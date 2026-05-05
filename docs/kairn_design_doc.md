@@ -808,6 +808,38 @@ Future inputs:
 * Claude hooks
 * Shell command output
 
+#### Hook support in Claude Code and Codex CLI (feasibility note)
+
+Kairn’s “interceptor” vision is feasible if the host agent exposes the events you care about as **hookable tool calls** (or if you run the agent under a Kairn-controlled runner/proxy).
+
+Today, both Claude Code and Codex CLI support **host-level hooks** that fire around tool execution, enabling Kairn to observe, gate, and react to agent actions.
+
+**Claude Code**
+
+- Supports lifecycle hook events including `PreToolUse` and `PostToolUse` (tool-call boundary), plus session/turn events like `SessionStart`, `UserPromptSubmit`, and file-watcher events like `FileChanged`.
+- Hooks can run user-defined commands/endpoints/prompts and can block certain tool calls (policy/guardrail style).
+- Docs: `https://code.claude.com/docs/en/hooks` and `https://code.claude.com/docs/en/hooks-guide`.
+
+**Codex CLI**
+
+- Supports hook events including `SessionStart`, `PreToolUse`, `PostToolUse`, `PermissionRequest`, `UserPromptSubmit`, and `Stop`.
+- Hooks can match tool names (including **MCP tool calls**) so you can react to or guardrail MCP usage as part of the agentic loop.
+- Docs: `https://developers.openai.com/codex/hooks`.
+
+**What hooks enable (practical interception)**
+
+- **Observe**: record what the agent attempted (reads/searches/edits/commands) into Kairn session state.
+- **Gate**: deny or require approval for risky tool calls, enforce “ask Kairn first” policies, block unsafe commands, etc.
+- **React**: after edits/commands, automatically trigger Kairn updates (diff review, test discovery, output compression) and feed results back as extra context.
+
+**What hooks do *not* guarantee**
+
+- Hooks generally operate at the **host’s tool boundary**, not at the OS/syscall level.
+- If the host performs an action without a hookable tool call (or via a tool path not covered by hooks), Kairn cannot reliably “intercept” it.
+- Therefore, “always-on interceptor” behavior is strongest when:
+  - the agent is configured to route retrieval through MCP tools, and/or
+  - Kairn provides an agent runner/proxy (`kairn run --agent ...`) that owns the IO boundary.
+
 Why this comes third:
 
 * It is powerful, but it depends on the runtime already understanding repo context and task state.

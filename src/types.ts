@@ -33,6 +33,10 @@ export type ContextResponseMode =
 
 export type OutputKind = "test" | "lint" | "typecheck" | "generic";
 
+export type WatchEventSource = "watch" | "generic" | "claude" | "codex";
+
+export type WatchEventKind = "file_change" | "diff_change" | "command" | "tool" | "session" | "hook" | "failure";
+
 export type SymbolKind =
   | "function"
   | "class"
@@ -145,6 +149,22 @@ export type DiffRecord = {
   createdAt: string;
 };
 
+export type WatchEventRecord = {
+  id?: number;
+  sessionId: string;
+  source: WatchEventSource;
+  kind: WatchEventKind;
+  eventName: string;
+  toolName?: string;
+  command?: string;
+  files: string[];
+  exitCode?: number;
+  summary: string;
+  contentHash: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+};
+
 export type TaskSession = {
   id: string;
   rootPath: string;
@@ -156,8 +176,50 @@ export type TaskSession = {
   symbolsShown: ContextShownRecord[];
   commandsRun: CommandRecord[];
   diffsObserved: DiffRecord[];
+  watchEvents: WatchEventRecord[];
   risks: string[];
   verificationHints: string[];
+};
+
+export type NormalizedHookEvent = {
+  source: WatchEventSource;
+  eventName: string;
+  kind: WatchEventKind;
+  toolName?: string;
+  toolInput?: unknown;
+  toolResponse?: unknown;
+  command?: string;
+  output?: string;
+  exitCode?: number;
+  files: string[];
+  cwd?: string;
+  timestamp?: string;
+  hostSessionId?: string;
+  metadata: Record<string, unknown>;
+};
+
+export type WatchRecommendation = {
+  summary: string;
+  files: string[];
+  suggestedNextContext: string[];
+  warnings: string[];
+  content?: string;
+};
+
+export type WatchSnapshot = {
+  sessionId: string;
+  rootPath: string;
+  changedFiles: string[];
+  indexedFiles: number;
+  watchEvents: WatchEventRecord[];
+  recommendations: WatchRecommendation[];
+  createdAt: string;
+};
+
+export type HookHandlingResult = {
+  event: WatchEventRecord;
+  recommendation?: WatchRecommendation;
+  response?: ContextResponse;
 };
 
 export type ContextRequest = {

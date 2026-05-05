@@ -8,7 +8,7 @@ import { normalizeRelativePath, resolveRoot } from "../utils/paths.js";
 import { nowIso } from "../utils/time.js";
 import { classifyFile, detectLanguage, scoreFileImportance } from "./classifyFile.js";
 
-const DEFAULT_IGNORE = [
+export const DEFAULT_IGNORE = [
   ".git/**",
   ".kairn/**",
   "node_modules/**",
@@ -39,7 +39,7 @@ const DEFAULT_IGNORE = [
 
 export async function scanRepo(root?: string): Promise<ScanResult> {
   const rootPath = resolveRoot(root);
-  const gitignore = loadGitignore(rootPath);
+  const gitignore = createRepoIgnore(rootPath);
   const scannedAt = nowIso();
 
   const candidates = await fg("**/*", {
@@ -93,8 +93,9 @@ export async function scanRepo(root?: string): Promise<ScanResult> {
   };
 }
 
-function loadGitignore(rootPath: string): ReturnType<typeof ignore> {
+export function createRepoIgnore(rootPath: string): ReturnType<typeof ignore> {
   const ig = ignore();
+  ig.add(DEFAULT_IGNORE);
   const gitignorePath = path.join(rootPath, ".gitignore");
 
   if (fs.existsSync(gitignorePath)) {
