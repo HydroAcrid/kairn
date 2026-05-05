@@ -1,9 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import type { ContextResponse, InitResult, OutputKind, TaskSession } from "../types.js";
+import type { ContextResponse, FileRecord, InitResult, OutputKind, TaskSession } from "../types.js";
 import { ensureKairnDir, getKairnPaths } from "../config/paths.js";
-import { scanRepo } from "../scanner/scanRepo.js";
 import { SqliteStore } from "../store/sqliteStore.js";
 import { compressOutput as compressOutputText } from "../compression/compressOutput.js";
 import { reviewGitDiff } from "../git/reviewDiff.js";
@@ -13,6 +12,7 @@ import { scoreFiles } from "../retrieval/scoreResults.js";
 import { sha256 } from "../utils/hash.js";
 import { normalizeRelativePath, resolveRoot } from "../utils/paths.js";
 import { estimateTokens, truncateToBudget } from "../utils/tokens.js";
+import { indexRepo } from "../indexer/indexRepo.js";
 
 export class KairnRuntime {
   private readonly rootPath: string;
@@ -30,15 +30,21 @@ export class KairnRuntime {
 
   async init(): Promise<InitResult> {
     const paths = ensureKairnDir(this.rootPath);
-    const scan = await scanRepo(this.rootPath);
-    this.store.upsertFiles(scan.files);
+    const index = await indexRepo(this.rootPath);
+    this.store.replaceIndex({
+      rootPath: this.rootPath,
+      files: index.graph.files,
+      symbols: index.graph.symbols,
+      edges: index.graph.edges
+    });
 
     return {
       rootPath: paths.rootPath,
       kairnDir: paths.kairnDir,
       configPath: paths.configPath,
       databasePath: paths.databasePath,
-      scan
+      scan: index.scan,
+      graph: index.graph
     };
   }
 
@@ -74,9 +80,10 @@ export class KairnRuntime {
     budget?: number | undefined;
   }): Promise<ContextResponse> {
     const session = this.store.getSession(input.sessionId);
-    const files = await this.refreshFiles(session.rootPath);
+    const files = await this.refreshIndex(session.rootPath);
+    const symbols = this.store.listSymbols(session.rootPath);
     const query = input.query ?? session.task;
-    const scored = scoreFiles(files, query).slice(0, 12);
+    const scored = scoreFiles(files, query, symbols).slice(0, 12);
     const content = truncateToBudget(
       [
         input.requestType === "initial_brief" ? "# Kairn Context Brief" : "# Kairn Context Results",
@@ -122,7 +129,7 @@ export class KairnRuntime {
   }): Promise<ContextResponse> {
     const session = this.store.getSession(input.sessionId);
     const target = normalizeRelativePath(input.target);
-    const files = await this.refreshFiles(session.rootPath);
+    const files = await this.refreshIndex(session.rootPath);
     const file = files.find((record) => record.path === target);
 
     if (!file) {
@@ -167,8 +174,17 @@ export class KairnRuntime {
   }): Promise<ContextResponse> {
     const session = this.store.getSession(input.sessionId);
     const target = normalizeRelativePath(input.target);
+    await this.refreshIndex(session.rootPath);
     const content = readTextFile(session.rootPath, target);
-    const symbol = extractSymbol(content, input.symbol);
+    const storedSymbol = this.store.findSymbol(session.rootPath, target, input.symbol);
+    const fallbackSymbol = storedSymbol ? null : extractSymbol(content, input.symbol);
+    const symbol = storedSymbol
+      ? {
+          snippet: sliceLines(content, storedSymbol.startLine, storedSymbol.endLine),
+          startLine: storedSymbol.startLine,
+          endLine: storedSymbol.endLine
+        }
+      : fallbackSymbol;
 
     if (!symbol) {
       const warning = `Symbol "${input.symbol}" was not found in ${target} with the lightweight extractor.`;
@@ -228,8 +244,10 @@ export class KairnRuntime {
   }): Promise<ContextResponse> {
     const session = this.store.getSession(input.sessionId);
     const target = normalizeRelativePath(input.target);
-    const files = await this.refreshFiles(session.rootPath);
-    const related = findRelatedFiles(session.rootPath, files, target).slice(0, 20);
+    const files = await this.refreshIndex(session.rootPath);
+    const graphRelated = this.getGraphRelatedFiles(session.rootPath, target);
+    const fallbackRelated = graphRelated.length > 0 ? [] : findRelatedFiles(session.rootPath, files, target);
+    const related = (graphRelated.length > 0 ? graphRelated : fallbackRelated.map((file) => ({ file, reason: "heuristic fallback" }))).slice(0, 20);
     const responseContent = truncateToBudget(
       [
         "# Related Files",
@@ -237,7 +255,9 @@ export class KairnRuntime {
         `Target: ${target}`,
         "",
         related.length > 0
-          ? related.map((file) => `- ${file.path} (${file.kind}, importance ${file.importance})`).join("\n")
+          ? related
+              .map(({ file, reason }) => `- ${file.path} (${file.kind}, importance ${file.importance}): ${reason}`)
+              .join("\n")
           : "No related files found from deterministic heuristics."
       ].join("\n"),
       input.budget ?? 1200
@@ -250,9 +270,9 @@ export class KairnRuntime {
       content: responseContent,
       files: [target],
       symbols: [],
-      related: related.map((file) => file.path),
-      warnings: related.length === 0 ? ["No related files found. AST graphing is not enabled yet."] : [],
-      suggestedNextContext: related.slice(0, 5).map((file) => file.path),
+      related: related.map(({ file }) => file.path),
+      warnings: related.length === 0 ? ["No related files found from graph or fallback heuristics."] : [],
+      suggestedNextContext: related.slice(0, 5).map(({ file }) => file.path),
       tokenEstimate: estimateTokens(responseContent)
     };
   }
@@ -263,14 +283,16 @@ export class KairnRuntime {
     budget?: number | undefined;
   }): Promise<ContextResponse> {
     const session = this.store.getSession(input.sessionId);
-    const files = await this.refreshFiles(session.rootPath);
-    const tests = findTestsFor(files, input.target ? normalizeRelativePath(input.target) : undefined).slice(0, 30);
+    const files = await this.refreshIndex(session.rootPath);
+    const target = input.target ? normalizeRelativePath(input.target) : undefined;
+    const graphTests = target ? this.getGraphTests(session.rootPath, target) : [];
+    const tests = (graphTests.length > 0 ? graphTests : findTestsFor(files, target)).slice(0, 30);
     const packageScripts = this.readPackageScripts(session.rootPath);
     const responseContent = truncateToBudget(
       [
         "# Related Tests",
         "",
-        input.target ? `Target: ${normalizeRelativePath(input.target)}` : `Task: ${session.task}`,
+        target ? `Target: ${target}` : `Task: ${session.task}`,
         "",
         "## Test Files",
         tests.length > 0 ? tests.map((file) => `- ${file.path}`).join("\n") : "No matching test files found.",
@@ -355,10 +377,54 @@ export class KairnRuntime {
     };
   }
 
-  private async refreshFiles(rootPath: string) {
-    const scan = await scanRepo(rootPath);
-    this.store.upsertFiles(scan.files);
-    return scan.files;
+  private async refreshIndex(rootPath: string) {
+    const index = await indexRepo(rootPath);
+    this.store.replaceIndex({
+      rootPath,
+      files: index.graph.files,
+      symbols: index.graph.symbols,
+      edges: index.graph.edges
+    });
+    return index.graph.files;
+  }
+
+  private getGraphRelatedFiles(rootPath: string, target: string) {
+    const filesByPath = new Map(this.store.listFiles(rootPath).map((file) => [file.path, file]));
+    const edges = this.store.listGraphEdgesForFile(rootPath, target);
+    const related = new Map<string, { file: FileRecord; reason: string }>();
+
+    for (const edge of edges) {
+      const relatedPath = edge.fromFile === target ? edge.toFile : edge.fromFile;
+      const file = filesByPath.get(relatedPath);
+      if (!file) continue;
+      const reason = graphReason(edge.type, edge.fromFile === target);
+      const existing = related.get(relatedPath);
+      const reasons = new Set([...(existing?.reason.split("; ") ?? []), reason]);
+      related.set(relatedPath, {
+        file,
+        reason: [...reasons].join("; ")
+      });
+    }
+
+    return [...related.values()].sort((a, b) => b.file.importance - a.file.importance || a.file.path.localeCompare(b.file.path));
+  }
+
+  private getGraphTests(rootPath: string, target: string) {
+    const filesByPath = new Map(this.store.listFiles(rootPath).map((file) => [file.path, file]));
+    const edges = this.store
+      .listGraphEdgesForFile(rootPath, target)
+      .filter((edge) => edge.type === "tested_by" || edge.type === "test_for");
+    const tests = new Map<string, FileRecord>();
+
+    for (const edge of edges) {
+      const path = edge.type === "tested_by" && edge.fromFile === target ? edge.toFile : edge.fromFile;
+      const file = filesByPath.get(path);
+      if (file?.kind === "test") {
+        tests.set(file.path, file);
+      }
+    }
+
+    return [...tests.values()].sort((a, b) => a.path.localeCompare(b.path));
   }
 
   private recordShown(
@@ -395,4 +461,17 @@ export class KairnRuntime {
 
 export function createRuntime(root?: string): KairnRuntime {
   return new KairnRuntime(root ?? getKairnPaths().rootPath);
+}
+
+function sliceLines(content: string, startLine: number, endLine: number): string {
+  return content.split(/\r?\n/).slice(startLine - 1, endLine).join("\n");
+}
+
+function graphReason(type: string, targetIsFromFile: boolean): string {
+  if (type === "imports") return targetIsFromFile ? "imports target" : "imported by target";
+  if (type === "imported_by") return targetIsFromFile ? "imported by target" : "imports target";
+  if (type === "tested_by") return targetIsFromFile ? "test for target" : "tested source";
+  if (type === "test_for") return targetIsFromFile ? "tested source" : "test for target";
+  if (type === "parent_route") return targetIsFromFile ? "parent route" : "route segment file";
+  return type;
 }

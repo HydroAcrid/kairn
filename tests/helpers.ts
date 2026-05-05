@@ -45,6 +45,16 @@ export function createFixtureRepo(): string {
   );
   write(
     root,
+    "src/widgets.ts",
+    [
+      "export function DashboardMetrics() {",
+      "  return 'metrics';",
+      "}",
+      ""
+    ].join("\n")
+  );
+  write(
+    root,
     "src/app.test.ts",
     [
       "import { renderDashboard } from './app';",
@@ -52,6 +62,28 @@ export function createFixtureRepo(): string {
       "test('renderDashboard', () => {",
       "  expect(renderDashboard('Kevin')).toContain('Kevin');",
       "});",
+      ""
+    ].join("\n")
+  );
+  write(
+    root,
+    "app/dashboard/page.tsx",
+    [
+      "import { DashboardCard } from './DashboardCard';",
+      "",
+      "export default function Page() {",
+      "  return <DashboardCard />;",
+      "}",
+      ""
+    ].join("\n")
+  );
+  write(
+    root,
+    "app/dashboard/DashboardCard.tsx",
+    [
+      "export const DashboardCard = () => {",
+      "  return <section />;",
+      "};",
       ""
     ].join("\n")
   );

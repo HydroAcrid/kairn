@@ -30,6 +30,7 @@ describe("KairnRuntime", () => {
     });
     const related = await runtime.getRelatedFiles({ sessionId: session.id, target: "src/app.ts" });
     const tests = await runtime.findTests({ sessionId: session.id, target: "src/app.ts" });
+    const symbolContext = await runtime.findContext({ sessionId: session.id, query: "DashboardMetrics" });
     const diff = await runtime.reviewDiff({ sessionId: session.id });
     const compressed = runtime.compressOutput({
       sessionId: session.id,
@@ -40,9 +41,27 @@ describe("KairnRuntime", () => {
     expect(file.mode).toBe("exact_code");
     expect(symbol.symbols).toEqual(["renderDashboard"]);
     expect(related.related).toContain("src/user.ts");
+    expect(related.content).toMatch(/imports target|imported by target|target imports file/);
     expect(tests.files).toContain("src/app.test.ts");
+    expect(symbolContext.files).toContain("src/widgets.ts");
     expect(diff.files).toContain("src/app.ts");
     expect(compressed.content).toContain("Expected true");
+
+    runtime.close();
+  });
+
+  it("uses graph edges for parent route relationships", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const { session } = await runtime.startTask("Update dashboard card");
+
+    const related = await runtime.getRelatedFiles({
+      sessionId: session.id,
+      target: "app/dashboard/DashboardCard.tsx"
+    });
+
+    expect(related.related).toContain("app/dashboard/page.tsx");
+    expect(related.content).toContain("parent route");
 
     runtime.close();
   });

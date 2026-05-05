@@ -4,7 +4,9 @@ import type {
   ContextShownRecord,
   DiffRecord,
   FileRecord,
+  GraphEdgeRecord,
   SessionStatus,
+  SymbolRecord,
   TaskSession
 } from "../types.js";
 import { nowIso } from "../utils/time.js";
@@ -29,6 +31,25 @@ type FileRow = {
   hash: string;
   importance: number;
   updated_at: string;
+};
+
+type SymbolRow = {
+  root_path: string;
+  file_path: string;
+  name: string;
+  kind: SymbolRecord["kind"];
+  exported: 0 | 1;
+  start_line: number;
+  end_line: number;
+  signature: string;
+};
+
+type GraphEdgeRow = {
+  root_path: string;
+  from_file: string;
+  to_file: string;
+  type: GraphEdgeRecord["type"];
+  metadata_json: string;
 };
 
 type ContextShownRow = {
@@ -96,12 +117,114 @@ export class SqliteStore {
     tx(files);
   }
 
+  replaceIndex(input: {
+    rootPath: string;
+    files: FileRecord[];
+    symbols: SymbolRecord[];
+    edges: GraphEdgeRecord[];
+  }): void {
+    const deleteFiles = this.db.prepare("delete from file_inventory where root_path = ?");
+    const deleteSymbols = this.db.prepare("delete from symbols where root_path = ?");
+    const deleteEdges = this.db.prepare("delete from graph_edges where root_path = ?");
+    const insertFile = this.db.prepare(`
+      insert into file_inventory (
+        root_path, path, language, kind, size, hash, importance, updated_at
+      ) values (
+        @rootPath, @path, @language, @kind, @size, @hash, @importance, @updatedAt
+      )
+    `);
+    const insertSymbol = this.db.prepare(`
+      insert into symbols (
+        root_path, file_path, name, kind, exported, start_line, end_line, signature
+      ) values (
+        @rootPath, @filePath, @name, @kind, @exported, @startLine, @endLine, @signature
+      )
+    `);
+    const insertEdge = this.db.prepare(`
+      insert into graph_edges (
+        root_path, from_file, to_file, type, metadata_json
+      ) values (
+        @rootPath, @fromFile, @toFile, @type, @metadataJson
+      )
+    `);
+
+    const tx = this.db.transaction(() => {
+      deleteEdges.run(input.rootPath);
+      deleteSymbols.run(input.rootPath);
+      deleteFiles.run(input.rootPath);
+
+      for (const file of input.files) {
+        insertFile.run(file);
+      }
+
+      for (const symbol of input.symbols) {
+        insertSymbol.run({
+          ...symbol,
+          exported: symbol.exported ? 1 : 0
+        });
+      }
+
+      for (const edge of input.edges) {
+        insertEdge.run({
+          ...edge,
+          metadataJson: JSON.stringify(edge.metadata)
+        });
+      }
+    });
+
+    tx();
+  }
+
   listFiles(rootPath: string): FileRecord[] {
     const rows = this.db
       .prepare("select * from file_inventory where root_path = ? order by path asc")
       .all(rootPath) as FileRow[];
 
     return rows.map(mapFileRow);
+  }
+
+  listSymbols(rootPath: string): SymbolRecord[] {
+    const rows = this.db
+      .prepare("select * from symbols where root_path = ? order by file_path asc, start_line asc, name asc")
+      .all(rootPath) as SymbolRow[];
+
+    return rows.map(mapSymbolRow);
+  }
+
+  listSymbolsForFile(rootPath: string, filePath: string): SymbolRecord[] {
+    const rows = this.db
+      .prepare("select * from symbols where root_path = ? and file_path = ? order by start_line asc, name asc")
+      .all(rootPath, filePath) as SymbolRow[];
+
+    return rows.map(mapSymbolRow);
+  }
+
+  findSymbol(rootPath: string, filePath: string, name: string): SymbolRecord | undefined {
+    const row = this.db
+      .prepare("select * from symbols where root_path = ? and file_path = ? and name = ? order by start_line asc limit 1")
+      .get(rootPath, filePath, name) as SymbolRow | undefined;
+
+    return row ? mapSymbolRow(row) : undefined;
+  }
+
+  listGraphEdges(rootPath: string): GraphEdgeRecord[] {
+    const rows = this.db
+      .prepare("select * from graph_edges where root_path = ? order by from_file asc, to_file asc, type asc")
+      .all(rootPath) as GraphEdgeRow[];
+
+    return rows.map(mapGraphEdgeRow);
+  }
+
+  listGraphEdgesForFile(rootPath: string, filePath: string): GraphEdgeRecord[] {
+    const rows = this.db
+      .prepare(`
+        select * from graph_edges
+        where root_path = ? and (from_file = ? or to_file = ?)
+        order by from_file asc, to_file asc, type asc
+      `)
+      .all(rootPath, filePath, filePath) as GraphEdgeRow[];
+
+    return rows.map(mapGraphEdgeRow);
   }
 
   createSession(input: {
@@ -276,6 +399,25 @@ export class SqliteStore {
         primary key (root_path, path)
       );
 
+      create table if not exists symbols (
+        root_path text not null,
+        file_path text not null,
+        name text not null,
+        kind text not null,
+        exported integer not null check (exported in (0, 1)),
+        start_line integer not null,
+        end_line integer not null,
+        signature text not null
+      );
+
+      create table if not exists graph_edges (
+        root_path text not null,
+        from_file text not null,
+        to_file text not null,
+        type text not null,
+        metadata_json text not null default '{}'
+      );
+
       create table if not exists command_records (
         id integer primary key autoincrement,
         session_id text not null references sessions(id) on delete cascade,
@@ -295,6 +437,9 @@ export class SqliteStore {
       create index if not exists context_shown_session_idx on context_shown(session_id);
       create index if not exists command_records_session_idx on command_records(session_id);
       create index if not exists diff_observations_session_idx on diff_observations(session_id);
+      create index if not exists symbols_root_file_idx on symbols(root_path, file_path, name);
+      create index if not exists graph_edges_root_from_idx on graph_edges(root_path, from_file);
+      create index if not exists graph_edges_root_to_idx on graph_edges(root_path, to_file);
     `);
   }
 }
@@ -312,7 +457,35 @@ function mapFileRow(row: FileRow): FileRecord {
   };
 }
 
+function mapSymbolRow(row: SymbolRow): SymbolRecord {
+  return {
+    rootPath: row.root_path,
+    filePath: row.file_path,
+    name: row.name,
+    kind: row.kind,
+    exported: row.exported === 1,
+    startLine: row.start_line,
+    endLine: row.end_line,
+    signature: row.signature
+  };
+}
+
+function mapGraphEdgeRow(row: GraphEdgeRow): GraphEdgeRecord {
+  return {
+    rootPath: row.root_path,
+    fromFile: row.from_file,
+    toFile: row.to_file,
+    type: row.type,
+    metadata: parseJsonObject(row.metadata_json)
+  };
+}
+
 function parseJsonList(value: string): string[] {
   const parsed = JSON.parse(value) as unknown;
   return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+}
+
+function parseJsonObject(value: string): Record<string, unknown> {
+  const parsed = JSON.parse(value) as unknown;
+  return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
 }

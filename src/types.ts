@@ -33,6 +33,20 @@ export type ContextResponseMode =
 
 export type OutputKind = "test" | "lint" | "typecheck" | "generic";
 
+export type SymbolKind =
+  | "function"
+  | "class"
+  | "interface"
+  | "type"
+  | "const"
+  | "let"
+  | "var"
+  | "component"
+  | "default"
+  | "unknown";
+
+export type GraphEdgeType = "imports" | "imported_by" | "test_for" | "tested_by" | "parent_route";
+
 export type FileRecord = {
   rootPath: string;
   path: string;
@@ -42,6 +56,42 @@ export type FileRecord = {
   hash: string;
   importance: number;
   updatedAt: string;
+};
+
+export type SymbolRecord = {
+  rootPath: string;
+  filePath: string;
+  name: string;
+  kind: SymbolKind;
+  exported: boolean;
+  startLine: number;
+  endLine: number;
+  signature: string;
+};
+
+export type GraphEdgeRecord = {
+  rootPath: string;
+  fromFile: string;
+  toFile: string;
+  type: GraphEdgeType;
+  metadata: Record<string, unknown>;
+};
+
+export type ParsedFile = {
+  rootPath: string;
+  filePath: string;
+  language: string;
+  symbols: SymbolRecord[];
+  imports: string[];
+  hasErrors: boolean;
+};
+
+export type RepoGraph = {
+  rootPath: string;
+  files: FileRecord[];
+  parsedFiles: ParsedFile[];
+  symbols: SymbolRecord[];
+  edges: GraphEdgeRecord[];
 };
 
 export type ContextShownRecord = {
@@ -119,6 +169,7 @@ export type InitResult = {
   configPath: string;
   databasePath: string;
   scan: ScanResult;
+  graph: RepoGraph;
 };
 
 export type ScoredFile = FileRecord & {

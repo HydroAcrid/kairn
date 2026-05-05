@@ -35,3 +35,11 @@ pnpm dev -- context --session <session-id> --file src/app.ts --root /path/to/rep
 ## State
 
 Kairn stores generated state in the target repo under `.kairn/`. This includes local SQLite metadata, sessions, scans, and traces. Raw source files are not copied into Kairn state.
+
+## Native Dependency Notes
+
+Kairn uses native Tree-sitter bindings for AST parsing. On Node 24, a fresh source build may need C++20 enabled:
+
+```bash
+CXXFLAGS="-std=c++20" pnpm install
+```
