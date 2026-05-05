@@ -44,6 +44,8 @@ describe("KairnRuntime", () => {
     expect(related.content).toMatch(/imports target|imported by target|target imports file/);
     expect(tests.files).toContain("src/app.test.ts");
     expect(symbolContext.files).toContain("src/widgets.ts");
+    expect(symbolContext.content).toContain("Response Mode");
+    expect(symbolContext.content).toMatch(/semantic match|symbol match/);
     expect(diff.files).toContain("src/app.ts");
     expect(compressed.content).toContain("Expected true");
 
@@ -62,6 +64,24 @@ describe("KairnRuntime", () => {
 
     expect(related.related).toContain("app/dashboard/page.tsx");
     expect(related.content).toContain("parent route");
+
+    runtime.close();
+  });
+
+  it("routes vague context queries to snippets when requested", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const { session } = await runtime.startTask("Update dashboard card");
+
+    const response = await runtime.findContext({
+      sessionId: session.id,
+      query: "metrics",
+      mode: "snippets",
+      budget: 800
+    });
+
+    expect(response.mode).toBe("snippets");
+    expect(response.content).toContain("## Matched Snippets");
 
     runtime.close();
   });

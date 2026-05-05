@@ -22,6 +22,22 @@ describe("CLI", () => {
       [...CLI.slice(1), "context", "--session", parsed.session.id, "--file", "src/app.ts", "--root", root],
       { cwd: process.cwd(), encoding: "utf8" }
     );
+    const semanticContext = execFileSync(
+      CLI[0]!,
+      [
+        ...CLI.slice(1),
+        "context",
+        "--session",
+        parsed.session.id,
+        "--query",
+        "DashboardMetrics",
+        "--mode",
+        "snippets",
+        "--root",
+        root
+      ],
+      { cwd: process.cwd(), encoding: "utf8" }
+    );
     const diff = execFileSync(CLI[0]!, [...CLI.slice(1), "diff", "--session", parsed.session.id, "--root", root], {
       cwd: process.cwd(),
       encoding: "utf8"
@@ -45,6 +61,8 @@ describe("CLI", () => {
 
     expect(init).toContain("Kairn initialized");
     expect(context).toContain("renderDashboard");
+    expect(semanticContext).toContain("Response Mode: snippets");
+    expect(semanticContext).toContain("DashboardMetrics");
     expect(diff).toContain("src/app.ts");
     expect(compressed).toContain("FAIL src/app.test.ts");
   });

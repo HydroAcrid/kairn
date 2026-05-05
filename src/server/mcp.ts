@@ -5,6 +5,7 @@ import { KairnRuntime } from "../runtime/KairnRuntime.js";
 import type { OutputKind } from "../types.js";
 
 const outputKindSchema = z.enum(["test", "lint", "typecheck", "generic"]);
+const contextModeSchema = z.enum(["brief", "snippets", "summary", "exact"]);
 
 export async function startMcpServer(options: { root?: string }): Promise<void> {
   const server = createMcpServer(options);
@@ -39,11 +40,12 @@ export function createMcpServer(options: { root?: string }): McpServer {
       inputSchema: {
         sessionId: z.string().min(1),
         query: z.string().optional(),
+        mode: contextModeSchema.optional(),
         budget: z.number().int().positive().optional()
       }
     },
-    async ({ sessionId, query, budget }) =>
-      toolResult(await runtime.findContext({ sessionId, query, requestType: "find_context", budget }))
+    async ({ sessionId, query, mode, budget }) =>
+      toolResult(await runtime.findContext({ sessionId, query, mode, requestType: "find_context", budget }))
   );
 
   server.registerTool(

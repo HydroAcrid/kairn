@@ -43,6 +43,18 @@ describe("MCP server", () => {
     const fileText = firstTextContent(file);
     expect(fileText).toContain("renderDashboard");
 
+    const context = await client.callTool({
+      name: "kairn_find_context",
+      arguments: {
+        sessionId: parsed.session.id,
+        query: "DashboardMetrics",
+        mode: "snippets"
+      }
+    });
+    const contextText = firstTextContent(context);
+    expect(contextText).toContain("DashboardMetrics");
+    expect(contextText).toContain("snippets");
+
     await client.close();
   });
 });

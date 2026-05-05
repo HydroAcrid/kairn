@@ -5,10 +5,13 @@ import type {
   DiffRecord,
   FileRecord,
   GraphEdgeRecord,
+  SemanticChunkRecord,
+  SemanticVectorRecord,
   SessionStatus,
   SymbolRecord,
   TaskSession
 } from "../types.js";
+import { deserializeVector, serializeVector } from "../semantic/vector.js";
 import { nowIso } from "../utils/time.js";
 
 type SessionRow = {
@@ -50,6 +53,26 @@ type GraphEdgeRow = {
   to_file: string;
   type: GraphEdgeRecord["type"];
   metadata_json: string;
+};
+
+type SemanticChunkRow = {
+  root_path: string;
+  id: string;
+  file_path: string;
+  kind: SemanticChunkRecord["kind"];
+  symbol: string | null;
+  start_line: number | null;
+  end_line: number | null;
+  text: string;
+  hash: string;
+  token_estimate: number;
+};
+
+type SemanticVectorRow = {
+  root_path: string;
+  chunk_id: string;
+  dimensions: number;
+  vector_json: string;
 };
 
 type ContextShownRow = {
@@ -122,10 +145,14 @@ export class SqliteStore {
     files: FileRecord[];
     symbols: SymbolRecord[];
     edges: GraphEdgeRecord[];
+    semanticChunks?: SemanticChunkRecord[];
+    semanticVectors?: SemanticVectorRecord[];
   }): void {
     const deleteFiles = this.db.prepare("delete from file_inventory where root_path = ?");
     const deleteSymbols = this.db.prepare("delete from symbols where root_path = ?");
     const deleteEdges = this.db.prepare("delete from graph_edges where root_path = ?");
+    const deleteChunks = this.db.prepare("delete from semantic_chunks where root_path = ?");
+    const deleteVectors = this.db.prepare("delete from semantic_vectors where root_path = ?");
     const insertFile = this.db.prepare(`
       insert into file_inventory (
         root_path, path, language, kind, size, hash, importance, updated_at
@@ -147,8 +174,24 @@ export class SqliteStore {
         @rootPath, @fromFile, @toFile, @type, @metadataJson
       )
     `);
+    const insertChunk = this.db.prepare(`
+      insert into semantic_chunks (
+        root_path, id, file_path, kind, symbol, start_line, end_line, text, hash, token_estimate
+      ) values (
+        @rootPath, @id, @filePath, @kind, @symbol, @startLine, @endLine, @text, @hash, @tokenEstimate
+      )
+    `);
+    const insertVector = this.db.prepare(`
+      insert into semantic_vectors (
+        root_path, chunk_id, dimensions, vector_json
+      ) values (
+        @rootPath, @chunkId, @dimensions, @vectorJson
+      )
+    `);
 
     const tx = this.db.transaction(() => {
+      deleteVectors.run(input.rootPath);
+      deleteChunks.run(input.rootPath);
       deleteEdges.run(input.rootPath);
       deleteSymbols.run(input.rootPath);
       deleteFiles.run(input.rootPath);
@@ -168,6 +211,22 @@ export class SqliteStore {
         insertEdge.run({
           ...edge,
           metadataJson: JSON.stringify(edge.metadata)
+        });
+      }
+
+      for (const chunk of input.semanticChunks ?? []) {
+        insertChunk.run({
+          ...chunk,
+          symbol: chunk.symbol ?? null,
+          startLine: chunk.startLine ?? null,
+          endLine: chunk.endLine ?? null
+        });
+      }
+
+      for (const vector of input.semanticVectors ?? []) {
+        insertVector.run({
+          ...vector,
+          vectorJson: serializeVector(vector.vector)
         });
       }
     });
@@ -225,6 +284,30 @@ export class SqliteStore {
       .all(rootPath, filePath, filePath) as GraphEdgeRow[];
 
     return rows.map(mapGraphEdgeRow);
+  }
+
+  listSemanticChunks(rootPath: string): SemanticChunkRecord[] {
+    const rows = this.db
+      .prepare("select * from semantic_chunks where root_path = ? order by file_path asc, kind asc, id asc")
+      .all(rootPath) as SemanticChunkRow[];
+
+    return rows.map(mapSemanticChunkRow);
+  }
+
+  listSemanticChunksForFile(rootPath: string, filePath: string): SemanticChunkRecord[] {
+    const rows = this.db
+      .prepare("select * from semantic_chunks where root_path = ? and file_path = ? order by kind asc, id asc")
+      .all(rootPath, filePath) as SemanticChunkRow[];
+
+    return rows.map(mapSemanticChunkRow);
+  }
+
+  listSemanticVectors(rootPath: string): SemanticVectorRecord[] {
+    const rows = this.db
+      .prepare("select * from semantic_vectors where root_path = ? order by chunk_id asc")
+      .all(rootPath) as SemanticVectorRow[];
+
+    return rows.map(mapSemanticVectorRow);
   }
 
   createSession(input: {
@@ -418,6 +501,28 @@ export class SqliteStore {
         metadata_json text not null default '{}'
       );
 
+      create table if not exists semantic_chunks (
+        root_path text not null,
+        id text not null,
+        file_path text not null,
+        kind text not null,
+        symbol text,
+        start_line integer,
+        end_line integer,
+        text text not null,
+        hash text not null,
+        token_estimate integer not null,
+        primary key (root_path, id)
+      );
+
+      create table if not exists semantic_vectors (
+        root_path text not null,
+        chunk_id text not null,
+        dimensions integer not null,
+        vector_json text not null,
+        primary key (root_path, chunk_id)
+      );
+
       create table if not exists command_records (
         id integer primary key autoincrement,
         session_id text not null references sessions(id) on delete cascade,
@@ -440,6 +545,8 @@ export class SqliteStore {
       create index if not exists symbols_root_file_idx on symbols(root_path, file_path, name);
       create index if not exists graph_edges_root_from_idx on graph_edges(root_path, from_file);
       create index if not exists graph_edges_root_to_idx on graph_edges(root_path, to_file);
+      create index if not exists semantic_chunks_root_file_idx on semantic_chunks(root_path, file_path);
+      create index if not exists semantic_vectors_root_chunk_idx on semantic_vectors(root_path, chunk_id);
     `);
   }
 }
@@ -477,6 +584,30 @@ function mapGraphEdgeRow(row: GraphEdgeRow): GraphEdgeRecord {
     toFile: row.to_file,
     type: row.type,
     metadata: parseJsonObject(row.metadata_json)
+  };
+}
+
+function mapSemanticChunkRow(row: SemanticChunkRow): SemanticChunkRecord {
+  return {
+    rootPath: row.root_path,
+    id: row.id,
+    filePath: row.file_path,
+    kind: row.kind,
+    ...(row.symbol ? { symbol: row.symbol } : {}),
+    ...(row.start_line ? { startLine: row.start_line } : {}),
+    ...(row.end_line ? { endLine: row.end_line } : {}),
+    text: row.text,
+    hash: row.hash,
+    tokenEstimate: row.token_estimate
+  };
+}
+
+function mapSemanticVectorRow(row: SemanticVectorRow): SemanticVectorRecord {
+  return {
+    rootPath: row.root_path,
+    chunkId: row.chunk_id,
+    dimensions: row.dimensions,
+    vector: deserializeVector(row.vector_json)
   };
 }
 

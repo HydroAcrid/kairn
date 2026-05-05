@@ -47,6 +47,10 @@ export type SymbolKind =
 
 export type GraphEdgeType = "imports" | "imported_by" | "test_for" | "tested_by" | "parent_route";
 
+export type SemanticChunkKind = "symbol" | "file_summary";
+
+export type ContextQueryMode = "brief" | "snippets" | "summary" | "exact";
+
 export type FileRecord = {
   rootPath: string;
   path: string;
@@ -92,6 +96,26 @@ export type RepoGraph = {
   parsedFiles: ParsedFile[];
   symbols: SymbolRecord[];
   edges: GraphEdgeRecord[];
+};
+
+export type SemanticChunkRecord = {
+  rootPath: string;
+  id: string;
+  filePath: string;
+  kind: SemanticChunkKind;
+  symbol?: string;
+  startLine?: number;
+  endLine?: number;
+  text: string;
+  hash: string;
+  tokenEstimate: number;
+};
+
+export type SemanticVectorRecord = {
+  rootPath: string;
+  chunkId: string;
+  dimensions: number;
+  vector: number[];
 };
 
 export type ContextShownRecord = {
@@ -143,6 +167,7 @@ export type ContextRequest = {
   query?: string;
   agentIntent?: string;
   budget?: number;
+  mode?: ContextQueryMode;
 };
 
 export type ContextResponse = {
@@ -170,9 +195,31 @@ export type InitResult = {
   databasePath: string;
   scan: ScanResult;
   graph: RepoGraph;
+  semantic: {
+    chunks: number;
+    vectors: number;
+  };
 };
 
 export type ScoredFile = FileRecord & {
   score: number;
   reasons: string[];
+};
+
+export type HybridScoredResult = FileRecord & {
+  score: number;
+  reasons: string[];
+  semanticScore: number;
+  keywordScore: number;
+  graphScore: number;
+  sessionScore: number;
+  importanceScore: number;
+  gitScore: number;
+  chunks: SemanticChunkRecord[];
+};
+
+export type ResponseDecision = {
+  mode: ContextResponseMode;
+  reason: string;
+  warnings: string[];
 };

@@ -1,14 +1,16 @@
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import type { ContextResponse, FileRecord, InitResult, OutputKind, TaskSession } from "../types.js";
+import { simpleGit } from "simple-git";
+import type { ContextQueryMode, ContextResponse, FileRecord, HybridScoredResult, InitResult, OutputKind, TaskSession } from "../types.js";
 import { ensureKairnDir, getKairnPaths } from "../config/paths.js";
 import { SqliteStore } from "../store/sqliteStore.js";
 import { compressOutput as compressOutputText } from "../compression/compressOutput.js";
 import { reviewGitDiff } from "../git/reviewDiff.js";
+import { hybridSearch } from "../retrieval/hybridRetrieval.js";
 import { findRelatedFiles, findTestsFor } from "../retrieval/relatedFiles.js";
 import { extractSymbol, readTextFile, summarizeFile } from "../retrieval/readSource.js";
-import { scoreFiles } from "../retrieval/scoreResults.js";
+import { decideResponse } from "../retrieval/responseRouter.js";
 import { sha256 } from "../utils/hash.js";
 import { normalizeRelativePath, resolveRoot } from "../utils/paths.js";
 import { estimateTokens, truncateToBudget } from "../utils/tokens.js";
@@ -35,7 +37,9 @@ export class KairnRuntime {
       rootPath: this.rootPath,
       files: index.graph.files,
       symbols: index.graph.symbols,
-      edges: index.graph.edges
+      edges: index.graph.edges,
+      semanticChunks: index.semanticChunks,
+      semanticVectors: index.semanticVectors
     });
 
     return {
@@ -44,7 +48,11 @@ export class KairnRuntime {
       configPath: paths.configPath,
       databasePath: paths.databasePath,
       scan: index.scan,
-      graph: index.graph
+      graph: index.graph,
+      semantic: {
+        chunks: index.semanticChunks.length,
+        vectors: index.semanticVectors.length
+      }
     };
   }
 
@@ -78,44 +86,60 @@ export class KairnRuntime {
     query?: string | undefined;
     requestType?: "initial_brief" | "find_context" | undefined;
     budget?: number | undefined;
+    mode?: ContextQueryMode | undefined;
   }): Promise<ContextResponse> {
     const session = this.store.getSession(input.sessionId);
     const files = await this.refreshIndex(session.rootPath);
     const symbols = this.store.listSymbols(session.rootPath);
+    const edges = this.store.listGraphEdges(session.rootPath);
+    const chunks = this.store.listSemanticChunks(session.rootPath);
+    const vectors = this.store.listSemanticVectors(session.rootPath);
+    const changedFiles = await this.getChangedFiles(session.rootPath);
     const query = input.query ?? session.task;
-    const scored = scoreFiles(files, query, symbols).slice(0, 12);
+    const scored = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors,
+      edges,
+      shown: session.filesShown,
+      changedFiles
+    }).slice(0, 12);
+    const repeatedFiles = scored.filter((file) => file.reasons.includes("already shown")).length;
+    const decision = decideResponse({
+      requestType: input.requestType ?? "find_context",
+      query,
+      repeatedFiles,
+      graphAvailable: edges.length > 0,
+      ...(input.mode ? { explicitMode: input.mode } : {}),
+      ...(input.budget ? { budget: input.budget } : {}),
+      ...(scored[0] ? { topScore: scored[0].score } : {})
+    });
     const content = truncateToBudget(
-      [
-        input.requestType === "initial_brief" ? "# Kairn Context Brief" : "# Kairn Context Results",
-        "",
-        `Task: ${session.task}`,
-        `Query: ${query}`,
-        "",
-        "## High-Confidence Files",
-        scored.length > 0
-          ? scored
-              .map((file) => `- ${file.path} (${file.kind}, score ${file.score}): ${file.reasons.join("; ")}`)
-              .join("\n")
-          : "No high-confidence files found from deterministic scoring.",
-        "",
-        "## Suggested Next Context",
+      formatContextResults({
+        title: input.requestType === "initial_brief" ? "Kairn Context Brief" : "Kairn Context Results",
+        task: session.task,
+        query,
+        decisionReason: decision.reason,
+        mode: decision.mode,
         scored
-          .slice(0, 5)
-          .map((file) => `- Read ${file.path}`)
-          .join("\n") || "Run a more specific context query."
-      ].join("\n"),
+      }),
       input.budget
     );
 
-    this.recordShown(input.sessionId, "context", "brief", content);
+    this.recordShown(input.sessionId, "context", decision.mode, content);
 
     return {
-      mode: "brief",
+      mode: decision.mode,
       content,
       files: scored.map((file) => file.path),
       symbols: [],
       related: [],
-      warnings: scored.length === 0 ? ["No deterministic file matches found. Try a more specific query."] : [],
+      warnings:
+        scored.length === 0
+          ? [...decision.warnings, "No hybrid retrieval matches found. Try a more specific query."]
+          : decision.warnings,
       suggestedNextContext: scored.slice(0, 5).map((file) => file.path),
       tokenEstimate: estimateTokens(content)
     };
@@ -246,8 +270,26 @@ export class KairnRuntime {
     const target = normalizeRelativePath(input.target);
     const files = await this.refreshIndex(session.rootPath);
     const graphRelated = this.getGraphRelatedFiles(session.rootPath, target);
-    const fallbackRelated = graphRelated.length > 0 ? [] : findRelatedFiles(session.rootPath, files, target);
-    const related = (graphRelated.length > 0 ? graphRelated : fallbackRelated.map((file) => ({ file, reason: "heuristic fallback" }))).slice(0, 20);
+    const semanticRelated = this.getSemanticRelatedFiles(session.rootPath, target, files);
+    const relatedByPath = new Map<string, { file: FileRecord; reason: string }>();
+
+    for (const item of [...graphRelated, ...semanticRelated]) {
+      const existing = relatedByPath.get(item.file.path);
+      relatedByPath.set(item.file.path, {
+        file: item.file,
+        reason: mergeReasonText(existing?.reason, item.reason)
+      });
+    }
+
+    if (relatedByPath.size === 0) {
+      for (const file of findRelatedFiles(session.rootPath, files, target)) {
+        relatedByPath.set(file.path, { file, reason: "heuristic fallback" });
+      }
+    }
+
+    const related = [...relatedByPath.values()]
+      .sort((a, b) => b.file.importance - a.file.importance || a.file.path.localeCompare(b.file.path))
+      .slice(0, 20);
     const responseContent = truncateToBudget(
       [
         "# Related Files",
@@ -286,7 +328,20 @@ export class KairnRuntime {
     const files = await this.refreshIndex(session.rootPath);
     const target = input.target ? normalizeRelativePath(input.target) : undefined;
     const graphTests = target ? this.getGraphTests(session.rootPath, target) : [];
-    const tests = (graphTests.length > 0 ? graphTests : findTestsFor(files, target)).slice(0, 30);
+    const semanticTests = this.getSemanticTests(session.rootPath, files, target, session.task);
+    const testsByPath = new Map<string, FileRecord>();
+
+    for (const file of [...graphTests, ...semanticTests]) {
+      testsByPath.set(file.path, file);
+    }
+
+    if (testsByPath.size === 0) {
+      for (const file of findTestsFor(files, target)) {
+        testsByPath.set(file.path, file);
+      }
+    }
+
+    const tests = [...testsByPath.values()].sort((a, b) => a.path.localeCompare(b.path)).slice(0, 30);
     const packageScripts = this.readPackageScripts(session.rootPath);
     const responseContent = truncateToBudget(
       [
@@ -383,9 +438,25 @@ export class KairnRuntime {
       rootPath,
       files: index.graph.files,
       symbols: index.graph.symbols,
-      edges: index.graph.edges
+      edges: index.graph.edges,
+      semanticChunks: index.semanticChunks,
+      semanticVectors: index.semanticVectors
     });
     return index.graph.files;
+  }
+
+  private async getChangedFiles(rootPath: string): Promise<Set<string>> {
+    try {
+      const output = await simpleGit(rootPath).diff(["--name-only"]);
+      return new Set(
+        output
+          .split(/\r?\n/)
+          .map((line) => normalizeRelativePath(line.trim()))
+          .filter(Boolean)
+      );
+    } catch {
+      return new Set();
+    }
   }
 
   private getGraphRelatedFiles(rootPath: string, target: string) {
@@ -427,6 +498,52 @@ export class KairnRuntime {
     return [...tests.values()].sort((a, b) => a.path.localeCompare(b.path));
   }
 
+  private getSemanticRelatedFiles(rootPath: string, target: string, files: FileRecord[]) {
+    const targetChunks = this.store.listSemanticChunksForFile(rootPath, target);
+    if (targetChunks.length === 0) return [];
+
+    const query = targetChunks
+      .map((chunk) => [target, chunk.symbol ?? "", chunk.text.slice(0, 2000)].join("\n"))
+      .join("\n");
+    const scored = hybridSearch({
+      files,
+      query,
+      symbols: this.store.listSymbols(rootPath),
+      chunks: this.store.listSemanticChunks(rootPath),
+      vectors: this.store.listSemanticVectors(rootPath),
+      edges: this.store.listGraphEdges(rootPath)
+    });
+
+    return scored
+      .filter((file) => file.path !== target)
+      .slice(0, 10)
+      .map((file) => ({
+        file,
+        reason: file.reasons.includes("graph neighbor")
+          ? "semantic/graph neighbor"
+          : `semantic neighbor${file.chunks[0]?.symbol ? `: ${file.chunks[0].symbol}` : ""}`
+      }));
+  }
+
+  private getSemanticTests(rootPath: string, files: FileRecord[], target: string | undefined, task: string) {
+    const queryParts = [target ?? task, "test spec verify"];
+    if (target) {
+      queryParts.push(...this.store.listSemanticChunksForFile(rootPath, target).map((chunk) => chunk.text.slice(0, 1200)));
+      queryParts.push(...this.store.listSymbolsForFile(rootPath, target).map((symbol) => symbol.name));
+    }
+
+    const scored = hybridSearch({
+      files,
+      query: queryParts.join("\n"),
+      symbols: this.store.listSymbols(rootPath),
+      chunks: this.store.listSemanticChunks(rootPath),
+      vectors: this.store.listSemanticVectors(rootPath),
+      edges: this.store.listGraphEdges(rootPath)
+    });
+
+    return scored.filter((file) => file.kind === "test").slice(0, 20);
+  }
+
   private recordShown(
     sessionId: string,
     kind: "file" | "symbol" | "summary" | "diff" | "tests" | "context",
@@ -463,6 +580,93 @@ export function createRuntime(root?: string): KairnRuntime {
   return new KairnRuntime(root ?? getKairnPaths().rootPath);
 }
 
+function formatContextResults(input: {
+  title: string;
+  task: string;
+  query: string;
+  decisionReason: string;
+  mode: ContextResponse["mode"];
+  scored: HybridScoredResult[];
+}): string {
+  const highConfidence =
+    input.scored.length > 0
+      ? input.scored
+          .map((file) => {
+            const scoreBreakdown = [
+              `semantic ${file.semanticScore}`,
+              `keyword ${file.keywordScore}`,
+              `graph ${file.graphScore}`,
+              `git ${file.gitScore}`
+            ].join(", ");
+            return `- ${file.path} (${file.kind}, score ${file.score}; ${scoreBreakdown}): ${file.reasons.join("; ")}`;
+          })
+          .join("\n")
+      : "No high-confidence files found from hybrid retrieval.";
+
+  const sections = [
+    `# ${input.title}`,
+    "",
+    `Task: ${input.task}`,
+    `Query: ${input.query}`,
+    `Response Mode: ${input.mode}`,
+    `Selection: ${input.decisionReason}`,
+    "",
+    "## Ranked Files",
+    highConfidence
+  ];
+
+  if (input.mode === "snippets" || input.mode === "exact_code") {
+    sections.push("", "## Matched Snippets", formatMatchedSnippets(input.scored.slice(0, 5)));
+  }
+
+  if (input.mode === "compressed_summary") {
+    sections.push("", "## Compact Summary", formatCompactSummary(input.scored.slice(0, 6)));
+  }
+
+  sections.push(
+    "",
+    "## Suggested Next Context",
+    input.scored
+      .slice(0, 5)
+      .map((file) => `- Read ${file.path}`)
+      .join("\n") || "Run a more specific context query."
+  );
+
+  return sections.join("\n");
+}
+
+function formatMatchedSnippets(files: HybridScoredResult[]): string {
+  const snippets = files.flatMap((file) =>
+    file.chunks.slice(0, 2).map((chunk) => {
+      const title = chunk.symbol
+        ? `${file.path} :: ${chunk.symbol} (${chunk.startLine ?? "?"}-${chunk.endLine ?? "?"})`
+        : file.path;
+      return [
+        `### ${title}`,
+        "",
+        "```",
+        chunk.text.split(/\r?\n/).slice(0, 80).join("\n"),
+        "```"
+      ].join("\n");
+    })
+  );
+
+  return snippets.length > 0 ? snippets.join("\n\n") : "No semantic snippets were available for the top files.";
+}
+
+function formatCompactSummary(files: HybridScoredResult[]): string {
+  if (files.length === 0) return "No matching files to summarize.";
+  return files
+    .map((file) => {
+      const chunkSummary = file.chunks
+        .slice(0, 2)
+        .map((chunk) => chunk.symbol ?? chunk.kind)
+        .join(", ");
+      return `- ${file.path}: ${file.reasons.slice(0, 3).join("; ")}${chunkSummary ? ` (${chunkSummary})` : ""}`;
+    })
+    .join("\n");
+}
+
 function sliceLines(content: string, startLine: number, endLine: number): string {
   return content.split(/\r?\n/).slice(startLine - 1, endLine).join("\n");
 }
@@ -474,4 +678,8 @@ function graphReason(type: string, targetIsFromFile: boolean): string {
   if (type === "test_for") return targetIsFromFile ? "tested source" : "test for target";
   if (type === "parent_route") return targetIsFromFile ? "parent route" : "route segment file";
   return type;
+}
+
+function mergeReasonText(left: string | undefined, right: string): string {
+  return [...new Set([...(left?.split("; ") ?? []), right])].filter(Boolean).join("; ");
 }

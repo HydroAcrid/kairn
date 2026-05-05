@@ -2,7 +2,7 @@
 import { Command, Option } from "commander";
 import { KairnRuntime } from "./runtime/KairnRuntime.js";
 import { startMcpServer } from "./server/mcp.js";
-import type { OutputKind } from "./types.js";
+import type { ContextQueryMode, OutputKind } from "./types.js";
 import { printContextResponse, printJson, readStdin } from "./cli/output.js";
 
 const program = new Command();
@@ -81,6 +81,7 @@ program
   .option("--related <path>", "find related files")
   .option("--tests [path]", "find related tests")
   .option("--summary", "use compressed summary mode for --file")
+  .addOption(new Option("--mode <mode>", "response mode for query/file context").choices(["brief", "snippets", "summary", "exact"]))
   .option("--budget <tokens>", "approximate response token budget", parsePositiveInt)
   .option("--json", "print JSON output")
   .action(async (options: ContextOptions) => {
@@ -98,7 +99,7 @@ program
             ? await runtime.readFile({
                 sessionId: options.session,
                 target: options.file,
-                mode: options.summary ? "summary" : "exact",
+                mode: options.summary || options.mode === "summary" ? "summary" : "exact",
                 budget
               })
             : options.related
@@ -119,7 +120,8 @@ program
                       sessionId: options.session,
                       query: options.query,
                       requestType: "find_context",
-                      budget
+                      budget,
+                      mode: options.mode
                     });
 
       printContextResponse(response, options.json);
@@ -190,6 +192,7 @@ type ContextOptions = {
   related?: string;
   tests?: true | string;
   summary?: boolean;
+  mode?: ContextQueryMode;
   budget?: number;
   json?: boolean;
 };
