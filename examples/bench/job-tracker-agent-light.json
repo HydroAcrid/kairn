@@ -1,0 +1,46 @@
+{
+  "id": "job-tracker-agent-light",
+  "name": "Job Tracker Light Live-Agent Validation",
+  "cases": [
+    {
+      "id": "agent-mobile-ui",
+      "mode": "agent",
+      "task": "Identify the files most relevant to the job tracker mobile layout and bottom sheet. Do not edit files. Report the primary files and why they matter.",
+      "agentPrompt": "Identify the files most relevant to the job tracker mobile layout and bottom sheet. Do not edit files. Report the primary files and why they matter.",
+      "expectedFiles": [
+        "src/app/private/jobs/JobsApplicationsTable.tsx",
+        "src/app/private/jobs/JobsDashboardTabs.tsx"
+      ],
+      "excludedFiles": [],
+      "budget": 1600
+    },
+    {
+      "id": "agent-sync-review",
+      "mode": "agent",
+      "task": "Identify the files that implement Gmail sync attempts, the review queue, retry, ignore, and add-to-tracker behavior. Do not edit files. Report the primary files and risks.",
+      "agentPrompt": "Identify the files that implement Gmail sync attempts, the review queue, retry, ignore, and add-to-tracker behavior. Do not edit files. Report the primary files and risks.",
+      "expectedFiles": [
+        "src/app/private/jobs/JobsReviewPanel.tsx",
+        "src/app/api/jobs/sync-attempts/route.ts",
+        "src/app/api/jobs/sync-attempts/[sourceEmailId]/route.ts",
+        "src/lib/jobs/repository.ts"
+      ],
+      "excludedFiles": [],
+      "budget": 1600
+    },
+    {
+      "id": "agent-parser-backend",
+      "mode": "agent",
+      "task": "Identify the files that parse Gmail job application emails, reject rental applications, and persist parsed job events. Do not edit files. Report the primary files and tests.",
+      "agentPrompt": "Identify the files that parse Gmail job application emails, reject rental applications, and persist parsed job events. Do not edit files. Report the primary files and tests.",
+      "expectedFiles": [
+        "src/lib/jobs/parser.ts",
+        "src/lib/jobs/ingest.ts",
+        "src/lib/jobs/repository.ts",
+        "src/lib/jobs/parser.test.ts"
+      ],
+      "excludedFiles": [],
+      "budget": 1600
+    }
+  ]
+}

@@ -30,6 +30,15 @@ describe("Codex usage parsing", () => {
     expect(parseCodexUsageFooter("no usage here")).toBeUndefined();
   });
 
+  it("parses current Codex total-only token footers from stderr output", () => {
+    expect(parseCodexUsageFooter("tokens used\n121,764")).toEqual({
+      totalTokens: 121764,
+      inputTokens: 0,
+      cachedInputTokens: 0,
+      outputTokens: 0
+    });
+  });
+
   it("parses transcript metadata without storing raw transcript text", () => {
     const root = createFixtureRepo();
     const transcriptPath = path.join(root, "codex-transcript.jsonl");

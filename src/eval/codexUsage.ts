@@ -13,7 +13,16 @@ export function parseCodexUsageFooter(input: string): Omit<CodexUsageRecord, "so
   const match = normalized.match(
     /Token usage:\s*total=([\d,]+)\s+input=([\d,]+)(?:\s*\(\+\s*([\d,]+)\s+cached\))?\s+output=([\d,]+)/i
   );
-  if (!match) return undefined;
+  if (!match) {
+    const totalOnlyMatch = normalized.match(/\btokens used\s+([\d,]+)/i);
+    if (!totalOnlyMatch) return undefined;
+    return {
+      totalTokens: parseTokenNumber(totalOnlyMatch[1]),
+      inputTokens: 0,
+      cachedInputTokens: 0,
+      outputTokens: 0
+    };
+  }
 
   return {
     totalTokens: parseTokenNumber(match[1]),

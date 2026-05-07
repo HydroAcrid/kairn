@@ -1,17 +1,23 @@
 #!/usr/bin/env node
+import fs from "node:fs";
+import path from "node:path";
 import { Command, Option } from "commander";
 import { KairnRuntime } from "./runtime/KairnRuntime.js";
 import { startMcpServer } from "./server/mcp.js";
 import type {
   BenchmarkComparison,
+  BenchmarkProofReport,
   BenchmarkReport,
   BenchmarkRunMode,
+  CodexSetupMode,
+  ContextPrime,
   ContextQueryMode,
   EvalComparison,
   EvalRunMode,
   EvalRunReport,
   MetricsSummary,
   OutputKind,
+  PrimeProfile,
   WatchEventSource,
   WatchSnapshot
 } from "./types.js";
@@ -72,6 +78,31 @@ program
   });
 
 program
+  .command("prime")
+  .description("Generate proactive task context before an agent starts scanning.")
+  .argument("<task>", "task description")
+  .option("--root <path>", "target repository root", process.cwd())
+  .option("--session <id>", "reuse an existing Kairn task session")
+  .addOption(new Option("--profile <profile>", "prime profile").choices(["auto", "ui", "workflow", "backend", "test", "generic"]).default("auto"))
+  .option("--budget <tokens>", "prime response token budget", parsePositiveInt)
+  .option("--json", "print JSON output")
+  .action(async (task: string, options: { root: string; session?: string; profile: PrimeProfile; budget?: number; json?: boolean }) => {
+    await withRuntime(options.root, async (runtime) => {
+      const prime = await runtime.primeContext({
+        task,
+        sessionId: options.session,
+        profile: options.profile,
+        budget: options.budget
+      });
+      if (options.json) {
+        printJson(prime);
+        return;
+      }
+      printContextPrime(prime);
+    });
+  });
+
+program
   .command("serve")
   .description("Start the local dynamic context runtime.")
   .option("--root <path>", "target repository root", process.cwd())
@@ -82,6 +113,43 @@ program
     }
 
     await startMcpServer({ root: options.root });
+  });
+
+const setup = program
+  .command("setup")
+  .description("Install local agent integration files for a target repo.");
+
+setup
+  .command("codex")
+  .description("Install Codex hook config that lets Kairn prime prompts automatically.")
+  .option("--root <path>", "target repository root", process.cwd())
+  .addOption(new Option("--mode <mode>", "Codex hook setup mode").choices(["savings", "observe", "debug"]).default("savings"))
+  .addOption(new Option("--prime-profile <profile>", "prompt-submit prime profile").choices(["auto", "ui", "workflow", "backend", "test", "generic"]).default("auto"))
+  .option("--prime-budget <tokens>", "prompt-submit prime token budget", parsePositiveInt, 1200)
+  .option("--json", "print JSON output")
+  .action((options: { root: string; mode: CodexSetupMode; primeProfile: PrimeProfile; primeBudget: number; json?: boolean }) => {
+    const result = writeCodexSetup({
+      root: options.root,
+      mode: options.mode,
+      primeProfile: options.primeProfile,
+      primeBudget: options.primeBudget
+    });
+    if (options.json) {
+      printJson(result);
+      return;
+    }
+
+    process.stdout.write(
+      [
+        "Kairn Codex setup written.",
+        `Root: ${result.rootPath}`,
+        `Config: ${result.configPath}`,
+        `Hooks: ${result.hooksPath}`,
+        `Mode: ${result.mode}`,
+        "Codex UserPromptSubmit hooks will request proactive Kairn context without KAIRN_SESSION.",
+        ""
+      ].join("\n")
+    );
   });
 
 program
@@ -227,17 +295,21 @@ program
 program
   .command("hook")
   .description("Ingest a generic, Claude, or Codex hook payload into a Kairn task session.")
-  .requiredOption("--session <id>", "Kairn task session ID")
+  .option("--session <id>", "Kairn task session ID")
   .option("--root <path>", "target repository root", process.cwd())
   .addOption(new Option("--source <source>", "hook source").choices(["generic", "claude", "codex"]).default("generic"))
   .option("--event <name>", "override hook event name")
+  .addOption(new Option("--prime-profile <profile>", "prompt-submit prime profile").choices(["auto", "ui", "workflow", "backend", "test", "generic"]).default("auto"))
+  .option("--prime-budget <tokens>", "prompt-submit prime token budget", parsePositiveInt, 1200)
   .option("--json", "print JSON output")
   .action(
     async (options: {
-      session: string;
+      session?: string;
       root: string;
       source: WatchEventSource;
       event?: string;
+      primeProfile: PrimeProfile;
+      primeBudget: number;
       json?: boolean;
     }) => {
       await withRuntime(options.root, async (runtime) => {
@@ -250,7 +322,9 @@ program
         });
         const result = await runtime.handleHookEvent({
           sessionId: options.session,
-          event
+          event,
+          primeProfile: options.primeProfile,
+          primeBudget: options.primeBudget
         });
 
         if (options.json) {
@@ -261,7 +335,7 @@ program
         const output = hostHookOutput({
           source: options.source,
           eventName: event.eventName,
-          content: result.recommendation?.content,
+          content: result.prime?.content ?? result.recommendation?.content,
           json: false
         });
         if (output) {
@@ -485,6 +559,102 @@ benchCommand
   );
 
 benchCommand
+  .command("ab")
+  .description("Run baseline and Kairn-assisted live-agent benchmarks, then compare observed usage.")
+  .option("--root <path>", "target repository root", process.cwd())
+  .option("--suite <path>", "benchmark suite JSON path or 'default'", "default")
+  .requiredOption("--baseline-command <command>", "baseline live-agent command with {prompt} and {root} placeholders")
+  .requiredOption("--kairn-command <command>", "Kairn-assisted live-agent command with {prompt} and {root} placeholders")
+  .option("--agent-timeout <ms>", "live-agent command timeout", parsePositiveInt, 120000)
+  .option("--json", "print JSON output")
+  .action(
+    async (options: {
+      root: string;
+      suite: string;
+      baselineCommand: string;
+      kairnCommand: string;
+      agentTimeout: number;
+      json?: boolean;
+    }) => {
+      await withRuntime(options.root, async (runtime) => {
+        const baseline = await runtime.runBenchmark({
+          suitePath: options.suite,
+          mode: "agent",
+          agentCommand: options.baselineCommand,
+          agentTimeoutMs: options.agentTimeout
+        });
+        const kairn = await runtime.runBenchmark({
+          suitePath: options.suite,
+          mode: "agent",
+          agentCommand: options.kairnCommand,
+          agentTimeoutMs: options.agentTimeout
+        });
+        const comparison = runtime.compareBenchmarkRuns({
+          beforeRunId: baseline.run.id,
+          afterRunId: kairn.run.id
+        });
+        if (options.json) {
+          printJson(comparison);
+          return;
+        }
+        printBenchmarkComparison(comparison);
+      });
+    }
+  );
+
+benchCommand
+  .command("prove")
+  .description("Compare baseline, prompt-hook, prompt+tool-hook, and manual-prime live-agent runs.")
+  .option("--root <path>", "target repository root", process.cwd())
+  .option("--suite <path>", "benchmark suite JSON path or 'default'", "default")
+  .requiredOption("--baseline-command <command>", "baseline live-agent command with {prompt} and {root} placeholders")
+  .option("--prompt-only-command <command>", "prompt-submit-only live-agent command with {prompt} and {root} placeholders")
+  .option("--prompt-plus-hooks-command <command>", "prompt and post-tool hook live-agent command with {prompt} and {root} placeholders")
+  .option("--manual-prime-command <command>", "manual-prime live-agent command with {prompt} and {root} placeholders")
+  .option("--passive-command <command>", "legacy alias for --prompt-plus-hooks-command")
+  .option("--proactive-command <command>", "legacy alias for --manual-prime-command")
+  .option("--agent-timeout <ms>", "live-agent command timeout", parsePositiveInt, 120000)
+  .option("--repeat <n>", "number of proof repeats", parsePositiveInt, 1)
+  .option("--shuffle-order", "shuffle assistance mode order within each repeat")
+  .option("--json", "print JSON output")
+  .action(
+    async (options: {
+      root: string;
+      suite: string;
+      baselineCommand: string;
+      promptOnlyCommand?: string;
+      promptPlusHooksCommand?: string;
+      manualPrimeCommand?: string;
+      passiveCommand?: string;
+      proactiveCommand?: string;
+      agentTimeout: number;
+      repeat: number;
+      shuffleOrder?: boolean;
+      json?: boolean;
+    }) => {
+      await withRuntime(options.root, async (runtime) => {
+        const proof = await runtime.proveBenchmark({
+          suitePath: options.suite,
+          baselineCommand: options.baselineCommand,
+          promptOnlyCommand: options.promptOnlyCommand,
+          promptPlusHooksCommand: options.promptPlusHooksCommand,
+          manualPrimeCommand: options.manualPrimeCommand,
+          passiveCommand: options.passiveCommand,
+          proactiveCommand: options.proactiveCommand,
+          agentTimeoutMs: options.agentTimeout,
+          repeat: options.repeat,
+          shuffleOrder: Boolean(options.shuffleOrder)
+        });
+        if (options.json) {
+          printJson(proof);
+          return;
+        }
+        printBenchmarkProof(proof);
+      });
+    }
+  );
+
+benchCommand
   .command("report")
   .description("Report benchmark evidence for a run or target repo.")
   .option("--root <path>", "target repository root", process.cwd())
@@ -574,6 +744,85 @@ function parsePositiveInt(value: string): number {
     throw new Error(`Expected a positive integer, received: ${value}`);
   }
   return parsed;
+}
+
+function writeCodexSetup(input: { root: string; mode: CodexSetupMode; primeProfile: PrimeProfile; primeBudget: number }) {
+  const rootPath = path.resolve(input.root);
+  const codexDir = path.join(rootPath, ".codex");
+  const configPath = path.join(codexDir, "config.toml");
+  const hooksPath = path.join(codexDir, "hooks.json");
+  fs.mkdirSync(codexDir, { recursive: true });
+  fs.writeFileSync(configPath, "[features]\ncodex_hooks = true\n");
+  fs.writeFileSync(
+    hooksPath,
+    `${JSON.stringify(buildCodexHooksConfig(input), null, 2)}\n`
+  );
+
+  return {
+    rootPath,
+    configPath,
+    hooksPath,
+    mode: input.mode,
+    primeProfile: input.primeProfile,
+    primeBudget: input.primeBudget
+  };
+}
+
+function buildCodexHooksConfig(input: { mode: CodexSetupMode; primeProfile: PrimeProfile; primeBudget: number }) {
+  const command = `eval "\${KAIRN_CMD:-kairn} hook --source codex --root \\"$PWD\\" --prime-profile ${input.primeProfile} --prime-budget ${input.primeBudget}"`;
+  const hooks: Record<string, unknown> = {
+    UserPromptSubmit: [
+      {
+        hooks: [
+          {
+            type: "command",
+            command,
+            statusMessage: "Priming Kairn context"
+          }
+        ]
+      }
+    ]
+  };
+
+  if (input.mode === "observe" || input.mode === "debug") {
+    hooks.PostToolUse = [
+      {
+        matcher: input.mode === "debug" ? ".*" : "Bash|apply_patch|mcp__.*",
+        hooks: [
+          {
+            type: "command",
+            command,
+            statusMessage: input.mode === "debug" ? "Sending debug hook output to Kairn" : "Sending useful tool output to Kairn"
+          }
+        ]
+      }
+    ];
+  }
+
+  if (input.mode === "debug") {
+    hooks.Stop = [
+        {
+          hooks: [
+            {
+              type: "command",
+              command,
+              statusMessage: "Recording Codex stop event in Kairn"
+            }
+          ]
+        }
+      ];
+  }
+
+  return {
+    hooks
+  };
+}
+
+function printContextPrime(prime: ContextPrime): void {
+  process.stdout.write(`${prime.content}\n`);
+  if (prime.warnings.length > 0) {
+    process.stdout.write(`\n## Warnings\n${prime.warnings.map((warning) => `- ${warning}`).join("\n")}\n`);
+  }
 }
 
 function printWatchSnapshot(snapshot: WatchSnapshot, json: boolean): void {
@@ -697,6 +946,9 @@ function printBenchmarkReport(report: BenchmarkReport | { runs: BenchmarkReport[
       `Status: ${item.run.status}`,
       `Overall score: ${item.overallScore}`,
       `Cases: ${item.results.length}`,
+      item.observed
+        ? `Observed Codex tokens: ${item.observed.codexTokens} across ${item.observed.codexCaseCount} case(s)`
+        : "Observed Codex tokens: none",
       item.weakestCases.length > 0 ? `Weakest: ${item.weakestCases.map((result) => `${result.caseId} (${result.score})`).join(", ")}` : "Weakest: none",
       item.recommendations.length > 0 ? ["Recommendations", ...item.recommendations.map((entry) => `- ${entry}`)].join("\n") : "Recommendations: none"
     );
@@ -712,6 +964,14 @@ function printBenchmarkComparison(comparison: BenchmarkComparison): void {
     `After: ${comparison.after.run.id} (${comparison.after.overallScore})`,
     `Score delta: ${comparison.scoreDelta}`,
     "",
+    "Observed Codex usage",
+    comparison.observedTokenDelta
+      ? `- saved: ${comparison.observedTokenDelta.savedTokens} tokens (${Math.round(comparison.observedTokenDelta.savingsRate * 100)}%)`
+      : "- saved: unavailable; run agent commands that print Codex token footers",
+    comparison.observedTokenDelta
+      ? `- before: ${comparison.observedTokenDelta.beforeTokens}; after: ${comparison.observedTokenDelta.afterTokens}`
+      : "",
+    "",
     comparison.improvedCases.length > 0 ? `Improved: ${comparison.improvedCases.join(", ")}` : "Improved: none",
     comparison.regressedCases.length > 0 ? `Regressed: ${comparison.regressedCases.join(", ")}` : "Regressed: none",
     "",
@@ -723,6 +983,39 @@ function printBenchmarkComparison(comparison: BenchmarkComparison): void {
   process.stdout.write(`${lines.join("\n")}\n`);
 }
 
+function printBenchmarkProof(report: BenchmarkProofReport): void {
+  const lines = [
+    "Kairn benchmark proof.",
+    "",
+    "Observed Codex usage",
+    formatProofDelta("Prompt-only hooks vs baseline", report.observedTokenDeltas.promptOnlyVsBaseline),
+    formatProofDelta("Prompt+tool hooks vs baseline", report.observedTokenDeltas.promptPlusHooksVsBaseline),
+    formatProofDelta("Manual prime vs baseline", report.observedTokenDeltas.manualPrimeVsBaseline),
+    report.aggregate ? `- Repeat count: ${report.aggregate.repeat}` : "",
+    report.aggregate?.deltas.promptOnlyVsBaseline?.savingsRate !== undefined
+      ? `- Prompt-only median savings: ${Math.round(report.aggregate.deltas.promptOnlyVsBaseline.savingsRate * 100)}%`
+      : "",
+    "",
+    "Cases",
+    ...report.caseDeltas.map((item) => {
+      const proactiveVsBaseline = item.proactiveVsBaseline !== undefined ? item.proactiveVsBaseline : "n/a";
+      const proactiveVsPassive = item.proactiveVsPassive !== undefined ? item.proactiveVsPassive : "n/a";
+      return `- ${item.caseId}: baseline ${item.baselineTokens ?? "n/a"}, passive ${item.passiveHooksTokens ?? "n/a"}, proactive ${item.proactiveTokens ?? "n/a"}; proactive-baseline delta ${proactiveVsBaseline}; proactive-passive delta ${proactiveVsPassive}`;
+    }),
+    "",
+    "Recommendations",
+    ...(report.recommendations.length > 0 ? report.recommendations.map((entry) => `- ${entry}`) : ["- none"]),
+    ""
+  ];
+
+  process.stdout.write(`${lines.join("\n")}\n`);
+}
+
+function formatProofDelta(label: string, delta: BenchmarkComparison["observedTokenDelta"]): string {
+  if (!delta) return `- ${label}: unavailable`;
+  return `- ${label}: ${delta.savedTokens} tokens (${Math.round(delta.savingsRate * 100)}%)`;
+}
+
 function formatBenchmarkMarkdown(report: BenchmarkReport): string {
   return [
     `# Kairn Benchmark Run ${report.run.id}`,
@@ -731,6 +1024,7 @@ function formatBenchmarkMarkdown(report: BenchmarkReport): string {
     `- Mode: ${report.run.mode}`,
     `- Status: ${report.run.status}`,
     `- Overall score: ${report.overallScore}`,
+    report.observed ? `- Observed Codex tokens: ${report.observed.codexTokens} across ${report.observed.codexCaseCount} case(s)` : "- Observed Codex tokens: none",
     "",
     "## Cases",
     ...report.results.map(

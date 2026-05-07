@@ -1,9 +1,10 @@
 import { execFileSync } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
 import { createDefaultBenchmarkSuite, loadBenchmarkSuite } from "../src/bench/suite.js";
-import { compareBenchmarkReports, scoreBenchmarkCase } from "../src/bench/score.js";
+import { buildBenchmarkReport, compareBenchmarkReports, scoreBenchmarkCase } from "../src/bench/score.js";
 import { createFixtureRepo } from "./helpers.js";
 
 const CLI = ["tsx", "src/cli.ts"];
@@ -40,6 +41,17 @@ describe("benchmark suite and scoring", () => {
         "src/app/api/jobs/sync-attempts/[sourceEmailId]/route.ts"
       ])
     );
+  });
+
+  it("loads the light job-tracker live-agent suite example", () => {
+    const suite = loadBenchmarkSuite({
+      suitePath: path.resolve("examples/bench/job-tracker-agent-light.json"),
+      files: []
+    });
+
+    expect(suite.id).toBe("job-tracker-agent-light");
+    expect(suite.cases).toHaveLength(3);
+    expect(suite.cases.every((item) => item.mode === "agent")).toBe(true);
   });
 
   it("scores expected file recall, unexpected drift, and comparisons", () => {
@@ -109,9 +121,142 @@ describe("benchmark suite and scoring", () => {
     expect(after.expectedFileRecall).toBe(1);
     expect(comparison.improvedCases).toContain("ui");
   });
+
+  it("aggregates observed Codex token usage in benchmark comparisons", () => {
+    const benchmarkCase = {
+      id: "agent",
+      mode: "agent" as const,
+      task: "Run an agent",
+      expectedFiles: [],
+      excludedFiles: []
+    };
+    const beforeResult = scoreBenchmarkCase({
+      runId: "bench_before",
+      benchmarkCase,
+      actualFiles: [],
+      responseTokens: 20,
+      observedCodexTokens: 2000,
+      summary: "baseline"
+    });
+    const afterResult = scoreBenchmarkCase({
+      runId: "bench_after",
+      benchmarkCase,
+      actualFiles: [],
+      responseTokens: 20,
+      observedCodexTokens: 1200,
+      summary: "kairn"
+    });
+    const before = buildBenchmarkReport({
+      run: {
+        id: "bench_before",
+        rootPath: "/repo",
+        suiteId: "default",
+        suiteName: "default",
+        mode: "agent",
+        status: "completed",
+        startedAt: "now",
+        metadata: {}
+      },
+      results: [{ ...beforeResult, id: 1, createdAt: "now" }]
+    });
+    const after = buildBenchmarkReport({
+      run: {
+        id: "bench_after",
+        rootPath: "/repo",
+        suiteId: "default",
+        suiteName: "default",
+        mode: "agent",
+        status: "completed",
+        startedAt: "now",
+        metadata: {}
+      },
+      results: [{ ...afterResult, id: 2, createdAt: "now" }]
+    });
+
+    const comparison = compareBenchmarkReports(before, after);
+
+    expect(before.observed?.codexTokens).toBe(2000);
+    expect(after.observed?.codexTokens).toBe(1200);
+    expect(comparison.observedTokenDelta).toEqual({
+      beforeTokens: 2000,
+      afterTokens: 1200,
+      savedTokens: 800,
+      savingsRate: 0.4
+    });
+  });
 });
 
 describe("benchmark runtime and CLI", () => {
+  it("generates proactive prime context and records prime metrics", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+
+    const prime = await runtime.primeContext({
+      task: "job tracker mobile layout bottom sheet",
+      budget: 1200
+    });
+    const metrics = runtime.getMetrics(prime.session.id);
+
+    expect(prime.content).toContain("Kairn Proactive Context");
+    expect(prime.content).toContain("broad repository scans");
+    expect(prime.content).not.toContain(root);
+    expect(prime.files).toContain("src/app/private/jobs/JobsApplicationsTable.tsx");
+    expect(prime.tokenEstimate).toBeLessThanOrEqual(1200);
+    expect(metrics.byKind.prime_context?.events).toBe(1);
+
+    runtime.close();
+  });
+
+  it("selects compact prime profiles and default budgets by intent", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+
+    const uiPrime = await runtime.primeContext({
+      task: "job tracker mobile layout bottom sheet"
+    });
+    const backendPrime = await runtime.primeContext({
+      task: "gmail parser rental application persist parsed job events"
+    });
+
+    expect(uiPrime.profile).toBe("ui");
+    expect(uiPrime.tokenEstimate).toBeLessThanOrEqual(700);
+    expect(uiPrime.content).not.toContain("## More Context");
+    expect(backendPrime.profile).toBe("backend");
+    expect(backendPrime.tokenEstimate).toBeLessThanOrEqual(1100);
+    expect(backendPrime.content).toContain("## More Context");
+
+    runtime.close();
+  });
+
+  it("generates parser/backend prime context for Gmail parsing tasks", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+
+    const prime = await runtime.primeContext({
+      task: "gmail parser rental application persist parsed job events",
+      budget: 1200
+    });
+
+    expect(prime.files).toEqual(expect.arrayContaining(["src/lib/jobs/parser.ts", "src/lib/jobs/repository.ts"]));
+    expect(prime.content).not.toContain("node_modules");
+
+    runtime.close();
+  });
+
+  it("supports prime CLI JSON output", () => {
+    const root = createFixtureRepo();
+    const prime = JSON.parse(
+      execFileSync(CLI[0]!, [...CLI.slice(1), "prime", "job tracker mobile layout", "--root", root, "--budget", "1200", "--json"], {
+        cwd: process.cwd(),
+        encoding: "utf8"
+      })
+    ) as { content: string; tokenEstimate: number; files: string[] };
+
+    expect(prime.content).toContain("Kairn Proactive Context");
+    expect(prime.tokenEstimate).toBeLessThanOrEqual(1200);
+    expect(prime.files).toContain("src/app/private/jobs/JobsApplicationsTable.tsx");
+  });
+
   it("runs replay benchmarks and reports results", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);
@@ -140,6 +285,97 @@ describe("benchmark runtime and CLI", () => {
     expect(report.results[0]?.caseMode).toBe("agent");
     expect(report.results[0]?.taskOutcome).toBe("pass");
     expect(String(report.results[0]?.metadata.workspacePath)).toContain("kairn-bench-agent-");
+
+    runtime.close();
+  });
+
+  it("scores expected files mentioned by read-only agent output", async () => {
+    const root = createFixtureRepo();
+    const suitePath = path.join(root, "mentions-suite.json");
+    fs.writeFileSync(
+      suitePath,
+      JSON.stringify({
+        id: "mentions",
+        name: "Mentions",
+        cases: [
+          {
+            id: "mentions-app",
+            mode: "agent",
+            task: "Find app file",
+            agentPrompt: "Find app file",
+            expectedFiles: ["src/app.ts"],
+            excludedFiles: [],
+            budget: 1200
+          }
+        ]
+      })
+    );
+    const runtime = new KairnRuntime(root);
+
+    const report = await runtime.runBenchmark({
+      suitePath,
+      mode: "agent",
+      agentCommand: "printf 'primary file: src/app.ts'"
+    });
+
+    expect(report.results[0]?.actualFiles).toContain("src/app.ts");
+    expect(report.results[0]?.expectedFileRecall).toBe(1);
+    expect(report.results[0]?.metadata.expectedFileMentions).toEqual(["src/app.ts"]);
+
+    runtime.close();
+  });
+
+  it("parses Codex token footers from live-agent benchmark output", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+
+    const report = await runtime.runBenchmark({
+      mode: "agent",
+      agentCommand: "printf 'Token usage: total=1,500 input=1,200 (+ 300 cached) output=300'"
+    });
+
+    expect(report.observed).toEqual({
+      codexTokens: 1500,
+      codexCaseCount: 1
+    });
+    expect(report.results[0]?.observedCodexTokens).toBe(1500);
+    expect(report.results[0]?.metadata.codexUsage).toMatchObject({
+      totalTokens: 1500,
+      inputTokens: 1200,
+      cachedInputTokens: 300,
+      outputTokens: 300,
+      source: "footer"
+    });
+
+    runtime.close();
+  });
+
+  it("parses Codex token footers from failed live-agent benchmark output", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+
+    const report = await runtime.runBenchmark({
+      mode: "agent",
+      agentCommand: "printf 'Token usage: total=900 input=800 output=100'; exit 2"
+    });
+
+    expect(report.results[0]?.taskOutcome).toBe("fail");
+    expect(report.results[0]?.observedCodexTokens).toBe(900);
+
+    runtime.close();
+  });
+
+  it("captures Codex stderr footers and hook markers from live-agent benchmark output", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+
+    const report = await runtime.runBenchmark({
+      mode: "agent",
+      agentCommand: "printf 'hook: PostToolUse Completed\\ntokens used\\n1,234\\n' >&2"
+    });
+
+    expect(report.results[0]?.observedCodexTokens).toBe(1234);
+    expect(report.results[0]?.metadata.hookCompleted).toBe(1);
 
     runtime.close();
   });
@@ -178,6 +414,98 @@ describe("benchmark runtime and CLI", () => {
     expect(report).toContain("Kairn benchmark report");
     expect(comparison.scoreDelta).toBeDefined();
     expect(exported).toContain("# Kairn Benchmark Run");
+  });
+
+  it("supports bench ab CLI with observed Codex token deltas", () => {
+    const root = createFixtureRepo();
+    const comparison = JSON.parse(
+      execFileSync(
+        CLI[0]!,
+        [
+          ...CLI.slice(1),
+          "bench",
+          "ab",
+          "--root",
+          root,
+          "--baseline-command",
+          "printf 'Token usage: total=2,000 input=1,700 output=300'",
+          "--kairn-command",
+          "printf 'Token usage: total=1,250 input=1,000 (+ 100 cached) output=250'",
+          "--json"
+        ],
+        { cwd: process.cwd(), encoding: "utf8" }
+      )
+    ) as { observedTokenDelta?: { beforeTokens: number; afterTokens: number; savedTokens: number } };
+
+    expect(comparison.observedTokenDelta).toMatchObject({
+      beforeTokens: 2000,
+      afterTokens: 1250,
+      savedTokens: 750
+    });
+  });
+
+  it("supports bench prove CLI and prepends proactive prime context", () => {
+    const root = createFixtureRepo();
+    const suitePath = path.join(root, "agent-suite.json");
+    fs.writeFileSync(
+      suitePath,
+      JSON.stringify({
+        id: "agent-one",
+        name: "Agent One",
+        cases: [
+          {
+            id: "agent-mobile",
+            mode: "agent",
+            task: "Find job tracker mobile layout files. Do not edit files.",
+            agentPrompt: "Find job tracker mobile layout files. Do not edit files.",
+            expectedFiles: [],
+            excludedFiles: [],
+            budget: 1200
+          }
+        ]
+      })
+    );
+    const commandForTokens =
+      "node -e \"const p=process.argv[1]||''; console.error('tokens used'); console.error(p.includes('Kairn Proactive Context') ? '1,000' : '3,000')\" {prompt}";
+    const proof = JSON.parse(
+      execFileSync(
+        CLI[0]!,
+        [
+          ...CLI.slice(1),
+          "bench",
+          "prove",
+          "--root",
+          root,
+          "--suite",
+          suitePath,
+          "--baseline-command",
+          commandForTokens,
+          "--prompt-only-command",
+          commandForTokens,
+          "--manual-prime-command",
+          commandForTokens,
+          "--repeat",
+          "2",
+          "--shuffle-order",
+          "--json"
+        ],
+        { cwd: process.cwd(), encoding: "utf8" }
+      )
+    ) as {
+      observedTokenDeltas: { proactiveVsBaseline?: { beforeTokens: number; afterTokens: number; savedTokens: number } };
+      aggregate?: { repeat: number; deltas: { manualPrimeVsBaseline?: { savedTokens?: number; savingsRate?: number } } };
+      proactive: { results: Array<{ metadata: Record<string, unknown> }> };
+    };
+
+    expect(proof.observedTokenDeltas.proactiveVsBaseline).toMatchObject({
+      beforeTokens: 3000,
+      afterTokens: 1000,
+      savedTokens: 2000
+    });
+    expect(proof.proactive.results[0]?.metadata.assistanceMode).toBe("manual_prime");
+    expect(proof.proactive.results[0]?.metadata.primeTokenEstimate).toBeGreaterThan(0);
+    expect(proof.aggregate?.repeat).toBe(2);
+    expect(proof.aggregate?.deltas.manualPrimeVsBaseline?.savedTokens).toBe(2000);
   });
 });
 

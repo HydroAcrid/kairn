@@ -257,3 +257,224 @@ The focused `sync-review-queue` case now places all expected files in the top fi
 5. `src/app/api/jobs/sync-attempts/route.ts`
 
 Response-budget warnings were eliminated in the replay output. Remaining default-suite noise is mostly the broad owner/auth expectation around `src/app/api/auth/[...nextauth]/route.ts`, which is not part of the workflow tuning pass.
+
+## Live Codex Validation
+
+Three read-only Codex `exec` probes were run in disposable copies of the job tracker repo:
+
+| Probe | Result | Codex-selected primary files |
+| --- | --- | --- |
+| Mobile UI | Pass | `JobsApplicationsTable.tsx`, `JobsDashboardTabs.tsx`, `page.tsx`, and optionally `JobsReviewPanel.tsx`. |
+| Sync review queue | Pass | `JobsReviewPanel.tsx`, sync-attempt API route, repository, page wiring, dashboard tabs, and ingest. |
+| Parser/backend | Pass | `parser.ts`, `parser.test.ts`, `repository.ts`, and `ingest.ts`. |
+
+The first two live runs exposed a Codex hook command issue: hooks were attempted, but every hook failed before Kairn recorded an event. Root cause was the example command:
+
+```json
+"command": "${KAIRN_CMD:-kairn} hook ..."
+```
+
+Codex executes project hooks under `zsh`; zsh does not split a scalar like `KAIRN_CMD="node /path/to/cli.js"` into command arguments. The hook tried to execute one filename containing a space. The example hook command was updated to use `eval`:
+
+```json
+"command": "eval \"${KAIRN_CMD:-kairn} hook ...\""
+```
+
+After that fix, all three live Codex probes recorded Kairn hook activity:
+
+| Probe | Hook events | Failures | Metric events | Output tokens | Estimated savings rate |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Mobile UI | `16` | `0` | `40` | `10,672` | `97.8%` |
+| Sync review queue | `37` | `0` | `87` | `18,795` | `97.38%` |
+| Parser/backend | `30` | `0` | `76` | `21,363` | `97.89%` |
+
+The sync-review run emitted one useful hook recommendation near a linked test/source event.
+
+Live Codex also surfaced a product finding in the sync-review flow: the review panel copy mentions skipped candidates, but the default queue only loads `needs_review` and `error` attempts.
+
+## Observed Usage Follow-Up
+
+The first live Codex numbers showed very high Kairn-estimated savings, but those estimates alone do not answer whether Kairn improves or degrades Codex performance. A clean answer needs observed Codex token usage from paired baseline and Kairn-assisted runs.
+
+Implemented follow-up:
+
+- Agent benchmark runs now parse Codex terminal footers automatically when the command output includes `Token usage: total=... input=... output=...`.
+- Benchmark reports now aggregate observed Codex token totals separately from Kairn's estimated savings.
+- `kairn bench ab` runs baseline and Kairn-assisted agent commands against the same agent cases in disposable workspaces, then reports observed token deltas.
+- Failed agent commands still preserve stdout/stderr enough to parse a Codex footer if Codex printed one before exiting.
+- `examples/bench/job-tracker-agent-light.json` provides three read-only live-agent cases matching the current validation areas: mobile UI, sync review queue, and parser/backend.
+
+This makes the next validation pass more credible: replay benchmarks still prove retrieval quality, while live A/B benchmark runs can now show actual Codex token movement.
+
+## First Clean A/B Result
+
+After updating the benchmark runner to capture Codex stderr and parse the current `tokens used` footer, a real three-case `kairn bench ab` pass was run against `new-site/my-portfolio` with the light job-tracker agent suite.
+
+Report file:
+
+```text
+/tmp/kairn-real-ab-20260507105143.json
+```
+
+Observed Codex usage:
+
+| Case | Baseline tokens | Kairn-hook tokens | Delta | Hook completions | Outcome |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Mobile UI | `65,338` | `87,261` | `-21,923` (`-33.6%`) | `21` | pass/pass |
+| Sync review queue | `58,100` | `59,584` | `-1,484` (`-2.6%`) | `26` | pass/pass |
+| Parser/backend | `67,935` | `59,717` | `+8,218` (`+12.1%`) | `15` | pass/pass |
+| Total | `191,373` | `206,562` | `-15,189` (`-7.94%`) | `62` | pass/pass |
+
+Interpretation:
+
+- Passive hook mode alone did not prove token savings on read-only discovery tasks.
+- Kairn degraded observed token usage overall in this run, mostly from the mobile UI case.
+- Parser/backend improved, but one improved case is not enough to claim system-wide benefit.
+- Hooks completed reliably with zero hook failures, so the integration works mechanically.
+- The result suggests Kairn's next validation should test proactive context delivery, not just passive post-tool hooks.
+
+Likely cause:
+
+- Codex was not instructed to ask Kairn for context before scanning, so it still performed broad file discovery and large source reads.
+- Passive hooks observe/compress after tools run; they do not stop the first expensive reads.
+- For read-only discovery, hook overhead can add transcript/workflow cost without changing Codex's file-selection behavior.
+
+Next improvement direction:
+
+- Add a benchmark mode that injects Kairn's ranked context before Codex starts, or exposes an MCP-first prompt path where Codex is explicitly told to use Kairn before broad scans.
+- Add hook throttling for successful read-only commands; post-tool hooks should be reserved for failures, diffs, edits, and high-signal command outputs.
+- Compare three modes separately: baseline, passive hooks, and proactive Kairn context.
+
+## Proactive Context Implementation
+
+Implemented next:
+
+- `kairn prime "<task>"` now generates a reusable proactive context brief before an agent starts scanning.
+- `prime` uses the existing retrieval stack, includes ranked files/snippets/related files/tests, records `prime_context` metrics, and avoids temp absolute paths in agent-facing output.
+- `kairn bench prove` compares three live-agent modes: baseline, passive hooks, and proactive Kairn-preloaded context.
+- Proactive benchmark mode generates the prime brief inside the same disposable temp clone that Codex will inspect, then prepends it to the agent prompt.
+
+The next real validation should rerun `examples/bench/job-tracker-agent-light.json` with `bench prove` and judge proactive mode against baseline, not passive hooks.
+
+## First Proactive Proof Result
+
+`kairn bench prove` was run against `new-site/my-portfolio` with the light job-tracker live-agent suite.
+
+Report file:
+
+```text
+/tmp/kairn-real-prove-20260507111621.json
+```
+
+Observed Codex usage:
+
+| Case | Baseline | Passive hooks | Proactive context | Proactive savings vs baseline |
+| --- | ---: | ---: | ---: | ---: |
+| Mobile UI | `64,709` | `68,393` | `47,037` | `17,672` |
+| Sync review queue | `64,167` | `64,874` | `50,324` | `13,843` |
+| Parser/backend | `58,855` | `77,794` | `41,072` | `17,783` |
+| Total | `187,731` | `211,061` | `138,433` | `49,298` (`26.26%`) |
+
+Interpretation:
+
+- Proactive context beat baseline in all three cases and saved `26.26%` observed Codex tokens overall.
+- Passive hooks again increased observed usage, this time by `12.43%` versus baseline.
+- Proactive context saved `34.41%` versus passive hooks.
+- All three modes completed with pass outcomes, so token reduction did not come from failed/short-circuited runs.
+
+Conclusion:
+
+- The core Kairn value path is proactive context delivery, not passive hook observation.
+- Hooks should remain useful for failures, edits, diffs, and live session telemetry.
+- Future optimization should reduce prime brief size and improve response-budget routing, since the proof report still flagged benchmark budget pressure.
+
+## Prompt-Submit Proactive Hook Direction
+
+The next implementation moves proactive context from a wrapper/benchmark path into normal Codex usage:
+
+- `kairn setup codex` installs sessionless Codex hooks in `.codex/`.
+- `UserPromptSubmit` can create or reuse a Kairn session from Codex `session_id`.
+- High-confidence prompts call `primeContext` with a smaller default budget and return the brief as Codex `additionalContext`.
+- Duplicate prompt/turn payloads are suppressed so Codex does not receive repeated prime context.
+- `PostToolUse` remains reactive and quiet, focused on failures, linked files, meaningful command output, and telemetry.
+
+This is the product path closest to the intended experience: users install Kairn once, open normal Codex CLI, submit a normal task, and receive proactive context before broad scanning begins.
+
+## First Prompt-Submit Hook Proof Result
+
+After implementing sessionless prompt-submit priming, `kairn bench prove` was run again with the light job-tracker live-agent suite. The "passive hooks" column in this run used the new `kairn setup codex` config inside each disposable benchmark workspace, so it represents normal Codex with prompt-submit proactive hooks enabled.
+
+Report file:
+
+```text
+/tmp/kairn-prompt-hook-prove-20260507120631.json
+```
+
+Observed Codex usage:
+
+| Case | Baseline | Prompt-submit hook | Manual prime | Prompt-hook savings vs baseline |
+| --- | ---: | ---: | ---: | ---: |
+| Mobile UI | `44,501` | `48,262` | `68,631` | `-3,761` |
+| Sync review queue | `69,132` | `72,702` | `70,935` | `-3,570` |
+| Parser/backend | `58,131` | `41,237` | `53,549` | `16,894` |
+| Total | `171,764` | `162,201` | `193,115` | `9,563` (`5.57%`) |
+
+Interpretation:
+
+- Prompt-submit hooks beat baseline overall by `5.57%` observed tokens with all cases passing.
+- The benefit was concentrated in parser/backend; UI and sync-review were slightly worse than baseline.
+- Manual prime lost in this run, which conflicts with the previous `26.26%` proactive win and confirms high live-Codex variance.
+- Hooks completed reliably with zero failures, so the setup path works mechanically.
+
+Conclusion:
+
+- Normal Codex plus Kairn prompt hooks is now viable, but not yet consistently high-savings.
+- The next optimization should tune prompt-hook prime budget/content by intent and reduce post-tool hook noise during read-only discovery tasks.
+- Savings claims should be based on repeated benchmark runs, not a single live pass.
+
+## Substantial Savings Improvement Pass
+
+Implemented next:
+
+- Codex setup is now mode-based: `savings` installs prompt-submit only, `observe` adds useful post-tool hooks, and `debug` installs broad diagnostic hooks.
+- Prime context is now profile-based: `ui`, `workflow`, `backend`, `test`, and `generic` profiles use smaller default budgets and compact sectioned output.
+- Prompt-submit hooks no longer suppress read-only prompts containing "Do not edit files"; benchmark discovery prompts can now receive proactive context.
+- Prompt-submit hooks emit the prime brief directly as additional context instead of wrapping it in a hook recommendation.
+- Live-agent benchmark scoring now counts expected files mentioned in agent output, so read-only runs can prove that the model found the right files.
+- `bench prove` supports repeated runs, shuffled mode order, and separate prompt-only, prompt+hooks, and manual-prime modes.
+
+Expected next validation:
+
+- Run at least three repeats against `examples/bench/job-tracker-agent-light.json`.
+- Treat median observed token savings as the headline number.
+- Require expected-file mentions before considering a token-saving run useful.
+
+## First Savings-Mode Proof After Tuning
+
+A one-repeat prompt-only proof was run after profile budgeting and the prompt confidence fix.
+
+Report file:
+
+```text
+/tmp/kairn-prompt-only-proof-20260507130649.json
+```
+
+Observed Codex usage:
+
+| Mode | Tokens |
+| --- | ---: |
+| Baseline | `219,259` |
+| Prompt-only savings hooks | `163,832` |
+| Savings | `55,427` (`25.28%`) |
+
+Per-case result:
+
+- Mobile UI: saved `48,100` tokens and mentioned both expected UI files.
+- Sync review queue: increased by `7,111` tokens but mentioned all expected review/API/repository files.
+- Parser/backend: saved `14,438` tokens and mentioned all expected parser/ingest/repository/test files.
+
+Interpretation:
+
+- The high-confidence prompt gate fix mattered: read-only prompts containing "Do not edit files" now receive proactive context.
+- Quality evidence improved because the live suite now verifies expected file mentions.
+- This is promising but still one repeat; the product claim should wait for a repeated median proof.

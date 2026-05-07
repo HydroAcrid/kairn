@@ -64,10 +64,18 @@ export function buildBenchmarkReport(input: {
   results: BenchmarkResultRecord[];
 }): BenchmarkReport {
   const scoredResults = input.results.filter((result) => result.taskOutcome !== "skipped");
+  const observedResults = input.results.filter((result) => result.observedCodexTokens !== undefined);
   const overallScore =
     scoredResults.length > 0
       ? Number((scoredResults.reduce((total, result) => total + result.score, 0) / scoredResults.length).toFixed(2))
       : 0;
+  const observed =
+    observedResults.length > 0
+      ? {
+          codexTokens: observedResults.reduce((total, result) => total + (result.observedCodexTokens ?? 0), 0),
+          codexCaseCount: observedResults.length
+        }
+      : undefined;
   const weakestCases = [...input.results].sort((a, b) => a.score - b.score).slice(0, 5);
   const recommendations = unique(
     weakestCases.flatMap((result) => result.recommendations).concat(overallScore < 70 ? ["Overall score is low; inspect weak cases before tuning retrieval."] : [])
@@ -77,6 +85,7 @@ export function buildBenchmarkReport(input: {
     run: input.run,
     results: input.results,
     overallScore,
+    ...(observed ? { observed } : {}),
     weakestCases,
     recommendations
   };
@@ -94,14 +103,29 @@ export function compareBenchmarkReports(before: BenchmarkReport, after: Benchmar
     if (delta >= 5) improvedCases.push(result.caseId);
     if (delta <= -5) regressedCases.push(result.caseId);
   }
+  const tokenDelta = observedTokenDelta(before, after);
 
   return {
     before,
     after,
     scoreDelta: Number((after.overallScore - before.overallScore).toFixed(2)),
+    ...(tokenDelta ? { observedTokenDelta: tokenDelta } : {}),
     improvedCases,
     regressedCases,
     recommendations: comparisonRecommendations({ before, after, regressedCases })
+  };
+}
+
+function observedTokenDelta(before: BenchmarkReport, after: BenchmarkReport): BenchmarkComparison["observedTokenDelta"] {
+  const beforeTokens = before.observed?.codexTokens;
+  const afterTokens = after.observed?.codexTokens;
+  if (beforeTokens === undefined || afterTokens === undefined) return undefined;
+  const savedTokens = beforeTokens - afterTokens;
+  return {
+    beforeTokens,
+    afterTokens,
+    savedTokens,
+    savingsRate: beforeTokens > 0 ? Number((savedTokens / beforeTokens).toFixed(4)) : 0
   };
 }
 

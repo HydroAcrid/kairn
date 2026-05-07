@@ -3,10 +3,13 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { simpleGit } from "simple-git";
 import type {
+  BenchmarkAssistanceMode,
   BenchmarkComparison,
+  BenchmarkProofReport,
   BenchmarkReport,
   BenchmarkResultRecord,
   BenchmarkRunMode,
+  ContextPrime,
   ContextQueryMode,
   ContextResponse,
   ContextResponseMode,
@@ -25,6 +28,7 @@ import type {
   MetricsSummary,
   NormalizedHookEvent,
   OutputKind,
+  PrimeProfile,
   TaskSession,
   WatchEventKind,
   WatchEventRecord,
@@ -115,8 +119,115 @@ export class KairnRuntime {
     };
   }
 
+  async primeContext(input: {
+    task: string;
+    sessionId?: string | undefined;
+    budget?: number | undefined;
+    mode?: ContextQueryMode | undefined;
+    profile?: PrimeProfile | undefined;
+    source?: WatchEventSource | "runtime" | "cli" | "mcp" | undefined;
+    eventName?: string | undefined;
+    metadata?: Record<string, unknown> | undefined;
+  }): Promise<ContextPrime> {
+    await this.init();
+    const task = input.task;
+    const profile = resolvePrimeProfile(input.profile ?? "auto", task);
+    const budget = input.budget ?? defaultPrimeBudget(profile);
+    const limits = primeProfileLimits(profile);
+    const session = input.sessionId
+      ? this.store.getSession(input.sessionId)
+      : this.store.createSession({
+          id: `task_${randomUUID()}`,
+          rootPath: this.rootPath,
+          task: input.task,
+          verificationHints: ["Start from Kairn prime context", "Avoid broad scans unless the prime is insufficient", "Run related tests before finalizing"]
+        });
+    const resolvedTask = input.task || session.task;
+    const context = await this.findContext({
+      sessionId: session.id,
+      query: resolvedTask,
+      requestType: "find_context",
+      budget: Math.max(360, Math.floor(budget * limits.contextRatio)),
+      mode: input.mode ?? "snippets"
+    });
+    const primaryFile = context.suggestedNextContext[0] ?? context.files[0];
+    const related = primaryFile
+      ? await this.getRelatedFiles({
+          sessionId: session.id,
+          target: primaryFile,
+          budget: 420
+        }).catch(() => undefined)
+      : undefined;
+    const tests = await this.findTests({
+      sessionId: session.id,
+      target: primaryFile,
+      budget: 420
+    }).catch(() => undefined);
+    const files = uniquePaths([
+      ...context.suggestedNextContext.slice(0, limits.topFiles),
+      ...context.files.slice(0, limits.topFiles),
+      ...(related?.related ?? []).slice(0, limits.relatedFiles),
+      ...(tests?.files ?? []).slice(0, limits.testFiles)
+    ]);
+    const suggestedCommands = [
+      `kairn context --session ${session.id} --root <repo> --query "${resolvedTask.replaceAll('"', '\\"')}" --mode snippets`,
+      ...(primaryFile ? [`kairn context --session ${session.id} --root <repo> --related ${primaryFile}`] : []),
+      ...(primaryFile ? [`kairn context --session ${session.id} --root <repo> --tests ${primaryFile}`] : [])
+    ];
+    const content = formatPrimeContext({
+      task: resolvedTask,
+      sessionId: session.id,
+      profile,
+      budget,
+      limits,
+      context,
+      relatedFiles: related?.related ?? [],
+      testFiles: tests?.files ?? [],
+      suggestedCommands
+    });
+    const fileRecords = this.store.listFiles(session.rootPath).filter((file) => files.includes(file.path));
+
+    this.recordShown(session.id, "context", "brief", content);
+    this.recordMetricsEvent({
+      sessionId: session.id,
+      rootPath: session.rootPath,
+      eventKind: "prime_context",
+      eventName: input.eventName ?? "prime_context",
+      source: input.source ?? "cli",
+      responseMode: "brief",
+      baselineTokens: estimateFileBaselineTokens(fileRecords),
+      outputTokens: estimateTokens(content),
+      files,
+      metadata: {
+        ...input.metadata,
+        taskHash: sha256(resolvedTask),
+        profile,
+        budget,
+        contextTokenEstimate: context.tokenEstimate,
+        relatedCount: related?.related.length ?? 0,
+        testCount: tests?.files.length ?? 0,
+        estimator: "prime selected files as full-source baseline"
+      }
+    });
+
+    return {
+      session: this.getSession(session.id),
+      task: resolvedTask,
+      profile,
+      content,
+      files,
+      tokenEstimate: estimateTokens(content),
+      warnings: uniqueStrings([...context.warnings, ...(related?.warnings ?? []), ...(tests?.warnings ?? [])]),
+      suggestedCommands
+    };
+  }
+
   getSession(sessionId: string): TaskSession {
     return this.store.getSession(sessionId);
+  }
+
+  listSessions(input?: { limit?: number | undefined; allRoots?: boolean | undefined }): TaskSession[] {
+    return this.store.listSessions({ rootPath: input?.allRoots ? undefined : this.rootPath, limit: input?.limit });
   }
 
   getMetrics(sessionId: string): MetricsSummary {
@@ -283,6 +394,7 @@ export class KairnRuntime {
     mode: BenchmarkRunMode;
     agentCommand?: string | undefined;
     agentTimeoutMs?: number | undefined;
+    assistanceMode?: BenchmarkAssistanceMode | undefined;
   }): Promise<BenchmarkReport> {
     await this.init();
     const suite = loadBenchmarkSuite({
@@ -300,18 +412,20 @@ export class KairnRuntime {
       metadata: {
         sessionId: session.id,
         caseCount: suite.cases.length,
-        agentConfigured: Boolean(input.agentCommand)
+        agentConfigured: Boolean(input.agentCommand),
+        assistanceMode: input.assistanceMode ?? "baseline"
       }
     });
 
     for (const benchmarkCase of suite.cases.filter((item) => benchmarkCaseApplies(item.mode, input.mode))) {
       const result =
         benchmarkCase.mode === "agent"
-          ? this.runAgentBenchmarkCase({
+          ? await this.runAgentBenchmarkCase({
               runId: run.id,
               benchmarkCase,
               agentCommand: input.agentCommand,
-              agentTimeoutMs: input.agentTimeoutMs
+              agentTimeoutMs: input.agentTimeoutMs,
+              assistanceMode: input.assistanceMode ?? "baseline"
             })
           : await this.runReplayBenchmarkCase({
               runId: run.id,
@@ -323,6 +437,68 @@ export class KairnRuntime {
 
     const completed = this.store.updateBenchmarkRunStatus(run.id, "completed");
     return this.buildBenchmarkReport(completed.id);
+  }
+
+  async proveBenchmark(input: {
+    suitePath?: string | undefined;
+    baselineCommand: string;
+    promptOnlyCommand?: string | undefined;
+    promptPlusHooksCommand?: string | undefined;
+    manualPrimeCommand?: string | undefined;
+    passiveCommand?: string | undefined;
+    proactiveCommand?: string | undefined;
+    agentTimeoutMs?: number | undefined;
+    repeat?: number | undefined;
+    shuffleOrder?: boolean | undefined;
+  }): Promise<BenchmarkProofReport> {
+    const repeat = Math.max(1, Math.floor(Number(input.repeat ?? 1) || 1));
+    const modeCommands: Array<{ mode: BenchmarkAssistanceMode; command: string }> = [
+      { mode: "baseline", command: input.baselineCommand },
+      ...(input.promptOnlyCommand ?? input.passiveCommand ? [{ mode: "prompt_only" as const, command: (input.promptOnlyCommand ?? input.passiveCommand)! }] : []),
+      ...(input.promptPlusHooksCommand ?? input.passiveCommand
+        ? [{ mode: "prompt_plus_hooks" as const, command: (input.promptPlusHooksCommand ?? input.passiveCommand)! }]
+        : []),
+      ...(input.manualPrimeCommand ?? input.proactiveCommand ? [{ mode: "manual_prime" as const, command: (input.manualPrimeCommand ?? input.proactiveCommand)! }] : [])
+    ];
+    const baselineReports: BenchmarkReport[] = [];
+    const promptOnlyReports: BenchmarkReport[] = [];
+    const promptPlusHooksReports: BenchmarkReport[] = [];
+    const manualPrimeReports: BenchmarkReport[] = [];
+
+    for (let iteration = 0; iteration < repeat; iteration += 1) {
+      const order = input.shuffleOrder ? shuffleItems(modeCommands) : modeCommands;
+      for (const item of order) {
+        const report = await this.runBenchmark({
+          suitePath: input.suitePath,
+          mode: "agent",
+          agentCommand: item.command,
+          agentTimeoutMs: input.agentTimeoutMs,
+          assistanceMode: item.mode
+        });
+        if (item.mode === "baseline") baselineReports.push(report);
+        if (item.mode === "prompt_only" || item.mode === "passive_hooks") promptOnlyReports.push(report);
+        if (item.mode === "prompt_plus_hooks") promptPlusHooksReports.push(report);
+        if (item.mode === "manual_prime" || item.mode === "proactive") manualPrimeReports.push(report);
+      }
+    }
+
+    if (baselineReports.length === 0) {
+      baselineReports.push(await this.runBenchmark({
+        suitePath: input.suitePath,
+        mode: "agent",
+        agentCommand: input.baselineCommand,
+        agentTimeoutMs: input.agentTimeoutMs,
+        assistanceMode: "baseline"
+      }));
+    }
+
+    return buildBenchmarkProofReport({
+      baseline: baselineReports,
+      promptOnly: promptOnlyReports,
+      promptPlusHooks: promptPlusHooksReports,
+      manualPrime: manualPrimeReports,
+      repeat
+    });
   }
 
   getBenchmarkReport(input: { runId?: string | undefined }): BenchmarkReport | { runs: BenchmarkReport[] } {
@@ -891,10 +1067,15 @@ export class KairnRuntime {
   }
 
   async handleHookEvent(input: {
-    sessionId: string;
+    sessionId?: string | undefined;
     event: NormalizedHookEvent;
+    primeBudget?: number | undefined;
+    primeProfile?: PrimeProfile | undefined;
   }): Promise<HookHandlingResult> {
-    const session = this.store.getSession(input.sessionId);
+    const session = await this.resolveHookSession({
+      sessionId: input.sessionId,
+      event: input.event
+    });
     await this.refreshIndex(session.rootPath);
     const knownFiles = this.store.listFiles(session.rootPath).map((file) => file.path);
     const outputKind = classifyObservedCommand({
@@ -909,6 +1090,33 @@ export class KairnRuntime {
       explicitFiles: input.event.files
     });
     const kind = input.event.exitCode && input.event.exitCode !== 0 ? "failure" : input.event.kind;
+    const promptHash = input.event.output && isPromptEvent(input.event.eventName) ? sha256(input.event.output) : undefined;
+    const duplicatePromptPrime = Boolean(
+      promptHash &&
+        isHighConfidencePrompt(input.event.eventName, input.event.output) &&
+        this.hasPromptPrimeForHook({
+          sessionId: session.id,
+          event: input.event,
+          promptHash
+        })
+    );
+    const prime = promptHash && !duplicatePromptPrime && isHighConfidencePrompt(input.event.eventName, input.event.output)
+      ? await this.primeContext({
+          task: input.event.output!,
+          sessionId: session.id,
+          budget: input.primeBudget ?? 1200,
+          mode: "snippets",
+          profile: input.primeProfile ?? "auto",
+          source: input.event.source,
+          eventName: "prime_context_hook",
+          metadata: {
+            promptHash,
+            hostSessionId: input.event.hostSessionId ?? null,
+            turnId: stringMetadata(input.event.metadata, "turn_id") ?? null,
+            hookEventName: input.event.eventName
+          }
+        })
+      : undefined;
     const shouldCompressOutput =
       Boolean(input.event.output) &&
       !isPromptEvent(input.event.eventName) &&
@@ -921,35 +1129,33 @@ export class KairnRuntime {
       });
     const response = shouldCompressOutput
       ? this.compressOutput({
-          sessionId: input.sessionId,
+          sessionId: session.id,
           type: outputKind,
           output: input.event.output!,
           budget: 1200,
           source: input.event.source,
           eventName: input.event.eventName
         })
-      : await this.promptContextResponse({
-          sessionId: input.sessionId,
-          eventName: input.event.eventName,
-          prompt: input.event.output
+      : undefined;
+    const recommendation = prime
+      ? undefined
+      : await this.recommendFromHook({
+          sessionId: session.id,
+          command: input.event.command,
+          response,
+          linkedFiles,
+          outputKind,
+          eventKind: kind
         });
-    const recommendation = await this.recommendFromHook({
-      sessionId: input.sessionId,
-      command: input.event.command,
-      response,
-      linkedFiles,
-      outputKind,
-      eventKind: kind
-    });
     const summary = [
       input.event.command ? `Command: ${input.event.command}` : `Event: ${input.event.eventName}`,
       input.event.toolName ? `Tool: ${input.event.toolName}` : "",
       input.event.exitCode !== undefined ? `Exit code: ${input.event.exitCode}` : "",
       linkedFiles.length > 0 ? `Linked files: ${linkedFiles.join(", ")}` : "",
-      response?.content ? response.content : ""
+      prime?.content ? prime.content : response?.content ? response.content : ""
     ].filter(Boolean).join("\n\n");
     const event = this.recordWatchEvent({
-      sessionId: input.sessionId,
+      sessionId: session.id,
       source: input.event.source,
       kind,
       eventName: input.event.eventName,
@@ -963,39 +1169,116 @@ export class KairnRuntime {
         outputKind,
         ...(input.event.cwd ? { cwd: input.event.cwd } : {}),
         ...(input.event.hostSessionId ? { hostSessionId: input.event.hostSessionId } : {}),
-        ...(input.event.timestamp ? { timestamp: input.event.timestamp } : {})
+        ...(input.event.timestamp ? { timestamp: input.event.timestamp } : {}),
+        ...(promptHash ? { promptHash } : {}),
+        ...(duplicatePromptPrime ? { duplicatePromptPrime: true } : {})
       }
     });
     this.recordMetricsEvent({
-      sessionId: input.sessionId,
+      sessionId: session.id,
       rootPath: session.rootPath,
       eventKind: "hook_signal",
-      eventName: recommendation ? "hook_recommendation_emitted" : "hook_recommendation_suppressed",
+      eventName: prime || recommendation ? "hook_recommendation_emitted" : "hook_recommendation_suppressed",
       source: input.event.source,
       baselineTokens: 0,
-      outputTokens: recommendation?.content ? estimateTokens(recommendation.content) : 0,
-      files: recommendation?.files ?? linkedFiles,
+      outputTokens: prime?.content ? estimateTokens(prime.content) : recommendation?.content ? estimateTokens(recommendation.content) : 0,
+      files: prime?.files ?? recommendation?.files ?? linkedFiles,
       metadata: {
         eventName: input.event.eventName,
         hookKind: kind,
         outputKind,
         linkedFiles: linkedFiles.length,
-        recommendation: recommendation ? "emitted" : "suppressed",
+        recommendation: prime ? "prime_emitted" : recommendation ? "emitted" : duplicatePromptPrime ? "duplicate_suppressed" : promptHash ? "prompt_suppressed" : "suppressed",
+        proactivePrime: Boolean(prime),
+        duplicatePromptPrime,
         compressedOutput: Boolean(response),
         trivialSuccessfulOutput: Boolean(input.event.output) && !shouldCompressOutput && !response
       }
     });
 
     return {
+      session: this.getSession(session.id),
       event,
       ...(recommendation ? { recommendation } : {}),
-      ...(response ? { response } : {})
+      ...(response ? { response } : {}),
+      ...(prime ? { prime } : {})
     };
   }
 
   listWatchEvents(sessionId: string, limit?: number): WatchEventRecord[] {
     this.store.getSession(sessionId);
     return this.store.listWatchEvents(sessionId, limit);
+  }
+
+  private async resolveHookSession(input: {
+    sessionId?: string | undefined;
+    event: NormalizedHookEvent;
+  }): Promise<TaskSession> {
+    const hostSessionId = hostSessionIdForEvent(input.event);
+
+    if (input.sessionId) {
+      const session = this.store.getSession(input.sessionId);
+      if (hostSessionId) {
+        this.store.upsertHostSessionLink({
+          source: input.event.source,
+          rootPath: session.rootPath,
+          hostSessionId,
+          sessionId: session.id,
+          metadata: hostSessionMetadata(input.event)
+        });
+      }
+      return session;
+    }
+
+    if (hostSessionId) {
+      const link = this.store.getHostSessionLink({
+        source: input.event.source,
+        rootPath: this.rootPath,
+        hostSessionId
+      });
+      if (link) {
+        this.store.upsertHostSessionLink({
+          source: input.event.source,
+          rootPath: this.rootPath,
+          hostSessionId,
+          sessionId: link.sessionId,
+          metadata: hostSessionMetadata(input.event)
+        });
+        return this.store.getSession(link.sessionId);
+      }
+    }
+
+    const session = this.store.createSession({
+      id: `task_${randomUUID()}`,
+      rootPath: this.rootPath,
+      task: taskFromHookEvent(input.event),
+      verificationHints: ["Start from Kairn hook context", "Avoid broad scans unless Kairn context is insufficient", "Run related tests before finalizing"]
+    });
+
+    if (hostSessionId) {
+      this.store.upsertHostSessionLink({
+        source: input.event.source,
+        rootPath: this.rootPath,
+        hostSessionId,
+        sessionId: session.id,
+        metadata: hostSessionMetadata(input.event)
+      });
+    }
+
+    return session;
+  }
+
+  private hasPromptPrimeForHook(input: {
+    sessionId: string;
+    event: NormalizedHookEvent;
+    promptHash: string;
+  }): boolean {
+    const turnId = stringMetadata(input.event.metadata, "turn_id");
+    return this.store.listMetricsEvents(input.sessionId).some((event) => {
+      if (event.eventKind !== "prime_context" || event.eventName !== "prime_context_hook") return false;
+      if (event.metadata.promptHash !== input.promptHash) return false;
+      return turnId ? event.metadata.turnId === turnId : true;
+    });
   }
 
   private findLatestEvalRunForSession(sessionId: string) {
@@ -1154,18 +1437,52 @@ export class KairnRuntime {
     });
   }
 
-  private runAgentBenchmarkCase(input: {
+  private async runAgentBenchmarkCase(input: {
     runId: string;
     benchmarkCase: Parameters<typeof scoreBenchmarkCase>[0]["benchmarkCase"];
     agentCommand?: string | undefined;
     agentTimeoutMs?: number | undefined;
-  }): Omit<BenchmarkResultRecord, "id" | "createdAt"> {
-    const result = runAgentBenchmarkCase({
+    assistanceMode?: BenchmarkAssistanceMode | undefined;
+  }): Promise<Omit<BenchmarkResultRecord, "id" | "createdAt">> {
+    const result = await runAgentBenchmarkCase({
       rootPath: this.rootPath,
       benchmarkCase: input.benchmarkCase,
       agentCommand: input.agentCommand,
-      timeoutMs: input.agentTimeoutMs
+      timeoutMs: input.agentTimeoutMs,
+      preparePrompt:
+        input.assistanceMode === "manual_prime" || input.assistanceMode === "proactive"
+          ? async ({ workspacePath, prompt }) => {
+              const workspaceRuntime = new KairnRuntime(workspacePath);
+              try {
+                const prime = await workspaceRuntime.primeContext({
+                  task: prompt,
+                  budget: input.benchmarkCase.budget
+                });
+                return {
+                  prompt: [
+                    prime.content,
+                    "",
+                    "User task:",
+                    prompt,
+                    "",
+                    "Use the Kairn context above first. Avoid broad scans unless the provided files are insufficient."
+                  ].join("\n"),
+                  metadata: {
+                    assistanceMode: input.assistanceMode === "proactive" ? "proactive" : "manual_prime",
+                    primeProfile: prime.profile,
+                    primeSessionId: prime.session.id,
+                    primeTokenEstimate: prime.tokenEstimate,
+                    primeFiles: prime.files,
+                    primeWarnings: prime.warnings
+                  }
+                };
+              } finally {
+                workspaceRuntime.close();
+              }
+            }
+          : undefined
     });
+    const workspaceMetrics = collectWorkspaceKairnMetrics(result.workspacePath);
     return scoreBenchmarkCase({
       runId: input.runId,
       benchmarkCase: input.benchmarkCase,
@@ -1174,7 +1491,11 @@ export class KairnRuntime {
       observedCodexTokens: result.observedCodexTokens,
       taskOutcome: result.outcome,
       summary: result.summary,
-      metadata: result.metadata
+      metadata: {
+        assistanceMode: input.assistanceMode ?? "baseline",
+        ...workspaceMetrics,
+        ...result.metadata
+      }
     });
   }
 
@@ -1505,6 +1826,316 @@ function formatContextResults(input: {
   return sections.join("\n");
 }
 
+type ResolvedPrimeProfile = Exclude<PrimeProfile, "auto">;
+
+type PrimeProfileLimits = {
+  topFiles: number;
+  relatedFiles: number;
+  testFiles: number;
+  contextRatio: number;
+  snippetBudget: number;
+  includeCommands: boolean;
+};
+
+function formatPrimeContext(input: {
+  task: string;
+  sessionId: string;
+  profile: ResolvedPrimeProfile;
+  budget: number;
+  limits: PrimeProfileLimits;
+  context: ContextResponse;
+  relatedFiles: string[];
+  testFiles: string[];
+  suggestedCommands: string[];
+}): string {
+  const topFiles = uniquePaths(input.context.suggestedNextContext.length > 0 ? input.context.suggestedNextContext : input.context.files).slice(0, input.limits.topFiles);
+  const related = uniquePaths(input.relatedFiles).filter((file) => !topFiles.includes(file)).slice(0, input.limits.relatedFiles);
+  const tests = uniquePaths(input.testFiles).slice(0, input.limits.testFiles);
+  const sections = [
+    "# Kairn Proactive Context",
+    "",
+    "Start with this context before broad repository scans. If it is insufficient, then use targeted reads or Kairn context commands.",
+    "",
+    `Task: ${input.task}`,
+    `Kairn session: ${input.sessionId}`,
+    `Prime profile: ${input.profile}`,
+    "",
+    "## Start Here",
+    topFiles.length > 0 ? topFiles.map((file) => `- ${file}`).join("\n") : "- No high-confidence files found.",
+    "",
+    "## Targeted Context",
+    compactPrimeContext(input.context.content, input.limits.snippetBudget),
+    "",
+    "## Likely Tests",
+    tests.length > 0 ? tests.map((file) => `- ${file}`).join("\n") : "- No likely tests found.",
+    "",
+    related.length > 0 ? ["## Related Files", related.map((file) => `- ${file}`).join("\n"), ""].join("\n") : "",
+    input.limits.includeCommands
+      ? ["## More Context", input.suggestedCommands.slice(0, 2).map((command) => `- ${command}`).join("\n"), ""].join("\n")
+      : "",
+    "",
+    "## Agent Guidance",
+    "- Prefer targeted reads of the Start Here files over `rg --files` or large file ranges.",
+    "- Do not edit files unless the user task explicitly asks for edits."
+  ].filter((section) => section !== "");
+
+  return fitSectionsToBudget(sections, input.budget);
+}
+
+function resolvePrimeProfile(profile: PrimeProfile, task: string): ResolvedPrimeProfile {
+  if (profile !== "auto") return profile;
+  const intent = classifyQueryIntent(task).primary;
+  if (intent === "ui" || intent === "workflow" || intent === "test") return intent;
+  if (intent === "backend" || intent === "data" || intent === "auth") return "backend";
+  return "generic";
+}
+
+function defaultPrimeBudget(profile: ResolvedPrimeProfile): number {
+  switch (profile) {
+    case "ui":
+      return 700;
+    case "workflow":
+      return 900;
+    case "backend":
+      return 1100;
+    case "test":
+      return 900;
+    case "generic":
+      return 800;
+  }
+}
+
+function primeProfileLimits(profile: ResolvedPrimeProfile): PrimeProfileLimits {
+  switch (profile) {
+    case "ui":
+      return { topFiles: 3, relatedFiles: 2, testFiles: 2, contextRatio: 0.5, snippetBudget: 330, includeCommands: false };
+    case "workflow":
+      return { topFiles: 4, relatedFiles: 3, testFiles: 2, contextRatio: 0.55, snippetBudget: 430, includeCommands: false };
+    case "backend":
+      return { topFiles: 4, relatedFiles: 3, testFiles: 3, contextRatio: 0.62, snippetBudget: 560, includeCommands: true };
+    case "test":
+      return { topFiles: 4, relatedFiles: 2, testFiles: 4, contextRatio: 0.56, snippetBudget: 430, includeCommands: true };
+    case "generic":
+      return { topFiles: 3, relatedFiles: 2, testFiles: 2, contextRatio: 0.5, snippetBudget: 360, includeCommands: false };
+  }
+}
+
+function compactPrimeContext(content: string, budget: number): string {
+  const snippetIndex = content.indexOf("## Matched Snippets");
+  const selected = snippetIndex >= 0 ? content.slice(snippetIndex).replace(/^## Matched Snippets\s*/m, "").trim() : content;
+  return truncateToBudget(selected, budget);
+}
+
+function fitSectionsToBudget(sections: string[], budget: number): string {
+  const accepted: string[] = [];
+  let used = 0;
+  for (const section of sections) {
+    const tokens = estimateTokens(section);
+    if (used + tokens <= budget) {
+      accepted.push(section);
+      used += tokens;
+      continue;
+    }
+    const remaining = Math.max(0, budget - used - 16);
+    if (remaining > 60) {
+      accepted.push(truncateToBudget(section, remaining));
+    }
+    break;
+  }
+  return accepted.join("\n");
+}
+
+function buildBenchmarkProofReport(input: {
+  baseline: BenchmarkReport[];
+  promptOnly: BenchmarkReport[];
+  promptPlusHooks: BenchmarkReport[];
+  manualPrime: BenchmarkReport[];
+  repeat: number;
+}): BenchmarkProofReport {
+  const baseline = latestReport(input.baseline);
+  const promptOnly = optionalLatestReport(input.promptOnly);
+  const promptPlusHooks = optionalLatestReport(input.promptPlusHooks);
+  const manualPrime = optionalLatestReport(input.manualPrime);
+  const passiveHooks = promptPlusHooks ?? promptOnly ?? baseline;
+  const proactive = manualPrime ?? baseline;
+  const promptOnlyVsBaseline = promptOnly ? compareBenchmarkReports(baseline, promptOnly) : undefined;
+  const promptPlusVsBaseline = promptPlusHooks ? compareBenchmarkReports(baseline, promptPlusHooks) : undefined;
+  const manualPrimeVsBaseline = manualPrime ? compareBenchmarkReports(baseline, manualPrime) : undefined;
+  const proactiveVsPassive = manualPrime && passiveHooks ? compareBenchmarkReports(passiveHooks, manualPrime) : undefined;
+  const baselineByCase = new Map(baseline.results.map((result) => [result.caseId, result]));
+  const promptOnlyByCase = new Map(promptOnly?.results.map((result) => [result.caseId, result]) ?? []);
+  const promptPlusByCase = new Map(promptPlusHooks?.results.map((result) => [result.caseId, result]) ?? []);
+  const manualPrimeByCase = new Map(manualPrime?.results.map((result) => [result.caseId, result]) ?? []);
+  const caseIds = uniqueStrings([...baselineByCase.keys(), ...promptOnlyByCase.keys(), ...promptPlusByCase.keys(), ...manualPrimeByCase.keys()]);
+  const caseDeltas = caseIds.map((caseId) => {
+    const baseline = baselineByCase.get(caseId);
+    const passiveHooks = promptPlusByCase.get(caseId) ?? promptOnlyByCase.get(caseId);
+    const proactive = manualPrimeByCase.get(caseId);
+    return {
+      caseId,
+      ...(baseline?.observedCodexTokens !== undefined ? { baselineTokens: baseline.observedCodexTokens } : {}),
+      ...(passiveHooks?.observedCodexTokens !== undefined ? { passiveHooksTokens: passiveHooks.observedCodexTokens } : {}),
+      ...(proactive?.observedCodexTokens !== undefined ? { proactiveTokens: proactive.observedCodexTokens } : {}),
+      ...(baseline?.observedCodexTokens !== undefined && proactive?.observedCodexTokens !== undefined
+        ? { proactiveVsBaseline: baseline.observedCodexTokens - proactive.observedCodexTokens }
+        : {}),
+      ...(passiveHooks?.observedCodexTokens !== undefined && proactive?.observedCodexTokens !== undefined
+        ? { proactiveVsPassive: passiveHooks.observedCodexTokens - proactive.observedCodexTokens }
+        : {}),
+      outcome: {
+        baseline: baseline?.taskOutcome ?? "skipped",
+        passiveHooks: passiveHooks?.taskOutcome ?? "skipped",
+        proactive: proactive?.taskOutcome ?? "skipped"
+      }
+    };
+  });
+  const aggregate = buildProofAggregate({
+    repeat: input.repeat,
+    reports: {
+      baseline: input.baseline,
+      prompt_only: input.promptOnly,
+      prompt_plus_hooks: input.promptPlusHooks,
+      manual_prime: input.manualPrime
+    }
+  });
+  const recommendations = uniqueStrings([
+    recommendationForDelta("Prompt-only hooks vs baseline", promptOnlyVsBaseline?.observedTokenDelta),
+    recommendationForDelta("Prompt+tool hooks vs baseline", promptPlusVsBaseline?.observedTokenDelta),
+    recommendationForDelta("Manual prime vs baseline", manualPrimeVsBaseline?.observedTokenDelta),
+    ...(manualPrimeVsBaseline?.recommendations.slice(0, 4) ?? promptOnlyVsBaseline?.recommendations.slice(0, 4) ?? [])
+  ]);
+
+  return {
+    baseline,
+    ...(promptOnly ? { promptOnly } : {}),
+    ...(promptPlusHooks ? { promptPlusHooks } : {}),
+    ...(manualPrime ? { manualPrime } : {}),
+    passiveHooks,
+    proactive,
+    runs: {
+      baseline: input.baseline,
+      prompt_only: input.promptOnly,
+      prompt_plus_hooks: input.promptPlusHooks,
+      manual_prime: input.manualPrime
+    },
+    aggregate,
+    observedTokenDeltas: {
+      ...(promptOnlyVsBaseline?.observedTokenDelta ? { promptOnlyVsBaseline: promptOnlyVsBaseline.observedTokenDelta } : {}),
+      ...(promptPlusVsBaseline?.observedTokenDelta ? { promptPlusHooksVsBaseline: promptPlusVsBaseline.observedTokenDelta } : {}),
+      ...(manualPrimeVsBaseline?.observedTokenDelta ? { manualPrimeVsBaseline: manualPrimeVsBaseline.observedTokenDelta } : {}),
+      ...(promptPlusVsBaseline?.observedTokenDelta ? { passiveVsBaseline: promptPlusVsBaseline.observedTokenDelta } : {}),
+      ...(manualPrimeVsBaseline?.observedTokenDelta ? { proactiveVsBaseline: manualPrimeVsBaseline.observedTokenDelta } : {}),
+      ...(proactiveVsPassive?.observedTokenDelta ? { proactiveVsPassive: proactiveVsPassive.observedTokenDelta } : {})
+    },
+    caseDeltas,
+    recommendations
+  };
+}
+
+function latestReport(reports: BenchmarkReport[]): BenchmarkReport {
+  const report = reports.at(-1);
+  if (!report) {
+    throw new Error("Benchmark proof requires at least one baseline report.");
+  }
+  return report;
+}
+
+function optionalLatestReport(reports: BenchmarkReport[]): BenchmarkReport | undefined {
+  return reports.at(-1);
+}
+
+function buildProofAggregate(input: {
+  repeat: number;
+  reports: Partial<Record<BenchmarkAssistanceMode, BenchmarkReport[]>>;
+}): NonNullable<BenchmarkProofReport["aggregate"]> {
+  const modes: NonNullable<BenchmarkProofReport["aggregate"]>["modes"] = {};
+  for (const [mode, reports] of Object.entries(input.reports) as Array<[BenchmarkAssistanceMode, BenchmarkReport[] | undefined]>) {
+    const tokenTotals = (reports ?? []).map((report) => report.observed?.codexTokens).filter((value): value is number => typeof value === "number");
+    modes[mode] = {
+      reports: reports?.length ?? 0,
+      ...(tokenTotals.length > 0 ? { meanTokens: mean(tokenTotals), medianTokens: median(tokenTotals) } : {}),
+      caseCount: reports?.reduce((total, report) => total + report.results.length, 0) ?? 0
+    };
+  }
+
+  return {
+    repeat: input.repeat,
+    modes,
+    deltas: {
+      promptOnlyVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.prompt_only?.medianTokens),
+      promptPlusHooksVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.prompt_plus_hooks?.medianTokens),
+      manualPrimeVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.manual_prime?.medianTokens)
+    }
+  };
+}
+
+function aggregateDelta(beforeMedianTokens: number | undefined, afterMedianTokens: number | undefined) {
+  if (beforeMedianTokens === undefined || afterMedianTokens === undefined) return {};
+  const savedTokens = beforeMedianTokens - afterMedianTokens;
+  return {
+    beforeMedianTokens,
+    afterMedianTokens,
+    savedTokens,
+    savingsRate: beforeMedianTokens > 0 ? Number((savedTokens / beforeMedianTokens).toFixed(4)) : 0
+  };
+}
+
+function mean(values: number[]): number {
+  return Math.round(values.reduce((total, value) => total + value, 0) / values.length);
+}
+
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const midpoint = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? Math.round((sorted[midpoint - 1]! + sorted[midpoint]!) / 2) : sorted[midpoint]!;
+}
+
+function shuffleItems<T>(items: T[]): T[] {
+  const shuffled = [...items];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex]!, shuffled[index]!];
+  }
+  return shuffled;
+}
+
+function recommendationForDelta(label: string, delta: BenchmarkComparison["observedTokenDelta"]): string {
+  if (!delta) return `${label}: observed Codex usage unavailable.`;
+  if (delta.savedTokens > 0) {
+    return `${label}: saved ${delta.savedTokens} observed Codex tokens (${Math.round(delta.savingsRate * 100)}%).`;
+  }
+  return `${label}: increased observed Codex usage by ${Math.abs(delta.savedTokens)} tokens (${Math.round(Math.abs(delta.savingsRate) * 100)}%).`;
+}
+
+function collectWorkspaceKairnMetrics(workspacePath: string): Record<string, unknown> {
+  const databasePath = path.join(workspacePath, ".kairn", "kairn.sqlite");
+  if (!fs.existsSync(databasePath)) {
+    return {
+      primeEmitted: 0,
+      hookInvocations: 0
+    };
+  }
+
+  const runtime = new KairnRuntime(workspacePath);
+  try {
+    const sessions = runtime.listSessions({ allRoots: true });
+    const metrics = sessions.map((session) => runtime.getMetrics(session.id));
+    return {
+      kairnSessionCount: sessions.length,
+      primeEmitted: metrics.reduce((total, item) => total + (item.byKind.prime_context?.events ?? 0), 0),
+      primeTokens: metrics.reduce((total, item) => total + (item.byKind.prime_context?.outputTokens ?? 0), 0),
+      hookInvocations: metrics.reduce((total, item) => total + (item.byKind.hook_signal?.events ?? 0), 0)
+    };
+  } catch {
+    return {
+      primeEmitted: 0,
+      hookInvocations: 0
+    };
+  } finally {
+    runtime.close();
+  }
+}
+
 function formatMatchedSnippets(files: HybridScoredResult[], budget = 700): string {
   const snippets: string[] = [];
   let usedTokens = 0;
@@ -1639,11 +2270,37 @@ function isPromptEvent(eventName: string): boolean {
   return eventName.toLowerCase() === "userpromptsubmit";
 }
 
+function hostSessionIdForEvent(event: NormalizedHookEvent): string | undefined {
+  return event.hostSessionId
+    ?? stringMetadata(event.metadata, "session_id")
+    ?? stringMetadata(event.metadata, "hostSessionId")
+    ?? stringMetadata(event.metadata, "turn_id");
+}
+
+function hostSessionMetadata(event: NormalizedHookEvent): Record<string, unknown> {
+  return {
+    eventName: event.eventName,
+    ...(event.hostSessionId ? { hostSessionId: event.hostSessionId } : {}),
+    ...(stringMetadata(event.metadata, "turn_id") ? { turnId: stringMetadata(event.metadata, "turn_id") } : {}),
+    ...(stringMetadata(event.metadata, "model") ? { model: stringMetadata(event.metadata, "model") } : {})
+  };
+}
+
+function taskFromHookEvent(event: NormalizedHookEvent): string {
+  if (isPromptEvent(event.eventName) && event.output?.trim()) {
+    return truncateText(event.output.trim(), 240);
+  }
+  if (event.command) {
+    return `Observed ${event.source} command: ${truncateText(event.command, 180)}`;
+  }
+  return `Observed ${event.source} ${event.eventName} hook session`;
+}
+
 function isHighConfidencePrompt(eventName: string, prompt: string | undefined): boolean {
   if (!isPromptEvent(eventName) || !prompt) return false;
   const normalized = prompt.toLowerCase();
-  if (normalized.startsWith("run ") || normalized.includes("do not edit files")) return false;
-  return /\b(fix|implement|update|refactor|debug|error|failing|component|api|layout|parser|mobile|test|hook|metrics|eval)\b/.test(normalized);
+  if (normalized.startsWith("run ")) return false;
+  return /\b(fix|identify|find|implement|update|refactor|debug|error|failing|component|api|layout|parser|mobile|review|queue|sync|gmail|test|hook|metrics|eval)\b/.test(normalized);
 }
 
 function isTrivialSuccessfulHook(input: {
@@ -1672,6 +2329,15 @@ function numberField(value: unknown): number | undefined {
 
 function stringField(value: unknown): string | undefined {
   return typeof value === "string" && value ? value : undefined;
+}
+
+function stringMetadata(metadata: Record<string, unknown>, key: string): string | undefined {
+  const value = metadata[key];
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function truncateText(value: string, maxLength: number): string {
+  return value.length > maxLength ? `${value.slice(0, Math.max(0, maxLength - 3))}...` : value;
 }
 
 function benchmarkCaseApplies(caseMode: BenchmarkCaseMode, runMode: BenchmarkRunMode): boolean {
@@ -1707,4 +2373,8 @@ function mergeReasonText(left: string | undefined, right: string): string {
 
 function uniquePaths(files: string[]): string[] {
   return [...new Set(files.map((file) => normalizeRelativePath(file).replace(/^\.\//, "")).filter(Boolean))].sort();
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))];
 }

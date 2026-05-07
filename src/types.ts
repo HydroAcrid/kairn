@@ -45,7 +45,8 @@ export type MetricsEventKind =
   | "tests"
   | "diff"
   | "compression"
-  | "hook_signal";
+  | "hook_signal"
+  | "prime_context";
 
 export type EvalRunMode = "baseline" | "kairn" | "manual";
 
@@ -76,6 +77,10 @@ export type GraphEdgeType = "imports" | "imported_by" | "test_for" | "tested_by"
 export type SemanticChunkKind = "symbol" | "file_summary";
 
 export type ContextQueryMode = "brief" | "snippets" | "summary" | "exact";
+
+export type PrimeProfile = "auto" | "ui" | "workflow" | "backend" | "test" | "generic";
+
+export type CodexSetupMode = "savings" | "observe" | "debug";
 
 export type FileRecord = {
   rootPath: string;
@@ -185,6 +190,16 @@ export type WatchEventRecord = {
   contentHash: string;
   metadata: Record<string, unknown>;
   createdAt: string;
+};
+
+export type HostSessionLinkRecord = {
+  source: WatchEventSource;
+  rootPath: string;
+  hostSessionId: string;
+  sessionId: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  metadata: Record<string, unknown>;
 };
 
 export type MetricsEventRecord = {
@@ -300,6 +315,14 @@ export type EvalComparison = {
 
 export type BenchmarkRunMode = "replay" | "agent" | "hybrid";
 
+export type BenchmarkAssistanceMode =
+  | "baseline"
+  | "prompt_only"
+  | "prompt_plus_hooks"
+  | "manual_prime"
+  | "passive_hooks"
+  | "proactive";
+
 export type BenchmarkCaseMode = "context" | "related" | "tests" | "diff" | "hook" | "agent";
 
 export type BenchmarkRunStatus = "active" | "completed" | "abandoned";
@@ -318,12 +341,24 @@ export type BenchmarkCase = {
   successCriteria?: string[];
   agentPrompt?: string;
   allowedCommands?: string[];
+  seed?: BenchmarkSeedSpec;
 };
 
 export type BenchmarkSuite = {
   id: string;
   name: string;
   cases: BenchmarkCase[];
+};
+
+export type BenchmarkSeedSpec = {
+  repoUrl: string;
+  ref?: string;
+  cloneDepth?: number;
+  setupCommands?: string[];
+  setupPatch?: string;
+  setupPatchFile?: string;
+  expectedFailureCommand?: string;
+  testCommand?: string;
 };
 
 export type BenchmarkRunRecord = {
@@ -365,6 +400,10 @@ export type BenchmarkReport = {
   run: BenchmarkRunRecord;
   results: BenchmarkResultRecord[];
   overallScore: number;
+  observed?: {
+    codexTokens: number;
+    codexCaseCount: number;
+  };
   weakestCases: BenchmarkResultRecord[];
   recommendations: string[];
 };
@@ -373,9 +412,73 @@ export type BenchmarkComparison = {
   before: BenchmarkReport;
   after: BenchmarkReport;
   scoreDelta: number;
+  observedTokenDelta?: {
+    beforeTokens: number;
+    afterTokens: number;
+    savedTokens: number;
+    savingsRate: number;
+  };
   improvedCases: string[];
   regressedCases: string[];
   recommendations: string[];
+};
+
+export type BenchmarkProofReport = {
+  baseline: BenchmarkReport;
+  promptOnly?: BenchmarkReport;
+  promptPlusHooks?: BenchmarkReport;
+  manualPrime?: BenchmarkReport;
+  passiveHooks: BenchmarkReport;
+  proactive: BenchmarkReport;
+  runs?: Partial<Record<BenchmarkAssistanceMode, BenchmarkReport[]>>;
+  aggregate?: {
+    repeat: number;
+    modes: Partial<Record<BenchmarkAssistanceMode, {
+      reports: number;
+      meanTokens?: number;
+      medianTokens?: number;
+      caseCount: number;
+    }>>;
+    deltas: Partial<Record<string, {
+      beforeMedianTokens?: number;
+      afterMedianTokens?: number;
+      savedTokens?: number;
+      savingsRate?: number;
+    }>>;
+  };
+  observedTokenDeltas: {
+    passiveVsBaseline?: BenchmarkComparison["observedTokenDelta"];
+    proactiveVsBaseline?: BenchmarkComparison["observedTokenDelta"];
+    proactiveVsPassive?: BenchmarkComparison["observedTokenDelta"];
+    promptOnlyVsBaseline?: BenchmarkComparison["observedTokenDelta"];
+    promptPlusHooksVsBaseline?: BenchmarkComparison["observedTokenDelta"];
+    manualPrimeVsBaseline?: BenchmarkComparison["observedTokenDelta"];
+  };
+  caseDeltas: Array<{
+    caseId: string;
+    baselineTokens?: number;
+    passiveHooksTokens?: number;
+    proactiveTokens?: number;
+    proactiveVsBaseline?: number;
+    proactiveVsPassive?: number;
+    outcome: {
+      baseline: BenchmarkTaskOutcome;
+      passiveHooks: BenchmarkTaskOutcome;
+      proactive: BenchmarkTaskOutcome;
+    };
+  }>;
+  recommendations: string[];
+};
+
+export type ContextPrime = {
+  session: TaskSession;
+  task: string;
+  profile: Exclude<PrimeProfile, "auto">;
+  content: string;
+  files: string[];
+  tokenEstimate: number;
+  warnings: string[];
+  suggestedCommands: string[];
 };
 
 export type TaskSession = {
@@ -430,9 +533,11 @@ export type WatchSnapshot = {
 };
 
 export type HookHandlingResult = {
+  session: TaskSession;
   event: WatchEventRecord;
   recommendation?: WatchRecommendation;
   response?: ContextResponse;
+  prime?: ContextPrime;
 };
 
 export type ContextRequest = {

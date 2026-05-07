@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
 import { classifyObservedCommand } from "../src/watch/classifyCommand.js";
@@ -349,6 +350,97 @@ describe("KairnRuntime watch behavior", () => {
 
     runtime.close();
   });
+
+  it("creates and reuses sessions for sessionless Codex prompt-submit hooks", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const promptEvent = normalizeHookPayload({
+      source: "codex",
+      payload: {
+        cwd: root,
+        hook_event_name: "UserPromptSubmit",
+        session_id: "codex-session",
+        turn_id: "turn_1",
+        prompt: "Fix the job tracker mobile layout bottom sheet"
+      }
+    });
+
+    const first = await runtime.handleHookEvent({ event: promptEvent, primeBudget: 1200 });
+    const followup = await runtime.handleHookEvent({
+      event: normalizeHookPayload({
+        source: "codex",
+        payload: {
+          cwd: root,
+          hook_event_name: "PostToolUse",
+          session_id: "codex-session",
+          turn_id: "turn_2",
+          tool_name: "Bash",
+          tool_input: { command: "pwd" },
+          tool_response: { stdout: root, exit_code: 0 }
+        }
+      })
+    });
+    const metrics = runtime.getMetrics(first.session.id);
+
+    expect(first.session.task).toContain("Fix the job tracker mobile layout");
+    expect(first.prime?.content).toContain("Kairn Proactive Context");
+    expect(first.recommendation).toBeUndefined();
+    expect(first.prime?.files).toContain("src/app/private/jobs/JobsApplicationsTable.tsx");
+    expect(followup.session.id).toBe(first.session.id);
+    expect(metrics.byKind.prime_context?.events).toBe(1);
+
+    runtime.close();
+  });
+
+  it("suppresses duplicate prompt-submit prime context for the same Codex turn", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const payload = {
+      cwd: root,
+      hook_event_name: "UserPromptSubmit",
+      session_id: "codex-session",
+      turn_id: "turn_1",
+      prompt: "Fix the job tracker mobile layout bottom sheet"
+    };
+    const first = await runtime.handleHookEvent({ event: normalizeHookPayload({ source: "codex", payload }) });
+    const duplicate = await runtime.handleHookEvent({ event: normalizeHookPayload({ source: "codex", payload }) });
+    const metrics = runtime.getMetrics(first.session.id);
+
+    expect(first.prime).toBeDefined();
+    expect(duplicate.prime).toBeUndefined();
+    expect(duplicate.recommendation).toBeUndefined();
+    expect(duplicate.event.metadata.duplicatePromptPrime).toBe(true);
+    expect(metrics.byKind.prime_context?.events).toBe(1);
+    expect(metrics.byKind.hook_signal?.events).toBe(2);
+
+    runtime.close();
+  });
+
+  it("records low-confidence sessionless prompt hooks without emitting context", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const result = await runtime.handleHookEvent({
+      event: normalizeHookPayload({
+        source: "codex",
+        payload: {
+          cwd: root,
+          hook_event_name: "UserPromptSubmit",
+          session_id: "codex-session",
+          turn_id: "turn_1",
+          prompt: "thanks"
+        }
+      })
+    });
+    const metrics = runtime.getMetrics(result.session.id);
+
+    expect(result.event.eventName).toBe("UserPromptSubmit");
+    expect(result.prime).toBeUndefined();
+    expect(result.recommendation).toBeUndefined();
+    expect(metrics.byKind.prime_context).toBeUndefined();
+    expect(metrics.byKind.hook_signal?.events).toBe(1);
+
+    runtime.close();
+  });
 });
 
 describe("watch and hook CLI", () => {
@@ -469,5 +561,74 @@ describe("watch and hook CLI", () => {
     expect(claudeParsed.recommendation?.suggestedNextContext).toContain("src/app.test.ts");
     expect(hostParsed.hookSpecificOutput.hookEventName).toBe("PostToolUse");
     expect(hostParsed.hookSpecificOutput.additionalContext).toContain("Kairn Hook Recommendation");
+  });
+
+  it("supports sessionless Codex prompt hooks and setup codex config", () => {
+    const root = createFixtureRepo();
+    const setup = JSON.parse(
+      execFileSync(CLI[0]!, [...CLI.slice(1), "setup", "codex", "--root", root, "--json"], {
+        cwd: process.cwd(),
+        encoding: "utf8"
+      })
+    ) as { configPath: string; hooksPath: string; primeBudget: number };
+    const config = fs.readFileSync(setup.configPath, "utf8");
+    const hooks = fs.readFileSync(setup.hooksPath, "utf8");
+    const observe = JSON.parse(
+      execFileSync(CLI[0]!, [...CLI.slice(1), "setup", "codex", "--root", root, "--mode", "observe", "--json"], {
+        cwd: process.cwd(),
+        encoding: "utf8"
+      })
+    ) as { hooksPath: string; mode: string };
+    const observeHooks = fs.readFileSync(observe.hooksPath, "utf8");
+    const debug = JSON.parse(
+      execFileSync(CLI[0]!, [...CLI.slice(1), "setup", "codex", "--root", root, "--mode", "debug", "--json"], {
+        cwd: process.cwd(),
+        encoding: "utf8"
+      })
+    ) as { hooksPath: string; mode: string };
+    const debugHooks = fs.readFileSync(debug.hooksPath, "utf8");
+    const hook = JSON.parse(
+      execFileSync(CLI[0]!, [...CLI.slice(1), "hook", "--root", root, "--source", "codex", "--json"], {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        input: JSON.stringify({
+          cwd: root,
+          hook_event_name: "UserPromptSubmit",
+          session_id: "codex-session",
+          turn_id: "turn_1",
+          prompt: "Fix the job tracker mobile layout bottom sheet"
+        })
+      })
+    ) as { session: { id: string }; prime?: { content: string; files: string[] }; recommendation?: { content: string } };
+    const hostOutput = execFileSync(CLI[0]!, [...CLI.slice(1), "hook", "--root", root, "--source", "codex"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      input: JSON.stringify({
+        cwd: root,
+        hook_event_name: "UserPromptSubmit",
+        session_id: "codex-host-output-session",
+        turn_id: "turn_1",
+        prompt: "Fix the job tracker mobile layout bottom sheet"
+      })
+    });
+    const hostParsed = JSON.parse(hostOutput) as { hookSpecificOutput: { hookEventName: string; additionalContext: string } };
+
+    expect(setup.primeBudget).toBe(1200);
+    expect(config).toContain("codex_hooks = true");
+    expect(hooks).toContain("--prime-budget 1200");
+    expect(hooks).not.toContain("--session");
+    expect(hooks).not.toContain("PostToolUse");
+    expect(observe.mode).toBe("observe");
+    expect(observeHooks).toContain("PostToolUse");
+    expect(observeHooks).toContain("Bash|apply_patch|mcp__.*");
+    expect(debug.mode).toBe("debug");
+    expect(debugHooks).toContain("\"matcher\": \".*\"");
+    expect(debugHooks).toContain("Stop");
+    expect(hook.session.id).toMatch(/^task_/);
+    expect(hook.prime?.content).toContain("Kairn Proactive Context");
+    expect(hook.prime?.files).toContain("src/app/private/jobs/JobsApplicationsTable.tsx");
+    expect(hook.recommendation).toBeUndefined();
+    expect(hostParsed.hookSpecificOutput.hookEventName).toBe("UserPromptSubmit");
+    expect(hostParsed.hookSpecificOutput.additionalContext).toContain("Kairn Proactive Context");
   });
 });

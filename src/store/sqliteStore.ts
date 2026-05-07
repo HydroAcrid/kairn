@@ -15,13 +15,15 @@ import type {
   EvalRunStatus,
   FileRecord,
   GraphEdgeRecord,
+  HostSessionLinkRecord,
   MetricsEventRecord,
   SemanticChunkRecord,
   SemanticVectorRecord,
   SessionStatus,
   SymbolRecord,
   TaskSession,
-  WatchEventRecord
+  WatchEventRecord,
+  WatchEventSource
 } from "../types.js";
 import { deserializeVector, serializeVector } from "../semantic/vector.js";
 import { nowIso } from "../utils/time.js";
@@ -128,6 +130,16 @@ type WatchEventRow = {
   content_hash: string;
   metadata_json: string;
   created_at: string;
+};
+
+type HostSessionLinkRow = {
+  source: WatchEventSource;
+  root_path: string;
+  host_session_id: string;
+  session_id: string;
+  first_seen_at: string;
+  last_seen_at: string;
+  metadata_json: string;
 };
 
 type MetricsEventRow = {
@@ -468,6 +480,19 @@ export class SqliteStore {
     };
   }
 
+  listSessions(input?: { rootPath?: string | undefined; limit?: number | undefined }): TaskSession[] {
+    const rows = this.db
+      .prepare(`
+        select * from sessions
+        ${input?.rootPath ? "where root_path = ?" : ""}
+        order by updated_at desc, created_at desc
+        ${input?.limit ? "limit ?" : ""}
+      `)
+      .all(...(input?.rootPath && input?.limit ? [input.rootPath, input.limit] : input?.rootPath ? [input.rootPath] : input?.limit ? [input.limit] : [])) as SessionRow[];
+
+    return rows.map((row) => this.getSession(row.id));
+  }
+
   recordContextShown(record: Omit<ContextShownRecord, "id" | "createdAt">): void {
     this.db
       .prepare(`
@@ -590,6 +615,52 @@ export class SqliteStore {
       .all(...(limit ? [sessionId, limit] : [sessionId])) as WatchEventRow[];
 
     return rows.map(mapWatchEventRow).reverse();
+  }
+
+  getHostSessionLink(input: {
+    source: WatchEventSource;
+    rootPath: string;
+    hostSessionId: string;
+  }): HostSessionLinkRecord | undefined {
+    const row = this.db
+      .prepare(`
+        select * from host_session_links
+        where source = ? and root_path = ? and host_session_id = ?
+      `)
+      .get(input.source, input.rootPath, input.hostSessionId) as HostSessionLinkRow | undefined;
+
+    return row ? mapHostSessionLinkRow(row) : undefined;
+  }
+
+  upsertHostSessionLink(record: {
+    source: WatchEventSource;
+    rootPath: string;
+    hostSessionId: string;
+    sessionId: string;
+    metadata?: Record<string, unknown>;
+  }): HostSessionLinkRecord {
+    const timestamp = nowIso();
+    this.db
+      .prepare(`
+        insert into host_session_links (
+          source, root_path, host_session_id, session_id, first_seen_at, last_seen_at, metadata_json
+        ) values (?, ?, ?, ?, ?, ?, ?)
+        on conflict(source, root_path, host_session_id) do update set
+          session_id = excluded.session_id,
+          last_seen_at = excluded.last_seen_at,
+          metadata_json = excluded.metadata_json
+      `)
+      .run(
+        record.source,
+        record.rootPath,
+        record.hostSessionId,
+        record.sessionId,
+        timestamp,
+        timestamp,
+        JSON.stringify(record.metadata ?? {})
+      );
+
+    return this.getHostSessionLink(record)!;
   }
 
   recordMetricsEvent(record: Omit<MetricsEventRecord, "id" | "createdAt">): MetricsEventRecord {
@@ -984,6 +1055,17 @@ export class SqliteStore {
         created_at text not null
       );
 
+      create table if not exists host_session_links (
+        source text not null,
+        root_path text not null,
+        host_session_id text not null,
+        session_id text not null references sessions(id) on delete cascade,
+        first_seen_at text not null,
+        last_seen_at text not null,
+        metadata_json text not null default '{}',
+        primary key (source, root_path, host_session_id)
+      );
+
       create table if not exists metrics_events (
         id integer primary key autoincrement,
         session_id text not null references sessions(id) on delete cascade,
@@ -1065,6 +1147,7 @@ export class SqliteStore {
       create index if not exists diff_observations_session_idx on diff_observations(session_id);
       create index if not exists watch_events_session_idx on watch_events(session_id);
       create index if not exists watch_events_session_kind_idx on watch_events(session_id, kind, created_at);
+      create index if not exists host_session_links_session_idx on host_session_links(session_id);
       create index if not exists metrics_events_session_idx on metrics_events(session_id, created_at);
       create index if not exists metrics_events_session_kind_idx on metrics_events(session_id, event_kind, created_at);
       create index if not exists eval_runs_root_idx on eval_runs(root_path, started_at);
@@ -1158,6 +1241,18 @@ function mapWatchEventRow(row: WatchEventRow): WatchEventRecord {
     contentHash: row.content_hash,
     metadata: parseJsonObject(row.metadata_json),
     createdAt: row.created_at
+  };
+}
+
+function mapHostSessionLinkRow(row: HostSessionLinkRow): HostSessionLinkRecord {
+  return {
+    source: row.source,
+    rootPath: row.root_path,
+    hostSessionId: row.host_session_id,
+    sessionId: row.session_id,
+    firstSeenAt: row.first_seen_at,
+    lastSeenAt: row.last_seen_at,
+    metadata: parseJsonObject(row.metadata_json)
   };
 }
 
