@@ -298,6 +298,86 @@ export type EvalComparison = {
   outcomeNotes: EvalObservationRecord[];
 };
 
+export type BenchmarkRunMode = "replay" | "agent" | "hybrid";
+
+export type BenchmarkCaseMode = "context" | "related" | "tests" | "diff" | "hook" | "agent";
+
+export type BenchmarkRunStatus = "active" | "completed" | "abandoned";
+
+export type BenchmarkTaskOutcome = "pass" | "fail" | "partial" | "skipped";
+
+export type BenchmarkCase = {
+  id: string;
+  task: string;
+  mode: BenchmarkCaseMode;
+  query?: string;
+  target?: string;
+  expectedFiles: string[];
+  excludedFiles: string[];
+  budget?: number;
+  successCriteria?: string[];
+  agentPrompt?: string;
+  allowedCommands?: string[];
+};
+
+export type BenchmarkSuite = {
+  id: string;
+  name: string;
+  cases: BenchmarkCase[];
+};
+
+export type BenchmarkRunRecord = {
+  id: string;
+  rootPath: string;
+  suiteId: string;
+  suiteName: string;
+  mode: BenchmarkRunMode;
+  status: BenchmarkRunStatus;
+  startedAt: string;
+  endedAt?: string;
+  metadata: Record<string, unknown>;
+};
+
+export type BenchmarkResultRecord = {
+  id?: number;
+  runId: string;
+  caseId: string;
+  caseMode: BenchmarkCaseMode;
+  score: number;
+  expectedFileRecall: number;
+  topKHitRate: number;
+  unexpectedFileRate: number;
+  responseTokens: number;
+  observedCodexTokens?: number;
+  hookContextEmitted: number;
+  hookContextSuppressed: number;
+  taskOutcome: BenchmarkTaskOutcome;
+  expectedFiles: string[];
+  actualFiles: string[];
+  excludedFiles: string[];
+  summary: string;
+  recommendations: string[];
+  metadata: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type BenchmarkReport = {
+  run: BenchmarkRunRecord;
+  results: BenchmarkResultRecord[];
+  overallScore: number;
+  weakestCases: BenchmarkResultRecord[];
+  recommendations: string[];
+};
+
+export type BenchmarkComparison = {
+  before: BenchmarkReport;
+  after: BenchmarkReport;
+  scoreDelta: number;
+  improvedCases: string[];
+  regressedCases: string[];
+  recommendations: string[];
+};
+
 export type TaskSession = {
   id: string;
   rootPath: string;

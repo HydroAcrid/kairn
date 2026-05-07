@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
+import { estimateTokens } from "../src/utils/tokens.js";
 import { createFixtureRepo } from "./helpers.js";
 
 describe("KairnRuntime", () => {
@@ -86,6 +87,7 @@ describe("KairnRuntime", () => {
 
     expect(response.mode).toBe("snippets");
     expect(response.content).toContain("## Matched Snippets");
+    expect(estimateTokens(response.content)).toBeLessThanOrEqual(800);
 
     runtime.close();
   });

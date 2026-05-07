@@ -79,6 +79,8 @@ function scoreFile(file: FileRecord, terms: string[], broadTerms: Set<string>, s
   if (terms.length === 0) {
     score = file.importance;
     reasons.push("default importance");
+  } else if (terms.every((term) => broadTerms.has(term))) {
+    score = Math.min(score, file.importance + 10);
   }
 
   return {

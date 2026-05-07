@@ -1,5 +1,11 @@
 import Database from "better-sqlite3";
 import type {
+  BenchmarkCaseMode,
+  BenchmarkResultRecord,
+  BenchmarkRunMode,
+  BenchmarkRunRecord,
+  BenchmarkRunStatus,
+  BenchmarkTaskOutcome,
   CommandRecord,
   ContextShownRecord,
   DiffRecord,
@@ -162,6 +168,41 @@ type EvalObservationRow = {
   metrics_json: string;
   files_json: string;
   content_hash: string;
+  created_at: string;
+};
+
+type BenchmarkRunRow = {
+  id: string;
+  root_path: string;
+  suite_id: string;
+  suite_name: string;
+  mode: BenchmarkRunMode;
+  status: BenchmarkRunStatus;
+  started_at: string;
+  ended_at: string | null;
+  metadata_json: string;
+};
+
+type BenchmarkResultRow = {
+  id: number;
+  run_id: string;
+  case_id: string;
+  case_mode: BenchmarkCaseMode;
+  score: number;
+  expected_file_recall: number;
+  top_k_hit_rate: number;
+  unexpected_file_rate: number;
+  response_tokens: number;
+  observed_codex_tokens: number | null;
+  hook_context_emitted: number;
+  hook_context_suppressed: number;
+  task_outcome: BenchmarkTaskOutcome;
+  expected_files_json: string;
+  actual_files_json: string;
+  excluded_files_json: string;
+  summary: string;
+  recommendations_json: string;
+  metadata_json: string;
   created_at: string;
 };
 
@@ -721,6 +762,115 @@ export class SqliteStore {
     return rows.map(mapEvalObservationRow).reverse();
   }
 
+  createBenchmarkRun(record: Omit<BenchmarkRunRecord, "startedAt">): BenchmarkRunRecord {
+    const timestamp = nowIso();
+    this.db
+      .prepare(`
+        insert into benchmark_runs (
+          id, root_path, suite_id, suite_name, mode, status, started_at, ended_at, metadata_json
+        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .run(
+        record.id,
+        record.rootPath,
+        record.suiteId,
+        record.suiteName,
+        record.mode,
+        record.status,
+        timestamp,
+        record.endedAt ?? null,
+        JSON.stringify(record.metadata)
+      );
+
+    return {
+      ...record,
+      startedAt: timestamp
+    };
+  }
+
+  getBenchmarkRun(runId: string): BenchmarkRunRecord {
+    const row = this.db.prepare("select * from benchmark_runs where id = ?").get(runId) as BenchmarkRunRow | undefined;
+    if (!row) {
+      throw new Error(`Unknown Kairn benchmark run: ${runId}`);
+    }
+    return mapBenchmarkRunRow(row);
+  }
+
+  listBenchmarkRuns(input: { rootPath?: string | undefined; limit?: number | undefined } = {}): BenchmarkRunRecord[] {
+    const params: unknown[] = [];
+    const where = input.rootPath ? "where root_path = ?" : "";
+    if (input.rootPath) params.push(input.rootPath);
+    if (input.limit) params.push(input.limit);
+
+    const rows = this.db
+      .prepare(`
+        select * from benchmark_runs
+        ${where}
+        order by started_at desc, id desc
+        ${input.limit ? "limit ?" : ""}
+      `)
+      .all(...params) as BenchmarkRunRow[];
+
+    return rows.map(mapBenchmarkRunRow);
+  }
+
+  updateBenchmarkRunStatus(runId: string, status: BenchmarkRunStatus): BenchmarkRunRecord {
+    const endedAt = status === "active" ? null : nowIso();
+    this.db
+      .prepare("update benchmark_runs set status = ?, ended_at = ? where id = ?")
+      .run(status, endedAt, runId);
+    return this.getBenchmarkRun(runId);
+  }
+
+  recordBenchmarkResult(record: Omit<BenchmarkResultRecord, "id" | "createdAt">): BenchmarkResultRecord {
+    const timestamp = nowIso();
+    const result = this.db
+      .prepare(`
+        insert into benchmark_results (
+          run_id, case_id, case_mode, score, expected_file_recall, top_k_hit_rate,
+          unexpected_file_rate, response_tokens, observed_codex_tokens,
+          hook_context_emitted, hook_context_suppressed, task_outcome,
+          expected_files_json, actual_files_json, excluded_files_json,
+          summary, recommendations_json, metadata_json, created_at
+        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .run(
+        record.runId,
+        record.caseId,
+        record.caseMode,
+        record.score,
+        record.expectedFileRecall,
+        record.topKHitRate,
+        record.unexpectedFileRate,
+        record.responseTokens,
+        record.observedCodexTokens ?? null,
+        record.hookContextEmitted,
+        record.hookContextSuppressed,
+        record.taskOutcome,
+        JSON.stringify(record.expectedFiles),
+        JSON.stringify(record.actualFiles),
+        JSON.stringify(record.excludedFiles),
+        record.summary,
+        JSON.stringify(record.recommendations),
+        JSON.stringify(record.metadata),
+        timestamp
+      );
+
+    return {
+      ...record,
+      id: Number(result.lastInsertRowid),
+      createdAt: timestamp
+    };
+  }
+
+  listBenchmarkResults(runId: string): BenchmarkResultRecord[] {
+    const rows = this.db
+      .prepare("select * from benchmark_results where run_id = ? order by created_at asc, id asc")
+      .all(runId) as BenchmarkResultRow[];
+
+    return rows.map(mapBenchmarkResultRow);
+  }
+
   private touchSession(sessionId: string): void {
     this.db.prepare("update sessions set updated_at = ? where id = ?").run(nowIso(), sessionId);
   }
@@ -875,6 +1025,41 @@ export class SqliteStore {
         created_at text not null
       );
 
+      create table if not exists benchmark_runs (
+        id text primary key,
+        root_path text not null,
+        suite_id text not null,
+        suite_name text not null,
+        mode text not null check (mode in ('replay', 'agent', 'hybrid')),
+        status text not null check (status in ('active', 'completed', 'abandoned')),
+        started_at text not null,
+        ended_at text,
+        metadata_json text not null default '{}'
+      );
+
+      create table if not exists benchmark_results (
+        id integer primary key autoincrement,
+        run_id text not null references benchmark_runs(id) on delete cascade,
+        case_id text not null,
+        case_mode text not null,
+        score real not null,
+        expected_file_recall real not null,
+        top_k_hit_rate real not null,
+        unexpected_file_rate real not null,
+        response_tokens integer not null,
+        observed_codex_tokens integer,
+        hook_context_emitted integer not null,
+        hook_context_suppressed integer not null,
+        task_outcome text not null,
+        expected_files_json text not null default '[]',
+        actual_files_json text not null default '[]',
+        excluded_files_json text not null default '[]',
+        summary text not null,
+        recommendations_json text not null default '[]',
+        metadata_json text not null default '{}',
+        created_at text not null
+      );
+
       create index if not exists context_shown_session_idx on context_shown(session_id);
       create index if not exists command_records_session_idx on command_records(session_id);
       create index if not exists diff_observations_session_idx on diff_observations(session_id);
@@ -886,6 +1071,9 @@ export class SqliteStore {
       create index if not exists eval_runs_session_idx on eval_runs(session_id, started_at);
       create index if not exists eval_observations_run_idx on eval_observations(run_id, created_at);
       create index if not exists eval_observations_session_idx on eval_observations(session_id, created_at);
+      create index if not exists benchmark_runs_root_idx on benchmark_runs(root_path, started_at);
+      create index if not exists benchmark_results_run_idx on benchmark_results(run_id, created_at);
+      create index if not exists benchmark_results_case_idx on benchmark_results(case_id, run_id);
       create index if not exists symbols_root_file_idx on symbols(root_path, file_path, name);
       create index if not exists graph_edges_root_from_idx on graph_edges(root_path, from_file);
       create index if not exists graph_edges_root_to_idx on graph_edges(root_path, to_file);
@@ -1016,6 +1204,45 @@ function mapEvalObservationRow(row: EvalObservationRow): EvalObservationRecord {
     metrics: parseJsonObject(row.metrics_json),
     files: parseJsonList(row.files_json),
     contentHash: row.content_hash,
+    createdAt: row.created_at
+  };
+}
+
+function mapBenchmarkRunRow(row: BenchmarkRunRow): BenchmarkRunRecord {
+  return {
+    id: row.id,
+    rootPath: row.root_path,
+    suiteId: row.suite_id,
+    suiteName: row.suite_name,
+    mode: row.mode,
+    status: row.status,
+    startedAt: row.started_at,
+    ...(row.ended_at ? { endedAt: row.ended_at } : {}),
+    metadata: parseJsonObject(row.metadata_json)
+  };
+}
+
+function mapBenchmarkResultRow(row: BenchmarkResultRow): BenchmarkResultRecord {
+  return {
+    id: row.id,
+    runId: row.run_id,
+    caseId: row.case_id,
+    caseMode: row.case_mode,
+    score: row.score,
+    expectedFileRecall: row.expected_file_recall,
+    topKHitRate: row.top_k_hit_rate,
+    unexpectedFileRate: row.unexpected_file_rate,
+    responseTokens: row.response_tokens,
+    ...(row.observed_codex_tokens !== null ? { observedCodexTokens: row.observed_codex_tokens } : {}),
+    hookContextEmitted: row.hook_context_emitted,
+    hookContextSuppressed: row.hook_context_suppressed,
+    taskOutcome: row.task_outcome,
+    expectedFiles: parseJsonList(row.expected_files_json),
+    actualFiles: parseJsonList(row.actual_files_json),
+    excludedFiles: parseJsonList(row.excluded_files_json),
+    summary: row.summary,
+    recommendations: parseJsonList(row.recommendations_json),
+    metadata: parseJsonObject(row.metadata_json),
     createdAt: row.created_at
   };
 }

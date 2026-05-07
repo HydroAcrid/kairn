@@ -45,8 +45,8 @@ export function hybridSearch(input: {
       const importanceScore = file.importance;
       const reasons = mergeReasons([
         ...(keyword?.reasons ?? []),
-        ...(semantic && semantic.score > 0.06 ? semanticReasons(semantic.chunks) : []),
         ...(intentMatch?.reasons ?? []),
+        ...(semantic && semantic.score > 0.06 ? semanticReasons(semantic.chunks) : []),
         ...(graphScore > 0 ? ["graph neighbor"] : []),
         ...(shownFiles.has(file.path) ? ["already shown"] : []),
         ...(gitScore > 0 ? ["changed in diff"] : [])
@@ -161,6 +161,7 @@ function graphWeight(type: GraphEdgeRecord["type"], intent: QueryIntent, target?
   if ((type === "tested_by" || type === "test_for") && intent.primary !== "test") return 2;
   if (type === "tested_by" || type === "test_for") return 42;
   if (intent.primary === "ui" && target && !isUiFile(target)) return 2;
+  if (intent.primary === "workflow") return target && isWorkflowSurface(target) ? 8 : 2;
   if (type === "imports" || type === "imported_by") return 5;
   if (type === "parent_route") return 4;
   return 2;
@@ -193,14 +194,60 @@ function scoreIntentMatches(
       ...(symbolsByFile.get(file.path)?.map((symbol) => symbol.name) ?? []),
       ...(chunksByFile.get(file.path)?.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 1200)}`) ?? [])
     ].join(" ").toLowerCase();
+    const normalizedFileText = normalizeSearchText(fileText);
+    const fileTerms = new Set(tokenizeLexical(fileText));
     const basename = file.path.toLowerCase().split("/").at(-1) ?? file.path.toLowerCase();
-    const matchedTerms = intent.matchedTerms.filter((term) => fileText.includes(term));
+    const matchedTerms = intent.matchedTerms.filter((term) => fileTerms.has(term) || normalizedFileText.includes(term));
     const domainTerms = [...queryTerms].filter((term) => !intent.matchedTerms.includes(term) && !GENERIC_DOMAIN_TERMS.has(term));
-    const matchedDomainTerms = domainTerms.filter((term) => fileText.includes(term));
+    const matchedDomainTerms = domainTerms.filter((term) => fileTerms.has(term) || normalizedFileText.includes(term));
     const filenameIntentTerms = intent.matchedTerms.filter((term) => basename.includes(term));
     const filenameDomainTerms = domainTerms.filter((term) => basename.includes(term));
 
-    if (intent.primary === "ui") {
+    if (intent.primary === "workflow") {
+      const matchedPhrases = (intent.matchedPhrases ?? []).filter((phrase) => phraseMatches(normalizedFileText, phrase, fileTerms));
+      const matchedStatusValues = WORKFLOW_STATUS_TERMS.filter((term) => phraseMatches(normalizedFileText, term, fileTerms));
+
+      if (isWorkflowSurface(file)) {
+        score += 72;
+        reasons.push("workflow intent file");
+      }
+      if (isWorkflowRoute(file)) {
+        score += 70;
+        reasons.push("workflow route match");
+      }
+      if (isReviewSurface(file)) {
+        score += 120;
+        reasons.push("workflow review surface");
+      }
+      if (isRepositoryWorkflowSurface(file, normalizedFileText, fileTerms)) {
+        score += 52;
+        reasons.push("workflow repository surface");
+      }
+      if (matchedPhrases.length > 0) {
+        score += matchedPhrases.length * 46;
+        reasons.push(`workflow phrase match: ${matchedPhrases.slice(0, 2).join(", ")}`);
+      }
+      if (matchedStatusValues.length > 0) {
+        score += matchedStatusValues.length * 42;
+        reasons.push(`workflow status match: ${matchedStatusValues.slice(0, 3).join(", ")}`);
+      }
+      if (matchedTerms.length > 0) {
+        score += matchedTerms.length * 9;
+        reasons.push(`workflow term match: ${matchedTerms.slice(0, 4).join(", ")}`);
+      }
+      if (filenameIntentTerms.length > 0) {
+        score += filenameIntentTerms.length * 32;
+        reasons.push(`workflow filename match: ${filenameIntentTerms.slice(0, 3).join(", ")}`);
+      }
+      if (isBroadWorkflowNoise(file, matchedPhrases.length + matchedStatusValues.length)) {
+        score -= /(^|\/)supabase\/migrations\//.test(file.path) ? 430 : 58;
+        reasons.push("broad workflow domain downranked");
+      }
+      if (file.kind === "test" && !queryTerms.has("test") && !queryTerms.has("tests")) {
+        score -= 130;
+        reasons.push("test downranked for workflow intent");
+      }
+    } else if (intent.primary === "ui") {
       if (isUiFile(file)) {
         score += 34;
         reasons.push("ui intent file");
@@ -304,12 +351,14 @@ function selectIntentChunks(chunks: SemanticChunkRecord[], intent: QueryIntent):
 function isGraphSeedAllowed(file: FileRecord | undefined, intent: QueryIntent, intentScore: number): boolean {
   if (!file) return false;
   if (intent.primary === "ui") return intentScore > 0 || isUiFile(file);
+  if (intent.primary === "workflow") return intentScore > 0 || isWorkflowSurface(file);
   if (intent.primary === "test") return file.kind === "test" || intentScore > 0;
   return true;
 }
 
 function graphCap(intent: QueryIntent, file: FileRecord | undefined): number {
   if (intent.primary === "ui") return file && isUiFile(file) ? 14 : 8;
+  if (intent.primary === "workflow") return file && isWorkflowSurface(file) ? 22 : 8;
   if (intent.primary === "test") return 54;
   return 18;
 }
@@ -348,6 +397,58 @@ function hasBackendFilenameIntentMatch(file: FileRecord, intent: QueryIntent): b
   return intent.matchedTerms.some((term) => basename.includes(term));
 }
 
+function isWorkflowSurface(file: FileRecord): boolean {
+  const normalizedPath = normalizeSearchText(file.path);
+  return (
+    isReviewSurface(file) ||
+    isWorkflowRoute(file) ||
+    /sync attempts?|sync status|review|queue|retry|ignore|ignored|requeued|needs review|source email id|manual correction/.test(normalizedPath) ||
+    /reviewpanel|syncattempts|syncstatus|attempts|manual/i.test(file.path)
+  );
+}
+
+function isWorkflowRoute(file: FileRecord): boolean {
+  const normalizedPath = normalizeSearchText(file.path);
+  return (
+    /(^|\/)api\//.test(file.path) &&
+    /sync attempts?|sync status|applications?|account|google disconnect|cron/.test(normalizedPath)
+  );
+}
+
+function isReviewSurface(file: FileRecord): boolean {
+  const terms = new Set(tokenizeLexical(file.path));
+  return terms.has("review") || terms.has("queue") || /jobsreviewpanel/i.test(file.path);
+}
+
+function isRepositoryWorkflowSurface(file: FileRecord, normalizedFileText: string, fileTerms: Set<string>): boolean {
+  if (!/(^|\/)repository\.[cm]?[jt]sx?$/.test(file.path)) return false;
+  return WORKFLOW_STATUS_TERMS.some((term) => phraseMatches(normalizedFileText, term, fileTerms)) ||
+    ["attempt", "attempts", "review", "retry", "ignore", "requeued"].some((term) => fileTerms.has(term));
+}
+
+function isBroadWorkflowNoise(file: FileRecord, exactWorkflowMatches: number): boolean {
+  if (/(^|\/)supabase\/migrations\//.test(file.path)) return true;
+  if (exactWorkflowMatches > 0 || isWorkflowRoute(file) || isReviewSurface(file)) return false;
+  return /(^|\/)(gmail|parser|types?|ingest)\.[cm]?[jt]sx?$/.test(file.path);
+}
+
+function phraseMatches(normalizedFileText: string, phrase: string, fileTerms: Set<string>): boolean {
+  const normalizedPhrase = normalizeSearchText(phrase);
+  if (normalizedFileText.includes(normalizedPhrase)) return true;
+  const terms = tokenizeLexical(phrase);
+  return terms.length > 0 && terms.every((term) => fileTerms.has(term));
+}
+
+function normalizeSearchText(input: string): string {
+  return input
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function groupByFile<T>(records: T[], filePathFor: (record: T) => string): Map<string, T[]> {
   const grouped = new Map<string, T[]>();
   for (const record of records) {
@@ -359,3 +460,4 @@ function groupByFile<T>(records: T[], filePathFor: (record: T) => string): Map<s
 
 const GENERIC_DOMAIN_TERMS = new Set(["app", "apps", "application", "applications", "feature", "page", "screen"]);
 const GENERIC_UI_FILENAME_TERMS = new Set(["settings", "layout", "mobile", "dashboard", "page", "view", "component", "screen"]);
+const WORKFLOW_STATUS_TERMS = ["needs_review", "needs review", "requeued", "ignored", "sourceEmailId", "source email id"];

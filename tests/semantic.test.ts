@@ -152,6 +152,44 @@ describe("hybridSearch", () => {
     expect(results.slice(0, 3).map((result) => result.path)).toContain("src/lib/jobs/repository.ts");
   });
 
+  it("prioritizes workflow review queue surfaces over broad Gmail sync files", () => {
+    const fixture = jobTrackerFixture();
+    const results = hybridSearch({
+      ...fixture,
+      query: "gmail_job_sync_attempts sync attempts review queue retry ignore add to tracker needs_review requeued",
+      changedFiles: new Set()
+    });
+    const topFive = results.slice(0, 5).map((result) => result.path);
+
+    expect(topFive).toEqual(
+      expect.arrayContaining([
+        "src/app/private/jobs/JobsReviewPanel.tsx",
+        "src/app/api/jobs/sync-attempts/route.ts",
+        "src/app/api/jobs/sync-attempts/[sourceEmailId]/route.ts",
+        "src/lib/jobs/repository.ts"
+      ])
+    );
+    expect(results[0]?.reasons).toEqual(expect.arrayContaining(["workflow intent file"]));
+    expect(results[0]?.reasons.some((reason) => reason.includes("workflow"))).toBe(true);
+    const lastExpectedIndex = Math.max(
+      ...[
+        "src/app/private/jobs/JobsReviewPanel.tsx",
+        "src/app/api/jobs/sync-attempts/route.ts",
+        "src/app/api/jobs/sync-attempts/[sourceEmailId]/route.ts",
+        "src/lib/jobs/repository.ts"
+      ].map((filePath) => results.findIndex((result) => result.path === filePath))
+    );
+    for (const noisyFile of [
+      "src/lib/jobs/gmail.ts",
+      "src/lib/jobs/types.ts",
+      "src/lib/jobs/parser.ts",
+      "supabase/migrations/20260502000000_job_tracker_resumable_sync_attempts.sql"
+    ]) {
+      const noisyIndex = results.findIndex((result) => result.path === noisyFile);
+      expect(noisyIndex === -1 || noisyIndex > lastExpectedIndex).toBe(true);
+    }
+  });
+
   it("boosts tests only when tests are requested", () => {
     const fixture = jobTrackerFixture();
     const results = hybridSearch({
@@ -323,12 +361,17 @@ function jobTrackerFixture(): {
   const files = [
     file(rootPath, "src/app/private/jobs/JobsApplicationsTable.tsx", "component"),
     file(rootPath, "src/app/private/jobs/JobsDashboardTabs.tsx", "component"),
+    file(rootPath, "src/app/private/jobs/JobsReviewPanel.tsx", "component"),
+    file(rootPath, "src/app/api/jobs/sync-attempts/route.ts", "route"),
+    file(rootPath, "src/app/api/jobs/sync-attempts/[sourceEmailId]/route.ts", "route"),
     file(rootPath, "src/app/private/jobs/JobsApplicationsTable.test.tsx", "test"),
     file(rootPath, "src/lib/jobs/types.ts", "source"),
+    file(rootPath, "src/lib/jobs/gmail.ts", "source"),
     file(rootPath, "src/lib/jobs/parser.ts", "source"),
     file(rootPath, "src/lib/jobs/repository.ts", "source"),
     file(rootPath, "src/lib/jobs/ingest.ts", "source"),
-    file(rootPath, "src/lib/jobs/access.ts", "source")
+    file(rootPath, "src/lib/jobs/access.ts", "source"),
+    file(rootPath, "supabase/migrations/20260502000000_job_tracker_resumable_sync_attempts.sql", "schema")
   ];
   const symbols = [
     symbol(rootPath, "src/app/private/jobs/JobsApplicationsTable.tsx", "JobsApplicationsTable"),
@@ -336,11 +379,18 @@ function jobTrackerFixture(): {
     symbol(rootPath, "src/app/private/jobs/JobsApplicationsTable.tsx", "mobileFiltersOpen"),
     symbol(rootPath, "src/app/private/jobs/JobsDashboardTabs.tsx", "JobsDashboardTabs"),
     symbol(rootPath, "src/app/private/jobs/JobsDashboardTabs.tsx", "mobileBottomTabs"),
+    symbol(rootPath, "src/app/private/jobs/JobsReviewPanel.tsx", "JobsReviewPanel"),
+    symbol(rootPath, "src/app/api/jobs/sync-attempts/route.ts", "GET"),
+    symbol(rootPath, "src/app/api/jobs/sync-attempts/[sourceEmailId]/route.ts", "PATCH"),
     symbol(rootPath, "src/lib/jobs/types.ts", "JobStatus"),
+    symbol(rootPath, "src/lib/jobs/types.ts", "GmailJobSyncAttemptStatus"),
+    symbol(rootPath, "src/lib/jobs/gmail.ts", "listGmailMessages"),
     symbol(rootPath, "src/lib/jobs/parser.ts", "parseJobEmailRules"),
     symbol(rootPath, "src/lib/jobs/parser.ts", "NON_JOB_APPLICATION_PHRASES"),
     symbol(rootPath, "src/lib/jobs/repository.ts", "getJobDashboardData"),
     symbol(rootPath, "src/lib/jobs/repository.ts", "applyJobApplicationFilters"),
+    symbol(rootPath, "src/lib/jobs/repository.ts", "listGmailJobSyncAttempts"),
+    symbol(rootPath, "src/lib/jobs/repository.ts", "updateGmailJobSyncAttempt"),
     symbol(rootPath, "src/lib/jobs/ingest.ts", "ingestJobsFromGmail"),
     symbol(rootPath, "src/lib/jobs/access.ts", "resolveJobsAccess")
   ];
@@ -357,12 +407,28 @@ function jobTrackerFixture(): {
       "JobsDashboardTabs",
       "mobile bottom tabs responsive layout applications review analytics tools"
     ),
+    chunk(rootPath, "src/app/private/jobs/JobsReviewPanel.tsx", "JobsReviewPanel", "review queue decision cards retry ignore add to tracker needs_review requeued"),
+    chunk(rootPath, "src/app/api/jobs/sync-attempts/route.ts", "GET", "sync attempts review queue route needs_review ignored requeued sourceEmailId"),
+    chunk(
+      rootPath,
+      "src/app/api/jobs/sync-attempts/[sourceEmailId]/route.ts",
+      "PATCH",
+      "sync attempts action route retry ignore add to tracker sourceEmailId requeued"
+    ),
     chunk(rootPath, "src/app/private/jobs/JobsApplicationsTable.test.tsx", "JobsApplicationsTableMobileTest", "tests mobile job tracker card layout"),
-    chunk(rootPath, "src/lib/jobs/types.ts", "JobStatus", "job statuses applied rejected interview assessment offer ghosted"),
+    chunk(rootPath, "src/lib/jobs/types.ts", "JobStatus", "job statuses applied rejected interview assessment offer ghosted needs_review"),
+    chunk(rootPath, "src/lib/jobs/gmail.ts", "listGmailMessages", "gmail messages sync state history list fetch"),
     chunk(rootPath, "src/lib/jobs/parser.ts", "parseJobEmailRules", "gmail parser rental application non job application phrase email parsing"),
     chunk(rootPath, "src/lib/jobs/repository.ts", "getJobDashboardData", "repository owner scoping api data filters job dashboard records"),
+    chunk(rootPath, "src/lib/jobs/repository.ts", "listGmailJobSyncAttempts", "repository gmail_job_sync_attempts review queue retry ignored needs_review requeued sourceEmailId"),
     chunk(rootPath, "src/lib/jobs/ingest.ts", "ingestJobsFromGmail", "gmail sync ingest parser attempts job application events"),
-    chunk(rootPath, "src/lib/jobs/access.ts", "resolveJobsAccess", "owner scoping allowed emails admin api access session")
+    chunk(rootPath, "src/lib/jobs/access.ts", "resolveJobsAccess", "owner scoping allowed emails admin api access session"),
+    chunk(
+      rootPath,
+      "supabase/migrations/20260502000000_job_tracker_resumable_sync_attempts.sql",
+      "gmail_job_sync_attempts",
+      "create table gmail_job_sync_attempts status inserted duplicate skipped error needs_review requeued"
+    )
   ];
   const edges: GraphEdgeRecord[] = [
     {

@@ -1,0 +1,82 @@
+{
+  "id": "job-tracker-focused",
+  "name": "Job Tracker Focused Validation",
+  "cases": [
+    {
+      "id": "job-mobile-layout",
+      "mode": "context",
+      "task": "Find the mobile job tracker layout and bottom sheet/card UI implementation.",
+      "query": "job tracker mobile layout drawer bottom sheet cards tabs filters responsive applications",
+      "expectedFiles": [
+        "src/app/private/jobs/JobsApplicationsTable.tsx",
+        "src/app/private/jobs/JobsDashboardTabs.tsx"
+      ],
+      "excludedFiles": [
+        "src/lib/jobs/parser.ts",
+        "src/lib/jobs/repository.ts",
+        "src/lib/jobs/ingest.ts"
+      ],
+      "budget": 1400
+    },
+    {
+      "id": "gmail-parser-rental-filter",
+      "mode": "context",
+      "task": "Find Gmail job parser logic that rejects rental applications and handles job confirmations.",
+      "query": "gmail job parser rental application filter parseJobEmailRules non job application",
+      "expectedFiles": [
+        "src/lib/jobs/parser.ts",
+        "src/lib/jobs/parser.test.ts"
+      ],
+      "excludedFiles": [
+        "src/app/private/jobs/JobsApplicationsTable.tsx",
+        "src/app/private/jobs/JobsDashboardTabs.tsx"
+      ],
+      "budget": 1400
+    },
+    {
+      "id": "owner-scoping-access",
+      "mode": "context",
+      "task": "Find owner scoping access control for private job tracker routes and APIs.",
+      "query": "ownerEmail owner scoping resolveJobsAccess private jobs api access allowed admin",
+      "expectedFiles": [
+        "src/lib/jobs/access.ts",
+        "src/app/private/jobs/page.tsx",
+        "src/app/api/jobs/applications/route.ts"
+      ],
+      "excludedFiles": [
+        "src/app/diary/page.tsx"
+      ],
+      "budget": 1400
+    },
+    {
+      "id": "sync-review-queue",
+      "mode": "context",
+      "task": "Find Gmail sync attempts review queue retry ignore add-to-tracker implementation.",
+      "query": "gmail_job_sync_attempts sync attempts review queue retry ignore add to tracker needs_review requeued",
+      "expectedFiles": [
+        "src/app/private/jobs/JobsReviewPanel.tsx",
+        "src/app/api/jobs/sync-attempts/route.ts",
+        "src/app/api/jobs/sync-attempts/[sourceEmailId]/route.ts",
+        "src/lib/jobs/repository.ts"
+      ],
+      "excludedFiles": [
+        "src/app/private/jobs/JobsApplicationsTable.tsx"
+      ],
+      "budget": 1400
+    },
+    {
+      "id": "job-tests",
+      "mode": "tests",
+      "task": "Find tests covering job parser, ingestion, repository, and access behavior.",
+      "target": "src/lib/jobs/parser.ts",
+      "expectedFiles": [
+        "src/lib/jobs/parser.test.ts",
+        "src/lib/jobs/ingest.test.ts",
+        "src/lib/jobs/repository.test.ts",
+        "src/lib/jobs/access.test.ts"
+      ],
+      "excludedFiles": [],
+      "budget": 1000
+    }
+  ]
+}

@@ -1,11 +1,12 @@
 import { tokenizeLexical } from "../semantic/tokenize.js";
 
-export type QueryIntentPrimary = "ui" | "backend" | "data" | "auth" | "test" | "infra" | "docs" | "generic";
+export type QueryIntentPrimary = "ui" | "backend" | "data" | "auth" | "test" | "workflow" | "infra" | "docs" | "generic";
 
 export type QueryIntent = {
   primary: QueryIntentPrimary;
   confidence: number;
   matchedTerms: string[];
+  matchedPhrases?: string[];
 };
 
 const INTENT_TERMS: Record<Exclude<QueryIntentPrimary, "generic">, Set<string>> = {
@@ -90,21 +91,61 @@ const INTENT_TERMS: Record<Exclude<QueryIntentPrimary, "generic">, Set<string>> 
   ]),
   auth: new Set(["auth", "oauth", "login", "session", "token", "permission", "access", "allowed", "owner"]),
   test: new Set(["test", "tests", "spec", "vitest", "jest", "verify", "failure", "failing"]),
+  workflow: new Set([
+    "attempt",
+    "attempts",
+    "queue",
+    "review",
+    "retry",
+    "ignore",
+    "ignored",
+    "tracker",
+    "needs",
+    "requeued",
+    "source",
+    "email",
+    "status",
+    "manual",
+    "correction",
+    "sync"
+  ]),
   infra: new Set(["build", "deploy", "ci", "vercel", "config", "package", "script", "lint", "typecheck"]),
   docs: new Set(["docs", "readme", "documentation", "markdown", "guide", "plan"])
 };
 
-const INTENT_PRIORITY: QueryIntentPrimary[] = ["test", "auth", "data", "backend", "ui", "infra", "docs"];
+const INTENT_PRIORITY: QueryIntentPrimary[] = ["test", "workflow", "auth", "data", "backend", "ui", "infra", "docs"];
+
+const WORKFLOW_PHRASES = [
+  "review queue",
+  "sync attempts",
+  "sync attempt",
+  "add to tracker",
+  "sync status",
+  "manual correction"
+];
+
+const WORKFLOW_STATUS_VALUES = ["needs_review", "needs review", "requeued", "ignored", "sourceEmailId", "source email id"];
 
 export function classifyQueryIntent(query: string): QueryIntent {
   const terms = tokenizeLexical(query);
+  const workflow = detectWorkflowIntent(query, terms);
   const scores = new Map<QueryIntentPrimary, string[]>();
 
   for (const [intent, dictionary] of Object.entries(INTENT_TERMS) as Array<[Exclude<QueryIntentPrimary, "generic">, Set<string>]>) {
+    if (intent === "workflow" && workflow.matchedPhrases.length === 0) continue;
     const matched = terms.filter((term) => dictionary.has(term));
     if (matched.length > 0) {
       scores.set(intent, [...new Set(matched)]);
     }
+  }
+
+  if (workflow.matchedPhrases.length > 0 && !hasExplicitTestIntent(terms)) {
+    return {
+      primary: "workflow",
+      confidence: Math.min(1, Math.max(workflow.matchedPhrases.length / 3, workflow.matchedTerms.length / 6)),
+      matchedTerms: workflow.matchedTerms,
+      matchedPhrases: workflow.matchedPhrases
+    };
   }
 
   if (scores.size === 0) {
@@ -123,6 +164,37 @@ export function classifyQueryIntent(query: string): QueryIntent {
   return {
     primary,
     confidence: Math.min(1, matchedTerms.length / 4),
-    matchedTerms
+    matchedTerms,
+    ...(primary === "workflow" ? { matchedPhrases: workflow.matchedPhrases } : {})
   };
+}
+
+function detectWorkflowIntent(query: string, terms: string[]): { matchedTerms: string[]; matchedPhrases: string[] } {
+  const normalized = normalizeForPhraseMatching(query);
+  const matchedPhrases = [...WORKFLOW_PHRASES, ...WORKFLOW_STATUS_VALUES].filter((phrase) =>
+    normalized.includes(normalizeForPhraseMatching(phrase))
+  );
+  const hasStatus = WORKFLOW_STATUS_VALUES.some((phrase) => normalized.includes(normalizeForPhraseMatching(phrase)));
+  const hasWorkflowPhrase = matchedPhrases.length > 0;
+  if (!hasWorkflowPhrase && !hasStatus) return { matchedTerms: [], matchedPhrases: [] };
+
+  const workflowTerms = [...new Set(terms.filter((term) => INTENT_TERMS.workflow.has(term)))];
+  return {
+    matchedTerms: workflowTerms,
+    matchedPhrases
+  };
+}
+
+function normalizeForPhraseMatching(input: string): string {
+  return input
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function hasExplicitTestIntent(terms: string[]): boolean {
+  return terms.some((term) => INTENT_TERMS.test.has(term));
 }

@@ -117,6 +117,39 @@ kairn eval ingest-codex --root /path/to/repo --session task_123 --run eval_def -
 
 Kairn stores parsed token totals, hashes, file references, and summaries. It does not store raw Codex transcripts or raw command output. Eval reports separate observed Codex usage from Kairn's estimated context savings; V1 is directional proof, not billing-grade token accounting.
 
+## Benchmarks
+
+Benchmarks automate the cheap part of proving Kairn: replaying known context queries, scoring expected files, and comparing before/after runs. Replay mode is deterministic and safe to run often.
+
+```bash
+kairn bench run --root /path/to/repo --mode replay
+kairn bench report --root /path/to/repo --run bench_123
+kairn bench compare --root /path/to/repo --before bench_old --after bench_new
+kairn bench export --root /path/to/repo --run bench_123 --format md
+```
+
+The default suite adapts to the target repo and covers UI context, parser/backend context, auth/access context, test discovery, diff review, and hook failure linking. You can also pass a JSON suite:
+
+```bash
+kairn bench run --root /path/to/repo --suite ./kairn-bench.json --mode replay --json
+```
+
+For a stronger validation pass, run the default suite first, then a focused suite for the workflow you care about, then compare the two reports. The job tracker validation suite is included as a concrete example:
+
+```bash
+TARGET_REPO="/Users/kevindotel/Documents/Projects/new-site/my-portfolio"
+kairn bench run --root "$TARGET_REPO" --mode replay --json
+kairn bench run --root "$TARGET_REPO" --suite examples/bench/job-tracker-focused.json --mode replay --json
+```
+
+Agent benchmarks are opt-in. Kairn copies the target repo into a disposable temp workspace and only runs an agent when you pass an explicit command:
+
+```bash
+kairn bench run --root /path/to/repo --mode agent --agent-command "codex exec --model gpt-5.4-mini {prompt}"
+```
+
+Without `--agent-command`, agent cases are recorded as skipped. Benchmark reports can recommend scoring or routing improvements, but they never edit Kairn automatically.
+
 ## State
 
 Kairn stores generated state in the target repo under `.kairn/`. This includes local SQLite metadata, sessions, scans, traces, watch events, metrics, compressed command summaries, and hashes. Raw source files and raw command output are not copied into Kairn state.

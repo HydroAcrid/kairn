@@ -3,11 +3,12 @@ export function estimateTokens(text: string): number {
 }
 
 export function truncateToBudget(text: string, budget = 2000): string {
-  const maxChars = Math.max(200, budget * 4);
+  const suffix = `\n\n[truncated to ~${budget} tokens]`;
+  const maxChars = Math.max(200, budget * 4 - suffix.length);
 
   if (text.length <= maxChars) {
     return text;
   }
 
-  return `${text.slice(0, maxChars)}\n\n[truncated to ~${budget} tokens]`;
+  return `${text.slice(0, maxChars)}${suffix}`;
 }

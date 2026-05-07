@@ -3,6 +3,9 @@ import { Command, Option } from "commander";
 import { KairnRuntime } from "./runtime/KairnRuntime.js";
 import { startMcpServer } from "./server/mcp.js";
 import type {
+  BenchmarkComparison,
+  BenchmarkReport,
+  BenchmarkRunMode,
   ContextQueryMode,
   EvalComparison,
   EvalRunMode,
@@ -443,6 +446,99 @@ evalCommand
     });
   });
 
+const benchCommand = program
+  .command("bench")
+  .description("Run deterministic and optional live-agent benchmarks for Kairn retrieval quality.");
+
+benchCommand
+  .command("run")
+  .description("Run a benchmark suite.")
+  .option("--root <path>", "target repository root", process.cwd())
+  .option("--suite <path>", "benchmark suite JSON path or 'default'", "default")
+  .addOption(new Option("--mode <mode>", "benchmark mode").choices(["replay", "agent", "hybrid"]).default("hybrid"))
+  .option("--agent-command <command>", "explicit live-agent command with {prompt} and {root} placeholders")
+  .option("--agent-timeout <ms>", "live-agent command timeout", parsePositiveInt, 120000)
+  .option("--json", "print JSON output")
+  .action(
+    async (options: {
+      root: string;
+      suite: string;
+      mode: BenchmarkRunMode;
+      agentCommand?: string;
+      agentTimeout: number;
+      json?: boolean;
+    }) => {
+      await withRuntime(options.root, async (runtime) => {
+        const report = await runtime.runBenchmark({
+          suitePath: options.suite,
+          mode: options.mode,
+          agentCommand: options.agentCommand,
+          agentTimeoutMs: options.agentTimeout
+        });
+        if (options.json) {
+          printJson(report);
+          return;
+        }
+        printBenchmarkReport(report);
+      });
+    }
+  );
+
+benchCommand
+  .command("report")
+  .description("Report benchmark evidence for a run or target repo.")
+  .option("--root <path>", "target repository root", process.cwd())
+  .option("--run <id>", "benchmark run ID")
+  .option("--json", "print JSON output")
+  .action(async (options: { root: string; run?: string; json?: boolean }) => {
+    await withRuntime(options.root, async (runtime) => {
+      const report = runtime.getBenchmarkReport({ runId: options.run });
+      if (options.json) {
+        printJson(report);
+        return;
+      }
+      printBenchmarkReport(report);
+    });
+  });
+
+benchCommand
+  .command("compare")
+  .description("Compare two benchmark runs.")
+  .requiredOption("--before <id>", "older benchmark run ID")
+  .requiredOption("--after <id>", "newer benchmark run ID")
+  .option("--root <path>", "target repository root", process.cwd())
+  .option("--json", "print JSON output")
+  .action(async (options: { before: string; after: string; root: string; json?: boolean }) => {
+    await withRuntime(options.root, async (runtime) => {
+      const comparison = runtime.compareBenchmarkRuns({
+        beforeRunId: options.before,
+        afterRunId: options.after
+      });
+      if (options.json) {
+        printJson(comparison);
+        return;
+      }
+      printBenchmarkComparison(comparison);
+    });
+  });
+
+benchCommand
+  .command("export")
+  .description("Export a benchmark run as JSON or Markdown.")
+  .requiredOption("--run <id>", "benchmark run ID")
+  .option("--root <path>", "target repository root", process.cwd())
+  .addOption(new Option("--format <format>", "export format").choices(["json", "md"]).default("md"))
+  .action(async (options: { run: string; root: string; format: "json" | "md" }) => {
+    await withRuntime(options.root, async (runtime) => {
+      const report = runtime.getBenchmarkReport({ runId: options.run }) as BenchmarkReport;
+      if (options.format === "json") {
+        printJson(report);
+        return;
+      }
+      process.stdout.write(formatBenchmarkMarkdown(report));
+    });
+  });
+
 program.parseAsync().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
   process.stderr.write(`kairn: ${message}\n`);
@@ -586,6 +682,70 @@ function printEvalComparison(comparison: EvalComparison): void {
   ].filter(Boolean);
 
   process.stdout.write(`${lines.join("\n")}\n`);
+}
+
+function printBenchmarkReport(report: BenchmarkReport | { runs: BenchmarkReport[] }): void {
+  const reports = "runs" in report ? report.runs : [report];
+  const lines = ["Kairn benchmark report."];
+
+  for (const item of reports) {
+    lines.push(
+      "",
+      `Run: ${item.run.id}`,
+      `Suite: ${item.run.suiteName}`,
+      `Mode: ${item.run.mode}`,
+      `Status: ${item.run.status}`,
+      `Overall score: ${item.overallScore}`,
+      `Cases: ${item.results.length}`,
+      item.weakestCases.length > 0 ? `Weakest: ${item.weakestCases.map((result) => `${result.caseId} (${result.score})`).join(", ")}` : "Weakest: none",
+      item.recommendations.length > 0 ? ["Recommendations", ...item.recommendations.map((entry) => `- ${entry}`)].join("\n") : "Recommendations: none"
+    );
+  }
+
+  process.stdout.write(`${lines.join("\n")}\n`);
+}
+
+function printBenchmarkComparison(comparison: BenchmarkComparison): void {
+  const lines = [
+    "Kairn benchmark comparison.",
+    `Before: ${comparison.before.run.id} (${comparison.before.overallScore})`,
+    `After: ${comparison.after.run.id} (${comparison.after.overallScore})`,
+    `Score delta: ${comparison.scoreDelta}`,
+    "",
+    comparison.improvedCases.length > 0 ? `Improved: ${comparison.improvedCases.join(", ")}` : "Improved: none",
+    comparison.regressedCases.length > 0 ? `Regressed: ${comparison.regressedCases.join(", ")}` : "Regressed: none",
+    "",
+    "Recommendations",
+    ...(comparison.recommendations.length > 0 ? comparison.recommendations.map((entry) => `- ${entry}`) : ["- none"]),
+    ""
+  ];
+
+  process.stdout.write(`${lines.join("\n")}\n`);
+}
+
+function formatBenchmarkMarkdown(report: BenchmarkReport): string {
+  return [
+    `# Kairn Benchmark Run ${report.run.id}`,
+    "",
+    `- Suite: ${report.run.suiteName}`,
+    `- Mode: ${report.run.mode}`,
+    `- Status: ${report.run.status}`,
+    `- Overall score: ${report.overallScore}`,
+    "",
+    "## Cases",
+    ...report.results.map(
+      (result) =>
+        `- ${result.caseId}: ${result.score} ` +
+        `(recall ${Math.round(result.expectedFileRecall * 100)}%, top-k ${Math.round(result.topKHitRate * 100)}%, unexpected ${Math.round(result.unexpectedFileRate * 100)}%, outcome ${result.taskOutcome})`
+    ),
+    "",
+    "## Weakest Cases",
+    ...(report.weakestCases.length > 0 ? report.weakestCases.map((result) => `- ${result.caseId}: ${result.score}`) : ["- none"]),
+    "",
+    "## Recommendations",
+    ...(report.recommendations.length > 0 ? report.recommendations.map((entry) => `- ${entry}`) : ["- none"]),
+    ""
+  ].join("\n");
 }
 
 function parseCsv(value: string | undefined): string[] {

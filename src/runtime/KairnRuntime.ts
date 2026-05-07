@@ -3,6 +3,10 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { simpleGit } from "simple-git";
 import type {
+  BenchmarkComparison,
+  BenchmarkReport,
+  BenchmarkResultRecord,
+  BenchmarkRunMode,
   ContextQueryMode,
   ContextResponse,
   ContextResponseMode,
@@ -12,6 +16,7 @@ import type {
   EvalRunMode,
   EvalRunReport,
   FileRecord,
+  BenchmarkCaseMode,
   HookHandlingResult,
   HybridScoredResult,
   InitResult,
@@ -41,9 +46,13 @@ import { estimateTokens, truncateToBudget } from "../utils/tokens.js";
 import { indexRepo } from "../indexer/indexRepo.js";
 import { classifyObservedCommand } from "../watch/classifyCommand.js";
 import { extractFailureFiles } from "../watch/failureParser.js";
+import { normalizeHookPayload } from "../watch/normalizeHook.js";
 import { nowIso } from "../utils/time.js";
 import { classifyQueryIntent, type QueryIntent } from "../retrieval/queryIntent.js";
 import { mergeCodexUsage, parseCodexUsageFooter, readCodexTranscript } from "../eval/codexUsage.js";
+import { loadBenchmarkSuite } from "../bench/suite.js";
+import { buildBenchmarkReport, compareBenchmarkReports, scoreBenchmarkCase } from "../bench/score.js";
+import { runAgentBenchmarkCase } from "../bench/agent.js";
 
 export class KairnRuntime {
   private readonly rootPath: string;
@@ -269,6 +278,64 @@ export class KairnRuntime {
     };
   }
 
+  async runBenchmark(input: {
+    suitePath?: string | undefined;
+    mode: BenchmarkRunMode;
+    agentCommand?: string | undefined;
+    agentTimeoutMs?: number | undefined;
+  }): Promise<BenchmarkReport> {
+    await this.init();
+    const suite = loadBenchmarkSuite({
+      suitePath: input.suitePath,
+      files: this.store.listFiles(this.rootPath)
+    });
+    const { session } = await this.startTask(`Benchmark: ${suite.name}`);
+    const run = this.store.createBenchmarkRun({
+      id: `bench_${randomUUID()}`,
+      rootPath: this.rootPath,
+      suiteId: suite.id,
+      suiteName: suite.name,
+      mode: input.mode,
+      status: "active",
+      metadata: {
+        sessionId: session.id,
+        caseCount: suite.cases.length,
+        agentConfigured: Boolean(input.agentCommand)
+      }
+    });
+
+    for (const benchmarkCase of suite.cases.filter((item) => benchmarkCaseApplies(item.mode, input.mode))) {
+      const result =
+        benchmarkCase.mode === "agent"
+          ? this.runAgentBenchmarkCase({
+              runId: run.id,
+              benchmarkCase,
+              agentCommand: input.agentCommand,
+              agentTimeoutMs: input.agentTimeoutMs
+            })
+          : await this.runReplayBenchmarkCase({
+              runId: run.id,
+              sessionId: session.id,
+              benchmarkCase
+            });
+      this.store.recordBenchmarkResult(result);
+    }
+
+    const completed = this.store.updateBenchmarkRunStatus(run.id, "completed");
+    return this.buildBenchmarkReport(completed.id);
+  }
+
+  getBenchmarkReport(input: { runId?: string | undefined }): BenchmarkReport | { runs: BenchmarkReport[] } {
+    if (input.runId) return this.buildBenchmarkReport(input.runId);
+    return {
+      runs: this.store.listBenchmarkRuns({ rootPath: this.rootPath }).map((run) => this.buildBenchmarkReport(run.id))
+    };
+  }
+
+  compareBenchmarkRuns(input: { beforeRunId: string; afterRunId: string }): BenchmarkComparison {
+    return compareBenchmarkReports(this.buildBenchmarkReport(input.beforeRunId), this.buildBenchmarkReport(input.afterRunId));
+  }
+
   async findContext(input: {
     sessionId: string;
     query?: string | undefined;
@@ -313,7 +380,8 @@ export class KairnRuntime {
         decisionReason: decision.reason,
         mode: decision.mode,
         intent,
-        scored
+        scored,
+        ...(input.budget ? { budget: input.budget } : {})
       }),
       input.budget
     );
@@ -971,6 +1039,145 @@ export class KairnRuntime {
     });
   }
 
+  private buildBenchmarkReport(runId: string): BenchmarkReport {
+    const run = this.store.getBenchmarkRun(runId);
+    const results = this.store.listBenchmarkResults(runId);
+    return buildBenchmarkReport({ run, results });
+  }
+
+  private async runReplayBenchmarkCase(input: {
+    runId: string;
+    sessionId: string;
+    benchmarkCase: Parameters<typeof scoreBenchmarkCase>[0]["benchmarkCase"];
+  }): Promise<Omit<BenchmarkResultRecord, "id" | "createdAt">> {
+    const benchmarkCase = input.benchmarkCase;
+    if (benchmarkCase.mode === "context") {
+      const response = await this.findContext({
+        sessionId: input.sessionId,
+        query: benchmarkCase.query ?? benchmarkCase.task,
+        budget: benchmarkCase.budget,
+        mode: "snippets"
+      });
+      return scoreBenchmarkCase({
+        runId: input.runId,
+        benchmarkCase,
+        actualFiles: response.files,
+        responseTokens: response.tokenEstimate,
+        summary: `Context replay returned ${response.files.length} files.`,
+        metadata: {
+          queryHash: sha256(benchmarkCase.query ?? benchmarkCase.task),
+          responseMode: response.mode,
+          warnings: response.warnings
+        }
+      });
+    }
+
+    if (benchmarkCase.mode === "related") {
+      const response = await this.getRelatedFiles({
+        sessionId: input.sessionId,
+        target: requireBenchmarkTarget(benchmarkCase),
+        budget: benchmarkCase.budget
+      });
+      return scoreBenchmarkCase({
+        runId: input.runId,
+        benchmarkCase,
+        actualFiles: response.related,
+        responseTokens: response.tokenEstimate,
+        summary: `Related replay returned ${response.related.length} related files.`,
+        metadata: { target: benchmarkCase.target }
+      });
+    }
+
+    if (benchmarkCase.mode === "tests") {
+      const response = await this.findTests({
+        sessionId: input.sessionId,
+        target: benchmarkCase.target,
+        budget: benchmarkCase.budget
+      });
+      return scoreBenchmarkCase({
+        runId: input.runId,
+        benchmarkCase,
+        actualFiles: response.files,
+        responseTokens: response.tokenEstimate,
+        summary: `Test replay returned ${response.files.length} test files.`,
+        metadata: benchmarkCase.target ? { target: benchmarkCase.target } : {}
+      });
+    }
+
+    if (benchmarkCase.mode === "diff") {
+      const response = await this.reviewDiff({
+        sessionId: input.sessionId,
+        budget: benchmarkCase.budget
+      });
+      return scoreBenchmarkCase({
+        runId: input.runId,
+        benchmarkCase,
+        actualFiles: response.files,
+        responseTokens: response.tokenEstimate,
+        summary: `Diff replay returned ${response.files.length} changed files.`,
+        metadata: { warnings: response.warnings }
+      });
+    }
+
+    if (benchmarkCase.mode === "hook") {
+      const referenceFile = benchmarkCase.expectedFiles[0] ?? benchmarkCase.target ?? "src/app.test.ts";
+      const event = normalizeHookPayload({
+        source: "generic",
+        payload: {
+          eventName: "PostToolUse",
+          command: "pnpm test",
+          output: `FAIL ${referenceFile}:1:1\nExpected benchmark assertion to pass`,
+          exitCode: 1
+        }
+      });
+      const result = await this.handleHookEvent({ sessionId: input.sessionId, event });
+      return scoreBenchmarkCase({
+        runId: input.runId,
+        benchmarkCase,
+        actualFiles: uniquePaths([...(result.event.files ?? []), ...(result.recommendation?.suggestedNextContext ?? [])]),
+        responseTokens: (result.response?.tokenEstimate ?? 0) + estimateTokens(result.recommendation?.content ?? ""),
+        hookContextEmitted: result.recommendation ? 1 : 0,
+        hookContextSuppressed: result.recommendation ? 0 : 1,
+        taskOutcome: result.event.files.includes(referenceFile) ? "pass" : "partial",
+        summary: `Hook replay linked ${result.event.files.length} file(s).`,
+        metadata: {
+          eventKind: result.event.kind,
+          recommendation: Boolean(result.recommendation)
+        }
+      });
+    }
+
+    return this.runAgentBenchmarkCase({
+      runId: input.runId,
+      benchmarkCase,
+      agentCommand: undefined
+    });
+  }
+
+  private runAgentBenchmarkCase(input: {
+    runId: string;
+    benchmarkCase: Parameters<typeof scoreBenchmarkCase>[0]["benchmarkCase"];
+    agentCommand?: string | undefined;
+    agentTimeoutMs?: number | undefined;
+  }): Omit<BenchmarkResultRecord, "id" | "createdAt"> {
+    const result = runAgentBenchmarkCase({
+      rootPath: this.rootPath,
+      benchmarkCase: input.benchmarkCase,
+      agentCommand: input.agentCommand,
+      timeoutMs: input.agentTimeoutMs
+    });
+    return scoreBenchmarkCase({
+      runId: input.runId,
+      benchmarkCase: input.benchmarkCase,
+      actualFiles: result.actualFiles,
+      responseTokens: result.responseTokens,
+      observedCodexTokens: result.observedCodexTokens,
+      taskOutcome: result.outcome,
+      summary: result.summary,
+      metadata: result.metadata
+    });
+  }
+
   private async refreshIndex(rootPath: string) {
     const index = await indexRepo(rootPath);
     this.store.replaceIndex({
@@ -1245,6 +1452,7 @@ function formatContextResults(input: {
   mode: ContextResponse["mode"];
   intent: QueryIntent;
   scored: HybridScoredResult[];
+  budget?: number | undefined;
 }): string {
   const highConfidence =
     input.scored.length > 0
@@ -1276,7 +1484,9 @@ function formatContextResults(input: {
   ];
 
   if (input.mode === "snippets" || input.mode === "exact_code") {
-    sections.push("", "## Matched Snippets", formatMatchedSnippets(input.scored.slice(0, 5)));
+    const snippetFiles = input.scored.filter((file) => file.intentScore > 0 || !file.reasons.includes("graph neighbor"));
+    const files = (snippetFiles.length > 0 ? snippetFiles : input.scored).slice(0, 5);
+    sections.push("", "## Matched Snippets", formatMatchedSnippets(files, Math.max(180, Math.floor((input.budget ?? 1600) * 0.42))));
   }
 
   if (input.mode === "compressed_summary") {
@@ -1295,23 +1505,41 @@ function formatContextResults(input: {
   return sections.join("\n");
 }
 
-function formatMatchedSnippets(files: HybridScoredResult[]): string {
-  const snippets = files.flatMap((file) =>
-    file.chunks.slice(0, 2).map((chunk) => {
+function formatMatchedSnippets(files: HybridScoredResult[], budget = 700): string {
+  const snippets: string[] = [];
+  let usedTokens = 0;
+  let omitted = 0;
+
+  for (const file of files) {
+    for (const chunk of file.chunks.slice(0, 2)) {
       const title = chunk.symbol
         ? `${file.path} :: ${chunk.symbol} (${chunk.startLine ?? "?"}-${chunk.endLine ?? "?"})`
         : file.path;
-      return [
+      const block = [
         `### ${title}`,
         "",
         "```",
-        chunk.text.split(/\r?\n/).slice(0, 80).join("\n"),
+        chunk.text.split(/\r?\n/).slice(0, 60).join("\n"),
         "```"
       ].join("\n");
-    })
-  );
+      const blockTokens = estimateTokens(block);
+      if (usedTokens + blockTokens > budget) {
+        omitted += 1;
+        if (snippets.length === 0) {
+          snippets.push(truncateToBudget(block, budget));
+          usedTokens = budget;
+        }
+        continue;
+      }
+      snippets.push(block);
+      usedTokens += blockTokens;
+    }
+  }
 
-  return snippets.length > 0 ? snippets.join("\n\n") : "No semantic snippets were available for the top files.";
+  if (snippets.length === 0) return "No semantic snippets were available within the response budget.";
+  const budgetNote =
+    omitted > 0 ? `\n\nSnippet budget reached; omitted ${omitted} lower-priority snippet${omitted === 1 ? "" : "s"}.` : "";
+  return `${snippets.join("\n\n")}${budgetNote}`;
 }
 
 function formatCompactSummary(files: HybridScoredResult[]): string {
@@ -1444,6 +1672,20 @@ function numberField(value: unknown): number | undefined {
 
 function stringField(value: unknown): string | undefined {
   return typeof value === "string" && value ? value : undefined;
+}
+
+function benchmarkCaseApplies(caseMode: BenchmarkCaseMode, runMode: BenchmarkRunMode): boolean {
+  if (runMode === "replay") return caseMode !== "agent";
+  if (runMode === "agent") return caseMode === "agent";
+  return true;
+}
+
+function requireBenchmarkTarget(benchmarkCase: { id: string; target?: string | undefined; expectedFiles: string[] }): string {
+  const target = benchmarkCase.target ?? benchmarkCase.expectedFiles[0];
+  if (!target) {
+    throw new Error(`Benchmark case ${benchmarkCase.id} requires a target or expected file.`);
+  }
+  return target;
 }
 
 function sliceLines(content: string, startLine: number, endLine: number): string {
