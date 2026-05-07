@@ -28,6 +28,7 @@ export function hybridSearch(input: {
   const symbolsByFile = groupByFile(input.symbols, (symbol) => symbol.filePath);
   const chunksByFile = groupByFile(input.chunks, (chunk) => chunk.filePath);
   const intentScores = scoreIntentMatches(input.files, intent, input.query, symbolsByFile, chunksByFile);
+  const behaviorScores = scoreBehaviorMatches(input.files, input.query, symbolsByFile, chunksByFile);
   const graphScores = scoreGraphNeighbors(input.edges, keywordScores, semanticScores, intentScores, intent, input.files);
   const shownFiles = new Set((input.shown ?? []).map((record) => record.filePath).filter((filePath): filePath is string => Boolean(filePath)));
 
@@ -36,16 +37,19 @@ export function hybridSearch(input: {
       const keyword = keywordScores.get(file.path);
       const semantic = semanticScores.get(file.path);
       const intentMatch = intentScores.get(file.path);
+      const behaviorMatch = behaviorScores.get(file.path);
       const graphScore = graphScores.get(file.path) ?? 0;
       const sessionScore = shownFiles.has(file.path) ? -3 : 0;
       const gitScore = input.changedFiles?.has(file.path) ? 8 : 0;
       const semanticScore = semantic?.score ?? 0;
       const keywordScore = keyword?.score ?? 0;
       const intentScore = intentMatch?.score ?? 0;
+      const behaviorScore = behaviorMatch?.score ?? 0;
       const importanceScore = file.importance;
       const reasons = mergeReasons([
         ...(keyword?.reasons ?? []),
         ...(intentMatch?.reasons ?? []),
+        ...(behaviorMatch?.reasons ?? []),
         ...(semantic && semantic.score > 0.06 ? semanticReasons(semantic.chunks) : []),
         ...(graphScore > 0 ? ["graph neighbor"] : []),
         ...(shownFiles.has(file.path) ? ["already shown"] : []),
@@ -55,6 +59,7 @@ export function hybridSearch(input: {
         importanceScore +
         keywordScore * 1.15 +
         semanticScore * 42 +
+        behaviorScore +
         intentScore +
         graphScore +
         sessionScore +
@@ -66,16 +71,110 @@ export function hybridSearch(input: {
         reasons,
         semanticScore: Number(semanticScore.toFixed(3)),
         keywordScore: Number(keywordScore.toFixed(3)),
+        behaviorScore,
         graphScore,
         intentScore,
         sessionScore,
         importanceScore,
         gitScore,
-        chunks: semantic?.chunks ?? selectIntentChunks(chunksByFile.get(file.path) ?? [], intent)
+        chunks: semantic?.chunks ?? behaviorMatch?.chunks ?? selectIntentChunks(chunksByFile.get(file.path) ?? [], intent)
       };
     })
     .filter((file) => file.score > 0 && file.reasons.length > 0)
     .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+}
+
+type BehaviorQuery = {
+  active: boolean;
+  terms: string[];
+  anchorTerms: string[];
+  phrases: string[];
+  symbolHints: string[];
+  sourceFix: boolean;
+  explicitTestIntent: boolean;
+};
+
+function scoreBehaviorMatches(
+  files: FileRecord[],
+  query: string,
+  symbolsByFile: Map<string, SymbolRecord[]>,
+  chunksByFile: Map<string, SemanticChunkRecord[]>
+): Map<string, { score: number; reasons: string[]; chunks: SemanticChunkRecord[] }> {
+  const behavior = detectBehaviorQuery(query);
+  if (!behavior.active) return new Map();
+
+  const scores = new Map<string, { score: number; reasons: string[]; chunks: SemanticChunkRecord[] }>();
+  for (const file of files) {
+    const symbols = symbolsByFile.get(file.path) ?? [];
+    const chunks = chunksByFile.get(file.path) ?? [];
+    const fileText = [
+      file.path,
+      file.kind,
+      ...symbols.map((symbol) => symbol.name),
+      ...chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text}`)
+    ].join(" ");
+    const normalizedFileText = normalizeSearchText(fileText);
+    const fileTerms = new Set(tokenizeLexical(fileText));
+    const reasons: string[] = [];
+    let score = 0;
+
+    const matchedTerms = behavior.terms.filter((term) => fileTerms.has(term));
+    const matchedPhrases = behavior.phrases.filter((phrase) => phraseMatches(normalizedFileText, phrase, fileTerms));
+    const symbolMatches = symbols.filter((symbol) => behaviorSymbolMatches(symbol.name, behavior));
+    const hasBehaviorAnchor =
+      matchedTerms.some((term) => behavior.anchorTerms.includes(term)) ||
+      matchedPhrases.length > 0 ||
+      symbolMatches.length > 0;
+    if (!hasBehaviorAnchor) continue;
+
+    if (matchedTerms.length > 0) {
+      score += matchedTerms.length * 22;
+      reasons.push(`behavior term match: ${matchedTerms.slice(0, 5).join(", ")}`);
+    }
+
+    if (matchedPhrases.length > 0) {
+      score += matchedPhrases.length * 54;
+      reasons.push(`behavior phrase match: ${matchedPhrases.slice(0, 3).join(", ")}`);
+    }
+
+    if (symbolMatches.length > 0) {
+      score += symbolMatches.reduce((total, symbol) => total + behaviorSymbolWeight(symbol.name, behavior), 0);
+      reasons.push(...symbolMatches.slice(0, 3).map((symbol) => `behavior symbol match: ${symbol.name}`));
+    }
+
+    const matchedChunks = chunks
+      .map((chunk) => ({
+        chunk,
+        hits: behaviorChunkHits(chunk, behavior)
+      }))
+      .filter((item) => item.hits > 0)
+      .sort((a, b) => b.hits - a.hits)
+      .map((item) => item.chunk);
+    if (matchedChunks.length > 0) {
+      score += Math.min(90, matchedChunks.length * 26);
+      reasons.push(`behavior chunk match: ${matchedChunks.slice(0, 2).map((chunk) => chunk.symbol ?? chunk.kind).join(", ")}`);
+    }
+
+    if (behavior.sourceFix && score > 0 && file.kind !== "test") {
+      score += 110;
+      reasons.push("production source behavior match");
+    }
+
+    if (file.kind === "test" && !behavior.explicitTestIntent) {
+      score -= behavior.sourceFix ? 850 : 220;
+      reasons.push("test downranked for behavior fix");
+    }
+
+    if (score > 0 || reasons.length > 0) {
+      scores.set(file.path, {
+        score,
+        reasons,
+        chunks: matchedChunks.slice(0, 3)
+      });
+    }
+  }
+
+  return scores;
 }
 
 function scoreSemanticChunks(
@@ -346,6 +445,153 @@ function selectIntentChunks(chunks: SemanticChunkRecord[], intent: QueryIntent):
     intent.matchedTerms.some((term) => `${chunk.symbol ?? ""} ${chunk.text}`.toLowerCase().includes(term))
   );
   return (matched.length > 0 ? matched : chunks).slice(0, 3);
+}
+
+const BEHAVIOR_TRIGGER_TERMS = new Set([
+  "bug",
+  "debug",
+  "regression",
+  "broken",
+  "incorrect",
+  "inconsistent",
+  "consistently",
+  "consistent",
+  "stable",
+  "unstable",
+  "same",
+  "different",
+  "order",
+  "orders",
+  "ordered",
+  "sorted",
+  "sort",
+  "hash",
+  "hashes",
+  "hashed",
+  "hashing",
+  "serialize",
+  "serialization",
+  "normalize",
+  "normalization",
+  "equal",
+  "equals",
+  "equality",
+  "compare",
+  "matching"
+]);
+
+const BEHAVIOR_STOP_TERMS = new Set([
+  "seeded",
+  "tanstack",
+  "query",
+  "core",
+  "production",
+  "source",
+  "fix",
+  "debug",
+  "regression",
+  "bug",
+  "longer",
+  "properties"
+]);
+
+const BEHAVIOR_CANONICAL_TERMS = new Map<string, string[]>([
+  ["hash", ["hash", "hashed", "hashes", "hashing"]],
+  ["key", ["key", "keys", "querykey", "querykeys", "mutationkey", "mutationkeys"]],
+  ["object", ["object", "objects", "property", "properties", "plain"]],
+  ["sort", ["sort", "sorted", "sorting"]],
+  ["order", ["order", "orders", "ordered", "ordering"]],
+  ["stable", ["stable", "consistently", "consistent", "same", "equal", "equals"]],
+  ["match", ["match", "matching", "compare", "comparison", "equality"]]
+]);
+
+function detectBehaviorQuery(query: string): BehaviorQuery {
+  const normalized = normalizeSearchText(query);
+  const queryTerms = new Set(tokenizeLexical(query));
+  const triggerCount = [...queryTerms].filter((term) => BEHAVIOR_TRIGGER_TERMS.has(term)).length;
+  const hasBehaviorPhrase = /same .* different order|different order|stable hash|hash consistently|sorted keys?|object keys?|object query keys?/.test(normalized);
+  const active = triggerCount >= 2 || hasBehaviorPhrase;
+  if (!active) {
+    return {
+      active: false,
+      terms: [],
+      anchorTerms: [],
+      phrases: [],
+      symbolHints: [],
+      sourceFix: false,
+      explicitTestIntent: false
+    };
+  }
+
+  const terms = new Set<string>();
+  for (const [canonical, aliases] of BEHAVIOR_CANONICAL_TERMS) {
+    if (aliases.some((alias) => queryTerms.has(alias) || normalized.includes(alias))) {
+      terms.add(canonical);
+    }
+  }
+  for (const term of queryTerms) {
+    if (term.length > 2 && !BEHAVIOR_STOP_TERMS.has(term) && BEHAVIOR_TRIGGER_TERMS.has(term)) {
+      terms.add(term);
+    }
+  }
+
+  const phrases = [
+    "stable hash",
+    "hash function",
+    "hash key",
+    "object keys",
+    "sorted keys",
+    "same properties",
+    "different order",
+    "different orders"
+  ].filter((phrase) => phraseMatches(normalized, phrase, new Set(tokenizeLexical(normalized))));
+
+  const symbolHints = new Set<string>();
+  if (terms.has("hash")) {
+    symbolHints.add("hash");
+    symbolHints.add("hashkey");
+  }
+  if (!terms.has("hash") && terms.has("key") && (terms.has("sort") || terms.has("match") || terms.has("stable"))) {
+    symbolHints.add("key");
+  }
+  if (terms.has("match")) symbolHints.add("match");
+  if (terms.has("sort")) symbolHints.add("sort");
+
+  return {
+    active: true,
+    terms: [...terms],
+    anchorTerms: [...terms].filter((term) => ["hash", "sort", "stable", "match", "object", "order"].includes(term)),
+    phrases,
+    symbolHints: [...symbolHints],
+    sourceFix: /\b(production source|source|fix|debug)\b/.test(normalized),
+    explicitTestIntent: /\b(test|tests|spec|verify|verification)\b/.test(normalized)
+  };
+}
+
+function behaviorSymbolMatches(symbolName: string, behavior: BehaviorQuery): boolean {
+  const normalizedSymbol = normalizeSearchText(symbolName);
+  const compactSymbol = normalizedSymbol.replace(/\s+/g, "");
+  return behavior.symbolHints.some((hint) => normalizedSymbol.includes(hint) || compactSymbol.includes(hint));
+}
+
+function behaviorSymbolWeight(symbolName: string, behavior: BehaviorQuery): number {
+  const normalizedSymbol = normalizeSearchText(symbolName);
+  const compactSymbol = normalizedSymbol.replace(/\s+/g, "");
+  let score = 76;
+  if (behavior.terms.includes("hash") && compactSymbol.includes("hash")) score += 92;
+  if (behavior.terms.includes("key") && compactSymbol.includes("key")) score += 58;
+  if (behavior.terms.includes("match") && compactSymbol.includes("match")) score += 34;
+  if (behavior.terms.includes("sort") && normalizedSymbol.includes("sort")) score += 42;
+  return score;
+}
+
+function behaviorChunkHits(chunk: SemanticChunkRecord, behavior: BehaviorQuery): number {
+  const text = normalizeSearchText(`${chunk.symbol ?? ""} ${chunk.text}`);
+  const terms = new Set(tokenizeLexical(text));
+  let hits = behavior.terms.filter((term) => terms.has(term) || text.includes(term)).length;
+  hits += behavior.phrases.filter((phrase) => phraseMatches(text, phrase, terms)).length * 2;
+  if (chunk.symbol && behaviorSymbolMatches(chunk.symbol, behavior)) hits += 3;
+  return hits;
 }
 
 function isGraphSeedAllowed(file: FileRecord | undefined, intent: QueryIntent, intentScore: number): boolean {

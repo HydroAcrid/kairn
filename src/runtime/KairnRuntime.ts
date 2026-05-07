@@ -1782,6 +1782,7 @@ function formatContextResults(input: {
             const scoreBreakdown = [
               `semantic ${file.semanticScore}`,
               `keyword ${file.keywordScore}`,
+              `behavior ${file.behaviorScore}`,
               `intent ${file.intentScore}`,
               `graph ${file.graphScore}`,
               `git ${file.gitScore}`
@@ -2372,7 +2373,7 @@ function mergeReasonText(left: string | undefined, right: string): string {
 }
 
 function uniquePaths(files: string[]): string[] {
-  return [...new Set(files.map((file) => normalizeRelativePath(file).replace(/^\.\//, "")).filter(Boolean))].sort();
+  return [...new Set(files.map((file) => normalizeRelativePath(file).replace(/^\.\//, "")).filter(Boolean))];
 }
 
 function uniqueStrings(values: string[]): string[] {

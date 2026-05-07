@@ -591,6 +591,7 @@ export type HybridScoredResult = FileRecord & {
   reasons: string[];
   semanticScore: number;
   keywordScore: number;
+  behaviorScore: number;
   graphScore: number;
   intentScore: number;
   sessionScore: number;

@@ -230,6 +230,21 @@ describe("hybridSearch", () => {
     );
   });
 
+  it("maps behavior-heavy hashing bug descriptions to the production symbol file", () => {
+    const fixture = tanStackHashFixture();
+    const results = hybridSearch({
+      ...fixture,
+      query:
+        "Debug a seeded regression in TanStack Query query-core: object query keys with the same properties in different orders no longer hash consistently. Fix the production source.",
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.path).toBe("packages/query-core/src/utils.ts");
+    expect(results[0]?.reasons).toEqual(expect.arrayContaining(["behavior symbol match: hashKey"]));
+    expect(results[0]?.reasons.some((reason) => reason.includes("behavior term match"))).toBe(true);
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("packages/react-query/src/__tests__/useQuery.test.tsx");
+  });
+
   it("detects game UI component intent for wheel and settings queries", () => {
     const rootPath = "/repo";
     const files = [
@@ -467,5 +482,79 @@ function jobTrackerFixture(): {
     chunks,
     vectors: chunks.map((record) => vector(rootPath, record)),
     edges
+  };
+}
+
+function tanStackHashFixture(): {
+  files: FileRecord[];
+  symbols: SymbolRecord[];
+  chunks: SemanticChunkRecord[];
+  vectors: SemanticVectorRecord[];
+  edges: GraphEdgeRecord[];
+} {
+  const rootPath = "/repo";
+  const files = [
+    file(rootPath, "packages/query-core/src/utils.ts", "source"),
+    file(rootPath, "packages/query-core/src/__tests__/utils.test.tsx", "test"),
+    file(rootPath, "packages/react-query/src/__tests__/useQuery.test.tsx", "test"),
+    file(rootPath, "packages/preact-query/src/__tests__/useQuery.test.tsx", "test"),
+    file(rootPath, "packages/query-core/src/query.ts", "source")
+  ];
+  const symbols = [
+    symbol(rootPath, "packages/query-core/src/utils.ts", "hashKey"),
+    symbol(rootPath, "packages/query-core/src/utils.ts", "hashQueryKeyByOptions"),
+    symbol(rootPath, "packages/query-core/src/utils.ts", "partialMatchKey"),
+    symbol(rootPath, "packages/query-core/src/query.ts", "Query"),
+    symbol(rootPath, "packages/react-query/src/__tests__/useQuery.test.tsx", "useQuery"),
+    symbol(rootPath, "packages/preact-query/src/__tests__/useQuery.test.tsx", "useQuery")
+  ];
+  const chunks = [
+    chunk(
+      rootPath,
+      "packages/query-core/src/utils.ts",
+      "hashKey",
+      "Default query and mutation keys hash function. Hashes the value into a stable hash. Object.keys(val).sort().reduce object key order stable consistently."
+    ),
+    chunk(
+      rootPath,
+      "packages/query-core/src/utils.ts",
+      "partialMatchKey",
+      "Checks if key b partially matches with key a for query keys and mutation keys."
+    ),
+    chunk(
+      rootPath,
+      "packages/query-core/src/__tests__/utils.test.tsx",
+      "hashKey tests",
+      "should hash objects with sorted keys consistently same properties different order expect hashKey key1 equals hashKey key2"
+    ),
+    chunk(
+      rootPath,
+      "packages/react-query/src/__tests__/useQuery.test.tsx",
+      "useQuery",
+      "useQuery query client query cache keys options queryFn queryKey many query tests"
+    ),
+    chunk(
+      rootPath,
+      "packages/preact-query/src/__tests__/useQuery.test.tsx",
+      "useQuery",
+      "useQuery query client query cache keys options queryFn queryKey many query tests"
+    ),
+    chunk(rootPath, "packages/query-core/src/query.ts", "Query", "query state fetch status observers data errors")
+  ];
+
+  return {
+    files,
+    symbols,
+    chunks,
+    vectors: chunks.map((record) => vector(rootPath, record)),
+    edges: [
+      {
+        rootPath,
+        fromFile: "packages/query-core/src/__tests__/utils.test.tsx",
+        toFile: "packages/query-core/src/utils.ts",
+        type: "test_for",
+        metadata: {}
+      }
+    ]
   };
 }

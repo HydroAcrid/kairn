@@ -496,3 +496,96 @@ This is the right next validation path because simple discovery tasks are where 
 The first implementation is intentionally case-driven through benchmark JSON, not a new benchmark product surface. `examples/bench/seeded-large-js-ts-template.json` documents the shape for large public repositories. Real seeded suites should pin exact commits and keep tests narrow enough to run repeatedly.
 
 Next validation should add at least one real seeded JS/TS debugging suite before making broader savings claims.
+
+## First Real Seeded Large-Repo Codex Runs
+
+Kairn was tested against a pinned `TanStack/query` clone:
+
+- Repo: `https://github.com/TanStack/query.git`
+- Ref: `9d1ce70b39d91271356432147d16f5441f9fa892`
+- Seeded patch: changed `packages/query-core/src/utils.ts` from `.sort()` to `.reverse()` inside `hashKey`.
+- Verification: `grep -q '\\.sort()' packages/query-core/src/utils.ts`
+
+The first attempt failed before Codex ran because the setup patch was malformed. After regenerating the patch from `git diff`, the harness successfully cloned the public repo, applied the patch, ran Codex in disposable workspaces, and verified the final file.
+
+### Exact-Path Prompt
+
+Report:
+
+```text
+/tmp/kairn-tanstack-real-codex-write-proof-20260507141837.json
+```
+
+Prompt included the exact file path and verification command. All modes fixed the seeded failure:
+
+| Mode | Outcome | Observed tokens | Delta vs baseline | Prime/hook signal |
+| --- | --- | ---: | ---: | --- |
+| Baseline | pass | `17,723` | - | none |
+| Prompt-only savings hook | pass | `19,931` | `-12.46%` | `primeEmitted=1`, `primeTokens=928`, `hookInvocations=1` |
+| Prompt + observe hooks | pass | `19,211` | `-8.40%` | `primeEmitted=1`, `primeTokens=928`, `hookInvocations=7` |
+
+Interpretation: this task is too easy for Kairn to help because the prompt already names the exact file and verification command. Kairn adds context overhead.
+
+### Hidden-Path Prompt
+
+Report:
+
+```text
+/tmp/kairn-tanstack-hidden-real-codex-proof-20260507142507.json
+```
+
+Prompt described the hashing behavior but did not name the exact file path or verification command. All modes still fixed the seeded failure:
+
+| Mode | Outcome | Observed tokens | Delta vs baseline | Prime/hook signal |
+| --- | --- | ---: | ---: | --- |
+| Baseline | pass | `29,870` | - | none |
+| Prompt-only savings hook | pass | `39,579` | `-32.50%` | `primeEmitted=1`, `primeTokens=1001`, `hookInvocations=1` |
+| Prompt + observe hooks | pass | `32,343` | `-8.28%` | `primeEmitted=1`, `primeTokens=1001`, `hookInvocations=19` |
+
+The hidden-path prime was actively weak. It did not include `packages/query-core/src/utils.ts`; it ranked broad `useQuery` tests and query-related files instead. Codex found and fixed the correct file without Kairn.
+
+Concrete retrieval failure:
+
+- Query terms such as "stable hashing", "object query keys", and "same properties in different orders" should strongly boost `hashKey`, `hashQueryKeyByOptions`, `partialMatchKey`, and `packages/query-core/src/utils.ts`.
+- Broad repo/domain terms like `query`, `query-core`, and `useQuery` overwhelmed exact behavior terms.
+- Test-heavy results were over-prioritized even though the task requested a production-source fix.
+
+Conclusion from these real runs:
+
+- The seeded harness works mechanically.
+- Modern Codex is strong at repository search on this class of bug.
+- Kairn should not claim savings from this seeded class yet.
+- The next useful implementation is behavior/symbol-aware retrieval for bug descriptions, especially mapping natural-language behavior to symbols such as `hashKey`.
+
+## Behavior Retrieval Patch
+
+Implemented after the first seeded TanStack runs.
+
+What changed:
+
+- Added behavior-aware scoring for natural-language bug descriptions.
+- Detects behavior terms such as `stable`, `hash`, `object`, `same`, `different order`, `sort`, `match`, and `consistent`.
+- Boosts matching production symbols such as `hashKey`, `hashQueryKeyByOptions`, and `partialMatchKey`.
+- Downranks broad test files when the prompt asks for a production-source fix and does not explicitly ask for tests.
+- Adds `behaviorScore` to ranked context output so failures are easier to inspect.
+- Preserves ranked file order in prime briefs instead of alphabetizing de-duplicated paths.
+
+Regression target:
+
+```text
+Debug a seeded regression in TanStack Query query-core: object query keys with the same properties in different orders no longer hash consistently. Fix the production source.
+```
+
+Expected first file:
+
+```text
+packages/query-core/src/utils.ts
+```
+
+Validation:
+
+- Added a fixture regression test in `tests/semantic.test.ts`.
+- Re-ran `kairn prime` against the previous hidden-path TanStack disposable workspace.
+- The prime brief now lists `packages/query-core/src/utils.ts` first in both `Start Here` and `Ranked Files`.
+
+This does not prove observed Codex savings yet. It fixes the known retrieval miss that made Kairn harmful on the hidden-path seeded run. The next live Codex proof should rerun the same hidden-path TanStack case and compare against the previous reports.
