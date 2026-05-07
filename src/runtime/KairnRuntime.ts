@@ -6,6 +6,11 @@ import type {
   ContextQueryMode,
   ContextResponse,
   ContextResponseMode,
+  CodexUsageRecord,
+  EvalComparison,
+  EvalObservationRecord,
+  EvalRunMode,
+  EvalRunReport,
   FileRecord,
   HookHandlingResult,
   HybridScoredResult,
@@ -38,6 +43,7 @@ import { classifyObservedCommand } from "../watch/classifyCommand.js";
 import { extractFailureFiles } from "../watch/failureParser.js";
 import { nowIso } from "../utils/time.js";
 import { classifyQueryIntent, type QueryIntent } from "../retrieval/queryIntent.js";
+import { mergeCodexUsage, parseCodexUsageFooter, readCodexTranscript } from "../eval/codexUsage.js";
 
 export class KairnRuntime {
   private readonly rootPath: string;
@@ -108,6 +114,10 @@ export class KairnRuntime {
     const session = this.store.getSession(sessionId);
     const events = this.store.listMetricsEvents(sessionId);
     const watchEvents = this.store.listWatchEvents(sessionId);
+    const evalRuns = this.store.listEvalRuns({ sessionId });
+    const evalObservations = this.store.listEvalObservations({ sessionId });
+    const latestCodexUsage = [...evalObservations].reverse().find((event) => event.kind === "codex_usage");
+    const latestCodexUsageRecord = codexUsageFromObservation(latestCodexUsage);
     const totals = summarizeMetrics(events);
 
     return {
@@ -125,7 +135,137 @@ export class KairnRuntime {
         fileChanges: watchEvents.filter((event) => event.kind === "file_change" || event.kind === "diff_change").length,
         hooks: watchEvents.filter((event) => event.source === "claude" || event.source === "codex" || event.source === "generic").length
       },
+      observed: {
+        evalRuns: evalRuns.length,
+        observations: evalObservations.length,
+        ...(latestCodexUsageRecord ? { latestCodexUsage: latestCodexUsageRecord } : {})
+      },
       recentEvents: events.slice(-10)
+    };
+  }
+
+  startEvalRun(input: {
+    task: string;
+    label: string;
+    mode: EvalRunMode;
+    sessionId?: string | undefined;
+    metadata?: Record<string, unknown> | undefined;
+  }) {
+    if (input.sessionId) this.store.getSession(input.sessionId);
+    return this.store.createEvalRun({
+      id: `eval_${randomUUID()}`,
+      ...(input.sessionId ? { sessionId: input.sessionId } : {}),
+      rootPath: this.rootPath,
+      task: input.task,
+      label: input.label,
+      mode: input.mode,
+      status: "active",
+      metadata: input.metadata ?? {}
+    });
+  }
+
+  ingestCodexUsage(input: {
+    sessionId: string;
+    runId?: string | undefined;
+    usageText?: string | undefined;
+    transcriptPath?: string | undefined;
+  }): EvalObservationRecord {
+    const session = this.store.getSession(input.sessionId);
+    const run = input.runId
+      ? this.store.getEvalRun(input.runId)
+      : this.findLatestEvalRunForSession(input.sessionId);
+    if (run.sessionId && run.sessionId !== input.sessionId) {
+      throw new Error(`Eval run ${run.id} belongs to a different session.`);
+    }
+
+    const footerUsage = input.usageText ? parseCodexUsageFooter(input.usageText) : undefined;
+    const transcript = input.transcriptPath ? readCodexTranscript({ transcriptPath: input.transcriptPath }) : undefined;
+    const usage = mergeCodexUsage({
+      footerUsage,
+      transcriptUsage: transcript?.usage,
+      transcriptMetadata: transcript?.metadata,
+      transcriptPath: transcript?.transcriptPath,
+      transcriptHash: transcript?.transcriptHash
+    });
+
+    if (!usage) {
+      throw new Error("No Codex token usage could be parsed from --usage, stdin, or --transcript.");
+    }
+
+    return this.store.recordEvalObservation({
+      runId: run.id,
+      sessionId: input.sessionId,
+      kind: "codex_usage",
+      summary: `Codex usage: ${usage.totalTokens} total tokens (${usage.inputTokens} input, ${usage.outputTokens} output).`,
+      metrics: {
+        codexUsage: usage,
+        ...(input.usageText ? { usageTextHash: sha256(input.usageText) } : {}),
+        rootPath: session.rootPath
+      },
+      files: [],
+      contentHash: sha256(JSON.stringify(usage))
+    });
+  }
+
+  addEvalNote(input: {
+    runId: string;
+    outcome: "pass" | "fail" | "partial";
+    summary: string;
+    files?: string[] | undefined;
+    sessionId?: string | undefined;
+  }): EvalObservationRecord {
+    const run = this.store.getEvalRun(input.runId);
+    const sessionId = input.sessionId ?? run.sessionId;
+    const observation = this.store.recordEvalObservation({
+      runId: run.id,
+      ...(sessionId ? { sessionId } : {}),
+      kind: "manual_outcome",
+      summary: input.summary,
+      metrics: {
+        outcome: input.outcome
+      },
+      files: uniquePaths(input.files ?? []),
+      contentHash: sha256([input.outcome, input.summary, ...(input.files ?? [])].join("\n"))
+    });
+    this.store.updateEvalRunStatus(run.id, input.outcome === "pass" ? "completed" : "active");
+    return observation;
+  }
+
+  getEvalReport(input: { runId?: string | undefined; sessionId?: string | undefined }): EvalRunReport | { runs: EvalRunReport[] } {
+    if (input.runId) return this.buildEvalReport(this.store.getEvalRun(input.runId));
+    const runs = this.store
+      .listEvalRuns({
+        rootPath: this.rootPath,
+        ...(input.sessionId ? { sessionId: input.sessionId } : {})
+      })
+      .map((run) => this.buildEvalReport(run));
+    return { runs };
+  }
+
+  compareEvalRuns(input: { baselineRunId: string; kairnRunId: string }): EvalComparison {
+    const baseline = this.buildEvalReport(this.store.getEvalRun(input.baselineRunId));
+    const kairn = this.buildEvalReport(this.store.getEvalRun(input.kairnRunId));
+    const baselineTokens = baseline.codexUsage?.totalTokens;
+    const kairnTokens = kairn.codexUsage?.totalTokens;
+    const observedTokenDelta =
+      baselineTokens !== undefined && kairnTokens !== undefined
+        ? {
+            baselineTokens,
+            kairnTokens,
+            savedTokens: Math.max(0, baselineTokens - kairnTokens),
+            savingsRate: baselineTokens > 0 ? Number(((baselineTokens - kairnTokens) / baselineTokens).toFixed(4)) : 0
+          }
+        : undefined;
+
+    return {
+      baseline,
+      kairn,
+      ...(observedTokenDelta ? { observedTokenDelta } : {}),
+      estimatedKairnSavings: kairn.estimatedMetrics?.totals ?? {
+        ...emptyMetricsBucket(),
+        savingsRate: 0
+      },
+      outcomeNotes: [...baseline.observations, ...kairn.observations].filter((event) => event.kind === "manual_outcome")
     };
   }
 
@@ -700,23 +840,38 @@ export class KairnRuntime {
       knownFiles,
       explicitFiles: input.event.files
     });
-        const response = input.event.output
+    const kind = input.event.exitCode && input.event.exitCode !== 0 ? "failure" : input.event.kind;
+    const shouldCompressOutput =
+      Boolean(input.event.output) &&
+      !isPromptEvent(input.event.eventName) &&
+      !isTrivialSuccessfulHook({
+        eventKind: kind,
+        command: input.event.command,
+        output: input.event.output,
+        linkedFiles,
+        exitCode: input.event.exitCode
+      });
+    const response = shouldCompressOutput
       ? this.compressOutput({
           sessionId: input.sessionId,
           type: outputKind,
-          output: input.event.output,
+          output: input.event.output!,
           budget: 1200,
           source: input.event.source,
           eventName: input.event.eventName
         })
-      : undefined;
-    const kind = input.event.exitCode && input.event.exitCode !== 0 ? "failure" : input.event.kind;
+      : await this.promptContextResponse({
+          sessionId: input.sessionId,
+          eventName: input.event.eventName,
+          prompt: input.event.output
+        });
     const recommendation = await this.recommendFromHook({
       sessionId: input.sessionId,
       command: input.event.command,
       response,
       linkedFiles,
-      outputKind
+      outputKind,
+      eventKind: kind
     });
     const summary = [
       input.event.command ? `Command: ${input.event.command}` : `Event: ${input.event.eventName}`,
@@ -743,6 +898,25 @@ export class KairnRuntime {
         ...(input.event.timestamp ? { timestamp: input.event.timestamp } : {})
       }
     });
+    this.recordMetricsEvent({
+      sessionId: input.sessionId,
+      rootPath: session.rootPath,
+      eventKind: "hook_signal",
+      eventName: recommendation ? "hook_recommendation_emitted" : "hook_recommendation_suppressed",
+      source: input.event.source,
+      baselineTokens: 0,
+      outputTokens: recommendation?.content ? estimateTokens(recommendation.content) : 0,
+      files: recommendation?.files ?? linkedFiles,
+      metadata: {
+        eventName: input.event.eventName,
+        hookKind: kind,
+        outputKind,
+        linkedFiles: linkedFiles.length,
+        recommendation: recommendation ? "emitted" : "suppressed",
+        compressedOutput: Boolean(response),
+        trivialSuccessfulOutput: Boolean(input.event.output) && !shouldCompressOutput && !response
+      }
+    });
 
     return {
       event,
@@ -754,6 +928,47 @@ export class KairnRuntime {
   listWatchEvents(sessionId: string, limit?: number): WatchEventRecord[] {
     this.store.getSession(sessionId);
     return this.store.listWatchEvents(sessionId, limit);
+  }
+
+  private findLatestEvalRunForSession(sessionId: string) {
+    const run = this.store.listEvalRuns({ sessionId, limit: 1 })[0];
+    if (!run) {
+      throw new Error(`No eval run exists for session ${sessionId}. Run kairn eval start first or pass --run.`);
+    }
+    return run;
+  }
+
+  private buildEvalReport(run: ReturnType<SqliteStore["getEvalRun"]>): EvalRunReport {
+    const observations = this.store.listEvalObservations({ runId: run.id });
+    const watchEvents = run.sessionId ? this.store.listWatchEvents(run.sessionId) : [];
+    const codexUsage = codexUsageFromObservation([...observations].reverse().find((event) => event.kind === "codex_usage"));
+    return {
+      run,
+      observations,
+      ...(codexUsage ? { codexUsage } : {}),
+      ...(run.sessionId ? { estimatedMetrics: this.getMetrics(run.sessionId) } : {}),
+      watch: {
+        events: watchEvents.length,
+        failures: watchEvents.filter((event) => event.kind === "failure").length,
+        fileChanges: watchEvents.filter((event) => event.kind === "file_change" || event.kind === "diff_change").length,
+        hooks: watchEvents.filter((event) => event.source === "claude" || event.source === "codex" || event.source === "generic").length
+      }
+    };
+  }
+
+  private async promptContextResponse(input: {
+    sessionId: string;
+    eventName: string;
+    prompt?: string | undefined;
+  }): Promise<ContextResponse | undefined> {
+    if (!isHighConfidencePrompt(input.eventName, input.prompt)) return undefined;
+    return this.findContext({
+      sessionId: input.sessionId,
+      query: input.prompt,
+      requestType: "find_context",
+      budget: 900,
+      mode: "brief"
+    });
   }
 
   private async refreshIndex(rootPath: string) {
@@ -804,9 +1019,16 @@ export class KairnRuntime {
     response?: ContextResponse | undefined;
     linkedFiles: string[];
     outputKind: OutputKind;
+    eventKind: WatchEventKind;
   }): Promise<WatchRecommendation | undefined> {
     const suggested = new Set<string>(input.linkedFiles);
     const warnings = [...(input.response?.warnings ?? [])];
+
+    if (input.response?.mode === "brief") {
+      for (const file of input.response.suggestedNextContext.slice(0, 5)) {
+        suggested.add(file);
+      }
+    }
 
     for (const linkedFile of input.linkedFiles.slice(0, 2)) {
       try {
@@ -829,6 +1051,7 @@ export class KairnRuntime {
     }
 
     if (suggested.size === 0 && !input.response) return undefined;
+    if (suggested.size === 0 && input.response && input.eventKind !== "failure" && input.outputKind === "generic") return undefined;
 
     const files = [...suggested].slice(0, 10);
     return {
@@ -1145,6 +1368,82 @@ function emptyMetricsBucket(): MetricsBucket {
     outputTokens: 0,
     savedTokens: 0
   };
+}
+
+function codexUsageFromObservation(observation: EvalObservationRecord | undefined): CodexUsageRecord | undefined {
+  const value = observation?.metrics.codexUsage;
+  if (!isRecord(value)) return undefined;
+  const totalTokens = numberField(value.totalTokens);
+  const inputTokens = numberField(value.inputTokens);
+  const cachedInputTokens = numberField(value.cachedInputTokens);
+  const outputTokens = numberField(value.outputTokens);
+  const source = stringField(value.source);
+  if (
+    totalTokens === undefined ||
+    inputTokens === undefined ||
+    cachedInputTokens === undefined ||
+    outputTokens === undefined ||
+    (source !== "footer" && source !== "transcript" && source !== "footer+transcript")
+  ) {
+    return undefined;
+  }
+  const model = stringField(value.model);
+  const hostSessionId = stringField(value.hostSessionId);
+  const turnId = stringField(value.turnId);
+  const transcriptPath = stringField(value.transcriptPath);
+  const transcriptHash = stringField(value.transcriptHash);
+
+  return {
+    totalTokens,
+    inputTokens,
+    cachedInputTokens,
+    outputTokens,
+    ...(model ? { model } : {}),
+    ...(hostSessionId ? { hostSessionId } : {}),
+    ...(turnId ? { turnId } : {}),
+    ...(transcriptPath ? { transcriptPath } : {}),
+    ...(transcriptHash ? { transcriptHash } : {}),
+    source
+  };
+}
+
+function isPromptEvent(eventName: string): boolean {
+  return eventName.toLowerCase() === "userpromptsubmit";
+}
+
+function isHighConfidencePrompt(eventName: string, prompt: string | undefined): boolean {
+  if (!isPromptEvent(eventName) || !prompt) return false;
+  const normalized = prompt.toLowerCase();
+  if (normalized.startsWith("run ") || normalized.includes("do not edit files")) return false;
+  return /\b(fix|implement|update|refactor|debug|error|failing|component|api|layout|parser|mobile|test|hook|metrics|eval)\b/.test(normalized);
+}
+
+function isTrivialSuccessfulHook(input: {
+  eventKind: WatchEventKind;
+  command?: string | undefined;
+  output?: string | undefined;
+  linkedFiles: string[];
+  exitCode?: number | undefined;
+}): boolean {
+  if (!input.output || input.eventKind === "failure" || input.linkedFiles.length > 0) return false;
+  if (input.exitCode !== undefined && input.exitCode !== 0) return false;
+  const lineCount = input.output.split(/\r?\n/).filter((line) => line.trim()).length;
+  const outputTokens = estimateTokens(input.output);
+  const command = input.command?.trim().toLowerCase() ?? "";
+  if (["pwd", "git status", "git branch", "npm pkg get scripts", "pnpm pkg get scripts"].includes(command)) return true;
+  return lineCount <= 12 && outputTokens <= 80 && !/\b(error|fail|failed|exception|traceback|ts\d{4})\b/i.test(input.output);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function numberField(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function stringField(value: unknown): string | undefined {
+  return typeof value === "string" && value ? value : undefined;
 }
 
 function sliceLines(content: string, startLine: number, endLine: number): string {

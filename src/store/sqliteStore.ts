@@ -3,6 +3,10 @@ import type {
   CommandRecord,
   ContextShownRecord,
   DiffRecord,
+  EvalObservationRecord,
+  EvalRunMode,
+  EvalRunRecord,
+  EvalRunStatus,
   FileRecord,
   GraphEdgeRecord,
   MetricsEventRecord,
@@ -133,6 +137,31 @@ type MetricsEventRow = {
   saved_tokens: number;
   files_json: string;
   metadata_json: string;
+  created_at: string;
+};
+
+type EvalRunRow = {
+  id: string;
+  session_id: string | null;
+  root_path: string;
+  task: string;
+  label: string;
+  mode: EvalRunMode;
+  status: EvalRunStatus;
+  started_at: string;
+  ended_at: string | null;
+  metadata_json: string;
+};
+
+type EvalObservationRow = {
+  id: number;
+  run_id: string;
+  session_id: string | null;
+  kind: EvalObservationRecord["kind"];
+  summary: string;
+  metrics_json: string;
+  files_json: string;
+  content_hash: string;
   created_at: string;
 };
 
@@ -567,6 +596,131 @@ export class SqliteStore {
     return rows.map(mapMetricsEventRow).reverse();
   }
 
+  createEvalRun(record: Omit<EvalRunRecord, "startedAt">): EvalRunRecord {
+    const timestamp = nowIso();
+    this.db
+      .prepare(`
+        insert into eval_runs (
+          id, session_id, root_path, task, label, mode, status, started_at, ended_at, metadata_json
+        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .run(
+        record.id,
+        record.sessionId ?? null,
+        record.rootPath,
+        record.task,
+        record.label,
+        record.mode,
+        record.status,
+        timestamp,
+        record.endedAt ?? null,
+        JSON.stringify(record.metadata)
+      );
+
+    if (record.sessionId) this.touchSession(record.sessionId);
+    return {
+      ...record,
+      startedAt: timestamp
+    };
+  }
+
+  getEvalRun(runId: string): EvalRunRecord {
+    const row = this.db.prepare("select * from eval_runs where id = ?").get(runId) as EvalRunRow | undefined;
+    if (!row) {
+      throw new Error(`Unknown Kairn eval run: ${runId}`);
+    }
+    return mapEvalRunRow(row);
+  }
+
+  listEvalRuns(input: { rootPath?: string | undefined; sessionId?: string | undefined; limit?: number | undefined } = {}): EvalRunRecord[] {
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    if (input.rootPath) {
+      conditions.push("root_path = ?");
+      params.push(input.rootPath);
+    }
+    if (input.sessionId) {
+      conditions.push("session_id = ?");
+      params.push(input.sessionId);
+    }
+    if (input.limit) {
+      params.push(input.limit);
+    }
+
+    const rows = this.db
+      .prepare(`
+        select * from eval_runs
+        ${conditions.length > 0 ? `where ${conditions.join(" and ")}` : ""}
+        order by started_at desc, id desc
+        ${input.limit ? "limit ?" : ""}
+      `)
+      .all(...params) as EvalRunRow[];
+
+    return rows.map(mapEvalRunRow);
+  }
+
+  updateEvalRunStatus(runId: string, status: EvalRunStatus): EvalRunRecord {
+    const endedAt = status === "active" ? null : nowIso();
+    this.db
+      .prepare("update eval_runs set status = ?, ended_at = ? where id = ?")
+      .run(status, endedAt, runId);
+    return this.getEvalRun(runId);
+  }
+
+  recordEvalObservation(record: Omit<EvalObservationRecord, "id" | "createdAt">): EvalObservationRecord {
+    const timestamp = nowIso();
+    const result = this.db
+      .prepare(`
+        insert into eval_observations (
+          run_id, session_id, kind, summary, metrics_json, files_json, content_hash, created_at
+        ) values (?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .run(
+        record.runId,
+        record.sessionId ?? null,
+        record.kind,
+        record.summary,
+        JSON.stringify(record.metrics),
+        JSON.stringify(record.files),
+        record.contentHash,
+        timestamp
+      );
+
+    if (record.sessionId) this.touchSession(record.sessionId);
+    return {
+      ...record,
+      id: Number(result.lastInsertRowid),
+      createdAt: timestamp
+    };
+  }
+
+  listEvalObservations(input: { runId?: string | undefined; sessionId?: string | undefined; limit?: number | undefined }): EvalObservationRecord[] {
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    if (input.runId) {
+      conditions.push("run_id = ?");
+      params.push(input.runId);
+    }
+    if (input.sessionId) {
+      conditions.push("session_id = ?");
+      params.push(input.sessionId);
+    }
+    if (input.limit) {
+      params.push(input.limit);
+    }
+
+    const rows = this.db
+      .prepare(`
+        select * from eval_observations
+        ${conditions.length > 0 ? `where ${conditions.join(" and ")}` : ""}
+        order by created_at desc, id desc
+        ${input.limit ? "limit ?" : ""}
+      `)
+      .all(...params) as EvalObservationRow[];
+
+    return rows.map(mapEvalObservationRow).reverse();
+  }
+
   private touchSession(sessionId: string): void {
     this.db.prepare("update sessions set updated_at = ? where id = ?").run(nowIso(), sessionId);
   }
@@ -696,6 +850,31 @@ export class SqliteStore {
         created_at text not null
       );
 
+      create table if not exists eval_runs (
+        id text primary key,
+        session_id text references sessions(id) on delete set null,
+        root_path text not null,
+        task text not null,
+        label text not null,
+        mode text not null check (mode in ('baseline', 'kairn', 'manual')),
+        status text not null check (status in ('active', 'completed', 'abandoned')),
+        started_at text not null,
+        ended_at text,
+        metadata_json text not null default '{}'
+      );
+
+      create table if not exists eval_observations (
+        id integer primary key autoincrement,
+        run_id text not null references eval_runs(id) on delete cascade,
+        session_id text references sessions(id) on delete set null,
+        kind text not null,
+        summary text not null,
+        metrics_json text not null default '{}',
+        files_json text not null default '[]',
+        content_hash text not null,
+        created_at text not null
+      );
+
       create index if not exists context_shown_session_idx on context_shown(session_id);
       create index if not exists command_records_session_idx on command_records(session_id);
       create index if not exists diff_observations_session_idx on diff_observations(session_id);
@@ -703,6 +882,10 @@ export class SqliteStore {
       create index if not exists watch_events_session_kind_idx on watch_events(session_id, kind, created_at);
       create index if not exists metrics_events_session_idx on metrics_events(session_id, created_at);
       create index if not exists metrics_events_session_kind_idx on metrics_events(session_id, event_kind, created_at);
+      create index if not exists eval_runs_root_idx on eval_runs(root_path, started_at);
+      create index if not exists eval_runs_session_idx on eval_runs(session_id, started_at);
+      create index if not exists eval_observations_run_idx on eval_observations(run_id, created_at);
+      create index if not exists eval_observations_session_idx on eval_observations(session_id, created_at);
       create index if not exists symbols_root_file_idx on symbols(root_path, file_path, name);
       create index if not exists graph_edges_root_from_idx on graph_edges(root_path, from_file);
       create index if not exists graph_edges_root_to_idx on graph_edges(root_path, to_file);
@@ -804,6 +987,35 @@ function mapMetricsEventRow(row: MetricsEventRow): MetricsEventRecord {
     savedTokens: row.saved_tokens,
     files: parseJsonList(row.files_json),
     metadata: parseJsonObject(row.metadata_json),
+    createdAt: row.created_at
+  };
+}
+
+function mapEvalRunRow(row: EvalRunRow): EvalRunRecord {
+  return {
+    id: row.id,
+    ...(row.session_id ? { sessionId: row.session_id } : {}),
+    rootPath: row.root_path,
+    task: row.task,
+    label: row.label,
+    mode: row.mode,
+    status: row.status,
+    startedAt: row.started_at,
+    ...(row.ended_at ? { endedAt: row.ended_at } : {}),
+    metadata: parseJsonObject(row.metadata_json)
+  };
+}
+
+function mapEvalObservationRow(row: EvalObservationRow): EvalObservationRecord {
+  return {
+    id: row.id,
+    runId: row.run_id,
+    ...(row.session_id ? { sessionId: row.session_id } : {}),
+    kind: row.kind,
+    summary: row.summary,
+    metrics: parseJsonObject(row.metrics_json),
+    files: parseJsonList(row.files_json),
+    contentHash: row.content_hash,
     createdAt: row.created_at
   };
 }

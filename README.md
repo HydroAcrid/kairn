@@ -89,6 +89,34 @@ kairn metrics --session task_123 --root /path/to/repo --json
 
 The useful first number while testing Codex hooks is `estimated tokens saved`. It is not billing-grade accounting; it is a directional measure for whether Kairn is reducing repeated context and compressing noisy command output.
 
+## Eval Harness
+
+The eval harness records proof from manual A/B Codex runs. Kairn does not launch Codex or spend quota automatically; you run the baseline and Kairn-assisted sessions yourself, then ingest the Codex usage footer.
+
+```bash
+# Baseline: Codex without Kairn hook output, or with hooks disabled.
+kairn eval start --root /path/to/repo --session task_123 --task "Fix mobile layout" --mode baseline --label baseline
+
+# Kairn-assisted: Codex with Kairn hooks/MCP enabled.
+kairn eval start --root /path/to/repo --session task_123 --task "Fix mobile layout" --mode kairn --label kairn
+
+# Paste the footer from Codex at the end of each run.
+kairn eval ingest-codex --root /path/to/repo --session task_123 --run eval_abc --usage "Token usage: total=33,729 input=33,253 (+ 24,704 cached) output=476"
+
+# Add the human outcome and compare.
+kairn eval note --root /path/to/repo --run eval_def --outcome pass --summary "Completed and tests passed" --files src/app.ts
+kairn eval compare --root /path/to/repo --baseline eval_abc --kairn eval_def
+kairn eval report --root /path/to/repo --session task_123
+```
+
+`ingest-codex` can also read a transcript path for best-effort metadata:
+
+```bash
+kairn eval ingest-codex --root /path/to/repo --session task_123 --run eval_def --transcript ~/.codex/sessions/...
+```
+
+Kairn stores parsed token totals, hashes, file references, and summaries. It does not store raw Codex transcripts or raw command output. Eval reports separate observed Codex usage from Kairn's estimated context savings; V1 is directional proof, not billing-grade token accounting.
+
 ## State
 
 Kairn stores generated state in the target repo under `.kairn/`. This includes local SQLite metadata, sessions, scans, traces, watch events, metrics, compressed command summaries, and hashes. Raw source files and raw command output are not copied into Kairn state.

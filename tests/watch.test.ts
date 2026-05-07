@@ -324,6 +324,31 @@ describe("KairnRuntime watch behavior", () => {
 
     runtime.close();
   });
+
+  it("records trivial successful hook output without emitting recommendation context", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const { session } = await runtime.startTask("Update dashboard rendering");
+    const event = normalizeHookPayload({
+      source: "codex",
+      payload: {
+        hook_event_name: "PostToolUse",
+        tool_name: "Bash",
+        tool_input: { command: "pwd" },
+        tool_response: { stdout: root, exit_code: 0 }
+      }
+    });
+
+    const result = await runtime.handleHookEvent({ sessionId: session.id, event });
+    const metrics = runtime.getMetrics(session.id);
+
+    expect(result.event.kind).toBe("command");
+    expect(result.response).toBeUndefined();
+    expect(result.recommendation).toBeUndefined();
+    expect(metrics.byKind.hook_signal?.events).toBe(1);
+
+    runtime.close();
+  });
 });
 
 describe("watch and hook CLI", () => {
