@@ -478,3 +478,21 @@ Interpretation:
 - The high-confidence prompt gate fix mattered: read-only prompts containing "Do not edit files" now receive proactive context.
 - Quality evidence improved because the live suite now verifies expected file mentions.
 - This is promising but still one repeat; the product claim should wait for a repeated median proof.
+
+## Seeded Large-Repo Harness
+
+Kairn now supports seeded agent benchmark cases for harder debugging validation:
+
+- Clone a pinned repo into a disposable temp workspace.
+- Apply an optional setup patch or patch file.
+- Run setup commands.
+- Optionally confirm the seeded failure with `expectedFailureCommand`.
+- Run baseline/prompt-only/prompt+hooks/manual-prime Codex commands.
+- Run a final `testCommand` to decide whether the agent actually fixed the seeded failure.
+- Score observed Codex tokens, expected-file mentions, changed files, excluded-file drift, hook metrics, elapsed time, and pass/fail.
+
+This is the right next validation path because simple discovery tasks are where modern Codex is already efficient. Seeded failures in large JS/TS repos should give Kairn more leverage: failure hooks, expected files, test output, graph neighbors, and proactive context can all work together.
+
+The first implementation is intentionally case-driven through benchmark JSON, not a new benchmark product surface. `examples/bench/seeded-large-js-ts-template.json` documents the shape for large public repositories. Real seeded suites should pin exact commits and keep tests narrow enough to run repeatedly.
+
+Next validation should add at least one real seeded JS/TS debugging suite before making broader savings claims.

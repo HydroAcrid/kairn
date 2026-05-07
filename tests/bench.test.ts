@@ -54,6 +54,46 @@ describe("benchmark suite and scoring", () => {
     expect(suite.cases.every((item) => item.mode === "agent")).toBe(true);
   });
 
+  it("loads seeded agent benchmark case metadata", () => {
+    const root = createFixtureRepo();
+    const patchPath = path.join(root, "seed.patch");
+    const suitePath = path.join(root, "seed-suite.json");
+    fs.writeFileSync(patchPath, "");
+    fs.writeFileSync(
+      suitePath,
+      JSON.stringify({
+        id: "seed-suite",
+        name: "Seed Suite",
+        cases: [
+          {
+            id: "seeded-debug",
+            mode: "agent",
+            task: "Debug seeded failure",
+            expectedFiles: ["src/app.ts"],
+            excludedFiles: [],
+            seed: {
+              repoUrl: root,
+              ref: "HEAD",
+              cloneDepth: 1,
+              setupCommands: ["node -e \"process.exit(0)\""],
+              setupPatchFile: "./seed.patch",
+              expectedFailureCommand: "node -e \"process.exit(1)\"",
+              testCommand: "node -e \"process.exit(0)\""
+            }
+          }
+        ]
+      })
+    );
+
+    const suite = loadBenchmarkSuite({ suitePath, files: [] });
+    const seed = suite.cases[0]?.seed;
+
+    expect(seed?.repoUrl).toBe(root);
+    expect(seed?.ref).toBe("HEAD");
+    expect(seed?.setupPatchFile).toBe(patchPath);
+    expect(seed?.testCommand).toContain("process.exit(0)");
+  });
+
   it("scores expected file recall, unexpected drift, and comparisons", () => {
     const before = scoreBenchmarkCase({
       runId: "bench_before",
@@ -120,6 +160,26 @@ describe("benchmark suite and scoring", () => {
     expect(before.unexpectedFileRate).toBe(1);
     expect(after.expectedFileRecall).toBe(1);
     expect(comparison.improvedCases).toContain("ui");
+  });
+
+  it("scores excluded directory and glob patterns as unexpected drift", () => {
+    const result = scoreBenchmarkCase({
+      runId: "bench",
+      benchmarkCase: {
+        id: "seeded",
+        mode: "agent",
+        task: "Debug seeded failure",
+        expectedFiles: ["src/core.ts"],
+        excludedFiles: ["docs/", "examples/*.tsx"]
+      },
+      actualFiles: ["src/core.ts", "docs/guide.md", "examples/demo.tsx"],
+      responseTokens: 200,
+      summary: "mixed"
+    });
+
+    expect(result.expectedFileRecall).toBe(1);
+    expect(result.unexpectedFileRate).toBe(0.6667);
+    expect(result.recommendations.join("\n")).toContain("docs/guide.md");
   });
 
   it("aggregates observed Codex token usage in benchmark comparisons", () => {
@@ -321,6 +381,95 @@ describe("benchmark runtime and CLI", () => {
     expect(report.results[0]?.actualFiles).toContain("src/app.ts");
     expect(report.results[0]?.expectedFileRecall).toBe(1);
     expect(report.results[0]?.metadata.expectedFileMentions).toEqual(["src/app.ts"]);
+
+    runtime.close();
+  });
+
+  it("runs seeded agent benchmarks in a disposable cloned workspace and verifies test command", async () => {
+    const root = createFixtureRepo();
+    const suitePath = path.join(root, "seeded-agent-suite.json");
+    fs.writeFileSync(
+      suitePath,
+      JSON.stringify({
+        id: "seeded-agent",
+        name: "Seeded Agent",
+        cases: [
+          {
+            id: "seeded-debug",
+            mode: "agent",
+            task: "Debug seeded failure",
+            agentPrompt: "Debug seeded failure",
+            expectedFiles: ["src/app.ts"],
+            excludedFiles: [],
+            budget: 1200,
+            seed: {
+              repoUrl: root,
+              ref: "HEAD",
+              cloneDepth: 1,
+              setupCommands: ["node -e \"require('fs').writeFileSync('seed-setup.txt','ok')\""],
+              expectedFailureCommand: "node -e \"process.exit(1)\"",
+              testCommand: "node -e \"const fs=require('fs'); process.exit(fs.existsSync('src/app.ts') && fs.existsSync('seed-setup.txt') ? 0 : 1)\""
+            }
+          }
+        ]
+      })
+    );
+    const runtime = new KairnRuntime(root);
+
+    const report = await runtime.runBenchmark({
+      suitePath,
+      mode: "agent",
+      agentCommand: "printf 'inspected src/app.ts\\nToken usage: total=1,111 input=1,000 output=111'"
+    });
+
+    expect(report.results[0]?.taskOutcome).toBe("pass");
+    expect(report.results[0]?.actualFiles).toContain("src/app.ts");
+    expect(report.results[0]?.observedCodexTokens).toBe(1111);
+    expect(report.results[0]?.metadata.seedConfigured).toBe(true);
+    expect(report.results[0]?.metadata.seedSetupCommandCount).toBe(1);
+    expect(report.results[0]?.metadata.seedExpectedFailurePassed).toBe(true);
+    expect(report.results[0]?.metadata.seedTestExitCode).toBe(0);
+    expect(String(report.results[0]?.metadata.workspacePath)).toContain("kairn-bench-seed-");
+
+    runtime.close();
+  });
+
+  it("marks seeded agent runs failed when verification command fails", async () => {
+    const root = createFixtureRepo();
+    const suitePath = path.join(root, "seeded-failing-suite.json");
+    fs.writeFileSync(
+      suitePath,
+      JSON.stringify({
+        id: "seeded-failing",
+        name: "Seeded Failing",
+        cases: [
+          {
+            id: "seeded-debug",
+            mode: "agent",
+            task: "Debug seeded failure",
+            expectedFiles: [],
+            excludedFiles: [],
+            seed: {
+              repoUrl: root,
+              ref: "HEAD",
+              cloneDepth: 1,
+              testCommand: "node -e \"process.exit(2)\""
+            }
+          }
+        ]
+      })
+    );
+    const runtime = new KairnRuntime(root);
+
+    const report = await runtime.runBenchmark({
+      suitePath,
+      mode: "agent",
+      agentCommand: "printf 'agent says done'"
+    });
+
+    expect(report.results[0]?.taskOutcome).toBe("fail");
+    expect(report.results[0]?.summary).toContain("seeded verification failed");
+    expect(report.results[0]?.metadata.seedTestExitCode).toBe(2);
 
     runtime.close();
   });

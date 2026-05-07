@@ -1,0 +1,38 @@
+{
+  "id": "seeded-large-js-ts-template",
+  "name": "Seeded Large JS/TS Repo Template",
+  "cases": [
+    {
+      "id": "tanstack-query-seeded-debug",
+      "mode": "agent",
+      "task": "Debug the seeded failing test. Inspect the expected files first, fix only the failure, and do not edit unrelated files.",
+      "agentPrompt": "Debug the seeded failing test. Do not edit unrelated files. Start by inspecting packages/query-core/src/query.ts and the failing test output.",
+      "expectedFiles": [
+        "packages/query-core/src/query.ts",
+        "packages/query-core/src/__tests__/query.test.ts"
+      ],
+      "excludedFiles": [
+        "docs/",
+        "examples/"
+      ],
+      "budget": 1200,
+      "seed": {
+        "repoUrl": "https://github.com/TanStack/query.git",
+        "ref": "9d1ce70b39d91271356432147d16f5441f9fa892",
+        "cloneDepth": 1,
+        "setupCommands": [
+          "corepack enable || true",
+          "pnpm install --ignore-scripts"
+        ],
+        "setupPatchFile": "./patches/tanstack-query-example.patch",
+        "expectedFailureCommand": "pnpm test packages/query-core/src/__tests__/query.test.ts",
+        "testCommand": "pnpm test packages/query-core/src/__tests__/query.test.ts"
+      },
+      "successCriteria": [
+        "Agent should inspect or mention the expected query core files.",
+        "Agent should make the seeded test command pass.",
+        "Agent should avoid broad docs/examples edits."
+      ]
+    }
+  ]
+}

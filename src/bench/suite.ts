@@ -8,7 +8,7 @@ export function loadBenchmarkSuite(input: {
   files: FileRecord[];
 }): BenchmarkSuite {
   if (input.suitePath && input.suitePath !== "default") {
-    return normalizeSuite(JSON.parse(fs.readFileSync(input.suitePath, "utf8")) as unknown);
+    return normalizeSuite(JSON.parse(fs.readFileSync(input.suitePath, "utf8")) as unknown, path.dirname(path.resolve(input.suitePath)));
   }
   return createDefaultBenchmarkSuite(input.files);
 }
@@ -108,17 +108,17 @@ export function createDefaultBenchmarkSuite(files: FileRecord[]): BenchmarkSuite
   };
 }
 
-function normalizeSuite(input: unknown): BenchmarkSuite {
+function normalizeSuite(input: unknown, suiteDir?: string): BenchmarkSuite {
   if (!isRecord(input)) throw new Error("Benchmark suite must be a JSON object.");
   const id = stringValue(input.id) ?? "custom";
   const name = stringValue(input.name) ?? id;
   const rawCases = Array.isArray(input.cases) ? input.cases : [];
-  const cases = rawCases.map(normalizeCase);
+  const cases = rawCases.map((item) => normalizeCase(item, suiteDir));
   if (cases.length === 0) throw new Error("Benchmark suite must include at least one case.");
   return { id, name, cases };
 }
 
-function normalizeCase(input: unknown): BenchmarkCase {
+function normalizeCase(input: unknown, suiteDir?: string): BenchmarkCase {
   if (!isRecord(input)) throw new Error("Benchmark case must be a JSON object.");
   const id = requireString(input.id, "case.id");
   const mode = requireString(input.mode, `case ${id}.mode`);
@@ -130,6 +130,7 @@ function normalizeCase(input: unknown): BenchmarkCase {
   const budget = numberValue(input.budget);
   const agentPrompt = stringValue(input.agentPrompt);
   const allowedCommands = stringList(input.allowedCommands);
+  const seed = normalizeSeed(input.seed, suiteDir);
   return {
     id,
     mode: mode as BenchmarkCase["mode"],
@@ -141,8 +142,38 @@ function normalizeCase(input: unknown): BenchmarkCase {
     ...(budget ? { budget } : {}),
     successCriteria: stringList(input.successCriteria),
     ...(agentPrompt ? { agentPrompt } : {}),
-    ...(allowedCommands.length > 0 ? { allowedCommands } : {})
+    ...(allowedCommands.length > 0 ? { allowedCommands } : {}),
+    ...(seed ? { seed } : {})
   };
+}
+
+function normalizeSeed(value: unknown, suiteDir?: string) {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) throw new Error("Benchmark case seed must be a JSON object.");
+  const repoUrl = requireString(value.repoUrl, "case.seed.repoUrl");
+  const ref = stringValue(value.ref);
+  const cloneDepth = numberValue(value.cloneDepth);
+  const setupPatch = stringValue(value.setupPatch);
+  const setupPatchFile = resolveSuitePath(stringValue(value.setupPatchFile), suiteDir);
+  const expectedFailureCommand = stringValue(value.expectedFailureCommand);
+  const testCommand = stringValue(value.testCommand);
+  const setupCommands = stringList(value.setupCommands);
+  return {
+    repoUrl,
+    ...(ref ? { ref } : {}),
+    ...(cloneDepth ? { cloneDepth } : {}),
+    ...(setupCommands.length > 0 ? { setupCommands } : {}),
+    ...(setupPatch ? { setupPatch } : {}),
+    ...(setupPatchFile ? { setupPatchFile } : {}),
+    ...(expectedFailureCommand ? { expectedFailureCommand } : {}),
+    ...(testCommand ? { testCommand } : {})
+  };
+}
+
+function resolveSuitePath(value: string | undefined, suiteDir?: string): string | undefined {
+  if (!value) return undefined;
+  if (path.isAbsolute(value)) return value;
+  return suiteDir ? path.resolve(suiteDir, value) : value;
 }
 
 function select(paths: string[], patterns: RegExp[], limit: number): string[] {

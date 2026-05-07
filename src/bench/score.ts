@@ -17,7 +17,7 @@ export function scoreBenchmarkCase(input: {
   const excludedFiles = unique(input.benchmarkCase.excludedFiles);
   const expectedHits = expectedFiles.filter((file) => actualFiles.includes(file));
   const topFive = actualFiles.slice(0, 5);
-  const excludedHits = excludedFiles.filter((file) => actualFiles.includes(file));
+  const excludedHits = actualFiles.filter((file) => excludedFiles.some((excluded) => fileMatchesBenchmarkPattern(file, excluded)));
   const expectedFileRecall = expectedFiles.length > 0 ? ratio(expectedHits.length, expectedFiles.length) : 1;
   const topKHitRate = expectedFiles.length > 0 ? (expectedFiles.some((file) => topFive.includes(file)) ? 1 : 0) : 1;
   const unexpectedFileRate = actualFiles.length > 0 ? ratio(excludedHits.length, actualFiles.length) : 0;
@@ -183,4 +183,18 @@ function clampScore(value: number): number {
 
 function unique(values: string[]): string[] {
   return [...new Set(values.filter(Boolean))];
+}
+
+function fileMatchesBenchmarkPattern(filePath: string, pattern: string): boolean {
+  if (!pattern) return false;
+  if (filePath === pattern) return true;
+  if (pattern.endsWith("/")) return filePath.startsWith(pattern);
+  if (pattern.includes("*")) {
+    const escaped = pattern
+      .split("*")
+      .map((part) => part.replace(/[|\\{}()[\]^$+?.]/g, "\\$&"))
+      .join(".*");
+    return new RegExp(`^${escaped}$`).test(filePath);
+  }
+  return false;
 }

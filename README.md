@@ -170,6 +170,43 @@ Use the Kairn command variant that matches your local hook setup. The `{prompt}`
 
 Without `--agent-command`, agent cases are recorded as skipped. Benchmark reports can recommend scoring or routing improvements, but they never edit Kairn automatically.
 
+Seeded agent cases let you validate Kairn on large public repos without mutating your real working tree. Add a `seed` object to an agent benchmark case with a pinned `repoUrl`, `ref`, optional `setupPatch` or `setupPatchFile`, setup commands, an `expectedFailureCommand`, and a final `testCommand`. Kairn clones the seed into a disposable temp workspace, applies the patch, runs the agent, then runs the verification command and scores tokens, expected-file mentions, changed files, and pass/fail.
+
+```json
+{
+  "id": "seeded-debug",
+  "mode": "agent",
+  "task": "Debug the seeded failing test. Do not edit unrelated files.",
+  "expectedFiles": ["packages/core/src/cache.ts", "packages/core/src/cache.test.ts"],
+  "excludedFiles": ["docs/", "examples/"],
+  "seed": {
+    "repoUrl": "https://github.com/example/large-typescript-repo.git",
+    "ref": "pinned_commit_sha",
+    "cloneDepth": 1,
+    "setupCommands": ["pnpm install --ignore-scripts"],
+    "setupPatchFile": "./patches/cache-regression.patch",
+    "expectedFailureCommand": "pnpm test packages/core/src/cache.test.ts",
+    "testCommand": "pnpm test packages/core/src/cache.test.ts"
+  }
+}
+```
+
+Use this for harder debugging proofs:
+
+```bash
+kairn bench prove \
+  --root /Users/kevindotel/Documents/Projects/kairn \
+  --suite ./seeded-debug-suite.json \
+  --baseline-command "codex exec --model gpt-5.4-mini --disable codex_hooks {prompt}" \
+  --prompt-only-command "kairn setup codex --root {root} --mode savings >/dev/null && codex exec --model gpt-5.4-mini --enable codex_hooks {prompt}" \
+  --prompt-plus-hooks-command "kairn setup codex --root {root} --mode observe >/dev/null && codex exec --model gpt-5.4-mini --enable codex_hooks {prompt}" \
+  --repeat 3 \
+  --shuffle-order \
+  --json
+```
+
+The included `examples/bench/seeded-large-js-ts-template.json` shows the intended shape for pinned public JS/TS repos. Treat it as a template: replace the patch path and commands with a controlled failure that is cheap enough to run repeatedly.
+
 ## Proactive Context
 
 For discovery-heavy tasks, `prime` creates or reuses a task session, runs Kairn retrieval, and emits a compact prompt prefix with ranked files, snippets, related files, likely tests, and guidance to avoid broad scans unless the brief is insufficient.
