@@ -2,7 +2,7 @@
 import { Command, Option } from "commander";
 import { KairnRuntime } from "./runtime/KairnRuntime.js";
 import { startMcpServer } from "./server/mcp.js";
-import type { ContextQueryMode, OutputKind, WatchEventSource, WatchSnapshot } from "./types.js";
+import type { ContextQueryMode, MetricsSummary, OutputKind, WatchEventSource, WatchSnapshot } from "./types.js";
 import { printContextResponse, printJson, readStdin } from "./cli/output.js";
 import { normalizeHookPayload, hostHookOutput } from "./watch/normalizeHook.js";
 import { runRepoWatcher } from "./watch/watchRepo.js";
@@ -172,7 +172,8 @@ program
           sessionId: options.session,
           type: options.type,
           output,
-          budget: options.budget
+          budget: options.budget,
+          source: "cli"
         });
         printContextResponse(response, options.json);
       });
@@ -258,6 +259,24 @@ program
     }
   );
 
+program
+  .command("metrics")
+  .description("Show session token-savings and hook/watch metrics.")
+  .requiredOption("--session <id>", "Kairn task session ID")
+  .option("--root <path>", "target repository root", process.cwd())
+  .option("--json", "print JSON output")
+  .action(async (options: { session: string; root: string; json?: boolean }) => {
+    await withRuntime(options.root, async (runtime) => {
+      const metrics = runtime.getMetrics(options.session);
+      if (options.json) {
+        printJson(metrics);
+        return;
+      }
+
+      printMetrics(metrics);
+    });
+  });
+
 program.parseAsync().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
   process.stderr.write(`kairn: ${message}\n`);
@@ -314,4 +333,30 @@ function printWatchSnapshot(snapshot: WatchSnapshot, json: boolean): void {
       ""
     ].filter(Boolean).join("\n")
   );
+}
+
+function printMetrics(metrics: MetricsSummary): void {
+  const lines = [
+    "Kairn metrics.",
+    `Session: ${metrics.sessionId}`,
+    `Events measured: ${metrics.totals.events}`,
+    `Estimated baseline tokens: ${metrics.totals.baselineTokens}`,
+    `Kairn output tokens: ${metrics.totals.outputTokens}`,
+    `Estimated tokens saved: ${metrics.totals.savedTokens}`,
+    `Estimated savings rate: ${Math.round(metrics.totals.savingsRate * 100)}%`,
+    "",
+    "By kind",
+    ...Object.entries(metrics.byKind).map(
+      ([kind, bucket]) => `- ${kind}: ${bucket.savedTokens} saved across ${bucket.events} event(s)`
+    ),
+    "",
+    "Watcher/hooks",
+    `- events: ${metrics.watch.events}`,
+    `- failures: ${metrics.watch.failures}`,
+    `- file changes: ${metrics.watch.fileChanges}`,
+    `- hook events: ${metrics.watch.hooks}`,
+    ""
+  ];
+
+  process.stdout.write(`${lines.join("\n")}\n`);
 }

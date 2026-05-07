@@ -25,6 +25,7 @@ pnpm dev -- init --root /path/to/repo
 pnpm dev -- start "Add filtering to the dashboard" --root /path/to/repo
 pnpm dev -- context --session <session-id> --file src/app.ts --root /path/to/repo
 pnpm dev -- watch --session <session-id> --root /path/to/repo --once
+pnpm dev -- metrics --session <session-id> --root /path/to/repo
 ```
 
 ## Runtime Surfaces
@@ -66,7 +67,7 @@ Generic hook payloads may include:
 }
 ```
 
-Examples live in `examples/.codex/config.toml`, `examples/.codex/hooks.json`, and `examples/claude/settings.json`. Set `KAIRN_SESSION` to the active Kairn task session before enabling those hooks.
+Examples live in `examples/.codex/config.toml`, `examples/.codex/hooks.json`, and `examples/claude/settings.json`. Set `KAIRN_SESSION` to the active Kairn task session before enabling those hooks. If the hook host cannot find the global `kairn` binary, set `KAIRN_CMD` to an absolute command such as `node /Users/kevindotel/Documents/Projects/kairn/dist/cli.js`.
 
 Codex project hooks require a trusted repo `.codex/` config and the hooks feature flag:
 
@@ -77,9 +78,20 @@ codex_hooks = true
 
 The Codex example observes `PostToolUse` for `Bash|apply_patch|mcp__.*` and `UserPromptSubmit`. Stop hooks are supported too, but Kairn only emits host JSON when it has useful additional context. The Claude example observes `PostToolUse`, `PostToolUseFailure`, and `FileChanged` for common project config files; use `kairn watch` for repo-wide file observation.
 
+## Metrics
+
+Metrics are local-only and approximate. Kairn records one additive metrics row for each context, diff, test-discovery, file/symbol read, and compression response. The baseline is an estimate of what the agent likely would have needed without Kairn, such as full source for suggested files or raw command output. The output count is Kairn's returned token estimate.
+
+```bash
+kairn metrics --session task_123 --root /path/to/repo
+kairn metrics --session task_123 --root /path/to/repo --json
+```
+
+The useful first number while testing Codex hooks is `estimated tokens saved`. It is not billing-grade accounting; it is a directional measure for whether Kairn is reducing repeated context and compressing noisy command output.
+
 ## State
 
-Kairn stores generated state in the target repo under `.kairn/`. This includes local SQLite metadata, sessions, scans, traces, watch events, compressed command summaries, and hashes. Raw source files and raw command output are not copied into Kairn state.
+Kairn stores generated state in the target repo under `.kairn/`. This includes local SQLite metadata, sessions, scans, traces, watch events, metrics, compressed command summaries, and hashes. Raw source files and raw command output are not copied into Kairn state.
 
 ## Native Dependency Notes
 

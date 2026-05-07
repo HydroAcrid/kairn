@@ -87,6 +87,70 @@ export function createFixtureRepo(): string {
       ""
     ].join("\n")
   );
+  write(
+    root,
+    "src/app/private/jobs/JobsApplicationsTable.tsx",
+    [
+      "export function JobsApplicationsTable() {",
+      "  const mobileDetailAppId = 'selected';",
+      "  const mobileFiltersOpen = true;",
+      "  return <section data-mobile={mobileFiltersOpen}>{mobileDetailAppId}</section>;",
+      "}",
+      ""
+    ].join("\n")
+  );
+  write(
+    root,
+    "src/app/private/jobs/JobsDashboardTabs.tsx",
+    [
+      "export function JobsDashboardTabs() {",
+      "  const mobileBottomTabs = ['applications', 'review', 'analytics', 'tools'];",
+      "  return <nav>{mobileBottomTabs.join(',')}</nav>;",
+      "}",
+      ""
+    ].join("\n")
+  );
+  write(
+    root,
+    "src/app/private/jobs/JobsApplicationsTable.test.tsx",
+    [
+      "import { JobsApplicationsTable } from './JobsApplicationsTable';",
+      "",
+      "test('JobsApplicationsTable mobile layout', () => {",
+      "  expect(JobsApplicationsTable).toBeTruthy();",
+      "});",
+      ""
+    ].join("\n")
+  );
+  write(
+    root,
+    "src/lib/jobs/parser.ts",
+    [
+      "export function parseJobEmailRules(message: string) {",
+      "  return message.includes('gmail') && !message.includes('rental application');",
+      "}",
+      ""
+    ].join("\n")
+  );
+  write(
+    root,
+    "src/lib/jobs/repository.ts",
+    [
+      "export function getJobDashboardData(ownerEmail: string) {",
+      "  return { ownerEmail };",
+      "}",
+      ""
+    ].join("\n")
+  );
+  write(
+    root,
+    "src/lib/jobs/types.ts",
+    [
+      "export const JOB_STATUSES = ['applied', 'rejected'] as const;",
+      "export type JobStatus = (typeof JOB_STATUSES)[number];",
+      ""
+    ].join("\n")
+  );
   write(root, "ignored.txt", "ignored");
 
   execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });

@@ -5,6 +5,7 @@ import type {
   DiffRecord,
   FileRecord,
   GraphEdgeRecord,
+  MetricsEventRecord,
   SemanticChunkRecord,
   SemanticVectorRecord,
   SessionStatus,
@@ -115,6 +116,22 @@ type WatchEventRow = {
   exit_code: number | null;
   summary: string;
   content_hash: string;
+  metadata_json: string;
+  created_at: string;
+};
+
+type MetricsEventRow = {
+  id: number;
+  session_id: string;
+  root_path: string;
+  event_kind: MetricsEventRecord["eventKind"];
+  event_name: string;
+  source: MetricsEventRecord["source"];
+  response_mode: MetricsEventRecord["responseMode"] | null;
+  baseline_tokens: number;
+  output_tokens: number;
+  saved_tokens: number;
+  files_json: string;
   metadata_json: string;
   created_at: string;
 };
@@ -505,6 +522,51 @@ export class SqliteStore {
     return rows.map(mapWatchEventRow).reverse();
   }
 
+  recordMetricsEvent(record: Omit<MetricsEventRecord, "id" | "createdAt">): MetricsEventRecord {
+    const timestamp = nowIso();
+    const result = this.db
+      .prepare(`
+        insert into metrics_events (
+          session_id, root_path, event_kind, event_name, source, response_mode,
+          baseline_tokens, output_tokens, saved_tokens, files_json, metadata_json, created_at
+        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .run(
+        record.sessionId,
+        record.rootPath,
+        record.eventKind,
+        record.eventName,
+        record.source,
+        record.responseMode ?? null,
+        record.baselineTokens,
+        record.outputTokens,
+        record.savedTokens,
+        JSON.stringify(record.files),
+        JSON.stringify(record.metadata),
+        timestamp
+      );
+    this.touchSession(record.sessionId);
+
+    return {
+      ...record,
+      id: Number(result.lastInsertRowid),
+      createdAt: timestamp
+    };
+  }
+
+  listMetricsEvents(sessionId: string, limit?: number): MetricsEventRecord[] {
+    const rows = this.db
+      .prepare(`
+        select * from metrics_events
+        where session_id = ?
+        order by created_at desc, id desc
+        ${limit ? "limit ?" : ""}
+      `)
+      .all(...(limit ? [sessionId, limit] : [sessionId])) as MetricsEventRow[];
+
+    return rows.map(mapMetricsEventRow).reverse();
+  }
+
   private touchSession(sessionId: string): void {
     this.db.prepare("update sessions set updated_at = ? where id = ?").run(nowIso(), sessionId);
   }
@@ -618,11 +680,29 @@ export class SqliteStore {
         created_at text not null
       );
 
+      create table if not exists metrics_events (
+        id integer primary key autoincrement,
+        session_id text not null references sessions(id) on delete cascade,
+        root_path text not null,
+        event_kind text not null,
+        event_name text not null,
+        source text not null,
+        response_mode text,
+        baseline_tokens integer not null,
+        output_tokens integer not null,
+        saved_tokens integer not null,
+        files_json text not null,
+        metadata_json text not null default '{}',
+        created_at text not null
+      );
+
       create index if not exists context_shown_session_idx on context_shown(session_id);
       create index if not exists command_records_session_idx on command_records(session_id);
       create index if not exists diff_observations_session_idx on diff_observations(session_id);
       create index if not exists watch_events_session_idx on watch_events(session_id);
       create index if not exists watch_events_session_kind_idx on watch_events(session_id, kind, created_at);
+      create index if not exists metrics_events_session_idx on metrics_events(session_id, created_at);
+      create index if not exists metrics_events_session_kind_idx on metrics_events(session_id, event_kind, created_at);
       create index if not exists symbols_root_file_idx on symbols(root_path, file_path, name);
       create index if not exists graph_edges_root_from_idx on graph_edges(root_path, from_file);
       create index if not exists graph_edges_root_to_idx on graph_edges(root_path, to_file);
@@ -705,6 +785,24 @@ function mapWatchEventRow(row: WatchEventRow): WatchEventRecord {
     ...(row.exit_code !== null ? { exitCode: row.exit_code } : {}),
     summary: row.summary,
     contentHash: row.content_hash,
+    metadata: parseJsonObject(row.metadata_json),
+    createdAt: row.created_at
+  };
+}
+
+function mapMetricsEventRow(row: MetricsEventRow): MetricsEventRecord {
+  return {
+    id: row.id,
+    sessionId: row.session_id,
+    rootPath: row.root_path,
+    eventKind: row.event_kind,
+    eventName: row.event_name,
+    source: row.source,
+    ...(row.response_mode ? { responseMode: row.response_mode } : {}),
+    baselineTokens: row.baseline_tokens,
+    outputTokens: row.output_tokens,
+    savedTokens: row.saved_tokens,
+    files: parseJsonList(row.files_json),
     metadata: parseJsonObject(row.metadata_json),
     createdAt: row.created_at
   };

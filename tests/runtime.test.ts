@@ -35,8 +35,9 @@ describe("KairnRuntime", () => {
     const compressed = runtime.compressOutput({
       sessionId: session.id,
       type: "test",
-      output: "FAIL src/app.test.ts\nExpected true to be false"
+      output: ["FAIL src/app.test.ts", "Expected true to be false", ...Array.from({ length: 800 }, (_, index) => `trace line ${index}`)].join("\n")
     });
+    const metrics = runtime.getMetrics(session.id);
 
     expect(file.mode).toBe("exact_code");
     expect(symbol.symbols).toEqual(["renderDashboard"]);
@@ -48,6 +49,9 @@ describe("KairnRuntime", () => {
     expect(symbolContext.content).toMatch(/semantic match|symbol match/);
     expect(diff.files).toContain("src/app.ts");
     expect(compressed.content).toContain("Expected true");
+    expect(metrics.totals.events).toBeGreaterThanOrEqual(7);
+    expect(metrics.totals.savedTokens).toBeGreaterThan(0);
+    expect(metrics.byKind.compression?.savedTokens).toBeGreaterThan(0);
 
     runtime.close();
   });
@@ -82,6 +86,32 @@ describe("KairnRuntime", () => {
 
     expect(response.mode).toBe("snippets");
     expect(response.content).toContain("## Matched Snippets");
+
+    runtime.close();
+  });
+
+  it("prioritizes job tracker UI files for mobile layout queries", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const { session } = await runtime.startTask("Update job tracker mobile layout");
+
+    const response = await runtime.findContext({
+      sessionId: session.id,
+      query: "job tracker mobile layout",
+      mode: "snippets",
+      budget: 1200
+    });
+
+    expect(response.files.slice(0, 3)).toEqual(
+      expect.arrayContaining([
+        "src/app/private/jobs/JobsApplicationsTable.tsx",
+        "src/app/private/jobs/JobsDashboardTabs.tsx"
+      ])
+    );
+    expect(response.content).toContain("Detected Intent: ui");
+    const uiIndex = response.files.indexOf("src/app/private/jobs/JobsApplicationsTable.tsx");
+    const parserIndex = response.files.indexOf("src/lib/jobs/parser.ts");
+    expect(parserIndex === -1 || uiIndex < parserIndex).toBe(true);
 
     runtime.close();
   });

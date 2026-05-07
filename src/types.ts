@@ -37,6 +37,15 @@ export type WatchEventSource = "watch" | "generic" | "claude" | "codex";
 
 export type WatchEventKind = "file_change" | "diff_change" | "command" | "tool" | "session" | "hook" | "failure";
 
+export type MetricsEventKind =
+  | "find_context"
+  | "read_file"
+  | "read_symbol"
+  | "related"
+  | "tests"
+  | "diff"
+  | "compression";
+
 export type SymbolKind =
   | "function"
   | "class"
@@ -165,6 +174,46 @@ export type WatchEventRecord = {
   createdAt: string;
 };
 
+export type MetricsEventRecord = {
+  id?: number;
+  sessionId: string;
+  rootPath: string;
+  eventKind: MetricsEventKind;
+  eventName: string;
+  source: WatchEventSource | "runtime" | "cli" | "mcp";
+  responseMode?: ContextResponseMode;
+  baselineTokens: number;
+  outputTokens: number;
+  savedTokens: number;
+  files: string[];
+  metadata: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type MetricsBucket = {
+  events: number;
+  baselineTokens: number;
+  outputTokens: number;
+  savedTokens: number;
+};
+
+export type MetricsSummary = {
+  sessionId: string;
+  rootPath: string;
+  totals: MetricsBucket & {
+    savingsRate: number;
+  };
+  byKind: Record<string, MetricsBucket>;
+  bySource: Record<string, MetricsBucket>;
+  watch: {
+    events: number;
+    failures: number;
+    fileChanges: number;
+    hooks: number;
+  };
+  recentEvents: MetricsEventRecord[];
+};
+
 export type TaskSession = {
   id: string;
   rootPath: string;
@@ -274,6 +323,7 @@ export type HybridScoredResult = FileRecord & {
   semanticScore: number;
   keywordScore: number;
   graphScore: number;
+  intentScore: number;
   sessionScore: number;
   importanceScore: number;
   gitScore: number;

@@ -1,5 +1,5 @@
-import path from "node:path";
 import type { FileRecord, ScoredFile, SymbolRecord } from "../types.js";
+import { tokenizeLexical } from "../semantic/tokenize.js";
 
 const STOPWORDS = new Set([
   "the",
@@ -24,28 +24,30 @@ const STOPWORDS = new Set([
 export function scoreFiles(files: FileRecord[], query: string, symbols: SymbolRecord[] = []): ScoredFile[] {
   const terms = tokenize(query);
   const symbolsByFile = groupSymbolsByFile(symbols);
+  const broadTerms = findBroadTerms(files, terms, symbolsByFile);
 
   return files
-    .map((file) => scoreFile(file, terms, symbolsByFile.get(file.path) ?? []))
+    .map((file) => scoreFile(file, terms, broadTerms, symbolsByFile.get(file.path) ?? []))
     .filter((file) => file.score > 0)
     .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
 }
 
-function scoreFile(file: FileRecord, terms: string[], symbols: SymbolRecord[]): ScoredFile {
+function scoreFile(file: FileRecord, terms: string[], broadTerms: Set<string>, symbols: SymbolRecord[]): ScoredFile {
   const pathLower = file.path.toLowerCase();
-  const basename = path.basename(pathLower);
+  const basename = pathLower.split("/").at(-1) ?? pathLower;
   const reasons: string[] = [];
   let score = file.importance;
 
   for (const term of terms) {
+    const broad = broadTerms.has(term);
     if (pathLower.includes(term)) {
-      score += 8;
-      reasons.push(`path contains "${term}"`);
+      score += broad ? 2 : 8;
+      reasons.push(broad ? `broad path term "${term}"` : `path contains "${term}"`);
     }
 
     if (basename.includes(term)) {
-      score += 5;
-      reasons.push(`filename contains "${term}"`);
+      score += broad ? 1 : 5;
+      reasons.push(broad ? `broad filename term "${term}"` : `filename contains "${term}"`);
     }
   }
 
@@ -53,11 +55,12 @@ function scoreFile(file: FileRecord, terms: string[], symbols: SymbolRecord[]): 
     const symbolTerms = tokenizeSymbol(symbol.name);
     const matched = terms.filter((term) => symbol.name.toLowerCase().includes(term) || symbolTerms.includes(term));
     if (matched.length > 0) {
-      score += 12 + matched.length * 4;
+      const nonBroadMatches = matched.filter((term) => !broadTerms.has(term)).length;
+      score += nonBroadMatches > 0 ? 12 + nonBroadMatches * 4 : 3;
       reasons.push(`symbol match: ${symbol.name}`);
     }
 
-    if (symbol.exported && matched.length > 0) {
+    if (symbol.exported && matched.some((term) => !broadTerms.has(term))) {
       score += 3;
       reasons.push(`exported symbol: ${symbol.name}`);
     }
@@ -94,18 +97,30 @@ function groupSymbolsByFile(symbols: SymbolRecord[]): Map<string, SymbolRecord[]
 }
 
 function tokenize(query: string): string[] {
-  return query
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .map((term) => term.trim())
-    .filter((term) => term.length > 2 && !STOPWORDS.has(term));
+  return tokenizeLexical(query).filter((term) => term.length > 2 && !STOPWORDS.has(term));
 }
 
 function tokenizeSymbol(symbol: string): string[] {
-  return symbol
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .map((term) => term.trim())
-    .filter((term) => term.length > 2 && !STOPWORDS.has(term));
+  return tokenizeLexical(symbol).filter((term) => term.length > 2 && !STOPWORDS.has(term));
+}
+
+function findBroadTerms(files: FileRecord[], terms: string[], symbolsByFile: Map<string, SymbolRecord[]>): Set<string> {
+  const broadTerms = new Set<string>();
+  const threshold = Math.min(18, Math.max(4, Math.ceil(files.length * 0.12)));
+
+  for (const term of terms) {
+    const matches = files.filter((file) => {
+      const haystack = [
+        file.path,
+        ...(symbolsByFile.get(file.path) ?? []).map((symbol) => symbol.name)
+      ].join(" ").toLowerCase();
+      return haystack.includes(term);
+    }).length;
+
+    if (matches >= threshold) {
+      broadTerms.add(term);
+    }
+  }
+
+  return broadTerms;
 }

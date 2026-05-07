@@ -22,6 +22,7 @@ describe("MCP server", () => {
 
     const tools = await client.listTools();
     expect(tools.tools.map((tool) => tool.name)).toContain("kairn_start_task");
+    expect(tools.tools.map((tool) => tool.name)).toContain("kairn_get_metrics");
 
     const started = await client.callTool({
       name: "kairn_start_task",
@@ -54,6 +55,15 @@ describe("MCP server", () => {
     const contextText = firstTextContent(context);
     expect(contextText).toContain("DashboardMetrics");
     expect(contextText).toContain("snippets");
+
+    const metrics = await client.callTool({
+      name: "kairn_get_metrics",
+      arguments: {
+        sessionId: parsed.session.id
+      }
+    });
+    const metricsText = firstTextContent(metrics);
+    expect(metricsText).toContain("savedTokens");
 
     await client.close();
   });

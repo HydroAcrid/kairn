@@ -5,10 +5,14 @@ import { simpleGit } from "simple-git";
 import type {
   ContextQueryMode,
   ContextResponse,
+  ContextResponseMode,
   FileRecord,
   HookHandlingResult,
   HybridScoredResult,
   InitResult,
+  MetricsBucket,
+  MetricsEventKind,
+  MetricsSummary,
   NormalizedHookEvent,
   OutputKind,
   TaskSession,
@@ -33,6 +37,7 @@ import { indexRepo } from "../indexer/indexRepo.js";
 import { classifyObservedCommand } from "../watch/classifyCommand.js";
 import { extractFailureFiles } from "../watch/failureParser.js";
 import { nowIso } from "../utils/time.js";
+import { classifyQueryIntent, type QueryIntent } from "../retrieval/queryIntent.js";
 
 export class KairnRuntime {
   private readonly rootPath: string;
@@ -99,6 +104,31 @@ export class KairnRuntime {
     return this.store.getSession(sessionId);
   }
 
+  getMetrics(sessionId: string): MetricsSummary {
+    const session = this.store.getSession(sessionId);
+    const events = this.store.listMetricsEvents(sessionId);
+    const watchEvents = this.store.listWatchEvents(sessionId);
+    const totals = summarizeMetrics(events);
+
+    return {
+      sessionId,
+      rootPath: session.rootPath,
+      totals: {
+        ...totals,
+        savingsRate: totals.baselineTokens > 0 ? Number((totals.savedTokens / totals.baselineTokens).toFixed(4)) : 0
+      },
+      byKind: groupMetrics(events, (event) => event.eventKind),
+      bySource: groupMetrics(events, (event) => event.source),
+      watch: {
+        events: watchEvents.length,
+        failures: watchEvents.filter((event) => event.kind === "failure").length,
+        fileChanges: watchEvents.filter((event) => event.kind === "file_change" || event.kind === "diff_change").length,
+        hooks: watchEvents.filter((event) => event.source === "claude" || event.source === "codex" || event.source === "generic").length
+      },
+      recentEvents: events.slice(-10)
+    };
+  }
+
   async findContext(input: {
     sessionId: string;
     query?: string | undefined;
@@ -114,6 +144,7 @@ export class KairnRuntime {
     const vectors = this.store.listSemanticVectors(session.rootPath);
     const changedFiles = await this.getChangedFiles(session.rootPath);
     const query = input.query ?? session.task;
+    const intent = classifyQueryIntent(query);
     const scored = hybridSearch({
       files,
       query,
@@ -141,12 +172,28 @@ export class KairnRuntime {
         query,
         decisionReason: decision.reason,
         mode: decision.mode,
+        intent,
         scored
       }),
       input.budget
     );
 
     this.recordShown(input.sessionId, "context", decision.mode, content);
+    this.recordMetricsEvent({
+      sessionId: input.sessionId,
+      rootPath: session.rootPath,
+      eventKind: "find_context",
+      eventName: input.requestType ?? "find_context",
+      responseMode: decision.mode,
+      baselineTokens: estimateFileBaselineTokens(scored.slice(0, 5)),
+      outputTokens: estimateTokens(content),
+      files: scored.slice(0, 5).map((file) => file.path),
+      metadata: {
+        query,
+        resultCount: scored.length,
+        estimator: "top 5 ranked files as full-source baseline"
+      }
+    });
 
     return {
       mode: decision.mode,
@@ -194,6 +241,21 @@ export class KairnRuntime {
       filePath: target,
       mode,
       contentHash: sha256(responseContent)
+    });
+    this.recordMetricsEvent({
+      sessionId: input.sessionId,
+      rootPath: session.rootPath,
+      eventKind: "read_file",
+      eventName: exact ? "read_file_exact" : "read_file_summary",
+      responseMode: mode,
+      baselineTokens: estimateTokens(content),
+      outputTokens: estimateTokens(responseContent),
+      files: [target],
+      metadata: {
+        target,
+        requestedMode: input.mode ?? "exact",
+        estimator: "full target file as baseline"
+      }
     });
 
     return {
@@ -266,6 +328,21 @@ export class KairnRuntime {
       mode: "exact_code",
       contentHash: sha256(responseContent)
     });
+    this.recordMetricsEvent({
+      sessionId: input.sessionId,
+      rootPath: session.rootPath,
+      eventKind: "read_symbol",
+      eventName: "read_symbol",
+      responseMode: "exact_code",
+      baselineTokens: estimateTokens(content),
+      outputTokens: estimateTokens(responseContent),
+      files: [target],
+      metadata: {
+        target,
+        symbol: input.symbol,
+        estimator: "full target file as baseline"
+      }
+    });
 
     return {
       mode: "exact_code",
@@ -324,6 +401,21 @@ export class KairnRuntime {
     );
 
     this.recordShown(input.sessionId, "context", "graph_neighbors", responseContent, target);
+    this.recordMetricsEvent({
+      sessionId: input.sessionId,
+      rootPath: session.rootPath,
+      eventKind: "related",
+      eventName: "related",
+      responseMode: "graph_neighbors",
+      baselineTokens: estimateFileBaselineTokens(related.map(({ file }) => file)),
+      outputTokens: estimateTokens(responseContent),
+      files: related.map(({ file }) => file.path),
+      metadata: {
+        target,
+        resultCount: related.length,
+        estimator: "related files as full-source baseline"
+      }
+    });
 
     return {
       mode: "graph_neighbors",
@@ -377,6 +469,21 @@ export class KairnRuntime {
     );
 
     this.recordShown(input.sessionId, "tests", "brief", responseContent, input.target);
+    this.recordMetricsEvent({
+      sessionId: input.sessionId,
+      rootPath: session.rootPath,
+      eventKind: "tests",
+      eventName: "find_tests",
+      responseMode: "brief",
+      baselineTokens: estimateFileBaselineTokens(tests),
+      outputTokens: estimateTokens(responseContent),
+      files: tests.map((file) => file.path),
+      metadata: {
+        ...(target ? { target } : {}),
+        resultCount: tests.length,
+        estimator: "test files as full-source baseline"
+      }
+    });
 
     return {
       mode: "brief",
@@ -407,6 +514,22 @@ export class KairnRuntime {
       mode: "verification_plan",
       contentHash: sha256(content)
     });
+    const changedFileRecords = this.store.listFiles(session.rootPath).filter((file) => review.files.includes(file.path));
+    this.recordMetricsEvent({
+      sessionId: input.sessionId,
+      rootPath: session.rootPath,
+      eventKind: "diff",
+      eventName: "review_diff",
+      responseMode: "verification_plan",
+      baselineTokens: estimateFileBaselineTokens(changedFileRecords),
+      outputTokens: estimateTokens(content),
+      files: review.files,
+      metadata: {
+        changedFiles: review.files.length,
+        missingContextFiles: review.missingContextFiles.length,
+        estimator: "changed files as full-source baseline"
+      }
+    });
 
     return {
       mode: "verification_plan",
@@ -428,14 +551,31 @@ export class KairnRuntime {
     type: OutputKind;
     output: string;
     budget?: number | undefined;
+    source?: WatchEventSource | "runtime" | "cli" | "mcp" | undefined;
+    eventName?: string | undefined;
   }): ContextResponse {
-    this.store.getSession(input.sessionId);
+    const session = this.store.getSession(input.sessionId);
     const content = compressOutputText(input.output, input.type, input.budget);
 
     this.store.recordCommand({
       sessionId: input.sessionId,
       type: input.type,
       summary: content
+    });
+    this.recordMetricsEvent({
+      sessionId: input.sessionId,
+      rootPath: session.rootPath,
+      eventKind: "compression",
+      eventName: input.eventName ?? `compress_${input.type}`,
+      source: input.source ?? "runtime",
+      responseMode: "failure_context",
+      baselineTokens: estimateTokens(input.output),
+      outputTokens: estimateTokens(content),
+      files: [],
+      metadata: {
+        outputKind: input.type,
+        estimator: "raw command output as baseline"
+      }
     });
 
     return {
@@ -560,12 +700,14 @@ export class KairnRuntime {
       knownFiles,
       explicitFiles: input.event.files
     });
-    const response = input.event.output
+        const response = input.event.output
       ? this.compressOutput({
           sessionId: input.sessionId,
           type: outputKind,
           output: input.event.output,
-          budget: 1200
+          budget: 1200,
+          source: input.event.source,
+          eventName: input.event.eventName
         })
       : undefined;
     const kind = input.event.exitCode && input.event.exitCode !== 0 ? "failure" : input.event.kind;
@@ -823,6 +965,35 @@ export class KairnRuntime {
     });
   }
 
+  private recordMetricsEvent(input: {
+    sessionId: string;
+    rootPath: string;
+    eventKind: MetricsEventKind;
+    eventName: string;
+    source?: WatchEventSource | "runtime" | "cli" | "mcp" | undefined;
+    responseMode?: ContextResponseMode | undefined;
+    baselineTokens: number;
+    outputTokens: number;
+    files: string[];
+    metadata?: Record<string, unknown> | undefined;
+  }): void {
+    const baselineTokens = Math.max(0, Math.round(input.baselineTokens));
+    const outputTokens = Math.max(0, Math.round(input.outputTokens));
+    this.store.recordMetricsEvent({
+      sessionId: input.sessionId,
+      rootPath: input.rootPath,
+      eventKind: input.eventKind,
+      eventName: input.eventName,
+      source: input.source ?? "runtime",
+      ...(input.responseMode ? { responseMode: input.responseMode } : {}),
+      baselineTokens,
+      outputTokens,
+      savedTokens: Math.max(0, baselineTokens - outputTokens),
+      files: uniquePaths(input.files),
+      metadata: input.metadata ?? {}
+    });
+  }
+
   private readPackageScripts(rootPath: string): string[] {
     const packageJsonPath = path.join(rootPath, "package.json");
     if (!fs.existsSync(packageJsonPath)) {
@@ -849,6 +1020,7 @@ function formatContextResults(input: {
   query: string;
   decisionReason: string;
   mode: ContextResponse["mode"];
+  intent: QueryIntent;
   scored: HybridScoredResult[];
 }): string {
   const highConfidence =
@@ -858,6 +1030,7 @@ function formatContextResults(input: {
             const scoreBreakdown = [
               `semantic ${file.semanticScore}`,
               `keyword ${file.keywordScore}`,
+              `intent ${file.intentScore}`,
               `graph ${file.graphScore}`,
               `git ${file.gitScore}`
             ].join(", ");
@@ -872,6 +1045,7 @@ function formatContextResults(input: {
     `Task: ${input.task}`,
     `Query: ${input.query}`,
     `Response Mode: ${input.mode}`,
+    `Detected Intent: ${input.intent.primary}${input.intent.matchedTerms.length > 0 ? ` (${input.intent.matchedTerms.join(", ")})` : ""}`,
     `Selection: ${input.decisionReason}`,
     "",
     "## Ranked Files",
@@ -928,6 +1102,49 @@ function formatCompactSummary(files: HybridScoredResult[]): string {
       return `- ${file.path}: ${file.reasons.slice(0, 3).join("; ")}${chunkSummary ? ` (${chunkSummary})` : ""}`;
     })
     .join("\n");
+}
+
+function estimateFileBaselineTokens(files: Pick<FileRecord, "size">[]): number {
+  return files.reduce((total, file) => total + Math.ceil(file.size / 4), 0);
+}
+
+function summarizeMetrics(events: { baselineTokens: number; outputTokens: number; savedTokens: number }[]): MetricsBucket {
+  return events.reduce<MetricsBucket>(
+    (totals, event) => ({
+      events: totals.events + 1,
+      baselineTokens: totals.baselineTokens + event.baselineTokens,
+      outputTokens: totals.outputTokens + event.outputTokens,
+      savedTokens: totals.savedTokens + event.savedTokens
+    }),
+    emptyMetricsBucket()
+  );
+}
+
+function groupMetrics<T extends { baselineTokens: number; outputTokens: number; savedTokens: number }>(
+  events: T[],
+  keyFor: (event: T) => string
+): Record<string, MetricsBucket> {
+  const grouped: Record<string, MetricsBucket> = {};
+  for (const event of events) {
+    const key = keyFor(event);
+    const current = grouped[key] ?? emptyMetricsBucket();
+    grouped[key] = {
+      events: current.events + 1,
+      baselineTokens: current.baselineTokens + event.baselineTokens,
+      outputTokens: current.outputTokens + event.outputTokens,
+      savedTokens: current.savedTokens + event.savedTokens
+    };
+  }
+  return grouped;
+}
+
+function emptyMetricsBucket(): MetricsBucket {
+  return {
+    events: 0,
+    baselineTokens: 0,
+    outputTokens: 0,
+    savedTokens: 0
+  };
 }
 
 function sliceLines(content: string, startLine: number, endLine: number): string {

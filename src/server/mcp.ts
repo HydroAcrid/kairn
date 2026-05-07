@@ -134,7 +134,19 @@ export function createMcpServer(options: { root?: string }): McpServer {
       }
     },
     ({ sessionId, type, output, budget }) =>
-      toolResult(runtime.compressOutput({ sessionId, type: type as OutputKind, output, budget }))
+      toolResult(runtime.compressOutput({ sessionId, type: type as OutputKind, output, budget, source: "mcp" }))
+  );
+
+  server.registerTool(
+    "kairn_get_metrics",
+    {
+      title: "Get metrics",
+      description: "Return session token-savings and hook/watch metrics.",
+      inputSchema: {
+        sessionId: z.string().min(1)
+      }
+    },
+    ({ sessionId }) => toolResult(runtime.getMetrics(sessionId))
   );
 
   server.registerTool(

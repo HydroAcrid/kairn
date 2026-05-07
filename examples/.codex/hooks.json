@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "kairn hook --source codex --session \"$KAIRN_SESSION\" --root \"$PWD\"",
+            "command": "${KAIRN_CMD:-kairn} hook --source codex --session \"$KAIRN_SESSION\" --root \"$PWD\"",
             "statusMessage": "Sending tool output to Kairn"
           }
         ]
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "kairn hook --source codex --session \"$KAIRN_SESSION\" --root \"$PWD\"",
+            "command": "${KAIRN_CMD:-kairn} hook --source codex --session \"$KAIRN_SESSION\" --root \"$PWD\"",
             "statusMessage": "Recording prompt in Kairn"
           }
         ]
