@@ -11,17 +11,35 @@ export function normalizeHookPayload(input: {
   const toolName = stringValue(payload.toolName) ?? stringValue(payload.tool_name);
   const toolInput = payload.toolInput ?? payload.tool_input;
   const toolResponse = payload.toolResponse ?? payload.tool_response;
+  const toolCalls = Array.isArray(payload.tool_calls) ? payload.tool_calls : [];
   const command =
     stringValue(payload.command) ??
     commandFromToolInput(toolInput) ??
-    commandFromToolResponse(toolResponse);
+    commandFromToolResponse(toolResponse) ??
+    commandFromToolCalls(toolCalls);
   const output =
-    stringValue(payload.output) ??
-    stringValue(payload.stdout) ??
-    stringValue(payload.stderr) ??
-    outputFromToolResponse(toolResponse);
-  const exitCode = numberValue(payload.exitCode) ?? numberValue(payload.exit_code) ?? exitCodeFromToolResponse(toolResponse);
-  const files = normalizeFiles(payload.files);
+    joinOutputValues([
+      payload.output,
+      payload.stdout,
+      payload.stderr,
+      payload.error
+    ]) ??
+    outputFromToolResponse(toolResponse) ??
+    outputFromToolCalls(toolCalls) ??
+    stringValue(payload.prompt) ??
+    stringValue(payload.last_assistant_message);
+  const exitCode =
+    numberValue(payload.exitCode) ??
+    numberValue(payload.exit_code) ??
+    exitCodeFromToolResponse(toolResponse) ??
+    exitCodeFromToolCalls(toolCalls);
+  const files = normalizeFiles([
+    ...arrayValue(payload.files),
+    payload.file_path,
+    fileFromToolInput(toolInput),
+    fileFromToolResponse(toolResponse),
+    ...filesFromToolCalls(toolCalls)
+  ]);
   const cwd = stringValue(payload.cwd);
   const timestamp = stringValue(payload.timestamp);
   const hostSessionId = stringValue(payload.hostSessionId) ?? stringValue(payload.session_id);
@@ -55,6 +73,14 @@ export function hostHookOutput(input: {
     return input.content;
   }
 
+  if (input.source === "codex" && input.eventName === "Stop") {
+    return JSON.stringify({ systemMessage: input.content }, null, 2);
+  }
+
+  if (!supportsAdditionalContext(input.source, input.eventName)) {
+    return "";
+  }
+
   return JSON.stringify(
     {
       hookSpecificOutput: {
@@ -67,6 +93,29 @@ export function hostHookOutput(input: {
   );
 }
 
+function supportsAdditionalContext(source: WatchEventSource, eventName: string): boolean {
+  const supportedByCodex = new Set(["SessionStart", "PostToolUse", "UserPromptSubmit"]);
+  const supportedByClaude = new Set([
+    "SessionStart",
+    "UserPromptSubmit",
+    "UserPromptExpansion",
+    "PreToolUse",
+    "PermissionRequest",
+    "PostToolUse",
+    "PostToolUseFailure",
+    "PostToolBatch",
+    "PermissionDenied",
+    "Stop",
+    "SubagentStop",
+    "ConfigChange",
+    "PreCompact"
+  ]);
+
+  if (source === "codex") return supportedByCodex.has(eventName);
+  if (source === "claude") return supportedByClaude.has(eventName);
+  return false;
+}
+
 function kindFor(input: {
   eventName: string;
   toolName?: string | undefined;
@@ -75,6 +124,8 @@ function kindFor(input: {
   output?: string | undefined;
 }): WatchEventKind {
   const event = input.eventName.toLowerCase();
+  if (event === "filechanged") return "file_change";
+  if (event.includes("failure")) return "failure";
   if (event.includes("session") || event === "stop") return "session";
   if (input.command) return input.exitCode && input.exitCode !== 0 ? "failure" : "command";
   if (input.output && input.exitCode && input.exitCode !== 0) return "failure";
@@ -83,8 +134,9 @@ function kindFor(input: {
 }
 
 function commandFromToolInput(value: unknown): string | undefined {
+  if (typeof value === "string") return stringValue(value);
   if (!isRecord(value)) return undefined;
-  return stringValue(value.command) ?? stringValue(value.cmd);
+  return stringValue(value.command) ?? stringValue(value.cmd) ?? stringValue(value.shell_command);
 }
 
 function commandFromToolResponse(value: unknown): string | undefined {
@@ -95,13 +147,14 @@ function commandFromToolResponse(value: unknown): string | undefined {
 function outputFromToolResponse(value: unknown): string | undefined {
   if (typeof value === "string") return value;
   if (!isRecord(value)) return undefined;
-  return (
-    stringValue(value.output) ??
-    stringValue(value.stdout) ??
-    stringValue(value.stderr) ??
-    stringValue(value.text) ??
-    stringValue(value.content)
-  );
+  return joinOutputValues([
+    value.output,
+    value.stdout,
+    value.stderr,
+    value.text,
+    value.content,
+    outputFromContentBlocks(value.content)
+  ]);
 }
 
 function exitCodeFromToolResponse(value: unknown): number | undefined {
@@ -109,19 +162,86 @@ function exitCodeFromToolResponse(value: unknown): number | undefined {
   return numberValue(value.exitCode) ?? numberValue(value.exit_code) ?? numberValue(value.status);
 }
 
-function normalizeFiles(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter((entry): entry is string => typeof entry === "string")
-    .map((entry) => normalizeRelativePath(entry).replace(/^\.\//, ""))
-    .filter(Boolean)
-    .sort();
+function commandFromToolCalls(value: unknown[]): string | undefined {
+  for (const entry of value) {
+    if (!isRecord(entry)) continue;
+    const command = commandFromToolInput(entry.tool_input ?? entry.toolInput);
+    if (command) return command;
+  }
+  return undefined;
+}
+
+function outputFromToolCalls(value: unknown[]): string | undefined {
+  const output = value
+    .map((entry) => {
+      if (!isRecord(entry)) return undefined;
+      return outputFromToolResponse(entry.tool_response ?? entry.toolResponse);
+    })
+    .filter((entry): entry is string => Boolean(entry))
+    .join("\n");
+  return output || undefined;
+}
+
+function exitCodeFromToolCalls(value: unknown[]): number | undefined {
+  for (const entry of value) {
+    if (!isRecord(entry)) continue;
+    const exitCode = exitCodeFromToolResponse(entry.tool_response ?? entry.toolResponse);
+    if (exitCode !== undefined) return exitCode;
+  }
+  return undefined;
+}
+
+function fileFromToolInput(value: unknown): string | undefined {
+  if (!isRecord(value)) return undefined;
+  return stringValue(value.file_path) ?? stringValue(value.filePath) ?? stringValue(value.path);
+}
+
+function fileFromToolResponse(value: unknown): string | undefined {
+  if (!isRecord(value)) return undefined;
+  return stringValue(value.file_path) ?? stringValue(value.filePath) ?? stringValue(value.path);
+}
+
+function filesFromToolCalls(value: unknown[]): string[] {
+  return value.flatMap((entry) => {
+    if (!isRecord(entry)) return [];
+    return [fileFromToolInput(entry.tool_input ?? entry.toolInput), fileFromToolResponse(entry.tool_response ?? entry.toolResponse)].filter(
+      (file): file is string => Boolean(file)
+    );
+  });
+}
+
+function outputFromContentBlocks(value: unknown): string | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const text = value
+    .map((entry) => {
+      if (typeof entry === "string") return entry;
+      if (!isRecord(entry)) return undefined;
+      return stringValue(entry.text) ?? stringValue(entry.content);
+    })
+    .filter((entry): entry is string => Boolean(entry))
+    .join("\n");
+  return text || undefined;
+}
+
+function normalizeFiles(value: unknown[]): string[] {
+  return [
+    ...new Set(
+      value
+        .filter((entry): entry is string => typeof entry === "string")
+        .map((entry) => normalizeRelativePath(entry).replace(/^\.\//, ""))
+        .filter(Boolean)
+    )
+  ].sort();
+}
+
+function arrayValue(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
 }
 
 function sanitizeMetadata(payload: Record<string, unknown>): Record<string, unknown> {
   const metadata: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(payload)) {
-    if (["output", "stdout", "stderr", "tool_response", "toolResponse"].includes(key)) {
+    if (isOutputBearingScalar(key, value)) {
       metadata[`${key}Hash`] = stableStringHash(String(value ?? ""));
       continue;
     }
@@ -135,13 +255,39 @@ function sanitizeValue(value: unknown): unknown {
   if (!isRecord(value)) return value;
   const sanitized: Record<string, unknown> = {};
   for (const [key, entry] of Object.entries(value)) {
-    if (["output", "stdout", "stderr", "content", "text"].includes(key)) {
+    if (isOutputBearingScalar(key, entry)) {
       sanitized[`${key}Hash`] = stableStringHash(String(entry ?? ""));
     } else {
       sanitized[key] = sanitizeValue(entry);
     }
   }
   return sanitized;
+}
+
+function joinOutputValues(values: unknown[]): string | undefined {
+  const text = values
+    .map((value) => {
+      if (Array.isArray(value)) return outputFromContentBlocks(value);
+      return stringValue(value);
+    })
+    .filter((entry): entry is string => Boolean(entry))
+    .join("\n");
+  return text || undefined;
+}
+
+function isOutputBearingScalar(key: string, value: unknown): boolean {
+  if (isRecord(value) || Array.isArray(value)) return false;
+  return [
+    "output",
+    "stdout",
+    "stderr",
+    "content",
+    "text",
+    "error",
+    "last_assistant_message",
+    "tool_response",
+    "toolResponse"
+  ].includes(key);
 }
 
 function stableStringHash(value: string): string {

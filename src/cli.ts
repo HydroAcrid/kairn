@@ -2,8 +2,10 @@
 import { Command, Option } from "commander";
 import { KairnRuntime } from "./runtime/KairnRuntime.js";
 import { startMcpServer } from "./server/mcp.js";
-import type { ContextQueryMode, OutputKind } from "./types.js";
+import type { ContextQueryMode, OutputKind, WatchEventSource, WatchSnapshot } from "./types.js";
 import { printContextResponse, printJson, readStdin } from "./cli/output.js";
+import { normalizeHookPayload, hostHookOutput } from "./watch/normalizeHook.js";
+import { runRepoWatcher } from "./watch/watchRepo.js";
 
 const program = new Command();
 
@@ -177,6 +179,85 @@ program
     }
   );
 
+program
+  .command("watch")
+  .description("Watch local work and update a Kairn task session.")
+  .requiredOption("--session <id>", "Kairn task session ID")
+  .option("--root <path>", "target repository root", process.cwd())
+  .option("--debounce <ms>", "file-change debounce window", parsePositiveInt, 250)
+  .option("--poll <ms>", "git diff polling interval", parsePositiveInt, 2000)
+  .option("--once", "run one snapshot and exit")
+  .option("--json", "print JSON output")
+  .action(
+    async (options: {
+      session: string;
+      root: string;
+      debounce: number;
+      poll: number;
+      once?: boolean;
+      json?: boolean;
+    }) => {
+      await withRuntime(options.root, async (runtime) => {
+        await runRepoWatcher({
+          runtime,
+          sessionId: options.session,
+          rootPath: options.root,
+          debounceMs: options.debounce,
+          pollMs: options.poll,
+          once: options.once,
+          onSnapshot: (snapshot) => printWatchSnapshot(snapshot, Boolean(options.json))
+        });
+      });
+    }
+  );
+
+program
+  .command("hook")
+  .description("Ingest a generic, Claude, or Codex hook payload into a Kairn task session.")
+  .requiredOption("--session <id>", "Kairn task session ID")
+  .option("--root <path>", "target repository root", process.cwd())
+  .addOption(new Option("--source <source>", "hook source").choices(["generic", "claude", "codex"]).default("generic"))
+  .option("--event <name>", "override hook event name")
+  .option("--json", "print JSON output")
+  .action(
+    async (options: {
+      session: string;
+      root: string;
+      source: WatchEventSource;
+      event?: string;
+      json?: boolean;
+    }) => {
+      await withRuntime(options.root, async (runtime) => {
+        const raw = await readStdin();
+        const payload = raw.trim() ? JSON.parse(raw) as unknown : {};
+        const event = normalizeHookPayload({
+          source: options.source,
+          payload,
+          eventName: options.event
+        });
+        const result = await runtime.handleHookEvent({
+          sessionId: options.session,
+          event
+        });
+
+        if (options.json) {
+          printJson(result);
+          return;
+        }
+
+        const output = hostHookOutput({
+          source: options.source,
+          eventName: event.eventName,
+          content: result.recommendation?.content,
+          json: false
+        });
+        if (output) {
+          process.stdout.write(`${output}\n`);
+        }
+      });
+    }
+  );
+
 program.parseAsync().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
   process.stderr.write(`kairn: ${message}\n`);
@@ -212,4 +293,25 @@ function parsePositiveInt(value: string): number {
     throw new Error(`Expected a positive integer, received: ${value}`);
   }
   return parsed;
+}
+
+function printWatchSnapshot(snapshot: WatchSnapshot, json: boolean): void {
+  if (json) {
+    printJson(snapshot);
+    return;
+  }
+
+  process.stdout.write(
+    [
+      "Kairn watch snapshot.",
+      `Session: ${snapshot.sessionId}`,
+      `Indexed files: ${snapshot.indexedFiles}`,
+      `Changed files: ${snapshot.changedFiles.length}`,
+      snapshot.changedFiles.length > 0 ? snapshot.changedFiles.map((file) => `- ${file}`).join("\n") : "No git diff detected.",
+      snapshot.recommendations.length > 0
+        ? ["", "Recommendations", ...snapshot.recommendations.map((item) => `- ${item.summary}`)].join("\n")
+        : "",
+      ""
+    ].filter(Boolean).join("\n")
+  );
 }

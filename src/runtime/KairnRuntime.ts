@@ -2,7 +2,22 @@ import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { simpleGit } from "simple-git";
-import type { ContextQueryMode, ContextResponse, FileRecord, HybridScoredResult, InitResult, OutputKind, TaskSession } from "../types.js";
+import type {
+  ContextQueryMode,
+  ContextResponse,
+  FileRecord,
+  HookHandlingResult,
+  HybridScoredResult,
+  InitResult,
+  NormalizedHookEvent,
+  OutputKind,
+  TaskSession,
+  WatchEventKind,
+  WatchEventRecord,
+  WatchEventSource,
+  WatchRecommendation,
+  WatchSnapshot
+} from "../types.js";
 import { ensureKairnDir, getKairnPaths } from "../config/paths.js";
 import { SqliteStore } from "../store/sqliteStore.js";
 import { compressOutput as compressOutputText } from "../compression/compressOutput.js";
@@ -15,6 +30,9 @@ import { sha256 } from "../utils/hash.js";
 import { normalizeRelativePath, resolveRoot } from "../utils/paths.js";
 import { estimateTokens, truncateToBudget } from "../utils/tokens.js";
 import { indexRepo } from "../indexer/indexRepo.js";
+import { classifyObservedCommand } from "../watch/classifyCommand.js";
+import { extractFailureFiles } from "../watch/failureParser.js";
+import { nowIso } from "../utils/time.js";
 
 export class KairnRuntime {
   private readonly rootPath: string;
@@ -432,6 +450,170 @@ export class KairnRuntime {
     };
   }
 
+  async recordFileChanges(input: {
+    sessionId: string;
+    files: string[];
+    source?: WatchEventSource | undefined;
+    eventName?: string | undefined;
+  }): Promise<WatchEventRecord | undefined> {
+    this.store.getSession(input.sessionId);
+    const files = uniquePaths(input.files);
+    if (files.length === 0) return undefined;
+
+    return this.recordWatchEvent({
+      sessionId: input.sessionId,
+      source: input.source ?? "watch",
+      kind: "file_change",
+      eventName: input.eventName ?? "FileChanged",
+      files,
+      summary: `Files changed: ${files.join(", ")}`,
+      metadata: { count: files.length }
+    });
+  }
+
+  async createWatchSnapshot(input: {
+    sessionId: string;
+    changedFiles?: string[] | undefined;
+    source?: WatchEventSource | undefined;
+  }): Promise<WatchSnapshot> {
+    const session = this.store.getSession(input.sessionId);
+    const files = await this.refreshIndex(session.rootPath);
+    const explicitlyChanged = uniquePaths(input.changedFiles ?? []);
+
+    if (explicitlyChanged.length > 0) {
+      await this.recordFileChanges({
+        sessionId: input.sessionId,
+        files: explicitlyChanged,
+        source: input.source ?? "watch"
+      });
+    }
+
+    const changedFiles = [...(await this.getChangedFiles(session.rootPath))].sort();
+    const recommendations: WatchRecommendation[] = [];
+
+    if (changedFiles.length > 0) {
+      const changeHash = sha256(changedFiles.join("\n"));
+      const lastDiffEvent = [...this.store.listWatchEvents(input.sessionId)]
+        .reverse()
+        .find((event) => event.kind === "diff_change");
+
+      if (lastDiffEvent?.contentHash !== changeHash) {
+        const diff = await reviewGitDiff(session.rootPath, session);
+        this.store.recordDiff({
+          sessionId: input.sessionId,
+          files: diff.files,
+          summary: diff.summary
+        });
+        this.recordWatchEvent({
+          sessionId: input.sessionId,
+          source: input.source ?? "watch",
+          kind: "diff_change",
+          eventName: "GitDiffChanged",
+          files: changedFiles,
+          summary: diff.summary,
+          contentHash: changeHash,
+          metadata: {
+            expectedFilesTouched: diff.expectedFilesTouched,
+            unexpectedFiles: diff.unexpectedFiles,
+            missingContextFiles: diff.missingContextFiles
+          }
+        });
+
+        if (diff.missingContextFiles.length > 0) {
+          recommendations.push({
+            summary: "Changed files include files not previously shown by Kairn.",
+            files: diff.missingContextFiles,
+            suggestedNextContext: diff.missingContextFiles.slice(0, 5),
+            warnings: ["Review missing changed-file context before continuing."],
+            content: diff.summary
+          });
+        }
+      }
+    }
+
+    return {
+      sessionId: input.sessionId,
+      rootPath: session.rootPath,
+      changedFiles,
+      indexedFiles: files.length,
+      watchEvents: this.store.listWatchEvents(input.sessionId, 25),
+      recommendations,
+      createdAt: nowIso()
+    };
+  }
+
+  async handleHookEvent(input: {
+    sessionId: string;
+    event: NormalizedHookEvent;
+  }): Promise<HookHandlingResult> {
+    const session = this.store.getSession(input.sessionId);
+    await this.refreshIndex(session.rootPath);
+    const knownFiles = this.store.listFiles(session.rootPath).map((file) => file.path);
+    const outputKind = classifyObservedCommand({
+      command: input.event.command,
+      output: input.event.output,
+      eventName: input.event.eventName
+    });
+    const linkedFiles = extractFailureFiles({
+      output: input.event.output,
+      rootPath: session.rootPath,
+      knownFiles,
+      explicitFiles: input.event.files
+    });
+    const response = input.event.output
+      ? this.compressOutput({
+          sessionId: input.sessionId,
+          type: outputKind,
+          output: input.event.output,
+          budget: 1200
+        })
+      : undefined;
+    const kind = input.event.exitCode && input.event.exitCode !== 0 ? "failure" : input.event.kind;
+    const recommendation = await this.recommendFromHook({
+      sessionId: input.sessionId,
+      command: input.event.command,
+      response,
+      linkedFiles,
+      outputKind
+    });
+    const summary = [
+      input.event.command ? `Command: ${input.event.command}` : `Event: ${input.event.eventName}`,
+      input.event.toolName ? `Tool: ${input.event.toolName}` : "",
+      input.event.exitCode !== undefined ? `Exit code: ${input.event.exitCode}` : "",
+      linkedFiles.length > 0 ? `Linked files: ${linkedFiles.join(", ")}` : "",
+      response?.content ? response.content : ""
+    ].filter(Boolean).join("\n\n");
+    const event = this.recordWatchEvent({
+      sessionId: input.sessionId,
+      source: input.event.source,
+      kind,
+      eventName: input.event.eventName,
+      toolName: input.event.toolName,
+      command: input.event.command,
+      files: linkedFiles,
+      exitCode: input.event.exitCode,
+      summary: truncateToBudget(summary, 1200),
+      metadata: {
+        ...input.event.metadata,
+        outputKind,
+        ...(input.event.cwd ? { cwd: input.event.cwd } : {}),
+        ...(input.event.hostSessionId ? { hostSessionId: input.event.hostSessionId } : {}),
+        ...(input.event.timestamp ? { timestamp: input.event.timestamp } : {})
+      }
+    });
+
+    return {
+      event,
+      ...(recommendation ? { recommendation } : {}),
+      ...(response ? { response } : {})
+    };
+  }
+
+  listWatchEvents(sessionId: string, limit?: number): WatchEventRecord[] {
+    this.store.getSession(sessionId);
+    return this.store.listWatchEvents(sessionId, limit);
+  }
+
   private async refreshIndex(rootPath: string) {
     const index = await indexRepo(rootPath);
     this.store.replaceIndex({
@@ -443,6 +625,87 @@ export class KairnRuntime {
       semanticVectors: index.semanticVectors
     });
     return index.graph.files;
+  }
+
+  private recordWatchEvent(record: {
+    sessionId: string;
+    source: WatchEventSource;
+    kind: WatchEventKind;
+    eventName: string;
+    toolName?: string | undefined;
+    command?: string | undefined;
+    files: string[];
+    exitCode?: number | undefined;
+    summary: string;
+    contentHash?: string | undefined;
+    metadata: Record<string, unknown>;
+  }): WatchEventRecord {
+    const contentHash = record.contentHash ?? sha256([record.summary, record.files.join("\n")].join("\n"));
+    return this.store.recordWatchEvent({
+      sessionId: record.sessionId,
+      source: record.source,
+      kind: record.kind,
+      eventName: record.eventName,
+      ...(record.toolName ? { toolName: record.toolName } : {}),
+      ...(record.command ? { command: record.command } : {}),
+      files: uniquePaths(record.files),
+      ...(record.exitCode !== undefined ? { exitCode: record.exitCode } : {}),
+      summary: record.summary,
+      contentHash,
+      metadata: record.metadata
+    });
+  }
+
+  private async recommendFromHook(input: {
+    sessionId: string;
+    command?: string | undefined;
+    response?: ContextResponse | undefined;
+    linkedFiles: string[];
+    outputKind: OutputKind;
+  }): Promise<WatchRecommendation | undefined> {
+    const suggested = new Set<string>(input.linkedFiles);
+    const warnings = [...(input.response?.warnings ?? [])];
+
+    for (const linkedFile of input.linkedFiles.slice(0, 2)) {
+      try {
+        const related = await this.getRelatedFiles({ sessionId: input.sessionId, target: linkedFile, budget: 700 });
+        for (const file of related.suggestedNextContext.slice(0, 3)) {
+          suggested.add(file);
+        }
+      } catch {
+        // Related context is best-effort for hook recommendations.
+      }
+
+      try {
+        const tests = await this.findTests({ sessionId: input.sessionId, target: linkedFile, budget: 700 });
+        for (const file of tests.suggestedNextContext.slice(0, 3)) {
+          suggested.add(file);
+        }
+      } catch {
+        // Test discovery is best-effort for hook recommendations.
+      }
+    }
+
+    if (suggested.size === 0 && !input.response) return undefined;
+
+    const files = [...suggested].slice(0, 10);
+    return {
+      summary: input.linkedFiles.length > 0
+        ? `Observed ${input.outputKind} output linked to ${input.linkedFiles.length} file(s).`
+        : `Observed ${input.outputKind} output${input.command ? ` from "${input.command}"` : ""}.`,
+      files,
+      suggestedNextContext: files.slice(0, 5),
+      warnings,
+      content: [
+        "# Kairn Hook Recommendation",
+        "",
+        input.command ? `Command: ${input.command}` : undefined,
+        `Output kind: ${input.outputKind}`,
+        files.length > 0 ? `Suggested next context: ${files.join(", ")}` : "No linked files were detected.",
+        "",
+        input.response?.content
+      ].filter(Boolean).join("\n")
+    };
   }
 
   private async getChangedFiles(rootPath: string): Promise<Set<string>> {
@@ -682,4 +945,8 @@ function graphReason(type: string, targetIsFromFile: boolean): string {
 
 function mergeReasonText(left: string | undefined, right: string): string {
   return [...new Set([...(left?.split("; ") ?? []), right])].filter(Boolean).join("; ");
+}
+
+function uniquePaths(files: string[]): string[] {
+  return [...new Set(files.map((file) => normalizeRelativePath(file).replace(/^\.\//, "")).filter(Boolean))].sort();
 }

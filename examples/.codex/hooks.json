@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash|apply_patch|mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "kairn hook --source codex --session \"$KAIRN_SESSION\" --root \"$PWD\"",
+            "statusMessage": "Sending tool output to Kairn"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "kairn hook --source codex --session \"$KAIRN_SESSION\" --root \"$PWD\"",
+            "statusMessage": "Recording prompt in Kairn"
+          }
+        ]
+      }
+    ]
+  }
+}

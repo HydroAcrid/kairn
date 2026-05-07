@@ -1,0 +1,37 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "kairn hook --source claude --session \"$KAIRN_SESSION\" --root \"$PWD\""
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "kairn hook --source claude --session \"$KAIRN_SESSION\" --root \"$PWD\""
+          }
+        ]
+      }
+    ],
+    "FileChanged": [
+      {
+        "matcher": ".env|.env.local|package.json|pnpm-lock.yaml|tsconfig.json",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "kairn hook --source claude --session \"$KAIRN_SESSION\" --root \"$PWD\""
+          }
+        ]
+      }
+    ]
+  }
+}
