@@ -22,11 +22,14 @@ import type {
   HookHandlingResult,
   HookOutputProfile,
   InitResult,
+  IndexCompactionResult,
+  IndexStateStats,
   MetricsEventKind,
   MetricsSummary,
   NormalizedHookEvent,
   OutputKind,
   PrimeProfile,
+  QueryLocalIndex,
   TaskSession,
   WatchEventKind,
   WatchEventRecord,
@@ -50,6 +53,7 @@ import { extractFailureFiles } from "../watch/failureParser.js";
 import { normalizeHookPayload } from "../watch/normalizeHook.js";
 import { nowIso } from "../utils/time.js";
 import { classifyQueryIntent } from "../retrieval/queryIntent.js";
+import { tokenizeLexical } from "../semantic/tokenize.js";
 import { loadBenchmarkSuite } from "../bench/suite.js";
 import { buildBenchmarkReport, compareBenchmarkReports, scoreBenchmarkCase } from "../bench/score.js";
 import { runAgentBenchmarkCase } from "../bench/agent.js";
@@ -144,8 +148,13 @@ export class KairnRuntime {
     source?: WatchEventSource | "runtime" | "cli" | "mcp" | undefined;
     eventName?: string | undefined;
     metadata?: Record<string, unknown> | undefined;
+    refreshIndex?: boolean | undefined;
   }): Promise<ContextPrime> {
-    await this.init();
+    const hadInventory = this.store.listFiles(this.rootPath).length > 0;
+    const shouldRefreshIndex = input.refreshIndex === true || (!hadInventory && input.refreshIndex !== false);
+    if (shouldRefreshIndex) {
+      await this.init();
+    }
     const task = input.task;
     const profile = resolvePrimeProfile(input.profile ?? "auto", task);
     const budget = input.budget ?? defaultPrimeBudget(profile, task);
@@ -164,20 +173,23 @@ export class KairnRuntime {
       query: resolvedTask,
       requestType: "find_context",
       budget: Math.max(360, Math.floor(budget * limits.contextRatio)),
-      mode: input.mode ?? "snippets"
+      mode: input.mode ?? "snippets",
+      refreshIndex: false
     });
     const primaryFile = context.suggestedNextContext[0] ?? context.files[0];
     const related = primaryFile
       ? await this.getRelatedFiles({
           sessionId: session.id,
           target: primaryFile,
-          budget: 420
+          budget: 420,
+          refreshIndex: false
         }).catch(() => undefined)
       : undefined;
     const tests = await this.findTests({
       sessionId: session.id,
       target: primaryFile,
-      budget: 420
+      budget: 420,
+      refreshIndex: false
     }).catch(() => undefined);
     const files = uniquePaths([
       ...context.suggestedNextContext.slice(0, limits.topFiles),
@@ -620,29 +632,29 @@ export class KairnRuntime {
     requestType?: "initial_brief" | "find_context" | undefined;
     budget?: number | undefined;
     mode?: ContextQueryMode | undefined;
+    refreshIndex?: boolean | undefined;
   }): Promise<ContextResponse> {
     const session = this.store.getSession(input.sessionId);
-    const files = await this.refreshIndex(session.rootPath);
-    const symbols = this.store.listSymbols(session.rootPath);
-    const edges = this.store.listGraphEdges(session.rootPath);
-    const chunks = this.store.listSemanticChunks(session.rootPath);
-    const vectors = this.store.listSemanticVectors(session.rootPath);
-    const lexicalDocuments = this.store.listLexicalDocuments(session.rootPath);
-    const lexicalTerms = this.store.listLexicalTerms(session.rootPath);
-    const lexicalStats = this.store.getLexicalStats(session.rootPath);
+    const files = input.refreshIndex === false ? this.store.listFiles(session.rootPath) : await this.refreshIndex(session.rootPath);
     const changedFiles = await this.getChangedFiles(session.rootPath);
     const query = input.query ?? session.task;
+    const localIndex = this.getQueryLocalIndex({
+      rootPath: session.rootPath,
+      files,
+      query,
+      changedFiles
+    });
     const intent = classifyQueryIntent(query);
     const scored = hybridSearch({
       files,
       query,
-      symbols,
-      chunks,
-      vectors,
-      lexicalDocuments,
-      lexicalTerms,
-      lexicalStats,
-      edges,
+      symbols: localIndex.symbols,
+      chunks: localIndex.chunks,
+      vectors: localIndex.vectors,
+      lexicalDocuments: localIndex.lexicalDocuments,
+      lexicalTerms: localIndex.lexicalTerms,
+      lexicalStats: localIndex.lexicalStats,
+      edges: localIndex.edges,
       shown: session.filesShown,
       changedFiles
     }).slice(0, 12);
@@ -651,7 +663,7 @@ export class KairnRuntime {
       requestType: input.requestType ?? "find_context",
       query,
       repeatedFiles,
-      graphAvailable: edges.length > 0,
+      graphAvailable: localIndex.edges.length > 0,
       ...(input.mode ? { explicitMode: input.mode } : {}),
       ...(input.budget ? { budget: input.budget } : {}),
       ...(scored[0] ? { topScore: scored[0].score } : {})
@@ -710,7 +722,8 @@ export class KairnRuntime {
   }): Promise<ContextResponse> {
     const session = this.store.getSession(input.sessionId);
     const target = normalizeRelativePath(input.target);
-    const files = await this.refreshIndex(session.rootPath);
+    const existingFiles = this.store.listFiles(session.rootPath);
+    const files = existingFiles.some((record) => record.path === target) ? existingFiles : await this.refreshIndex(session.rootPath);
     const file = files.find((record) => record.path === target);
 
     if (!file) {
@@ -770,7 +783,6 @@ export class KairnRuntime {
   }): Promise<ContextResponse> {
     const session = this.store.getSession(input.sessionId);
     const target = normalizeRelativePath(input.target);
-    await this.refreshIndex(session.rootPath);
     const content = readTextFile(session.rootPath, target);
     const storedSymbol = this.store.findSymbol(session.rootPath, target, input.symbol);
     const fallbackSymbol = storedSymbol ? null : extractSymbol(content, input.symbol);
@@ -852,10 +864,11 @@ export class KairnRuntime {
     sessionId: string;
     target: string;
     budget?: number | undefined;
+    refreshIndex?: boolean | undefined;
   }): Promise<ContextResponse> {
     const session = this.store.getSession(input.sessionId);
     const target = normalizeRelativePath(input.target);
-    const files = await this.refreshIndex(session.rootPath);
+    const files = input.refreshIndex === false ? this.store.listFiles(session.rootPath) : await this.refreshIndex(session.rootPath);
     const graphRelated = this.getGraphRelatedFiles(session.rootPath, target);
     const semanticRelated = this.getSemanticRelatedFiles(session.rootPath, target, files);
     const relatedByPath = new Map<string, { file: FileRecord; reason: string }>();
@@ -925,12 +938,14 @@ export class KairnRuntime {
     sessionId: string;
     target?: string | undefined;
     budget?: number | undefined;
+    refreshIndex?: boolean | undefined;
   }): Promise<ContextResponse> {
     const session = this.store.getSession(input.sessionId);
-    const files = await this.refreshIndex(session.rootPath);
+    const files = input.refreshIndex === false ? this.store.listFiles(session.rootPath) : await this.refreshIndex(session.rootPath);
     const target = input.target ? normalizeRelativePath(input.target) : undefined;
     const graphTests = target ? this.getGraphTests(session.rootPath, target) : [];
     const semanticTests = this.getSemanticTests(session.rootPath, files, target, session.task);
+    const graphTestPaths = new Set(graphTests.map((file) => file.path));
     const testsByPath = new Map<string, FileRecord>();
 
     for (const file of [...graphTests, ...semanticTests]) {
@@ -943,7 +958,9 @@ export class KairnRuntime {
       }
     }
 
-    const tests = [...testsByPath.values()].sort((a, b) => a.path.localeCompare(b.path)).slice(0, 30);
+    const tests = [...testsByPath.values()]
+      .sort((a, b) => Number(graphTestPaths.has(b.path)) - Number(graphTestPaths.has(a.path)) || a.path.localeCompare(b.path))
+      .slice(0, 30);
     const packageScripts = this.readPackageScripts(session.rootPath);
     const responseContent = truncateToBudget(
       [
@@ -1408,7 +1425,9 @@ export class KairnRuntime {
       event: input.event
     });
     const refreshStartedAt = Date.now();
-    if (input.refreshIndex ?? true) {
+    const promptEvent = isPromptEvent(input.event.eventName);
+    const shouldRefreshIndex = input.refreshIndex ?? !promptEvent;
+    if (shouldRefreshIndex) {
       await this.refreshIndex(session.rootPath);
     }
     const refreshIndexMs = Date.now() - refreshStartedAt;
@@ -1454,6 +1473,7 @@ export class KairnRuntime {
               format: hookOutput === "mcp-brief" ? "mcp_brief" : "standard",
               source: input.event.source,
               eventName: "prime_context_hook",
+              refreshIndex: shouldRefreshIndex,
               metadata: {
                 promptHash,
                 hostSessionId: input.event.hostSessionId ?? null,
@@ -1469,7 +1489,8 @@ export class KairnRuntime {
           }
         })()
       : undefined;
-    const emittedPrime = prime?.quality?.action === "suppress"
+    const suppressedPrime = prime?.quality?.action === "suppress" || prime?.contextDecision?.action === "suppress";
+    const emittedPrime = suppressedPrime
       ? undefined
       : prime && hookOutput === "tiny-directive"
         ? withTinyDirectivePrime(prime, input.primeBudget ?? 600)
@@ -1515,6 +1536,8 @@ export class KairnRuntime {
         ? failureRecommendation(failureContext)
         : failureOnlyNonFailure
           ? undefined
+        : promptEvent
+          ? undefined
         : await this.recommendFromHook({
           sessionId: session.id,
           command: input.event.command,
@@ -1552,6 +1575,7 @@ export class KairnRuntime {
         transport: input.transport ?? "cli",
         daemonAttempted: Boolean(input.daemonAttempted),
         daemonHit: Boolean(input.daemonHit),
+        indexRefreshSkipped: !shouldRefreshIndex,
         refreshIndexMs,
         primeElapsedMs,
         hookLatencyMs: Date.now() - hookStartedAt
@@ -1574,11 +1598,13 @@ export class KairnRuntime {
         transport: input.transport ?? "cli",
         daemonAttempted: Boolean(input.daemonAttempted),
         daemonHit: Boolean(input.daemonHit),
+        daemonMiss: Boolean(input.daemonAttempted) && !input.daemonHit,
+        indexRefreshSkipped: !shouldRefreshIndex,
         refreshIndexMs,
         primeElapsedMs,
         hookLatencyMs: Date.now() - hookStartedAt,
         linkedFiles: linkedFiles.length,
-        recommendation: emittedPrime ? (hookOutput === "tiny-directive" ? "tiny_prime_emitted" : hookOutput === "mcp-brief" ? "mcp_brief_prime_emitted" : "prime_emitted") : prime ? "prime_quality_suppressed" : recommendation ? "emitted" : duplicatePromptPrime ? "duplicate_suppressed" : promptHash ? "prompt_suppressed" : "suppressed",
+        recommendation: emittedPrime ? (hookOutput === "tiny-directive" ? "tiny_prime_emitted" : hookOutput === "mcp-brief" ? "mcp_brief_prime_emitted" : "prime_emitted") : suppressedPrime ? "prime_quality_suppressed_silent" : recommendation ? "emitted" : duplicatePromptPrime ? "duplicate_suppressed" : promptHash ? "prompt_suppressed" : "suppressed",
         ...(hookOutput === "mcp-brief" ? { coordinationMode: "mcp_hybrid", hookFiles: emittedPrime?.files ?? [] } : {}),
         proactivePrime: Boolean(emittedPrime),
         primeQuality: prime?.quality,
@@ -1897,6 +1923,65 @@ export class KairnRuntime {
     return this.indexService.refreshIndex(rootPath);
   }
 
+  getIndexStatus(): IndexStateStats {
+    return this.indexService.getStatus(this.rootPath);
+  }
+
+  compactIndex(): IndexCompactionResult {
+    return this.indexService.compact(this.rootPath);
+  }
+
+  private getQueryLocalIndex(input: {
+    rootPath: string;
+    files: FileRecord[];
+    query: string;
+    changedFiles?: Set<string> | undefined;
+    seedPaths?: string[] | undefined;
+    candidateLimit?: number | undefined;
+  }): QueryLocalIndex {
+    const symbols = this.store.listSymbols(input.rootPath);
+    const lexicalDocuments = this.store.listLexicalDocuments(input.rootPath);
+    const lexicalTerms = this.store.listLexicalTermsForTerms(input.rootPath, tokenizeLexical(input.query));
+    const lexicalStats = this.store.getLexicalStats(input.rootPath);
+    const preliminary = hybridSearch({
+      files: input.files,
+      query: input.query,
+      symbols,
+      chunks: [],
+      vectors: [],
+      lexicalDocuments,
+      lexicalTerms,
+      lexicalStats,
+      edges: [],
+      ...(input.changedFiles ? { changedFiles: input.changedFiles } : {})
+    });
+    const candidateLimit = input.candidateLimit ?? 300;
+    const candidateFiles = uniquePaths([
+      ...(input.seedPaths ?? []),
+      ...preliminary.slice(0, candidateLimit).map((file) => file.path),
+      ...(input.changedFiles ? [...input.changedFiles] : []),
+      ...exactPathCandidates(input.files, input.query).slice(0, 50)
+    ]).slice(0, candidateLimit + 100);
+    const edges = this.store.listGraphEdgesForFiles(input.rootPath, candidateFiles);
+    const expandedFiles = uniquePaths([
+      ...candidateFiles,
+      ...edges.flatMap((edge) => [edge.fromFile, edge.toFile])
+    ]).slice(0, candidateLimit + 500);
+    const chunks = this.store.listSemanticChunksForFiles(input.rootPath, expandedFiles);
+    const vectors = this.store.listSemanticVectorsForChunkIds(input.rootPath, chunks.map((chunk) => chunk.id));
+
+    return {
+      symbols,
+      chunks,
+      vectors,
+      lexicalDocuments,
+      lexicalTerms,
+      ...(lexicalStats ? { lexicalStats } : {}),
+      edges,
+      candidateFiles: expandedFiles
+    };
+  }
+
   private recordWatchEvent(record: {
     sessionId: string;
     source: WatchEventSource;
@@ -2046,13 +2131,23 @@ export class KairnRuntime {
     const query = targetChunks
       .map((chunk) => [target, chunk.symbol ?? "", chunk.text.slice(0, 2000)].join("\n"))
       .join("\n");
+    const localIndex = this.getQueryLocalIndex({
+      rootPath,
+      files,
+      query,
+      seedPaths: [target],
+      candidateLimit: 120
+    });
     const scored = hybridSearch({
       files,
       query,
-      symbols: this.store.listSymbols(rootPath),
-      chunks: this.store.listSemanticChunks(rootPath),
-      vectors: this.store.listSemanticVectors(rootPath),
-      edges: this.store.listGraphEdges(rootPath)
+      symbols: localIndex.symbols,
+      chunks: localIndex.chunks,
+      vectors: localIndex.vectors,
+      lexicalDocuments: localIndex.lexicalDocuments,
+      lexicalTerms: localIndex.lexicalTerms,
+      lexicalStats: localIndex.lexicalStats,
+      edges: localIndex.edges
     });
 
     return scored
@@ -2073,13 +2168,24 @@ export class KairnRuntime {
       queryParts.push(...this.store.listSymbolsForFile(rootPath, target).map((symbol) => symbol.name));
     }
 
+    const query = queryParts.join("\n");
+    const localIndex = this.getQueryLocalIndex({
+      rootPath,
+      files,
+      query,
+      seedPaths: target ? [target] : [],
+      candidateLimit: 160
+    });
     const scored = hybridSearch({
       files,
-      query: queryParts.join("\n"),
-      symbols: this.store.listSymbols(rootPath),
-      chunks: this.store.listSemanticChunks(rootPath),
-      vectors: this.store.listSemanticVectors(rootPath),
-      edges: this.store.listGraphEdges(rootPath)
+      query,
+      symbols: localIndex.symbols,
+      chunks: localIndex.chunks,
+      vectors: localIndex.vectors,
+      lexicalDocuments: localIndex.lexicalDocuments,
+      lexicalTerms: localIndex.lexicalTerms,
+      lexicalStats: localIndex.lexicalStats,
+      edges: localIndex.edges
     });
 
     return scored.filter((file) => file.kind === "test").slice(0, 20);
@@ -2186,4 +2292,23 @@ function collectWorkspaceKairnMetrics(workspacePath: string): Record<string, unk
   } finally {
     runtime.close();
   }
+}
+
+function exactPathCandidates(files: FileRecord[], query: string): string[] {
+  const terms = tokenizeLexical(query).filter((term) => term.length >= 3);
+  if (terms.length === 0) return [];
+  return files
+    .map((file) => {
+      const normalized = file.path.toLowerCase();
+      const base = path.posix.basename(normalized);
+      const hits = terms.filter((term) => normalized.includes(term));
+      const baseHits = terms.filter((term) => base.includes(term));
+      return {
+        path: file.path,
+        score: hits.length + baseHits.length * 2 + (file.kind === "source" ? 2 : 0)
+      };
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
+    .map((item) => item.path);
 }

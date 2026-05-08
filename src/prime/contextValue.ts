@@ -143,7 +143,7 @@ function isPrimarySourcePath(filePath: string): boolean {
     normalized.startsWith("src/") ||
     normalized.startsWith("packages/") ||
     normalized.startsWith("include/") ||
-    (/\.pyi?$/.test(normalized) && !/(^|\/)(tests?|docs?|examples?)\//.test(normalized)) ||
+    (/\.pyi?$/.test(normalized) && !/(^|\/)(tests?|docs?|examples)\//.test(normalized)) ||
     normalized.includes("/src/") ||
     normalized.includes("/include/") ||
     normalized.includes("/src/main/java/")

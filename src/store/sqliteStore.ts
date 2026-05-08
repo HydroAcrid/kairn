@@ -15,6 +15,9 @@ import type {
   EvalRunStatus,
   FileRecord,
   GraphEdgeRecord,
+  IndexCompactionResult,
+  IndexStateStats,
+  IndexingConfig,
   HostSessionLinkRecord,
   LexicalDocumentRecord,
   LexicalStatsRecord,
@@ -28,6 +31,7 @@ import type {
   WatchEventRecord,
   WatchEventSource
 } from "../types.js";
+import fs from "node:fs";
 import { deserializeVector, serializeVector } from "../semantic/vector.js";
 import { nowIso } from "../utils/time.js";
 
@@ -50,6 +54,8 @@ type FileRow = {
   size: number;
   hash: string;
   importance: number;
+  index_tier: FileRecord["indexTier"] | null;
+  tier_score: number | null;
   updated_at: string;
 };
 
@@ -248,8 +254,10 @@ type BenchmarkResultRow = {
 
 export class SqliteStore {
   private readonly db: Database.Database;
+  private readonly databasePath: string;
 
   constructor(databasePath: string) {
+    this.databasePath = databasePath;
     this.db = new Database(databasePath);
     this.db.pragma("journal_mode = WAL");
     this.migrate();
@@ -259,12 +267,17 @@ export class SqliteStore {
     this.db.close();
   }
 
+  checkpointWal(): boolean {
+    this.db.pragma("wal_checkpoint(TRUNCATE)");
+    return true;
+  }
+
   upsertFiles(files: FileRecord[]): void {
     const stmt = this.db.prepare(`
       insert into file_inventory (
-        root_path, path, language, kind, size, hash, importance, updated_at
+        root_path, path, language, kind, size, hash, importance, index_tier, tier_score, updated_at
       ) values (
-        @rootPath, @path, @language, @kind, @size, @hash, @importance, @updatedAt
+        @rootPath, @path, @language, @kind, @size, @hash, @importance, @indexTier, @tierScore, @updatedAt
       )
       on conflict(root_path, path) do update set
         language = excluded.language,
@@ -272,12 +285,14 @@ export class SqliteStore {
         size = excluded.size,
         hash = excluded.hash,
         importance = excluded.importance,
+        index_tier = excluded.index_tier,
+        tier_score = excluded.tier_score,
         updated_at = excluded.updated_at
     `);
 
     const tx = this.db.transaction((records: FileRecord[]) => {
       for (const record of records) {
-        stmt.run(record);
+        stmt.run(fileParams(record));
       }
     });
 
@@ -305,9 +320,9 @@ export class SqliteStore {
     const deleteLexicalStats = this.db.prepare("delete from lexical_stats where root_path = ?");
     const insertFile = this.db.prepare(`
       insert into file_inventory (
-        root_path, path, language, kind, size, hash, importance, updated_at
+        root_path, path, language, kind, size, hash, importance, index_tier, tier_score, updated_at
       ) values (
-        @rootPath, @path, @language, @kind, @size, @hash, @importance, @updatedAt
+        @rootPath, @path, @language, @kind, @size, @hash, @importance, @indexTier, @tierScore, @updatedAt
       )
     `);
     const insertSymbol = this.db.prepare(`
@@ -371,7 +386,7 @@ export class SqliteStore {
       deleteFiles.run(input.rootPath);
 
       for (const file of input.files) {
-        insertFile.run(file);
+        insertFile.run(fileParams(file));
       }
 
       for (const symbol of input.symbols) {
@@ -421,6 +436,7 @@ export class SqliteStore {
     });
 
     tx();
+    this.checkpointWal();
   }
 
   listFiles(rootPath: string): FileRecord[] {
@@ -475,6 +491,30 @@ export class SqliteStore {
     return rows.map(mapGraphEdgeRow);
   }
 
+  listGraphEdgesForFiles(rootPath: string, filePaths: string[], limit = 50_000): GraphEdgeRecord[] {
+    const unique = [...new Set(filePaths)].filter(Boolean);
+    if (unique.length === 0) return [];
+    const rows: GraphEdgeRow[] = [];
+
+    for (const chunk of chunkValues(unique, 500)) {
+      const placeholders = chunk.map(() => "?").join(", ");
+      rows.push(
+        ...(this.db
+          .prepare(`
+            select * from graph_edges
+            where root_path = ?
+              and (from_file in (${placeholders}) or to_file in (${placeholders}))
+            order by from_file asc, to_file asc, type asc
+            limit ?
+          `)
+          .all(rootPath, ...chunk, ...chunk, limit) as GraphEdgeRow[])
+      );
+      if (rows.length >= limit) break;
+    }
+
+    return rows.slice(0, limit).map(mapGraphEdgeRow);
+  }
+
   listSemanticChunks(rootPath: string): SemanticChunkRecord[] {
     const rows = this.db
       .prepare("select * from semantic_chunks where root_path = ? order by file_path asc, kind asc, id asc")
@@ -491,10 +531,54 @@ export class SqliteStore {
     return rows.map(mapSemanticChunkRow);
   }
 
+  listSemanticChunksForFiles(rootPath: string, filePaths: string[], limit = 10_000): SemanticChunkRecord[] {
+    const unique = [...new Set(filePaths)].filter(Boolean);
+    if (unique.length === 0) return [];
+    const rows: SemanticChunkRow[] = [];
+
+    for (const chunk of chunkValues(unique, 500)) {
+      const placeholders = chunk.map(() => "?").join(", ");
+      rows.push(
+        ...(this.db
+          .prepare(`
+            select * from semantic_chunks
+            where root_path = ? and file_path in (${placeholders})
+            order by file_path asc, kind asc, id asc
+            limit ?
+          `)
+          .all(rootPath, ...chunk, limit) as SemanticChunkRow[])
+      );
+      if (rows.length >= limit) break;
+    }
+
+    return rows.slice(0, limit).map(mapSemanticChunkRow);
+  }
+
   listSemanticVectors(rootPath: string): SemanticVectorRecord[] {
     const rows = this.db
       .prepare("select * from semantic_vectors where root_path = ? order by chunk_id asc")
       .all(rootPath) as SemanticVectorRow[];
+
+    return rows.map(mapSemanticVectorRow);
+  }
+
+  listSemanticVectorsForChunkIds(rootPath: string, chunkIds: string[]): SemanticVectorRecord[] {
+    const unique = [...new Set(chunkIds)].filter(Boolean);
+    if (unique.length === 0) return [];
+    const rows: SemanticVectorRow[] = [];
+
+    for (const chunk of chunkValues(unique, 500)) {
+      const placeholders = chunk.map(() => "?").join(", ");
+      rows.push(
+        ...(this.db
+          .prepare(`
+            select * from semantic_vectors
+            where root_path = ? and chunk_id in (${placeholders})
+            order by chunk_id asc
+          `)
+          .all(rootPath, ...chunk) as SemanticVectorRow[])
+      );
+    }
 
     return rows.map(mapSemanticVectorRow);
   }
@@ -513,6 +597,120 @@ export class SqliteStore {
       .all(rootPath) as LexicalTermRow[];
 
     return rows.map(mapLexicalTermRow);
+  }
+
+  listLexicalTermsForTerms(rootPath: string, terms: string[], limit = 30_000): LexicalTermRecord[] {
+    const unique = [...new Set(terms)].filter(Boolean);
+    if (unique.length === 0) return [];
+    const rows: LexicalTermRow[] = [];
+
+    for (const chunk of chunkValues(unique, 250)) {
+      const placeholders = chunk.map(() => "?").join(", ");
+      rows.push(
+        ...(this.db
+          .prepare(`
+            select * from lexical_terms
+            where root_path = ? and term in (${placeholders})
+            order by term asc, document_id asc
+            limit ?
+          `)
+          .all(rootPath, ...chunk, limit) as LexicalTermRow[])
+      );
+      if (rows.length >= limit) break;
+    }
+
+    return rows.slice(0, limit).map(mapLexicalTermRow);
+  }
+
+  getIndexStateStats(rootPath: string, config: IndexingConfig): IndexStateStats {
+    const sizes = this.databaseSizes();
+    const tiers = this.db
+      .prepare("select coalesce(index_tier, 'tier0') as tier, count(*) as count from file_inventory where root_path = ? group by coalesce(index_tier, 'tier0')")
+      .all(rootPath) as Array<{ tier: keyof IndexStateStats["tiers"]; count: number }>;
+    const tierCounts: IndexStateStats["tiers"] = { tier0: 0, tier1: 0, tier2: 0, tier3: 0, tier4: 0 };
+    for (const row of tiers) {
+      if (row.tier in tierCounts) tierCounts[row.tier] = row.count;
+    }
+
+    return {
+      rootPath,
+      databasePath: this.databasePath,
+      dbSizeBytes: sizes.dbSizeBytes,
+      walSizeBytes: sizes.walSizeBytes,
+      totalSizeBytes: sizes.dbSizeBytes + sizes.walSizeBytes,
+      maxStateBytes: config.maxStateMb * 1024 * 1024,
+      hardMaxStateBytes: config.hardMaxStateMb * 1024 * 1024,
+      fileCount: this.countRows("file_inventory", rootPath),
+      symbolCount: this.countRows("symbols", rootPath),
+      graphEdgeCount: this.countRows("graph_edges", rootPath),
+      semanticChunkCount: this.countRows("semantic_chunks", rootPath),
+      semanticVectorCount: this.countRows("semantic_vectors", rootPath),
+      lexicalDocumentCount: this.countRows("lexical_documents", rootPath),
+      lexicalTermCount: this.countRows("lexical_terms", rootPath),
+      tiers: tierCounts
+    };
+  }
+
+  compactIndex(rootPath: string, config: IndexingConfig): IndexCompactionResult {
+    const before = this.getIndexStateStats(rootPath, config);
+    const graphEdgesDeleted = Math.max(0, before.graphEdgeCount - config.maxGraphEdges);
+    if (graphEdgesDeleted > 0) {
+      this.db.prepare(`
+        delete from graph_edges
+        where rowid in (
+          select rowid from graph_edges
+          where root_path = ?
+          order by
+            case type
+              when 'imports' then 1
+              when 'test_for' then 2
+              when 'parent_route' then 3
+              when 'definition' then 4
+              when 'reference' then 5
+              when 'type_reference' then 6
+              when 'implementation' then 7
+              when 'call' then 8
+              else 20
+            end desc,
+            rowid desc
+          limit ?
+        )
+      `).run(rootPath, graphEdgesDeleted);
+    }
+
+    const chunksToDelete = Math.max(0, before.semanticChunkCount - config.maxSemanticChunks);
+    const deletedChunkIds =
+      chunksToDelete > 0
+        ? (this.db
+            .prepare(`
+              select id from semantic_chunks
+              where root_path = ?
+              order by
+                case kind when 'symbol' then 1 else 2 end desc,
+                token_estimate desc,
+                rowid desc
+              limit ?
+            `)
+            .all(rootPath, chunksToDelete) as Array<{ id: string }>)
+        : [];
+    if (deletedChunkIds.length > 0) {
+      const ids = deletedChunkIds.map((row) => row.id);
+      for (const chunk of chunkValues(ids, 500)) {
+        const placeholders = chunk.map(() => "?").join(", ");
+        this.db.prepare(`delete from semantic_vectors where root_path = ? and chunk_id in (${placeholders})`).run(rootPath, ...chunk);
+        this.db.prepare(`delete from semantic_chunks where root_path = ? and id in (${placeholders})`).run(rootPath, ...chunk);
+      }
+    }
+
+    this.checkpointWal();
+    return {
+      before,
+      after: this.getIndexStateStats(rootPath, config),
+      graphEdgesDeleted,
+      semanticChunksDeleted: deletedChunkIds.length,
+      semanticVectorsDeleted: deletedChunkIds.length,
+      walCheckpointed: true
+    };
   }
 
   getLexicalStats(rootPath: string): LexicalStatsRecord | undefined {
@@ -1043,6 +1241,19 @@ export class SqliteStore {
     this.db.prepare("update sessions set updated_at = ? where id = ?").run(nowIso(), sessionId);
   }
 
+  private countRows(table: string, rootPath: string): number {
+    const row = this.db.prepare(`select count(*) as count from ${table} where root_path = ?`).get(rootPath) as { count: number };
+    return row.count;
+  }
+
+  private databaseSizes(): { dbSizeBytes: number; walSizeBytes: number } {
+    const walPath = `${this.databasePath}-wal`;
+    return {
+      dbSizeBytes: fs.existsSync(this.databasePath) ? fs.statSync(this.databasePath).size : 0,
+      walSizeBytes: fs.existsSync(walPath) ? fs.statSync(walPath).size : 0
+    };
+  }
+
   private migrate(): void {
     this.db.exec(`
       create table if not exists sessions (
@@ -1075,6 +1286,8 @@ export class SqliteStore {
         size integer not null,
         hash text not null,
         importance integer not null,
+        index_tier text,
+        tier_score real,
         updated_at text not null,
         primary key (root_path, path)
       );
@@ -1290,6 +1503,14 @@ export class SqliteStore {
       create index if not exists lexical_terms_root_term_idx on lexical_terms(root_path, term);
       create index if not exists lexical_terms_root_file_idx on lexical_terms(root_path, file_path);
     `);
+    this.ensureColumn("file_inventory", "index_tier", "text");
+    this.ensureColumn("file_inventory", "tier_score", "real");
+  }
+
+  private ensureColumn(table: string, column: string, definition: string): void {
+    const rows = this.db.prepare(`pragma table_info(${table})`).all() as Array<{ name: string }>;
+    if (rows.some((row) => row.name === column)) return;
+    this.db.exec(`alter table ${table} add column ${column} ${definition}`);
   }
 }
 
@@ -1302,7 +1523,17 @@ function mapFileRow(row: FileRow): FileRecord {
     size: row.size,
     hash: row.hash,
     importance: row.importance,
+    ...(row.index_tier ? { indexTier: row.index_tier } : {}),
+    ...(row.tier_score !== null && row.tier_score !== undefined ? { tierScore: row.tier_score } : {}),
     updatedAt: row.updated_at
+  };
+}
+
+function fileParams(file: FileRecord): Record<string, unknown> {
+  return {
+    ...file,
+    indexTier: file.indexTier ?? null,
+    tierScore: file.tierScore ?? null
   };
 }
 
@@ -1508,4 +1739,12 @@ function parseJsonList(value: string): string[] {
 function parseJsonObject(value: string): Record<string, unknown> {
   const parsed = JSON.parse(value) as unknown;
   return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
+}
+
+function chunkValues<T>(values: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < values.length; index += size) {
+    chunks.push(values.slice(index, index + size));
+  }
+  return chunks;
 }

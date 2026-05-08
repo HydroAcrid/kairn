@@ -9,7 +9,7 @@ import type { FileRecord } from "../src/types.js";
 import { createFixtureRepo } from "./helpers.js";
 
 describe("buildRepoGraph", () => {
-  it("builds import, reverse import, test, index, and parent route edges", () => {
+  it("builds direct import, direct test, index, and parent route edges", () => {
     const rootPath = "/repo";
     const files = [
       file(rootPath, "src/app.ts", "source"),
@@ -37,12 +37,33 @@ describe("buildRepoGraph", () => {
     const graph = buildRepoGraph({ rootPath, files, parsedFiles });
 
     expect(edgeTypes(graph.edges, "src/app.ts", "src/user/index.ts")).toContain("imports");
-    expect(edgeTypes(graph.edges, "src/user/index.ts", "src/app.ts")).toContain("imported_by");
     expect(edgeTypes(graph.edges, "src/app.test.ts", "src/app.ts")).toContain("test_for");
-    expect(edgeTypes(graph.edges, "src/app.ts", "src/app.test.ts")).toContain("tested_by");
     expect(edgeTypes(graph.edges, "app/dashboard/DashboardCard.tsx", "app/dashboard/page.tsx")).toContain(
       "parent_route"
     );
+  });
+
+  it("does not create test edges by comparing every source to every test", () => {
+    const rootPath = "/repo";
+    const files = [
+      ...Array.from({ length: 200 }, (_, index) => file(rootPath, `src/module-${index}.ts`, "source")),
+      file(rootPath, "src/local-url.ts", "source"),
+      file(rootPath, "src/local-url.test.ts", "test")
+    ];
+    const parsedFiles = files.map((record) =>
+      parseSourceFile({
+        rootPath,
+        filePath: record.path,
+        language: record.language,
+        content: record.kind === "test" ? "import './local-url';\ntest('local url', () => {});" : `export const value${record.path.length} = 1;`
+      })
+    );
+
+    const graph = buildRepoGraph({ rootPath, files, parsedFiles });
+    const testEdges = graph.edges.filter((edge) => edge.type === "test_for");
+
+    expect(testEdges.length).toBeLessThanOrEqual(12);
+    expect(edgeTypes(graph.edges, "src/local-url.test.ts", "src/local-url.ts")).toContain("imports");
   });
 
   it("adds TypeScript language-service reference edges without replacing tree-sitter edges", async () => {

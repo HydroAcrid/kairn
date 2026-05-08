@@ -110,6 +110,10 @@ export type BenchmarkComparison = {
     afterTokens: number;
     savedTokens: number;
     savingsRate: number;
+    qualityGatePassed?: boolean;
+    validSavings?: number;
+    invalidSavings?: number;
+    negativeEvidenceReason?: string;
   };
   improvedCases: string[];
   regressedCases: string[];
@@ -137,6 +141,7 @@ export type BenchmarkProofReport = {
       reports: number;
       meanTokens?: number;
       medianTokens?: number;
+      qualityPassingReports?: number;
       caseCount: number;
     }>>;
     deltas: Partial<Record<string, {

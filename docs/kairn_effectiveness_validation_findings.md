@@ -1249,3 +1249,353 @@ Next validation step:
 - Re-run the valid Django proof and confirm the new source-targeted prime no longer regresses baseline as badly.
 - Re-run a Next.js-scale Codex proof now that initialization remains bounded.
 - Do not claim large-repo savings until repeated proofs pass quality gates and observed tokens improve.
+
+## Large Repo Retest After Source-Targeting Fix
+
+Date: 2026-05-08
+
+This pass reran the large-repo proofs after adding index caps, example-literal stripping, source-targeting, and wrong-context-risk suppression.
+
+Verification before live tests:
+
+```text
+pnpm build
+```
+
+### Django Retake
+
+Result file:
+
+```text
+/tmp/kairn-large-django-retake-20260508140726.json
+```
+
+Quality gate:
+
+- all modes passed verification
+- all modes touched `django/utils/text.py`
+- no docs/tests/examples were touched
+
+| Mode | Quality | Required source touched | Observed tokens | Delta vs baseline | Elapsed |
+| --- | --- | --- | ---: | ---: | ---: |
+| Baseline | pass | yes | `20,305` | - | `28.7s` |
+| Manual prime | pass | yes | `16,682` | `+17.84%` | `86.1s` |
+| Hook full-prime | pass | yes | `26,292` | `-29.49%` | `102.1s` |
+
+Interpretation:
+
+- The catastrophic previous result was fixed. Kairn no longer produced a `-135%` token regression on Django.
+- Manual prime was quality-valid and saved `3,623` observed Codex tokens in this single run.
+- This is still not a clean “Kairn source prime solved it” result. With the suite's exact prompt wording, Kairn classified the prime as risky and produced a compact suppressed-context brief. The recorded candidate files were still test-heavy:
+
+```text
+tests/template_tests/filter_tests/test_slugify.py
+tests/admin_scripts/tests.py
+```
+
+- The controller did the right thing by suppressing risky context instead of force-feeding the wrong files. The single-run token win may come from lower variance, the suppressive instruction, or Codex taking a shorter path.
+- Hook full-prime is still problematic on large repos. Even with only a small prime payload, the automatic hook path increased observed tokens by `5,987` and took longer. Large-repo hook mode needs a warm daemon/pre-indexed state and stricter hook emission rules.
+
+### Next.js Retake
+
+Result file:
+
+```text
+/tmp/kairn-large-next-retake-20260508141503.json
+```
+
+The Next.js retake is **not a valid savings win** because every mode failed verification.
+
+| Mode | Quality | Required source touched | Observed tokens | Delta vs baseline | Elapsed |
+| --- | --- | --- | ---: | ---: | ---: |
+| Baseline | fail | no | `81,377` | - | `87.2s` |
+| Manual prime | fail | yes | `43,162` | invalid `+46.96%` | `204.0s` |
+| Hook full-prime | fail | no | `39,171` | invalid `+51.86%` | `221.7s` |
+
+Important details:
+
+- Baseline mentioned the expected file but did not modify it.
+- Manual prime touched `packages/next/src/shared/lib/router/utils/is-local-url.ts`, but the edit failed verification. It removed the `isAbsoluteUrl` early return instead of restoring `if (!isAbsoluteUrl(url)) return true`.
+- Hook full-prime saved tokens relative to baseline, but did not touch the required source file and failed verification.
+- Therefore the large Next.js token reductions cannot be claimed as product savings. They are quality failures.
+
+Indexing result:
+
+- The previous Next.js indexing attempt ballooned `.kairn` toward `8GB`.
+- After the cap, the proof workspace stayed bounded; observed `.kairn` size during the hook leg was about `240MB`.
+- The full disposable workspace was about `527MB`, mostly the cloned repo plus `.kairn`.
+
+### Conclusions From The Retake
+
+What improved:
+
+- Large-repo indexing is bounded now.
+- Django no longer shows catastrophic Kairn harm.
+- Manual/suppressed context can beat baseline on a valid large Python repo case.
+
+What is still broken:
+
+- Hook full-prime is not production-ready for large repos. It can add latency and token cost even when the payload is small.
+- The controller suppresses risky context, but retrieval still needs to get the primary source candidate right for more prompt phrasings.
+- Next.js showed token savings without quality, which must count as failure.
+- The benchmark still reports high response-token counts, which suggests the agent/harness transcript output is large even when the Kairn prime itself is small.
+
+Next improvement priorities:
+
+1. Add warm hook/daemon reuse for large repos so `UserPromptSubmit` does not build an index during the Codex turn.
+2. Make hook savings mode more conservative than manual prime. If prime quality is suppressed, the hook should usually emit nothing, not a suppression brief.
+3. Add a source-candidate rescue step: if top context is test/doc but an exact production file is mentioned elsewhere in ranked results, promote the production file.
+4. Improve Next.js router utility retrieval so `is-local-url.ts` outranks broader `router.ts`.
+5. Treat quality-failing token reductions as negative evidence, not savings.
+
+## 2026-05-08 Full Test Flow After Large-Repo Reliability Pass
+
+Local verification:
+
+- `pnpm test`: pass, `106` tests across `11` files.
+- `pnpm typecheck`: pass.
+- `pnpm build`: pass.
+- Replay smoke on Kairn itself: pass, overall score `100`.
+
+Replay artifact:
+
+```text
+/tmp/kairn-replay-smoke-20260508155403.json
+```
+
+### Django Large-Repo Proof
+
+Suite:
+
+```text
+/tmp/kairn-large-django-valid-suite.json
+```
+
+Result:
+
+```text
+/tmp/kairn-django-fullflow-20260508155640.json
+```
+
+This run compared baseline, manual prime, and a pre-indexed `hook_full_prime` path. The hook path ran `kairn init` before Codex so the prompt hook could use existing `.kairn` state instead of indexing during the Codex turn.
+
+| Mode | Quality | Required source touched | Observed tokens | Delta vs baseline | Hook status |
+| --- | --- | --- | ---: | ---: | --- |
+| Baseline | pass | yes | `23,104` | - | none |
+| Manual prime | fail/partial | no | `26,100` | `-12.97%` | none |
+| Hook full-prime | pass | yes | `18,897` | `+18.21%` | `1` completed, `0` failed |
+
+Interpretation:
+
+- The pre-indexed hook path is materially better than the previous large-Django hook result.
+- `hook_full_prime` passed the quality gate, touched `django/utils/text.py`, and saved about `4,207` observed Codex tokens.
+- Manual prime was correctly marked invalid/negative because it did not touch the required production file.
+- The new quality-gated reporting is working: lower or higher tokens no longer matter unless the production source gate passes.
+
+### Next.js Large-Repo Proof
+
+Suite:
+
+```text
+/tmp/kairn-large-next-valid-suite.json
+```
+
+Attempted result:
+
+```text
+/tmp/kairn-next-fullflow-20260508160016.json
+```
+
+The Next proof did not produce a valid JSON report. The Node process hit a heap OOM during the benchmark:
+
+```text
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+```
+
+Observed state from the disposable Next workspace:
+
+- Workspace size: `7.3GB`.
+- `.kairn/kairn.sqlite`: `3.5GB`.
+- `.kairn/kairn.sqlite-wal`: `6.4GB`.
+- File inventory rows: `27,176`.
+- Symbol rows: `136,702`.
+- Semantic chunks: `7,500`.
+- Semantic vectors: `7,500`.
+- Lexical docs: `937`.
+- Graph edges: `5,824,479`.
+
+A targeted `kairn prime` against the same Next workspace was manually stopped after several minutes without returning. This means the issue is not just live Codex overhead; the Kairn large-repo state itself is too expensive to load/query at this scale.
+
+Interpretation:
+
+- The immediate hook fixes improved Django, but Next still exposes a deeper architecture problem.
+- The first tiered indexing pass did not prevent graph-edge explosion. The emergency chunk caps bounded semantic chunks, but graph edges still grew into millions.
+- The database/WAL size is unacceptable for normal use. Kairn needs edge budgets, relation pruning, lazy graph loading, and query-local expansion before another Next live proof.
+- This result supports the tiered adaptive indexing plan, but also shows that tiering must apply to graph edges and runtime loading, not just semantic chunks.
+
+### Current Conclusion
+
+What is now verified:
+
+- Local correctness is green.
+- Replay benchmark path is green.
+- Pre-indexed prompt hooks can produce quality-valid savings on a large Python repo.
+- Quality-gated reports are correctly rejecting invalid savings.
+
+What is still blocking:
+
+- Next-scale graph persistence and loading can OOM.
+- Tiered indexing is incomplete because graph edges are still effectively unbounded.
+- Targeted context commands can hang on huge workspaces if they load too much state.
+
+Next implementation priorities:
+
+1. Add graph-edge budgets and relationship pruning.
+2. Avoid loading all graph edges/vectors for `prime` and prompt hooks; use query-local retrieval first, then expand only the top candidates.
+3. Make SQLite WAL checkpointing/cleanup part of indexing completion.
+4. Add a large-repo max-state-size guard that aborts indexing with a useful warning before producing multi-GB `.kairn` state.
+5. Re-run Next only after the state-size and edge-explosion issue is fixed.
+
+## 2026-05-08 Full Test Flow After Query-Local Indexing
+
+Local verification:
+
+- `pnpm test`: pass, `107` tests across `11` files.
+- `pnpm typecheck`: pass.
+- `pnpm build`: pass.
+
+### Large-Repo State Bound
+
+Synthetic repo:
+
+```text
+/tmp/kairn-synthetic-large-fulltest
+```
+
+Shape:
+
+- `25,002` indexed files.
+- `12,000` source files.
+- `6,000` test files.
+- `7,000` extra cold inventory files.
+
+Result:
+
+| Metric | Value |
+| --- | ---: |
+| Init time | `3.21s` |
+| Prime time | `1.16s` |
+| Graph edges | `12,001` |
+| Semantic chunks | `7,500` |
+| State size | `33.0MB` |
+| WAL size | `0MB` |
+
+Prime selected:
+
+```text
+src/module-5999.ts
+tests/module-5999.test.ts
+```
+
+Interpretation:
+
+- The O(test × source) edge problem is fixed for this synthetic stress case.
+- Query-local prime works from existing state and returns quickly.
+- WAL checkpointing is working in this case.
+
+### Cross-Language Exact Source Targeting
+
+Fixture:
+
+```text
+/tmp/kairn-crosslang-targeting
+```
+
+| Language | Expected source | Result |
+| --- | --- | --- |
+| TypeScript | `packages/query-core/src/utils.ts` | top file |
+| Python | `src/click/_compat.py` | top file |
+| Java | `src/main/java/org/apache/commons/lang3/StringUtils.java` | top file |
+| C++ | `include/fmt/base.h` | top file |
+
+Weak prompt test:
+
+```text
+make this project better maybe improve stuff
+```
+
+Result:
+
+- `prime` decision: `suppress`.
+- Codex `UserPromptSubmit` hook output: `0` bytes.
+- Strong Python prompt hook output: emitted Kairn proactive context.
+
+Interpretation:
+
+- Exact source targeting improved across JS/TS, Python, Java, and C++ without benchmark-specific symbol rules.
+- Weak-signal suppression works in the actual Codex hook path, not just CLI prime.
+
+### Django Live Proof
+
+Result:
+
+```text
+/tmp/kairn-django-post-tiered-20260508171944.json
+```
+
+| Mode | Quality | Required source touched | Observed tokens | Delta vs baseline | Hook status |
+| --- | --- | --- | ---: | ---: | --- |
+| Baseline | pass | yes | `22,866` | - | none |
+| Hook full-prime | pass | yes | `16,393` | `+28.31%` | `1` completed, `0` failed |
+
+Interpretation:
+
+- Automatic hook full-prime produced valid savings on Django after pre-indexing.
+- The run touched `django/utils/text.py` and passed verification.
+- This is a quality-valid token reduction.
+
+### Next.js Live Proof
+
+Result:
+
+```text
+/tmp/kairn-next-post-tiered-20260508172119.json
+```
+
+Index state during hook leg:
+
+| Metric | Before | After query-local indexing |
+| --- | ---: | ---: |
+| Graph edges | `5,824,479` | `10,877` |
+| SQLite DB | `3.5GB` | `261.0MB` |
+| SQLite WAL | `6.4GB` | `0MB` |
+| Semantic chunks | `7,500` | `7,500` |
+
+Live proof:
+
+| Mode | Quality | Required source touched | Observed tokens | Evidence |
+| --- | --- | --- | ---: | --- |
+| Baseline | fail | yes | `35,387` | invalid |
+| Hook full-prime | fail | yes | `36,498` | invalid/negative |
+
+Interpretation:
+
+- The state explosion is fixed enough for Next to complete without OOM.
+- Exact source targeting improved: both modes touched `packages/next/src/shared/lib/router/utils/is-local-url.ts`.
+- Verification still failed, so no token savings can be claimed.
+- Hook full-prime slightly increased tokens on this failed Next case. This is negative evidence for this prompt/task shape, not a product win.
+- The DB is just over the `250MB` soft target (`261MB`) but far below the `1GB` hard guard; the next state pass should shave more symbol/chunk/lexical storage.
+
+### Current Answer To The Four Questions
+
+1. **Does state stay bounded on large repos with many tests?** Mostly yes. Synthetic 25k-file state stayed at `33MB`; real Next stayed at `261MB` instead of multi-GB.
+2. **Does exact source targeting improve across JS, Python, C++, Java?** Yes in deterministic tests. Next also touched the correct source file in live runs.
+3. **Does Kairn suppress itself when retrieval signal is weak?** Yes. The actual Codex prompt hook emitted no context for a weak prompt.
+4. **Does it preserve quality gates while saving tokens?** Mixed. Django passed and saved `28.31%`; Next touched the correct file but failed verification, so it counts as invalid/negative evidence.
+
+Next priorities:
+
+1. Reduce Next state below the `250MB` soft target by trimming symbol/lexical storage and compacting low-value chunks.
+2. Investigate why the Next edit fails verification even when the correct file is touched.
+3. Keep hook full-prime default only for high-confidence cases; the controller should become more conservative on tasks where Kairn can identify the file but not the exact fix.
+4. Add repeated proof runs after the Next quality issue is understood; single-run results are still exploratory.

@@ -1,5 +1,6 @@
 import type { ContextResponseMode } from "./context.js";
 import type { CodexUsageRecord } from "./eval.js";
+import type { IndexTier } from "./graph.js";
 import type { WatchEventSource } from "./watch.js";
 
 export type MetricsEventKind =
@@ -64,6 +65,15 @@ export type MetricsSummary = {
     hookFiles: string[];
     mcpFiles: string[];
     overlapFiles: string[];
+  };
+  index: {
+    files: number;
+    tiers: Record<IndexTier, number>;
+    dbSizeBytes?: number;
+    walSizeBytes?: number;
+    totalSizeBytes?: number;
+    graphEdges?: number;
+    semanticChunks?: number;
   };
   recentEvents: MetricsEventRecord[];
 };

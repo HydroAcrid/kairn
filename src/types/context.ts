@@ -1,4 +1,4 @@
-import type { FileRecord, RepoGraph, ScanResult, SemanticChunkRecord } from "./graph.js";
+import type { FileRecord, IndexStateStats, RepoGraph, ScanResult, SemanticChunkRecord } from "./graph.js";
 import type { TaskSession } from "./runtime.js";
 
 export type ContextRequestType =
@@ -133,6 +133,7 @@ export type InitResult = {
     chunks: number;
     vectors: number;
   };
+  state?: IndexStateStats;
 };
 
 export type ScoredFile = FileRecord & {

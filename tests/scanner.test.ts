@@ -18,22 +18,25 @@ describe("scanRepo", () => {
     expect(scan.files.find((file) => file.path === "package.json")?.kind).toBe("config");
   });
 
-  it("caps very large repositories while keeping source files first", async () => {
+  it("assigns adaptive index tiers while keeping source files hot", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-large-scan-"));
     try {
       fs.mkdirSync(path.join(root, "docs"), { recursive: true });
       fs.mkdirSync(path.join(root, "src"), { recursive: true });
       fs.writeFileSync(path.join(root, "src/important.ts"), "export function important() { return true; }\n");
-      for (let index = 0; index < 8050; index += 1) {
+      for (let index = 0; index < 120; index += 1) {
         fs.writeFileSync(path.join(root, "docs", `guide-${index}.md`), `# Guide ${index}\n`);
       }
 
       const scan = await scanRepo(root);
-      const paths = scan.files.map((file) => file.path);
+      const important = scan.files.find((file) => file.path === "src/important.ts");
+      const guide = scan.files.find((file) => file.path === "docs/guide-0.md");
 
-      expect(scan.files.length).toBe(8000);
-      expect(scan.skippedByLimit).toBeGreaterThan(0);
-      expect(paths).toContain("src/important.ts");
+      expect(scan.skippedByLimit).toBe(0);
+      expect(important?.indexTier).toBe("tier3");
+      expect(guide?.indexTier).toBe("tier0");
+      expect(scan.indexTiers?.tier3).toBeGreaterThan(0);
+      expect(scan.indexTiers?.tier0).toBeGreaterThan(0);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }

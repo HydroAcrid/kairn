@@ -415,6 +415,42 @@ describe("hybridSearch", () => {
     expect(results.slice(0, 2).map((result) => result.path)).not.toContain("examples/format.cc");
   });
 
+  it("rescues precise Next router utility files over broad router modules", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "packages/next/src/shared/lib/router/router.ts", "source"),
+      file(rootPath, "packages/next/src/shared/lib/router/utils/is-local-url.ts", "source"),
+      file(rootPath, "packages/next/src/shared/lib/router/utils/is-dynamic.ts", "source"),
+      file(rootPath, "test/router/is-local-url.test.ts", "test")
+    ];
+    const symbols = [
+      symbol(rootPath, "packages/next/src/shared/lib/router/router.ts", "Router"),
+      symbol(rootPath, "packages/next/src/shared/lib/router/utils/is-local-url.ts", "isLocalURL"),
+      symbol(rootPath, "packages/next/src/shared/lib/router/utils/is-dynamic.ts", "isDynamicRoute")
+    ];
+    const chunks = [
+      chunk(rootPath, "packages/next/src/shared/lib/router/router.ts", "Router", "router navigation push replace local absolute relative url handling"),
+      chunk(rootPath, "packages/next/src/shared/lib/router/utils/is-local-url.ts", "isLocalURL", "returns true for local relative URLs and false for external absolute URLs"),
+      chunk(rootPath, "packages/next/src/shared/lib/router/utils/is-dynamic.ts", "isDynamicRoute", "dynamic route helper"),
+      chunk(rootPath, "test/router/is-local-url.test.ts", "isLocalURLTest", "local URL test cases")
+    ];
+    const results = hybridSearch({
+      files,
+      query: "Debug Next router local URL helper regression: relative URLs should be treated as local. Fix production source.",
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.path).toBe("packages/next/src/shared/lib/router/utils/is-local-url.ts");
+    expect(results[0]?.reasons).toEqual(expect.arrayContaining(["utility/helper source rescue"]));
+    expect(results.findIndex((result) => result.path === "packages/next/src/shared/lib/router/utils/is-local-url.ts")).toBeLessThan(
+      results.findIndex((result) => result.path === "packages/next/src/shared/lib/router/router.ts")
+    );
+  });
+
   it("detects game UI component intent for wheel and settings queries", () => {
     const rootPath = "/repo";
     const files = [

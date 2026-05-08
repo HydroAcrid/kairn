@@ -47,7 +47,7 @@ export function hybridSearch(input: {
   const graphScores = scoreGraphNeighbors(input.edges, keywordScores, semanticScores, intentScores, intent, input.files);
   const shownFiles = new Set((input.shown ?? []).map((record) => record.filePath).filter((filePath): filePath is string => Boolean(filePath)));
 
-  return input.files
+  const scored = input.files
     .map((file) => {
       const keyword = keywordScores.get(file.path);
       const bm25 = bm25Scores.get(file.path);
@@ -105,6 +105,9 @@ export function hybridSearch(input: {
       };
     })
     .filter((file) => file.score > 0 && file.reasons.length > 0)
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+
+  return applyPreciseSourceRescue(scored, input.query, symbolsByFile, chunksByFile)
     .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
 }
 
@@ -350,7 +353,7 @@ function semanticReasons(chunks: SemanticChunkRecord[]): string[] {
 }
 
 function mergeReasons(reasons: string[]): string[] {
-  return [...new Set(reasons)].slice(0, 14);
+  return [...new Set(reasons)].slice(0, 18);
 }
 
 function scoreIntentMatches(
@@ -783,7 +786,7 @@ function isPrimaryLanguageSourceSurface(file: FileRecord): boolean {
   if (file.language === "python") {
     return (
       (normalized.startsWith("src/") || normalized.includes("/src/") || /^[a-z_][\w-]*\//.test(normalized)) &&
-      !/(^|\/)(tests?|examples?|docs?)\//.test(normalized)
+      !/(^|\/)(tests?|examples|docs?)\//.test(normalized)
     );
   }
   if (file.language === "java") {
@@ -806,7 +809,7 @@ function isNoisyImplementationSurface(file: FileRecord): boolean {
   const normalized = file.path.toLowerCase();
   return (
     file.kind === "doc" ||
-    /(^|\/)(docs?|documentation|examples?|demo|demos|devtools|codemods|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook)\//.test(normalized) ||
+    /(^|\/)(docs?|documentation|examples|demo|demos|devtools|codemods|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook)\//.test(normalized) ||
     /(^|\/)__fixtures__\//.test(normalized)
   );
 }
@@ -936,3 +939,148 @@ function groupByFile<T>(records: T[], filePathFor: (record: T) => string): Map<s
 const GENERIC_DOMAIN_TERMS = new Set(["app", "apps", "application", "applications", "feature", "page", "screen"]);
 const GENERIC_UI_FILENAME_TERMS = new Set(["settings", "layout", "mobile", "dashboard", "page", "view", "component", "screen"]);
 const WORKFLOW_STATUS_TERMS = ["needs_review", "needs review", "requeued", "ignored", "sourceEmailId", "source email id"];
+
+function applyPreciseSourceRescue(
+  files: HybridScoredResult[],
+  query: string,
+  symbolsByFile: Map<string, SymbolRecord[]>,
+  chunksByFile: Map<string, SemanticChunkRecord[]>
+): HybridScoredResult[] {
+  const rescue = detectPreciseSourceRescue(query);
+  if (!rescue.active) return files;
+
+  return files.map((file) => {
+    const exact = preciseSourceScore(file, rescue, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (exact.score === 0) return file;
+    const broadPenalty = exact.precise ? 0 : broadSourcePenalty(file, rescue);
+    const adjustedScore = Math.max(0, file.score + exact.score - broadPenalty);
+    return {
+      ...file,
+      score: Number(adjustedScore.toFixed(3)),
+      behaviorScore: file.behaviorScore + exact.score - broadPenalty,
+      reasons: mergeReasons([...file.reasons, ...exact.reasons, ...(broadPenalty > 0 ? ["broad source downranked"] : [])])
+    };
+  });
+}
+
+type PreciseSourceRescue = {
+  active: boolean;
+  terms: string[];
+  phraseTerms: string[];
+  helperIntent: boolean;
+};
+
+function detectPreciseSourceRescue(query: string): PreciseSourceRescue {
+  const normalized = normalizeSearchText(query);
+  const terms = tokenizeLexical(query)
+    .filter((term) => term.length > 2 && !PRECISE_RESCUE_STOP_TERMS.has(term));
+  const phraseTerms = new Set<string>();
+  for (const phrase of PRECISE_RESCUE_PHRASES) {
+    if (normalized.includes(phrase.normalized)) {
+      for (const term of phrase.terms) phraseTerms.add(term);
+    }
+  }
+  const helperIntent = /\b(helper|utility|utils?|source|implementation|debug|fix|regression|relative|absolute|local)\b/.test(normalized);
+  const specificTerms = [...new Set([...terms, ...phraseTerms])];
+  return {
+    active: helperIntent && specificTerms.length >= 2,
+    terms: specificTerms,
+    phraseTerms: [...phraseTerms],
+    helperIntent
+  };
+}
+
+function preciseSourceScore(
+  file: HybridScoredResult,
+  rescue: PreciseSourceRescue,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[]; precise: boolean } {
+  if (!isLanguageSourceSurface(file) || isNoisyImplementationSurface(file)) {
+    return { score: 0, reasons: [], precise: false };
+  }
+
+  const pathText = normalizeSearchText(file.path);
+  const basename = file.path.toLowerCase().split("/").at(-1) ?? file.path.toLowerCase();
+  const basenameTerms = new Set(tokenizeLexical(basename));
+  const pathTerms = new Set(tokenizeLexical(file.path));
+  const symbolText = normalizeSearchText(symbols.map((symbol) => symbol.name).join(" "));
+  const chunkText = normalizeSearchText(chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 500)}`).join(" "));
+  const pathHits = rescue.terms.filter((term) => pathTerms.has(term) || pathText.includes(term));
+  const basenameHits = rescue.terms.filter((term) => basenameTerms.has(term) || basename.includes(term));
+  const symbolHits = rescue.terms.filter((term) => symbolText.includes(term));
+  const chunkHits = rescue.phraseTerms.filter((term) => chunkText.includes(term));
+  const exactUtilityPath = /(^|\/)(utils?|helpers?|shared|common)(\/|\.|-|_)/.test(file.path.toLowerCase());
+  const precise = basenameHits.length >= 2 || symbolHits.length >= 2 || (pathHits.length >= 3 && exactUtilityPath);
+  let score = 0;
+  const reasons: string[] = [];
+
+  if (pathHits.length >= 2) {
+    score += pathHits.length * 44;
+    reasons.push(`precise source path match: ${pathHits.slice(0, 4).join(", ")}`);
+  }
+  if (basenameHits.length >= 2) {
+    score += basenameHits.length * 78;
+    reasons.push(`precise filename match: ${basenameHits.slice(0, 4).join(", ")}`);
+  }
+  if (symbolHits.length >= 2) {
+    score += symbolHits.length * 72;
+    reasons.push(`precise symbol rescue: ${symbolHits.slice(0, 4).join(", ")}`);
+  }
+  if (chunkHits.length >= 2) {
+    score += chunkHits.length * 24;
+    reasons.push(`precise chunk phrase match: ${chunkHits.slice(0, 4).join(", ")}`);
+  }
+  if (exactUtilityPath && (basenameHits.length >= 1 || symbolHits.length >= 1)) {
+    score += 64;
+    reasons.push("utility/helper source rescue");
+  }
+  if (file.kind === "test") {
+    score -= 240;
+    reasons.push("test excluded from precise source rescue");
+  }
+
+  return { score: Math.max(0, score), reasons, precise };
+}
+
+function broadSourcePenalty(file: HybridScoredResult, rescue: PreciseSourceRescue): number {
+  if (!isLanguageSourceSurface(file)) return 0;
+  const basename = file.path.toLowerCase().split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const genericBroad = ["router", "index", "main", "core", "types", "utils", "helpers", "client", "server"].includes(basename);
+  const pathTerms = new Set(tokenizeLexical(file.path));
+  const matchingTerms = rescue.terms.filter((term) => pathTerms.has(term)).length;
+  return genericBroad && matchingTerms < 2 ? 70 : 0;
+}
+
+const PRECISE_RESCUE_STOP_TERMS = new Set([
+  "debug",
+  "seeded",
+  "failing",
+  "failure",
+  "regression",
+  "production",
+  "source",
+  "check",
+  "test",
+  "fix",
+  "bug",
+  "should",
+  "return",
+  "when",
+  "with",
+  "from",
+  "into",
+  "that",
+  "this"
+]);
+
+const PRECISE_RESCUE_PHRASES = [
+  { normalized: "local url", terms: ["local", "url"] },
+  { normalized: "relative url", terms: ["relative", "url"] },
+  { normalized: "absolute url", terms: ["absolute", "url"] },
+  { normalized: "is local url", terms: ["local", "url"] },
+  { normalized: "starts with", terms: ["starts", "with", "prefix"] },
+  { normalized: "starts_with", terms: ["starts", "prefix"] },
+  { normalized: "term len", terms: ["term", "len", "length"] },
+  { normalized: "term_len", terms: ["term", "len", "length"] }
+];

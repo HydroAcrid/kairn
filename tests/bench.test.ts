@@ -644,12 +644,71 @@ describe("benchmark suite and scoring", () => {
 
     expect(before.observed?.codexTokens).toBe(2000);
     expect(after.observed?.codexTokens).toBe(1200);
-    expect(comparison.observedTokenDelta).toEqual({
+    expect(comparison.observedTokenDelta).toMatchObject({
       beforeTokens: 2000,
       afterTokens: 1200,
       savedTokens: 800,
-      savingsRate: 0.4
+      savingsRate: 0.4,
+      qualityGatePassed: true,
+      validSavings: 800,
+      invalidSavings: 0
     });
+  });
+
+  it("marks lower token usage as invalid savings when quality gates fail", () => {
+    const beforeResult = scoreBenchmarkCase({
+      runId: "bench_before",
+      benchmarkCase: {
+        id: "next-local-url",
+        mode: "agent",
+        task: "Fix local URL regression",
+        expectedFiles: ["packages/next/src/shared/lib/router/utils/is-local-url.ts"],
+        requiredTouchedFiles: ["packages/next/src/shared/lib/router/utils/is-local-url.ts"],
+        excludedFiles: []
+      },
+      actualFiles: ["packages/next/src/shared/lib/router/utils/is-local-url.ts"],
+      responseTokens: 100,
+      observedCodexTokens: 8000,
+      taskOutcome: "pass",
+      summary: "baseline",
+      metadata: { agentChangedFiles: ["packages/next/src/shared/lib/router/utils/is-local-url.ts"] }
+    });
+    const afterResult = scoreBenchmarkCase({
+      runId: "bench_after",
+      benchmarkCase: {
+        id: "next-local-url",
+        mode: "agent",
+        task: "Fix local URL regression",
+        expectedFiles: ["packages/next/src/shared/lib/router/utils/is-local-url.ts"],
+        requiredTouchedFiles: ["packages/next/src/shared/lib/router/utils/is-local-url.ts"],
+        excludedFiles: []
+      },
+      actualFiles: ["packages/next/src/shared/lib/router/router.ts"],
+      responseTokens: 100,
+      observedCodexTokens: 4000,
+      taskOutcome: "fail",
+      summary: "failed"
+    });
+    const before = buildBenchmarkReport({
+      run: { id: "before", rootPath: "/repo", suiteId: "suite", suiteName: "suite", mode: "agent", status: "completed", startedAt: "now", metadata: {} },
+      results: [{ ...beforeResult, id: 1, createdAt: "now" }]
+    });
+    const after = buildBenchmarkReport({
+      run: { id: "after", rootPath: "/repo", suiteId: "suite", suiteName: "suite", mode: "agent", status: "completed", startedAt: "now", metadata: {} },
+      results: [{ ...afterResult, id: 2, createdAt: "now" }]
+    });
+    const comparison = compareBenchmarkReports(before, after);
+
+    expect(afterResult.metadata.qualityGatePassed).toBe(false);
+    expect(comparison.observedTokenDelta).toMatchObject({
+      savedTokens: 4000,
+      qualityGatePassed: false,
+      validSavings: 0,
+      invalidSavings: 4000
+    });
+    expect(comparison.recommendations).toEqual(
+      expect.arrayContaining(["After-run has quality-gate failures; any lower observed token usage is negative evidence, not valid savings."])
+    );
   });
 });
 

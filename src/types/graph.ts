@@ -35,6 +35,69 @@ export type GraphEdgeType =
 
 export type SemanticChunkKind = "symbol" | "file_summary";
 
+export type IndexTier = "tier0" | "tier1" | "tier2" | "tier3" | "tier4";
+
+export type IndexedFileTierState = {
+  path: string;
+  tier: IndexTier;
+  score: number;
+  reasons: string[];
+};
+
+export type IndexingConfig = {
+  maxStateMb: number;
+  hardMaxStateMb: number;
+  maxGraphEdges: number;
+  maxSemanticChunks: number;
+  maxHotFiles: number;
+};
+
+export type GraphEdgeBudget = {
+  maxTotalEdges: number;
+  maxImportsPerFile: number;
+  maxTestsPerFile: number;
+  maxRouteSiblingsPerFile: number;
+  maxTypeScriptEnrichmentEdges: number;
+};
+
+export type IndexStateStats = {
+  rootPath: string;
+  databasePath: string;
+  dbSizeBytes: number;
+  walSizeBytes: number;
+  totalSizeBytes: number;
+  maxStateBytes: number;
+  hardMaxStateBytes: number;
+  fileCount: number;
+  symbolCount: number;
+  graphEdgeCount: number;
+  semanticChunkCount: number;
+  semanticVectorCount: number;
+  lexicalDocumentCount: number;
+  lexicalTermCount: number;
+  tiers: Record<IndexTier, number>;
+};
+
+export type IndexCompactionResult = {
+  before: IndexStateStats;
+  after: IndexStateStats;
+  graphEdgesDeleted: number;
+  semanticChunksDeleted: number;
+  semanticVectorsDeleted: number;
+  walCheckpointed: boolean;
+};
+
+export type QueryLocalIndex = {
+  symbols: SymbolRecord[];
+  chunks: SemanticChunkRecord[];
+  vectors: SemanticVectorRecord[];
+  lexicalDocuments: LexicalDocumentRecord[];
+  lexicalTerms: LexicalTermRecord[];
+  lexicalStats?: LexicalStatsRecord;
+  edges: GraphEdgeRecord[];
+  candidateFiles: string[];
+};
+
 export type FileRecord = {
   rootPath: string;
   path: string;
@@ -43,6 +106,8 @@ export type FileRecord = {
   size: number;
   hash: string;
   importance: number;
+  indexTier?: IndexTier;
+  tierScore?: number;
   updatedAt: string;
 };
 
@@ -134,5 +199,7 @@ export type ScanResult = {
   candidateCount?: number;
   indexedFileLimit?: number;
   skippedByLimit?: number;
+  indexTiers?: Record<IndexTier, number>;
+  tierStates?: IndexedFileTierState[];
   scannedAt: string;
 };

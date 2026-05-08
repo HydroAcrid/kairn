@@ -12,6 +12,10 @@ export function buildSemanticChunks(rootPath: string, graph: RepoGraph): Semanti
   const chunks: SemanticChunkRecord[] = [];
 
   for (const file of graph.files) {
+    if (!shouldBuildChunkForFile(file)) {
+      continue;
+    }
+
     let content: string;
     try {
       content = readTextFile(rootPath, file.path);
@@ -20,7 +24,7 @@ export function buildSemanticChunks(rootPath: string, graph: RepoGraph): Semanti
     }
 
     const symbols = symbolsByFile.get(file.path) ?? [];
-    if (symbols.length > 0) {
+    if (file.indexTier === "tier3" && symbols.length > 0) {
       for (const symbol of symbols) {
         const chunk = chunkForSymbol(file, symbol, content, parsedByFile.get(file.path)?.imports ?? []);
         if (chunk) chunks.push(chunk);
@@ -32,6 +36,11 @@ export function buildSemanticChunks(rootPath: string, graph: RepoGraph): Semanti
   }
 
   return chunks.sort((a, b) => a.filePath.localeCompare(b.filePath) || a.id.localeCompare(b.id));
+}
+
+function shouldBuildChunkForFile(file: FileRecord): boolean {
+  if (!file.indexTier) return true;
+  return file.indexTier === "tier2" || file.indexTier === "tier3" || file.indexTier === "tier4";
 }
 
 function chunkForSymbol(

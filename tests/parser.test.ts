@@ -224,11 +224,11 @@ describe("cross-language parser adapters", () => {
     );
     expect(index.graph.edges).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ fromFile: "click/utils.py", toFile: "tests/test_utils.py", type: "tested_by" }),
+        expect.objectContaining({ fromFile: "tests/test_utils.py", toFile: "click/utils.py", type: "test_for" }),
         expect.objectContaining({
-          fromFile: "src/main/java/org/example/StringUtils.java",
-          toFile: "src/test/java/org/example/StringUtilsTest.java",
-          type: "tested_by"
+          fromFile: "src/test/java/org/example/StringUtilsTest.java",
+          toFile: "src/main/java/org/example/StringUtils.java",
+          type: "test_for"
         })
       ])
     );

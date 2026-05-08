@@ -173,9 +173,11 @@ function buildProofAggregate(input: {
   const modes: NonNullable<BenchmarkProofReport["aggregate"]>["modes"] = {};
   for (const [mode, reports] of Object.entries(input.reports) as Array<[BenchmarkAssistanceMode, BenchmarkReport[] | undefined]>) {
     const tokenTotals = (reports ?? []).map((report) => report.observed?.codexTokens).filter((value): value is number => typeof value === "number");
+    const qualityPassingReports = (reports ?? []).filter(reportQualityGatePassed).length;
     modes[mode] = {
       reports: reports?.length ?? 0,
       ...(tokenTotals.length > 0 ? { meanTokens: mean(tokenTotals), medianTokens: median(tokenTotals) } : {}),
+      qualityPassingReports,
       caseCount: reports?.reduce((total, report) => total + report.results.length, 0) ?? 0
     };
   }
@@ -218,8 +220,16 @@ function median(values: number[]): number {
 
 function recommendationForDelta(label: string, delta: BenchmarkComparison["observedTokenDelta"]): string {
   if (!delta) return `${label}: observed Codex usage unavailable.`;
+  if (!delta.qualityGatePassed && delta.savedTokens > 0) {
+    return `${label}: reduced ${delta.savedTokens} observed Codex tokens, but this is invalid savings because quality gates failed.`;
+  }
   if (delta.savedTokens > 0) {
     return `${label}: saved ${delta.savedTokens} observed Codex tokens (${Math.round(delta.savingsRate * 100)}%).`;
   }
   return `${label}: increased observed Codex usage by ${Math.abs(delta.savedTokens)} tokens (${Math.round(Math.abs(delta.savingsRate) * 100)}%).`;
+}
+
+function reportQualityGatePassed(report: BenchmarkReport): boolean {
+  const scored = report.results.filter((result) => result.taskOutcome !== "skipped");
+  return scored.length > 0 && scored.every((result) => result.metadata.qualityGatePassed === true);
 }

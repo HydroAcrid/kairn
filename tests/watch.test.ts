@@ -355,6 +355,7 @@ describe("KairnRuntime watch behavior", () => {
   it("creates and reuses sessions for sessionless Codex prompt-submit hooks", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);
+    await runtime.init();
     const promptEvent = normalizeHookPayload({
       source: "codex",
       payload: {
@@ -396,6 +397,7 @@ describe("KairnRuntime watch behavior", () => {
   it("suppresses duplicate prompt-submit prime context for the same Codex turn", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);
+    await runtime.init();
     const payload = {
       cwd: root,
       hook_event_name: "UserPromptSubmit",
@@ -420,6 +422,7 @@ describe("KairnRuntime watch behavior", () => {
   it("supports tiny directive, mcp-brief, and failure-only hook output profiles", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);
+    await runtime.init();
     const event = normalizeHookPayload({
       source: "codex",
       payload: {
@@ -516,6 +519,30 @@ describe("KairnRuntime watch behavior", () => {
     expect(result.recommendation).toBeUndefined();
     expect(metrics.byKind.prime_context).toBeUndefined();
     expect(metrics.byKind.hook_signal?.events).toBe(1);
+
+    runtime.close();
+  });
+
+  it("does not index during a prompt hook when no warm index exists", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const result = await runtime.handleHookEvent({
+      event: normalizeHookPayload({
+        source: "codex",
+        payload: {
+          cwd: root,
+          hook_event_name: "UserPromptSubmit",
+          session_id: "codex-no-index-session",
+          turn_id: "turn_1",
+          prompt: "Fix the job tracker mobile layout bottom sheet"
+        }
+      })
+    });
+
+    expect(result.prime).toBeUndefined();
+    expect(result.recommendation).toBeUndefined();
+    expect(result.event.metadata.indexRefreshSkipped).toBe(true);
+    expect(Number(result.event.metadata.refreshIndexMs)).toBeLessThan(5);
 
     runtime.close();
   });
@@ -684,6 +711,10 @@ describe("watch and hook CLI", () => {
     const hybridConfig = fs.readFileSync(hybrid.configPath, "utf8");
     const hybridHooks = fs.readFileSync(hybrid.hooksPath, "utf8");
     const hybridInstructions = fs.readFileSync(hybrid.instructionsPath, "utf8");
+    execFileSync(CLI[0]!, [...CLI.slice(1), "init", "--root", root], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
     const hook = JSON.parse(
       execFileSync(CLI[0]!, [...CLI.slice(1), "hook", "--root", root, "--source", "codex", "--json"], {
         cwd: process.cwd(),

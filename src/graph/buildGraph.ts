@@ -1,6 +1,7 @@
 import path from "node:path";
 import type { FileRecord, GraphEdgeRecord, ParsedFile, RepoGraph } from "../types.js";
 import { resolveImportCandidates } from "../retrieval/readSource.js";
+import { budgetGraphEdges } from "./budget.js";
 
 export function buildRepoGraph(input: {
   rootPath: string;
@@ -22,13 +23,6 @@ export function buildRepoGraph(input: {
           type: "imports",
           metadata: { specifier }
         });
-        addEdge(edgeMap, {
-          rootPath: input.rootPath,
-          fromFile: candidate,
-          toFile: parsedFile.filePath,
-          type: "imported_by",
-          metadata: { specifier }
-        });
       }
     }
   }
@@ -41,12 +35,7 @@ export function buildRepoGraph(input: {
     files: input.files,
     parsedFiles: input.parsedFiles,
     symbols: input.parsedFiles.flatMap((file) => file.symbols),
-    edges: [...edgeMap.values()].sort(
-      (a, b) =>
-        a.fromFile.localeCompare(b.fromFile) ||
-        a.toFile.localeCompare(b.toFile) ||
-        a.type.localeCompare(b.type)
-    )
+    edges: budgetGraphEdges({ edges: [...edgeMap.values()], files: input.files })
   };
 }
 
@@ -57,23 +46,25 @@ export function graphEdgesForFile(edges: GraphEdgeRecord[], target: string): Gra
 function addTestEdges(edgeMap: Map<string, GraphEdgeRecord>, rootPath: string, files: FileRecord[]): void {
   const sourceFiles = files.filter((file) => file.kind !== "test");
   const testFiles = files.filter((file) => file.kind === "test");
+  const sourceByBase = new Map<string, FileRecord[]>();
+  const sourceByDirectory = new Map<string, FileRecord[]>();
+
+  for (const source of sourceFiles) {
+    const sourceBase = baseNameWithoutExtension(source.path);
+    sourceByBase.set(sourceBase, [...(sourceByBase.get(sourceBase) ?? []), source]);
+    const directory = path.posix.dirname(source.path);
+    sourceByDirectory.set(directory, [...(sourceByDirectory.get(directory) ?? []), source]);
+  }
 
   for (const test of testFiles) {
-    for (const source of sourceFiles) {
-      if (!isLikelyTestFor(test.path, source.path)) continue;
+    const candidates = candidateSourcesForTest(test, sourceByBase, sourceByDirectory);
 
+    for (const source of candidates) {
       addEdge(edgeMap, {
         rootPath,
         fromFile: test.path,
         toFile: source.path,
         type: "test_for",
-        metadata: { reason: "filename/path proximity" }
-      });
-      addEdge(edgeMap, {
-        rootPath,
-        fromFile: source.path,
-        toFile: test.path,
-        type: "tested_by",
         metadata: { reason: "filename/path proximity" }
       });
     }
@@ -124,6 +115,53 @@ function isLikelyTestFor(testPath: string, sourcePath: string): boolean {
     testDirectory.endsWith("/tests") && normalizedTest.includes(sourceBase) ||
     normalizedTest.includes("/src/test/java/") && normalizedSource.includes("/src/main/java/") && testBase.includes(sourceBase)
   );
+}
+
+function candidateSourcesForTest(
+  test: FileRecord,
+  sourceByBase: Map<string, FileRecord[]>,
+  sourceByDirectory: Map<string, FileRecord[]>
+): FileRecord[] {
+  const testDirectory = path.posix.dirname(test.path);
+  const mappedDirectory = sourceDirectoryForTestDirectory(testDirectory);
+  const testBase = baseNameWithoutExtension(test.path)
+    .replace(/(^test[-_.])|([-_.]test$)|([-_.]spec$)|(^test_)/g, "")
+    .replace(/test$/i, "")
+    .toLowerCase();
+  const candidates = new Map<string, FileRecord>();
+
+  for (const source of sourceByBase.get(testBase) ?? []) {
+    candidates.set(source.path, source);
+  }
+
+  for (const source of sourceByDirectory.get(mappedDirectory) ?? []) {
+    if (isLikelyTestFor(test.path, source.path)) {
+      candidates.set(source.path, source);
+    }
+  }
+
+  for (const source of sourceByDirectory.get(testDirectory) ?? []) {
+    if (isLikelyTestFor(test.path, source.path)) {
+      candidates.set(source.path, source);
+    }
+  }
+
+  return [...candidates.values()]
+    .sort((a, b) => b.importance - a.importance || a.path.localeCompare(b.path))
+    .slice(0, 12);
+}
+
+function sourceDirectoryForTestDirectory(testDirectory: string): string {
+  if (testDirectory.endsWith("/__tests__")) return path.posix.dirname(testDirectory);
+  if (testDirectory.endsWith("/tests")) return path.posix.dirname(testDirectory);
+  if (testDirectory.includes("/src/test/java/")) {
+    return testDirectory.replace("/src/test/java/", "/src/main/java/");
+  }
+  return testDirectory;
+}
+
+function baseNameWithoutExtension(filePath: string): string {
+  return path.posix.basename(filePath).replace(/\.(test|spec)?\.?[^.]+$/i, "").toLowerCase();
 }
 
 function isNextRouteFile(filePath: string): boolean {

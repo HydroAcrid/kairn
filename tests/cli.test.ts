@@ -63,10 +63,20 @@ describe("CLI", () => {
       [...CLI.slice(1), "metrics", "--session", parsed.session.id, "--root", root, "--json"],
       { cwd: process.cwd(), encoding: "utf8" }
     );
+    const indexStatus = execFileSync(CLI[0]!, [...CLI.slice(1), "index", "status", "--root", root, "--json"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+    const indexCompact = execFileSync(CLI[0]!, [...CLI.slice(1), "index", "compact", "--root", root, "--json"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
     const parsedMetrics = JSON.parse(metrics) as {
       totals: { events: number; savedTokens: number };
       bySource: Record<string, { events: number }>;
     };
+    const parsedStatus = JSON.parse(indexStatus) as { fileCount: number; graphEdgeCount: number; tiers: Record<string, number> };
+    const parsedCompact = JSON.parse(indexCompact) as { after: { fileCount: number }; walCheckpointed: boolean };
 
     expect(init).toContain("Kairn initialized");
     expect(context).toContain("renderDashboard");
@@ -77,5 +87,10 @@ describe("CLI", () => {
     expect(parsedMetrics.totals.events).toBeGreaterThan(0);
     expect(parsedMetrics.totals.savedTokens).toBeGreaterThanOrEqual(0);
     expect(parsedMetrics.bySource.cli?.events).toBe(1);
+    expect(parsedStatus.fileCount).toBeGreaterThan(0);
+    expect(parsedStatus.graphEdgeCount).toBeGreaterThanOrEqual(0);
+    expect(parsedStatus.tiers.tier0).toBeGreaterThanOrEqual(0);
+    expect(parsedCompact.after.fileCount).toBe(parsedStatus.fileCount);
+    expect(parsedCompact.walCheckpointed).toBe(true);
   });
 });

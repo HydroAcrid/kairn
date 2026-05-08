@@ -49,7 +49,14 @@ export function ensureKairnDir(root?: string): KairnPaths {
         {
           version: 1,
           rootPath: paths.rootPath,
-          createdBy: "kairn"
+          createdBy: "kairn",
+          indexing: {
+            maxStateMb: 250,
+            hardMaxStateMb: 1000,
+            maxGraphEdges: 250000,
+            maxSemanticChunks: 7500,
+            maxHotFiles: 3000
+          }
         },
         null,
         2

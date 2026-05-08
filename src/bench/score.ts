@@ -80,7 +80,10 @@ export function scoreBenchmarkCase(input: {
       missingRequiredTouchedFiles,
       requiredTouchedSatisfied,
       mcpSuccess,
-      qualityGatePassed
+      qualityGatePassed,
+      validSavings: qualityGatePassed,
+      invalidSavings: !qualityGatePassed,
+      negativeEvidenceReason: qualityGatePassed ? undefined : negativeEvidenceReason({ requestedOutcome, requiredTouchedSatisfied, excludedHits, mcpSuccess })
     }
   };
 }
@@ -147,11 +150,16 @@ function observedTokenDelta(before: BenchmarkReport, after: BenchmarkReport): Be
   const afterTokens = after.observed?.codexTokens;
   if (beforeTokens === undefined || afterTokens === undefined) return undefined;
   const savedTokens = beforeTokens - afterTokens;
+  const qualityGatePassed = reportQualityGatePassed(before) && reportQualityGatePassed(after);
   return {
     beforeTokens,
     afterTokens,
     savedTokens,
-    savingsRate: beforeTokens > 0 ? Number((savedTokens / beforeTokens).toFixed(4)) : 0
+    savingsRate: beforeTokens > 0 ? Number((savedTokens / beforeTokens).toFixed(4)) : 0,
+    qualityGatePassed,
+    validSavings: qualityGatePassed && savedTokens > 0 ? savedTokens : 0,
+    invalidSavings: !qualityGatePassed && savedTokens > 0 ? savedTokens : 0,
+    ...(!qualityGatePassed ? { negativeEvidenceReason: "Token reduction is invalid because one or more quality gates failed." } : {})
   };
 }
 
@@ -188,6 +196,9 @@ function recommendationsFor(input: {
   if (input.outcome === "fail") {
     recommendations.push("Task outcome failed; inspect linked files and hook recommendations.");
   }
+  if (input.outcome !== "pass") {
+    recommendations.push("Observed token reductions for this case must be treated as invalid until the quality gate passes.");
+  }
   return recommendations;
 }
 
@@ -203,8 +214,29 @@ function comparisonRecommendations(input: {
   if (input.regressedCases.length > 0) {
     recommendations.push(`Regressed cases: ${input.regressedCases.join(", ")}.`);
   }
+  if (input.after.results.some((result) => result.metadata.qualityGatePassed === false)) {
+    recommendations.push("After-run has quality-gate failures; any lower observed token usage is negative evidence, not valid savings.");
+  }
   recommendations.push(...input.after.recommendations.slice(0, 5));
   return unique(recommendations);
+}
+
+function reportQualityGatePassed(report: BenchmarkReport): boolean {
+  const scored = report.results.filter((result) => result.taskOutcome !== "skipped");
+  return scored.length > 0 && scored.every((result) => result.metadata.qualityGatePassed === true);
+}
+
+function negativeEvidenceReason(input: {
+  requestedOutcome: BenchmarkResultRecord["taskOutcome"];
+  requiredTouchedSatisfied: boolean;
+  excludedHits: string[];
+  mcpSuccess: boolean;
+}): string {
+  if (input.requestedOutcome !== "pass") return "verification or requested task outcome did not pass";
+  if (!input.requiredTouchedSatisfied) return "required production source files were not touched";
+  if (input.excludedHits.length > 0) return "excluded/noisy files were surfaced or touched";
+  if (!input.mcpSuccess) return "MCP mode did not record an actual Kairn MCP call";
+  return "quality gate failed";
 }
 
 function ratio(value: number, total: number): number {

@@ -368,7 +368,7 @@ function isMcpPrimarySourceFile(filePath: string): boolean {
 }
 
 function isMcpNoisyFile(filePath: string): boolean {
-  return /(^|\/)(docs?|documentation|examples?|demo|demos|devtools|codemods|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook)\//.test(filePath);
+  return /(^|\/)(docs?|documentation|examples|demo|demos|devtools|codemods|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook)\//.test(filePath);
 }
 
 function estimateCompactPrepareTokens(startFiles: string[], likelyTests: string[], nextToolCalls: unknown[]): number {

@@ -10,6 +10,7 @@ import {
   sessionIdFromMcpValue,
   tokenEstimateFromMcpValue
 } from "../../mcp/resultExtractors.js";
+import { loadIndexingConfig } from "../../config/indexing.js";
 import { groupMetrics, summarizeCoordinationMetrics, summarizeMetrics } from "../../metrics/summary.js";
 import { codexUsageFromObservation } from "../../eval/usageObservation.js";
 import { uniquePaths } from "../../utils/collections.js";
@@ -28,6 +29,8 @@ export class MetricsService {
     const latestCodexUsageRecord = codexUsageFromObservation(latestCodexUsage);
     const totals = summarizeMetrics(events);
     const coordination = summarizeCoordinationMetrics(events);
+    const files = this.deps.store.listFiles(session.rootPath);
+    const indexStats = this.deps.store.getIndexStateStats(session.rootPath, loadIndexingConfig(session.rootPath));
 
     return {
       sessionId,
@@ -50,6 +53,15 @@ export class MetricsService {
         ...(latestCodexUsageRecord ? { latestCodexUsage: latestCodexUsageRecord } : {})
       },
       coordination,
+      index: {
+        files: files.length,
+        tiers: indexStats.tiers,
+        dbSizeBytes: indexStats.dbSizeBytes,
+        walSizeBytes: indexStats.walSizeBytes,
+        totalSizeBytes: indexStats.totalSizeBytes,
+        graphEdges: indexStats.graphEdgeCount,
+        semanticChunks: indexStats.semanticChunkCount
+      },
       recentEvents: events.slice(-10)
     };
   }

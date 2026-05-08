@@ -59,6 +59,10 @@ export function printMetrics(metrics: MetricsSummary): void {
     `- file changes: ${metrics.watch.fileChanges}`,
     `- hook events: ${metrics.watch.hooks}`,
     "",
+    "Index tiers",
+    `- files: ${metrics.index.files}`,
+    ...Object.entries(metrics.index.tiers).map(([tier, count]) => `- ${tier}: ${count}`),
+    "",
     "Observed Codex usage",
     metrics.observed.latestCodexUsage
       ? `- latest: ${metrics.observed.latestCodexUsage.totalTokens} total (${metrics.observed.latestCodexUsage.inputTokens} input, ${metrics.observed.latestCodexUsage.outputTokens} output)`
@@ -158,7 +162,9 @@ export function printBenchmarkComparison(comparison: BenchmarkComparison): void 
     "",
     "Observed Codex usage",
     comparison.observedTokenDelta
-      ? `- saved: ${comparison.observedTokenDelta.savedTokens} tokens (${Math.round(comparison.observedTokenDelta.savingsRate * 100)}%)`
+      ? comparison.observedTokenDelta.qualityGatePassed === false && comparison.observedTokenDelta.savedTokens > 0
+        ? `- invalid savings: ${comparison.observedTokenDelta.savedTokens} fewer tokens, but quality gate failed`
+        : `- saved: ${comparison.observedTokenDelta.savedTokens} tokens (${Math.round(comparison.observedTokenDelta.savingsRate * 100)}%)`
       : "- saved: unavailable; run agent commands that print Codex token footers",
     comparison.observedTokenDelta
       ? `- before: ${comparison.observedTokenDelta.beforeTokens}; after: ${comparison.observedTokenDelta.afterTokens}`
@@ -237,5 +243,8 @@ export function formatBenchmarkMarkdown(report: BenchmarkReport): string {
 
 function formatProofDelta(label: string, delta: BenchmarkComparison["observedTokenDelta"]): string {
   if (!delta) return `- ${label}: unavailable`;
+  if (!delta.qualityGatePassed && delta.savedTokens > 0) {
+    return `- ${label}: ${delta.savedTokens} fewer tokens, invalid savings (quality gate failed)`;
+  }
   return `- ${label}: ${delta.savedTokens} tokens (${Math.round(delta.savingsRate * 100)}%)`;
 }

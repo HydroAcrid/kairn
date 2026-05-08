@@ -2,13 +2,14 @@ import fs from "node:fs";
 import path from "node:path";
 import fg from "fast-glob";
 import ignore from "ignore";
-import type { FileRecord, ScanResult } from "../types.js";
+import type { FileRecord, IndexedFileTierState, IndexTier, ScanResult } from "../types.js";
+import { loadIndexingConfig } from "../config/indexing.js";
 import { sha256 } from "../utils/hash.js";
 import { normalizeRelativePath, resolveRoot } from "../utils/paths.js";
 import { nowIso } from "../utils/time.js";
 import { classifyFile, detectLanguage, scoreFileImportance } from "./classifyFile.js";
 
-const MAX_INDEXED_FILES = 8_000;
+const MAX_INVENTORY_FILES = 60_000;
 
 export const DEFAULT_IGNORE = [
   ".git/**",
@@ -52,6 +53,7 @@ export const DEFAULT_IGNORE = [
 
 export async function scanRepo(root?: string): Promise<ScanResult> {
   const rootPath = resolveRoot(root);
+  const indexingConfig = loadIndexingConfig(rootPath);
   const gitignore = createRepoIgnore(rootPath);
   const scannedAt = nowIso();
 
@@ -104,14 +106,22 @@ export async function scanRepo(root?: string): Promise<ScanResult> {
     });
   }
 
-  eligible.sort((a, b) => scanPriority(b) - scanPriority(a) || a.path.localeCompare(b.path));
-  const selected = eligible.slice(0, MAX_INDEXED_FILES);
+  const ranked = eligible
+    .map((file) => ({
+      ...file,
+      tierScore: scanPriority(file)
+    }))
+    .sort((a, b) => b.tierScore - a.tierScore || a.path.localeCompare(b.path));
+  const selected = ranked.slice(0, MAX_INVENTORY_FILES);
   const skippedByLimit = Math.max(0, eligible.length - selected.length);
   ignoredCount += skippedByLimit;
+  const tierStates = assignIndexTiers(selected, indexingConfig.maxHotFiles);
+  const tiersByPath = new Map(tierStates.map((state) => [state.path, state]));
 
   const files: FileRecord[] = [];
   for (const item of selected) {
     const content = fs.readFileSync(item.absolutePath);
+    const tier = tiersByPath.get(item.path);
     files.push({
       rootPath,
       path: item.path,
@@ -120,6 +130,7 @@ export async function scanRepo(root?: string): Promise<ScanResult> {
       size: item.size,
       hash: sha256(content),
       importance: item.importance,
+      ...(tier ? { indexTier: tier.tier, tierScore: tier.score } : {}),
       updatedAt: scannedAt
     });
   }
@@ -129,8 +140,10 @@ export async function scanRepo(root?: string): Promise<ScanResult> {
     files,
     ignoredCount,
     candidateCount: candidates.length,
-    indexedFileLimit: MAX_INDEXED_FILES,
+    indexedFileLimit: MAX_INVENTORY_FILES,
     skippedByLimit,
+    indexTiers: countTiers(tierStates),
+    tierStates,
     scannedAt
   };
 }
@@ -168,7 +181,7 @@ function scanPriority(file: {
   if (normalized.startsWith("django/") || normalized.startsWith("lib/")) score += 22;
   if (normalized.startsWith("tests/") || normalized.includes("/tests/")) score -= 12;
   if (
-    /(^|\/)(docs?|documentation|examples?|demo|demos|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook|codemods?|devtools)\//.test(
+    /(^|\/)(docs?|documentation|examples|demo|demos|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook|codemods?|devtools)\//.test(
       normalized
     )
   ) {
@@ -178,4 +191,82 @@ function scanPriority(file: {
   if (file.size > 120_000) score -= 10;
 
   return score;
+}
+
+function assignIndexTiers(
+  files: Array<{
+    path: string;
+    kind: ReturnType<typeof classifyFile>;
+    language: string;
+    importance: number;
+    size: number;
+    tierScore: number;
+  }>,
+  maxHotFiles: number
+): IndexedFileTierState[] {
+  return files.map((file, index) => {
+    const reasons: string[] = [];
+    let tier: IndexTier = "tier0";
+    const sourceLike = isSourceLike(file);
+    const noisy = isNoisyPath(file.path);
+
+    if (sourceLike && !noisy) {
+      tier = "tier1";
+      reasons.push("cheap lexical/symbol metadata");
+    }
+    if (sourceLike && !noisy && (file.tierScore >= 95 || index < maxHotFiles * 3)) {
+      tier = "tier2";
+      reasons.push("summary candidate");
+    }
+    if (sourceLike && !noisy && (file.tierScore >= 125 || index < maxHotFiles)) {
+      tier = "tier3";
+      reasons.push("hot semantic chunk candidate");
+    }
+    if (file.kind === "config" || file.kind === "schema") {
+      tier = "tier2";
+      reasons.push("project metadata");
+    }
+    if (file.kind === "test" && tier === "tier3" && index >= 2_000) {
+      tier = "tier2";
+      reasons.push("test retained as summary unless strongly hot");
+    }
+    if (noisy) {
+      tier = "tier0";
+      reasons.push("docs/examples/generated retained as inventory only");
+    }
+
+    return {
+      path: file.path,
+      tier,
+      score: Number(file.tierScore.toFixed(3)),
+      reasons: reasons.length > 0 ? reasons : ["inventory metadata"]
+    };
+  });
+}
+
+function countTiers(states: IndexedFileTierState[]): Record<IndexTier, number> {
+  return states.reduce<Record<IndexTier, number>>(
+    (counts, state) => ({
+      ...counts,
+      [state.tier]: counts[state.tier] + 1
+    }),
+    { tier0: 0, tier1: 0, tier2: 0, tier3: 0, tier4: 0 }
+  );
+}
+
+function isSourceLike(file: { kind: ReturnType<typeof classifyFile>; language: string }): boolean {
+  return (
+    file.kind === "source" ||
+    file.kind === "component" ||
+    file.kind === "route" ||
+    file.kind === "test" ||
+    ["python", "java", "c", "cpp", "typescript", "javascript"].includes(file.language)
+  );
+}
+
+function isNoisyPath(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  return /(^|\/)(docs?|documentation|examples|demo|demos|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook|codemods?|devtools)\//.test(
+    normalized
+  );
 }
