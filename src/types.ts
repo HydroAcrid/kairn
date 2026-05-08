@@ -48,7 +48,8 @@ export type MetricsEventKind =
   | "compression"
   | "hook_signal"
   | "prime_context"
-  | "prime_quality";
+  | "prime_quality"
+  | "mcp_tool_call";
 
 export type EvalRunMode = "baseline" | "kairn" | "manual";
 
@@ -365,6 +366,8 @@ export type BenchmarkAssistanceMode =
   | "hook_tiny_directive"
   | "hook_tiny_with_failures"
   | "mcp_first"
+  | "real_mcp_first"
+  | "mcp_first_plus_hook_full_prime"
   | "passive_hooks"
   | "proactive";
 
@@ -477,6 +480,8 @@ export type BenchmarkProofReport = {
   hookTinyDirective?: BenchmarkReport;
   hookTinyWithFailures?: BenchmarkReport;
   mcpFirst?: BenchmarkReport;
+  realMcpFirst?: BenchmarkReport;
+  mcpFirstPlusHookFullPrime?: BenchmarkReport;
   passiveHooks: BenchmarkReport;
   proactive: BenchmarkReport;
   runs?: Partial<Record<BenchmarkAssistanceMode, BenchmarkReport[]>>;
@@ -506,6 +511,8 @@ export type BenchmarkProofReport = {
     hookTinyDirectiveVsBaseline?: BenchmarkComparison["observedTokenDelta"];
     hookTinyWithFailuresVsBaseline?: BenchmarkComparison["observedTokenDelta"];
     mcpFirstVsBaseline?: BenchmarkComparison["observedTokenDelta"];
+    realMcpFirstVsBaseline?: BenchmarkComparison["observedTokenDelta"];
+    mcpFirstPlusHookFullPrimeVsBaseline?: BenchmarkComparison["observedTokenDelta"];
   };
   caseDeltas: Array<{
     caseId: string;

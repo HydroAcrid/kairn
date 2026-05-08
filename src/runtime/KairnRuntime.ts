@@ -539,6 +539,8 @@ export class KairnRuntime {
     hookTinyDirectiveCommand?: string | undefined;
     hookTinyWithFailuresCommand?: string | undefined;
     mcpFirstCommand?: string | undefined;
+    realMcpFirstCommand?: string | undefined;
+    mcpFirstPlusHookFullPrimeCommand?: string | undefined;
     passiveCommand?: string | undefined;
     proactiveCommand?: string | undefined;
     agentTimeoutMs?: number | undefined;
@@ -556,7 +558,9 @@ export class KairnRuntime {
       ...(input.hookFullPrimeCommand ? [{ mode: "hook_full_prime" as const, command: input.hookFullPrimeCommand }] : []),
       ...(input.hookTinyDirectiveCommand ? [{ mode: "hook_tiny_directive" as const, command: input.hookTinyDirectiveCommand }] : []),
       ...(input.hookTinyWithFailuresCommand ? [{ mode: "hook_tiny_with_failures" as const, command: input.hookTinyWithFailuresCommand }] : []),
-      ...(input.mcpFirstCommand ? [{ mode: "mcp_first" as const, command: input.mcpFirstCommand }] : [])
+      ...(input.mcpFirstCommand ? [{ mode: "mcp_first" as const, command: input.mcpFirstCommand }] : []),
+      ...(input.realMcpFirstCommand ? [{ mode: "real_mcp_first" as const, command: input.realMcpFirstCommand }] : []),
+      ...(input.mcpFirstPlusHookFullPrimeCommand ? [{ mode: "mcp_first_plus_hook_full_prime" as const, command: input.mcpFirstPlusHookFullPrimeCommand }] : [])
     ];
     const baselineReports: BenchmarkReport[] = [];
     const promptOnlyReports: BenchmarkReport[] = [];
@@ -566,14 +570,15 @@ export class KairnRuntime {
     const hookTinyDirectiveReports: BenchmarkReport[] = [];
     const hookTinyWithFailuresReports: BenchmarkReport[] = [];
     const mcpFirstReports: BenchmarkReport[] = [];
+    const realMcpFirstReports: BenchmarkReport[] = [];
+    const mcpFirstPlusHookFullPrimeReports: BenchmarkReport[] = [];
 
     for (let iteration = 0; iteration < repeat; iteration += 1) {
       const order = input.shuffleOrder ? shuffleItems(modeCommands) : modeCommands;
       for (const item of order) {
-        const report = await this.runBenchmark({
+        const report = await this.runProofModeBenchmark({
           suitePath: input.suitePath,
-          mode: "agent",
-          agentCommand: item.command,
+          command: item.command,
           agentTimeoutMs: input.agentTimeoutMs,
           assistanceMode: item.mode
         });
@@ -585,14 +590,15 @@ export class KairnRuntime {
         if (item.mode === "hook_tiny_directive") hookTinyDirectiveReports.push(report);
         if (item.mode === "hook_tiny_with_failures") hookTinyWithFailuresReports.push(report);
         if (item.mode === "mcp_first") mcpFirstReports.push(report);
+        if (item.mode === "real_mcp_first") realMcpFirstReports.push(report);
+        if (item.mode === "mcp_first_plus_hook_full_prime") mcpFirstPlusHookFullPrimeReports.push(report);
       }
     }
 
     if (baselineReports.length === 0) {
-      baselineReports.push(await this.runBenchmark({
+      baselineReports.push(await this.runProofModeBenchmark({
         suitePath: input.suitePath,
-        mode: "agent",
-        agentCommand: input.baselineCommand,
+        command: input.baselineCommand,
         agentTimeoutMs: input.agentTimeoutMs,
         assistanceMode: "baseline"
       }));
@@ -607,8 +613,93 @@ export class KairnRuntime {
       hookTinyDirective: hookTinyDirectiveReports,
       hookTinyWithFailures: hookTinyWithFailuresReports,
       mcpFirst: mcpFirstReports,
+      realMcpFirst: realMcpFirstReports,
+      mcpFirstPlusHookFullPrime: mcpFirstPlusHookFullPrimeReports,
       repeat
     });
+  }
+
+  private async runProofModeBenchmark(input: {
+    suitePath?: string | undefined;
+    command: string;
+    agentTimeoutMs?: number | undefined;
+    assistanceMode: BenchmarkAssistanceMode;
+  }): Promise<BenchmarkReport> {
+    try {
+      return await this.runBenchmark({
+        suitePath: input.suitePath,
+        mode: "agent",
+        agentCommand: input.command,
+        agentTimeoutMs: input.agentTimeoutMs,
+        assistanceMode: input.assistanceMode
+      });
+    } catch (error) {
+      return this.buildFailedProofModeReport({
+        suitePath: input.suitePath,
+        assistanceMode: input.assistanceMode,
+        error
+      });
+    }
+  }
+
+  private buildFailedProofModeReport(input: {
+    suitePath?: string | undefined;
+    assistanceMode: BenchmarkAssistanceMode;
+    error: unknown;
+  }): BenchmarkReport {
+    const suite = loadBenchmarkSuite({
+      suitePath: input.suitePath,
+      files: this.store.listFiles(this.rootPath)
+    });
+    const session = this.store.createSession({
+      id: `task_${randomUUID()}`,
+      rootPath: this.rootPath,
+      task: `Failed benchmark mode: ${input.assistanceMode}`,
+      verificationHints: ["Inspect benchmark mode setup before trusting token deltas."]
+    });
+    const run = this.store.createBenchmarkRun({
+      id: `bench_${randomUUID()}`,
+      rootPath: this.rootPath,
+      suiteId: suite.id,
+      suiteName: suite.name,
+      mode: "agent",
+      status: "active",
+      metadata: {
+        sessionId: session.id,
+        caseCount: suite.cases.length,
+        agentConfigured: true,
+        assistanceMode: input.assistanceMode,
+        modeError: input.error instanceof Error ? input.error.message : String(input.error)
+      }
+    });
+
+    for (const benchmarkCase of suite.cases.filter((item) => benchmarkCaseApplies(item.mode, "agent"))) {
+      this.store.recordBenchmarkResult({
+        runId: run.id,
+        caseId: benchmarkCase.id,
+        caseMode: benchmarkCase.mode,
+        score: 0,
+        expectedFileRecall: 0,
+        topKHitRate: 0,
+        unexpectedFileRate: 0,
+        responseTokens: 0,
+        hookContextEmitted: 0,
+        hookContextSuppressed: 0,
+        taskOutcome: "fail",
+        expectedFiles: benchmarkCase.expectedFiles,
+        actualFiles: [],
+        excludedFiles: benchmarkCase.excludedFiles,
+        summary: `Benchmark mode ${input.assistanceMode} failed before producing a result.`,
+        recommendations: ["Fix this proof mode before using its token delta."],
+        metadata: {
+          assistanceMode: input.assistanceMode,
+          modeError: input.error instanceof Error ? input.error.message : String(input.error)
+        }
+      });
+    }
+
+    this.store.updateBenchmarkRunStatus(run.id, "abandoned");
+    return this.buildBenchmarkReport(run.id);
   }
 
   getBenchmarkReport(input: { runId?: string | undefined }): BenchmarkReport | { runs: BenchmarkReport[] } {
@@ -1163,27 +1254,55 @@ export class KairnRuntime {
       const related = await this.getRelatedFiles({
         sessionId: input.sessionId,
         target: latestFailure.files[0],
-        budget: input.budget ?? 900
+        budget: 500
       });
-      return {
-        ...related,
-        content: [
+      const nextReads = uniquePaths([latestFailure.files[0], ...related.suggestedNextContext]).slice(0, 2);
+      const content = truncateToBudget(
+        [
           "# Kairn Next Context",
           "",
           `Latest failure file: ${latestFailure.files[0]}`,
           "",
-          related.content,
+          "## Next Reads",
+          ...nextReads.map((file) => `- ${file}`),
           "",
-          "Agent guidance: read the failure file and closest related files before broad scans."
+          "Agent guidance: inspect these files before broad scans."
         ].join("\n"),
+        input.budget ?? 700
+      );
+      return {
+        ...related,
+        content,
+        files: nextReads,
+        related: nextReads.filter((file) => file !== latestFailure.files[0]),
+        suggestedNextContext: nextReads,
+        tokenEstimate: estimateTokens(content),
         warnings: uniqueStrings([...related.warnings, "Next context selected from latest failure event."])
       };
     }
 
     const diff = await this.reviewDiff({ sessionId: input.sessionId, budget: input.budget ?? 900 });
     if (diff.suggestedNextContext.length > 0) {
+      const nextReads = diff.suggestedNextContext.slice(0, 2);
+      const content = truncateToBudget(
+        [
+          "# Kairn Next Context",
+          "",
+          "Current diff has files that Kairn has not shown yet.",
+          "",
+          "## Next Reads",
+          ...nextReads.map((file) => `- ${file}`),
+          "",
+          "Agent guidance: read the smallest missing diff context before broader review."
+        ].join("\n"),
+        input.budget ?? 700
+      );
       return {
         ...diff,
+        content,
+        files: nextReads,
+        suggestedNextContext: nextReads,
+        tokenEstimate: estimateTokens(content),
         warnings: uniqueStrings([...diff.warnings, "Next context selected from current diff."])
       };
     }
@@ -1194,6 +1313,43 @@ export class KairnRuntime {
       requestType: "find_context",
       budget: input.budget ?? 900,
       mode: "brief"
+    });
+  }
+
+  recordMcpToolCall(input: {
+    toolName: string;
+    sessionId?: string | undefined;
+    result: unknown;
+    input?: unknown;
+  }): void {
+    const sessionId = input.sessionId ?? sessionIdFromMcpValue(input.result) ?? sessionIdFromMcpValue(input.input);
+    if (!sessionId) return;
+
+    let session: TaskSession;
+    try {
+      session = this.store.getSession(sessionId);
+    } catch {
+      return;
+    }
+
+    const files = uniquePaths([
+      ...filesFromMcpValue(input.result),
+      ...filesFromMcpValue(input.input)
+    ]);
+    this.recordMetricsEvent({
+      sessionId,
+      rootPath: session.rootPath,
+      eventKind: "mcp_tool_call",
+      eventName: input.toolName,
+      source: "mcp",
+      baselineTokens: 0,
+      outputTokens: tokenEstimateFromMcpValue(input.result),
+      files,
+      metadata: {
+        toolName: input.toolName,
+        resultFileCount: files.length,
+        resultMode: responseModeFromMcpValue(input.result)
+      }
     });
   }
 
@@ -1814,7 +1970,9 @@ export class KairnRuntime {
                 workspaceRuntime.close();
               }
             }
-          : input.assistanceMode === "mcp_first"
+          : input.assistanceMode === "mcp_first" ||
+              input.assistanceMode === "real_mcp_first" ||
+              input.assistanceMode === "mcp_first_plus_hook_full_prime"
             ? ({ prompt }) => ({
                 prompt: [
                   "Kairn MCP-first instruction:",
@@ -1827,7 +1985,7 @@ export class KairnRuntime {
                   prompt
                 ].join("\n"),
                 metadata: {
-                  assistanceMode: "mcp_first",
+                  assistanceMode: input.assistanceMode,
                   mcpFirstInstructionsPrepended: true
                 }
               })
@@ -2470,6 +2628,8 @@ function buildBenchmarkProofReport(input: {
   hookTinyDirective: BenchmarkReport[];
   hookTinyWithFailures: BenchmarkReport[];
   mcpFirst: BenchmarkReport[];
+  realMcpFirst: BenchmarkReport[];
+  mcpFirstPlusHookFullPrime: BenchmarkReport[];
   repeat: number;
 }): BenchmarkProofReport {
   const baseline = latestReport(input.baseline);
@@ -2480,6 +2640,8 @@ function buildBenchmarkProofReport(input: {
   const hookTinyDirective = optionalLatestReport(input.hookTinyDirective);
   const hookTinyWithFailures = optionalLatestReport(input.hookTinyWithFailures);
   const mcpFirst = optionalLatestReport(input.mcpFirst);
+  const realMcpFirst = optionalLatestReport(input.realMcpFirst);
+  const mcpFirstPlusHookFullPrime = optionalLatestReport(input.mcpFirstPlusHookFullPrime);
   const passiveHooks = promptPlusHooks ?? promptOnly ?? baseline;
   const proactive = manualPrime ?? baseline;
   const promptOnlyVsBaseline = promptOnly ? compareBenchmarkReports(baseline, promptOnly) : undefined;
@@ -2489,6 +2651,8 @@ function buildBenchmarkProofReport(input: {
   const hookTinyDirectiveVsBaseline = hookTinyDirective ? compareBenchmarkReports(baseline, hookTinyDirective) : undefined;
   const hookTinyWithFailuresVsBaseline = hookTinyWithFailures ? compareBenchmarkReports(baseline, hookTinyWithFailures) : undefined;
   const mcpFirstVsBaseline = mcpFirst ? compareBenchmarkReports(baseline, mcpFirst) : undefined;
+  const realMcpFirstVsBaseline = realMcpFirst ? compareBenchmarkReports(baseline, realMcpFirst) : undefined;
+  const mcpFirstPlusHookFullPrimeVsBaseline = mcpFirstPlusHookFullPrime ? compareBenchmarkReports(baseline, mcpFirstPlusHookFullPrime) : undefined;
   const proactiveVsPassive = manualPrime && passiveHooks ? compareBenchmarkReports(passiveHooks, manualPrime) : undefined;
   const baselineByCase = new Map(baseline.results.map((result) => [result.caseId, result]));
   const promptOnlyByCase = new Map(promptOnly?.results.map((result) => [result.caseId, result]) ?? []);
@@ -2527,7 +2691,9 @@ function buildBenchmarkProofReport(input: {
       hook_full_prime: input.hookFullPrime,
       hook_tiny_directive: input.hookTinyDirective,
       hook_tiny_with_failures: input.hookTinyWithFailures,
-      mcp_first: input.mcpFirst
+      mcp_first: input.mcpFirst,
+      real_mcp_first: input.realMcpFirst,
+      mcp_first_plus_hook_full_prime: input.mcpFirstPlusHookFullPrime
     }
   });
   const recommendations = uniqueStrings([
@@ -2538,6 +2704,8 @@ function buildBenchmarkProofReport(input: {
     recommendationForDelta("Hook tiny directive vs baseline", hookTinyDirectiveVsBaseline?.observedTokenDelta),
     recommendationForDelta("Hook tiny+failures vs baseline", hookTinyWithFailuresVsBaseline?.observedTokenDelta),
     recommendationForDelta("MCP-first vs baseline", mcpFirstVsBaseline?.observedTokenDelta),
+    recommendationForDelta("Real MCP-first vs baseline", realMcpFirstVsBaseline?.observedTokenDelta),
+    recommendationForDelta("MCP-first + full-prime hook vs baseline", mcpFirstPlusHookFullPrimeVsBaseline?.observedTokenDelta),
     ...(manualPrimeVsBaseline?.recommendations.slice(0, 4) ?? promptOnlyVsBaseline?.recommendations.slice(0, 4) ?? [])
   ]);
 
@@ -2550,6 +2718,8 @@ function buildBenchmarkProofReport(input: {
     ...(hookTinyDirective ? { hookTinyDirective } : {}),
     ...(hookTinyWithFailures ? { hookTinyWithFailures } : {}),
     ...(mcpFirst ? { mcpFirst } : {}),
+    ...(realMcpFirst ? { realMcpFirst } : {}),
+    ...(mcpFirstPlusHookFullPrime ? { mcpFirstPlusHookFullPrime } : {}),
     passiveHooks,
     proactive,
     runs: {
@@ -2560,7 +2730,9 @@ function buildBenchmarkProofReport(input: {
       hook_full_prime: input.hookFullPrime,
       hook_tiny_directive: input.hookTinyDirective,
       hook_tiny_with_failures: input.hookTinyWithFailures,
-      mcp_first: input.mcpFirst
+      mcp_first: input.mcpFirst,
+      real_mcp_first: input.realMcpFirst,
+      mcp_first_plus_hook_full_prime: input.mcpFirstPlusHookFullPrime
     },
     aggregate,
     observedTokenDeltas: {
@@ -2571,6 +2743,8 @@ function buildBenchmarkProofReport(input: {
       ...(hookTinyDirectiveVsBaseline?.observedTokenDelta ? { hookTinyDirectiveVsBaseline: hookTinyDirectiveVsBaseline.observedTokenDelta } : {}),
       ...(hookTinyWithFailuresVsBaseline?.observedTokenDelta ? { hookTinyWithFailuresVsBaseline: hookTinyWithFailuresVsBaseline.observedTokenDelta } : {}),
       ...(mcpFirstVsBaseline?.observedTokenDelta ? { mcpFirstVsBaseline: mcpFirstVsBaseline.observedTokenDelta } : {}),
+      ...(realMcpFirstVsBaseline?.observedTokenDelta ? { realMcpFirstVsBaseline: realMcpFirstVsBaseline.observedTokenDelta } : {}),
+      ...(mcpFirstPlusHookFullPrimeVsBaseline?.observedTokenDelta ? { mcpFirstPlusHookFullPrimeVsBaseline: mcpFirstPlusHookFullPrimeVsBaseline.observedTokenDelta } : {}),
       ...(promptPlusVsBaseline?.observedTokenDelta ? { passiveVsBaseline: promptPlusVsBaseline.observedTokenDelta } : {}),
       ...(manualPrimeVsBaseline?.observedTokenDelta ? { proactiveVsBaseline: manualPrimeVsBaseline.observedTokenDelta } : {}),
       ...(proactiveVsPassive?.observedTokenDelta ? { proactiveVsPassive: proactiveVsPassive.observedTokenDelta } : {})
@@ -2612,7 +2786,10 @@ function buildProofAggregate(input: {
     deltas: {
       promptOnlyVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.prompt_only?.medianTokens),
       promptPlusHooksVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.prompt_plus_hooks?.medianTokens),
-      manualPrimeVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.manual_prime?.medianTokens)
+      manualPrimeVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.manual_prime?.medianTokens),
+      hookFullPrimeVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.hook_full_prime?.medianTokens),
+      realMcpFirstVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.real_mcp_first?.medianTokens),
+      mcpFirstPlusHookFullPrimeVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.mcp_first_plus_hook_full_prime?.medianTokens)
     }
   };
 }
@@ -2674,7 +2851,15 @@ function collectWorkspaceKairnMetrics(workspacePath: string): Record<string, unk
       primeTokens: metrics.reduce((total, item) => total + (item.byKind.prime_context?.outputTokens ?? 0), 0),
       primeQualityEvents: metrics.reduce((total, item) => total + (item.byKind.prime_quality?.events ?? 0), 0),
       hookInvocations: metrics.reduce((total, item) => total + (item.byKind.hook_signal?.events ?? 0), 0),
-      failureContextUsed: metrics.reduce((total, item) => total + (item.byKind.failure_context?.events ?? 0), 0)
+      failureContextUsed: metrics.reduce((total, item) => total + (item.byKind.failure_context?.events ?? 0), 0),
+      mcpToolCalls: metrics.reduce((total, item) => total + (item.byKind.mcp_tool_call?.events ?? 0), 0),
+      mcpFilesReturned: uniquePaths(
+        metrics.flatMap((item) =>
+          item.recentEvents
+            .filter((event) => event.eventKind === "mcp_tool_call")
+            .flatMap((event) => event.files)
+        )
+      )
     };
   } catch {
     return {
@@ -2684,6 +2869,40 @@ function collectWorkspaceKairnMetrics(workspacePath: string): Record<string, unk
   } finally {
     runtime.close();
   }
+}
+
+function sessionIdFromMcpValue(value: unknown): string | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  if (typeof record.sessionId === "string") return record.sessionId;
+  const session = record.session;
+  if (session && typeof session === "object" && typeof (session as Record<string, unknown>).id === "string") {
+    return (session as Record<string, string>).id;
+  }
+  return undefined;
+}
+
+function filesFromMcpValue(value: unknown): string[] {
+  if (!value || typeof value !== "object") return [];
+  const record = value as Record<string, unknown>;
+  const fields = [record.files, record.related, record.suggestedNextContext, record.failureFiles, record.testFiles, record.changedFiles];
+  return uniquePaths(
+    fields.flatMap((field) => Array.isArray(field) ? field.filter((item): item is string => typeof item === "string") : [])
+  );
+}
+
+function tokenEstimateFromMcpValue(value: unknown): number {
+  if (!value || typeof value !== "object") return 0;
+  const record = value as Record<string, unknown>;
+  if (typeof record.tokenEstimate === "number") return Math.max(0, Math.round(record.tokenEstimate));
+  if (typeof record.content === "string") return estimateTokens(record.content);
+  return 0;
+}
+
+function responseModeFromMcpValue(value: unknown): string | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const mode = (value as Record<string, unknown>).mode;
+  return typeof mode === "string" ? mode : undefined;
 }
 
 function formatMatchedSnippets(files: HybridScoredResult[], budget = 700): string {

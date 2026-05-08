@@ -220,9 +220,9 @@ setup
   .option("--root <path>", "target repository root", process.cwd())
   .addOption(new Option("--mode <mode>", "Codex hook setup mode").choices(["savings", "observe", "debug", "mcp-first"]).default("savings"))
   .addOption(new Option("--prime-profile <profile>", "prompt-submit prime profile").choices(["auto", "ui", "workflow", "backend", "test", "generic"]).default("auto"))
-  .addOption(new Option("--hook-output <profile>", "prompt-submit hook output profile").choices(["full-prime", "tiny-directive", "failure-only"]).default("tiny-directive"))
+  .addOption(new Option("--hook-output <profile>", "prompt-submit hook output profile").choices(["full-prime", "tiny-directive", "failure-only"]).default("full-prime"))
   .addOption(new Option("--post-tool-hook-output <profile>", "post-tool hook output profile").choices(["full-prime", "tiny-directive", "failure-only"]).default("failure-only"))
-  .option("--prime-budget <tokens>", "prompt-submit prime token budget", parsePositiveInt, 600)
+  .option("--prime-budget <tokens>", "prompt-submit prime token budget", parsePositiveInt, 900)
   .option("--json", "print JSON output")
   .action((options: {
     root: string;
@@ -252,11 +252,13 @@ setup
         `Root: ${result.rootPath}`,
         `Config: ${result.configPath}`,
         `Hooks: ${result.hooksPath}`,
+        result.mcpConfigured ? `MCP: ${result.mcpServerName}` : "",
+        result.instructionsPath ? `Instructions: ${result.instructionsPath}` : "",
         `Mode: ${result.mode}`,
         `Hook output: ${result.hookOutput}`,
         `Post-tool hook output: ${result.postToolHookOutput}`,
         "Codex UserPromptSubmit hooks will request proactive Kairn context without KAIRN_SESSION.",
-        result.mode === "mcp-first" ? "MCP-first mode also writes savings hooks; configure Codex MCP manually with `kairn serve --mcp --root <repo>`." : "",
+        result.mode === "mcp-first" ? "MCP-first mode writes a Kairn MCP server config and AGENTS.md guidance." : "",
         ""
       ].filter(Boolean).join("\n")
     );
@@ -825,6 +827,8 @@ benchCommand
   .option("--hook-tiny-directive-command <command>", "UserPromptSubmit tiny-directive live-agent command with {prompt} and {root} placeholders")
   .option("--hook-tiny-with-failures-command <command>", "tiny prompt hook plus failure-only post-tool hook command with {prompt} and {root} placeholders")
   .option("--mcp-first-command <command>", "MCP-first live-agent command with {prompt} and {root} placeholders")
+  .option("--real-mcp-first-command <command>", "real MCP-first live-agent command with {prompt} and {root} placeholders")
+  .option("--mcp-first-plus-hook-full-prime-command <command>", "MCP-first plus full-prime hook command with {prompt} and {root} placeholders")
   .option("--passive-command <command>", "legacy alias for --prompt-plus-hooks-command")
   .option("--proactive-command <command>", "legacy alias for --manual-prime-command")
   .option("--agent-timeout <ms>", "live-agent command timeout", parsePositiveInt, 120000)
@@ -843,6 +847,8 @@ benchCommand
       hookTinyDirectiveCommand?: string;
       hookTinyWithFailuresCommand?: string;
       mcpFirstCommand?: string;
+      realMcpFirstCommand?: string;
+      mcpFirstPlusHookFullPrimeCommand?: string;
       passiveCommand?: string;
       proactiveCommand?: string;
       agentTimeout: number;
@@ -861,6 +867,8 @@ benchCommand
           hookTinyDirectiveCommand: options.hookTinyDirectiveCommand,
           hookTinyWithFailuresCommand: options.hookTinyWithFailuresCommand,
           mcpFirstCommand: options.mcpFirstCommand,
+          realMcpFirstCommand: options.realMcpFirstCommand,
+          mcpFirstPlusHookFullPrimeCommand: options.mcpFirstPlusHookFullPrimeCommand,
           passiveCommand: options.passiveCommand,
           proactiveCommand: options.proactiveCommand,
           agentTimeoutMs: options.agentTimeout,
@@ -1015,22 +1023,74 @@ function writeCodexSetup(input: {
   const configPath = path.join(codexDir, "config.toml");
   const hooksPath = path.join(codexDir, "hooks.json");
   fs.mkdirSync(codexDir, { recursive: true });
-  fs.writeFileSync(configPath, "[features]\ncodex_hooks = true\n");
+  const existingConfig = fs.existsSync(configPath) ? fs.readFileSync(configPath, "utf8") : "";
+  fs.writeFileSync(configPath, buildCodexConfig({ ...input, rootPath, existingConfig }));
   fs.writeFileSync(
     hooksPath,
     `${JSON.stringify(buildCodexHooksConfig(input), null, 2)}\n`
   );
+  const instructions = input.mode === "mcp-first" ? writeMcpInstructionsSetup({ root: rootPath }) : undefined;
 
   return {
     rootPath,
     configPath,
     hooksPath,
+    mcpConfigured: input.mode === "mcp-first",
+    mcpServerName: input.mode === "mcp-first" ? "kairn" : undefined,
+    instructionsPath: instructions?.instructionsPath,
     mode: input.mode,
     primeProfile: input.primeProfile,
     hookOutput: input.hookOutput,
     postToolHookOutput: input.postToolHookOutput,
     primeBudget: input.primeBudget
   };
+}
+
+function buildCodexConfig(input: {
+  rootPath: string;
+  mode: CodexSetupMode;
+  existingConfig: string;
+}): string {
+  let config = upsertFeatureFlag(input.existingConfig, "codex_hooks", true);
+  if (input.mode === "mcp-first") {
+    config = upsertTomlTable(config, "mcp_servers.kairn", [
+      `[mcp_servers.kairn]`,
+      `command = "kairn"`,
+      `args = ["serve", "--mcp", "--root", ${JSON.stringify(input.rootPath)}]`,
+      `startup_timeout_sec = 20`,
+      `tool_timeout_sec = 60`,
+      `enabled = true`
+    ]);
+  }
+  return config.endsWith("\n") ? config : `${config}\n`;
+}
+
+function upsertFeatureFlag(config: string, key: string, value: boolean): string {
+  const featureLine = `${key} = ${value ? "true" : "false"}`;
+  const featureHeader = "[features]";
+  if (!config.trim()) return `${featureHeader}\n${featureLine}\n`;
+  const featurePattern = /(^|\n)\[features\]\n([\s\S]*?)(?=\n\[|$)/;
+  const match = config.match(featurePattern);
+  if (!match) return `${config.trimEnd()}\n\n${featureHeader}\n${featureLine}\n`;
+
+  const body = match[2] ?? "";
+  const keyPattern = new RegExp(`^${escapeRegExp(key)}\\s*=.*$`, "m");
+  const nextBody = keyPattern.test(body)
+    ? body.replace(keyPattern, featureLine)
+    : `${body.trimEnd()}\n${featureLine}\n`;
+  return config.replace(featurePattern, `${match[1]}${featureHeader}\n${nextBody.trimEnd()}\n`);
+}
+
+function upsertTomlTable(config: string, table: string, lines: string[]): string {
+  const escaped = escapeRegExp(`[${table}]`);
+  const pattern = new RegExp(`(^|\\n)${escaped}\\n[\\s\\S]*?(?=\\n\\[|$)`);
+  const block = lines.join("\n");
+  if (pattern.test(config)) return config.replace(pattern, `$1${block}\n`);
+  return `${config.trimEnd()}\n\n${block}\n`;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function buildCodexHooksConfig(input: {
@@ -1309,6 +1369,8 @@ function printBenchmarkProof(report: BenchmarkProofReport): void {
     formatProofDelta("Hook tiny directive vs baseline", report.observedTokenDeltas.hookTinyDirectiveVsBaseline),
     formatProofDelta("Hook tiny+failures vs baseline", report.observedTokenDeltas.hookTinyWithFailuresVsBaseline),
     formatProofDelta("MCP-first vs baseline", report.observedTokenDeltas.mcpFirstVsBaseline),
+    formatProofDelta("Real MCP-first vs baseline", report.observedTokenDeltas.realMcpFirstVsBaseline),
+    formatProofDelta("MCP-first + full-prime hook vs baseline", report.observedTokenDeltas.mcpFirstPlusHookFullPrimeVsBaseline),
     report.aggregate ? `- Repeat count: ${report.aggregate.repeat}` : "",
     report.aggregate?.deltas.promptOnlyVsBaseline?.savingsRate !== undefined
       ? `- Prompt-only median savings: ${Math.round(report.aggregate.deltas.promptOnlyVsBaseline.savingsRate * 100)}%`

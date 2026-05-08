@@ -721,3 +721,44 @@ Next test recommendation:
 - Run repeated median validation for only the viable modes first: `baseline`, `hook_full_prime`, `mcp_first`, and `manual_prime`.
 - Keep `hook_tiny_directive` and `hook_tiny_with_failures` out of default setup until they show repeated quality-preserving savings.
 - Treat `mcp_first` as the next serious product direction, but verify whether the agent actually calls MCP tools or is mainly following the instruction text.
+
+## Real MCP Setup Proof
+
+Report:
+
+```text
+/tmp/kairn-real-mcp-proof-20260507231627.json
+```
+
+After adding real Codex MCP setup, MCP call telemetry, and full-prime hook defaults, the TanStack hidden-hash seeded regression was rerun with real Codex agents in disposable workspaces.
+
+Quality rule remained unchanged: token savings only count when the seeded verification passes, the expected file is used or mentioned, the run avoids timeouts, and hook failures do not appear.
+
+| Mode | Outcome | Observed tokens | Delta vs baseline | Expected file used | Hook signal | MCP signal |
+| --- | --- | ---: | ---: | --- | --- | --- |
+| Baseline | pass | `97,045` | - | yes | none | none |
+| Manual prime | pass | `83,253` | `+14.21%` | yes | none | `0` MCP calls |
+| Hook full prime | pass | `46,859` | `+51.71%` | yes | `1` hook, `0` failures, `883` prime tokens | `0` MCP calls |
+| Real MCP-first | pass | `56,750` | `+41.52%` | yes | none | `6` MCP mentions, `0` recorded MCP calls |
+| MCP-first + full-prime hook | pass | `52,905` | `+45.48%` | yes | `1` hook, `0` failures, `884` prime tokens | `3` MCP mentions, `0` recorded MCP calls |
+
+Interpretation:
+
+- The new defaults produced the cleanest hook result so far: `hook_full_prime` saved about `52%` while preserving quality.
+- MCP-first still performed strongly, saving about `42%`, but Kairn recorded `0` actual MCP tool calls in the disposable workspace.
+- The current MCP result is therefore not proof that Codex used the Kairn MCP server. It is proof that MCP-first setup/instructions changed Codex behavior enough to reduce tokens on this run.
+- `mcp_first_plus_hook_full_prime` saved less than hook-only full-prime in this run, so combining MCP-first text with hook context is not automatically better.
+- Manual prime underperformed compared with earlier runs, reinforcing that single-run live Codex numbers are high variance.
+
+Product implication:
+
+- The best currently proven automatic path is full-prime prompt hooks, not MCP tool usage.
+- MCP-first remains strategically important, but the immediate blocker is tool invocation reliability: Codex mentioned Kairn tool names but did not produce Kairn-side `mcp_tool_call` metrics.
+- Do not claim "MCP saved 42%" yet. The accurate claim is: "MCP-first instructions/config saved 42% in one run; actual MCP tool calls were not confirmed."
+
+Next implementation target:
+
+- Make Codex MCP usage observable end-to-end by forcing or strongly prompting an actual `kairn_prepare_task` call in the benchmark prompt.
+- Add a benchmark quality gate: `real_mcp_first` should fail the MCP-specific criterion if `mcpToolCalls === 0`.
+- Investigate whether the Codex MCP server config shape is correct for project-local MCP, or whether Codex requires a different config location/field for tool availability.
+- Keep `hook_full_prime` as the current default savings path while MCP tool-call reliability is being fixed.

@@ -614,7 +614,7 @@ describe("watch and hook CLI", () => {
         cwd: process.cwd(),
         encoding: "utf8"
       })
-    ) as { configPath: string; hooksPath: string; primeBudget: number; hookOutput: string; postToolHookOutput: string };
+    ) as { configPath: string; hooksPath: string; primeBudget: number; hookOutput: string; postToolHookOutput: string; mcpConfigured: boolean };
     const config = fs.readFileSync(setup.configPath, "utf8");
     const hooks = fs.readFileSync(setup.hooksPath, "utf8");
     const observe = JSON.parse(
@@ -631,6 +631,15 @@ describe("watch and hook CLI", () => {
       })
     ) as { hooksPath: string; mode: string };
     const debugHooks = fs.readFileSync(debug.hooksPath, "utf8");
+    fs.appendFileSync(setup.configPath, "\n[model]\nname = \"gpt-5.4-mini\"\n");
+    const mcpFirst = JSON.parse(
+      execFileSync(CLI[0]!, [...CLI.slice(1), "setup", "codex", "--root", root, "--mode", "mcp-first", "--json"], {
+        cwd: process.cwd(),
+        encoding: "utf8"
+      })
+    ) as { configPath: string; instructionsPath: string; mcpConfigured: boolean; hookOutput: string };
+    const mcpConfig = fs.readFileSync(mcpFirst.configPath, "utf8");
+    const mcpInstructions = fs.readFileSync(mcpFirst.instructionsPath, "utf8");
     const hook = JSON.parse(
       execFileSync(CLI[0]!, [...CLI.slice(1), "hook", "--root", root, "--source", "codex", "--json"], {
         cwd: process.cwd(),
@@ -657,12 +666,13 @@ describe("watch and hook CLI", () => {
     });
     const hostParsed = JSON.parse(hostOutput) as { hookSpecificOutput: { hookEventName: string; additionalContext: string } };
 
-    expect(setup.primeBudget).toBe(600);
-    expect(setup.hookOutput).toBe("tiny-directive");
+    expect(setup.primeBudget).toBe(900);
+    expect(setup.hookOutput).toBe("full-prime");
     expect(setup.postToolHookOutput).toBe("failure-only");
+    expect(setup.mcpConfigured).toBe(false);
     expect(config).toContain("codex_hooks = true");
-    expect(hooks).toContain("--prime-budget 600");
-    expect(hooks).toContain("--hook-output tiny-directive");
+    expect(hooks).toContain("--prime-budget 900");
+    expect(hooks).toContain("--hook-output full-prime");
     expect(hooks).not.toContain("--session");
     expect(hooks).not.toContain("PostToolUse");
     expect(observe.mode).toBe("observe");
@@ -672,6 +682,14 @@ describe("watch and hook CLI", () => {
     expect(debug.mode).toBe("debug");
     expect(debugHooks).toContain("\"matcher\": \".*\"");
     expect(debugHooks).toContain("Stop");
+    expect(mcpFirst.mcpConfigured).toBe(true);
+    expect(mcpFirst.hookOutput).toBe("full-prime");
+    expect(mcpConfig).toContain("[mcp_servers.kairn]");
+    expect(mcpConfig).toContain("serve");
+    expect(mcpConfig).toContain("--mcp");
+    expect(mcpConfig).toContain("[model]");
+    expect(mcpConfig).toContain("gpt-5.4-mini");
+    expect(mcpInstructions).toContain("kairn_prepare_task");
     expect(hook.session.id).toMatch(/^task_/);
     expect(hook.prime?.content).toContain("Kairn Proactive Context");
     expect(hook.prime?.files).toContain("src/app/private/jobs/JobsApplicationsTable.tsx");

@@ -82,7 +82,7 @@ Examples live in `examples/.codex/config.toml`, `examples/.codex/hooks.json`, an
 kairn setup codex --root /path/to/repo
 ```
 
-After that, open normal `codex` in the repo and submit a task. The default `savings` setup installs only `UserPromptSubmit` with a tiny directive brief, so Kairn can create or reuse a task session and point Codex at the smallest likely start files before broad repo scanning. Use `--hook-output full-prime` for delivery experiments, `--mode observe --post-tool-hook-output failure-only` to add failure-only post-tool context, `--mode debug` for broad diagnostics, or `--mode mcp-first` when you want savings hooks plus MCP setup guidance. If the hook host cannot find the global `kairn` binary, set `KAIRN_CMD` to an absolute command such as `node /Users/kevindotel/Documents/Projects/kairn/dist/cli.js`.
+After that, open normal `codex` in the repo and submit a task. The default `savings` setup installs only `UserPromptSubmit` with a quality-gated full-prime brief, so Kairn can create or reuse a task session and point Codex at high-confidence start files before broad repo scanning. Use `--hook-output tiny-directive` only for delivery experiments, `--mode observe --post-tool-hook-output failure-only` to add failure-only post-tool context, `--mode debug` for broad diagnostics, or `--mode mcp-first` to install Kairn as a Codex MCP server plus MCP-first guidance. If the hook host cannot find the global `kairn` binary, set `KAIRN_CMD` to an absolute command such as `node /Users/kevindotel/Documents/Projects/kairn/dist/cli.js`.
 
 Codex project hooks require a trusted repo `.codex/` config and the hooks feature flag:
 
@@ -250,6 +250,8 @@ kairn bench prove \
   --hook-tiny-with-failures-command "kairn setup codex --root {root} --mode observe --hook-output tiny-directive --post-tool-hook-output failure-only >/dev/null && codex exec --model gpt-5.4-mini --enable codex_hooks {prompt}" \
   --manual-prime-command "codex exec --model gpt-5.4-mini --disable codex_hooks {prompt}" \
   --mcp-first-command "codex exec --model gpt-5.4-mini --disable codex_hooks {prompt}" \
+  --real-mcp-first-command "kairn setup codex --root {root} --mode mcp-first >/dev/null && codex exec --model gpt-5.4-mini --disable codex_hooks {prompt}" \
+  --mcp-first-plus-hook-full-prime-command "kairn setup codex --root {root} --mode mcp-first --hook-output full-prime >/dev/null && codex exec --model gpt-5.4-mini --enable codex_hooks {prompt}" \
   --repeat 3 \
   --shuffle-order \
   --json
@@ -257,10 +259,10 @@ kairn bench prove \
 
 V1 treats post-tool hooks as observation/failure support, not the main savings path. The key validation number is median observed Codex tokens for each automatic mode versus baseline and manual prime.
 
-MCP remains an explicit tool surface: `kairn serve --mcp` gives an agent Kairn context tools, but the agent must call those tools or be instructed to ask Kairn before reading files directly. The MCP server includes `kairn_prepare_task`, `kairn_get_next_context`, and `kairn_get_failure_context` for MCP-first workflows where the agent asks Kairn before broad file reads.
+MCP remains an explicit tool surface: `kairn serve --mcp` gives an agent Kairn context tools, but the agent must call those tools or be instructed to ask Kairn before reading files directly. The MCP server includes `kairn_prepare_task`, `kairn_get_next_context`, and `kairn_get_failure_context` for MCP-first workflows where the agent asks Kairn before broad file reads. MCP calls are recorded separately from output mentions, so benchmark reports can distinguish "the agent mentioned Kairn" from "the agent actually called Kairn MCP tools."
 
 ```bash
-kairn setup mcp-instructions --root "$TARGET_REPO"
+kairn setup codex --mode mcp-first --root "$TARGET_REPO"
 kairn serve --mcp --root "$TARGET_REPO"
 ```
 

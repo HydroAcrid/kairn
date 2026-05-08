@@ -635,6 +635,10 @@ describe("benchmark runtime and CLI", () => {
           commandForTokens,
           "--mcp-first-command",
           commandForTokens,
+          "--real-mcp-first-command",
+          commandForTokens,
+          "--mcp-first-plus-hook-full-prime-command",
+          commandForTokens,
           "--repeat",
           "2",
           "--shuffle-order",
@@ -647,6 +651,8 @@ describe("benchmark runtime and CLI", () => {
       aggregate?: { repeat: number; deltas: { manualPrimeVsBaseline?: { savedTokens?: number; savingsRate?: number } } };
       proactive: { results: Array<{ metadata: Record<string, unknown> }> };
       mcpFirst?: { results: Array<{ metadata: Record<string, unknown>; observedCodexTokens?: number }> };
+      realMcpFirst?: { results: Array<{ metadata: Record<string, unknown>; observedCodexTokens?: number }> };
+      mcpFirstPlusHookFullPrime?: { results: Array<{ metadata: Record<string, unknown>; observedCodexTokens?: number }> };
     };
 
     expect(proof.observedTokenDeltas.proactiveVsBaseline).toMatchObject({
@@ -658,6 +664,10 @@ describe("benchmark runtime and CLI", () => {
     expect(proof.proactive.results[0]?.metadata.primeTokenEstimate).toBeGreaterThan(0);
     expect(proof.mcpFirst?.results[0]?.metadata.mcpFirstInstructionsPrepended).toBe(true);
     expect(proof.mcpFirst?.results[0]?.observedCodexTokens).toBe(1500);
+    expect(proof.realMcpFirst?.results[0]?.metadata.mcpFirstInstructionsPrepended).toBe(true);
+    expect(proof.realMcpFirst?.results[0]?.observedCodexTokens).toBe(1500);
+    expect(proof.mcpFirstPlusHookFullPrime?.results[0]?.metadata.mcpFirstInstructionsPrepended).toBe(true);
+    expect(proof.mcpFirstPlusHookFullPrime?.results[0]?.observedCodexTokens).toBe(1500);
     expect(proof.aggregate?.repeat).toBe(2);
     expect(proof.aggregate?.deltas.manualPrimeVsBaseline?.savedTokens).toBe(2000);
   });

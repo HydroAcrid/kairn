@@ -37,6 +37,17 @@ describe("MCP server", () => {
     expect(startedText).toBeTruthy();
     const parsed = JSON.parse(startedText!) as { session: { id: string } };
 
+    const prepared = await client.callTool({
+      name: "kairn_prepare_task",
+      arguments: {
+        task: "Update dashboard rendering",
+        sessionId: parsed.session.id,
+        budget: 700
+      }
+    });
+    const preparedText = firstTextContent(prepared);
+    expect(preparedText).toContain("recommendedToolCalls");
+
     const file = await client.callTool({
       name: "kairn_read_file",
       arguments: {
@@ -77,6 +88,12 @@ describe("MCP server", () => {
     });
     const metricsText = firstTextContent(metrics);
     expect(metricsText).toContain("savedTokens");
+    const metricsParsed = JSON.parse(metricsText!) as {
+      byKind: Record<string, { events: number }>;
+      bySource: Record<string, { events: number }>;
+    };
+    expect(metricsParsed.byKind.mcp_tool_call?.events).toBeGreaterThan(0);
+    expect(metricsParsed.bySource.mcp?.events).toBeGreaterThan(0);
 
     await client.close();
   });

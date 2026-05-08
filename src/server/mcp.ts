@@ -34,13 +34,22 @@ export function createMcpServer(options: { root?: string }): McpServer {
       }
     },
     async ({ task, sessionId, budget, profile }) => {
-      const prime = await runtime.primeContext({ task, sessionId, budget, profile });
-      return toolResult({
-        ...prime,
+      const prime = await runtime.primeContext({ task, sessionId, budget: budget ?? 900, profile });
+      return mcpToolResult(runtime, "kairn_prepare_task", { task, sessionId, budget, profile }, {
+        session: prime.session,
+        task: prime.task,
+        profile: prime.profile,
+        content: prime.content,
+        startFiles: prime.files.slice(0, 4),
+        files: prime.files.slice(0, 4),
+        quality: prime.quality,
+        warnings: prime.warnings,
+        suggestedCommands: prime.suggestedCommands.slice(0, 3),
+        tokenEstimate: prime.tokenEstimate,
         recommendedToolCalls: [
-          { tool: "kairn_find_context", input: { sessionId: prime.session.id, query: task, mode: "snippets", budget: 900 } },
-          ...(prime.files[0] ? [{ tool: "kairn_get_related_files", input: { sessionId: prime.session.id, target: prime.files[0], budget: 700 } }] : []),
-          ...(prime.files[0] ? [{ tool: "kairn_find_tests", input: { sessionId: prime.session.id, target: prime.files[0], budget: 700 } }] : [])
+          ...(prime.files[0] ? [{ tool: "kairn_read_file", input: { sessionId: prime.session.id, target: prime.files[0], mode: "summary", budget: 700 } }] : []),
+          ...(prime.files[0] ? [{ tool: "kairn_get_next_context", input: { sessionId: prime.session.id, budget: 700 } }] : []),
+          ...(prime.files[0] ? [{ tool: "kairn_find_tests", input: { sessionId: prime.session.id, target: prime.files[0], budget: 600 } }] : [])
         ]
       });
     }
@@ -55,7 +64,7 @@ export function createMcpServer(options: { root?: string }): McpServer {
         task: z.string().min(1)
       }
     },
-    async ({ task }) => toolResult(await runtime.startTask(task))
+    async ({ task }) => mcpToolResult(runtime, "kairn_start_task", { task }, await runtime.startTask(task))
   );
 
   server.registerTool(
@@ -71,7 +80,12 @@ export function createMcpServer(options: { root?: string }): McpServer {
       }
     },
     async ({ sessionId, query, mode, budget }) =>
-      toolResult(await runtime.findContext({ sessionId, query, mode, requestType: "find_context", budget }))
+      mcpToolResult(
+        runtime,
+        "kairn_find_context",
+        { sessionId, query, mode, budget },
+        await runtime.findContext({ sessionId, query, mode, requestType: "find_context", budget })
+      )
   );
 
   server.registerTool(
@@ -87,7 +101,7 @@ export function createMcpServer(options: { root?: string }): McpServer {
       }
     },
     async ({ sessionId, target, mode, budget }) =>
-      toolResult(await runtime.readFile({ sessionId, target, mode, budget }))
+      mcpToolResult(runtime, "kairn_read_file", { sessionId, target, mode, budget }, await runtime.readFile({ sessionId, target, mode, budget }))
   );
 
   server.registerTool(
@@ -103,7 +117,12 @@ export function createMcpServer(options: { root?: string }): McpServer {
       }
     },
     async ({ sessionId, target, symbol, budget }) =>
-      toolResult(await runtime.readSymbol({ sessionId, target, symbol, budget }))
+      mcpToolResult(
+        runtime,
+        "kairn_read_symbol",
+        { sessionId, target, symbol, budget },
+        await runtime.readSymbol({ sessionId, target, symbol, budget })
+      )
   );
 
   server.registerTool(
@@ -117,7 +136,8 @@ export function createMcpServer(options: { root?: string }): McpServer {
         budget: z.number().int().positive().optional()
       }
     },
-    async ({ sessionId, target, budget }) => toolResult(await runtime.getRelatedFiles({ sessionId, target, budget }))
+    async ({ sessionId, target, budget }) =>
+      mcpToolResult(runtime, "kairn_get_related_files", { sessionId, target, budget }, await runtime.getRelatedFiles({ sessionId, target, budget }))
   );
 
   server.registerTool(
@@ -131,7 +151,8 @@ export function createMcpServer(options: { root?: string }): McpServer {
         budget: z.number().int().positive().optional()
       }
     },
-    async ({ sessionId, target, budget }) => toolResult(await runtime.findTests({ sessionId, target, budget }))
+    async ({ sessionId, target, budget }) =>
+      mcpToolResult(runtime, "kairn_find_tests", { sessionId, target, budget }, await runtime.findTests({ sessionId, target, budget }))
   );
 
   server.registerTool(
@@ -144,7 +165,7 @@ export function createMcpServer(options: { root?: string }): McpServer {
         budget: z.number().int().positive().optional()
       }
     },
-    async ({ sessionId, budget }) => toolResult(await runtime.reviewDiff({ sessionId, budget }))
+    async ({ sessionId, budget }) => mcpToolResult(runtime, "kairn_review_diff", { sessionId, budget }, await runtime.reviewDiff({ sessionId, budget }))
   );
 
   server.registerTool(
@@ -160,7 +181,12 @@ export function createMcpServer(options: { root?: string }): McpServer {
       }
     },
     ({ sessionId, type, output, budget }) =>
-      toolResult(runtime.compressOutput({ sessionId, type: type as OutputKind, output, budget, source: "mcp" }))
+      mcpToolResult(
+        runtime,
+        "kairn_compress_output",
+        { sessionId, type, budget },
+        runtime.compressOutput({ sessionId, type: type as OutputKind, output, budget, source: "mcp" })
+      )
   );
 
   server.registerTool(
@@ -173,7 +199,8 @@ export function createMcpServer(options: { root?: string }): McpServer {
         budget: z.number().int().positive().optional()
       }
     },
-    async ({ sessionId, budget }) => toolResult(await runtime.getNextContext({ sessionId, budget }))
+    async ({ sessionId, budget }) =>
+      mcpToolResult(runtime, "kairn_get_next_context", { sessionId, budget }, await runtime.getNextContext({ sessionId, budget }))
   );
 
   server.registerTool(
@@ -191,7 +218,12 @@ export function createMcpServer(options: { root?: string }): McpServer {
       }
     },
     async ({ sessionId, type, output, command, files, budget }) =>
-      toolResult(await runtime.getFailureContext({ sessionId, type: type as OutputKind, output, command, files, budget, source: "mcp" }))
+      mcpToolResult(
+        runtime,
+        "kairn_get_failure_context",
+        { sessionId, type, command, files, budget },
+        await runtime.getFailureContext({ sessionId, type: type as OutputKind, output, command, files, budget, source: "mcp" })
+      )
   );
 
   server.registerTool(
@@ -215,10 +247,19 @@ export function createMcpServer(options: { root?: string }): McpServer {
         sessionId: z.string().min(1)
       }
     },
-    ({ sessionId }) => toolResult(runtime.getSession(sessionId))
+    ({ sessionId }) => mcpToolResult(runtime, "kairn_get_session_state", { sessionId }, runtime.getSession(sessionId))
   );
 
   return server;
+}
+
+function mcpToolResult(runtime: KairnRuntime, toolName: string, input: unknown, value: unknown) {
+  runtime.recordMcpToolCall({
+    toolName,
+    input,
+    result: value
+  });
+  return toolResult(value);
 }
 
 function toolResult(value: unknown) {

@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "eval \"${KAIRN_CMD:-kairn} hook --source codex --root \\\"$PWD\\\" --prime-profile auto --prime-budget 600 --hook-output tiny-directive\"",
+            "command": "eval \"${KAIRN_CMD:-kairn} hook --source codex --root \\\"$PWD\\\" --prime-profile auto --prime-budget 900 --hook-output full-prime\"",
             "statusMessage": "Priming Kairn context"
           }
         ]
