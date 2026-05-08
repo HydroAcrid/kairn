@@ -56,7 +56,7 @@ describe("MCP server", () => {
     };
     expect(preparedParsed.detail).toBe("compact");
     expect(preparedParsed.sessionId).toBe(parsed.session.id);
-    expect(preparedParsed.startFiles.length).toBeLessThanOrEqual(3);
+    expect(preparedParsed.startFiles.length).toBeLessThanOrEqual(2);
     expect(preparedParsed.nextToolCalls.length).toBeLessThanOrEqual(2);
     expect(preparedParsed.content).toBeUndefined();
 

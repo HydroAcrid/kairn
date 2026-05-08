@@ -1,0 +1,12 @@
+diff --git a/include/fmt/base.h b/include/fmt/base.h
+--- a/include/fmt/base.h
++++ b/include/fmt/base.h
+@@ -549,7 +549,7 @@ template <typename Char> class basic_string_view {
+   }
+ 
+   FMT_CONSTEXPR auto starts_with(basic_string_view sv) const noexcept -> bool {
+-    return size_ >= sv.size_ && detail::compare(data_, sv.data_, sv.size_) == 0;
++    return size_ > sv.size_ && detail::compare(data_, sv.data_, sv.size_) == 0;
+   }
+   FMT_CONSTEXPR auto starts_with(Char c) const noexcept -> bool {
+     return size_ >= 1 && *data_ == c;

@@ -63,6 +63,10 @@ export function extractImports(content: string): string[] {
   const imports = new Set<string>();
   const importPattern = /import(?:["'\s\w{},*]+from\s*)?["']([^"']+)["']/g;
   const requirePattern = /require\(["']([^"']+)["']\)/g;
+  const pythonImportPattern = /^\s*import\s+([.\w]+)(?:\s+as\s+\w+)?(?:\s*,\s*([.\w]+)(?:\s+as\s+\w+)?)*\s*$/gm;
+  const pythonFromPattern = /^\s*from\s+([.\w]+)\s+import\s+/gm;
+  const javaImportPattern = /^\s*import\s+(?:static\s+)?([\w.]+(?:\.\*)?)\s*;/gm;
+  const cIncludePattern = /^\s*#\s*include\s+[<"]([^>"]+)[>"]/gm;
 
   for (const match of content.matchAll(importPattern)) {
     if (match[1]) imports.add(match[1]);
@@ -72,16 +76,35 @@ export function extractImports(content: string): string[] {
     if (match[1]) imports.add(match[1]);
   }
 
+  for (const match of content.matchAll(pythonImportPattern)) {
+    const line = match[0].replace(/^\s*import\s+/, "");
+    for (const item of line.split(",")) {
+      const specifier = item.trim().replace(/\s+as\s+.+$/, "");
+      if (specifier) imports.add(specifier);
+    }
+  }
+
+  for (const match of content.matchAll(pythonFromPattern)) {
+    if (match[1]) imports.add(match[1].startsWith(".") ? match[1].replace(/^\.+/, "./") : match[1]);
+  }
+
+  for (const match of content.matchAll(javaImportPattern)) {
+    if (match[1]) imports.add(match[1]);
+  }
+
+  for (const match of content.matchAll(cIncludePattern)) {
+    if (match[1]) imports.add(match[1]);
+  }
+
   return [...imports];
 }
 
 export function resolveImportCandidates(fromFile: string, specifier: string): string[] {
-  if (!specifier.startsWith(".")) {
-    return [];
-  }
+  const candidates: string[] = [];
 
-  const base = path.posix.normalize(path.posix.join(path.posix.dirname(fromFile), specifier));
-  const candidates = [
+  if (specifier.startsWith(".")) {
+    const base = path.posix.normalize(path.posix.join(path.posix.dirname(fromFile), specifier));
+    candidates.push(
     base,
     `${base}.ts`,
     `${base}.tsx`,
@@ -89,13 +112,47 @@ export function resolveImportCandidates(fromFile: string, specifier: string): st
     `${base}.jsx`,
     `${base}.mjs`,
     `${base}.cjs`,
+      `${base}.py`,
+      `${base}.pyi`,
+      `${base}.java`,
+      `${base}.c`,
+      `${base}.cc`,
+      `${base}.cpp`,
+      `${base}.cxx`,
+      `${base}.h`,
+      `${base}.hh`,
+      `${base}.hpp`,
+      `${base}.hxx`,
     path.posix.join(base, "index.ts"),
     path.posix.join(base, "index.tsx"),
     path.posix.join(base, "index.js"),
-    path.posix.join(base, "index.jsx")
-  ];
+      path.posix.join(base, "index.jsx"),
+      path.posix.join(base, "__init__.py")
+    );
+  }
 
-  return candidates;
+  if (/^[A-Za-z_][\w.]*$/.test(specifier)) {
+    const modulePath = specifier.replaceAll(".", "/");
+    candidates.push(
+      `${modulePath}.py`,
+      path.posix.join(modulePath, "__init__.py"),
+      path.posix.join("src", `${modulePath}.py`),
+      path.posix.join("src", modulePath, "__init__.py"),
+      path.posix.join("src/main/java", `${modulePath}.java`),
+      path.posix.join("src/test/java", `${modulePath}.java`)
+    );
+  }
+
+  if (/^[^/].*\.(h|hh|hpp|hxx)$/.test(specifier)) {
+    candidates.push(
+      specifier,
+      path.posix.normalize(path.posix.join(path.posix.dirname(fromFile), specifier)),
+      path.posix.join("include", specifier),
+      path.posix.join("src", specifier)
+    );
+  }
+
+  return [...new Set(candidates)];
 }
 
 function findLikelyBlockEnd(lines: string[], startIndex: number): number {

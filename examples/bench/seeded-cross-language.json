@@ -1,0 +1,121 @@
+{
+  "id": "seeded-cross-language",
+  "name": "Seeded Cross-Language Debug Proofs",
+  "cases": [
+    {
+      "id": "typescript-tanstack-hidden-hash",
+      "mode": "agent",
+      "task": "Debug a seeded regression in TanStack Query query-core: object query keys with the same properties in different orders no longer hash consistently. Fix the production source and do not edit unrelated files.",
+      "agentPrompt": "Debug the seeded failing test. Object query keys with the same properties in different orders no longer hash consistently. Fix the production source and do not edit unrelated files.",
+      "expectedFiles": [
+        "packages/query-core/src/utils.ts"
+      ],
+      "excludedFiles": [
+        "docs/",
+        "examples/",
+        "packages/query-codemods/",
+        "packages/query-devtools/"
+      ],
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/TanStack/query.git",
+        "ref": "3894b052b75f1b8a35235e804aadc815db67878d",
+        "cloneDepth": 1,
+        "setupCommands": [
+          "corepack enable || true",
+          "pnpm install --ignore-scripts"
+        ],
+        "setupPatchFile": "./patches/tanstack-query-hidden-hash.patch",
+        "expectedFailureCommand": "pnpm test packages/query-core/src/__tests__/utils.test.tsx",
+        "testCommand": "pnpm test packages/query-core/src/__tests__/utils.test.tsx"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Expected source file is read, mentioned, or touched.",
+        "Docs/examples/codemods/devtools are not touched."
+      ]
+    },
+    {
+      "id": "python-click-term-len-ansi",
+      "mode": "agent",
+      "task": "Debug a seeded Click regression: terminal visible length for ANSI-colored text is wrong. Fix the production source and do not edit unrelated files.",
+      "agentPrompt": "Debug the seeded failing Python check. ANSI-colored terminal text should have visible length 3 for red, but the seeded regression counts escape codes. Fix the production source and do not edit unrelated files.",
+      "expectedFiles": [
+        "src/click/_compat.py"
+      ],
+      "excludedFiles": [
+        "docs/",
+        "examples/"
+      ],
+      "budget": 1200,
+      "seed": {
+        "repoUrl": "https://github.com/pallets/click.git",
+        "ref": "fc6c7c47edd6110b6bd5a1a5297b2035214b0cd1",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/click-term-len-ansi.patch",
+        "expectedFailureCommand": "PYTHONPATH=src python - <<'PY'\nfrom click._compat import term_len\nassert term_len(\"\\033[31mred\\033[0m\") == 3\nPY",
+        "testCommand": "PYTHONPATH=src python - <<'PY'\nfrom click._compat import term_len\nassert term_len(\"\\033[31mred\\033[0m\") == 3\nPY"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Expected Python source file is used.",
+        "Docs/examples are not touched."
+      ]
+    },
+    {
+      "id": "java-commons-lang-isblank",
+      "mode": "agent",
+      "task": "Debug a seeded Apache Commons Lang regression: StringUtils.isBlank no longer handles all Java whitespace correctly. Fix the production source and do not edit unrelated files.",
+      "agentPrompt": "Debug the seeded failing Java test. StringUtils.isBlank should use Java whitespace semantics, not only the space character. Fix the production source and do not edit unrelated files.",
+      "expectedFiles": [
+        "src/main/java/org/apache/commons/lang3/StringUtils.java"
+      ],
+      "excludedFiles": [
+        "src/site/",
+        "docs/"
+      ],
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/apache/commons-lang.git",
+        "ref": "d0fb835fd93357238cbd29b0b1fbcfb84d856464",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/commons-lang-isblank-whitespace.patch",
+        "expectedFailureCommand": "mvn -q -Dtest=org.apache.commons.lang3.StringUtilsEmptyBlankTest#testIsBlank test",
+        "testCommand": "mvn -q -Dtest=org.apache.commons.lang3.StringUtilsEmptyBlankTest#testIsBlank test"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Expected Java production file is used.",
+        "Site/docs are not touched."
+      ]
+    },
+    {
+      "id": "cpp-fmt-starts-with",
+      "mode": "agent",
+      "task": "Debug a seeded fmt regression: basic_string_view::starts_with fails when the prefix has equal length. Fix the production header and do not edit unrelated files.",
+      "agentPrompt": "Debug the seeded failing C++ check. basic_string_view::starts_with should return true for an equal-length identical prefix. Fix the production header and do not edit unrelated files.",
+      "expectedFiles": [
+        "include/fmt/base.h"
+      ],
+      "excludedFiles": [
+        "doc/",
+        "docs/",
+        "examples/"
+      ],
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/fmtlib/fmt.git",
+        "ref": "9cb8c0f92b4c345fb974a75d71370c23047528aa",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/fmt-starts-with-equal-length.patch",
+        "expectedFailureCommand": "cat > /tmp/kairn-fmt-starts-with.cc <<'CPP'\n#include \"fmt/base.h\"\n#include <cassert>\nint main() {\n  fmt::string_view value(\"red\");\n  fmt::string_view prefix(\"red\");\n  assert(value.starts_with(prefix));\n  return 0;\n}\nCPP\nc++ -std=c++11 -Iinclude /tmp/kairn-fmt-starts-with.cc -o /tmp/kairn-fmt-starts-with && /tmp/kairn-fmt-starts-with",
+        "testCommand": "cat > /tmp/kairn-fmt-starts-with.cc <<'CPP'\n#include \"fmt/base.h\"\n#include <cassert>\nint main() {\n  fmt::string_view value(\"red\");\n  fmt::string_view prefix(\"red\");\n  assert(value.starts_with(prefix));\n  return 0;\n}\nCPP\nc++ -std=c++11 -Iinclude /tmp/kairn-fmt-starts-with.cc -o /tmp/kairn-fmt-starts-with && /tmp/kairn-fmt-starts-with"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Expected C++ header is used.",
+        "Docs/examples are not touched."
+      ]
+    }
+  ]
+}

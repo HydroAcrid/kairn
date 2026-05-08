@@ -42,6 +42,7 @@ export function hybridSearch(input: {
   const chunksByFile = groupByFile(input.chunks, (chunk) => chunk.filePath);
   const intentScores = scoreIntentMatches(input.files, intent, input.query, symbolsByFile, chunksByFile);
   const behaviorScores = scoreBehaviorMatches(input.files, input.query, symbolsByFile, chunksByFile);
+  const sourcePriorityScores = scoreSourcePriority(input.files, input.query, intent, symbolsByFile, chunksByFile);
   const graphScores = scoreGraphNeighbors(input.edges, keywordScores, semanticScores, intentScores, intent, input.files);
   const shownFiles = new Set((input.shown ?? []).map((record) => record.filePath).filter((filePath): filePath is string => Boolean(filePath)));
 
@@ -52,6 +53,7 @@ export function hybridSearch(input: {
       const semantic = semanticScores.get(file.path);
       const intentMatch = intentScores.get(file.path);
       const behaviorMatch = behaviorScores.get(file.path);
+      const sourcePriority = sourcePriorityScores.get(file.path);
       const graphScore = graphScores.get(file.path) ?? 0;
       const sessionScore = shownFiles.has(file.path) ? -3 : 0;
       const gitScore = input.changedFiles?.has(file.path) ? 8 : 0;
@@ -60,12 +62,14 @@ export function hybridSearch(input: {
       const bm25Score = bm25?.score ?? 0;
       const intentScore = intentMatch?.score ?? 0;
       const behaviorScore = behaviorMatch?.score ?? 0;
+      const sourcePriorityScore = sourcePriority?.score ?? 0;
       const importanceScore = file.importance;
       const reasons = mergeReasons([
         ...(keyword?.reasons ?? []),
         ...(bm25?.reasons ?? []),
         ...(intentMatch?.reasons ?? []),
         ...(behaviorMatch?.reasons ?? []),
+        ...(sourcePriority?.reasons ?? []),
         ...(semantic && semantic.score > 0.06 ? semanticReasons(semantic.chunks) : []),
         ...(graphScore > 0 ? ["graph neighbor"] : []),
         ...(shownFiles.has(file.path) ? ["already shown"] : []),
@@ -77,6 +81,7 @@ export function hybridSearch(input: {
         keywordScore * 1.15 +
         semanticScore * 42 +
         behaviorScore +
+        sourcePriorityScore +
         intentScore +
         graphScore +
         sessionScore +
@@ -89,7 +94,7 @@ export function hybridSearch(input: {
         semanticScore: Number(semanticScore.toFixed(3)),
         keywordScore: Number(keywordScore.toFixed(3)),
         bm25Score: Number(bm25Score.toFixed(3)),
-        behaviorScore,
+        behaviorScore: behaviorScore + sourcePriorityScore,
         graphScore,
         intentScore,
         sessionScore,
@@ -189,6 +194,57 @@ function scoreBehaviorMatches(
         reasons,
         chunks: matchedChunks.slice(0, 3)
       });
+    }
+  }
+
+  return scores;
+}
+
+function scoreSourcePriority(
+  files: FileRecord[],
+  query: string,
+  intent: QueryIntent,
+  symbolsByFile: Map<string, SymbolRecord[]>,
+  chunksByFile: Map<string, SemanticChunkRecord[]>
+): Map<string, { score: number; reasons: string[] }> {
+  const scores = new Map<string, { score: number; reasons: string[] }>();
+  const queryTerms = new Set(tokenizeLexical(query));
+  const explicitDocsIntent = intent.primary === "docs" || ["docs", "doc", "readme", "example", "examples", "demo"].some((term) => queryTerms.has(term));
+  const explicitTestIntent = intent.primary === "test" || ["test", "tests", "spec", "failing", "failure"].some((term) => queryTerms.has(term));
+  const implementationIntent = !explicitDocsIntent && ["generic", "backend", "data", "auth", "workflow", "ui"].includes(intent.primary);
+
+  for (const file of files) {
+    const reasons: string[] = [];
+    let score = 0;
+    const exactSymbolMatches = exactSymbolMatchesForQuery(queryTerms, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+
+    if (exactSymbolMatches.length > 0) {
+      score += Math.min(220, exactSymbolMatches.length * 90);
+      reasons.push(`exact symbol match: ${exactSymbolMatches.slice(0, 3).join(", ")}`);
+    }
+
+    if (implementationIntent && isLanguageSourceSurface(file)) {
+      score += 24;
+      reasons.push("language source surface");
+    }
+
+    if (implementationIntent && isPrimaryLanguageSourceSurface(file)) {
+      score += 48;
+      reasons.push("primary source path");
+    }
+
+    if (!explicitTestIntent && file.kind === "test" && exactSymbolMatches.length === 0) {
+      score -= 72;
+      reasons.push("test downranked for implementation prompt");
+    }
+
+    if (implementationIntent && isNoisyImplementationSurface(file)) {
+      score -= file.kind === "doc" ? 120 : 90;
+      reasons.push("docs/examples/devtools downranked");
+    }
+
+    if (score !== 0) {
+      scores.set(file.path, { score, reasons });
     }
   }
 
@@ -610,6 +666,69 @@ function behaviorChunkHits(chunk: SemanticChunkRecord, behavior: BehaviorQuery):
   hits += behavior.phrases.filter((phrase) => phraseMatches(text, phrase, terms)).length * 2;
   if (chunk.symbol && behaviorSymbolMatches(chunk.symbol, behavior)) hits += 3;
   return hits;
+}
+
+function exactSymbolMatchesForQuery(
+  queryTerms: Set<string>,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): string[] {
+  if (queryTerms.size === 0) return [];
+  const compactQuery = [...queryTerms].join("");
+  const matches = new Set<string>();
+  for (const symbol of symbols) {
+    const symbolTerms = tokenizeLexical(symbol.name);
+    const compactSymbol = normalizeSearchText(symbol.name).replace(/\s+/g, "");
+    if (
+      symbolTerms.length > 0 &&
+      (symbolTerms.every((term) => queryTerms.has(term)) ||
+        (compactSymbol.length > 3 && (compactQuery.includes(compactSymbol) || compactSymbol === compactQuery)))
+    ) {
+      matches.add(symbol.name);
+    }
+  }
+  for (const chunk of chunks) {
+    if (!chunk.symbol) continue;
+    const symbolTerms = tokenizeLexical(chunk.symbol);
+    if (symbolTerms.length > 0 && symbolTerms.every((term) => queryTerms.has(term))) {
+      matches.add(chunk.symbol);
+    }
+  }
+  return [...matches];
+}
+
+function isLanguageSourceSurface(file: FileRecord): boolean {
+  return (
+    file.kind === "source" &&
+    ["python", "java", "c", "cpp", "typescript", "javascript"].includes(file.language) &&
+    !isNoisyImplementationSurface(file)
+  );
+}
+
+function isPrimaryLanguageSourceSurface(file: FileRecord): boolean {
+  const normalized = file.path.toLowerCase();
+  if (file.language === "python") {
+    return (
+      (normalized.startsWith("src/") || normalized.includes("/src/") || /^[a-z_][\w-]*\//.test(normalized)) &&
+      !/(^|\/)(tests?|examples?|docs?)\//.test(normalized)
+    );
+  }
+  if (file.language === "java") {
+    return normalized.startsWith("src/main/java/") || normalized.includes("/src/main/java/");
+  }
+  if (file.language === "c" || file.language === "cpp") {
+    return normalized.startsWith("src/") || normalized.includes("/src/") || normalized.startsWith("include/") || normalized.includes("/include/");
+  }
+  return file.path.startsWith("src/") || file.path.includes("/src/");
+}
+
+function isNoisyImplementationSurface(file: FileRecord): boolean {
+  const normalized = file.path.toLowerCase();
+  return (
+    file.kind === "doc" ||
+    /(^|\/)(docs?|documentation|examples?|demo|demos|devtools|codemods|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook)\//.test(normalized) ||
+    /(^|\/)__fixtures__\//.test(normalized)
+  );
 }
 
 function isGraphSeedAllowed(file: FileRecord | undefined, intent: QueryIntent, intentScore: number): boolean {

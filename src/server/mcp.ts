@@ -244,11 +244,15 @@ type PrimeContextResult = Awaited<ReturnType<KairnRuntime["primeContext"]>>;
 
 function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) {
   const coordination = runtime.getCoordinationState(prime.session.id);
-  const startFiles = uniqueValues([
-    ...prime.files.filter((file) => !coordination.hookFiles.includes(file)),
-    ...prime.files
-  ]).slice(0, 3);
-  const likelyTests = uniqueValues(prime.files.filter((file) => /\.(test|spec)\.[cm]?[jt]sx?$/.test(file) || file.includes("__tests__"))).slice(0, 2);
+  const unshownPrimeFiles = prime.files.filter((file) => !coordination.hookFiles.includes(file));
+  const sourceCandidates = uniqueValues([
+    ...unshownPrimeFiles.filter(isMcpPrimarySourceFile),
+    ...prime.files.filter(isMcpPrimarySourceFile),
+    ...unshownPrimeFiles.filter((file) => !isMcpLikelyTestFile(file) && !isMcpNoisyFile(file)),
+    ...prime.files.filter((file) => !isMcpLikelyTestFile(file) && !isMcpNoisyFile(file))
+  ]);
+  const startFiles = sourceCandidates.slice(0, 2);
+  const likelyTests = uniqueValues(prime.files.filter(isMcpLikelyTestFile)).slice(0, 1);
   const primaryFile = startFiles[0];
   const nextToolCalls = [
     ...(primaryFile
@@ -306,6 +310,37 @@ function fullPrepareResult(prime: PrimeContextResult) {
 
 function uniqueValues(values: string[]): string[] {
   return [...new Set(values.filter(Boolean))];
+}
+
+function isMcpLikelyTestFile(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  return (
+    /\.(test|spec)\.[cm]?[jt]sx?$/.test(normalized) ||
+    normalized.includes("__tests__/") ||
+    /^test_.*\.pyi?$/.test(normalized.split("/").at(-1) ?? normalized) ||
+    /_test\.pyi?$/.test(normalized) ||
+    /(test|tests)\.java$/.test(normalized) ||
+    normalized.includes("/src/test/java/") ||
+    /(_test|_tests|_unittest)\.(cc|cpp|cxx|c|hh|hpp|hxx)$/.test(normalized) ||
+    /(^|\/)(test|tests)\//.test(normalized)
+  );
+}
+
+function isMcpPrimarySourceFile(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  return (
+    !isMcpLikelyTestFile(normalized) &&
+    !isMcpNoisyFile(normalized) &&
+    (normalized.startsWith("src/") ||
+      normalized.includes("/src/") ||
+      normalized.startsWith("include/") ||
+      normalized.includes("/include/") ||
+      /\.(ts|tsx|js|jsx|mjs|cjs|py|pyi|java|c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(normalized))
+  );
+}
+
+function isMcpNoisyFile(filePath: string): boolean {
+  return /(^|\/)(docs?|documentation|examples?|demo|demos|devtools|codemods|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook)\//.test(filePath);
 }
 
 function estimateCompactPrepareTokens(startFiles: string[], likelyTests: string[], nextToolCalls: unknown[]): number {

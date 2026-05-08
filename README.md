@@ -219,7 +219,21 @@ kairn bench prove \
   --json
 ```
 
-The included `examples/bench/seeded-large-js-ts-template.json` shows the intended shape for pinned public JS/TS repos. Treat it as a template: replace the patch path and commands with a controlled failure that is cheap enough to run repeatedly.
+The included `examples/bench/seeded-large-js-ts-template.json` shows the intended shape for pinned public JS/TS repos. `examples/bench/seeded-cross-language.json` adds concrete TypeScript, Python, Java, and C++ seeded debugging cases against pinned public repos. Java validation requires Maven, and C++ validation requires a local `c++` compiler.
+
+```bash
+kairn bench prove \
+  --root /Users/kevindotel/Documents/Projects/kairn \
+  --suite examples/bench/seeded-cross-language.json \
+  --baseline-command "codex exec --model gpt-5.4-mini --disable codex_hooks {prompt}" \
+  --hook-full-prime-command "kairn setup codex --root {root} --mode savings --hook-output full-prime >/dev/null && codex exec --model gpt-5.4-mini --enable codex_hooks {prompt}" \
+  --real-mcp-first-command "kairn setup codex --root {root} --mode mcp-first >/dev/null && codex exec --model gpt-5.4-mini --disable codex_hooks {prompt}" \
+  --hybrid-mcp-brief-command "kairn setup codex --root {root} --mode hybrid >/dev/null && codex exec --model gpt-5.4-mini --enable codex_hooks {prompt}" \
+  --manual-prime-command "codex exec --model gpt-5.4-mini --disable codex_hooks {prompt}" \
+  --repeat 3 \
+  --shuffle-order \
+  --json
+```
 
 ## Proactive Context
 

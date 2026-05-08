@@ -39,12 +39,15 @@ describe("semantic indexing", () => {
 describe("language adapter registry", () => {
   it("keeps universal retrieval extensible across popular languages", () => {
     expect(languageAdapters.find((adapter) => adapter.id === "typescript")?.status).toBe("active");
-    expect(languageAdapters.find((adapter) => adapter.id === "python")?.status).toBe("stub");
-    expect(languageAdapters.find((adapter) => adapter.id === "java")?.status).toBe("stub");
+    expect(languageAdapters.find((adapter) => adapter.id === "python")?.status).toBe("active");
+    expect(languageAdapters.find((adapter) => adapter.id === "java")?.status).toBe("active");
+    expect(languageAdapters.find((adapter) => adapter.id === "c-cpp")?.status).toBe("active");
     expect(languageAdapters.find((adapter) => adapter.id === "go")?.status).toBe("stub");
     expect(languageAdapters.find((adapter) => adapter.id === "rust")?.status).toBe("stub");
     expect(getLanguageAdapterForPath("src/service.py")?.id).toBe("python");
     expect(getLanguageAdapterForPath("src/App.java")?.id).toBe("java");
+    expect(getLanguageAdapterForPath("include/fmt/base.h")?.id).toBe("c-cpp");
+    expect(getLanguageAdapterForPath("src/core.cpp")?.id).toBe("c-cpp");
     expect(getLanguageAdapterForPath("cmd/main.go")?.id).toBe("go");
     expect(getLanguageAdapterForPath("src/lib.rs")?.id).toBe("rust");
   });
@@ -288,6 +291,91 @@ describe("hybridSearch", () => {
     expect(results.slice(0, 3).map((result) => result.path)).not.toContain("packages/react-query/src/__tests__/useQuery.test.tsx");
   });
 
+  it("prioritizes Python package source over docs and examples for implementation prompts", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "click/utils.py", "source", "python"),
+      file(rootPath, "tests/test_utils.py", "test", "python"),
+      file(rootPath, "docs/utils.rst", "doc", "text"),
+      file(rootPath, "examples/ansi.py", "source", "python")
+    ];
+    const symbols = [symbol(rootPath, "click/utils.py", "term_len"), symbol(rootPath, "click/utils.py", "strip_ansi")];
+    const chunks = [
+      chunk(rootPath, "click/utils.py", "term_len", "term_len strips ansi sequences before measuring terminal visible length"),
+      chunk(rootPath, "tests/test_utils.py", "test_term_len", "test term_len ansi red color visible width"),
+      chunk(rootPath, "docs/utils.rst", "term_len docs", "documentation for term_len and strip_ansi examples"),
+      chunk(rootPath, "examples/ansi.py", "ansi example", "example showing term_len")
+    ];
+    const results = hybridSearch({
+      files,
+      query: "Debug Click term_len ANSI width regression in production source",
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.path).toBe("click/utils.py");
+    expect(results[0]?.reasons).toEqual(expect.arrayContaining(["exact symbol match: term_len"]));
+    expect(results.slice(0, 2).map((result) => result.path)).not.toContain("docs/utils.rst");
+  });
+
+  it("prioritizes Java src/main source over tests for implementation prompts", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "src/main/java/org/apache/commons/lang3/StringUtils.java", "source", "java"),
+      file(rootPath, "src/test/java/org/apache/commons/lang3/StringUtilsEmptyBlankTest.java", "test", "java"),
+      file(rootPath, "src/site/xdoc/StringUtils.xml", "doc", "xml")
+    ];
+    const symbols = [symbol(rootPath, "src/main/java/org/apache/commons/lang3/StringUtils.java", "isBlank")];
+    const chunks = [
+      chunk(rootPath, "src/main/java/org/apache/commons/lang3/StringUtils.java", "isBlank", "isBlank CharSequence whitespace blank logic"),
+      chunk(rootPath, "src/test/java/org/apache/commons/lang3/StringUtilsEmptyBlankTest.java", "testIsBlank", "testIsBlank whitespace cases"),
+      chunk(rootPath, "src/site/xdoc/StringUtils.xml", "StringUtils docs", "isBlank documentation")
+    ];
+    const results = hybridSearch({
+      files,
+      query: "Debug StringUtils isBlank whitespace regression fix production source",
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.path).toBe("src/main/java/org/apache/commons/lang3/StringUtils.java");
+    expect(results[0]?.reasons).toEqual(expect.arrayContaining(["primary source path"]));
+  });
+
+  it("prioritizes C++ include/source files over examples for implementation prompts", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "include/fmt/base.h", "source", "cpp"),
+      file(rootPath, "test/base-test.cc", "test", "cpp"),
+      file(rootPath, "examples/format.cc", "source", "cpp")
+    ];
+    const symbols = [symbol(rootPath, "include/fmt/base.h", "starts_with")];
+    const chunks = [
+      chunk(rootPath, "include/fmt/base.h", "starts_with", "basic_string_view starts_with equal length prefix comparison"),
+      chunk(rootPath, "test/base-test.cc", "starts_with test", "starts_with equal length case"),
+      chunk(rootPath, "examples/format.cc", "starts_with example", "example use starts_with")
+    ];
+    const results = hybridSearch({
+      files,
+      query: "Debug fmt basic_string_view starts_with equal length regression",
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.path).toBe("include/fmt/base.h");
+    expect(results[0]?.reasons).toEqual(expect.arrayContaining(["primary source path"]));
+    expect(results.slice(0, 2).map((result) => result.path)).not.toContain("examples/format.cc");
+  });
+
   it("detects game UI component intent for wheel and settings queries", () => {
     const rootPath = "/repo";
     const files = [
@@ -358,11 +446,11 @@ describe("decideResponse", () => {
   });
 });
 
-function file(rootPath: string, filePath: string, kind: FileRecord["kind"]): FileRecord {
+function file(rootPath: string, filePath: string, kind: FileRecord["kind"], language = "typescript"): FileRecord {
   return {
     rootPath,
     path: filePath,
-    language: "typescript",
+    language,
     kind,
     size: 100,
     hash: filePath,

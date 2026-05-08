@@ -13,17 +13,25 @@ export const languageAdapters: LanguageAdapter[] = [
     id: "python",
     languages: ["python"],
     fileExtensions: [".py", ".pyi"],
-    capabilities: ["symbols", "definitions", "references", "tests", "failures"],
-    status: "stub",
-    notes: "Universal scan/BM25/failure parsing works now; deep Python graph support is a future adapter."
+    capabilities: ["symbols", "tests", "failures"],
+    status: "active",
+    notes: "Tree-sitter symbols/imports plus universal retrieval and failure parsing."
   },
   {
     id: "java",
     languages: ["java"],
     fileExtensions: [".java"],
-    capabilities: ["symbols", "definitions", "references", "tests", "failures"],
-    status: "stub",
-    notes: "Universal retrieval works now; deep Java graph support is a future adapter."
+    capabilities: ["symbols", "tests", "failures"],
+    status: "active",
+    notes: "Tree-sitter package/import/class/method extraction plus universal retrieval."
+  },
+  {
+    id: "c-cpp",
+    languages: ["c", "cpp"],
+    fileExtensions: [".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx"],
+    capabilities: ["symbols", "tests", "failures"],
+    status: "active",
+    notes: "Tree-sitter include/class/struct/function extraction plus universal retrieval."
   },
   {
     id: "go",

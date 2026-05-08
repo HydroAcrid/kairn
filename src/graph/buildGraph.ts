@@ -113,12 +113,16 @@ function isLikelyTestFor(testPath: string, sourcePath: string): boolean {
   const sourceDirectory = path.posix.dirname(sourcePath);
   const sourceBase = path.posix.basename(sourcePath).replace(/\.[^.]+$/, "").toLowerCase();
   const testBase = path.posix.basename(testPath).toLowerCase();
+  const normalizedTest = testPath.toLowerCase();
+  const normalizedSource = sourcePath.toLowerCase();
 
   return (
     testBase.includes(sourceBase) ||
     testPath.toLowerCase().includes(sourceBase) ||
     testDirectory === sourceDirectory ||
-    testDirectory.endsWith("__tests__") && path.posix.dirname(testDirectory) === sourceDirectory
+    testDirectory.endsWith("__tests__") && path.posix.dirname(testDirectory) === sourceDirectory ||
+    testDirectory.endsWith("/tests") && normalizedTest.includes(sourceBase) ||
+    normalizedTest.includes("/src/test/java/") && normalizedSource.includes("/src/main/java/") && testBase.includes(sourceBase)
   );
 }
 

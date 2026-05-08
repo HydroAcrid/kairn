@@ -1,0 +1,12 @@
+diff --git a/src/main/java/org/apache/commons/lang3/StringUtils.java b/src/main/java/org/apache/commons/lang3/StringUtils.java
+--- a/src/main/java/org/apache/commons/lang3/StringUtils.java
++++ b/src/main/java/org/apache/commons/lang3/StringUtils.java
+@@ -3524,7 +3524,7 @@
+     public static boolean isBlank(final CharSequence cs) {
+         final int strLen = length(cs);
+         for (int i = 0; i < strLen; i++) {
+-            if (!Character.isWhitespace(cs.charAt(i))) {
++            if (cs.charAt(i) != ' ') {
+                 return false;
+             }
+         }

@@ -94,6 +94,29 @@ describe("benchmark suite and scoring", () => {
     expect(seed?.testCommand).toContain("process.exit(0)");
   });
 
+  it("loads the seeded cross-language proof suite example", () => {
+    const suite = loadBenchmarkSuite({
+      suitePath: path.resolve("examples/bench/seeded-cross-language.json"),
+      files: []
+    });
+
+    expect(suite.id).toBe("seeded-cross-language");
+    expect(suite.cases.map((item) => item.id)).toEqual(
+      expect.arrayContaining([
+        "typescript-tanstack-hidden-hash",
+        "python-click-term-len-ansi",
+        "java-commons-lang-isblank",
+        "cpp-fmt-starts-with"
+      ])
+    );
+    expect(suite.cases.find((item) => item.id === "python-click-term-len-ansi")?.expectedFiles).toContain(
+      "src/click/_compat.py"
+    );
+    expect(suite.cases.find((item) => item.id === "java-commons-lang-isblank")?.seed?.setupPatchFile).toMatch(
+      /commons-lang-isblank-whitespace\.patch$/
+    );
+  });
+
   it("scores expected file recall, unexpected drift, and comparisons", () => {
     const before = scoreBenchmarkCase({
       runId: "bench_before",

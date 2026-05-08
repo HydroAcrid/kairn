@@ -846,3 +846,82 @@ Product implication:
 - Default automatic path should remain `hook_full_prime` for now.
 - MCP-first is no longer blocked mechanically, but it needs response slimming before it becomes the primary path.
 - The next MCP improvement should make `kairn_prepare_task` and `kairn_get_next_context` return fewer files, tighter reasons, and one or two concrete next reads instead of broad neighbor lists.
+
+## Post-Modularization Hook/MCP Proof + Python Cross-Language Pass
+
+Date: 2026-05-08
+
+After the modularization refactor and Hook+MCP coordination work, the full static verification suite was rerun:
+
+```text
+pnpm test
+pnpm typecheck
+pnpm build
+```
+
+All passed.
+
+Two live Codex proof matrices were then run in disposable seeded workspaces:
+
+```text
+/tmp/kairn-ts-hook-mcp-proof-20260508102931.json
+/tmp/kairn-python-hook-mcp-proof-20260508103821.json
+```
+
+The TypeScript case reused the TanStack Query hidden-hash regression. The Python case added a new public-repo seed using `pallets/click`, with a regression in ANSI-aware terminal width calculation:
+
+- Repo: `https://github.com/pallets/click.git`
+- Ref: `fc6c7c47edd6110b6bd5a1a5297b2035214b0cd1`
+- Seeded patch: changed `src/click/_compat.py` so `term_len` counts raw ANSI escape codes.
+- Verification: `term_len("\033[31mred\033[0m") == 3`
+
+Quality rule remained unchanged: a mode only counts if the seeded verification passes, the expected file is used or mentioned, hook failures are absent, and excluded docs/examples are not touched.
+
+### TypeScript: TanStack Hidden Hash
+
+| Mode | Outcome | Observed tokens | Delta vs baseline | Expected file used | Hook signal | MCP signal |
+| --- | --- | ---: | ---: | --- | --- | --- |
+| Baseline | pass | `50,722` | - | yes | none | none |
+| Manual prime | pass | `51,075` | `-0.70%` | yes | none, `971` prime tokens | `0` MCP calls |
+| Hook full prime | pass | `38,177` | `+24.73%` | yes | `1` hook, `0` failures, `883` prime tokens | `0` MCP calls |
+| Real MCP-first | pass | `33,564` | `+33.83%` | yes | none | `3` MCP calls |
+| Hybrid MCP brief | pass | `31,883` | `+37.14%` | yes | `1` hook, `0` failures, `1,143` prime tokens | `3` MCP calls |
+
+Findings:
+
+- The coordinated `hybrid_mcp_brief` mode beat hook-only and MCP-only in this run.
+- Real MCP-first is now genuinely using Kairn tools, not just mentioning them.
+- MCP still returned too many secondary files in TypeScript: `real_mcp_first` returned `utils.ts`, but also broad query-codemod/devtools/angular files.
+- Manual prime underperformed in this specific run, reinforcing that single-run live Codex numbers are high variance.
+
+### Python: Click ANSI Width
+
+| Mode | Outcome | Observed tokens | Delta vs baseline | Expected file used | Hook signal | MCP signal |
+| --- | --- | ---: | ---: | --- | --- | --- |
+| Baseline | pass | `60,271` | - | yes | none | none |
+| Manual prime | pass | `36,795` | `+38.95%` | yes | none, `567` prime tokens | `0` MCP calls |
+| Hook full prime | pass | `23,217` | `+61.48%` | yes | `1` hook, `0` failures, `567` prime tokens | `0` MCP calls |
+| Real MCP-first | pass | `52,001` | `+13.72%` | yes | none | `3` MCP calls |
+| Hybrid MCP brief | pass | `26,189` | `+56.55%` | yes | `1` hook, `0` failures, `1,091` prime tokens | `2` MCP calls |
+
+Findings:
+
+- Kairn’s universal retrieval layer works on Python well enough to produce meaningful savings, even without a Python language-service graph.
+- Hook full-prime was strongest on Python, saving `61.48%` while preserving quality.
+- Hybrid also worked well, saving `56.55%`, but MCP-only was much weaker at `13.72%`.
+- The Python prime quality is still noisy: manual prime initially surfaced `docs/utils.md` and examples before the correct `src/click/_compat.py`, yet Codex still reached the right file. This points to a clear Python retrieval improvement opportunity.
+- MCP returned Python docs/examples too often. Cross-language MCP needs stronger source-vs-doc/example filtering.
+
+### Cross-Language Interpretation
+
+- Hook full-prime remains the safest default automatic mode because it performed well on both TypeScript and Python.
+- Hybrid MCP-brief is now worth taking seriously. It beat hook-only on the TypeScript case and nearly matched it on Python, with real MCP calls recorded.
+- MCP-only is not ready as the default. It is real and useful, but too broad, especially outside TypeScript.
+- Python support is already viable through universal scan/chunk/BM25/context priming, but deeper Python adapter work should target symbol extraction, import relationships, test association, and better source/doc/example ranking.
+
+Next improvement target:
+
+1. Slim MCP returned file sets further, especially docs/examples/codemod/devtools drift.
+2. Add language-aware source priority for Python: `src/**/*.py` and package modules should outrank docs/examples unless the prompt asks for docs or examples.
+3. Add Python symbol extraction beyond generic chunks so prompts like `terminal width`, `ANSI`, and `visible characters` bind more directly to `term_len` and `strip_ansi`.
+4. Keep `hook_full_prime` as the default savings path, but continue benchmarking `hybrid_mcp_brief` because it may become the best long-task mode once MCP context is less noisy.

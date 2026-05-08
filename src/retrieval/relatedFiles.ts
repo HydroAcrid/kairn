@@ -35,7 +35,7 @@ export function findRelatedFiles(rootPath: string, files: FileRecord[], target: 
   }
 
   for (const file of files) {
-    if (!/\.[cm]?[jt]sx?$/.test(file.path)) continue;
+    if (!isSourceLike(file.path)) continue;
     try {
       const content = readTextFile(rootPath, file.path);
       const importsTarget = extractImports(content).some((specifier) =>
@@ -68,5 +68,20 @@ export function findTestsFor(files: FileRecord[], target?: string): FileRecord[]
 function isLikelyTestFor(testPath: string, target: string): boolean {
   const targetBase = path.posix.basename(target).replace(/\.[^.]+$/, "").toLowerCase();
   const testBase = path.posix.basename(testPath).toLowerCase();
-  return testBase.includes(targetBase) || testPath.toLowerCase().includes(targetBase);
+  const normalizedTest = testPath.toLowerCase();
+  const normalizedTarget = target.toLowerCase();
+  const targetDirectory = path.posix.dirname(normalizedTarget);
+  const testDirectory = path.posix.dirname(normalizedTest);
+
+  return (
+    testBase.includes(targetBase) ||
+    normalizedTest.includes(targetBase) ||
+    testDirectory === targetDirectory ||
+    testDirectory.endsWith("/tests") && normalizedTest.includes(targetBase) ||
+    normalizedTest.includes("/src/test/java/") && normalizedTarget.includes("/src/main/java/") && testBase.includes(targetBase)
+  );
+}
+
+function isSourceLike(filePath: string): boolean {
+  return /\.(ts|tsx|js|jsx|mjs|cjs|py|pyi|java|c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(filePath);
 }

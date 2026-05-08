@@ -1,0 +1,12 @@
+diff --git a/src/click/_compat.py b/src/click/_compat.py
+--- a/src/click/_compat.py
++++ b/src/click/_compat.py
+@@ -570,7 +570,7 @@
+ 
+ 
+ def term_len(x: str) -> int:
+-    return len(strip_ansi(x))
++    return len(x)
+ 
+ 
+ def isatty(stream: t.IO[t.Any]) -> bool:

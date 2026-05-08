@@ -15,9 +15,18 @@ const LANGUAGE_BY_EXTENSION: Record<string, string> = {
   ".scss": "scss",
   ".sql": "sql",
   ".py": "python",
+  ".pyi": "python",
   ".go": "go",
   ".rs": "rust",
   ".java": "java",
+  ".c": "c",
+  ".h": "cpp",
+  ".cc": "cpp",
+  ".cpp": "cpp",
+  ".cxx": "cpp",
+  ".hh": "cpp",
+  ".hpp": "cpp",
+  ".hxx": "cpp",
   ".rb": "ruby",
   ".yml": "yaml",
   ".yaml": "yaml",
@@ -32,7 +41,18 @@ export function classifyFile(filePath: string): FileKind {
   const normalized = filePath.toLowerCase();
   const basename = path.basename(normalized);
 
-  if (/\.(test|spec)\.[cm]?[jt]sx?$/.test(basename) || normalized.includes("__tests__/")) {
+  if (
+    /\.(test|spec)\.[cm]?[jt]sx?$/.test(basename) ||
+    normalized.includes("__tests__/") ||
+    /^test_.*\.pyi?$/.test(basename) ||
+    /_test\.pyi?$/.test(basename) ||
+    /tests?\//.test(normalized) && /\.pyi?$/.test(basename) ||
+    /(test|tests)\.java$/.test(basename) ||
+    /(^|\/)src\/test\/java\//.test(normalized) ||
+    /(_test|_unittest|_tests)\.(cc|cpp|cxx|c|hh|hpp|hxx)$/.test(basename) ||
+    /^test_.*\.(cc|cpp|cxx|c)$/.test(basename) ||
+    /(^|\/)(test|tests)\//.test(normalized) && /\.(cc|cpp|cxx|c|hh|hpp|hxx)$/.test(basename)
+  ) {
     return "test";
   }
 
@@ -67,7 +87,7 @@ export function classifyFile(filePath: string): FileKind {
     return "component";
   }
 
-  if (/\.[cm]?[jt]sx?$/.test(basename)) {
+  if (/\.[cm]?[jt]sx?$/.test(basename) || /\.pyi?$/.test(basename) || /\.java$/.test(basename) || /\.(c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(basename)) {
     return "source";
   }
 
@@ -80,6 +100,9 @@ export function scoreFileImportance(filePath: string, kind: FileKind): number {
   if (kind === "test") score += 2;
   if (kind === "config" || kind === "schema") score += 2;
   if (filePath.includes("/src/")) score += 1;
+  if (filePath.startsWith("src/")) score += 1;
+  if (filePath.includes("/src/main/java/") || filePath.startsWith("src/main/java/")) score += 2;
+  if (filePath.startsWith("include/") || filePath.includes("/include/")) score += 2;
   if (filePath.includes("/app/") || filePath.includes("/pages/")) score += 1;
   if (filePath.includes("/lib/") || filePath.includes("/server/")) score += 1;
   return score;
