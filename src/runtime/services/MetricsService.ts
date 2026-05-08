@@ -59,6 +59,7 @@ export class MetricsService {
         dbSizeBytes: indexStats.dbSizeBytes,
         walSizeBytes: indexStats.walSizeBytes,
         totalSizeBytes: indexStats.totalSizeBytes,
+        symbols: indexStats.symbolCount,
         graphEdges: indexStats.graphEdgeCount,
         semanticChunks: indexStats.semanticChunkCount
       },

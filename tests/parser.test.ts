@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { indexRepo } from "../src/indexer/indexRepo.js";
+import { compactParsedSymbols } from "../src/indexer/symbolCompaction.js";
 import { parseSourceFile } from "../src/parser/parseFile.js";
 import { classifyFile, detectLanguage } from "../src/scanner/classifyFile.js";
+import type { FileRecord, ParsedFile, SymbolRecord } from "../src/types.js";
 import { createFixtureRepo } from "./helpers.js";
 import fs from "node:fs";
 import path from "node:path";
@@ -233,7 +235,67 @@ describe("cross-language parser adapters", () => {
       ])
     );
   });
+
+  it("compacts large-repo symbols by dropping low-value local variables while preserving structural symbols", () => {
+    const rootPath = "/repo";
+    const file = fileRecord(rootPath, "src/module.ts");
+    const parsed: ParsedFile = {
+      rootPath,
+      filePath: file.path,
+      language: "typescript",
+      imports: [],
+      hasErrors: false,
+      symbols: [
+        symbol(rootPath, file.path, "runTask", "function", false),
+        symbol(rootPath, file.path, "ExportedValue", "const", true),
+        symbol(rootPath, file.path, "LOCAL_LIMIT", "const", false),
+        ...Array.from({ length: 180 }, (_, index) => symbol(rootPath, file.path, `localValue${index}`, "const", false))
+      ]
+    };
+
+    const compacted = compactParsedSymbols({
+      files: [file, ...Array.from({ length: 900 }, (_, index) => fileRecord(rootPath, `src/filler-${index}.ts`))],
+      parsedFiles: [parsed]
+    })[0]!;
+    const names = compacted.symbols.map((item) => item.name);
+
+    expect(names).toEqual(expect.arrayContaining(["runTask", "ExportedValue", "LOCAL_LIMIT"]));
+    expect(names).not.toContain("localValue0");
+    expect(compacted.symbols.length).toBeLessThanOrEqual(120);
+  });
 });
+
+function fileRecord(rootPath: string, filePath: string): FileRecord {
+  return {
+    rootPath,
+    path: filePath,
+    language: "typescript",
+    kind: "source",
+    size: 100,
+    hash: filePath,
+    importance: 4,
+    updatedAt: "2026-05-08T00:00:00.000Z"
+  };
+}
+
+function symbol(
+  rootPath: string,
+  filePath: string,
+  name: string,
+  kind: SymbolRecord["kind"],
+  exported: boolean
+): SymbolRecord {
+  return {
+    rootPath,
+    filePath,
+    name,
+    kind,
+    exported,
+    startLine: 1,
+    endLine: 1,
+    signature: `${exported ? "export " : ""}${kind} ${name}`
+  };
+}
 
 function write(root: string, filePath: string, content: string): void {
   const absolutePath = path.join(root, filePath);

@@ -9,6 +9,7 @@ import { buildSemanticChunks } from "../semantic/chunk.js";
 import { embedText, VECTOR_DIMENSIONS } from "../semantic/vector.js";
 import type { RepoGraph, ScanResult, SemanticChunkRecord, SemanticVectorRecord } from "../types.js";
 import { loadIndexingConfig } from "../config/indexing.js";
+import { compactParsedSymbols } from "./symbolCompaction.js";
 
 export type RepoIndex = {
   scan: ScanResult;
@@ -40,10 +41,15 @@ export async function indexRepo(rootPath: string): Promise<RepoIndex> {
       };
     }
   });
+  const compactedParsedFiles = compactParsedSymbols({
+    files: scan.files,
+    parsedFiles,
+    maxStateMb: config.maxStateMb
+  });
   const baseGraph = buildRepoGraph({
     rootPath,
     files: scan.files,
-    parsedFiles
+    parsedFiles: compactedParsedFiles
   });
   const enrichedGraph = await enrichGraphWithTypeScript({
     rootPath,
@@ -71,7 +77,8 @@ export async function indexRepo(rootPath: string): Promise<RepoIndex> {
     rootPath,
     files: graph.files,
     symbols: graph.symbols,
-    chunks: semanticChunks
+    chunks: semanticChunks,
+    maxStateMb: config.maxStateMb
   });
 
   return {
@@ -95,10 +102,29 @@ function shouldParseFile(file: { indexTier?: string; kind: string; language: str
 }
 
 function selectSemanticChunks(chunks: SemanticChunkRecord[], maxChunks: number): SemanticChunkRecord[] {
-  return chunks
+  const ranked = chunks
     .slice()
-    .sort((a, b) => chunkPriority(b) - chunkPriority(a) || a.filePath.localeCompare(b.filePath) || a.id.localeCompare(b.id))
-    .slice(0, maxChunks)
+    .sort((a, b) => chunkPriority(b) - chunkPriority(a) || a.filePath.localeCompare(b.filePath) || a.id.localeCompare(b.id));
+  const selectedById = new Set<string>();
+  const selected: SemanticChunkRecord[] = [];
+  const fileSeen = new Set<string>();
+
+  for (const chunk of ranked) {
+    if (fileSeen.has(chunk.filePath)) continue;
+    fileSeen.add(chunk.filePath);
+    selectedById.add(chunk.id);
+    selected.push(chunk);
+    if (selected.length >= maxChunks) break;
+  }
+
+  for (const chunk of ranked) {
+    if (selected.length >= maxChunks) break;
+    if (selectedById.has(chunk.id)) continue;
+    selectedById.add(chunk.id);
+    selected.push(chunk);
+  }
+
+  return selected
     .sort((a, b) => a.filePath.localeCompare(b.filePath) || a.id.localeCompare(b.id));
 }
 
@@ -109,10 +135,14 @@ function chunkPriority(chunk: SemanticChunkRecord): number {
   if (filePath.startsWith("packages/") || filePath.includes("/packages/")) score += 24;
   if (filePath.startsWith("include/") || filePath.includes("/include/")) score += 30;
   if (filePath.startsWith("django/") || filePath.startsWith("lib/")) score += 24;
+  if (/(^|\/)(utils?|helpers?|shared|common)(\/|\.|-|_)/.test(filePath)) score += 42;
+  if (/(^|\/)[a-z0-9]+(?:[-_][a-z0-9]+){1,}\.[a-z0-9]+$/.test(filePath)) score += 18;
+  if (/(^|\/)(index|main|router|client|server|core)\.[cm]?[jt]sx?$/.test(filePath)) score -= 18;
   if (/(^|\/)(tests?|spec)\//.test(filePath)) score -= 8;
-  if (/(^|\/)(docs?|documentation|examples|demo|demos|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook|codemods?|devtools)\//.test(filePath)) {
+  if (/(^|\/)(docs?|documentation|examples|demo|demos|fixtures?|__fixtures__|compiled|generated|vendor|third[_-]party|dist|build|coverage|website|site|playground|storybook|codemods?|devtools)\//.test(filePath)) {
     score -= 80;
   }
+  if (chunk.tokenEstimate < 450 && chunk.kind === "symbol") score += 8;
   if (chunk.tokenEstimate > 1_500) score -= 10;
   return score;
 }

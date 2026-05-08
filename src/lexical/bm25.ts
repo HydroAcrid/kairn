@@ -9,16 +9,10 @@ import type {
 import { tokenizeLexical } from "../semantic/tokenize.js";
 import { sha256 } from "../utils/hash.js";
 import { estimateTokens } from "../utils/tokens.js";
+import { createBudgetProfile, lexicalIndexBudget } from "../budget/adaptiveBudget.js";
 
 const K1 = 1.4;
 const B = 0.72;
-const LARGE_REPO_FILE_COUNT = 800;
-const LARGE_REPO_SYMBOL_COUNT = 5000;
-const LARGE_REPO_CHUNK_COUNT = 5000;
-const MAX_SYMBOL_DOCUMENTS = 3000;
-const MAX_CHUNK_DOCUMENTS = 2500;
-const MAX_LARGE_REPO_CHUNK_DOCUMENTS = 0;
-const MAX_LEXICAL_TERMS = 30000;
 const LOW_SIGNAL_QUERY_TERMS = new Set(["debug", "seeded", "failing", "failure", "regression", "production", "source", "check"]);
 
 export type LexicalIndex = {
@@ -32,24 +26,28 @@ export function buildLexicalIndex(input: {
   files: FileRecord[];
   symbols: SymbolRecord[];
   chunks: SemanticChunkRecord[];
+  maxStateMb?: number | undefined;
 }): LexicalIndex {
   const documents: LexicalDocumentRecord[] = [];
   const terms: LexicalTermRecord[] = [];
 
   const symbolsByFile = groupBy(input.symbols, (symbol) => symbol.filePath);
   const chunksByFile = groupBy(input.chunks, (chunk) => chunk.filePath);
-  const largeRepo =
-    input.files.length > LARGE_REPO_FILE_COUNT ||
-    input.symbols.length > LARGE_REPO_SYMBOL_COUNT ||
-    input.chunks.length > LARGE_REPO_CHUNK_COUNT;
+  const budget = lexicalIndexBudget(createBudgetProfile({
+    fileCount: input.files.length,
+    symbolCount: input.symbols.length,
+    chunkCount: input.chunks.length,
+    maxStateMb: input.maxStateMb
+  }));
 
   for (const file of input.files) {
     const fileSymbols = symbolsByFile.get(file.path) ?? [];
-    const fileChunks = largeRepo ? [] : chunksByFile.get(file.path) ?? [];
+    const fileChunks = (chunksByFile.get(file.path) ?? []).slice(0, budget.chunksPerFileDocument);
     addDocument({
       rootPath: input.rootPath,
       documents,
       terms,
+      maxLexicalTerms: budget.maxLexicalTerms,
       id: `file:${file.path}`,
       filePath: file.path,
       kind: "file",
@@ -63,11 +61,12 @@ export function buildLexicalIndex(input: {
     });
   }
 
-  for (const symbol of input.symbols.slice(0, MAX_SYMBOL_DOCUMENTS)) {
+  for (const symbol of input.symbols.slice(0, budget.maxSymbolDocuments)) {
     addDocument({
       rootPath: input.rootPath,
       documents,
       terms,
+      maxLexicalTerms: budget.maxLexicalTerms,
       id: `symbol:${symbol.filePath}:${symbol.name}:${symbol.startLine}`,
       filePath: symbol.filePath,
       kind: "symbol",
@@ -76,12 +75,12 @@ export function buildLexicalIndex(input: {
     });
   }
 
-  const chunkLimit = largeRepo ? MAX_LARGE_REPO_CHUNK_DOCUMENTS : MAX_CHUNK_DOCUMENTS;
-  for (const chunk of input.chunks.slice(0, chunkLimit)) {
+  for (const chunk of input.chunks.slice(0, budget.maxChunkDocuments)) {
     addDocument({
       rootPath: input.rootPath,
       documents,
       terms,
+      maxLexicalTerms: budget.maxLexicalTerms,
       id: `chunk:${chunk.id}`,
       filePath: chunk.filePath,
       kind: "chunk",
@@ -159,13 +158,14 @@ function addDocument(input: {
   rootPath: string;
   documents: LexicalDocumentRecord[];
   terms: LexicalTermRecord[];
+  maxLexicalTerms: number;
   id: string;
   filePath: string;
   kind: LexicalDocumentRecord["kind"];
   symbol?: string | undefined;
   text: string;
 }): void {
-  if (input.terms.length >= MAX_LEXICAL_TERMS) return;
+  if (input.terms.length >= input.maxLexicalTerms) return;
   const tokens = tokenizeLexical(input.text);
   if (tokens.length === 0) return;
   const frequencies = new Map<string, number>();
@@ -185,7 +185,7 @@ function addDocument(input: {
   });
 
   for (const [term, frequency] of frequencies) {
-    if (input.terms.length >= MAX_LEXICAL_TERMS) break;
+    if (input.terms.length >= input.maxLexicalTerms) break;
     input.terms.push({
       rootPath: input.rootPath,
       term,

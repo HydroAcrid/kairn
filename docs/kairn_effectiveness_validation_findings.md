@@ -1599,3 +1599,69 @@ Next priorities:
 2. Investigate why the Next edit fails verification even when the correct file is touched.
 3. Keep hook full-prime default only for high-confidence cases; the controller should become more conservative on tasks where Kairn can identify the file but not the exact fix.
 4. Add repeated proof runs after the Next quality issue is understood; single-run results are still exploratory.
+
+## 2026-05-08 Follow-Up: Symbol Compaction + Query-Local Retrieval
+
+Implemented the general follow-up from the investigation:
+
+- Added large-repo symbol compaction:
+  - preserves exported/public and structural symbols,
+  - drops low-value local `const`/`let`/`var` symbols in large repos,
+  - caps per-file symbol retention.
+- Demoted compiled/generated/vendor/devtool paths to shallow inventory.
+- Switched `findContext`/`prime` to query-local symbol and lexical-document loading instead of loading every symbol in the repo.
+- Changed semantic chunk selection to preserve at least one high-priority chunk per selected file before filling the remaining budget.
+- Added delivered-vs-suppressed hook metadata:
+  - `primeAttempted`
+  - `primeContextDelivered`
+  - `primeSuppressed`
+  - `hostAdditionalContextBytes`
+- Tightened adaptive suppression for vague broad prompts such as “make this project better maybe improve stuff.”
+
+Validation:
+
+| Check | Result |
+| --- | --- |
+| Full unit suite | `109` tests passed |
+| Typecheck | passed |
+| Build | passed |
+| Synthetic 25k-file repo | `33.7MB`, `12,000` symbols, `12,001` graph edges, `7,500` chunks |
+| Reindexed Next temp repo | `66.9MB`, `23,575` symbols, `10,489` graph edges, `7,500` chunks |
+| Next local URL prime | `is-local-url.ts` ranked first, `327` tokens, `shrink` decision |
+| Weak Next prompt | `suppress` decision |
+
+Interpretation:
+
+- The prior Next bottleneck was symbol storage, not graph storage.
+- Symbol compaction reduced the reindexed Next state from the old `~286MB` state to `66.9MB` in the tested temp workspace.
+- Exact utility targeting now works from path/symbol metadata even when no semantic chunk is available.
+- Kairn now reports whether hook context was actually delivered, which avoids treating suppressed prompt hooks as successful prime emissions.
+
+## 2026-05-08 Follow-Up: Adaptive Budget Policy
+
+Implemented a central adaptive budget policy so high-impact limits are derived from repo scale, symbol/chunk density, query specificity, and state budget instead of being scattered per module.
+
+Wired policy into:
+
+- inventory scanning,
+- symbol compaction,
+- lexical/BM25 document and term budgets,
+- query-local retrieval expansion,
+- default prime budget selection.
+
+Validation:
+
+| Check | Result |
+| --- | --- |
+| Full unit suite | `113` tests passed |
+| Typecheck | passed |
+| Build | passed |
+| Synthetic 25k-file repo | `51.7MB`, `12,000` symbols, `12,001` graph edges, `90,000` lexical terms |
+| Reindexed Next temp repo | `105.9MB`, `22,626` symbols, `10,489` graph edges, `90,000` lexical terms |
+| Next local URL prime | `is-local-url.ts` ranked first, `578` tokens, `emit` decision |
+
+Interpretation:
+
+- State remains well below the `250MB` soft target while allowing richer lexical coverage than the fixed `30,000`-term budget.
+- Budget decisions are now centralized, which makes future tuning evidence-based instead of hunting scattered constants.
+- Safety ceilings still exist, but normal operating budgets now scale with repo/query conditions.

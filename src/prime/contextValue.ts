@@ -17,6 +17,7 @@ export function evaluateContextValue(input: {
   const debugSignal = input.profile === "failure_debug" || isFailureDebugTask(input.task);
   const sourceFixSignal = isSourceFixTask(input.task);
   const easyTaskSignal = isEasyTask(input.task);
+  const vagueImprovementSignal = isVagueImprovementTask(input.task);
   const wrongContextRisk = Boolean(
     primaryFile &&
       sourceFixSignal &&
@@ -53,6 +54,10 @@ export function evaluateContextValue(input: {
     score -= 16;
     reasons.add("task appears simple enough that broad priming may not repay its cost");
   }
+  if (vagueImprovementSignal && !debugSignal) {
+    score -= input.repoFileCount >= 1500 ? 42 : 28;
+    reasons.add("task is broad and lacks a concrete source target");
+  }
   if (input.quality.topGap < 20) {
     score -= 12;
     reasons.add("top retrieval candidates are not well separated");
@@ -79,6 +84,7 @@ export function evaluateContextValue(input: {
     score,
     debugSignal,
     easyTaskSignal,
+    vagueImprovementSignal,
     exactPathMentioned: input.quality.exactPathMentioned,
     topScore: input.quality.topScore,
     topGap: input.quality.topGap,
@@ -108,6 +114,7 @@ function chooseAction(input: {
   score: number;
   debugSignal: boolean;
   easyTaskSignal: boolean;
+  vagueImprovementSignal: boolean;
   exactPathMentioned: boolean;
   topScore: number;
   topGap: number;
@@ -117,6 +124,7 @@ function chooseAction(input: {
   if (input.exactPathMentioned) return "suppress";
   if (input.wrongContextRisk && input.score < 72) return "suppress";
   if (input.wrongContextRisk) return "shrink";
+  if (input.vagueImprovementSignal && !input.debugSignal) return input.score >= 88 && input.topGap >= 80 ? "shrink" : "suppress";
   if (input.topScore <= 0 || input.score < 38) return "suppress";
   if (input.language === "cpp" && input.score < 78) return "shrink";
   if (input.easyTaskSignal && !input.debugSignal && input.score < 82) return "suppress";
@@ -180,4 +188,30 @@ function isEasyTask(task: string): boolean {
     /\b(read|open|show|find|where is|what file|explain)\b/.test(normalized) ||
     /\btypo|rename|format|comment\b/.test(normalized)
   );
+}
+
+function isVagueImprovementTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  const vagueTerms = ["better", "improve", "improvement", "clean up", "cleanup", "stuff", "things", "quality"];
+  const concreteTerms = [
+    "debug",
+    "failing",
+    "failure",
+    "regression",
+    "test",
+    "error",
+    "stack",
+    "file",
+    "function",
+    "class",
+    "api",
+    "ui",
+    "mobile",
+    "layout",
+    "parser",
+    "auth",
+    "database",
+    "performance"
+  ];
+  return vagueTerms.some((term) => normalized.includes(term)) && !concreteTerms.some((term) => normalized.includes(term));
 }

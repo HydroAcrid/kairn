@@ -3,13 +3,12 @@ import path from "node:path";
 import fg from "fast-glob";
 import ignore from "ignore";
 import type { FileRecord, IndexedFileTierState, IndexTier, ScanResult } from "../types.js";
+import { inventoryBudget } from "../budget/adaptiveBudget.js";
 import { loadIndexingConfig } from "../config/indexing.js";
 import { sha256 } from "../utils/hash.js";
 import { normalizeRelativePath, resolveRoot } from "../utils/paths.js";
 import { nowIso } from "../utils/time.js";
 import { classifyFile, detectLanguage, scoreFileImportance } from "./classifyFile.js";
-
-const MAX_INVENTORY_FILES = 60_000;
 
 export const DEFAULT_IGNORE = [
   ".git/**",
@@ -65,6 +64,10 @@ export async function scanRepo(root?: string): Promise<ScanResult> {
     ignore: DEFAULT_IGNORE,
     unique: true
   });
+  const inventory = inventoryBudget({
+    candidateCount: candidates.length,
+    maxStateMb: indexingConfig.maxStateMb
+  });
 
   let ignoredCount = 0;
   const eligible: Array<{
@@ -87,7 +90,7 @@ export async function scanRepo(root?: string): Promise<ScanResult> {
     const absolutePath = path.join(rootPath, relativePath);
     const stat = fs.statSync(absolutePath);
 
-    if (stat.size > 400_000) {
+    if (stat.size > inventory.maxFileBytes) {
       ignoredCount += 1;
       continue;
     }
@@ -112,7 +115,7 @@ export async function scanRepo(root?: string): Promise<ScanResult> {
       tierScore: scanPriority(file)
     }))
     .sort((a, b) => b.tierScore - a.tierScore || a.path.localeCompare(b.path));
-  const selected = ranked.slice(0, MAX_INVENTORY_FILES);
+  const selected = ranked.slice(0, inventory.maxInventoryFiles);
   const skippedByLimit = Math.max(0, eligible.length - selected.length);
   ignoredCount += skippedByLimit;
   const tierStates = assignIndexTiers(selected, indexingConfig.maxHotFiles);
@@ -140,7 +143,7 @@ export async function scanRepo(root?: string): Promise<ScanResult> {
     files,
     ignoredCount,
     candidateCount: candidates.length,
-    indexedFileLimit: MAX_INVENTORY_FILES,
+    indexedFileLimit: inventory.maxInventoryFiles,
     skippedByLimit,
     indexTiers: countTiers(tierStates),
     tierStates,
@@ -181,7 +184,7 @@ function scanPriority(file: {
   if (normalized.startsWith("django/") || normalized.startsWith("lib/")) score += 22;
   if (normalized.startsWith("tests/") || normalized.includes("/tests/")) score -= 12;
   if (
-    /(^|\/)(docs?|documentation|examples|demo|demos|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook|codemods?|devtools)\//.test(
+    /(^|\/)(docs?|documentation|examples|demo|demos|fixtures?|__fixtures__|compiled|generated|vendor|third[_-]party|dist|build|coverage|website|site|playground|storybook|codemods?|devtools)\//.test(
       normalized
     )
   ) {
@@ -266,7 +269,7 @@ function isSourceLike(file: { kind: ReturnType<typeof classifyFile>; language: s
 
 function isNoisyPath(filePath: string): boolean {
   const normalized = filePath.toLowerCase();
-  return /(^|\/)(docs?|documentation|examples|demo|demos|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook|codemods?|devtools)\//.test(
+  return /(^|\/)(docs?|documentation|examples|demo|demos|fixtures?|__fixtures__|compiled|generated|vendor|third[_-]party|dist|build|coverage|website|site|playground|storybook|codemods?|devtools)\//.test(
     normalized
   );
 }

@@ -72,6 +72,7 @@ export type MetricsSummary = {
     dbSizeBytes?: number;
     walSizeBytes?: number;
     totalSizeBytes?: number;
+    symbols?: number;
     graphEdges?: number;
     semanticChunks?: number;
   };

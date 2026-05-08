@@ -30,6 +30,7 @@ import type {
   OutputKind,
   PrimeProfile,
   QueryLocalIndex,
+  SymbolRecord,
   TaskSession,
   WatchEventKind,
   WatchEventRecord,
@@ -60,7 +61,6 @@ import { runAgentBenchmarkCase } from "../bench/agent.js";
 import { buildBenchmarkProofReport, shuffleItems } from "../bench/proofReport.js";
 import { benchmarkCaseApplies, requireBenchmarkTarget } from "../bench/runtimeHelpers.js";
 import {
-  defaultPrimeBudget,
   evaluatePrimeQuality,
   primeProfileLimits,
   resolvePrimeProfile
@@ -77,6 +77,7 @@ import { estimateFileBaselineTokens } from "../metrics/baseline.js";
 import { uniquePaths, uniqueStrings } from "../utils/collections.js";
 import { formatContextResults } from "../context/formatContext.js";
 import { failureRecommendation } from "../watch/recommendation.js";
+import { adaptivePrimeBudget, queryLocalBudget } from "../budget/adaptiveBudget.js";
 import {
   hostSessionIdForEvent,
   hostSessionMetadata,
@@ -157,7 +158,8 @@ export class KairnRuntime {
     }
     const task = input.task;
     const profile = resolvePrimeProfile(input.profile ?? "auto", task);
-    const budget = input.budget ?? defaultPrimeBudget(profile, task);
+    const repoFileCount = this.store.listFiles(this.rootPath).length;
+    const budget = input.budget ?? adaptivePrimeBudget({ profile, task, repoFileCount });
     const limits = primeProfileLimits(profile);
     const session = input.sessionId
       ? this.store.getSession(input.sessionId)
@@ -1606,6 +1608,10 @@ export class KairnRuntime {
         linkedFiles: linkedFiles.length,
         recommendation: emittedPrime ? (hookOutput === "tiny-directive" ? "tiny_prime_emitted" : hookOutput === "mcp-brief" ? "mcp_brief_prime_emitted" : "prime_emitted") : suppressedPrime ? "prime_quality_suppressed_silent" : recommendation ? "emitted" : duplicatePromptPrime ? "duplicate_suppressed" : promptHash ? "prompt_suppressed" : "suppressed",
         ...(hookOutput === "mcp-brief" ? { coordinationMode: "mcp_hybrid", hookFiles: emittedPrime?.files ?? [] } : {}),
+        primeAttempted: Boolean(prime),
+        primeContextDelivered: Boolean(emittedPrime?.content),
+        primeSuppressed: Boolean(suppressedPrime),
+        hostAdditionalContextBytes: emittedPrime?.content ? Buffer.byteLength(emittedPrime.content, "utf8") : recommendation?.content ? Buffer.byteLength(recommendation.content, "utf8") : 0,
         proactivePrime: Boolean(emittedPrime),
         primeQuality: prime?.quality,
         contextDecision: prime?.contextDecision,
@@ -1939,14 +1945,23 @@ export class KairnRuntime {
     seedPaths?: string[] | undefined;
     candidateLimit?: number | undefined;
   }): QueryLocalIndex {
-    const symbols = this.store.listSymbols(input.rootPath);
-    const lexicalDocuments = this.store.listLexicalDocuments(input.rootPath);
-    const lexicalTerms = this.store.listLexicalTermsForTerms(input.rootPath, tokenizeLexical(input.query));
+    const queryTerms = tokenizeLexical(input.query);
+    const budget = queryLocalBudget({
+      fileCount: input.files.length,
+      query: input.query
+    });
+    const lexicalTerms = this.store.listLexicalTermsForTerms(input.rootPath, queryTerms, budget.lexicalTermLimit);
+    const lexicalDocuments = this.store.listLexicalDocumentsByIds(
+      input.rootPath,
+      lexicalTerms.map((term) => term.documentId),
+      budget.lexicalDocumentLimit
+    );
     const lexicalStats = this.store.getLexicalStats(input.rootPath);
+    const termSymbols = this.store.listSymbolsForTerms(input.rootPath, queryTerms.slice(0, budget.termLookupLimit), budget.symbolLimit);
     const preliminary = hybridSearch({
       files: input.files,
       query: input.query,
-      symbols,
+      symbols: termSymbols,
       chunks: [],
       vectors: [],
       lexicalDocuments,
@@ -1955,19 +1970,24 @@ export class KairnRuntime {
       edges: [],
       ...(input.changedFiles ? { changedFiles: input.changedFiles } : {})
     });
-    const candidateLimit = input.candidateLimit ?? 300;
+    const candidateLimit = input.candidateLimit ?? budget.candidateLimit;
     const candidateFiles = uniquePaths([
       ...(input.seedPaths ?? []),
       ...preliminary.slice(0, candidateLimit).map((file) => file.path),
+      ...termSymbols.map((symbol) => symbol.filePath),
       ...(input.changedFiles ? [...input.changedFiles] : []),
-      ...exactPathCandidates(input.files, input.query).slice(0, 50)
-    ]).slice(0, candidateLimit + 100);
-    const edges = this.store.listGraphEdgesForFiles(input.rootPath, candidateFiles);
+      ...exactPathCandidates(input.files, input.query).slice(0, budget.exactPathLimit)
+    ]).slice(0, candidateLimit + budget.candidateSlack);
+    const edges = this.store.listGraphEdgesForFiles(input.rootPath, candidateFiles, budget.graphEdgeLimit);
     const expandedFiles = uniquePaths([
       ...candidateFiles,
       ...edges.flatMap((edge) => [edge.fromFile, edge.toFile])
-    ]).slice(0, candidateLimit + 500);
-    const chunks = this.store.listSemanticChunksForFiles(input.rootPath, expandedFiles);
+    ]).slice(0, candidateLimit + budget.expansionSlack);
+    const symbols = uniqueSymbols([
+      ...termSymbols,
+      ...this.store.listSymbolsForFiles(input.rootPath, expandedFiles, budget.symbolLimit)
+    ]);
+    const chunks = this.store.listSemanticChunksForFiles(input.rootPath, expandedFiles, budget.chunkLimit);
     const vectors = this.store.listSemanticVectorsForChunkIds(input.rootPath, chunks.map((chunk) => chunk.id));
 
     return {
@@ -2268,10 +2288,13 @@ function collectWorkspaceKairnMetrics(workspacePath: string): Record<string, unk
   try {
     const sessions = runtime.listSessions({ allRoots: true });
     const metrics = sessions.map((session) => runtime.getMetrics(session.id));
+    const hookSignals = metrics.flatMap((item) => item.recentEvents.filter((event) => event.eventKind === "hook_signal"));
     return {
       kairnSessionCount: sessions.length,
-      primeEmitted: metrics.reduce((total, item) => total + (item.byKind.prime_context?.events ?? 0), 0),
-      primeTokens: metrics.reduce((total, item) => total + (item.byKind.prime_context?.outputTokens ?? 0), 0),
+      primeAttempted: hookSignals.filter((event) => event.metadata.primeAttempted === true).length,
+      primeEmitted: hookSignals.filter((event) => event.metadata.primeContextDelivered === true).length,
+      primeSuppressed: hookSignals.filter((event) => event.metadata.primeSuppressed === true).length,
+      primeTokens: hookSignals.reduce((total, event) => total + (event.metadata.primeContextDelivered === true ? event.outputTokens : 0), 0),
       primeQualityEvents: metrics.reduce((total, item) => total + (item.byKind.prime_quality?.events ?? 0), 0),
       hookInvocations: metrics.reduce((total, item) => total + (item.byKind.hook_signal?.events ?? 0), 0),
       failureContextUsed: metrics.reduce((total, item) => total + (item.byKind.failure_context?.events ?? 0), 0),
@@ -2295,20 +2318,45 @@ function collectWorkspaceKairnMetrics(workspacePath: string): Record<string, unk
 }
 
 function exactPathCandidates(files: FileRecord[], query: string): string[] {
-  const terms = tokenizeLexical(query).filter((term) => term.length >= 3);
+  const terms = [...new Set([...tokenizeLexical(query), ...compoundQueryTerms(query)])].filter((term) => term.length >= 3);
   if (terms.length === 0) return [];
   return files
     .map((file) => {
-      const normalized = file.path.toLowerCase();
-      const base = path.posix.basename(normalized);
+      const normalized = normalizeCandidateText(file.path);
+      const base = normalizeCandidateText(path.posix.basename(file.path));
       const hits = terms.filter((term) => normalized.includes(term));
       const baseHits = terms.filter((term) => base.includes(term));
+      const utilityBoost = /(^|\/)(utils?|helpers?|shared|common)(\/|\.|-|_)/i.test(file.path) ? 2 : 0;
       return {
         path: file.path,
-        score: hits.length + baseHits.length * 2 + (file.kind === "source" ? 2 : 0)
+        score: hits.length + baseHits.length * 2 + utilityBoost + (file.kind === "source" ? 2 : 0)
       };
     })
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
     .map((item) => item.path);
+}
+
+function compoundQueryTerms(query: string): string[] {
+  return tokenizeLexical(query)
+    .flatMap((term, index, terms) => {
+      const next = terms[index + 1];
+      return next ? [`${term}${next}`] : [];
+    });
+}
+
+function normalizeCandidateText(input: string): string {
+  return input
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ");
+}
+
+function uniqueSymbols(symbols: SymbolRecord[]): SymbolRecord[] {
+  const byKey = new Map<string, SymbolRecord>();
+  for (const symbol of symbols) {
+    byKey.set(`${symbol.filePath}:${symbol.name}:${symbol.startLine}:${symbol.endLine}`, symbol);
+  }
+  return [...byKey.values()];
 }

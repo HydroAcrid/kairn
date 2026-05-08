@@ -1,4 +1,5 @@
 import type { ContextResponse, FileRecord, PrimeProfile, PrimeQuality } from "../types.js";
+import { adaptivePrimeBudget } from "../budget/adaptiveBudget.js";
 import { classifyQueryIntent } from "../retrieval/queryIntent.js";
 
 export type ResolvedPrimeProfile = Exclude<PrimeProfile, "auto">;
@@ -67,20 +68,7 @@ export function resolvePrimeProfile(profile: PrimeProfile, task: string): Resolv
 }
 
 export function defaultPrimeBudget(profile: ResolvedPrimeProfile, task = ""): number {
-  switch (profile) {
-    case "ui":
-      return 700;
-    case "workflow":
-      return 900;
-    case "backend":
-      return 1100;
-    case "failure_debug":
-      return languageDebugBudget(task);
-    case "test":
-      return 900;
-    case "generic":
-      return 800;
-  }
+  return adaptivePrimeBudget({ profile, task, repoFileCount: 0 });
 }
 
 export function primeProfileLimits(profile: ResolvedPrimeProfile): PrimeProfileLimits {
@@ -106,15 +94,6 @@ export function isFailureDebugTask(task: string): boolean {
   const verificationTerms = ["test", "check", "assert", "verification", "seeded"];
   return debugTerms.some((term) => normalized.includes(term)) &&
     verificationTerms.some((term) => normalized.includes(term));
-}
-
-function languageDebugBudget(task: string): number {
-  const normalized = task.toLowerCase();
-  if (/\b(c\+\+|cpp|header|\.hpp|\.h|\.cc|\.cpp|fmt|string_view)\b/.test(normalized)) return 550;
-  if (/\bpython|\.py|ansi|click\b/.test(normalized)) return 650;
-  if (/\bjava|maven|mvn|\.java\b/.test(normalized)) return 750;
-  if (/\btypescript|javascript|tsx|jsx|tanstack|query\b/.test(normalized)) return 900;
-  return 800;
 }
 
 function extractRankedScores(content: string): number[] {

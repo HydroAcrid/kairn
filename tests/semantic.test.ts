@@ -451,6 +451,32 @@ describe("hybridSearch", () => {
     );
   });
 
+  it("rescues precise utility files from path and symbol metadata even when chunks are unavailable", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "packages/next/src/shared/lib/router/router.ts", "source"),
+      file(rootPath, "packages/next/src/shared/lib/router/utils/is-local-url.ts", "source"),
+      file(rootPath, "packages/next/src/shared/lib/router/utils/is-dynamic.ts", "source")
+    ];
+    const symbols = [
+      symbol(rootPath, "packages/next/src/shared/lib/router/router.ts", "Router"),
+      symbol(rootPath, "packages/next/src/shared/lib/router/utils/is-local-url.ts", "isLocalURL"),
+      symbol(rootPath, "packages/next/src/shared/lib/router/utils/is-dynamic.ts", "isDynamicRoute")
+    ];
+    const results = hybridSearch({
+      files,
+      query: "Debug local URL helper regression: relative URLs should be treated as local in production source.",
+      symbols,
+      chunks: [],
+      vectors: [],
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.path).toBe("packages/next/src/shared/lib/router/utils/is-local-url.ts");
+    expect(results[0]?.reasons).toEqual(expect.arrayContaining(["utility/helper source rescue"]));
+  });
+
   it("detects game UI component intent for wheel and settings queries", () => {
     const rootPath = "/repo";
     const files = [

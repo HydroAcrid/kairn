@@ -463,6 +463,64 @@ export class SqliteStore {
     return rows.map(mapSymbolRow);
   }
 
+  listSymbolsForFiles(rootPath: string, filePaths: string[], limit = 20_000): SymbolRecord[] {
+    const unique = [...new Set(filePaths)].filter(Boolean);
+    if (unique.length === 0) return [];
+    const rows: SymbolRow[] = [];
+
+    for (const chunk of chunkValues(unique, 500)) {
+      const placeholders = chunk.map(() => "?").join(", ");
+      rows.push(
+        ...(this.db
+          .prepare(`
+            select * from symbols
+            where root_path = ? and file_path in (${placeholders})
+            order by file_path asc, start_line asc, name asc
+            limit ?
+          `)
+          .all(rootPath, ...chunk, limit) as SymbolRow[])
+      );
+      if (rows.length >= limit) break;
+    }
+
+    return rows.slice(0, limit).map(mapSymbolRow);
+  }
+
+  listSymbolsForTerms(rootPath: string, terms: string[], limit = 12_000): SymbolRecord[] {
+    const unique = [...new Set(terms.map((term) => term.toLowerCase()).filter((term) => term.length >= 3))];
+    if (unique.length === 0) return [];
+    const byKey = new Map<string, SymbolRow>();
+
+    for (const term of unique.slice(0, 24)) {
+      const rows = this.db
+        .prepare(`
+          select * from symbols
+          where root_path = ? and lower(name) like ? escape '\\'
+          order by exported desc,
+            case kind
+              when 'function' then 1
+              when 'class' then 2
+              when 'component' then 3
+              when 'interface' then 4
+              when 'type' then 5
+              else 9
+            end asc,
+            file_path asc,
+            start_line asc
+          limit ?
+        `)
+        .all(rootPath, `%${escapeLike(term)}%`, Math.ceil(limit / unique.length)) as SymbolRow[];
+
+      for (const row of rows) {
+        byKey.set(`${row.file_path}:${row.name}:${row.start_line}:${row.end_line}`, row);
+        if (byKey.size >= limit) break;
+      }
+      if (byKey.size >= limit) break;
+    }
+
+    return [...byKey.values()].map(mapSymbolRow);
+  }
+
   findSymbol(rootPath: string, filePath: string, name: string): SymbolRecord | undefined {
     const row = this.db
       .prepare("select * from symbols where root_path = ? and file_path = ? and name = ? order by start_line asc limit 1")
@@ -589,6 +647,29 @@ export class SqliteStore {
       .all(rootPath) as LexicalDocumentRow[];
 
     return rows.map(mapLexicalDocumentRow);
+  }
+
+  listLexicalDocumentsByIds(rootPath: string, documentIds: string[], limit = 30_000): LexicalDocumentRecord[] {
+    const unique = [...new Set(documentIds)].filter(Boolean);
+    if (unique.length === 0) return [];
+    const rows: LexicalDocumentRow[] = [];
+
+    for (const chunk of chunkValues(unique, 500)) {
+      const placeholders = chunk.map(() => "?").join(", ");
+      rows.push(
+        ...(this.db
+          .prepare(`
+            select * from lexical_documents
+            where root_path = ? and id in (${placeholders})
+            order by file_path asc, kind asc, id asc
+            limit ?
+          `)
+          .all(rootPath, ...chunk, limit) as LexicalDocumentRow[])
+      );
+      if (rows.length >= limit) break;
+    }
+
+    return rows.slice(0, limit).map(mapLexicalDocumentRow);
   }
 
   listLexicalTerms(rootPath: string): LexicalTermRecord[] {
@@ -1495,6 +1576,7 @@ export class SqliteStore {
       create index if not exists benchmark_results_run_idx on benchmark_results(run_id, created_at);
       create index if not exists benchmark_results_case_idx on benchmark_results(case_id, run_id);
       create index if not exists symbols_root_file_idx on symbols(root_path, file_path, name);
+      create index if not exists symbols_root_name_idx on symbols(root_path, name);
       create index if not exists graph_edges_root_from_idx on graph_edges(root_path, from_file);
       create index if not exists graph_edges_root_to_idx on graph_edges(root_path, to_file);
       create index if not exists semantic_chunks_root_file_idx on semantic_chunks(root_path, file_path);
@@ -1613,6 +1695,10 @@ function mapLexicalStatsRow(row: LexicalStatsRow): LexicalStatsRecord {
     documentCount: row.document_count,
     averageDocumentLength: row.average_document_length
   };
+}
+
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (match) => `\\${match}`);
 }
 
 function mapWatchEventRow(row: WatchEventRow): WatchEventRecord {
