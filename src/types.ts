@@ -95,9 +95,9 @@ export type ContextQueryMode = "brief" | "snippets" | "summary" | "exact";
 
 export type PrimeProfile = "auto" | "ui" | "workflow" | "backend" | "test" | "generic";
 
-export type CodexSetupMode = "savings" | "observe" | "debug" | "mcp-first";
+export type CodexSetupMode = "savings" | "observe" | "debug" | "mcp-first" | "hybrid";
 
-export type HookOutputProfile = "full-prime" | "tiny-directive" | "failure-only";
+export type HookOutputProfile = "full-prime" | "tiny-directive" | "failure-only" | "mcp-brief";
 
 export type FileRecord = {
   rootPath: string;
@@ -286,6 +286,12 @@ export type MetricsSummary = {
     observations: number;
     latestCodexUsage?: CodexUsageRecord;
   };
+  coordination: {
+    duplicateContextAvoided: number;
+    hookFiles: string[];
+    mcpFiles: string[];
+    overlapFiles: string[];
+  };
   recentEvents: MetricsEventRecord[];
 };
 
@@ -368,6 +374,7 @@ export type BenchmarkAssistanceMode =
   | "mcp_first"
   | "real_mcp_first"
   | "mcp_first_plus_hook_full_prime"
+  | "hybrid_mcp_brief"
   | "passive_hooks"
   | "proactive";
 
@@ -482,6 +489,7 @@ export type BenchmarkProofReport = {
   mcpFirst?: BenchmarkReport;
   realMcpFirst?: BenchmarkReport;
   mcpFirstPlusHookFullPrime?: BenchmarkReport;
+  hybridMcpBrief?: BenchmarkReport;
   passiveHooks: BenchmarkReport;
   proactive: BenchmarkReport;
   runs?: Partial<Record<BenchmarkAssistanceMode, BenchmarkReport[]>>;
@@ -513,6 +521,7 @@ export type BenchmarkProofReport = {
     mcpFirstVsBaseline?: BenchmarkComparison["observedTokenDelta"];
     realMcpFirstVsBaseline?: BenchmarkComparison["observedTokenDelta"];
     mcpFirstPlusHookFullPrimeVsBaseline?: BenchmarkComparison["observedTokenDelta"];
+    hybridMcpBriefVsBaseline?: BenchmarkComparison["observedTokenDelta"];
   };
   caseDeltas: Array<{
     caseId: string;

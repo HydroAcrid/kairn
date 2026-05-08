@@ -64,6 +64,31 @@ describe("Codex usage parsing", () => {
     expect(transcript.feedback.testsRun).toContain("pnpm test src/app.test.ts");
     expect(transcript.transcriptHash).toHaveLength(64);
   });
+
+  it("parses Codex JSONL usage when total tokens are omitted", () => {
+    const root = createFixtureRepo();
+    const transcriptPath = path.join(root, "codex-jsonl-usage.jsonl");
+    fs.writeFileSync(
+      transcriptPath,
+      JSON.stringify({
+        type: "turn.completed",
+        usage: {
+          input_tokens: 41439,
+          cached_input_tokens: 36480,
+          output_tokens: 485
+        }
+      })
+    );
+
+    const transcript = readCodexTranscript({ transcriptPath });
+
+    expect(transcript.usage).toEqual({
+      totalTokens: 41924,
+      inputTokens: 41439,
+      cachedInputTokens: 36480,
+      outputTokens: 485
+    });
+  });
 });
 
 describe("eval runtime", () => {

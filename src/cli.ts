@@ -1053,16 +1053,56 @@ function buildCodexConfig(input: {
 }): string {
   let config = upsertFeatureFlag(input.existingConfig, "codex_hooks", true);
   if (input.mode === "mcp-first") {
+    const mcpCommand = resolveKairnMcpCommand();
+    const mcpArgs = [...mcpCommand.argsPrefix, "serve", "--mcp", "--root", input.rootPath];
     config = upsertTomlTable(config, "mcp_servers.kairn", [
       `[mcp_servers.kairn]`,
-      `command = "kairn"`,
-      `args = ["serve", "--mcp", "--root", ${JSON.stringify(input.rootPath)}]`,
+      `command = ${JSON.stringify(mcpCommand.command)}`,
+      `args = ${JSON.stringify(mcpArgs)}`,
       `startup_timeout_sec = 20`,
       `tool_timeout_sec = 60`,
       `enabled = true`
     ]);
   }
   return config.endsWith("\n") ? config : `${config}\n`;
+}
+
+function resolveKairnMcpCommand(): { command: string; argsPrefix: string[] } {
+  const envCommand = process.env.KAIRN_CMD?.trim();
+  if (envCommand) return splitCommandForMcp(envCommand);
+
+  const argvEntrypoint = process.argv[1] ? path.resolve(process.argv[1]) : "";
+  if (argvEntrypoint && fs.existsSync(argvEntrypoint)) {
+    if (path.extname(argvEntrypoint) === ".js") {
+      return { command: process.execPath, argsPrefix: [argvEntrypoint] };
+    }
+    return { command: argvEntrypoint, argsPrefix: [] };
+  }
+
+  const pathCommand = findExecutableOnPath("kairn");
+  if (pathCommand) return { command: pathCommand, argsPrefix: [] };
+
+  return { command: "kairn", argsPrefix: [] };
+}
+
+function splitCommandForMcp(command: string): { command: string; argsPrefix: string[] } {
+  const parts = command.match(/"[^"]+"|'[^']+'|\S+/g)?.map((part) => part.replace(/^['"]|['"]$/g, "")) ?? [];
+  if (parts.length === 0) return { command: "kairn", argsPrefix: [] };
+  return { command: parts[0]!, argsPrefix: parts.slice(1) };
+}
+
+function findExecutableOnPath(name: string): string | undefined {
+  const pathDirs = process.env.PATH?.split(path.delimiter) ?? [];
+  for (const dir of pathDirs) {
+    const candidate = path.join(dir, name);
+    try {
+      fs.accessSync(candidate, fs.constants.X_OK);
+      return candidate;
+    } catch {
+      // Keep searching.
+    }
+  }
+  return undefined;
 }
 
 function upsertFeatureFlag(config: string, key: string, value: boolean): string {

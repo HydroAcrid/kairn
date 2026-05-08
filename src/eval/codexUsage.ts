@@ -115,9 +115,9 @@ function findUsageObject(value: unknown): Omit<CodexUsageRecord, "source"> | und
     const total = numberValue(candidate.total_tokens) ?? numberValue(candidate.totalTokens) ?? numberValue(candidate.total);
     const input = numberValue(candidate.input_tokens) ?? numberValue(candidate.inputTokens) ?? numberValue(candidate.input);
     const output = numberValue(candidate.output_tokens) ?? numberValue(candidate.outputTokens) ?? numberValue(candidate.output);
-    if (total !== undefined && input !== undefined && output !== undefined) {
+    if (input !== undefined && output !== undefined) {
       return {
-        totalTokens: total,
+        totalTokens: total ?? input + output,
         inputTokens: input,
         cachedInputTokens:
           numberValue(candidate.cached_input_tokens) ??

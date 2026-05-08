@@ -762,3 +762,87 @@ Next implementation target:
 - Add a benchmark quality gate: `real_mcp_first` should fail the MCP-specific criterion if `mcpToolCalls === 0`.
 - Investigate whether the Codex MCP server config shape is correct for project-local MCP, or whether Codex requires a different config location/field for tool availability.
 - Keep `hook_full_prime` as the current default savings path while MCP tool-call reliability is being fixed.
+
+## MCP Failure Investigation
+
+Date: 2026-05-07
+
+Question: why did the MCP proof show Kairn MCP mentions but `0` recorded Kairn MCP calls?
+
+Findings:
+
+- Codex project MCP config is valid in principle. Official Codex docs say MCP servers can be configured in `~/.codex/config.toml` or project-local `.codex/config.toml` for trusted projects.
+- Codex's native project instruction file is `AGENTS.md`. Copilot's equivalent is `.github/copilot-instructions.md`, but Codex reads `AGENTS.md` before work starts.
+- Kairn's generated MCP config was brittle because it wrote `command = "kairn"`.
+- On this machine, `kairn` is not on `PATH`; hooks still worked because the benchmark supplied `KAIRN_CMD`, but MCP config did not use that fallback.
+- A contained smoke test using an absolute MCP command proved the Kairn MCP server is discoverable by Codex:
+  - Codex emitted a real JSONL `mcp_tool_call` item for server `kairn`, tool `kairn_prepare_task`.
+  - Without approval bypass, noninteractive `codex exec` cancelled the MCP call with `user cancelled MCP tool call`.
+  - With `--dangerously-bypass-approvals-and-sandbox` in a disposable `/tmp` workspace, the same MCP tool call completed and returned Kairn context.
+
+Conclusion:
+
+- MCP did not fail because Kairn's MCP server is broken.
+- It failed because setup and benchmark execution were not actually allowing a Kairn MCP tool call to complete:
+  1. The generated project MCP command could not resolve `kairn` unless Kairn was globally installed.
+  2. Noninteractive Codex proof runs require an MCP approval/trust path; otherwise Codex may see the tool but cancel the call.
+
+Patch applied:
+
+- `kairn setup codex --mode mcp-first` now writes a concrete executable command for the MCP server when possible, such as `node /path/to/kairn/dist/cli.js`, instead of always writing `command = "kairn"`.
+- Existing hook behavior remains unchanged.
+
+Next MCP proof requirements:
+
+- Treat `mcpToolCalls === 0` as an MCP-specific failure, even if token savings are good.
+- Run MCP proof with a trusted project and an approval path that permits Kairn MCP calls.
+- Parse Codex JSONL for actual `mcp_tool_call` events, not just final text mentions.
+- Keep `hook_full_prime` as the current default automatic savings path while MCP is being hardened.
+
+## Full Real Proof After MCP Setup Fix
+
+Reports:
+
+```text
+/tmp/kairn-full-real-proof-20260508001013.json
+/tmp/kairn-full-real-proof-tokens-20260508001805.json
+```
+
+The TanStack hidden-hash seeded regression was rerun after fixing MCP setup to write a concrete executable command. The first pass used Codex JSONL to verify MCP behavior; the second pass used normal Codex output so the harness could parse observed token footers.
+
+Quality rule remained unchanged: a result only counts if the seeded verification passes, the expected production file is used or mentioned, hook failures are absent, and unrelated docs/examples are not touched.
+
+### MCP JSONL Evidence
+
+The JSONL pass proved the corrected MCP setup is now usable:
+
+- `real_mcp_first` recorded `3` actual Kairn MCP tool calls.
+- `real_mcp_first` returned `packages/query-core/src/utils.ts` through MCP.
+- The run passed seeded verification.
+- This fixes the previous `0`-MCP-call blocker.
+
+One harness issue surfaced: Codex JSONL currently reports `input_tokens`, `cached_input_tokens`, and `output_tokens` without `total_tokens`, so the benchmark parser missed observed totals in the JSONL pass. The parser was patched to compute `totalTokens = inputTokens + outputTokens` when total is omitted.
+
+### Token-Footer Evidence
+
+| Mode | Outcome | Observed tokens | Delta vs baseline | Expected file used | Hook signal | MCP signal |
+| --- | --- | ---: | ---: | --- | --- | --- |
+| Baseline | pass | `37,583` | - | yes | none | none |
+| Hook full prime | pass | `17,663` | `+53.00%` | yes | `1` hook, `0` failures, `884` prime tokens | `0` MCP calls |
+| Manual prime | pass | `20,483` | `+45.50%` | yes | none, `884` prime tokens | `0` MCP calls |
+| Real MCP-first | pass | `24,288` | `+35.38%` | yes | none | `3` MCP calls |
+| MCP-first + full-prime hook | pass | `24,824` | `+33.95%` | yes | `1` hook, `0` failures, `1,736` prime tokens | `2` MCP calls |
+
+Findings:
+
+- The corrected MCP path is real now: Codex can call Kairn MCP tools in a disposable repo when the server command is absolute and approvals are bypassed/trusted for the benchmark.
+- `hook_full_prime` is still the strongest automatic path in this run, saving `53%` observed tokens while preserving quality.
+- `real_mcp_first` is also effective, saving `35%` with actual MCP calls, but it currently returns too many secondary files. That likely explains why it trails full-prime hooks.
+- Combining MCP-first and full-prime hooks did not help. It emitted duplicated Kairn context (`1,736` prime tokens) and saved less than hook-only or MCP-only.
+- Manual prime remains strong, but hook full-prime outperformed it in this run. This suggests Codex is accepting `UserPromptSubmit` additional context well when the prime is rich and high-confidence.
+
+Product implication:
+
+- Default automatic path should remain `hook_full_prime` for now.
+- MCP-first is no longer blocked mechanically, but it needs response slimming before it becomes the primary path.
+- The next MCP improvement should make `kairn_prepare_task` and `kairn_get_next_context` return fewer files, tighter reasons, and one or two concrete next reads instead of broad neighbor lists.

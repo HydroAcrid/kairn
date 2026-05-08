@@ -131,6 +131,7 @@ export class KairnRuntime {
     budget?: number | undefined;
     mode?: ContextQueryMode | undefined;
     profile?: PrimeProfile | undefined;
+    format?: "standard" | "mcp_brief" | undefined;
     source?: WatchEventSource | "runtime" | "cli" | "mcp" | undefined;
     eventName?: string | undefined;
     metadata?: Record<string, unknown> | undefined;
@@ -185,28 +186,38 @@ export class KairnRuntime {
       context,
       knownFiles: this.store.listFiles(session.rootPath)
     });
-    const content = quality.action === "suppress"
-      ? formatSuppressedPrimeContext({ task: resolvedTask, sessionId: session.id, profile, quality })
-      : quality.action === "shrink"
-        ? formatShrunkPrimeContext({
-            task: resolvedTask,
-            sessionId: session.id,
-            profile,
-            quality,
-            context,
-            budget: Math.min(budget, 420)
-          })
-        : formatPrimeContext({
-      task: resolvedTask,
-      sessionId: session.id,
-      profile,
-      budget,
-      limits,
-      context,
-      relatedFiles: related?.related ?? [],
-      testFiles: tests?.files ?? [],
-      suggestedCommands
-        });
+    const content = input.format === "mcp_brief"
+      ? formatMcpBriefPrimeContext({
+          task: resolvedTask,
+          sessionId: session.id,
+          profile,
+          budget: Math.min(budget, 360),
+          context,
+          files,
+          quality
+        })
+      : quality.action === "suppress"
+        ? formatSuppressedPrimeContext({ task: resolvedTask, sessionId: session.id, profile, quality })
+        : quality.action === "shrink"
+          ? formatShrunkPrimeContext({
+              task: resolvedTask,
+              sessionId: session.id,
+              profile,
+              quality,
+              context,
+              budget: Math.min(budget, 420)
+            })
+          : formatPrimeContext({
+              task: resolvedTask,
+              sessionId: session.id,
+              profile,
+              budget,
+              limits,
+              context,
+              relatedFiles: related?.related ?? [],
+              testFiles: tests?.files ?? [],
+              suggestedCommands
+            });
     const fileRecords = this.store.listFiles(session.rootPath).filter((file) => files.includes(file.path));
 
     this.recordShown(session.id, "context", "brief", content);
@@ -225,6 +236,7 @@ export class KairnRuntime {
         taskHash: sha256(resolvedTask),
         profile,
         budget,
+        format: input.format ?? "standard",
         quality,
         contextTokenEstimate: context.tokenEstimate,
         relatedCount: related?.related.length ?? 0,
@@ -279,6 +291,7 @@ export class KairnRuntime {
     const latestCodexUsage = [...evalObservations].reverse().find((event) => event.kind === "codex_usage");
     const latestCodexUsageRecord = codexUsageFromObservation(latestCodexUsage);
     const totals = summarizeMetrics(events);
+    const coordination = summarizeCoordinationMetrics(events);
 
     return {
       sessionId,
@@ -300,8 +313,14 @@ export class KairnRuntime {
         observations: evalObservations.length,
         ...(latestCodexUsageRecord ? { latestCodexUsage: latestCodexUsageRecord } : {})
       },
+      coordination,
       recentEvents: events.slice(-10)
     };
+  }
+
+  getCoordinationState(sessionId: string): MetricsSummary["coordination"] {
+    this.store.getSession(sessionId);
+    return summarizeCoordinationMetrics(this.store.listMetricsEvents(sessionId));
   }
 
   startEvalRun(input: {
@@ -1550,6 +1569,7 @@ export class KairnRuntime {
               budget: input.primeBudget ?? 1200,
               mode: "snippets",
               profile: input.primeProfile ?? "auto",
+              format: hookOutput === "mcp-brief" ? "mcp_brief" : "standard",
               source: input.event.source,
               eventName: "prime_context_hook",
               metadata: {
@@ -1558,6 +1578,7 @@ export class KairnRuntime {
                 turnId: stringMetadata(input.event.metadata, "turn_id") ?? null,
                 hookEventName: input.event.eventName,
                 hookOutput,
+                ...(hookOutput === "mcp-brief" ? { coordinationMode: "mcp_hybrid" } : {}),
                 transport: input.transport ?? "cli"
               }
             });
@@ -1675,7 +1696,8 @@ export class KairnRuntime {
         primeElapsedMs,
         hookLatencyMs: Date.now() - hookStartedAt,
         linkedFiles: linkedFiles.length,
-        recommendation: emittedPrime ? (hookOutput === "tiny-directive" ? "tiny_prime_emitted" : "prime_emitted") : prime ? "prime_quality_suppressed" : recommendation ? "emitted" : duplicatePromptPrime ? "duplicate_suppressed" : promptHash ? "prompt_suppressed" : "suppressed",
+        recommendation: emittedPrime ? (hookOutput === "tiny-directive" ? "tiny_prime_emitted" : hookOutput === "mcp-brief" ? "mcp_brief_prime_emitted" : "prime_emitted") : prime ? "prime_quality_suppressed" : recommendation ? "emitted" : duplicatePromptPrime ? "duplicate_suppressed" : promptHash ? "prompt_suppressed" : "suppressed",
+        ...(hookOutput === "mcp-brief" ? { coordinationMode: "mcp_hybrid", hookFiles: emittedPrime?.files ?? [] } : {}),
         proactivePrime: Boolean(emittedPrime),
         primeQuality: prime?.quality,
         failureContext: Boolean(failureContext),
@@ -2440,6 +2462,49 @@ function formatTinyDirectivePrime(input: { prime: ContextPrime; budget: number }
   ].filter(Boolean);
 
   return fitSectionsToBudget(lines, input.budget);
+}
+
+function formatMcpBriefPrimeContext(input: {
+  task: string;
+  sessionId: string;
+  profile: ResolvedPrimeProfile;
+  budget: number;
+  context: ContextResponse;
+  files: string[];
+  quality: PrimeQuality;
+}): string {
+  const files = uniquePaths(input.files).slice(0, 2);
+  const primaryFile = files[0];
+  const reason = primaryFile
+    ? primaryReasonForFile(input.context, primaryFile)
+    : "Kairn did not find a high-confidence start file.";
+  const lines = [
+    "# Kairn MCP Brief",
+    "",
+    `Task: ${input.task}`,
+    `Kairn session: ${input.sessionId}`,
+    `Profile: ${input.profile}`,
+    "",
+    "Start files:",
+    files.length > 0 ? files.map((file, index) => `${index + 1}. ${file}`).join("\n") : "No high-confidence start file found.",
+    "",
+    `Reason: ${reason}`,
+    "",
+    "Instruction: call `kairn_prepare_task` with this session id before broad scans, then use `kairn_get_next_context` for the next smallest read.",
+    `Suggested MCP call: kairn_prepare_task({ "task": ${JSON.stringify(input.task)}, "sessionId": ${JSON.stringify(input.sessionId)}, "detail": "compact" })`,
+    "",
+    `Quality: ${input.quality.score}/100 (${input.quality.action})`
+  ];
+
+  return fitSectionsToBudget(lines, input.budget);
+}
+
+function primaryReasonForFile(context: ContextResponse, filePath: string): string {
+  const line = context.content
+    .split(/\r?\n/)
+    .find((entry) => entry.includes(filePath) && entry.includes(":"));
+  if (!line) return `Top Kairn-ranked file for this task: ${filePath}`;
+  return truncateToBudget(line.replace(/^[-*\s]+/, ""), 48);
 }
 
 function extractPrimeSymbolHints(content: string): string[] {
