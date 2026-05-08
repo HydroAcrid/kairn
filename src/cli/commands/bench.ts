@@ -3,9 +3,11 @@ import type { BenchmarkReport, BenchmarkRunMode } from "../../types.js";
 import {
   formatBenchmarkMarkdown,
   printBenchmarkComparison,
+  printBenchmarkMatrixReport,
   printBenchmarkProof,
   printBenchmarkReport
 } from "../formatters.js";
+import { runBenchmarkRepoMatrix } from "../../bench/matrix.js";
 import { parsePositiveInt, withRuntime } from "../helpers.js";
 import { printJson } from "../output.js";
 
@@ -13,6 +15,24 @@ export function registerBenchCommands(program: Command): void {
   const benchCommand = program
     .command("bench")
     .description("Run deterministic and optional live-agent benchmarks for Kairn retrieval quality.");
+
+  benchCommand
+    .command("matrix")
+    .description("Run cheap repo-matrix preflight checks before live-agent benchmarking.")
+    .requiredOption("--matrix <path>", "repo matrix JSON path")
+    .option("--workdir <path>", "workspace for cloned repos")
+    .option("--json", "print JSON output")
+    .action(async (options: { matrix: string; workdir?: string; json?: boolean }) => {
+      const report = await runBenchmarkRepoMatrix({
+        matrixPath: options.matrix,
+        workdir: options.workdir
+      });
+      if (options.json) {
+        printJson(report);
+        return;
+      }
+      printBenchmarkMatrixReport(report);
+    });
 
   benchCommand
     .command("run")

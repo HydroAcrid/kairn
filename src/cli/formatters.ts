@@ -1,5 +1,6 @@
 import type {
   BenchmarkComparison,
+  BenchmarkMatrixReport,
   BenchmarkProofReport,
   BenchmarkReport,
   ContextPrime,
@@ -149,6 +150,38 @@ export function printBenchmarkReport(report: BenchmarkReport | { runs: Benchmark
       item.recommendations.length > 0 ? ["Recommendations", ...item.recommendations.map((entry) => `- ${entry}`)].join("\n") : "Recommendations: none"
     );
   }
+
+  process.stdout.write(`${lines.join("\n")}\n`);
+}
+
+export function printBenchmarkMatrixReport(report: BenchmarkMatrixReport): void {
+  const lines = [
+    "Kairn repo-matrix preflight.",
+    `Matrix: ${report.name}`,
+    `Repos: ${report.totals.repos}; passed ${report.totals.passedRepos}; failed ${report.totals.failedRepos}; skipped ${report.totals.skippedRepos}`,
+    `Cases: ${report.totals.cases}; quality-passing ${report.totals.qualityPassingCases}`,
+    `State gates: ${report.totals.statePassingRepos}/${report.totals.repos} repo(s) within limit`,
+    "",
+    "Repos"
+  ];
+
+  for (const repo of report.repos) {
+    lines.push(
+      `- ${repo.repo.id}: ${repo.status}; files ${repo.index.files}; state ${repo.index.totalSizeMb}MB; cases ${repo.cases.filter((item) => item.qualityGatePassed).length}/${repo.cases.length}`
+    );
+    for (const item of repo.weakestCases.slice(0, 3)) {
+      lines.push(
+        `  - ${item.caseId}: failed; decision ${item.contextDecision ?? "n/a"}; top ${item.returnedFiles.slice(0, 3).join(", ") || "none"}`
+      );
+    }
+  }
+
+  lines.push(
+    "",
+    "Recommendations",
+    ...(report.recommendations.length > 0 ? report.recommendations.map((entry) => `- ${entry}`) : ["- none"]),
+    ""
+  );
 
   process.stdout.write(`${lines.join("\n")}\n`);
 }

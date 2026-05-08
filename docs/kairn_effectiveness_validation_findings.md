@@ -1665,3 +1665,32 @@ Interpretation:
 - State remains well below the `250MB` soft target while allowing richer lexical coverage than the fixed `30,000`-term budget.
 - Budget decisions are now centralized, which makes future tuning evidence-based instead of hunting scattered constants.
 - Safety ceilings still exist, but normal operating budgets now scale with repo/query conditions.
+
+## 2026-05-08 Follow-Up: Repo-Matrix Preflight Harness
+
+Implemented a cheap broad-validation layer before live Codex proofs:
+
+- Added `kairn bench matrix --matrix <path>`.
+- Added `examples/bench/repo-matrix.json` covering TypeScript, Python, Java, C++, and a weak-signal control.
+- The matrix preflight clones or opens repos, runs Kairn indexing, calls `prime`, and scores:
+  - index state size,
+  - prime latency,
+  - expected source file top-k recall,
+  - noisy docs/examples/generated drift,
+  - weak-prompt suppression.
+- Added repo-matrix types and text/JSON reporting.
+- Removed a repo-name-specific source-priority shortcut so future broad tests measure general heuristics rather than Django-specific tuning.
+
+Validation:
+
+| Check | Result |
+| --- | --- |
+| Bench test suite | `115` tests passed |
+| Typecheck | passed |
+| Build | passed |
+| Local matrix CLI smoke | passed: state `37.21MB`, `bm25.ts` in top 5, no noisy docs |
+
+Interpretation:
+
+- Broad testing can now start with retrieval/state preflight before spending live-agent quota.
+- The next broad test should run `examples/bench/repo-matrix.json` first. Live Codex runs should only proceed for repo/case pairs that pass state, recall, suppression, and noise gates.

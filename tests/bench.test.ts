@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
 import { createDefaultBenchmarkSuite, loadBenchmarkSuite } from "../src/bench/suite.js";
 import { buildBenchmarkReport, compareBenchmarkReports, scoreBenchmarkCase } from "../src/bench/score.js";
+import { loadBenchmarkRepoMatrix, runBenchmarkRepoMatrix } from "../src/bench/matrix.js";
 import { runAgentBenchmarkCase } from "../src/bench/agent.js";
 import { evaluateContextValue } from "../src/prime/contextValue.js";
 import { createFixtureRepo } from "./helpers.js";
@@ -122,6 +123,60 @@ describe("benchmark suite and scoring", () => {
     expect(suite.cases.find((item) => item.id === "cpp-fmt-starts-with")?.requiredTouchedFiles).toEqual([
       "include/fmt/base.h"
     ]);
+  });
+
+  it("loads the broad repo-matrix preflight example", () => {
+    const matrix = loadBenchmarkRepoMatrix({
+      matrixPath: path.resolve("examples/bench/repo-matrix.json")
+    });
+
+    expect(matrix.id).toBe("broad-repo-matrix");
+    expect(matrix.repos.map((repo) => repo.id)).toEqual(
+      expect.arrayContaining(["tanstack-query", "click", "commons-lang", "fmt", "weak-signal-control"])
+    );
+    expect(matrix.repos.find((repo) => repo.id === "click")?.cases[0]?.expectedFiles).toContain("src/click/_compat.py");
+  });
+
+  it("runs repo-matrix preflight against local fixture repos", async () => {
+    const root = createFixtureRepo();
+    const matrixPath = path.join(root, "matrix.json");
+    fs.writeFileSync(
+      matrixPath,
+      JSON.stringify({
+        id: "local-matrix",
+        name: "Local Matrix",
+        gates: {
+          maxStateMb: 100,
+          maxPrimeLatencyMs: 10000,
+          expectedTopK: 5,
+          requireSuppressionForWeakCases: false
+        },
+        repos: [
+          {
+            id: "fixture",
+            localPath: root,
+            cases: [
+              {
+                id: "mobile-layout",
+                mode: "context",
+                task: "job tracker mobile layout drawer tabs cards",
+                expectedFiles: ["src/app/private/jobs/JobsApplicationsTable.tsx"],
+                excludedFiles: ["docs/"],
+                budget: 900
+              }
+            ]
+          }
+        ]
+      })
+    );
+
+    const report = await runBenchmarkRepoMatrix({ matrixPath });
+
+    expect(report.totals.repos).toBe(1);
+    expect(report.totals.cases).toBe(1);
+    expect(report.repos[0]?.stateWithinLimit).toBe(true);
+    expect(report.repos[0]?.cases[0]?.expectedTopKPassed).toBe(true);
+    expect(report.repos[0]?.cases[0]?.excludedFilesAvoided).toBe(true);
   });
 
   it("does not count seed-patch dirtiness as agent-touched files", async () => {

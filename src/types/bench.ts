@@ -43,6 +43,100 @@ export type BenchmarkSuite = {
   cases: BenchmarkCase[];
 };
 
+export type BenchmarkRepoSizeClass = "small" | "medium" | "large" | "huge";
+
+export type BenchmarkMatrixGates = {
+  maxStateMb?: number;
+  maxPrimeLatencyMs?: number;
+  expectedTopK?: number;
+  requireSuppressionForWeakCases?: boolean;
+};
+
+export type BenchmarkRepoTarget = {
+  id: string;
+  name?: string;
+  repoUrl?: string;
+  ref?: string;
+  cloneDepth?: number;
+  localPath?: string;
+  subdir?: string;
+  language?: string;
+  sizeClass?: BenchmarkRepoSizeClass;
+  setupCommands?: string[];
+  gates?: BenchmarkMatrixGates;
+  cases: BenchmarkCase[];
+};
+
+export type BenchmarkRepoMatrix = {
+  id: string;
+  name: string;
+  gates?: BenchmarkMatrixGates;
+  repos: BenchmarkRepoTarget[];
+};
+
+export type BenchmarkMatrixCaseResult = {
+  repoId: string;
+  caseId: string;
+  task: string;
+  profile: string;
+  expectedFiles: string[];
+  returnedFiles: string[];
+  missingExpectedFiles: string[];
+  excludedFiles: string[];
+  excludedHits: string[];
+  primeTokens: number;
+  primeLatencyMs: number;
+  contextDecision?: string;
+  qualityScore?: number;
+  expectedTopKPassed: boolean;
+  excludedFilesAvoided: boolean;
+  suppressionPassed: boolean;
+  qualityGatePassed: boolean;
+  summary: string;
+  recommendations: string[];
+};
+
+export type BenchmarkMatrixRepoResult = {
+  repo: BenchmarkRepoTarget;
+  rootPath?: string;
+  status: "passed" | "failed" | "skipped";
+  error?: string;
+  index: {
+    files: number;
+    totalSizeBytes: number;
+    totalSizeMb: number;
+    softMaxSizeMb: number;
+    hardMaxSizeMb: number;
+    graphEdges: number;
+    semanticChunks: number;
+    lexicalTerms: number;
+    tiers: Record<string, number>;
+  };
+  gates: Required<BenchmarkMatrixGates>;
+  stateWithinLimit: boolean;
+  cases: BenchmarkMatrixCaseResult[];
+  weakestCases: BenchmarkMatrixCaseResult[];
+  recommendations: string[];
+};
+
+export type BenchmarkMatrixReport = {
+  id: string;
+  name: string;
+  startedAt: string;
+  endedAt: string;
+  repos: BenchmarkMatrixRepoResult[];
+  totals: {
+    repos: number;
+    passedRepos: number;
+    failedRepos: number;
+    skippedRepos: number;
+    cases: number;
+    qualityPassingCases: number;
+    statePassingRepos: number;
+  };
+  recommendations: string[];
+};
+
 export type BenchmarkSeedSpec = {
   repoUrl: string;
   ref?: string;

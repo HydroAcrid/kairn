@@ -134,7 +134,7 @@ function chunkPriority(chunk: SemanticChunkRecord): number {
   if (filePath.startsWith("src/") || filePath.includes("/src/")) score += 35;
   if (filePath.startsWith("packages/") || filePath.includes("/packages/")) score += 24;
   if (filePath.startsWith("include/") || filePath.includes("/include/")) score += 30;
-  if (filePath.startsWith("django/") || filePath.startsWith("lib/")) score += 24;
+  if (filePath.startsWith("lib/") || filePath.includes("/lib/")) score += 24;
   if (/(^|\/)(utils?|helpers?|shared|common)(\/|\.|-|_)/.test(filePath)) score += 42;
   if (/(^|\/)[a-z0-9]+(?:[-_][a-z0-9]+){1,}\.[a-z0-9]+$/.test(filePath)) score += 18;
   if (/(^|\/)(index|main|router|client|server|core)\.[cm]?[jt]sx?$/.test(filePath)) score -= 18;

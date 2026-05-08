@@ -163,6 +163,14 @@ kairn bench run --root "$TARGET_REPO" --mode replay --json
 kairn bench run --root "$TARGET_REPO" --suite examples/bench/job-tracker-focused.json --mode replay --json
 ```
 
+Before broad live-agent testing, run a repo-matrix preflight. This clones or opens several repos, runs Kairn indexing and `prime` only, then checks state size, prime latency, expected source files, noisy-file drift, and weak-prompt suppression without spending agent tokens.
+
+```bash
+kairn bench matrix --matrix examples/bench/repo-matrix.json --workdir /tmp/kairn-repo-matrix --json
+```
+
+The included matrix is intentionally retrieval-only. Treat failures as a signal to improve general source targeting, suppression, or state discipline before running expensive Codex proofs.
+
 Agent benchmarks are opt-in. Kairn copies the target repo into a disposable temp workspace and only runs an agent when you pass an explicit command. If the command output contains a Codex footer like `Token usage: total=33,729 input=33,253 (+ 24,704 cached) output=476`, Kairn parses it automatically and shows observed Codex usage in benchmark reports.
 
 ```bash

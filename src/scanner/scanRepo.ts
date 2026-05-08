@@ -181,7 +181,7 @@ function scanPriority(file: {
   if (normalized.startsWith("src/") || normalized.includes("/src/")) score += 35;
   if (normalized.startsWith("packages/") || normalized.includes("/packages/")) score += 22;
   if (normalized.startsWith("include/") || normalized.includes("/include/")) score += 30;
-  if (normalized.startsWith("django/") || normalized.startsWith("lib/")) score += 22;
+  if (normalized.startsWith("lib/") || normalized.includes("/lib/")) score += 22;
   if (normalized.startsWith("tests/") || normalized.includes("/tests/")) score -= 12;
   if (
     /(^|\/)(docs?|documentation|examples|demo|demos|fixtures?|__fixtures__|compiled|generated|vendor|third[_-]party|dist|build|coverage|website|site|playground|storybook|codemods?|devtools)\//.test(

@@ -1,0 +1,131 @@
+{
+  "id": "broad-repo-matrix",
+  "name": "Broad Repo Retrieval Preflight",
+  "gates": {
+    "maxStateMb": 250,
+    "maxPrimeLatencyMs": 6000,
+    "expectedTopK": 5,
+    "requireSuppressionForWeakCases": true
+  },
+  "repos": [
+    {
+      "id": "tanstack-query",
+      "name": "TanStack Query",
+      "repoUrl": "https://github.com/TanStack/query.git",
+      "ref": "3894b052b75f1b8a35235e804aadc815db67878d",
+      "cloneDepth": 1,
+      "language": "typescript",
+      "sizeClass": "large",
+      "cases": [
+        {
+          "id": "hidden-hash-debug",
+          "mode": "context",
+          "task": "Debug object query key hashing: keys with the same properties in different orders should hash consistently.",
+          "expectedFiles": [
+            "packages/query-core/src/utils.ts"
+          ],
+          "excludedFiles": [
+            "docs/",
+            "examples/",
+            "packages/query-codemods/",
+            "packages/query-devtools/"
+          ],
+          "budget": 900
+        }
+      ]
+    },
+    {
+      "id": "click",
+      "name": "Click",
+      "repoUrl": "https://github.com/pallets/click.git",
+      "ref": "fc6c7c47edd6110b6bd5a1a5297b2035214b0cd1",
+      "cloneDepth": 1,
+      "language": "python",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "term-len-ansi-debug",
+          "mode": "context",
+          "task": "Debug terminal visible length for ANSI-colored text: term_len should ignore escape codes and return 3 for red.",
+          "expectedFiles": [
+            "src/click/_compat.py"
+          ],
+          "excludedFiles": [
+            "docs/",
+            "examples/"
+          ],
+          "budget": 700
+        }
+      ]
+    },
+    {
+      "id": "commons-lang",
+      "name": "Apache Commons Lang",
+      "repoUrl": "https://github.com/apache/commons-lang.git",
+      "ref": "d0fb835fd93357238cbd29b0b1fbcfb84d856464",
+      "cloneDepth": 1,
+      "language": "java",
+      "sizeClass": "large",
+      "cases": [
+        {
+          "id": "stringutils-isblank-debug",
+          "mode": "context",
+          "task": "Debug StringUtils.isBlank whitespace behavior: it should use Java whitespace semantics, not only plain spaces.",
+          "expectedFiles": [
+            "src/main/java/org/apache/commons/lang3/StringUtils.java"
+          ],
+          "excludedFiles": [
+            "src/site/",
+            "docs/"
+          ],
+          "budget": 850
+        }
+      ]
+    },
+    {
+      "id": "fmt",
+      "name": "fmt",
+      "repoUrl": "https://github.com/fmtlib/fmt.git",
+      "ref": "9cb8c0f92b4c345fb974a75d71370c23047528aa",
+      "cloneDepth": 1,
+      "language": "cpp",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "string-view-starts-with-debug",
+          "mode": "context",
+          "task": "Debug basic_string_view starts_with equal-length prefix behavior.",
+          "expectedFiles": [
+            "include/fmt/base.h"
+          ],
+          "excludedFiles": [
+            "doc/",
+            "docs/",
+            "examples/"
+          ],
+          "budget": 700
+        }
+      ]
+    },
+    {
+      "id": "weak-signal-control",
+      "name": "Weak Signal Local Control",
+      "localPath": "../../",
+      "language": "mixed",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "vague-idea",
+          "mode": "context",
+          "task": "make it better",
+          "expectedFiles": [],
+          "excludedFiles": [],
+          "successCriteria": [
+            "suppress weak prompt"
+          ],
+          "budget": 500
+        }
+      ]
+    }
+  ]
+}
