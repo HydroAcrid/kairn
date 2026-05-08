@@ -16,6 +16,7 @@ export function scoreBenchmarkCase(input: {
   const actualFiles = unique(input.actualFiles);
   const excludedFiles = unique(input.benchmarkCase.excludedFiles);
   const expectedHits = expectedFiles.filter((file) => actualFiles.includes(file));
+  const missedExpectedFiles = expectedFiles.filter((file) => !actualFiles.includes(file));
   const topFive = actualFiles.slice(0, 5);
   const excludedHits = actualFiles.filter((file) => excludedFiles.some((excluded) => fileMatchesBenchmarkPattern(file, excluded)));
   const expectedFileRecall = expectedFiles.length > 0 ? ratio(expectedHits.length, expectedFiles.length) : 1;
@@ -55,7 +56,12 @@ export function scoreBenchmarkCase(input: {
       budget: input.benchmarkCase.budget,
       outcome
     }),
-    metadata: input.metadata ?? {}
+    metadata: {
+      ...(input.metadata ?? {}),
+      missedExpectedFiles,
+      irrelevantFilesRead: excludedHits,
+      expectedFilesMentioned: expectedHits
+    }
   };
 }
 

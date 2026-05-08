@@ -117,4 +117,40 @@ describe("KairnRuntime", () => {
 
     runtime.close();
   });
+
+  it("suppresses low-value exact-path prime briefs", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+
+    const prime = await runtime.primeContext({
+      task: "Fix src/app.ts by checking renderDashboard",
+      budget: 900
+    });
+
+    expect(prime.quality?.action).toBe("suppress");
+    expect(prime.quality?.exactPathMentioned).toBe(true);
+    expect(prime.content).toContain("Kairn Prime Suppressed");
+
+    runtime.close();
+  });
+
+  it("builds failure-first context from failing test output", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const { session } = await runtime.startTask("Debug dashboard test failure");
+
+    const context = await runtime.getFailureContext({
+      sessionId: session.id,
+      type: "test",
+      command: "pnpm test",
+      output: "FAIL src/app.test.ts\nsrc/app.test.ts:4:10 Expected true to be false"
+    });
+
+    expect(context.failureFiles).toContain("src/app.test.ts");
+    expect(context.files).toContain("src/app.ts");
+    expect(context.content).toContain("Kairn Failure Context");
+    expect(context.content).toContain("Likely tests");
+
+    runtime.close();
+  });
 });

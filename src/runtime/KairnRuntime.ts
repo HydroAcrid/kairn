@@ -18,6 +18,7 @@ import type {
   EvalObservationRecord,
   EvalRunMode,
   EvalRunReport,
+  FailureContext,
   FileRecord,
   BenchmarkCaseMode,
   HookHandlingResult,
@@ -28,6 +29,7 @@ import type {
   MetricsSummary,
   NormalizedHookEvent,
   OutputKind,
+  PrimeQuality,
   PrimeProfile,
   TaskSession,
   WatchEventKind,
@@ -81,7 +83,10 @@ export class KairnRuntime {
       symbols: index.graph.symbols,
       edges: index.graph.edges,
       semanticChunks: index.semanticChunks,
-      semanticVectors: index.semanticVectors
+      semanticVectors: index.semanticVectors,
+      lexicalDocuments: index.lexical.documents,
+      lexicalTerms: index.lexical.terms,
+      lexicalStats: index.lexical.stats
     });
 
     return {
@@ -174,7 +179,23 @@ export class KairnRuntime {
       ...(primaryFile ? [`kairn context --session ${session.id} --root <repo> --related ${primaryFile}`] : []),
       ...(primaryFile ? [`kairn context --session ${session.id} --root <repo> --tests ${primaryFile}`] : [])
     ];
-    const content = formatPrimeContext({
+    const quality = evaluatePrimeQuality({
+      task: resolvedTask,
+      context,
+      knownFiles: this.store.listFiles(session.rootPath)
+    });
+    const content = quality.action === "suppress"
+      ? formatSuppressedPrimeContext({ task: resolvedTask, sessionId: session.id, profile, quality })
+      : quality.action === "shrink"
+        ? formatShrunkPrimeContext({
+            task: resolvedTask,
+            sessionId: session.id,
+            profile,
+            quality,
+            context,
+            budget: Math.min(budget, 420)
+          })
+        : formatPrimeContext({
       task: resolvedTask,
       sessionId: session.id,
       profile,
@@ -184,7 +205,7 @@ export class KairnRuntime {
       relatedFiles: related?.related ?? [],
       testFiles: tests?.files ?? [],
       suggestedCommands
-    });
+        });
     const fileRecords = this.store.listFiles(session.rootPath).filter((file) => files.includes(file.path));
 
     this.recordShown(session.id, "context", "brief", content);
@@ -203,10 +224,27 @@ export class KairnRuntime {
         taskHash: sha256(resolvedTask),
         profile,
         budget,
+        quality,
         contextTokenEstimate: context.tokenEstimate,
         relatedCount: related?.related.length ?? 0,
         testCount: tests?.files.length ?? 0,
         estimator: "prime selected files as full-source baseline"
+      }
+    });
+    this.recordMetricsEvent({
+      sessionId: session.id,
+      rootPath: session.rootPath,
+      eventKind: "prime_quality",
+      eventName: quality.action,
+      source: input.source ?? "cli",
+      responseMode: "brief",
+      baselineTokens: 0,
+      outputTokens: 0,
+      files,
+      metadata: {
+        ...quality,
+        taskHash: sha256(resolvedTask),
+        profile
       }
     });
 
@@ -217,6 +255,7 @@ export class KairnRuntime {
       content,
       files,
       tokenEstimate: estimateTokens(content),
+      quality,
       warnings: uniqueStrings([...context.warnings, ...(related?.warnings ?? []), ...(tests?.warnings ?? [])]),
       suggestedCommands
     };
@@ -312,7 +351,7 @@ export class KairnRuntime {
       throw new Error("No Codex token usage could be parsed from --usage, stdin, or --transcript.");
     }
 
-    return this.store.recordEvalObservation({
+    const observation = this.store.recordEvalObservation({
       runId: run.id,
       sessionId: input.sessionId,
       kind: "codex_usage",
@@ -324,6 +363,56 @@ export class KairnRuntime {
       },
       files: [],
       contentHash: sha256(JSON.stringify(usage))
+    });
+    if (transcript?.feedback && (transcript.feedback.filesRead.length > 0 || transcript.feedback.filesEdited.length > 0 || transcript.feedback.commands.length > 0)) {
+      const files = uniquePaths([...transcript.feedback.filesRead, ...transcript.feedback.filesEdited]);
+      this.store.recordEvalObservation({
+        runId: run.id,
+        sessionId: input.sessionId,
+        kind: "agent_file_usage",
+        summary: `Agent usage: ${transcript.feedback.filesRead.length} read file(s), ${transcript.feedback.filesEdited.length} edited file(s), ${transcript.feedback.commands.length} command(s).`,
+        metrics: {
+          feedback: transcript.feedback,
+          transcriptHash: transcript.transcriptHash,
+          rootPath: session.rootPath
+        },
+        files,
+        contentHash: sha256(JSON.stringify({ files, feedback: transcript.feedback }))
+      });
+    }
+
+    return observation;
+  }
+
+  getEvalFeedback(input: { sessionId: string }): EvalObservationRecord {
+    const session = this.store.getSession(input.sessionId);
+    const latestRun = this.findLatestEvalRunForSession(input.sessionId);
+    const metrics = this.store.listMetricsEvents(input.sessionId);
+    const observations = this.store.listEvalObservations({ sessionId: input.sessionId });
+    const recommendedFiles = uniquePaths(metrics.flatMap((event) => event.files));
+    const agentUsageFiles = uniquePaths(
+      observations
+        .filter((event) => event.kind === "agent_file_usage")
+        .flatMap((event) => event.files)
+    );
+    const recommendedFilesUsed = recommendedFiles.filter((file) => agentUsageFiles.includes(file));
+    const missedRecommendedFiles = recommendedFiles.filter((file) => !agentUsageFiles.includes(file));
+    const unpromptedFilesUsed = agentUsageFiles.filter((file) => !recommendedFiles.includes(file));
+
+    return this.store.recordEvalObservation({
+      runId: latestRun.id,
+      sessionId: input.sessionId,
+      kind: "retrieval_feedback",
+      summary: `Retrieval feedback: ${recommendedFilesUsed.length}/${recommendedFiles.length} recommended file(s) appeared in agent usage.`,
+      metrics: {
+        recommendedCount: recommendedFiles.length,
+        agentUsageCount: agentUsageFiles.length,
+        recommendedFilesUsed,
+        missedRecommendedFiles,
+        unpromptedFilesUsed
+      },
+      files: uniquePaths([...recommendedFilesUsed, ...unpromptedFilesUsed]),
+      contentHash: sha256(JSON.stringify({ recommendedFiles, agentUsageFiles }))
     });
   }
 
@@ -525,6 +614,9 @@ export class KairnRuntime {
     const edges = this.store.listGraphEdges(session.rootPath);
     const chunks = this.store.listSemanticChunks(session.rootPath);
     const vectors = this.store.listSemanticVectors(session.rootPath);
+    const lexicalDocuments = this.store.listLexicalDocuments(session.rootPath);
+    const lexicalTerms = this.store.listLexicalTerms(session.rootPath);
+    const lexicalStats = this.store.getLexicalStats(session.rootPath);
     const changedFiles = await this.getChangedFiles(session.rootPath);
     const query = input.query ?? session.task;
     const intent = classifyQueryIntent(query);
@@ -534,6 +626,9 @@ export class KairnRuntime {
       symbols,
       chunks,
       vectors,
+      lexicalDocuments,
+      lexicalTerms,
+      lexicalStats,
       edges,
       shown: session.filesShown,
       changedFiles
@@ -930,6 +1025,157 @@ export class KairnRuntime {
     };
   }
 
+  async getFailureContext(input: {
+    sessionId: string;
+    type: OutputKind;
+    output?: string | undefined;
+    files?: string[] | undefined;
+    command?: string | undefined;
+    budget?: number | undefined;
+    source?: WatchEventSource | "runtime" | "cli" | "mcp" | undefined;
+    eventName?: string | undefined;
+  }): Promise<FailureContext> {
+    const session = this.store.getSession(input.sessionId);
+    await this.refreshIndex(session.rootPath);
+    const knownFiles = this.store.listFiles(session.rootPath).map((file) => file.path);
+    const failureFiles = extractFailureFiles({
+      output: input.output,
+      rootPath: session.rootPath,
+      knownFiles,
+      explicitFiles: input.files
+    });
+    const changedFiles = [...(await this.getChangedFiles(session.rootPath))].sort();
+    const seedFiles = uniquePaths([...failureFiles, ...changedFiles]).slice(0, 4);
+    const relatedFiles = new Set<string>();
+    const testFiles = new Set<string>();
+    const warnings: string[] = [];
+
+    for (const file of seedFiles) {
+      try {
+        const related = await this.getRelatedFiles({ sessionId: input.sessionId, target: file, budget: 500 });
+        for (const relatedFile of related.suggestedNextContext.slice(0, 4)) relatedFiles.add(relatedFile);
+      } catch {
+        warnings.push(`Could not resolve related files for ${file}.`);
+      }
+
+      try {
+        const tests = await this.findTests({ sessionId: input.sessionId, target: file, budget: 500 });
+        for (const testFile of tests.suggestedNextContext.slice(0, 4)) testFiles.add(testFile);
+      } catch {
+        warnings.push(`Could not resolve tests for ${file}.`);
+      }
+    }
+
+    const outputSummary = input.output ? compressOutputText(input.output, input.type, 480) : "";
+    const files = uniquePaths([...failureFiles, ...relatedFiles, ...testFiles, ...changedFiles]).slice(0, 12);
+    const content = truncateToBudget(
+      [
+        "# Kairn Failure Context",
+        "",
+        input.command ? `Command: ${input.command}` : undefined,
+        `Output kind: ${input.type}`,
+        failureFiles.length > 0 ? `Failure files: ${failureFiles.join(", ")}` : "Failure files: none detected.",
+        changedFiles.length > 0 ? `Changed files: ${changedFiles.slice(0, 8).join(", ")}` : undefined,
+        relatedFiles.size > 0 ? `Related source: ${[...relatedFiles].slice(0, 8).join(", ")}` : undefined,
+        testFiles.size > 0 ? `Likely tests: ${[...testFiles].slice(0, 8).join(", ")}` : undefined,
+        "",
+        outputSummary ? "## Compressed Failure Output" : undefined,
+        outputSummary || undefined,
+        "",
+        "## Agent Guidance",
+        "- Inspect failure files first, then related source/tests.",
+        "- Avoid broad scans until these files are insufficient."
+      ].filter(Boolean).join("\n"),
+      input.budget ?? 1200
+    );
+
+    this.store.recordCommand({
+      sessionId: input.sessionId,
+      type: input.type,
+      summary: content
+    });
+    this.recordShown(input.sessionId, "context", "failure_context", content);
+    this.recordMetricsEvent({
+      sessionId: input.sessionId,
+      rootPath: session.rootPath,
+      eventKind: "failure_context",
+      eventName: input.eventName ?? "failure_context",
+      source: input.source ?? "runtime",
+      responseMode: "failure_context",
+      baselineTokens: input.output ? estimateTokens(input.output) + estimateFileBaselineTokens(this.store.listFiles(session.rootPath).filter((file) => files.includes(file.path))) : 0,
+      outputTokens: estimateTokens(content),
+      files,
+      metadata: {
+        outputKind: input.type,
+        failureFiles: failureFiles.length,
+        relatedFiles: relatedFiles.size,
+        testFiles: testFiles.size,
+        changedFiles: changedFiles.length,
+        estimator: "raw failure output plus linked full-source files as baseline"
+      }
+    });
+
+    return {
+      session: this.getSession(input.sessionId),
+      type: input.type,
+      content,
+      files,
+      failureFiles,
+      relatedFiles: [...relatedFiles],
+      testFiles: [...testFiles],
+      changedFiles,
+      tokenEstimate: estimateTokens(content),
+      warnings: uniqueStrings(warnings)
+    };
+  }
+
+  async getNextContext(input: {
+    sessionId: string;
+    budget?: number | undefined;
+  }): Promise<ContextResponse> {
+    const session = this.store.getSession(input.sessionId);
+    const latestFailure = [...this.store.listWatchEvents(input.sessionId)]
+      .reverse()
+      .find((event) => event.kind === "failure" && event.files.length > 0);
+
+    if (latestFailure?.files[0]) {
+      const related = await this.getRelatedFiles({
+        sessionId: input.sessionId,
+        target: latestFailure.files[0],
+        budget: input.budget ?? 900
+      });
+      return {
+        ...related,
+        content: [
+          "# Kairn Next Context",
+          "",
+          `Latest failure file: ${latestFailure.files[0]}`,
+          "",
+          related.content,
+          "",
+          "Agent guidance: read the failure file and closest related files before broad scans."
+        ].join("\n"),
+        warnings: uniqueStrings([...related.warnings, "Next context selected from latest failure event."])
+      };
+    }
+
+    const diff = await this.reviewDiff({ sessionId: input.sessionId, budget: input.budget ?? 900 });
+    if (diff.suggestedNextContext.length > 0) {
+      return {
+        ...diff,
+        warnings: uniqueStrings([...diff.warnings, "Next context selected from current diff."])
+      };
+    }
+
+    return this.findContext({
+      sessionId: input.sessionId,
+      query: session.task,
+      requestType: "find_context",
+      budget: input.budget ?? 900,
+      mode: "brief"
+    });
+  }
+
   compressOutput(input: {
     sessionId: string;
     type: OutputKind;
@@ -1117,9 +1363,23 @@ export class KairnRuntime {
           }
         })
       : undefined;
+    const emittedPrime = prime?.quality?.action === "suppress" ? undefined : prime;
+    const failureContext = kind === "failure"
+      ? await this.getFailureContext({
+          sessionId: session.id,
+          type: outputKind,
+          output: input.event.output,
+          files: linkedFiles,
+          command: input.event.command,
+          budget: 1000,
+          source: input.event.source,
+          eventName: input.event.eventName
+        })
+      : undefined;
     const shouldCompressOutput =
       Boolean(input.event.output) &&
       !isPromptEvent(input.event.eventName) &&
+      !failureContext &&
       !isTrivialSuccessfulHook({
         eventKind: kind,
         command: input.event.command,
@@ -1137,9 +1397,11 @@ export class KairnRuntime {
           eventName: input.event.eventName
         })
       : undefined;
-    const recommendation = prime
+    const recommendation = emittedPrime
       ? undefined
-      : await this.recommendFromHook({
+      : failureContext
+        ? failureRecommendation(failureContext)
+        : await this.recommendFromHook({
           sessionId: session.id,
           command: input.event.command,
           response,
@@ -1152,7 +1414,7 @@ export class KairnRuntime {
       input.event.toolName ? `Tool: ${input.event.toolName}` : "",
       input.event.exitCode !== undefined ? `Exit code: ${input.event.exitCode}` : "",
       linkedFiles.length > 0 ? `Linked files: ${linkedFiles.join(", ")}` : "",
-      prime?.content ? prime.content : response?.content ? response.content : ""
+      emittedPrime?.content ? emittedPrime.content : failureContext?.content ? failureContext.content : response?.content ? response.content : ""
     ].filter(Boolean).join("\n\n");
     const event = this.recordWatchEvent({
       sessionId: session.id,
@@ -1178,18 +1440,20 @@ export class KairnRuntime {
       sessionId: session.id,
       rootPath: session.rootPath,
       eventKind: "hook_signal",
-      eventName: prime || recommendation ? "hook_recommendation_emitted" : "hook_recommendation_suppressed",
+      eventName: emittedPrime || recommendation ? "hook_recommendation_emitted" : "hook_recommendation_suppressed",
       source: input.event.source,
       baselineTokens: 0,
-      outputTokens: prime?.content ? estimateTokens(prime.content) : recommendation?.content ? estimateTokens(recommendation.content) : 0,
-      files: prime?.files ?? recommendation?.files ?? linkedFiles,
+      outputTokens: emittedPrime?.content ? estimateTokens(emittedPrime.content) : failureContext?.tokenEstimate ?? (recommendation?.content ? estimateTokens(recommendation.content) : 0),
+      files: emittedPrime?.files ?? failureContext?.files ?? recommendation?.files ?? linkedFiles,
       metadata: {
         eventName: input.event.eventName,
         hookKind: kind,
         outputKind,
         linkedFiles: linkedFiles.length,
-        recommendation: prime ? "prime_emitted" : recommendation ? "emitted" : duplicatePromptPrime ? "duplicate_suppressed" : promptHash ? "prompt_suppressed" : "suppressed",
-        proactivePrime: Boolean(prime),
+        recommendation: emittedPrime ? "prime_emitted" : prime ? "prime_quality_suppressed" : recommendation ? "emitted" : duplicatePromptPrime ? "duplicate_suppressed" : promptHash ? "prompt_suppressed" : "suppressed",
+        proactivePrime: Boolean(emittedPrime),
+        primeQuality: prime?.quality,
+        failureContext: Boolean(failureContext),
         duplicatePromptPrime,
         compressedOutput: Boolean(response),
         trivialSuccessfulOutput: Boolean(input.event.output) && !shouldCompressOutput && !response
@@ -1201,7 +1465,8 @@ export class KairnRuntime {
       event,
       ...(recommendation ? { recommendation } : {}),
       ...(response ? { response } : {}),
-      ...(prime ? { prime } : {})
+      ...(failureContext ? { failureContext } : {}),
+      ...(emittedPrime ? { prime: emittedPrime } : {})
     };
   }
 
@@ -1507,7 +1772,10 @@ export class KairnRuntime {
       symbols: index.graph.symbols,
       edges: index.graph.edges,
       semanticChunks: index.semanticChunks,
-      semanticVectors: index.semanticVectors
+      semanticVectors: index.semanticVectors,
+      lexicalDocuments: index.lexical.documents,
+      lexicalTerms: index.lexical.terms,
+      lexicalStats: index.lexical.stats
     });
     return index.graph.files;
   }
@@ -1765,6 +2033,16 @@ export function createRuntime(root?: string): KairnRuntime {
   return new KairnRuntime(root ?? getKairnPaths().rootPath);
 }
 
+function failureRecommendation(context: FailureContext): WatchRecommendation {
+  return {
+    summary: `Failure context linked ${context.failureFiles.length} failure file(s).`,
+    files: context.files,
+    suggestedNextContext: context.files.slice(0, 5),
+    warnings: context.warnings,
+    content: context.content
+  };
+}
+
 function formatContextResults(input: {
   title: string;
   task: string;
@@ -1780,6 +2058,7 @@ function formatContextResults(input: {
       ? input.scored
           .map((file) => {
             const scoreBreakdown = [
+              `bm25 ${file.bm25Score}`,
               `semantic ${file.semanticScore}`,
               `keyword ${file.keywordScore}`,
               `behavior ${file.behaviorScore}`,
@@ -1881,6 +2160,109 @@ function formatPrimeContext(input: {
   ].filter((section) => section !== "");
 
   return fitSectionsToBudget(sections, input.budget);
+}
+
+function evaluatePrimeQuality(input: {
+  task: string;
+  context: ContextResponse;
+  knownFiles: FileRecord[];
+}): PrimeQuality {
+  const scores = extractRankedScores(input.context.content);
+  const topScore = scores[0] ?? 0;
+  const secondScore = scores[1] ?? 0;
+  const topGap = Number(Math.max(0, topScore - secondScore).toFixed(3));
+  const normalizedTask = input.task.toLowerCase();
+  const exactPathMentioned = input.knownFiles.some((file) => normalizedTask.includes(file.path.toLowerCase()));
+  const reasons: string[] = [];
+
+  if (exactPathMentioned) reasons.push("prompt already names an exact indexed file");
+  if (topScore >= 250) reasons.push("high-confidence top retrieval score");
+  if (topGap >= 80) reasons.push("top result is clearly separated");
+  if (topScore > 0 && topScore < 90) reasons.push("low top retrieval score");
+  if (topScore > 0 && topGap < 20) reasons.push("top results are tightly clustered");
+  if (input.context.files.length === 0) reasons.push("no retrieved files");
+
+  let score = 42;
+  score += Math.min(34, topScore / 24);
+  score += Math.min(18, topGap / 12);
+  if (exactPathMentioned) score -= 44;
+  if (input.context.files.length === 0) score -= 45;
+  score = Math.round(Math.max(0, Math.min(100, score)));
+
+  const action = exactPathMentioned || score < 42
+    ? "suppress"
+    : score < 68 || topGap < 20
+      ? "shrink"
+      : "emit";
+  const expectedSavingsRisk = action === "suppress" ? "high" : action === "shrink" ? "medium" : "low";
+
+  return {
+    score,
+    action,
+    reasons: reasons.length > 0 ? reasons : ["retrieval confidence is acceptable"],
+    topScore,
+    topGap,
+    exactPathMentioned,
+    expectedSavingsRisk
+  };
+}
+
+function formatSuppressedPrimeContext(input: {
+  task: string;
+  sessionId: string;
+  profile: ResolvedPrimeProfile;
+  quality: PrimeQuality;
+}): string {
+  return [
+    "# Kairn Prime Suppressed",
+    "",
+    `Task: ${input.task}`,
+    `Kairn session: ${input.sessionId}`,
+    `Prime profile: ${input.profile}`,
+    `Quality score: ${input.quality.score}`,
+    `Reason: ${input.quality.reasons.join("; ")}`,
+    "",
+    "Kairn did not emit proactive context because it is unlikely to save tokens for this prompt."
+  ].join("\n");
+}
+
+function formatShrunkPrimeContext(input: {
+  task: string;
+  sessionId: string;
+  profile: ResolvedPrimeProfile;
+  quality: PrimeQuality;
+  context: ContextResponse;
+  budget: number;
+}): string {
+  const topFiles = input.context.suggestedNextContext.slice(0, 3);
+  const sections = [
+    "# Kairn Compact Prime",
+    "",
+    `Task: ${input.task}`,
+    `Kairn session: ${input.sessionId}`,
+    `Prime profile: ${input.profile}`,
+    `Quality score: ${input.quality.score} (${input.quality.action})`,
+    "",
+    "## Start Here",
+    topFiles.length > 0 ? topFiles.map((file) => `- ${file}`).join("\n") : "- No high-confidence files found.",
+    "",
+    "## Targeted Context",
+    compactPrimeContext(input.context.content, Math.max(160, Math.floor(input.budget * 0.42))),
+    "",
+    "## Agent Guidance",
+    "- Use this only as a starting point; avoid broad scans if these files fit the task."
+  ];
+  return fitSectionsToBudget(sections, input.budget);
+}
+
+function extractRankedScores(content: string): number[] {
+  const scores: number[] = [];
+  const pattern = /score\s+([\d.]+)/g;
+  for (const match of content.matchAll(pattern)) {
+    const score = Number(match[1]);
+    if (Number.isFinite(score)) scores.push(score);
+  }
+  return scores;
 }
 
 function resolvePrimeProfile(profile: PrimeProfile, task: string): ResolvedPrimeProfile {
@@ -2125,7 +2507,9 @@ function collectWorkspaceKairnMetrics(workspacePath: string): Record<string, unk
       kairnSessionCount: sessions.length,
       primeEmitted: metrics.reduce((total, item) => total + (item.byKind.prime_context?.events ?? 0), 0),
       primeTokens: metrics.reduce((total, item) => total + (item.byKind.prime_context?.outputTokens ?? 0), 0),
-      hookInvocations: metrics.reduce((total, item) => total + (item.byKind.hook_signal?.events ?? 0), 0)
+      primeQualityEvents: metrics.reduce((total, item) => total + (item.byKind.prime_quality?.events ?? 0), 0),
+      hookInvocations: metrics.reduce((total, item) => total + (item.byKind.hook_signal?.events ?? 0), 0),
+      failureContextUsed: metrics.reduce((total, item) => total + (item.byKind.failure_context?.events ?? 0), 0)
     };
   } catch {
     return {
@@ -2365,6 +2749,11 @@ function graphReason(type: string, targetIsFromFile: boolean): string {
   if (type === "tested_by") return targetIsFromFile ? "test for target" : "tested source";
   if (type === "test_for") return targetIsFromFile ? "tested source" : "test for target";
   if (type === "parent_route") return targetIsFromFile ? "parent route" : "route segment file";
+  if (type === "definition") return targetIsFromFile ? "definition target" : "defined from target";
+  if (type === "reference") return targetIsFromFile ? "references target" : "referenced by target";
+  if (type === "type_reference") return targetIsFromFile ? "type reference target" : "type referenced by target";
+  if (type === "implementation") return targetIsFromFile ? "implementation target" : "implemented by target";
+  if (type === "call") return targetIsFromFile ? "calls target" : "called by target";
   return type;
 }
 

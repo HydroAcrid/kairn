@@ -6,7 +6,7 @@ It runs beside coding agents and answers live context questions against a target
 
 ## Status
 
-MCP, CLI, semantic retrieval, and watcher/hook MVPs are in progress.
+MCP, CLI, semantic retrieval, TypeScript graph enrichment, BM25 lexical retrieval, watcher/hooks, proactive priming, and eval/benchmark MVPs are in progress.
 
 ## Quick Start
 
@@ -34,6 +34,8 @@ pnpm dev -- prime "job tracker mobile layout" --root /path/to/repo
 - MCP tools for agent-native context requests.
 - CLI wrappers for humans and agents without MCP.
 - Watcher/hooks for observe-and-react session updates.
+- TypeScript language-service graph enrichment for JS/TS definitions, references, calls, implementations, and type references.
+- BM25 exact lexical retrieval for identifiers and status terms that should not be blurred by vector scoring.
 
 ## Watcher And Hooks
 
@@ -44,7 +46,7 @@ kairn watch --session task_123 --root /path/to/repo
 kairn watch --session task_123 --root /path/to/repo --once --json
 ```
 
-Hook mode ingests JSON from agent host hooks. V1 is observe/react only: it records events, compresses command output, links failures to source files, and recommends next context. It does not block or approve tool calls.
+Hook mode ingests JSON from agent host hooks. V1 is observe/react only: it records events, routes failures through failure-first context, compresses non-trivial output, links failures to source files, and recommends next context. It does not block or approve tool calls.
 
 Kairn normalizes the official snake_case Codex and Claude payload fields, including `hook_event_name`, `session_id`, `tool_name`, `tool_input`, `tool_response`, `tool_calls`, `file_path`, `error`, and host session metadata. Raw output-bearing fields are hashed in stored metadata; summaries and file references are kept.
 
@@ -52,6 +54,12 @@ Kairn normalizes the official snake_case Codex and Claude payload fields, includ
 kairn hook --session task_123 --root /path/to/repo --source generic --json
 kairn hook --session task_123 --root /path/to/repo --source claude
 kairn hook --session task_123 --root /path/to/repo --source codex
+```
+
+For failed tests, lint, typecheck, or stack traces, use failure-first context directly:
+
+```bash
+kairn failure --session task_123 --root /path/to/repo --type test --output-file /tmp/test-output.txt
 ```
 
 Generic hook payloads may include:
@@ -74,7 +82,7 @@ Examples live in `examples/.codex/config.toml`, `examples/.codex/hooks.json`, an
 kairn setup codex --root /path/to/repo
 ```
 
-After that, open normal `codex` in the repo and submit a task. The default `savings` setup installs only `UserPromptSubmit`, so Kairn can create or reuse a task session and inject proactive context before Codex starts broad repo scanning. Use `--mode observe` to add quiet post-tool hooks for failures and meaningful output, or `--mode debug` for broad diagnostics. If the hook host cannot find the global `kairn` binary, set `KAIRN_CMD` to an absolute command such as `node /Users/kevindotel/Documents/Projects/kairn/dist/cli.js`.
+After that, open normal `codex` in the repo and submit a task. The default `savings` setup installs only `UserPromptSubmit`, so Kairn can create or reuse a task session and inject proactive context before Codex starts broad repo scanning. Use `--mode observe` to add quiet post-tool hooks for failures and meaningful output, `--mode debug` for broad diagnostics, or `--mode mcp-first` when you want savings hooks plus manual MCP setup guidance. If the hook host cannot find the global `kairn` binary, set `KAIRN_CMD` to an absolute command such as `node /Users/kevindotel/Documents/Projects/kairn/dist/cli.js`.
 
 Codex project hooks require a trusted repo `.codex/` config and the hooks feature flag:
 
@@ -123,6 +131,12 @@ kairn eval ingest-codex --root /path/to/repo --session task_123 --run eval_def -
 ```
 
 Kairn stores parsed token totals, hashes, file references, and summaries. It does not store raw Codex transcripts or raw command output. Eval reports separate observed Codex usage from Kairn's estimated context savings; V1 is directional proof, not billing-grade token accounting.
+
+When a transcript is ingested, Kairn also extracts metadata-only feedback: files read, files edited, commands run, test commands, outcome hints, and transcript hash. It does not store the raw transcript. Use feedback to compare Kairn recommendations against actual agent behavior:
+
+```bash
+kairn eval feedback --root /path/to/repo --session task_123
+```
 
 ## Benchmarks
 
@@ -209,14 +223,14 @@ The included `examples/bench/seeded-large-js-ts-template.json` shows the intende
 
 ## Proactive Context
 
-For discovery-heavy tasks, `prime` creates or reuses a task session, runs Kairn retrieval, and emits a compact prompt prefix with ranked files, snippets, related files, likely tests, and guidance to avoid broad scans unless the brief is insufficient.
+For discovery-heavy tasks, `prime` creates or reuses a task session, runs Kairn retrieval, scores prime quality, and emits a compact prompt prefix with ranked files, snippets, related files, likely tests, and guidance to avoid broad scans unless the brief is insufficient.
 
 ```bash
 kairn prime "job tracker mobile layout" --root "$TARGET_REPO" --profile auto
 kairn prime "job tracker mobile layout" --root "$TARGET_REPO" --json
 ```
 
-Normal Codex can receive the same style of context through the prompt-submit hook after `kairn setup codex`. This is the preferred everyday path because users can keep using Codex normally while Kairn quietly primes high-confidence task prompts.
+Normal Codex can receive the same style of context through the prompt-submit hook after `kairn setup codex`. This is the preferred everyday path because users can keep using Codex normally while Kairn quietly primes high-confidence task prompts. If the prompt already names an exact indexed file or retrieval confidence is low, Kairn shrinks or suppresses the prime to avoid wasting tokens.
 
 To prove whether proactive context helps, compare live-agent modes. Repeat runs are preferred because live Codex usage has high variance:
 
@@ -234,7 +248,7 @@ kairn bench prove \
 
 V1 treats post-tool hooks as observation/failure support, not the main savings path. The key validation number is median observed Codex tokens for prompt-only proactive hooks versus baseline.
 
-MCP remains an explicit tool surface: `kairn serve --mcp` gives an agent Kairn context tools, but the agent must call those tools or be instructed to ask Kairn before reading files directly.
+MCP remains an explicit tool surface: `kairn serve --mcp` gives an agent Kairn context tools, but the agent must call those tools or be instructed to ask Kairn before reading files directly. The MCP server includes `kairn_prepare_task`, `kairn_get_next_context`, and `kairn_get_failure_context` for MCP-first workflows where the agent asks Kairn before broad file reads.
 
 ## State
 

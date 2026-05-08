@@ -302,7 +302,7 @@ describe("KairnRuntime watch behavior", () => {
     runtime.close();
   });
 
-  it("handles hook events, compresses output, and recommends linked context", async () => {
+  it("handles hook failures with failure-first context and recommends linked context", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);
     const { session } = await runtime.startTask("Update dashboard rendering");
@@ -320,7 +320,8 @@ describe("KairnRuntime watch behavior", () => {
 
     expect(result.event.kind).toBe("failure");
     expect(result.event.files).toContain("src/app.test.ts");
-    expect(result.response?.content).toContain("Expected true");
+    expect(result.failureContext?.content).toContain("Expected true");
+    expect(result.failureContext?.failureFiles).toContain("src/app.test.ts");
     expect(result.recommendation?.suggestedNextContext).toContain("src/app.test.ts");
 
     runtime.close();
@@ -560,7 +561,7 @@ describe("watch and hook CLI", () => {
     expect(claudeParsed.event.files).toContain("src/app.test.ts");
     expect(claudeParsed.recommendation?.suggestedNextContext).toContain("src/app.test.ts");
     expect(hostParsed.hookSpecificOutput.hookEventName).toBe("PostToolUse");
-    expect(hostParsed.hookSpecificOutput.additionalContext).toContain("Kairn Hook Recommendation");
+    expect(hostParsed.hookSpecificOutput.additionalContext).toContain("Kairn Failure Context");
   });
 
   it("supports sessionless Codex prompt hooks and setup codex config", () => {

@@ -3,10 +3,14 @@ import type {
   FileRecord,
   GraphEdgeRecord,
   HybridScoredResult,
+  LexicalDocumentRecord,
+  LexicalStatsRecord,
+  LexicalTermRecord,
   SemanticChunkRecord,
   SemanticVectorRecord,
   SymbolRecord
 } from "../types.js";
+import { scoreBm25Files } from "../lexical/bm25.js";
 import { cosineSimilarity, embedText } from "../semantic/vector.js";
 import { tokenizeLexical } from "../semantic/tokenize.js";
 import { classifyQueryIntent, type QueryIntent } from "./queryIntent.js";
@@ -18,12 +22,21 @@ export function hybridSearch(input: {
   symbols: SymbolRecord[];
   chunks: SemanticChunkRecord[];
   vectors: SemanticVectorRecord[];
+  lexicalDocuments?: LexicalDocumentRecord[];
+  lexicalTerms?: LexicalTermRecord[];
+  lexicalStats?: LexicalStatsRecord | undefined;
   edges: GraphEdgeRecord[];
   shown?: ContextShownRecord[];
   changedFiles?: Set<string>;
 }): HybridScoredResult[] {
   const intent = classifyQueryIntent(input.query);
   const keywordScores = new Map(scoreFiles(input.files, input.query, input.symbols).map((file) => [file.path, file]));
+  const bm25Scores = scoreBm25Files({
+    query: input.query,
+    documents: input.lexicalDocuments ?? [],
+    terms: input.lexicalTerms ?? [],
+    stats: input.lexicalStats
+  });
   const semanticScores = scoreSemanticChunks(input.query, input.chunks, input.vectors);
   const symbolsByFile = groupByFile(input.symbols, (symbol) => symbol.filePath);
   const chunksByFile = groupByFile(input.chunks, (chunk) => chunk.filePath);
@@ -35,6 +48,7 @@ export function hybridSearch(input: {
   return input.files
     .map((file) => {
       const keyword = keywordScores.get(file.path);
+      const bm25 = bm25Scores.get(file.path);
       const semantic = semanticScores.get(file.path);
       const intentMatch = intentScores.get(file.path);
       const behaviorMatch = behaviorScores.get(file.path);
@@ -43,11 +57,13 @@ export function hybridSearch(input: {
       const gitScore = input.changedFiles?.has(file.path) ? 8 : 0;
       const semanticScore = semantic?.score ?? 0;
       const keywordScore = keyword?.score ?? 0;
+      const bm25Score = bm25?.score ?? 0;
       const intentScore = intentMatch?.score ?? 0;
       const behaviorScore = behaviorMatch?.score ?? 0;
       const importanceScore = file.importance;
       const reasons = mergeReasons([
         ...(keyword?.reasons ?? []),
+        ...(bm25?.reasons ?? []),
         ...(intentMatch?.reasons ?? []),
         ...(behaviorMatch?.reasons ?? []),
         ...(semantic && semantic.score > 0.06 ? semanticReasons(semantic.chunks) : []),
@@ -57,6 +73,7 @@ export function hybridSearch(input: {
       ]);
       const score =
         importanceScore +
+        bm25Score +
         keywordScore * 1.15 +
         semanticScore * 42 +
         behaviorScore +
@@ -71,6 +88,7 @@ export function hybridSearch(input: {
         reasons,
         semanticScore: Number(semanticScore.toFixed(3)),
         keywordScore: Number(keywordScore.toFixed(3)),
+        bm25Score: Number(bm25Score.toFixed(3)),
         behaviorScore,
         graphScore,
         intentScore,

@@ -6,6 +6,7 @@ import type { OutputKind } from "../types.js";
 
 const outputKindSchema = z.enum(["test", "lint", "typecheck", "generic"]);
 const contextModeSchema = z.enum(["brief", "snippets", "summary", "exact"]);
+const primeProfileSchema = z.enum(["auto", "ui", "workflow", "backend", "test", "generic"]);
 
 export async function startMcpServer(options: { root?: string }): Promise<void> {
   const server = createMcpServer(options);
@@ -19,6 +20,31 @@ export function createMcpServer(options: { root?: string }): McpServer {
   });
 
   const runtime = new KairnRuntime(options.root);
+
+  server.registerTool(
+    "kairn_prepare_task",
+    {
+      title: "Prepare Kairn task",
+      description: "Start or reuse a task session and return proactive context plus recommended next Kairn tool calls.",
+      inputSchema: {
+        task: z.string().min(1),
+        sessionId: z.string().optional(),
+        budget: z.number().int().positive().optional(),
+        profile: primeProfileSchema.optional()
+      }
+    },
+    async ({ task, sessionId, budget, profile }) => {
+      const prime = await runtime.primeContext({ task, sessionId, budget, profile });
+      return toolResult({
+        ...prime,
+        recommendedToolCalls: [
+          { tool: "kairn_find_context", input: { sessionId: prime.session.id, query: task, mode: "snippets", budget: 900 } },
+          ...(prime.files[0] ? [{ tool: "kairn_get_related_files", input: { sessionId: prime.session.id, target: prime.files[0], budget: 700 } }] : []),
+          ...(prime.files[0] ? [{ tool: "kairn_find_tests", input: { sessionId: prime.session.id, target: prime.files[0], budget: 700 } }] : [])
+        ]
+      });
+    }
+  );
 
   server.registerTool(
     "kairn_start_task",
@@ -135,6 +161,37 @@ export function createMcpServer(options: { root?: string }): McpServer {
     },
     ({ sessionId, type, output, budget }) =>
       toolResult(runtime.compressOutput({ sessionId, type: type as OutputKind, output, budget, source: "mcp" }))
+  );
+
+  server.registerTool(
+    "kairn_get_next_context",
+    {
+      title: "Get next context",
+      description: "Recommend the next smallest useful context from session history, failures, and diff state.",
+      inputSchema: {
+        sessionId: z.string().min(1),
+        budget: z.number().int().positive().optional()
+      }
+    },
+    async ({ sessionId, budget }) => toolResult(await runtime.getNextContext({ sessionId, budget }))
+  );
+
+  server.registerTool(
+    "kairn_get_failure_context",
+    {
+      title: "Get failure context",
+      description: "Build failure-first context from test, lint, typecheck, or generic command output.",
+      inputSchema: {
+        sessionId: z.string().min(1),
+        type: outputKindSchema,
+        output: z.string().optional(),
+        command: z.string().optional(),
+        files: z.array(z.string()).optional(),
+        budget: z.number().int().positive().optional()
+      }
+    },
+    async ({ sessionId, type, output, command, files, budget }) =>
+      toolResult(await runtime.getFailureContext({ sessionId, type: type as OutputKind, output, command, files, budget, source: "mcp" }))
   );
 
   server.registerTool(

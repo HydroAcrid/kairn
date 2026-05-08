@@ -3,7 +3,9 @@ import { normalizeRelativePath } from "../utils/paths.js";
 
 const FILE_REF_PATTERNS = [
   /(?:^|\s|["'([])((?:[A-Za-z]:)?[^ "'()\n\r]+?\.[cm]?[jt]sx?|[^ "'()\n\r]+?\.(?:ts|tsx|js|jsx|mjs|cjs|json|css|scss|md|mdx)):(\d+)(?::(\d+))?/gm,
-  /(?:^|\s|["'([])((?:[A-Za-z]:)?[^ "'()\n\r]+?\.[cm]?[jt]sx?|[^ "'()\n\r]+?\.(?:ts|tsx|js|jsx|mjs|cjs|json|css|scss|md|mdx))\((\d+),(\d+)\)/gm
+  /(?:^|\s|["'([])((?:[A-Za-z]:)?[^ "'()\n\r]+?\.[cm]?[jt]sx?|[^ "'()\n\r]+?\.(?:ts|tsx|js|jsx|mjs|cjs|json|css|scss|md|mdx))\((\d+),(\d+)\)/gm,
+  /(?:^|\s)(?:FAIL|PASS|Test Files?|at|file|File|Error:)\s+((?:[A-Za-z]:)?[^ "'()\n\r]+?\.(?:ts|tsx|js|jsx|mjs|cjs|json|css|scss|md|mdx))/gm,
+  /\b((?:[A-Za-z]:)?[^ "'()\n\r]+?\.(?:ts|tsx|js|jsx|mjs|cjs|json|css|scss|md|mdx))\b/gm
 ];
 
 export function extractFailureFiles(input: {

@@ -123,7 +123,7 @@ setup
   .command("codex")
   .description("Install Codex hook config that lets Kairn prime prompts automatically.")
   .option("--root <path>", "target repository root", process.cwd())
-  .addOption(new Option("--mode <mode>", "Codex hook setup mode").choices(["savings", "observe", "debug"]).default("savings"))
+  .addOption(new Option("--mode <mode>", "Codex hook setup mode").choices(["savings", "observe", "debug", "mcp-first"]).default("savings"))
   .addOption(new Option("--prime-profile <profile>", "prompt-submit prime profile").choices(["auto", "ui", "workflow", "backend", "test", "generic"]).default("auto"))
   .option("--prime-budget <tokens>", "prompt-submit prime token budget", parsePositiveInt, 1200)
   .option("--json", "print JSON output")
@@ -147,8 +147,9 @@ setup
         `Hooks: ${result.hooksPath}`,
         `Mode: ${result.mode}`,
         "Codex UserPromptSubmit hooks will request proactive Kairn context without KAIRN_SESSION.",
+        result.mode === "mcp-first" ? "MCP-first mode also writes savings hooks; configure Codex MCP manually with `kairn serve --mcp --root <repo>`." : "",
         ""
-      ].join("\n")
+      ].filter(Boolean).join("\n")
     );
   });
 
@@ -223,6 +224,53 @@ program
       printContextResponse(response, options.json);
     });
   });
+
+program
+  .command("failure")
+  .description("Build failure-first context from test, lint, typecheck, or generic output.")
+  .requiredOption("--session <id>", "Kairn task session ID")
+  .option("--root <path>", "target repository root", process.cwd())
+  .addOption(
+    new Option("--type <type>", "output kind")
+      .choices(["test", "lint", "typecheck", "generic"])
+      .default("generic")
+  )
+  .option("--output <text>", "failure output text; stdin is used when omitted")
+  .option("--output-file <path>", "read failure output from a local file")
+  .option("--command <command>", "command that produced the failure")
+  .option("--budget <tokens>", "approximate response token budget", parsePositiveInt)
+  .option("--json", "print JSON output")
+  .action(
+    async (options: {
+      session: string;
+      root: string;
+      type: OutputKind;
+      output?: string;
+      outputFile?: string;
+      command?: string;
+      budget?: number;
+      json?: boolean;
+    }) => {
+      await withRuntime(options.root, async (runtime) => {
+        const output =
+          options.output ??
+          (options.outputFile ? fs.readFileSync(path.resolve(options.outputFile), "utf8") : await readStdin());
+        const context = await runtime.getFailureContext({
+          sessionId: options.session,
+          type: options.type,
+          output,
+          command: options.command,
+          budget: options.budget,
+          source: "cli"
+        });
+        if (options.json) {
+          printJson(context);
+          return;
+        }
+        process.stdout.write(`${context.content}\n`);
+      });
+    }
+  );
 
 program
   .command("compress")
@@ -335,7 +383,7 @@ program
         const output = hostHookOutput({
           source: options.source,
           eventName: event.eventName,
-          content: result.prime?.content ?? result.recommendation?.content,
+          content: result.prime?.content ?? result.failureContext?.content ?? result.recommendation?.content,
           json: false
         });
         if (output) {
@@ -517,6 +565,23 @@ evalCommand
         return;
       }
       printEvalComparison(comparison);
+    });
+  });
+
+evalCommand
+  .command("feedback")
+  .description("Compare Kairn-recommended files against ingested Codex transcript file usage.")
+  .requiredOption("--session <id>", "Kairn task session ID")
+  .option("--root <path>", "target repository root", process.cwd())
+  .option("--json", "print JSON output")
+  .action(async (options: { session: string; root: string; json?: boolean }) => {
+    await withRuntime(options.root, async (runtime) => {
+      const observation = runtime.getEvalFeedback({ sessionId: options.session });
+      if (options.json) {
+        printJson(observation);
+        return;
+      }
+      process.stdout.write(["Kairn eval feedback recorded.", `Session: ${options.session}`, observation.summary, ""].join("\n"));
     });
   });
 

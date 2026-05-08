@@ -1,4 +1,6 @@
 import { buildRepoGraph } from "../graph/buildGraph.js";
+import { enrichGraphWithTypeScript } from "../ts/tsGraph.js";
+import { buildLexicalIndex, type LexicalIndex } from "../lexical/bm25.js";
 import { parseSourceFile } from "../parser/parseFile.js";
 import { readTextFile } from "../retrieval/readSource.js";
 import { scanRepo } from "../scanner/scanRepo.js";
@@ -11,6 +13,7 @@ export type RepoIndex = {
   graph: RepoGraph;
   semanticChunks: SemanticChunkRecord[];
   semanticVectors: SemanticVectorRecord[];
+  lexical: LexicalIndex;
 };
 
 export async function indexRepo(rootPath: string): Promise<RepoIndex> {
@@ -34,10 +37,14 @@ export async function indexRepo(rootPath: string): Promise<RepoIndex> {
       };
     }
   });
-  const graph = buildRepoGraph({
+  const baseGraph = buildRepoGraph({
     rootPath,
     files: scan.files,
     parsedFiles
+  });
+  const graph = await enrichGraphWithTypeScript({
+    rootPath,
+    graph: baseGraph
   });
   const semanticChunks = buildSemanticChunks(rootPath, graph);
   const semanticVectors = semanticChunks.map((chunk) => ({
@@ -46,11 +53,18 @@ export async function indexRepo(rootPath: string): Promise<RepoIndex> {
     dimensions: VECTOR_DIMENSIONS,
     vector: embedText(chunk.text)
   }));
+  const lexical = buildLexicalIndex({
+    rootPath,
+    files: graph.files,
+    symbols: graph.symbols,
+    chunks: semanticChunks
+  });
 
   return {
     scan,
     graph,
     semanticChunks,
-    semanticVectors
+    semanticVectors,
+    lexical
   };
 }

@@ -44,9 +44,11 @@ export type MetricsEventKind =
   | "related"
   | "tests"
   | "diff"
+  | "failure_context"
   | "compression"
   | "hook_signal"
-  | "prime_context";
+  | "prime_context"
+  | "prime_quality";
 
 export type EvalRunMode = "baseline" | "kairn" | "manual";
 
@@ -58,7 +60,9 @@ export type EvalObservationKind =
   | "command_summary"
   | "artifact"
   | "manual_outcome"
-  | "hook_signal_stats";
+  | "hook_signal_stats"
+  | "agent_file_usage"
+  | "retrieval_feedback";
 
 export type SymbolKind =
   | "function"
@@ -72,7 +76,17 @@ export type SymbolKind =
   | "default"
   | "unknown";
 
-export type GraphEdgeType = "imports" | "imported_by" | "test_for" | "tested_by" | "parent_route";
+export type GraphEdgeType =
+  | "imports"
+  | "imported_by"
+  | "test_for"
+  | "tested_by"
+  | "parent_route"
+  | "definition"
+  | "reference"
+  | "call"
+  | "type_reference"
+  | "implementation";
 
 export type SemanticChunkKind = "symbol" | "file_summary";
 
@@ -80,7 +94,7 @@ export type ContextQueryMode = "brief" | "snippets" | "summary" | "exact";
 
 export type PrimeProfile = "auto" | "ui" | "workflow" | "backend" | "test" | "generic";
 
-export type CodexSetupMode = "savings" | "observe" | "debug";
+export type CodexSetupMode = "savings" | "observe" | "debug" | "mcp-first";
 
 export type FileRecord = {
   rootPath: string;
@@ -147,6 +161,31 @@ export type SemanticVectorRecord = {
   chunkId: string;
   dimensions: number;
   vector: number[];
+};
+
+export type LexicalDocumentRecord = {
+  rootPath: string;
+  id: string;
+  filePath: string;
+  kind: "file" | "symbol" | "chunk";
+  symbol?: string;
+  length: number;
+  tokenEstimate: number;
+  hash: string;
+};
+
+export type LexicalTermRecord = {
+  rootPath: string;
+  term: string;
+  documentId: string;
+  filePath: string;
+  frequency: number;
+};
+
+export type LexicalStatsRecord = {
+  rootPath: string;
+  documentCount: number;
+  averageDocumentLength: number;
 };
 
 export type ContextShownRecord = {
@@ -477,8 +516,21 @@ export type ContextPrime = {
   content: string;
   files: string[];
   tokenEstimate: number;
+  quality?: PrimeQuality;
   warnings: string[];
   suggestedCommands: string[];
+};
+
+export type PrimeQualityAction = "emit" | "shrink" | "suppress";
+
+export type PrimeQuality = {
+  score: number;
+  action: PrimeQualityAction;
+  reasons: string[];
+  topScore: number;
+  topGap: number;
+  exactPathMentioned: boolean;
+  expectedSavingsRisk: "low" | "medium" | "high";
 };
 
 export type TaskSession = {
@@ -522,6 +574,19 @@ export type WatchRecommendation = {
   content?: string;
 };
 
+export type FailureContext = {
+  session: TaskSession;
+  type: OutputKind;
+  content: string;
+  files: string[];
+  failureFiles: string[];
+  relatedFiles: string[];
+  testFiles: string[];
+  changedFiles: string[];
+  tokenEstimate: number;
+  warnings: string[];
+};
+
 export type WatchSnapshot = {
   sessionId: string;
   rootPath: string;
@@ -537,6 +602,7 @@ export type HookHandlingResult = {
   event: WatchEventRecord;
   recommendation?: WatchRecommendation;
   response?: ContextResponse;
+  failureContext?: FailureContext;
   prime?: ContextPrime;
 };
 
@@ -591,6 +657,7 @@ export type HybridScoredResult = FileRecord & {
   reasons: string[];
   semanticScore: number;
   keywordScore: number;
+  bm25Score: number;
   behaviorScore: number;
   graphScore: number;
   intentScore: number;

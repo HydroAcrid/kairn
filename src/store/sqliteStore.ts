@@ -16,6 +16,9 @@ import type {
   FileRecord,
   GraphEdgeRecord,
   HostSessionLinkRecord,
+  LexicalDocumentRecord,
+  LexicalStatsRecord,
+  LexicalTermRecord,
   MetricsEventRecord,
   SemanticChunkRecord,
   SemanticVectorRecord,
@@ -87,6 +90,31 @@ type SemanticVectorRow = {
   chunk_id: string;
   dimensions: number;
   vector_json: string;
+};
+
+type LexicalDocumentRow = {
+  root_path: string;
+  id: string;
+  file_path: string;
+  kind: LexicalDocumentRecord["kind"];
+  symbol: string | null;
+  length: number;
+  token_estimate: number;
+  hash: string;
+};
+
+type LexicalTermRow = {
+  root_path: string;
+  term: string;
+  document_id: string;
+  file_path: string;
+  frequency: number;
+};
+
+type LexicalStatsRow = {
+  root_path: string;
+  document_count: number;
+  average_document_length: number;
 };
 
 type ContextShownRow = {
@@ -263,12 +291,18 @@ export class SqliteStore {
     edges: GraphEdgeRecord[];
     semanticChunks?: SemanticChunkRecord[];
     semanticVectors?: SemanticVectorRecord[];
+    lexicalDocuments?: LexicalDocumentRecord[];
+    lexicalTerms?: LexicalTermRecord[];
+    lexicalStats?: LexicalStatsRecord;
   }): void {
     const deleteFiles = this.db.prepare("delete from file_inventory where root_path = ?");
     const deleteSymbols = this.db.prepare("delete from symbols where root_path = ?");
     const deleteEdges = this.db.prepare("delete from graph_edges where root_path = ?");
     const deleteChunks = this.db.prepare("delete from semantic_chunks where root_path = ?");
     const deleteVectors = this.db.prepare("delete from semantic_vectors where root_path = ?");
+    const deleteLexicalDocuments = this.db.prepare("delete from lexical_documents where root_path = ?");
+    const deleteLexicalTerms = this.db.prepare("delete from lexical_terms where root_path = ?");
+    const deleteLexicalStats = this.db.prepare("delete from lexical_stats where root_path = ?");
     const insertFile = this.db.prepare(`
       insert into file_inventory (
         root_path, path, language, kind, size, hash, importance, updated_at
@@ -304,8 +338,32 @@ export class SqliteStore {
         @rootPath, @chunkId, @dimensions, @vectorJson
       )
     `);
+    const insertLexicalDocument = this.db.prepare(`
+      insert into lexical_documents (
+        root_path, id, file_path, kind, symbol, length, token_estimate, hash
+      ) values (
+        @rootPath, @id, @filePath, @kind, @symbol, @length, @tokenEstimate, @hash
+      )
+    `);
+    const insertLexicalTerm = this.db.prepare(`
+      insert into lexical_terms (
+        root_path, term, document_id, file_path, frequency
+      ) values (
+        @rootPath, @term, @documentId, @filePath, @frequency
+      )
+    `);
+    const insertLexicalStats = this.db.prepare(`
+      insert into lexical_stats (
+        root_path, document_count, average_document_length
+      ) values (
+        @rootPath, @documentCount, @averageDocumentLength
+      )
+    `);
 
     const tx = this.db.transaction(() => {
+      deleteLexicalStats.run(input.rootPath);
+      deleteLexicalTerms.run(input.rootPath);
+      deleteLexicalDocuments.run(input.rootPath);
       deleteVectors.run(input.rootPath);
       deleteChunks.run(input.rootPath);
       deleteEdges.run(input.rootPath);
@@ -344,6 +402,21 @@ export class SqliteStore {
           ...vector,
           vectorJson: serializeVector(vector.vector)
         });
+      }
+
+      for (const document of input.lexicalDocuments ?? []) {
+        insertLexicalDocument.run({
+          ...document,
+          symbol: document.symbol ?? null
+        });
+      }
+
+      for (const term of input.lexicalTerms ?? []) {
+        insertLexicalTerm.run(term);
+      }
+
+      if (input.lexicalStats) {
+        insertLexicalStats.run(input.lexicalStats);
       }
     });
 
@@ -424,6 +497,30 @@ export class SqliteStore {
       .all(rootPath) as SemanticVectorRow[];
 
     return rows.map(mapSemanticVectorRow);
+  }
+
+  listLexicalDocuments(rootPath: string): LexicalDocumentRecord[] {
+    const rows = this.db
+      .prepare("select * from lexical_documents where root_path = ? order by file_path asc, kind asc, id asc")
+      .all(rootPath) as LexicalDocumentRow[];
+
+    return rows.map(mapLexicalDocumentRow);
+  }
+
+  listLexicalTerms(rootPath: string): LexicalTermRecord[] {
+    const rows = this.db
+      .prepare("select * from lexical_terms where root_path = ? order by term asc, document_id asc")
+      .all(rootPath) as LexicalTermRow[];
+
+    return rows.map(mapLexicalTermRow);
+  }
+
+  getLexicalStats(rootPath: string): LexicalStatsRecord | undefined {
+    const row = this.db
+      .prepare("select * from lexical_stats where root_path = ?")
+      .get(rootPath) as LexicalStatsRow | undefined;
+
+    return row ? mapLexicalStatsRow(row) : undefined;
   }
 
   createSession(input: {
@@ -1023,6 +1120,33 @@ export class SqliteStore {
         primary key (root_path, chunk_id)
       );
 
+      create table if not exists lexical_documents (
+        root_path text not null,
+        id text not null,
+        file_path text not null,
+        kind text not null,
+        symbol text,
+        length integer not null,
+        token_estimate integer not null,
+        hash text not null,
+        primary key (root_path, id)
+      );
+
+      create table if not exists lexical_terms (
+        root_path text not null,
+        term text not null,
+        document_id text not null,
+        file_path text not null,
+        frequency integer not null,
+        primary key (root_path, term, document_id)
+      );
+
+      create table if not exists lexical_stats (
+        root_path text primary key,
+        document_count integer not null,
+        average_document_length real not null
+      );
+
       create table if not exists command_records (
         id integer primary key autoincrement,
         session_id text not null references sessions(id) on delete cascade,
@@ -1162,6 +1286,9 @@ export class SqliteStore {
       create index if not exists graph_edges_root_to_idx on graph_edges(root_path, to_file);
       create index if not exists semantic_chunks_root_file_idx on semantic_chunks(root_path, file_path);
       create index if not exists semantic_vectors_root_chunk_idx on semantic_vectors(root_path, chunk_id);
+      create index if not exists lexical_documents_root_file_idx on lexical_documents(root_path, file_path);
+      create index if not exists lexical_terms_root_term_idx on lexical_terms(root_path, term);
+      create index if not exists lexical_terms_root_file_idx on lexical_terms(root_path, file_path);
     `);
   }
 }
@@ -1223,6 +1350,37 @@ function mapSemanticVectorRow(row: SemanticVectorRow): SemanticVectorRecord {
     chunkId: row.chunk_id,
     dimensions: row.dimensions,
     vector: deserializeVector(row.vector_json)
+  };
+}
+
+function mapLexicalDocumentRow(row: LexicalDocumentRow): LexicalDocumentRecord {
+  return {
+    rootPath: row.root_path,
+    id: row.id,
+    filePath: row.file_path,
+    kind: row.kind,
+    ...(row.symbol ? { symbol: row.symbol } : {}),
+    length: row.length,
+    tokenEstimate: row.token_estimate,
+    hash: row.hash
+  };
+}
+
+function mapLexicalTermRow(row: LexicalTermRow): LexicalTermRecord {
+  return {
+    rootPath: row.root_path,
+    term: row.term,
+    documentId: row.document_id,
+    filePath: row.file_path,
+    frequency: row.frequency
+  };
+}
+
+function mapLexicalStatsRow(row: LexicalStatsRow): LexicalStatsRecord {
+  return {
+    rootPath: row.root_path,
+    documentCount: row.document_count,
+    averageDocumentLength: row.average_document_length
   };
 }
 

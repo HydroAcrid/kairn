@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { buildRepoGraph } from "../src/graph/buildGraph.js";
+import { indexRepo } from "../src/indexer/indexRepo.js";
 import { parseSourceFile } from "../src/parser/parseFile.js";
 import type { FileRecord } from "../src/types.js";
+import { createFixtureRepo } from "./helpers.js";
 
 describe("buildRepoGraph", () => {
   it("builds import, reverse import, test, index, and parent route edges", () => {
@@ -38,6 +43,26 @@ describe("buildRepoGraph", () => {
     expect(edgeTypes(graph.edges, "app/dashboard/DashboardCard.tsx", "app/dashboard/page.tsx")).toContain(
       "parent_route"
     );
+  });
+
+  it("adds TypeScript language-service reference edges without replacing tree-sitter edges", async () => {
+    const root = createFixtureRepo();
+    const index = await indexRepo(root);
+
+    expect(edgeTypes(index.graph.edges, "src/user.ts", "src/app.ts")).toContain("reference");
+    expect(edgeTypes(index.graph.edges, "src/app.ts", "src/user.ts")).toContain("imports");
+  });
+
+  it("falls back gracefully when tsconfig is broken", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-broken-tsconfig-"));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.writeFileSync(path.join(root, "tsconfig.json"), "{ not valid json");
+    fs.writeFileSync(path.join(root, "src/a.ts"), "export const value = 1;\n");
+
+    const index = await indexRepo(root);
+
+    expect(index.graph.files.map((fileRecord) => fileRecord.path)).toContain("src/a.ts");
+    expect(index.graph.symbols.map((symbol) => symbol.name)).toContain("value");
   });
 });
 

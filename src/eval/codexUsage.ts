@@ -8,6 +8,14 @@ type TranscriptMetadata = {
   turnId?: string;
 };
 
+export type CodexTranscriptFeedback = {
+  filesRead: string[];
+  filesEdited: string[];
+  commands: string[];
+  testsRun: string[];
+  outcome?: "pass" | "fail" | "partial";
+};
+
 export function parseCodexUsageFooter(input: string): Omit<CodexUsageRecord, "source"> | undefined {
   const normalized = input.replace(/\s+/g, " ").trim();
   const match = normalized.match(
@@ -37,16 +45,19 @@ export function readCodexTranscript(input: {
 }): {
   usage?: Omit<CodexUsageRecord, "source">;
   metadata: TranscriptMetadata;
+  feedback: CodexTranscriptFeedback;
   transcriptPath: string;
   transcriptHash: string;
 } {
   const content = fs.readFileSync(input.transcriptPath, "utf8");
   const metadata = extractTranscriptMetadata(content);
   const usage = parseCodexUsageFooter(content) ?? extractUsageFromJsonl(content);
+  const feedback = extractTranscriptFeedback(content);
 
   return {
     ...(usage ? { usage } : {}),
     metadata,
+    feedback,
     transcriptPath: input.transcriptPath,
     transcriptHash: sha256(content)
   };
@@ -142,6 +153,93 @@ function extractTranscriptMetadata(input: string): TranscriptMetadata {
   }
 
   return metadata;
+}
+
+function extractTranscriptFeedback(input: string): CodexTranscriptFeedback {
+  const filesRead = new Set<string>();
+  const filesEdited = new Set<string>();
+  const commands = new Set<string>();
+  const testsRun = new Set<string>();
+  let passSignals = 0;
+  let failSignals = 0;
+
+  for (const line of input.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const lower = trimmed.toLowerCase();
+    if (/\b(pass|passed|success|succeeded)\b/.test(lower)) passSignals += 1;
+    if (/\b(fail|failed|error|exception)\b/.test(lower)) failSignals += 1;
+
+    if (trimmed.startsWith("{")) {
+      try {
+        collectFeedback(JSON.parse(trimmed) as unknown, { filesRead, filesEdited, commands, testsRun });
+        continue;
+      } catch {
+        // Fall through to text extraction.
+      }
+    }
+    for (const file of extractFileRefs(trimmed)) filesRead.add(file);
+  }
+
+  return {
+    filesRead: [...filesRead].sort(),
+    filesEdited: [...filesEdited].sort(),
+    commands: [...commands].slice(0, 60),
+    testsRun: [...testsRun].slice(0, 30),
+    ...(failSignals > passSignals ? { outcome: "fail" as const } : passSignals > 0 ? { outcome: "pass" as const } : {})
+  };
+}
+
+function collectFeedback(
+  value: unknown,
+  output: {
+    filesRead: Set<string>;
+    filesEdited: Set<string>;
+    commands: Set<string>;
+    testsRun: Set<string>;
+  },
+  parentKey = ""
+): void {
+  if (typeof value === "string") {
+    const key = parentKey.toLowerCase();
+    for (const file of extractFileRefs(value)) {
+      if (/(patch|edit|write|apply|update|modified|file_change)/.test(key)) output.filesEdited.add(file);
+      else output.filesRead.add(file);
+    }
+    if (/(command|cmd|shell|bash)/.test(key) || looksLikeCommand(value)) {
+      output.commands.add(value.trim());
+      if (/\b(test|vitest|jest|playwright|cypress|tsc|typecheck|lint)\b/i.test(value)) output.testsRun.add(value.trim());
+    }
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value.slice(0, 100)) collectFeedback(item, output, parentKey);
+    return;
+  }
+
+  if (!isRecord(value)) return;
+  const toolName = stringValue(value.tool_name) ?? stringValue(value.toolName) ?? stringValue(value.name) ?? "";
+  const editLikeTool = /\b(apply_patch|edit|write|replace|filechanged)\b/i.test(toolName);
+  for (const [key, nested] of Object.entries(value).slice(0, 80)) {
+    const nextKey = [parentKey, editLikeTool ? `edit ${key}` : key].filter(Boolean).join(" ");
+    collectFeedback(nested, output, nextKey);
+  }
+}
+
+function extractFileRefs(input: string): string[] {
+  const files = new Set<string>();
+  const pattern = /(?:^|\s|["'([])((?:\.{0,2}\/)?[^ "'()\n\r]+?\.(?:ts|tsx|js|jsx|mjs|cjs|json|css|scss|md|mdx))(?:[:)]|\s|$)/g;
+  for (const match of input.matchAll(pattern)) {
+    const candidate = match[1]?.replace(/^\.\//, "");
+    if (!candidate || candidate.includes("node_modules") || candidate.startsWith("../")) continue;
+    files.add(candidate);
+  }
+  return [...files];
+}
+
+function looksLikeCommand(value: string): boolean {
+  return /^(pnpm|npm|yarn|bun|npx|node|deno|git|rg|grep|sed|cat|ls|tsx|tsc)\b/.test(value.trim());
 }
 
 function collectMetadata(value: unknown, metadata: TranscriptMetadata): void {

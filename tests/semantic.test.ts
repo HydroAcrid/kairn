@@ -3,6 +3,7 @@ import { hybridSearch } from "../src/retrieval/hybridRetrieval.js";
 import { decideResponse } from "../src/retrieval/responseRouter.js";
 import { embedText, cosineSimilarity } from "../src/semantic/vector.js";
 import { indexRepo } from "../src/indexer/indexRepo.js";
+import { buildLexicalIndex } from "../src/lexical/bm25.js";
 import type { FileRecord, GraphEdgeRecord, SemanticChunkRecord, SemanticVectorRecord, SymbolRecord } from "../src/types.js";
 import { createFixtureRepo } from "./helpers.js";
 
@@ -188,6 +189,33 @@ describe("hybridSearch", () => {
       const noisyIndex = results.findIndex((result) => result.path === noisyFile);
       expect(noisyIndex === -1 || noisyIndex > lastExpectedIndex).toBe(true);
     }
+  });
+
+  it("uses BM25 exact matches for status and API identifier terms", () => {
+    const fixture = jobTrackerFixture();
+    const lexical = buildLexicalIndex({
+      rootPath: "/repo",
+      files: fixture.files,
+      symbols: fixture.symbols,
+      chunks: fixture.chunks
+    });
+    const results = hybridSearch({
+      ...fixture,
+      lexicalDocuments: lexical.documents,
+      lexicalTerms: lexical.terms,
+      lexicalStats: lexical.stats,
+      query: "sourceEmailId needs_review PostToolUse FileChanged",
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.bm25Score).toBeGreaterThan(0);
+    expect(results.slice(0, 4).map((result) => result.path)).toEqual(
+      expect.arrayContaining([
+        "src/app/api/jobs/sync-attempts/[sourceEmailId]/route.ts",
+        "src/app/api/jobs/sync-attempts/route.ts"
+      ])
+    );
+    expect(results[0]?.reasons.some((reason) => reason.includes("bm25 exact match"))).toBe(true);
   });
 
   it("boosts tests only when tests are requested", () => {

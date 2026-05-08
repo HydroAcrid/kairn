@@ -589,3 +589,26 @@ Validation:
 - The prime brief now lists `packages/query-core/src/utils.ts` first in both `Start Here` and `Ranked Files`.
 
 This does not prove observed Codex savings yet. It fixes the known retrieval miss that made Kairn harmful on the hidden-path seeded run. The next live Codex proof should rerun the same hidden-path TanStack case and compare against the previous reports.
+
+## Context Quality Layer Patch
+
+Implemented after the behavior patch to address the broader reasons Kairn can still lose to modern Codex.
+
+What changed:
+
+- Added TypeScript language-service graph enrichment on top of Tree-sitter parsing.
+- Added persisted BM25 lexical indexing for exact identifiers and status terms.
+- Added size guards so TypeScript enrichment and lexical persistence stay best-effort on large monorepos instead of blocking prime.
+- Added failure-first context for test/lint/typecheck failures, including CLI and MCP surfaces.
+- Routed hook failures through failure context instead of generic compression.
+- Added prime quality scoring so exact-path or low-confidence prompts shrink or suppress proactive context.
+- Added MCP-first helper tools: `kairn_prepare_task`, `kairn_get_next_context`, and `kairn_get_failure_context`.
+- Added transcript-aware feedback extraction for files read, files edited, commands, test commands, and outcome hints without storing raw transcripts.
+
+Validation:
+
+- Added unit/integration tests for TypeScript graph enrichment, BM25 exact matches, failure-first context, prime suppression, MCP tools, and transcript feedback.
+- Verification passed with `pnpm test`, `pnpm typecheck`, and `pnpm build`.
+- Re-ran `kairn prime` against the previous hidden-path TanStack workspace. It completed without launching Codex, emitted `quality.action = emit`, and ranked `packages/query-core/src/utils.ts` first.
+
+Next validation should rerun the seeded TanStack hidden-path proof. Success means Kairn no longer loses tokens on the hidden-path case; the stronger target is at least 20% median observed token savings on repeated debugging cases.

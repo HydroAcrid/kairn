@@ -46,6 +46,8 @@ describe("Codex usage parsing", () => {
       transcriptPath,
       [
         JSON.stringify({ session_id: "codex-session", turn_id: "turn_123", model: "gpt-5.4" }),
+        JSON.stringify({ tool_name: "Bash", tool_input: { command: "pnpm test src/app.test.ts" } }),
+        JSON.stringify({ tool_name: "apply_patch", tool_input: { file_path: "src/app.ts" } }),
         JSON.stringify({ usage: { total_tokens: 1200, input_tokens: 1000, cached_input_tokens: 400, output_tokens: 200 } })
       ].join("\n")
     );
@@ -58,6 +60,8 @@ describe("Codex usage parsing", () => {
       turnId: "turn_123"
     });
     expect(transcript.usage?.totalTokens).toBe(1200);
+    expect(transcript.feedback.filesEdited).toContain("src/app.ts");
+    expect(transcript.feedback.testsRun).toContain("pnpm test src/app.test.ts");
     expect(transcript.transcriptHash).toHaveLength(64);
   });
 });
@@ -96,6 +100,21 @@ describe("eval runtime", () => {
       summary: "Completed with fewer context reads.",
       files: ["src/app.ts"]
     });
+    const transcriptPath = path.join(root, "codex-transcript.jsonl");
+    fs.writeFileSync(
+      transcriptPath,
+      [
+        JSON.stringify({ tool_name: "Bash", tool_input: { command: "cat src/app.ts" } }),
+        JSON.stringify({ tool_name: "apply_patch", tool_input: { file_path: "src/app.ts" } }),
+        JSON.stringify({ usage: { total_tokens: 1200, input_tokens: 1050, cached_input_tokens: 300, output_tokens: 150 } })
+      ].join("\n")
+    );
+    runtime.ingestCodexUsage({
+      sessionId: session.id,
+      runId: kairn.id,
+      transcriptPath
+    });
+    const feedback = runtime.getEvalFeedback({ sessionId: session.id });
 
     const report = runtime.getEvalReport({ runId: kairn.id });
     const comparison = runtime.compareEvalRuns({
@@ -107,6 +126,8 @@ describe("eval runtime", () => {
     expect("run" in report && report.codexUsage?.totalTokens).toBe(1200);
     expect(comparison.observedTokenDelta?.savedTokens).toBe(800);
     expect(comparison.outcomeNotes[0]?.summary).toContain("fewer context");
+    expect(feedback.kind).toBe("retrieval_feedback");
+    expect(feedback.summary).toContain("recommended file");
     expect(metrics.observed.latestCodexUsage?.cachedInputTokens).toBe(300);
 
     runtime.close();
@@ -237,9 +258,16 @@ describe("eval CLI", () => {
         encoding: "utf8"
       })
     ) as { observed: { latestCodexUsage?: { totalTokens: number } } };
+    const feedback = JSON.parse(
+      execFileSync(CLI[0]!, [...CLI.slice(1), "eval", "feedback", "--session", parsed.session.id, "--root", root, "--json"], {
+        cwd: process.cwd(),
+        encoding: "utf8"
+      })
+    ) as { kind: string };
 
     expect(report).toContain("Observed Codex tokens: 1500 total");
     expect(comparison.observedTokenDelta?.savedTokens).toBe(500);
     expect(metrics.observed.latestCodexUsage?.totalTokens).toBe(1500);
+    expect(feedback.kind).toBe("retrieval_feedback");
   });
 });

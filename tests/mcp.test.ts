@@ -23,6 +23,9 @@ describe("MCP server", () => {
     const tools = await client.listTools();
     expect(tools.tools.map((tool) => tool.name)).toContain("kairn_start_task");
     expect(tools.tools.map((tool) => tool.name)).toContain("kairn_get_metrics");
+    expect(tools.tools.map((tool) => tool.name)).toContain("kairn_prepare_task");
+    expect(tools.tools.map((tool) => tool.name)).toContain("kairn_get_failure_context");
+    expect(tools.tools.map((tool) => tool.name)).toContain("kairn_get_next_context");
 
     const started = await client.callTool({
       name: "kairn_start_task",
@@ -55,6 +58,16 @@ describe("MCP server", () => {
     const contextText = firstTextContent(context);
     expect(contextText).toContain("DashboardMetrics");
     expect(contextText).toContain("snippets");
+
+    const failure = await client.callTool({
+      name: "kairn_get_failure_context",
+      arguments: {
+        sessionId: parsed.session.id,
+        type: "test",
+        output: "FAIL src/app.test.ts\nsrc/app.test.ts:4:10 Expected true to be false"
+      }
+    });
+    expect(firstTextContent(failure)).toContain("Kairn Failure Context");
 
     const metrics = await client.callTool({
       name: "kairn_get_metrics",
