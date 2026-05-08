@@ -417,6 +417,49 @@ describe("KairnRuntime watch behavior", () => {
     runtime.close();
   });
 
+  it("supports tiny directive and failure-only hook output profiles", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const event = normalizeHookPayload({
+      source: "codex",
+      payload: {
+        cwd: root,
+        hook_event_name: "UserPromptSubmit",
+        session_id: "codex-session",
+        turn_id: "turn_1",
+        prompt: "Fix the job tracker mobile layout bottom sheet"
+      }
+    });
+    const tiny = await runtime.handleHookEvent({
+      event,
+      hookOutput: "tiny-directive",
+      primeBudget: 600
+    });
+    const failureOnly = await runtime.handleHookEvent({
+      event: normalizeHookPayload({
+        source: "codex",
+        payload: {
+          cwd: root,
+          hook_event_name: "UserPromptSubmit",
+          session_id: "codex-failure-only-session",
+          turn_id: "turn_1",
+          prompt: "Fix the job tracker mobile layout bottom sheet"
+        }
+      }),
+      hookOutput: "failure-only",
+      primeBudget: 600
+    });
+
+    expect(tiny.prime?.content).toContain("Kairn Start Points");
+    expect(tiny.prime?.content).toContain("Use these before broad repo search");
+    expect(tiny.prime?.tokenEstimate).toBeLessThanOrEqual(600);
+    expect(tiny.prime?.files).toContain("src/app/private/jobs/JobsApplicationsTable.tsx");
+    expect(failureOnly.prime).toBeUndefined();
+    expect(failureOnly.recommendation).toBeUndefined();
+
+    runtime.close();
+  });
+
   it("records low-confidence sessionless prompt hooks without emitting context", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);
@@ -571,7 +614,7 @@ describe("watch and hook CLI", () => {
         cwd: process.cwd(),
         encoding: "utf8"
       })
-    ) as { configPath: string; hooksPath: string; primeBudget: number };
+    ) as { configPath: string; hooksPath: string; primeBudget: number; hookOutput: string; postToolHookOutput: string };
     const config = fs.readFileSync(setup.configPath, "utf8");
     const hooks = fs.readFileSync(setup.hooksPath, "utf8");
     const observe = JSON.parse(
@@ -614,14 +657,18 @@ describe("watch and hook CLI", () => {
     });
     const hostParsed = JSON.parse(hostOutput) as { hookSpecificOutput: { hookEventName: string; additionalContext: string } };
 
-    expect(setup.primeBudget).toBe(1200);
+    expect(setup.primeBudget).toBe(600);
+    expect(setup.hookOutput).toBe("tiny-directive");
+    expect(setup.postToolHookOutput).toBe("failure-only");
     expect(config).toContain("codex_hooks = true");
-    expect(hooks).toContain("--prime-budget 1200");
+    expect(hooks).toContain("--prime-budget 600");
+    expect(hooks).toContain("--hook-output tiny-directive");
     expect(hooks).not.toContain("--session");
     expect(hooks).not.toContain("PostToolUse");
     expect(observe.mode).toBe("observe");
     expect(observeHooks).toContain("PostToolUse");
     expect(observeHooks).toContain("Bash|apply_patch|mcp__.*");
+    expect(observeHooks).toContain("--hook-output failure-only");
     expect(debug.mode).toBe("debug");
     expect(debugHooks).toContain("\"matcher\": \".*\"");
     expect(debugHooks).toContain("Stop");

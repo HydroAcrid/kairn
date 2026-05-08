@@ -615,7 +615,7 @@ describe("benchmark runtime and CLI", () => {
       })
     );
     const commandForTokens =
-      "node -e \"const p=process.argv[1]||''; console.error('tokens used'); console.error(p.includes('Kairn Proactive Context') ? '1,000' : '3,000')\" {prompt}";
+      "node -e \"const p=process.argv[1]||''; console.error('tokens used'); console.error(p.includes('Kairn Proactive Context') ? '1,000' : p.includes('kairn_prepare_task') ? '1,500' : '3,000')\" {prompt}";
     const proof = JSON.parse(
       execFileSync(
         CLI[0]!,
@@ -633,6 +633,8 @@ describe("benchmark runtime and CLI", () => {
           commandForTokens,
           "--manual-prime-command",
           commandForTokens,
+          "--mcp-first-command",
+          commandForTokens,
           "--repeat",
           "2",
           "--shuffle-order",
@@ -644,6 +646,7 @@ describe("benchmark runtime and CLI", () => {
       observedTokenDeltas: { proactiveVsBaseline?: { beforeTokens: number; afterTokens: number; savedTokens: number } };
       aggregate?: { repeat: number; deltas: { manualPrimeVsBaseline?: { savedTokens?: number; savingsRate?: number } } };
       proactive: { results: Array<{ metadata: Record<string, unknown> }> };
+      mcpFirst?: { results: Array<{ metadata: Record<string, unknown>; observedCodexTokens?: number }> };
     };
 
     expect(proof.observedTokenDeltas.proactiveVsBaseline).toMatchObject({
@@ -653,8 +656,40 @@ describe("benchmark runtime and CLI", () => {
     });
     expect(proof.proactive.results[0]?.metadata.assistanceMode).toBe("manual_prime");
     expect(proof.proactive.results[0]?.metadata.primeTokenEstimate).toBeGreaterThan(0);
+    expect(proof.mcpFirst?.results[0]?.metadata.mcpFirstInstructionsPrepended).toBe(true);
+    expect(proof.mcpFirst?.results[0]?.observedCodexTokens).toBe(1500);
     expect(proof.aggregate?.repeat).toBe(2);
     expect(proof.aggregate?.deltas.manualPrimeVsBaseline?.savedTokens).toBe(2000);
+  });
+
+  it("supports kairn codex dry-run and MCP instruction setup", () => {
+    const root = createFixtureRepo();
+    fs.writeFileSync(path.join(root, "AGENTS.md"), "# Existing Instructions\n");
+    const setup = JSON.parse(
+      execFileSync(CLI[0]!, [...CLI.slice(1), "setup", "mcp-instructions", "--root", root, "--json"], {
+        cwd: process.cwd(),
+        encoding: "utf8"
+      })
+    ) as { instructionsPath: string };
+    execFileSync(CLI[0]!, [...CLI.slice(1), "setup", "mcp-instructions", "--root", root], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+    const instructions = fs.readFileSync(setup.instructionsPath, "utf8");
+    const dryRun = JSON.parse(
+      execFileSync(
+        CLI[0]!,
+        [...CLI.slice(1), "codex", "Find job tracker mobile layout files", "--root", root, "--dry-run", "--json"],
+        { cwd: process.cwd(), encoding: "utf8" }
+      )
+    ) as { args: string[]; prompt: string; prime: { files: string[] } };
+
+    expect(instructions).toContain("# Existing Instructions");
+    expect(instructions.match(/kairn:mcp-first:start/g)?.length).toBe(1);
+    expect(dryRun.args[0]).toBe("exec");
+    expect(dryRun.prompt).toContain("Kairn Proactive Context");
+    expect(dryRun.prompt).toContain("User task:");
+    expect(dryRun.prime.files).toContain("src/app/private/jobs/JobsApplicationsTable.tsx");
   });
 });
 

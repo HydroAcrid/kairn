@@ -82,7 +82,7 @@ Examples live in `examples/.codex/config.toml`, `examples/.codex/hooks.json`, an
 kairn setup codex --root /path/to/repo
 ```
 
-After that, open normal `codex` in the repo and submit a task. The default `savings` setup installs only `UserPromptSubmit`, so Kairn can create or reuse a task session and inject proactive context before Codex starts broad repo scanning. Use `--mode observe` to add quiet post-tool hooks for failures and meaningful output, `--mode debug` for broad diagnostics, or `--mode mcp-first` when you want savings hooks plus manual MCP setup guidance. If the hook host cannot find the global `kairn` binary, set `KAIRN_CMD` to an absolute command such as `node /Users/kevindotel/Documents/Projects/kairn/dist/cli.js`.
+After that, open normal `codex` in the repo and submit a task. The default `savings` setup installs only `UserPromptSubmit` with a tiny directive brief, so Kairn can create or reuse a task session and point Codex at the smallest likely start files before broad repo scanning. Use `--hook-output full-prime` for delivery experiments, `--mode observe --post-tool-hook-output failure-only` to add failure-only post-tool context, `--mode debug` for broad diagnostics, or `--mode mcp-first` when you want savings hooks plus MCP setup guidance. If the hook host cannot find the global `kairn` binary, set `KAIRN_CMD` to an absolute command such as `node /Users/kevindotel/Documents/Projects/kairn/dist/cli.js`.
 
 Codex project hooks require a trusted repo `.codex/` config and the hooks feature flag:
 
@@ -91,7 +91,7 @@ Codex project hooks require a trusted repo `.codex/` config and the hooks featur
 codex_hooks = true
 ```
 
-The Codex example uses the savings-first setup: proactive `UserPromptSubmit` only. Stop and post-tool hooks are supported in observe/debug modes, but Kairn only emits host JSON when it has useful additional context. The Claude example observes `PostToolUse`, `PostToolUseFailure`, and `FileChanged` for common project config files; use `kairn watch` for repo-wide file observation.
+The Codex example uses the savings-first setup: proactive `UserPromptSubmit` only. Stop and post-tool hooks are supported in observe/debug modes, but Kairn only emits host JSON when it has useful additional context. For lower latency, run `kairn daemon --root /path/to/repo` in another terminal; hooks will use the warm runtime when available and fall back to direct CLI execution otherwise. The Claude example observes `PostToolUse`, `PostToolUseFailure`, and `FileChanged` for common project config files; use `kairn watch` for repo-wide file observation.
 
 ## Metrics
 
@@ -230,7 +230,13 @@ kairn prime "job tracker mobile layout" --root "$TARGET_REPO" --profile auto
 kairn prime "job tracker mobile layout" --root "$TARGET_REPO" --json
 ```
 
-Normal Codex can receive the same style of context through the prompt-submit hook after `kairn setup codex`. This is the preferred everyday path because users can keep using Codex normally while Kairn quietly primes high-confidence task prompts. If the prompt already names an exact indexed file or retrieval confidence is low, Kairn shrinks or suppresses the prime to avoid wasting tokens.
+For the proven high-savings path without manual copy/paste, use the Codex wrapper:
+
+```bash
+kairn codex "debug the query key hashing regression" --root "$TARGET_REPO" --model gpt-5.4-mini
+```
+
+Normal Codex can receive automatic context through the prompt-submit hook after `kairn setup codex`. Hook delivery is useful for everyday low-friction usage, but benchmark it separately from manual/wrapper prime because Codex may weight hook `additionalContext` differently from prompt-prepended context.
 
 To prove whether proactive context helps, compare live-agent modes. Repeat runs are preferred because live Codex usage has high variance:
 
@@ -239,16 +245,24 @@ kairn bench prove \
   --root "$TARGET_REPO" \
   --suite examples/bench/job-tracker-agent-light.json \
   --baseline-command "codex exec --model gpt-5.4-mini --disable codex_hooks {prompt}" \
-  --prompt-only-command "kairn setup codex --root {root} --mode savings >/dev/null && codex exec --model gpt-5.4-mini --enable codex_hooks {prompt}" \
+  --hook-full-prime-command "kairn setup codex --root {root} --mode savings --hook-output full-prime >/dev/null && codex exec --model gpt-5.4-mini --enable codex_hooks {prompt}" \
+  --hook-tiny-directive-command "kairn setup codex --root {root} --mode savings --hook-output tiny-directive >/dev/null && codex exec --model gpt-5.4-mini --enable codex_hooks {prompt}" \
+  --hook-tiny-with-failures-command "kairn setup codex --root {root} --mode observe --hook-output tiny-directive --post-tool-hook-output failure-only >/dev/null && codex exec --model gpt-5.4-mini --enable codex_hooks {prompt}" \
   --manual-prime-command "codex exec --model gpt-5.4-mini --disable codex_hooks {prompt}" \
+  --mcp-first-command "codex exec --model gpt-5.4-mini --disable codex_hooks {prompt}" \
   --repeat 3 \
   --shuffle-order \
   --json
 ```
 
-V1 treats post-tool hooks as observation/failure support, not the main savings path. The key validation number is median observed Codex tokens for prompt-only proactive hooks versus baseline.
+V1 treats post-tool hooks as observation/failure support, not the main savings path. The key validation number is median observed Codex tokens for each automatic mode versus baseline and manual prime.
 
 MCP remains an explicit tool surface: `kairn serve --mcp` gives an agent Kairn context tools, but the agent must call those tools or be instructed to ask Kairn before reading files directly. The MCP server includes `kairn_prepare_task`, `kairn_get_next_context`, and `kairn_get_failure_context` for MCP-first workflows where the agent asks Kairn before broad file reads.
+
+```bash
+kairn setup mcp-instructions --root "$TARGET_REPO"
+kairn serve --mcp --root "$TARGET_REPO"
+```
 
 ## State
 

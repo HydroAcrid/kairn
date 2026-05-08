@@ -96,6 +96,8 @@ export type PrimeProfile = "auto" | "ui" | "workflow" | "backend" | "test" | "ge
 
 export type CodexSetupMode = "savings" | "observe" | "debug" | "mcp-first";
 
+export type HookOutputProfile = "full-prime" | "tiny-directive" | "failure-only";
+
 export type FileRecord = {
   rootPath: string;
   path: string;
@@ -359,6 +361,10 @@ export type BenchmarkAssistanceMode =
   | "prompt_only"
   | "prompt_plus_hooks"
   | "manual_prime"
+  | "hook_full_prime"
+  | "hook_tiny_directive"
+  | "hook_tiny_with_failures"
+  | "mcp_first"
   | "passive_hooks"
   | "proactive";
 
@@ -467,6 +473,10 @@ export type BenchmarkProofReport = {
   promptOnly?: BenchmarkReport;
   promptPlusHooks?: BenchmarkReport;
   manualPrime?: BenchmarkReport;
+  hookFullPrime?: BenchmarkReport;
+  hookTinyDirective?: BenchmarkReport;
+  hookTinyWithFailures?: BenchmarkReport;
+  mcpFirst?: BenchmarkReport;
   passiveHooks: BenchmarkReport;
   proactive: BenchmarkReport;
   runs?: Partial<Record<BenchmarkAssistanceMode, BenchmarkReport[]>>;
@@ -492,6 +502,10 @@ export type BenchmarkProofReport = {
     promptOnlyVsBaseline?: BenchmarkComparison["observedTokenDelta"];
     promptPlusHooksVsBaseline?: BenchmarkComparison["observedTokenDelta"];
     manualPrimeVsBaseline?: BenchmarkComparison["observedTokenDelta"];
+    hookFullPrimeVsBaseline?: BenchmarkComparison["observedTokenDelta"];
+    hookTinyDirectiveVsBaseline?: BenchmarkComparison["observedTokenDelta"];
+    hookTinyWithFailuresVsBaseline?: BenchmarkComparison["observedTokenDelta"];
+    mcpFirstVsBaseline?: BenchmarkComparison["observedTokenDelta"];
   };
   caseDeltas: Array<{
     caseId: string;

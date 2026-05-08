@@ -22,6 +22,7 @@ import type {
   FileRecord,
   BenchmarkCaseMode,
   HookHandlingResult,
+  HookOutputProfile,
   HybridScoredResult,
   InitResult,
   MetricsBucket,
@@ -534,6 +535,10 @@ export class KairnRuntime {
     promptOnlyCommand?: string | undefined;
     promptPlusHooksCommand?: string | undefined;
     manualPrimeCommand?: string | undefined;
+    hookFullPrimeCommand?: string | undefined;
+    hookTinyDirectiveCommand?: string | undefined;
+    hookTinyWithFailuresCommand?: string | undefined;
+    mcpFirstCommand?: string | undefined;
     passiveCommand?: string | undefined;
     proactiveCommand?: string | undefined;
     agentTimeoutMs?: number | undefined;
@@ -547,12 +552,20 @@ export class KairnRuntime {
       ...(input.promptPlusHooksCommand ?? input.passiveCommand
         ? [{ mode: "prompt_plus_hooks" as const, command: (input.promptPlusHooksCommand ?? input.passiveCommand)! }]
         : []),
-      ...(input.manualPrimeCommand ?? input.proactiveCommand ? [{ mode: "manual_prime" as const, command: (input.manualPrimeCommand ?? input.proactiveCommand)! }] : [])
+      ...(input.manualPrimeCommand ?? input.proactiveCommand ? [{ mode: "manual_prime" as const, command: (input.manualPrimeCommand ?? input.proactiveCommand)! }] : []),
+      ...(input.hookFullPrimeCommand ? [{ mode: "hook_full_prime" as const, command: input.hookFullPrimeCommand }] : []),
+      ...(input.hookTinyDirectiveCommand ? [{ mode: "hook_tiny_directive" as const, command: input.hookTinyDirectiveCommand }] : []),
+      ...(input.hookTinyWithFailuresCommand ? [{ mode: "hook_tiny_with_failures" as const, command: input.hookTinyWithFailuresCommand }] : []),
+      ...(input.mcpFirstCommand ? [{ mode: "mcp_first" as const, command: input.mcpFirstCommand }] : [])
     ];
     const baselineReports: BenchmarkReport[] = [];
     const promptOnlyReports: BenchmarkReport[] = [];
     const promptPlusHooksReports: BenchmarkReport[] = [];
     const manualPrimeReports: BenchmarkReport[] = [];
+    const hookFullPrimeReports: BenchmarkReport[] = [];
+    const hookTinyDirectiveReports: BenchmarkReport[] = [];
+    const hookTinyWithFailuresReports: BenchmarkReport[] = [];
+    const mcpFirstReports: BenchmarkReport[] = [];
 
     for (let iteration = 0; iteration < repeat; iteration += 1) {
       const order = input.shuffleOrder ? shuffleItems(modeCommands) : modeCommands;
@@ -568,6 +581,10 @@ export class KairnRuntime {
         if (item.mode === "prompt_only" || item.mode === "passive_hooks") promptOnlyReports.push(report);
         if (item.mode === "prompt_plus_hooks") promptPlusHooksReports.push(report);
         if (item.mode === "manual_prime" || item.mode === "proactive") manualPrimeReports.push(report);
+        if (item.mode === "hook_full_prime") hookFullPrimeReports.push(report);
+        if (item.mode === "hook_tiny_directive") hookTinyDirectiveReports.push(report);
+        if (item.mode === "hook_tiny_with_failures") hookTinyWithFailuresReports.push(report);
+        if (item.mode === "mcp_first") mcpFirstReports.push(report);
       }
     }
 
@@ -586,6 +603,10 @@ export class KairnRuntime {
       promptOnly: promptOnlyReports,
       promptPlusHooks: promptPlusHooksReports,
       manualPrime: manualPrimeReports,
+      hookFullPrime: hookFullPrimeReports,
+      hookTinyDirective: hookTinyDirectiveReports,
+      hookTinyWithFailures: hookTinyWithFailuresReports,
+      mcpFirst: mcpFirstReports,
       repeat
     });
   }
@@ -1317,12 +1338,23 @@ export class KairnRuntime {
     event: NormalizedHookEvent;
     primeBudget?: number | undefined;
     primeProfile?: PrimeProfile | undefined;
+    hookOutput?: HookOutputProfile | undefined;
+    transport?: "cli" | "daemon" | undefined;
+    daemonAttempted?: boolean | undefined;
+    daemonHit?: boolean | undefined;
+    refreshIndex?: boolean | undefined;
   }): Promise<HookHandlingResult> {
+    const hookStartedAt = Date.now();
+    const hookOutput = input.hookOutput ?? "full-prime";
     const session = await this.resolveHookSession({
       sessionId: input.sessionId,
       event: input.event
     });
-    await this.refreshIndex(session.rootPath);
+    const refreshStartedAt = Date.now();
+    if (input.refreshIndex ?? true) {
+      await this.refreshIndex(session.rootPath);
+    }
+    const refreshIndexMs = Date.now() - refreshStartedAt;
     const knownFiles = this.store.listFiles(session.rootPath).map((file) => file.path);
     const outputKind = classifyObservedCommand({
       command: input.event.command,
@@ -1346,24 +1378,43 @@ export class KairnRuntime {
           promptHash
         })
     );
-    const prime = promptHash && !duplicatePromptPrime && isHighConfidencePrompt(input.event.eventName, input.event.output)
-      ? await this.primeContext({
-          task: input.event.output!,
-          sessionId: session.id,
-          budget: input.primeBudget ?? 1200,
-          mode: "snippets",
-          profile: input.primeProfile ?? "auto",
-          source: input.event.source,
-          eventName: "prime_context_hook",
-          metadata: {
-            promptHash,
-            hostSessionId: input.event.hostSessionId ?? null,
-            turnId: stringMetadata(input.event.metadata, "turn_id") ?? null,
-            hookEventName: input.event.eventName
+    let primeElapsedMs = 0;
+    const shouldPrimePrompt =
+      hookOutput !== "failure-only" &&
+      promptHash &&
+      !duplicatePromptPrime &&
+      isHighConfidencePrompt(input.event.eventName, input.event.output);
+    const prime = shouldPrimePrompt
+      ? await (async () => {
+          const startedAt = Date.now();
+          try {
+            return await this.primeContext({
+              task: input.event.output!,
+              sessionId: session.id,
+              budget: input.primeBudget ?? 1200,
+              mode: "snippets",
+              profile: input.primeProfile ?? "auto",
+              source: input.event.source,
+              eventName: "prime_context_hook",
+              metadata: {
+                promptHash,
+                hostSessionId: input.event.hostSessionId ?? null,
+                turnId: stringMetadata(input.event.metadata, "turn_id") ?? null,
+                hookEventName: input.event.eventName,
+                hookOutput,
+                transport: input.transport ?? "cli"
+              }
+            });
+          } finally {
+            primeElapsedMs = Date.now() - startedAt;
           }
-        })
+        })()
       : undefined;
-    const emittedPrime = prime?.quality?.action === "suppress" ? undefined : prime;
+    const emittedPrime = prime?.quality?.action === "suppress"
+      ? undefined
+      : prime && hookOutput === "tiny-directive"
+        ? withTinyDirectivePrime(prime, input.primeBudget ?? 600)
+        : prime;
     const failureContext = kind === "failure"
       ? await this.getFailureContext({
           sessionId: session.id,
@@ -1376,10 +1427,12 @@ export class KairnRuntime {
           eventName: input.event.eventName
         })
       : undefined;
+    const failureOnlyNonFailure = hookOutput === "failure-only" && kind !== "failure";
     const shouldCompressOutput =
       Boolean(input.event.output) &&
       !isPromptEvent(input.event.eventName) &&
       !failureContext &&
+      !failureOnlyNonFailure &&
       !isTrivialSuccessfulHook({
         eventKind: kind,
         command: input.event.command,
@@ -1401,6 +1454,8 @@ export class KairnRuntime {
       ? undefined
       : failureContext
         ? failureRecommendation(failureContext)
+        : failureOnlyNonFailure
+          ? undefined
         : await this.recommendFromHook({
           sessionId: session.id,
           command: input.event.command,
@@ -1433,7 +1488,14 @@ export class KairnRuntime {
         ...(input.event.hostSessionId ? { hostSessionId: input.event.hostSessionId } : {}),
         ...(input.event.timestamp ? { timestamp: input.event.timestamp } : {}),
         ...(promptHash ? { promptHash } : {}),
-        ...(duplicatePromptPrime ? { duplicatePromptPrime: true } : {})
+        ...(duplicatePromptPrime ? { duplicatePromptPrime: true } : {}),
+        hookOutput,
+        transport: input.transport ?? "cli",
+        daemonAttempted: Boolean(input.daemonAttempted),
+        daemonHit: Boolean(input.daemonHit),
+        refreshIndexMs,
+        primeElapsedMs,
+        hookLatencyMs: Date.now() - hookStartedAt
       }
     });
     this.recordMetricsEvent({
@@ -1449,8 +1511,15 @@ export class KairnRuntime {
         eventName: input.event.eventName,
         hookKind: kind,
         outputKind,
+        hookOutput,
+        transport: input.transport ?? "cli",
+        daemonAttempted: Boolean(input.daemonAttempted),
+        daemonHit: Boolean(input.daemonHit),
+        refreshIndexMs,
+        primeElapsedMs,
+        hookLatencyMs: Date.now() - hookStartedAt,
         linkedFiles: linkedFiles.length,
-        recommendation: emittedPrime ? "prime_emitted" : prime ? "prime_quality_suppressed" : recommendation ? "emitted" : duplicatePromptPrime ? "duplicate_suppressed" : promptHash ? "prompt_suppressed" : "suppressed",
+        recommendation: emittedPrime ? (hookOutput === "tiny-directive" ? "tiny_prime_emitted" : "prime_emitted") : prime ? "prime_quality_suppressed" : recommendation ? "emitted" : duplicatePromptPrime ? "duplicate_suppressed" : promptHash ? "prompt_suppressed" : "suppressed",
         proactivePrime: Boolean(emittedPrime),
         primeQuality: prime?.quality,
         failureContext: Boolean(failureContext),
@@ -1745,6 +1814,23 @@ export class KairnRuntime {
                 workspaceRuntime.close();
               }
             }
+          : input.assistanceMode === "mcp_first"
+            ? ({ prompt }) => ({
+                prompt: [
+                  "Kairn MCP-first instruction:",
+                  "Before broad file scans, call `kairn_prepare_task` with this task.",
+                  "For follow-up reads, call `kairn_get_next_context`.",
+                  "For failures, call `kairn_get_failure_context`.",
+                  "Use the smallest Kairn-recommended read before `rg --files`, large `sed`, or full-file reads.",
+                  "",
+                  "User task:",
+                  prompt
+                ].join("\n"),
+                metadata: {
+                  assistanceMode: "mcp_first",
+                  mcpFirstInstructionsPrepended: true
+                }
+              })
           : undefined
     });
     const workspaceMetrics = collectWorkspaceKairnMetrics(result.workspacePath);
@@ -2162,6 +2248,53 @@ function formatPrimeContext(input: {
   return fitSectionsToBudget(sections, input.budget);
 }
 
+function withTinyDirectivePrime(prime: ContextPrime, requestedBudget: number): ContextPrime {
+  const budget = Math.max(240, Math.min(600, requestedBudget));
+  const content = formatTinyDirectivePrime({ prime, budget });
+  return {
+    ...prime,
+    content,
+    tokenEstimate: estimateTokens(content),
+    warnings: uniqueStrings([...prime.warnings, "tiny directive hook output"])
+  };
+}
+
+function formatTinyDirectivePrime(input: { prime: ContextPrime; budget: number }): string {
+  const files = input.prime.files.slice(0, 3);
+  const likelyTest = files.find((file) => /\b(test|spec)\b|__tests__/.test(file));
+  const symbols = extractPrimeSymbolHints(input.prime.content).slice(0, 4);
+  const lines = [
+    "# Kairn Start Points",
+    "",
+    "Use these before broad repo search.",
+    "",
+    `Task: ${input.prime.task}`,
+    `Session: ${input.prime.session.id}`,
+    "",
+    "Start here:",
+    files.length > 0
+      ? files.map((file, index) => `${index + 1}. ${file}`).join("\n")
+      : "No high-confidence start file found.",
+    symbols.length > 0 ? `Symbols: ${symbols.join(", ")}` : "",
+    likelyTest ? `Likely test: ${likelyTest}` : "",
+    "",
+    "Instruction: inspect the start files first; only use broad search if these are insufficient."
+  ].filter(Boolean);
+
+  return fitSectionsToBudget(lines, input.budget);
+}
+
+function extractPrimeSymbolHints(content: string): string[] {
+  const symbols: string[] = [];
+  for (const match of content.matchAll(/\bsymbol match:\s*([A-Za-z_$][\w$]*)/g)) {
+    symbols.push(match[1]!);
+  }
+  for (const match of content.matchAll(/\bsymbol:\s*([A-Za-z_$][\w$]*)/g)) {
+    symbols.push(match[1]!);
+  }
+  return uniqueStrings(symbols);
+}
+
 function evaluatePrimeQuality(input: {
   task: string;
   context: ContextResponse;
@@ -2333,17 +2466,29 @@ function buildBenchmarkProofReport(input: {
   promptOnly: BenchmarkReport[];
   promptPlusHooks: BenchmarkReport[];
   manualPrime: BenchmarkReport[];
+  hookFullPrime: BenchmarkReport[];
+  hookTinyDirective: BenchmarkReport[];
+  hookTinyWithFailures: BenchmarkReport[];
+  mcpFirst: BenchmarkReport[];
   repeat: number;
 }): BenchmarkProofReport {
   const baseline = latestReport(input.baseline);
   const promptOnly = optionalLatestReport(input.promptOnly);
   const promptPlusHooks = optionalLatestReport(input.promptPlusHooks);
   const manualPrime = optionalLatestReport(input.manualPrime);
+  const hookFullPrime = optionalLatestReport(input.hookFullPrime);
+  const hookTinyDirective = optionalLatestReport(input.hookTinyDirective);
+  const hookTinyWithFailures = optionalLatestReport(input.hookTinyWithFailures);
+  const mcpFirst = optionalLatestReport(input.mcpFirst);
   const passiveHooks = promptPlusHooks ?? promptOnly ?? baseline;
   const proactive = manualPrime ?? baseline;
   const promptOnlyVsBaseline = promptOnly ? compareBenchmarkReports(baseline, promptOnly) : undefined;
   const promptPlusVsBaseline = promptPlusHooks ? compareBenchmarkReports(baseline, promptPlusHooks) : undefined;
   const manualPrimeVsBaseline = manualPrime ? compareBenchmarkReports(baseline, manualPrime) : undefined;
+  const hookFullPrimeVsBaseline = hookFullPrime ? compareBenchmarkReports(baseline, hookFullPrime) : undefined;
+  const hookTinyDirectiveVsBaseline = hookTinyDirective ? compareBenchmarkReports(baseline, hookTinyDirective) : undefined;
+  const hookTinyWithFailuresVsBaseline = hookTinyWithFailures ? compareBenchmarkReports(baseline, hookTinyWithFailures) : undefined;
+  const mcpFirstVsBaseline = mcpFirst ? compareBenchmarkReports(baseline, mcpFirst) : undefined;
   const proactiveVsPassive = manualPrime && passiveHooks ? compareBenchmarkReports(passiveHooks, manualPrime) : undefined;
   const baselineByCase = new Map(baseline.results.map((result) => [result.caseId, result]));
   const promptOnlyByCase = new Map(promptOnly?.results.map((result) => [result.caseId, result]) ?? []);
@@ -2378,13 +2523,21 @@ function buildBenchmarkProofReport(input: {
       baseline: input.baseline,
       prompt_only: input.promptOnly,
       prompt_plus_hooks: input.promptPlusHooks,
-      manual_prime: input.manualPrime
+      manual_prime: input.manualPrime,
+      hook_full_prime: input.hookFullPrime,
+      hook_tiny_directive: input.hookTinyDirective,
+      hook_tiny_with_failures: input.hookTinyWithFailures,
+      mcp_first: input.mcpFirst
     }
   });
   const recommendations = uniqueStrings([
     recommendationForDelta("Prompt-only hooks vs baseline", promptOnlyVsBaseline?.observedTokenDelta),
     recommendationForDelta("Prompt+tool hooks vs baseline", promptPlusVsBaseline?.observedTokenDelta),
     recommendationForDelta("Manual prime vs baseline", manualPrimeVsBaseline?.observedTokenDelta),
+    recommendationForDelta("Hook full prime vs baseline", hookFullPrimeVsBaseline?.observedTokenDelta),
+    recommendationForDelta("Hook tiny directive vs baseline", hookTinyDirectiveVsBaseline?.observedTokenDelta),
+    recommendationForDelta("Hook tiny+failures vs baseline", hookTinyWithFailuresVsBaseline?.observedTokenDelta),
+    recommendationForDelta("MCP-first vs baseline", mcpFirstVsBaseline?.observedTokenDelta),
     ...(manualPrimeVsBaseline?.recommendations.slice(0, 4) ?? promptOnlyVsBaseline?.recommendations.slice(0, 4) ?? [])
   ]);
 
@@ -2393,19 +2546,31 @@ function buildBenchmarkProofReport(input: {
     ...(promptOnly ? { promptOnly } : {}),
     ...(promptPlusHooks ? { promptPlusHooks } : {}),
     ...(manualPrime ? { manualPrime } : {}),
+    ...(hookFullPrime ? { hookFullPrime } : {}),
+    ...(hookTinyDirective ? { hookTinyDirective } : {}),
+    ...(hookTinyWithFailures ? { hookTinyWithFailures } : {}),
+    ...(mcpFirst ? { mcpFirst } : {}),
     passiveHooks,
     proactive,
     runs: {
       baseline: input.baseline,
       prompt_only: input.promptOnly,
       prompt_plus_hooks: input.promptPlusHooks,
-      manual_prime: input.manualPrime
+      manual_prime: input.manualPrime,
+      hook_full_prime: input.hookFullPrime,
+      hook_tiny_directive: input.hookTinyDirective,
+      hook_tiny_with_failures: input.hookTinyWithFailures,
+      mcp_first: input.mcpFirst
     },
     aggregate,
     observedTokenDeltas: {
       ...(promptOnlyVsBaseline?.observedTokenDelta ? { promptOnlyVsBaseline: promptOnlyVsBaseline.observedTokenDelta } : {}),
       ...(promptPlusVsBaseline?.observedTokenDelta ? { promptPlusHooksVsBaseline: promptPlusVsBaseline.observedTokenDelta } : {}),
       ...(manualPrimeVsBaseline?.observedTokenDelta ? { manualPrimeVsBaseline: manualPrimeVsBaseline.observedTokenDelta } : {}),
+      ...(hookFullPrimeVsBaseline?.observedTokenDelta ? { hookFullPrimeVsBaseline: hookFullPrimeVsBaseline.observedTokenDelta } : {}),
+      ...(hookTinyDirectiveVsBaseline?.observedTokenDelta ? { hookTinyDirectiveVsBaseline: hookTinyDirectiveVsBaseline.observedTokenDelta } : {}),
+      ...(hookTinyWithFailuresVsBaseline?.observedTokenDelta ? { hookTinyWithFailuresVsBaseline: hookTinyWithFailuresVsBaseline.observedTokenDelta } : {}),
+      ...(mcpFirstVsBaseline?.observedTokenDelta ? { mcpFirstVsBaseline: mcpFirstVsBaseline.observedTokenDelta } : {}),
       ...(promptPlusVsBaseline?.observedTokenDelta ? { passiveVsBaseline: promptPlusVsBaseline.observedTokenDelta } : {}),
       ...(manualPrimeVsBaseline?.observedTokenDelta ? { proactiveVsBaseline: manualPrimeVsBaseline.observedTokenDelta } : {}),
       ...(proactiveVsPassive?.observedTokenDelta ? { proactiveVsPassive: proactiveVsPassive.observedTokenDelta } : {})

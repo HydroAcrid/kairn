@@ -612,3 +612,112 @@ Validation:
 - Re-ran `kairn prime` against the previous hidden-path TanStack workspace. It completed without launching Codex, emitted `quality.action = emit`, and ranked `packages/query-core/src/utils.ts` first.
 
 Next validation should rerun the seeded TanStack hidden-path proof. Success means Kairn no longer loses tokens on the hidden-path case; the stronger target is at least 20% median observed token savings on repeated debugging cases.
+
+## Context Quality Layer Live Proof
+
+Report:
+
+```text
+/tmp/kairn-tanstack-hidden-hash-live-proof-20260507204224.json
+```
+
+After the context quality layer, the same hidden-path TanStack regression was rerun against real Codex agents in disposable workspaces.
+
+| Mode | Outcome | Observed tokens | Delta vs baseline | Prime/hook signal |
+| --- | --- | ---: | ---: | --- |
+| Baseline | pass | `62,629` | - | none |
+| Prompt-only savings hook | pass | `76,343` | `-21.90%` | `primeEmitted=1`, `primeTokens=971`, `hookInvocations=1` |
+| Prompt + observe hooks | timeout/fail | unavailable | unavailable | `primeEmitted=1`, `primeTokens=971`, `hookInvocations=20`; seeded verification passed before timeout |
+| Manual prime | pass | `40,942` | `+34.63%` | `primeEmitted=1`, `primeTokens=883`, `hookInvocations=0` |
+
+What improved:
+
+- Manual proactive context now works on the hidden-path debugging task.
+- Kairn ranked `packages/query-core/src/utils.ts` first and the agent fixed the seeded failure.
+- Manual prime saved `21,687` observed Codex tokens versus baseline, roughly `35%`.
+
+What still failed:
+
+- Sessionless `UserPromptSubmit` prompt-hook delivery is not equivalent to prepending the same prime brief to the prompt. It emitted context, but Codex used more tokens than baseline.
+- Prompt + observe hooks are still too heavy for savings-oriented usage. The run fixed the seeded file according to verification, but the agent process hit the timeout after `20` hook invocations.
+- The benchmark still flags response-budget issues because live agent output is much larger than the benchmark case budget.
+
+Current product implication:
+
+- `kairn prime` / manual preloading is the proven savings path.
+- Prompt-submit hooks are mechanically working but behaviorally weaker than manual prime.
+- Observe hooks should stay out of the default savings path until they prove a net benefit.
+
+Next implementation target:
+
+- Make normal Codex usage behave closer to manual prime, not just emit hook context.
+- Investigate why Codex treats hook `additionalContext` differently from prompt-prepended context.
+- Consider a `kairn codex "<task>"` wrapper or setup-generated shell alias that prepends `kairn prime` directly before launching Codex.
+- Keep prompt hooks as a fallback, but do not position them as the primary savings interface until repeated proofs show positive median savings.
+
+### Manual Prime Confirmation Pass
+
+Report:
+
+```text
+/tmp/kairn-tanstack-hidden-hash-manual-confirm-20260507205523.json
+```
+
+A second smaller proof ran only baseline vs manual prime to isolate the proven path.
+
+| Mode | Outcome | Observed tokens | Delta vs baseline | Prime signal |
+| --- | --- | ---: | ---: | --- |
+| Baseline | pass | `111,959` | - | none |
+| Manual prime | pass | `37,820` | `+66.22%` | `primeEmitted=1`, `primeTokens=883`, `hookInvocations=0` |
+
+Combined live result across the two post-quality-layer hidden-path proofs:
+
+- Baseline observed tokens: `62,629`, `111,959`
+- Manual-prime observed tokens: `40,942`, `37,820`
+- Manual-prime savings: `34.63%`, `66.22%`
+- Both baseline and manual-prime runs fixed the seeded failure.
+- Manual-prime consistently touched or mentioned `packages/query-core/src/utils.ts`.
+
+Updated interpretation:
+
+- The context quality layer fixed the original hidden-path retrieval failure.
+- Manual prime is now a credible savings surface on this debugging class.
+- Savings variance is large because baseline Codex behavior varies heavily across runs.
+- Product claims should use repeated medians, not single-run highs.
+- The next product feature should make the ergonomic default use prompt-prepended prime context, because hook `additionalContext` has not yet matched manual-prime behavior.
+
+## Automatic Mode Matrix Attempt
+
+Artifacts:
+
+```text
+/tmp/kairn-auto-mode-matrix-20260507223026.json
+/tmp/kairn-auto-mode-baseline-only-20260507224733.json
+```
+
+The all-mode matrix process was stopped after four completed modes because the later `manual_prime` leg hung without producing a result. The matrix JSON artifact is empty, so the partial mode results below were recovered from `.kairn/kairn.sqlite`. A baseline-only control was then run separately and completed successfully.
+
+Quality rule for this pass: token savings only count when the seeded verification passes, the expected file is used or mentioned, the run avoids timeouts, and hook failures do not appear. We are not accepting lower-quality behavior just because it uses fewer tokens.
+
+| Mode | Outcome | Observed tokens | Delta vs baseline | Expected file used | Hooks / MCP signal | Notes |
+| --- | --- | ---: | ---: | --- | --- | --- |
+| Baseline | pass | `67,106` | - | yes | none | Separate control run; touched `packages/query-core/src/utils.ts` and nearby test. |
+| Hook tiny directive | pass | `91,668` | `-36.60%` | yes | `1` hook, `587` prime tokens | Too small/directive appears worse than baseline for this case. |
+| Hook full prime | pass | `51,548` | `+23.18%` | yes | `1` hook, `883` prime tokens | First hook mode to beat baseline while preserving quality. |
+| Hook tiny + failures | timeout/fail | unavailable | unavailable | yes | `43` hook invocations | Seeded verification passed, but agent command timed out; not viable as a savings default. |
+| MCP-first | pass | `35,588` | `+46.97%` | yes | `6` Kairn MCP mentions, no hooks | Strongest result in this partial matrix; needs repeat validation and real MCP-call confirmation. |
+| Manual prime | no result | unavailable | unavailable | unknown | none | Harness leg hung before a result; this is a harness reliability issue, not a model-quality conclusion. |
+
+Findings:
+
+- `MCP-first` is the most interesting automatic-path result so far: it passed, used the expected file, had no hook overhead, and beat baseline by about `47%` in this run.
+- `hook_full_prime` suggests Codex hook delivery can work when the hook receives a rich enough prime. This contradicts the earlier hook-only failure and means the delivery mechanism is not hopeless.
+- `hook_tiny_directive` was too weak for this hidden-path debugging task. It passed, but Codex spent substantially more tokens than baseline.
+- Failure-only post-tool hooks are still dangerous in live runs. The `hook_tiny_with_failures` leg emitted too many hooks and timed out despite the seed verification passing.
+- The benchmark harness needs better isolation and timeout handling around `manual_prime`; the current all-mode run can be blocked by a single stuck leg.
+
+Next test recommendation:
+
+- Run repeated median validation for only the viable modes first: `baseline`, `hook_full_prime`, `mcp_first`, and `manual_prime`.
+- Keep `hook_tiny_directive` and `hook_tiny_with_failures` out of default setup until they show repeated quality-preserving savings.
+- Treat `mcp_first` as the next serious product direction, but verify whether the agent actually calls MCP tools or is mainly following the instruction text.

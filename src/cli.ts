@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { Command, Option } from "commander";
 import { KairnRuntime } from "./runtime/KairnRuntime.js";
 import { startMcpServer } from "./server/mcp.js";
+import { handleHookWithDaemon, startKairnDaemon } from "./daemon/server.js";
 import type {
   BenchmarkComparison,
   BenchmarkProofReport,
@@ -15,6 +17,7 @@ import type {
   EvalComparison,
   EvalRunMode,
   EvalRunReport,
+  HookOutputProfile,
   MetricsSummary,
   OutputKind,
   PrimeProfile,
@@ -115,6 +118,98 @@ program
     await startMcpServer({ root: options.root });
   });
 
+program
+  .command("daemon")
+  .description("Keep a warm Kairn runtime available for hook requests.")
+  .option("--root <path>", "target repository root", process.cwd())
+  .option("--port <port>", "daemon port override", parsePositiveInt)
+  .option("--json", "print JSON output")
+  .action(async (options: { root: string; port?: number; json?: boolean }) => {
+    const daemon = await startKairnDaemon({ root: options.root, port: options.port });
+    const result = {
+      rootPath: daemon.rootPath,
+      port: daemon.port,
+      url: daemon.url
+    };
+    if (options.json) {
+      printJson(result);
+    } else {
+      process.stdout.write(
+        [
+          "Kairn daemon listening.",
+          `Root: ${result.rootPath}`,
+          `URL: ${result.url}`,
+          "Press Ctrl+C to stop.",
+          ""
+        ].join("\n")
+      );
+    }
+
+    await waitForShutdown(async () => {
+      await daemon.close();
+    });
+  });
+
+program
+  .command("codex")
+  .description("Launch Codex with Kairn prime context prepended to the task prompt.")
+  .argument("<task...>", "task to pass to Codex")
+  .option("--root <path>", "target repository root", process.cwd())
+  .addOption(new Option("--profile <profile>", "prime profile").choices(["auto", "ui", "workflow", "backend", "test", "generic"]).default("auto"))
+  .option("--budget <tokens>", "prime response token budget", parsePositiveInt)
+  .option("--codex-command <command>", "Codex command to execute", process.env.KAIRN_CODEX_CMD ?? "codex")
+  .option("--model <model>", "Codex model")
+  .addOption(new Option("--sandbox <mode>", "Codex sandbox mode").choices(["read-only", "workspace-write", "danger-full-access"]).default("workspace-write"))
+  .option("--dry-run", "print the prepared prompt/command without launching Codex")
+  .option("--json", "print JSON output")
+  .action(async (taskParts: string[], options: {
+    root: string;
+    profile: PrimeProfile;
+    budget?: number;
+    codexCommand: string;
+    model?: string;
+    sandbox: string;
+    dryRun?: boolean;
+    json?: boolean;
+  }) => {
+    const task = taskParts.join(" ").trim();
+    await withRuntime(options.root, async (runtime) => {
+      const prime = await runtime.primeContext({
+        task,
+        profile: options.profile,
+        budget: options.budget
+      });
+      const prompt = [
+        prime.content,
+        "",
+        "User task:",
+        task,
+        "",
+        "Use the Kairn context above first. Avoid broad scans unless the provided files are insufficient."
+      ].join("\n");
+      const result = {
+        rootPath: path.resolve(options.root),
+        codexCommand: options.codexCommand,
+        args: codexExecArgs({ root: options.root, prompt, model: options.model, sandbox: options.sandbox }),
+        prompt,
+        prime
+      };
+
+      if (options.dryRun || options.json) {
+        printJson(result);
+        return;
+      }
+
+      const command = [options.codexCommand, ...result.args.map(shellQuote)].join(" ");
+      const completed = spawnSync(command, {
+        cwd: result.rootPath,
+        shell: true,
+        stdio: "inherit"
+      });
+      process.exitCode = completed.status ?? (completed.error ? 1 : 0);
+    });
+  });
+
 const setup = program
   .command("setup")
   .description("Install local agent integration files for a target repo.");
@@ -125,13 +220,25 @@ setup
   .option("--root <path>", "target repository root", process.cwd())
   .addOption(new Option("--mode <mode>", "Codex hook setup mode").choices(["savings", "observe", "debug", "mcp-first"]).default("savings"))
   .addOption(new Option("--prime-profile <profile>", "prompt-submit prime profile").choices(["auto", "ui", "workflow", "backend", "test", "generic"]).default("auto"))
-  .option("--prime-budget <tokens>", "prompt-submit prime token budget", parsePositiveInt, 1200)
+  .addOption(new Option("--hook-output <profile>", "prompt-submit hook output profile").choices(["full-prime", "tiny-directive", "failure-only"]).default("tiny-directive"))
+  .addOption(new Option("--post-tool-hook-output <profile>", "post-tool hook output profile").choices(["full-prime", "tiny-directive", "failure-only"]).default("failure-only"))
+  .option("--prime-budget <tokens>", "prompt-submit prime token budget", parsePositiveInt, 600)
   .option("--json", "print JSON output")
-  .action((options: { root: string; mode: CodexSetupMode; primeProfile: PrimeProfile; primeBudget: number; json?: boolean }) => {
+  .action((options: {
+    root: string;
+    mode: CodexSetupMode;
+    primeProfile: PrimeProfile;
+    hookOutput: HookOutputProfile;
+    postToolHookOutput: HookOutputProfile;
+    primeBudget: number;
+    json?: boolean;
+  }) => {
     const result = writeCodexSetup({
       root: options.root,
       mode: options.mode,
       primeProfile: options.primeProfile,
+      hookOutput: options.hookOutput,
+      postToolHookOutput: options.postToolHookOutput,
       primeBudget: options.primeBudget
     });
     if (options.json) {
@@ -146,10 +253,34 @@ setup
         `Config: ${result.configPath}`,
         `Hooks: ${result.hooksPath}`,
         `Mode: ${result.mode}`,
+        `Hook output: ${result.hookOutput}`,
+        `Post-tool hook output: ${result.postToolHookOutput}`,
         "Codex UserPromptSubmit hooks will request proactive Kairn context without KAIRN_SESSION.",
         result.mode === "mcp-first" ? "MCP-first mode also writes savings hooks; configure Codex MCP manually with `kairn serve --mcp --root <repo>`." : "",
         ""
       ].filter(Boolean).join("\n")
+    );
+  });
+
+setup
+  .command("mcp-instructions")
+  .description("Install MCP-first agent instructions for a target repo without overwriting unrelated content.")
+  .option("--root <path>", "target repository root", process.cwd())
+  .option("--json", "print JSON output")
+  .action((options: { root: string; json?: boolean }) => {
+    const result = writeMcpInstructionsSetup({ root: options.root });
+    if (options.json) {
+      printJson(result);
+      return;
+    }
+
+    process.stdout.write(
+      [
+        "Kairn MCP-first instructions written.",
+        `Root: ${result.rootPath}`,
+        `Instructions: ${result.instructionsPath}`,
+        ""
+      ].join("\n")
     );
   });
 
@@ -348,6 +479,7 @@ program
   .addOption(new Option("--source <source>", "hook source").choices(["generic", "claude", "codex"]).default("generic"))
   .option("--event <name>", "override hook event name")
   .addOption(new Option("--prime-profile <profile>", "prompt-submit prime profile").choices(["auto", "ui", "workflow", "backend", "test", "generic"]).default("auto"))
+  .addOption(new Option("--hook-output <profile>", "hook output profile").choices(["full-prime", "tiny-directive", "failure-only"]).default("full-prime"))
   .option("--prime-budget <tokens>", "prompt-submit prime token budget", parsePositiveInt, 1200)
   .option("--json", "print JSON output")
   .action(
@@ -357,23 +489,37 @@ program
       source: WatchEventSource;
       event?: string;
       primeProfile: PrimeProfile;
+      hookOutput: HookOutputProfile;
       primeBudget: number;
       json?: boolean;
     }) => {
-      await withRuntime(options.root, async (runtime) => {
-        const raw = await readStdin();
-        const payload = raw.trim() ? JSON.parse(raw) as unknown : {};
-        const event = normalizeHookPayload({
-          source: options.source,
-          payload,
-          eventName: options.event
-        });
-        const result = await runtime.handleHookEvent({
+      const raw = await readStdin();
+      const payload = raw.trim() ? JSON.parse(raw) as unknown : {};
+      const event = normalizeHookPayload({
+        source: options.source,
+        payload,
+        eventName: options.event
+      });
+      const daemonResult = await handleHookWithDaemon({
+        root: options.root,
+        sessionId: options.session,
+        event,
+        primeProfile: options.primeProfile,
+        primeBudget: options.primeBudget,
+        hookOutput: options.hookOutput
+      });
+      const result = daemonResult ?? await withRuntime(options.root, async (runtime) =>
+        runtime.handleHookEvent({
           sessionId: options.session,
           event,
           primeProfile: options.primeProfile,
-          primeBudget: options.primeBudget
-        });
+          primeBudget: options.primeBudget,
+          hookOutput: options.hookOutput,
+          transport: "cli",
+          daemonAttempted: true,
+          daemonHit: false
+        })
+      );
 
         if (options.json) {
           printJson(result);
@@ -389,7 +535,6 @@ program
         if (output) {
           process.stdout.write(`${output}\n`);
         }
-      });
     }
   );
 
@@ -676,6 +821,10 @@ benchCommand
   .option("--prompt-only-command <command>", "prompt-submit-only live-agent command with {prompt} and {root} placeholders")
   .option("--prompt-plus-hooks-command <command>", "prompt and post-tool hook live-agent command with {prompt} and {root} placeholders")
   .option("--manual-prime-command <command>", "manual-prime live-agent command with {prompt} and {root} placeholders")
+  .option("--hook-full-prime-command <command>", "UserPromptSubmit full-prime live-agent command with {prompt} and {root} placeholders")
+  .option("--hook-tiny-directive-command <command>", "UserPromptSubmit tiny-directive live-agent command with {prompt} and {root} placeholders")
+  .option("--hook-tiny-with-failures-command <command>", "tiny prompt hook plus failure-only post-tool hook command with {prompt} and {root} placeholders")
+  .option("--mcp-first-command <command>", "MCP-first live-agent command with {prompt} and {root} placeholders")
   .option("--passive-command <command>", "legacy alias for --prompt-plus-hooks-command")
   .option("--proactive-command <command>", "legacy alias for --manual-prime-command")
   .option("--agent-timeout <ms>", "live-agent command timeout", parsePositiveInt, 120000)
@@ -690,6 +839,10 @@ benchCommand
       promptOnlyCommand?: string;
       promptPlusHooksCommand?: string;
       manualPrimeCommand?: string;
+      hookFullPrimeCommand?: string;
+      hookTinyDirectiveCommand?: string;
+      hookTinyWithFailuresCommand?: string;
+      mcpFirstCommand?: string;
       passiveCommand?: string;
       proactiveCommand?: string;
       agentTimeout: number;
@@ -704,6 +857,10 @@ benchCommand
           promptOnlyCommand: options.promptOnlyCommand,
           promptPlusHooksCommand: options.promptPlusHooksCommand,
           manualPrimeCommand: options.manualPrimeCommand,
+          hookFullPrimeCommand: options.hookFullPrimeCommand,
+          hookTinyDirectiveCommand: options.hookTinyDirectiveCommand,
+          hookTinyWithFailuresCommand: options.hookTinyWithFailuresCommand,
+          mcpFirstCommand: options.mcpFirstCommand,
           passiveCommand: options.passiveCommand,
           proactiveCommand: options.proactiveCommand,
           agentTimeoutMs: options.agentTimeout,
@@ -811,7 +968,48 @@ function parsePositiveInt(value: string): number {
   return parsed;
 }
 
-function writeCodexSetup(input: { root: string; mode: CodexSetupMode; primeProfile: PrimeProfile; primeBudget: number }) {
+function codexExecArgs(input: {
+  root: string;
+  prompt: string;
+  model?: string | undefined;
+  sandbox: string;
+}): string[] {
+  return [
+    "exec",
+    ...(input.model ? ["--model", input.model] : []),
+    "--sandbox",
+    input.sandbox,
+    "--cd",
+    path.resolve(input.root),
+    input.prompt
+  ];
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+async function waitForShutdown(close: () => Promise<void>): Promise<void> {
+  await new Promise<void>((resolve) => {
+    let closed = false;
+    const shutdown = () => {
+      if (closed) return;
+      closed = true;
+      close().finally(resolve);
+    };
+    process.once("SIGINT", shutdown);
+    process.once("SIGTERM", shutdown);
+  });
+}
+
+function writeCodexSetup(input: {
+  root: string;
+  mode: CodexSetupMode;
+  primeProfile: PrimeProfile;
+  hookOutput: HookOutputProfile;
+  postToolHookOutput: HookOutputProfile;
+  primeBudget: number;
+}) {
   const rootPath = path.resolve(input.root);
   const codexDir = path.join(rootPath, ".codex");
   const configPath = path.join(codexDir, "config.toml");
@@ -829,19 +1027,36 @@ function writeCodexSetup(input: { root: string; mode: CodexSetupMode; primeProfi
     hooksPath,
     mode: input.mode,
     primeProfile: input.primeProfile,
+    hookOutput: input.hookOutput,
+    postToolHookOutput: input.postToolHookOutput,
     primeBudget: input.primeBudget
   };
 }
 
-function buildCodexHooksConfig(input: { mode: CodexSetupMode; primeProfile: PrimeProfile; primeBudget: number }) {
-  const command = `eval "\${KAIRN_CMD:-kairn} hook --source codex --root \\"$PWD\\" --prime-profile ${input.primeProfile} --prime-budget ${input.primeBudget}"`;
+function buildCodexHooksConfig(input: {
+  mode: CodexSetupMode;
+  primeProfile: PrimeProfile;
+  hookOutput: HookOutputProfile;
+  postToolHookOutput: HookOutputProfile;
+  primeBudget: number;
+}) {
+  const promptCommand = buildCodexHookCommand({
+    primeProfile: input.primeProfile,
+    primeBudget: input.primeBudget,
+    hookOutput: input.hookOutput
+  });
+  const postToolCommand = buildCodexHookCommand({
+    primeProfile: input.primeProfile,
+    primeBudget: input.primeBudget,
+    hookOutput: input.postToolHookOutput
+  });
   const hooks: Record<string, unknown> = {
     UserPromptSubmit: [
       {
         hooks: [
           {
             type: "command",
-            command,
+            command: promptCommand,
             statusMessage: "Priming Kairn context"
           }
         ]
@@ -856,7 +1071,7 @@ function buildCodexHooksConfig(input: { mode: CodexSetupMode; primeProfile: Prim
         hooks: [
           {
             type: "command",
-            command,
+            command: postToolCommand,
             statusMessage: input.mode === "debug" ? "Sending debug hook output to Kairn" : "Sending useful tool output to Kairn"
           }
         ]
@@ -870,7 +1085,7 @@ function buildCodexHooksConfig(input: { mode: CodexSetupMode; primeProfile: Prim
           hooks: [
             {
               type: "command",
-              command,
+              command: postToolCommand,
               statusMessage: "Recording Codex stop event in Kairn"
             }
           ]
@@ -880,6 +1095,40 @@ function buildCodexHooksConfig(input: { mode: CodexSetupMode; primeProfile: Prim
 
   return {
     hooks
+  };
+}
+
+function buildCodexHookCommand(input: {
+  primeProfile: PrimeProfile;
+  primeBudget: number;
+  hookOutput: HookOutputProfile;
+}): string {
+  return `eval "\${KAIRN_CMD:-kairn} hook --source codex --root \\"$PWD\\" --prime-profile ${input.primeProfile} --prime-budget ${input.primeBudget} --hook-output ${input.hookOutput}"`;
+}
+
+function writeMcpInstructionsSetup(input: { root: string }) {
+  const rootPath = path.resolve(input.root);
+  const instructionsPath = path.join(rootPath, "AGENTS.md");
+  const block = [
+    "<!-- kairn:mcp-first:start -->",
+    "## Kairn MCP-First Workflow",
+    "",
+    "- Before broad file scans, call `kairn_prepare_task` with the user task.",
+    "- For follow-up reads, call `kairn_get_next_context` before reading large files.",
+    "- For failures, call `kairn_get_failure_context` before broad debugging searches.",
+    "- Prefer the smallest Kairn-recommended read that can answer the immediate question.",
+    "<!-- kairn:mcp-first:end -->",
+    ""
+  ].join("\n");
+  const existing = fs.existsSync(instructionsPath) ? fs.readFileSync(instructionsPath, "utf8") : "";
+  const pattern = /<!-- kairn:mcp-first:start -->[\s\S]*?<!-- kairn:mcp-first:end -->\n?/;
+  const next = pattern.test(existing)
+    ? existing.replace(pattern, block)
+    : [existing.trimEnd(), "", block].filter(Boolean).join("\n");
+  fs.writeFileSync(instructionsPath, next.endsWith("\n") ? next : `${next}\n`);
+  return {
+    rootPath,
+    instructionsPath
   };
 }
 
@@ -1056,6 +1305,10 @@ function printBenchmarkProof(report: BenchmarkProofReport): void {
     formatProofDelta("Prompt-only hooks vs baseline", report.observedTokenDeltas.promptOnlyVsBaseline),
     formatProofDelta("Prompt+tool hooks vs baseline", report.observedTokenDeltas.promptPlusHooksVsBaseline),
     formatProofDelta("Manual prime vs baseline", report.observedTokenDeltas.manualPrimeVsBaseline),
+    formatProofDelta("Hook full prime vs baseline", report.observedTokenDeltas.hookFullPrimeVsBaseline),
+    formatProofDelta("Hook tiny directive vs baseline", report.observedTokenDeltas.hookTinyDirectiveVsBaseline),
+    formatProofDelta("Hook tiny+failures vs baseline", report.observedTokenDeltas.hookTinyWithFailuresVsBaseline),
+    formatProofDelta("MCP-first vs baseline", report.observedTokenDeltas.mcpFirstVsBaseline),
     report.aggregate ? `- Repeat count: ${report.aggregate.repeat}` : "",
     report.aggregate?.deltas.promptOnlyVsBaseline?.savingsRate !== undefined
       ? `- Prompt-only median savings: ${Math.round(report.aggregate.deltas.promptOnlyVsBaseline.savingsRate * 100)}%`

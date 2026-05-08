@@ -346,6 +346,7 @@ function metadataFromOutput(input: {
   const usage = parseCodexUsageFooter(input.output);
   const hookCompleted = countMatches(input.output, /\bhook \(completed\)|hook:\s*[\w.-]+\s+Completed\b|hook context:/gi);
   const hookFailed = countMatches(input.output, /\bhook \(failed\)|error:\s*hook exited with code/gi);
+  const kairnMcpToolMentions = countMatches(input.output, /\bkairn_(prepare_task|get_next_context|get_failure_context|find_context|read_file|read_symbol)\b/g);
   const metadata: Record<string, unknown> = {
     workspacePath: input.workspacePath,
     promptHash: sha256(input.prompt),
@@ -353,6 +354,7 @@ function metadataFromOutput(input: {
     adapter: input.adapter,
     hookCompleted,
     hookFailed,
+    kairnMcpToolMentions,
     ...(input.extraMetadata ?? {})
   };
 
