@@ -13,24 +13,19 @@ import type {
   ContextQueryMode,
   ContextResponse,
   ContextResponseMode,
-  CodexUsageRecord,
   EvalComparison,
   EvalObservationRecord,
   EvalRunMode,
   EvalRunReport,
   FailureContext,
   FileRecord,
-  BenchmarkCaseMode,
   HookHandlingResult,
   HookOutputProfile,
-  HybridScoredResult,
   InitResult,
-  MetricsBucket,
   MetricsEventKind,
   MetricsSummary,
   NormalizedHookEvent,
   OutputKind,
-  PrimeQuality,
   PrimeProfile,
   TaskSession,
   WatchEventKind,
@@ -50,25 +45,63 @@ import { decideResponse } from "../retrieval/responseRouter.js";
 import { sha256 } from "../utils/hash.js";
 import { normalizeRelativePath, resolveRoot } from "../utils/paths.js";
 import { estimateTokens, truncateToBudget } from "../utils/tokens.js";
-import { indexRepo } from "../indexer/indexRepo.js";
 import { classifyObservedCommand } from "../watch/classifyCommand.js";
 import { extractFailureFiles } from "../watch/failureParser.js";
 import { normalizeHookPayload } from "../watch/normalizeHook.js";
 import { nowIso } from "../utils/time.js";
-import { classifyQueryIntent, type QueryIntent } from "../retrieval/queryIntent.js";
-import { mergeCodexUsage, parseCodexUsageFooter, readCodexTranscript } from "../eval/codexUsage.js";
+import { classifyQueryIntent } from "../retrieval/queryIntent.js";
 import { loadBenchmarkSuite } from "../bench/suite.js";
 import { buildBenchmarkReport, compareBenchmarkReports, scoreBenchmarkCase } from "../bench/score.js";
 import { runAgentBenchmarkCase } from "../bench/agent.js";
+import { buildBenchmarkProofReport, shuffleItems } from "../bench/proofReport.js";
+import { benchmarkCaseApplies, requireBenchmarkTarget } from "../bench/runtimeHelpers.js";
+import {
+  defaultPrimeBudget,
+  evaluatePrimeQuality,
+  primeProfileLimits,
+  resolvePrimeProfile
+} from "../prime/quality.js";
+import {
+  formatMcpBriefPrimeContext,
+  formatPrimeContext,
+  formatShrunkPrimeContext,
+  formatSuppressedPrimeContext,
+  withTinyDirectivePrime
+} from "../prime/formatPrime.js";
+import { estimateFileBaselineTokens } from "../metrics/baseline.js";
+import { uniquePaths, uniqueStrings } from "../utils/collections.js";
+import { formatContextResults } from "../context/formatContext.js";
+import { failureRecommendation } from "../watch/recommendation.js";
+import {
+  hostSessionIdForEvent,
+  hostSessionMetadata,
+  isHighConfidencePrompt,
+  isPromptEvent,
+  isTrivialSuccessfulHook,
+  stringMetadata,
+  taskFromHookEvent
+} from "../watch/hookPredicates.js";
+import { graphReason, mergeReasonText } from "../graph/reasons.js";
+import { sliceLines } from "../source/text.js";
+import { IndexService } from "./services/IndexService.js";
+import { MetricsService } from "./services/MetricsService.js";
+import { EvalService } from "./services/EvalService.js";
 
 export class KairnRuntime {
   private readonly rootPath: string;
   private readonly store: SqliteStore;
+  private readonly indexService: IndexService;
+  private readonly metricsService: MetricsService;
+  private readonly evalService: EvalService;
 
   constructor(root?: string) {
     this.rootPath = resolveRoot(root);
     const paths = ensureKairnDir(this.rootPath);
     this.store = new SqliteStore(paths.databasePath);
+    const deps = { rootPath: this.rootPath, store: this.store };
+    this.indexService = new IndexService(deps);
+    this.metricsService = new MetricsService(deps);
+    this.evalService = new EvalService(deps, this.metricsService);
   }
 
   close(): void {
@@ -76,32 +109,7 @@ export class KairnRuntime {
   }
 
   async init(): Promise<InitResult> {
-    const paths = ensureKairnDir(this.rootPath);
-    const index = await indexRepo(this.rootPath);
-    this.store.replaceIndex({
-      rootPath: this.rootPath,
-      files: index.graph.files,
-      symbols: index.graph.symbols,
-      edges: index.graph.edges,
-      semanticChunks: index.semanticChunks,
-      semanticVectors: index.semanticVectors,
-      lexicalDocuments: index.lexical.documents,
-      lexicalTerms: index.lexical.terms,
-      lexicalStats: index.lexical.stats
-    });
-
-    return {
-      rootPath: paths.rootPath,
-      kairnDir: paths.kairnDir,
-      configPath: paths.configPath,
-      databasePath: paths.databasePath,
-      scan: index.scan,
-      graph: index.graph,
-      semantic: {
-        chunks: index.semanticChunks.length,
-        vectors: index.semanticVectors.length
-      }
-    };
+    return this.indexService.init();
   }
 
   async startTask(task: string): Promise<{ session: TaskSession; response: ContextResponse }> {
@@ -283,44 +291,11 @@ export class KairnRuntime {
   }
 
   getMetrics(sessionId: string): MetricsSummary {
-    const session = this.store.getSession(sessionId);
-    const events = this.store.listMetricsEvents(sessionId);
-    const watchEvents = this.store.listWatchEvents(sessionId);
-    const evalRuns = this.store.listEvalRuns({ sessionId });
-    const evalObservations = this.store.listEvalObservations({ sessionId });
-    const latestCodexUsage = [...evalObservations].reverse().find((event) => event.kind === "codex_usage");
-    const latestCodexUsageRecord = codexUsageFromObservation(latestCodexUsage);
-    const totals = summarizeMetrics(events);
-    const coordination = summarizeCoordinationMetrics(events);
-
-    return {
-      sessionId,
-      rootPath: session.rootPath,
-      totals: {
-        ...totals,
-        savingsRate: totals.baselineTokens > 0 ? Number((totals.savedTokens / totals.baselineTokens).toFixed(4)) : 0
-      },
-      byKind: groupMetrics(events, (event) => event.eventKind),
-      bySource: groupMetrics(events, (event) => event.source),
-      watch: {
-        events: watchEvents.length,
-        failures: watchEvents.filter((event) => event.kind === "failure").length,
-        fileChanges: watchEvents.filter((event) => event.kind === "file_change" || event.kind === "diff_change").length,
-        hooks: watchEvents.filter((event) => event.source === "claude" || event.source === "codex" || event.source === "generic").length
-      },
-      observed: {
-        evalRuns: evalRuns.length,
-        observations: evalObservations.length,
-        ...(latestCodexUsageRecord ? { latestCodexUsage: latestCodexUsageRecord } : {})
-      },
-      coordination,
-      recentEvents: events.slice(-10)
-    };
+    return this.metricsService.getMetrics(sessionId);
   }
 
   getCoordinationState(sessionId: string): MetricsSummary["coordination"] {
-    this.store.getSession(sessionId);
-    return summarizeCoordinationMetrics(this.store.listMetricsEvents(sessionId));
+    return this.metricsService.getCoordinationState(sessionId);
   }
 
   startEvalRun(input: {
@@ -330,17 +305,7 @@ export class KairnRuntime {
     sessionId?: string | undefined;
     metadata?: Record<string, unknown> | undefined;
   }) {
-    if (input.sessionId) this.store.getSession(input.sessionId);
-    return this.store.createEvalRun({
-      id: `eval_${randomUUID()}`,
-      ...(input.sessionId ? { sessionId: input.sessionId } : {}),
-      rootPath: this.rootPath,
-      task: input.task,
-      label: input.label,
-      mode: input.mode,
-      status: "active",
-      metadata: input.metadata ?? {}
-    });
+    return this.evalService.startEvalRun(input);
   }
 
   ingestCodexUsage(input: {
@@ -349,91 +314,11 @@ export class KairnRuntime {
     usageText?: string | undefined;
     transcriptPath?: string | undefined;
   }): EvalObservationRecord {
-    const session = this.store.getSession(input.sessionId);
-    const run = input.runId
-      ? this.store.getEvalRun(input.runId)
-      : this.findLatestEvalRunForSession(input.sessionId);
-    if (run.sessionId && run.sessionId !== input.sessionId) {
-      throw new Error(`Eval run ${run.id} belongs to a different session.`);
-    }
-
-    const footerUsage = input.usageText ? parseCodexUsageFooter(input.usageText) : undefined;
-    const transcript = input.transcriptPath ? readCodexTranscript({ transcriptPath: input.transcriptPath }) : undefined;
-    const usage = mergeCodexUsage({
-      footerUsage,
-      transcriptUsage: transcript?.usage,
-      transcriptMetadata: transcript?.metadata,
-      transcriptPath: transcript?.transcriptPath,
-      transcriptHash: transcript?.transcriptHash
-    });
-
-    if (!usage) {
-      throw new Error("No Codex token usage could be parsed from --usage, stdin, or --transcript.");
-    }
-
-    const observation = this.store.recordEvalObservation({
-      runId: run.id,
-      sessionId: input.sessionId,
-      kind: "codex_usage",
-      summary: `Codex usage: ${usage.totalTokens} total tokens (${usage.inputTokens} input, ${usage.outputTokens} output).`,
-      metrics: {
-        codexUsage: usage,
-        ...(input.usageText ? { usageTextHash: sha256(input.usageText) } : {}),
-        rootPath: session.rootPath
-      },
-      files: [],
-      contentHash: sha256(JSON.stringify(usage))
-    });
-    if (transcript?.feedback && (transcript.feedback.filesRead.length > 0 || transcript.feedback.filesEdited.length > 0 || transcript.feedback.commands.length > 0)) {
-      const files = uniquePaths([...transcript.feedback.filesRead, ...transcript.feedback.filesEdited]);
-      this.store.recordEvalObservation({
-        runId: run.id,
-        sessionId: input.sessionId,
-        kind: "agent_file_usage",
-        summary: `Agent usage: ${transcript.feedback.filesRead.length} read file(s), ${transcript.feedback.filesEdited.length} edited file(s), ${transcript.feedback.commands.length} command(s).`,
-        metrics: {
-          feedback: transcript.feedback,
-          transcriptHash: transcript.transcriptHash,
-          rootPath: session.rootPath
-        },
-        files,
-        contentHash: sha256(JSON.stringify({ files, feedback: transcript.feedback }))
-      });
-    }
-
-    return observation;
+    return this.evalService.ingestCodexUsage(input);
   }
 
   getEvalFeedback(input: { sessionId: string }): EvalObservationRecord {
-    const session = this.store.getSession(input.sessionId);
-    const latestRun = this.findLatestEvalRunForSession(input.sessionId);
-    const metrics = this.store.listMetricsEvents(input.sessionId);
-    const observations = this.store.listEvalObservations({ sessionId: input.sessionId });
-    const recommendedFiles = uniquePaths(metrics.flatMap((event) => event.files));
-    const agentUsageFiles = uniquePaths(
-      observations
-        .filter((event) => event.kind === "agent_file_usage")
-        .flatMap((event) => event.files)
-    );
-    const recommendedFilesUsed = recommendedFiles.filter((file) => agentUsageFiles.includes(file));
-    const missedRecommendedFiles = recommendedFiles.filter((file) => !agentUsageFiles.includes(file));
-    const unpromptedFilesUsed = agentUsageFiles.filter((file) => !recommendedFiles.includes(file));
-
-    return this.store.recordEvalObservation({
-      runId: latestRun.id,
-      sessionId: input.sessionId,
-      kind: "retrieval_feedback",
-      summary: `Retrieval feedback: ${recommendedFilesUsed.length}/${recommendedFiles.length} recommended file(s) appeared in agent usage.`,
-      metrics: {
-        recommendedCount: recommendedFiles.length,
-        agentUsageCount: agentUsageFiles.length,
-        recommendedFilesUsed,
-        missedRecommendedFiles,
-        unpromptedFilesUsed
-      },
-      files: uniquePaths([...recommendedFilesUsed, ...unpromptedFilesUsed]),
-      contentHash: sha256(JSON.stringify({ recommendedFiles, agentUsageFiles }))
-    });
+    return this.evalService.getEvalFeedback(input);
   }
 
   addEvalNote(input: {
@@ -443,59 +328,15 @@ export class KairnRuntime {
     files?: string[] | undefined;
     sessionId?: string | undefined;
   }): EvalObservationRecord {
-    const run = this.store.getEvalRun(input.runId);
-    const sessionId = input.sessionId ?? run.sessionId;
-    const observation = this.store.recordEvalObservation({
-      runId: run.id,
-      ...(sessionId ? { sessionId } : {}),
-      kind: "manual_outcome",
-      summary: input.summary,
-      metrics: {
-        outcome: input.outcome
-      },
-      files: uniquePaths(input.files ?? []),
-      contentHash: sha256([input.outcome, input.summary, ...(input.files ?? [])].join("\n"))
-    });
-    this.store.updateEvalRunStatus(run.id, input.outcome === "pass" ? "completed" : "active");
-    return observation;
+    return this.evalService.addEvalNote(input);
   }
 
   getEvalReport(input: { runId?: string | undefined; sessionId?: string | undefined }): EvalRunReport | { runs: EvalRunReport[] } {
-    if (input.runId) return this.buildEvalReport(this.store.getEvalRun(input.runId));
-    const runs = this.store
-      .listEvalRuns({
-        rootPath: this.rootPath,
-        ...(input.sessionId ? { sessionId: input.sessionId } : {})
-      })
-      .map((run) => this.buildEvalReport(run));
-    return { runs };
+    return this.evalService.getEvalReport(input);
   }
 
   compareEvalRuns(input: { baselineRunId: string; kairnRunId: string }): EvalComparison {
-    const baseline = this.buildEvalReport(this.store.getEvalRun(input.baselineRunId));
-    const kairn = this.buildEvalReport(this.store.getEvalRun(input.kairnRunId));
-    const baselineTokens = baseline.codexUsage?.totalTokens;
-    const kairnTokens = kairn.codexUsage?.totalTokens;
-    const observedTokenDelta =
-      baselineTokens !== undefined && kairnTokens !== undefined
-        ? {
-            baselineTokens,
-            kairnTokens,
-            savedTokens: Math.max(0, baselineTokens - kairnTokens),
-            savingsRate: baselineTokens > 0 ? Number(((baselineTokens - kairnTokens) / baselineTokens).toFixed(4)) : 0
-          }
-        : undefined;
-
-    return {
-      baseline,
-      kairn,
-      ...(observedTokenDelta ? { observedTokenDelta } : {}),
-      estimatedKairnSavings: kairn.estimatedMetrics?.totals ?? {
-        ...emptyMetricsBucket(),
-        savingsRate: 0
-      },
-      outcomeNotes: [...baseline.observations, ...kairn.observations].filter((event) => event.kind === "manual_outcome")
-    };
+    return this.evalService.compareEvalRuns(input);
   }
 
   async runBenchmark(input: {
@@ -1374,41 +1215,7 @@ export class KairnRuntime {
     result: unknown;
     input?: unknown;
   }): void {
-    const sessionId = input.sessionId ?? sessionIdFromMcpValue(input.result) ?? sessionIdFromMcpValue(input.input);
-    if (!sessionId) return;
-
-    let session: TaskSession;
-    try {
-      session = this.store.getSession(sessionId);
-    } catch {
-      return;
-    }
-
-    const files = uniquePaths([
-      ...filesFromMcpValue(input.result),
-      ...filesFromMcpValue(input.input)
-    ]);
-    const coordination = summarizeCoordinationMetrics(this.store.listMetricsEvents(sessionId));
-    const overlapFiles = files.filter((file) => coordination.hookFiles.includes(file));
-    this.recordMetricsEvent({
-      sessionId,
-      rootPath: session.rootPath,
-      eventKind: "mcp_tool_call",
-      eventName: input.toolName,
-      source: "mcp",
-      baselineTokens: 0,
-      outputTokens: tokenEstimateFromMcpValue(input.result),
-      files,
-      metadata: {
-        toolName: input.toolName,
-        resultFileCount: files.length,
-        resultMode: responseModeFromMcpValue(input.result),
-        hookFiles: coordination.hookFiles,
-        mcpFiles: files,
-        overlapFiles,
-        duplicateContextAvoided: Math.max(0, coordination.hookFiles.length - overlapFiles.length)
-      }
-    });
+    this.metricsService.recordMcpToolCall(input);
   }
 
   compressOutput(input: {
@@ -1832,32 +1639,6 @@ export class KairnRuntime {
     });
   }
 
-  private findLatestEvalRunForSession(sessionId: string) {
-    const run = this.store.listEvalRuns({ sessionId, limit: 1 })[0];
-    if (!run) {
-      throw new Error(`No eval run exists for session ${sessionId}. Run kairn eval start first or pass --run.`);
-    }
-    return run;
-  }
-
-  private buildEvalReport(run: ReturnType<SqliteStore["getEvalRun"]>): EvalRunReport {
-    const observations = this.store.listEvalObservations({ runId: run.id });
-    const watchEvents = run.sessionId ? this.store.listWatchEvents(run.sessionId) : [];
-    const codexUsage = codexUsageFromObservation([...observations].reverse().find((event) => event.kind === "codex_usage"));
-    return {
-      run,
-      observations,
-      ...(codexUsage ? { codexUsage } : {}),
-      ...(run.sessionId ? { estimatedMetrics: this.getMetrics(run.sessionId) } : {}),
-      watch: {
-        events: watchEvents.length,
-        failures: watchEvents.filter((event) => event.kind === "failure").length,
-        fileChanges: watchEvents.filter((event) => event.kind === "file_change" || event.kind === "diff_change").length,
-        hooks: watchEvents.filter((event) => event.source === "claude" || event.source === "codex" || event.source === "generic").length
-      }
-    };
-  }
-
   private async promptContextResponse(input: {
     sessionId: string;
     eventName: string;
@@ -2071,19 +1852,7 @@ export class KairnRuntime {
   }
 
   private async refreshIndex(rootPath: string) {
-    const index = await indexRepo(rootPath);
-    this.store.replaceIndex({
-      rootPath,
-      files: index.graph.files,
-      symbols: index.graph.symbols,
-      edges: index.graph.edges,
-      semanticChunks: index.semanticChunks,
-      semanticVectors: index.semanticVectors,
-      lexicalDocuments: index.lexical.documents,
-      lexicalTerms: index.lexical.terms,
-      lexicalStats: index.lexical.stats
-    });
-    return index.graph.files;
+    return this.indexService.refreshIndex(rootPath);
   }
 
   private recordWatchEvent(record: {
@@ -2292,7 +2061,7 @@ export class KairnRuntime {
 
   private recordMetricsEvent(input: {
     sessionId: string;
-    rootPath: string;
+    rootPath?: string | undefined;
     eventKind: MetricsEventKind;
     eventName: string;
     source?: WatchEventSource | "runtime" | "cli" | "mcp" | undefined;
@@ -2304,9 +2073,8 @@ export class KairnRuntime {
   }): void {
     const baselineTokens = Math.max(0, Math.round(input.baselineTokens));
     const outputTokens = Math.max(0, Math.round(input.outputTokens));
-    this.store.recordMetricsEvent({
+    this.metricsService.recordMetricsEvent({
       sessionId: input.sessionId,
-      rootPath: input.rootPath,
       eventKind: input.eventKind,
       eventName: input.eventName,
       source: input.source ?? "runtime",
@@ -2337,613 +2105,6 @@ export class KairnRuntime {
 
 export function createRuntime(root?: string): KairnRuntime {
   return new KairnRuntime(root ?? getKairnPaths().rootPath);
-}
-
-function failureRecommendation(context: FailureContext): WatchRecommendation {
-  return {
-    summary: `Failure context linked ${context.failureFiles.length} failure file(s).`,
-    files: context.files,
-    suggestedNextContext: context.files.slice(0, 5),
-    warnings: context.warnings,
-    content: context.content
-  };
-}
-
-function formatContextResults(input: {
-  title: string;
-  task: string;
-  query: string;
-  decisionReason: string;
-  mode: ContextResponse["mode"];
-  intent: QueryIntent;
-  scored: HybridScoredResult[];
-  budget?: number | undefined;
-}): string {
-  const highConfidence =
-    input.scored.length > 0
-      ? input.scored
-          .map((file) => {
-            const scoreBreakdown = [
-              `bm25 ${file.bm25Score}`,
-              `semantic ${file.semanticScore}`,
-              `keyword ${file.keywordScore}`,
-              `behavior ${file.behaviorScore}`,
-              `intent ${file.intentScore}`,
-              `graph ${file.graphScore}`,
-              `git ${file.gitScore}`
-            ].join(", ");
-            return `- ${file.path} (${file.kind}, score ${file.score}; ${scoreBreakdown}): ${file.reasons.join("; ")}`;
-          })
-          .join("\n")
-      : "No high-confidence files found from hybrid retrieval.";
-
-  const sections = [
-    `# ${input.title}`,
-    "",
-    `Task: ${input.task}`,
-    `Query: ${input.query}`,
-    `Response Mode: ${input.mode}`,
-    `Detected Intent: ${input.intent.primary}${input.intent.matchedTerms.length > 0 ? ` (${input.intent.matchedTerms.join(", ")})` : ""}`,
-    `Selection: ${input.decisionReason}`,
-    "",
-    "## Ranked Files",
-    highConfidence
-  ];
-
-  if (input.mode === "snippets" || input.mode === "exact_code") {
-    const snippetFiles = input.scored.filter((file) => file.intentScore > 0 || !file.reasons.includes("graph neighbor"));
-    const files = (snippetFiles.length > 0 ? snippetFiles : input.scored).slice(0, 5);
-    sections.push("", "## Matched Snippets", formatMatchedSnippets(files, Math.max(180, Math.floor((input.budget ?? 1600) * 0.42))));
-  }
-
-  if (input.mode === "compressed_summary") {
-    sections.push("", "## Compact Summary", formatCompactSummary(input.scored.slice(0, 6)));
-  }
-
-  sections.push(
-    "",
-    "## Suggested Next Context",
-    input.scored
-      .slice(0, 5)
-      .map((file) => `- Read ${file.path}`)
-      .join("\n") || "Run a more specific context query."
-  );
-
-  return sections.join("\n");
-}
-
-type ResolvedPrimeProfile = Exclude<PrimeProfile, "auto">;
-
-type PrimeProfileLimits = {
-  topFiles: number;
-  relatedFiles: number;
-  testFiles: number;
-  contextRatio: number;
-  snippetBudget: number;
-  includeCommands: boolean;
-};
-
-function formatPrimeContext(input: {
-  task: string;
-  sessionId: string;
-  profile: ResolvedPrimeProfile;
-  budget: number;
-  limits: PrimeProfileLimits;
-  context: ContextResponse;
-  relatedFiles: string[];
-  testFiles: string[];
-  suggestedCommands: string[];
-}): string {
-  const topFiles = uniquePaths(input.context.suggestedNextContext.length > 0 ? input.context.suggestedNextContext : input.context.files).slice(0, input.limits.topFiles);
-  const related = uniquePaths(input.relatedFiles).filter((file) => !topFiles.includes(file)).slice(0, input.limits.relatedFiles);
-  const tests = uniquePaths(input.testFiles).slice(0, input.limits.testFiles);
-  const sections = [
-    "# Kairn Proactive Context",
-    "",
-    "Start with this context before broad repository scans. If it is insufficient, then use targeted reads or Kairn context commands.",
-    "",
-    `Task: ${input.task}`,
-    `Kairn session: ${input.sessionId}`,
-    `Prime profile: ${input.profile}`,
-    "",
-    "## Start Here",
-    topFiles.length > 0 ? topFiles.map((file) => `- ${file}`).join("\n") : "- No high-confidence files found.",
-    "",
-    "## Targeted Context",
-    compactPrimeContext(input.context.content, input.limits.snippetBudget),
-    "",
-    "## Likely Tests",
-    tests.length > 0 ? tests.map((file) => `- ${file}`).join("\n") : "- No likely tests found.",
-    "",
-    related.length > 0 ? ["## Related Files", related.map((file) => `- ${file}`).join("\n"), ""].join("\n") : "",
-    input.limits.includeCommands
-      ? ["## More Context", input.suggestedCommands.slice(0, 2).map((command) => `- ${command}`).join("\n"), ""].join("\n")
-      : "",
-    "",
-    "## Agent Guidance",
-    "- Prefer targeted reads of the Start Here files over `rg --files` or large file ranges.",
-    "- Do not edit files unless the user task explicitly asks for edits."
-  ].filter((section) => section !== "");
-
-  return fitSectionsToBudget(sections, input.budget);
-}
-
-function withTinyDirectivePrime(prime: ContextPrime, requestedBudget: number): ContextPrime {
-  const budget = Math.max(240, Math.min(600, requestedBudget));
-  const content = formatTinyDirectivePrime({ prime, budget });
-  return {
-    ...prime,
-    content,
-    tokenEstimate: estimateTokens(content),
-    warnings: uniqueStrings([...prime.warnings, "tiny directive hook output"])
-  };
-}
-
-function formatTinyDirectivePrime(input: { prime: ContextPrime; budget: number }): string {
-  const files = input.prime.files.slice(0, 3);
-  const likelyTest = files.find((file) => /\b(test|spec)\b|__tests__/.test(file));
-  const symbols = extractPrimeSymbolHints(input.prime.content).slice(0, 4);
-  const lines = [
-    "# Kairn Start Points",
-    "",
-    "Use these before broad repo search.",
-    "",
-    `Task: ${input.prime.task}`,
-    `Session: ${input.prime.session.id}`,
-    "",
-    "Start here:",
-    files.length > 0
-      ? files.map((file, index) => `${index + 1}. ${file}`).join("\n")
-      : "No high-confidence start file found.",
-    symbols.length > 0 ? `Symbols: ${symbols.join(", ")}` : "",
-    likelyTest ? `Likely test: ${likelyTest}` : "",
-    "",
-    "Instruction: inspect the start files first; only use broad search if these are insufficient."
-  ].filter(Boolean);
-
-  return fitSectionsToBudget(lines, input.budget);
-}
-
-function formatMcpBriefPrimeContext(input: {
-  task: string;
-  sessionId: string;
-  profile: ResolvedPrimeProfile;
-  budget: number;
-  context: ContextResponse;
-  files: string[];
-  quality: PrimeQuality;
-}): string {
-  const files = uniquePaths(input.files).slice(0, 2);
-  const primaryFile = files[0];
-  const reason = primaryFile
-    ? primaryReasonForFile(input.context, primaryFile)
-    : "Kairn did not find a high-confidence start file.";
-  const lines = [
-    "# Kairn MCP Brief",
-    "",
-    `Task: ${input.task}`,
-    `Kairn session: ${input.sessionId}`,
-    `Profile: ${input.profile}`,
-    "",
-    "Start files:",
-    files.length > 0 ? files.map((file, index) => `${index + 1}. ${file}`).join("\n") : "No high-confidence start file found.",
-    "",
-    `Reason: ${reason}`,
-    "",
-    "Instruction: call `kairn_prepare_task` with this session id before broad scans, then use `kairn_get_next_context` for the next smallest read.",
-    `Suggested MCP call: kairn_prepare_task({ "task": ${JSON.stringify(input.task)}, "sessionId": ${JSON.stringify(input.sessionId)}, "detail": "compact" })`,
-    "",
-    `Quality: ${input.quality.score}/100 (${input.quality.action})`
-  ];
-
-  return fitSectionsToBudget(lines, input.budget);
-}
-
-function primaryReasonForFile(context: ContextResponse, filePath: string): string {
-  const line = context.content
-    .split(/\r?\n/)
-    .find((entry) => entry.includes(filePath) && entry.includes(":"));
-  if (!line) return `Top Kairn-ranked file for this task: ${filePath}`;
-  return truncateToBudget(line.replace(/^[-*\s]+/, ""), 48);
-}
-
-function extractPrimeSymbolHints(content: string): string[] {
-  const symbols: string[] = [];
-  for (const match of content.matchAll(/\bsymbol match:\s*([A-Za-z_$][\w$]*)/g)) {
-    symbols.push(match[1]!);
-  }
-  for (const match of content.matchAll(/\bsymbol:\s*([A-Za-z_$][\w$]*)/g)) {
-    symbols.push(match[1]!);
-  }
-  return uniqueStrings(symbols);
-}
-
-function evaluatePrimeQuality(input: {
-  task: string;
-  context: ContextResponse;
-  knownFiles: FileRecord[];
-}): PrimeQuality {
-  const scores = extractRankedScores(input.context.content);
-  const topScore = scores[0] ?? 0;
-  const secondScore = scores[1] ?? 0;
-  const topGap = Number(Math.max(0, topScore - secondScore).toFixed(3));
-  const normalizedTask = input.task.toLowerCase();
-  const exactPathMentioned = input.knownFiles.some((file) => normalizedTask.includes(file.path.toLowerCase()));
-  const reasons: string[] = [];
-
-  if (exactPathMentioned) reasons.push("prompt already names an exact indexed file");
-  if (topScore >= 250) reasons.push("high-confidence top retrieval score");
-  if (topGap >= 80) reasons.push("top result is clearly separated");
-  if (topScore > 0 && topScore < 90) reasons.push("low top retrieval score");
-  if (topScore > 0 && topGap < 20) reasons.push("top results are tightly clustered");
-  if (input.context.files.length === 0) reasons.push("no retrieved files");
-
-  let score = 42;
-  score += Math.min(34, topScore / 24);
-  score += Math.min(18, topGap / 12);
-  if (exactPathMentioned) score -= 44;
-  if (input.context.files.length === 0) score -= 45;
-  score = Math.round(Math.max(0, Math.min(100, score)));
-
-  const action = exactPathMentioned || score < 42
-    ? "suppress"
-    : score < 68 || topGap < 20
-      ? "shrink"
-      : "emit";
-  const expectedSavingsRisk = action === "suppress" ? "high" : action === "shrink" ? "medium" : "low";
-
-  return {
-    score,
-    action,
-    reasons: reasons.length > 0 ? reasons : ["retrieval confidence is acceptable"],
-    topScore,
-    topGap,
-    exactPathMentioned,
-    expectedSavingsRisk
-  };
-}
-
-function formatSuppressedPrimeContext(input: {
-  task: string;
-  sessionId: string;
-  profile: ResolvedPrimeProfile;
-  quality: PrimeQuality;
-}): string {
-  return [
-    "# Kairn Prime Suppressed",
-    "",
-    `Task: ${input.task}`,
-    `Kairn session: ${input.sessionId}`,
-    `Prime profile: ${input.profile}`,
-    `Quality score: ${input.quality.score}`,
-    `Reason: ${input.quality.reasons.join("; ")}`,
-    "",
-    "Kairn did not emit proactive context because it is unlikely to save tokens for this prompt."
-  ].join("\n");
-}
-
-function formatShrunkPrimeContext(input: {
-  task: string;
-  sessionId: string;
-  profile: ResolvedPrimeProfile;
-  quality: PrimeQuality;
-  context: ContextResponse;
-  budget: number;
-}): string {
-  const topFiles = input.context.suggestedNextContext.slice(0, 3);
-  const sections = [
-    "# Kairn Compact Prime",
-    "",
-    `Task: ${input.task}`,
-    `Kairn session: ${input.sessionId}`,
-    `Prime profile: ${input.profile}`,
-    `Quality score: ${input.quality.score} (${input.quality.action})`,
-    "",
-    "## Start Here",
-    topFiles.length > 0 ? topFiles.map((file) => `- ${file}`).join("\n") : "- No high-confidence files found.",
-    "",
-    "## Targeted Context",
-    compactPrimeContext(input.context.content, Math.max(160, Math.floor(input.budget * 0.42))),
-    "",
-    "## Agent Guidance",
-    "- Use this only as a starting point; avoid broad scans if these files fit the task."
-  ];
-  return fitSectionsToBudget(sections, input.budget);
-}
-
-function extractRankedScores(content: string): number[] {
-  const scores: number[] = [];
-  const pattern = /score\s+([\d.]+)/g;
-  for (const match of content.matchAll(pattern)) {
-    const score = Number(match[1]);
-    if (Number.isFinite(score)) scores.push(score);
-  }
-  return scores;
-}
-
-function resolvePrimeProfile(profile: PrimeProfile, task: string): ResolvedPrimeProfile {
-  if (profile !== "auto") return profile;
-  const intent = classifyQueryIntent(task).primary;
-  if (intent === "ui" || intent === "workflow" || intent === "test") return intent;
-  if (intent === "backend" || intent === "data" || intent === "auth") return "backend";
-  return "generic";
-}
-
-function defaultPrimeBudget(profile: ResolvedPrimeProfile): number {
-  switch (profile) {
-    case "ui":
-      return 700;
-    case "workflow":
-      return 900;
-    case "backend":
-      return 1100;
-    case "test":
-      return 900;
-    case "generic":
-      return 800;
-  }
-}
-
-function primeProfileLimits(profile: ResolvedPrimeProfile): PrimeProfileLimits {
-  switch (profile) {
-    case "ui":
-      return { topFiles: 3, relatedFiles: 2, testFiles: 2, contextRatio: 0.5, snippetBudget: 330, includeCommands: false };
-    case "workflow":
-      return { topFiles: 4, relatedFiles: 3, testFiles: 2, contextRatio: 0.55, snippetBudget: 430, includeCommands: false };
-    case "backend":
-      return { topFiles: 4, relatedFiles: 3, testFiles: 3, contextRatio: 0.62, snippetBudget: 560, includeCommands: true };
-    case "test":
-      return { topFiles: 4, relatedFiles: 2, testFiles: 4, contextRatio: 0.56, snippetBudget: 430, includeCommands: true };
-    case "generic":
-      return { topFiles: 3, relatedFiles: 2, testFiles: 2, contextRatio: 0.5, snippetBudget: 360, includeCommands: false };
-  }
-}
-
-function compactPrimeContext(content: string, budget: number): string {
-  const snippetIndex = content.indexOf("## Matched Snippets");
-  const selected = snippetIndex >= 0 ? content.slice(snippetIndex).replace(/^## Matched Snippets\s*/m, "").trim() : content;
-  return truncateToBudget(selected, budget);
-}
-
-function fitSectionsToBudget(sections: string[], budget: number): string {
-  const accepted: string[] = [];
-  let used = 0;
-  for (const section of sections) {
-    const tokens = estimateTokens(section);
-    if (used + tokens <= budget) {
-      accepted.push(section);
-      used += tokens;
-      continue;
-    }
-    const remaining = Math.max(0, budget - used - 16);
-    if (remaining > 60) {
-      accepted.push(truncateToBudget(section, remaining));
-    }
-    break;
-  }
-  return accepted.join("\n");
-}
-
-function buildBenchmarkProofReport(input: {
-  baseline: BenchmarkReport[];
-  promptOnly: BenchmarkReport[];
-  promptPlusHooks: BenchmarkReport[];
-  manualPrime: BenchmarkReport[];
-  hookFullPrime: BenchmarkReport[];
-  hookTinyDirective: BenchmarkReport[];
-  hookTinyWithFailures: BenchmarkReport[];
-  mcpFirst: BenchmarkReport[];
-  realMcpFirst: BenchmarkReport[];
-  mcpFirstPlusHookFullPrime: BenchmarkReport[];
-  hybridMcpBrief: BenchmarkReport[];
-  repeat: number;
-}): BenchmarkProofReport {
-  const baseline = latestReport(input.baseline);
-  const promptOnly = optionalLatestReport(input.promptOnly);
-  const promptPlusHooks = optionalLatestReport(input.promptPlusHooks);
-  const manualPrime = optionalLatestReport(input.manualPrime);
-  const hookFullPrime = optionalLatestReport(input.hookFullPrime);
-  const hookTinyDirective = optionalLatestReport(input.hookTinyDirective);
-  const hookTinyWithFailures = optionalLatestReport(input.hookTinyWithFailures);
-  const mcpFirst = optionalLatestReport(input.mcpFirst);
-  const realMcpFirst = optionalLatestReport(input.realMcpFirst);
-  const mcpFirstPlusHookFullPrime = optionalLatestReport(input.mcpFirstPlusHookFullPrime);
-  const hybridMcpBrief = optionalLatestReport(input.hybridMcpBrief);
-  const passiveHooks = promptPlusHooks ?? promptOnly ?? baseline;
-  const proactive = manualPrime ?? baseline;
-  const promptOnlyVsBaseline = promptOnly ? compareBenchmarkReports(baseline, promptOnly) : undefined;
-  const promptPlusVsBaseline = promptPlusHooks ? compareBenchmarkReports(baseline, promptPlusHooks) : undefined;
-  const manualPrimeVsBaseline = manualPrime ? compareBenchmarkReports(baseline, manualPrime) : undefined;
-  const hookFullPrimeVsBaseline = hookFullPrime ? compareBenchmarkReports(baseline, hookFullPrime) : undefined;
-  const hookTinyDirectiveVsBaseline = hookTinyDirective ? compareBenchmarkReports(baseline, hookTinyDirective) : undefined;
-  const hookTinyWithFailuresVsBaseline = hookTinyWithFailures ? compareBenchmarkReports(baseline, hookTinyWithFailures) : undefined;
-  const mcpFirstVsBaseline = mcpFirst ? compareBenchmarkReports(baseline, mcpFirst) : undefined;
-  const realMcpFirstVsBaseline = realMcpFirst ? compareBenchmarkReports(baseline, realMcpFirst) : undefined;
-  const mcpFirstPlusHookFullPrimeVsBaseline = mcpFirstPlusHookFullPrime ? compareBenchmarkReports(baseline, mcpFirstPlusHookFullPrime) : undefined;
-  const hybridMcpBriefVsBaseline = hybridMcpBrief ? compareBenchmarkReports(baseline, hybridMcpBrief) : undefined;
-  const proactiveVsPassive = manualPrime && passiveHooks ? compareBenchmarkReports(passiveHooks, manualPrime) : undefined;
-  const baselineByCase = new Map(baseline.results.map((result) => [result.caseId, result]));
-  const promptOnlyByCase = new Map(promptOnly?.results.map((result) => [result.caseId, result]) ?? []);
-  const promptPlusByCase = new Map(promptPlusHooks?.results.map((result) => [result.caseId, result]) ?? []);
-  const manualPrimeByCase = new Map(manualPrime?.results.map((result) => [result.caseId, result]) ?? []);
-  const caseIds = uniqueStrings([...baselineByCase.keys(), ...promptOnlyByCase.keys(), ...promptPlusByCase.keys(), ...manualPrimeByCase.keys()]);
-  const caseDeltas = caseIds.map((caseId) => {
-    const baseline = baselineByCase.get(caseId);
-    const passiveHooks = promptPlusByCase.get(caseId) ?? promptOnlyByCase.get(caseId);
-    const proactive = manualPrimeByCase.get(caseId);
-    return {
-      caseId,
-      ...(baseline?.observedCodexTokens !== undefined ? { baselineTokens: baseline.observedCodexTokens } : {}),
-      ...(passiveHooks?.observedCodexTokens !== undefined ? { passiveHooksTokens: passiveHooks.observedCodexTokens } : {}),
-      ...(proactive?.observedCodexTokens !== undefined ? { proactiveTokens: proactive.observedCodexTokens } : {}),
-      ...(baseline?.observedCodexTokens !== undefined && proactive?.observedCodexTokens !== undefined
-        ? { proactiveVsBaseline: baseline.observedCodexTokens - proactive.observedCodexTokens }
-        : {}),
-      ...(passiveHooks?.observedCodexTokens !== undefined && proactive?.observedCodexTokens !== undefined
-        ? { proactiveVsPassive: passiveHooks.observedCodexTokens - proactive.observedCodexTokens }
-        : {}),
-      outcome: {
-        baseline: baseline?.taskOutcome ?? "skipped",
-        passiveHooks: passiveHooks?.taskOutcome ?? "skipped",
-        proactive: proactive?.taskOutcome ?? "skipped"
-      }
-    };
-  });
-  const aggregate = buildProofAggregate({
-    repeat: input.repeat,
-    reports: {
-      baseline: input.baseline,
-      prompt_only: input.promptOnly,
-      prompt_plus_hooks: input.promptPlusHooks,
-      manual_prime: input.manualPrime,
-      hook_full_prime: input.hookFullPrime,
-      hook_tiny_directive: input.hookTinyDirective,
-      hook_tiny_with_failures: input.hookTinyWithFailures,
-      mcp_first: input.mcpFirst,
-      real_mcp_first: input.realMcpFirst,
-      mcp_first_plus_hook_full_prime: input.mcpFirstPlusHookFullPrime,
-      hybrid_mcp_brief: input.hybridMcpBrief
-    }
-  });
-  const recommendations = uniqueStrings([
-    recommendationForDelta("Prompt-only hooks vs baseline", promptOnlyVsBaseline?.observedTokenDelta),
-    recommendationForDelta("Prompt+tool hooks vs baseline", promptPlusVsBaseline?.observedTokenDelta),
-    recommendationForDelta("Manual prime vs baseline", manualPrimeVsBaseline?.observedTokenDelta),
-    recommendationForDelta("Hook full prime vs baseline", hookFullPrimeVsBaseline?.observedTokenDelta),
-    recommendationForDelta("Hook tiny directive vs baseline", hookTinyDirectiveVsBaseline?.observedTokenDelta),
-    recommendationForDelta("Hook tiny+failures vs baseline", hookTinyWithFailuresVsBaseline?.observedTokenDelta),
-    recommendationForDelta("MCP-first vs baseline", mcpFirstVsBaseline?.observedTokenDelta),
-    recommendationForDelta("Real MCP-first vs baseline", realMcpFirstVsBaseline?.observedTokenDelta),
-    recommendationForDelta("MCP-first + full-prime hook vs baseline", mcpFirstPlusHookFullPrimeVsBaseline?.observedTokenDelta),
-    recommendationForDelta("Hybrid MCP brief vs baseline", hybridMcpBriefVsBaseline?.observedTokenDelta),
-    ...(manualPrimeVsBaseline?.recommendations.slice(0, 4) ?? promptOnlyVsBaseline?.recommendations.slice(0, 4) ?? [])
-  ]);
-
-  return {
-    baseline,
-    ...(promptOnly ? { promptOnly } : {}),
-    ...(promptPlusHooks ? { promptPlusHooks } : {}),
-    ...(manualPrime ? { manualPrime } : {}),
-    ...(hookFullPrime ? { hookFullPrime } : {}),
-    ...(hookTinyDirective ? { hookTinyDirective } : {}),
-    ...(hookTinyWithFailures ? { hookTinyWithFailures } : {}),
-    ...(mcpFirst ? { mcpFirst } : {}),
-    ...(realMcpFirst ? { realMcpFirst } : {}),
-    ...(mcpFirstPlusHookFullPrime ? { mcpFirstPlusHookFullPrime } : {}),
-    ...(hybridMcpBrief ? { hybridMcpBrief } : {}),
-    passiveHooks,
-    proactive,
-    runs: {
-      baseline: input.baseline,
-      prompt_only: input.promptOnly,
-      prompt_plus_hooks: input.promptPlusHooks,
-      manual_prime: input.manualPrime,
-      hook_full_prime: input.hookFullPrime,
-      hook_tiny_directive: input.hookTinyDirective,
-      hook_tiny_with_failures: input.hookTinyWithFailures,
-      mcp_first: input.mcpFirst,
-      real_mcp_first: input.realMcpFirst,
-      mcp_first_plus_hook_full_prime: input.mcpFirstPlusHookFullPrime,
-      hybrid_mcp_brief: input.hybridMcpBrief
-    },
-    aggregate,
-    observedTokenDeltas: {
-      ...(promptOnlyVsBaseline?.observedTokenDelta ? { promptOnlyVsBaseline: promptOnlyVsBaseline.observedTokenDelta } : {}),
-      ...(promptPlusVsBaseline?.observedTokenDelta ? { promptPlusHooksVsBaseline: promptPlusVsBaseline.observedTokenDelta } : {}),
-      ...(manualPrimeVsBaseline?.observedTokenDelta ? { manualPrimeVsBaseline: manualPrimeVsBaseline.observedTokenDelta } : {}),
-      ...(hookFullPrimeVsBaseline?.observedTokenDelta ? { hookFullPrimeVsBaseline: hookFullPrimeVsBaseline.observedTokenDelta } : {}),
-      ...(hookTinyDirectiveVsBaseline?.observedTokenDelta ? { hookTinyDirectiveVsBaseline: hookTinyDirectiveVsBaseline.observedTokenDelta } : {}),
-      ...(hookTinyWithFailuresVsBaseline?.observedTokenDelta ? { hookTinyWithFailuresVsBaseline: hookTinyWithFailuresVsBaseline.observedTokenDelta } : {}),
-      ...(mcpFirstVsBaseline?.observedTokenDelta ? { mcpFirstVsBaseline: mcpFirstVsBaseline.observedTokenDelta } : {}),
-      ...(realMcpFirstVsBaseline?.observedTokenDelta ? { realMcpFirstVsBaseline: realMcpFirstVsBaseline.observedTokenDelta } : {}),
-      ...(mcpFirstPlusHookFullPrimeVsBaseline?.observedTokenDelta ? { mcpFirstPlusHookFullPrimeVsBaseline: mcpFirstPlusHookFullPrimeVsBaseline.observedTokenDelta } : {}),
-      ...(hybridMcpBriefVsBaseline?.observedTokenDelta ? { hybridMcpBriefVsBaseline: hybridMcpBriefVsBaseline.observedTokenDelta } : {}),
-      ...(promptPlusVsBaseline?.observedTokenDelta ? { passiveVsBaseline: promptPlusVsBaseline.observedTokenDelta } : {}),
-      ...(manualPrimeVsBaseline?.observedTokenDelta ? { proactiveVsBaseline: manualPrimeVsBaseline.observedTokenDelta } : {}),
-      ...(proactiveVsPassive?.observedTokenDelta ? { proactiveVsPassive: proactiveVsPassive.observedTokenDelta } : {})
-    },
-    caseDeltas,
-    recommendations
-  };
-}
-
-function latestReport(reports: BenchmarkReport[]): BenchmarkReport {
-  const report = reports.at(-1);
-  if (!report) {
-    throw new Error("Benchmark proof requires at least one baseline report.");
-  }
-  return report;
-}
-
-function optionalLatestReport(reports: BenchmarkReport[]): BenchmarkReport | undefined {
-  return reports.at(-1);
-}
-
-function buildProofAggregate(input: {
-  repeat: number;
-  reports: Partial<Record<BenchmarkAssistanceMode, BenchmarkReport[]>>;
-}): NonNullable<BenchmarkProofReport["aggregate"]> {
-  const modes: NonNullable<BenchmarkProofReport["aggregate"]>["modes"] = {};
-  for (const [mode, reports] of Object.entries(input.reports) as Array<[BenchmarkAssistanceMode, BenchmarkReport[] | undefined]>) {
-    const tokenTotals = (reports ?? []).map((report) => report.observed?.codexTokens).filter((value): value is number => typeof value === "number");
-    modes[mode] = {
-      reports: reports?.length ?? 0,
-      ...(tokenTotals.length > 0 ? { meanTokens: mean(tokenTotals), medianTokens: median(tokenTotals) } : {}),
-      caseCount: reports?.reduce((total, report) => total + report.results.length, 0) ?? 0
-    };
-  }
-
-  return {
-    repeat: input.repeat,
-    modes,
-    deltas: {
-      promptOnlyVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.prompt_only?.medianTokens),
-      promptPlusHooksVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.prompt_plus_hooks?.medianTokens),
-      manualPrimeVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.manual_prime?.medianTokens),
-      hookFullPrimeVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.hook_full_prime?.medianTokens),
-      realMcpFirstVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.real_mcp_first?.medianTokens),
-      mcpFirstPlusHookFullPrimeVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.mcp_first_plus_hook_full_prime?.medianTokens),
-      hybridMcpBriefVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.hybrid_mcp_brief?.medianTokens)
-    }
-  };
-}
-
-function aggregateDelta(beforeMedianTokens: number | undefined, afterMedianTokens: number | undefined) {
-  if (beforeMedianTokens === undefined || afterMedianTokens === undefined) return {};
-  const savedTokens = beforeMedianTokens - afterMedianTokens;
-  return {
-    beforeMedianTokens,
-    afterMedianTokens,
-    savedTokens,
-    savingsRate: beforeMedianTokens > 0 ? Number((savedTokens / beforeMedianTokens).toFixed(4)) : 0
-  };
-}
-
-function mean(values: number[]): number {
-  return Math.round(values.reduce((total, value) => total + value, 0) / values.length);
-}
-
-function median(values: number[]): number {
-  const sorted = [...values].sort((a, b) => a - b);
-  const midpoint = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0 ? Math.round((sorted[midpoint - 1]! + sorted[midpoint]!) / 2) : sorted[midpoint]!;
-}
-
-function shuffleItems<T>(items: T[]): T[] {
-  const shuffled = [...items];
-  for (let index = shuffled.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex]!, shuffled[index]!];
-  }
-  return shuffled;
-}
-
-function recommendationForDelta(label: string, delta: BenchmarkComparison["observedTokenDelta"]): string {
-  if (!delta) return `${label}: observed Codex usage unavailable.`;
-  if (delta.savedTokens > 0) {
-    return `${label}: saved ${delta.savedTokens} observed Codex tokens (${Math.round(delta.savingsRate * 100)}%).`;
-  }
-  return `${label}: increased observed Codex usage by ${Math.abs(delta.savedTokens)} tokens (${Math.round(Math.abs(delta.savingsRate) * 100)}%).`;
 }
 
 function collectWorkspaceKairnMetrics(workspacePath: string): Record<string, unknown> {
@@ -2983,308 +2144,4 @@ function collectWorkspaceKairnMetrics(workspacePath: string): Record<string, unk
   } finally {
     runtime.close();
   }
-}
-
-function sessionIdFromMcpValue(value: unknown): string | undefined {
-  if (!value || typeof value !== "object") return undefined;
-  const record = value as Record<string, unknown>;
-  if (typeof record.sessionId === "string") return record.sessionId;
-  const session = record.session;
-  if (session && typeof session === "object" && typeof (session as Record<string, unknown>).id === "string") {
-    return (session as Record<string, string>).id;
-  }
-  return undefined;
-}
-
-function filesFromMcpValue(value: unknown): string[] {
-  if (!value || typeof value !== "object") return [];
-  const record = value as Record<string, unknown>;
-  const fields = [record.files, record.related, record.suggestedNextContext, record.failureFiles, record.testFiles, record.changedFiles];
-  return uniquePaths(
-    fields.flatMap((field) => Array.isArray(field) ? field.filter((item): item is string => typeof item === "string") : [])
-  );
-}
-
-function tokenEstimateFromMcpValue(value: unknown): number {
-  if (!value || typeof value !== "object") return 0;
-  const record = value as Record<string, unknown>;
-  if (typeof record.tokenEstimate === "number") return Math.max(0, Math.round(record.tokenEstimate));
-  if (typeof record.content === "string") return estimateTokens(record.content);
-  return 0;
-}
-
-function responseModeFromMcpValue(value: unknown): string | undefined {
-  if (!value || typeof value !== "object") return undefined;
-  const mode = (value as Record<string, unknown>).mode;
-  return typeof mode === "string" ? mode : undefined;
-}
-
-function formatMatchedSnippets(files: HybridScoredResult[], budget = 700): string {
-  const snippets: string[] = [];
-  let usedTokens = 0;
-  let omitted = 0;
-
-  for (const file of files) {
-    for (const chunk of file.chunks.slice(0, 2)) {
-      const title = chunk.symbol
-        ? `${file.path} :: ${chunk.symbol} (${chunk.startLine ?? "?"}-${chunk.endLine ?? "?"})`
-        : file.path;
-      const block = [
-        `### ${title}`,
-        "",
-        "```",
-        chunk.text.split(/\r?\n/).slice(0, 60).join("\n"),
-        "```"
-      ].join("\n");
-      const blockTokens = estimateTokens(block);
-      if (usedTokens + blockTokens > budget) {
-        omitted += 1;
-        if (snippets.length === 0) {
-          snippets.push(truncateToBudget(block, budget));
-          usedTokens = budget;
-        }
-        continue;
-      }
-      snippets.push(block);
-      usedTokens += blockTokens;
-    }
-  }
-
-  if (snippets.length === 0) return "No semantic snippets were available within the response budget.";
-  const budgetNote =
-    omitted > 0 ? `\n\nSnippet budget reached; omitted ${omitted} lower-priority snippet${omitted === 1 ? "" : "s"}.` : "";
-  return `${snippets.join("\n\n")}${budgetNote}`;
-}
-
-function formatCompactSummary(files: HybridScoredResult[]): string {
-  if (files.length === 0) return "No matching files to summarize.";
-  return files
-    .map((file) => {
-      const chunkSummary = file.chunks
-        .slice(0, 2)
-        .map((chunk) => chunk.symbol ?? chunk.kind)
-        .join(", ");
-      return `- ${file.path}: ${file.reasons.slice(0, 3).join("; ")}${chunkSummary ? ` (${chunkSummary})` : ""}`;
-    })
-    .join("\n");
-}
-
-function estimateFileBaselineTokens(files: Pick<FileRecord, "size">[]): number {
-  return files.reduce((total, file) => total + Math.ceil(file.size / 4), 0);
-}
-
-function summarizeMetrics(events: { baselineTokens: number; outputTokens: number; savedTokens: number }[]): MetricsBucket {
-  return events.reduce<MetricsBucket>(
-    (totals, event) => ({
-      events: totals.events + 1,
-      baselineTokens: totals.baselineTokens + event.baselineTokens,
-      outputTokens: totals.outputTokens + event.outputTokens,
-      savedTokens: totals.savedTokens + event.savedTokens
-    }),
-    emptyMetricsBucket()
-  );
-}
-
-function groupMetrics<T extends { baselineTokens: number; outputTokens: number; savedTokens: number }>(
-  events: T[],
-  keyFor: (event: T) => string
-): Record<string, MetricsBucket> {
-  const grouped: Record<string, MetricsBucket> = {};
-  for (const event of events) {
-    const key = keyFor(event);
-    const current = grouped[key] ?? emptyMetricsBucket();
-    grouped[key] = {
-      events: current.events + 1,
-      baselineTokens: current.baselineTokens + event.baselineTokens,
-      outputTokens: current.outputTokens + event.outputTokens,
-      savedTokens: current.savedTokens + event.savedTokens
-    };
-  }
-  return grouped;
-}
-
-function summarizeCoordinationMetrics(events: Array<{ eventKind: MetricsEventKind; files: string[]; metadata: Record<string, unknown> }>): MetricsSummary["coordination"] {
-  const hookFiles = uniquePaths(
-    events
-      .filter((event) => event.metadata.coordinationMode === "mcp_hybrid" || event.metadata.hookOutput === "mcp-brief")
-      .flatMap((event) => event.files)
-  );
-  const mcpFiles = uniquePaths(
-    events
-      .filter((event) => event.eventKind === "mcp_tool_call")
-      .flatMap((event) => event.files)
-  );
-  const overlapFiles = hookFiles.filter((file) => mcpFiles.includes(file));
-  const recordedAvoided = events.reduce((total, event) => total + (numberField(event.metadata.duplicateContextAvoided) ?? 0), 0);
-
-  return {
-    duplicateContextAvoided: recordedAvoided + Math.max(0, hookFiles.length + mcpFiles.length - uniquePaths([...hookFiles, ...mcpFiles]).length),
-    hookFiles,
-    mcpFiles,
-    overlapFiles
-  };
-}
-
-function emptyMetricsBucket(): MetricsBucket {
-  return {
-    events: 0,
-    baselineTokens: 0,
-    outputTokens: 0,
-    savedTokens: 0
-  };
-}
-
-function codexUsageFromObservation(observation: EvalObservationRecord | undefined): CodexUsageRecord | undefined {
-  const value = observation?.metrics.codexUsage;
-  if (!isRecord(value)) return undefined;
-  const totalTokens = numberField(value.totalTokens);
-  const inputTokens = numberField(value.inputTokens);
-  const cachedInputTokens = numberField(value.cachedInputTokens);
-  const outputTokens = numberField(value.outputTokens);
-  const source = stringField(value.source);
-  if (
-    totalTokens === undefined ||
-    inputTokens === undefined ||
-    cachedInputTokens === undefined ||
-    outputTokens === undefined ||
-    (source !== "footer" && source !== "transcript" && source !== "footer+transcript")
-  ) {
-    return undefined;
-  }
-  const model = stringField(value.model);
-  const hostSessionId = stringField(value.hostSessionId);
-  const turnId = stringField(value.turnId);
-  const transcriptPath = stringField(value.transcriptPath);
-  const transcriptHash = stringField(value.transcriptHash);
-
-  return {
-    totalTokens,
-    inputTokens,
-    cachedInputTokens,
-    outputTokens,
-    ...(model ? { model } : {}),
-    ...(hostSessionId ? { hostSessionId } : {}),
-    ...(turnId ? { turnId } : {}),
-    ...(transcriptPath ? { transcriptPath } : {}),
-    ...(transcriptHash ? { transcriptHash } : {}),
-    source
-  };
-}
-
-function isPromptEvent(eventName: string): boolean {
-  return eventName.toLowerCase() === "userpromptsubmit";
-}
-
-function hostSessionIdForEvent(event: NormalizedHookEvent): string | undefined {
-  return event.hostSessionId
-    ?? stringMetadata(event.metadata, "session_id")
-    ?? stringMetadata(event.metadata, "hostSessionId")
-    ?? stringMetadata(event.metadata, "turn_id");
-}
-
-function hostSessionMetadata(event: NormalizedHookEvent): Record<string, unknown> {
-  return {
-    eventName: event.eventName,
-    ...(event.hostSessionId ? { hostSessionId: event.hostSessionId } : {}),
-    ...(stringMetadata(event.metadata, "turn_id") ? { turnId: stringMetadata(event.metadata, "turn_id") } : {}),
-    ...(stringMetadata(event.metadata, "model") ? { model: stringMetadata(event.metadata, "model") } : {})
-  };
-}
-
-function taskFromHookEvent(event: NormalizedHookEvent): string {
-  if (isPromptEvent(event.eventName) && event.output?.trim()) {
-    return truncateText(event.output.trim(), 240);
-  }
-  if (event.command) {
-    return `Observed ${event.source} command: ${truncateText(event.command, 180)}`;
-  }
-  return `Observed ${event.source} ${event.eventName} hook session`;
-}
-
-function isHighConfidencePrompt(eventName: string, prompt: string | undefined): boolean {
-  if (!isPromptEvent(eventName) || !prompt) return false;
-  const normalized = prompt.toLowerCase();
-  if (normalized.startsWith("run ")) return false;
-  return /\b(fix|identify|find|implement|update|refactor|debug|error|failing|component|api|layout|parser|mobile|review|queue|sync|gmail|test|hook|metrics|eval)\b/.test(normalized);
-}
-
-function isTrivialSuccessfulHook(input: {
-  eventKind: WatchEventKind;
-  command?: string | undefined;
-  output?: string | undefined;
-  linkedFiles: string[];
-  exitCode?: number | undefined;
-}): boolean {
-  if (!input.output || input.eventKind === "failure" || input.linkedFiles.length > 0) return false;
-  if (input.exitCode !== undefined && input.exitCode !== 0) return false;
-  const lineCount = input.output.split(/\r?\n/).filter((line) => line.trim()).length;
-  const outputTokens = estimateTokens(input.output);
-  const command = input.command?.trim().toLowerCase() ?? "";
-  if (["pwd", "git status", "git branch", "npm pkg get scripts", "pnpm pkg get scripts"].includes(command)) return true;
-  return lineCount <= 12 && outputTokens <= 80 && !/\b(error|fail|failed|exception|traceback|ts\d{4})\b/i.test(input.output);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function numberField(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
-function stringField(value: unknown): string | undefined {
-  return typeof value === "string" && value ? value : undefined;
-}
-
-function stringMetadata(metadata: Record<string, unknown>, key: string): string | undefined {
-  const value = metadata[key];
-  return typeof value === "string" && value.trim() ? value : undefined;
-}
-
-function truncateText(value: string, maxLength: number): string {
-  return value.length > maxLength ? `${value.slice(0, Math.max(0, maxLength - 3))}...` : value;
-}
-
-function benchmarkCaseApplies(caseMode: BenchmarkCaseMode, runMode: BenchmarkRunMode): boolean {
-  if (runMode === "replay") return caseMode !== "agent";
-  if (runMode === "agent") return caseMode === "agent";
-  return true;
-}
-
-function requireBenchmarkTarget(benchmarkCase: { id: string; target?: string | undefined; expectedFiles: string[] }): string {
-  const target = benchmarkCase.target ?? benchmarkCase.expectedFiles[0];
-  if (!target) {
-    throw new Error(`Benchmark case ${benchmarkCase.id} requires a target or expected file.`);
-  }
-  return target;
-}
-
-function sliceLines(content: string, startLine: number, endLine: number): string {
-  return content.split(/\r?\n/).slice(startLine - 1, endLine).join("\n");
-}
-
-function graphReason(type: string, targetIsFromFile: boolean): string {
-  if (type === "imports") return targetIsFromFile ? "imports target" : "imported by target";
-  if (type === "imported_by") return targetIsFromFile ? "imported by target" : "imports target";
-  if (type === "tested_by") return targetIsFromFile ? "test for target" : "tested source";
-  if (type === "test_for") return targetIsFromFile ? "tested source" : "test for target";
-  if (type === "parent_route") return targetIsFromFile ? "parent route" : "route segment file";
-  if (type === "definition") return targetIsFromFile ? "definition target" : "defined from target";
-  if (type === "reference") return targetIsFromFile ? "references target" : "referenced by target";
-  if (type === "type_reference") return targetIsFromFile ? "type reference target" : "type referenced by target";
-  if (type === "implementation") return targetIsFromFile ? "implementation target" : "implemented by target";
-  if (type === "call") return targetIsFromFile ? "calls target" : "called by target";
-  return type;
-}
-
-function mergeReasonText(left: string | undefined, right: string): string {
-  return [...new Set([...(left?.split("; ") ?? []), right])].filter(Boolean).join("; ");
-}
-
-function uniquePaths(files: string[]): string[] {
-  return [...new Set(files.map((file) => normalizeRelativePath(file).replace(/^\.\//, "")).filter(Boolean))];
-}
-
-function uniqueStrings(values: string[]): string[] {
-  return [...new Set(values.filter(Boolean))];
 }
