@@ -7,6 +7,7 @@ import type { OutputKind } from "../types.js";
 const outputKindSchema = z.enum(["test", "lint", "typecheck", "generic"]);
 const contextModeSchema = z.enum(["brief", "snippets", "summary", "exact"]);
 const primeProfileSchema = z.enum(["auto", "ui", "workflow", "backend", "test", "generic"]);
+const prepareDetailSchema = z.enum(["compact", "full"]);
 
 export async function startMcpServer(options: { root?: string }): Promise<void> {
   const server = createMcpServer(options);
@@ -30,28 +31,14 @@ export function createMcpServer(options: { root?: string }): McpServer {
         task: z.string().min(1),
         sessionId: z.string().optional(),
         budget: z.number().int().positive().optional(),
-        profile: primeProfileSchema.optional()
+        profile: primeProfileSchema.optional(),
+        detail: prepareDetailSchema.optional()
       }
     },
-    async ({ task, sessionId, budget, profile }) => {
+    async ({ task, sessionId, budget, profile, detail }) => {
       const prime = await runtime.primeContext({ task, sessionId, budget: budget ?? 900, profile });
-      return mcpToolResult(runtime, "kairn_prepare_task", { task, sessionId, budget, profile }, {
-        session: prime.session,
-        task: prime.task,
-        profile: prime.profile,
-        content: prime.content,
-        startFiles: prime.files.slice(0, 4),
-        files: prime.files.slice(0, 4),
-        quality: prime.quality,
-        warnings: prime.warnings,
-        suggestedCommands: prime.suggestedCommands.slice(0, 3),
-        tokenEstimate: prime.tokenEstimate,
-        recommendedToolCalls: [
-          ...(prime.files[0] ? [{ tool: "kairn_read_file", input: { sessionId: prime.session.id, target: prime.files[0], mode: "summary", budget: 700 } }] : []),
-          ...(prime.files[0] ? [{ tool: "kairn_get_next_context", input: { sessionId: prime.session.id, budget: 700 } }] : []),
-          ...(prime.files[0] ? [{ tool: "kairn_find_tests", input: { sessionId: prime.session.id, target: prime.files[0], budget: 600 } }] : [])
-        ]
-      });
+      const value = (detail ?? "compact") === "full" ? fullPrepareResult(prime) : compactPrepareResult(runtime, prime);
+      return mcpToolResult(runtime, "kairn_prepare_task", { task, sessionId, budget, profile, detail }, value);
     }
   );
 
@@ -251,6 +238,78 @@ export function createMcpServer(options: { root?: string }): McpServer {
   );
 
   return server;
+}
+
+type PrimeContextResult = Awaited<ReturnType<KairnRuntime["primeContext"]>>;
+
+function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) {
+  const coordination = runtime.getCoordinationState(prime.session.id);
+  const startFiles = uniqueValues([
+    ...prime.files.filter((file) => !coordination.hookFiles.includes(file)),
+    ...prime.files
+  ]).slice(0, 3);
+  const likelyTests = uniqueValues(prime.files.filter((file) => /\.(test|spec)\.[cm]?[jt]sx?$/.test(file) || file.includes("__tests__"))).slice(0, 2);
+  const primaryFile = startFiles[0];
+  const nextToolCalls = [
+    ...(primaryFile
+      ? [{ tool: "kairn_read_file", input: { sessionId: prime.session.id, target: primaryFile, mode: "summary", budget: 650 } }]
+      : []),
+    { tool: "kairn_get_next_context", input: { sessionId: prime.session.id, budget: 650 } },
+    ...(primaryFile ? [{ tool: "kairn_find_tests", input: { sessionId: prime.session.id, target: primaryFile, budget: 500 } }] : [])
+  ].slice(0, 2);
+
+  return {
+    detail: "compact",
+    sessionId: prime.session.id,
+    session: { id: prime.session.id, task: prime.session.task },
+    task: prime.task,
+    profile: prime.profile,
+    startFiles,
+    files: startFiles,
+    primaryReason: primaryFile
+      ? `Start with ${primaryFile}; it is Kairn's highest-confidence unshown file for this task.`
+      : "Kairn did not find a high-confidence start file.",
+    nextToolCalls,
+    recommendedToolCalls: nextToolCalls,
+    likelyTests,
+    tokenEstimate: estimateCompactPrepareTokens(startFiles, likelyTests, nextToolCalls),
+    quality: prime.quality,
+    warnings: prime.warnings,
+    duplicateContextAvoided: coordination.duplicateContextAvoided,
+    hookFiles: coordination.hookFiles.slice(0, 3)
+  };
+}
+
+function fullPrepareResult(prime: PrimeContextResult) {
+  const recommendedToolCalls = [
+    ...(prime.files[0] ? [{ tool: "kairn_read_file", input: { sessionId: prime.session.id, target: prime.files[0], mode: "summary", budget: 700 } }] : []),
+    ...(prime.files[0] ? [{ tool: "kairn_get_next_context", input: { sessionId: prime.session.id, budget: 700 } }] : []),
+    ...(prime.files[0] ? [{ tool: "kairn_find_tests", input: { sessionId: prime.session.id, target: prime.files[0], budget: 600 } }] : [])
+  ];
+  return {
+    detail: "full",
+    session: prime.session,
+    sessionId: prime.session.id,
+    task: prime.task,
+    profile: prime.profile,
+    content: prime.content,
+    startFiles: prime.files.slice(0, 4),
+    files: prime.files.slice(0, 4),
+    quality: prime.quality,
+    warnings: prime.warnings,
+    suggestedCommands: prime.suggestedCommands.slice(0, 3),
+    tokenEstimate: prime.tokenEstimate,
+    recommendedToolCalls,
+    nextToolCalls: recommendedToolCalls.slice(0, 2)
+  };
+}
+
+function uniqueValues(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function estimateCompactPrepareTokens(startFiles: string[], likelyTests: string[], nextToolCalls: unknown[]): number {
+  return Math.ceil(JSON.stringify({ startFiles, likelyTests, nextToolCalls }).length / 4);
 }
 
 function mcpToolResult(runtime: KairnRuntime, toolName: string, input: unknown, value: unknown) {

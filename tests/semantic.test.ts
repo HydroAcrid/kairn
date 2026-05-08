@@ -4,6 +4,7 @@ import { decideResponse } from "../src/retrieval/responseRouter.js";
 import { embedText, cosineSimilarity } from "../src/semantic/vector.js";
 import { indexRepo } from "../src/indexer/indexRepo.js";
 import { buildLexicalIndex } from "../src/lexical/bm25.js";
+import { getLanguageAdapterForPath, languageAdapters } from "../src/languages/adapters.js";
 import type { FileRecord, GraphEdgeRecord, SemanticChunkRecord, SemanticVectorRecord, SymbolRecord } from "../src/types.js";
 import { createFixtureRepo } from "./helpers.js";
 
@@ -32,6 +33,20 @@ describe("semantic indexing", () => {
     );
     expect(index.semanticChunks.every((chunk) => chunk.tokenEstimate <= 2100)).toBe(true);
     expect(index.semanticVectors).toHaveLength(index.semanticChunks.length);
+  });
+});
+
+describe("language adapter registry", () => {
+  it("keeps universal retrieval extensible across popular languages", () => {
+    expect(languageAdapters.find((adapter) => adapter.id === "typescript")?.status).toBe("active");
+    expect(languageAdapters.find((adapter) => adapter.id === "python")?.status).toBe("stub");
+    expect(languageAdapters.find((adapter) => adapter.id === "java")?.status).toBe("stub");
+    expect(languageAdapters.find((adapter) => adapter.id === "go")?.status).toBe("stub");
+    expect(languageAdapters.find((adapter) => adapter.id === "rust")?.status).toBe("stub");
+    expect(getLanguageAdapterForPath("src/service.py")?.id).toBe("python");
+    expect(getLanguageAdapterForPath("src/App.java")?.id).toBe("java");
+    expect(getLanguageAdapterForPath("cmd/main.go")?.id).toBe("go");
+    expect(getLanguageAdapterForPath("src/lib.rs")?.id).toBe("rust");
   });
 });
 

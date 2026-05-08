@@ -47,6 +47,32 @@ describe("MCP server", () => {
     });
     const preparedText = firstTextContent(prepared);
     expect(preparedText).toContain("recommendedToolCalls");
+    const preparedParsed = JSON.parse(preparedText!) as {
+      detail: string;
+      sessionId: string;
+      startFiles: string[];
+      nextToolCalls: unknown[];
+      content?: string;
+    };
+    expect(preparedParsed.detail).toBe("compact");
+    expect(preparedParsed.sessionId).toBe(parsed.session.id);
+    expect(preparedParsed.startFiles.length).toBeLessThanOrEqual(3);
+    expect(preparedParsed.nextToolCalls.length).toBeLessThanOrEqual(2);
+    expect(preparedParsed.content).toBeUndefined();
+
+    const fullPrepared = await client.callTool({
+      name: "kairn_prepare_task",
+      arguments: {
+        task: "Update dashboard rendering",
+        sessionId: parsed.session.id,
+        budget: 700,
+        detail: "full"
+      }
+    });
+    const fullPreparedText = firstTextContent(fullPrepared);
+    const fullPreparedParsed = JSON.parse(fullPreparedText!) as { detail: string; content?: string };
+    expect(fullPreparedParsed.detail).toBe("full");
+    expect(fullPreparedParsed.content).toContain("Kairn");
 
     const file = await client.callTool({
       name: "kairn_read_file",

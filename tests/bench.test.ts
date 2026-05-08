@@ -639,6 +639,8 @@ describe("benchmark runtime and CLI", () => {
           commandForTokens,
           "--mcp-first-plus-hook-full-prime-command",
           commandForTokens,
+          "--hybrid-mcp-brief-command",
+          commandForTokens,
           "--repeat",
           "2",
           "--shuffle-order",
@@ -653,6 +655,7 @@ describe("benchmark runtime and CLI", () => {
       mcpFirst?: { results: Array<{ metadata: Record<string, unknown>; observedCodexTokens?: number }> };
       realMcpFirst?: { results: Array<{ metadata: Record<string, unknown>; observedCodexTokens?: number }> };
       mcpFirstPlusHookFullPrime?: { results: Array<{ metadata: Record<string, unknown>; observedCodexTokens?: number }> };
+      hybridMcpBrief?: { results: Array<{ metadata: Record<string, unknown>; observedCodexTokens?: number }> };
     };
 
     expect(proof.observedTokenDeltas.proactiveVsBaseline).toMatchObject({
@@ -668,6 +671,8 @@ describe("benchmark runtime and CLI", () => {
     expect(proof.realMcpFirst?.results[0]?.observedCodexTokens).toBe(1500);
     expect(proof.mcpFirstPlusHookFullPrime?.results[0]?.metadata.mcpFirstInstructionsPrepended).toBe(true);
     expect(proof.mcpFirstPlusHookFullPrime?.results[0]?.observedCodexTokens).toBe(1500);
+    expect(proof.hybridMcpBrief?.results[0]?.metadata.mcpFirstInstructionsPrepended).toBe(true);
+    expect(proof.hybridMcpBrief?.results[0]?.observedCodexTokens).toBe(1500);
     expect(proof.aggregate?.repeat).toBe(2);
     expect(proof.aggregate?.deltas.manualPrimeVsBaseline?.savedTokens).toBe(2000);
   });

@@ -218,10 +218,10 @@ setup
   .command("codex")
   .description("Install Codex hook config that lets Kairn prime prompts automatically.")
   .option("--root <path>", "target repository root", process.cwd())
-  .addOption(new Option("--mode <mode>", "Codex hook setup mode").choices(["savings", "observe", "debug", "mcp-first"]).default("savings"))
+  .addOption(new Option("--mode <mode>", "Codex hook setup mode").choices(["savings", "observe", "debug", "mcp-first", "hybrid"]).default("savings"))
   .addOption(new Option("--prime-profile <profile>", "prompt-submit prime profile").choices(["auto", "ui", "workflow", "backend", "test", "generic"]).default("auto"))
-  .addOption(new Option("--hook-output <profile>", "prompt-submit hook output profile").choices(["full-prime", "tiny-directive", "failure-only"]).default("full-prime"))
-  .addOption(new Option("--post-tool-hook-output <profile>", "post-tool hook output profile").choices(["full-prime", "tiny-directive", "failure-only"]).default("failure-only"))
+  .addOption(new Option("--hook-output <profile>", "prompt-submit hook output profile").choices(["full-prime", "tiny-directive", "failure-only", "mcp-brief"]).default("full-prime"))
+  .addOption(new Option("--post-tool-hook-output <profile>", "post-tool hook output profile").choices(["full-prime", "tiny-directive", "failure-only", "mcp-brief"]).default("failure-only"))
   .option("--prime-budget <tokens>", "prompt-submit prime token budget", parsePositiveInt, 900)
   .option("--json", "print JSON output")
   .action((options: {
@@ -237,7 +237,7 @@ setup
       root: options.root,
       mode: options.mode,
       primeProfile: options.primeProfile,
-      hookOutput: options.hookOutput,
+      hookOutput: options.mode === "hybrid" ? "mcp-brief" : options.hookOutput,
       postToolHookOutput: options.postToolHookOutput,
       primeBudget: options.primeBudget
     });
@@ -257,8 +257,10 @@ setup
         `Mode: ${result.mode}`,
         `Hook output: ${result.hookOutput}`,
         `Post-tool hook output: ${result.postToolHookOutput}`,
-        "Codex UserPromptSubmit hooks will request proactive Kairn context without KAIRN_SESSION.",
-        result.mode === "mcp-first" ? "MCP-first mode writes a Kairn MCP server config and AGENTS.md guidance." : "",
+        result.mode === "mcp-first"
+          ? "No prompt hook was installed; Codex should use Kairn through MCP-first instructions."
+          : "Codex UserPromptSubmit hooks will request proactive Kairn context without KAIRN_SESSION.",
+        result.mcpConfigured ? `${result.mode} mode writes a Kairn MCP server config and AGENTS.md guidance.` : "",
         ""
       ].filter(Boolean).join("\n")
     );
@@ -481,7 +483,7 @@ program
   .addOption(new Option("--source <source>", "hook source").choices(["generic", "claude", "codex"]).default("generic"))
   .option("--event <name>", "override hook event name")
   .addOption(new Option("--prime-profile <profile>", "prompt-submit prime profile").choices(["auto", "ui", "workflow", "backend", "test", "generic"]).default("auto"))
-  .addOption(new Option("--hook-output <profile>", "hook output profile").choices(["full-prime", "tiny-directive", "failure-only"]).default("full-prime"))
+  .addOption(new Option("--hook-output <profile>", "hook output profile").choices(["full-prime", "tiny-directive", "failure-only", "mcp-brief"]).default("full-prime"))
   .option("--prime-budget <tokens>", "prompt-submit prime token budget", parsePositiveInt, 1200)
   .option("--json", "print JSON output")
   .action(
@@ -829,6 +831,7 @@ benchCommand
   .option("--mcp-first-command <command>", "MCP-first live-agent command with {prompt} and {root} placeholders")
   .option("--real-mcp-first-command <command>", "real MCP-first live-agent command with {prompt} and {root} placeholders")
   .option("--mcp-first-plus-hook-full-prime-command <command>", "MCP-first plus full-prime hook command with {prompt} and {root} placeholders")
+  .option("--hybrid-mcp-brief-command <command>", "hybrid MCP plus mcp-brief hook command with {prompt} and {root} placeholders")
   .option("--passive-command <command>", "legacy alias for --prompt-plus-hooks-command")
   .option("--proactive-command <command>", "legacy alias for --manual-prime-command")
   .option("--agent-timeout <ms>", "live-agent command timeout", parsePositiveInt, 120000)
@@ -849,6 +852,7 @@ benchCommand
       mcpFirstCommand?: string;
       realMcpFirstCommand?: string;
       mcpFirstPlusHookFullPrimeCommand?: string;
+      hybridMcpBriefCommand?: string;
       passiveCommand?: string;
       proactiveCommand?: string;
       agentTimeout: number;
@@ -869,6 +873,7 @@ benchCommand
           mcpFirstCommand: options.mcpFirstCommand,
           realMcpFirstCommand: options.realMcpFirstCommand,
           mcpFirstPlusHookFullPrimeCommand: options.mcpFirstPlusHookFullPrimeCommand,
+          hybridMcpBriefCommand: options.hybridMcpBriefCommand,
           passiveCommand: options.passiveCommand,
           proactiveCommand: options.proactiveCommand,
           agentTimeoutMs: options.agentTimeout,
@@ -1029,14 +1034,15 @@ function writeCodexSetup(input: {
     hooksPath,
     `${JSON.stringify(buildCodexHooksConfig(input), null, 2)}\n`
   );
-  const instructions = input.mode === "mcp-first" ? writeMcpInstructionsSetup({ root: rootPath }) : undefined;
+  const hasMcp = input.mode === "mcp-first" || input.mode === "hybrid";
+  const instructions = hasMcp ? writeMcpInstructionsSetup({ root: rootPath }) : undefined;
 
   return {
     rootPath,
     configPath,
     hooksPath,
-    mcpConfigured: input.mode === "mcp-first",
-    mcpServerName: input.mode === "mcp-first" ? "kairn" : undefined,
+    mcpConfigured: hasMcp,
+    mcpServerName: hasMcp ? "kairn" : undefined,
     instructionsPath: instructions?.instructionsPath,
     mode: input.mode,
     primeProfile: input.primeProfile,
@@ -1052,7 +1058,7 @@ function buildCodexConfig(input: {
   existingConfig: string;
 }): string {
   let config = upsertFeatureFlag(input.existingConfig, "codex_hooks", true);
-  if (input.mode === "mcp-first") {
+  if (input.mode === "mcp-first" || input.mode === "hybrid") {
     const mcpCommand = resolveKairnMcpCommand();
     const mcpArgs = [...mcpCommand.argsPrefix, "serve", "--mcp", "--root", input.rootPath];
     config = upsertTomlTable(config, "mcp_servers.kairn", [
@@ -1076,6 +1082,9 @@ function resolveKairnMcpCommand(): { command: string; argsPrefix: string[] } {
     if (path.extname(argvEntrypoint) === ".js") {
       return { command: process.execPath, argsPrefix: [argvEntrypoint] };
     }
+    if (path.extname(argvEntrypoint) === ".ts" || path.extname(argvEntrypoint) === ".tsx") {
+      return { command: findExecutableOnPath("tsx") ?? "tsx", argsPrefix: [argvEntrypoint] };
+    }
     return { command: argvEntrypoint, argsPrefix: [] };
   }
 
@@ -1097,7 +1106,7 @@ function findExecutableOnPath(name: string): string | undefined {
     const candidate = path.join(dir, name);
     try {
       fs.accessSync(candidate, fs.constants.X_OK);
-      return candidate;
+      return path.resolve(candidate);
     } catch {
       // Keep searching.
     }
@@ -1150,19 +1159,21 @@ function buildCodexHooksConfig(input: {
     primeBudget: input.primeBudget,
     hookOutput: input.postToolHookOutput
   });
-  const hooks: Record<string, unknown> = {
-    UserPromptSubmit: [
+  const hooks: Record<string, unknown> = {};
+
+  if (input.mode !== "mcp-first") {
+    hooks.UserPromptSubmit = [
       {
         hooks: [
           {
             type: "command",
             command: promptCommand,
-            statusMessage: "Priming Kairn context"
+            statusMessage: input.hookOutput === "mcp-brief" ? "Coordinating Kairn MCP context" : "Priming Kairn context"
           }
         ]
       }
-    ]
-  };
+    ];
+  }
 
   if (input.mode === "observe" || input.mode === "debug") {
     hooks.PostToolUse = [

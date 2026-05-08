@@ -99,6 +99,25 @@ export type CodexSetupMode = "savings" | "observe" | "debug" | "mcp-first" | "hy
 
 export type HookOutputProfile = "full-prime" | "tiny-directive" | "failure-only" | "mcp-brief";
 
+export type LanguageAdapterCapability =
+  | "symbols"
+  | "definitions"
+  | "references"
+  | "call_graph"
+  | "tests"
+  | "failures";
+
+export type LanguageAdapterStatus = "stub" | "active";
+
+export type LanguageAdapter = {
+  id: string;
+  languages: string[];
+  fileExtensions: string[];
+  capabilities: LanguageAdapterCapability[];
+  status: LanguageAdapterStatus;
+  notes?: string | undefined;
+};
+
 export type FileRecord = {
   rootPath: string;
   path: string;

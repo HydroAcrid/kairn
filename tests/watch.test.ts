@@ -417,7 +417,7 @@ describe("KairnRuntime watch behavior", () => {
     runtime.close();
   });
 
-  it("supports tiny directive and failure-only hook output profiles", async () => {
+  it("supports tiny directive, mcp-brief, and failure-only hook output profiles", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);
     const event = normalizeHookPayload({
@@ -449,11 +449,45 @@ describe("KairnRuntime watch behavior", () => {
       hookOutput: "failure-only",
       primeBudget: 600
     });
+    const mcpBrief = await runtime.handleHookEvent({
+      event: normalizeHookPayload({
+        source: "codex",
+        payload: {
+          cwd: root,
+          hook_event_name: "UserPromptSubmit",
+          session_id: "codex-mcp-brief-session",
+          turn_id: "turn_1",
+          prompt: "Fix the job tracker mobile layout bottom sheet"
+        }
+      }),
+      hookOutput: "mcp-brief",
+      primeBudget: 360
+    });
+    const fullPrime = await runtime.handleHookEvent({
+      event: normalizeHookPayload({
+        source: "codex",
+        payload: {
+          cwd: root,
+          hook_event_name: "UserPromptSubmit",
+          session_id: "codex-full-prime-session",
+          turn_id: "turn_1",
+          prompt: "Fix the job tracker mobile layout bottom sheet"
+        }
+      }),
+      hookOutput: "full-prime",
+      primeBudget: 1200
+    });
 
     expect(tiny.prime?.content).toContain("Kairn Start Points");
     expect(tiny.prime?.content).toContain("Use these before broad repo search");
     expect(tiny.prime?.tokenEstimate).toBeLessThanOrEqual(600);
     expect(tiny.prime?.files).toContain("src/app/private/jobs/JobsApplicationsTable.tsx");
+    expect(mcpBrief.prime?.content).toContain("Kairn MCP Brief");
+    expect(mcpBrief.prime?.content).toContain("Kairn session:");
+    expect(mcpBrief.prime?.content).toContain("kairn_prepare_task");
+    expect(mcpBrief.prime?.tokenEstimate).toBeLessThanOrEqual(360);
+    expect(mcpBrief.prime?.tokenEstimate).toBeLessThan(fullPrime.prime?.tokenEstimate ?? 0);
+    expect(mcpBrief.prime?.files).toContain("src/app/private/jobs/JobsApplicationsTable.tsx");
     expect(failureOnly.prime).toBeUndefined();
     expect(failureOnly.recommendation).toBeUndefined();
 
@@ -637,9 +671,19 @@ describe("watch and hook CLI", () => {
         cwd: process.cwd(),
         encoding: "utf8"
       })
-    ) as { configPath: string; instructionsPath: string; mcpConfigured: boolean; hookOutput: string };
+    ) as { configPath: string; hooksPath: string; instructionsPath: string; mcpConfigured: boolean; hookOutput: string };
     const mcpConfig = fs.readFileSync(mcpFirst.configPath, "utf8");
+    const mcpHooks = fs.readFileSync(mcpFirst.hooksPath, "utf8");
     const mcpInstructions = fs.readFileSync(mcpFirst.instructionsPath, "utf8");
+    const hybrid = JSON.parse(
+      execFileSync(CLI[0]!, [...CLI.slice(1), "setup", "codex", "--root", root, "--mode", "hybrid", "--json"], {
+        cwd: process.cwd(),
+        encoding: "utf8"
+      })
+    ) as { configPath: string; hooksPath: string; instructionsPath: string; mcpConfigured: boolean; hookOutput: string };
+    const hybridConfig = fs.readFileSync(hybrid.configPath, "utf8");
+    const hybridHooks = fs.readFileSync(hybrid.hooksPath, "utf8");
+    const hybridInstructions = fs.readFileSync(hybrid.instructionsPath, "utf8");
     const hook = JSON.parse(
       execFileSync(CLI[0]!, [...CLI.slice(1), "hook", "--root", root, "--source", "codex", "--json"], {
         cwd: process.cwd(),
@@ -689,7 +733,14 @@ describe("watch and hook CLI", () => {
     expect(mcpConfig).toContain("--mcp");
     expect(mcpConfig).toContain("[model]");
     expect(mcpConfig).toContain("gpt-5.4-mini");
+    expect(mcpHooks).not.toContain("UserPromptSubmit");
     expect(mcpInstructions).toContain("kairn_prepare_task");
+    expect(hybrid.mcpConfigured).toBe(true);
+    expect(hybrid.hookOutput).toBe("mcp-brief");
+    expect(hybridConfig).toContain("[mcp_servers.kairn]");
+    expect(hybridHooks).toContain("UserPromptSubmit");
+    expect(hybridHooks).toContain("--hook-output mcp-brief");
+    expect(hybridInstructions).toContain("kairn_get_next_context");
     expect(hook.session.id).toMatch(/^task_/);
     expect(hook.prime?.content).toContain("Kairn Proactive Context");
     expect(hook.prime?.files).toContain("src/app/private/jobs/JobsApplicationsTable.tsx");
