@@ -90,7 +90,7 @@ const INTENT_TERMS: Record<Exclude<QueryIntentPrimary, "generic">, Set<string>> 
     "scoping"
   ]),
   auth: new Set(["auth", "oauth", "login", "session", "token", "permission", "access", "allowed", "owner"]),
-  test: new Set(["test", "tests", "spec", "vitest", "jest", "verify", "failure", "failing"]),
+  test: new Set(["test", "tests", "spec", "vitest", "jest", "verify"]),
   workflow: new Set([
     "attempt",
     "attempts",

@@ -171,9 +171,9 @@ function optionalPrimeProfile(value: unknown): PrimeProfile | undefined {
 }
 
 function optionalHookOutput(value: unknown): HookOutputProfile | undefined {
-  return value === "full-prime" || value === "tiny-directive" || value === "failure-only" ? value : undefined;
+  return value === "full-prime" || value === "tiny-directive" || value === "failure-only" || value === "mcp-brief" ? value : undefined;
 }
 
 function isPrimeProfile(value: unknown): value is PrimeProfile {
-  return value === "auto" || value === "ui" || value === "workflow" || value === "backend" || value === "test" || value === "generic";
+  return value === "auto" || value === "ui" || value === "workflow" || value === "backend" || value === "test" || value === "failure_debug" || value === "generic";
 }

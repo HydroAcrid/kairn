@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
+import Database from "better-sqlite3";
 import type { BenchmarkCase, BenchmarkSeedSpec, BenchmarkTaskOutcome } from "../types.js";
 import { parseCodexUsageFooter } from "../eval/codexUsage.js";
 import { sha256 } from "../utils/hash.js";
@@ -41,6 +42,21 @@ export async function runAgentBenchmarkCase(input: {
     workspacePath = workspace.workspacePath;
     seedMetadata = workspace.metadata;
   } catch (error) {
+    if (error instanceof MissingBenchmarkPrerequisiteError) {
+      return {
+        workspacePath,
+        actualFiles: [],
+        responseTokens: 0,
+        outcome: "skipped",
+        summary: error.message,
+        metadata: {
+          promptHash: sha256(prompt),
+          workspaceSetupSkipped: true,
+          missingPrerequisite: error.prerequisite,
+          seedConfigured: Boolean(input.benchmarkCase.seed)
+        }
+      };
+    }
     return {
       workspacePath,
       actualFiles: [],
@@ -94,7 +110,19 @@ export async function runAgentBenchmarkCase(input: {
     });
     const combinedOutput = [output, verification.output].filter(Boolean).join("\n");
     const expectedFileMentions = mentionedExpectedFiles(combinedOutput, input.benchmarkCase.expectedFiles);
-    const actualFiles = unique([...changedFiles(workspacePath), ...expectedFileMentions]);
+    const changedFileList = changedFiles(workspacePath);
+    const seedPatchFiles = stringListMetadata(seedMetadata.seedPatchFiles);
+    const seedPatchFileHashes = recordMetadata(seedMetadata.seedPatchFileHashes);
+    const agentChangedFiles = agentTouchedFiles({
+      workspacePath,
+      changedFiles: changedFileList,
+      seedPatchFiles,
+      seedPatchFileHashes
+    });
+    const requiredTouchedFiles = input.benchmarkCase.requiredTouchedFiles ?? [];
+    const missingRequiredTouchedFiles = requiredTouchedFiles.filter((file) => !agentChangedFiles.includes(file));
+    const requiredTouchedSatisfied = missingRequiredTouchedFiles.length === 0;
+    const actualFiles = unique([...agentChangedFiles, ...expectedFileMentions]);
     const metadata = metadataFromOutput({
       output: combinedOutput,
       prompt: prepared.prompt,
@@ -104,6 +132,12 @@ export async function runAgentBenchmarkCase(input: {
       extraMetadata: {
         originalPromptHash: sha256(prompt),
         expectedFileMentions,
+        changedFiles: changedFileList,
+        seedPatchFiles,
+        agentChangedFiles,
+        requiredTouchedFiles,
+        requiredTouchedSatisfied,
+        missingRequiredTouchedFiles,
         ...verification.metadata,
         ...seedMetadata,
         ...(prepared.metadata ?? {})
@@ -127,22 +161,43 @@ export async function runAgentBenchmarkCase(input: {
       actualFiles,
       responseTokens: estimateTokens(combinedOutput),
       ...(metadata.observedCodexTokens !== undefined ? { observedCodexTokens: metadata.observedCodexTokens } : {}),
-      outcome: "pass",
-      summary: `Agent command completed in disposable workspace. Relevant files surfaced: ${actualFiles.length}.`,
+      outcome: requiredTouchedSatisfied ? "pass" : "partial",
+      summary: requiredTouchedSatisfied
+        ? `Agent command completed in disposable workspace. Relevant files surfaced: ${actualFiles.length}.`
+        : `Agent command passed verification, but did not touch required source file(s): ${missingRequiredTouchedFiles.join(", ")}.`,
       metadata: metadata.metadata
     };
   } catch (error) {
     const output = outputFromExecError(error);
+    const seedPatchFiles = stringListMetadata(seedMetadata.seedPatchFiles);
+    const changedFileList = changedFiles(workspacePath);
+    const seedPatchFileHashes = recordMetadata(seedMetadata.seedPatchFileHashes);
+    const agentChangedFiles = agentTouchedFiles({
+      workspacePath,
+      changedFiles: changedFileList,
+      seedPatchFiles,
+      seedPatchFileHashes
+    });
+    const requiredTouchedFiles = input.benchmarkCase.requiredTouchedFiles ?? [];
+    const missingRequiredTouchedFiles = requiredTouchedFiles.filter((file) => !agentChangedFiles.includes(file));
     const metadata = metadataFromOutput({
       output,
       prompt,
       workspacePath,
       elapsedMs: undefined,
-      adapter: "command"
+      adapter: "command",
+      extraMetadata: {
+        seedPatchFiles,
+        changedFiles: changedFileList,
+        agentChangedFiles,
+        requiredTouchedFiles,
+        requiredTouchedSatisfied: missingRequiredTouchedFiles.length === 0,
+        missingRequiredTouchedFiles
+      }
     });
     return {
       workspacePath,
-      actualFiles: unique([...changedFiles(workspacePath), ...mentionedExpectedFiles(output, input.benchmarkCase.expectedFiles)]),
+      actualFiles: unique([...agentChangedFiles, ...mentionedExpectedFiles(output, input.benchmarkCase.expectedFiles)]),
       responseTokens: estimateTokens(output),
       ...(metadata.observedCodexTokens !== undefined ? { observedCodexTokens: metadata.observedCodexTokens } : {}),
       outcome: "fail",
@@ -185,6 +240,11 @@ function createBenchmarkWorkspace(input: {
 }
 
 function createSeededWorkspace(seed: BenchmarkSeedSpec): { workspacePath: string; metadata: Record<string, unknown> } {
+  const missingPrerequisite = missingSeedPrerequisite(seed);
+  if (missingPrerequisite) {
+    throw new MissingBenchmarkPrerequisiteError(missingPrerequisite);
+  }
+
   const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-bench-seed-"));
   const cloneDepth = seed.cloneDepth ?? 1;
 
@@ -205,11 +265,13 @@ function createSeededWorkspace(seed: BenchmarkSeedSpec): { workspacePath: string
   }
 
   applySeedPatch({ workspacePath, seed });
+  const seedPatchFiles = changedFiles(workspacePath);
+  const seedPatchFileHashes = fileHashes(workspacePath, seedPatchFiles);
   for (const command of seed.setupCommands ?? []) {
-    runRequired(command, [], { cwd: workspacePath, label: `setup command: ${command}`, shell: true });
+    runRequired(normalizeSeedCommand(command), [], { cwd: workspacePath, label: `setup command: ${command}`, shell: true });
   }
 
-  const expectedFailure = seed.expectedFailureCommand ? runShell(seed.expectedFailureCommand, workspacePath, 120000) : undefined;
+  const expectedFailure = seed.expectedFailureCommand ? runShell(normalizeSeedCommand(seed.expectedFailureCommand), workspacePath, 120000) : undefined;
 
   return {
     workspacePath,
@@ -220,9 +282,12 @@ function createSeededWorkspace(seed: BenchmarkSeedSpec): { workspacePath: string
       seedCloneDepth: cloneDepth,
       seedSetupCommandCount: seed.setupCommands?.length ?? 0,
       seedHasPatch: Boolean(seed.setupPatch || seed.setupPatchFile),
+      seedPatchFiles,
+      seedPatchFileHashes,
+      seedCommandNormalization: seedCommandNormalizationMetadata(seed),
       ...(expectedFailure
         ? {
-            seedExpectedFailureCommandHash: sha256(seed.expectedFailureCommand ?? ""),
+            seedExpectedFailureCommandHash: sha256(normalizeSeedCommand(seed.expectedFailureCommand ?? "")),
             seedExpectedFailureExitCode: expectedFailure.status,
             seedExpectedFailurePassed: expectedFailure.status !== 0,
             seedExpectedFailureOutputHash: sha256(expectedFailure.output),
@@ -261,18 +326,96 @@ function runSeedVerification(input: {
   if (!command) {
     return { failed: false, output: "", metadata: {} };
   }
-  const result = runShell(command, input.workspacePath, input.timeoutMs ?? 120000);
+  const normalizedCommand = normalizeSeedCommand(command);
+  const result = runShell(normalizedCommand, input.workspacePath, input.timeoutMs ?? 120000);
   return {
     failed: result.status !== 0,
     exitCode: result.status,
     output: result.output,
     metadata: {
-      seedTestCommandHash: sha256(command),
+      seedTestCommandHash: sha256(normalizedCommand),
       seedTestExitCode: result.status,
       seedTestOutputHash: sha256(result.output),
       seedTestOutputTokens: estimateTokens(result.output)
     }
   };
+}
+
+class MissingBenchmarkPrerequisiteError extends Error {
+  constructor(readonly prerequisite: string) {
+    super(`Agent benchmark skipped because required command is unavailable: ${prerequisite}`);
+  }
+}
+
+function missingSeedPrerequisite(seed: BenchmarkSeedSpec): string | undefined {
+  const commands = [
+    ...(seed.setupCommands ?? []),
+    seed.expectedFailureCommand,
+    seed.testCommand
+  ].filter((command): command is string => Boolean(command));
+  if (commands.some((command) => /\bmvn\b/.test(command)) && !commandExists("mvn")) return "mvn";
+  if (commands.some((command) => /\bc\+\+\b/.test(command)) && !commandExists("c++")) return "c++";
+  if (commands.some((command) => /\bpython\b/.test(command)) && !commandExists("python") && !commandExists("python3")) return "python or python3";
+  return undefined;
+}
+
+function normalizeSeedCommand(command: string): string {
+  if (commandExists("python") || !commandExists("python3")) return command;
+  return command.replace(/(^|[;&|(\s])python(\s+-\s)/g, "$1python3$2");
+}
+
+function seedCommandNormalizationMetadata(seed: BenchmarkSeedSpec): Record<string, unknown> {
+  const commands = [seed.expectedFailureCommand, seed.testCommand, ...(seed.setupCommands ?? [])].filter((command): command is string => Boolean(command));
+  return {
+    pythonToPython3: commands.some((command) => command !== normalizeSeedCommand(command))
+  };
+}
+
+function commandExists(command: string): boolean {
+  const result = spawnSync("sh", ["-lc", `command -v ${shellQuote(command)} >/dev/null 2>&1`], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"]
+  });
+  return (result.status ?? 1) === 0;
+}
+
+function stringListMetadata(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function recordMetadata(value: unknown): Record<string, string> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
+  const output: Record<string, string> = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (typeof item === "string") output[key] = item;
+  }
+  return output;
+}
+
+function agentTouchedFiles(input: {
+  workspacePath: string;
+  changedFiles: string[];
+  seedPatchFiles: string[];
+  seedPatchFileHashes: Record<string, string>;
+}): string[] {
+  return input.changedFiles.filter((file) => {
+    if (!input.seedPatchFiles.includes(file)) return true;
+    return currentFileHash(input.workspacePath, file) !== input.seedPatchFileHashes[file];
+  });
+}
+
+function fileHashes(workspacePath: string, files: string[]): Record<string, string> {
+  const hashes: Record<string, string> = {};
+  for (const file of files) {
+    hashes[file] = currentFileHash(workspacePath, file);
+  }
+  return hashes;
+}
+
+function currentFileHash(workspacePath: string, filePath: string): string {
+  const absolute = path.join(workspacePath, filePath);
+  if (!fs.existsSync(absolute)) return "missing";
+  return sha256(fs.readFileSync(absolute));
 }
 
 function runRequired(
@@ -347,6 +490,9 @@ function metadataFromOutput(input: {
   const hookCompleted = countMatches(input.output, /\bhook \(completed\)|hook:\s*[\w.-]+\s+Completed\b|hook context:/gi);
   const hookFailed = countMatches(input.output, /\bhook \(failed\)|error:\s*hook exited with code/gi);
   const kairnMcpToolMentions = countMatches(input.output, /\bkairn_(prepare_task|get_next_context|get_failure_context|find_context|read_file|read_symbol)\b/g);
+  const codexJsonlMcp = codexJsonlMcpCalls(input.output);
+  const workspaceMcp = workspaceMcpCalls(input.workspacePath);
+  const actualMcpToolCalls = workspaceMcp.count > 0 ? workspaceMcp.count : codexJsonlMcp.count;
   const metadata: Record<string, unknown> = {
     workspacePath: input.workspacePath,
     promptHash: sha256(input.prompt),
@@ -355,6 +501,10 @@ function metadataFromOutput(input: {
     hookCompleted,
     hookFailed,
     kairnMcpToolMentions,
+    actualMcpToolCalls,
+    actualMcpToolNames: unique([...workspaceMcp.toolNames, ...codexJsonlMcp.toolNames]),
+    actualMcpToolCallSource: workspaceMcp.count > 0 ? "workspace_metrics" : codexJsonlMcp.count > 0 ? "codex_jsonl" : "none",
+    actualMcpFiles: workspaceMcp.files,
     ...(input.extraMetadata ?? {})
   };
 
@@ -394,6 +544,93 @@ function bufferLikeToString(value: unknown): string {
 
 function countMatches(input: string, pattern: RegExp): number {
   return input.match(pattern)?.length ?? 0;
+}
+
+function codexJsonlMcpCalls(output: string): { count: number; toolNames: string[] } {
+  const toolNames: string[] = [];
+  let count = 0;
+  for (const line of output.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("{")) continue;
+    try {
+      const value = JSON.parse(trimmed) as unknown;
+      const text = JSON.stringify(value);
+      if (!text.includes("mcp") || !text.includes("kairn")) continue;
+      if (!text.includes("tool_call") && !text.includes("mcp_tool_call")) continue;
+      count += 1;
+      for (const match of text.matchAll(/\bkairn_(prepare_task|get_next_context|get_failure_context|find_context|read_file|read_symbol)\b/g)) {
+        toolNames.push(match[0]!);
+      }
+    } catch {
+      continue;
+    }
+  }
+  return {
+    count,
+    toolNames: unique(toolNames)
+  };
+}
+
+function workspaceMcpCalls(workspacePath: string): { count: number; toolNames: string[]; files: string[] } {
+  const dbPath = path.join(workspacePath, ".kairn", "kairn.sqlite");
+  if (!fs.existsSync(dbPath)) {
+    return { count: 0, toolNames: [], files: [] };
+  }
+
+  let db: Database.Database | undefined;
+  try {
+    db = new Database(dbPath, { readonly: true, fileMustExist: true });
+    const rows = db
+      .prepare(
+        `
+          select event_name, files_json, metadata_json
+          from metrics_events
+          where event_kind = 'mcp_tool_call'
+        `
+      )
+      .all() as Array<{ event_name: string; files_json: string; metadata_json: string }>;
+
+    const toolNames: string[] = [];
+    const files: string[] = [];
+    for (const row of rows) {
+      toolNames.push(row.event_name);
+      for (const file of parseStringArray(row.files_json)) {
+        files.push(normalizeRelativePath(file));
+      }
+      const metadata = parseJsonObject(row.metadata_json);
+      if (typeof metadata.toolName === "string") {
+        toolNames.push(metadata.toolName);
+      }
+    }
+
+    return {
+      count: rows.length,
+      toolNames: unique(toolNames),
+      files: unique(files)
+    };
+  } catch {
+    return { count: 0, toolNames: [], files: [] };
+  } finally {
+    db?.close();
+  }
+}
+
+function parseStringArray(value: string): string[] {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseJsonObject(value: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
+  } catch {
+    return {};
+  }
 }
 
 function unique(values: string[]): string[] {

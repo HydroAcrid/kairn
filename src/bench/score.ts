@@ -13,17 +13,29 @@ export function scoreBenchmarkCase(input: {
   metadata?: Record<string, unknown> | undefined;
 }): Omit<BenchmarkResultRecord, "id" | "createdAt"> {
   const expectedFiles = unique(input.benchmarkCase.expectedFiles);
+  const requiredTouchedFiles = unique(input.benchmarkCase.requiredTouchedFiles ?? []);
   const actualFiles = unique(input.actualFiles);
   const excludedFiles = unique(input.benchmarkCase.excludedFiles);
   const expectedHits = expectedFiles.filter((file) => actualFiles.includes(file));
   const missedExpectedFiles = expectedFiles.filter((file) => !actualFiles.includes(file));
+  const agentChangedFiles = stringArrayMetadata(input.metadata?.agentChangedFiles);
+  const requiredTouchedHits = requiredTouchedFiles.filter((file) => agentChangedFiles.includes(file));
+  const missingRequiredTouchedFiles = requiredTouchedFiles.filter((file) => !agentChangedFiles.includes(file));
   const topFive = actualFiles.slice(0, 5);
   const excludedHits = actualFiles.filter((file) => excludedFiles.some((excluded) => fileMatchesBenchmarkPattern(file, excluded)));
   const expectedFileRecall = expectedFiles.length > 0 ? ratio(expectedHits.length, expectedFiles.length) : 1;
   const topKHitRate = expectedFiles.length > 0 ? (expectedFiles.some((file) => topFive.includes(file)) ? 1 : 0) : 1;
   const unexpectedFileRate = actualFiles.length > 0 ? ratio(excludedHits.length, actualFiles.length) : 0;
   const responsePenalty = Math.min(0.15, Math.max(0, input.responseTokens - (input.benchmarkCase.budget ?? 1200)) / 8000);
-  const outcome = input.taskOutcome ?? "pass";
+  const requestedOutcome = input.taskOutcome ?? "pass";
+  const requiredTouchedSatisfied = requiredTouchedFiles.length === 0 || missingRequiredTouchedFiles.length === 0;
+  const mcpSuccess = !requiresMcpSuccess(input.metadata) || numberMetadata(input.metadata?.actualMcpToolCalls ?? input.metadata?.mcpToolCalls) > 0;
+  const qualityGatePassed = requestedOutcome === "pass" && requiredTouchedSatisfied && excludedHits.length === 0 && mcpSuccess;
+  const outcome = requestedOutcome === "fail" || requestedOutcome === "skipped"
+    ? requestedOutcome
+    : qualityGatePassed
+      ? "pass"
+      : "partial";
   const outcomeMultiplier = outcome === "fail" ? 0.45 : outcome === "partial" ? 0.75 : outcome === "skipped" ? 0 : 1;
   const score = clampScore(
     (0.52 * expectedFileRecall + 0.28 * topKHitRate + 0.2 * (1 - unexpectedFileRate) - responsePenalty) *
@@ -52,6 +64,8 @@ export function scoreBenchmarkCase(input: {
       expectedFiles,
       actualFiles,
       excludedHits,
+      missingRequiredTouchedFiles,
+      mcpSuccess,
       responseTokens: input.responseTokens,
       budget: input.benchmarkCase.budget,
       outcome
@@ -60,7 +74,13 @@ export function scoreBenchmarkCase(input: {
       ...(input.metadata ?? {}),
       missedExpectedFiles,
       irrelevantFilesRead: excludedHits,
-      expectedFilesMentioned: expectedHits
+      expectedFilesMentioned: expectedHits,
+      requiredTouchedFiles,
+      requiredTouchedFilesTouched: requiredTouchedHits,
+      missingRequiredTouchedFiles,
+      requiredTouchedSatisfied,
+      mcpSuccess,
+      qualityGatePassed
     }
   };
 }
@@ -139,6 +159,8 @@ function recommendationsFor(input: {
   expectedFiles: string[];
   actualFiles: string[];
   excludedHits: string[];
+  missingRequiredTouchedFiles: string[];
+  mcpSuccess: boolean;
   responseTokens: number;
   budget?: number | undefined;
   outcome: BenchmarkResultRecord["taskOutcome"];
@@ -150,6 +172,12 @@ function recommendationsFor(input: {
   }
   if (input.excludedHits.length > 0) {
     recommendations.push(`Unexpected files surfaced: ${input.excludedHits.slice(0, 4).join(", ")}.`);
+  }
+  if (input.missingRequiredTouchedFiles.length > 0) {
+    recommendations.push(`Required source files were not touched: ${input.missingRequiredTouchedFiles.slice(0, 4).join(", ")}.`);
+  }
+  if (!input.mcpSuccess) {
+    recommendations.push("MCP mode did not record an actual Kairn MCP tool call.");
   }
   if (input.budget && input.responseTokens > input.budget) {
     recommendations.push("Response exceeded the benchmark budget; tune response routing or snippets.");
@@ -203,4 +231,20 @@ function fileMatchesBenchmarkPattern(filePath: string, pattern: string): boolean
     return new RegExp(`^${escaped}$`).test(filePath);
   }
   return false;
+}
+
+function stringArrayMetadata(value: unknown): string[] {
+  return Array.isArray(value) ? unique(value.filter((item): item is string => typeof item === "string" && Boolean(item))) : [];
+}
+
+function numberMetadata(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function requiresMcpSuccess(metadata: Record<string, unknown> | undefined): boolean {
+  const assistanceMode = typeof metadata?.assistanceMode === "string" ? metadata.assistanceMode : "";
+  return assistanceMode === "mcp_first" ||
+    assistanceMode === "real_mcp_first" ||
+    assistanceMode === "mcp_first_plus_hook_full_prime" ||
+    assistanceMode === "hybrid_mcp_brief";
 }

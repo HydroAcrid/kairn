@@ -47,7 +47,7 @@ export function registerWatchCommands(program: Command): void {
     .option("--root <path>", "target repository root", process.cwd())
     .addOption(new Option("--source <source>", "hook source").choices(["generic", "claude", "codex"]).default("generic"))
     .option("--event <name>", "override hook event name")
-    .addOption(new Option("--prime-profile <profile>", "prompt-submit prime profile").choices(["auto", "ui", "workflow", "backend", "test", "generic"]).default("auto"))
+    .addOption(new Option("--prime-profile <profile>", "prompt-submit prime profile").choices(["auto", "ui", "workflow", "backend", "test", "failure_debug", "generic"]).default("auto"))
     .addOption(new Option("--hook-output <profile>", "hook output profile").choices(["full-prime", "tiny-directive", "failure-only", "mcp-brief"]).default("full-prime"))
     .option("--prime-budget <tokens>", "prompt-submit prime token budget", parsePositiveInt, 1200)
     .option("--json", "print JSON output")

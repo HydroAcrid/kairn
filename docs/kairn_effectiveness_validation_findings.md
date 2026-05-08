@@ -925,3 +925,327 @@ Next improvement target:
 2. Add language-aware source priority for Python: `src/**/*.py` and package modules should outrank docs/examples unless the prompt asks for docs or examples.
 3. Add Python symbol extraction beyond generic chunks so prompts like `terminal width`, `ANSI`, and `visible characters` bind more directly to `term_len` and `strip_ansi`.
 4. Keep `hook_full_prime` as the default savings path, but continue benchmarking `hybrid_mcp_brief` because it may become the best long-task mode once MCP context is less noisy.
+
+## Cross-Language Adapter Proof After Parser Expansion
+
+Date: 2026-05-08
+
+After adding Python, Java, and C/C++ parser adapters plus source-vs-noise ranking rules, the static verification suite passed again:
+
+```text
+pnpm test
+pnpm typecheck
+pnpm build
+```
+
+The new seeded suite was added at:
+
+```text
+examples/bench/seeded-cross-language.json
+```
+
+The Java live case could not be run on this machine because Maven is not installed:
+
+```text
+mvn: command not found
+```
+
+Two live attempts were made. The first broad TypeScript/Python/C++ matrix is not a valid quality proof because the live Codex commands did not explicitly set a writable sandbox and the Python verification command used `python`, while this machine only has `python3`. That run is still useful as a harness finding: benchmark suites must force `--sandbox workspace-write` for fixing tasks and must use portable interpreter commands.
+
+The corrected quality proof used Python and C++ only:
+
+```text
+/tmp/kairn-py-cpp-write-proof-20260508114528.json
+```
+
+It ran with:
+
+```text
+codex exec --model gpt-5.4-mini --sandbox workspace-write
+```
+
+Quality rule remained unchanged: a mode only counts if seeded verification passes, the expected production file is used or mentioned, hook failures are absent, and excluded docs/examples are not touched.
+
+### Corrected Python + C++ Proof
+
+| Mode | Case | Outcome | Observed tokens | Delta vs baseline | Expected file used | Hook signal | MCP signal |
+| --- | --- | --- | ---: | ---: | --- | --- | --- |
+| Baseline | Python Click ANSI width | pass | `30,569` | - | yes | none | none |
+| Hook full prime | Python Click ANSI width | pass | `20,977` | `+31.38%` | yes | `1` hook, `0` failures | none |
+| Real MCP-first | Python Click ANSI width | pass | `25,267` | `+17.34%` | yes | none | `7` MCP mentions |
+| Baseline | C++ fmt starts_with | pass | `13,222` | - | yes | none | none |
+| Hook full prime | C++ fmt starts_with | pass | `13,512` | `-2.19%` | yes | no completed hook recorded | none |
+| Real MCP-first | C++ fmt starts_with | pass | `18,745` | `-41.77%` | yes | none | `5` MCP mentions |
+
+Aggregate observed token deltas:
+
+| Mode | Baseline tokens | Assisted tokens | Savings |
+| --- | ---: | ---: | ---: |
+| Hook full prime | `43,791` | `34,489` | `21.24%` |
+| Real MCP-first | `43,791` | `44,012` | `-0.50%` |
+
+Findings:
+
+- The expanded parser/indexing work did not break quality: Python and C++ both passed verification in baseline, hook full-prime, and real MCP-first.
+- Hook full-prime is still the better automatic path across this corrected cross-language proof, but the savings came almost entirely from Python.
+- C++ currently does not benefit from Kairn on this small seeded case. Hook full-prime was roughly flat, and MCP-first was substantially worse.
+- MCP-first is not ready as the cross-language default. It can steer Codex to the right file, but it adds enough process/tool overhead that it loses on small Python/C++ fixes.
+- The benchmark harness needs two fixes before broader claims:
+  - fixing tasks must run Codex with an explicit writable sandbox;
+  - seeded benchmark `actualFiles` should distinguish seed-patch files from agent-touched files.
+- The first invalid matrix showed every case "used" the expected file even when Codex did not edit it, because the seed patch itself made the expected file dirty. That must be corrected before scoring expected-file usage.
+
+Product implication:
+
+- Keep `hook_full_prime` as the default savings mode.
+- Keep MCP-first/hybrid experimental for now; it may still be valuable on long multi-step sessions, but this proof says it is not automatically better for small cross-language fixes.
+- Prioritize harness reliability before running larger Java/C++ proof claims.
+- Next cross-language retrieval work should improve C/C++ exact symbol targeting and make MCP responses smaller than hook primes, not larger.
+
+## 60%+ Savings Pass: Harness Fixes And Cross-Language Smoke
+
+Date: 2026-05-08
+
+This pass implemented the quality-first improvements before making any larger savings claim. Static verification is green after the changes:
+
+```text
+pnpm test
+pnpm typecheck
+pnpm build
+```
+
+Implemented changes:
+
+- Added a `failure_debug` prime profile for seeded debugging prompts. It emits a smaller, sharper brief: one primary source file, focused symbol hints, one likely check/test, and a direct instruction to inspect the source before broad searching.
+- Added language-aware debug budgets: TypeScript backend/debug around `900` tokens, Python around `650`, C++ around `550`, and Java around `750`.
+- Improved cross-language exact retrieval signals for Python ANSI/visible length, C++ `starts_with`/`string_view`, and Java blank/whitespace prompts.
+- Reduced BM25 noise from generic words like `debug`, `seeded`, `failing`, and `regression` so exact identifiers matter more.
+- Slimmed compact MCP prepare output toward one primary source file, one symbol hint, one likely check/test, and one next tool call.
+- Fixed live-agent proof scoring so seeded patch files are tracked separately from agent-touched files.
+- Added workspace `.kairn` metrics extraction for actual MCP tool calls, so MCP success can be measured from Kairn-side telemetry, not just text mentions.
+- Updated benchmark examples to run Codex fixing tasks with `--sandbox workspace-write`.
+- Updated the Python seeded suite to use `python3`.
+
+A corrected Python + C++ exploratory smoke was run with writable Codex workspaces:
+
+```text
+/tmp/kairn-py-cpp-smoke-20260508120836.json
+```
+
+This was a single-repeat smoke, not a product claim.
+
+| Mode | Aggregate observed tokens | Delta vs baseline | Quality |
+| --- | ---: | ---: | --- |
+| Baseline | `49,032` | - | both cases passed |
+| Hook full-prime | `49,610` | `-1.18%` | both cases passed |
+| Real MCP-first | `51,880` | `-5.81%` | both cases passed, but `actualMcpToolCalls = 0` |
+
+Per-case observations:
+
+| Mode | Case | Outcome | Observed tokens | Agent-touched files | Expected-file mentions | Actual MCP calls |
+| --- | --- | --- | ---: | --- | --- | ---: |
+| Baseline | Python Click ANSI width | pass | `32,135` | `tests/test_compat.py` | `src/click/_compat.py` | `0` |
+| Hook full-prime | Python Click ANSI width | pass | `30,109` | none | `src/click/_compat.py` | `0` |
+| Real MCP-first | Python Click ANSI width | pass | `17,102` | none | `src/click/_compat.py` | `0` |
+| Baseline | C++ fmt starts_with | pass | `16,897` | none | `include/fmt/base.h` | `0` |
+| Hook full-prime | C++ fmt starts_with | pass | `19,501` | none | `include/fmt/base.h` | `0` |
+| Real MCP-first | C++ fmt starts_with | pass | `34,778` | none | `include/fmt/base.h` | `0` |
+
+Findings:
+
+- The harness fix worked: seed-patch files are no longer counted as agent-touched files. This exposed a real scoring problem from earlier runs.
+- The Python baseline passed by changing `tests/test_compat.py` while only mentioning `src/click/_compat.py`. That means expected-file mention is too weak for seeded bug-fix quality. Future seeded cases should require the expected production source file to be touched or should validate behavior in a way that cannot be solved by test-only edits.
+- MCP-first still did not produce actual Kairn MCP tool calls in this smoke. Its result must be treated as instructions-only, not MCP success.
+- The new failure-debug profile did not produce a cross-language savings win in this smoke. It preserved quality, but did not beat baseline on aggregate tokens.
+- The path to `60%+` savings is likely harder seeded failures where the expected source edit is enforced, not small cases where Codex can already infer or bypass the source quickly.
+
+Next required harness improvement:
+
+- Add a seeded-case quality gate for expected production source edits. `expectedFiles` can continue to allow read/mention scoring, but seeded bug-fix suites need a stricter field such as `requiredTouchedFiles` or `requiredSourceFiles` so a test-only workaround does not count as a full-quality pass.
+- MCP/hybrid modes should only count as MCP success when workspace metrics or JSONL show `actualMcpToolCalls > 0`.
+
+## Adaptive Context Controller Implementation
+
+Date: 2026-05-08
+
+This pass implemented the adaptive solution from the post-C++ analysis: Kairn should not always inject context. It should emit context when it has high-confidence leverage, shrink when value is uncertain, and suppress when Codex is likely cheaper without help.
+
+Static verification passed:
+
+```text
+pnpm test
+pnpm typecheck
+pnpm build
+```
+
+Result:
+
+```text
+11 test files passed
+99 tests passed
+```
+
+Implemented changes:
+
+- Added a central context-value decision layer with `emit`, `shrink`, and `suppress` actions.
+- Wired the decision into `primeContext`, prompt hooks, MCP prepare responses, metrics, and benchmark metadata.
+- Exact-path prompts now suppress proactive context instead of spending extra tokens.
+- Low-confidence C/C++ prompts shrink instead of emitting full-prime context.
+- MCP compact prepare now suppresses start files when Kairn has no high-confidence context and tells the agent to call Kairn again after a failure, diff, or more specific target.
+- Added `requiredTouchedFiles` to seeded benchmark cases.
+- Seeded bug-fix runs now count as full-quality only when required production source files are touched, not merely mentioned.
+- MCP benchmark modes now fail the MCP-specific quality gate when no actual Kairn MCP tool call is recorded.
+- Updated `examples/bench/seeded-cross-language.json` so TypeScript, Python, Java, and C++ seeded cases require the intended production source file to be touched.
+
+Important behavior change:
+
+- `expectedFiles` still measures retrieval/read/mention quality.
+- `requiredTouchedFiles` measures seeded bug-fix correctness.
+- A run can pass verification but still be marked `partial` if it only edits tests or mentions the source file without touching the required production file.
+
+This directly addresses the previous smoke-test flaw where Python baseline passed by editing `tests/test_compat.py` while only mentioning `src/click/_compat.py`.
+
+Product implication:
+
+- Kairn's default direction is now adaptive, not always-on.
+- Hook full-prime remains the main automatic path, but it can now be suppressed or shrunk when the controller predicts low marginal value.
+- Future 60%+ claims should be based only on repeated runs where `qualityGatePassed = true`, `requiredTouchedSatisfied = true`, and MCP modes have actual tool-call evidence.
+
+## Large Repo Proof: Django And Next.js
+
+Date: 2026-05-08
+
+This pass tested the current Kairn system against larger repositories instead of small or medium fixture-style cases. The goal was to check the hypothesis that Kairn's savings should improve as repository size and task complexity grow.
+
+Repos selected:
+
+| Repo | Commit | Approx files | Case |
+| --- | --- | ---: | --- |
+| `django/django` | `e7f539f813bd56a71ca3c1fbf379f47691002086` | `7,066` | seeded `slugify` lowercase regression |
+| `vercel/next.js` | `8f132ea9848b52e6717959d9ced4efda44ab430d` | `28,866` | seeded `isLocalURL` relative URL regression |
+
+The Next.js-scale run was stopped before completion. The disposable workspace `.kairn` directory grew to roughly `8GB`, and the indexing/proof process became CPU-bound. This is a product issue, not a Codex issue: Kairn needs index-size controls, storage compaction, and large-monorepo limits before we can honestly claim it scales cleanly to Next.js-sized repositories.
+
+The first Django run was also invalid because the verification command imported `django.utils.text` without the external `asgiref` dependency available. A second Django run installed `asgiref` into a temp target and produced a valid quality-gated proof.
+
+Valid Django proof file:
+
+```text
+/tmp/kairn-large-django-valid-proof-20260508130529.json
+```
+
+All three modes passed the task and touched the required production source file, `django/utils/text.py`:
+
+| Mode | Quality | Observed tokens | Delta vs baseline | Elapsed | Required source touched |
+| --- | --- | ---: | ---: | ---: | --- |
+| Baseline | pass | `15,341` | - | `32.5s` | yes |
+| Manual prime | pass | `19,932` | `-29.93%` | `115.6s` | yes |
+| Hook full-prime | pass | `36,085` | `-135.22%` | `166.7s` | yes |
+
+The important finding is that Kairn made the large Django case worse even though quality was preserved. The manual prime selected these starting files:
+
+```text
+tests/asgi/urls.py
+tests/admin_scripts/tests.py
+```
+
+Those files were wrong for the seeded regression. The required fix was in:
+
+```text
+django/utils/text.py
+```
+
+Why this matters:
+
+- Large-repo complexity did not automatically make Kairn better. Bad retrieval scales harm because the assistant spends extra tokens reconciling misleading context.
+- The adaptive controller was necessary, but not sufficient. It allowed a prime that looked compact but pointed at the wrong part of the repository.
+- Failure/debug prompts are currently too vulnerable to generic terms like `test`, `hello-world`, and failure language. Those terms can over-rank arbitrary tests instead of the production source named by the behavior under test.
+- The benchmark harness fix worked: seeded files are now counted as agent-touched only when Codex changes them after the seed patch, and this proof correctly shows `requiredTouchedSatisfied = true`.
+
+Next improvements before more large-repo claims:
+
+- Add hard large-index limits: cap indexed files/chunks/vectors per repo by default, compact SQLite writes, and skip generated/vendor/docs/examples aggressively unless requested.
+- Add source-targeting failure routing: for seeded debug prompts, Kairn should prefer production source files with exact behavior/symbol matches over test files unless the failure output explicitly names the test path.
+- Add a "wrong-context risk" controller feature: suppress or shrink when top-ranked files are tests/docs and the prompt asks for a production behavior fix.
+- Improve Python exact behavior retrieval: `slugify`, `lowercase`, `allow_unicode`, and return-value behavior should beat unrelated test paths.
+- Keep the large-repo proof claim honest: current evidence says Kairn can save a lot on some tasks, but it does not yet universally improve large repos.
+
+## Large-Repo Safety And Source-Targeting Fix
+
+Date: 2026-05-08
+
+This pass directly addressed the two failures from the Django/Next.js proof:
+
+1. Next.js-scale indexing created an oversized `.kairn` state directory.
+2. Django `slugify` retrieval let example literals and generic test/failure terms outrank the production source file.
+
+Implemented changes:
+
+- Added a default scan cap of `8,000` indexed files. Candidate files are prioritized before hashing/indexing so source, routes, components, schemas, configs, `src/`, `packages/`, `include/`, and package-like modules are kept before docs/examples/generated/test-heavy surfaces.
+- Added a semantic chunk cap of `7,500` chunks so vectors and lexical documents cannot grow unbounded on large monorepos.
+- `kairn init` now reports when files were skipped by the index cap.
+- Retrieval now strips quoted/example literals before keyword, BM25, semantic, and source-priority scoring. This prevents strings like `'Hello World'` and `'hello-world'` from making unrelated `hello` tests look like the best context.
+- Behavior routing now understands case/lowercase/slugify regressions and avoids treating generic `case` symbols like `CheckTestCase` as strong production-source evidence.
+- Exact-symbol scoring now filters low-value symbols such as `lower`, `upper`, `input`, `output`, and `case` when a more specific query symbol exists.
+- Source priority now boosts core utility modules such as `utils`, `helpers`, `core`, `text`, `string`, `common`, and `shared` when they contain exact symbol matches.
+- The context-value controller now marks test/doc/non-source top results as `wrongContextRisk` for production-source fixes. In large repos, that suppresses or shrinks the prime instead of emitting confident but misleading context.
+
+Regression check:
+
+```text
+kairn prime "Debug a seeded regression in Django slugify: uppercase input no longer lowercases. Fix the production source so slugify('Hello World') returns 'hello-world'." --root /tmp/kairn-large-django --json
+```
+
+Before:
+
+```text
+tests/asgi/urls.py
+tests/admin_scripts/tests.py
+```
+
+Intermediate controller-only fix:
+
+```text
+tests/modeladmin/test_checks.py
+tests/admin_widgets/tests.py
+action: suppress
+wrongContextRisk: true
+```
+
+After source-targeting fix:
+
+```text
+django/utils/text.py
+tests/admin_widgets/tests.py
+action: emit
+wrongContextRisk: false
+```
+
+The second file is still an imperfect likely-test guess, but the primary context is now the required production source. That is the key correction.
+
+Static verification for the targeted pass:
+
+```text
+pnpm exec vitest run tests/semantic.test.ts tests/bench.test.ts tests/scanner.test.ts
+pnpm typecheck
+pnpm build
+```
+
+Large-repo index cap check:
+
+```text
+node dist/cli.js init --root /tmp/kairn-large-next
+Files indexed: 8000
+Ignored candidates: 19801
+Skipped by index cap: 19176
+.kairn size: 208M
+elapsed: 30.46s
+```
+
+This does not prove Next.js task quality yet, but it confirms the previous `~8GB` indexing blow-up is now bounded in the same clone.
+
+Next validation step:
+
+- Re-run the valid Django proof and confirm the new source-targeted prime no longer regresses baseline as badly.
+- Re-run a Next.js-scale Codex proof now that initialization remains bounded.
+- Do not claim large-repo savings until repeated proofs pass quality gates and observed tokens improve.

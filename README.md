@@ -166,7 +166,7 @@ kairn bench run --root "$TARGET_REPO" --suite examples/bench/job-tracker-focused
 Agent benchmarks are opt-in. Kairn copies the target repo into a disposable temp workspace and only runs an agent when you pass an explicit command. If the command output contains a Codex footer like `Token usage: total=33,729 input=33,253 (+ 24,704 cached) output=476`, Kairn parses it automatically and shows observed Codex usage in benchmark reports.
 
 ```bash
-kairn bench run --root /path/to/repo --mode agent --agent-command "codex exec --model gpt-5.4-mini {prompt}"
+kairn bench run --root /path/to/repo --mode agent --agent-command "codex exec --model gpt-5.4-mini --sandbox workspace-write {prompt}"
 ```
 
 For direct A/B runs, use `bench ab`. It runs the same agent cases twice in disposable workspaces, once with the baseline command and once with the Kairn-assisted command, then compares observed Codex token totals when footers are present.
@@ -175,8 +175,8 @@ For direct A/B runs, use `bench ab`. It runs the same agent cases twice in dispo
 kairn bench ab \
   --root "$TARGET_REPO" \
   --suite examples/bench/job-tracker-agent-light.json \
-  --baseline-command "codex exec --model gpt-5.4-mini {prompt}" \
-  --kairn-command "codex exec --model gpt-5.4-mini {prompt}" \
+  --baseline-command "codex exec --model gpt-5.4-mini --sandbox workspace-write {prompt}" \
+  --kairn-command "codex exec --model gpt-5.4-mini --sandbox workspace-write {prompt}" \
   --json
 ```
 
@@ -211,9 +211,9 @@ Use this for harder debugging proofs:
 kairn bench prove \
   --root /Users/kevindotel/Documents/Projects/kairn \
   --suite ./seeded-debug-suite.json \
-  --baseline-command "codex exec --model gpt-5.4-mini --disable codex_hooks {prompt}" \
-  --prompt-only-command "kairn setup codex --root {root} --mode savings >/dev/null && codex exec --model gpt-5.4-mini --enable codex_hooks {prompt}" \
-  --prompt-plus-hooks-command "kairn setup codex --root {root} --mode observe >/dev/null && codex exec --model gpt-5.4-mini --enable codex_hooks {prompt}" \
+  --baseline-command "codex exec --model gpt-5.4-mini --sandbox workspace-write --disable codex_hooks {prompt}" \
+  --prompt-only-command "kairn setup codex --root {root} --mode savings >/dev/null && codex exec --model gpt-5.4-mini --sandbox workspace-write --enable codex_hooks {prompt}" \
+  --prompt-plus-hooks-command "kairn setup codex --root {root} --mode observe >/dev/null && codex exec --model gpt-5.4-mini --sandbox workspace-write --enable codex_hooks {prompt}" \
   --repeat 3 \
   --shuffle-order \
   --json
@@ -225,11 +225,11 @@ The included `examples/bench/seeded-large-js-ts-template.json` shows the intende
 kairn bench prove \
   --root /Users/kevindotel/Documents/Projects/kairn \
   --suite examples/bench/seeded-cross-language.json \
-  --baseline-command "codex exec --model gpt-5.4-mini --disable codex_hooks {prompt}" \
-  --hook-full-prime-command "kairn setup codex --root {root} --mode savings --hook-output full-prime >/dev/null && codex exec --model gpt-5.4-mini --enable codex_hooks {prompt}" \
-  --real-mcp-first-command "kairn setup codex --root {root} --mode mcp-first >/dev/null && codex exec --model gpt-5.4-mini --disable codex_hooks {prompt}" \
-  --hybrid-mcp-brief-command "kairn setup codex --root {root} --mode hybrid >/dev/null && codex exec --model gpt-5.4-mini --enable codex_hooks {prompt}" \
-  --manual-prime-command "codex exec --model gpt-5.4-mini --disable codex_hooks {prompt}" \
+  --baseline-command "codex exec --model gpt-5.4-mini --sandbox workspace-write --disable codex_hooks {prompt}" \
+  --hook-full-prime-command "kairn setup codex --root {root} --mode savings --hook-output full-prime >/dev/null && codex exec --model gpt-5.4-mini --sandbox workspace-write --enable codex_hooks {prompt}" \
+  --real-mcp-first-command "kairn setup codex --root {root} --mode mcp-first >/dev/null && codex exec --model gpt-5.4-mini --sandbox workspace-write --disable codex_hooks {prompt}" \
+  --hybrid-mcp-brief-command "kairn setup codex --root {root} --mode hybrid >/dev/null && codex exec --model gpt-5.4-mini --sandbox workspace-write --enable codex_hooks {prompt}" \
+  --manual-prime-command "codex exec --model gpt-5.4-mini --sandbox workspace-write --disable codex_hooks {prompt}" \
   --repeat 3 \
   --shuffle-order \
   --json
@@ -258,14 +258,14 @@ To prove whether proactive context helps, compare live-agent modes. Repeat runs 
 kairn bench prove \
   --root "$TARGET_REPO" \
   --suite examples/bench/job-tracker-agent-light.json \
-  --baseline-command "codex exec --model gpt-5.4-mini --disable codex_hooks {prompt}" \
-  --hook-full-prime-command "kairn setup codex --root {root} --mode savings --hook-output full-prime >/dev/null && codex exec --model gpt-5.4-mini --enable codex_hooks {prompt}" \
-  --hook-tiny-directive-command "kairn setup codex --root {root} --mode savings --hook-output tiny-directive >/dev/null && codex exec --model gpt-5.4-mini --enable codex_hooks {prompt}" \
-  --hook-tiny-with-failures-command "kairn setup codex --root {root} --mode observe --hook-output tiny-directive --post-tool-hook-output failure-only >/dev/null && codex exec --model gpt-5.4-mini --enable codex_hooks {prompt}" \
-  --manual-prime-command "codex exec --model gpt-5.4-mini --disable codex_hooks {prompt}" \
-  --mcp-first-command "codex exec --model gpt-5.4-mini --disable codex_hooks {prompt}" \
-  --real-mcp-first-command "kairn setup codex --root {root} --mode mcp-first >/dev/null && codex exec --model gpt-5.4-mini --disable codex_hooks {prompt}" \
-  --hybrid-mcp-brief-command "kairn setup codex --root {root} --mode hybrid >/dev/null && codex exec --model gpt-5.4-mini --enable codex_hooks {prompt}" \
+  --baseline-command "codex exec --model gpt-5.4-mini --sandbox workspace-write --disable codex_hooks {prompt}" \
+  --hook-full-prime-command "kairn setup codex --root {root} --mode savings --hook-output full-prime >/dev/null && codex exec --model gpt-5.4-mini --sandbox workspace-write --enable codex_hooks {prompt}" \
+  --hook-tiny-directive-command "kairn setup codex --root {root} --mode savings --hook-output tiny-directive >/dev/null && codex exec --model gpt-5.4-mini --sandbox workspace-write --enable codex_hooks {prompt}" \
+  --hook-tiny-with-failures-command "kairn setup codex --root {root} --mode observe --hook-output tiny-directive --post-tool-hook-output failure-only >/dev/null && codex exec --model gpt-5.4-mini --sandbox workspace-write --enable codex_hooks {prompt}" \
+  --manual-prime-command "codex exec --model gpt-5.4-mini --sandbox workspace-write --disable codex_hooks {prompt}" \
+  --mcp-first-command "codex exec --model gpt-5.4-mini --sandbox workspace-write --disable codex_hooks {prompt}" \
+  --real-mcp-first-command "kairn setup codex --root {root} --mode mcp-first >/dev/null && codex exec --model gpt-5.4-mini --sandbox workspace-write --disable codex_hooks {prompt}" \
+  --hybrid-mcp-brief-command "kairn setup codex --root {root} --mode hybrid >/dev/null && codex exec --model gpt-5.4-mini --sandbox workspace-write --enable codex_hooks {prompt}" \
   --repeat 3 \
   --shuffle-order \
   --json

@@ -29,8 +29,9 @@ export function registerCoreCommands(program: Command): void {
             `State: ${result.kairnDir}`,
             `Files indexed: ${result.scan.files.length}`,
             `Ignored candidates: ${result.scan.ignoredCount}`,
+            result.scan.skippedByLimit ? `Skipped by index cap: ${result.scan.skippedByLimit}` : "",
             ""
-          ].join("\n")
+          ].filter(Boolean).join("\n") + "\n"
         );
       });
     });
@@ -60,7 +61,7 @@ export function registerCoreCommands(program: Command): void {
     .argument("<task>", "task description")
     .option("--root <path>", "target repository root", process.cwd())
     .option("--session <id>", "reuse an existing Kairn task session")
-    .addOption(new Option("--profile <profile>", "prime profile").choices(["auto", "ui", "workflow", "backend", "test", "generic"]).default("auto"))
+    .addOption(new Option("--profile <profile>", "prime profile").choices(["auto", "ui", "workflow", "backend", "test", "failure_debug", "generic"]).default("auto"))
     .option("--budget <tokens>", "prime response token budget", parsePositiveInt)
     .option("--json", "print JSON output")
     .action(async (task: string, options: { root: string; session?: string; profile: PrimeProfile; budget?: number; json?: boolean }) => {
@@ -129,7 +130,7 @@ export function registerCoreCommands(program: Command): void {
     .description("Launch Codex with Kairn prime context prepended to the task prompt.")
     .argument("<task...>", "task to pass to Codex")
     .option("--root <path>", "target repository root", process.cwd())
-    .addOption(new Option("--profile <profile>", "prime profile").choices(["auto", "ui", "workflow", "backend", "test", "generic"]).default("auto"))
+    .addOption(new Option("--profile <profile>", "prime profile").choices(["auto", "ui", "workflow", "backend", "test", "failure_debug", "generic"]).default("auto"))
     .option("--budget <tokens>", "prime response token budget", parsePositiveInt)
     .option("--codex-command <command>", "Codex command to execute", process.env.KAIRN_CODEX_CMD ?? "codex")
     .option("--model <model>", "Codex model")

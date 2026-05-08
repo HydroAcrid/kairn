@@ -138,6 +138,7 @@ function normalizeCase(input: unknown, suiteDir?: string): BenchmarkCase {
     ...(query ? { query } : {}),
     ...(target ? { target: normalizeRelativePath(target) } : {}),
     expectedFiles: normalizeFiles(input.expectedFiles),
+    requiredTouchedFiles: normalizeFiles(input.requiredTouchedFiles),
     excludedFiles: normalizeFiles(input.excludedFiles),
     ...(budget ? { budget } : {}),
     successCriteria: stringList(input.successCriteria),

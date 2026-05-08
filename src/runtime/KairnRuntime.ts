@@ -61,6 +61,7 @@ import {
   primeProfileLimits,
   resolvePrimeProfile
 } from "../prime/quality.js";
+import { evaluateContextValue } from "../prime/contextValue.js";
 import {
   formatMcpBriefPrimeContext,
   formatPrimeContext,
@@ -147,7 +148,7 @@ export class KairnRuntime {
     await this.init();
     const task = input.task;
     const profile = resolvePrimeProfile(input.profile ?? "auto", task);
-    const budget = input.budget ?? defaultPrimeBudget(profile);
+    const budget = input.budget ?? defaultPrimeBudget(profile, task);
     const limits = primeProfileLimits(profile);
     const session = input.sessionId
       ? this.store.getSession(input.sessionId)
@@ -189,11 +190,27 @@ export class KairnRuntime {
       ...(primaryFile ? [`kairn context --session ${session.id} --root <repo> --related ${primaryFile}`] : []),
       ...(primaryFile ? [`kairn context --session ${session.id} --root <repo> --tests ${primaryFile}`] : [])
     ];
-    const quality = evaluatePrimeQuality({
+    const baseQuality = evaluatePrimeQuality({
       task: resolvedTask,
       context,
       knownFiles: this.store.listFiles(session.rootPath)
     });
+    const contextDecision = evaluateContextValue({
+      task: resolvedTask,
+      profile,
+      context,
+      quality: baseQuality,
+      knownFiles: this.store.listFiles(session.rootPath),
+      repoFileCount: this.store.listFiles(session.rootPath).length,
+      estimatedContextCost: budget
+    });
+    const quality = {
+      ...baseQuality,
+      score: contextDecision.score,
+      action: contextDecision.action,
+      reasons: contextDecision.reasons,
+      expectedSavingsRisk: contextDecision.expectedSavingsRisk
+    };
     const content = input.format === "mcp_brief"
       ? formatMcpBriefPrimeContext({
           task: resolvedTask,
@@ -246,6 +263,7 @@ export class KairnRuntime {
         budget,
         format: input.format ?? "standard",
         quality,
+        contextDecision,
         contextTokenEstimate: context.tokenEstimate,
         relatedCount: related?.related.length ?? 0,
         testCount: tests?.files.length ?? 0,
@@ -264,6 +282,23 @@ export class KairnRuntime {
       files,
       metadata: {
         ...quality,
+        contextDecision,
+        taskHash: sha256(resolvedTask),
+        profile
+      }
+    });
+    this.recordMetricsEvent({
+      sessionId: session.id,
+      rootPath: session.rootPath,
+      eventKind: "context_value_decision",
+      eventName: contextDecision.action,
+      source: input.source ?? "cli",
+      responseMode: "brief",
+      baselineTokens: 0,
+      outputTokens: 0,
+      files,
+      metadata: {
+        ...contextDecision,
         taskHash: sha256(resolvedTask),
         profile
       }
@@ -277,6 +312,7 @@ export class KairnRuntime {
       files,
       tokenEstimate: estimateTokens(content),
       quality,
+      contextDecision,
       warnings: uniqueStrings([...context.warnings, ...(related?.warnings ?? []), ...(tests?.warnings ?? [])]),
       suggestedCommands
     };
@@ -1546,6 +1582,12 @@ export class KairnRuntime {
         ...(hookOutput === "mcp-brief" ? { coordinationMode: "mcp_hybrid", hookFiles: emittedPrime?.files ?? [] } : {}),
         proactivePrime: Boolean(emittedPrime),
         primeQuality: prime?.quality,
+        contextDecision: prime?.contextDecision,
+        decision: prime?.contextDecision?.action,
+        decisionScore: prime?.contextDecision?.score,
+        decisionReasons: prime?.contextDecision?.reasons,
+        estimatedContextCost: prime?.contextDecision?.estimatedContextCost,
+        expectedSavingsRisk: prime?.contextDecision?.expectedSavingsRisk,
         failureContext: Boolean(failureContext),
         duplicatePromptPrime,
         compressedOutput: Boolean(response),

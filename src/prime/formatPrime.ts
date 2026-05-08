@@ -14,6 +14,10 @@ export function formatPrimeContext(input: {
   testFiles: string[];
   suggestedCommands: string[];
 }): string {
+  if (input.profile === "failure_debug") {
+    return formatFailureDebugPrime(input);
+  }
+
   const topFiles = uniquePaths(input.context.suggestedNextContext.length > 0 ? input.context.suggestedNextContext : input.context.files).slice(0, input.limits.topFiles);
   const related = uniquePaths(input.relatedFiles).filter((file) => !topFiles.includes(file)).slice(0, input.limits.relatedFiles);
   const tests = uniquePaths(input.testFiles).slice(0, input.limits.testFiles);
@@ -44,6 +48,38 @@ export function formatPrimeContext(input: {
     "- Prefer targeted reads of the Start Here files over `rg --files` or large file ranges.",
     "- Do not edit files unless the user task explicitly asks for edits."
   ].filter((section) => section !== "");
+
+  return fitSectionsToBudget(sections, input.budget);
+}
+
+function formatFailureDebugPrime(input: {
+  task: string;
+  sessionId: string;
+  profile: ResolvedPrimeProfile;
+  budget: number;
+  limits: PrimeProfileLimits;
+  context: ContextResponse;
+  testFiles: string[];
+}): string {
+  const topFile = uniquePaths(input.context.suggestedNextContext.length > 0 ? input.context.suggestedNextContext : input.context.files)[0];
+  const likelyTest = uniquePaths(input.testFiles)[0];
+  const symbolHints = extractPrimeSymbolHints(input.context.content).slice(0, 3);
+  const sections = [
+    "# Kairn Failure Debug Context",
+    "",
+    `Task: ${input.task}`,
+    `Kairn session: ${input.sessionId}`,
+    "",
+    "Start file:",
+    topFile ? `- ${topFile}` : "- No high-confidence source file found.",
+    symbolHints.length > 0 ? `Symbols: ${symbolHints.join(", ")}` : "",
+    likelyTest ? `Likely check/test: ${likelyTest}` : "",
+    "",
+    "Focused snippet:",
+    compactPrimeContext(input.context.content, input.limits.snippetBudget),
+    "",
+    "Instruction: inspect the start file and symbol first, patch only the production source, then run the failing check."
+  ].filter(Boolean);
 
   return fitSectionsToBudget(sections, input.budget);
 }

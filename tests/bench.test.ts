@@ -1,10 +1,13 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
 import { createDefaultBenchmarkSuite, loadBenchmarkSuite } from "../src/bench/suite.js";
 import { buildBenchmarkReport, compareBenchmarkReports, scoreBenchmarkCase } from "../src/bench/score.js";
+import { runAgentBenchmarkCase } from "../src/bench/agent.js";
+import { evaluateContextValue } from "../src/prime/contextValue.js";
 import { createFixtureRepo } from "./helpers.js";
 
 const CLI = ["tsx", "src/cli.ts"];
@@ -115,6 +118,387 @@ describe("benchmark suite and scoring", () => {
     expect(suite.cases.find((item) => item.id === "java-commons-lang-isblank")?.seed?.setupPatchFile).toMatch(
       /commons-lang-isblank-whitespace\.patch$/
     );
+    expect(suite.cases.find((item) => item.id === "python-click-term-len-ansi")?.seed?.testCommand).toContain("python3");
+    expect(suite.cases.find((item) => item.id === "cpp-fmt-starts-with")?.requiredTouchedFiles).toEqual([
+      "include/fmt/base.h"
+    ]);
+  });
+
+  it("does not count seed-patch dirtiness as agent-touched files", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-seed-score-"));
+    try {
+      fs.mkdirSync(path.join(root, "src"), { recursive: true });
+      fs.writeFileSync(path.join(root, "src/app.ts"), "export const value = 1;\n");
+      execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["add", "."], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["commit", "-m", "initial"], {
+        cwd: root,
+        stdio: "ignore",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: "Kairn Test",
+          GIT_AUTHOR_EMAIL: "test@example.com",
+          GIT_COMMITTER_NAME: "Kairn Test",
+          GIT_COMMITTER_EMAIL: "test@example.com"
+        }
+      });
+      const patchPath = path.join(root, "seed.patch");
+      fs.writeFileSync(
+        patchPath,
+        [
+          "diff --git a/src/app.ts b/src/app.ts",
+          "index 2368447..e2403dd 100644",
+          "--- a/src/app.ts",
+          "+++ b/src/app.ts",
+          "@@ -1 +1 @@",
+          "-export const value = 1;",
+          "+export const value = 2;",
+          ""
+        ].join("\n")
+      );
+
+      const result = await runAgentBenchmarkCase({
+        rootPath: root,
+        benchmarkCase: {
+          id: "seeded",
+          mode: "agent",
+          task: "Do nothing",
+          expectedFiles: ["src/app.ts"],
+          excludedFiles: [],
+          seed: {
+            repoUrl: root,
+            ref: "HEAD",
+            setupPatchFile: patchPath,
+            testCommand: "node -e \"process.exit(0)\""
+          }
+        },
+        agentCommand: "node -e \"console.log('no relevant file mentioned')\" {prompt}"
+      });
+
+      expect(result.outcome).toBe("pass");
+      expect(result.metadata.seedPatchFiles).toEqual(["src/app.ts"]);
+      expect(result.metadata.seedPatchFileHashes).toBeDefined();
+      expect(result.metadata.agentChangedFiles).toEqual([]);
+      expect(result.actualFiles).not.toContain("src/app.ts");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("counts seeded files as agent-touched when content changes after seeding", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-seed-agent-touch-"));
+    try {
+      fs.mkdirSync(path.join(root, "src"), { recursive: true });
+      fs.writeFileSync(path.join(root, "src/app.ts"), "export const value = 1;\n");
+      execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["add", "."], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["commit", "-m", "initial"], {
+        cwd: root,
+        stdio: "ignore",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: "Kairn Test",
+          GIT_AUTHOR_EMAIL: "test@example.com",
+          GIT_COMMITTER_NAME: "Kairn Test",
+          GIT_COMMITTER_EMAIL: "test@example.com"
+        }
+      });
+      const patchPath = path.join(root, "seed.patch");
+      fs.writeFileSync(
+        patchPath,
+        [
+          "diff --git a/src/app.ts b/src/app.ts",
+          "index 2368447..e2403dd 100644",
+          "--- a/src/app.ts",
+          "+++ b/src/app.ts",
+          "@@ -1 +1 @@",
+          "-export const value = 1;",
+          "+export const value = 2;",
+          ""
+        ].join("\n")
+      );
+
+      const result = await runAgentBenchmarkCase({
+        rootPath: root,
+        benchmarkCase: {
+          id: "seeded",
+          mode: "agent",
+          task: "Fix source",
+          expectedFiles: ["src/app.ts"],
+          requiredTouchedFiles: ["src/app.ts"],
+          excludedFiles: [],
+          seed: {
+            repoUrl: root,
+            ref: "HEAD",
+            setupPatchFile: patchPath,
+            testCommand: "node -e \"process.exit(0)\""
+          }
+        },
+        agentCommand: "node -e \"require('fs').writeFileSync('src/app.ts', 'export const value = 3;\\\\n')\" {prompt}"
+      });
+
+      expect(result.outcome).toBe("pass");
+      expect(result.metadata.agentChangedFiles).toEqual(["src/app.ts"]);
+      expect(result.metadata.requiredTouchedSatisfied).toBe(true);
+      expect(result.actualFiles).toContain("src/app.ts");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("marks seeded fixes partial when required production files are not touched", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-required-touch-"));
+    try {
+      fs.mkdirSync(path.join(root, "src"), { recursive: true });
+      fs.writeFileSync(path.join(root, "src/app.ts"), "export const value = 1;\n");
+      execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["add", "."], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["commit", "-m", "initial"], {
+        cwd: root,
+        stdio: "ignore",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: "Kairn Test",
+          GIT_AUTHOR_EMAIL: "test@example.com",
+          GIT_COMMITTER_NAME: "Kairn Test",
+          GIT_COMMITTER_EMAIL: "test@example.com"
+        }
+      });
+
+      const result = await runAgentBenchmarkCase({
+        rootPath: root,
+        benchmarkCase: {
+          id: "required",
+          mode: "agent",
+          task: "Pass verification without touching source",
+          expectedFiles: ["src/app.ts"],
+          requiredTouchedFiles: ["src/app.ts"],
+          excludedFiles: [],
+          seed: {
+            repoUrl: root,
+            ref: "HEAD",
+            testCommand: "node -e \"process.exit(0)\""
+          }
+        },
+        agentCommand: "node -e \"console.log('src/app.ts')\" {prompt}"
+      });
+
+      expect(result.outcome).toBe("partial");
+      expect(result.metadata.requiredTouchedSatisfied).toBe(false);
+      expect(result.metadata.missingRequiredTouchedFiles).toEqual(["src/app.ts"]);
+
+      const scored = scoreBenchmarkCase({
+        runId: "bench_required",
+        benchmarkCase: {
+          id: "required",
+          mode: "agent",
+          task: "Required source touch",
+          expectedFiles: ["src/app.ts"],
+          requiredTouchedFiles: ["src/app.ts"],
+          excludedFiles: []
+        },
+        actualFiles: result.actualFiles,
+        responseTokens: result.responseTokens,
+        taskOutcome: result.outcome,
+        summary: result.summary,
+        metadata: result.metadata
+      });
+      expect(scored.taskOutcome).toBe("partial");
+      expect(scored.metadata.qualityGatePassed).toBe(false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("shrinks low-value C++ context instead of emitting a full prime", () => {
+    const decision = evaluateContextValue({
+      task: "Debug the seeded failing C++ check. basic_string_view::starts_with should return true for an equal-length identical prefix.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- include/fmt/base.h (source, score 120): symbol match starts_with\n- test/core-test.cc (test, score 112): graph neighbor",
+        files: ["include/fmt/base.h", "test/core-test.cc"],
+        symbols: ["starts_with"],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["include/fmt/base.h"],
+        tokenEstimate: 420
+      },
+      quality: {
+        score: 62,
+        action: "shrink",
+        reasons: ["top results are tightly clustered"],
+        topScore: 120,
+        topGap: 8,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      knownFiles: [
+        {
+          rootPath: "/repo",
+          path: "include/fmt/base.h",
+          language: "cpp",
+          kind: "source",
+          size: 1200,
+          hash: "hash",
+          importance: 1,
+          updatedAt: new Date(0).toISOString()
+        }
+      ],
+      repoFileCount: 2400,
+      estimatedContextCost: 900
+    });
+
+    expect(decision.action).toBe("shrink");
+    expect(decision.language).toBe("cpp");
+    expect(decision.expectedSavingsRisk).toBe("medium");
+  });
+
+  it("suppresses exact-path prompts that do not need proactive context", () => {
+    const decision = evaluateContextValue({
+      task: "Open src/app.ts and explain what it does",
+      profile: "generic",
+      context: {
+        mode: "snippets",
+        content: "- src/app.ts (source, score 300): path match",
+        files: ["src/app.ts"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/app.ts"],
+        tokenEstimate: 120
+      },
+      quality: {
+        score: 90,
+        action: "suppress",
+        reasons: ["prompt already names an exact indexed file"],
+        topScore: 300,
+        topGap: 200,
+        exactPathMentioned: true,
+        expectedSavingsRisk: "high"
+      },
+      knownFiles: [
+        {
+          rootPath: "/repo",
+          path: "src/app.ts",
+          language: "typescript",
+          kind: "source",
+          size: 200,
+          hash: "hash",
+          importance: 1,
+          updatedAt: new Date(0).toISOString()
+        }
+      ],
+      repoFileCount: 20,
+      estimatedContextCost: 800
+    });
+
+    expect(decision.action).toBe("suppress");
+    expect(decision.exactPathMentioned).toBe(true);
+  });
+
+  it("suppresses risky test-first context for production-source fixes", () => {
+    const decision = evaluateContextValue({
+      task: "Debug a seeded regression in Django slugify. Fix the production source.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- tests/modeladmin/test_checks.py (test, score 900): behavior symbol match CheckTestCase",
+        files: ["tests/modeladmin/test_checks.py"],
+        symbols: ["CheckTestCase"],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["tests/modeladmin/test_checks.py"],
+        tokenEstimate: 400
+      },
+      quality: {
+        score: 96,
+        action: "emit",
+        reasons: ["high-confidence top retrieval score"],
+        topScore: 900,
+        topGap: 300,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      knownFiles: [
+        {
+          rootPath: "/repo",
+          path: "tests/modeladmin/test_checks.py",
+          language: "python",
+          kind: "test",
+          size: 1000,
+          hash: "hash",
+          importance: 1,
+          updatedAt: new Date(0).toISOString()
+        }
+      ],
+      repoFileCount: 7000,
+      estimatedContextCost: 700
+    });
+
+    expect(decision.action).toBe("suppress");
+    expect(decision.wrongContextRisk).toBe(true);
+    expect(decision.reasons).toEqual(expect.arrayContaining(["top result is risky for a production-source fix"]));
+  });
+
+  it("marks MCP benchmark modes partial when no actual MCP call is recorded", () => {
+    const scored = scoreBenchmarkCase({
+      runId: "bench_mcp",
+      benchmarkCase: {
+        id: "mcp",
+        mode: "agent",
+        task: "Use MCP",
+        expectedFiles: ["src/app.ts"],
+        excludedFiles: []
+      },
+      actualFiles: ["src/app.ts"],
+      responseTokens: 200,
+      taskOutcome: "pass",
+      summary: "Agent mentioned MCP tool names.",
+      metadata: {
+        assistanceMode: "real_mcp_first",
+        actualMcpToolCalls: 0
+      }
+    });
+
+    expect(scored.taskOutcome).toBe("partial");
+    expect(scored.metadata.mcpSuccess).toBe(false);
+    expect(scored.metadata.qualityGatePassed).toBe(false);
+  });
+
+  it("counts actual MCP tool calls from workspace Kairn metrics", async () => {
+    const root = createFixtureRepo();
+    fs.writeFileSync(
+      path.join(root, "write-mcp-metric.cjs"),
+      [
+        "const fs = require('fs');",
+        "const Database = require('better-sqlite3');",
+        "fs.mkdirSync('.kairn', { recursive: true });",
+        "const db = new Database('.kairn/kairn.sqlite');",
+        "db.exec(`create table if not exists metrics_events (id integer primary key autoincrement, session_id text not null, root_path text not null, event_kind text not null, event_name text not null, source text not null, response_mode text, baseline_tokens integer not null, output_tokens integer not null, saved_tokens integer not null, files_json text not null, metadata_json text not null default '{}', created_at text not null)`);",
+        "db.prepare(`insert into metrics_events (session_id, root_path, event_kind, event_name, source, response_mode, baseline_tokens, output_tokens, saved_tokens, files_json, metadata_json, created_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run('task_test', process.cwd(), 'mcp_tool_call', 'kairn_prepare_task', 'mcp', null, 100, 25, 75, JSON.stringify(['src/app.ts']), JSON.stringify({ toolName: 'kairn_prepare_task' }), new Date().toISOString());",
+        "db.close();",
+        "console.log('Token usage: total=100 input=80 output=20');"
+      ].join("\n")
+    );
+
+    const result = await runAgentBenchmarkCase({
+      rootPath: root,
+      benchmarkCase: {
+        id: "mcp-metrics",
+        mode: "agent",
+        task: "Use Kairn MCP",
+        expectedFiles: [],
+        excludedFiles: []
+      },
+      agentCommand: `NODE_PATH=${JSON.stringify(path.resolve("node_modules"))} node write-mcp-metric.cjs`
+    });
+
+    expect(result.outcome).toBe("pass");
+    expect(result.metadata.actualMcpToolCalls).toBe(1);
+    expect(result.metadata.actualMcpToolCallSource).toBe("workspace_metrics");
+    expect(result.metadata.actualMcpToolNames).toEqual(["kairn_prepare_task"]);
+    expect(result.metadata.actualMcpFiles).toEqual(["src/app.ts"]);
   });
 
   it("scores expected file recall, unexpected drift, and comparisons", () => {
@@ -307,6 +691,37 @@ describe("benchmark runtime and CLI", () => {
     expect(backendPrime.profile).toBe("backend");
     expect(backendPrime.tokenEstimate).toBeLessThanOrEqual(1100);
     expect(backendPrime.content).toContain("## More Context");
+
+    runtime.close();
+  });
+
+  it("selects failure-debug primes for seeded debugging prompts", async () => {
+    const root = createFixtureRepo();
+    fs.mkdirSync(path.join(root, "src/click"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "src/click/_compat.py"),
+      [
+        "def strip_ansi(value):",
+        "    return value",
+        "",
+        "def term_len(value):",
+        "    return len(strip_ansi(value))",
+        ""
+      ].join("\n")
+    );
+    fs.mkdirSync(path.join(root, "docs"), { recursive: true });
+    fs.writeFileSync(path.join(root, "docs/utils.md"), "ANSI terminal visible length examples\n");
+    const runtime = new KairnRuntime(root);
+
+    const prime = await runtime.primeContext({
+      task: "Debug the seeded failing Python check. ANSI-colored terminal text should have visible length 3 for red.",
+      budget: 900
+    });
+
+    expect(prime.profile).toBe("failure_debug");
+    expect(prime.content).toContain("Kairn Failure Debug Context");
+    expect(prime.files[0]).toBe("src/click/_compat.py");
+    expect(prime.tokenEstimate).toBeLessThanOrEqual(900);
 
     runtime.close();
   });
@@ -628,8 +1043,8 @@ describe("benchmark runtime and CLI", () => {
           {
             id: "agent-mobile",
             mode: "agent",
-            task: "Find job tracker mobile layout files. Do not edit files.",
-            agentPrompt: "Find job tracker mobile layout files. Do not edit files.",
+            task: "Improve job tracker mobile layout bottom sheet behavior in the applications table.",
+            agentPrompt: "Improve job tracker mobile layout bottom sheet behavior in the applications table.",
             expectedFiles: [],
             excludedFiles: [],
             budget: 1200
@@ -717,7 +1132,7 @@ describe("benchmark runtime and CLI", () => {
     const dryRun = JSON.parse(
       execFileSync(
         CLI[0]!,
-        [...CLI.slice(1), "codex", "Find job tracker mobile layout files", "--root", root, "--dry-run", "--json"],
+        [...CLI.slice(1), "codex", "Improve job tracker mobile layout bottom sheet behavior", "--root", root, "--dry-run", "--json"],
         { cwd: process.cwd(), encoding: "utf8" }
       )
     ) as { args: string[]; prompt: string; prime: { files: string[] } };

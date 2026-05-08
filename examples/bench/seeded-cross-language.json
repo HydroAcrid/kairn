@@ -10,6 +10,9 @@
       "expectedFiles": [
         "packages/query-core/src/utils.ts"
       ],
+      "requiredTouchedFiles": [
+        "packages/query-core/src/utils.ts"
+      ],
       "excludedFiles": [
         "docs/",
         "examples/",
@@ -43,6 +46,9 @@
       "expectedFiles": [
         "src/click/_compat.py"
       ],
+      "requiredTouchedFiles": [
+        "src/click/_compat.py"
+      ],
       "excludedFiles": [
         "docs/",
         "examples/"
@@ -53,8 +59,8 @@
         "ref": "fc6c7c47edd6110b6bd5a1a5297b2035214b0cd1",
         "cloneDepth": 1,
         "setupPatchFile": "./patches/click-term-len-ansi.patch",
-        "expectedFailureCommand": "PYTHONPATH=src python - <<'PY'\nfrom click._compat import term_len\nassert term_len(\"\\033[31mred\\033[0m\") == 3\nPY",
-        "testCommand": "PYTHONPATH=src python - <<'PY'\nfrom click._compat import term_len\nassert term_len(\"\\033[31mred\\033[0m\") == 3\nPY"
+        "expectedFailureCommand": "PYTHONPATH=src python3 - <<'PY'\nfrom click._compat import term_len\nassert term_len(\"\\033[31mred\\033[0m\") == 3\nPY",
+        "testCommand": "PYTHONPATH=src python3 - <<'PY'\nfrom click._compat import term_len\nassert term_len(\"\\033[31mred\\033[0m\") == 3\nPY"
       },
       "successCriteria": [
         "Verification passes.",
@@ -68,6 +74,9 @@
       "task": "Debug a seeded Apache Commons Lang regression: StringUtils.isBlank no longer handles all Java whitespace correctly. Fix the production source and do not edit unrelated files.",
       "agentPrompt": "Debug the seeded failing Java test. StringUtils.isBlank should use Java whitespace semantics, not only the space character. Fix the production source and do not edit unrelated files.",
       "expectedFiles": [
+        "src/main/java/org/apache/commons/lang3/StringUtils.java"
+      ],
+      "requiredTouchedFiles": [
         "src/main/java/org/apache/commons/lang3/StringUtils.java"
       ],
       "excludedFiles": [
@@ -95,6 +104,9 @@
       "task": "Debug a seeded fmt regression: basic_string_view::starts_with fails when the prefix has equal length. Fix the production header and do not edit unrelated files.",
       "agentPrompt": "Debug the seeded failing C++ check. basic_string_view::starts_with should return true for an equal-length identical prefix. Fix the production header and do not edit unrelated files.",
       "expectedFiles": [
+        "include/fmt/base.h"
+      ],
+      "requiredTouchedFiles": [
         "include/fmt/base.h"
       ],
       "excludedFiles": [

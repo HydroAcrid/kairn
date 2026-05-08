@@ -59,13 +59,14 @@ export function evaluatePrimeQuality(input: {
 
 export function resolvePrimeProfile(profile: PrimeProfile, task: string): ResolvedPrimeProfile {
   if (profile !== "auto") return profile;
+  if (isFailureDebugTask(task)) return "failure_debug";
   const intent = classifyQueryIntent(task).primary;
   if (intent === "ui" || intent === "workflow" || intent === "test") return intent;
   if (intent === "backend" || intent === "data" || intent === "auth") return "backend";
   return "generic";
 }
 
-export function defaultPrimeBudget(profile: ResolvedPrimeProfile): number {
+export function defaultPrimeBudget(profile: ResolvedPrimeProfile, task = ""): number {
   switch (profile) {
     case "ui":
       return 700;
@@ -73,6 +74,8 @@ export function defaultPrimeBudget(profile: ResolvedPrimeProfile): number {
       return 900;
     case "backend":
       return 1100;
+    case "failure_debug":
+      return languageDebugBudget(task);
     case "test":
       return 900;
     case "generic":
@@ -88,11 +91,30 @@ export function primeProfileLimits(profile: ResolvedPrimeProfile): PrimeProfileL
       return { topFiles: 4, relatedFiles: 3, testFiles: 2, contextRatio: 0.55, snippetBudget: 430, includeCommands: false };
     case "backend":
       return { topFiles: 4, relatedFiles: 3, testFiles: 3, contextRatio: 0.62, snippetBudget: 560, includeCommands: true };
+    case "failure_debug":
+      return { topFiles: 1, relatedFiles: 0, testFiles: 1, contextRatio: 0.72, snippetBudget: 430, includeCommands: false };
     case "test":
       return { topFiles: 4, relatedFiles: 2, testFiles: 4, contextRatio: 0.56, snippetBudget: 430, includeCommands: true };
     case "generic":
       return { topFiles: 3, relatedFiles: 2, testFiles: 2, contextRatio: 0.5, snippetBudget: 360, includeCommands: false };
   }
+}
+
+export function isFailureDebugTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  const debugTerms = ["debug", "failing", "failure", "regression", "broken", "incorrect", "fix"];
+  const verificationTerms = ["test", "check", "assert", "verification", "seeded"];
+  return debugTerms.some((term) => normalized.includes(term)) &&
+    verificationTerms.some((term) => normalized.includes(term));
+}
+
+function languageDebugBudget(task: string): number {
+  const normalized = task.toLowerCase();
+  if (/\b(c\+\+|cpp|header|\.hpp|\.h|\.cc|\.cpp|fmt|string_view)\b/.test(normalized)) return 550;
+  if (/\bpython|\.py|ansi|click\b/.test(normalized)) return 650;
+  if (/\bjava|maven|mvn|\.java\b/.test(normalized)) return 750;
+  if (/\btypescript|javascript|tsx|jsx|tanstack|query\b/.test(normalized)) return 900;
+  return 800;
 }
 
 function extractRankedScores(content: string): number[] {

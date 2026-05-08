@@ -19,6 +19,7 @@ const MAX_SYMBOL_DOCUMENTS = 3000;
 const MAX_CHUNK_DOCUMENTS = 2500;
 const MAX_LARGE_REPO_CHUNK_DOCUMENTS = 0;
 const MAX_LEXICAL_TERMS = 30000;
+const LOW_SIGNAL_QUERY_TERMS = new Set(["debug", "seeded", "failing", "failure", "regression", "production", "source", "check"]);
 
 export type LexicalIndex = {
   documents: LexicalDocumentRecord[];
@@ -111,7 +112,7 @@ export function scoreBm25Files(input: {
   terms: LexicalTermRecord[];
   stats?: LexicalStatsRecord | undefined;
 }): Map<string, { score: number; reasons: string[] }> {
-  const queryTerms = [...new Set(tokenizeLexical(input.query))];
+  const queryTerms = [...new Set(tokenizeLexical(input.query).filter((term) => !LOW_SIGNAL_QUERY_TERMS.has(term)))];
   if (queryTerms.length === 0 || input.documents.length === 0 || input.terms.length === 0) return new Map();
 
   const documentById = new Map(input.documents.map((document) => [document.id, document]));

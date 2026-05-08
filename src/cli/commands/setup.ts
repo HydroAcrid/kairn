@@ -15,7 +15,7 @@ export function registerSetupCommands(program: Command): void {
     .description("Install Codex hook config that lets Kairn prime prompts automatically.")
     .option("--root <path>", "target repository root", process.cwd())
     .addOption(new Option("--mode <mode>", "Codex hook setup mode").choices(["savings", "observe", "debug", "mcp-first", "hybrid"]).default("savings"))
-    .addOption(new Option("--prime-profile <profile>", "prompt-submit prime profile").choices(["auto", "ui", "workflow", "backend", "test", "generic"]).default("auto"))
+    .addOption(new Option("--prime-profile <profile>", "prompt-submit prime profile").choices(["auto", "ui", "workflow", "backend", "test", "failure_debug", "generic"]).default("auto"))
     .addOption(new Option("--hook-output <profile>", "prompt-submit hook output profile").choices(["full-prime", "tiny-directive", "failure-only", "mcp-brief"]).default("full-prime"))
     .addOption(new Option("--post-tool-hook-output <profile>", "post-tool hook output profile").choices(["full-prime", "tiny-directive", "failure-only", "mcp-brief"]).default("failure-only"))
     .option("--prime-budget <tokens>", "prompt-submit prime token budget", parsePositiveInt, 900)

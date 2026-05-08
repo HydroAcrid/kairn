@@ -321,6 +321,45 @@ describe("hybridSearch", () => {
     expect(results.slice(0, 2).map((result) => result.path)).not.toContain("docs/utils.rst");
   });
 
+  it("ignores quoted example literals and routes Django slugify regressions to source", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "django/utils/text.py", "source", "python"),
+      file(rootPath, "django/template/defaultfilters.py", "source", "python"),
+      file(rootPath, "tests/asgi/urls.py", "test", "python"),
+      file(rootPath, "tests/modeladmin/test_checks.py", "test", "python")
+    ];
+    const symbols = [
+      symbol(rootPath, "django/utils/text.py", "slugify"),
+      symbol(rootPath, "django/template/defaultfilters.py", "slugify"),
+      symbol(rootPath, "django/template/defaultfilters.py", "lower"),
+      symbol(rootPath, "django/template/defaultfilters.py", "upper"),
+      symbol(rootPath, "tests/asgi/urls.py", "hello"),
+      symbol(rootPath, "tests/modeladmin/test_checks.py", "CheckTestCase")
+    ];
+    const chunks = [
+      chunk(rootPath, "django/utils/text.py", "slugify", "def slugify(value, allow_unicode=False): normalize value lower strip"),
+      chunk(rootPath, "django/template/defaultfilters.py", "slugify", "template filter imports django.utils.text slugify as _slugify"),
+      chunk(rootPath, "tests/asgi/urls.py", "hello", "hello world test urls"),
+      chunk(rootPath, "tests/modeladmin/test_checks.py", "CheckTestCase", "valid case checks")
+    ];
+    const results = hybridSearch({
+      files,
+      query:
+        "Debug a seeded regression in Django slugify: uppercase input no longer lowercases. Fix the production source so slugify('Hello World') returns 'hello-world'.",
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.path).toBe("django/utils/text.py");
+    expect(results[0]?.reasons).toEqual(expect.arrayContaining(["behavior symbol match: slugify"]));
+    expect(results.slice(0, 2).map((result) => result.path)).not.toContain("tests/asgi/urls.py");
+    expect(results.slice(0, 2).map((result) => result.path)).not.toContain("tests/modeladmin/test_checks.py");
+  });
+
   it("prioritizes Java src/main source over tests for implementation prompts", () => {
     const rootPath = "/repo";
     const files = [

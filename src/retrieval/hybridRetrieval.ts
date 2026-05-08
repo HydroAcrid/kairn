@@ -30,19 +30,20 @@ export function hybridSearch(input: {
   changedFiles?: Set<string>;
 }): HybridScoredResult[] {
   const intent = classifyQueryIntent(input.query);
-  const keywordScores = new Map(scoreFiles(input.files, input.query, input.symbols).map((file) => [file.path, file]));
+  const retrievalQuery = stripExampleLiterals(input.query);
+  const keywordScores = new Map(scoreFiles(input.files, retrievalQuery, input.symbols).map((file) => [file.path, file]));
   const bm25Scores = scoreBm25Files({
-    query: input.query,
+    query: retrievalQuery,
     documents: input.lexicalDocuments ?? [],
     terms: input.lexicalTerms ?? [],
     stats: input.lexicalStats
   });
-  const semanticScores = scoreSemanticChunks(input.query, input.chunks, input.vectors);
+  const semanticScores = scoreSemanticChunks(retrievalQuery, input.chunks, input.vectors);
   const symbolsByFile = groupByFile(input.symbols, (symbol) => symbol.filePath);
   const chunksByFile = groupByFile(input.chunks, (chunk) => chunk.filePath);
   const intentScores = scoreIntentMatches(input.files, intent, input.query, symbolsByFile, chunksByFile);
   const behaviorScores = scoreBehaviorMatches(input.files, input.query, symbolsByFile, chunksByFile);
-  const sourcePriorityScores = scoreSourcePriority(input.files, input.query, intent, symbolsByFile, chunksByFile);
+  const sourcePriorityScores = scoreSourcePriority(input.files, retrievalQuery, intent, symbolsByFile, chunksByFile);
   const graphScores = scoreGraphNeighbors(input.edges, keywordScores, semanticScores, intentScores, intent, input.files);
   const shownFiles = new Set((input.shown ?? []).map((record) => record.filePath).filter((filePath): filePath is string => Boolean(filePath)));
 
@@ -178,7 +179,7 @@ function scoreBehaviorMatches(
       reasons.push(`behavior chunk match: ${matchedChunks.slice(0, 2).map((chunk) => chunk.symbol ?? chunk.kind).join(", ")}`);
     }
 
-    if (behavior.sourceFix && score > 0 && file.kind !== "test") {
+    if (behavior.sourceFix && score > 0 && isLanguageSourceSurface(file)) {
       score += 110;
       reasons.push("production source behavior match");
     }
@@ -210,7 +211,7 @@ function scoreSourcePriority(
   const scores = new Map<string, { score: number; reasons: string[] }>();
   const queryTerms = new Set(tokenizeLexical(query));
   const explicitDocsIntent = intent.primary === "docs" || ["docs", "doc", "readme", "example", "examples", "demo"].some((term) => queryTerms.has(term));
-  const explicitTestIntent = intent.primary === "test" || ["test", "tests", "spec", "failing", "failure"].some((term) => queryTerms.has(term));
+  const explicitTestIntent = hasExplicitTestIntent(queryTerms);
   const implementationIntent = !explicitDocsIntent && ["generic", "backend", "data", "auth", "workflow", "ui"].includes(intent.primary);
 
   for (const file of files) {
@@ -221,6 +222,10 @@ function scoreSourcePriority(
     if (exactSymbolMatches.length > 0) {
       score += Math.min(220, exactSymbolMatches.length * 90);
       reasons.push(`exact symbol match: ${exactSymbolMatches.slice(0, 3).join(", ")}`);
+      if (isCoreSourceModule(file)) {
+        score += 86;
+        reasons.push("core source module");
+      }
     }
 
     if (implementationIntent && isLanguageSourceSurface(file)) {
@@ -345,7 +350,7 @@ function semanticReasons(chunks: SemanticChunkRecord[]): string[] {
 }
 
 function mergeReasons(reasons: string[]): string[] {
-  return [...new Set(reasons)].slice(0, 10);
+  return [...new Set(reasons)].slice(0, 14);
 }
 
 function scoreIntentMatches(
@@ -551,7 +556,24 @@ const BEHAVIOR_TRIGGER_TERMS = new Set([
   "equals",
   "equality",
   "compare",
-  "matching"
+  "matching",
+  "visible",
+  "length",
+  "ansi",
+  "escape",
+  "prefix",
+  "starts",
+  "string",
+  "view",
+  "blank",
+  "whitespace",
+  "lower",
+  "lowercase",
+  "lowercases",
+  "uppercase",
+  "upper",
+  "slug",
+  "slugify"
 ]);
 
 const BEHAVIOR_STOP_TERMS = new Set([
@@ -566,7 +588,8 @@ const BEHAVIOR_STOP_TERMS = new Set([
   "regression",
   "bug",
   "longer",
-  "properties"
+  "properties",
+  "seeded"
 ]);
 
 const BEHAVIOR_CANONICAL_TERMS = new Map<string, string[]>([
@@ -576,7 +599,14 @@ const BEHAVIOR_CANONICAL_TERMS = new Map<string, string[]>([
   ["sort", ["sort", "sorted", "sorting"]],
   ["order", ["order", "orders", "ordered", "ordering"]],
   ["stable", ["stable", "consistently", "consistent", "same", "equal", "equals"]],
-  ["match", ["match", "matching", "compare", "comparison", "equality"]]
+  ["match", ["match", "matching", "compare", "comparison", "equality"]],
+  ["length", ["length", "len", "visible", "width"]],
+  ["ansi", ["ansi", "escape", "escapes", "colored", "color"]],
+  ["prefix", ["prefix", "starts", "startswith", "starts_with"]],
+  ["stringview", ["string", "view", "stringview", "string_view"]],
+  ["blank", ["blank", "whitespace", "space"]],
+  ["lowercase", ["lower", "lowercase", "lowercases", "uppercase", "upper"]],
+  ["slugify", ["slug", "slugify"]]
 ]);
 
 function detectBehaviorQuery(query: string): BehaviorQuery {
@@ -630,11 +660,36 @@ function detectBehaviorQuery(query: string): BehaviorQuery {
   }
   if (terms.has("match")) symbolHints.add("match");
   if (terms.has("sort")) symbolHints.add("sort");
+  if (terms.has("length")) {
+    symbolHints.add("term");
+    symbolHints.add("termlen");
+    symbolHints.add("len");
+  }
+  if (terms.has("ansi")) {
+    symbolHints.add("ansi");
+    symbolHints.add("stripansi");
+  }
+  if (terms.has("prefix")) {
+    symbolHints.add("startswith");
+    symbolHints.add("starts");
+  }
+  if (terms.has("stringview")) {
+    symbolHints.add("stringview");
+    symbolHints.add("basicstringview");
+  }
+  if (terms.has("blank")) {
+    symbolHints.add("isblank");
+    symbolHints.add("blank");
+  }
+  if (terms.has("slugify")) symbolHints.add("slugify");
+  if (terms.has("lowercase") && !terms.has("slugify")) {
+    symbolHints.add("lower");
+  }
 
   return {
     active: true,
     terms: [...terms],
-    anchorTerms: [...terms].filter((term) => ["hash", "sort", "stable", "match", "object", "order"].includes(term)),
+    anchorTerms: [...terms].filter((term) => ["hash", "sort", "stable", "match", "object", "order", "length", "ansi", "prefix", "stringview", "blank", "lowercase", "slugify"].includes(term)),
     phrases,
     symbolHints: [...symbolHints],
     sourceFix: /\b(production source|source|fix|debug)\b/.test(normalized),
@@ -656,6 +711,13 @@ function behaviorSymbolWeight(symbolName: string, behavior: BehaviorQuery): numb
   if (behavior.terms.includes("key") && compactSymbol.includes("key")) score += 58;
   if (behavior.terms.includes("match") && compactSymbol.includes("match")) score += 34;
   if (behavior.terms.includes("sort") && normalizedSymbol.includes("sort")) score += 42;
+  if (behavior.terms.includes("length") && (compactSymbol.includes("len") || compactSymbol.includes("length"))) score += 92;
+  if (behavior.terms.includes("ansi") && compactSymbol.includes("ansi")) score += 78;
+  if (behavior.terms.includes("prefix") && compactSymbol.includes("startswith")) score += 110;
+  if (behavior.terms.includes("stringview") && compactSymbol.includes("stringview")) score += 84;
+  if (behavior.terms.includes("blank") && compactSymbol.includes("blank")) score += 104;
+  if (behavior.terms.includes("slugify") && compactSymbol.includes("slugify")) score += 140;
+  if (behavior.terms.includes("lowercase") && compactSymbol.includes("lower")) score += 54;
   return score;
 }
 
@@ -679,6 +741,7 @@ function exactSymbolMatchesForQuery(
   for (const symbol of symbols) {
     const symbolTerms = tokenizeLexical(symbol.name);
     const compactSymbol = normalizeSearchText(symbol.name).replace(/\s+/g, "");
+    if (isLowValueExactSymbol(symbol.name) && hasSpecificQuerySymbol(queryTerms)) continue;
     if (
       symbolTerms.length > 0 &&
       (symbolTerms.every((term) => queryTerms.has(term)) ||
@@ -690,11 +753,21 @@ function exactSymbolMatchesForQuery(
   for (const chunk of chunks) {
     if (!chunk.symbol) continue;
     const symbolTerms = tokenizeLexical(chunk.symbol);
+    if (isLowValueExactSymbol(chunk.symbol) && hasSpecificQuerySymbol(queryTerms)) continue;
     if (symbolTerms.length > 0 && symbolTerms.every((term) => queryTerms.has(term))) {
       matches.add(chunk.symbol);
     }
   }
   return [...matches];
+}
+
+function isLowValueExactSymbol(symbolName: string): boolean {
+  const compact = normalizeSearchText(symbolName).replace(/\s+/g, "");
+  return ["lower", "upper", "input", "output", "value", "name", "case", "test"].includes(compact);
+}
+
+function hasSpecificQuerySymbol(queryTerms: Set<string>): boolean {
+  return [...queryTerms].some((term) => term.length >= 5 && !["debug", "seeded", "regression", "source", "production", "lowercase", "uppercase"].includes(term));
 }
 
 function isLanguageSourceSurface(file: FileRecord): boolean {
@@ -720,6 +793,13 @@ function isPrimaryLanguageSourceSurface(file: FileRecord): boolean {
     return normalized.startsWith("src/") || normalized.includes("/src/") || normalized.startsWith("include/") || normalized.includes("/include/");
   }
   return file.path.startsWith("src/") || file.path.includes("/src/");
+}
+
+function isCoreSourceModule(file: FileRecord): boolean {
+  if (!isLanguageSourceSurface(file)) return false;
+  const normalized = file.path.toLowerCase();
+  return /(^|\/)(utils?|helpers?|core|text|strings?|common|shared)(\/|\.|-|_)/.test(normalized) ||
+    /(^|\/)(utils?|helpers?|core|text|strings?|common|shared)\.[a-z0-9]+$/.test(normalized);
 }
 
 function isNoisyImplementationSurface(file: FileRecord): boolean {
@@ -830,6 +910,18 @@ function normalizeSearchText(input: string): string {
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function stripExampleLiterals(query: string): string {
+  return query
+    .replace(/`[^`]*`/g, " ")
+    .replace(/'[^']*'/g, " ")
+    .replace(/"[^"]*"/g, " ")
+    .replace(/\b[A-Za-z_][\w.]*\(([^)]{1,120})\)/g, (match) => match.replace(/\(([^)]*)\)/, "()"));
+}
+
+function hasExplicitTestIntent(queryTerms: Set<string>): boolean {
+  return ["test", "tests", "spec", "unit", "integration", "pytest", "vitest", "jest"].some((term) => queryTerms.has(term));
 }
 
 function groupByFile<T>(records: T[], filePathFor: (record: T) => string): Map<string, T[]> {

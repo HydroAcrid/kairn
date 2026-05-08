@@ -8,6 +8,8 @@ import { buildSemanticChunks } from "../semantic/chunk.js";
 import { embedText, VECTOR_DIMENSIONS } from "../semantic/vector.js";
 import type { RepoGraph, ScanResult, SemanticChunkRecord, SemanticVectorRecord } from "../types.js";
 
+const MAX_SEMANTIC_CHUNKS = 7_500;
+
 export type RepoIndex = {
   scan: ScanResult;
   graph: RepoGraph;
@@ -46,7 +48,7 @@ export async function indexRepo(rootPath: string): Promise<RepoIndex> {
     rootPath,
     graph: baseGraph
   });
-  const semanticChunks = buildSemanticChunks(rootPath, graph);
+  const semanticChunks = selectSemanticChunks(buildSemanticChunks(rootPath, graph));
   const semanticVectors = semanticChunks.map((chunk) => ({
     rootPath,
     chunkId: chunk.id,
@@ -67,4 +69,27 @@ export async function indexRepo(rootPath: string): Promise<RepoIndex> {
     semanticVectors,
     lexical
   };
+}
+
+function selectSemanticChunks(chunks: SemanticChunkRecord[]): SemanticChunkRecord[] {
+  return chunks
+    .slice()
+    .sort((a, b) => chunkPriority(b) - chunkPriority(a) || a.filePath.localeCompare(b.filePath) || a.id.localeCompare(b.id))
+    .slice(0, MAX_SEMANTIC_CHUNKS)
+    .sort((a, b) => a.filePath.localeCompare(b.filePath) || a.id.localeCompare(b.id));
+}
+
+function chunkPriority(chunk: SemanticChunkRecord): number {
+  const filePath = chunk.filePath.toLowerCase();
+  let score = chunk.kind === "symbol" ? 90 : 30;
+  if (filePath.startsWith("src/") || filePath.includes("/src/")) score += 35;
+  if (filePath.startsWith("packages/") || filePath.includes("/packages/")) score += 24;
+  if (filePath.startsWith("include/") || filePath.includes("/include/")) score += 30;
+  if (filePath.startsWith("django/") || filePath.startsWith("lib/")) score += 24;
+  if (/(^|\/)(tests?|spec)\//.test(filePath)) score -= 8;
+  if (/(^|\/)(docs?|documentation|examples?|demo|demos|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook|codemods?|devtools)\//.test(filePath)) {
+    score -= 80;
+  }
+  if (chunk.tokenEstimate > 1_500) score -= 10;
+  return score;
 }

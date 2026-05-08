@@ -131,5 +131,8 @@ export type ScanResult = {
   rootPath: string;
   files: FileRecord[];
   ignoredCount: number;
+  candidateCount?: number;
+  indexedFileLimit?: number;
+  skippedByLimit?: number;
   scannedAt: string;
 };

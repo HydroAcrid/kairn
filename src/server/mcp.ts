@@ -6,7 +6,7 @@ import type { OutputKind } from "../types.js";
 
 const outputKindSchema = z.enum(["test", "lint", "typecheck", "generic"]);
 const contextModeSchema = z.enum(["brief", "snippets", "summary", "exact"]);
-const primeProfileSchema = z.enum(["auto", "ui", "workflow", "backend", "test", "generic"]);
+const primeProfileSchema = z.enum(["auto", "ui", "workflow", "backend", "test", "failure_debug", "generic"]);
 const prepareDetailSchema = z.enum(["compact", "full"]);
 
 export async function startMcpServer(options: { root?: string }): Promise<void> {
@@ -244,6 +244,29 @@ type PrimeContextResult = Awaited<ReturnType<KairnRuntime["primeContext"]>>;
 
 function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) {
   const coordination = runtime.getCoordinationState(prime.session.id);
+  const decision = prime.contextDecision;
+  if (decision?.action === "suppress") {
+    return {
+      detail: "compact",
+      sessionId: prime.session.id,
+      session: { id: prime.session.id, task: prime.session.task },
+      task: prime.task,
+      profile: prime.profile,
+      startFiles: [],
+      files: [],
+      exactSymbolHint: null,
+      primaryReason: "Kairn does not have high-confidence context yet; continue normally and call Kairn again after a failure, diff, or more specific target.",
+      nextToolCalls: [],
+      recommendedToolCalls: [],
+      likelyTests: [],
+      tokenEstimate: 0,
+      quality: prime.quality,
+      contextDecision: decision,
+      warnings: uniqueValues([...prime.warnings, "Kairn suppressed proactive context because expected savings risk is high."]),
+      duplicateContextAvoided: coordination.duplicateContextAvoided,
+      hookFiles: coordination.hookFiles.slice(0, 3)
+    };
+  }
   const unshownPrimeFiles = prime.files.filter((file) => !coordination.hookFiles.includes(file));
   const sourceCandidates = uniqueValues([
     ...unshownPrimeFiles.filter(isMcpPrimarySourceFile),
@@ -251,16 +274,18 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
     ...unshownPrimeFiles.filter((file) => !isMcpLikelyTestFile(file) && !isMcpNoisyFile(file)),
     ...prime.files.filter((file) => !isMcpLikelyTestFile(file) && !isMcpNoisyFile(file))
   ]);
-  const startFiles = sourceCandidates.slice(0, 2);
+  const startFiles = sourceCandidates.slice(0, 1);
   const likelyTests = uniqueValues(prime.files.filter(isMcpLikelyTestFile)).slice(0, 1);
   const primaryFile = startFiles[0];
+  const symbolHint = extractSymbolHints(prime.content)[0];
   const nextToolCalls = [
-    ...(primaryFile
-      ? [{ tool: "kairn_read_file", input: { sessionId: prime.session.id, target: primaryFile, mode: "summary", budget: 650 } }]
-      : []),
-    { tool: "kairn_get_next_context", input: { sessionId: prime.session.id, budget: 650 } },
-    ...(primaryFile ? [{ tool: "kairn_find_tests", input: { sessionId: prime.session.id, target: primaryFile, budget: 500 } }] : [])
-  ].slice(0, 2);
+    ...(primaryFile && symbolHint
+      ? [{ tool: "kairn_read_symbol", input: { sessionId: prime.session.id, target: primaryFile, symbol: symbolHint, budget: 550 } }]
+      : primaryFile
+        ? [{ tool: "kairn_read_file", input: { sessionId: prime.session.id, target: primaryFile, mode: "summary", budget: 550 } }]
+        : []),
+    ...(!primaryFile ? [{ tool: "kairn_get_next_context", input: { sessionId: prime.session.id, budget: 550 } }] : [])
+  ].slice(0, 1);
 
   return {
     detail: "compact",
@@ -270,6 +295,7 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
     profile: prime.profile,
     startFiles,
     files: startFiles,
+    exactSymbolHint: symbolHint ?? null,
     primaryReason: primaryFile
       ? `Start with ${primaryFile}; it is Kairn's highest-confidence unshown file for this task.`
       : "Kairn did not find a high-confidence start file.",
@@ -278,6 +304,7 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
     likelyTests,
     tokenEstimate: estimateCompactPrepareTokens(startFiles, likelyTests, nextToolCalls),
     quality: prime.quality,
+    contextDecision: decision,
     warnings: prime.warnings,
     duplicateContextAvoided: coordination.duplicateContextAvoided,
     hookFiles: coordination.hookFiles.slice(0, 3)
@@ -300,6 +327,7 @@ function fullPrepareResult(prime: PrimeContextResult) {
     startFiles: prime.files.slice(0, 4),
     files: prime.files.slice(0, 4),
     quality: prime.quality,
+    contextDecision: prime.contextDecision,
     warnings: prime.warnings,
     suggestedCommands: prime.suggestedCommands.slice(0, 3),
     tokenEstimate: prime.tokenEstimate,
@@ -345,6 +373,14 @@ function isMcpNoisyFile(filePath: string): boolean {
 
 function estimateCompactPrepareTokens(startFiles: string[], likelyTests: string[], nextToolCalls: unknown[]): number {
   return Math.ceil(JSON.stringify({ startFiles, likelyTests, nextToolCalls }).length / 4);
+}
+
+function extractSymbolHints(content: string): string[] {
+  const symbols: string[] = [];
+  for (const match of content.matchAll(/\bsymbol(?: match)?:\s*([A-Za-z_$][\w$]*)/g)) {
+    symbols.push(match[1]!);
+  }
+  return uniqueValues(symbols).slice(0, 3);
 }
 
 function mcpToolResult(runtime: KairnRuntime, toolName: string, input: unknown, value: unknown) {

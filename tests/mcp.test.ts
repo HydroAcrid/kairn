@@ -52,12 +52,14 @@ describe("MCP server", () => {
       sessionId: string;
       startFiles: string[];
       nextToolCalls: unknown[];
+      exactSymbolHint?: string | null;
       content?: string;
     };
     expect(preparedParsed.detail).toBe("compact");
     expect(preparedParsed.sessionId).toBe(parsed.session.id);
-    expect(preparedParsed.startFiles.length).toBeLessThanOrEqual(2);
-    expect(preparedParsed.nextToolCalls.length).toBeLessThanOrEqual(2);
+    expect(preparedParsed.startFiles.length).toBeLessThanOrEqual(1);
+    expect(preparedParsed.nextToolCalls.length).toBeLessThanOrEqual(1);
+    expect(preparedParsed).toHaveProperty("exactSymbolHint");
     expect(preparedParsed.content).toBeUndefined();
 
     const fullPrepared = await client.callTool({

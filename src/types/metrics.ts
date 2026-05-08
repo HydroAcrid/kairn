@@ -14,6 +14,7 @@ export type MetricsEventKind =
   | "hook_signal"
   | "prime_context"
   | "prime_quality"
+  | "context_value_decision"
   | "mcp_tool_call";
 
 export type MetricsEventRecord = {

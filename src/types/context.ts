@@ -25,7 +25,7 @@ export type OutputKind = "test" | "lint" | "typecheck" | "generic";
 
 export type ContextQueryMode = "brief" | "snippets" | "summary" | "exact";
 
-export type PrimeProfile = "auto" | "ui" | "workflow" | "backend" | "test" | "generic";
+export type PrimeProfile = "auto" | "ui" | "workflow" | "backend" | "test" | "failure_debug" | "generic";
 
 export type CodexSetupMode = "savings" | "observe" | "debug" | "mcp-first" | "hybrid";
 
@@ -66,11 +66,14 @@ export type ContextPrime = {
   files: string[];
   tokenEstimate: number;
   quality?: PrimeQuality;
+  contextDecision?: ContextValueDecision;
   warnings: string[];
   suggestedCommands: string[];
 };
 
 export type PrimeQualityAction = "emit" | "shrink" | "suppress";
+
+export type ContextValueAction = "emit" | "shrink" | "suppress";
 
 export type PrimeQuality = {
   score: number;
@@ -80,6 +83,22 @@ export type PrimeQuality = {
   topGap: number;
   exactPathMentioned: boolean;
   expectedSavingsRisk: "low" | "medium" | "high";
+};
+
+export type ContextValueDecision = {
+  score: number;
+  action: ContextValueAction;
+  reasons: string[];
+  topScore: number;
+  topGap: number;
+  primaryFile?: string;
+  language: "typescript" | "javascript" | "python" | "java" | "cpp" | "c" | "unknown";
+  exactPathMentioned: boolean;
+  estimatedContextCost: number;
+  expectedSavingsRisk: "low" | "medium" | "high";
+  debugSignal: boolean;
+  easyTaskSignal: boolean;
+  wrongContextRisk?: boolean;
 };
 
 export type ContextRequest = {

@@ -28,6 +28,7 @@ export type BenchmarkCase = {
   query?: string;
   target?: string;
   expectedFiles: string[];
+  requiredTouchedFiles?: string[];
   excludedFiles: string[];
   budget?: number;
   successCriteria?: string[];
