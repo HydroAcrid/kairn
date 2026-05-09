@@ -416,26 +416,41 @@ describe("hybridSearch", () => {
     const rootPath = "/repo";
     const files = [
       file(rootPath, "include/fmt/base.h", "source", "cpp"),
+      file(rootPath, "include/fmt/format.h", "source", "cpp"),
       file(rootPath, "test/base-test.cc", "test", "cpp"),
       file(rootPath, "examples/format.cc", "source", "cpp")
     ];
-    const symbols = [symbol(rootPath, "include/fmt/base.h", "starts_with")];
+    const symbols = [
+      symbol(rootPath, "include/fmt/base.h", "basic_string_view"),
+      symbol(rootPath, "include/fmt/base.h", "starts_with"),
+      symbol(rootPath, "include/fmt/format.h", "basic_string_view"),
+      symbol(rootPath, "include/fmt/format.h", "string_view"),
+      symbol(rootPath, "include/fmt/format.h", "maybe_set_debug_format")
+    ];
     const chunks = [
       chunk(rootPath, "include/fmt/base.h", "starts_with", "basic_string_view starts_with equal length prefix comparison"),
+      chunk(rootPath, "include/fmt/format.h", "basic_string_view", "formatting basic string view format parser debug formatting string view"),
       chunk(rootPath, "test/base-test.cc", "starts_with test", "starts_with equal length case"),
       chunk(rootPath, "examples/format.cc", "starts_with example", "example use starts_with")
     ];
+    const lexical = buildLexicalIndex({ rootPath, files, symbols, chunks });
     const results = hybridSearch({
       files,
       query: "Debug fmt basic_string_view starts_with equal length regression",
       symbols,
       chunks,
       vectors: chunks.map((record) => vector(rootPath, record)),
+      lexicalDocuments: lexical.documents,
+      lexicalTerms: lexical.terms,
+      lexicalStats: lexical.stats,
       edges: [],
       changedFiles: new Set()
     });
 
     expect(results[0]?.path).toBe("include/fmt/base.h");
+    expect(results.findIndex((result) => result.path === "include/fmt/base.h")).toBeLessThan(
+      results.findIndex((result) => result.path === "include/fmt/format.h")
+    );
     expect(results[0]?.reasons).toEqual(expect.arrayContaining(["primary source path"]));
     expect(results.slice(0, 2).map((result) => result.path)).not.toContain("examples/format.cc");
   });

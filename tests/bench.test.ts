@@ -9,11 +9,18 @@ import { buildBenchmarkReport, compareBenchmarkReports, scoreBenchmarkCase } fro
 import { loadBenchmarkRepoMatrix, runBenchmarkRepoMatrix } from "../src/bench/matrix.js";
 import { runAgentBenchmarkCase } from "../src/bench/agent.js";
 import { evaluateContextValue } from "../src/prime/contextValue.js";
+import { resolvePrimeProfile } from "../src/prime/quality.js";
 import { createFixtureRepo } from "./helpers.js";
 
 const CLI = ["tsx", "src/cli.ts"];
 
 describe("benchmark suite and scoring", () => {
+  it("routes explicit debug/regression prompts to the failure-debug prime profile", () => {
+    expect(resolvePrimeProfile("auto", "Debug StringUtils.isBlank whitespace behavior")).toBe("failure_debug");
+    expect(resolvePrimeProfile("auto", "Debug local URL handling in the router utility")).toBe("failure_debug");
+    expect(resolvePrimeProfile("auto", "Fix mobile layout spacing")).not.toBe("failure_debug");
+  });
+
   it("builds an adaptive default suite from inventory-like files", () => {
     const suite = createDefaultBenchmarkSuite([
       record("src/app/private/jobs/JobsApplicationsTable.tsx", "component"),
@@ -450,6 +457,54 @@ describe("benchmark suite and scoring", () => {
 
     expect(decision.action).toBe("suppress");
     expect(decision.exactPathMentioned).toBe(true);
+  });
+
+  it("shrinks high-confidence exact source hits for easy find-style prompts", () => {
+    const decision = evaluateContextValue({
+      task: "Find the router utility source for local URL handling",
+      profile: "generic",
+      context: {
+        mode: "snippets",
+        content: "- packages/next/src/shared/lib/router/utils/is-local-url.ts (source, score 220): exact local url utility match\n- packages/next/src/shared/lib/router/router.ts (source, score 160): router match",
+        files: [
+          "packages/next/src/shared/lib/router/utils/is-local-url.ts",
+          "packages/next/src/shared/lib/router/router.ts"
+        ],
+        symbols: ["isLocalURL"],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["packages/next/src/shared/lib/router/utils/is-local-url.ts"],
+        tokenEstimate: 260
+      },
+      quality: {
+        score: 80,
+        action: "emit",
+        reasons: ["high-confidence top retrieval score"],
+        topScore: 220,
+        topGap: 60,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      knownFiles: [
+        {
+          rootPath: "/repo",
+          path: "packages/next/src/shared/lib/router/utils/is-local-url.ts",
+          language: "typescript",
+          kind: "source",
+          size: 400,
+          hash: "hash",
+          importance: 1,
+          updatedAt: new Date(0).toISOString()
+        }
+      ],
+      repoFileCount: 27000,
+      estimatedContextCost: 800
+    });
+
+    expect(decision.action).toBe("shrink");
+    expect(decision.reasons).toEqual(
+      expect.arrayContaining(["high-confidence exact source target supports compact context"])
+    );
   });
 
   it("suppresses risky test-first context for production-source fixes", () => {

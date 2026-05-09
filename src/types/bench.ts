@@ -86,6 +86,7 @@ export type BenchmarkMatrixCaseResult = {
   excludedHits: string[];
   primeTokens: number;
   primeLatencyMs: number;
+  timings?: Record<string, number>;
   contextDecision?: string;
   qualityScore?: number;
   expectedTopKPassed: boolean;

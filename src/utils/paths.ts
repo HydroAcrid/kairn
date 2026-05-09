@@ -1,7 +1,13 @@
+import fs from "node:fs";
 import path from "node:path";
 
 export function resolveRoot(root?: string): string {
-  return path.resolve(root ?? process.cwd());
+  const absolute = path.resolve(root ?? process.cwd());
+  try {
+    return fs.realpathSync.native(absolute);
+  } catch {
+    return absolute;
+  }
 }
 
 export function normalizeRelativePath(filePath: string): string {

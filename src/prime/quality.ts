@@ -90,9 +90,10 @@ export function primeProfileLimits(profile: ResolvedPrimeProfile): PrimeProfileL
 
 export function isFailureDebugTask(task: string): boolean {
   const normalized = task.toLowerCase();
-  const debugTerms = ["debug", "failing", "failure", "regression", "broken", "incorrect", "fix"];
+  const strongDebugTerms = ["debug", "failing", "failure", "regression", "broken", "incorrect"];
+  if (strongDebugTerms.some((term) => normalized.includes(term))) return true;
   const verificationTerms = ["test", "check", "assert", "verification", "seeded"];
-  return debugTerms.some((term) => normalized.includes(term)) &&
+  return normalized.includes("fix") &&
     verificationTerms.some((term) => normalized.includes(term));
 }
 

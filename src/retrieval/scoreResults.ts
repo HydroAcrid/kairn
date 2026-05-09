@@ -18,7 +18,15 @@ const STOPWORDS = new Set([
   "fix",
   "make",
   "build",
-  "implement"
+  "implement",
+  "debug",
+  "failing",
+  "failure",
+  "regression",
+  "bug",
+  "behavior",
+  "source",
+  "production"
 ]);
 
 export function scoreFiles(files: FileRecord[], query: string, symbols: SymbolRecord[] = []): ScoredFile[] {

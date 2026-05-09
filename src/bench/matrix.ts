@@ -201,6 +201,7 @@ async function runCasePreflight(input: {
     excludedHits,
     primeTokens: prime.tokenEstimate || estimateTokens(prime.content),
     primeLatencyMs,
+    ...(prime.timings ? { timings: prime.timings } : {}),
     ...(contextDecision ? { contextDecision } : {}),
     ...(prime.quality?.score !== undefined ? { qualityScore: prime.quality.score } : {}),
     expectedTopKPassed,

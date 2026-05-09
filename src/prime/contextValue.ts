@@ -33,6 +33,9 @@ export function evaluateContextValue(input: {
   if (primaryFile && isPrimarySourcePath(primaryFile)) {
     score += 8;
     reasons.add("top result is a production source file");
+    if (input.quality.topScore >= 160 && input.quality.topGap >= 20) {
+      reasons.add("high-confidence exact source target supports compact context");
+    }
   }
   if (wrongContextRisk) {
     score -= input.repoFileCount >= 1500 ? 58 : 38;
@@ -89,7 +92,8 @@ export function evaluateContextValue(input: {
     topScore: input.quality.topScore,
     topGap: input.quality.topGap,
     language,
-    wrongContextRisk
+    wrongContextRisk,
+    primarySource: Boolean(primaryFile && isPrimarySourcePath(primaryFile))
   });
   const expectedSavingsRisk = action === "emit" ? "low" : action === "shrink" ? "medium" : "high";
 
@@ -120,6 +124,7 @@ function chooseAction(input: {
   topGap: number;
   language: ContextValueDecision["language"];
   wrongContextRisk: boolean;
+  primarySource: boolean;
 }): ContextValueDecision["action"] {
   if (input.exactPathMentioned) return "suppress";
   if (input.wrongContextRisk && input.score < 72) return "suppress";
@@ -127,7 +132,9 @@ function chooseAction(input: {
   if (input.vagueImprovementSignal && !input.debugSignal) return input.score >= 88 && input.topGap >= 80 ? "shrink" : "suppress";
   if (input.topScore <= 0 || input.score < 38) return "suppress";
   if (input.language === "cpp" && input.score < 78) return "shrink";
-  if (input.easyTaskSignal && !input.debugSignal && input.score < 82) return "suppress";
+  if (input.easyTaskSignal && !input.debugSignal && input.score < 82) {
+    return input.primarySource && input.topScore >= 160 && input.topGap >= 20 ? "shrink" : "suppress";
+  }
   if (input.score < 68 || input.topGap < 20) return "shrink";
   return "emit";
 }

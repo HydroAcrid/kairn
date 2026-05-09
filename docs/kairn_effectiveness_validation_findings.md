@@ -1834,3 +1834,184 @@ The broad test points to general improvements, not repo-specific tuning:
    - good candidates: TanStack, Click, fmt.
    - hold Commons Lang/Django until prime latency is below the gate.
    - use Next for controller validation, not savings claims, until it emits a small useful brief instead of suppressing exact hits.
+
+## 2026-05-08 Post-Latency/Controller Live Proof
+
+Implemented before this pass:
+
+- Added `primeContext` timing metadata:
+  - inventory,
+  - index refresh,
+  - `findContext`,
+  - decision,
+  - related/test expansion,
+  - formatting,
+  - total prime time.
+- Made `failure_debug` prompts route earlier and skip broad related-file expansion when the profile does not need it.
+- Changed high-confidence exact source hits from `suppress` to a compact/shrunk path where appropriate.
+- Reduced BM25 repeated-evidence dominance so one large header cannot win purely by repeating broad terms across many documents.
+- Added behavior-symbol de-duplication so repeated class/container matches do not outrank a narrower exact method owner.
+- Fixed a macOS root canonicalization bug:
+  - benchmark workspaces appeared as both `/var/...` and `/private/var/...`,
+  - `kairn init` indexed one path while Codex hooks used the other,
+  - hooks therefore saw an empty index and suppressed all context,
+  - `resolveRoot()` now canonicalizes with `fs.realpathSync.native()`.
+
+Verification:
+
+```bash
+pnpm test
+pnpm typecheck
+pnpm build
+```
+
+All passed.
+
+### Retrieval/State Matrix After Fixes
+
+Reports:
+
+```text
+/tmp/kairn-broad-repo-matrix-final.json
+/tmp/kairn-large-repo-matrix-final.json
+```
+
+Broad repo matrix:
+
+| Repo | Result | State | Prime latency | Top files |
+| --- | --- | ---: | ---: | --- |
+| TanStack Query | pass | `58.5MB` | `3.15s` | `packages/query-core/src/utils.ts` |
+| Click | pass | `26.83MB` | `0.56s` | `src/click/_compat.py` |
+| Commons Lang | latency fail only | `74.46MB` | `6.31s` | `StringUtils.java` |
+| fmt | pass | `34.01MB` | `3.78s` | `include/fmt/base.h` |
+| weak local prompt | pass | `37.7MB` | `0.11s` | suppressed |
+
+Large repo matrix:
+
+| Repo | Result | State | Prime latency | Top files |
+| --- | --- | ---: | ---: | --- |
+| Django slugify | pass | `63.88MB` | `6.32s` | `django/utils/text.py` |
+| Django weak prompt | pass | `63.88MB` | `0.27s` | suppressed |
+| Next local URL | pass | `77.42MB` | `4.77s` | `is-local-url.ts` |
+| Next weak prompt | pass | `77.42MB` | `0.56s` | suppressed |
+
+Interpretation:
+
+- State discipline is now healthy on the broad/large preflight set.
+- Exact source targeting improved across JS/TS, Python, Java, and C++.
+- fmt now ranks `include/fmt/base.h` first instead of the broader `format.h`.
+- Next now ranks `packages/next/src/shared/lib/router/utils/is-local-url.ts` first and emits context instead of suppressing.
+- Commons Lang is the only preflight failure, and it is a narrow latency miss, not a retrieval miss.
+
+### Live Proof: TanStack + Click + fmt
+
+Report:
+
+```text
+/tmp/kairn-live-ts-py-cpp-proof-rootfix.json
+```
+
+Modes:
+
+- `baseline`
+- pre-indexed `hook_full_prime`
+
+Aggregate:
+
+| Mode | Observed tokens | Quality-passing report? |
+| --- | ---: | --- |
+| baseline | `86,201` | no |
+| hook_full_prime | `64,261` | no |
+
+Observed token delta:
+
+- `21,940` fewer tokens
+- `25.45%` reduction
+- **Invalid as a savings claim** because not all quality gates passed.
+
+Case detail:
+
+| Case | Baseline | Hook full-prime | Notes |
+| --- | --- | --- | --- |
+| TanStack hidden hash | fail, `38,446` tokens | fail, `22,659` tokens | Both surfaced `utils.ts`, but verification timed out/failed and required source was not touched. |
+| Click ANSI term length | pass, `34,641` tokens | partial, `23,180` tokens | Hook saved tokens but verification passed without required source touch; quality gate failed for hook. |
+| fmt `starts_with` | partial, `13,114` tokens | pass, `18,422` tokens | Hook improved quality and touched `include/fmt/base.h`, but used more tokens than baseline. |
+
+Hook metrics after root canonicalization:
+
+- Hook primes emitted correctly in all three hook cases.
+- Prime sizes stayed compact:
+  - TanStack: `580` tokens,
+  - Click: `575` tokens,
+  - fmt: `566` tokens.
+- Hook failures: `0`.
+
+### Live Proof: Django + Next
+
+Report:
+
+```text
+/tmp/kairn-live-django-next-proof-rootfix.json
+```
+
+Modes:
+
+- `baseline`
+- pre-indexed `hook_full_prime`
+
+Aggregate:
+
+| Mode | Observed tokens | Quality-passing report? |
+| --- | ---: | --- |
+| baseline | `54,805` | no |
+| hook_full_prime | `46,761` | no |
+
+Observed token delta:
+
+- `8,044` fewer tokens
+- `14.68%` reduction
+- **Invalid as a savings claim** because the Next case failed verification in both modes.
+
+Case detail:
+
+| Case | Baseline | Hook full-prime | Notes |
+| --- | --- | --- | --- |
+| Django slugify | pass, `13,184` tokens | pass, `11,936` tokens | Valid quality-preserving savings: `1,248` tokens, about `9.47%`. |
+| Next local URL | fail, `41,621` tokens | fail, `34,825` tokens | Both touched `is-local-url.ts`, but both failed verification. Token reduction is negative evidence until the fix quality improves. |
+
+Hook metrics:
+
+- Hook primes emitted correctly in both hook cases.
+- Prime sizes:
+  - Django: `597` tokens,
+  - Next: `610` tokens.
+- Hook failures: `0`.
+
+### Current Interpretation
+
+The latest implementation fixed the mechanical blockers:
+
+- hooks no longer silently fail because of temp-path canonicalization,
+- primes are compact,
+- exact source files are now ranked correctly in the preflight matrix,
+- weak prompts suppress,
+- state remains bounded.
+
+The main issue is now **agent outcome quality**, not retrieval quality:
+
+- Kairn often points at the right file and reduces tokens.
+- But Codex may still fail or solve the seeded check without touching the required production source.
+- Those reductions are correctly marked invalid/negative by the quality gate.
+
+The strongest valid result in this pass:
+
+- Django hook full-prime passed and saved `9.47%`.
+- fmt hook full-prime passed where baseline did not satisfy the source-touch gate, but used more tokens.
+
+Next improvement direction:
+
+1. Make seeded prompts and quality gates distinguish "verification passes because the source was fixed" from "verification passes by workaround/no-op."
+2. Add failure-output-aware primes for live seeded runs so Kairn can include the actual failing assertion/command context, not only the natural-language task.
+3. Add optional pre-agent `kairn failure` context when a seed has an expected failing command.
+4. Improve TanStack setup/test reliability; current exit `130` makes it hard to judge retrieval quality.
+5. For Next, prime should include the exact expected repair shape, not just the target file, because Codex finds the right file but makes the wrong edit.

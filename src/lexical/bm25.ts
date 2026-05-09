@@ -118,7 +118,7 @@ export function scoreBm25Files(input: {
   const termsByTerm = groupBy(input.terms, (term) => term.term);
   const averageLength = input.stats?.averageDocumentLength || average(input.documents.map((document) => document.length)) || 1;
   const documentCount = input.stats?.documentCount || input.documents.length;
-  const fileScores = new Map<string, { score: number; reasons: Set<string>; docScores: number[] }>();
+  const fileScores = new Map<string, { score: number; reasons: Set<string>; docScores: number[]; termScores: Map<string, number> }>();
 
   for (const queryTerm of queryTerms) {
     const termRows = termsByTerm.get(queryTerm) ?? [];
@@ -132,9 +132,10 @@ export function scoreBm25Files(input: {
       const tf = row.frequency;
       const normalizedTf = (tf * (K1 + 1)) / (tf + K1 * (1 - B + B * (document.length / averageLength)));
       const docScore = idf * normalizedTf * weightForDocument(document, queryTerm);
-      const current = fileScores.get(row.filePath) ?? { score: 0, reasons: new Set<string>(), docScores: [] };
+      const current = fileScores.get(row.filePath) ?? { score: 0, reasons: new Set<string>(), docScores: [], termScores: new Map<string, number>() };
       current.score += docScore;
       current.docScores.push(docScore);
+      current.termScores.set(queryTerm, Math.max(current.termScores.get(queryTerm) ?? 0, docScore));
       if (docScore > 0.2) current.reasons.add(`bm25 exact match: ${queryTerm}`);
       fileScores.set(row.filePath, current);
     }
@@ -143,7 +144,10 @@ export function scoreBm25Files(input: {
   const result = new Map<string, { score: number; reasons: string[] }>();
   for (const [filePath, item] of fileScores) {
     const maxDoc = Math.max(...item.docScores, 0);
-    const score = maxDoc * 36 + item.score * 8;
+    const uniqueTermScore = [...item.termScores.values()].reduce((total, score) => total + score, 0);
+    const coverage = item.termScores.size / queryTerms.length;
+    const repeatedEvidence = Math.log1p(Math.max(0, item.score - uniqueTermScore));
+    const score = maxDoc * 36 + uniqueTermScore * 14 + repeatedEvidence * 6 + coverage * 8;
     if (score <= 0) continue;
     result.set(filePath, {
       score: Number(score.toFixed(3)),

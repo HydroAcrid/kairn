@@ -147,7 +147,7 @@ function scoreBehaviorMatches(
 
     const matchedTerms = behavior.terms.filter((term) => fileTerms.has(term));
     const matchedPhrases = behavior.phrases.filter((phrase) => phraseMatches(normalizedFileText, phrase, fileTerms));
-    const symbolMatches = symbols.filter((symbol) => behaviorSymbolMatches(symbol.name, behavior));
+    const symbolMatches = selectBehaviorSymbolMatches(symbols, behavior);
     const hasBehaviorAnchor =
       matchedTerms.some((term) => behavior.anchorTerms.includes(term)) ||
       matchedPhrases.length > 0 ||
@@ -706,6 +706,38 @@ function behaviorSymbolMatches(symbolName: string, behavior: BehaviorQuery): boo
   return behavior.symbolHints.some((hint) => normalizedSymbol.includes(hint) || compactSymbol.includes(hint));
 }
 
+function selectBehaviorSymbolMatches(symbols: SymbolRecord[], behavior: BehaviorQuery): SymbolRecord[] {
+  const bestByHint = new Map<string, { symbol: SymbolRecord; weight: number }>();
+  for (const symbol of symbols) {
+    const matchedHints = matchedBehaviorSymbolHints(symbol.name, behavior);
+    if (matchedHints.length === 0) continue;
+    const weight = behaviorSymbolWeight(symbol.name, behavior);
+    for (const hint of matchedHints) {
+      const current = bestByHint.get(hint);
+      if (!current || weight > current.weight) {
+        bestByHint.set(hint, { symbol, weight });
+      }
+    }
+  }
+
+  const unique = new Map<string, { symbol: SymbolRecord; weight: number }>();
+  for (const { symbol, weight } of bestByHint.values()) {
+    const key = normalizeSearchText(symbol.name).replace(/\s+/g, "");
+    const current = unique.get(key);
+    if (!current || weight > current.weight) unique.set(key, { symbol, weight });
+  }
+
+  return [...unique.values()]
+    .sort((a, b) => b.weight - a.weight || a.symbol.name.localeCompare(b.symbol.name))
+    .map((item) => item.symbol);
+}
+
+function matchedBehaviorSymbolHints(symbolName: string, behavior: BehaviorQuery): string[] {
+  const normalizedSymbol = normalizeSearchText(symbolName);
+  const compactSymbol = normalizedSymbol.replace(/\s+/g, "");
+  return behavior.symbolHints.filter((hint) => normalizedSymbol.includes(hint) || compactSymbol.includes(hint));
+}
+
 function behaviorSymbolWeight(symbolName: string, behavior: BehaviorQuery): number {
   const normalizedSymbol = normalizeSearchText(symbolName);
   const compactSymbol = normalizedSymbol.replace(/\s+/g, "");
@@ -717,6 +749,7 @@ function behaviorSymbolWeight(symbolName: string, behavior: BehaviorQuery): numb
   if (behavior.terms.includes("length") && (compactSymbol.includes("len") || compactSymbol.includes("length"))) score += 92;
   if (behavior.terms.includes("ansi") && compactSymbol.includes("ansi")) score += 78;
   if (behavior.terms.includes("prefix") && compactSymbol.includes("startswith")) score += 110;
+  if (behavior.terms.includes("prefix") && /^starts?with/.test(compactSymbol)) score += 96;
   if (behavior.terms.includes("stringview") && compactSymbol.includes("stringview")) score += 84;
   if (behavior.terms.includes("blank") && compactSymbol.includes("blank")) score += 104;
   if (behavior.terms.includes("slugify") && compactSymbol.includes("slugify")) score += 140;

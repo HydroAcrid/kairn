@@ -67,6 +67,7 @@ export type ContextPrime = {
   tokenEstimate: number;
   quality?: PrimeQuality;
   contextDecision?: ContextValueDecision;
+  timings?: Record<string, number>;
   warnings: string[];
   suggestedCommands: string[];
 };

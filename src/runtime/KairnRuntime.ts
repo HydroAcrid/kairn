@@ -151,14 +151,27 @@ export class KairnRuntime {
     metadata?: Record<string, unknown> | undefined;
     refreshIndex?: boolean | undefined;
   }): Promise<ContextPrime> {
-    const hadInventory = this.store.listFiles(this.rootPath).length > 0;
+    const primeStartedAt = Date.now();
+    const timings: Record<string, number> = {};
+    const markTiming = (label: string, startedAt: number) => {
+      timings[label] = Date.now() - startedAt;
+    };
+    const inventoryStartedAt = Date.now();
+    let knownFiles = this.store.listFiles(this.rootPath);
+    markTiming("initialInventoryMs", inventoryStartedAt);
+    const hadInventory = knownFiles.length > 0;
     const shouldRefreshIndex = input.refreshIndex === true || (!hadInventory && input.refreshIndex !== false);
     if (shouldRefreshIndex) {
+      const initStartedAt = Date.now();
       await this.init();
+      markTiming("initMs", initStartedAt);
+      const refreshedInventoryStartedAt = Date.now();
+      knownFiles = this.store.listFiles(this.rootPath);
+      markTiming("refreshedInventoryMs", refreshedInventoryStartedAt);
     }
     const task = input.task;
     const profile = resolvePrimeProfile(input.profile ?? "auto", task);
-    const repoFileCount = this.store.listFiles(this.rootPath).length;
+    const repoFileCount = knownFiles.length;
     const budget = input.budget ?? adaptivePrimeBudget({ profile, task, repoFileCount });
     const limits = primeProfileLimits(profile);
     const session = input.sessionId
@@ -170,6 +183,7 @@ export class KairnRuntime {
           verificationHints: ["Start from Kairn prime context", "Avoid broad scans unless the prime is insufficient", "Run related tests before finalizing"]
         });
     const resolvedTask = input.task || session.task;
+    const findContextStartedAt = Date.now();
     const context = await this.findContext({
       sessionId: session.id,
       query: resolvedTask,
@@ -178,21 +192,63 @@ export class KairnRuntime {
       mode: input.mode ?? "snippets",
       refreshIndex: false
     });
+    markTiming("findContextMs", findContextStartedAt);
     const primaryFile = context.suggestedNextContext[0] ?? context.files[0];
-    const related = primaryFile
-      ? await this.getRelatedFiles({
-          sessionId: session.id,
-          target: primaryFile,
-          budget: 420,
-          refreshIndex: false
-        }).catch(() => undefined)
-      : undefined;
-    const tests = await this.findTests({
-      sessionId: session.id,
-      target: primaryFile,
-      budget: 420,
-      refreshIndex: false
-    }).catch(() => undefined);
+    const sessionFiles = session.rootPath === this.rootPath ? knownFiles : this.store.listFiles(session.rootPath);
+    const decisionStartedAt = Date.now();
+    const baseQuality = evaluatePrimeQuality({
+      task: resolvedTask,
+      context,
+      knownFiles: sessionFiles
+    });
+    const contextDecision = evaluateContextValue({
+      task: resolvedTask,
+      profile,
+      context,
+      quality: baseQuality,
+      knownFiles: sessionFiles,
+      repoFileCount: sessionFiles.length,
+      estimatedContextCost: budget
+    });
+    markTiming("decisionMs", decisionStartedAt);
+    const quality = {
+      ...baseQuality,
+      score: contextDecision.score,
+      action: contextDecision.action,
+      reasons: contextDecision.reasons,
+      expectedSavingsRisk: contextDecision.expectedSavingsRisk
+    };
+    let related: Awaited<ReturnType<KairnRuntime["getRelatedFiles"]>> | undefined;
+    let tests: Awaited<ReturnType<KairnRuntime["findTests"]>> | undefined;
+    const needsExpansion = quality.action === "emit" && input.format !== "mcp_brief";
+    if (needsExpansion) {
+      const expansionStartedAt = Date.now();
+      const relatedStartedAt = Date.now();
+      const testsStartedAt = Date.now();
+      const [relatedResult, testsResult] = await Promise.all([
+        primaryFile && limits.relatedFiles > 0
+          ? this.getRelatedFiles({
+              sessionId: session.id,
+              target: primaryFile,
+              budget: 420,
+              refreshIndex: false
+            })
+          : Promise.resolve(undefined),
+        limits.testFiles > 0
+          ? this.findTests({
+              sessionId: session.id,
+              target: primaryFile,
+              budget: 420,
+              refreshIndex: false
+            })
+          : Promise.resolve(undefined)
+      ].map((promise) => promise.catch(() => undefined)));
+      related = relatedResult as typeof related;
+      tests = testsResult as typeof tests;
+      markTiming("relatedFilesMs", relatedStartedAt);
+      markTiming("findTestsMs", testsStartedAt);
+      markTiming("expansionWallMs", expansionStartedAt);
+    }
     const files = uniquePaths([
       ...context.suggestedNextContext.slice(0, limits.topFiles),
       ...context.files.slice(0, limits.topFiles),
@@ -204,27 +260,7 @@ export class KairnRuntime {
       ...(primaryFile ? [`kairn context --session ${session.id} --root <repo> --related ${primaryFile}`] : []),
       ...(primaryFile ? [`kairn context --session ${session.id} --root <repo> --tests ${primaryFile}`] : [])
     ];
-    const baseQuality = evaluatePrimeQuality({
-      task: resolvedTask,
-      context,
-      knownFiles: this.store.listFiles(session.rootPath)
-    });
-    const contextDecision = evaluateContextValue({
-      task: resolvedTask,
-      profile,
-      context,
-      quality: baseQuality,
-      knownFiles: this.store.listFiles(session.rootPath),
-      repoFileCount: this.store.listFiles(session.rootPath).length,
-      estimatedContextCost: budget
-    });
-    const quality = {
-      ...baseQuality,
-      score: contextDecision.score,
-      action: contextDecision.action,
-      reasons: contextDecision.reasons,
-      expectedSavingsRisk: contextDecision.expectedSavingsRisk
-    };
+    const formatStartedAt = Date.now();
     const content = input.format === "mcp_brief"
       ? formatMcpBriefPrimeContext({
           task: resolvedTask,
@@ -257,7 +293,9 @@ export class KairnRuntime {
               testFiles: tests?.files ?? [],
               suggestedCommands
             });
-    const fileRecords = this.store.listFiles(session.rootPath).filter((file) => files.includes(file.path));
+    markTiming("formatMs", formatStartedAt);
+    timings.totalPrimeMs = Date.now() - primeStartedAt;
+    const fileRecords = sessionFiles.filter((file) => files.includes(file.path));
 
     this.recordShown(session.id, "context", "brief", content);
     this.recordMetricsEvent({
@@ -278,6 +316,7 @@ export class KairnRuntime {
         format: input.format ?? "standard",
         quality,
         contextDecision,
+        timings,
         contextTokenEstimate: context.tokenEstimate,
         relatedCount: related?.related.length ?? 0,
         testCount: tests?.files.length ?? 0,
@@ -297,6 +336,7 @@ export class KairnRuntime {
       metadata: {
         ...quality,
         contextDecision,
+        timings,
         taskHash: sha256(resolvedTask),
         profile
       }
@@ -313,6 +353,7 @@ export class KairnRuntime {
       files,
       metadata: {
         ...contextDecision,
+        timings,
         taskHash: sha256(resolvedTask),
         profile
       }
@@ -327,6 +368,7 @@ export class KairnRuntime {
       tokenEstimate: estimateTokens(content),
       quality,
       contextDecision,
+      timings,
       warnings: uniqueStrings([...context.warnings, ...(related?.warnings ?? []), ...(tests?.warnings ?? [])]),
       suggestedCommands
     };
