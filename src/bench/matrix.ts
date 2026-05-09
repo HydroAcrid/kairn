@@ -166,12 +166,20 @@ async function runCasePreflight(input: {
   const returnedFiles = prime.files;
   const topFiles = returnedFiles.slice(0, input.gates.expectedTopK);
   const missingExpectedFiles = input.benchmarkCase.expectedFiles.filter((file) => !topFiles.includes(file));
-  const excludedHits = input.benchmarkCase.excludedFiles.filter((file) => returnedFiles.includes(file));
+  const excludedHits = returnedFiles.filter((file) =>
+    input.benchmarkCase.excludedFiles.some((excluded) => benchmarkPathMatches(file, excluded))
+  );
+  const noisePrefixHits = returnedFiles.filter((file) => isNoisyMatrixPath(file));
+  const companionReasons = extractCompanionReasons(prime.metadata?.companionCandidates);
+  const companionFilesReturned = Object.keys(companionReasons).filter((file) => returnedFiles.includes(file));
+  const expectedCompanions = input.benchmarkCase.expectedFiles.slice(1);
+  const missingCompanionFiles = expectedCompanions.filter((file) => !topFiles.includes(file));
+  const sourceVsTestDecision = decideSourceVsTest(returnedFiles);
   const requiresSuppression = shouldRequireSuppression(input.benchmarkCase, input.gates);
   const contextDecision = prime.contextDecision?.action ?? prime.quality?.action;
   const suppressionPassed = !requiresSuppression || contextDecision === "suppress";
   const expectedTopKPassed = input.benchmarkCase.expectedFiles.length === 0 || missingExpectedFiles.length === 0;
-  const excludedFilesAvoided = excludedHits.length === 0;
+  const excludedFilesAvoided = excludedHits.length === 0 && noisePrefixHits.length === 0;
   const latencyPassed = primeLatencyMs <= input.gates.maxPrimeLatencyMs;
   const qualityGatePassed = expectedTopKPassed && excludedFilesAvoided && suppressionPassed && latencyPassed;
   const recommendations: string[] = [];
@@ -180,7 +188,10 @@ async function runCasePreflight(input: {
     recommendations.push(`Expected files missing from top ${input.gates.expectedTopK}: ${missingExpectedFiles.join(", ")}`);
   }
   if (!excludedFilesAvoided) {
-    recommendations.push(`Excluded/noisy files returned: ${excludedHits.join(", ")}`);
+    recommendations.push(`Excluded/noisy files returned: ${uniqueStrings([...excludedHits, ...noisePrefixHits]).join(", ")}`);
+  }
+  if (missingCompanionFiles.length > 0 && input.benchmarkCase.expectedFiles.length > 1) {
+    recommendations.push(`Companion files missing from top ${input.gates.expectedTopK}: ${missingCompanionFiles.join(", ")}`);
   }
   if (!suppressionPassed) {
     recommendations.push("Weak-signal case emitted context instead of suppressing.");
@@ -197,8 +208,13 @@ async function runCasePreflight(input: {
     expectedFiles: input.benchmarkCase.expectedFiles,
     returnedFiles,
     missingExpectedFiles,
+    companionFilesReturned,
+    missingCompanionFiles,
     excludedFiles: input.benchmarkCase.excludedFiles,
     excludedHits,
+    noisePrefixHits,
+    sourceVsTestDecision,
+    companionReasons,
     primeTokens: prime.tokenEstimate || estimateTokens(prime.content),
     primeLatencyMs,
     ...(prime.timings ? { timings: prime.timings } : {}),
@@ -289,6 +305,71 @@ function shouldRequireSuppression(benchmarkCase: BenchmarkCase, gates: Required<
   return gates.requireSuppressionForWeakCases && benchmarkCase.expectedFiles.length === 0;
 }
 
+function benchmarkPathMatches(filePath: string, pattern: string): boolean {
+  const normalizedFile = normalizePath(filePath);
+  const normalizedPattern = normalizePath(pattern);
+  if (normalizedPattern.includes("*")) {
+    const escaped = normalizedPattern
+      .split("**")
+      .map((part) => part.split("*").map(escapeRegex).join("[^/]*"))
+      .join(".*");
+    return new RegExp(`^${escaped}`).test(normalizedFile);
+  }
+  if (normalizedPattern.endsWith("/")) return normalizedFile.startsWith(normalizedPattern);
+  return normalizedFile === normalizedPattern || normalizedFile.startsWith(`${normalizedPattern}/`);
+}
+
+function isNoisyMatrixPath(filePath: string): boolean {
+  return /(^|\/)(docs?|docs_src|documentation|_?examples|demo|demos|devtools|codemods|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook|testing|testdata|integration)\//.test(
+    normalizePath(filePath)
+  );
+}
+
+function decideSourceVsTest(returnedFiles: string[]): string {
+  const first = returnedFiles[0];
+  if (!first) return "no_files";
+  if (isTestPath(first)) return "test_first";
+  if (isNoisyMatrixPath(first)) return "noise_first";
+  if (returnedFiles.slice(1, 5).some(isTestPath)) return "source_with_test_fanout";
+  return "source_first";
+}
+
+function isTestPath(filePath: string): boolean {
+  const normalized = normalizePath(filePath);
+  const basename = normalized.split("/").at(-1) ?? normalized;
+  return (
+    /\.(test|spec)\.[cm]?[jt]sx?$/.test(basename) ||
+    /(^|\/)(test|tests|testing|spec)\//.test(normalized) ||
+    /^test_/.test(basename) ||
+    /^test.*\.go$/.test(basename) ||
+    /(_test|_spec)\.(py|rb|go|cc|cpp|cxx|c|h|hpp|hh|hxx)$/.test(basename)
+  );
+}
+
+function extractCompanionReasons(value: unknown): Record<string, string[]> {
+  if (!Array.isArray(value)) return {};
+  const reasons: Record<string, string[]> = {};
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const record = item as { file?: unknown; reasons?: unknown };
+    if (typeof record.file !== "string" || !Array.isArray(record.reasons)) continue;
+    reasons[record.file] = record.reasons.filter((reason): reason is string => typeof reason === "string");
+  }
+  return reasons;
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function normalizePath(filePath: string): string {
+  return filePath.replaceAll("\\", "/").replace(/^\.\/+/, "").toLowerCase();
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function repoRecommendations(input: {
   stateWithinLimit: boolean;
   cases: BenchmarkMatrixCaseResult[];
@@ -314,10 +395,13 @@ function matrixRecommendations(repos: BenchmarkMatrixRepoResult[]): string[] {
   if (failedCases.some((item) => item.missingExpectedFiles.length > 0)) {
     recommendations.push("Some cases missed expected source files in the top results; improve general exact-source rescue before live testing.");
   }
+  if (failedCases.some((item) => (item.missingCompanionFiles ?? []).length > 0)) {
+    recommendations.push("Some multi-surface cases missed companion files; improve query-local companion routing before live testing.");
+  }
   if (failedCases.some((item) => !item.suppressionPassed)) {
     recommendations.push("Weak-signal prompts emitted context; tighten adaptive suppression before hook-heavy tests.");
   }
-  if (failedCases.some((item) => item.excludedHits.length > 0)) {
+  if (failedCases.some((item) => item.excludedHits.length > 0 || (item.noisePrefixHits ?? []).length > 0)) {
     recommendations.push("Noisy docs/examples/generated files appeared; strengthen source-vs-noise ranking generally.");
   }
   if (failedCases.some((item) => item.recommendations.length > 0)) {

@@ -146,6 +146,23 @@ describe("benchmark suite and scoring", () => {
     expect(matrix.repos.find((repo) => repo.id === "click")?.cases[0]?.expectedFiles).toContain("src/click/_compat.py");
   });
 
+  it("loads the companion generalization repo-matrix example", () => {
+    const matrix = loadBenchmarkRepoMatrix({
+      matrixPath: path.resolve("examples/bench/repo-matrix-generalization.json")
+    });
+
+    expect(matrix.id).toBe("repo-matrix-generalization");
+    expect(matrix.repos.map((repo) => repo.id)).toEqual(
+      expect.arrayContaining(["fastapi", "pytest", "axios", "vue-core", "gin", "go-chi", "flask", "nestjs", "commons-io"])
+    );
+    expect(matrix.repos.find((repo) => repo.id === "gin")?.cases[0]?.expectedFiles).toEqual(
+      expect.arrayContaining(["routergroup.go", "gin.go", "context.go"])
+    );
+    expect(matrix.repos.find((repo) => repo.id === "nestjs")?.cases[0]?.expectedFiles).toContain(
+      "packages/core/router/router-execution-context.ts"
+    );
+  });
+
   it("runs repo-matrix preflight against local fixture repos", async () => {
     const root = createFixtureRepo();
     const matrixPath = path.join(root, "matrix.json");
@@ -186,6 +203,47 @@ describe("benchmark suite and scoring", () => {
     expect(report.repos[0]?.stateWithinLimit).toBe(true);
     expect(report.repos[0]?.cases[0]?.expectedTopKPassed).toBe(true);
     expect(report.repos[0]?.cases[0]?.excludedFilesAvoided).toBe(true);
+    expect(report.repos[0]?.cases[0]?.sourceVsTestDecision).not.toBe("test_first");
+  });
+
+  it("treats excluded directory prefixes as noisy matrix hits", async () => {
+    const root = createFixtureRepo();
+    const matrixPath = path.join(root, "prefix-matrix.json");
+    fs.writeFileSync(
+      matrixPath,
+      JSON.stringify({
+        id: "prefix-matrix",
+        name: "Prefix Matrix",
+        gates: {
+          maxStateMb: 100,
+          maxPrimeLatencyMs: 10000,
+          expectedTopK: 5,
+          requireSuppressionForWeakCases: false
+        },
+        repos: [
+          {
+            id: "fixture",
+            localPath: root,
+            cases: [
+              {
+                id: "prefix-noise",
+                mode: "context",
+                task: "job tracker mobile layout drawer tabs cards",
+                expectedFiles: ["src/app/private/jobs/JobsApplicationsTable.tsx"],
+                excludedFiles: ["src/"],
+                budget: 900
+              }
+            ]
+          }
+        ]
+      })
+    );
+
+    const report = await runBenchmarkRepoMatrix({ matrixPath });
+    const result = report.repos[0]?.cases[0];
+
+    expect(result?.excludedFilesAvoided).toBe(false);
+    expect(result?.excludedHits.some((filePath) => filePath.startsWith("src/"))).toBe(true);
   });
 
   it("does not count seed-patch dirtiness as agent-touched files", async () => {

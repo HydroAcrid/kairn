@@ -2399,3 +2399,75 @@ Current improvement direction:
 - Full-prime hooks should become more adaptive; they were net negative on Python and C++ in this pass.
 - MCP compact responses need stricter returned-file caps and better test-fanout control.
 - TanStack should be demoted to retrieval stress testing until the verification command is reliable.
+
+## 2026-05-09 Generalization Matrix + Fresh Repo Live Proof
+
+After adding query-local companion retrieval and stricter source-over-noise routing, the broad retrieval matrix was expanded beyond the older proof repos.
+
+Matrix command output: `/tmp/kairn-repo-matrix-generalization-v2.json`
+
+### Retrieval Preflight
+
+The generalization matrix passed `9/9` repos and `9/9` cases:
+
+| Repo | Language | Case | Returned files | State size |
+| --- | --- | --- | --- | ---: |
+| FastAPI | Python | routing/dependency companion | `fastapi/routing.py`, `fastapi/dependencies/utils.py`, `fastapi/dependencies/models.py` | `65.27MB` |
+| pytest | Python | fixture resolution | `src/_pytest/fixtures.py`, `src/_pytest/scope.py`, `src/_pytest/python.py` | `57.48MB` |
+| Axios | JS | interceptor dispatch | `lib/core/dispatchRequest.js`, `lib/core/Axios.js`, `lib/core/InterceptorManager.js` | `51.46MB` |
+| Vue core | TS | scheduler/renderer | `scheduler.ts`, `ssrRenderComponent.ts`, `renderer.ts` | `63.96MB` |
+| Gin | Go | router group/context | `routergroup.go`, `context.go`, `gin.go` | `7.91MB` |
+| go-chi | Go | middleware chain/router context | `chain.go`, `context.go`, `mux.go` | `5.88MB` |
+| Flask | Python | request context dispatch | `src/flask/app.py`, `src/flask/ctx.py`, `src/flask/cli.py` | `35.45MB` |
+| NestJS | TS | router execution context | `router-execution-context.ts`, `router-response-controller.ts`, `router-proxy.ts` | `60.18MB` |
+| Commons IO | Java | filename normalization/case | `FilenameUtils.java`, `IOCase.java`, `PathUtils.java` | `85.63MB` |
+
+Interpretation:
+
+- Companion retrieval fixed the prior FastAPI and Axios misses.
+- Go routing/package retrieval now works without a Go AST adapter by using path, package-role, and source-over-test routing.
+- Ruby remains documented as a future adapter target, not part of the current headline matrix.
+
+### Fresh Repo Live Proof
+
+Live proof output: `/tmp/kairn-seeded-new-repos-live-proof.json`
+
+Fresh seeded repos:
+
+- Axios: request interceptor ordering in `lib/core/Axios.js`.
+- Flask: request dispatch in `src/flask/app.py`.
+- Commons IO: `FilenameUtils.equals` case-mode handling in `FilenameUtils.java`.
+
+Aggregate results:
+
+| Mode | Total observed tokens | Aggregate quality | Valid savings vs baseline |
+| --- | ---: | --- | ---: |
+| Baseline | `92,728` | pass | `0%` |
+| Hook full-prime | `56,158` | fail | invalid, despite `39.44%` lower tokens |
+| Real MCP-first | `71,628` | pass | `22.75%` |
+| Hybrid MCP-brief | `76,983` | pass | `16.98%` |
+
+Per-case results:
+
+| Case | Mode | Outcome | Tokens | Delta vs baseline | MCP calls | Notes |
+| --- | --- | --- | ---: | ---: | ---: | --- |
+| Axios | Baseline | pass | `34,331` | `0%` | `0` | touched `Axios.js` |
+| Axios | Hook full-prime | pass | `29,174` | `15.0%` saved | `0` | hook emitted once |
+| Axios | Real MCP-first | pass | `21,612` | `37.0%` saved | `2` | strongest valid result, but MCP still returned test fanout |
+| Axios | Hybrid MCP-brief | pass | `31,460` | `8.4%` saved | `3` | missed `InterceptorManager.js` / `dispatchRequest.js` in reported actual files |
+| Flask | Baseline | pass | `24,327` | `0%` | `0` | touched `app.py` |
+| Flask | Hook full-prime | pass | `19,227` | `21.0%` saved | `0` | focused valid win |
+| Flask | Real MCP-first | pass | `30,144` | `23.9%` worse | `4` | over-read via context/tests/noisy files |
+| Flask | Hybrid MCP-brief | pass | `26,855` | `10.4%` worse | `4` | still over-read |
+| Commons IO | Baseline | pass | `34,070` | `0%` | `0` | touched `FilenameUtils.java` |
+| Commons IO | Hook full-prime | fail | `7,757` | invalid | `0` | low tokens but verification failed |
+| Commons IO | Real MCP-first | pass | `19,872` | `41.7%` saved | `3` | valid Java win |
+| Commons IO | Hybrid MCP-brief | pass | `18,668` | `45.2%` saved | `2` | strongest Java result |
+
+Conclusions:
+
+- MCP is now real, not theoretical: the fresh proof recorded actual Kairn MCP tool calls.
+- MCP-first is the strongest valid aggregate mode on the fresh suite, but its Python behavior still over-expands.
+- Hook full-prime remains useful for Python/JS one-shot tasks, but the Java failure means it cannot be treated as a universal default win.
+- Hybrid can beat MCP on Java, but it underperformed on Axios and Flask. It should remain experimental.
+- The next improvement should make MCP stop after enough source evidence is found across follow-up calls, especially `kairn_find_context`, `kairn_find_tests`, and failure-context paths.

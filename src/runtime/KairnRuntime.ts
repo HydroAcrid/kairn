@@ -44,6 +44,7 @@ import { SqliteStore } from "../store/sqliteStore.js";
 import { compressOutput as compressOutputText } from "../compression/compressOutput.js";
 import { reviewGitDiff } from "../git/reviewDiff.js";
 import { hybridSearch } from "../retrieval/hybridRetrieval.js";
+import { applyCompanionCandidatesToResults, findCompanionCandidates } from "../retrieval/companions.js";
 import { findRelatedFiles, findTestsFor } from "../retrieval/relatedFiles.js";
 import { extractSymbol, readTextFile, summarizeFile } from "../retrieval/readSource.js";
 import { decideResponse } from "../retrieval/responseRouter.js";
@@ -196,6 +197,7 @@ export class KairnRuntime {
     });
     markTiming("findContextMs", findContextStartedAt);
     const primaryFile = context.suggestedNextContext[0] ?? context.files[0];
+    const companionMetadata = Array.isArray(context.metadata?.companions) ? context.metadata.companions : [];
     const sessionFiles = session.rootPath === this.rootPath ? knownFiles : this.store.listFiles(session.rootPath);
     const decisionStartedAt = Date.now();
     const baseQuality = evaluatePrimeQuality({
@@ -227,7 +229,12 @@ export class KairnRuntime {
       : [];
     let related: Awaited<ReturnType<KairnRuntime["getRelatedFiles"]>> | undefined;
     let tests: Awaited<ReturnType<KairnRuntime["findTests"]>> | undefined;
-    const needsExpansion = quality.action === "emit" && !contextDecision.exactSourceHit && input.format !== "mcp_brief";
+    const companionPaths = companionMetadata
+      .map((item) => (item && typeof item === "object" && "file" in item ? (item as { file?: unknown }).file : undefined))
+      .filter((file): file is string => typeof file === "string");
+    const includeCompanionContext = !contextDecision.exactSourceHit && shouldUseCompanionContext(resolvedTask, companionPaths);
+    const needsExpansion =
+      quality.action === "emit" && !contextDecision.exactSourceHit && !includeCompanionContext && input.format !== "mcp_brief";
     if (needsExpansion) {
       const expansionStartedAt = Date.now();
       const relatedStartedAt = Date.now();
@@ -256,11 +263,13 @@ export class KairnRuntime {
       markTiming("findTestsMs", testsStartedAt);
       markTiming("expansionWallMs", expansionStartedAt);
     }
-    const files = contextDecision.exactSourceHit && primaryFile
+    const topFileLimit = includeCompanionContext ? Math.max(limits.topFiles, 3) : limits.topFiles;
+    const files = contextDecision.exactSourceHit && primaryFile && !includeCompanionContext
       ? [primaryFile]
       : uniquePaths([
-          ...context.suggestedNextContext.slice(0, limits.topFiles),
-          ...context.files.slice(0, limits.topFiles),
+          ...context.suggestedNextContext.slice(0, topFileLimit),
+          ...companionPaths.slice(0, 2),
+          ...context.files.slice(0, topFileLimit),
           ...(related?.related ?? []).slice(0, limits.relatedFiles),
           ...(tests?.files ?? []).slice(0, limits.testFiles)
         ]);
@@ -331,6 +340,7 @@ export class KairnRuntime {
         invariants,
         timings,
         contextTokenEstimate: context.tokenEstimate,
+        companionCandidates: companionMetadata,
         relatedCount: related?.related.length ?? 0,
         testCount: tests?.files.length ?? 0,
         estimator: "prime selected files as full-source baseline"
@@ -385,6 +395,9 @@ export class KairnRuntime {
       quality,
       contextDecision,
       timings,
+      metadata: {
+        companionCandidates: companionMetadata
+      },
       warnings: uniqueStrings([...context.warnings, ...(related?.warnings ?? []), ...(tests?.warnings ?? [])]),
       suggestedCommands
     };
@@ -724,7 +737,7 @@ export class KairnRuntime {
       changedFiles
     });
     const intent = classifyQueryIntent(query);
-    const scored = hybridSearch({
+    const initialScored = hybridSearch({
       files,
       query,
       symbols: localIndex.symbols,
@@ -737,6 +750,16 @@ export class KairnRuntime {
       shown: session.filesShown,
       changedFiles
     }).slice(0, 12);
+    const companionCandidates = findCompanionCandidates({
+      files,
+      ranked: initialScored,
+      query,
+      symbols: localIndex.symbols,
+      chunks: localIndex.chunks,
+      edges: localIndex.edges,
+      limit: 2
+    });
+    const scored = applyCompanionCandidatesToResults(initialScored, companionCandidates).slice(0, 12);
     const repeatedFiles = scored.filter((file) => file.reasons.includes("already shown")).length;
     const decision = decideResponse({
       requestType: input.requestType ?? "find_context",
@@ -774,6 +797,11 @@ export class KairnRuntime {
       metadata: {
         query,
         resultCount: scored.length,
+        companionCandidates: companionCandidates.map((candidate) => ({
+          file: candidate.file.path,
+          score: candidate.score,
+          reasons: candidate.reasons
+        })),
         estimator: "top 5 ranked files as full-source baseline"
       }
     });
@@ -783,13 +811,20 @@ export class KairnRuntime {
       content,
       files: scored.map((file) => file.path),
       symbols: [],
-      related: [],
+      related: companionCandidates.map((candidate) => candidate.file.path),
       warnings:
         scored.length === 0
           ? [...decision.warnings, "No hybrid retrieval matches found. Try a more specific query."]
           : decision.warnings,
       suggestedNextContext: scored.slice(0, 5).map((file) => file.path),
-      tokenEstimate: estimateTokens(content)
+      tokenEstimate: estimateTokens(content),
+      metadata: {
+        companions: companionCandidates.map((candidate) => ({
+          file: candidate.file.path,
+          score: candidate.score,
+          reasons: candidate.reasons
+        }))
+      }
     };
   }
 
@@ -2650,6 +2685,14 @@ function identifierTerms(value: string): string[] {
       .toLowerCase()
       .split(/[^a-z0-9_]+|_/)
       .filter((term) => term.length >= 2)
+  );
+}
+
+function shouldUseCompanionContext(task: string, companionPaths: string[]): boolean {
+  const normalized = task.toLowerCase();
+  if (companionPaths.length > 0) return true;
+  return /\b(route|routing|dependency|dependencies|controller|repository|model|scheduler|renderer|interceptor|interceptors|dispatch|adapter|validation|callback|callbacks|group|context|handler|middleware|fixture|framework|flow|request|response|proxy|guard|guards|pipe|pipes|case|sensitivity|extension|normalize|normalization)\b/.test(
+    normalized
   );
 }
 

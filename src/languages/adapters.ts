@@ -48,6 +48,14 @@ export const languageAdapters: LanguageAdapter[] = [
     capabilities: ["symbols", "definitions", "references", "tests", "failures"],
     status: "stub",
     notes: "Universal retrieval works now; deep Rust graph support is a future adapter."
+  },
+  {
+    id: "ruby",
+    languages: ["ruby"],
+    fileExtensions: [".rb"],
+    capabilities: ["symbols", "tests", "failures"],
+    status: "stub",
+    notes: "Universal retrieval works now; Rails-aware convention routing is a documented future adapter target."
   }
 ];
 

@@ -13,6 +13,7 @@ import type {
 import { scoreBm25Files } from "../lexical/bm25.js";
 import { cosineSimilarity, embedText } from "../semantic/vector.js";
 import { tokenizeLexical } from "../semantic/tokenize.js";
+import { isNoisySourcePath, scoreSourceRoleHints } from "./companions.js";
 import { classifyQueryIntent, type QueryIntent } from "./queryIntent.js";
 import { scoreFiles } from "./scoreResults.js";
 
@@ -215,7 +216,9 @@ function scoreSourcePriority(
   const queryTerms = new Set(tokenizeLexical(query));
   const explicitDocsIntent = intent.primary === "docs" || ["docs", "doc", "readme", "example", "examples", "demo"].some((term) => queryTerms.has(term));
   const explicitTestIntent = hasExplicitTestIntent(queryTerms);
-  const implementationIntent = !explicitDocsIntent && ["generic", "backend", "data", "auth", "workflow", "ui"].includes(intent.primary);
+  const debugImplementationIntent = ["debug", "fix", "regression", "bug", "broken"].some((term) => queryTerms.has(term));
+  const implementationIntent =
+    !explicitDocsIntent && (debugImplementationIntent || ["generic", "backend", "data", "auth", "workflow", "ui"].includes(intent.primary));
 
   for (const file of files) {
     const reasons: string[] = [];
@@ -229,6 +232,12 @@ function scoreSourcePriority(
         score += 86;
         reasons.push("core source module");
       }
+    }
+
+    const roleHints = scoreSourceRoleHints(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && roleHints.score > 0) {
+      score += roleHints.score;
+      reasons.push(...roleHints.reasons);
     }
 
     if (implementationIntent && isLanguageSourceSurface(file)) {
@@ -247,8 +256,29 @@ function scoreSourcePriority(
     }
 
     if (implementationIntent && isNoisyImplementationSurface(file)) {
-      score -= file.kind === "doc" ? 120 : 90;
+      score -= file.kind === "doc" ? 220 : 260;
       reasons.push("docs/examples/devtools downranked");
+    }
+
+    if (implementationIntent && isDownstreamAdapterForCoreFlow(file, queryTerms)) {
+      score -= 1200;
+      reasons.push("downstream adapter downranked for core dispatch/interceptor prompt");
+    }
+
+    const goRoutingScore = scoreGoPackageRoutingSurface(file, queryTerms);
+    if (implementationIntent && goRoutingScore.score !== 0) {
+      score += goRoutingScore.score;
+      reasons.push(...goRoutingScore.reasons);
+    }
+
+    if (debugImplementationIntent && file.kind === "config" && !hasSpecificInfraIntent(queryTerms)) {
+      score -= 350;
+      reasons.push("config downranked for source debugging prompt");
+    }
+
+    if (implementationIntent && isPlatformVariantSource(file)) {
+      score -= 360;
+      reasons.push("platform-specific variant downranked");
     }
 
     if (score !== 0) {
@@ -353,7 +383,7 @@ function semanticReasons(chunks: SemanticChunkRecord[]): string[] {
 }
 
 function mergeReasons(reasons: string[]): string[] {
-  return [...new Set(reasons)].slice(0, 18);
+  return [...new Set(reasons)].slice(0, 24);
 }
 
 function scoreIntentMatches(
@@ -825,7 +855,7 @@ function hasSpecificQuerySymbol(queryTerms: Set<string>): boolean {
 function isLanguageSourceSurface(file: FileRecord): boolean {
   return (
     file.kind === "source" &&
-    ["python", "java", "c", "cpp", "typescript", "javascript"].includes(file.language) &&
+    ["python", "java", "c", "cpp", "typescript", "javascript", "go", "ruby"].includes(file.language) &&
     !isNoisyImplementationSurface(file)
   );
 }
@@ -844,6 +874,12 @@ function isPrimaryLanguageSourceSurface(file: FileRecord): boolean {
   if (file.language === "c" || file.language === "cpp") {
     return normalized.startsWith("src/") || normalized.includes("/src/") || normalized.startsWith("include/") || normalized.includes("/include/");
   }
+  if (file.language === "go") {
+    return !/(^|\/)(vendor|testdata)\//.test(normalized) && /\.(go)$/.test(normalized);
+  }
+  if (file.language === "ruby") {
+    return normalized.startsWith("lib/") || normalized.startsWith("app/") || normalized.includes("/lib/") || normalized.includes("/app/");
+  }
   return file.path.startsWith("src/") || file.path.includes("/src/");
 }
 
@@ -858,7 +894,7 @@ function isNoisyImplementationSurface(file: FileRecord): boolean {
   const normalized = file.path.toLowerCase();
   return (
     file.kind === "doc" ||
-    /(^|\/)(docs?|documentation|examples|demo|demos|devtools|codemods|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook)\//.test(normalized) ||
+    isNoisySourcePath(normalized) ||
     /(^|\/)__fixtures__\//.test(normalized)
   );
 }
@@ -907,6 +943,10 @@ function hasSpecificBackendIntent(queryTerms: Set<string>): boolean {
   );
 }
 
+function hasSpecificInfraIntent(queryTerms: Set<string>): boolean {
+  return ["config", "build", "ci", "workflow", "docker", "deploy", "yaml", "toml"].some((term) => queryTerms.has(term));
+}
+
 function hasBackendFilenameIntentMatch(file: FileRecord, intent: QueryIntent): boolean {
   const basename = file.path.toLowerCase().split("/").at(-1) ?? file.path.toLowerCase();
   return intent.matchedTerms.some((term) => basename.includes(term));
@@ -945,6 +985,32 @@ function isBroadWorkflowNoise(file: FileRecord, exactWorkflowMatches: number): b
   if (/(^|\/)supabase\/migrations\//.test(file.path)) return true;
   if (exactWorkflowMatches > 0 || isWorkflowRoute(file) || isReviewSurface(file)) return false;
   return /(^|\/)(gmail|parser|types?|ingest)\.[cm]?[jt]sx?$/.test(file.path);
+}
+
+function isDownstreamAdapterForCoreFlow(file: FileRecord, queryTerms: Set<string>): boolean {
+  const normalized = file.path.toLowerCase();
+  if (!/(^|\/)adapters?\//.test(normalized)) return false;
+  return queryTerms.has("interceptor") || queryTerms.has("interceptors") || queryTerms.has("dispatch") || queryTerms.has("dispatcher");
+}
+
+function isPlatformVariantSource(file: FileRecord): boolean {
+  return file.language === "go" && /_(appengine|windows|linux|darwin|unix|posix|wasm|js)\.go$/i.test(file.path);
+}
+
+function scoreGoPackageRoutingSurface(file: FileRecord, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  if (file.language !== "go") return { score: 0, reasons: [] };
+  const normalized = file.path.toLowerCase();
+  const routingPrompt = ["route", "router", "routing", "group", "context", "chain", "middleware", "handler", "mount"].some((term) =>
+    queryTerms.has(term)
+  );
+  if (!routingPrompt) return { score: 0, reasons: [] };
+  if (/^(\w+)\.go$/.test(normalized) && ["gin.go", "chi.go", "mux.go", "context.go", "chain.go", "router.go", "engine.go"].includes(normalized)) {
+    return { score: 360, reasons: ["go package routing anchor"] };
+  }
+  if (/^middleware\//.test(normalized) && (queryTerms.has("router") || queryTerms.has("route") || queryTerms.has("context") || queryTerms.has("chain"))) {
+    return { score: -900, reasons: ["go middleware package downranked for router/context prompt"] };
+  }
+  return { score: 0, reasons: [] };
 }
 
 function phraseMatches(normalizedFileText: string, phrase: string, fileTerms: Set<string>): boolean {
@@ -1007,7 +1073,7 @@ function applyPreciseSourceRescue(
       ...file,
       score: Number(adjustedScore.toFixed(3)),
       behaviorScore: file.behaviorScore + exact.score - broadPenalty,
-      reasons: mergeReasons([...file.reasons, ...exact.reasons, ...(broadPenalty > 0 ? ["broad source downranked"] : [])])
+      reasons: mergeReasons([...exact.reasons, ...file.reasons, ...(broadPenalty > 0 ? ["broad source downranked"] : [])])
     };
   });
 }
@@ -1130,6 +1196,12 @@ const PRECISE_RESCUE_STOP_TERMS = new Set([
   "edit",
   "unrelated",
   "bug",
+  "api",
+  "open",
+  "openapi",
+  "operation",
+  "generation",
+  "path",
   "should",
   "return",
   "when",

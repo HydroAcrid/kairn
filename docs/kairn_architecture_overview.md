@@ -171,7 +171,8 @@ Indexing starts with `runtime.init()` and flows through:
 
 3. `src/languages/adapters.ts`
    - language adapter registry,
-   - JS/TS, Python, Java, C/C++ support.
+   - active JS/TS, Python, Java, C/C++ support,
+   - stub adapters for Go, Rust, and Ruby where universal retrieval works but deep graph support is future work.
 
 4. `src/graph/buildGraph.ts`
    - import edges,
@@ -212,6 +213,7 @@ Core modules:
 
 - `src/retrieval/queryIntent.ts`
 - `src/retrieval/hybridRetrieval.ts`
+- `src/retrieval/companions.ts`
 - `src/retrieval/scoreResults.ts`
 - `src/retrieval/relatedFiles.ts`
 - `src/retrieval/readSource.ts`
@@ -232,9 +234,13 @@ Signals used:
 - failure references,
 - repeated-context penalties.
 
+The companion stage is query-local and capped. It exists for multi-surface framework tasks where the first relevant file is not enough, such as router/dependency, controller/repository, scheduler/renderer, interceptor/dispatch, validation/callback, and Go router/context/engine surfaces. It should not reintroduce broad fanout after exact source hits.
+
 Important design point:
 
 > Query-local retrieval is mandatory for large repos. Kairn should not load every graph edge, chunk, vector, or lexical term for a normal `prime` or `findContext` call.
+
+Ruby/Rails is documented as a future adapter target in `docs/kairn_ruby_adapter_future.md`. Rails conventions need framework-aware routing before Kairn should make strong quality/savings claims there.
 
 ## Prime And Context Control
 
@@ -419,4 +425,3 @@ Still experimental:
 - Keep expensive state query-local.
 - Treat benchmarks as evidence, not as targets to overfit.
 - Refactor behind stable public facades.
-

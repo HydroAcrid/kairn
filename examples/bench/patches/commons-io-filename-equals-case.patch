@@ -1,0 +1,12 @@
+diff --git a/src/main/java/org/apache/commons/io/FilenameUtils.java b/src/main/java/org/apache/commons/io/FilenameUtils.java
+--- a/src/main/java/org/apache/commons/io/FilenameUtils.java
++++ b/src/main/java/org/apache/commons/io/FilenameUtils.java
+@@ -480,7 +480,7 @@ public class FilenameUtils {
+                 return false;
+             }
+         }
+-        return IOCase.value(ioCase, IOCase.SENSITIVE).checkEquals(fileName1, fileName2);
++        return IOCase.SENSITIVE.checkEquals(fileName1, fileName2);
+     }
+ 
+     /**

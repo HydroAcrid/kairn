@@ -1,0 +1,12 @@
+diff --git a/lib/core/Axios.js b/lib/core/Axios.js
+--- a/lib/core/Axios.js
++++ b/lib/core/Axios.js
+@@ -169,7 +169,7 @@ class Axios {
+       if (legacyInterceptorReqResOrdering) {
+         requestInterceptorChain.unshift(interceptor.fulfilled, interceptor.rejected);
+       } else {
+-        requestInterceptorChain.push(interceptor.fulfilled, interceptor.rejected);
++        requestInterceptorChain.unshift(interceptor.fulfilled, interceptor.rejected);
+       }
+     });
+ 

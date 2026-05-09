@@ -1,0 +1,104 @@
+{
+  "id": "seeded-new-repos-live",
+  "name": "Seeded Fresh Repo Live Proofs",
+  "cases": [
+    {
+      "id": "js-axios-request-interceptor-order",
+      "mode": "agent",
+      "task": "Debug a seeded Axios regression: non-legacy request interceptors now run in the wrong order before dispatchRequest. Fix the production source and do not edit unrelated files.",
+      "agentPrompt": "Debug the seeded failing JS check. In Axios, non-legacy request interceptors should be appended in request order before dispatchRequest, but the seeded regression reverses them. Fix the production source and do not edit unrelated files.",
+      "expectedFiles": [
+        "lib/core/Axios.js",
+        "lib/core/InterceptorManager.js",
+        "lib/core/dispatchRequest.js"
+      ],
+      "requiredTouchedFiles": [
+        "lib/core/Axios.js"
+      ],
+      "excludedFiles": [
+        "docs/",
+        "examples/",
+        "test/",
+        "test/"
+      ],
+      "budget": 1200,
+      "seed": {
+        "repoUrl": "https://github.com/axios/axios.git",
+        "ref": "44f0c5bf73c45df6009365141faa394d73596bd7",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/axios-request-interceptor-order.patch",
+        "expectedFailureCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('lib/core/Axios.js', 'utf8');\nconst expected = '} else {\\n        requestInterceptorChain.push(interceptor.fulfilled, interceptor.rejected);\\n      }';\nprocess.exit(source.includes(expected) ? 1 : 0);\nNODE",
+        "testCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('lib/core/Axios.js', 'utf8');\nconst expected = '} else {\\n        requestInterceptorChain.push(interceptor.fulfilled, interceptor.rejected);\\n      }';\nprocess.exit(source.includes(expected) ? 0 : 1);\nNODE"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Axios production source is touched.",
+        "Docs/examples/tests are not touched."
+      ]
+    },
+    {
+      "id": "python-flask-dispatch-request-view",
+      "mode": "agent",
+      "task": "Debug a seeded Flask regression: dispatch_request no longer invokes the matched view function. Fix the production source and do not edit unrelated files.",
+      "agentPrompt": "Debug the seeded failing Python check. Flask dispatch_request should call the matched endpoint view function with view_args, but the seeded regression returns None. Fix the production source and do not edit unrelated files.",
+      "expectedFiles": [
+        "src/flask/app.py",
+        "src/flask/ctx.py"
+      ],
+      "requiredTouchedFiles": [
+        "src/flask/app.py"
+      ],
+      "excludedFiles": [
+        "docs/",
+        "examples/",
+        "tests/"
+      ],
+      "budget": 1000,
+      "seed": {
+        "repoUrl": "https://github.com/pallets/flask.git",
+        "ref": "7374c85ddefc3f4b177a698ab9f0cbb6a5c0b392",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/flask-dispatch-request-view.patch",
+        "expectedFailureCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/flask/app.py').read_text()\nexpected = 'return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)'\nraise SystemExit(1 if expected in source else 0)\nPY",
+        "testCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/flask/app.py').read_text()\nexpected = 'return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)'\nraise SystemExit(0 if expected in source else 1)\nPY"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Flask app dispatch source is touched.",
+        "Docs/examples/tests are not touched."
+      ]
+    },
+    {
+      "id": "java-commons-io-filename-equals-case",
+      "mode": "agent",
+      "task": "Debug a seeded Commons IO regression: FilenameUtils.equals ignores the requested IOCase comparison mode. Fix the production source and do not edit unrelated files.",
+      "agentPrompt": "Debug the seeded failing Java check. FilenameUtils.equals should honor the IOCase argument, but the seeded regression always uses IOCase.SENSITIVE. Fix the production source and do not edit unrelated files.",
+      "expectedFiles": [
+        "src/main/java/org/apache/commons/io/FilenameUtils.java",
+        "src/main/java/org/apache/commons/io/IOCase.java"
+      ],
+      "requiredTouchedFiles": [
+        "src/main/java/org/apache/commons/io/FilenameUtils.java"
+      ],
+      "excludedFiles": [
+        "src/site/",
+        "docs/",
+        "examples/"
+      ],
+      "budget": 1200,
+      "seed": {
+        "repoUrl": "https://github.com/apache/commons-io.git",
+        "ref": "7c3eabb081ae69f1ac47d3c57b947ae54bbff40b",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/commons-io-filename-equals-case.patch",
+        "expectedFailureCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('src/main/java/org/apache/commons/io/FilenameUtils.java', 'utf8');\nconst expected = 'return IOCase.value(ioCase, IOCase.SENSITIVE).checkEquals(fileName1, fileName2);';\nprocess.exit(source.includes(expected) ? 1 : 0);\nNODE",
+        "testCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('src/main/java/org/apache/commons/io/FilenameUtils.java', 'utf8');\nconst expected = 'return IOCase.value(ioCase, IOCase.SENSITIVE).checkEquals(fileName1, fileName2);';\nprocess.exit(source.includes(expected) ? 0 : 1);\nNODE"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Commons IO production source is touched.",
+        "Site/docs/examples are not touched."
+      ]
+    }
+  ]
+}

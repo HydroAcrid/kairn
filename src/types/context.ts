@@ -69,6 +69,7 @@ export type ContextPrime = {
   quality?: PrimeQuality;
   contextDecision?: ContextValueDecision;
   timings?: Record<string, number>;
+  metadata?: Record<string, unknown>;
   warnings: string[];
   suggestedCommands: string[];
 };
@@ -124,6 +125,7 @@ export type ContextResponse = {
   warnings: string[];
   suggestedNextContext: string[];
   tokenEstimate: number;
+  metadata?: Record<string, unknown>;
 };
 
 export type ExactSourceEvidence = {

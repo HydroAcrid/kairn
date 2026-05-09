@@ -316,7 +316,7 @@ function isVagueImprovementTask(task: string): boolean {
 
 function isMultiFileTask(task: string): boolean {
   const normalized = task.toLowerCase();
-  return /\b(across|multiple|end-to-end|e2e|integration|workflow|flow|refactor|feature|migration|api and ui|frontend and backend|full stack|system|ui|mobile|layout|responsive|drawer|sheet|tabs|dashboard|screen|component|filter|filters|card|cards)\b/.test(normalized);
+  return /\b(across|multiple|end-to-end|e2e|integration|workflow|flow|pipeline|through|refactor|feature|migration|api and ui|frontend and backend|full stack|system|ui|mobile|layout|responsive|drawer|sheet|tabs|dashboard|screen|component|filter|filters|card|cards|routing|dependency|dependencies|route handler|proxy|interceptor|interceptors|guard|guards|pipe|pipes|case sensitivity|extension matching)\b/.test(normalized);
 }
 
 function identifierTerms(value: string): string[] {

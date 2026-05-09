@@ -1,0 +1,241 @@
+{
+  "id": "repo-matrix-generalization",
+  "name": "Companion Retrieval Generalization Matrix",
+  "gates": {
+    "maxStateMb": 250,
+    "maxPrimeLatencyMs": 8000,
+    "expectedTopK": 5,
+    "requireSuppressionForWeakCases": true
+  },
+  "repos": [
+    {
+      "id": "fastapi",
+      "name": "FastAPI",
+      "repoUrl": "https://github.com/fastapi/fastapi.git",
+      "cloneDepth": 1,
+      "language": "python",
+      "sizeClass": "large",
+      "cases": [
+        {
+          "id": "routing-dependency-companion",
+          "mode": "context",
+          "task": "Debug path operation routing dependency resolution: dependencies should be resolved with the route handler before OpenAPI generation.",
+          "expectedFiles": [
+            "fastapi/routing.py",
+            "fastapi/dependencies/utils.py"
+          ],
+          "excludedFiles": [
+            "docs/",
+            "tests/",
+            "fastapi/openapi/"
+          ],
+          "budget": 900
+        }
+      ]
+    },
+    {
+      "id": "pytest",
+      "name": "pytest",
+      "repoUrl": "https://github.com/pytest-dev/pytest.git",
+      "cloneDepth": 1,
+      "language": "python",
+      "sizeClass": "large",
+      "cases": [
+        {
+          "id": "fixture-resolution",
+          "mode": "context",
+          "task": "Debug pytest fixture resolution and parametrized scope behavior in the runtime fixture system.",
+          "expectedFiles": [
+            "src/_pytest/fixtures.py",
+            "src/_pytest/python.py"
+          ],
+          "excludedFiles": [
+            "doc/",
+            "testing/"
+          ],
+          "budget": 850
+        }
+      ]
+    },
+    {
+      "id": "axios",
+      "name": "Axios",
+      "repoUrl": "https://github.com/axios/axios.git",
+      "cloneDepth": 1,
+      "language": "javascript",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "interceptor-dispatch",
+          "mode": "context",
+          "task": "Debug request interceptor execution order before dispatchRequest sends config through adapters.",
+          "expectedFiles": [
+            "lib/core/Axios.js",
+            "lib/core/InterceptorManager.js",
+            "lib/core/dispatchRequest.js"
+          ],
+          "excludedFiles": [
+            "test/",
+            "examples/",
+            "sandbox/"
+          ],
+          "budget": 850
+        }
+      ]
+    },
+    {
+      "id": "vue-core",
+      "name": "Vue Core",
+      "repoUrl": "https://github.com/vuejs/core.git",
+      "cloneDepth": 1,
+      "language": "typescript",
+      "sizeClass": "large",
+      "cases": [
+        {
+          "id": "scheduler-renderer",
+          "mode": "context",
+          "task": "Debug scheduler job queue flushing and renderer update timing for component effects.",
+          "expectedFiles": [
+            "packages/runtime-core/src/scheduler.ts",
+            "packages/runtime-core/src/renderer.ts"
+          ],
+          "excludedFiles": [
+            "packages/**/__tests__/",
+            "scripts/",
+            "docs/"
+          ],
+          "budget": 900
+        }
+      ]
+    },
+    {
+      "id": "gin",
+      "name": "Gin",
+      "repoUrl": "https://github.com/gin-gonic/gin.git",
+      "cloneDepth": 1,
+      "language": "go",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "routergroup-context-handler",
+          "mode": "context",
+          "task": "Debug route group middleware handler context behavior when nested groups register routes.",
+          "expectedFiles": [
+            "routergroup.go",
+            "gin.go",
+            "context.go"
+          ],
+          "excludedFiles": [
+            "docs/",
+            "examples/",
+            "testdata/",
+            "middleware_test.go"
+          ],
+          "budget": 850
+        }
+      ]
+    },
+    {
+      "id": "go-chi",
+      "name": "chi",
+      "repoUrl": "https://github.com/go-chi/chi.git",
+      "cloneDepth": 1,
+      "language": "go",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "middleware-chain-router-context",
+          "mode": "context",
+          "task": "Debug middleware chain route context behavior when nested routers mount handlers.",
+          "expectedFiles": [
+            "mux.go",
+            "context.go",
+            "chain.go"
+          ],
+          "excludedFiles": [
+            "docs/",
+            "examples/",
+            "testdata/"
+          ],
+          "budget": 850
+        }
+      ]
+    },
+    {
+      "id": "flask",
+      "name": "Flask",
+      "repoUrl": "https://github.com/pallets/flask.git",
+      "cloneDepth": 1,
+      "language": "python",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "request-context-dispatch",
+          "mode": "context",
+          "task": "Debug request context dispatch and before/after request callback behavior in the Flask app routing flow.",
+          "expectedFiles": [
+            "src/flask/app.py",
+            "src/flask/ctx.py"
+          ],
+          "excludedFiles": [
+            "docs/",
+            "examples/",
+            "tests/"
+          ],
+          "budget": 850
+        }
+      ]
+    },
+    {
+      "id": "nestjs",
+      "name": "NestJS",
+      "repoUrl": "https://github.com/nestjs/nest.git",
+      "cloneDepth": 1,
+      "language": "typescript",
+      "sizeClass": "large",
+      "cases": [
+        {
+          "id": "router-execution-context",
+          "mode": "context",
+          "task": "Debug controller route handler execution context through guards, pipes, interceptors, and router proxy dispatch.",
+          "expectedFiles": [
+            "packages/core/router/router-execution-context.ts",
+            "packages/core/router/router-proxy.ts",
+            "packages/core/router/router-response-controller.ts"
+          ],
+          "excludedFiles": [
+            "sample/",
+            "integration/",
+            "packages/**/test/"
+          ],
+          "budget": 900
+        }
+      ]
+    },
+    {
+      "id": "commons-io",
+      "name": "Apache Commons IO",
+      "repoUrl": "https://github.com/apache/commons-io.git",
+      "cloneDepth": 1,
+      "language": "java",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "filename-normalize-case",
+          "mode": "context",
+          "task": "Debug FilenameUtils path normalization and case sensitivity behavior for extension matching.",
+          "expectedFiles": [
+            "src/main/java/org/apache/commons/io/FilenameUtils.java",
+            "src/main/java/org/apache/commons/io/IOCase.java"
+          ],
+          "excludedFiles": [
+            "src/site/",
+            "docs/",
+            "src/test/"
+          ],
+          "budget": 900
+        }
+      ]
+    }
+  ]
+}

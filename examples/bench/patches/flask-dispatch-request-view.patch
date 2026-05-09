@@ -1,0 +1,12 @@
+diff --git a/src/flask/app.py b/src/flask/app.py
+--- a/src/flask/app.py
++++ b/src/flask/app.py
+@@ -987,7 +987,7 @@ class Flask(App):
+             return self.make_default_options_response(ctx)
+         # otherwise dispatch to the handler for that endpoint
+         view_args: dict[str, t.Any] = req.view_args  # type: ignore[assignment]
+-        return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
++        return None
+ 
+     def full_dispatch_request(self, ctx: AppContext) -> Response:
+         """Dispatches the request and on top of that performs request

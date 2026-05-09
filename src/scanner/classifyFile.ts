@@ -51,7 +51,11 @@ export function classifyFile(filePath: string): FileKind {
     /(^|\/)src\/test\/java\//.test(normalized) ||
     /(_test|_unittest|_tests)\.(cc|cpp|cxx|c|hh|hpp|hxx)$/.test(basename) ||
     /^test_.*\.(cc|cpp|cxx|c)$/.test(basename) ||
-    /(^|\/)(test|tests)\//.test(normalized) && /\.(cc|cpp|cxx|c|hh|hpp|hxx)$/.test(basename)
+    /(^|\/)(test|tests)\//.test(normalized) && /\.(cc|cpp|cxx|c|hh|hpp|hxx)$/.test(basename) ||
+    /_test\.go$/.test(basename) ||
+    /^test.*\.go$/.test(basename) ||
+    /(_test|_spec)\.rb$/.test(basename) ||
+    /(^|\/)(test|tests|spec)\//.test(normalized) && /\.rb$/.test(basename)
   ) {
     return "test";
   }
@@ -87,7 +91,14 @@ export function classifyFile(filePath: string): FileKind {
     return "component";
   }
 
-  if (/\.[cm]?[jt]sx?$/.test(basename) || /\.pyi?$/.test(basename) || /\.java$/.test(basename) || /\.(c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(basename)) {
+  if (
+    /\.[cm]?[jt]sx?$/.test(basename) ||
+    /\.pyi?$/.test(basename) ||
+    /\.java$/.test(basename) ||
+    /\.(c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(basename) ||
+    /\.go$/.test(basename) ||
+    /\.rb$/.test(basename)
+  ) {
     return "source";
   }
 

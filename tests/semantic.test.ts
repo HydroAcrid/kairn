@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { hybridSearch } from "../src/retrieval/hybridRetrieval.js";
+import { applyCompanionCandidatesToResults, findCompanionCandidates } from "../src/retrieval/companions.js";
 import { classifyQueryIntent } from "../src/retrieval/queryIntent.js";
 import { decideResponse } from "../src/retrieval/responseRouter.js";
 import { embedText, cosineSimilarity } from "../src/semantic/vector.js";
@@ -45,11 +46,13 @@ describe("language adapter registry", () => {
     expect(languageAdapters.find((adapter) => adapter.id === "c-cpp")?.status).toBe("active");
     expect(languageAdapters.find((adapter) => adapter.id === "go")?.status).toBe("stub");
     expect(languageAdapters.find((adapter) => adapter.id === "rust")?.status).toBe("stub");
+    expect(languageAdapters.find((adapter) => adapter.id === "ruby")?.status).toBe("stub");
     expect(getLanguageAdapterForPath("src/service.py")?.id).toBe("python");
     expect(getLanguageAdapterForPath("src/App.java")?.id).toBe("java");
     expect(getLanguageAdapterForPath("include/fmt/base.h")?.id).toBe("c-cpp");
     expect(getLanguageAdapterForPath("src/core.cpp")?.id).toBe("c-cpp");
     expect(getLanguageAdapterForPath("cmd/main.go")?.id).toBe("go");
+    expect(getLanguageAdapterForPath("app/models/user.rb")?.id).toBe("ruby");
     expect(getLanguageAdapterForPath("src/lib.rs")?.id).toBe("rust");
   });
 });
@@ -515,6 +518,140 @@ describe("hybridSearch", () => {
 
     expect(results[0]?.path).toBe("packages/next/src/shared/lib/router/utils/is-local-url.ts");
     expect(results[0]?.reasons).toEqual(expect.arrayContaining(["utility/helper source rescue"]));
+  });
+
+  it("adds FastAPI-style routing/dependency companions without promoting OpenAPI noise", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "fastapi/openapi/utils.py", "source", "python"),
+      file(rootPath, "fastapi/routing.py", "source", "python"),
+      file(rootPath, "fastapi/dependencies/utils.py", "source", "python"),
+      file(rootPath, "tests/test_routing.py", "test", "python")
+    ];
+    const symbols = [
+      symbol(rootPath, "fastapi/openapi/utils.py", "get_openapi_path"),
+      symbol(rootPath, "fastapi/routing.py", "APIRoute"),
+      symbol(rootPath, "fastapi/routing.py", "solve_dependencies"),
+      symbol(rootPath, "fastapi/dependencies/utils.py", "solve_dependencies")
+    ];
+    const chunks = [
+      chunk(rootPath, "fastapi/openapi/utils.py", "get_openapi_path", "openapi generation schema path operation metadata"),
+      chunk(rootPath, "fastapi/routing.py", "APIRoute", "route handler path operation dependency resolution"),
+      chunk(rootPath, "fastapi/dependencies/utils.py", "solve_dependencies", "dependency resolution route handler solve dependencies"),
+      chunk(rootPath, "tests/test_routing.py", "test_route", "routing dependency tests")
+    ];
+    const ranked = hybridSearch({
+      files,
+      query: "Debug path operation routing dependency resolution before OpenAPI generation",
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    }).slice(0, 5);
+    const companions = findCompanionCandidates({
+      files,
+      ranked,
+      query: "Debug path operation routing dependency resolution before OpenAPI generation",
+      symbols,
+      chunks,
+      edges: [],
+      limit: 2
+    });
+    const merged = applyCompanionCandidatesToResults(ranked, companions);
+
+    expect(merged.slice(0, 4).map((result) => result.path)).toEqual(
+      expect.arrayContaining(["fastapi/routing.py", "fastapi/dependencies/utils.py"])
+    );
+    expect(merged.slice(0, 4).map((result) => result.path)).not.toContain("tests/test_routing.py");
+    expect(companions.some((candidate) => candidate.reasons.some((reason) => reason.includes("routing/dependency pair")))).toBe(true);
+  });
+
+  it("keeps universal Go source ahead of test/noise paths for router group prompts", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "routergroup.go", "source", "go"),
+      file(rootPath, "gin.go", "source", "go"),
+      file(rootPath, "context.go", "source", "go"),
+      file(rootPath, "context_appengine.go", "source", "go"),
+      file(rootPath, "test_helpers.go", "test", "go"),
+      file(rootPath, "middleware_test.go", "test", "go"),
+      file(rootPath, "examples/route.go", "source", "go")
+    ];
+    const chunks = [
+      chunk(rootPath, "routergroup.go", "RouterGroup", "router group route registration middleware handler"),
+      chunk(rootPath, "gin.go", "Engine", "engine handler routing group context"),
+      chunk(rootPath, "context.go", "Context", "request context handler middleware"),
+      chunk(rootPath, "context_appengine.go", "Context", "request context handler middleware appengine variant"),
+      chunk(rootPath, "test_helpers.go", "test helpers", "route middleware context tests"),
+      chunk(rootPath, "middleware_test.go", "TestMiddleware", "middleware route tests"),
+      chunk(rootPath, "examples/route.go", "example", "route example")
+    ];
+    const results = hybridSearch({
+      files,
+      query: "Debug route group middleware handler context behavior when nested groups register routes",
+      symbols: [],
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 3).map((result) => result.path)).toEqual(
+      expect.arrayContaining(["routergroup.go", "gin.go", "context.go"])
+    );
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("middleware_test.go");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("test_helpers.go");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("context_appengine.go");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("examples/route.go");
+  });
+
+  it("adds Axios interceptor/dispatch companions ahead of adapters", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "lib/core/Axios.js", "source", "javascript"),
+      file(rootPath, "lib/core/InterceptorManager.js", "source", "javascript"),
+      file(rootPath, "lib/core/dispatchRequest.js", "source", "javascript"),
+      file(rootPath, "lib/adapters/http.js", "source", "javascript"),
+      file(rootPath, "test/specs/interceptors.spec.js", "test", "javascript")
+    ];
+    const symbols = [
+      symbol(rootPath, "lib/core/Axios.js", "Axios"),
+      symbol(rootPath, "lib/core/InterceptorManager.js", "InterceptorManager"),
+      symbol(rootPath, "lib/core/dispatchRequest.js", "dispatchRequest"),
+      symbol(rootPath, "lib/adapters/http.js", "httpAdapter")
+    ];
+    const chunks = [
+      chunk(rootPath, "lib/core/Axios.js", "Axios", "request interceptor chain dispatchRequest config adapters"),
+      chunk(rootPath, "lib/core/InterceptorManager.js", "InterceptorManager", "interceptor use eject manager request response"),
+      chunk(rootPath, "lib/core/dispatchRequest.js", "dispatchRequest", "dispatch request transform config adapter"),
+      chunk(rootPath, "lib/adapters/http.js", "httpAdapter", "node http adapter sends config"),
+      chunk(rootPath, "test/specs/interceptors.spec.js", "interceptor tests", "request interceptor tests")
+    ];
+    const ranked = hybridSearch({
+      files,
+      query: "Debug request interceptor execution order before dispatchRequest sends config through adapters",
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    }).slice(0, 5);
+    const companions = findCompanionCandidates({
+      files,
+      ranked,
+      query: "Debug request interceptor execution order before dispatchRequest sends config through adapters",
+      symbols,
+      chunks,
+      edges: [],
+      limit: 2
+    });
+    const merged = applyCompanionCandidatesToResults(ranked, companions);
+
+    expect(merged.slice(0, 4).map((result) => result.path)).toEqual(
+      expect.arrayContaining(["lib/core/Axios.js", "lib/core/InterceptorManager.js", "lib/core/dispatchRequest.js"])
+    );
+    expect(merged.slice(0, 4).map((result) => result.path)).not.toContain("test/specs/interceptors.spec.js");
   });
 
   it("detects game UI component intent for wheel and settings queries", () => {

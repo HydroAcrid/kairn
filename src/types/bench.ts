@@ -82,8 +82,13 @@ export type BenchmarkMatrixCaseResult = {
   expectedFiles: string[];
   returnedFiles: string[];
   missingExpectedFiles: string[];
+  companionFilesReturned?: string[];
+  missingCompanionFiles?: string[];
   excludedFiles: string[];
   excludedHits: string[];
+  noisePrefixHits?: string[];
+  sourceVsTestDecision?: string;
+  companionReasons?: Record<string, string[]>;
   primeTokens: number;
   primeLatencyMs: number;
   timings?: Record<string, number>;

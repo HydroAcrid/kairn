@@ -303,6 +303,9 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
     ...prime.files.filter((file) => !isMcpLikelyTestFile(file) && !isMcpNoisyFile(file))
   ]);
   const startFiles = sourceCandidates.slice(0, 1);
+  const companionFiles = sourceCandidates
+    .filter((file) => !startFiles.includes(file))
+    .slice(0, shouldIncludeMcpCompanion(prime) ? 1 : 0);
   const likelyTests = shouldIncludeMcpLikelyTests(prime)
     ? uniqueValues(prime.files.filter(isMcpLikelyTestFile)).slice(0, 1)
     : [];
@@ -327,7 +330,9 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
     task: prime.task,
     profile: prime.profile,
     startFiles,
-    files: startFiles,
+    files: uniqueValues([...startFiles, ...companionFiles]),
+    companionFiles,
+    fallbackFiles: companionFiles,
     exactSymbolHint: symbolHint ?? null,
     exactSourceEvidence: exactSourceEvidence ?? null,
     invariant: exactSourceEvidence?.invariant ?? prime.invariants?.[0] ?? null,
@@ -335,12 +340,14 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
     expectedBehavior: exactSourceEvidence?.expectedBehavior ?? null,
     verificationCommand: exactSourceEvidence?.verificationCommand ?? null,
     primaryReason: primaryFile
-      ? `Start with ${primaryFile}; it is Kairn's highest-confidence unshown file for this task.`
+      ? companionFiles[0]
+        ? `Start with ${primaryFile}; ${companionFiles[0]} is the one capped companion for this multi-surface task.`
+        : `Start with ${primaryFile}; it is Kairn's highest-confidence unshown file for this task.`
       : "Kairn did not find a high-confidence start file.",
     nextToolCalls,
     recommendedToolCalls: nextToolCalls,
     likelyTests,
-    tokenEstimate: estimateCompactPrepareTokens(startFiles, likelyTests, nextToolCalls, exactSourceEvidence),
+    tokenEstimate: estimateCompactPrepareTokens(uniqueValues([...startFiles, ...companionFiles]), likelyTests, nextToolCalls, exactSourceEvidence),
     quality: prime.quality,
     contextDecision: decision,
     warnings: prime.warnings,
@@ -389,6 +396,8 @@ function isMcpLikelyTestFile(filePath: string): boolean {
     /(test|tests)\.java$/.test(normalized) ||
     normalized.includes("/src/test/java/") ||
     /(_test|_tests|_unittest)\.(cc|cpp|cxx|c|hh|hpp|hxx)$/.test(normalized) ||
+    /_test\.go$/.test(normalized) ||
+    /(_test|_spec)\.rb$/.test(normalized) ||
     /(^|\/)(test|tests)\//.test(normalized)
   );
 }
@@ -402,17 +411,26 @@ function isMcpPrimarySourceFile(filePath: string): boolean {
       normalized.includes("/src/") ||
       normalized.startsWith("include/") ||
       normalized.includes("/include/") ||
-      /\.(ts|tsx|js|jsx|mjs|cjs|py|pyi|java|c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(normalized))
+      normalized.startsWith("lib/") ||
+      normalized.includes("/lib/") ||
+      /\.(ts|tsx|js|jsx|mjs|cjs|py|pyi|java|c|cc|cpp|cxx|h|hh|hpp|hxx|go|rb)$/.test(normalized))
   );
 }
 
 function isMcpNoisyFile(filePath: string): boolean {
-  return /(^|\/)(docs?|documentation|examples|demo|demos|devtools|codemods|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook)\//.test(filePath);
+  return /(^|\/)(docs?|docs_src|documentation|_?examples|demo|demos|devtools|codemods|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook|testing|testdata|integration)\//.test(filePath);
 }
 
 function shouldIncludeMcpLikelyTests(prime: PrimeContextResult): boolean {
   if (!prime.contextDecision?.exactSourceHit) return true;
   return /\b(test|tests|spec|verify|verification|failing test|failure output)\b/i.test(prime.task);
+}
+
+function shouldIncludeMcpCompanion(prime: PrimeContextResult): boolean {
+  if (prime.contextDecision?.exactSourceHit) return false;
+  return /\b(route|routing|dependency|dependencies|controller|repository|model|scheduler|renderer|interceptor|dispatch|adapter|validation|callback|group|context|handler|middleware|fixture|framework|flow|request|response)\b/i.test(
+    prime.task
+  );
 }
 
 function mcpExactSourceFile(runtime: KairnRuntime, sessionId: string): string | undefined {
