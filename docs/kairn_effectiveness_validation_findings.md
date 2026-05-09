@@ -2471,3 +2471,43 @@ Conclusions:
 - Hook full-prime remains useful for Python/JS one-shot tasks, but the Java failure means it cannot be treated as a universal default win.
 - Hybrid can beat MCP on Java, but it underperformed on Axios and Flask. It should remain experimental.
 - The next improvement should make MCP stop after enough source evidence is found across follow-up calls, especially `kairn_find_context`, `kairn_find_tests`, and failure-context paths.
+
+### Validator Repair Rerun
+
+The Commons IO source-invariant check was too strict: it required the exact original return statement, so it rejected an equivalent repair that resolved `IOCase.value(ioCase, IOCase.SENSITIVE)` into a local variable and then called `checkEquals` through that resolved value.
+
+The validator was updated to accept repairs where:
+
+- the seeded bad line `return IOCase.SENSITIVE.checkEquals(fileName1, fileName2);` is gone,
+- `IOCase.value(ioCase, IOCase.SENSITIVE)` is still used,
+- the final comparison uses either the direct expression or the resolved `IOCase` variable,
+- the harness still requires `FilenameUtils.java` to be touched.
+
+Rerun output: `/tmp/kairn-seeded-new-repos-live-proof-rerun.json`
+
+Aggregate rerun:
+
+| Mode | Total observed tokens | Quality | Valid savings vs baseline |
+| --- | ---: | --- | ---: |
+| Baseline | `62,835` | pass | `0%` |
+| Hook full-prime | `61,212` | pass | `2.58%` |
+| Real MCP-first | `71,205` | pass | `13.32%` worse |
+| Hybrid MCP-brief | `80,584` | pass | `28.25%` worse |
+
+Per-case rerun:
+
+| Case | Mode | Outcome | Tokens | Delta vs baseline |
+| --- | --- | --- | ---: | ---: |
+| Axios | Hook full-prime | pass | `42,463` | `137.1%` worse |
+| Flask | Hook full-prime | pass | `12,132` | `47.5%` saved |
+| Commons IO | Hook full-prime | pass | `6,617` | `69.7%` saved |
+| Axios | Real MCP-first | pass | `34,906` | `94.9%` worse |
+| Flask | Real MCP-first | pass | `20,491` | `11.3%` saved |
+| Commons IO | Real MCP-first | pass | `15,808` | `27.5%` saved |
+
+Interpretation:
+
+- The validator repair worked: Java hook full-prime is now quality-valid and shows a large `69.7%` single-run savings.
+- The earlier `39.44%` aggregate hook-full-prime result was not reproduced because live Codex variance was high and Axios became a large negative outlier in the rerun.
+- This reinforces the current benchmark rule: use repeat medians before making product claims.
+- The next high-leverage issue is still follow-up discipline. MCP/hybrid modes made real tool calls but often kept expanding after enough source evidence was available.

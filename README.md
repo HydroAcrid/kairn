@@ -120,6 +120,13 @@ kairn metrics --session task_123 --root /path/to/repo --json
 
 The useful first number while testing Codex hooks is `estimated tokens saved`. It is not billing-grade accounting; it is a directional measure for whether Kairn is reducing repeated context and compressing noisy command output.
 
+Kairn also keeps a metadata-only session ledger for long conversations. The ledger tracks which files Kairn recommended or showed, which files the agent later mentioned or touched, commands/tests/failures, phase changes, and repeated context that Kairn avoided. It stores file refs, hashes, summaries, and token estimates only.
+
+```bash
+kairn ledger --session task_123 --root /path/to/repo
+kairn ledger --session task_123 --root /path/to/repo --json
+```
+
 ## Eval Harness
 
 The eval harness records proof from manual A/B Codex runs. For manual sessions, you run the baseline and Kairn-assisted sessions yourself, then ingest the Codex usage footer.
@@ -186,6 +193,19 @@ kairn bench matrix --matrix examples/bench/repo-matrix.json --workdir /tmp/kairn
 ```
 
 The included matrix is intentionally retrieval-only. Treat failures as a signal to improve general source targeting, suppression, or state discipline before running expensive Codex proofs.
+
+Endurance benchmarks simulate the longer-session use case with ordered turns in one disposable workspace and one Kairn session. They are meant to answer whether Kairn avoids repeated context, preserves quality gates, and saves cumulative observed Codex tokens over follow-up work.
+
+```bash
+kairn bench endurance \
+  --root /Users/kevindotel/Documents/Projects/kairn \
+  --suite examples/bench/endurance-axios.json \
+  --baseline-command "codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable codex_hooks {prompt}" \
+  --kairn-command "codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable codex_hooks {prompt}" \
+  --json
+```
+
+The included endurance examples cover Axios, Flask, and Commons IO. They use source-invariant checks and required touched files, so lower tokens only count when the final quality gate passes.
 
 Agent benchmarks are opt-in. Kairn copies the target repo into a disposable temp workspace and only runs an agent when you pass an explicit command. If the command output contains a Codex footer like `Token usage: total=33,729 input=33,253 (+ 24,704 cached) output=476`, Kairn parses it automatically and shows observed Codex usage in benchmark reports.
 

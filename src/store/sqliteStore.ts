@@ -25,6 +25,7 @@ import type {
   MetricsEventRecord,
   SemanticChunkRecord,
   SemanticVectorRecord,
+  SessionLedgerEvent,
   SessionStatus,
   SymbolRecord,
   TaskSession,
@@ -188,6 +189,21 @@ type MetricsEventRow = {
   output_tokens: number;
   saved_tokens: number;
   files_json: string;
+  metadata_json: string;
+  created_at: string;
+};
+
+type SessionLedgerEventRow = {
+  id: number;
+  session_id: string;
+  kind: SessionLedgerEvent["kind"];
+  turn_id: string | null;
+  file_path: string | null;
+  symbol: string | null;
+  content_hash: string;
+  token_estimate: number;
+  source: SessionLedgerEvent["source"];
+  summary: string;
   metadata_json: string;
   created_at: string;
 };
@@ -1084,6 +1100,50 @@ export class SqliteStore {
     return rows.map(mapMetricsEventRow).reverse();
   }
 
+  recordSessionLedgerEvent(record: Omit<SessionLedgerEvent, "id" | "createdAt">): SessionLedgerEvent {
+    const timestamp = nowIso();
+    const result = this.db
+      .prepare(`
+        insert into session_ledger_events (
+          session_id, kind, turn_id, file_path, symbol, content_hash, token_estimate,
+          source, summary, metadata_json, created_at
+        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .run(
+        record.sessionId,
+        record.kind,
+        record.turnId ?? null,
+        record.filePath ?? null,
+        record.symbol ?? null,
+        record.contentHash,
+        record.tokenEstimate,
+        record.source,
+        record.summary,
+        JSON.stringify(record.metadata),
+        timestamp
+      );
+    this.touchSession(record.sessionId);
+
+    return {
+      ...record,
+      id: Number(result.lastInsertRowid),
+      createdAt: timestamp
+    };
+  }
+
+  listSessionLedgerEvents(sessionId: string, limit?: number): SessionLedgerEvent[] {
+    const rows = this.db
+      .prepare(`
+        select * from session_ledger_events
+        where session_id = ?
+        order by created_at desc, id desc
+        ${limit ? "limit ?" : ""}
+      `)
+      .all(...(limit ? [sessionId, limit] : [sessionId])) as SessionLedgerEventRow[];
+
+    return rows.map(mapSessionLedgerEventRow).reverse();
+  }
+
   createEvalRun(record: Omit<EvalRunRecord, "startedAt">): EvalRunRecord {
     const timestamp = nowIso();
     this.db
@@ -1500,6 +1560,21 @@ export class SqliteStore {
         created_at text not null
       );
 
+      create table if not exists session_ledger_events (
+        id integer primary key autoincrement,
+        session_id text not null references sessions(id) on delete cascade,
+        kind text not null,
+        turn_id text,
+        file_path text,
+        symbol text,
+        content_hash text not null,
+        token_estimate integer not null,
+        source text not null,
+        summary text not null,
+        metadata_json text not null default '{}',
+        created_at text not null
+      );
+
       create table if not exists eval_runs (
         id text primary key,
         session_id text references sessions(id) on delete set null,
@@ -1568,6 +1643,9 @@ export class SqliteStore {
       create index if not exists host_session_links_session_idx on host_session_links(session_id);
       create index if not exists metrics_events_session_idx on metrics_events(session_id, created_at);
       create index if not exists metrics_events_session_kind_idx on metrics_events(session_id, event_kind, created_at);
+      create index if not exists session_ledger_events_session_idx on session_ledger_events(session_id, created_at);
+      create index if not exists session_ledger_events_session_kind_idx on session_ledger_events(session_id, kind, created_at);
+      create index if not exists session_ledger_events_session_file_idx on session_ledger_events(session_id, file_path, created_at);
       create index if not exists eval_runs_root_idx on eval_runs(root_path, started_at);
       create index if not exists eval_runs_session_idx on eval_runs(session_id, started_at);
       create index if not exists eval_observations_run_idx on eval_observations(run_id, created_at);
@@ -1744,6 +1822,23 @@ function mapMetricsEventRow(row: MetricsEventRow): MetricsEventRecord {
     outputTokens: row.output_tokens,
     savedTokens: row.saved_tokens,
     files: parseJsonList(row.files_json),
+    metadata: parseJsonObject(row.metadata_json),
+    createdAt: row.created_at
+  };
+}
+
+function mapSessionLedgerEventRow(row: SessionLedgerEventRow): SessionLedgerEvent {
+  return {
+    id: row.id,
+    sessionId: row.session_id,
+    kind: row.kind,
+    ...(row.turn_id ? { turnId: row.turn_id } : {}),
+    ...(row.file_path ? { filePath: row.file_path } : {}),
+    ...(row.symbol ? { symbol: row.symbol } : {}),
+    contentHash: row.content_hash,
+    tokenEstimate: row.token_estimate,
+    source: row.source,
+    summary: row.summary,
     metadata: parseJsonObject(row.metadata_json),
     createdAt: row.created_at
   };

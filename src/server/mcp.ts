@@ -36,7 +36,7 @@ export function createMcpServer(options: { root?: string }): McpServer {
       }
     },
     async ({ task, sessionId, budget, profile, detail }) => {
-      const prime = await runtime.primeContext({ task, sessionId, budget: budget ?? 900, profile });
+      const prime = await runtime.primeContext({ task, sessionId, budget: budget ?? 900, profile, source: "mcp" });
       const value = (detail ?? "compact") === "full" ? fullPrepareResult(prime) : compactPrepareResult(runtime, prime);
       return mcpToolResult(runtime, "kairn_prepare_task", { task, sessionId, budget, profile, detail }, value);
     }

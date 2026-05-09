@@ -1,6 +1,7 @@
 import type { ContextResponseMode } from "./context.js";
 import type { CodexUsageRecord } from "./eval.js";
 import type { IndexTier } from "./graph.js";
+import type { TaskPhase } from "./ledger.js";
 import type { WatchEventSource } from "./watch.js";
 
 export type MetricsEventKind =
@@ -24,7 +25,7 @@ export type MetricsEventRecord = {
   rootPath: string;
   eventKind: MetricsEventKind;
   eventName: string;
-  source: WatchEventSource | "runtime" | "cli" | "mcp";
+  source: WatchEventSource | "runtime" | "cli" | "mcp" | "bench";
   responseMode?: ContextResponseMode;
   baselineTokens: number;
   outputTokens: number;
@@ -76,6 +77,15 @@ export type MetricsSummary = {
     symbols?: number;
     graphEdges?: number;
     semanticChunks?: number;
+  };
+  ledger: {
+    events: number;
+    repeatedFilesAvoided: number;
+    repeatedSnippetsAvoided: number;
+    recommendedFilesUsed: string[];
+    repeatedlyTouchedFiles: string[];
+    unresolvedFailures: number;
+    currentPhase: TaskPhase;
   };
   recentEvents: MetricsEventRecord[];
 };

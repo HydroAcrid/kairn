@@ -3,6 +3,7 @@ export * from "./types/context.js";
 export * from "./types/eval.js";
 export * from "./types/graph.js";
 export * from "./types/language.js";
+export * from "./types/ledger.js";
 export * from "./types/metrics.js";
 export * from "./types/runtime.js";
 export * from "./types/watch.js";

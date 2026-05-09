@@ -218,14 +218,11 @@ describe("MCP server", () => {
       }
     });
     const nextParsed = JSON.parse(firstTextContent(next)!) as { files: string[]; related: string[]; warnings: string[]; content: string };
-    expect(nextParsed.files).toEqual(["include/fmt/base.h"]);
+    expect(nextParsed.files).toEqual([]);
     expect(nextParsed.related).toEqual([]);
-    expect(nextParsed.warnings.join(" ")).toContain("Exact source hit");
-    expect(nextParsed.content).toContain("starts_with");
-    expect(nextParsed.content).toContain("Invariant to preserve");
-    expect(nextParsed.content).toContain("equal-length identical prefix");
-    expect(nextParsed.content).toContain("Verification:");
-    expect(nextParsed.content).toContain("Stop condition");
+    expect(nextParsed.warnings.join(" ")).toContain("No fresh context");
+    expect(nextParsed.content).toContain("already showed include/fmt/base.h");
+    expect(nextParsed.content).toContain("no new failure or diff");
 
     const context = await client.callTool({
       name: "kairn_find_context",

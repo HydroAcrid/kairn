@@ -4,10 +4,12 @@ import {
   formatBenchmarkMarkdown,
   printBenchmarkComparison,
   printBenchmarkMatrixReport,
+  printBenchmarkEnduranceReport,
   printBenchmarkProof,
   printBenchmarkReport
 } from "../formatters.js";
 import { runBenchmarkRepoMatrix } from "../../bench/matrix.js";
+import { runBenchmarkEndurance } from "../../bench/endurance.js";
 import { parsePositiveInt, withRuntime } from "../helpers.js";
 import { printJson } from "../output.js";
 
@@ -33,6 +35,42 @@ export function registerBenchCommands(program: Command): void {
       }
       printBenchmarkMatrixReport(report);
     });
+
+  benchCommand
+    .command("endurance")
+    .description("Run a multi-turn endurance benchmark in one disposable workspace/session.")
+    .option("--root <path>", "target repository root", process.cwd())
+    .requiredOption("--suite <path>", "endurance suite JSON path")
+    .requiredOption("--baseline-command <command>", "baseline live-agent command with {prompt}, {root}, and {turn} placeholders")
+    .requiredOption("--kairn-command <command>", "Kairn-assisted live-agent command with {prompt}, {root}, {session}, and {turn} placeholders")
+    .option("--mcp-command <command>", "MCP-assisted live-agent command with {prompt}, {root}, {session}, and {turn} placeholders")
+    .option("--turn-timeout <ms>", "per-turn live-agent command timeout", parsePositiveInt, 180000)
+    .option("--json", "print JSON output")
+    .action(
+      async (options: {
+        root: string;
+        suite: string;
+        baselineCommand: string;
+        kairnCommand: string;
+        mcpCommand?: string;
+        turnTimeout: number;
+        json?: boolean;
+      }) => {
+        const report = await runBenchmarkEndurance({
+          rootPath: options.root,
+          suitePath: options.suite,
+          baselineCommand: options.baselineCommand,
+          kairnCommand: options.kairnCommand,
+          mcpCommand: options.mcpCommand,
+          turnTimeoutMs: options.turnTimeout
+        });
+        if (options.json) {
+          printJson(report);
+          return;
+        }
+        printBenchmarkEnduranceReport(report);
+      }
+    );
 
   benchCommand
     .command("run")

@@ -13,6 +13,7 @@ import {
 import { loadIndexingConfig } from "../../config/indexing.js";
 import { groupMetrics, summarizeCoordinationMetrics, summarizeMetrics } from "../../metrics/summary.js";
 import { codexUsageFromObservation } from "../../eval/usageObservation.js";
+import { summarizeSessionLedger } from "../../ledger/summary.js";
 import { uniquePaths } from "../../utils/collections.js";
 import type { RuntimeDeps } from "../deps.js";
 
@@ -31,6 +32,7 @@ export class MetricsService {
     const coordination = summarizeCoordinationMetrics(events);
     const files = this.deps.store.listFiles(session.rootPath);
     const indexStats = this.deps.store.getIndexStateStats(session.rootPath, loadIndexingConfig(session.rootPath));
+    const ledger = summarizeSessionLedger(sessionId, this.deps.store.listSessionLedgerEvents(sessionId));
 
     return {
       sessionId,
@@ -62,6 +64,15 @@ export class MetricsService {
         symbols: indexStats.symbolCount,
         graphEdges: indexStats.graphEdgeCount,
         semanticChunks: indexStats.semanticChunkCount
+      },
+      ledger: {
+        events: ledger.events,
+        repeatedFilesAvoided: ledger.repeatedFilesAvoided,
+        repeatedSnippetsAvoided: ledger.repeatedSnippetsAvoided,
+        recommendedFilesUsed: ledger.recommendedFilesUsed,
+        repeatedlyTouchedFiles: ledger.repeatedlyTouchedFiles,
+        unresolvedFailures: ledger.unresolvedFailures,
+        currentPhase: ledger.currentPhase
       },
       recentEvents: events.slice(-10)
     };
@@ -124,7 +135,7 @@ export class MetricsService {
     sessionId: string;
     eventKind: MetricsEventKind;
     eventName: string;
-    source: WatchEventSource | "runtime" | "cli" | "mcp";
+    source: WatchEventSource | "runtime" | "cli" | "mcp" | "bench";
     responseMode?: ContextResponseMode | undefined;
     baselineTokens: number;
     outputTokens: number;

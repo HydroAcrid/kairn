@@ -1,0 +1,55 @@
+{
+  "id": "endurance-axios",
+  "name": "Axios Interceptor Endurance",
+  "task": "Debug and verify the seeded Axios request interceptor ordering regression across multiple turns.",
+  "seed": {
+    "repoUrl": "https://github.com/axios/axios.git",
+    "ref": "44f0c5bf73c45df6009365141faa394d73596bd7",
+    "cloneDepth": 1,
+    "setupPatchFile": "./patches/axios-request-interceptor-order.patch",
+    "expectedFailureCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('lib/core/Axios.js', 'utf8');\nconst expected = '} else {\\n        requestInterceptorChain.push(interceptor.fulfilled, interceptor.rejected);\\n      }';\nprocess.exit(source.includes(expected) ? 1 : 0);\nNODE",
+    "testCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('lib/core/Axios.js', 'utf8');\nconst expected = '} else {\\n        requestInterceptorChain.push(interceptor.fulfilled, interceptor.rejected);\\n      }';\nprocess.exit(source.includes(expected) ? 0 : 1);\nNODE"
+  },
+  "turns": [
+    {
+      "id": "diagnose",
+      "task": "Diagnose the seeded Axios interceptor regression and identify the smallest production source fix.",
+      "agentPrompt": "Diagnose the seeded Axios regression. Non-legacy request interceptors should be appended in request order before dispatchRequest. Do not edit yet.",
+      "expectedFiles": ["lib/core/Axios.js", "lib/core/InterceptorManager.js", "lib/core/dispatchRequest.js"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["docs/", "examples/", "test/"],
+      "budget": 900
+    },
+    {
+      "id": "fix",
+      "task": "Fix the seeded Axios interceptor order regression in production source only.",
+      "agentPrompt": "Fix the seeded Axios interceptor order regression. Edit only the necessary production source file.",
+      "expectedFiles": ["lib/core/Axios.js"],
+      "requiredTouchedFiles": ["lib/core/Axios.js"],
+      "excludedFiles": ["docs/", "examples/", "test/"],
+      "verificationCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('lib/core/Axios.js', 'utf8');\nconst expected = '} else {\\n        requestInterceptorChain.push(interceptor.fulfilled, interceptor.rejected);\\n      }';\nprocess.exit(source.includes(expected) ? 0 : 1);\nNODE",
+      "budget": 900
+    },
+    {
+      "id": "verify",
+      "task": "Run the smallest source-invariant verification for the Axios fix.",
+      "agentPrompt": "Verify the Axios fix with the smallest source-invariant check. Do not broaden into full test discovery unless it fails.",
+      "expectedFiles": ["lib/core/Axios.js"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["docs/", "examples/", "test/"],
+      "verificationCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('lib/core/Axios.js', 'utf8');\nconst expected = '} else {\\n        requestInterceptorChain.push(interceptor.fulfilled, interceptor.rejected);\\n      }';\nprocess.exit(source.includes(expected) ? 0 : 1);\nNODE",
+      "budget": 500
+    },
+    {
+      "id": "cleanup",
+      "task": "Review the final Axios diff for unrelated edits.",
+      "agentPrompt": "Review the final diff and confirm only the required Axios production source changed.",
+      "expectedFiles": ["lib/core/Axios.js"],
+      "requiredTouchedFiles": ["lib/core/Axios.js"],
+      "excludedFiles": ["docs/", "examples/", "test/"],
+      "verificationCommand": "git diff --name-only | node -e \"const fs=require('fs'); const files=fs.readFileSync(0,'utf8').trim().split(/\\n/).filter(Boolean); process.exit(files.every(f=>f==='lib/core/Axios.js') ? 0 : 1)\"",
+      "budget": 500
+    }
+  ],
+  "finalVerificationCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('lib/core/Axios.js', 'utf8');\nconst expected = '} else {\\n        requestInterceptorChain.push(interceptor.fulfilled, interceptor.rejected);\\n      }';\nprocess.exit(source.includes(expected) ? 0 : 1);\nNODE"
+}

@@ -31,8 +31,13 @@ import type {
   OutputKind,
   PrimeProfile,
   QueryLocalIndex,
+  SessionContextPolicyDecision,
+  SessionLedgerEvent,
+  SessionLedgerEventKind,
+  SessionLedgerSummary,
   SymbolRecord,
   TaskSession,
+  TaskPhase,
   WatchEventKind,
   WatchEventRecord,
   WatchEventSource,
@@ -68,6 +73,8 @@ import {
   resolvePrimeProfile
 } from "../prime/quality.js";
 import { evaluateContextValue } from "../prime/contextValue.js";
+import { decideSessionContextPolicy, inferTaskPhase } from "../ledger/policy.js";
+import { summarizeSessionLedger } from "../ledger/summary.js";
 import {
   formatMcpBriefPrimeContext,
   formatPrimeContext,
@@ -149,7 +156,7 @@ export class KairnRuntime {
     mode?: ContextQueryMode | undefined;
     profile?: PrimeProfile | undefined;
     format?: "standard" | "mcp_brief" | undefined;
-    source?: WatchEventSource | "runtime" | "cli" | "mcp" | undefined;
+    source?: WatchEventSource | "runtime" | "cli" | "mcp" | "bench" | undefined;
     eventName?: string | undefined;
     metadata?: Record<string, unknown> | undefined;
     refreshIndex?: boolean | undefined;
@@ -278,6 +285,72 @@ export class KairnRuntime {
       ...(primaryFile ? [`kairn context --session ${session.id} --root <repo> --related ${primaryFile}`] : []),
       ...(primaryFile ? [`kairn context --session ${session.id} --root <repo> --tests ${primaryFile}`] : [])
     ];
+    const ledgerEvents = this.getSessionLedger(session.id);
+    const ledgerSummary = summarizeSessionLedger(session.id, ledgerEvents);
+    const changedFilesForPolicy = await this.getChangedFiles(session.rootPath).catch(() => []);
+    const failureFilesForPolicy = uniquePaths(
+      ledgerEvents
+        .filter((event) => event.kind === "failure_seen" && event.filePath)
+        .map((event) => event.filePath!)
+    );
+    const sessionPolicy = decideSessionContextPolicy({
+      task: resolvedTask,
+      candidateFiles: files,
+      contentHash: sha256([resolvedTask, ...files, quality.action].join("\n")),
+      tokenEstimate: budget,
+      ledger: ledgerSummary,
+      recentEvents: ledgerEvents,
+      changedFiles: [...changedFilesForPolicy],
+      failureFiles: failureFilesForPolicy,
+      source: input.source ?? "cli"
+    });
+    const effectiveAction = strongestSuppressiveAction(quality.action, contextDecision.action, sessionPolicy.action);
+    const effectiveQuality = {
+      ...quality,
+      action: effectiveAction,
+      reasons: uniqueStrings([...quality.reasons, `session policy: ${sessionPolicy.reason}`])
+    };
+    const effectiveContextDecision = {
+      ...contextDecision,
+      action: effectiveAction,
+      recommendedDelivery: effectiveAction === "emit" ? contextDecision.recommendedDelivery ?? "full_prime" : effectiveAction === "shrink" ? "one_file_directive" as const : "none" as const
+    };
+    const emittedFiles = effectiveAction === "suppress"
+      ? []
+      : effectiveAction === "shrink" && sessionPolicy.files.length > 0
+        ? sessionPolicy.files.slice(0, 1)
+        : files;
+    for (const file of files) {
+      this.recordLedgerEvent({
+        sessionId: session.id,
+        kind: "context_recommended",
+        filePath: file,
+        contentHash: sha256(`${resolvedTask}\n${file}`),
+        tokenEstimate: 0,
+        source: input.source ?? "cli",
+        summary: `Kairn recommended ${file}`,
+        metadata: {
+          taskHash: sha256(resolvedTask),
+          phase: sessionPolicy.phase,
+          policyReason: sessionPolicy.reason,
+          emitted: emittedFiles.includes(file)
+        }
+      });
+    }
+    if (sessionPolicy.phase !== ledgerSummary.currentPhase) {
+      this.recordLedgerEvent({
+        sessionId: session.id,
+        kind: "phase_change",
+        contentHash: sha256(`${ledgerSummary.currentPhase}->${sessionPolicy.phase}`),
+        tokenEstimate: 0,
+        source: input.source ?? "cli",
+        summary: `Phase changed from ${ledgerSummary.currentPhase} to ${sessionPolicy.phase}`,
+        metadata: {
+          previousPhase: ledgerSummary.currentPhase,
+          phase: sessionPolicy.phase
+        }
+      });
+    }
     const formatStartedAt = Date.now();
     const content = input.format === "mcp_brief"
       ? formatMcpBriefPrimeContext({
@@ -286,18 +359,18 @@ export class KairnRuntime {
           profile,
           budget: Math.min(budget, 360),
           context,
-          files,
-          quality,
+          files: emittedFiles,
+          quality: effectiveQuality,
           invariants
         })
-      : quality.action === "suppress"
-        ? formatSuppressedPrimeContext({ task: resolvedTask, sessionId: session.id, profile, quality })
-        : quality.action === "shrink"
+      : effectiveAction === "suppress"
+        ? formatSuppressedPrimeContext({ task: resolvedTask, sessionId: session.id, profile, quality: effectiveQuality })
+        : effectiveAction === "shrink"
           ? formatShrunkPrimeContext({
               task: resolvedTask,
               sessionId: session.id,
               profile,
-              quality,
+              quality: effectiveQuality,
               context,
               budget: Math.min(budget, 420),
               invariants
@@ -316,9 +389,43 @@ export class KairnRuntime {
             });
     markTiming("formatMs", formatStartedAt);
     timings.totalPrimeMs = Date.now() - primeStartedAt;
-    const fileRecords = sessionFiles.filter((file) => files.includes(file.path));
+    const fileRecords = sessionFiles.filter((file) => emittedFiles.includes(file.path));
 
     this.recordShown(session.id, "context", "brief", content);
+    for (const file of emittedFiles) {
+      this.recordLedgerEvent({
+        sessionId: session.id,
+        kind: "context_shown",
+        filePath: file,
+        contentHash: sha256(content),
+        tokenEstimate: estimateTokens(content),
+        source: input.source ?? "cli",
+        summary: `Kairn showed context for ${file}`,
+        metadata: {
+          taskHash: sha256(resolvedTask),
+          phase: sessionPolicy.phase,
+          policyReason: sessionPolicy.reason,
+          policyAction: sessionPolicy.action
+        }
+      });
+    }
+    if (sessionPolicy.action === "suppress") {
+      this.recordLedgerEvent({
+        sessionId: session.id,
+        kind: "context_shown",
+        contentHash: sha256(content),
+        tokenEstimate: estimateTokens(content),
+        source: input.source ?? "cli",
+        summary: "Kairn suppressed repeated or low-value context",
+        metadata: {
+          taskHash: sha256(resolvedTask),
+          phase: sessionPolicy.phase,
+          policyReason: sessionPolicy.reason,
+          repeatedFilesAvoided: sessionPolicy.repeatedFiles.length,
+          repeatedSnippetsAvoided: sessionPolicy.reason === "repeated_context_suppressed" ? 1 : 0
+        }
+      });
+    }
     this.recordMetricsEvent({
       sessionId: session.id,
       rootPath: session.rootPath,
@@ -328,15 +435,16 @@ export class KairnRuntime {
       responseMode: "brief",
       baselineTokens: estimateFileBaselineTokens(fileRecords),
       outputTokens: estimateTokens(content),
-      files,
+      files: emittedFiles,
       metadata: {
         ...input.metadata,
         taskHash: sha256(resolvedTask),
         profile,
         budget,
         format: input.format ?? "standard",
-        quality,
-        contextDecision,
+        quality: effectiveQuality,
+        contextDecision: effectiveContextDecision,
+        sessionPolicy,
         invariants,
         timings,
         contextTokenEstimate: context.tokenEstimate,
@@ -350,15 +458,16 @@ export class KairnRuntime {
       sessionId: session.id,
       rootPath: session.rootPath,
       eventKind: "prime_quality",
-      eventName: quality.action,
+      eventName: effectiveQuality.action,
       source: input.source ?? "cli",
       responseMode: "brief",
       baselineTokens: 0,
       outputTokens: 0,
-      files,
+      files: emittedFiles,
       metadata: {
-        ...quality,
-        contextDecision,
+        ...effectiveQuality,
+        contextDecision: effectiveContextDecision,
+        sessionPolicy,
         invariants,
         timings,
         taskHash: sha256(resolvedTask),
@@ -369,14 +478,15 @@ export class KairnRuntime {
       sessionId: session.id,
       rootPath: session.rootPath,
       eventKind: "context_value_decision",
-      eventName: contextDecision.action,
+      eventName: effectiveContextDecision.action,
       source: input.source ?? "cli",
       responseMode: "brief",
       baselineTokens: 0,
       outputTokens: 0,
-      files,
+      files: emittedFiles,
       metadata: {
-        ...contextDecision,
+        ...effectiveContextDecision,
+        sessionPolicy,
         invariants,
         timings,
         taskHash: sha256(resolvedTask),
@@ -389,14 +499,15 @@ export class KairnRuntime {
       task: resolvedTask,
       profile,
       content,
-      files,
+      files: emittedFiles,
       tokenEstimate: estimateTokens(content),
       invariants,
-      quality,
-      contextDecision,
+      quality: effectiveQuality,
+      contextDecision: effectiveContextDecision,
       timings,
       metadata: {
-        companionCandidates: companionMetadata
+        companionCandidates: companionMetadata,
+        sessionPolicy
       },
       warnings: uniqueStrings([...context.warnings, ...(related?.warnings ?? []), ...(tests?.warnings ?? [])]),
       suggestedCommands
@@ -417,6 +528,42 @@ export class KairnRuntime {
 
   getCoordinationState(sessionId: string): MetricsSummary["coordination"] {
     return this.metricsService.getCoordinationState(sessionId);
+  }
+
+  recordLedgerEvent(input: {
+    sessionId: string;
+    kind: SessionLedgerEventKind;
+    turnId?: string | undefined;
+    filePath?: string | undefined;
+    symbol?: string | undefined;
+    contentHash?: string | undefined;
+    tokenEstimate?: number | undefined;
+    source?: SessionLedgerEvent["source"] | undefined;
+    summary: string;
+    metadata?: Record<string, unknown> | undefined;
+  }): SessionLedgerEvent {
+    this.store.getSession(input.sessionId);
+    return this.store.recordSessionLedgerEvent({
+      sessionId: input.sessionId,
+      kind: input.kind,
+      ...(input.turnId ? { turnId: input.turnId } : {}),
+      ...(input.filePath ? { filePath: input.filePath } : {}),
+      ...(input.symbol ? { symbol: input.symbol } : {}),
+      contentHash: input.contentHash ?? sha256([input.kind, input.filePath ?? "", input.symbol ?? "", input.summary].join("\n")),
+      tokenEstimate: Math.max(0, Math.round(input.tokenEstimate ?? estimateTokens(input.summary))),
+      source: input.source ?? "runtime",
+      summary: input.summary,
+      metadata: input.metadata ?? {}
+    });
+  }
+
+  getSessionLedger(sessionId: string, limit?: number | undefined): SessionLedgerEvent[] {
+    this.store.getSession(sessionId);
+    return this.store.listSessionLedgerEvents(sessionId, limit);
+  }
+
+  summarizeSessionLedger(sessionId: string): SessionLedgerSummary {
+    return summarizeSessionLedger(sessionId, this.getSessionLedger(sessionId));
   }
 
   startEvalRun(input: {
@@ -1178,7 +1325,7 @@ export class KairnRuntime {
     files?: string[] | undefined;
     command?: string | undefined;
     budget?: number | undefined;
-    source?: WatchEventSource | "runtime" | "cli" | "mcp" | undefined;
+    source?: WatchEventSource | "runtime" | "cli" | "mcp" | "bench" | undefined;
     eventName?: string | undefined;
   }): Promise<FailureContext> {
     const session = this.store.getSession(input.sessionId);
@@ -1345,22 +1492,78 @@ export class KairnRuntime {
     budget?: number | undefined;
   }): Promise<ContextResponse> {
     const session = this.store.getSession(input.sessionId);
+    const ledgerEvents = this.getSessionLedger(input.sessionId);
+    const ledgerSummary = summarizeSessionLedger(input.sessionId, ledgerEvents);
     const coordination = this.getCoordinationState(input.sessionId);
     const exactSourceFile = coordination.exactSourceFiles[0];
-    const alreadyReturnedFiles = uniquePaths([...coordination.hookFiles, ...coordination.mcpFiles]);
+    const alreadyReturnedFiles = uniquePaths([...coordination.hookFiles, ...coordination.mcpFiles, ...ledgerSummary.shownFiles]);
     const avoidReturnedFiles = (files: string[]) => uniquePaths(files).filter((file) => !alreadyReturnedFiles.includes(file));
-    if (exactSourceFile) {
-      return this.focusedExactSourceContext({
-        sessionId: input.sessionId,
-        file: exactSourceFile,
-        budget: input.budget,
-        alreadyReturned: alreadyReturnedFiles.includes(exactSourceFile),
-        reason: "Kairn already found a high-confidence exact source file for this task."
-      });
-    }
     const latestFailure = [...this.store.listWatchEvents(input.sessionId)]
       .reverse()
       .find((event) => event.kind === "failure" && event.files.length > 0);
+
+    if (exactSourceFile && !latestFailure) {
+      if (alreadyReturnedFiles.includes(exactSourceFile)) {
+        const content = truncateToBudget(
+          [
+            "# Kairn Next Context",
+            "",
+            `No fresh source context is needed. Kairn already showed ${exactSourceFile}, and there is no new failure or diff requiring re-emission.`,
+            "",
+            "Agent guidance: continue from the already-shown source file. Ask Kairn again after a failing check, file change, or clearer new target."
+          ].join("\n"),
+          input.budget ?? 360
+        );
+        this.recordLedgerEvent({
+          sessionId: input.sessionId,
+          kind: "context_shown",
+          filePath: exactSourceFile,
+          contentHash: sha256(content),
+          tokenEstimate: estimateTokens(content),
+          source: "runtime",
+          summary: `Kairn avoided repeating ${exactSourceFile}.`,
+          metadata: {
+            repeatedFilesAvoided: 1,
+            repeatedSnippetsAvoided: 1,
+            policyReason: "repeated_context_suppressed"
+          }
+        });
+        return {
+          mode: "brief",
+          content,
+          files: [],
+          symbols: [],
+          related: [],
+          warnings: ["No fresh context emitted because the exact source file was already shown."],
+          suggestedNextContext: [],
+          tokenEstimate: estimateTokens(content),
+          metadata: {
+            sessionPolicy: "repeated_context_suppressed",
+            exactSourceFile
+          }
+        };
+      }
+      const focused = this.focusedExactSourceContext({
+        sessionId: input.sessionId,
+        file: exactSourceFile,
+        budget: input.budget,
+        reason: "Kairn already found a high-confidence exact source file for this task."
+      });
+      this.recordLedgerEvent({
+        sessionId: input.sessionId,
+        kind: "context_shown",
+        filePath: exactSourceFile,
+        contentHash: sha256(focused.content),
+        tokenEstimate: focused.tokenEstimate,
+        source: "runtime",
+        summary: `Kairn showed focused next context for ${exactSourceFile}.`,
+        metadata: {
+          policyReason: "fresh_context",
+          phase: ledgerSummary.currentPhase
+        }
+      });
+      return focused;
+    }
 
     if (latestFailure?.files[0]) {
       const related = await this.getRelatedFiles({
@@ -1385,6 +1588,21 @@ export class KairnRuntime {
         ].join("\n"),
         input.budget ?? 700
       );
+      for (const file of nextReads) {
+        this.recordLedgerEvent({
+          sessionId: input.sessionId,
+          kind: "context_shown",
+          filePath: file,
+          contentHash: sha256(content),
+          tokenEstimate: estimateTokens(content),
+          source: "runtime",
+          summary: `Kairn showed failure-linked next context for ${file}.`,
+          metadata: {
+            policyReason: "failure_reemitted",
+            phase: "debugging"
+          }
+        });
+      }
       return {
         ...related,
         content,
@@ -1412,6 +1630,21 @@ export class KairnRuntime {
         ].join("\n"),
         input.budget ?? 700
       );
+      for (const file of nextReads) {
+        this.recordLedgerEvent({
+          sessionId: input.sessionId,
+          kind: "context_shown",
+          filePath: file,
+          contentHash: sha256(content),
+          tokenEstimate: estimateTokens(content),
+          source: "runtime",
+          summary: `Kairn showed diff-linked next context for ${file}.`,
+          metadata: {
+            policyReason: "changed_file_reemitted",
+            phase: "cleanup"
+          }
+        });
+      }
       return {
         ...diff,
         content,
@@ -1463,6 +1696,21 @@ export class KairnRuntime {
       ].filter(Boolean).join("\n"),
       input.budget ?? 700
     );
+    for (const file of nextReads) {
+      this.recordLedgerEvent({
+        sessionId: input.sessionId,
+        kind: "context_shown",
+        filePath: file,
+        contentHash: sha256(content),
+        tokenEstimate: estimateTokens(content),
+        source: "runtime",
+        summary: `Kairn showed next context for ${file}.`,
+        metadata: {
+          policyReason: "fresh_context",
+          phase: ledgerSummary.currentPhase
+        }
+      });
+    }
     return {
       ...context,
       content,
@@ -1578,7 +1826,7 @@ export class KairnRuntime {
     type: OutputKind;
     output: string;
     budget?: number | undefined;
-    source?: WatchEventSource | "runtime" | "cli" | "mcp" | undefined;
+    source?: WatchEventSource | "runtime" | "cli" | "mcp" | "bench" | undefined;
     eventName?: string | undefined;
   }): ContextResponse {
     const session = this.store.getSession(input.sessionId);
@@ -1746,6 +1994,49 @@ export class KairnRuntime {
       explicitFiles: input.event.files
     });
     const kind = input.event.exitCode && input.event.exitCode !== 0 ? "failure" : input.event.kind;
+    const hookPhase = inferTaskPhase({
+      task: input.event.output ?? input.event.command ?? session.task,
+      recentEvents: this.getSessionLedger(session.id),
+      failureFiles: kind === "failure" ? linkedFiles : [],
+      changedFiles: input.event.files
+    });
+    if (input.event.command) {
+      this.recordLedgerEvent({
+        sessionId: session.id,
+        kind: outputKind === "test" ? "test_run" : "command_run",
+        turnId: stringMetadata(input.event.metadata, "turn_id"),
+        contentHash: sha256(input.event.command),
+        tokenEstimate: estimateTokens(input.event.command),
+        source: input.event.source,
+        summary: `${outputKind} command observed: ${input.event.command}`,
+        metadata: {
+          eventName: input.event.eventName,
+          outputKind,
+          phase: hookPhase,
+          exitCode: input.event.exitCode ?? null
+        }
+      });
+    }
+    if (kind === "failure") {
+      for (const file of linkedFiles.length > 0 ? linkedFiles : [undefined]) {
+        this.recordLedgerEvent({
+          sessionId: session.id,
+          kind: "failure_seen",
+          turnId: stringMetadata(input.event.metadata, "turn_id"),
+          ...(file ? { filePath: file } : {}),
+          contentHash: sha256([input.event.command ?? "", input.event.output ? sha256(input.event.output) : ""].join("\n")),
+          tokenEstimate: input.event.output ? estimateTokens(input.event.output) : 0,
+          source: input.event.source,
+          summary: file ? `Failure linked to ${file}` : "Failure observed without a linked file",
+          metadata: {
+            eventName: input.event.eventName,
+            outputKind,
+            phase: hookPhase,
+            exitCode: input.event.exitCode ?? null
+          }
+        });
+      }
+    }
     const promptHash = input.event.output && isPromptEvent(input.event.eventName) ? sha256(input.event.output) : undefined;
     const duplicatePromptPrime = Boolean(
       promptHash &&
@@ -2534,7 +2825,7 @@ export class KairnRuntime {
     rootPath?: string | undefined;
     eventKind: MetricsEventKind;
     eventName: string;
-    source?: WatchEventSource | "runtime" | "cli" | "mcp" | undefined;
+    source?: WatchEventSource | "runtime" | "cli" | "mcp" | "bench" | undefined;
     responseMode?: ContextResponseMode | undefined;
     baselineTokens: number;
     outputTokens: number;
@@ -2694,6 +2985,14 @@ function shouldUseCompanionContext(task: string, companionPaths: string[]): bool
   return /\b(route|routing|dependency|dependencies|controller|repository|model|scheduler|renderer|interceptor|interceptors|dispatch|adapter|validation|callback|callbacks|group|context|handler|middleware|fixture|framework|flow|request|response|proxy|guard|guards|pipe|pipes|case|sensitivity|extension|normalize|normalization)\b/.test(
     normalized
   );
+}
+
+function strongestSuppressiveAction(
+  ...actions: Array<"emit" | "shrink" | "suppress">
+): "emit" | "shrink" | "suppress" {
+  if (actions.includes("suppress")) return "suppress";
+  if (actions.includes("shrink")) return "shrink";
+  return "emit";
 }
 
 function collectWorkspaceKairnMetrics(workspacePath: string): Record<string, unknown> {

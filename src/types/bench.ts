@@ -37,6 +37,76 @@ export type BenchmarkCase = {
   seed?: BenchmarkSeedSpec;
 };
 
+export type BenchmarkEnduranceTurn = {
+  id: string;
+  task: string;
+  agentPrompt?: string;
+  expectedFiles: string[];
+  requiredTouchedFiles?: string[];
+  excludedFiles: string[];
+  verificationCommand?: string;
+  budget?: number;
+};
+
+export type BenchmarkEnduranceSuite = {
+  id: string;
+  name: string;
+  task: string;
+  seed?: BenchmarkSeedSpec;
+  turns: BenchmarkEnduranceTurn[];
+  finalVerificationCommand?: string;
+};
+
+export type BenchmarkEnduranceTurnResult = {
+  turnId: string;
+  mode: "baseline" | "kairn" | "mcp";
+  outcome: BenchmarkTaskOutcome;
+  observedCodexTokens?: number;
+  responseTokens: number;
+  elapsedMs: number;
+  actualFiles: string[];
+  agentTouchedFiles: string[];
+  expectedFiles: string[];
+  missingExpectedFiles: string[];
+  requiredTouchedSatisfied: boolean;
+  qualityGatePassed: boolean;
+  repeatedFilesAvoided: number;
+  repeatedSnippetsAvoided: number;
+  summary: string;
+  metadata: Record<string, unknown>;
+};
+
+export type BenchmarkEnduranceModeReport = {
+  mode: "baseline" | "kairn" | "mcp";
+  workspacePath: string;
+  sessionId?: string;
+  turns: BenchmarkEnduranceTurnResult[];
+  totalObservedCodexTokens?: number;
+  totalResponseTokens: number;
+  totalElapsedMs: number;
+  qualityGatePassed: boolean;
+  finalVerificationPassed: boolean;
+  ledger?: import("./ledger.js").SessionLedgerSummary;
+};
+
+export type BenchmarkEnduranceReport = {
+  suiteId: string;
+  suiteName: string;
+  startedAt: string;
+  endedAt: string;
+  reports: BenchmarkEnduranceModeReport[];
+  deltas: Record<string, {
+    baselineTokens?: number;
+    modeTokens?: number;
+    savedTokens?: number;
+    savingsRate?: number;
+    qualityGatePassed: boolean;
+    validSavings?: number;
+    invalidSavings?: number;
+  }>;
+  recommendations: string[];
+};
+
 export type BenchmarkSuite = {
   id: string;
   name: string;

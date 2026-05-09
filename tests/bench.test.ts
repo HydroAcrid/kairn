@@ -7,6 +7,8 @@ import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
 import { createDefaultBenchmarkSuite, loadBenchmarkSuite } from "../src/bench/suite.js";
 import { buildBenchmarkReport, compareBenchmarkReports, scoreBenchmarkCase } from "../src/bench/score.js";
 import { loadBenchmarkRepoMatrix, runBenchmarkRepoMatrix } from "../src/bench/matrix.js";
+import { loadBenchmarkEnduranceSuite } from "../src/bench/enduranceSuite.js";
+import { runBenchmarkEndurance } from "../src/bench/endurance.js";
 import { runAgentBenchmarkCase } from "../src/bench/agent.js";
 import { evaluateContextValue } from "../src/prime/contextValue.js";
 import { resolvePrimeProfile } from "../src/prime/quality.js";
@@ -134,6 +136,24 @@ describe("benchmark suite and scoring", () => {
     ]);
   });
 
+  it("loads endurance benchmark suite examples", () => {
+    const axios = loadBenchmarkEnduranceSuite({
+      suitePath: path.resolve("examples/bench/endurance-axios.json")
+    });
+    const flask = loadBenchmarkEnduranceSuite({
+      suitePath: path.resolve("examples/bench/endurance-flask.json")
+    });
+    const commons = loadBenchmarkEnduranceSuite({
+      suitePath: path.resolve("examples/bench/endurance-commons-io.json")
+    });
+
+    expect(axios.turns.map((turn) => turn.id)).toEqual(["diagnose", "fix", "verify", "cleanup"]);
+    expect(flask.seed?.setupPatchFile).toMatch(/flask-dispatch-request-view\.patch$/);
+    expect(commons.turns.find((turn) => turn.id === "fix")?.requiredTouchedFiles).toContain(
+      "src/main/java/org/apache/commons/io/FilenameUtils.java"
+    );
+  });
+
   it("loads the broad repo-matrix preflight example", () => {
     const matrix = loadBenchmarkRepoMatrix({
       matrixPath: path.resolve("examples/bench/repo-matrix.json")
@@ -204,6 +224,67 @@ describe("benchmark suite and scoring", () => {
     expect(report.repos[0]?.cases[0]?.expectedTopKPassed).toBe(true);
     expect(report.repos[0]?.cases[0]?.excludedFilesAvoided).toBe(true);
     expect(report.repos[0]?.cases[0]?.sourceVsTestDecision).not.toBe("test_first");
+  });
+
+  it("runs a fake-agent endurance suite in one workspace and reports ledger savings signals", async () => {
+    const root = createFixtureRepo();
+    const suitePath = path.join(root, "endurance-suite.json");
+    fs.writeFileSync(
+      suitePath,
+      JSON.stringify({
+        id: "fixture-endurance",
+        name: "Fixture Endurance",
+        task: "Keep src/user.ts context focused across turns.",
+        seed: {
+          repoUrl: root,
+          ref: "HEAD",
+          cloneDepth: 1
+        },
+        turns: [
+          {
+            id: "diagnose",
+            task: "Inspect src/user.ts formatting behavior.",
+            agentPrompt: "Inspect src/user.ts formatting behavior.",
+            expectedFiles: ["src/user.ts"],
+            requiredTouchedFiles: [],
+            excludedFiles: [],
+            budget: 500
+          },
+          {
+            id: "fix",
+            task: "Update src/user.ts formatting behavior.",
+            agentPrompt: "Update src/user.ts formatting behavior.",
+            expectedFiles: ["src/user.ts"],
+            requiredTouchedFiles: ["src/user.ts"],
+            excludedFiles: [],
+            verificationCommand: "node -e \"const fs=require('fs'); process.exit(fs.readFileSync('src/user.ts','utf8').includes('enduranceFix') ? 0 : 1)\"",
+            budget: 500
+          }
+        ]
+      })
+    );
+    const fakeCommand = [
+      "node -e \"",
+      "const fs=require('fs');",
+      "fs.appendFileSync('src/user.ts','\\nexport const enduranceFix = true;\\n');",
+      "console.log('src/user.ts');",
+      "console.log('Token usage: total=120 input=100 output=20');",
+      "\""
+    ].join("");
+
+    const report = await runBenchmarkEndurance({
+      rootPath: root,
+      suitePath,
+      baselineCommand: fakeCommand,
+      kairnCommand: fakeCommand,
+      turnTimeoutMs: 30000
+    });
+
+    expect(report.reports.map((item) => item.mode)).toEqual(["baseline", "kairn"]);
+    expect(report.reports.every((item) => item.qualityGatePassed)).toBe(true);
+    expect(report.reports.find((item) => item.mode === "kairn")?.sessionId).toMatch(/^task_/);
+    expect(report.reports.find((item) => item.mode === "kairn")?.ledger?.events).toBeGreaterThan(0);
+    expect(report.deltas.kairn?.baselineTokens).toBe(240);
   });
 
   it("treats excluded directory prefixes as noisy matrix hits", async () => {

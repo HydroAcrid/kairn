@@ -1,0 +1,55 @@
+{
+  "id": "endurance-flask",
+  "name": "Flask Dispatch Endurance",
+  "task": "Debug and verify a seeded Flask dispatch_request regression across multiple turns.",
+  "seed": {
+    "repoUrl": "https://github.com/pallets/flask.git",
+    "ref": "7374c85ddefc3f4b177a698ab9f0cbb6a5c0b392",
+    "cloneDepth": 1,
+    "setupPatchFile": "./patches/flask-dispatch-request-view.patch",
+    "expectedFailureCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/flask/app.py').read_text()\nexpected = 'return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)'\nraise SystemExit(1 if expected in source else 0)\nPY",
+    "testCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/flask/app.py').read_text()\nexpected = 'return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)'\nraise SystemExit(0 if expected in source else 1)\nPY"
+  },
+  "turns": [
+    {
+      "id": "diagnose",
+      "task": "Diagnose why Flask dispatch_request stopped invoking the matched view function.",
+      "agentPrompt": "Diagnose the seeded Flask dispatch_request regression. It should call the matched endpoint view function with view_args. Do not edit yet.",
+      "expectedFiles": ["src/flask/app.py", "src/flask/ctx.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["docs/", "examples/", "tests/"],
+      "budget": 800
+    },
+    {
+      "id": "fix",
+      "task": "Fix dispatch_request in Flask production source.",
+      "agentPrompt": "Fix the seeded Flask regression in production source only. Do not edit unrelated files.",
+      "expectedFiles": ["src/flask/app.py"],
+      "requiredTouchedFiles": ["src/flask/app.py"],
+      "excludedFiles": ["docs/", "examples/", "tests/"],
+      "verificationCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/flask/app.py').read_text()\nexpected = 'return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)'\nraise SystemExit(0 if expected in source else 1)\nPY",
+      "budget": 800
+    },
+    {
+      "id": "verify",
+      "task": "Run the smallest source-invariant verification for the Flask fix.",
+      "agentPrompt": "Verify the Flask dispatch_request fix with the smallest source-invariant check. Do not broaden unless it fails.",
+      "expectedFiles": ["src/flask/app.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["docs/", "examples/", "tests/"],
+      "verificationCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/flask/app.py').read_text()\nexpected = 'return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)'\nraise SystemExit(0 if expected in source else 1)\nPY",
+      "budget": 500
+    },
+    {
+      "id": "cleanup",
+      "task": "Review the final Flask diff for unrelated edits.",
+      "agentPrompt": "Review the final diff and confirm only the required Flask production source changed.",
+      "expectedFiles": ["src/flask/app.py"],
+      "requiredTouchedFiles": ["src/flask/app.py"],
+      "excludedFiles": ["docs/", "examples/", "tests/"],
+      "verificationCommand": "git diff --name-only | python3 - <<'PY'\nimport sys\nfiles=[line.strip() for line in sys.stdin if line.strip()]\nraise SystemExit(0 if all(f == 'src/flask/app.py' for f in files) else 1)\nPY",
+      "budget": 500
+    }
+  ],
+  "finalVerificationCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/flask/app.py').read_text()\nexpected = 'return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)'\nraise SystemExit(0 if expected in source else 1)\nPY"
+}

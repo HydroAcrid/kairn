@@ -292,7 +292,7 @@ function createTempWorkspace(rootPath: string): string {
   return workspacePath;
 }
 
-function createBenchmarkWorkspace(input: {
+export function createBenchmarkWorkspace(input: {
   rootPath: string;
   benchmarkCase: BenchmarkCase;
 }): { workspacePath: string; metadata: Record<string, unknown> } {
@@ -380,7 +380,7 @@ function applySeedPatch(input: { workspacePath: string; seed: BenchmarkSeedSpec 
   }
 }
 
-function runSeedVerification(input: {
+export function runSeedVerification(input: {
   workspacePath: string;
   benchmarkCase: BenchmarkCase;
   timeoutMs?: number | undefined;
@@ -462,7 +462,7 @@ function recordMetadata(value: unknown): Record<string, string> {
   return output;
 }
 
-function agentTouchedFiles(input: {
+export function agentTouchedFiles(input: {
   workspacePath: string;
   changedFiles: string[];
   seedPatchFiles: string[];
@@ -515,7 +515,7 @@ function runRequired(
   }
 }
 
-function runShell(command: string, cwd: string, timeoutMs: number): { status: number; output: string; timedOut: boolean; signal?: NodeJS.Signals | null } {
+export function runShell(command: string, cwd: string, timeoutMs: number): { status: number; output: string; timedOut: boolean; signal?: NodeJS.Signals | null } {
   const result = spawnSync(command, {
     cwd,
     shell: true,
@@ -540,7 +540,7 @@ function depthArgs(depth: number): string[] {
   return depth > 0 ? ["--depth", String(Math.floor(depth))] : [];
 }
 
-function changedFiles(workspacePath: string): string[] {
+export function changedFiles(workspacePath: string): string[] {
   if (!workspacePath) return [];
   try {
     return execFileSync("git", ["-C", workspacePath, "diff", "--name-only"], {
@@ -563,7 +563,7 @@ function shellQuote(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
-function commandWithPlaceholders(command: string, input: { prompt: string; root: string }): string {
+export function commandWithPlaceholders(command: string, input: { prompt: string; root: string }): string {
   return command
     .replaceAll("{prompt}", shellQuote(input.prompt))
     .replaceAll("{root}", shellQuote(input.root));

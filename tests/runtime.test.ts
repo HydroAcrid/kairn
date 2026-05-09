@@ -18,6 +18,60 @@ describe("KairnRuntime", () => {
     runtime.close();
   });
 
+  it("records and summarizes durable session ledger events", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const { session } = await runtime.startTask("Update dashboard rendering");
+
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "context_recommended",
+      filePath: "src/app.ts",
+      source: "runtime",
+      summary: "Recommended app source"
+    });
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "agent_file_touched",
+      filePath: "src/app.ts",
+      source: "agent",
+      summary: "Agent touched app source"
+    });
+
+    const events = runtime.getSessionLedger(session.id);
+    const summary = runtime.summarizeSessionLedger(session.id);
+
+    expect(events.map((event) => event.kind)).toEqual(expect.arrayContaining(["context_recommended", "agent_file_touched"]));
+    expect(summary.recommendedFilesUsed).toContain("src/app.ts");
+    expect(summary.currentPhase).toBe("implementation");
+
+    runtime.close();
+  });
+
+  it("suppresses duplicate automatic prime context in the same session", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const { session } = await runtime.startTask("Update job tracker mobile layout");
+
+    const first = await runtime.primeContext({
+      task: "Update job tracker mobile layout",
+      sessionId: session.id,
+      budget: 700
+    });
+    const second = await runtime.primeContext({
+      task: "Update job tracker mobile layout",
+      sessionId: session.id,
+      budget: 700
+    });
+    const ledger = runtime.summarizeSessionLedger(session.id);
+
+    expect(first.files.length).toBeGreaterThan(0);
+    expect(second.contextDecision?.action).toBe("suppress");
+    expect(ledger.repeatedFilesAvoided).toBeGreaterThanOrEqual(1);
+
+    runtime.close();
+  });
+
   it("reads files, symbols, related files, tests, diff, and compressed output", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);

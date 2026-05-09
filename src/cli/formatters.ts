@@ -1,5 +1,6 @@
 import type {
   BenchmarkComparison,
+  BenchmarkEnduranceReport,
   BenchmarkMatrixReport,
   BenchmarkProofReport,
   BenchmarkReport,
@@ -70,6 +71,14 @@ export function printMetrics(metrics: MetricsSummary): void {
       : "- latest: none ingested",
     `- eval runs: ${metrics.observed.evalRuns}`,
     `- eval observations: ${metrics.observed.observations}`,
+    "",
+    "Session ledger",
+    `- events: ${metrics.ledger.events}`,
+    `- phase: ${metrics.ledger.currentPhase}`,
+    `- repeated files avoided: ${metrics.ledger.repeatedFilesAvoided}`,
+    `- repeated snippets avoided: ${metrics.ledger.repeatedSnippetsAvoided}`,
+    `- recommended files used: ${metrics.ledger.recommendedFilesUsed.length}`,
+    `- unresolved failures: ${metrics.ledger.unresolvedFailures}`,
     ""
   ];
 
@@ -183,6 +192,49 @@ export function printBenchmarkMatrixReport(report: BenchmarkMatrixReport): void 
     ""
   );
 
+  process.stdout.write(`${lines.join("\n")}\n`);
+}
+
+export function printBenchmarkEnduranceReport(report: BenchmarkEnduranceReport): void {
+  const lines = [
+    "Kairn endurance benchmark.",
+    `Suite: ${report.suiteName}`,
+    "",
+    "Modes"
+  ];
+
+  for (const mode of report.reports) {
+    const observed = mode.totalObservedCodexTokens !== undefined ? `${mode.totalObservedCodexTokens} observed Codex tokens` : "observed Codex tokens unavailable";
+    lines.push(
+      `- ${mode.mode}: ${mode.qualityGatePassed ? "quality passed" : "quality failed"}; ${observed}; response tokens ${mode.totalResponseTokens}; turns ${mode.turns.length}`,
+      `  ledger: phase ${mode.ledger?.currentPhase ?? "n/a"}, repeated files avoided ${mode.ledger?.repeatedFilesAvoided ?? 0}, recommended files used ${mode.ledger?.recommendedFilesUsed.length ?? 0}`
+    );
+    for (const turn of mode.turns) {
+      lines.push(
+        `  - ${turn.turnId}: ${turn.outcome}; tokens ${turn.observedCodexTokens ?? "n/a"}; repeated avoided ${turn.repeatedFilesAvoided}/${turn.repeatedSnippetsAvoided}; ${turn.summary}`
+      );
+    }
+  }
+
+  lines.push("", "Deltas");
+  for (const [mode, delta] of Object.entries(report.deltas)) {
+    if (delta.savedTokens === undefined) {
+      lines.push(`- ${mode}: unavailable`);
+      continue;
+    }
+    if (!delta.qualityGatePassed && (delta.savedTokens ?? 0) > 0) {
+      lines.push(`- ${mode}: ${delta.savedTokens} fewer tokens, invalid savings because quality failed`);
+    } else {
+      lines.push(`- ${mode}: ${delta.savedTokens} tokens (${Math.round((delta.savingsRate ?? 0) * 100)}%)`);
+    }
+  }
+
+  lines.push(
+    "",
+    "Recommendations",
+    ...(report.recommendations.length > 0 ? report.recommendations.map((entry) => `- ${entry}`) : ["- none"]),
+    ""
+  );
   process.stdout.write(`${lines.join("\n")}\n`);
 }
 

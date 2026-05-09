@@ -125,6 +125,41 @@ export function registerCoreCommands(program: Command): void {
       });
     });
 
+  program
+    .command("ledger")
+    .description("Show Kairn's durable session context ledger.")
+    .requiredOption("--session <id>", "Kairn task session id")
+    .option("--root <path>", "target repository root", process.cwd())
+    .option("--json", "print JSON output")
+    .action(async (options: { session: string; root: string; json?: boolean }) => {
+      await withRuntime(options.root, async (runtime) => {
+        const events = runtime.getSessionLedger(options.session);
+        const summary = runtime.summarizeSessionLedger(options.session);
+        if (options.json) {
+          printJson({ summary, events });
+          return;
+        }
+        process.stdout.write(
+          [
+            "Kairn session ledger.",
+            `Session: ${summary.sessionId}`,
+            `Events: ${summary.events}`,
+            `Current phase: ${summary.currentPhase}`,
+            `Recommended files used: ${summary.recommendedFilesUsed.length}`,
+            `Repeated files avoided: ${summary.repeatedFilesAvoided}`,
+            `Repeated snippets avoided: ${summary.repeatedSnippetsAvoided}`,
+            `Unresolved failures: ${summary.unresolvedFailures}`,
+            "",
+            "Recent events",
+            ...(summary.recentEvents.length > 0
+              ? summary.recentEvents.map((event) => `- ${event.kind}${event.filePath ? ` ${event.filePath}` : ""}: ${event.summary}`)
+              : ["- none"]),
+            ""
+          ].join("\n")
+        );
+      });
+    });
+
   const index = program
     .command("index")
     .description("Inspect and compact Kairn index state.");
