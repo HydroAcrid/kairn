@@ -1,4 +1,4 @@
-import type { ContextPrime, ContextResponse, PrimeQuality } from "../types.js";
+import type { ContextInvariant, ContextPrime, ContextResponse, PrimeQuality } from "../types.js";
 import { estimateTokens, truncateToBudget } from "../utils/tokens.js";
 import { uniquePaths, uniqueStrings } from "../utils/collections.js";
 import type { PrimeProfileLimits, ResolvedPrimeProfile } from "./quality.js";
@@ -13,6 +13,7 @@ export function formatPrimeContext(input: {
   relatedFiles: string[];
   testFiles: string[];
   suggestedCommands: string[];
+  invariants?: ContextInvariant[] | undefined;
 }): string {
   if (input.profile === "failure_debug") {
     return formatFailureDebugPrime(input);
@@ -35,6 +36,8 @@ export function formatPrimeContext(input: {
     "",
     "## Targeted Context",
     compactPrimeContext(input.context.content, input.limits.snippetBudget),
+    "",
+    ...formatInvariantSections(input.invariants, "## Invariant To Preserve"),
     "",
     "## Likely Tests",
     tests.length > 0 ? tests.map((file) => `- ${file}`).join("\n") : "- No likely tests found.",
@@ -60,6 +63,7 @@ function formatFailureDebugPrime(input: {
   limits: PrimeProfileLimits;
   context: ContextResponse;
   testFiles: string[];
+  invariants?: ContextInvariant[] | undefined;
 }): string {
   const topFile = uniquePaths(input.context.suggestedNextContext.length > 0 ? input.context.suggestedNextContext : input.context.files)[0];
   const likelyTest = uniquePaths(input.testFiles)[0];
@@ -77,6 +81,8 @@ function formatFailureDebugPrime(input: {
     "",
     "Focused snippet:",
     compactPrimeContext(input.context.content, input.limits.snippetBudget),
+    "",
+    ...formatInvariantSections(input.invariants, "Invariant to preserve:"),
     "",
     "Instruction: inspect the start file and symbol first, patch only the production source, then run the failing check."
   ].filter(Boolean);
@@ -103,6 +109,7 @@ export function formatMcpBriefPrimeContext(input: {
   context: ContextResponse;
   files: string[];
   quality: PrimeQuality;
+  invariants?: ContextInvariant[] | undefined;
 }): string {
   const files = uniquePaths(input.files).slice(0, 2);
   const primaryFile = files[0];
@@ -120,6 +127,8 @@ export function formatMcpBriefPrimeContext(input: {
     files.length > 0 ? files.map((file, index) => `${index + 1}. ${file}`).join("\n") : "No high-confidence start file found.",
     "",
     `Reason: ${reason}`,
+    "",
+    ...formatInvariantSections(input.invariants, "Invariant:"),
     "",
     "Instruction: call `kairn_prepare_task` with this session id before broad scans, then use `kairn_get_next_context` for the next smallest read.",
     `Suggested MCP call: kairn_prepare_task({ "task": ${JSON.stringify(input.task)}, "sessionId": ${JSON.stringify(input.sessionId)}, "detail": "compact" })`,
@@ -156,6 +165,7 @@ export function formatShrunkPrimeContext(input: {
   quality: PrimeQuality;
   context: ContextResponse;
   budget: number;
+  invariants?: ContextInvariant[] | undefined;
 }): string {
   const topFiles = uniquePaths(input.context.suggestedNextContext.length > 0 ? input.context.suggestedNextContext : input.context.files).slice(0, 1);
   const symbolHints = extractPrimeSymbolHints(input.context.content).slice(0, 2);
@@ -174,7 +184,9 @@ export function formatShrunkPrimeContext(input: {
     "Focused context:",
     compactPrimeContext(input.context.content, Math.max(120, Math.floor(input.budget * 0.34))),
     "",
-    "Instruction: inspect this source file first; avoid broad related-file/test scans unless this file is insufficient or a failure names another file."
+    ...formatInvariantSections(input.invariants, "Invariant to preserve:"),
+    "",
+    "Stop condition: preserve the invariant in the start file first; avoid broad related-file/test scans unless this file cannot satisfy the invariant or a failure names another file."
   ].filter(Boolean);
   return fitSectionsToBudget(sections, input.budget);
 }
@@ -215,12 +227,24 @@ function formatTinyDirectivePrime(input: { prime: ContextPrime; budget: number }
       ? files.map((file, index) => `${index + 1}. ${file}`).join("\n")
       : "No high-confidence start file found.",
     symbols.length > 0 ? `Symbols: ${symbols.join(", ")}` : "",
+    ...formatInvariantSections(input.prime.invariants, "Invariant:"),
     likelyTest ? `Likely test: ${likelyTest}` : "",
     "",
     "Instruction: inspect the start files first; only use broad search if these are insufficient."
   ].filter(Boolean);
 
   return fitSectionsToBudget(lines, input.budget);
+}
+
+function formatInvariantSections(invariants: ContextInvariant[] | undefined, heading: string): string[] {
+  const invariant = invariants?.[0];
+  if (!invariant) return [];
+  return [
+    heading,
+    `- ${invariant.statement}`,
+    invariant.evidence ? `Evidence: ${invariant.evidence}` : "",
+    invariant.verificationCommand ? `Verification: ${invariant.verificationCommand}` : ""
+  ].filter(Boolean);
 }
 
 function primaryReasonForFile(context: ContextResponse, filePath: string): string {

@@ -443,6 +443,40 @@ The next improvement should focus on general patterns rather than repo-specific 
 - Make hook full-prime use the exact-source evidence packet more directly. The Next failure shows that correct file targeting is not enough; the brief must preserve the key behavioral invariant.
 - Keep MCP as a serious candidate for large repos, but only when returned-file quality is high and actual MCP calls are recorded.
 
+## Invariant-Guided Context Layer
+
+Implemented after the large-repo source-invariant proof:
+
+- Added first-class `ContextInvariant` metadata for exact-source context.
+- Exact-source prime/MCP responses now include:
+  - primary source file,
+  - exact symbol/snippet evidence,
+  - invariant statement,
+  - verification command,
+  - stop condition to avoid broad reads unless the invariant cannot be satisfied locally.
+- `hook_full_prime`, tiny directives, MCP brief output, compact `kairn_prepare_task`, and focused MCP follow-ups all receive the invariant metadata.
+- Invariant extraction prefers explicit task language like `should`, `must`, `preserve`, `no longer`, and `regression`, with reusable behavior templates for common debugging phrasing.
+- Exact-source gating now requires concrete source alignment, such as a symbol match or precise filename match, before attaching an invariant.
+- URL/local/relative behavior scoring was tightened so a Next-style prompt ranks `packages/next/src/shared/lib/router/utils/is-local-url.ts` above broader URL/type helpers.
+
+Why this matters:
+
+- The Next hook failure was not a file-targeting failure. Kairn found the right file, but Codex made a plausible rewrite that did not restore the required invariant.
+- The new layer changes the guidance from "this file is relevant" to "preserve this behavior in this file before broadening."
+- This should improve exact-source tasks across languages without adding repo-specific scoring rules.
+
+Verification:
+
+- `pnpm test -- tests/bench.test.ts tests/mcp.test.ts`: `126` tests passed
+- `pnpm typecheck`: passed
+- `pnpm build`: passed
+
+Smoke check:
+
+- `kairn prime "Debug the seeded Next.js regression. Relative URLs should be treated as local URLs..." --root /tmp/kairn-expanded-matrix/next --budget 900`
+- Result: focused start file was `packages/next/src/shared/lib/router/utils/is-local-url.ts`
+- Included invariant: `Relative or non-absolute URLs must remain local/routable before absolute-origin fallback logic.`
+
 Expected impact for the next live proof:
 
 - Python `real_mcp_first` should preserve its focused two-file pattern.

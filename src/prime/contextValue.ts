@@ -25,6 +25,7 @@ export function evaluateContextValue(input: {
       (isNoisyPath(primaryFile.toLowerCase()) || primaryRecord?.kind === "test" || !isPrimarySourcePath(primaryFile))
   );
   const reasons = new Set<string>(input.quality.reasons);
+  const primaryReasons = primaryFile ? reasonsForPrimaryFile(input.context, primaryFile) : [];
 
   let score = input.quality.score;
   if (debugSignal) {
@@ -44,7 +45,8 @@ export function evaluateContextValue(input: {
     topScore: input.quality.topScore,
     topGap: input.quality.topGap,
     primaryKind: primaryRecord?.kind,
-    sourceFixSignal
+    sourceFixSignal,
+    primaryReasons
   });
   if (exactSourceHit) {
     reasons.add("exact source hit should use focused context");
@@ -209,6 +211,7 @@ export function isExactSourceHit(input: {
   topGap: number;
   primaryKind?: FileRecord["kind"] | undefined;
   sourceFixSignal?: boolean | undefined;
+  primaryReasons?: string[] | undefined;
 }): boolean {
   if (!input.primaryFile) return false;
   const normalized = input.primaryFile.toLowerCase();
@@ -219,10 +222,52 @@ export function isExactSourceHit(input: {
     input.primaryKind !== "test" &&
     isPrimarySourcePath(input.primaryFile) &&
     !isNoisyPath(normalized) &&
+    hasConcreteExactSourceSignal(input.primaryReasons ?? [], input.primaryFile, input.task) &&
     input.topScore >= 160 &&
     input.topGap >= 20
   );
 }
+
+function hasConcreteExactSourceSignal(reasons: string[], filePath: string, task: string): boolean {
+  if (
+    reasons.some((reason) =>
+      /(^|;|\b)(symbol match|behavior symbol match|exact symbol match|precise filename match|precise symbol rescue|utility\/helper source rescue)\b/.test(reason)
+    )
+  ) {
+    return true;
+  }
+  const basenameTerms = new Set(identifierTerms(filePath.split("/").at(-1) ?? filePath));
+  const taskTerms = new Set(identifierTerms(task).filter((term) => !EXACT_SOURCE_TASK_STOP_TERMS.has(term)));
+  const hits = [...basenameTerms].filter((term) => taskTerms.has(term) || (term === "url" && taskTerms.has("urls")));
+  return hits.length >= 2;
+}
+
+function reasonsForPrimaryFile(context: ContextResponse, filePath: string): string[] {
+  const line = context.content
+    .split(/\r?\n/)
+    .find((entry) => entry.includes(filePath) && entry.includes("):"));
+  if (!line) return [];
+  const reasonText = line.split("):").slice(1).join("):");
+  return reasonText
+    .split(";")
+    .map((reason) => reason.trim())
+    .filter(Boolean);
+}
+
+const EXACT_SOURCE_TASK_STOP_TERMS = new Set([
+  "debug",
+  "seeded",
+  "regression",
+  "fix",
+  "production",
+  "source",
+  "file",
+  "files",
+  "edit",
+  "unrelated",
+  "should",
+  "treated"
+]);
 
 function isSourceFixTask(task: string): boolean {
   const normalized = task.toLowerCase();
@@ -272,4 +317,17 @@ function isVagueImprovementTask(task: string): boolean {
 function isMultiFileTask(task: string): boolean {
   const normalized = task.toLowerCase();
   return /\b(across|multiple|end-to-end|e2e|integration|workflow|flow|refactor|feature|migration|api and ui|frontend and backend|full stack|system|ui|mobile|layout|responsive|drawer|sheet|tabs|dashboard|screen|component|filter|filters|card|cards)\b/.test(normalized);
+}
+
+function identifierTerms(value: string): string[] {
+  return [
+    ...new Set(
+      value
+        .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+        .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter((term) => term.length >= 2)
+    )
+  ];
 }

@@ -65,6 +65,7 @@ export type ContextPrime = {
   content: string;
   files: string[];
   tokenEstimate: number;
+  invariants?: ContextInvariant[];
   quality?: PrimeQuality;
   contextDecision?: ContextValueDecision;
   timings?: Record<string, number>;
@@ -131,8 +132,19 @@ export type ExactSourceEvidence = {
   lines?: string;
   snippet?: string;
   expectedBehavior: string;
+  invariant?: ContextInvariant;
   verificationCommand: string;
   tokenEstimate: number;
+};
+
+export type ContextInvariant = {
+  file: string;
+  symbol?: string;
+  statement: string;
+  evidence?: string;
+  verificationCommand?: string;
+  confidence: number;
+  source: "seed" | "test" | "failure" | "symbol" | "heuristic";
 };
 
 export type InitResult = {

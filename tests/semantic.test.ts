@@ -485,7 +485,7 @@ describe("hybridSearch", () => {
     });
 
     expect(results[0]?.path).toBe("packages/next/src/shared/lib/router/utils/is-local-url.ts");
-    expect(results[0]?.reasons).toEqual(expect.arrayContaining(["utility/helper source rescue"]));
+    expect(results[0]?.reasons).toEqual(expect.arrayContaining(["precise filename match: local, url"]));
     expect(results.findIndex((result) => result.path === "packages/next/src/shared/lib/router/utils/is-local-url.ts")).toBeLessThan(
       results.findIndex((result) => result.path === "packages/next/src/shared/lib/router/router.ts")
     );

@@ -576,7 +576,14 @@ const BEHAVIOR_TRIGGER_TERMS = new Set([
   "uppercase",
   "upper",
   "slug",
-  "slugify"
+  "slugify",
+  "local",
+  "url",
+  "urls",
+  "relative",
+  "absolute",
+  "origin",
+  "routable"
 ]);
 
 const BEHAVIOR_STOP_TERMS = new Set([
@@ -609,7 +616,10 @@ const BEHAVIOR_CANONICAL_TERMS = new Map<string, string[]>([
   ["stringview", ["string", "view", "stringview", "string_view"]],
   ["blank", ["blank", "whitespace", "space"]],
   ["lowercase", ["lower", "lowercase", "lowercases", "uppercase", "upper"]],
-  ["slugify", ["slug", "slugify"]]
+  ["slugify", ["slug", "slugify"]],
+  ["localurl", ["local", "url", "urls", "routable"]],
+  ["relative", ["relative"]],
+  ["absolute", ["absolute", "origin"]]
 ]);
 
 function detectBehaviorQuery(query: string): BehaviorQuery {
@@ -685,6 +695,10 @@ function detectBehaviorQuery(query: string): BehaviorQuery {
     symbolHints.add("blank");
   }
   if (terms.has("slugify")) symbolHints.add("slugify");
+  if (terms.has("localurl") && (terms.has("relative") || terms.has("absolute") || normalized.includes("local"))) {
+    symbolHints.add("islocalurl");
+    symbolHints.add("localurl");
+  }
   if (terms.has("lowercase") && !terms.has("slugify")) {
     symbolHints.add("lower");
   }
@@ -692,7 +706,7 @@ function detectBehaviorQuery(query: string): BehaviorQuery {
   return {
     active: true,
     terms: [...terms],
-    anchorTerms: [...terms].filter((term) => ["hash", "sort", "stable", "match", "object", "order", "length", "ansi", "prefix", "stringview", "blank", "lowercase", "slugify"].includes(term)),
+    anchorTerms: [...terms].filter((term) => ["hash", "sort", "stable", "match", "object", "order", "length", "ansi", "prefix", "stringview", "blank", "lowercase", "slugify", "localurl", "relative", "absolute"].includes(term)),
     phrases,
     symbolHints: [...symbolHints],
     sourceFix: /\b(production source|source|fix|debug)\b/.test(normalized),
@@ -753,6 +767,8 @@ function behaviorSymbolWeight(symbolName: string, behavior: BehaviorQuery): numb
   if (behavior.terms.includes("stringview") && compactSymbol.includes("stringview")) score += 84;
   if (behavior.terms.includes("blank") && compactSymbol.includes("blank")) score += 104;
   if (behavior.terms.includes("slugify") && compactSymbol.includes("slugify")) score += 140;
+  if (behavior.terms.includes("localurl") && compactSymbol.includes("localurl")) score += 150;
+  if (behavior.terms.includes("relative") && compactSymbol.includes("localurl")) score += 70;
   if (behavior.terms.includes("lowercase") && compactSymbol.includes("lower")) score += 54;
   return score;
 }
@@ -984,8 +1000,8 @@ function applyPreciseSourceRescue(
 
   return files.map((file) => {
     const exact = preciseSourceScore(file, rescue, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
-    if (exact.score === 0) return file;
-    const broadPenalty = exact.precise ? 0 : broadSourcePenalty(file, rescue);
+    const broadPenalty = broadSourcePenalty(file, rescue, exact.precise);
+    if (exact.score === 0 && broadPenalty === 0) return file;
     const adjustedScore = Math.max(0, file.score + exact.score - broadPenalty);
     return {
       ...file,
@@ -1043,7 +1059,12 @@ function preciseSourceScore(
   const basenameHits = rescue.terms.filter((term) => basenameTerms.has(term) || basename.includes(term));
   const symbolHits = rescue.terms.filter((term) => symbolText.includes(term));
   const chunkHits = rescue.phraseTerms.filter((term) => chunkText.includes(term));
-  const exactUtilityPath = /(^|\/)(utils?|helpers?|shared|common)(\/|\.|-|_)/.test(file.path.toLowerCase());
+  const lowerPath = file.path.toLowerCase();
+  const exactUtilityPath =
+    /(^|\/)(utils?|helpers?|shared|common)(\/|\.|-|_)/.test(lowerPath) ||
+    lowerPath.includes("/utils/") ||
+    lowerPath.includes("/helpers/") ||
+    lowerPath.includes("/shared/");
   const precise = basenameHits.length >= 2 || symbolHits.length >= 2 || (pathHits.length >= 3 && exactUtilityPath);
   let score = 0;
   const reasons: string[] = [];
@@ -1076,13 +1097,21 @@ function preciseSourceScore(
   return { score: Math.max(0, score), reasons, precise };
 }
 
-function broadSourcePenalty(file: HybridScoredResult, rescue: PreciseSourceRescue): number {
-  if (!isLanguageSourceSurface(file)) return 0;
+function broadSourcePenalty(file: HybridScoredResult, rescue: PreciseSourceRescue, precise: boolean): number {
+  if (!isLanguageSourceSurface(file) || precise) return 0;
   const basename = file.path.toLowerCase().split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
   const genericBroad = ["router", "index", "main", "core", "types", "utils", "helpers", "client", "server"].includes(basename);
   const pathTerms = new Set(tokenizeLexical(file.path));
   const matchingTerms = rescue.terms.filter((term) => pathTerms.has(term)).length;
-  return genericBroad && matchingTerms < 2 ? 70 : 0;
+  let penalty = genericBroad && matchingTerms < 2 ? 70 : 0;
+  const normalized = file.path.toLowerCase();
+  if (/(^|\/)(types?|metadata|schema|schemas|interfaces?)(\/|\.|-|_)/.test(normalized) && matchingTerms < 2) {
+    penalty += 260;
+  }
+  if (rescue.helperIntent && matchingTerms === 0 && !/(^|\/)(utils?|helpers?|shared|common)(\/|\.|-|_)/.test(normalized)) {
+    penalty += 120;
+  }
+  return penalty;
 }
 
 const PRECISE_RESCUE_STOP_TERMS = new Set([
@@ -1096,6 +1125,10 @@ const PRECISE_RESCUE_STOP_TERMS = new Set([
   "check",
   "test",
   "fix",
+  "file",
+  "files",
+  "edit",
+  "unrelated",
   "bug",
   "should",
   "return",

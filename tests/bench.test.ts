@@ -1117,7 +1117,48 @@ describe("benchmark runtime and CLI", () => {
     expect(prime.quality?.action).toBe("shrink");
     expect(prime.contextDecision?.exactSourceHit).toBe(true);
     expect(prime.files[0]).toBe("src/click/_compat.py");
+    expect(prime.invariants?.[0]?.statement).toContain("ANSI escape sequences");
+    expect(prime.content).toContain("Invariant to preserve");
+    expect(prime.content).toContain("visible terminal text length");
+    expect(prime.content).toContain("Stop condition");
     expect(prime.tokenEstimate).toBeLessThanOrEqual(900);
+
+    runtime.close();
+  });
+
+  it("adds invariant guidance for exact-source URL helper primes", async () => {
+    const root = createFixtureRepo();
+    fs.mkdirSync(path.join(root, "packages/next/src/shared/lib/router/utils"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "packages/next/src/shared/lib/router/utils/is-local-url.ts"),
+      [
+        "import { isAbsoluteUrl, getLocationOrigin } from '../../utils'",
+        "",
+        "export function isLocalURL(url: string): boolean {",
+        "  if (!isAbsoluteUrl(url)) return true",
+        "  const locationOrigin = getLocationOrigin()",
+        "  const resolved = new URL(url, locationOrigin)",
+        "  return resolved.origin === locationOrigin",
+        "}",
+        ""
+      ].join("\n")
+    );
+    fs.mkdirSync(path.join(root, "packages/next/src/shared/lib/router"), { recursive: true });
+    fs.writeFileSync(path.join(root, "packages/next/src/shared/lib/router/router.ts"), "export const router = {}\n");
+    const runtime = new KairnRuntime(root);
+
+    const prime = await runtime.primeContext({
+      task: "Debug the seeded Next.js regression. Relative URLs should be treated as local URLs. Fix the production source and do not edit unrelated files.",
+      budget: 900
+    });
+
+    expect(prime.contextDecision?.exactSourceHit).toBe(true);
+    expect(prime.files).toEqual(["packages/next/src/shared/lib/router/utils/is-local-url.ts"]);
+    expect(prime.invariants?.[0]?.statement).toContain("Relative or non-absolute URLs");
+    expect(prime.content).toContain("Invariant to preserve");
+    expect(prime.content).toContain("Relative or non-absolute URLs");
+    expect(prime.content).toContain("Stop condition");
+    expect(prime.content).not.toContain("router.ts");
 
     runtime.close();
   });

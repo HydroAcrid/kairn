@@ -193,13 +193,21 @@ describe("MCP server", () => {
         symbol?: string;
         snippet?: string;
         verificationCommand?: string;
+        invariant?: {
+          statement: string;
+          confidence: number;
+        };
       } | null;
+      invariantStatement?: string | null;
     };
     expect(preparedParsed.contextDecision?.exactSourceHit).toBe(true);
     expect(preparedParsed.startFiles).toEqual(["include/fmt/base.h"]);
     expect(preparedParsed.exactSourceEvidence?.file).toBe("include/fmt/base.h");
     expect(preparedParsed.exactSourceEvidence?.symbol).toBe("starts_with");
     expect(preparedParsed.exactSourceEvidence?.snippet).toContain("starts_with");
+    expect(preparedParsed.exactSourceEvidence?.invariant?.statement).toContain("equal-length identical prefix");
+    expect(preparedParsed.exactSourceEvidence?.invariant?.confidence).toBeGreaterThanOrEqual(70);
+    expect(preparedParsed.invariantStatement).toContain("equal-length identical prefix");
     expect(preparedParsed.exactSourceEvidence?.verificationCommand).toBeTruthy();
 
     const next = await client.callTool({
@@ -214,7 +222,10 @@ describe("MCP server", () => {
     expect(nextParsed.related).toEqual([]);
     expect(nextParsed.warnings.join(" ")).toContain("Exact source hit");
     expect(nextParsed.content).toContain("starts_with");
+    expect(nextParsed.content).toContain("Invariant to preserve");
+    expect(nextParsed.content).toContain("equal-length identical prefix");
     expect(nextParsed.content).toContain("Verification:");
+    expect(nextParsed.content).toContain("Stop condition");
 
     const context = await client.callTool({
       name: "kairn_find_context",

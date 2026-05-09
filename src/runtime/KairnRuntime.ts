@@ -77,6 +77,7 @@ import {
 import { estimateFileBaselineTokens } from "../metrics/baseline.js";
 import { uniquePaths, uniqueStrings } from "../utils/collections.js";
 import { formatContextResults } from "../context/formatContext.js";
+import { buildContextInvariant } from "../context/invariants.js";
 import { failureRecommendation } from "../watch/recommendation.js";
 import { adaptivePrimeBudget, queryLocalBudget } from "../budget/adaptiveBudget.js";
 import {
@@ -219,6 +220,11 @@ export class KairnRuntime {
       reasons: contextDecision.reasons,
       expectedSavingsRisk: contextDecision.expectedSavingsRisk
     };
+    const invariants = contextDecision.exactSourceHit && primaryFile
+      ? [this.getExactSourceEvidence({ sessionId: session.id, file: primaryFile, budget: 180 }).invariant].filter(
+          (invariant): invariant is NonNullable<typeof invariant> => Boolean(invariant)
+        )
+      : [];
     let related: Awaited<ReturnType<KairnRuntime["getRelatedFiles"]>> | undefined;
     let tests: Awaited<ReturnType<KairnRuntime["findTests"]>> | undefined;
     const needsExpansion = quality.action === "emit" && !contextDecision.exactSourceHit && input.format !== "mcp_brief";
@@ -272,7 +278,8 @@ export class KairnRuntime {
           budget: Math.min(budget, 360),
           context,
           files,
-          quality
+          quality,
+          invariants
         })
       : quality.action === "suppress"
         ? formatSuppressedPrimeContext({ task: resolvedTask, sessionId: session.id, profile, quality })
@@ -283,7 +290,8 @@ export class KairnRuntime {
               profile,
               quality,
               context,
-              budget: Math.min(budget, 420)
+              budget: Math.min(budget, 420),
+              invariants
             })
           : formatPrimeContext({
               task: resolvedTask,
@@ -294,7 +302,8 @@ export class KairnRuntime {
               context,
               relatedFiles: related?.related ?? [],
               testFiles: tests?.files ?? [],
-              suggestedCommands
+              suggestedCommands,
+              invariants
             });
     markTiming("formatMs", formatStartedAt);
     timings.totalPrimeMs = Date.now() - primeStartedAt;
@@ -319,6 +328,7 @@ export class KairnRuntime {
         format: input.format ?? "standard",
         quality,
         contextDecision,
+        invariants,
         timings,
         contextTokenEstimate: context.tokenEstimate,
         relatedCount: related?.related.length ?? 0,
@@ -339,6 +349,7 @@ export class KairnRuntime {
       metadata: {
         ...quality,
         contextDecision,
+        invariants,
         timings,
         taskHash: sha256(resolvedTask),
         profile
@@ -356,6 +367,7 @@ export class KairnRuntime {
       files,
       metadata: {
         ...contextDecision,
+        invariants,
         timings,
         taskHash: sha256(resolvedTask),
         profile
@@ -369,6 +381,7 @@ export class KairnRuntime {
       content,
       files,
       tokenEstimate: estimateTokens(content),
+      invariants,
       quality,
       contextDecision,
       timings,
@@ -1452,8 +1465,9 @@ export class KairnRuntime {
         evidence.symbol ? `Symbol: ${evidence.symbol}` : undefined,
         evidence.lines ? `Lines: ${evidence.lines}` : undefined,
         "",
-        "Expected behavior:",
+        "Invariant to preserve:",
         evidence.expectedBehavior,
+        evidence.invariant?.evidence ? `Evidence: ${evidence.invariant.evidence}` : undefined,
         "",
         evidence.snippet ? "## Focused Snippet" : undefined,
         evidence.snippet ? "```" : undefined,
@@ -1463,7 +1477,7 @@ export class KairnRuntime {
         "Verification:",
         evidence.verificationCommand,
         "",
-        "Agent guidance: do not request broad related files or test fanout unless this exact source file is insufficient."
+        "Stop condition: do not request broad related files or test fanout unless this exact source file cannot satisfy the invariant."
       ].filter(Boolean).join("\n"),
       input.budget ?? 550
     );
@@ -1495,13 +1509,22 @@ export class KairnRuntime {
     const rawSnippet = sliceLines(content, snippetStart, snippetEnd);
     const snippet = truncateToBudget(rawSnippet, input.budget ?? 220);
     const evidenceSymbol = chooseSnippetIdentifier(rawSnippet, session.task) ?? symbol?.name;
+    const verificationCommand = inferVerificationCommand(session.rootPath, target);
+    const invariant = buildContextInvariant({
+      task: session.task,
+      file: target,
+      symbol: evidenceSymbol,
+      snippet: rawSnippet,
+      verificationCommand
+    });
     return {
       file: target,
       ...(evidenceSymbol ? { symbol: evidenceSymbol } : {}),
       lines: symbol ? `${symbol.startLine}-${symbol.endLine}` : `${snippetStart}-${snippetEnd}`,
       snippet,
-      expectedBehavior: inferExpectedBehavior(session.task),
-      verificationCommand: inferVerificationCommand(session.rootPath, target),
+      expectedBehavior: invariant.statement,
+      invariant,
+      verificationCommand,
       tokenEstimate: estimateTokens(snippet) + estimateTokens(session.task)
     };
   }

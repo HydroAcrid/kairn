@@ -330,6 +330,8 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
     files: startFiles,
     exactSymbolHint: symbolHint ?? null,
     exactSourceEvidence: exactSourceEvidence ?? null,
+    invariant: exactSourceEvidence?.invariant ?? prime.invariants?.[0] ?? null,
+    invariantStatement: exactSourceEvidence?.invariant?.statement ?? prime.invariants?.[0]?.statement ?? null,
     expectedBehavior: exactSourceEvidence?.expectedBehavior ?? null,
     verificationCommand: exactSourceEvidence?.verificationCommand ?? null,
     primaryReason: primaryFile
@@ -364,6 +366,7 @@ function fullPrepareResult(prime: PrimeContextResult) {
     files: prime.files.slice(0, 4),
     quality: prime.quality,
     contextDecision: prime.contextDecision,
+    invariants: prime.invariants ?? [],
     warnings: prime.warnings,
     suggestedCommands: prime.suggestedCommands.slice(0, 3),
     tokenEstimate: prime.tokenEstimate,
