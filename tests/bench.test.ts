@@ -308,6 +308,67 @@ describe("benchmark suite and scoring", () => {
     }
   });
 
+  it("counts seeded files as agent-touched when the fix restores clean committed content", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-seed-clean-restore-"));
+    try {
+      fs.mkdirSync(path.join(root, "src"), { recursive: true });
+      fs.writeFileSync(path.join(root, "src/app.ts"), "export const value = 1;\n");
+      execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["add", "."], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["commit", "-m", "initial"], {
+        cwd: root,
+        stdio: "ignore",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: "Kairn Test",
+          GIT_AUTHOR_EMAIL: "test@example.com",
+          GIT_COMMITTER_NAME: "Kairn Test",
+          GIT_COMMITTER_EMAIL: "test@example.com"
+        }
+      });
+      const patchPath = path.join(root, "seed.patch");
+      fs.writeFileSync(
+        patchPath,
+        [
+          "diff --git a/src/app.ts b/src/app.ts",
+          "index 2368447..e2403dd 100644",
+          "--- a/src/app.ts",
+          "+++ b/src/app.ts",
+          "@@ -1 +1 @@",
+          "-export const value = 1;",
+          "+export const value = 2;",
+          ""
+        ].join("\n")
+      );
+
+      const result = await runAgentBenchmarkCase({
+        rootPath: root,
+        benchmarkCase: {
+          id: "seeded-clean-restore",
+          mode: "agent",
+          task: "Fix source",
+          expectedFiles: ["src/app.ts"],
+          requiredTouchedFiles: ["src/app.ts"],
+          excludedFiles: [],
+          seed: {
+            repoUrl: root,
+            ref: "HEAD",
+            setupPatchFile: patchPath,
+            testCommand: "node -e \"const fs=require('fs'); if(!fs.readFileSync('src/app.ts','utf8').includes('value = 1')) process.exit(1)\""
+          }
+        },
+        agentCommand: "node -e \"require('fs').writeFileSync('src/app.ts', 'export const value = 1;\\\\n')\" {prompt}"
+      });
+
+      expect(result.outcome).toBe("pass");
+      expect(result.metadata.changedFiles).toEqual([]);
+      expect(result.metadata.agentChangedFiles).toEqual(["src/app.ts"]);
+      expect(result.metadata.requiredTouchedSatisfied).toBe(true);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("times benchmark setup separately from the live-agent command", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-agent-setup-timing-"));
     try {

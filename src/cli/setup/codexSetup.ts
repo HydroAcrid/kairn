@@ -202,5 +202,20 @@ function buildCodexHookCommand(input: {
   primeBudget: number;
   hookOutput: HookOutputProfile;
 }): string {
-  return `eval "\${KAIRN_CMD:-kairn} hook --source codex --root \\"$PWD\\" --prime-profile ${input.primeProfile} --prime-budget ${input.primeBudget} --hook-output ${input.hookOutput}"`;
+  const kairnCommand = resolveKairnMcpCommand();
+  const defaultCommand = shellCommand([kairnCommand.command, ...kairnCommand.argsPrefix]);
+  return `eval "\${KAIRN_CMD:-${escapeDoubleQuotedShell(defaultCommand)}} hook --source codex --root \\"$PWD\\" --prime-profile ${input.primeProfile} --prime-budget ${input.primeBudget} --hook-output ${input.hookOutput}"`;
+}
+
+function shellCommand(parts: string[]): string {
+  return parts.map(shellQuote).join(" ");
+}
+
+function shellQuote(value: string): string {
+  if (/^[A-Za-z0-9_./:=+-]+$/.test(value)) return value;
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+function escapeDoubleQuotedShell(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\$/g, "\\$").replace(/`/g, "\\`");
 }

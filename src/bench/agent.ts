@@ -452,10 +452,21 @@ function agentTouchedFiles(input: {
   seedPatchFiles: string[];
   seedPatchFileHashes: Record<string, string>;
 }): string[] {
-  return input.changedFiles.filter((file) => {
-    if (!input.seedPatchFiles.includes(file)) return true;
-    return currentFileHash(input.workspacePath, file) !== input.seedPatchFileHashes[file];
-  });
+  const touched = new Set<string>();
+
+  for (const file of input.changedFiles) {
+    if (!input.seedPatchFiles.includes(file)) {
+      touched.add(file);
+      continue;
+    }
+    if (currentFileHash(input.workspacePath, file) !== input.seedPatchFileHashes[file]) touched.add(file);
+  }
+
+  for (const file of input.seedPatchFiles) {
+    if (currentFileHash(input.workspacePath, file) !== input.seedPatchFileHashes[file]) touched.add(file);
+  }
+
+  return [...touched].sort();
 }
 
 function fileHashes(workspacePath: string, files: string[]): Record<string, string> {

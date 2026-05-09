@@ -2092,3 +2092,128 @@ Interpretation:
 - MCP tool calls are recorded in `.kairn` metrics.
 - Benchmark scoring sees `actualMcpToolCalls > 0`.
 - The next live proof can trust the MCP success gate; MCP modes should still only count when this field is nonzero.
+
+## 2026-05-08 Four-Mode Live Proof: Baseline vs Hook vs MCP vs Hybrid
+
+After the timing-attribution change, ran the requested live matrix:
+
+- `baseline`
+- `hook_full_prime`
+- `real_mcp_first`
+- `hybrid_mcp_brief`
+
+Suite:
+
+```text
+/tmp/kairn-seeded-ts-py-cpp-live.json
+```
+
+Output:
+
+```text
+/tmp/kairn-live-ts-py-cpp-four-mode-rerun.json
+```
+
+Before trusting the run, fixed a benchmark scoring bug:
+
+- The harness previously used `git diff` as the primary source-touch signal.
+- If the agent correctly restored a seeded file back to the committed clean version, `git diff` became empty.
+- That made correct fixes look like "required source was not touched."
+- The harness now counts seeded files as agent-touched when their final hash differs from the seeded broken hash, even when the final working tree is clean.
+
+Verification after the fix:
+
+```bash
+pnpm test
+pnpm typecheck
+pnpm build
+```
+
+All passed.
+
+### Aggregate Result
+
+| Mode | Observed tokens | Raw delta vs baseline | Report-level quality | Valid savings |
+| --- | ---: | ---: | --- | ---: |
+| Baseline | `88,394` | - | fail | - |
+| Hook full-prime | `60,750` | `31.27%` lower | fail | `0` |
+| Real MCP-first | `69,388` | `21.50%` lower | fail | `0` |
+| Hybrid MCP-brief | `61,457` | `30.47%` lower | fail | `0` |
+
+Important: report-level quality failed for every mode because the TanStack verification failed in every mode. Token reductions in those aggregate rows are therefore **invalid savings**, not product claims.
+
+### Per-Case Quality
+
+| Case | Baseline | Hook full-prime | Real MCP-first | Hybrid MCP-brief |
+| --- | --- | --- | --- | --- |
+| TanStack hidden hash | fail, `38,017` tokens | fail, `19,085` tokens | fail, `26,300` tokens | fail, `22,780` tokens |
+| Python Click `term_len` | pass, `36,394` tokens | pass, `26,312` tokens | verification passed, MCP gate failed, `24,341` tokens | verification passed, MCP gate failed, `26,465` tokens |
+| C++ fmt `starts_with` | pass, `13,983` tokens | pass, `15,353` tokens | verification passed, MCP gate failed, `18,747` tokens | verification passed, MCP gate failed, `12,212` tokens |
+
+Case-level interpretation:
+
+- Hook full-prime produced a valid Python win: `27.70%` lower observed tokens with the required source file fixed.
+- Hook full-prime regressed C++: `9.80%` higher observed tokens, despite passing quality.
+- Hybrid MCP-brief had the lowest C++ token use, but it did not record an MCP call, so it cannot be treated as MCP evidence.
+- TanStack remains the hard failing case; all modes touched `packages/query-core/src/utils.ts`, but verification exited `130`.
+
+### Latency Attribution
+
+Setup is now separated from agent time:
+
+| Mode / Case | Setup time | Codex agent time | Verification time |
+| --- | ---: | ---: | ---: |
+| Hook TanStack | `4.6s` | `30.8s` | `19.3s` |
+| Hook Python | `1.5s` | `50.1s` | `<0.1s` |
+| Hook C++ | `2.3s` | `40.8s` | `0.2s` |
+| MCP TanStack | `4.7s` | `29.6s` | `19.1s` |
+| Hybrid TanStack | `4.6s` | `48.7s` | `19.0s` |
+
+Current latency conclusion:
+
+- Kairn setup/index cost for these seeded repos is roughly `1.5s` to `4.7s`.
+- Prompt hook context itself is not the dominant wall-clock cost in this proof.
+- Codex agent time dominates and varies heavily by case.
+
+### MCP Finding
+
+`real_mcp_first` and `hybrid_mcp_brief` recorded:
+
+```json
+{
+  "actualMcpToolCalls": 0
+}
+```
+
+This means the model did not successfully use Kairn MCP tools during the live proof.
+
+Follow-up MCP smoke with real `codex exec`:
+
+- `codex mcp list` saw the project-local Kairn server when run from an MCP-configured workspace.
+- When explicitly prompted to call `kairn_prepare_task`, Codex attempted the MCP tool.
+- The MCP call failed before reaching Kairn with:
+
+```text
+user cancelled MCP tool call
+```
+
+So there are two separate MCP issues:
+
+1. In normal benchmark prompts, Codex does not reliably choose MCP despite instructions.
+2. In `codex exec`, an explicit MCP call can be cancelled by the Codex tool layer before Kairn receives it.
+
+Until that is solved, MCP should stay experimental and should not be counted unless `actualMcpToolCalls > 0`.
+
+### Current Product Read
+
+- The hook path is still the only automatic path producing reliable Kairn context in live Codex runs.
+- Hook full-prime can reduce tokens while preserving quality on some cases, but not universally.
+- MCP is configured correctly enough for Codex to see the server, but it is not yet a dependable savings path in `codex exec`.
+- The benchmark quality gate is now stricter and more accurate: clean reverts of seeded files count as source touches, while failed verification still invalidates savings.
+
+Next improvements:
+
+1. Make TanStack verification reliable or replace it with a smaller deterministic TS seeded case.
+2. Keep hook full-prime as the main automatic path.
+3. Treat MCP as a separate integration issue: first make explicit MCP calls succeed under `codex exec`, then retest MCP-first behavior.
+4. Tune language-specific hook decisions: Python benefited; C++ should shrink or suppress unless confidence is very high.

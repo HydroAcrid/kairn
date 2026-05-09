@@ -748,6 +748,7 @@ describe("watch and hook CLI", () => {
     expect(config).toContain("codex_hooks = true");
     expect(hooks).toContain("--prime-budget 900");
     expect(hooks).toContain("--hook-output full-prime");
+    expect(hooks).not.toContain(":-kairn");
     expect(hooks).not.toContain("--session");
     expect(hooks).not.toContain("PostToolUse");
     expect(observe.mode).toBe("observe");
