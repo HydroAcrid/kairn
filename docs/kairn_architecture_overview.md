@@ -1,0 +1,422 @@
+# Kairn Architecture Overview
+
+Kairn is no longer a single retrieval command. It is a local context runtime with several integration surfaces, an indexing pipeline, retrieval/ranking layers, session memory, hook/MCP delivery paths, and an evidence harness. This document is the high-level map for keeping that complexity understandable.
+
+## Product Shape
+
+Kairn has one core product:
+
+> A local-first context runtime that helps coding agents read less, read better, and preserve quality by choosing the smallest useful context for a task.
+
+It exposes that runtime through multiple surfaces:
+
+- CLI commands for direct use and scripting.
+- MCP tools for agent-native context requests.
+- Codex/Claude hooks for automatic prompt and failure context.
+- Watcher/daemon paths for warm state and observe/react behavior.
+- Eval/benchmark tools for proving whether Kairn actually helps.
+
+These are surfaces over the same runtime. They should not become separate products.
+
+## Layer Map
+
+```text
+Agent / Human
+  |
+  |-- CLI: init, start, prime, context, hook, watch, eval, bench
+  |-- MCP: prepare_task, find_context, read_file, read_symbol, next_context, failure_context
+  |-- Hooks: Codex/Claude UserPromptSubmit, PostToolUse, failures, file changes
+  |
+KairnRuntime facade
+  |
+  |-- IndexService      -> scan, parse, graph, semantic chunks, lexical index, tier/state stats
+  |-- MetricsService    -> token estimates, hook/MCP telemetry, index tier stats
+  |-- EvalService       -> observed Codex usage, transcript metadata, feedback
+  |-- Runtime methods   -> context, prime, hooks, failures, benchmarks, sessions
+  |
+Retrieval / Decision Layer
+  |
+  |-- query intent classification
+  |-- BM25 exact lexical retrieval
+  |-- local hashed semantic vectors
+  |-- Tree-sitter symbols and chunks
+  |-- TypeScript graph enrichment
+  |-- graph/test/related-file heuristics
+  |-- adaptive context controller
+  |
+SQLite Store under .kairn/
+  |
+  |-- sessions, shown context, files, symbols, graph edges
+  |-- semantic chunks/vectors, lexical documents/terms
+  |-- watch events, metrics events, eval runs, benchmark runs
+```
+
+## Public Surfaces
+
+### CLI
+
+Main entrypoint: `src/cli.ts`
+
+Command modules:
+
+- `src/cli/commands/core.ts`: `init`, `start`, `prime`, `serve`, `daemon`, `metrics`, `index`, `codex`.
+- `src/cli/commands/context.ts`: `context`, `diff`, `compress`, `failure`.
+- `src/cli/commands/watch.ts`: `watch`, `hook`.
+- `src/cli/commands/setup.ts`: `setup codex`, `setup mcp-instructions`.
+- `src/cli/commands/eval.ts`: eval runs, Codex usage ingestion, feedback.
+- `src/cli/commands/bench.ts`: replay, live-agent proofs, repo-matrix preflight.
+
+The CLI should stay thin. Command modules should parse options, call `KairnRuntime` or focused benchmark/setup helpers, then format output.
+
+### MCP
+
+Main entrypoint: `src/server/mcp.ts`
+
+Current tools:
+
+- `kairn_prepare_task`
+- `kairn_start_task`
+- `kairn_find_context`
+- `kairn_read_file`
+- `kairn_read_symbol`
+- `kairn_get_related_files`
+- `kairn_find_tests`
+- `kairn_review_diff`
+- `kairn_compress_output`
+- `kairn_get_next_context`
+- `kairn_get_failure_context`
+- `kairn_get_metrics`
+- `kairn_get_session_state`
+
+MCP is the read-gateway surface. Its job is not to dump large prime briefs. It should help agents take the next smallest useful read.
+
+### Hooks And Watcher
+
+Hook command path:
+
+- `src/cli/commands/watch.ts`
+- `src/watch/normalizeHook.ts`
+- `src/watch/hookPredicates.ts`
+- `src/watch/recommendation.ts`
+- `KairnRuntime.handleHookEvent`
+
+Watcher path:
+
+- `src/watch/watchRepo.ts`
+- `KairnRuntime.createWatchSnapshot`
+- `KairnRuntime.recordFileChanges`
+
+Hook modes:
+
+- `savings`: prompt-submit full-prime only when confidence is high.
+- `observe`: prompt context plus quiet/failure-oriented post-tool observation.
+- `debug`: broad diagnostics.
+- `mcp-first`: MCP config and instructions, no prompt prime by default.
+- `hybrid`: tiny hook directive plus MCP instructions.
+
+Hooks must stay quiet when Kairn lacks high-confidence leverage.
+
+### Daemon
+
+Daemon path:
+
+- `src/daemon/server.ts`
+
+Purpose:
+
+- Keep a warm runtime/index available.
+- Let hooks avoid expensive prompt-turn indexing.
+- Reduce hook latency and timeout risk.
+
+The daemon is an optimization layer, not a separate source of truth.
+
+## Runtime Facade
+
+Main file: `src/runtime/KairnRuntime.ts`
+
+`KairnRuntime` is still the compatibility boundary for CLI, MCP, hooks, eval, and tests. It currently does too much, but that is intentional during product exploration. The intended direction is to keep it as a facade and gradually delegate into services.
+
+Current extracted services:
+
+- `src/runtime/services/IndexService.ts`
+- `src/runtime/services/MetricsService.ts`
+- `src/runtime/services/EvalService.ts`
+
+Still mostly inside `KairnRuntime`:
+
+- context search orchestration,
+- file/symbol reads,
+- related/test/diff context,
+- failure-first routing,
+- hook session resolution,
+- watch recommendations,
+- benchmark orchestration.
+
+Refactor rule: preserve `KairnRuntime` public methods while moving implementation behind services.
+
+## Indexing Pipeline
+
+Indexing starts with `runtime.init()` and flows through:
+
+1. `src/scanner/scanRepo.ts`
+   - full file inventory,
+   - ignore handling,
+   - language/kind classification,
+   - adaptive scan budgets.
+
+2. `src/parser/parseFile.ts`
+   - Tree-sitter parsing for supported languages,
+   - symbol extraction,
+   - import/include extraction.
+
+3. `src/languages/adapters.ts`
+   - language adapter registry,
+   - JS/TS, Python, Java, C/C++ support.
+
+4. `src/graph/buildGraph.ts`
+   - import edges,
+   - test/source associations,
+   - nearby/route relationships,
+   - bounded graph edge generation.
+
+5. `src/ts/tsGraph.ts`
+   - TypeScript language-service enrichment for JS/TS definitions/references where feasible.
+
+6. `src/semantic/chunk.ts`
+   - symbol-aware chunks,
+   - file summaries for files without symbols.
+
+7. `src/semantic/vector.ts`
+   - deterministic local hashed lexical vectors.
+
+8. `src/lexical/bm25.ts`
+   - exact lexical document/term index.
+
+9. `src/indexer/indexRepo.ts`
+   - combines scan, parse, graph, chunks, vectors, BM25, and tier state into persisted index records.
+
+10. `src/indexer/symbolCompaction.ts`
+   - large-repo symbol compaction.
+
+Indexing goal:
+
+- Keep cheap recall across the whole repo.
+- Load expensive graph/chunk/vector detail only for hot or query-relevant files.
+- Avoid whole-repo deep context loading in user-facing paths.
+
+## Retrieval Stack
+
+Retrieval is hybrid and local-only.
+
+Core modules:
+
+- `src/retrieval/queryIntent.ts`
+- `src/retrieval/hybridRetrieval.ts`
+- `src/retrieval/scoreResults.ts`
+- `src/retrieval/relatedFiles.ts`
+- `src/retrieval/readSource.ts`
+- `src/retrieval/responseRouter.ts`
+- `src/context/formatContext.ts`
+
+Signals used:
+
+- exact path/name matches,
+- exact identifier/BM25 matches,
+- symbol matches,
+- local hashed semantic vector similarity,
+- file kind/source priority,
+- query intent,
+- graph proximity,
+- related tests,
+- git diff and session history,
+- failure references,
+- repeated-context penalties.
+
+Important design point:
+
+> Query-local retrieval is mandatory for large repos. Kairn should not load every graph edge, chunk, vector, or lexical term for a normal `prime` or `findContext` call.
+
+## Prime And Context Control
+
+Prime modules:
+
+- `src/prime/formatPrime.ts`
+- `src/prime/quality.ts`
+- `src/prime/contextValue.ts`
+
+Budget policy:
+
+- `src/budget/adaptiveBudget.ts`
+
+`primeContext` generates proactive context for the agent. It is controlled by:
+
+- profile: `ui`, `workflow`, `backend`, `test`, `failure_debug`, `generic`,
+- adaptive budget,
+- ranked files and snippets,
+- `PrimeQuality`,
+- `ContextValueDecision`.
+
+Context actions:
+
+- `emit`: send useful context.
+- `shrink`: send a tiny one-file/directive brief.
+- `suppress`: send nothing to the agent, but record internal metrics.
+
+This controller is one of the most important quality safeguards. Bad primes increase token use and can reduce agent quality.
+
+## Failure-First Path
+
+Failure modules:
+
+- `src/watch/failureParser.ts`
+- `src/watch/classifyCommand.ts`
+- `src/watch/recommendation.ts`
+- `KairnRuntime.getFailureContext`
+
+Used by:
+
+- CLI `kairn failure`,
+- MCP `kairn_get_failure_context`,
+- hook failure events,
+- watcher snapshots,
+- benchmarks.
+
+Failure-first context prioritizes:
+
+- stack traces,
+- `path:line:col` references,
+- TypeScript diagnostics,
+- Vitest/Jest/Python/Java/C++ style failure output,
+- changed files,
+- linked tests,
+- likely production sources.
+
+This is the path most likely to produce large savings on hard debugging tasks.
+
+## Storage Layer
+
+Main file: `src/store/sqliteStore.ts`
+
+State location: `<target-repo>/.kairn/`
+
+Major record groups:
+
+- sessions and context shown,
+- file inventory,
+- symbols,
+- graph edges,
+- semantic chunks/vectors,
+- lexical documents/terms/stats,
+- watch events,
+- metrics events,
+- eval runs/observations,
+- benchmark runs/results,
+- host-session links.
+
+The store is currently large but acts as a persistence facade. It should be split after runtime service boundaries are stable.
+
+Storage rules:
+
+- Do not store raw Codex transcripts.
+- Do not store raw command output unless explicitly necessary.
+- Prefer hashes, summaries, metadata, and file references.
+- Keep SQLite state bounded; watch DB/WAL size and tier counts.
+
+## Metrics, Eval, And Bench
+
+Metrics:
+
+- `src/metrics/baseline.ts`
+- `src/metrics/summary.ts`
+- `src/runtime/services/MetricsService.ts`
+
+Eval:
+
+- `src/eval/codexUsage.ts`
+- `src/eval/usageObservation.ts`
+- `src/runtime/services/EvalService.ts`
+
+Bench:
+
+- `src/bench/suite.ts`
+- `src/bench/score.ts`
+- `src/bench/agent.ts`
+- `src/bench/proofReport.ts`
+- `src/bench/matrix.ts`
+
+Bench layers:
+
+1. Replay benchmarks: deterministic retrieval scoring.
+2. Repo-matrix preflight: broad repo/state/retrieval gates without live agents.
+3. Live-agent proof: expensive Codex/agent runs in disposable workspaces.
+4. Eval harness: manual A/B run evidence and transcript metadata.
+
+Quality rule:
+
+> Token savings only count when quality gates pass.
+
+Quality gates include:
+
+- verification passes,
+- required production files are used when specified,
+- excluded files are avoided,
+- hook failures are zero,
+- MCP modes have actual MCP calls,
+- token reductions are not counted when task quality fails.
+
+## Current Complexity Hotspots
+
+These files/modules carry the most complexity:
+
+- `src/runtime/KairnRuntime.ts`
+  - still contains many orchestration responsibilities.
+- `src/store/sqliteStore.ts`
+  - persistence facade with many table groups.
+- `src/server/mcp.ts`
+  - many tools in one file.
+- `src/bench/agent.ts` and `src/bench/score.ts`
+  - live-agent proof and quality scoring complexity.
+- `src/retrieval/hybridRetrieval.ts`
+  - central scoring logic.
+
+Planned pressure relief:
+
+- keep CLI and MCP thin,
+- continue extracting runtime services,
+- split store only after service boundaries stabilize,
+- keep retrieval scoring rules general and test them broadly,
+- document benchmark findings before tuning.
+
+## Stable Versus Experimental
+
+Stable-ish foundations:
+
+- file inventory,
+- sessions,
+- exact file/symbol reads,
+- BM25/exact lexical retrieval,
+- Tree-sitter symbol extraction,
+- query-local retrieval direction,
+- metrics/eval storage principles.
+
+Still experimental:
+
+- observed token-savings claims,
+- hook delivery effectiveness,
+- MCP-first behavior with Codex,
+- hybrid hook+MCP coordination,
+- cross-language depth beyond parsing/symbols,
+- tiered adaptive indexing policies,
+- live-agent benchmark methodology.
+
+## Design Guardrails
+
+- One runtime, multiple surfaces.
+- Local-first and deterministic by default.
+- Prefer broad mechanisms over repo-specific tuning.
+- Suppress low-confidence context.
+- Count savings only after quality passes.
+- Keep expensive state query-local.
+- Treat benchmarks as evidence, not as targets to overfit.
+- Refactor behind stable public facades.
+

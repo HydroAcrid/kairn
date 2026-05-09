@@ -8,6 +8,8 @@ It runs beside coding agents and answers live context questions against a target
 
 MCP, CLI, semantic retrieval, TypeScript graph enrichment, BM25 lexical retrieval, watcher/hooks, proactive priming, and eval/benchmark MVPs are in progress.
 
+For a full map of the current layers and data flow, see `docs/kairn_architecture_overview.md`.
+
 ## Quick Start
 
 ```bash

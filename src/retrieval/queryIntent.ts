@@ -38,7 +38,6 @@ const INTENT_TERMS: Record<Exclude<QueryIntentPrimary, "generic">, Set<string>> 
     "jsx",
     "page",
     "dashboard",
-    "view",
     "render",
     "css",
     "tailwind",

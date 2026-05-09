@@ -1694,3 +1694,143 @@ Interpretation:
 
 - Broad testing can now start with retrieval/state preflight before spending live-agent quota.
 - The next broad test should run `examples/bench/repo-matrix.json` first. Live Codex runs should only proceed for repo/case pairs that pass state, recall, suppression, and noise gates.
+
+## 2026-05-08 Broad Repo-Matrix Preflight
+
+Ran the broad retrieval/state preflight before spending live-agent quota.
+
+Commands:
+
+```bash
+node dist/cli.js bench matrix --matrix examples/bench/repo-matrix.json --workdir /tmp/kairn-broad-matrix --json
+node dist/cli.js bench matrix --matrix /tmp/kairn-large-repo-matrix.json --workdir /tmp/kairn-large-matrix --json
+```
+
+Saved result files:
+
+- `/tmp/kairn-broad-repo-matrix-results.json`
+- `/tmp/kairn-large-repo-matrix-results.json`
+
+### Fixes During The Run
+
+The first broad pass exposed a general C/C++ indexing bug:
+
+- Duplicate parser captures could generate duplicate BM25 lexical document IDs.
+- This caused `fmt` indexing to fail with `UNIQUE constraint failed: lexical_documents.root_path, lexical_documents.id`.
+
+Fix:
+
+- BM25 lexical document IDs are now deduplicated with a content-hash suffix when parser/index input produces duplicate preferred IDs.
+- Added a regression test for duplicate symbol/chunk lexical documents.
+
+The broad pass also exposed an intent false positive:
+
+- `basic_string_view` was classified as UI because `view` was an overly broad UI intent term.
+
+Fix:
+
+- Removed bare `view` from UI intent terms.
+- Added a regression test so technical `string_view` prompts are not classified as UI.
+
+### Broad Matrix Results
+
+| Repo | Language | State | Case | Decision | Top Source | Gate |
+| --- | --- | ---: | --- | --- | --- | --- |
+| TanStack Query | TypeScript | `58.46MB` | hidden hash | `emit` | `packages/query-core/src/utils.ts` | pass |
+| Click | Python | `26.80MB` | ANSI `term_len` | `emit` | `src/click/_compat.py` | pass |
+| Apache Commons Lang | Java | `74.42MB` | `StringUtils.isBlank` | `emit` | `src/main/java/org/apache/commons/lang3/StringUtils.java` | fail: latency |
+| fmt | C++ | `33.98MB` | `basic_string_view::starts_with` | `emit` | `include/fmt/base.h` in top 2 | pass |
+| Local weak-signal control | Mixed | `37.41MB` | vague prompt | `suppress` | none required | pass |
+
+Broad matrix totals:
+
+- `5` repos
+- `5` cases
+- `4/5` quality-passing cases
+- `5/5` repos within state gate
+
+### Large Matrix Results
+
+| Repo | Language | State | Case | Decision | Top Source | Gate |
+| --- | --- | ---: | --- | --- | --- | --- |
+| Django | Python | `63.81MB` | `slugify` | `emit` | `django/utils/text.py` | fail: latency |
+| Django | Python | `63.81MB` | weak prompt | `suppress` | none required | pass |
+| Next.js | TypeScript | `77.34MB` | local URL utility | `suppress` | `packages/next/src/shared/lib/router/utils/is-local-url.ts` | pass |
+| Next.js | TypeScript | `77.34MB` | weak prompt | `suppress` | none required | pass |
+
+Large matrix totals:
+
+- `2` repos
+- `4` cases
+- `3/4` quality-passing cases
+- `2/2` repos within state gate
+
+### Interpretation
+
+What looks strong:
+
+- State discipline is now good enough for broad preflight:
+  - Next stayed at `77.34MB`, far below the previous multi-GB failure mode.
+  - Django stayed at `63.81MB`.
+  - All tested repos stayed below the `250MB` state gate.
+- Exact source targeting is strong across TypeScript, Python, Java, C++, and large TS/Python repos:
+  - TanStack: expected file ranked first.
+  - Click: expected file ranked first.
+  - Commons Lang: expected file ranked first.
+  - Django: expected file ranked first.
+  - Next: expected file ranked first.
+  - fmt: expected file ranked second.
+- Weak-signal suppression is working:
+  - local vague prompt suppressed,
+  - Django vague prompt suppressed,
+  - Next vague prompt suppressed.
+
+What still needs work:
+
+1. **Prime latency is the main broad blocker.**
+   - Commons Lang took `11.7s`.
+   - Django took `11.0s`.
+   - Retrieval quality was correct, but the preflight gate failed on latency.
+   - Next was acceptable but still high at `6.9s`.
+
+2. **The adaptive controller is too conservative when retrieval is exact.**
+   - Next local URL ranked the exact source file first but chose `suppress`.
+   - That is fine for avoiding bad context, but it means automatic hook mode would not help even when Kairn has the right answer.
+   - This should likely become `shrink`: one file, one reason, one next read.
+
+3. **C++ source targeting works but still prefers a broader header first.**
+   - fmt returned `include/fmt/format.h` before `include/fmt/base.h`.
+   - `base.h` was still in top 2, so it passes current top-k gates.
+   - The next quality improvement is better exact method/class ownership ranking for C/C++ headers.
+
+4. **No live-agent savings claim should be made from this run.**
+   - This was intentionally retrieval/state preflight only.
+   - It tells us which cases are worth live testing after latency/controller fixes.
+
+### Next Evolution
+
+The broad test points to general improvements, not repo-specific tuning:
+
+1. Add latency profiling inside `primeContext`:
+   - time query-local index loading,
+   - hybrid scoring,
+   - related files,
+   - test discovery,
+   - formatting.
+
+2. Make `primeContext` lazy for hook/preflight paths:
+   - if top result is high-confidence, do not always compute related files and tests before deciding emit/shrink/suppress.
+   - for `shrink`, only need top file and one reason.
+
+3. Change context controller policy:
+   - high-confidence exact source result + moderate/high savings risk should `shrink`, not `suppress`.
+   - `suppress` should be reserved for low-confidence or vague prompts.
+
+4. Improve C/C++ exact owner ranking:
+   - boost files containing the exact method symbol or class method range,
+   - reduce broad umbrella headers when a narrower exact header has the target symbol.
+
+5. Run live-agent proofs only after the latency/controller pass:
+   - good candidates: TanStack, Click, fmt.
+   - hold Commons Lang/Django until prime latency is below the gate.
+   - use Next for controller validation, not savings claims, until it emits a small useful brief instead of suppressing exact hits.

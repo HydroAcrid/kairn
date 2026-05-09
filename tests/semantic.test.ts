@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { hybridSearch } from "../src/retrieval/hybridRetrieval.js";
+import { classifyQueryIntent } from "../src/retrieval/queryIntent.js";
 import { decideResponse } from "../src/retrieval/responseRouter.js";
 import { embedText, cosineSimilarity } from "../src/semantic/vector.js";
 import { indexRepo } from "../src/indexer/indexRepo.js";
@@ -70,6 +71,12 @@ describe("lexical vectors", () => {
 });
 
 describe("hybridSearch", () => {
+  it("does not classify technical string_view identifiers as UI intent", () => {
+    const intent = classifyQueryIntent("Debug basic_string_view starts_with equal-length prefix behavior");
+
+    expect(intent.primary).not.toBe("ui");
+  });
+
   it("finds semantically relevant files even when the path and symbols do not match the query", () => {
     const rootPath = "/repo";
     const files = [
@@ -274,6 +281,24 @@ describe("hybridSearch", () => {
     expect(results.slice(0, 2).map((result) => result.path)).toEqual(
       expect.arrayContaining(["domains/verification/service.ts", "workers/verification/worker.ts"])
     );
+  });
+
+  it("deduplicates lexical document ids for parser duplicate symbol captures", () => {
+    const rootPath = "/repo";
+    const files = [file(rootPath, "include/fmt/base.h", "source", "cpp")];
+    const symbols = [
+      symbol(rootPath, "include/fmt/base.h", "starts_with"),
+      symbol(rootPath, "include/fmt/base.h", "starts_with")
+    ];
+    const chunks = [
+      chunk(rootPath, "include/fmt/base.h", "starts_with", "basic_string_view starts_with prefix"),
+      chunk(rootPath, "include/fmt/base.h", "starts_with", "basic_string_view starts_with equal length")
+    ];
+    const lexical = buildLexicalIndex({ rootPath, files, symbols, chunks });
+    const ids = lexical.documents.map((document) => document.id);
+
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(lexical.terms.every((term) => ids.includes(term.documentId))).toBe(true);
   });
 
   it("maps behavior-heavy hashing bug descriptions to the production symbol file", () => {

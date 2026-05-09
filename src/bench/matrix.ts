@@ -319,6 +319,9 @@ function matrixRecommendations(repos: BenchmarkMatrixRepoResult[]): string[] {
   if (failedCases.some((item) => item.excludedHits.length > 0)) {
     recommendations.push("Noisy docs/examples/generated files appeared; strengthen source-vs-noise ranking generally.");
   }
+  if (failedCases.some((item) => item.recommendations.length > 0)) {
+    recommendations.push("Some cases failed non-retrieval gates such as latency or suppression; inspect weakest case recommendations before live-agent tests.");
+  }
   return recommendations.length > 0 ? recommendations : ["Matrix preflight passed current quality and state gates."];
 }
 

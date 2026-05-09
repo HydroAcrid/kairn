@@ -168,6 +168,11 @@ function addDocument(input: {
   if (input.terms.length >= input.maxLexicalTerms) return;
   const tokens = tokenizeLexical(input.text);
   if (tokens.length === 0) return;
+  const id = uniqueDocumentId({
+    preferredId: input.id,
+    documents: input.documents,
+    text: input.text
+  });
   const frequencies = new Map<string, number>();
   for (const token of tokens) {
     frequencies.set(token, (frequencies.get(token) ?? 0) + 1);
@@ -175,7 +180,7 @@ function addDocument(input: {
 
   input.documents.push({
     rootPath: input.rootPath,
-    id: input.id,
+    id,
     filePath: input.filePath,
     kind: input.kind,
     ...(input.symbol ? { symbol: input.symbol } : {}),
@@ -189,11 +194,27 @@ function addDocument(input: {
     input.terms.push({
       rootPath: input.rootPath,
       term,
-      documentId: input.id,
+      documentId: id,
       filePath: input.filePath,
       frequency
     });
   }
+}
+
+function uniqueDocumentId(input: {
+  preferredId: string;
+  documents: LexicalDocumentRecord[];
+  text: string;
+}): string {
+  if (!input.documents.some((document) => document.id === input.preferredId)) return input.preferredId;
+  const suffix = sha256(input.text).slice(0, 10);
+  const withHash = `${input.preferredId}:${suffix}`;
+  if (!input.documents.some((document) => document.id === withHash)) return withHash;
+  let index = 2;
+  while (input.documents.some((document) => document.id === `${withHash}:${index}`)) {
+    index += 1;
+  }
+  return `${withHash}:${index}`;
 }
 
 function weightForDocument(document: LexicalDocumentRecord, queryTerm: string): number {
