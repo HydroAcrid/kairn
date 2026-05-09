@@ -422,6 +422,18 @@ Endurance reports distinguish:
 
 Only `active` runs can produce `validSavings`. Suppress-only reductions are tracked as passive evidence so the report does not overclaim.
 
+Assist and abstention classification:
+
+- `valid_assist`: Kairn was active, quality passed, and observed tokens dropped.
+- `over_assist`: Kairn was active, quality passed, but observed tokens did not improve.
+- `harmful_invalid_assist`: Kairn was active and quality failed.
+- `correct_abstention`: Kairn suppressed while baseline passed cheaply.
+- `missed_savings_opportunity`: Kairn suppressed while baseline passed but spent many tokens.
+- `missed_quality_opportunity`: Kairn suppressed while baseline failed quality.
+- `passive_quality_regression`: Kairn suppressed, baseline passed, but the Kairn-mode run failed quality.
+
+This classification is what lets broad tests measure abstention accuracy instead of treating all lower-token runs as wins. Kairn should abstain when it has no leverage, but missed expensive searches are now visible as missed opportunities.
+
 Source-invariant validation:
 
 - Defined in benchmark suites as semantic file invariants.

@@ -10,6 +10,7 @@ import { loadBenchmarkRepoMatrix, runBenchmarkRepoMatrix } from "../src/bench/ma
 import { loadBenchmarkEnduranceSuite } from "../src/bench/enduranceSuite.js";
 import { runBenchmarkEndurance } from "../src/bench/endurance.js";
 import { runAgentBenchmarkCase } from "../src/bench/agent.js";
+import { classifyAssistance } from "../src/bench/assistClassification.js";
 import { evaluateDiffScopes, evaluateSourceInvariants } from "../src/bench/sourceValidation.js";
 import { evaluateContextValue } from "../src/prime/contextValue.js";
 import { resolvePrimeProfile } from "../src/prime/quality.js";
@@ -1318,8 +1319,11 @@ describe("benchmark suite and scoring", () => {
       savedTokens: 800,
       savingsRate: 0.4,
       qualityGatePassed: true,
-      validSavings: 800,
-      invalidSavings: 0
+      validSavings: 0,
+      invalidSavings: 0,
+      assistanceStatus: "none",
+      assistanceEligible: false,
+      assistClassification: "neutral"
     });
   });
 
@@ -1377,6 +1381,63 @@ describe("benchmark suite and scoring", () => {
     expect(comparison.recommendations).toEqual(
       expect.arrayContaining(["After-run has quality-gate failures; any lower observed token usage is negative evidence, not valid savings."])
     );
+  });
+
+  it("classifies assist, over-assist, and abstention outcomes", () => {
+    expect(
+      classifyAssistance({
+        assistanceStatus: "active",
+        qualityGatePassed: true,
+        savedTokens: 800,
+        baselineTokens: 2000,
+        baselineQualityGatePassed: true,
+        turnCount: 1
+      }).assistClassification
+    ).toBe("valid_assist");
+    expect(
+      classifyAssistance({
+        assistanceStatus: "active",
+        qualityGatePassed: true,
+        savedTokens: -200,
+        baselineTokens: 2000,
+        baselineQualityGatePassed: true,
+        turnCount: 1
+      })
+    ).toMatchObject({ assistClassification: "over_assist", overAssist: true });
+    expect(
+      classifyAssistance({
+        assistanceStatus: "active",
+        qualityGatePassed: false,
+        savedTokens: 500,
+        baselineTokens: 2000,
+        baselineQualityGatePassed: true,
+        turnCount: 1
+      })
+    ).toMatchObject({ assistClassification: "harmful_invalid_assist", harmfulAssist: true });
+    expect(
+      classifyAssistance({
+        assistanceStatus: "passive_suppressed",
+        qualityGatePassed: true,
+        savedTokens: 100,
+        baselineTokens: 2000,
+        baselineQualityGatePassed: true,
+        turnCount: 1
+      }).assistClassification
+    ).toBe("correct_abstention");
+    expect(
+      classifyAssistance({
+        assistanceStatus: "passive_suppressed",
+        qualityGatePassed: true,
+        savedTokens: 100,
+        baselineTokens: 80_000,
+        baselineQualityGatePassed: true,
+        turnCount: 4
+      })
+    ).toMatchObject({
+      assistClassification: "missed_savings_opportunity",
+      abstentionOutcome: "missed_savings_opportunity",
+      missedOpportunity: true
+    });
   });
 });
 

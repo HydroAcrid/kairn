@@ -2606,3 +2606,19 @@ Implementation update:
 - Added source-invariant validation to endurance suites. Invariants support required/forbidden text plus regex alternatives, so equivalent repairs can pass without requiring an exact original source string.
 - Added hunk-level diff-scope validation. Endurance suites can restrict changed hunks to specific symbols, so unrelated edits in the same expected file now fail quality gates.
 - Updated the Flask endurance suite to accept equivalent `dispatch_request` repairs while restricting final diffs to the `dispatch_request` symbol in `src/flask/app.py`.
+
+### Abstention Accuracy Reporting
+
+Implementation update:
+
+- Added shared assist classification for benchmark comparisons and endurance deltas.
+- Reports now distinguish `valid_assist`, `over_assist`, `harmful_invalid_assist`, `correct_abstention`, `missed_savings_opportunity`, `missed_quality_opportunity`, and `passive_quality_regression`.
+- `validSavings` now requires active Kairn assistance, not just lower observed tokens.
+- Suppress-only runs can still be useful evidence, but they are classified as abstention outcomes instead of Kairn-assisted savings.
+
+Why this matters:
+
+- If Kairn suppresses and baseline passes cheaply, suppression was correct.
+- If Kairn suppresses and baseline burns many tokens, that is a missed savings opportunity.
+- If Kairn is active and quality fails, lower tokens are negative evidence.
+- If Kairn is active, quality passes, and tokens drop, that is a real product win.

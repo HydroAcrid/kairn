@@ -21,6 +21,28 @@ export type BenchmarkRunStatus = "active" | "completed" | "abandoned";
 
 export type BenchmarkTaskOutcome = "pass" | "fail" | "partial" | "skipped";
 
+export type BenchmarkAssistanceStatus = "none" | "active" | "passive_suppressed";
+
+export type BenchmarkBaselineDifficulty = "unknown" | "cheap_pass" | "expensive_pass" | "quality_fail";
+
+export type BenchmarkAbstentionOutcome =
+  | "not_applicable"
+  | "correct_abstention"
+  | "missed_savings_opportunity"
+  | "missed_quality_opportunity"
+  | "passive_quality_regression";
+
+export type BenchmarkAssistClassification =
+  | "baseline"
+  | "valid_assist"
+  | "over_assist"
+  | "harmful_invalid_assist"
+  | "correct_abstention"
+  | "missed_savings_opportunity"
+  | "missed_quality_opportunity"
+  | "passive_quality_regression"
+  | "neutral";
+
 export type BenchmarkCase = {
   id: string;
   task: string;
@@ -107,7 +129,7 @@ export type BenchmarkEnduranceModeReport = {
   totalElapsedMs: number;
   qualityGatePassed: boolean;
   finalVerificationPassed: boolean;
-  assistanceStatus: "none" | "active" | "passive_suppressed";
+  assistanceStatus: BenchmarkAssistanceStatus;
   assistanceActions: {
     emitted: number;
     shrunk: number;
@@ -131,8 +153,15 @@ export type BenchmarkEnduranceReport = {
     savedTokens?: number;
     savingsRate?: number;
     qualityGatePassed: boolean;
-    assistanceStatus: "none" | "active" | "passive_suppressed";
+    assistanceStatus: BenchmarkAssistanceStatus;
     assistanceEligible: boolean;
+    baselineDifficulty: BenchmarkBaselineDifficulty;
+    baselineTokenCost?: number;
+    abstentionOutcome: BenchmarkAbstentionOutcome;
+    missedOpportunity: boolean;
+    overAssist: boolean;
+    harmfulAssist: boolean;
+    assistClassification: BenchmarkAssistClassification;
     validSavings?: number;
     invalidSavings?: number;
     passiveSavings?: number;
@@ -315,8 +344,18 @@ export type BenchmarkComparison = {
     savedTokens: number;
     savingsRate: number;
     qualityGatePassed?: boolean;
+    assistanceStatus?: BenchmarkAssistanceStatus;
+    assistanceEligible?: boolean;
+    baselineDifficulty?: BenchmarkBaselineDifficulty;
+    baselineTokenCost?: number;
+    abstentionOutcome?: BenchmarkAbstentionOutcome;
+    missedOpportunity?: boolean;
+    overAssist?: boolean;
+    harmfulAssist?: boolean;
+    assistClassification?: BenchmarkAssistClassification;
     validSavings?: number;
     invalidSavings?: number;
+    passiveSavings?: number;
     negativeEvidenceReason?: string;
   };
   improvedCases: string[];

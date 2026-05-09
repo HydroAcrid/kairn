@@ -228,11 +228,11 @@ export function printBenchmarkEnduranceReport(report: BenchmarkEnduranceReport):
       continue;
     }
     if (!delta.qualityGatePassed && (delta.savedTokens ?? 0) > 0) {
-      lines.push(`- ${mode}: ${delta.savedTokens} fewer tokens, invalid savings because quality failed`);
+      lines.push(`- ${mode}: ${delta.savedTokens} fewer tokens, invalid savings because quality failed (${delta.assistClassification})`);
     } else if (!delta.assistanceEligible && (delta.savedTokens ?? 0) > 0) {
-      lines.push(`- ${mode}: ${delta.savedTokens} fewer tokens, passive/suppressed evidence only`);
+      lines.push(`- ${mode}: ${delta.savedTokens} fewer tokens, ${delta.assistClassification}; passive/suppressed evidence only`);
     } else {
-      lines.push(`- ${mode}: ${delta.savedTokens} tokens (${Math.round((delta.savingsRate ?? 0) * 100)}%)`);
+      lines.push(`- ${mode}: ${delta.savedTokens} tokens (${Math.round((delta.savingsRate ?? 0) * 100)}%); ${delta.assistClassification}`);
     }
   }
 
@@ -256,10 +256,15 @@ export function printBenchmarkComparison(comparison: BenchmarkComparison): void 
     comparison.observedTokenDelta
       ? comparison.observedTokenDelta.qualityGatePassed === false && comparison.observedTokenDelta.savedTokens > 0
         ? `- invalid savings: ${comparison.observedTokenDelta.savedTokens} fewer tokens, but quality gate failed`
+        : comparison.observedTokenDelta.assistanceEligible === false && comparison.observedTokenDelta.savedTokens > 0
+          ? `- passive evidence: ${comparison.observedTokenDelta.savedTokens} fewer tokens (${comparison.observedTokenDelta.assistClassification})`
         : `- saved: ${comparison.observedTokenDelta.savedTokens} tokens (${Math.round(comparison.observedTokenDelta.savingsRate * 100)}%)`
       : "- saved: unavailable; run agent commands that print Codex token footers",
     comparison.observedTokenDelta
       ? `- before: ${comparison.observedTokenDelta.beforeTokens}; after: ${comparison.observedTokenDelta.afterTokens}`
+      : "",
+    comparison.observedTokenDelta?.assistClassification
+      ? `- classification: ${comparison.observedTokenDelta.assistClassification}; assistance ${comparison.observedTokenDelta.assistanceStatus ?? "unknown"}`
       : "",
     "",
     comparison.improvedCases.length > 0 ? `Improved: ${comparison.improvedCases.join(", ")}` : "Improved: none",
@@ -336,7 +341,10 @@ export function formatBenchmarkMarkdown(report: BenchmarkReport): string {
 function formatProofDelta(label: string, delta: BenchmarkComparison["observedTokenDelta"]): string {
   if (!delta) return `- ${label}: unavailable`;
   if (!delta.qualityGatePassed && delta.savedTokens > 0) {
-    return `- ${label}: ${delta.savedTokens} fewer tokens, invalid savings (quality gate failed)`;
+    return `- ${label}: ${delta.savedTokens} fewer tokens, invalid savings (${delta.assistClassification ?? "quality gate failed"})`;
   }
-  return `- ${label}: ${delta.savedTokens} tokens (${Math.round(delta.savingsRate * 100)}%)`;
+  if (delta.assistanceEligible === false && delta.savedTokens > 0) {
+    return `- ${label}: ${delta.savedTokens} fewer tokens, ${delta.assistClassification ?? "passive evidence only"}`;
+  }
+  return `- ${label}: ${delta.savedTokens} tokens (${Math.round(delta.savingsRate * 100)}%)${delta.assistClassification ? `; ${delta.assistClassification}` : ""}`;
 }

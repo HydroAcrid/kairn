@@ -1,4 +1,5 @@
-import type { BenchmarkCase, BenchmarkComparison, BenchmarkReport, BenchmarkResultRecord } from "../types.js";
+import type { BenchmarkAssistanceStatus, BenchmarkCase, BenchmarkComparison, BenchmarkReport, BenchmarkResultRecord } from "../types.js";
+import { classificationNegativeEvidenceReason, classifyAssistance } from "./assistClassification.js";
 
 export function scoreBenchmarkCase(input: {
   runId: string;
@@ -155,16 +156,63 @@ function observedTokenDelta(before: BenchmarkReport, after: BenchmarkReport): Be
   if (beforeTokens === undefined || afterTokens === undefined) return undefined;
   const savedTokens = beforeTokens - afterTokens;
   const qualityGatePassed = reportQualityGatePassed(before) && reportQualityGatePassed(after);
+  const assistanceStatus = reportAssistanceStatus(after);
+  const classification = classifyAssistance({
+    assistanceStatus,
+    qualityGatePassed: reportQualityGatePassed(after),
+    savedTokens,
+    baselineTokens: beforeTokens,
+    baselineQualityGatePassed: reportQualityGatePassed(before),
+    turnCount: before.results.length
+  });
+  const negativeEvidenceReason =
+    classificationNegativeEvidenceReason({
+      classification,
+      qualityFailureReason: "Token reduction is invalid because one or more quality gates failed."
+    }) ??
+    (!qualityGatePassed && savedTokens > 0 ? "Token reduction is invalid because one or more quality gates failed." : undefined);
   return {
     beforeTokens,
     afterTokens,
     savedTokens,
     savingsRate: beforeTokens > 0 ? Number((savedTokens / beforeTokens).toFixed(4)) : 0,
     qualityGatePassed,
-    validSavings: qualityGatePassed && savedTokens > 0 ? savedTokens : 0,
+    assistanceStatus,
+    assistanceEligible: classification.assistanceEligible,
+    baselineDifficulty: classification.baselineDifficulty,
+    baselineTokenCost: beforeTokens,
+    abstentionOutcome: classification.abstentionOutcome,
+    missedOpportunity: classification.missedOpportunity,
+    overAssist: classification.overAssist,
+    harmfulAssist: classification.harmfulAssist,
+    assistClassification: classification.assistClassification,
+    validSavings: qualityGatePassed && classification.assistanceEligible && savedTokens > 0 ? savedTokens : 0,
     invalidSavings: !qualityGatePassed && savedTokens > 0 ? savedTokens : 0,
-    ...(!qualityGatePassed ? { negativeEvidenceReason: "Token reduction is invalid because one or more quality gates failed." } : {})
+    ...(qualityGatePassed && !classification.assistanceEligible && savedTokens > 0 ? { passiveSavings: savedTokens } : {}),
+    ...(negativeEvidenceReason ? { negativeEvidenceReason } : {})
   };
+}
+
+function reportAssistanceStatus(report: BenchmarkReport): BenchmarkAssistanceStatus {
+  const hasActiveAssistance = report.results.some((result) =>
+    result.hookContextEmitted > 0 ||
+    numberMetadata(result.metadata.actualMcpToolCalls ?? result.metadata.mcpToolCalls) > 0 ||
+    result.metadata.primeEmitted === true ||
+    result.metadata.primeDecision === "emit" ||
+    result.metadata.primeDecision === "shrink" ||
+    result.metadata.contextDecision === "emit" ||
+    result.metadata.contextDecision === "shrink" ||
+    result.metadata.assistanceMode === "manual_prime" ||
+    result.metadata.assistanceMode === "hook_full_prime"
+  );
+  if (hasActiveAssistance) return "active";
+  const hasSuppressedAssistance = report.results.some((result) =>
+    result.hookContextSuppressed > 0 ||
+    result.metadata.primeSuppressed === true ||
+    result.metadata.primeDecision === "suppress" ||
+    result.metadata.contextDecision === "suppress"
+  );
+  return hasSuppressedAssistance ? "passive_suppressed" : "none";
 }
 
 function recommendationsFor(input: {

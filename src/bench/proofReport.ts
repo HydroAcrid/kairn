@@ -223,6 +223,12 @@ function recommendationForDelta(label: string, delta: BenchmarkComparison["obser
   if (!delta.qualityGatePassed && delta.savedTokens > 0) {
     return `${label}: reduced ${delta.savedTokens} observed Codex tokens, but this is invalid savings because quality gates failed.`;
   }
+  if (delta.assistanceEligible === false && delta.savedTokens > 0) {
+    return `${label}: reduced ${delta.savedTokens} observed Codex tokens, but this is ${delta.assistClassification ?? "passive evidence"} rather than Kairn-assisted savings.`;
+  }
+  if (delta.assistClassification === "over_assist") {
+    return `${label}: Kairn was active but increased observed Codex usage by ${Math.abs(delta.savedTokens)} tokens.`;
+  }
   if (delta.savedTokens > 0) {
     return `${label}: saved ${delta.savedTokens} observed Codex tokens (${Math.round(delta.savingsRate * 100)}%).`;
   }

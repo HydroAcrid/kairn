@@ -18,6 +18,7 @@ import {
   createBenchmarkWorkspace,
   runShell
 } from "./agent.js";
+import { classificationNegativeEvidenceReason, classifyAssistance } from "./assistClassification.js";
 import { loadBenchmarkEnduranceSuite } from "./enduranceSuite.js";
 import { evaluateDiffScopes, evaluateSourceInvariants } from "./sourceValidation.js";
 
@@ -125,7 +126,7 @@ async function runEnduranceMode(input: {
       turns: turnResults,
       ledgerEvents
     });
-    const assistanceStatus = classifyAssistance(input.mode, assistanceActions);
+    const assistanceStatus = classifyEnduranceAssistanceStatus(input.mode, assistanceActions);
     return {
       mode: input.mode,
       workspacePath: workspace.workspacePath,
@@ -420,8 +421,18 @@ function buildEnduranceDeltas(reports: BenchmarkEnduranceModeReport[]): Benchmar
     const modeTokens = report.totalObservedCodexTokens;
     const savedTokens = baselineTokens !== undefined && modeTokens !== undefined ? baselineTokens - modeTokens : undefined;
     const savingsRate = savedTokens !== undefined && baselineTokens && baselineTokens > 0 ? savedTokens / baselineTokens : undefined;
-    const assistanceEligible = report.assistanceStatus === "active";
-    const negativeEvidenceReason = enduranceNegativeEvidenceReason({ report, savedTokens, assistanceEligible });
+    const classification = classifyAssistance({
+      assistanceStatus: report.assistanceStatus,
+      qualityGatePassed: report.qualityGatePassed,
+      savedTokens,
+      baselineTokens,
+      baselineQualityGatePassed: baseline?.qualityGatePassed,
+      turnCount: baseline?.turns.length
+    });
+    const qualityFailureReason = enduranceQualityFailureReason(report);
+    const negativeEvidenceReason =
+      classificationNegativeEvidenceReason({ classification, qualityFailureReason }) ??
+      enduranceNegativeEvidenceReason({ report, savedTokens, assistanceEligible: classification.assistanceEligible });
     deltas[report.mode] = {
       ...(baselineTokens !== undefined ? { baselineTokens } : {}),
       ...(modeTokens !== undefined ? { modeTokens } : {}),
@@ -429,10 +440,17 @@ function buildEnduranceDeltas(reports: BenchmarkEnduranceModeReport[]): Benchmar
       ...(savingsRate !== undefined ? { savingsRate } : {}),
       qualityGatePassed: report.qualityGatePassed,
       assistanceStatus: report.assistanceStatus,
-      assistanceEligible,
-      ...(savedTokens !== undefined && report.qualityGatePassed && assistanceEligible && savedTokens > 0 ? { validSavings: savedTokens } : {}),
+      assistanceEligible: classification.assistanceEligible,
+      baselineDifficulty: classification.baselineDifficulty,
+      ...(classification.baselineTokenCost !== undefined ? { baselineTokenCost: classification.baselineTokenCost } : {}),
+      abstentionOutcome: classification.abstentionOutcome,
+      missedOpportunity: classification.missedOpportunity,
+      overAssist: classification.overAssist,
+      harmfulAssist: classification.harmfulAssist,
+      assistClassification: classification.assistClassification,
+      ...(savedTokens !== undefined && report.qualityGatePassed && classification.assistanceEligible && savedTokens > 0 ? { validSavings: savedTokens } : {}),
       ...(savedTokens !== undefined && !report.qualityGatePassed && savedTokens > 0 ? { invalidSavings: savedTokens } : {}),
-      ...(savedTokens !== undefined && report.qualityGatePassed && !assistanceEligible && savedTokens > 0 ? { passiveSavings: savedTokens } : {}),
+      ...(savedTokens !== undefined && report.qualityGatePassed && !classification.assistanceEligible && savedTokens > 0 ? { passiveSavings: savedTokens } : {}),
       ...(negativeEvidenceReason ? { negativeEvidenceReason } : {})
     };
   }
@@ -494,7 +512,7 @@ function buildAssistanceActions(input: {
   };
 }
 
-function classifyAssistance(
+function classifyEnduranceAssistanceStatus(
   mode: EnduranceMode,
   actions: BenchmarkEnduranceModeReport["assistanceActions"]
 ): BenchmarkEnduranceModeReport["assistanceStatus"] {
@@ -512,6 +530,13 @@ function enduranceNegativeEvidenceReason(input: {
   if (!input.report.qualityGatePassed) return "Token reduction is invalid because the endurance quality gate failed.";
   if (!input.assistanceEligible) return "Token reduction is passive evidence because Kairn emitted no useful context, MCP call, or failure context.";
   return undefined;
+}
+
+function enduranceQualityFailureReason(report: BenchmarkEnduranceModeReport): string | undefined {
+  if (report.qualityGatePassed) return undefined;
+  if (!report.finalVerificationPassed) return "Final endurance verification failed.";
+  const failedTurn = report.turns.find((turn) => !turn.qualityGatePassed);
+  return failedTurn ? `${failedTurn.turnId}: ${failedTurn.summary}` : "Endurance quality gate failed.";
 }
 
 function buildTurnFailureSummary(input: {
