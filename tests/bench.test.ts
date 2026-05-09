@@ -127,6 +127,8 @@ describe("benchmark suite and scoring", () => {
       /commons-lang-isblank-whitespace\.patch$/
     );
     expect(suite.cases.find((item) => item.id === "python-click-term-len-ansi")?.seed?.testCommand).toContain("python3");
+    expect(suite.cases.find((item) => item.id === "typescript-tanstack-hidden-hash")?.seed?.testCommand).toContain(".sort()");
+    expect(suite.cases.find((item) => item.id === "typescript-tanstack-hidden-hash")?.seed?.testCommand).not.toContain("pnpm test");
     expect(suite.cases.find((item) => item.id === "cpp-fmt-starts-with")?.requiredTouchedFiles).toEqual([
       "include/fmt/base.h"
     ]);
@@ -509,6 +511,97 @@ describe("benchmark suite and scoring", () => {
     expect(decision.expectedSavingsRisk).toBe("medium");
   });
 
+  it("shrinks high-confidence exact source hits instead of broad full-prime delivery", () => {
+    const decision = evaluateContextValue({
+      task: "Debug a seeded failing C++ check. basic_string_view::starts_with should return true. Fix the production header.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- include/fmt/base.h (source, score 260): symbol match starts_with\n- test/base-test.cc (test, score 190): graph neighbor",
+        files: ["include/fmt/base.h", "test/base-test.cc"],
+        symbols: ["starts_with"],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["include/fmt/base.h"],
+        tokenEstimate: 420
+      },
+      quality: {
+        score: 92,
+        action: "emit",
+        reasons: ["high-confidence top retrieval score"],
+        topScore: 260,
+        topGap: 70,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      knownFiles: [
+        {
+          rootPath: "/repo",
+          path: "include/fmt/base.h",
+          language: "cpp",
+          kind: "source",
+          size: 1200,
+          hash: "hash",
+          importance: 1,
+          updatedAt: new Date(0).toISOString()
+        }
+      ],
+      repoFileCount: 2400,
+      estimatedContextCost: 900
+    });
+
+    expect(decision.action).toBe("shrink");
+    expect(decision.exactSourceHit).toBe(true);
+    expect(decision.recommendedDelivery).toBe("one_file_directive");
+  });
+
+  it("shrinks Java exact source hits to avoid neighboring utility fanout", () => {
+    const decision = evaluateContextValue({
+      task: "Debug a seeded failing Java test. StringUtils.isBlank should use Java whitespace semantics. Fix the production source.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- src/main/java/org/apache/commons/lang3/StringUtils.java (source, score 300): exact StringUtils isBlank match\n- src/main/java/org/apache/commons/lang3/Validate.java (source, score 210): package neighbor",
+        files: [
+          "src/main/java/org/apache/commons/lang3/StringUtils.java",
+          "src/main/java/org/apache/commons/lang3/Validate.java"
+        ],
+        symbols: ["isBlank"],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/main/java/org/apache/commons/lang3/StringUtils.java"],
+        tokenEstimate: 360
+      },
+      quality: {
+        score: 94,
+        action: "emit",
+        reasons: ["high-confidence top retrieval score"],
+        topScore: 300,
+        topGap: 90,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      knownFiles: [
+        {
+          rootPath: "/repo",
+          path: "src/main/java/org/apache/commons/lang3/StringUtils.java",
+          language: "java",
+          kind: "source",
+          size: 2000,
+          hash: "hash",
+          importance: 1,
+          updatedAt: new Date(0).toISOString()
+        }
+      ],
+      repoFileCount: 1800,
+      estimatedContextCost: 900
+    });
+
+    expect(decision.action).toBe("shrink");
+    expect(decision.exactSourceHit).toBe(true);
+    expect(decision.recommendedDelivery).toBe("one_file_directive");
+  });
+
   it("suppresses exact-path prompts that do not need proactive context", () => {
     const decision = evaluateContextValue({
       task: "Open src/app.ts and explain what it does",
@@ -679,7 +772,7 @@ describe("benchmark suite and scoring", () => {
         "fs.mkdirSync('.kairn', { recursive: true });",
         "const db = new Database('.kairn/kairn.sqlite');",
         "db.exec(`create table if not exists metrics_events (id integer primary key autoincrement, session_id text not null, root_path text not null, event_kind text not null, event_name text not null, source text not null, response_mode text, baseline_tokens integer not null, output_tokens integer not null, saved_tokens integer not null, files_json text not null, metadata_json text not null default '{}', created_at text not null)`);",
-        "db.prepare(`insert into metrics_events (session_id, root_path, event_kind, event_name, source, response_mode, baseline_tokens, output_tokens, saved_tokens, files_json, metadata_json, created_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run('task_test', process.cwd(), 'mcp_tool_call', 'kairn_prepare_task', 'mcp', null, 100, 25, 75, JSON.stringify(['src/app.ts']), JSON.stringify({ toolName: 'kairn_prepare_task' }), new Date().toISOString());",
+        "db.prepare(`insert into metrics_events (session_id, root_path, event_kind, event_name, source, response_mode, baseline_tokens, output_tokens, saved_tokens, files_json, metadata_json, created_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run('task_test', process.cwd(), 'mcp_tool_call', 'kairn_prepare_task', 'mcp', null, 100, 25, 75, JSON.stringify(['src/app.ts', 'test/app.test.ts', 'docs/readme.md']), JSON.stringify({ toolName: 'kairn_prepare_task' }), new Date().toISOString());",
         "db.close();",
         "console.log('Token usage: total=100 input=80 output=20');"
       ].join("\n")
@@ -691,8 +784,8 @@ describe("benchmark suite and scoring", () => {
         id: "mcp-metrics",
         mode: "agent",
         task: "Use Kairn MCP",
-        expectedFiles: [],
-        excludedFiles: []
+        expectedFiles: ["src/app.ts"],
+        excludedFiles: ["docs/"]
       },
       agentCommand: `NODE_PATH=${JSON.stringify(path.resolve("node_modules"))} node write-mcp-metric.cjs`
     });
@@ -701,7 +794,46 @@ describe("benchmark suite and scoring", () => {
     expect(result.metadata.actualMcpToolCalls).toBe(1);
     expect(result.metadata.actualMcpToolCallSource).toBe("workspace_metrics");
     expect(result.metadata.actualMcpToolNames).toEqual(["kairn_prepare_task"]);
-    expect(result.metadata.actualMcpFiles).toEqual(["src/app.ts"]);
+    expect(result.metadata.actualMcpFiles).toEqual(["src/app.ts", "test/app.test.ts", "docs/readme.md"]);
+    expect(result.metadata.mcpReturnedFileCount).toBe(3);
+    expect(result.metadata.mcpReturnedExpectedFileCount).toBe(1);
+    expect(result.metadata.mcpReturnedNoiseFileCount).toBe(1);
+    expect(result.metadata.mcpReturnedTestFanoutCount).toBe(1);
+    expect(result.metadata.mcpContextEfficiency).toBeCloseTo(1 / 3, 4);
+  });
+
+  it("adds recommendations for broad MCP fanout even when quality passes", () => {
+    const scored = scoreBenchmarkCase({
+      runId: "bench_mcp_fanout",
+      benchmarkCase: {
+        id: "mcp-fanout",
+        mode: "agent",
+        task: "Use Kairn MCP",
+        expectedFiles: ["src/app.ts"],
+        excludedFiles: []
+      },
+      actualFiles: ["src/app.ts"],
+      responseTokens: 200,
+      taskOutcome: "pass",
+      summary: "Agent used MCP.",
+      metadata: {
+        assistanceMode: "real_mcp_first",
+        actualMcpToolCalls: 2,
+        mcpReturnedFileCount: 12,
+        mcpReturnedExpectedFileCount: 1,
+        mcpReturnedNoiseFileCount: 0,
+        mcpReturnedTestFanoutCount: 7,
+        mcpContextEfficiency: 0.2
+      }
+    });
+
+    expect(scored.metadata.qualityGatePassed).toBe(true);
+    expect(scored.recommendations).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("MCP returned too many test files"),
+        expect.stringContaining("MCP returned broad low-efficiency context")
+      ])
+    );
   });
 
   it("scores expected file recall, unexpected drift, and comparisons", () => {
@@ -981,7 +1113,9 @@ describe("benchmark runtime and CLI", () => {
     });
 
     expect(prime.profile).toBe("failure_debug");
-    expect(prime.content).toContain("Kairn Failure Debug Context");
+    expect(prime.content).toContain("Kairn Focused Start");
+    expect(prime.quality?.action).toBe("shrink");
+    expect(prime.contextDecision?.exactSourceHit).toBe(true);
     expect(prime.files[0]).toBe("src/click/_compat.py");
     expect(prime.tokenEstimate).toBeLessThanOrEqual(900);
 

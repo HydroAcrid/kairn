@@ -44,6 +44,7 @@ export function summarizeCoordinationMetrics(
       .filter((event) => event.eventKind === "mcp_tool_call")
       .flatMap((event) => event.files)
   );
+  const exactSourceFiles = uniquePaths(events.flatMap((event) => exactSourceFilesFromMetadata(event.metadata, event.files)));
   const overlapFiles = hookFiles.filter((file) => mcpFiles.includes(file));
   const recordedAvoided = events.reduce((total, event) => total + (numberField(event.metadata.duplicateContextAvoided) ?? 0), 0);
 
@@ -51,7 +52,8 @@ export function summarizeCoordinationMetrics(
     duplicateContextAvoided: recordedAvoided + Math.max(0, hookFiles.length + mcpFiles.length - uniquePaths([...hookFiles, ...mcpFiles]).length),
     hookFiles,
     mcpFiles,
-    overlapFiles
+    overlapFiles,
+    exactSourceFiles
   };
 }
 
@@ -66,4 +68,27 @@ export function emptyMetricsBucket(): MetricsBucket {
 
 function numberField(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function exactSourceFilesFromMetadata(metadata: Record<string, unknown>, eventFiles: string[]): string[] {
+  const direct = contextDecisionFile(metadata);
+  const nested = contextDecisionFile(metadata.contextDecision);
+  const qualityNested = contextDecisionFile(nestedObject(metadata.primeQuality)?.contextDecision);
+  const primary = direct ?? nested ?? qualityNested;
+  if (primary) return [primary];
+  return booleanField(metadata.exactSourceHit) ? eventFiles.slice(0, 1) : [];
+}
+
+function contextDecisionFile(value: unknown): string | undefined {
+  const record = nestedObject(value);
+  if (!record || !booleanField(record.exactSourceHit)) return undefined;
+  return typeof record.primaryFile === "string" ? record.primaryFile : undefined;
+}
+
+function nestedObject(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
+}
+
+function booleanField(value: unknown): boolean {
+  return value === true;
 }

@@ -220,7 +220,7 @@ export class KairnRuntime {
     };
     let related: Awaited<ReturnType<KairnRuntime["getRelatedFiles"]>> | undefined;
     let tests: Awaited<ReturnType<KairnRuntime["findTests"]>> | undefined;
-    const needsExpansion = quality.action === "emit" && input.format !== "mcp_brief";
+    const needsExpansion = quality.action === "emit" && !contextDecision.exactSourceHit && input.format !== "mcp_brief";
     if (needsExpansion) {
       const expansionStartedAt = Date.now();
       const relatedStartedAt = Date.now();
@@ -249,12 +249,14 @@ export class KairnRuntime {
       markTiming("findTestsMs", testsStartedAt);
       markTiming("expansionWallMs", expansionStartedAt);
     }
-    const files = uniquePaths([
-      ...context.suggestedNextContext.slice(0, limits.topFiles),
-      ...context.files.slice(0, limits.topFiles),
-      ...(related?.related ?? []).slice(0, limits.relatedFiles),
-      ...(tests?.files ?? []).slice(0, limits.testFiles)
-    ]);
+    const files = contextDecision.exactSourceHit && primaryFile
+      ? [primaryFile]
+      : uniquePaths([
+          ...context.suggestedNextContext.slice(0, limits.topFiles),
+          ...context.files.slice(0, limits.topFiles),
+          ...(related?.related ?? []).slice(0, limits.relatedFiles),
+          ...(tests?.files ?? []).slice(0, limits.testFiles)
+        ]);
     const suggestedCommands = [
       `kairn context --session ${session.id} --root <repo> --query "${resolvedTask.replaceAll('"', '\\"')}" --mode snippets`,
       ...(primaryFile ? [`kairn context --session ${session.id} --root <repo> --related ${primaryFile}`] : []),
@@ -1002,6 +1004,8 @@ export class KairnRuntime {
     target?: string | undefined;
     budget?: number | undefined;
     refreshIndex?: boolean | undefined;
+    limit?: number | undefined;
+    focused?: boolean | undefined;
   }): Promise<ContextResponse> {
     const session = this.store.getSession(input.sessionId);
     const files = input.refreshIndex === false ? this.store.listFiles(session.rootPath) : await this.refreshIndex(session.rootPath);
@@ -1015,7 +1019,7 @@ export class KairnRuntime {
       testsByPath.set(file.path, file);
     }
 
-    if (testsByPath.size === 0) {
+    if (testsByPath.size === 0 && !input.focused) {
       for (const file of findTestsFor(files, target)) {
         testsByPath.set(file.path, file);
       }
@@ -1023,7 +1027,7 @@ export class KairnRuntime {
 
     const tests = [...testsByPath.values()]
       .sort((a, b) => Number(graphTestPaths.has(b.path)) - Number(graphTestPaths.has(a.path)) || a.path.localeCompare(b.path))
-      .slice(0, 30);
+      .slice(0, Math.max(0, input.limit ?? 30));
     const packageScripts = this.readPackageScripts(session.rootPath);
     const responseContent = truncateToBudget(
       [
@@ -1130,6 +1134,8 @@ export class KairnRuntime {
   }): Promise<FailureContext> {
     const session = this.store.getSession(input.sessionId);
     await this.refreshIndex(session.rootPath);
+    const coordination = this.getCoordinationState(input.sessionId);
+    const exactSourceFile = input.source === "mcp" ? coordination.exactSourceFiles[0] : undefined;
     const knownFiles = this.store.listFiles(session.rootPath).map((file) => file.path);
     const failureFiles = extractFailureFiles({
       output: input.output,
@@ -1138,6 +1144,69 @@ export class KairnRuntime {
       explicitFiles: input.files
     });
     const changedFiles = [...(await this.getChangedFiles(session.rootPath))].sort();
+    if (exactSourceFile) {
+      const outputSummary = input.output ? compressOutputText(input.output, input.type, 360) : "";
+      const files = uniquePaths([...failureFiles, exactSourceFile, ...changedFiles.filter((file) => file === exactSourceFile)]).slice(0, 4);
+      const content = truncateToBudget(
+        [
+          "# Kairn Failure Context",
+          "",
+          input.command ? `Command: ${input.command}` : undefined,
+          `Output kind: ${input.type}`,
+          `Exact source focus: ${exactSourceFile}`,
+          failureFiles.length > 0 ? `Failure files: ${failureFiles.join(", ")}` : "Failure files: none detected.",
+          "",
+          outputSummary ? "## Compressed Failure Output" : undefined,
+          outputSummary || undefined,
+          "",
+          "## Agent Guidance",
+          "- Stay on the exact source focus first.",
+          "- Do not request broad related files or test fanout unless this source file is insufficient."
+        ].filter(Boolean).join("\n"),
+        input.budget ?? 900
+      );
+
+      this.store.recordCommand({
+        sessionId: input.sessionId,
+        type: input.type,
+        summary: content
+      });
+      this.recordShown(input.sessionId, "context", "failure_context", content);
+      this.recordMetricsEvent({
+        sessionId: input.sessionId,
+        rootPath: session.rootPath,
+        eventKind: "failure_context",
+        eventName: input.eventName ?? "failure_context",
+        source: input.source ?? "runtime",
+        responseMode: "failure_context",
+        baselineTokens: input.output ? estimateTokens(input.output) + estimateFileBaselineTokens(this.store.listFiles(session.rootPath).filter((file) => files.includes(file.path))) : 0,
+        outputTokens: estimateTokens(content),
+        files,
+        metadata: {
+          outputKind: input.type,
+          exactSourceFollowup: true,
+          exactSourceFile,
+          failureFiles: failureFiles.length,
+          relatedFiles: 0,
+          testFiles: 0,
+          changedFiles: changedFiles.length,
+          estimator: "raw failure output plus exact-source linked files as baseline"
+        }
+      });
+
+      return {
+        session: this.getSession(input.sessionId),
+        type: input.type,
+        content,
+        files,
+        failureFiles,
+        relatedFiles: [],
+        testFiles: [],
+        changedFiles,
+        tokenEstimate: estimateTokens(content),
+        warnings: ["Exact source hit: failure context intentionally skipped broad related/test expansion."]
+      };
+    }
     const seedFiles = uniquePaths([...failureFiles, ...changedFiles]).slice(0, 4);
     const relatedFiles = new Set<string>();
     const testFiles = new Set<string>();
@@ -1228,7 +1297,18 @@ export class KairnRuntime {
   }): Promise<ContextResponse> {
     const session = this.store.getSession(input.sessionId);
     const coordination = this.getCoordinationState(input.sessionId);
-    const avoidHookFiles = (files: string[]) => uniquePaths(files).filter((file) => !coordination.hookFiles.includes(file));
+    const exactSourceFile = coordination.exactSourceFiles[0];
+    const alreadyReturnedFiles = uniquePaths([...coordination.hookFiles, ...coordination.mcpFiles]);
+    const avoidReturnedFiles = (files: string[]) => uniquePaths(files).filter((file) => !alreadyReturnedFiles.includes(file));
+    if (exactSourceFile) {
+      return this.focusedExactSourceContext({
+        sessionId: input.sessionId,
+        file: exactSourceFile,
+        budget: input.budget,
+        alreadyReturned: alreadyReturnedFiles.includes(exactSourceFile),
+        reason: "Kairn already found a high-confidence exact source file for this task."
+      });
+    }
     const latestFailure = [...this.store.listWatchEvents(input.sessionId)]
       .reverse()
       .find((event) => event.kind === "failure" && event.files.length > 0);
@@ -1240,7 +1320,7 @@ export class KairnRuntime {
         budget: 500
       });
       const nextReads = uniquePaths([
-        ...avoidHookFiles([latestFailure.files[0], ...related.suggestedNextContext]),
+        ...avoidReturnedFiles([latestFailure.files[0], ...related.suggestedNextContext]),
         latestFailure.files[0]
       ]).slice(0, 2);
       const content = truncateToBudget(
@@ -1269,7 +1349,7 @@ export class KairnRuntime {
 
     const diff = await this.reviewDiff({ sessionId: input.sessionId, budget: input.budget ?? 900 });
     if (diff.suggestedNextContext.length > 0) {
-      const nextReads = uniquePaths([...avoidHookFiles(diff.suggestedNextContext), ...diff.suggestedNextContext]).slice(0, 2);
+      const nextReads = uniquePaths([...avoidReturnedFiles(diff.suggestedNextContext), ...diff.suggestedNextContext]).slice(0, 2);
       const content = truncateToBudget(
         [
           "# Kairn Next Context",
@@ -1300,7 +1380,25 @@ export class KairnRuntime {
       budget: input.budget ?? 900,
       mode: "brief"
     });
-    const nextReads = uniquePaths([...avoidHookFiles(context.suggestedNextContext), ...context.suggestedNextContext]).slice(0, 2);
+    const files = this.store.listFiles(session.rootPath);
+    const quality = evaluatePrimeQuality({
+      task: session.task,
+      context,
+      knownFiles: files
+    });
+    const decision = evaluateContextValue({
+      task: session.task,
+      profile: resolvePrimeProfile("auto", session.task),
+      context,
+      quality,
+      knownFiles: files,
+      repoFileCount: files.length,
+      estimatedContextCost: input.budget ?? 700
+    });
+    const nextReads = uniquePaths([...avoidReturnedFiles(context.suggestedNextContext), ...context.suggestedNextContext]).slice(
+      0,
+      decision.exactSourceHit ? 1 : 2
+    );
     if (nextReads.length === 0) return context;
     const content = truncateToBudget(
       [
@@ -1309,8 +1407,10 @@ export class KairnRuntime {
         "## Next Reads",
         ...nextReads.map((file) => `- ${file}`),
         "",
-        coordination.hookFiles.length > 0 ? `Avoiding hook-shown files: ${coordination.hookFiles.slice(0, 3).join(", ")}` : "",
-        "Agent guidance: read the first file before broad scans; use the fallback only if needed."
+        alreadyReturnedFiles.length > 0 ? `Avoiding already-returned files: ${alreadyReturnedFiles.slice(0, 3).join(", ")}` : "",
+        decision.exactSourceHit
+          ? "Agent guidance: Kairn found a high-confidence source file; read it before requesting broader related files or tests."
+          : "Agent guidance: read the first file before broad scans; use the fallback only if needed."
       ].filter(Boolean).join("\n"),
       input.budget ?? 700
     );
@@ -1321,7 +1421,47 @@ export class KairnRuntime {
       related: nextReads.slice(1),
       suggestedNextContext: nextReads,
       tokenEstimate: estimateTokens(content),
-      warnings: uniqueStrings([...context.warnings, coordination.hookFiles.length > 0 ? "Next context avoided files already emitted by the hybrid hook." : ""])
+      warnings: uniqueStrings([
+        ...context.warnings,
+        alreadyReturnedFiles.length > 0 ? "Next context avoided files already emitted by Kairn hooks or MCP tools." : "",
+        decision.exactSourceHit ? "Exact source hit: Kairn intentionally avoided broad expansion." : ""
+      ])
+    };
+  }
+
+  focusedExactSourceContext(input: {
+    sessionId: string;
+    file: string;
+    budget?: number | undefined;
+    alreadyReturned?: boolean | undefined;
+    reason?: string | undefined;
+  }): ContextResponse {
+    const nextReads = input.alreadyReturned ? [] : [input.file];
+    const content = truncateToBudget(
+      [
+        "# Kairn Focused Next Context",
+        "",
+        input.reason ?? "Kairn found a high-confidence exact source file.",
+        "",
+        `Primary source: ${input.file}`,
+        "",
+        "## Next Reads",
+        nextReads.length > 0 ? nextReads.map((file) => `- ${file}`).join("\n") : "No new file recommended; continue with the already-returned exact source file.",
+        "",
+        "Agent guidance: do not request broad related files or test fanout unless this exact source file is insufficient."
+      ].join("\n"),
+      input.budget ?? 550
+    );
+    this.recordShown(input.sessionId, "context", "brief", content);
+    return {
+      mode: "brief",
+      content,
+      files: nextReads,
+      symbols: [],
+      related: [],
+      warnings: ["Exact source hit: Kairn intentionally stopped broad MCP expansion."],
+      suggestedNextContext: nextReads,
+      tokenEstimate: estimateTokens(content)
     };
   }
 

@@ -112,12 +112,13 @@ export async function runAgentBenchmarkCase(input: {
         };
     if (setupResult && setupResult.status !== 0) {
       const metadata = metadataFromOutput({
-        output: setupResult.output,
-        prompt,
-        workspacePath,
-        elapsedMs: Date.now() - startedAt,
-        adapter: "command",
-        extraMetadata: {
+      output: setupResult.output,
+      prompt,
+      workspacePath,
+      elapsedMs: Date.now() - startedAt,
+      adapter: "command",
+      benchmarkCase: input.benchmarkCase,
+      extraMetadata: {
           originalPromptHash: sha256(prompt),
           ...setupMetadata,
           ...seedMetadata
@@ -178,6 +179,7 @@ export async function runAgentBenchmarkCase(input: {
       workspacePath,
       elapsedMs: Date.now() - startedAt,
       adapter: "command",
+      benchmarkCase: input.benchmarkCase,
       extraMetadata: {
         originalPromptHash: sha256(prompt),
         ...setupMetadata,
@@ -240,6 +242,7 @@ export async function runAgentBenchmarkCase(input: {
       workspacePath,
       elapsedMs: undefined,
       adapter: "command",
+      benchmarkCase: input.benchmarkCase,
       extraMetadata: {
         seedPatchFiles,
         changedFiles: changedFileList,
@@ -552,6 +555,7 @@ function metadataFromOutput(input: {
   workspacePath: string;
   elapsedMs: number | undefined;
   adapter: string;
+  benchmarkCase?: BenchmarkCase | undefined;
   extraMetadata?: Record<string, unknown> | undefined;
 }): {
   observedCodexTokens?: number;
@@ -564,6 +568,9 @@ function metadataFromOutput(input: {
   const codexJsonlMcp = codexJsonlMcpCalls(input.output);
   const workspaceMcp = workspaceMcpCalls(input.workspacePath);
   const actualMcpToolCalls = workspaceMcp.count > 0 ? workspaceMcp.count : codexJsonlMcp.count;
+  const mcpReturnedQuality = input.benchmarkCase
+    ? mcpReturnedFileQuality(input.benchmarkCase, workspaceMcp.files)
+    : {};
   const metadata: Record<string, unknown> = {
     workspacePath: input.workspacePath,
     promptHash: sha256(input.prompt),
@@ -576,6 +583,7 @@ function metadataFromOutput(input: {
     actualMcpToolNames: unique([...workspaceMcp.toolNames, ...codexJsonlMcp.toolNames]),
     actualMcpToolCallSource: workspaceMcp.count > 0 ? "workspace_metrics" : codexJsonlMcp.count > 0 ? "codex_jsonl" : "none",
     actualMcpFiles: workspaceMcp.files,
+    ...mcpReturnedQuality,
     ...(input.extraMetadata ?? {})
   };
 
@@ -684,6 +692,49 @@ function workspaceMcpCalls(workspacePath: string): { count: number; toolNames: s
   } finally {
     db?.close();
   }
+}
+
+function mcpReturnedFileQuality(benchmarkCase: BenchmarkCase, files: string[]): Record<string, unknown> {
+  const uniqueFiles = unique(files);
+  const expected = uniqueFiles.filter((file) => benchmarkCase.expectedFiles.includes(file));
+  const noisy = uniqueFiles.filter((file) =>
+    benchmarkCase.excludedFiles.some((excluded) => benchmarkPatternMatches(file, excluded)) || isNoisyMcpReturnedFile(file)
+  );
+  const testFanout = uniqueFiles.filter(isMcpReturnedTestFile);
+  const relevant = unique([...expected, ...uniqueFiles.filter((file) => !noisy.includes(file) && !testFanout.includes(file))]);
+  return {
+    mcpReturnedFileCount: uniqueFiles.length,
+    mcpReturnedExpectedFileCount: expected.length,
+    mcpReturnedNoiseFileCount: noisy.length,
+    mcpReturnedTestFanoutCount: testFanout.length,
+    mcpContextEfficiency: uniqueFiles.length > 0 ? Number((relevant.length / uniqueFiles.length).toFixed(4)) : 1
+  };
+}
+
+function benchmarkPatternMatches(filePath: string, pattern: string): boolean {
+  const normalizedFile = normalizeRelativePath(filePath);
+  const normalizedPattern = normalizeRelativePath(pattern);
+  return normalizedFile === normalizedPattern ||
+    normalizedFile.startsWith(normalizedPattern.endsWith("/") ? normalizedPattern : `${normalizedPattern}/`) ||
+    normalizedFile.includes(normalizedPattern);
+}
+
+function isNoisyMcpReturnedFile(filePath: string): boolean {
+  return /(^|\/)(docs?|documentation|examples|demo|demos|devtools|codemods|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook)\//i.test(filePath);
+}
+
+function isMcpReturnedTestFile(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  return (
+    /\.(test|spec)\.[cm]?[jt]sx?$/.test(normalized) ||
+    normalized.includes("__tests__/") ||
+    /^test_.*\.pyi?$/.test(normalized.split("/").at(-1) ?? normalized) ||
+    /_test\.pyi?$/.test(normalized) ||
+    /(test|tests)\.java$/.test(normalized) ||
+    normalized.includes("/src/test/java/") ||
+    /(_test|_tests|_unittest)\.(cc|cpp|cxx|c|hh|hpp|hxx)$/.test(normalized) ||
+    /(^|\/)(test|tests)\//.test(normalized)
+  );
 }
 
 function parseStringArray(value: string): string[] {

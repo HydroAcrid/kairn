@@ -65,6 +65,7 @@ export type MetricsSummary = {
     hookFiles: string[];
     mcpFiles: string[];
     overlapFiles: string[];
+    exactSourceFiles: string[];
   };
   index: {
     files: number;

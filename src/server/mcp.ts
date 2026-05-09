@@ -66,13 +66,24 @@ export function createMcpServer(options: { root?: string }): McpServer {
         budget: z.number().int().positive().optional()
       }
     },
-    async ({ sessionId, query, mode, budget }) =>
-      mcpToolResult(
+    async ({ sessionId, query, mode, budget }) => {
+      const exactSourceFile = mcpExactSourceFile(runtime, sessionId);
+      const value = exactSourceFile
+        ? runtime.focusedExactSourceContext({
+            sessionId,
+            file: exactSourceFile,
+            budget,
+            alreadyReturned: runtime.getCoordinationState(sessionId).mcpFiles.includes(exactSourceFile),
+            reason: "Kairn already found an exact source hit; find_context is staying focused instead of reopening broad retrieval."
+          })
+        : await runtime.findContext({ sessionId, query, mode, requestType: "find_context", budget });
+      return mcpToolResult(
         runtime,
         "kairn_find_context",
         { sessionId, query, mode, budget },
-        await runtime.findContext({ sessionId, query, mode, requestType: "find_context", budget })
-      )
+        value
+      );
+    }
   );
 
   server.registerTool(
@@ -123,8 +134,19 @@ export function createMcpServer(options: { root?: string }): McpServer {
         budget: z.number().int().positive().optional()
       }
     },
-    async ({ sessionId, target, budget }) =>
-      mcpToolResult(runtime, "kairn_get_related_files", { sessionId, target, budget }, await runtime.getRelatedFiles({ sessionId, target, budget }))
+    async ({ sessionId, target, budget }) => {
+      const exactSourceFile = mcpExactSourceFile(runtime, sessionId);
+      const value = exactSourceFile
+        ? runtime.focusedExactSourceContext({
+            sessionId,
+            file: exactSourceFile,
+            budget,
+            alreadyReturned: runtime.getCoordinationState(sessionId).mcpFiles.includes(exactSourceFile),
+            reason: "Kairn already found an exact source hit; related-file expansion is intentionally skipped."
+          })
+        : await runtime.getRelatedFiles({ sessionId, target, budget });
+      return mcpToolResult(runtime, "kairn_get_related_files", { sessionId, target, budget }, value);
+    }
   );
 
   server.registerTool(
@@ -135,11 +157,17 @@ export function createMcpServer(options: { root?: string }): McpServer {
       inputSchema: {
         sessionId: z.string().min(1),
         target: z.string().optional(),
-        budget: z.number().int().positive().optional()
+        budget: z.number().int().positive().optional(),
+        limit: z.number().int().nonnegative().optional()
       }
     },
-    async ({ sessionId, target, budget }) =>
-      mcpToolResult(runtime, "kairn_find_tests", { sessionId, target, budget }, await runtime.findTests({ sessionId, target, budget }))
+    async ({ sessionId, target, budget, limit }) =>
+      mcpToolResult(
+        runtime,
+        "kairn_find_tests",
+        { sessionId, target, budget, limit },
+        await runtime.findTests({ sessionId, target, budget, limit: limit ?? 1, focused: true })
+      )
   );
 
   server.registerTool(
@@ -275,7 +303,9 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
     ...prime.files.filter((file) => !isMcpLikelyTestFile(file) && !isMcpNoisyFile(file))
   ]);
   const startFiles = sourceCandidates.slice(0, 1);
-  const likelyTests = uniqueValues(prime.files.filter(isMcpLikelyTestFile)).slice(0, 1);
+  const likelyTests = shouldIncludeMcpLikelyTests(prime)
+    ? uniqueValues(prime.files.filter(isMcpLikelyTestFile)).slice(0, 1)
+    : [];
   const primaryFile = startFiles[0];
   const symbolHint = extractSymbolHints(prime.content)[0];
   const nextToolCalls = [
@@ -369,6 +399,15 @@ function isMcpPrimarySourceFile(filePath: string): boolean {
 
 function isMcpNoisyFile(filePath: string): boolean {
   return /(^|\/)(docs?|documentation|examples|demo|demos|devtools|codemods|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook)\//.test(filePath);
+}
+
+function shouldIncludeMcpLikelyTests(prime: PrimeContextResult): boolean {
+  if (!prime.contextDecision?.exactSourceHit) return true;
+  return /\b(test|tests|spec|verify|verification|failing test|failure output)\b/i.test(prime.task);
+}
+
+function mcpExactSourceFile(runtime: KairnRuntime, sessionId: string): string | undefined {
+  return runtime.getCoordinationState(sessionId).exactSourceFiles[0];
 }
 
 function estimateCompactPrepareTokens(startFiles: string[], likelyTests: string[], nextToolCalls: unknown[]): number {

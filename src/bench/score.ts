@@ -66,6 +66,10 @@ export function scoreBenchmarkCase(input: {
       excludedHits,
       missingRequiredTouchedFiles,
       mcpSuccess,
+      mcpReturnedFileCount: numberMetadata(input.metadata?.mcpReturnedFileCount),
+      mcpReturnedNoiseFileCount: numberMetadata(input.metadata?.mcpReturnedNoiseFileCount),
+      mcpReturnedTestFanoutCount: numberMetadata(input.metadata?.mcpReturnedTestFanoutCount),
+      mcpContextEfficiency: numberMetadata(input.metadata?.mcpContextEfficiency),
       responseTokens: input.responseTokens,
       budget: input.benchmarkCase.budget,
       outcome
@@ -169,6 +173,10 @@ function recommendationsFor(input: {
   excludedHits: string[];
   missingRequiredTouchedFiles: string[];
   mcpSuccess: boolean;
+  mcpReturnedFileCount?: number | undefined;
+  mcpReturnedNoiseFileCount?: number | undefined;
+  mcpReturnedTestFanoutCount?: number | undefined;
+  mcpContextEfficiency?: number | undefined;
   responseTokens: number;
   budget?: number | undefined;
   outcome: BenchmarkResultRecord["taskOutcome"];
@@ -186,6 +194,15 @@ function recommendationsFor(input: {
   }
   if (!input.mcpSuccess) {
     recommendations.push("MCP mode did not record an actual Kairn MCP tool call.");
+  }
+  if ((input.mcpReturnedTestFanoutCount ?? 0) > 1) {
+    recommendations.push(`MCP returned too many test files (${input.mcpReturnedTestFanoutCount}); tighten focused context before claiming savings.`);
+  }
+  if ((input.mcpReturnedNoiseFileCount ?? 0) > 0) {
+    recommendations.push(`MCP returned noisy files (${input.mcpReturnedNoiseFileCount}); filter docs/examples/generated/devtools from compact responses.`);
+  }
+  if ((input.mcpReturnedFileCount ?? 0) > 4 && (input.mcpContextEfficiency ?? 1) < 0.5) {
+    recommendations.push("MCP returned broad low-efficiency context; stop expanding after high-confidence source hits.");
   }
   if (input.budget && input.responseTokens > input.budget) {
     recommendations.push("Response exceeded the benchmark budget; tune response routing or snippets.");

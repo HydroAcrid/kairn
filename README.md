@@ -84,7 +84,7 @@ Examples live in `examples/.codex/config.toml`, `examples/.codex/hooks.json`, an
 kairn setup codex --root /path/to/repo
 ```
 
-After that, open normal `codex` in the repo and submit a task. The default `savings` setup installs only `UserPromptSubmit` with a quality-gated full-prime brief, so Kairn can create or reuse a task session and point Codex at high-confidence start files before broad repo scanning. Use `--hook-output tiny-directive` only for delivery experiments, `--mode observe --post-tool-hook-output failure-only` to add failure-only post-tool context, `--mode debug` for broad diagnostics, `--mode mcp-first` to install Kairn as a Codex MCP server plus MCP-first guidance with no prompt prime, or `--mode hybrid` to install MCP plus a tiny prompt hook that tells Codex which Kairn session/files to start with before calling MCP. If the hook host cannot find the global `kairn` binary, set `KAIRN_CMD` to an absolute command such as `node /Users/kevindotel/Documents/Projects/kairn/dist/cli.js`.
+After that, open normal `codex` in the repo and submit a task. The default `savings` setup installs only `UserPromptSubmit` with a quality-gated full-prime brief, so Kairn can create or reuse a task session and point Codex at high-confidence start files before broad repo scanning. Use `--hook-output tiny-directive` only for delivery experiments, `--mode observe --post-tool-hook-output failure-only` to add failure-only post-tool context, `--mode debug` for broad diagnostics, `--mode mcp-first` to install Kairn as a Codex MCP server plus MCP-first guidance with no prompt prime, or `--mode hybrid` to install MCP plus a tiny prompt hook that tells Codex which Kairn session/files to start with before calling MCP. Generated hook and MCP configs use a resolved Kairn command when possible; set `KAIRN_CMD` only when you want to override that command for local development builds.
 
 Codex project hooks require a trusted repo `.codex/` config and the hooks feature flag:
 
@@ -94,6 +94,20 @@ codex_hooks = true
 ```
 
 The Codex example uses the savings-first setup: proactive `UserPromptSubmit` only. Stop and post-tool hooks are supported in observe/debug modes, but Kairn only emits host JSON when it has useful additional context. For lower latency, run `kairn daemon --root /path/to/repo` in another terminal; hooks will use the warm runtime when available and fall back to direct CLI execution otherwise. The Claude example observes `PostToolUse`, `PostToolUseFailure`, and `FileChanged` for common project config files; use `kairn watch` for repo-wide file observation.
+
+For MCP proof runs, first verify Codex can see the server:
+
+```bash
+codex mcp list --json
+```
+
+In non-interactive `codex exec`, project MCP calls can be cancelled before Kairn receives them under `--sandbox workspace-write`, even when the server is visible. For disposable benchmark workspaces, use approval-never plus full sandbox access for MCP modes and require `actualMcpToolCalls > 0` before treating a run as MCP evidence:
+
+```bash
+codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable codex_hooks "Call kairn_prepare_task for this task before reading files."
+```
+
+Use the same Codex sandbox/approval mode across all modes in an MCP comparison matrix so token comparisons are fair. Do not use `danger-full-access` as a normal user default outside disposable benchmark clones.
 
 ## Metrics
 
@@ -235,11 +249,11 @@ The included `examples/bench/seeded-large-js-ts-template.json` shows the intende
 kairn bench prove \
   --root /Users/kevindotel/Documents/Projects/kairn \
   --suite examples/bench/seeded-cross-language.json \
-  --baseline-command "codex exec --model gpt-5.4-mini --sandbox workspace-write --disable codex_hooks {prompt}" \
-  --hook-full-prime-command "kairn setup codex --root {root} --mode savings --hook-output full-prime >/dev/null && codex exec --model gpt-5.4-mini --sandbox workspace-write --enable codex_hooks {prompt}" \
-  --real-mcp-first-command "kairn setup codex --root {root} --mode mcp-first >/dev/null && codex exec --model gpt-5.4-mini --sandbox workspace-write --disable codex_hooks {prompt}" \
-  --hybrid-mcp-brief-command "kairn setup codex --root {root} --mode hybrid >/dev/null && codex exec --model gpt-5.4-mini --sandbox workspace-write --enable codex_hooks {prompt}" \
-  --manual-prime-command "codex exec --model gpt-5.4-mini --sandbox workspace-write --disable codex_hooks {prompt}" \
+  --baseline-command "codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable codex_hooks {prompt}" \
+  --hook-full-prime-command "kairn setup codex --root {root} --mode savings --hook-output full-prime >/dev/null && codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --enable codex_hooks {prompt}" \
+  --real-mcp-first-command "kairn setup codex --root {root} --mode mcp-first >/dev/null && codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable codex_hooks {prompt}" \
+  --hybrid-mcp-brief-command "kairn setup codex --root {root} --mode hybrid >/dev/null && codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --enable codex_hooks {prompt}" \
+  --manual-prime-command "codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable codex_hooks {prompt}" \
   --repeat 3 \
   --shuffle-order \
   --json
@@ -268,14 +282,14 @@ To prove whether proactive context helps, compare live-agent modes. Repeat runs 
 kairn bench prove \
   --root "$TARGET_REPO" \
   --suite examples/bench/job-tracker-agent-light.json \
-  --baseline-command "codex exec --model gpt-5.4-mini --sandbox workspace-write --disable codex_hooks {prompt}" \
-  --hook-full-prime-command "kairn setup codex --root {root} --mode savings --hook-output full-prime >/dev/null && codex exec --model gpt-5.4-mini --sandbox workspace-write --enable codex_hooks {prompt}" \
-  --hook-tiny-directive-command "kairn setup codex --root {root} --mode savings --hook-output tiny-directive >/dev/null && codex exec --model gpt-5.4-mini --sandbox workspace-write --enable codex_hooks {prompt}" \
-  --hook-tiny-with-failures-command "kairn setup codex --root {root} --mode observe --hook-output tiny-directive --post-tool-hook-output failure-only >/dev/null && codex exec --model gpt-5.4-mini --sandbox workspace-write --enable codex_hooks {prompt}" \
-  --manual-prime-command "codex exec --model gpt-5.4-mini --sandbox workspace-write --disable codex_hooks {prompt}" \
-  --mcp-first-command "codex exec --model gpt-5.4-mini --sandbox workspace-write --disable codex_hooks {prompt}" \
-  --real-mcp-first-command "kairn setup codex --root {root} --mode mcp-first >/dev/null && codex exec --model gpt-5.4-mini --sandbox workspace-write --disable codex_hooks {prompt}" \
-  --hybrid-mcp-brief-command "kairn setup codex --root {root} --mode hybrid >/dev/null && codex exec --model gpt-5.4-mini --sandbox workspace-write --enable codex_hooks {prompt}" \
+  --baseline-command "codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable codex_hooks {prompt}" \
+  --hook-full-prime-command "kairn setup codex --root {root} --mode savings --hook-output full-prime >/dev/null && codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --enable codex_hooks {prompt}" \
+  --hook-tiny-directive-command "kairn setup codex --root {root} --mode savings --hook-output tiny-directive >/dev/null && codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --enable codex_hooks {prompt}" \
+  --hook-tiny-with-failures-command "kairn setup codex --root {root} --mode observe --hook-output tiny-directive --post-tool-hook-output failure-only >/dev/null && codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --enable codex_hooks {prompt}" \
+  --manual-prime-command "codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable codex_hooks {prompt}" \
+  --mcp-first-command "codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable codex_hooks {prompt}" \
+  --real-mcp-first-command "kairn setup codex --root {root} --mode mcp-first >/dev/null && codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable codex_hooks {prompt}" \
+  --hybrid-mcp-brief-command "kairn setup codex --root {root} --mode hybrid >/dev/null && codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --enable codex_hooks {prompt}" \
   --repeat 3 \
   --shuffle-order \
   --json

@@ -95,6 +95,7 @@ export class MetricsService {
     ]);
     const coordination = this.getCoordinationState(sessionId);
     const overlapFiles = files.filter((file) => coordination.hookFiles.includes(file));
+    const contextDecision = contextDecisionFromMcpValue(input.result);
 
     this.recordMetricsEvent({
       sessionId,
@@ -113,7 +114,8 @@ export class MetricsService {
         hookFiles: coordination.hookFiles,
         mcpFiles: files,
         overlapFiles,
-        duplicateContextAvoided: Math.max(0, coordination.hookFiles.length - overlapFiles.length)
+        duplicateContextAvoided: Math.max(0, coordination.hookFiles.length - overlapFiles.length),
+        ...(contextDecision ? { contextDecision } : {})
       }
     });
   }
@@ -148,4 +150,12 @@ export class MetricsService {
       ...record
     });
   }
+}
+
+function contextDecisionFromMcpValue(value: unknown): Record<string, unknown> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const candidate = (value as Record<string, unknown>).contextDecision;
+  return candidate && typeof candidate === "object" && !Array.isArray(candidate)
+    ? candidate as Record<string, unknown>
+    : undefined;
 }

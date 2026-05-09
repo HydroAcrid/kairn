@@ -2217,3 +2217,185 @@ Next improvements:
 2. Keep hook full-prime as the main automatic path.
 3. Treat MCP as a separate integration issue: first make explicit MCP calls succeed under `codex exec`, then retest MCP-first behavior.
 4. Tune language-specific hook decisions: Python benefited; C++ should shrink or suppress unless confidence is very high.
+
+## 2026-05-08 Hook Setup Fix + Chunked Four-Mode Retest
+
+After trying the hook inside `new-site/my-portfolio`, Codex reported:
+
+```text
+PostToolUse - Sending tool output to Kairn
+failed
+error: hook exited with code 127
+```
+
+Root cause:
+
+- The repo still had an old `.codex/hooks.json` that called `${KAIRN_CMD:-kairn}`.
+- In Codex's hook shell, `kairn` was not on `PATH`.
+- Exit `127` was therefore command-not-found, not a Kairn retrieval failure.
+
+Fix:
+
+- `kairn setup codex` now writes a resolved CLI command into hook config instead of falling back to bare `kairn`.
+- The hook still honors `KAIRN_CMD` when explicitly provided.
+- Regenerated setup for:
+  - `/Users/kevindotel/Documents/Projects/new-site/.codex/hooks.json`
+  - `/Users/kevindotel/Documents/Projects/new-site/my-portfolio/.codex/hooks.json`
+- Manual hook smoke from `my-portfolio` exited `0` and returned a proactive context brief.
+
+Verification:
+
+```text
+pnpm test -- tests/watch.test.ts  # pass
+pnpm typecheck                   # pass
+pnpm build                       # pass
+```
+
+### Benchmark Harness Correction
+
+The live seeded runs exposed a scoring bug: if Codex fixes a seeded file by restoring it to the committed clean version, `git diff` becomes empty, so the old harness incorrectly treated the required source file as not touched.
+
+Fix:
+
+- Agent-touched files now include seeded files whose current hash differs from the seeded broken hash, even if the final git diff is clean.
+- Added a regression test for "fix restores clean committed content."
+
+Verification:
+
+```text
+pnpm test -- tests/bench.test.ts  # pass
+pnpm typecheck                   # pass
+pnpm build                       # pass
+```
+
+### Chunked Retest Files
+
+The all-at-once 12-run matrix stalled, so the retest was chunked by language:
+
+```text
+/tmp/kairn-live-python-four-mode-fixed.json
+/tmp/kairn-live-cpp-four-mode-fixed.json
+/tmp/kairn-live-typescript-four-mode-fixed.json
+```
+
+Modes tested:
+
+- `baseline`
+- `hook_full_prime`
+- `real_mcp_first`
+- `hybrid_mcp_brief`
+
+### Python Click `term_len`
+
+| Mode | Outcome | Tokens | Quality | Required source touched | Hook failures | MCP calls | Agent time |
+| --- | --- | ---: | --- | --- | ---: | ---: | ---: |
+| Baseline | pass | `24,153` | pass | yes | `0` | `0` | `58.2s` |
+| Hook full-prime | pass | `24,157` | pass | yes | `0` | `0` | `45.2s` |
+| Real MCP-first | partial | `52,477` | fail | yes | `0` | `0` | `67.8s` |
+| Hybrid MCP-brief | partial | `33,007` | fail | yes | `0` | `0` | `76.6s` |
+
+Interpretation:
+
+- Hook full-prime preserved quality and reduced wall-clock agent time, but was token-neutral (`+4` tokens).
+- MCP modes did not call Kairn MCP tools, so MCP quality gate failed.
+- Hybrid was worse than hook-only on both tokens and latency.
+
+### C++ fmt `starts_with`
+
+| Mode | Outcome | Tokens | Quality | Required source touched | Hook failures | MCP calls | Agent time |
+| --- | --- | ---: | --- | --- | ---: | ---: | ---: |
+| Baseline | pass | `20,103` | pass | yes | `0` | `0` | `19.0s` |
+| Hook full-prime | pass | `16,501` | pass | yes | `0` | `0` | `61.1s` |
+| Real MCP-first | partial | `14,202` | fail | yes | `0` | `0` | `28.4s` |
+| Hybrid MCP-brief | partial | `9,436` | fail | yes | `0` | `0` | `18.9s` |
+
+Valid savings:
+
+- Hook full-prime saved `3,602` observed tokens: `17.92%`.
+
+Invalid savings:
+
+- Real MCP-first and hybrid reduced tokens, but recorded `0` MCP calls, so the reductions cannot be claimed as MCP wins.
+- Hybrid's `53.06%` reduction is interesting, but it is hook/directive behavior, not proven MCP behavior.
+
+### TypeScript TanStack Hidden Hash
+
+| Mode | Outcome | Tokens | Quality | Required source touched | Hook failures | MCP calls | Agent time |
+| --- | --- | ---: | --- | --- | ---: | ---: | ---: |
+| Baseline | fail | `30,928` | fail | yes | `0` | `0` | `36.3s` |
+| Hook full-prime | fail | `19,729` | fail | yes | `0` | `0` | `28.3s` |
+| Real MCP-first | fail | `21,018` | fail | yes | `0` | `0` | `34.8s` |
+| Hybrid MCP-brief | fail | `21,150` | fail | yes | `0` | `0` | `37.4s` |
+
+Interpretation:
+
+- Every mode touched `packages/query-core/src/utils.ts`, but verification failed with exit `130`.
+- Hook full-prime reduced tokens by `36.21%`, but this is invalid savings because quality failed.
+- The task remains a poor proof case until the verification command is made less brittle or replaced with a smaller deterministic TypeScript seeded case.
+
+### Updated Conclusions
+
+- The hook setup bug is fixed. Code `127` should not recur after regenerating `.codex/hooks.json` and restarting Codex.
+- Hook full-prime is currently the only automatic surface that reliably emits useful Kairn context.
+- On this retest, hook full-prime produced one valid token win: C++ at `17.92%`.
+- Python was quality-preserving but token-neutral.
+- TanStack showed large token reductions but failed verification, so no savings claim.
+- MCP remains unproven in live `codex exec`: setup exists, but actual MCP tool calls remain `0` in the benchmark runs.
+
+### MCP Exec Cancellation Resolution
+
+Follow-up smoke testing isolated the MCP failure to Codex execution mode, not to Kairn's MCP server:
+
+- `codex mcp list --json` showed the project-local `kairn` MCP server with the expected `node /path/to/kairn/dist/cli.js serve --mcp --root <repo>` stdio command.
+- An explicit `codex exec` prompt to call `kairn_prepare_task` produced an MCP tool attempt, but under `--sandbox workspace-write` the call failed before Kairn received it:
+
+```text
+user cancelled MCP tool call
+```
+
+- `-a never` alone did not fix this.
+- `--dangerously-bypass-approvals-and-sandbox` did fix it in a disposable workspace.
+- The narrower successful mode was:
+
+```bash
+codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --skip-git-repo-check "Call kairn_prepare_task for this task before reading files."
+```
+
+That run completed actual Kairn MCP calls and Kairn recorded them in `.kairn` metrics:
+
+- `kairn_prepare_task`
+- `kairn_read_symbol`
+
+Conclusion:
+
+- Kairn MCP setup is mechanically valid.
+- Prior `real_mcp_first` and `hybrid_mcp_brief` runs used a Codex mode that could see the MCP server but cancelled tool execution.
+- Future MCP proof matrices must run in disposable benchmark clones with a consistent MCP-enabled Codex command, currently `codex -a never exec --sandbox danger-full-access ...`, and must require `actualMcpToolCalls > 0`.
+- `danger-full-access` is a benchmark-only recommendation for disposable clones, not a default user workflow.
+
+## 2026-05-09 MCP-Enabled Full Retest
+
+Report: `docs/kairn_mcp_full_test_improvement_report_2026-05-09.md`
+
+After switching MCP proof commands to `codex -a never exec --sandbox danger-full-access ...` in disposable workspaces, the runnable cross-language cases were retested with:
+
+- `baseline`
+- `hook_full_prime`
+- `real_mcp_first`
+- `hybrid_mcp_brief`
+
+Java was skipped because Maven is not installed locally.
+
+Key results:
+
+- Python Click: `hybrid_mcp_brief` passed quality gates, recorded `2` actual MCP calls, and saved `55.76%` observed tokens versus baseline.
+- C++ fmt: all Kairn modes passed quality gates and recorded MCP calls where expected, but all used more tokens than baseline.
+- TypeScript TanStack: MCP calls were recorded, but all modes failed verification with exit `130`, so all token reductions are invalid savings.
+
+Current improvement direction:
+
+- MCP is mechanically fixed.
+- Kairn must stop expanding after high-confidence exact source hits.
+- Full-prime hooks should become more adaptive; they were net negative on Python and C++ in this pass.
+- MCP compact responses need stricter returned-file caps and better test-fanout control.
+- TanStack should be demoted to retrieval stress testing until the verification command is reliable.

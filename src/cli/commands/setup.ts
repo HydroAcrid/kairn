@@ -57,6 +57,9 @@ export function registerSetupCommands(program: Command): void {
             ? "No prompt hook was installed; Codex should use Kairn through MCP-first instructions."
             : "Codex UserPromptSubmit hooks will request proactive Kairn context without KAIRN_SESSION.",
           result.mcpConfigured ? `${result.mode} mode writes a Kairn MCP server config and AGENTS.md guidance.` : "",
+          result.mcpConfigured
+            ? "MCP proof note: noninteractive codex exec may cancel project MCP calls under workspace-write; in disposable benchmark clones use `codex -a never exec --sandbox danger-full-access ...` and require actualMcpToolCalls > 0."
+            : "",
           ""
         ].filter(Boolean).join("\n")
       );

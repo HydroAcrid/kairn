@@ -18,6 +18,7 @@ export function evaluateContextValue(input: {
   const sourceFixSignal = isSourceFixTask(input.task);
   const easyTaskSignal = isEasyTask(input.task);
   const vagueImprovementSignal = isVagueImprovementTask(input.task);
+  const multiFileSignal = isMultiFileTask(input.task);
   const wrongContextRisk = Boolean(
     primaryFile &&
       sourceFixSignal &&
@@ -35,6 +36,21 @@ export function evaluateContextValue(input: {
     reasons.add("top result is a production source file");
     if (input.quality.topScore >= 160 && input.quality.topGap >= 20) {
       reasons.add("high-confidence exact source target supports compact context");
+    }
+  }
+  const exactSourceHit = isExactSourceHit({
+    task: input.task,
+    primaryFile,
+    topScore: input.quality.topScore,
+    topGap: input.quality.topGap,
+    primaryKind: primaryRecord?.kind,
+    sourceFixSignal
+  });
+  if (exactSourceHit) {
+    reasons.add("exact source hit should use focused context");
+    if (!multiFileSignal) {
+      score -= language === "python" ? 8 : 18;
+      reasons.add("single-source fix should not receive broad context expansion");
     }
   }
   if (wrongContextRisk) {
@@ -93,9 +109,12 @@ export function evaluateContextValue(input: {
     topGap: input.quality.topGap,
     language,
     wrongContextRisk,
-    primarySource: Boolean(primaryFile && isPrimarySourcePath(primaryFile))
+    primarySource: Boolean(primaryFile && isPrimarySourcePath(primaryFile)),
+    exactSourceHit,
+    multiFileSignal
   });
   const expectedSavingsRisk = action === "emit" ? "low" : action === "shrink" ? "medium" : "high";
+  const recommendedDelivery = action === "emit" ? "full_prime" : action === "shrink" ? "one_file_directive" : "none";
 
   return {
     score,
@@ -106,6 +125,8 @@ export function evaluateContextValue(input: {
     ...(primaryFile ? { primaryFile } : {}),
     language,
     exactPathMentioned: input.quality.exactPathMentioned,
+    exactSourceHit,
+    recommendedDelivery,
     estimatedContextCost: input.estimatedContextCost,
     expectedSavingsRisk,
     debugSignal,
@@ -125,10 +146,13 @@ function chooseAction(input: {
   language: ContextValueDecision["language"];
   wrongContextRisk: boolean;
   primarySource: boolean;
+  exactSourceHit: boolean;
+  multiFileSignal: boolean;
 }): ContextValueDecision["action"] {
   if (input.exactPathMentioned) return "suppress";
   if (input.wrongContextRisk && input.score < 72) return "suppress";
   if (input.wrongContextRisk) return "shrink";
+  if (input.exactSourceHit && !input.multiFileSignal) return "shrink";
   if (input.vagueImprovementSignal && !input.debugSignal) return input.score >= 88 && input.topGap >= 80 ? "shrink" : "suppress";
   if (input.topScore <= 0 || input.score < 38) return "suppress";
   if (input.language === "cpp" && input.score < 78) return "shrink";
@@ -178,6 +202,28 @@ function isNoisyPath(normalizedPath: string): boolean {
   );
 }
 
+export function isExactSourceHit(input: {
+  task: string;
+  primaryFile?: string | undefined;
+  topScore: number;
+  topGap: number;
+  primaryKind?: FileRecord["kind"] | undefined;
+  sourceFixSignal?: boolean | undefined;
+}): boolean {
+  if (!input.primaryFile) return false;
+  const normalized = input.primaryFile.toLowerCase();
+  const sourceFixSignal = input.sourceFixSignal ?? isSourceFixTask(input.task);
+  return (
+    sourceFixSignal &&
+    !isMultiFileTask(input.task) &&
+    input.primaryKind !== "test" &&
+    isPrimarySourcePath(input.primaryFile) &&
+    !isNoisyPath(normalized) &&
+    input.topScore >= 160 &&
+    input.topGap >= 20
+  );
+}
+
 function isSourceFixTask(task: string): boolean {
   const normalized = task.toLowerCase();
   return /\b(fix|debug|regression|bug|broken|production source|source)\b/.test(normalized);
@@ -221,4 +267,9 @@ function isVagueImprovementTask(task: string): boolean {
     "performance"
   ];
   return vagueTerms.some((term) => normalized.includes(term)) && !concreteTerms.some((term) => normalized.includes(term));
+}
+
+function isMultiFileTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  return /\b(across|multiple|end-to-end|e2e|integration|workflow|flow|refactor|feature|migration|api and ui|frontend and backend|full stack|system|ui|mobile|layout|responsive|drawer|sheet|tabs|dashboard|screen|component|filter|filters|card|cards)\b/.test(normalized);
 }

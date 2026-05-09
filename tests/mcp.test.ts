@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
@@ -52,6 +53,7 @@ describe("MCP server", () => {
       sessionId: string;
       startFiles: string[];
       nextToolCalls: unknown[];
+      likelyTests: string[];
       exactSymbolHint?: string | null;
       content?: string;
     };
@@ -59,6 +61,7 @@ describe("MCP server", () => {
     expect(preparedParsed.sessionId).toBe(parsed.session.id);
     expect(preparedParsed.startFiles.length).toBeLessThanOrEqual(1);
     expect(preparedParsed.nextToolCalls.length).toBeLessThanOrEqual(1);
+    expect(preparedParsed.likelyTests.length).toBeLessThanOrEqual(1);
     expect(preparedParsed).toHaveProperty("exactSymbolHint");
     expect(preparedParsed.content).toBeUndefined();
 
@@ -98,6 +101,17 @@ describe("MCP server", () => {
     expect(contextText).toContain("DashboardMetrics");
     expect(contextText).toContain("snippets");
 
+    const tests = await client.callTool({
+      name: "kairn_find_tests",
+      arguments: {
+        sessionId: parsed.session.id,
+        target: "src/app.ts"
+      }
+    });
+    const testsText = firstTextContent(tests);
+    const testsParsed = JSON.parse(testsText!) as { files: string[] };
+    expect(testsParsed.files.length).toBeLessThanOrEqual(1);
+
     const failure = await client.callTool({
       name: "kairn_get_failure_context",
       arguments: {
@@ -122,6 +136,101 @@ describe("MCP server", () => {
     };
     expect(metricsParsed.byKind.mcp_tool_call?.events).toBeGreaterThan(0);
     expect(metricsParsed.bySource.mcp?.events).toBeGreaterThan(0);
+
+    await client.close();
+  });
+
+  it("stops MCP expansion after a high-confidence exact source hit", async () => {
+    const root = createFixtureRepo();
+    fs.mkdirSync(path.join(root, "include/fmt"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "include/fmt/base.h"),
+      [
+        "namespace fmt {",
+        "class basic_string_view {",
+        " public:",
+        "  bool starts_with(basic_string_view prefix) const {",
+        "    return size_ > prefix.size_;",
+        "  }",
+        " private:",
+        "  int size_;",
+        "};",
+        "}",
+        ""
+      ].join("\n")
+    );
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(path.join(root, "test/base-test.cc"), "TEST(starts_with, equal_length) {}\n");
+    fs.mkdirSync(path.join(root, "docs"), { recursive: true });
+    fs.writeFileSync(path.join(root, "docs/starts-with.md"), "starts_with documentation\n");
+
+    const client = new Client({
+      name: "kairn-test-client",
+      version: "0.1.0"
+    });
+    const transport = new StdioClientTransport({
+      command: path.join(process.cwd(), "node_modules/.bin/tsx"),
+      args: ["src/cli.ts", "serve", "--mcp", "--root", root],
+      cwd: process.cwd(),
+      stderr: "pipe"
+    });
+
+    await client.connect(transport);
+
+    const prepared = await client.callTool({
+      name: "kairn_prepare_task",
+      arguments: {
+        task: "Debug a seeded failing C++ check. basic_string_view::starts_with should return true for an equal-length identical prefix. Fix the production header.",
+        budget: 700
+      }
+    });
+    const preparedParsed = JSON.parse(firstTextContent(prepared)!) as {
+      sessionId: string;
+      startFiles: string[];
+      contextDecision?: { exactSourceHit?: boolean };
+    };
+    expect(preparedParsed.contextDecision?.exactSourceHit).toBe(true);
+    expect(preparedParsed.startFiles).toEqual(["include/fmt/base.h"]);
+
+    const next = await client.callTool({
+      name: "kairn_get_next_context",
+      arguments: {
+        sessionId: preparedParsed.sessionId,
+        budget: 500
+      }
+    });
+    const nextParsed = JSON.parse(firstTextContent(next)!) as { files: string[]; related: string[]; warnings: string[] };
+    expect(nextParsed.files).toEqual([]);
+    expect(nextParsed.related).toEqual([]);
+    expect(nextParsed.warnings.join(" ")).toContain("Exact source hit");
+
+    const context = await client.callTool({
+      name: "kairn_find_context",
+      arguments: {
+        sessionId: preparedParsed.sessionId,
+        query: "starts_with tests and related files",
+        mode: "snippets",
+        budget: 700
+      }
+    });
+    const contextParsed = JSON.parse(firstTextContent(context)!) as { files: string[]; related: string[]; suggestedNextContext: string[]; content: string };
+    expect(contextParsed.files).toEqual([]);
+    expect(contextParsed.related).toEqual([]);
+    expect(contextParsed.suggestedNextContext).toEqual([]);
+    expect(contextParsed.content).toContain("include/fmt/base.h");
+
+    const failure = await client.callTool({
+      name: "kairn_get_failure_context",
+      arguments: {
+        sessionId: preparedParsed.sessionId,
+        type: "test",
+        output: "FAIL test/base-test.cc\n test/base-test.cc:1:1 starts_with equal length failed"
+      }
+    });
+    const failureParsed = JSON.parse(firstTextContent(failure)!) as { files: string[]; relatedFiles: string[]; testFiles: string[] };
+    expect(failureParsed.files).toEqual(["include/fmt/base.h"]);
+    expect(failureParsed.relatedFiles).toEqual([]);
+    expect(failureParsed.testFiles).toEqual([]);
 
     await client.close();
   });

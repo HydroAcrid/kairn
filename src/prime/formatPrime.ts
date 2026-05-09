@@ -157,24 +157,25 @@ export function formatShrunkPrimeContext(input: {
   context: ContextResponse;
   budget: number;
 }): string {
-  const topFiles = input.context.suggestedNextContext.slice(0, 3);
+  const topFiles = uniquePaths(input.context.suggestedNextContext.length > 0 ? input.context.suggestedNextContext : input.context.files).slice(0, 1);
+  const symbolHints = extractPrimeSymbolHints(input.context.content).slice(0, 2);
   const sections = [
-    "# Kairn Compact Prime",
+    "# Kairn Focused Start",
     "",
     `Task: ${input.task}`,
     `Kairn session: ${input.sessionId}`,
     `Prime profile: ${input.profile}`,
     `Quality score: ${input.quality.score} (${input.quality.action})`,
     "",
-    "## Start Here",
-    topFiles.length > 0 ? topFiles.map((file) => `- ${file}`).join("\n") : "- No high-confidence files found.",
+    "Start file:",
+    topFiles.length > 0 ? `- ${topFiles[0]}` : "- No high-confidence source file found.",
+    symbolHints.length > 0 ? `Symbols: ${symbolHints.join(", ")}` : "",
     "",
-    "## Targeted Context",
-    compactPrimeContext(input.context.content, Math.max(160, Math.floor(input.budget * 0.42))),
+    "Focused context:",
+    compactPrimeContext(input.context.content, Math.max(120, Math.floor(input.budget * 0.34))),
     "",
-    "## Agent Guidance",
-    "- Use this only as a starting point; avoid broad scans if these files fit the task."
-  ];
+    "Instruction: inspect this source file first; avoid broad related-file/test scans unless this file is insufficient or a failure names another file."
+  ].filter(Boolean);
   return fitSectionsToBudget(sections, input.budget);
 }
 
