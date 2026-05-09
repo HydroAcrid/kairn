@@ -308,6 +308,38 @@ describe("benchmark suite and scoring", () => {
     }
   });
 
+  it("times benchmark setup separately from the live-agent command", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-agent-setup-timing-"));
+    try {
+      fs.writeFileSync(path.join(root, "package.json"), "{\"type\":\"module\"}\n");
+      const result = await runAgentBenchmarkCase({
+        rootPath: root,
+        benchmarkCase: {
+          id: "setup-timing",
+          mode: "agent",
+          task: "Use preconfigured setup state",
+          expectedFiles: [],
+          excludedFiles: [],
+          budget: 1200
+        },
+        setupCommand: "node -e \"require('fs').writeFileSync('setup-ready.txt','ok')\"",
+        agentCommand:
+          "node -e \"const fs=require('fs'); if(!fs.existsSync('setup-ready.txt')) process.exit(2); console.error('Token usage: total=123 input=100 output=23')\" {prompt}"
+      });
+
+      expect(result.outcome).toBe("pass");
+      expect(result.observedCodexTokens).toBe(123);
+      expect(result.metadata.setupCommandExitCode).toBe(0);
+      expect(result.metadata.assistanceSetupMs).toEqual(expect.any(Number));
+      expect(result.metadata.agentElapsedMs).toEqual(expect.any(Number));
+      expect(result.metadata.codexElapsedMs).toBe(result.metadata.agentElapsedMs);
+      expect(result.metadata.verificationElapsedMs).toEqual(expect.any(Number));
+      expect(result.metadata.elapsedMs as number).toBeGreaterThanOrEqual(result.metadata.agentElapsedMs as number);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("marks seeded fixes partial when required production files are not touched", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-required-touch-"));
     try {

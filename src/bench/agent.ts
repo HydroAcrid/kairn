@@ -23,6 +23,7 @@ export async function runAgentBenchmarkCase(input: {
   rootPath: string;
   benchmarkCase: BenchmarkCase;
   agentCommand?: string | undefined;
+  setupCommand?: string | undefined;
   timeoutMs?: number | undefined;
   preparePrompt?: ((input: {
     workspacePath: string;
@@ -33,6 +34,7 @@ export async function runAgentBenchmarkCase(input: {
   const prompt = input.benchmarkCase.agentPrompt ?? input.benchmarkCase.task;
   let workspacePath = "";
   let seedMetadata: Record<string, unknown> = {};
+  const workspaceStartedAt = Date.now();
 
   try {
     const workspace = createBenchmarkWorkspace({
@@ -40,7 +42,10 @@ export async function runAgentBenchmarkCase(input: {
       benchmarkCase: input.benchmarkCase
     });
     workspacePath = workspace.workspacePath;
-    seedMetadata = workspace.metadata;
+    seedMetadata = {
+      ...workspace.metadata,
+      workspaceSetupMs: Date.now() - workspaceStartedAt
+    };
   } catch (error) {
     if (error instanceof MissingBenchmarkPrerequisiteError) {
       return {
@@ -89,12 +94,53 @@ export async function runAgentBenchmarkCase(input: {
 
   try {
     const startedAt = Date.now();
+    const setupStartedAt = Date.now();
+    const setupResult = input.setupCommand
+      ? runShell(commandWithPlaceholders(input.setupCommand, { prompt, root: workspacePath }), workspacePath, input.timeoutMs ?? 120000)
+      : undefined;
+    const assistanceSetupMs = Date.now() - setupStartedAt;
+    const setupMetadata = setupResult
+      ? {
+          setupCommandHash: sha256(input.setupCommand ?? ""),
+          setupCommandExitCode: setupResult.status,
+          setupOutputHash: sha256(setupResult.output),
+          setupOutputTokens: estimateTokens(setupResult.output),
+          assistanceSetupMs
+        }
+      : {
+          assistanceSetupMs: 0
+        };
+    if (setupResult && setupResult.status !== 0) {
+      const metadata = metadataFromOutput({
+        output: setupResult.output,
+        prompt,
+        workspacePath,
+        elapsedMs: Date.now() - startedAt,
+        adapter: "command",
+        extraMetadata: {
+          originalPromptHash: sha256(prompt),
+          ...setupMetadata,
+          ...seedMetadata
+        }
+      });
+      return {
+        workspacePath,
+        actualFiles: [],
+        responseTokens: estimateTokens(setupResult.output),
+        ...(metadata.observedCodexTokens !== undefined ? { observedCodexTokens: metadata.observedCodexTokens } : {}),
+        outcome: "fail",
+        summary: `Agent setup command failed in disposable workspace with exit code ${setupResult.status}.`,
+        metadata: metadata.metadata
+      };
+    }
+
+    const prepareStartedAt = Date.now();
     const prepared = input.preparePrompt
       ? await input.preparePrompt({ workspacePath, prompt, benchmarkCase: input.benchmarkCase })
       : { prompt };
-    const command = input.agentCommand
-      .replaceAll("{prompt}", shellQuote(prepared.prompt))
-      .replaceAll("{root}", shellQuote(workspacePath));
+    const promptPrepareMs = Date.now() - prepareStartedAt;
+    const command = commandWithPlaceholders(input.agentCommand, { prompt: prepared.prompt, root: workspacePath });
+    const agentStartedAt = Date.now();
     const completed = spawnSync(command, {
       cwd: workspacePath,
       shell: true,
@@ -102,12 +148,15 @@ export async function runAgentBenchmarkCase(input: {
       timeout: input.timeoutMs ?? 120000,
       maxBuffer: 16 * 1024 * 1024
     });
+    const agentElapsedMs = Date.now() - agentStartedAt;
     const output = [completed.stdout, completed.stderr, completed.error?.message].filter(Boolean).join("\n");
+    const verificationStartedAt = Date.now();
     const verification = runSeedVerification({
       workspacePath,
       benchmarkCase: input.benchmarkCase,
       timeoutMs: input.timeoutMs
     });
+    const verificationElapsedMs = Date.now() - verificationStartedAt;
     const combinedOutput = [output, verification.output].filter(Boolean).join("\n");
     const expectedFileMentions = mentionedExpectedFiles(combinedOutput, input.benchmarkCase.expectedFiles);
     const changedFileList = changedFiles(workspacePath);
@@ -131,6 +180,11 @@ export async function runAgentBenchmarkCase(input: {
       adapter: "command",
       extraMetadata: {
         originalPromptHash: sha256(prompt),
+        ...setupMetadata,
+        promptPrepareMs,
+        agentElapsedMs,
+        codexElapsedMs: agentElapsedMs,
+        verificationElapsedMs,
         expectedFileMentions,
         changedFiles: changedFileList,
         seedPatchFiles,
@@ -473,6 +527,12 @@ function mentionedExpectedFiles(output: string, expectedFiles: string[]): string
 
 function shellQuote(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+function commandWithPlaceholders(command: string, input: { prompt: string; root: string }): string {
+  return command
+    .replaceAll("{prompt}", shellQuote(input.prompt))
+    .replaceAll("{root}", shellQuote(input.root));
 }
 
 function metadataFromOutput(input: {

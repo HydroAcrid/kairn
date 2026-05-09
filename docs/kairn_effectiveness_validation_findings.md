@@ -2015,3 +2015,80 @@ Next improvement direction:
 3. Add optional pre-agent `kairn failure` context when a seed has an expected failing command.
 4. Improve TanStack setup/test reliability; current exit `130` makes it hard to judge retrieval quality.
 5. For Next, prime should include the exact expected repair shape, not just the target file, because Codex finds the right file but makes the wrong edit.
+
+## 2026-05-08 Benchmark Timing Attribution + MCP Smoke
+
+Implemented before the next full proof:
+
+- Added explicit per-mode setup commands to `bench prove`.
+- Setup/index/config commands now run before the live-agent command and are timed separately.
+- Agent benchmark metadata now includes:
+  - `workspaceSetupMs`,
+  - `assistanceSetupMs`,
+  - `promptPrepareMs`,
+  - `agentElapsedMs`,
+  - `codexElapsedMs`,
+  - `verificationElapsedMs`,
+  - legacy `elapsedMs` as the total harness time for the case.
+- This prevents one-time Kairn setup/index work from being mixed into normal Codex wall-clock time.
+
+New proof CLI shape:
+
+```bash
+kairn bench prove \
+  --baseline-command "<codex command>" \
+  --hook-full-prime-setup-command "kairn init --root {root} && kairn setup codex --root {root} --mode savings" \
+  --hook-full-prime-command "<codex command>" \
+  --real-mcp-first-setup-command "kairn init --root {root} && kairn setup codex --root {root} --mode mcp-first" \
+  --real-mcp-first-command "<codex command>" \
+  --hybrid-mcp-brief-setup-command "kairn init --root {root} && kairn setup codex --root {root} --mode hybrid" \
+  --hybrid-mcp-brief-command "<codex command>"
+```
+
+Verification:
+
+```bash
+pnpm test
+pnpm typecheck
+pnpm build
+```
+
+All passed.
+
+### MCP Smoke Check
+
+Report:
+
+```text
+/tmp/kairn-mcp-smoke-proof.json
+```
+
+Smoke setup:
+
+- Created a tiny TypeScript repo under `/tmp/kairn-mcp-smoke-root-*`.
+- Started Kairn over stdio MCP.
+- Called `kairn_prepare_task`.
+- Ran a fake `real_mcp_first` agent command so the benchmark report could inspect workspace metrics.
+
+Result:
+
+```json
+{
+  "actualMcpToolCalls": 1,
+  "actualMcpToolNames": ["kairn_prepare_task"],
+  "actualMcpFiles": ["src/app.ts"],
+  "mcpSuccess": true,
+  "qualityGatePassed": true,
+  "setupMs": 603,
+  "agentMs": 23,
+  "verificationMs": 0,
+  "observedTokens": 150
+}
+```
+
+Interpretation:
+
+- `kairn_prepare_task` is callable through the real MCP server.
+- MCP tool calls are recorded in `.kairn` metrics.
+- Benchmark scoring sees `actualMcpToolCalls > 0`.
+- The next live proof can trust the MCP success gate; MCP modes should still only count when this field is nonzero.

@@ -435,6 +435,7 @@ export class KairnRuntime {
     suitePath?: string | undefined;
     mode: BenchmarkRunMode;
     agentCommand?: string | undefined;
+    agentSetupCommand?: string | undefined;
     agentTimeoutMs?: number | undefined;
     assistanceMode?: BenchmarkAssistanceMode | undefined;
   }): Promise<BenchmarkReport> {
@@ -466,6 +467,7 @@ export class KairnRuntime {
               runId: run.id,
               benchmarkCase,
               agentCommand: input.agentCommand,
+              setupCommand: input.agentSetupCommand,
               agentTimeoutMs: input.agentTimeoutMs,
               assistanceMode: input.assistanceMode ?? "baseline"
             })
@@ -484,37 +486,50 @@ export class KairnRuntime {
   async proveBenchmark(input: {
     suitePath?: string | undefined;
     baselineCommand: string;
+    baselineSetupCommand?: string | undefined;
     promptOnlyCommand?: string | undefined;
+    promptOnlySetupCommand?: string | undefined;
     promptPlusHooksCommand?: string | undefined;
+    promptPlusHooksSetupCommand?: string | undefined;
     manualPrimeCommand?: string | undefined;
+    manualPrimeSetupCommand?: string | undefined;
     hookFullPrimeCommand?: string | undefined;
+    hookFullPrimeSetupCommand?: string | undefined;
     hookTinyDirectiveCommand?: string | undefined;
+    hookTinyDirectiveSetupCommand?: string | undefined;
     hookTinyWithFailuresCommand?: string | undefined;
+    hookTinyWithFailuresSetupCommand?: string | undefined;
     mcpFirstCommand?: string | undefined;
+    mcpFirstSetupCommand?: string | undefined;
     realMcpFirstCommand?: string | undefined;
+    realMcpFirstSetupCommand?: string | undefined;
     mcpFirstPlusHookFullPrimeCommand?: string | undefined;
+    mcpFirstPlusHookFullPrimeSetupCommand?: string | undefined;
     hybridMcpBriefCommand?: string | undefined;
+    hybridMcpBriefSetupCommand?: string | undefined;
     passiveCommand?: string | undefined;
+    passiveSetupCommand?: string | undefined;
     proactiveCommand?: string | undefined;
+    proactiveSetupCommand?: string | undefined;
     agentTimeoutMs?: number | undefined;
     repeat?: number | undefined;
     shuffleOrder?: boolean | undefined;
   }): Promise<BenchmarkProofReport> {
     const repeat = Math.max(1, Math.floor(Number(input.repeat ?? 1) || 1));
-    const modeCommands: Array<{ mode: BenchmarkAssistanceMode; command: string }> = [
-      { mode: "baseline", command: input.baselineCommand },
-      ...(input.promptOnlyCommand ?? input.passiveCommand ? [{ mode: "prompt_only" as const, command: (input.promptOnlyCommand ?? input.passiveCommand)! }] : []),
+    const modeCommands: Array<{ mode: BenchmarkAssistanceMode; command: string; setupCommand?: string | undefined }> = [
+      { mode: "baseline", command: input.baselineCommand, setupCommand: input.baselineSetupCommand },
+      ...(input.promptOnlyCommand ?? input.passiveCommand ? [{ mode: "prompt_only" as const, command: (input.promptOnlyCommand ?? input.passiveCommand)!, setupCommand: input.promptOnlySetupCommand ?? input.passiveSetupCommand }] : []),
       ...(input.promptPlusHooksCommand ?? input.passiveCommand
-        ? [{ mode: "prompt_plus_hooks" as const, command: (input.promptPlusHooksCommand ?? input.passiveCommand)! }]
+        ? [{ mode: "prompt_plus_hooks" as const, command: (input.promptPlusHooksCommand ?? input.passiveCommand)!, setupCommand: input.promptPlusHooksSetupCommand ?? input.passiveSetupCommand }]
         : []),
-      ...(input.manualPrimeCommand ?? input.proactiveCommand ? [{ mode: "manual_prime" as const, command: (input.manualPrimeCommand ?? input.proactiveCommand)! }] : []),
-      ...(input.hookFullPrimeCommand ? [{ mode: "hook_full_prime" as const, command: input.hookFullPrimeCommand }] : []),
-      ...(input.hookTinyDirectiveCommand ? [{ mode: "hook_tiny_directive" as const, command: input.hookTinyDirectiveCommand }] : []),
-      ...(input.hookTinyWithFailuresCommand ? [{ mode: "hook_tiny_with_failures" as const, command: input.hookTinyWithFailuresCommand }] : []),
-      ...(input.mcpFirstCommand ? [{ mode: "mcp_first" as const, command: input.mcpFirstCommand }] : []),
-      ...(input.realMcpFirstCommand ? [{ mode: "real_mcp_first" as const, command: input.realMcpFirstCommand }] : []),
-      ...(input.mcpFirstPlusHookFullPrimeCommand ? [{ mode: "mcp_first_plus_hook_full_prime" as const, command: input.mcpFirstPlusHookFullPrimeCommand }] : []),
-      ...(input.hybridMcpBriefCommand ? [{ mode: "hybrid_mcp_brief" as const, command: input.hybridMcpBriefCommand }] : [])
+      ...(input.manualPrimeCommand ?? input.proactiveCommand ? [{ mode: "manual_prime" as const, command: (input.manualPrimeCommand ?? input.proactiveCommand)!, setupCommand: input.manualPrimeSetupCommand ?? input.proactiveSetupCommand }] : []),
+      ...(input.hookFullPrimeCommand ? [{ mode: "hook_full_prime" as const, command: input.hookFullPrimeCommand, setupCommand: input.hookFullPrimeSetupCommand }] : []),
+      ...(input.hookTinyDirectiveCommand ? [{ mode: "hook_tiny_directive" as const, command: input.hookTinyDirectiveCommand, setupCommand: input.hookTinyDirectiveSetupCommand }] : []),
+      ...(input.hookTinyWithFailuresCommand ? [{ mode: "hook_tiny_with_failures" as const, command: input.hookTinyWithFailuresCommand, setupCommand: input.hookTinyWithFailuresSetupCommand }] : []),
+      ...(input.mcpFirstCommand ? [{ mode: "mcp_first" as const, command: input.mcpFirstCommand, setupCommand: input.mcpFirstSetupCommand }] : []),
+      ...(input.realMcpFirstCommand ? [{ mode: "real_mcp_first" as const, command: input.realMcpFirstCommand, setupCommand: input.realMcpFirstSetupCommand }] : []),
+      ...(input.mcpFirstPlusHookFullPrimeCommand ? [{ mode: "mcp_first_plus_hook_full_prime" as const, command: input.mcpFirstPlusHookFullPrimeCommand, setupCommand: input.mcpFirstPlusHookFullPrimeSetupCommand }] : []),
+      ...(input.hybridMcpBriefCommand ? [{ mode: "hybrid_mcp_brief" as const, command: input.hybridMcpBriefCommand, setupCommand: input.hybridMcpBriefSetupCommand }] : [])
     ];
     const baselineReports: BenchmarkReport[] = [];
     const promptOnlyReports: BenchmarkReport[] = [];
@@ -534,6 +549,7 @@ export class KairnRuntime {
         const report = await this.runProofModeBenchmark({
           suitePath: input.suitePath,
           command: item.command,
+          setupCommand: item.setupCommand,
           agentTimeoutMs: input.agentTimeoutMs,
           assistanceMode: item.mode
         });
@@ -555,6 +571,7 @@ export class KairnRuntime {
       baselineReports.push(await this.runProofModeBenchmark({
         suitePath: input.suitePath,
         command: input.baselineCommand,
+        setupCommand: input.baselineSetupCommand,
         agentTimeoutMs: input.agentTimeoutMs,
         assistanceMode: "baseline"
       }));
@@ -579,6 +596,7 @@ export class KairnRuntime {
   private async runProofModeBenchmark(input: {
     suitePath?: string | undefined;
     command: string;
+    setupCommand?: string | undefined;
     agentTimeoutMs?: number | undefined;
     assistanceMode: BenchmarkAssistanceMode;
   }): Promise<BenchmarkReport> {
@@ -587,6 +605,7 @@ export class KairnRuntime {
         suitePath: input.suitePath,
         mode: "agent",
         agentCommand: input.command,
+        agentSetupCommand: input.setupCommand,
         agentTimeoutMs: input.agentTimeoutMs,
         assistanceMode: input.assistanceMode
       });
@@ -1889,6 +1908,7 @@ export class KairnRuntime {
     runId: string;
     benchmarkCase: Parameters<typeof scoreBenchmarkCase>[0]["benchmarkCase"];
     agentCommand?: string | undefined;
+    setupCommand?: string | undefined;
     agentTimeoutMs?: number | undefined;
     assistanceMode?: BenchmarkAssistanceMode | undefined;
   }): Promise<Omit<BenchmarkResultRecord, "id" | "createdAt">> {
@@ -1896,6 +1916,7 @@ export class KairnRuntime {
       rootPath: this.rootPath,
       benchmarkCase: input.benchmarkCase,
       agentCommand: input.agentCommand,
+      setupCommand: input.setupCommand,
       timeoutMs: input.agentTimeoutMs,
       preparePrompt:
         input.assistanceMode === "manual_prime" || input.assistanceMode === "proactive"
