@@ -45,6 +45,8 @@ export type BenchmarkEnduranceTurn = {
   requiredTouchedFiles?: string[];
   excludedFiles: string[];
   verificationCommand?: string;
+  sourceInvariants?: BenchmarkSourceInvariant[];
+  allowedDiffScopes?: BenchmarkDiffScope[];
   budget?: number;
 };
 
@@ -55,6 +57,25 @@ export type BenchmarkEnduranceSuite = {
   seed?: BenchmarkSeedSpec;
   turns: BenchmarkEnduranceTurn[];
   finalVerificationCommand?: string;
+  finalSourceInvariants?: BenchmarkSourceInvariant[];
+  allowedDiffScopes?: BenchmarkDiffScope[];
+};
+
+export type BenchmarkSourceInvariant = {
+  id?: string;
+  file: string;
+  description?: string;
+  requiredPresent?: string[];
+  requiredAbsent?: string[];
+  requiredRegex?: string[];
+  requiredAny?: string[];
+  requiredAnyRegex?: string[];
+};
+
+export type BenchmarkDiffScope = {
+  file: string;
+  symbols?: string[];
+  allowWholeFile?: boolean;
 };
 
 export type BenchmarkEnduranceTurnResult = {
@@ -86,6 +107,15 @@ export type BenchmarkEnduranceModeReport = {
   totalElapsedMs: number;
   qualityGatePassed: boolean;
   finalVerificationPassed: boolean;
+  assistanceStatus: "none" | "active" | "passive_suppressed";
+  assistanceActions: {
+    emitted: number;
+    shrunk: number;
+    suppressed: number;
+    mcpCalls: number;
+    failureContexts: number;
+  };
+  metadata?: Record<string, unknown>;
   ledger?: import("./ledger.js").SessionLedgerSummary;
 };
 
@@ -101,8 +131,12 @@ export type BenchmarkEnduranceReport = {
     savedTokens?: number;
     savingsRate?: number;
     qualityGatePassed: boolean;
+    assistanceStatus: "none" | "active" | "passive_suppressed";
+    assistanceEligible: boolean;
     validSavings?: number;
     invalidSavings?: number;
+    passiveSavings?: number;
+    negativeEvidenceReason?: string;
   }>;
   recommendations: string[];
 };

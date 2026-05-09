@@ -72,7 +72,14 @@ export class MetricsService {
         recommendedFilesUsed: ledger.recommendedFilesUsed,
         repeatedlyTouchedFiles: ledger.repeatedlyTouchedFiles,
         unresolvedFailures: ledger.unresolvedFailures,
-        currentPhase: ledger.currentPhase
+        currentPhase: ledger.currentPhase,
+        workingSet: {
+          activeFiles: ledger.workingSet.activeFiles,
+          ignoredRecommendedFiles: ledger.workingSet.ignoredRecommendedFiles,
+          staleFiles: ledger.workingSet.staleFiles,
+          ...(ledger.workingSet.nextSmallestUsefulRead ? { nextSmallestUsefulRead: ledger.workingSet.nextSmallestUsefulRead.filePath } : {}),
+          openRisks: ledger.workingSet.openRisks
+        }
       },
       recentEvents: events.slice(-10)
     };

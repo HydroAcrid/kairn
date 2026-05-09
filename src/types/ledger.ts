@@ -43,7 +43,44 @@ export type SessionLedgerSummary = {
   recommendedFilesUsed: string[];
   repeatedlyTouchedFiles: string[];
   unresolvedFailures: number;
+  workingSet: SessionWorkingSet;
   recentEvents: SessionLedgerEvent[];
+};
+
+export type SessionWorkingSet = {
+  sessionId: string;
+  currentPhase: TaskPhase;
+  activeFiles: string[];
+  recentlyTouchedFiles: string[];
+  shownFiles: string[];
+  ignoredRecommendedFiles: string[];
+  ruledOutFiles: string[];
+  staleFiles: string[];
+  currentInvariant?: SessionWorkingSetInvariant;
+  lastFailure?: SessionWorkingSetSignal;
+  lastPassingVerification?: SessionWorkingSetSignal;
+  nextSmallestUsefulRead?: SessionWorkingSetNextRead;
+  openRisks: string[];
+};
+
+export type SessionWorkingSetInvariant = {
+  statement: string;
+  filePath?: string;
+  confidence?: number;
+  sourceEventId?: number;
+};
+
+export type SessionWorkingSetSignal = {
+  turnId?: string;
+  filePath?: string;
+  summary: string;
+  createdAt: string;
+};
+
+export type SessionWorkingSetNextRead = {
+  filePath: string;
+  reason: string;
+  source: "failure" | "changed_file" | "ignored_recommendation" | "active_file" | "fresh_candidate";
 };
 
 export type SessionContextPolicyAction = "emit" | "shrink" | "suppress";

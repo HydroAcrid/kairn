@@ -44,6 +44,8 @@ describe("KairnRuntime", () => {
     expect(events.map((event) => event.kind)).toEqual(expect.arrayContaining(["context_recommended", "agent_file_touched"]));
     expect(summary.recommendedFilesUsed).toContain("src/app.ts");
     expect(summary.currentPhase).toBe("implementation");
+    expect(summary.workingSet.activeFiles).toContain("src/app.ts");
+    expect(summary.workingSet.recentlyTouchedFiles).toContain("src/app.ts");
 
     runtime.close();
   });
@@ -68,6 +70,90 @@ describe("KairnRuntime", () => {
     expect(first.files.length).toBeGreaterThan(0);
     expect(second.contextDecision?.action).toBe("suppress");
     expect(ledger.repeatedFilesAvoided).toBeGreaterThanOrEqual(1);
+    expect(ledger.workingSet.shownFiles.length).toBeGreaterThan(0);
+
+    runtime.close();
+  });
+
+  it("builds a working-set next read from ignored recommendations", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const { session } = await runtime.startTask("Investigate dashboard formatting");
+
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "context_recommended",
+      filePath: "src/app.ts",
+      source: "runtime",
+      summary: "Recommended app source"
+    });
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "context_shown",
+      filePath: "src/app.ts",
+      source: "runtime",
+      summary: "Showed app source"
+    });
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "context_recommended",
+      filePath: "src/user.ts",
+      source: "runtime",
+      summary: "Recommended user formatting source"
+    });
+
+    const summary = runtime.summarizeSessionLedger(session.id);
+
+    expect(summary.workingSet.ignoredRecommendedFiles).toContain("src/user.ts");
+    expect(summary.workingSet.nextSmallestUsefulRead?.filePath).toBe("src/user.ts");
+    expect(summary.workingSet.nextSmallestUsefulRead?.source).toBe("ignored_recommendation");
+
+    runtime.close();
+  });
+
+  it("does not suggest ignored recommendations after suppress-only context or passing verification", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const { session } = await runtime.startTask("Investigate dashboard formatting");
+
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "context_recommended",
+      filePath: "src/user.ts",
+      source: "runtime",
+      summary: "Recommended user formatting source"
+    });
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "context_shown",
+      source: "runtime",
+      summary: "Kairn suppressed low-value context",
+      metadata: { policyReason: "repeated_context_suppressed" }
+    });
+
+    const suppressedSummary = runtime.summarizeSessionLedger(session.id);
+    expect(suppressedSummary.workingSet.ignoredRecommendedFiles).toContain("src/user.ts");
+    expect(suppressedSummary.workingSet.nextSmallestUsefulRead).toBeUndefined();
+
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "context_shown",
+      filePath: "src/app.ts",
+      source: "runtime",
+      summary: "Showed app source"
+    });
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "verification_passed",
+      source: "bench",
+      summary: "Final verification passed."
+    });
+
+    const verifiedSummary = runtime.summarizeSessionLedger(session.id);
+    expect(verifiedSummary.workingSet.nextSmallestUsefulRead).toBeUndefined();
+    expect(verifiedSummary.workingSet.openRisks).not.toEqual(
+      expect.arrayContaining([expect.stringContaining("recommended file")])
+    );
 
     runtime.close();
   });

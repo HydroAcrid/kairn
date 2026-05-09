@@ -64,7 +64,7 @@ Command modules:
 - `src/cli/commands/watch.ts`: `watch`, `hook`.
 - `src/cli/commands/setup.ts`: `setup codex`, `setup mcp-instructions`.
 - `src/cli/commands/eval.ts`: eval runs, Codex usage ingestion, feedback.
-- `src/cli/commands/bench.ts`: replay, live-agent proofs, repo-matrix preflight.
+- `src/cli/commands/bench.ts`: replay, live-agent proofs, repo-matrix preflight, endurance runs.
 
 The CLI should stay thin. Command modules should parse options, call `KairnRuntime` or focused benchmark/setup helpers, then format output.
 
@@ -270,6 +270,39 @@ Context actions:
 
 This controller is one of the most important quality safeguards. Bad primes increase token use and can reduce agent quality.
 
+## Session Memory
+
+Session memory is structured, not transcript-like.
+
+Core modules:
+
+- `src/types/ledger.ts`
+- `src/ledger/summary.ts`
+- `src/ledger/workingSet.ts`
+- `src/ledger/policy.ts`
+
+The append-only ledger records metadata-only facts:
+
+- context recommended or shown,
+- files mentioned or touched by the agent,
+- commands and tests,
+- failures and verification outcomes,
+- diffs and phase changes.
+
+The derived working set is the compact long-session memory that hooks, MCP, `primeContext`, and endurance benchmarks consult:
+
+- active files,
+- recently touched files,
+- ignored recommendations,
+- stale shown files,
+- current invariant,
+- latest failure,
+- latest passing verification,
+- next smallest useful read,
+- open risks.
+
+This is Kairn's answer to long-conversation compaction. Instead of summarizing the whole chat into prose, Kairn keeps repo-grounded state and uses hashes/file refs to decide whether to repeat, shrink, suppress, or re-emit context.
+
 ## Failure-First Path
 
 Failure modules:
@@ -349,13 +382,17 @@ Bench:
 - `src/bench/agent.ts`
 - `src/bench/proofReport.ts`
 - `src/bench/matrix.ts`
+- `src/bench/endurance.ts`
+- `src/bench/enduranceSuite.ts`
+- `src/bench/sourceValidation.ts`
 
 Bench layers:
 
 1. Replay benchmarks: deterministic retrieval scoring.
 2. Repo-matrix preflight: broad repo/state/retrieval gates without live agents.
 3. Live-agent proof: expensive Codex/agent runs in disposable workspaces.
-4. Eval harness: manual A/B run evidence and transcript metadata.
+4. Endurance benchmarks: multi-turn agent work in one disposable workspace/session.
+5. Eval harness: manual A/B run evidence and transcript metadata.
 
 Quality rule:
 
@@ -368,7 +405,35 @@ Quality gates include:
 - excluded files are avoided,
 - hook failures are zero,
 - MCP modes have actual MCP calls,
+- source invariants pass when declared,
+- changed hunks stay inside allowed diff scopes when declared,
+- active Kairn assistance happened for a Kairn-assisted savings claim,
 - token reductions are not counted when task quality fails.
+
+Endurance benchmark rule:
+
+> A lower token count is not automatically a Kairn win.
+
+Endurance reports distinguish:
+
+- `active`: Kairn emitted/shrank context, served MCP context, or supplied failure context.
+- `passive_suppressed`: Kairn ran but suppressed every turn.
+- `none`: baseline/no Kairn assistance.
+
+Only `active` runs can produce `validSavings`. Suppress-only reductions are tracked as passive evidence so the report does not overclaim.
+
+Source-invariant validation:
+
+- Defined in benchmark suites as semantic file invariants.
+- Checks required/forbidden text and regex alternatives.
+- Allows equivalent repairs, such as introducing a local variable before calling the intended function.
+- Replaces brittle exact-source-string checks for seeded bug-fix tasks.
+
+Diff-scope validation:
+
+- Uses `git diff --unified=0` plus parsed symbols to map changed lines to functions/classes.
+- Fails when an agent edits unrelated hunks in the same file, even if the changed file itself is expected.
+- Prevents cleanup checks from accepting broad same-file behavior drift.
 
 ## Current Complexity Hotspots
 

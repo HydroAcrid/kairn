@@ -2511,3 +2511,98 @@ Interpretation:
 - The earlier `39.44%` aggregate hook-full-prime result was not reproduced because live Codex variance was high and Axios became a large negative outlier in the rerun.
 - This reinforces the current benchmark rule: use repeat medians before making product claims.
 - The next high-leverage issue is still follow-up discipline. MCP/hybrid modes made real tool calls but often kept expanding after enough source evidence was available.
+
+### Endurance Proofs
+
+Reports:
+
+- Axios: `/tmp/kairn-endurance-axios-20260509143004.json`
+- Flask: `/tmp/kairn-endurance-flask-20260509143539.json`
+
+These runs used the new endurance harness: four sequential turns in one disposable workspace and one Kairn session, with cumulative observed Codex token usage, per-turn quality gates, final verification, and session ledger/working-set summaries.
+
+Aggregate results:
+
+| Suite | Baseline tokens | Kairn tokens | Valid savings | Quality | Kairn decisions | Interpretation |
+| --- | ---: | ---: | ---: | --- | --- | --- |
+| Axios | `91,353` | `86,457` | `5.36%` | pass | suppress, suppress, suppress, suppress | Weak Kairn evidence. Quality passed, but Kairn emitted no useful context, so this should not be treated as strong product savings. |
+| Flask | `99,485` | `54,261` | `45.46%` | pass | shrink, shrink, suppress, shrink | Strong endurance evidence. Kairn preserved quality while using focused one-file context across turns. |
+
+Per-turn token usage:
+
+| Suite | Turn | Baseline tokens | Kairn tokens | Result |
+| --- | --- | ---: | ---: | --- |
+| Axios | diagnose | `32,185` | `26,030` | Kairn lower |
+| Axios | fix | `39,627` | `26,373` | Kairn lower |
+| Axios | verify | `16,077` | `31,163` | Kairn higher |
+| Axios | cleanup | `3,464` | `2,891` | Kairn lower |
+| Flask | diagnose | `23,778` | `9,481` | Kairn lower |
+| Flask | fix | `17,910` | `16,287` | Kairn lower |
+| Flask | verify | `48,445` | `25,188` | Kairn lower |
+| Flask | cleanup | `9,352` | `3,305` | Kairn lower |
+
+Ledger and working-set findings:
+
+- Axios working set converged on `lib/core/Axios.js`, `lib/core/InterceptorManager.js`, and `lib/core/dispatchRequest.js`.
+- Flask working set converged on `src/flask/app.py`.
+- Flask showed the intended long-session behavior: Kairn emitted compact context, avoided repeated broad primes, and later identified that `src/flask/app.py` changed after it was shown.
+- Axios exposed an important policy issue: the controller suppressed all turns, but the ledger still accumulated ignored recommendations. The next-read recommendation drifted toward stale ignored files such as typings/tests instead of concluding that no further context was useful.
+
+Conclusions:
+
+- The long-session thesis is now partially validated. Flask is the clearest result so far: `45.46%` quality-gated cumulative savings with focused shrink-context behavior.
+- Axios validates the harness but not the product behavior. Because Kairn suppressed every turn, the small `5.36%` token reduction should be treated as variance or passive session effects, not a strong Kairn win.
+- The benchmark report should distinguish `Kairn-assisted` from `Kairn-passive/suppressed` when no context is actually emitted.
+- The session ledger is useful, but follow-up policy needs one more refinement: after final verification passes or after recommended files are repeatedly ignored, Kairn should prefer `stop/no more context` over stale next-read suggestions.
+- Future endurance claims should require both quality pass and at least one meaningful Kairn context action (`emit`, `shrink`, MCP call, or failure-context response).
+
+### Endurance Rerun After Assistance Gating
+
+Reports:
+
+- Axios: `/tmp/kairn-endurance-axios-rerun-20260509145444.json`
+- Flask: `/tmp/kairn-endurance-flask-rerun-20260509150006.json`
+
+Local verification before the live proofs:
+
+- `pnpm test`: pass, `12` files / `137` tests.
+- `pnpm typecheck`: pass.
+- `pnpm build`: pass.
+
+Aggregate rerun:
+
+| Suite | Baseline tokens | Kairn tokens | Quality | Assistance status | Assistance actions | Valid savings |
+| --- | ---: | ---: | --- | --- | --- | ---: |
+| Axios | `64,111` | `97,320` | pass | `passive_suppressed` | emit `0`, shrink `0`, suppress `4`, MCP `0`, failure `0` | none |
+| Flask | `73,856` | `75,347` | fail | `active` | emit `0`, shrink `3`, suppress `1`, MCP `0`, failure `0` | none |
+
+Results:
+
+- Axios is now correctly classified as suppress-only/passive evidence. It was also `51.80%` worse than baseline in this rerun, so there is no savings claim to make.
+- Flask was active, but quality failed and tokens were `2.02%` worse. The report correctly produced no valid savings.
+- The `validSavings` / `passiveSavings` distinction is working: suppress-only runs no longer count as Kairn-assisted wins.
+
+Flask failure inspection:
+
+- Kairn shrank context around `src/flask/app.py`.
+- The agent changed `dispatch_request` from a direct endpoint call to:
+
+```python
+view_func = self.view_functions[rule.endpoint]
+return self.ensure_sync(view_func)(**view_args)
+```
+
+- That is semantically close to the expected fix, but the current validator requires the exact original string `return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)`, so the validator is too brittle for equivalent repairs.
+- The agent also made an unrelated hunk in `ensure_sync`, adding an `asyncio.run` fallback. The cleanup validator only checks changed file names, so it missed this unrelated same-file behavior change.
+
+Next harness improvements:
+
+- Replace exact-string source validators with semantic source-invariant validators that accept equivalent repairs.
+- Add hunk-level or symbol-level unrelated-change detection, not just file-level cleanup checks.
+- For Kairn endurance claims, require `qualityGatePassed`, `assistanceStatus = active`, and no unrelated same-file hunk drift.
+
+Implementation update:
+
+- Added source-invariant validation to endurance suites. Invariants support required/forbidden text plus regex alternatives, so equivalent repairs can pass without requiring an exact original source string.
+- Added hunk-level diff-scope validation. Endurance suites can restrict changed hunks to specific symbols, so unrelated edits in the same expected file now fail quality gates.
+- Updated the Flask endurance suite to accept equivalent `dispatch_request` repairs while restricting final diffs to the `dispatch_request` symbol in `src/flask/app.py`.

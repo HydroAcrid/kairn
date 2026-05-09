@@ -273,6 +273,7 @@ type PrimeContextResult = Awaited<ReturnType<KairnRuntime["primeContext"]>>;
 function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) {
   const coordination = runtime.getCoordinationState(prime.session.id);
   const decision = prime.contextDecision;
+  const workingSet = isRecord(prime.metadata?.workingSet) ? prime.metadata.workingSet : undefined;
   if (decision?.action === "suppress") {
     return {
       detail: "compact",
@@ -290,6 +291,7 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
       tokenEstimate: 0,
       quality: prime.quality,
       contextDecision: decision,
+      workingSet,
       warnings: uniqueValues([...prime.warnings, "Kairn suppressed proactive context because expected savings risk is high."]),
       duplicateContextAvoided: coordination.duplicateContextAvoided,
       hookFiles: coordination.hookFiles.slice(0, 3)
@@ -339,6 +341,7 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
     invariantStatement: exactSourceEvidence?.invariant?.statement ?? prime.invariants?.[0]?.statement ?? null,
     expectedBehavior: exactSourceEvidence?.expectedBehavior ?? null,
     verificationCommand: exactSourceEvidence?.verificationCommand ?? null,
+    workingSet,
     primaryReason: primaryFile
       ? companionFiles[0]
         ? `Start with ${primaryFile}; ${companionFiles[0]} is the one capped companion for this multi-surface task.`
@@ -447,6 +450,10 @@ function extractSymbolHints(content: string): string[] {
     symbols.push(match[1]!);
   }
   return uniqueValues(symbols).slice(0, 3);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function mcpToolResult(runtime: KairnRuntime, toolName: string, input: unknown, value: unknown) {

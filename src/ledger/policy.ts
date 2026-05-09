@@ -54,13 +54,12 @@ export function decideSessionContextPolicy(input: {
     };
   }
 
-  const shownFiles = new Set(input.ledger.shownFiles);
+  const workingSet = input.ledger.workingSet;
+  const shownFiles = new Set(workingSet.shownFiles);
   const repeatedFiles = candidateFiles.filter((file) => shownFiles.has(file));
-  const changedFiles = candidateFiles.filter((file) => (input.changedFiles ?? []).includes(file));
+  const changedFiles = candidateFiles.filter((file) => (input.changedFiles ?? []).includes(file) || workingSet.staleFiles.includes(file));
   const failureFiles = candidateFiles.filter((file) => (input.failureFiles ?? []).includes(file));
-  const ignoredRecommendedFiles = input.ledger.recommendedFiles.filter(
-    (file) => !input.ledger.agentMentionedFiles.includes(file) && !input.ledger.agentTouchedFiles.includes(file)
-  );
+  const ignoredRecommendedFiles = workingSet.ignoredRecommendedFiles;
   const contentHash = input.contentHash ?? sha256(candidateFiles.join("\n"));
   const duplicateSnippet = input.recentEvents.some(
     (event) => event.kind === "context_shown" && event.contentHash === contentHash
@@ -85,7 +84,10 @@ export function decideSessionContextPolicy(input: {
   if (ignoredRecommendedFiles.length >= 2) {
     return decision("shrink", phase, "ignored_recommendation_shrunk", candidateFiles.filter((file) => !shownFiles.has(file)).slice(0, 1), repeatedFiles, changedFiles, ignoredRecommendedFiles, input);
   }
-  return decision("emit", phase, "fresh_context", candidateFiles.filter((file) => !shownFiles.has(file)), repeatedFiles, changedFiles, ignoredRecommendedFiles, input);
+  return decision("emit", phase, "fresh_context", candidateFiles.filter((file) => !shownFiles.has(file)), repeatedFiles, changedFiles, ignoredRecommendedFiles, input, {
+    workingSetActiveFiles: workingSet.activeFiles.slice(0, 5),
+    nextSmallestUsefulRead: workingSet.nextSmallestUsefulRead
+  });
 }
 
 function decision(

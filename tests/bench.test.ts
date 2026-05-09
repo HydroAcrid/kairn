@@ -10,6 +10,7 @@ import { loadBenchmarkRepoMatrix, runBenchmarkRepoMatrix } from "../src/bench/ma
 import { loadBenchmarkEnduranceSuite } from "../src/bench/enduranceSuite.js";
 import { runBenchmarkEndurance } from "../src/bench/endurance.js";
 import { runAgentBenchmarkCase } from "../src/bench/agent.js";
+import { evaluateDiffScopes, evaluateSourceInvariants } from "../src/bench/sourceValidation.js";
 import { evaluateContextValue } from "../src/prime/contextValue.js";
 import { resolvePrimeProfile } from "../src/prime/quality.js";
 import { createFixtureRepo } from "./helpers.js";
@@ -149,9 +150,100 @@ describe("benchmark suite and scoring", () => {
 
     expect(axios.turns.map((turn) => turn.id)).toEqual(["diagnose", "fix", "verify", "cleanup"]);
     expect(flask.seed?.setupPatchFile).toMatch(/flask-dispatch-request-view\.patch$/);
+    expect(flask.finalSourceInvariants?.[0]?.requiredAnyRegex?.length).toBeGreaterThan(0);
+    expect(flask.allowedDiffScopes?.[0]?.symbols).toEqual(["dispatch_request"]);
     expect(commons.turns.find((turn) => turn.id === "fix")?.requiredTouchedFiles).toContain(
       "src/main/java/org/apache/commons/io/FilenameUtils.java"
     );
+  });
+
+  it("validates equivalent semantic source repairs", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-source-invariant-"));
+    try {
+      fs.mkdirSync(path.join(root, "src/flask"), { recursive: true });
+      fs.writeFileSync(
+        path.join(root, "src/flask/app.py"),
+        [
+          "def dispatch_request(self):",
+          "    view_args = req.view_args",
+          "    view_func = self.view_functions[rule.endpoint]",
+          "    return self.ensure_sync(view_func)(**view_args)",
+          ""
+        ].join("\n")
+      );
+
+      const result = evaluateSourceInvariants({
+        rootPath: root,
+        invariants: [
+          {
+            file: "src/flask/app.py",
+            requiredAbsent: ["return None"],
+            requiredAnyRegex: [
+              "return\\s+self\\.ensure_sync\\(self\\.view_functions\\[rule\\.endpoint\\]\\)\\(\\*\\*view_args\\)",
+              "([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*self\\.view_functions\\[rule\\.endpoint\\][\\s\\S]*return\\s+self\\.ensure_sync\\(\\1\\)\\(\\*\\*view_args\\)"
+            ]
+          }
+        ]
+      });
+
+      expect(result.passed).toBe(true);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("detects unrelated same-file hunks outside allowed symbols", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-diff-scope-"));
+    try {
+      fs.mkdirSync(path.join(root, "src/flask"), { recursive: true });
+      fs.writeFileSync(
+        path.join(root, "src/flask/app.py"),
+        [
+          "class Flask:",
+          "    def dispatch_request(self):",
+          "        return None",
+          "",
+          "    def ensure_sync(self, func):",
+          "        return func",
+          ""
+        ].join("\n")
+      );
+      execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["add", "."], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["commit", "-m", "initial"], {
+        cwd: root,
+        stdio: "ignore",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: "Kairn Test",
+          GIT_AUTHOR_EMAIL: "test@example.com",
+          GIT_COMMITTER_NAME: "Kairn Test",
+          GIT_COMMITTER_EMAIL: "test@example.com"
+        }
+      });
+      fs.writeFileSync(
+        path.join(root, "src/flask/app.py"),
+        [
+          "class Flask:",
+          "    def dispatch_request(self):",
+          "        return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)",
+          "",
+          "    def ensure_sync(self, func):",
+          "        return lambda *args, **kwargs: func(*args, **kwargs)",
+          ""
+        ].join("\n")
+      );
+
+      const result = evaluateDiffScopes({
+        rootPath: root,
+        scopes: [{ file: "src/flask/app.py", symbols: ["dispatch_request"] }]
+      });
+
+      expect(result.passed).toBe(false);
+      expect(result.violations.join("\n")).toContain("outside allowed symbols");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("loads the broad repo-matrix preflight example", () => {
@@ -284,7 +376,109 @@ describe("benchmark suite and scoring", () => {
     expect(report.reports.every((item) => item.qualityGatePassed)).toBe(true);
     expect(report.reports.find((item) => item.mode === "kairn")?.sessionId).toMatch(/^task_/);
     expect(report.reports.find((item) => item.mode === "kairn")?.ledger?.events).toBeGreaterThan(0);
+    expect(report.reports.find((item) => item.mode === "kairn")?.ledger?.workingSet.activeFiles).toContain("src/user.ts");
     expect(report.deltas.kairn?.baselineTokens).toBe(240);
+  });
+
+  it("applies source invariants and hunk-level diff scopes in endurance quality gates", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-endurance-source-scope-"));
+    try {
+      fs.mkdirSync(path.join(root, "src"), { recursive: true });
+      fs.writeFileSync(
+        path.join(root, "src/app.ts"),
+        [
+          "export function target() { return 1; }",
+          "export function other() { return 1; }",
+          ""
+        ].join("\n")
+      );
+      execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["add", "."], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["commit", "-m", "initial"], {
+        cwd: root,
+        stdio: "ignore",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: "Kairn Test",
+          GIT_AUTHOR_EMAIL: "test@example.com",
+          GIT_COMMITTER_NAME: "Kairn Test",
+          GIT_COMMITTER_EMAIL: "test@example.com"
+        }
+      });
+      const patchPath = path.join(root, "seed.patch");
+      fs.writeFileSync(
+        patchPath,
+        [
+          "diff --git a/src/app.ts b/src/app.ts",
+          "index 6d3bb07..3c66ff5 100644",
+          "--- a/src/app.ts",
+          "+++ b/src/app.ts",
+          "@@ -1,2 +1,2 @@",
+          "-export function target() { return 1; }",
+          "+export function target() { return 0; }",
+          " export function other() { return 1; }",
+          ""
+        ].join("\n")
+      );
+      const suitePath = path.join(root, "endurance-suite.json");
+      fs.writeFileSync(
+        suitePath,
+        JSON.stringify({
+          id: "source-scope",
+          name: "Source Scope",
+          task: "Fix target without touching other.",
+          seed: {
+            repoUrl: root,
+            ref: "HEAD",
+            setupPatchFile: patchPath
+          },
+          turns: [
+            {
+              id: "fix",
+              task: "Fix target",
+              expectedFiles: ["src/app.ts"],
+              requiredTouchedFiles: ["src/app.ts"],
+              excludedFiles: [],
+              sourceInvariants: [
+                {
+                  file: "src/app.ts",
+                  requiredPresent: ["target() { return 2; }"]
+                }
+              ],
+              allowedDiffScopes: [
+                {
+                  file: "src/app.ts",
+                  symbols: ["target"]
+                }
+              ]
+            }
+          ]
+        })
+      );
+      const command = [
+        "node -e \"",
+        "const fs=require('fs');",
+        "fs.writeFileSync('src/app.ts','export function target() { return 2; }\\nexport function other() { return 9; }\\n');",
+        "console.log('Token usage: total=120 input=100 output=20');",
+        "\""
+      ].join("");
+
+      const report = await runBenchmarkEndurance({
+        rootPath: root,
+        suitePath,
+        baselineCommand: command,
+        kairnCommand: command,
+        turnTimeoutMs: 30000
+      });
+      const kairnTurn = report.reports.find((item) => item.mode === "kairn")?.turns[0];
+
+      expect(kairnTurn?.metadata.sourceInvariantPassed).toBe(true);
+      expect(kairnTurn?.metadata.diffScopePassed).toBe(false);
+      expect(kairnTurn?.qualityGatePassed).toBe(false);
+      expect(kairnTurn?.summary).toContain("outside allowed diff scope");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("treats excluded directory prefixes as noisy matrix hits", async () => {

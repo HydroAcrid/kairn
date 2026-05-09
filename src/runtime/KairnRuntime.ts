@@ -333,7 +333,9 @@ export class KairnRuntime {
           taskHash: sha256(resolvedTask),
           phase: sessionPolicy.phase,
           policyReason: sessionPolicy.reason,
-          emitted: emittedFiles.includes(file)
+          emitted: emittedFiles.includes(file),
+          workingSetActiveFiles: ledgerSummary.workingSet.activeFiles.slice(0, 6),
+          nextSmallestUsefulRead: ledgerSummary.workingSet.nextSmallestUsefulRead
         }
       });
     }
@@ -405,7 +407,10 @@ export class KairnRuntime {
           taskHash: sha256(resolvedTask),
           phase: sessionPolicy.phase,
           policyReason: sessionPolicy.reason,
-          policyAction: sessionPolicy.action
+          policyAction: sessionPolicy.action,
+          ...(invariants[0] ? { invariant: invariants[0] } : {}),
+          workingSetActiveFiles: ledgerSummary.workingSet.activeFiles.slice(0, 6),
+          nextSmallestUsefulRead: ledgerSummary.workingSet.nextSmallestUsefulRead
         }
       });
     }
@@ -422,7 +427,9 @@ export class KairnRuntime {
           phase: sessionPolicy.phase,
           policyReason: sessionPolicy.reason,
           repeatedFilesAvoided: sessionPolicy.repeatedFiles.length,
-          repeatedSnippetsAvoided: sessionPolicy.reason === "repeated_context_suppressed" ? 1 : 0
+          repeatedSnippetsAvoided: sessionPolicy.reason === "repeated_context_suppressed" ? 1 : 0,
+          workingSetActiveFiles: ledgerSummary.workingSet.activeFiles.slice(0, 6),
+          nextSmallestUsefulRead: ledgerSummary.workingSet.nextSmallestUsefulRead
         }
       });
     }
@@ -445,6 +452,7 @@ export class KairnRuntime {
         quality: effectiveQuality,
         contextDecision: effectiveContextDecision,
         sessionPolicy,
+        workingSet: ledgerSummary.workingSet,
         invariants,
         timings,
         contextTokenEstimate: context.tokenEstimate,
@@ -468,6 +476,7 @@ export class KairnRuntime {
         ...effectiveQuality,
         contextDecision: effectiveContextDecision,
         sessionPolicy,
+        workingSet: ledgerSummary.workingSet,
         invariants,
         timings,
         taskHash: sha256(resolvedTask),
@@ -487,6 +496,7 @@ export class KairnRuntime {
       metadata: {
         ...effectiveContextDecision,
         sessionPolicy,
+        workingSet: ledgerSummary.workingSet,
         invariants,
         timings,
         taskHash: sha256(resolvedTask),
@@ -507,7 +517,8 @@ export class KairnRuntime {
       timings,
       metadata: {
         companionCandidates: companionMetadata,
-        sessionPolicy
+        sessionPolicy,
+        workingSet: ledgerSummary.workingSet
       },
       warnings: uniqueStrings([...context.warnings, ...(related?.warnings ?? []), ...(tests?.warnings ?? [])]),
       suggestedCommands
@@ -1501,8 +1512,9 @@ export class KairnRuntime {
     const latestFailure = [...this.store.listWatchEvents(input.sessionId)]
       .reverse()
       .find((event) => event.kind === "failure" && event.files.length > 0);
+    const workingSetRead = ledgerSummary.workingSet.nextSmallestUsefulRead;
 
-    if (exactSourceFile && !latestFailure) {
+    if (exactSourceFile && !latestFailure && !ledgerSummary.workingSet.lastFailure) {
       if (alreadyReturnedFiles.includes(exactSourceFile)) {
         const content = truncateToBudget(
           [
@@ -1525,7 +1537,8 @@ export class KairnRuntime {
           metadata: {
             repeatedFilesAvoided: 1,
             repeatedSnippetsAvoided: 1,
-            policyReason: "repeated_context_suppressed"
+            policyReason: "repeated_context_suppressed",
+            workingSet: ledgerSummary.workingSet
           }
         });
         return {
@@ -1539,7 +1552,8 @@ export class KairnRuntime {
           tokenEstimate: estimateTokens(content),
           metadata: {
             sessionPolicy: "repeated_context_suppressed",
-            exactSourceFile
+            exactSourceFile,
+            workingSet: ledgerSummary.workingSet
           }
         };
       }
@@ -1559,10 +1573,56 @@ export class KairnRuntime {
         summary: `Kairn showed focused next context for ${exactSourceFile}.`,
         metadata: {
           policyReason: "fresh_context",
-          phase: ledgerSummary.currentPhase
+          phase: ledgerSummary.currentPhase,
+          workingSet: ledgerSummary.workingSet
         }
       });
       return focused;
+    }
+
+    if (workingSetRead && (workingSetRead.source === "failure" || workingSetRead.source === "changed_file" || !alreadyReturnedFiles.includes(workingSetRead.filePath))) {
+      const content = truncateToBudget(
+        [
+          "# Kairn Next Context",
+          "",
+          `Next smallest useful read: ${workingSetRead.filePath}`,
+          `Reason: ${workingSetRead.reason}`,
+          "",
+          ledgerSummary.workingSet.currentInvariant ? `Invariant: ${ledgerSummary.workingSet.currentInvariant.statement}` : "",
+          ledgerSummary.workingSet.lastFailure ? `Last failure: ${ledgerSummary.workingSet.lastFailure.summary}` : "",
+          ledgerSummary.workingSet.lastPassingVerification ? `Last passing verification: ${ledgerSummary.workingSet.lastPassingVerification.summary}` : "",
+          "",
+          "Agent guidance: read only this file next. Ask Kairn again after the check fails, the file changes, or the task target changes."
+        ].filter(Boolean).join("\n"),
+        input.budget ?? 520
+      );
+      this.recordLedgerEvent({
+        sessionId: input.sessionId,
+        kind: "context_shown",
+        filePath: workingSetRead.filePath,
+        contentHash: sha256(content),
+        tokenEstimate: estimateTokens(content),
+        source: "runtime",
+        summary: `Kairn showed working-set next read for ${workingSetRead.filePath}.`,
+        metadata: {
+          policyReason: workingSetRead.source === "failure" ? "failure_reemitted" : workingSetRead.source === "changed_file" ? "changed_file_reemitted" : "fresh_context",
+          phase: ledgerSummary.currentPhase,
+          workingSet: ledgerSummary.workingSet
+        }
+      });
+      return {
+        mode: "brief",
+        content,
+        files: [workingSetRead.filePath],
+        symbols: [],
+        related: [],
+        warnings: ["Next context selected from session working set."],
+        suggestedNextContext: [workingSetRead.filePath],
+        tokenEstimate: estimateTokens(content),
+        metadata: {
+          workingSet: ledgerSummary.workingSet
+        }
+      };
     }
 
     if (latestFailure?.files[0]) {
@@ -1599,7 +1659,8 @@ export class KairnRuntime {
           summary: `Kairn showed failure-linked next context for ${file}.`,
           metadata: {
             policyReason: "failure_reemitted",
-            phase: "debugging"
+            phase: "debugging",
+            workingSet: ledgerSummary.workingSet
           }
         });
       }
@@ -1641,7 +1702,8 @@ export class KairnRuntime {
           summary: `Kairn showed diff-linked next context for ${file}.`,
           metadata: {
             policyReason: "changed_file_reemitted",
-            phase: "cleanup"
+            phase: "cleanup",
+            workingSet: ledgerSummary.workingSet
           }
         });
       }
@@ -1705,11 +1767,12 @@ export class KairnRuntime {
         tokenEstimate: estimateTokens(content),
         source: "runtime",
         summary: `Kairn showed next context for ${file}.`,
-        metadata: {
-          policyReason: "fresh_context",
-          phase: ledgerSummary.currentPhase
-        }
-      });
+          metadata: {
+            policyReason: "fresh_context",
+            phase: ledgerSummary.currentPhase,
+            workingSet: ledgerSummary.workingSet
+          }
+        });
     }
     return {
       ...context,

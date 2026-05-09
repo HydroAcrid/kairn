@@ -1,6 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { BenchmarkEnduranceSuite, BenchmarkEnduranceTurn, BenchmarkSeedSpec } from "../types.js";
+import type {
+  BenchmarkDiffScope,
+  BenchmarkEnduranceSuite,
+  BenchmarkEnduranceTurn,
+  BenchmarkSeedSpec,
+  BenchmarkSourceInvariant
+} from "../types.js";
 import { normalizeRelativePath } from "../utils/paths.js";
 
 export function loadBenchmarkEnduranceSuite(input: { suitePath: string }): BenchmarkEnduranceSuite {
@@ -18,13 +24,17 @@ function normalizeEnduranceSuite(input: unknown, suiteDir: string): BenchmarkEnd
   if (turns.length === 0) throw new Error("Endurance benchmark suite must include at least one turn.");
   const seed = normalizeSeed(input.seed, suiteDir);
   const finalVerificationCommand = stringValue(input.finalVerificationCommand);
+  const finalSourceInvariants = normalizeSourceInvariants(input.finalSourceInvariants);
+  const allowedDiffScopes = normalizeDiffScopes(input.allowedDiffScopes);
   return {
     id,
     name,
     task,
     ...(seed ? { seed } : {}),
     turns,
-    ...(finalVerificationCommand ? { finalVerificationCommand } : {})
+    ...(finalVerificationCommand ? { finalVerificationCommand } : {}),
+    ...(finalSourceInvariants.length > 0 ? { finalSourceInvariants } : {}),
+    ...(allowedDiffScopes.length > 0 ? { allowedDiffScopes } : {})
   };
 }
 
@@ -43,8 +53,37 @@ function normalizeTurn(input: unknown): BenchmarkEnduranceTurn {
     requiredTouchedFiles: normalizeFiles(input.requiredTouchedFiles),
     excludedFiles: normalizeFiles(input.excludedFiles),
     ...(verificationCommand ? { verificationCommand } : {}),
+    sourceInvariants: normalizeSourceInvariants(input.sourceInvariants),
+    allowedDiffScopes: normalizeDiffScopes(input.allowedDiffScopes),
     ...(budget ? { budget } : {})
   };
+}
+
+function normalizeSourceInvariants(value: unknown): BenchmarkSourceInvariant[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isRecord).map((item) => {
+    const id = stringValue(item.id);
+    const description = stringValue(item.description);
+    return {
+      ...(id ? { id } : {}),
+      file: normalizeRelativePath(requireString(item.file, "sourceInvariant.file")),
+      ...(description ? { description } : {}),
+      requiredPresent: stringList(item.requiredPresent),
+      requiredAbsent: stringList(item.requiredAbsent),
+      requiredRegex: stringList(item.requiredRegex),
+      requiredAny: stringList(item.requiredAny),
+      requiredAnyRegex: stringList(item.requiredAnyRegex)
+    };
+  });
+}
+
+function normalizeDiffScopes(value: unknown): BenchmarkDiffScope[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isRecord).map((item) => ({
+    file: normalizeRelativePath(requireString(item.file, "allowedDiffScopes.file")),
+    symbols: stringList(item.symbols),
+    ...(Boolean(item.allowWholeFile) ? { allowWholeFile: true } : {})
+  }));
 }
 
 function normalizeSeed(value: unknown, suiteDir: string): BenchmarkSeedSpec | undefined {

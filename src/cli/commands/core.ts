@@ -150,6 +150,15 @@ export function registerCoreCommands(program: Command): void {
             `Repeated snippets avoided: ${summary.repeatedSnippetsAvoided}`,
             `Unresolved failures: ${summary.unresolvedFailures}`,
             "",
+            "Working set",
+            `- active files: ${summary.workingSet.activeFiles.slice(0, 8).join(", ") || "none"}`,
+            `- recently touched: ${summary.workingSet.recentlyTouchedFiles.slice(0, 8).join(", ") || "none"}`,
+            `- ignored recommendations: ${summary.workingSet.ignoredRecommendedFiles.slice(0, 8).join(", ") || "none"}`,
+            `- stale files: ${summary.workingSet.staleFiles.slice(0, 8).join(", ") || "none"}`,
+            `- next read: ${summary.workingSet.nextSmallestUsefulRead ? `${summary.workingSet.nextSmallestUsefulRead.filePath} (${summary.workingSet.nextSmallestUsefulRead.reason})` : "none"}`,
+            `- invariant: ${summary.workingSet.currentInvariant?.statement ?? "none"}`,
+            `- open risks: ${summary.workingSet.openRisks.join("; ") || "none"}`,
+            "",
             "Recent events",
             ...(summary.recentEvents.length > 0
               ? summary.recentEvents.map((event) => `- ${event.kind}${event.filePath ? ` ${event.filePath}` : ""}: ${event.summary}`)

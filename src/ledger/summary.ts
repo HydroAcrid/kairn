@@ -1,5 +1,6 @@
 import type { SessionLedgerEvent, SessionLedgerSummary, TaskPhase } from "../types.js";
 import { uniquePaths } from "../utils/collections.js";
+import { buildSessionWorkingSet } from "./workingSet.js";
 
 export function summarizeSessionLedger(sessionId: string, events: SessionLedgerEvent[]): SessionLedgerSummary {
   const recommendedFiles = uniquePaths(events.filter((event) => event.kind === "context_recommended").flatMap(eventFile));
@@ -13,11 +14,13 @@ export function summarizeSessionLedger(sessionId: string, events: SessionLedgerE
     events.filter((event) => event.kind === "failure_seen").length -
       events.filter((event) => event.kind === "verification_passed").length
   );
+  const currentPhase = inferCurrentPhase(events);
+  const workingSet = buildSessionWorkingSet({ sessionId, events, currentPhase });
 
   return {
     sessionId,
     events: events.length,
-    currentPhase: inferCurrentPhase(events),
+    currentPhase,
     recommendedFiles,
     shownFiles,
     agentMentionedFiles,
@@ -27,6 +30,7 @@ export function summarizeSessionLedger(sessionId: string, events: SessionLedgerE
     recommendedFilesUsed,
     repeatedlyTouchedFiles: [...touchedCounts.entries()].filter(([, count]) => count > 1).map(([file]) => file),
     unresolvedFailures,
+    workingSet,
     recentEvents: events.slice(-20)
   };
 }

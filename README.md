@@ -122,6 +122,8 @@ The useful first number while testing Codex hooks is `estimated tokens saved`. I
 
 Kairn also keeps a metadata-only session ledger for long conversations. The ledger tracks which files Kairn recommended or showed, which files the agent later mentioned or touched, commands/tests/failures, phase changes, and repeated context that Kairn avoided. It stores file refs, hashes, summaries, and token estimates only.
 
+On top of the append-only ledger, Kairn derives a session working set: active files, ignored recommendations, stale shown files, the current invariant, latest failure, latest passing verification, open risks, and the next smallest useful read. Hooks and MCP tools use this working set to avoid repeating context and to re-emit only when the file changed, a failure references it, or the task phase shifted.
+
 ```bash
 kairn ledger --session task_123 --root /path/to/repo
 kairn ledger --session task_123 --root /path/to/repo --json

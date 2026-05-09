@@ -79,6 +79,9 @@ export function printMetrics(metrics: MetricsSummary): void {
     `- repeated snippets avoided: ${metrics.ledger.repeatedSnippetsAvoided}`,
     `- recommended files used: ${metrics.ledger.recommendedFilesUsed.length}`,
     `- unresolved failures: ${metrics.ledger.unresolvedFailures}`,
+    `- active files: ${metrics.ledger.workingSet.activeFiles.slice(0, 5).join(", ") || "none"}`,
+    `- next read: ${metrics.ledger.workingSet.nextSmallestUsefulRead ?? "none"}`,
+    `- open risks: ${metrics.ledger.workingSet.openRisks.length}`,
     ""
   ];
 
@@ -206,8 +209,10 @@ export function printBenchmarkEnduranceReport(report: BenchmarkEnduranceReport):
   for (const mode of report.reports) {
     const observed = mode.totalObservedCodexTokens !== undefined ? `${mode.totalObservedCodexTokens} observed Codex tokens` : "observed Codex tokens unavailable";
     lines.push(
-      `- ${mode.mode}: ${mode.qualityGatePassed ? "quality passed" : "quality failed"}; ${observed}; response tokens ${mode.totalResponseTokens}; turns ${mode.turns.length}`,
-      `  ledger: phase ${mode.ledger?.currentPhase ?? "n/a"}, repeated files avoided ${mode.ledger?.repeatedFilesAvoided ?? 0}, recommended files used ${mode.ledger?.recommendedFilesUsed.length ?? 0}`
+      `- ${mode.mode}: ${mode.qualityGatePassed ? "quality passed" : "quality failed"}; assistance ${mode.assistanceStatus}; ${observed}; response tokens ${mode.totalResponseTokens}; turns ${mode.turns.length}`,
+      `  assistance: emitted ${mode.assistanceActions.emitted}, shrunk ${mode.assistanceActions.shrunk}, suppressed ${mode.assistanceActions.suppressed}, MCP ${mode.assistanceActions.mcpCalls}, failure contexts ${mode.assistanceActions.failureContexts}`,
+      `  ledger: phase ${mode.ledger?.currentPhase ?? "n/a"}, repeated files avoided ${mode.ledger?.repeatedFilesAvoided ?? 0}, recommended files used ${mode.ledger?.recommendedFilesUsed.length ?? 0}`,
+      `  working set: active ${mode.ledger?.workingSet.activeFiles.slice(0, 3).join(", ") || "none"}; next ${mode.ledger?.workingSet.nextSmallestUsefulRead?.filePath ?? "none"}`
     );
     for (const turn of mode.turns) {
       lines.push(
@@ -224,6 +229,8 @@ export function printBenchmarkEnduranceReport(report: BenchmarkEnduranceReport):
     }
     if (!delta.qualityGatePassed && (delta.savedTokens ?? 0) > 0) {
       lines.push(`- ${mode}: ${delta.savedTokens} fewer tokens, invalid savings because quality failed`);
+    } else if (!delta.assistanceEligible && (delta.savedTokens ?? 0) > 0) {
+      lines.push(`- ${mode}: ${delta.savedTokens} fewer tokens, passive/suppressed evidence only`);
     } else {
       lines.push(`- ${mode}: ${delta.savedTokens} tokens (${Math.round((delta.savingsRate ?? 0) * 100)}%)`);
     }

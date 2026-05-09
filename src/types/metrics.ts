@@ -86,6 +86,13 @@ export type MetricsSummary = {
     repeatedlyTouchedFiles: string[];
     unresolvedFailures: number;
     currentPhase: TaskPhase;
+    workingSet: {
+      activeFiles: string[];
+      ignoredRecommendedFiles: string[];
+      staleFiles: string[];
+      nextSmallestUsefulRead?: string;
+      openRisks: string[];
+    };
   };
   recentEvents: MetricsEventRecord[];
 };

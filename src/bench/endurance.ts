@@ -19,6 +19,7 @@ import {
   runShell
 } from "./agent.js";
 import { loadBenchmarkEnduranceSuite } from "./enduranceSuite.js";
+import { evaluateDiffScopes, evaluateSourceInvariants } from "./sourceValidation.js";
 
 type EnduranceMode = "baseline" | "kairn" | "mcp";
 
@@ -90,21 +91,41 @@ async function runEnduranceMode(input: {
     const finalVerification = input.suite.finalVerificationCommand
       ? runShell(input.suite.finalVerificationCommand, workspace.workspacePath, timeoutMs)
       : undefined;
-    if (runtime && sessionId && finalVerification) {
+    const finalSourceInvariantResult = evaluateSourceInvariants({
+      rootPath: workspace.workspacePath,
+      invariants: input.suite.finalSourceInvariants
+    });
+    const finalDiffScopeResult = evaluateDiffScopes({
+      rootPath: workspace.workspacePath,
+      scopes: input.suite.allowedDiffScopes
+    });
+    const finalVerificationCommandPassed = finalVerification ? finalVerification.status === 0 && !finalVerification.timedOut : true;
+    const finalVerificationPassed = finalVerificationCommandPassed && finalSourceInvariantResult.passed && finalDiffScopeResult.passed;
+    if (runtime && sessionId && (finalVerification || input.suite.finalSourceInvariants || input.suite.allowedDiffScopes)) {
       runtime.recordLedgerEvent({
         sessionId,
-        kind: finalVerification.status === 0 ? "verification_passed" : "verification_failed",
+        kind: finalVerificationPassed ? "verification_passed" : "verification_failed",
         source: "bench",
-        summary: finalVerification.status === 0 ? "Final endurance verification passed." : "Final endurance verification failed.",
+        summary: finalVerificationPassed ? "Final endurance verification passed." : "Final endurance verification failed.",
         metadata: {
           finalVerificationCommandHash: sha256(input.suite.finalVerificationCommand ?? ""),
-          finalVerificationExitCode: finalVerification.status,
-          finalVerificationOutputHash: sha256(finalVerification.output)
+          finalVerificationExitCode: finalVerification?.status,
+          finalVerificationOutputHash: sha256(finalVerification?.output ?? ""),
+          finalSourceInvariantPassed: finalSourceInvariantResult.passed,
+          finalSourceInvariantFailures: finalSourceInvariantResult.failures,
+          finalDiffScopePassed: finalDiffScopeResult.passed,
+          finalDiffScopeViolations: finalDiffScopeResult.violations
         }
       });
     }
+    const ledgerEvents = runtime && sessionId ? runtime.getSessionLedger(sessionId) : [];
     const ledger = runtime && sessionId ? runtime.summarizeSessionLedger(sessionId) : undefined;
-    const finalVerificationPassed = finalVerification ? finalVerification.status === 0 : true;
+    const assistanceActions = buildAssistanceActions({
+      mode: input.mode,
+      turns: turnResults,
+      ledgerEvents
+    });
+    const assistanceStatus = classifyAssistance(input.mode, assistanceActions);
     return {
       mode: input.mode,
       workspacePath: workspace.workspacePath,
@@ -117,7 +138,17 @@ async function runEnduranceMode(input: {
       totalElapsedMs: Date.now() - startedAt,
       qualityGatePassed: finalVerificationPassed && turnResults.every((turn) => turn.qualityGatePassed),
       finalVerificationPassed,
-      ...(ledger ? { ledger } : {})
+      assistanceStatus,
+      assistanceActions,
+      ...(ledger ? { ledger } : {}),
+      metadata: {
+        finalVerificationCommandPassed,
+        finalSourceInvariantPassed: finalSourceInvariantResult.passed,
+        finalSourceInvariantFailures: finalSourceInvariantResult.failures,
+        finalDiffScopePassed: finalDiffScopeResult.passed,
+        finalDiffScopeViolations: finalDiffScopeResult.violations,
+        finalChangedFiles: finalDiffScopeResult.changedFiles
+      } as Record<string, unknown>
     };
   } finally {
     runtime?.close();
@@ -204,8 +235,22 @@ async function runEnduranceTurn(input: {
   const excludedTouchedFiles = actualFiles.filter((file) => input.turn.excludedFiles.some((excluded) => benchmarkPathMatches(file, excluded)));
   const commandPassed = result.status === 0 && !result.timedOut;
   const verificationPassed = verification ? verification.status === 0 && !verification.timedOut : true;
+  const sourceInvariantResult = evaluateSourceInvariants({
+    rootPath: input.workspacePath,
+    invariants: input.turn.sourceInvariants
+  });
+  const diffScopeResult = evaluateDiffScopes({
+    rootPath: input.workspacePath,
+    scopes: input.turn.allowedDiffScopes
+  });
   const requiredTouchedSatisfied = missingRequiredTouchedFiles.length === 0;
-  const qualityGatePassed = commandPassed && verificationPassed && requiredTouchedSatisfied && excludedTouchedFiles.length === 0;
+  const qualityGatePassed =
+    commandPassed &&
+    verificationPassed &&
+    requiredTouchedSatisfied &&
+    excludedTouchedFiles.length === 0 &&
+    sourceInvariantResult.passed &&
+    diffScopeResult.passed;
   const outcome: BenchmarkTaskOutcome = qualityGatePassed ? "pass" : commandPassed && verificationPassed ? "partial" : "fail";
 
   if (input.runtime && input.sessionId) {
@@ -240,7 +285,15 @@ async function runEnduranceTurn(input: {
     repeatedSnippetsAvoided: Math.max(0, (afterLedger?.repeatedSnippetsAvoided ?? 0) - (beforeLedger?.repeatedSnippetsAvoided ?? 0)),
     summary: qualityGatePassed
       ? "Turn passed quality gate."
-      : buildTurnFailureSummary({ commandPassed, verificationPassed, missingRequiredTouchedFiles, excludedTouchedFiles, result }),
+      : buildTurnFailureSummary({
+          commandPassed,
+          verificationPassed,
+          missingRequiredTouchedFiles,
+          excludedTouchedFiles,
+          sourceInvariantFailures: sourceInvariantResult.failures,
+          diffScopeViolations: diffScopeResult.violations,
+          result
+        }),
     metadata: {
       promptHash: sha256(prompt),
       preparedPromptHash: sha256(preparedPrompt),
@@ -257,6 +310,11 @@ async function runEnduranceTurn(input: {
       excludedTouchedFiles,
       verificationExitCode: verification?.status,
       verificationTimedOut: verification?.timedOut,
+      sourceInvariantPassed: sourceInvariantResult.passed,
+      sourceInvariantFailures: sourceInvariantResult.failures,
+      diffScopePassed: diffScopeResult.passed,
+      diffScopeViolations: diffScopeResult.violations,
+      diffScopeChangedFiles: diffScopeResult.changedFiles,
       ...(usage ? { codexUsage: { ...usage, source: "footer" } } : {}),
       ...primeMetadata
     }
@@ -362,14 +420,20 @@ function buildEnduranceDeltas(reports: BenchmarkEnduranceModeReport[]): Benchmar
     const modeTokens = report.totalObservedCodexTokens;
     const savedTokens = baselineTokens !== undefined && modeTokens !== undefined ? baselineTokens - modeTokens : undefined;
     const savingsRate = savedTokens !== undefined && baselineTokens && baselineTokens > 0 ? savedTokens / baselineTokens : undefined;
+    const assistanceEligible = report.assistanceStatus === "active";
+    const negativeEvidenceReason = enduranceNegativeEvidenceReason({ report, savedTokens, assistanceEligible });
     deltas[report.mode] = {
       ...(baselineTokens !== undefined ? { baselineTokens } : {}),
       ...(modeTokens !== undefined ? { modeTokens } : {}),
       ...(savedTokens !== undefined ? { savedTokens } : {}),
       ...(savingsRate !== undefined ? { savingsRate } : {}),
       qualityGatePassed: report.qualityGatePassed,
-      ...(savedTokens !== undefined && report.qualityGatePassed && savedTokens > 0 ? { validSavings: savedTokens } : {}),
-      ...(savedTokens !== undefined && !report.qualityGatePassed && savedTokens > 0 ? { invalidSavings: savedTokens } : {})
+      assistanceStatus: report.assistanceStatus,
+      assistanceEligible,
+      ...(savedTokens !== undefined && report.qualityGatePassed && assistanceEligible && savedTokens > 0 ? { validSavings: savedTokens } : {}),
+      ...(savedTokens !== undefined && !report.qualityGatePassed && savedTokens > 0 ? { invalidSavings: savedTokens } : {}),
+      ...(savedTokens !== undefined && report.qualityGatePassed && !assistanceEligible && savedTokens > 0 ? { passiveSavings: savedTokens } : {}),
+      ...(negativeEvidenceReason ? { negativeEvidenceReason } : {})
     };
   }
   return deltas;
@@ -381,8 +445,17 @@ function buildEnduranceRecommendations(reports: BenchmarkEnduranceModeReport[]):
     if (!report.qualityGatePassed) {
       recommendations.push(`${report.mode}: quality gate failed; do not claim token savings for this mode.`);
     }
+    if (report.mode !== "baseline" && report.assistanceStatus !== "active") {
+      recommendations.push(`${report.mode}: Kairn was ${report.assistanceStatus}; any lower token usage is passive evidence, not valid Kairn-assisted savings.`);
+    }
     if ((report.ledger?.repeatedFilesAvoided ?? 0) > 0) {
       recommendations.push(`${report.mode}: ledger avoided ${report.ledger?.repeatedFilesAvoided ?? 0} repeated file context event(s).`);
+    }
+    if (report.assistanceStatus === "active" && report.ledger?.workingSet.nextSmallestUsefulRead) {
+      recommendations.push(`${report.mode}: working set next read is ${report.ledger.workingSet.nextSmallestUsefulRead.filePath}.`);
+    }
+    if ((report.ledger?.workingSet.openRisks.length ?? 0) > 0) {
+      recommendations.push(`${report.mode}: open working-set risks: ${report.ledger?.workingSet.openRisks.slice(0, 2).join("; ")}.`);
     }
     const repeatedTouches = report.ledger?.repeatedlyTouchedFiles ?? [];
     if (repeatedTouches.length > 0) {
@@ -393,11 +466,61 @@ function buildEnduranceRecommendations(reports: BenchmarkEnduranceModeReport[]):
   return uniqueStrings(recommendations);
 }
 
+function buildAssistanceActions(input: {
+  mode: EnduranceMode;
+  turns: BenchmarkEnduranceTurnResult[];
+  ledgerEvents: ReturnType<KairnRuntime["getSessionLedger"]>;
+}): BenchmarkEnduranceModeReport["assistanceActions"] {
+  if (input.mode === "baseline") {
+    return {
+      emitted: 0,
+      shrunk: 0,
+      suppressed: 0,
+      mcpCalls: 0,
+      failureContexts: 0
+    };
+  }
+  const decisions = input.turns.map((turn) => typeof turn.metadata.primeDecision === "string" ? turn.metadata.primeDecision : "");
+  const mcpCalls = input.ledgerEvents.filter((event) => event.source === "mcp").length;
+  const failureContexts = input.ledgerEvents.filter(
+    (event) => event.kind === "context_shown" && event.metadata.policyReason === "failure_reemitted"
+  ).length;
+  return {
+    emitted: decisions.filter((decision) => decision === "emit").length,
+    shrunk: decisions.filter((decision) => decision === "shrink").length,
+    suppressed: decisions.filter((decision) => decision === "suppress").length,
+    mcpCalls,
+    failureContexts
+  };
+}
+
+function classifyAssistance(
+  mode: EnduranceMode,
+  actions: BenchmarkEnduranceModeReport["assistanceActions"]
+): BenchmarkEnduranceModeReport["assistanceStatus"] {
+  if (mode === "baseline") return "none";
+  if (actions.emitted > 0 || actions.shrunk > 0 || actions.mcpCalls > 0 || actions.failureContexts > 0) return "active";
+  return "passive_suppressed";
+}
+
+function enduranceNegativeEvidenceReason(input: {
+  report: BenchmarkEnduranceModeReport;
+  savedTokens: number | undefined;
+  assistanceEligible: boolean;
+}): string | undefined {
+  if (input.savedTokens === undefined || input.savedTokens <= 0) return undefined;
+  if (!input.report.qualityGatePassed) return "Token reduction is invalid because the endurance quality gate failed.";
+  if (!input.assistanceEligible) return "Token reduction is passive evidence because Kairn emitted no useful context, MCP call, or failure context.";
+  return undefined;
+}
+
 function buildTurnFailureSummary(input: {
   commandPassed: boolean;
   verificationPassed: boolean;
   missingRequiredTouchedFiles: string[];
   excludedTouchedFiles: string[];
+  sourceInvariantFailures: string[];
+  diffScopeViolations: string[];
   result: ReturnType<typeof runShell>;
 }): string {
   if (input.result.timedOut) return "Turn command timed out.";
@@ -408,6 +531,12 @@ function buildTurnFailureSummary(input: {
   }
   if (input.excludedTouchedFiles.length > 0) {
     return `Turn touched excluded files: ${input.excludedTouchedFiles.join(", ")}.`;
+  }
+  if (input.sourceInvariantFailures.length > 0) {
+    return `Turn source invariant failed: ${input.sourceInvariantFailures.slice(0, 2).join("; ")}.`;
+  }
+  if (input.diffScopeViolations.length > 0) {
+    return `Turn changed outside allowed diff scope: ${input.diffScopeViolations.slice(0, 2).join("; ")}.`;
   }
   return "Turn did not pass the quality gate.";
 }
