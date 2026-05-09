@@ -13,6 +13,7 @@ import type {
   ContextQueryMode,
   ContextResponse,
   ContextResponseMode,
+  ExactSourceEvidence,
   EvalComparison,
   EvalObservationRecord,
   EvalRunMode,
@@ -1436,7 +1437,11 @@ export class KairnRuntime {
     alreadyReturned?: boolean | undefined;
     reason?: string | undefined;
   }): ContextResponse {
-    const nextReads = input.alreadyReturned ? [] : [input.file];
+    const evidence = this.getExactSourceEvidence({
+      sessionId: input.sessionId,
+      file: input.file,
+      budget: Math.max(180, Math.floor((input.budget ?? 550) * 0.62))
+    });
     const content = truncateToBudget(
       [
         "# Kairn Focused Next Context",
@@ -1444,24 +1449,60 @@ export class KairnRuntime {
         input.reason ?? "Kairn found a high-confidence exact source file.",
         "",
         `Primary source: ${input.file}`,
+        evidence.symbol ? `Symbol: ${evidence.symbol}` : undefined,
+        evidence.lines ? `Lines: ${evidence.lines}` : undefined,
         "",
-        "## Next Reads",
-        nextReads.length > 0 ? nextReads.map((file) => `- ${file}`).join("\n") : "No new file recommended; continue with the already-returned exact source file.",
+        "Expected behavior:",
+        evidence.expectedBehavior,
+        "",
+        evidence.snippet ? "## Focused Snippet" : undefined,
+        evidence.snippet ? "```" : undefined,
+        evidence.snippet,
+        evidence.snippet ? "```" : undefined,
+        "",
+        "Verification:",
+        evidence.verificationCommand,
         "",
         "Agent guidance: do not request broad related files or test fanout unless this exact source file is insufficient."
-      ].join("\n"),
+      ].filter(Boolean).join("\n"),
       input.budget ?? 550
     );
     this.recordShown(input.sessionId, "context", "brief", content);
     return {
       mode: "brief",
       content,
-      files: nextReads,
-      symbols: [],
+      files: [input.file],
+      symbols: evidence.symbol ? [evidence.symbol] : [],
       related: [],
       warnings: ["Exact source hit: Kairn intentionally stopped broad MCP expansion."],
-      suggestedNextContext: nextReads,
+      suggestedNextContext: input.alreadyReturned ? [] : [input.file],
       tokenEstimate: estimateTokens(content)
+    };
+  }
+
+  getExactSourceEvidence(input: {
+    sessionId: string;
+    file: string;
+    budget?: number | undefined;
+  }): ExactSourceEvidence {
+    const session = this.store.getSession(input.sessionId);
+    const target = normalizeRelativePath(input.file);
+    const content = readTextFile(session.rootPath, target);
+    const symbol = chooseEvidenceSymbol(this.store.listSymbolsForFile(session.rootPath, target), session.task);
+    const lineCount = content.split(/\r?\n/).length;
+    const snippetStart = symbol ? Math.max(1, symbol.startLine - 2) : firstMatchingLine(content, session.task);
+    const snippetEnd = symbol ? Math.min(lineCount, symbol.endLine + 2) : Math.min(lineCount, snippetStart + 8);
+    const rawSnippet = sliceLines(content, snippetStart, snippetEnd);
+    const snippet = truncateToBudget(rawSnippet, input.budget ?? 220);
+    const evidenceSymbol = chooseSnippetIdentifier(rawSnippet, session.task) ?? symbol?.name;
+    return {
+      file: target,
+      ...(evidenceSymbol ? { symbol: evidenceSymbol } : {}),
+      lines: symbol ? `${symbol.startLine}-${symbol.endLine}` : `${snippetStart}-${snippetEnd}`,
+      snippet,
+      expectedBehavior: inferExpectedBehavior(session.task),
+      verificationCommand: inferVerificationCommand(session.rootPath, target),
+      tokenEstimate: estimateTokens(snippet) + estimateTokens(session.task)
     };
   }
 
@@ -2476,6 +2517,117 @@ export class KairnRuntime {
 
 export function createRuntime(root?: string): KairnRuntime {
   return new KairnRuntime(root ?? getKairnPaths().rootPath);
+}
+
+function chooseEvidenceSymbol(symbols: SymbolRecord[], task: string): SymbolRecord | undefined {
+  if (symbols.length === 0) return undefined;
+  const taskTerms = new Set(identifierTerms(task));
+  const scored = symbols
+    .map((symbol) => ({
+      symbol,
+      score: evidenceSymbolScore(symbol, task.toLowerCase(), taskTerms)
+    }))
+    .sort((a, b) => b.score - a.score || symbolSpan(a.symbol) - symbolSpan(b.symbol) || a.symbol.startLine - b.symbol.startLine);
+  return scored[0]?.symbol;
+}
+
+function evidenceSymbolScore(symbol: SymbolRecord, normalizedTask: string, taskTerms: Set<string>): number {
+  const name = symbol.name.toLowerCase();
+  const signature = symbol.signature.toLowerCase();
+  const symbolTerms = identifierTerms(symbol.name);
+  let score = 0;
+  if (normalizedTask.includes(name)) score += 120;
+  if (signature && normalizedTask.includes(signature)) score += 30;
+  for (const term of symbolTerms) {
+    if (taskTerms.has(term)) score += 24;
+  }
+  if (symbol.exported) score += 8;
+  if (symbol.kind === "function" || symbol.kind === "component") score += 18;
+  if (symbol.kind === "class" || symbol.kind === "interface") score += 8;
+  if (symbol.kind === "const" || symbol.kind === "let" || symbol.kind === "var") score -= 8;
+  score -= Math.min(28, Math.max(0, symbolSpan(symbol) - 18));
+  return score;
+}
+
+function symbolSpan(symbol: SymbolRecord): number {
+  return Math.max(1, symbol.endLine - symbol.startLine + 1);
+}
+
+function firstMatchingLine(content: string, task: string): number {
+  const lines = content.split(/\r?\n/);
+  const terms = identifierTerms(task).filter((term) => term.length >= 4);
+  const index = lines.findIndex((line) => {
+    const normalized = line.toLowerCase();
+    return terms.some((term) => normalized.includes(term));
+  });
+  return Math.max(1, index >= 0 ? index + 1 : 1);
+}
+
+function chooseSnippetIdentifier(snippet: string, task: string): string | undefined {
+  const identifiers = uniqueStrings(task.match(/[A-Za-z_$][\w$]*/g) ?? [])
+    .filter((identifier) => identifier.length >= 3)
+    .sort((a, b) => b.length - a.length);
+  for (const identifier of identifiers) {
+    const escaped = identifier.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(`\\b${escaped}\\s*\\(`);
+    if (pattern.test(snippet)) return identifier;
+  }
+  return undefined;
+}
+
+function inferExpectedBehavior(task: string): string {
+  return truncateToBudget(
+    task
+      .replace(/\bdebug\b/gi, "Fix")
+      .replace(/\bseeded\b/gi, "")
+      .replace(/\bdo not edit unrelated files\b\.?/gi, "")
+      .replace(/\s+/g, " ")
+      .trim(),
+    64
+  );
+}
+
+function inferVerificationCommand(rootPath: string, filePath: string): string {
+  const normalized = filePath.toLowerCase();
+  const packageManager = fs.existsSync(path.join(rootPath, "pnpm-lock.yaml"))
+    ? "pnpm"
+    : fs.existsSync(path.join(rootPath, "yarn.lock"))
+      ? "yarn"
+      : "npm";
+  if (/\.(ts|tsx|js|jsx|mjs|cjs)$/.test(normalized) && fs.existsSync(path.join(rootPath, "package.json"))) {
+    return `${packageManager} test`;
+  }
+  if (/\.pyi?$/.test(normalized)) {
+    const basename = path.basename(filePath).replace(/\.pyi?$/, "").replace(/^_+/, "");
+    const testCandidates = [
+      `tests/test_${basename}.py`,
+      `test/test_${basename}.py`,
+      `${path.dirname(filePath)}/test_${basename}.py`
+    ];
+    const candidate = testCandidates.find((item) => fs.existsSync(path.join(rootPath, item)));
+    return candidate ? `python3 -m pytest ${candidate}` : `python3 -m pytest`;
+  }
+  if (/\.java$/.test(normalized) && fs.existsSync(path.join(rootPath, "pom.xml"))) {
+    const className = path.basename(filePath, ".java");
+    return `mvn -q -Dtest=*${className}* test`;
+  }
+  if (/\.(c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(normalized)) {
+    if (fs.existsSync(path.join(rootPath, "CMakeLists.txt"))) {
+      return "ctest --test-dir build";
+    }
+    return "Run the user-provided failing compiler/test command.";
+  }
+  return "Run the narrowest failing check from the task.";
+}
+
+function identifierTerms(value: string): string[] {
+  return uniqueStrings(
+    value
+      .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+      .toLowerCase()
+      .split(/[^a-z0-9_]+|_/)
+      .filter((term) => term.length >= 2)
+  );
 }
 
 function collectWorkspaceKairnMetrics(workspacePath: string): Record<string, unknown> {

@@ -1,0 +1,13 @@
+diff --git a/packages/next/src/shared/lib/router/utils/is-local-url.ts b/packages/next/src/shared/lib/router/utils/is-local-url.ts
+index 4fc4c5a0b3..d1e69b2338 100644
+--- a/packages/next/src/shared/lib/router/utils/is-local-url.ts
++++ b/packages/next/src/shared/lib/router/utils/is-local-url.ts
+@@ -6,7 +6,7 @@ import { hasBasePath } from '../../../../client/has-base-path'
+  */
+ export function isLocalURL(url: string): boolean {
+   // prevent a hydration mismatch on href for url with anchor refs
+-  if (!isAbsoluteUrl(url)) return true
++  if (!isAbsoluteUrl(url)) return false
+   try {
+     // absolute urls can be local if they are on the same origin
+     const locationOrigin = getLocationOrigin()

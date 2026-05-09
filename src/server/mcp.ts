@@ -307,7 +307,10 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
     ? uniqueValues(prime.files.filter(isMcpLikelyTestFile)).slice(0, 1)
     : [];
   const primaryFile = startFiles[0];
-  const symbolHint = extractSymbolHints(prime.content)[0];
+  const exactSourceEvidence = primaryFile && decision?.exactSourceHit
+    ? runtime.getExactSourceEvidence({ sessionId: prime.session.id, file: primaryFile, budget: 220 })
+    : undefined;
+  const symbolHint = exactSourceEvidence?.symbol ?? extractSymbolHints(prime.content)[0];
   const nextToolCalls = [
     ...(primaryFile && symbolHint
       ? [{ tool: "kairn_read_symbol", input: { sessionId: prime.session.id, target: primaryFile, symbol: symbolHint, budget: 550 } }]
@@ -326,13 +329,16 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
     startFiles,
     files: startFiles,
     exactSymbolHint: symbolHint ?? null,
+    exactSourceEvidence: exactSourceEvidence ?? null,
+    expectedBehavior: exactSourceEvidence?.expectedBehavior ?? null,
+    verificationCommand: exactSourceEvidence?.verificationCommand ?? null,
     primaryReason: primaryFile
       ? `Start with ${primaryFile}; it is Kairn's highest-confidence unshown file for this task.`
       : "Kairn did not find a high-confidence start file.",
     nextToolCalls,
     recommendedToolCalls: nextToolCalls,
     likelyTests,
-    tokenEstimate: estimateCompactPrepareTokens(startFiles, likelyTests, nextToolCalls),
+    tokenEstimate: estimateCompactPrepareTokens(startFiles, likelyTests, nextToolCalls, exactSourceEvidence),
     quality: prime.quality,
     contextDecision: decision,
     warnings: prime.warnings,
@@ -410,8 +416,8 @@ function mcpExactSourceFile(runtime: KairnRuntime, sessionId: string): string | 
   return runtime.getCoordinationState(sessionId).exactSourceFiles[0];
 }
 
-function estimateCompactPrepareTokens(startFiles: string[], likelyTests: string[], nextToolCalls: unknown[]): number {
-  return Math.ceil(JSON.stringify({ startFiles, likelyTests, nextToolCalls }).length / 4);
+function estimateCompactPrepareTokens(startFiles: string[], likelyTests: string[], nextToolCalls: unknown[], exactSourceEvidence?: unknown): number {
+  return Math.ceil(JSON.stringify({ startFiles, likelyTests, nextToolCalls, exactSourceEvidence }).length / 4);
 }
 
 function extractSymbolHints(content: string): string[] {

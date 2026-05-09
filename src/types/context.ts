@@ -125,6 +125,16 @@ export type ContextResponse = {
   tokenEstimate: number;
 };
 
+export type ExactSourceEvidence = {
+  file: string;
+  symbol?: string;
+  lines?: string;
+  snippet?: string;
+  expectedBehavior: string;
+  verificationCommand: string;
+  tokenEstimate: number;
+};
+
 export type InitResult = {
   rootPath: string;
   kairnDir: string;

@@ -188,9 +188,19 @@ describe("MCP server", () => {
       sessionId: string;
       startFiles: string[];
       contextDecision?: { exactSourceHit?: boolean };
+      exactSourceEvidence?: {
+        file: string;
+        symbol?: string;
+        snippet?: string;
+        verificationCommand?: string;
+      } | null;
     };
     expect(preparedParsed.contextDecision?.exactSourceHit).toBe(true);
     expect(preparedParsed.startFiles).toEqual(["include/fmt/base.h"]);
+    expect(preparedParsed.exactSourceEvidence?.file).toBe("include/fmt/base.h");
+    expect(preparedParsed.exactSourceEvidence?.symbol).toBe("starts_with");
+    expect(preparedParsed.exactSourceEvidence?.snippet).toContain("starts_with");
+    expect(preparedParsed.exactSourceEvidence?.verificationCommand).toBeTruthy();
 
     const next = await client.callTool({
       name: "kairn_get_next_context",
@@ -199,10 +209,12 @@ describe("MCP server", () => {
         budget: 500
       }
     });
-    const nextParsed = JSON.parse(firstTextContent(next)!) as { files: string[]; related: string[]; warnings: string[] };
-    expect(nextParsed.files).toEqual([]);
+    const nextParsed = JSON.parse(firstTextContent(next)!) as { files: string[]; related: string[]; warnings: string[]; content: string };
+    expect(nextParsed.files).toEqual(["include/fmt/base.h"]);
     expect(nextParsed.related).toEqual([]);
     expect(nextParsed.warnings.join(" ")).toContain("Exact source hit");
+    expect(nextParsed.content).toContain("starts_with");
+    expect(nextParsed.content).toContain("Verification:");
 
     const context = await client.callTool({
       name: "kairn_find_context",
@@ -214,7 +226,7 @@ describe("MCP server", () => {
       }
     });
     const contextParsed = JSON.parse(firstTextContent(context)!) as { files: string[]; related: string[]; suggestedNextContext: string[]; content: string };
-    expect(contextParsed.files).toEqual([]);
+    expect(contextParsed.files).toEqual(["include/fmt/base.h"]);
     expect(contextParsed.related).toEqual([]);
     expect(contextParsed.suggestedNextContext).toEqual([]);
     expect(contextParsed.content).toContain("include/fmt/base.h");

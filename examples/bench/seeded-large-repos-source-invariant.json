@@ -1,0 +1,68 @@
+{
+  "id": "seeded-large-repos-source-invariant",
+  "name": "Seeded Large-Repo Source-Invariant Proofs",
+  "cases": [
+    {
+      "id": "next-is-local-url-relative",
+      "mode": "agent",
+      "task": "Debug a seeded Next.js regression: relative URLs are no longer treated as local URLs. Fix the production source and do not edit unrelated files.",
+      "agentPrompt": "Debug the seeded Next.js regression. Relative URLs should be treated as local URLs, but the seeded change makes the helper reject relative URLs. Fix the production source and do not edit unrelated files.",
+      "expectedFiles": [
+        "packages/next/src/shared/lib/router/utils/is-local-url.ts"
+      ],
+      "requiredTouchedFiles": [
+        "packages/next/src/shared/lib/router/utils/is-local-url.ts"
+      ],
+      "excludedFiles": [
+        "docs/",
+        "examples/",
+        "packages/next-codemod/",
+        "test/"
+      ],
+      "budget": 1200,
+      "seed": {
+        "repoUrl": "https://github.com/vercel/next.js.git",
+        "ref": "938c286bac984aa7275bb4c18aa0c154b443aa93",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/next-is-local-url-relative.patch",
+        "expectedFailureCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('packages/next/src/shared/lib/router/utils/is-local-url.ts', 'utf8');\nprocess.exit(source.includes('if (!isAbsoluteUrl(url)) return true') ? 1 : 0);\nNODE",
+        "testCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('packages/next/src/shared/lib/router/utils/is-local-url.ts', 'utf8');\nprocess.exit(source.includes('if (!isAbsoluteUrl(url)) return true') ? 0 : 1);\nNODE"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Expected production source file is touched.",
+        "Docs/examples/codemods/tests are not touched."
+      ]
+    },
+    {
+      "id": "django-slugify-allow-unicode",
+      "mode": "agent",
+      "task": "Debug a seeded Django regression: slugify with allow_unicode=True strips Unicode characters instead of preserving them. Fix the production source and do not edit unrelated files.",
+      "agentPrompt": "Debug the seeded Django regression. slugify(..., allow_unicode=True) should preserve Unicode characters through NFKC normalization, but the seeded change strips them. Fix the production source and do not edit unrelated files.",
+      "expectedFiles": [
+        "django/utils/text.py"
+      ],
+      "requiredTouchedFiles": [
+        "django/utils/text.py"
+      ],
+      "excludedFiles": [
+        "docs/",
+        "tests/"
+      ],
+      "budget": 1100,
+      "seed": {
+        "repoUrl": "https://github.com/django/django.git",
+        "ref": "4d455ae2d7689ce066dfffef9fc29a6f6d3ed33e",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/django-slugify-allow-unicode.patch",
+        "expectedFailureCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('django/utils/text.py').read_text()\nraise SystemExit(1 if 'unicodedata.normalize(\"NFKC\", value)' in source else 0)\nPY",
+        "testCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('django/utils/text.py').read_text()\nraise SystemExit(0 if 'unicodedata.normalize(\"NFKC\", value)' in source else 1)\nPY"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Expected production source file is touched.",
+        "Docs/tests are not touched."
+      ]
+    }
+  ]
+}

@@ -94,15 +94,18 @@ export async function runAgentBenchmarkCase(input: {
 
   try {
     const startedAt = Date.now();
+    const timeoutMs = input.timeoutMs ?? 120000;
     const setupStartedAt = Date.now();
     const setupResult = input.setupCommand
-      ? runShell(commandWithPlaceholders(input.setupCommand, { prompt, root: workspacePath }), workspacePath, input.timeoutMs ?? 120000)
+      ? runShell(commandWithPlaceholders(input.setupCommand, { prompt, root: workspacePath }), workspacePath, timeoutMs)
       : undefined;
     const assistanceSetupMs = Date.now() - setupStartedAt;
     const setupMetadata = setupResult
       ? {
           setupCommandHash: sha256(input.setupCommand ?? ""),
           setupCommandExitCode: setupResult.status,
+          setupTimedOut: setupResult.timedOut,
+          setupSignal: setupResult.signal,
           setupOutputHash: sha256(setupResult.output),
           setupOutputTokens: estimateTokens(setupResult.output),
           assistanceSetupMs
@@ -130,7 +133,9 @@ export async function runAgentBenchmarkCase(input: {
         responseTokens: estimateTokens(setupResult.output),
         ...(metadata.observedCodexTokens !== undefined ? { observedCodexTokens: metadata.observedCodexTokens } : {}),
         outcome: "fail",
-        summary: `Agent setup command failed in disposable workspace with exit code ${setupResult.status}.`,
+        summary: setupResult.timedOut
+          ? `Agent setup command timed out after ${timeoutMs}ms.`
+          : `Agent setup command failed in disposable workspace with exit code ${setupResult.status}.`,
         metadata: metadata.metadata
       };
     }
@@ -146,9 +151,10 @@ export async function runAgentBenchmarkCase(input: {
       cwd: workspacePath,
       shell: true,
       encoding: "utf8",
-      timeout: input.timeoutMs ?? 120000,
+      timeout: timeoutMs,
       maxBuffer: 16 * 1024 * 1024
     });
+    const agentTimedOut = spawnTimedOut(completed);
     const agentElapsedMs = Date.now() - agentStartedAt;
     const output = [completed.stdout, completed.stderr, completed.error?.message].filter(Boolean).join("\n");
     const verificationStartedAt = Date.now();
@@ -186,6 +192,9 @@ export async function runAgentBenchmarkCase(input: {
         promptPrepareMs,
         agentElapsedMs,
         codexElapsedMs: agentElapsedMs,
+        agentTimedOut,
+        agentTimeoutMs: timeoutMs,
+        agentSignal: completed.signal ?? undefined,
         verificationElapsedMs,
         expectedFileMentions,
         changedFiles: changedFileList,
@@ -206,7 +215,9 @@ export async function runAgentBenchmarkCase(input: {
         responseTokens: estimateTokens(combinedOutput),
         ...(metadata.observedCodexTokens !== undefined ? { observedCodexTokens: metadata.observedCodexTokens } : {}),
         outcome: "fail",
-        summary: verification.failed
+        summary: agentTimedOut
+          ? `Agent command timed out after ${timeoutMs}ms.`
+          : verification.failed
           ? `Agent command completed, but seeded verification failed with exit code ${verification.exitCode ?? "unknown"}.`
           : `Agent command failed in disposable workspace with exit code ${completed.status ?? "unknown"}.`,
         metadata: metadata.metadata
@@ -392,6 +403,8 @@ function runSeedVerification(input: {
     metadata: {
       seedTestCommandHash: sha256(normalizedCommand),
       seedTestExitCode: result.status,
+      seedTestTimedOut: result.timedOut,
+      seedTestSignal: result.signal,
       seedTestOutputHash: sha256(result.output),
       seedTestOutputTokens: estimateTokens(result.output)
     }
@@ -502,7 +515,7 @@ function runRequired(
   }
 }
 
-function runShell(command: string, cwd: string, timeoutMs: number): { status: number; output: string } {
+function runShell(command: string, cwd: string, timeoutMs: number): { status: number; output: string; timedOut: boolean; signal?: NodeJS.Signals | null } {
   const result = spawnSync(command, {
     cwd,
     shell: true,
@@ -512,8 +525,15 @@ function runShell(command: string, cwd: string, timeoutMs: number): { status: nu
   });
   return {
     status: result.status ?? (result.error ? 1 : 0),
-    output: [result.stdout, result.stderr, result.error?.message].filter(Boolean).join("\n")
+    output: [result.stdout, result.stderr, result.error?.message].filter(Boolean).join("\n"),
+    timedOut: spawnTimedOut(result),
+    signal: result.signal
   };
+}
+
+function spawnTimedOut(result: ReturnType<typeof spawnSync>): boolean {
+  const error = result.error as NodeJS.ErrnoException | undefined;
+  return error?.code === "ETIMEDOUT" || /ETIMEDOUT|timed out/i.test(error?.message ?? "");
 }
 
 function depthArgs(depth: number): string[] {

@@ -1,0 +1,224 @@
+{
+  "id": "expanded-repo-matrix",
+  "name": "Expanded Cross-Repo Retrieval Preflight",
+  "gates": {
+    "maxStateMb": 250,
+    "maxPrimeLatencyMs": 7000,
+    "expectedTopK": 5,
+    "requireSuppressionForWeakCases": true
+  },
+  "repos": [
+    {
+      "id": "kairn-local",
+      "name": "Kairn Local",
+      "localPath": "../../",
+      "language": "typescript",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "mcp-followup-quality",
+          "mode": "context",
+          "task": "Improve MCP follow-up quality so exact source hits return one evidence packet and avoid repeated broad context.",
+          "expectedFiles": [
+            "src/server/mcp.ts",
+            "src/runtime/KairnRuntime.ts"
+          ],
+          "excludedFiles": [
+            "docs/",
+            "examples/bench/patches/"
+          ],
+          "budget": 900
+        },
+        {
+          "id": "weak-signal-suppression",
+          "mode": "context",
+          "task": "make it better",
+          "expectedFiles": [],
+          "excludedFiles": [],
+          "successCriteria": [
+            "suppress weak prompt"
+          ],
+          "budget": 500
+        }
+      ]
+    },
+    {
+      "id": "portfolio-local",
+      "name": "Portfolio Job Tracker",
+      "localPath": "../../../new-site/my-portfolio",
+      "language": "typescript",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "job-tracker-mobile-layout",
+          "mode": "context",
+          "task": "Fix the job tracker mobile layout bottom sheet and filters.",
+          "expectedFiles": [
+            "src/app/private/jobs/JobsApplicationsTable.tsx",
+            "src/app/private/jobs/JobsDashboardTabs.tsx"
+          ],
+          "excludedFiles": [
+            "src/lib/jobs/parser.ts",
+            "src/lib/jobs/repository.ts",
+            "docs/"
+          ],
+          "budget": 900
+        }
+      ]
+    },
+    {
+      "id": "next",
+      "name": "Next.js",
+      "repoUrl": "https://github.com/vercel/next.js.git",
+      "cloneDepth": 1,
+      "language": "typescript",
+      "sizeClass": "huge",
+      "gates": {
+        "maxStateMb": 400,
+        "maxPrimeLatencyMs": 10000
+      },
+      "cases": [
+        {
+          "id": "local-url-helper",
+          "mode": "context",
+          "task": "Debug local URL handling: relative and same-origin URLs should be detected by the local URL helper before router fallback.",
+          "expectedFiles": [
+            "packages/next/src/shared/lib/router/utils/is-local-url.ts"
+          ],
+          "excludedFiles": [
+            "docs/",
+            "examples/",
+            "packages/next-codemod/",
+            "test/"
+          ],
+          "budget": 900
+        }
+      ]
+    },
+    {
+      "id": "django",
+      "name": "Django",
+      "repoUrl": "https://github.com/django/django.git",
+      "cloneDepth": 1,
+      "language": "python",
+      "sizeClass": "large",
+      "gates": {
+        "maxStateMb": 350,
+        "maxPrimeLatencyMs": 10000
+      },
+      "cases": [
+        {
+          "id": "slugify-unicode",
+          "mode": "context",
+          "task": "Debug slugify unicode behavior: allow_unicode should preserve Unicode characters while still normalizing separators.",
+          "expectedFiles": [
+            "django/utils/text.py"
+          ],
+          "excludedFiles": [
+            "docs/",
+            "tests/"
+          ],
+          "budget": 850
+        }
+      ]
+    },
+    {
+      "id": "starlette",
+      "name": "Starlette",
+      "repoUrl": "https://github.com/encode/starlette.git",
+      "cloneDepth": 1,
+      "language": "python",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "route-matching",
+          "mode": "context",
+          "task": "Debug route matching and path convertor behavior for mounted routes.",
+          "expectedFiles": [
+            "starlette/routing.py",
+            "starlette/convertors.py"
+          ],
+          "excludedFiles": [
+            "docs/",
+            "tests/"
+          ],
+          "budget": 850
+        }
+      ]
+    },
+    {
+      "id": "express",
+      "name": "Express",
+      "repoUrl": "https://github.com/expressjs/express.git",
+      "ref": "4.18.2",
+      "cloneDepth": 1,
+      "language": "javascript",
+      "sizeClass": "small",
+      "cases": [
+        {
+          "id": "router-param-dispatch",
+          "mode": "context",
+          "task": "Debug Express router param middleware dispatch order and repeated param handling.",
+          "expectedFiles": [
+            "lib/router/index.js",
+            "lib/router/route.js"
+          ],
+          "excludedFiles": [
+            "examples/",
+            "test/"
+          ],
+          "budget": 800
+        }
+      ]
+    },
+    {
+      "id": "spring-petclinic",
+      "name": "Spring PetClinic",
+      "repoUrl": "https://github.com/spring-projects/spring-petclinic.git",
+      "cloneDepth": 1,
+      "language": "java",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "owner-search-controller",
+          "mode": "context",
+          "task": "Debug owner search behavior in the web controller when multiple owners match a submitted last name.",
+          "expectedFiles": [
+            "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java",
+            "src/main/java/org/springframework/samples/petclinic/owner/OwnerRepository.java"
+          ],
+          "excludedFiles": [
+            "src/test/",
+            "src/main/resources/static/"
+          ],
+          "budget": 900
+        }
+      ]
+    },
+    {
+      "id": "fmt",
+      "name": "fmt",
+      "repoUrl": "https://github.com/fmtlib/fmt.git",
+      "ref": "9cb8c0f92b4c345fb974a75d71370c23047528aa",
+      "cloneDepth": 1,
+      "language": "cpp",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "string-view-starts-with-debug",
+          "mode": "context",
+          "task": "Debug basic_string_view starts_with equal-length prefix behavior.",
+          "expectedFiles": [
+            "include/fmt/base.h"
+          ],
+          "excludedFiles": [
+            "doc/",
+            "docs/",
+            "examples/"
+          ],
+          "budget": 700
+        }
+      ]
+    }
+  ]
+}

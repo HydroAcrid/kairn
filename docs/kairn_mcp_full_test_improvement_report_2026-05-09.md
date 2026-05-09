@@ -352,8 +352,172 @@ Verification:
 - `pnpm typecheck`: passed
 - `pnpm build`: passed
 
+## Expanded Repo Matrix And Large-Repo Source-Invariant Proof
+
+New artifacts:
+
+- Expanded preflight matrix: `examples/bench/repo-matrix-expanded.json`
+- New live proof suite: `examples/bench/seeded-large-repos-source-invariant.json`
+- Next seed patch: `examples/bench/patches/next-is-local-url-relative.patch`
+- Django seed patch: `examples/bench/patches/django-slugify-allow-unicode.patch`
+- Live proof JSON: `/tmp/kairn-large-repos-source-proof-20260509.json`
+
+### Expanded Matrix Results
+
+The expanded matrix tested local Kairn, the portfolio job tracker, Next.js, Django, Starlette, Express, Spring PetClinic, and fmt.
+
+Aggregate:
+
+- Repos: `8`
+- Passing repos: `3`
+- Failing repos: `5`
+- Cases: `9`
+- Quality-passing cases: `4`
+- State-passing repos: `8`
+
+State stayed bounded across the matrix:
+
+| Repo | State | Result | Main finding |
+| --- | ---: | --- | --- |
+| Kairn local | `39.82MB` | fail | Returned `KairnRuntime.ts` but missed `src/server/mcp.ts` for MCP follow-up quality. |
+| Portfolio job tracker | `38.22MB` | fail | Returned `JobsApplicationsTable.tsx` first but missed `JobsDashboardTabs.tsx` in top 5. |
+| Next.js | `84.09MB` | pass | Correctly ranked `is-local-url.ts` first. |
+| Django | `70.25MB` | pass | Correctly ranked `django/utils/text.py` first. |
+| Starlette | `33.72MB` | fail | Returned `routing.py` but missed `convertors.py`. |
+| Express | `19.56MB` | fail | Returned `lib/router/index.js` but missed `lib/router/route.js`. |
+| Spring PetClinic | `14.47MB` | fail | Returned `OwnerController.java` but missed `OwnerRepository.java`. |
+| fmt | `38.77MB` | pass | Correctly ranked `include/fmt/base.h` first. |
+
+Interpretation:
+
+- The tiered/state work is doing its job: large repos did not produce runaway `.kairn` state.
+- The remaining general problem is multi-file recall. Kairn is strong when there is one precise implementation target, but it often under-recovers companion files for controller/repository, router/route, and routing/convertor tasks.
+- This is a general retrieval issue, not a Next- or Django-specific issue.
+
+### Large-Repo Live Proof
+
+Modes tested:
+
+- `baseline`
+- `hook_full_prime`
+- `real_mcp_first`
+- `hybrid_mcp_brief`
+
+Cases:
+
+- Next.js `is-local-url.ts` relative URL regression.
+- Django `slugify(..., allow_unicode=True)` Unicode-preservation regression.
+
+Case-level results:
+
+| Mode | Next | Django | Total tokens | Notes |
+| --- | --- | --- | ---: | --- |
+| baseline | `43,623` pass | `29,343` partial | `72,966` | Django touched an excluded test file, so quality was partial. |
+| hook_full_prime | `38,056` fail | `11,667` pass | `49,723` | Token reduction is not valid overall because Next verification failed. |
+| real_mcp_first | `43,552` pass, `2` MCP calls | `13,768` pass, `3` MCP calls | `57,320` | Quality passed both cases, but Django MCP still returned broad/noisy context. |
+| hybrid_mcp_brief | `52,326` pass, `1` MCP call | `25,576` pass, `4` MCP calls | `77,902` | Quality passed, but tokens increased versus baseline. |
+
+Latency attribution worked:
+
+- Next baseline agent time: `79.1s`
+- Next hook agent time: `56.1s`, setup/index time: `17.5s`
+- Next MCP agent time: `91.7s`, setup/index time: `17.5s`
+- Django baseline agent time: `78.3s`
+- Django hook agent time: `24.9s`, setup/index time: `11.2s`
+- Django MCP agent time: `58.2s`, setup/index time: `11.0s`
+
+Quality findings:
+
+- `real_mcp_first` was the strongest valid mode in this two-case run: both cases passed, expected source files were touched, and actual MCP calls were recorded.
+- `hook_full_prime` showed why strict quality gates matter. It reduced tokens overall, but failed the Next source-invariant check. The agent edited the correct file, but replaced the exact helper behavior with a different implementation that did not restore the required invariant.
+- `hybrid_mcp_brief` is still not justified as a default: it passed quality but increased tokens by `7%`.
+- MCP returned-file quality metrics caught the Django MCP weakness: `11` returned files, `10` test files, `6` noisy files, and context efficiency `0.0909`.
+
+### Updated Direction From The New Repos
+
+The next improvement should focus on general patterns rather than repo-specific tuning:
+
+- Improve multi-file recall when the task naturally has paired implementation surfaces: controller/repository, router/route, route/convertor, UI table/tabs.
+- Keep exact-source discipline for single-file utility/debug tasks, because it is working across Next, Django, and fmt.
+- Add a "companion file" retrieval stage with strict caps, not broad graph fanout.
+- Make hook full-prime use the exact-source evidence packet more directly. The Next failure shows that correct file targeting is not enough; the brief must preserve the key behavioral invariant.
+- Keep MCP as a serious candidate for large repos, but only when returned-file quality is high and actual MCP calls are recorded.
+
 Expected impact for the next live proof:
 
 - Python `real_mcp_first` should preserve its focused two-file pattern.
 - Java MCP modes should stop returning 10+ tests after `StringUtils.java` is identified.
 - Hybrid should improve only if Codex follows the MCP guidance without repeatedly asking for broad search.
+
+## Post-Gate Live Proof
+
+Fresh live proof artifact:
+
+- `/tmp/kairn-full-proof-after-mcp-gate-20260509.json`
+
+Modes:
+
+- `baseline`
+- `hook_full_prime`
+- `real_mcp_first`
+- `hybrid_mcp_brief`
+
+### Aggregate
+
+| Mode | Tokens | Quality | Savings |
+| --- | ---: | --- | ---: |
+| baseline | `110,422` | pass | control |
+| hook_full_prime | `83,210` | pass | `24.6%` valid |
+| real_mcp_first | `96,674` | fail | invalid, Java failed |
+| hybrid_mcp_brief | `83,812` | fail | invalid, Java failed |
+
+### Case Results
+
+| Case | Baseline | hook_full_prime | real_mcp_first | hybrid_mcp_brief |
+| --- | ---: | ---: | ---: | ---: |
+| TypeScript TanStack | `37,466` pass | `22,204` pass | `22,534` pass, `11` MCP files / `10` tests | `23,090` pass, `1` MCP file |
+| Python Click | `31,243` pass | `16,145` pass | `25,121` pass, `1` MCP file | `26,465` pass, `1` MCP file |
+| Java Commons Lang | `28,164` pass | `37,378` pass | `22,023` fail, `1` MCP file | `19,811` fail, `1` MCP file |
+| C++ fmt | `13,549` pass | `7,483` pass | `26,996` pass, `1` MCP file | `14,446` pass, `1` MCP file |
+
+### Interpretation
+
+- The exact-source MCP follow-up gate worked mechanically for Python, Java, C++, and hybrid TypeScript: MCP returned one file and zero test fanout in those paths.
+- TypeScript `real_mcp_first` still produced fanout: `11` MCP files and `10` tests. That suggests the exact-source state was not established early enough in that path, or a later MCP tool returned tests before the gate had source focus.
+- `hook_full_prime` remained the only mode with all quality gates passing across all four languages, but its aggregate savings dropped from the previous run to `24.6%`.
+- Java is the blocker for MCP/hybrid promotion. The MCP modes used the expected file and avoided fanout, but still failed verification. That means the issue is no longer just broad context; MCP guidance may be too sparse or may be steering Codex toward an incomplete edit.
+- C++ hybrid is close to neutral but still not better than hook full-prime. C++ real MCP-first regressed badly despite one-file MCP output, likely because Codex spent more time reasoning/tooling around the sparse MCP path.
+
+### Next Improvement From This Proof
+
+The next MCP improvement should not simply reduce returned files further. It should add a small exact-source evidence packet:
+
+- one source file,
+- one exact symbol/function,
+- one minimal snippet around the likely edit,
+- one verification command,
+- no related/test fanout unless explicitly requested.
+
+This keeps the gate's discipline while giving Codex enough concrete evidence to avoid under-solving Java and over-reasoning in C++.
+
+## Exact-Source Evidence Packet
+
+Implemented after the post-gate proof:
+
+- Compact `kairn_prepare_task` now includes `exactSourceEvidence` for high-confidence exact-source hits.
+- The evidence packet contains:
+  - `file`
+  - `symbol`
+  - `lines`
+  - `snippet`
+  - `expectedBehavior`
+  - `verificationCommand`
+- Exact-source follow-up context now returns the same focused evidence shape in prose instead of only saying "stay focused."
+- The symbol selector prefers task identifiers that appear as callable code in the snippet, so C++ cases surface `starts_with` instead of only the enclosing class.
+- Related-file/test fanout remains suppressed after exact-source hits.
+
+Verification:
+
+- `pnpm test`: `125` tests passed
+- `pnpm typecheck`: passed
+- `pnpm build`: passed
