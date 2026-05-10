@@ -148,6 +148,15 @@ describe("benchmark suite and scoring", () => {
     const commons = loadBenchmarkEnduranceSuite({
       suitePath: path.resolve("examples/bench/endurance-commons-io.json")
     });
+    const fastapi = loadBenchmarkEnduranceSuite({
+      suitePath: path.resolve("examples/bench/endurance-fastapi.json")
+    });
+    const fastify = loadBenchmarkEnduranceSuite({
+      suitePath: path.resolve("examples/bench/endurance-fastify.json")
+    });
+    const gin = loadBenchmarkEnduranceSuite({
+      suitePath: path.resolve("examples/bench/endurance-gin.json")
+    });
 
     expect(axios.turns.map((turn) => turn.id)).toEqual(["diagnose", "fix", "verify", "cleanup"]);
     expect(flask.seed?.setupPatchFile).toMatch(/flask-dispatch-request-view\.patch$/);
@@ -156,6 +165,9 @@ describe("benchmark suite and scoring", () => {
     expect(commons.turns.find((turn) => turn.id === "fix")?.requiredTouchedFiles).toContain(
       "src/main/java/org/apache/commons/io/FilenameUtils.java"
     );
+    expect(fastapi.finalSourceInvariants?.[0]?.requiredPresent).toContain("else functools.partial(run_in_threadpool, func)");
+    expect(fastify.finalSourceInvariants?.[0]?.requiredPresent).toContain("? [...onSendHandlers, headRouteOnSendHandler]");
+    expect(gin.finalSourceInvariants?.[0]?.requiredPresent).toContain("Handlers: group.combineHandlers(handlers),");
   });
 
   it("validates equivalent semantic source repairs", () => {

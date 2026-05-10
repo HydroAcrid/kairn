@@ -1,0 +1,109 @@
+{
+  "id": "endurance-gin",
+  "name": "Gin Router Group Endurance",
+  "task": "Debug and verify a seeded Gin RouterGroup middleware inheritance regression across multiple turns.",
+  "seed": {
+    "repoUrl": "https://github.com/gin-gonic/gin.git",
+    "ref": "5f4f9643258dc2a65e684b63f12c8d543c936c67",
+    "cloneDepth": 1,
+    "setupPatchFile": "./patches/gin-routergroup-middleware.patch",
+    "expectedFailureCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('routergroup.go', 'utf8');\nconst fixed = source.includes('Handlers: group.combineHandlers(handlers),') && !source.includes('Handlers: handlers,');\nprocess.exit(fixed ? 1 : 0);\nNODE",
+    "testCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('routergroup.go', 'utf8');\nconst fixed = source.includes('Handlers: group.combineHandlers(handlers),') && !source.includes('Handlers: handlers,');\nprocess.exit(fixed ? 0 : 1);\nNODE"
+  },
+  "allowedDiffScopes": [
+    {
+      "file": "routergroup.go",
+      "allowWholeFile": true
+    }
+  ],
+  "finalSourceInvariants": [
+    {
+      "id": "router-group-combines-parent-handlers",
+      "file": "routergroup.go",
+      "description": "RouterGroup.Group must combine parent handlers with child handlers.",
+      "requiredPresent": ["Handlers: group.combineHandlers(handlers),"],
+      "requiredAbsent": ["Handlers: handlers,"]
+    }
+  ],
+  "turns": [
+    {
+      "id": "diagnose",
+      "task": "Diagnose why Gin RouterGroup.Group stopped inheriting parent middleware.",
+      "agentPrompt": "Diagnose the seeded Gin RouterGroup regression. Child groups should inherit parent middleware by combining handlers. Do not edit yet.",
+      "expectedFiles": ["routergroup.go", "gin.go", "context.go"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["docs/", "examples/", "testdata/"],
+      "budget": 800
+    },
+    {
+      "id": "fix",
+      "task": "Fix Gin RouterGroup.Group middleware inheritance.",
+      "agentPrompt": "Fix the seeded Gin RouterGroup regression in production source only. In RouterGroup.Group, combine parent handlers with new handlers instead of dropping parent middleware. Keep edits inside routergroup.go.",
+      "expectedFiles": ["routergroup.go"],
+      "requiredTouchedFiles": ["routergroup.go"],
+      "excludedFiles": ["docs/", "examples/", "testdata/"],
+      "sourceInvariants": [
+        {
+          "id": "router-group-combines-parent-handlers",
+          "file": "routergroup.go",
+          "requiredPresent": ["Handlers: group.combineHandlers(handlers),"],
+          "requiredAbsent": ["Handlers: handlers,"]
+        }
+      ],
+      "allowedDiffScopes": [
+        {
+          "file": "routergroup.go",
+          "allowWholeFile": true
+        }
+      ],
+      "budget": 800
+    },
+    {
+      "id": "verify",
+      "task": "Run the smallest source-invariant verification for the Gin fix.",
+      "agentPrompt": "Verify the Gin RouterGroup fix with the smallest source-invariant check. Do not broaden unless it fails.",
+      "expectedFiles": ["routergroup.go"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["docs/", "examples/", "testdata/"],
+      "sourceInvariants": [
+        {
+          "id": "router-group-combines-parent-handlers",
+          "file": "routergroup.go",
+          "requiredPresent": ["Handlers: group.combineHandlers(handlers),"],
+          "requiredAbsent": ["Handlers: handlers,"]
+        }
+      ],
+      "allowedDiffScopes": [
+        {
+          "file": "routergroup.go",
+          "allowWholeFile": true
+        }
+      ],
+      "budget": 500
+    },
+    {
+      "id": "cleanup",
+      "task": "Review the final Gin diff for unrelated edits.",
+      "agentPrompt": "Review the final diff and confirm only the required Gin production source changed.",
+      "expectedFiles": ["routergroup.go"],
+      "requiredTouchedFiles": ["routergroup.go"],
+      "excludedFiles": ["docs/", "examples/", "testdata/"],
+      "verificationCommand": "git diff --name-only | node -e \"const fs=require('fs'); const files=fs.readFileSync(0,'utf8').trim().split(/\\n/).filter(Boolean); process.exit(files.every(f=>f==='routergroup.go') ? 0 : 1)\"",
+      "sourceInvariants": [
+        {
+          "id": "router-group-combines-parent-handlers",
+          "file": "routergroup.go",
+          "requiredPresent": ["Handlers: group.combineHandlers(handlers),"],
+          "requiredAbsent": ["Handlers: handlers,"]
+        }
+      ],
+      "allowedDiffScopes": [
+        {
+          "file": "routergroup.go",
+          "allowWholeFile": true
+        }
+      ],
+      "budget": 500
+    }
+  ]
+}

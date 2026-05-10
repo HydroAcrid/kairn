@@ -1,0 +1,12 @@
+diff --git a/routergroup.go b/routergroup.go
+--- a/routergroup.go
++++ b/routergroup.go
+@@ -74,7 +74,7 @@ func (group *RouterGroup) Group(relativePath string, handlers ...HandlerFunc) *R
+ // For example, all the routes that use a common middleware for authorization could be grouped.
+ func (group *RouterGroup) Group(relativePath string, handlers ...HandlerFunc) *RouterGroup {
+ 	return &RouterGroup{
+-		Handlers: group.combineHandlers(handlers),
++		Handlers: handlers,
+ 		basePath: group.calculateAbsolutePath(relativePath),
+ 		engine:   group.engine,
+ 	}

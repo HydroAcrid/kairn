@@ -1,0 +1,13 @@
+diff --git a/lib/head-route.js b/lib/head-route.js
+index 63f3519..9b7b786 100644
+--- a/lib/head-route.js
++++ b/lib/head-route.js
+@@ -36,7 +36,7 @@ function headRouteOnSendHandler (req, reply, payload, done) {
+ function parseHeadOnSendHandlers (onSendHandlers) {
+   if (onSendHandlers == null) return headRouteOnSendHandler
+   return Array.isArray(onSendHandlers)
+-    ? [...onSendHandlers, headRouteOnSendHandler]
++    ? [headRouteOnSendHandler]
+     : [onSendHandlers, headRouteOnSendHandler]
+ }
+ 

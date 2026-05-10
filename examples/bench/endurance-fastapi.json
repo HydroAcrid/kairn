@@ -1,0 +1,109 @@
+{
+  "id": "endurance-fastapi",
+  "name": "FastAPI Request Response Endurance",
+  "task": "Debug and verify a seeded FastAPI request_response regression across multiple turns.",
+  "seed": {
+    "repoUrl": "https://github.com/fastapi/fastapi.git",
+    "ref": "622b6356b5102113d0074083ac23c82367f4284b",
+    "cloneDepth": 1,
+    "setupPatchFile": "./patches/fastapi-request-response-threadpool.patch",
+    "expectedFailureCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('fastapi/routing.py').read_text()\nfixed = 'else functools.partial(run_in_threadpool, func)' in source and 'else func  # type: ignore[assignment]' not in source\nraise SystemExit(1 if fixed else 0)\nPY",
+    "testCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('fastapi/routing.py').read_text()\nfixed = 'else functools.partial(run_in_threadpool, func)' in source and 'else func  # type: ignore[assignment]' not in source\nraise SystemExit(0 if fixed else 1)\nPY"
+  },
+  "allowedDiffScopes": [
+    {
+      "file": "fastapi/routing.py",
+      "symbols": ["request_response"]
+    }
+  ],
+  "finalSourceInvariants": [
+    {
+      "id": "request-response-sync-threadpool",
+      "file": "fastapi/routing.py",
+      "description": "request_response must run synchronous endpoint functions through run_in_threadpool.",
+      "requiredPresent": ["else functools.partial(run_in_threadpool, func)"],
+      "requiredAbsent": ["else func  # type: ignore[assignment]"]
+    }
+  ],
+  "turns": [
+    {
+      "id": "diagnose",
+      "task": "Diagnose why FastAPI request_response stopped running sync endpoint functions through the threadpool.",
+      "agentPrompt": "Diagnose the seeded FastAPI request_response regression. Synchronous endpoint functions should be wrapped with run_in_threadpool before the ASGI app awaits them. Do not edit yet.",
+      "expectedFiles": ["fastapi/routing.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["docs/", "tests/"],
+      "budget": 800
+    },
+    {
+      "id": "fix",
+      "task": "Fix FastAPI request_response sync endpoint threadpool behavior.",
+      "agentPrompt": "Fix the seeded FastAPI request_response regression in production source only. Restore the non-async branch so sync endpoint functions use functools.partial(run_in_threadpool, func). Keep edits inside request_response.",
+      "expectedFiles": ["fastapi/routing.py"],
+      "requiredTouchedFiles": ["fastapi/routing.py"],
+      "excludedFiles": ["docs/", "tests/"],
+      "sourceInvariants": [
+        {
+          "id": "request-response-sync-threadpool",
+          "file": "fastapi/routing.py",
+          "requiredPresent": ["else functools.partial(run_in_threadpool, func)"],
+          "requiredAbsent": ["else func  # type: ignore[assignment]"]
+        }
+      ],
+      "allowedDiffScopes": [
+        {
+          "file": "fastapi/routing.py",
+          "symbols": ["request_response"]
+        }
+      ],
+      "budget": 800
+    },
+    {
+      "id": "verify",
+      "task": "Run the smallest source-invariant verification for the FastAPI fix.",
+      "agentPrompt": "Verify the FastAPI request_response fix with the smallest source-invariant check. Do not broaden unless it fails.",
+      "expectedFiles": ["fastapi/routing.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["docs/", "tests/"],
+      "sourceInvariants": [
+        {
+          "id": "request-response-sync-threadpool",
+          "file": "fastapi/routing.py",
+          "requiredPresent": ["else functools.partial(run_in_threadpool, func)"],
+          "requiredAbsent": ["else func  # type: ignore[assignment]"]
+        }
+      ],
+      "allowedDiffScopes": [
+        {
+          "file": "fastapi/routing.py",
+          "symbols": ["request_response"]
+        }
+      ],
+      "budget": 500
+    },
+    {
+      "id": "cleanup",
+      "task": "Review the final FastAPI diff for unrelated edits.",
+      "agentPrompt": "Review the final diff and confirm only the required FastAPI production source changed.",
+      "expectedFiles": ["fastapi/routing.py"],
+      "requiredTouchedFiles": ["fastapi/routing.py"],
+      "excludedFiles": ["docs/", "tests/"],
+      "verificationCommand": "git diff --name-only | python3 -c \"import sys; files=[line.strip() for line in sys.stdin if line.strip()]; raise SystemExit(0 if all(f == 'fastapi/routing.py' for f in files) else 1)\"",
+      "sourceInvariants": [
+        {
+          "id": "request-response-sync-threadpool",
+          "file": "fastapi/routing.py",
+          "requiredPresent": ["else functools.partial(run_in_threadpool, func)"],
+          "requiredAbsent": ["else func  # type: ignore[assignment]"]
+        }
+      ],
+      "allowedDiffScopes": [
+        {
+          "file": "fastapi/routing.py",
+          "symbols": ["request_response"]
+        }
+      ],
+      "budget": 500
+    }
+  ]
+}

@@ -29,6 +29,9 @@ Token savings below only count when quality passes, required production files ar
 - Axios post-diagnose focus proof: `/tmp/kairn-endurance-axios-v3.json`
 - Flask post-diagnose focus proof: `/tmp/kairn-endurance-flask-v3.json`
 - Commons IO post-diagnose focus proof: `/tmp/kairn-endurance-commons-io-v2.json`
+- FastAPI expansion endurance proof: `/tmp/kairn-endurance-fastapi-v1.json`
+- Fastify expansion endurance proof: `/tmp/kairn-endurance-fastify-v1.json`
+- Gin expansion endurance proof: `/tmp/kairn-endurance-gin-v1.json`
 
 ## Preflight Results
 
@@ -354,6 +357,32 @@ Remaining pain points:
 - Axios-style multi-surface tasks still have live-run variance, even though post-diagnose source focusing fixed the companion drift in the latest run.
 - The report aggregation still needs clearer per-case active/passive attribution so aggregate savings cannot be over-attributed to one active case.
 - MCP has not yet shown the same repeatable long-session win as hook/ledger assistance.
+
+## Follow-Up: Fresh Repo Expansion
+
+Kairn then added and ran fresh endurance suites against new repositories:
+
+- FastAPI: request-response sync endpoint threadpool regression.
+- Fastify: HEAD route onSend handler preservation regression.
+- Gin: RouterGroup parent middleware inheritance regression.
+
+All three fresh suites passed quality gates in baseline and Kairn modes.
+
+| Suite | Baseline Tokens | Kairn Tokens | Valid Savings | Quality | Pattern |
+| --- | ---: | ---: | ---: | --- | --- |
+| FastAPI request_response | `108,087` | `87,652` | `18.91%` | pass/pass | Kairn won diagnose/verify/cleanup, lost fix turn |
+| Fastify HEAD route | `107,882` | `88,909` | `17.59%` | pass/pass | Kairn won diagnose/verify/cleanup, lost fix turn |
+| Gin RouterGroup | `73,099` | `54,392` | `25.59%` | pass/pass | Kairn won diagnose/verify, lost fix/cleanup |
+
+Fresh-expansion interpretation:
+
+- The hook/ledger path generalized beyond the tuned Axios/Flask/Commons set.
+- Savings were smaller than the old-suite post-diagnose wins, but still quality-preserving and positive across Python, JS, and Go.
+- The repeated new failure pattern is **fix-turn over-assistance**. Kairn is very good at reducing diagnose/verify/cleanup cost, but on small exact-source edits, baseline Codex can patch faster than Kairn-assisted Codex.
+
+Next improvement target:
+
+> For fix turns after diagnosis, Kairn should often emit only the invariant and active source path, or suppress entirely if the agent already touched the right file. The current focused source brief is still sometimes more context than the model needs for the edit.
 
 Next validation should use the same guardrail and ledger setup on a wider suite, split by repo to avoid long timeout-bound runs:
 
