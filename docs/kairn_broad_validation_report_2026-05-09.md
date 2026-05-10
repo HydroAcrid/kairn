@@ -10,7 +10,7 @@ The result is honest but useful:
 - Kairn's **exact-source retrieval is strong** across TypeScript, Python, Java, and C++.
 - Kairn's **automatic one-shot assistance currently over-assists on aggregate** against modern Codex. Baseline Codex is already very efficient on small seeded source bugs.
 - Kairn's most repeated weakness is **companion-file recall** for multi-surface framework tasks.
-- The repaired endurance path is now the strongest evidence for Kairn's product direction: quality-passing long-session runs saved `39-53%` while staying active through shrink/suppress decisions.
+- The repaired endurance path is now the strongest evidence for Kairn's product direction: quality-passing long-session runs saved `37-53%` while staying active through shrink/suppress/failure-context decisions.
 
 Token savings below only count when quality passes, required production files are touched, unrelated files are avoided, and Kairn was actually active.
 
@@ -25,6 +25,7 @@ Token savings below only count when quality passes, required production files ar
 - Repaired Flask endurance proof v1: `/tmp/kairn-endurance-flask-v1.json`
 - Repaired Flask endurance proof v2: `/tmp/kairn-endurance-flask-v2.json`
 - Commons IO endurance proof: `/tmp/kairn-endurance-commons-io-v1.json`
+- Axios endurance proof: `/tmp/kairn-endurance-axios-v1.json`
 
 ## Preflight Results
 
@@ -136,6 +137,7 @@ After the harness started recording semantic source invariants, diff-scope check
 | Flask dispatch endurance v1 | `107,208` | `63,994` | `40.31%` | pass/pass | active: `3` shrink, `1` suppress |
 | Flask dispatch endurance v2 | `99,737` | `47,216` | `52.66%` | pass/pass | active: `3` shrink, `1` suppress |
 | Commons IO filename endurance | `158,869` | `96,479` | `39.27%` | pass/pass | active: `4` shrink |
+| Axios interceptor endurance | `114,217` | `71,498` | `37.40%` | pass/pass | active: `2` shrink, `2` suppress, `3` failure contexts |
 
 Per-turn pattern:
 
@@ -149,6 +151,10 @@ Per-turn pattern:
 | Commons IO | fix | `21,849` | `20,895` | Small improvement |
 | Commons IO | verify | `62,719` | `15,202` | Major long-session win |
 | Commons IO | cleanup | `33,430` | `14,787` | Major long-session win |
+| Axios | diagnose | `31,393` | `22,543` | Kairn reduced companion discovery cost |
+| Axios | fix | `26,180` | `14,163` | Kairn kept the edit focused |
+| Axios | verify | `40,750` | `29,504` | Kairn reduced verification cost |
+| Axios | cleanup | `15,894` | `5,288` | Ledger/failure context prevented broad rereads |
 
 This is the first clear evidence that the long-session thesis is stronger than the one-shot thesis. Kairn did not win every turn, but it won cumulatively by preventing repeated discovery and broad verification/cleanup scans.
 
@@ -313,6 +319,7 @@ The repaired endurance results are now stronger than the one-shot results:
 | --- | ---: | ---: | ---: | --- | --- |
 | Flask dispatch endurance v2 | `99,737` | `47,216` | `52.66%` | pass/pass | verification and cleanup stayed focused |
 | Commons IO filename endurance | `158,869` | `96,479` | `39.27%` | pass/pass | verification and cleanup avoided broad rereads |
+| Axios interceptor endurance | `114,217` | `71,498` | `37.40%` | pass/pass | companion discovery, verification, and cleanup stayed bounded |
 
 Current interpretation:
 
@@ -323,6 +330,7 @@ Current interpretation:
 Remaining pain points:
 
 - Axios-style multi-surface tasks are still noisy across individual runs, even though the guardrail repeat passed.
+- Axios endurance passed, but the fix-turn prime still included secondary files (`index.d.ts`, `InterceptorManager.js`, `dispatchRequest.js`) after `lib/core/Axios.js` was already the active source. That is useful evidence for tightening post-diagnose companion behavior.
 - The report aggregation still needs clearer per-case active/passive attribution so aggregate savings cannot be over-attributed to one active case.
 - Flask verification metadata still briefly surfaced neighbor files before cleanup anchored on `src/flask/app.py`; phase-aware routing should tighten that.
 
