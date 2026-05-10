@@ -98,6 +98,8 @@ export type ContextValueDecision = {
   language: "typescript" | "javascript" | "python" | "java" | "cpp" | "c" | "unknown";
   exactPathMentioned: boolean;
   exactSourceHit?: boolean;
+  cheapSingleSource?: boolean;
+  companionSpecific?: boolean;
   multiSurfaceSignal?: boolean;
   companionCount?: number;
   companionTopScore?: number;

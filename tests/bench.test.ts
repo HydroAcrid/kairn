@@ -200,6 +200,7 @@ describe("benchmark suite and scoring", () => {
       expect(pilot.suite.cases[0]?.seed?.testCommand).toBeUndefined();
       expect(pilot.matrix.repos[0]?.cases[0]?.mode).toBe("context");
       expect(pilot.matrix.repos[0]?.cases[0]?.query).toContain("dispatch");
+      expect(pilot.matrix.repos[0]?.cases[0]?.query).toContain("Likely production basename hints");
       expect(pilot.matrix.repos[0]?.cases[0]?.query).not.toContain("src/flask/app.py");
       expect(pilot.matrix.repos[0]?.cases[0]?.seed).toBeUndefined();
       expect(fs.existsSync(outputs.suitePath)).toBe(true);
@@ -1057,6 +1058,41 @@ describe("benchmark suite and scoring", () => {
     expect(quality.topScore).toBe(240);
   });
 
+  it("does not treat reproduction artifacts like Dockerfile as exact source mentions", () => {
+    const quality = evaluatePrimeQuality({
+      task: [
+        "Debug the failing Trivy conversion.",
+        "Steps to reproduce: create a Dockerfile, run trivy -f json, and inspect parse.json.",
+        "Expected behavior: cveContents should not contain duplicate Debian severity records."
+      ].join("\n"),
+      context: {
+        mode: "snippets",
+        content: "- contrib/trivy/pkg/converter.go (source): exact converter behavior match",
+        files: ["contrib/trivy/pkg/converter.go"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["contrib/trivy/pkg/converter.go"],
+        rankedFiles: [
+          {
+            path: "contrib/trivy/pkg/converter.go",
+            kind: "source",
+            score: 280,
+            reasons: ["exact converter behavior match"]
+          }
+        ],
+        tokenEstimate: 180
+      },
+      knownFiles: [
+        record("Dockerfile", "source"),
+        record("contrib/trivy/pkg/converter.go", "source")
+      ]
+    });
+
+    expect(quality.exactPathMentioned).toBe(false);
+    expect(quality.action).not.toBe("suppress");
+  });
+
   it("uses structured ranked scores when markdown has no score text", () => {
     const quality = evaluatePrimeQuality({
       task: "Debug a structured production failure with selected tests.",
@@ -1093,6 +1129,91 @@ describe("benchmark suite and scoring", () => {
     expect(quality.topScore).toBe(310);
     expect(quality.topGap).toBe(50);
     expect(quality.action).not.toBe("suppress");
+  });
+
+  it("classifies dominant generic-companion debug hits as cheap single-source", () => {
+    const decision = evaluateContextValue({
+      task: [
+        "Debug a failing converter issue.",
+        "Steps to reproduce: create a Dockerfile and run a generated JSON through the CLI.",
+        "Expected behavior: duplicate CVE content entries with multiple severities should be merged deterministically."
+      ].join("\n"),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- contrib/trivy/pkg/converter.go (source, score 2080): exact converter behavior match",
+        files: ["contrib/trivy/pkg/converter.go"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["contrib/trivy/pkg/converter.go"],
+        tokenEstimate: 180
+      },
+      quality: {
+        score: 79,
+        action: "shrink",
+        reasons: ["high-confidence top retrieval score", "top result is clearly separated"],
+        topScore: 2080,
+        topGap: 740,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      knownFiles: [record("contrib/trivy/pkg/converter.go", "source")],
+      repoFileCount: 2200,
+      estimatedContextCost: 900,
+      companionCount: 2,
+      companionTopScore: 1300,
+      companionSpecific: false
+    });
+
+    expect(decision.action).toBe("shrink");
+    expect(decision.cheapSingleSource).toBe(true);
+    expect(decision.recommendedDelivery).toBe("one_file_directive");
+  });
+
+  it("does not classify relocation-style two-source debug tasks as cheap single-source", () => {
+    const decision = evaluateContextValue({
+      task: [
+        "Qt warning filtering tests moved to appropriate module.",
+        "The hide_qt_warning function moved from log.py to qtlog.py.",
+        "Expected behavior: filtering should work identically after the relocation."
+      ].join("\n"),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: [
+          "- qutebrowser/utils/log.py (source, score 520): source relocation origin",
+          "- qutebrowser/utils/qtlog.py (source, score 470): direct role basename anchor"
+        ].join("\n"),
+        files: ["qutebrowser/utils/log.py", "qutebrowser/utils/qtlog.py"],
+        symbols: ["hide_qt_warning"],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["qutebrowser/utils/log.py", "qutebrowser/utils/qtlog.py"],
+        tokenEstimate: 260
+      },
+      quality: {
+        score: 76,
+        action: "shrink",
+        reasons: ["high-confidence top retrieval score"],
+        topScore: 520,
+        topGap: 50,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      knownFiles: [
+        record("qutebrowser/utils/log.py", "source"),
+        record("qutebrowser/utils/qtlog.py", "source")
+      ],
+      repoFileCount: 1800,
+      estimatedContextCost: 900,
+      companionCount: 1,
+      companionTopScore: 470,
+      companionSpecific: true
+    });
+
+    expect(decision.cheapSingleSource).toBe(false);
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
   });
 
   it("chooses multi-file directive for structured debug prompts with companion evidence", () => {

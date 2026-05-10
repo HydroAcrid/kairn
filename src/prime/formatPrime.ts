@@ -188,6 +188,7 @@ export function formatShrunkPrimeContext(input: {
       "",
       ...formatInvariantSections(input.invariants, "Invariant to preserve:"),
       "",
+      "Smallest check: run the narrowest relevant compile/test command before finalizing; do not stop at an edit that has not compiled or passed its focused check.",
       "Stop condition: edit the start file only; avoid broad related-file/test scans unless this file cannot satisfy the invariant or a failure names another file."
     ].filter(Boolean);
     return fitSectionsToBudget(sections, input.budget);
@@ -195,7 +196,7 @@ export function formatShrunkPrimeContext(input: {
   const sections = [
     "# Kairn Focused Start",
     "",
-    `Task: ${input.task}`,
+    `Task: ${compactTaskLine(input.task)}`,
     `Kairn session: ${input.sessionId}`,
     `Prime profile: ${input.profile}`,
     `Quality score: ${input.quality.score} (${input.quality.action})`,
@@ -261,6 +262,10 @@ function formatTinyDirectivePrime(input: { prime: ContextPrime; budget: number }
   ].filter(Boolean);
 
   return fitSectionsToBudget(lines, input.budget);
+}
+
+function compactTaskLine(task: string): string {
+  return truncateToBudget(task.replace(/\s+/g, " ").trim(), 72);
 }
 
 function formatInvariantSections(invariants: ContextInvariant[] | undefined, heading: string): string[] {

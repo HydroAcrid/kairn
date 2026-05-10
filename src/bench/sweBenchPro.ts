@@ -250,14 +250,46 @@ function distillSweBenchQuery(row: SweBenchProRow): string {
     .map((item) => item.trim())
     .filter((item) => item.length >= 3 && /[A-Za-z_]/.test(item))
     .slice(0, 16);
+  const sourceNameHints = selectedTests.flatMap(sourceNameHintsFromSelectedTest).slice(0, 18);
   return [
     `Debug/fix SWE-Bench Pro issue: ${firstMeaningfulLine(row.problem_statement) ?? row.instance_id}`,
     row.requirements ? `Requirements/invariant terms: ${compactSweText(row.requirements, 900)}` : "",
     row.interface ? `Interface notes: ${compactSweText(row.interface, 240)}` : "",
     identifiers.length > 0 ? `Code identifiers and domain terms: ${identifiers.slice(0, 28).join(" ")}` : "",
+    sourceNameHints.length > 0 ? `Likely production basename hints from selected tests: ${unique(sourceNameHints).slice(0, 12).join(" ")}` : "",
     testTerms.length > 0 ? `Related failing tests/files: ${unique(testTerms).slice(0, 16).join(" ")}` : "",
     "Find the smallest production source surface before broad scans."
   ].filter(Boolean).join("\n");
+}
+
+function sourceNameHintsFromSelectedTest(testRef: string): string[] {
+  const fileRef = testRef.split("::")[0]?.split("#")[0]?.split("|")[0] ?? testRef;
+  const basename = path.basename(fileRef).replace(/\.[^.]+$/, "");
+  const parent = path.basename(path.dirname(fileRef));
+  const candidates = [
+    basename
+      .replace(/^test[_-]/i, "")
+      .replace(/[_-]test$/i, "")
+      .replace(/[_-]?spec$/i, "")
+      .replace(/Test$/i, ""),
+    parent
+  ];
+  const hints: string[] = [];
+  for (const candidate of candidates) {
+    for (const term of candidate
+      .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+      .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+      .split(/[^A-Za-z0-9_]+/)) {
+      const normalized = term.trim();
+      if (normalized.length < 3) continue;
+      if (/^(test|tests|unit|integration|spec|specs|utils?|helpers?|database)$/i.test(normalized)) continue;
+      hints.push(normalized);
+      if (/s$/i.test(normalized) && normalized.length > 4) {
+        hints.push(normalized.slice(0, -1));
+      }
+    }
+  }
+  return unique(hints);
 }
 
 function compactSweText(text: string, maxLength: number): string {

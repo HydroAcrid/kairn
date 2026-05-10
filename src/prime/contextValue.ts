@@ -12,6 +12,7 @@ export function evaluateContextValue(input: {
   estimatedContextCost: number;
   companionCount?: number | undefined;
   companionTopScore?: number | undefined;
+  companionSpecific?: boolean | undefined;
 }): ContextValueDecision {
   const primaryFile = input.context.suggestedNextContext[0] ?? input.context.files[0];
   const primaryRecord = input.knownFiles.find((file) => file.path === primaryFile);
@@ -23,6 +24,7 @@ export function evaluateContextValue(input: {
   const vagueImprovementSignal = isVagueImprovementTask(input.task);
   const multiFileSignal = isMultiFileTask(input.task);
   const companionSignal = Boolean(input.companionCount && input.companionCount > 0 && (multiFileSignal || (input.companionTopScore ?? 0) >= 360));
+  const companionSpecific = Boolean(input.companionSpecific);
   const wrongContextRisk = Boolean(
     primaryFile &&
       sourceFixSignal &&
@@ -64,7 +66,7 @@ export function evaluateContextValue(input: {
     structuredDebugSignal &&
     companionSignal &&
     Boolean(primaryFile && isPrimarySourcePath(primaryFile)) &&
-    (multiFileSignal || (input.companionTopScore ?? 0) >= 520 || input.context.files.length > 1);
+    (multiFileSignal || companionSpecific || input.context.files.length > 1);
   const effectiveCompanionSignal = companionSignal && (!exactSourceHit || structuredCompanionAllowed);
   if (effectiveCompanionSignal) {
     score += Math.min(18, Math.max(8, Math.floor((input.companionTopScore ?? 0) / 120)));
@@ -114,6 +116,23 @@ export function evaluateContextValue(input: {
     score -= 45;
     reasons.add("no retrieved files");
   }
+  const cheapSingleSource = isCheapSingleSourceTask({
+    task: input.task,
+    debugSignal,
+    sourceFixSignal,
+    primaryFile,
+    primaryKind: primaryRecord?.kind,
+    topScore: input.quality.topScore,
+    topGap: input.quality.topGap,
+    companionSignal: effectiveCompanionSignal,
+    companionSpecific,
+    multiFileSignal,
+    contextFileCount: input.context.files.length
+  });
+  if (cheapSingleSource) {
+    score -= 18;
+    reasons.add("cheap single-source task should use a minimal guardrail");
+  }
 
   score = Math.round(Math.max(0, Math.min(100, score)));
   let action = chooseAction({
@@ -128,6 +147,8 @@ export function evaluateContextValue(input: {
     wrongContextRisk,
     primarySource: Boolean(primaryFile && isPrimarySourcePath(primaryFile)),
     exactSourceHit,
+    cheapSingleSource,
+    structuredDebugSignal,
     multiFileSignal,
     companionSignal: effectiveCompanionSignal,
     companionTopScore: input.companionTopScore
@@ -147,6 +168,7 @@ export function evaluateContextValue(input: {
   const multiFileDirective =
     action === "shrink" &&
     debugSignal &&
+    !cheapSingleSource &&
     Boolean(primaryFile && isPrimarySourcePath(primaryFile)) &&
     !wrongContextRisk &&
     effectiveCompanionSignal &&
@@ -167,6 +189,8 @@ export function evaluateContextValue(input: {
     language,
     exactPathMentioned: input.quality.exactPathMentioned,
     exactSourceHit,
+    cheapSingleSource,
+    companionSpecific,
     multiSurfaceSignal: multiFileSignal || effectiveCompanionSignal,
     companionCount: input.companionCount ?? 0,
     companionTopScore: input.companionTopScore ?? 0,
@@ -191,13 +215,16 @@ function chooseAction(input: {
   wrongContextRisk: boolean;
   primarySource: boolean;
   exactSourceHit: boolean;
+  cheapSingleSource: boolean;
+  structuredDebugSignal: boolean;
   multiFileSignal: boolean;
   companionSignal: boolean;
   companionTopScore?: number | undefined;
 }): ContextValueDecision["action"] {
   if (input.exactPathMentioned) {
-    return input.debugSignal && input.primarySource && input.multiFileSignal ? "shrink" : "suppress";
+    return input.debugSignal && input.primarySource && (input.multiFileSignal || input.structuredDebugSignal) ? "shrink" : "suppress";
   }
+  if (input.cheapSingleSource) return "shrink";
   if (input.wrongContextRisk && input.companionSignal && (input.companionTopScore ?? 0) >= 420) return "shrink";
   if (input.wrongContextRisk && input.score < 72) return "suppress";
   if (input.wrongContextRisk) return "shrink";
@@ -242,6 +269,13 @@ function isPrimarySourcePath(filePath: string): boolean {
     normalized.includes("/include/") ||
     normalized.includes("/src/main/java/")
   );
+}
+
+function isProductionSourcePath(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  if (isNoisyPath(normalized)) return false;
+  if (/(^|\/)(tests?|testing|__tests__|spec|specs|fixtures?|examples?|docs?)\//.test(normalized)) return false;
+  return /\.(?:[cm]?[jt]sx?|pyi?|go|java|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|rb|php|cs)$/.test(normalized);
 }
 
 function isNoisyPath(normalizedPath: string): boolean {
@@ -293,6 +327,41 @@ function hasConcreteExactSourceSignal(reasons: string[], filePath: string, task:
   const taskTerms = new Set(identifierTerms(task).filter((term) => !EXACT_SOURCE_TASK_STOP_TERMS.has(term)));
   const hits = [...basenameTerms].filter((term) => taskTerms.has(term) || (term === "url" && taskTerms.has("urls")));
   return hits.length >= 2;
+}
+
+function isCheapSingleSourceTask(input: {
+  task: string;
+  debugSignal: boolean;
+  sourceFixSignal: boolean;
+  primaryFile?: string | undefined;
+  primaryKind?: FileRecord["kind"] | undefined;
+  topScore: number;
+  topGap: number;
+  companionSignal: boolean;
+  companionSpecific: boolean;
+  multiFileSignal: boolean;
+  contextFileCount: number;
+}): boolean {
+  if (!input.primaryFile) return false;
+  if (!input.debugSignal || !input.sourceFixSignal) return false;
+  if (input.primaryKind === "test" || !isProductionSourcePath(input.primaryFile)) return false;
+  if (hasStrongMultiSurfaceLanguage(input.task)) return false;
+  if (input.topScore < 420 || input.topGap < 220) return false;
+  if (input.companionSpecific) return false;
+  if (input.multiFileSignal && input.contextFileCount > 1 && input.topGap < 420) return false;
+  return !input.companionSignal || input.topGap >= 420 || input.contextFileCount <= 1;
+}
+
+function hasStrongMultiSurfaceLanguage(task: string): boolean {
+  const normalized = task.toLowerCase();
+  return (
+    /\b(end-to-end|e2e|integration|workflow|flow|pipeline|frontend and backend|api and ui|full stack|system)\b/.test(normalized) ||
+    /\bacross\s+(files?|modules?|components?|surfaces?|packages?|services?|layers?)\b/.test(normalized) ||
+    /\bmultiple\s+(files?|modules?|components?|surfaces?|packages?|services?|layers?)\b/.test(normalized) ||
+    /\b(move|moved|relocat(?:e|ed|ion)|split|centraliz(?:e|ed)|shared|public api|new public interfaces?)\b/.test(normalized) ||
+    /\b(router|routing|route handler|route matching)\b.*\b(dependency|dependencies|converter|convertor|controller|handler)\b/.test(normalized) ||
+    /\b(controller|repository|model|scheduler|renderer|interceptor|dispatch|adapter|validation|callback)\b.*\b(controller|repository|model|scheduler|renderer|interceptor|dispatch|adapter|validation|callback)\b/.test(normalized)
+  );
 }
 
 function reasonsForPrimaryFile(context: ContextResponse, filePath: string): string[] {
@@ -381,7 +450,9 @@ function isVagueImprovementTask(task: string): boolean {
 
 function isMultiFileTask(task: string): boolean {
   const normalized = task.toLowerCase();
-  return /\b(across|multiple|end-to-end|e2e|integration|workflow|flow|pipeline|through|refactor|feature|migration|api and ui|frontend and backend|full stack|system|ui|mobile|layout|responsive|drawer|sheet|tabs|dashboard|screen|component|filter|filters|card|cards|routing|dependency|dependencies|route handler|route matching|convertor|convertors|converter|converters|mcp|tool|tools|runtime|follow-up|next context|proxy|response controller|interceptor|interceptors|guard|guards|pipe|pipes|case sensitivity|extension matching)\b/.test(normalized);
+  return /\b(end-to-end|e2e|integration|workflow|flow|pipeline|refactor|feature|migration|api and ui|frontend and backend|full stack|system|ui|mobile|layout|responsive|drawer|sheet|tabs|dashboard|screen|component|filter|filters|card|cards|routing|dependency|dependencies|route handler|route matching|mcp|tool|tools|runtime|follow-up|next context|proxy|response controller|interceptor|interceptors|guard|guards|pipe|pipes|case sensitivity|extension matching|move|moved|relocate|relocated|relocation|centralize|centralized|shared)\b/.test(normalized) ||
+    /\bacross\s+(files?|modules?|components?|surfaces?|packages?|services?|layers?)\b/.test(normalized) ||
+    /\bmultiple\s+(files?|modules?|components?|surfaces?|packages?|services?|layers?)\b/.test(normalized);
 }
 
 function identifierTerms(value: string): string[] {

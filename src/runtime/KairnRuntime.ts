@@ -217,6 +217,7 @@ export class KairnRuntime {
         .map((item) => (item && typeof item === "object" && "score" in item ? Number((item as { score?: unknown }).score) : 0))
         .filter((score) => Number.isFinite(score))
     );
+    const companionSpecific = companionMetadata.some(hasSpecificCompanionEvidence);
     const sessionFiles = session.rootPath === this.rootPath ? knownFiles : this.store.listFiles(session.rootPath);
     const decisionStartedAt = Date.now();
     const baseQuality = evaluatePrimeQuality({
@@ -233,7 +234,8 @@ export class KairnRuntime {
       repoFileCount: sessionFiles.length,
       estimatedContextCost: budget,
       companionCount: companionMetadata.length,
-      companionTopScore
+      companionTopScore,
+      companionSpecific
     });
     const automaticSuppressionReason = automaticPrimeSuppressionReason({ source: input.source, decision: contextDecision });
     const mcpBriefSuppressionReason = input.format === "mcp_brief" && contextDecision.wrongContextRisk
@@ -261,7 +263,7 @@ export class KairnRuntime {
     const directivePrimaryFile = contextDecision.recommendedDelivery === "multi_file_directive"
       ? preferredStructuredDebugPrimary(primaryFile, companionMetadata)
       : primaryFile;
-    const invariants = directivePrimaryFile && (contextDecision.exactSourceHit || contextDecision.recommendedDelivery === "multi_file_directive")
+    const invariants = directivePrimaryFile && (contextDecision.exactSourceHit || contextDecision.cheapSingleSource || contextDecision.recommendedDelivery === "multi_file_directive")
       ? [
           contextDecision.exactSourceHit
             ? this.getExactSourceEvidence({ sessionId: session.id, file: directivePrimaryFile, budget: 180 }).invariant
@@ -429,9 +431,11 @@ export class KairnRuntime {
               includeSnippet:
                 sessionPolicy.reason !== "verified_context_shrunk" &&
                 sessionPolicy.reason !== "active_source_context_shrunk" &&
+                !contextDecision.cheapSingleSource &&
                 !contextDecision.wrongContextRisk &&
                 !isAutomaticExactSourceHook({ source: input.source, decision: contextDecision }),
-              minimal: sessionPolicy.reason === "active_source_context_shrunk"
+              minimal: sessionPolicy.reason === "active_source_context_shrunk" ||
+                isAutomaticCheapSingleSourceHook({ source: input.source, decision: contextDecision })
             })
           : formatPrimeContext({
               task: resolvedTask,
@@ -3319,6 +3323,25 @@ function isAutomaticExactSourceHook(input: {
   if (input.source !== "codex" && input.source !== "claude") return false;
   if (!input.decision.exactSourceHit || input.decision.multiSurfaceSignal) return false;
   return input.decision.topScore >= 240 && input.decision.topGap >= 70;
+}
+
+function isAutomaticCheapSingleSourceHook(input: {
+  source?: WatchEventSource | "runtime" | "cli" | "mcp" | "bench" | undefined;
+  decision: ContextValueDecision;
+}): boolean {
+  if (input.source !== "codex" && input.source !== "claude") return false;
+  return Boolean(input.decision.cheapSingleSource);
+}
+
+function hasSpecificCompanionEvidence(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false;
+  const reasons = "reasons" in value && Array.isArray((value as { reasons?: unknown }).reasons)
+    ? (value as { reasons: unknown[] }).reasons
+      .filter((reason): reason is string => typeof reason === "string")
+      .join("; ")
+      .toLowerCase()
+    : "";
+  return /mentioned source filename|direct role basename anchor|route\/path surface anchor|same package|same module|import neighbor|controller\/repository|scheduler\/renderer|interceptor\/dispatch|validation\/callback/.test(reasons);
 }
 
 function strongestSuppressiveAction(

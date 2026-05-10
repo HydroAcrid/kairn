@@ -273,6 +273,13 @@ Context actions:
 - `shrink` with `multi_file_directive`: send a compact structured-debug brief with one active production source, one companion production source, one invariant, and no broad fanout.
 - `suppress`: send nothing to the agent, but record internal metrics.
 
+Current delivery classes:
+
+- `source_rescue`: Kairn has a strong source target that the agent may otherwise miss.
+- `multi_file_directive`: SWE/debug work needs a primary source, one companion source, an invariant, and a small check.
+- `cheap_single_source`: one production source dominates and companion evidence is generic; automatic hooks emit only a minimal fix guardrail or suppress.
+- `weak_signal_abstain`: retrieval is broad/noisy, so automatic surfaces stay silent.
+
 Automatic prompt hooks apply a stricter delivery rule than manual `kairn prime`. If Kairn finds one very strong production file or a risky multi-surface target, the hook emits a tiny no-snippet guardrail: start file, invariant/check guidance when available, and a stop condition. Full prime output is reserved for prompts where extra context is likely to change agent behavior without causing broad scans.
 
 Post-diagnose fix turns have an even smaller Fix Guardrail. When the ledger already knows the active production source and the task is a fix/debug turn, Kairn emits only the source path, source invariant, and stop condition. It intentionally omits snippets, companions, related tests, and quality scoring text so the agent edits the known source instead of reopening broad discovery.
@@ -422,6 +429,7 @@ Quality gates include:
 - excluded files are avoided,
 - hook failures are zero,
 - MCP modes have actual MCP calls,
+- official SWE-Pro Docker evaluation passes for SWE-Pro claims,
 - source invariants pass when declared,
 - changed hunks stay inside allowed diff scopes when declared,
 - active Kairn assistance happened for a Kairn-assisted savings claim,

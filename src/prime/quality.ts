@@ -117,6 +117,9 @@ function extractRankedScores(content: string): number[] {
 function isSourceExactPathCandidate(file: FileRecord): boolean {
   if (file.kind === "test" || file.kind === "doc") return false;
   const normalized = file.path.toLowerCase();
+  if (!/\.(?:[cm]?[jt]sx?|pyi?|go|java|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|rb|php|cs)$/.test(normalized)) {
+    return false;
+  }
   return !/(^|\/)(tests?|docs?|examples?|fixtures?|generated|node_modules|dist|build)\//.test(normalized);
 }
 
