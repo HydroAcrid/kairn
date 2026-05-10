@@ -390,3 +390,32 @@ Next validation should use the same guardrail and ledger setup on a wider suite,
 2. Python framework pair: Flask + FastAPI.
 3. Java utility/framework pair: Commons IO + a Spring-style repo.
 4. One endurance repeat set after each suite passes once in both baseline and Kairn modes.
+
+## Follow-Up: Fix-Turn Minimalism Pass
+
+Kairn then changed post-diagnose fix turns from ordinary focused context to a smaller **Fix Guardrail**:
+
+- one active source path,
+- semantic invariant to preserve,
+- no snippets, symbols, quality score, companions, or related tests,
+- explicit stop condition: edit the start file only unless the invariant or a failure requires another file.
+
+This is meant to solve the fresh-expansion pattern where Kairn helped diagnose/verify/cleanup but sometimes over-assisted during the actual edit turn.
+
+| Suite | Previous Savings | Minimalist Savings | Quality | Fix-Turn Behavior |
+| --- | ---: | ---: | --- | --- |
+| FastAPI request_response | `63.42%` | `73.61%` | pass/pass | fix turn changed from suppress to `118`-token guardrail on `fastapi/routing.py` |
+| Fastify HEAD route | `17.59%` | `52.39%` | pass/pass | fix turn changed from suppress to `53`-token guardrail on `lib/head-route.js` |
+| Gin RouterGroup | `25.59%` | `-35.36%` | pass/pass | fix turn changed from suppress to `52`-token guardrail on `routergroup.go`, but the diagnose turn became much more expensive |
+
+Interpretation:
+
+- The behavioral target worked: fix turns now receive tiny active-source guardrails instead of either broad context or silence.
+- Fastify improved dramatically, and FastAPI improved on total tokens in this repeat.
+- Gin is negative evidence. The guardrail did not break quality, and the fix turn itself was cheaper, but the run spent far more tokens during diagnosis. This means fix-turn minimalism is not sufficient by itself; Kairn still needs per-turn attribution and repeat medians before claiming a general win.
+
+Current recommendation:
+
+- Keep the Fix Guardrail behavior because it is safer than full-prime context and it preserves quality.
+- Do not claim a universal savings increase from this pass.
+- Next iteration should add a per-turn “where did the tokens move?” report so diagnose spikes cannot hide behind aggregate savings.

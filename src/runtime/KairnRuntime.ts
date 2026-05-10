@@ -328,7 +328,9 @@ export class KairnRuntime {
       failureFiles: failureFilesForPolicy,
       source: input.source ?? "cli"
     });
-    const effectiveAction = strongestSuppressiveAction(quality.action, contextDecision.action, sessionPolicy.action);
+    const effectiveAction = minimalSourceFocusOverridesSuppression(sessionPolicy.reason)
+      ? "shrink"
+      : strongestSuppressiveAction(quality.action, contextDecision.action, sessionPolicy.action);
     const effectiveQuality = {
       ...quality,
       action: effectiveAction,
@@ -407,7 +409,8 @@ export class KairnRuntime {
                 sessionPolicy.reason !== "verified_context_shrunk" &&
                 sessionPolicy.reason !== "active_source_context_shrunk" &&
                 !contextDecision.wrongContextRisk &&
-                !isAutomaticExactSourceHook({ source: input.source, decision: contextDecision })
+                !isAutomaticExactSourceHook({ source: input.source, decision: contextDecision }),
+              minimal: sessionPolicy.reason === "active_source_context_shrunk"
             })
           : formatPrimeContext({
               task: resolvedTask,
@@ -3299,6 +3302,10 @@ function strongestSuppressiveAction(
   if (actions.includes("suppress")) return "suppress";
   if (actions.includes("shrink")) return "shrink";
   return "emit";
+}
+
+function minimalSourceFocusOverridesSuppression(reason: SessionContextPolicyDecision["reason"]): boolean {
+  return reason === "active_source_context_shrunk";
 }
 
 function collectWorkspaceKairnMetrics(workspacePath: string): Record<string, unknown> {

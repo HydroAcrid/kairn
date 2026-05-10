@@ -274,6 +274,8 @@ Context actions:
 
 Automatic prompt hooks apply a stricter delivery rule than manual `kairn prime`. If Kairn finds one very strong production file or a risky multi-surface target, the hook emits a tiny no-snippet guardrail: start file, invariant/check guidance when available, and a stop condition. Full prime output is reserved for prompts where extra context is likely to change agent behavior without causing broad scans.
 
+Post-diagnose fix turns have an even smaller Fix Guardrail. When the ledger already knows the active production source and the task is a fix/debug turn, Kairn emits only the source path, source invariant, and stop condition. It intentionally omits snippets, companions, related tests, and quality scoring text so the agent edits the known source instead of reopening broad discovery.
+
 This controller is one of the most important quality safeguards. Bad primes increase token use and can reduce agent quality.
 
 ## Session Memory

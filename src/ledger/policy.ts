@@ -100,6 +100,12 @@ export function decideSessionContextPolicy(input: {
   if (failureFiles.length > 0) {
     return decision("emit", phase, "failure_reemitted", candidateFiles.slice(0, 2), repeatedFiles, changedFiles, ignoredRecommendedFiles, input);
   }
+  if (postDiagnosisFocus && isFixTurnSignal(input.task, phase)) {
+    return decision("shrink", phase, "active_source_context_shrunk", [postDiagnosisFocus], repeatedFiles, changedFiles, ignoredRecommendedFiles, input, {
+      activeSourceFile: postDiagnosisFocus,
+      repeatedFilesAvoided: repeatedFiles.length
+    });
+  }
   if (duplicateSnippet || repeatedFiles.length === candidateFiles.length) {
     return decision("suppress", phase, "repeated_context_suppressed", [], repeatedFiles, changedFiles, ignoredRecommendedFiles, input, {
       repeatedFilesAvoided: repeatedFiles.length,
@@ -197,6 +203,11 @@ function selectPostDiagnosisFocus(input: {
 
 function hasExplicitMultiFileSignal(task: string): boolean {
   return /\b(multi[-\s]?file|multiple files|across files|across modules|between .+ and .+|wire .+ and .+|integrat(?:e|ion)|companion|controller.+repository|repository.+controller|router.+dependency|dependency.+router|scheduler.+renderer|renderer.+scheduler|interceptor.+dispatch|dispatch.+interceptor)\b/i.test(task);
+}
+
+function isFixTurnSignal(task: string, phase: TaskPhase): boolean {
+  if (phase !== "debugging" && phase !== "implementation") return false;
+  return /\b(fix|repair|patch|regression|bug|seeded|failing|failure|broken)\b/i.test(task);
 }
 
 function isLikelyProductionSourcePath(filePath: string): boolean {

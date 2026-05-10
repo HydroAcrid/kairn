@@ -172,7 +172,7 @@ describe("KairnRuntime", () => {
     });
 
     const prime = await runtime.primeContext({
-      task: "Update dashboard formatting behavior in the production source.",
+      task: "Fix the dashboard formatting regression in the production source.",
       sessionId: session.id,
       budget: 500,
       source: "bench"
@@ -184,6 +184,8 @@ describe("KairnRuntime", () => {
     expect(prime.files).toEqual(["src/app.ts"]);
     expect(prime.content).toContain("src/app.ts");
     expect(prime.content).not.toContain("src/user.ts");
+    expect(prime.content).toContain("Kairn Fix Guardrail");
+    expect(prime.content).not.toContain("Quality score");
 
     runtime.close();
   });

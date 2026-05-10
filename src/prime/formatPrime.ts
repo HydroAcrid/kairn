@@ -168,6 +168,7 @@ export function formatShrunkPrimeContext(input: {
   budget: number;
   invariants?: ContextInvariant[] | undefined;
   includeSnippet?: boolean | undefined;
+  minimal?: boolean | undefined;
 }): string {
   const topFiles = uniquePaths(
     input.files && input.files.length > 0
@@ -177,6 +178,19 @@ export function formatShrunkPrimeContext(input: {
         : input.context.files
   ).slice(0, 1);
   const symbolHints = extractPrimeSymbolHints(input.context.content).slice(0, 2);
+  if (input.minimal) {
+    const sections = [
+      "# Kairn Fix Guardrail",
+      "",
+      "Start file:",
+      topFiles.length > 0 ? `- ${topFiles[0]}` : "- No high-confidence source file found.",
+      "",
+      ...formatInvariantSections(input.invariants, "Invariant to preserve:"),
+      "",
+      "Stop condition: edit the start file only; avoid broad related-file/test scans unless this file cannot satisfy the invariant or a failure names another file."
+    ].filter(Boolean);
+    return fitSectionsToBudget(sections, input.budget);
+  }
   const sections = [
     "# Kairn Focused Start",
     "",
