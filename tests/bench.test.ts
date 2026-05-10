@@ -391,6 +391,20 @@ describe("benchmark suite and scoring", () => {
     );
   });
 
+  it("loads the fresh holdout repo-matrix example", () => {
+    const matrix = loadBenchmarkRepoMatrix({
+      matrixPath: path.resolve("examples/bench/repo-matrix-holdout.json")
+    });
+
+    expect(matrix.id).toBe("repo-matrix-holdout");
+    expect(matrix.repos.map((repo) => repo.id)).toEqual(
+      expect.arrayContaining(["werkzeug", "requests", "express", "gorilla-mux", "guava", "redis", "react"])
+    );
+    expect(matrix.repos.find((repo) => repo.id === "requests")?.cases[0]?.expectedFiles).toEqual(
+      expect.arrayContaining(["src/requests/sessions.py", "src/requests/adapters.py", "src/requests/models.py"])
+    );
+  });
+
   it("runs repo-matrix preflight against local fixture repos", async () => {
     const root = createFixtureRepo();
     const matrixPath = path.join(root, "matrix.json");
@@ -542,6 +556,67 @@ describe("benchmark suite and scoring", () => {
 
     expect(companions[0]).toBe("lib/service/kubernetes.go");
     expect(companions).not.toContain("lib/services/access_request.go");
+  });
+
+  it("adds request session/adapter/model companions for multi-surface request flow prompts", () => {
+    const files = [
+      sourceRecord("src/requests/sessions.py", "python"),
+      sourceRecord("src/requests/adapters.py", "python"),
+      sourceRecord("src/requests/models.py", "python"),
+      sourceRecord("tests/test_sessions.py", "python")
+    ];
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query: "Debug request session send behavior through mounted adapters, redirect handling, and prepared request state.",
+      symbols: [],
+      chunks: [],
+      edges: [],
+      limit: 3
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions).toEqual(expect.arrayContaining(["src/requests/adapters.py", "src/requests/models.py"]));
+    expect(companions).not.toContain("tests/test_sessions.py");
+  });
+
+  it("adds router route/layer companions for mounted router dispatch prompts", () => {
+    const files = [
+      sourceRecord("lib/router/index.js", "javascript"),
+      sourceRecord("lib/router/layer.js", "javascript"),
+      sourceRecord("lib/router/route.js", "javascript"),
+      sourceRecord("test/router.js", "javascript")
+    ];
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query: "Debug Express router middleware dispatch when route layers handle params and mounted routers continue through next.",
+      symbols: [],
+      chunks: [],
+      edges: [],
+      limit: 3
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions).toEqual(expect.arrayContaining(["lib/router/layer.js", "lib/router/route.js"]));
+    expect(companions).not.toContain("test/router.js");
+  });
+
+  it("adds fiber hooks/workloop companions ahead of generic component surfaces", () => {
+    const files = [
+      sourceRecord("packages/react-reconciler/src/ReactFiberWorkLoop.js", "javascript"),
+      sourceRecord("packages/react-reconciler/src/ReactFiberHooks.js", "javascript"),
+      sourceRecord("packages/react-reconciler/src/ReactFiberCacheComponent.js", "javascript")
+    ];
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query: "Debug React fiber hook update scheduling and work loop behavior when component effects are flushed.",
+      symbols: [],
+      chunks: [],
+      edges: [],
+      limit: 1
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions[0]).toBe("packages/react-reconciler/src/ReactFiberHooks.js");
   });
 
   it("runs a fake-agent endurance suite in one workspace and reports ledger savings signals", async () => {

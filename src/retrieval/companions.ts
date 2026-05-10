@@ -21,6 +21,16 @@ const ROLE_GROUPS: CompanionRole[] = [
       "routing",
       "route",
       "routes",
+      "rule",
+      "rules",
+      "map",
+      "maps",
+      "matcher",
+      "matchers",
+      "layer",
+      "layers",
+      "param",
+      "params",
       "dependency",
       "dependencies",
       "depends",
@@ -50,8 +60,13 @@ const ROLE_GROUPS: CompanionRole[] = [
   },
   {
     id: "interceptor-dispatch-adapter",
-    terms: ["interceptor", "interceptors", "dispatch", "dispatcher", "adapter", "adapters", "request", "response", "proxy"],
+    terms: ["interceptor", "interceptors", "dispatch", "dispatcher", "adapter", "adapters", "request", "response", "proxy", "session", "sessions", "prepared", "redirect", "mounted"],
     reason: "interceptor/dispatch/adapter pair"
+  },
+  {
+    id: "session-adapter-model",
+    terms: ["session", "sessions", "adapter", "adapters", "model", "models", "prepared", "redirect", "mounted", "send"],
+    reason: "session/adapter/model pair"
   },
   {
     id: "validation-callback",
@@ -82,6 +97,16 @@ const ROLE_GROUPS: CompanionRole[] = [
     id: "mcp-runtime",
     terms: ["mcp", "runtime", "server", "tool", "tools", "context", "next", "prepare", "session"],
     reason: "MCP/runtime pair"
+  },
+  {
+    id: "fiber-hooks-workloop",
+    terms: ["fiber", "hook", "hooks", "effect", "effects", "work", "workloop", "workloop", "reconciler", "component", "components", "flush", "flushed", "update", "scheduling"],
+    reason: "fiber/hooks/workloop pair"
+  },
+  {
+    id: "string-matcher",
+    terms: ["string", "strings", "char", "character", "matcher", "matching", "prefix", "suffix", "surrogate"],
+    reason: "string/matcher pair"
   }
 ];
 
@@ -318,6 +343,22 @@ export function findCompanionCandidates(input: {
       score += 2400;
       reasons.push("kubernetes service companion");
     }
+    if (isSessionAdapterModelCompanion(file.path, queryTerms)) {
+      score += 1250;
+      reasons.push("session/adapter/model companion");
+    }
+    if (isFiberHooksWorkLoopCompanion(file.path, queryTerms)) {
+      score += 1800;
+      reasons.push("fiber/hooks/workloop companion");
+    }
+    if (isStringMatcherCompanion(file.path, queryTerms)) {
+      score += 1150;
+      reasons.push("string/matcher companion");
+    }
+    if (isRoutingMapRuleCompanion(file.path, queryTerms)) {
+      score += 980;
+      reasons.push("routing map/rule companion");
+    }
     if (isGenericKubernetesServiceDistractor(file.path, queryTerms)) {
       score -= 3200;
       reasons.push("generic service/request path downranked for kubernetes task");
@@ -470,7 +511,7 @@ export function isNoisySourcePath(filePath: string): boolean {
   const normalized = filePath.toLowerCase();
   return /(^|\/)(docs?|docs_src|documentation|_?examples|demo|demos|devtools|codemods|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook|testing|testdata|integration)\//.test(
     normalized
-  );
+  ) || /(^|\/)(deps|vendor|third_party|node_modules)\//.test(normalized);
 }
 
 export function isLikelyTestPath(filePath: string): boolean {
@@ -699,7 +740,10 @@ function isComplementaryRole(left: string, right: string): boolean {
   return (
     (pair.has("controller") && (pair.has("repository") || pair.has("service") || pair.has("model"))) ||
     (pair.has("routing") && (pair.has("dependency") || pair.has("convertor") || pair.has("handler") || pair.has("context"))) ||
+    (pair.has("session") && (pair.has("adapter") || pair.has("model"))) ||
     (pair.has("scheduler") && pair.has("renderer")) ||
+    (pair.has("fiber") && (pair.has("hook") || pair.has("workloop"))) ||
+    (pair.has("string") && pair.has("matcher")) ||
     (pair.has("interceptor") && (pair.has("dispatch") || pair.has("adapter"))) ||
     (pair.has("validation") && pair.has("callback")) ||
     (pair.has("engine") && (pair.has("context") || pair.has("routing") || pair.has("handler"))) ||
@@ -780,9 +824,15 @@ function roleCategory(filePath: string): string | undefined {
   if (/(^|\/)adapters?\//.test(normalized) || /adapter/.test(normalized.split("/").at(-1) ?? "")) return "adapter";
   if (/mcp/.test(normalized.split("/").at(-1) ?? "") || /(^|\/)mcp\//.test(normalized)) return "mcp";
   if (/runtime/.test(normalized.split("/").at(-1) ?? "")) return "runtime";
+  if (/(^|\/)sessions?\.[a-z0-9]+$/.test(normalized) || /(^|\/)sessions?\//.test(normalized)) return "session";
   if (/proxy/.test(normalized.split("/").at(-1) ?? "")) return "proxy";
   if (/interceptor/.test(normalized)) return "interceptor";
   if (/dispatch/.test(normalized)) return "dispatch";
+  if (/workloop/.test(normalized)) return "workloop";
+  if (/hooks?/.test(normalized)) return "hook";
+  if (/reactfiber/.test(normalized)) return "fiber";
+  if (/(^|\/)strings?\.[a-z0-9]+$/.test(normalized)) return "string";
+  if (/charmatcher|char[-_]?matcher/.test(normalized)) return "matcher";
   if (/convertors?|converters?/.test(normalized)) return "convertor";
   if (/dependenc/.test(normalized)) return "dependency";
   if (/repository|repositories|repo\b|dao/.test(normalized)) return "repository";
@@ -913,6 +963,44 @@ function isGenericKubernetesServiceDistractor(filePath: string, queryTerms: Set<
   if (isKubernetesServiceCompanion(filePath, queryTerms)) return false;
   const normalized = filePath.toLowerCase();
   return /(^|\/)services?\//.test(normalized) && !/(kube|kubernetes|kubectl)/.test(normalized);
+}
+
+function isSessionAdapterModelCompanion(filePath: string, queryTerms: Set<string>): boolean {
+  const asksSessionFlow =
+    (queryTerms.has("session") || queryTerms.has("sessions")) &&
+    (queryTerms.has("adapter") || queryTerms.has("adapters") || queryTerms.has("prepared") || queryTerms.has("redirect") || queryTerms.has("mounted") || queryTerms.has("send"));
+  if (!asksSessionFlow) return false;
+  const normalized = filePath.toLowerCase();
+  return /(^|\/)(sessions?|adapters?|models?)\.[a-z0-9]+$/.test(normalized) ||
+    /(^|\/)(sessions?|adapters?|models?)(\/|$)/.test(normalized);
+}
+
+function isFiberHooksWorkLoopCompanion(filePath: string, queryTerms: Set<string>): boolean {
+  const asksFiberHooks =
+    queryTerms.has("fiber") &&
+    (queryTerms.has("hook") || queryTerms.has("hooks") || queryTerms.has("effect") || queryTerms.has("effects") || queryTerms.has("work") || queryTerms.has("workloop"));
+  if (!asksFiberHooks) return false;
+  const normalized = filePath.toLowerCase();
+  return /reactfiber(hooks|workloop)\.[cm]?[jt]sx?$/.test(normalized) ||
+    (normalized.includes("reactfiber") && (normalized.includes("hooks") || normalized.includes("workloop")));
+}
+
+function isStringMatcherCompanion(filePath: string, queryTerms: Set<string>): boolean {
+  const asksStringMatcher =
+    (queryTerms.has("string") || queryTerms.has("strings")) &&
+    (queryTerms.has("char") || queryTerms.has("character") || queryTerms.has("matcher") || queryTerms.has("matching") || queryTerms.has("prefix") || queryTerms.has("suffix"));
+  if (!asksStringMatcher) return false;
+  const normalized = filePath.toLowerCase();
+  return /(^|\/)(strings?|charmatcher)\.java$/.test(normalized) || /(^|\/)(strings?|char[-_]?matcher)\.[a-z0-9]+$/.test(normalized);
+}
+
+function isRoutingMapRuleCompanion(filePath: string, queryTerms: Set<string>): boolean {
+  const asksMapRules =
+    (queryTerms.has("routing") || queryTerms.has("route") || queryTerms.has("url")) &&
+    (queryTerms.has("map") || queryTerms.has("rule") || queryTerms.has("rules") || queryTerms.has("matcher") || queryTerms.has("matching") || queryTerms.has("binding"));
+  if (!asksMapRules) return false;
+  const normalized = filePath.toLowerCase();
+  return /(^|\/)(map|rules?|converters?)\.[a-z0-9]+$/.test(normalized) || /(^|\/)routing\/(map|rules?|converters?)\.[a-z0-9]+$/.test(normalized);
 }
 
 function isGenericHelperForRoleCompanion(filePath: string, queryTerms: Set<string>): boolean {
@@ -1058,6 +1146,10 @@ function canonicalTerm(term: string): string {
   if (term === "controllers") return "controller";
   if (term === "models") return "model";
   if (term === "routes") return "route";
+  if (term === "rules") return "rule";
+  if (term === "maps") return "map";
+  if (term === "layers") return "layer";
+  if (term === "params") return "param";
   if (term === "handlers") return "handler";
   if (term === "callbacks") return "callback";
   if (term === "ctx") return "context";
@@ -1070,6 +1162,11 @@ function canonicalTerm(term: string): string {
   if (term === "groups") return "group";
   if (term === "requests") return "request";
   if (term === "responses") return "response";
+  if (term === "sessions") return "session";
+  if (term === "hooks") return "hook";
+  if (term === "effects") return "effect";
+  if (term === "strings") return "string";
+  if (term === "characters") return "character";
   if (term === "convertors") return "convertor";
   if (term === "converters") return "converter";
   if (term === "tools") return "tool";

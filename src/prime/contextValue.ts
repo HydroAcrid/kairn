@@ -63,10 +63,10 @@ export function evaluateContextValue(input: {
   }
   const structuredCompanionAllowed =
     debugSignal &&
-    structuredDebugSignal &&
     companionSignal &&
     Boolean(primaryFile && isPrimarySourcePath(primaryFile)) &&
-    (multiFileSignal || companionSpecific || input.context.files.length > 1);
+    input.context.files.length > 1 &&
+    (structuredDebugSignal || multiFileSignal || (companionSpecific && (input.companionTopScore ?? 0) >= 650) || input.context.files.length > 1);
   const effectiveCompanionSignal = companionSignal && (!exactSourceHit || structuredCompanionAllowed);
   if (effectiveCompanionSignal) {
     score += Math.min(18, Math.max(8, Math.floor((input.companionTopScore ?? 0) / 120)));

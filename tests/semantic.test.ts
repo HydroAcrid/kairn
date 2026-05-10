@@ -654,6 +654,42 @@ describe("hybridSearch", () => {
     expect(merged.slice(0, 4).map((result) => result.path)).not.toContain("test/specs/interceptors.spec.js");
   });
 
+  it("keeps exact C source ahead of vendored dependency surfaces for short identifier prompts", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "deps/lua/src/lua_cjson.c", "source", "c"),
+      file(rootPath, "src/sds.c", "source", "c"),
+      file(rootPath, "src/sds.h", "source", "c"),
+      file(rootPath, "src/t_string.c", "source", "c")
+    ];
+    const symbols = [
+      symbol(rootPath, "deps/lua/src/lua_cjson.c", "lua_cjson_decode"),
+      symbol(rootPath, "src/sds.c", "sdsrange"),
+      symbol(rootPath, "src/sds.h", "sds"),
+      symbol(rootPath, "src/t_string.c", "setrangeCommand")
+    ];
+    const chunks = [
+      chunk(rootPath, "deps/lua/src/lua_cjson.c", "lua_cjson_decode", "string range JSON decode length"),
+      chunk(rootPath, "src/sds.c", "sdsrange", "SDS string range trimming length negative indexes empty ranges"),
+      chunk(rootPath, "src/sds.h", "sds", "SDS string header length allocation helpers"),
+      chunk(rootPath, "src/t_string.c", "setrangeCommand", "Redis string command setrange getrange SDS range operations")
+    ];
+    const results = hybridSearch({
+      files,
+      query: "Debug SDS string range trimming and length update behavior for negative indexes and empty ranges.",
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 3).map((result) => result.path)).toEqual(
+      expect.arrayContaining(["src/sds.c", "src/sds.h"])
+    );
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("deps/lua/src/lua_cjson.c");
+  });
+
   it("detects game UI component intent for wheel and settings queries", () => {
     const rootPath = "/repo";
     const files = [

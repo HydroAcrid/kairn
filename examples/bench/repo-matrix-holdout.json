@@ -1,0 +1,191 @@
+{
+  "id": "repo-matrix-holdout",
+  "name": "Kairn Holdout Generalization Matrix",
+  "gates": {
+    "maxStateMb": 250,
+    "maxPrimeLatencyMs": 9000,
+    "expectedTopK": 5,
+    "requireSuppressionForWeakCases": true
+  },
+  "repos": [
+    {
+      "id": "werkzeug",
+      "name": "Werkzeug",
+      "repoUrl": "https://github.com/pallets/werkzeug.git",
+      "cloneDepth": 1,
+      "language": "python",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "routing-map-rules",
+          "mode": "context",
+          "task": "Debug URL routing map matching and rule binding behavior when request paths are normalized and redirected.",
+          "expectedFiles": [
+            "src/werkzeug/routing/map.py",
+            "src/werkzeug/routing/rules.py"
+          ],
+          "excludedFiles": [
+            "docs/",
+            "examples/",
+            "tests/"
+          ],
+          "budget": 850
+        }
+      ]
+    },
+    {
+      "id": "requests",
+      "name": "Requests",
+      "repoUrl": "https://github.com/psf/requests.git",
+      "cloneDepth": 1,
+      "language": "python",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "session-adapter-send",
+          "mode": "context",
+          "task": "Debug request session send behavior through mounted adapters, redirect handling, and prepared request state.",
+          "expectedFiles": [
+            "src/requests/sessions.py",
+            "src/requests/adapters.py",
+            "src/requests/models.py"
+          ],
+          "excludedFiles": [
+            "docs/",
+            "tests/",
+            "ext/"
+          ],
+          "budget": 850
+        }
+      ]
+    },
+    {
+      "id": "express",
+      "name": "Express",
+      "repoUrl": "https://github.com/expressjs/express.git",
+      "ref": "4.18.2",
+      "cloneDepth": 1,
+      "language": "javascript",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "router-layer-route",
+          "mode": "context",
+          "task": "Debug Express router middleware dispatch when route layers handle params and mounted routers continue through next.",
+          "expectedFiles": [
+            "lib/router/index.js",
+            "lib/router/layer.js",
+            "lib/router/route.js"
+          ],
+          "excludedFiles": [
+            "test/",
+            "examples/",
+            "benchmarks/"
+          ],
+          "budget": 850
+        }
+      ]
+    },
+    {
+      "id": "gorilla-mux",
+      "name": "gorilla/mux",
+      "repoUrl": "https://github.com/gorilla/mux.git",
+      "cloneDepth": 1,
+      "language": "go",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "route-matcher-middleware",
+          "mode": "context",
+          "task": "Debug route matcher middleware behavior when a mux route matches path variables and method constraints.",
+          "expectedFiles": [
+            "mux.go",
+            "route.go",
+            "middleware.go"
+          ],
+          "excludedFiles": [
+            "docs/",
+            "examples/",
+            "testdata/"
+          ],
+          "budget": 850
+        }
+      ]
+    },
+    {
+      "id": "guava",
+      "name": "Guava",
+      "repoUrl": "https://github.com/google/guava.git",
+      "cloneDepth": 1,
+      "language": "java",
+      "sizeClass": "large",
+      "cases": [
+        {
+          "id": "strings-prefix-suffix",
+          "mode": "context",
+          "task": "Debug common string prefix and suffix behavior around surrogate pairs and character matching utilities.",
+          "expectedFiles": [
+            "guava/src/com/google/common/base/Strings.java",
+            "guava/src/com/google/common/base/CharMatcher.java"
+          ],
+          "excludedFiles": [
+            "guava-tests/",
+            "android/guava-tests/",
+            "docs/"
+          ],
+          "budget": 900
+        }
+      ]
+    },
+    {
+      "id": "redis",
+      "name": "Redis",
+      "repoUrl": "https://github.com/redis/redis.git",
+      "cloneDepth": 1,
+      "language": "c",
+      "sizeClass": "large",
+      "cases": [
+        {
+          "id": "sds-range-trim",
+          "mode": "context",
+          "task": "Debug SDS string range trimming and length update behavior for negative indexes and empty ranges.",
+          "expectedFiles": [
+            "src/sds.c",
+            "src/sds.h"
+          ],
+          "excludedFiles": [
+            "deps/",
+            "tests/",
+            "utils/"
+          ],
+          "budget": 850
+        }
+      ]
+    },
+    {
+      "id": "react",
+      "name": "React",
+      "repoUrl": "https://github.com/facebook/react.git",
+      "cloneDepth": 1,
+      "language": "javascript",
+      "sizeClass": "large",
+      "cases": [
+        {
+          "id": "fiber-hooks-workloop",
+          "mode": "context",
+          "task": "Debug React fiber hook update scheduling and work loop behavior when component effects are flushed.",
+          "expectedFiles": [
+            "packages/react-reconciler/src/ReactFiberHooks.js",
+            "packages/react-reconciler/src/ReactFiberWorkLoop.js"
+          ],
+          "excludedFiles": [
+            "fixtures/",
+            "scripts/",
+            "packages/*/__tests__/"
+          ],
+          "budget": 900
+        }
+      ]
+    }
+  ]
+}

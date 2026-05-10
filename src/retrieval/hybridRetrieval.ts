@@ -281,7 +281,7 @@ function scoreSourcePriority(
     }
 
     if (implementationIntent && isNoisyImplementationSurface(file)) {
-      score -= file.kind === "doc" ? 220 : 260;
+      score -= isVendoredDependencySurface(file.path) ? 1400 : file.kind === "doc" ? 220 : 260;
       reasons.push("docs/examples/devtools downranked");
     }
 
@@ -973,7 +973,7 @@ function scoreRepositoryLanguagePreference(file: FileRecord, query: string): { s
 }
 
 function isSpecificDomainPathTerm(term: string): boolean {
-  return term.length >= 4 &&
+  return term.length >= 3 &&
     !GENERIC_DOMAIN_TERMS.has(term) &&
     ![
       "debug",
@@ -1083,8 +1083,13 @@ function isNoisyImplementationSurface(file: FileRecord): boolean {
   return (
     file.kind === "doc" ||
     isNoisySourcePath(normalized) ||
+    isVendoredDependencySurface(normalized) ||
     /(^|\/)__fixtures__\//.test(normalized)
   );
+}
+
+function isVendoredDependencySurface(filePath: string): boolean {
+  return /(^|\/)(deps|vendor|third_party|node_modules)\//.test(filePath.toLowerCase());
 }
 
 function isGraphSeedAllowed(file: FileRecord | undefined, intent: QueryIntent, intentScore: number): boolean {
@@ -1254,7 +1259,7 @@ function isGenericMentionedSourceBasename(basename: string): boolean {
   return /^(main|index)\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(basename);
 }
 
-const GENERIC_DOMAIN_TERMS = new Set(["app", "apps", "application", "applications", "feature", "page", "screen"]);
+const GENERIC_DOMAIN_TERMS = new Set(["api", "app", "apps", "application", "applications", "feature", "page", "screen"]);
 const GENERIC_UI_FILENAME_TERMS = new Set(["settings", "layout", "mobile", "dashboard", "page", "view", "component", "screen"]);
 const WORKFLOW_STATUS_TERMS = ["needs_review", "needs review", "requeued", "ignored", "sourceEmailId", "source email id"];
 

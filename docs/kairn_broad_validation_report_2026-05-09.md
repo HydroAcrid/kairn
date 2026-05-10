@@ -565,3 +565,97 @@ Current selective-governor status:
 | Multi-file debug | compact two-file directives remain positive on Axios/SWE-Pro preflight |
 | Java exact source | quality can pass with semantic invariant validation; avoid exact-source-string brittleness |
 | Weak/low-confidence prompts | still needs broader abstention-accuracy testing |
+
+## Fresh Holdout Matrix
+
+To avoid self-confirming on the tuned repos, Kairn ran a retrieval-only holdout matrix across seven fresh repos:
+
+- Werkzeug
+- Requests
+- Express
+- gorilla/mux
+- Guava
+- Redis
+- React
+
+Artifact:
+
+- `/tmp/kairn-holdout-matrix-20260510.json`
+- Matrix definition: `examples/bench/repo-matrix-holdout.json`
+
+Summary:
+
+| Gate | Result |
+| --- | ---: |
+| Repos | `7` |
+| State limit | `7/7` passed |
+| Retrieval quality | `0/7` passed strict gates |
+| Live-agent runs | skipped |
+
+Important nuance: this does not mean Kairn returned useless files. Most cases returned one strong primary source quickly. The strict gate failed because holdout tasks intentionally expected multi-surface companion files too.
+
+| Repo | Returned Files | Missing Pattern |
+| --- | --- | --- |
+| Werkzeug | `rules.py`, `converters.py` | missed routing `map.py` companion |
+| Requests | `sessions.py` | missed adapter/model companions |
+| Express | `router/index.js` | missed router `layer.js` / `route.js` companions |
+| gorilla/mux | `middleware.go`, `mux.go` | missed `route.go` |
+| Guava | `Strings.java` | missed `CharMatcher.java` companion |
+| Redis | `deps/lua/src/lua_cjson.c` | source-vs-deps failure; missed `src/sds.c` / `src/sds.h` |
+| React | `ReactFiberWorkLoop.js`, `ReactFiberCacheComponent.js` | missed `ReactFiberHooks.js` |
+
+Interpretation:
+
+- Kairn is not ready to hand to a friend as “works with arbitrary supported repos and workflows.”
+- The recent live wins are real, but the holdout shows the next general weakness clearly: companion routing and source-over-vendor/deps routing.
+- The state-discipline work is holding up. Even React and Guava stayed under the configured state cap.
+- The next implementation should not tune these repos one by one. It should improve generic companion behavior:
+  - same directory source siblings,
+  - role triples such as `index/layer/route`, `session/adapter/model`, `map/rules/converter`, `mux/route/middleware`, `hooks/workloop`,
+  - exact acronym/identifier rescue such as `SDS -> sds.c`,
+  - stronger demotion for `deps/`, `vendor/`, and third-party embedded source unless the prompt asks for dependencies.
+
+Recommendation:
+
+Do not run live Codex holdout proofs yet. First improve general companion routing V3 and source-vs-deps routing, then rerun this holdout matrix. Live-agent spending only makes sense after at least a subset of this fresh matrix passes preflight.
+
+## Companion Routing V3 Rerun
+
+After adding generic role triples and stronger source-over-deps routing, the same fresh holdout matrix passed retrieval preflight.
+
+Artifacts:
+
+- `/tmp/kairn-holdout-matrix-v3b-20260510.json`
+- Matrix definition: `examples/bench/repo-matrix-holdout.json`
+
+Summary:
+
+| Gate | Result |
+| --- | ---: |
+| Repos | `7` |
+| State limit | `7/7` passed |
+| Retrieval quality | `7/7` passed strict gates |
+| Live-agent runs | still skipped |
+
+Returned files:
+
+| Repo | Top Returned Files |
+| --- | --- |
+| Werkzeug | `src/werkzeug/routing/map.py`, `src/werkzeug/routing/converters.py`, `src/werkzeug/routing/rules.py` |
+| Requests | `src/requests/sessions.py`, `src/requests/adapters.py`, `src/requests/models.py` |
+| Express | `lib/router/index.js`, `lib/router/route.js`, `lib/router/layer.js` |
+| gorilla/mux | `mux.go`, `route.go`, `middleware.go` |
+| Guava | `guava/src/com/google/common/base/Strings.java`, `guava/src/com/google/common/base/CharMatcher.java`, `android/guava/src/com/google/common/base/CharMatcher.java` |
+| Redis | `src/t_string.c`, `src/sds.c`, `src/sds.h` |
+| React | `packages/react-reconciler/src/ReactFiberWorkLoop.js`, `packages/react-reconciler/src/ReactFiberHooks.js`, `packages/react-reconciler/src/ReactFiberCacheComponent.js` |
+
+What changed:
+
+- Generic companion role groups now cover session/adapter/model, router/index/route/layer, map/rules/converter, mux/route/middleware, string/matcher, and fiber/hooks/workloop.
+- Multi-file directive delivery can include a capped third source file when a framework task has strong companion evidence.
+- Vendored dependency surfaces such as `deps/`, `vendor/`, `third_party/`, and `node_modules/` are demoted for implementation/debug prompts.
+- Short generic terms like `api` no longer behave like precise source anchors; short exact identifiers such as `SDS` still get source rescue through lexical/source scoring.
+
+Interpretation:
+
+This is a better generalization signal than the tuned live suite because the repos were fresh and the previous strict preflight failed `0/7`. It is still not a live-agent quality claim. The next live spend should use a small holdout subset from these repos, with quality gates and baseline vs hook comparison, before treating V3 as a product-level win.

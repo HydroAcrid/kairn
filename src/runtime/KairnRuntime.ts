@@ -276,7 +276,9 @@ export class KairnRuntime {
       : [];
     let related: Awaited<ReturnType<KairnRuntime["getRelatedFiles"]>> | undefined;
     let tests: Awaited<ReturnType<KairnRuntime["findTests"]>> | undefined;
-    const includeCompanionContext = !contextDecision.exactSourceHit && shouldUseCompanionContext(resolvedTask, companionPaths);
+    const includeCompanionContext =
+      (!contextDecision.exactSourceHit || contextDecision.recommendedDelivery === "multi_file_directive") &&
+      shouldUseCompanionContext(resolvedTask, companionPaths);
     const needsExpansion =
       quality.action === "emit" && !contextDecision.exactSourceHit && !includeCompanionContext && input.format !== "mcp_brief";
     if (needsExpansion) {
@@ -307,8 +309,9 @@ export class KairnRuntime {
       markTiming("findTestsMs", testsStartedAt);
       markTiming("expansionWallMs", expansionStartedAt);
     }
-    const topFileLimit = includeCompanionContext ? Math.max(limits.topFiles, 3) : limits.topFiles;
-    const files = contextDecision.exactSourceHit && directivePrimaryFile && !includeCompanionContext
+    const multiFileLimit = multiFileDirectiveFileLimit(resolvedTask, companionPaths, contextDecision);
+    const topFileLimit = includeCompanionContext ? Math.max(limits.topFiles, multiFileLimit) : limits.topFiles;
+    const files = contextDecision.exactSourceHit && directivePrimaryFile && !includeCompanionContext && contextDecision.recommendedDelivery !== "multi_file_directive"
       ? [directivePrimaryFile]
       : contextDecision.recommendedDelivery === "multi_file_directive" && directivePrimaryFile
         ? uniquePaths([
@@ -317,7 +320,7 @@ export class KairnRuntime {
             ...companionPaths,
             ...context.suggestedNextContext,
             ...context.files
-          ]).slice(0, Math.max(2, topFileLimit))
+          ]).slice(0, Math.max(multiFileLimit, topFileLimit))
       : uniquePaths([
           ...context.suggestedNextContext.slice(0, topFileLimit),
           ...companionPaths.slice(0, 2),
@@ -374,7 +377,7 @@ export class KairnRuntime {
       : effectiveAction === "shrink" && forceMinimalSourceFocus && sessionPolicy.files.length > 0
         ? sessionPolicy.files.slice(0, 1)
       : effectiveContextDecision.recommendedDelivery === "multi_file_directive"
-        ? files.slice(0, 2)
+        ? files.slice(0, multiFileLimit)
       : effectiveAction === "shrink" && sessionPolicy.files.length > 0
         ? sessionPolicy.files.slice(0, 1)
       : effectiveAction === "shrink" && includeCompanionContext
@@ -3295,6 +3298,20 @@ function shouldUseCompanionContext(task: string, companionPaths: string[]): bool
   );
 }
 
+function multiFileDirectiveFileLimit(
+  task: string,
+  companionPaths: string[],
+  decision: ContextValueDecision
+): number {
+  if (decision.recommendedDelivery !== "multi_file_directive") return 2;
+  if (companionPaths.length < 2) return 2;
+  const normalized = task.toLowerCase();
+  const asksFrameworkTriple =
+    /\b(router|route|routing|layer|middleware|session|adapter|model|map|rule|matcher|mux|fiber|hook|work loop|workloop|strings?|matcher|sds)\b/.test(normalized) &&
+    /\b(debug|fix|regression|behavior|dispatch|send|matching|scheduling|trimming|prefix|suffix)\b/.test(normalized);
+  return asksFrameworkTriple || (decision.companionTopScore ?? 0) >= 1_200 ? 3 : 2;
+}
+
 function isLikelyProductionSourceFile(filePath: string): boolean {
   const normalized = filePath.toLowerCase();
   if (/(^|\/)(tests?|testing|docs?|examples?|devtools|codemods|generated|fixtures?|testdata)\//.test(normalized)) return false;
@@ -3452,12 +3469,14 @@ function preferredStructuredDebugPrimary(primaryFile: string | undefined, compan
   const prioritized = companionMetadata
     .map((item) => {
       if (!item || typeof item !== "object") return undefined;
-      const record = item as { file?: unknown; reasons?: unknown };
+      const record = item as { file?: unknown; reasons?: unknown; score?: unknown };
       if (typeof record.file !== "string") return undefined;
       const reasons = Array.isArray(record.reasons) ? record.reasons.map(String) : [];
+      const score = typeof record.score === "number" ? record.score : 0;
       const priority = reasons.some((reason) =>
         reason.includes("route/path surface anchor") ||
         reason.includes("mentioned source filename") ||
+        reason.includes("router core sibling") ||
         reason.includes("named peer client companion") ||
         reason.includes("user/email companion") ||
         reason.includes("exact user/email companion") ||
@@ -3470,10 +3489,10 @@ function preferredStructuredDebugPrimary(primaryFile: string | undefined, compan
         : reasons.some((reason) => reason.includes("direct role basename anchor"))
           ? 1
           : 0;
-      return { file: record.file, priority };
+      return { file: record.file, priority, score };
     })
-    .filter((item): item is { file: string; priority: number } => Boolean(item))
-    .sort((a, b) => b.priority - a.priority);
+    .filter((item): item is { file: string; priority: number; score: number } => Boolean(item))
+    .sort((a, b) => b.priority - a.priority || b.score - a.score);
   const best = prioritized[0];
   return best && best.priority > 0 ? best.file : primaryFile;
 }

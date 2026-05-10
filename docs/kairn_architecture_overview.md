@@ -236,7 +236,14 @@ Signals used:
 - failure references,
 - repeated-context penalties.
 
-The companion stage is query-local and capped. It exists for multi-surface framework tasks where the first relevant file is not enough, such as router/dependency, controller/repository, scheduler/renderer, interceptor/dispatch, validation/callback, and Go router/context/engine surfaces. It should not reintroduce broad fanout after exact source hits.
+The companion stage is query-local and capped. It exists for multi-surface framework tasks where the first relevant file is not enough, such as router/dependency, controller/repository, scheduler/renderer, interceptor/dispatch, validation/callback, session/adapter/model, router/index/route/layer, fiber/hooks/workloop, and Go router/context/engine surfaces. It should not reintroduce broad fanout after exact source hits.
+
+Companion routing is evidence-gated:
+
+- exact single-source fixes stay one-file or silent,
+- structured debug tasks may use a two-file directive,
+- strong framework triples may use at most three production files,
+- docs/tests/examples/generated/vendor/dependency surfaces are demoted unless explicitly requested.
 
 Companion Routing V2 adds role-complement scoring. Kairn now prefers complementary source surfaces over same-role siblings: controller/repository over neighboring controllers, route/convertor over unrelated middleware, runtime/MCP over docs, and framework router/proxy/response-controller companions over cross-package helper surfaces. These rules must stay convention-based and language-general, not tuned to a single benchmark repo.
 
