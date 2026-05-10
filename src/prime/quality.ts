@@ -18,12 +18,17 @@ export function evaluatePrimeQuality(input: {
   context: ContextResponse;
   knownFiles: FileRecord[];
 }): PrimeQuality {
-  const scores = extractRankedScores(input.context.content);
+  const scores = input.context.rankedFiles?.map((file) => file.score).filter(Number.isFinite) ?? extractRankedScores(input.context.content);
   const topScore = scores[0] ?? 0;
   const secondScore = scores[1] ?? 0;
   const topGap = Number(Math.max(0, topScore - secondScore).toFixed(3));
   const normalizedTask = input.task.toLowerCase();
-  const exactPathMentioned = input.knownFiles.some((file) => normalizedTask.includes(file.path.toLowerCase()));
+  const exactPathMentioned = input.knownFiles.some((file) =>
+    normalizedTask.includes(file.path.toLowerCase()) && isSourceExactPathCandidate(file)
+  );
+  const debugSignal = isFailureDebugTask(input.task);
+  const exactPathShouldShrink = exactPathMentioned && debugSignal && isStructuredDebugPrompt(input.task);
+  const hasRetrievedFiles = input.context.files.length > 0;
   const reasons: string[] = [];
 
   if (exactPathMentioned) reasons.push("prompt already names an exact indexed file");
@@ -40,8 +45,10 @@ export function evaluatePrimeQuality(input: {
   if (input.context.files.length === 0) score -= 45;
   score = Math.round(Math.max(0, Math.min(100, score)));
 
-  const action = exactPathMentioned || score < 42
-    ? "suppress"
+  const action = exactPathMentioned
+    ? exactPathShouldShrink && hasRetrievedFiles ? "shrink" : "suppress"
+    : score < 42
+      ? debugSignal && hasRetrievedFiles ? "shrink" : "suppress"
     : score < 68 || topGap < 20
       ? "shrink"
       : "emit";
@@ -105,4 +112,21 @@ function extractRankedScores(content: string): number[] {
     if (Number.isFinite(score)) scores.push(score);
   }
   return scores;
+}
+
+function isSourceExactPathCandidate(file: FileRecord): boolean {
+  if (file.kind === "test" || file.kind === "doc") return false;
+  const normalized = file.path.toLowerCase();
+  return !/(^|\/)(tests?|docs?|examples?|fixtures?|generated|node_modules|dist|build)\//.test(normalized);
+}
+
+function isStructuredDebugPrompt(task: string): boolean {
+  const normalized = task.toLowerCase();
+  return task.length > 500 ||
+    normalized.includes("selected tests") ||
+    normalized.includes("requirements:") ||
+    normalized.includes("actual behavior") ||
+    normalized.includes("expected behavior") ||
+    normalized.includes("stack trace") ||
+    normalized.includes("internal server error");
 }

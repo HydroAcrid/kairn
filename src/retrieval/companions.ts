@@ -129,6 +129,8 @@ export function findCompanionCandidates(input: {
   const queryTerms = termSet(input.query);
   const roleSignals = detectRoleSignals(queryTerms, input.query);
   if (roleSignals.length === 0 && !hasMultiSurfaceQuerySignal(queryTerms)) return [];
+  const routeAnchors = routePathAnchors(input.query);
+  const mentionedSourceBasenames = mentionedSourceFileBasenames(input.query);
 
   const symbolsByFile = groupByFile(input.symbols, (symbol) => symbol.filePath);
   const chunksByFile = groupByFile(input.chunks, (chunk) => chunk.filePath);
@@ -165,6 +167,26 @@ export function findCompanionCandidates(input: {
     if (pathQueryHits.length > 0) {
       score += Math.min(360, pathQueryHits.length * 120);
       reasons.push(`specific path term match: ${pathQueryHits.slice(0, 4).join(", ")}`);
+    }
+    const basename = file.path.toLowerCase().split("/").at(-1) ?? "";
+    const mentionedBasename = mentionedSourceBasenames.has(basename);
+    if (mentionedBasename) {
+      score += 3200;
+      reasons.push(`mentioned source filename: ${basename}`);
+    }
+    const routeAnchorHits = routeAnchors.filter((anchor) => basename.includes(anchor) || pathTerms.has(anchor));
+    if (routeAnchorHits.length > 0) {
+      score += Math.min(2200, routeAnchorHits.length * 1900);
+      reasons.push(`route/path surface anchor: ${routeAnchorHits.slice(0, 2).join(", ")}`);
+    }
+    if (
+      routeAnchors.length > 0 &&
+      routeAnchorHits.length === 0 &&
+      specificQueryHits.length === 0 &&
+      /(filters?|requests?|responses?|views?|handlers?|helpers?|utils?)\./.test(basename)
+    ) {
+      score -= 420;
+      reasons.push("generic route-adjacent helper downranked");
     }
 
     for (const role of roleMatches) {
@@ -258,9 +280,13 @@ export function findCompanionCandidates(input: {
         score += 1200;
         reasons.push("router core sibling");
       }
-      if (isCrossPackageFrameworkSurface(seed.path, file.path)) {
+      if (isCrossPackageFrameworkSurface(seed.path, file.path) && !mentionedBasename && routeAnchorHits.length === 0) {
         score -= 900;
         reasons.push("cross-package framework surface downranked");
+      }
+      if (!isCompatibleCompanionLanguage(seed.language, file.language)) {
+        score -= 700;
+        reasons.push("cross-language companion downranked");
       }
     }
 
@@ -440,6 +466,68 @@ function isPrimaryUniversalSourcePath(file: Pick<FileRecord, "path" | "language"
   if (file.language === "ruby") return normalized.startsWith("lib/") || normalized.startsWith("app/") || normalized.includes("/lib/");
   return normalized.startsWith("src/") || normalized.includes("/src/") || normalized.startsWith("lib/") || normalized.includes("/lib/");
 }
+
+function isCompatibleCompanionLanguage(left: string, right: string): boolean {
+  if (!left || !right || left === "unknown" || right === "unknown") return true;
+  if (left === right) return true;
+  const jsFamily = new Set(["javascript", "typescript"]);
+  if (jsFamily.has(left) && jsFamily.has(right)) return true;
+  const cFamily = new Set(["c", "cpp"]);
+  if (cFamily.has(left) && cFamily.has(right)) return true;
+  return false;
+}
+
+function routePathAnchors(query: string): string[] {
+  const anchors = new Set<string>();
+  for (const match of query.matchAll(/(?:^|[\s('"“‘])\/([A-Za-z][A-Za-z0-9_-]*(?:\/[A-Za-z][A-Za-z0-9_-]*)*)/g)) {
+    const route = match[1]!;
+    if (route.includes(".") || route.includes("\\")) continue;
+    const parts = route
+      .split("/")
+      .map((part) => canonicalTerm(part.toLowerCase()))
+      .filter((part) => part.length >= 3 && !ROUTE_ANCHOR_STOP_TERMS.has(part));
+    const value = parts[0];
+    if (value) {
+      anchors.add(value);
+      if (value.endsWith("s") && value.length > 4) anchors.add(value.slice(0, -1));
+    }
+  }
+  return [...anchors];
+}
+
+function mentionedSourceFileBasenames(query: string): Set<string> {
+  const basenames = new Set<string>();
+  const pattern = /\b[A-Za-z0-9_.-]+\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)\b/g;
+  for (const match of query.matchAll(pattern)) {
+    const basename = match[0]!.toLowerCase().split(/[\\/]/).at(-1);
+    if (!basename || isLikelyTestPath(basename)) continue;
+    basenames.add(basename);
+  }
+  return basenames;
+}
+
+const ROUTE_ANCHOR_STOP_TERMS = new Set([
+  "api",
+  "app",
+  "apps",
+  "src",
+  "lib",
+  "libs",
+  "plugin",
+  "plugins",
+  "unit",
+  "units",
+  "util",
+  "utils",
+  "openlibrary",
+  "ansible",
+  "test",
+  "tests",
+  "docs",
+  "doc",
+  "http",
+  "https"
+]);
 
 function samePackageSurface(left: string, right: string): boolean {
   const leftParts = left.split("/");

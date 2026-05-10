@@ -11,6 +11,7 @@ import type {
   BenchmarkRunMode,
   ContextPrime,
   ContextQueryMode,
+  ContextRankedFile,
   ContextResponse,
   ContextResponseMode,
   ContextValueDecision,
@@ -21,6 +22,7 @@ import type {
   EvalRunReport,
   FailureContext,
   FileRecord,
+  HybridScoredResult,
   HookHandlingResult,
   HookOutputProfile,
   InitResult,
@@ -206,6 +208,9 @@ export class KairnRuntime {
     markTiming("findContextMs", findContextStartedAt);
     const primaryFile = context.suggestedNextContext[0] ?? context.files[0];
     const companionMetadata = Array.isArray(context.metadata?.companions) ? context.metadata.companions : [];
+    const companionPaths = companionMetadata
+      .map((item) => (item && typeof item === "object" && "file" in item ? (item as { file?: unknown }).file : undefined))
+      .filter((file): file is string => typeof file === "string");
     const companionTopScore = Math.max(
       0,
       ...companionMetadata
@@ -253,16 +258,18 @@ export class KairnRuntime {
       reasons: contextDecision.reasons,
       expectedSavingsRisk: contextDecision.expectedSavingsRisk
     };
-    const invariants = contextDecision.exactSourceHit && primaryFile
-      ? [this.getExactSourceEvidence({ sessionId: session.id, file: primaryFile, budget: 180 }).invariant].filter(
-          (invariant): invariant is NonNullable<typeof invariant> => Boolean(invariant)
-        )
+    const directivePrimaryFile = contextDecision.recommendedDelivery === "multi_file_directive"
+      ? preferredStructuredDebugPrimary(primaryFile, companionMetadata)
+      : primaryFile;
+    const invariants = directivePrimaryFile && (contextDecision.exactSourceHit || contextDecision.recommendedDelivery === "multi_file_directive")
+      ? [
+          contextDecision.exactSourceHit
+            ? this.getExactSourceEvidence({ sessionId: session.id, file: directivePrimaryFile, budget: 180 }).invariant
+            : buildContextInvariant({ task: resolvedTask, file: directivePrimaryFile })
+        ].filter((invariant): invariant is NonNullable<typeof invariant> => Boolean(invariant))
       : [];
     let related: Awaited<ReturnType<KairnRuntime["getRelatedFiles"]>> | undefined;
     let tests: Awaited<ReturnType<KairnRuntime["findTests"]>> | undefined;
-    const companionPaths = companionMetadata
-      .map((item) => (item && typeof item === "object" && "file" in item ? (item as { file?: unknown }).file : undefined))
-      .filter((file): file is string => typeof file === "string");
     const includeCompanionContext = !contextDecision.exactSourceHit && shouldUseCompanionContext(resolvedTask, companionPaths);
     const needsExpansion =
       quality.action === "emit" && !contextDecision.exactSourceHit && !includeCompanionContext && input.format !== "mcp_brief";
@@ -295,8 +302,16 @@ export class KairnRuntime {
       markTiming("expansionWallMs", expansionStartedAt);
     }
     const topFileLimit = includeCompanionContext ? Math.max(limits.topFiles, 3) : limits.topFiles;
-    const files = contextDecision.exactSourceHit && primaryFile && !includeCompanionContext
-      ? [primaryFile]
+    const files = contextDecision.exactSourceHit && directivePrimaryFile && !includeCompanionContext
+      ? [directivePrimaryFile]
+      : contextDecision.recommendedDelivery === "multi_file_directive" && directivePrimaryFile
+        ? uniquePaths([
+            directivePrimaryFile,
+            ...(primaryFile && primaryFile !== directivePrimaryFile ? [primaryFile] : []),
+            ...companionPaths,
+            ...context.suggestedNextContext,
+            ...context.files
+          ]).slice(0, Math.max(2, topFileLimit))
       : uniquePaths([
           ...context.suggestedNextContext.slice(0, topFileLimit),
           ...companionPaths.slice(0, 2),
@@ -339,10 +354,16 @@ export class KairnRuntime {
     const effectiveContextDecision = {
       ...contextDecision,
       action: effectiveAction,
-      recommendedDelivery: effectiveAction === "emit" ? contextDecision.recommendedDelivery ?? "full_prime" : effectiveAction === "shrink" ? "one_file_directive" as const : "none" as const
+      recommendedDelivery: effectiveAction === "emit"
+        ? contextDecision.recommendedDelivery ?? "full_prime"
+        : effectiveAction === "shrink"
+          ? contextDecision.recommendedDelivery === "multi_file_directive" ? "multi_file_directive" as const : "one_file_directive" as const
+        : "none" as const
     };
     const emittedFiles = effectiveAction === "suppress"
       ? []
+      : effectiveContextDecision.recommendedDelivery === "multi_file_directive"
+        ? files.slice(0, 2)
       : effectiveAction === "shrink" && sessionPolicy.files.length > 0
         ? sessionPolicy.files.slice(0, 1)
       : effectiveAction === "shrink" && includeCompanionContext
@@ -953,6 +974,7 @@ export class KairnRuntime {
       limit: 2
     });
     const scored = applyCompanionCandidatesToResults(initialScored, companionCandidates).slice(0, 12);
+    const rankedFiles = rankedFilesFromScored(scored);
     const repeatedFiles = scored.filter((file) => file.reasons.includes("already shown")).length;
     const decision = decideResponse({
       requestType: input.requestType ?? "find_context",
@@ -990,6 +1012,7 @@ export class KairnRuntime {
       metadata: {
         query,
         resultCount: scored.length,
+        rankedFiles: rankedFiles.slice(0, 12),
         companionCandidates: companionCandidates.map((candidate) => ({
           file: candidate.file.path,
           score: candidate.score,
@@ -1010,8 +1033,10 @@ export class KairnRuntime {
           ? [...decision.warnings, "No hybrid retrieval matches found. Try a more specific query."]
           : decision.warnings,
       suggestedNextContext: scored.slice(0, 5).map((file) => file.path),
+      rankedFiles,
       tokenEstimate: estimateTokens(content),
       metadata: {
+        rankedFiles,
         companions: companionCandidates.map((candidate) => ({
           file: candidate.file.path,
           score: candidate.score,
@@ -3368,6 +3393,46 @@ function exactPathCandidates(files: FileRecord[], query: string): string[] {
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
     .map((item) => item.path);
+}
+
+function rankedFilesFromScored(files: HybridScoredResult[]): ContextRankedFile[] {
+  return files.map((file) => ({
+    path: file.path,
+    kind: file.kind,
+    score: file.score,
+    reasons: file.reasons,
+    scores: {
+      semantic: file.semanticScore,
+      keyword: file.keywordScore,
+      bm25: file.bm25Score,
+      behavior: file.behaviorScore,
+      graph: file.graphScore,
+      intent: file.intentScore,
+      session: file.sessionScore,
+      importance: file.importanceScore,
+      git: file.gitScore
+    }
+  }));
+}
+
+function preferredStructuredDebugPrimary(primaryFile: string | undefined, companionMetadata: unknown[]): string | undefined {
+  const prioritized = companionMetadata
+    .map((item) => {
+      if (!item || typeof item !== "object") return undefined;
+      const record = item as { file?: unknown; reasons?: unknown };
+      if (typeof record.file !== "string") return undefined;
+      const reasons = Array.isArray(record.reasons) ? record.reasons.map(String) : [];
+      const priority = reasons.some((reason) => reason.includes("route/path surface anchor") || reason.includes("mentioned source filename"))
+        ? 2
+        : reasons.some((reason) => reason.includes("direct role basename anchor"))
+          ? 1
+          : 0;
+      return { file: record.file, priority };
+    })
+    .filter((item): item is { file: string; priority: number } => Boolean(item))
+    .sort((a, b) => b.priority - a.priority);
+  const best = prioritized[0];
+  return best && best.priority > 0 ? best.file : primaryFile;
 }
 
 function compoundQueryTerms(query: string): string[] {

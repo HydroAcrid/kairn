@@ -219,11 +219,24 @@ function scoreSourcePriority(
   const debugImplementationIntent = ["debug", "fix", "regression", "bug", "broken"].some((term) => queryTerms.has(term));
   const implementationIntent =
     !explicitDocsIntent && (debugImplementationIntent || ["generic", "backend", "data", "auth", "workflow", "ui"].includes(intent.primary));
+  const mentionedSourceBasenames = mentionedSourceFileBasenames(query);
 
   for (const file of files) {
     const reasons: string[] = [];
     let score = 0;
+    const basename = file.path.toLowerCase().split("/").at(-1) ?? "";
     const exactSymbolMatches = exactSymbolMatchesForQuery(queryTerms, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+
+    if (
+      implementationIntent &&
+      mentionedSourceBasenames.has(basename) &&
+      isLanguageSourceSurface(file) &&
+      file.kind !== "test" &&
+      !isNoisyImplementationSurface(file)
+    ) {
+      score += 2000;
+      reasons.push(`mentioned source filename: ${basename}`);
+    }
 
     if (exactSymbolMatches.length > 0) {
       score += Math.min(220, exactSymbolMatches.length * 90);
@@ -1031,11 +1044,7 @@ function normalizeSearchText(input: string): string {
 }
 
 function stripExampleLiterals(query: string): string {
-  return query
-    .replace(/`[^`]*`/g, " ")
-    .replace(/'[^']*'/g, " ")
-    .replace(/"[^"]*"/g, " ")
-    .replace(/\b[A-Za-z_][\w.]*\(([^)]{1,120})\)/g, (match) => match.replace(/\(([^)]*)\)/, "()"));
+  return query.replace(/\b[A-Za-z_][\w.]*\(([^)]{1,120})\)/g, (match) => match.replace(/\(([^)]*)\)/, "()"));
 }
 
 function hasExplicitTestIntent(queryTerms: Set<string>): boolean {
@@ -1049,6 +1058,21 @@ function groupByFile<T>(records: T[], filePathFor: (record: T) => string): Map<s
     grouped.set(filePath, [...(grouped.get(filePath) ?? []), record]);
   }
   return grouped;
+}
+
+function mentionedSourceFileBasenames(query: string): Set<string> {
+  const basenames = new Set<string>();
+  const pattern = /\b[A-Za-z0-9_.-]+\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)\b/g;
+  for (const match of query.matchAll(pattern)) {
+    const basename = match[0]!.toLowerCase().split(/[\\/]/).at(-1);
+    if (!basename || isLikelyMentionedTestBasename(basename)) continue;
+    basenames.add(basename);
+  }
+  return basenames;
+}
+
+function isLikelyMentionedTestBasename(basename: string): boolean {
+  return /^test_/.test(basename) || /(?:^|[_\-.])(test|tests|spec|specs)(?:[_\-.]|$)/.test(basename) || /_test\./.test(basename);
 }
 
 const GENERIC_DOMAIN_TERMS = new Set(["app", "apps", "application", "applications", "feature", "page", "screen"]);

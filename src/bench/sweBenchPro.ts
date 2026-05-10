@@ -28,6 +28,7 @@ export type SweBenchProPilot = {
   generatedAt: string;
   source: string;
   rows: number;
+  rawRows: SweBenchProRow[];
   suite: BenchmarkSuite;
   matrix: BenchmarkRepoMatrix;
   summary: {
@@ -119,6 +120,7 @@ export function buildSweBenchProPilot(input: {
     generatedAt: new Date().toISOString(),
     source: "ScaleAI/SWE-bench_Pro",
     rows: selected.length,
+    rawRows: selected,
     suite: {
       id: "swe-bench-pro-pilot-live",
       name: "SWE-Bench Pro Pilot Live Suite",
@@ -146,13 +148,14 @@ export function buildSweBenchProPilot(input: {
 export function writeSweBenchProPilot(input: {
   pilot: SweBenchProPilot;
   outDir: string;
-}): { suitePath: string; matrixPath: string; summaryPath: string; rowsPath: string } {
+}): { suitePath: string; matrixPath: string; summaryPath: string; rowsPath: string; rawRowsPath: string } {
   const outDir = path.resolve(input.outDir);
   fs.mkdirSync(outDir, { recursive: true });
   const suitePath = path.join(outDir, "swe-pro-pilot-suite.json");
   const matrixPath = path.join(outDir, "swe-pro-pilot-matrix.json");
   const summaryPath = path.join(outDir, "swe-pro-pilot-summary.json");
   const rowsPath = path.join(outDir, "swe-pro-pilot-rows.json");
+  const rawRowsPath = path.join(outDir, "swe-pro-pilot-raw.jsonl");
   fs.writeFileSync(suitePath, `${JSON.stringify(input.pilot.suite, null, 2)}\n`);
   fs.writeFileSync(matrixPath, `${JSON.stringify(input.pilot.matrix, null, 2)}\n`);
   fs.writeFileSync(summaryPath, `${JSON.stringify({
@@ -164,7 +167,8 @@ export function writeSweBenchProPilot(input: {
       suitePath,
       matrixPath,
       summaryPath,
-      rowsPath
+      rowsPath,
+      rawRowsPath
     }
   }, null, 2)}\n`);
   fs.writeFileSync(rowsPath, `${JSON.stringify(input.pilot.matrix.repos.map((repo) => ({
@@ -174,19 +178,21 @@ export function writeSweBenchProPilot(input: {
     language: repo.language,
     expectedFiles: repo.cases.flatMap((benchmarkCase) => benchmarkCase.expectedFiles)
   })), null, 2)}\n`);
-  return { suitePath, matrixPath, summaryPath, rowsPath };
+  fs.writeFileSync(rawRowsPath, `${input.pilot.rawRows.map((row) => JSON.stringify(row)).join("\n")}\n`);
+  return { suitePath, matrixPath, summaryPath, rowsPath, rawRowsPath };
 }
 
 function sweBenchRowToCase(row: SweBenchProRow): BenchmarkCase {
-  const patchFiles = primaryPatchFiles(row, 1);
+  const patchFiles = primaryPatchFiles(row, 2);
   const testFiles = diffFiles(row.test_patch).filter(isLikelyTestPath);
   const selectedTests = parseStringList(row.selected_test_files_to_run);
-  const testCommand = inferTestCommand(row, selectedTests);
+  const setupCommands = sweBenchSetupCommands(row, selectedTests);
+  const testCommand = setupCommands.length > 0 ? undefined : inferTestCommand(row, selectedTests);
   const seed = {
     repoUrl: `https://github.com/${row.repo}.git`,
     ref: row.base_commit,
     cloneDepth: 1,
-    ...(row.test_patch ? { setupPatch: row.test_patch } : {}),
+    ...(setupCommands.length > 0 ? { setupCommands } : row.test_patch ? { setupPatch: row.test_patch } : {}),
     ...(testCommand ? { testCommand } : {})
   };
   return {
@@ -246,10 +252,20 @@ function distillSweBenchQuery(row: SweBenchProRow): string {
     .slice(0, 16);
   return [
     `Debug/fix SWE-Bench Pro issue: ${firstMeaningfulLine(row.problem_statement) ?? row.instance_id}`,
+    row.requirements ? `Requirements/invariant terms: ${compactSweText(row.requirements, 900)}` : "",
+    row.interface ? `Interface notes: ${compactSweText(row.interface, 240)}` : "",
     identifiers.length > 0 ? `Code identifiers and domain terms: ${identifiers.slice(0, 28).join(" ")}` : "",
     testTerms.length > 0 ? `Related failing tests/files: ${unique(testTerms).slice(0, 16).join(" ")}` : "",
     "Find the smallest production source surface before broad scans."
   ].filter(Boolean).join("\n");
+}
+
+function compactSweText(text: string, maxLength: number): string {
+  return text
+    .replace(/\\n/g, "\n")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
 }
 
 function extractIssueIdentifiers(text: string): string[] {
@@ -289,6 +305,48 @@ function inferTestCommand(row: SweBenchProRow, selectedTests: string[]): string 
     if (tests.length > 0) return `go test ./... -run ${shellQuote(unique(tests).join("|"))}`;
   }
   return undefined;
+}
+
+function sweBenchSetupCommands(row: SweBenchProRow, selectedTests: string[]): string[] {
+  const beforeCommand = row.before_repo_set_cmd?.trim();
+  if (!beforeCommand) return [];
+  const setupCommit = referencedSetupCommit(beforeCommand, row.base_commit);
+  const testFiles = unique([
+    ...selectedTests.filter(looksLikeTestFilePath),
+    ...testFilesFromSetupCommand(beforeCommand)
+  ]);
+  return [
+    ...(setupCommit ? [`git fetch origin ${setupCommit} --depth 1`] : []),
+    beforeCommand,
+    ...(testFiles.length > 0
+      ? [`git add ${testFiles.map(shellQuote).join(" ")} && git -c user.email=kairn@example.com -c user.name=Kairn commit -m kairn-seed-tests --no-verify`]
+      : [])
+  ];
+}
+
+function referencedSetupCommit(command: string, baseCommit: string): string | undefined {
+  for (const match of command.matchAll(/\bgit\s+checkout\s+([0-9a-f]{32,40})\b/g)) {
+    const commit = match[1]!;
+    if (commit !== baseCommit) return commit;
+  }
+  return undefined;
+}
+
+function testFilesFromSetupCommand(command: string): string[] {
+  const files: string[] = [];
+  for (const line of command.split(/\r?\n/)) {
+    const checkoutFiles = /\bgit\s+checkout\s+[0-9a-f]{32,40}\s+--\s+(.+)$/.exec(line.trim())?.[1];
+    if (!checkoutFiles) continue;
+    for (const token of checkoutFiles.match(/"[^"]+"|'[^']+'|\S+/g) ?? []) {
+      const file = token.replace(/^['"]|['"]$/g, "");
+      if (looksLikeTestFilePath(file)) files.push(file);
+    }
+  }
+  return files;
+}
+
+function looksLikeTestFilePath(value: string): boolean {
+  return /(^|\/)(test|tests|testing|__tests__|spec|specs)(\/|$)|(?:\.test|\.spec)\.[cm]?[jt]sx?$|_test\.go$|Test\.java$/i.test(value);
 }
 
 function buildAgentPrompt(row: SweBenchProRow, patchFiles: string[], selectedTests: string[]): string {

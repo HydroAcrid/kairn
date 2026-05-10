@@ -1,4 +1,4 @@
-import type { FileRecord, IndexStateStats, RepoGraph, ScanResult, SemanticChunkRecord } from "./graph.js";
+import type { FileKind, FileRecord, IndexStateStats, RepoGraph, ScanResult, SemanticChunkRecord } from "./graph.js";
 import type { TaskSession } from "./runtime.js";
 
 export type ContextRequestType =
@@ -101,7 +101,7 @@ export type ContextValueDecision = {
   multiSurfaceSignal?: boolean;
   companionCount?: number;
   companionTopScore?: number;
-  recommendedDelivery?: "full_prime" | "one_file_directive" | "none";
+  recommendedDelivery?: "full_prime" | "one_file_directive" | "multi_file_directive" | "none";
   estimatedContextCost: number;
   expectedSavingsRisk: "low" | "medium" | "high";
   debugSignal: boolean;
@@ -127,8 +127,27 @@ export type ContextResponse = {
   related: string[];
   warnings: string[];
   suggestedNextContext: string[];
+  rankedFiles?: ContextRankedFile[];
   tokenEstimate: number;
   metadata?: Record<string, unknown>;
+};
+
+export type ContextRankedFile = {
+  path: string;
+  kind: FileKind;
+  score: number;
+  reasons: string[];
+  scores?: {
+    semantic?: number;
+    keyword?: number;
+    bm25?: number;
+    behavior?: number;
+    graph?: number;
+    intent?: number;
+    session?: number;
+    importance?: number;
+    git?: number;
+  };
 };
 
 export type ExactSourceEvidence = {

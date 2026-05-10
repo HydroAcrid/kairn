@@ -17,6 +17,7 @@ export function evaluateContextValue(input: {
   const primaryRecord = input.knownFiles.find((file) => file.path === primaryFile);
   const language = inferLanguage(primaryFile);
   const debugSignal = input.profile === "failure_debug" || isFailureDebugTask(input.task);
+  const structuredDebugSignal = isStructuredDebugTask(input.task);
   const sourceFixSignal = isSourceFixTask(input.task);
   const easyTaskSignal = isEasyTask(input.task);
   const vagueImprovementSignal = isVagueImprovementTask(input.task);
@@ -58,7 +59,13 @@ export function evaluateContextValue(input: {
       reasons.add("single-source fix should not receive broad context expansion");
     }
   }
-  const effectiveCompanionSignal = companionSignal && !exactSourceHit;
+  const structuredCompanionAllowed =
+    debugSignal &&
+    structuredDebugSignal &&
+    companionSignal &&
+    Boolean(primaryFile && isPrimarySourcePath(primaryFile)) &&
+    (multiFileSignal || (input.companionTopScore ?? 0) >= 520 || input.context.files.length > 1);
+  const effectiveCompanionSignal = companionSignal && (!exactSourceHit || structuredCompanionAllowed);
   if (effectiveCompanionSignal) {
     score += Math.min(18, Math.max(8, Math.floor((input.companionTopScore ?? 0) / 120)));
     reasons.add("query-local companion evidence supports multi-surface context");
@@ -109,7 +116,7 @@ export function evaluateContextValue(input: {
   }
 
   score = Math.round(Math.max(0, Math.min(100, score)));
-  const action = chooseAction({
+  let action = chooseAction({
     score,
     debugSignal,
     easyTaskSignal,
@@ -125,8 +132,30 @@ export function evaluateContextValue(input: {
     companionSignal: effectiveCompanionSignal,
     companionTopScore: input.companionTopScore
   });
+  const structuredMultiFileDirectiveSignal =
+    debugSignal &&
+    structuredDebugSignal &&
+    Boolean(primaryFile && isPrimarySourcePath(primaryFile)) &&
+    !wrongContextRisk &&
+    effectiveCompanionSignal &&
+    (multiFileSignal || (input.companionTopScore ?? 0) >= 520 || input.context.files.length > 1);
+  if (action === "emit" && structuredMultiFileDirectiveSignal) {
+    action = "shrink";
+    reasons.add("structured debug companion context should stay compact");
+  }
   const expectedSavingsRisk = action === "emit" ? "low" : action === "shrink" ? "medium" : "high";
-  const recommendedDelivery = action === "emit" ? "full_prime" : action === "shrink" ? "one_file_directive" : "none";
+  const multiFileDirective =
+    action === "shrink" &&
+    debugSignal &&
+    Boolean(primaryFile && isPrimarySourcePath(primaryFile)) &&
+    !wrongContextRisk &&
+    effectiveCompanionSignal &&
+    (structuredDebugSignal || multiFileSignal || (input.companionTopScore ?? 0) >= 520);
+  const recommendedDelivery = action === "emit"
+    ? "full_prime"
+    : action === "shrink"
+      ? multiFileDirective ? "multi_file_directive" : "one_file_directive"
+    : "none";
 
   return {
     score,
@@ -166,7 +195,9 @@ function chooseAction(input: {
   companionSignal: boolean;
   companionTopScore?: number | undefined;
 }): ContextValueDecision["action"] {
-  if (input.exactPathMentioned) return "suppress";
+  if (input.exactPathMentioned) {
+    return input.debugSignal && input.primarySource && input.multiFileSignal ? "shrink" : "suppress";
+  }
   if (input.wrongContextRisk && input.companionSignal && (input.companionTopScore ?? 0) >= 420) return "shrink";
   if (input.wrongContextRisk && input.score < 72) return "suppress";
   if (input.wrongContextRisk) return "shrink";
@@ -175,7 +206,10 @@ function chooseAction(input: {
   }
   if (input.exactSourceHit && !input.multiFileSignal) return "shrink";
   if (input.vagueImprovementSignal && !input.debugSignal) return input.score >= 88 && input.topGap >= 80 ? "shrink" : "suppress";
-  if (input.topScore <= 0 || input.score < 38) return "suppress";
+  if (input.topScore <= 0) {
+    return input.debugSignal && input.primarySource && (input.companionSignal || input.score >= 45) ? "shrink" : "suppress";
+  }
+  if (input.score < 38) return "suppress";
   if (input.language === "cpp" && input.score < 78) return "shrink";
   if (input.easyTaskSignal && !input.debugSignal && input.score < 82) {
     return input.primarySource && input.topScore >= 160 && input.topGap >= 20 ? "shrink" : "suppress";
@@ -296,6 +330,18 @@ function isSourceFixTask(task: string): boolean {
 function hasExplicitTestPathSignal(task: string): boolean {
   const normalized = task.toLowerCase();
   return /\b(test|tests|spec|pytest|vitest|jest)\b/.test(normalized) && /(\.|\/)(test|spec)|test_|\btests?\//.test(normalized);
+}
+
+function isStructuredDebugTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  return task.length > 500 ||
+    normalized.includes("selected tests") ||
+    normalized.includes("requirements:") ||
+    normalized.includes("actual behavior") ||
+    normalized.includes("expected behavior") ||
+    normalized.includes("stack trace") ||
+    normalized.includes("internal server error") ||
+    normalized.includes("swe-bench");
 }
 
 function isEasyTask(task: string): boolean {

@@ -14,7 +14,7 @@ import { classifyAssistance } from "../src/bench/assistClassification.js";
 import { buildSweBenchProPilot, loadSweBenchProRows, writeSweBenchProPilot } from "../src/bench/sweBenchPro.js";
 import { evaluateDiffScopes, evaluateSourceInvariants } from "../src/bench/sourceValidation.js";
 import { evaluateContextValue } from "../src/prime/contextValue.js";
-import { resolvePrimeProfile } from "../src/prime/quality.js";
+import { evaluatePrimeQuality, resolvePrimeProfile } from "../src/prime/quality.js";
 import { createFixtureRepo } from "./helpers.js";
 
 const CLI = ["tsx", "src/cli.ts"];
@@ -175,7 +175,11 @@ describe("benchmark suite and scoring", () => {
                 pass_to_pass: "[]",
                 issue_specificity: "['major_bug']",
                 issue_categories: "['back_end_knowledge']",
-                before_repo_set_cmd: "",
+                before_repo_set_cmd: [
+                  "git reset --hard 0123456789012345678901234567890123456789",
+                  "git clean -fd",
+                  "git checkout fedcba9876543210fedcba9876543210fedcba98 -- tests/test_app.py"
+                ].join("\n"),
                 selected_test_files_to_run: "[\"tests/test_app.py\"]",
                 dockerhub_tag: "example/flask:latest"
               }
@@ -190,14 +194,17 @@ describe("benchmark suite and scoring", () => {
 
       expect(pilot.suite.cases[0]?.expectedFiles).toEqual(["src/flask/app.py"]);
       expect(pilot.suite.cases[0]?.agentPrompt).not.toContain("src/flask/app.py");
-      expect(pilot.suite.cases[0]?.seed?.setupPatch).toContain("tests/test_app.py");
-      expect(pilot.suite.cases[0]?.seed?.testCommand).toBe("python3 -m pytest 'tests/test_app.py'");
+      expect(pilot.suite.cases[0]?.seed?.setupPatch).toBeUndefined();
+      expect(pilot.suite.cases[0]?.seed?.setupCommands?.[0]).toContain("git fetch origin");
+      expect(pilot.suite.cases[0]?.seed?.setupCommands?.at(-1)).toContain("kairn-seed-tests");
+      expect(pilot.suite.cases[0]?.seed?.testCommand).toBeUndefined();
       expect(pilot.matrix.repos[0]?.cases[0]?.mode).toBe("context");
       expect(pilot.matrix.repos[0]?.cases[0]?.query).toContain("dispatch");
       expect(pilot.matrix.repos[0]?.cases[0]?.query).not.toContain("src/flask/app.py");
       expect(pilot.matrix.repos[0]?.cases[0]?.seed).toBeUndefined();
       expect(fs.existsSync(outputs.suitePath)).toBe(true);
       expect(fs.existsSync(outputs.matrixPath)).toBe(true);
+      expect(fs.existsSync(outputs.rawRowsPath)).toBe(true);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -1011,6 +1018,141 @@ describe("benchmark suite and scoring", () => {
     expect(decision.action).toBe("shrink");
     expect(decision.exactSourceHit).toBe(true);
     expect(decision.recommendedDelivery).toBe("one_file_directive");
+  });
+
+  it("does not treat selected test paths as exact source mentions", () => {
+    const context = {
+      mode: "snippets" as const,
+      content: "- src/flask/app.py (source): dispatch request match",
+      files: ["src/flask/app.py"],
+      symbols: [],
+      related: [],
+      warnings: [],
+      suggestedNextContext: ["src/flask/app.py"],
+      rankedFiles: [
+        {
+          path: "src/flask/app.py",
+          kind: "source" as const,
+          score: 240,
+          reasons: ["structured source match"]
+        }
+      ],
+      tokenEstimate: 200
+    };
+    const quality = evaluatePrimeQuality({
+      task: [
+        "Fix the failing dispatch behavior.",
+        "Selected tests from SWE-Bench Pro metadata: tests/test_app.py",
+        "Expected behavior: dispatch should call the selected view function."
+      ].join("\n"),
+      context,
+      knownFiles: [
+        record("src/flask/app.py", "source"),
+        record("tests/test_app.py", "test")
+      ]
+    });
+
+    expect(quality.exactPathMentioned).toBe(false);
+    expect(quality.action).not.toBe("suppress");
+    expect(quality.topScore).toBe(240);
+  });
+
+  it("uses structured ranked scores when markdown has no score text", () => {
+    const quality = evaluatePrimeQuality({
+      task: "Debug a structured production failure with selected tests.",
+      context: {
+        mode: "snippets",
+        content: "OpenLibrary list parsing context without markdown score text.",
+        files: ["openlibrary/plugins/upstream/utils.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["openlibrary/plugins/upstream/utils.py"],
+        rankedFiles: [
+          {
+            path: "openlibrary/plugins/upstream/utils.py",
+            kind: "source",
+            score: 310,
+            reasons: ["source match"]
+          },
+          {
+            path: "openlibrary/plugins/openlibrary/lists.py",
+            kind: "source",
+            score: 260,
+            reasons: ["companion source"]
+          }
+        ],
+        tokenEstimate: 200
+      },
+      knownFiles: [
+        record("openlibrary/plugins/upstream/utils.py", "source"),
+        record("openlibrary/plugins/openlibrary/lists.py", "source")
+      ]
+    });
+
+    expect(quality.topScore).toBe(310);
+    expect(quality.topGap).toBe(50);
+    expect(quality.action).not.toBe("suppress");
+  });
+
+  it("chooses multi-file directive for structured debug prompts with companion evidence", () => {
+    const decision = evaluateContextValue({
+      task: [
+        "# /lists/add returns 500 error when POST data conflicts with query parameters",
+        "Requirements:",
+        "- When body data is present, do not pre-populate parent keys before unflatten.",
+        "Selected tests from SWE-Bench Pro metadata: openlibrary/plugins/openlibrary/tests/test_lists.py",
+        "Expected behavior: body data should populate key, name, description, and seeds."
+      ].join("\n\n"),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: [
+          "- openlibrary/plugins/upstream/utils.py (source, score 310): source match",
+          "- openlibrary/plugins/openlibrary/lists.py (source, score 260): companion source"
+        ].join("\n"),
+        files: ["openlibrary/plugins/upstream/utils.py", "openlibrary/plugins/openlibrary/lists.py"],
+        symbols: [],
+        related: ["openlibrary/plugins/openlibrary/lists.py"],
+        warnings: [],
+        suggestedNextContext: ["openlibrary/plugins/upstream/utils.py", "openlibrary/plugins/openlibrary/lists.py"],
+        rankedFiles: [
+          {
+            path: "openlibrary/plugins/upstream/utils.py",
+            kind: "source",
+            score: 310,
+            reasons: ["source match"]
+          },
+          {
+            path: "openlibrary/plugins/openlibrary/lists.py",
+            kind: "source",
+            score: 260,
+            reasons: ["companion source"]
+          }
+        ],
+        tokenEstimate: 360
+      },
+      quality: {
+        score: 68,
+        action: "shrink",
+        reasons: ["structured debug context"],
+        topScore: 310,
+        topGap: 50,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      knownFiles: [
+        record("openlibrary/plugins/upstream/utils.py", "source"),
+        record("openlibrary/plugins/openlibrary/lists.py", "source")
+      ],
+      repoFileCount: 6000,
+      estimatedContextCost: 900,
+      companionCount: 1,
+      companionTopScore: 650
+    });
+
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
   });
 
   it("suppresses exact-path prompts that do not need proactive context", () => {

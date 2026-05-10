@@ -176,8 +176,9 @@ export function formatShrunkPrimeContext(input: {
       : input.context.suggestedNextContext.length > 0
         ? input.context.suggestedNextContext
         : input.context.files
-  ).slice(0, 1);
+  ).slice(0, input.files && input.files.length > 1 ? 2 : 1);
   const symbolHints = extractPrimeSymbolHints(input.context.content).slice(0, 2);
+  const multiFileDirective = topFiles.length > 1;
   if (input.minimal) {
     const sections = [
       "# Kairn Fix Guardrail",
@@ -199,8 +200,10 @@ export function formatShrunkPrimeContext(input: {
     `Prime profile: ${input.profile}`,
     `Quality score: ${input.quality.score} (${input.quality.action})`,
     "",
-    "Start file:",
-    topFiles.length > 0 ? `- ${topFiles[0]}` : "- No high-confidence source file found.",
+    multiFileDirective ? "Primary source:" : "Start file:",
+    topFiles[0] ? `- ${topFiles[0]} - ${primaryReasonForFile(input.context, topFiles[0])}` : "- No high-confidence source file found.",
+    topFiles[1] ? "Companion source:" : "",
+    topFiles[1] ? `- ${topFiles[1]} - ${primaryReasonForFile(input.context, topFiles[1])}` : "",
     symbolHints.length > 0 ? `Symbols: ${symbolHints.join(", ")}` : "",
     "",
     input.includeSnippet === false ? "" : "Focused context:",
@@ -208,7 +211,9 @@ export function formatShrunkPrimeContext(input: {
     input.includeSnippet === false ? "" : "",
     ...formatInvariantSections(input.invariants, "Invariant to preserve:"),
     "",
-    "Stop condition: preserve the invariant in the start file first; avoid broad related-file/test scans unless this file cannot satisfy the invariant or a failure names another file."
+    multiFileDirective
+      ? "Stop condition: inspect only these source files first; avoid broad related-file/test scans unless neither file can satisfy the invariant or a failure names another file."
+      : "Stop condition: preserve the invariant in the start file first; avoid broad related-file/test scans unless this file cannot satisfy the invariant or a failure names another file."
   ].filter(Boolean);
   return fitSectionsToBudget(sections, input.budget);
 }

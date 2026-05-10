@@ -270,11 +270,14 @@ Context actions:
 
 - `emit`: send useful context.
 - `shrink`: send a tiny one-file/directive brief.
+- `shrink` with `multi_file_directive`: send a compact structured-debug brief with one active production source, one companion production source, one invariant, and no broad fanout.
 - `suppress`: send nothing to the agent, but record internal metrics.
 
 Automatic prompt hooks apply a stricter delivery rule than manual `kairn prime`. If Kairn finds one very strong production file or a risky multi-surface target, the hook emits a tiny no-snippet guardrail: start file, invariant/check guidance when available, and a stop condition. Full prime output is reserved for prompts where extra context is likely to change agent behavior without causing broad scans.
 
 Post-diagnose fix turns have an even smaller Fix Guardrail. When the ledger already knows the active production source and the task is a fix/debug turn, Kairn emits only the source path, source invariant, and stop condition. It intentionally omits snippets, companions, related tests, and quality scoring text so the agent edits the known source instead of reopening broad discovery.
+
+Structured-debug delivery handles issue-style prompts with requirements, selected tests, failure/debug language, or strong companion evidence. It is smaller than full prime but less brittle than one-file shrink. Route and named-source signals can reorder the two files so the likely active source appears before helper files.
 
 This controller is one of the most important quality safeguards. Bad primes increase token use and can reduce agent quality.
 
@@ -464,7 +467,9 @@ Diff-scope validation:
 SWE-Bench Pro pilot rule:
 
 - Public rows are useful for repo-matrix preflight and source-retrieval stress tests.
-- Live proof requires full untruncated task data or the official Docker evaluator path. The rows API can truncate large patches, so Kairn should not run leaderboard-style live claims from that source alone.
+- Live proof requires full untruncated task data and the official Docker evaluator path before token reductions count as valid SWE-Pro savings. The rows API can truncate large patches, so Kairn should not run leaderboard-style live claims from that source alone.
+- SWE-Pro suite generation should prefer `before_repo_set_cmd` over direct `test_patch`, fetch referenced test commits, and commit selected tests so solution diffs contain only agent changes.
+- Local required-file and invariant gates are prefilters only. If the official evaluator fails, active Kairn context is negative evidence even when local gates pass.
 
 ## Current Complexity Hotspots
 
