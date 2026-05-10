@@ -230,6 +230,29 @@ describe("MCP server", () => {
     expect(preparedParsed.invariantStatement).toContain("equal-length identical prefix");
     expect(preparedParsed.exactSourceEvidence?.verificationCommand).toBeTruthy();
 
+    const repeatedPrepare = await client.callTool({
+      name: "kairn_prepare_task",
+      arguments: {
+        task: "Fix the same seeded C++ starts_with regression now.",
+        sessionId: preparedParsed.sessionId,
+        budget: 700
+      }
+    });
+    const repeatedPrepareParsed = JSON.parse(firstTextContent(repeatedPrepare)!) as {
+      contextSuppressed?: boolean;
+      stopCondition?: string | null;
+      startFiles: string[];
+      files: string[];
+      nextToolCalls: unknown[];
+      primaryReason: string;
+    };
+    expect(repeatedPrepareParsed.contextSuppressed).toBe(true);
+    expect(repeatedPrepareParsed.stopCondition).toBe("source_evidence_already_shown");
+    expect(repeatedPrepareParsed.startFiles).toEqual([]);
+    expect(repeatedPrepareParsed.files).toEqual([]);
+    expect(repeatedPrepareParsed.nextToolCalls).toEqual([]);
+    expect(repeatedPrepareParsed.primaryReason).toContain("include/fmt/base.h");
+
     const next = await client.callTool({
       name: "kairn_get_next_context",
       arguments: {

@@ -90,6 +90,12 @@ Current tools:
 
 MCP is the read-gateway surface. Its job is not to dump large prime briefs. It should help agents take the next smallest useful read.
 
+MCP stop conditions are part of the product contract:
+
+- after `kairn_prepare_task` returns a high-confidence production source file, repeated compact prepare calls should usually return a stop-only payload with no files;
+- `kairn_get_next_context` should not expand after source evidence is sufficient unless a check fails, a file changes, or the task target changes;
+- `kairn_get_failure_context` may re-emit focused failure context, but should prefer the already-returned production source over broad tests or neighboring files.
+
 MCP follow-up calls have a stop condition: after Kairn has already returned sufficient source evidence and no new failure or diff exists, `kairn_get_next_context` should return a small "continue from the shown source" response instead of expanding into more files. Metrics record returned source/noise/test counts and token estimates per MCP call.
 
 ### Hooks And Watcher
@@ -334,6 +340,8 @@ Passing verification is now a first-class ledger signal. When a source invariant
 Post-diagnose source focus is the companion to that rule. Once a session has prior context and one active production source, later implementation/debugging/verification/cleanup turns can use `active_source_context_shrunk`: one source file, no companion fanout, and no snippet unless the file changed or a real failure references another file.
 
 This is Kairn's answer to long-conversation compaction. Instead of summarizing the whole chat into prose, Kairn keeps repo-grounded state and uses hashes/file refs to decide whether to repeat, shrink, suppress, or re-emit context.
+
+The ledger is now also a stop-condition source for MCP. When Kairn has already returned the active production file and no unresolved failure exists, MCP compact responses should prefer "continue from the known source" over returning more files. This keeps MCP useful as a read gateway without becoming a repeated-context generator.
 
 ## Failure-First Path
 

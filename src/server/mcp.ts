@@ -274,6 +274,49 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
   const coordination = runtime.getCoordinationState(prime.session.id);
   const decision = prime.contextDecision;
   const workingSet = isRecord(prime.metadata?.workingSet) ? prime.metadata.workingSet : undefined;
+  const priorMcpSource = coordination.mcpFiles.find(isMcpPrimarySourceFile);
+  const priorSourceStop = priorMcpSource
+    ? mcpPrepareStopAfterPriorSource({ task: prime.task, sourceFile: priorMcpSource, workingSet })
+    : undefined;
+  if (priorSourceStop) {
+    const tokenEstimate = estimateCompactPrepareTokens([], [], [], undefined);
+    return {
+      detail: "compact",
+      contextSuppressed: true,
+      sessionId: prime.session.id,
+      session: { id: prime.session.id, task: prime.session.task },
+      task: prime.task,
+      profile: prime.profile,
+      startFiles: [],
+      files: [],
+      companionFiles: [],
+      fallbackFiles: [],
+      exactSymbolHint: null,
+      exactSourceEvidence: null,
+      invariant: workingSetInvariant(workingSet) ?? prime.invariants?.[0] ?? null,
+      invariantStatement: workingSetInvariantStatement(workingSet) ?? prime.invariants?.[0]?.statement ?? null,
+      expectedBehavior: workingSetInvariantStatement(workingSet) ?? null,
+      verificationCommand: null,
+      workingSet,
+      primaryReason: priorSourceStop.reason,
+      stopCondition: priorSourceStop.stopCondition,
+      nextToolCalls: [],
+      recommendedToolCalls: [],
+      likelyTests: [],
+      tokenEstimate,
+      quality: prime.quality,
+      contextDecision: {
+        ...(decision ?? {}),
+        action: "suppress",
+        recommendedDelivery: "none",
+        reasons: uniqueValues([...(decision?.reasons ?? []), priorSourceStop.reason])
+      },
+      warnings: uniqueValues([...prime.warnings, priorSourceStop.reason]),
+      duplicateContextAvoided: coordination.duplicateContextAvoided + 1,
+      hookFiles: coordination.hookFiles.slice(0, 3),
+      priorMcpFiles: coordination.mcpFiles.slice(0, 3)
+    };
+  }
   if (decision?.action === "suppress") {
     return {
       detail: "compact",
@@ -487,6 +530,62 @@ function shouldIncludeMcpCompanion(prime: PrimeContextResult): boolean {
 
 function mcpExactSourceFile(runtime: KairnRuntime, sessionId: string): string | undefined {
   return runtime.getCoordinationState(sessionId).exactSourceFiles[0];
+}
+
+function mcpPrepareStopAfterPriorSource(input: {
+  task: string;
+  sourceFile: string;
+  workingSet: Record<string, unknown> | undefined;
+}): { stopCondition: string; reason: string } | undefined {
+  if (hasMcpExplicitMultiFileSignal(input.task)) return undefined;
+  const phase = mcpTaskPhase(input.task);
+  const invariant = workingSetInvariantStatement(input.workingSet);
+  const lastPassingVerification = isRecord(input.workingSet?.lastPassingVerification) ? input.workingSet?.lastPassingVerification : undefined;
+  const lastFailure = isRecord(input.workingSet?.lastFailure) ? input.workingSet?.lastFailure : undefined;
+  const unresolvedFailure = Boolean(lastFailure) && !lastPassingVerification;
+  if (unresolvedFailure) return undefined;
+
+  if (lastPassingVerification && (phase === "verification" || phase === "cleanup")) {
+    return {
+      stopCondition: "verification_already_passed",
+      reason: `Kairn already returned ${input.sourceFile} and the latest verification passed. Continue from the existing source and invariant${invariant ? `: ${invariant}` : ""}; do not call more Kairn unless a new check fails or the target changes.`
+    };
+  }
+  if (phase === "verification" || phase === "cleanup") {
+    return {
+      stopCondition: "source_evidence_already_shown",
+      reason: `Kairn already returned ${input.sourceFile}. Run the smallest verification or cleanup check from that source; do not request more Kairn context unless it fails.`
+    };
+  }
+  if (phase === "implementation" || phase === "debugging") {
+    return {
+      stopCondition: "source_evidence_already_shown",
+      reason: `Kairn already returned ${input.sourceFile}. Use that source file first; ask Kairn again only after a concrete failure, file change, or different target.`
+    };
+  }
+  return undefined;
+}
+
+function mcpTaskPhase(task: string): "discovery" | "implementation" | "debugging" | "verification" | "cleanup" {
+  const text = task.toLowerCase();
+  if (/\b(cleanup|clean up|review diff|final diff|final review|summarize)\b/.test(text)) return "cleanup";
+  if (/\b(verify|verification|test|check|typecheck|lint|build)\b/.test(text)) return "verification";
+  if (/\b(debug|failure|failing|regression|error|exception)\b/.test(text)) return "debugging";
+  if (/\b(fix|repair|patch|edit|change|update|implement)\b/.test(text)) return "implementation";
+  return "discovery";
+}
+
+function hasMcpExplicitMultiFileSignal(task: string): boolean {
+  return /\b(multi[-\s]?file|multiple files|across files|across modules|between .+ and .+|wire .+ and .+|integrat(?:e|ion)|companion|controller.+repository|repository.+controller|router.+dependency|dependency.+router|scheduler.+renderer|renderer.+scheduler|interceptor.+dispatch|dispatch.+interceptor)\b/i.test(task);
+}
+
+function workingSetInvariant(workingSet: Record<string, unknown> | undefined): unknown {
+  return isRecord(workingSet?.currentInvariant) ? workingSet?.currentInvariant : undefined;
+}
+
+function workingSetInvariantStatement(workingSet: Record<string, unknown> | undefined): string | undefined {
+  const invariant = workingSetInvariant(workingSet);
+  return isRecord(invariant) && typeof invariant.statement === "string" ? invariant.statement : undefined;
 }
 
 function estimateCompactPrepareTokens(startFiles: string[], likelyTests: string[], nextToolCalls: unknown[], exactSourceEvidence?: unknown): number {

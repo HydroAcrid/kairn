@@ -429,6 +429,28 @@ export type BenchmarkProofReport = {
     met: number;
     missed: number;
   }>>;
+  caseRepeatClassifications?: Array<{
+    mode: BenchmarkAssistanceMode;
+    caseId: string;
+    repeats: number;
+    qualityPasses: number;
+    activeRuns: number;
+    suppressedRuns: number;
+    baselineMedianTokens?: number;
+    modeMedianTokens?: number;
+    medianSavedTokens?: number;
+    medianSavingsRate?: number;
+    classifications: Partial<Record<BenchmarkAssistClassification, number>>;
+    verdict:
+      | "insufficient_data"
+      | "consistent_win"
+      | "consistent_abstention"
+      | "missed_opportunity"
+      | "over_assist"
+      | "quality_risk"
+      | "volatile";
+    recommendation: string;
+  }>;
   observedTokenDeltas: {
     passiveVsBaseline?: BenchmarkComparison["observedTokenDelta"];
     proactiveVsBaseline?: BenchmarkComparison["observedTokenDelta"];

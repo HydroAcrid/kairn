@@ -121,10 +121,12 @@ async function runEnduranceMode(input: {
     }
     const ledgerEvents = runtime && sessionId ? runtime.getSessionLedger(sessionId) : [];
     const ledger = runtime && sessionId ? runtime.summarizeSessionLedger(sessionId) : undefined;
+    const metrics = runtime && sessionId ? runtime.getMetrics(sessionId) : undefined;
     const assistanceActions = buildAssistanceActions({
       mode: input.mode,
       turns: turnResults,
-      ledgerEvents
+      ledgerEvents,
+      mcpToolCallCount: metrics?.byKind.mcp_tool_call?.events ?? 0
     });
     const assistanceStatus = classifyEnduranceAssistanceStatus(input.mode, assistanceActions);
     return {
@@ -148,7 +150,8 @@ async function runEnduranceMode(input: {
         finalSourceInvariantFailures: finalSourceInvariantResult.failures,
         finalDiffScopePassed: finalDiffScopeResult.passed,
         finalDiffScopeViolations: finalDiffScopeResult.violations,
-        finalChangedFiles: finalDiffScopeResult.changedFiles
+        finalChangedFiles: finalDiffScopeResult.changedFiles,
+        actualMcpToolCalls: metrics?.byKind.mcp_tool_call?.events ?? 0
       } as Record<string, unknown>
     };
   } finally {
@@ -529,6 +532,7 @@ function buildAssistanceActions(input: {
   mode: EnduranceMode;
   turns: BenchmarkEnduranceTurnResult[];
   ledgerEvents: ReturnType<KairnRuntime["getSessionLedger"]>;
+  mcpToolCallCount?: number | undefined;
 }): BenchmarkEnduranceModeReport["assistanceActions"] {
   if (input.mode === "baseline") {
     return {
@@ -540,7 +544,7 @@ function buildAssistanceActions(input: {
     };
   }
   const decisions = input.turns.map((turn) => typeof turn.metadata.primeDecision === "string" ? turn.metadata.primeDecision : "");
-  const mcpCalls = input.ledgerEvents.filter((event) => event.source === "mcp").length;
+  const mcpCalls = input.mcpToolCallCount ?? 0;
   const failureContexts = input.ledgerEvents.filter(
     (event) => event.kind === "context_shown" && event.metadata.policyReason === "failure_reemitted"
   ).length;

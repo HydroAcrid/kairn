@@ -72,6 +72,24 @@ describe("benchmark suite and scoring", () => {
     expect(suite.cases.every((item) => item.mode === "agent")).toBe(true);
   });
 
+  it("loads the seeded holdout light live-agent suite example", () => {
+    const suite = loadBenchmarkSuite({
+      suitePath: path.resolve("examples/bench/seeded-holdout-live-light.json"),
+      files: []
+    });
+
+    expect(suite.id).toBe("seeded-holdout-live-light");
+    expect(suite.cases.map((item) => item.id)).toEqual(
+      expect.arrayContaining(["js-express-layer-fast-star", "python-requests-redirects"])
+    );
+    expect(suite.cases.find((item) => item.id === "js-express-layer-fast-star")?.requiredTouchedFiles).toEqual([
+      "lib/router/layer.js"
+    ]);
+    expect(suite.cases.find((item) => item.id === "python-requests-redirects")?.seed?.setupPatchFile).toMatch(
+      /requests-disable-redirects\.patch$/
+    );
+  });
+
   it("loads seeded agent benchmark case metadata", () => {
     const root = createFixtureRepo();
     const patchPath = path.join(root, "seed.patch");
@@ -2800,6 +2818,13 @@ describe("benchmark runtime and CLI", () => {
     ) as {
       observedTokenDeltas: { proactiveVsBaseline?: { beforeTokens: number; afterTokens: number; savedTokens: number } };
       aggregate?: { repeat: number; deltas: { manualPrimeVsBaseline?: { savedTokens?: number; savingsRate?: number } } };
+      caseRepeatClassifications?: Array<{
+        mode: string;
+        caseId: string;
+        repeats: number;
+        verdict: string;
+        medianSavedTokens?: number;
+      }>;
       proactive: { results: Array<{ metadata: Record<string, unknown> }> };
       mcpFirst?: { results: Array<{ metadata: Record<string, unknown>; observedCodexTokens?: number }> };
       realMcpFirst?: { results: Array<{ metadata: Record<string, unknown>; observedCodexTokens?: number }> };
@@ -2825,6 +2850,17 @@ describe("benchmark runtime and CLI", () => {
     expect(proof.hybridMcpBrief?.results[0]?.observedCodexTokens).toBe(3000);
     expect(proof.aggregate?.repeat).toBe(2);
     expect(proof.aggregate?.deltas.manualPrimeVsBaseline?.savedTokens).toBe(2000);
+    expect(proof.caseRepeatClassifications).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          mode: "manual_prime",
+          caseId: "agent-mobile",
+          repeats: 2,
+          verdict: "consistent_win",
+          medianSavedTokens: 2000
+        })
+      ])
+    );
   });
 
   it("supports kairn codex dry-run and MCP instruction setup", () => {

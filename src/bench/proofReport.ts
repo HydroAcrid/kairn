@@ -1,4 +1,13 @@
-import type { BenchmarkAssistanceMode, BenchmarkComparison, BenchmarkProofReport, BenchmarkReport } from "../types.js";
+import type {
+  BenchmarkAssistClassification,
+  BenchmarkAssistanceMode,
+  BenchmarkAssistanceStatus,
+  BenchmarkComparison,
+  BenchmarkProofReport,
+  BenchmarkReport,
+  BenchmarkResultRecord
+} from "../types.js";
+import { classifyAssistance } from "./assistClassification.js";
 import { compareBenchmarkReports } from "./score.js";
 import { uniqueStrings } from "../utils/collections.js";
 
@@ -83,7 +92,26 @@ export function buildBenchmarkProofReport(input: {
       hybrid_mcp_brief: input.hybridMcpBrief
     }
   });
+  const caseRepeatClassifications = buildCaseRepeatClassifications({
+    baseline: input.baseline,
+    reports: {
+      prompt_only: input.promptOnly,
+      prompt_plus_hooks: input.promptPlusHooks,
+      manual_prime: input.manualPrime,
+      hook_full_prime: input.hookFullPrime,
+      hook_tiny_directive: input.hookTinyDirective,
+      hook_tiny_with_failures: input.hookTinyWithFailures,
+      mcp_first: input.mcpFirst,
+      real_mcp_first: input.realMcpFirst,
+      mcp_first_plus_hook_full_prime: input.mcpFirstPlusHookFullPrime,
+      hybrid_mcp_brief: input.hybridMcpBrief
+    }
+  });
   const recommendations = uniqueStrings([
+    ...(input.repeat > 1
+      ? ["Repeat proof: prefer aggregate medians and case repeat classifications over the latest-run observedTokenDeltas field."]
+      : []),
+    ...aggregateRecommendations(aggregate),
     recommendationForDelta("Prompt-only hooks vs baseline", promptOnlyVsBaseline?.observedTokenDelta),
     recommendationForDelta("Prompt+tool hooks vs baseline", promptPlusVsBaseline?.observedTokenDelta),
     recommendationForDelta("Manual prime vs baseline", manualPrimeVsBaseline?.observedTokenDelta),
@@ -94,8 +122,12 @@ export function buildBenchmarkProofReport(input: {
     recommendationForDelta("Real MCP-first vs baseline", realMcpFirstVsBaseline?.observedTokenDelta),
     recommendationForDelta("MCP-first + full-prime hook vs baseline", mcpFirstPlusHookFullPrimeVsBaseline?.observedTokenDelta),
     recommendationForDelta("Hybrid MCP brief vs baseline", hybridMcpBriefVsBaseline?.observedTokenDelta),
+    ...caseRepeatClassifications
+      .filter((item) => item.verdict !== "consistent_win" && item.verdict !== "consistent_abstention")
+      .slice(0, 6)
+      .map((item) => `${item.mode}/${item.caseId}: ${item.recommendation}`),
     ...(manualPrimeVsBaseline?.recommendations.slice(0, 4) ?? promptOnlyVsBaseline?.recommendations.slice(0, 4) ?? [])
-  ]);
+]);
   const observedTokenDeltas = {
     ...(promptOnlyVsBaseline?.observedTokenDelta ? { promptOnlyVsBaseline: promptOnlyVsBaseline.observedTokenDelta } : {}),
     ...(promptPlusVsBaseline?.observedTokenDelta ? { promptPlusHooksVsBaseline: promptPlusVsBaseline.observedTokenDelta } : {}),
@@ -153,6 +185,7 @@ export function buildBenchmarkProofReport(input: {
       mcpFirstPlusHookFullPrimeVsBaseline,
       hybridMcpBriefVsBaseline
     ]),
+    ...(caseRepeatClassifications.length > 0 ? { caseRepeatClassifications } : {}),
     observedTokenDeltas,
     caseDeltas,
     recommendations
@@ -211,6 +244,157 @@ function buildProofAggregate(input: {
   };
 }
 
+function buildCaseRepeatClassifications(input: {
+  baseline: BenchmarkReport[];
+  reports: Partial<Record<BenchmarkAssistanceMode, BenchmarkReport[]>>;
+}): NonNullable<BenchmarkProofReport["caseRepeatClassifications"]> {
+  const rows: NonNullable<BenchmarkProofReport["caseRepeatClassifications"]> = [];
+  for (const [mode, reports] of Object.entries(input.reports) as Array<[BenchmarkAssistanceMode, BenchmarkReport[] | undefined]>) {
+    if (!reports || reports.length === 0) continue;
+    const observations = new Map<string, Array<{
+      baselineTokens?: number;
+      modeTokens?: number;
+      savedTokens?: number;
+      classification: BenchmarkAssistClassification;
+      assistanceStatus: BenchmarkAssistanceStatus;
+      qualityGatePassed: boolean;
+    }>>();
+
+    const pairs = Math.min(input.baseline.length, reports.length);
+    for (let index = 0; index < pairs; index += 1) {
+      const baseline = input.baseline[index]!;
+      const report = reports[index]!;
+      const baselineByCase = new Map(baseline.results.map((result) => [result.caseId, result]));
+      for (const result of report.results) {
+        const before = baselineByCase.get(result.caseId);
+        if (!before) continue;
+        const baselineTokens = before.observedCodexTokens;
+        const modeTokens = result.observedCodexTokens;
+        const savedTokens = baselineTokens !== undefined && modeTokens !== undefined ? baselineTokens - modeTokens : undefined;
+        const qualityGatePassed = resultQualityGatePassed(result);
+        const assistanceStatus = resultAssistanceStatus(result);
+        const classification = classifyAssistance({
+          assistanceStatus,
+          qualityGatePassed,
+          savedTokens,
+          baselineTokens,
+          baselineQualityGatePassed: resultQualityGatePassed(before),
+          turnCount: 1
+        });
+        const bucket = observations.get(result.caseId) ?? [];
+        bucket.push({
+          ...(baselineTokens !== undefined ? { baselineTokens } : {}),
+          ...(modeTokens !== undefined ? { modeTokens } : {}),
+          ...(savedTokens !== undefined ? { savedTokens } : {}),
+          classification: classification.assistClassification,
+          assistanceStatus,
+          qualityGatePassed
+        });
+        observations.set(result.caseId, bucket);
+      }
+    }
+
+    for (const [caseId, items] of observations) {
+      const classifications = countClassifications(items.map((item) => item.classification));
+      const baselineTokens = items.map((item) => item.baselineTokens).filter((value): value is number => value !== undefined);
+      const modeTokens = items.map((item) => item.modeTokens).filter((value): value is number => value !== undefined);
+      const savedTokens = items.map((item) => item.savedTokens).filter((value): value is number => value !== undefined);
+      const baselineMedianTokens = baselineTokens.length > 0 ? median(baselineTokens) : undefined;
+      const modeMedianTokens = modeTokens.length > 0 ? median(modeTokens) : undefined;
+      const medianSavedTokens = savedTokens.length > 0 ? median(savedTokens) : undefined;
+      const medianSavingsRate = baselineMedianTokens && baselineMedianTokens > 0 && medianSavedTokens !== undefined
+        ? Number((medianSavedTokens / baselineMedianTokens).toFixed(4))
+        : undefined;
+      const activeRuns = items.filter((item) => item.assistanceStatus === "active").length;
+      const suppressedRuns = items.filter((item) => item.assistanceStatus === "passive_suppressed").length;
+      const qualityPasses = items.filter((item) => item.qualityGatePassed).length;
+      const verdict = repeatVerdict({
+        repeats: items.length,
+        classifications,
+        qualityPasses,
+        activeRuns,
+        suppressedRuns
+      });
+      rows.push({
+        mode,
+        caseId,
+        repeats: items.length,
+        qualityPasses,
+        activeRuns,
+        suppressedRuns,
+        ...(baselineMedianTokens !== undefined ? { baselineMedianTokens } : {}),
+        ...(modeMedianTokens !== undefined ? { modeMedianTokens } : {}),
+        ...(medianSavedTokens !== undefined ? { medianSavedTokens } : {}),
+        ...(medianSavingsRate !== undefined ? { medianSavingsRate } : {}),
+        classifications,
+        verdict,
+        recommendation: repeatRecommendation({ mode, caseId, verdict, classifications, medianSavedTokens, medianSavingsRate })
+      });
+    }
+  }
+
+  return rows.sort((a, b) => a.mode.localeCompare(b.mode) || a.caseId.localeCompare(b.caseId));
+}
+
+function countClassifications(values: BenchmarkAssistClassification[]): Partial<Record<BenchmarkAssistClassification, number>> {
+  const counts: Partial<Record<BenchmarkAssistClassification, number>> = {};
+  for (const value of values) {
+    counts[value] = (counts[value] ?? 0) + 1;
+  }
+  return counts;
+}
+
+function repeatVerdict(input: {
+  repeats: number;
+  classifications: Partial<Record<BenchmarkAssistClassification, number>>;
+  qualityPasses: number;
+  activeRuns: number;
+  suppressedRuns: number;
+}): NonNullable<BenchmarkProofReport["caseRepeatClassifications"]>[number]["verdict"] {
+  if (input.repeats < 2) return "insufficient_data";
+  if (input.qualityPasses < input.repeats) return "quality_risk";
+  const valid = input.classifications.valid_assist ?? 0;
+  const abstained = input.classifications.correct_abstention ?? 0;
+  const missed = (input.classifications.missed_savings_opportunity ?? 0) + (input.classifications.missed_quality_opportunity ?? 0);
+  const over = input.classifications.over_assist ?? 0;
+  const harmful = (input.classifications.harmful_invalid_assist ?? 0) + (input.classifications.passive_quality_regression ?? 0);
+  if (harmful > 0) return "quality_risk";
+  if (valid === input.repeats && input.activeRuns === input.repeats) return "consistent_win";
+  if (abstained === input.repeats && input.suppressedRuns === input.repeats) return "consistent_abstention";
+  if (missed >= Math.ceil(input.repeats / 2)) return "missed_opportunity";
+  if (over >= Math.ceil(input.repeats / 2)) return "over_assist";
+  return "volatile";
+}
+
+function repeatRecommendation(input: {
+  mode: BenchmarkAssistanceMode;
+  caseId: string;
+  verdict: NonNullable<BenchmarkProofReport["caseRepeatClassifications"]>[number]["verdict"];
+  classifications: Partial<Record<BenchmarkAssistClassification, number>>;
+  medianSavedTokens?: number | undefined;
+  medianSavingsRate?: number | undefined;
+}): string {
+  const savings = input.medianSavedTokens !== undefined && input.medianSavingsRate !== undefined
+    ? ` median ${input.medianSavedTokens} tokens (${Math.round(input.medianSavingsRate * 100)}%)`
+    : "";
+  switch (input.verdict) {
+    case "consistent_win":
+      return `Consistent active win for ${input.mode}${savings}.`;
+    case "consistent_abstention":
+      return `Consistent correct abstention; keep this class quiet.`;
+    case "missed_opportunity":
+      return `Repeated missed opportunity; Kairn stayed passive while baseline was expensive.`;
+    case "over_assist":
+      return `Repeated over-assist; tighten emit confidence or suppress this behavior class.`;
+    case "quality_risk":
+      return `Quality risk repeated; do not count token reductions until quality stabilizes.`;
+    case "volatile":
+      return `Mixed repeat outcomes (${JSON.stringify(input.classifications)}); require more repeats before tuning from ${input.caseId}.`;
+    case "insufficient_data":
+      return `Only one repeat; treat ${input.mode}/${input.caseId} as exploratory evidence.`;
+  }
+}
+
 function aggregateDelta(beforeMedianTokens: number | undefined, afterMedianTokens: number | undefined) {
   if (beforeMedianTokens === undefined || afterMedianTokens === undefined) return {};
   const savedTokens = beforeMedianTokens - afterMedianTokens;
@@ -249,6 +433,27 @@ function recommendationForDelta(label: string, delta: BenchmarkComparison["obser
   return `${label}: increased observed Codex usage by ${Math.abs(delta.savedTokens)} tokens (${Math.round(Math.abs(delta.savingsRate) * 100)}%).`;
 }
 
+function aggregateRecommendations(aggregate: NonNullable<BenchmarkProofReport["aggregate"]>): string[] {
+  const labels: Record<string, string> = {
+    promptOnlyVsBaseline: "Prompt-only median",
+    promptPlusHooksVsBaseline: "Prompt+tool hooks median",
+    manualPrimeVsBaseline: "Manual prime median",
+    hookFullPrimeVsBaseline: "Hook full-prime median",
+    realMcpFirstVsBaseline: "Real MCP-first median",
+    mcpFirstPlusHookFullPrimeVsBaseline: "MCP-first + hook median",
+    hybridMcpBriefVsBaseline: "Hybrid MCP brief median"
+  };
+  return Object.entries(aggregate.deltas).flatMap(([key, value]) => {
+    if (!value || value.savedTokens === undefined || value.savingsRate === undefined) return [];
+    const label = labels[key] ?? key;
+    return [
+      value.savedTokens >= 0
+        ? `${label}: saved ${value.savedTokens} observed Codex tokens by repeat median (${Math.round(value.savingsRate * 100)}%).`
+        : `${label}: increased observed Codex tokens by repeat median ${Math.abs(value.savedTokens)} (${Math.round(Math.abs(value.savingsRate) * 100)}%).`
+    ];
+  });
+}
+
 function summarizeAssistClassifications(deltas: BenchmarkProofReport["observedTokenDeltas"]): NonNullable<BenchmarkProofReport["abstentionSummary"]> {
   const summary: NonNullable<BenchmarkProofReport["abstentionSummary"]> = {};
   for (const delta of Object.values(deltas)) {
@@ -276,4 +481,33 @@ function summarizeBehaviorTargetComparisons(comparisons: Array<BenchmarkComparis
 function reportQualityGatePassed(report: BenchmarkReport): boolean {
   const scored = report.results.filter((result) => result.taskOutcome !== "skipped");
   return scored.length > 0 && scored.every((result) => result.metadata.qualityGatePassed === true);
+}
+
+function resultQualityGatePassed(result: BenchmarkResultRecord): boolean {
+  return result.taskOutcome === "pass" && result.metadata.qualityGatePassed === true;
+}
+
+function resultAssistanceStatus(result: BenchmarkResultRecord): BenchmarkAssistanceStatus {
+  const hasActiveAssistance =
+    result.hookContextEmitted > 0 ||
+    numberMetadata(result.metadata.actualMcpToolCalls ?? result.metadata.mcpToolCalls) > 0 ||
+    result.metadata.primeEmitted === true ||
+    numberMetadata(result.metadata.primeEmitted) > 0 ||
+    result.metadata.primeDecision === "emit" ||
+    result.metadata.primeDecision === "shrink" ||
+    result.metadata.contextDecision === "emit" ||
+    result.metadata.contextDecision === "shrink" ||
+    result.metadata.assistanceMode === "manual_prime";
+  if (hasActiveAssistance) return "active";
+  const hasSuppressedAssistance =
+    result.hookContextSuppressed > 0 ||
+    result.metadata.primeSuppressed === true ||
+    numberMetadata(result.metadata.primeSuppressed) > 0 ||
+    result.metadata.primeDecision === "suppress" ||
+    result.metadata.contextDecision === "suppress";
+  return hasSuppressedAssistance ? "passive_suppressed" : "none";
+}
+
+function numberMetadata(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }

@@ -1,0 +1,72 @@
+{
+  "id": "seeded-holdout-live-light",
+  "name": "Seeded Holdout Live Light Proofs",
+  "cases": [
+    {
+      "id": "js-express-layer-fast-star",
+      "mode": "agent",
+      "task": "Debug a seeded Express regression: wildcard route layers no longer enable fast star matching. Fix the production source and do not edit unrelated files.",
+      "agentPrompt": "Debug the seeded failing JS check. In Express router layers, wildcard `*` paths should set `regexp.fast_star` based on the layer path, but the seeded regression disables it. Fix the production source and do not edit unrelated files.",
+      "expectedFiles": [
+        "lib/router/index.js",
+        "lib/router/layer.js",
+        "lib/router/route.js"
+      ],
+      "requiredTouchedFiles": [
+        "lib/router/layer.js"
+      ],
+      "excludedFiles": [
+        "test/",
+        "examples/",
+        "benchmarks/"
+      ],
+      "budget": 1000,
+      "seed": {
+        "repoUrl": "https://github.com/expressjs/express.git",
+        "ref": "4.18.2",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/express-layer-fast-star.patch",
+        "expectedFailureCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('lib/router/layer.js', 'utf8');\nconst fixed = source.includes(\"this.regexp.fast_star = path === '*'\");\nprocess.exit(fixed ? 1 : 0);\nNODE",
+        "testCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('lib/router/layer.js', 'utf8');\nconst fixed = source.includes(\"this.regexp.fast_star = path === '*'\");\nprocess.exit(fixed ? 0 : 1);\nNODE"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Express router layer production source is touched.",
+        "Tests/examples/benchmarks are not touched."
+      ]
+    },
+    {
+      "id": "python-requests-redirects",
+      "mode": "agent",
+      "task": "Debug a seeded Requests regression: Session.send ignores allow_redirects and never resolves redirects. Fix the production source and do not edit unrelated files.",
+      "agentPrompt": "Debug the seeded failing Python check. Requests Session.send should resolve redirects when allow_redirects is true, but the seeded regression disables that branch. Fix the production source and do not edit unrelated files.",
+      "expectedFiles": [
+        "src/requests/sessions.py",
+        "src/requests/adapters.py",
+        "src/requests/models.py"
+      ],
+      "requiredTouchedFiles": [
+        "src/requests/sessions.py"
+      ],
+      "excludedFiles": [
+        "docs/",
+        "tests/",
+        "ext/"
+      ],
+      "budget": 1000,
+      "seed": {
+        "repoUrl": "https://github.com/psf/requests.git",
+        "ref": "e8d2c015eecda8273612dd4562425e00cd164ba5",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/requests-disable-redirects.patch",
+        "expectedFailureCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/requests/sessions.py').read_text()\nfixed = 'if allow_redirects:' in source and 'if False and allow_redirects:' not in source\nraise SystemExit(1 if fixed else 0)\nPY",
+        "testCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/requests/sessions.py').read_text()\nfixed = 'if allow_redirects:' in source and 'if False and allow_redirects:' not in source\nraise SystemExit(0 if fixed else 1)\nPY"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Requests session production source is touched.",
+        "Docs/tests/ext are not touched."
+      ]
+    }
+  ]
+}

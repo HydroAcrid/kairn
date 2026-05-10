@@ -1,0 +1,11 @@
+diff --git a/lib/router/layer.js b/lib/router/layer.js
+--- a/lib/router/layer.js
++++ b/lib/router/layer.js
+@@ -41,6 +41,6 @@ function Layer(path, options, fn) {
+   this.regexp = pathRegexp(path, this.keys = [], opts);
+ 
+   // set fast path flags
+-  this.regexp.fast_star = path === '*'
++  this.regexp.fast_star = false
+   this.regexp.fast_slash = path === '/' && opts.end === false
+ }

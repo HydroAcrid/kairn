@@ -1418,10 +1418,10 @@ export class KairnRuntime {
     const session = this.store.getSession(input.sessionId);
     await this.refreshIndex(session.rootPath);
     const coordination = this.getCoordinationState(input.sessionId);
-    const exactSourceFile = input.source === "mcp" ? coordination.exactSourceFiles[0] : undefined;
     const mcpSourceEvidenceFiles = input.source === "mcp"
       ? uniquePaths(coordination.mcpFiles.filter(isLikelyProductionSourceFile)).slice(0, 2)
       : [];
+    const exactSourceFile = input.source === "mcp" ? coordination.exactSourceFiles[0] ?? mcpSourceEvidenceFiles[0] : undefined;
     const knownFiles = this.store.listFiles(session.rootPath).map((file) => file.path);
     const failureFiles = extractFailureFiles({
       output: input.output,
@@ -1432,7 +1432,7 @@ export class KairnRuntime {
     const changedFiles = [...(await this.getChangedFiles(session.rootPath))].sort();
     if (exactSourceFile) {
       const outputSummary = input.output ? compressOutputText(input.output, input.type, 360) : "";
-      const files = uniquePaths([...failureFiles, exactSourceFile, ...changedFiles.filter((file) => file === exactSourceFile)]).slice(0, 4);
+      const files = uniquePaths([exactSourceFile, ...changedFiles.filter((file) => file === exactSourceFile)]).slice(0, 1);
       const content = truncateToBudget(
         [
           "# Kairn Failure Context",
@@ -3339,7 +3339,10 @@ function automaticPrimeSuppressionReason(input: {
   source?: WatchEventSource | "runtime" | "cli" | "mcp" | "bench" | undefined;
   decision: ContextValueDecision;
 }): string | undefined {
-  void input;
+  if (input.source !== "codex" && input.source !== "claude") return undefined;
+  if (input.decision.cheapSingleSource && !input.decision.companionSpecific) {
+    return "automatic hook suppressed cheap single-source context to avoid over-assist";
+  }
   return undefined;
 }
 

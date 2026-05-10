@@ -1,0 +1,12 @@
+diff --git a/src/requests/sessions.py b/src/requests/sessions.py
+--- a/src/requests/sessions.py
++++ b/src/requests/sessions.py
+@@ -794,7 +794,7 @@ class Session(SessionRedirectMixin):
+         extract_cookies_to_jar(self.cookies, request, r.raw)
+ 
+         # Resolve redirects if allowed.
+-        if allow_redirects:
++        if False and allow_redirects:
+             # Redirect resolving generator.
+             gen = self.resolve_redirects(r, request, **kwargs)
+             history = [resp for resp in gen]

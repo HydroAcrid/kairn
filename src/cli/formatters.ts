@@ -305,6 +305,9 @@ export function printBenchmarkProof(report: BenchmarkProofReport): void {
     report.behaviorTargetSummary && Object.keys(report.behaviorTargetSummary).length > 0
       ? `- Behavior target summary: ${Object.entries(report.behaviorTargetSummary).map(([key, value]) => `${key}=${value.met}/${value.cases} met`).join(", ")}`
       : "",
+    report.caseRepeatClassifications && report.caseRepeatClassifications.length > 0
+      ? `- Repeat classifications: ${report.caseRepeatClassifications.map((item) => `${item.mode}/${item.caseId}=${item.verdict}`).join(", ")}`
+      : "",
     "",
     "Cases",
     ...report.caseDeltas.map((item) => {

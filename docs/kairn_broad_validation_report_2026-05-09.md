@@ -659,3 +659,149 @@ What changed:
 Interpretation:
 
 This is a better generalization signal than the tuned live suite because the repos were fresh and the previous strict preflight failed `0/7`. It is still not a live-agent quality claim. The next live spend should use a small holdout subset from these repos, with quality gates and baseline vs hook comparison, before treating V3 as a product-level win.
+
+## Light Live Holdout Proof
+
+Kairn then ran a small live Codex subset with `gpt-5.4-mini`, using two fresh seeded holdout cases:
+
+- Express `lib/router/layer.js` fast-star regression
+- Requests `Session.send` redirect-resolution regression
+
+Artifacts:
+
+- Suite: `examples/bench/seeded-holdout-live-light.json`
+- First valid indexed run: `/tmp/kairn-holdout-live-light-gpt54mini-indexed-20260510.json`
+- Autosuppression rerun: `/tmp/kairn-holdout-live-light-gpt54mini-autosuppress-20260510.json`
+
+Important setup finding:
+
+- A first attempted run installed hooks without `kairn init`.
+- Prompt hooks correctly skipped prompt-turn indexing, found no candidates, and suppressed.
+- Valid hook benchmark commands must separate setup/index time but still run `kairn init` before `kairn setup codex`.
+
+Indexed run:
+
+| Mode | Tokens | Quality | Active Kairn | Result |
+| --- | ---: | --- | --- | --- |
+| Baseline | `42,469` | pass | no | control |
+| Hook full-prime | `33,292` | pass | yes | `21.61%` valid savings |
+
+Case split:
+
+| Case | Baseline | Hook | Result |
+| --- | ---: | ---: | --- |
+| Express | `19,080` | `23,110` | hook over-assisted a cheap one-file fix |
+| Requests | `23,389` | `10,182` | hook helped substantially with multi-file directive |
+
+Follow-up change:
+
+- Automatic hooks now suppress cheap single-source context when companion evidence is generic.
+- Requests-style multi-file directives still emit.
+
+Autosuppression rerun:
+
+| Mode | Tokens | Quality | Result |
+| --- | ---: | --- | --- |
+| Baseline | `49,853` | pass | control |
+| Hook full-prime | `51,863` | pass | `-4.03%`, over-assist |
+
+Case split after autosuppression:
+
+| Case | Baseline | Hook | Kairn Behavior |
+| --- | ---: | ---: | --- |
+| Express | `30,868` | `28,731` | suppressed, slight win |
+| Requests | `18,985` | `23,132` | emitted multi-file directive, regressed on this repeat |
+
+Interpretation:
+
+- Companion Routing V3 is clearly better in retrieval preflight.
+- Live results are mixed and high-variance on `gpt-5.4-mini`.
+- The product direction is still correct: suppress cheap one-file cases, use structured multi-file directives for framework bugs.
+- This does not yet justify broad live holdout spending. The next improvement should focus on repeat-based reporting and perhaps per-case prompt difficulty classification before claiming new live savings.
+
+## Repeat-Based Holdout Classification
+
+Kairn added case-level repeat classifications to `bench prove` so a repeated proof can distinguish:
+
+- consistent active wins,
+- correct abstention,
+- missed opportunities,
+- over-assist,
+- volatile mixed evidence,
+- quality risk.
+
+This matters because latest-run deltas are noisy. The repeat-2 light holdout proof showed:
+
+Artifact:
+
+- `/tmp/kairn-holdout-live-light-gpt54mini-repeat2-20260510.json`
+
+Aggregate median:
+
+| Mode | Median Tokens | Quality | Median Result |
+| --- | ---: | --- | --- |
+| Baseline | `50,117` | pass | control |
+| Hook full-prime | `43,003` | pass | `14.19%` median savings |
+
+Case repeat classifications:
+
+| Case | Classification | Median Saved Tokens | Interpretation |
+| --- | --- | ---: | --- |
+| Express `layer.js` | `missed_opportunity` | `-5,891` | Kairn suppressed both repeats, but baseline remained expensive; suppression alone is not enough for this prompt class. |
+| Requests `sessions.py` | `consistent_win` | `13,006` | Multi-file directive was active both repeats and saved `51.48%` median tokens while preserving quality. |
+
+Interpretation:
+
+- Requests-style multi-file directives should not be disabled globally; they are now repeat-confirmed useful on this holdout.
+- Express-style cheap source fixes need a better choice than either one-file guardrail or silent suppression. The next controller shape should probably be an ultra-short invariant-only guardrail, or a stronger prediction that Codex already has enough signal and Kairn should fully abstain.
+- For repeat proofs, use aggregate medians and `caseRepeatClassifications` over the latest-run `observedTokenDeltas` field, which remains present for backwards compatibility but can mislead when live runs are high variance.
+
+## Long-Session Ledger Proof
+
+Kairn then shifted from one-shot retrieval proofs to four-turn endurance tasks:
+
+1. diagnose source,
+2. fix source,
+3. verify or handle the edge case,
+4. cleanup/review diff.
+
+The goal was to test the real wedge: cumulative token savings, repeated-context control, and quality preservation over follow-up work.
+
+Artifacts:
+
+- Requests baseline/Kairn run: `/tmp/kairn-endurance-requests-ledger-20260510.json`
+- Requests MCP-inclusive run before MCP stop-condition fix: `/tmp/kairn-endurance-requests-ledger-mcp-20260510.json`
+- Requests MCP-inclusive rerun after MCP stop-condition fix: `/tmp/kairn-endurance-requests-ledger-mcp-v2-20260510.json`
+- Gin baseline/Kairn run: `/tmp/kairn-endurance-gin-ledger-20260510.json`
+
+Results:
+
+| Suite | Mode | Tokens | Quality | Active Kairn | Valid Savings |
+| --- | --- | ---: | --- | --- | ---: |
+| Requests | baseline | `74,534` | pass | no | control |
+| Requests | Kairn prime | `49,894` | pass | yes, `4` shrink turns | `33.06%` |
+| Gin | baseline | `68,790` | pass | no | control |
+| Gin | Kairn prime | `27,072` | pass | yes, `4` shrink turns | `60.65%` |
+
+Requests MCP comparison before and after the stop-condition fix:
+
+| Run | Baseline | Kairn Prime | MCP/Hybrid | MCP Result |
+| --- | ---: | ---: | ---: | --- |
+| before fix | `54,957` | `47,333` (`13.87%`) | `73,396` | `-33.55%`, over-assist |
+| after fix | `53,293` | `43,348` (`18.66%`) | `42,398` | `20.44%`, valid savings |
+
+What changed:
+
+- MCP compact prepare now returns a stop-only suppressed payload after it has already returned a production source file for the same session.
+- MCP failure context now focuses on the previously returned MCP source file when exact-source metadata is unavailable.
+- In the successful MCP rerun, recorded tool calls returned:
+  - `kairn_prepare_task`: `src/requests/sessions.py`
+  - later `kairn_prepare_task`: no files, stop-only payload
+  - `kairn_get_failure_context`: `src/requests/sessions.py`
+  - later prepare calls: no files, stop-only payload
+
+Interpretation:
+
+- The long-session Kairn prime path is now stronger evidence than the one-shot holdout: it passed quality on Requests and Gin while saving `33-61%`.
+- MCP is mechanically viable but very sensitive to stop conditions. The same Requests suite moved from a large regression to positive savings after Kairn stopped re-surfacing context once source evidence was sufficient.
+- The next MCP target is fewer total tool calls, not broader context. Tool calls can still be useful, but repeated prepare/failure calls should return tiny stop guidance once the active source and invariant are known.
