@@ -1311,6 +1311,78 @@ describe("benchmark suite and scoring", () => {
     expect(decision.recommendedDelivery).toBe("one_file_directive");
   });
 
+  it("marks obvious dynamic-language exact source fixes for ultra-minimal automatic guardrails", () => {
+    const decision = evaluateContextValue({
+      task: "Debug the seeded failing Python check. Flask dispatch_request should call the matched endpoint view function with view_args, but the seeded regression returns None. Fix the production source and do not edit unrelated files.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- src/flask/app.py (source, score 3298): symbol match dispatch_request; exact source behavior match",
+        files: ["src/flask/app.py"],
+        symbols: ["dispatch_request"],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/flask/app.py"],
+        tokenEstimate: 274
+      },
+      quality: {
+        score: 86,
+        action: "shrink",
+        reasons: ["high-confidence top retrieval score", "top result is clearly separated"],
+        topScore: 3298,
+        topGap: 1396,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      knownFiles: [record("src/flask/app.py", "source")],
+      repoFileCount: 900,
+      estimatedContextCost: 900,
+      companionCount: 2,
+      companionTopScore: 488,
+      companionSpecific: true
+    });
+
+    expect(decision.exactSourceHit).toBe(true);
+    expect(decision.cheapExactSource).toBe(true);
+    expect(decision.recommendedDelivery).toBe("one_file_directive");
+  });
+
+  it("does not mark Java exact source fixes as cheap exact-source abstentions", () => {
+    const decision = evaluateContextValue({
+      task: "Debug a seeded Commons IO regression: FilenameUtils.equals ignores the requested IOCase comparison mode. Fix the production source.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- src/main/java/org/apache/commons/io/FilenameUtils.java (source, score 4011): symbol match FilenameUtils; exact source behavior match",
+        files: ["src/main/java/org/apache/commons/io/FilenameUtils.java"],
+        symbols: ["FilenameUtils"],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/main/java/org/apache/commons/io/FilenameUtils.java"],
+        tokenEstimate: 250
+      },
+      quality: {
+        score: 90,
+        action: "shrink",
+        reasons: ["high-confidence top retrieval score", "top result is clearly separated"],
+        topScore: 4011,
+        topGap: 657,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      knownFiles: [record("src/main/java/org/apache/commons/io/FilenameUtils.java", "source")],
+      repoFileCount: 1800,
+      estimatedContextCost: 900,
+      companionCount: 1,
+      companionTopScore: 1082,
+      companionSpecific: true
+    });
+
+    expect(decision.exactSourceHit).toBe(true);
+    expect(decision.cheapExactSource).toBe(false);
+    expect(decision.recommendedDelivery).toBe("one_file_directive");
+  });
+
   it("does not classify relocation-style two-source debug tasks as cheap single-source", () => {
     const decision = evaluateContextValue({
       task: [

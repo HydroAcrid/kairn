@@ -133,6 +133,21 @@ export function evaluateContextValue(input: {
     score -= 18;
     reasons.add("cheap single-source task should use a minimal guardrail");
   }
+  const cheapExactSource = isCheapExactSourceTask({
+    task: input.task,
+    language,
+    exactSourceHit,
+    debugSignal,
+    multiFileSignal,
+    companionSignal: effectiveCompanionSignal,
+    companionTopScore: input.companionTopScore ?? 0,
+    topScore: input.quality.topScore,
+    topGap: input.quality.topGap
+  });
+  if (cheapExactSource) {
+    score -= 12;
+    reasons.add("cheap exact-source task should use an ultra-minimal automatic guardrail");
+  }
 
   score = Math.round(Math.max(0, Math.min(100, score)));
   let action = chooseAction({
@@ -196,6 +211,7 @@ export function evaluateContextValue(input: {
     exactPathMentioned: input.quality.exactPathMentioned,
     exactSourceHit,
     cheapSingleSource,
+    cheapExactSource,
     companionSpecific,
     multiSurfaceSignal: multiFileSignal || effectiveCompanionSignal,
     companionCount: input.companionCount ?? 0,
@@ -364,6 +380,35 @@ function isCheapSingleSourceTask(input: {
   if (input.companionSpecific) return false;
   if (input.multiFileSignal && input.contextFileCount > 1 && input.topGap < 420) return false;
   return !input.companionSignal || input.topGap >= 420 || input.contextFileCount <= 1;
+}
+
+function isCheapExactSourceTask(input: {
+  task: string;
+  language: ContextValueDecision["language"];
+  exactSourceHit: boolean;
+  debugSignal: boolean;
+  multiFileSignal: boolean;
+  companionSignal: boolean;
+  companionTopScore: number;
+  topScore: number;
+  topGap: number;
+}): boolean {
+  if (!input.exactSourceHit || !input.debugSignal) return false;
+  if (input.multiFileSignal || input.companionSignal) return false;
+  if (!isDynamicSingleSourceLanguage(input.language)) return false;
+  if (input.topScore < 900 || input.topGap < 600) return false;
+  if (input.companionTopScore >= 620) return false;
+  if (hasStrongMultiSurfaceLanguage(input.task)) return false;
+  return hasDirectInvariantLanguage(input.task);
+}
+
+function isDynamicSingleSourceLanguage(language: ContextValueDecision["language"]): boolean {
+  return language === "python" || language === "javascript" || language === "typescript" || language === "ruby";
+}
+
+function hasDirectInvariantLanguage(task: string): boolean {
+  const normalized = task.toLowerCase();
+  return /\b(no longer|expected behavior|actual behavior|should|must|restore|preserve|regression|now returns|now fails|fails to|does not|doesn't)\b/.test(normalized);
 }
 
 function hasStrongMultiSurfaceLanguage(task: string): boolean {

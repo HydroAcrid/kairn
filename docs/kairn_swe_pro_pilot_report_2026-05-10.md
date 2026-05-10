@@ -343,3 +343,20 @@ Current recommendation:
 - Keep hook `savings` mode adaptive: it may be called `hook_full_prime`, but it should emit full prime only for truly high-value cases.
 - Treat compact one/two-file directives as the default hard-debug shape.
 - Next work should measure exact-source abstention accuracy on repeated Python/JavaScript/Java cases before suppressing all exact-source prompts.
+
+## Exact-Source Guardrail Follow-Up
+
+A follow-up live proof tested the next selective-governor behavior: when Kairn finds an obvious exact source hit, automatic hooks should avoid full context but still preserve edit-scope and verification constraints.
+
+The winning version was not total silence. Complete suppression caused Flask to repair the source while touching a test file, failing the quality gate. The better behavior was an ultra-minimal guardrail.
+
+| Case | Baseline Tokens | Hook Tokens | Prime Tokens | Quality |
+| --- | ---: | ---: | ---: | --- |
+| Axios interceptor order | `23,448` | `12,702` | `395` | pass/pass |
+| Flask dispatch request | `41,033` | `12,175` | `156` | pass/pass |
+| Commons IO filename equals | `27,071` | `6,258` | `281` | pass/pass |
+| Aggregate | `91,552` | `31,135` | - | pass/pass, `65.99%` valid savings |
+
+Artifact: `/tmp/kairn-seeded-new-repos-final-guardrail-20260510.json`
+
+This does not prove universal `65%` savings, but it is strong evidence for the behavior class: cheap exact-source hooks should be tiny and directive, not a full prime and not necessarily silent.

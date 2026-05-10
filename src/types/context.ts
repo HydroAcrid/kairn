@@ -99,6 +99,7 @@ export type ContextValueDecision = {
   exactPathMentioned: boolean;
   exactSourceHit?: boolean;
   cheapSingleSource?: boolean;
+  cheapExactSource?: boolean;
   companionSpecific?: boolean;
   multiSurfaceSignal?: boolean;
   companionCount?: number;

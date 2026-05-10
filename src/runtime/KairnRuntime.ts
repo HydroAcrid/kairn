@@ -3322,6 +3322,7 @@ function automaticPrimeSuppressionReason(input: {
   source?: WatchEventSource | "runtime" | "cli" | "mcp" | "bench" | undefined;
   decision: ContextValueDecision;
 }): string | undefined {
+  void input;
   return undefined;
 }
 
@@ -3339,7 +3340,7 @@ function isAutomaticCheapSingleSourceHook(input: {
   decision: ContextValueDecision;
 }): boolean {
   if (input.source !== "codex" && input.source !== "claude") return false;
-  return Boolean(input.decision.cheapSingleSource);
+  return Boolean(input.decision.cheapSingleSource || input.decision.cheapExactSource);
 }
 
 function hasSpecificCompanionEvidence(value: unknown): boolean {

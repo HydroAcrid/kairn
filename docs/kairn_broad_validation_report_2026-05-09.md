@@ -527,3 +527,41 @@ Case detail:
 Current pain point:
 
 Flask proves Kairn still needs better exact-source abstention. The context was tiny and correct, but Codex was already cheap enough that the guardrail increased tokens. The next broad validation should explicitly score exact-source abstention accuracy across repeated Python/JS/Java cases before making a stronger default-policy claim.
+
+## Cheap Exact-Source Guardrail Follow-Up
+
+Kairn tested two responses to the Flask exact-source over-assist pattern:
+
+1. Complete automatic hook suppression for obvious dynamic-language exact-source fixes.
+2. An ultra-minimal guardrail: one source file, invariant, smallest check, and a stop condition.
+
+The complete suppression run was not a product win. Flask received no Kairn context, but Codex touched `tests/test_basic.py`, so the quality gate failed even though the source invariant was repaired. This is useful evidence: for cheap exact-source tasks, silence can avoid token cost, but it can also fail to preserve the “do not edit unrelated files/tests” constraint.
+
+The guardrail rerun was the stronger behavior:
+
+| Case | Baseline Tokens | Hook Tokens | Prime Tokens | Quality | Result |
+| --- | ---: | ---: | ---: | --- | --- |
+| Axios interceptor order | `23,448` | `12,702` | `395` | pass/pass | valid assist |
+| Flask dispatch request | `41,033` | `12,175` | `156` | pass/pass | valid cheap exact-source guardrail |
+| Commons IO filename equals | `27,071` | `6,258` | `281` | pass/pass | valid assist |
+| Aggregate | `91,552` | `31,135` | - | pass/pass | `65.99%` valid savings |
+
+Artifact:
+
+- `/tmp/kairn-seeded-new-repos-final-guardrail-20260510.json`
+
+Implementation takeaway:
+
+- Exact-source abstention should not mean “always silent.”
+- For automatic hooks, cheap exact-source tasks should usually emit an ultra-minimal guardrail when the prompt includes a concrete invariant and edit-scope constraint.
+- The guardrail is materially smaller than the old one-file directive and prevented the test-file drift seen during suppression.
+- Java validation was widened to accept semantically equivalent `IOCase` null-fallback repairs, not only exact `IOCase.value(...)` source text.
+
+Current selective-governor status:
+
+| Behavior Class | Current Evidence |
+| --- | --- |
+| Cheap/easy exact source | ultra-minimal guardrail can preserve quality and save tokens; complete silence is risky |
+| Multi-file debug | compact two-file directives remain positive on Axios/SWE-Pro preflight |
+| Java exact source | quality can pass with semantic invariant validation; avoid exact-source-string brittleness |
+| Weak/low-confidence prompts | still needs broader abstention-accuracy testing |
