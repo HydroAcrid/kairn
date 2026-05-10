@@ -141,6 +141,18 @@ export function buildBenchmarkProofReport(input: {
     },
     aggregate,
     abstentionSummary: summarizeAssistClassifications(observedTokenDeltas),
+    behaviorTargetSummary: summarizeBehaviorTargetComparisons([
+      promptOnlyVsBaseline,
+      promptPlusVsBaseline,
+      manualPrimeVsBaseline,
+      hookFullPrimeVsBaseline,
+      hookTinyDirectiveVsBaseline,
+      hookTinyWithFailuresVsBaseline,
+      mcpFirstVsBaseline,
+      realMcpFirstVsBaseline,
+      mcpFirstPlusHookFullPrimeVsBaseline,
+      hybridMcpBriefVsBaseline
+    ]),
     observedTokenDeltas,
     caseDeltas,
     recommendations
@@ -243,6 +255,20 @@ function summarizeAssistClassifications(deltas: BenchmarkProofReport["observedTo
     const classification = delta?.assistClassification;
     if (!classification) continue;
     summary[classification] = (summary[classification] ?? 0) + 1;
+  }
+  return summary;
+}
+
+function summarizeBehaviorTargetComparisons(comparisons: Array<BenchmarkComparison | undefined>): NonNullable<BenchmarkProofReport["behaviorTargetSummary"]> {
+  const summary: NonNullable<BenchmarkProofReport["behaviorTargetSummary"]> = {};
+  for (const comparison of comparisons) {
+    for (const [behavior, bucket] of Object.entries(comparison?.behaviorTargetSummary ?? {})) {
+      const current = summary[behavior as keyof typeof summary] ?? { cases: 0, met: 0, missed: 0 };
+      current.cases += bucket.cases;
+      current.met += bucket.met;
+      current.missed += bucket.missed;
+      summary[behavior as keyof typeof summary] = current;
+    }
   }
   return summary;
 }

@@ -160,9 +160,15 @@ export function evaluateContextValue(input: {
     !wrongContextRisk &&
     effectiveCompanionSignal &&
     (multiFileSignal || (input.companionTopScore ?? 0) >= 520 || input.context.files.length > 1);
-  if (action === "emit" && structuredMultiFileDirectiveSignal) {
+  const focusedDebugCompanionSignal =
+    debugSignal &&
+    Boolean(primaryFile && isPrimarySourcePath(primaryFile)) &&
+    !wrongContextRisk &&
+    effectiveCompanionSignal &&
+    (multiFileSignal || companionSpecific || (input.companionTopScore ?? 0) < 1_100);
+  if (action === "emit" && (structuredMultiFileDirectiveSignal || focusedDebugCompanionSignal)) {
     action = "shrink";
-    reasons.add("structured debug companion context should stay compact");
+    reasons.add("debug companion context should stay directive instead of full-prime");
   }
   const expectedSavingsRisk = action === "emit" ? "low" : action === "shrink" ? "medium" : "high";
   const multiFileDirective =
@@ -254,6 +260,8 @@ function inferLanguage(filePath: string | undefined): ContextValueDecision["lang
   if (/^include\/.*\.(h|hpp|hh|hxx)$/.test(normalized) || normalized.includes("/include/")) return "cpp";
   if (/\.(cc|cpp|cxx|hpp|hh|hxx)$/.test(normalized)) return "cpp";
   if (/\.(c|h)$/.test(normalized)) return "c";
+  if (/\.go$/.test(normalized)) return "go";
+  if (/\.rb$/.test(normalized)) return "ruby";
   return "unknown";
 }
 
@@ -262,10 +270,16 @@ function isPrimarySourcePath(filePath: string): boolean {
   if (isNoisyPath(normalized)) return false;
   return (
     normalized.startsWith("src/") ||
+    normalized.startsWith("lib/") ||
+    normalized.startsWith("app/") ||
     normalized.startsWith("packages/") ||
     normalized.startsWith("include/") ||
     (/\.pyi?$/.test(normalized) && !/(^|\/)(tests?|docs?|examples)\//.test(normalized)) ||
+    (/\.go$/.test(normalized) && !/(^|\/)(vendor|testdata|tests?|examples|docs?)\//.test(normalized)) ||
+    (/\.rb$/.test(normalized) && /(^|\/)(app|lib)\//.test(normalized)) ||
     normalized.includes("/src/") ||
+    normalized.includes("/lib/") ||
+    normalized.includes("/app/") ||
     normalized.includes("/include/") ||
     normalized.includes("/src/main/java/")
   );

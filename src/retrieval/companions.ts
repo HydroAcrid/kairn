@@ -65,17 +65,17 @@ const ROLE_GROUPS: CompanionRole[] = [
   },
   {
     id: "normalization-case",
-    terms: ["filename", "file", "path", "normalize", "normalization", "case", "sensitivity", "extension", "extensions"],
+    terms: ["filename", "filepath", "path", "normalize", "normalization", "case-sensitive", "case-insensitive", "sensitivity", "extension", "extensions"],
     reason: "normalization/case pair"
   },
   {
     id: "fixture-context",
-    terms: ["fixture", "fixtures", "scope", "parametrize", "parametrized", "python", "request"],
+    terms: ["fixture", "fixtures", "scope", "parametrize", "parametrized", "python"],
     reason: "same fixture surface"
   },
   {
     id: "ui-sibling",
-    terms: ["ui", "mobile", "layout", "responsive", "dashboard", "tabs", "table", "panel", "filter", "filters", "drawer", "sheet", "component"],
+    terms: ["mobile", "layout", "responsive", "dashboard", "tabs", "table", "panel", "filter", "filters", "drawer", "sheet", "component"],
     reason: "UI sibling surface"
   },
   {
@@ -106,6 +106,53 @@ const COMPANION_STOP_TERMS = new Set([
   "spec",
   "should",
   "must",
+  "repository",
+  "language",
+  "js",
+  "ts",
+  "py",
+  "go",
+  "java",
+  "python",
+  "javascript",
+  "typescript",
+  "golang",
+  "prefer",
+  "unless",
+  "explicitly",
+  "metadata",
+  "interface",
+  "path",
+  "paths",
+  "main",
+  "index",
+  "data",
+  "database",
+  "key",
+  "keys",
+  "object",
+  "objects",
+  "string",
+  "strings",
+  "promise",
+  "array",
+  "arrays",
+  "method",
+  "methods",
+  "class",
+  "classes",
+  "client",
+  "clients",
+  "request",
+  "requests",
+  "response",
+  "responses",
+  "package",
+  "packages",
+  "if",
+  "is",
+  "at",
+  "as",
   "when",
   "with",
   "from",
@@ -146,6 +193,7 @@ export function findCompanionCandidates(input: {
 
   for (const file of input.files) {
     if (seedPaths.has(file.path) || isNoisyCompanionFile(file) || isLikelyTestPath(file.path)) continue;
+    if (!isUniversalSourceFile(file)) continue;
     if (isPlatformVariantPath(file.path)) continue;
 
     const sourceScore = scoreSourceRoleHints(file, input.query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
@@ -156,6 +204,7 @@ export function findCompanionCandidates(input: {
     const specificQueryHits = [...queryTerms].filter((term) => !COMPANION_STOP_TERMS.has(term) && sourceTerms.has(term));
     const rolePathMatches = roleSignals.filter((role) => role.terms.some((term) => pathTerms.has(canonicalTerm(term))));
     const pathQueryHits = [...queryTerms].filter((term) => !COMPANION_STOP_TERMS.has(term) && pathTerms.has(term));
+    const compoundPathHits = compoundQueryTerms(input.query).filter((term) => pathTerms.has(term));
 
     let score = sourceScore.score;
     const reasons = [...sourceScore.reasons];
@@ -167,6 +216,10 @@ export function findCompanionCandidates(input: {
     if (pathQueryHits.length > 0) {
       score += Math.min(360, pathQueryHits.length * 120);
       reasons.push(`specific path term match: ${pathQueryHits.slice(0, 4).join(", ")}`);
+    }
+    if (compoundPathHits.length > 0) {
+      score += Math.min(620, compoundPathHits.length * 360);
+      reasons.push(`compound path term match: ${compoundPathHits.slice(0, 3).join(", ")}`);
     }
     const basename = file.path.toLowerCase().split("/").at(-1) ?? "";
     const mentionedBasename = mentionedSourceBasenames.has(basename);
@@ -232,6 +285,42 @@ export function findCompanionCandidates(input: {
     if (isDirectRoleBasenameAnchor(file.path, roleSignals, queryTerms)) {
       score += 460;
       reasons.push("direct role basename anchor");
+    }
+    if (isNamedPeerClientCompanion(file.path, queryTerms)) {
+      score += 2600;
+      reasons.push("named peer client companion");
+    }
+    if (isGenericNamedPeerDistractor(file.path, queryTerms)) {
+      score -= 1100;
+      reasons.push("generic request/model path downranked because named peer clients are present");
+    }
+    if (isKeyboardShortcutCompanion(file.path, queryTerms)) {
+      score += 920;
+      reasons.push("keyboard shortcut companion");
+    }
+    if (isUserEmailCompanion(file.path, queryTerms)) {
+      score += 2400;
+      reasons.push("user/email companion");
+    }
+    if (isExactUserEmailCompanion(file.path, queryTerms)) {
+      score += 1800;
+      reasons.push("exact user/email companion");
+    }
+    if (isGenericUserEmailDistractor(file.path, queryTerms)) {
+      score -= 1400;
+      reasons.push("generic database/main path downranked for user/email task");
+    }
+    if (isProxyServiceCompanion(file.path, queryTerms)) {
+      score += 2100;
+      reasons.push("proxy/service companion");
+    }
+    if (isKubernetesServiceCompanion(file.path, queryTerms)) {
+      score += 2400;
+      reasons.push("kubernetes service companion");
+    }
+    if (isGenericKubernetesServiceDistractor(file.path, queryTerms)) {
+      score -= 3200;
+      reasons.push("generic service/request path downranked for kubernetes task");
     }
 
     for (const seed of seedFiles) {
@@ -500,10 +589,14 @@ function mentionedSourceFileBasenames(query: string): Set<string> {
   const pattern = /\b[A-Za-z0-9_.-]+\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)\b/g;
   for (const match of query.matchAll(pattern)) {
     const basename = match[0]!.toLowerCase().split(/[\\/]/).at(-1);
-    if (!basename || isLikelyTestPath(basename)) continue;
+    if (!basename || isLikelyTestPath(basename) || isGenericMentionedBasename(basename)) continue;
     basenames.add(basename);
   }
   return basenames;
+}
+
+function isGenericMentionedBasename(basename: string): boolean {
+  return /^(main|index)\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(basename);
 }
 
 const ROUTE_ANCHOR_STOP_TERMS = new Set([
@@ -738,6 +831,90 @@ function isDirectRoleBasenameAnchor(filePath: string, roles: CompanionRole[], qu
   return roles.some((role) => role.terms.some((term) => basenameTerms.has(canonicalTerm(term)) && queryTerms.has(canonicalTerm(term))));
 }
 
+function isNamedPeerClientCompanion(filePath: string, queryTerms: Set<string>): boolean {
+  const normalized = filePath.toLowerCase();
+  if (!/\/client\.[a-z0-9]+$/.test(normalized) && !/(^|\/)client\.[a-z0-9]+$/.test(normalized)) return false;
+  const agentNames = ["lastfm", "listenbrainz", "spotify", "github", "gitlab", "slack", "gmail", "jira"];
+  return agentNames.some((name) => queryTerms.has(name) && normalized.includes(name)) ||
+    (queryTerms.has("listen") && queryTerms.has("brainz") && normalized.includes("listenbrainz")) ||
+    (queryTerms.has("last") && queryTerms.has("fm") && normalized.includes("lastfm"));
+}
+
+function hasNamedPeerClientQuery(queryTerms: Set<string>): boolean {
+  const agentNames = ["lastfm", "listenbrainz", "spotify", "github", "gitlab", "slack", "gmail", "jira"];
+  return agentNames.some((name) => queryTerms.has(name)) ||
+    (queryTerms.has("listen") && queryTerms.has("brainz")) ||
+    (queryTerms.has("last") && queryTerms.has("fm"));
+}
+
+function isGenericNamedPeerDistractor(filePath: string, queryTerms: Set<string>): boolean {
+  if (!hasNamedPeerClientQuery(queryTerms)) return false;
+  if (isNamedPeerClientCompanion(filePath, queryTerms)) return false;
+  const normalized = filePath.toLowerCase();
+  return /(^|\/)(model|models|request|requests|response|responses|repository|repositories)\//.test(normalized) ||
+    /(^|\/)(request|response|model|repository)\.[a-z0-9]+$/.test(normalized);
+}
+
+function isKeyboardShortcutCompanion(filePath: string, queryTerms: Set<string>): boolean {
+  const normalized = filePath.toLowerCase();
+  const asksKeyboardShortcut =
+    (queryTerms.has("keyboard") || queryTerms.has("key")) &&
+    (queryTerms.has("shortcut") || queryTerms.has("shortcuts") || queryTerms.has("binding") || queryTerms.has("bindings"));
+  if (!asksKeyboardShortcut) return false;
+  return /key[-_]?bindings?|keyboard[-_]?shortcuts?|shortcuts?/.test(normalized) || (normalized.includes("key") && normalized.includes("binding"));
+}
+
+function isUserEmailCompanion(filePath: string, queryTerms: Set<string>): boolean {
+  const normalized = filePath.toLowerCase();
+  if (!queryTerms.has("email")) return false;
+  if (!["user", "users", "admin", "acp", "confirmation", "validation", "validate"].some((term) => queryTerms.has(term))) return false;
+  const basename = normalized.split("/").at(-1) ?? "";
+  return basename.includes("email") || /(^|\/)(user|users|admin|admins)(\/|$)/.test(normalized);
+}
+
+function isExactUserEmailCompanion(filePath: string, queryTerms: Set<string>): boolean {
+  if (!isUserEmailCompanion(filePath, queryTerms)) return false;
+  const pathTerms = termSet(filePath);
+  const basename = filePath.toLowerCase().split("/").at(-1) ?? "";
+  return (pathTerms.has("user") || pathTerms.has("users")) && (pathTerms.has("email") || basename.includes("email"));
+}
+
+function isGenericUserEmailDistractor(filePath: string, queryTerms: Set<string>): boolean {
+  const asksUserEmail =
+    queryTerms.has("email") &&
+    (queryTerms.has("user") || queryTerms.has("users") || queryTerms.has("admin") || queryTerms.has("confirmation") || queryTerms.has("validation"));
+  if (!asksUserEmail) return false;
+  if (isUserEmailCompanion(filePath, queryTerms)) return false;
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1) ?? "";
+  return /(^|\/)(database|db|mongo|redis|postgres|postgresql|mysql)\//.test(normalized) ||
+    /^(main|index)\.[a-z0-9]+$/.test(basename);
+}
+
+function isProxyServiceCompanion(filePath: string, queryTerms: Set<string>): boolean {
+  const normalized = filePath.toLowerCase();
+  if (!/(^|\/)service\//.test(normalized) && !/service/.test(normalized)) return false;
+  const asksService = queryTerms.has("service") || queryTerms.has("services") || queryTerms.has("initialization") || queryTerms.has("uploader");
+  const asksProxy = queryTerms.has("proxy") || queryTerms.has("forwarder") || queryTerms.has("forwarding");
+  const asksKube = queryTerms.has("kube") || queryTerms.has("kubernetes") || queryTerms.has("kubectl");
+  return asksService && (asksProxy || asksKube);
+}
+
+function isKubernetesServiceCompanion(filePath: string, queryTerms: Set<string>): boolean {
+  const asksKube = queryTerms.has("kube") || queryTerms.has("kubernetes") || queryTerms.has("kubectl");
+  if (!asksKube) return false;
+  const normalized = filePath.toLowerCase();
+  return /(^|\/)service\//.test(normalized) && /(kube|kubernetes|kubectl)/.test(normalized);
+}
+
+function isGenericKubernetesServiceDistractor(filePath: string, queryTerms: Set<string>): boolean {
+  const asksKube = queryTerms.has("kube") || queryTerms.has("kubernetes") || queryTerms.has("kubectl");
+  if (!asksKube) return false;
+  if (isKubernetesServiceCompanion(filePath, queryTerms)) return false;
+  const normalized = filePath.toLowerCase();
+  return /(^|\/)services?\//.test(normalized) && !/(kube|kubernetes|kubectl)/.test(normalized);
+}
+
 function isGenericHelperForRoleCompanion(filePath: string, queryTerms: Set<string>): boolean {
   const normalized = filePath.toLowerCase();
   if (!/(^|\/)(helpers?|utils?|support)\//.test(normalized)) return false;
@@ -846,6 +1023,21 @@ function normalizeText(input: string): string {
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function compoundQueryTerms(query: string): string[] {
+  const terms = tokenizeLexical(query).map(canonicalTerm);
+  const compounds = new Set<string>();
+  for (let index = 0; index < terms.length - 1; index += 1) {
+    const left = terms[index];
+    const right = terms[index + 1];
+    if (!left || !right) continue;
+    const compound = `${left}${right}`;
+    if (compound.length >= 5 && !COMPANION_STOP_TERMS.has(left) && !COMPANION_STOP_TERMS.has(right)) {
+      compounds.add(compound);
+    }
+  }
+  return [...compounds];
 }
 
 function termSet(input: string): Set<string> {

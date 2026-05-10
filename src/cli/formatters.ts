@@ -266,6 +266,9 @@ export function printBenchmarkComparison(comparison: BenchmarkComparison): void 
     comparison.observedTokenDelta?.assistClassification
       ? `- classification: ${comparison.observedTokenDelta.assistClassification}; assistance ${comparison.observedTokenDelta.assistanceStatus ?? "unknown"}`
       : "",
+    comparison.behaviorTargetSummary && Object.keys(comparison.behaviorTargetSummary).length > 0
+      ? `- behavior targets: ${Object.entries(comparison.behaviorTargetSummary).map(([key, value]) => `${key}=${value.met}/${value.cases} met`).join(", ")}`
+      : "",
     "",
     comparison.improvedCases.length > 0 ? `Improved: ${comparison.improvedCases.join(", ")}` : "Improved: none",
     comparison.regressedCases.length > 0 ? `Regressed: ${comparison.regressedCases.join(", ")}` : "Regressed: none",
@@ -298,6 +301,9 @@ export function printBenchmarkProof(report: BenchmarkProofReport): void {
       : "",
     report.abstentionSummary && Object.keys(report.abstentionSummary).length > 0
       ? `- Assist classification summary: ${Object.entries(report.abstentionSummary).map(([key, value]) => `${key}=${value}`).join(", ")}`
+      : "",
+    report.behaviorTargetSummary && Object.keys(report.behaviorTargetSummary).length > 0
+      ? `- Behavior target summary: ${Object.entries(report.behaviorTargetSummary).map(([key, value]) => `${key}=${value.met}/${value.cases} met`).join(", ")}`
       : "",
     "",
     "Cases",

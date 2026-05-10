@@ -260,8 +260,12 @@ export class KairnRuntime {
       reasons: contextDecision.reasons,
       expectedSavingsRisk: contextDecision.expectedSavingsRisk
     };
+    const structuredPrimaryCandidate =
+      contextDecision.primaryFile && uniquePaths([...context.files, ...context.suggestedNextContext, ...companionPaths]).includes(contextDecision.primaryFile)
+        ? contextDecision.primaryFile
+        : primaryFile;
     const directivePrimaryFile = contextDecision.recommendedDelivery === "multi_file_directive"
-      ? preferredStructuredDebugPrimary(primaryFile, companionMetadata)
+      ? preferredStructuredDebugPrimary(structuredPrimaryCandidate, companionMetadata)
       : primaryFile;
     const invariants = directivePrimaryFile && (contextDecision.exactSourceHit || contextDecision.cheapSingleSource || contextDecision.recommendedDelivery === "multi_file_directive")
       ? [
@@ -345,7 +349,8 @@ export class KairnRuntime {
       failureFiles: failureFilesForPolicy,
       source: input.source ?? "cli"
     });
-    const effectiveAction = minimalSourceFocusOverridesSuppression(sessionPolicy.reason)
+    const forceMinimalSourceFocus = minimalSourceFocusOverridesSuppression(sessionPolicy.reason);
+    const effectiveAction = forceMinimalSourceFocus
       ? "shrink"
       : strongestSuppressiveAction(quality.action, contextDecision.action, sessionPolicy.action);
     const effectiveQuality = {
@@ -356,7 +361,9 @@ export class KairnRuntime {
     const effectiveContextDecision = {
       ...contextDecision,
       action: effectiveAction,
-      recommendedDelivery: effectiveAction === "emit"
+      recommendedDelivery: forceMinimalSourceFocus
+        ? "one_file_directive" as const
+        : effectiveAction === "emit"
         ? contextDecision.recommendedDelivery ?? "full_prime"
         : effectiveAction === "shrink"
           ? contextDecision.recommendedDelivery === "multi_file_directive" ? "multi_file_directive" as const : "one_file_directive" as const
@@ -364,6 +371,8 @@ export class KairnRuntime {
     };
     const emittedFiles = effectiveAction === "suppress"
       ? []
+      : effectiveAction === "shrink" && forceMinimalSourceFocus && sessionPolicy.files.length > 0
+        ? sessionPolicy.files.slice(0, 1)
       : effectiveContextDecision.recommendedDelivery === "multi_file_directive"
         ? files.slice(0, 2)
       : effectiveAction === "shrink" && sessionPolicy.files.length > 0
@@ -3341,7 +3350,7 @@ function hasSpecificCompanionEvidence(value: unknown): boolean {
       .join("; ")
       .toLowerCase()
     : "";
-  return /mentioned source filename|direct role basename anchor|route\/path surface anchor|same package|same module|import neighbor|controller\/repository|scheduler\/renderer|interceptor\/dispatch|validation\/callback/.test(reasons);
+  return /mentioned source filename|direct role basename anchor|route\/path surface anchor|same package|same module|import neighbor|controller\/repository|scheduler\/renderer|interceptor\/dispatch|validation\/callback|named peer client companion|user\/email companion|exact user\/email companion|proxy\/service companion|kubernetes service companion|keyboard shortcut companion|compound path term match/.test(reasons);
 }
 
 function strongestSuppressiveAction(
@@ -3445,7 +3454,17 @@ function preferredStructuredDebugPrimary(primaryFile: string | undefined, compan
       const record = item as { file?: unknown; reasons?: unknown };
       if (typeof record.file !== "string") return undefined;
       const reasons = Array.isArray(record.reasons) ? record.reasons.map(String) : [];
-      const priority = reasons.some((reason) => reason.includes("route/path surface anchor") || reason.includes("mentioned source filename"))
+      const priority = reasons.some((reason) =>
+        reason.includes("route/path surface anchor") ||
+        reason.includes("mentioned source filename") ||
+        reason.includes("named peer client companion") ||
+        reason.includes("user/email companion") ||
+        reason.includes("exact user/email companion") ||
+        reason.includes("proxy/service companion") ||
+        reason.includes("kubernetes service companion") ||
+        reason.includes("keyboard shortcut companion") ||
+        reason.includes("compound path term match")
+      )
         ? 2
         : reasons.some((reason) => reason.includes("direct role basename anchor"))
           ? 1

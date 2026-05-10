@@ -95,7 +95,7 @@ async function runRepoPreflight(input: {
       const index = runtime.getIndexStatus();
       const cases: BenchmarkMatrixCaseResult[] = [];
       for (const benchmarkCase of input.repo.cases) {
-        cases.push(await runCasePreflight({ runtime, repoId: input.repo.id, benchmarkCase, gates: input.gates }));
+        cases.push(await runCasePreflight({ runtime, rootPath, repoId: input.repo.id, benchmarkCase, gates: input.gates }));
       }
       const stateWithinLimit = bytesToMb(index.totalSizeBytes) <= input.gates.maxStateMb;
       const status = stateWithinLimit && cases.every((item) => item.qualityGatePassed) ? "passed" : "failed";
@@ -151,6 +151,7 @@ async function runRepoPreflight(input: {
 
 async function runCasePreflight(input: {
   runtime: KairnRuntime;
+  rootPath: string;
   repoId: string;
   benchmarkCase: BenchmarkCase;
   gates: Required<BenchmarkMatrixGates>;
@@ -165,20 +166,22 @@ async function runCasePreflight(input: {
   const primeLatencyMs = Date.now() - started;
   const returnedFiles = prime.files;
   const topFiles = returnedFiles.slice(0, input.gates.expectedTopK);
-  const missingExpectedFiles = input.benchmarkCase.expectedFiles.filter((file) => !topFiles.includes(file));
+  const absentExpectedFiles = input.benchmarkCase.expectedFiles.filter((file) => !fs.existsSync(path.join(input.rootPath, file)));
+  const scorableExpectedFiles = input.benchmarkCase.expectedFiles.filter((file) => !absentExpectedFiles.includes(file));
+  const missingExpectedFiles = scorableExpectedFiles.filter((file) => !topFiles.includes(file));
   const excludedHits = returnedFiles.filter((file) =>
     input.benchmarkCase.excludedFiles.some((excluded) => benchmarkPathMatches(file, excluded))
   );
   const noisePrefixHits = returnedFiles.filter((file) => isNoisyMatrixPath(file));
   const companionReasons = extractCompanionReasons(prime.metadata?.companionCandidates);
   const companionFilesReturned = Object.keys(companionReasons).filter((file) => returnedFiles.includes(file));
-  const expectedCompanions = input.benchmarkCase.expectedFiles.slice(1);
+  const expectedCompanions = scorableExpectedFiles.slice(1);
   const missingCompanionFiles = expectedCompanions.filter((file) => !topFiles.includes(file));
   const sourceVsTestDecision = decideSourceVsTest(returnedFiles);
   const requiresSuppression = shouldRequireSuppression(input.benchmarkCase, input.gates);
   const contextDecision = prime.contextDecision?.action ?? prime.quality?.action;
   const suppressionPassed = !requiresSuppression || contextDecision === "suppress";
-  const expectedTopKPassed = input.benchmarkCase.expectedFiles.length === 0 || missingExpectedFiles.length === 0;
+  const expectedTopKPassed = scorableExpectedFiles.length === 0 || missingExpectedFiles.length === 0;
   const excludedFilesAvoided = excludedHits.length === 0 && noisePrefixHits.length === 0;
   const latencyPassed = primeLatencyMs <= input.gates.maxPrimeLatencyMs;
   const qualityGatePassed = expectedTopKPassed && excludedFilesAvoided && suppressionPassed && latencyPassed;
@@ -187,10 +190,13 @@ async function runCasePreflight(input: {
   if (!expectedTopKPassed) {
     recommendations.push(`Expected files missing from top ${input.gates.expectedTopK}: ${missingExpectedFiles.join(", ")}`);
   }
+  if (absentExpectedFiles.length > 0) {
+    recommendations.push(`Expected files absent from base checkout and not scored for retrieval: ${absentExpectedFiles.join(", ")}`);
+  }
   if (!excludedFilesAvoided) {
     recommendations.push(`Excluded/noisy files returned: ${uniqueStrings([...excludedHits, ...noisePrefixHits]).join(", ")}`);
   }
-  if (missingCompanionFiles.length > 0 && input.benchmarkCase.expectedFiles.length > 1) {
+  if (missingCompanionFiles.length > 0 && scorableExpectedFiles.length > 1) {
     recommendations.push(`Companion files missing from top ${input.gates.expectedTopK}: ${missingCompanionFiles.join(", ")}`);
   }
   if (!suppressionPassed) {
@@ -206,6 +212,7 @@ async function runCasePreflight(input: {
     task,
     profile: prime.profile,
     expectedFiles: input.benchmarkCase.expectedFiles,
+    ...(absentExpectedFiles.length > 0 ? { absentExpectedFiles } : {}),
     returnedFiles,
     missingExpectedFiles,
     companionFilesReturned,

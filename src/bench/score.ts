@@ -1,5 +1,6 @@
 import type { BenchmarkAssistanceStatus, BenchmarkCase, BenchmarkComparison, BenchmarkReport, BenchmarkResultRecord } from "../types.js";
 import { classificationNegativeEvidenceReason, classifyAssistance } from "./assistClassification.js";
+import { evaluateBehaviorTarget, summarizeBehaviorTargets } from "./behaviorTargets.js";
 
 export function scoreBenchmarkCase(input: {
   runId: string;
@@ -78,6 +79,7 @@ export function scoreBenchmarkCase(input: {
     }),
     metadata: {
       ...(input.metadata ?? {}),
+      ...(input.benchmarkCase.contextBehavior ? { contextBehavior: input.benchmarkCase.contextBehavior } : {}),
       missedExpectedFiles,
       irrelevantFilesRead: excludedHits,
       expectedFilesMentioned: expectedHits,
@@ -131,6 +133,7 @@ export function compareBenchmarkReports(before: BenchmarkReport, after: Benchmar
   const beforeByCase = new Map(before.results.map((result) => [result.caseId, result]));
   const improvedCases: string[] = [];
   const regressedCases: string[] = [];
+  const caseBehaviorOutcomes: NonNullable<BenchmarkComparison["caseBehaviorOutcomes"]> = [];
 
   for (const result of after.results) {
     const previous = beforeByCase.get(result.caseId);
@@ -138,17 +141,21 @@ export function compareBenchmarkReports(before: BenchmarkReport, after: Benchmar
     const delta = result.score - previous.score;
     if (delta >= 5) improvedCases.push(result.caseId);
     if (delta <= -5) regressedCases.push(result.caseId);
+    const behaviorOutcome = behaviorTargetOutcome({ before: previous, after: result });
+    if (behaviorOutcome) caseBehaviorOutcomes.push(behaviorOutcome);
   }
   const tokenDelta = observedTokenDelta(before, after);
+  const behaviorTargetSummary = summarizeBehaviorTargets(caseBehaviorOutcomes);
 
   return {
     before,
     after,
     scoreDelta: Number((after.overallScore - before.overallScore).toFixed(2)),
     ...(tokenDelta ? { observedTokenDelta: tokenDelta } : {}),
+    ...(caseBehaviorOutcomes.length > 0 ? { behaviorTargetSummary, caseBehaviorOutcomes } : {}),
     improvedCases,
     regressedCases,
-    recommendations: comparisonRecommendations({ before, after, regressedCases })
+    recommendations: comparisonRecommendations({ before, after, regressedCases, caseBehaviorOutcomes })
   };
 }
 
@@ -196,7 +203,12 @@ function observedTokenDelta(before: BenchmarkReport, after: BenchmarkReport): Be
 }
 
 function reportAssistanceStatus(report: BenchmarkReport): BenchmarkAssistanceStatus {
-  const hasActiveAssistance = report.results.some((result) =>
+  if (report.results.some((result) => resultAssistanceStatus(result) === "active")) return "active";
+  return report.results.some((result) => resultAssistanceStatus(result) === "passive_suppressed") ? "passive_suppressed" : "none";
+}
+
+function resultAssistanceStatus(result: BenchmarkResultRecord): BenchmarkAssistanceStatus {
+  const hasActiveAssistance =
     result.hookContextEmitted > 0 ||
     (numberMetadata(result.metadata.actualMcpToolCalls ?? result.metadata.mcpToolCalls) > 0 &&
       numberMetadata(result.metadata.mcpReturnedFileCount) > 0) ||
@@ -206,17 +218,50 @@ function reportAssistanceStatus(report: BenchmarkReport): BenchmarkAssistanceSta
     result.metadata.primeDecision === "shrink" ||
     result.metadata.contextDecision === "emit" ||
     result.metadata.contextDecision === "shrink" ||
-    result.metadata.assistanceMode === "manual_prime"
-  );
+    result.metadata.assistanceMode === "manual_prime";
   if (hasActiveAssistance) return "active";
-  const hasSuppressedAssistance = report.results.some((result) =>
+  const hasSuppressedAssistance =
     result.hookContextSuppressed > 0 ||
     result.metadata.primeSuppressed === true ||
     numberMetadata(result.metadata.primeSuppressed) > 0 ||
     result.metadata.primeDecision === "suppress" ||
-    result.metadata.contextDecision === "suppress"
-  );
+    result.metadata.contextDecision === "suppress";
   return hasSuppressedAssistance ? "passive_suppressed" : "none";
+}
+
+function behaviorTargetOutcome(input: {
+  before: BenchmarkResultRecord;
+  after: BenchmarkResultRecord;
+}): NonNullable<BenchmarkComparison["caseBehaviorOutcomes"]>[number] | undefined {
+  const behavior =
+    typeof input.after.metadata.contextBehavior === "string"
+      ? input.after.metadata.contextBehavior
+      : typeof input.before.metadata.contextBehavior === "string"
+        ? input.before.metadata.contextBehavior
+        : undefined;
+  const beforeTokens = input.before.observedCodexTokens;
+  const afterTokens = input.after.observedCodexTokens;
+  const savedTokens = beforeTokens !== undefined && afterTokens !== undefined ? beforeTokens - afterTokens : undefined;
+  const assistanceStatus = resultAssistanceStatus(input.after);
+  const classification = classifyAssistance({
+    assistanceStatus,
+    qualityGatePassed: input.after.metadata.qualityGatePassed === true,
+    savedTokens,
+    baselineTokens: beforeTokens,
+    baselineQualityGatePassed: input.before.metadata.qualityGatePassed === true,
+    turnCount: 1
+  });
+  return evaluateBehaviorTarget({
+    caseId: input.after.caseId,
+    behavior: behavior as Parameters<typeof evaluateBehaviorTarget>[0]["behavior"],
+    assistanceStatus,
+    assistClassification: classification.assistClassification,
+    qualityGatePassed: input.after.metadata.qualityGatePassed === true,
+    baselineQualityGatePassed: input.before.metadata.qualityGatePassed === true,
+    baselineTokens: beforeTokens,
+    afterTokens,
+    savedTokens
+  });
 }
 
 function recommendationsFor(input: {
@@ -275,6 +320,7 @@ function comparisonRecommendations(input: {
   before: BenchmarkReport;
   after: BenchmarkReport;
   regressedCases: string[];
+  caseBehaviorOutcomes?: NonNullable<BenchmarkComparison["caseBehaviorOutcomes"]>;
 }): string[] {
   const recommendations: string[] = [];
   if (input.after.overallScore < input.before.overallScore) {
@@ -285,6 +331,11 @@ function comparisonRecommendations(input: {
   }
   if (input.after.results.some((result) => result.metadata.qualityGatePassed === false)) {
     recommendations.push("After-run has quality-gate failures; any lower observed token usage is negative evidence, not valid savings.");
+  }
+  for (const outcome of input.caseBehaviorOutcomes ?? []) {
+    if (outcome.outcome === "missed") {
+      recommendations.push(`${outcome.caseId}: ${outcome.behavior} target missed - ${outcome.reason}`);
+    }
   }
   recommendations.push(...input.after.recommendations.slice(0, 5));
   return unique(recommendations);

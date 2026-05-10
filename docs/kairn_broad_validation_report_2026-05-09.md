@@ -486,3 +486,44 @@ Artifacts:
 - SWE preflight report: `/tmp/kairn-swe-pro-pilot-matrix-20260510-v4.json`
 - SWE verification smoke: `/tmp/kairn-swe-pro-pilot-pass3-verification-smoke-20260510.json`
 - Gin repeat artifacts: `/tmp/kairn-endurance-gin-repeat-3.json`, `/tmp/kairn-endurance-gin-repeat-4.json`, `/tmp/kairn-endurance-gin-repeat-5.json`
+
+## Selective Governor Update
+
+The latest implementation moved Kairn further away from "RAG firehose" behavior and toward a selective context governor:
+
+| Situation | Desired Behavior | Current Evidence |
+| --- | --- | --- |
+| Obvious source hit | suppress or tiny guardrail | works mechanically, but Flask shows more abstention tuning is needed |
+| Source rescue | exact source over broad scans | NodeBB, Teleport, Navidrome SWE-Pro preflight improved to pass |
+| Multi-file debug | max two production files plus invariant | SWE-Pro v9 preflight passed `6/6` cases |
+| Failure/debug work | compact directive, not full prime | Axios over-assist flipped into a valid assist after directive change |
+| Low confidence | stay silent | behavior-target scoring exists; needs more weak-prompt examples |
+
+SWE-Pro preflight v9 passed all six selected cases:
+
+| Case | Returned Files | Gate |
+| --- | --- | --- |
+| NodeBB | `src/user/email.js`, `src/controllers/admin/users.js` | pass |
+| qutebrowser | `qutebrowser/utils/log.py`, `qutebrowser/utils/qtlog.py` | pass |
+| Teleport | `lib/service/kubernetes.go`, `lib/kube/proxy/forwarder.go` | pass |
+| Navidrome | `core/agents/lastfm/client.go`, `core/agents/listenbrainz/client.go` | pass |
+| Element Web | expected files absent from base checkout; scored as absent-file case | pass |
+| Vuls | `models/cvecontents.go`, `contrib/trivy/pkg/converter.go` | pass |
+
+Fresh seeded live proof:
+
+| Suite | Cases | Quality | Hook Savings |
+| --- | ---: | --- | ---: |
+| Axios, Flask, Commons IO | `3` | pass/pass/pass | `56.70%` aggregate |
+
+Case detail:
+
+| Case | Baseline | Hook | Result |
+| --- | ---: | ---: | --- |
+| Axios | `40,025` | `7,024` | valid assist |
+| Flask | `24,226` | `28,760` | over-assist despite quality pass |
+| Commons IO | `34,564` | `6,999` | valid assist |
+
+Current pain point:
+
+Flask proves Kairn still needs better exact-source abstention. The context was tiny and correct, but Codex was already cheap enough that the guardrail increased tokens. The next broad validation should explicitly score exact-source abstention accuracy across repeated Python/JS/Java cases before making a stronger default-policy claim.

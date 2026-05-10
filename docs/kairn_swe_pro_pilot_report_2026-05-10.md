@@ -284,3 +284,62 @@ Artifacts:
 | `/tmp/kairn-swe-pro-vuls-official-v4-20260510/vuls-hook-patch.json` | Hook patch sent to the official evaluator |
 
 This is not counted as pass/pass token savings because the baseline patch failed official evaluation. It is still meaningful product evidence: the minimal guardrail improved quality over baseline while also cutting observed tokens locally. The lesson is general, not Vuls-specific: cheap single-source abstention should not mean "give no useful constraints." For compile-sensitive bugs, the minimal context must include the invariant and the smallest verification check.
+
+## Selective Context Governor Follow-Up
+
+The next pass framed SWE-Pro behavior as reusable behavior classes rather than repo-specific fixes:
+
+- `cheap_single_source`: obvious one-file fixes should suppress or emit only an ultra-minimal guardrail.
+- `source_rescue`: when Codex is likely to search broadly, Kairn should surface the exact source quickly.
+- `multi_file_debug`: long issue statements often need two production files plus an invariant, not a full prime and not one file only.
+- `failure_first`: failure output should route to the smallest linked source/check.
+- `session_repeat`: previously shown unchanged files should not be repeated.
+- `weak_signal`: if confidence is low, Kairn should stay silent.
+
+Implementation changes:
+
+- Added behavior-target metadata and report aggregation for `correct abstention`, `missed opportunity`, `over-assist`, and behavior-class outcomes.
+- Added structured multi-file shrink as a compact delivery shape for hard debug prompts.
+- Added generic companion routing improvements for:
+  - named peer clients such as LastFM/ListenBrainz,
+  - user/email/admin source surfaces,
+  - Kubernetes service/proxy companions,
+  - compound identifiers such as `LastFM -> lastfm`.
+- Stopped treating generic basenames such as `main.js`/`index.js` as strong source-file mentions.
+- Skipped non-source files in companion expansion, which reduced NodeBB companion scoring latency substantially.
+- Added Go/Ruby production source recognition to the context-value controller.
+- Changed focused debug companion hooks from full-prime to compact multi-file directives.
+
+SWE-Pro preflight v9:
+
+| Case | Expected Source Result | Prime Latency | Context Shape | Quality Gate |
+| --- | --- | ---: | --- | --- |
+| NodeBB | `src/user/email.js`, `src/controllers/admin/users.js` | `3.836s` | two-file shrink | pass |
+| qutebrowser | `qutebrowser/utils/log.py`, `qutebrowser/utils/qtlog.py` | `1.973s` | two-file shrink | pass |
+| Teleport | `lib/service/kubernetes.go`, `lib/kube/proxy/forwarder.go` | `1.148s` | two-file shrink | pass |
+| Navidrome | `core/agents/lastfm/client.go`, `core/agents/listenbrainz/client.go` | `0.793s` | two-file shrink | pass |
+| Element Web | expected files absent from base checkout | `2.340s` | shrink | pass with absent-file note |
+| Vuls | `models/cvecontents.go`, `contrib/trivy/pkg/converter.go` | `0.283s` | two-file shrink | pass |
+
+Preflight result: `6/6` quality gates passed, `6/6` repos stayed within state limits.
+
+Live seeded framework proof after the over-assist fix:
+
+| Case | Baseline Tokens | Hook Tokens | Quality | Valid Savings |
+| --- | ---: | ---: | --- | ---: |
+| Axios interceptor order | `40,025` | `7,024` | pass/pass | `82.45%` |
+| Flask dispatch request | `24,226` | `28,760` | pass/pass | `-18.72%` |
+| Commons IO filename equals | `34,564` | `6,999` | pass/pass | `79.75%` |
+| Aggregate | `98,815` | `42,783` | pass/pass | `56.70%` |
+
+Interpretation:
+
+- This is the strongest selective-governor evidence so far: all three live cases passed quality gates and the aggregate was strongly positive.
+- The Flask result is still important negative evidence. Kairn emitted a one-file guardrail for an exact Python source hit, and Codex used more tokens than baseline. This is the next abstention-accuracy target.
+- The Axios result proves the over-assist fix mattered: the earlier full-prime hook run used `50,867` tokens versus `35,164` baseline; after switching focused debug companions to a compact directive, the follow-up run passed at `26,417` versus `31,775`, and the broader three-case run passed at `7,024` versus `40,025`.
+
+Current recommendation:
+
+- Keep hook `savings` mode adaptive: it may be called `hook_full_prime`, but it should emit full prime only for truly high-value cases.
+- Treat compact one/two-file directives as the default hard-debug shape.
+- Next work should measure exact-source abstention accuracy on repeated Python/JavaScript/Java cases before suppressing all exact-source prompts.

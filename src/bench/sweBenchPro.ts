@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { BenchmarkCase, BenchmarkRepoMatrix, BenchmarkRepoTarget, BenchmarkSuite } from "../types.js";
+import type { BenchmarkCase, BenchmarkContextBehavior, BenchmarkRepoMatrix, BenchmarkRepoTarget, BenchmarkSuite } from "../types.js";
 import { normalizeRelativePath } from "../utils/paths.js";
 
 const DATASET_ROWS_URL = "https://datasets-server.huggingface.co/rows?dataset=ScaleAI%2FSWE-bench_Pro&config=default&split=test";
@@ -199,6 +199,7 @@ function sweBenchRowToCase(row: SweBenchProRow): BenchmarkCase {
     id: normalizeId(row.instance_id),
     mode: "agent",
     task: firstMeaningfulLine(row.problem_statement) ?? row.instance_id,
+    contextBehavior: inferSweBenchContextBehavior(row, patchFiles, selectedTests),
     agentPrompt: buildAgentPrompt(row, patchFiles, selectedTests),
     expectedFiles: patchFiles,
     requiredTouchedFiles: patchFiles.slice(0, 5),
@@ -213,6 +214,19 @@ function sweBenchRowToCase(row: SweBenchProRow): BenchmarkCase {
     ],
     allowedCommands: selectedTests.length > 0 ? selectedTests : testFiles
   };
+}
+
+function inferSweBenchContextBehavior(
+  row: SweBenchProRow,
+  patchFiles: string[],
+  selectedTests: string[]
+): BenchmarkContextBehavior {
+  if (patchFiles.length >= 2) return "multi_file_debug";
+  const primary = patchFiles[0];
+  if (!primary) return "weak_signal";
+  if (selectedTests.length > 0 && failureText(row).length > 0 && mentionsPatchSurface(row, primary)) return "failure_first";
+  if (mentionsPatchSurface(row, primary)) return "cheap_single_source";
+  return "source_rescue";
 }
 
 function sweBenchRowToRepoTarget(row: SweBenchProRow, benchmarkCase: BenchmarkCase): BenchmarkRepoTarget {
@@ -253,8 +267,9 @@ function distillSweBenchQuery(row: SweBenchProRow): string {
   const sourceNameHints = selectedTests.flatMap(sourceNameHintsFromSelectedTest).slice(0, 18);
   return [
     `Debug/fix SWE-Bench Pro issue: ${firstMeaningfulLine(row.problem_statement) ?? row.instance_id}`,
+    `Repository language: ${row.repo_language}. Prefer ${row.repo_language} production source unless the issue explicitly names frontend/UI files.`,
     row.requirements ? `Requirements/invariant terms: ${compactSweText(row.requirements, 900)}` : "",
-    row.interface ? `Interface notes: ${compactSweText(row.interface, 240)}` : "",
+    row.interface ? `Interface notes, not necessarily edit targets: ${compactSweText(stripInterfacePathHints(row.interface), 240)}` : "",
     identifiers.length > 0 ? `Code identifiers and domain terms: ${identifiers.slice(0, 28).join(" ")}` : "",
     sourceNameHints.length > 0 ? `Likely production basename hints from selected tests: ${unique(sourceNameHints).slice(0, 12).join(" ")}` : "",
     testTerms.length > 0 ? `Related failing tests/files: ${unique(testTerms).slice(0, 16).join(" ")}` : "",
@@ -298,6 +313,12 @@ function compactSweText(text: string, maxLength: number): string {
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, maxLength);
+}
+
+function stripInterfacePathHints(text: string): string {
+  return text
+    .replace(/\bPath:\s*[^\n]+/gi, "Path: [interface path omitted]")
+    .replace(/\b[A-Za-z0-9_.-]+\/[A-Za-z0-9_./-]+\.(?:ts|tsx|js|jsx|mjs|cjs|py|go|java|rb|c|cc|cpp|h|hpp)\b/g, "[source path omitted]");
 }
 
 function extractIssueIdentifiers(text: string): string[] {
@@ -385,11 +406,37 @@ function buildAgentPrompt(row: SweBenchProRow, patchFiles: string[], selectedTes
   const sections = [
     row.problem_statement.trim(),
     row.requirements ? `Requirements:\n${row.requirements.trim()}` : "",
-    row.interface ? `Interface notes:\n${row.interface.trim()}` : "",
+    row.interface ? `Interface notes, not necessarily edit targets:\n${stripInterfacePathHints(row.interface).trim()}` : "",
     selectedTests.length > 0 ? `Selected tests from SWE-Bench Pro metadata: ${selectedTests.slice(0, 12).join(", ")}` : "",
     "Fix the issue in production source. Do not edit unrelated files. Avoid broad scans once the relevant source surface is known."
   ].filter(Boolean);
   return sections.join("\n\n");
+}
+
+function mentionsPatchSurface(row: SweBenchProRow, filePath: string): boolean {
+  const haystack = [
+    row.problem_statement,
+    row.requirements ?? "",
+    row.interface ?? "",
+    row.fail_to_pass ?? ""
+  ].join("\n").toLowerCase();
+  const basename = path.basename(filePath).replace(/\.[^.]+$/, "").toLowerCase();
+  const parent = path.basename(path.dirname(filePath)).toLowerCase();
+  const parts = basename
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .split(/[^a-z0-9_]+/i)
+    .map((item) => item.trim().toLowerCase())
+    .filter((item) => item.length >= 4 && !/^(test|spec|util|utils?|helper|helpers?|index|main)$/.test(item));
+  if (basename.length >= 4 && haystack.includes(basename)) return true;
+  if (parent.length >= 4 && haystack.includes(parent)) return true;
+  return parts.some((part) => haystack.includes(part));
+}
+
+function failureText(row: SweBenchProRow): string {
+  return [
+    row.fail_to_pass ?? "",
+    row.problem_statement.match(/\b(fail(?:ing|ed)?|traceback|assert|exception|error|regression)\b/i)?.[0] ?? ""
+  ].filter(Boolean).join("\n");
 }
 
 function normalizeDatasetRow(input: unknown): SweBenchProRow | undefined {

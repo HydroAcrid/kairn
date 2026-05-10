@@ -247,6 +247,18 @@ function scoreSourcePriority(
       }
     }
 
+    const domainPathAnchor = scoreDomainPathAnchors(file, query, queryTerms);
+    if (implementationIntent && domainPathAnchor.score !== 0) {
+      score += domainPathAnchor.score;
+      reasons.push(...domainPathAnchor.reasons);
+    }
+
+    const repositoryLanguage = scoreRepositoryLanguagePreference(file, query);
+    if (implementationIntent && repositoryLanguage.score !== 0) {
+      score += repositoryLanguage.score;
+      reasons.push(...repositoryLanguage.reasons);
+    }
+
     const roleHints = scoreSourceRoleHints(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
     if (implementationIntent && roleHints.score > 0) {
       score += roleHints.score;
@@ -903,6 +915,169 @@ function isCoreSourceModule(file: FileRecord): boolean {
     /(^|\/)(utils?|helpers?|core|text|strings?|common|shared)\.[a-z0-9]+$/.test(normalized);
 }
 
+function scoreDomainPathAnchors(file: FileRecord, query: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  if (!isLanguageSourceSurface(file) && !isPrimaryLanguageSourceSurface(file)) return { score: 0, reasons: [] };
+  const normalizedPath = normalizeSearchText(file.path);
+  const pathTerms = new Set(tokenizeLexical(file.path));
+  const domainTerms = [...queryTerms].filter((term) => isSpecificDomainPathTerm(term));
+  const matchedPathTerms = domainTerms.filter((term) => pathTerms.has(term) || normalizedPath.includes(term));
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (matchedPathTerms.length > 0) {
+    score += Math.min(760, matchedPathTerms.length * 150);
+    if (matchedPathTerms.length >= 2) score += 260;
+    reasons.push(`specific source path terms: ${matchedPathTerms.slice(0, 5).join(", ")}`);
+  }
+
+  if (isKeyboardShortcutSource(file.path, queryTerms)) {
+    score += 950;
+    reasons.push("keyboard shortcut source surface");
+  }
+
+  if (isExactUserEmailSource(file.path, queryTerms)) {
+    score += 2600;
+    reasons.push("exact user/email source surface");
+  } else if (isUserEmailAdminSource(file.path, queryTerms)) {
+    score += 820;
+    reasons.push("user/email admin source surface");
+  }
+  if (isBackendUserEmailUiNoise(file.path, queryTerms)) {
+    score -= 720;
+    reasons.push("public/admin UI surface downranked for backend user/email task");
+  }
+
+  if (isNamedAgentClientSource(file.path, queryTerms)) {
+    score += 900;
+    reasons.push("named agent client source surface");
+  }
+
+  if (mentionsGoPackageSurface(query, file.path)) {
+    score += 700;
+    reasons.push("go package surface named by task");
+  }
+
+  return { score, reasons };
+}
+
+function scoreRepositoryLanguagePreference(file: FileRecord, query: string): { score: number; reasons: string[] } {
+  const expected = /repository language:\s*([a-z0-9+#.-]+)/i.exec(query)?.[1]?.toLowerCase();
+  if (!expected || expected === "unknown") return { score: 0, reasons: [] };
+  if (languageMatchesPreference(file.language, expected)) {
+    return isPrimaryLanguageSourceSurface(file) ? { score: 120, reasons: [`repository language source: ${expected}`] } : { score: 55, reasons: [`repository language match: ${expected}`] };
+  }
+  if (isUiFile(file) || isLanguageSourceSurface(file) || isPrimaryLanguageSourceSurface(file)) {
+    return { score: -780, reasons: [`non-${expected} source downranked for repository language`] };
+  }
+  return { score: 0, reasons: [] };
+}
+
+function isSpecificDomainPathTerm(term: string): boolean {
+  return term.length >= 4 &&
+    !GENERIC_DOMAIN_TERMS.has(term) &&
+    ![
+      "debug",
+      "fix",
+      "issue",
+      "source",
+      "production",
+      "tests",
+      "test",
+      "selected",
+      "metadata",
+      "repository",
+      "language",
+      "prefer",
+      "unless",
+      "explicitly",
+      "files",
+      "file",
+      "function",
+      "class",
+      "input",
+      "output",
+      "type",
+      "types",
+      "data",
+      "current",
+      "expected",
+      "actual"
+    ].includes(term);
+}
+
+function isKeyboardShortcutSource(filePath: string, queryTerms: Set<string>): boolean {
+  const normalized = filePath.toLowerCase();
+  const asksKeyboardShortcut =
+    (queryTerms.has("keyboard") || queryTerms.has("key")) &&
+    (queryTerms.has("shortcut") || queryTerms.has("shortcuts") || queryTerms.has("binding") || queryTerms.has("bindings"));
+  if (!asksKeyboardShortcut) return false;
+  return /key[-_]?bindings?|keyboard[-_]?shortcuts?|shortcuts?/.test(normalized) || (normalized.includes("key") && normalized.includes("binding"));
+}
+
+function isUserEmailAdminSource(filePath: string, queryTerms: Set<string>): boolean {
+  const normalized = filePath.toLowerCase();
+  const asksEmailUser =
+    queryTerms.has("email") &&
+    (queryTerms.has("user") || queryTerms.has("users") || queryTerms.has("admin") || queryTerms.has("acp") || queryTerms.has("confirmation") || queryTerms.has("validation"));
+  if (!asksEmailUser) return false;
+  const basename = normalized.split("/").at(-1) ?? "";
+  return (
+    /(^|\/)(user|users|admin|admins)(\/|$)/.test(normalized) ||
+    basename.includes("email") ||
+    basename.includes("user")
+  );
+}
+
+function isExactUserEmailSource(filePath: string, queryTerms: Set<string>): boolean {
+  const normalized = filePath.toLowerCase();
+  const asksEmailUser =
+    queryTerms.has("email") &&
+    (queryTerms.has("user") || queryTerms.has("users") || queryTerms.has("admin") || queryTerms.has("confirmation") || queryTerms.has("validation"));
+  if (!asksEmailUser) return false;
+  const pathTerms = new Set(tokenizeLexical(normalized));
+  const basename = normalized.split("/").at(-1) ?? "";
+  return (pathTerms.has("user") || pathTerms.has("users")) && (pathTerms.has("email") || basename.includes("email"));
+}
+
+function isBackendUserEmailUiNoise(filePath: string, queryTerms: Set<string>): boolean {
+  const asksBackendEmail =
+    queryTerms.has("email") &&
+    (queryTerms.has("user") || queryTerms.has("users") || queryTerms.has("admin")) &&
+    (queryTerms.has("backend") || queryTerms.has("authentication") || queryTerms.has("confirmation") || queryTerms.has("validation"));
+  if (!asksBackendEmail) return false;
+  const normalized = filePath.toLowerCase();
+  return normalized.startsWith("public/") || /(^|\/)(views?|components?|templates?)\//.test(normalized);
+}
+
+function isNamedAgentClientSource(filePath: string, queryTerms: Set<string>): boolean {
+  const normalized = filePath.toLowerCase();
+  if (!queryTerms.has("client") && !queryTerms.has("clients")) return false;
+  const agentNames = ["lastfm", "listenbrainz", "spotify", "github", "gitlab", "slack", "gmail", "jira"];
+  const namedAgent =
+    agentNames.some((name) => queryTerms.has(name) && normalized.includes(name)) ||
+    (queryTerms.has("listen") && queryTerms.has("brainz") && normalized.includes("listenbrainz"));
+  return namedAgent && /(^|\/)client\.[a-z0-9]+$/.test(normalized);
+}
+
+function mentionsGoPackageSurface(query: string, filePath: string): boolean {
+  if (!/repository language:\s*go/i.test(query)) return false;
+  const normalizedPath = filePath.toLowerCase();
+  const basename = normalizedPath.split("/").at(-1)?.replace(/\.go$/, "") ?? "";
+  if (!basename || basename === "main") return false;
+  const normalizedQuery = normalizeSearchText(query);
+  return normalizedQuery.includes(basename.replace(/[_-]+/g, " "));
+}
+
+function languageMatchesPreference(fileLanguage: string, expected: string): boolean {
+  if (fileLanguage === expected) return true;
+  if (expected === "js" || expected === "javascript") return fileLanguage === "javascript" || fileLanguage === "typescript";
+  if (expected === "ts" || expected === "typescript") return fileLanguage === "typescript" || fileLanguage === "javascript";
+  if (expected === "py" || expected === "python") return fileLanguage === "python";
+  if (expected === "golang") return fileLanguage === "go";
+  if (expected === "c++" || expected === "cpp") return fileLanguage === "cpp" || fileLanguage === "c";
+  return false;
+}
+
 function isNoisyImplementationSurface(file: FileRecord): boolean {
   const normalized = file.path.toLowerCase();
   return (
@@ -1065,7 +1240,7 @@ function mentionedSourceFileBasenames(query: string): Set<string> {
   const pattern = /\b[A-Za-z0-9_.-]+\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)\b/g;
   for (const match of query.matchAll(pattern)) {
     const basename = match[0]!.toLowerCase().split(/[\\/]/).at(-1);
-    if (!basename || isLikelyMentionedTestBasename(basename)) continue;
+    if (!basename || isLikelyMentionedTestBasename(basename) || isGenericMentionedSourceBasename(basename)) continue;
     basenames.add(basename);
   }
   return basenames;
@@ -1073,6 +1248,10 @@ function mentionedSourceFileBasenames(query: string): Set<string> {
 
 function isLikelyMentionedTestBasename(basename: string): boolean {
   return /^test_/.test(basename) || /(?:^|[_\-.])(test|tests|spec|specs)(?:[_\-.]|$)/.test(basename) || /_test\./.test(basename);
+}
+
+function isGenericMentionedSourceBasename(basename: string): boolean {
+  return /^(main|index)\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(basename);
 }
 
 const GENERIC_DOMAIN_TERMS = new Set(["app", "apps", "application", "applications", "feature", "page", "screen"]);

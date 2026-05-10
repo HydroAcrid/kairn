@@ -43,12 +43,23 @@ export type BenchmarkAssistClassification =
   | "passive_quality_regression"
   | "neutral";
 
+export type BenchmarkContextBehavior =
+  | "cheap_single_source"
+  | "source_rescue"
+  | "multi_file_debug"
+  | "failure_first"
+  | "session_repeat"
+  | "weak_signal";
+
+export type BenchmarkBehaviorTargetOutcome = "met" | "missed" | "not_applicable";
+
 export type BenchmarkCase = {
   id: string;
   task: string;
   mode: BenchmarkCaseMode;
   query?: string;
   target?: string;
+  contextBehavior?: BenchmarkContextBehavior;
   expectedFiles: string[];
   requiredTouchedFiles?: string[];
   excludedFiles: string[];
@@ -213,6 +224,7 @@ export type BenchmarkMatrixCaseResult = {
   task: string;
   profile: string;
   expectedFiles: string[];
+  absentExpectedFiles?: string[];
   returnedFiles: string[];
   missingExpectedFiles: string[];
   companionFilesReturned?: string[];
@@ -358,6 +370,23 @@ export type BenchmarkComparison = {
     passiveSavings?: number;
     negativeEvidenceReason?: string;
   };
+  behaviorTargetSummary?: Partial<Record<BenchmarkContextBehavior, {
+    cases: number;
+    met: number;
+    missed: number;
+  }>>;
+  caseBehaviorOutcomes?: Array<{
+    caseId: string;
+    behavior: BenchmarkContextBehavior;
+    outcome: BenchmarkBehaviorTargetOutcome;
+    reason: string;
+    baselineTokens?: number;
+    afterTokens?: number;
+    savedTokens?: number;
+    savingsRate?: number;
+    assistanceStatus: BenchmarkAssistanceStatus;
+    assistClassification: BenchmarkAssistClassification;
+  }>;
   improvedCases: string[];
   regressedCases: string[];
   recommendations: string[];
@@ -395,6 +424,11 @@ export type BenchmarkProofReport = {
     }>>;
   };
   abstentionSummary?: Partial<Record<BenchmarkAssistClassification, number>>;
+  behaviorTargetSummary?: Partial<Record<BenchmarkContextBehavior, {
+    cases: number;
+    met: number;
+    missed: number;
+  }>>;
   observedTokenDeltas: {
     passiveVsBaseline?: BenchmarkComparison["observedTokenDelta"];
     proactiveVsBaseline?: BenchmarkComparison["observedTokenDelta"];

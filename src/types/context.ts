@@ -95,7 +95,7 @@ export type ContextValueDecision = {
   topScore: number;
   topGap: number;
   primaryFile?: string;
-  language: "typescript" | "javascript" | "python" | "java" | "cpp" | "c" | "unknown";
+  language: "typescript" | "javascript" | "python" | "java" | "cpp" | "c" | "go" | "ruby" | "unknown";
   exactPathMentioned: boolean;
   exactSourceHit?: boolean;
   cheapSingleSource?: boolean;

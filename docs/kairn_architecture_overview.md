@@ -459,6 +459,17 @@ Assist and abstention classification:
 
 This classification is what lets broad tests measure abstention accuracy instead of treating all lower-token runs as wins. Kairn should abstain when it has no leverage, but missed expensive searches are now visible as missed opportunities.
 
+Behavior target scoring:
+
+- `cheap_single_source`: obvious one-file fixes should suppress or emit only a minimal guardrail with near-zero harm.
+- `source_rescue`: Kairn should actively help when Codex is likely to search broadly for a hidden source file.
+- `multi_file_debug`: Kairn should return the primary source plus one focused companion and an invariant, not broad fanout.
+- `failure_first`: failure output should route to linked source/check context before generic retrieval.
+- `session_repeat`: automatic surfaces should avoid repeating unchanged context already shown in the session.
+- `weak_signal`: low-confidence prompts should stay silent.
+
+Reports aggregate these targets separately from raw token deltas. This is the main product metric for the selective context governor: Kairn is judged on whether it chose the right behavior class before token savings are interpreted.
+
 Source-invariant validation:
 
 - Defined in benchmark suites as semantic file invariants.

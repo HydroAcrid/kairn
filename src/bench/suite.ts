@@ -130,6 +130,7 @@ function normalizeCase(input: unknown, suiteDir?: string): BenchmarkCase {
   const budget = numberValue(input.budget);
   const agentPrompt = stringValue(input.agentPrompt);
   const allowedCommands = stringList(input.allowedCommands);
+  const contextBehavior = normalizeContextBehavior(stringValue(input.contextBehavior));
   const seed = normalizeSeed(input.seed, suiteDir);
   return {
     id,
@@ -137,6 +138,7 @@ function normalizeCase(input: unknown, suiteDir?: string): BenchmarkCase {
     task: stringValue(input.task) ?? stringValue(input.query) ?? id,
     ...(query ? { query } : {}),
     ...(target ? { target: normalizeRelativePath(target) } : {}),
+    ...(contextBehavior ? { contextBehavior } : {}),
     expectedFiles: normalizeFiles(input.expectedFiles),
     requiredTouchedFiles: normalizeFiles(input.requiredTouchedFiles),
     excludedFiles: normalizeFiles(input.excludedFiles),
@@ -211,6 +213,21 @@ function stringValue(value: unknown): string | undefined {
 
 function numberValue(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.round(value) : undefined;
+}
+
+function normalizeContextBehavior(value: string | undefined): BenchmarkCase["contextBehavior"] | undefined {
+  if (!value) return undefined;
+  if (
+    value === "cheap_single_source" ||
+    value === "source_rescue" ||
+    value === "multi_file_debug" ||
+    value === "failure_first" ||
+    value === "session_repeat" ||
+    value === "weak_signal"
+  ) {
+    return value;
+  }
+  throw new Error(`Unsupported benchmark contextBehavior: ${value}`);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

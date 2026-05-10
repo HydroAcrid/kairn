@@ -15,7 +15,9 @@ import { buildSweBenchProPilot, loadSweBenchProRows, writeSweBenchProPilot } fro
 import { evaluateDiffScopes, evaluateSourceInvariants } from "../src/bench/sourceValidation.js";
 import { evaluateContextValue } from "../src/prime/contextValue.js";
 import { evaluatePrimeQuality, resolvePrimeProfile } from "../src/prime/quality.js";
+import { findCompanionCandidates } from "../src/retrieval/companions.js";
 import { createFixtureRepo } from "./helpers.js";
+import type { FileRecord, HybridScoredResult } from "../src/types.js";
 
 const CLI = ["tsx", "src/cli.ts"];
 
@@ -110,6 +112,32 @@ describe("benchmark suite and scoring", () => {
     expect(seed?.testCommand).toContain("process.exit(0)");
   });
 
+  it("loads benchmark context behavior targets", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-suite-behavior-"));
+    const suitePath = path.join(root, "suite.json");
+    fs.writeFileSync(
+      suitePath,
+      JSON.stringify({
+        id: "behavior-suite",
+        name: "Behavior Suite",
+        cases: [
+          {
+            id: "cheap",
+            mode: "agent",
+            task: "Fix obvious parser file",
+            contextBehavior: "cheap_single_source",
+            expectedFiles: ["src/parser.ts"],
+            excludedFiles: []
+          }
+        ]
+      })
+    );
+
+    const suite = loadBenchmarkSuite({ suitePath, files: [] });
+
+    expect(suite.cases[0]?.contextBehavior).toBe("cheap_single_source");
+  });
+
   it("loads the seeded cross-language proof suite example", () => {
     const suite = loadBenchmarkSuite({
       suitePath: path.resolve("examples/bench/seeded-cross-language.json"),
@@ -193,12 +221,14 @@ describe("benchmark suite and scoring", () => {
       const outputs = writeSweBenchProPilot({ pilot, outDir: path.join(root, "out") });
 
       expect(pilot.suite.cases[0]?.expectedFiles).toEqual(["src/flask/app.py"]);
+      expect(pilot.suite.cases[0]?.contextBehavior).toBe("source_rescue");
       expect(pilot.suite.cases[0]?.agentPrompt).not.toContain("src/flask/app.py");
       expect(pilot.suite.cases[0]?.seed?.setupPatch).toBeUndefined();
       expect(pilot.suite.cases[0]?.seed?.setupCommands?.[0]).toContain("git fetch origin");
       expect(pilot.suite.cases[0]?.seed?.setupCommands?.at(-1)).toContain("kairn-seed-tests");
       expect(pilot.suite.cases[0]?.seed?.testCommand).toBeUndefined();
       expect(pilot.matrix.repos[0]?.cases[0]?.mode).toBe("context");
+      expect(pilot.matrix.repos[0]?.cases[0]?.contextBehavior).toBe("source_rescue");
       expect(pilot.matrix.repos[0]?.cases[0]?.query).toContain("dispatch");
       expect(pilot.matrix.repos[0]?.cases[0]?.query).toContain("Likely production basename hints");
       expect(pilot.matrix.repos[0]?.cases[0]?.query).not.toContain("src/flask/app.py");
@@ -402,6 +432,116 @@ describe("benchmark suite and scoring", () => {
     expect(report.repos[0]?.cases[0]?.expectedTopKPassed).toBe(true);
     expect(report.repos[0]?.cases[0]?.excludedFilesAvoided).toBe(true);
     expect(report.repos[0]?.cases[0]?.sourceVsTestDecision).not.toBe("test_first");
+  });
+
+  it("does not count absent expected files as retrieval misses in repo-matrix preflight", async () => {
+    const root = createFixtureRepo();
+    const matrixPath = path.join(root, "matrix-absent.json");
+    fs.writeFileSync(
+      matrixPath,
+      JSON.stringify({
+        id: "local-matrix-absent",
+        name: "Local Matrix Absent",
+        gates: {
+          maxStateMb: 100,
+          maxPrimeLatencyMs: 10000,
+          expectedTopK: 5,
+          requireSuppressionForWeakCases: false
+        },
+        repos: [
+          {
+            id: "fixture",
+            localPath: root,
+            cases: [
+              {
+                id: "new-file",
+                mode: "context",
+                task: "Create a new keyboard shortcuts defaults file.",
+                expectedFiles: ["src/NewKeyboardDefaults.ts"],
+                excludedFiles: [],
+                budget: 900
+              }
+            ]
+          }
+        ]
+      })
+    );
+
+    const report = await runBenchmarkRepoMatrix({ matrixPath });
+    const result = report.repos[0]?.cases[0];
+
+    expect(result?.absentExpectedFiles).toEqual(["src/NewKeyboardDefaults.ts"]);
+    expect(result?.missingExpectedFiles).toEqual([]);
+    expect(result?.expectedTopKPassed).toBe(true);
+    expect(result?.recommendations).toEqual(
+      expect.arrayContaining(["Expected files absent from base checkout and not scored for retrieval: src/NewKeyboardDefaults.ts"])
+    );
+  });
+
+  it("prefers named source companions over generic role paths", () => {
+    const files = [
+      sourceRecord("core/agents/listenbrainz/client.go", "go"),
+      sourceRecord("core/agents/lastfm/client.go", "go"),
+      sourceRecord("core/agents/spotify/client.go", "go"),
+      sourceRecord("model/request/request.go", "go")
+    ];
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query:
+        "Repository language: go. Improve encapsulation for LastFM, ListenBrainz, and Spotify client packages. Low-level request response methods should be package-private.",
+      symbols: [],
+      chunks: [],
+      edges: [],
+      limit: 2
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions).toContain("core/agents/lastfm/client.go");
+    expect(companions).not.toContain("model/request/request.go");
+  });
+
+  it("prefers user/email companions over generic database main files", () => {
+    const files = [
+      sourceRecord("src/controllers/admin/users.js", "javascript"),
+      sourceRecord("src/user/email.js", "javascript"),
+      sourceRecord("src/database/mongo/main.js", "javascript"),
+      sourceRecord("src/database/redis/main.js", "javascript")
+    ];
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query:
+        "Repository language: js. Fix ACP email validation status and confirmation logic. loadUserInfo should attach email pending and expired flags, validate email, and send validation email. db.mget main.js is mentioned as interface metadata, not necessarily edit target.",
+      symbols: [],
+      chunks: [],
+      edges: [],
+      limit: 2
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions[0]).toBe("src/user/email.js");
+    expect(companions).not.toContain("src/database/mongo/main.js");
+  });
+
+  it("prefers kubernetes service companions over generic service request files", () => {
+    const files = [
+      sourceRecord("lib/kube/proxy/forwarder.go", "go"),
+      sourceRecord("lib/service/kubernetes.go", "go"),
+      sourceRecord("lib/services/access_request.go", "go"),
+      sourceRecord("lib/services/local/session.go", "go")
+    ];
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query:
+        "Repository language: go. Debug kubectl exec interactive sessions where Kubernetes service uploader initialization is missing in the kube proxy Forwarder.",
+      symbols: [],
+      chunks: [],
+      edges: [],
+      limit: 2
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions[0]).toBe("lib/service/kubernetes.go");
+    expect(companions).not.toContain("lib/services/access_request.go");
   });
 
   it("runs a fake-agent endurance suite in one workspace and reports ledger savings signals", async () => {
@@ -1216,6 +1356,49 @@ describe("benchmark suite and scoring", () => {
     expect(decision.recommendedDelivery).toBe("multi_file_directive");
   });
 
+  it("keeps focused debug companion tasks directive instead of full-prime", () => {
+    const decision = evaluateContextValue({
+      task: "Debug a seeded Axios regression: request interceptors now run in the wrong order before dispatch. Fix the production source only.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: [
+          "- lib/core/Axios.js (source, score 2612): interceptor order source",
+          "- lib/core/dispatchRequest.js (source, score 714): interceptor/dispatch companion",
+          "- lib/core/InterceptorManager.js (source, score 700): interceptor companion"
+        ].join("\n"),
+        files: ["lib/core/Axios.js", "lib/core/dispatchRequest.js", "lib/core/InterceptorManager.js"],
+        symbols: [],
+        related: ["lib/core/dispatchRequest.js", "lib/core/InterceptorManager.js"],
+        warnings: [],
+        suggestedNextContext: ["lib/core/Axios.js", "lib/core/dispatchRequest.js", "lib/core/InterceptorManager.js"],
+        tokenEstimate: 572
+      },
+      quality: {
+        score: 92,
+        action: "emit",
+        reasons: ["high-confidence top retrieval score", "top result is clearly separated"],
+        topScore: 2612,
+        topGap: 86,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      knownFiles: [
+        record("lib/core/Axios.js", "source"),
+        record("lib/core/dispatchRequest.js", "source"),
+        record("lib/core/InterceptorManager.js", "source")
+      ],
+      repoFileCount: 900,
+      estimatedContextCost: 900,
+      companionCount: 2,
+      companionTopScore: 714,
+      companionSpecific: true
+    });
+
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
   it("chooses multi-file directive for structured debug prompts with companion evidence", () => {
     const decision = evaluateContextValue({
       task: [
@@ -1805,6 +1988,146 @@ describe("benchmark suite and scoring", () => {
       abstentionOutcome: "missed_savings_opportunity",
       missedOpportunity: true
     });
+  });
+
+  it("scores behavior targets for cheap abstention and source rescue", () => {
+    const cheapCase = {
+      id: "cheap",
+      mode: "agent" as const,
+      task: "Fix obvious parser file",
+      contextBehavior: "cheap_single_source" as const,
+      expectedFiles: ["src/parser.ts"],
+      excludedFiles: []
+    };
+    const rescueCase = {
+      id: "rescue",
+      mode: "agent" as const,
+      task: "Debug hidden source routing",
+      contextBehavior: "source_rescue" as const,
+      expectedFiles: ["src/router.ts"],
+      excludedFiles: []
+    };
+    const before = buildBenchmarkReport({
+      run: { id: "before", rootPath: "/repo", suiteId: "suite", suiteName: "suite", mode: "agent", status: "completed", startedAt: "now", metadata: {} },
+      results: [
+        {
+          ...scoreBenchmarkCase({
+            runId: "before",
+            benchmarkCase: cheapCase,
+            actualFiles: ["src/parser.ts"],
+            responseTokens: 100,
+            observedCodexTokens: 2000,
+            taskOutcome: "pass",
+            summary: "baseline cheap"
+          }),
+          id: 1,
+          createdAt: "now"
+        },
+        {
+          ...scoreBenchmarkCase({
+            runId: "before",
+            benchmarkCase: rescueCase,
+            actualFiles: ["src/router.ts"],
+            responseTokens: 100,
+            observedCodexTokens: 60_000,
+            taskOutcome: "pass",
+            summary: "baseline rescue"
+          }),
+          id: 2,
+          createdAt: "now"
+        }
+      ]
+    });
+    const after = buildBenchmarkReport({
+      run: { id: "after", rootPath: "/repo", suiteId: "suite", suiteName: "suite", mode: "agent", status: "completed", startedAt: "now", metadata: {} },
+      results: [
+        {
+          ...scoreBenchmarkCase({
+            runId: "after",
+            benchmarkCase: cheapCase,
+            actualFiles: ["src/parser.ts"],
+            responseTokens: 100,
+            observedCodexTokens: 1900,
+            taskOutcome: "pass",
+            summary: "suppressed cheap",
+            metadata: { primeSuppressed: 1 }
+          }),
+          id: 3,
+          createdAt: "now"
+        },
+        {
+          ...scoreBenchmarkCase({
+            runId: "after",
+            benchmarkCase: rescueCase,
+            actualFiles: ["src/router.ts"],
+            responseTokens: 100,
+            observedCodexTokens: 48_000,
+            taskOutcome: "pass",
+            summary: "active rescue",
+            metadata: { primeEmitted: 1 }
+          }),
+          id: 4,
+          createdAt: "now"
+        }
+      ]
+    });
+
+    const comparison = compareBenchmarkReports(before, after);
+
+    expect(comparison.behaviorTargetSummary).toMatchObject({
+      cheap_single_source: { cases: 1, met: 1, missed: 0 },
+      source_rescue: { cases: 1, met: 1, missed: 0 }
+    });
+    expect(comparison.caseBehaviorOutcomes?.map((item) => [item.caseId, item.outcome])).toEqual([
+      ["cheap", "met"],
+      ["rescue", "met"]
+    ]);
+  });
+
+  it("marks weak-signal emission and under-saving source rescue as missed behavior targets", () => {
+    const weakCase = {
+      id: "weak",
+      mode: "agent" as const,
+      task: "Improve stuff",
+      contextBehavior: "weak_signal" as const,
+      expectedFiles: [],
+      excludedFiles: []
+    };
+    const rescueCase = {
+      id: "rescue-low",
+      mode: "agent" as const,
+      task: "Debug hidden source routing",
+      contextBehavior: "source_rescue" as const,
+      expectedFiles: ["src/router.ts"],
+      excludedFiles: []
+    };
+    const before = buildBenchmarkReport({
+      run: { id: "before", rootPath: "/repo", suiteId: "suite", suiteName: "suite", mode: "agent", status: "completed", startedAt: "now", metadata: {} },
+      results: [
+        { ...scoreBenchmarkCase({ runId: "before", benchmarkCase: weakCase, actualFiles: [], responseTokens: 100, observedCodexTokens: 2000, taskOutcome: "pass", summary: "baseline weak" }), id: 1, createdAt: "now" },
+        { ...scoreBenchmarkCase({ runId: "before", benchmarkCase: rescueCase, actualFiles: ["src/router.ts"], responseTokens: 100, observedCodexTokens: 60_000, taskOutcome: "pass", summary: "baseline rescue" }), id: 2, createdAt: "now" }
+      ]
+    });
+    const after = buildBenchmarkReport({
+      run: { id: "after", rootPath: "/repo", suiteId: "suite", suiteName: "suite", mode: "agent", status: "completed", startedAt: "now", metadata: {} },
+      results: [
+        { ...scoreBenchmarkCase({ runId: "after", benchmarkCase: weakCase, actualFiles: [], responseTokens: 100, observedCodexTokens: 2100, taskOutcome: "pass", summary: "active weak", metadata: { primeEmitted: 1 } }), id: 3, createdAt: "now" },
+        { ...scoreBenchmarkCase({ runId: "after", benchmarkCase: rescueCase, actualFiles: ["src/router.ts"], responseTokens: 100, observedCodexTokens: 56_000, taskOutcome: "pass", summary: "under-saving rescue", metadata: { primeEmitted: 1 } }), id: 4, createdAt: "now" }
+      ]
+    });
+
+    const comparison = compareBenchmarkReports(before, after);
+
+    expect(comparison.behaviorTargetSummary).toMatchObject({
+      weak_signal: { cases: 1, met: 0, missed: 1 },
+      source_rescue: { cases: 1, met: 0, missed: 1 }
+    });
+    expect(comparison.recommendations).toEqual(
+      expect.arrayContaining([
+        "weak: weak_signal target missed - Kairn emitted context for a weak-signal case that should usually stay silent.",
+        "rescue-low: source_rescue target missed - Kairn did not meet the 15% source rescue savings target."
+      ])
+    );
   });
 
   it("treats numeric prime metrics as active assistance", () => {
@@ -2398,5 +2721,36 @@ function record(path: string, kind: "source" | "component" | "test") {
     hash: path,
     importance: 1,
     updatedAt: "now"
+  };
+}
+
+function sourceRecord(path: string, language: string): FileRecord {
+  return {
+    rootPath: "/repo",
+    path,
+    language,
+    kind: "source",
+    size: 100,
+    hash: path,
+    importance: 1,
+    updatedAt: "now"
+  };
+}
+
+function scoredRecord(file: FileRecord): HybridScoredResult {
+  return {
+    ...file,
+    score: 1000,
+    reasons: ["seed"],
+    semanticScore: 0,
+    keywordScore: 0,
+    bm25Score: 0,
+    behaviorScore: 0,
+    graphScore: 0,
+    intentScore: 0,
+    sessionScore: 0,
+    importanceScore: file.importance,
+    gitScore: 0,
+    chunks: []
   };
 }
