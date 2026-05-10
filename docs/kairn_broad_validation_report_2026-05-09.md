@@ -419,3 +419,70 @@ Current recommendation:
 - Keep the Fix Guardrail behavior because it is safer than full-prime context and it preserves quality.
 - Do not claim a universal savings increase from this pass.
 - Next iteration should add a per-turn “where did the tokens move?” report so diagnose spikes cannot hide behind aggregate savings.
+
+## Follow-Up: Gin Canary + SWE-Bench Pro Pilot
+
+The Gin regression was treated as a canary rather than a tuning target. A repeat-3 run after the negative `v2` outlier showed the regression was mostly live-run variance:
+
+| Run | Baseline Tokens | Kairn Tokens | Valid Savings | Quality |
+| --- | ---: | ---: | ---: | --- |
+| Gin repeat 3 | `71,863` | `50,117` | `30.26%` | pass/pass |
+| Gin repeat 4 | `74,426` | `28,152` | `62.17%` | pass/pass |
+| Gin repeat 5 | `78,659` | `23,024` | `70.73%` | pass/pass |
+
+Median repeat result:
+
+| Baseline Median | Kairn Median | Median Savings |
+| ---: | ---: | ---: |
+| `74,426` | `28,152` | `62.17%` |
+
+Interpretation:
+
+- The earlier `-35.36%` Gin run should stay in the record as negative variance evidence.
+- It should not drive Go-specific tuning by itself.
+- Gin remains a useful canary, but the median repeat supports the Fix Guardrail direction.
+
+Kairn also added a small SWE-Bench Pro pilot adapter:
+
+- `kairn bench swe-pro-pilot` fetches a public sample from `ScaleAI/SWE-bench_Pro` or consumes a local JSON/JSONL export.
+- It writes both a repo-matrix preflight file and a live-agent suite scaffold.
+- The generator removes golden patch file paths from prompts so retrieval is not leaked.
+- Matrix preflight uses a distilled issue query: title, code identifiers, and test names instead of the full long issue body.
+- The pilot scores only the primary production source file, because official patches often include docs, schemas, tests, config, or secondary files.
+
+SWE-Bench Pro pilot sample:
+
+| Sample | Languages | Repos | State Gate | Primary-Source Preflight |
+| --- | --- | --- | --- | --- |
+| `12` tasks | JS `2`, Python `8`, Go `2` | NodeBB, qutebrowser, ansible, openlibrary, teleport, navidrome | `12/12` passed | `3/12` passed |
+
+Preflight passes:
+
+| Repo | Language | Expected Primary Source | Returned |
+| --- | --- | --- | --- |
+| ansible | Python | `lib/ansible/utils/collection_loader/_collection_finder.py` | matched |
+| teleport | Go | `lib/kube/proxy/forwarder.go` | matched |
+| openlibrary | Python | `openlibrary/plugins/openlibrary/lists.py` | matched |
+
+Preflight failures showed two repeated patterns:
+
+- Kairn still over-suppresses several long SWE-style issue statements even after query distillation.
+- Some emitted results find a nearby surface but miss the exact primary patch file, especially NodeBB routing/user-email and qutebrowser host/log movement tasks.
+
+A no-agent verification smoke on the three preflight-pass cases failed before live Codex could run because the Hugging Face rows API truncates large `test_patch` fields, producing corrupt patches. That means live SWE-Bench Pro proof should not run from the rows API export. The next harness step is either:
+
+1. consume a full Parquet/JSONL export with untruncated `test_patch`, or
+2. integrate the official Docker evaluator flow using `dockerhub_tag`.
+
+Current SWE-Bench Pro conclusion:
+
+- Kairn can index these larger professional repos within state limits.
+- Kairn is not yet good enough on long issue-statement retrieval: `3/12` primary-source preflight is a useful hard baseline, not a product win.
+- Do not spend live Codex tokens on SWE-Bench Pro until the pilot uses full untruncated task data and preflight improves.
+
+Artifacts:
+
+- SWE pilot files: `/tmp/kairn-swe-pro-pilot-20260510-v4/`
+- SWE preflight report: `/tmp/kairn-swe-pro-pilot-matrix-20260510-v4.json`
+- SWE verification smoke: `/tmp/kairn-swe-pro-pilot-pass3-verification-smoke-20260510.json`
+- Gin repeat artifacts: `/tmp/kairn-endurance-gin-repeat-3.json`, `/tmp/kairn-endurance-gin-repeat-4.json`, `/tmp/kairn-endurance-gin-repeat-5.json`

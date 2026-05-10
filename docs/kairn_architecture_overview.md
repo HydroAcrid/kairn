@@ -397,6 +397,7 @@ Bench:
 - `src/bench/endurance.ts`
 - `src/bench/enduranceSuite.ts`
 - `src/bench/sourceValidation.ts`
+- `src/bench/sweBenchPro.ts`
 
 Bench layers:
 
@@ -404,7 +405,8 @@ Bench layers:
 2. Repo-matrix preflight: broad repo/state/retrieval gates without live agents.
 3. Live-agent proof: expensive Codex/agent runs in disposable workspaces.
 4. Endurance benchmarks: multi-turn agent work in one disposable workspace/session.
-5. Eval harness: manual A/B run evidence and transcript metadata.
+5. SWE-Bench Pro pilot generation: imports public task rows into Kairn preflight/live-suite scaffolds.
+6. Eval harness: manual A/B run evidence and transcript metadata.
 
 Quality rule:
 
@@ -458,6 +460,11 @@ Diff-scope validation:
 - Uses `git diff --unified=0` plus parsed symbols to map changed lines to functions/classes.
 - Fails when an agent edits unrelated hunks in the same file, even if the changed file itself is expected.
 - Prevents cleanup checks from accepting broad same-file behavior drift.
+
+SWE-Bench Pro pilot rule:
+
+- Public rows are useful for repo-matrix preflight and source-retrieval stress tests.
+- Live proof requires full untruncated task data or the official Docker evaluator path. The rows API can truncate large patches, so Kairn should not run leaderboard-style live claims from that source alone.
 
 ## Current Complexity Hotspots
 

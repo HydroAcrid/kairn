@@ -10,6 +10,7 @@ import {
 } from "../formatters.js";
 import { runBenchmarkRepoMatrix } from "../../bench/matrix.js";
 import { runBenchmarkEndurance } from "../../bench/endurance.js";
+import { buildSweBenchProPilot, fetchSweBenchProRows, loadSweBenchProRows, writeSweBenchProPilot } from "../../bench/sweBenchPro.js";
 import { parsePositiveInt, withRuntime } from "../helpers.js";
 import { printJson } from "../output.js";
 
@@ -17,6 +18,59 @@ export function registerBenchCommands(program: Command): void {
   const benchCommand = program
     .command("bench")
     .description("Run deterministic and optional live-agent benchmarks for Kairn retrieval quality.");
+
+  benchCommand
+    .command("swe-pro-pilot")
+    .description("Generate a small SWE-Bench Pro pilot suite and repo-matrix preflight sample.")
+    .option("--input <path>", "local SWE-Bench Pro rows JSON/JSONL export; fetches public rows when omitted")
+    .option("--out-dir <path>", "directory for generated suite/matrix files", "examples/bench/swe-pro-pilot")
+    .option("--offset <n>", "public dataset row offset", parseNonNegativeInt, 0)
+    .option("--limit <n>", "maximum selected tasks", parsePositiveInt, 20)
+    .option("--fetch-length <n>", "number of public rows to fetch before filtering", parsePositiveInt, 50)
+    .option("--languages <csv>", "optional comma-separated language filter, for example python,js,go")
+    .option("--repos <csv>", "optional comma-separated repo filter, for example qutebrowser/qutebrowser,NodeBB/NodeBB")
+    .option("--json", "print JSON output")
+    .action(
+      async (options: {
+        input?: string;
+        outDir: string;
+        offset: number;
+        limit: number;
+        fetchLength: number;
+        languages?: string;
+        repos?: string;
+        json?: boolean;
+      }) => {
+        const rows = options.input
+          ? loadSweBenchProRows(options.input)
+          : await fetchSweBenchProRows({ offset: options.offset, length: options.fetchLength });
+        const pilot = buildSweBenchProPilot({
+          rows,
+          limit: options.limit,
+          languages: csvList(options.languages),
+          repos: csvList(options.repos)
+        });
+        const outputs = writeSweBenchProPilot({ pilot, outDir: options.outDir });
+        const result = {
+          generatedAt: pilot.generatedAt,
+          source: pilot.source,
+          rows: pilot.rows,
+          summary: pilot.summary,
+          outputs
+        };
+        if (options.json) {
+          printJson(result);
+          return;
+        }
+        console.log(`Generated SWE-Bench Pro pilot with ${pilot.rows} tasks.`);
+        console.log(`Suite: ${outputs.suitePath}`);
+        console.log(`Matrix: ${outputs.matrixPath}`);
+        console.log(`Summary: ${outputs.summaryPath}`);
+        for (const warning of pilot.summary.warnings) {
+          console.log(`Warning: ${warning}`);
+        }
+      }
+    );
 
   benchCommand
     .command("matrix")
@@ -310,4 +364,16 @@ export function registerBenchCommands(program: Command): void {
         process.stdout.write(formatBenchmarkMarkdown(report));
       });
     });
+}
+
+function csvList(value: string | undefined): string[] {
+  return value ? value.split(",").map((item) => item.trim()).filter(Boolean) : [];
+}
+
+function parseNonNegativeInt(value: string): number {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error(`Expected a non-negative integer, received: ${value}`);
+  }
+  return parsed;
 }

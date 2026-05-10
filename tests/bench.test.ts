@@ -11,6 +11,7 @@ import { loadBenchmarkEnduranceSuite } from "../src/bench/enduranceSuite.js";
 import { runBenchmarkEndurance } from "../src/bench/endurance.js";
 import { runAgentBenchmarkCase } from "../src/bench/agent.js";
 import { classifyAssistance } from "../src/bench/assistClassification.js";
+import { buildSweBenchProPilot, loadSweBenchProRows, writeSweBenchProPilot } from "../src/bench/sweBenchPro.js";
 import { evaluateDiffScopes, evaluateSourceInvariants } from "../src/bench/sourceValidation.js";
 import { evaluateContextValue } from "../src/prime/contextValue.js";
 import { resolvePrimeProfile } from "../src/prime/quality.js";
@@ -136,6 +137,70 @@ describe("benchmark suite and scoring", () => {
     expect(suite.cases.find((item) => item.id === "cpp-fmt-starts-with")?.requiredTouchedFiles).toEqual([
       "include/fmt/base.h"
     ]);
+  });
+
+  it("builds SWE-Bench Pro pilot suite and matrix files from exported rows", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-swe-pro-pilot-"));
+    try {
+      const rowsPath = path.join(root, "rows.json");
+      fs.writeFileSync(
+        rowsPath,
+        JSON.stringify({
+          rows: [
+            {
+              row: {
+                repo: "pallets/flask",
+                instance_id: "instance_pallets__flask-demo",
+                base_commit: "0123456789012345678901234567890123456789",
+                patch: [
+                  "diff --git a/src/flask/app.py b/src/flask/app.py",
+                  "--- a/src/flask/app.py",
+                  "+++ b/src/flask/app.py",
+                  "@@ -1 +1 @@",
+                  "-return None",
+                  "+return self.ensure_sync(view_func)(**view_args)"
+                ].join("\n"),
+                test_patch: [
+                  "diff --git a/tests/test_app.py b/tests/test_app.py",
+                  "--- a/tests/test_app.py",
+                  "+++ b/tests/test_app.py",
+                  "@@ -1 +1 @@",
+                  "+def test_dispatch(): pass"
+                ].join("\n"),
+                problem_statement: "# Dispatch request returns None\n\nFix dispatch behavior.",
+                requirements: "Use existing dispatch API.",
+                interface: "",
+                repo_language: "python",
+                fail_to_pass: "['tests/test_app.py::test_dispatch']",
+                pass_to_pass: "[]",
+                issue_specificity: "['major_bug']",
+                issue_categories: "['back_end_knowledge']",
+                before_repo_set_cmd: "",
+                selected_test_files_to_run: "[\"tests/test_app.py\"]",
+                dockerhub_tag: "example/flask:latest"
+              }
+            }
+          ]
+        })
+      );
+
+      const rows = loadSweBenchProRows(rowsPath);
+      const pilot = buildSweBenchProPilot({ rows, limit: 1 });
+      const outputs = writeSweBenchProPilot({ pilot, outDir: path.join(root, "out") });
+
+      expect(pilot.suite.cases[0]?.expectedFiles).toEqual(["src/flask/app.py"]);
+      expect(pilot.suite.cases[0]?.agentPrompt).not.toContain("src/flask/app.py");
+      expect(pilot.suite.cases[0]?.seed?.setupPatch).toContain("tests/test_app.py");
+      expect(pilot.suite.cases[0]?.seed?.testCommand).toBe("python3 -m pytest 'tests/test_app.py'");
+      expect(pilot.matrix.repos[0]?.cases[0]?.mode).toBe("context");
+      expect(pilot.matrix.repos[0]?.cases[0]?.query).toContain("dispatch");
+      expect(pilot.matrix.repos[0]?.cases[0]?.query).not.toContain("src/flask/app.py");
+      expect(pilot.matrix.repos[0]?.cases[0]?.seed).toBeUndefined();
+      expect(fs.existsSync(outputs.suitePath)).toBe(true);
+      expect(fs.existsSync(outputs.matrixPath)).toBe(true);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("loads endurance benchmark suite examples", () => {
