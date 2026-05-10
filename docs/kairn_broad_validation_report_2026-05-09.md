@@ -805,3 +805,83 @@ Interpretation:
 - The long-session Kairn prime path is now stronger evidence than the one-shot holdout: it passed quality on Requests and Gin while saving `33-61%`.
 - MCP is mechanically viable but very sensitive to stop conditions. The same Requests suite moved from a large regression to positive savings after Kairn stopped re-surfacing context once source evidence was sufficient.
 - The next MCP target is fewer total tool calls, not broader context. Tool calls can still be useful, but repeated prepare/failure calls should return tiny stop guidance once the active source and invariant are known.
+
+### MCP Tool-Call Discipline Follow-Up
+
+Kairn added phase-aware MCP benchmark guidance:
+
+- first turn: call `kairn_prepare_task` before broad reads;
+- later turns: if a known source is already in the session ledger, do **not** call `kairn_prepare_task` again;
+- after concrete failure output: call `kairn_get_failure_context` at most once;
+- source selection now prefers actual MCP-returned files over ignored ledger recommendations.
+
+Artifacts:
+
+- `/tmp/kairn-endurance-requests-mcp-discipline-20260510.json`
+- `/tmp/kairn-endurance-requests-mcp-discipline-v2-20260510.json`
+- `/tmp/kairn-endurance-requests-mcp-discipline-v3-20260510.json`
+- `/tmp/kairn-holdout-hook-mcp-hybrid-20260510.json`
+
+Requests endurance after the final source-priority fix:
+
+| Mode | Tokens | Quality | Actual MCP Calls | Result |
+| --- | ---: | --- | ---: | --- |
+| Baseline | `85,830` | pass | `0` | control |
+| Kairn prime/shrink | `52,669` | pass | `0` | `38.64%` valid savings |
+| MCP/hybrid | `72,276` | pass | `1` | `15.79%` valid savings |
+
+This is the right direction: MCP no longer repeatedly calls Kairn through the whole session. It still lags direct prime/shrink on this run, mostly because the natural-language MCP instruction overhead is higher than the direct shrunk prime.
+
+Actual installed one-shot surfaces were then checked on the light holdout suite:
+
+| Mode | Quality | Result |
+| --- | --- | --- |
+| Hook full-prime | pass | over-assisted vs baseline |
+| Real MCP-first | pass | over-assisted vs baseline |
+| Hybrid MCP brief | pass | over-assisted vs baseline |
+
+Interpretation:
+
+- Long-session direct prime/shrink is currently the strongest proven path.
+- MCP is improving and now shows valid long-session savings when calls are disciplined, but it needs lower prompt/tool overhead before becoming the default.
+- Actual installed hook/hybrid one-shot mode is not ready for SWE-Pro live spend based on this exploratory run. The next fix should make prompt hooks and hybrid briefs more aggressively abstain or emit ultra-minimal guardrails on cheap one-shot source bugs.
+
+### Cheap One-Shot Hook/MCP Guardrail Iteration
+
+Plan:
+
+1. Detect cheap one-shot source fixes as a behavior class, not a repo-specific rule.
+2. For prompt hooks, suppress host context completely when the task is cheap, exact-source, and has no multi-file signal.
+3. For MCP, avoid fanout. If the model calls Kairn anyway, return either no context or one ultra-minimal source guardrail: one production path, invariant, no snippets, no companions, no next tool calls.
+4. Tighten MCP-first instructions so agents do not call Kairn solely because a prompt says debug/failure/regression when the task is otherwise a small one-source fix.
+5. Treat suppress-only runs as passive evidence; active savings require hook context, MCP guidance, or failure guidance.
+
+Implementation:
+
+- Hook prompt submissions now suppress cheap exact-source one-shot tasks instead of emitting full prime context.
+- `kairn_prepare_task(detail: "compact")` now returns `cheap_one_shot_guardrail` with one source file when Kairn has a clean production candidate, or `cheap_one_shot_abstention` with no files when it does not.
+- MCP-first `AGENTS.md` instructions now explicitly say to work normally on cheap one-shot source fixes and to reserve Kairn for broad, unclear, multi-file, or real command/test failure output.
+
+Artifacts:
+
+- First MCP abstention run: `/tmp/kairn-holdout-real-mcp-ultra-guardrail-20260510.json`
+- Instruction-abstention rerun: `/tmp/kairn-holdout-real-mcp-instruction-abstain-20260510.json`
+
+Live result after the final instruction pass:
+
+| Mode | Tokens | Quality | Actual MCP Calls | Result |
+| --- | ---: | --- | ---: | --- |
+| Baseline | `33,397` | pass | `0` | control |
+| Real MCP-first | `28,055` | pass | `2` total, `1` per case | `16.00%` exploratory savings |
+
+Per-case notes:
+
+- Express: `23,248` baseline tokens to `10,828` MCP tokens, quality pass, one returned source file: `lib/router/layer.js`.
+- Requests: `10,149` baseline tokens to `17,227` MCP tokens, quality pass, one returned source file: `src/requests/sessions.py`.
+
+Interpretation:
+
+- The active over-assist pattern was reduced: MCP returned one production source file and no companion/test fanout.
+- The earlier over-abstention failure was repaired: both holdout cases passed quality gates again.
+- MCP still has per-case variance. The Requests case remained token-negative in this run, so this is not enough to promote MCP-first as the default for cheap one-shot tasks.
+- Hook-only behavior is now safer for this task class because suppressed hooks do not add host context. MCP-first remains useful where tools are the only available integration surface, but it needs repeat-based classification before product claims.

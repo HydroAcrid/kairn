@@ -317,6 +317,61 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
       priorMcpFiles: coordination.mcpFiles.slice(0, 3)
     };
   }
+  const cheapOneShotStop = mcpCheapOneShotAbstention(prime);
+  if (cheapOneShotStop) {
+    const guardrailFiles = cheapOneShotStop.primaryFile ? [cheapOneShotStop.primaryFile] : [];
+    const contextSuppressed = guardrailFiles.length === 0;
+    const tokenEstimate = estimateCompactPrepareTokens(guardrailFiles, [], [], undefined);
+    return {
+      detail: "compact",
+      contextSuppressed,
+      sessionId: prime.session.id,
+      session: { id: prime.session.id, task: prime.session.task },
+      task: prime.task,
+      profile: prime.profile,
+      startFiles: guardrailFiles,
+      files: guardrailFiles,
+      companionFiles: [],
+      fallbackFiles: [],
+      exactSymbolHint: null,
+      exactSourceEvidence: null,
+      invariant: prime.invariants?.[0] ?? null,
+      invariantStatement: prime.invariants?.[0]?.statement ?? null,
+      expectedBehavior: prime.invariants?.[0]?.statement ?? null,
+      verificationCommand: null,
+      workingSet,
+      primaryReason: cheapOneShotStop.reason,
+      stopCondition: cheapOneShotStop.stopCondition,
+      nextToolCalls: [],
+      recommendedToolCalls: [],
+      likelyTests: [],
+      tokenEstimate,
+      quality: {
+        ...(prime.quality ?? {
+          score: prime.contextDecision?.score ?? 0,
+          action: contextSuppressed ? "suppress" : "shrink",
+          reasons: [],
+          topScore: prime.contextDecision?.topScore ?? 0,
+          topGap: prime.contextDecision?.topGap ?? 0,
+          exactPathMentioned: false,
+          expectedSavingsRisk: "high"
+        }),
+        action: contextSuppressed ? "suppress" : "shrink",
+        expectedSavingsRisk: contextSuppressed ? "high" : "medium",
+        reasons: uniqueValues([...(prime.quality?.reasons ?? []), cheapOneShotStop.reason])
+      },
+      contextDecision: {
+        ...(decision ?? {}),
+        action: contextSuppressed ? "suppress" : "shrink",
+        recommendedDelivery: contextSuppressed ? "none" : "one_file_directive",
+        expectedSavingsRisk: contextSuppressed ? "high" : "medium",
+        reasons: uniqueValues([...(decision?.reasons ?? []), cheapOneShotStop.reason])
+      },
+      warnings: uniqueValues([...prime.warnings, cheapOneShotStop.reason]),
+      duplicateContextAvoided: coordination.duplicateContextAvoided,
+      hookFiles: coordination.hookFiles.slice(0, 3)
+    };
+  }
   if (decision?.action === "suppress") {
     return {
       detail: "compact",
@@ -564,6 +619,40 @@ function mcpPrepareStopAfterPriorSource(input: {
     };
   }
   return undefined;
+}
+
+function mcpCheapOneShotAbstention(prime: PrimeContextResult): { stopCondition: string; reason: string; primaryFile?: string } | undefined {
+  const decision = prime.contextDecision;
+  if (!decision) return undefined;
+  if (!isMcpCheapOneShotTask(prime.task)) return undefined;
+  if (decision.wrongContextRisk) return undefined;
+  if (hasMcpExplicitMultiFileSignal(prime.task)) return undefined;
+  const primaryFile = uniqueValues([
+    ...(decision.primaryFile ? [decision.primaryFile] : []),
+    ...prime.files
+  ]).find((file) => isMcpPrimarySourceFile(file) && !isMcpNoisyFile(file));
+  if (primaryFile) {
+    return {
+      stopCondition: "cheap_one_shot_guardrail",
+      primaryFile,
+      reason: `Kairn returned an ultra-minimal guardrail for this cheap one-shot source fix: use ${primaryFile}, preserve the stated invariant, and do not call more Kairn unless a concrete check fails or the target broadens.`
+    };
+  }
+  return {
+    stopCondition: "cheap_one_shot_abstention",
+    reason: "Kairn abstained because this looks like an obvious one-shot source fix; continue normally and call Kairn again only after a concrete failure, broader target, or multi-file signal."
+  };
+}
+
+function isMcpCheapOneShotTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  if (task.length > 420) return false;
+  if (!/\b(debug|fix|repair|patch|regression|bug|failing|failure)\b/.test(normalized)) return false;
+  if (!/\b(production source|source|do not edit unrelated|unrelated files|smallest)\b/.test(normalized)) return false;
+  if (/\b(stack trace|traceback|selected tests|requirements:|actual behavior|expected behavior|multi[-\s]?file|multiple files|across files|across modules|integration|workflow|end-to-end|e2e)\b/.test(normalized)) {
+    return false;
+  }
+  return true;
 }
 
 function mcpTaskPhase(task: string): "discovery" | "implementation" | "debugging" | "verification" | "cleanup" {

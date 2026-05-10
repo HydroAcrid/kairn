@@ -237,7 +237,11 @@ export class KairnRuntime {
       companionTopScore,
       companionSpecific
     });
-    const automaticSuppressionReason = automaticPrimeSuppressionReason({ source: input.source, decision: contextDecision });
+    const automaticSuppressionReason = automaticPrimeSuppressionReason({
+      source: input.source,
+      task: resolvedTask,
+      decision: contextDecision
+    });
     const mcpBriefSuppressionReason = input.format === "mcp_brief" && contextDecision.wrongContextRisk
       ? "hybrid MCP brief abstained because compact MCP context risk is high"
       : undefined;
@@ -3337,11 +3341,18 @@ function hasRecentMcpPrepareAbstention(events: Array<{ eventKind: string; eventN
 
 function automaticPrimeSuppressionReason(input: {
   source?: WatchEventSource | "runtime" | "cli" | "mcp" | "bench" | undefined;
+  task: string;
   decision: ContextValueDecision;
 }): string | undefined {
   if (input.source !== "codex" && input.source !== "claude") return undefined;
   if (input.decision.cheapSingleSource && !input.decision.companionSpecific) {
     return "automatic hook suppressed cheap single-source context to avoid over-assist";
+  }
+  if (input.decision.cheapExactSource) {
+    return "automatic hook suppressed cheap exact-source context to avoid over-assist";
+  }
+  if (isCheapOneShotAutomaticTask(input.task) && input.decision.exactSourceHit && !input.decision.wrongContextRisk) {
+    return "automatic hook suppressed obvious one-shot source context to avoid over-assist";
   }
   return undefined;
 }
@@ -3361,6 +3372,17 @@ function isAutomaticCheapSingleSourceHook(input: {
 }): boolean {
   if (input.source !== "codex" && input.source !== "claude") return false;
   return Boolean(input.decision.cheapSingleSource || input.decision.cheapExactSource);
+}
+
+function isCheapOneShotAutomaticTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  if (task.length > 420) return false;
+  if (!/\b(debug|fix|repair|patch|regression|bug|failing|failure)\b/.test(normalized)) return false;
+  if (!/\b(production source|source|do not edit unrelated|unrelated files|smallest)\b/.test(normalized)) return false;
+  if (/\b(stack trace|traceback|selected tests|requirements:|actual behavior|expected behavior|multi[-\s]?file|multiple files|across files|across modules|integration|workflow|end-to-end|e2e)\b/.test(normalized)) {
+    return false;
+  }
+  return true;
 }
 
 function hasSpecificCompanionEvidence(value: unknown): boolean {

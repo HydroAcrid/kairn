@@ -5,7 +5,8 @@ import type {
   BenchmarkEnduranceSuite,
   BenchmarkEnduranceTurn,
   BenchmarkEnduranceTurnResult,
-  BenchmarkTaskOutcome
+  BenchmarkTaskOutcome,
+  SessionLedgerSummary
 } from "../types.js";
 import { parseCodexUsageFooter } from "../eval/codexUsage.js";
 import { KairnRuntime } from "../runtime/KairnRuntime.js";
@@ -202,16 +203,18 @@ async function runEnduranceTurn(input: {
           "Use this context first. Do not reread already-shown files unless they changed or verification fails."
         ].join("\n");
   } else if (input.runtime && input.sessionId && input.mode === "mcp") {
-    preparedPrompt = [
-      "Kairn long-session instruction:",
-      `Use Kairn session ${input.sessionId}.`,
-      "Call kairn_prepare_task before broad reads. If it returns stopCondition or no nextToolCalls, continue from its files and do not call more Kairn unless a check fails or the target changes.",
-      "Only call kairn_get_next_context when prepare explicitly returns it; call kairn_get_failure_context once after real failures.",
-      "Prefer the smallest Kairn-provided source read and avoid repeating files already shown by Kairn.",
-      "",
-      "User task:",
-      prompt
-    ].join("\n");
+    const mcpPrompt = buildMcpEndurancePrompt({
+      sessionId: input.sessionId,
+      prompt,
+      ledger: beforeLedger,
+      mcpFiles: input.runtime.getCoordinationState(input.sessionId).mcpFiles
+    });
+    preparedPrompt = mcpPrompt.prompt;
+    primeMetadata = {
+      mcpGuidance: mcpPrompt.guidance,
+      ...(mcpPrompt.knownSource ? { mcpKnownSource: mcpPrompt.knownSource } : {}),
+      mcpShouldCallPrepare: mcpPrompt.shouldCallPrepare
+    };
   }
 
   const command = enduranceCommandWithPlaceholders(input.command, {
@@ -332,6 +335,94 @@ async function runEnduranceTurn(input: {
       ...primeMetadata
     }
   };
+}
+
+function buildMcpEndurancePrompt(input: {
+  sessionId: string;
+  prompt: string;
+  ledger?: SessionLedgerSummary | undefined;
+  mcpFiles?: string[] | undefined;
+}): {
+  prompt: string;
+  guidance: "prepare_first" | "continue_known_source" | "failure_gateway";
+  shouldCallPrepare: boolean;
+  knownSource?: string | undefined;
+} {
+  const knownSource = firstKnownSource(input.ledger, input.mcpFiles);
+  const invariant = input.ledger?.workingSet.currentInvariant?.statement;
+  const unresolvedFailures = (input.ledger?.unresolvedFailures ?? 0) > 0;
+  const taskLooksFailureDriven = /\b(fail|failing|failure|error|exception|stack trace|traceback)\b/i.test(input.prompt);
+  if (knownSource && (unresolvedFailures || taskLooksFailureDriven)) {
+    return {
+      guidance: "failure_gateway",
+      shouldCallPrepare: false,
+      knownSource,
+      prompt: [
+        "Kairn long-session instruction:",
+        `Use Kairn session ${input.sessionId}.`,
+        `Known active source: ${knownSource}.`,
+        invariant ? `Known invariant: ${invariant}` : undefined,
+        "Do not call kairn_prepare_task for this turn; source discovery is already complete.",
+        "If there is concrete failure output, call kairn_get_failure_context once with that output. Otherwise continue from the known source and run the smallest check.",
+        "Do not call kairn_get_next_context unless the failure context explicitly asks for it.",
+        "",
+        "User task:",
+        input.prompt
+      ].filter(Boolean).join("\n")
+    };
+  }
+  if (knownSource) {
+    return {
+      guidance: "continue_known_source",
+      shouldCallPrepare: false,
+      knownSource,
+      prompt: [
+        "Kairn long-session instruction:",
+        `Use Kairn session ${input.sessionId}.`,
+        `Known active source: ${knownSource}.`,
+        invariant ? `Known invariant: ${invariant}` : undefined,
+        "Do not call kairn_prepare_task for this turn; Kairn already established the active source.",
+        "Continue from the known source and smallest verification/check. Only call kairn_get_failure_context once if a real check fails, or kairn_prepare_task if the task target changes to a different source area.",
+        "",
+        "User task:",
+        input.prompt
+      ].filter(Boolean).join("\n")
+    };
+  }
+  return {
+    guidance: "prepare_first",
+    shouldCallPrepare: true,
+    prompt: [
+      "Kairn long-session instruction:",
+      `Use Kairn session ${input.sessionId}.`,
+      "Call kairn_prepare_task before broad reads.",
+      "If it returns stopCondition or no nextToolCalls, continue from its files and do not call more Kairn unless a check fails or the target changes.",
+      "Only call kairn_get_next_context when prepare explicitly returns it; call kairn_get_failure_context once after real failures.",
+      "Prefer the smallest Kairn-provided source read and avoid repeating files already shown by Kairn.",
+      "",
+      "User task:",
+      input.prompt
+    ].join("\n")
+  };
+}
+
+function firstKnownSource(ledger?: SessionLedgerSummary | undefined, mcpFiles: string[] = []): string | undefined {
+  if (!ledger) return undefined;
+  const nextRead = ledger.workingSet.nextSmallestUsefulRead;
+  return [
+    ...mcpFiles,
+    ledger.workingSet.currentInvariant?.filePath,
+    ...ledger.workingSet.recentlyTouchedFiles,
+    ...ledger.workingSet.activeFiles,
+    ...ledger.shownFiles,
+    nextRead && nextRead.source !== "ignored_recommendation" ? nextRead.filePath : undefined
+  ].find(isLikelyBenchmarkSource);
+}
+
+function isLikelyBenchmarkSource(filePath: string | undefined): filePath is string {
+  if (!filePath) return false;
+  if (!/\.(?:[cm]?[jt]sx?|py|java|go|rs|c|cc|cpp|cxx|h|hh|hpp|hxx)$/i.test(filePath)) return false;
+  return !/(^|\/)(?:test|tests|testing|__tests__|spec|specs|docs|examples|fixtures|generated|codemods|devtools)(?:\/|$)/i.test(filePath);
 }
 
 function suiteSeedCase(suite: BenchmarkEnduranceSuite): BenchmarkCase {

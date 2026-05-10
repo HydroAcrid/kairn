@@ -297,6 +297,59 @@ describe("MCP server", () => {
 
     await client.close();
   });
+
+  it("returns only an ultra-minimal MCP guardrail for cheap one-shot exact-source fixes", async () => {
+    const root = createFixtureRepo();
+    fs.mkdirSync(path.join(root, "src/flask"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "src/flask/app.py"),
+      [
+        "class Flask:",
+        "    def dispatch_request(self):",
+        "        req = request_ctx.request",
+        "        rule = req.url_rule",
+        "        return self.ensure_sync(self.view_functions[rule.endpoint])(**req.view_args)",
+        ""
+      ].join("\n")
+    );
+    const client = new Client({
+      name: "kairn-test-client",
+      version: "0.1.0"
+    });
+    const transport = new StdioClientTransport({
+      command: path.join(process.cwd(), "node_modules/.bin/tsx"),
+      args: ["src/cli.ts", "serve", "--mcp", "--root", root],
+      cwd: process.cwd(),
+      stderr: "pipe"
+    });
+
+    await client.connect(transport);
+
+    const prepared = await client.callTool({
+      name: "kairn_prepare_task",
+      arguments: {
+        task: "Debug the seeded failing Python check. Flask dispatch_request should call the matched endpoint view function with view_args, but the seeded regression returns None. Fix the production source and do not edit unrelated files.",
+        budget: 700
+      }
+    });
+    const parsed = JSON.parse(firstTextContent(prepared)!) as {
+      contextSuppressed?: boolean;
+      stopCondition?: string | null;
+      startFiles: string[];
+      files: string[];
+      nextToolCalls: unknown[];
+      primaryReason: string;
+    };
+
+    expect(parsed.contextSuppressed).toBe(false);
+    expect(parsed.stopCondition).toBe("cheap_one_shot_guardrail");
+    expect(parsed.startFiles).toEqual(["src/flask/app.py"]);
+    expect(parsed.files).toEqual(["src/flask/app.py"]);
+    expect(parsed.nextToolCalls).toEqual([]);
+    expect(parsed.primaryReason).toContain("ultra-minimal guardrail");
+
+    await client.close();
+  });
 });
 
 function firstTextContent(result: unknown): string | undefined {

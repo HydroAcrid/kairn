@@ -523,6 +523,46 @@ describe("KairnRuntime watch behavior", () => {
     runtime.close();
   });
 
+  it("suppresses cheap exact-source prompt hooks to avoid one-shot over-assist", async () => {
+    const root = createFixtureRepo();
+    fs.mkdirSync(`${root}/src/flask`, { recursive: true });
+    fs.writeFileSync(
+      `${root}/src/flask/app.py`,
+      [
+        "class Flask:",
+        "    def dispatch_request(self):",
+        "        req = request_ctx.request",
+        "        rule = req.url_rule",
+        "        return self.ensure_sync(self.view_functions[rule.endpoint])(**req.view_args)",
+        ""
+      ].join("\n")
+    );
+    const runtime = new KairnRuntime(root);
+    await runtime.init();
+
+    const result = await runtime.handleHookEvent({
+      event: normalizeHookPayload({
+        source: "codex",
+        payload: {
+          cwd: root,
+          hook_event_name: "UserPromptSubmit",
+          session_id: "codex-cheap-exact-source",
+          turn_id: "turn_1",
+          prompt: "Debug the seeded failing Python check. Flask dispatch_request should call the matched endpoint view function with view_args, but the seeded regression returns None. Fix the production source and do not edit unrelated files."
+        }
+      }),
+      hookOutput: "full-prime",
+      primeBudget: 900
+    });
+    const metrics = runtime.getMetrics(result.session.id);
+
+    expect(result.prime).toBeUndefined();
+    expect(result.recommendation).toBeUndefined();
+    expect(metrics.byKind.prime_quality?.events).toBeGreaterThan(0);
+
+    runtime.close();
+  });
+
   it("does not index during a prompt hook when no warm index exists", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);
@@ -767,6 +807,9 @@ describe("watch and hook CLI", () => {
     expect(mcpConfig).toContain("gpt-5.4-mini");
     expect(mcpHooks).not.toContain("UserPromptSubmit");
     expect(mcpInstructions).toContain("kairn_prepare_task");
+    expect(mcpInstructions).toContain("cheap one-shot source fixes");
+    expect(mcpInstructions).toContain("Do not call Kairn solely because a prompt says debug");
+    expect(mcpInstructions).toContain("cheap_one_shot_guardrail");
     expect(hybrid.mcpConfigured).toBe(true);
     expect(hybrid.hookOutput).toBe("mcp-brief");
     expect(hybridConfig).toContain("[mcp_servers.kairn]");

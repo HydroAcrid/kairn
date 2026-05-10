@@ -16,14 +16,16 @@ export function writeMcpInstructionsSetup(input: { root: string; mode?: "mcp-fir
           "- Treat Kairn MCP as an optional fallback only after the task becomes clearly multi-file, unclear, or failure-driven."
         ]
       : [
-          "- For broad, unclear, multi-file, or failure/debug tasks, call `kairn_prepare_task` before broad file scans.",
-          "- For exact-file, exact-symbol, or obviously small tasks, work normally unless you need more context.",
-          "- For real failures, call `kairn_get_failure_context` once before broad debugging searches."
+          "- For broad, unclear, multi-file, or cross-module tasks, call `kairn_prepare_task` before broad file scans.",
+          "- For cheap one-shot source fixes, work normally first. Examples: the prompt names one behavior, asks to fix production source, and says not to edit unrelated files.",
+          "- Do not call Kairn solely because a prompt says debug, failing, failure, or regression when the task is otherwise a small one-source fix.",
+          "- For exact-file, exact-symbol, or obviously small tasks, work normally unless targeted search fails or the task broadens.",
+          "- For real command/test failure output, call `kairn_get_failure_context` once before broad debugging searches."
         ]),
     ...(mode === "hybrid"
       ? ["- Prefer silence over unnecessary Kairn calls when the hook has not supplied useful context."]
       : [
-          "- If `kairn_prepare_task` returns `stopCondition` or no `nextToolCalls`, continue from its files and do not call more Kairn unless a check fails, a file changes, or the target changes.",
+          "- If `kairn_prepare_task` returns `cheap_one_shot_guardrail`, `cheap_one_shot_abstention`, any other `stopCondition`, or no `nextToolCalls`, continue normally and do not call more Kairn unless a check fails, a file changes, or the target changes.",
           "- Only call `kairn_get_next_context` when `kairn_prepare_task` explicitly returns it as a next tool call.",
           "- Prefer the smallest Kairn-recommended read that can answer the immediate question."
         ]),
