@@ -62,7 +62,7 @@ export function decideSessionContextPolicy(input: {
     (!lastPassingVerification || Date.parse(lastFailure!.createdAt) > Date.parse(lastPassingVerification.createdAt));
   const shownFiles = new Set(workingSet.shownFiles);
   const repeatedFiles = candidateFiles.filter((file) => shownFiles.has(file));
-  const changedFiles = candidateFiles.filter((file) => (input.changedFiles ?? []).includes(file) || workingSet.staleFiles.includes(file));
+  const changedFiles = candidateFiles.filter((file) => workingSet.staleFiles.includes(file));
   const failureFiles = candidateFiles.filter((file) => (input.failureFiles ?? []).includes(file));
   const ignoredRecommendedFiles = workingSet.ignoredRecommendedFiles;
   const contentHash = input.contentHash ?? sha256(candidateFiles.join("\n"));
@@ -70,6 +70,18 @@ export function decideSessionContextPolicy(input: {
     (event) => event.kind === "context_shown" && event.contentHash === contentHash
   );
   const phaseShift = phase !== input.ledger.currentPhase;
+  const postDiagnosisFocus = selectPostDiagnosisFocus({
+    task: input.task,
+    phase,
+    candidateFiles,
+    changedFiles: input.changedFiles ?? [],
+    activeFiles: workingSet.activeFiles,
+    shownFiles: workingSet.shownFiles,
+    recentlyTouchedFiles: workingSet.recentlyTouchedFiles,
+    currentInvariantFile: workingSet.currentInvariant?.filePath,
+    lastPassingVerificationFile: lastPassingVerification?.filePath,
+    hasUnresolvedFailure
+  });
 
   if ((phase === "verification" || phase === "cleanup") && hasPassingVerification && !hasUnresolvedFailure) {
     const verifiedFocus = lastPassingVerification?.filePath ?? workingSet.currentInvariant?.filePath ?? workingSet.activeFiles[0];
@@ -85,17 +97,26 @@ export function decideSessionContextPolicy(input: {
   if (changedFiles.length > 0) {
     return decision("emit", phase, "changed_file_reemitted", candidateFiles, repeatedFiles, changedFiles, ignoredRecommendedFiles, input);
   }
-  if (failureFiles.length > 0 || phase === "debugging") {
+  if (failureFiles.length > 0) {
     return decision("emit", phase, "failure_reemitted", candidateFiles.slice(0, 2), repeatedFiles, changedFiles, ignoredRecommendedFiles, input);
-  }
-  if (phaseShift && repeatedFiles.length < candidateFiles.length) {
-    return decision("emit", phase, "phase_shift_reemitted", candidateFiles.filter((file) => !shownFiles.has(file)), repeatedFiles, changedFiles, ignoredRecommendedFiles, input);
   }
   if (duplicateSnippet || repeatedFiles.length === candidateFiles.length) {
     return decision("suppress", phase, "repeated_context_suppressed", [], repeatedFiles, changedFiles, ignoredRecommendedFiles, input, {
       repeatedFilesAvoided: repeatedFiles.length,
       repeatedSnippetsAvoided: duplicateSnippet ? 1 : 0
     });
+  }
+  if (postDiagnosisFocus) {
+    return decision("shrink", phase, "active_source_context_shrunk", [postDiagnosisFocus], repeatedFiles, changedFiles, ignoredRecommendedFiles, input, {
+      activeSourceFile: postDiagnosisFocus,
+      repeatedFilesAvoided: repeatedFiles.length
+    });
+  }
+  if (phase === "debugging") {
+    return decision("emit", phase, "failure_reemitted", candidateFiles.slice(0, 2), repeatedFiles, changedFiles, ignoredRecommendedFiles, input);
+  }
+  if (phaseShift && repeatedFiles.length < candidateFiles.length) {
+    return decision("emit", phase, "phase_shift_reemitted", candidateFiles.filter((file) => !shownFiles.has(file)), repeatedFiles, changedFiles, ignoredRecommendedFiles, input);
   }
   if (ignoredRecommendedFiles.length >= 2) {
     return decision("shrink", phase, "ignored_recommendation_shrunk", candidateFiles.filter((file) => !shownFiles.has(file)).slice(0, 1), repeatedFiles, changedFiles, ignoredRecommendedFiles, input);
@@ -135,4 +156,54 @@ function decision(
 
 function uniqueStrings(values: string[]): string[] {
   return [...new Set(values.filter(Boolean))];
+}
+
+function selectPostDiagnosisFocus(input: {
+  task: string;
+  phase: TaskPhase;
+  candidateFiles: string[];
+  changedFiles: string[];
+  activeFiles: string[];
+  shownFiles: string[];
+  recentlyTouchedFiles: string[];
+  currentInvariantFile?: string | undefined;
+  lastPassingVerificationFile?: string | undefined;
+  hasUnresolvedFailure: boolean;
+}): string | undefined {
+  if (input.hasUnresolvedFailure) return undefined;
+  if (!["debugging", "implementation", "verification", "cleanup"].includes(input.phase)) return undefined;
+  if (hasExplicitMultiFileSignal(input.task)) return undefined;
+  const hasPriorSessionEvidence =
+    input.shownFiles.length > 0 ||
+    input.recentlyTouchedFiles.length > 0 ||
+    Boolean(input.currentInvariantFile || input.lastPassingVerificationFile);
+  if (!hasPriorSessionEvidence) return undefined;
+
+  const directFocus = uniqueStrings([
+    ...input.changedFiles,
+    ...(input.lastPassingVerificationFile ? [input.lastPassingVerificationFile] : []),
+    ...(input.currentInvariantFile ? [input.currentInvariantFile] : []),
+    ...input.recentlyTouchedFiles
+  ]).filter(isLikelyProductionSourcePath);
+  const matchedDirect = directFocus.filter((file) => input.candidateFiles.includes(file));
+  if (matchedDirect.length === 1) return matchedDirect[0];
+  if (directFocus.length === 1) return directFocus[0];
+
+  const activeFocus = uniqueStrings(input.activeFiles).filter(isLikelyProductionSourcePath);
+  if (activeFocus.length === 1) return activeFocus[0];
+  const matchedActive = activeFocus.filter((file) => input.candidateFiles.includes(file));
+  return matchedActive.length === 1 ? matchedActive[0] : undefined;
+}
+
+function hasExplicitMultiFileSignal(task: string): boolean {
+  return /\b(multi[-\s]?file|multiple files|across files|across modules|between .+ and .+|wire .+ and .+|integrat(?:e|ion)|companion|controller.+repository|repository.+controller|router.+dependency|dependency.+router|scheduler.+renderer|renderer.+scheduler|interceptor.+dispatch|dispatch.+interceptor)\b/i.test(task);
+}
+
+function isLikelyProductionSourcePath(filePath: string): boolean {
+  if (!/\.(?:[cm]?[jt]sx?|py|java|go|rs|c|cc|cpp|cxx|h|hh|hpp|hxx)$/i.test(filePath)) return false;
+  if (/(^|\/)(?:test|tests|testing|__tests__|spec|specs|docs|examples|fixtures|generated|codemods|devtools)(?:\/|$)/i.test(filePath)) {
+    return false;
+  }
+  if (/(?:^|\/)[^/]*(?:test|spec)\.[^/]+$/i.test(filePath)) return false;
+  return true;
 }

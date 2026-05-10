@@ -158,6 +158,36 @@ describe("KairnRuntime", () => {
     runtime.close();
   });
 
+  it("shrinks post-diagnose context to the active source instead of resurfacing companions", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const { session } = await runtime.startTask("Investigate dashboard formatting");
+
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "context_shown",
+      filePath: "src/user.ts",
+      source: "runtime",
+      summary: "Earlier companion context"
+    });
+
+    const prime = await runtime.primeContext({
+      task: "Update dashboard formatting behavior in the production source.",
+      sessionId: session.id,
+      budget: 500,
+      source: "bench"
+    });
+    const sessionPolicy = prime.metadata?.sessionPolicy as { reason?: string } | undefined;
+
+    expect(sessionPolicy?.reason).toBe("active_source_context_shrunk");
+    expect(prime.contextDecision?.action).toBe("shrink");
+    expect(prime.files).toEqual(["src/app.ts"]);
+    expect(prime.content).toContain("src/app.ts");
+    expect(prime.content).not.toContain("src/user.ts");
+
+    runtime.close();
+  });
+
   it("reads files, symbols, related files, tests, diff, and compressed output", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);

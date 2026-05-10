@@ -309,6 +309,8 @@ The derived working set is the compact long-session memory that hooks, MCP, `pri
 
 Passing verification is now a first-class ledger signal. When a source invariant or diff-scope check passes, Kairn records a metadata-only `verification_passed` event anchored to the source file. Verification and cleanup turns can then use `verified_context_shrunk`: a tiny source-focused reminder instead of repeating the earlier prime or expanding into neighboring files.
 
+Post-diagnose source focus is the companion to that rule. Once a session has prior context and one active production source, later implementation/debugging/verification/cleanup turns can use `active_source_context_shrunk`: one source file, no companion fanout, and no snippet unless the file changed or a real failure references another file.
+
 This is Kairn's answer to long-conversation compaction. Instead of summarizing the whole chat into prose, Kairn keeps repo-grounded state and uses hashes/file refs to decide whether to repeat, shrink, suppress, or re-emit context.
 
 ## Failure-First Path

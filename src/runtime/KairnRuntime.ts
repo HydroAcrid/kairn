@@ -341,10 +341,10 @@ export class KairnRuntime {
     };
     const emittedFiles = effectiveAction === "suppress"
       ? []
-      : effectiveAction === "shrink" && includeCompanionContext
-        ? files.slice(0, 3)
       : effectiveAction === "shrink" && sessionPolicy.files.length > 0
         ? sessionPolicy.files.slice(0, 1)
+      : effectiveAction === "shrink" && includeCompanionContext
+        ? files.slice(0, 3)
         : files;
     for (const file of files) {
       this.recordLedgerEvent({
@@ -400,10 +400,12 @@ export class KairnRuntime {
               profile,
               quality: effectiveQuality,
               context,
+              files: emittedFiles,
               budget: Math.min(budget, 420),
               invariants,
               includeSnippet:
                 sessionPolicy.reason !== "verified_context_shrunk" &&
+                sessionPolicy.reason !== "active_source_context_shrunk" &&
                 !contextDecision.wrongContextRisk &&
                 !isAutomaticExactSourceHook({ source: input.source, decision: contextDecision })
             })

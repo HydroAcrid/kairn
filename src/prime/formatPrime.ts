@@ -164,11 +164,18 @@ export function formatShrunkPrimeContext(input: {
   profile: ResolvedPrimeProfile;
   quality: PrimeQuality;
   context: ContextResponse;
+  files?: string[] | undefined;
   budget: number;
   invariants?: ContextInvariant[] | undefined;
   includeSnippet?: boolean | undefined;
 }): string {
-  const topFiles = uniquePaths(input.context.suggestedNextContext.length > 0 ? input.context.suggestedNextContext : input.context.files).slice(0, 1);
+  const topFiles = uniquePaths(
+    input.files && input.files.length > 0
+      ? input.files
+      : input.context.suggestedNextContext.length > 0
+        ? input.context.suggestedNextContext
+        : input.context.files
+  ).slice(0, 1);
   const symbolHints = extractPrimeSymbolHints(input.context.content).slice(0, 2);
   const sections = [
     "# Kairn Focused Start",

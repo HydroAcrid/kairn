@@ -10,7 +10,7 @@ The result is honest but useful:
 - Kairn's **exact-source retrieval is strong** across TypeScript, Python, Java, and C++.
 - Kairn's **automatic one-shot assistance currently over-assists on aggregate** against modern Codex. Baseline Codex is already very efficient on small seeded source bugs.
 - Kairn's most repeated weakness is **companion-file recall** for multi-surface framework tasks.
-- The repaired endurance path is now the strongest evidence for Kairn's product direction: quality-passing long-session runs saved `37-53%` while staying active through shrink/suppress/failure-context decisions.
+- The repaired endurance path is now the strongest evidence for Kairn's product direction: quality-passing long-session runs saved `50-59%` after post-diagnose source focusing.
 
 Token savings below only count when quality passes, required production files are touched, unrelated files are avoided, and Kairn was actually active.
 
@@ -26,6 +26,9 @@ Token savings below only count when quality passes, required production files ar
 - Repaired Flask endurance proof v2: `/tmp/kairn-endurance-flask-v2.json`
 - Commons IO endurance proof: `/tmp/kairn-endurance-commons-io-v1.json`
 - Axios endurance proof: `/tmp/kairn-endurance-axios-v1.json`
+- Axios post-diagnose focus proof: `/tmp/kairn-endurance-axios-v3.json`
+- Flask post-diagnose focus proof: `/tmp/kairn-endurance-flask-v3.json`
+- Commons IO post-diagnose focus proof: `/tmp/kairn-endurance-commons-io-v2.json`
 
 ## Preflight Results
 
@@ -158,7 +161,26 @@ Per-turn pattern:
 
 This is the first clear evidence that the long-session thesis is stronger than the one-shot thesis. Kairn did not win every turn, but it won cumulatively by preventing repeated discovery and broad verification/cleanup scans.
 
-Remaining caveat: Flask v2 still surfaced neighbor files during one verification turn before the ledger fully anchored on `src/flask/app.py`. That is not a failed run, but it is the next polish target for phase-aware routing.
+Remaining caveat from this pass: Flask v2 still surfaced neighbor files during one verification turn before the ledger fully anchored on `src/flask/app.py`. That became the next polish target for phase-aware routing.
+
+### Post-Diagnose Source Focus
+
+Kairn then tightened post-diagnose behavior:
+
+- after Kairn has prior session evidence and one active production source, implementation/debugging/verification/cleanup turns shrink to that source,
+- real failure-linked files still override the source-focus rule,
+- duplicate-context suppression still wins over repeating a focused source,
+- shrunk prime formatting now uses the emitted focus file instead of the raw retrieval companion list.
+
+This directly addressed the Axios and Flask issue where Kairn occasionally resurfaced companion files after the active source was already known.
+
+| Suite | Previous Valid Savings | Focused Valid Savings | Quality | Notable Change |
+| --- | ---: | ---: | --- | --- |
+| Axios interceptor endurance | `37.40%` | `58.56%` | pass/pass | fix turn changed from companions/declarations to `lib/core/Axios.js` |
+| Flask dispatch endurance | `52.66%` | `49.83%` | pass/pass | verification turn changed from neighbor files to `src/flask/app.py` |
+| Commons IO filename endurance | `39.27%` | `52.72%` | pass/pass | cleanup stayed tightly anchored to `FilenameUtils.java` |
+
+The live-proof variance is still real, but the behavioral change is clear: prime files are now source-focused after diagnosis, and all three suites preserved quality.
 
 ## Answers To The Four Questions
 
@@ -317,22 +339,21 @@ The repaired endurance results are now stronger than the one-shot results:
 
 | Suite | Baseline Tokens | Kairn Tokens | Valid Savings | Quality | Main Win |
 | --- | ---: | ---: | ---: | --- | --- |
-| Flask dispatch endurance v2 | `99,737` | `47,216` | `52.66%` | pass/pass | verification and cleanup stayed focused |
-| Commons IO filename endurance | `158,869` | `96,479` | `39.27%` | pass/pass | verification and cleanup avoided broad rereads |
-| Axios interceptor endurance | `114,217` | `71,498` | `37.40%` | pass/pass | companion discovery, verification, and cleanup stayed bounded |
+| Flask dispatch endurance v3 | `69,025` | `34,631` | `49.83%` | pass/pass | verification anchored to `src/flask/app.py` |
+| Commons IO filename endurance v2 | `154,666` | `73,124` | `52.72%` | pass/pass | verification and cleanup avoided broad rereads |
+| Axios interceptor endurance v3 | `127,942` | `53,023` | `58.56%` | pass/pass | fix turn stayed on `lib/core/Axios.js` |
 
 Current interpretation:
 
 - The default one-shot path should remain adaptive hook guardrails.
-- The high-value product claim should emphasize hard/debug/long-session work, where the ledger can prevent repeated discovery and verification drift.
+- The high-value product claim should emphasize hard/debug/long-session work, where the ledger can prevent repeated discovery, companion drift, and broad verification/cleanup scans.
 - MCP remains experimental until it proves similar cumulative savings with actual tool calls and quality passing.
 
 Remaining pain points:
 
-- Axios-style multi-surface tasks are still noisy across individual runs, even though the guardrail repeat passed.
-- Axios endurance passed, but the fix-turn prime still included secondary files (`index.d.ts`, `InterceptorManager.js`, `dispatchRequest.js`) after `lib/core/Axios.js` was already the active source. That is useful evidence for tightening post-diagnose companion behavior.
+- Axios-style multi-surface tasks still have live-run variance, even though post-diagnose source focusing fixed the companion drift in the latest run.
 - The report aggregation still needs clearer per-case active/passive attribution so aggregate savings cannot be over-attributed to one active case.
-- Flask verification metadata still briefly surfaced neighbor files before cleanup anchored on `src/flask/app.py`; phase-aware routing should tighten that.
+- MCP has not yet shown the same repeatable long-session win as hook/ledger assistance.
 
 Next validation should use the same guardrail and ledger setup on a wider suite, split by repo to avoid long timeout-bound runs:
 
