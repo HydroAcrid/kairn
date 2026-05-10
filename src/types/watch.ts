@@ -60,6 +60,7 @@ export type FailureContext = {
   session: TaskSession;
   type: OutputKind;
   content: string;
+  contextSuppressed?: boolean;
   files: string[];
   failureFiles: string[];
   relatedFiles: string[];

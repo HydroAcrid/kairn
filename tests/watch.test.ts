@@ -772,7 +772,9 @@ describe("watch and hook CLI", () => {
     expect(hybridConfig).toContain("[mcp_servers.kairn]");
     expect(hybridHooks).toContain("UserPromptSubmit");
     expect(hybridHooks).toContain("--hook-output mcp-brief");
-    expect(hybridInstructions).toContain("kairn_get_next_context");
+    expect(hybridInstructions).toContain("Kairn Hybrid Workflow");
+    expect(hybridInstructions).not.toContain("kairn_get_next_context");
+    expect(hybridInstructions).toContain("If no Kairn hook context appears, work normally");
     expect(hook.session.id).toMatch(/^task_/);
     expect(hook.prime?.content).toContain("Kairn Proactive Context");
     expect(hook.prime?.files).toContain("src/app/private/jobs/JobsApplicationsTable.tsx");

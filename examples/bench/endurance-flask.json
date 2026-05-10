@@ -7,8 +7,8 @@
     "ref": "7374c85ddefc3f4b177a698ab9f0cbb6a5c0b392",
     "cloneDepth": 1,
     "setupPatchFile": "./patches/flask-dispatch-request-view.patch",
-    "expectedFailureCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/flask/app.py').read_text()\nraise SystemExit(1 if 'return None' in source else 0)\nPY",
-    "testCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/flask/app.py').read_text()\nraise SystemExit(0 if 'return None' not in source and 'view_functions[rule.endpoint]' in source and 'ensure_sync' in source and '**view_args' in source else 1)\nPY"
+    "expectedFailureCommand": "python3 - <<'PY'\nfrom pathlib import Path\nimport re\nsource = Path('src/flask/app.py').read_text()\nmatch = re.search(r'def dispatch_request\\([\\s\\S]*?\\n    def ', source)\nbody = match.group(0) if match else ''\ndirect = 'return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)' in body\nvia_local = bool(re.search(r'([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*self\\.view_functions\\[rule\\.endpoint\\][\\s\\S]*return\\s+self\\.ensure_sync\\(\\1\\)\\(\\*\\*view_args\\)', body))\nfixed = 'return None' not in body and (direct or via_local)\nraise SystemExit(1 if fixed else 0)\nPY",
+    "testCommand": "python3 - <<'PY'\nfrom pathlib import Path\nimport re\nsource = Path('src/flask/app.py').read_text()\nmatch = re.search(r'def dispatch_request\\([\\s\\S]*?\\n    def ', source)\nbody = match.group(0) if match else ''\ndirect = 'return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)' in body\nvia_local = bool(re.search(r'([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*self\\.view_functions\\[rule\\.endpoint\\][\\s\\S]*return\\s+self\\.ensure_sync\\(\\1\\)\\(\\*\\*view_args\\)', body))\nfixed = 'return None' not in body and (direct or via_local)\nraise SystemExit(0 if fixed else 1)\nPY"
   },
   "allowedDiffScopes": [
     {
@@ -21,10 +21,9 @@
       "id": "dispatch-request-calls-view",
       "file": "src/flask/app.py",
       "description": "dispatch_request must dispatch to the matched endpoint view function with view_args.",
-      "requiredAbsent": ["return None"],
       "requiredAnyRegex": [
-        "return\\s+self\\.ensure_sync\\(self\\.view_functions\\[rule\\.endpoint\\]\\)\\(\\*\\*view_args\\)",
-        "([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*self\\.view_functions\\[rule\\.endpoint\\][\\s\\S]*return\\s+self\\.ensure_sync\\(\\1\\)\\(\\*\\*view_args\\)"
+        "def\\s+dispatch_request\\([\\s\\S]*?return\\s+self\\.ensure_sync\\(self\\.view_functions\\[rule\\.endpoint\\]\\)\\(\\*\\*view_args\\)[\\s\\S]*?\\n    def ",
+        "def\\s+dispatch_request\\([\\s\\S]*?([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*self\\.view_functions\\[rule\\.endpoint\\][\\s\\S]*return\\s+self\\.ensure_sync\\(\\1\\)\\(\\*\\*view_args\\)[\\s\\S]*?\\n    def "
       ]
     }
   ],
@@ -41,7 +40,7 @@
     {
       "id": "fix",
       "task": "Fix dispatch_request in Flask production source.",
-      "agentPrompt": "Fix the seeded Flask regression in production source only. Do not edit unrelated files.",
+      "agentPrompt": "Fix the seeded Flask dispatch_request regression in production source only. In src/flask/app.py, inside dispatch_request, remove the seeded `return None`, call `self.view_functions[rule.endpoint]` for the matched rule, return through `self.ensure_sync(...)(**view_args)`, preserve existing ensure_sync behavior, and keep edits inside dispatch_request. Do not edit ensure_sync or unrelated functions.",
       "expectedFiles": ["src/flask/app.py"],
       "requiredTouchedFiles": ["src/flask/app.py"],
       "excludedFiles": ["docs/", "examples/", "tests/"],
@@ -49,10 +48,9 @@
         {
           "id": "dispatch-request-calls-view",
           "file": "src/flask/app.py",
-          "requiredAbsent": ["return None"],
           "requiredAnyRegex": [
-            "return\\s+self\\.ensure_sync\\(self\\.view_functions\\[rule\\.endpoint\\]\\)\\(\\*\\*view_args\\)",
-            "([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*self\\.view_functions\\[rule\\.endpoint\\][\\s\\S]*return\\s+self\\.ensure_sync\\(\\1\\)\\(\\*\\*view_args\\)"
+            "def\\s+dispatch_request\\([\\s\\S]*?return\\s+self\\.ensure_sync\\(self\\.view_functions\\[rule\\.endpoint\\]\\)\\(\\*\\*view_args\\)[\\s\\S]*?\\n    def ",
+            "def\\s+dispatch_request\\([\\s\\S]*?([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*self\\.view_functions\\[rule\\.endpoint\\][\\s\\S]*return\\s+self\\.ensure_sync\\(\\1\\)\\(\\*\\*view_args\\)[\\s\\S]*?\\n    def "
           ]
         }
       ],
@@ -75,10 +73,9 @@
         {
           "id": "dispatch-request-calls-view",
           "file": "src/flask/app.py",
-          "requiredAbsent": ["return None"],
           "requiredAnyRegex": [
-            "return\\s+self\\.ensure_sync\\(self\\.view_functions\\[rule\\.endpoint\\]\\)\\(\\*\\*view_args\\)",
-            "([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*self\\.view_functions\\[rule\\.endpoint\\][\\s\\S]*return\\s+self\\.ensure_sync\\(\\1\\)\\(\\*\\*view_args\\)"
+            "def\\s+dispatch_request\\([\\s\\S]*?return\\s+self\\.ensure_sync\\(self\\.view_functions\\[rule\\.endpoint\\]\\)\\(\\*\\*view_args\\)[\\s\\S]*?\\n    def ",
+            "def\\s+dispatch_request\\([\\s\\S]*?([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*self\\.view_functions\\[rule\\.endpoint\\][\\s\\S]*return\\s+self\\.ensure_sync\\(\\1\\)\\(\\*\\*view_args\\)[\\s\\S]*?\\n    def "
           ]
         }
       ],
@@ -102,10 +99,9 @@
         {
           "id": "dispatch-request-calls-view",
           "file": "src/flask/app.py",
-          "requiredAbsent": ["return None"],
           "requiredAnyRegex": [
-            "return\\s+self\\.ensure_sync\\(self\\.view_functions\\[rule\\.endpoint\\]\\)\\(\\*\\*view_args\\)",
-            "([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*self\\.view_functions\\[rule\\.endpoint\\][\\s\\S]*return\\s+self\\.ensure_sync\\(\\1\\)\\(\\*\\*view_args\\)"
+            "def\\s+dispatch_request\\([\\s\\S]*?return\\s+self\\.ensure_sync\\(self\\.view_functions\\[rule\\.endpoint\\]\\)\\(\\*\\*view_args\\)[\\s\\S]*?\\n    def ",
+            "def\\s+dispatch_request\\([\\s\\S]*?([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*self\\.view_functions\\[rule\\.endpoint\\][\\s\\S]*return\\s+self\\.ensure_sync\\(\\1\\)\\(\\*\\*view_args\\)[\\s\\S]*?\\n    def "
           ]
         }
       ],

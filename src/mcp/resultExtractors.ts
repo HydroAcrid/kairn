@@ -16,7 +16,8 @@ export function sessionIdFromMcpValue(value: unknown): string | undefined {
 export function filesFromMcpValue(value: unknown): string[] {
   if (!value || typeof value !== "object") return [];
   const record = value as Record<string, unknown>;
-  const fields = [record.files, record.related, record.suggestedNextContext, record.failureFiles, record.testFiles, record.changedFiles];
+  if (record.contextSuppressed === true) return [];
+  const fields = [record.files, record.related, record.suggestedNextContext, record.failureFiles, record.testFiles];
   return uniquePaths(
     fields.flatMap((field) => Array.isArray(field) ? field.filter((item): item is string => typeof item === "string") : [])
   );

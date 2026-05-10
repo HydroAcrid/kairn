@@ -3,9 +3,29 @@ import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { describe, expect, it } from "vitest";
+import { filesFromMcpValue } from "../src/mcp/resultExtractors.js";
 import { createFixtureRepo } from "./helpers.js";
 
 describe("MCP server", () => {
+  it("does not count suppressed failure metadata as returned MCP files", () => {
+    expect(
+      filesFromMcpValue({
+        contextSuppressed: true,
+        files: [],
+        failureFiles: ["eslint.config.js", "tests/browser/interceptors.browser.test.js"],
+        changedFiles: ["AGENTS.md", "lib/core/Axios.js"],
+        testFiles: ["tests/browser/interceptors.browser.test.js"]
+      })
+    ).toEqual([]);
+
+    expect(
+      filesFromMcpValue({
+        files: ["lib/core/Axios.js"],
+        changedFiles: ["AGENTS.md"]
+      })
+    ).toEqual(["lib/core/Axios.js"]);
+  });
+
   it("lists and calls Kairn tools over stdio", async () => {
     const root = createFixtureRepo();
     const client = new Client({

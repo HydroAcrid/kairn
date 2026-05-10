@@ -2,7 +2,7 @@
 
 ## Summary
 
-This pass tested Kairn across deterministic repo-matrix preflight, one-shot live Codex proofs, and one short endurance proof.
+This pass tested Kairn across deterministic repo-matrix preflight, one-shot live Codex proofs, and short multi-turn endurance proofs.
 
 The result is honest but useful:
 
@@ -10,7 +10,7 @@ The result is honest but useful:
 - Kairn's **exact-source retrieval is strong** across TypeScript, Python, Java, and C++.
 - Kairn's **automatic one-shot assistance currently over-assists on aggregate** against modern Codex. Baseline Codex is already very efficient on small seeded source bugs.
 - Kairn's most repeated weakness is **companion-file recall** for multi-surface framework tasks.
-- Endurance remains the right long-session thesis, but the latest Flask endurance run failed quality in both baseline and Kairn modes, so it is not a savings claim.
+- The repaired endurance path is now the strongest evidence for Kairn's product direction: quality-passing long-session runs saved `39-53%` while staying active through shrink/suppress decisions.
 
 Token savings below only count when quality passes, required production files are touched, unrelated files are avoided, and Kairn was actually active.
 
@@ -22,6 +22,9 @@ Token savings below only count when quality passes, required production files ar
 - Cross-language live proof: `/tmp/kairn-broad-live-cross-language-20260509.json`
 - Fresh-repo live proof: `/tmp/kairn-broad-live-new-repos-20260509.json`
 - Flask endurance proof: `/tmp/kairn-broad-endurance-flask-20260509.json`
+- Repaired Flask endurance proof v1: `/tmp/kairn-endurance-flask-v1.json`
+- Repaired Flask endurance proof v2: `/tmp/kairn-endurance-flask-v2.json`
+- Commons IO endurance proof: `/tmp/kairn-endurance-commons-io-v1.json`
 
 ## Preflight Results
 
@@ -107,9 +110,9 @@ Per-case valid wins:
 
 Conclusion: Kairn has real per-case wins, but current automatic modes are not yet consistently better than baseline across mixed suites.
 
-## Endurance Proof
+## Endurance Proofs
 
-Suite: Flask dispatch endurance, four turns: diagnose, fix, verify, cleanup.
+### Initial Flask Stress Run
 
 | Mode | Quality | Tokens | Assistance | Classification |
 | --- | --- | ---: | --- | --- |
@@ -123,6 +126,33 @@ Important endurance findings:
 - Kairn's ledger correctly identified `src/flask/app.py` as the active file and next smallest read.
 - Kairn avoided broad full-prime repetition, using shrink/suppress decisions.
 - Both baseline and Kairn failed to remove the seeded `return None` invariant, so the task prompt or turn structure needs repair before repeated endurance claims.
+
+### Repaired Long-Session Runs
+
+After the harness started recording semantic source invariants, diff-scope checks, passing verification events, and verified-source anchors into the session ledger, the same long-session pattern became a quality-passing product signal.
+
+| Suite | Baseline Tokens | Kairn Tokens | Valid Savings | Quality | Kairn Assistance |
+| --- | ---: | ---: | ---: | --- | --- |
+| Flask dispatch endurance v1 | `107,208` | `63,994` | `40.31%` | pass/pass | active: `3` shrink, `1` suppress |
+| Flask dispatch endurance v2 | `99,737` | `47,216` | `52.66%` | pass/pass | active: `3` shrink, `1` suppress |
+| Commons IO filename endurance | `158,869` | `96,479` | `39.27%` | pass/pass | active: `4` shrink |
+
+Per-turn pattern:
+
+| Suite | Turn | Baseline Tokens | Kairn Tokens | Result |
+| --- | --- | ---: | ---: | --- |
+| Flask v2 | diagnose | `39,133` | `20,399` | Kairn reduced search cost |
+| Flask v2 | fix | `16,900` | `8,589` | Kairn kept the edit focused |
+| Flask v2 | verify | `26,994` | `14,080` | Kairn reduced verification drift |
+| Flask v2 | cleanup | `16,710` | `4,148` | Ledger guidance prevented broad rereads |
+| Commons IO | diagnose | `40,871` | `45,595` | Kairn over-assisted on the first turn |
+| Commons IO | fix | `21,849` | `20,895` | Small improvement |
+| Commons IO | verify | `62,719` | `15,202` | Major long-session win |
+| Commons IO | cleanup | `33,430` | `14,787` | Major long-session win |
+
+This is the first clear evidence that the long-session thesis is stronger than the one-shot thesis. Kairn did not win every turn, but it won cumulatively by preventing repeated discovery and broad verification/cleanup scans.
+
+Remaining caveat: Flask v2 still surfaced neighbor files during one verification turn before the ledger fully anchored on `src/flask/app.py`. That is not a failed run, but it is the next polish target for phase-aware routing.
 
 ## Answers To The Four Questions
 
@@ -170,7 +200,7 @@ Repeated patterns:
 1. **Companion misses**: router/dependency, controller/repository, routing/convertor, UI table/tabs, Go route/context.
 2. **Over-assist on exact-source bugs**: Kairn should shrink harder or suppress when baseline is likely cheap.
 3. **MCP tool use is real now, but not always efficient**: actual MCP calls are recorded, but agents sometimes call several tools and still use more tokens.
-4. **Endurance task quality is not stable yet**: ledger behavior is useful, but turn prompts need better invariant/check guidance.
+4. **Endurance task quality became the strongest positive signal after source-invariant and ledger repairs**: Kairn's cumulative wins came mostly from verification and cleanup turns, not from first-turn discovery.
 
 ## Current Best Product Interpretation
 
@@ -197,9 +227,9 @@ The broad report makes the next product direction clear: fewer automatic primes,
    - It needs a "done, stop asking Kairn" response after enough evidence is returned.
    - Track tokens per MCP call and returned-file usefulness more aggressively.
 
-4. **Endurance Prompt Repair**
-   - The Flask endurance suite should be revised so the fix turn gives the invariant directly: remove `return None`, call `self.view_functions[rule.endpoint]`, preserve `ensure_sync`, and keep edits inside `dispatch_request`.
-   - Do not run repeat endurance claims until baseline or Kairn can pass at least once.
+4. **Endurance Phase Routing**
+   - Verification and cleanup turns should anchor harder on the last passing source-invariant file.
+   - Kairn should avoid returning neighbor files once the ledger has a passing verification and no unresolved failure.
 
 5. **Abstention Accuracy Metric**
    - Add a report-level score:
@@ -226,3 +256,79 @@ Then rerun:
 2. fresh framework one-shot suite,
 3. revised Flask or Commons IO endurance.
 
+## Follow-Up: Guardrail Hook Pass
+
+After the broad report, Kairn implemented the repeated deterministic fixes:
+
+- Companion Routing V2 for generic role pairs and source-over-noise routing.
+- Conditional hybrid MCP setup so hybrid does not force first-turn MCP calls.
+- MCP stop/suppression metrics so suppressed failure context does not count as returned files.
+- Tiny no-snippet guardrails for automatic hooks when full context is risky.
+- Exact-source hook delivery changed from suppress-only to small active guardrails.
+
+The most important one-shot live result came from a repeat-2 fresh-repo suite over Axios, Flask, and Commons IO Java:
+
+| Mode | Repeats | Quality Passing Reports | Median Tokens | Valid Savings |
+| --- | ---: | ---: | ---: | ---: |
+| baseline | `2` | `2/2` | `65,661` | n/a |
+| hook full-prime adaptive guardrail | `2` | `2/2` | `48,487` | `26.16%` |
+
+Per-repeat totals:
+
+| Repeat | Baseline Tokens | Hook Tokens | Result |
+| ---: | ---: | ---: | --- |
+| 1 | `58,427` | `39,422` | hook won, quality passed |
+| 2 | `72,895` | `57,552` | hook won, quality passed |
+
+Per-case hook behavior in the repeat-2 proof:
+
+| Case | Hook Prime | Prime Tokens | Quality |
+| --- | --- | ---: | --- |
+| Axios interceptor order | emitted tiny guardrail | `159` | pass |
+| Flask dispatch request | emitted tiny guardrail | `217` | pass |
+| Commons IO filename equals | emitted tiny guardrail | `224` | pass |
+
+This is the strongest current one-shot evidence that the product path should be:
+
+> Default Codex setup = prompt hook with adaptive tiny guardrails, not broad full-prime context and not forced MCP-first.
+
+Current interpretation:
+
+- The earlier large wins were real but unstable because full-prime and MCP could over-assist.
+- The new guardrail path is less flashy but more repeatable: it preserved quality and beat baseline in both repeats.
+- Hybrid MCP should remain experimental. It is now safer because it suppresses when MCP would return no useful files, but it did not beat hook-only in this pass.
+
+## Follow-Up: Session Ledger Endurance Pass
+
+After the guardrail hook pass, Kairn added long-session ledger discipline:
+
+- source-invariant and diff-scope verification events are recorded in the session ledger,
+- passing verification anchors the working set to the verified source file,
+- verification and cleanup turns can use `verified_context_shrunk` instead of repeating the full prime,
+- suppress-only runs still cannot count as active Kairn wins.
+
+The repaired endurance results are now stronger than the one-shot results:
+
+| Suite | Baseline Tokens | Kairn Tokens | Valid Savings | Quality | Main Win |
+| --- | ---: | ---: | ---: | --- | --- |
+| Flask dispatch endurance v2 | `99,737` | `47,216` | `52.66%` | pass/pass | verification and cleanup stayed focused |
+| Commons IO filename endurance | `158,869` | `96,479` | `39.27%` | pass/pass | verification and cleanup avoided broad rereads |
+
+Current interpretation:
+
+- The default one-shot path should remain adaptive hook guardrails.
+- The high-value product claim should emphasize hard/debug/long-session work, where the ledger can prevent repeated discovery and verification drift.
+- MCP remains experimental until it proves similar cumulative savings with actual tool calls and quality passing.
+
+Remaining pain points:
+
+- Axios-style multi-surface tasks are still noisy across individual runs, even though the guardrail repeat passed.
+- The report aggregation still needs clearer per-case active/passive attribution so aggregate savings cannot be over-attributed to one active case.
+- Flask verification metadata still briefly surfaced neighbor files before cleanup anchored on `src/flask/app.py`; phase-aware routing should tighten that.
+
+Next validation should use the same guardrail and ledger setup on a wider suite, split by repo to avoid long timeout-bound runs:
+
+1. JS/TS framework pair: Axios + Vue or Fastify.
+2. Python framework pair: Flask + FastAPI.
+3. Java utility/framework pair: Commons IO + a Spring-style repo.
+4. One endurance repeat set after each suite passes once in both baseline and Kairn modes.

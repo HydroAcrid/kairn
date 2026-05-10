@@ -130,7 +130,7 @@ export function formatMcpBriefPrimeContext(input: {
     "",
     ...formatInvariantSections(input.invariants, "Invariant:"),
     "",
-    "Instruction: call `kairn_prepare_task` with this session id before broad scans, then use `kairn_get_next_context` for the next smallest read.",
+    "Instruction: call `kairn_prepare_task` with this session id before broad scans. If it returns `stopCondition` or no `nextToolCalls`, continue from its files and do not call more Kairn unless a check fails or the target changes.",
     `Suggested MCP call: kairn_prepare_task({ "task": ${JSON.stringify(input.task)}, "sessionId": ${JSON.stringify(input.sessionId)}, "detail": "compact" })`,
     "",
     `Quality: ${input.quality.score}/100 (${input.quality.action})`
@@ -166,6 +166,7 @@ export function formatShrunkPrimeContext(input: {
   context: ContextResponse;
   budget: number;
   invariants?: ContextInvariant[] | undefined;
+  includeSnippet?: boolean | undefined;
 }): string {
   const topFiles = uniquePaths(input.context.suggestedNextContext.length > 0 ? input.context.suggestedNextContext : input.context.files).slice(0, 1);
   const symbolHints = extractPrimeSymbolHints(input.context.content).slice(0, 2);
@@ -181,9 +182,9 @@ export function formatShrunkPrimeContext(input: {
     topFiles.length > 0 ? `- ${topFiles[0]}` : "- No high-confidence source file found.",
     symbolHints.length > 0 ? `Symbols: ${symbolHints.join(", ")}` : "",
     "",
-    "Focused context:",
-    compactPrimeContext(input.context.content, Math.max(120, Math.floor(input.budget * 0.34))),
-    "",
+    input.includeSnippet === false ? "" : "Focused context:",
+    input.includeSnippet === false ? "" : compactPrimeContext(input.context.content, Math.max(120, Math.floor(input.budget * 0.34))),
+    input.includeSnippet === false ? "" : "",
     ...formatInvariantSections(input.invariants, "Invariant to preserve:"),
     "",
     "Stop condition: preserve the invariant in the start file first; avoid broad related-file/test scans unless this file cannot satisfy the invariant or a failure names another file."

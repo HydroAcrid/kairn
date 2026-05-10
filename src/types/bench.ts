@@ -394,6 +394,7 @@ export type BenchmarkProofReport = {
       savingsRate?: number;
     }>>;
   };
+  abstentionSummary?: Partial<Record<BenchmarkAssistClassification, number>>;
   observedTokenDeltas: {
     passiveVsBaseline?: BenchmarkComparison["observedTokenDelta"];
     proactiveVsBaseline?: BenchmarkComparison["observedTokenDelta"];

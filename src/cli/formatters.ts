@@ -296,6 +296,9 @@ export function printBenchmarkProof(report: BenchmarkProofReport): void {
     report.aggregate?.deltas.promptOnlyVsBaseline?.savingsRate !== undefined
       ? `- Prompt-only median savings: ${Math.round(report.aggregate.deltas.promptOnlyVsBaseline.savingsRate * 100)}%`
       : "",
+    report.abstentionSummary && Object.keys(report.abstentionSummary).length > 0
+      ? `- Assist classification summary: ${Object.entries(report.abstentionSummary).map(([key, value]) => `${key}=${value}`).join(", ")}`
+      : "",
     "",
     "Cases",
     ...report.caseDeltas.map((item) => {

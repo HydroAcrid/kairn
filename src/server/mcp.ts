@@ -297,6 +297,49 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
       hookFiles: coordination.hookFiles.slice(0, 3)
     };
   }
+  if (decision?.wrongContextRisk && decision.action === "shrink") {
+    const quality = prime.quality ?? {
+      score: decision.score,
+      action: decision.action,
+      reasons: decision.reasons,
+      topScore: decision.topScore,
+      topGap: decision.topGap,
+      exactPathMentioned: decision.exactPathMentioned,
+      expectedSavingsRisk: decision.expectedSavingsRisk
+    };
+    return {
+      detail: "compact",
+      sessionId: prime.session.id,
+      session: { id: prime.session.id, task: prime.session.task },
+      task: prime.task,
+      profile: prime.profile,
+      startFiles: [],
+      files: [],
+      exactSymbolHint: null,
+      primaryReason: "Kairn found possible context, but the top source signal is risky for this task. Continue normally; call Kairn again after a concrete failure, diff, or exact target.",
+      stopCondition: "context_risk_abstention",
+      nextToolCalls: [],
+      recommendedToolCalls: [],
+      likelyTests: [],
+      tokenEstimate: 0,
+      quality: {
+        ...quality,
+        action: "suppress",
+        reasons: [...quality.reasons, "MCP compact abstained because context risk is high"]
+      },
+      contextDecision: {
+        ...decision,
+        action: "suppress",
+        recommendedDelivery: "none",
+        expectedSavingsRisk: "high",
+        reasons: [...decision.reasons, "MCP compact abstained because context risk is high"]
+      },
+      workingSet,
+      warnings: uniqueValues([...prime.warnings, "Kairn suppressed MCP context because the expected savings risk is high."]),
+      duplicateContextAvoided: coordination.duplicateContextAvoided,
+      hookFiles: coordination.hookFiles.slice(0, 3)
+    };
+  }
   const unshownPrimeFiles = prime.files.filter((file) => !coordination.hookFiles.includes(file));
   const sourceCandidates = uniqueValues([
     ...unshownPrimeFiles.filter(isMcpPrimarySourceFile),
@@ -316,14 +359,17 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
     ? runtime.getExactSourceEvidence({ sessionId: prime.session.id, file: primaryFile, budget: 220 })
     : undefined;
   const symbolHint = exactSourceEvidence?.symbol ?? extractSymbolHints(prime.content)[0];
-  const nextToolCalls = [
-    ...(primaryFile && symbolHint
+  const sourceEvidenceStop = Boolean(primaryFile);
+  const nextToolCalls = sourceEvidenceStop
+    ? []
+    : [
+      ...(primaryFile && symbolHint
       ? [{ tool: "kairn_read_symbol", input: { sessionId: prime.session.id, target: primaryFile, symbol: symbolHint, budget: 550 } }]
       : primaryFile
         ? [{ tool: "kairn_read_file", input: { sessionId: prime.session.id, target: primaryFile, mode: "summary", budget: 550 } }]
         : []),
-    ...(!primaryFile ? [{ tool: "kairn_get_next_context", input: { sessionId: prime.session.id, budget: 550 } }] : [])
-  ].slice(0, 1);
+      ...(!primaryFile ? [{ tool: "kairn_get_next_context", input: { sessionId: prime.session.id, budget: 550 } }] : [])
+    ].slice(0, 1);
 
   return {
     detail: "compact",
@@ -343,10 +389,13 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
     verificationCommand: exactSourceEvidence?.verificationCommand ?? null,
     workingSet,
     primaryReason: primaryFile
-      ? companionFiles[0]
+      ? sourceEvidenceStop
+        ? `Source evidence stop: use ${primaryFile}; do not call more Kairn unless a check fails, the file changes, or the task target changes.`
+        : companionFiles[0]
         ? `Start with ${primaryFile}; ${companionFiles[0]} is the one capped companion for this multi-surface task.`
         : `Start with ${primaryFile}; it is Kairn's highest-confidence unshown file for this task.`
       : "Kairn did not find a high-confidence start file.",
+    stopCondition: sourceEvidenceStop ? "source_evidence_sufficient" : null,
     nextToolCalls,
     recommendedToolCalls: nextToolCalls,
     likelyTests,

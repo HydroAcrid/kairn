@@ -10,6 +10,8 @@ export function evaluateContextValue(input: {
   knownFiles: FileRecord[];
   repoFileCount: number;
   estimatedContextCost: number;
+  companionCount?: number | undefined;
+  companionTopScore?: number | undefined;
 }): ContextValueDecision {
   const primaryFile = input.context.suggestedNextContext[0] ?? input.context.files[0];
   const primaryRecord = input.knownFiles.find((file) => file.path === primaryFile);
@@ -19,6 +21,7 @@ export function evaluateContextValue(input: {
   const easyTaskSignal = isEasyTask(input.task);
   const vagueImprovementSignal = isVagueImprovementTask(input.task);
   const multiFileSignal = isMultiFileTask(input.task);
+  const companionSignal = Boolean(input.companionCount && input.companionCount > 0 && (multiFileSignal || (input.companionTopScore ?? 0) >= 360));
   const wrongContextRisk = Boolean(
     primaryFile &&
       sourceFixSignal &&
@@ -54,6 +57,11 @@ export function evaluateContextValue(input: {
       score -= language === "python" ? 8 : 18;
       reasons.add("single-source fix should not receive broad context expansion");
     }
+  }
+  const effectiveCompanionSignal = companionSignal && !exactSourceHit;
+  if (effectiveCompanionSignal) {
+    score += Math.min(18, Math.max(8, Math.floor((input.companionTopScore ?? 0) / 120)));
+    reasons.add("query-local companion evidence supports multi-surface context");
   }
   if (wrongContextRisk) {
     score -= input.repoFileCount >= 1500 ? 58 : 38;
@@ -113,7 +121,9 @@ export function evaluateContextValue(input: {
     wrongContextRisk,
     primarySource: Boolean(primaryFile && isPrimarySourcePath(primaryFile)),
     exactSourceHit,
-    multiFileSignal
+    multiFileSignal,
+    companionSignal: effectiveCompanionSignal,
+    companionTopScore: input.companionTopScore
   });
   const expectedSavingsRisk = action === "emit" ? "low" : action === "shrink" ? "medium" : "high";
   const recommendedDelivery = action === "emit" ? "full_prime" : action === "shrink" ? "one_file_directive" : "none";
@@ -128,6 +138,9 @@ export function evaluateContextValue(input: {
     language,
     exactPathMentioned: input.quality.exactPathMentioned,
     exactSourceHit,
+    multiSurfaceSignal: multiFileSignal || effectiveCompanionSignal,
+    companionCount: input.companionCount ?? 0,
+    companionTopScore: input.companionTopScore ?? 0,
     recommendedDelivery,
     estimatedContextCost: input.estimatedContextCost,
     expectedSavingsRisk,
@@ -150,10 +163,16 @@ function chooseAction(input: {
   primarySource: boolean;
   exactSourceHit: boolean;
   multiFileSignal: boolean;
+  companionSignal: boolean;
+  companionTopScore?: number | undefined;
 }): ContextValueDecision["action"] {
   if (input.exactPathMentioned) return "suppress";
+  if (input.wrongContextRisk && input.companionSignal && (input.companionTopScore ?? 0) >= 420) return "shrink";
   if (input.wrongContextRisk && input.score < 72) return "suppress";
   if (input.wrongContextRisk) return "shrink";
+  if (input.companionSignal && input.primarySource && input.topScore >= 80) {
+    return input.score >= 74 && (input.companionTopScore ?? 0) >= 520 ? "emit" : "shrink";
+  }
   if (input.exactSourceHit && !input.multiFileSignal) return "shrink";
   if (input.vagueImprovementSignal && !input.debugSignal) return input.score >= 88 && input.topGap >= 80 ? "shrink" : "suppress";
   if (input.topScore <= 0 || input.score < 38) return "suppress";
@@ -316,7 +335,7 @@ function isVagueImprovementTask(task: string): boolean {
 
 function isMultiFileTask(task: string): boolean {
   const normalized = task.toLowerCase();
-  return /\b(across|multiple|end-to-end|e2e|integration|workflow|flow|pipeline|through|refactor|feature|migration|api and ui|frontend and backend|full stack|system|ui|mobile|layout|responsive|drawer|sheet|tabs|dashboard|screen|component|filter|filters|card|cards|routing|dependency|dependencies|route handler|proxy|interceptor|interceptors|guard|guards|pipe|pipes|case sensitivity|extension matching)\b/.test(normalized);
+  return /\b(across|multiple|end-to-end|e2e|integration|workflow|flow|pipeline|through|refactor|feature|migration|api and ui|frontend and backend|full stack|system|ui|mobile|layout|responsive|drawer|sheet|tabs|dashboard|screen|component|filter|filters|card|cards|routing|dependency|dependencies|route handler|route matching|convertor|convertors|converter|converters|mcp|tool|tools|runtime|follow-up|next context|proxy|response controller|interceptor|interceptors|guard|guards|pipe|pipes|case sensitivity|extension matching)\b/.test(normalized);
 }
 
 function identifierTerms(value: string): string[] {

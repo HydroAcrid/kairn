@@ -107,10 +107,12 @@ export class MetricsService {
       return;
     }
 
-    const files = uniquePaths([
-      ...filesFromMcpValue(input.result),
-      ...filesFromMcpValue(input.input)
-    ]);
+    const resultFiles = uniquePaths(filesFromMcpValue(input.result));
+    const inputFiles = uniquePaths(filesFromMcpValue(input.input));
+    const files = resultFiles;
+    const returnedSourceFiles = files.filter(isLikelySourceFileForMetrics);
+    const returnedNoiseFiles = files.filter(isLikelyNoiseFileForMetrics);
+    const returnedTestFiles = files.filter(isLikelyTestFileForMetrics);
     const coordination = this.getCoordinationState(sessionId);
     const overlapFiles = files.filter((file) => coordination.hookFiles.includes(file));
     const contextDecision = contextDecisionFromMcpValue(input.result);
@@ -128,9 +130,15 @@ export class MetricsService {
       metadata: {
         toolName: input.toolName,
         resultFileCount: files.length,
+        inputFileCount: inputFiles.length,
+        resultSourceFileCount: returnedSourceFiles.length,
+        resultNoiseFileCount: returnedNoiseFiles.length,
+        resultTestFileCount: returnedTestFiles.length,
+        tokenEstimate: tokenEstimateFromMcpValue(input.result),
         resultMode: responseModeFromMcpValue(input.result),
         hookFiles: coordination.hookFiles,
         mcpFiles: files,
+        inputFiles,
         overlapFiles,
         duplicateContextAvoided: Math.max(0, coordination.hookFiles.length - overlapFiles.length),
         ...(contextDecision ? { contextDecision } : {})
@@ -176,4 +184,31 @@ function contextDecisionFromMcpValue(value: unknown): Record<string, unknown> | 
   return candidate && typeof candidate === "object" && !Array.isArray(candidate)
     ? candidate as Record<string, unknown>
     : undefined;
+}
+
+function isLikelySourceFileForMetrics(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  return (
+    !isLikelyNoiseFileForMetrics(normalized) &&
+    !isLikelyTestFileForMetrics(normalized) &&
+    /\.(ts|tsx|js|jsx|mjs|cjs|py|pyi|java|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(normalized)
+  );
+}
+
+function isLikelyNoiseFileForMetrics(filePath: string): boolean {
+  return /(^|\/)(docs?|examples?|devtools|codemods|generated|dist|build|coverage|website|site|playground|testdata)\//i.test(filePath);
+}
+
+function isLikelyTestFileForMetrics(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1) ?? normalized;
+  return (
+    /\.(test|spec)\.[cm]?[jt]sx?$/.test(basename) ||
+    /(^|\/)(tests?|testing)\//.test(normalized) ||
+    /^test_.*\.pyi?$/.test(basename) ||
+    /_test\.pyi?$/.test(basename) ||
+    /_test\.go$/.test(basename) ||
+    /(test|tests)\.java$/.test(basename) ||
+    /(_test|_tests|_unittest)\.(cc|cpp|cxx|c|hh|hpp|hxx)$/.test(basename)
+  );
 }

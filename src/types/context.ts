@@ -98,6 +98,9 @@ export type ContextValueDecision = {
   language: "typescript" | "javascript" | "python" | "java" | "cpp" | "c" | "unknown";
   exactPathMentioned: boolean;
   exactSourceHit?: boolean;
+  multiSurfaceSignal?: boolean;
+  companionCount?: number;
+  companionTopScore?: number;
   recommendedDelivery?: "full_prime" | "one_file_directive" | "none";
   estimatedContextCost: number;
   expectedSavingsRisk: "low" | "medium" | "high";

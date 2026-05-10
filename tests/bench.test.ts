@@ -1096,6 +1096,33 @@ describe("benchmark suite and scoring", () => {
     expect(scored.metadata.qualityGatePassed).toBe(false);
   });
 
+  it("treats hybrid MCP abstention as neutral instead of a quality failure", () => {
+    const scored = scoreBenchmarkCase({
+      runId: "bench_hybrid_abstain",
+      benchmarkCase: {
+        id: "hybrid-abstain",
+        mode: "agent",
+        task: "Small exact source fix",
+        expectedFiles: ["src/app.ts"],
+        excludedFiles: []
+      },
+      actualFiles: ["src/app.ts"],
+      responseTokens: 200,
+      taskOutcome: "pass",
+      summary: "Hybrid setup was available, but Kairn returned no MCP context.",
+      metadata: {
+        assistanceMode: "hybrid_mcp_brief",
+        actualMcpToolCalls: 0,
+        mcpReturnedFileCount: 0
+      }
+    });
+
+    expect(scored.taskOutcome).toBe("pass");
+    expect(scored.metadata.mcpRequired).toBe(false);
+    expect(scored.metadata.mcpSuccess).toBe(true);
+    expect(scored.metadata.qualityGatePassed).toBe(true);
+  });
+
   it("counts actual MCP tool calls from workspace Kairn metrics", async () => {
     const root = createFixtureRepo();
     fs.writeFileSync(
@@ -1437,6 +1464,49 @@ describe("benchmark suite and scoring", () => {
       assistClassification: "missed_savings_opportunity",
       abstentionOutcome: "missed_savings_opportunity",
       missedOpportunity: true
+    });
+  });
+
+  it("treats numeric prime metrics as active assistance", () => {
+    const benchmarkCase = {
+      id: "numeric-prime",
+      mode: "agent" as const,
+      task: "Fix bug",
+      expectedFiles: ["src/app.ts"],
+      excludedFiles: []
+    };
+    const beforeResult = scoreBenchmarkCase({
+      runId: "before",
+      benchmarkCase,
+      actualFiles: ["src/app.ts"],
+      responseTokens: 100,
+      observedCodexTokens: 2000,
+      taskOutcome: "pass",
+      summary: "baseline"
+    });
+    const afterResult = scoreBenchmarkCase({
+      runId: "after",
+      benchmarkCase,
+      actualFiles: ["src/app.ts"],
+      responseTokens: 100,
+      observedCodexTokens: 1500,
+      taskOutcome: "pass",
+      summary: "hook",
+      metadata: { primeEmitted: 1 }
+    });
+    const before = buildBenchmarkReport({
+      run: { id: "before", rootPath: "/repo", suiteId: "suite", suiteName: "suite", mode: "agent", status: "completed", startedAt: "now", metadata: {} },
+      results: [{ ...beforeResult, id: 1, createdAt: "now" }]
+    });
+    const after = buildBenchmarkReport({
+      run: { id: "after", rootPath: "/repo", suiteId: "suite", suiteName: "suite", mode: "agent", status: "completed", startedAt: "now", metadata: {} },
+      results: [{ ...afterResult, id: 2, createdAt: "now" }]
+    });
+
+    expect(compareBenchmarkReports(before, after).observedTokenDelta).toMatchObject({
+      assistanceStatus: "active",
+      assistanceEligible: true,
+      validSavings: 500
     });
   });
 });
@@ -1940,8 +2010,9 @@ describe("benchmark runtime and CLI", () => {
     expect(proof.realMcpFirst?.results[0]?.observedCodexTokens).toBe(1500);
     expect(proof.mcpFirstPlusHookFullPrime?.results[0]?.metadata.mcpFirstInstructionsPrepended).toBe(true);
     expect(proof.mcpFirstPlusHookFullPrime?.results[0]?.observedCodexTokens).toBe(1500);
-    expect(proof.hybridMcpBrief?.results[0]?.metadata.mcpFirstInstructionsPrepended).toBe(true);
-    expect(proof.hybridMcpBrief?.results[0]?.observedCodexTokens).toBe(1500);
+    expect(proof.hybridMcpBrief?.results[0]?.metadata.mcpFirstInstructionsPrepended).toBe(false);
+    expect(proof.hybridMcpBrief?.results[0]?.metadata.hybridMcpInstructionsConditional).toBe(true);
+    expect(proof.hybridMcpBrief?.results[0]?.observedCodexTokens).toBe(3000);
     expect(proof.aggregate?.repeat).toBe(2);
     expect(proof.aggregate?.deltas.manualPrimeVsBaseline?.savedTokens).toBe(2000);
   });

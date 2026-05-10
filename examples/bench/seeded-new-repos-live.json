@@ -59,8 +59,8 @@
         "ref": "7374c85ddefc3f4b177a698ab9f0cbb6a5c0b392",
         "cloneDepth": 1,
         "setupPatchFile": "./patches/flask-dispatch-request-view.patch",
-        "expectedFailureCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/flask/app.py').read_text()\nexpected = 'return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)'\nraise SystemExit(1 if expected in source else 0)\nPY",
-        "testCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/flask/app.py').read_text()\nexpected = 'return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)'\nraise SystemExit(0 if expected in source else 1)\nPY"
+        "expectedFailureCommand": "python3 - <<'PY'\nfrom pathlib import Path\nimport re\nsource = Path('src/flask/app.py').read_text()\nmatch = re.search(r'def dispatch_request\\([\\s\\S]*?\\n    def ', source)\nbody = match.group(0) if match else ''\ndirect = 'return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)' in body\nvia_local = bool(re.search(r'([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*self\\.view_functions\\[rule\\.endpoint\\][\\s\\S]*return\\s+self\\.ensure_sync\\(\\1\\)\\(\\*\\*view_args\\)', body))\nfixed = 'return None' not in body and (direct or via_local)\nraise SystemExit(1 if fixed else 0)\nPY",
+        "testCommand": "python3 - <<'PY'\nfrom pathlib import Path\nimport re\nsource = Path('src/flask/app.py').read_text()\nmatch = re.search(r'def dispatch_request\\([\\s\\S]*?\\n    def ', source)\nbody = match.group(0) if match else ''\ndirect = 'return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)' in body\nvia_local = bool(re.search(r'([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*self\\.view_functions\\[rule\\.endpoint\\][\\s\\S]*return\\s+self\\.ensure_sync\\(\\1\\)\\(\\*\\*view_args\\)', body))\nfixed = 'return None' not in body and (direct or via_local)\nraise SystemExit(0 if fixed else 1)\nPY"
       },
       "successCriteria": [
         "Verification passes.",

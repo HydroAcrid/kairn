@@ -92,6 +92,7 @@ export type SessionContextPolicyReason =
   | "failure_reemitted"
   | "phase_shift_reemitted"
   | "ignored_recommendation_shrunk"
+  | "verified_context_shrunk"
   | "no_candidate_files";
 
 export type SessionContextPolicyDecision = {

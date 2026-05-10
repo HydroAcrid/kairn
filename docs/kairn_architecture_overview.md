@@ -90,6 +90,8 @@ Current tools:
 
 MCP is the read-gateway surface. Its job is not to dump large prime briefs. It should help agents take the next smallest useful read.
 
+MCP follow-up calls have a stop condition: after Kairn has already returned sufficient source evidence and no new failure or diff exists, `kairn_get_next_context` should return a small "continue from the shown source" response instead of expanding into more files. Metrics record returned source/noise/test counts and token estimates per MCP call.
+
 ### Hooks And Watcher
 
 Hook command path:
@@ -112,9 +114,9 @@ Hook modes:
 - `observe`: prompt context plus quiet/failure-oriented post-tool observation.
 - `debug`: broad diagnostics.
 - `mcp-first`: MCP config and instructions, no prompt prime by default.
-- `hybrid`: tiny hook directive plus MCP instructions.
+- `hybrid`: tiny hook directive plus MCP availability, with AGENTS.md telling the agent to work normally unless a hook supplies context or a concrete failure appears.
 
-Hooks must stay quiet when Kairn lacks high-confidence leverage.
+Hooks must stay quiet when Kairn lacks high-confidence leverage. When Kairn does have a strong but potentially over-assisting signal, hooks should prefer a tiny guardrail over a full brief.
 
 ### Daemon
 
@@ -236,6 +238,8 @@ Signals used:
 
 The companion stage is query-local and capped. It exists for multi-surface framework tasks where the first relevant file is not enough, such as router/dependency, controller/repository, scheduler/renderer, interceptor/dispatch, validation/callback, and Go router/context/engine surfaces. It should not reintroduce broad fanout after exact source hits.
 
+Companion Routing V2 adds role-complement scoring. Kairn now prefers complementary source surfaces over same-role siblings: controller/repository over neighboring controllers, route/convertor over unrelated middleware, runtime/MCP over docs, and framework router/proxy/response-controller companions over cross-package helper surfaces. These rules must stay convention-based and language-general, not tuned to a single benchmark repo.
+
 Important design point:
 
 > Query-local retrieval is mandatory for large repos. Kairn should not load every graph edge, chunk, vector, or lexical term for a normal `prime` or `findContext` call.
@@ -267,6 +271,8 @@ Context actions:
 - `emit`: send useful context.
 - `shrink`: send a tiny one-file/directive brief.
 - `suppress`: send nothing to the agent, but record internal metrics.
+
+Automatic prompt hooks apply a stricter delivery rule than manual `kairn prime`. If Kairn finds one very strong production file or a risky multi-surface target, the hook emits a tiny no-snippet guardrail: start file, invariant/check guidance when available, and a stop condition. Full prime output is reserved for prompts where extra context is likely to change agent behavior without causing broad scans.
 
 This controller is one of the most important quality safeguards. Bad primes increase token use and can reduce agent quality.
 
@@ -300,6 +306,8 @@ The derived working set is the compact long-session memory that hooks, MCP, `pri
 - latest passing verification,
 - next smallest useful read,
 - open risks.
+
+Passing verification is now a first-class ledger signal. When a source invariant or diff-scope check passes, Kairn records a metadata-only `verification_passed` event anchored to the source file. Verification and cleanup turns can then use `verified_context_shrunk`: a tiny source-focused reminder instead of repeating the earlier prime or expanding into neighboring files.
 
 This is Kairn's answer to long-conversation compaction. Instead of summarizing the whole chat into prose, Kairn keeps repo-grounded state and uses hashes/file refs to decide whether to repeat, shrink, suppress, or re-emit context.
 

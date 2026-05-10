@@ -47,6 +47,7 @@ export function buildSessionWorkingSet(input: {
   const activeFiles = uniquePaths([
     ...recentlyTouchedFiles,
     ...(lastFailure?.filePath ? [lastFailure.filePath] : []),
+    ...(lastPassingVerification?.filePath ? [lastPassingVerification.filePath] : []),
     ...(currentInvariant?.filePath ? [currentInvariant.filePath] : []),
     ...usedFiles.slice(-6),
     ...shownFiles.slice(-4)

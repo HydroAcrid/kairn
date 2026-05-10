@@ -30,7 +30,8 @@ export function scoreBenchmarkCase(input: {
   const responsePenalty = Math.min(0.15, Math.max(0, input.responseTokens - (input.benchmarkCase.budget ?? 1200)) / 8000);
   const requestedOutcome = input.taskOutcome ?? "pass";
   const requiredTouchedSatisfied = requiredTouchedFiles.length === 0 || missingRequiredTouchedFiles.length === 0;
-  const mcpSuccess = !requiresMcpSuccess(input.metadata) || numberMetadata(input.metadata?.actualMcpToolCalls ?? input.metadata?.mcpToolCalls) > 0;
+  const mcpRequired = requiresMcpSuccess(input.metadata);
+  const mcpSuccess = !mcpRequired || numberMetadata(input.metadata?.actualMcpToolCalls ?? input.metadata?.mcpToolCalls) > 0;
   const qualityGatePassed = requestedOutcome === "pass" && requiredTouchedSatisfied && excludedHits.length === 0 && mcpSuccess;
   const outcome = requestedOutcome === "fail" || requestedOutcome === "skipped"
     ? requestedOutcome
@@ -84,6 +85,7 @@ export function scoreBenchmarkCase(input: {
       requiredTouchedFilesTouched: requiredTouchedHits,
       missingRequiredTouchedFiles,
       requiredTouchedSatisfied,
+      mcpRequired,
       mcpSuccess,
       qualityGatePassed,
       validSavings: qualityGatePassed,
@@ -196,19 +198,21 @@ function observedTokenDelta(before: BenchmarkReport, after: BenchmarkReport): Be
 function reportAssistanceStatus(report: BenchmarkReport): BenchmarkAssistanceStatus {
   const hasActiveAssistance = report.results.some((result) =>
     result.hookContextEmitted > 0 ||
-    numberMetadata(result.metadata.actualMcpToolCalls ?? result.metadata.mcpToolCalls) > 0 ||
+    (numberMetadata(result.metadata.actualMcpToolCalls ?? result.metadata.mcpToolCalls) > 0 &&
+      numberMetadata(result.metadata.mcpReturnedFileCount) > 0) ||
     result.metadata.primeEmitted === true ||
+    numberMetadata(result.metadata.primeEmitted) > 0 ||
     result.metadata.primeDecision === "emit" ||
     result.metadata.primeDecision === "shrink" ||
     result.metadata.contextDecision === "emit" ||
     result.metadata.contextDecision === "shrink" ||
-    result.metadata.assistanceMode === "manual_prime" ||
-    result.metadata.assistanceMode === "hook_full_prime"
+    result.metadata.assistanceMode === "manual_prime"
   );
   if (hasActiveAssistance) return "active";
   const hasSuppressedAssistance = report.results.some((result) =>
     result.hookContextSuppressed > 0 ||
     result.metadata.primeSuppressed === true ||
+    numberMetadata(result.metadata.primeSuppressed) > 0 ||
     result.metadata.primeDecision === "suppress" ||
     result.metadata.contextDecision === "suppress"
   );
@@ -342,6 +346,5 @@ function requiresMcpSuccess(metadata: Record<string, unknown> | undefined): bool
   const assistanceMode = typeof metadata?.assistanceMode === "string" ? metadata.assistanceMode : "";
   return assistanceMode === "mcp_first" ||
     assistanceMode === "real_mcp_first" ||
-    assistanceMode === "mcp_first_plus_hook_full_prime" ||
-    assistanceMode === "hybrid_mcp_brief";
+    assistanceMode === "mcp_first_plus_hook_full_prime";
 }

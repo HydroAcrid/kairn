@@ -55,6 +55,11 @@ export function decideSessionContextPolicy(input: {
   }
 
   const workingSet = input.ledger.workingSet;
+  const lastFailure = workingSet.lastFailure;
+  const lastPassingVerification = workingSet.lastPassingVerification;
+  const hasPassingVerification = Boolean(lastPassingVerification);
+  const hasUnresolvedFailure = Boolean(lastFailure) &&
+    (!lastPassingVerification || Date.parse(lastFailure!.createdAt) > Date.parse(lastPassingVerification.createdAt));
   const shownFiles = new Set(workingSet.shownFiles);
   const repeatedFiles = candidateFiles.filter((file) => shownFiles.has(file));
   const changedFiles = candidateFiles.filter((file) => (input.changedFiles ?? []).includes(file) || workingSet.staleFiles.includes(file));
@@ -66,6 +71,17 @@ export function decideSessionContextPolicy(input: {
   );
   const phaseShift = phase !== input.ledger.currentPhase;
 
+  if ((phase === "verification" || phase === "cleanup") && hasPassingVerification && !hasUnresolvedFailure) {
+    const verifiedFocus = lastPassingVerification?.filePath ?? workingSet.currentInvariant?.filePath ?? workingSet.activeFiles[0];
+    const activeFiles = uniqueStrings([
+      ...(verifiedFocus ? [verifiedFocus] : []),
+      ...candidateFiles.filter((file) => workingSet.activeFiles.includes(file))
+    ]);
+    return decision("shrink", phase, "verified_context_shrunk", activeFiles.slice(0, 1), repeatedFiles, changedFiles, ignoredRecommendedFiles, input, {
+      lastPassingVerification,
+      repeatedFilesAvoided: repeatedFiles.length
+    });
+  }
   if (changedFiles.length > 0) {
     return decision("emit", phase, "changed_file_reemitted", candidateFiles, repeatedFiles, changedFiles, ignoredRecommendedFiles, input);
   }
@@ -115,4 +131,8 @@ function decision(
       ...(input.source ? { source: input.source } : {})
     }
   };
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))];
 }

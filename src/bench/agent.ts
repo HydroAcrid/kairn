@@ -139,6 +139,8 @@ export async function runAgentBenchmarkCase(input: {
         metadata: metadata.metadata
       };
     }
+    const setupChangedFiles = setupResult ? changedFiles(workspacePath) : [];
+    const setupChangedFileHashes = setupResult ? fileHashes(workspacePath, setupChangedFiles) : {};
 
     const prepareStartedAt = Date.now();
     const prepared = input.preparePrompt
@@ -169,11 +171,15 @@ export async function runAgentBenchmarkCase(input: {
     const changedFileList = changedFiles(workspacePath);
     const seedPatchFiles = stringListMetadata(seedMetadata.seedPatchFiles);
     const seedPatchFileHashes = recordMetadata(seedMetadata.seedPatchFileHashes);
+    const baselineChangedFiles = unique([...seedPatchFiles, ...setupChangedFiles]);
     const agentChangedFiles = agentTouchedFiles({
       workspacePath,
       changedFiles: changedFileList,
-      seedPatchFiles,
-      seedPatchFileHashes
+      seedPatchFiles: baselineChangedFiles,
+      seedPatchFileHashes: {
+        ...seedPatchFileHashes,
+        ...setupChangedFileHashes
+      }
     });
     const requiredTouchedFiles = input.benchmarkCase.requiredTouchedFiles ?? [];
     const missingRequiredTouchedFiles = requiredTouchedFiles.filter((file) => !agentChangedFiles.includes(file));
@@ -199,6 +205,7 @@ export async function runAgentBenchmarkCase(input: {
         expectedFileMentions,
         changedFiles: changedFileList,
         seedPatchFiles,
+        setupChangedFiles,
         agentChangedFiles,
         requiredTouchedFiles,
         requiredTouchedSatisfied,

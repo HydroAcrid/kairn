@@ -96,6 +96,21 @@ export function buildBenchmarkProofReport(input: {
     recommendationForDelta("Hybrid MCP brief vs baseline", hybridMcpBriefVsBaseline?.observedTokenDelta),
     ...(manualPrimeVsBaseline?.recommendations.slice(0, 4) ?? promptOnlyVsBaseline?.recommendations.slice(0, 4) ?? [])
   ]);
+  const observedTokenDeltas = {
+    ...(promptOnlyVsBaseline?.observedTokenDelta ? { promptOnlyVsBaseline: promptOnlyVsBaseline.observedTokenDelta } : {}),
+    ...(promptPlusVsBaseline?.observedTokenDelta ? { promptPlusHooksVsBaseline: promptPlusVsBaseline.observedTokenDelta } : {}),
+    ...(manualPrimeVsBaseline?.observedTokenDelta ? { manualPrimeVsBaseline: manualPrimeVsBaseline.observedTokenDelta } : {}),
+    ...(hookFullPrimeVsBaseline?.observedTokenDelta ? { hookFullPrimeVsBaseline: hookFullPrimeVsBaseline.observedTokenDelta } : {}),
+    ...(hookTinyDirectiveVsBaseline?.observedTokenDelta ? { hookTinyDirectiveVsBaseline: hookTinyDirectiveVsBaseline.observedTokenDelta } : {}),
+    ...(hookTinyWithFailuresVsBaseline?.observedTokenDelta ? { hookTinyWithFailuresVsBaseline: hookTinyWithFailuresVsBaseline.observedTokenDelta } : {}),
+    ...(mcpFirstVsBaseline?.observedTokenDelta ? { mcpFirstVsBaseline: mcpFirstVsBaseline.observedTokenDelta } : {}),
+    ...(realMcpFirstVsBaseline?.observedTokenDelta ? { realMcpFirstVsBaseline: realMcpFirstVsBaseline.observedTokenDelta } : {}),
+    ...(mcpFirstPlusHookFullPrimeVsBaseline?.observedTokenDelta ? { mcpFirstPlusHookFullPrimeVsBaseline: mcpFirstPlusHookFullPrimeVsBaseline.observedTokenDelta } : {}),
+    ...(hybridMcpBriefVsBaseline?.observedTokenDelta ? { hybridMcpBriefVsBaseline: hybridMcpBriefVsBaseline.observedTokenDelta } : {}),
+    ...(promptPlusVsBaseline?.observedTokenDelta ? { passiveVsBaseline: promptPlusVsBaseline.observedTokenDelta } : {}),
+    ...(manualPrimeVsBaseline?.observedTokenDelta ? { proactiveVsBaseline: manualPrimeVsBaseline.observedTokenDelta } : {}),
+    ...(proactiveVsPassive?.observedTokenDelta ? { proactiveVsPassive: proactiveVsPassive.observedTokenDelta } : {})
+  };
 
   return {
     baseline,
@@ -125,21 +140,8 @@ export function buildBenchmarkProofReport(input: {
       hybrid_mcp_brief: input.hybridMcpBrief
     },
     aggregate,
-    observedTokenDeltas: {
-      ...(promptOnlyVsBaseline?.observedTokenDelta ? { promptOnlyVsBaseline: promptOnlyVsBaseline.observedTokenDelta } : {}),
-      ...(promptPlusVsBaseline?.observedTokenDelta ? { promptPlusHooksVsBaseline: promptPlusVsBaseline.observedTokenDelta } : {}),
-      ...(manualPrimeVsBaseline?.observedTokenDelta ? { manualPrimeVsBaseline: manualPrimeVsBaseline.observedTokenDelta } : {}),
-      ...(hookFullPrimeVsBaseline?.observedTokenDelta ? { hookFullPrimeVsBaseline: hookFullPrimeVsBaseline.observedTokenDelta } : {}),
-      ...(hookTinyDirectiveVsBaseline?.observedTokenDelta ? { hookTinyDirectiveVsBaseline: hookTinyDirectiveVsBaseline.observedTokenDelta } : {}),
-      ...(hookTinyWithFailuresVsBaseline?.observedTokenDelta ? { hookTinyWithFailuresVsBaseline: hookTinyWithFailuresVsBaseline.observedTokenDelta } : {}),
-      ...(mcpFirstVsBaseline?.observedTokenDelta ? { mcpFirstVsBaseline: mcpFirstVsBaseline.observedTokenDelta } : {}),
-      ...(realMcpFirstVsBaseline?.observedTokenDelta ? { realMcpFirstVsBaseline: realMcpFirstVsBaseline.observedTokenDelta } : {}),
-      ...(mcpFirstPlusHookFullPrimeVsBaseline?.observedTokenDelta ? { mcpFirstPlusHookFullPrimeVsBaseline: mcpFirstPlusHookFullPrimeVsBaseline.observedTokenDelta } : {}),
-      ...(hybridMcpBriefVsBaseline?.observedTokenDelta ? { hybridMcpBriefVsBaseline: hybridMcpBriefVsBaseline.observedTokenDelta } : {}),
-      ...(promptPlusVsBaseline?.observedTokenDelta ? { passiveVsBaseline: promptPlusVsBaseline.observedTokenDelta } : {}),
-      ...(manualPrimeVsBaseline?.observedTokenDelta ? { proactiveVsBaseline: manualPrimeVsBaseline.observedTokenDelta } : {}),
-      ...(proactiveVsPassive?.observedTokenDelta ? { proactiveVsPassive: proactiveVsPassive.observedTokenDelta } : {})
-    },
+    abstentionSummary: summarizeAssistClassifications(observedTokenDeltas),
+    observedTokenDeltas,
     caseDeltas,
     recommendations
   };
@@ -233,6 +235,16 @@ function recommendationForDelta(label: string, delta: BenchmarkComparison["obser
     return `${label}: saved ${delta.savedTokens} observed Codex tokens (${Math.round(delta.savingsRate * 100)}%).`;
   }
   return `${label}: increased observed Codex usage by ${Math.abs(delta.savedTokens)} tokens (${Math.round(Math.abs(delta.savingsRate) * 100)}%).`;
+}
+
+function summarizeAssistClassifications(deltas: BenchmarkProofReport["observedTokenDeltas"]): NonNullable<BenchmarkProofReport["abstentionSummary"]> {
+  const summary: NonNullable<BenchmarkProofReport["abstentionSummary"]> = {};
+  for (const delta of Object.values(deltas)) {
+    const classification = delta?.assistClassification;
+    if (!classification) continue;
+    summary[classification] = (summary[classification] ?? 0) + 1;
+  }
+  return summary;
 }
 
 function reportQualityGatePassed(report: BenchmarkReport): boolean {

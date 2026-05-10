@@ -23,7 +23,7 @@ export function writeCodexSetup(input: {
     `${JSON.stringify(buildCodexHooksConfig(input), null, 2)}\n`
   );
   const hasMcp = input.mode === "mcp-first" || input.mode === "hybrid";
-  const instructions = hasMcp ? writeMcpInstructionsSetup({ root: rootPath }) : undefined;
+  const instructions = hasMcp ? writeMcpInstructionsSetup({ root: rootPath, mode: input.mode === "hybrid" ? "hybrid" : "mcp-first" }) : undefined;
 
   return {
     rootPath,

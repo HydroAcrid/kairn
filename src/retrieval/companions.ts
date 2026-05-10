@@ -16,12 +16,31 @@ type CompanionRole = {
 const ROLE_GROUPS: CompanionRole[] = [
   {
     id: "routing-dependency",
-    terms: ["router", "routing", "route", "routes", "dependency", "dependencies", "depends", "resolver", "resolvers", "resolve"],
+    terms: [
+      "router",
+      "routing",
+      "route",
+      "routes",
+      "dependency",
+      "dependencies",
+      "depends",
+      "resolver",
+      "resolvers",
+      "resolve",
+      "convertor",
+      "convertors",
+      "converter",
+      "converters",
+      "path",
+      "paths",
+      "mount",
+      "matching"
+    ],
     reason: "routing/dependency pair"
   },
   {
     id: "controller-repository-model",
-    terms: ["controller", "controllers", "repository", "repositories", "model", "models", "schema", "service", "services"],
+    terms: ["controller", "controllers", "repository", "repositories", "repo", "repos", "dao", "model", "models", "schema", "service", "services"],
     reason: "controller/repository/model pair"
   },
   {
@@ -53,6 +72,16 @@ const ROLE_GROUPS: CompanionRole[] = [
     id: "fixture-context",
     terms: ["fixture", "fixtures", "scope", "parametrize", "parametrized", "python", "request"],
     reason: "same fixture surface"
+  },
+  {
+    id: "ui-sibling",
+    terms: ["ui", "mobile", "layout", "responsive", "dashboard", "tabs", "table", "panel", "filter", "filters", "drawer", "sheet", "component"],
+    reason: "UI sibling surface"
+  },
+  {
+    id: "mcp-runtime",
+    terms: ["mcp", "runtime", "server", "tool", "tools", "context", "next", "prepare", "session"],
+    reason: "MCP/runtime pair"
   }
 ];
 
@@ -115,6 +144,7 @@ export function findCompanionCandidates(input: {
 
   for (const file of input.files) {
     if (seedPaths.has(file.path) || isNoisyCompanionFile(file) || isLikelyTestPath(file.path)) continue;
+    if (isPlatformVariantPath(file.path)) continue;
 
     const sourceScore = scoreSourceRoleHints(file, input.query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
     const roleMatches = matchRoleSignals(file, roleSignals, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
@@ -169,9 +199,32 @@ export function findCompanionCandidates(input: {
       score -= 260;
       reasons.push("downstream comparator/filter downranked for core path prompt");
     }
+    if (isGenericHelperForRoleCompanion(file.path, queryTerms)) {
+      score -= 340;
+      reasons.push("helper companion downranked in favor of direct source surface");
+    }
+    if (isUnaskedConverterCompanion(file.path, queryTerms)) {
+      score -= 520;
+      reasons.push("converter companion downranked because conversion was not requested");
+    }
+    if (isDirectRoleBasenameAnchor(file.path, roleSignals, queryTerms)) {
+      score += 460;
+      reasons.push("direct role basename anchor");
+    }
 
     for (const seed of seedFiles) {
       const seedRoles = matchRoleSignals(seed, roleSignals, symbolsByFile.get(seed.path) ?? [], chunksByFile.get(seed.path) ?? []);
+      const roleComplement = scoreRoleComplement({
+        seed,
+        candidate: file,
+        queryTerms,
+        seedRoles,
+        candidateRoles: roleMatches
+      });
+      if (roleComplement.score !== 0) {
+        score += roleComplement.score;
+        reasons.push(...roleComplement.reasons);
+      }
       if (roleMatches.length > 0 && seedRoles.length > 0 && samePackageSurface(seed.path, file.path)) {
         score += 54;
         reasons.push("same package");
@@ -185,7 +238,8 @@ export function findCompanionCandidates(input: {
         reasons.push("import neighbor");
       }
       if (sameRoleCategory(seed.path, file.path)) {
-        score -= 120;
+        const penalty = sameRoleDuplicatePenalty(seed.path, file.path, queryTerms);
+        score -= penalty;
         reasons.push("same role duplicate downranked");
       }
       if (isPlatformVariantPath(file.path)) {
@@ -199,6 +253,14 @@ export function findCompanionCandidates(input: {
       if (isGoPackageAnchor(seed, file, roleSignals)) {
         score += 240;
         reasons.push("go package anchor");
+      }
+      if (isRouteCoreSibling(seed.path, file.path, queryTerms)) {
+        score += 1200;
+        reasons.push("router core sibling");
+      }
+      if (isCrossPackageFrameworkSurface(seed.path, file.path)) {
+        score -= 900;
+        reasons.push("cross-package framework surface downranked");
       }
     }
 
@@ -395,12 +457,157 @@ function sameRoleCategory(left: string, right: string): boolean {
   return Boolean(leftCategory && leftCategory === roleCategory(right));
 }
 
+function scoreRoleComplement(input: {
+  seed: FileRecord;
+  candidate: FileRecord;
+  queryTerms: Set<string>;
+  seedRoles: CompanionRole[];
+  candidateRoles: CompanionRole[];
+}): { score: number; reasons: string[] } {
+  const seedCategory = roleCategory(input.seed.path);
+  const candidateCategory = roleCategory(input.candidate.path);
+  const reasons: string[] = [];
+  let score = 0;
+  if (!seedCategory || !candidateCategory) {
+    if (isUiSiblingCompanion(input.seed.path, input.candidate.path, input.queryTerms)) {
+      return { score: 520, reasons: ["UI sibling companion"] };
+    }
+    return { score, reasons };
+  }
+
+  if (isComplementaryRole(seedCategory, candidateCategory)) {
+    score += samePackageSurface(input.seed.path, input.candidate.path) ? 620 : 420;
+    reasons.push(`${seedCategory}/${candidateCategory} role complement`);
+  }
+
+  if (isEntityRolePair(input.seed.path, input.candidate.path, seedCategory, candidateCategory)) {
+    score += 540;
+    reasons.push("same entity role pair");
+  }
+
+  if (isRouteConvertorPair(seedCategory, candidateCategory, input.seed.path, input.candidate.path)) {
+    score += 680;
+    reasons.push("route/convertor companion");
+  }
+
+  if (isMcpRuntimePair(seedCategory, candidateCategory, input.queryTerms)) {
+    score += 620;
+    reasons.push("MCP/runtime companion");
+  }
+
+  if (isGoPackageCorePair(input.seed, input.candidate, seedCategory, candidateCategory, input.queryTerms)) {
+    score += 500;
+    reasons.push("Go package core companion");
+  }
+
+  if (isFixtureCorePair(input.candidate.path, input.queryTerms)) {
+    score += 520;
+    reasons.push("fixture implementation companion");
+  }
+
+  if (input.candidateRoles.some((role) => role.id === "ui-sibling") && isUiSiblingCompanion(input.seed.path, input.candidate.path, input.queryTerms)) {
+    score += 440;
+    reasons.push("UI sibling companion");
+  }
+
+  return { score, reasons };
+}
+
+function isComplementaryRole(left: string, right: string): boolean {
+  const pair = new Set([left, right]);
+  return (
+    (pair.has("controller") && (pair.has("repository") || pair.has("service") || pair.has("model"))) ||
+    (pair.has("routing") && (pair.has("dependency") || pair.has("convertor") || pair.has("handler") || pair.has("context"))) ||
+    (pair.has("scheduler") && pair.has("renderer")) ||
+    (pair.has("interceptor") && (pair.has("dispatch") || pair.has("adapter"))) ||
+    (pair.has("validation") && pair.has("callback")) ||
+    (pair.has("engine") && (pair.has("context") || pair.has("routing") || pair.has("handler"))) ||
+    (pair.has("runtime") && pair.has("mcp"))
+  );
+}
+
+function isEntityRolePair(seedPath: string, candidatePath: string, seedCategory: string, candidateCategory: string): boolean {
+  if (!isComplementaryRole(seedCategory, candidateCategory)) return false;
+  const seedEntity = entityStem(seedPath, seedCategory);
+  const candidateEntity = entityStem(candidatePath, candidateCategory);
+  return Boolean(seedEntity && candidateEntity && seedEntity === candidateEntity);
+}
+
+function entityStem(filePath: string, category: string): string | undefined {
+  const basename = filePath.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const stripped = basename
+    .replace(new RegExp(`${category}$`, "i"), "")
+    .replace(/(controller|repository|repo|service|model|dao|handler|route|router|routing|context|engine|mcp|runtime)$/i, "")
+    .replace(/[-_]+$/g, "");
+  const terms = termSet(stripped);
+  return [...terms].filter((term) => !["base", "abstract", "default", "impl"].includes(term)).join("-");
+}
+
+function isRouteConvertorPair(seedCategory: string, candidateCategory: string, seedPath: string, candidatePath: string): boolean {
+  const pair = new Set([seedCategory, candidateCategory]);
+  if (!(pair.has("routing") && pair.has("convertor"))) return false;
+  return samePackageSurface(seedPath, candidatePath) || sameModuleSurface(seedPath, candidatePath);
+}
+
+function isMcpRuntimePair(seedCategory: string, candidateCategory: string, queryTerms: Set<string>): boolean {
+  const pair = new Set([seedCategory, candidateCategory]);
+  return pair.has("runtime") && pair.has("mcp") && (queryTerms.has("mcp") || queryTerms.has("tool") || queryTerms.has("context"));
+}
+
+function isGoPackageCorePair(
+  seed: Pick<FileRecord, "path" | "language">,
+  candidate: Pick<FileRecord, "path" | "language">,
+  seedCategory: string,
+  candidateCategory: string,
+  queryTerms: Set<string>
+): boolean {
+  if (seed.language !== "go" || candidate.language !== "go") return false;
+  if (candidate.path.includes("/")) return false;
+  const asksRouterCore = ["router", "routing", "route", "context", "group", "handler", "middleware", "chain", "mount"].some((term) => queryTerms.has(term));
+  if (!asksRouterCore) return false;
+  return isComplementaryRole(seedCategory, candidateCategory) || ["gin.go", "context.go", "routergroup.go", "chain.go", "mux.go", "router.go"].includes(candidate.path.toLowerCase());
+}
+
+function isFixtureCorePair(filePath: string, queryTerms: Set<string>): boolean {
+  if (!queryTerms.has("fixture")) return false;
+  const basename = filePath.toLowerCase().split("/").at(-1) ?? "";
+  return basename === "fixtures.py" || basename === "python.py";
+}
+
+function isUiSiblingCompanion(seedPath: string, candidatePath: string, queryTerms: Set<string>): boolean {
+  const asksUi = ["ui", "mobile", "layout", "dashboard", "tabs", "table", "panel", "filter", "filters", "component"].some((term) => queryTerms.has(term));
+  if (!asksUi) return false;
+  if (!sameModuleSurface(seedPath, candidatePath)) return false;
+  const basename = candidatePath.toLowerCase().split("/").at(-1) ?? "";
+  return /(tabs?|tables?|panels?|filters?|dashboard|layout|mobile|sheet|drawer|view|list|card|form|component)/.test(basename);
+}
+
+function sameRoleDuplicatePenalty(seedPath: string, candidatePath: string, queryTerms: Set<string>): number {
+  const category = roleCategory(seedPath);
+  if (!category) return 120;
+  const seedEntity = entityStem(seedPath, category);
+  const candidateEntity = entityStem(candidatePath, category);
+  if (seedEntity && candidateEntity && seedEntity !== candidateEntity && ["controller", "repository", "service", "model"].includes(category)) {
+    return 620;
+  }
+  if (category === "routing" && !["route", "routes", "router", "routing"].some((term) => queryTerms.has(term))) return 360;
+  return 180;
+}
+
 function roleCategory(filePath: string): string | undefined {
   const normalized = filePath.toLowerCase();
   if (/(^|\/)adapters?\//.test(normalized) || /adapter/.test(normalized.split("/").at(-1) ?? "")) return "adapter";
+  if (/mcp/.test(normalized.split("/").at(-1) ?? "") || /(^|\/)mcp\//.test(normalized)) return "mcp";
+  if (/runtime/.test(normalized.split("/").at(-1) ?? "")) return "runtime";
+  if (/proxy/.test(normalized.split("/").at(-1) ?? "")) return "proxy";
   if (/interceptor/.test(normalized)) return "interceptor";
   if (/dispatch/.test(normalized)) return "dispatch";
+  if (/convertors?|converters?/.test(normalized)) return "convertor";
   if (/dependenc/.test(normalized)) return "dependency";
+  if (/repository|repositories|repo\b|dao/.test(normalized)) return "repository";
+  if (/service/.test(normalized)) return "service";
+  if (/model|schema/.test(normalized)) return "model";
+  if (/controller/.test(normalized)) return "controller";
   if (/routing|router|route/.test(normalized)) return "routing";
   if (/scheduler/.test(normalized)) return "scheduler";
   if (/renderer/.test(normalized)) return "renderer";
@@ -422,6 +629,44 @@ function isGoPackageAnchor(seed: FileRecord, file: FileRecord, roles: CompanionR
   if (!roles.some((role) => role.id === "group-context-handler" || role.id === "routing-dependency")) return false;
   const basename = file.path.toLowerCase();
   return ["gin.go", "chi.go", "mux.go", "router.go", "engine.go", "server.go", "context.go", "chain.go"].includes(basename);
+}
+
+function isRouteCoreSibling(seedPath: string, candidatePath: string, queryTerms: Set<string>): boolean {
+  const seed = seedPath.toLowerCase();
+  const candidate = candidatePath.toLowerCase();
+  if (!sameModuleSurface(seed, candidate)) return false;
+  const seedBase = seed.split("/").at(-1) ?? "";
+  const candidateBase = candidate.split("/").at(-1) ?? "";
+  if (!/(index|router|routing|route|layer|execution-context)\.[cm]?[jt]s$/.test(seedBase)) return false;
+  if (!/(route|layer|router|proxy|response-controller|execution-context|index)\.[cm]?[jt]s$/.test(candidateBase)) return false;
+  return ["param", "params", "dispatch", "handler", "middleware", "route", "router", "proxy", "response", "controller"].some((term) => queryTerms.has(term));
+}
+
+function isDirectRoleBasenameAnchor(filePath: string, roles: CompanionRole[], queryTerms: Set<string>): boolean {
+  const basename = filePath.toLowerCase().split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  if (!basename) return false;
+  if (basename === "index") return false;
+  const basenameTerms = termSet(basename);
+  return roles.some((role) => role.terms.some((term) => basenameTerms.has(canonicalTerm(term)) && queryTerms.has(canonicalTerm(term))));
+}
+
+function isGenericHelperForRoleCompanion(filePath: string, queryTerms: Set<string>): boolean {
+  const normalized = filePath.toLowerCase();
+  if (!/(^|\/)(helpers?|utils?|support)\//.test(normalized)) return false;
+  return !["helper", "helpers", "utility", "utils", "support"].some((term) => queryTerms.has(term));
+}
+
+function isUnaskedConverterCompanion(filePath: string, queryTerms: Set<string>): boolean {
+  if (!/convert(or|er)|converter|convertor/.test(filePath.toLowerCase())) return false;
+  return !["convert", "converter", "convertor", "conversion", "path", "matching"].some((term) => queryTerms.has(term));
+}
+
+function isCrossPackageFrameworkSurface(seedPath: string, candidatePath: string): boolean {
+  const seedParts = seedPath.toLowerCase().split("/");
+  const candidateParts = candidatePath.toLowerCase().split("/");
+  if (seedParts[0] !== "packages" || candidateParts[0] !== "packages") return false;
+  if (!seedParts[1] || !candidateParts[1] || seedParts[1] === candidateParts[1]) return false;
+  return true;
 }
 
 function isDownstreamAdapterForCoreFlow(filePath: string, queryTerms: Set<string>): boolean {
@@ -529,6 +774,7 @@ function termSet(input: string): Set<string> {
 function canonicalTerm(term: string): string {
   if (term === "dependencies") return "dependency";
   if (term === "repositories") return "repository";
+  if (term === "repos") return "repo";
   if (term === "controllers") return "controller";
   if (term === "models") return "model";
   if (term === "routes") return "route";
@@ -544,5 +790,10 @@ function canonicalTerm(term: string): string {
   if (term === "groups") return "group";
   if (term === "requests") return "request";
   if (term === "responses") return "response";
+  if (term === "convertors") return "convertor";
+  if (term === "converters") return "converter";
+  if (term === "tools") return "tool";
+  if (term === "tabs") return "tab";
+  if (term === "filters") return "filter";
   return term;
 }

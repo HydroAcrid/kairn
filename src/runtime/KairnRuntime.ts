@@ -13,6 +13,7 @@ import type {
   ContextQueryMode,
   ContextResponse,
   ContextResponseMode,
+  ContextValueDecision,
   ExactSourceEvidence,
   EvalComparison,
   EvalObservationRecord,
@@ -205,6 +206,12 @@ export class KairnRuntime {
     markTiming("findContextMs", findContextStartedAt);
     const primaryFile = context.suggestedNextContext[0] ?? context.files[0];
     const companionMetadata = Array.isArray(context.metadata?.companions) ? context.metadata.companions : [];
+    const companionTopScore = Math.max(
+      0,
+      ...companionMetadata
+        .map((item) => (item && typeof item === "object" && "score" in item ? Number((item as { score?: unknown }).score) : 0))
+        .filter((score) => Number.isFinite(score))
+    );
     const sessionFiles = session.rootPath === this.rootPath ? knownFiles : this.store.listFiles(session.rootPath);
     const decisionStartedAt = Date.now();
     const baseQuality = evaluatePrimeQuality({
@@ -212,15 +219,32 @@ export class KairnRuntime {
       context,
       knownFiles: sessionFiles
     });
-    const contextDecision = evaluateContextValue({
+    let contextDecision = evaluateContextValue({
       task: resolvedTask,
       profile,
       context,
       quality: baseQuality,
       knownFiles: sessionFiles,
       repoFileCount: sessionFiles.length,
-      estimatedContextCost: budget
+      estimatedContextCost: budget,
+      companionCount: companionMetadata.length,
+      companionTopScore
     });
+    const automaticSuppressionReason = automaticPrimeSuppressionReason({ source: input.source, decision: contextDecision });
+    const mcpBriefSuppressionReason = input.format === "mcp_brief" && contextDecision.wrongContextRisk
+      ? "hybrid MCP brief abstained because compact MCP context risk is high"
+      : undefined;
+    const suppressionReason = automaticSuppressionReason ?? mcpBriefSuppressionReason;
+    if (suppressionReason) {
+      contextDecision = {
+        ...contextDecision,
+        score: Math.max(0, contextDecision.score - 18),
+        action: "suppress",
+        recommendedDelivery: "none",
+        expectedSavingsRisk: "high",
+        reasons: uniqueStrings([...contextDecision.reasons, suppressionReason])
+      };
+    }
     markTiming("decisionMs", decisionStartedAt);
     const quality = {
       ...baseQuality,
@@ -317,6 +341,8 @@ export class KairnRuntime {
     };
     const emittedFiles = effectiveAction === "suppress"
       ? []
+      : effectiveAction === "shrink" && includeCompanionContext
+        ? files.slice(0, 3)
       : effectiveAction === "shrink" && sessionPolicy.files.length > 0
         ? sessionPolicy.files.slice(0, 1)
         : files;
@@ -375,7 +401,11 @@ export class KairnRuntime {
               quality: effectiveQuality,
               context,
               budget: Math.min(budget, 420),
-              invariants
+              invariants,
+              includeSnippet:
+                sessionPolicy.reason !== "verified_context_shrunk" &&
+                !contextDecision.wrongContextRisk &&
+                !isAutomaticExactSourceHook({ source: input.source, decision: contextDecision })
             })
           : formatPrimeContext({
               task: resolvedTask,
@@ -1343,6 +1373,9 @@ export class KairnRuntime {
     await this.refreshIndex(session.rootPath);
     const coordination = this.getCoordinationState(input.sessionId);
     const exactSourceFile = input.source === "mcp" ? coordination.exactSourceFiles[0] : undefined;
+    const mcpSourceEvidenceFiles = input.source === "mcp"
+      ? uniquePaths(coordination.mcpFiles.filter(isLikelyProductionSourceFile)).slice(0, 2)
+      : [];
     const knownFiles = this.store.listFiles(session.rootPath).map((file) => file.path);
     const failureFiles = extractFailureFiles({
       output: input.output,
@@ -1412,6 +1445,121 @@ export class KairnRuntime {
         changedFiles,
         tokenEstimate: estimateTokens(content),
         warnings: ["Exact source hit: failure context intentionally skipped broad related/test expansion."]
+      };
+    }
+    if (mcpSourceEvidenceFiles.length > 0) {
+      const outputSummary = input.output ? compressOutputText(input.output, input.type, 320) : "";
+      const files = uniquePaths([
+        ...failureFiles.filter(isLikelyProductionSourceFile),
+        ...mcpSourceEvidenceFiles,
+        ...changedFiles.filter((file) => mcpSourceEvidenceFiles.includes(file))
+      ]).slice(0, 3);
+      const content = truncateToBudget(
+        [
+          "# Kairn Failure Context",
+          "",
+          input.command ? `Command: ${input.command}` : undefined,
+          `Output kind: ${input.type}`,
+          `Source evidence focus: ${mcpSourceEvidenceFiles.join(", ")}`,
+          failureFiles.length > 0 ? `Failure files: ${failureFiles.join(", ")}` : "Failure files: none detected.",
+          "",
+          outputSummary ? "## Compressed Failure Output" : undefined,
+          outputSummary || undefined,
+          "",
+          "## Agent Guidance",
+          "- Stay on the source evidence Kairn already returned.",
+          "- Do not request broad related files or test fanout unless these files are insufficient."
+        ].filter(Boolean).join("\n"),
+        input.budget ?? 760
+      );
+
+      this.store.recordCommand({
+        sessionId: input.sessionId,
+        type: input.type,
+        summary: content
+      });
+      this.recordShown(input.sessionId, "context", "failure_context", content);
+      this.recordMetricsEvent({
+        sessionId: input.sessionId,
+        rootPath: session.rootPath,
+        eventKind: "failure_context",
+        eventName: input.eventName ?? "failure_context",
+        source: input.source,
+        responseMode: "failure_context",
+        baselineTokens: input.output ? estimateTokens(input.output) + estimateFileBaselineTokens(this.store.listFiles(session.rootPath).filter((file) => files.includes(file.path))) : 0,
+        outputTokens: estimateTokens(content),
+        files,
+        metadata: {
+          outputKind: input.type,
+          sourceEvidenceFollowup: true,
+          sourceEvidenceFiles: mcpSourceEvidenceFiles,
+          failureFiles: failureFiles.length,
+          relatedFiles: 0,
+          testFiles: 0,
+          changedFiles: changedFiles.length,
+          estimator: "raw failure output plus MCP source evidence as baseline"
+        }
+      });
+
+      return {
+        session: this.getSession(input.sessionId),
+        type: input.type,
+        content,
+        files,
+        failureFiles,
+        relatedFiles: [],
+        testFiles: [],
+        changedFiles,
+        tokenEstimate: estimateTokens(content),
+        warnings: ["MCP source evidence already exists: failure context intentionally skipped broad related/test expansion."]
+      };
+    }
+    if (input.source === "mcp" && hasRecentMcpPrepareAbstention(this.store.listMetricsEvents(input.sessionId))) {
+      const outputSummary = input.output ? compressOutputText(input.output, input.type, 240) : "";
+      const content = truncateToBudget(
+        [
+          "# Kairn Failure Context",
+          "",
+          "Kairn previously abstained because context risk was high.",
+          "No additional Kairn files are recommended yet.",
+          "",
+          outputSummary ? "## Compressed Failure Output" : undefined,
+          outputSummary || undefined,
+          "",
+          "Agent guidance: continue normally. Call Kairn again only after a more specific failing file, stack trace, or changed source target appears."
+        ].filter(Boolean).join("\n"),
+        input.budget ?? 420
+      );
+      this.recordMetricsEvent({
+        sessionId: input.sessionId,
+        rootPath: session.rootPath,
+        eventKind: "failure_context",
+        eventName: input.eventName ?? "failure_context_suppressed",
+        source: input.source,
+        responseMode: "failure_context",
+        baselineTokens: input.output ? estimateTokens(input.output) : 0,
+        outputTokens: estimateTokens(content),
+        files: [],
+        metadata: {
+          outputKind: input.type,
+          previousMcpAbstention: true,
+          relatedFiles: 0,
+          testFiles: 0,
+          changedFiles: changedFiles.length
+        }
+      });
+      return {
+        session: this.getSession(input.sessionId),
+        type: input.type,
+        content,
+        contextSuppressed: true,
+        files: [],
+        failureFiles,
+        relatedFiles: [],
+        testFiles: [],
+        changedFiles,
+        tokenEstimate: estimateTokens(content),
+        warnings: ["Previous MCP prepare abstained: failure context intentionally skipped broad expansion."]
       };
     }
     const seedFiles = uniquePaths([...failureFiles, ...changedFiles]).slice(0, 4);
@@ -1513,6 +1661,7 @@ export class KairnRuntime {
       .reverse()
       .find((event) => event.kind === "failure" && event.files.length > 0);
     const workingSetRead = ledgerSummary.workingSet.nextSmallestUsefulRead;
+    const changedFiles = [...(await this.getChangedFiles(session.rootPath).catch(() => new Set<string>()))];
 
     if (exactSourceFile && !latestFailure && !ledgerSummary.workingSet.lastFailure) {
       if (alreadyReturnedFiles.includes(exactSourceFile)) {
@@ -1578,6 +1727,50 @@ export class KairnRuntime {
         }
       });
       return focused;
+    }
+
+    const alreadyReturnedSource = uniquePaths([...coordination.mcpFiles, ...coordination.hookFiles]).find(isLikelyProductionSourceFile);
+    if (alreadyReturnedSource && !latestFailure && !ledgerSummary.workingSet.lastFailure && changedFiles.length === 0) {
+      const content = truncateToBudget(
+        [
+          "# Kairn Next Context",
+          "",
+          `Stop condition: Kairn already returned source evidence for ${alreadyReturnedSource}.`,
+          "",
+          "Agent guidance: continue with that source file and the smallest verification check. Do not ask Kairn for broader context unless a check fails, a file changes, or the task target changes."
+        ].join("\n"),
+        input.budget ?? 360
+      );
+      this.recordLedgerEvent({
+        sessionId: input.sessionId,
+        kind: "context_shown",
+        filePath: alreadyReturnedSource,
+        contentHash: sha256(content),
+        tokenEstimate: estimateTokens(content),
+        source: "runtime",
+        summary: `Kairn stopped follow-up context after returning ${alreadyReturnedSource}.`,
+        metadata: {
+          repeatedFilesAvoided: 1,
+          repeatedSnippetsAvoided: 1,
+          policyReason: "source_evidence_sufficient",
+          workingSet: ledgerSummary.workingSet
+        }
+      });
+      return {
+        mode: "brief",
+        content,
+        files: [],
+        symbols: [],
+        related: [],
+        warnings: ["No fresh context emitted because Kairn already returned enough source evidence."],
+        suggestedNextContext: [],
+        tokenEstimate: estimateTokens(content),
+        metadata: {
+          sessionPolicy: "source_evidence_sufficient",
+          sourceEvidenceFile: alreadyReturnedSource,
+          workingSet: ledgerSummary.workingSet
+        }
+      };
     }
 
     if (workingSetRead && (workingSetRead.source === "failure" || workingSetRead.source === "changed_file" || !alreadyReturnedFiles.includes(workingSetRead.filePath))) {
@@ -2544,14 +2737,14 @@ export class KairnRuntime {
             }
           : input.assistanceMode === "mcp_first" ||
               input.assistanceMode === "real_mcp_first" ||
-              input.assistanceMode === "mcp_first_plus_hook_full_prime" ||
-              input.assistanceMode === "hybrid_mcp_brief"
+              input.assistanceMode === "mcp_first_plus_hook_full_prime"
             ? ({ prompt }) => ({
                 prompt: [
                   "Kairn MCP-first instruction:",
                   "Before broad file scans, call `kairn_prepare_task` with this task.",
-                  "For follow-up reads, call `kairn_get_next_context`.",
-                  "For failures, call `kairn_get_failure_context`.",
+                  "If `kairn_prepare_task` returns `stopCondition` or no `nextToolCalls`, continue from its files and do not call more Kairn unless a check fails or the target changes.",
+                  "Only call `kairn_get_next_context` when `kairn_prepare_task` explicitly returns it as a next tool call.",
+                  "For real failures, call `kairn_get_failure_context` once before broad debugging searches.",
                   "Use the smallest Kairn-recommended read before `rg --files`, large `sed`, or full-file reads.",
                   "",
                   "User task:",
@@ -2560,6 +2753,15 @@ export class KairnRuntime {
                 metadata: {
                   assistanceMode: input.assistanceMode,
                   mcpFirstInstructionsPrepended: true
+                }
+              })
+          : input.assistanceMode === "hybrid_mcp_brief"
+            ? ({ prompt }) => ({
+                prompt,
+                metadata: {
+                  assistanceMode: input.assistanceMode,
+                  mcpFirstInstructionsPrepended: false,
+                  hybridMcpInstructionsConditional: true
                 }
               })
           : undefined
@@ -3048,6 +3250,45 @@ function shouldUseCompanionContext(task: string, companionPaths: string[]): bool
   return /\b(route|routing|dependency|dependencies|controller|repository|model|scheduler|renderer|interceptor|interceptors|dispatch|adapter|validation|callback|callbacks|group|context|handler|middleware|fixture|framework|flow|request|response|proxy|guard|guards|pipe|pipes|case|sensitivity|extension|normalize|normalization)\b/.test(
     normalized
   );
+}
+
+function isLikelyProductionSourceFile(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  if (/(^|\/)(tests?|testing|docs?|examples?|devtools|codemods|generated|fixtures?|testdata)\//.test(normalized)) return false;
+  if (/\.(test|spec)\.[cm]?[jt]sx?$/.test(normalized)) return false;
+  if (/(_test|_spec|_tests)\.(py|go|rb|cc|cpp|cxx|c|hpp|hh|hxx)$/.test(normalized)) return false;
+  if (/(test|tests)\.java$/.test(normalized.split("/").at(-1) ?? "")) return false;
+  return /\.(ts|tsx|js|jsx|mjs|cjs|py|pyi|java|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(normalized);
+}
+
+function hasRecentMcpPrepareAbstention(events: Array<{ eventKind: string; eventName: string; metadata: Record<string, unknown> }>): boolean {
+  return [...events].reverse().some((event) => {
+    if (event.eventKind !== "mcp_tool_call" || event.eventName !== "kairn_prepare_task") return false;
+    const decision = event.metadata.contextDecision;
+    return Boolean(
+      decision &&
+        typeof decision === "object" &&
+        !Array.isArray(decision) &&
+        (decision as Record<string, unknown>).action === "suppress" &&
+        String((decision as Record<string, unknown>).recommendedDelivery ?? "") === "none"
+    );
+  });
+}
+
+function automaticPrimeSuppressionReason(input: {
+  source?: WatchEventSource | "runtime" | "cli" | "mcp" | "bench" | undefined;
+  decision: ContextValueDecision;
+}): string | undefined {
+  return undefined;
+}
+
+function isAutomaticExactSourceHook(input: {
+  source?: WatchEventSource | "runtime" | "cli" | "mcp" | "bench" | undefined;
+  decision: ContextValueDecision;
+}): boolean {
+  if (input.source !== "codex" && input.source !== "claude") return false;
+  if (!input.decision.exactSourceHit || input.decision.multiSurfaceSignal) return false;
+  return input.decision.topScore >= 240 && input.decision.topGap >= 70;
 }
 
 function strongestSuppressiveAction(

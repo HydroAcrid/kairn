@@ -202,7 +202,8 @@ async function runEnduranceTurn(input: {
     preparedPrompt = [
       "Kairn long-session instruction:",
       `Use Kairn session ${input.sessionId}.`,
-      "Call kairn_prepare_task before broad reads, kairn_get_next_context for follow-up reads, and kairn_get_failure_context after failures.",
+      "Call kairn_prepare_task before broad reads. If it returns stopCondition or no nextToolCalls, continue from its files and do not call more Kairn unless a check fails or the target changes.",
+      "Only call kairn_get_next_context when prepare explicitly returns it; call kairn_get_failure_context once after real failures.",
       "Prefer the smallest Kairn-provided source read and avoid repeating files already shown by Kairn.",
       "",
       "User task:",
@@ -264,7 +265,15 @@ async function runEnduranceTurn(input: {
       verification,
       expectedMentions,
       touched,
-      output
+      output,
+      qualityGatePassed,
+      sourceInvariantChecked: Boolean(input.turn.sourceInvariants?.length),
+      sourceInvariantFiles: uniquePaths((input.turn.sourceInvariants ?? []).map((invariant) => invariant.file)),
+      sourceInvariantPassed: sourceInvariantResult.passed,
+      sourceInvariantFailures: sourceInvariantResult.failures,
+      diffScopeChecked: Boolean(input.turn.allowedDiffScopes?.length),
+      diffScopePassed: diffScopeResult.passed,
+      diffScopeViolations: diffScopeResult.violations
     });
   }
   const afterLedger = input.runtime && input.sessionId ? input.runtime.summarizeSessionLedger(input.sessionId) : undefined;
@@ -343,6 +352,14 @@ function recordTurnLedger(input: {
   expectedMentions: string[];
   touched: string[];
   output: string;
+  qualityGatePassed: boolean;
+  sourceInvariantChecked: boolean;
+  sourceInvariantFiles: string[];
+  sourceInvariantPassed: boolean;
+  sourceInvariantFailures: string[];
+  diffScopeChecked: boolean;
+  diffScopePassed: boolean;
+  diffScopeViolations: string[];
 }): void {
   input.runtime.recordLedgerEvent({
     sessionId: input.sessionId,
@@ -379,6 +396,17 @@ function recordTurnLedger(input: {
       metadata: { turnId: input.turn.id }
     });
   }
+  for (const file of input.touched) {
+    input.runtime.recordLedgerEvent({
+      sessionId: input.sessionId,
+      kind: "diff_seen",
+      turnId: input.turn.id,
+      filePath: file,
+      source: "agent",
+      summary: `Diff touched ${file} during endurance turn ${input.turn.id}.`,
+      metadata: { turnId: input.turn.id }
+    });
+  }
   const verificationFailed = input.verification ? input.verification.status !== 0 || input.verification.timedOut : false;
   if (input.result.status !== 0 || input.result.timedOut || verificationFailed) {
     input.runtime.recordLedgerEvent({
@@ -395,19 +423,32 @@ function recordTurnLedger(input: {
       }
     });
   }
-  if (input.verification) {
+  const semanticVerificationChecked = input.sourceInvariantChecked || input.diffScopeChecked;
+  if (input.verification || semanticVerificationChecked) {
+    const verificationPassed =
+      (input.verification ? input.verification.status === 0 && !input.verification.timedOut : true) &&
+      (!input.sourceInvariantChecked || input.sourceInvariantPassed) &&
+      (!input.diffScopeChecked || input.diffScopePassed);
     input.runtime.recordLedgerEvent({
       sessionId: input.sessionId,
-      kind: input.verification.status === 0 ? "verification_passed" : "verification_failed",
+      kind: verificationPassed ? "verification_passed" : "verification_failed",
       turnId: input.turn.id,
       source: "bench",
-      summary: input.verification.status === 0
+      filePath: input.sourceInvariantFiles[0] ?? input.touched[0] ?? input.expectedMentions[0],
+      summary: verificationPassed
         ? `Verification passed for endurance turn ${input.turn.id}.`
         : `Verification failed for endurance turn ${input.turn.id}.`,
       metadata: {
         verificationCommandHash: sha256(input.turn.verificationCommand ?? ""),
-        verificationExitCode: input.verification.status,
-        verificationTimedOut: input.verification.timedOut
+        verificationExitCode: input.verification?.status,
+        verificationTimedOut: input.verification?.timedOut,
+        sourceInvariantChecked: input.sourceInvariantChecked,
+        sourceInvariantPassed: input.sourceInvariantPassed,
+        sourceInvariantFailures: input.sourceInvariantFailures,
+        diffScopeChecked: input.diffScopeChecked,
+        diffScopePassed: input.diffScopePassed,
+        diffScopeViolations: input.diffScopeViolations,
+        qualityGatePassed: input.qualityGatePassed
       }
     });
   }
