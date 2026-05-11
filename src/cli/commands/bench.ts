@@ -98,6 +98,12 @@ export function registerBenchCommands(program: Command): void {
     .requiredOption("--baseline-command <command>", "baseline live-agent command with {prompt}, {root}, and {turn} placeholders")
     .requiredOption("--kairn-command <command>", "Kairn-assisted live-agent command with {prompt}, {root}, {session}, and {turn} placeholders")
     .option("--mcp-command <command>", "MCP-assisted live-agent command with {prompt}, {root}, {session}, and {turn} placeholders")
+    .option("--hook-full-prime-command <command>", "hook full-prime endurance command with {prompt}, {root}, {session}, and {turn} placeholders")
+    .option("--hook-full-prime-setup-command <command>", "hook full-prime setup command timed separately before endurance turns")
+    .option("--real-mcp-first-command <command>", "real MCP-first endurance command with {prompt}, {root}, {session}, and {turn} placeholders")
+    .option("--real-mcp-first-setup-command <command>", "real MCP-first setup command timed separately before endurance turns")
+    .option("--hybrid-mcp-brief-command <command>", "hybrid MCP brief endurance command with {prompt}, {root}, {session}, and {turn} placeholders")
+    .option("--hybrid-mcp-brief-setup-command <command>", "hybrid MCP brief setup command timed separately before endurance turns")
     .option("--turn-timeout <ms>", "per-turn live-agent command timeout", parsePositiveInt, 180000)
     .option("--json", "print JSON output")
     .action(
@@ -107,6 +113,12 @@ export function registerBenchCommands(program: Command): void {
         baselineCommand: string;
         kairnCommand: string;
         mcpCommand?: string;
+        hookFullPrimeCommand?: string;
+        hookFullPrimeSetupCommand?: string;
+        realMcpFirstCommand?: string;
+        realMcpFirstSetupCommand?: string;
+        hybridMcpBriefCommand?: string;
+        hybridMcpBriefSetupCommand?: string;
         turnTimeout: number;
         json?: boolean;
       }) => {
@@ -116,6 +128,12 @@ export function registerBenchCommands(program: Command): void {
           baselineCommand: options.baselineCommand,
           kairnCommand: options.kairnCommand,
           mcpCommand: options.mcpCommand,
+          hookFullPrimeCommand: options.hookFullPrimeCommand,
+          hookFullPrimeSetupCommand: options.hookFullPrimeSetupCommand,
+          realMcpFirstCommand: options.realMcpFirstCommand,
+          realMcpFirstSetupCommand: options.realMcpFirstSetupCommand,
+          hybridMcpBriefCommand: options.hybridMcpBriefCommand,
+          hybridMcpBriefSetupCommand: options.hybridMcpBriefSetupCommand,
           turnTimeoutMs: options.turnTimeout
         });
         if (options.json) {

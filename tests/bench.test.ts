@@ -688,14 +688,29 @@ describe("benchmark suite and scoring", () => {
       suitePath,
       baselineCommand: fakeCommand,
       kairnCommand: fakeCommand,
+      mcpCommand: fakeCommand,
+      hookFullPrimeCommand: fakeCommand,
+      hookFullPrimeSetupCommand: "node -e \"console.log('hook setup')\"",
+      realMcpFirstCommand: fakeCommand,
+      realMcpFirstSetupCommand: "node -e \"console.log('mcp setup')\"",
+      hybridMcpBriefCommand: fakeCommand,
+      hybridMcpBriefSetupCommand: "node -e \"console.log('hybrid setup')\"",
       turnTimeoutMs: 30000
     });
 
-    expect(report.reports.map((item) => item.mode)).toEqual(["baseline", "kairn"]);
+    expect(report.reports.map((item) => item.mode)).toEqual([
+      "baseline",
+      "kairn",
+      "mcp",
+      "hook_full_prime",
+      "real_mcp_first",
+      "hybrid_mcp_brief"
+    ]);
     expect(report.reports.every((item) => item.qualityGatePassed)).toBe(true);
     expect(report.reports.find((item) => item.mode === "kairn")?.sessionId).toMatch(/^task_/);
     expect(report.reports.find((item) => item.mode === "kairn")?.ledger?.events).toBeGreaterThan(0);
     expect(report.reports.find((item) => item.mode === "kairn")?.ledger?.workingSet.activeFiles).toContain("src/user.ts");
+    expect(report.reports.find((item) => item.mode === "hook_full_prime")?.metadata?.setupExitCode).toBe(0);
     expect(report.deltas.kairn?.baselineTokens).toBe(240);
   });
 

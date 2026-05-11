@@ -23,7 +23,24 @@ import { classificationNegativeEvidenceReason, classifyAssistance } from "./assi
 import { loadBenchmarkEnduranceSuite } from "./enduranceSuite.js";
 import { evaluateDiffScopes, evaluateSourceInvariants } from "./sourceValidation.js";
 
-type EnduranceMode = "baseline" | "kairn" | "mcp";
+type EnduranceMode = "baseline" | "kairn" | "mcp" | "hook_full_prime" | "real_mcp_first" | "hybrid_mcp_brief";
+
+type EnduranceModeSpec = {
+  mode: EnduranceMode;
+  command: string;
+  setupCommand?: string | undefined;
+};
+
+type EnduranceWorkspaceMetrics = {
+  kairnSessionCount: number;
+  primeEmitted: number;
+  primeSuppressed: number;
+  hookInvocations: number;
+  failureContextUsed: number;
+  mcpToolCalls: number;
+  mcpFilesReturned: string[];
+  mcpReturnedFileCount: number;
+};
 
 export async function runBenchmarkEndurance(input: {
   rootPath: string;
@@ -31,15 +48,40 @@ export async function runBenchmarkEndurance(input: {
   baselineCommand: string;
   kairnCommand: string;
   mcpCommand?: string | undefined;
+  hookFullPrimeCommand?: string | undefined;
+  hookFullPrimeSetupCommand?: string | undefined;
+  realMcpFirstCommand?: string | undefined;
+  realMcpFirstSetupCommand?: string | undefined;
+  hybridMcpBriefCommand?: string | undefined;
+  hybridMcpBriefSetupCommand?: string | undefined;
   turnTimeoutMs?: number | undefined;
 }): Promise<BenchmarkEnduranceReport> {
   const suite = loadBenchmarkEnduranceSuite({ suitePath: input.suitePath });
   const startedAt = new Date().toISOString();
   const reports: BenchmarkEnduranceModeReport[] = [];
-  reports.push(await runEnduranceMode({ rootPath: input.rootPath, suite, mode: "baseline", command: input.baselineCommand, timeoutMs: input.turnTimeoutMs }));
-  reports.push(await runEnduranceMode({ rootPath: input.rootPath, suite, mode: "kairn", command: input.kairnCommand, timeoutMs: input.turnTimeoutMs }));
-  if (input.mcpCommand) {
-    reports.push(await runEnduranceMode({ rootPath: input.rootPath, suite, mode: "mcp", command: input.mcpCommand, timeoutMs: input.turnTimeoutMs }));
+  const modeSpecs: EnduranceModeSpec[] = [
+    { mode: "baseline", command: input.baselineCommand },
+    { mode: "kairn", command: input.kairnCommand },
+    ...(input.mcpCommand ? [{ mode: "mcp" as const, command: input.mcpCommand }] : []),
+    ...(input.hookFullPrimeCommand
+      ? [{ mode: "hook_full_prime" as const, command: input.hookFullPrimeCommand, setupCommand: input.hookFullPrimeSetupCommand }]
+      : []),
+    ...(input.realMcpFirstCommand
+      ? [{ mode: "real_mcp_first" as const, command: input.realMcpFirstCommand, setupCommand: input.realMcpFirstSetupCommand }]
+      : []),
+    ...(input.hybridMcpBriefCommand
+      ? [{ mode: "hybrid_mcp_brief" as const, command: input.hybridMcpBriefCommand, setupCommand: input.hybridMcpBriefSetupCommand }]
+      : [])
+  ];
+  for (const spec of modeSpecs) {
+    reports.push(await runEnduranceMode({
+      rootPath: input.rootPath,
+      suite,
+      mode: spec.mode,
+      command: spec.command,
+      setupCommand: spec.setupCommand,
+      timeoutMs: input.turnTimeoutMs
+    }));
   }
   const endedAt = new Date().toISOString();
   return {
@@ -58,6 +100,7 @@ async function runEnduranceMode(input: {
   suite: BenchmarkEnduranceSuite;
   mode: EnduranceMode;
   command: string;
+  setupCommand?: string | undefined;
   timeoutMs?: number | undefined;
 }): Promise<BenchmarkEnduranceModeReport> {
   const workspace = createBenchmarkWorkspace({
@@ -65,12 +108,50 @@ async function runEnduranceMode(input: {
     benchmarkCase: suiteSeedCase(input.suite)
   });
   const timeoutMs = input.timeoutMs ?? 180000;
-  const runtime = input.mode === "baseline" ? undefined : new KairnRuntime(workspace.workspacePath);
+  const needsRuntime = input.mode === "kairn" || input.mode === "mcp" || input.mode === "real_mcp_first" || input.mode === "hybrid_mcp_brief";
+  const runtime = needsRuntime ? new KairnRuntime(workspace.workspacePath) : undefined;
   const startedAt = Date.now();
+  const setupStartedAt = Date.now();
+  const setupResult = input.setupCommand
+    ? runShell(enduranceCommandWithPlaceholders(input.setupCommand, {
+        prompt: input.suite.task,
+        root: workspace.workspacePath,
+        session: "",
+        turn: "setup"
+      }), workspace.workspacePath, timeoutMs)
+    : undefined;
+  const setupElapsedMs = Date.now() - setupStartedAt;
   let sessionId: string | undefined;
   const turnResults: BenchmarkEnduranceTurnResult[] = [];
 
   try {
+    if (setupResult && (setupResult.status !== 0 || setupResult.timedOut)) {
+      return {
+        mode: input.mode,
+        workspacePath: workspace.workspacePath,
+        turns: [],
+        totalResponseTokens: estimateTokens(setupResult.output),
+        totalElapsedMs: Date.now() - startedAt,
+        qualityGatePassed: false,
+        finalVerificationPassed: false,
+        assistanceStatus: input.mode === "baseline" ? "none" : "passive_suppressed",
+        assistanceActions: {
+          emitted: 0,
+          shrunk: 0,
+          suppressed: 0,
+          mcpCalls: 0,
+          failureContexts: 0
+        },
+        metadata: {
+          setupCommandHash: sha256(input.setupCommand ?? ""),
+          setupExitCode: setupResult.status,
+          setupTimedOut: setupResult.timedOut,
+          setupElapsedMs,
+          setupOutputHash: sha256(setupResult.output),
+          setupOutputTokens: estimateTokens(setupResult.output)
+        }
+      };
+    }
     if (runtime) {
       await runtime.init();
       sessionId = (await runtime.startTask(input.suite.task)).session.id;
@@ -122,12 +203,12 @@ async function runEnduranceMode(input: {
     }
     const ledgerEvents = runtime && sessionId ? runtime.getSessionLedger(sessionId) : [];
     const ledger = runtime && sessionId ? runtime.summarizeSessionLedger(sessionId) : undefined;
-    const metrics = runtime && sessionId ? runtime.getMetrics(sessionId) : undefined;
+    const workspaceMetrics = collectEnduranceWorkspaceMetrics(workspace.workspacePath, runtime);
     const assistanceActions = buildAssistanceActions({
       mode: input.mode,
       turns: turnResults,
       ledgerEvents,
-      mcpToolCallCount: metrics?.byKind.mcp_tool_call?.events ?? 0
+      workspaceMetrics
     });
     const assistanceStatus = classifyEnduranceAssistanceStatus(input.mode, assistanceActions);
     return {
@@ -152,7 +233,25 @@ async function runEnduranceMode(input: {
         finalDiffScopePassed: finalDiffScopeResult.passed,
         finalDiffScopeViolations: finalDiffScopeResult.violations,
         finalChangedFiles: finalDiffScopeResult.changedFiles,
-        actualMcpToolCalls: metrics?.byKind.mcp_tool_call?.events ?? 0
+        setupElapsedMs,
+        ...(setupResult
+          ? {
+              setupCommandHash: sha256(input.setupCommand ?? ""),
+              setupExitCode: setupResult.status,
+              setupTimedOut: setupResult.timedOut,
+              setupOutputHash: sha256(setupResult.output),
+              setupOutputTokens: estimateTokens(setupResult.output)
+            }
+          : {}),
+        ...workspaceMetrics,
+        mcpReturnedUsefulFileCount: usefulReturnedFileCount(workspaceMetrics.mcpFilesReturned, turnResults),
+        mcpObservedTokensPerCall: workspaceMetrics.mcpToolCalls > 0 && turnResults.some((turn) => turn.observedCodexTokens !== undefined)
+          ? sumDefined(turnResults.map((turn) => turn.observedCodexTokens)) / workspaceMetrics.mcpToolCalls
+          : undefined,
+        mcpObservedTokensPerUsefulFile:
+          usefulReturnedFileCount(workspaceMetrics.mcpFilesReturned, turnResults) > 0 && turnResults.some((turn) => turn.observedCodexTokens !== undefined)
+            ? sumDefined(turnResults.map((turn) => turn.observedCodexTokens)) / usefulReturnedFileCount(workspaceMetrics.mcpFilesReturned, turnResults)
+            : undefined
       } as Record<string, unknown>
     };
   } finally {
@@ -202,7 +301,11 @@ async function runEnduranceTurn(input: {
           "",
           "Use this context first. Do not reread already-shown files unless they changed or verification fails."
         ].join("\n");
-  } else if (input.runtime && input.sessionId && input.mode === "mcp") {
+  } else if (
+    input.runtime &&
+    input.sessionId &&
+    (input.mode === "mcp" || input.mode === "real_mcp_first" || input.mode === "hybrid_mcp_brief")
+  ) {
     const mcpPrompt = buildMcpEndurancePrompt({
       sessionId: input.sessionId,
       prompt,
@@ -419,6 +522,58 @@ function firstKnownSource(ledger?: SessionLedgerSummary | undefined, mcpFiles: s
   ].find(isLikelyBenchmarkSource);
 }
 
+function collectEnduranceWorkspaceMetrics(workspacePath: string, runtime?: KairnRuntime | undefined): EnduranceWorkspaceMetrics {
+  const ownsRuntime = !runtime;
+  const activeRuntime = runtime ?? new KairnRuntime(workspacePath);
+  try {
+    const sessions = activeRuntime.listSessions({ allRoots: true });
+    const summaries = sessions.map((session) => activeRuntime.getMetrics(session.id));
+    const recentEvents = summaries.flatMap((summary) => summary.recentEvents);
+    const hookSignals = recentEvents.filter((event) => event.eventKind === "hook_signal");
+    const mcpFilesReturned = uniquePaths(
+      recentEvents
+        .filter((event) => event.eventKind === "mcp_tool_call")
+        .flatMap((event) => event.files)
+    );
+    return {
+      kairnSessionCount: sessions.length,
+      primeEmitted: hookSignals.filter((event) => event.metadata.primeContextDelivered === true).length,
+      primeSuppressed: hookSignals.filter((event) => event.metadata.primeSuppressed === true).length,
+      hookInvocations: summaries.reduce((total, summary) => total + (summary.byKind.hook_signal?.events ?? 0), 0),
+      failureContextUsed: summaries.reduce((total, summary) => total + (summary.byKind.failure_context?.events ?? 0), 0),
+      mcpToolCalls: summaries.reduce((total, summary) => total + (summary.byKind.mcp_tool_call?.events ?? 0), 0),
+      mcpFilesReturned,
+      mcpReturnedFileCount: mcpFilesReturned.length
+    };
+  } catch {
+    return {
+      kairnSessionCount: 0,
+      primeEmitted: 0,
+      primeSuppressed: 0,
+      hookInvocations: 0,
+      failureContextUsed: 0,
+      mcpToolCalls: 0,
+      mcpFilesReturned: [],
+      mcpReturnedFileCount: 0
+    };
+  } finally {
+    if (ownsRuntime) {
+      activeRuntime.close();
+    }
+  }
+}
+
+function usefulReturnedFileCount(files: string[], turns: BenchmarkEnduranceTurnResult[]): number {
+  const usefulFiles = new Set(
+    turns.flatMap((turn) => [
+      ...turn.actualFiles,
+      ...turn.expectedFiles,
+      ...turn.agentTouchedFiles
+    ])
+  );
+  return uniquePaths(files).filter((file) => usefulFiles.has(file)).length;
+}
+
 function isLikelyBenchmarkSource(filePath: string | undefined): filePath is string {
   if (!filePath) return false;
   if (!/\.(?:[cm]?[jt]sx?|py|java|go|rs|c|cc|cpp|cxx|h|hh|hpp|hxx)$/i.test(filePath)) return false;
@@ -623,7 +778,7 @@ function buildAssistanceActions(input: {
   mode: EnduranceMode;
   turns: BenchmarkEnduranceTurnResult[];
   ledgerEvents: ReturnType<KairnRuntime["getSessionLedger"]>;
-  mcpToolCallCount?: number | undefined;
+  workspaceMetrics: EnduranceWorkspaceMetrics;
 }): BenchmarkEnduranceModeReport["assistanceActions"] {
   if (input.mode === "baseline") {
     return {
@@ -635,16 +790,16 @@ function buildAssistanceActions(input: {
     };
   }
   const decisions = input.turns.map((turn) => typeof turn.metadata.primeDecision === "string" ? turn.metadata.primeDecision : "");
-  const mcpCalls = input.mcpToolCallCount ?? 0;
+  const mcpCalls = input.workspaceMetrics.mcpToolCalls;
   const failureContexts = input.ledgerEvents.filter(
     (event) => event.kind === "context_shown" && event.metadata.policyReason === "failure_reemitted"
   ).length;
   return {
-    emitted: decisions.filter((decision) => decision === "emit").length,
+    emitted: decisions.filter((decision) => decision === "emit").length + input.workspaceMetrics.primeEmitted,
     shrunk: decisions.filter((decision) => decision === "shrink").length,
-    suppressed: decisions.filter((decision) => decision === "suppress").length,
+    suppressed: decisions.filter((decision) => decision === "suppress").length + input.workspaceMetrics.primeSuppressed,
     mcpCalls,
-    failureContexts
+    failureContexts: failureContexts + input.workspaceMetrics.failureContextUsed
   };
 }
 

@@ -113,7 +113,7 @@ export type BenchmarkDiffScope = {
 
 export type BenchmarkEnduranceTurnResult = {
   turnId: string;
-  mode: "baseline" | "kairn" | "mcp";
+  mode: "baseline" | "kairn" | "mcp" | "hook_full_prime" | "real_mcp_first" | "hybrid_mcp_brief";
   outcome: BenchmarkTaskOutcome;
   observedCodexTokens?: number;
   responseTokens: number;
@@ -131,7 +131,7 @@ export type BenchmarkEnduranceTurnResult = {
 };
 
 export type BenchmarkEnduranceModeReport = {
-  mode: "baseline" | "kairn" | "mcp";
+  mode: "baseline" | "kairn" | "mcp" | "hook_full_prime" | "real_mcp_first" | "hybrid_mcp_brief";
   workspacePath: string;
   sessionId?: string;
   turns: BenchmarkEnduranceTurnResult[];

@@ -885,3 +885,50 @@ Interpretation:
 - The earlier over-abstention failure was repaired: both holdout cases passed quality gates again.
 - MCP still has per-case variance. The Requests case remained token-negative in this run, so this is not enough to promote MCP-first as the default for cheap one-shot tasks.
 - Hook-only behavior is now safer for this task class because suppressed hooks do not add host context. MCP-first remains useful where tools are the only available integration surface, but it needs repeat-based classification before product claims.
+
+### Endurance Installed-Surface Smoke
+
+After adding installed-surface endurance modes, Kairn ran two full-surface endurance smokes with:
+
+- baseline
+- direct Kairn prime/shrink
+- installed hook full-prime
+- real MCP-first
+- hybrid MCP brief
+
+Artifacts:
+
+- Requests: `/tmp/kairn-endurance-requests-full-surface-smoke-20260510.json`
+- Gin: `/tmp/kairn-endurance-gin-full-surface-smoke-20260510.json`
+
+Results:
+
+| Suite | Mode | Tokens | Quality | Active | Valid Savings |
+| --- | --- | ---: | --- | --- | ---: |
+| Requests | baseline | `96,967` | pass | no | control |
+| Requests | direct Kairn prime | `79,488` | pass | yes | `18.03%` |
+| Requests | hook full-prime | `50,609` | pass | yes | `47.81%` |
+| Requests | real MCP-first | `71,484` | pass | yes, `3` MCP calls | `26.28%` |
+| Requests | hybrid MCP brief | `66,599` | pass | yes, `1` MCP call | `31.32%` |
+| Gin | baseline | `79,429` | pass | no | control |
+| Gin | direct Kairn prime | `39,973` | pass | yes | `49.67%` |
+| Gin | hook full-prime | `73,626` | pass | yes | `7.31%` |
+| Gin | real MCP-first | `60,366` | pass | yes, `2` MCP calls | `24.00%` |
+| Gin | hybrid MCP brief | `58,643` | pass | yes, `1` MCP call | `26.17%` |
+
+Findings:
+
+- The endurance harness can now compare installed hook, real MCP-first, and hybrid modes instead of only direct prompt priming.
+- Both suites passed quality gates across every mode; no token reduction here is invalid savings.
+- MCP/hybrid are now positive in both smokes and have controlled call counts. Hybrid used one MCP call in both suites.
+- Hook full-prime is not universally best. It was strongest on Requests, but weak on Gin. This supports the product thesis that Kairn needs adaptive delivery by behavior class, not one universal mode.
+- Direct Kairn prime/shrink remains the strongest long-session upper-bound on Gin, but it is not the normal automatic UX.
+
+Recommendation:
+
+- Do not claim repeat-3 endurance stability yet from these two smokes.
+- The next live spend should be repeat-3 on two representative suites first, not the full four-suite/five-mode matrix. A full matrix would be roughly 240 live Codex turns.
+- If repeat-3 confirms the same pattern, the product story should be:
+  - hook as default automatic savings path,
+  - MCP/hybrid as positive but still experimental read-gateway paths,
+  - direct prime/shrink as upper-bound and wrapper/control path.
