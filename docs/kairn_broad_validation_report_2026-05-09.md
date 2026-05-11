@@ -932,3 +932,40 @@ Recommendation:
   - hook as default automatic savings path,
   - MCP/hybrid as positive but still experimental read-gateway paths,
   - direct prime/shrink as upper-bound and wrapper/control path.
+
+### Session-Bound Hook Rerun
+
+The first installed-surface endurance smoke exposed a harness/product gap: `hook_full_prime` was running in installed Codex hook mode, but the hook command did not receive the endurance session id. That meant hook turns could emit useful context, but they were not reliably sharing the same ledger/source-lock state that direct Kairn and MCP used.
+
+Kairn added session-bound Codex setup:
+
+```bash
+kairn setup codex --mode savings --hook-output full-prime --session <session-id>
+kairn setup codex --mode hybrid --session <session-id>
+```
+
+The endurance harness now passes `{session}` into installed hook and hybrid setup commands so multi-turn `codex exec` proofs exercise one durable Kairn ledger.
+
+Artifacts:
+
+- Requests: `/tmp/kairn-endurance-requests-session-bound-hook-20260510.json`
+- Gin: `/tmp/kairn-endurance-gin-session-bound-hook-20260510.json`
+
+Before/after results:
+
+| Suite | Mode | Before Tokens | Before Savings | After Tokens | After Savings | Quality |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| Requests | hook full-prime | `50,609` | `47.81%` | `36,390` | `47.94%` | pass/pass |
+| Requests | real MCP-first | `71,484` | `26.28%` | `55,535` | `20.55%` | pass/pass |
+| Requests | hybrid MCP brief | `66,599` | `31.32%` | `52,903` | `24.31%` | pass/pass |
+| Gin | hook full-prime | `73,626` | `7.31%` | `43,558` | `49.60%` | pass/pass |
+| Gin | real MCP-first | `60,366` | `24.00%` | `76,539` | `11.44%` | pass/pass |
+| Gin | hybrid MCP brief | `58,643` | `26.17%` | `57,987` | `32.91%` | pass/pass |
+
+Interpretation:
+
+- Session-bound hooks repaired the Gin weakness. Hook full-prime moved from `7.31%` to `49.60%` valid savings while preserving quality.
+- Requests stayed stable: hook full-prime remained about `48%` valid savings.
+- The issue was not that hook context was inherently worse than MCP. The weak Gin result was largely a session/ledger mismatch in the endurance harness.
+- MCP and hybrid remain positive but more variable. MCP's advantage is still tool portability and explicit read-gateway behavior; hook's advantage is lower-friction automatic delivery when the host supports hooks.
+- For long-session Codex usage, the safest current automatic path is `savings` hooks bound to a durable Kairn session. MCP/hybrid should continue as experimental paths for agents or tools without prompt hooks.

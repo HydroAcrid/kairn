@@ -718,6 +718,17 @@ describe("watch and hook CLI", () => {
     ) as { configPath: string; hooksPath: string; primeBudget: number; hookOutput: string; postToolHookOutput: string; mcpConfigured: boolean };
     const config = fs.readFileSync(setup.configPath, "utf8");
     const hooks = fs.readFileSync(setup.hooksPath, "utf8");
+    const bound = JSON.parse(
+      execFileSync(CLI[0]!, [...CLI.slice(1), "setup", "codex", "--root", root, "--session", "task_bound", "--json"], {
+        cwd: process.cwd(),
+        encoding: "utf8"
+      })
+    ) as { hooksPath: string };
+    const boundHooks = fs.readFileSync(bound.hooksPath, "utf8");
+    execFileSync(CLI[0]!, [...CLI.slice(1), "setup", "codex", "--root", root, "--json"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
     const observe = JSON.parse(
       execFileSync(CLI[0]!, [...CLI.slice(1), "setup", "codex", "--root", root, "--mode", "observe", "--json"], {
         cwd: process.cwd(),
@@ -790,6 +801,7 @@ describe("watch and hook CLI", () => {
     expect(hooks).toContain("--hook-output full-prime");
     expect(hooks).not.toContain(":-kairn");
     expect(hooks).not.toContain("--session");
+    expect(boundHooks).toContain("--session task_bound");
     expect(hooks).not.toContain("PostToolUse");
     expect(observe.mode).toBe("observe");
     expect(observeHooks).toContain("PostToolUse");

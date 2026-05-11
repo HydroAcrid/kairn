@@ -10,6 +10,7 @@ export function writeCodexSetup(input: {
   hookOutput: HookOutputProfile;
   postToolHookOutput: HookOutputProfile;
   primeBudget: number;
+  sessionId?: string | undefined;
 }) {
   const rootPath = path.resolve(input.root);
   const codexDir = path.join(rootPath, ".codex");
@@ -36,7 +37,8 @@ export function writeCodexSetup(input: {
     primeProfile: input.primeProfile,
     hookOutput: input.hookOutput,
     postToolHookOutput: input.postToolHookOutput,
-    primeBudget: input.primeBudget
+    primeBudget: input.primeBudget,
+    sessionId: input.sessionId
   };
 }
 
@@ -136,16 +138,19 @@ function buildCodexHooksConfig(input: {
   hookOutput: HookOutputProfile;
   postToolHookOutput: HookOutputProfile;
   primeBudget: number;
+  sessionId?: string | undefined;
 }) {
   const promptCommand = buildCodexHookCommand({
     primeProfile: input.primeProfile,
     primeBudget: input.primeBudget,
-    hookOutput: input.hookOutput
+    hookOutput: input.hookOutput,
+    sessionId: input.sessionId
   });
   const postToolCommand = buildCodexHookCommand({
     primeProfile: input.primeProfile,
     primeBudget: input.primeBudget,
-    hookOutput: input.postToolHookOutput
+    hookOutput: input.postToolHookOutput,
+    sessionId: input.sessionId
   });
   const hooks: Record<string, unknown> = {};
 
@@ -201,10 +206,12 @@ function buildCodexHookCommand(input: {
   primeProfile: PrimeProfile;
   primeBudget: number;
   hookOutput: HookOutputProfile;
+  sessionId?: string | undefined;
 }): string {
   const kairnCommand = resolveKairnMcpCommand();
   const defaultCommand = shellCommand([kairnCommand.command, ...kairnCommand.argsPrefix]);
-  return `eval "\${KAIRN_CMD:-${escapeDoubleQuotedShell(defaultCommand)}} hook --source codex --root \\"$PWD\\" --prime-profile ${input.primeProfile} --prime-budget ${input.primeBudget} --hook-output ${input.hookOutput}"`;
+  const sessionArg = input.sessionId ? ` --session ${shellQuote(input.sessionId)}` : "";
+  return `eval "\${KAIRN_CMD:-${escapeDoubleQuotedShell(defaultCommand)}} hook --source codex --root \\"$PWD\\"${sessionArg} --prime-profile ${input.primeProfile} --prime-budget ${input.primeBudget} --hook-output ${input.hookOutput}"`;
 }
 
 function shellCommand(parts: string[]): string {

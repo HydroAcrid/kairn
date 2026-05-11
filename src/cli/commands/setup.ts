@@ -19,6 +19,7 @@ export function registerSetupCommands(program: Command): void {
     .addOption(new Option("--hook-output <profile>", "prompt-submit hook output profile").choices(["full-prime", "tiny-directive", "failure-only", "mcp-brief"]).default("full-prime"))
     .addOption(new Option("--post-tool-hook-output <profile>", "post-tool hook output profile").choices(["full-prime", "tiny-directive", "failure-only", "mcp-brief"]).default("failure-only"))
     .option("--prime-budget <tokens>", "prompt-submit prime token budget", parsePositiveInt, 900)
+    .option("--session <id>", "bind generated hook commands to an existing Kairn session")
     .option("--json", "print JSON output")
     .action((options: {
       root: string;
@@ -27,6 +28,7 @@ export function registerSetupCommands(program: Command): void {
       hookOutput: HookOutputProfile;
       postToolHookOutput: HookOutputProfile;
       primeBudget: number;
+      session?: string;
       json?: boolean;
     }) => {
       const result = writeCodexSetup({
@@ -35,7 +37,8 @@ export function registerSetupCommands(program: Command): void {
         primeProfile: options.primeProfile,
         hookOutput: options.mode === "hybrid" ? "mcp-brief" : options.hookOutput,
         postToolHookOutput: options.postToolHookOutput,
-        primeBudget: options.primeBudget
+        primeBudget: options.primeBudget,
+        sessionId: options.session
       });
       if (options.json) {
         printJson(result);
@@ -53,6 +56,7 @@ export function registerSetupCommands(program: Command): void {
           `Mode: ${result.mode}`,
           `Hook output: ${result.hookOutput}`,
           `Post-tool hook output: ${result.postToolHookOutput}`,
+          options.session ? `Session-bound hooks: ${options.session}` : "",
           result.mode === "mcp-first"
             ? "No prompt hook was installed; Codex should use Kairn through MCP-first instructions."
             : "Codex UserPromptSubmit hooks will request proactive Kairn context without KAIRN_SESSION.",

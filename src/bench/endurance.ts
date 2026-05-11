@@ -108,27 +108,39 @@ async function runEnduranceMode(input: {
     benchmarkCase: suiteSeedCase(input.suite)
   });
   const timeoutMs = input.timeoutMs ?? 180000;
-  const needsRuntime = input.mode === "kairn" || input.mode === "mcp" || input.mode === "real_mcp_first" || input.mode === "hybrid_mcp_brief";
+  const needsRuntime =
+    input.mode === "kairn" ||
+    input.mode === "mcp" ||
+    input.mode === "hook_full_prime" ||
+    input.mode === "real_mcp_first" ||
+    input.mode === "hybrid_mcp_brief";
   const runtime = needsRuntime ? new KairnRuntime(workspace.workspacePath) : undefined;
   const startedAt = Date.now();
-  const setupStartedAt = Date.now();
-  const setupResult = input.setupCommand
-    ? runShell(enduranceCommandWithPlaceholders(input.setupCommand, {
-        prompt: input.suite.task,
-        root: workspace.workspacePath,
-        session: "",
-        turn: "setup"
-      }), workspace.workspacePath, timeoutMs)
-    : undefined;
-  const setupElapsedMs = Date.now() - setupStartedAt;
   let sessionId: string | undefined;
   const turnResults: BenchmarkEnduranceTurnResult[] = [];
 
   try {
+    if (runtime) {
+      await runtime.init();
+      sessionId = (await runtime.startTask(input.suite.task)).session.id;
+    }
+
+    const setupStartedAt = Date.now();
+    const setupResult = input.setupCommand
+      ? runShell(enduranceCommandWithPlaceholders(input.setupCommand, {
+          prompt: input.suite.task,
+          root: workspace.workspacePath,
+          session: sessionId ?? "",
+          turn: "setup"
+        }), workspace.workspacePath, timeoutMs)
+      : undefined;
+    const setupElapsedMs = Date.now() - setupStartedAt;
+
     if (setupResult && (setupResult.status !== 0 || setupResult.timedOut)) {
       return {
         mode: input.mode,
         workspacePath: workspace.workspacePath,
+        ...(sessionId ? { sessionId } : {}),
         turns: [],
         totalResponseTokens: estimateTokens(setupResult.output),
         totalElapsedMs: Date.now() - startedAt,
@@ -151,10 +163,6 @@ async function runEnduranceMode(input: {
           setupOutputTokens: estimateTokens(setupResult.output)
         }
       };
-    }
-    if (runtime) {
-      await runtime.init();
-      sessionId = (await runtime.startTask(input.suite.task)).session.id;
     }
 
     for (const turn of input.suite.turns) {
