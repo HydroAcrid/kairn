@@ -1,0 +1,12 @@
+diff --git a/command.go b/command.go
+--- a/command.go
++++ b/command.go
+@@ -1086,7 +1086,7 @@ func (c *Command) ExecuteC() (cmd *Command, err error) {
+ 	c.initCompleteCmd(args)
+ 
+ 	var flags []string
+-	if c.TraverseChildren {
++	if false && c.TraverseChildren {
+ 		cmd, flags, err = c.Traverse(args)
+ 	} else {
+ 		cmd, flags, err = c.Find(args)

@@ -520,6 +520,104 @@ describe("hybridSearch", () => {
     expect(results[0]?.reasons).toEqual(expect.arrayContaining(["utility/helper source rescue"]));
   });
 
+  it("routes Java fixes to canonical main source before platform mirrors", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "android/guava/src/com/google/common/base/Strings.java", "source", "java"),
+      file(rootPath, "guava/src/com/google/common/base/Strings.java", "source", "java"),
+      file(rootPath, "guava-tests/test/com/google/common/base/StringsTest.java", "test", "java")
+    ];
+    const symbols = [
+      symbol(rootPath, "android/guava/src/com/google/common/base/Strings.java", "isNullOrEmpty"),
+      symbol(rootPath, "guava/src/com/google/common/base/Strings.java", "isNullOrEmpty"),
+      symbol(rootPath, "guava-tests/test/com/google/common/base/StringsTest.java", "testIsNullOrEmpty")
+    ];
+    const chunks = [
+      chunk(rootPath, "android/guava/src/com/google/common/base/Strings.java", "isNullOrEmpty", "android CharSequence string empty null helper"),
+      chunk(rootPath, "guava/src/com/google/common/base/Strings.java", "isNullOrEmpty", "CharSequence string empty null helper"),
+      chunk(rootPath, "guava-tests/test/com/google/common/base/StringsTest.java", "testIsNullOrEmpty", "test string empty null")
+    ];
+    const results = hybridSearch({
+      files,
+      query: "Debug seeded Java regression: Strings.isNullOrEmpty should return true for empty CharSequence. Fix production source and do not edit unrelated files.",
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.path).toBe("guava/src/com/google/common/base/Strings.java");
+    expect(results[0]?.reasons).toEqual(expect.arrayContaining(["canonical source route"]));
+    expect(results.slice(0, 2).map((result) => result.path)).not.toContain("android/guava/src/com/google/common/base/Strings.java");
+  });
+
+  it("routes Go fixes to canonical source before build-tag variants", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "command.go", "source", "go"),
+      file(rootPath, "command_notwin.go", "source", "go"),
+      file(rootPath, "command_windows.go", "source", "go"),
+      file(rootPath, "command_test.go", "test", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "command.go", "TraverseChildren"),
+      symbol(rootPath, "command_notwin.go", "TraverseChildren"),
+      symbol(rootPath, "command_windows.go", "TraverseChildren")
+    ];
+    const chunks = [
+      chunk(rootPath, "command.go", "TraverseChildren", "traverse children command routing source behavior"),
+      chunk(rootPath, "command_notwin.go", "TraverseChildren", "not windows platform command behavior"),
+      chunk(rootPath, "command_windows.go", "TraverseChildren", "windows platform command behavior"),
+      chunk(rootPath, "command_test.go", "TestTraverseChildren", "test command traverse children")
+    ];
+    const results = hybridSearch({
+      files,
+      query: "Debug Cobra TraverseChildren source regression: parent commands should traverse child command handlers. Fix production source and do not edit unrelated files.",
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set(["command.go"])
+    });
+
+    expect(results[0]?.path).toBe("command.go");
+    expect(results[0]?.reasons).toEqual(expect.arrayContaining(["changed source target"]));
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("command_notwin.go");
+  });
+
+  it("routes public JS API prompts to monolithic source before tests", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "lodash.js", "source", "javascript"),
+      file(rootPath, "test/test-fp.js", "test", "javascript"),
+      file(rootPath, "fp/_baseConvert.js", "source", "javascript")
+    ];
+    const symbols = [
+      symbol(rootPath, "lodash.js", "isString"),
+      symbol(rootPath, "test/test-fp.js", "isString"),
+      symbol(rootPath, "fp/_baseConvert.js", "baseConvert")
+    ];
+    const chunks = [
+      chunk(rootPath, "lodash.js", "isString", "exported public API isString object wrapper string tag"),
+      chunk(rootPath, "test/test-fp.js", "testIsString", "tests fp isString object wrapper"),
+      chunk(rootPath, "fp/_baseConvert.js", "baseConvert", "fp wrapper convert methods")
+    ];
+    const results = hybridSearch({
+      files,
+      query: "Debug lodash _.isString object wrapper regression: isString should return true for String object wrappers. Fix production source.",
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.path).toBe("lodash.js");
+    expect(results[0]?.reasons).toEqual(expect.arrayContaining(["monolithic public API source"]));
+    expect(results.slice(0, 2).map((result) => result.path)).not.toContain("test/test-fp.js");
+  });
+
   it("adds FastAPI-style routing/dependency companions without promoting OpenAPI noise", () => {
     const rootPath = "/repo";
     const files = [

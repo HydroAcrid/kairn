@@ -32,6 +32,8 @@ export function evaluateContextValue(input: {
   );
   const reasons = new Set<string>(input.quality.reasons);
   const primaryReasons = primaryFile ? reasonsForPrimaryFile(input.context, primaryFile) : [];
+  const sourceRescue = hasSourceRescueSignal(primaryReasons);
+  const canonicalSourceHit = hasCanonicalSourceSignal(primaryReasons);
 
   let score = input.quality.score;
   if (debugSignal) {
@@ -56,6 +58,12 @@ export function evaluateContextValue(input: {
   });
   if (exactSourceHit) {
     reasons.add("exact source hit should use focused context");
+    if (sourceRescue) {
+      reasons.add("source-rescue signal supports an active one-file guardrail");
+    }
+    if (canonicalSourceHit) {
+      reasons.add("canonical source routing supports focused context");
+    }
     if (!multiFileSignal) {
       score -= language === "python" ? 8 : 18;
       reasons.add("single-source fix should not receive broad context expansion");
@@ -142,7 +150,8 @@ export function evaluateContextValue(input: {
     companionSignal: effectiveCompanionSignal,
     companionTopScore: input.companionTopScore ?? 0,
     topScore: input.quality.topScore,
-    topGap: input.quality.topGap
+    topGap: input.quality.topGap,
+    sourceRescue
   });
   if (cheapExactSource) {
     score -= 12;
@@ -210,6 +219,8 @@ export function evaluateContextValue(input: {
     language,
     exactPathMentioned: input.quality.exactPathMentioned,
     exactSourceHit,
+    sourceRescue,
+    canonicalSourceHit,
     cheapSingleSource,
     cheapExactSource,
     companionSpecific,
@@ -348,7 +359,7 @@ export function isExactSourceHit(input: {
 function hasConcreteExactSourceSignal(reasons: string[], filePath: string, task: string): boolean {
   if (
     reasons.some((reason) =>
-      /(^|;|\b)(symbol match|behavior symbol match|exact symbol match|precise filename match|precise symbol rescue|utility\/helper source rescue)\b/.test(reason)
+      /(^|;|\b)(symbol match|behavior symbol match|exact symbol match|precise filename match|precise symbol rescue|utility\/helper source rescue|canonical source route|monolithic public API source|changed source target)\b/.test(reason)
     )
   ) {
     return true;
@@ -357,6 +368,16 @@ function hasConcreteExactSourceSignal(reasons: string[], filePath: string, task:
   const taskTerms = new Set(identifierTerms(task).filter((term) => !EXACT_SOURCE_TASK_STOP_TERMS.has(term)));
   const hits = [...basenameTerms].filter((term) => taskTerms.has(term) || (term === "url" && taskTerms.has("urls")));
   return hits.length >= 2;
+}
+
+function hasSourceRescueSignal(reasons: string[]): boolean {
+  return reasons.some((reason) =>
+    /\b(precise source path match|precise filename match|precise symbol rescue|utility\/helper source rescue|monolithic public API source|changed source target)\b/i.test(reason)
+  );
+}
+
+function hasCanonicalSourceSignal(reasons: string[]): boolean {
+  return reasons.some((reason) => /\b(canonical source route|canonical module source|primary source path|monolithic public API source)\b/i.test(reason));
 }
 
 function isCheapSingleSourceTask(input: {
@@ -392,8 +413,10 @@ function isCheapExactSourceTask(input: {
   companionTopScore: number;
   topScore: number;
   topGap: number;
+  sourceRescue: boolean;
 }): boolean {
   if (!input.exactSourceHit || !input.debugSignal) return false;
+  if (input.sourceRescue && input.topScore < 1_700 && input.topGap < 1_000) return false;
   if (input.multiFileSignal || input.companionSignal) return false;
   if (!isDynamicSingleSourceLanguage(input.language)) return false;
   if (input.topScore < 900 || input.topGap < 600) return false;

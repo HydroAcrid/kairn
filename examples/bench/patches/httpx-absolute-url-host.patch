@@ -1,0 +1,12 @@
+diff --git a/httpx/_urls.py b/httpx/_urls.py
+--- a/httpx/_urls.py
++++ b/httpx/_urls.py
+@@ -331,7 +331,7 @@ class URL:
+         # URLs with a fragment portion as not absolute.
+         # What we actually care about is if the URL provides
+         # a scheme and hostname to which connections should be made.
+-        return bool(self._uri_reference.scheme and self._uri_reference.host)
++        return bool(self._uri_reference.scheme or self._uri_reference.host)
+ 
+     @property
+     def is_relative_url(self) -> bool:

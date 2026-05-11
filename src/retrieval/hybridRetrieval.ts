@@ -47,6 +47,10 @@ export function hybridSearch(input: {
   const sourcePriorityScores = scoreSourcePriority(input.files, retrievalQuery, intent, symbolsByFile, chunksByFile);
   const graphScores = scoreGraphNeighbors(input.edges, keywordScores, semanticScores, intentScores, intent, input.files);
   const shownFiles = new Set((input.shown ?? []).map((record) => record.filePath).filter((filePath): filePath is string => Boolean(filePath)));
+  const retrievalTerms = new Set(tokenizeLexical(retrievalQuery));
+  const debugSourcePrompt =
+    ["debug", "fix", "regression", "bug", "broken", "failing", "failure"].some((term) => retrievalTerms.has(term)) &&
+    ["source", "production", "implementation", "helper", "utility"].some((term) => retrievalTerms.has(term));
 
   const scored = input.files
     .map((file) => {
@@ -58,7 +62,9 @@ export function hybridSearch(input: {
       const sourcePriority = sourcePriorityScores.get(file.path);
       const graphScore = graphScores.get(file.path) ?? 0;
       const sessionScore = shownFiles.has(file.path) ? -3 : 0;
-      const gitScore = input.changedFiles?.has(file.path) ? 8 : 0;
+      const gitScore = input.changedFiles?.has(file.path)
+        ? debugSourcePrompt && isLanguageSourceSurface(file) ? 180 : 8
+        : 0;
       const semanticScore = semantic?.score ?? 0;
       const keywordScore = keyword?.score ?? 0;
       const bm25Score = bm25?.score ?? 0;
@@ -75,7 +81,7 @@ export function hybridSearch(input: {
         ...(semantic && semantic.score > 0.06 ? semanticReasons(semantic.chunks) : []),
         ...(graphScore > 0 ? ["graph neighbor"] : []),
         ...(shownFiles.has(file.path) ? ["already shown"] : []),
-        ...(gitScore > 0 ? ["changed in diff"] : [])
+        ...(gitScore > 0 ? [gitScore > 40 ? "changed source target" : "changed in diff"] : [])
       ]);
       const score =
         importanceScore +
@@ -259,6 +265,21 @@ function scoreSourcePriority(
       reasons.push(...repositoryLanguage.reasons);
     }
 
+    const canonicalRoute = scoreCanonicalSourceRoute({
+      file,
+      query,
+      queryTerms,
+      symbols: symbolsByFile.get(file.path) ?? [],
+      chunks: chunksByFile.get(file.path) ?? [],
+      implementationIntent: implementationIntent && intent.primary !== "ui",
+      debugImplementationIntent,
+      explicitTestIntent
+    });
+    if (implementationIntent && canonicalRoute.score !== 0) {
+      score += canonicalRoute.score;
+      reasons.push(...canonicalRoute.reasons);
+    }
+
     const roleHints = scoreSourceRoleHints(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
     if (implementationIntent && roleHints.score > 0) {
       score += roleHints.score;
@@ -275,9 +296,9 @@ function scoreSourcePriority(
       reasons.push("primary source path");
     }
 
-    if (!explicitTestIntent && file.kind === "test" && exactSymbolMatches.length === 0) {
-      score -= 72;
-      reasons.push("test downranked for implementation prompt");
+    if (!explicitTestIntent && file.kind === "test") {
+      score -= exactSymbolMatches.length === 0 ? 72 : 420;
+      reasons.push(exactSymbolMatches.length === 0 ? "test downranked for implementation prompt" : "test downranked for source rescue");
     }
 
     if (implementationIntent && isNoisyImplementationSurface(file)) {
@@ -1076,6 +1097,165 @@ function languageMatchesPreference(fileLanguage: string, expected: string): bool
   if (expected === "golang") return fileLanguage === "go";
   if (expected === "c++" || expected === "cpp") return fileLanguage === "cpp" || fileLanguage === "c";
   return false;
+}
+
+function scoreCanonicalSourceRoute(input: {
+  file: FileRecord;
+  query: string;
+  queryTerms: Set<string>;
+  symbols: SymbolRecord[];
+  chunks: SemanticChunkRecord[];
+  implementationIntent: boolean;
+  debugImplementationIntent: boolean;
+  explicitTestIntent: boolean;
+}): { score: number; reasons: string[] } {
+  if (!input.implementationIntent) return { score: 0, reasons: [] };
+  const { file, queryTerms } = input;
+  const normalized = file.path.toLowerCase();
+  const reasons: string[] = [];
+  let score = 0;
+
+  const platformRoute = scorePlatformVariantRoute(file, queryTerms);
+  if (platformRoute.score !== 0) {
+    score += platformRoute.score;
+    reasons.push(...platformRoute.reasons);
+  }
+
+  if (!isLanguageSourceSurface(file)) return { score, reasons };
+
+  if (isCanonicalProductionPath(file)) {
+    score += input.debugImplementationIntent ? 180 : 90;
+    reasons.push("canonical source route");
+  }
+
+  if (file.language === "java" && /(^|\/)src\/main\/java\//.test(normalized)) {
+    score += 210;
+    reasons.push("canonical Java main source");
+  }
+
+  if (file.language === "go" && isCanonicalGoSourcePath(file.path)) {
+    score += 120;
+    reasons.push("canonical Go source");
+  }
+
+  if (file.language === "javascript" || file.language === "typescript") {
+    const publicApi = scoreMonolithicPublicApiSource(file, input.query, input.symbols, input.chunks, input.explicitTestIntent);
+    if (publicApi.score !== 0) {
+      score += publicApi.score;
+      reasons.push(...publicApi.reasons);
+    }
+  }
+
+  return { score, reasons };
+}
+
+function scorePlatformVariantRoute(file: FileRecord, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const normalized = file.path.toLowerCase();
+  const mentionsPlatform = mentionsPlatformVariant(queryTerms, normalized);
+  if (mentionsPlatform) {
+    const platform = namedPlatformVariant(normalized);
+    return platform && queryTerms.has(platform) ? { score: 130, reasons: ["platform-specific source named by task"] } : { score: 0, reasons: [] };
+  }
+
+  if (file.language === "go" && /_(appengine|windows|win|notwin|linux|darwin|unix|posix|wasm|js|nocgo|cgo|freebsd|openbsd|netbsd|solaris|dragonfly|aix|plan9)\.go$/i.test(normalized)) {
+    return { score: -1200, reasons: ["platform-specific variant downranked"] };
+  }
+
+  if (file.language === "java" && /(^|\/)(android|jre|gwt|emulated|emulation|j2objc|gwt-src|java8|java9)(\/|$)/.test(normalized)) {
+    return { score: -1400, reasons: ["platform mirror source downranked"] };
+  }
+
+  if ((file.language === "c" || file.language === "cpp") && /(^|\/)(win32|windows|posix|unix|darwin|linux|platform|ports?)(\/|$)/.test(normalized)) {
+    return { score: -360, reasons: ["platform-specific variant downranked"] };
+  }
+
+  return { score: 0, reasons: [] };
+}
+
+function mentionsPlatformVariant(queryTerms: Set<string>, filePath: string): boolean {
+  return [
+    "android",
+    "jre",
+    "gwt",
+    "appengine",
+    "windows",
+    "win",
+    "linux",
+    "darwin",
+    "macos",
+    "unix",
+    "posix",
+    "wasm",
+    "browser",
+    "node",
+    "cgo",
+    "nocgo"
+  ].some((term) => queryTerms.has(term) || (term === "macos" && filePath.includes("darwin")));
+}
+
+function namedPlatformVariant(filePath: string): string | undefined {
+  if (filePath.includes("android")) return "android";
+  if (filePath.includes("appengine")) return "appengine";
+  if (filePath.includes("windows") || filePath.includes("_win")) return "windows";
+  if (filePath.includes("linux")) return "linux";
+  if (filePath.includes("darwin")) return "darwin";
+  if (filePath.includes("unix")) return "unix";
+  if (filePath.includes("posix")) return "posix";
+  if (filePath.includes("wasm")) return "wasm";
+  if (filePath.includes("gwt")) return "gwt";
+  if (filePath.includes("jre")) return "jre";
+  return undefined;
+}
+
+function isCanonicalProductionPath(file: FileRecord): boolean {
+  const normalized = file.path.toLowerCase();
+  if (file.kind !== "source" || isNoisyImplementationSurface(file)) return false;
+  if (/(^|\/)(android|jre|gwt|emulated|emulation|j2objc|vendor|deps|third_party|testdata)(\/|$)/.test(normalized)) return false;
+  return (
+    normalized.startsWith("src/") ||
+    normalized.startsWith("lib/") ||
+    normalized.startsWith("include/") ||
+    /(^|\/)src\/main\/java\//.test(normalized) ||
+    /^[^/]+\/src\//.test(normalized) ||
+    (file.language === "python" && /^[a-z_][\w-]*\/[^/]+\.py$/.test(normalized)) ||
+    (file.language === "go" && isCanonicalGoSourcePath(file.path))
+  );
+}
+
+function isCanonicalGoSourcePath(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  if (!/\.go$/.test(normalized)) return false;
+  if (/_test\.go$/.test(normalized)) return false;
+  if (/(^|\/)(vendor|testdata|examples?|docs?|internal\/testdata)\//.test(normalized)) return false;
+  if (/_(appengine|windows|win|notwin|linux|darwin|unix|posix|wasm|js|nocgo|cgo|freebsd|openbsd|netbsd|solaris|dragonfly|aix|plan9)\.go$/i.test(normalized)) return false;
+  return normalized.split("/").length <= 3;
+}
+
+function scoreMonolithicPublicApiSource(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[],
+  explicitTestIntent: boolean
+): { score: number; reasons: string[] } {
+  if (explicitTestIntent || !isRootPublicApiSource(file.path)) return { score: 0, reasons: [] };
+  const normalizedQuery = normalizeSearchText(query);
+  const queryTerms = new Set(tokenizeLexical(query));
+  const publicApiSignal =
+    /\b(public api|exported api|top[-\s]?level api|library api)\b/.test(normalizedQuery) ||
+    /(^|\s)_\.[A-Za-z_$][\w$]*/.test(query) ||
+    /\b[A-Za-z_$][\w$]*\(\)/.test(query);
+  const symbolMatches = exactSymbolMatchesForQuery(queryTerms, symbols, chunks);
+  const hasExportedSymbolMatch = symbolMatches.length > 0 || symbols.some((symbol) => normalizeSearchText(query).replace(/\s+/g, "").includes(normalizeSearchText(symbol.name).replace(/\s+/g, "")));
+  if (!publicApiSignal || !hasExportedSymbolMatch) return { score: 0, reasons: [] };
+  return { score: 780, reasons: ["monolithic public API source"] };
+}
+
+function isRootPublicApiSource(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  if (normalized.includes("/") || isNoisySourcePath(normalized)) return false;
+  if (/\.(config|test|spec|min|bundle|umd|esm|cjs)\.[cm]?js$/.test(normalized)) return false;
+  return /\.(js|mjs|cjs|ts)$/.test(normalized);
 }
 
 function isNoisyImplementationSurface(file: FileRecord): boolean {

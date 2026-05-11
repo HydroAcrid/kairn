@@ -3345,16 +3345,26 @@ function automaticPrimeSuppressionReason(input: {
   decision: ContextValueDecision;
 }): string | undefined {
   if (input.source !== "codex" && input.source !== "claude") return undefined;
-  if (input.decision.cheapSingleSource && !input.decision.companionSpecific) {
+  const sourceRescueGuardrail = shouldEmitAutomaticSourceRescueGuardrail(input.decision);
+  if (input.decision.cheapSingleSource && !input.decision.companionSpecific && !sourceRescueGuardrail) {
     return "automatic hook suppressed cheap single-source context to avoid over-assist";
   }
   if (input.decision.cheapExactSource) {
     return "automatic hook suppressed cheap exact-source context to avoid over-assist";
   }
-  if (isCheapOneShotAutomaticTask(input.task) && input.decision.exactSourceHit && !input.decision.wrongContextRisk) {
+  if (isCheapOneShotAutomaticTask(input.task) && input.decision.exactSourceHit && !input.decision.wrongContextRisk && !sourceRescueGuardrail) {
     return "automatic hook suppressed obvious one-shot source context to avoid over-assist";
   }
   return undefined;
+}
+
+function shouldEmitAutomaticSourceRescueGuardrail(decision: ContextValueDecision): boolean {
+  if (!decision.exactSourceHit || decision.wrongContextRisk || decision.cheapExactSource) return false;
+  if (decision.recommendedDelivery === "multi_file_directive") return true;
+  const hasSourceRoutingSignal = Boolean(decision.sourceRescue);
+  if (!hasSourceRoutingSignal) return false;
+  if (decision.topScore < 220 || decision.topGap < 35) return false;
+  return decision.recommendedDelivery === "one_file_directive" || decision.action === "shrink";
 }
 
 function isAutomaticExactSourceHook(input: {

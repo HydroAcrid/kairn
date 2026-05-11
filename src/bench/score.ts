@@ -164,14 +164,15 @@ function observedTokenDelta(before: BenchmarkReport, after: BenchmarkReport): Be
   const afterTokens = after.observed?.codexTokens;
   if (beforeTokens === undefined || afterTokens === undefined) return undefined;
   const savedTokens = beforeTokens - afterTokens;
-  const qualityGatePassed = reportQualityGatePassed(before) && reportQualityGatePassed(after);
+  const baselineQualityGatePassed = reportQualityGatePassed(before);
+  const qualityGatePassed = reportQualityGatePassed(after);
   const assistanceStatus = reportAssistanceStatus(after);
   const classification = classifyAssistance({
     assistanceStatus,
-    qualityGatePassed: reportQualityGatePassed(after),
+    qualityGatePassed,
     savedTokens,
     baselineTokens: beforeTokens,
-    baselineQualityGatePassed: reportQualityGatePassed(before),
+    baselineQualityGatePassed,
     turnCount: before.results.length
   });
   const negativeEvidenceReason =

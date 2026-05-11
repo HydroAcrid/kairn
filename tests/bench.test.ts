@@ -90,6 +90,29 @@ describe("benchmark suite and scoring", () => {
     );
   });
 
+  it("loads the fresh holdout live-agent suite example", () => {
+    const suite = loadBenchmarkSuite({
+      suitePath: path.resolve("examples/bench/seeded-fresh-holdout-20260510.json"),
+      files: []
+    });
+
+    expect(suite.id).toBe("seeded-fresh-holdout-20260510");
+    expect(suite.cases.map((item) => item.id)).toEqual(
+      expect.arrayContaining([
+        "js-lodash-isstring-primitive",
+        "python-httpx-absolute-url",
+        "java-guava-is-null-or-empty",
+        "go-cobra-traverse-children"
+      ])
+    );
+    expect(suite.cases.find((item) => item.id === "python-httpx-absolute-url")?.requiredTouchedFiles).toEqual([
+      "httpx/_urls.py"
+    ]);
+    expect(suite.cases.find((item) => item.id === "go-cobra-traverse-children")?.seed?.setupPatchFile).toMatch(
+      /cobra-traverse-children\.patch$/
+    );
+  });
+
   it("loads seeded agent benchmark case metadata", () => {
     const root = createFixtureRepo();
     const patchPath = path.join(root, "seed.patch");
@@ -1455,6 +1478,44 @@ describe("benchmark suite and scoring", () => {
     expect(decision.recommendedDelivery).toBe("one_file_directive");
   });
 
+  it("keeps source-rescue Python exact hits active as one-file guardrails", () => {
+    const decision = evaluateContextValue({
+      task: "Debug HTTPX absolute URL host regression: URL('https://example.com/path') should preserve the host and scheme. Fix production source and do not edit unrelated files.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- httpx/_urls.py (source, score 1410): precise filename match: url; precise symbol rescue: URL; canonical source route",
+        files: ["httpx/_urls.py"],
+        symbols: ["URL"],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["httpx/_urls.py"],
+        tokenEstimate: 220
+      },
+      quality: {
+        score: 88,
+        action: "shrink",
+        reasons: ["high-confidence top retrieval score", "top result is clearly separated"],
+        topScore: 1410,
+        topGap: 760,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      knownFiles: [record("httpx/_urls.py", "source")],
+      repoFileCount: 1400,
+      estimatedContextCost: 900,
+      companionCount: 0,
+      companionTopScore: 0,
+      companionSpecific: false
+    });
+
+    expect(decision.exactSourceHit).toBe(true);
+    expect(decision.sourceRescue).toBe(true);
+    expect(decision.cheapExactSource).toBe(false);
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("one_file_directive");
+  });
+
   it("does not mark Java exact source fixes as cheap exact-source abstentions", () => {
     const decision = evaluateContextValue({
       task: "Debug a seeded Commons IO regression: FilenameUtils.equals ignores the requested IOCase comparison mode. Fix the production source.",
@@ -2111,6 +2172,59 @@ describe("benchmark suite and scoring", () => {
     expect(comparison.recommendations).toEqual(
       expect.arrayContaining(["After-run has quality-gate failures; any lower observed token usage is negative evidence, not valid savings."])
     );
+  });
+
+  it("counts active savings when Kairn passes quality even if baseline failed quality", () => {
+    const benchmarkCase = {
+      id: "quality-rescue",
+      mode: "agent" as const,
+      task: "Fix source",
+      expectedFiles: ["src/app.ts"],
+      requiredTouchedFiles: ["src/app.ts"],
+      excludedFiles: []
+    };
+    const before = buildBenchmarkReport({
+      run: { id: "before", rootPath: "/repo", suiteId: "suite", suiteName: "suite", mode: "agent", status: "completed", startedAt: "now", metadata: {} },
+      results: [{
+        ...scoreBenchmarkCase({
+          runId: "before",
+          benchmarkCase,
+          actualFiles: ["src/app.ts"],
+          responseTokens: 100,
+          observedCodexTokens: 2000,
+          taskOutcome: "pass",
+          summary: "baseline missed required edit",
+          metadata: { agentChangedFiles: [] }
+        }),
+        id: 1,
+        createdAt: "now"
+      }]
+    });
+    const after = buildBenchmarkReport({
+      run: { id: "after", rootPath: "/repo", suiteId: "suite", suiteName: "suite", mode: "agent", status: "completed", startedAt: "now", metadata: {} },
+      results: [{
+        ...scoreBenchmarkCase({
+          runId: "after",
+          benchmarkCase,
+          actualFiles: ["src/app.ts"],
+          responseTokens: 100,
+          observedCodexTokens: 1200,
+          taskOutcome: "pass",
+          summary: "active source rescue",
+          metadata: { agentChangedFiles: ["src/app.ts"], primeEmitted: 1 }
+        }),
+        id: 2,
+        createdAt: "now"
+      }]
+    });
+
+    expect(compareBenchmarkReports(before, after).observedTokenDelta).toMatchObject({
+      qualityGatePassed: true,
+      assistanceStatus: "active",
+      assistClassification: "valid_assist",
+      validSavings: 800,
+      invalidSavings: 0
+    });
   });
 
   it("classifies assist, over-assist, and abstention outcomes", () => {

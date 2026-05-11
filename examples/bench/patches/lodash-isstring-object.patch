@@ -1,0 +1,12 @@
+diff --git a/lodash.js b/lodash.js
+--- a/lodash.js
++++ b/lodash.js
+@@ -12200,7 +12200,7 @@
+      * // => false
+      */
+     function isString(value) {
+-      return typeof value == 'string' ||
++      return typeof value == 'string' && false ||
+         (!isArray(value) && isObjectLike(value) && baseGetTag(value) == stringTag);
+     }
+ 

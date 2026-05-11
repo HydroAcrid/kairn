@@ -1,0 +1,138 @@
+{
+  "id": "seeded-fresh-holdout-20260510",
+  "name": "Seeded Fresh Holdout Proofs 2026-05-10",
+  "cases": [
+    {
+      "id": "js-lodash-isstring-primitive",
+      "mode": "agent",
+      "task": "Debug a seeded Lodash regression: _.isString no longer returns true for primitive strings. Fix the production source and do not edit unrelated files.",
+      "agentPrompt": "Debug the seeded failing JS check. Lodash _.isString should return true for primitive strings and string objects, but the seeded regression disables the primitive string branch. Fix the production source and do not edit unrelated files.",
+      "contextBehavior": "cheap_single_source",
+      "expectedFiles": [
+        "lodash.js"
+      ],
+      "requiredTouchedFiles": [
+        "lodash.js"
+      ],
+      "excludedFiles": [
+        "test/",
+        "perf/",
+        "vendor/"
+      ],
+      "budget": 900,
+      "seed": {
+        "repoUrl": "https://github.com/lodash/lodash.git",
+        "ref": "f299b52f39486275a9e6483b60a410e06520c538",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/lodash-isstring-object.patch",
+        "expectedFailureCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('lodash.js', 'utf8');\nconst fixed = source.includes(\"return typeof value == 'string' ||\") && !source.includes(\"return typeof value == 'string' && false ||\");\nprocess.exit(fixed ? 1 : 0);\nNODE",
+        "testCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('lodash.js', 'utf8');\nconst fixed = source.includes(\"return typeof value == 'string' ||\") && !source.includes(\"return typeof value == 'string' && false ||\");\nprocess.exit(fixed ? 0 : 1);\nNODE"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Lodash production source is touched.",
+        "Tests/perf/vendor files are not touched."
+      ]
+    },
+    {
+      "id": "python-httpx-absolute-url",
+      "mode": "agent",
+      "task": "Debug a seeded HTTPX regression: URL.is_absolute_url now accepts scheme-only or host-only URLs as absolute. Fix the production source and do not edit unrelated files.",
+      "agentPrompt": "Debug the seeded failing Python check. HTTPX URL.is_absolute_url should require both a scheme and a host, but the seeded regression treats either one as enough. Fix the production source and do not edit unrelated files.",
+      "contextBehavior": "source_rescue",
+      "expectedFiles": [
+        "httpx/_urls.py",
+        "httpx/_urlparse.py",
+        "httpx/_client.py"
+      ],
+      "requiredTouchedFiles": [
+        "httpx/_urls.py"
+      ],
+      "excludedFiles": [
+        "docs/",
+        "tests/",
+        "scripts/"
+      ],
+      "budget": 1000,
+      "seed": {
+        "repoUrl": "https://github.com/encode/httpx.git",
+        "ref": "609df7ecc0f7cb10a1c998aa9c269bba77337c5f",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/httpx-absolute-url-host.patch",
+        "expectedFailureCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('httpx/_urls.py').read_text()\nfixed = 'return bool(self._uri_reference.scheme and self._uri_reference.host)' in source and 'return bool(self._uri_reference.scheme or self._uri_reference.host)' not in source\nraise SystemExit(1 if fixed else 0)\nPY",
+        "testCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('httpx/_urls.py').read_text()\nfixed = 'return bool(self._uri_reference.scheme and self._uri_reference.host)' in source and 'return bool(self._uri_reference.scheme or self._uri_reference.host)' not in source\nraise SystemExit(0 if fixed else 1)\nPY"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "HTTPX URL production source is touched.",
+        "Docs/tests/scripts are not touched."
+      ]
+    },
+    {
+      "id": "java-guava-is-null-or-empty",
+      "mode": "agent",
+      "task": "Debug a seeded Guava regression: Strings.isNullOrEmpty now mishandles null and empty strings. Fix the production source and do not edit unrelated files.",
+      "agentPrompt": "Debug the seeded failing Java check. Guava Strings.isNullOrEmpty should use the existing platform helper semantics for null or empty input, but the seeded regression replaced it with unsafe boolean logic. Fix the production source and do not edit unrelated files.",
+      "contextBehavior": "cheap_single_source",
+      "expectedFiles": [
+        "guava/src/com/google/common/base/Strings.java",
+        "guava/src/com/google/common/base/Platform.java"
+      ],
+      "requiredTouchedFiles": [
+        "guava/src/com/google/common/base/Strings.java"
+      ],
+      "excludedFiles": [
+        "guava-tests/",
+        "android/",
+        "docs/"
+      ],
+      "budget": 1000,
+      "seed": {
+        "repoUrl": "https://github.com/google/guava.git",
+        "ref": "0c33dd12b193402cdf6962d43d69743521aa2f76",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/guava-is-null-or-empty.patch",
+        "expectedFailureCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('guava/src/com/google/common/base/Strings.java', 'utf8');\nconst fixed = source.includes('return Platform.stringIsNullOrEmpty(string);') && !source.includes('return string == null && string.isEmpty();');\nprocess.exit(fixed ? 1 : 0);\nNODE",
+        "testCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('guava/src/com/google/common/base/Strings.java', 'utf8');\nconst fixed = source.includes('return Platform.stringIsNullOrEmpty(string);') && !source.includes('return string == null && string.isEmpty();');\nprocess.exit(fixed ? 0 : 1);\nNODE"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Guava production source is touched.",
+        "Tests/android/docs are not touched."
+      ]
+    },
+    {
+      "id": "go-cobra-traverse-children",
+      "mode": "agent",
+      "task": "Debug a seeded Cobra regression: commands with TraverseChildren no longer parse parent flags before finding subcommands. Fix the production source and do not edit unrelated files.",
+      "agentPrompt": "Debug the seeded failing Go check. Cobra Command.ExecuteC should call Traverse(args) when TraverseChildren is true, but the seeded regression always falls through to Find(args). Fix the production source and do not edit unrelated files.",
+      "contextBehavior": "source_rescue",
+      "expectedFiles": [
+        "command.go",
+        "command_test.go"
+      ],
+      "requiredTouchedFiles": [
+        "command.go"
+      ],
+      "excludedFiles": [
+        "doc/",
+        "site/",
+        "testdata/"
+      ],
+      "budget": 1000,
+      "seed": {
+        "repoUrl": "https://github.com/spf13/cobra.git",
+        "ref": "e94f6d0dd9a5e5738dca6bce03c4b1207ffbc0ec",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/cobra-traverse-children.patch",
+        "expectedFailureCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('command.go', 'utf8');\nconst fixed = source.includes('if c.TraverseChildren {') && !source.includes('if false && c.TraverseChildren {');\nprocess.exit(fixed ? 1 : 0);\nNODE",
+        "testCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('command.go', 'utf8');\nconst fixed = source.includes('if c.TraverseChildren {') && !source.includes('if false && c.TraverseChildren {');\nprocess.exit(fixed ? 0 : 1);\nNODE"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Cobra production source is touched.",
+        "Docs/site/testdata are not touched."
+      ]
+    }
+  ]
+}

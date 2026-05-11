@@ -98,6 +98,8 @@ export type ContextValueDecision = {
   language: "typescript" | "javascript" | "python" | "java" | "cpp" | "c" | "go" | "ruby" | "unknown";
   exactPathMentioned: boolean;
   exactSourceHit?: boolean;
+  sourceRescue?: boolean;
+  canonicalSourceHit?: boolean;
   cheapSingleSource?: boolean;
   cheapExactSource?: boolean;
   companionSpecific?: boolean;
