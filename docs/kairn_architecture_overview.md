@@ -124,6 +124,14 @@ Hook modes:
 
 Hooks must stay quiet when Kairn lacks high-confidence leverage. When Kairn does have a strong but potentially over-assisting signal, hooks should prefer a tiny guardrail over a full brief.
 
+Conversation binding:
+
+- If a host hook payload includes a stable conversation/session id, Kairn maps that host id to one durable Kairn session through `host_session_links`.
+- If the host cannot provide a stable id, such as repeated `codex exec` launches, Kairn needs an explicit session binding.
+- `kairn setup codex --session <id>` writes hook commands that always use that Kairn session.
+- `kairn codex "<task>" --bind-hooks` creates or reuses a Kairn session, temporarily installs session-bound hooks, launches Codex with `codex_hooks` enabled, and restores the previous project `.codex/` files afterward.
+- This keeps hook mode attached to the same ledger across diagnose, fix, verify, and cleanup turns instead of creating isolated per-process sessions.
+
 ### Daemon
 
 Daemon path:
@@ -340,6 +348,8 @@ Passing verification is now a first-class ledger signal. When a source invariant
 Post-diagnose source focus is the companion to that rule. Once a session has prior context and one active production source, later implementation/debugging/verification/cleanup turns can use `active_source_context_shrunk`: one source file, no companion fanout, and no snippet unless the file changed or a real failure references another file.
 
 This is Kairn's answer to long-conversation compaction. Instead of summarizing the whole chat into prose, Kairn keeps repo-grounded state and uses hashes/file refs to decide whether to repeat, shrink, suppress, or re-emit context.
+
+The ledger is per Kairn session. It behaves like conversation memory only when the integration keeps the same session id. Interactive hosts should do this through stable hook session ids; wrappers and repeated `codex exec` flows should use session-bound hooks.
 
 The ledger is now also a stop-condition source for MCP. When Kairn has already returned the active production file and no unresolved failure exists, MCP compact responses should prefer "continue from the known source" over returning more files. This keeps MCP useful as a read gateway without becoming a repeated-context generator.
 

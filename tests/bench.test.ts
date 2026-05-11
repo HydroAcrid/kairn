@@ -2898,14 +2898,60 @@ describe("benchmark runtime and CLI", () => {
         [...CLI.slice(1), "codex", "Improve job tracker mobile layout bottom sheet behavior", "--root", root, "--dry-run", "--json"],
         { cwd: process.cwd(), encoding: "utf8" }
       )
-    ) as { args: string[]; prompt: string; prime: { files: string[] } };
+    ) as { args: string[]; prompt: string; prime: { files: string[] }; sessionId: string };
+    const boundDryRun = JSON.parse(
+      execFileSync(
+        CLI[0]!,
+        [
+          ...CLI.slice(1),
+          "codex",
+          "Improve job tracker mobile layout bottom sheet behavior",
+          "--root",
+          root,
+          "--session",
+          dryRun.sessionId,
+          "--bind-hooks",
+          "--dry-run",
+          "--json"
+        ],
+        { cwd: process.cwd(), encoding: "utf8" }
+      )
+    ) as { args: string[]; prompt: string; sessionId: string; hookBinding: { dryRun: boolean; sessionId: string; mode: string } };
 
     expect(instructions).toContain("# Existing Instructions");
     expect(instructions.match(/kairn:mcp-first:start/g)?.length).toBe(1);
     expect(dryRun.args[0]).toBe("exec");
+    expect(dryRun.args).not.toContain("codex_hooks");
     expect(dryRun.prompt).toContain("Kairn Proactive Context");
     expect(dryRun.prompt).toContain("User task:");
     expect(dryRun.prime.files).toContain("src/app/private/jobs/JobsApplicationsTable.tsx");
+    expect(boundDryRun.sessionId).toBe(dryRun.sessionId);
+    expect(boundDryRun.args).toContain("--enable");
+    expect(boundDryRun.args).toContain("codex_hooks");
+    expect(boundDryRun.prompt).toContain(`Kairn conversation session: ${dryRun.sessionId}`);
+    expect(boundDryRun.hookBinding.dryRun).toBe(true);
+    expect(boundDryRun.hookBinding.sessionId).toBe(dryRun.sessionId);
+
+    const codexDir = path.join(root, ".codex");
+    fs.mkdirSync(codexDir, { recursive: true });
+    fs.writeFileSync(path.join(codexDir, "config.toml"), "[features]\ncodex_hooks = false\n");
+    fs.writeFileSync(path.join(codexDir, "hooks.json"), "{\"hooks\":{}}\n");
+    execFileSync(
+      CLI[0]!,
+      [
+        ...CLI.slice(1),
+        "codex",
+        "Improve job tracker mobile layout bottom sheet behavior",
+        "--root",
+        root,
+        "--bind-hooks",
+        "--codex-command",
+        "true"
+      ],
+      { cwd: process.cwd(), encoding: "utf8" }
+    );
+    expect(fs.readFileSync(path.join(codexDir, "config.toml"), "utf8")).toBe("[features]\ncodex_hooks = false\n");
+    expect(fs.readFileSync(path.join(codexDir, "hooks.json"), "utf8")).toBe("{\"hooks\":{}}\n");
   });
 });
 

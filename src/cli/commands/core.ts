@@ -1,12 +1,14 @@
+import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { Command, Option } from "commander";
 import { startKairnDaemon } from "../../daemon/server.js";
 import { startMcpServer } from "../../server/mcp.js";
-import type { IndexStateStats, PrimeProfile } from "../../types.js";
+import type { CodexSetupMode, HookOutputProfile, IndexStateStats, PrimeProfile } from "../../types.js";
 import { printContextPrime } from "../formatters.js";
 import { codexExecArgs, parsePositiveInt, shellQuote, waitForShutdown, withRuntime } from "../helpers.js";
 import { printContextResponse, printJson } from "../output.js";
+import { writeCodexSetup } from "../setup/codexSetup.js";
 
 export function registerCoreCommands(program: Command): void {
   program
@@ -219,20 +221,28 @@ export function registerCoreCommands(program: Command): void {
     .description("Launch Codex with Kairn prime context prepended to the task prompt.")
     .argument("<task...>", "task to pass to Codex")
     .option("--root <path>", "target repository root", process.cwd())
+    .option("--session <id>", "reuse an existing Kairn task session")
     .addOption(new Option("--profile <profile>", "prime profile").choices(["auto", "ui", "workflow", "backend", "test", "failure_debug", "generic"]).default("auto"))
     .option("--budget <tokens>", "prime response token budget", parsePositiveInt)
     .option("--codex-command <command>", "Codex command to execute", process.env.KAIRN_CODEX_CMD ?? "codex")
     .option("--model <model>", "Codex model")
     .addOption(new Option("--sandbox <mode>", "Codex sandbox mode").choices(["read-only", "workspace-write", "danger-full-access"]).default("workspace-write"))
+    .option("--bind-hooks", "install Codex hooks bound to this Kairn session before launching")
+    .addOption(new Option("--hook-mode <mode>", "Codex setup mode to use with --bind-hooks").choices(["savings", "hybrid"]).default("savings"))
+    .addOption(new Option("--hook-output <profile>", "prompt-submit hook output profile for --bind-hooks").choices(["full-prime", "tiny-directive", "failure-only", "mcp-brief"]).default("full-prime"))
     .option("--dry-run", "print the prepared prompt/command without launching Codex")
     .option("--json", "print JSON output")
     .action(async (taskParts: string[], options: {
       root: string;
+      session?: string;
       profile: PrimeProfile;
       budget?: number;
       codexCommand: string;
       model?: string;
       sandbox: string;
+      bindHooks?: boolean;
+      hookMode: "savings" | "hybrid";
+      hookOutput: HookOutputProfile;
       dryRun?: boolean;
       json?: boolean;
     }) => {
@@ -240,12 +250,31 @@ export function registerCoreCommands(program: Command): void {
       await withRuntime(options.root, async (runtime) => {
         const prime = await runtime.primeContext({
           task,
+          sessionId: options.session,
           profile: options.profile,
           budget: options.budget
         });
+        const sessionId = prime.session.id;
+        const hookMode = options.hookMode as CodexSetupMode;
+        const shouldInstallSessionHooks = Boolean(options.bindHooks && !options.dryRun && !options.json);
+        const hookBackup = shouldInstallSessionHooks ? snapshotCodexConversationFiles(options.root) : undefined;
+        const hookSetup = shouldInstallSessionHooks
+          ? writeCodexSetup({
+              root: options.root,
+              mode: hookMode,
+              primeProfile: options.profile,
+              hookOutput: hookMode === "hybrid" ? "mcp-brief" : options.hookOutput,
+              postToolHookOutput: "failure-only",
+              primeBudget: options.budget ?? 900,
+              sessionId
+            })
+          : undefined;
         const prompt = [
           prime.content,
           "",
+          options.bindHooks ? `Kairn conversation session: ${sessionId}` : "",
+          options.bindHooks ? "Session-bound hooks are installed for follow-up turns in this conversation." : "",
+          options.bindHooks ? "" : "",
           "User task:",
           task,
           "",
@@ -253,24 +282,46 @@ export function registerCoreCommands(program: Command): void {
         ].join("\n");
         const result = {
           rootPath: path.resolve(options.root),
+          sessionId,
           codexCommand: options.codexCommand,
-          args: codexExecArgs({ root: options.root, prompt, model: options.model, sandbox: options.sandbox }),
+          args: codexExecArgs({
+            root: options.root,
+            prompt,
+            model: options.model,
+            sandbox: options.sandbox,
+            enableHooks: Boolean(options.bindHooks)
+          }),
           prompt,
-          prime
+          prime,
+          ...(options.bindHooks
+            ? {
+                hookBinding: hookSetup ?? {
+                  dryRun: true,
+                  mode: hookMode,
+                  sessionId,
+                  hookOutput: hookMode === "hybrid" ? "mcp-brief" : options.hookOutput,
+                  primeBudget: options.budget ?? 900
+                }
+              }
+            : {})
         };
 
-        if (options.dryRun || options.json) {
-          printJson(result);
-          return;
-        }
+        try {
+          if (options.dryRun || options.json) {
+            printJson(result);
+            return;
+          }
 
-        const command = [options.codexCommand, ...result.args.map(shellQuote)].join(" ");
-        const completed = spawnSync(command, {
-          cwd: result.rootPath,
-          shell: true,
-          stdio: "inherit"
-        });
-        process.exitCode = completed.status ?? (completed.error ? 1 : 0);
+          const command = [options.codexCommand, ...result.args.map(shellQuote)].join(" ");
+          const completed = spawnSync(command, {
+            cwd: result.rootPath,
+            shell: true,
+            stdio: "inherit"
+          });
+          process.exitCode = completed.status ?? (completed.error ? 1 : 0);
+        } finally {
+          if (hookBackup) restoreCodexConversationFiles(hookBackup);
+        }
       });
     });
 }
@@ -297,4 +348,43 @@ function formatIndexStatus(status: IndexStateStats): string {
 
 function formatBytes(value: number): string {
   return `${(value / 1024 / 1024).toFixed(1)}MB`;
+}
+
+function snapshotCodexConversationFiles(root: string): {
+  codexDir: string;
+  files: Array<{ path: string; existed: boolean; content?: string | undefined }>;
+} {
+  const rootPath = path.resolve(root);
+  const codexDir = path.join(rootPath, ".codex");
+  const files = [
+    path.join(codexDir, "config.toml"),
+    path.join(codexDir, "hooks.json"),
+    path.join(rootPath, "AGENTS.md")
+  ].map((filePath) => ({
+    path: filePath,
+    existed: fs.existsSync(filePath),
+    ...(fs.existsSync(filePath) ? { content: fs.readFileSync(filePath, "utf8") } : {})
+  }));
+  return { codexDir, files };
+}
+
+function restoreCodexConversationFiles(snapshot: {
+  codexDir: string;
+  files: Array<{ path: string; existed: boolean; content?: string | undefined }>;
+}): void {
+  for (const file of snapshot.files) {
+    if (file.existed) {
+      fs.mkdirSync(path.dirname(file.path), { recursive: true });
+      fs.writeFileSync(file.path, file.content ?? "");
+      continue;
+    }
+    if (fs.existsSync(file.path)) fs.rmSync(file.path, { force: true });
+  }
+  try {
+    if (fs.existsSync(snapshot.codexDir) && fs.readdirSync(snapshot.codexDir).length === 0) {
+      fs.rmdirSync(snapshot.codexDir);
+    }
+  } catch {
+    // Best-effort cleanup only; preserving user files is more important than removing an empty directory.
+  }
 }

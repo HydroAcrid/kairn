@@ -23,12 +23,14 @@ export function codexExecArgs(input: {
   prompt: string;
   model?: string | undefined;
   sandbox: string;
+  enableHooks?: boolean | undefined;
 }): string[] {
   return [
     "exec",
     ...(input.model ? ["--model", input.model] : []),
     "--sandbox",
     input.sandbox,
+    ...(input.enableHooks ? ["--enable", "codex_hooks"] : []),
     "--cd",
     path.resolve(input.root),
     input.prompt

@@ -86,6 +86,25 @@ kairn setup codex --root /path/to/repo
 
 After that, open normal `codex` in the repo and submit a task. The default `savings` setup installs only `UserPromptSubmit` with a quality-gated full-prime brief, so Kairn can create or reuse a task session and point Codex at high-confidence start files before broad repo scanning. Use `--hook-output tiny-directive` only for delivery experiments, `--mode observe --post-tool-hook-output failure-only` to add failure-only post-tool context, `--mode debug` for broad diagnostics, `--mode mcp-first` to install Kairn as a Codex MCP server plus MCP-first guidance with no prompt prime, or `--mode hybrid` to install MCP plus a tiny prompt hook that tells Codex which Kairn session/files to start with before calling MCP. Generated hook and MCP configs use a resolved Kairn command when possible; set `KAIRN_CMD` only when you want to override that command for local development builds.
 
+For long conversations, Kairn needs a stable conversation key. Interactive Codex/Claude hooks can provide this through the host session id in hook payloads. For repeated `codex exec` or wrapper-driven work where the host id may change per process, bind hooks to an explicit Kairn session:
+
+```bash
+kairn start "debug redirect handling across follow-up turns" --root /path/to/repo --json
+kairn setup codex --root /path/to/repo --session task_123
+```
+
+The Codex wrapper can do this in one step for a session-bound launch:
+
+```bash
+kairn codex "debug redirect handling across follow-up turns" \
+  --root /path/to/repo \
+  --model gpt-5.4-mini \
+  --bind-hooks
+```
+
+Use `--session task_123 --bind-hooks` to continue an existing Kairn conversation. Session-bound hooks keep follow-up prompt hooks attached to the same ledger, so Kairn can avoid repeated context and preserve source/invariant state across diagnose, fix, verify, and cleanup turns.
+The wrapper installs the session-bound hook config for the Codex launch and restores the previous `.codex/` files afterward. Use `kairn setup codex --session task_123` directly only when you intentionally want the repo hooks to remain pinned to that Kairn session.
+
 Codex project hooks require a trusted repo `.codex/` config and the hooks feature flag:
 
 ```toml
@@ -294,6 +313,12 @@ For the proven high-savings path without manual copy/paste, use the Codex wrappe
 
 ```bash
 kairn codex "debug the query key hashing regression" --root "$TARGET_REPO" --model gpt-5.4-mini
+```
+
+For long-session wrapper runs, add `--bind-hooks` so follow-up hook calls share the same Kairn ledger:
+
+```bash
+kairn codex "debug the query key hashing regression" --root "$TARGET_REPO" --model gpt-5.4-mini --bind-hooks
 ```
 
 Normal Codex can receive automatic context through the prompt-submit hook after `kairn setup codex`. Hook delivery is useful for everyday low-friction usage, but benchmark it separately from manual/wrapper prime because Codex may weight hook `additionalContext` differently from prompt-prepended context.
