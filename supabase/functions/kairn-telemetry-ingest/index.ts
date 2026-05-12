@@ -23,7 +23,7 @@ Deno.serve(async (request) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const serviceRoleKey = getServiceRoleKey();
   if (!supabaseUrl || !serviceRoleKey) {
     return json({ error: "server_not_configured" }, 500);
   }
@@ -87,6 +87,29 @@ function validatePayload(payload: unknown): asserts payload is TelemetryPayload 
     throw new Error("Missing installationId.");
   }
   scan(record, []);
+}
+
+function getServiceRoleKey(): string | undefined {
+  const explicit = Deno.env.get("KAIRN_TELEMETRY_SERVICE_ROLE_KEY");
+  if (explicit) return explicit;
+
+  const legacy = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (legacy) return legacy;
+
+  const secretKeys = Deno.env.get("SUPABASE_SECRET_KEYS");
+  if (!secretKeys) return undefined;
+  try {
+    const parsed = JSON.parse(secretKeys) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return undefined;
+    const record = parsed as Record<string, unknown>;
+    for (const key of ["service_role", "serviceRole", "service_role_key", "secret", "secret_key"]) {
+      const value = record[key];
+      if (typeof value === "string" && value.length > 0) return value;
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
 }
 
 function scan(value: unknown, path: string[]): void {

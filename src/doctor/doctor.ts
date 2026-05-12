@@ -184,12 +184,41 @@ function checkCodexHooks(rootPath: string, runtime: KairnRuntime): DoctorCheck {
 function checkMcpConfig(rootPath: string): DoctorCheck {
   const configPath = path.join(rootPath, ".codex", "config.toml");
   const config = fs.existsSync(configPath) ? fs.readFileSync(configPath, "utf8") : "";
+  const codexConfigured = config.includes("[mcp_servers.kairn]");
+  const vscodeConfigPath = path.join(rootPath, ".vscode", "mcp.json");
+  const vscodeConfigured = hasVscodeMcpServer(vscodeConfigPath);
+  const configured = codexConfigured || vscodeConfigured;
   return {
     id: "mcp_config",
-    status: config.includes("[mcp_servers.kairn]") ? "ok" : "warn",
-    summary: config.includes("[mcp_servers.kairn]") ? "Kairn MCP server is configured." : "Kairn MCP server is not configured.",
-    fix: config.includes("[mcp_servers.kairn]") ? undefined : "Run kairn setup codex --mode mcp-first --root <repo> when you want MCP."
+    status: configured ? "ok" : "warn",
+    summary: configured
+      ? `Kairn MCP server is configured${codexConfigured && vscodeConfigured ? " for Codex and VS Code" : codexConfigured ? " for Codex" : " for VS Code"}.`
+      : "Kairn MCP server is not configured.",
+    fix: configured ? undefined : "Run kairn setup mcp --client vscode --root <repo> or kairn setup codex --mode mcp-first --root <repo>.",
+    metadata: {
+      codexConfigured,
+      vscodeConfigured
+    }
   };
+}
+
+function hasVscodeMcpServer(filePath: string): boolean {
+  if (!fs.existsSync(filePath)) return false;
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, "utf8")) as unknown;
+    return Boolean(
+      parsed &&
+        typeof parsed === "object" &&
+        !Array.isArray(parsed) &&
+        "servers" in parsed &&
+        parsed.servers &&
+        typeof parsed.servers === "object" &&
+        !Array.isArray(parsed.servers) &&
+        "kairn" in parsed.servers
+    );
+  } catch {
+    return false;
+  }
 }
 
 function checkDaemon(rootPath: string): DoctorCheck {

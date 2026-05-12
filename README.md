@@ -10,6 +10,65 @@ MCP, CLI, semantic retrieval, TypeScript graph enrichment, BM25 lexical retrieva
 
 For a full map of the current layers and data flow, see `docs/kairn_architecture_overview.md`.
 
+## Install And Guided Setup
+
+Kairn's beta-friendly distribution path is npm first because it works across macOS, Linux, and Windows with one Node-based CLI. Homebrew and other native package managers can come later, but npm is the lowest-friction cross-platform path for the private beta.
+
+Requirements:
+
+- Node.js 20 or 22 LTS for the private beta. Node 24 currently requires extra native build flags for the Tree-sitter dependency chain, so do not use it as the easy-install path yet.
+- Git
+- Codex CLI for the terminal hook/session path, or a client that can read workspace MCP config for the MCP path
+
+Once Kairn is published:
+
+```bash
+npm install -g kairn
+kairn setup wizard --root /path/to/repo
+```
+
+For private beta tarballs or local source builds:
+
+```bash
+# maintainer/source checkout
+pnpm install
+pnpm build
+npm pack
+
+# beta user
+npm install -g ./kairn-0.1.0.tgz
+kairn setup wizard --root /path/to/repo
+```
+
+The wizard asks for one of the practical beta paths:
+
+| Choice | Best for | What it configures |
+| --- | --- | --- |
+| Codex CLI session/hooks | Terminal Codex users | Default savings hooks plus the `kairn codex` session-bound path. |
+| VS Code / editor MCP | Editor users or users who do not want hooks | `.vscode/mcp.json` and MCP-first `AGENTS.md` guidance. |
+| Both | Users who switch between terminal and editor | Codex savings hooks plus pure VS Code MCP. |
+| Advanced hybrid | Codex users who explicitly want hook + MCP coordination | Codex hybrid config; not the default MCP recommendation. |
+
+Scriptable setup is available for docs, CI, and support:
+
+```bash
+kairn setup wizard --root /path/to/repo --choice codex --yes
+kairn setup wizard --root /path/to/repo --choice mcp --yes
+kairn doctor --root /path/to/repo
+```
+
+To remove Kairn from a repo:
+
+```bash
+kairn setup remove --root /path/to/repo
+kairn setup remove --root /path/to/repo --delete-state
+npm uninstall -g kairn
+```
+
+`setup remove` deletes Kairn-owned Codex hooks, Kairn MCP config, and the Kairn block in `AGENTS.md` while preserving unrelated user config. Without `--delete-state`, it keeps `.kairn/` local indexes, metrics, and session ledger data but disables telemetry upload. With `--delete-state`, it removes `.kairn/` too.
+
+Homebrew, Winget, and signed native installers are packaging targets, not the first beta path. They are useful once the npm path, hook review flow, MCP setup, and `kairn doctor` checks are stable on other machines.
+
 ## Quick Start
 
 ```bash
@@ -152,8 +211,30 @@ kairn ledger --session task_123 --root /path/to/repo --json
 
 Kairn is local-first by default. Detailed metrics, ledger facts, hook events, and benchmark evidence stay under `.kairn/`. Telemetry upload is opt-in and sends only sanitized aggregate counts: no source code, prompts, command output, diffs, filenames, repo URLs, usernames, branch names, or machine paths.
 
+Beta users have two supported integration paths:
+
+- `kairn codex`: session-bound Codex hooks for the CLI/interactive conversation path.
+- `kairn setup mcp --client vscode`: a workspace MCP server config for editor/app clients such as VS Code, where hooks may be unavailable or not trusted.
+
+For most users, start with the guided setup:
+
+```bash
+kairn setup wizard --root /path/to/repo
+```
+
+Recommended choice:
+
+| User setup | Command | Notes |
+| --- | --- | --- |
+| Codex CLI / terminal user | `kairn codex` | Best-tested automatic beta path; one durable session ledger plus adaptive hooks. |
+| VS Code / editor / app user | `kairn setup mcp --client vscode` | Pure MCP path. No hooks required; the agent calls Kairn tools when useful. |
+| Codex user who explicitly wants both | `kairn setup codex --mode hybrid` | Advanced/experimental: tiny hook guidance plus MCP. Use only if hooks are acceptable. |
+
+For MCP users, start with pure MCP. Hybrid is not the default MCP setup because hybrid requires hooks; a VS Code-only MCP install cannot provide hook behavior.
+
 ```bash
 kairn doctor --root /path/to/repo
+kairn setup mcp --root /path/to/repo --client vscode
 kairn beta report --root /path/to/repo
 kairn telemetry status --root /path/to/repo
 kairn telemetry enable --root /path/to/repo --destination supabase
@@ -161,7 +242,16 @@ kairn telemetry flush --root /path/to/repo --dry-run --json
 kairn diagnostics export --root /path/to/repo --out kairn-diagnostics.json
 ```
 
-Use `kairn doctor` before sharing beta results. It checks Node/Kairn/Codex setup, hook config, MCP config, daemon hints, session-bound hooks, index state, and telemetry status. `kairn beta report` summarizes whether Kairn helped, stayed silent, over-assisted, or missed opportunities in local sessions.
+Use `kairn doctor` before sharing beta results. It checks Node/Kairn/Codex setup, hook config, Codex or VS Code MCP config, daemon hints, session-bound hooks, index state, and telemetry status. `kairn beta report` summarizes whether Kairn helped, stayed silent, over-assisted, or missed opportunities in local sessions.
+
+Kairn's local footprint in a user repo is intentionally reversible:
+
+- `.kairn/`: local SQLite index, sessions, metrics, ledger, telemetry queue/config, and generated cache state.
+- `.codex/config.toml` and `.codex/hooks.json`: Codex hook/MCP setup when the user chooses Codex integration.
+- `.vscode/mcp.json`: workspace MCP server config when the user chooses editor MCP.
+- `AGENTS.md`: a marked Kairn MCP guidance block between `<!-- kairn:mcp-first:start -->` and `<!-- kairn:mcp-first:end -->`.
+
+No repo source files are modified by setup, and telemetry upload is opt-in. Use `kairn setup remove --delete-state` to remove all Kairn-owned repo-local state.
 
 ## Eval Harness
 

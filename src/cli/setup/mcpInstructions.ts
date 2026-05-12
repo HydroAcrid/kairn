@@ -12,11 +12,13 @@ export function writeMcpInstructionsSetup(input: { root: string; mode?: "mcp-fir
     ...(mode === "hybrid"
       ? [
           "- If a Kairn prompt hook provides context, use that small context first.",
-          "- If no Kairn hook context appears, work normally and do not call Kairn tools on the first turn.",
+          "- If no Kairn hook context appears, work normally on cheap exact-source tasks and do not call Kairn just to confirm an obvious file.",
+          "- For diagnose, investigate, audit, or trace tasks that do not name an exact production path, call `kairn_prepare_task` once before broad/manual source reads.",
           "- Treat Kairn MCP as an optional fallback only after the task becomes clearly multi-file, unclear, or failure-driven."
         ]
       : [
           "- For broad, unclear, multi-file, or cross-module tasks, call `kairn_prepare_task` before broad file scans.",
+          "- For diagnose, investigate, audit, or trace tasks that do not name an exact production path, call `kairn_prepare_task` once before broad/manual source reads.",
           "- For cheap one-shot source fixes, work normally first. Examples: the prompt names one behavior, asks to fix production source, and says not to edit unrelated files.",
           "- Do not call Kairn solely because a prompt says debug, failing, failure, or regression when the task is otherwise a small one-source fix.",
           "- For exact-file, exact-symbol, or obviously small tasks, work normally unless targeted search fails or the task broadens.",

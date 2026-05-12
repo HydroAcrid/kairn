@@ -63,12 +63,14 @@ Command modules:
 - `src/cli/commands/core.ts`: `init`, `start`, `prime`, `serve`, `daemon`, `metrics`, `index`, `codex`.
 - `src/cli/commands/context.ts`: `context`, `diff`, `compress`, `failure`.
 - `src/cli/commands/watch.ts`: `watch`, `hook`.
-- `src/cli/commands/setup.ts`: `setup codex`, `setup mcp-instructions`.
+- `src/cli/commands/setup.ts`: `setup wizard`, `setup codex`, `setup mcp`, `setup mcp-instructions`.
 - `src/cli/commands/eval.ts`: eval runs, Codex usage ingestion, feedback.
 - `src/cli/commands/bench.ts`: replay, live-agent proofs, repo-matrix preflight, endurance runs.
 - `src/cli/commands/beta.ts`: doctor checks, privacy-first telemetry, diagnostics export, beta reports.
 
 The CLI should stay thin. Command modules should parse options, call `KairnRuntime` or focused benchmark/setup helpers, then format output.
+
+Private beta onboarding starts at `kairn setup wizard`. The wizard is a thin composition layer over the same setup primitives used by direct commands: Codex savings hooks, VS Code MCP config, advanced Codex hybrid, doctor checks, and optional sanitized telemetry.
 
 ### MCP
 
@@ -91,6 +93,16 @@ Current tools:
 - `kairn_get_session_state`
 
 MCP is the read-gateway surface. Its job is not to dump large prime briefs. It should help agents take the next smallest useful read.
+
+MCP is also a beta entrypoint, not only a benchmark mode. It supports editor/app integrations where prompt hooks are unavailable, blocked by review, or not part of the host UX. `kairn setup mcp --client vscode` writes a workspace `.vscode/mcp.json` server block while preserving unrelated MCP servers. `kairn setup codex --mode mcp-first` writes the Codex TOML equivalent. Both point at the same local `kairn serve --mcp --root <repo>` server.
+
+Beta mode guidance:
+
+- `kairn codex`: default CLI/terminal path with session-bound hooks.
+- `kairn setup mcp --client vscode`: default MCP/editor path with no hooks.
+- `kairn setup codex --mode hybrid`: advanced Codex-only path for users who explicitly want both a tiny hook and MCP.
+
+Pure MCP should remain the default MCP recommendation until hybrid wins repeatedly across fresh suites. Hybrid is not just "MCP with better defaults"; it depends on hooks, so it is a separate trust/UX choice.
 
 MCP stop conditions are part of the product contract:
 

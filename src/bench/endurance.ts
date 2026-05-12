@@ -668,6 +668,7 @@ function latestHookSignalMetadata(runtime: KairnRuntime, sessionId: string): Rec
 
 function isLikelyObviousSingleSourcePrompt(prompt: string): boolean {
   if (prompt.length > 260) return false;
+  if (/\b(diagnose|investigate|audit|trace)\b/i.test(prompt)) return false;
   if (/\b(multi[-\s]?file|multiple files|across files|across modules|integration|workflow|end-to-end|e2e|stack trace|traceback|selected tests|requirements:|production source|source fix|smallest production)\b/i.test(prompt)) {
     return false;
   }

@@ -1,7 +1,10 @@
 import { Command, Option } from "commander";
 import type { CodexSetupMode, HookOutputProfile, PrimeProfile } from "../../types.js";
 import { writeCodexSetup } from "../setup/codexSetup.js";
+import { writeMcpClientSetup, type McpClientSetupTarget } from "../setup/mcpSetup.js";
 import { writeMcpInstructionsSetup } from "../setup/mcpInstructions.js";
+import { formatSetupRemoveResult, removeKairnSetup } from "../setup/remove.js";
+import { formatSetupWizardResult, runSetupWizard, type SetupWizardChoice } from "../setup/wizard.js";
 import { parsePositiveInt } from "../helpers.js";
 import { printJson } from "../output.js";
 
@@ -9,6 +12,96 @@ export function registerSetupCommands(program: Command): void {
   const setup = program
     .command("setup")
     .description("Install local agent integration files for a target repo.");
+
+  setup
+    .command("remove")
+    .description("Remove Kairn-owned hook/MCP setup from a target repo.")
+    .option("--root <path>", "target repository root", process.cwd())
+    .option("--delete-state", "also delete .kairn indexes, metrics, ledger, and telemetry queue")
+    .option("--json", "print JSON output")
+    .action((options: { root: string; deleteState?: boolean; json?: boolean }) => {
+      const result = removeKairnSetup({
+        root: options.root,
+        deleteState: options.deleteState
+      });
+      if (options.json) {
+        printJson(result);
+        return;
+      }
+      process.stdout.write(formatSetupRemoveResult(result));
+    });
+
+  setup
+    .command("wizard")
+    .description("Run the guided Kairn setup wizard for Codex CLI, VS Code MCP, or both.")
+    .option("--root <path>", "target repository root", process.cwd())
+    .addOption(new Option("--choice <choice>", "non-interactive setup choice").choices(["codex", "mcp", "both", "hybrid", "doctor"]))
+    .option("--yes", "accept defaults for non-interactive setup")
+    .option("--no-index", "skip indexing during setup")
+    .option("--telemetry", "enable opt-in sanitized telemetry upload")
+    .option("--telemetry-endpoint <url>", "telemetry ingest endpoint override")
+    .option("--json", "print JSON output")
+    .action(async (options: {
+      root: string;
+      choice?: SetupWizardChoice;
+      yes?: boolean;
+      index?: boolean;
+      telemetry?: boolean;
+      telemetryEndpoint?: string;
+      json?: boolean;
+    }, command: Command) => {
+      const indexSource = command.getOptionValueSource("index");
+      const result = await runSetupWizard({
+        root: options.root,
+        choice: options.choice,
+        yes: options.yes,
+        index: indexSource === "default" ? undefined : options.index,
+        telemetry: options.telemetry,
+        telemetryEndpoint: options.telemetryEndpoint
+      });
+      if (options.json) {
+        printJson(result);
+        return;
+      }
+      process.stdout.write(formatSetupWizardResult(result));
+    });
+
+  setup
+    .command("mcp")
+    .description("Install a Kairn MCP server config for editor/app clients such as VS Code.")
+    .option("--root <path>", "target repository root", process.cwd())
+    .addOption(new Option("--client <client>", "MCP client config format").choices(["vscode", "generic"]).default("vscode"))
+    .option("--no-instructions", "do not write AGENTS.md MCP guidance")
+    .option("--json", "print JSON output")
+    .action((options: {
+      root: string;
+      client: McpClientSetupTarget;
+      instructions?: boolean;
+      json?: boolean;
+    }) => {
+      const result = writeMcpClientSetup({
+        root: options.root,
+        client: options.client,
+        writeInstructions: options.instructions
+      });
+      if (options.json) {
+        printJson(result);
+        return;
+      }
+
+      process.stdout.write(
+        [
+          "Kairn MCP setup written.",
+          `Root: ${result.rootPath}`,
+          `Client: ${result.client}`,
+          result.configPath ? `Config: ${result.configPath}` : "Config: not written; use the JSON serverConfig for your MCP client.",
+          `Server: ${result.serverName}`,
+          result.instructionsPath ? `Instructions: ${result.instructionsPath}` : "",
+          "MCP is best for editor/app integrations where prompt hooks are unavailable or not trusted.",
+          ""
+        ].filter(Boolean).join("\n")
+      );
+    });
 
   setup
     .command("codex")

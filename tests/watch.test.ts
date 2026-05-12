@@ -829,6 +829,7 @@ describe("watch and hook CLI", () => {
     expect(mcpHooks).not.toContain("UserPromptSubmit");
     expect(mcpInstructions).toContain("kairn_prepare_task");
     expect(mcpInstructions).toContain("cheap one-shot source fixes");
+    expect(mcpInstructions).toContain("diagnose, investigate, audit, or trace");
     expect(mcpInstructions).toContain("Do not call Kairn solely because a prompt says debug");
     expect(mcpInstructions).toContain("cheap_one_shot_guardrail");
     expect(hybrid.mcpConfigured).toBe(true);
@@ -837,6 +838,7 @@ describe("watch and hook CLI", () => {
     expect(hybridHooks).toContain("UserPromptSubmit");
     expect(hybridHooks).toContain("--hook-output mcp-brief");
     expect(hybridInstructions).toContain("Kairn Hybrid Workflow");
+    expect(hybridInstructions).toContain("diagnose, investigate, audit, or trace");
     expect(hybridInstructions).not.toContain("kairn_get_next_context");
     expect(hybridInstructions).toContain("If no Kairn hook context appears, work normally");
     expect(hook.session.id).toMatch(/^task_/);

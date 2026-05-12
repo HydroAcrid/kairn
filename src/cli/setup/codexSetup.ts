@@ -64,7 +64,7 @@ function buildCodexConfig(input: {
   return config.endsWith("\n") ? config : `${config}\n`;
 }
 
-function resolveKairnMcpCommand(): { command: string; argsPrefix: string[] } {
+export function resolveKairnMcpCommand(): { command: string; argsPrefix: string[] } {
   const envCommand = process.env.KAIRN_CMD?.trim();
   if (envCommand) return splitCommandForMcp(envCommand);
 

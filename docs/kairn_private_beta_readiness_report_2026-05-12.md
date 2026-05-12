@@ -2,7 +2,7 @@
 
 ## Summary
 
-Kairn has enough evidence for a small trusted private beta, but not for a public "works anywhere" claim. The current beta path should be `kairn codex` / `kairn_codex_session`: one session-bound ledger, adaptive prompt-hook delivery, and suppression when Kairn lacks high-confidence leverage.
+Kairn has enough evidence for a small trusted private beta, but not for a public "works anywhere" claim. The primary beta path should be `kairn codex` / `kairn_codex_session`: one session-bound ledger, adaptive prompt-hook delivery, and suppression when Kairn lacks high-confidence leverage. The secondary beta path should be MCP via `kairn setup mcp --client vscode` or `kairn setup codex --mode mcp-first` for editor/app users who do not want CLI hooks.
 
 ## Current Evidence
 
@@ -14,6 +14,7 @@ Kairn has enough evidence for a small trusted private beta, but not for a public
 | Session memory | Ledger avoided repeated file/snippet context and cleared stale risks after verification |
 | Privacy posture | Detailed metrics stay local by default |
 | Telemetry readiness | Opt-in sanitized aggregate telemetry scaffolded with Supabase ingest assets |
+| MCP setup readiness | Workspace `.vscode/mcp.json` setup and doctor detection added for editor/app integrations |
 
 ## Fresh Holdout V3
 
@@ -71,10 +72,14 @@ Live model: `gpt-5.4-mini`
 | --- | --- | --- | ---: | ---: | ---: | --- |
 | Fastify HEAD route | pass/pass | active | 72,311 | 32,897 | 54.51% | `/tmp/kairn-private-beta-fastify-session-post-diagnose-20260512131558.json` |
 | FastAPI request response | pass/pass | active | 91,374 | 63,691 | 30.30% | `/tmp/kairn-private-beta-fastapi-session-20260512132116.json` |
+| Fastify MCP-first | pass/pass | active | 93,585 | 56,029 | 40.13% | `/tmp/kairn-private-beta-fastify-mcp-hybrid-post-diagnose-20260512135059.json` |
+| Fastify hybrid MCP-brief | pass/pass | active | 93,585 | 48,720 | 47.94% | `/tmp/kairn-private-beta-fastify-mcp-hybrid-post-diagnose-20260512135059.json` |
 
 The first Fastify attempt exposed a general missed-opportunity issue: `diagnose` and `audit` prompts were not considered high-confidence hook candidates, so Kairn stayed passive. The fix was behavior-class based, not repo-specific: prompt hooks now treat `diagnose`, `investigate`, `audit`, and `trace` as high-confidence source-routing verbs.
 
 Remaining weakness from the fresh live smoke: FastAPI's first shrink found the correct source, `fastapi/routing.py`, but included extra neighbor files. This did not break quality, but Companion Routing should continue moving toward "one exact source unless multi-file evidence is strong."
+
+MCP note: the first Fastify MCP/hybrid run was passive because no MCP tool calls occurred. Kairn then updated MCP-first/hybrid guidance so diagnose, investigate, audit, and trace prompts without exact production paths call `kairn_prepare_task` once before broad/manual source reads. The rerun recorded one MCP call in both pure MCP and hybrid, one returned useful file, no quality loss, and active valid savings. This supports pure MCP as the default editor/app path, while hybrid remains opt-in for users who also accept hooks.
 
 ## Beta Readiness Gate
 
@@ -90,6 +95,7 @@ Private beta can start when fresh validation shows:
 
 Implemented beta support surfaces:
 
+- `kairn setup mcp --root <repo> --client vscode`
 - `kairn doctor --root <repo> [--json]`
 - `kairn telemetry status|enable|disable|flush`
 - `kairn diagnostics export`
