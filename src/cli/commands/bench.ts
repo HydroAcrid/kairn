@@ -115,7 +115,7 @@ export function registerBenchCommands(program: Command): void {
         root: string;
         suite: string;
         baselineCommand: string;
-        kairnCommand: string;
+        kairnCommand?: string;
         mcpCommand?: string;
         hookFullPrimeCommand?: string;
         hookFullPrimeSetupCommand?: string;

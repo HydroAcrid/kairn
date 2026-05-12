@@ -4,12 +4,18 @@ import { describe, expect, it } from "vitest";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
 import { classifyObservedCommand } from "../src/watch/classifyCommand.js";
 import { extractFailureFiles } from "../src/watch/failureParser.js";
+import { isHighConfidencePrompt } from "../src/watch/hookPredicates.js";
 import { hostHookOutput, normalizeHookPayload } from "../src/watch/normalizeHook.js";
 import { createFixtureRepo } from "./helpers.js";
 
 const CLI = ["tsx", "src/cli.ts"];
 
 describe("watch utilities", () => {
+  it("treats diagnose and audit prompts as high-confidence hook candidates", () => {
+    expect(isHighConfidencePrompt("UserPromptSubmit", "Diagnose why Fastify HEAD routes stopped running onSend handlers.")).toBe(true);
+    expect(isHighConfidencePrompt("UserPromptSubmit", "Audit the sync path for repeated candidate selection failures.")).toBe(true);
+  });
+
   it("normalizes generic, Claude, and Codex hook payloads", () => {
     const generic = normalizeHookPayload({
       source: "generic",

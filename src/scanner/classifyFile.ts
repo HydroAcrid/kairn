@@ -19,6 +19,8 @@ const LANGUAGE_BY_EXTENSION: Record<string, string> = {
   ".go": "go",
   ".rs": "rust",
   ".java": "java",
+  ".kt": "kotlin",
+  ".kts": "kotlin",
   ".c": "c",
   ".h": "cpp",
   ".cc": "cpp",
@@ -48,7 +50,9 @@ export function classifyFile(filePath: string): FileKind {
     /_test\.pyi?$/.test(basename) ||
     /tests?\//.test(normalized) && /\.pyi?$/.test(basename) ||
     /(test|tests)\.java$/.test(basename) ||
+    /(test|tests)\.kt$/.test(basename) ||
     /(^|\/)src\/test\/java\//.test(normalized) ||
+    /(^|\/)src\/test\/kotlin\//.test(normalized) ||
     /(_test|_unittest|_tests)\.(cc|cpp|cxx|c|hh|hpp|hxx)$/.test(basename) ||
     /^test_.*\.(cc|cpp|cxx|c)$/.test(basename) ||
     /(^|\/)(test|tests)\//.test(normalized) && /\.(cc|cpp|cxx|c|hh|hpp|hxx)$/.test(basename) ||
@@ -95,6 +99,7 @@ export function classifyFile(filePath: string): FileKind {
     /\.[cm]?[jt]sx?$/.test(basename) ||
     /\.pyi?$/.test(basename) ||
     /\.java$/.test(basename) ||
+    /\.kts?$/.test(basename) ||
     /\.(c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(basename) ||
     /\.go$/.test(basename) ||
     /\.rb$/.test(basename)

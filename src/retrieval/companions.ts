@@ -44,7 +44,11 @@ const ROLE_GROUPS: CompanionRole[] = [
       "path",
       "paths",
       "mount",
-      "matching"
+      "matching",
+      "pattern",
+      "patterns",
+      "tree",
+      "trie"
     ],
     reason: "routing/dependency pair"
   },
@@ -55,13 +59,38 @@ const ROLE_GROUPS: CompanionRole[] = [
   },
   {
     id: "scheduler-renderer",
-    terms: ["scheduler", "schedule", "renderer", "render", "queue", "flush", "callback"],
+    terms: ["scheduler", "schedule", "renderer", "render", "rendering", "measure", "measurement", "width", "segment", "segments", "queue", "flush", "callback"],
     reason: "scheduler/renderer pair"
   },
   {
     id: "interceptor-dispatch-adapter",
-    terms: ["interceptor", "interceptors", "dispatch", "dispatcher", "adapter", "adapters", "request", "response", "proxy", "session", "sessions", "prepared", "redirect", "mounted"],
+    terms: ["interceptor", "interceptors", "dispatch", "dispatcher", "adapter", "adapters", "request", "response", "proxy", "session", "sessions", "prepared", "redirect", "mounted", "chain", "chains", "call", "calls", "network", "application"],
     reason: "interceptor/dispatch/adapter pair"
+  },
+  {
+    id: "schema-parser",
+    terms: ["schema", "schemas", "shape", "shapes", "object", "objects", "parse", "parser", "parsing", "unknown", "key", "keys", "validation", "validate"],
+    reason: "schema/parser pair"
+  },
+  {
+    id: "connection-pool",
+    terms: ["connection", "connections", "pool", "pools", "retry", "retries", "dispatch", "request", "requests", "failure", "failed"],
+    reason: "connection/pool pair"
+  },
+  {
+    id: "log-core-sink",
+    terms: ["log", "logs", "logger", "loggers", "sink", "sinks", "core", "entry", "entries", "encoder", "encoders", "field", "fields", "write", "writing", "flush"],
+    reason: "log/core/sink pair"
+  },
+  {
+    id: "plugin-transform-analysis",
+    terms: ["plugin", "plugins", "container", "containers", "transform", "transforms", "analysis", "analyze", "import", "imports", "module", "modules", "resolve", "resolver", "load", "hooks"],
+    reason: "plugin/transform analysis pair"
+  },
+  {
+    id: "parse-persist",
+    terms: ["parse", "parser", "parsed", "persist", "persistence", "repository", "repositories", "events", "event", "ingest", "store", "storage"],
+    reason: "parse/persist pair"
   },
   {
     id: "session-adapter-model",
@@ -186,6 +215,30 @@ const COMPANION_STOP_TERMS = new Set([
   "this"
 ]);
 
+const STRONG_CANONICAL_BASENAME_TERMS = new Set([
+  "sink",
+  "logger",
+  "core",
+  "entry",
+  "encoder",
+  "schema",
+  "object",
+  "connection",
+  "pool",
+  "chain",
+  "call",
+  "interceptor",
+  "measure",
+  "segment",
+  "console",
+  "tree",
+  "mux",
+  "context",
+  "route",
+  "parser",
+  "repository"
+]);
+
 export function findCompanionCandidates(input: {
   files: FileRecord[];
   ranked: HybridScoredResult[];
@@ -219,9 +272,11 @@ export function findCompanionCandidates(input: {
   for (const file of input.files) {
     if (seedPaths.has(file.path) || isNoisyCompanionFile(file) || isLikelyTestPath(file.path)) continue;
     if (!isUniversalSourceFile(file)) continue;
+    if ((file.kind === "component" || file.kind === "route") && !hasUiQuerySignal(queryTerms)) continue;
     if (isPlatformVariantPath(file.path)) continue;
 
     const sourceScore = scoreSourceRoleHints(file, input.query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    const canonicalRoleScore = scoreCanonicalRoleSurface(file, input.query, queryTerms);
     const roleMatches = matchRoleSignals(file, roleSignals, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
     const sourceText = searchableText(file, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
     const sourceTerms = termSet(sourceText);
@@ -231,8 +286,8 @@ export function findCompanionCandidates(input: {
     const pathQueryHits = [...queryTerms].filter((term) => !COMPANION_STOP_TERMS.has(term) && pathTerms.has(term));
     const compoundPathHits = compoundQueryTerms(input.query).filter((term) => pathTerms.has(term));
 
-    let score = sourceScore.score;
-    const reasons = [...sourceScore.reasons];
+    let score = sourceScore.score + canonicalRoleScore.score;
+    const reasons = [...sourceScore.reasons, ...canonicalRoleScore.reasons];
 
     if (specificQueryHits.length > 0) {
       score += Math.min(56, specificQueryHits.length * 14);
@@ -359,6 +414,23 @@ export function findCompanionCandidates(input: {
       score += 980;
       reasons.push("routing map/rule companion");
     }
+    if (isTransformAnalysisCompanion(file.path, queryTerms)) {
+      score += /import[-_]?analysis/i.test(file.path) ? 2200 : 1500;
+      reasons.push("transform analysis companion");
+    }
+    if (isRoutePatternTreeCompanion(file.path, queryTerms)) {
+      score += 1500;
+      reasons.push("route pattern tree companion");
+    }
+    if (isRealImplementationCompanion(file.path, queryTerms)) {
+      score += 1500;
+      reasons.push("real implementation companion");
+    }
+    const specializedPenalty = unmentionedSpecializedSurfacePenalty(file.path, queryTerms);
+    if (specializedPenalty > 0) {
+      score -= specializedPenalty;
+      reasons.push("unmentioned specialized surface downranked");
+    }
     if (isGenericKubernetesServiceDistractor(file.path, queryTerms)) {
       score -= 3200;
       reasons.push("generic service/request path downranked for kubernetes task");
@@ -403,7 +475,7 @@ export function findCompanionCandidates(input: {
         reasons.push("go middleware helper downranked for router core prompt");
       }
       if (isGoPackageAnchor(seed, file, roleSignals)) {
-        score += 240;
+        score += 920;
         reasons.push("go package anchor");
       }
       if (isRouteCoreSibling(seed.path, file.path, queryTerms)) {
@@ -509,9 +581,59 @@ export function scoreSourceRoleHints(
 
 export function isNoisySourcePath(filePath: string): boolean {
   const normalized = filePath.toLowerCase();
-  return /(^|\/)(docs?|docs_src|documentation|_?examples|demo|demos|devtools|codemods|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook|testing|testdata|integration)\//.test(
+  return /(^|\/)(docs?|docs_src|documentation|_?examples|samples?|demo|demos|devtools|codemods|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook|testing|testdata|integration)\//.test(
     normalized
   ) || /(^|\/)(deps|vendor|third_party|node_modules)\//.test(normalized);
+}
+
+function scoreCanonicalRoleSurface(
+  file: Pick<FileRecord, "path" | "kind" | "language">,
+  query: string,
+  queryTerms: Set<string>
+): { score: number; reasons: string[] } {
+  if (!isUniversalSourceFile(file) || isNoisySourcePath(file.path) || isLikelyTestPath(file.path)) return { score: 0, reasons: [] };
+  const basename = file.path.toLowerCase().split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const basenameTerms = [...termSet(basename)].filter((term) => !COMPANION_STOP_TERMS.has(term));
+  const pathTerms = termSet(file.path);
+  const directHits = basenameTerms.filter((term) => queryTerms.has(term));
+  const compoundHits = compoundQueryTerms(query).filter((term) => basename.replace(/[^a-z0-9]/g, "").includes(term));
+  const coreHits = [...new Set([...directHits, ...compoundHits])];
+  if (coreHits.length === 0) return { score: 0, reasons: [] };
+
+  let score = Math.min(1_200, coreHits.length * 340);
+  const reasons = [`canonical role basename anchor: ${coreHits.slice(0, 4).join(", ")}`];
+  if (isPrimaryUniversalSourcePath(file)) {
+    score += 120;
+    reasons.push("primary source role anchor");
+  }
+  if (pathTerms.has("core") && queryTerms.has("core")) score += 180;
+  if (basenameTerms.length > 0 && basenameTerms.every((term) => queryTerms.has(term) || ["base", "internal"].includes(term))) {
+    score += basenameTerms.length === 1 && STRONG_CANONICAL_BASENAME_TERMS.has(basenameTerms[0]!) ? 820 : 280;
+    reasons.push("exact canonical role file");
+  }
+  return { score, reasons };
+}
+
+function unmentionedSpecializedSurfacePenalty(filePath: string, queryTerms: Set<string>): number {
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1) ?? normalized;
+  if (/module-info\.(java|kt)$/.test(basename)) return 1_800;
+  if (/(^|\/)(samples?|examples?|docs?|playground|testing|testdata)\//.test(normalized)) return 1_400;
+
+  const qualifiers: Array<[RegExp, string[], number]> = [
+    [/json[-_]?schema|standard[-_]?schema/, ["json", "standard"], 760],
+    [/(^|[_-])proxy|socks[-_]?proxy|http[-_]?proxy/, ["proxy", "socks"], 860],
+    [/logging[-_]?interceptor|logging/, ["logging", "log"], 820],
+    [/stdout|stderr|console[-_]?encoder/, ["stdout", "stderr", "console"], 760],
+    [/callback[-_]?sink|android[-_]?sink|msvc[-_]?sink|syslog[-_]?sink|daily[-_]?sink|rotating[-_]?sink|qt[-_]?sink|win[-_]?eventlog[-_]?sink|eventlog[-_]?sink|systemd[-_]?namespace[-_]?sink|namespace[-_]?sink|async[-_]?logger/, ["callback", "android", "msvc", "syslog", "daily", "rotating", "qt", "win", "eventlog", "systemd", "namespace", "async"], 760],
+    [/-inl\./, ["inline", "inl"], 520],
+    [/_windows|_notwin|windows|win32|notwin|android|darwin|linux|posix|unix|wasm/, ["windows", "win", "notwin", "android", "darwin", "linux", "posix", "unix", "wasm"], 620],
+    [/optimizer\//, ["optimizer", "optimize"], 460]
+  ];
+  return qualifiers.reduce((total, [pattern, terms, penalty]) => {
+    if (!pattern.test(normalized)) return total;
+    return terms.some((term) => queryTerms.has(term)) ? total : total + penalty;
+  }, 0);
 }
 
 export function isLikelyTestPath(filePath: string): boolean {
@@ -526,7 +648,7 @@ export function isLikelyTestPath(filePath: string): boolean {
     /_test\.go$/.test(basename) ||
     /^test.*\.go$/.test(basename) ||
     /(_test|_spec)\.rb$/.test(basename) ||
-    /(test|tests)\.java$/.test(basename) ||
+    /(test|tests)\.(java|kt)$/.test(basename) ||
     /(_test|_tests|_unittest)\.(cc|cpp|cxx|c|hh|hpp|hxx)$/.test(basename)
   );
 }
@@ -541,6 +663,12 @@ function detectRoleSignals(queryTerms: Set<string>, query: string): CompanionRol
 function hasMultiSurfaceQuerySignal(queryTerms: Set<string>): boolean {
   const signals = ["integration", "flow", "framework", "pipeline", "request", "response", "callback", "handler", "middleware", "routing"];
   return signals.filter((term) => queryTerms.has(term)).length >= 2;
+}
+
+function hasUiQuerySignal(queryTerms: Set<string>): boolean {
+  return ["ui", "component", "components", "mobile", "layout", "dashboard", "tabs", "table", "panel", "filter", "filters", "render", "renderer", "page", "view"].some((term) =>
+    queryTerms.has(term)
+  );
 }
 
 function matchRoleSignals(
@@ -580,12 +708,13 @@ function isNoisyCompanionFile(file: FileRecord): boolean {
 
 function isUniversalSourceFile(file: Pick<FileRecord, "path" | "kind" | "language">): boolean {
   if (["source", "component", "route"].includes(file.kind)) return true;
-  return /\.(ts|tsx|js|jsx|mjs|cjs|py|pyi|java|c|cc|cpp|cxx|h|hh|hpp|hxx|go|rb)$/.test(file.path.toLowerCase());
+  return /\.(ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|c|cc|cpp|cxx|h|hh|hpp|hxx|go|rb)$/.test(file.path.toLowerCase());
 }
 
 function isPrimaryUniversalSourcePath(file: Pick<FileRecord, "path" | "language">): boolean {
   const normalized = file.path.toLowerCase();
   if (file.language === "java") return normalized.startsWith("src/main/java/") || normalized.includes("/src/main/java/");
+  if (file.language === "kotlin") return normalized.startsWith("src/main/kotlin/") || normalized.includes("/src/main/kotlin/");
   if (file.language === "cpp" || file.language === "c") {
     return normalized.startsWith("include/") || normalized.includes("/include/") || normalized.startsWith("src/") || normalized.includes("/src/");
   }
@@ -637,7 +766,7 @@ function mentionedSourceFileBasenames(query: string): Set<string> {
 }
 
 function isGenericMentionedBasename(basename: string): boolean {
-  return /^(main|index)\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(basename);
+  return /^(main|index)\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(basename);
 }
 
 const ROUTE_ANCHOR_STOP_TERMS = new Set([
@@ -740,11 +869,20 @@ function isComplementaryRole(left: string, right: string): boolean {
   return (
     (pair.has("controller") && (pair.has("repository") || pair.has("service") || pair.has("model"))) ||
     (pair.has("routing") && (pair.has("dependency") || pair.has("convertor") || pair.has("handler") || pair.has("context"))) ||
+    (pair.has("routing") && pair.has("engine")) ||
     (pair.has("session") && (pair.has("adapter") || pair.has("model"))) ||
     (pair.has("scheduler") && pair.has("renderer")) ||
+    (pair.has("renderer") && (pair.has("measure") || pair.has("segment"))) ||
+    (pair.has("measure") && pair.has("segment")) ||
     (pair.has("fiber") && (pair.has("hook") || pair.has("workloop"))) ||
     (pair.has("string") && pair.has("matcher")) ||
-    (pair.has("interceptor") && (pair.has("dispatch") || pair.has("adapter"))) ||
+    (pair.has("interceptor") && (pair.has("dispatch") || pair.has("adapter") || pair.has("chain") || pair.has("call"))) ||
+    (pair.has("chain") && pair.has("call")) ||
+    (pair.has("pool") && pair.has("connection")) ||
+    (pair.has("core") && (pair.has("entry") || pair.has("encoder") || pair.has("sink") || pair.has("logger"))) ||
+    (pair.has("logger") && pair.has("sink")) ||
+    (pair.has("sink") && pair.has("encoder")) ||
+    (pair.has("analysis") && (pair.has("transform") || pair.has("routing"))) ||
     (pair.has("validation") && pair.has("callback")) ||
     (pair.has("engine") && (pair.has("context") || pair.has("routing") || pair.has("handler"))) ||
     (pair.has("runtime") && pair.has("mcp"))
@@ -790,7 +928,7 @@ function isGoPackageCorePair(
   if (candidate.path.includes("/")) return false;
   const asksRouterCore = ["router", "routing", "route", "context", "group", "handler", "middleware", "chain", "mount"].some((term) => queryTerms.has(term));
   if (!asksRouterCore) return false;
-  return isComplementaryRole(seedCategory, candidateCategory) || ["gin.go", "context.go", "routergroup.go", "chain.go", "mux.go", "router.go"].includes(candidate.path.toLowerCase());
+  return isComplementaryRole(seedCategory, candidateCategory) || ["gin.go", "context.go", "routergroup.go", "chain.go", "mux.go", "router.go", "tree.go"].includes(candidate.path.toLowerCase());
 }
 
 function isFixtureCorePair(filePath: string, queryTerms: Set<string>): boolean {
@@ -826,13 +964,26 @@ function roleCategory(filePath: string): string | undefined {
   if (/runtime/.test(normalized.split("/").at(-1) ?? "")) return "runtime";
   if (/(^|\/)sessions?\.[a-z0-9]+$/.test(normalized) || /(^|\/)sessions?\//.test(normalized)) return "session";
   if (/proxy/.test(normalized.split("/").at(-1) ?? "")) return "proxy";
+  if (/pool/.test(normalized.split("/").at(-1) ?? "")) return "pool";
+  if (/connection/.test(normalized.split("/").at(-1) ?? "")) return "connection";
+  if (/chain/.test(normalized.split("/").at(-1) ?? "")) return "chain";
+  if (/call/.test(normalized.split("/").at(-1) ?? "")) return "call";
   if (/interceptor/.test(normalized)) return "interceptor";
   if (/dispatch/.test(normalized)) return "dispatch";
+  if (/analysis|analyzer/.test(normalized.split("/").at(-1) ?? "")) return "analysis";
+  if (/transform/.test(normalized.split("/").at(-1) ?? "")) return "transform";
   if (/workloop/.test(normalized)) return "workloop";
   if (/hooks?/.test(normalized)) return "hook";
   if (/reactfiber/.test(normalized)) return "fiber";
   if (/(^|\/)strings?\.[a-z0-9]+$/.test(normalized)) return "string";
   if (/charmatcher|char[-_]?matcher/.test(normalized)) return "matcher";
+  if (/measure/.test(normalized.split("/").at(-1) ?? "")) return "measure";
+  if (/segment/.test(normalized.split("/").at(-1) ?? "")) return "segment";
+  if (/logger/.test(normalized.split("/").at(-1) ?? "")) return "logger";
+  if (/sink/.test(normalized.split("/").at(-1) ?? "")) return "sink";
+  if (/encoder/.test(normalized.split("/").at(-1) ?? "")) return "encoder";
+  if (/(^|\/)core\.[a-z0-9]+$/.test(normalized) || /(^|\/)core\//.test(normalized)) return "core";
+  if (/entry/.test(normalized.split("/").at(-1) ?? "")) return "entry";
   if (/convertors?|converters?/.test(normalized)) return "convertor";
   if (/dependenc/.test(normalized)) return "dependency";
   if (/repository|repositories|repo\b|dao/.test(normalized)) return "repository";
@@ -846,12 +997,12 @@ function roleCategory(filePath: string): string | undefined {
   if (/validation/.test(normalized)) return "validation";
   if (/context/.test(normalized)) return "context";
   if (/handler|middleware/.test(normalized)) return "handler";
-  if (/(^|\/)(gin|engine|mux)\.go$/.test(normalized)) return "engine";
+  if (/(^|\/)(gin|engine|mux|tree)\.go$/.test(normalized)) return "engine";
   return undefined;
 }
 
 function isPlatformVariantPath(filePath: string): boolean {
-  return /_(appengine|windows|linux|darwin|unix|posix|wasm|js)\./i.test(filePath);
+  return /_(appengine|windows|win|notwin|linux|darwin|unix|posix|wasm|js|nocgo|cgo|freebsd|openbsd|netbsd|solaris|dragonfly|aix|plan9)\./i.test(filePath);
 }
 
 function isGoPackageAnchor(seed: FileRecord, file: FileRecord, roles: CompanionRole[]): boolean {
@@ -859,7 +1010,7 @@ function isGoPackageAnchor(seed: FileRecord, file: FileRecord, roles: CompanionR
   if (file.path.includes("/")) return false;
   if (!roles.some((role) => role.id === "group-context-handler" || role.id === "routing-dependency")) return false;
   const basename = file.path.toLowerCase();
-  return ["gin.go", "chi.go", "mux.go", "router.go", "engine.go", "server.go", "context.go", "chain.go"].includes(basename);
+  return ["gin.go", "chi.go", "mux.go", "router.go", "engine.go", "server.go", "context.go", "chain.go", "tree.go"].includes(basename);
 }
 
 function isRouteCoreSibling(seedPath: string, candidatePath: string, queryTerms: Set<string>): boolean {
@@ -868,8 +1019,8 @@ function isRouteCoreSibling(seedPath: string, candidatePath: string, queryTerms:
   if (!sameModuleSurface(seed, candidate)) return false;
   const seedBase = seed.split("/").at(-1) ?? "";
   const candidateBase = candidate.split("/").at(-1) ?? "";
-  if (!/(index|router|routing|route|layer|execution-context)\.[cm]?[jt]s$/.test(seedBase)) return false;
-  if (!/(route|layer|router|proxy|response-controller|execution-context|index)\.[cm]?[jt]s$/.test(candidateBase)) return false;
+  if (!/(index|router|routing|route|layer|execution-context|mux|tree)\.[cm]?[jt]s$/.test(seedBase)) return false;
+  if (!/(route|layer|router|proxy|response-controller|execution-context|index|mux|tree)\.[cm]?[jt]s$/.test(candidateBase)) return false;
   return ["param", "params", "dispatch", "handler", "middleware", "route", "router", "proxy", "response", "controller"].some((term) => queryTerms.has(term));
 }
 
@@ -1001,6 +1152,29 @@ function isRoutingMapRuleCompanion(filePath: string, queryTerms: Set<string>): b
   if (!asksMapRules) return false;
   const normalized = filePath.toLowerCase();
   return /(^|\/)(map|rules?|converters?)\.[a-z0-9]+$/.test(normalized) || /(^|\/)routing\/(map|rules?|converters?)\.[a-z0-9]+$/.test(normalized);
+}
+
+function isTransformAnalysisCompanion(filePath: string, queryTerms: Set<string>): boolean {
+  const asksTransformSurface =
+    (queryTerms.has("plugin") || queryTerms.has("plugins") || queryTerms.has("module") || queryTerms.has("modules")) &&
+    (queryTerms.has("transform") || queryTerms.has("transforms") || queryTerms.has("load") || queryTerms.has("resolve"));
+  if (!asksTransformSurface) return false;
+  const basename = filePath.toLowerCase().split("/").at(-1) ?? "";
+  return /(import[-_]?analysis|analysis|analyzer|transform)/.test(basename);
+}
+
+function isRoutePatternTreeCompanion(filePath: string, queryTerms: Set<string>): boolean {
+  const asksRoutePattern =
+    (queryTerms.has("route") || queryTerms.has("router") || queryTerms.has("routing") || queryTerms.has("mux")) &&
+    (queryTerms.has("pattern") || queryTerms.has("patterns") || queryTerms.has("match") || queryTerms.has("matching"));
+  if (!asksRoutePattern) return false;
+  return /(^|\/)(tree|trie)\.go$/.test(filePath.toLowerCase());
+}
+
+function isRealImplementationCompanion(filePath: string, queryTerms: Set<string>): boolean {
+  if (!queryTerms.has("real")) return false;
+  const basename = filePath.toLowerCase().split("/").at(-1) ?? "";
+  return /real[a-z0-9_-]*(call|chain|client|connection|dispatcher|exchange|engine)/.test(basename);
 }
 
 function isGenericHelperForRoleCompanion(filePath: string, queryTerms: Set<string>): boolean {
@@ -1146,6 +1320,7 @@ function canonicalTerm(term: string): string {
   if (term === "controllers") return "controller";
   if (term === "models") return "model";
   if (term === "routes") return "route";
+  if (term === "patterns") return "pattern";
   if (term === "rules") return "rule";
   if (term === "maps") return "map";
   if (term === "layers") return "layer";
@@ -1156,6 +1331,24 @@ function canonicalTerm(term: string): string {
   if (term === "validations") return "validation";
   if (term === "interceptors") return "interceptor";
   if (term === "adapters") return "adapter";
+  if (term === "connections") return "connection";
+  if (term === "pools") return "pool";
+  if (term === "retries") return "retry";
+  if (term === "chains") return "chain";
+  if (term === "calls") return "call";
+  if (term === "schemas") return "schema";
+  if (term === "shapes") return "shape";
+  if (term === "objects") return "object";
+  if (term === "segments") return "segment";
+  if (term === "rendering") return "render";
+  if (term === "measurement") return "measure";
+  if (term === "measurements") return "measure";
+  if (term === "loggers") return "logger";
+  if (term === "logs") return "log";
+  if (term === "sinks") return "sink";
+  if (term === "entries") return "entry";
+  if (term === "encoders") return "encoder";
+  if (term === "fields") return "field";
   if (term === "resolvers") return "resolver";
   if (term === "extensions") return "extension";
   if (term === "fixtures") return "fixture";

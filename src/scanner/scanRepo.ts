@@ -263,7 +263,7 @@ function isSourceLike(file: { kind: ReturnType<typeof classifyFile>; language: s
     file.kind === "component" ||
     file.kind === "route" ||
     file.kind === "test" ||
-    ["python", "java", "c", "cpp", "typescript", "javascript"].includes(file.language)
+    ["python", "java", "kotlin", "c", "cpp", "typescript", "javascript"].includes(file.language)
   );
 }
 

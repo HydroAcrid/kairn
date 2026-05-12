@@ -97,7 +97,7 @@ function shouldParseFile(file: { indexTier?: string; kind: string; language: str
     file.kind === "component" ||
     file.kind === "route" ||
     file.kind === "test" ||
-    ["typescript", "javascript", "python", "java", "c", "cpp"].includes(file.language)
+    ["typescript", "javascript", "python", "java", "kotlin", "c", "cpp"].includes(file.language)
   );
 }
 

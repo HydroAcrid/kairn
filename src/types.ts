@@ -6,4 +6,5 @@ export * from "./types/language.js";
 export * from "./types/ledger.js";
 export * from "./types/metrics.js";
 export * from "./types/runtime.js";
+export * from "./types/telemetry.js";
 export * from "./types/watch.js";

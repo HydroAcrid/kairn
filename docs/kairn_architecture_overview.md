@@ -49,6 +49,7 @@ SQLite Store under .kairn/
   |-- sessions, shown context, files, symbols, graph edges
   |-- semantic chunks/vectors, lexical documents/terms
   |-- watch events, metrics events, eval runs, benchmark runs
+  |-- session ledger events and local telemetry queue/config
 ```
 
 ## Public Surfaces
@@ -65,6 +66,7 @@ Command modules:
 - `src/cli/commands/setup.ts`: `setup codex`, `setup mcp-instructions`.
 - `src/cli/commands/eval.ts`: eval runs, Codex usage ingestion, feedback.
 - `src/cli/commands/bench.ts`: replay, live-agent proofs, repo-matrix preflight, endurance runs.
+- `src/cli/commands/beta.ts`: doctor checks, privacy-first telemetry, diagnostics export, beta reports.
 
 The CLI should stay thin. Command modules should parse options, call `KairnRuntime` or focused benchmark/setup helpers, then format output.
 
@@ -402,6 +404,7 @@ Major record groups:
 - eval runs/observations,
 - benchmark runs/results,
 - host-session links.
+- local telemetry queue/config.
 
 The store is currently large but acts as a persistence facade. It should be split after runtime service boundaries are stable.
 
@@ -411,6 +414,34 @@ Storage rules:
 - Do not store raw command output unless explicitly necessary.
 - Prefer hashes, summaries, metadata, and file references.
 - Keep SQLite state bounded; watch DB/WAL size and tier counts.
+
+## Beta Diagnostics And Telemetry
+
+Beta support modules:
+
+- `src/doctor/doctor.ts`
+- `src/telemetry/config.ts`
+- `src/telemetry/sanitize.ts`
+- `src/telemetry/payload.ts`
+- `src/telemetry/queue.ts`
+- `src/telemetry/report.ts`
+- `src/telemetry/diagnostics.ts`
+
+CLI surfaces:
+
+- `kairn doctor --root <repo> [--json] [--fix-hooks]`
+- `kairn telemetry status|enable|disable|flush`
+- `kairn diagnostics export --root <repo> --out <path>`
+- `kairn beta report --root <repo> [--session <id>] [--json]`
+
+Telemetry is opt-in. Detailed evidence remains local under `.kairn/`; upload payloads are sanitized aggregates only. They may include version, mode, language mix, repo-size buckets, decision counts, assistance classification, token totals, hook/MCP counters, coarse file roles, and salted file ids. They must not include source code, prompts, command output, diffs, filenames, repo URLs, usernames, branch names, or machine paths.
+
+Hosted ingest lives under `supabase/`:
+
+- `supabase/migrations/20260512000000_kairn_private_beta_telemetry.sql`
+- `supabase/functions/kairn-telemetry-ingest/index.ts`
+
+Clients never receive Supabase service-role credentials. The Edge Function validates payload shape, rejects unsafe fields, rate-limits by installation id, and stores only sanitized aggregate JSON.
 
 ## Metrics, Eval, And Bench
 

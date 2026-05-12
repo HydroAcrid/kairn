@@ -296,6 +296,14 @@ function scoreSourcePriority(
       reasons.push(...canonicalRoute.reasons);
     }
 
+    const canonicalRoleSurface = debugImplementationIntent || hasExplicitSourceRoutingPrompt(query, queryTerms)
+      ? scoreCanonicalRoleSurface(file, query, queryTerms)
+      : { score: 0, reasons: [] };
+    if (implementationIntent && canonicalRoleSurface.score !== 0) {
+      score += canonicalRoleSurface.score;
+      reasons.push(...canonicalRoleSurface.reasons);
+    }
+
     const roleHints = scoreSourceRoleHints(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
     if (implementationIntent && roleHints.score > 0) {
       score += roleHints.score;
@@ -313,13 +321,19 @@ function scoreSourcePriority(
     }
 
     if (!explicitTestIntent && file.kind === "test") {
-      score -= exactSymbolMatches.length === 0 ? 72 : 420;
+      score -= debugImplementationIntent ? 900 : exactSymbolMatches.length === 0 ? 72 : 420;
       reasons.push(exactSymbolMatches.length === 0 ? "test downranked for implementation prompt" : "test downranked for source rescue");
     }
 
     if (implementationIntent && isNoisyImplementationSurface(file)) {
       score -= isVendoredDependencySurface(file.path) ? 1400 : file.kind === "doc" ? 220 : 260;
       reasons.push("docs/examples/devtools downranked");
+    }
+
+    const specializedPenalty = unmentionedSpecializedSourcePenalty(file, queryTerms);
+    if (implementationIntent && specializedPenalty > 0) {
+      score -= specializedPenalty;
+      reasons.push("unmentioned specialized source downranked");
     }
 
     if (implementationIntent && isDownstreamAdapterForCoreFlow(file, queryTerms)) {
@@ -917,7 +931,7 @@ function hasSpecificQuerySymbol(queryTerms: Set<string>): boolean {
 function isLanguageSourceSurface(file: FileRecord): boolean {
   return (
     file.kind === "source" &&
-    ["python", "java", "c", "cpp", "typescript", "javascript", "go", "ruby"].includes(file.language) &&
+    ["python", "java", "kotlin", "c", "cpp", "typescript", "javascript", "go", "ruby"].includes(file.language) &&
     !isNoisyImplementationSurface(file)
   );
 }
@@ -932,6 +946,9 @@ function isPrimaryLanguageSourceSurface(file: FileRecord): boolean {
   }
   if (file.language === "java") {
     return normalized.startsWith("src/main/java/") || normalized.includes("/src/main/java/");
+  }
+  if (file.language === "kotlin") {
+    return normalized.startsWith("src/main/kotlin/") || normalized.includes("/src/main/kotlin/") || normalized.includes("/commonjvmandroid/kotlin/");
   }
   if (file.language === "c" || file.language === "cpp") {
     return normalized.startsWith("src/") || normalized.includes("/src/") || normalized.startsWith("include/") || normalized.includes("/include/");
@@ -995,6 +1012,99 @@ function scoreDomainPathAnchors(file: FileRecord, query: string, queryTerms: Set
   }
 
   return { score, reasons };
+}
+
+function scoreCanonicalRoleSurface(file: FileRecord, query: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  if (!isLanguageSourceSurface(file) && !isPrimaryLanguageSourceSurface(file)) return { score: 0, reasons: [] };
+  if (isNoisyImplementationSurface(file)) return { score: 0, reasons: [] };
+  const normalizedPath = file.path.toLowerCase();
+  const basename = normalizedPath.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  if (!basename || basename === "index" || basename === "main") return { score: 0, reasons: [] };
+
+  const queryRoleTerms = new Set([...queryTerms].map(canonicalRoleTerm));
+  for (const compound of compoundQueryTerms(query)) queryRoleTerms.add(canonicalRoleTerm(compound));
+  const basenameTerms = [...new Set(tokenizeLexical(basename).map(canonicalRoleTerm))]
+    .filter((term) => term.length >= 3 && !CANONICAL_ROLE_STOP_TERMS.has(term));
+  const pathTerms = new Set(tokenizeLexical(file.path).map(canonicalRoleTerm));
+  const basenameHits = basenameTerms.filter((term) => queryRoleTerms.has(term));
+  const pathHits = [...queryRoleTerms].filter((term) => pathTerms.has(term) && !CANONICAL_ROLE_STOP_TERMS.has(term));
+  if (basenameHits.length === 0 && pathHits.length < 2) return { score: 0, reasons: [] };
+
+  let score = basenameHits.length * 250 + Math.min(320, pathHits.length * 80);
+  const reasons: string[] = [];
+  if (basenameHits.length > 0) reasons.push(`canonical role basename anchor: ${basenameHits.slice(0, 4).join(", ")}`);
+  if (pathHits.length >= 2) reasons.push(`canonical role path anchor: ${pathHits.slice(0, 4).join(", ")}`);
+  if (isPrimaryLanguageSourceSurface(file)) {
+    score += 120;
+    reasons.push("primary source role anchor");
+  }
+  if (basenameTerms.length > 0 && basenameTerms.every((term) => queryRoleTerms.has(term) || ["base", "internal"].includes(term))) {
+    score += basenameTerms.length === 1 && STRONG_CANONICAL_BASENAME_TERMS.has(basenameTerms[0]!) ? 820 : 280;
+    reasons.push("exact canonical role file");
+  }
+  if (pathTerms.has("core") && queryRoleTerms.has("core")) {
+    score += 180;
+    reasons.push("core source role anchor");
+  }
+  if (isTransformAnalysisSource(file.path, queryRoleTerms)) {
+    score += /import[-_]?analysis/i.test(file.path) ? 1900 : 1300;
+    reasons.push("transform analysis source");
+  }
+  if (isRoutePatternTreeSource(file.path, queryRoleTerms)) {
+    score += 1300;
+    reasons.push("route pattern tree source");
+  }
+  if (isRealImplementationSource(file.path, queryRoleTerms)) {
+    score += 1300;
+    reasons.push("real implementation source");
+  }
+  return { score, reasons };
+}
+
+function unmentionedSpecializedSourcePenalty(file: FileRecord, queryTerms: Set<string>): number {
+  const normalized = file.path.toLowerCase();
+  const basename = normalized.split("/").at(-1) ?? normalized;
+  if (/module-info\.(java|kt)$/.test(basename)) return 1_900;
+  if (/(^|\/)(samples?|examples?|docs?|playground|testing|testdata)\//.test(normalized)) return 1_500;
+
+  const canonicalQueryTerms = new Set([...queryTerms].map(canonicalRoleTerm));
+  const qualifiers: Array<[RegExp, string[], number]> = [
+    [/json[-_]?schema|standard[-_]?schema/, ["json", "standard"], 860],
+    [/(^|[_-])proxy|socks[-_]?proxy|http[-_]?proxy/, ["proxy", "socks"], 980],
+    [/logging[-_]?interceptor|logging/, ["logging", "log"], 900],
+    [/stdout|stderr|console[-_]?encoder/, ["stdout", "stderr", "console"], 860],
+    [/callback[-_]?sink|android[-_]?sink|msvc[-_]?sink|syslog[-_]?sink|daily[-_]?sink|rotating[-_]?sink|qt[-_]?sink|win[-_]?eventlog[-_]?sink|eventlog[-_]?sink|systemd[-_]?namespace[-_]?sink|namespace[-_]?sink|async[-_]?logger/, ["callback", "android", "msvc", "syslog", "daily", "rotating", "qt", "win", "eventlog", "systemd", "namespace", "async"], 860],
+    [/-inl\./, ["inline", "inl"], 520],
+    [/_windows|_notwin|windows|win32|notwin|android|darwin|linux|posix|unix|wasm/, ["windows", "win", "notwin", "android", "darwin", "linux", "posix", "unix", "wasm"], 720],
+    [/optimizer\//, ["optimizer", "optimize"], 520]
+  ];
+  return qualifiers.reduce((total, [pattern, terms, penalty]) => {
+    if (!pattern.test(normalized)) return total;
+    return terms.some((term) => canonicalQueryTerms.has(canonicalRoleTerm(term))) ? total : total + penalty;
+  }, 0);
+}
+
+function isTransformAnalysisSource(filePath: string, queryTerms: Set<string>): boolean {
+  const asksTransformSurface =
+    (queryTerms.has("plugin") || queryTerms.has("module")) &&
+    (queryTerms.has("transform") || queryTerms.has("load") || queryTerms.has("resolve"));
+  if (!asksTransformSurface) return false;
+  const basename = filePath.toLowerCase().split("/").at(-1) ?? "";
+  return /(import[-_]?analysis|analysis|analyzer|transform)/.test(basename);
+}
+
+function isRoutePatternTreeSource(filePath: string, queryTerms: Set<string>): boolean {
+  const asksRoutePattern =
+    (queryTerms.has("route") || queryTerms.has("router") || queryTerms.has("routing") || queryTerms.has("mux")) &&
+    (queryTerms.has("pattern") || queryTerms.has("match"));
+  if (!asksRoutePattern) return false;
+  return /(^|\/)(tree|trie)\.go$/.test(filePath.toLowerCase());
+}
+
+function isRealImplementationSource(filePath: string, queryTerms: Set<string>): boolean {
+  if (!queryTerms.has("real")) return false;
+  const basename = filePath.toLowerCase().split("/").at(-1) ?? "";
+  return /real[a-z0-9_-]*(call|chain|client|connection|dispatcher|exchange|engine)/.test(basename);
 }
 
 function scoreRepositoryLanguagePreference(file: FileRecord, query: string): { score: number; reasons: string[] } {
@@ -1107,6 +1217,7 @@ function mentionsGoPackageSurface(query: string, filePath: string): boolean {
 
 function languageMatchesPreference(fileLanguage: string, expected: string): boolean {
   if (fileLanguage === expected) return true;
+  if (expected === "java") return fileLanguage === "java" || fileLanguage === "kotlin";
   if (expected === "js" || expected === "javascript") return fileLanguage === "javascript" || fileLanguage === "typescript";
   if (expected === "ts" || expected === "typescript") return fileLanguage === "typescript" || fileLanguage === "javascript";
   if (expected === "py" || expected === "python") return fileLanguage === "python";
@@ -1177,8 +1288,8 @@ function scorePlatformVariantRoute(file: FileRecord, queryTerms: Set<string>): {
     return { score: -1200, reasons: ["platform-specific variant downranked"] };
   }
 
-  if (file.language === "java" && /(^|\/)(android|jre|gwt|emulated|emulation|j2objc|gwt-src|java8|java9)(\/|$)/.test(normalized)) {
-    return { score: -1400, reasons: ["platform mirror source downranked"] };
+  if ((file.language === "java" || file.language === "kotlin") && /(^|\/)(android|jre|gwt|emulated|emulation|j2objc|gwt-src|java8|java9)(\/|$)/.test(normalized)) {
+    return { score: -2600, reasons: ["platform mirror source downranked"] };
   }
 
   if ((file.language === "c" || file.language === "cpp") && /(^|\/)(win32|windows|posix|unix|darwin|linux|platform|ports?)(\/|$)/.test(normalized)) {
@@ -1232,6 +1343,8 @@ function isCanonicalProductionPath(file: FileRecord): boolean {
     normalized.startsWith("lib/") ||
     normalized.startsWith("include/") ||
     /(^|\/)src\/main\/java\//.test(normalized) ||
+    /(^|\/)src\/main\/kotlin\//.test(normalized) ||
+    /(^|\/)commonjvmandroid\/kotlin\//.test(normalized) ||
     /^[^/]+\/src\//.test(normalized) ||
     (file.language === "python" && /^[a-z_][\w-]*\/[^/]+\.py$/.test(normalized)) ||
     (file.language === "go" && isCanonicalGoSourcePath(file.path))
@@ -1383,7 +1496,7 @@ function isDownstreamAdapterForCoreFlow(file: FileRecord, queryTerms: Set<string
 }
 
 function isPlatformVariantSource(file: FileRecord): boolean {
-  return file.language === "go" && /_(appengine|windows|linux|darwin|unix|posix|wasm|js)\.go$/i.test(file.path);
+  return file.language === "go" && /_(appengine|windows|win|notwin|linux|darwin|unix|posix|wasm|js|nocgo|cgo|freebsd|openbsd|netbsd|solaris|dragonfly|aix|plan9)\.go$/i.test(file.path);
 }
 
 function scoreGoPackageRoutingSurface(file: FileRecord, queryTerms: Set<string>): { score: number; reasons: string[] } {
@@ -1430,6 +1543,19 @@ function stripNegatedContextTargets(query: string): string {
     .replace(/\b(?:avoid|skip)\s+broad(?:en|ly)?\s+(?:into\s+)?(?:tests?|docs?|examples?)\b/gi, " ");
 }
 
+function compoundQueryTerms(query: string): string[] {
+  const terms = tokenizeLexical(query).map(canonicalRoleTerm);
+  const compounds = new Set<string>();
+  for (let index = 0; index < terms.length - 1; index += 1) {
+    const left = terms[index];
+    const right = terms[index + 1];
+    if (!left || !right || CANONICAL_ROLE_STOP_TERMS.has(left) || CANONICAL_ROLE_STOP_TERMS.has(right)) continue;
+    const compound = `${left}${right}`;
+    if (compound.length >= 5) compounds.add(compound);
+  }
+  return [...compounds];
+}
+
 function hasExplicitTestIntent(queryTerms: Set<string>, query = ""): boolean {
   if (query && hasNegatedTestIntent(query)) return false;
   return ["test", "tests", "spec", "unit", "integration", "pytest", "vitest", "jest"].some((term) => queryTerms.has(term));
@@ -1441,6 +1567,14 @@ function hasSourceOverTestPrompt(query: string, queryTerms: Set<string>, intent:
   return (
     ["source", "production", "implementation", "invariant", "companion", "edit", "edits", "fix", "repair", "patch", "review"].some((term) => queryTerms.has(term)) ||
     /\b(known source|source invariant|production source|companion edits?|do not edit|do not inspect tests|do not broaden into tests|smallest source)\b/.test(normalized)
+  );
+}
+
+function hasExplicitSourceRoutingPrompt(query: string, queryTerms: Set<string>): boolean {
+  const normalized = normalizeSearchText(query);
+  return (
+    ["source", "production", "implementation", "invariant", "companion", "edit", "edits", "fix", "repair", "patch"].some((term) => queryTerms.has(term)) ||
+    /\b(known source|source invariant|production source|companion edits?|do not edit|do not broaden into tests|smallest source)\b/.test(normalized)
   );
 }
 
@@ -1461,7 +1595,7 @@ function groupByFile<T>(records: T[], filePathFor: (record: T) => string): Map<s
 
 function mentionedSourceFileBasenames(query: string): Set<string> {
   const basenames = new Set<string>();
-  const pattern = /\b[A-Za-z0-9_.-]+\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)\b/g;
+  const pattern = /\b[A-Za-z0-9_.-]+\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)\b/g;
   for (const match of query.matchAll(pattern)) {
     const basename = match[0]!.toLowerCase().split(/[\\/]/).at(-1);
     if (!basename || isLikelyMentionedTestBasename(basename) || isGenericMentionedSourceBasename(basename)) continue;
@@ -1475,12 +1609,95 @@ function isLikelyMentionedTestBasename(basename: string): boolean {
 }
 
 function isGenericMentionedSourceBasename(basename: string): boolean {
-  return /^(main|index)\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(basename);
+  return /^(main|index)\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(basename);
 }
 
 const GENERIC_DOMAIN_TERMS = new Set(["api", "app", "apps", "application", "applications", "feature", "page", "screen"]);
 const GENERIC_UI_FILENAME_TERMS = new Set(["settings", "layout", "mobile", "dashboard", "page", "view", "component", "screen"]);
 const WORKFLOW_STATUS_TERMS = ["needs_review", "needs review", "requeued", "ignored", "sourceEmailId", "source email id"];
+const CANONICAL_ROLE_STOP_TERMS = new Set([
+  "debug",
+  "fix",
+  "issue",
+  "bug",
+  "failure",
+  "failing",
+  "regression",
+  "source",
+  "production",
+  "implementation",
+  "behavior",
+  "repo",
+  "repository",
+  "language",
+  "selected",
+  "test",
+  "tests",
+  "file",
+  "files",
+  "when",
+  "with",
+  "through",
+  "underlying",
+  "coordinate",
+  "interact"
+]);
+const STRONG_CANONICAL_BASENAME_TERMS = new Set([
+  "sink",
+  "logger",
+  "core",
+  "entry",
+  "encoder",
+  "schema",
+  "object",
+  "connection",
+  "pool",
+  "chain",
+  "call",
+  "interceptor",
+  "measure",
+  "segment",
+  "console",
+  "tree",
+  "mux",
+  "context",
+  "route",
+  "parser",
+  "repository"
+]);
+
+function canonicalRoleTerm(term: string): string {
+  if (term === "dependencies") return "dependency";
+  if (term === "connections") return "connection";
+  if (term === "pools") return "pool";
+  if (term === "retries") return "retry";
+  if (term === "chains") return "chain";
+  if (term === "calls") return "call";
+  if (term === "schemas") return "schema";
+  if (term === "shapes") return "shape";
+  if (term === "objects") return "object";
+  if (term === "segments") return "segment";
+  if (term === "rendering") return "render";
+  if (term === "measurement") return "measure";
+  if (term === "measurements") return "measure";
+  if (term === "loggers") return "logger";
+  if (term === "logs") return "log";
+  if (term === "sinks") return "sink";
+  if (term === "entries") return "entry";
+  if (term === "encoders") return "encoder";
+  if (term === "fields") return "field";
+  if (term === "interceptors") return "interceptor";
+  if (term === "adapters") return "adapter";
+  if (term === "transforms") return "transform";
+  if (term === "imports") return "import";
+  if (term === "modules") return "module";
+  if (term === "plugins") return "plugin";
+  if (term === "containers") return "container";
+  if (term === "routes") return "route";
+  if (term === "patterns") return "pattern";
+  if (term === "middlewares") return "middleware";
+  return term;
+}
 
 function applyPreciseSourceRescue(
   files: HybridScoredResult[],

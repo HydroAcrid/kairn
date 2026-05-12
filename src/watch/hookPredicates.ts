@@ -35,7 +35,7 @@ export function isHighConfidencePrompt(eventName: string, prompt: string | undef
   if (!isPromptEvent(eventName) || !prompt) return false;
   const normalized = prompt.toLowerCase();
   if (normalized.startsWith("run ")) return false;
-  return /\b(fix|identify|find|implement|update|refactor|debug|error|failing|component|api|layout|parser|mobile|review|queue|sync|gmail|test|hook|metrics|eval)\b/.test(normalized);
+  return /\b(fix|identify|find|implement|update|refactor|debug|diagnose|investigate|audit|trace|error|failing|component|api|layout|parser|mobile|review|queue|sync|gmail|test|hook|metrics|eval)\b/.test(normalized);
 }
 
 export function isTrivialSuccessfulHook(input: {

@@ -1,0 +1,236 @@
+import fs from "node:fs";
+import path from "node:path";
+import { Command } from "commander";
+import { runDoctor } from "../../doctor/doctor.js";
+import { buildDiagnosticExport, writeDiagnosticExport } from "../../telemetry/diagnostics.js";
+import { buildTelemetryPayload } from "../../telemetry/payload.js";
+import { buildBetaReport } from "../../telemetry/report.js";
+import { disableTelemetry, enableTelemetry, ensureTelemetryIdentity, getTelemetryStatus } from "../../telemetry/config.js";
+import { enqueueTelemetryPayload } from "../../telemetry/queue.js";
+import { flushTelemetryQueue } from "../../telemetry/queue.js";
+import { writeCodexSetup } from "../setup/codexSetup.js";
+import { withRuntime } from "../helpers.js";
+import { printJson } from "../output.js";
+
+export function registerBetaCommands(program: Command): void {
+  program
+    .command("doctor")
+    .description("Check Kairn beta setup health for hooks, MCP, daemon, telemetry, and state.")
+    .option("--root <path>", "target repository root", process.cwd())
+    .option("--codex-command <command>", "Codex command to check", process.env.KAIRN_CODEX_CMD ?? "codex")
+    .option("--fix-hooks", "rewrite Kairn-owned Codex hook files when safe")
+    .option("--json", "print JSON output")
+    .action(async (options: { root: string; codexCommand: string; fixHooks?: boolean; json?: boolean }) => {
+      await withRuntime(options.root, async (runtime) => {
+        if (options.fixHooks) {
+          fixHooksIfSafe(options.root);
+        }
+        const report = runDoctor({ rootPath: options.root, runtime, codexCommand: options.codexCommand });
+        if (options.json) {
+          printJson(report);
+          return;
+        }
+        printDoctor(report);
+      });
+    });
+
+  const telemetry = program
+    .command("telemetry")
+    .description("Manage privacy-first local telemetry and optional sanitized upload.");
+
+  telemetry
+    .command("status")
+    .description("Show local telemetry status.")
+    .option("--root <path>", "target repository root", process.cwd())
+    .option("--json", "print JSON output")
+    .action((options: { root: string; json?: boolean }) => {
+      const status = getTelemetryStatus(options.root);
+      if (options.json) {
+        printJson(status);
+        return;
+      }
+      printTelemetryStatus(status);
+    });
+
+  telemetry
+    .command("enable")
+    .description("Opt in to sanitized aggregate telemetry.")
+    .option("--root <path>", "target repository root", process.cwd())
+    .requiredOption("--destination <destination>", "telemetry destination, currently: supabase")
+    .option("--endpoint <url>", "ingest endpoint override")
+    .option("--json", "print JSON output")
+    .action((options: { root: string; destination: string; endpoint?: string; json?: boolean }) => {
+      if (options.destination !== "supabase") {
+        throw new Error("Only --destination supabase is supported.");
+      }
+      const config = enableTelemetry({ rootPath: options.root, destination: "supabase", endpoint: options.endpoint });
+      if (options.json) {
+        printJson(config);
+        return;
+      }
+      process.stdout.write("Kairn telemetry enabled. Only sanitized aggregate payloads will be uploaded.\n");
+    });
+
+  telemetry
+    .command("disable")
+    .description("Disable telemetry upload.")
+    .option("--root <path>", "target repository root", process.cwd())
+    .option("--json", "print JSON output")
+    .action((options: { root: string; json?: boolean }) => {
+      const config = disableTelemetry(options.root);
+      if (options.json) {
+        printJson(config);
+        return;
+      }
+      process.stdout.write("Kairn telemetry disabled. Local metrics remain in .kairn/.\n");
+    });
+
+  telemetry
+    .command("flush")
+    .description("Queue and upload the current sanitized telemetry snapshot.")
+    .option("--root <path>", "target repository root", process.cwd())
+    .option("--endpoint <url>", "ingest endpoint override")
+    .option("--dry-run", "preview without queueing or sending")
+    .option("--json", "print JSON output")
+    .action(async (options: { root: string; endpoint?: string; dryRun?: boolean; json?: boolean }) => {
+      await withRuntime(options.root, async (runtime) => {
+        const identity = ensureTelemetryIdentity(options.root);
+        const payload = buildTelemetryPayload({
+          runtime,
+          installationId: identity.installationId!,
+          repoSalt: identity.repoSalt!
+        });
+        if (!options.dryRun) {
+          enqueueTelemetryPayload({ rootPath: options.root, payload });
+        }
+        const result = await flushTelemetryQueue({ rootPath: options.root, endpoint: options.endpoint, dryRun: options.dryRun });
+        if (options.json) {
+          printJson({ result, ...(options.dryRun ? { payload } : {}) });
+          return;
+        }
+        process.stdout.write(
+          [
+            options.dryRun ? "Kairn telemetry dry run." : "Kairn telemetry flush complete.",
+            `Attempted: ${result.attempted}`,
+            `Sent: ${result.sent}`,
+            `Retained: ${result.retained}`,
+            result.failures.length ? `Failures: ${result.failures.join("; ")}` : "",
+            ""
+          ].filter(Boolean).join("\n")
+        );
+      });
+    });
+
+  const diagnostics = program
+    .command("diagnostics")
+    .description("Create local, user-previewed diagnostic bundles.");
+
+  diagnostics
+    .command("export")
+    .description("Export a redacted local diagnostic bundle.")
+    .option("--root <path>", "target repository root", process.cwd())
+    .requiredOption("--out <path>", "output JSON path")
+    .option("--json", "print JSON output")
+    .action(async (options: { root: string; out: string; json?: boolean }) => {
+      await withRuntime(options.root, async (runtime) => {
+        const identity = ensureTelemetryIdentity(options.root);
+        const doctor = runDoctor({ rootPath: options.root, runtime });
+        const exportData = buildDiagnosticExport({
+          runtime,
+          rootPath: options.root,
+          installationId: identity.installationId!,
+          repoSalt: identity.repoSalt!,
+          doctor
+        });
+        writeDiagnosticExport({ outPath: options.out, exportData });
+        if (options.json) {
+          printJson({ outPath: path.resolve(options.out), export: exportData });
+          return;
+        }
+        process.stdout.write(`Kairn diagnostic bundle written: ${path.resolve(options.out)}\n`);
+      });
+    });
+
+  const beta = program
+    .command("beta")
+    .description("Private beta reporting helpers.");
+
+  beta
+    .command("report")
+    .description("Summarize whether Kairn helped, stayed silent, or over-assisted.")
+    .option("--root <path>", "target repository root", process.cwd())
+    .option("--session <id>", "limit report to one Kairn session")
+    .option("--json", "print JSON output")
+    .action(async (options: { root: string; session?: string; json?: boolean }) => {
+      await withRuntime(options.root, async (runtime) => {
+        const report = buildBetaReport({ runtime, sessionId: options.session });
+        if (options.json) {
+          printJson(report);
+          return;
+        }
+        printBetaReport(report);
+      });
+    });
+}
+
+function fixHooksIfSafe(root: string): void {
+  const hooksPath = path.join(root, ".codex", "hooks.json");
+  const existing = fs.existsSync(hooksPath) ? fs.readFileSync(hooksPath, "utf8") : "";
+  if (existing && !/kairn|Kairn/.test(existing)) {
+    throw new Error("Refusing to rewrite non-Kairn Codex hooks. Remove or edit .codex/hooks.json manually.");
+  }
+  writeCodexSetup({
+    root,
+    mode: "savings",
+    primeProfile: "auto",
+    hookOutput: "full-prime",
+    postToolHookOutput: "failure-only",
+    primeBudget: 900
+  });
+}
+
+function printDoctor(report: ReturnType<typeof runDoctor>): void {
+  process.stdout.write(
+    [
+      `Kairn doctor: ${report.status}`,
+      `Root: ${report.rootPath}`,
+      ...report.checks.map((check) => {
+        const fix = check.fix ? `\n  fix: ${check.fix}` : "";
+        return `- ${check.status.toUpperCase()} ${check.id}: ${check.summary}${fix}`;
+      }),
+      ""
+    ].join("\n")
+  );
+}
+
+function printTelemetryStatus(status: ReturnType<typeof getTelemetryStatus>): void {
+  process.stdout.write(
+    [
+      "Kairn telemetry status.",
+      `Enabled: ${status.enabled}`,
+      `Destination: ${status.destination ?? "none"}`,
+      `Endpoint configured: ${status.endpointConfigured}`,
+      `Queue length: ${status.queueLength}`,
+      `Queue: ${status.queuePath}`,
+      ""
+    ].join("\n")
+  );
+}
+
+function printBetaReport(report: ReturnType<typeof buildBetaReport>): void {
+  process.stdout.write(
+    [
+      `Kairn beta report: ${report.verdict}`,
+      `Sessions: ${report.sessions}`,
+      `Helped: ${report.status.helped}`,
+      `Silent: ${report.status.silent}`,
+      `Over-assisted: ${report.status.mayHaveOverAssisted}`,
+      `Missed opportunities: ${report.status.missedOpportunity}`,
+      `Estimated saved tokens: ${report.tokens.estimatedSaved}`,
+      `Repeated context avoided: ${report.context.repeatedFilesAvoided} files, ${report.context.repeatedSnippetsAvoided} snippets`,
+      "",
+      ...report.summary.map((line) => `- ${line}`),
+      ""
+    ].join("\n")
+  );
+}

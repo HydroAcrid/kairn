@@ -438,6 +438,7 @@ function hasStrongMultiSurfaceLanguage(task: string): boolean {
   const normalized = task.toLowerCase();
   return (
     /\b(end-to-end|e2e|integration|workflow|flow|pipeline|frontend and backend|api and ui|full stack|system)\b/.test(normalized) ||
+    /\b(coordinate|coordinates|coordinated|interact|interacts|interaction)\b.*\bacross\b/.test(normalized) ||
     /\bacross\s+(files?|modules?|components?|surfaces?|packages?|services?|layers?)\b/.test(normalized) ||
     /\bmultiple\s+(files?|modules?|components?|surfaces?|packages?|services?|layers?)\b/.test(normalized) ||
     /\b(move|moved|relocat(?:e|ed|ion)|split|centraliz(?:e|ed)|shared|public api|new public interfaces?)\b/.test(normalized) ||
@@ -533,6 +534,7 @@ function isVagueImprovementTask(task: string): boolean {
 function isMultiFileTask(task: string): boolean {
   const normalized = task.toLowerCase();
   return /\b(end-to-end|e2e|integration|workflow|flow|pipeline|refactor|feature|migration|api and ui|frontend and backend|full stack|system|ui|mobile|layout|responsive|drawer|sheet|tabs|dashboard|screen|component|filter|filters|card|cards|routing|dependency|dependencies|route handler|route matching|mcp|tool|tools|runtime|follow-up|next context|proxy|response controller|interceptor|interceptors|guard|guards|pipe|pipes|case sensitivity|extension matching|move|moved|relocate|relocated|relocation|centralize|centralized|shared)\b/.test(normalized) ||
+    /\b(coordinate|coordinates|coordinated|interact|interacts|interaction)\b.*\bacross\b/.test(normalized) ||
     /\bacross\s+(files?|modules?|components?|surfaces?|packages?|services?|layers?)\b/.test(normalized) ||
     /\bmultiple\s+(files?|modules?|components?|surfaces?|packages?|services?|layers?)\b/.test(normalized);
 }

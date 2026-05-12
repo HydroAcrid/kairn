@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import { registerBetaCommands } from "./cli/commands/beta.js";
 import { registerBenchCommands } from "./cli/commands/bench.js";
 import { registerContextCommands } from "./cli/commands/context.js";
 import { registerCoreCommands } from "./cli/commands/core.js";
@@ -20,6 +21,7 @@ registerContextCommands(program);
 registerWatchCommands(program);
 registerEvalCommands(program);
 registerBenchCommands(program);
+registerBetaCommands(program);
 
 program.parseAsync().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);

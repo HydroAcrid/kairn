@@ -148,6 +148,21 @@ kairn ledger --session task_123 --root /path/to/repo
 kairn ledger --session task_123 --root /path/to/repo --json
 ```
 
+## Private Beta Diagnostics
+
+Kairn is local-first by default. Detailed metrics, ledger facts, hook events, and benchmark evidence stay under `.kairn/`. Telemetry upload is opt-in and sends only sanitized aggregate counts: no source code, prompts, command output, diffs, filenames, repo URLs, usernames, branch names, or machine paths.
+
+```bash
+kairn doctor --root /path/to/repo
+kairn beta report --root /path/to/repo
+kairn telemetry status --root /path/to/repo
+kairn telemetry enable --root /path/to/repo --destination supabase
+kairn telemetry flush --root /path/to/repo --dry-run --json
+kairn diagnostics export --root /path/to/repo --out kairn-diagnostics.json
+```
+
+Use `kairn doctor` before sharing beta results. It checks Node/Kairn/Codex setup, hook config, MCP config, daemon hints, session-bound hooks, index state, and telemetry status. `kairn beta report` summarizes whether Kairn helped, stayed silent, over-assisted, or missed opportunities in local sessions.
+
 ## Eval Harness
 
 The eval harness records proof from manual A/B Codex runs. For manual sessions, you run the baseline and Kairn-assisted sessions yourself, then ingest the Codex usage footer.
