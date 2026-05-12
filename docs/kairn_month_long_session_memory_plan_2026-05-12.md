@@ -6,6 +6,16 @@ Kairn is pointed at a stronger long-session architecture than normal chat compac
 
 This plan is intentionally future-facing. It should guide implementation and validation before Kairn claims reliable weeks/months-long token savings.
 
+## Three-Layer Model
+
+| Layer | Status | Scope | Purpose |
+| --- | --- | --- | --- |
+| Session ledger | Built foundation | One Kairn session in `.kairn` | Records structured facts: files shown/touched, failures, commands, verification, ignored recommendations, and hashes. |
+| Short-session controller | Current focus | 3-8 turn coding sessions | Uses the ledger to decide when to emit, shrink, or suppress context on the next turn. |
+| Month-long memory | Future larger system | Weeks/months, branch changes, stale context | Keeps ledger facts useful over time through stable session identity, branch awareness, aging, archive memory, and periodic compaction. |
+
+The short-session controller is the missing bridge between "we stored facts" and "we actually used those facts well." It should treat silence as a first-class positive outcome when prior context is still valid, verification already passed, or the task is a cheap obvious source fix.
+
 ## Current Foundation
 
 Kairn already has the right base:
@@ -49,6 +59,10 @@ codex
 where hooks and MCP resolve to the same durable Kairn session for that conversation.
 
 In this model, Kairn becomes less like prompt RAG and more like local repo working memory.
+
+`kairn codex` without a task is the session-bound launcher shape: it creates or reuses a Kairn session, temporarily installs Codex hooks bound to that session, launches interactive Codex, and restores the previous `.codex` files when Codex exits. The user types normally inside Codex, but all hook turns share one Kairn ledger.
+
+A PATH shim named `codex` is technically possible because Codex is a normal CLI binary. The shim would need to sit earlier in `PATH`, locate the real Codex binary without recursing into itself, and delegate interactive launches through `kairn codex`. This should remain opt-in because shadowing a common developer command can be surprising.
 
 ## Required Improvements
 
@@ -99,9 +113,13 @@ Automatic delivery should follow these rules:
 
 - If the same file/snippet was already shown and unchanged, suppress or emit a one-line reminder.
 - If verification passed, stop suggesting stale ignored files.
+- If verification or cleanup is requested after a passing check and no new failure exists, prefer suppression for hooks/MCP/benchmark automatic delivery.
+- If the active source and invariant are already known, emit at most a tiny guardrail; do not fan out to companions unless the task target broadens.
 - If a new failure references a known file, re-emit only failure-linked evidence.
 - If the task target changes, allow a new focused retrieval.
 - If the user asks broad planning questions, summarize the working set rather than source snippets.
+
+This is where Kairn's suppression system belongs. The goal is not to speak every turn. The goal is to compound savings by avoiding repeated context, only re-emitting when the repo state or task phase makes that context valuable again.
 
 ### 6. Host Tooling Coverage
 
@@ -186,6 +204,11 @@ Add/track:
 - stale recommendations suppressed,
 - changed-file re-emissions,
 - failure re-emissions,
+- verified-context suppressions,
+- correct abstentions,
+- missed savings opportunities,
+- over-assists,
+- harmful assists,
 - archive-to-active promotions,
 - active Kairn turns,
 - passive/suppressed turns,

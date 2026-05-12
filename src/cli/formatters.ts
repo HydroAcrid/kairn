@@ -1,6 +1,7 @@
 import type {
   BenchmarkComparison,
   BenchmarkEnduranceReport,
+  BenchmarkEnduranceRepeatReport,
   BenchmarkMatrixReport,
   BenchmarkProofReport,
   BenchmarkReport,
@@ -234,6 +235,37 @@ export function printBenchmarkEnduranceReport(report: BenchmarkEnduranceReport):
     } else {
       lines.push(`- ${mode}: ${delta.savedTokens} tokens (${Math.round((delta.savingsRate ?? 0) * 100)}%); ${delta.assistClassification}`);
     }
+  }
+
+  lines.push(
+    "",
+    "Recommendations",
+    ...(report.recommendations.length > 0 ? report.recommendations.map((entry) => `- ${entry}`) : ["- none"]),
+    ""
+  );
+  process.stdout.write(`${lines.join("\n")}\n`);
+}
+
+export function printBenchmarkEnduranceRepeatReport(report: BenchmarkEnduranceRepeatReport): void {
+  const lines = [
+    "Kairn endurance repeat benchmark.",
+    `Suite: ${report.suiteName}`,
+    `Repeats: ${report.repeat}`,
+    "",
+    "Aggregate"
+  ];
+
+  for (const summary of Object.values(report.aggregate)) {
+    const tokens = summary.medianObservedCodexTokens !== undefined
+      ? `${Math.round(summary.medianObservedCodexTokens)} median observed Codex tokens`
+      : "observed Codex tokens unavailable";
+    const savings = summary.medianSavingsRate !== undefined
+      ? `${Math.round(summary.medianSavingsRate * 10_000) / 100}% median savings`
+      : "savings unavailable";
+    lines.push(
+      `- ${summary.mode}: ${summary.verdict}; quality ${summary.qualityPasses}/${summary.repeats}; ${tokens}; ${savings}`,
+      `  active ${summary.activeRuns}, passive ${summary.passiveSuppressedRuns}, valid ${summary.validSavingsRuns}, over-assist ${summary.overAssistRuns}, harmful ${summary.harmfulRuns}, missed ${summary.missedOpportunityRuns}`
+    );
   }
 
   lines.push(

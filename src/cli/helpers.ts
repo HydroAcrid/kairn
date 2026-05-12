@@ -30,10 +30,28 @@ export function codexExecArgs(input: {
     ...(input.model ? ["--model", input.model] : []),
     "--sandbox",
     input.sandbox,
-    ...(input.enableHooks ? ["--enable", "codex_hooks"] : []),
+    ...(input.enableHooks ? ["--enable", "hooks"] : []),
     "--cd",
     path.resolve(input.root),
     input.prompt
+  ];
+}
+
+export function codexInteractiveArgs(input: {
+  root: string;
+  initialPrompt?: string | undefined;
+  model?: string | undefined;
+  sandbox: string;
+  enableHooks?: boolean | undefined;
+}): string[] {
+  return [
+    ...(input.model ? ["--model", input.model] : []),
+    "--sandbox",
+    input.sandbox,
+    ...(input.enableHooks ? ["--enable", "hooks"] : []),
+    "--cd",
+    path.resolve(input.root),
+    ...(input.initialPrompt ? [input.initialPrompt] : [])
   ];
 }
 

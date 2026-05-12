@@ -47,7 +47,8 @@ function buildCodexConfig(input: {
   mode: CodexSetupMode;
   existingConfig: string;
 }): string {
-  let config = upsertFeatureFlag(input.existingConfig, "codex_hooks", true);
+  let config = removeFeatureFlag(input.existingConfig, "codex_hooks");
+  config = upsertFeatureFlag(config, "hooks", true);
   if (input.mode === "mcp-first" || input.mode === "hybrid") {
     const mcpCommand = resolveKairnMcpCommand();
     const mcpArgs = [...mcpCommand.argsPrefix, "serve", "--mcp", "--root", input.rootPath];
@@ -118,6 +119,23 @@ function upsertFeatureFlag(config: string, key: string, value: boolean): string 
     ? body.replace(keyPattern, featureLine)
     : `${body.trimEnd()}\n${featureLine}\n`;
   return config.replace(featurePattern, `${match[1]}${featureHeader}\n${nextBody.trimEnd()}\n`);
+}
+
+function removeFeatureFlag(config: string, key: string): string {
+  const featureHeader = "[features]";
+  const featurePattern = /(^|\n)\[features\]\n([\s\S]*?)(?=\n\[|$)/;
+  const match = config.match(featurePattern);
+  if (!match) return config;
+
+  const body = match[2] ?? "";
+  const keyPattern = new RegExp(`^\\s*${escapeRegExp(key)}\\s*=.*\\n?`, "m");
+  if (!keyPattern.test(body)) return config;
+
+  const nextBody = body.replace(keyPattern, "").trimEnd();
+  return config.replace(
+    featurePattern,
+    `${match[1]}${featureHeader}\n${nextBody ? `${nextBody}\n` : ""}`
+  );
 }
 
 function upsertTomlTable(config: string, table: string, lines: string[]): string {

@@ -271,7 +271,7 @@ export class KairnRuntime {
     const directivePrimaryFile = contextDecision.recommendedDelivery === "multi_file_directive"
       ? preferredStructuredDebugPrimary(structuredPrimaryCandidate, companionMetadata)
       : primaryFile;
-    const invariants = directivePrimaryFile && (contextDecision.exactSourceHit || contextDecision.cheapSingleSource || contextDecision.recommendedDelivery === "multi_file_directive")
+    let invariants = directivePrimaryFile && (contextDecision.exactSourceHit || contextDecision.cheapSingleSource || contextDecision.recommendedDelivery === "multi_file_directive")
       ? [
           contextDecision.exactSourceHit
             ? this.getExactSourceEvidence({ sessionId: session.id, file: directivePrimaryFile, budget: 180 }).invariant
@@ -387,6 +387,14 @@ export class KairnRuntime {
       : effectiveAction === "shrink" && includeCompanionContext
         ? files.slice(0, 3)
         : files;
+    const invariantFilesMatchDelivery = invariants.every((invariant) => emittedFiles.includes(invariant.file));
+    const deliveredPrimaryFile = emittedFiles[0];
+    if (effectiveAction !== "suppress" && deliveredPrimaryFile && !invariantFilesMatchDelivery) {
+      const deliveredInvariant = contextDecision.exactSourceHit && deliveredPrimaryFile === directivePrimaryFile
+        ? this.getExactSourceEvidence({ sessionId: session.id, file: deliveredPrimaryFile, budget: 180 }).invariant
+        : buildContextInvariant({ task: resolvedTask, file: deliveredPrimaryFile });
+      invariants = deliveredInvariant ? [deliveredInvariant] : [];
+    }
     for (const file of files) {
       this.recordLedgerEvent({
         sessionId: session.id,
@@ -468,6 +476,9 @@ export class KairnRuntime {
     markTiming("formatMs", formatStartedAt);
     timings.totalPrimeMs = Date.now() - primeStartedAt;
     const fileRecords = sessionFiles.filter((file) => emittedFiles.includes(file.path));
+    const policyRepeatedFilesAvoided = typeof sessionPolicy.metadata.repeatedFilesAvoided === "number"
+      ? sessionPolicy.metadata.repeatedFilesAvoided
+      : sessionPolicy.repeatedFiles.length;
 
     this.recordShown(session.id, "context", "brief", content);
     for (const file of emittedFiles) {
@@ -502,7 +513,7 @@ export class KairnRuntime {
           taskHash: sha256(resolvedTask),
           phase: sessionPolicy.phase,
           policyReason: sessionPolicy.reason,
-          repeatedFilesAvoided: sessionPolicy.repeatedFiles.length,
+          repeatedFilesAvoided: policyRepeatedFilesAvoided,
           repeatedSnippetsAvoided: sessionPolicy.reason === "repeated_context_suppressed" ? 1 : 0,
           workingSetActiveFiles: ledgerSummary.workingSet.activeFiles.slice(0, 6),
           nextSmallestUsefulRead: ledgerSummary.workingSet.nextSmallestUsefulRead
@@ -2791,7 +2802,8 @@ export class KairnRuntime {
             ? ({ prompt }) => ({
                 prompt: [
                   "Kairn MCP-first instruction:",
-                  "Before broad file scans, call `kairn_prepare_task` with this task.",
+                  "Call `kairn_prepare_task` before broad, unclear, multi-file, or failure-driven file scans.",
+                  "For short obvious single-source symbol tasks, inspect the likely source first and call Kairn only if that guess fails or the task broadens.",
                   "If `kairn_prepare_task` returns `stopCondition` or no `nextToolCalls`, continue from its files and do not call more Kairn unless a check fails or the target changes.",
                   "Only call `kairn_get_next_context` when `kairn_prepare_task` explicitly returns it as a next tool call.",
                   "For real failures, call `kairn_get_failure_context` once before broad debugging searches.",

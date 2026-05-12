@@ -30,7 +30,8 @@ export type BenchmarkAbstentionOutcome =
   | "correct_abstention"
   | "missed_savings_opportunity"
   | "missed_quality_opportunity"
-  | "passive_quality_regression";
+  | "passive_quality_regression"
+  | "passive_token_regression";
 
 export type BenchmarkAssistClassification =
   | "baseline"
@@ -41,6 +42,7 @@ export type BenchmarkAssistClassification =
   | "missed_savings_opportunity"
   | "missed_quality_opportunity"
   | "passive_quality_regression"
+  | "passive_token_regression"
   | "neutral";
 
 export type BenchmarkContextBehavior =
@@ -178,6 +180,43 @@ export type BenchmarkEnduranceReport = {
     passiveSavings?: number;
     negativeEvidenceReason?: string;
   }>;
+  recommendations: string[];
+};
+
+export type BenchmarkEnduranceRepeatModeAggregate = {
+  mode: "baseline" | "kairn" | "mcp" | "hook_full_prime" | "real_mcp_first" | "hybrid_mcp_brief";
+  repeats: number;
+  qualityPasses: number;
+  activeRuns: number;
+  passiveSuppressedRuns: number;
+  medianObservedCodexTokens?: number;
+  meanObservedCodexTokens?: number;
+  medianSavedTokens?: number;
+  medianSavingsRate?: number;
+  validSavingsRuns: number;
+  overAssistRuns: number;
+  harmfulRuns: number;
+  missedOpportunityRuns: number;
+  correctAbstentionRuns: number;
+  classifications: Partial<Record<BenchmarkAssistClassification, number>>;
+  verdict:
+    | "baseline"
+    | "consistent_win"
+    | "mixed"
+    | "consistent_loss"
+    | "passive_only"
+    | "quality_risk"
+    | "insufficient_data";
+};
+
+export type BenchmarkEnduranceRepeatReport = {
+  suiteId: string;
+  suiteName: string;
+  repeat: number;
+  startedAt: string;
+  endedAt: string;
+  runs: BenchmarkEnduranceReport[];
+  aggregate: Record<string, BenchmarkEnduranceRepeatModeAggregate>;
   recommendations: string[];
 };
 

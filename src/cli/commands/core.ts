@@ -6,7 +6,7 @@ import { startKairnDaemon } from "../../daemon/server.js";
 import { startMcpServer } from "../../server/mcp.js";
 import type { CodexSetupMode, HookOutputProfile, IndexStateStats, PrimeProfile } from "../../types.js";
 import { printContextPrime } from "../formatters.js";
-import { codexExecArgs, parsePositiveInt, shellQuote, waitForShutdown, withRuntime } from "../helpers.js";
+import { codexExecArgs, codexInteractiveArgs, parsePositiveInt, shellQuote, waitForShutdown, withRuntime } from "../helpers.js";
 import { printContextResponse, printJson } from "../output.js";
 import { writeCodexSetup } from "../setup/codexSetup.js";
 
@@ -218,8 +218,8 @@ export function registerCoreCommands(program: Command): void {
 
   program
     .command("codex")
-    .description("Launch Codex with Kairn prime context prepended to the task prompt.")
-    .argument("<task...>", "task to pass to Codex")
+    .description("Launch Codex through a Kairn session-bound wrapper.")
+    .argument("[task...]", "optional task to pass to Codex exec; omit to launch interactive Codex")
     .option("--root <path>", "target repository root", process.cwd())
     .option("--session <id>", "reuse an existing Kairn task session")
     .addOption(new Option("--profile <profile>", "prime profile").choices(["auto", "ui", "workflow", "backend", "test", "failure_debug", "generic"]).default("auto"))
@@ -248,15 +248,24 @@ export function registerCoreCommands(program: Command): void {
     }) => {
       const task = taskParts.join(" ").trim();
       await withRuntime(options.root, async (runtime) => {
-        const prime = await runtime.primeContext({
-          task,
-          sessionId: options.session,
-          profile: options.profile,
-          budget: options.budget
-        });
-        const sessionId = prime.session.id;
+        const interactive = task.length === 0;
+        const prime = interactive
+          ? undefined
+          : await runtime.primeContext({
+              task,
+              sessionId: options.session,
+              profile: options.profile,
+              budget: options.budget
+            });
+        const session = interactive
+          ? options.session
+            ? runtime.getSession(options.session)
+            : (await runtime.startTask("Interactive Codex session")).session
+          : prime!.session;
+        const sessionId = session.id;
         const hookMode = options.hookMode as CodexSetupMode;
-        const shouldInstallSessionHooks = Boolean(options.bindHooks && !options.dryRun && !options.json);
+        const bindHooks = interactive || Boolean(options.bindHooks);
+        const shouldInstallSessionHooks = Boolean(bindHooks && !options.dryRun && !options.json);
         const hookBackup = shouldInstallSessionHooks ? snapshotCodexConversationFiles(options.root) : undefined;
         const hookSetup = shouldInstallSessionHooks
           ? writeCodexSetup({
@@ -269,31 +278,41 @@ export function registerCoreCommands(program: Command): void {
               sessionId
             })
           : undefined;
-        const prompt = [
-          prime.content,
-          "",
-          options.bindHooks ? `Kairn conversation session: ${sessionId}` : "",
-          options.bindHooks ? "Session-bound hooks are installed for follow-up turns in this conversation." : "",
-          options.bindHooks ? "" : "",
-          "User task:",
-          task,
-          "",
-          "Use the Kairn context above first. Avoid broad scans unless the provided files are insufficient."
-        ].join("\n");
+        const prompt = interactive
+          ? undefined
+          : [
+              prime!.content,
+              "",
+              bindHooks ? `Kairn conversation session: ${sessionId}` : "",
+              bindHooks ? "Session-bound hooks are installed for follow-up turns in this conversation." : "",
+              bindHooks ? "" : "",
+              "User task:",
+              task,
+              "",
+              "Use the Kairn context above first. Avoid broad scans unless the provided files are insufficient."
+            ].join("\n");
         const result = {
           rootPath: path.resolve(options.root),
           sessionId,
           codexCommand: options.codexCommand,
-          args: codexExecArgs({
-            root: options.root,
-            prompt,
-            model: options.model,
-            sandbox: options.sandbox,
-            enableHooks: Boolean(options.bindHooks)
-          }),
-          prompt,
-          prime,
-          ...(options.bindHooks
+          mode: interactive ? "interactive" : "exec",
+          args: interactive
+            ? codexInteractiveArgs({
+                root: options.root,
+                model: options.model,
+                sandbox: options.sandbox,
+                enableHooks: bindHooks
+              })
+            : codexExecArgs({
+                root: options.root,
+                prompt: prompt!,
+                model: options.model,
+                sandbox: options.sandbox,
+                enableHooks: bindHooks
+              }),
+          ...(prompt ? { prompt } : {}),
+          ...(prime ? { prime } : {}),
+          ...(bindHooks
             ? {
                 hookBinding: hookSetup ?? {
                   dryRun: true,
@@ -312,6 +331,16 @@ export function registerCoreCommands(program: Command): void {
             return;
           }
 
+          if (interactive) {
+            process.stdout.write(
+              [
+                `Kairn Codex session: ${sessionId}`,
+                "Session-bound Codex hooks are active for this interactive conversation.",
+                "Type normally in Codex. Kairn will stay quiet unless it has useful context.",
+                ""
+              ].join("\n")
+            );
+          }
           const command = [options.codexCommand, ...result.args.map(shellQuote)].join(" ");
           const completed = spawnSync(command, {
             cwd: result.rootPath,

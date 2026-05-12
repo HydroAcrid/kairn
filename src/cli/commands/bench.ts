@@ -5,11 +5,12 @@ import {
   printBenchmarkComparison,
   printBenchmarkMatrixReport,
   printBenchmarkEnduranceReport,
+  printBenchmarkEnduranceRepeatReport,
   printBenchmarkProof,
   printBenchmarkReport
 } from "../formatters.js";
 import { runBenchmarkRepoMatrix } from "../../bench/matrix.js";
-import { runBenchmarkEndurance } from "../../bench/endurance.js";
+import { runBenchmarkEndurance, runBenchmarkEnduranceRepeats } from "../../bench/endurance.js";
 import { buildSweBenchProPilot, fetchSweBenchProRows, loadSweBenchProRows, writeSweBenchProPilot } from "../../bench/sweBenchPro.js";
 import { parsePositiveInt, withRuntime } from "../helpers.js";
 import { printJson } from "../output.js";
@@ -105,6 +106,7 @@ export function registerBenchCommands(program: Command): void {
     .option("--hybrid-mcp-brief-command <command>", "hybrid MCP brief endurance command with {prompt}, {root}, {session}, and {turn} placeholders")
     .option("--hybrid-mcp-brief-setup-command <command>", "hybrid MCP brief setup command timed separately before endurance turns")
     .option("--turn-timeout <ms>", "per-turn live-agent command timeout", parsePositiveInt, 180000)
+    .option("--repeat <n>", "run the endurance suite multiple times and aggregate median results", parsePositiveInt, 1)
     .option("--json", "print JSON output")
     .action(
       async (options: {
@@ -120,9 +122,10 @@ export function registerBenchCommands(program: Command): void {
         hybridMcpBriefCommand?: string;
         hybridMcpBriefSetupCommand?: string;
         turnTimeout: number;
+        repeat: number;
         json?: boolean;
       }) => {
-        const report = await runBenchmarkEndurance({
+        const input = {
           rootPath: options.root,
           suitePath: options.suite,
           baselineCommand: options.baselineCommand,
@@ -135,9 +138,16 @@ export function registerBenchCommands(program: Command): void {
           hybridMcpBriefCommand: options.hybridMcpBriefCommand,
           hybridMcpBriefSetupCommand: options.hybridMcpBriefSetupCommand,
           turnTimeoutMs: options.turnTimeout
-        });
+        };
+        const report = options.repeat > 1
+          ? await runBenchmarkEnduranceRepeats({ ...input, repeat: options.repeat })
+          : await runBenchmarkEndurance(input);
         if (options.json) {
           printJson(report);
+          return;
+        }
+        if ("aggregate" in report) {
+          printBenchmarkEnduranceRepeatReport(report);
           return;
         }
         printBenchmarkEnduranceReport(report);

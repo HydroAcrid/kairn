@@ -190,6 +190,53 @@ describe("KairnRuntime", () => {
     runtime.close();
   });
 
+  it("suppresses automatic verification and cleanup context after a passing check", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const { session } = await runtime.startTask("Investigate dashboard formatting");
+
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "context_shown",
+      filePath: "src/app.ts",
+      source: "runtime",
+      summary: "Earlier focused source context"
+    });
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "verification_passed",
+      filePath: "src/app.ts",
+      source: "bench",
+      summary: "Dashboard verification passed."
+    });
+
+    const prime = await runtime.primeContext({
+      task: "Verify the src/app.ts dashboard rendering fix after the passing check.",
+      sessionId: session.id,
+      budget: 500,
+      source: "codex"
+    });
+    const sessionPolicy = prime.metadata?.sessionPolicy as { reason?: string } | undefined;
+
+    expect(sessionPolicy?.reason).toBe("verified_context_suppressed");
+    expect(prime.contextDecision?.action).toBe("suppress");
+    expect(prime.files).toEqual([]);
+
+    const cleanup = await runtime.primeContext({
+      task: "Review the final diff and confirm only src/app.ts changed.",
+      sessionId: session.id,
+      budget: 500,
+      source: "codex"
+    });
+    const cleanupPolicy = cleanup.metadata?.sessionPolicy as { phase?: string; reason?: string } | undefined;
+
+    expect(cleanupPolicy?.phase).toBe("cleanup");
+    expect(cleanupPolicy?.reason).toBe("verified_context_suppressed");
+    expect(cleanup.contextDecision?.action).toBe("suppress");
+
+    runtime.close();
+  });
+
   it("reads files, symbols, related files, tests, diff, and compressed output", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);

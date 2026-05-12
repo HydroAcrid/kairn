@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "eval \"${KAIRN_CMD:-/opt/homebrew/Cellar/node/24.7.0/bin/node /Users/kevindotel/Documents/Projects/kairn/dist/cli.js} hook --source codex --root \\\"$PWD\\\" --session task_e45c614e-3c3d-4893-8750-1052c4e185cb --prime-profile auto --prime-budget 900 --hook-output full-prime\"",
+            "statusMessage": "Priming Kairn context"
+          }
+        ]
+      }
+    ]
+  }
+}

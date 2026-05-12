@@ -743,7 +743,7 @@ describe("watch and hook CLI", () => {
       })
     ) as { hooksPath: string; mode: string };
     const debugHooks = fs.readFileSync(debug.hooksPath, "utf8");
-    fs.appendFileSync(setup.configPath, "\n[model]\nname = \"gpt-5.4-mini\"\n");
+    fs.appendFileSync(setup.configPath, "codex_hooks = false\n\n[model]\nname = \"gpt-5.4-mini\"\n");
     const mcpFirst = JSON.parse(
       execFileSync(CLI[0]!, [...CLI.slice(1), "setup", "codex", "--root", root, "--mode", "mcp-first", "--json"], {
         cwd: process.cwd(),
@@ -796,7 +796,8 @@ describe("watch and hook CLI", () => {
     expect(setup.hookOutput).toBe("full-prime");
     expect(setup.postToolHookOutput).toBe("failure-only");
     expect(setup.mcpConfigured).toBe(false);
-    expect(config).toContain("codex_hooks = true");
+    expect(config).toContain("hooks = true");
+    expect(config).not.toContain("codex_hooks");
     expect(hooks).toContain("--prime-budget 900");
     expect(hooks).toContain("--hook-output full-prime");
     expect(hooks).not.toContain(":-kairn");
@@ -813,6 +814,8 @@ describe("watch and hook CLI", () => {
     expect(mcpFirst.mcpConfigured).toBe(true);
     expect(mcpFirst.hookOutput).toBe("full-prime");
     expect(mcpConfig).toContain("[mcp_servers.kairn]");
+    expect(mcpConfig).toContain("hooks = true");
+    expect(mcpConfig).not.toContain("codex_hooks");
     expect(mcpConfig).toContain("serve");
     expect(mcpConfig).toContain("--mcp");
     expect(mcpConfig).toContain("[model]");

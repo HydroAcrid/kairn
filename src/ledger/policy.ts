@@ -15,7 +15,7 @@ export function inferTaskPhase(input: {
   failureFiles?: string[] | undefined;
 }): TaskPhase {
   const task = input.task.toLowerCase();
-  if (/\b(cleanup|clean up|refactor|polish|final review|diff review|summarize)\b/.test(task)) return "cleanup";
+  if (/\b(cleanup|clean up|refactor|polish|final review|diff review|review (?:the )?final diff|final diff|summarize)\b/.test(task)) return "cleanup";
   if (/\b(test|verify|verification|typecheck|lint|build|run checks|failing command)\b/.test(task)) return "verification";
   if (/\b(debug|failure|failing|regression|stack trace|error|exception|fix bug)\b/.test(task) || (input.failureFiles?.length ?? 0) > 0) return "debugging";
   if (/\b(implement|edit|change|update|fix|wire|add|remove)\b/.test(task) || (input.changedFiles?.length ?? 0) > 0) return "implementation";
@@ -89,6 +89,19 @@ export function decideSessionContextPolicy(input: {
       ...(verifiedFocus ? [verifiedFocus] : []),
       ...candidateFiles.filter((file) => workingSet.activeFiles.includes(file))
     ]);
+    if (shouldSuppressVerifiedContext({
+      task: input.task,
+      phase,
+      source: input.source,
+      activeFiles,
+      repeatedFiles
+    })) {
+      return decision("suppress", phase, "verified_context_suppressed", [], repeatedFiles, changedFiles, ignoredRecommendedFiles, input, {
+        lastPassingVerification,
+        verifiedFocus,
+        repeatedFilesAvoided: Math.max(repeatedFiles.length, activeFiles.length)
+      });
+    }
     return decision("shrink", phase, "verified_context_shrunk", activeFiles.slice(0, 1), repeatedFiles, changedFiles, ignoredRecommendedFiles, input, {
       lastPassingVerification,
       repeatedFilesAvoided: repeatedFiles.length
@@ -208,6 +221,29 @@ function hasExplicitMultiFileSignal(task: string): boolean {
 function isFixTurnSignal(task: string, phase: TaskPhase): boolean {
   if (phase !== "debugging" && phase !== "implementation") return false;
   return /\b(fix|repair|patch|regression|bug|seeded|failing|failure|broken)\b/i.test(task);
+}
+
+function shouldSuppressVerifiedContext(input: {
+  task: string;
+  phase: TaskPhase;
+  source?: string | undefined;
+  activeFiles: string[];
+  repeatedFiles: string[];
+}): boolean {
+  if (input.phase === "cleanup") return true;
+  if (!isAutomaticContextSource(input.source)) return false;
+  if (input.repeatedFiles.length > 0) return true;
+  if (isVerificationOnlyTask(input.task)) return true;
+  return false;
+}
+
+function isAutomaticContextSource(source: string | undefined): boolean {
+  return !source || /^(?:codex|claude|mcp|watch|bench|generic)$/.test(source);
+}
+
+function isVerificationOnlyTask(task: string): boolean {
+  return /\b(verify|verification|check|test|typecheck|lint|build|cleanup|review diff|final review)\b/i.test(task) &&
+    !/\b(repair|patch|implement|change|update|debug|failing|failure|regression)\b/i.test(task);
 }
 
 function isLikelyProductionSourcePath(filePath: string): boolean {

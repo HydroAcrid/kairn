@@ -81,6 +81,14 @@ export function classifyAssistance(input: AssistanceClassificationInput): Assist
         assistClassification: "passive_quality_regression"
       };
     }
+    if (input.savedTokens !== undefined && input.savedTokens < 0 && input.baselineQualityGatePassed === true && input.qualityGatePassed) {
+      return {
+        ...base,
+        abstentionOutcome: "passive_token_regression",
+        overAssist: true,
+        assistClassification: "passive_token_regression"
+      };
+    }
     if (baselineDifficulty === "expensive_pass") {
       return {
         ...base,
@@ -143,6 +151,8 @@ export function classificationNegativeEvidenceReason(input: {
       return "Kairn suppressed while baseline failed quality; this is a missed quality opportunity.";
     case "passive_quality_regression":
       return "Kairn was passive/suppressed, but the assisted run failed quality while baseline passed.";
+    case "passive_token_regression":
+      return "Kairn was passive/suppressed, but the integration used more observed tokens than baseline.";
     default:
       return undefined;
   }

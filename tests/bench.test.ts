@@ -8,7 +8,7 @@ import { createDefaultBenchmarkSuite, loadBenchmarkSuite } from "../src/bench/su
 import { buildBenchmarkReport, compareBenchmarkReports, scoreBenchmarkCase } from "../src/bench/score.js";
 import { loadBenchmarkRepoMatrix, runBenchmarkRepoMatrix } from "../src/bench/matrix.js";
 import { loadBenchmarkEnduranceSuite } from "../src/bench/enduranceSuite.js";
-import { runBenchmarkEndurance } from "../src/bench/endurance.js";
+import { runBenchmarkEndurance, runBenchmarkEnduranceRepeats } from "../src/bench/endurance.js";
 import { runAgentBenchmarkCase } from "../src/bench/agent.js";
 import { classifyAssistance } from "../src/bench/assistClassification.js";
 import { buildSweBenchProPilot, loadSweBenchProRows, writeSweBenchProPilot } from "../src/bench/sweBenchPro.js";
@@ -735,6 +735,58 @@ describe("benchmark suite and scoring", () => {
     expect(report.reports.find((item) => item.mode === "kairn")?.ledger?.workingSet.activeFiles).toContain("src/user.ts");
     expect(report.reports.find((item) => item.mode === "hook_full_prime")?.metadata?.setupExitCode).toBe(0);
     expect(report.deltas.kairn?.baselineTokens).toBe(240);
+  });
+
+  it("aggregates repeated endurance runs by median savings and classifications", async () => {
+    const root = createFixtureRepo();
+    const suitePath = path.join(root, "endurance-repeat-suite.json");
+    fs.writeFileSync(
+      suitePath,
+      JSON.stringify({
+        id: "fixture-endurance-repeat",
+        name: "Fixture Endurance Repeat",
+        task: "Keep src/user.ts context focused across repeated runs.",
+        seed: {
+          repoUrl: root,
+          ref: "HEAD",
+          cloneDepth: 1
+        },
+        turns: [
+          {
+            id: "diagnose",
+            task: "Inspect src/user.ts formatting behavior.",
+            agentPrompt: "Inspect src/user.ts formatting behavior.",
+            expectedFiles: ["src/user.ts"],
+            requiredTouchedFiles: [],
+            excludedFiles: [],
+            budget: 500
+          }
+        ]
+      })
+    );
+    const baselineCommand = "node -e \"console.log('src/user.ts'); console.log('Token usage: total=300 input=250 output=50')\"";
+    const kairnCommand = "node -e \"console.log('src/user.ts'); console.log('Token usage: total=180 input=150 output=30')\"";
+
+    const report = await runBenchmarkEnduranceRepeats({
+      rootPath: root,
+      suitePath,
+      baselineCommand,
+      kairnCommand,
+      repeat: 2,
+      turnTimeoutMs: 30000
+    });
+
+    expect(report.repeat).toBe(2);
+    expect(report.runs).toHaveLength(2);
+    expect(report.aggregate.baseline?.medianObservedCodexTokens).toBe(300);
+    expect(report.aggregate.kairn).toMatchObject({
+      repeats: 2,
+      qualityPasses: 2,
+      validSavingsRuns: 0,
+      passiveSuppressedRuns: 2,
+      verdict: "passive_only"
+    });
+    expect(report.aggregate.kairn?.medianSavedTokens).toBe(120);
   });
 
   it("applies source invariants and hunk-level diff scopes in endurance quality gates", async () => {
@@ -2282,6 +2334,20 @@ describe("benchmark suite and scoring", () => {
       abstentionOutcome: "missed_savings_opportunity",
       missedOpportunity: true
     });
+    expect(
+      classifyAssistance({
+        assistanceStatus: "passive_suppressed",
+        qualityGatePassed: true,
+        savedTokens: -100,
+        baselineTokens: 80_000,
+        baselineQualityGatePassed: true,
+        turnCount: 4
+      })
+    ).toMatchObject({
+      assistClassification: "passive_token_regression",
+      abstentionOutcome: "passive_token_regression",
+      overAssist: true
+    });
   });
 
   it("scores behavior targets for cheap abstention and source rescue", () => {
@@ -3031,20 +3097,33 @@ describe("benchmark runtime and CLI", () => {
         { cwd: process.cwd(), encoding: "utf8" }
       )
     ) as { args: string[]; prompt: string; sessionId: string; hookBinding: { dryRun: boolean; sessionId: string; mode: string } };
+    const interactiveDryRun = JSON.parse(
+      execFileSync(CLI[0]!, [...CLI.slice(1), "codex", "--root", root, "--dry-run", "--json"], {
+        cwd: process.cwd(),
+        encoding: "utf8"
+      })
+    ) as { args: string[]; mode: string; prompt?: string; sessionId: string; hookBinding: { dryRun: boolean; sessionId: string } };
 
     expect(instructions).toContain("# Existing Instructions");
     expect(instructions.match(/kairn:mcp-first:start/g)?.length).toBe(1);
     expect(dryRun.args[0]).toBe("exec");
-    expect(dryRun.args).not.toContain("codex_hooks");
+    expect(dryRun.args).not.toContain("hooks");
     expect(dryRun.prompt).toContain("Kairn Proactive Context");
     expect(dryRun.prompt).toContain("User task:");
     expect(dryRun.prime.files).toContain("src/app/private/jobs/JobsApplicationsTable.tsx");
     expect(boundDryRun.sessionId).toBe(dryRun.sessionId);
     expect(boundDryRun.args).toContain("--enable");
-    expect(boundDryRun.args).toContain("codex_hooks");
+    expect(boundDryRun.args).toContain("hooks");
     expect(boundDryRun.prompt).toContain(`Kairn conversation session: ${dryRun.sessionId}`);
     expect(boundDryRun.hookBinding.dryRun).toBe(true);
     expect(boundDryRun.hookBinding.sessionId).toBe(dryRun.sessionId);
+    expect(interactiveDryRun.mode).toBe("interactive");
+    expect(interactiveDryRun.args).not.toContain("exec");
+    expect(interactiveDryRun.args).toContain("--enable");
+    expect(interactiveDryRun.args).toContain("hooks");
+    expect(interactiveDryRun.args).toContain("--cd");
+    expect(interactiveDryRun.prompt).toBeUndefined();
+    expect(interactiveDryRun.hookBinding.sessionId).toBe(interactiveDryRun.sessionId);
 
     const codexDir = path.join(root, ".codex");
     fs.mkdirSync(codexDir, { recursive: true });

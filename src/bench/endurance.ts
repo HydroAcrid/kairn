@@ -2,9 +2,12 @@ import type {
   BenchmarkCase,
   BenchmarkEnduranceModeReport,
   BenchmarkEnduranceReport,
+  BenchmarkEnduranceRepeatModeAggregate,
+  BenchmarkEnduranceRepeatReport,
   BenchmarkEnduranceSuite,
   BenchmarkEnduranceTurn,
   BenchmarkEnduranceTurnResult,
+  BenchmarkAssistClassification,
   BenchmarkTaskOutcome,
   SessionLedgerSummary
 } from "../types.js";
@@ -42,7 +45,7 @@ type EnduranceWorkspaceMetrics = {
   mcpReturnedFileCount: number;
 };
 
-export async function runBenchmarkEndurance(input: {
+type BenchmarkEnduranceInput = {
   rootPath: string;
   suitePath: string;
   baselineCommand: string;
@@ -55,7 +58,9 @@ export async function runBenchmarkEndurance(input: {
   hybridMcpBriefCommand?: string | undefined;
   hybridMcpBriefSetupCommand?: string | undefined;
   turnTimeoutMs?: number | undefined;
-}): Promise<BenchmarkEnduranceReport> {
+};
+
+export async function runBenchmarkEndurance(input: BenchmarkEnduranceInput): Promise<BenchmarkEnduranceReport> {
   const suite = loadBenchmarkEnduranceSuite({ suitePath: input.suitePath });
   const startedAt = new Date().toISOString();
   const reports: BenchmarkEnduranceModeReport[] = [];
@@ -92,6 +97,30 @@ export async function runBenchmarkEndurance(input: {
     reports,
     deltas: buildEnduranceDeltas(reports),
     recommendations: buildEnduranceRecommendations(reports)
+  };
+}
+
+export async function runBenchmarkEnduranceRepeats(input: BenchmarkEnduranceInput & {
+  repeat?: number | undefined;
+}): Promise<BenchmarkEnduranceRepeatReport> {
+  const repeat = Math.max(1, Math.floor(input.repeat ?? 1));
+  const startedAt = new Date().toISOString();
+  const runs: BenchmarkEnduranceReport[] = [];
+  for (let index = 0; index < repeat; index += 1) {
+    runs.push(await runBenchmarkEndurance(input));
+  }
+  const suite = runs[0] ?? loadBenchmarkEnduranceSuite({ suitePath: input.suitePath });
+  const endedAt = new Date().toISOString();
+  const aggregate = buildEnduranceRepeatAggregate(runs);
+  return {
+    suiteId: "suiteId" in suite ? suite.suiteId : suite.id,
+    suiteName: "suiteName" in suite ? suite.suiteName : suite.name,
+    repeat,
+    startedAt,
+    endedAt,
+    runs,
+    aggregate,
+    recommendations: buildEnduranceRepeatRecommendations(aggregate)
   };
 }
 
@@ -455,7 +484,7 @@ function buildMcpEndurancePrompt(input: {
   mcpFiles?: string[] | undefined;
 }): {
   prompt: string;
-  guidance: "prepare_first" | "continue_known_source" | "failure_gateway";
+  guidance: "prepare_first" | "continue_known_source" | "failure_gateway" | "obvious_single_source_abstain";
   shouldCallPrepare: boolean;
   knownSource?: string | undefined;
 } {
@@ -488,16 +517,29 @@ function buildMcpEndurancePrompt(input: {
       shouldCallPrepare: false,
       knownSource,
       prompt: [
-        "Kairn long-session instruction:",
-        `Use Kairn session ${input.sessionId}.`,
-        `Known active source: ${knownSource}.`,
-        invariant ? `Known invariant: ${invariant}` : undefined,
-        "Do not call kairn_prepare_task for this turn; Kairn already established the active source.",
-        "Continue from the known source and smallest verification/check. Only call kairn_get_failure_context once if a real check fails, or kairn_prepare_task if the task target changes to a different source area.",
+        `Kairn session ${input.sessionId}: source already found.`,
+        `Source: ${knownSource}.`,
+        invariant ? `Invariant: ${invariant}` : undefined,
+        "Do not call Kairn again unless a real check fails or the target changes.",
         "",
         "User task:",
         input.prompt
       ].filter(Boolean).join("\n")
+    };
+  }
+  if (isLikelyObviousSingleSourcePrompt(input.prompt)) {
+    return {
+      guidance: "obvious_single_source_abstain",
+      shouldCallPrepare: false,
+      prompt: [
+        "Kairn long-session instruction:",
+        `Use Kairn session ${input.sessionId}.`,
+        "This looks like a short single-source symbol task.",
+        "Do not call Kairn on this turn unless your first local source guess fails, a concrete check fails, or the task target broadens.",
+        "",
+        "User task:",
+        input.prompt
+      ].join("\n")
     };
   }
   return {
@@ -506,7 +548,8 @@ function buildMcpEndurancePrompt(input: {
     prompt: [
       "Kairn long-session instruction:",
       `Use Kairn session ${input.sessionId}.`,
-      "Call kairn_prepare_task before broad reads.",
+      "Call kairn_prepare_task only before broad, unclear, multi-file, or failure-driven reads.",
+      "For an obvious single-source symbol task, inspect the likely source directly and do not call Kairn just to confirm it.",
       "If it returns stopCondition or no nextToolCalls, continue from its files and do not call more Kairn unless a check fails or the target changes.",
       "Only call kairn_get_next_context when prepare explicitly returns it; call kairn_get_failure_context once after real failures.",
       "Prefer the smallest Kairn-provided source read and avoid repeating files already shown by Kairn.",
@@ -515,6 +558,16 @@ function buildMcpEndurancePrompt(input: {
       input.prompt
     ].join("\n")
   };
+}
+
+function isLikelyObviousSingleSourcePrompt(prompt: string): boolean {
+  if (prompt.length > 260) return false;
+  if (/\b(multi[-\s]?file|multiple files|across files|across modules|integration|workflow|end-to-end|e2e|stack trace|traceback|selected tests|requirements:|production source|source fix|smallest production)\b/i.test(prompt)) {
+    return false;
+  }
+  if (!/\b(debug|diagnose|fix|repair|regression|bug|verify)\b/i.test(prompt)) return false;
+  return /\b[A-Z][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?\b/.test(prompt) ||
+    /\b[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*\b/.test(prompt);
 }
 
 function firstKnownSource(ledger?: SessionLedgerSummary | undefined, mcpFiles: string[] = []): string | undefined {
@@ -780,6 +833,105 @@ function buildEnduranceRecommendations(reports: BenchmarkEnduranceModeReport[]):
   }
   if (recommendations.length === 0) recommendations.push("No endurance-specific issues detected.");
   return uniqueStrings(recommendations);
+}
+
+function buildEnduranceRepeatAggregate(runs: BenchmarkEnduranceReport[]): BenchmarkEnduranceRepeatReport["aggregate"] {
+  const modes = uniqueStrings(runs.flatMap((run) => run.reports.map((report) => report.mode))) as EnduranceMode[];
+  const aggregate: BenchmarkEnduranceRepeatReport["aggregate"] = {};
+  for (const mode of modes) {
+    const modeReports = runs.flatMap((run) => run.reports.filter((report) => report.mode === mode));
+    const modeDeltas = runs.flatMap((run) => {
+      const delta = run.deltas[mode];
+      return delta ? [delta] : [];
+    });
+    const tokens = modeReports
+      .map((report) => report.totalObservedCodexTokens)
+      .filter((value): value is number => typeof value === "number");
+    const savedTokens = modeDeltas
+      .map((delta) => delta.savedTokens)
+      .filter((value): value is number => typeof value === "number");
+    const savingsRates = modeDeltas
+      .map((delta) => delta.savingsRate)
+      .filter((value): value is number => typeof value === "number");
+    const classifications = countRepeatClassifications(modeDeltas.map((delta) => delta.assistClassification));
+    const summary: BenchmarkEnduranceRepeatModeAggregate = {
+      mode,
+      repeats: modeReports.length,
+      qualityPasses: modeReports.filter((report) => report.qualityGatePassed).length,
+      activeRuns: modeReports.filter((report) => report.assistanceStatus === "active").length,
+      passiveSuppressedRuns: modeReports.filter((report) => report.assistanceStatus === "passive_suppressed").length,
+      ...(tokens.length > 0 ? { medianObservedCodexTokens: medianNumber(tokens), meanObservedCodexTokens: meanNumber(tokens) } : {}),
+      ...(savedTokens.length > 0 ? { medianSavedTokens: medianNumber(savedTokens) } : {}),
+      ...(savingsRates.length > 0 ? { medianSavingsRate: medianNumber(savingsRates) } : {}),
+      validSavingsRuns: modeDeltas.filter((delta) => (delta.validSavings ?? 0) > 0).length,
+      overAssistRuns: modeDeltas.filter((delta) => delta.overAssist).length,
+      harmfulRuns: modeDeltas.filter((delta) => delta.harmfulAssist).length,
+      missedOpportunityRuns: modeDeltas.filter((delta) => delta.missedOpportunity).length,
+      correctAbstentionRuns: modeDeltas.filter((delta) => delta.assistClassification === "correct_abstention").length,
+      classifications,
+      verdict: "insufficient_data"
+    };
+    summary.verdict = repeatVerdict(summary);
+    aggregate[mode] = summary;
+  }
+  return aggregate;
+}
+
+function repeatVerdict(summary: Omit<BenchmarkEnduranceRepeatModeAggregate, "verdict">): BenchmarkEnduranceRepeatModeAggregate["verdict"] {
+  if (summary.mode === "baseline") return "baseline";
+  if (summary.repeats === 0 || summary.qualityPasses === 0) return "insufficient_data";
+  if (summary.harmfulRuns > 0 || summary.qualityPasses < summary.repeats) return "quality_risk";
+  const threshold = Math.ceil(summary.repeats * 0.67);
+  if (summary.validSavingsRuns >= threshold && summary.overAssistRuns === 0) return "consistent_win";
+  if (summary.overAssistRuns >= threshold) return "consistent_loss";
+  if (summary.activeRuns === 0 && summary.passiveSuppressedRuns > 0) return "passive_only";
+  return "mixed";
+}
+
+function buildEnduranceRepeatRecommendations(
+  aggregate: BenchmarkEnduranceRepeatReport["aggregate"]
+): string[] {
+  const recommendations: string[] = [];
+  for (const summary of Object.values(aggregate)) {
+    if (summary.mode === "baseline") continue;
+    if (summary.verdict === "consistent_win") {
+      recommendations.push(`${summary.mode}: repeat evidence is positive; median savings ${formatPercent(summary.medianSavingsRate)}.`);
+    } else if (summary.verdict === "consistent_loss") {
+      recommendations.push(`${summary.mode}: repeat evidence shows over-assist; keep this mode guarded or quieter.`);
+    } else if (summary.verdict === "quality_risk") {
+      recommendations.push(`${summary.mode}: quality risk detected; do not claim savings until failures are resolved.`);
+    } else if (summary.verdict === "passive_only") {
+      recommendations.push(`${summary.mode}: Kairn stayed passive; useful as abstention evidence, not active savings.`);
+    } else if (summary.missedOpportunityRuns > 0) {
+      recommendations.push(`${summary.mode}: missed ${summary.missedOpportunityRuns}/${summary.repeats} savings opportunities; improve activation confidence.`);
+    } else {
+      recommendations.push(`${summary.mode}: mixed repeat evidence; collect more holdout runs before tuning.`);
+    }
+  }
+  return recommendations.length > 0 ? uniqueStrings(recommendations) : ["No repeat-level endurance issues detected."];
+}
+
+function countRepeatClassifications(values: BenchmarkAssistClassification[]): Partial<Record<BenchmarkAssistClassification, number>> {
+  const counts: Partial<Record<BenchmarkAssistClassification, number>> = {};
+  for (const value of values) {
+    counts[value] = (counts[value] ?? 0) + 1;
+  }
+  return counts;
+}
+
+function medianNumber(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[middle - 1]! + sorted[middle]!) / 2 : sorted[middle]!;
+}
+
+function meanNumber(values: number[]): number {
+  return values.length === 0 ? 0 : values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+function formatPercent(value: number | undefined): string {
+  return value === undefined ? "n/a" : `${Math.round(value * 10_000) / 100}%`;
 }
 
 function buildAssistanceActions(input: {

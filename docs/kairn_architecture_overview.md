@@ -129,7 +129,8 @@ Conversation binding:
 - If a host hook payload includes a stable conversation/session id, Kairn maps that host id to one durable Kairn session through `host_session_links`.
 - If the host cannot provide a stable id, such as repeated `codex exec` launches, Kairn needs an explicit session binding.
 - `kairn setup codex --session <id>` writes hook commands that always use that Kairn session.
-- `kairn codex "<task>" --bind-hooks` creates or reuses a Kairn session, temporarily installs session-bound hooks, launches Codex with `codex_hooks` enabled, and restores the previous project `.codex/` files afterward.
+- `kairn codex "<task>" --bind-hooks` creates or reuses a Kairn session, temporarily installs session-bound hooks, launches Codex with `hooks` enabled, and restores the previous project `.codex/` files afterward.
+- `kairn codex` without a task launches interactive Codex with session-bound hooks by default. This is the preferred "one command per conversation" shape.
 - This keeps hook mode attached to the same ledger across diagnose, fix, verify, and cleanup turns instead of creating isolated per-process sessions.
 
 ### Daemon
@@ -343,7 +344,7 @@ The derived working set is the compact long-session memory that hooks, MCP, `pri
 - next smallest useful read,
 - open risks.
 
-Passing verification is now a first-class ledger signal. When a source invariant or diff-scope check passes, Kairn records a metadata-only `verification_passed` event anchored to the source file. Verification and cleanup turns can then use `verified_context_shrunk`: a tiny source-focused reminder instead of repeating the earlier prime or expanding into neighboring files.
+Passing verification is now a first-class ledger signal. When a source invariant or diff-scope check passes, Kairn records a metadata-only `verification_passed` event anchored to the source file. Verification and cleanup turns can then use `verified_context_suppressed` for automatic surfaces, or `verified_context_shrunk` for explicit/manual requests, instead of repeating the earlier prime or expanding into neighboring files.
 
 Post-diagnose source focus is the companion to that rule. Once a session has prior context and one active production source, later implementation/debugging/verification/cleanup turns can use `active_source_context_shrunk`: one source file, no companion fanout, and no snippet unless the file changed or a real failure references another file.
 
