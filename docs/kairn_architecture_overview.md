@@ -447,6 +447,8 @@ Bench layers:
 5. SWE-Bench Pro pilot generation: imports public task rows into Kairn preflight/live-suite scaffolds.
 6. Eval harness: manual A/B run evidence and transcript metadata.
 
+The session-bound `kairn codex` product path is tested through the `kairn_codex_session` endurance mode. Because `codex exec` is not a reliable proxy for interactive prompt hooks, this mode simulates `UserPromptSubmit` against one explicit Kairn session before each turn, then runs Codex with hooks disabled. That is the scriptable equivalent of the context policy used when a user launches `kairn codex` and types normally inside the interactive Codex UI.
+
 Quality rule:
 
 > Token savings only count when quality gates pass.

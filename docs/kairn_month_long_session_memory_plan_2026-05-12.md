@@ -64,6 +64,8 @@ In this model, Kairn becomes less like prompt RAG and more like local repo worki
 
 A PATH shim named `codex` is technically possible because Codex is a normal CLI binary. The shim would need to sit earlier in `PATH`, locate the real Codex binary without recursing into itself, and delegate interactive launches through `kairn codex`. This should remain opt-in because shadowing a common developer command can be surprising.
 
+The benchmark equivalent is `kairn_codex_session`: simulate the session-bound prompt hook before each scripted turn, run Codex with external hooks disabled, and require all turns to use the same Kairn session ledger. This avoids treating `codex exec` hook behavior as equivalent to interactive Codex. The detailed test plan lives in `docs/kairn_session_bound_codex_endurance_test_plan_2026-05-12.md`.
+
 ## Required Improvements
 
 ### 1. Stable Session Identity

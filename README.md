@@ -222,9 +222,12 @@ kairn bench endurance \
   --root /Users/kevindotel/Documents/Projects/kairn \
   --suite examples/bench/endurance-axios.json \
   --baseline-command "codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}" \
-  --kairn-command "codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}" \
+  --kairn-codex-session-setup-command "kairn setup codex --root {root} --mode savings --session {session} >/dev/null" \
+  --kairn-codex-session-command "codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}" \
   --json
 ```
+
+`kairn_codex_session` is the scriptable equivalent of the product UX `kairn codex`: one Kairn session ledger is created up front, the benchmark simulates the prompt hook against that ledger before each turn, and Codex is run with hooks disabled to avoid double-counting external hook behavior.
 
 The included endurance examples cover Axios, Flask, and Commons IO. They use source-invariant checks and required touched files, so lower tokens only count when the final quality gate passes.
 

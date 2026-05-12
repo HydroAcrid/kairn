@@ -301,6 +301,9 @@ describe("benchmark suite and scoring", () => {
     const gin = loadBenchmarkEnduranceSuite({
       suitePath: path.resolve("examples/bench/endurance-gin.json")
     });
+    const requestsLong = loadBenchmarkEnduranceSuite({
+      suitePath: path.resolve("examples/bench/endurance-requests-10turn.json")
+    });
 
     expect(axios.turns.map((turn) => turn.id)).toEqual(["diagnose", "fix", "verify", "cleanup"]);
     expect(flask.seed?.setupPatchFile).toMatch(/flask-dispatch-request-view\.patch$/);
@@ -312,6 +315,8 @@ describe("benchmark suite and scoring", () => {
     expect(fastapi.finalSourceInvariants?.[0]?.requiredPresent).toContain("else functools.partial(run_in_threadpool, func)");
     expect(fastify.finalSourceInvariants?.[0]?.requiredPresent).toContain("? [...onSendHandlers, headRouteOnSendHandler]");
     expect(gin.finalSourceInvariants?.[0]?.requiredPresent).toContain("Handlers: group.combineHandlers(handlers),");
+    expect(requestsLong.turns).toHaveLength(10);
+    expect(requestsLong.turns.map((turn) => turn.id)).toContain("repeat-context-check");
   });
 
   it("validates equivalent semantic source repairs", () => {
@@ -714,6 +719,8 @@ describe("benchmark suite and scoring", () => {
       mcpCommand: fakeCommand,
       hookFullPrimeCommand: fakeCommand,
       hookFullPrimeSetupCommand: "node -e \"console.log('hook setup')\"",
+      kairnCodexSessionCommand: fakeCommand,
+      kairnCodexSessionSetupCommand: "node -e \"console.log('session setup')\"",
       realMcpFirstCommand: fakeCommand,
       realMcpFirstSetupCommand: "node -e \"console.log('mcp setup')\"",
       hybridMcpBriefCommand: fakeCommand,
@@ -726,6 +733,7 @@ describe("benchmark suite and scoring", () => {
       "kairn",
       "mcp",
       "hook_full_prime",
+      "kairn_codex_session",
       "real_mcp_first",
       "hybrid_mcp_brief"
     ]);
@@ -734,6 +742,8 @@ describe("benchmark suite and scoring", () => {
     expect(report.reports.find((item) => item.mode === "kairn")?.ledger?.events).toBeGreaterThan(0);
     expect(report.reports.find((item) => item.mode === "kairn")?.ledger?.workingSet.activeFiles).toContain("src/user.ts");
     expect(report.reports.find((item) => item.mode === "hook_full_prime")?.metadata?.setupExitCode).toBe(0);
+    expect(report.reports.find((item) => item.mode === "kairn_codex_session")?.metadata?.setupExitCode).toBe(0);
+    expect(report.reports.find((item) => item.mode === "kairn_codex_session")?.sessionId).toMatch(/^task_/);
     expect(report.deltas.kairn?.baselineTokens).toBe(240);
   });
 

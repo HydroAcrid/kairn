@@ -129,9 +129,13 @@ export function classifyQueryIntent(query: string): QueryIntent {
   const terms = tokenizeLexical(query);
   const workflow = detectWorkflowIntent(query, terms);
   const scores = new Map<QueryIntentPrimary, string[]>();
+  const negatedTestIntent = hasNegatedIntent(query, ["test", "tests", "spec", "specs", "pytest", "vitest", "jest"]);
+  const negatedDocsIntent = hasNegatedIntent(query, ["doc", "docs", "documentation", "readme", "example", "examples"]);
 
   for (const [intent, dictionary] of Object.entries(INTENT_TERMS) as Array<[Exclude<QueryIntentPrimary, "generic">, Set<string>]>) {
     if (intent === "workflow" && workflow.matchedPhrases.length === 0) continue;
+    if (intent === "test" && negatedTestIntent) continue;
+    if (intent === "docs" && negatedDocsIntent) continue;
     const matched = terms.filter((term) => dictionary.has(term));
     if (matched.length > 0) {
       scores.set(intent, [...new Set(matched)]);
@@ -194,6 +198,18 @@ function normalizeForPhraseMatching(input: string): string {
     .trim();
 }
 
-function hasExplicitTestIntent(terms: string[]): boolean {
+function hasExplicitTestIntent(terms: string[], query = ""): boolean {
+  if (query && hasNegatedIntent(query, ["test", "tests", "spec", "specs", "pytest", "vitest", "jest"])) return false;
   return terms.some((term) => INTENT_TERMS.test.has(term));
+}
+
+function hasNegatedIntent(query: string, targets: string[]): boolean {
+  const normalized = normalizeForPhraseMatching(query);
+  const targetPattern = targets.map(escapeRegExp).join("|");
+  return new RegExp(`\\b(?:do not|dont|don t|never|avoid|without|no)\\b(?:\\s+[a-z0-9]+){0,8}\\s+\\b(?:${targetPattern})\\b`).test(normalized) ||
+    new RegExp(`\\b(?:${targetPattern})\\b(?:\\s+[a-z0-9]+){0,6}\\s+\\b(?:unless|except)\\b(?:\\s+[a-z0-9]+){0,8}\\s+\\b(?:fail|fails|failed|failure|named|requested)\\b`).test(normalized);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

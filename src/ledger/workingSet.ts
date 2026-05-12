@@ -41,7 +41,13 @@ export function buildSessionWorkingSet(input: {
     shownFiles.filter((file) => {
       const lastShown = lastEventForFile(events, "context_shown", file);
       const lastTouched = lastEventForFile(events, "agent_file_touched", file);
-      return Boolean(lastShown && lastTouched && Date.parse(lastTouched.createdAt) > Date.parse(lastShown.createdAt));
+      const lastVerified = lastVerificationForFile(events, file);
+      return Boolean(
+        lastShown &&
+          lastTouched &&
+          Date.parse(lastTouched.createdAt) > Date.parse(lastShown.createdAt) &&
+          (!lastVerified || Date.parse(lastVerified.createdAt) < Date.parse(lastTouched.createdAt))
+      );
     })
   );
   const activeFiles = uniquePaths([
@@ -188,6 +194,14 @@ function signalFromEvent(event: SessionLedgerEvent | undefined): SessionWorkingS
 
 function lastEventForFile(events: SessionLedgerEvent[], kind: SessionLedgerEvent["kind"], filePath: string): SessionLedgerEvent | undefined {
   return [...events].reverse().find((event) => event.kind === kind && event.filePath === filePath);
+}
+
+function lastVerificationForFile(events: SessionLedgerEvent[], filePath: string): SessionLedgerEvent | undefined {
+  return [...events].reverse().find((event) => {
+    if (event.kind !== "verification_passed") return false;
+    if (!event.filePath) return true;
+    return event.filePath === filePath;
+  });
 }
 
 function eventFile(event: SessionLedgerEvent): string[] {

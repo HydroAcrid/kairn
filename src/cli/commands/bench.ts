@@ -97,10 +97,12 @@ export function registerBenchCommands(program: Command): void {
     .option("--root <path>", "target repository root", process.cwd())
     .requiredOption("--suite <path>", "endurance suite JSON path")
     .requiredOption("--baseline-command <command>", "baseline live-agent command with {prompt}, {root}, and {turn} placeholders")
-    .requiredOption("--kairn-command <command>", "Kairn-assisted live-agent command with {prompt}, {root}, {session}, and {turn} placeholders")
+    .option("--kairn-command <command>", "direct Kairn prompt-prepend live-agent command with {prompt}, {root}, {session}, and {turn} placeholders")
     .option("--mcp-command <command>", "MCP-assisted live-agent command with {prompt}, {root}, {session}, and {turn} placeholders")
     .option("--hook-full-prime-command <command>", "hook full-prime endurance command with {prompt}, {root}, {session}, and {turn} placeholders")
     .option("--hook-full-prime-setup-command <command>", "hook full-prime setup command timed separately before endurance turns")
+    .option("--kairn-codex-session-command <command>", "session-bound kairn codex equivalent command with {prompt}, {root}, {session}, and {turn} placeholders")
+    .option("--kairn-codex-session-setup-command <command>", "session-bound kairn codex setup command timed separately before endurance turns")
     .option("--real-mcp-first-command <command>", "real MCP-first endurance command with {prompt}, {root}, {session}, and {turn} placeholders")
     .option("--real-mcp-first-setup-command <command>", "real MCP-first setup command timed separately before endurance turns")
     .option("--hybrid-mcp-brief-command <command>", "hybrid MCP brief endurance command with {prompt}, {root}, {session}, and {turn} placeholders")
@@ -117,6 +119,8 @@ export function registerBenchCommands(program: Command): void {
         mcpCommand?: string;
         hookFullPrimeCommand?: string;
         hookFullPrimeSetupCommand?: string;
+        kairnCodexSessionCommand?: string;
+        kairnCodexSessionSetupCommand?: string;
         realMcpFirstCommand?: string;
         realMcpFirstSetupCommand?: string;
         hybridMcpBriefCommand?: string;
@@ -133,6 +137,8 @@ export function registerBenchCommands(program: Command): void {
           mcpCommand: options.mcpCommand,
           hookFullPrimeCommand: options.hookFullPrimeCommand,
           hookFullPrimeSetupCommand: options.hookFullPrimeSetupCommand,
+          kairnCodexSessionCommand: options.kairnCodexSessionCommand,
+          kairnCodexSessionSetupCommand: options.kairnCodexSessionSetupCommand,
           realMcpFirstCommand: options.realMcpFirstCommand,
           realMcpFirstSetupCommand: options.realMcpFirstSetupCommand,
           hybridMcpBriefCommand: options.hybridMcpBriefCommand,

@@ -16,6 +16,7 @@ import { KairnRuntime } from "../runtime/KairnRuntime.js";
 import { estimateTokens } from "../utils/tokens.js";
 import { sha256 } from "../utils/hash.js";
 import { normalizeRelativePath } from "../utils/paths.js";
+import { normalizeHookPayload } from "../watch/normalizeHook.js";
 import {
   agentTouchedFiles,
   changedFiles,
@@ -26,7 +27,14 @@ import { classificationNegativeEvidenceReason, classifyAssistance } from "./assi
 import { loadBenchmarkEnduranceSuite } from "./enduranceSuite.js";
 import { evaluateDiffScopes, evaluateSourceInvariants } from "./sourceValidation.js";
 
-type EnduranceMode = "baseline" | "kairn" | "mcp" | "hook_full_prime" | "real_mcp_first" | "hybrid_mcp_brief";
+type EnduranceMode =
+  | "baseline"
+  | "kairn"
+  | "mcp"
+  | "hook_full_prime"
+  | "kairn_codex_session"
+  | "real_mcp_first"
+  | "hybrid_mcp_brief";
 
 type EnduranceModeSpec = {
   mode: EnduranceMode;
@@ -49,10 +57,12 @@ type BenchmarkEnduranceInput = {
   rootPath: string;
   suitePath: string;
   baselineCommand: string;
-  kairnCommand: string;
+  kairnCommand?: string | undefined;
   mcpCommand?: string | undefined;
   hookFullPrimeCommand?: string | undefined;
   hookFullPrimeSetupCommand?: string | undefined;
+  kairnCodexSessionCommand?: string | undefined;
+  kairnCodexSessionSetupCommand?: string | undefined;
   realMcpFirstCommand?: string | undefined;
   realMcpFirstSetupCommand?: string | undefined;
   hybridMcpBriefCommand?: string | undefined;
@@ -66,10 +76,13 @@ export async function runBenchmarkEndurance(input: BenchmarkEnduranceInput): Pro
   const reports: BenchmarkEnduranceModeReport[] = [];
   const modeSpecs: EnduranceModeSpec[] = [
     { mode: "baseline", command: input.baselineCommand },
-    { mode: "kairn", command: input.kairnCommand },
+    ...(input.kairnCommand ? [{ mode: "kairn" as const, command: input.kairnCommand }] : []),
     ...(input.mcpCommand ? [{ mode: "mcp" as const, command: input.mcpCommand }] : []),
     ...(input.hookFullPrimeCommand
       ? [{ mode: "hook_full_prime" as const, command: input.hookFullPrimeCommand, setupCommand: input.hookFullPrimeSetupCommand }]
+      : []),
+    ...(input.kairnCodexSessionCommand
+      ? [{ mode: "kairn_codex_session" as const, command: input.kairnCodexSessionCommand, setupCommand: input.kairnCodexSessionSetupCommand }]
       : []),
     ...(input.realMcpFirstCommand
       ? [{ mode: "real_mcp_first" as const, command: input.realMcpFirstCommand, setupCommand: input.realMcpFirstSetupCommand }]
@@ -141,6 +154,7 @@ async function runEnduranceMode(input: {
     input.mode === "kairn" ||
     input.mode === "mcp" ||
     input.mode === "hook_full_prime" ||
+    input.mode === "kairn_codex_session" ||
     input.mode === "real_mcp_first" ||
     input.mode === "hybrid_mcp_brief";
   const runtime = needsRuntime ? new KairnRuntime(workspace.workspacePath) : undefined;
@@ -338,6 +352,36 @@ async function runEnduranceTurn(input: {
           "",
           "Use this context first. Do not reread already-shown files unless they changed or verification fails."
         ].join("\n");
+  } else if (input.runtime && input.sessionId && input.mode === "kairn_codex_session") {
+    const hook = await runSessionBoundPromptHook({
+      runtime: input.runtime,
+      workspacePath: input.workspacePath,
+      sessionId: input.sessionId,
+      prompt,
+      turnId: input.turn.id,
+      budget: input.turn.budget
+    });
+    primeMetadata = {
+      hookSimulated: true,
+      hookDeliveredContext: Boolean(hook.content),
+      hookDecision: hook.decision,
+      primeDecision: hook.decision,
+      hookRecommendation: hook.recommendation,
+      primeFiles: hook.files,
+      hookFiles: hook.files,
+      hookOutputTokens: hook.tokenEstimate,
+      ...(hook.metadata ? { hookSignalMetadata: hook.metadata } : {})
+    };
+    preparedPrompt = hook.content
+      ? [
+          hook.content,
+          "",
+          "User task:",
+          prompt,
+          "",
+          "This context was delivered by Kairn's session-bound Codex prompt hook. Continue normally and do not reread already-shown files unless they changed or verification fails."
+        ].join("\n")
+      : prompt;
   } else if (
     input.runtime &&
     input.sessionId &&
@@ -558,6 +602,68 @@ function buildMcpEndurancePrompt(input: {
       input.prompt
     ].join("\n")
   };
+}
+
+async function runSessionBoundPromptHook(input: {
+  runtime: KairnRuntime;
+  workspacePath: string;
+  sessionId: string;
+  prompt: string;
+  turnId: string;
+  budget?: number | undefined;
+}): Promise<{
+  content?: string | undefined;
+  decision?: string | undefined;
+  recommendation?: string | undefined;
+  files: string[];
+  tokenEstimate: number;
+  metadata?: Record<string, unknown> | undefined;
+}> {
+  const event = normalizeHookPayload({
+    source: "codex",
+    payload: {
+      cwd: input.workspacePath,
+      hook_event_name: "UserPromptSubmit",
+      session_id: input.sessionId,
+      turn_id: input.turnId,
+      prompt: input.prompt,
+      enduranceMode: "kairn_codex_session",
+      simulatedByBenchmark: true
+    }
+  });
+  const result = await input.runtime.handleHookEvent({
+    sessionId: input.sessionId,
+    event,
+    primeBudget: input.budget,
+    hookOutput: "full-prime",
+    refreshIndex: false
+  });
+  const content =
+    result.prime?.content ??
+    result.recommendation?.content ??
+    result.failureContext?.content ??
+    result.response?.content;
+  const files = uniquePaths([
+    ...(result.prime?.files ?? []),
+    ...(result.recommendation?.files ?? []),
+    ...(result.failureContext?.files ?? []),
+    ...(result.response?.files ?? [])
+  ]);
+  const metadata = latestHookSignalMetadata(input.runtime, input.sessionId);
+  return {
+    ...(content?.trim() ? { content } : {}),
+    decision: stringMetadata(metadata, "decision"),
+    recommendation: stringMetadata(metadata, "recommendation"),
+    files,
+    tokenEstimate: content ? estimateTokens(content) : 0,
+    ...(metadata ? { metadata } : {})
+  };
+}
+
+function latestHookSignalMetadata(runtime: KairnRuntime, sessionId: string): Record<string, unknown> | undefined {
+  const metrics = runtime.getMetrics(sessionId);
+  const event = [...metrics.recentEvents].reverse().find((item) => item.eventKind === "hook_signal");
+  return recordValue(event?.metadata);
 }
 
 function isLikelyObviousSingleSourcePrompt(prompt: string): boolean {
@@ -1052,6 +1158,17 @@ function stringRecord(value: unknown): Record<string, string> {
     if (typeof item === "string") output[key] = item;
   }
   return output;
+}
+
+function recordValue(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : undefined;
+}
+
+function stringMetadata(metadata: Record<string, unknown> | undefined, key: string): string | undefined {
+  const value = metadata?.[key];
+  return typeof value === "string" ? value : undefined;
 }
 
 function sumDefined(values: Array<number | undefined>): number {

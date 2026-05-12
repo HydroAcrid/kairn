@@ -618,6 +618,76 @@ describe("hybridSearch", () => {
     expect(results.slice(0, 2).map((result) => result.path)).not.toContain("test/test-fp.js");
   });
 
+  it("does not treat negated test mentions as positive test intent", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "src/requests/sessions.py", "source", "python"),
+      file(rootPath, "src/requests/adapters.py", "source", "python"),
+      file(rootPath, "tests/test_requests.py", "test", "python")
+    ];
+    const symbols = [
+      symbol(rootPath, "src/requests/sessions.py", "Session"),
+      symbol(rootPath, "src/requests/sessions.py", "send"),
+      symbol(rootPath, "src/requests/sessions.py", "resolve_redirects"),
+      symbol(rootPath, "tests/test_requests.py", "test_HTTP_302_ALLOW_REDIRECT_GET")
+    ];
+    const chunks = [
+      chunk(rootPath, "src/requests/sessions.py", "send", "Session.send allow_redirects resolve_redirects production source redirect handling"),
+      chunk(rootPath, "src/requests/adapters.py", "send", "adapter send transport response redirect"),
+      chunk(rootPath, "tests/test_requests.py", "test_HTTP_302_ALLOW_REDIRECT_GET", "test allow_redirects redirect response")
+    ];
+    const query = "Before editing, state the exact production source path and invariant. Session.send must call resolve_redirects when allow_redirects is true. Do not inspect tests unless source verification fails.";
+    const intent = classifyQueryIntent(query);
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(intent.primary).not.toBe("test");
+    expect(results[0]?.path).toBe("src/requests/sessions.py");
+    expect(results.slice(0, 2).map((result) => result.path)).not.toContain("tests/test_requests.py");
+  });
+
+  it("keeps source review prompts on production files when tests share the behavior terms", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "src/requests/sessions.py", "source", "python"),
+      file(rootPath, "src/requests/adapters.py", "source", "python"),
+      file(rootPath, "src/requests/models.py", "source", "python"),
+      file(rootPath, "tests/test_requests.py", "test", "python")
+    ];
+    const symbols = [
+      symbol(rootPath, "src/requests/sessions.py", "Session"),
+      symbol(rootPath, "src/requests/sessions.py", "send"),
+      symbol(rootPath, "src/requests/adapters.py", "HTTPAdapter"),
+      symbol(rootPath, "src/requests/models.py", "PreparedRequest"),
+      symbol(rootPath, "tests/test_requests.py", "test_HTTP_302_ALLOW_REDIRECT_GET")
+    ];
+    const chunks = [
+      chunk(rootPath, "src/requests/sessions.py", "send", "Session.send allow_redirects resolve_redirects production source redirect handling"),
+      chunk(rootPath, "src/requests/adapters.py", "send", "adapter send transport redirect response"),
+      chunk(rootPath, "src/requests/models.py", "PreparedRequest", "request model redirect URL response"),
+      chunk(rootPath, "tests/test_requests.py", "test_HTTP_302_ALLOW_REDIRECT_GET", "test allow_redirects redirect response")
+    ];
+    const results = hybridSearch({
+      files,
+      query: "Review whether allow_redirects handling requires companion edits in adapters or models. Prefer the known source invariant. Do not edit unless the source invariant is wrong.",
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.kind).toBe("source");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("tests/test_requests.py");
+  });
+
   it("adds FastAPI-style routing/dependency companions without promoting OpenAPI noise", () => {
     const rootPath = "/repo";
     const files = [

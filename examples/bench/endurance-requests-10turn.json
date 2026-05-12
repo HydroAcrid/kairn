@@ -1,0 +1,212 @@
+{
+  "id": "endurance-requests-10turn",
+  "name": "Requests Redirect 10-Turn Endurance",
+  "task": "Debug, fix, verify, and preserve a seeded Requests allow_redirects regression across ten turns.",
+  "seed": {
+    "repoUrl": "https://github.com/psf/requests.git",
+    "ref": "e8d2c015eecda8273612dd4562425e00cd164ba5",
+    "cloneDepth": 1,
+    "setupPatchFile": "./patches/requests-disable-redirects.patch",
+    "expectedFailureCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/requests/sessions.py').read_text()\nfixed = 'if allow_redirects:' in source and 'if False and allow_redirects:' not in source\nraise SystemExit(1 if fixed else 0)\nPY",
+    "testCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/requests/sessions.py').read_text()\nfixed = 'if allow_redirects:' in source and 'if False and allow_redirects:' not in source\nraise SystemExit(0 if fixed else 1)\nPY"
+  },
+  "allowedDiffScopes": [
+    {
+      "file": "src/requests/sessions.py",
+      "allowWholeFile": true
+    }
+  ],
+  "finalSourceInvariants": [
+    {
+      "id": "session-send-honors-allow-redirects",
+      "file": "src/requests/sessions.py",
+      "description": "Session.send must resolve redirects when allow_redirects is true.",
+      "requiredPresent": ["if allow_redirects:"],
+      "requiredAbsent": ["if False and allow_redirects:"]
+    }
+  ],
+  "turns": [
+    {
+      "id": "diagnose",
+      "task": "Diagnose why Requests Session.send stopped resolving redirects when allow_redirects is true.",
+      "agentPrompt": "Diagnose the seeded Requests redirect regression. Session.send should resolve redirects when allow_redirects is true. Identify the smallest production source fix. Do not edit yet.",
+      "expectedFiles": ["src/requests/sessions.py", "src/requests/adapters.py", "src/requests/models.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["docs/", "tests/", "ext/"],
+      "budget": 800
+    },
+    {
+      "id": "source-invariant",
+      "task": "State the production source invariant and the smallest source file for the redirect fix.",
+      "agentPrompt": "Before editing, state the exact production source path and invariant. The invariant is that Session.send must call resolve_redirects when allow_redirects is true. Do not inspect tests unless source verification fails.",
+      "expectedFiles": ["src/requests/sessions.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["docs/", "tests/", "ext/"],
+      "budget": 500
+    },
+    {
+      "id": "fix",
+      "task": "Fix Requests Session.send allow_redirects handling.",
+      "agentPrompt": "Fix the seeded Requests redirect regression in production source only. In Session.send, preserve redirect resolution when allow_redirects is true. Keep edits inside src/requests/sessions.py.",
+      "expectedFiles": ["src/requests/sessions.py"],
+      "requiredTouchedFiles": ["src/requests/sessions.py"],
+      "excludedFiles": ["docs/", "tests/", "ext/"],
+      "sourceInvariants": [
+        {
+          "id": "session-send-honors-allow-redirects",
+          "file": "src/requests/sessions.py",
+          "requiredPresent": ["if allow_redirects:"],
+          "requiredAbsent": ["if False and allow_redirects:"]
+        }
+      ],
+      "allowedDiffScopes": [
+        {
+          "file": "src/requests/sessions.py",
+          "allowWholeFile": true
+        }
+      ],
+      "budget": 800
+    },
+    {
+      "id": "verify-source",
+      "task": "Run the smallest source-invariant verification for the Requests redirect fix.",
+      "agentPrompt": "Verify the Requests redirect fix with the smallest source-invariant check. Do not broaden into tests unless this check fails.",
+      "expectedFiles": ["src/requests/sessions.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["docs/", "tests/", "ext/"],
+      "verificationCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/requests/sessions.py').read_text()\nfixed = 'if allow_redirects:' in source and 'if False and allow_redirects:' not in source\nraise SystemExit(0 if fixed else 1)\nPY",
+      "sourceInvariants": [
+        {
+          "id": "session-send-honors-allow-redirects",
+          "file": "src/requests/sessions.py",
+          "requiredPresent": ["if allow_redirects:"],
+          "requiredAbsent": ["if False and allow_redirects:"]
+        }
+      ],
+      "allowedDiffScopes": [
+        {
+          "file": "src/requests/sessions.py",
+          "allowWholeFile": true
+        }
+      ],
+      "budget": 500
+    },
+    {
+      "id": "edge-case-review",
+      "task": "Confirm the fix does not require changes outside Session.send.",
+      "agentPrompt": "Review whether allow_redirects handling requires companion edits in adapters or models. Prefer the known source invariant. Do not edit unless the source invariant is wrong.",
+      "expectedFiles": ["src/requests/sessions.py", "src/requests/adapters.py", "src/requests/models.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["docs/", "tests/", "ext/"],
+      "sourceInvariants": [
+        {
+          "id": "session-send-honors-allow-redirects",
+          "file": "src/requests/sessions.py",
+          "requiredPresent": ["if allow_redirects:"],
+          "requiredAbsent": ["if False and allow_redirects:"]
+        }
+      ],
+      "budget": 500
+    },
+    {
+      "id": "failure-recovery",
+      "task": "Handle a hypothetical failed source verification without broad rereads.",
+      "agentPrompt": "If the source invariant check still fails, inspect src/requests/sessions.py only and repair it. If it already passes, do not reread broadly and do not edit.",
+      "expectedFiles": ["src/requests/sessions.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["docs/", "tests/", "ext/"],
+      "sourceInvariants": [
+        {
+          "id": "session-send-honors-allow-redirects",
+          "file": "src/requests/sessions.py",
+          "requiredPresent": ["if allow_redirects:"],
+          "requiredAbsent": ["if False and allow_redirects:"]
+        }
+      ],
+      "budget": 500
+    },
+    {
+      "id": "repeat-context-check",
+      "task": "Continue from the known source without repeating broad context.",
+      "agentPrompt": "Continue from the known Requests redirect source and invariant. Confirm the next smallest useful check; do not repeat earlier broad source discovery.",
+      "expectedFiles": ["src/requests/sessions.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["docs/", "tests/", "ext/"],
+      "sourceInvariants": [
+        {
+          "id": "session-send-honors-allow-redirects",
+          "file": "src/requests/sessions.py",
+          "requiredPresent": ["if allow_redirects:"],
+          "requiredAbsent": ["if False and allow_redirects:"]
+        }
+      ],
+      "budget": 400
+    },
+    {
+      "id": "diff-review",
+      "task": "Review the final Requests diff for unrelated edits.",
+      "agentPrompt": "Review the final diff and confirm only the required Requests production source changed.",
+      "expectedFiles": ["src/requests/sessions.py"],
+      "requiredTouchedFiles": ["src/requests/sessions.py"],
+      "excludedFiles": ["docs/", "tests/", "ext/"],
+      "verificationCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/requests/sessions.py').read_text()\nfixed = 'if allow_redirects:' in source and 'if False and allow_redirects:' not in source\nraise SystemExit(0 if fixed else 1)\nPY",
+      "sourceInvariants": [
+        {
+          "id": "session-send-honors-allow-redirects",
+          "file": "src/requests/sessions.py",
+          "requiredPresent": ["if allow_redirects:"],
+          "requiredAbsent": ["if False and allow_redirects:"]
+        }
+      ],
+      "allowedDiffScopes": [
+        {
+          "file": "src/requests/sessions.py",
+          "allowWholeFile": true
+        }
+      ],
+      "budget": 500
+    },
+    {
+      "id": "summary",
+      "task": "Summarize the invariant and touched source after verification.",
+      "agentPrompt": "Summarize the final invariant, the source file touched, and the smallest verification evidence. Do not inspect new files.",
+      "expectedFiles": ["src/requests/sessions.py"],
+      "requiredTouchedFiles": ["src/requests/sessions.py"],
+      "excludedFiles": ["docs/", "tests/", "ext/"],
+      "sourceInvariants": [
+        {
+          "id": "session-send-honors-allow-redirects",
+          "file": "src/requests/sessions.py",
+          "requiredPresent": ["if allow_redirects:"],
+          "requiredAbsent": ["if False and allow_redirects:"]
+        }
+      ],
+      "budget": 400
+    },
+    {
+      "id": "final-cleanup",
+      "task": "Final cleanup pass for the Requests redirect fix.",
+      "agentPrompt": "Final cleanup: ensure the diff is still limited to src/requests/sessions.py and the allow_redirects invariant still holds. Do not edit unrelated files.",
+      "expectedFiles": ["src/requests/sessions.py"],
+      "requiredTouchedFiles": ["src/requests/sessions.py"],
+      "excludedFiles": ["docs/", "tests/", "ext/"],
+      "verificationCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/requests/sessions.py').read_text()\nfixed = 'if allow_redirects:' in source and 'if False and allow_redirects:' not in source\nraise SystemExit(0 if fixed else 1)\nPY",
+      "sourceInvariants": [
+        {
+          "id": "session-send-honors-allow-redirects",
+          "file": "src/requests/sessions.py",
+          "requiredPresent": ["if allow_redirects:"],
+          "requiredAbsent": ["if False and allow_redirects:"]
+        }
+      ],
+      "allowedDiffScopes": [
+        {
+          "file": "src/requests/sessions.py",
+          "allowWholeFile": true
+        }
+      ],
+      "budget": 500
+    }
+  ],
+  "finalVerificationCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/requests/sessions.py').read_text()\nfixed = 'if allow_redirects:' in source and 'if False and allow_redirects:' not in source\nraise SystemExit(0 if fixed else 1)\nPY"
+}

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { buildSessionWorkingSet } from "../src/ledger/workingSet.js";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
+import type { SessionLedgerEvent } from "../src/types.js";
 import { estimateTokens } from "../src/utils/tokens.js";
 import { createFixtureRepo } from "./helpers.js";
 
@@ -156,6 +158,30 @@ describe("KairnRuntime", () => {
     );
 
     runtime.close();
+  });
+
+  it("clears changed-file stale risk after a later passing verification", () => {
+    const events: SessionLedgerEvent[] = [
+      ledgerEvent("context_shown", "src/app.ts", "2026-05-12T10:00:00.000Z"),
+      ledgerEvent("agent_file_touched", "src/app.ts", "2026-05-12T10:01:00.000Z")
+    ];
+    const stale = buildSessionWorkingSet({ sessionId: "task_test", events, currentPhase: "implementation" });
+
+    expect(stale.staleFiles).toContain("src/app.ts");
+    expect(stale.nextSmallestUsefulRead?.source).toBe("changed_file");
+
+    const verified = buildSessionWorkingSet({
+      sessionId: "task_test",
+      events: [
+        ...events,
+        ledgerEvent("verification_passed", "src/app.ts", "2026-05-12T10:02:00.000Z")
+      ],
+      currentPhase: "verification"
+    });
+
+    expect(verified.staleFiles).not.toContain("src/app.ts");
+    expect(verified.nextSmallestUsefulRead?.source).not.toBe("changed_file");
+    expect(verified.openRisks).not.toEqual(expect.arrayContaining([expect.stringContaining("changed after being shown")]));
   });
 
   it("shrinks post-diagnose context to the active source instead of resurfacing companions", async () => {
@@ -373,3 +399,17 @@ describe("KairnRuntime", () => {
     runtime.close();
   });
 });
+
+function ledgerEvent(kind: SessionLedgerEvent["kind"], filePath: string, createdAt: string): SessionLedgerEvent {
+  return {
+    sessionId: "task_test",
+    kind,
+    filePath,
+    contentHash: `${kind}:${filePath}:${createdAt}`,
+    tokenEstimate: 1,
+    source: "bench",
+    summary: `${kind} ${filePath}`,
+    metadata: {},
+    createdAt
+  };
+}

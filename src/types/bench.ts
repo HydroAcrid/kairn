@@ -8,6 +8,7 @@ export type BenchmarkAssistanceMode =
   | "hook_full_prime"
   | "hook_tiny_directive"
   | "hook_tiny_with_failures"
+  | "kairn_codex_session"
   | "mcp_first"
   | "real_mcp_first"
   | "mcp_first_plus_hook_full_prime"
@@ -115,7 +116,7 @@ export type BenchmarkDiffScope = {
 
 export type BenchmarkEnduranceTurnResult = {
   turnId: string;
-  mode: "baseline" | "kairn" | "mcp" | "hook_full_prime" | "real_mcp_first" | "hybrid_mcp_brief";
+  mode: "baseline" | "kairn" | "mcp" | "hook_full_prime" | "kairn_codex_session" | "real_mcp_first" | "hybrid_mcp_brief";
   outcome: BenchmarkTaskOutcome;
   observedCodexTokens?: number;
   responseTokens: number;
@@ -133,7 +134,7 @@ export type BenchmarkEnduranceTurnResult = {
 };
 
 export type BenchmarkEnduranceModeReport = {
-  mode: "baseline" | "kairn" | "mcp" | "hook_full_prime" | "real_mcp_first" | "hybrid_mcp_brief";
+  mode: "baseline" | "kairn" | "mcp" | "hook_full_prime" | "kairn_codex_session" | "real_mcp_first" | "hybrid_mcp_brief";
   workspacePath: string;
   sessionId?: string;
   turns: BenchmarkEnduranceTurnResult[];
@@ -184,7 +185,7 @@ export type BenchmarkEnduranceReport = {
 };
 
 export type BenchmarkEnduranceRepeatModeAggregate = {
-  mode: "baseline" | "kairn" | "mcp" | "hook_full_prime" | "real_mcp_first" | "hybrid_mcp_brief";
+  mode: "baseline" | "kairn" | "mcp" | "hook_full_prime" | "kairn_codex_session" | "real_mcp_first" | "hybrid_mcp_brief";
   repeats: number;
   qualityPasses: number;
   activeRuns: number;

@@ -31,7 +31,7 @@ export function hybridSearch(input: {
   changedFiles?: Set<string>;
 }): HybridScoredResult[] {
   const intent = classifyQueryIntent(input.query);
-  const retrievalQuery = stripExampleLiterals(input.query);
+  const retrievalQuery = stripNegatedContextTargets(stripExampleLiterals(input.query));
   const keywordScores = new Map(scoreFiles(input.files, retrievalQuery, input.symbols).map((file) => [file.path, file]));
   const bm25Scores = scoreBm25Files({
     query: retrievalQuery,
@@ -48,6 +48,8 @@ export function hybridSearch(input: {
   const graphScores = scoreGraphNeighbors(input.edges, keywordScores, semanticScores, intentScores, intent, input.files);
   const shownFiles = new Set((input.shown ?? []).map((record) => record.filePath).filter((filePath): filePath is string => Boolean(filePath)));
   const retrievalTerms = new Set(tokenizeLexical(retrievalQuery));
+  const explicitTestIntentForQuery = hasExplicitTestIntent(retrievalTerms, input.query);
+  const sourceOverTestPrompt = hasSourceOverTestPrompt(input.query, retrievalTerms, intent);
   const debugSourcePrompt =
     ["debug", "fix", "regression", "bug", "broken", "failing", "failure"].some((term) => retrievalTerms.has(term)) &&
     ["source", "production", "implementation", "helper", "utility"].some((term) => retrievalTerms.has(term));
@@ -83,6 +85,7 @@ export function hybridSearch(input: {
       const behaviorScore = behaviorMatch?.score ?? 0;
       const sourcePriorityScore = sourcePriority?.score ?? 0;
       const importanceScore = file.importance;
+      const sourceOverTestPenalty = file.kind === "test" && !explicitTestIntentForQuery && sourceOverTestPrompt ? -2600 : 0;
       const reasons = mergeReasons([
         ...(keyword?.reasons ?? []),
         ...(bm25?.reasons ?? []),
@@ -92,6 +95,7 @@ export function hybridSearch(input: {
         ...(semantic && semantic.score > 0.06 ? semanticReasons(semantic.chunks) : []),
         ...(graphScore > 0 ? ["graph neighbor"] : []),
         ...(shownFiles.has(file.path) ? ["already shown"] : []),
+        ...(sourceOverTestPenalty < 0 ? ["test downranked for source/invariant prompt"] : []),
         ...(gitScore > 0 ? [changedExactSymbolMatch ? "changed exact-symbol source target" : gitScore > 40 ? "changed source target" : "changed in diff"] : [])
       ]);
       const score =
@@ -104,7 +108,8 @@ export function hybridSearch(input: {
         intentScore +
         graphScore +
         sessionScore +
-        gitScore;
+        gitScore +
+        sourceOverTestPenalty;
 
       return {
         ...file,
@@ -232,7 +237,7 @@ function scoreSourcePriority(
   const scores = new Map<string, { score: number; reasons: string[] }>();
   const queryTerms = new Set(tokenizeLexical(query));
   const explicitDocsIntent = intent.primary === "docs" || ["docs", "doc", "readme", "example", "examples", "demo"].some((term) => queryTerms.has(term));
-  const explicitTestIntent = hasExplicitTestIntent(queryTerms);
+  const explicitTestIntent = hasExplicitTestIntent(queryTerms, query);
   const debugImplementationIntent = ["debug", "fix", "regression", "bug", "broken"].some((term) => queryTerms.has(term));
   const implementationIntent =
     !explicitDocsIntent && (debugImplementationIntent || ["generic", "backend", "data", "auth", "workflow", "ui"].includes(intent.primary));
@@ -797,7 +802,7 @@ function detectBehaviorQuery(query: string): BehaviorQuery {
     phrases,
     symbolHints: [...symbolHints],
     sourceFix: /\b(production source|source|fix|debug)\b/.test(normalized),
-    explicitTestIntent: /\b(test|tests|spec|verify|verification)\b/.test(normalized)
+    explicitTestIntent: /\b(test|tests|spec|verify|verification)\b/.test(normalized) && !hasNegatedTestIntent(query)
   };
 }
 
@@ -1418,8 +1423,31 @@ function stripExampleLiterals(query: string): string {
   return query.replace(/\b[A-Za-z_][\w.]*\(([^)]{1,120})\)/g, (match) => match.replace(/\(([^)]*)\)/, "()"));
 }
 
-function hasExplicitTestIntent(queryTerms: Set<string>): boolean {
+function stripNegatedContextTargets(query: string): string {
+  return query
+    .replace(/\b(?:do not|don't|dont|never|avoid|without|no)\b(?:\s+[A-Za-z0-9_-]+){0,8}\s+\b(?:tests?|specs?|pytest|vitest|jest|docs?|documentation|readme|examples?)\b/gi, " ")
+    .replace(/\b(?:tests?|specs?|pytest|vitest|jest|docs?|documentation|readme|examples?)\b(?:\s+[A-Za-z0-9_-]+){0,6}\s+\b(?:unless|except)\b(?:\s+[A-Za-z0-9_-]+){0,8}\s+\b(?:fail|fails|failed|failure|named|requested)\b/gi, " ")
+    .replace(/\b(?:avoid|skip)\s+broad(?:en|ly)?\s+(?:into\s+)?(?:tests?|docs?|examples?)\b/gi, " ");
+}
+
+function hasExplicitTestIntent(queryTerms: Set<string>, query = ""): boolean {
+  if (query && hasNegatedTestIntent(query)) return false;
   return ["test", "tests", "spec", "unit", "integration", "pytest", "vitest", "jest"].some((term) => queryTerms.has(term));
+}
+
+function hasSourceOverTestPrompt(query: string, queryTerms: Set<string>, intent: QueryIntent): boolean {
+  if (intent.primary === "test") return false;
+  const normalized = normalizeSearchText(query);
+  return (
+    ["source", "production", "implementation", "invariant", "companion", "edit", "edits", "fix", "repair", "patch", "review"].some((term) => queryTerms.has(term)) ||
+    /\b(known source|source invariant|production source|companion edits?|do not edit|do not inspect tests|do not broaden into tests|smallest source)\b/.test(normalized)
+  );
+}
+
+function hasNegatedTestIntent(query: string): boolean {
+  const normalized = normalizeSearchText(query);
+  return /\b(?:do not|don t|dont|never|avoid|without|no)\b(?:\s+[a-z0-9]+){0,8}\s+\b(?:test|tests|spec|specs|pytest|vitest|jest)\b/.test(normalized) ||
+    /\b(?:test|tests|spec|specs|pytest|vitest|jest)\b(?:\s+[a-z0-9]+){0,6}\s+\b(?:unless|except)\b(?:\s+[a-z0-9]+){0,8}\s+\b(?:fail|fails|failed|failure|named|requested)\b/.test(normalized);
 }
 
 function groupByFile<T>(records: T[], filePathFor: (record: T) => string): Map<string, T[]> {
