@@ -26,6 +26,14 @@ export type SetupWizardResult = {
   nextSteps: string[];
 };
 
+const KAIRN_WIZARD_BANNER = [
+  " _                            _.-._",
+  "| | ____ (_) _ __ _ __       /_____\\",
+  "| |/ / _` | || '__| '_ \\      /_\\",
+  "|   < (_| | || |  | | | |    _/___\\_",
+  "|_|\\_\\__,_|_||_|  |_| |_|   /_______\\"
+].join("\n");
+
 export async function runSetupWizard(inputOptions: {
   root: string;
   choice?: SetupWizardChoice | undefined;
@@ -141,6 +149,8 @@ export function formatSetupWizardResult(result: SetupWizardResult): string {
     : ["- diagnostics only"];
 
   return [
+    KAIRN_WIZARD_BANNER,
+    "",
     "Kairn setup wizard complete.",
     `Root: ${result.rootPath}`,
     `Choice: ${result.choice}`,
@@ -176,6 +186,8 @@ async function collectWizardAnswers(inputOptions: {
   try {
     output.write(
       [
+        "",
+        KAIRN_WIZARD_BANNER,
         "",
         "Kairn setup wizard",
         "",
