@@ -359,7 +359,7 @@ export function isExactSourceHit(input: {
 function hasConcreteExactSourceSignal(reasons: string[], filePath: string, task: string): boolean {
   if (
     reasons.some((reason) =>
-      /(^|;|\b)(symbol match|behavior symbol match|exact symbol match|precise filename match|precise symbol rescue|utility\/helper source rescue|canonical source route|monolithic public API source|changed source target)\b/.test(reason)
+      /(^|;|\b)(symbol match|behavior symbol match|exact symbol match|precise filename match|precise symbol rescue|utility\/helper source rescue|canonical source route|monolithic public API source|changed source target|changed exact-symbol source target)\b/.test(reason)
     )
   ) {
     return true;
@@ -372,7 +372,7 @@ function hasConcreteExactSourceSignal(reasons: string[], filePath: string, task:
 
 function hasSourceRescueSignal(reasons: string[]): boolean {
   return reasons.some((reason) =>
-    /\b(precise source path match|precise filename match|precise symbol rescue|utility\/helper source rescue|monolithic public API source|changed source target)\b/i.test(reason)
+    /\b(precise source path match|precise filename match|precise symbol rescue|utility\/helper source rescue|monolithic public API source|changed source target|changed exact-symbol source target)\b/i.test(reason)
   );
 }
 

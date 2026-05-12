@@ -1,0 +1,13 @@
+diff --git a/packages/vite/src/client/client.ts b/packages/vite/src/client/client.ts
+index b6bfb63..62efd7b 100644
+--- a/packages/vite/src/client/client.ts
++++ b/packages/vite/src/client/client.ts
+@@ -613,7 +613,7 @@ export function createHotContext(ownerPath: string): ViteHotContext {
+  */
+ export function injectQuery(url: string, queryToInject: string): string {
+   // skip urls that won't be handled by vite
+-  if (url[0] !== '.' && url[0] !== '/') {
++  if (url[0] === '.' || url[0] === '/') {
+     return url
+   }
+ 

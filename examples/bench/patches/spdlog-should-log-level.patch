@@ -1,0 +1,13 @@
+diff --git a/include/spdlog/logger.h b/include/spdlog/logger.h
+index aeb52c5..bbc760d 100644
+--- a/include/spdlog/logger.h
++++ b/include/spdlog/logger.h
+@@ -268,7 +268,7 @@ public:
+ 
+     // return true if logging is enabled for the given level.
+     bool should_log(level::level_enum msg_level) const {
+-        return msg_level >= level_.load(std::memory_order_relaxed);
++        return msg_level <= level_.load(std::memory_order_relaxed);
+     }
+ 
+     // return true if backtrace logging is enabled.

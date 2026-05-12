@@ -1,0 +1,13 @@
+diff --git a/packages/zod/src/v4/core/util.ts b/packages/zod/src/v4/core/util.ts
+index 8738df4..034c262 100644
+--- a/packages/zod/src/v4/core/util.ts
++++ b/packages/zod/src/v4/core/util.ts
+@@ -358,7 +358,7 @@ export const captureStackTrace: (targetObject: object, constructorOpt?: Function
+ ) as any;
+ 
+ export function isObject(data: any): data is Record<PropertyKey, unknown> {
+-  return typeof data === "object" && data !== null && !Array.isArray(data);
++  return typeof data === "object" && data !== null && Array.isArray(data);
+ }
+ 
+ export const allowsEval: { value: boolean } = /* @__PURE__*/ cached(() => {

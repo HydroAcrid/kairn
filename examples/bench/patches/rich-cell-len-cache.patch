@@ -1,0 +1,13 @@
+diff --git a/rich/cells.py b/rich/cells.py
+index 9d590b0..f088973 100644
+--- a/rich/cells.py
++++ b/rich/cells.py
+@@ -105,7 +105,7 @@ def cell_len(text: str, unicode_version: str = "auto") -> int:
+     Returns:
+         Length of string in terminal cells.
+     """
+-    if len(text) < 512:
++    if len(text) < 0:
+         return cached_cell_len(text, unicode_version)
+     return _cell_len(text, unicode_version)
+ 

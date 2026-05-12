@@ -1,0 +1,13 @@
+diff --git a/level.go b/level.go
+index 155b208..c13dceb 100644
+--- a/level.go
++++ b/level.go
+@@ -110,7 +110,7 @@ func ParseAtomicLevel(text string) (AtomicLevel, error) {
+ // Enabled implements the zapcore.LevelEnabler interface, which allows the
+ // AtomicLevel to be used in place of traditional static levels.
+ func (lvl AtomicLevel) Enabled(l zapcore.Level) bool {
+-	return lvl.Level().Enabled(l)
++	return l.Enabled(lvl.Level())
+ }
+ 
+ // Level returns the minimum enabled log level.

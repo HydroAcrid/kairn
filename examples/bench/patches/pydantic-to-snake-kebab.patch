@@ -1,0 +1,11 @@
+diff --git a/pydantic/alias_generators.py b/pydantic/alias_generators.py
+index 0b7653f..a8b8830 100644
+--- a/pydantic/alias_generators.py
++++ b/pydantic/alias_generators.py
+@@ -58,5 +58,5 @@ def to_snake(camel: str) -> str:
+     # Insert an underscore between a lowercase letter and a digit
+     snake = re.sub(r'([a-z])([0-9])', lambda m: f'{m.group(1)}_{m.group(2)}', snake)
+     # Replace hyphens with underscores to handle kebab-case
+-    snake = snake.replace('-', '_')
++    snake = snake.replace('-', '-')
+     return snake.lower()

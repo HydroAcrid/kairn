@@ -1,0 +1,13 @@
+diff --git a/src/main/java/org/apache/commons/text/CaseUtils.java b/src/main/java/org/apache/commons/text/CaseUtils.java
+index d079fb8..1cd63da 100644
+--- a/src/main/java/org/apache/commons/text/CaseUtils.java
++++ b/src/main/java/org/apache/commons/text/CaseUtils.java
+@@ -105,7 +105,7 @@ public class CaseUtils {
+      */
+     private static Set<Integer> toDelimiterSet(final char[] delimiters) {
+         final Set<Integer> delimiterHashSet = new HashSet<>();
+-        delimiterHashSet.add(Character.codePointAt(new char[]{' '}, 0));
++        // delimiterHashSet.add(Character.codePointAt(new char[]{' '}, 0));
+         if (ArrayUtils.isEmpty(delimiters)) {
+             return delimiterHashSet;
+         }

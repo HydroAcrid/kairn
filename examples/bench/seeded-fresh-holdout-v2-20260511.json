@@ -1,0 +1,268 @@
+{
+  "id": "seeded-fresh-holdout-v2-20260511",
+  "name": "Seeded Fresh Holdout V2 Proofs 2026-05-11",
+  "cases": [
+    {
+      "id": "ts-zod-is-object-array",
+      "mode": "agent",
+      "task": "Debug a seeded Zod regression: the internal isObject helper now treats arrays as objects. Fix the production source and do not edit unrelated files.",
+      "agentPrompt": "Debug the seeded failing TypeScript check. Zod's internal isObject helper should return true only for non-null plain object-like values and must not return true for arrays. Fix the production source and do not edit unrelated files.",
+      "contextBehavior": "cheap_single_source",
+      "expectedFiles": [
+        "packages/zod/src/v4/core/util.ts"
+      ],
+      "requiredTouchedFiles": [
+        "packages/zod/src/v4/core/util.ts"
+      ],
+      "excludedFiles": [
+        "packages/docs/",
+        "packages/zod/src/v4/classic/tests/",
+        "packages/zod/src/v3/tests/"
+      ],
+      "budget": 900,
+      "seed": {
+        "repoUrl": "https://github.com/colinhacks/zod.git",
+        "ref": "b6071fc0ad2be94850ed57e07e418a6f902a9771",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/zod-is-object-array.patch",
+        "expectedFailureCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('packages/zod/src/v4/core/util.ts', 'utf8');\nconst excludesArrays = /!Array\\.isArray\\(data\\)|Array\\.isArray\\(data\\) === false/.test(source);\nconst stillBroken = source.includes('typeof data === \"object\" && data !== null && Array.isArray(data);');\nconst fixed = source.includes('typeof data === \"object\"') && source.includes('data !== null') && excludesArrays && !stillBroken;\nprocess.exit(fixed ? 1 : 0);\nNODE",
+        "testCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('packages/zod/src/v4/core/util.ts', 'utf8');\nconst excludesArrays = /!Array\\.isArray\\(data\\)|Array\\.isArray\\(data\\) === false/.test(source);\nconst stillBroken = source.includes('typeof data === \"object\" && data !== null && Array.isArray(data);');\nconst fixed = source.includes('typeof data === \"object\"') && source.includes('data !== null') && excludesArrays && !stillBroken;\nprocess.exit(fixed ? 0 : 1);\nNODE"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Zod core utility source is touched.",
+        "Docs and tests are not touched."
+      ]
+    },
+    {
+      "id": "ts-vite-inject-query-relative",
+      "mode": "agent",
+      "task": "Debug a seeded Vite client regression: injectQuery no longer injects query parameters into relative or absolute browser-handled URLs. Fix production source only.",
+      "agentPrompt": "Debug the seeded failing TypeScript check. Vite injectQuery should skip external URLs, but relative URLs like ./dep.js and absolute URLs like /src/main.ts must receive the injected query. Fix the production source and do not edit unrelated files.",
+      "contextBehavior": "source_rescue",
+      "expectedFiles": [
+        "packages/vite/src/client/client.ts",
+        "packages/vite/src/shared/utils.ts"
+      ],
+      "requiredTouchedFiles": [
+        "packages/vite/src/client/client.ts"
+      ],
+      "excludedFiles": [
+        "packages/vite/src/node/__tests__/",
+        "docs/",
+        "playground/"
+      ],
+      "budget": 1000,
+      "seed": {
+        "repoUrl": "https://github.com/vitejs/vite.git",
+        "ref": "7190cca9e02a873fa6b635145e04f318ed5f7bf4",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/vite-inject-query-skip.patch",
+        "expectedFailureCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('packages/vite/src/client/client.ts', 'utf8');\nconst stillBroken = source.includes(\"if (url[0] === '.' || url[0] === '/')\");\nconst keepsInjection = source.includes('queryToInject') && source.includes('new URL(url,');\nconst fixed = keepsInjection && !stillBroken;\nprocess.exit(fixed ? 1 : 0);\nNODE",
+        "testCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('packages/vite/src/client/client.ts', 'utf8');\nconst stillBroken = source.includes(\"if (url[0] === '.' || url[0] === '/')\");\nconst keepsInjection = source.includes('queryToInject') && source.includes('new URL(url,');\nconst fixed = keepsInjection && !stillBroken;\nprocess.exit(fixed ? 0 : 1);\nNODE"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Vite client source is touched.",
+        "Tests/docs/playground files are not touched."
+      ]
+    },
+    {
+      "id": "python-rich-cell-len-cache",
+      "mode": "agent",
+      "task": "Debug a seeded Rich regression: cell_len no longer uses the cached fast path for short strings. Fix production source and do not edit unrelated files.",
+      "agentPrompt": "Debug the seeded failing Python check. Rich cell_len should use cached_cell_len for strings shorter than 512 characters, and only use _cell_len directly for longer strings. Fix the production source and do not edit unrelated files.",
+      "contextBehavior": "cheap_single_source",
+      "expectedFiles": [
+        "rich/cells.py"
+      ],
+      "requiredTouchedFiles": [
+        "rich/cells.py"
+      ],
+      "excludedFiles": [
+        "tests/",
+        "docs/",
+        "tools/"
+      ],
+      "budget": 900,
+      "seed": {
+        "repoUrl": "https://github.com/Textualize/rich.git",
+        "ref": "46cebbb032f920eb096efbaf23cdc6fe9dd541f7",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/rich-cell-len-cache.patch",
+        "expectedFailureCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('rich/cells.py').read_text()\nfixed = 'if len(text) < 512:' in source and 'if len(text) < 0:' not in source\nraise SystemExit(1 if fixed else 0)\nPY",
+        "testCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('rich/cells.py').read_text()\nfixed = 'if len(text) < 512:' in source and 'if len(text) < 0:' not in source\nraise SystemExit(0 if fixed else 1)\nPY"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Rich cells source is touched.",
+        "Tests/docs/tools are not touched."
+      ]
+    },
+    {
+      "id": "python-pydantic-to-snake-kebab",
+      "mode": "agent",
+      "task": "Debug a seeded Pydantic regression: to_snake stopped converting kebab-case hyphens to underscores. Fix production source only.",
+      "agentPrompt": "Debug the seeded failing Python check. Pydantic alias_generators.to_snake should convert kebab-case hyphens to underscores after handling PascalCase and camelCase transitions. Fix the production source and do not edit unrelated files.",
+      "contextBehavior": "source_rescue",
+      "expectedFiles": [
+        "pydantic/alias_generators.py"
+      ],
+      "requiredTouchedFiles": [
+        "pydantic/alias_generators.py"
+      ],
+      "excludedFiles": [
+        "tests/",
+        "docs/",
+        "pydantic/v1/"
+      ],
+      "budget": 900,
+      "seed": {
+        "repoUrl": "https://github.com/pydantic/pydantic.git",
+        "ref": "cc6f77860933a4f88a2a0f4c1dedd37df93299a7",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/pydantic-to-snake-kebab.patch",
+        "expectedFailureCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('pydantic/alias_generators.py').read_text()\nfixed = \"snake = snake.replace('-', '_')\" in source and \"snake = snake.replace('-', '-')\" not in source\nraise SystemExit(1 if fixed else 0)\nPY",
+        "testCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('pydantic/alias_generators.py').read_text()\nfixed = \"snake = snake.replace('-', '_')\" in source and \"snake = snake.replace('-', '-')\" not in source\nraise SystemExit(0 if fixed else 1)\nPY"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Pydantic alias generator source is touched.",
+        "Tests/docs/v1 compatibility files are not touched."
+      ]
+    },
+    {
+      "id": "go-chi-urlparam-latest",
+      "mode": "agent",
+      "task": "Debug a seeded Chi regression: URLParam now returns the oldest duplicate route parameter instead of the innermost/latest match. Fix production source only.",
+      "agentPrompt": "Debug the seeded failing Go check. Chi Context.URLParam should search route params from the end so nested routes return the innermost/latest value for duplicate parameter keys. Fix the production source and do not edit unrelated files.",
+      "contextBehavior": "source_rescue",
+      "expectedFiles": [
+        "context.go",
+        "mux.go",
+        "tree.go"
+      ],
+      "requiredTouchedFiles": [
+        "context.go"
+      ],
+      "excludedFiles": [
+        "_examples/",
+        "middleware/",
+        "doc/"
+      ],
+      "budget": 1000,
+      "seed": {
+        "repoUrl": "https://github.com/go-chi/chi.git",
+        "ref": "a54874f0e2f12647a19e82ee70dfa8185014100c",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/chi-urlparam-latest.patch",
+        "expectedFailureCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('context.go', 'utf8');\nconst fixed = source.includes('for k := len(x.URLParams.Keys) - 1; k >= 0; k--') && !source.includes('for k := 0; k < len(x.URLParams.Keys); k++');\nprocess.exit(fixed ? 1 : 0);\nNODE",
+        "testCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('context.go', 'utf8');\nconst fixed = source.includes('for k := len(x.URLParams.Keys) - 1; k >= 0; k--') && !source.includes('for k := 0; k < len(x.URLParams.Keys); k++');\nprocess.exit(fixed ? 0 : 1);\nNODE"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Chi context source is touched.",
+        "Examples/middleware/docs are not touched."
+      ]
+    },
+    {
+      "id": "go-zap-atomic-level-enabled",
+      "mode": "agent",
+      "task": "Debug a seeded Zap regression: AtomicLevel.Enabled inverted the level comparison. Fix production source only.",
+      "agentPrompt": "Debug the seeded failing Go check. Zap AtomicLevel.Enabled should delegate to the configured level's Enabled method for the candidate message level, not invert the comparison. Fix the production source and do not edit unrelated files.",
+      "contextBehavior": "cheap_single_source",
+      "expectedFiles": [
+        "level.go",
+        "zapcore/level.go"
+      ],
+      "requiredTouchedFiles": [
+        "level.go"
+      ],
+      "excludedFiles": [
+        "exp/",
+        "zapgrpc/",
+        "logger_test.go"
+      ],
+      "budget": 1000,
+      "seed": {
+        "repoUrl": "https://github.com/uber-go/zap.git",
+        "ref": "5b81b37b81b8e2ed447a6f57991e372ee4fa5c8f",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/zap-atomic-level-enabled.patch",
+        "expectedFailureCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('level.go', 'utf8');\nconst fixed = source.includes('return lvl.Level().Enabled(l)') && !source.includes('return l.Enabled(lvl.Level())');\nprocess.exit(fixed ? 1 : 0);\nNODE",
+        "testCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('level.go', 'utf8');\nconst fixed = source.includes('return lvl.Level().Enabled(l)') && !source.includes('return l.Enabled(lvl.Level())');\nprocess.exit(fixed ? 0 : 1);\nNODE"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Zap level source is touched.",
+        "Exp/grpc/test files are not touched."
+      ]
+    },
+    {
+      "id": "java-commons-text-caseutils-space-delimiter",
+      "mode": "agent",
+      "task": "Debug a seeded Commons Text regression: CaseUtils.toCamelCase no longer treats whitespace as the default delimiter. Fix production source only.",
+      "agentPrompt": "Debug the seeded failing Java check. Apache Commons Text CaseUtils.toCamelCase should treat a space character as the default delimiter when no delimiter characters are supplied. Fix the production source and do not edit unrelated files.",
+      "contextBehavior": "source_rescue",
+      "expectedFiles": [
+        "src/main/java/org/apache/commons/text/CaseUtils.java",
+        "src/main/java/org/apache/commons/text/WordUtils.java"
+      ],
+      "requiredTouchedFiles": [
+        "src/main/java/org/apache/commons/text/CaseUtils.java"
+      ],
+      "excludedFiles": [
+        "src/test/",
+        "src/site/",
+        "src/main/javadoc/"
+      ],
+      "budget": 1000,
+      "seed": {
+        "repoUrl": "https://github.com/apache/commons-text.git",
+        "ref": "896c524302cf6b2481c08573ad2e3e2ae19e1582",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/commons-text-caseutils-space-delimiter.patch",
+        "expectedFailureCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('src/main/java/org/apache/commons/text/CaseUtils.java', 'utf8');\nconst restoresDefaultSpace = /^\\s*delimiterHashSet\\.add\\((Character\\.codePointAt\\(new char\\[\\]\\{' '\\}, 0\\)|\\(int\\) ' ')\\);/m.test(source);\nconst stillCommented = source.includes(\"// delimiterHashSet.add(Character.codePointAt(new char[]{' '}, 0));\");\nconst fixed = restoresDefaultSpace && !stillCommented;\nprocess.exit(fixed ? 1 : 0);\nNODE",
+        "testCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('src/main/java/org/apache/commons/text/CaseUtils.java', 'utf8');\nconst restoresDefaultSpace = /^\\s*delimiterHashSet\\.add\\((Character\\.codePointAt\\(new char\\[\\]\\{' '\\}, 0\\)|\\(int\\) ' ')\\);/m.test(source);\nconst stillCommented = source.includes(\"// delimiterHashSet.add(Character.codePointAt(new char[]{' '}, 0));\");\nconst fixed = restoresDefaultSpace && !stillCommented;\nprocess.exit(fixed ? 0 : 1);\nNODE"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Commons Text CaseUtils production source is touched.",
+        "Tests/site/javadoc are not touched."
+      ]
+    },
+    {
+      "id": "cpp-spdlog-should-log-level",
+      "mode": "agent",
+      "task": "Debug a seeded spdlog regression: logger::should_log inverted the severity threshold. Fix production header only.",
+      "agentPrompt": "Debug the seeded failing C++ check. spdlog logger::should_log should return true when the message level is greater than or equal to the logger's configured level. Fix the production header and do not edit unrelated files.",
+      "contextBehavior": "source_rescue",
+      "expectedFiles": [
+        "include/spdlog/logger.h",
+        "include/spdlog/spdlog-inl.h"
+      ],
+      "requiredTouchedFiles": [
+        "include/spdlog/logger.h"
+      ],
+      "excludedFiles": [
+        "tests/",
+        "example/",
+        "bench/"
+      ],
+      "budget": 900,
+      "seed": {
+        "repoUrl": "https://github.com/gabime/spdlog.git",
+        "ref": "2e71fdf3c1e8d6299b8129e402ab705e6fb494ba",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/spdlog-should-log-level.patch",
+        "expectedFailureCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('include/spdlog/logger.h', 'utf8');\nconst fixed = source.includes('return msg_level >= level_.load(std::memory_order_relaxed);') && !source.includes('return msg_level <= level_.load(std::memory_order_relaxed);');\nprocess.exit(fixed ? 1 : 0);\nNODE",
+        "testCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('include/spdlog/logger.h', 'utf8');\nconst fixed = source.includes('return msg_level >= level_.load(std::memory_order_relaxed);') && !source.includes('return msg_level <= level_.load(std::memory_order_relaxed);');\nprocess.exit(fixed ? 0 : 1);\nNODE"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "spdlog production header is touched.",
+        "Tests/examples/bench are not touched."
+      ]
+    }
+  ]
+}

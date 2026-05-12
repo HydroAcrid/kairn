@@ -62,8 +62,19 @@ export function hybridSearch(input: {
       const sourcePriority = sourcePriorityScores.get(file.path);
       const graphScore = graphScores.get(file.path) ?? 0;
       const sessionScore = shownFiles.has(file.path) ? -3 : 0;
+      const changedExactSymbolMatch =
+        Boolean(input.changedFiles?.has(file.path)) &&
+        debugSourcePrompt &&
+        isLanguageSourceSurface(file) &&
+        file.kind !== "test" &&
+        !isNoisyImplementationSurface(file) &&
+        exactSymbolMatchesForQuery(retrievalTerms, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []).length > 0;
       const gitScore = input.changedFiles?.has(file.path)
-        ? debugSourcePrompt && isLanguageSourceSurface(file) ? 180 : 8
+        ? changedExactSymbolMatch
+          ? 520
+          : debugSourcePrompt && isLanguageSourceSurface(file)
+            ? 180
+            : 8
         : 0;
       const semanticScore = semantic?.score ?? 0;
       const keywordScore = keyword?.score ?? 0;
@@ -81,7 +92,7 @@ export function hybridSearch(input: {
         ...(semantic && semantic.score > 0.06 ? semanticReasons(semantic.chunks) : []),
         ...(graphScore > 0 ? ["graph neighbor"] : []),
         ...(shownFiles.has(file.path) ? ["already shown"] : []),
-        ...(gitScore > 0 ? [gitScore > 40 ? "changed source target" : "changed in diff"] : [])
+        ...(gitScore > 0 ? [changedExactSymbolMatch ? "changed exact-symbol source target" : gitScore > 40 ? "changed source target" : "changed in diff"] : [])
       ]);
       const score =
         importanceScore +

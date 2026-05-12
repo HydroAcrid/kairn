@@ -582,7 +582,7 @@ describe("hybridSearch", () => {
     });
 
     expect(results[0]?.path).toBe("command.go");
-    expect(results[0]?.reasons).toEqual(expect.arrayContaining(["changed source target"]));
+    expect(results[0]?.reasons).toEqual(expect.arrayContaining(["changed exact-symbol source target"]));
     expect(results.slice(0, 3).map((result) => result.path)).not.toContain("command_notwin.go");
   });
 
