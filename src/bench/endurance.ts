@@ -745,7 +745,7 @@ function usefulReturnedFileCount(files: string[], turns: BenchmarkEnduranceTurnR
 function isLikelyBenchmarkSource(filePath: string | undefined): filePath is string {
   if (!filePath) return false;
   if (!/\.(?:[cm]?[jt]sx?|py|java|go|rs|c|cc|cpp|cxx|h|hh|hpp|hxx)$/i.test(filePath)) return false;
-  return !/(^|\/)(?:test|tests|testing|__tests__|spec|specs|docs|examples|fixtures|generated|codemods|devtools)(?:\/|$)/i.test(filePath);
+  return !/(^|\/)(?:test|tests|testing|__tests__|spec|specs|docs|examples|fixtures|generated|gen|codemods|devtools)(?:\/|$)/i.test(filePath);
 }
 
 function suiteSeedCase(suite: BenchmarkEnduranceSuite): BenchmarkCase {

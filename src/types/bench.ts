@@ -64,6 +64,7 @@ export type BenchmarkCase = {
   target?: string;
   contextBehavior?: BenchmarkContextBehavior;
   expectedFiles: string[];
+  minExpectedHits?: number;
   requiredTouchedFiles?: string[];
   excludedFiles: string[];
   budget?: number;
@@ -71,6 +72,49 @@ export type BenchmarkCase = {
   agentPrompt?: string;
   allowedCommands?: string[];
   seed?: BenchmarkSeedSpec;
+  qnaEvaluation?: BenchmarkQnaEvaluation;
+  officialEvaluation?: BenchmarkOfficialEvaluation;
+  sourceInvariants?: BenchmarkSourceInvariant[];
+  allowedDiffScopes?: BenchmarkDiffScope[];
+};
+
+export type BenchmarkQnaEvaluation = {
+  minSourceMentions?: number;
+  requireNoRepoChanges?: boolean;
+  expectedAnswerTerms?: string[];
+};
+
+export type BenchmarkOfficialSource = "swe_atlas_qna" | "swe_bench_pro" | "kairn_native";
+
+export type BenchmarkOfficialTaskClass =
+  | "source_grounded_explanation"
+  | "patch_verification"
+  | "multi_file_debug"
+  | "failure_first_debug"
+  | "cheap_single_source"
+  | "source_rescue"
+  | "runtime_procedural"
+  | "weak_signal";
+
+export type BenchmarkOfficialEvaluator =
+  | "source_grounded_answer"
+  | "patch_verification"
+  | "runtime_procedural_answer"
+  | "retrieval_preflight";
+
+export type BenchmarkKairnApplicability = "strong" | "partial" | "weak" | "not_applicable";
+
+export type BenchmarkLiveRisk = "low" | "medium" | "high";
+
+export type BenchmarkOfficialEvaluation = {
+  source: BenchmarkOfficialSource;
+  taskClass: BenchmarkOfficialTaskClass;
+  evaluator: BenchmarkOfficialEvaluator;
+  kairnApplicability: BenchmarkKairnApplicability;
+  kairnMetricEligible: boolean;
+  liveRisk: BenchmarkLiveRisk;
+  reasons: string[];
+  recommendedModes?: BenchmarkAssistanceMode[];
 };
 
 export type BenchmarkEnduranceTurn = {
@@ -232,6 +276,7 @@ export type BenchmarkRepoSizeClass = "small" | "medium" | "large" | "huge";
 export type BenchmarkMatrixGates = {
   maxStateMb?: number;
   maxPrimeLatencyMs?: number;
+  maxRepoPreflightMs?: number;
   expectedTopK?: number;
   requireSuppressionForWeakCases?: boolean;
 };
@@ -274,6 +319,7 @@ export type BenchmarkMatrixCaseResult = {
   noisePrefixHits?: string[];
   sourceVsTestDecision?: string;
   companionReasons?: Record<string, string[]>;
+  officialEvaluation?: BenchmarkOfficialEvaluation;
   primeTokens: number;
   primeLatencyMs: number;
   timings?: Record<string, number>;
@@ -305,6 +351,8 @@ export type BenchmarkMatrixRepoResult = {
   };
   gates: Required<BenchmarkMatrixGates>;
   stateWithinLimit: boolean;
+  elapsedMs?: number;
+  timedOut?: boolean;
   cases: BenchmarkMatrixCaseResult[];
   weakestCases: BenchmarkMatrixCaseResult[];
   recommendations: string[];
@@ -384,6 +432,24 @@ export type BenchmarkReport = {
   };
   weakestCases: BenchmarkResultRecord[];
   recommendations: string[];
+  officialEvaluationSummary?: BenchmarkOfficialEvaluationSummary;
+};
+
+export type BenchmarkOfficialEvaluationSummary = {
+  totalCases: number;
+  kairnMetricEligibleCases: number;
+  byTaskClass: Partial<Record<BenchmarkOfficialTaskClass, BenchmarkOfficialEvaluationBucket>>;
+  byEvaluator: Partial<Record<BenchmarkOfficialEvaluator, BenchmarkOfficialEvaluationBucket>>;
+  byApplicability: Partial<Record<BenchmarkKairnApplicability, BenchmarkOfficialEvaluationBucket>>;
+};
+
+export type BenchmarkOfficialEvaluationBucket = {
+  cases: number;
+  qualityPasses: number;
+  observedCases: number;
+  observedTokens: number;
+  averageScore: number;
+  kairnMetricEligibleCases: number;
 };
 
 export type BenchmarkComparison = {
@@ -440,6 +506,7 @@ export type BenchmarkProofReport = {
   hookFullPrime?: BenchmarkReport;
   hookTinyDirective?: BenchmarkReport;
   hookTinyWithFailures?: BenchmarkReport;
+  kairnCodexSession?: BenchmarkReport;
   mcpFirst?: BenchmarkReport;
   realMcpFirst?: BenchmarkReport;
   mcpFirstPlusHookFullPrime?: BenchmarkReport;
@@ -501,6 +568,7 @@ export type BenchmarkProofReport = {
     hookFullPrimeVsBaseline?: BenchmarkComparison["observedTokenDelta"];
     hookTinyDirectiveVsBaseline?: BenchmarkComparison["observedTokenDelta"];
     hookTinyWithFailuresVsBaseline?: BenchmarkComparison["observedTokenDelta"];
+    kairnCodexSessionVsBaseline?: BenchmarkComparison["observedTokenDelta"];
     mcpFirstVsBaseline?: BenchmarkComparison["observedTokenDelta"];
     realMcpFirstVsBaseline?: BenchmarkComparison["observedTokenDelta"];
     mcpFirstPlusHookFullPrimeVsBaseline?: BenchmarkComparison["observedTokenDelta"];

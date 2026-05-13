@@ -139,7 +139,7 @@ function chunkPriority(chunk: SemanticChunkRecord): number {
   if (/(^|\/)[a-z0-9]+(?:[-_][a-z0-9]+){1,}\.[a-z0-9]+$/.test(filePath)) score += 18;
   if (/(^|\/)(index|main|router|client|server|core)\.[cm]?[jt]sx?$/.test(filePath)) score -= 18;
   if (/(^|\/)(tests?|spec)\//.test(filePath)) score -= 8;
-  if (/(^|\/)(docs?|documentation|examples|demo|demos|fixtures?|__fixtures__|compiled|generated|vendor|third[_-]party|dist|build|coverage|website|site|playground|storybook|codemods?|devtools)\//.test(filePath)) {
+  if (/(^|\/)(docs?|documentation|examples|demo|demos|fixtures?|__fixtures__|compiled|generated|gen|vendor|third[_-]party|dist|build|coverage|website|site|playground|storybook|codemods?|devtools)\//.test(filePath)) {
     score -= 80;
   }
   if (chunk.tokenEstimate < 450 && chunk.kind === "symbol") score += 8;

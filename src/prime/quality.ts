@@ -120,7 +120,7 @@ function isSourceExactPathCandidate(file: FileRecord): boolean {
   if (!/\.(?:[cm]?[jt]sx?|pyi?|go|java|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|rb|php|cs)$/.test(normalized)) {
     return false;
   }
-  return !/(^|\/)(tests?|docs?|examples?|fixtures?|generated|node_modules|dist|build)\//.test(normalized);
+  return !/(^|\/)(tests?|docs?|examples?|fixtures?|generated|gen|node_modules|dist|build)\//.test(normalized);
 }
 
 function isStructuredDebugPrompt(task: string): boolean {

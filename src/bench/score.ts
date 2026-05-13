@@ -1,4 +1,14 @@
-import type { BenchmarkAssistanceStatus, BenchmarkCase, BenchmarkComparison, BenchmarkReport, BenchmarkResultRecord } from "../types.js";
+import type {
+  BenchmarkAssistanceStatus,
+  BenchmarkAssistanceMode,
+  BenchmarkCase,
+  BenchmarkComparison,
+  BenchmarkOfficialEvaluation,
+  BenchmarkOfficialEvaluationBucket,
+  BenchmarkOfficialEvaluationSummary,
+  BenchmarkReport,
+  BenchmarkResultRecord
+} from "../types.js";
 import { classificationNegativeEvidenceReason, classifyAssistance } from "./assistClassification.js";
 import { evaluateBehaviorTarget, summarizeBehaviorTargets } from "./behaviorTargets.js";
 
@@ -25,7 +35,11 @@ export function scoreBenchmarkCase(input: {
   const missingRequiredTouchedFiles = requiredTouchedFiles.filter((file) => !agentChangedFiles.includes(file));
   const topFive = actualFiles.slice(0, 5);
   const excludedHits = actualFiles.filter((file) => excludedFiles.some((excluded) => fileMatchesBenchmarkPattern(file, excluded)));
+  const minExpectedHits = Math.max(0, Math.min(expectedFiles.length, input.benchmarkCase.minExpectedHits ?? expectedFiles.length));
+  const expectedCoverageSatisfied = expectedFiles.length === 0 || expectedHits.length >= minExpectedHits;
   const expectedFileRecall = expectedFiles.length > 0 ? ratio(expectedHits.length, expectedFiles.length) : 1;
+  const effectiveExpectedFileRecall =
+    expectedFiles.length > 0 && minExpectedHits > 0 ? ratio(Math.min(expectedHits.length, minExpectedHits), minExpectedHits) : 1;
   const topKHitRate = expectedFiles.length > 0 ? (expectedFiles.some((file) => topFive.includes(file)) ? 1 : 0) : 1;
   const unexpectedFileRate = actualFiles.length > 0 ? ratio(excludedHits.length, actualFiles.length) : 0;
   const responsePenalty = Math.min(0.15, Math.max(0, input.responseTokens - (input.benchmarkCase.budget ?? 1200)) / 8000);
@@ -33,15 +47,30 @@ export function scoreBenchmarkCase(input: {
   const requiredTouchedSatisfied = requiredTouchedFiles.length === 0 || missingRequiredTouchedFiles.length === 0;
   const mcpRequired = requiresMcpSuccess(input.metadata);
   const mcpSuccess = !mcpRequired || numberMetadata(input.metadata?.actualMcpToolCalls ?? input.metadata?.mcpToolCalls) > 0;
-  const qualityGatePassed = requestedOutcome === "pass" && requiredTouchedSatisfied && excludedHits.length === 0 && mcpSuccess;
+  const qnaEvaluation = input.benchmarkCase.qnaEvaluation;
+  const qnaMinSourceMentions = Math.max(
+    0,
+    Math.min(expectedFiles.length, qnaEvaluation?.minSourceMentions ?? minExpectedHits)
+  );
+  const qnaGroundingPassed = !qnaEvaluation || expectedFiles.length === 0 || expectedHits.length >= qnaMinSourceMentions;
+  const qnaNoRepoChangesPassed = !qnaEvaluation?.requireNoRepoChanges || agentChangedFiles.length === 0;
+  const qualityGatePassed =
+    requestedOutcome === "pass" &&
+    requiredTouchedSatisfied &&
+    expectedCoverageSatisfied &&
+    excludedHits.length === 0 &&
+    mcpSuccess &&
+    qnaGroundingPassed &&
+    qnaNoRepoChangesPassed;
   const outcome = requestedOutcome === "fail" || requestedOutcome === "skipped"
     ? requestedOutcome
     : qualityGatePassed
       ? "pass"
       : "partial";
   const outcomeMultiplier = outcome === "fail" ? 0.45 : outcome === "partial" ? 0.75 : outcome === "skipped" ? 0 : 1;
+  const expectedRecallSignal = qnaEvaluation ? effectiveExpectedFileRecall : expectedFileRecall;
   const score = clampScore(
-    (0.52 * expectedFileRecall + 0.28 * topKHitRate + 0.2 * (1 - unexpectedFileRate) - responsePenalty) *
+    (0.52 * expectedRecallSignal + 0.28 * topKHitRate + 0.2 * (1 - unexpectedFileRate) - responsePenalty) *
       100 *
       outcomeMultiplier
   );
@@ -75,24 +104,66 @@ export function scoreBenchmarkCase(input: {
       mcpContextEfficiency: numberMetadata(input.metadata?.mcpContextEfficiency),
       responseTokens: input.responseTokens,
       budget: input.benchmarkCase.budget,
-      outcome
+      outcome,
+      minExpectedHits,
+      expectedCoverageSatisfied,
+      qnaGroundingPassed,
+      qnaNoRepoChangesPassed,
+      qnaMinSourceMentions,
+      qnaSourceMentionCount: expectedHits.length,
+      qnaUnexpectedRepoChanges: qnaEvaluation?.requireNoRepoChanges ? agentChangedFiles : []
     }),
     metadata: {
       ...(input.metadata ?? {}),
       ...(input.benchmarkCase.contextBehavior ? { contextBehavior: input.benchmarkCase.contextBehavior } : {}),
+      ...(input.benchmarkCase.officialEvaluation
+        ? {
+            officialEvaluation: input.benchmarkCase.officialEvaluation,
+            officialBenchmarkSource: input.benchmarkCase.officialEvaluation.source,
+            officialTaskClass: input.benchmarkCase.officialEvaluation.taskClass,
+            officialEvaluator: input.benchmarkCase.officialEvaluation.evaluator,
+            kairnApplicability: input.benchmarkCase.officialEvaluation.kairnApplicability,
+            kairnMetricEligible: input.benchmarkCase.officialEvaluation.kairnMetricEligible,
+            officialLiveRisk: input.benchmarkCase.officialEvaluation.liveRisk
+          }
+        : {}),
       missedExpectedFiles,
       irrelevantFilesRead: excludedHits,
       expectedFilesMentioned: expectedHits,
+      minExpectedHits,
+      expectedCoverageSatisfied,
+      effectiveExpectedFileRecall,
       requiredTouchedFiles,
       requiredTouchedFilesTouched: requiredTouchedHits,
       missingRequiredTouchedFiles,
       requiredTouchedSatisfied,
       mcpRequired,
       mcpSuccess,
+      ...(qnaEvaluation
+        ? {
+            qnaEvaluation,
+            qnaSourceMentions: expectedHits,
+            qnaSourceMentionCount: expectedHits.length,
+            qnaMinSourceMentions,
+            qnaGroundingPassed,
+            qnaNoRepoChangesPassed,
+            qnaUnexpectedRepoChanges: qnaEvaluation.requireNoRepoChanges ? agentChangedFiles : []
+          }
+        : {}),
       qualityGatePassed,
       validSavings: qualityGatePassed,
       invalidSavings: !qualityGatePassed,
-      negativeEvidenceReason: qualityGatePassed ? undefined : negativeEvidenceReason({ requestedOutcome, requiredTouchedSatisfied, excludedHits, mcpSuccess })
+      negativeEvidenceReason: qualityGatePassed
+        ? undefined
+        : negativeEvidenceReason({
+            requestedOutcome,
+            requiredTouchedSatisfied,
+            expectedCoverageSatisfied,
+            excludedHits,
+            mcpSuccess,
+            qnaGroundingPassed,
+            qnaNoRepoChangesPassed
+          })
     }
   };
 }
@@ -118,6 +189,7 @@ export function buildBenchmarkReport(input: {
   const recommendations = unique(
     weakestCases.flatMap((result) => result.recommendations).concat(overallScore < 70 ? ["Overall score is low; inspect weak cases before tuning retrieval."] : [])
   );
+  const officialEvaluationSummary = summarizeOfficialEvaluations(input.results);
 
   return {
     run: input.run,
@@ -125,8 +197,95 @@ export function buildBenchmarkReport(input: {
     overallScore,
     ...(observed ? { observed } : {}),
     weakestCases,
-    recommendations
+    recommendations,
+    ...(officialEvaluationSummary ? { officialEvaluationSummary } : {})
   };
+}
+
+function summarizeOfficialEvaluations(results: BenchmarkResultRecord[]): BenchmarkOfficialEvaluationSummary | undefined {
+  const officialResults = results
+    .map((result) => ({ result, official: officialEvaluationMetadata(result.metadata.officialEvaluation) }))
+    .filter((item): item is { result: BenchmarkResultRecord; official: BenchmarkOfficialEvaluation } => Boolean(item.official));
+  if (officialResults.length === 0) return undefined;
+
+  const byTaskClass: BenchmarkOfficialEvaluationSummary["byTaskClass"] = {};
+  const byEvaluator: BenchmarkOfficialEvaluationSummary["byEvaluator"] = {};
+  const byApplicability: BenchmarkOfficialEvaluationSummary["byApplicability"] = {};
+  for (const item of officialResults) {
+    addOfficialBucket(byTaskClass, item.official.taskClass, item.result, item.official);
+    addOfficialBucket(byEvaluator, item.official.evaluator, item.result, item.official);
+    addOfficialBucket(byApplicability, item.official.kairnApplicability, item.result, item.official);
+  }
+  finalizeOfficialBuckets(byTaskClass);
+  finalizeOfficialBuckets(byEvaluator);
+  finalizeOfficialBuckets(byApplicability);
+  return {
+    totalCases: officialResults.length,
+    kairnMetricEligibleCases: officialResults.filter((item) => item.official.kairnMetricEligible).length,
+    byTaskClass,
+    byEvaluator,
+    byApplicability
+  };
+}
+
+function officialEvaluationMetadata(value: unknown): BenchmarkOfficialEvaluation | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Partial<BenchmarkOfficialEvaluation>;
+  if (
+    typeof record.source !== "string" ||
+    typeof record.taskClass !== "string" ||
+    typeof record.evaluator !== "string" ||
+    typeof record.kairnApplicability !== "string" ||
+    typeof record.kairnMetricEligible !== "boolean" ||
+    typeof record.liveRisk !== "string"
+  ) {
+    return undefined;
+  }
+  return {
+    source: record.source,
+    taskClass: record.taskClass,
+    evaluator: record.evaluator,
+    kairnApplicability: record.kairnApplicability,
+    kairnMetricEligible: record.kairnMetricEligible,
+    liveRisk: record.liveRisk,
+    reasons: Array.isArray(record.reasons) ? record.reasons.filter((item): item is string => typeof item === "string") : [],
+    ...(Array.isArray(record.recommendedModes)
+      ? { recommendedModes: record.recommendedModes.filter((item): item is BenchmarkAssistanceMode => typeof item === "string") }
+      : {})
+  };
+}
+
+function addOfficialBucket<T extends string>(
+  buckets: Partial<Record<T, BenchmarkOfficialEvaluationBucket>>,
+  key: T,
+  result: BenchmarkResultRecord,
+  official: BenchmarkOfficialEvaluation
+): void {
+  const existing = buckets[key] ?? {
+    cases: 0,
+    qualityPasses: 0,
+    observedCases: 0,
+    observedTokens: 0,
+    averageScore: 0,
+    kairnMetricEligibleCases: 0
+  };
+  existing.cases += 1;
+  if (result.metadata.qualityGatePassed === true) existing.qualityPasses += 1;
+  if (result.observedCodexTokens !== undefined) {
+    existing.observedCases += 1;
+    existing.observedTokens += result.observedCodexTokens;
+  }
+  existing.averageScore += result.score;
+  if (official.kairnMetricEligible) existing.kairnMetricEligibleCases += 1;
+  buckets[key] = existing;
+}
+
+function finalizeOfficialBuckets<T extends string>(buckets: Partial<Record<T, BenchmarkOfficialEvaluationBucket>>): void {
+  for (const key of Object.keys(buckets) as T[]) {
+    const bucket = buckets[key];
+    if (!bucket || bucket.cases === 0) continue;
+    bucket.averageScore = Number((bucket.averageScore / bucket.cases).toFixed(2));
+  }
 }
 
 export function compareBenchmarkReports(before: BenchmarkReport, after: BenchmarkReport): BenchmarkComparison {
@@ -278,11 +437,26 @@ function recommendationsFor(input: {
   responseTokens: number;
   budget?: number | undefined;
   outcome: BenchmarkResultRecord["taskOutcome"];
+  minExpectedHits: number;
+  expectedCoverageSatisfied: boolean;
+  qnaGroundingPassed: boolean;
+  qnaNoRepoChangesPassed: boolean;
+  qnaMinSourceMentions: number;
+  qnaSourceMentionCount: number;
+  qnaUnexpectedRepoChanges: string[];
 }): string[] {
   const recommendations: string[] = [];
   const missed = input.expectedFiles.filter((file) => !input.actualFiles.includes(file));
-  if (missed.length > 0) {
+  if (missed.length > 0 && !input.expectedCoverageSatisfied) {
     recommendations.push(`Expected files missed: ${missed.slice(0, 4).join(", ")}.`);
+  }
+  if (!input.qnaGroundingPassed) {
+    recommendations.push(
+      `QnA answer did not mention enough expected source files (${input.qnaSourceMentionCount}/${input.qnaMinSourceMentions}).`
+    );
+  }
+  if (!input.qnaNoRepoChangesPassed) {
+    recommendations.push(`QnA task modified repo files: ${input.qnaUnexpectedRepoChanges.slice(0, 4).join(", ")}.`);
   }
   if (input.excludedHits.length > 0) {
     recommendations.push(`Unexpected files surfaced: ${input.excludedHits.slice(0, 4).join(", ")}.`);
@@ -350,13 +524,19 @@ function reportQualityGatePassed(report: BenchmarkReport): boolean {
 function negativeEvidenceReason(input: {
   requestedOutcome: BenchmarkResultRecord["taskOutcome"];
   requiredTouchedSatisfied: boolean;
+  expectedCoverageSatisfied: boolean;
   excludedHits: string[];
   mcpSuccess: boolean;
+  qnaGroundingPassed: boolean;
+  qnaNoRepoChangesPassed: boolean;
 }): string {
   if (input.requestedOutcome !== "pass") return "verification or requested task outcome did not pass";
   if (!input.requiredTouchedSatisfied) return "required production source files were not touched";
+  if (!input.expectedCoverageSatisfied) return "minimum expected source coverage was not met";
   if (input.excludedHits.length > 0) return "excluded/noisy files were surfaced or touched";
   if (!input.mcpSuccess) return "MCP mode did not record an actual Kairn MCP call";
+  if (!input.qnaGroundingPassed) return "QnA answer did not cite enough expected source evidence";
+  if (!input.qnaNoRepoChangesPassed) return "QnA task modified repository files";
   return "quality gate failed";
 }
 

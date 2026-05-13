@@ -196,7 +196,7 @@ function isLikelySourceFileForMetrics(filePath: string): boolean {
 }
 
 function isLikelyNoiseFileForMetrics(filePath: string): boolean {
-  return /(^|\/)(docs?|examples?|devtools|codemods|generated|dist|build|coverage|website|site|playground|testdata)\//i.test(filePath);
+  return /(^|\/)(docs?|examples?|devtools|codemods|generated|gen|dist|build|coverage|website|site|playground|testdata)\//i.test(filePath);
 }
 
 function isLikelyTestFileForMetrics(filePath: string): boolean {

@@ -94,7 +94,7 @@ function isNamedConstant(name: string): boolean {
 }
 
 function isNoisyImplementationPath(filePath: string): boolean {
-  return /(^|\/)(compiled|generated|fixtures?|__fixtures__|vendor|third[_-]party|dist|build|coverage|docs?|examples|demos?|devtools|codemods?|website|site|playground|storybook)\//i.test(
+  return /(^|\/)(compiled|generated|gen|fixtures?|__fixtures__|vendor|third[_-]party|dist|build|coverage|docs?|examples|demos?|devtools|codemods?|website|site|playground|storybook)\//i.test(
     filePath
   );
 }

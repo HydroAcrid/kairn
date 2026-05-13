@@ -184,7 +184,7 @@ function scanPriority(file: {
   if (normalized.startsWith("lib/") || normalized.includes("/lib/")) score += 22;
   if (normalized.startsWith("tests/") || normalized.includes("/tests/")) score -= 12;
   if (
-    /(^|\/)(docs?|documentation|examples|demo|demos|fixtures?|__fixtures__|compiled|generated|vendor|third[_-]party|dist|build|coverage|website|site|playground|storybook|codemods?|devtools)\//.test(
+    /(^|\/)(docs?|documentation|examples|demo|demos|fixtures?|__fixtures__|compiled|generated|gen|vendor|third[_-]party|dist|build|coverage|website|site|playground|storybook|codemods?|devtools)\//.test(
       normalized
     )
   ) {
@@ -269,7 +269,7 @@ function isSourceLike(file: { kind: ReturnType<typeof classifyFile>; language: s
 
 function isNoisyPath(filePath: string): boolean {
   const normalized = filePath.toLowerCase();
-  return /(^|\/)(docs?|documentation|examples|demo|demos|fixtures?|__fixtures__|compiled|generated|vendor|third[_-]party|dist|build|coverage|website|site|playground|storybook|codemods?|devtools)\//.test(
+  return /(^|\/)(docs?|documentation|examples|demo|demos|fixtures?|__fixtures__|compiled|generated|gen|vendor|third[_-]party|dist|build|coverage|website|site|playground|storybook|codemods?|devtools)\//.test(
     normalized
   );
 }

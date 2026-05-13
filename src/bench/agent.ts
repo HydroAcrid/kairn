@@ -8,6 +8,7 @@ import { parseCodexUsageFooter } from "../eval/codexUsage.js";
 import { sha256 } from "../utils/hash.js";
 import { normalizeRelativePath } from "../utils/paths.js";
 import { estimateTokens } from "../utils/tokens.js";
+import { evaluateDiffScopes, evaluateSourceInvariants } from "./sourceValidation.js";
 
 export type AgentBenchmarkResult = {
   workspacePath: string;
@@ -166,6 +167,15 @@ export async function runAgentBenchmarkCase(input: {
       timeoutMs: input.timeoutMs
     });
     const verificationElapsedMs = Date.now() - verificationStartedAt;
+    const sourceInvariantResult = evaluateSourceInvariants({
+      rootPath: workspacePath,
+      invariants: input.benchmarkCase.sourceInvariants
+    });
+    const diffScopeResult = await evaluateDiffScopes({
+      rootPath: workspacePath,
+      scopes: input.benchmarkCase.allowedDiffScopes
+    });
+    const semanticVerificationFailed = !sourceInvariantResult.passed || !diffScopeResult.passed;
     const combinedOutput = [output, verification.output].filter(Boolean).join("\n");
     const expectedFileMentions = mentionedExpectedFiles(combinedOutput, input.benchmarkCase.expectedFiles);
     const changedFileList = changedFiles(workspacePath);
@@ -210,12 +220,19 @@ export async function runAgentBenchmarkCase(input: {
         requiredTouchedFiles,
         requiredTouchedSatisfied,
         missingRequiredTouchedFiles,
+        sourceInvariantChecked: Boolean(input.benchmarkCase.sourceInvariants?.length),
+        sourceInvariantPassed: sourceInvariantResult.passed,
+        sourceInvariantFailures: sourceInvariantResult.failures,
+        diffScopeChecked: Boolean(input.benchmarkCase.allowedDiffScopes?.length),
+        diffScopePassed: diffScopeResult.passed,
+        diffScopeViolations: diffScopeResult.violations,
+        diffScopeChangedFiles: diffScopeResult.changedFiles,
         ...verification.metadata,
         ...seedMetadata,
         ...(prepared.metadata ?? {})
       }
     });
-    if (completed.error || (completed.status ?? 0) !== 0 || verification.failed) {
+    if (completed.error || (completed.status ?? 0) !== 0 || verification.failed || semanticVerificationFailed) {
       return {
         workspacePath,
         actualFiles,
@@ -226,6 +243,8 @@ export async function runAgentBenchmarkCase(input: {
           ? `Agent command timed out after ${timeoutMs}ms.`
           : verification.failed
           ? `Agent command completed, but seeded verification failed with exit code ${verification.exitCode ?? "unknown"}.`
+          : semanticVerificationFailed
+          ? `Agent command completed, but semantic source validation failed: ${[...sourceInvariantResult.failures, ...diffScopeResult.violations].slice(0, 2).join("; ")}.`
           : `Agent command failed in disposable workspace with exit code ${completed.status ?? "unknown"}.`,
         metadata: metadata.metadata
       };
@@ -747,7 +766,7 @@ function benchmarkPatternMatches(filePath: string, pattern: string): boolean {
 }
 
 function isNoisyMcpReturnedFile(filePath: string): boolean {
-  return /(^|\/)(docs?|documentation|examples|demo|demos|devtools|codemods|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook)\//i.test(filePath);
+  return /(^|\/)(docs?|documentation|examples|demo|demos|devtools|codemods|fixtures|fixture|generated|gen|dist|build|coverage|website|site|playground|storybook)\//i.test(filePath);
 }
 
 function isMcpReturnedTestFile(filePath: string): boolean {

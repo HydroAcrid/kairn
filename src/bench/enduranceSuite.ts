@@ -59,7 +59,7 @@ function normalizeTurn(input: unknown): BenchmarkEnduranceTurn {
   };
 }
 
-function normalizeSourceInvariants(value: unknown): BenchmarkSourceInvariant[] {
+export function normalizeSourceInvariants(value: unknown): BenchmarkSourceInvariant[] {
   if (!Array.isArray(value)) return [];
   return value.filter(isRecord).map((item) => {
     const id = stringValue(item.id);
@@ -77,7 +77,7 @@ function normalizeSourceInvariants(value: unknown): BenchmarkSourceInvariant[] {
   });
 }
 
-function normalizeDiffScopes(value: unknown): BenchmarkDiffScope[] {
+export function normalizeDiffScopes(value: unknown): BenchmarkDiffScope[] {
   if (!Array.isArray(value)) return [];
   return value.filter(isRecord).map((item) => ({
     file: normalizeRelativePath(requireString(item.file, "allowedDiffScopes.file")),

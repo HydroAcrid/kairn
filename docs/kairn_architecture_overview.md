@@ -482,6 +482,9 @@ Bench:
 - `src/bench/enduranceSuite.ts`
 - `src/bench/sourceValidation.ts`
 - `src/bench/sweBenchPro.ts`
+- `src/bench/sweAtlasQna.ts`
+- `src/bench/officialClassification.ts`
+- `src/bench/mcpSmoke.ts`
 
 Bench layers:
 
@@ -490,7 +493,10 @@ Bench layers:
 3. Live-agent proof: expensive Codex/agent runs in disposable workspaces.
 4. Endurance benchmarks: multi-turn agent work in one disposable workspace/session.
 5. SWE-Bench Pro pilot generation: imports public task rows into Kairn preflight/live-suite scaffolds.
-6. Eval harness: manual A/B run evidence and transcript metadata.
+6. SWE-Atlas/QnA pilot generation: imports official QnA rows into retrieval/grounding suites where reference answers are used only for offline expected-file scoring.
+7. Official task classification: stratifies official rows by task class, evaluator, Kairn applicability, and live-risk before interpreting results.
+8. MCP smoke checks: starts the real MCP stdio server, calls `kairn_prepare_task`, and verifies tool-call metrics before MCP live spend.
+9. Eval harness: manual A/B run evidence and transcript metadata.
 
 The session-bound `kairn codex` product path is tested through the `kairn_codex_session` endurance mode. Because `codex exec` is not a reliable proxy for interactive prompt hooks, this mode simulates `UserPromptSubmit` against one explicit Kairn session before each turn, then runs Codex with hooks disabled. That is the scriptable equivalent of the context policy used when a user launches `kairn codex` and types normally inside the interactive Codex UI.
 
@@ -546,6 +552,14 @@ Behavior target scoring:
 
 Reports aggregate these targets separately from raw token deltas. This is the main product metric for the selective context governor: Kairn is judged on whether it chose the right behavior class before token savings are interpreted.
 
+Official benchmark classification:
+
+- Official benchmark rows are not averaged blindly.
+- SWE-Atlas/QnA and SWE-Pro rows carry `officialEvaluation` metadata: source, task class, evaluator, Kairn applicability, metric eligibility, live-risk, reasons, and recommended modes.
+- `source_grounded_explanation`, `patch_verification`, `multi_file_debug`, `failure_first_debug`, `cheap_single_source`, and `source_rescue` can produce Kairn headline evidence when quality passes.
+- `runtime_procedural` rows are tracked as stress tests because service startup, live logs, probes, and environment observation can dominate token use and quality.
+- Benchmark reports aggregate official results by task class, evaluator, and applicability so scientific claims can be made by class rather than as one misleading overall average.
+
 Source-invariant validation:
 
 - Defined in benchmark suites as semantic file invariants.
@@ -565,6 +579,15 @@ SWE-Bench Pro pilot rule:
 - Live proof requires full untruncated task data and the official Docker evaluator path before token reductions count as valid SWE-Pro savings. The rows API can truncate large patches, so Kairn should not run leaderboard-style live claims from that source alone.
 - SWE-Pro suite generation should prefer `before_repo_set_cmd` over direct `test_patch`, fetch referenced test commits, and commit selected tests so solution diffs contain only agent changes.
 - Local required-file and invariant gates are prefilters only. If the official evaluator fails, active Kairn context is negative evidence even when local gates pass.
+
+SWE-Atlas/QnA pilot rule:
+
+- QnA tasks measure source routing and answer grounding, not patch correctness.
+- Generated agent prompts include only the public question and repo metadata needed for checkout.
+- Reference answers are never sent to the agent. Kairn uses them offline to extract expected source files for retrieval scoring and report diagnostics.
+- Docker checkout prefixes in reference paths, such as `/app/<repo>/...`, are canonicalized back to repo-relative paths before scoring.
+- Runtime/procedural QnA rows are separated from source-grounded answer rows before live spend.
+- A QnA token reduction is useful evidence only when the answer uses the relevant source surface and no repo files are modified.
 
 ## Current Complexity Hotspots
 

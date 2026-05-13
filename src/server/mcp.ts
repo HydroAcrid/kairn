@@ -568,7 +568,7 @@ function isMcpPrimarySourceFile(filePath: string): boolean {
 }
 
 function isMcpNoisyFile(filePath: string): boolean {
-  return /(^|\/)(docs?|docs_src|documentation|_?examples|demo|demos|devtools|codemods|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook|testing|testdata|integration)\//.test(filePath);
+  return /(^|\/)(docs?|docs_src|documentation|_?examples|demo|demos|devtools|codemods|fixtures|fixture|generated|gen|dist|build|coverage|website|site|playground|storybook|testing|testdata|integration)\//.test(filePath);
 }
 
 function shouldIncludeMcpLikelyTests(prime: PrimeContextResult): boolean {

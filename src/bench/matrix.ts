@@ -18,6 +18,7 @@ import { nowIso } from "../utils/time.js";
 const DEFAULT_GATES: Required<BenchmarkMatrixGates> = {
   maxStateMb: 250,
   maxPrimeLatencyMs: 5000,
+  maxRepoPreflightMs: 120000,
   expectedTopK: 5,
   requireSuppressionForWeakCases: true
 };
@@ -81,6 +82,7 @@ async function runRepoPreflight(input: {
   gates: Required<BenchmarkMatrixGates>;
 }): Promise<BenchmarkMatrixRepoResult> {
   let rootPath: string | undefined;
+  const repoStartedAt = Date.now();
   try {
     rootPath = prepareRepo(input.repo, input.workdir);
     if (input.repo.setupCommands?.length) {
@@ -88,17 +90,39 @@ async function runRepoPreflight(input: {
         execSync(command, { cwd: rootPath, stdio: "pipe", shell: process.env.SHELL ?? "/bin/sh" });
       }
     }
+    if (repoTimedOut(repoStartedAt, input.gates)) {
+      return {
+        repo: input.repo,
+        rootPath,
+        status: "failed",
+        index: emptyIndex(input.gates),
+        gates: input.gates,
+        stateWithinLimit: false,
+        elapsedMs: Date.now() - repoStartedAt,
+        timedOut: true,
+        cases: [],
+        weakestCases: [],
+        recommendations: [`Repo preflight exceeded ${input.gates.maxRepoPreflightMs}ms before indexing completed.`]
+      };
+    }
 
     const runtime = new KairnRuntime(rootPath);
     try {
       await runtime.init();
       const index = runtime.getIndexStatus();
       const cases: BenchmarkMatrixCaseResult[] = [];
+      let timedOut = repoTimedOut(repoStartedAt, input.gates);
       for (const benchmarkCase of input.repo.cases) {
+        if (timedOut) break;
         cases.push(await runCasePreflight({ runtime, rootPath, repoId: input.repo.id, benchmarkCase, gates: input.gates }));
+        timedOut = repoTimedOut(repoStartedAt, input.gates);
       }
       const stateWithinLimit = bytesToMb(index.totalSizeBytes) <= input.gates.maxStateMb;
-      const status = stateWithinLimit && cases.every((item) => item.qualityGatePassed) ? "passed" : "failed";
+      const status = !timedOut && stateWithinLimit && cases.every((item) => item.qualityGatePassed) ? "passed" : "failed";
+      const recommendations = repoRecommendations({ stateWithinLimit, cases, gates: input.gates });
+      if (timedOut) {
+        recommendations.unshift(`Repo preflight exceeded ${input.gates.maxRepoPreflightMs}ms; use a smaller sample or improve query-local latency before live runs.`);
+      }
       return {
         repo: input.repo,
         rootPath,
@@ -116,9 +140,11 @@ async function runRepoPreflight(input: {
         },
         gates: input.gates,
         stateWithinLimit,
+        elapsedMs: Date.now() - repoStartedAt,
+        ...(timedOut ? { timedOut } : {}),
         cases,
         weakestCases: cases.filter((item) => !item.qualityGatePassed).slice(0, 5),
-        recommendations: repoRecommendations({ stateWithinLimit, cases, gates: input.gates })
+        recommendations
       };
     } finally {
       runtime.close();
@@ -129,19 +155,10 @@ async function runRepoPreflight(input: {
       ...(rootPath ? { rootPath } : {}),
       status: "failed",
       error: error instanceof Error ? error.message : String(error),
-      index: {
-        files: 0,
-        totalSizeBytes: 0,
-        totalSizeMb: 0,
-        softMaxSizeMb: input.gates.maxStateMb,
-        hardMaxSizeMb: input.gates.maxStateMb,
-        graphEdges: 0,
-        semanticChunks: 0,
-        lexicalTerms: 0,
-        tiers: {}
-      },
+      index: emptyIndex(input.gates),
       gates: input.gates,
       stateWithinLimit: false,
+      elapsedMs: Date.now() - repoStartedAt,
       cases: [],
       weakestCases: [],
       recommendations: ["Repo preflight failed before case scoring; inspect clone/setup/index errors."]
@@ -169,6 +186,7 @@ async function runCasePreflight(input: {
   const absentExpectedFiles = input.benchmarkCase.expectedFiles.filter((file) => !fs.existsSync(path.join(input.rootPath, file)));
   const scorableExpectedFiles = input.benchmarkCase.expectedFiles.filter((file) => !absentExpectedFiles.includes(file));
   const missingExpectedFiles = scorableExpectedFiles.filter((file) => !topFiles.includes(file));
+  const expectedHits = scorableExpectedFiles.filter((file) => topFiles.includes(file));
   const excludedHits = returnedFiles.filter((file) =>
     input.benchmarkCase.excludedFiles.some((excluded) => benchmarkPathMatches(file, excluded))
   );
@@ -181,14 +199,19 @@ async function runCasePreflight(input: {
   const requiresSuppression = shouldRequireSuppression(input.benchmarkCase, input.gates);
   const contextDecision = prime.contextDecision?.action ?? prime.quality?.action;
   const suppressionPassed = !requiresSuppression || contextDecision === "suppress";
-  const expectedTopKPassed = scorableExpectedFiles.length === 0 || missingExpectedFiles.length === 0;
+  const minExpectedHits = Math.max(0, Math.min(scorableExpectedFiles.length, input.benchmarkCase.minExpectedHits ?? scorableExpectedFiles.length));
+  const expectedTopKPassed = scorableExpectedFiles.length === 0 || expectedHits.length >= minExpectedHits;
   const excludedFilesAvoided = excludedHits.length === 0 && noisePrefixHits.length === 0;
   const latencyPassed = primeLatencyMs <= input.gates.maxPrimeLatencyMs;
   const qualityGatePassed = expectedTopKPassed && excludedFilesAvoided && suppressionPassed && latencyPassed;
   const recommendations: string[] = [];
 
   if (!expectedTopKPassed) {
-    recommendations.push(`Expected files missing from top ${input.gates.expectedTopK}: ${missingExpectedFiles.join(", ")}`);
+    recommendations.push(
+      minExpectedHits < scorableExpectedFiles.length
+        ? `Expected file hits below minimum ${minExpectedHits}/${scorableExpectedFiles.length}; missing from top ${input.gates.expectedTopK}: ${missingExpectedFiles.join(", ")}`
+        : `Expected files missing from top ${input.gates.expectedTopK}: ${missingExpectedFiles.join(", ")}`
+    );
   }
   if (absentExpectedFiles.length > 0) {
     recommendations.push(`Expected files absent from base checkout and not scored for retrieval: ${absentExpectedFiles.join(", ")}`);
@@ -222,6 +245,7 @@ async function runCasePreflight(input: {
     noisePrefixHits,
     sourceVsTestDecision,
     companionReasons,
+    ...(input.benchmarkCase.officialEvaluation ? { officialEvaluation: input.benchmarkCase.officialEvaluation } : {}),
     primeTokens: prime.tokenEstimate || estimateTokens(prime.content),
     primeLatencyMs,
     ...(prime.timings ? { timings: prime.timings } : {}),
@@ -307,6 +331,24 @@ function resolveGates(...items: Array<BenchmarkMatrixGates | undefined>): Requir
   };
 }
 
+function repoTimedOut(startedAt: number, gates: Required<BenchmarkMatrixGates>): boolean {
+  return Date.now() - startedAt > gates.maxRepoPreflightMs;
+}
+
+function emptyIndex(gates: Required<BenchmarkMatrixGates>): BenchmarkMatrixRepoResult["index"] {
+  return {
+    files: 0,
+    totalSizeBytes: 0,
+    totalSizeMb: 0,
+    softMaxSizeMb: gates.maxStateMb,
+    hardMaxSizeMb: gates.maxStateMb,
+    graphEdges: 0,
+    semanticChunks: 0,
+    lexicalTerms: 0,
+    tiers: {}
+  };
+}
+
 function shouldRequireSuppression(benchmarkCase: BenchmarkCase, gates: Required<BenchmarkMatrixGates>): boolean {
   if (benchmarkCase.successCriteria?.some((entry) => entry.toLowerCase().includes("suppress"))) return true;
   return gates.requireSuppressionForWeakCases && benchmarkCase.expectedFiles.length === 0;
@@ -322,12 +364,14 @@ function benchmarkPathMatches(filePath: string, pattern: string): boolean {
       .join(".*");
     return new RegExp(`^${escaped}`).test(normalizedFile);
   }
-  if (normalizedPattern.endsWith("/")) return normalizedFile.startsWith(normalizedPattern);
+  if (normalizedPattern.endsWith("/")) {
+    return normalizedFile.startsWith(normalizedPattern) || normalizedFile.includes(`/${normalizedPattern}`);
+  }
   return normalizedFile === normalizedPattern || normalizedFile.startsWith(`${normalizedPattern}/`);
 }
 
 function isNoisyMatrixPath(filePath: string): boolean {
-  return /(^|\/)(docs?|docs_src|documentation|_?examples|demo|demos|devtools|codemods|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook|testing|testdata|integration)\//.test(
+  return /(^|\/)(docs?|docs_src|documentation|_?examples|demo|demos|devtools|codemods|fixtures|fixture|generated|gen|dist|build|coverage|website|site|playground|storybook|testing|testdata|integration)\//.test(
     normalizePath(filePath)
   );
 }

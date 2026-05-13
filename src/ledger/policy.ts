@@ -248,7 +248,7 @@ function isVerificationOnlyTask(task: string): boolean {
 
 function isLikelyProductionSourcePath(filePath: string): boolean {
   if (!/\.(?:[cm]?[jt]sx?|py|java|go|rs|c|cc|cpp|cxx|h|hh|hpp|hxx)$/i.test(filePath)) return false;
-  if (/(^|\/)(?:test|tests|testing|__tests__|spec|specs|docs|examples|fixtures|generated|codemods|devtools)(?:\/|$)/i.test(filePath)) {
+  if (/(^|\/)(?:test|tests|testing|__tests__|spec|specs|docs|examples|fixtures|generated|gen|codemods|devtools)(?:\/|$)/i.test(filePath)) {
     return false;
   }
   if (/(?:^|\/)[^/]*(?:test|spec)\.[^/]+$/i.test(filePath)) return false;

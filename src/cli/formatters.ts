@@ -324,6 +324,7 @@ export function printBenchmarkProof(report: BenchmarkProofReport): void {
     formatProofDelta("Hook full prime vs baseline", report.observedTokenDeltas.hookFullPrimeVsBaseline),
     formatProofDelta("Hook tiny directive vs baseline", report.observedTokenDeltas.hookTinyDirectiveVsBaseline),
     formatProofDelta("Hook tiny+failures vs baseline", report.observedTokenDeltas.hookTinyWithFailuresVsBaseline),
+    formatProofDelta("Kairn Codex session vs baseline", report.observedTokenDeltas.kairnCodexSessionVsBaseline),
     formatProofDelta("MCP-first vs baseline", report.observedTokenDeltas.mcpFirstVsBaseline),
     formatProofDelta("Real MCP-first vs baseline", report.observedTokenDeltas.realMcpFirstVsBaseline),
     formatProofDelta("MCP-first + full-prime hook vs baseline", report.observedTokenDeltas.mcpFirstPlusHookFullPrimeVsBaseline),

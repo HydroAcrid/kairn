@@ -581,7 +581,7 @@ export function scoreSourceRoleHints(
 
 export function isNoisySourcePath(filePath: string): boolean {
   const normalized = filePath.toLowerCase();
-  return /(^|\/)(docs?|docs_src|documentation|_?examples|samples?|demo|demos|devtools|codemods|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook|testing|testdata|integration)\//.test(
+  return /(^|\/)(docs?|docs_src|documentation|_?examples|samples?|demo|demos|devtools|codemods|fixtures|fixture|generated|gen|dist|build|coverage|website|site|playground|storybook|testing|testdata|integration)\//.test(
     normalized
   ) || /(^|\/)(deps|vendor|third_party|node_modules)\//.test(normalized);
 }

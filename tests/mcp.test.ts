@@ -3,6 +3,7 @@ import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { describe, expect, it } from "vitest";
+import { runBenchmarkMcpSmoke } from "../src/bench/mcpSmoke.js";
 import { filesFromMcpValue } from "../src/mcp/resultExtractors.js";
 import { createFixtureRepo } from "./helpers.js";
 
@@ -158,6 +159,21 @@ describe("MCP server", () => {
     expect(metricsParsed.bySource.mcp?.events).toBeGreaterThan(0);
 
     await client.close();
+  });
+
+  it("runs the benchmark MCP smoke helper", async () => {
+    const root = createFixtureRepo();
+    const report = await runBenchmarkMcpSmoke({
+      rootPath: root,
+      task: "Find the dashboard rendering source before broad scans",
+      serverCommand: path.join(process.cwd(), "node_modules/.bin/tsx"),
+      serverArgs: ["src/cli.ts", "serve", "--mcp", "--root", "{root}"]
+    });
+
+    expect(report.tools).toContain("kairn_prepare_task");
+    expect(report.sessionId).toMatch(/^task_/);
+    expect(report.metrics.mcpToolCalls).toBeGreaterThan(0);
+    expect(report.prepare.startFiles.length).toBeLessThanOrEqual(1);
   });
 
   it("stops MCP expansion after a high-confidence exact source hit", async () => {

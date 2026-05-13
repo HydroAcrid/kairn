@@ -89,7 +89,7 @@ function isNoisyFile(file: FileRecord | undefined): boolean {
   const normalized = file.path.toLowerCase();
   return (
     file.kind === "doc" ||
-    /(^|\/)(docs?|documentation|examples|demo|demos|fixtures|fixture|generated|dist|build|coverage|website|site|playground|storybook|codemods?|devtools)\//.test(
+    /(^|\/)(docs?|documentation|examples|demo|demos|fixtures|fixture|generated|gen|dist|build|coverage|website|site|playground|storybook|codemods?|devtools)\//.test(
       normalized
     )
   );

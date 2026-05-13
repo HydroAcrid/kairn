@@ -712,6 +712,14 @@ export class KairnRuntime {
     agentSetupCommand?: string | undefined;
     agentTimeoutMs?: number | undefined;
     assistanceMode?: BenchmarkAssistanceMode | undefined;
+    onCaseProgress?: ((event: {
+      phase: "start" | "complete";
+      caseId: string;
+      assistanceMode: BenchmarkAssistanceMode;
+      outcome?: string | undefined;
+      elapsedMs?: number | undefined;
+      summary?: string | undefined;
+    }) => void) | undefined;
   }): Promise<BenchmarkReport> {
     await this.init();
     const suite = loadBenchmarkSuite({
@@ -735,6 +743,12 @@ export class KairnRuntime {
     });
 
     for (const benchmarkCase of suite.cases.filter((item) => benchmarkCaseApplies(item.mode, input.mode))) {
+      const caseStartedAt = Date.now();
+      input.onCaseProgress?.({
+        phase: "start",
+        caseId: benchmarkCase.id,
+        assistanceMode: input.assistanceMode ?? "baseline"
+      });
       const result =
         benchmarkCase.mode === "agent"
           ? await this.runAgentBenchmarkCase({
@@ -751,6 +765,14 @@ export class KairnRuntime {
               benchmarkCase
             });
       this.store.recordBenchmarkResult(result);
+      input.onCaseProgress?.({
+        phase: "complete",
+        caseId: benchmarkCase.id,
+        assistanceMode: input.assistanceMode ?? "baseline",
+        outcome: result.taskOutcome,
+        elapsedMs: Date.now() - caseStartedAt,
+        summary: result.summary
+      });
     }
 
     const completed = this.store.updateBenchmarkRunStatus(run.id, "completed");
@@ -773,6 +795,8 @@ export class KairnRuntime {
     hookTinyDirectiveSetupCommand?: string | undefined;
     hookTinyWithFailuresCommand?: string | undefined;
     hookTinyWithFailuresSetupCommand?: string | undefined;
+    kairnCodexSessionCommand?: string | undefined;
+    kairnCodexSessionSetupCommand?: string | undefined;
     mcpFirstCommand?: string | undefined;
     mcpFirstSetupCommand?: string | undefined;
     realMcpFirstCommand?: string | undefined;
@@ -788,6 +812,8 @@ export class KairnRuntime {
     agentTimeoutMs?: number | undefined;
     repeat?: number | undefined;
     shuffleOrder?: boolean | undefined;
+    proofOutputPath?: string | undefined;
+    onProgress?: ((message: string) => void) | undefined;
   }): Promise<BenchmarkProofReport> {
     const repeat = Math.max(1, Math.floor(Number(input.repeat ?? 1) || 1));
     const modeCommands: Array<{ mode: BenchmarkAssistanceMode; command: string; setupCommand?: string | undefined }> = [
@@ -800,6 +826,7 @@ export class KairnRuntime {
       ...(input.hookFullPrimeCommand ? [{ mode: "hook_full_prime" as const, command: input.hookFullPrimeCommand, setupCommand: input.hookFullPrimeSetupCommand }] : []),
       ...(input.hookTinyDirectiveCommand ? [{ mode: "hook_tiny_directive" as const, command: input.hookTinyDirectiveCommand, setupCommand: input.hookTinyDirectiveSetupCommand }] : []),
       ...(input.hookTinyWithFailuresCommand ? [{ mode: "hook_tiny_with_failures" as const, command: input.hookTinyWithFailuresCommand, setupCommand: input.hookTinyWithFailuresSetupCommand }] : []),
+      ...(input.kairnCodexSessionCommand ? [{ mode: "kairn_codex_session" as const, command: input.kairnCodexSessionCommand, setupCommand: input.kairnCodexSessionSetupCommand }] : []),
       ...(input.mcpFirstCommand ? [{ mode: "mcp_first" as const, command: input.mcpFirstCommand, setupCommand: input.mcpFirstSetupCommand }] : []),
       ...(input.realMcpFirstCommand ? [{ mode: "real_mcp_first" as const, command: input.realMcpFirstCommand, setupCommand: input.realMcpFirstSetupCommand }] : []),
       ...(input.mcpFirstPlusHookFullPrimeCommand ? [{ mode: "mcp_first_plus_hook_full_prime" as const, command: input.mcpFirstPlusHookFullPrimeCommand, setupCommand: input.mcpFirstPlusHookFullPrimeSetupCommand }] : []),
@@ -812,6 +839,7 @@ export class KairnRuntime {
     const hookFullPrimeReports: BenchmarkReport[] = [];
     const hookTinyDirectiveReports: BenchmarkReport[] = [];
     const hookTinyWithFailuresReports: BenchmarkReport[] = [];
+    const kairnCodexSessionReports: BenchmarkReport[] = [];
     const mcpFirstReports: BenchmarkReport[] = [];
     const realMcpFirstReports: BenchmarkReport[] = [];
     const mcpFirstPlusHookFullPrimeReports: BenchmarkReport[] = [];
@@ -820,13 +848,26 @@ export class KairnRuntime {
     for (let iteration = 0; iteration < repeat; iteration += 1) {
       const order = input.shuffleOrder ? shuffleItems(modeCommands) : modeCommands;
       for (const item of order) {
+        input.onProgress?.(`[bench prove] repeat ${iteration + 1}/${repeat} ${item.mode}: start`);
         const report = await this.runProofModeBenchmark({
           suitePath: input.suitePath,
           command: item.command,
           setupCommand: item.setupCommand,
           agentTimeoutMs: input.agentTimeoutMs,
-          assistanceMode: item.mode
+          assistanceMode: item.mode,
+          onCaseProgress: (event) => {
+            if (event.phase === "start") {
+              input.onProgress?.(`[bench prove] repeat ${iteration + 1}/${repeat} ${item.mode}/${event.caseId}: start`);
+              return;
+            }
+            input.onProgress?.(
+              `[bench prove] repeat ${iteration + 1}/${repeat} ${item.mode}/${event.caseId}: ${event.outcome ?? "unknown"} in ${event.elapsedMs ?? 0}ms`
+            );
+          }
         });
+        input.onProgress?.(
+          `[bench prove] repeat ${iteration + 1}/${repeat} ${item.mode}: completed ${report.results.length} case(s), observed tokens ${report.observed?.codexTokens ?? "n/a"}`
+        );
         if (item.mode === "baseline") baselineReports.push(report);
         if (item.mode === "prompt_only" || item.mode === "passive_hooks") promptOnlyReports.push(report);
         if (item.mode === "prompt_plus_hooks") promptPlusHooksReports.push(report);
@@ -834,10 +875,27 @@ export class KairnRuntime {
         if (item.mode === "hook_full_prime") hookFullPrimeReports.push(report);
         if (item.mode === "hook_tiny_directive") hookTinyDirectiveReports.push(report);
         if (item.mode === "hook_tiny_with_failures") hookTinyWithFailuresReports.push(report);
+        if (item.mode === "kairn_codex_session") kairnCodexSessionReports.push(report);
         if (item.mode === "mcp_first") mcpFirstReports.push(report);
         if (item.mode === "real_mcp_first") realMcpFirstReports.push(report);
         if (item.mode === "mcp_first_plus_hook_full_prime") mcpFirstPlusHookFullPrimeReports.push(report);
         if (item.mode === "hybrid_mcp_brief") hybridMcpBriefReports.push(report);
+        this.writeProofSnapshot({
+          outputPath: input.proofOutputPath,
+          baselineReports,
+          promptOnlyReports,
+          promptPlusHooksReports,
+          manualPrimeReports,
+          hookFullPrimeReports,
+          hookTinyDirectiveReports,
+          hookTinyWithFailuresReports,
+          kairnCodexSessionReports,
+          mcpFirstReports,
+          realMcpFirstReports,
+          mcpFirstPlusHookFullPrimeReports,
+          hybridMcpBriefReports,
+          repeat
+        });
       }
     }
 
@@ -851,7 +909,7 @@ export class KairnRuntime {
       }));
     }
 
-    return buildBenchmarkProofReport({
+    const proof = buildBenchmarkProofReport({
       baseline: baselineReports,
       promptOnly: promptOnlyReports,
       promptPlusHooks: promptPlusHooksReports,
@@ -859,12 +917,61 @@ export class KairnRuntime {
       hookFullPrime: hookFullPrimeReports,
       hookTinyDirective: hookTinyDirectiveReports,
       hookTinyWithFailures: hookTinyWithFailuresReports,
+      kairnCodexSession: kairnCodexSessionReports,
       mcpFirst: mcpFirstReports,
       realMcpFirst: realMcpFirstReports,
       mcpFirstPlusHookFullPrime: mcpFirstPlusHookFullPrimeReports,
       hybridMcpBrief: hybridMcpBriefReports,
       repeat
     });
+    this.writeProofFile(input.proofOutputPath, proof);
+    return proof;
+  }
+
+  private writeProofSnapshot(input: {
+    outputPath?: string | undefined;
+    baselineReports: BenchmarkReport[];
+    promptOnlyReports: BenchmarkReport[];
+    promptPlusHooksReports: BenchmarkReport[];
+    manualPrimeReports: BenchmarkReport[];
+    hookFullPrimeReports: BenchmarkReport[];
+    hookTinyDirectiveReports: BenchmarkReport[];
+    hookTinyWithFailuresReports: BenchmarkReport[];
+    kairnCodexSessionReports: BenchmarkReport[];
+    mcpFirstReports: BenchmarkReport[];
+    realMcpFirstReports: BenchmarkReport[];
+    mcpFirstPlusHookFullPrimeReports: BenchmarkReport[];
+    hybridMcpBriefReports: BenchmarkReport[];
+    repeat: number;
+  }): void {
+    if (!input.outputPath || input.baselineReports.length === 0) return;
+    const proof = buildBenchmarkProofReport({
+      baseline: input.baselineReports,
+      promptOnly: input.promptOnlyReports,
+      promptPlusHooks: input.promptPlusHooksReports,
+      manualPrime: input.manualPrimeReports,
+      hookFullPrime: input.hookFullPrimeReports,
+      hookTinyDirective: input.hookTinyDirectiveReports,
+      hookTinyWithFailures: input.hookTinyWithFailuresReports,
+      kairnCodexSession: input.kairnCodexSessionReports,
+      mcpFirst: input.mcpFirstReports,
+      realMcpFirst: input.realMcpFirstReports,
+      mcpFirstPlusHookFullPrime: input.mcpFirstPlusHookFullPrimeReports,
+      hybridMcpBrief: input.hybridMcpBriefReports,
+      repeat: input.repeat
+    });
+    this.writeProofFile(input.outputPath, {
+      ...proof,
+      partial: true
+    });
+  }
+
+  private writeProofFile(outputPath: string | undefined, proof: BenchmarkProofReport | (BenchmarkProofReport & { partial: boolean })): void {
+    if (!outputPath) return;
+    fs.mkdirSync(path.dirname(path.resolve(outputPath)), { recursive: true });
+    const tmpPath = `${outputPath}.${process.pid}.tmp`;
+    fs.writeFileSync(tmpPath, `${JSON.stringify(proof, null, 2)}\n`);
+    fs.renameSync(tmpPath, outputPath);
   }
 
   private async runProofModeBenchmark(input: {
@@ -873,6 +980,7 @@ export class KairnRuntime {
     setupCommand?: string | undefined;
     agentTimeoutMs?: number | undefined;
     assistanceMode: BenchmarkAssistanceMode;
+    onCaseProgress?: Parameters<KairnRuntime["runBenchmark"]>[0]["onCaseProgress"];
   }): Promise<BenchmarkReport> {
     try {
       return await this.runBenchmark({
@@ -881,7 +989,8 @@ export class KairnRuntime {
         agentCommand: input.command,
         agentSetupCommand: input.setupCommand,
         agentTimeoutMs: input.agentTimeoutMs,
-        assistanceMode: input.assistanceMode
+        assistanceMode: input.assistanceMode,
+        onCaseProgress: input.onCaseProgress
       });
     } catch (error) {
       return this.buildFailedProofModeReport({
@@ -3322,15 +3431,25 @@ function multiFileDirectiveFileLimit(
   if (decision.recommendedDelivery !== "multi_file_directive") return 2;
   if (companionPaths.length < 2) return 2;
   const normalized = task.toLowerCase();
-  const asksFrameworkTriple =
-    /\b(router|route|routing|layer|middleware|session|adapter|model|map|rule|matcher|mux|fiber|hook|work loop|workloop|strings?|matcher|sds)\b/.test(normalized) &&
+  const roleFamilies = [
+    /\b(router|route|routing|mux)\b/,
+    /\b(context|ctx|handler|middleware)\b/,
+    /\b(controller|repository|model)\b/,
+    /\b(scheduler|renderer|work loop|workloop)\b/,
+    /\b(interceptor|dispatch|adapter)\b/,
+    /\b(runtime|mcp|server|client)\b/
+  ];
+  const roleFamilyHits = roleFamilies.filter((pattern) => pattern.test(normalized)).length;
+  const explicitlySpansFrameworkTriple =
+    roleFamilyHits >= 3 &&
+    /\b(framework|architecture|across|spans|flow|pipeline|lifecycle|integration)\b/.test(normalized) &&
     /\b(debug|fix|regression|behavior|dispatch|send|matching|scheduling|trimming|prefix|suffix)\b/.test(normalized);
-  return asksFrameworkTriple || (decision.companionTopScore ?? 0) >= 1_200 ? 3 : 2;
+  return explicitlySpansFrameworkTriple ? 3 : 2;
 }
 
 function isLikelyProductionSourceFile(filePath: string): boolean {
   const normalized = filePath.toLowerCase();
-  if (/(^|\/)(tests?|testing|docs?|examples?|devtools|codemods|generated|fixtures?|testdata)\//.test(normalized)) return false;
+  if (/(^|\/)(tests?|testing|docs?|examples?|devtools|codemods|generated|gen|fixtures?|testdata)\//.test(normalized)) return false;
   if (/\.(test|spec)\.[cm]?[jt]sx?$/.test(normalized)) return false;
   if (/(_test|_spec|_tests)\.(py|go|rb|cc|cpp|cxx|c|hpp|hh|hxx)$/.test(normalized)) return false;
   if (/(test|tests)\.java$/.test(normalized.split("/").at(-1) ?? "")) return false;
@@ -3443,13 +3562,27 @@ function collectWorkspaceKairnMetrics(workspacePath: string): Record<string, unk
   try {
     const sessions = runtime.listSessions({ allRoots: true });
     const metrics = sessions.map((session) => runtime.getMetrics(session.id));
+    const primeContextEvents = metrics.flatMap((item) => item.recentEvents.filter((event) => event.eventKind === "prime_context"));
     const hookSignals = metrics.flatMap((item) => item.recentEvents.filter((event) => event.eventKind === "hook_signal"));
+    const emittedPrimeContexts = primeContextEvents.filter((event) => {
+      const decision = recordValue(event.metadata.contextDecision);
+      const action = typeof decision.action === "string" ? decision.action : event.eventName;
+      return (action === "emit" || action === "shrink") && (event.outputTokens > 0 || event.files.length > 0);
+    });
+    const suppressedPrimeContexts = primeContextEvents.filter((event) => {
+      const decision = recordValue(event.metadata.contextDecision);
+      const action = typeof decision.action === "string" ? decision.action : event.eventName;
+      return action === "suppress";
+    });
     return {
       kairnSessionCount: sessions.length,
-      primeAttempted: hookSignals.filter((event) => event.metadata.primeAttempted === true).length,
-      primeEmitted: hookSignals.filter((event) => event.metadata.primeContextDelivered === true).length,
-      primeSuppressed: hookSignals.filter((event) => event.metadata.primeSuppressed === true).length,
-      primeTokens: hookSignals.reduce((total, event) => total + (event.metadata.primeContextDelivered === true ? event.outputTokens : 0), 0),
+      primeAttempted: primeContextEvents.length + hookSignals.filter((event) => event.metadata.primeAttempted === true).length,
+      primeEmitted: emittedPrimeContexts.length + hookSignals.filter((event) => event.metadata.primeContextDelivered === true).length,
+      primeSuppressed: suppressedPrimeContexts.length + hookSignals.filter((event) => event.metadata.primeSuppressed === true).length,
+      primeTokens:
+        emittedPrimeContexts.reduce((total, event) => total + event.outputTokens, 0) +
+        hookSignals.reduce((total, event) => total + (event.metadata.primeContextDelivered === true ? event.outputTokens : 0), 0),
+      primeContextEvents: primeContextEvents.length,
       primeQualityEvents: metrics.reduce((total, item) => total + (item.byKind.prime_quality?.events ?? 0), 0),
       hookInvocations: metrics.reduce((total, item) => total + (item.byKind.hook_signal?.events ?? 0), 0),
       failureContextUsed: metrics.reduce((total, item) => total + (item.byKind.failure_context?.events ?? 0), 0),
@@ -3470,6 +3603,10 @@ function collectWorkspaceKairnMetrics(workspacePath: string): Record<string, unk
   } finally {
     runtime.close();
   }
+}
+
+function recordValue(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
 function exactPathCandidates(files: FileRecord[], query: string): string[] {

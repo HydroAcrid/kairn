@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { BenchmarkCase, BenchmarkContextBehavior, BenchmarkRepoMatrix, BenchmarkRepoTarget, BenchmarkSuite } from "../types.js";
 import { normalizeRelativePath } from "../utils/paths.js";
+import { classifySweBenchProTask } from "./officialClassification.js";
 
 const DATASET_ROWS_URL = "https://datasets-server.huggingface.co/rows?dataset=ScaleAI%2FSWE-bench_Pro&config=default&split=test";
 
@@ -34,6 +35,9 @@ export type SweBenchProPilot = {
   summary: {
     languages: Record<string, number>;
     repos: Record<string, number>;
+    taskClasses: Record<string, number>;
+    evaluators: Record<string, number>;
+    applicability: Record<string, number>;
     skippedRows: number;
     warnings: string[];
   };
@@ -102,9 +106,19 @@ export function buildSweBenchProPilot(input: {
   const targets = selected.map((row, index) => sweBenchRowToRepoTarget(row, cases[index]!));
   const languageSummary: Record<string, number> = {};
   const repoSummary: Record<string, number> = {};
+  const taskClassSummary: Record<string, number> = {};
+  const evaluatorSummary: Record<string, number> = {};
+  const applicabilitySummary: Record<string, number> = {};
   for (const row of selected) {
     languageSummary[row.repo_language] = (languageSummary[row.repo_language] ?? 0) + 1;
     repoSummary[row.repo] = (repoSummary[row.repo] ?? 0) + 1;
+  }
+  for (const benchmarkCase of cases) {
+    const official = benchmarkCase.officialEvaluation;
+    if (!official) continue;
+    taskClassSummary[official.taskClass] = (taskClassSummary[official.taskClass] ?? 0) + 1;
+    evaluatorSummary[official.evaluator] = (evaluatorSummary[official.evaluator] ?? 0) + 1;
+    applicabilitySummary[official.kairnApplicability] = (applicabilitySummary[official.kairnApplicability] ?? 0) + 1;
   }
 
   const warnings: string[] = [];
@@ -139,6 +153,9 @@ export function buildSweBenchProPilot(input: {
     summary: {
       languages: languageSummary,
       repos: repoSummary,
+      taskClasses: taskClassSummary,
+      evaluators: evaluatorSummary,
+      applicability: applicabilitySummary,
       skippedRows,
       warnings
     }
@@ -188,6 +205,16 @@ function sweBenchRowToCase(row: SweBenchProRow): BenchmarkCase {
   const selectedTests = parseStringList(row.selected_test_files_to_run);
   const setupCommands = sweBenchSetupCommands(row, selectedTests);
   const testCommand = setupCommands.length > 0 ? undefined : inferTestCommand(row, selectedTests);
+  const contextBehavior = inferSweBenchContextBehavior(row, patchFiles, selectedTests);
+  const officialEvaluation = classifySweBenchProTask({
+    problemStatement: row.problem_statement,
+    requirements: row.requirements,
+    interfaceText: row.interface,
+    patchFiles,
+    selectedTests,
+    contextBehavior,
+    hasOfficialSetup: Boolean(row.before_repo_set_cmd?.trim())
+  });
   const seed = {
     repoUrl: `https://github.com/${row.repo}.git`,
     ref: row.base_commit,
@@ -199,11 +226,14 @@ function sweBenchRowToCase(row: SweBenchProRow): BenchmarkCase {
     id: normalizeId(row.instance_id),
     mode: "agent",
     task: firstMeaningfulLine(row.problem_statement) ?? row.instance_id,
-    contextBehavior: inferSweBenchContextBehavior(row, patchFiles, selectedTests),
+    contextBehavior,
     agentPrompt: buildAgentPrompt(row, patchFiles, selectedTests),
     expectedFiles: patchFiles,
+    minExpectedHits: patchFiles.length > 0 ? 1 : 0,
     requiredTouchedFiles: patchFiles.slice(0, 5),
+    allowedDiffScopes: patchFiles.slice(0, 5).map((file) => ({ file, allowWholeFile: true })),
     excludedFiles: commonNoisePrefixes(row.repo_language),
+    officialEvaluation,
     budget: 1200,
     seed,
     successCriteria: [
@@ -244,6 +274,7 @@ function sweBenchRowToRepoTarget(row: SweBenchProRow, benchmarkCase: BenchmarkCa
       {
         ...caseWithoutSeed,
         mode: "context",
+        minExpectedHits: benchmarkCase.expectedFiles.length > 0 ? 1 : 0,
         query
       }
     ]

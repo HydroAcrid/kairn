@@ -12,6 +12,8 @@ import {
 import { runBenchmarkRepoMatrix } from "../../bench/matrix.js";
 import { runBenchmarkEndurance, runBenchmarkEnduranceRepeats } from "../../bench/endurance.js";
 import { buildSweBenchProPilot, fetchSweBenchProRows, loadSweBenchProRows, writeSweBenchProPilot } from "../../bench/sweBenchPro.js";
+import { buildSweAtlasQnaPilot, fetchSweAtlasQnaRows, loadSweAtlasQnaRows, writeSweAtlasQnaPilot } from "../../bench/sweAtlasQna.js";
+import { runBenchmarkMcpSmoke } from "../../bench/mcpSmoke.js";
 import { parsePositiveInt, withRuntime } from "../helpers.js";
 import { printJson } from "../output.js";
 
@@ -19,6 +21,62 @@ export function registerBenchCommands(program: Command): void {
   const benchCommand = program
     .command("bench")
     .description("Run deterministic and optional live-agent benchmarks for Kairn retrieval quality.");
+
+  benchCommand
+    .command("swe-atlas-qna-pilot")
+    .description("Generate a SWE-Atlas/QnA pilot suite and repo-matrix preflight sample.")
+    .option("--input <path>", "local SWE-Atlas/QnA rows JSON/JSONL export; fetches public rows when omitted")
+    .option("--out-dir <path>", "directory for generated suite/matrix files", "examples/bench/swe-atlas-qna-pilot")
+    .option("--offset <n>", "public dataset row offset", parseNonNegativeInt, 0)
+    .option("--limit <n>", "maximum selected tasks", parsePositiveInt, 30)
+    .option("--fetch-length <n>", "number of public rows to fetch before filtering", parsePositiveInt, 50)
+    .option("--languages <csv>", "optional comma-separated language filter, for example python,typescript,go")
+    .option("--repos <csv>", "optional comma-separated repo filter, for example kovidgoyal/kitty")
+    .option("--categories <csv>", "optional comma-separated category filter")
+    .option("--json", "print JSON output")
+    .action(
+      async (options: {
+        input?: string;
+        outDir: string;
+        offset: number;
+        limit: number;
+        fetchLength: number;
+        languages?: string;
+        repos?: string;
+        categories?: string;
+        json?: boolean;
+      }) => {
+        const rows = options.input
+          ? loadSweAtlasQnaRows(options.input)
+          : await fetchSweAtlasQnaRows({ offset: options.offset, length: options.fetchLength });
+        const pilot = buildSweAtlasQnaPilot({
+          rows,
+          limit: options.limit,
+          languages: csvList(options.languages),
+          repos: csvList(options.repos),
+          categories: csvList(options.categories)
+        });
+        const outputs = writeSweAtlasQnaPilot({ pilot, outDir: options.outDir });
+        const result = {
+          generatedAt: pilot.generatedAt,
+          source: pilot.source,
+          rows: pilot.rows,
+          summary: pilot.summary,
+          outputs
+        };
+        if (options.json) {
+          printJson(result);
+          return;
+        }
+        console.log(`Generated SWE-Atlas/QnA pilot with ${pilot.rows} tasks.`);
+        console.log(`Suite: ${outputs.suitePath}`);
+        console.log(`Matrix: ${outputs.matrixPath}`);
+        console.log(`Summary: ${outputs.summaryPath}`);
+        for (const warning of pilot.summary.warnings) {
+          console.log(`Warning: ${warning}`);
+        }
+      }
+    );
 
   benchCommand
     .command("swe-pro-pilot")
@@ -72,6 +130,34 @@ export function registerBenchCommands(program: Command): void {
         }
       }
     );
+
+  benchCommand
+    .command("mcp-smoke")
+    .description("Start Kairn over MCP stdio and verify prepare-task tool-call delivery.")
+    .option("--root <path>", "target repository root", process.cwd())
+    .requiredOption("--task <task>", "task prompt to send through kairn_prepare_task")
+    .option("--budget <tokens>", "prepare-task budget", parsePositiveInt, 700)
+    .addOption(new Option("--detail <detail>", "prepare-task detail").choices(["compact", "full"]).default("compact"))
+    .option("--json", "print JSON output")
+    .action(async (options: { root: string; task: string; budget: number; detail: "compact" | "full"; json?: boolean }) => {
+      const report = await runBenchmarkMcpSmoke({
+        rootPath: options.root,
+        task: options.task,
+        budget: options.budget,
+        detail: options.detail
+      });
+      if (options.json) {
+        printJson(report);
+        return;
+      }
+      console.log("Kairn MCP smoke passed.");
+      console.log(`Root: ${report.rootPath}`);
+      console.log(`Session: ${report.sessionId ?? "unknown"}`);
+      console.log(`Tools listed: ${report.tools.length}`);
+      console.log(`MCP tool calls recorded: ${report.metrics.mcpToolCalls}`);
+      console.log(`Start files: ${report.prepare.startFiles.join(", ") || "none"}`);
+      console.log(`Stop condition: ${report.prepare.stopCondition ?? "none"}`);
+    });
 
   benchCommand
     .command("matrix")
@@ -257,6 +343,8 @@ export function registerBenchCommands(program: Command): void {
     .option("--hook-tiny-directive-setup-command <command>", "hook tiny-directive setup command timed separately before the live-agent command")
     .option("--hook-tiny-with-failures-command <command>", "tiny prompt hook plus failure-only post-tool hook command with {prompt} and {root} placeholders")
     .option("--hook-tiny-with-failures-setup-command <command>", "hook tiny-with-failures setup command timed separately before the live-agent command")
+    .option("--kairn-codex-session-command <command>", "session-bound kairn codex wrapper command with {prompt} and {root} placeholders")
+    .option("--kairn-codex-session-setup-command <command>", "session-bound kairn codex setup command timed separately before the live-agent command")
     .option("--mcp-first-command <command>", "MCP-first live-agent command with {prompt} and {root} placeholders")
     .option("--mcp-first-setup-command <command>", "MCP-first setup command timed separately before the live-agent command")
     .option("--real-mcp-first-command <command>", "real MCP-first live-agent command with {prompt} and {root} placeholders")
@@ -270,6 +358,8 @@ export function registerBenchCommands(program: Command): void {
     .option("--agent-timeout <ms>", "live-agent command timeout", parsePositiveInt, 120000)
     .option("--repeat <n>", "number of proof repeats", parsePositiveInt, 1)
     .option("--shuffle-order", "shuffle assistance mode order within each repeat")
+    .option("--out <path>", "write proof JSON to this file after each completed mode and at the end")
+    .option("--no-progress", "disable stderr progress messages for long live proof runs")
     .option("--json", "print JSON output")
     .action(
       async (options: {
@@ -289,6 +379,8 @@ export function registerBenchCommands(program: Command): void {
         hookTinyDirectiveSetupCommand?: string;
         hookTinyWithFailuresCommand?: string;
         hookTinyWithFailuresSetupCommand?: string;
+        kairnCodexSessionCommand?: string;
+        kairnCodexSessionSetupCommand?: string;
         mcpFirstCommand?: string;
         mcpFirstSetupCommand?: string;
         realMcpFirstCommand?: string;
@@ -302,6 +394,8 @@ export function registerBenchCommands(program: Command): void {
         agentTimeout: number;
         repeat: number;
         shuffleOrder?: boolean;
+        out?: string;
+        progress?: boolean;
         json?: boolean;
       }) => {
         await withRuntime(options.root, async (runtime) => {
@@ -321,6 +415,8 @@ export function registerBenchCommands(program: Command): void {
             hookTinyDirectiveSetupCommand: options.hookTinyDirectiveSetupCommand,
             hookTinyWithFailuresCommand: options.hookTinyWithFailuresCommand,
             hookTinyWithFailuresSetupCommand: options.hookTinyWithFailuresSetupCommand,
+            kairnCodexSessionCommand: options.kairnCodexSessionCommand,
+            kairnCodexSessionSetupCommand: options.kairnCodexSessionSetupCommand,
             mcpFirstCommand: options.mcpFirstCommand,
             mcpFirstSetupCommand: options.mcpFirstSetupCommand,
             realMcpFirstCommand: options.realMcpFirstCommand,
@@ -333,8 +429,13 @@ export function registerBenchCommands(program: Command): void {
             proactiveCommand: options.proactiveCommand,
             agentTimeoutMs: options.agentTimeout,
             repeat: options.repeat,
-            shuffleOrder: Boolean(options.shuffleOrder)
+            shuffleOrder: Boolean(options.shuffleOrder),
+            proofOutputPath: options.out,
+            onProgress: options.progress === false ? undefined : (message) => process.stderr.write(`${message}\n`)
           });
+          if (options.out && options.progress !== false) {
+            process.stderr.write(`[bench prove] wrote proof JSON to ${options.out}\n`);
+          }
           if (options.json) {
             printJson(proof);
             return;

@@ -310,6 +310,12 @@ function scoreSourcePriority(
       reasons.push(...roleHints.reasons);
     }
 
+    const protocolFlow = scoreProtocolFlowSurface(file, queryTerms, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && protocolFlow.score !== 0) {
+      score += protocolFlow.score;
+      reasons.push(...protocolFlow.reasons);
+    }
+
     if (implementationIntent && isLanguageSourceSurface(file)) {
       score += 24;
       reasons.push("language source surface");
@@ -1011,6 +1017,42 @@ function scoreDomainPathAnchors(file: FileRecord, query: string, queryTerms: Set
     reasons.push("go package surface named by task");
   }
 
+  const packageRoleSurface = scorePackageRoleSurface(file, queryTerms);
+  if (packageRoleSurface.score !== 0) {
+    score += packageRoleSurface.score;
+    reasons.push(...packageRoleSurface.reasons);
+  }
+
+  return { score, reasons };
+}
+
+function scorePackageRoleSurface(file: FileRecord, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  if (!isLanguageSourceSurface(file)) return { score: 0, reasons: [] };
+  const normalized = file.path.toLowerCase();
+  const pathTerms = tokenizeLexical(normalized).filter((term) => term.length >= 3);
+  const matchedTerms = pathTerms.filter((term) => queryTerms.has(term) || (term.endsWith("s") && queryTerms.has(term.slice(0, -1))));
+  if (matchedTerms.length === 0) return { score: 0, reasons: [] };
+
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const parent = normalized.split("/").at(-2) ?? "";
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (file.language === "go" && (basename === parent || basename === "common" || basename === "json" || basename === "defaults")) {
+    score += Math.min(1100, matchedTerms.length * 260 + 420);
+    reasons.push(`go package role surface: ${matchedTerms.slice(0, 4).join(", ")}`);
+  }
+
+  if (/\/management\/commands\//.test(normalized) && matchedTerms.length >= 2) {
+    score += Math.min(1300, matchedTerms.length * 260 + 520);
+    reasons.push(`framework management command surface: ${matchedTerms.slice(0, 4).join(", ")}`);
+  }
+
+  if (/(^|\/)(classifier|sanity[_-]?checker|consumer|index)\.py$/.test(normalized) && matchedTerms.length >= 1) {
+    score += Math.min(900, matchedTerms.length * 240 + 260);
+    reasons.push(`domain module surface: ${matchedTerms.slice(0, 4).join(", ")}`);
+  }
+
   return { score, reasons };
 }
 
@@ -1082,6 +1124,64 @@ function unmentionedSpecializedSourcePenalty(file: FileRecord, queryTerms: Set<s
     if (!pattern.test(normalized)) return total;
     return terms.some((term) => canonicalQueryTerms.has(canonicalRoleTerm(term))) ? total : total + penalty;
   }, 0);
+}
+
+function scoreProtocolFlowSurface(
+  file: FileRecord,
+  queryTerms: Set<string>,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const protocolTermHits = ["remote", "control", "socket", "protocol", "command", "tty", "listen", "path"].filter((term) =>
+    queryTerms.has(term)
+  );
+  if (protocolTermHits.length < 2) return { score: 0, reasons: [] };
+
+  const normalizedPath = normalizeSearchText(file.path);
+  const sourceText = normalizeSearchText([
+    file.path,
+    ...symbols.slice(0, 80).map((symbol) => symbol.name),
+    ...chunks.slice(0, 12).map((chunk) => chunk.text)
+  ].join(" "));
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (queryTerms.has("remote") && queryTerms.has("control") && /(^| )remote( |$).*?(^| )control( |$)|remotecontrol/.test(normalizedPath)) {
+    score += 1600;
+    reasons.push("remote-control protocol source");
+  }
+
+  if (
+    (queryTerms.has("socket") || queryTerms.has("listen") || queryTerms.has("path")) &&
+    /\b(expand listen on|listen on|listening on|socket|tempdir|pid)\b/.test(sourceText)
+  ) {
+    score += 1200;
+    reasons.push("socket/listen path source");
+  }
+
+  if (
+    (queryTerms.has("command") || queryTerms.has("handler") || queryTerms.has("routed") || queryTerms.has("route")) &&
+    /\b(handle cmd|parse cmd|command for name|remote command|dispatch|route|routed|handler)\b/.test(sourceText)
+  ) {
+    score += 900;
+    reasons.push("command routing source");
+  }
+
+  if (queryTerms.has("ls") && (/\/rc\/ls\b|(^| )ls( |$)/.test(normalizedPath) || /\bclass ls\b|\bls command\b/.test(sourceText))) {
+    score += 1300;
+    reasons.push("named command handler source");
+  }
+
+  if (
+    (queryTerms.has("remote") || queryTerms.has("socket") || queryTerms.has("protocol")) &&
+    /\b(tui|terminal ui|ui handler)\b/.test(normalizedPath) &&
+    !/\b(remote|socket|protocol|listen|command for name)\b/.test(sourceText)
+  ) {
+    score -= 900;
+    reasons.push("generic UI handler downranked for protocol-flow prompt");
+  }
+
+  return { score, reasons };
 }
 
 function isTransformAnalysisSource(filePath: string, queryTerms: Set<string>): boolean {

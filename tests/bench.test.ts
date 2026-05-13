@@ -12,6 +12,7 @@ import { runBenchmarkEndurance, runBenchmarkEnduranceRepeats } from "../src/benc
 import { runAgentBenchmarkCase } from "../src/bench/agent.js";
 import { classifyAssistance } from "../src/bench/assistClassification.js";
 import { buildSweBenchProPilot, loadSweBenchProRows, writeSweBenchProPilot } from "../src/bench/sweBenchPro.js";
+import { buildSweAtlasQnaPilot, loadSweAtlasQnaRows, writeSweAtlasQnaPilot } from "../src/bench/sweAtlasQna.js";
 import { evaluateDiffScopes, evaluateSourceInvariants } from "../src/bench/sourceValidation.js";
 import { evaluateContextValue } from "../src/prime/contextValue.js";
 import { evaluatePrimeQuality, resolvePrimeProfile } from "../src/prime/quality.js";
@@ -263,6 +264,10 @@ describe("benchmark suite and scoring", () => {
 
       expect(pilot.suite.cases[0]?.expectedFiles).toEqual(["src/flask/app.py"]);
       expect(pilot.suite.cases[0]?.contextBehavior).toBe("source_rescue");
+      expect(pilot.suite.cases[0]?.officialEvaluation?.source).toBe("swe_bench_pro");
+      expect(pilot.suite.cases[0]?.officialEvaluation?.evaluator).toBe("patch_verification");
+      expect(pilot.suite.cases[0]?.officialEvaluation?.kairnMetricEligible).toBe(true);
+      expect(pilot.summary.evaluators.patch_verification).toBe(1);
       expect(pilot.suite.cases[0]?.agentPrompt).not.toContain("src/flask/app.py");
       expect(pilot.suite.cases[0]?.seed?.setupPatch).toBeUndefined();
       expect(pilot.suite.cases[0]?.seed?.setupCommands?.[0]).toContain("git fetch origin");
@@ -280,6 +285,95 @@ describe("benchmark suite and scoring", () => {
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
+  });
+
+  it("builds SWE-Atlas QnA pilot suite and matrix files without leaking reference answers", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-swe-atlas-qna-pilot-"));
+    try {
+      const rowsPath = path.join(root, "rows.json");
+      fs.writeFileSync(
+        rowsPath,
+        JSON.stringify({
+          rows: [
+            {
+              row: {
+                task_id: "qna-kitty-remote",
+                prompt: [
+                  "Trace how kitten @ ls reaches the running terminal.",
+                  "Where is the socket path generated and where does the ls handler live?"
+                ].join("\n"),
+                reference_answer: [
+                  "The client path is in `/app/kitty/remote_control.py`.",
+                  "Socket path expansion is in `kitty/main.py`.",
+                  "The handler dispatch enters `kitty/boss.py` and reaches `kitty/rc/ls.py`.",
+                  "Tests in `kitty_tests/remote_control.py` are not the production source target."
+                ].join("\n"),
+                repository_url: "https://github.com/kovidgoyal/kitty.git",
+                repository_base_commit: "0123456789012345678901234567890123456789",
+                language: "python",
+                category: "code_understanding",
+                rubric: "Answer with source references.",
+                docker_image: "example/kitty:latest"
+              }
+            }
+          ]
+        })
+      );
+
+      const rows = loadSweAtlasQnaRows(rowsPath);
+      const pilot = buildSweAtlasQnaPilot({ rows, limit: 1 });
+      const outputs = writeSweAtlasQnaPilot({ pilot, outDir: path.join(root, "out") });
+
+      expect(pilot.suite.cases[0]?.expectedFiles).toEqual(
+        expect.arrayContaining([
+          "kitty/remote_control.py",
+          "kitty/main.py",
+          "kitty/boss.py",
+          "kitty/rc/ls.py"
+        ])
+      );
+      expect(pilot.suite.cases[0]?.contextBehavior).toBe("multi_file_debug");
+      expect(pilot.suite.cases[0]?.officialEvaluation?.taskClass).toBe("multi_file_debug");
+      expect(pilot.suite.cases[0]?.officialEvaluation?.evaluator).toBe("source_grounded_answer");
+      expect(pilot.suite.cases[0]?.officialEvaluation?.kairnMetricEligible).toBe(true);
+      expect(pilot.summary.taskClasses.multi_file_debug).toBe(1);
+      expect(pilot.summary.evaluators.source_grounded_answer).toBe(1);
+      expect(pilot.suite.cases[0]?.agentPrompt).toContain("Trace how kitten @ ls");
+      expect(pilot.suite.cases[0]?.agentPrompt).not.toContain("kitty/remote_control.py");
+      expect(pilot.matrix.repos[0]?.repoUrl).toBe("https://github.com/kovidgoyal/kitty.git");
+      expect(pilot.matrix.repos[0]?.cases[0]?.mode).toBe("context");
+      expect(pilot.matrix.repos[0]?.cases[0]?.query).toContain("socket");
+      expect(pilot.matrix.repos[0]?.cases[0]?.query).not.toContain("kitty/remote_control.py");
+      expect(fs.existsSync(outputs.suitePath)).toBe(true);
+      expect(fs.existsSync(outputs.matrixPath)).toBe(true);
+      expect(fs.existsSync(outputs.rawRowsPath)).toBe(true);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("classifies runtime-heavy SWE-Atlas QnA separately from source-grounded Kairn metrics", () => {
+    const row = {
+      task_id: "qna-runtime-minio",
+      prompt: [
+        "When MinIO is running in distributed mode, start it and observe what happens when a disk becomes inaccessible.",
+        "Use logs, health endpoints, and write attempts to explain runtime behavior."
+      ].join("\n"),
+      reference_answer: "The quorum code is in `cmd/erasure.go` and live repair is observed through runtime logs.",
+      repository_url: "https://github.com/minio/minio.git",
+      repository_base_commit: "0123456789012345678901234567890123456789",
+      language: "go",
+      category: "Root-cause analysis",
+      rubric: "Answer with source references and runtime observations."
+    };
+    const pilot = buildSweAtlasQnaPilot({ rows: [row], limit: 1 });
+    const official = pilot.suite.cases[0]?.officialEvaluation;
+
+    expect(official?.taskClass).toBe("runtime_procedural");
+    expect(official?.evaluator).toBe("runtime_procedural_answer");
+    expect(official?.kairnMetricEligible).toBe(false);
+    expect(official?.liveRisk).toBe("high");
+    expect(pilot.summary.taskClasses.runtime_procedural).toBe(1);
   });
 
   it("loads endurance benchmark suite examples", () => {
@@ -1214,6 +1308,179 @@ describe("benchmark suite and scoring", () => {
       });
       expect(scored.taskOutcome).toBe("partial");
       expect(scored.metadata.qualityGatePassed).toBe(false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("fails live-agent one-shot cases when edits escape allowed diff scopes", async () => {
+    const root = createFixtureRepo();
+    const result = await runAgentBenchmarkCase({
+      rootPath: root,
+      benchmarkCase: {
+        id: "diff-scope-one-shot",
+        mode: "agent",
+        task: "Edit only the allowed source file.",
+        expectedFiles: [],
+        excludedFiles: [],
+        allowedDiffScopes: [{ file: "src/app.ts", allowWholeFile: true }],
+        seed: {
+          repoUrl: root,
+          ref: "HEAD"
+        }
+      },
+      agentCommand: "node -e \"require('fs').appendFileSync('src/user.ts', '\\nexport const drift = true;\\n'); console.error('Token usage: total=100 input=80 output=20')\""
+    });
+
+    expect(result.outcome).toBe("fail");
+    expect(result.metadata.diffScopePassed).toBe(false);
+    expect(result.metadata.diffScopeViolations).toEqual(expect.arrayContaining([expect.stringContaining("src/user.ts")]));
+  });
+
+  it("scores QnA grounding by minimum source mentions instead of requiring every reference file", () => {
+    const scored = scoreBenchmarkCase({
+      runId: "qna_grounded",
+      benchmarkCase: {
+        id: "qna",
+        mode: "agent",
+        task: "Explain how the request lifecycle chooses the handler.",
+        expectedFiles: ["src/router.py", "src/dispatch.py", "src/runtime.py"],
+        minExpectedHits: 1,
+        excludedFiles: [],
+        qnaEvaluation: {
+          minSourceMentions: 1,
+          requireNoRepoChanges: true
+        }
+      },
+      actualFiles: ["src/router.py"],
+      responseTokens: 500,
+      taskOutcome: "pass",
+      summary: "Answer cited src/router.py as the source grounding.",
+      metadata: { agentChangedFiles: [] }
+    });
+
+    expect(scored.taskOutcome).toBe("pass");
+    expect(scored.metadata.qualityGatePassed).toBe(true);
+    expect(scored.metadata.qnaGroundingPassed).toBe(true);
+    expect(scored.metadata.effectiveExpectedFileRecall).toBe(1);
+  });
+
+  it("fails QnA grounding when answer tasks modify repository files", () => {
+    const scored = scoreBenchmarkCase({
+      runId: "qna_changed_repo",
+      benchmarkCase: {
+        id: "qna",
+        mode: "agent",
+        task: "Explain how the request lifecycle chooses the handler.",
+        expectedFiles: ["src/router.py"],
+        minExpectedHits: 1,
+        excludedFiles: [],
+        qnaEvaluation: {
+          minSourceMentions: 1,
+          requireNoRepoChanges: true
+        }
+      },
+      actualFiles: ["src/router.py"],
+      responseTokens: 500,
+      taskOutcome: "pass",
+      summary: "Answer cited src/router.py but edited it.",
+      metadata: { agentChangedFiles: ["src/router.py"] }
+    });
+
+    expect(scored.taskOutcome).toBe("partial");
+    expect(scored.metadata.qualityGatePassed).toBe(false);
+    expect(scored.metadata.qnaNoRepoChangesPassed).toBe(false);
+    expect(scored.metadata.negativeEvidenceReason).toBe("QnA task modified repository files");
+  });
+
+  it("aggregates official benchmark results by task class and evaluator", () => {
+    const result = scoreBenchmarkCase({
+      runId: "official_summary",
+      benchmarkCase: {
+        id: "qna-source",
+        mode: "agent",
+        task: "Explain source behavior.",
+        expectedFiles: ["src/router.py"],
+        minExpectedHits: 1,
+        excludedFiles: [],
+        qnaEvaluation: { minSourceMentions: 1, requireNoRepoChanges: true },
+        officialEvaluation: {
+          source: "swe_atlas_qna",
+          taskClass: "source_grounded_explanation",
+          evaluator: "source_grounded_answer",
+          kairnApplicability: "strong",
+          kairnMetricEligible: true,
+          liveRisk: "low",
+          reasons: ["source-grounded answer"]
+        }
+      },
+      actualFiles: ["src/router.py"],
+      responseTokens: 300,
+      observedCodexTokens: 1200,
+      taskOutcome: "pass",
+      summary: "grounded answer",
+      metadata: { agentChangedFiles: [] }
+    });
+    const report = buildBenchmarkReport({
+      run: {
+        id: "run",
+        rootPath: "/repo",
+        suiteId: "suite",
+        suiteName: "suite",
+        mode: "agent",
+        status: "completed",
+        startedAt: "now",
+        metadata: {}
+      },
+      results: [{ ...result, id: 1, createdAt: "now" }]
+    });
+
+    expect(report.officialEvaluationSummary?.totalCases).toBe(1);
+    expect(report.officialEvaluationSummary?.kairnMetricEligibleCases).toBe(1);
+    expect(report.officialEvaluationSummary?.byTaskClass.source_grounded_explanation?.qualityPasses).toBe(1);
+    expect(report.officialEvaluationSummary?.byEvaluator.source_grounded_answer?.observedTokens).toBe(1200);
+  });
+
+  it("treats directory exclusions as nested path segments in repo matrices", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-matrix-nested-tests-"));
+    const matrixPath = path.join(root, "matrix.json");
+    const repo = path.join(root, "repo");
+    try {
+      fs.mkdirSync(path.join(repo, "src/documents/tests"), { recursive: true });
+      fs.writeFileSync(path.join(repo, "src/documents/tests/test_api.py"), "def test_api(): pass\n");
+      fs.writeFileSync(path.join(repo, "src/documents/views.py"), "def api_view(): pass\n");
+      fs.writeFileSync(
+        matrixPath,
+        JSON.stringify({
+          id: "nested-tests",
+          name: "Nested Test Exclusion",
+          gates: { expectedTopK: 5, maxPrimeLatencyMs: 10000 },
+          repos: [
+            {
+              id: "fixture",
+              localPath: repo,
+              cases: [
+                {
+                  id: "nested",
+                  mode: "context",
+                  task: "Inspect src/documents/tests/test_api.py and explain API view routing",
+                  query: "Inspect src/documents/tests/test_api.py and explain API view routing",
+                  expectedFiles: ["src/documents/views.py"],
+                  excludedFiles: ["tests/"]
+                }
+              ]
+            }
+          ]
+        })
+      );
+
+      const report = await runBenchmarkRepoMatrix({ matrixPath });
+      const result = report.repos[0]?.cases[0];
+
+      expect(result?.returnedFiles).toContain("src/documents/tests/test_api.py");
+      expect(result?.excludedHits).toContain("src/documents/tests/test_api.py");
+      expect(result?.excludedFilesAvoided).toBe(false);
+      expect(result?.qualityGatePassed).toBe(false);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -2623,6 +2890,62 @@ describe("benchmark runtime and CLI", () => {
     runtime.close();
   });
 
+  it("caps structured debug multi-file primes at two production files", async () => {
+    const root = createFixtureRepo();
+    fs.mkdirSync(path.join(root, "qutebrowser/utils"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "qutebrowser/utils/log.py"),
+      [
+        "from contextlib import contextmanager",
+        "",
+        "@contextmanager",
+        "def hide_qt_warning(pattern, logger='qt'):",
+        "    yield",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(root, "qutebrowser/utils/qtlog.py"),
+      [
+        "import logging",
+        "",
+        "class QtWarningFilter(logging.Filter):",
+        "    def filter(self, record):",
+        "        return True",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(root, "qutebrowser/utils/utils.py"),
+      [
+        "def message_filter_warning_helper(value):",
+        "    return value.strip()",
+        ""
+      ].join("\n")
+    );
+    const runtime = new KairnRuntime(root);
+
+    const prime = await runtime.primeContext({
+      task: [
+        "# Qt warning filtering tests moved to appropriate module",
+        "Requirements:",
+        "- The hide_qt_warning context manager should continue to operate with identical filtering behavior after relocation from log.py to qtlog.py.",
+        "- QtWarningFilter should suppress matching warnings without changing unrelated log behavior.",
+        "Selected tests from SWE-Bench Pro metadata: tests/unit/utils/test_log.py, tests/unit/utils/test_qtlog.py",
+        "Fix the issue in production source. Do not edit unrelated files. Avoid broad scans once the relevant source surface is known."
+      ].join("\n"),
+      profile: "failure_debug",
+      budget: 900
+    });
+
+    expect(prime.contextDecision?.recommendedDelivery).toBe("multi_file_directive");
+    expect(prime.files).toHaveLength(2);
+    expect(prime.files).toEqual(expect.arrayContaining(["qutebrowser/utils/log.py", "qutebrowser/utils/qtlog.py"]));
+    expect(prime.files).not.toContain("qutebrowser/utils/utils.py");
+
+    runtime.close();
+  });
+
   it("adds invariant guidance for exact-source URL helper primes", async () => {
     const root = createFixtureRepo();
     fs.mkdirSync(path.join(root, "packages/next/src/shared/lib/router/utils"), { recursive: true });
@@ -3016,6 +3339,7 @@ describe("benchmark runtime and CLI", () => {
           "--repeat",
           "2",
           "--shuffle-order",
+          "--no-progress",
           "--json"
         ],
         { cwd: process.cwd(), encoding: "utf8" }
