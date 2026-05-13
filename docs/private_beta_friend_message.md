@@ -13,14 +13,14 @@ If you are open to testing it:
 ```bash
 nvm install 22
 nvm use 22
-npm install -g --legacy-peer-deps ./kairn-0.1.0.tgz
+npm install -g ./kairn-0.1.0.tgz
 cd /path/to/your/repo
 kairn setup wizard
 kairn doctor
 kairn codex
 ```
 
-Please use **Node 20 or 22 LTS** for now. Node 24/25 can fail while building Kairn's native Tree-sitter dependencies.
+Please use **Node 20 or 22 LTS** if you want the safest beta path. Node 20 through 25 should work now, and newer Node releases should no longer hit the old native Tree-sitter build failure because Kairn uses WASM Tree-sitter parsing.
 
 Telemetry is optional but very helpful. It is sanitized and does **not** upload source code, prompts, diffs, filenames, repo names, raw command output, usernames, branch names, or machine paths. It only sends aggregate signals like whether Kairn helped, stayed silent, over-assisted, hit hook/MCP errors, or saved estimated tokens.
 
@@ -62,14 +62,14 @@ Kairn is **local-first**. Your code stays on your machine. It creates a local `.
 
 ## Install
 
-For beta, please use **Node 20 or 22 LTS**.
+For beta, **Node 20 or 22 LTS** is recommended.
 
 If I send you a beta package:
 
 ```bash
 nvm install 22
 nvm use 22
-npm install -g --legacy-peer-deps ./kairn-0.1.0.tgz
+npm install -g ./kairn-0.1.0.tgz
 ```
 
 If it is available through npm:

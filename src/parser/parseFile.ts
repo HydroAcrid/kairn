@@ -1,57 +1,77 @@
 import { createRequire } from "node:module";
 import path from "node:path";
-import Parser from "tree-sitter";
-import TypeScript from "tree-sitter-typescript";
+import { Language, Parser, type Point } from "web-tree-sitter";
 import type { ParsedFile, SymbolKind, SymbolRecord } from "../types.js";
 
 const require = createRequire(import.meta.url);
 
-const TS_LANGUAGE = TypeScript.typescript as unknown as Parser.Language;
-const TSX_LANGUAGE = TypeScript.tsx as unknown as Parser.Language;
-const PYTHON_LANGUAGE = require("tree-sitter-python") as Parser.Language;
-const JAVA_LANGUAGE = require("tree-sitter-java") as Parser.Language;
-const CPP_LANGUAGE = require("tree-sitter-cpp") as Parser.Language;
-const C_LANGUAGE = require("tree-sitter-c") as Parser.Language;
+type ParserGrammar = "typescript" | "tsx" | "python" | "java" | "c" | "cpp";
 
-const SOURCE_LANGUAGE_BY_EXTENSION = new Map<string, Parser.Language>([
-  [".ts", TS_LANGUAGE],
-  [".tsx", TSX_LANGUAGE],
-  [".js", TS_LANGUAGE],
-  [".jsx", TSX_LANGUAGE],
-  [".mjs", TS_LANGUAGE],
-  [".cjs", TS_LANGUAGE],
-  [".py", PYTHON_LANGUAGE],
-  [".pyi", PYTHON_LANGUAGE],
-  [".java", JAVA_LANGUAGE],
-  [".c", C_LANGUAGE],
-  [".h", CPP_LANGUAGE],
-  [".cc", CPP_LANGUAGE],
-  [".cpp", CPP_LANGUAGE],
-  [".cxx", CPP_LANGUAGE],
-  [".hh", CPP_LANGUAGE],
-  [".hpp", CPP_LANGUAGE],
-  [".hxx", CPP_LANGUAGE]
+type SyntaxNodeLike = {
+  type: string;
+  text: string;
+  startPosition: Point;
+  endPosition: Point;
+  hasError: boolean;
+  firstChild: SyntaxNodeLike | null;
+  parent: SyntaxNodeLike | null;
+  namedChildren: SyntaxNodeLike[];
+  childForFieldName(fieldName: string): SyntaxNodeLike | null;
+};
+
+const WASM_BY_GRAMMAR: Record<ParserGrammar, string> = {
+  typescript: "@repomix/tree-sitter-wasms/out/tree-sitter-typescript.wasm",
+  tsx: "@repomix/tree-sitter-wasms/out/tree-sitter-tsx.wasm",
+  python: "@repomix/tree-sitter-wasms/out/tree-sitter-python.wasm",
+  java: "@repomix/tree-sitter-wasms/out/tree-sitter-java.wasm",
+  c: "@repomix/tree-sitter-wasms/out/tree-sitter-c.wasm",
+  cpp: "@repomix/tree-sitter-wasms/out/tree-sitter-cpp.wasm"
+};
+
+const SOURCE_GRAMMAR_BY_EXTENSION = new Map<string, ParserGrammar>([
+  [".ts", "typescript"],
+  [".tsx", "tsx"],
+  [".js", "typescript"],
+  [".jsx", "tsx"],
+  [".mjs", "typescript"],
+  [".cjs", "typescript"],
+  [".py", "python"],
+  [".pyi", "python"],
+  [".java", "java"],
+  [".c", "c"],
+  [".h", "cpp"],
+  [".cc", "cpp"],
+  [".cpp", "cpp"],
+  [".cxx", "cpp"],
+  [".hh", "cpp"],
+  [".hpp", "cpp"],
+  [".hxx", "cpp"]
 ]);
 
+let parserInitPromise: Promise<void> | undefined;
+const languagePromises = new Map<ParserGrammar, Promise<Language>>();
+
 export function isParseSupported(filePath: string): boolean {
-  return SOURCE_LANGUAGE_BY_EXTENSION.has(path.extname(filePath).toLowerCase());
+  return SOURCE_GRAMMAR_BY_EXTENSION.has(path.extname(filePath).toLowerCase());
 }
 
-export function parseSourceFile(input: {
+export async function parseSourceFile(input: {
   rootPath: string;
   filePath: string;
   content: string;
   language: string;
-}): ParsedFile {
-  const language = SOURCE_LANGUAGE_BY_EXTENSION.get(path.extname(input.filePath).toLowerCase());
-  if (!language) {
+}): Promise<ParsedFile> {
+  const grammar = SOURCE_GRAMMAR_BY_EXTENSION.get(path.extname(input.filePath).toLowerCase());
+  if (!grammar) {
     return emptyParsedFile(input, false);
   }
 
   try {
+    const language = await loadLanguage(grammar);
     const parser = new Parser();
     parser.setLanguage(language);
     const tree = parser.parse(input.content);
+    if (!tree) return emptyParsedFile(input, true);
     const parsed = parseByLanguage(input, tree.rootNode);
 
     return {
@@ -65,6 +85,18 @@ export function parseSourceFile(input: {
   } catch {
     return emptyParsedFile(input, true);
   }
+}
+
+async function loadLanguage(grammar: ParserGrammar): Promise<Language> {
+  parserInitPromise ??= Parser.init();
+  await parserInitPromise;
+
+  const cached = languagePromises.get(grammar);
+  if (cached) return cached;
+
+  const promise = Language.load(require.resolve(WASM_BY_GRAMMAR[grammar]));
+  languagePromises.set(grammar, promise);
+  return promise;
 }
 
 function emptyParsedFile(
@@ -83,7 +115,7 @@ function emptyParsedFile(
 
 function parseByLanguage(
   input: { rootPath: string; filePath: string; content: string; language: string },
-  rootNode: Parser.SyntaxNode
+  rootNode: SyntaxNodeLike
 ): { symbols: SymbolRecord[]; imports: string[] } {
   if (input.language === "python") return parsePython(input, rootNode);
   if (input.language === "java") return parseJava(input, rootNode);
@@ -93,7 +125,7 @@ function parseByLanguage(
 
 function parseJavaScriptLike(
   input: { rootPath: string; filePath: string; content: string },
-  rootNode: Parser.SyntaxNode
+  rootNode: SyntaxNodeLike
 ): { symbols: SymbolRecord[]; imports: string[] } {
   const symbols: SymbolRecord[] = [];
   const imports = new Set<string>();
@@ -125,7 +157,7 @@ function parseJavaScriptLike(
 
 function parsePython(
   input: { rootPath: string; filePath: string; content: string },
-  rootNode: Parser.SyntaxNode
+  rootNode: SyntaxNodeLike
 ): { symbols: SymbolRecord[]; imports: string[] } {
   const symbols: SymbolRecord[] = [];
   const imports = new Set<string>();
@@ -156,7 +188,7 @@ function parsePython(
 
 function parseJava(
   input: { rootPath: string; filePath: string; content: string },
-  rootNode: Parser.SyntaxNode
+  rootNode: SyntaxNodeLike
 ): { symbols: SymbolRecord[]; imports: string[] } {
   const symbols: SymbolRecord[] = [];
   const imports = new Set<string>();
@@ -199,7 +231,7 @@ function parseJava(
 
 function parseCFamily(
   input: { rootPath: string; filePath: string; content: string; language: string },
-  rootNode: Parser.SyntaxNode
+  rootNode: SyntaxNodeLike
 ): { symbols: SymbolRecord[]; imports: string[] } {
   const symbols: SymbolRecord[] = [];
   const imports = new Set<string>();
@@ -232,7 +264,7 @@ function parseCFamily(
   return { symbols, imports: [...imports] };
 }
 
-function visit(node: Parser.SyntaxNode, cb: (node: Parser.SyntaxNode) => void): void {
+function visit(node: SyntaxNodeLike, cb: (node: SyntaxNodeLike) => void): void {
   cb(node);
   for (const child of node.namedChildren) {
     visit(child, cb);
@@ -242,9 +274,9 @@ function visit(node: Parser.SyntaxNode, cb: (node: Parser.SyntaxNode) => void): 
 function jsSymbolsFromDeclaration(
   rootPath: string,
   filePath: string,
-  declaration: Parser.SyntaxNode,
+  declaration: SyntaxNodeLike,
   exported: boolean,
-  rangeNode: Parser.SyntaxNode
+  rangeNode: SyntaxNodeLike
 ): SymbolRecord[] {
   switch (declaration.type) {
     case "function_declaration":
@@ -267,10 +299,10 @@ function jsSymbolsFromDeclaration(
 function symbolForNamedDeclaration(
   rootPath: string,
   filePath: string,
-  declaration: Parser.SyntaxNode,
+  declaration: SyntaxNodeLike,
   kind: SymbolKind,
   exported: boolean,
-  rangeNode: Parser.SyntaxNode
+  rangeNode: SyntaxNodeLike
 ): SymbolRecord[] {
   const name = findIdentifierName(declaration) ?? (exported && isDefaultExport(rangeNode) ? "default" : undefined);
   if (!name) return [];
@@ -292,9 +324,9 @@ function symbolForNamedDeclaration(
 function symbolsForVariableDeclaration(
   rootPath: string,
   filePath: string,
-  declaration: Parser.SyntaxNode,
+  declaration: SyntaxNodeLike,
   exported: boolean,
-  rangeNode: Parser.SyntaxNode
+  rangeNode: SyntaxNodeLike
 ): SymbolRecord[] {
   const kindText = declaration.firstChild?.text;
   const kind: SymbolKind = kindText === "let" || kindText === "var" ? kindText : "const";
@@ -322,7 +354,7 @@ function symbolsForVariableDeclaration(
 function addNamedJavaSymbol(
   input: { rootPath: string; filePath: string },
   symbols: SymbolRecord[],
-  node: Parser.SyntaxNode,
+  node: SyntaxNodeLike,
   kind: SymbolKind
 ): void {
   const name = node.childForFieldName("name")?.text;
@@ -334,7 +366,7 @@ function symbolRecord(
   name: string,
   kind: SymbolKind,
   exported: boolean,
-  node: Parser.SyntaxNode
+  node: SyntaxNodeLike
 ): SymbolRecord {
   return {
     rootPath: input.rootPath,
@@ -348,7 +380,7 @@ function symbolRecord(
   };
 }
 
-function findIdentifierName(node: Parser.SyntaxNode): string | undefined {
+function findIdentifierName(node: SyntaxNodeLike): string | undefined {
   const child = node.namedChildren.find((candidate) =>
     ["identifier", "type_identifier", "field_identifier", "namespace_identifier"].includes(candidate.type)
   );
@@ -362,15 +394,15 @@ function findIdentifierName(node: Parser.SyntaxNode): string | undefined {
   return undefined;
 }
 
-function findNodes(node: Parser.SyntaxNode, type: string): Parser.SyntaxNode[] {
-  const matches: Parser.SyntaxNode[] = [];
+function findNodes(node: SyntaxNodeLike, type: string): SyntaxNodeLike[] {
+  const matches: SyntaxNodeLike[] = [];
   visit(node, (candidate) => {
     if (candidate.type === type) matches.push(candidate);
   });
   return matches;
 }
 
-function functionNameFromDeclarator(node: Parser.SyntaxNode | null): string | undefined {
+function functionNameFromDeclarator(node: SyntaxNodeLike | null): string | undefined {
   if (!node) return undefined;
   if (["identifier", "field_identifier", "qualified_identifier", "operator_name"].includes(node.type)) {
     return node.text;
@@ -383,15 +415,15 @@ function functionNameFromDeclarator(node: Parser.SyntaxNode | null): string | un
   return findIdentifierName(node);
 }
 
-function isExported(node: Parser.SyntaxNode): boolean {
+function isExported(node: SyntaxNodeLike): boolean {
   return node.type === "export_statement";
 }
 
-function isDefaultExport(node: Parser.SyntaxNode): boolean {
+function isDefaultExport(node: SyntaxNodeLike): boolean {
   return node.type === "export_statement" && /\bdefault\b/.test(node.text);
 }
 
-function firstDeclarationChild(node: Parser.SyntaxNode): Parser.SyntaxNode | null {
+function firstDeclarationChild(node: SyntaxNodeLike): SyntaxNodeLike | null {
   if (node.type !== "export_statement") return node;
   return (
     node.namedChildren.find((child) =>
@@ -443,11 +475,11 @@ function extractCIncludeSpecifier(text: string): string | undefined {
   return text.match(/#\s*include\s+[<"]([^>"]+)[>"]/)?.[1];
 }
 
-function hasPublicModifier(node: Parser.SyntaxNode): boolean {
+function hasPublicModifier(node: SyntaxNodeLike): boolean {
   return /\bpublic\b/.test(node.text.split(/\r?\n/)[0] ?? "");
 }
 
-function signatureFor(node: Parser.SyntaxNode): string {
+function signatureFor(node: SyntaxNodeLike): string {
   return node.text.split(/\r?\n/)[0]?.trim() ?? "";
 }
 

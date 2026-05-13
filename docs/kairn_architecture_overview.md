@@ -39,7 +39,7 @@ Retrieval / Decision Layer
   |-- query intent classification
   |-- BM25 exact lexical retrieval
   |-- local hashed semantic vectors
-  |-- Tree-sitter symbols and chunks
+  |-- WASM Tree-sitter symbols and chunks
   |-- TypeScript graph enrichment
   |-- graph/test/related-file heuristics
   |-- adaptive context controller
@@ -196,7 +196,7 @@ Indexing starts with `runtime.init()` and flows through:
    - adaptive scan budgets.
 
 2. `src/parser/parseFile.ts`
-   - Tree-sitter parsing for supported languages,
+   - WASM Tree-sitter parsing for supported languages,
    - symbol extraction,
    - import/include extraction.
 
@@ -597,7 +597,7 @@ Stable-ish foundations:
 - sessions,
 - exact file/symbol reads,
 - BM25/exact lexical retrieval,
-- Tree-sitter symbol extraction,
+- WASM Tree-sitter symbol extraction,
 - query-local retrieval direction,
 - metrics/eval storage principles.
 

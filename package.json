@@ -13,7 +13,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup src/cli.ts --format esm --target node20 --dts --clean --external typescript",
+    "build": "tsup src/cli.ts --format esm --target node20 --dts --clean --external typescript --external web-tree-sitter --external @repomix/tree-sitter-wasms",
     "dev": "tsx src/cli.ts",
     "kairn": "node dist/cli.js",
     "preinstall": "node ./scripts/preinstall-check.cjs",
@@ -30,37 +30,26 @@
   "author": "Kevin Dotel",
   "license": "UNLICENSED",
   "engines": {
-    "node": ">=20 <24"
+    "node": ">=20 <26"
   },
   "packageManager": "pnpm@10.31.0",
   "pnpm": {
     "onlyBuiltDependencies": [
       "better-sqlite3",
-      "esbuild",
-      "tree-sitter",
-      "tree-sitter-c",
-      "tree-sitter-cpp",
-      "tree-sitter-java",
-      "tree-sitter-javascript",
-      "tree-sitter-python",
-      "tree-sitter-typescript"
+      "esbuild"
     ]
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@repomix/tree-sitter-wasms": "0.1.17",
     "better-sqlite3": "^12.9.0",
     "chokidar": "^5.0.0",
     "commander": "^14.0.3",
     "fast-glob": "^3.3.3",
     "ignore": "^7.0.5",
     "simple-git": "^3.36.0",
-    "tree-sitter": "0.25.0",
-    "tree-sitter-c": "0.24.1",
-    "tree-sitter-cpp": "0.23.4",
-    "tree-sitter-java": "0.23.5",
-    "tree-sitter-python": "0.25.0",
-    "tree-sitter-typescript": "0.23.2",
     "typescript": "^6.0.3",
+    "web-tree-sitter": "0.26.8",
     "zod": "^4.4.3"
   },
   "devDependencies": {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { performance } from "node:perf_hooks";
 import { indexRepo } from "../src/indexer/indexRepo.js";
 import { compactParsedSymbols } from "../src/indexer/symbolCompaction.js";
 import { parseSourceFile } from "../src/parser/parseFile.js";
@@ -9,8 +10,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 describe("cross-language parser adapters", () => {
-  it("extracts TypeScript symbols and imports", () => {
-    const parsed = parseSourceFile({
+  it("extracts TypeScript symbols and imports", async () => {
+    const parsed = await parseSourceFile({
       rootPath: "/repo",
       filePath: "src/example.ts",
       language: "typescript",
@@ -36,10 +37,52 @@ describe("cross-language parser adapters", () => {
         "function:DefaultRunner:true"
       ])
     );
+    expect(parsed.symbols).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "runTask",
+          startLine: 2,
+          endLine: 2,
+          signature: "export function runTask() { return helper(); }"
+        })
+      ])
+    );
   });
 
-  it("extracts TSX component symbols", () => {
-    const parsed = parseSourceFile({
+  it("extracts JavaScript require imports and symbols through the WASM parser", async () => {
+    const parsed = await parseSourceFile({
+      rootPath: "/repo",
+      filePath: "src/router.js",
+      language: "javascript",
+      content: [
+        "const Layer = require('./layer');",
+        "function route(path) { return new Layer(path); }",
+        "module.exports = { route };",
+        ""
+      ].join("\n")
+    });
+
+    expect(parsed.imports).toContain("./layer");
+    expect(parsed.symbols).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "Layer",
+          kind: "const",
+          startLine: 1,
+          endLine: 1
+        }),
+        expect.objectContaining({
+          name: "route",
+          kind: "function",
+          startLine: 2,
+          endLine: 2
+        })
+      ])
+    );
+  });
+
+  it("extracts TSX component symbols", async () => {
+    const parsed = await parseSourceFile({
       rootPath: "/repo",
       filePath: "src/DashboardCard.tsx",
       language: "typescript",
@@ -66,8 +109,8 @@ describe("cross-language parser adapters", () => {
     );
   });
 
-  it("marks broken supported files without throwing", () => {
-    const parsed = parseSourceFile({
+  it("marks broken supported files without throwing", async () => {
+    const parsed = await parseSourceFile({
       rootPath: "/repo",
       filePath: "src/broken.ts",
       language: "typescript",
@@ -77,8 +120,8 @@ describe("cross-language parser adapters", () => {
     expect(parsed.hasErrors).toBe(true);
   });
 
-  it("skips unsupported file types", () => {
-    const parsed = parseSourceFile({
+  it("skips unsupported file types", async () => {
+    const parsed = await parseSourceFile({
       rootPath: "/repo",
       filePath: "README.md",
       language: "markdown",
@@ -90,8 +133,8 @@ describe("cross-language parser adapters", () => {
     expect(parsed.hasErrors).toBe(false);
   });
 
-  it("extracts Python functions, classes, async functions, and imports", () => {
-    const parsed = parseSourceFile({
+  it("extracts Python functions, classes, async functions, and imports", async () => {
+    const parsed = await parseSourceFile({
       rootPath: "/repo",
       filePath: "click/utils.py",
       language: "python",
@@ -118,8 +161,8 @@ describe("cross-language parser adapters", () => {
     );
   });
 
-  it("extracts Java packages, imports, classes, interfaces, enums, methods, and constructors", () => {
-    const parsed = parseSourceFile({
+  it("extracts Java packages, imports, classes, interfaces, enums, methods, and constructors", async () => {
+    const parsed = await parseSourceFile({
       rootPath: "/repo",
       filePath: "src/main/java/org/apache/commons/lang3/StringUtils.java",
       language: "java",
@@ -149,8 +192,8 @@ describe("cross-language parser adapters", () => {
     );
   });
 
-  it("extracts C and C++ includes, namespaces, classes, structs, and functions", () => {
-    const cpp = parseSourceFile({
+  it("extracts C and C++ includes, namespaces, classes, structs, and functions", async () => {
+    const cpp = await parseSourceFile({
       rootPath: "/repo",
       filePath: "include/fmt/base.h",
       language: "cpp",
@@ -168,7 +211,7 @@ describe("cross-language parser adapters", () => {
         ""
       ].join("\n")
     });
-    const c = parseSourceFile({
+    const c = await parseSourceFile({
       rootPath: "/repo",
       filePath: "src/core.c",
       language: "c",
@@ -193,6 +236,38 @@ describe("cross-language parser adapters", () => {
     expect(c.symbols.map((symbol) => `${symbol.name}:${symbol.kind}`)).toEqual(
       expect.arrayContaining(["buffer:class", "starts_with:function"])
     );
+  });
+
+  it("keeps WASM parser throughput under the beta indexing budget", async () => {
+    const content = [
+      "import { helper } from './helper';",
+      "export type RunnerMode = 'fast' | 'safe';",
+      "export interface RunnerProps { mode: RunnerMode }",
+      "export class Runner { run() { return helper(); } }",
+      "export function runTask(input: string) { return input.trim(); }",
+      "const RunnerValue = 42;"
+    ].join("\n").concat("\n").repeat(20);
+
+    await parseSourceFile({
+      rootPath: "/repo",
+      filePath: "src/perf.ts",
+      language: "typescript",
+      content
+    });
+
+    const iterations = 100;
+    const started = performance.now();
+    for (let index = 0; index < iterations; index += 1) {
+      const parsed = await parseSourceFile({
+        rootPath: "/repo",
+        filePath: "src/perf.ts",
+        language: "typescript",
+        content
+      });
+      expect(parsed.hasErrors).toBe(false);
+    }
+    const averageMs = (performance.now() - started) / iterations;
+    expect(averageMs).toBeLessThan(10);
   });
 
   it("classifies Python, Java, and C++ source/test files", () => {

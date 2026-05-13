@@ -16,7 +16,7 @@ Kairn's beta-friendly distribution path is npm first because it works across mac
 
 Requirements:
 
-- Node.js 20 or 22 LTS for the private beta. Node 24+ currently fails or requires extra native build flags for the Tree-sitter dependency chain, so do not use it as the easy-install path yet.
+- Node.js 20 through 25. Node 20 or 22 LTS is still the recommended private beta path, but Kairn's parser now uses WASM Tree-sitter to avoid the old native Tree-sitter build failure on newer Node releases.
 - Git
 - Codex CLI for the terminal hook/session path, or a client that can read workspace MCP config for the MCP path
 
@@ -38,7 +38,7 @@ npm pack
 # beta user
 nvm install 22
 nvm use 22
-npm install -g --legacy-peer-deps ./kairn-0.1.0.tgz
+npm install -g ./kairn-0.1.0.tgz
 kairn setup wizard --root /path/to/repo
 ```
 
@@ -470,8 +470,4 @@ Kairn stores generated state in the target repo under `.kairn/`. This includes l
 
 ## Native Dependency Notes
 
-Kairn uses native Tree-sitter bindings for AST parsing. On Node 24, a fresh source build may need C++20 enabled:
-
-```bash
-CXXFLAGS="-std=c++20" pnpm install
-```
+Kairn uses WASM Tree-sitter grammars for AST parsing, so parser install no longer depends on native Node ABI builds. The remaining expected native dependency is SQLite storage through `better-sqlite3`; use Node 20 or 22 LTS if a newer Node release exposes a platform-specific SQLite install issue.

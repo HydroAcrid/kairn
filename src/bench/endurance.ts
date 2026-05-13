@@ -229,7 +229,7 @@ async function runEnduranceMode(input: {
       rootPath: workspace.workspacePath,
       invariants: input.suite.finalSourceInvariants
     });
-    const finalDiffScopeResult = evaluateDiffScopes({
+    const finalDiffScopeResult = await evaluateDiffScopes({
       rootPath: workspace.workspacePath,
       scopes: input.suite.allowedDiffScopes
     });
@@ -431,7 +431,7 @@ async function runEnduranceTurn(input: {
     rootPath: input.workspacePath,
     invariants: input.turn.sourceInvariants
   });
-  const diffScopeResult = evaluateDiffScopes({
+  const diffScopeResult = await evaluateDiffScopes({
     rootPath: input.workspacePath,
     scopes: input.turn.allowedDiffScopes
   });

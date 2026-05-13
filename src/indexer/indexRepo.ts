@@ -22,9 +22,9 @@ export type RepoIndex = {
 export async function indexRepo(rootPath: string): Promise<RepoIndex> {
   const config = loadIndexingConfig(rootPath);
   const scan = await scanRepo(rootPath);
-  const parsedFiles = scan.files.filter(shouldParseFile).map((file) => {
+  const parsedFiles = await Promise.all(scan.files.filter(shouldParseFile).map(async (file) => {
     try {
-      return parseSourceFile({
+      return await parseSourceFile({
         rootPath,
         filePath: file.path,
         content: readTextFile(rootPath, file.path),
@@ -40,7 +40,7 @@ export async function indexRepo(rootPath: string): Promise<RepoIndex> {
         hasErrors: true
       };
     }
-  });
+  }));
   const compactedParsedFiles = compactParsedSymbols({
     files: scan.files,
     parsedFiles,

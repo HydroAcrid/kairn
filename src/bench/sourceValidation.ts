@@ -37,10 +37,10 @@ export function evaluateSourceInvariants(input: {
   };
 }
 
-export function evaluateDiffScopes(input: {
+export async function evaluateDiffScopes(input: {
   rootPath: string;
   scopes?: BenchmarkDiffScope[] | undefined;
-}): DiffScopeResult {
+}): Promise<DiffScopeResult> {
   const scopes = input.scopes ?? [];
   if (scopes.length === 0) {
     return {
@@ -63,7 +63,7 @@ export function evaluateDiffScopes(input: {
     if (scope.allowWholeFile || !scope.symbols || scope.symbols.length === 0) continue;
 
     const changedLines = changedLinesForFile(input.rootPath, file);
-    const symbols = symbolsForFile(input.rootPath, file);
+    const symbols = await symbolsForFile(input.rootPath, file);
     const allowedSymbols = symbols.filter((symbol) => scope.symbols?.includes(symbol.name));
     if (allowedSymbols.length === 0 && changedLines.length > 0) {
       violations.push(`${file}: none of the allowed symbols were found (${scope.symbols.join(", ")})`);
@@ -164,16 +164,16 @@ function changedLinesForFile(rootPath: string, file: string): ChangedLine[] {
   return dedupeChangedLines(lines);
 }
 
-function symbolsForFile(rootPath: string, file: string): SymbolRecord[] {
+async function symbolsForFile(rootPath: string, file: string): Promise<SymbolRecord[]> {
   const absolute = path.join(rootPath, file);
   if (!fs.existsSync(absolute)) return [];
   const content = fs.readFileSync(absolute, "utf8");
-  return parseSourceFile({
+  return (await parseSourceFile({
     rootPath,
     filePath: file,
     content,
     language: detectLanguage(file)
-  }).symbols;
+  })).symbols;
 }
 
 function dedupeChangedLines(lines: ChangedLine[]): ChangedLine[] {

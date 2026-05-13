@@ -354,7 +354,7 @@ describe("benchmark suite and scoring", () => {
     }
   });
 
-  it("detects unrelated same-file hunks outside allowed symbols", () => {
+  it("detects unrelated same-file hunks outside allowed symbols", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-diff-scope-"));
     try {
       fs.mkdirSync(path.join(root, "src/flask"), { recursive: true });
@@ -396,7 +396,7 @@ describe("benchmark suite and scoring", () => {
         ].join("\n")
       );
 
-      const result = evaluateDiffScopes({
+      const result = await evaluateDiffScopes({
         rootPath: root,
         scopes: [{ file: "src/flask/app.py", symbols: ["dispatch_request"] }]
       });

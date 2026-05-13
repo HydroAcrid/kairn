@@ -9,7 +9,7 @@ import type { FileRecord } from "../src/types.js";
 import { createFixtureRepo } from "./helpers.js";
 
 describe("buildRepoGraph", () => {
-  it("builds direct import, direct test, index, and parent route edges", () => {
+  it("builds direct import, direct test, index, and parent route edges", async () => {
     const rootPath = "/repo";
     const files = [
       file(rootPath, "src/app.ts", "source"),
@@ -25,14 +25,14 @@ describe("buildRepoGraph", () => {
       ["app/dashboard/page.tsx", "import { DashboardCard } from './DashboardCard';\nexport default function Page() { return <DashboardCard />; }"],
       ["app/dashboard/DashboardCard.tsx", "export const DashboardCard = () => <section />;"]
     ]);
-    const parsedFiles = files.map((record) =>
+    const parsedFiles = await Promise.all(files.map((record) =>
       parseSourceFile({
         rootPath,
         filePath: record.path,
         language: record.language,
         content: sources.get(record.path) ?? ""
       })
-    );
+    ));
 
     const graph = buildRepoGraph({ rootPath, files, parsedFiles });
 
@@ -43,21 +43,21 @@ describe("buildRepoGraph", () => {
     );
   });
 
-  it("does not create test edges by comparing every source to every test", () => {
+  it("does not create test edges by comparing every source to every test", async () => {
     const rootPath = "/repo";
     const files = [
       ...Array.from({ length: 200 }, (_, index) => file(rootPath, `src/module-${index}.ts`, "source")),
       file(rootPath, "src/local-url.ts", "source"),
       file(rootPath, "src/local-url.test.ts", "test")
     ];
-    const parsedFiles = files.map((record) =>
+    const parsedFiles = await Promise.all(files.map((record) =>
       parseSourceFile({
         rootPath,
         filePath: record.path,
         language: record.language,
         content: record.kind === "test" ? "import './local-url';\ntest('local url', () => {});" : `export const value${record.path.length} = 1;`
       })
-    );
+    ));
 
     const graph = buildRepoGraph({ rootPath, files, parsedFiles });
     const testEdges = graph.edges.filter((edge) => edge.type === "test_for");
