@@ -195,15 +195,18 @@ async function runCasePreflight(input: {
   const companionFilesReturned = Object.keys(companionReasons).filter((file) => returnedFiles.includes(file));
   const expectedCompanions = scorableExpectedFiles.slice(1);
   const missingCompanionFiles = expectedCompanions.filter((file) => !topFiles.includes(file));
+  const companionHits = expectedCompanions.filter((file) => topFiles.includes(file));
   const sourceVsTestDecision = decideSourceVsTest(returnedFiles);
   const requiresSuppression = shouldRequireSuppression(input.benchmarkCase, input.gates);
   const contextDecision = prime.contextDecision?.action ?? prime.quality?.action;
   const suppressionPassed = !requiresSuppression || contextDecision === "suppress";
-  const minExpectedHits = Math.max(0, Math.min(scorableExpectedFiles.length, input.benchmarkCase.minExpectedHits ?? scorableExpectedFiles.length));
+  const minExpectedHits = effectiveMatrixMinExpectedHits(input.benchmarkCase, scorableExpectedFiles.length);
+  const requiredCompanionHits = effectiveMatrixRequiredCompanionHits(input.benchmarkCase, expectedCompanions.length, minExpectedHits);
   const expectedTopKPassed = scorableExpectedFiles.length === 0 || expectedHits.length >= minExpectedHits;
+  const companionGatePassed = companionHits.length >= requiredCompanionHits;
   const excludedFilesAvoided = excludedHits.length === 0 && noisePrefixHits.length === 0;
   const latencyPassed = primeLatencyMs <= input.gates.maxPrimeLatencyMs;
-  const qualityGatePassed = expectedTopKPassed && excludedFilesAvoided && suppressionPassed && latencyPassed;
+  const qualityGatePassed = expectedTopKPassed && companionGatePassed && excludedFilesAvoided && suppressionPassed && latencyPassed;
   const recommendations: string[] = [];
 
   if (!expectedTopKPassed) {
@@ -219,8 +222,10 @@ async function runCasePreflight(input: {
   if (!excludedFilesAvoided) {
     recommendations.push(`Excluded/noisy files returned: ${uniqueStrings([...excludedHits, ...noisePrefixHits]).join(", ")}`);
   }
-  if (missingCompanionFiles.length > 0 && scorableExpectedFiles.length > 1) {
-    recommendations.push(`Companion files missing from top ${input.gates.expectedTopK}: ${missingCompanionFiles.join(", ")}`);
+  if (!companionGatePassed && missingCompanionFiles.length > 0 && scorableExpectedFiles.length > 1) {
+    recommendations.push(
+      `Companion file hits below minimum ${requiredCompanionHits}/${expectedCompanions.length}; missing from top ${input.gates.expectedTopK}: ${missingCompanionFiles.join(", ")}`
+    );
   }
   if (!suppressionPassed) {
     recommendations.push("Weak-signal case emitted context instead of suppressing.");
@@ -251,6 +256,9 @@ async function runCasePreflight(input: {
     ...(prime.timings ? { timings: prime.timings } : {}),
     ...(contextDecision ? { contextDecision } : {}),
     ...(prime.quality?.score !== undefined ? { qualityScore: prime.quality.score } : {}),
+    minExpectedHits,
+    requiredCompanionHits,
+    companionGatePassed,
     expectedTopKPassed,
     excludedFilesAvoided,
     suppressionPassed,
@@ -352,6 +360,49 @@ function emptyIndex(gates: Required<BenchmarkMatrixGates>): BenchmarkMatrixRepoR
 function shouldRequireSuppression(benchmarkCase: BenchmarkCase, gates: Required<BenchmarkMatrixGates>): boolean {
   if (benchmarkCase.successCriteria?.some((entry) => entry.toLowerCase().includes("suppress"))) return true;
   return gates.requireSuppressionForWeakCases && benchmarkCase.expectedFiles.length === 0;
+}
+
+export function effectiveMatrixMinExpectedHits(benchmarkCase: BenchmarkCase, expectedFileCount: number): number {
+  if (expectedFileCount === 0) return 0;
+  if (benchmarkCase.minExpectedHits !== undefined) {
+    return Math.max(0, Math.min(expectedFileCount, benchmarkCase.minExpectedHits));
+  }
+  switch (benchmarkCase.contextBehavior) {
+    case "weak_signal":
+      return 0;
+    case "cheap_single_source":
+    case "source_rescue":
+    case "failure_first":
+    case "session_repeat":
+      return 1;
+    case "multi_file_debug":
+      return Math.min(expectedFileCount, 2);
+    default:
+      return expectedFileCount;
+  }
+}
+
+export function effectiveMatrixRequiredCompanionHits(
+  benchmarkCase: BenchmarkCase,
+  expectedCompanionCount: number,
+  minExpectedHits: number
+): number {
+  if (expectedCompanionCount === 0) return 0;
+  if (benchmarkCase.minExpectedHits !== undefined) {
+    return Math.max(0, Math.min(expectedCompanionCount, minExpectedHits - 1));
+  }
+  switch (benchmarkCase.contextBehavior) {
+    case "multi_file_debug":
+      return 1;
+    case "cheap_single_source":
+    case "source_rescue":
+    case "failure_first":
+    case "session_repeat":
+    case "weak_signal":
+      return 0;
+    default:
+      return expectedCompanionCount;
+  }
 }
 
 function benchmarkPathMatches(filePath: string, pattern: string): boolean {

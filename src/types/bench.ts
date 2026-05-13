@@ -325,6 +325,9 @@ export type BenchmarkMatrixCaseResult = {
   timings?: Record<string, number>;
   contextDecision?: string;
   qualityScore?: number;
+  minExpectedHits?: number;
+  requiredCompanionHits?: number;
+  companionGatePassed?: boolean;
   expectedTopKPassed: boolean;
   excludedFilesAvoided: boolean;
   suppressionPassed: boolean;

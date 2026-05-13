@@ -6,7 +6,12 @@ import { describe, expect, it } from "vitest";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
 import { createDefaultBenchmarkSuite, loadBenchmarkSuite } from "../src/bench/suite.js";
 import { buildBenchmarkReport, compareBenchmarkReports, scoreBenchmarkCase } from "../src/bench/score.js";
-import { loadBenchmarkRepoMatrix, runBenchmarkRepoMatrix } from "../src/bench/matrix.js";
+import {
+  effectiveMatrixMinExpectedHits,
+  effectiveMatrixRequiredCompanionHits,
+  loadBenchmarkRepoMatrix,
+  runBenchmarkRepoMatrix
+} from "../src/bench/matrix.js";
 import { loadBenchmarkEnduranceSuite } from "../src/bench/enduranceSuite.js";
 import { runBenchmarkEndurance, runBenchmarkEnduranceRepeats } from "../src/bench/endurance.js";
 import { runAgentBenchmarkCase } from "../src/bench/agent.js";
@@ -630,6 +635,24 @@ describe("benchmark suite and scoring", () => {
     expect(result?.recommendations).toEqual(
       expect.arrayContaining(["Expected files absent from base checkout and not scored for retrieval: src/NewKeyboardDefaults.ts"])
     );
+  });
+
+  it("scores multi-file debug preflight as primary plus one companion by default", () => {
+    const benchmarkCase = {
+      id: "router-context-tree",
+      mode: "context" as const,
+      contextBehavior: "multi_file_debug" as const,
+      task: "Debug router route context behavior when middleware and route patterns dispatch through the router.",
+      expectedFiles: ["src/router.ts", "src/context.ts", "src/tree.ts"],
+      excludedFiles: [],
+      budget: 700
+    };
+
+    const minExpectedHits = effectiveMatrixMinExpectedHits(benchmarkCase, benchmarkCase.expectedFiles.length);
+    const requiredCompanionHits = effectiveMatrixRequiredCompanionHits(benchmarkCase, benchmarkCase.expectedFiles.length - 1, minExpectedHits);
+
+    expect(minExpectedHits).toBe(2);
+    expect(requiredCompanionHits).toBe(1);
   });
 
   it("prefers named source companions over generic role paths", () => {
