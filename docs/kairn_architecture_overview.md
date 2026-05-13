@@ -63,14 +63,14 @@ Command modules:
 - `src/cli/commands/core.ts`: `init`, `start`, `prime`, `serve`, `daemon`, `metrics`, `index`, `codex`.
 - `src/cli/commands/context.ts`: `context`, `diff`, `compress`, `failure`.
 - `src/cli/commands/watch.ts`: `watch`, `hook`.
-- `src/cli/commands/setup.ts`: `setup wizard`, `setup codex`, `setup mcp`, `setup mcp-instructions`.
+- `src/cli/commands/setup.ts`: `setup wizard`, `setup codex`, `setup mcp`, `setup mcp-instructions`, `setup remove`.
 - `src/cli/commands/eval.ts`: eval runs, Codex usage ingestion, feedback.
 - `src/cli/commands/bench.ts`: replay, live-agent proofs, repo-matrix preflight, endurance runs.
 - `src/cli/commands/beta.ts`: doctor checks, privacy-first telemetry, diagnostics export, beta reports.
 
 The CLI should stay thin. Command modules should parse options, call `KairnRuntime` or focused benchmark/setup helpers, then format output.
 
-Private beta onboarding starts at `kairn setup wizard`. The wizard is a thin composition layer over the same setup primitives used by direct commands: Codex savings hooks, VS Code MCP config, advanced Codex hybrid, doctor checks, and optional sanitized telemetry.
+Private beta onboarding starts at `kairn setup wizard`. The wizard is a thin composition layer over the same setup primitives used by direct commands: Codex savings hooks, VS Code MCP config, advanced Codex hybrid, doctor checks, and optional sanitized telemetry. Private beta offboarding uses `kairn setup remove`, which removes only Kairn-owned hook/MCP/instruction config and can optionally delete local `.kairn/` state.
 
 ### MCP
 
@@ -447,6 +447,8 @@ CLI surfaces:
 - `kairn beta report --root <repo> [--session <id>] [--json]`
 
 Telemetry is opt-in. Detailed evidence remains local under `.kairn/`; upload payloads are sanitized aggregates only. They may include version, mode, language mix, repo-size buckets, decision counts, assistance classification, token totals, hook/MCP counters, coarse file roles, and salted file ids. They must not include source code, prompts, command output, diffs, filenames, repo URLs, usernames, branch names, or machine paths.
+
+When telemetry is enabled, uploads happen only at safe command boundaries. `kairn codex` queues and flushes one sanitized snapshot after the Codex process exits, and `kairn beta report` queues and flushes one snapshot after producing the local report. Prompt hooks and MCP tool calls do not perform network uploads during an agent turn; they record local metrics that are flushed later.
 
 Hosted ingest lives under `supabase/`:
 

@@ -8,6 +8,7 @@
   },
   "files": [
     "dist",
+    "scripts/preinstall-check.cjs",
     "README.md",
     "LICENSE"
   ],
@@ -15,6 +16,7 @@
     "build": "tsup src/cli.ts --format esm --target node20 --dts --clean --external typescript",
     "dev": "tsx src/cli.ts",
     "kairn": "node dist/cli.js",
+    "preinstall": "node ./scripts/preinstall-check.cjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

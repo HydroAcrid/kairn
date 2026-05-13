@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { Command, Option } from "commander";
 import { startKairnDaemon } from "../../daemon/server.js";
 import { startMcpServer } from "../../server/mcp.js";
+import { queueAndFlushTelemetrySnapshot } from "../../telemetry/autoFlush.js";
 import type { CodexSetupMode, HookOutputProfile, IndexStateStats, PrimeProfile } from "../../types.js";
 import { printContextPrime } from "../formatters.js";
 import { codexExecArgs, codexInteractiveArgs, parsePositiveInt, shellQuote, waitForShutdown, withRuntime } from "../helpers.js";
@@ -350,6 +351,23 @@ export function registerCoreCommands(program: Command): void {
           process.exitCode = completed.status ?? (completed.error ? 1 : 0);
         } finally {
           if (hookBackup) restoreCodexConversationFiles(hookBackup);
+          if (!options.dryRun && !options.json) {
+            try {
+              const telemetry = await queueAndFlushTelemetrySnapshot({
+                rootPath: options.root,
+                runtime,
+                sessionId
+              });
+              if (telemetry?.sent) {
+                process.stdout.write(`Kairn telemetry uploaded: ${telemetry.sent} snapshot(s).\n`);
+              } else if (telemetry?.failures.length) {
+                process.stderr.write(`Kairn telemetry upload retained for retry: ${telemetry.failures.join("; ")}\n`);
+              }
+            } catch (error) {
+              const message = error instanceof Error ? error.message : String(error);
+              process.stderr.write(`Kairn telemetry upload skipped: ${message}\n`);
+            }
+          }
         }
       });
     });

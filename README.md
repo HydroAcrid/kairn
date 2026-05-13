@@ -16,7 +16,7 @@ Kairn's beta-friendly distribution path is npm first because it works across mac
 
 Requirements:
 
-- Node.js 20 or 22 LTS for the private beta. Node 24 currently requires extra native build flags for the Tree-sitter dependency chain, so do not use it as the easy-install path yet.
+- Node.js 20 or 22 LTS for the private beta. Node 24+ currently fails or requires extra native build flags for the Tree-sitter dependency chain, so do not use it as the easy-install path yet.
 - Git
 - Codex CLI for the terminal hook/session path, or a client that can read workspace MCP config for the MCP path
 
@@ -36,7 +36,9 @@ pnpm build
 npm pack
 
 # beta user
-npm install -g ./kairn-0.1.0.tgz
+nvm install 22
+nvm use 22
+npm install -g --legacy-peer-deps ./kairn-0.1.0.tgz
 kairn setup wizard --root /path/to/repo
 ```
 
@@ -56,6 +58,8 @@ kairn setup wizard --root /path/to/repo --choice codex --yes
 kairn setup wizard --root /path/to/repo --choice mcp --yes
 kairn doctor --root /path/to/repo
 ```
+
+If sanitized telemetry is enabled, Kairn uploads at safe command boundaries: when `kairn codex` exits and when `kairn beta report` runs. Prompt hooks do not perform network uploads during an agent turn. Private beta telemetry defaults to the Kairn Supabase ingest endpoint when users opt in with `kairn telemetry enable --destination supabase`.
 
 To remove Kairn from a repo:
 

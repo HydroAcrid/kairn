@@ -1,5 +1,49 @@
 # Kairn Private Beta Message
 
+## Short Version
+
+I am privately testing **Kairn**, a local-first tool that helps Codex and other AI coding agents use fewer tokens by giving them only the repo context that actually matters, or staying silent when extra context would just be noise.
+
+In private tests, I have seen quality-passing token reductions around **20% to 70%+** on the kinds of work Kairn is designed for: debugging, larger repos, multi-file tasks, and longer coding sessions. I am not claiming that on every task. The goal of this beta is to prove where it helps, where it should stay quiet, and how it behaves on real projects.
+
+Your code stays local. Kairn creates a `.kairn/` index in your repo and can connect through Codex hooks or MCP for editors like VS Code.
+
+If you are open to testing it:
+
+```bash
+nvm install 22
+nvm use 22
+npm install -g --legacy-peer-deps ./kairn-0.1.0.tgz
+cd /path/to/your/repo
+kairn setup wizard
+kairn doctor
+kairn codex
+```
+
+Please use **Node 20 or 22 LTS** for now. Node 24/25 can fail while building Kairn's native Tree-sitter dependencies.
+
+Telemetry is optional but very helpful. It is sanitized and does **not** upload source code, prompts, diffs, filenames, repo names, raw command output, usernames, branch names, or machine paths. It only sends aggregate signals like whether Kairn helped, stayed silent, over-assisted, hit hook/MCP errors, or saved estimated tokens.
+
+If you enable telemetry:
+
+```bash
+kairn telemetry enable --destination supabase
+```
+
+After telemetry is enabled, Kairn automatically uploads sanitized snapshots when `kairn codex` exits or when you run `kairn beta report`. You can still force a send with `kairn telemetry flush`.
+
+You can see whether it helped with:
+
+```bash
+kairn beta report
+```
+
+This is private beta software, so feedback on setup, confusion, bad context, silence, latency, or real token savings is exactly what I need.
+
+Please keep this private for now. I am still validating the idea before making broader claims or a public launch.
+
+## Full Version
+
 I am private testing a tool called **Kairn**.
 
 Kairn runs locally beside Codex and other AI coding agents. Its job is to reduce wasted tokens by giving the agent the smallest useful repo context for a task, or by staying silent when the task is already obvious.
@@ -23,7 +67,9 @@ For beta, please use **Node 20 or 22 LTS**.
 If I send you a beta package:
 
 ```bash
-npm install -g ./kairn-0.1.0.tgz
+nvm install 22
+nvm use 22
+npm install -g --legacy-peer-deps ./kairn-0.1.0.tgz
 ```
 
 If it is available through npm:
@@ -84,9 +130,7 @@ It only sends sanitized aggregate signals like:
 Enable telemetry from inside your repo:
 
 ```bash
-kairn telemetry enable \
-  --destination supabase \
-  --endpoint https://umefcjkwnphqzxkjwpgx.functions.supabase.co/kairn-telemetry-ingest
+kairn telemetry enable --destination supabase
 ```
 
 Check telemetry:
@@ -100,6 +144,8 @@ Send queued sanitized metrics:
 ```bash
 kairn telemetry flush
 ```
+
+Telemetry also flushes automatically at safe points after it is enabled, such as when a `kairn codex` session exits or when you run `kairn beta report`. It does not upload during prompt hooks.
 
 ## See Whether Kairn Helped
 

@@ -6,6 +6,7 @@ import { buildDiagnosticExport, writeDiagnosticExport } from "../../telemetry/di
 import { buildTelemetryPayload } from "../../telemetry/payload.js";
 import { buildBetaReport } from "../../telemetry/report.js";
 import { disableTelemetry, enableTelemetry, ensureTelemetryIdentity, getTelemetryStatus } from "../../telemetry/config.js";
+import { queueAndFlushTelemetrySnapshot } from "../../telemetry/autoFlush.js";
 import { enqueueTelemetryPayload } from "../../telemetry/queue.js";
 import { flushTelemetryQueue } from "../../telemetry/queue.js";
 import { writeCodexSetup } from "../setup/codexSetup.js";
@@ -164,11 +165,15 @@ export function registerBetaCommands(program: Command): void {
     .action(async (options: { root: string; session?: string; json?: boolean }) => {
       await withRuntime(options.root, async (runtime) => {
         const report = buildBetaReport({ runtime, sessionId: options.session });
+        const telemetry = await queueAndFlushTelemetrySnapshot({ rootPath: options.root, runtime, sessionId: options.session });
         if (options.json) {
-          printJson(report);
+          printJson({ ...report, ...(telemetry ? { telemetry } : {}) });
           return;
         }
         printBetaReport(report);
+        if (telemetry?.sent) {
+          process.stdout.write(`Telemetry uploaded: ${telemetry.sent} snapshot(s).\n`);
+        }
       });
     });
 }

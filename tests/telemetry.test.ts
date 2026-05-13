@@ -3,6 +3,7 @@ import http from "node:http";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
+import { queueAndFlushTelemetrySnapshot } from "../src/telemetry/autoFlush.js";
 import { buildDiagnosticExport } from "../src/telemetry/diagnostics.js";
 import { disableTelemetry, enableTelemetry, ensureTelemetryIdentity, getTelemetryStatus } from "../src/telemetry/config.js";
 import { buildTelemetryPayload } from "../src/telemetry/payload.js";
@@ -83,6 +84,23 @@ describe("telemetry", () => {
     const disabled = disableTelemetry(root);
     expect(disabled.enabled).toBe(false);
     expect(getTelemetryStatus(root).enabled).toBe(false);
+
+    runtime.close();
+  });
+
+  it("automatically flushes enabled telemetry to the configured endpoint", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const { session } = await runtime.startTask("Update dashboard rendering");
+    await runtime.primeContext({ task: "Update dashboard rendering", sessionId: session.id, source: "codex" });
+
+    const received: unknown[] = [];
+    const endpoint = await startIngestServer(received);
+    enableTelemetry({ rootPath: root, destination: "supabase", endpoint });
+    const flushed = await queueAndFlushTelemetrySnapshot({ rootPath: root, runtime, sessionId: session.id });
+    expect(flushed?.sent).toBe(1);
+    expect(readTelemetryQueue(root)).toHaveLength(0);
+    expect(received).toHaveLength(1);
 
     runtime.close();
   });

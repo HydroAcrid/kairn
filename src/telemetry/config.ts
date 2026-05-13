@@ -4,6 +4,8 @@ import path from "node:path";
 import { ensureKairnDir, getKairnPaths } from "../config/paths.js";
 import type { TelemetryConfig, TelemetryDestination, TelemetryStatus } from "../types.js";
 
+export const DEFAULT_SUPABASE_TELEMETRY_ENDPOINT = "https://umefcjkwnphqzxkjwpgx.functions.supabase.co/kairn-telemetry-ingest";
+
 export function telemetryPaths(rootPath: string) {
   const paths = getKairnPaths(rootPath);
   return {
@@ -52,7 +54,7 @@ export function enableTelemetry(input: {
   return writeTelemetryConfig(input.rootPath, {
     enabled: true,
     destination: input.destination,
-    endpoint: input.endpoint ?? process.env.KAIRN_TELEMETRY_ENDPOINT ?? current.endpoint,
+    endpoint: input.endpoint ?? process.env.KAIRN_TELEMETRY_ENDPOINT ?? current.endpoint ?? DEFAULT_SUPABASE_TELEMETRY_ENDPOINT,
     installationId: current.installationId ?? `kairn_${crypto.randomUUID()}`,
     repoSalt: current.repoSalt ?? crypto.randomBytes(32).toString("hex")
   });

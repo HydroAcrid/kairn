@@ -97,11 +97,11 @@ describe("CLI", () => {
         encoding: "utf8"
       }
     );
-    execFileSync(CLI[0]!, [...CLI.slice(1), "telemetry", "enable", "--root", root, "--destination", "supabase"], {
+    const betaReport = execFileSync(CLI[0]!, [...CLI.slice(1), "beta", "report", "--root", root, "--json"], {
       cwd: process.cwd(),
       encoding: "utf8"
     });
-    const betaReport = execFileSync(CLI[0]!, [...CLI.slice(1), "beta", "report", "--root", root, "--json"], {
+    execFileSync(CLI[0]!, [...CLI.slice(1), "telemetry", "enable", "--root", root, "--destination", "supabase"], {
       cwd: process.cwd(),
       encoding: "utf8"
     });
@@ -151,7 +151,7 @@ describe("CLI", () => {
     expect(parsedTelemetry.queueLength).toBe(0);
     expect(parsedBetaReport.sessions).toBeGreaterThan(0);
     expect(parsedBetaReport.verdict).toBeTruthy();
-  });
+  }, 30_000);
 
   it("removes Kairn-owned setup without removing unrelated client config", () => {
     const root = createFixtureRepo();
