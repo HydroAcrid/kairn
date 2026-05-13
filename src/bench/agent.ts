@@ -195,6 +195,11 @@ export async function runAgentBenchmarkCase(input: {
     const missingRequiredTouchedFiles = requiredTouchedFiles.filter((file) => !agentChangedFiles.includes(file));
     const requiredTouchedSatisfied = missingRequiredTouchedFiles.length === 0;
     const actualFiles = unique([...agentChangedFiles, ...expectedFileMentions]);
+    const scopeViolations = diffScopeResult.violations;
+    const testsEdited = agentChangedFiles.filter(isTestPath);
+    const unrelatedFilesTouched = diffScopeResult.passed
+      ? []
+      : agentChangedFiles.filter((file) => !diffScopeResult.changedFiles.includes(file) || scopeViolations.some((violation) => violation.startsWith(`${file}:`) || violation.startsWith(`${file}:`)));
     const metadata = metadataFromOutput({
       output: combinedOutput,
       prompt: prepared.prompt,
@@ -227,6 +232,12 @@ export async function runAgentBenchmarkCase(input: {
         diffScopePassed: diffScopeResult.passed,
         diffScopeViolations: diffScopeResult.violations,
         diffScopeChangedFiles: diffScopeResult.changedFiles,
+        scopeViolations,
+        sourceScopeDiscipline: diffScopeResult.passed ? "passed" : "failed",
+        unrelatedFilesTouched,
+        testsEdited,
+        scopeExpanded: false,
+        scopeExpansionReason: null,
         ...verification.metadata,
         ...seedMetadata,
         ...(prepared.metadata ?? {})
@@ -583,6 +594,19 @@ export function changedFiles(workspacePath: string): string[] {
 
 function mentionedExpectedFiles(output: string, expectedFiles: string[]): string[] {
   return expectedFiles.filter((file) => output.includes(file));
+}
+
+function isTestPath(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  return (
+    /\.(test|spec)\.[cm]?[jt]sx?$/.test(normalized) ||
+    normalized.includes("__tests__/") ||
+    /^test_.*\.pyi?$/.test(normalized.split("/").at(-1) ?? normalized) ||
+    /_test\.pyi?$/.test(normalized) ||
+    /_test\.go$/.test(normalized) ||
+    /(test|tests)\.java$/.test(normalized) ||
+    /(^|\/)(test|tests|testing|spec|specs)\//.test(normalized)
+  );
 }
 
 function shellQuote(value: string): string {

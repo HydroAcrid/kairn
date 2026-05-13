@@ -54,6 +54,10 @@ export function scoreBenchmarkCase(input: {
   );
   const qnaGroundingPassed = !qnaEvaluation || expectedFiles.length === 0 || expectedHits.length >= qnaMinSourceMentions;
   const qnaNoRepoChangesPassed = !qnaEvaluation?.requireNoRepoChanges || agentChangedFiles.length === 0;
+  const sourceInvariantPassed = input.metadata?.sourceInvariantPassed !== false;
+  const diffScopePassed = input.metadata?.diffScopePassed !== false;
+  const scopeViolationCount = stringArrayMetadata(input.metadata?.scopeViolations ?? input.metadata?.diffScopeViolations).length;
+  const sourceScopeDisciplinePassed = diffScopePassed && scopeViolationCount === 0;
   const qualityGatePassed =
     requestedOutcome === "pass" &&
     requiredTouchedSatisfied &&
@@ -61,7 +65,9 @@ export function scoreBenchmarkCase(input: {
     excludedHits.length === 0 &&
     mcpSuccess &&
     qnaGroundingPassed &&
-    qnaNoRepoChangesPassed;
+    qnaNoRepoChangesPassed &&
+    sourceInvariantPassed &&
+    sourceScopeDisciplinePassed;
   const outcome = requestedOutcome === "fail" || requestedOutcome === "skipped"
     ? requestedOutcome
     : qualityGatePassed
@@ -111,7 +117,9 @@ export function scoreBenchmarkCase(input: {
       qnaNoRepoChangesPassed,
       qnaMinSourceMentions,
       qnaSourceMentionCount: expectedHits.length,
-      qnaUnexpectedRepoChanges: qnaEvaluation?.requireNoRepoChanges ? agentChangedFiles : []
+      qnaUnexpectedRepoChanges: qnaEvaluation?.requireNoRepoChanges ? agentChangedFiles : [],
+      scopeViolations: stringArrayMetadata(input.metadata?.scopeViolations ?? input.metadata?.diffScopeViolations),
+      sourceScopeDisciplinePassed
     }),
     metadata: {
       ...(input.metadata ?? {}),
@@ -139,6 +147,10 @@ export function scoreBenchmarkCase(input: {
       requiredTouchedSatisfied,
       mcpRequired,
       mcpSuccess,
+      sourceInvariantPassed,
+      diffScopePassed,
+      scopeViolations: stringArrayMetadata(input.metadata?.scopeViolations ?? input.metadata?.diffScopeViolations),
+      sourceScopeDiscipline: sourceScopeDisciplinePassed ? "passed" : "failed",
       ...(qnaEvaluation
         ? {
             qnaEvaluation,
@@ -162,7 +174,9 @@ export function scoreBenchmarkCase(input: {
             excludedHits,
             mcpSuccess,
             qnaGroundingPassed,
-            qnaNoRepoChangesPassed
+            qnaNoRepoChangesPassed,
+            sourceInvariantPassed,
+            sourceScopeDisciplinePassed
           })
     }
   };
@@ -444,6 +458,8 @@ function recommendationsFor(input: {
   qnaMinSourceMentions: number;
   qnaSourceMentionCount: number;
   qnaUnexpectedRepoChanges: string[];
+  scopeViolations: string[];
+  sourceScopeDisciplinePassed: boolean;
 }): string[] {
   const recommendations: string[] = [];
   const missed = input.expectedFiles.filter((file) => !input.actualFiles.includes(file));
@@ -457,6 +473,9 @@ function recommendationsFor(input: {
   }
   if (!input.qnaNoRepoChangesPassed) {
     recommendations.push(`QnA task modified repo files: ${input.qnaUnexpectedRepoChanges.slice(0, 4).join(", ")}.`);
+  }
+  if (!input.sourceScopeDisciplinePassed) {
+    recommendations.push(`Diff scope violations: ${input.scopeViolations.slice(0, 4).join("; ")}.`);
   }
   if (input.excludedHits.length > 0) {
     recommendations.push(`Unexpected files surfaced: ${input.excludedHits.slice(0, 4).join(", ")}.`);
@@ -529,6 +548,8 @@ function negativeEvidenceReason(input: {
   mcpSuccess: boolean;
   qnaGroundingPassed: boolean;
   qnaNoRepoChangesPassed: boolean;
+  sourceInvariantPassed: boolean;
+  sourceScopeDisciplinePassed: boolean;
 }): string {
   if (input.requestedOutcome !== "pass") return "verification or requested task outcome did not pass";
   if (!input.requiredTouchedSatisfied) return "required production source files were not touched";
@@ -537,6 +558,8 @@ function negativeEvidenceReason(input: {
   if (!input.mcpSuccess) return "MCP mode did not record an actual Kairn MCP call";
   if (!input.qnaGroundingPassed) return "QnA answer did not cite enough expected source evidence";
   if (!input.qnaNoRepoChangesPassed) return "QnA task modified repository files";
+  if (!input.sourceInvariantPassed) return "declared source invariants failed";
+  if (!input.sourceScopeDisciplinePassed) return "agent edited outside the allowed source scope";
   return "quality gate failed";
 }
 

@@ -76,6 +76,31 @@ export type IndexStateStats = {
   lexicalDocumentCount: number;
   lexicalTermCount: number;
   tiers: Record<IndexTier, number>;
+  freshness?: IndexFreshnessStatus;
+};
+
+export type IndexFreshnessMetadata = {
+  rootPath: string;
+  gitHead?: string;
+  gitBranch?: string;
+  dirtyFingerprint: string;
+  fileCount: number;
+  schemaVersion: number;
+  indexedAt: string;
+  metadata: Record<string, unknown>;
+};
+
+export type IndexFreshnessStatus = {
+  stale: boolean;
+  reason: "fresh" | "missing_metadata" | "git_head_changed" | "git_branch_changed" | "dirty_state_changed" | "file_count_changed" | "unknown";
+  indexedAt?: string | undefined;
+  gitHead?: string | undefined;
+  gitBranch?: string | undefined;
+  currentGitHead?: string | undefined;
+  currentGitBranch?: string | undefined;
+  dirtyFileCount: number;
+  indexedFileCount?: number | undefined;
+  currentFileCount?: number | undefined;
 };
 
 export type IndexCompactionResult = {

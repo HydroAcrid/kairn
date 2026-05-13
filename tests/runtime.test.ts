@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildSessionWorkingSet } from "../src/ledger/workingSet.js";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
@@ -73,6 +75,24 @@ describe("KairnRuntime", () => {
     expect(second.contextDecision?.action).toBe("suppress");
     expect(ledger.repeatedFilesAvoided).toBeGreaterThanOrEqual(1);
     expect(ledger.workingSet.shownFiles.length).toBeGreaterThan(0);
+
+    runtime.close();
+  });
+
+  it("tracks index freshness across repo changes and refreshes", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+
+    await runtime.init();
+    expect(runtime.getIndexStatus().freshness?.stale).toBe(false);
+
+    fs.writeFileSync(path.join(root, "src/new-source.ts"), "export const newSource = true;\n");
+    const stale = runtime.getIndexStatus().freshness;
+    expect(stale?.stale).toBe(true);
+    expect(stale?.reason).toBe("dirty_state_changed");
+
+    const refreshed = await runtime.refreshIndexNow();
+    expect(refreshed.freshness?.stale).toBe(false);
 
     runtime.close();
   });

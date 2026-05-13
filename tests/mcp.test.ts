@@ -235,6 +235,11 @@ describe("MCP server", () => {
         };
       } | null;
       invariantStatement?: string | null;
+      editScope?: {
+        initialEditFiles: string[];
+        readOnlyFiles: string[];
+        allowedExpansionTriggers: string[];
+      };
     };
     expect(preparedParsed.contextDecision?.exactSourceHit).toBe(true);
     expect(preparedParsed.startFiles).toEqual(["include/fmt/base.h"]);
@@ -245,6 +250,8 @@ describe("MCP server", () => {
     expect(preparedParsed.exactSourceEvidence?.invariant?.confidence).toBeGreaterThanOrEqual(70);
     expect(preparedParsed.invariantStatement).toContain("equal-length identical prefix");
     expect(preparedParsed.exactSourceEvidence?.verificationCommand).toBeTruthy();
+    expect(preparedParsed.editScope?.initialEditFiles).toEqual(["include/fmt/base.h"]);
+    expect(preparedParsed.editScope?.allowedExpansionTriggers.length).toBeGreaterThan(0);
 
     const repeatedPrepare = await client.callTool({
       name: "kairn_prepare_task",

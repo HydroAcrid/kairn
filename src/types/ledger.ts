@@ -13,7 +13,8 @@ export type SessionLedgerEventKind =
   | "diff_seen"
   | "verification_passed"
   | "verification_failed"
-  | "phase_change";
+  | "phase_change"
+  | "edit_scope_changed";
 
 export type SessionLedgerEvent = {
   id?: number;

@@ -45,6 +45,7 @@ export function buildTelemetryPayload(input: {
     mcp: summarizeMcp(metrics),
     ledger: summarizeLedger(metrics),
     quality: summarizeQuality(metrics),
+    scope: summarizeScope(metrics),
     fileSignals: {
       hashedFileIds: fileSignals.hashedFileIds
     }
@@ -165,6 +166,17 @@ function summarizeQuality(metrics: MetricsSummary[]): TelemetryPayload["quality"
   };
 }
 
+function summarizeScope(metrics: MetricsSummary[]): TelemetryPayload["scope"] {
+  const events = metrics.flatMap((item) => item.recentEvents);
+  return {
+    decisions: events.filter((event) => typeof event.metadata.editScope === "object" && event.metadata.editScope !== null).length,
+    violations: events.reduce((total, event) => total + arrayMetadata(event.metadata.scopeViolations).length, 0),
+    failedDiscipline: events.filter((event) => event.metadata.sourceScopeDiscipline === "failed").length,
+    testEdits: events.reduce((total, event) => total + arrayMetadata(event.metadata.testsEdited).length, 0),
+    expansions: events.filter((event) => event.metadata.scopeExpanded === true).length
+  };
+}
+
 function mergeRecords(records: Array<Record<string, number>>): Record<string, number> {
   const merged = new Map<string, number>();
   for (const record of records) {
@@ -177,4 +189,8 @@ function mergeRecords(records: Array<Record<string, number>>): Record<string, nu
 
 function sumMetadata(events: MetricsSummary["recentEvents"], key: string): number {
   return events.reduce((total, event) => total + (typeof event.metadata[key] === "number" ? event.metadata[key] as number : 0), 0);
+}
+
+function arrayMetadata(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
 }

@@ -80,6 +80,13 @@ export type TelemetryPayload = {
     benchmarkPasses: number;
     benchmarkFailures: number;
   };
+  scope: {
+    decisions: number;
+    violations: number;
+    failedDiscipline: number;
+    testEdits: number;
+    expansions: number;
+  };
   fileSignals: {
     hashedFileIds: string[];
   };

@@ -68,6 +68,7 @@ export type ContextPrime = {
   invariants?: ContextInvariant[];
   quality?: PrimeQuality;
   contextDecision?: ContextValueDecision;
+  editScope?: EditScopeDecision;
   timings?: Record<string, number>;
   metadata?: Record<string, unknown>;
   warnings: string[];
@@ -112,6 +113,28 @@ export type ContextValueDecision = {
   debugSignal: boolean;
   easyTaskSignal: boolean;
   wrongContextRisk?: boolean;
+};
+
+export type EditScopeConfidence = "high" | "medium" | "low";
+
+export type EditScopeSource =
+  | "exact_source"
+  | "source_rescue"
+  | "multi_file_debug"
+  | "failure_output"
+  | "official_harness"
+  | "session_ledger"
+  | "weak_signal";
+
+export type EditScopeDecision = {
+  initialEditFiles: string[];
+  readOnlyFiles: string[];
+  allowedExpansionTriggers: string[];
+  forbiddenEditPatterns: string[];
+  scopeConfidence: EditScopeConfidence;
+  scopeSource: EditScopeSource;
+  reason: string;
+  dynamic: true;
 };
 
 export type ContextRequest = {

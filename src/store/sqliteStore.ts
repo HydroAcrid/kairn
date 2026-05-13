@@ -19,6 +19,7 @@ import type {
   IndexStateStats,
   IndexingConfig,
   HostSessionLinkRecord,
+  IndexFreshnessMetadata,
   LexicalDocumentRecord,
   LexicalStatsRecord,
   LexicalTermRecord,
@@ -122,6 +123,17 @@ type LexicalStatsRow = {
   root_path: string;
   document_count: number;
   average_document_length: number;
+};
+
+type IndexMetadataRow = {
+  root_path: string;
+  git_head: string | null;
+  git_branch: string | null;
+  dirty_fingerprint: string;
+  file_count: number;
+  schema_version: number;
+  indexed_at: string;
+  metadata_json: string;
 };
 
 type ContextShownRow = {
@@ -694,6 +706,41 @@ export class SqliteStore {
       .all(rootPath) as LexicalTermRow[];
 
     return rows.map(mapLexicalTermRow);
+  }
+
+  upsertIndexMetadata(record: IndexFreshnessMetadata): void {
+    this.db
+      .prepare(`
+        insert into index_metadata (
+          root_path, git_head, git_branch, dirty_fingerprint, file_count,
+          schema_version, indexed_at, metadata_json
+        ) values (?, ?, ?, ?, ?, ?, ?, ?)
+        on conflict(root_path) do update set
+          git_head = excluded.git_head,
+          git_branch = excluded.git_branch,
+          dirty_fingerprint = excluded.dirty_fingerprint,
+          file_count = excluded.file_count,
+          schema_version = excluded.schema_version,
+          indexed_at = excluded.indexed_at,
+          metadata_json = excluded.metadata_json
+      `)
+      .run(
+        record.rootPath,
+        record.gitHead ?? null,
+        record.gitBranch ?? null,
+        record.dirtyFingerprint,
+        record.fileCount,
+        record.schemaVersion,
+        record.indexedAt,
+        JSON.stringify(record.metadata)
+      );
+  }
+
+  getIndexMetadata(rootPath: string): IndexFreshnessMetadata | undefined {
+    const row = this.db
+      .prepare("select * from index_metadata where root_path = ?")
+      .get(rootPath) as IndexMetadataRow | undefined;
+    return row ? mapIndexMetadataRow(row) : undefined;
   }
 
   listLexicalTermsForTerms(rootPath: string, terms: string[], limit = 30_000): LexicalTermRecord[] {
@@ -1501,6 +1548,17 @@ export class SqliteStore {
         average_document_length real not null
       );
 
+      create table if not exists index_metadata (
+        root_path text primary key,
+        git_head text,
+        git_branch text,
+        dirty_fingerprint text not null,
+        file_count integer not null,
+        schema_version integer not null,
+        indexed_at text not null,
+        metadata_json text not null default '{}'
+      );
+
       create table if not exists command_records (
         id integer primary key autoincrement,
         session_id text not null references sessions(id) on delete cascade,
@@ -1662,6 +1720,7 @@ export class SqliteStore {
       create index if not exists lexical_documents_root_file_idx on lexical_documents(root_path, file_path);
       create index if not exists lexical_terms_root_term_idx on lexical_terms(root_path, term);
       create index if not exists lexical_terms_root_file_idx on lexical_terms(root_path, file_path);
+      create index if not exists index_metadata_root_idx on index_metadata(root_path);
     `);
     this.ensureColumn("file_inventory", "index_tier", "text");
     this.ensureColumn("file_inventory", "tier_score", "real");
@@ -1772,6 +1831,19 @@ function mapLexicalStatsRow(row: LexicalStatsRow): LexicalStatsRecord {
     rootPath: row.root_path,
     documentCount: row.document_count,
     averageDocumentLength: row.average_document_length
+  };
+}
+
+function mapIndexMetadataRow(row: IndexMetadataRow): IndexFreshnessMetadata {
+  return {
+    rootPath: row.root_path,
+    ...(row.git_head ? { gitHead: row.git_head } : {}),
+    ...(row.git_branch ? { gitBranch: row.git_branch } : {}),
+    dirtyFingerprint: row.dirty_fingerprint,
+    fileCount: row.file_count,
+    schemaVersion: row.schema_version,
+    indexedAt: row.indexed_at,
+    metadata: parseJsonObject(row.metadata_json)
   };
 }
 

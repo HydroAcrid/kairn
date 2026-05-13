@@ -2883,6 +2883,8 @@ describe("benchmark runtime and CLI", () => {
     expect(prime.files[0]).toBe("src/click/_compat.py");
     expect(prime.invariants?.[0]?.statement).toContain("ANSI escape sequences");
     expect(prime.content).toContain("Invariant to preserve");
+    expect(prime.content).toContain("Edit scope");
+    expect(prime.editScope?.initialEditFiles).toEqual(["src/click/_compat.py"]);
     expect(prime.content).toContain("visible terminal text length");
     expect(prime.content).toContain("Stop condition");
     expect(prime.tokenEstimate).toBeLessThanOrEqual(900);
@@ -2942,6 +2944,7 @@ describe("benchmark runtime and CLI", () => {
     expect(prime.files).toHaveLength(2);
     expect(prime.files).toEqual(expect.arrayContaining(["qutebrowser/utils/log.py", "qutebrowser/utils/qtlog.py"]));
     expect(prime.files).not.toContain("qutebrowser/utils/utils.py");
+    expect(prime.editScope?.initialEditFiles).toEqual(expect.arrayContaining(["qutebrowser/utils/log.py", "qutebrowser/utils/qtlog.py"]));
 
     runtime.close();
   });

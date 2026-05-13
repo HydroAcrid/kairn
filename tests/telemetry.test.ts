@@ -162,6 +162,7 @@ function minimalPayload(): TelemetryPayload {
     mcp: { calls: 0, returnedSourceFiles: 0, returnedTestFiles: 0, returnedNoiseFiles: 0 },
     ledger: { events: 1, repeatedFilesAvoided: 0, repeatedSnippetsAvoided: 0, unresolvedFailures: 0 },
     quality: { benchmarkPasses: 0, benchmarkFailures: 0 },
+    scope: { decisions: 0, violations: 0, failedDiscipline: 0, testEdits: 0, expansions: 0 },
     fileSignals: { hashedFileIds: ["abc123"] }
   };
 }

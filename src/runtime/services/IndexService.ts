@@ -1,6 +1,7 @@
 import type { FileRecord, IndexCompactionResult, IndexStateStats, InitResult } from "../../types.js";
 import { ensureKairnDir } from "../../config/paths.js";
 import { loadIndexingConfig } from "../../config/indexing.js";
+import { captureIndexFreshnessMetadata, evaluateIndexFreshness } from "../../indexer/freshness.js";
 import { indexRepo } from "../../indexer/indexRepo.js";
 import type { RuntimeDeps } from "../deps.js";
 
@@ -21,6 +22,10 @@ export class IndexService {
       lexicalTerms: index.lexical.terms,
       lexicalStats: index.lexical.stats
     });
+    this.deps.store.upsertIndexMetadata(captureIndexFreshnessMetadata({
+      rootPath: this.deps.rootPath,
+      fileCount: index.graph.files.length
+    }));
     const stats = this.ensureStateWithinHardLimit(this.deps.rootPath);
 
     return {
@@ -38,7 +43,15 @@ export class IndexService {
     };
   }
 
-  async refreshIndex(rootPath: string): Promise<FileRecord[]> {
+  async refreshIndex(rootPath: string, input?: { force?: boolean | undefined }): Promise<FileRecord[]> {
+    const existing = this.deps.store.listFiles(rootPath);
+    const freshness = evaluateIndexFreshness({
+      rootPath,
+      stored: this.deps.store.getIndexMetadata(rootPath)
+    });
+    if (!input?.force && existing.length > 0 && !freshness.stale) {
+      return existing;
+    }
     const index = await indexRepo(rootPath);
     this.deps.store.replaceIndex({
       rootPath,
@@ -51,12 +64,23 @@ export class IndexService {
       lexicalTerms: index.lexical.terms,
       lexicalStats: index.lexical.stats
     });
+    this.deps.store.upsertIndexMetadata(captureIndexFreshnessMetadata({
+      rootPath,
+      fileCount: index.graph.files.length
+    }));
     this.ensureStateWithinHardLimit(rootPath);
     return index.graph.files;
   }
 
   getStatus(rootPath = this.deps.rootPath): IndexStateStats {
-    return this.deps.store.getIndexStateStats(rootPath, loadIndexingConfig(rootPath));
+    const stats = this.deps.store.getIndexStateStats(rootPath, loadIndexingConfig(rootPath));
+    return {
+      ...stats,
+      freshness: evaluateIndexFreshness({
+        rootPath,
+        stored: this.deps.store.getIndexMetadata(rootPath)
+      })
+    };
   }
 
   compact(rootPath = this.deps.rootPath): IndexCompactionResult {

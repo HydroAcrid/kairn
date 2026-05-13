@@ -193,6 +193,22 @@ export function registerCoreCommands(program: Command): void {
     });
 
   index
+    .command("refresh")
+    .description("Force-refresh Kairn's index for the target repo.")
+    .option("--root <path>", "target repository root", process.cwd())
+    .option("--json", "print JSON output")
+    .action(async (options: { root: string; json?: boolean }) => {
+      await withRuntime(options.root, async (runtime) => {
+        const status = await runtime.refreshIndexNow();
+        if (options.json) {
+          printJson(status);
+          return;
+        }
+        process.stdout.write(["Kairn index refreshed.", formatIndexStatus(status)].join("\n"));
+      });
+    });
+
+  index
     .command("compact")
     .description("Checkpoint WAL and prune low-value index state to configured limits.")
     .option("--root <path>", "target repository root", process.cwd())
@@ -389,8 +405,11 @@ function formatIndexStatus(status: IndexStateStats): string {
     `Lexical documents: ${status.lexicalDocumentCount}`,
     `Lexical terms: ${status.lexicalTermCount}`,
     `Tiers: tier0=${status.tiers.tier0}, tier1=${status.tiers.tier1}, tier2=${status.tiers.tier2}, tier3=${status.tiers.tier3}, tier4=${status.tiers.tier4}`,
+    status.freshness
+      ? `Freshness: ${status.freshness.stale ? `stale (${status.freshness.reason})` : "fresh"}${status.freshness.indexedAt ? `, indexed ${status.freshness.indexedAt}` : ""}`
+      : "",
     ""
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 function formatBytes(value: number): string {

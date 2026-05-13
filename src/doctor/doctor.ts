@@ -93,12 +93,14 @@ function checkIndex(runtime: KairnRuntime): DoctorCheck {
     const status = runtime.getIndexStatus();
     const stateMb = Math.round((status.totalSizeBytes / (1024 * 1024)) * 10) / 10;
     const softMb = Math.round((status.maxStateBytes / (1024 * 1024)) * 10) / 10;
+    const stale = status.freshness?.stale === true;
+    const overLimit = status.totalSizeBytes > status.hardMaxStateBytes;
     return {
       id: "index_state",
-      status: status.totalSizeBytes <= status.hardMaxStateBytes ? "ok" : "fail",
-      summary: `Index has ${status.fileCount} files and uses ${stateMb}MB.`,
-      fix: status.totalSizeBytes <= status.hardMaxStateBytes ? undefined : "Run kairn index compact --root <repo>.",
-      metadata: { stateMb, softMb, graphEdges: status.graphEdgeCount, semanticChunks: status.semanticChunkCount }
+      status: overLimit ? "fail" : stale ? "warn" : "ok",
+      summary: `Index has ${status.fileCount} files, uses ${stateMb}MB, and is ${stale ? `stale (${status.freshness?.reason})` : "fresh"}.`,
+      fix: overLimit ? "Run kairn index compact --root <repo>." : stale ? "Run kairn index refresh --root <repo>." : undefined,
+      metadata: { stateMb, softMb, graphEdges: status.graphEdgeCount, semanticChunks: status.semanticChunkCount, freshness: status.freshness }
     };
   } catch (error) {
     return {

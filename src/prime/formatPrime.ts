@@ -1,4 +1,5 @@
-import type { ContextInvariant, ContextPrime, ContextResponse, PrimeQuality } from "../types.js";
+import type { ContextInvariant, ContextPrime, ContextResponse, EditScopeDecision, PrimeQuality } from "../types.js";
+import { editScopeBlock, editScopeLine } from "../scope/editScope.js";
 import { estimateTokens, truncateToBudget } from "../utils/tokens.js";
 import { uniquePaths, uniqueStrings } from "../utils/collections.js";
 import type { PrimeProfileLimits, ResolvedPrimeProfile } from "./quality.js";
@@ -14,6 +15,7 @@ export function formatPrimeContext(input: {
   testFiles: string[];
   suggestedCommands: string[];
   invariants?: ContextInvariant[] | undefined;
+  editScope?: EditScopeDecision | undefined;
 }): string {
   if (input.profile === "failure_debug") {
     return formatFailureDebugPrime(input);
@@ -38,6 +40,8 @@ export function formatPrimeContext(input: {
     compactPrimeContext(input.context.content, input.limits.snippetBudget),
     "",
     ...formatInvariantSections(input.invariants, "## Invariant To Preserve"),
+    "",
+    ...(input.editScope ? ["## Edit Scope", editScopeLine(input.editScope)] : []),
     "",
     "## Likely Tests",
     tests.length > 0 ? tests.map((file) => `- ${file}`).join("\n") : "- No likely tests found.",
@@ -64,6 +68,7 @@ function formatFailureDebugPrime(input: {
   context: ContextResponse;
   testFiles: string[];
   invariants?: ContextInvariant[] | undefined;
+  editScope?: EditScopeDecision | undefined;
 }): string {
   const topFile = uniquePaths(input.context.suggestedNextContext.length > 0 ? input.context.suggestedNextContext : input.context.files)[0];
   const likelyTest = uniquePaths(input.testFiles)[0];
@@ -83,6 +88,8 @@ function formatFailureDebugPrime(input: {
     compactPrimeContext(input.context.content, input.limits.snippetBudget),
     "",
     ...formatInvariantSections(input.invariants, "Invariant to preserve:"),
+    "",
+    ...(input.editScope ? editScopeBlock(input.editScope, "Edit scope:") : []),
     "",
     "Instruction: inspect the start file and symbol first, patch only the production source, then run the failing check."
   ].filter(Boolean);
@@ -110,6 +117,7 @@ export function formatMcpBriefPrimeContext(input: {
   files: string[];
   quality: PrimeQuality;
   invariants?: ContextInvariant[] | undefined;
+  editScope?: EditScopeDecision | undefined;
 }): string {
   const files = uniquePaths(input.files).slice(0, 2);
   const primaryFile = files[0];
@@ -129,6 +137,8 @@ export function formatMcpBriefPrimeContext(input: {
     `Reason: ${reason}`,
     "",
     ...formatInvariantSections(input.invariants, "Invariant:"),
+    "",
+    ...(input.editScope ? editScopeBlock(input.editScope, "Edit scope:") : []),
     "",
     "Instruction: call `kairn_prepare_task` with this session id before broad scans. If it returns `stopCondition` or no `nextToolCalls`, continue from its files and do not call more Kairn unless a check fails or the target changes.",
     `Suggested MCP call: kairn_prepare_task({ "task": ${JSON.stringify(input.task)}, "sessionId": ${JSON.stringify(input.sessionId)}, "detail": "compact" })`,
@@ -167,6 +177,7 @@ export function formatShrunkPrimeContext(input: {
   files?: string[] | undefined;
   budget: number;
   invariants?: ContextInvariant[] | undefined;
+  editScope?: EditScopeDecision | undefined;
   includeSnippet?: boolean | undefined;
   minimal?: boolean | undefined;
 }): string {
@@ -189,7 +200,9 @@ export function formatShrunkPrimeContext(input: {
       ...formatInvariantSections(input.invariants, "Invariant to preserve:"),
       "",
       "Smallest check: run the narrowest relevant compile/test command before finalizing; do not stop at an edit that has not compiled or passed its focused check.",
-      "Stop condition: edit the start file only; avoid broad related-file/test scans unless this file cannot satisfy the invariant or a failure names another file."
+      "Stop condition: edit the start file only; avoid broad related-file/test scans unless this file cannot satisfy the invariant or a failure names another file.",
+      "",
+      ...(input.editScope ? editScopeBlock(input.editScope, "Edit scope:") : [])
     ].filter(Boolean);
     return fitSectionsToBudget(sections, input.budget);
   }
@@ -214,7 +227,9 @@ export function formatShrunkPrimeContext(input: {
     "",
     multiFileDirective
       ? "Stop condition: inspect only these source files first; avoid broad related-file/test scans unless neither file can satisfy the invariant or a failure names another file."
-      : "Stop condition: preserve the invariant in the start file first; avoid broad related-file/test scans unless this file cannot satisfy the invariant or a failure names another file."
+      : "Stop condition: preserve the invariant in the start file first; avoid broad related-file/test scans unless this file cannot satisfy the invariant or a failure names another file.",
+    "",
+    ...(input.editScope ? editScopeBlock(input.editScope, "Edit scope:") : [])
   ].filter(Boolean);
   return fitSectionsToBudget(sections, input.budget);
 }
@@ -256,6 +271,7 @@ function formatTinyDirectivePrime(input: { prime: ContextPrime; budget: number }
       : "No high-confidence start file found.",
     symbols.length > 0 ? `Symbols: ${symbols.join(", ")}` : "",
     ...formatInvariantSections(input.prime.invariants, "Invariant:"),
+    ...(input.prime.editScope ? editScopeBlock(input.prime.editScope, "Edit scope:") : []),
     likelyTest ? `Likely test: ${likelyTest}` : "",
     "",
     "Instruction: inspect the start files first; only use broad search if these are insufficient."

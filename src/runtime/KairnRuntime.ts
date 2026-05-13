@@ -4,6 +4,8 @@ import { randomUUID } from "node:crypto";
 import { simpleGit } from "simple-git";
 import type {
   BenchmarkAssistanceMode,
+  BenchmarkDiffScope,
+  BenchmarkSourceInvariant,
   BenchmarkComparison,
   BenchmarkProofReport,
   BenchmarkReport,
@@ -105,6 +107,7 @@ import { sliceLines } from "../source/text.js";
 import { IndexService } from "./services/IndexService.js";
 import { MetricsService } from "./services/MetricsService.js";
 import { EvalService } from "./services/EvalService.js";
+import { decideEditScope } from "../scope/editScope.js";
 
 export class KairnRuntime {
   private readonly rootPath: string;
@@ -163,6 +166,11 @@ export class KairnRuntime {
     eventName?: string | undefined;
     metadata?: Record<string, unknown> | undefined;
     refreshIndex?: boolean | undefined;
+    editScopeHints?: {
+      allowedDiffScopes?: BenchmarkDiffScope[] | undefined;
+      sourceInvariants?: BenchmarkSourceInvariant[] | undefined;
+      failureFiles?: string[] | undefined;
+    } | undefined;
   }): Promise<ContextPrime> {
     const primeStartedAt = Date.now();
     const timings: Record<string, number> = {};
@@ -173,10 +181,11 @@ export class KairnRuntime {
     let knownFiles = this.store.listFiles(this.rootPath);
     markTiming("initialInventoryMs", inventoryStartedAt);
     const hadInventory = knownFiles.length > 0;
-    const shouldRefreshIndex = input.refreshIndex === true || (!hadInventory && input.refreshIndex !== false);
+    const freshness = hadInventory ? this.indexService.getStatus(this.rootPath).freshness : undefined;
+    const shouldRefreshIndex = input.refreshIndex === true || ((!hadInventory || freshness?.stale) && input.refreshIndex !== false);
     if (shouldRefreshIndex) {
       const initStartedAt = Date.now();
-      await this.init();
+      knownFiles = await this.refreshIndex(this.rootPath, { force: input.refreshIndex === true });
       markTiming("initMs", initStartedAt);
       const refreshedInventoryStartedAt = Date.now();
       knownFiles = this.store.listFiles(this.rootPath);
@@ -264,6 +273,9 @@ export class KairnRuntime {
       reasons: contextDecision.reasons,
       expectedSavingsRisk: contextDecision.expectedSavingsRisk
     };
+    if (freshness?.stale && input.refreshIndex === false) {
+      quality.reasons = uniqueStrings([...quality.reasons, `index freshness: ${freshness.reason}`]);
+    }
     const structuredPrimaryCandidate =
       contextDecision.primaryFile && uniquePaths([...context.files, ...context.suggestedNextContext, ...companionPaths]).includes(contextDecision.primaryFile)
         ? contextDecision.primaryFile
@@ -395,6 +407,17 @@ export class KairnRuntime {
         : buildContextInvariant({ task: resolvedTask, file: deliveredPrimaryFile });
       invariants = deliveredInvariant ? [deliveredInvariant] : [];
     }
+    const editScope = decideEditScope({
+      task: resolvedTask,
+      candidateFiles: effectiveAction === "suppress" ? files : uniquePaths([...emittedFiles, ...files, ...(tests?.files ?? [])]),
+      contextDecision: effectiveContextDecision,
+      invariants,
+      knownFiles: sessionFiles,
+      allowedDiffScopes: input.editScopeHints?.allowedDiffScopes,
+      sourceInvariants: input.editScopeHints?.sourceInvariants,
+      failureFiles: uniquePaths([...(input.editScopeHints?.failureFiles ?? []), ...failureFilesForPolicy]),
+      changedFiles: [...changedFilesForPolicy]
+    });
     for (const file of files) {
       this.recordLedgerEvent({
         sessionId: session.id,
@@ -411,6 +434,21 @@ export class KairnRuntime {
           emitted: emittedFiles.includes(file),
           workingSetActiveFiles: ledgerSummary.workingSet.activeFiles.slice(0, 6),
           nextSmallestUsefulRead: ledgerSummary.workingSet.nextSmallestUsefulRead
+        }
+      });
+    }
+    if (effectiveAction !== "suppress" && editScope.initialEditFiles.length > 0) {
+      this.recordLedgerEvent({
+        sessionId: session.id,
+        kind: "edit_scope_changed",
+        contentHash: sha256(JSON.stringify(editScope)),
+        tokenEstimate: 0,
+        source: input.source ?? "cli",
+        summary: `Initial edit scope: ${editScope.initialEditFiles.join(", ")}`,
+        metadata: {
+          taskHash: sha256(resolvedTask),
+          phase: sessionPolicy.phase,
+          editScope
         }
       });
     }
@@ -438,7 +476,8 @@ export class KairnRuntime {
           context,
           files: emittedFiles,
           quality: effectiveQuality,
-          invariants
+          invariants,
+          editScope
         })
       : effectiveAction === "suppress"
         ? formatSuppressedPrimeContext({ task: resolvedTask, sessionId: session.id, profile, quality: effectiveQuality })
@@ -452,6 +491,7 @@ export class KairnRuntime {
               files: emittedFiles,
               budget: Math.min(budget, 420),
               invariants,
+              editScope,
               includeSnippet:
                 sessionPolicy.reason !== "verified_context_shrunk" &&
                 sessionPolicy.reason !== "active_source_context_shrunk" &&
@@ -471,7 +511,8 @@ export class KairnRuntime {
               relatedFiles: related?.related ?? [],
               testFiles: tests?.files ?? [],
               suggestedCommands,
-              invariants
+              invariants,
+              editScope
             });
     markTiming("formatMs", formatStartedAt);
     timings.totalPrimeMs = Date.now() - primeStartedAt;
@@ -538,6 +579,7 @@ export class KairnRuntime {
         format: input.format ?? "standard",
         quality: effectiveQuality,
         contextDecision: effectiveContextDecision,
+        editScope,
         sessionPolicy,
         workingSet: ledgerSummary.workingSet,
         invariants,
@@ -562,6 +604,7 @@ export class KairnRuntime {
       metadata: {
         ...effectiveQuality,
         contextDecision: effectiveContextDecision,
+        editScope,
         sessionPolicy,
         workingSet: ledgerSummary.workingSet,
         invariants,
@@ -582,6 +625,7 @@ export class KairnRuntime {
       files: emittedFiles,
       metadata: {
         ...effectiveContextDecision,
+        editScope,
         sessionPolicy,
         workingSet: ledgerSummary.workingSet,
         invariants,
@@ -601,10 +645,12 @@ export class KairnRuntime {
       invariants,
       quality: effectiveQuality,
       contextDecision: effectiveContextDecision,
+      editScope,
       timings,
       metadata: {
         companionCandidates: companionMetadata,
         sessionPolicy,
+        editScope,
         workingSet: ledgerSummary.workingSet
       },
       warnings: uniqueStrings([...context.warnings, ...(related?.warnings ?? []), ...(tests?.warnings ?? [])]),
@@ -2881,7 +2927,11 @@ export class KairnRuntime {
               try {
                 const prime = await workspaceRuntime.primeContext({
                   task: prompt,
-                  budget: input.benchmarkCase.budget
+                  budget: input.benchmarkCase.budget,
+                  editScopeHints: {
+                    allowedDiffScopes: input.benchmarkCase.allowedDiffScopes,
+                    sourceInvariants: input.benchmarkCase.sourceInvariants
+                  }
                 });
                 return {
                   prompt: [
@@ -2954,12 +3004,17 @@ export class KairnRuntime {
     });
   }
 
-  private async refreshIndex(rootPath: string) {
-    return this.indexService.refreshIndex(rootPath);
+  private async refreshIndex(rootPath: string, input?: { force?: boolean | undefined }) {
+    return this.indexService.refreshIndex(rootPath, input);
   }
 
   getIndexStatus(): IndexStateStats {
     return this.indexService.getStatus(this.rootPath);
+  }
+
+  async refreshIndexNow(): Promise<IndexStateStats> {
+    await this.refreshIndex(this.rootPath, { force: true });
+    return this.getIndexStatus();
   }
 
   compactIndex(): IndexCompactionResult {

@@ -274,6 +274,7 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
   const coordination = runtime.getCoordinationState(prime.session.id);
   const decision = prime.contextDecision;
   const workingSet = isRecord(prime.metadata?.workingSet) ? prime.metadata.workingSet : undefined;
+  const editScope = prime.editScope ?? (isRecord(prime.metadata?.editScope) ? prime.metadata.editScope : undefined);
   const priorMcpSource = coordination.mcpFiles.find(isMcpPrimarySourceFile);
   const priorSourceStop = priorMcpSource
     ? mcpPrepareStopAfterPriorSource({ task: prime.task, sourceFile: priorMcpSource, workingSet })
@@ -298,6 +299,7 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
       expectedBehavior: workingSetInvariantStatement(workingSet) ?? null,
       verificationCommand: null,
       workingSet,
+      editScope,
       primaryReason: priorSourceStop.reason,
       stopCondition: priorSourceStop.stopCondition,
       nextToolCalls: [],
@@ -340,6 +342,7 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
       expectedBehavior: prime.invariants?.[0]?.statement ?? null,
       verificationCommand: null,
       workingSet,
+      editScope,
       primaryReason: cheapOneShotStop.reason,
       stopCondition: cheapOneShotStop.stopCondition,
       nextToolCalls: [],
@@ -389,6 +392,7 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
       tokenEstimate: 0,
       quality: prime.quality,
       contextDecision: decision,
+      editScope,
       workingSet,
       warnings: uniqueValues([...prime.warnings, "Kairn suppressed proactive context because expected savings risk is high."]),
       duplicateContextAvoided: coordination.duplicateContextAvoided,
@@ -432,6 +436,7 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
         expectedSavingsRisk: "high",
         reasons: [...decision.reasons, "MCP compact abstained because context risk is high"]
       },
+      editScope,
       workingSet,
       warnings: uniqueValues([...prime.warnings, "Kairn suppressed MCP context because the expected savings risk is high."]),
       duplicateContextAvoided: coordination.duplicateContextAvoided,
@@ -486,6 +491,7 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
     expectedBehavior: exactSourceEvidence?.expectedBehavior ?? null,
     verificationCommand: exactSourceEvidence?.verificationCommand ?? null,
     workingSet,
+    editScope,
     primaryReason: primaryFile
       ? sourceEvidenceStop
         ? `Source evidence stop: use ${primaryFile}; do not call more Kairn unless a check fails, the file changes, or the task target changes.`
@@ -523,6 +529,7 @@ function fullPrepareResult(prime: PrimeContextResult) {
     files: prime.files.slice(0, 4),
     quality: prime.quality,
     contextDecision: prime.contextDecision,
+    editScope: prime.editScope,
     invariants: prime.invariants ?? [],
     warnings: prime.warnings,
     suggestedCommands: prime.suggestedCommands.slice(0, 3),
