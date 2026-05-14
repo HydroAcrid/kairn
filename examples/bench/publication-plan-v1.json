@@ -11,11 +11,11 @@
     "modes": ["baseline", "kairn_codex_session", "real_mcp_first"],
     "commands": {
       "baseline": "codex -a never exec --model {model} --sandbox danger-full-access --disable hooks {prompt}",
-      "kairn_codex_session": "kairn codex --root {root} --session {session} --model {model} --sandbox danger-full-access {prompt}",
+      "kairn_codex_session": "kairn codex --root {root} --model {model} --sandbox danger-full-access {prompt}",
       "real_mcp_first": "codex -a never exec --model {model} --sandbox danger-full-access --disable hooks {prompt}"
     },
     "setupCommands": {
-      "kairn_codex_session": "kairn setup codex --root {root} --mode savings --session {session} >/dev/null",
+      "kairn_codex_session": "kairn setup codex --root {root} --mode savings >/dev/null",
       "real_mcp_first": "kairn setup codex --root {root} --mode mcp-first --session {session} >/dev/null",
       "hybrid_mcp_brief": "kairn setup codex --root {root} --mode hybrid --session {session} >/dev/null"
     }

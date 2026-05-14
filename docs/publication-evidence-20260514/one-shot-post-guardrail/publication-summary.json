@@ -1,0 +1,107 @@
+{
+  "id": "one-shot-repeat1-post-guardrail-20260514",
+  "name": "One-shot repeat1 post guardrail validation",
+  "generatedAt": "2026-05-14T15:49:19.823Z",
+  "planPath": "/tmp/kairn-publication-live-20260514/one-shot-repeat1-post-guardrail-plan.json",
+  "outDir": "/tmp/kairn-publication-one-shot-repeat1-post-guardrail",
+  "dryRun": false,
+  "model": "gpt-5.4-mini",
+  "repeat": 1,
+  "aggregate": {
+    "entries": 1,
+    "resultRows": 2,
+    "qualityPassRate": 0,
+    "medianValidSavingsRate": 0,
+    "modes": {
+      "baseline": {
+        "rows": 1,
+        "qualityPasses": 0,
+        "activeRows": 0,
+        "passiveRows": 0,
+        "validSavingsRows": 0,
+        "validSavings": 0,
+        "passiveSavings": 0,
+        "invalidSavings": 0,
+        "medianSavingsRate": 0,
+        "overAssistRows": 0,
+        "harmfulRows": 0,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "mcpCalls": 0,
+        "repeatedFilesAvoided": 0,
+        "scopeViolations": 0
+      },
+      "kairn_codex_session": {
+        "rows": 1,
+        "qualityPasses": 0,
+        "activeRows": 1,
+        "passiveRows": 0,
+        "validSavingsRows": 0,
+        "validSavings": 0,
+        "passiveSavings": 0,
+        "invalidSavings": 63256,
+        "medianSavingsRate": 0.233,
+        "overAssistRows": 0,
+        "harmfulRows": 1,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "mcpCalls": 0,
+        "repeatedFilesAvoided": 0,
+        "scopeViolations": 0
+      }
+    },
+    "byTaskClass": {
+      "unknown": {
+        "rows": 2,
+        "qualityPasses": 0,
+        "activeRows": 1,
+        "passiveRows": 0,
+        "validSavingsRows": 0,
+        "validSavings": 0,
+        "passiveSavings": 0,
+        "invalidSavings": 63256,
+        "medianSavingsRate": 0.1165,
+        "overAssistRows": 0,
+        "harmfulRows": 1,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "mcpCalls": 0,
+        "repeatedFilesAvoided": 0,
+        "scopeViolations": 0
+      }
+    },
+    "classifications": {
+      "harmful_invalid_assist": 1
+    },
+    "failurePatterns": [
+      {
+        "pattern": "quality gate failed",
+        "count": 1,
+        "examples": [
+          "seeded-fresh-one-shot-live:baseline"
+        ]
+      },
+      {
+        "pattern": "Token reduction is invalid because one or more quality gates failed.",
+        "count": 1,
+        "examples": [
+          "seeded-fresh-one-shot-live:kairn_codex_session"
+        ]
+      }
+    ],
+    "successCriteria": {
+      "qualityWithinFivePoints": true,
+      "activeMedianSavingsAtLeast15": false,
+      "noRepeatedHarmfulPattern": true,
+      "hasMcpEvidence": false,
+      "hasEnduranceAfterTurnOneEvidence": false
+    }
+  },
+  "outputs": {
+    "summaryPath": "/tmp/kairn-publication-one-shot-repeat1-post-guardrail/publication-summary.json",
+    "resultsCsvPath": "/tmp/kairn-publication-one-shot-repeat1-post-guardrail/publication-results.csv",
+    "failuresCsvPath": "/tmp/kairn-publication-one-shot-repeat1-post-guardrail/publication-failures.csv",
+    "manifestPath": "/tmp/kairn-publication-one-shot-repeat1-post-guardrail/publication-manifest.json",
+    "markdownPath": "/tmp/kairn-publication-one-shot-repeat1-post-guardrail/kairn_publication_evidence_report_2026-05-14.md"
+  }
+}

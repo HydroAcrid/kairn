@@ -189,7 +189,8 @@ export function registerBenchCommands(program: Command): void {
           repeat: options.repeat,
           resume: Boolean(options.resume),
           only: options.only,
-          dryRun: Boolean(options.dryRun)
+          dryRun: Boolean(options.dryRun),
+          onProgress: options.json ? undefined : (message) => process.stderr.write(`${message}\n`)
         });
         if (options.json) {
           printJson(report);

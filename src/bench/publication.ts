@@ -113,6 +113,7 @@ export type PublicationRunOptions = {
   resume?: boolean | undefined;
   only?: string | undefined;
   dryRun?: boolean | undefined;
+  onProgress?: ((message: string) => void) | undefined;
 };
 
 export type PublicationEntryArtifact = {
@@ -238,7 +239,16 @@ export async function runPublicationCampaign(options: PublicationRunOptions): Pr
   validatePublicationPlan({ plan, entries });
   const artifacts: PublicationEntryArtifact[] = [];
   for (const entry of entries) {
-    artifacts.push(await runPublicationEntry({ plan, entry, outDir, model, repeat, resume: Boolean(options.resume), dryRun: Boolean(options.dryRun) }));
+    artifacts.push(await runPublicationEntry({
+      plan,
+      entry,
+      outDir,
+      model,
+      repeat,
+      resume: Boolean(options.resume),
+      dryRun: Boolean(options.dryRun),
+      onProgress: options.onProgress
+    }));
   }
   const rows = artifacts.flatMap((artifact) => artifactToRows(artifact, entryById(entries, artifact.entryId)));
   const aggregate = aggregatePublicationRows(rows);
@@ -304,10 +314,13 @@ async function runPublicationEntry(input: {
   repeat: number;
   resume: boolean;
   dryRun: boolean;
+  onProgress?: ((message: string) => void) | undefined;
 }): Promise<PublicationEntryArtifact> {
   const startedAt = new Date().toISOString();
   const artifactPath = path.join(input.outDir, "raw", `${input.entry.id}.json`);
+  const partialPath = path.join(input.outDir, "raw", `${input.entry.id}.partial.json`);
   const commands = plannedCommands(input.plan, input.entry, input.model, input.repeat);
+  input.onProgress?.(`[bench publication] ${input.entry.id}: start`);
   if (input.dryRun) {
     return {
       entryId: input.entry.id,
@@ -323,13 +336,14 @@ async function runPublicationEntry(input: {
   if (input.resume && fs.existsSync(artifactPath)) {
     const existing = JSON.parse(fs.readFileSync(artifactPath, "utf8")) as PublicationEntryArtifact;
     if (existing.status === "passed") {
+      input.onProgress?.(`[bench publication] ${input.entry.id}: skipped existing artifact`);
       return { ...existing, status: "skipped", entryMetadata: existing.entryMetadata ?? publicationEntryMetadata(input.entry) };
     }
   }
 
   fs.mkdirSync(path.dirname(artifactPath), { recursive: true });
   try {
-    const report = await executePublicationEntry(input.plan, input.entry, input.model, input.repeat);
+    const report = await executePublicationEntry(input.plan, input.entry, input.model, input.repeat, partialPath, input.onProgress);
     const artifact: PublicationEntryArtifact = {
       entryId: input.entry.id,
       kind: input.entry.kind,
@@ -342,6 +356,7 @@ async function runPublicationEntry(input: {
       report
     };
     fs.writeFileSync(artifactPath, `${JSON.stringify(artifact, null, 2)}\n`);
+    input.onProgress?.(`[bench publication] ${input.entry.id}: passed`);
     return artifact;
   } catch (error) {
     const artifact: PublicationEntryArtifact = {
@@ -356,6 +371,7 @@ async function runPublicationEntry(input: {
       error: error instanceof Error ? error.message : String(error)
     };
     fs.writeFileSync(artifactPath, `${JSON.stringify(artifact, null, 2)}\n`);
+    input.onProgress?.(`[bench publication] ${input.entry.id}: failed`);
     return artifact;
   }
 }
@@ -364,7 +380,9 @@ async function executePublicationEntry(
   plan: PublicationPlan,
   entry: PublicationPlanEntry,
   model: string,
-  repeat: number
+  repeat: number,
+  partialPath: string,
+  onProgress: ((message: string) => void) | undefined
 ): Promise<unknown> {
   if (entry.kind === "matrix") {
     return runBenchmarkRepoMatrix({
@@ -423,7 +441,9 @@ async function executePublicationEntry(
         ...(modes.includes("real_mcp_first") ? { realMcpFirstCommand: commandFor(plan, entry, "real_mcp_first", model), realMcpFirstSetupCommand: setupCommandFor(plan, entry, "real_mcp_first") } : {}),
         ...(modes.includes("hybrid_mcp_brief") ? { hybridMcpBriefCommand: commandFor(plan, entry, "hybrid_mcp_brief", model), hybridMcpBriefSetupCommand: setupCommandFor(plan, entry, "hybrid_mcp_brief") } : {}),
         agentTimeoutMs: entry.timeoutMs ?? plan.defaults?.agentTimeoutMs,
-        repeat: Math.max(1, Math.floor(entry.repeat ?? repeat))
+        repeat: Math.max(1, Math.floor(entry.repeat ?? repeat)),
+        proofOutputPath: partialPath,
+        onProgress
       });
     } finally {
       runtime.close();
@@ -1041,7 +1061,7 @@ function setupCommandFor(plan: PublicationPlan, entry: PublicationPlanEntry, mod
 function defaultCommand(mode: PublicationMode, model: string): string {
   const base = `codex -a never exec --model ${model} --sandbox danger-full-access --disable hooks {prompt}`;
   if (mode === "kairn_codex_session") {
-    return `kairn codex --root {root} --session {session} --model ${model} --sandbox danger-full-access {prompt}`;
+    return `kairn codex --root {root} --model ${model} --sandbox danger-full-access {prompt}`;
   }
   if (mode === "hook_full_prime" || mode === "hybrid_mcp_brief") {
     return `codex -a never exec --model ${model} --sandbox danger-full-access --enable hooks {prompt}`;

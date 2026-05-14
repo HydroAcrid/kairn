@@ -280,7 +280,7 @@ export class KairnRuntime {
       contextDecision.primaryFile && uniquePaths([...context.files, ...context.suggestedNextContext, ...companionPaths]).includes(contextDecision.primaryFile)
         ? contextDecision.primaryFile
         : primaryFile;
-    const directivePrimaryFile = contextDecision.recommendedDelivery === "multi_file_directive"
+    const directivePrimaryFile = contextDecision.recommendedDelivery === "multi_file_directive" && !contextDecision.exactSourceHit && !contextDecision.canonicalSourceHit
       ? preferredStructuredDebugPrimary(structuredPrimaryCandidate, companionMetadata)
       : primaryFile;
     let invariants = directivePrimaryFile && (contextDecision.exactSourceHit || contextDecision.cheapSingleSource || contextDecision.recommendedDelivery === "multi_file_directive")
@@ -3590,7 +3590,7 @@ function hasSpecificCompanionEvidence(value: unknown): boolean {
       .join("; ")
       .toLowerCase()
     : "";
-  return /mentioned source filename|direct role basename anchor|route\/path surface anchor|same package|same module|import neighbor|controller\/repository|scheduler\/renderer|interceptor\/dispatch|validation\/callback|named peer client companion|user\/email companion|exact user\/email companion|proxy\/service companion|kubernetes service companion|keyboard shortcut companion|module resolver companion|schema generation companion|field definition companion|statement state companion|field metadata companion|command-line parser companion|config companion|routing map\/rule companion|named source surface|compound path term match/.test(reasons);
+  return /mentioned source filename|direct role basename anchor|route\/path surface anchor|same package|same module|import neighbor|controller\/repository|scheduler\/renderer|interceptor\/dispatch|validation\/callback|named peer client companion|user\/email companion|exact user\/email companion|proxy\/service companion|kubernetes service companion|keyboard shortcut companion|module resolver companion|schema generation companion|field definition companion|statement state companion|field metadata companion|command-line parser companion|config companion|routing map\/rule companion|named source surface|compound path term match|same-package utility sibling companion|shared URL\/path utility companion|inline\/header companion/.test(reasons);
 }
 
 function strongestSuppressiveAction(

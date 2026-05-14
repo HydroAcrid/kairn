@@ -1,0 +1,92 @@
+{
+  "id": "companion-routing-live-20260514",
+  "name": "Companion routing live validation",
+  "generatedAt": "2026-05-14T16:03:38.878Z",
+  "planPath": "/tmp/kairn-publication-live-20260514/companion-routing-plan.json",
+  "outDir": "/tmp/kairn-publication-companion-routing",
+  "dryRun": false,
+  "model": "gpt-5.4-mini",
+  "repeat": 1,
+  "aggregate": {
+    "entries": 1,
+    "resultRows": 2,
+    "qualityPassRate": 1,
+    "medianValidSavingsRate": 0.542,
+    "modes": {
+      "baseline": {
+        "rows": 1,
+        "qualityPasses": 1,
+        "activeRows": 0,
+        "passiveRows": 0,
+        "validSavingsRows": 0,
+        "validSavings": 0,
+        "passiveSavings": 0,
+        "invalidSavings": 0,
+        "medianSavingsRate": 0,
+        "overAssistRows": 0,
+        "harmfulRows": 0,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "mcpCalls": 0,
+        "repeatedFilesAvoided": 0,
+        "scopeViolations": 0
+      },
+      "kairn_codex_session": {
+        "rows": 1,
+        "qualityPasses": 1,
+        "activeRows": 1,
+        "passiveRows": 0,
+        "validSavingsRows": 1,
+        "validSavings": 51566,
+        "passiveSavings": 0,
+        "invalidSavings": 0,
+        "medianSavingsRate": 0.542,
+        "overAssistRows": 0,
+        "harmfulRows": 0,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "mcpCalls": 0,
+        "repeatedFilesAvoided": 0,
+        "scopeViolations": 0
+      }
+    },
+    "byTaskClass": {
+      "unknown": {
+        "rows": 2,
+        "qualityPasses": 2,
+        "activeRows": 1,
+        "passiveRows": 0,
+        "validSavingsRows": 1,
+        "validSavings": 51566,
+        "passiveSavings": 0,
+        "invalidSavings": 0,
+        "medianSavingsRate": 0.271,
+        "overAssistRows": 0,
+        "harmfulRows": 0,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "mcpCalls": 0,
+        "repeatedFilesAvoided": 0,
+        "scopeViolations": 0
+      }
+    },
+    "classifications": {
+      "valid_assist": 1
+    },
+    "failurePatterns": [],
+    "successCriteria": {
+      "qualityWithinFivePoints": true,
+      "activeMedianSavingsAtLeast15": true,
+      "noRepeatedHarmfulPattern": true,
+      "hasMcpEvidence": false,
+      "hasEnduranceAfterTurnOneEvidence": false
+    }
+  },
+  "outputs": {
+    "summaryPath": "/tmp/kairn-publication-companion-routing/publication-summary.json",
+    "resultsCsvPath": "/tmp/kairn-publication-companion-routing/publication-results.csv",
+    "failuresCsvPath": "/tmp/kairn-publication-companion-routing/publication-failures.csv",
+    "manifestPath": "/tmp/kairn-publication-companion-routing/publication-manifest.json",
+    "markdownPath": "/tmp/kairn-publication-companion-routing/kairn_publication_evidence_report_2026-05-14.md"
+  }
+}

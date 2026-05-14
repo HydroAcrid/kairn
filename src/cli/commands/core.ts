@@ -279,7 +279,8 @@ export function registerCoreCommands(program: Command): void {
               task,
               sessionId: options.session,
               profile: options.profile,
-              budget: options.budget
+              budget: options.budget,
+              source: "codex"
             });
         const session = interactive
           ? options.session

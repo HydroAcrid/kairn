@@ -450,6 +450,11 @@ export function findCompanionCandidates(input: {
       score += statementField.score;
       reasons.push(...statementField.reasons);
     }
+    const textUtility = scoreTextTransformUtilityCompanion(file.path, sourceTerms, queryTerms);
+    if (textUtility.score !== 0) {
+      score += textUtility.score;
+      reasons.push(...textUtility.reasons);
+    }
     const commandConfig = scoreSessionCommandConfigCompanion(file.path, queryTerms);
     if (commandConfig.score !== 0) {
       score += commandConfig.score;
@@ -519,9 +524,23 @@ export function findCompanionCandidates(input: {
         score -= 900;
         reasons.push("go middleware helper downranked for router core prompt");
       }
+      if (isCrossRuntimeNodeDistractor(seed.path, file.path, queryTerms)) {
+        score -= 4200;
+        reasons.push("node/runtime companion downranked for browser/client source task");
+      }
       if (isGoPackageAnchor(seed, file, roleSignals)) {
         score += 920;
         reasons.push("go package anchor");
+      }
+      const utilitySibling = scoreUtilitySiblingCompanion(seed.path, file.path, queryTerms);
+      if (utilitySibling.score !== 0) {
+        score += utilitySibling.score;
+        reasons.push(...utilitySibling.reasons);
+      }
+      const headerInline = scoreHeaderInlineCompanion(seed.path, file.path, queryTerms, sourceTerms);
+      if (headerInline.score !== 0) {
+        score += headerInline.score;
+        reasons.push(...headerInline.reasons);
       }
       if (isRouteCoreSibling(seed.path, file.path, queryTerms)) {
         score += 1200;
@@ -541,7 +560,7 @@ export function findCompanionCandidates(input: {
       candidates.push({
         file: filesByPath.get(file.path) ?? file,
         score: Math.round(score),
-        reasons: uniqueReasons(reasons).slice(0, 6)
+        reasons: uniqueReasons(reasons).slice(0, 10)
       });
     }
   }
@@ -797,6 +816,8 @@ function isCompatibleCompanionLanguage(left: string, right: string): boolean {
 function routePathAnchors(query: string): string[] {
   const anchors = new Set<string>();
   for (const match of query.matchAll(/(?:^|[\s('"“‘])\/([A-Za-z][A-Za-z0-9_-]*(?:\/[A-Za-z][A-Za-z0-9_-]*)*)/g)) {
+    const endIndex = (match.index ?? 0) + match[0]!.length;
+    if (query[endIndex] === ".") continue;
     const route = match[1]!;
     if (route.includes(".") || route.includes("\\")) continue;
     const parts = route
@@ -1394,6 +1415,91 @@ function isGoMiddlewareForRouterCore(filePath: string, queryTerms: Set<string>):
   return ["router", "route", "context", "chain", "mount"].some((term) => queryTerms.has(term));
 }
 
+function isCrossRuntimeNodeDistractor(seedPath: string, candidatePath: string, queryTerms: Set<string>): boolean {
+  const seed = seedPath.toLowerCase();
+  const candidate = candidatePath.toLowerCase();
+  const clientTask =
+    seed.includes("/client/") ||
+    ["browser", "client", "relative", "absolute"].some((term) => queryTerms.has(term));
+  if (!clientTask) return false;
+  if (!candidate.includes("/node/") && !candidate.includes("/server/")) return false;
+  return !["node", "server", "ssr", "build", "bundler"].some((term) => queryTerms.has(term));
+}
+
+function scoreUtilitySiblingCompanion(seedPath: string, candidatePath: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  if (!samePackageSurface(seedPath, candidatePath)) return { score: 0, reasons: [] };
+  const normalizedSeed = seedPath.toLowerCase();
+  const normalizedCandidate = candidatePath.toLowerCase();
+  const seedBase = normalizedSeed.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const candidateBase = normalizedCandidate.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/utils?$/.test(seedBase) && /utils?$/.test(candidateBase) && seedBase !== candidateBase) {
+    score += 1800;
+    reasons.push("same-package utility sibling companion");
+  }
+
+  const urlPathTask = ["url", "urls", "relative", "absolute", "external", "query", "path", "paths", "browser"].some((term) => queryTerms.has(term));
+  if (
+    urlPathTask &&
+    /utils?$/.test(candidateBase) &&
+    !/(^|\/)(templates?|examples?|playground|fixtures?)\//.test(normalizedCandidate)
+  ) {
+    score += 3600;
+    reasons.push("shared URL/path utility companion");
+  }
+  if (
+    urlPathTask &&
+    /(^|\/)(shared|common)\//.test(normalizedCandidate) &&
+    !/utils?$/.test(candidateBase) &&
+    !["url", "urls", "path", "paths", "query", "queries", "resolve", "resolver"].some((term) => termSet(candidateBase).has(term))
+  ) {
+    score -= 900;
+    reasons.push("generic shared module downranked for URL/path task");
+  }
+
+  return { score, reasons };
+}
+
+function scoreTextTransformUtilityCompanion(filePath: string, sourceTerms: Set<string>, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const textTransformTask = ["case", "camel", "delimiter", "delimiters", "whitespace", "space", "capitalize", "capitalized", "word", "words"].some((term) =>
+    queryTerms.has(term)
+  );
+  if (!textTransformTask) return { score: 0, reasons: [] };
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  if (!/utils?$/.test(basename)) return { score: 0, reasons: [] };
+  const hasDelimiterSurface =
+    sourceTerms.has("delimiter") ||
+    sourceTerms.has("delimiters") ||
+    sourceTerms.has("whitespace") ||
+    sourceTerms.has("capitalize") ||
+    sourceTerms.has("uncapitalize");
+  if (!hasDelimiterSurface) return { score: 0, reasons: [] };
+  return {
+    score: basename.includes("word") ? 3200 : 1200,
+    reasons: ["text transform utility companion"]
+  };
+}
+
+function scoreHeaderInlineCompanion(seedPath: string, candidatePath: string, queryTerms: Set<string>, sourceTerms: Set<string>): { score: number; reasons: string[] } {
+  const normalizedSeed = seedPath.toLowerCase();
+  const normalizedCandidate = candidatePath.toLowerCase();
+  if (!/\.(h|hh|hpp|hxx)$/.test(normalizedSeed)) return { score: 0, reasons: [] };
+  if (!/\.(h|hh|hpp|hxx)$/.test(normalizedCandidate)) return { score: 0, reasons: [] };
+  if (pathDir(normalizedSeed) !== pathDir(normalizedCandidate)) return { score: 0, reasons: [] };
+  if (!/(^|[-_])inl\./.test(normalizedCandidate) && !/[-_]inl\./.test(normalizedCandidate)) return { score: 0, reasons: [] };
+  const parent = pathDir(normalizedCandidate).split("/").at(-1) ?? "";
+  const basename = normalizedCandidate.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const queryHits = [...queryTerms].filter((term) => sourceTerms.has(term) && !COMPANION_STOP_TERMS.has(term));
+  const publicApiBoost = basename.replace(/[-_]inl$/, "") === parent ? 1300 : 0;
+  return {
+    score: 2400 + publicApiBoost + Math.min(900, queryHits.length * 180),
+    reasons: ["inline/header companion", ...(publicApiBoost > 0 ? ["public API inline companion"] : [])]
+  };
+}
+
 function isCaseSensitivityAnchor(filePath: string, queryTerms: Set<string>): boolean {
   const basename = filePath.toLowerCase().split("/").at(-1) ?? "";
   return /(^|\/)io(case)?\.java$/.test(filePath.toLowerCase()) || (basename.includes("case") && queryTerms.has("sensitivity"));
@@ -1409,6 +1515,11 @@ function commonPrefixLength(left: string[], right: string[]): number {
   let count = 0;
   while (left[count] && right[count] && left[count] === right[count]) count += 1;
   return count;
+}
+
+function pathDir(filePath: string): string {
+  const index = filePath.lastIndexOf("/");
+  return index >= 0 ? filePath.slice(0, index) : "";
 }
 
 function buildEdgeNeighborMap(edges: GraphEdgeRecord[]): Map<string, Set<string>> {

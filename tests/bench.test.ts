@@ -31,7 +31,7 @@ import { evaluateContextValue } from "../src/prime/contextValue.js";
 import { evaluatePrimeQuality, resolvePrimeProfile } from "../src/prime/quality.js";
 import { findCompanionCandidates } from "../src/retrieval/companions.js";
 import { createFixtureRepo } from "./helpers.js";
-import type { FileRecord, HybridScoredResult } from "../src/types.js";
+import type { FileRecord, HybridScoredResult, SemanticChunkRecord } from "../src/types.js";
 
 const CLI = ["tsx", "src/cli.ts"];
 const requireFromTest = createRequire(import.meta.url);
@@ -963,6 +963,77 @@ describe("benchmark suite and scoring", () => {
     }).map((candidate) => candidate.file.path);
 
     expect(companions[0]).toBe("packages/react-reconciler/src/ReactFiberHooks.js");
+  });
+
+  it("does not treat URL example literals as source-file companions", () => {
+    const files = [
+      sourceRecord("packages/vite/src/client/client.ts", "typescript"),
+      sourceRecord("packages/vite/src/shared/utils.ts", "typescript"),
+      sourceRecord("packages/vite/src/node/utils.ts", "typescript"),
+      sourceRecord("packages/create-vite/template-vanilla-ts/src/main.ts", "typescript")
+    ];
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query:
+        "Debug injectQuery handling. Relative URLs like ./dep.js and absolute URLs like /src/main.ts must receive the query while external URLs are skipped.",
+      symbols: [],
+      chunks: [],
+      edges: [],
+      limit: 2
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions[0]).toBe("packages/vite/src/shared/utils.ts");
+    expect(companions).not.toContain("packages/vite/src/node/utils.ts");
+    expect(companions).not.toContain("packages/create-vite/template-vanilla-ts/src/main.ts");
+  });
+
+  it("prefers same-package text utility companions with delimiter behavior", () => {
+    const files = [
+      sourceRecord("src/main/java/org/apache/commons/text/CaseUtils.java", "java"),
+      sourceRecord("src/main/java/org/apache/commons/text/WordUtils.java", "java"),
+      sourceRecord("src/main/java/org/apache/commons/text/StringEscapeUtils.java", "java")
+    ];
+    const chunks = [
+      chunkRecord("src/main/java/org/apache/commons/text/CaseUtils.java", "toCamelCase", "camel case delimiter"),
+      chunkRecord("src/main/java/org/apache/commons/text/WordUtils.java", "capitalize", "delimiter whitespace capitalize words"),
+      chunkRecord("src/main/java/org/apache/commons/text/StringEscapeUtils.java", "escape", "escape string html xml")
+    ];
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query: "Debug CaseUtils.toCamelCase default delimiter behavior for whitespace and space characters.",
+      symbols: [],
+      chunks,
+      edges: [],
+      limit: 2
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions[0]).toBe("src/main/java/org/apache/commons/text/WordUtils.java");
+  });
+
+  it("prefers public API inline header companions for C++ header fixes", () => {
+    const files = [
+      sourceRecord("include/spdlog/logger.h", "cpp"),
+      sourceRecord("include/spdlog/spdlog-inl.h", "cpp"),
+      sourceRecord("include/spdlog/details/log_msg.h", "cpp")
+    ];
+    const chunks = [
+      chunkRecord("include/spdlog/logger.h", "should_log", "logger should_log level threshold"),
+      chunkRecord("include/spdlog/spdlog-inl.h", "should_log", "spdlog should_log default logger level"),
+      chunkRecord("include/spdlog/details/log_msg.h", "log_msg", "message level payload")
+    ];
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query: "Debug spdlog logger::should_log level threshold behavior in the production header.",
+      symbols: [],
+      chunks,
+      edges: [],
+      limit: 2
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions[0]).toBe("include/spdlog/spdlog-inl.h");
   });
 
   it("runs a fake-agent endurance suite in one workspace and reports ledger savings signals", async () => {
@@ -3818,5 +3889,20 @@ function scoredRecord(file: FileRecord): HybridScoredResult {
     importanceScore: file.importance,
     gitScore: 0,
     chunks: []
+  };
+}
+
+function chunkRecord(filePath: string, symbolName: string, text: string): SemanticChunkRecord {
+  return {
+    rootPath: "/repo",
+    id: `${filePath}:${symbolName}`,
+    filePath,
+    kind: "symbol",
+    symbol: symbolName,
+    startLine: 1,
+    endLine: 5,
+    text,
+    tokenEstimate: Math.max(1, Math.ceil(text.length / 4)),
+    hash: `${filePath}:${symbolName}`
   };
 }

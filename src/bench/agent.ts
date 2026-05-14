@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import Database from "better-sqlite3";
 import type { BenchmarkCase, BenchmarkSeedSpec, BenchmarkTaskOutcome } from "../types.js";
 import { parseCodexUsageFooter } from "../eval/codexUsage.js";
@@ -96,9 +97,10 @@ export async function runAgentBenchmarkCase(input: {
   try {
     const startedAt = Date.now();
     const timeoutMs = input.timeoutMs ?? 120000;
+    const commandSessionId = `task_${randomUUID()}`;
     const setupStartedAt = Date.now();
     const setupResult = input.setupCommand
-      ? runShell(commandWithPlaceholders(input.setupCommand, { prompt, root: workspacePath }), workspacePath, timeoutMs)
+      ? runShell(commandWithPlaceholders(input.setupCommand, { prompt, root: workspacePath, session: commandSessionId }), workspacePath, timeoutMs)
       : undefined;
     const assistanceSetupMs = Date.now() - setupStartedAt;
     const setupMetadata = setupResult
@@ -148,7 +150,7 @@ export async function runAgentBenchmarkCase(input: {
       ? await input.preparePrompt({ workspacePath, prompt, benchmarkCase: input.benchmarkCase })
       : { prompt };
     const promptPrepareMs = Date.now() - prepareStartedAt;
-    const command = commandWithPlaceholders(input.agentCommand, { prompt: prepared.prompt, root: workspacePath });
+    const command = commandWithPlaceholders(input.agentCommand, { prompt: prepared.prompt, root: workspacePath, session: commandSessionId });
     const agentStartedAt = Date.now();
     const completed = spawnSync(command, {
       cwd: workspacePath,
@@ -613,10 +615,12 @@ function shellQuote(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
-export function commandWithPlaceholders(command: string, input: { prompt: string; root: string }): string {
+export function commandWithPlaceholders(command: string, input: { prompt: string; root: string; session?: string | undefined; turn?: string | number | undefined }): string {
   return command
     .replaceAll("{prompt}", shellQuote(input.prompt))
-    .replaceAll("{root}", shellQuote(input.root));
+    .replaceAll("{root}", shellQuote(input.root))
+    .replaceAll("{session}", shellQuote(input.session ?? ""))
+    .replaceAll("{turn}", shellQuote(String(input.turn ?? "")));
 }
 
 function metadataFromOutput(input: {

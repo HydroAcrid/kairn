@@ -1,0 +1,1387 @@
+{
+  "entryId": "fresh-holdout-v3-preflight",
+  "kind": "matrix",
+  "status": "passed",
+  "entryMetadata": {
+    "label": "Fresh holdout v3 repo-matrix preflight",
+    "repoId": "fresh-holdout-v3",
+    "taskClass": "mixed"
+  },
+  "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260514/raw/fresh-holdout-v3-preflight.json",
+  "startedAt": "2026-05-14T14:12:06.339Z",
+  "endedAt": "2026-05-14T14:12:27.132Z",
+  "commands": [
+    "kairn bench matrix --matrix examples/bench/repo-matrix-private-beta-v3.json"
+  ],
+  "report": {
+    "id": "repo-matrix-private-beta-v3",
+    "name": "Kairn Private Beta Fresh Holdout V3",
+    "startedAt": "2026-05-14T14:12:06.343Z",
+    "endedAt": "2026-05-14T14:12:27.132Z",
+    "repos": [
+      {
+        "repo": {
+          "id": "vite",
+          "name": "Vite",
+          "repoUrl": "https://github.com/vitejs/vite.git",
+          "cloneDepth": 1,
+          "language": "typescript",
+          "sizeClass": "large",
+          "cases": [
+            {
+              "id": "plugin-container-resolve",
+              "mode": "context",
+              "contextBehavior": "multi_file_debug",
+              "task": "Debug Vite plugin container module resolution when resolveId and load hooks coordinate across dev server transforms.",
+              "expectedFiles": [
+                "packages/vite/src/node/server/pluginContainer.ts",
+                "packages/vite/src/node/plugins/importAnalysis.ts"
+              ],
+              "excludedFiles": [
+                "docs/",
+                "playground/",
+                "packages/vite/src/node/__tests__/"
+              ],
+              "budget": 900
+            }
+          ]
+        },
+        "rootPath": "/tmp/kairn-publication-workdirs/vite",
+        "status": "failed",
+        "index": {
+          "files": 2552,
+          "totalSizeBytes": 51982440,
+          "totalSizeMb": 49.57,
+          "softMaxSizeMb": 250,
+          "hardMaxSizeMb": 1000,
+          "graphEdges": 1362,
+          "semanticChunks": 1620,
+          "lexicalTerms": 90000,
+          "tiers": {
+            "tier0": 2194,
+            "tier1": 0,
+            "tier2": 66,
+            "tier3": 292,
+            "tier4": 0
+          }
+        },
+        "gates": {
+          "maxStateMb": 250,
+          "maxPrimeLatencyMs": 10000,
+          "maxRepoPreflightMs": 120000,
+          "expectedTopK": 5,
+          "requireSuppressionForWeakCases": true
+        },
+        "stateWithinLimit": true,
+        "elapsedMs": 3574,
+        "cases": [
+          {
+            "repoId": "vite",
+            "caseId": "plugin-container-resolve",
+            "task": "Debug Vite plugin container module resolution when resolveId and load hooks coordinate across dev server transforms.",
+            "profile": "failure_debug",
+            "expectedFiles": [
+              "packages/vite/src/node/server/pluginContainer.ts",
+              "packages/vite/src/node/plugins/importAnalysis.ts"
+            ],
+            "returnedFiles": [
+              "packages/vite/src/node/server/pluginContainer.ts",
+              "packages/vite/src/node/plugins/resolve.ts"
+            ],
+            "missingExpectedFiles": [
+              "packages/vite/src/node/plugins/importAnalysis.ts"
+            ],
+            "companionFilesReturned": [
+              "packages/vite/src/node/plugins/resolve.ts"
+            ],
+            "missingCompanionFiles": [
+              "packages/vite/src/node/plugins/importAnalysis.ts"
+            ],
+            "excludedFiles": [
+              "docs/",
+              "playground/",
+              "packages/vite/src/node/__tests__/"
+            ],
+            "excludedHits": [],
+            "noisePrefixHits": [],
+            "sourceVsTestDecision": "source_first",
+            "companionReasons": {
+              "packages/vite/src/node/plugins/resolve.ts": [
+                "role match: routing/dependency pair",
+                "role match: plugin/transform analysis pair",
+                "role match: module/loader/resolver pair",
+                "role match: MCP/runtime pair",
+                "role match: fiber/hooks/workloop pair",
+                "role path match: routing/dependency pair"
+              ],
+              "packages/vite/src/node/optimizer/resolve.ts": [
+                "role match: routing/dependency pair",
+                "role match: plugin/transform analysis pair",
+                "role match: module/loader/resolver pair",
+                "role path match: routing/dependency pair",
+                "role path match: plugin/transform analysis pair",
+                "role path match: module/loader/resolver pair"
+              ]
+            },
+            "primeTokens": 381,
+            "primeLatencyMs": 979,
+            "timings": {
+              "initialInventoryMs": 2,
+              "findContextMs": 848,
+              "decisionMs": 1,
+              "formatMs": 0,
+              "totalPrimeMs": 978
+            },
+            "contextDecision": "shrink",
+            "qualityScore": 100,
+            "minExpectedHits": 2,
+            "requiredCompanionHits": 1,
+            "companionGatePassed": false,
+            "expectedTopKPassed": false,
+            "excludedFilesAvoided": true,
+            "suppressionPassed": true,
+            "qualityGatePassed": false,
+            "summary": "Preflight quality gate failed.",
+            "recommendations": [
+              "Expected files missing from top 5: packages/vite/src/node/plugins/importAnalysis.ts",
+              "Companion file hits below minimum 1/1; missing from top 5: packages/vite/src/node/plugins/importAnalysis.ts"
+            ]
+          }
+        ],
+        "weakestCases": [
+          {
+            "repoId": "vite",
+            "caseId": "plugin-container-resolve",
+            "task": "Debug Vite plugin container module resolution when resolveId and load hooks coordinate across dev server transforms.",
+            "profile": "failure_debug",
+            "expectedFiles": [
+              "packages/vite/src/node/server/pluginContainer.ts",
+              "packages/vite/src/node/plugins/importAnalysis.ts"
+            ],
+            "returnedFiles": [
+              "packages/vite/src/node/server/pluginContainer.ts",
+              "packages/vite/src/node/plugins/resolve.ts"
+            ],
+            "missingExpectedFiles": [
+              "packages/vite/src/node/plugins/importAnalysis.ts"
+            ],
+            "companionFilesReturned": [
+              "packages/vite/src/node/plugins/resolve.ts"
+            ],
+            "missingCompanionFiles": [
+              "packages/vite/src/node/plugins/importAnalysis.ts"
+            ],
+            "excludedFiles": [
+              "docs/",
+              "playground/",
+              "packages/vite/src/node/__tests__/"
+            ],
+            "excludedHits": [],
+            "noisePrefixHits": [],
+            "sourceVsTestDecision": "source_first",
+            "companionReasons": {
+              "packages/vite/src/node/plugins/resolve.ts": [
+                "role match: routing/dependency pair",
+                "role match: plugin/transform analysis pair",
+                "role match: module/loader/resolver pair",
+                "role match: MCP/runtime pair",
+                "role match: fiber/hooks/workloop pair",
+                "role path match: routing/dependency pair"
+              ],
+              "packages/vite/src/node/optimizer/resolve.ts": [
+                "role match: routing/dependency pair",
+                "role match: plugin/transform analysis pair",
+                "role match: module/loader/resolver pair",
+                "role path match: routing/dependency pair",
+                "role path match: plugin/transform analysis pair",
+                "role path match: module/loader/resolver pair"
+              ]
+            },
+            "primeTokens": 381,
+            "primeLatencyMs": 979,
+            "timings": {
+              "initialInventoryMs": 2,
+              "findContextMs": 848,
+              "decisionMs": 1,
+              "formatMs": 0,
+              "totalPrimeMs": 978
+            },
+            "contextDecision": "shrink",
+            "qualityScore": 100,
+            "minExpectedHits": 2,
+            "requiredCompanionHits": 1,
+            "companionGatePassed": false,
+            "expectedTopKPassed": false,
+            "excludedFilesAvoided": true,
+            "suppressionPassed": true,
+            "qualityGatePassed": false,
+            "summary": "Preflight quality gate failed.",
+            "recommendations": [
+              "Expected files missing from top 5: packages/vite/src/node/plugins/importAnalysis.ts",
+              "Companion file hits below minimum 1/1; missing from top 5: packages/vite/src/node/plugins/importAnalysis.ts"
+            ]
+          }
+        ],
+        "recommendations": [
+          "plugin-container-resolve: Expected files missing from top 5: packages/vite/src/node/plugins/importAnalysis.ts; Companion file hits below minimum 1/1; missing from top 5: packages/vite/src/node/plugins/importAnalysis.ts"
+        ]
+      },
+      {
+        "repo": {
+          "id": "zod",
+          "name": "Zod",
+          "repoUrl": "https://github.com/colinhacks/zod.git",
+          "cloneDepth": 1,
+          "language": "typescript",
+          "sizeClass": "medium",
+          "cases": [
+            {
+              "id": "object-parse-shape",
+              "mode": "context",
+              "contextBehavior": "source_rescue",
+              "task": "Debug Zod object parsing when unknown keys and shape validation interact in the core object schema implementation.",
+              "expectedFiles": [
+                "packages/zod/src/v4/core/schemas.ts"
+              ],
+              "excludedFiles": [
+                "packages/*/src/*/*.test.ts",
+                "docs/",
+                "rfcs/"
+              ],
+              "budget": 800
+            }
+          ]
+        },
+        "rootPath": "/tmp/kairn-publication-workdirs/zod",
+        "status": "passed",
+        "index": {
+          "files": 531,
+          "totalSizeBytes": 42655848,
+          "totalSizeMb": 40.68,
+          "softMaxSizeMb": 250,
+          "hardMaxSizeMb": 1000,
+          "graphEdges": 273,
+          "semanticChunks": 1891,
+          "lexicalTerms": 79110,
+          "tiers": {
+            "tier0": 142,
+            "tier1": 0,
+            "tier2": 39,
+            "tier3": 350,
+            "tier4": 0
+          }
+        },
+        "gates": {
+          "maxStateMb": 250,
+          "maxPrimeLatencyMs": 10000,
+          "maxRepoPreflightMs": 120000,
+          "expectedTopK": 5,
+          "requireSuppressionForWeakCases": true
+        },
+        "stateWithinLimit": true,
+        "elapsedMs": 3772,
+        "cases": [
+          {
+            "repoId": "zod",
+            "caseId": "object-parse-shape",
+            "task": "Debug Zod object parsing when unknown keys and shape validation interact in the core object schema implementation.",
+            "profile": "failure_debug",
+            "expectedFiles": [
+              "packages/zod/src/v4/core/schemas.ts"
+            ],
+            "returnedFiles": [
+              "packages/treeshake/zod-object.ts",
+              "packages/zod/src/v4/core/schemas.ts"
+            ],
+            "missingExpectedFiles": [],
+            "companionFilesReturned": [
+              "packages/zod/src/v4/core/schemas.ts"
+            ],
+            "missingCompanionFiles": [],
+            "excludedFiles": [
+              "packages/*/src/*/*.test.ts",
+              "docs/",
+              "rfcs/"
+            ],
+            "excludedHits": [],
+            "noisePrefixHits": [],
+            "sourceVsTestDecision": "source_first",
+            "companionReasons": {
+              "packages/zod/src/v4/core/schemas.ts": [
+                "role match: controller/repository/model pair",
+                "role match: schema/parser pair",
+                "role match: log/core/sink pair",
+                "role match: module/loader/resolver pair",
+                "role match: schema/field generation pair",
+                "role match: statement/callback/field pair"
+              ],
+              "packages/zod/src/v4/core/core.ts": [
+                "role match: controller/repository/model pair",
+                "role match: schema/parser pair",
+                "role match: log/core/sink pair",
+                "role match: module/loader/resolver pair",
+                "role match: schema/field generation pair",
+                "role match: statement/callback/field pair"
+              ]
+            },
+            "primeTokens": 407,
+            "primeLatencyMs": 539,
+            "timings": {
+              "initialInventoryMs": 1,
+              "findContextMs": 428,
+              "decisionMs": 2,
+              "formatMs": 0,
+              "totalPrimeMs": 538
+            },
+            "contextDecision": "shrink",
+            "qualityScore": 100,
+            "minExpectedHits": 1,
+            "requiredCompanionHits": 0,
+            "companionGatePassed": true,
+            "expectedTopKPassed": true,
+            "excludedFilesAvoided": true,
+            "suppressionPassed": true,
+            "qualityGatePassed": true,
+            "summary": "Preflight quality gate passed.",
+            "recommendations": []
+          }
+        ],
+        "weakestCases": [],
+        "recommendations": []
+      },
+      {
+        "repo": {
+          "id": "rich",
+          "name": "Rich",
+          "repoUrl": "https://github.com/Textualize/rich.git",
+          "cloneDepth": 1,
+          "language": "python",
+          "sizeClass": "medium",
+          "cases": [
+            {
+              "id": "console-render-measure",
+              "mode": "context",
+              "contextBehavior": "multi_file_debug",
+              "task": "Debug Rich console rendering and measurement behavior when styled segments wrap and width is calculated.",
+              "expectedFiles": [
+                "rich/console.py",
+                "rich/measure.py",
+                "rich/segment.py"
+              ],
+              "excludedFiles": [
+                "docs/",
+                "examples/",
+                "tests/"
+              ],
+              "budget": 900
+            }
+          ]
+        },
+        "rootPath": "/tmp/kairn-publication-workdirs/rich",
+        "status": "passed",
+        "index": {
+          "files": 530,
+          "totalSizeBytes": 43020392,
+          "totalSizeMb": 41.03,
+          "softMaxSizeMb": 250,
+          "hardMaxSizeMb": 1000,
+          "graphEdges": 674,
+          "semanticChunks": 2100,
+          "lexicalTerms": 90000,
+          "tiers": {
+            "tier0": 350,
+            "tier1": 0,
+            "tier2": 4,
+            "tier3": 176,
+            "tier4": 0
+          }
+        },
+        "gates": {
+          "maxStateMb": 250,
+          "maxPrimeLatencyMs": 10000,
+          "maxRepoPreflightMs": 120000,
+          "expectedTopK": 5,
+          "requireSuppressionForWeakCases": true
+        },
+        "stateWithinLimit": true,
+        "elapsedMs": 3140,
+        "cases": [
+          {
+            "repoId": "rich",
+            "caseId": "console-render-measure",
+            "task": "Debug Rich console rendering and measurement behavior when styled segments wrap and width is calculated.",
+            "profile": "failure_debug",
+            "expectedFiles": [
+              "rich/console.py",
+              "rich/measure.py",
+              "rich/segment.py"
+            ],
+            "returnedFiles": [
+              "rich/console.py",
+              "rich/measure.py"
+            ],
+            "missingExpectedFiles": [
+              "rich/segment.py"
+            ],
+            "companionFilesReturned": [
+              "rich/measure.py"
+            ],
+            "missingCompanionFiles": [
+              "rich/segment.py"
+            ],
+            "excludedFiles": [
+              "docs/",
+              "examples/",
+              "tests/"
+            ],
+            "excludedHits": [],
+            "noisePrefixHits": [],
+            "sourceVsTestDecision": "source_first",
+            "companionReasons": {
+              "rich/measure.py": [
+                "role match: scheduler/renderer pair",
+                "role path match: scheduler/renderer pair",
+                "canonical role basename anchor: measure",
+                "primary source role anchor",
+                "exact canonical role file",
+                "specific task term match: rich, console, render, measurement"
+              ],
+              "rich/segment.py": [
+                "role match: scheduler/renderer pair",
+                "role path match: scheduler/renderer pair",
+                "canonical role basename anchor: segment",
+                "primary source role anchor",
+                "exact canonical role file",
+                "specific task term match: rich, console, rendering, render"
+              ]
+            },
+            "primeTokens": 414,
+            "primeLatencyMs": 875,
+            "timings": {
+              "initialInventoryMs": 1,
+              "findContextMs": 722,
+              "decisionMs": 2,
+              "formatMs": 0,
+              "totalPrimeMs": 867
+            },
+            "contextDecision": "shrink",
+            "qualityScore": 100,
+            "minExpectedHits": 2,
+            "requiredCompanionHits": 1,
+            "companionGatePassed": true,
+            "expectedTopKPassed": true,
+            "excludedFilesAvoided": true,
+            "suppressionPassed": true,
+            "qualityGatePassed": true,
+            "summary": "Preflight quality gate passed.",
+            "recommendations": []
+          }
+        ],
+        "weakestCases": [],
+        "recommendations": []
+      },
+      {
+        "repo": {
+          "id": "httpcore",
+          "name": "httpcore",
+          "repoUrl": "https://github.com/encode/httpcore.git",
+          "cloneDepth": 1,
+          "language": "python",
+          "sizeClass": "medium",
+          "cases": [
+            {
+              "id": "connection-pool-retry",
+              "mode": "context",
+              "contextBehavior": "failure_first",
+              "task": "Debug httpcore connection pool retry and request dispatch behavior after a connection failure.",
+              "expectedFiles": [
+                "httpcore/_sync/connection_pool.py",
+                "httpcore/_sync/connection.py"
+              ],
+              "excludedFiles": [
+                "docs/",
+                "tests/"
+              ],
+              "budget": 850
+            }
+          ]
+        },
+        "rootPath": "/tmp/kairn-publication-workdirs/httpcore",
+        "status": "passed",
+        "index": {
+          "files": 90,
+          "totalSizeBytes": 24170600,
+          "totalSizeMb": 23.05,
+          "softMaxSizeMb": 250,
+          "hardMaxSizeMb": 1000,
+          "graphEdges": 113,
+          "semanticChunks": 791,
+          "lexicalTerms": 48759,
+          "tiers": {
+            "tier0": 34,
+            "tier1": 0,
+            "tier2": 1,
+            "tier3": 55,
+            "tier4": 0
+          }
+        },
+        "gates": {
+          "maxStateMb": 250,
+          "maxPrimeLatencyMs": 10000,
+          "maxRepoPreflightMs": 120000,
+          "expectedTopK": 5,
+          "requireSuppressionForWeakCases": true
+        },
+        "stateWithinLimit": true,
+        "elapsedMs": 1397,
+        "cases": [
+          {
+            "repoId": "httpcore",
+            "caseId": "connection-pool-retry",
+            "task": "Debug httpcore connection pool retry and request dispatch behavior after a connection failure.",
+            "profile": "failure_debug",
+            "expectedFiles": [
+              "httpcore/_sync/connection_pool.py",
+              "httpcore/_sync/connection.py"
+            ],
+            "returnedFiles": [
+              "httpcore/_sync/connection_pool.py",
+              "httpcore/_async/connection_pool.py"
+            ],
+            "missingExpectedFiles": [
+              "httpcore/_sync/connection.py"
+            ],
+            "companionFilesReturned": [
+              "httpcore/_async/connection_pool.py"
+            ],
+            "missingCompanionFiles": [
+              "httpcore/_sync/connection.py"
+            ],
+            "excludedFiles": [
+              "docs/",
+              "tests/"
+            ],
+            "excludedHits": [],
+            "noisePrefixHits": [],
+            "sourceVsTestDecision": "source_first",
+            "companionReasons": {
+              "httpcore/_async/connection_pool.py": [
+                "role match: interceptor/dispatch/adapter pair",
+                "role match: connection/pool pair",
+                "role match: log/core/sink pair",
+                "role match: schema/field generation pair",
+                "role path match: connection/pool pair",
+                "canonical role basename anchor: connection, pool, connectionpool"
+              ],
+              "httpcore/_sync/connection.py": [
+                "role match: interceptor/dispatch/adapter pair",
+                "role match: connection/pool pair",
+                "role match: log/core/sink pair",
+                "role match: schema/field generation pair",
+                "role path match: connection/pool pair",
+                "canonical role basename anchor: connection"
+              ]
+            },
+            "primeTokens": 416,
+            "primeLatencyMs": 292,
+            "timings": {
+              "initialInventoryMs": 0,
+              "findContextMs": 183,
+              "decisionMs": 0,
+              "formatMs": 0,
+              "totalPrimeMs": 291
+            },
+            "contextDecision": "shrink",
+            "qualityScore": 100,
+            "minExpectedHits": 1,
+            "requiredCompanionHits": 0,
+            "companionGatePassed": true,
+            "expectedTopKPassed": true,
+            "excludedFilesAvoided": true,
+            "suppressionPassed": true,
+            "qualityGatePassed": true,
+            "summary": "Preflight quality gate passed.",
+            "recommendations": []
+          }
+        ],
+        "weakestCases": [],
+        "recommendations": []
+      },
+      {
+        "repo": {
+          "id": "chi",
+          "name": "Chi",
+          "repoUrl": "https://github.com/go-chi/chi.git",
+          "cloneDepth": 1,
+          "language": "go",
+          "sizeClass": "medium",
+          "cases": [
+            {
+              "id": "mux-route-context",
+              "mode": "context",
+              "contextBehavior": "multi_file_debug",
+              "task": "Debug chi router route context behavior when middleware and route patterns dispatch through the mux.",
+              "expectedFiles": [
+                "mux.go",
+                "context.go",
+                "tree.go"
+              ],
+              "excludedFiles": [
+                "_examples/",
+                "middleware/*_test.go"
+              ],
+              "budget": 850
+            }
+          ]
+        },
+        "rootPath": "/tmp/kairn-publication-workdirs/chi",
+        "status": "passed",
+        "index": {
+          "files": 95,
+          "totalSizeBytes": 5468264,
+          "totalSizeMb": 5.21,
+          "softMaxSizeMb": 250,
+          "hardMaxSizeMb": 1000,
+          "graphEdges": 189,
+          "semanticChunks": 75,
+          "lexicalTerms": 12641,
+          "tiers": {
+            "tier0": 20,
+            "tier1": 0,
+            "tier2": 1,
+            "tier3": 74,
+            "tier4": 0
+          }
+        },
+        "gates": {
+          "maxStateMb": 250,
+          "maxPrimeLatencyMs": 10000,
+          "maxRepoPreflightMs": 120000,
+          "expectedTopK": 5,
+          "requireSuppressionForWeakCases": true
+        },
+        "stateWithinLimit": true,
+        "elapsedMs": 646,
+        "cases": [
+          {
+            "repoId": "chi",
+            "caseId": "mux-route-context",
+            "task": "Debug chi router route context behavior when middleware and route patterns dispatch through the mux.",
+            "profile": "failure_debug",
+            "expectedFiles": [
+              "mux.go",
+              "context.go",
+              "tree.go"
+            ],
+            "returnedFiles": [
+              "mux.go",
+              "context.go"
+            ],
+            "missingExpectedFiles": [
+              "tree.go"
+            ],
+            "companionFilesReturned": [
+              "context.go"
+            ],
+            "missingCompanionFiles": [
+              "tree.go"
+            ],
+            "excludedFiles": [
+              "_examples/",
+              "middleware/*_test.go"
+            ],
+            "excludedHits": [],
+            "noisePrefixHits": [],
+            "sourceVsTestDecision": "source_first",
+            "companionReasons": {
+              "context.go": [
+                "role match: routing/dependency pair",
+                "role match: interceptor/dispatch/adapter pair",
+                "role match: connection/pool pair",
+                "role match: group/context/handler pair",
+                "role match: MCP/runtime pair",
+                "role path match: group/context/handler pair"
+              ],
+              "tree.go": [
+                "role match: routing/dependency pair",
+                "role match: group/context/handler pair",
+                "role path match: routing/dependency pair",
+                "specific task term match: chi",
+                "routing/dependency pair",
+                "group/context/handler pair"
+              ]
+            },
+            "primeTokens": 378,
+            "primeLatencyMs": 199,
+            "timings": {
+              "initialInventoryMs": 0,
+              "findContextMs": 94,
+              "decisionMs": 1,
+              "formatMs": 0,
+              "totalPrimeMs": 198
+            },
+            "contextDecision": "shrink",
+            "qualityScore": 100,
+            "minExpectedHits": 2,
+            "requiredCompanionHits": 1,
+            "companionGatePassed": true,
+            "expectedTopKPassed": true,
+            "excludedFilesAvoided": true,
+            "suppressionPassed": true,
+            "qualityGatePassed": true,
+            "summary": "Preflight quality gate passed.",
+            "recommendations": []
+          }
+        ],
+        "weakestCases": [],
+        "recommendations": []
+      },
+      {
+        "repo": {
+          "id": "zap",
+          "name": "Zap",
+          "repoUrl": "https://github.com/uber-go/zap.git",
+          "cloneDepth": 1,
+          "language": "go",
+          "sizeClass": "medium",
+          "cases": [
+            {
+              "id": "core-entry-write",
+              "mode": "context",
+              "contextBehavior": "source_rescue",
+              "task": "Debug zap core entry writing when checked entries dispatch fields to the underlying core and encoder.",
+              "expectedFiles": [
+                "zapcore/core.go",
+                "zapcore/entry.go",
+                "zapcore/encoder.go"
+              ],
+              "excludedFiles": [
+                "internal/*test*",
+                "zaptest/",
+                "benchmarks/"
+              ],
+              "budget": 850
+            }
+          ]
+        },
+        "rootPath": "/tmp/kairn-publication-workdirs/zap",
+        "status": "failed",
+        "index": {
+          "files": 176,
+          "totalSizeBytes": 7823464,
+          "totalSizeMb": 7.46,
+          "softMaxSizeMb": 250,
+          "hardMaxSizeMb": 1000,
+          "graphEdges": 373,
+          "semanticChunks": 147,
+          "lexicalTerms": 18619,
+          "tiers": {
+            "tier0": 29,
+            "tier1": 0,
+            "tier2": 4,
+            "tier3": 143,
+            "tier4": 0
+          }
+        },
+        "gates": {
+          "maxStateMb": 250,
+          "maxPrimeLatencyMs": 10000,
+          "maxRepoPreflightMs": 120000,
+          "expectedTopK": 5,
+          "requireSuppressionForWeakCases": true
+        },
+        "stateWithinLimit": true,
+        "elapsedMs": 766,
+        "cases": [
+          {
+            "repoId": "zap",
+            "caseId": "core-entry-write",
+            "task": "Debug zap core entry writing when checked entries dispatch fields to the underlying core and encoder.",
+            "profile": "failure_debug",
+            "expectedFiles": [
+              "zapcore/core.go",
+              "zapcore/entry.go",
+              "zapcore/encoder.go"
+            ],
+            "returnedFiles": [
+              "zapcore/field.go"
+            ],
+            "missingExpectedFiles": [
+              "zapcore/core.go",
+              "zapcore/entry.go",
+              "zapcore/encoder.go"
+            ],
+            "companionFilesReturned": [],
+            "missingCompanionFiles": [
+              "zapcore/entry.go",
+              "zapcore/encoder.go"
+            ],
+            "excludedFiles": [
+              "internal/*test*",
+              "zaptest/",
+              "benchmarks/"
+            ],
+            "excludedHits": [],
+            "noisePrefixHits": [],
+            "sourceVsTestDecision": "source_first",
+            "companionReasons": {
+              "field.go": [
+                "role match: log/core/sink pair",
+                "role match: schema/field generation pair",
+                "role match: statement/callback/field pair",
+                "role path match: log/core/sink pair",
+                "role path match: schema/field generation pair",
+                "role path match: statement/callback/field pair"
+              ],
+              "exp/zapfield/zapfield.go": [
+                "role match: log/core/sink pair",
+                "role match: schema/field generation pair",
+                "role match: statement/callback/field pair",
+                "log/core/sink pair",
+                "schema/field generation pair",
+                "statement/callback/field pair"
+              ]
+            },
+            "primeTokens": 356,
+            "primeLatencyMs": 245,
+            "timings": {
+              "initialInventoryMs": 0,
+              "findContextMs": 135,
+              "decisionMs": 0,
+              "formatMs": 0,
+              "totalPrimeMs": 244
+            },
+            "contextDecision": "shrink",
+            "qualityScore": 96,
+            "minExpectedHits": 1,
+            "requiredCompanionHits": 0,
+            "companionGatePassed": true,
+            "expectedTopKPassed": false,
+            "excludedFilesAvoided": true,
+            "suppressionPassed": true,
+            "qualityGatePassed": false,
+            "summary": "Preflight quality gate failed.",
+            "recommendations": [
+              "Expected file hits below minimum 1/3; missing from top 5: zapcore/core.go, zapcore/entry.go, zapcore/encoder.go"
+            ]
+          }
+        ],
+        "weakestCases": [
+          {
+            "repoId": "zap",
+            "caseId": "core-entry-write",
+            "task": "Debug zap core entry writing when checked entries dispatch fields to the underlying core and encoder.",
+            "profile": "failure_debug",
+            "expectedFiles": [
+              "zapcore/core.go",
+              "zapcore/entry.go",
+              "zapcore/encoder.go"
+            ],
+            "returnedFiles": [
+              "zapcore/field.go"
+            ],
+            "missingExpectedFiles": [
+              "zapcore/core.go",
+              "zapcore/entry.go",
+              "zapcore/encoder.go"
+            ],
+            "companionFilesReturned": [],
+            "missingCompanionFiles": [
+              "zapcore/entry.go",
+              "zapcore/encoder.go"
+            ],
+            "excludedFiles": [
+              "internal/*test*",
+              "zaptest/",
+              "benchmarks/"
+            ],
+            "excludedHits": [],
+            "noisePrefixHits": [],
+            "sourceVsTestDecision": "source_first",
+            "companionReasons": {
+              "field.go": [
+                "role match: log/core/sink pair",
+                "role match: schema/field generation pair",
+                "role match: statement/callback/field pair",
+                "role path match: log/core/sink pair",
+                "role path match: schema/field generation pair",
+                "role path match: statement/callback/field pair"
+              ],
+              "exp/zapfield/zapfield.go": [
+                "role match: log/core/sink pair",
+                "role match: schema/field generation pair",
+                "role match: statement/callback/field pair",
+                "log/core/sink pair",
+                "schema/field generation pair",
+                "statement/callback/field pair"
+              ]
+            },
+            "primeTokens": 356,
+            "primeLatencyMs": 245,
+            "timings": {
+              "initialInventoryMs": 0,
+              "findContextMs": 135,
+              "decisionMs": 0,
+              "formatMs": 0,
+              "totalPrimeMs": 244
+            },
+            "contextDecision": "shrink",
+            "qualityScore": 96,
+            "minExpectedHits": 1,
+            "requiredCompanionHits": 0,
+            "companionGatePassed": true,
+            "expectedTopKPassed": false,
+            "excludedFilesAvoided": true,
+            "suppressionPassed": true,
+            "qualityGatePassed": false,
+            "summary": "Preflight quality gate failed.",
+            "recommendations": [
+              "Expected file hits below minimum 1/3; missing from top 5: zapcore/core.go, zapcore/entry.go, zapcore/encoder.go"
+            ]
+          }
+        ],
+        "recommendations": [
+          "core-entry-write: Expected file hits below minimum 1/3; missing from top 5: zapcore/core.go, zapcore/entry.go, zapcore/encoder.go"
+        ]
+      },
+      {
+        "repo": {
+          "id": "okhttp",
+          "name": "OkHttp",
+          "repoUrl": "https://github.com/square/okhttp.git",
+          "cloneDepth": 1,
+          "language": "java",
+          "sizeClass": "large",
+          "cases": [
+            {
+              "id": "interceptor-chain-call",
+              "mode": "context",
+              "contextBehavior": "multi_file_debug",
+              "task": "Debug OkHttp interceptor chain behavior when real calls proceed through application and network interceptors.",
+              "expectedFiles": [
+                "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/http/RealInterceptorChain.kt",
+                "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/connection/RealCall.kt"
+              ],
+              "excludedFiles": [
+                "**/src/test/",
+                "docs/",
+                "samples/"
+              ],
+              "budget": 900
+            }
+          ]
+        },
+        "rootPath": "/tmp/kairn-publication-workdirs/okhttp",
+        "status": "failed",
+        "index": {
+          "files": 783,
+          "totalSizeBytes": 47435880,
+          "totalSizeMb": 45.24,
+          "softMaxSizeMb": 250,
+          "hardMaxSizeMb": 1000,
+          "graphEdges": 290,
+          "semanticChunks": 933,
+          "lexicalTerms": 72030,
+          "tiers": {
+            "tier0": 138,
+            "tier1": 0,
+            "tier2": 5,
+            "tier3": 640,
+            "tier4": 0
+          }
+        },
+        "gates": {
+          "maxStateMb": 250,
+          "maxPrimeLatencyMs": 10000,
+          "maxRepoPreflightMs": 120000,
+          "expectedTopK": 5,
+          "requireSuppressionForWeakCases": true
+        },
+        "stateWithinLimit": true,
+        "elapsedMs": 1942,
+        "cases": [
+          {
+            "repoId": "okhttp",
+            "caseId": "interceptor-chain-call",
+            "task": "Debug OkHttp interceptor chain behavior when real calls proceed through application and network interceptors.",
+            "profile": "failure_debug",
+            "expectedFiles": [
+              "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/http/RealInterceptorChain.kt",
+              "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/connection/RealCall.kt"
+            ],
+            "returnedFiles": [
+              "okhttp/src/commonJvmAndroid/kotlin/okhttp3/OkHttp.kt",
+              "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/connection/RealCall.kt"
+            ],
+            "missingExpectedFiles": [
+              "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/http/RealInterceptorChain.kt"
+            ],
+            "companionFilesReturned": [
+              "okhttp/src/commonJvmAndroid/kotlin/okhttp3/OkHttp.kt"
+            ],
+            "missingCompanionFiles": [],
+            "excludedFiles": [
+              "**/src/test/",
+              "docs/",
+              "samples/"
+            ],
+            "excludedHits": [],
+            "noisePrefixHits": [],
+            "sourceVsTestDecision": "source_first",
+            "companionReasons": {
+              "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/http/RealInterceptorChain.kt": [
+                "role match: interceptor/dispatch/adapter pair",
+                "role match: group/context/handler pair",
+                "role path match: interceptor/dispatch/adapter pair",
+                "role path match: group/context/handler pair",
+                "canonical role basename anchor: interceptorchain",
+                "specific task term match: http, interceptor, chain, real"
+              ],
+              "okhttp/src/commonJvmAndroid/kotlin/okhttp3/OkHttp.kt": [
+                "canonical role basename anchor: okhttp",
+                "specific task term match: ok, http",
+                "named source surface: OkHttp",
+                "specific path term match: ok, http",
+                "compound path term match: okhttp",
+                "unmentioned specialized surface downranked"
+              ]
+            },
+            "primeTokens": 418,
+            "primeLatencyMs": 474,
+            "timings": {
+              "initialInventoryMs": 1,
+              "findContextMs": 349,
+              "decisionMs": 0,
+              "formatMs": 0,
+              "totalPrimeMs": 473
+            },
+            "contextDecision": "shrink",
+            "qualityScore": 100,
+            "minExpectedHits": 2,
+            "requiredCompanionHits": 1,
+            "companionGatePassed": true,
+            "expectedTopKPassed": false,
+            "excludedFilesAvoided": true,
+            "suppressionPassed": true,
+            "qualityGatePassed": false,
+            "summary": "Preflight quality gate failed.",
+            "recommendations": [
+              "Expected files missing from top 5: okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/http/RealInterceptorChain.kt"
+            ]
+          }
+        ],
+        "weakestCases": [
+          {
+            "repoId": "okhttp",
+            "caseId": "interceptor-chain-call",
+            "task": "Debug OkHttp interceptor chain behavior when real calls proceed through application and network interceptors.",
+            "profile": "failure_debug",
+            "expectedFiles": [
+              "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/http/RealInterceptorChain.kt",
+              "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/connection/RealCall.kt"
+            ],
+            "returnedFiles": [
+              "okhttp/src/commonJvmAndroid/kotlin/okhttp3/OkHttp.kt",
+              "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/connection/RealCall.kt"
+            ],
+            "missingExpectedFiles": [
+              "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/http/RealInterceptorChain.kt"
+            ],
+            "companionFilesReturned": [
+              "okhttp/src/commonJvmAndroid/kotlin/okhttp3/OkHttp.kt"
+            ],
+            "missingCompanionFiles": [],
+            "excludedFiles": [
+              "**/src/test/",
+              "docs/",
+              "samples/"
+            ],
+            "excludedHits": [],
+            "noisePrefixHits": [],
+            "sourceVsTestDecision": "source_first",
+            "companionReasons": {
+              "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/http/RealInterceptorChain.kt": [
+                "role match: interceptor/dispatch/adapter pair",
+                "role match: group/context/handler pair",
+                "role path match: interceptor/dispatch/adapter pair",
+                "role path match: group/context/handler pair",
+                "canonical role basename anchor: interceptorchain",
+                "specific task term match: http, interceptor, chain, real"
+              ],
+              "okhttp/src/commonJvmAndroid/kotlin/okhttp3/OkHttp.kt": [
+                "canonical role basename anchor: okhttp",
+                "specific task term match: ok, http",
+                "named source surface: OkHttp",
+                "specific path term match: ok, http",
+                "compound path term match: okhttp",
+                "unmentioned specialized surface downranked"
+              ]
+            },
+            "primeTokens": 418,
+            "primeLatencyMs": 474,
+            "timings": {
+              "initialInventoryMs": 1,
+              "findContextMs": 349,
+              "decisionMs": 0,
+              "formatMs": 0,
+              "totalPrimeMs": 473
+            },
+            "contextDecision": "shrink",
+            "qualityScore": 100,
+            "minExpectedHits": 2,
+            "requiredCompanionHits": 1,
+            "companionGatePassed": true,
+            "expectedTopKPassed": false,
+            "excludedFilesAvoided": true,
+            "suppressionPassed": true,
+            "qualityGatePassed": false,
+            "summary": "Preflight quality gate failed.",
+            "recommendations": [
+              "Expected files missing from top 5: okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/http/RealInterceptorChain.kt"
+            ]
+          }
+        ],
+        "recommendations": [
+          "interceptor-chain-call: Expected files missing from top 5: okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/http/RealInterceptorChain.kt"
+        ]
+      },
+      {
+        "repo": {
+          "id": "spdlog",
+          "name": "spdlog",
+          "repoUrl": "https://github.com/gabime/spdlog.git",
+          "cloneDepth": 1,
+          "language": "cpp",
+          "sizeClass": "medium",
+          "cases": [
+            {
+              "id": "logger-sink-dispatch",
+              "mode": "context",
+              "contextBehavior": "source_rescue",
+              "task": "Debug spdlog logger sink dispatch behavior when a log message fans out through sinks and flush policy.",
+              "expectedFiles": [
+                "include/spdlog/logger.h",
+                "include/spdlog/sinks/sink.h"
+              ],
+              "excludedFiles": [
+                "tests/",
+                "example/",
+                "bench/"
+              ],
+              "budget": 850
+            }
+          ]
+        },
+        "rootPath": "/tmp/kairn-publication-workdirs/spdlog",
+        "status": "passed",
+        "index": {
+          "files": 178,
+          "totalSizeBytes": 50671720,
+          "totalSizeMb": 48.32,
+          "softMaxSizeMb": 250,
+          "hardMaxSizeMb": 1000,
+          "graphEdges": 495,
+          "semanticChunks": 2884,
+          "lexicalTerms": 90000,
+          "tiers": {
+            "tier0": 23,
+            "tier1": 0,
+            "tier2": 5,
+            "tier3": 150,
+            "tier4": 0
+          }
+        },
+        "gates": {
+          "maxStateMb": 250,
+          "maxPrimeLatencyMs": 10000,
+          "maxRepoPreflightMs": 120000,
+          "expectedTopK": 5,
+          "requireSuppressionForWeakCases": true
+        },
+        "stateWithinLimit": true,
+        "elapsedMs": 2431,
+        "cases": [
+          {
+            "repoId": "spdlog",
+            "caseId": "logger-sink-dispatch",
+            "task": "Debug spdlog logger sink dispatch behavior when a log message fans out through sinks and flush policy.",
+            "profile": "failure_debug",
+            "expectedFiles": [
+              "include/spdlog/logger.h",
+              "include/spdlog/sinks/sink.h"
+            ],
+            "returnedFiles": [
+              "include/spdlog/logger.h",
+              "include/spdlog/sinks/sink.h"
+            ],
+            "missingExpectedFiles": [],
+            "companionFilesReturned": [
+              "include/spdlog/sinks/sink.h"
+            ],
+            "missingCompanionFiles": [],
+            "excludedFiles": [
+              "tests/",
+              "example/",
+              "bench/"
+            ],
+            "excludedHits": [],
+            "noisePrefixHits": [],
+            "sourceVsTestDecision": "source_first",
+            "companionReasons": {
+              "include/spdlog/sinks/sink.h": [
+                "role match: scheduler/renderer pair",
+                "role match: log/core/sink pair",
+                "role match: fiber/hooks/workloop pair",
+                "role path match: log/core/sink pair",
+                "canonical role basename anchor: sink",
+                "primary source role anchor"
+              ],
+              "include/spdlog/sinks/base_sink.h": [
+                "role match: scheduler/renderer pair",
+                "role match: log/core/sink pair",
+                "role match: fiber/hooks/workloop pair",
+                "role path match: log/core/sink pair",
+                "canonical role basename anchor: sink",
+                "primary source role anchor"
+              ]
+            },
+            "primeTokens": 420,
+            "primeLatencyMs": 745,
+            "timings": {
+              "initialInventoryMs": 0,
+              "findContextMs": 637,
+              "decisionMs": 1,
+              "formatMs": 0,
+              "totalPrimeMs": 744
+            },
+            "contextDecision": "shrink",
+            "qualityScore": 100,
+            "minExpectedHits": 1,
+            "requiredCompanionHits": 0,
+            "companionGatePassed": true,
+            "expectedTopKPassed": true,
+            "excludedFilesAvoided": true,
+            "suppressionPassed": true,
+            "qualityGatePassed": true,
+            "summary": "Preflight quality gate passed.",
+            "recommendations": []
+          }
+        ],
+        "weakestCases": [],
+        "recommendations": []
+      },
+      {
+        "repo": {
+          "id": "weak-signal-canary",
+          "name": "Zod Weak Signal Canary",
+          "repoUrl": "https://github.com/colinhacks/zod.git",
+          "cloneDepth": 1,
+          "language": "typescript",
+          "sizeClass": "medium",
+          "cases": [
+            {
+              "id": "vague-cleanup",
+              "mode": "context",
+              "contextBehavior": "weak_signal",
+              "task": "Make this better and clean up the confusing part.",
+              "expectedFiles": [],
+              "excludedFiles": [
+                "docs/",
+                "packages/*/src/*/*.test.ts"
+              ],
+              "successCriteria": [
+                "suppress low-confidence context"
+              ],
+              "budget": 500
+            }
+          ]
+        },
+        "rootPath": "/tmp/kairn-publication-workdirs/weak-signal-canary",
+        "status": "passed",
+        "index": {
+          "files": 531,
+          "totalSizeBytes": 49049704,
+          "totalSizeMb": 46.78,
+          "softMaxSizeMb": 250,
+          "hardMaxSizeMb": 1000,
+          "graphEdges": 273,
+          "semanticChunks": 1891,
+          "lexicalTerms": 79110,
+          "tiers": {
+            "tier0": 142,
+            "tier1": 0,
+            "tier2": 39,
+            "tier3": 350,
+            "tier4": 0
+          }
+        },
+        "gates": {
+          "maxStateMb": 250,
+          "maxPrimeLatencyMs": 10000,
+          "maxRepoPreflightMs": 120000,
+          "expectedTopK": 5,
+          "requireSuppressionForWeakCases": true
+        },
+        "stateWithinLimit": true,
+        "elapsedMs": 3089,
+        "cases": [
+          {
+            "repoId": "weak-signal-canary",
+            "caseId": "vague-cleanup",
+            "task": "Make this better and clean up the confusing part.",
+            "profile": "generic",
+            "expectedFiles": [],
+            "returnedFiles": [],
+            "missingExpectedFiles": [],
+            "companionFilesReturned": [],
+            "missingCompanionFiles": [],
+            "excludedFiles": [
+              "docs/",
+              "packages/*/src/*/*.test.ts"
+            ],
+            "excludedHits": [],
+            "noisePrefixHits": [],
+            "sourceVsTestDecision": "no_files",
+            "companionReasons": {},
+            "primeTokens": 110,
+            "primeLatencyMs": 296,
+            "timings": {
+              "initialInventoryMs": 1,
+              "findContextMs": 193,
+              "decisionMs": 1,
+              "formatMs": 0,
+              "totalPrimeMs": 296
+            },
+            "contextDecision": "suppress",
+            "qualityScore": 37,
+            "minExpectedHits": 0,
+            "requiredCompanionHits": 0,
+            "companionGatePassed": true,
+            "expectedTopKPassed": true,
+            "excludedFilesAvoided": true,
+            "suppressionPassed": true,
+            "qualityGatePassed": true,
+            "summary": "Preflight quality gate passed.",
+            "recommendations": []
+          }
+        ],
+        "weakestCases": [],
+        "recommendations": []
+      }
+    ],
+    "totals": {
+      "repos": 9,
+      "passedRepos": 6,
+      "failedRepos": 3,
+      "skippedRepos": 0,
+      "cases": 9,
+      "qualityPassingCases": 6,
+      "statePassingRepos": 9
+    },
+    "recommendations": [
+      "Some cases missed expected source files in the top results; improve general exact-source rescue before live testing.",
+      "Some multi-surface cases missed companion files; improve query-local companion routing before live testing.",
+      "Some cases failed non-retrieval gates such as latency or suppression; inspect weakest case recommendations before live-agent tests."
+    ]
+  }
+}
