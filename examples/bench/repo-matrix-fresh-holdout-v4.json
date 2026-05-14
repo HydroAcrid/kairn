@@ -1,0 +1,197 @@
+{
+  "id": "repo-matrix-fresh-holdout-v4",
+  "name": "Kairn Fresh Holdout V4",
+  "gates": {
+    "maxStateMb": 350,
+    "maxPrimeLatencyMs": 12000,
+    "expectedTopK": 5,
+    "requireSuppressionForWeakCases": true
+  },
+  "repos": [
+    {
+      "id": "webpack",
+      "name": "webpack",
+      "repoUrl": "https://github.com/webpack/webpack.git",
+      "cloneDepth": 1,
+      "language": "javascript",
+      "sizeClass": "large",
+      "cases": [
+        {
+          "id": "normal-module-resolver",
+          "mode": "context",
+          "contextBehavior": "multi_file_debug",
+          "task": "Debug webpack NormalModuleFactory module resolution when requests are resolved through ResolverFactory and parser hooks.",
+          "expectedFiles": [
+            "lib/NormalModuleFactory.js",
+            "lib/ResolverFactory.js",
+            "lib/javascript/JavascriptParser.js"
+          ],
+          "excludedFiles": ["test/", "examples/", "benchmark/", "declarations/"],
+          "budget": 900
+        }
+      ]
+    },
+    {
+      "id": "rollup",
+      "name": "Rollup",
+      "repoUrl": "https://github.com/rollup/rollup.git",
+      "cloneDepth": 1,
+      "language": "typescript",
+      "sizeClass": "large",
+      "cases": [
+        {
+          "id": "module-loader-resolve-id",
+          "mode": "context",
+          "contextBehavior": "multi_file_debug",
+          "task": "Debug Rollup module loading when ModuleLoader resolves import ids through resolveId and links modules into the graph.",
+          "expectedFiles": ["src/ModuleLoader.ts", "src/utils/resolveId.ts", "src/Graph.ts"],
+          "excludedFiles": ["docs/", "test/", "perf/", "browser/"],
+          "budget": 900
+        }
+      ]
+    },
+    {
+      "id": "pydantic",
+      "name": "Pydantic",
+      "repoUrl": "https://github.com/pydantic/pydantic.git",
+      "cloneDepth": 1,
+      "language": "python",
+      "sizeClass": "large",
+      "cases": [
+        {
+          "id": "field-schema-generation",
+          "mode": "context",
+          "contextBehavior": "multi_file_debug",
+          "task": "Debug Pydantic field schema generation when aliases and model fields are converted into core schema.",
+          "expectedFiles": ["pydantic/_internal/_generate_schema.py", "pydantic/_internal/_fields.py"],
+          "excludedFiles": ["docs/", "tests/", "pydantic/v1/"],
+          "budget": 900
+        }
+      ]
+    },
+    {
+      "id": "werkzeug",
+      "name": "Werkzeug",
+      "repoUrl": "https://github.com/pallets/werkzeug.git",
+      "cloneDepth": 1,
+      "language": "python",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "routing-map-rule-match",
+          "mode": "context",
+          "contextBehavior": "multi_file_debug",
+          "task": "Debug Werkzeug routing when MapAdapter matches URL rules through converters and the state matcher.",
+          "expectedFiles": [
+            "src/werkzeug/routing/map.py",
+            "src/werkzeug/routing/converters.py",
+            "src/werkzeug/routing/rules.py",
+            "src/werkzeug/routing/matcher.py"
+          ],
+          "excludedFiles": ["docs/", "examples/", "tests/"],
+          "budget": 900
+        }
+      ]
+    },
+    {
+      "id": "gorm",
+      "name": "GORM",
+      "repoUrl": "https://github.com/go-gorm/gorm.git",
+      "cloneDepth": 1,
+      "language": "go",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "create-callback-statement",
+          "mode": "context",
+          "contextBehavior": "multi_file_debug",
+          "task": "Debug GORM create callback behavior when schema fields are read from Statement values before inserting rows.",
+          "expectedFiles": ["callbacks/create.go", "statement.go", "schema/field.go"],
+          "excludedFiles": ["tests/", "*/tests/", "*_test.go"],
+          "budget": 850
+        }
+      ]
+    },
+    {
+      "id": "cobra",
+      "name": "Cobra",
+      "repoUrl": "https://github.com/spf13/cobra.git",
+      "cloneDepth": 1,
+      "language": "go",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "command-args-validation",
+          "mode": "context",
+          "contextBehavior": "source_rescue",
+          "task": "Debug Cobra command execution when argument validation and command dispatch interact in the Command implementation.",
+          "expectedFiles": ["command.go", "args.go"],
+          "excludedFiles": ["site/", "doc/", "*_test.go"],
+          "budget": 800
+        }
+      ]
+    },
+    {
+      "id": "guava",
+      "name": "Guava",
+      "repoUrl": "https://github.com/google/guava.git",
+      "cloneDepth": 1,
+      "language": "java",
+      "sizeClass": "large",
+      "cases": [
+        {
+          "id": "strings-null-empty",
+          "mode": "context",
+          "contextBehavior": "cheap_single_source",
+          "task": "Fix Guava Strings nullToEmpty and isNullOrEmpty edge-case behavior in the source utility.",
+          "expectedFiles": ["guava/src/com/google/common/base/Strings.java"],
+          "excludedFiles": ["guava-tests/", "android/guava-tests/", "docs/"],
+          "budget": 700
+        }
+      ]
+    },
+    {
+      "id": "catch2",
+      "name": "Catch2",
+      "repoUrl": "https://github.com/catchorg/Catch2.git",
+      "cloneDepth": 1,
+      "language": "cpp",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "session-commandline-config",
+          "mode": "context",
+          "contextBehavior": "multi_file_debug",
+          "task": "Debug Catch2 session startup when command line parsing populates config before tests execute.",
+          "expectedFiles": [
+            "src/catch2/catch_session.cpp",
+            "src/catch2/catch_config.cpp",
+            "src/catch2/internal/catch_commandline.cpp"
+          ],
+          "excludedFiles": ["tests/", "docs/", "examples/", "extras/"],
+          "budget": 900
+        }
+      ]
+    },
+    {
+      "id": "weak-signal-canary",
+      "name": "Rollup Weak Signal Canary",
+      "repoUrl": "https://github.com/rollup/rollup.git",
+      "cloneDepth": 1,
+      "language": "typescript",
+      "sizeClass": "large",
+      "cases": [
+        {
+          "id": "vague-refactor",
+          "mode": "context",
+          "contextBehavior": "weak_signal",
+          "task": "Clean this up and make the confusing part better.",
+          "expectedFiles": [],
+          "excludedFiles": ["docs/", "test/"],
+          "successCriteria": ["suppress low-confidence context"],
+          "budget": 500
+        }
+      ]
+    }
+  ]
+}

@@ -443,8 +443,10 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
       hookFiles: coordination.hookFiles.slice(0, 3)
     };
   }
+  const decisionPrimaryFile = typeof decision?.primaryFile === "string" ? decision.primaryFile : undefined;
   const unshownPrimeFiles = prime.files.filter((file) => !coordination.hookFiles.includes(file));
   const sourceCandidates = uniqueValues([
+    ...(decisionPrimaryFile && isMcpPrimarySourceFile(decisionPrimaryFile) ? [decisionPrimaryFile] : []),
     ...unshownPrimeFiles.filter(isMcpPrimarySourceFile),
     ...prime.files.filter(isMcpPrimarySourceFile),
     ...unshownPrimeFiles.filter((file) => !isMcpLikelyTestFile(file) && !isMcpNoisyFile(file)),

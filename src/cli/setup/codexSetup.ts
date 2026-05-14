@@ -74,7 +74,10 @@ export function resolveKairnMcpCommand(): { command: string; argsPrefix: string[
       return { command: process.execPath, argsPrefix: [argvEntrypoint] };
     }
     if (path.extname(argvEntrypoint) === ".ts" || path.extname(argvEntrypoint) === ".tsx") {
-      return { command: findExecutableOnPath("tsx") ?? "tsx", argsPrefix: [argvEntrypoint] };
+      return {
+        command: findExecutableNearEntrypoint("tsx", argvEntrypoint) ?? findExecutableOnPath("tsx") ?? "tsx",
+        argsPrefix: [argvEntrypoint]
+      };
     }
     return { command: argvEntrypoint, argsPrefix: [] };
   }
@@ -83,6 +86,20 @@ export function resolveKairnMcpCommand(): { command: string; argsPrefix: string[
   if (pathCommand) return { command: pathCommand, argsPrefix: [] };
 
   return { command: "kairn", argsPrefix: [] };
+}
+
+function findExecutableNearEntrypoint(name: string, entrypoint: string): string | undefined {
+  let current = path.dirname(entrypoint);
+  while (current && current !== path.dirname(current)) {
+    const candidate = path.join(current, "node_modules", ".bin", name);
+    try {
+      fs.accessSync(candidate, fs.constants.X_OK);
+      return path.resolve(candidate);
+    } catch {
+      current = path.dirname(current);
+    }
+  }
+  return undefined;
 }
 
 function splitCommandForMcp(command: string): { command: string; argsPrefix: string[] } {

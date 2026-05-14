@@ -88,6 +88,26 @@ const ROLE_GROUPS: CompanionRole[] = [
     reason: "plugin/transform analysis pair"
   },
   {
+    id: "module-loader-resolver",
+    terms: ["module", "modules", "loader", "loading", "load", "resolve", "resolver", "resolvers", "factory", "graph", "parser", "parsing", "hook", "hooks"],
+    reason: "module/loader/resolver pair"
+  },
+  {
+    id: "schema-field-generation",
+    terms: ["schema", "schemas", "field", "fields", "alias", "aliases", "model", "models", "generate", "generation", "validator", "validators", "core"],
+    reason: "schema/field generation pair"
+  },
+  {
+    id: "statement-callback-field",
+    terms: ["statement", "statements", "callback", "callbacks", "create", "update", "query", "delete", "field", "fields", "schema", "value", "values", "insert", "rows"],
+    reason: "statement/callback/field pair"
+  },
+  {
+    id: "session-command-config",
+    terms: ["session", "sessions", "startup", "start", "command", "commands", "commandline", "command-line", "cli", "config", "configuration", "parse", "parsing", "argument", "arguments", "args"],
+    reason: "session/command/config pair"
+  },
+  {
     id: "parse-persist",
     terms: ["parse", "parser", "parsed", "persist", "persistence", "repository", "repositories", "events", "event", "ingest", "store", "storage"],
     reason: "parse/persist pair"
@@ -293,6 +313,11 @@ export function findCompanionCandidates(input: {
       score += Math.min(56, specificQueryHits.length * 14);
       reasons.push(`specific task term match: ${specificQueryHits.slice(0, 4).join(", ")}`);
     }
+    const namedFileSurface = scoreNamedFileSurface(file.path, input.query);
+    if (namedFileSurface.score !== 0) {
+      score += namedFileSurface.score;
+      reasons.push(...namedFileSurface.reasons);
+    }
     if (pathQueryHits.length > 0) {
       score += Math.min(360, pathQueryHits.length * 120);
       reasons.push(`specific path term match: ${pathQueryHits.slice(0, 4).join(", ")}`);
@@ -409,6 +434,26 @@ export function findCompanionCandidates(input: {
     if (isStringMatcherCompanion(file.path, queryTerms)) {
       score += 1150;
       reasons.push("string/matcher companion");
+    }
+    const moduleResolver = scoreModuleResolverCompanion(file.path, queryTerms);
+    if (moduleResolver.score !== 0) {
+      score += moduleResolver.score;
+      reasons.push(...moduleResolver.reasons);
+    }
+    const schemaField = scoreSchemaFieldGenerationCompanion(file.path, queryTerms);
+    if (schemaField.score !== 0) {
+      score += schemaField.score;
+      reasons.push(...schemaField.reasons);
+    }
+    const statementField = scoreStatementCallbackCompanion(file.path, queryTerms);
+    if (statementField.score !== 0) {
+      score += statementField.score;
+      reasons.push(...statementField.reasons);
+    }
+    const commandConfig = scoreSessionCommandConfigCompanion(file.path, queryTerms);
+    if (commandConfig.score !== 0) {
+      score += commandConfig.score;
+      reasons.push(...commandConfig.reasons);
     }
     if (isRoutingMapRuleCompanion(file.path, queryTerms)) {
       score += 980;
@@ -614,6 +659,18 @@ function scoreCanonicalRoleSurface(
   return { score, reasons };
 }
 
+function scoreNamedFileSurface(filePath: string, query: string): { score: number; reasons: string[] } {
+  const basename = filePath.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  if (!basename || basename.length < 5 || /^(index|main|core|base|utils?|helpers?)$/i.test(basename)) return { score: 0, reasons: [] };
+  const normalizedBasename = normalizeText(basename);
+  if (!normalizedBasename || normalizedBasename.split(" ").length < 2) return { score: 0, reasons: [] };
+  if (!normalizeText(query).includes(normalizedBasename)) return { score: 0, reasons: [] };
+  return {
+    score: 2600,
+    reasons: [`named source surface: ${basename}`]
+  };
+}
+
 function unmentionedSpecializedSurfacePenalty(filePath: string, queryTerms: Set<string>): number {
   const normalized = filePath.toLowerCase();
   const basename = normalized.split("/").at(-1) ?? normalized;
@@ -626,6 +683,7 @@ function unmentionedSpecializedSurfacePenalty(filePath: string, queryTerms: Set<
     [/logging[-_]?interceptor|logging/, ["logging", "log"], 820],
     [/stdout|stderr|console[-_]?encoder/, ["stdout", "stderr", "console"], 760],
     [/callback[-_]?sink|android[-_]?sink|msvc[-_]?sink|syslog[-_]?sink|daily[-_]?sink|rotating[-_]?sink|qt[-_]?sink|win[-_]?eventlog[-_]?sink|eventlog[-_]?sink|systemd[-_]?namespace[-_]?sink|namespace[-_]?sink|async[-_]?logger/, ["callback", "android", "msvc", "syslog", "daily", "rotating", "qt", "win", "eventlog", "systemd", "namespace", "async"], 760],
+    [/cache[-_]?plugin|cache\//, ["cache"], 760],
     [/-inl\./, ["inline", "inl"], 520],
     [/_windows|_notwin|windows|win32|notwin|android|darwin|linux|posix|unix|wasm/, ["windows", "win", "notwin", "android", "darwin", "linux", "posix", "unix", "wasm"], 620],
     [/optimizer\//, ["optimizer", "optimize"], 460]
@@ -1151,7 +1209,114 @@ function isRoutingMapRuleCompanion(filePath: string, queryTerms: Set<string>): b
     (queryTerms.has("map") || queryTerms.has("rule") || queryTerms.has("rules") || queryTerms.has("matcher") || queryTerms.has("matching") || queryTerms.has("binding"));
   if (!asksMapRules) return false;
   const normalized = filePath.toLowerCase();
-  return /(^|\/)(map|rules?|converters?)\.[a-z0-9]+$/.test(normalized) || /(^|\/)routing\/(map|rules?|converters?)\.[a-z0-9]+$/.test(normalized);
+  return /(^|\/)(map|rules?|matcher|converters?)\.[a-z0-9]+$/.test(normalized) || /(^|\/)routing\/(map|rules?|matcher|converters?)\.[a-z0-9]+$/.test(normalized);
+}
+
+function scoreModuleResolverCompanion(filePath: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const asksModuleResolution =
+    (queryTerms.has("module") || queryTerms.has("modules")) &&
+    (queryTerms.has("resolve") || queryTerms.has("resolver") || queryTerms.has("load") || queryTerms.has("loader") || queryTerms.has("loading"));
+  if (!asksModuleResolution) return { score: 0, reasons: [] };
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const compact = basename.replace(/[^a-z0-9]/g, "");
+  let score = 0;
+  const reasons: string[] = [];
+  if (/resolver(factory)?|resolveid|resolve/.test(compact)) {
+    score += 2100;
+    reasons.push("module resolver companion");
+  }
+  if (/moduleloader|loader/.test(compact)) {
+    score += 1400;
+    reasons.push("module loader companion");
+  }
+  if (/modulegraph|(^|\/)graph/.test(compact)) {
+    score += 900;
+    reasons.push("module graph companion");
+  }
+  if (/javascriptparser|[a-z0-9]+parser/.test(compact)) {
+    score += 760;
+    reasons.push("specific parser companion");
+  } else if (compact === "parser") {
+    score -= 520;
+    reasons.push("generic parser downranked for module resolution");
+  }
+  return { score, reasons };
+}
+
+function scoreSchemaFieldGenerationCompanion(filePath: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const asksSchemaFields =
+    (queryTerms.has("schema") || queryTerms.has("core")) &&
+    (queryTerms.has("field") || queryTerms.has("fields") || queryTerms.has("alias") || queryTerms.has("aliases") || queryTerms.has("generate") || queryTerms.has("generation") || queryTerms.has("model"));
+  if (!asksSchemaFields) return { score: 0, reasons: [] };
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  let score = 0;
+  const reasons: string[] = [];
+  if (/generate[_-]?schema|schema[_-]?gen|schema/.test(basename) && /generate|generation|field|fields|alias|aliases|model/.test([...queryTerms].join(" "))) {
+    score += /generate[_-]?schema/.test(basename) ? 2300 : 900;
+    reasons.push("schema generation companion");
+  }
+  if (/^_?fields?$|field/.test(basename)) {
+    score += 3200;
+    reasons.push("field definition companion");
+  }
+  if (/(^|\/)[a-z0-9_-]+-core\//.test(normalized)) {
+    score -= 2600;
+    reasons.push("dependency-core package downranked for schema/field prompt");
+  }
+  return { score, reasons };
+}
+
+function scoreStatementCallbackCompanion(filePath: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const asksStatementCallback =
+    (queryTerms.has("callback") || queryTerms.has("callbacks") || queryTerms.has("create") || queryTerms.has("insert") || queryTerms.has("row") || queryTerms.has("rows")) &&
+    (queryTerms.has("statement") || queryTerms.has("field") || queryTerms.has("fields") || queryTerms.has("schema") || queryTerms.has("value") || queryTerms.has("values"));
+  if (!asksStatementCallback) return { score: 0, reasons: [] };
+  const basename = filePath.toLowerCase().split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  let score = 0;
+  const reasons: string[] = [];
+  if (basename === "statement") {
+    score += 2300;
+    reasons.push("statement state companion");
+  }
+  if (basename === "field" || basename === "fields") {
+    score += 1900;
+    reasons.push("field metadata companion");
+  }
+  if (/^(create|update|query|delete)$/.test(basename)) {
+    score += 900;
+    reasons.push("callback phase companion");
+  }
+  return { score, reasons };
+}
+
+function scoreSessionCommandConfigCompanion(filePath: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const asksSessionCommandConfig =
+    (queryTerms.has("session") || queryTerms.has("startup") || queryTerms.has("start")) &&
+    (queryTerms.has("command") || queryTerms.has("commandline") || queryTerms.has("cli") || queryTerms.has("config") || queryTerms.has("configuration") || queryTerms.has("argument") || queryTerms.has("args"));
+  if (!asksSessionCommandConfig) return { score: 0, reasons: [] };
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  let score = 0;
+  const reasons: string[] = [];
+  if (/session/.test(basename)) {
+    score += 1300;
+    reasons.push("session startup companion");
+  }
+  if (/config/.test(basename)) {
+    score += 1700;
+    reasons.push("config companion");
+  }
+  if (/command[-_]?line|commandline|cli|args?/.test(basename) || /internal\/catch_commandline/.test(normalized)) {
+    score += 2100;
+    reasons.push("command-line parser companion");
+  }
+  if (/\.(h|hh|hpp|hxx)$/.test(normalized) && !queryTerms.has("header")) {
+    score -= 1500;
+    reasons.push("header downranked for implementation companion");
+  }
+  return { score, reasons };
 }
 
 function isTransformAnalysisCompanion(filePath: string, queryTerms: Set<string>): boolean {
@@ -1349,6 +1514,16 @@ function canonicalTerm(term: string): string {
   if (term === "entries") return "entry";
   if (term === "encoders") return "encoder";
   if (term === "fields") return "field";
+  if (term === "aliases") return "alias";
+  if (term === "generation" || term === "generating" || term === "generated") return "generate";
+  if (term === "statements") return "statement";
+  if (term === "values") return "value";
+  if (term === "rows") return "row";
+  if (term === "arguments") return "argument";
+  if (term === "args") return "arg";
+  if (term === "loading") return "load";
+  if (term === "loaders") return "loader";
+  if (term === "resolving") return "resolve";
   if (term === "resolvers") return "resolver";
   if (term === "extensions") return "extension";
   if (term === "fixtures") return "fixture";

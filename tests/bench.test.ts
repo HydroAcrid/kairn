@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -26,6 +27,7 @@ import { createFixtureRepo } from "./helpers.js";
 import type { FileRecord, HybridScoredResult } from "../src/types.js";
 
 const CLI = ["tsx", "src/cli.ts"];
+const requireFromTest = createRequire(import.meta.url);
 
 describe("benchmark suite and scoring", () => {
   it("routes explicit debug/regression prompts to the failure-debug prime profile", () => {
@@ -862,6 +864,64 @@ describe("benchmark suite and scoring", () => {
     expect(report.reports.find((item) => item.mode === "kairn_codex_session")?.metadata?.setupExitCode).toBe(0);
     expect(report.reports.find((item) => item.mode === "kairn_codex_session")?.sessionId).toMatch(/^task_/);
     expect(report.deltas.kairn?.baselineTokens).toBe(240);
+  });
+
+  it("does not count MCP savings as valid when MCP returns no useful source files", async () => {
+    const root = createFixtureRepo();
+    const suitePath = path.join(root, "endurance-mcp-usefulness-suite.json");
+    fs.writeFileSync(
+      suitePath,
+      JSON.stringify({
+        id: "fixture-endurance-mcp-usefulness",
+        name: "Fixture Endurance MCP Usefulness",
+        task: "Keep src/user.ts context focused.",
+        seed: {
+          repoUrl: root,
+          ref: "HEAD",
+          cloneDepth: 1
+        },
+        turns: [
+          {
+            id: "diagnose",
+            task: "Find src/user.ts behavior.",
+            agentPrompt: "Find src/user.ts behavior.",
+            expectedFiles: ["src/user.ts"],
+            requiredTouchedFiles: [],
+            excludedFiles: [],
+            budget: 500
+          }
+        ]
+      })
+    );
+    const sqliteModule = requireFromTest.resolve("better-sqlite3");
+    const baselineCommand = "node -e \"console.log('src/user.ts'); console.log('Token usage: total=1000 input=900 output=100')\"";
+    const insertMetricSql = "insert into metrics_events (session_id, root_path, event_kind, event_name, source, response_mode, baseline_tokens, output_tokens, saved_tokens, files_json, metadata_json, created_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    const realMcpCommand = [
+      "node -e \"",
+      `const Database=require(${JSON.stringify(sqliteModule)});`,
+      "const db=new Database('.kairn/kairn.sqlite');",
+      `db.prepare(${JSON.stringify(insertMetricSql)}).run('task_mcp', process.cwd(), 'mcp_tool_call', 'kairn_prepare_task', 'mcp', null, 100, 25, 75, JSON.stringify(['src/wrong.ts']), JSON.stringify({ toolName: 'kairn_prepare_task' }), new Date().toISOString());`,
+      "db.close();",
+      "console.log('src/user.ts');",
+      "console.log('Token usage: total=100 input=80 output=20');",
+      "\""
+    ].join("");
+
+    const report = await runBenchmarkEndurance({
+      rootPath: root,
+      suitePath,
+      baselineCommand,
+      realMcpFirstCommand: realMcpCommand,
+      turnTimeoutMs: 30000
+    });
+
+    expect(report.deltas.real_mcp_first).toMatchObject({
+      savedTokens: 900,
+      assistanceEligible: false,
+      invalidSavings: 900
+    });
+    expect(report.deltas.real_mcp_first?.validSavings).toBeUndefined();
+    expect(report.deltas.real_mcp_first?.negativeEvidenceReason).toBeTruthy();
   });
 
   it("aggregates repeated endurance runs by median savings and classifications", async () => {

@@ -592,7 +592,7 @@ function buildMcpEndurancePrompt(input: {
     prompt: [
       "Kairn long-session instruction:",
       `Use Kairn session ${input.sessionId}.`,
-      "Call kairn_prepare_task only before broad, unclear, multi-file, or failure-driven reads.",
+      "No active source has been established yet. For this diagnose/source-rescue turn, call kairn_prepare_task once before manual source reads.",
       "For an obvious single-source symbol task, inspect the likely source directly and do not call Kairn just to confirm it.",
       "If it returns stopCondition or no nextToolCalls, continue from its files and do not call more Kairn unless a check fails or the target changes.",
       "Only call kairn_get_next_context when prepare explicitly returns it; call kairn_get_failure_context once after real failures.",
@@ -887,10 +887,16 @@ function buildEnduranceDeltas(reports: BenchmarkEnduranceModeReport[]): Benchmar
       baselineQualityGatePassed: baseline?.qualityGatePassed,
       turnCount: baseline?.turns.length
     });
+    const assistanceEligible = enduranceUsefulAssistanceEligible(report, classification.assistanceEligible);
     const qualityFailureReason = enduranceQualityFailureReason(report);
     const negativeEvidenceReason =
       classificationNegativeEvidenceReason({ classification, qualityFailureReason }) ??
-      enduranceNegativeEvidenceReason({ report, savedTokens, assistanceEligible: classification.assistanceEligible });
+      enduranceNegativeEvidenceReason({ report, savedTokens, assistanceEligible });
+    const assistClassification = assistanceEligible || !classification.assistanceEligible
+      ? classification.assistClassification
+      : savedTokens !== undefined && savedTokens <= 0
+        ? "over_assist"
+        : "neutral";
     deltas[report.mode] = {
       ...(baselineTokens !== undefined ? { baselineTokens } : {}),
       ...(modeTokens !== undefined ? { modeTokens } : {}),
@@ -898,16 +904,16 @@ function buildEnduranceDeltas(reports: BenchmarkEnduranceModeReport[]): Benchmar
       ...(savingsRate !== undefined ? { savingsRate } : {}),
       qualityGatePassed: report.qualityGatePassed,
       assistanceStatus: report.assistanceStatus,
-      assistanceEligible: classification.assistanceEligible,
+      assistanceEligible,
       baselineDifficulty: classification.baselineDifficulty,
       ...(classification.baselineTokenCost !== undefined ? { baselineTokenCost: classification.baselineTokenCost } : {}),
       abstentionOutcome: classification.abstentionOutcome,
       missedOpportunity: classification.missedOpportunity,
       overAssist: classification.overAssist,
       harmfulAssist: classification.harmfulAssist,
-      assistClassification: classification.assistClassification,
-      ...(savedTokens !== undefined && report.qualityGatePassed && classification.assistanceEligible && savedTokens > 0 ? { validSavings: savedTokens } : {}),
-      ...(savedTokens !== undefined && !report.qualityGatePassed && savedTokens > 0 ? { invalidSavings: savedTokens } : {}),
+      assistClassification,
+      ...(savedTokens !== undefined && report.qualityGatePassed && assistanceEligible && savedTokens > 0 ? { validSavings: savedTokens } : {}),
+      ...(savedTokens !== undefined && (!report.qualityGatePassed || (classification.assistanceEligible && !assistanceEligible)) && savedTokens > 0 ? { invalidSavings: savedTokens } : {}),
       ...(savedTokens !== undefined && report.qualityGatePassed && !classification.assistanceEligible && savedTokens > 0 ? { passiveSavings: savedTokens } : {}),
       ...(negativeEvidenceReason ? { negativeEvidenceReason } : {})
     };
@@ -1079,6 +1085,20 @@ function classifyEnduranceAssistanceStatus(
   return "passive_suppressed";
 }
 
+function enduranceUsefulAssistanceEligible(report: BenchmarkEnduranceModeReport, baseEligible: boolean): boolean {
+  if (!baseEligible) return false;
+  const mcpOnly =
+    (report.mode === "mcp" || report.mode === "real_mcp_first") &&
+    report.assistanceActions.mcpCalls > 0 &&
+    report.assistanceActions.emitted === 0 &&
+    report.assistanceActions.shrunk === 0;
+  if (!mcpOnly) return true;
+  const usefulMcpFiles = typeof report.metadata?.mcpReturnedUsefulFileCount === "number"
+    ? report.metadata.mcpReturnedUsefulFileCount
+    : 0;
+  return usefulMcpFiles > 0;
+}
+
 function enduranceNegativeEvidenceReason(input: {
   report: BenchmarkEnduranceModeReport;
   savedTokens: number | undefined;
@@ -1086,6 +1106,9 @@ function enduranceNegativeEvidenceReason(input: {
 }): string | undefined {
   if (input.savedTokens === undefined || input.savedTokens <= 0) return undefined;
   if (!input.report.qualityGatePassed) return "Token reduction is invalid because the endurance quality gate failed.";
+  if (input.report.assistanceStatus === "active" && !input.assistanceEligible) {
+    return "Token reduction is invalid because active MCP did not return an expected or later-used source file.";
+  }
   if (!input.assistanceEligible) return "Token reduction is passive evidence because Kairn emitted no useful context, MCP call, or failure context.";
   return undefined;
 }

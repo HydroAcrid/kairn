@@ -399,6 +399,7 @@ function isCheapSingleSourceTask(input: {
   if (hasStrongMultiSurfaceLanguage(input.task)) return false;
   if (input.topScore < 420 || input.topGap < 220) return false;
   if (input.companionSpecific) return false;
+  if (input.multiFileSignal && input.companionSignal) return false;
   if (input.multiFileSignal && input.contextFileCount > 1 && input.topGap < 420) return false;
   return !input.companionSignal || input.topGap >= 420 || input.contextFileCount <= 1;
 }
@@ -533,7 +534,7 @@ function isVagueImprovementTask(task: string): boolean {
 
 function isMultiFileTask(task: string): boolean {
   const normalized = task.toLowerCase();
-  return /\b(end-to-end|e2e|integration|workflow|flow|pipeline|refactor|feature|migration|api and ui|frontend and backend|full stack|system|ui|mobile|layout|responsive|drawer|sheet|tabs|dashboard|screen|component|filter|filters|card|cards|routing|dependency|dependencies|route handler|route matching|mcp|tool|tools|runtime|follow-up|next context|proxy|response controller|interceptor|interceptors|guard|guards|pipe|pipes|case sensitivity|extension matching|move|moved|relocate|relocated|relocation|centralize|centralized|shared)\b/.test(normalized) ||
+  return /\b(end-to-end|e2e|integration|workflow|flow|pipeline|refactor|feature|migration|api and ui|frontend and backend|full stack|system|ui|mobile|layout|responsive|drawer|sheet|tabs|dashboard|screen|component|filter|filters|card|cards|routing|dependency|dependencies|route handler|route matching|module resolution|module loading|loader|resolver|graph|schema generation|field schema|statement|callback|command line|command-line|matcher|mcp|tool|tools|runtime|follow-up|next context|proxy|response controller|interceptor|interceptors|guard|guards|pipe|pipes|case sensitivity|extension matching|move|moved|relocate|relocated|relocation|centralize|centralized|shared)\b/.test(normalized) ||
     /\b(coordinate|coordinates|coordinated|interact|interacts|interaction)\b.*\bacross\b/.test(normalized) ||
     /\bacross\s+(files?|modules?|components?|surfaces?|packages?|services?|layers?)\b/.test(normalized) ||
     /\bmultiple\s+(files?|modules?|components?|surfaces?|packages?|services?|layers?)\b/.test(normalized);

@@ -275,6 +275,12 @@ function scoreSourcePriority(
       reasons.push(...domainPathAnchor.reasons);
     }
 
+    const namedFileSurface = scoreNamedFileSurface(file, query);
+    if (implementationIntent && namedFileSurface.score !== 0) {
+      score += namedFileSurface.score;
+      reasons.push(...namedFileSurface.reasons);
+    }
+
     const repositoryLanguage = scoreRepositoryLanguagePreference(file, query);
     if (implementationIntent && repositoryLanguage.score !== 0) {
       score += repositoryLanguage.score;
@@ -302,6 +308,12 @@ function scoreSourcePriority(
     if (implementationIntent && canonicalRoleSurface.score !== 0) {
       score += canonicalRoleSurface.score;
       reasons.push(...canonicalRoleSurface.reasons);
+    }
+
+    const structuredDebugSurface = scoreStructuredDebugSourceSurface(file, query, queryTerms);
+    if (implementationIntent && structuredDebugSurface.score !== 0) {
+      score += structuredDebugSurface.score;
+      reasons.push(...structuredDebugSurface.reasons);
     }
 
     const roleHints = scoreSourceRoleHints(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
@@ -1026,6 +1038,19 @@ function scoreDomainPathAnchors(file: FileRecord, query: string, queryTerms: Set
   return { score, reasons };
 }
 
+function scoreNamedFileSurface(file: FileRecord, query: string): { score: number; reasons: string[] } {
+  if (!isLanguageSourceSurface(file) && !isPrimaryLanguageSourceSurface(file)) return { score: 0, reasons: [] };
+  const basename = file.path.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  if (!basename || basename.length < 5 || /^(index|main|core|base|utils?|helpers?)$/i.test(basename)) return { score: 0, reasons: [] };
+  const normalizedBasename = normalizeSearchText(basename);
+  if (!normalizedBasename || normalizedBasename.split(" ").length < 2) return { score: 0, reasons: [] };
+  if (!normalizeSearchText(query).includes(normalizedBasename)) return { score: 0, reasons: [] };
+  return {
+    score: 2600,
+    reasons: [`named source surface: ${basename}`]
+  };
+}
+
 function scorePackageRoleSurface(file: FileRecord, queryTerms: Set<string>): { score: number; reasons: string[] } {
   if (!isLanguageSourceSurface(file)) return { score: 0, reasons: [] };
   const normalized = file.path.toLowerCase();
@@ -1078,6 +1103,7 @@ function scoreCanonicalRoleSurface(file: FileRecord, query: string, queryTerms: 
   if (pathHits.length >= 2) reasons.push(`canonical role path anchor: ${pathHits.slice(0, 4).join(", ")}`);
   if (isPrimaryLanguageSourceSurface(file)) {
     score += 120;
+    reasons.push("primary source path");
     reasons.push("primary source role anchor");
   }
   if (basenameTerms.length > 0 && basenameTerms.every((term) => queryRoleTerms.has(term) || ["base", "internal"].includes(term))) {
@@ -1103,6 +1129,112 @@ function scoreCanonicalRoleSurface(file: FileRecord, query: string, queryTerms: 
   return { score, reasons };
 }
 
+function scoreStructuredDebugSourceSurface(file: FileRecord, query: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  if (!isLanguageSourceSurface(file) && !isPrimaryLanguageSourceSurface(file)) return { score: 0, reasons: [] };
+  if (isNoisyImplementationSurface(file)) return { score: 0, reasons: [] };
+  const normalized = file.path.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const compactBasename = basename.replace(/[^a-z0-9]/g, "");
+  const roleTerms = new Set([...queryTerms].map(canonicalRoleTerm));
+  const normalizedQuery = normalizeSearchText(query);
+  const reasons: string[] = [];
+  let score = 0;
+
+  const asksModuleResolution =
+    (roleTerms.has("module") || roleTerms.has("plugin")) &&
+    (roleTerms.has("resolve") || roleTerms.has("resolver") || roleTerms.has("load") || roleTerms.has("loader"));
+  if (asksModuleResolution) {
+    if (/resolver(factory)?|resolveid|resolve/.test(compactBasename)) {
+      score += 2100;
+      reasons.push("module resolver source");
+    }
+    if (/moduleloader|loader/.test(compactBasename)) {
+      score += 1300;
+      reasons.push("module loader source");
+    }
+    if (/modulegraph|^graph$/.test(compactBasename)) {
+      score += 760;
+      reasons.push("module graph source");
+    }
+    if (/javascriptparser|[a-z0-9]+parser/.test(compactBasename)) {
+      score += 620;
+      reasons.push("specific parser source");
+    } else if (compactBasename === "parser") {
+      score -= 620;
+      reasons.push("generic parser downranked for module resolution");
+    }
+  }
+
+  const asksSchemaFields =
+    (roleTerms.has("schema") || roleTerms.has("core")) &&
+    (roleTerms.has("field") || roleTerms.has("alias") || roleTerms.has("generate") || roleTerms.has("model"));
+  if (asksSchemaFields) {
+    if (/generate[_-]?schema|schemageneration|schema/.test(compactBasename)) {
+      score += /generate[_-]?schema|generateschema/.test(compactBasename) ? 2400 : 820;
+      reasons.push("schema generation source");
+    }
+    if (/^_?fields?$|field/.test(basename)) {
+      score += 1900;
+      reasons.push("field definition source");
+    }
+    const topLevel = normalized.split("/")[0] ?? "";
+    if (/(^|\/)[a-z0-9_-]+-core\//.test(normalized) && topLevel && !normalizedQuery.includes(topLevel.replace(/[-_]+/g, " "))) {
+      score -= 2600;
+      reasons.push("dependency-core package downranked for schema/field prompt");
+    }
+  }
+
+  const asksStatementCallback =
+    (roleTerms.has("callback") || roleTerms.has("create") || roleTerms.has("insert") || roleTerms.has("row")) &&
+    (roleTerms.has("statement") || roleTerms.has("field") || roleTerms.has("schema") || roleTerms.has("value"));
+  if (asksStatementCallback) {
+    if (basename === "statement") {
+      score += 2300;
+      reasons.push("statement state source");
+    }
+    if (basename === "field" || basename === "fields") {
+      score += 1900;
+      reasons.push("field metadata source");
+    }
+    if (/^(create|update|query|delete)$/.test(basename)) {
+      score += 900;
+      reasons.push("callback phase source");
+    }
+  }
+
+  const asksRoutingMap =
+    (roleTerms.has("routing") || roleTerms.has("route") || roleTerms.has("url")) &&
+    (roleTerms.has("map") || roleTerms.has("rule") || roleTerms.has("matcher") || roleTerms.has("converter"));
+  if (asksRoutingMap && /^(map|rules?|matcher|converters?)$/.test(basename)) {
+    score += basename === "matcher" || basename.startsWith("rule") ? 1500 : 900;
+    reasons.push("routing map/rule/matcher source");
+  }
+
+  const asksSessionCommandConfig =
+    (roleTerms.has("session") || roleTerms.has("startup") || roleTerms.has("start")) &&
+    (roleTerms.has("command") || roleTerms.has("commandline") || roleTerms.has("cli") || roleTerms.has("config") || roleTerms.has("configuration") || roleTerms.has("argument") || roleTerms.has("arg"));
+  if (asksSessionCommandConfig) {
+    if (/session/.test(basename)) {
+      score += 1300;
+      reasons.push("session startup source");
+    }
+    if (/config/.test(basename)) {
+      score += 1700;
+      reasons.push("config source");
+    }
+    if (/command[-_]?line|commandline|cli|args?/.test(basename) || /internal\/catch_commandline/.test(normalized)) {
+      score += 2100;
+      reasons.push("command-line parser source");
+    }
+    if (/\.(h|hh|hpp|hxx)$/.test(normalized) && !roleTerms.has("header")) {
+      score -= 520;
+      reasons.push("header downranked for implementation prompt");
+    }
+  }
+
+  return { score, reasons };
+}
+
 function unmentionedSpecializedSourcePenalty(file: FileRecord, queryTerms: Set<string>): number {
   const normalized = file.path.toLowerCase();
   const basename = normalized.split("/").at(-1) ?? normalized;
@@ -1116,6 +1248,7 @@ function unmentionedSpecializedSourcePenalty(file: FileRecord, queryTerms: Set<s
     [/logging[-_]?interceptor|logging/, ["logging", "log"], 900],
     [/stdout|stderr|console[-_]?encoder/, ["stdout", "stderr", "console"], 860],
     [/callback[-_]?sink|android[-_]?sink|msvc[-_]?sink|syslog[-_]?sink|daily[-_]?sink|rotating[-_]?sink|qt[-_]?sink|win[-_]?eventlog[-_]?sink|eventlog[-_]?sink|systemd[-_]?namespace[-_]?sink|namespace[-_]?sink|async[-_]?logger/, ["callback", "android", "msvc", "syslog", "daily", "rotating", "qt", "win", "eventlog", "systemd", "namespace", "async"], 860],
+    [/cache[-_]?plugin|cache\//, ["cache"], 820],
     [/-inl\./, ["inline", "inl"], 520],
     [/_windows|_notwin|windows|win32|notwin|android|darwin|linux|posix|unix|wasm/, ["windows", "win", "notwin", "android", "darwin", "linux", "posix", "unix", "wasm"], 720],
     [/optimizer\//, ["optimizer", "optimize"], 520]
@@ -1786,6 +1919,16 @@ function canonicalRoleTerm(term: string): string {
   if (term === "entries") return "entry";
   if (term === "encoders") return "encoder";
   if (term === "fields") return "field";
+  if (term === "aliases") return "alias";
+  if (term === "generation" || term === "generating" || term === "generated") return "generate";
+  if (term === "statements") return "statement";
+  if (term === "values") return "value";
+  if (term === "rows") return "row";
+  if (term === "arguments") return "argument";
+  if (term === "args") return "arg";
+  if (term === "loading") return "load";
+  if (term === "loaders") return "loader";
+  if (term === "resolving") return "resolve";
   if (term === "interceptors") return "interceptor";
   if (term === "adapters") return "adapter";
   if (term === "transforms") return "transform";

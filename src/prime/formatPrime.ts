@@ -140,7 +140,7 @@ export function formatMcpBriefPrimeContext(input: {
     "",
     ...(input.editScope ? editScopeBlock(input.editScope, "Edit scope:") : []),
     "",
-    "Instruction: call `kairn_prepare_task` with this session id before broad scans. If it returns `stopCondition` or no `nextToolCalls`, continue from its files and do not call more Kairn unless a check fails or the target changes.",
+    "Instruction: call `kairn_prepare_task` with this session id before broad, unclear, multi-file, failure-driven, or source-rescue reads. If it returns `stopCondition` or no `nextToolCalls`, continue from its files and do not call more Kairn unless a check fails or the target changes.",
     `Suggested MCP call: kairn_prepare_task({ "task": ${JSON.stringify(input.task)}, "sessionId": ${JSON.stringify(input.sessionId)}, "detail": "compact" })`,
     "",
     `Quality: ${input.quality.score}/100 (${input.quality.action})`

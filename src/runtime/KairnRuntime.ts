@@ -2962,6 +2962,7 @@ export class KairnRuntime {
                 prompt: [
                   "Kairn MCP-first instruction:",
                   "Call `kairn_prepare_task` before broad, unclear, multi-file, or failure-driven file scans.",
+                  "For diagnose, investigate, audit, trace, or source-rescue tasks that do not name an exact production path, call `kairn_prepare_task` once before manual source reads.",
                   "For short obvious single-source symbol tasks, inspect the likely source first and call Kairn only if that guess fails or the task broadens.",
                   "If `kairn_prepare_task` returns `stopCondition` or no `nextToolCalls`, continue from its files and do not call more Kairn unless a check fails or the target changes.",
                   "Only call `kairn_get_next_context` when `kairn_prepare_task` explicitly returns it as a next tool call.",
@@ -3589,7 +3590,7 @@ function hasSpecificCompanionEvidence(value: unknown): boolean {
       .join("; ")
       .toLowerCase()
     : "";
-  return /mentioned source filename|direct role basename anchor|route\/path surface anchor|same package|same module|import neighbor|controller\/repository|scheduler\/renderer|interceptor\/dispatch|validation\/callback|named peer client companion|user\/email companion|exact user\/email companion|proxy\/service companion|kubernetes service companion|keyboard shortcut companion|compound path term match/.test(reasons);
+  return /mentioned source filename|direct role basename anchor|route\/path surface anchor|same package|same module|import neighbor|controller\/repository|scheduler\/renderer|interceptor\/dispatch|validation\/callback|named peer client companion|user\/email companion|exact user\/email companion|proxy\/service companion|kubernetes service companion|keyboard shortcut companion|module resolver companion|schema generation companion|field definition companion|statement state companion|field metadata companion|command-line parser companion|config companion|routing map\/rule companion|named source surface|compound path term match/.test(reasons);
 }
 
 function strongestSuppressiveAction(
@@ -3722,6 +3723,15 @@ function preferredStructuredDebugPrimary(primaryFile: string | undefined, compan
         reason.includes("proxy/service companion") ||
         reason.includes("kubernetes service companion") ||
         reason.includes("keyboard shortcut companion") ||
+        reason.includes("module resolver companion") ||
+        reason.includes("schema generation companion") ||
+        reason.includes("field definition companion") ||
+        reason.includes("statement state companion") ||
+        reason.includes("field metadata companion") ||
+        reason.includes("command-line parser companion") ||
+        reason.includes("config companion") ||
+        reason.includes("routing map/rule companion") ||
+        reason.includes("named source surface") ||
         reason.includes("compound path term match")
       )
         ? 2
