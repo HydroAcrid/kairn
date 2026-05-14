@@ -37,7 +37,7 @@ export async function runBenchmarkMcpSmoke(input: {
   const server = resolveServerCommand(rootPath, input.serverCommand, input.serverArgs);
   const client = new Client({
     name: "kairn-benchmark-mcp-smoke",
-    version: "0.1.0"
+    version: "0.1.1"
   });
   const transport = new StdioClientTransport({
     command: server.command,

@@ -13,11 +13,17 @@ If you are open to testing it:
 ```bash
 nvm install 22
 nvm use 22
-npm install -g ./kairn-0.1.0.tgz
+npm install -g ./kairn-0.1.1.tgz
 cd /path/to/your/repo
 kairn setup wizard
 kairn doctor
 kairn codex
+```
+
+On Windows, install from the folder where the `.tgz` file actually downloaded, or use the full path:
+
+```powershell
+npm install -g "$env:USERPROFILE\Downloads\kairn-0.1.1.tgz"
 ```
 
 Please use **Node 20 or 22 LTS** if you want the safest beta path. Node 20 through 25 should work now, and newer Node releases should no longer hit the old native Tree-sitter build failure because Kairn uses WASM Tree-sitter parsing.
@@ -69,7 +75,13 @@ If I send you a beta package:
 ```bash
 nvm install 22
 nvm use 22
-npm install -g ./kairn-0.1.0.tgz
+npm install -g ./kairn-0.1.1.tgz
+```
+
+That command assumes the `.tgz` file is in the current directory. If it is in Downloads on Windows:
+
+```powershell
+npm install -g "$env:USERPROFILE\Downloads\kairn-0.1.1.tgz"
 ```
 
 If it is available through npm:

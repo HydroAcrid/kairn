@@ -14,6 +14,7 @@ export type SetupWizardResult = {
   rootPath: string;
   choice: SetupWizardChoice;
   indexed: boolean;
+  indexError?: string | undefined;
   integrations: Array<{
     kind: "codex" | "mcp" | "hybrid";
     mode?: CodexSetupMode | undefined;
@@ -62,8 +63,18 @@ export async function runSetupWizard(inputOptions: {
   const runtime = new KairnRuntime(rootPath);
   try {
     const integrations: SetupWizardResult["integrations"] = [];
+    let indexed = false;
+    let indexError: string | undefined;
     if (answers.index) {
-      await runtime.init();
+      const restoreParserEnv = useSafeWizardIndexing();
+      try {
+        await runtime.init();
+        indexed = true;
+      } catch (error) {
+        indexError = error instanceof Error ? error.message : String(error);
+      } finally {
+        restoreParserEnv();
+      }
     }
 
     if (answers.choice === "codex" || answers.choice === "both") {
@@ -126,7 +137,8 @@ export async function runSetupWizard(inputOptions: {
     return {
       rootPath,
       choice: answers.choice,
-      indexed: answers.index,
+      indexed,
+      indexError,
       integrations,
       telemetry: getTelemetryStatus(rootPath),
       doctor,
@@ -148,6 +160,8 @@ export function formatSetupWizardResult(result: SetupWizardResult): string {
       })
     : ["- diagnostics only"];
 
+  const indexWarning = result.indexError ? [`Index warning: ${result.indexError}`] : [];
+
   return [
     KAIRN_WIZARD_BANNER,
     "",
@@ -155,6 +169,7 @@ export function formatSetupWizardResult(result: SetupWizardResult): string {
     `Root: ${result.rootPath}`,
     `Choice: ${result.choice}`,
     `Indexed now: ${result.indexed}`,
+    ...indexWarning,
     `Doctor status: ${result.doctor.status}`,
     `Telemetry upload: ${result.telemetry.enabled ? "enabled" : "disabled"}`,
     "",
@@ -266,5 +281,20 @@ function buildNextSteps(choice: SetupWizardChoice, rootPath: string): string[] {
 }
 
 function shellPath(value: string): string {
-  return value.includes(" ") ? `"${value.replaceAll('"', '\\"')}"` : value;
+  return /[\s&|;<>()]/.test(value) ? `"${value.replaceAll('"', '\\"')}"` : value;
+}
+
+function useSafeWizardIndexing(): () => void {
+  if (process.platform !== "win32") return () => {};
+  if (/^(1|true|yes)$/i.test(process.env.KAIRN_WIZARD_WASM_INDEX ?? "")) return () => {};
+
+  const previous = process.env.KAIRN_DISABLE_WASM_PARSER;
+  process.env.KAIRN_DISABLE_WASM_PARSER = "1";
+  return () => {
+    if (previous === undefined) {
+      delete process.env.KAIRN_DISABLE_WASM_PARSER;
+      return;
+    }
+    process.env.KAIRN_DISABLE_WASM_PARSER = previous;
+  };
 }

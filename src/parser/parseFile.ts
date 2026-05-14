@@ -28,6 +28,8 @@ const WASM_BY_GRAMMAR: Record<ParserGrammar, string> = {
   cpp: "@repomix/tree-sitter-wasms/out/tree-sitter-cpp.wasm"
 };
 
+const TREE_SITTER_CORE_WASM = require.resolve("web-tree-sitter/web-tree-sitter.wasm");
+
 const SOURCE_GRAMMAR_BY_EXTENSION = new Map<string, ParserGrammar>([
   [".ts", "typescript"],
   [".tsx", "tsx"],
@@ -49,6 +51,7 @@ const SOURCE_GRAMMAR_BY_EXTENSION = new Map<string, ParserGrammar>([
 ]);
 
 let parserInitPromise: Promise<void> | undefined;
+let parserBackendDisabled = false;
 const languagePromises = new Map<ParserGrammar, Promise<Language>>();
 
 export function isParseSupported(filePath: string): boolean {
@@ -64,6 +67,9 @@ export async function parseSourceFile(input: {
   const grammar = SOURCE_GRAMMAR_BY_EXTENSION.get(path.extname(input.filePath).toLowerCase());
   if (!grammar) {
     return emptyParsedFile(input, false);
+  }
+  if (parserBackendDisabled || isWasmParserDisabled()) {
+    return emptyParsedFile(input, true);
   }
 
   try {
@@ -82,13 +88,24 @@ export async function parseSourceFile(input: {
       imports: [...new Set(parsed.imports)].sort(),
       hasErrors: tree.rootNode.hasError
     };
-  } catch {
+  } catch (error) {
+    if (isFatalWasmParserError(error)) {
+      parserBackendDisabled = true;
+    }
     return emptyParsedFile(input, true);
   }
 }
 
 async function loadLanguage(grammar: ParserGrammar): Promise<Language> {
-  parserInitPromise ??= Parser.init();
+  parserInitPromise ??= Parser.init({
+    locateFile(scriptName: string) {
+      return scriptName.endsWith(".wasm") ? TREE_SITTER_CORE_WASM : scriptName;
+    },
+    printErr() {
+      // web-tree-sitter can print repeated "Aborted()" lines before throwing when
+      // a runtime cannot initialize WASM. Kairn degrades to lexical indexing below.
+    }
+  });
   await parserInitPromise;
 
   const cached = languagePromises.get(grammar);
@@ -97,6 +114,18 @@ async function loadLanguage(grammar: ParserGrammar): Promise<Language> {
   const promise = Language.load(require.resolve(WASM_BY_GRAMMAR[grammar]));
   languagePromises.set(grammar, promise);
   return promise;
+}
+
+function isFatalWasmParserError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /aborted|wasm|webassembly|incompatible|failed to initialize/i.test(message);
+}
+
+function isWasmParserDisabled(): boolean {
+  const explicitDisable = process.env.KAIRN_DISABLE_WASM_PARSER;
+  if (explicitDisable && /^(1|true|yes)$/i.test(explicitDisable)) return true;
+  const parserBackend = process.env.KAIRN_PARSER_BACKEND;
+  return Boolean(parserBackend && /^(lexical|scan|none)$/i.test(parserBackend));
 }
 
 function emptyParsedFile(

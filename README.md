@@ -38,7 +38,7 @@ npm pack
 # beta user
 nvm install 22
 nvm use 22
-npm install -g ./kairn-0.1.0.tgz
+npm install -g ./kairn-0.1.1.tgz
 kairn setup wizard --root /path/to/repo
 ```
 

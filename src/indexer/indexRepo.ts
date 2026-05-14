@@ -7,7 +7,7 @@ import { readTextFile } from "../retrieval/readSource.js";
 import { scanRepo } from "../scanner/scanRepo.js";
 import { buildSemanticChunks } from "../semantic/chunk.js";
 import { embedText, VECTOR_DIMENSIONS } from "../semantic/vector.js";
-import type { RepoGraph, ScanResult, SemanticChunkRecord, SemanticVectorRecord } from "../types.js";
+import type { ParsedFile, RepoGraph, ScanResult, SemanticChunkRecord, SemanticVectorRecord } from "../types.js";
 import { loadIndexingConfig } from "../config/indexing.js";
 import { compactParsedSymbols } from "./symbolCompaction.js";
 
@@ -22,25 +22,11 @@ export type RepoIndex = {
 export async function indexRepo(rootPath: string): Promise<RepoIndex> {
   const config = loadIndexingConfig(rootPath);
   const scan = await scanRepo(rootPath);
-  const parsedFiles = await Promise.all(scan.files.filter(shouldParseFile).map(async (file) => {
-    try {
-      return await parseSourceFile({
-        rootPath,
-        filePath: file.path,
-        content: readTextFile(rootPath, file.path),
-        language: file.language
-      });
-    } catch {
-      return {
-        rootPath,
-        filePath: file.path,
-        language: file.language,
-        symbols: [],
-        imports: [],
-        hasErrors: true
-      };
-    }
-  }));
+  const parsedFiles = await parseFilesWithLimit({
+    rootPath,
+    files: scan.files.filter(shouldParseFile),
+    concurrency: process.platform === "win32" ? 1 : 8
+  });
   const compactedParsedFiles = compactParsedSymbols({
     files: scan.files,
     parsedFiles,
@@ -88,6 +74,48 @@ export async function indexRepo(rootPath: string): Promise<RepoIndex> {
     semanticVectors,
     lexical
   };
+}
+
+async function parseFilesWithLimit(input: {
+  rootPath: string;
+  files: Array<{ path: string; language: string }>;
+  concurrency: number;
+}): Promise<ParsedFile[]> {
+  const results: ParsedFile[] = [];
+  const concurrency = Math.max(1, Math.min(input.concurrency, input.files.length || 1));
+  let nextIndex = 0;
+
+  async function worker(): Promise<void> {
+    while (nextIndex < input.files.length) {
+      const file = input.files[nextIndex];
+      nextIndex += 1;
+      if (!file) continue;
+      results.push(await parseIndexedFile(input.rootPath, file));
+    }
+  }
+
+  await Promise.all(Array.from({ length: concurrency }, () => worker()));
+  return results.sort((a, b) => a.filePath.localeCompare(b.filePath));
+}
+
+async function parseIndexedFile(rootPath: string, file: { path: string; language: string }): Promise<ParsedFile> {
+  try {
+    return await parseSourceFile({
+      rootPath,
+      filePath: file.path,
+      content: readTextFile(rootPath, file.path),
+      language: file.language
+    });
+  } catch {
+    return {
+      rootPath,
+      filePath: file.path,
+      language: file.language,
+      symbols: [],
+      imports: [],
+      hasErrors: true
+    };
+  }
 }
 
 function shouldParseFile(file: { indexTier?: string; kind: string; language: string }): boolean {
