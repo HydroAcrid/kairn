@@ -71,6 +71,15 @@ Direct MCP smoke after compact-primary fix: `/tmp/kairn-mcp-smoke-fastapi-after-
 - `kairn_prepare_task` returned `fastapi/routing.py`.
 - Stop condition: `source_evidence_sufficient`.
 
+Full MCP endurance after compact-primary fix: `/tmp/kairn-endurance-fastapi-v4-mcp-after-compact-primary.json`
+
+| Mode | Quality | Observed Tokens | Assistance | Result |
+| --- | --- | ---: | --- | --- |
+| baseline | pass | `83,065` | none | control |
+| real_mcp_first | pass | `38,147` | active, `1` MCP call | `54.08%` valid savings |
+
+This rerun closes the prior caveat. MCP returned `fastapi/routing.py`, the returned file was useful, quality passed, and strict accounting counted the savings as valid.
+
 ## Current Read
 
 This was a product-positive loop:
@@ -80,10 +89,10 @@ This was a product-positive loop:
 - MCP had a real setup reliability issue, which is now fixed.
 - MCP had a real compact-output routing issue, which is now fixed.
 - The benchmark harness became stricter and less likely to overclaim.
+- The full MCP endurance rerun after the compact-primary fix is now a valid MCP-assisted win.
 
 ## Remaining Risks
 
-- The MCP full endurance result should be rerun after the compact-primary fix before claiming MCP endurance savings on FastAPI.
 - MCP can still be more variance-prone than session-bound hooks because the model chooses whether and how to call tools.
 - More 6-10 turn holdouts are still needed before making a broad public claim.
 
@@ -98,5 +107,6 @@ This was a product-positive loop:
 - `/tmp/kairn-endurance-fastapi-v4.json`
 - `/tmp/kairn-endurance-fastapi-v4-mcp-rerun.json`
 - `/tmp/kairn-endurance-fastapi-v4-mcp-fixed.json`
+- `/tmp/kairn-endurance-fastapi-v4-mcp-after-compact-primary.json`
 - `/tmp/kairn-mcp-direct-call-smoke-fixed.jsonl`
 - `/tmp/kairn-mcp-smoke-fastapi-after-primary-fix.json`
