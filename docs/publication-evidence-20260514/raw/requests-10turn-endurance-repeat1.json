@@ -1,0 +1,3511 @@
+{
+  "entryId": "requests-10turn-endurance",
+  "kind": "endurance",
+  "status": "passed",
+  "entryMetadata": {
+    "label": "Requests 10-turn endurance proof",
+    "repoId": "requests",
+    "language": "python",
+    "sizeClass": "medium",
+    "taskClass": "session_repeat",
+    "contextBehavior": "source_rescue"
+  },
+  "artifactPath": "/tmp/kairn-publication-requests-endurance-repeat1/raw/requests-10turn-endurance.json",
+  "startedAt": "2026-05-14T19:14:08.569Z",
+  "endedAt": "2026-05-14T19:35:35.076Z",
+  "commands": [
+    "endurance repeat=1",
+    "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+    "kairn_codex_session: node \"/Users/kevindotel/Documents/Projects/kairn/dist/cli.js\" codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}",
+    "real_mcp_first: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}"
+  ],
+  "report": {
+    "suiteId": "endurance-requests-10turn",
+    "suiteName": "Requests Redirect 10-Turn Endurance",
+    "startedAt": "2026-05-14T19:14:08.571Z",
+    "endedAt": "2026-05-14T19:35:35.075Z",
+    "reports": [
+      {
+        "mode": "baseline",
+        "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-PdxCNv",
+        "turns": [
+          {
+            "turnId": "diagnose",
+            "mode": "baseline",
+            "outcome": "pass",
+            "observedCodexTokens": 22401,
+            "responseTokens": 26103,
+            "elapsedMs": 54130,
+            "actualFiles": [
+              "src/requests/sessions.py",
+              "src/requests/adapters.py",
+              "src/requests/models.py"
+            ],
+            "agentTouchedFiles": [],
+            "expectedFiles": [
+              "src/requests/sessions.py",
+              "src/requests/adapters.py",
+              "src/requests/models.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "01175ff72998b575cde3f862523a06769071b76aa2d2f6a35543a77474fe7639",
+              "preparedPromptHash": "01175ff72998b575cde3f862523a06769071b76aa2d2f6a35543a77474fe7639",
+              "commandHash": "7d6f406a326a97acdf26a236399cf4d18a1ab6c8f47c35781f5e02628a5e5af3",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "6b2a07333cfdd11b7d0354cb111650fe4a0d6c01bfef96b31b8dd653502e0a07",
+              "expectedFileMentions": [
+                "src/requests/sessions.py",
+                "src/requests/adapters.py",
+                "src/requests/models.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "codexUsage": {
+                "totalTokens": 22401,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              }
+            }
+          },
+          {
+            "turnId": "source-invariant",
+            "mode": "baseline",
+            "outcome": "pass",
+            "observedCodexTokens": 7105,
+            "responseTokens": 9641,
+            "elapsedMs": 21823,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "a47b87313ae96148ef01a9de7a95609733d0c5c2a83e18951ba7f5a3de858d5e",
+              "preparedPromptHash": "a47b87313ae96148ef01a9de7a95609733d0c5c2a83e18951ba7f5a3de858d5e",
+              "commandHash": "9fe31b5e90527d177f09ea373eec8605720f928720d19ae65d26a4ae02309294",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "4cde390af3eb6bb671b1ca578d445cce97704c3600c824cc02897f2f28d67b07",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "codexUsage": {
+                "totalTokens": 7105,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              }
+            }
+          },
+          {
+            "turnId": "fix",
+            "mode": "baseline",
+            "outcome": "pass",
+            "observedCodexTokens": 100099,
+            "responseTokens": 34276,
+            "elapsedMs": 110045,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "7e1f4c2e9c207186978ceb325eae5ee35dba23ad385dce9208fdcf4ae67e1891",
+              "preparedPromptHash": "7e1f4c2e9c207186978ceb325eae5ee35dba23ad385dce9208fdcf4ae67e1891",
+              "commandHash": "b30aa7f748dff2c172d617a0e6b2fdc90e52a399e830c7b9819c1a3e4eb64e53",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "abde871a686025fdfd407093c08cf6df8972376884acb5f3797ed51a0ebe7f7d",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "codexUsage": {
+                "totalTokens": 100099,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              }
+            }
+          },
+          {
+            "turnId": "verify-source",
+            "mode": "baseline",
+            "outcome": "pass",
+            "observedCodexTokens": 15440,
+            "responseTokens": 263991,
+            "elapsedMs": 30966,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "29e44b6d4b26849e3055c67bb4744ce88b8786b0873d206ace268202a8b78fe7",
+              "preparedPromptHash": "29e44b6d4b26849e3055c67bb4744ce88b8786b0873d206ace268202a8b78fe7",
+              "commandHash": "f84d4718b980044178d6ecfaa9f53ae5f6f7972e1495184640bc4d68fe057cde",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "00dea35ac2fc756806c0c55637c99d9a55de2a4e3d01ed98c21633c75ecd8618",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "codexUsage": {
+                "totalTokens": 15440,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              }
+            }
+          },
+          {
+            "turnId": "edge-case-review",
+            "mode": "baseline",
+            "outcome": "pass",
+            "observedCodexTokens": 46921,
+            "responseTokens": 48347,
+            "elapsedMs": 51361,
+            "actualFiles": [
+              "src/requests/sessions.py",
+              "src/requests/adapters.py",
+              "src/requests/models.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py",
+              "src/requests/adapters.py",
+              "src/requests/models.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "9003371c2a18f3329644c51744b01c6bdcd9e9a64b66436f1cc0ea383898ab57",
+              "preparedPromptHash": "9003371c2a18f3329644c51744b01c6bdcd9e9a64b66436f1cc0ea383898ab57",
+              "commandHash": "2953d6d261483c4e6423f94bb3bd7507b8651a1bbfa9e735e716efc252b55b18",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "22d1239db98fb6b7362e1f1ce4eb8272f92b2866c02430fb780cbd26d68370f9",
+              "expectedFileMentions": [
+                "src/requests/sessions.py",
+                "src/requests/adapters.py",
+                "src/requests/models.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "codexUsage": {
+                "totalTokens": 46921,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              }
+            }
+          },
+          {
+            "turnId": "failure-recovery",
+            "mode": "baseline",
+            "outcome": "pass",
+            "observedCodexTokens": 25596,
+            "responseTokens": 32104,
+            "elapsedMs": 97174,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "ef5f003f9d7043aebd78e4c1a274b6d435dd781c8b11360daa71b673d9b1a741",
+              "preparedPromptHash": "ef5f003f9d7043aebd78e4c1a274b6d435dd781c8b11360daa71b673d9b1a741",
+              "commandHash": "5fd71a439c26701159447b5a9f7a7dc1b262015c31ee2ecd2d449decccbcc644",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "1a0bd5589eb49acb69997793f1fafe2be81fb5304ecb56ac8bd7bf16c42e8432",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "codexUsage": {
+                "totalTokens": 25596,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              }
+            }
+          },
+          {
+            "turnId": "repeat-context-check",
+            "mode": "baseline",
+            "outcome": "pass",
+            "observedCodexTokens": 28828,
+            "responseTokens": 35077,
+            "elapsedMs": 52827,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "996275e871240fbf71abb23c8456475bc2026eff50707a2f2e636b26499a131b",
+              "preparedPromptHash": "996275e871240fbf71abb23c8456475bc2026eff50707a2f2e636b26499a131b",
+              "commandHash": "dc6c3b88e75e4b26480258b0e72fbdd03f255f5e249c07d88b475e0b6951cf89",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "20ad62db18e3718502301f8fbbedf70bca4385cc9cffa9cec9612bb83261fe6f",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "codexUsage": {
+                "totalTokens": 28828,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              }
+            }
+          },
+          {
+            "turnId": "diff-review",
+            "mode": "baseline",
+            "outcome": "pass",
+            "observedCodexTokens": 8283,
+            "responseTokens": 9138,
+            "elapsedMs": 24902,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "04e2159af1ed16cfd98cd62095ca0b454047839732cf2d92d663567149c702d2",
+              "preparedPromptHash": "04e2159af1ed16cfd98cd62095ca0b454047839732cf2d92d663567149c702d2",
+              "commandHash": "ebca1e88cc2b5ab12d9efa934cf9803d0560bce031243b2b819e30b34f0584f4",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "9eeb16d23f765a8f6d3aa889ccc031df80bbf7ca93527595bec39ffd00777a7f",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "codexUsage": {
+                "totalTokens": 8283,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              }
+            }
+          },
+          {
+            "turnId": "summary",
+            "mode": "baseline",
+            "outcome": "pass",
+            "observedCodexTokens": 6978,
+            "responseTokens": 8526,
+            "elapsedMs": 29381,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "688f1e22b324fb0a5b887139840db3fcd02dea052fd42a103a50a89c8f7d103f",
+              "preparedPromptHash": "688f1e22b324fb0a5b887139840db3fcd02dea052fd42a103a50a89c8f7d103f",
+              "commandHash": "4da9393ea1d00acef4cfe106407fa47da227089d85f544008b9ffa384dfb715b",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "64361ca3924bdfeee859c68a51b807fc057eb23341804a611678e90284216935",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "codexUsage": {
+                "totalTokens": 6978,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              }
+            }
+          },
+          {
+            "turnId": "final-cleanup",
+            "mode": "baseline",
+            "outcome": "pass",
+            "observedCodexTokens": 5240,
+            "responseTokens": 7235,
+            "elapsedMs": 21788,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "30213a7b76d5001c11151f06bbc990b1f540e2f0f3294e335f3fa87cdede35af",
+              "preparedPromptHash": "30213a7b76d5001c11151f06bbc990b1f540e2f0f3294e335f3fa87cdede35af",
+              "commandHash": "586d165fcb288e3f006345ba50c6af52595ce516e8dad37f3e1df6de14a5433d",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "cd43fc092bcfc7865d28d7b3f5813945012d08c25a9f7e7dc8450626dcd80eae",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "codexUsage": {
+                "totalTokens": 5240,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              }
+            }
+          }
+        ],
+        "totalObservedCodexTokens": 266891,
+        "totalResponseTokens": 474438,
+        "totalElapsedMs": 494432,
+        "qualityGatePassed": true,
+        "finalVerificationPassed": true,
+        "assistanceStatus": "none",
+        "assistanceActions": {
+          "emitted": 0,
+          "shrunk": 0,
+          "suppressed": 0,
+          "mcpCalls": 0,
+          "failureContexts": 0
+        },
+        "metadata": {
+          "finalVerificationCommandPassed": true,
+          "finalSourceInvariantPassed": true,
+          "finalSourceInvariantFailures": [],
+          "finalDiffScopePassed": true,
+          "finalDiffScopeViolations": [],
+          "finalChangedFiles": [],
+          "setupElapsedMs": 0,
+          "kairnSessionCount": 0,
+          "primeEmitted": 0,
+          "primeSuppressed": 0,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 0,
+          "mcpFilesReturned": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedUsefulFileCount": 0
+        }
+      },
+      {
+        "mode": "kairn_codex_session",
+        "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-oaManC",
+        "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+        "turns": [
+          {
+            "turnId": "diagnose",
+            "mode": "kairn_codex_session",
+            "outcome": "pass",
+            "observedCodexTokens": 15882,
+            "responseTokens": 19203,
+            "elapsedMs": 24010,
+            "actualFiles": [
+              "src/requests/sessions.py",
+              "src/requests/models.py"
+            ],
+            "agentTouchedFiles": [],
+            "expectedFiles": [
+              "src/requests/sessions.py",
+              "src/requests/adapters.py",
+              "src/requests/models.py"
+            ],
+            "missingExpectedFiles": [
+              "src/requests/adapters.py"
+            ],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "01175ff72998b575cde3f862523a06769071b76aa2d2f6a35543a77474fe7639",
+              "preparedPromptHash": "37c58b40b00c051624626093dec422a26b4ffa828dc6e2d26e3da891a7d05d32",
+              "commandHash": "e2e65bc3cd90ff2e350646dba049b16f21257ba77d42a8593a00aca7a95c9323",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "95bdcc719808c2e19343f595420d1d6613a8430b3efdf382270466f25469fa26",
+              "expectedFileMentions": [
+                "src/requests/sessions.py",
+                "src/requests/models.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "codexUsage": {
+                "totalTokens": 15882,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "hookSimulated": true,
+              "hookDeliveredContext": true,
+              "hookDecision": "shrink",
+              "primeDecision": "shrink",
+              "hookRecommendation": "prime_emitted",
+              "primeFiles": [
+                "src/requests/sessions.py",
+                "src/requests/models.py"
+              ],
+              "hookFiles": [
+                "src/requests/sessions.py",
+                "src/requests/models.py"
+              ],
+              "hookOutputTokens": 443,
+              "hookSignalMetadata": {
+                "eventName": "UserPromptSubmit",
+                "hookKind": "hook",
+                "outputKind": "generic",
+                "hookOutput": "full-prime",
+                "transport": "cli",
+                "daemonAttempted": false,
+                "daemonHit": false,
+                "daemonMiss": false,
+                "indexRefreshSkipped": true,
+                "refreshIndexMs": 0,
+                "primeElapsedMs": 178,
+                "hookLatencyMs": 180,
+                "linkedFiles": 0,
+                "recommendation": "prime_emitted",
+                "primeAttempted": true,
+                "primeContextDelivered": true,
+                "primeSuppressed": false,
+                "hostAdditionalContextBytes": 1770,
+                "proactivePrime": true,
+                "primeQuality": {
+                  "score": 100,
+                  "action": "shrink",
+                  "reasons": [
+                    "high-confidence top retrieval score",
+                    "top result is clearly separated",
+                    "debug/failure task can benefit from targeted context",
+                    "top result is a production source file",
+                    "high-confidence exact source target supports compact context",
+                    "exact source hit should use focused context",
+                    "source-rescue signal supports an active one-file guardrail",
+                    "canonical source routing supports focused context",
+                    "single-source fix should not receive broad context expansion",
+                    "query-local companion evidence supports multi-surface context",
+                    "debug companion context should stay directive instead of full-prime",
+                    "index freshness: dirty_state_changed",
+                    "session policy: failure_reemitted"
+                  ],
+                  "topScore": 5839.518,
+                  "topGap": 2767.18,
+                  "exactPathMentioned": false,
+                  "expectedSavingsRisk": "medium"
+                },
+                "contextDecision": {
+                  "score": 100,
+                  "action": "shrink",
+                  "reasons": [
+                    "high-confidence top retrieval score",
+                    "top result is clearly separated",
+                    "debug/failure task can benefit from targeted context",
+                    "top result is a production source file",
+                    "high-confidence exact source target supports compact context",
+                    "exact source hit should use focused context",
+                    "source-rescue signal supports an active one-file guardrail",
+                    "canonical source routing supports focused context",
+                    "single-source fix should not receive broad context expansion",
+                    "query-local companion evidence supports multi-surface context",
+                    "debug companion context should stay directive instead of full-prime"
+                  ],
+                  "topScore": 5839.518,
+                  "topGap": 2767.18,
+                  "primaryFile": "src/requests/sessions.py",
+                  "language": "python",
+                  "exactPathMentioned": false,
+                  "exactSourceHit": true,
+                  "sourceRescue": true,
+                  "canonicalSourceHit": true,
+                  "cheapSingleSource": false,
+                  "cheapExactSource": false,
+                  "companionSpecific": true,
+                  "multiSurfaceSignal": true,
+                  "companionCount": 2,
+                  "companionTopScore": 3714,
+                  "recommendedDelivery": "multi_file_directive",
+                  "estimatedContextCost": 800,
+                  "expectedSavingsRisk": "medium",
+                  "debugSignal": true,
+                  "easyTaskSignal": false,
+                  "wrongContextRisk": false
+                },
+                "decision": "shrink",
+                "decisionScore": 100,
+                "decisionReasons": [
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "debug/failure task can benefit from targeted context",
+                  "top result is a production source file",
+                  "high-confidence exact source target supports compact context",
+                  "exact source hit should use focused context",
+                  "source-rescue signal supports an active one-file guardrail",
+                  "canonical source routing supports focused context",
+                  "single-source fix should not receive broad context expansion",
+                  "query-local companion evidence supports multi-surface context",
+                  "debug companion context should stay directive instead of full-prime"
+                ],
+                "estimatedContextCost": 800,
+                "expectedSavingsRisk": "medium",
+                "failureContext": false,
+                "duplicatePromptPrime": false,
+                "compressedOutput": false,
+                "trivialSuccessfulOutput": true
+              }
+            }
+          },
+          {
+            "turnId": "source-invariant",
+            "mode": "kairn_codex_session",
+            "outcome": "pass",
+            "observedCodexTokens": 4465,
+            "responseTokens": 7791,
+            "elapsedMs": 17475,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "a47b87313ae96148ef01a9de7a95609733d0c5c2a83e18951ba7f5a3de858d5e",
+              "preparedPromptHash": "a47b87313ae96148ef01a9de7a95609733d0c5c2a83e18951ba7f5a3de858d5e",
+              "commandHash": "68859b89465c90cc2c222f1f59008e5675cfdbbfb83dbbe81fbcf6449d039d16",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "38719a7ae53f0fd36df0ec532a8bf43e5714107125db1cbc5e6f8db80b780ec2",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "codexUsage": {
+                "totalTokens": 4465,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "hookSimulated": true,
+              "hookDeliveredContext": false,
+              "hookRecommendation": "prompt_suppressed",
+              "primeFiles": [],
+              "hookFiles": [],
+              "hookOutputTokens": 0,
+              "hookSignalMetadata": {
+                "eventName": "UserPromptSubmit",
+                "hookKind": "hook",
+                "outputKind": "generic",
+                "hookOutput": "full-prime",
+                "transport": "cli",
+                "daemonAttempted": false,
+                "daemonHit": false,
+                "daemonMiss": false,
+                "indexRefreshSkipped": true,
+                "refreshIndexMs": 0,
+                "primeElapsedMs": 0,
+                "hookLatencyMs": 1,
+                "linkedFiles": 0,
+                "recommendation": "prompt_suppressed",
+                "primeAttempted": false,
+                "primeContextDelivered": false,
+                "primeSuppressed": false,
+                "hostAdditionalContextBytes": 0,
+                "proactivePrime": false,
+                "failureContext": false,
+                "duplicatePromptPrime": false,
+                "compressedOutput": false,
+                "trivialSuccessfulOutput": true
+              }
+            }
+          },
+          {
+            "turnId": "fix",
+            "mode": "kairn_codex_session",
+            "outcome": "pass",
+            "observedCodexTokens": 25036,
+            "responseTokens": 24872,
+            "elapsedMs": 62796,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "7e1f4c2e9c207186978ceb325eae5ee35dba23ad385dce9208fdcf4ae67e1891",
+              "preparedPromptHash": "7e1f4c2e9c207186978ceb325eae5ee35dba23ad385dce9208fdcf4ae67e1891",
+              "commandHash": "11ca25ac8dec26a07b761a1a3c1de6e631a64ccbee3daa732e981e9bc41fef1f",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "63476550cc42612b4d2024df2fb1fd87dc508f711fb38653d0a7279c1da8cfe3",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "codexUsage": {
+                "totalTokens": 25036,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "hookSimulated": true,
+              "hookDeliveredContext": false,
+              "hookDecision": "suppress",
+              "primeDecision": "suppress",
+              "hookRecommendation": "prime_quality_suppressed_silent",
+              "primeFiles": [],
+              "hookFiles": [],
+              "hookOutputTokens": 0,
+              "hookSignalMetadata": {
+                "eventName": "UserPromptSubmit",
+                "hookKind": "hook",
+                "outputKind": "generic",
+                "hookOutput": "full-prime",
+                "transport": "cli",
+                "daemonAttempted": false,
+                "daemonHit": false,
+                "daemonMiss": false,
+                "indexRefreshSkipped": true,
+                "refreshIndexMs": 0,
+                "primeElapsedMs": 286,
+                "hookLatencyMs": 287,
+                "linkedFiles": 0,
+                "recommendation": "prime_quality_suppressed_silent",
+                "primeAttempted": true,
+                "primeContextDelivered": false,
+                "primeSuppressed": true,
+                "hostAdditionalContextBytes": 0,
+                "proactivePrime": false,
+                "primeQuality": {
+                  "score": 30,
+                  "action": "suppress",
+                  "reasons": [
+                    "prompt already names an exact indexed file",
+                    "high-confidence top retrieval score",
+                    "top result is clearly separated",
+                    "debug/failure task can benefit from targeted context",
+                    "top result is a production source file",
+                    "high-confidence exact source target supports compact context",
+                    "exact source hit should use focused context",
+                    "source-rescue signal supports an active one-file guardrail",
+                    "single-source fix should not receive broad context expansion",
+                    "query-local companion evidence supports multi-surface context",
+                    "automatic hook suppressed obvious one-shot source context to avoid over-assist",
+                    "index freshness: dirty_state_changed",
+                    "session policy: changed_file_reemitted"
+                  ],
+                  "topScore": 8180.582,
+                  "topGap": 4752.833,
+                  "exactPathMentioned": true,
+                  "expectedSavingsRisk": "high"
+                },
+                "contextDecision": {
+                  "score": 30,
+                  "action": "suppress",
+                  "reasons": [
+                    "prompt already names an exact indexed file",
+                    "high-confidence top retrieval score",
+                    "top result is clearly separated",
+                    "debug/failure task can benefit from targeted context",
+                    "top result is a production source file",
+                    "high-confidence exact source target supports compact context",
+                    "exact source hit should use focused context",
+                    "source-rescue signal supports an active one-file guardrail",
+                    "single-source fix should not receive broad context expansion",
+                    "query-local companion evidence supports multi-surface context",
+                    "automatic hook suppressed obvious one-shot source context to avoid over-assist"
+                  ],
+                  "topScore": 8180.582,
+                  "topGap": 4752.833,
+                  "primaryFile": "src/requests/sessions.py",
+                  "language": "python",
+                  "exactPathMentioned": true,
+                  "exactSourceHit": true,
+                  "sourceRescue": true,
+                  "canonicalSourceHit": false,
+                  "cheapSingleSource": false,
+                  "cheapExactSource": false,
+                  "companionSpecific": true,
+                  "multiSurfaceSignal": true,
+                  "companionCount": 2,
+                  "companionTopScore": 3636,
+                  "recommendedDelivery": "none",
+                  "estimatedContextCost": 800,
+                  "expectedSavingsRisk": "high",
+                  "debugSignal": true,
+                  "easyTaskSignal": false,
+                  "wrongContextRisk": false
+                },
+                "decision": "suppress",
+                "decisionScore": 30,
+                "decisionReasons": [
+                  "prompt already names an exact indexed file",
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "debug/failure task can benefit from targeted context",
+                  "top result is a production source file",
+                  "high-confidence exact source target supports compact context",
+                  "exact source hit should use focused context",
+                  "source-rescue signal supports an active one-file guardrail",
+                  "single-source fix should not receive broad context expansion",
+                  "query-local companion evidence supports multi-surface context",
+                  "automatic hook suppressed obvious one-shot source context to avoid over-assist"
+                ],
+                "estimatedContextCost": 800,
+                "expectedSavingsRisk": "high",
+                "failureContext": false,
+                "duplicatePromptPrime": false,
+                "compressedOutput": false,
+                "trivialSuccessfulOutput": true
+              }
+            }
+          },
+          {
+            "turnId": "verify-source",
+            "mode": "kairn_codex_session",
+            "outcome": "pass",
+            "observedCodexTokens": 11236,
+            "responseTokens": 13847,
+            "elapsedMs": 32994,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 2,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "29e44b6d4b26849e3055c67bb4744ce88b8786b0873d206ace268202a8b78fe7",
+              "preparedPromptHash": "29e44b6d4b26849e3055c67bb4744ce88b8786b0873d206ace268202a8b78fe7",
+              "commandHash": "8eebe16b207fa70df98f8121ed58228d55f8de01e0229084682d9c954f0c1762",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "de8e37a392622adbb7de8a4c7771b680ac566eaf27326970c6d6a3b68289b8d6",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "codexUsage": {
+                "totalTokens": 11236,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "hookSimulated": true,
+              "hookDeliveredContext": false,
+              "hookDecision": "suppress",
+              "primeDecision": "suppress",
+              "hookRecommendation": "prime_quality_suppressed_silent",
+              "primeFiles": [],
+              "hookFiles": [],
+              "hookOutputTokens": 0,
+              "hookSignalMetadata": {
+                "eventName": "UserPromptSubmit",
+                "hookKind": "hook",
+                "outputKind": "generic",
+                "hookOutput": "full-prime",
+                "transport": "cli",
+                "daemonAttempted": false,
+                "daemonHit": false,
+                "daemonMiss": false,
+                "indexRefreshSkipped": true,
+                "refreshIndexMs": 0,
+                "primeElapsedMs": 167,
+                "hookLatencyMs": 168,
+                "linkedFiles": 0,
+                "recommendation": "prime_quality_suppressed_silent",
+                "primeAttempted": true,
+                "primeContextDelivered": false,
+                "primeSuppressed": true,
+                "hostAdditionalContextBytes": 0,
+                "proactivePrime": false,
+                "primeQuality": {
+                  "score": 100,
+                  "action": "suppress",
+                  "reasons": [
+                    "high-confidence top retrieval score",
+                    "top results are tightly clustered",
+                    "debug/failure task can benefit from targeted context",
+                    "top result is a production source file",
+                    "query-local companion evidence supports multi-surface context",
+                    "top retrieval candidates are not well separated",
+                    "debug companion context should stay directive instead of full-prime",
+                    "index freshness: dirty_state_changed",
+                    "session policy: verified_context_suppressed"
+                  ],
+                  "topScore": 1727.615,
+                  "topGap": 8.928,
+                  "exactPathMentioned": false,
+                  "expectedSavingsRisk": "medium"
+                },
+                "contextDecision": {
+                  "score": 100,
+                  "action": "suppress",
+                  "reasons": [
+                    "high-confidence top retrieval score",
+                    "top results are tightly clustered",
+                    "debug/failure task can benefit from targeted context",
+                    "top result is a production source file",
+                    "query-local companion evidence supports multi-surface context",
+                    "top retrieval candidates are not well separated",
+                    "debug companion context should stay directive instead of full-prime"
+                  ],
+                  "topScore": 1727.615,
+                  "topGap": 8.928,
+                  "primaryFile": "src/requests/models.py",
+                  "language": "python",
+                  "exactPathMentioned": false,
+                  "exactSourceHit": false,
+                  "sourceRescue": false,
+                  "canonicalSourceHit": true,
+                  "cheapSingleSource": false,
+                  "cheapExactSource": false,
+                  "companionSpecific": true,
+                  "multiSurfaceSignal": true,
+                  "companionCount": 2,
+                  "companionTopScore": 2020,
+                  "recommendedDelivery": "none",
+                  "estimatedContextCost": 500,
+                  "expectedSavingsRisk": "medium",
+                  "debugSignal": true,
+                  "easyTaskSignal": false,
+                  "wrongContextRisk": false
+                },
+                "decision": "suppress",
+                "decisionScore": 100,
+                "decisionReasons": [
+                  "high-confidence top retrieval score",
+                  "top results are tightly clustered",
+                  "debug/failure task can benefit from targeted context",
+                  "top result is a production source file",
+                  "query-local companion evidence supports multi-surface context",
+                  "top retrieval candidates are not well separated",
+                  "debug companion context should stay directive instead of full-prime"
+                ],
+                "estimatedContextCost": 500,
+                "expectedSavingsRisk": "medium",
+                "failureContext": false,
+                "duplicatePromptPrime": false,
+                "compressedOutput": false,
+                "trivialSuccessfulOutput": true
+              }
+            }
+          },
+          {
+            "turnId": "edge-case-review",
+            "mode": "kairn_codex_session",
+            "outcome": "pass",
+            "observedCodexTokens": 21203,
+            "responseTokens": 28178,
+            "elapsedMs": 134807,
+            "actualFiles": [
+              "src/requests/sessions.py",
+              "src/requests/adapters.py",
+              "src/requests/models.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py",
+              "src/requests/adapters.py",
+              "src/requests/models.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 1,
+            "repeatedSnippetsAvoided": 1,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "9003371c2a18f3329644c51744b01c6bdcd9e9a64b66436f1cc0ea383898ab57",
+              "preparedPromptHash": "9003371c2a18f3329644c51744b01c6bdcd9e9a64b66436f1cc0ea383898ab57",
+              "commandHash": "46bd7d11dd8fb5498a0a8bf48da0878757f8cd4b44e5cc77d9e3c6432d7392ab",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "b4a2609d17c6583879122da8a0fd74f94913b32263829ac9a97718bfa4ab8f64",
+              "expectedFileMentions": [
+                "src/requests/sessions.py",
+                "src/requests/adapters.py",
+                "src/requests/models.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "codexUsage": {
+                "totalTokens": 21203,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "hookSimulated": true,
+              "hookDeliveredContext": false,
+              "hookDecision": "suppress",
+              "primeDecision": "suppress",
+              "hookRecommendation": "prime_quality_suppressed_silent",
+              "primeFiles": [],
+              "hookFiles": [],
+              "hookOutputTokens": 0,
+              "hookSignalMetadata": {
+                "eventName": "UserPromptSubmit",
+                "hookKind": "hook",
+                "outputKind": "generic",
+                "hookOutput": "full-prime",
+                "transport": "cli",
+                "daemonAttempted": false,
+                "daemonHit": false,
+                "daemonMiss": false,
+                "indexRefreshSkipped": true,
+                "refreshIndexMs": 0,
+                "primeElapsedMs": 162,
+                "hookLatencyMs": 163,
+                "linkedFiles": 0,
+                "recommendation": "prime_quality_suppressed_silent",
+                "primeAttempted": true,
+                "primeContextDelivered": false,
+                "primeSuppressed": true,
+                "hostAdditionalContextBytes": 0,
+                "proactivePrime": false,
+                "primeQuality": {
+                  "score": 94,
+                  "action": "suppress",
+                  "reasons": [
+                    "high-confidence top retrieval score",
+                    "top result is clearly separated",
+                    "top result is a production source file",
+                    "high-confidence exact source target supports compact context",
+                    "exact source hit should use focused context",
+                    "canonical source routing supports focused context",
+                    "single-source fix should not receive broad context expansion",
+                    "session policy: repeated_context_suppressed"
+                  ],
+                  "topScore": 2608.618,
+                  "topGap": 554.828,
+                  "exactPathMentioned": false,
+                  "expectedSavingsRisk": "medium"
+                },
+                "contextDecision": {
+                  "score": 94,
+                  "action": "suppress",
+                  "reasons": [
+                    "high-confidence top retrieval score",
+                    "top result is clearly separated",
+                    "top result is a production source file",
+                    "high-confidence exact source target supports compact context",
+                    "exact source hit should use focused context",
+                    "canonical source routing supports focused context",
+                    "single-source fix should not receive broad context expansion"
+                  ],
+                  "topScore": 2608.618,
+                  "topGap": 554.828,
+                  "primaryFile": "src/requests/models.py",
+                  "language": "python",
+                  "exactPathMentioned": false,
+                  "exactSourceHit": true,
+                  "sourceRescue": false,
+                  "canonicalSourceHit": true,
+                  "cheapSingleSource": false,
+                  "cheapExactSource": false,
+                  "companionSpecific": true,
+                  "multiSurfaceSignal": false,
+                  "companionCount": 2,
+                  "companionTopScore": 3000,
+                  "recommendedDelivery": "none",
+                  "estimatedContextCost": 500,
+                  "expectedSavingsRisk": "medium",
+                  "debugSignal": false,
+                  "easyTaskSignal": false,
+                  "wrongContextRisk": false
+                },
+                "decision": "suppress",
+                "decisionScore": 94,
+                "decisionReasons": [
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "top result is a production source file",
+                  "high-confidence exact source target supports compact context",
+                  "exact source hit should use focused context",
+                  "canonical source routing supports focused context",
+                  "single-source fix should not receive broad context expansion"
+                ],
+                "estimatedContextCost": 500,
+                "expectedSavingsRisk": "medium",
+                "failureContext": false,
+                "duplicatePromptPrime": false,
+                "compressedOutput": false,
+                "trivialSuccessfulOutput": true
+              }
+            }
+          },
+          {
+            "turnId": "failure-recovery",
+            "mode": "kairn_codex_session",
+            "outcome": "pass",
+            "observedCodexTokens": 7455,
+            "responseTokens": 10198,
+            "elapsedMs": 22437,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "ef5f003f9d7043aebd78e4c1a274b6d435dd781c8b11360daa71b673d9b1a741",
+              "preparedPromptHash": "ef5f003f9d7043aebd78e4c1a274b6d435dd781c8b11360daa71b673d9b1a741",
+              "commandHash": "dd44635ba42030ca44414e252c7a26e88f688ff4385dc885e67101863b51ab49",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "c4843951dae65817793755b775f1837c0af07003eb89b9db9469a81f8e295079",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "codexUsage": {
+                "totalTokens": 7455,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "hookSimulated": true,
+              "hookDeliveredContext": false,
+              "hookRecommendation": "prompt_suppressed",
+              "primeFiles": [],
+              "hookFiles": [],
+              "hookOutputTokens": 0,
+              "hookSignalMetadata": {
+                "eventName": "UserPromptSubmit",
+                "hookKind": "hook",
+                "outputKind": "generic",
+                "hookOutput": "full-prime",
+                "transport": "cli",
+                "daemonAttempted": false,
+                "daemonHit": false,
+                "daemonMiss": false,
+                "indexRefreshSkipped": true,
+                "refreshIndexMs": 0,
+                "primeElapsedMs": 0,
+                "hookLatencyMs": 1,
+                "linkedFiles": 0,
+                "recommendation": "prompt_suppressed",
+                "primeAttempted": false,
+                "primeContextDelivered": false,
+                "primeSuppressed": false,
+                "hostAdditionalContextBytes": 0,
+                "proactivePrime": false,
+                "failureContext": false,
+                "duplicatePromptPrime": false,
+                "compressedOutput": false,
+                "trivialSuccessfulOutput": true
+              }
+            }
+          },
+          {
+            "turnId": "repeat-context-check",
+            "mode": "kairn_codex_session",
+            "outcome": "pass",
+            "observedCodexTokens": 19064,
+            "responseTokens": 22517,
+            "elapsedMs": 34797,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "996275e871240fbf71abb23c8456475bc2026eff50707a2f2e636b26499a131b",
+              "preparedPromptHash": "996275e871240fbf71abb23c8456475bc2026eff50707a2f2e636b26499a131b",
+              "commandHash": "947481ec19c693fa1756bd6e0fa21849aacb6b2936f64b4d53936516288c6286",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "d4d997b54117daf399b71f39780834133e3e4c8ba6ee857eff8592617b837df8",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "codexUsage": {
+                "totalTokens": 19064,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "hookSimulated": true,
+              "hookDeliveredContext": false,
+              "hookRecommendation": "prompt_suppressed",
+              "primeFiles": [],
+              "hookFiles": [],
+              "hookOutputTokens": 0,
+              "hookSignalMetadata": {
+                "eventName": "UserPromptSubmit",
+                "hookKind": "hook",
+                "outputKind": "generic",
+                "hookOutput": "full-prime",
+                "transport": "cli",
+                "daemonAttempted": false,
+                "daemonHit": false,
+                "daemonMiss": false,
+                "indexRefreshSkipped": true,
+                "refreshIndexMs": 0,
+                "primeElapsedMs": 0,
+                "hookLatencyMs": 1,
+                "linkedFiles": 0,
+                "recommendation": "prompt_suppressed",
+                "primeAttempted": false,
+                "primeContextDelivered": false,
+                "primeSuppressed": false,
+                "hostAdditionalContextBytes": 0,
+                "proactivePrime": false,
+                "failureContext": false,
+                "duplicatePromptPrime": false,
+                "compressedOutput": false,
+                "trivialSuccessfulOutput": true
+              }
+            }
+          },
+          {
+            "turnId": "diff-review",
+            "mode": "kairn_codex_session",
+            "outcome": "pass",
+            "observedCodexTokens": 31316,
+            "responseTokens": 20981,
+            "elapsedMs": 117998,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 1,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "04e2159af1ed16cfd98cd62095ca0b454047839732cf2d92d663567149c702d2",
+              "preparedPromptHash": "04e2159af1ed16cfd98cd62095ca0b454047839732cf2d92d663567149c702d2",
+              "commandHash": "11774e25689875eb8023f5340bff0ba4b0e474eccafcdac0c2b5def70f0da13e",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "12bf37b0b0b33be7aa0fe9ab36d6e859aaf40081ab4d2c00a761aadebf994b8b",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "codexUsage": {
+                "totalTokens": 31316,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "hookSimulated": true,
+              "hookDeliveredContext": false,
+              "hookDecision": "suppress",
+              "primeDecision": "suppress",
+              "hookRecommendation": "prime_quality_suppressed_silent",
+              "primeFiles": [],
+              "hookFiles": [],
+              "hookOutputTokens": 0,
+              "hookSignalMetadata": {
+                "eventName": "UserPromptSubmit",
+                "hookKind": "hook",
+                "outputKind": "generic",
+                "hookOutput": "full-prime",
+                "transport": "cli",
+                "daemonAttempted": false,
+                "daemonHit": false,
+                "daemonMiss": false,
+                "indexRefreshSkipped": true,
+                "refreshIndexMs": 0,
+                "primeElapsedMs": 148,
+                "hookLatencyMs": 150,
+                "linkedFiles": 0,
+                "recommendation": "prime_quality_suppressed_silent",
+                "primeAttempted": true,
+                "primeContextDelivered": false,
+                "primeSuppressed": true,
+                "hostAdditionalContextBytes": 0,
+                "proactivePrime": false,
+                "primeQuality": {
+                  "score": 94,
+                  "action": "suppress",
+                  "reasons": [
+                    "high-confidence top retrieval score",
+                    "top result is clearly separated",
+                    "top result is a production source file",
+                    "high-confidence exact source target supports compact context",
+                    "exact source hit should use focused context",
+                    "source-rescue signal supports an active one-file guardrail",
+                    "canonical source routing supports focused context",
+                    "single-source fix should not receive broad context expansion",
+                    "session policy: verified_context_suppressed"
+                  ],
+                  "topScore": 1858.774,
+                  "topGap": 1027.064,
+                  "exactPathMentioned": false,
+                  "expectedSavingsRisk": "medium"
+                },
+                "contextDecision": {
+                  "score": 94,
+                  "action": "suppress",
+                  "reasons": [
+                    "high-confidence top retrieval score",
+                    "top result is clearly separated",
+                    "top result is a production source file",
+                    "high-confidence exact source target supports compact context",
+                    "exact source hit should use focused context",
+                    "source-rescue signal supports an active one-file guardrail",
+                    "canonical source routing supports focused context",
+                    "single-source fix should not receive broad context expansion"
+                  ],
+                  "topScore": 1858.774,
+                  "topGap": 1027.064,
+                  "primaryFile": "src/requests/exceptions.py",
+                  "language": "python",
+                  "exactPathMentioned": false,
+                  "exactSourceHit": true,
+                  "sourceRescue": true,
+                  "canonicalSourceHit": true,
+                  "cheapSingleSource": false,
+                  "cheapExactSource": false,
+                  "companionSpecific": true,
+                  "multiSurfaceSignal": false,
+                  "companionCount": 2,
+                  "companionTopScore": 1006,
+                  "recommendedDelivery": "none",
+                  "estimatedContextCost": 500,
+                  "expectedSavingsRisk": "medium",
+                  "debugSignal": false,
+                  "easyTaskSignal": false,
+                  "wrongContextRisk": false
+                },
+                "decision": "suppress",
+                "decisionScore": 94,
+                "decisionReasons": [
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "top result is a production source file",
+                  "high-confidence exact source target supports compact context",
+                  "exact source hit should use focused context",
+                  "source-rescue signal supports an active one-file guardrail",
+                  "canonical source routing supports focused context",
+                  "single-source fix should not receive broad context expansion"
+                ],
+                "estimatedContextCost": 500,
+                "expectedSavingsRisk": "medium",
+                "failureContext": false,
+                "duplicatePromptPrime": false,
+                "compressedOutput": false,
+                "trivialSuccessfulOutput": true
+              }
+            }
+          },
+          {
+            "turnId": "summary",
+            "mode": "kairn_codex_session",
+            "outcome": "pass",
+            "observedCodexTokens": 4727,
+            "responseTokens": 6178,
+            "elapsedMs": 18906,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "688f1e22b324fb0a5b887139840db3fcd02dea052fd42a103a50a89c8f7d103f",
+              "preparedPromptHash": "688f1e22b324fb0a5b887139840db3fcd02dea052fd42a103a50a89c8f7d103f",
+              "commandHash": "602282bb2f768289727f9b494638a133544b1bb975ebbd03bdb3ccc89a0bbd66",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "9abcd21b6d015148792f56af94339054e1ad95975601386ed9ed217d2620e1ad",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "codexUsage": {
+                "totalTokens": 4727,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "hookSimulated": true,
+              "hookDeliveredContext": false,
+              "hookRecommendation": "prompt_suppressed",
+              "primeFiles": [],
+              "hookFiles": [],
+              "hookOutputTokens": 0,
+              "hookSignalMetadata": {
+                "eventName": "UserPromptSubmit",
+                "hookKind": "hook",
+                "outputKind": "generic",
+                "hookOutput": "full-prime",
+                "transport": "cli",
+                "daemonAttempted": false,
+                "daemonHit": false,
+                "daemonMiss": false,
+                "indexRefreshSkipped": true,
+                "refreshIndexMs": 0,
+                "primeElapsedMs": 0,
+                "hookLatencyMs": 2,
+                "linkedFiles": 0,
+                "recommendation": "prompt_suppressed",
+                "primeAttempted": false,
+                "primeContextDelivered": false,
+                "primeSuppressed": false,
+                "hostAdditionalContextBytes": 0,
+                "proactivePrime": false,
+                "failureContext": false,
+                "duplicatePromptPrime": false,
+                "compressedOutput": false,
+                "trivialSuccessfulOutput": true
+              }
+            }
+          },
+          {
+            "turnId": "final-cleanup",
+            "mode": "kairn_codex_session",
+            "outcome": "pass",
+            "observedCodexTokens": 9586,
+            "responseTokens": 9927,
+            "elapsedMs": 23271,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "30213a7b76d5001c11151f06bbc990b1f540e2f0f3294e335f3fa87cdede35af",
+              "preparedPromptHash": "30213a7b76d5001c11151f06bbc990b1f540e2f0f3294e335f3fa87cdede35af",
+              "commandHash": "7feea235fe8491a9b2429309abaf064e1aedbd63203f3f3c18a062e81117b51f",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "9533d2b7db15befb4a2bd3ba3f19edb89b86c46dc5e4e42ba791c968fbe80c05",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "codexUsage": {
+                "totalTokens": 9586,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "hookSimulated": true,
+              "hookDeliveredContext": false,
+              "hookRecommendation": "prompt_suppressed",
+              "primeFiles": [],
+              "hookFiles": [],
+              "hookOutputTokens": 0,
+              "hookSignalMetadata": {
+                "eventName": "UserPromptSubmit",
+                "hookKind": "hook",
+                "outputKind": "generic",
+                "hookOutput": "full-prime",
+                "transport": "cli",
+                "daemonAttempted": false,
+                "daemonHit": false,
+                "daemonMiss": false,
+                "indexRefreshSkipped": true,
+                "refreshIndexMs": 0,
+                "primeElapsedMs": 0,
+                "hookLatencyMs": 2,
+                "linkedFiles": 0,
+                "recommendation": "prompt_suppressed",
+                "primeAttempted": false,
+                "primeContextDelivered": false,
+                "primeSuppressed": false,
+                "hostAdditionalContextBytes": 0,
+                "proactivePrime": false,
+                "failureContext": false,
+                "duplicatePromptPrime": false,
+                "compressedOutput": false,
+                "trivialSuccessfulOutput": true
+              }
+            }
+          }
+        ],
+        "totalObservedCodexTokens": 149970,
+        "totalResponseTokens": 163692,
+        "totalElapsedMs": 490939,
+        "qualityGatePassed": true,
+        "finalVerificationPassed": true,
+        "assistanceStatus": "active",
+        "assistanceActions": {
+          "emitted": 0,
+          "shrunk": 1,
+          "suppressed": 6,
+          "mcpCalls": 0,
+          "failureContexts": 2
+        },
+        "ledger": {
+          "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+          "events": 67,
+          "currentPhase": "cleanup",
+          "recommendedFiles": [
+            "src/requests/sessions.py",
+            "src/requests/models.py",
+            "src/requests/exceptions.py"
+          ],
+          "shownFiles": [
+            "src/requests/sessions.py",
+            "src/requests/models.py"
+          ],
+          "agentMentionedFiles": [
+            "src/requests/sessions.py",
+            "src/requests/models.py",
+            "src/requests/adapters.py"
+          ],
+          "agentTouchedFiles": [
+            "src/requests/sessions.py"
+          ],
+          "repeatedFilesAvoided": 4,
+          "repeatedSnippetsAvoided": 1,
+          "recommendedFilesUsed": [
+            "src/requests/sessions.py",
+            "src/requests/models.py"
+          ],
+          "repeatedlyTouchedFiles": [
+            "src/requests/sessions.py"
+          ],
+          "unresolvedFailures": 0,
+          "workingSet": {
+            "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+            "currentPhase": "cleanup",
+            "activeFiles": [
+              "src/requests/sessions.py",
+              "src/requests/models.py",
+              "src/requests/adapters.py"
+            ],
+            "recentlyTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "shownFiles": [
+              "src/requests/sessions.py",
+              "src/requests/models.py"
+            ],
+            "ignoredRecommendedFiles": [
+              "src/requests/exceptions.py"
+            ],
+            "ruledOutFiles": [],
+            "staleFiles": [],
+            "currentInvariant": {
+              "statement": ", fix, verify, and preserve a Requests allow_redirects regression across ten turns.",
+              "filePath": "src/requests/models.py",
+              "confidence": 96,
+              "sourceEventId": 6
+            },
+            "lastPassingVerification": {
+              "summary": "Final endurance verification passed.",
+              "createdAt": "2026-05-14T19:30:35.094Z"
+            },
+            "nextSmallestUsefulRead": {
+              "filePath": "src/requests/adapters.py",
+              "reason": "active session file has not been shown yet",
+              "source": "active_file"
+            },
+            "openRisks": []
+          },
+          "recentEvents": [
+            {
+              "id": 74,
+              "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+              "kind": "verification_passed",
+              "turnId": "repeat-context-check",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "e0ae5562ff25bb462fde00c70b5a8f9e22a570dc8708d19b72eb3ab16aec9f4f",
+              "tokenEstimate": 15,
+              "source": "bench",
+              "summary": "Verification passed for endurance turn repeat-context-check.",
+              "metadata": {
+                "verificationCommandHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sourceInvariantChecked": true,
+                "sourceInvariantPassed": true,
+                "sourceInvariantFailures": [],
+                "diffScopeChecked": false,
+                "diffScopePassed": true,
+                "diffScopeViolations": [],
+                "qualityGatePassed": true
+              },
+              "createdAt": "2026-05-14T19:27:54.891Z"
+            },
+            {
+              "id": 75,
+              "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+              "kind": "context_recommended",
+              "filePath": "src/requests/exceptions.py",
+              "contentHash": "5baf63c818156b4a8113ed13f1294852b63467d8b798f9c7fe60f022d96e1867",
+              "tokenEstimate": 0,
+              "source": "codex",
+              "summary": "Kairn recommended src/requests/exceptions.py",
+              "metadata": {
+                "taskHash": "04e2159af1ed16cfd98cd62095ca0b454047839732cf2d92d663567149c702d2",
+                "phase": "cleanup",
+                "policyReason": "verified_context_suppressed",
+                "emitted": false,
+                "workingSetActiveFiles": [
+                  "src/requests/sessions.py",
+                  "src/requests/models.py",
+                  "src/requests/adapters.py"
+                ],
+                "nextSmallestUsefulRead": {
+                  "filePath": "src/requests/adapters.py",
+                  "reason": "active session file has not been shown yet",
+                  "source": "active_file"
+                }
+              },
+              "createdAt": "2026-05-14T19:27:55.041Z"
+            },
+            {
+              "id": 76,
+              "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+              "kind": "phase_change",
+              "contentHash": "06a97ae27692aa35150d1a4c93a620fa743193d6f6e4e92db61f751c1714c49a",
+              "tokenEstimate": 0,
+              "source": "codex",
+              "summary": "Phase changed from implementation to cleanup",
+              "metadata": {
+                "previousPhase": "implementation",
+                "phase": "cleanup"
+              },
+              "createdAt": "2026-05-14T19:27:55.041Z"
+            },
+            {
+              "id": 77,
+              "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+              "kind": "context_shown",
+              "contentHash": "2e86ec44018abeffbe9a3cc7a26a83a9df7c50cc333c966b1eea01d8cff14b7d",
+              "tokenEstimate": 188,
+              "source": "codex",
+              "summary": "Kairn suppressed repeated or low-value context",
+              "metadata": {
+                "taskHash": "04e2159af1ed16cfd98cd62095ca0b454047839732cf2d92d663567149c702d2",
+                "phase": "cleanup",
+                "policyReason": "verified_context_suppressed",
+                "repeatedFilesAvoided": 1,
+                "repeatedSnippetsAvoided": 0,
+                "workingSetActiveFiles": [
+                  "src/requests/sessions.py",
+                  "src/requests/models.py",
+                  "src/requests/adapters.py"
+                ],
+                "nextSmallestUsefulRead": {
+                  "filePath": "src/requests/adapters.py",
+                  "reason": "active session file has not been shown yet",
+                  "source": "active_file"
+                }
+              },
+              "createdAt": "2026-05-14T19:27:55.041Z"
+            },
+            {
+              "id": 82,
+              "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+              "kind": "command_run",
+              "turnId": "diff-review",
+              "contentHash": "09806bc62b5d9435af55833e9ffc17637f92f1d7d7aca371da134c89fae9fc89",
+              "tokenEstimate": 14,
+              "source": "agent",
+              "summary": "Agent command for endurance turn diff-review exited 0.",
+              "metadata": {
+                "commandHash": "11774e25689875eb8023f5340bff0ba4b0e474eccafcdac0c2b5def70f0da13e",
+                "exitCode": 0,
+                "timedOut": false,
+                "outputHash": "12bf37b0b0b33be7aa0fe9ab36d6e859aaf40081ab4d2c00a761aadebf994b8b"
+              },
+              "createdAt": "2026-05-14T19:29:52.887Z"
+            },
+            {
+              "id": 83,
+              "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+              "kind": "agent_file_mentioned",
+              "turnId": "diff-review",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "e0b8226be96ab9f54c863cd396ef49c1a7394002659c03aaded6d1e2624a2944",
+              "tokenEstimate": 11,
+              "source": "agent",
+              "summary": "Agent mentioned src/requests/sessions.py.",
+              "metadata": {
+                "turnId": "diff-review"
+              },
+              "createdAt": "2026-05-14T19:29:52.887Z"
+            },
+            {
+              "id": 84,
+              "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+              "kind": "agent_file_touched",
+              "turnId": "diff-review",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "6d89a5575829c6528c641cbc93a89617516ff1384a667dd9cba020b3263da6a5",
+              "tokenEstimate": 10,
+              "source": "agent",
+              "summary": "Agent touched src/requests/sessions.py.",
+              "metadata": {
+                "turnId": "diff-review"
+              },
+              "createdAt": "2026-05-14T19:29:52.888Z"
+            },
+            {
+              "id": 85,
+              "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+              "kind": "diff_seen",
+              "turnId": "diff-review",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "a69933fa538f8fc3b5ac9492a5308ded00ace1c327f81d397f1475e516fc548f",
+              "tokenEstimate": 18,
+              "source": "agent",
+              "summary": "Diff touched src/requests/sessions.py during endurance turn diff-review.",
+              "metadata": {
+                "turnId": "diff-review"
+              },
+              "createdAt": "2026-05-14T19:29:52.888Z"
+            },
+            {
+              "id": 86,
+              "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+              "kind": "verification_passed",
+              "turnId": "diff-review",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "43a90f67f76a77758dd7071281e78e5f34f8164fb06465a4b539576cba18bc44",
+              "tokenEstimate": 13,
+              "source": "bench",
+              "summary": "Verification passed for endurance turn diff-review.",
+              "metadata": {
+                "verificationCommandHash": "a6923eb6005806de17710436199db891abdf379dd2d1539fe66101d0ee8777df",
+                "verificationExitCode": 0,
+                "verificationTimedOut": false,
+                "sourceInvariantChecked": true,
+                "sourceInvariantPassed": true,
+                "sourceInvariantFailures": [],
+                "diffScopeChecked": true,
+                "diffScopePassed": true,
+                "diffScopeViolations": [],
+                "qualityGatePassed": true
+              },
+              "createdAt": "2026-05-14T19:29:52.888Z"
+            },
+            {
+              "id": 91,
+              "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+              "kind": "command_run",
+              "turnId": "summary",
+              "contentHash": "0e143b6938ffedc8cf476ac52ac3dceb7ae030ac9a28c95fed63863bc5a88469",
+              "tokenEstimate": 13,
+              "source": "agent",
+              "summary": "Agent command for endurance turn summary exited 0.",
+              "metadata": {
+                "commandHash": "602282bb2f768289727f9b494638a133544b1bb975ebbd03bdb3ccc89a0bbd66",
+                "exitCode": 0,
+                "timedOut": false,
+                "outputHash": "9abcd21b6d015148792f56af94339054e1ad95975601386ed9ed217d2620e1ad"
+              },
+              "createdAt": "2026-05-14T19:30:11.793Z"
+            },
+            {
+              "id": 92,
+              "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+              "kind": "agent_file_mentioned",
+              "turnId": "summary",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "e0b8226be96ab9f54c863cd396ef49c1a7394002659c03aaded6d1e2624a2944",
+              "tokenEstimate": 11,
+              "source": "agent",
+              "summary": "Agent mentioned src/requests/sessions.py.",
+              "metadata": {
+                "turnId": "summary"
+              },
+              "createdAt": "2026-05-14T19:30:11.793Z"
+            },
+            {
+              "id": 93,
+              "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+              "kind": "agent_file_touched",
+              "turnId": "summary",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "6d89a5575829c6528c641cbc93a89617516ff1384a667dd9cba020b3263da6a5",
+              "tokenEstimate": 10,
+              "source": "agent",
+              "summary": "Agent touched src/requests/sessions.py.",
+              "metadata": {
+                "turnId": "summary"
+              },
+              "createdAt": "2026-05-14T19:30:11.794Z"
+            },
+            {
+              "id": 94,
+              "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+              "kind": "diff_seen",
+              "turnId": "summary",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "5f4d79c3adfcef4c632982768a9803f1540f9c3fd3e71df2cb276b674f870ea6",
+              "tokenEstimate": 17,
+              "source": "agent",
+              "summary": "Diff touched src/requests/sessions.py during endurance turn summary.",
+              "metadata": {
+                "turnId": "summary"
+              },
+              "createdAt": "2026-05-14T19:30:11.794Z"
+            },
+            {
+              "id": 95,
+              "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+              "kind": "verification_passed",
+              "turnId": "summary",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "63b57322989d193449a9f9812cfc038a175cbda64ce5ce6bb245d4d539ec12b4",
+              "tokenEstimate": 12,
+              "source": "bench",
+              "summary": "Verification passed for endurance turn summary.",
+              "metadata": {
+                "verificationCommandHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sourceInvariantChecked": true,
+                "sourceInvariantPassed": true,
+                "sourceInvariantFailures": [],
+                "diffScopeChecked": false,
+                "diffScopePassed": true,
+                "diffScopeViolations": [],
+                "qualityGatePassed": true
+              },
+              "createdAt": "2026-05-14T19:30:11.794Z"
+            },
+            {
+              "id": 100,
+              "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+              "kind": "command_run",
+              "turnId": "final-cleanup",
+              "contentHash": "f09ef117ba20bb0d0706b80b2f3576b8113b1c05ae9eed9af9ca9b81f73c5dbb",
+              "tokenEstimate": 14,
+              "source": "agent",
+              "summary": "Agent command for endurance turn final-cleanup exited 0.",
+              "metadata": {
+                "commandHash": "7feea235fe8491a9b2429309abaf064e1aedbd63203f3f3c18a062e81117b51f",
+                "exitCode": 0,
+                "timedOut": false,
+                "outputHash": "9533d2b7db15befb4a2bd3ba3f19edb89b86c46dc5e4e42ba791c968fbe80c05"
+              },
+              "createdAt": "2026-05-14T19:30:35.065Z"
+            },
+            {
+              "id": 101,
+              "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+              "kind": "agent_file_mentioned",
+              "turnId": "final-cleanup",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "e0b8226be96ab9f54c863cd396ef49c1a7394002659c03aaded6d1e2624a2944",
+              "tokenEstimate": 11,
+              "source": "agent",
+              "summary": "Agent mentioned src/requests/sessions.py.",
+              "metadata": {
+                "turnId": "final-cleanup"
+              },
+              "createdAt": "2026-05-14T19:30:35.065Z"
+            },
+            {
+              "id": 102,
+              "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+              "kind": "agent_file_touched",
+              "turnId": "final-cleanup",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "6d89a5575829c6528c641cbc93a89617516ff1384a667dd9cba020b3263da6a5",
+              "tokenEstimate": 10,
+              "source": "agent",
+              "summary": "Agent touched src/requests/sessions.py.",
+              "metadata": {
+                "turnId": "final-cleanup"
+              },
+              "createdAt": "2026-05-14T19:30:35.065Z"
+            },
+            {
+              "id": 103,
+              "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+              "kind": "diff_seen",
+              "turnId": "final-cleanup",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "2a5e4cc52d0686a1bb496f4da3c21f65171697e67cf634590fc1d851af1e64bc",
+              "tokenEstimate": 19,
+              "source": "agent",
+              "summary": "Diff touched src/requests/sessions.py during endurance turn final-cleanup.",
+              "metadata": {
+                "turnId": "final-cleanup"
+              },
+              "createdAt": "2026-05-14T19:30:35.065Z"
+            },
+            {
+              "id": 104,
+              "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+              "kind": "verification_passed",
+              "turnId": "final-cleanup",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "73fc5306f872293b5d6b1ff1c9ecc27b9051e300925a02385dfa17607332b200",
+              "tokenEstimate": 14,
+              "source": "bench",
+              "summary": "Verification passed for endurance turn final-cleanup.",
+              "metadata": {
+                "verificationCommandHash": "a6923eb6005806de17710436199db891abdf379dd2d1539fe66101d0ee8777df",
+                "verificationExitCode": 0,
+                "verificationTimedOut": false,
+                "sourceInvariantChecked": true,
+                "sourceInvariantPassed": true,
+                "sourceInvariantFailures": [],
+                "diffScopeChecked": true,
+                "diffScopePassed": true,
+                "diffScopeViolations": [],
+                "qualityGatePassed": true
+              },
+              "createdAt": "2026-05-14T19:30:35.065Z"
+            },
+            {
+              "id": 105,
+              "sessionId": "task_dc70cccd-92b7-4553-b774-8c0d51a0356c",
+              "kind": "verification_passed",
+              "contentHash": "01686a52d490ab8e273bc13297bc95ca3a956265b15943a23c3c2801a08de538",
+              "tokenEstimate": 9,
+              "source": "bench",
+              "summary": "Final endurance verification passed.",
+              "metadata": {
+                "finalVerificationCommandHash": "a6923eb6005806de17710436199db891abdf379dd2d1539fe66101d0ee8777df",
+                "finalVerificationExitCode": 0,
+                "finalVerificationOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "finalSourceInvariantPassed": true,
+                "finalSourceInvariantFailures": [],
+                "finalDiffScopePassed": true,
+                "finalDiffScopeViolations": []
+              },
+              "createdAt": "2026-05-14T19:30:35.094Z"
+            }
+          ]
+        },
+        "metadata": {
+          "finalVerificationCommandPassed": true,
+          "finalSourceInvariantPassed": true,
+          "finalSourceInvariantFailures": [],
+          "finalDiffScopePassed": true,
+          "finalDiffScopeViolations": [],
+          "finalChangedFiles": [
+            "src/requests/sessions.py"
+          ],
+          "setupElapsedMs": 270,
+          "setupCommandHash": "6852400648a6ff2b6e485c2097bfd95e43f11be788cfd9381f234de030b81aec",
+          "setupExitCode": 0,
+          "setupTimedOut": false,
+          "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "setupOutputTokens": 0,
+          "kairnSessionCount": 11,
+          "primeEmitted": 0,
+          "primeSuppressed": 2,
+          "hookInvocations": 10,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 0,
+          "mcpFilesReturned": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedUsefulFileCount": 0
+        }
+      },
+      {
+        "mode": "real_mcp_first",
+        "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-uKaSOd",
+        "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+        "turns": [
+          {
+            "turnId": "diagnose",
+            "mode": "real_mcp_first",
+            "outcome": "pass",
+            "observedCodexTokens": 20249,
+            "responseTokens": 15378,
+            "elapsedMs": 38312,
+            "actualFiles": [
+              "src/requests/sessions.py",
+              "src/requests/models.py"
+            ],
+            "agentTouchedFiles": [],
+            "expectedFiles": [
+              "src/requests/sessions.py",
+              "src/requests/adapters.py",
+              "src/requests/models.py"
+            ],
+            "missingExpectedFiles": [
+              "src/requests/adapters.py"
+            ],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "01175ff72998b575cde3f862523a06769071b76aa2d2f6a35543a77474fe7639",
+              "preparedPromptHash": "4a3db1bb8ef6570a730333ae9300870c5d6821052cbdabce8d2dd4229d30aecd",
+              "commandHash": "96670caa441b5bcaff09b8ff56cb11e69e84760eb3b0845b9d59b3cc9d746ad3",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "02c9ed68775687e5a6d7065299e3a9efc1ebfa9a0802ce3a20607feb627396b7",
+              "expectedFileMentions": [
+                "src/requests/sessions.py",
+                "src/requests/models.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "codexUsage": {
+                "totalTokens": 20249,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "mcpGuidance": "prepare_first",
+              "mcpShouldCallPrepare": true
+            }
+          },
+          {
+            "turnId": "source-invariant",
+            "mode": "real_mcp_first",
+            "outcome": "pass",
+            "observedCodexTokens": 12930,
+            "responseTokens": 11456,
+            "elapsedMs": 22752,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "a47b87313ae96148ef01a9de7a95609733d0c5c2a83e18951ba7f5a3de858d5e",
+              "preparedPromptHash": "8b5f5ef052413eef2cd9b50b6e84dec9e06716c9aebd063fad3ff5ab37bc7b89",
+              "commandHash": "174cace4b3349a3e579ec226f6f2f61223358abd70e9c17b5d45cc70e8b5d286",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "0926b2f370d1ec71867e3b5fe35d2e925bdba3058c667f7667ab1fc00f8f4fed",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "codexUsage": {
+                "totalTokens": 12930,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "mcpGuidance": "continue_known_source",
+              "mcpKnownSource": "src/requests/sessions.py",
+              "mcpShouldCallPrepare": false
+            }
+          },
+          {
+            "turnId": "fix",
+            "mode": "real_mcp_first",
+            "outcome": "pass",
+            "observedCodexTokens": 21585,
+            "responseTokens": 24164,
+            "elapsedMs": 78271,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "7e1f4c2e9c207186978ceb325eae5ee35dba23ad385dce9208fdcf4ae67e1891",
+              "preparedPromptHash": "eb06b0c4d55615cb27b77a66b5d9bdeaeb2cb78b5ce266bcf74861fca1067697",
+              "commandHash": "d1e9970f8db7087c5df8c6bce2ae5013ef177bd2c270c07cfabc00787c265997",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "784636f4c4a0e535ff76ce4e0f96e758d6fb3ddb14667f231485ffcfd2f0656b",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "codexUsage": {
+                "totalTokens": 21585,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "mcpGuidance": "continue_known_source",
+              "mcpKnownSource": "src/requests/sessions.py",
+              "mcpShouldCallPrepare": false
+            }
+          },
+          {
+            "turnId": "verify-source",
+            "mode": "real_mcp_first",
+            "outcome": "pass",
+            "observedCodexTokens": 7602,
+            "responseTokens": 10042,
+            "elapsedMs": 19661,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "29e44b6d4b26849e3055c67bb4744ce88b8786b0873d206ace268202a8b78fe7",
+              "preparedPromptHash": "214fa1193bb6a4b9a5b8726f49932b7444d150985a834c5e741f7e06f6784646",
+              "commandHash": "fbe4a5f0bdc5facc01da606896e76f86b456f31c7adafb0ffb9e67be072b8acc",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "9b3720262b8b3a26ca274a1e5333fd2d96fd08053018c92e0e42fe0355871144",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "codexUsage": {
+                "totalTokens": 7602,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "mcpGuidance": "continue_known_source",
+              "mcpKnownSource": "src/requests/sessions.py",
+              "mcpShouldCallPrepare": false
+            }
+          },
+          {
+            "turnId": "edge-case-review",
+            "mode": "real_mcp_first",
+            "outcome": "pass",
+            "observedCodexTokens": 19497,
+            "responseTokens": 21066,
+            "elapsedMs": 25490,
+            "actualFiles": [
+              "src/requests/sessions.py",
+              "src/requests/adapters.py",
+              "src/requests/models.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py",
+              "src/requests/adapters.py",
+              "src/requests/models.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "9003371c2a18f3329644c51744b01c6bdcd9e9a64b66436f1cc0ea383898ab57",
+              "preparedPromptHash": "f6216232ea2dd83a0752d28fd0ce6973d48d952b96bbffffdbb25442fc44c18b",
+              "commandHash": "2c4204a8cc60ad321be8c25204689c66a7336034f55bd6865d4fe47bb7340661",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "3ed5dcd637a4e67297fd355266cc98717feec496bb832686e4ae66060868e770",
+              "expectedFileMentions": [
+                "src/requests/sessions.py",
+                "src/requests/adapters.py",
+                "src/requests/models.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "codexUsage": {
+                "totalTokens": 19497,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "mcpGuidance": "continue_known_source",
+              "mcpKnownSource": "src/requests/sessions.py",
+              "mcpShouldCallPrepare": false
+            }
+          },
+          {
+            "turnId": "failure-recovery",
+            "mode": "real_mcp_first",
+            "outcome": "pass",
+            "observedCodexTokens": 8593,
+            "responseTokens": 11494,
+            "elapsedMs": 26325,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "ef5f003f9d7043aebd78e4c1a274b6d435dd781c8b11360daa71b673d9b1a741",
+              "preparedPromptHash": "33d2ad735bada7d10e3559f341349129fdfe73230e21bd0b6771025059d7091c",
+              "commandHash": "54f8244a38c4b5d14c0be5a0255153b3c14577b87d9d71465ef1533f2e878e41",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "5300899c36698c7c7085a57f9a06891848f1718de62682dd19e132629de24c2c",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "codexUsage": {
+                "totalTokens": 8593,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "mcpGuidance": "continue_known_source",
+              "mcpKnownSource": "src/requests/sessions.py",
+              "mcpShouldCallPrepare": false
+            }
+          },
+          {
+            "turnId": "repeat-context-check",
+            "mode": "real_mcp_first",
+            "outcome": "pass",
+            "observedCodexTokens": 15948,
+            "responseTokens": 19280,
+            "elapsedMs": 38769,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "996275e871240fbf71abb23c8456475bc2026eff50707a2f2e636b26499a131b",
+              "preparedPromptHash": "90270a5369ce86ed75bbb8e6faf583b9bce3f9c5578468f7ce316fe3c698a027",
+              "commandHash": "127750182c7a2afa8d32aef485f67f5ec94f2f517f54c9f6871651147ae9ab58",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "5d6e1bb18a9afec587ef82451740f5dea1818fe6b2d546edb8c1699298268946",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "codexUsage": {
+                "totalTokens": 15948,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "mcpGuidance": "continue_known_source",
+              "mcpKnownSource": "src/requests/sessions.py",
+              "mcpShouldCallPrepare": false
+            }
+          },
+          {
+            "turnId": "diff-review",
+            "mode": "real_mcp_first",
+            "outcome": "pass",
+            "observedCodexTokens": 2587,
+            "responseTokens": 4268,
+            "elapsedMs": 17613,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "04e2159af1ed16cfd98cd62095ca0b454047839732cf2d92d663567149c702d2",
+              "preparedPromptHash": "e1c739967cca73e0249e58fae35acbd24fe02fec495a5be890501deaee75b60e",
+              "commandHash": "760b0c51ddacbbda1559a094985ea958bd87e3a49b1ad3b67dadc37497777b1f",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "0eda228bd4e2675a89882943de1ac0ceef71acbfce7d8538e631fd5c022b48b8",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "codexUsage": {
+                "totalTokens": 2587,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "mcpGuidance": "continue_known_source",
+              "mcpKnownSource": "src/requests/sessions.py",
+              "mcpShouldCallPrepare": false
+            }
+          },
+          {
+            "turnId": "summary",
+            "mode": "real_mcp_first",
+            "outcome": "pass",
+            "observedCodexTokens": 1780,
+            "responseTokens": 3385,
+            "elapsedMs": 13009,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "688f1e22b324fb0a5b887139840db3fcd02dea052fd42a103a50a89c8f7d103f",
+              "preparedPromptHash": "fe9cd5dc347a248d8d140c1b2dac485d872ec7d1986046c39dee192792703c30",
+              "commandHash": "17d47903f6dd14baf2e4df003847f0415cfc9604c709b74c57bbc38e51454777",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "04fb9295f444e01cb2a32f7dd958955b46bd5b68128e3fd4d965e14fcb6ee032",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "codexUsage": {
+                "totalTokens": 1780,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "mcpGuidance": "continue_known_source",
+              "mcpKnownSource": "src/requests/sessions.py",
+              "mcpShouldCallPrepare": false
+            }
+          },
+          {
+            "turnId": "final-cleanup",
+            "mode": "real_mcp_first",
+            "outcome": "pass",
+            "observedCodexTokens": 3822,
+            "responseTokens": 6236,
+            "elapsedMs": 17829,
+            "actualFiles": [
+              "src/requests/sessions.py"
+            ],
+            "agentTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "expectedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "missingExpectedFiles": [],
+            "requiredTouchedSatisfied": true,
+            "qualityGatePassed": true,
+            "repeatedFilesAvoided": 0,
+            "repeatedSnippetsAvoided": 0,
+            "summary": "Turn passed quality gate.",
+            "metadata": {
+              "promptHash": "30213a7b76d5001c11151f06bbc990b1f540e2f0f3294e335f3fa87cdede35af",
+              "preparedPromptHash": "d07e7f61dc9da19dca72dc5a775192348c3a7bbd72f629765e939b81b7f45844",
+              "commandHash": "b0178ea94a2afe3568f5dabd81ad985dae98d7a462248a334e4c8a4071367d70",
+              "commandExitCode": 0,
+              "commandTimedOut": false,
+              "outputHash": "dbbfbae788f087f102ed4e4bcbd18ebc839dde7ffe14c38e513fce7ae44232fe",
+              "expectedFileMentions": [
+                "src/requests/sessions.py"
+              ],
+              "changedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "seedPatchFiles": [
+                "src/requests/sessions.py"
+              ],
+              "agentTouchedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "missingRequiredTouchedFiles": [],
+              "excludedTouchedFiles": [],
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [
+                "src/requests/sessions.py"
+              ],
+              "codexUsage": {
+                "totalTokens": 3822,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "mcpGuidance": "continue_known_source",
+              "mcpKnownSource": "src/requests/sessions.py",
+              "mcpShouldCallPrepare": false
+            }
+          }
+        ],
+        "totalObservedCodexTokens": 114593,
+        "totalResponseTokens": 126769,
+        "totalElapsedMs": 299413,
+        "qualityGatePassed": true,
+        "finalVerificationPassed": true,
+        "assistanceStatus": "active",
+        "assistanceActions": {
+          "emitted": 0,
+          "shrunk": 0,
+          "suppressed": 0,
+          "mcpCalls": 1,
+          "failureContexts": 2
+        },
+        "ledger": {
+          "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+          "events": 56,
+          "currentPhase": "debugging",
+          "recommendedFiles": [
+            "src/requests/sessions.py",
+            "src/requests/models.py"
+          ],
+          "shownFiles": [
+            "src/requests/sessions.py",
+            "src/requests/models.py"
+          ],
+          "agentMentionedFiles": [
+            "src/requests/sessions.py",
+            "src/requests/models.py",
+            "src/requests/adapters.py"
+          ],
+          "agentTouchedFiles": [
+            "src/requests/sessions.py"
+          ],
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "recommendedFilesUsed": [
+            "src/requests/sessions.py",
+            "src/requests/models.py"
+          ],
+          "repeatedlyTouchedFiles": [
+            "src/requests/sessions.py"
+          ],
+          "unresolvedFailures": 0,
+          "workingSet": {
+            "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+            "currentPhase": "debugging",
+            "activeFiles": [
+              "src/requests/sessions.py",
+              "src/requests/models.py",
+              "src/requests/adapters.py"
+            ],
+            "recentlyTouchedFiles": [
+              "src/requests/sessions.py"
+            ],
+            "shownFiles": [
+              "src/requests/sessions.py",
+              "src/requests/models.py"
+            ],
+            "ignoredRecommendedFiles": [],
+            "ruledOutFiles": [],
+            "staleFiles": [],
+            "currentInvariant": {
+              "statement": ", fix, verify, and preserve a Requests allow_redirects regression across ten turns.",
+              "filePath": "src/requests/models.py",
+              "confidence": 96,
+              "sourceEventId": 6
+            },
+            "lastPassingVerification": {
+              "summary": "Final endurance verification passed.",
+              "createdAt": "2026-05-14T19:35:35.068Z"
+            },
+            "nextSmallestUsefulRead": {
+              "filePath": "src/requests/adapters.py",
+              "reason": "active session file has not been shown yet",
+              "source": "active_file"
+            },
+            "openRisks": []
+          },
+          "recentEvents": [
+            {
+              "id": 37,
+              "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+              "kind": "agent_file_mentioned",
+              "turnId": "repeat-context-check",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "e0b8226be96ab9f54c863cd396ef49c1a7394002659c03aaded6d1e2624a2944",
+              "tokenEstimate": 11,
+              "source": "agent",
+              "summary": "Agent mentioned src/requests/sessions.py.",
+              "metadata": {
+                "turnId": "repeat-context-check"
+              },
+              "createdAt": "2026-05-14T19:34:46.589Z"
+            },
+            {
+              "id": 38,
+              "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+              "kind": "agent_file_touched",
+              "turnId": "repeat-context-check",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "6d89a5575829c6528c641cbc93a89617516ff1384a667dd9cba020b3263da6a5",
+              "tokenEstimate": 10,
+              "source": "agent",
+              "summary": "Agent touched src/requests/sessions.py.",
+              "metadata": {
+                "turnId": "repeat-context-check"
+              },
+              "createdAt": "2026-05-14T19:34:46.590Z"
+            },
+            {
+              "id": 39,
+              "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+              "kind": "diff_seen",
+              "turnId": "repeat-context-check",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "59fcf24eaaf5b9caa8fe808e7d0da034f746da8facd8994ef783bc8da362173f",
+              "tokenEstimate": 21,
+              "source": "agent",
+              "summary": "Diff touched src/requests/sessions.py during endurance turn repeat-context-check.",
+              "metadata": {
+                "turnId": "repeat-context-check"
+              },
+              "createdAt": "2026-05-14T19:34:46.590Z"
+            },
+            {
+              "id": 40,
+              "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+              "kind": "verification_passed",
+              "turnId": "repeat-context-check",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "e0ae5562ff25bb462fde00c70b5a8f9e22a570dc8708d19b72eb3ab16aec9f4f",
+              "tokenEstimate": 15,
+              "source": "bench",
+              "summary": "Verification passed for endurance turn repeat-context-check.",
+              "metadata": {
+                "verificationCommandHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sourceInvariantChecked": true,
+                "sourceInvariantPassed": true,
+                "sourceInvariantFailures": [],
+                "diffScopeChecked": false,
+                "diffScopePassed": true,
+                "diffScopeViolations": [],
+                "qualityGatePassed": true
+              },
+              "createdAt": "2026-05-14T19:34:46.590Z"
+            },
+            {
+              "id": 41,
+              "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+              "kind": "command_run",
+              "turnId": "diff-review",
+              "contentHash": "09806bc62b5d9435af55833e9ffc17637f92f1d7d7aca371da134c89fae9fc89",
+              "tokenEstimate": 14,
+              "source": "agent",
+              "summary": "Agent command for endurance turn diff-review exited 0.",
+              "metadata": {
+                "commandHash": "760b0c51ddacbbda1559a094985ea958bd87e3a49b1ad3b67dadc37497777b1f",
+                "exitCode": 0,
+                "timedOut": false,
+                "outputHash": "0eda228bd4e2675a89882943de1ac0ceef71acbfce7d8538e631fd5c022b48b8"
+              },
+              "createdAt": "2026-05-14T19:35:04.202Z"
+            },
+            {
+              "id": 42,
+              "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+              "kind": "agent_file_mentioned",
+              "turnId": "diff-review",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "e0b8226be96ab9f54c863cd396ef49c1a7394002659c03aaded6d1e2624a2944",
+              "tokenEstimate": 11,
+              "source": "agent",
+              "summary": "Agent mentioned src/requests/sessions.py.",
+              "metadata": {
+                "turnId": "diff-review"
+              },
+              "createdAt": "2026-05-14T19:35:04.202Z"
+            },
+            {
+              "id": 43,
+              "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+              "kind": "agent_file_touched",
+              "turnId": "diff-review",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "6d89a5575829c6528c641cbc93a89617516ff1384a667dd9cba020b3263da6a5",
+              "tokenEstimate": 10,
+              "source": "agent",
+              "summary": "Agent touched src/requests/sessions.py.",
+              "metadata": {
+                "turnId": "diff-review"
+              },
+              "createdAt": "2026-05-14T19:35:04.202Z"
+            },
+            {
+              "id": 44,
+              "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+              "kind": "diff_seen",
+              "turnId": "diff-review",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "a69933fa538f8fc3b5ac9492a5308ded00ace1c327f81d397f1475e516fc548f",
+              "tokenEstimate": 18,
+              "source": "agent",
+              "summary": "Diff touched src/requests/sessions.py during endurance turn diff-review.",
+              "metadata": {
+                "turnId": "diff-review"
+              },
+              "createdAt": "2026-05-14T19:35:04.202Z"
+            },
+            {
+              "id": 45,
+              "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+              "kind": "verification_passed",
+              "turnId": "diff-review",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "43a90f67f76a77758dd7071281e78e5f34f8164fb06465a4b539576cba18bc44",
+              "tokenEstimate": 13,
+              "source": "bench",
+              "summary": "Verification passed for endurance turn diff-review.",
+              "metadata": {
+                "verificationCommandHash": "a6923eb6005806de17710436199db891abdf379dd2d1539fe66101d0ee8777df",
+                "verificationExitCode": 0,
+                "verificationTimedOut": false,
+                "sourceInvariantChecked": true,
+                "sourceInvariantPassed": true,
+                "sourceInvariantFailures": [],
+                "diffScopeChecked": true,
+                "diffScopePassed": true,
+                "diffScopeViolations": [],
+                "qualityGatePassed": true
+              },
+              "createdAt": "2026-05-14T19:35:04.202Z"
+            },
+            {
+              "id": 46,
+              "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+              "kind": "command_run",
+              "turnId": "summary",
+              "contentHash": "0e143b6938ffedc8cf476ac52ac3dceb7ae030ac9a28c95fed63863bc5a88469",
+              "tokenEstimate": 13,
+              "source": "agent",
+              "summary": "Agent command for endurance turn summary exited 0.",
+              "metadata": {
+                "commandHash": "17d47903f6dd14baf2e4df003847f0415cfc9604c709b74c57bbc38e51454777",
+                "exitCode": 0,
+                "timedOut": false,
+                "outputHash": "04fb9295f444e01cb2a32f7dd958955b46bd5b68128e3fd4d965e14fcb6ee032"
+              },
+              "createdAt": "2026-05-14T19:35:17.210Z"
+            },
+            {
+              "id": 47,
+              "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+              "kind": "agent_file_mentioned",
+              "turnId": "summary",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "e0b8226be96ab9f54c863cd396ef49c1a7394002659c03aaded6d1e2624a2944",
+              "tokenEstimate": 11,
+              "source": "agent",
+              "summary": "Agent mentioned src/requests/sessions.py.",
+              "metadata": {
+                "turnId": "summary"
+              },
+              "createdAt": "2026-05-14T19:35:17.211Z"
+            },
+            {
+              "id": 48,
+              "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+              "kind": "agent_file_touched",
+              "turnId": "summary",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "6d89a5575829c6528c641cbc93a89617516ff1384a667dd9cba020b3263da6a5",
+              "tokenEstimate": 10,
+              "source": "agent",
+              "summary": "Agent touched src/requests/sessions.py.",
+              "metadata": {
+                "turnId": "summary"
+              },
+              "createdAt": "2026-05-14T19:35:17.211Z"
+            },
+            {
+              "id": 49,
+              "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+              "kind": "diff_seen",
+              "turnId": "summary",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "5f4d79c3adfcef4c632982768a9803f1540f9c3fd3e71df2cb276b674f870ea6",
+              "tokenEstimate": 17,
+              "source": "agent",
+              "summary": "Diff touched src/requests/sessions.py during endurance turn summary.",
+              "metadata": {
+                "turnId": "summary"
+              },
+              "createdAt": "2026-05-14T19:35:17.211Z"
+            },
+            {
+              "id": 50,
+              "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+              "kind": "verification_passed",
+              "turnId": "summary",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "63b57322989d193449a9f9812cfc038a175cbda64ce5ce6bb245d4d539ec12b4",
+              "tokenEstimate": 12,
+              "source": "bench",
+              "summary": "Verification passed for endurance turn summary.",
+              "metadata": {
+                "verificationCommandHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sourceInvariantChecked": true,
+                "sourceInvariantPassed": true,
+                "sourceInvariantFailures": [],
+                "diffScopeChecked": false,
+                "diffScopePassed": true,
+                "diffScopeViolations": [],
+                "qualityGatePassed": true
+              },
+              "createdAt": "2026-05-14T19:35:17.211Z"
+            },
+            {
+              "id": 51,
+              "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+              "kind": "command_run",
+              "turnId": "final-cleanup",
+              "contentHash": "f09ef117ba20bb0d0706b80b2f3576b8113b1c05ae9eed9af9ca9b81f73c5dbb",
+              "tokenEstimate": 14,
+              "source": "agent",
+              "summary": "Agent command for endurance turn final-cleanup exited 0.",
+              "metadata": {
+                "commandHash": "b0178ea94a2afe3568f5dabd81ad985dae98d7a462248a334e4c8a4071367d70",
+                "exitCode": 0,
+                "timedOut": false,
+                "outputHash": "dbbfbae788f087f102ed4e4bcbd18ebc839dde7ffe14c38e513fce7ae44232fe"
+              },
+              "createdAt": "2026-05-14T19:35:35.040Z"
+            },
+            {
+              "id": 52,
+              "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+              "kind": "agent_file_mentioned",
+              "turnId": "final-cleanup",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "e0b8226be96ab9f54c863cd396ef49c1a7394002659c03aaded6d1e2624a2944",
+              "tokenEstimate": 11,
+              "source": "agent",
+              "summary": "Agent mentioned src/requests/sessions.py.",
+              "metadata": {
+                "turnId": "final-cleanup"
+              },
+              "createdAt": "2026-05-14T19:35:35.040Z"
+            },
+            {
+              "id": 53,
+              "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+              "kind": "agent_file_touched",
+              "turnId": "final-cleanup",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "6d89a5575829c6528c641cbc93a89617516ff1384a667dd9cba020b3263da6a5",
+              "tokenEstimate": 10,
+              "source": "agent",
+              "summary": "Agent touched src/requests/sessions.py.",
+              "metadata": {
+                "turnId": "final-cleanup"
+              },
+              "createdAt": "2026-05-14T19:35:35.040Z"
+            },
+            {
+              "id": 54,
+              "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+              "kind": "diff_seen",
+              "turnId": "final-cleanup",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "2a5e4cc52d0686a1bb496f4da3c21f65171697e67cf634590fc1d851af1e64bc",
+              "tokenEstimate": 19,
+              "source": "agent",
+              "summary": "Diff touched src/requests/sessions.py during endurance turn final-cleanup.",
+              "metadata": {
+                "turnId": "final-cleanup"
+              },
+              "createdAt": "2026-05-14T19:35:35.041Z"
+            },
+            {
+              "id": 55,
+              "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+              "kind": "verification_passed",
+              "turnId": "final-cleanup",
+              "filePath": "src/requests/sessions.py",
+              "contentHash": "73fc5306f872293b5d6b1ff1c9ecc27b9051e300925a02385dfa17607332b200",
+              "tokenEstimate": 14,
+              "source": "bench",
+              "summary": "Verification passed for endurance turn final-cleanup.",
+              "metadata": {
+                "verificationCommandHash": "a6923eb6005806de17710436199db891abdf379dd2d1539fe66101d0ee8777df",
+                "verificationExitCode": 0,
+                "verificationTimedOut": false,
+                "sourceInvariantChecked": true,
+                "sourceInvariantPassed": true,
+                "sourceInvariantFailures": [],
+                "diffScopeChecked": true,
+                "diffScopePassed": true,
+                "diffScopeViolations": [],
+                "qualityGatePassed": true
+              },
+              "createdAt": "2026-05-14T19:35:35.041Z"
+            },
+            {
+              "id": 56,
+              "sessionId": "task_28e57df7-53bb-49c4-9224-2e5bc3e7fdd3",
+              "kind": "verification_passed",
+              "contentHash": "01686a52d490ab8e273bc13297bc95ca3a956265b15943a23c3c2801a08de538",
+              "tokenEstimate": 9,
+              "source": "bench",
+              "summary": "Final endurance verification passed.",
+              "metadata": {
+                "finalVerificationCommandHash": "a6923eb6005806de17710436199db891abdf379dd2d1539fe66101d0ee8777df",
+                "finalVerificationExitCode": 0,
+                "finalVerificationOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "finalSourceInvariantPassed": true,
+                "finalSourceInvariantFailures": [],
+                "finalDiffScopePassed": true,
+                "finalDiffScopeViolations": []
+              },
+              "createdAt": "2026-05-14T19:35:35.068Z"
+            }
+          ]
+        },
+        "metadata": {
+          "finalVerificationCommandPassed": true,
+          "finalSourceInvariantPassed": true,
+          "finalSourceInvariantFailures": [],
+          "finalDiffScopePassed": true,
+          "finalDiffScopeViolations": [],
+          "finalChangedFiles": [
+            "src/requests/sessions.py"
+          ],
+          "setupElapsedMs": 274,
+          "setupCommandHash": "16b2d5d219eabf79cecbd2447a5c2b0d9047b79c0309f419675abaf0adc82b94",
+          "setupExitCode": 0,
+          "setupTimedOut": false,
+          "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "setupOutputTokens": 0,
+          "kairnSessionCount": 1,
+          "primeEmitted": 0,
+          "primeSuppressed": 0,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 1,
+          "mcpFilesReturned": [
+            "src/requests/sessions.py"
+          ],
+          "mcpReturnedFileCount": 1,
+          "mcpReturnedUsefulFileCount": 1,
+          "mcpObservedTokensPerCall": 114593,
+          "mcpObservedTokensPerUsefulFile": 114593
+        }
+      }
+    ],
+    "deltas": {
+      "kairn_codex_session": {
+        "baselineTokens": 266891,
+        "modeTokens": 149970,
+        "savedTokens": 116921,
+        "savingsRate": 0.4380852108164007,
+        "qualityGatePassed": true,
+        "assistanceStatus": "active",
+        "assistanceEligible": true,
+        "baselineDifficulty": "expensive_pass",
+        "baselineTokenCost": 266891,
+        "abstentionOutcome": "not_applicable",
+        "missedOpportunity": false,
+        "overAssist": false,
+        "harmfulAssist": false,
+        "assistClassification": "valid_assist",
+        "validSavings": 116921
+      },
+      "real_mcp_first": {
+        "baselineTokens": 266891,
+        "modeTokens": 114593,
+        "savedTokens": 152298,
+        "savingsRate": 0.5706374512441409,
+        "qualityGatePassed": true,
+        "assistanceStatus": "active",
+        "assistanceEligible": true,
+        "baselineDifficulty": "expensive_pass",
+        "baselineTokenCost": 266891,
+        "abstentionOutcome": "not_applicable",
+        "missedOpportunity": false,
+        "overAssist": false,
+        "harmfulAssist": false,
+        "assistClassification": "valid_assist",
+        "validSavings": 152298
+      }
+    },
+    "recommendations": [
+      "kairn_codex_session: ledger avoided 4 repeated file context event(s).",
+      "kairn_codex_session: working set next read is src/requests/adapters.py.",
+      "kairn_codex_session: repeatedly touched files suggest a follow-up focused cleanup context: src/requests/sessions.py.",
+      "real_mcp_first: working set next read is src/requests/adapters.py.",
+      "real_mcp_first: repeatedly touched files suggest a follow-up focused cleanup context: src/requests/sessions.py."
+    ]
+  }
+}

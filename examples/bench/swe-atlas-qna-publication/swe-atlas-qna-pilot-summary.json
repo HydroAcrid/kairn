@@ -1,0 +1,62 @@
+{
+  "generatedAt": "2026-05-14T19:36:29.531Z",
+  "source": "ScaleAI/SWE-Atlas-QnA",
+  "rows": 30,
+  "summary": {
+    "languages": {
+      "c": 9,
+      "ts": 5,
+      "go": 9,
+      "python": 7
+    },
+    "repos": {
+      "kovidgoyal/kitty": 9,
+      "simple-login/app": 2,
+      "Automattic/wp-calypso": 2,
+      "trufflesecurity/trufflehog": 4,
+      "minio/minio": 1,
+      "secdev/scapy": 2,
+      "drakkan/sftpgo": 1,
+      "paperless-ngx/paperless-ngx": 5,
+      "foxcpp/maddy": 2,
+      "grafana/k6": 1,
+      "grafana/grafana": 1
+    },
+    "categories": {
+      "Architecture & system design": 16,
+      "Code Onboarding": 5,
+      "Root-cause analysis": 6,
+      "Security": 2,
+      "API & library usage / integration": 1
+    },
+    "taskClasses": {
+      "runtime_procedural": 14,
+      "multi_file_debug": 9,
+      "weak_signal": 4,
+      "failure_first_debug": 2,
+      "source_rescue": 1
+    },
+    "evaluators": {
+      "runtime_procedural_answer": 14,
+      "source_grounded_answer": 16
+    },
+    "applicability": {
+      "partial": 11,
+      "strong": 12,
+      "weak": 7
+    },
+    "skippedRows": 0,
+    "warnings": [
+      "Some selected QnA rows have no source paths in the reference answer; they are omitted from repo-matrix preflight and retained only in the live suite.",
+      "Reference answers are used only for offline expected-file scoring. They are never included in generated agent prompts.",
+      "SWE-Atlas/QnA checks retrieval and answer-grounding quality, not patch correctness."
+    ]
+  },
+  "outputs": {
+    "suitePath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/swe-atlas-qna-publication/swe-atlas-qna-pilot-suite.json",
+    "matrixPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/swe-atlas-qna-publication/swe-atlas-qna-pilot-matrix.json",
+    "summaryPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/swe-atlas-qna-publication/swe-atlas-qna-pilot-summary.json",
+    "rowsPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/swe-atlas-qna-publication/swe-atlas-qna-pilot-rows.json",
+    "rawRowsPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/swe-atlas-qna-publication/swe-atlas-qna-pilot-raw.jsonl"
+  }
+}

@@ -1,0 +1,1811 @@
+{
+  "id": "swe-atlas-qna-pilot-live",
+  "name": "SWE-Atlas QnA Pilot Live Suite",
+  "cases": [
+    {
+      "id": "6905333b74f22949d97ba9e3",
+      "mode": "agent",
+      "task": "I'm  trying to wrap my head around kitty's remote control system because I want to eventually add a new command to it. I've been reading through the code but I'm getting lost in how all the pieces connect.",
+      "contextBehavior": "multi_file_debug",
+      "agentPrompt": "I'm  trying to wrap my head around kitty's remote control system because I want to eventually add a new command to it. I've been reading through the code but I'm getting lost in how all the pieces connect.\n\nSo here's what's confusing me. When I run something like kitten @ ls from another terminal, somehow that command finds its way to the running kitty instance, gets processed, and sends back a list of windows. But I can't figure out how the kitten knows where to send the command in the first place. Is it a socket? A pipe? Something else?\n\nI got kitty built and running, but when I poke around in /tmp looking for sockets, I'm not finding what I expected based on the docs. I'm wondering if the socket path is generated dynamically or if I'm looking in the wrong place entirely.\n\nThe other thing that's throwing me off is the shell integration angle. The docs mention you can send remote commands \"without explicit configuration\" when shell integration is active, but I don't understand the mechanism. Is it using the same socket? Or is there some TTY magic happening where commands go through the terminal's own pty? I tried looking at the shell integration scripts but they're setting environment variables that I can't trace back to where they're actually used.\n\nCan you help me trace through what actually happens end-to-end including the logging behavior? I want to see the real socket path kitty creates, what the actual protocol messages look like on the wire, and where in the Python code the incoming command gets parsed and routed to the ls handler. If you can show me the JSON that comes back from a real ls call, that would help me understand the response format I'd need to follow for a new command.\n\nDon't modify any files in the repository. If you need to create temporary scripts for testing, that's fine. but don't change the actual codebase files. And delete all those temporary scripts/files after task completion.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "kitty/remote_control.py",
+        "kitty/rc/ls.py",
+        "kitty/boss.py",
+        "rc/ls.py",
+        "kitty/main.py",
+        "kitty/child.py"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "runtime_procedural",
+        "evaluator": "runtime_procedural_answer",
+        "kairnApplicability": "partial",
+        "kairnMetricEligible": false,
+        "liveRisk": "high",
+        "reasons": [
+          "requires runtime logs or failure observation",
+          "requires procedural commands or temporary probes"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/kovidgoyal/kitty.git",
+        "ref": "815df1e210e0a9ab4622f5c7f2d6891d7dbeddf1",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97ba9aa",
+      "mode": "agent",
+      "task": "I'm new to SimpleLogin and trying to get everything running locally. Once the application starts, how can I tell that the web server, email handler, and job runner are actually up and responding? What should I see in the logs or dashboard UI that confirms users can sign in and manage their aliases?",
+      "contextBehavior": "cheap_single_source",
+      "agentPrompt": "I'm new to SimpleLogin and trying to get everything running locally. Once the application starts, how can I tell that the web server, email handler, and job runner are actually up and responding? What should I see in the logs or dashboard UI that confirms users can sign in and manage their aliases?\n\nAfter it's running, try performing some basic user actions like creating a new account, creating an alias, and having that alias receive an email. What happens when a new account interacts with aliases or tries to receive mail, and how does the system show that these actions were handled correctly? What should I see at runtime that confirms the behavior you would expect?\n\nWhile the application is active, do the email handler and job runner automatically come online in the background to support email activity or data handling? What behavior suggests that these internal components are functioning as intended across different situations?\n\nDo not modify the source code. You can create temporary testing data such as accounts or aliases but clean them up when you are done.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "app/api/views/alias.py"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "runtime_procedural",
+        "evaluator": "runtime_procedural_answer",
+        "kairnApplicability": "partial",
+        "kairnMetricEligible": false,
+        "liveRisk": "high",
+        "reasons": [
+          "requires starting or running a service",
+          "requires runtime logs or failure observation"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/simple-login/app.git",
+        "ref": "2cd6ee777f8c2d3531559588bcfb18627ffb5d2c",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97ba99d",
+      "mode": "agent",
+      "task": "I’m trying to understand why back navigation in a multi step onboarding flow sometimes behaves like it has a mind of its own. The Back button is supposed to move one step backward, but every so often it snaps straight to the first step or slips out into an entirely different flow, and it never feels truly random. What is actually deciding the destination for a given step, and which inputs get to win when the flow position, component props, and query string arguments disagree? I keep getting the sense that an external back target is being treated like a quiet override even when the current step should not be eligible for it, so I want to understand where that override is coming from, what precedence rule lets it take control, what code path handles the expected step-by-step navigation that's being bypassed, and observe the computed destination for each step position to confirm the pattern. Temporary scripts may be used for observation, but the repository itself should remain unchanged and anything temporary should be cleaned up afterward.",
+      "contextBehavior": "multi_file_debug",
+      "agentPrompt": "I’m trying to understand why back navigation in a multi step onboarding flow sometimes behaves like it has a mind of its own. The Back button is supposed to move one step backward, but every so often it snaps straight to the first step or slips out into an entirely different flow, and it never feels truly random. What is actually deciding the destination for a given step, and which inputs get to win when the flow position, component props, and query string arguments disagree? I keep getting the sense that an external back target is being treated like a quiet override even when the current step should not be eligible for it, so I want to understand where that override is coming from, what precedence rule lets it take control, what code path handles the expected step-by-step navigation that's being bypassed, and observe the computed destination for each step position to confirm the pattern. Temporary scripts may be used for observation, but the repository itself should remain unchanged and anything temporary should be cleaned up afterward.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "client/signup/step-wrapper/index.jsx",
+        "client/signup/navigation-link/index.jsx",
+        "client/signup/config/flows-pure.js"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "multi_file_debug",
+        "evaluator": "source_grounded_answer",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "reference answer cites 3 source files",
+          "question appears to span multiple source surfaces"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/Automattic/wp-calypso.git",
+        "ref": "be7e5cc641622d153040491fd5625c6cb83e12eb",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97ba9c8",
+      "mode": "agent",
+      "task": "I'm worried about deploying TruffleHog in an environment where teams can contribute custom detector configurations. Custom detectors can specify webhook URLs for verification, and I need to understand what security boundaries exist around this feature before we open it up.",
+      "contextBehavior": "source_rescue",
+      "agentPrompt": "I'm worried about deploying TruffleHog in an environment where teams can contribute custom detector configurations. Custom detectors can specify webhook URLs for verification, and I need to understand what security boundaries exist around this feature before we open it up.\n\nIf someone submits a detector configuration pointing to an internal address or a cloud metadata endpoint, what actually happens? I assumed there would be validation preventing this, but I haven't been able to confirm that from the documentation. When verification requests are made over HTTPS, what certificate validation does TruffleHog perform? If someone is sitting on the network path, could they intercept the traffic?\n\nThere's also something I don't fully understand about how verification works when a detector has multiple matching patterns in the same file. Does it verify once, or does something more complex happen? If it's more complex, is there any limit on how many requests can be triggered?\n\nWhen the verification webhook is called, what data gets sent to the endpoint? I need to understand what information is included in the request.\n\nI'm also wondering about the regex patterns in custom detectors. If someone provides a complex regex pattern, how does TruffleHog handle it? Are there any safeguards around regex execution?\n\nWhat I'm really trying to determine is whether someone with control over a detector configuration could abuse the verification system in ways we haven't anticipated.\n\nI don't want theoretical explanations of what the code should do . I want to see actual evidence of how the system behaves in practice. Don't modify any source files in the repository. You can create test scripts to observe the actual behavior, but clean them up when finished.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [],
+      "minExpectedHits": 0,
+      "qnaEvaluation": {
+        "minSourceMentions": 0,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "weak_signal",
+        "evaluator": "source_grounded_answer",
+        "kairnApplicability": "weak",
+        "kairnMetricEligible": false,
+        "liveRisk": "low",
+        "reasons": [
+          "reference answer has no extractable production source files"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/trufflesecurity/trufflehog.git",
+        "ref": "e42153d44a5e5c37c1bd0c70e074781e9edcb760",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97ba9f5",
+      "mode": "agent",
+      "task": "I want to understand how Kitty actually handles input event flow and focus management across windows, tabs, and child processes at runtime, without relying on assumptions from reading the source.",
+      "contextBehavior": "failure_first",
+      "agentPrompt": "I want to understand how Kitty actually handles input event flow and focus management across windows, tabs, and child processes at runtime, without relying on assumptions from reading the source.\n\nStart Kitty from this repository and interact with it in a way that creates overlapping input activity: open multiple tabs and windows, switch focus rapidly, send keyboard input while resizing and scrolling, and trigger at least one case where a background window is producing output while another window has focus. Observe what the system is actually doing while this is happening.\n\nBased only on what you can observe at runtime, describe how Kitty decides which window receives input, how focus changes propagate internally, and how input events are routed to the correct child process. I’m interested in what components appear to see the input first, what intermediate processing happens, and how the final destination is chosen.\n\nWhile this is happening, capture at least one stack-level or symbol-level snapshot related to input handling using whatever inspection tools are available in your environment. If your first attempt is blocked, show the error and use an alternative method that still provides real visibility into the call path or goroutine/thread activity. Include the commands and representative raw output.\n\nAlso observe how Kitty behaves when input is generated for a window that is no longer focused or has just been closed. Describe what happens to that input and how you can tell from runtime behavior.\n\nFrom the runtime artifacts you collect, infer which parts of the input pipeline belong to Python, which to C, and which are delegated to external libraries. Explicitly rule out at least two plausible but incorrect interpretations using evidence from your observations.\n\nFinally, identify one correctness-versus-responsiveness tradeoff in Kitty’s input handling that is directly supported by the runtime behavior you observed, not by comments in the code.\n\nKeep the repository unchanged. Temporary scripts or tracing artifacts are fine, but clean them up afterward.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "kitty/child-monitor.c",
+        "kitty/main.py",
+        "kitty/boss.py",
+        "kitty/entry_points.py",
+        "kitty/keys.c",
+        "kitty/glfw.c"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "runtime_procedural",
+        "evaluator": "runtime_procedural_answer",
+        "kairnApplicability": "partial",
+        "kairnMetricEligible": false,
+        "liveRisk": "high",
+        "reasons": [
+          "requires starting or running a service",
+          "requires procedural commands or temporary probes"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/kovidgoyal/kitty.git",
+        "ref": "815df1e210e0a9ab4622f5c7f2d6891d7dbeddf1",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97baa1b",
+      "mode": "agent",
+      "task": "I'm trying to get a clearer sense of how MinIO actually behaves when things start going wrong at runtime, especially before we rely on it more heavily for fault tolerance. When MinIO runs in distributed mode with four directories and data is spread across them using erasure coding, it reports that everything is healthy, but I want to understand how it decides that and what assumptions it is making about the required number of disks. At some point during normal operation, if one of those directories suddenly becomes inaccessible due to permission changes, what really happens in that moment? Does MinIO quietly adapt and keep going, or does it draw a hard line and refuse to write? I want to see both scenarios: what happens when we're still above the threshold versus when we drop below it by losing a second disk. The logs seem like they should tell part of the story, but do they call out the failing disk directly by path, and is there any sign of recovery being attempted while the system is still live? If the missing directory later becomes accessible again, does MinIO recognize that on its own through some polling mechanism, or does something need to push it into a healing path? For objects that were written while a disk was down, how do they get repaired once the disk returns? I want to trace where the quorum decision lives in the code and understand how MinIO calculates the threshold for having enough disks to proceed versus when it decides the risk is too high and stops, grounding the explanation in what can be observed from the health endpoint and actual write attempts while the system is running. Temporary scripts may be used for observation, but the repository itself should remain unchanged and anything temporary should be cleaned up afterward.",
+      "contextBehavior": "failure_first",
+      "agentPrompt": "I'm trying to get a clearer sense of how MinIO actually behaves when things start going wrong at runtime, especially before we rely on it more heavily for fault tolerance. When MinIO runs in distributed mode with four directories and data is spread across them using erasure coding, it reports that everything is healthy, but I want to understand how it decides that and what assumptions it is making about the required number of disks. At some point during normal operation, if one of those directories suddenly becomes inaccessible due to permission changes, what really happens in that moment? Does MinIO quietly adapt and keep going, or does it draw a hard line and refuse to write? I want to see both scenarios: what happens when we're still above the threshold versus when we drop below it by losing a second disk. The logs seem like they should tell part of the story, but do they call out the failing disk directly by path, and is there any sign of recovery being attempted while the system is still live? If the missing directory later becomes accessible again, does MinIO recognize that on its own through some polling mechanism, or does something need to push it into a healing path? For objects that were written while a disk was down, how do they get repaired once the disk returns? I want to trace where the quorum decision lives in the code and understand how MinIO calculates the threshold for having enough disks to proceed versus when it decides the risk is too high and stops, grounding the explanation in what can be observed from the health endpoint and actual write attempts while the system is running. Temporary scripts may be used for observation, but the repository itself should remain unchanged and anything temporary should be cleaned up afterward.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "cmd/erasure.go",
+        "cmd/erasure-object.go",
+        "cmd/xl-storage-disk-id-check.go",
+        "cmd/mrf.go",
+        "cmd/background-newdisks-heal-ops.go"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "runtime_procedural",
+        "evaluator": "runtime_procedural_answer",
+        "kairnApplicability": "partial",
+        "kairnMetricEligible": false,
+        "liveRisk": "high",
+        "reasons": [
+          "requires starting or running a service",
+          "requires runtime logs or failure observation",
+          "requires procedural commands or temporary probes"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/minio/minio.git",
+        "ref": "c07e5b49d477b0774f23db3b290745aef8c01bd2",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97ba9fd",
+      "mode": "agent",
+      "task": "I'm onboarding to the kitty codebase and want to understand how its file transfer protocol enables efficient file copying over SSH connections. After building kitty from source, establish an SSH connection using the SSH kitten and initiate a file transfer, then help me trace the complete journey of file data through the transfer protocol. Specifically, I need to understand how the transfer kitten initiates the protocol handshake and what escape sequences establish the transfer session over the terminal connection. Once the session is established, how does kitty implement rsync-style delta transfer, and what data structures track file signatures and differences? Then trace the actual data flow; when file chunks are transmitted, how are they encoded in the terminal stream and how does the receiving side reassemble them while distinguishing transfer data from regular terminal output? I'm also curious about transfer resumption behavior. If a transfer is interrupted and restarted, what state allows it to resume rather than starting over, and where is this resumption metadata stored? Show me evidence of delta transfer efficiency by transferring a file, modifying a small portion of it, and transferring again; demonstrate that the second transfer sends substantially less data than the first and identify what mechanism detected the unchanged portions. Do not modify any source files. Temporary test files are fine but clean them up afterwards.",
+      "contextBehavior": "multi_file_debug",
+      "agentPrompt": "I'm onboarding to the kitty codebase and want to understand how its file transfer protocol enables efficient file copying over SSH connections. After building kitty from source, establish an SSH connection using the SSH kitten and initiate a file transfer, then help me trace the complete journey of file data through the transfer protocol. Specifically, I need to understand how the transfer kitten initiates the protocol handshake and what escape sequences establish the transfer session over the terminal connection. Once the session is established, how does kitty implement rsync-style delta transfer, and what data structures track file signatures and differences? Then trace the actual data flow; when file chunks are transmitted, how are they encoded in the terminal stream and how does the receiving side reassemble them while distinguishing transfer data from regular terminal output? I'm also curious about transfer resumption behavior. If a transfer is interrupted and restarted, what state allows it to resume rather than starting over, and where is this resumption metadata stored? Show me evidence of delta transfer efficiency by transferring a file, modifying a small portion of it, and transferring again; demonstrate that the second transfer sends substantially less data than the first and identify what mechanism detected the unchanged portions. Do not modify any source files. Temporary test files are fine but clean them up afterwards.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [],
+      "minExpectedHits": 0,
+      "qnaEvaluation": {
+        "minSourceMentions": 0,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "weak_signal",
+        "evaluator": "source_grounded_answer",
+        "kairnApplicability": "weak",
+        "kairnMetricEligible": false,
+        "liveRisk": "low",
+        "reasons": [
+          "reference answer has no extractable production source files"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/kovidgoyal/kitty.git",
+        "ref": "815df1e210e0a9ab4622f5c7f2d6891d7dbeddf1",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97ba9fb",
+      "mode": "agent",
+      "task": "I'm new to Kitty and I'm having trouble with Kitty's search query parser and I suspect there might be a bug. When I combine multiple search terms with \"or\" and spaces, the results don't match what I expect. Items that should clearly match at least one term are being excluded entirely.",
+      "contextBehavior": "source_rescue",
+      "agentPrompt": "I'm new to Kitty and I'm having trouble with Kitty's search query parser and I suspect there might be a bug. When I combine multiple search terms with \"or\" and spaces, the results don't match what I expect. Items that should clearly match at least one term are being excluded entirely.\n\nI looked through the code briefly but I couldn't figure out where the issue is or what logic is causing this. Can you investigate the parser implementation and explain what's actually happening? Running some test queries would help me see the behavior clearly.\n\nIf it turns out I'm just using the wrong syntax, I'd like to know the correct way to write these queries. Don't modify any repository source files. You can create temporary test scripts or helper tools if needed, but clean them up and leave the codebase unchanged when done.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [],
+      "minExpectedHits": 0,
+      "qnaEvaluation": {
+        "minSourceMentions": 0,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "weak_signal",
+        "evaluator": "source_grounded_answer",
+        "kairnApplicability": "weak",
+        "kairnMetricEligible": false,
+        "liveRisk": "low",
+        "reasons": [
+          "reference answer has no extractable production source files"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/kovidgoyal/kitty.git",
+        "ref": "815df1e210e0a9ab4622f5c7f2d6891d7dbeddf1",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97baa09",
+      "mode": "agent",
+      "task": "I'm onboarding to TruffleHog and trying to understand its detection architecture before working with it. If I build it from source and run a basic scan, what happens during startup? Does it load detector configurations from files, or are they compiled in? What initialization messages appear about which detectors get registered?",
+      "contextBehavior": "multi_file_debug",
+      "agentPrompt": "I'm onboarding to TruffleHog and trying to understand its detection architecture before working with it. If I build it from source and run a basic scan, what happens during startup? Does it load detector configurations from files, or are they compiled in? What initialization messages appear about which detectors get registered?\n\nI'm curious about the verification setup. When I examine the build dependencies, are there HTTP client libraries suggesting network verification? If I run a scan and watch the process activity, does the architecture show verification happening in parallel or sequentially?\n\nAnother thing is the output structure. If I run a scan with JSON output, what's the actual schema for a finding? Are there fields for verification status, confidence scores, or metadata about where secrets were found? I also want to understand repository traversal. If I scan a test repo with mixed file types and check verbose logs, what does it reveal about how TruffleHog decides which files to scan versus skip?\n\nThe detector architecture itself puzzles me. When I compile the project, are the detectors separate plugins or embedded modules? If I run the binary with a help flag, what information does it show about available detection capabilities?\n\nTemporary scripts may be used for observation, but the repository itself should remain unchanged and anything temporary should be cleaned up afterward.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "pkg/detectors/detectors.go",
+        "pkg/output/json.go",
+        "pkg/common/http.go",
+        "pkg/detectors/stripe/stripe.go",
+        "pkg/engine/defaults/defaults.go",
+        "pkg/engine/engine.go"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "runtime_procedural",
+        "evaluator": "runtime_procedural_answer",
+        "kairnApplicability": "partial",
+        "kairnMetricEligible": false,
+        "liveRisk": "high",
+        "reasons": [
+          "requires starting or running a service",
+          "requires runtime logs or failure observation",
+          "requires procedural commands or temporary probes"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/trufflesecurity/trufflehog.git",
+        "ref": "e42153d44a5e5c37c1bd0c70e074781e9edcb760",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97ba9c2",
+      "mode": "agent",
+      "task": "I am joining a team that relies heavily on Scapy for custom packet manipulation, and before I start writing any code, I need to understand what the runtime environment actually looks like. I've cloned the Scapy repository locally, and I need you to help me get oriented by answering some specific questions about how it behaves when running.",
+      "contextBehavior": "cheap_single_source",
+      "agentPrompt": "I am joining a team that relies heavily on Scapy for custom packet manipulation, and before I start writing any code, I need to understand what the runtime environment actually looks like. I've cloned the Scapy repository locally, and I need you to help me get oriented by answering some specific questions about how it behaves when running.\n\nWhat welcome message and version information does Scapy display when it starts? How many protocol layers are actually available in the environment - not just files in the source tree, but what's actually loaded and ready to use? I need to understand the default configuration.  What's the verbosity level set to at startup, what does that number actually mean for output behavior, and what networking socket implementation does it use on this system?\n\nWhen you construct a basic ICMP ping packet, what's the actual structure of that packet object? I'm trying to understand whether Scapy creates a single composite object or something else - what layer types are involved, and how are they related? Also, the team mentioned something about Scapy's theming system for terminal output. What theme is active in a default session, and what's it called in the code?\n\nDon't modify any of the repository files while investigating this. If you need to write temporary test scripts or commands to figure things out, that's fine, but keep the actual codebase unchanged, and clean up any temporary files or scripts you create when you're done.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "scapy/layers/ipsec.py"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "runtime_procedural",
+        "evaluator": "runtime_procedural_answer",
+        "kairnApplicability": "partial",
+        "kairnMetricEligible": false,
+        "liveRisk": "high",
+        "reasons": [
+          "requires observing runtime environment",
+          "requires starting or running a service",
+          "requires procedural commands or temporary probes",
+          "asks for environment-dependent observed values",
+          "asks for runtime configuration rather than static source only"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/secdev/scapy.git",
+        "ref": "0925ada485406684174d6f068dbd85c4154657b3",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97baa27",
+      "mode": "agent",
+      "task": "I'm onboarding into the SFTPGo repository and trying to understand how the connection handling, quota enforcement, and atomic upload mechanisms hold together under real pressure, because the code paths look straightforward in isolation but I suspect the interesting behavior only emerges when everything runs at once. What I want to see is what actually happens when a user with strict quota limits opens multiple sessions close to the maximum allowed and starts concurrent file uploads that collectively threaten to exceed both the file count and size thresholds, while at the same time the periodic idle checker is running in the background deciding which connections to terminate. Specifically, I'm curious how the system coordinates quota updates across simultaneous transfers and whether those quota checks race with each other or serialize cleanly, and where that decision first manifests as a runtime evidence. If one upload is partway through writing to a temporary file for atomic mode and the connection gets dropped because it hit the idle timeout or because another session attempt pushed it over the limit, what happens to that partial file and the quota accounting for it, does it get cleaned up and reversed or does something linger behind? I'd like to see what the actual logged messages, file states, and quota values look like during this kind of burst, including how many sessions were accepted versus rejected, how the quota numbers changed at each step, and whether any temporary files survived that shouldn't have. What gaps or inconsistencies appear when we deliberately kill a transfer mid-stream versus when it completes normally, and what concrete signs in the logs or file system tell us which path the system took? I want to understand how the pieces coordinate when stressed, where the handoffs happen, and what the observable differences are between a clean run and one where contention causes trouble. Feel free to write any temporary scripts to get the evidence, but keep the actual repository unchanged and clean up any test artifacts when you're done.",
+      "contextBehavior": "source_rescue",
+      "agentPrompt": "I'm onboarding into the SFTPGo repository and trying to understand how the connection handling, quota enforcement, and atomic upload mechanisms hold together under real pressure, because the code paths look straightforward in isolation but I suspect the interesting behavior only emerges when everything runs at once. What I want to see is what actually happens when a user with strict quota limits opens multiple sessions close to the maximum allowed and starts concurrent file uploads that collectively threaten to exceed both the file count and size thresholds, while at the same time the periodic idle checker is running in the background deciding which connections to terminate. Specifically, I'm curious how the system coordinates quota updates across simultaneous transfers and whether those quota checks race with each other or serialize cleanly, and where that decision first manifests as a runtime evidence. If one upload is partway through writing to a temporary file for atomic mode and the connection gets dropped because it hit the idle timeout or because another session attempt pushed it over the limit, what happens to that partial file and the quota accounting for it, does it get cleaned up and reversed or does something linger behind? I'd like to see what the actual logged messages, file states, and quota values look like during this kind of burst, including how many sessions were accepted versus rejected, how the quota numbers changed at each step, and whether any temporary files survived that shouldn't have. What gaps or inconsistencies appear when we deliberately kill a transfer mid-stream versus when it completes normally, and what concrete signs in the logs or file system tell us which path the system took? I want to understand how the pieces coordinate when stressed, where the handoffs happen, and what the observable differences are between a clean run and one where contention causes trouble. Feel free to write any temporary scripts to get the evidence, but keep the actual repository unchanged and clean up any test artifacts when you're done.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [],
+      "minExpectedHits": 0,
+      "qnaEvaluation": {
+        "minSourceMentions": 0,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "runtime_procedural",
+        "evaluator": "runtime_procedural_answer",
+        "kairnApplicability": "weak",
+        "kairnMetricEligible": false,
+        "liveRisk": "high",
+        "reasons": [
+          "requires starting or running a service",
+          "requires runtime logs or failure observation",
+          "requires procedural commands or temporary probes"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/drakkan/sftpgo.git",
+        "ref": "44634210287cb192f2a53147eafb84a33a96826b",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97ba9e1",
+      "mode": "agent",
+      "task": "I'm evaluating TruffleHog for our security pipeline and I've run into some confusing behavior. When I scan certain files, valid AWS credentials get detected perfectly, but in other files with what appear to be the same credentials, they're completely missed or reported differently.",
+      "contextBehavior": "multi_file_debug",
+      "agentPrompt": "I'm evaluating TruffleHog for our security pipeline and I've run into some confusing behavior. When I scan certain files, valid AWS credentials get detected perfectly, but in other files with what appear to be the same credentials, they're completely missed or reported differently.\n\nI initially thought it might be random, but it seems consistent, the same file always produces the same result. Some of our developers encode sensitive data before committing (thinking it adds a layer of protection), and I'm wondering if that's somehow fooling the scanner. I also need you to explain why some credentials in our test fixtures never get flagged even though they follow the right format.\n\nThere's another thing I don't understand our CI logs sometimes show warnings about \"verification disabled for safety\" on certain findings. I have no idea what triggers that or why verification would be disabled.\n\nCan you figure out what's actually going on? I'm trying to understand where the boundaries are, what gets caught versus what slips through, and why. I want to see the actual scan output for cases that get detected versus cases that get missed, so I can understand the difference. If there are thresholds involved, show me what happens right at the boundary.Don't modify any source files in the repository. You can create test files to investigate, but clean up when done.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "pkg/detectors/aws/common.go",
+        "pkg/detectors/aws/access_keys/accesskey.go",
+        "pkg/detectors/falsepositives.go",
+        "pkg/decoders/decoders.go",
+        "pkg/decoders/base64.go",
+        "pkg/engine/engine.go"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "multi_file_debug",
+        "evaluator": "source_grounded_answer",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "reference answer cites 6 source files",
+          "question appears to span multiple source surfaces"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/trufflesecurity/trufflehog.git",
+        "ref": "e42153d44a5e5c37c1bd0c70e074781e9edcb760",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97ba9ab",
+      "mode": "agent",
+      "task": "I want to understand how SimpleLogin behaves during a normal alias-creation flow. To do that, run the full application locally using the standard development setup, login with any test user, and create a new alias while observing the system in real time.",
+      "contextBehavior": "failure_first",
+      "agentPrompt": "I want to understand how SimpleLogin behaves during a normal alias-creation flow. To do that, run the full application locally using the standard development setup, login with any test user, and create a new alias while observing the system in real time.\n\nAs you go through this flow, watch the frontend and note exactly what request it sends to the backend when an alias is created. Then observe what the backend returns, including any status codes, payloads, or metadata that appear in the response. While the request is being processed, check what changes occur in the database. Identify which records are inserted or updated, how many tables are touched, and whether any related entities are created as part of the same operation.\n\nPay close attention to the logs to see whether the system triggers any background tasks, emits follow-up events, or performs additional work beyond the initial write. If anything fails, such as validation problems, DB errors, or network issues. Note how the error surfaces in the API response, logs, and resulting database state. Don't modify any of the repository source files while investigating. Feel free to create temporary scripts that's fine, but leave the actual codebase as you found it and ensure to clean up any temporary files or scripts you create when you're done.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "app/app/auth/views/login_utils.py",
+        "app/app/auth/views/login.py",
+        "app/app/events/event_dispatcher.py",
+        "app/init_app.py",
+        "app/config.py",
+        "app/app/models.py"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "runtime_procedural",
+        "evaluator": "runtime_procedural_answer",
+        "kairnApplicability": "partial",
+        "kairnMetricEligible": false,
+        "liveRisk": "high",
+        "reasons": [
+          "requires runtime logs or failure observation",
+          "requires procedural commands or temporary probes"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/simple-login/app.git",
+        "ref": "2cd6ee777f8c2d3531559588bcfb18627ffb5d2c",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97ba9fa",
+      "mode": "agent",
+      "task": "I want to understand how kitty keeps its internal state consistent when terminal windows appear, resize, and disappear in quick succession. When a new window is created and immediately used to run a command, resize events and signals start flowing through the system. What happens if the window is gone before everything has finished reacting to those changes? How does kitty decide what state to keep and what to discard? I am especially interested in how timing affects signal delivery and internal bookkeeping, and whether there are moments where the system has to resolve conflicting views of what is still alive. Temporary scripts may be used for observation, but the repository itself should remain unchanged and anything temporary should be cleaned up afterward.",
+      "contextBehavior": "source_rescue",
+      "agentPrompt": "I want to understand how kitty keeps its internal state consistent when terminal windows appear, resize, and disappear in quick succession. When a new window is created and immediately used to run a command, resize events and signals start flowing through the system. What happens if the window is gone before everything has finished reacting to those changes? How does kitty decide what state to keep and what to discard? I am especially interested in how timing affects signal delivery and internal bookkeeping, and whether there are moments where the system has to resolve conflicting views of what is still alive. Temporary scripts may be used for observation, but the repository itself should remain unchanged and anything temporary should be cleaned up afterward.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [],
+      "minExpectedHits": 0,
+      "qnaEvaluation": {
+        "minSourceMentions": 0,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "runtime_procedural",
+        "evaluator": "runtime_procedural_answer",
+        "kairnApplicability": "weak",
+        "kairnMetricEligible": false,
+        "liveRisk": "high",
+        "reasons": [
+          "requires starting or running a service",
+          "requires procedural commands or temporary probes"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/kovidgoyal/kitty.git",
+        "ref": "815df1e210e0a9ab4622f5c7f2d6891d7dbeddf1",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97ba9eb",
+      "mode": "agent",
+      "task": "I'm trying to understand exactly how the keyboard protocol stack behaves during alternating screen buffer switches, and I'm getting confused by what I observe versus what I expect.",
+      "contextBehavior": "failure_first",
+      "agentPrompt": "I'm trying to understand exactly how the keyboard protocol stack behaves during alternating screen buffer switches, and I'm getting confused by what I observe versus what I expect.\n\nHere's my situation: I'm writing a text-mode application that needs to push its own keyboard enhancement flags when it starts, but the application uses the alternate screen buffer, and I've noticed something strange. When I switch to the alternate buffer and then push keyboard flags, the behavior is different from when I push flags on the main buffer first and then switch to alternate. I can't figure out from reading the code whether each buffer maintains its own independent stack, whether flags get copied when switching, or if there's some other mechanism at play.\n\nWhat I really need to know is this: if I start on the main buffer, push a specific set of keyboard flags there, then toggle to the alternate screen, push a different set of flags on alternate, then toggle back to main, what is the actual keyboard encoding mode that's active? Does the stack I pushed on main survive the round-trip? And what escape sequences would a key press actually produce in each of these states?\n\nI also want to understand the edge cases around stack exhaustion. The documentation mentions there's some limit to how many levels can be pushed. If I deliberately push more flags than allowed while on one buffer, what actually happens? Does it silently drop old entries, error out, or something else? And does this exhaustion on one buffer affect the other buffer's stack?\n\nTo make things more concrete: I want you to set up a controlled test where you can actually observe what sequences get sent back to the child process for the same key press under different stack states and buffer combinations. I need to see real output, not just theoretical analysis. For instance, press a modified key like Ctrl+Shift+a while on main with no flags pushed, then again after pushing disambiguate mode, then again after switching to alternate and pushing report-all-keys mode, then back to main.\n\nThe key thing I'm after is: what are the actual byte sequences that get transmitted in each scenario, and do they prove that the buffers truly have independent stacks? I also want to understand if there's any state leakage or unexpected interaction when rapidly switching between buffers while keyboard mode is being manipulated.\n\nOne more thing: I've heard there might be differences in how this works depending on whether the terminal is in certain modes or has specific settings enabled. If there are any conditions where the stack isolation breaks down or behaves unexpectedly, I want to know about those too.\n\nDon't modify any source files in the repository. Use only what exists in the codebase, including any test infrastructure or utilities that might help demonstrate this behavior. I want to understand the actual runtime behavior, not just what the code says should happen.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "kitty/key_encoding.c",
+        "kitty/screen.h",
+        "kitty/screen.c"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "failure_first_debug",
+        "evaluator": "source_grounded_answer",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "question contains failure/debug signals and should use failure-first context if output exists"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/kovidgoyal/kitty.git",
+        "ref": "815df1e210e0a9ab4622f5c7f2d6891d7dbeddf1",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97ba9d0",
+      "mode": "agent",
+      "task": "I'm evaluating paperless-ngx architecture and need to understand what background maintenance happens automatically. Set up the development environment, what periodic tasks are registered with the task scheduler, and where is the schedule configuration defined? Find the sanity checker; what does it validate, what log output does it produce, and how often does it run? Is there automatic index optimization or database cleanup? Check if there's a task that handles failed document retries or stuck processing jobs. Look at the Celery beat schedule configuration and list all recurring tasks with their intervals. Trace through the code to find where periodic tasks are defined and registered. What happens if a scheduled task fails; is there retry logic or alerting? Are there any tasks that run on startup versus strictly on schedule? Query the database to see if there's a table tracking task execution history or scheduled job state. What controls whether these maintenance features are enabled or disabled? Don't modify source code; observing system behavior is fine, clean up any test artifacts when done.",
+      "contextBehavior": "failure_first",
+      "agentPrompt": "I'm evaluating paperless-ngx architecture and need to understand what background maintenance happens automatically. Set up the development environment, what periodic tasks are registered with the task scheduler, and where is the schedule configuration defined? Find the sanity checker; what does it validate, what log output does it produce, and how often does it run? Is there automatic index optimization or database cleanup? Check if there's a task that handles failed document retries or stuck processing jobs. Look at the Celery beat schedule configuration and list all recurring tasks with their intervals. Trace through the code to find where periodic tasks are defined and registered. What happens if a scheduled task fails; is there retry logic or alerting? Are there any tasks that run on startup versus strictly on schedule? Query the database to see if there's a table tracking task execution history or scheduled job state. What controls whether these maintenance features are enabled or disabled? Don't modify source code; observing system behavior is fine, clean up any test artifacts when done.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "src/documents/migrations/1004_sanity_check_schedule.py",
+        "src/documents/sanity_checker.py",
+        "src/documents/tasks.py",
+        "src/documents/management/commands/document_consumer.py",
+        "src/paperless/settings.py",
+        "src/documents/apps.py"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "runtime_procedural",
+        "evaluator": "runtime_procedural_answer",
+        "kairnApplicability": "partial",
+        "kairnMetricEligible": false,
+        "liveRisk": "high",
+        "reasons": [
+          "requires starting or running a service",
+          "requires runtime logs or failure observation"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/paperless-ngx/paperless-ngx.git",
+        "ref": "542221a38dff06361e07976452f9aea24d210542",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97ba9f2",
+      "mode": "agent",
+      "task": "I’m onboarding into the Kitty repository and trying to understand how its terminal interaction pipeline behaves when it is actually alive and running, because it feels like a busy junction where keystrokes, paste bursts, and resize signals all arrive at once and still somehow turn into a coherent flow. When the terminal sends a surge of raw input, especially if a session is being paused and then resumed, how does that stream become something the application can react to, and where does it first enter the system? It feels like there is an unseen conductor managing timing, ordering, and state handoffs, so how are those responsibilities split up, and what decides which event gets handled first? When shell integration hints arrive mixed in with ordinary text, how does the system keep screen state, command context, and input meaning aligned without drifting out of sync, and does it behave differently when there is heavy backpressure or an unstable remote connection? I want to understand what really happens from the moment that mixed input arrives to the moment the interface settles again, and how all those moving parts manage to keep their rhythm instead of slowly falling apart. Temporary scripts may be used for observation, but the repository itself should remain unchanged and anything temporary should be cleaned up afterward.",
+      "contextBehavior": "multi_file_debug",
+      "agentPrompt": "I’m onboarding into the Kitty repository and trying to understand how its terminal interaction pipeline behaves when it is actually alive and running, because it feels like a busy junction where keystrokes, paste bursts, and resize signals all arrive at once and still somehow turn into a coherent flow. When the terminal sends a surge of raw input, especially if a session is being paused and then resumed, how does that stream become something the application can react to, and where does it first enter the system? It feels like there is an unseen conductor managing timing, ordering, and state handoffs, so how are those responsibilities split up, and what decides which event gets handled first? When shell integration hints arrive mixed in with ordinary text, how does the system keep screen state, command context, and input meaning aligned without drifting out of sync, and does it behave differently when there is heavy backpressure or an unstable remote connection? I want to understand what really happens from the moment that mixed input arrives to the moment the interface settles again, and how all those moving parts manage to keep their rhythm instead of slowly falling apart. Temporary scripts may be used for observation, but the repository itself should remain unchanged and anything temporary should be cleaned up afterward.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "kitty/screen.c",
+        "kitty/child-monitor.c",
+        "kitty/child.py"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "multi_file_debug",
+        "evaluator": "source_grounded_answer",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "reference answer cites 3 source files",
+          "question appears to span multiple source surfaces"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/kovidgoyal/kitty.git",
+        "ref": "815df1e210e0a9ab4622f5c7f2d6891d7dbeddf1",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97baa19",
+      "mode": "agent",
+      "task": "We're evaluating TruffleHog for our CI pipeline, but I'm concerned about resource exhaustion attacks. If a malicious actor commits a specially crafted file to a repository we're scanning, could they cause TruffleHog to hang or time out, effectively blocking our security scans? I need you to determine if TruffleHog's pattern matching is vulnerable to computational complexity attacks. Find out which detector patterns, if any, can be exploited to cause disproportionate processing time. Measure the actual impact, how much slower can you make a scan compared to normal files of equivalent size? Provide timing measurements and CPU profiling data showing the vulnerability in action. Don't modify the TruffleHog source - just demonstrate the attack. Temporary test files and scripts are fine, just clean up afterward and don't commit anything to the actual source.",
+      "contextBehavior": "multi_file_debug",
+      "agentPrompt": "We're evaluating TruffleHog for our CI pipeline, but I'm concerned about resource exhaustion attacks. If a malicious actor commits a specially crafted file to a repository we're scanning, could they cause TruffleHog to hang or time out, effectively blocking our security scans? I need you to determine if TruffleHog's pattern matching is vulnerable to computational complexity attacks. Find out which detector patterns, if any, can be exploited to cause disproportionate processing time. Measure the actual impact, how much slower can you make a scan compared to normal files of equivalent size? Provide timing measurements and CPU profiling data showing the vulnerability in action. Don't modify the TruffleHog source - just demonstrate the attack. Temporary test files and scripts are fine, just clean up afterward and don't commit anything to the actual source.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "tmp/regex_timing.go",
+        "tmp/cpu_profile.go",
+        "tmp/comprehensive_timing.go",
+        "tmp/attack_demo.go"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "multi_file_debug",
+        "evaluator": "source_grounded_answer",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "reference answer cites 4 source files",
+          "question appears to span multiple source surfaces"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/trufflesecurity/trufflehog.git",
+        "ref": "e42153d44a5e5c37c1bd0c70e074781e9edcb760",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97baa12",
+      "mode": "agent",
+      "task": "I'm onboarding to this mail server and trying to understand how recipient address transformations are tracked. A colleague explained that when aliases rewrite addresses, the system maintains a \"forward mapping\" that stores what each original address was transformed into, so you can look up [user@domain.com](mailto:user@domain.com) and find it became [alias@domain.com](mailto:alias@domain.com). They said this mapping is built incrementally by each modifier as it runs, creating a chain of all intermediate transformations. They also mentioned something about using this for bounces. I checked the modify and dsn packages but couldn't find this mapping anywhere. Can you trace how address tracking actually works, find tests that verify it, run them, and show me the actual data structure and direction of the mapping? please clarify what the system actually does.",
+      "contextBehavior": "multi_file_debug",
+      "agentPrompt": "I'm onboarding to this mail server and trying to understand how recipient address transformations are tracked. A colleague explained that when aliases rewrite addresses, the system maintains a \"forward mapping\" that stores what each original address was transformed into, so you can look up [user@domain.com](mailto:user@domain.com) and find it became [alias@domain.com](mailto:alias@domain.com). They said this mapping is built incrementally by each modifier as it runs, creating a chain of all intermediate transformations. They also mentioned something about using this for bounces. I checked the modify and dsn packages but couldn't find this mapping anywhere. Can you trace how address tracking actually works, find tests that verify it, run them, and show me the actual data structure and direction of the mapping? please clarify what the system actually does.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "internal/module/modifier.go",
+        "internal/module/msgmetadata.go",
+        "internal/msgpipeline/msgpipeline.go"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "multi_file_debug",
+        "evaluator": "source_grounded_answer",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "reference answer cites 3 source files",
+          "question appears to span multiple source surfaces"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/foxcpp/maddy.git",
+        "ref": "26452dd8dd787dc455278b0fdd296f4a5432c768",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97baa06",
+      "mode": "agent",
+      "task": "I’m trying to get an intuitive feel for what Kitty’s history buffer really does when it’s pushed far beyond normal use, especially in moments where it feels like the terminal is being overwhelmed. If I trigger a command that pours out an enormous amount of text in a very short time, what actually unfolds inside the HistoryBuf as it fills, stretches, and starts carving out new segments? There seems to be a quiet interaction between the segmented scrollback storage and the pager-style ring buffer, and I’m curious how that relationship holds up when both are under stress. Does everything transition smoothly as segments reach their limits, or are there subtle moments where the system hesitates or behaves differently than expected? And what changes if someone is actively scrolling through old output while new data is still arriving at full speed? I want to observe how allocation, wrapping, and retention really behave at runtime and see hints of how the underlying memory structures evolve as pressure builds, without relying only on theory or code reading. Temporary scripts may be used for observation, but the repository itself should remain unchanged, and anything temporary should be cleaned up afterward.",
+      "contextBehavior": "cheap_single_source",
+      "agentPrompt": "I’m trying to get an intuitive feel for what Kitty’s history buffer really does when it’s pushed far beyond normal use, especially in moments where it feels like the terminal is being overwhelmed. If I trigger a command that pours out an enormous amount of text in a very short time, what actually unfolds inside the HistoryBuf as it fills, stretches, and starts carving out new segments? There seems to be a quiet interaction between the segmented scrollback storage and the pager-style ring buffer, and I’m curious how that relationship holds up when both are under stress. Does everything transition smoothly as segments reach their limits, or are there subtle moments where the system hesitates or behaves differently than expected? And what changes if someone is actively scrolling through old output while new data is still arriving at full speed? I want to observe how allocation, wrapping, and retention really behave at runtime and see hints of how the underlying memory structures evolve as pressure builds, without relying only on theory or code reading. Temporary scripts may be used for observation, but the repository itself should remain unchanged, and anything temporary should be cleaned up afterward.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "kitty/history.c"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "runtime_procedural",
+        "evaluator": "runtime_procedural_answer",
+        "kairnApplicability": "partial",
+        "kairnMetricEligible": false,
+        "liveRisk": "high",
+        "reasons": [
+          "requires starting or running a service",
+          "requires procedural commands or temporary probes"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/kovidgoyal/kitty.git",
+        "ref": "815df1e210e0a9ab4622f5c7f2d6891d7dbeddf1",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97baa14",
+      "mode": "agent",
+      "task": "I'm trying to understand how maddy's message processing pipeline operates from the moment a message enters the system until it reaches its final destination. When you configure maddy with a small max_tries setting and point it at a non-responsive SMTP destination that times out, what exact sequence of connection attempts occurs? How long does each timeout actually take, and what specific log entries mark each retry attempt, what fields, timestamps, and error details appear? Where does the queue store these pending messages while waiting for retry? If you inspect the filesystem after the first failure but before the second retry, what files exist, what are their naming patterns, and what metadata do they contain about retry counts? When multiple messages are queued simultaneously to different destinations how does maddy's queue scheduler prioritize them? What happens to the retry timing of message A when message B to a different destination is blocking on a slow timeout? Can you observe any queue starvation in the logs or connection patterns? Avoid modifying the codebase. You can create test configurations and intentionally failing destinations, but repository files should remain unchanged. Focus on what actually happens during execution, not theoretical behavior.",
+      "contextBehavior": "failure_first",
+      "agentPrompt": "I'm trying to understand how maddy's message processing pipeline operates from the moment a message enters the system until it reaches its final destination. When you configure maddy with a small max_tries setting and point it at a non-responsive SMTP destination that times out, what exact sequence of connection attempts occurs? How long does each timeout actually take, and what specific log entries mark each retry attempt, what fields, timestamps, and error details appear? Where does the queue store these pending messages while waiting for retry? If you inspect the filesystem after the first failure but before the second retry, what files exist, what are their naming patterns, and what metadata do they contain about retry counts? When multiple messages are queued simultaneously to different destinations how does maddy's queue scheduler prioritize them? What happens to the retry timing of message A when message B to a different destination is blocking on a slow timeout? Can you observe any queue starvation in the logs or connection patterns? Avoid modifying the codebase. You can create test configurations and intentionally failing destinations, but repository files should remain unchanged. Focus on what actually happens during execution, not theoretical behavior.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [],
+      "minExpectedHits": 0,
+      "qnaEvaluation": {
+        "minSourceMentions": 0,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "weak_signal",
+        "evaluator": "source_grounded_answer",
+        "kairnApplicability": "weak",
+        "kairnMetricEligible": false,
+        "liveRisk": "low",
+        "reasons": [
+          "reference answer has no extractable production source files"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/foxcpp/maddy.git",
+        "ref": "26452dd8dd787dc455278b0fdd296f4a5432c768",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97baa23",
+      "mode": "agent",
+      "task": "I need to get familiar with how k6 behaves as a tool. I need to understand how the basic workflow of writing and running a load-testing script works and what k6 reports back when the script executes.",
+      "contextBehavior": "multi_file_debug",
+      "agentPrompt": "I need to get familiar with how k6 behaves as a tool. I need to understand how the basic workflow of writing and running a load-testing script works and what k6 reports back when the script executes.\n\nHow can I test a single HTTP request using k6 to understand its behavior? I am interested in seeing what the output looks like during that run, specifically regarding the metrics, units, and protocols it reports. Could you also explain the command used to execute the script, whether any specific configuration or environment variables are required, and if the tool generates any external files or enforces specific validation logic on the script?\n\nYou cannot change any repository files. If you need to create your own test script, that is fine as long as you delete any temporary scripts or artifacts before the conversation ends.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "jslib.k6.io/k6-summary/0.0.1/index.js",
+        "k6/main.go"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "multi_file_debug",
+        "evaluator": "source_grounded_answer",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "reference answer cites 2 source files",
+          "question appears to span multiple source surfaces"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/grafana/k6.git",
+        "ref": "ddc3b0b1d23c128e34e2792fc9075f9126e32375",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97ba9db",
+      "mode": "agent",
+      "task": "I'm onboarding into the Paperless-NGX repository and I'm curious about the hidden choreography that happens when the system is actually running. When a document's tags change and the filename format includes tags in the directory structure, files apparently relocate themselves. I wonder what log messages actually appear during that dance, and what the before and after paths look like in practice. There's supposedly a rollback safety net if something goes wrong during a file move, but I can't tell from reading the code whether it truly recovers or just promises to, what actually happens to files when a move fails partway through? Beyond file handling, there are other runtime mysteries I want to explore. The classifier's behavior puzzles me, sometimes training finishes instantly, other times it takes much longer. I want to trigger both scenarios and see the actual log messages that explain why training was skipped versus why it proceeded with full retraining, including whatever hash or checksum the system uses to detect changes. Duplicate detection feels like magic, two files that look completely different can still be rejected as duplicates, and I want to see the actual checksums being compared at that moment of judgment. The sanity checker intrigues me as well, what does its output actually look like when an archive is healthy versus when something has gone wrong, and can I see the specific hash values it compares when it discovers a mismatch? I also wonder about ghost files, whether orphaned files really linger in the media folder and what the system actually reports when it finds them. I need to see real runtime evidence for all of this; actual paths, actual checksums, actual log messages. Temporary scripts may be used for observation, but the repository itself should remain unchanged and anything temporary cleaned up afterward.",
+      "contextBehavior": "multi_file_debug",
+      "agentPrompt": "I'm onboarding into the Paperless-NGX repository and I'm curious about the hidden choreography that happens when the system is actually running. When a document's tags change and the filename format includes tags in the directory structure, files apparently relocate themselves. I wonder what log messages actually appear during that dance, and what the before and after paths look like in practice. There's supposedly a rollback safety net if something goes wrong during a file move, but I can't tell from reading the code whether it truly recovers or just promises to, what actually happens to files when a move fails partway through? Beyond file handling, there are other runtime mysteries I want to explore. The classifier's behavior puzzles me, sometimes training finishes instantly, other times it takes much longer. I want to trigger both scenarios and see the actual log messages that explain why training was skipped versus why it proceeded with full retraining, including whatever hash or checksum the system uses to detect changes. Duplicate detection feels like magic, two files that look completely different can still be rejected as duplicates, and I want to see the actual checksums being compared at that moment of judgment. The sanity checker intrigues me as well, what does its output actually look like when an archive is healthy versus when something has gone wrong, and can I see the specific hash values it compares when it discovers a mismatch? I also wonder about ghost files, whether orphaned files really linger in the media folder and what the system actually reports when it finds them. I need to see real runtime evidence for all of this; actual paths, actual checksums, actual log messages. Temporary scripts may be used for observation, but the repository itself should remain unchanged and anything temporary cleaned up afterward.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "src/documents/sanity_checker.py",
+        "src/documents/classifier.py",
+        "src/documents/signals/handlers.py",
+        "src/documents/consumer.py"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "runtime_procedural",
+        "evaluator": "runtime_procedural_answer",
+        "kairnApplicability": "partial",
+        "kairnMetricEligible": false,
+        "liveRisk": "high",
+        "reasons": [
+          "requires runtime logs or failure observation",
+          "requires procedural commands or temporary probes"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/paperless-ngx/paperless-ngx.git",
+        "ref": "542221a38dff06361e07976452f9aea24d210542",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97ba9b6",
+      "mode": "agent",
+      "task": "I’m trying to understand how Grafana’s Grouping to matrix transformation behaves when the source series is sparse and some row and column pairings never show up at all. In charts that expect a dense grid, those missing intersections can quietly turn into empty cells, nulls, or zeros, and that small difference can completely change what the visualization seems to be saying. When a combination does not exist in the input, what does the transformation actually emit for that spot, and how does that value get carried forward as the panel renders and calculates totals, thresholds, or color scales? I keep running into cases where the human intent is missing means zero, but the dashboard feels like it is making a different choice somewhere along the way, so I want to watch a concrete sparse dataset move through the transformation and then through a downstream visualization to see exactly where the semantics shift, if they shift at all. Temporary scripts may be used for observation, but the repository itself should remain unchanged and anything temporary should be cleaned up afterward.",
+      "contextBehavior": "multi_file_debug",
+      "agentPrompt": "I’m trying to understand how Grafana’s Grouping to matrix transformation behaves when the source series is sparse and some row and column pairings never show up at all. In charts that expect a dense grid, those missing intersections can quietly turn into empty cells, nulls, or zeros, and that small difference can completely change what the visualization seems to be saying. When a combination does not exist in the input, what does the transformation actually emit for that spot, and how does that value get carried forward as the panel renders and calculates totals, thresholds, or color scales? I keep running into cases where the human intent is missing means zero, but the dashboard feels like it is making a different choice somewhere along the way, so I want to watch a concrete sparse dataset move through the transformation and then through a downstream visualization to see exactly where the semantics shift, if they shift at all. Temporary scripts may be used for observation, but the repository itself should remain unchanged and anything temporary should be cleaned up afterward.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "packages/grafana-data/src/transformations/transformers/groupingToMatrix.ts",
+        "packages/grafana-data/src/types/transformations.ts",
+        "public/app/plugins/panel/barchart/utils.ts"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "multi_file_debug",
+        "evaluator": "source_grounded_answer",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "reference answer cites 3 source files",
+          "question appears to span multiple source surfaces"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/grafana/grafana.git",
+        "ref": "4550cfb5b72886782d9a3e6cf995f8dbd57ca4ff",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97ba9de",
+      "mode": "agent",
+      "task": "I'm investigating a strange memory usage pattern in the Paperless document processing system. When the system imports documents, it sometimes consumes far more memory than expected for the metadata handling, but this doesn't happen consistently and seems to vary based on the document source or processing stage.",
+      "contextBehavior": "multi_file_debug",
+      "agentPrompt": "I'm investigating a strange memory usage pattern in the Paperless document processing system. When the system imports documents, it sometimes consumes far more memory than expected for the metadata handling, but this doesn't happen consistently and seems to vary based on the document source or processing stage.\n\nWhat I'm seeing is that memory usage spikes significantly during document import operations, particularly when metadata is being processed, but the spike seems disproportionate to the actual document size. The odd part is that this memory doesn't always get released back to the system in a timely manner, even after processing is complete. This seems unusual because these are mostly text documents with relatively small metadata - we're not dealing with massive image processing here.\n\nCan you figure out what's causing these memory spikes? I'm curious whether there's something in the metadata handling that's creating unnecessary copies or holding references longer than needed, or if there's caching behavior that's accumulating data unexpectedly. What's different between the cases where memory spikes and cases where it doesn't? How does the behavior change with different document types or batch sizes?\n\nI need to see actual runtime memory measurements during processing, understand which components or methods are responsible for holding onto memory, and get evidence showing whether this is normal Python garbage collection behavior or something problematic. Show me what patterns you can find and where the memory is actually going.\n\nDon't modify any repository source files. You can create temporary test scripts or helper tools to reproduce and analyze the behavior, but clean them up and leave the codebase unchanged when done.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "tmp/paperless-mem/mem_metadata_profile.py",
+        "usr/local/lib/python3.9/site-packages/pikepdf/models/metadata.py",
+        "documents/views.py",
+        "documents/apps.py",
+        "paperless_tesseract/parsers.py",
+        "app/src/paperless_tesseract/parsers.py"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "multi_file_debug",
+        "evaluator": "source_grounded_answer",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "reference answer cites 6 source files",
+          "question appears to span multiple source surfaces"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/paperless-ngx/paperless-ngx.git",
+        "ref": "542221a38dff06361e07976452f9aea24d210542",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97ba9e4",
+      "mode": "agent",
+      "task": "I'm onboarding into the Kitty repository and trying to understand how the SSH kitten behaves when it sets up a secure session and shares connections. It seems to do something clever with shared memory to pass credentials securely and then generates bootstrap scripts that run on the remote machine. I'm trying to piece together how the whole thing actually works end-to-end. Like, how does that archive with all the shell integration stuff get built and sent over? And how does the kitten keep track of everything it needs for a connection? The connection reuse part is also confusing me because I can't figure out how it decides whether to start a fresh connection or piggyback on an existing one. The bootstrap script encoding looks wild too with all those character substitutions for different shells. Can you help me trace through what happens from when a user initiates an SSH session all the way to when the bootstrap actually executes on the remote side? I want to understand how the shared memory piece keeps things secure and how the terminal communicates back and forth with the remote shell during setup. Temporary scripts may be used for observation, but the repository itself should remain unchanged, and anything temporary should be cleaned up afterward.",
+      "contextBehavior": "multi_file_debug",
+      "agentPrompt": "I'm onboarding into the Kitty repository and trying to understand how the SSH kitten behaves when it sets up a secure session and shares connections. It seems to do something clever with shared memory to pass credentials securely and then generates bootstrap scripts that run on the remote machine. I'm trying to piece together how the whole thing actually works end-to-end. Like, how does that archive with all the shell integration stuff get built and sent over? And how does the kitten keep track of everything it needs for a connection? The connection reuse part is also confusing me because I can't figure out how it decides whether to start a fresh connection or piggyback on an existing one. The bootstrap script encoding looks wild too with all those character substitutions for different shells. Can you help me trace through what happens from when a user initiates an SSH session all the way to when the bootstrap actually executes on the remote side? I want to understand how the shared memory piece keeps things secure and how the terminal communicates back and forth with the remote shell during setup. Temporary scripts may be used for observation, but the repository itself should remain unchanged, and anything temporary should be cleaned up afterward.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [],
+      "minExpectedHits": 0,
+      "qnaEvaluation": {
+        "minSourceMentions": 0,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "runtime_procedural",
+        "evaluator": "runtime_procedural_answer",
+        "kairnApplicability": "weak",
+        "kairnMetricEligible": false,
+        "liveRisk": "high",
+        "reasons": [
+          "requires starting or running a service",
+          "requires procedural commands or temporary probes"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/kovidgoyal/kitty.git",
+        "ref": "815df1e210e0a9ab4622f5c7f2d6891d7dbeddf1",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97ba9d1",
+      "mode": "agent",
+      "task": "I want to understand how Paperless-NGX keeps its search index synchronized with document changes before I start working with this codebase. With the full environment running, I'm curious what actually happens at runtime when a document gets modified after it's already been ingested. If I change an existing document's title through the API to something unique and then search for that exact new title within a few seconds, does the document appear in results immediately, or do I need to wait for background processing to complete? While making this change, I want to watch what happens in the background task worker process specifically to see whether any job gets picked up in response to the edit, or whether the update completes entirely within the API request before returning. Something I particularly want to explore is what happens if a document's title gets updates directly in the database using a raw SQL statement rather than through the API. After making that direct change and searching for the new title, does the document appear in search results, or does the index remain stale? If it stays stale, I want to know whether there is a way to force the system to reconcile the index with the current database state, and what observable effect that reconciliation process has on the worker logs and task queue. I'm also wondering how the system would behave if the search index became corrupted or deleted entirely while documents still exist in the database. After removing the index files and triggering whatever recovery mechanism exists, how long does reconstruction take for a small set of documents, and what processing activity is visible during that rebuild? The goal is to understand whether the system can self-heal from index inconsistencies or whether manual intervention is always required. You may create temporary test documents for observation, but don't modify any source files and clean up test artifacts when finished.",
+      "contextBehavior": "multi_file_debug",
+      "agentPrompt": "I want to understand how Paperless-NGX keeps its search index synchronized with document changes before I start working with this codebase. With the full environment running, I'm curious what actually happens at runtime when a document gets modified after it's already been ingested. If I change an existing document's title through the API to something unique and then search for that exact new title within a few seconds, does the document appear in results immediately, or do I need to wait for background processing to complete? While making this change, I want to watch what happens in the background task worker process specifically to see whether any job gets picked up in response to the edit, or whether the update completes entirely within the API request before returning. Something I particularly want to explore is what happens if a document's title gets updates directly in the database using a raw SQL statement rather than through the API. After making that direct change and searching for the new title, does the document appear in search results, or does the index remain stale? If it stays stale, I want to know whether there is a way to force the system to reconcile the index with the current database state, and what observable effect that reconciliation process has on the worker logs and task queue. I'm also wondering how the system would behave if the search index became corrupted or deleted entirely while documents still exist in the database. After removing the index files and triggering whatever recovery mechanism exists, how long does reconstruction take for a small set of documents, and what processing activity is visible during that rebuild? The goal is to understand whether the system can self-heal from index inconsistencies or whether manual intervention is always required. You may create temporary test documents for observation, but don't modify any source files and clean up test artifacts when finished.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "src/documents/management/commands/document_index.py",
+        "src/documents/tasks.py",
+        "src/documents/index.py",
+        "src/documents/views.py"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "runtime_procedural",
+        "evaluator": "runtime_procedural_answer",
+        "kairnApplicability": "partial",
+        "kairnMetricEligible": false,
+        "liveRisk": "high",
+        "reasons": [
+          "requires starting or running a service",
+          "requires runtime logs or failure observation"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/paperless-ngx/paperless-ngx.git",
+        "ref": "542221a38dff06361e07976452f9aea24d210542",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97ba9a3",
+      "mode": "agent",
+      "task": "I'm seeing inconsistent test execution times in wp-calypso and I need to understand why. Run any test file from the data-layer module twice in a row and measure the wall-clock time for each run, I'm expecting to see a significant difference between the first and second execution. What's the ratio of first-run time to second-run time you're observing?",
+      "contextBehavior": "source_rescue",
+      "agentPrompt": "I'm seeing inconsistent test execution times in wp-calypso and I need to understand why. Run any test file from the data-layer module twice in a row and measure the wall-clock time for each run, I'm expecting to see a significant difference between the first and second execution. What's the ratio of first-run time to second-run time you're observing?\n\nThen investigate what's causing this warmup overhead. Find where Jest's transformation cache is configured in this repository, what directory does it use, and what configuration option controls it? Look at the actual cache directory after running tests and tell me what types of files are being cached there.\n\nNext, I want to understand the test infrastructure itself. The data-layer tests use HTTP mocking , find which library handles the mocking, trace where it's configured in the test helpers, and explain how the mock setup affects the timing you observed. Is the mock library contributing to the first-run overhead?\n\nFinally, run the same test file with the --no-cache flag and compare the timing to your previous cached run. What's the performance impact of disabling the cache? Based on your observations, which specific transformation step is consuming the most time during the uncached run?\n\nDon't modify any repository files.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "src/asset-transform.js"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "source_rescue",
+        "evaluator": "source_grounded_answer",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "low",
+        "reasons": [
+          "question is source-grounded but does not directly name the expected file"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/Automattic/wp-calypso.git",
+        "ref": "be7e5cc641622d153040491fd5625c6cb83e12eb",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97ba9d2",
+      "mode": "agent",
+      "task": "I’m trying to get a big-picture understanding of how documents flow through the system. How does a new document usually enter paperless-ngx. Once a document is received, what are the main stages it goes through before it’s fully processed and available, are there any background jobs and what is used for background execution.",
+      "contextBehavior": "multi_file_debug",
+      "agentPrompt": "I’m trying to get a big-picture understanding of how documents flow through the system. How does a new document usually enter paperless-ngx. Once a document is received, what are the main stages it goes through before it’s fully processed and available, are there any background jobs and what is used for background execution.\n\nI’m also curious about the kind of information paperless stores for each document. What metadata fields are saved, and which ones are absolutely required versus optional or derived later during runtime-processing. Can you show with a runtime example?\n\nAlso I wonder how things like tags, correspondents, and document types are used together to organize documents in a practical way.\n\nPlease don’t make any changes to the repository itself. You can create temporary scripts for testing if needed but do clean them up once you're done.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "src/documents/management/commands/document_consumer.py",
+        "src/documents/views.py",
+        "src/documents/consumer.py",
+        "src/documents/apps.py",
+        "src/documents/models.py",
+        "src/paperless_mail/mail.py"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "multi_file_debug",
+        "evaluator": "source_grounded_answer",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "reference answer cites 6 source files",
+          "question appears to span multiple source surfaces"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/paperless-ngx/paperless-ngx.git",
+        "ref": "542221a38dff06361e07976452f9aea24d210542",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    },
+    {
+      "id": "6905333b74f22949d97ba9cf",
+      "mode": "agent",
+      "task": "I'm seeing some confusing behavior when building Ethernet frames with Scapy and I want to understand what's actually happening. Using the secdev/scapy repository, create a few simple test packets in memory: a normal Ethernet/IP/TCP packet, one with a really short payload (like 10 bytes), and one with a weird EtherType value that Scapy doesn't recognize (try 0x9000 or something random).",
+      "contextBehavior": "failure_first",
+      "agentPrompt": "I'm seeing some confusing behavior when building Ethernet frames with Scapy and I want to understand what's actually happening. Using the secdev/scapy repository, create a few simple test packets in memory: a normal Ethernet/IP/TCP packet, one with a really short payload (like 10 bytes), and one with a weird EtherType value that Scapy doesn't recognize (try 0x9000 or something random).\n\nBuild these packets and see what Scapy does with them. For the short payload case, does Scapy automatically pad it to meet the minimum Ethernet frame size, or does it stay small? When you convert it to raw bytes and back using Ether(raw(packet)), what happens to that padding - does it stick around or disappear? For the unknown EtherType packet, what does Scapy show after the Ethernet layer when you print it - does it just dump raw data, throw an error, or try to guess what it is? Try a few different payload sizes and figure out at what point Scapy stops adding padding.\n\nDig into the Ethernet layer code to find where Scapy decides to add padding and how it figures out which protocol comes next based on the EtherType field. What logic does it use when it sees a protocol number it doesn't recognize? Don't modify any of the repository files while you're investigating.\n\nAnswer using the checked-out repository as ground truth. Do not modify repository files. If temporary scripts are needed, remove them before finishing.",
+      "expectedFiles": [
+        "scapy/arch/linux.py"
+      ],
+      "minExpectedHits": 1,
+      "qnaEvaluation": {
+        "minSourceMentions": 1,
+        "requireNoRepoChanges": true
+      },
+      "requiredTouchedFiles": [],
+      "excludedFiles": [
+        "docs/",
+        "doc/",
+        "examples/",
+        "example/",
+        "fixtures/",
+        "generated/",
+        "gen/",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "tests/",
+        "test/"
+      ],
+      "officialEvaluation": {
+        "source": "swe_atlas_qna",
+        "taskClass": "failure_first_debug",
+        "evaluator": "source_grounded_answer",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "question contains failure/debug signals and should use failure-first context if output exists"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      },
+      "budget": 1400,
+      "seed": {
+        "repoUrl": "https://github.com/secdev/scapy.git",
+        "ref": "0925ada485406684174d6f068dbd85c4154657b3",
+        "cloneDepth": 1
+      },
+      "successCriteria": [
+        "Answer the repository question without modifying source files.",
+        "Use the source files implied by the reference answer when applicable.",
+        "Avoid docs/examples/generated files unless the prompt explicitly asks about docs.",
+        "This is a QnA retrieval/grounding pilot, not a patch-verification benchmark."
+      ]
+    }
+  ]
+}

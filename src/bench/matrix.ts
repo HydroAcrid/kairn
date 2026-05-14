@@ -422,9 +422,10 @@ function benchmarkPathMatches(filePath: string, pattern: string): boolean {
 }
 
 function isNoisyMatrixPath(filePath: string): boolean {
+  const normalized = normalizePath(filePath);
   return /(^|\/)(docs?|docs_src|documentation|_?examples|demo|demos|devtools|codemods|fixtures|fixture|generated|gen|dist|build|coverage|website|site|playground|storybook|testing|testdata|integration)\//.test(
-    normalizePath(filePath)
-  );
+    normalized
+  ) || /(^|\/)([^/]+\.)?(generated|gen)\.[a-z0-9]+$/.test(normalized) || /\.(generated|gen)\.[a-z0-9]+$/.test(normalized);
 }
 
 function decideSourceVsTest(returnedFiles: string[]): string {

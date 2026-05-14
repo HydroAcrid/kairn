@@ -190,6 +190,9 @@ export function formatShrunkPrimeContext(input: {
   ).slice(0, input.files && input.files.length > 1 ? 2 : 1);
   const symbolHints = extractPrimeSymbolHints(input.context.content).slice(0, 2);
   const multiFileDirective = topFiles.length > 1;
+  const focusedContext = input.includeSnippet === false
+    ? ""
+    : formatFocusedContextBlock(input.context.content, Math.max(100, Math.floor(input.budget * 0.24)));
   if (input.minimal) {
     const sections = [
       "# Kairn Fix Guardrail",
@@ -220,16 +223,15 @@ export function formatShrunkPrimeContext(input: {
     topFiles[1] ? `- ${topFiles[1]} - ${primaryReasonForFile(input.context, topFiles[1])}` : "",
     symbolHints.length > 0 ? `Symbols: ${symbolHints.join(", ")}` : "",
     "",
-    input.includeSnippet === false ? "" : "Focused context:",
-    input.includeSnippet === false ? "" : compactPrimeContext(input.context.content, Math.max(120, Math.floor(input.budget * 0.34))),
-    input.includeSnippet === false ? "" : "",
     ...formatInvariantSections(input.invariants, "Invariant to preserve:"),
     "",
     multiFileDirective
       ? "Stop condition: inspect only these source files first; avoid broad related-file/test scans unless neither file can satisfy the invariant or a failure names another file."
       : "Stop condition: preserve the invariant in the start file first; avoid broad related-file/test scans unless this file cannot satisfy the invariant or a failure names another file.",
     "",
-    ...(input.editScope ? editScopeBlock(input.editScope, "Edit scope:") : [])
+    ...(input.editScope ? editScopeBlock(input.editScope, "Edit scope:") : []),
+    focusedContext ? "" : "",
+    focusedContext
   ].filter(Boolean);
   return fitSectionsToBudget(sections, input.budget);
 }
@@ -287,12 +289,12 @@ function compactTaskLine(task: string): string {
 function formatInvariantSections(invariants: ContextInvariant[] | undefined, heading: string): string[] {
   const invariant = invariants?.[0];
   if (!invariant) return [];
-  return [
+  return [[
     heading,
     `- ${invariant.statement}`,
     invariant.evidence ? `Evidence: ${invariant.evidence}` : "",
     invariant.verificationCommand ? `Verification: ${invariant.verificationCommand}` : ""
-  ].filter(Boolean);
+  ].filter(Boolean).join("\n")];
 }
 
 function primaryReasonForFile(context: ContextResponse, filePath: string): string {
@@ -312,6 +314,11 @@ function extractPrimeSymbolHints(content: string): string[] {
     symbols.push(match[1]!);
   }
   return uniqueStrings(symbols);
+}
+
+function formatFocusedContextBlock(content: string, budget: number): string {
+  const compact = compactPrimeContext(content, budget).trim();
+  return compact ? ["Focused context:", compact].join("\n") : "";
 }
 
 function compactPrimeContext(content: string, budget: number): string {

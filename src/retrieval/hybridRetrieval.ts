@@ -13,6 +13,7 @@ import type {
 import { scoreBm25Files } from "../lexical/bm25.js";
 import { cosineSimilarity, embedText } from "../semantic/vector.js";
 import { tokenizeLexical } from "../semantic/tokenize.js";
+import { uniqueStrings } from "../utils/collections.js";
 import { isNoisySourcePath, scoreSourceRoleHints } from "./companions.js";
 import { classifyQueryIntent, type QueryIntent } from "./queryIntent.js";
 import { scoreFiles } from "./scoreResults.js";
@@ -64,6 +65,7 @@ export function hybridSearch(input: {
       const sourcePriority = sourcePriorityScores.get(file.path);
       const graphScore = graphScores.get(file.path) ?? 0;
       const sessionScore = shownFiles.has(file.path) ? -3 : 0;
+      const generatedFilePenalty = isGeneratedFilenameSurface(file.path) ? -1800 : 0;
       const changedExactSymbolMatch =
         Boolean(input.changedFiles?.has(file.path)) &&
         debugSourcePrompt &&
@@ -95,6 +97,7 @@ export function hybridSearch(input: {
         ...(semantic && semantic.score > 0.06 ? semanticReasons(semantic.chunks) : []),
         ...(graphScore > 0 ? ["graph neighbor"] : []),
         ...(shownFiles.has(file.path) ? ["already shown"] : []),
+        ...(generatedFilePenalty < 0 ? ["generated file downranked"] : []),
         ...(sourceOverTestPenalty < 0 ? ["test downranked for source/invariant prompt"] : []),
         ...(gitScore > 0 ? [changedExactSymbolMatch ? "changed exact-symbol source target" : gitScore > 40 ? "changed source target" : "changed in diff"] : [])
       ]);
@@ -109,7 +112,8 @@ export function hybridSearch(input: {
         graphScore +
         sessionScore +
         gitScore +
-        sourceOverTestPenalty;
+        sourceOverTestPenalty +
+        generatedFilePenalty;
 
       return {
         ...file,
@@ -282,7 +286,7 @@ function scoreSourcePriority(
     }
 
     const repositoryLanguage = scoreRepositoryLanguagePreference(file, query);
-    if (implementationIntent && repositoryLanguage.score !== 0) {
+    if (repositoryLanguage.score !== 0) {
       score += repositoryLanguage.score;
       reasons.push(...repositoryLanguage.reasons);
     }
@@ -344,7 +348,7 @@ function scoreSourcePriority(
     }
 
     if (implementationIntent && isNoisyImplementationSurface(file)) {
-      score -= isVendoredDependencySurface(file.path) ? 1400 : file.kind === "doc" ? 220 : 260;
+      score -= isVendoredDependencySurface(file.path) ? 1400 : isGeneratedFilenameSurface(file.path) ? 1800 : file.kind === "doc" ? 220 : 260;
       reasons.push("docs/examples/devtools downranked");
     }
 
@@ -1341,13 +1345,15 @@ function isRealImplementationSource(filePath: string, queryTerms: Set<string>): 
 }
 
 function scoreRepositoryLanguagePreference(file: FileRecord, query: string): { score: number; reasons: string[] } {
-  const expected = /repository language:\s*([a-z0-9+#.-]+)/i.exec(query)?.[1]?.toLowerCase();
+  const expected = /(?:repository|dataset)\s+language(?:\s+label)?:\s*([a-z0-9+#.-]+)/i.exec(query)?.[1]?.toLowerCase().replace(/[.:-]+$/g, "");
   if (!expected || expected === "unknown") return { score: 0, reasons: [] };
   if (languageMatchesPreference(file.language, expected)) {
-    return isPrimaryLanguageSourceSurface(file) ? { score: 120, reasons: [`repository language source: ${expected}`] } : { score: 55, reasons: [`repository language match: ${expected}`] };
+    return isPrimaryLanguageSourceSurface(file)
+      ? { score: 220, reasons: [`expected language source: ${expected}`] }
+      : { score: 140, reasons: [`expected language match: ${expected}`] };
   }
   if (isUiFile(file) || isLanguageSourceSurface(file) || isPrimaryLanguageSourceSurface(file)) {
-    return { score: -780, reasons: [`non-${expected} source downranked for repository language`] };
+    return { score: -920, reasons: [`non-${expected} source downranked for expected language`] };
   }
   return { score: 0, reasons: [] };
 }
@@ -1626,8 +1632,14 @@ function isNoisyImplementationSurface(file: FileRecord): boolean {
     file.kind === "doc" ||
     isNoisySourcePath(normalized) ||
     isVendoredDependencySurface(normalized) ||
+    isGeneratedFilenameSurface(normalized) ||
     /(^|\/)__fixtures__\//.test(normalized)
   );
+}
+
+function isGeneratedFilenameSurface(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  return /(^|\/)([^/]+\.)?(generated|gen)\.[a-z0-9]+$/.test(normalized) || /\.(generated|gen)\.[a-z0-9]+$/.test(normalized);
 }
 
 function isVendoredDependencySurface(filePath: string): boolean {
@@ -1814,7 +1826,7 @@ function hasExplicitSourceRoutingPrompt(query: string, queryTerms: Set<string>):
 function hasNegatedTestIntent(query: string): boolean {
   const normalized = normalizeSearchText(query);
   return /\b(?:do not|don t|dont|never|avoid|without|no)\b(?:\s+[a-z0-9]+){0,8}\s+\b(?:test|tests|spec|specs|pytest|vitest|jest)\b/.test(normalized) ||
-    /\b(?:test|tests|spec|specs|pytest|vitest|jest)\b(?:\s+[a-z0-9]+){0,6}\s+\b(?:unless|except)\b(?:\s+[a-z0-9]+){0,8}\s+\b(?:fail|fails|failed|failure|named|requested)\b/.test(normalized);
+    /\b(?:test|tests|spec|specs|pytest|vitest|jest)\b(?:\s+[a-z0-9]+){0,6}\s+\b(?:unless|except)\b(?:\s+[a-z0-9]+){0,8}\s+\b(?:ask|asks|asked|requested|explicitly|fail|fails|failed|failure|named)\b/.test(normalized);
 }
 
 function groupByFile<T>(records: T[], filePathFor: (record: T) => string): Map<string, T[]> {
@@ -1969,6 +1981,7 @@ type PreciseSourceRescue = {
   active: boolean;
   terms: string[];
   phraseTerms: string[];
+  qualifiedSymbolTerms: string[][];
   helperIntent: boolean;
 };
 
@@ -1984,12 +1997,24 @@ function detectPreciseSourceRescue(query: string): PreciseSourceRescue {
   }
   const helperIntent = /\b(helper|utility|utils?|source|implementation|debug|fix|regression|relative|absolute|local)\b/.test(normalized);
   const specificTerms = [...new Set([...terms, ...phraseTerms])];
+  const qualifiedSymbolTerms = extractQualifiedSymbolTerms(query);
   return {
-    active: helperIntent && specificTerms.length >= 2,
+    active: (helperIntent && specificTerms.length >= 2) || qualifiedSymbolTerms.length > 0,
     terms: specificTerms,
     phraseTerms: [...phraseTerms],
+    qualifiedSymbolTerms,
     helperIntent
   };
+}
+
+function extractQualifiedSymbolTerms(query: string): string[][] {
+  const groups: string[][] = [];
+  for (const match of query.matchAll(/\b[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+\b/g)) {
+    const terms = uniqueStrings(tokenizeLexical(match[0] ?? "")
+      .filter((term) => term.length > 2 && !PRECISE_RESCUE_STOP_TERMS.has(term)));
+    if (terms.length >= 2) groups.push(terms);
+  }
+  return groups;
 }
 
 function preciseSourceScore(
@@ -2008,19 +2033,32 @@ function preciseSourceScore(
   const pathTerms = new Set(tokenizeLexical(file.path));
   const symbolText = normalizeSearchText(symbols.map((symbol) => symbol.name).join(" "));
   const chunkText = normalizeSearchText(chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 500)}`).join(" "));
+  const qualifiedChunkText = rescue.qualifiedSymbolTerms.length > 0
+    ? normalizeSearchText(chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text}`).join(" "))
+    : "";
   const pathHits = rescue.terms.filter((term) => pathTerms.has(term) || pathText.includes(term));
   const basenameHits = rescue.terms.filter((term) => basenameTerms.has(term) || basename.includes(term));
   const symbolHits = rescue.terms.filter((term) => symbolText.includes(term));
   const chunkHits = rescue.phraseTerms.filter((term) => chunkText.includes(term));
+  const qualifiedMatches = rescue.qualifiedSymbolTerms.filter((terms) =>
+    terms.every((term) => symbolText.includes(term) || qualifiedChunkText.includes(term) || pathText.includes(term))
+  );
   const lowerPath = file.path.toLowerCase();
   const exactUtilityPath =
     /(^|\/)(utils?|helpers?|shared|common)(\/|\.|-|_)/.test(lowerPath) ||
     lowerPath.includes("/utils/") ||
     lowerPath.includes("/helpers/") ||
     lowerPath.includes("/shared/");
-  const precise = basenameHits.length >= 2 || symbolHits.length >= 2 || (pathHits.length >= 3 && exactUtilityPath);
+  let precise = basenameHits.length >= 2 || symbolHits.length >= 2 || (pathHits.length >= 3 && exactUtilityPath);
   let score = 0;
   const reasons: string[] = [];
+
+  if (qualifiedMatches.length > 0) {
+    precise = true;
+    const termCount = Math.max(...qualifiedMatches.map((terms) => terms.length));
+    score += 360 + termCount * 72;
+    reasons.push(`qualified symbol owner match: ${qualifiedMatches[0]!.slice(0, 4).join(", ")}`);
+  }
 
   if (pathHits.length >= 2) {
     score += pathHits.length * 44;

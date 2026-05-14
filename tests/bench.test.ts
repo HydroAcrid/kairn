@@ -14,7 +14,7 @@ import {
   runBenchmarkRepoMatrix
 } from "../src/bench/matrix.js";
 import { loadBenchmarkEnduranceSuite } from "../src/bench/enduranceSuite.js";
-import { runBenchmarkEndurance, runBenchmarkEnduranceRepeats } from "../src/bench/endurance.js";
+import { enduranceInvariantForPrompt, runBenchmarkEndurance, runBenchmarkEnduranceRepeats } from "../src/bench/endurance.js";
 import { runAgentBenchmarkCase } from "../src/bench/agent.js";
 import { classifyAssistance } from "../src/bench/assistClassification.js";
 import { buildSweBenchProPilot, loadSweBenchProRows, writeSweBenchProPilot } from "../src/bench/sweBenchPro.js";
@@ -28,7 +28,9 @@ import {
 } from "../src/bench/publication.js";
 import { evaluateDiffScopes, evaluateSourceInvariants } from "../src/bench/sourceValidation.js";
 import { evaluateContextValue } from "../src/prime/contextValue.js";
+import { formatShrunkPrimeContext } from "../src/prime/formatPrime.js";
 import { evaluatePrimeQuality, resolvePrimeProfile } from "../src/prime/quality.js";
+import { hybridSearch } from "../src/retrieval/hybridRetrieval.js";
 import { findCompanionCandidates } from "../src/retrieval/companions.js";
 import { createFixtureRepo } from "./helpers.js";
 import type { FileRecord, HybridScoredResult, SemanticChunkRecord } from "../src/types.js";
@@ -601,6 +603,22 @@ describe("benchmark suite and scoring", () => {
     expect(requestsLong.turns.map((turn) => turn.id)).toContain("repeat-context-check");
   });
 
+  it("cleans weak ledger invariants for endurance MCP guidance", () => {
+    expect(
+      enduranceInvariantForPrompt(
+        ", fix, verify, and preserve a Requests allow_redirects regression across ten turns.",
+        "Before editing, state the exact production source path and invariant. The invariant is that Session.send must call resolve_redirects when allow_redirects is true."
+      )
+    ).toBe("Session.send must call resolve_redirects when allow_redirects is true.");
+
+    expect(
+      enduranceInvariantForPrompt(
+        "Session.send must call resolve_redirects when allow_redirects is true.",
+        "Continue from the known source."
+      )
+    ).toBe("Session.send must call resolve_redirects when allow_redirects is true.");
+  });
+
   it("validates equivalent semantic source repairs", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-source-invariant-"));
     try {
@@ -986,6 +1004,75 @@ describe("benchmark suite and scoring", () => {
     expect(companions[0]).toBe("packages/vite/src/shared/utils.ts");
     expect(companions).not.toContain("packages/vite/src/node/utils.ts");
     expect(companions).not.toContain("packages/create-vite/template-vanilla-ts/src/main.ts");
+  });
+
+  it("prefers qualified symbol owner files over generic method providers", () => {
+    const files = [
+      sourceRecord("level.go", "go"),
+      sourceRecord("zapcore/level.go", "go")
+    ];
+    const ranked = hybridSearch({
+      files,
+      query: "Debug a seeded Zap regression: AtomicLevel.Enabled inverted the level comparison. Fix production source only.",
+      symbols: [],
+      chunks: [
+        chunkRecord("level.go", "file", "type AtomicLevel struct {}\nfunc (lvl AtomicLevel) Enabled(l Level) bool { return lvl.Level().Enabled(l) }"),
+        chunkRecord("zapcore/level.go", "file", "type Level int8\nfunc (l Level) Enabled(lvl Level) bool { return lvl >= l }")
+      ],
+      vectors: [],
+      edges: []
+    });
+
+    expect(ranked[0]?.path).toBe("level.go");
+    expect(ranked[0]?.reasons).toEqual(expect.arrayContaining([expect.stringContaining("qualified symbol owner match")]));
+  });
+
+  it("uses explicit dataset language labels to prefer matching implementation sources", () => {
+    const files = [
+      sourceRecord("kitty/key_encoding.c", "c"),
+      sourceRecord("kitty/rc/get_text.py", "python"),
+      sourceRecord("kitty/client.py", "python")
+    ];
+    const ranked = hybridSearch({
+      files,
+      query:
+        "Answer SWE-Atlas/QnA repository question: keyboard protocol stack behavior during alternating screen buffer switches.\nDataset language label: c. Prefer production source over tests/docs/examples unless the prompt explicitly asks for them.",
+      symbols: [],
+      chunks: [
+        chunkRecord("kitty/key_encoding.c", "encode_key", "keyboard protocol flags alternate screen buffer"),
+        chunkRecord("kitty/rc/get_text.py", "get_text", "keyboard protocol text command"),
+        chunkRecord("kitty/client.py", "main", "client command keyboard")
+      ],
+      vectors: [],
+      edges: []
+    });
+
+    expect(ranked[0]?.path).toBe("kitty/key_encoding.c");
+    expect(ranked[0]?.reasons).toEqual(expect.arrayContaining([expect.stringContaining("expected language")]));
+  });
+
+  it("downranks generated filename surfaces even outside generated directories", () => {
+    const files = [
+      sourceRecord("packages/grafana-data/src/transformations/transformers/groupingToMatrix.ts", "typescript"),
+      sourceRecord("packages/grafana-data/src/types/transformations.ts", "typescript"),
+      sourceRecord("packages/grafana-schema/src/raw/dashboard/x/dashboard_types.gen.ts", "typescript")
+    ];
+    const ranked = hybridSearch({
+      files,
+      query:
+        "Answer SWE-Atlas/QnA repository question: Grafana Grouping to matrix transformation sparse rows and columns.\nDataset language label: ts. Prefer production source over tests/docs/examples unless the prompt explicitly asks for them.",
+      symbols: [],
+      chunks: [
+        chunkRecord("packages/grafana-data/src/transformations/transformers/groupingToMatrix.ts", "groupingToMatrix", "sparse rows columns matrix transform"),
+        chunkRecord("packages/grafana-data/src/types/transformations.ts", "TransformerRegistryItem", "grouping matrix transformation options"),
+        chunkRecord("packages/grafana-schema/src/raw/dashboard/x/dashboard_types.gen.ts", "Dashboard", "matrix panel dashboard generated schema")
+      ],
+      vectors: [],
+      edges: []
+    });
+
+    expect(ranked[0]?.path).toBe("packages/grafana-data/src/transformations/transformers/groupingToMatrix.ts");
+    expect(ranked.map((item) => item.path).slice(0, 2)).not.toContain("packages/grafana-schema/src/raw/dashboard/x/dashboard_types.gen.ts");
   });
 
   it("prefers same-package text utility companions with delimiter behavior", () => {
@@ -3319,6 +3406,70 @@ describe("benchmark runtime and CLI", () => {
     expect(prime.content).not.toContain("router.ts");
 
     runtime.close();
+  });
+
+  it("keeps invariant and scope guidance ahead of optional snippets in compact multi-file primes", () => {
+    const clientFile = "packages/vite/src/client/client.ts";
+    const helperFile = "packages/vite/src/shared/utils.ts";
+    const content = formatShrunkPrimeContext({
+      task: "Debug injectQuery URL handling. External URLs should be skipped, but ./dep.js and /src/main.ts must receive the injected query.",
+      sessionId: "task_test",
+      profile: "failure_debug",
+      quality: {
+        score: 91,
+        action: "shrink",
+        reasons: ["strong source and companion evidence"],
+        topScore: 1800,
+        topGap: 70,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      context: {
+        mode: "snippets",
+        files: [clientFile, helperFile],
+        suggestedNextContext: [clientFile, helperFile],
+        related: [helperFile],
+        symbols: [],
+        warnings: [],
+        rankedFiles: [],
+        tokenEstimate: 1000,
+        content: [
+          "## Matched Snippets",
+          `- ${clientFile} (source, score 1800): injectQuery URL handling`,
+          `- ${helperFile} (source, score 1100): URL helper companion`,
+          "const repeated = 'focused snippet that is intentionally long enough to be optional';".repeat(20)
+        ].join("\n")
+      },
+      files: [clientFile, helperFile],
+      budget: 260,
+      invariants: [
+        {
+          file: clientFile,
+          statement: "External URLs must be skipped, but relative and absolute local URLs must receive the injected query.",
+          confidence: 86,
+          source: "seed"
+        }
+      ],
+      editScope: {
+        initialEditFiles: [clientFile, helperFile],
+        readOnlyFiles: [],
+        allowedExpansionTriggers: ["verification names another production file"],
+        forbiddenEditPatterns: ["tests", "docs", "generated", "vendor"],
+        scopeConfidence: "high",
+        scopeSource: "multi_file_debug",
+        reason: "Two production files carry the source and helper behavior.",
+        dynamic: true
+      }
+    });
+
+    expect(content).toContain("Invariant to preserve:");
+    expect(content).toContain("- External URLs must be skipped");
+    expect(content).toContain("Stop condition:");
+    expect(content).toContain("Edit scope:");
+    const snippetIndex = content.indexOf("Focused context:");
+    if (snippetIndex >= 0) {
+      expect(content.indexOf("Invariant to preserve:")).toBeLessThan(snippetIndex);
+    }
   });
 
   it("generates parser/backend prime context for Gmail parsing tasks", async () => {

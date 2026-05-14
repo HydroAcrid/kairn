@@ -489,7 +489,7 @@ export class KairnRuntime {
               quality: effectiveQuality,
               context,
               files: emittedFiles,
-              budget: Math.min(budget, 420),
+              budget: Math.min(budget, effectiveContextDecision.recommendedDelivery === "multi_file_directive" ? 520 : 420),
               invariants,
               editScope,
               includeSnippet:

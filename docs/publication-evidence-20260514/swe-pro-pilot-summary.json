@@ -1,0 +1,80 @@
+{
+  "id": "kairn-publication-evidence-v1",
+  "name": "Kairn Publication Evidence Campaign v1",
+  "generatedAt": "2026-05-14T19:58:26.718Z",
+  "planPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/publication-plan-v1.json",
+  "outDir": "/tmp/kairn-publication-swe-pro-pilot-20260514",
+  "dryRun": false,
+  "model": "gpt-5.4-mini",
+  "repeat": 3,
+  "aggregate": {
+    "entries": 1,
+    "resultRows": 1,
+    "qualityPassRate": 1,
+    "medianValidSavingsRate": 0,
+    "modes": {
+      "official_pilot": {
+        "rows": 1,
+        "qualityPasses": 1,
+        "activeRows": 0,
+        "passiveRows": 0,
+        "validSavingsRows": 0,
+        "validSavings": 0,
+        "passiveSavings": 0,
+        "invalidSavings": 0,
+        "medianSavingsRate": 0,
+        "overAssistRows": 0,
+        "harmfulRows": 0,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "mcpCalls": 0,
+        "repeatedFilesAvoided": 0,
+        "scopeViolations": 0
+      }
+    },
+    "byTaskClass": {
+      "official_patch": {
+        "rows": 1,
+        "qualityPasses": 1,
+        "activeRows": 0,
+        "passiveRows": 0,
+        "validSavingsRows": 0,
+        "validSavings": 0,
+        "passiveSavings": 0,
+        "invalidSavings": 0,
+        "medianSavingsRate": 0,
+        "overAssistRows": 0,
+        "harmfulRows": 0,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "mcpCalls": 0,
+        "repeatedFilesAvoided": 0,
+        "scopeViolations": 0
+      }
+    },
+    "classifications": {},
+    "failurePatterns": [
+      {
+        "pattern": "Generated live suites are pilot scaffolds. Full SWE-Bench Pro verification should use Docker evaluator metadata before making leaderboard-style claims.",
+        "count": 1,
+        "examples": [
+          "swe-pro-clean-setup-pilot:official_pilot"
+        ]
+      }
+    ],
+    "successCriteria": {
+      "qualityWithinFivePoints": true,
+      "activeMedianSavingsAtLeast15": false,
+      "noRepeatedHarmfulPattern": true,
+      "hasMcpEvidence": false,
+      "hasEnduranceAfterTurnOneEvidence": false
+    }
+  },
+  "outputs": {
+    "summaryPath": "/tmp/kairn-publication-swe-pro-pilot-20260514/publication-summary.json",
+    "resultsCsvPath": "/tmp/kairn-publication-swe-pro-pilot-20260514/publication-results.csv",
+    "failuresCsvPath": "/tmp/kairn-publication-swe-pro-pilot-20260514/publication-failures.csv",
+    "manifestPath": "/tmp/kairn-publication-swe-pro-pilot-20260514/publication-manifest.json",
+    "markdownPath": "/tmp/kairn-publication-swe-pro-pilot-20260514/kairn_publication_evidence_report_2026-05-14.md"
+  }
+}

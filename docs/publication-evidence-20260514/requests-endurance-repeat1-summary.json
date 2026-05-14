@@ -1,0 +1,108 @@
+{
+  "id": "kairn-publication-evidence-v1",
+  "name": "Kairn Publication Evidence Campaign v1",
+  "generatedAt": "2026-05-14T19:35:35.078Z",
+  "planPath": "/tmp/kairn-publication-live-20260514/requests-endurance-repeat1-plan.json",
+  "outDir": "/tmp/kairn-publication-requests-endurance-repeat1",
+  "dryRun": false,
+  "model": "gpt-5.4-mini",
+  "repeat": 1,
+  "aggregate": {
+    "entries": 1,
+    "resultRows": 3,
+    "qualityPassRate": 1,
+    "medianValidSavingsRate": 0.5043613310302708,
+    "modes": {
+      "baseline": {
+        "rows": 1,
+        "qualityPasses": 1,
+        "activeRows": 0,
+        "passiveRows": 0,
+        "validSavingsRows": 0,
+        "validSavings": 0,
+        "passiveSavings": 0,
+        "invalidSavings": 0,
+        "medianSavingsRate": 0,
+        "overAssistRows": 0,
+        "harmfulRows": 0,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "mcpCalls": 0,
+        "repeatedFilesAvoided": 0,
+        "scopeViolations": 0
+      },
+      "kairn_codex_session": {
+        "rows": 1,
+        "qualityPasses": 1,
+        "activeRows": 1,
+        "passiveRows": 0,
+        "validSavingsRows": 1,
+        "validSavings": 116921,
+        "passiveSavings": 0,
+        "invalidSavings": 0,
+        "medianSavingsRate": 0.4380852108164007,
+        "overAssistRows": 0,
+        "harmfulRows": 0,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "mcpCalls": 0,
+        "repeatedFilesAvoided": 4,
+        "scopeViolations": 0
+      },
+      "real_mcp_first": {
+        "rows": 1,
+        "qualityPasses": 1,
+        "activeRows": 1,
+        "passiveRows": 0,
+        "validSavingsRows": 1,
+        "validSavings": 152298,
+        "passiveSavings": 0,
+        "invalidSavings": 0,
+        "medianSavingsRate": 0.5706374512441409,
+        "overAssistRows": 0,
+        "harmfulRows": 0,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "mcpCalls": 1,
+        "repeatedFilesAvoided": 0,
+        "scopeViolations": 0
+      }
+    },
+    "byTaskClass": {
+      "session_repeat": {
+        "rows": 3,
+        "qualityPasses": 3,
+        "activeRows": 2,
+        "passiveRows": 0,
+        "validSavingsRows": 2,
+        "validSavings": 269219,
+        "passiveSavings": 0,
+        "invalidSavings": 0,
+        "medianSavingsRate": 0.4380852108164007,
+        "overAssistRows": 0,
+        "harmfulRows": 0,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "mcpCalls": 1,
+        "repeatedFilesAvoided": 4,
+        "scopeViolations": 0
+      }
+    },
+    "classifications": {},
+    "failurePatterns": [],
+    "successCriteria": {
+      "qualityWithinFivePoints": true,
+      "activeMedianSavingsAtLeast15": true,
+      "noRepeatedHarmfulPattern": true,
+      "hasMcpEvidence": true,
+      "hasEnduranceAfterTurnOneEvidence": true
+    }
+  },
+  "outputs": {
+    "summaryPath": "/tmp/kairn-publication-requests-endurance-repeat1/publication-summary.json",
+    "resultsCsvPath": "/tmp/kairn-publication-requests-endurance-repeat1/publication-results.csv",
+    "failuresCsvPath": "/tmp/kairn-publication-requests-endurance-repeat1/publication-failures.csv",
+    "manifestPath": "/tmp/kairn-publication-requests-endurance-repeat1/publication-manifest.json",
+    "markdownPath": "/tmp/kairn-publication-requests-endurance-repeat1/kairn_publication_evidence_report_2026-05-14.md"
+  }
+}

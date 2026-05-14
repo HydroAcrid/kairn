@@ -533,7 +533,7 @@ function buildMcpEndurancePrompt(input: {
   knownSource?: string | undefined;
 } {
   const knownSource = firstKnownSource(input.ledger, input.mcpFiles);
-  const invariant = input.ledger?.workingSet.currentInvariant?.statement;
+  const invariant = enduranceInvariantForPrompt(input.ledger?.workingSet.currentInvariant?.statement, input.prompt);
   const unresolvedFailures = (input.ledger?.unresolvedFailures ?? 0) > 0;
   const taskLooksFailureDriven = /\b(fail|failing|failure|error|exception|stack trace|traceback)\b/i.test(input.prompt);
   if (knownSource && (unresolvedFailures || taskLooksFailureDriven)) {
@@ -602,6 +602,53 @@ function buildMcpEndurancePrompt(input: {
       input.prompt
     ].join("\n")
   };
+}
+
+export function enduranceInvariantForPrompt(ledgerInvariant: string | undefined, prompt: string): string | undefined {
+  const cleaned = cleanEnduranceInvariant(ledgerInvariant);
+  if (cleaned && !isWeakEnduranceInvariant(cleaned)) return cleaned;
+  return extractPromptInvariant(prompt);
+}
+
+function cleanEnduranceInvariant(value: string | undefined): string | undefined {
+  const cleaned = value
+    ?.replace(/\s+/g, " ")
+    .replace(/^[\s,;:.!?-]+/, "")
+    .trim();
+  return cleaned || undefined;
+}
+
+function isWeakEnduranceInvariant(value: string): boolean {
+  const normalized = value.toLowerCase();
+  return (
+    normalized.length < 12 ||
+    /^\b(debug|fix|verify|preserve)\b(?:,|\s+and|\s)/i.test(value) ||
+    /\bdebug,\s*fix,\s*verify\b/.test(normalized) ||
+    /\bacross\s+(?:ten|\d+)\s+turns\b/.test(normalized)
+  );
+}
+
+function extractPromptInvariant(prompt: string): string | undefined {
+  const normalized = prompt.replace(/\s+/g, " ").trim();
+  const explicit = normalized.match(/\binvariant\s+is\s+that\s+(.+?)(?:\s+(?:do not|don't|dont|then|if|use|keep|run)\b|$)/i)?.[1]?.trim();
+  if (explicit) return sentenceCaseInvariant(ensureTerminalPeriod(explicit));
+
+  const behaviorSentence = normalized
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .find((sentence) => /\b(must|should|preserve|requires?|ensure)\b/i.test(sentence) && !isWeakEnduranceInvariant(sentence));
+  return behaviorSentence ? sentenceCaseInvariant(behaviorSentence) : undefined;
+}
+
+function sentenceCaseInvariant(value: string): string {
+  const cleaned = value.replace(/\s+/g, " ").replace(/^[\s,;:.!?-]+/, "").trim();
+  if (!cleaned) return value;
+  return cleaned[0]!.toUpperCase() + cleaned.slice(1);
+}
+
+function ensureTerminalPeriod(value: string): string {
+  const cleaned = value.trim();
+  return /[.!?]$/.test(cleaned) ? cleaned : `${cleaned}.`;
 }
 
 async function runSessionBoundPromptHook(input: {

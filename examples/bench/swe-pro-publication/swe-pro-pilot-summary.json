@@ -1,0 +1,41 @@
+{
+  "generatedAt": "2026-05-14T19:58:26.713Z",
+  "source": "ScaleAI/SWE-bench_Pro",
+  "rows": 10,
+  "summary": {
+    "languages": {
+      "js": 2,
+      "python": 6,
+      "go": 2
+    },
+    "repos": {
+      "NodeBB/NodeBB": 2,
+      "qutebrowser/qutebrowser": 3,
+      "ansible/ansible": 2,
+      "internetarchive/openlibrary": 1,
+      "gravitational/teleport": 1,
+      "navidrome/navidrome": 1
+    },
+    "taskClasses": {
+      "multi_file_debug": 9,
+      "failure_first_debug": 1
+    },
+    "evaluators": {
+      "patch_verification": 10
+    },
+    "applicability": {
+      "strong": 10
+    },
+    "skippedRows": 0,
+    "warnings": [
+      "Generated live suites are pilot scaffolds. Full SWE-Bench Pro verification should use Docker evaluator metadata before making leaderboard-style claims."
+    ]
+  },
+  "outputs": {
+    "suitePath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/swe-pro-publication/swe-pro-pilot-suite.json",
+    "matrixPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/swe-pro-publication/swe-pro-pilot-matrix.json",
+    "summaryPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/swe-pro-publication/swe-pro-pilot-summary.json",
+    "rowsPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/swe-pro-publication/swe-pro-pilot-rows.json",
+    "rawRowsPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/swe-pro-publication/swe-pro-pilot-raw.jsonl"
+  }
+}
