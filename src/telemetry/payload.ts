@@ -39,6 +39,7 @@ export function buildTelemetryPayload(input: {
       sampled: sessions.length
     },
     decisions: countDecisions(metrics),
+    governor: summarizeGovernor(metrics),
     assistance: countAssistance(metrics),
     tokens: summarizeTokens(metrics),
     hooks: summarizeHooks(metrics),
@@ -55,16 +56,61 @@ export function buildTelemetryPayload(input: {
 }
 
 function countDecisions(metrics: MetricsSummary[]): TelemetryPayload["decisions"] {
-  const decisions = { emit: 0, shrink: 0, suppress: 0 };
+  const decisions = { emit: 0, shrink: 0, suppress: 0, requestEvidence: 0 };
   for (const item of metrics) {
     for (const event of item.recentEvents) {
       const decision = event.metadata.decision ?? (event.metadata.contextDecision as { action?: unknown } | undefined)?.action;
       if (decision === "emit") decisions.emit += 1;
       if (decision === "shrink") decisions.shrink += 1;
       if (decision === "suppress") decisions.suppress += 1;
+      if (decision === "request_evidence") decisions.requestEvidence += 1;
     }
   }
   return decisions;
+}
+
+function summarizeGovernor(metrics: MetricsSummary[]): TelemetryPayload["governor"] {
+  const taskFrames = new Map<string, number>();
+  const fileRoles = new Map<string, number>();
+  const pUseful: number[] = [];
+  const pHarm: number[] = [];
+  const pNeedMoreEvidence: number[] = [];
+  let requestEvidence = 0;
+  for (const item of metrics) {
+    for (const event of item.recentEvents) {
+      const decision = event.metadata.contextDecision;
+      if (!decision || typeof decision !== "object" || Array.isArray(decision)) continue;
+      const record = decision as Record<string, unknown>;
+      if (record.action === "request_evidence") requestEvidence += 1;
+      if (typeof record.taskFrame === "string") {
+        taskFrames.set(record.taskFrame, (taskFrames.get(record.taskFrame) ?? 0) + 1);
+      }
+      const featureSummary = record.featureSummary;
+      if (featureSummary && typeof featureSummary === "object" && !Array.isArray(featureSummary)) {
+        const roleCounts = (featureSummary as Record<string, unknown>).fileRoleCounts;
+        if (roleCounts && typeof roleCounts === "object" && !Array.isArray(roleCounts)) {
+          for (const [role, value] of Object.entries(roleCounts)) {
+            if (typeof value === "number") fileRoles.set(role, (fileRoles.get(role) ?? 0) + value);
+          }
+        }
+      }
+      const prediction = record.modelPrediction;
+      if (prediction && typeof prediction === "object" && !Array.isArray(prediction)) {
+        const p = prediction as Record<string, unknown>;
+        if (typeof p.pUseful === "number") pUseful.push(p.pUseful);
+        if (typeof p.pHarm === "number") pHarm.push(p.pHarm);
+        if (typeof p.pNeedMoreEvidence === "number") pNeedMoreEvidence.push(p.pNeedMoreEvidence);
+      }
+    }
+  }
+  return {
+    requestEvidence,
+    taskFrames: Object.fromEntries([...taskFrames.entries()].sort()),
+    fileRoles: Object.fromEntries([...fileRoles.entries()].sort()),
+    ...(pUseful.length > 0 ? { averagePUseful: averageProbability(pUseful) } : {}),
+    ...(pHarm.length > 0 ? { averagePHarm: averageProbability(pHarm) } : {}),
+    ...(pNeedMoreEvidence.length > 0 ? { averagePNeedMoreEvidence: averageProbability(pNeedMoreEvidence) } : {})
+  };
 }
 
 function countAssistance(metrics: MetricsSummary[]): TelemetryPayload["assistance"] {
@@ -193,4 +239,8 @@ function sumMetadata(events: MetricsSummary["recentEvents"], key: string): numbe
 
 function arrayMetadata(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
+}
+
+function averageProbability(values: number[]): number {
+  return Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 1000) / 1000;
 }

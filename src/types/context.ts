@@ -75,9 +75,73 @@ export type ContextPrime = {
   suggestedCommands: string[];
 };
 
-export type PrimeQualityAction = "emit" | "shrink" | "suppress";
+export type PrimeQualityAction = "emit" | "shrink" | "suppress" | "request_evidence";
 
-export type ContextValueAction = "emit" | "shrink" | "suppress";
+export type ContextValueAction = "emit" | "shrink" | "suppress" | "request_evidence";
+
+export type TaskFrame =
+  | "cheap_single_source"
+  | "source_rescue"
+  | "multi_file_debug"
+  | "failure_first"
+  | "runtime_procedural"
+  | "verification_cleanup"
+  | "weak_signal"
+  | "official_patch"
+  | "qna_source_grounded";
+
+export type FileRoleV2 =
+  | "production_source"
+  | "test"
+  | "docs"
+  | "example"
+  | "generated"
+  | "vendor_dep"
+  | "config"
+  | "schema"
+  | "public_api"
+  | "entrypoint"
+  | "platform_variant"
+  | "ui_surface"
+  | "route"
+  | "unknown";
+
+export type EvidenceRequestKind =
+  | "failure_output"
+  | "exact_source"
+  | "verification_result"
+  | "runtime_scope"
+  | "changed_file"
+  | "clarify_task";
+
+export type EvidenceRequest = {
+  kind: EvidenceRequestKind;
+  prompt: string;
+  reason: string;
+};
+
+export type ContextGovernorModelPrediction = {
+  pUseful: number;
+  pHarm: number;
+  pNeedMoreEvidence: number;
+  suggestedAction: ContextValueAction;
+  confidence: number;
+  source: "deterministic" | "linear_model";
+};
+
+export type ContextGovernorFeatureSummary = {
+  taskFrame: TaskFrame;
+  candidateCount: number;
+  fileRoleCounts: Partial<Record<FileRoleV2, number>>;
+  repoLanguageMix: Record<string, number>;
+  topRole?: FileRoleV2;
+  topLanguage?: string;
+  confidenceGap: number;
+  candidateEntropy: number;
+  ambiguity: number;
+  expectedContextCost: number;
+  estimatedSearchCost: number;
+};
 
 export type PrimeQuality = {
   score: number;
@@ -107,12 +171,16 @@ export type ContextValueDecision = {
   multiSurfaceSignal?: boolean;
   companionCount?: number;
   companionTopScore?: number;
-  recommendedDelivery?: "full_prime" | "one_file_directive" | "multi_file_directive" | "none";
+  recommendedDelivery?: "full_prime" | "one_file_directive" | "multi_file_directive" | "evidence_request" | "none";
   estimatedContextCost: number;
   expectedSavingsRisk: "low" | "medium" | "high";
   debugSignal: boolean;
   easyTaskSignal: boolean;
   wrongContextRisk?: boolean;
+  taskFrame?: TaskFrame;
+  evidenceRequest?: EvidenceRequest;
+  modelPrediction?: ContextGovernorModelPrediction;
+  featureSummary?: ContextGovernorFeatureSummary;
 };
 
 export type EditScopeConfidence = "high" | "medium" | "low";

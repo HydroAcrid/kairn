@@ -167,6 +167,7 @@ export type PublicationResultRow = {
   harmfulAssist: boolean;
   missedOpportunity: boolean;
   correctAbstention: boolean;
+  requestEvidence: boolean;
   failurePattern?: string | undefined;
 };
 
@@ -202,6 +203,7 @@ export type PublicationModeAggregate = {
   harmfulRows: number;
   missedOpportunityRows: number;
   correctAbstentionRows: number;
+  requestEvidenceRows: number;
   mcpCalls: number;
   repeatedFilesAvoided: number;
   scopeViolations: number;
@@ -597,8 +599,9 @@ function matrixRows(report: BenchmarkMatrixReport, artifact: PublicationEntryArt
         mode: "matrix_preflight",
         qualityPassed: matrixCase.qualityGatePassed,
         observedTokens: matrixCase.primeTokens,
-        active: matrixCase.contextDecision === "emit" || matrixCase.contextDecision === "shrink",
-        scopeViolations: 0,
+      active: matrixCase.contextDecision === "emit" || matrixCase.contextDecision === "shrink",
+      requestEvidence: matrixCase.contextDecision === "request_evidence",
+      scopeViolations: 0,
         failurePattern: matrixCase.qualityGatePassed ? undefined : matrixCase.recommendations[0]
       })
     )
@@ -701,6 +704,7 @@ function baseRow(input: {
   harmfulAssist?: boolean | undefined;
   missedOpportunity?: boolean | undefined;
   correctAbstention?: boolean | undefined;
+  requestEvidence?: boolean | undefined;
   failurePattern?: string | undefined;
 }): PublicationResultRow {
   const officialSavingsBlocked =
@@ -738,6 +742,7 @@ function baseRow(input: {
     harmfulAssist: Boolean(input.harmfulAssist),
     missedOpportunity: Boolean(input.missedOpportunity),
     correctAbstention: Boolean(input.correctAbstention),
+    requestEvidence: Boolean(input.requestEvidence),
     failurePattern: officialSavingsBlocked ? "Official evaluator pass missing; savings cannot be counted." : input.failurePattern
   };
 }
@@ -795,6 +800,7 @@ function addRowToAggregate(target: Record<string, PublicationModeAggregate>, key
   if (row.harmfulAssist) aggregate.harmfulRows += 1;
   if (row.missedOpportunity) aggregate.missedOpportunityRows += 1;
   if (row.correctAbstention) aggregate.correctAbstentionRows += 1;
+  if (row.requestEvidence) aggregate.requestEvidenceRows += 1;
   aggregate.mcpCalls += row.mcpCalls;
   aggregate.repeatedFilesAvoided += row.repeatedFilesAvoided;
   aggregate.scopeViolations += row.scopeViolations;
@@ -815,6 +821,7 @@ function emptyModeAggregate(): PublicationModeAggregate {
     harmfulRows: 0,
     missedOpportunityRows: 0,
     correctAbstentionRows: 0,
+    requestEvidenceRows: 0,
     mcpCalls: 0,
     repeatedFilesAvoided: 0,
     scopeViolations: 0
@@ -925,7 +932,7 @@ function formatPublicationMarkdown(report: PublicationReport): string {
     "## Mode Results",
     "",
     markdownTable(
-      ["Mode", "Rows", "Quality", "Active", "Valid Savings", "Passive", "Invalid", "MCP Calls", "Over", "Harmful", "Missed", "Abstain", "Scope Violations"],
+      ["Mode", "Rows", "Quality", "Active", "Valid Savings", "Passive", "Invalid", "MCP Calls", "Over", "Harmful", "Missed", "Abstain", "Evidence", "Scope Violations"],
       Object.entries(report.aggregate.modes).map(([mode, item]) => [
         mode,
         String(item.rows),
@@ -939,6 +946,7 @@ function formatPublicationMarkdown(report: PublicationReport): string {
         String(item.harmfulRows),
         String(item.missedOpportunityRows),
         String(item.correctAbstentionRows),
+        String(item.requestEvidenceRows),
         String(item.scopeViolations)
       ])
     ),
@@ -946,7 +954,7 @@ function formatPublicationMarkdown(report: PublicationReport): string {
     "## Task Class Results",
     "",
     markdownTable(
-      ["Task Class", "Rows", "Quality", "Active", "Median Savings", "Harmful", "Missed"],
+      ["Task Class", "Rows", "Quality", "Active", "Median Savings", "Harmful", "Missed", "Evidence"],
       Object.entries(report.aggregate.byTaskClass).map(([taskClass, item]) => [
         taskClass,
         String(item.rows),
@@ -954,7 +962,8 @@ function formatPublicationMarkdown(report: PublicationReport): string {
         String(item.activeRows),
         percent(item.medianSavingsRate),
         String(item.harmfulRows),
-        String(item.missedOpportunityRows)
+        String(item.missedOpportunityRows),
+        String(item.requestEvidenceRows)
       ])
     ),
     "",
@@ -1029,6 +1038,7 @@ function rowsToCsv(rows: PublicationResultRow[]): string {
     "harmfulAssist",
     "missedOpportunity",
     "correctAbstention",
+    "requestEvidence",
     "failurePattern"
   ];
   return [

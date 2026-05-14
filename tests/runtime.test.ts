@@ -79,6 +79,25 @@ describe("KairnRuntime", () => {
     runtime.close();
   });
 
+  it("requests runtime evidence before expensive source retrieval for procedural QnA", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+
+    const prime = await runtime.primeContext({
+      task: "Run the dashboard import command twice and tell me what log output appears.",
+      budget: 900
+    });
+
+    expect(prime.contextDecision?.action).toBe("request_evidence");
+    expect(prime.contextDecision?.taskFrame).toBe("runtime_procedural");
+    expect(prime.contextDecision?.evidenceRequest?.kind).toBe("runtime_scope");
+    expect(prime.files).toEqual([]);
+    expect(prime.timings?.findContextMs).toBeUndefined();
+    expect(prime.content).toContain("Kairn Needs One More Signal");
+
+    runtime.close();
+  });
+
   it("tracks index freshness across repo changes and refreshes", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);

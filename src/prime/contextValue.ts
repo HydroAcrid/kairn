@@ -1,6 +1,7 @@
 import type { ContextResponse, ContextValueDecision, FileRecord, PrimeQuality } from "../types.js";
 import type { ResolvedPrimeProfile } from "./quality.js";
 import { isFailureDebugTask } from "./quality.js";
+import { applyContextGovernor } from "./contextGovernor.js";
 
 export function evaluateContextValue(input: {
   task: string;
@@ -209,7 +210,7 @@ export function evaluateContextValue(input: {
       ? multiFileDirective ? "multi_file_directive" : "one_file_directive"
     : "none";
 
-  return {
+  const baseDecision: ContextValueDecision = {
     score,
     action,
     reasons: [...reasons],
@@ -234,6 +235,20 @@ export function evaluateContextValue(input: {
     easyTaskSignal,
     wrongContextRisk
   };
+
+  return applyContextGovernor({
+    task: input.task,
+    profile: input.profile,
+    context: input.context,
+    quality: input.quality,
+    baseDecision,
+    knownFiles: input.knownFiles,
+    repoFileCount: input.repoFileCount,
+    estimatedContextCost: input.estimatedContextCost,
+    companionCount: input.companionCount,
+    companionTopScore: input.companionTopScore,
+    companionSpecific: input.companionSpecific
+  });
 }
 
 function chooseAction(input: {

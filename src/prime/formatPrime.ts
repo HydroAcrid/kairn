@@ -1,4 +1,4 @@
-import type { ContextInvariant, ContextPrime, ContextResponse, EditScopeDecision, PrimeQuality } from "../types.js";
+import type { ContextInvariant, ContextPrime, ContextResponse, EditScopeDecision, EvidenceRequest, PrimeQuality } from "../types.js";
 import { editScopeBlock, editScopeLine } from "../scope/editScope.js";
 import { estimateTokens, truncateToBudget } from "../utils/tokens.js";
 import { uniquePaths, uniqueStrings } from "../utils/collections.js";
@@ -165,6 +165,33 @@ export function formatSuppressedPrimeContext(input: {
     `Reason: ${input.quality.reasons.join("; ")}`,
     "",
     "Kairn did not emit proactive context because it is unlikely to save tokens for this prompt."
+  ].join("\n");
+}
+
+export function formatEvidenceRequestPrimeContext(input: {
+  task: string;
+  sessionId: string;
+  profile: ResolvedPrimeProfile;
+  quality: PrimeQuality;
+  evidenceRequest?: EvidenceRequest | undefined;
+}): string {
+  const request = input.evidenceRequest ?? {
+    kind: "clarify_task" as const,
+    prompt: "Provide one concrete source file, symbol, failure output, or verification result before Kairn sends code context.",
+    reason: "Kairn does not have enough reliable evidence to choose useful context."
+  };
+  return [
+    "# Kairn Needs One More Signal",
+    "",
+    `Task: ${compactTaskLine(input.task)}`,
+    `Kairn session: ${input.sessionId}`,
+    `Prime profile: ${input.profile}`,
+    `Decision: ${input.quality.action}`,
+    "",
+    `Needed evidence: ${request.prompt}`,
+    `Why: ${request.reason}`,
+    "",
+    "Kairn did not include source snippets or edit targets for this turn."
   ].join("\n");
 }
 

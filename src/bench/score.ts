@@ -399,7 +399,9 @@ function resultAssistanceStatus(result: BenchmarkResultRecord): BenchmarkAssista
     result.metadata.primeSuppressed === true ||
     numberMetadata(result.metadata.primeSuppressed) > 0 ||
     result.metadata.primeDecision === "suppress" ||
-    result.metadata.contextDecision === "suppress";
+    result.metadata.contextDecision === "suppress" ||
+    result.metadata.primeDecision === "request_evidence" ||
+    result.metadata.contextDecision === "request_evidence";
   return hasSuppressedAssistance ? "passive_suppressed" : "none";
 }
 

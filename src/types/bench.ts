@@ -324,6 +324,8 @@ export type BenchmarkMatrixCaseResult = {
   primeLatencyMs: number;
   timings?: Record<string, number>;
   contextDecision?: string;
+  taskFrame?: string;
+  evidenceRequestKind?: string;
   qualityScore?: number;
   minExpectedHits?: number;
   requiredCompanionHits?: number;

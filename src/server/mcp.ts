@@ -375,6 +375,40 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
       hookFiles: coordination.hookFiles.slice(0, 3)
     };
   }
+  if (decision?.action === "request_evidence") {
+    return {
+      detail: "compact",
+      contextSuppressed: true,
+      sessionId: prime.session.id,
+      session: { id: prime.session.id, task: prime.session.task },
+      task: prime.task,
+      profile: prime.profile,
+      startFiles: [],
+      files: [],
+      companionFiles: [],
+      fallbackFiles: [],
+      exactSymbolHint: null,
+      exactSourceEvidence: null,
+      invariant: prime.invariants?.[0] ?? null,
+      invariantStatement: prime.invariants?.[0]?.statement ?? null,
+      expectedBehavior: null,
+      verificationCommand: null,
+      workingSet,
+      editScope,
+      evidenceRequest: decision.evidenceRequest ?? null,
+      primaryReason: decision.evidenceRequest?.reason ?? "Kairn needs one more concrete signal before returning source context.",
+      stopCondition: "evidence_required",
+      nextToolCalls: [],
+      recommendedToolCalls: [],
+      likelyTests: [],
+      tokenEstimate: estimateCompactPrepareTokens([], [], [], undefined),
+      quality: prime.quality,
+      contextDecision: decision,
+      warnings: uniqueValues([...prime.warnings, "Kairn requested evidence instead of returning source context."]),
+      duplicateContextAvoided: coordination.duplicateContextAvoided,
+      hookFiles: coordination.hookFiles.slice(0, 3)
+    };
+  }
   if (decision?.action === "suppress") {
     return {
       detail: "compact",
@@ -532,6 +566,7 @@ function fullPrepareResult(prime: PrimeContextResult) {
     quality: prime.quality,
     contextDecision: prime.contextDecision,
     editScope: prime.editScope,
+    evidenceRequest: prime.contextDecision?.evidenceRequest ?? null,
     invariants: prime.invariants ?? [],
     warnings: prime.warnings,
     suggestedCommands: prime.suggestedCommands.slice(0, 3),

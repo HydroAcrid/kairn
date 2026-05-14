@@ -39,6 +39,15 @@ export type TelemetryPayload = {
     emit: number;
     shrink: number;
     suppress: number;
+    requestEvidence: number;
+  };
+  governor: {
+    requestEvidence: number;
+    taskFrames: Record<string, number>;
+    fileRoles: Record<string, number>;
+    averagePUseful?: number;
+    averagePHarm?: number;
+    averagePNeedMoreEvidence?: number;
   };
   assistance: {
     active: number;

@@ -78,9 +78,11 @@ import {
   resolvePrimeProfile
 } from "../prime/quality.js";
 import { evaluateContextValue } from "../prime/contextValue.js";
+import { classifyTaskFrameFromTask } from "../prime/contextGovernor.js";
 import { decideSessionContextPolicy, inferTaskPhase } from "../ledger/policy.js";
 import { summarizeSessionLedger } from "../ledger/summary.js";
 import {
+  formatEvidenceRequestPrimeContext,
   formatMcpBriefPrimeContext,
   formatPrimeContext,
   formatShrunkPrimeContext,
@@ -205,6 +207,144 @@ export class KairnRuntime {
           verificationHints: ["Start from Kairn prime context", "Avoid broad scans unless the prime is insufficient", "Run related tests before finalizing"]
         });
     const resolvedTask = input.task || session.task;
+    const preRetrievalTaskFrame = classifyTaskFrameFromTask(resolvedTask, profile);
+    if (preRetrievalTaskFrame === "runtime_procedural") {
+      const preRetrievalFiles = session.rootPath === this.rootPath ? knownFiles : this.store.listFiles(session.rootPath);
+      const evidenceRequest = {
+        kind: "runtime_scope" as const,
+        prompt: "Provide the runtime command/output, log excerpt, or observation target before Kairn sends source context.",
+        reason: "This prompt asks for runtime observation; static retrieval alone would likely over-assist or point at the wrong source."
+      };
+      const contextDecision: ContextValueDecision = {
+        score: 42,
+        action: "request_evidence",
+        reasons: ["pre-retrieval governor requested runtime evidence before source retrieval"],
+        topScore: 0,
+        topGap: 0,
+        language: "unknown",
+        exactPathMentioned: false,
+        recommendedDelivery: "evidence_request",
+        estimatedContextCost: 0,
+        expectedSavingsRisk: "high",
+        debugSignal: profile === "failure_debug",
+        easyTaskSignal: false,
+        taskFrame: preRetrievalTaskFrame,
+        evidenceRequest,
+        modelPrediction: {
+          pUseful: 0.24,
+          pHarm: 0.52,
+          pNeedMoreEvidence: 0.86,
+          suggestedAction: "request_evidence",
+          confidence: 0.86,
+          source: "deterministic"
+        },
+        featureSummary: {
+          taskFrame: preRetrievalTaskFrame,
+          candidateCount: 0,
+          fileRoleCounts: {},
+          repoLanguageMix: languageMixForGovernorSummary(preRetrievalFiles),
+          confidenceGap: 0,
+          candidateEntropy: 0,
+          ambiguity: 1,
+          expectedContextCost: 0,
+          estimatedSearchCost: Math.min(100, Math.round(Math.log10(Math.max(10, preRetrievalFiles.length)) * 18 + 22))
+        }
+      };
+      const quality = {
+        score: contextDecision.score,
+        action: contextDecision.action,
+        reasons: contextDecision.reasons,
+        topScore: 0,
+        topGap: 0,
+        exactPathMentioned: false,
+        expectedSavingsRisk: contextDecision.expectedSavingsRisk
+      };
+      const content = formatEvidenceRequestPrimeContext({
+        task: resolvedTask,
+        sessionId: session.id,
+        profile,
+        quality,
+        evidenceRequest
+      });
+      timings.totalPrimeMs = Date.now() - primeStartedAt;
+      this.recordShown(session.id, "context", "brief", content);
+      this.recordMetricsEvent({
+        sessionId: session.id,
+        rootPath: session.rootPath,
+        eventKind: "prime_context",
+        eventName: "request_evidence",
+        source: input.source ?? "cli",
+        responseMode: "brief",
+        baselineTokens: 0,
+        outputTokens: estimateTokens(content),
+        files: [],
+        metadata: {
+          ...input.metadata,
+          taskHash: sha256(resolvedTask),
+          profile,
+          budget,
+          format: input.format ?? "standard",
+          quality,
+          contextDecision,
+          timings,
+          contextTokenEstimate: 0,
+          estimator: "pre-retrieval runtime evidence request"
+        }
+      });
+      this.recordMetricsEvent({
+        sessionId: session.id,
+        rootPath: session.rootPath,
+        eventKind: "prime_quality",
+        eventName: "request_evidence",
+        source: input.source ?? "cli",
+        responseMode: "brief",
+        baselineTokens: 0,
+        outputTokens: 0,
+        files: [],
+        metadata: {
+          ...quality,
+          contextDecision,
+          timings,
+          taskHash: sha256(resolvedTask),
+          profile
+        }
+      });
+      this.recordMetricsEvent({
+        sessionId: session.id,
+        rootPath: session.rootPath,
+        eventKind: "context_value_decision",
+        eventName: "request_evidence",
+        source: input.source ?? "cli",
+        responseMode: "brief",
+        baselineTokens: 0,
+        outputTokens: 0,
+        files: [],
+        metadata: {
+          ...contextDecision,
+          timings,
+          taskHash: sha256(resolvedTask),
+          profile
+        }
+      });
+      return {
+        session: this.getSession(session.id),
+        task: resolvedTask,
+        profile,
+        content,
+        files: [],
+        tokenEstimate: estimateTokens(content),
+        quality,
+        contextDecision,
+        timings,
+        metadata: {
+          preRetrievalTaskFrame
+        },
+        warnings: ["Kairn requested runtime evidence before source retrieval."],
+        suggestedCommands: [
+          `kairn context --session ${session.id} --root <repo> --query "${resolvedTask.replaceAll('"', '\\"')}" --mode snippets`
+        ]
+      };
+    }
     const findContextStartedAt = Date.now();
     const context = await this.findContext({
       sessionId: session.id,
@@ -386,9 +526,11 @@ export class KairnRuntime {
         ? contextDecision.recommendedDelivery ?? "full_prime"
         : effectiveAction === "shrink"
           ? contextDecision.recommendedDelivery === "multi_file_directive" ? "multi_file_directive" as const : "one_file_directive" as const
+        : effectiveAction === "request_evidence"
+          ? "evidence_request" as const
         : "none" as const
     };
-    const emittedFiles = effectiveAction === "suppress"
+    const emittedFiles = !isFileEmittingAction(effectiveAction)
       ? []
       : effectiveAction === "shrink" && forceMinimalSourceFocus && sessionPolicy.files.length > 0
         ? sessionPolicy.files.slice(0, 1)
@@ -401,7 +543,7 @@ export class KairnRuntime {
         : files;
     const invariantFilesMatchDelivery = invariants.every((invariant) => emittedFiles.includes(invariant.file));
     const deliveredPrimaryFile = emittedFiles[0];
-    if (effectiveAction !== "suppress" && deliveredPrimaryFile && !invariantFilesMatchDelivery) {
+    if (isFileEmittingAction(effectiveAction) && deliveredPrimaryFile && !invariantFilesMatchDelivery) {
       const deliveredInvariant = contextDecision.exactSourceHit && deliveredPrimaryFile === directivePrimaryFile
         ? this.getExactSourceEvidence({ sessionId: session.id, file: deliveredPrimaryFile, budget: 180 }).invariant
         : buildContextInvariant({ task: resolvedTask, file: deliveredPrimaryFile });
@@ -409,7 +551,7 @@ export class KairnRuntime {
     }
     const editScope = decideEditScope({
       task: resolvedTask,
-      candidateFiles: effectiveAction === "suppress" ? files : uniquePaths([...emittedFiles, ...files, ...(tests?.files ?? [])]),
+      candidateFiles: !isFileEmittingAction(effectiveAction) ? files : uniquePaths([...emittedFiles, ...files, ...(tests?.files ?? [])]),
       contextDecision: effectiveContextDecision,
       invariants,
       knownFiles: sessionFiles,
@@ -437,7 +579,7 @@ export class KairnRuntime {
         }
       });
     }
-    if (effectiveAction !== "suppress" && editScope.initialEditFiles.length > 0) {
+    if (isFileEmittingAction(effectiveAction) && editScope.initialEditFiles.length > 0) {
       this.recordLedgerEvent({
         sessionId: session.id,
         kind: "edit_scope_changed",
@@ -481,6 +623,14 @@ export class KairnRuntime {
         })
       : effectiveAction === "suppress"
         ? formatSuppressedPrimeContext({ task: resolvedTask, sessionId: session.id, profile, quality: effectiveQuality })
+        : effectiveAction === "request_evidence"
+          ? formatEvidenceRequestPrimeContext({
+              task: resolvedTask,
+              sessionId: session.id,
+              profile,
+              quality: effectiveQuality,
+              evidenceRequest: effectiveContextDecision.evidenceRequest
+            })
         : effectiveAction === "shrink"
           ? formatShrunkPrimeContext({
               task: resolvedTask,
@@ -3520,8 +3670,10 @@ function hasRecentMcpPrepareAbstention(events: Array<{ eventKind: string; eventN
       decision &&
         typeof decision === "object" &&
         !Array.isArray(decision) &&
-        (decision as Record<string, unknown>).action === "suppress" &&
-        String((decision as Record<string, unknown>).recommendedDelivery ?? "") === "none"
+        ((decision as Record<string, unknown>).action === "suppress" ||
+          (decision as Record<string, unknown>).action === "request_evidence") &&
+        (String((decision as Record<string, unknown>).recommendedDelivery ?? "") === "none" ||
+          String((decision as Record<string, unknown>).recommendedDelivery ?? "") === "evidence_request")
     );
   });
 }
@@ -3594,11 +3746,25 @@ function hasSpecificCompanionEvidence(value: unknown): boolean {
 }
 
 function strongestSuppressiveAction(
-  ...actions: Array<"emit" | "shrink" | "suppress">
-): "emit" | "shrink" | "suppress" {
+  ...actions: ContextValueDecision["action"][]
+): ContextValueDecision["action"] {
   if (actions.includes("suppress")) return "suppress";
+  if (actions.includes("request_evidence")) return "request_evidence";
   if (actions.includes("shrink")) return "shrink";
   return "emit";
+}
+
+function isFileEmittingAction(action: ContextValueDecision["action"]): boolean {
+  return action === "emit" || action === "shrink";
+}
+
+function languageMixForGovernorSummary(files: FileRecord[]): Record<string, number> {
+  const counts = new Map<string, number>();
+  for (const file of files) {
+    const language = file.language || "unknown";
+    counts.set(language, (counts.get(language) ?? 0) + 1);
+  }
+  return Object.fromEntries([...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8));
 }
 
 function minimalSourceFocusOverridesSuppression(reason: SessionContextPolicyDecision["reason"]): boolean {
@@ -3630,11 +3796,17 @@ function collectWorkspaceKairnMetrics(workspacePath: string): Record<string, unk
       const action = typeof decision.action === "string" ? decision.action : event.eventName;
       return action === "suppress";
     });
+    const evidenceRequestPrimeContexts = primeContextEvents.filter((event) => {
+      const decision = recordValue(event.metadata.contextDecision);
+      const action = typeof decision.action === "string" ? decision.action : event.eventName;
+      return action === "request_evidence";
+    });
     return {
       kairnSessionCount: sessions.length,
       primeAttempted: primeContextEvents.length + hookSignals.filter((event) => event.metadata.primeAttempted === true).length,
       primeEmitted: emittedPrimeContexts.length + hookSignals.filter((event) => event.metadata.primeContextDelivered === true).length,
       primeSuppressed: suppressedPrimeContexts.length + hookSignals.filter((event) => event.metadata.primeSuppressed === true).length,
+      primeEvidenceRequested: evidenceRequestPrimeContexts.length,
       primeTokens:
         emittedPrimeContexts.reduce((total, event) => total + event.outputTokens, 0) +
         hookSignals.reduce((total, event) => total + (event.metadata.primeContextDelivered === true ? event.outputTokens : 0), 0),

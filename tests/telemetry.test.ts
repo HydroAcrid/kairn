@@ -155,7 +155,8 @@ function minimalPayload(): TelemetryPayload {
       roleCounts: { source: 2 }
     },
     sessions: { count: 1, sampled: 1 },
-    decisions: { emit: 0, shrink: 1, suppress: 1 },
+    decisions: { emit: 0, shrink: 1, suppress: 1, requestEvidence: 0 },
+    governor: { requestEvidence: 0, taskFrames: {}, fileRoles: {} },
     assistance: { active: 1, passiveSuppressed: 0, none: 0, validAssist: 0, overAssist: 0, missedOpportunity: 0, harmfulAssist: 0 },
     tokens: { estimatedBaseline: 100, estimatedOutput: 30, estimatedSaved: 70, activeEstimatedSaved: 70, passiveEstimatedSaved: 0 },
     hooks: { invocations: 1, failures: 0, daemonHits: 0, daemonMisses: 0 },

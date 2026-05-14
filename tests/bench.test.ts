@@ -28,6 +28,7 @@ import {
 } from "../src/bench/publication.js";
 import { evaluateDiffScopes, evaluateSourceInvariants } from "../src/bench/sourceValidation.js";
 import { evaluateContextValue } from "../src/prime/contextValue.js";
+import { classifyFileRoleV2, linearModelPrediction, buildDecisionFeatures } from "../src/prime/contextGovernor.js";
 import { formatShrunkPrimeContext } from "../src/prime/formatPrime.js";
 import { evaluatePrimeQuality, resolvePrimeProfile } from "../src/prime/quality.js";
 import { hybridSearch } from "../src/retrieval/hybridRetrieval.js";
@@ -1950,6 +1951,225 @@ describe("benchmark suite and scoring", () => {
     expect(decision.action).toBe("shrink");
     expect(decision.language).toBe("cpp");
     expect(decision.expectedSavingsRisk).toBe("medium");
+  });
+
+  it("classifies generated, vendor, test, docs, route, and UI roles without repo-specific path checks", () => {
+    expect(classifyFileRoleV2("src/api/user.gen.ts", "source")).toBe("generated");
+    expect(classifyFileRoleV2("third_party/codec/parser.cc", "source")).toBe("vendor_dep");
+    expect(classifyFileRoleV2("tests/test_parser.py", "test")).toBe("test");
+    expect(classifyFileRoleV2("docs/architecture.md", "doc")).toBe("docs");
+    expect(classifyFileRoleV2("app/users/[id]/route.ts", "route")).toBe("route");
+    expect(classifyFileRoleV2("src/components/UserPanel.tsx", "component")).toBe("ui_surface");
+  });
+
+  it("requests evidence for low-confidence runtime procedural questions instead of guessing source context", () => {
+    const decision = evaluateContextValue({
+      task: "How many rows does the CLI print after running the import command with the default fixture?",
+      profile: "generic",
+      context: {
+        mode: "snippets",
+        content: "- docs/import.md (doc, score 80): import mention\n- scripts/import.ts (source, score 72): weak command mention",
+        files: ["docs/import.md", "scripts/import.ts"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["docs/import.md"],
+        rankedFiles: [
+          { path: "docs/import.md", kind: "doc", score: 80, reasons: ["weak import mention"] },
+          { path: "scripts/import.ts", kind: "source", score: 72, reasons: ["weak command mention"] }
+        ],
+        tokenEstimate: 240
+      },
+      quality: {
+        score: 58,
+        action: "shrink",
+        reasons: ["top retrieval candidates are not well separated"],
+        topScore: 80,
+        topGap: 8,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      knownFiles: [
+        record("docs/import.md", "source"),
+        record("scripts/import.ts", "source")
+      ],
+      repoFileCount: 1800,
+      estimatedContextCost: 900
+    });
+
+    expect(decision.action).toBe("request_evidence");
+    expect(decision.recommendedDelivery).toBe("evidence_request");
+    expect(decision.evidenceRequest?.kind).toBe("runtime_scope");
+    expect(decision.featureSummary?.taskFrame).toBe("runtime_procedural");
+  });
+
+  it("requests evidence for QnA prompts that require logs or runtime measurement", () => {
+    const decision = evaluateContextValue({
+      task: "Build it from source and run a basic scan. What initialization messages appear about which detectors get registered?",
+      profile: "generic",
+      context: {
+        mode: "snippets",
+        content: "- pkg/detectors/azure/repository.go (source, score 420): detector mention\n- pkg/tui/form.go (source, score 390): startup mention",
+        files: ["pkg/detectors/azure/repository.go", "pkg/tui/form.go"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["pkg/detectors/azure/repository.go"],
+        rankedFiles: [
+          { path: "pkg/detectors/azure/repository.go", kind: "source", score: 420, reasons: ["detector mention"] },
+          { path: "pkg/tui/form.go", kind: "source", score: 390, reasons: ["startup mention"] }
+        ],
+        tokenEstimate: 260
+      },
+      quality: {
+        score: 88,
+        action: "emit",
+        reasons: ["high-confidence top retrieval score"],
+        topScore: 420,
+        topGap: 30,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      knownFiles: [
+        record("pkg/detectors/azure/repository.go", "source"),
+        record("pkg/tui/form.go", "source")
+      ],
+      repoFileCount: 3200,
+      estimatedContextCost: 900
+    });
+
+    expect(decision.action).toBe("request_evidence");
+    expect(decision.evidenceRequest?.kind).toBe("runtime_scope");
+    expect(decision.featureSummary?.taskFrame).toBe("runtime_procedural");
+  });
+
+  it("keeps source-grounded explain prompts eligible for read-only test context", () => {
+    const decision = evaluateContextValue({
+      task: "Inspect src/documents/tests/test_api.py and explain API view routing.",
+      profile: "generic",
+      context: {
+        mode: "snippets",
+        content: "- src/documents/tests/test_api.py (test, score 300): exact test path match",
+        files: ["src/documents/tests/test_api.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/documents/tests/test_api.py"],
+        rankedFiles: [{ path: "src/documents/tests/test_api.py", kind: "test", score: 300, reasons: ["exact test path match"] }],
+        tokenEstimate: 120
+      },
+      quality: {
+        score: 74,
+        action: "shrink",
+        reasons: ["source-grounded explanation"],
+        topScore: 300,
+        topGap: 200,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      knownFiles: [record("src/documents/tests/test_api.py", "test")],
+      repoFileCount: 80,
+      estimatedContextCost: 700
+    });
+
+    expect(decision.action).not.toBe("request_evidence");
+    expect(decision.featureSummary?.taskFrame).toBe("qna_source_grounded");
+  });
+
+  it("requests production source evidence when generated files dominate retrieval", () => {
+    const decision = evaluateContextValue({
+      task: "Fix the API client status handling bug in production source.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- src/api/client.gen.ts (source, score 420): generated client match\n- src/api/client.ts (source, score 130): source fallback",
+        files: ["src/api/client.gen.ts", "src/api/client.ts"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/api/client.gen.ts"],
+        rankedFiles: [
+          { path: "src/api/client.gen.ts", kind: "source", score: 420, reasons: ["generated client match"] },
+          { path: "src/api/client.ts", kind: "source", score: 130, reasons: ["source fallback"] }
+        ],
+        tokenEstimate: 240
+      },
+      quality: {
+        score: 82,
+        action: "emit",
+        reasons: ["high-confidence top retrieval score"],
+        topScore: 420,
+        topGap: 290,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      knownFiles: [
+        record("src/api/client.gen.ts", "source"),
+        record("src/api/client.ts", "source")
+      ],
+      repoFileCount: 900,
+      estimatedContextCost: 900
+    });
+
+    expect(decision.action).toBe("request_evidence");
+    expect(decision.evidenceRequest?.kind).toBe("exact_source");
+    expect(decision.featureSummary?.topRole).toBe("generated");
+  });
+
+  it("allows a calibrated model seam to downgrade but not broaden deterministic decisions", () => {
+    const baseInput = {
+      task: "Debug a source rescue issue in the parser.",
+      profile: "failure_debug" as const,
+      context: {
+        mode: "snippets" as const,
+        content: "- src/parser.ts (source, score 500): exact parser match",
+        files: ["src/parser.ts"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/parser.ts"],
+        rankedFiles: [{ path: "src/parser.ts", kind: "source" as const, score: 500, reasons: ["exact parser match"] }],
+        tokenEstimate: 180
+      },
+      quality: {
+        score: 85,
+        action: "shrink" as const,
+        reasons: ["high-confidence top retrieval score"],
+        topScore: 500,
+        topGap: 300,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium" as const
+      },
+      knownFiles: [record("src/parser.ts", "source")],
+      repoFileCount: 1200,
+      estimatedContextCost: 900,
+      baseDecision: {
+        score: 85,
+        action: "suppress" as const,
+        reasons: ["deterministic safety"],
+        topScore: 500,
+        topGap: 300,
+        primaryFile: "src/parser.ts",
+        language: "typescript" as const,
+        exactPathMentioned: false,
+        exactSourceHit: true,
+        recommendedDelivery: "none" as const,
+        estimatedContextCost: 900,
+        expectedSavingsRisk: "high" as const,
+        debugSignal: true,
+        easyTaskSignal: false
+      }
+    };
+    const features = buildDecisionFeatures(baseInput);
+    const prediction = linearModelPrediction(features, {
+      bias: 10,
+      harmBias: -10,
+      evidenceBias: -10,
+      weights: { topScore: 1 }
+    });
+
+    expect(prediction.suggestedAction).toBe("shrink");
+    expect(prediction.pUseful).toBeGreaterThan(0.9);
   });
 
   it("shrinks high-confidence exact source hits instead of broad full-prime delivery", () => {
@@ -3995,6 +4215,7 @@ function publicationRow(overrides: Partial<PublicationResultRow>): PublicationRe
     harmfulAssist: false,
     missedOpportunity: false,
     correctAbstention: false,
+    requestEvidence: false,
     ...overrides
   };
 }

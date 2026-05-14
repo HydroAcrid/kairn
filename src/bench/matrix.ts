@@ -199,11 +199,16 @@ async function runCasePreflight(input: {
   const sourceVsTestDecision = decideSourceVsTest(returnedFiles);
   const requiresSuppression = shouldRequireSuppression(input.benchmarkCase, input.gates);
   const contextDecision = prime.contextDecision?.action ?? prime.quality?.action;
-  const suppressionPassed = !requiresSuppression || contextDecision === "suppress";
+  const taskFrame = prime.contextDecision?.taskFrame;
+  const evidenceRequestKind = prime.contextDecision?.evidenceRequest?.kind;
+  const evidenceRequestPassed =
+    contextDecision === "request_evidence" &&
+    (taskFrame === "runtime_procedural" || taskFrame === "weak_signal");
+  const suppressionPassed = !requiresSuppression || contextDecision === "suppress" || contextDecision === "request_evidence";
   const minExpectedHits = effectiveMatrixMinExpectedHits(input.benchmarkCase, scorableExpectedFiles.length);
   const requiredCompanionHits = effectiveMatrixRequiredCompanionHits(input.benchmarkCase, expectedCompanions.length, minExpectedHits);
-  const expectedTopKPassed = scorableExpectedFiles.length === 0 || expectedHits.length >= minExpectedHits;
-  const companionGatePassed = companionHits.length >= requiredCompanionHits;
+  const expectedTopKPassed = evidenceRequestPassed || scorableExpectedFiles.length === 0 || expectedHits.length >= minExpectedHits;
+  const companionGatePassed = evidenceRequestPassed || companionHits.length >= requiredCompanionHits;
   const excludedFilesAvoided = excludedHits.length === 0 && noisePrefixHits.length === 0;
   const latencyPassed = primeLatencyMs <= input.gates.maxPrimeLatencyMs;
   const qualityGatePassed = expectedTopKPassed && companionGatePassed && excludedFilesAvoided && suppressionPassed && latencyPassed;
@@ -228,7 +233,10 @@ async function runCasePreflight(input: {
     );
   }
   if (!suppressionPassed) {
-    recommendations.push("Weak-signal case emitted context instead of suppressing.");
+    recommendations.push("Weak-signal case emitted context instead of suppressing or requesting evidence.");
+  }
+  if (evidenceRequestPassed) {
+    recommendations.push(`Evidence request accepted for ${taskFrame} task (${evidenceRequestKind ?? "unknown"}).`);
   }
   if (!latencyPassed) {
     recommendations.push(`Prime latency ${primeLatencyMs}ms exceeded ${input.gates.maxPrimeLatencyMs}ms gate.`);
@@ -255,6 +263,8 @@ async function runCasePreflight(input: {
     primeLatencyMs,
     ...(prime.timings ? { timings: prime.timings } : {}),
     ...(contextDecision ? { contextDecision } : {}),
+    ...(taskFrame ? { taskFrame } : {}),
+    ...(evidenceRequestKind ? { evidenceRequestKind } : {}),
     ...(prime.quality?.score !== undefined ? { qualityScore: prime.quality.score } : {}),
     minExpectedHits,
     requiredCompanionHits,

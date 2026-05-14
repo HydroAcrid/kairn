@@ -222,6 +222,22 @@ Main finding:
 - Low QnA preflight is not a laptop issue. It is a task-shape mismatch plus a current retrieval weakness on long, vague, architecture-style questions with weak source anchors.
 - Do not spend live QnA tokens broadly yet. Use the 7/23 passing or strong-applicability subset for a small answer-grounding pilot only.
 
+### Dynamic Governor Follow-Up
+
+After adding the shared context governor and `request_evidence` action, the same SWE-Atlas/QnA preflight was rerun with runtime/procedural rows scored as correct evidence requests rather than static retrieval failures.
+
+| Run | Passing Cases | Decisions | Max Prime Latency |
+| --- | ---: | --- | ---: |
+| before dynamic governor | 8 / 23 | 12 emit, 7 request_evidence, 4 shrink | > 18s on large repos |
+| after runtime evidence classifier | 18 / 23 | 20 request_evidence, 2 emit, 1 shrink | 24.7s |
+| after pre-retrieval evidence guard | 21 / 23 | 20 request_evidence, 2 emit, 1 shrink | 1.8s |
+
+Main finding:
+
+- QnA-style prompts often ask for logs, measurements, runtime behavior, or temporary scripts. Kairn should request that evidence before source retrieval instead of returning misleading static context.
+- The pre-retrieval guard is a general latency and reliability improvement: it skips expensive retrieval on runtime-procedural prompts and emits a tiny evidence request instead.
+- Remaining QnA failures are source-routing issues in verification/cleanup-style questions, not evidence-request behavior.
+
 ### SWE-Bench Pro
 
 The SWE-Pro publication pilot generated 10 strong-applicability patch tasks across JS, Python, and Go.
