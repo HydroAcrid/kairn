@@ -62,7 +62,10 @@ kairn setup wizard --root /path/to/repo --targets claude-code,gemini-cli --yes -
 kairn setup mcp --root /path/to/repo --client copilot-cli --json
 kairn doctor --root /path/to/repo
 kairn doctor --root /path/to/repo --target gemini-cli
+kairn doctor --root /path/to/repo --fix
 ```
+
+During rapid tarball beta updates, run `kairn doctor --fix` inside a repo after installing the new tarball. It rewrites only Kairn-owned hook/MCP entries to the current `kairn` command path and leaves unrelated client config alone. Use `--target vscode`, `--target claude-code`, `--target gemini-cli`, or `--target codex` to repair one integration.
 
 If sanitized telemetry is enabled, Kairn uploads at safe command boundaries: when `kairn codex` exits and when `kairn beta report` runs. Prompt hooks do not perform network uploads during an agent turn. Private beta telemetry defaults to the Kairn Supabase ingest endpoint when users opt in with `kairn telemetry enable --destination supabase`.
 
@@ -250,6 +253,7 @@ For MCP users, start with pure MCP. Hybrid is not the default MCP setup because 
 ```bash
 kairn doctor --root /path/to/repo
 kairn doctor --root /path/to/repo --target claude-code
+kairn doctor --root /path/to/repo --fix
 kairn setup mcp --root /path/to/repo --client vscode
 kairn setup mcp --root /path/to/repo --client claude-code
 kairn setup mcp --root /path/to/repo --client gemini-cli

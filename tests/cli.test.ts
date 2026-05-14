@@ -269,4 +269,46 @@ describe("CLI", () => {
     expect(mcpJson.servers?.existing).toBeTruthy();
     expect(mcpJson.servers?.kairn).toBeUndefined();
   });
+
+  it("repairs Kairn-owned setup with doctor --fix", () => {
+    const root = createFixtureRepo();
+    fs.mkdirSync(path.join(root, ".vscode"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, ".vscode", "mcp.json"),
+      `${JSON.stringify({ servers: { kairn: { type: "stdio", command: "/old/kairn", args: ["serve", "--mcp", "--root", root] } } }, null, 2)}\n`
+    );
+    fs.mkdirSync(path.join(root, ".codex"), { recursive: true });
+    fs.writeFileSync(path.join(root, ".codex", "config.toml"), "[features]\ncodex_hooks = false\n");
+    fs.writeFileSync(
+      path.join(root, ".codex", "hooks.json"),
+      `${JSON.stringify({ hooks: { UserPromptSubmit: [{ hooks: [{ type: "command", command: "/old/kairn hook --source codex" }] }] } }, null, 2)}\n`
+    );
+
+    const fixedVscode = execFileSync(
+      CLI[0]!,
+      [...CLI.slice(1), "doctor", "--root", root, "--target", "vscode", "--fix", "--json"],
+      { cwd: process.cwd(), encoding: "utf8" }
+    );
+    const fixedCodex = execFileSync(
+      CLI[0]!,
+      [...CLI.slice(1), "doctor", "--root", root, "--target", "codex", "--fix", "--json"],
+      { cwd: process.cwd(), encoding: "utf8" }
+    );
+    const parsedVscode = JSON.parse(fixedVscode) as { fix: { repaired: string[] } };
+    const parsedCodex = JSON.parse(fixedCodex) as { fix: { repaired: string[] } };
+    const vscodeConfig = JSON.parse(fs.readFileSync(path.join(root, ".vscode", "mcp.json"), "utf8")) as {
+      servers: { kairn: { command: string; args: string[] } };
+    };
+    const codexConfig = fs.readFileSync(path.join(root, ".codex", "config.toml"), "utf8");
+    const codexHooks = fs.readFileSync(path.join(root, ".codex", "hooks.json"), "utf8");
+
+    expect(parsedVscode.fix.repaired).toContain("mcp:vscode");
+    expect(vscodeConfig.servers.kairn.command).not.toBe("/old/kairn");
+    expect(vscodeConfig.servers.kairn.args).toContain("serve");
+    expect(parsedCodex.fix.repaired).toContain("codex:savings");
+    expect(codexConfig).toContain("hooks = true");
+    expect(codexConfig).not.toContain("codex_hooks");
+    expect(codexHooks).toContain("Priming Kairn context");
+    expect(codexHooks).not.toContain("/old/kairn");
+  });
 });

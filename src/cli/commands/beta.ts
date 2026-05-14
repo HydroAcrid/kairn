@@ -1,7 +1,7 @@
-import fs from "node:fs";
 import path from "node:path";
 import { Command, Option } from "commander";
 import { runDoctor, type DoctorTarget } from "../../doctor/doctor.js";
+import { fixDoctorIssues, type DoctorFixResult } from "../../doctor/fix.js";
 import { buildDiagnosticExport, writeDiagnosticExport } from "../../telemetry/diagnostics.js";
 import { buildTelemetryPayload } from "../../telemetry/payload.js";
 import { buildBetaReport } from "../../telemetry/report.js";
@@ -9,7 +9,6 @@ import { disableTelemetry, enableTelemetry, ensureTelemetryIdentity, getTelemetr
 import { queueAndFlushTelemetrySnapshot } from "../../telemetry/autoFlush.js";
 import { enqueueTelemetryPayload } from "../../telemetry/queue.js";
 import { flushTelemetryQueue } from "../../telemetry/queue.js";
-import { writeCodexSetup } from "../setup/codexSetup.js";
 import { withRuntime } from "../helpers.js";
 import { printJson } from "../output.js";
 
@@ -20,18 +19,24 @@ export function registerBetaCommands(program: Command): void {
     .option("--root <path>", "target repository root", process.cwd())
     .option("--codex-command <command>", "Codex command to check", process.env.KAIRN_CODEX_CMD ?? "codex")
     .addOption(new Option("--target <target>", "limit doctor checks to one client").choices(["all", "codex", "claude-code", "copilot-cli", "gemini-cli", "vscode", "generic"]).default("all"))
+    .option("--fix", "repair Kairn-owned hook/MCP config for the selected target")
     .option("--fix-hooks", "rewrite Kairn-owned Codex hook files when safe")
     .option("--json", "print JSON output")
-    .action(async (options: { root: string; codexCommand: string; target: DoctorTarget; fixHooks?: boolean; json?: boolean }) => {
+    .action(async (options: { root: string; codexCommand: string; target: DoctorTarget; fix?: boolean; fixHooks?: boolean; json?: boolean }) => {
       await withRuntime(options.root, async (runtime) => {
-        if (options.fixHooks) {
-          fixHooksIfSafe(options.root);
+        let fix: DoctorFixResult | undefined;
+        if (options.fix || options.fixHooks) {
+          fix = fixDoctorIssues({
+            rootPath: options.root,
+            target: options.fixHooks && !options.fix ? "codex" : options.target
+          });
         }
         const report = runDoctor({ rootPath: options.root, runtime, codexCommand: options.codexCommand, target: options.target });
         if (options.json) {
-          printJson(report);
+          printJson(fix ? { ...report, fix } : report);
           return;
         }
+        if (fix) printDoctorFix(fix);
         printDoctor(report);
       });
     });
@@ -179,22 +184,6 @@ export function registerBetaCommands(program: Command): void {
     });
 }
 
-function fixHooksIfSafe(root: string): void {
-  const hooksPath = path.join(root, ".codex", "hooks.json");
-  const existing = fs.existsSync(hooksPath) ? fs.readFileSync(hooksPath, "utf8") : "";
-  if (existing && !/kairn|Kairn/.test(existing)) {
-    throw new Error("Refusing to rewrite non-Kairn Codex hooks. Remove or edit .codex/hooks.json manually.");
-  }
-  writeCodexSetup({
-    root,
-    mode: "savings",
-    primeProfile: "auto",
-    hookOutput: "full-prime",
-    postToolHookOutput: "failure-only",
-    primeBudget: 900
-  });
-}
-
 function printDoctor(report: ReturnType<typeof runDoctor>): void {
   process.stdout.write(
     [
@@ -204,6 +193,18 @@ function printDoctor(report: ReturnType<typeof runDoctor>): void {
         const fix = check.fix ? `\n  fix: ${check.fix}` : "";
         return `- ${check.status.toUpperCase()} ${check.id}: ${check.summary}${fix}`;
       }),
+      ""
+    ].join("\n")
+  );
+}
+
+function printDoctorFix(result: DoctorFixResult): void {
+  process.stdout.write(
+    [
+      "Kairn doctor fix.",
+      `Target: ${result.target}`,
+      `Repaired: ${result.repaired.join(", ") || "none"}`,
+      ...result.skipped.map((item) => `Skipped ${item.target}: ${item.reason}`),
       ""
     ].join("\n")
   );

@@ -100,6 +100,14 @@ kairn doctor
 
 The wizard lets you choose terminal Codex hooks, Claude Code MCP, Copilot CLI MCP, Gemini CLI MCP, VS Code/Copilot MCP, generic MCP, or multiple clients at once.
 
+If I send you a newer beta tarball later, reinstall it and then run this inside each repo using Kairn:
+
+```bash
+kairn doctor --fix
+```
+
+That refreshes Kairn-owned hooks/MCP config to the current installed `kairn` command while preserving unrelated editor or agent config.
+
 ## Normal Use
 
 If you use Codex in the terminal, start a session with:
