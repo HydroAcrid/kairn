@@ -18,7 +18,7 @@ Requirements:
 
 - Node.js 20 through 25. Node 20 or 22 LTS is still the recommended private beta path, but Kairn's parser now uses WASM Tree-sitter to avoid the old native Tree-sitter build failure on newer Node releases.
 - Git
-- Codex CLI for the terminal hook/session path, or a client that can read workspace MCP config for the MCP path
+- Codex CLI for the terminal hook/session path, or an MCP-capable client such as Claude Code, GitHub Copilot CLI, Gemini CLI, VS Code/Copilot, Antigravity, Avante/MCPHub, or another MCP client
 
 Once Kairn is published:
 
@@ -38,25 +38,30 @@ npm pack
 # beta user
 nvm install 22
 nvm use 22
-npm install -g ./kairn-0.1.1.tgz
+npm install -g ./kairn-0.1.2.tgz
 kairn setup wizard --root /path/to/repo
 ```
 
-The wizard asks for one of the practical beta paths:
+The wizard asks which agents/clients to configure and supports multi-select:
 
 | Choice | Best for | What it configures |
 | --- | --- | --- |
 | Codex CLI session/hooks | Terminal Codex users | Default savings hooks plus the `kairn codex` session-bound path. |
-| VS Code / editor MCP | Editor users or users who do not want hooks | `.vscode/mcp.json` and MCP-first `AGENTS.md` guidance. |
-| Both | Users who switch between terminal and editor | Codex savings hooks plus pure VS Code MCP. |
-| Advanced hybrid | Codex users who explicitly want hook + MCP coordination | Codex hybrid config; not the default MCP recommendation. |
+| Claude Code MCP | Claude users | Project `.mcp.json` plus MCP-first `AGENTS.md` guidance. Advanced Claude hooks are optional. |
+| Copilot CLI MCP | Copilot terminal users | A safe user-config template for `~/.copilot/mcp-config.json`; writes only with explicit confirmation or `--install-user`. |
+| Gemini CLI MCP | Gemini users | Project `.gemini/settings.json` with `mcpServers.kairn`. |
+| VS Code / Copilot MCP | Editor users or users who do not want hooks | `.vscode/mcp.json` and MCP-first `AGENTS.md` guidance. |
+| Generic MCP | Antigravity, Avante/MCPHub, or other clients | JSON config output to paste into that client's MCP settings. |
 
 Scriptable setup is available for docs, CI, and support:
 
 ```bash
 kairn setup wizard --root /path/to/repo --choice codex --yes
 kairn setup wizard --root /path/to/repo --choice mcp --yes
+kairn setup wizard --root /path/to/repo --targets claude-code,gemini-cli --yes --no-index
+kairn setup mcp --root /path/to/repo --client copilot-cli --json
 kairn doctor --root /path/to/repo
+kairn doctor --root /path/to/repo --target gemini-cli
 ```
 
 If sanitized telemetry is enabled, Kairn uploads at safe command boundaries: when `kairn codex` exits and when `kairn beta report` runs. Prompt hooks do not perform network uploads during an agent turn. Private beta telemetry defaults to the Kairn Supabase ingest endpoint when users opt in with `kairn telemetry enable --destination supabase`.
@@ -69,7 +74,9 @@ kairn setup remove --root /path/to/repo --delete-state
 npm uninstall -g kairn
 ```
 
-`setup remove` deletes Kairn-owned Codex hooks, Kairn MCP config, and the Kairn block in `AGENTS.md` while preserving unrelated user config. Without `--delete-state`, it keeps `.kairn/` local indexes, metrics, and session ledger data but disables telemetry upload. With `--delete-state`, it removes `.kairn/` too.
+`setup remove` deletes Kairn-owned Codex hooks, Claude hooks, MCP config, and the Kairn block in `AGENTS.md` while preserving unrelated user config. Without `--delete-state`, it keeps `.kairn/` local indexes, metrics, and session ledger data but disables telemetry upload. With `--delete-state`, it removes `.kairn/` too.
+
+On Windows, the wizard defaults to a safe setup index that avoids WASM AST parsing during first setup. If native indexing still misbehaves, run `kairn setup wizard --no-index`, then use `kairn index refresh --safe --root <repo>` or WSL as a fallback.
 
 Homebrew, Winget, and signed native installers are packaging targets, not the first beta path. They are useful once the npm path, hook review flow, MCP setup, and `kairn doctor` checks are stable on other machines.
 
@@ -218,7 +225,7 @@ Kairn is local-first by default. Detailed metrics, ledger facts, hook events, an
 Beta users have two supported integration paths:
 
 - `kairn codex`: session-bound Codex hooks for the CLI/interactive conversation path.
-- `kairn setup mcp --client vscode`: a workspace MCP server config for editor/app clients such as VS Code, where hooks may be unavailable or not trusted.
+- `kairn setup mcp`: a local MCP server config for clients where hooks may be unavailable or not trusted.
 
 For most users, start with the guided setup:
 
@@ -231,14 +238,21 @@ Recommended choice:
 | User setup | Command | Notes |
 | --- | --- | --- |
 | Codex CLI / terminal user | `kairn codex` | Best-tested automatic beta path; one durable session ledger plus adaptive hooks. |
+| Claude Code user | `kairn setup mcp --client claude-code` | Project `.mcp.json`; verify with `claude mcp list` and `/mcp`. |
+| Copilot CLI user | `kairn setup mcp --client copilot-cli --json` | Copy config to `~/.copilot/mcp-config.json`, or use `--install-user` intentionally. |
+| Gemini CLI user | `kairn setup mcp --client gemini-cli` | Project `.gemini/settings.json`; verify with `/mcp`. |
 | VS Code / editor / app user | `kairn setup mcp --client vscode` | Pure MCP path. No hooks required; the agent calls Kairn tools when useful. |
+| Generic MCP client | `kairn setup mcp --client generic --json` | Use for Antigravity, Avante/MCPHub, or clients with custom config UIs. |
 | Codex user who explicitly wants both | `kairn setup codex --mode hybrid` | Advanced/experimental: tiny hook guidance plus MCP. Use only if hooks are acceptable. |
 
 For MCP users, start with pure MCP. Hybrid is not the default MCP setup because hybrid requires hooks; a VS Code-only MCP install cannot provide hook behavior.
 
 ```bash
 kairn doctor --root /path/to/repo
+kairn doctor --root /path/to/repo --target claude-code
 kairn setup mcp --root /path/to/repo --client vscode
+kairn setup mcp --root /path/to/repo --client claude-code
+kairn setup mcp --root /path/to/repo --client gemini-cli
 kairn beta report --root /path/to/repo
 kairn telemetry status --root /path/to/repo
 kairn telemetry enable --root /path/to/repo --destination supabase
@@ -246,12 +260,15 @@ kairn telemetry flush --root /path/to/repo --dry-run --json
 kairn diagnostics export --root /path/to/repo --out kairn-diagnostics.json
 ```
 
-Use `kairn doctor` before sharing beta results. It checks Node/Kairn/Codex setup, hook config, Codex or VS Code MCP config, daemon hints, session-bound hooks, index state, and telemetry status. `kairn beta report` summarizes whether Kairn helped, stayed silent, over-assisted, or missed opportunities in local sessions.
+Use `kairn doctor` before sharing beta results. It checks Node/Kairn setup, target-specific client config, daemon hints, index state, Windows friction, and telemetry status. `kairn beta report` summarizes whether Kairn helped, stayed silent, over-assisted, or missed opportunities in local sessions.
 
 Kairn's local footprint in a user repo is intentionally reversible:
 
 - `.kairn/`: local SQLite index, sessions, metrics, ledger, telemetry queue/config, and generated cache state.
 - `.codex/config.toml` and `.codex/hooks.json`: Codex hook/MCP setup when the user chooses Codex integration.
+- `.mcp.json`: Claude Code project MCP setup.
+- `.claude/settings.local.json`: optional advanced Claude Code hooks.
+- `.gemini/settings.json`: Gemini CLI project MCP setup.
 - `.vscode/mcp.json`: workspace MCP server config when the user chooses editor MCP.
 - `AGENTS.md`: a marked Kairn MCP guidance block between `<!-- kairn:mcp-first:start -->` and `<!-- kairn:mcp-first:end -->`.
 

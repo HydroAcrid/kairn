@@ -70,7 +70,7 @@ Command modules:
 
 The CLI should stay thin. Command modules should parse options, call `KairnRuntime` or focused benchmark/setup helpers, then format output.
 
-Private beta onboarding starts at `kairn setup wizard`. The wizard is a thin composition layer over the same setup primitives used by direct commands: Codex savings hooks, VS Code MCP config, advanced Codex hybrid, doctor checks, and optional sanitized telemetry. Private beta offboarding uses `kairn setup remove`, which removes only Kairn-owned hook/MCP/instruction config and can optionally delete local `.kairn/` state.
+Private beta onboarding starts at `kairn setup wizard`. The wizard is a thin composition layer over the same setup primitives used by direct commands: Codex savings hooks, client-specific MCP config for Claude Code, Copilot CLI, Gemini CLI, VS Code/Copilot, generic MCP clients, advanced Codex/Claude hooks, doctor checks, and optional sanitized telemetry. Private beta offboarding uses `kairn setup remove`, which removes only Kairn-owned hook/MCP/instruction config and can optionally delete local `.kairn/` state.
 
 ### MCP
 
@@ -92,7 +92,7 @@ Current tools:
 - `kairn_get_metrics`
 - `kairn_get_session_state`
 
-MCP is the read-gateway surface. Its job is not to dump large prime briefs. It should help agents take the next smallest useful read.
+MCP is the read-gateway surface. Its job is not to dump large prime briefs. It should help agents take the next smallest useful read. Kairn writes client-specific config rather than assuming one MCP layout: VS Code uses `.vscode/mcp.json` with `servers`, Claude Code uses project `.mcp.json` with `mcpServers`, Gemini CLI uses `.gemini/settings.json`, Copilot CLI uses `~/.copilot/mcp-config.json` only with explicit user-level consent, and generic clients receive JSON to paste into their own settings.
 
 MCP is also a beta entrypoint, not only a benchmark mode. It supports editor/app integrations where prompt hooks are unavailable, blocked by review, or not part of the host UX. `kairn setup mcp --client vscode` writes a workspace `.vscode/mcp.json` server block while preserving unrelated MCP servers. `kairn setup codex --mode mcp-first` writes the Codex TOML equivalent. Both point at the same local `kairn serve --mcp --root <repo>` server.
 

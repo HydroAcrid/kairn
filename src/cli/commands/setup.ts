@@ -1,5 +1,6 @@
 import { Command, Option } from "commander";
 import type { CodexSetupMode, HookOutputProfile, PrimeProfile } from "../../types.js";
+import { writeClaudeHooksSetup } from "../setup/claudeSetup.js";
 import { writeCodexSetup } from "../setup/codexSetup.js";
 import { writeMcpClientSetup, type McpClientSetupTarget } from "../setup/mcpSetup.js";
 import { writeMcpInstructionsSetup } from "../setup/mcpInstructions.js";
@@ -36,26 +37,34 @@ export function registerSetupCommands(program: Command): void {
     .description("Run the guided Kairn setup wizard for Codex CLI, VS Code MCP, or both.")
     .option("--root <path>", "target repository root", process.cwd())
     .addOption(new Option("--choice <choice>", "non-interactive setup choice").choices(["codex", "mcp", "both", "hybrid", "doctor"]))
+    .option("--targets <targets>", "comma-separated setup targets: codex,claude-code,copilot-cli,gemini-cli,vscode,generic")
     .option("--yes", "accept defaults for non-interactive setup")
     .option("--no-index", "skip indexing during setup")
+    .addOption(new Option("--index-mode <mode>", "indexing mode during setup").choices(["safe", "full", "skip"]))
     .option("--telemetry", "enable opt-in sanitized telemetry upload")
     .option("--telemetry-endpoint <url>", "telemetry ingest endpoint override")
     .option("--json", "print JSON output")
     .action(async (options: {
       root: string;
       choice?: SetupWizardChoice;
+      targets?: string;
       yes?: boolean;
       index?: boolean;
+      indexMode?: "safe" | "full" | "skip";
       telemetry?: boolean;
       telemetryEndpoint?: string;
       json?: boolean;
     }, command: Command) => {
       const indexSource = command.getOptionValueSource("index");
+      const indexModeSource = command.getOptionValueSource("indexMode");
+      const indexMode = indexModeSource ? options.indexMode : undefined;
       const result = await runSetupWizard({
         root: options.root,
         choice: options.choice,
+        targets: options.targets,
         yes: options.yes,
-        index: indexSource === "default" ? undefined : options.index,
+        index: indexMode === "skip" ? false : indexSource === "default" ? undefined : options.index,
+        indexMode,
         telemetry: options.telemetry,
         telemetryEndpoint: options.telemetryEndpoint
       });
@@ -68,21 +77,24 @@ export function registerSetupCommands(program: Command): void {
 
   setup
     .command("mcp")
-    .description("Install a Kairn MCP server config for editor/app clients such as VS Code.")
+    .description("Install a Kairn MCP server config for editor/app clients.")
     .option("--root <path>", "target repository root", process.cwd())
-    .addOption(new Option("--client <client>", "MCP client config format").choices(["vscode", "generic"]).default("vscode"))
+    .addOption(new Option("--client <client>", "MCP client config format").choices(["vscode", "claude-code", "copilot-cli", "gemini-cli", "generic"]).default("vscode"))
+    .option("--install-user", "write user-level config when the selected client requires it, such as Copilot CLI")
     .option("--no-instructions", "do not write AGENTS.md MCP guidance")
     .option("--json", "print JSON output")
     .action((options: {
       root: string;
       client: McpClientSetupTarget;
+      installUser?: boolean;
       instructions?: boolean;
       json?: boolean;
     }) => {
       const result = writeMcpClientSetup({
         root: options.root,
         client: options.client,
-        writeInstructions: options.instructions
+        writeInstructions: options.instructions,
+        writeUserConfig: options.installUser
       });
       if (options.json) {
         printJson(result);
@@ -94,12 +106,37 @@ export function registerSetupCommands(program: Command): void {
           "Kairn MCP setup written.",
           `Root: ${result.rootPath}`,
           `Client: ${result.client}`,
-          result.configPath ? `Config: ${result.configPath}` : "Config: not written; use the JSON serverConfig for your MCP client.",
+          result.configPath ? `Config: ${result.configPath}` : "Config: not written; use the JSON clientConfig/serverConfig for your MCP client.",
           `Server: ${result.serverName}`,
+          result.installCommand ? `Install command: ${result.installCommand}` : "",
+          result.userConfigWriteSkipped ? "User config was not written. Re-run with --install-user to write it." : "",
           result.instructionsPath ? `Instructions: ${result.instructionsPath}` : "",
           "MCP is best for editor/app integrations where prompt hooks are unavailable or not trusted.",
           ""
         ].filter(Boolean).join("\n")
+      );
+    });
+
+  setup
+    .command("claude")
+    .description("Install advanced Claude Code hooks in .claude/settings.local.json.")
+    .option("--root <path>", "target repository root", process.cwd())
+    .option("--json", "print JSON output")
+    .action((options: { root: string; json?: boolean }) => {
+      const result = writeClaudeHooksSetup({ root: options.root });
+      if (options.json) {
+        printJson(result);
+        return;
+      }
+      process.stdout.write(
+        [
+          "Kairn Claude Code hooks written.",
+          `Root: ${result.rootPath}`,
+          `Config: ${result.configPath}`,
+          `Hooks: ${result.hooksInstalled.join(", ")}`,
+          "Claude MCP remains the recommended Claude path; hooks are advanced.",
+          ""
+        ].join("\n")
       );
     });
 

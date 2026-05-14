@@ -1,6 +1,6 @@
 {
   "name": "kairn",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Local-first dynamic context runtime for software engineering agents.",
   "type": "module",
   "bin": {
@@ -40,6 +40,7 @@
     ]
   },
   "dependencies": {
+    "@inquirer/prompts": "^8.4.3",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@repomix/tree-sitter-wasms": "0.1.17",
     "better-sqlite3": "^12.9.0",
@@ -47,6 +48,7 @@
     "commander": "^14.0.3",
     "fast-glob": "^3.3.3",
     "ignore": "^7.0.5",
+    "picocolors": "^1.1.1",
     "simple-git": "^3.36.0",
     "typescript": "^6.0.3",
     "web-tree-sitter": "0.26.8",

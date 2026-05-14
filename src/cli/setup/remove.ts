@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { getKairnPaths } from "../../config/paths.js";
 import { disableTelemetry } from "../../telemetry/config.js";
@@ -29,6 +30,10 @@ export function removeKairnSetup(input: {
   removeCodexHooks(rootPath, result);
   removeCodexMcpConfig(rootPath, result);
   removeVscodeMcp(rootPath, result);
+  removeProjectMcp(rootPath, result);
+  removeGeminiMcp(rootPath, result);
+  removeCopilotMcp(rootPath, result);
+  removeClaudeHooks(rootPath, result);
   removeAgentsInstructions(rootPath, result);
 
   const kairnDir = getKairnPaths(rootPath).kairnDir;
@@ -46,6 +51,8 @@ export function removeKairnSetup(input: {
 
   cleanupEmptyDir(path.join(rootPath, ".codex"), rootPath, result);
   cleanupEmptyDir(path.join(rootPath, ".vscode"), rootPath, result);
+  cleanupEmptyDir(path.join(rootPath, ".claude"), rootPath, result);
+  cleanupEmptyDir(path.join(rootPath, ".gemini"), rootPath, result);
 
   return result;
 }
@@ -127,6 +134,84 @@ function removeCodexMcpConfig(rootPath: string, result: SetupRemoveResult): void
 
 function removeVscodeMcp(rootPath: string, result: SetupRemoveResult): void {
   const configPath = path.join(rootPath, ".vscode", "mcp.json");
+  removeMcpServerFromJson({
+    rootPath,
+    filePath: configPath,
+    result,
+    serverKey: "servers",
+    relativePath: ".vscode/mcp.json"
+  });
+}
+
+function removeProjectMcp(rootPath: string, result: SetupRemoveResult): void {
+  removeMcpServerFromJson({
+    rootPath,
+    filePath: path.join(rootPath, ".mcp.json"),
+    result,
+    serverKey: "mcpServers",
+    relativePath: ".mcp.json"
+  });
+}
+
+function removeGeminiMcp(rootPath: string, result: SetupRemoveResult): void {
+  removeMcpServerFromJson({
+    rootPath,
+    filePath: path.join(rootPath, ".gemini", "settings.json"),
+    result,
+    serverKey: "mcpServers",
+    relativePath: ".gemini/settings.json"
+  });
+}
+
+function removeCopilotMcp(rootPath: string, result: SetupRemoveResult): void {
+  const configPath = path.join(os.homedir(), ".copilot", "mcp-config.json");
+  if (!fs.existsSync(configPath)) return;
+  const raw = fs.readFileSync(configPath, "utf8");
+  if (!raw.includes(rootPath)) return;
+  removeMcpServerFromJson({
+    rootPath,
+    filePath: configPath,
+    result,
+    serverKey: "mcpServers",
+    relativePath: configPath
+  });
+}
+
+function removeMcpServerFromJson(input: {
+  rootPath: string;
+  filePath: string;
+  result: SetupRemoveResult;
+  serverKey: "servers" | "mcpServers";
+  relativePath: string;
+}): void {
+  const { filePath, result, serverKey, relativePath } = input;
+  if (!fs.existsSync(filePath)) return;
+  const raw = fs.readFileSync(filePath, "utf8");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    if (/kairn/i.test(raw)) {
+      result.skipped.push({ path: relativePath, reason: "contains Kairn text but is not valid JSON; edit manually" });
+    }
+    return;
+  }
+  if (!isRecord(parsed) || !isRecord(parsed[serverKey]) || !("kairn" in parsed[serverKey])) return;
+  const servers = { ...parsed[serverKey] };
+  delete servers.kairn;
+  const next: Record<string, unknown> = { ...parsed, [serverKey]: servers };
+  if (Object.keys(servers).length === 0) delete next[serverKey];
+  if (Object.keys(next).length === 0) {
+    fs.rmSync(filePath, { force: true });
+    result.removed.push(relativePath);
+    return;
+  }
+  fs.writeFileSync(filePath, `${JSON.stringify(next, null, 2)}\n`);
+  result.changed.push(relativePath);
+}
+
+function removeClaudeHooks(rootPath: string, result: SetupRemoveResult): void {
+  const configPath = path.join(rootPath, ".claude", "settings.local.json");
   if (!fs.existsSync(configPath)) return;
   const raw = fs.readFileSync(configPath, "utf8");
   let parsed: unknown;
@@ -134,22 +219,26 @@ function removeVscodeMcp(rootPath: string, result: SetupRemoveResult): void {
     parsed = JSON.parse(raw);
   } catch {
     if (/kairn/i.test(raw)) {
-      result.skipped.push({ path: ".vscode/mcp.json", reason: "contains Kairn text but is not valid JSON; edit manually" });
+      result.skipped.push({ path: ".claude/settings.local.json", reason: "contains Kairn text but is not valid JSON; edit manually" });
     }
     return;
   }
-  if (!isRecord(parsed) || !isRecord(parsed.servers) || !("kairn" in parsed.servers)) return;
-  const servers = { ...parsed.servers };
-  delete servers.kairn;
-  const next: Record<string, unknown> = { ...parsed, servers };
-  if (Object.keys(servers).length === 0) delete next.servers;
+  if (!isRecord(parsed) || !isRecord(parsed.hooks)) return;
+  const nextHooks: Record<string, unknown[]> = {};
+  for (const [eventName, value] of Object.entries(parsed.hooks)) {
+    const entries = Array.isArray(value) ? value : [value];
+    const kept = entries.filter((entry) => !containsKairnCommand(entry));
+    if (kept.length > 0) nextHooks[eventName] = kept;
+  }
+  const next: Record<string, unknown> = { ...parsed, hooks: nextHooks };
+  if (Object.keys(nextHooks).length === 0) delete next.hooks;
   if (Object.keys(next).length === 0) {
     fs.rmSync(configPath, { force: true });
-    result.removed.push(".vscode/mcp.json");
+    result.removed.push(".claude/settings.local.json");
     return;
   }
   fs.writeFileSync(configPath, `${JSON.stringify(next, null, 2)}\n`);
-  result.changed.push(".vscode/mcp.json");
+  result.changed.push(".claude/settings.local.json");
 }
 
 function removeAgentsInstructions(rootPath: string, result: SetupRemoveResult): void {

@@ -1,4 +1,5 @@
 import path from "node:path";
+import fs from "node:fs";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
@@ -37,7 +38,7 @@ export async function runBenchmarkMcpSmoke(input: {
   const server = resolveServerCommand(rootPath, input.serverCommand, input.serverArgs);
   const client = new Client({
     name: "kairn-benchmark-mcp-smoke",
-    version: "0.1.1"
+    version: "0.1.2"
   });
   const transport = new StdioClientTransport({
     command: server.command,
@@ -127,23 +128,36 @@ function resolveServerCommand(
     };
   }
 
-  const entry = process.argv[1] ?? "";
+  const rawEntry = process.argv[1] ?? "";
+  const entry = rawEntry ? path.resolve(rawEntry) : "";
   if (entry.endsWith(".ts")) {
     return {
-      command: path.join(process.cwd(), "node_modules/.bin/tsx"),
+      command: resolveLocalTsx(entry),
       args: [entry, "serve", "--mcp", "--root", rootPath]
     };
   }
-  if (entry.endsWith(".js")) {
+  if (entry.endsWith(".js") || (entry && fs.existsSync(entry))) {
     return {
       command: process.execPath,
       args: [entry, "serve", "--mcp", "--root", rootPath]
     };
   }
   return {
-    command: path.join(process.cwd(), "node_modules/.bin/tsx"),
-    args: ["src/cli.ts", "serve", "--mcp", "--root", rootPath]
+    command: "kairn",
+    args: ["serve", "--mcp", "--root", rootPath]
   };
+}
+
+function resolveLocalTsx(entry: string): string {
+  const candidates = [
+    path.join(process.cwd(), "node_modules/.bin/tsx"),
+    path.join(path.dirname(entry), "../node_modules/.bin/tsx"),
+    path.join(path.dirname(entry), "../../node_modules/.bin/tsx")
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return "tsx";
 }
 
 function normalizeToolCalls(calls: Array<string | { name?: string; tool?: string }>): string[] {

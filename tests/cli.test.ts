@@ -73,6 +73,10 @@ describe("CLI", () => {
       cwd: process.cwd(),
       encoding: "utf8"
     });
+    const indexSafeRefresh = execFileSync(CLI[0]!, [...CLI.slice(1), "index", "refresh", "--safe", "--root", root, "--json"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
     const doctor = execFileSync(CLI[0]!, [...CLI.slice(1), "doctor", "--root", root, "--json"], {
       cwd: process.cwd(),
       encoding: "utf8"
@@ -85,13 +89,45 @@ describe("CLI", () => {
       cwd: process.cwd(),
       encoding: "utf8"
     });
+    const claudeMcpSetup = execFileSync(CLI[0]!, [...CLI.slice(1), "setup", "mcp", "--root", root, "--client", "claude-code", "--json"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+    const geminiMcpSetup = execFileSync(CLI[0]!, [...CLI.slice(1), "setup", "mcp", "--root", root, "--client", "gemini-cli", "--json"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+    const copilotMcpSetup = execFileSync(CLI[0]!, [...CLI.slice(1), "setup", "mcp", "--root", root, "--client", "copilot-cli", "--json"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+    const genericMcpSetup = execFileSync(CLI[0]!, [...CLI.slice(1), "setup", "mcp", "--root", root, "--client", "generic", "--json"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+    const claudeHookSetup = execFileSync(CLI[0]!, [...CLI.slice(1), "setup", "claude", "--root", root, "--json"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
     const doctorAfterMcp = execFileSync(CLI[0]!, [...CLI.slice(1), "doctor", "--root", root, "--json"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+    const doctorGemini = execFileSync(CLI[0]!, [...CLI.slice(1), "doctor", "--root", root, "--target", "gemini-cli", "--json"], {
       cwd: process.cwd(),
       encoding: "utf8"
     });
     const setupWizard = execFileSync(
       CLI[0]!,
       [...CLI.slice(1), "setup", "wizard", "--root", root, "--choice", "both", "--yes", "--no-index", "--json"],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8"
+      }
+    );
+    const setupWizardTargets = execFileSync(
+      CLI[0]!,
+      [...CLI.slice(1), "setup", "wizard", "--root", root, "--targets", "claude-code,gemini-cli", "--yes", "--no-index", "--json"],
       {
         cwd: process.cwd(),
         encoding: "utf8"
@@ -111,14 +147,26 @@ describe("CLI", () => {
     };
     const parsedStatus = JSON.parse(indexStatus) as { fileCount: number; graphEdgeCount: number; tiers: Record<string, number> };
     const parsedCompact = JSON.parse(indexCompact) as { after: { fileCount: number }; walCheckpointed: boolean };
+    const parsedSafeRefresh = JSON.parse(indexSafeRefresh) as { fileCount: number };
     const parsedDoctor = JSON.parse(doctor) as { checks: Array<{ id: string; status: string }> };
     const parsedDoctorAfterMcp = JSON.parse(doctorAfterMcp) as { checks: Array<{ id: string; status: string; metadata?: Record<string, unknown> }> };
+    const parsedDoctorGemini = JSON.parse(doctorGemini) as { checks: Array<{ id: string; status: string; metadata?: Record<string, unknown> }> };
     const parsedMcpSetup = JSON.parse(mcpSetup) as { configPath: string; serverConfig: { args: string[] } };
+    const parsedClaudeMcpSetup = JSON.parse(claudeMcpSetup) as { configPath: string; clientConfig: { mcpServers: Record<string, unknown> }; installCommand: string };
+    const parsedGeminiMcpSetup = JSON.parse(geminiMcpSetup) as { configPath: string; clientConfig: { mcpServers: Record<string, { trust?: boolean }> } };
+    const parsedCopilotMcpSetup = JSON.parse(copilotMcpSetup) as { configPath?: string; userConfigWriteSkipped: boolean; clientConfig: { mcpServers: Record<string, { type?: string; tools?: string[] }> } };
+    const parsedGenericMcpSetup = JSON.parse(genericMcpSetup) as { configPath?: string; clientConfig: { mcpServers: Record<string, unknown> } };
+    const parsedClaudeHookSetup = JSON.parse(claudeHookSetup) as { configPath: string; hooksInstalled: string[] };
     const parsedSetupWizard = JSON.parse(setupWizard) as {
       choice: string;
+      targets: string[];
       indexed: boolean;
       integrations: Array<{ kind: string; configPath?: string; hooksPath?: string }>;
       nextSteps: string[];
+    };
+    const parsedSetupWizardTargets = JSON.parse(setupWizardTargets) as {
+      targets: string[];
+      integrations: Array<{ kind: string; target?: string; configPath?: string }>;
     };
     const parsedTelemetry = JSON.parse(telemetryStatus) as { enabled: boolean; queueLength: number };
     const parsedBetaReport = JSON.parse(betaReport) as { sessions: number; verdict: string };
@@ -137,16 +185,37 @@ describe("CLI", () => {
     expect(parsedStatus.tiers.tier0).toBeGreaterThanOrEqual(0);
     expect(parsedCompact.after.fileCount).toBe(parsedStatus.fileCount);
     expect(parsedCompact.walCheckpointed).toBe(true);
+    expect(parsedSafeRefresh.fileCount).toBeGreaterThan(0);
     expect(parsedDoctor.checks.some((check) => check.id === "kairn_state")).toBe(true);
     expect(parsedMcpSetup.configPath.endsWith(".vscode/mcp.json")).toBe(true);
     expect(parsedMcpSetup.serverConfig.args).toContain("serve");
+    expect(parsedClaudeMcpSetup.configPath.endsWith(".mcp.json")).toBe(true);
+    expect(parsedClaudeMcpSetup.clientConfig.mcpServers.kairn).toBeTruthy();
+    expect(parsedClaudeMcpSetup.installCommand).toContain("claude mcp add-json kairn");
+    expect(parsedGeminiMcpSetup.configPath.endsWith(path.join(".gemini", "settings.json"))).toBe(true);
+    expect(parsedGeminiMcpSetup.clientConfig.mcpServers.kairn?.trust).toBe(false);
+    expect(parsedCopilotMcpSetup.configPath).toBeUndefined();
+    expect(parsedCopilotMcpSetup.userConfigWriteSkipped).toBe(true);
+    expect(parsedCopilotMcpSetup.clientConfig.mcpServers.kairn?.type).toBe("local");
+    expect(parsedCopilotMcpSetup.clientConfig.mcpServers.kairn?.tools).toEqual(["*"]);
+    expect(parsedGenericMcpSetup.configPath).toBeUndefined();
+    expect(parsedGenericMcpSetup.clientConfig.mcpServers.kairn).toBeTruthy();
+    expect(parsedClaudeHookSetup.configPath.endsWith(path.join(".claude", "settings.local.json"))).toBe(true);
+    expect(parsedClaudeHookSetup.hooksInstalled).toContain("UserPromptSubmit");
     expect(parsedSetupWizard.choice).toBe("both");
+    expect(parsedSetupWizard.targets).toContain("codex");
     expect(parsedSetupWizard.indexed).toBe(false);
     expect(parsedSetupWizard.integrations.some((integration) => integration.kind === "codex" && integration.hooksPath?.endsWith(".codex/hooks.json"))).toBe(true);
     expect(parsedSetupWizard.integrations.some((integration) => integration.kind === "mcp" && integration.configPath?.endsWith(".vscode/mcp.json"))).toBe(true);
     expect(parsedSetupWizard.nextSteps.some((step) => step.includes("kairn codex"))).toBe(true);
+    expect(parsedSetupWizardTargets.targets).toEqual(["claude-code", "gemini-cli"]);
+    expect(parsedSetupWizardTargets.integrations.some((integration) => integration.target === "claude-code" && integration.configPath?.endsWith(".mcp.json"))).toBe(true);
+    expect(parsedSetupWizardTargets.integrations.some((integration) => integration.target === "gemini-cli" && integration.configPath?.endsWith(path.join(".gemini", "settings.json")))).toBe(true);
     expect(parsedDoctorAfterMcp.checks.find((check) => check.id === "mcp_config")?.status).toBe("ok");
     expect(parsedDoctorAfterMcp.checks.find((check) => check.id === "mcp_config")?.metadata?.vscodeConfigured).toBe(true);
+    expect(parsedDoctorAfterMcp.checks.find((check) => check.id === "mcp_config")?.metadata?.claudeConfigured).toBe(true);
+    expect(parsedDoctorAfterMcp.checks.find((check) => check.id === "mcp_config")?.metadata?.geminiConfigured).toBe(true);
+    expect(parsedDoctorGemini.checks.find((check) => check.id === "mcp_config")?.status).toBe("ok");
     expect(parsedTelemetry.enabled).toBe(false);
     expect(parsedTelemetry.queueLength).toBe(0);
     expect(parsedBetaReport.sessions).toBeGreaterThan(0);
@@ -167,6 +236,18 @@ describe("CLI", () => {
       [...CLI.slice(1), "setup", "wizard", "--root", root, "--choice", "both", "--yes", "--no-index"],
       { cwd: process.cwd(), encoding: "utf8" }
     );
+    execFileSync(CLI[0]!, [...CLI.slice(1), "setup", "mcp", "--root", root, "--client", "claude-code"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+    execFileSync(CLI[0]!, [...CLI.slice(1), "setup", "mcp", "--root", root, "--client", "gemini-cli"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+    execFileSync(CLI[0]!, [...CLI.slice(1), "setup", "claude", "--root", root], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
     const removed = execFileSync(
       CLI[0]!,
       [...CLI.slice(1), "setup", "remove", "--root", root, "--delete-state", "--json"],
@@ -179,6 +260,9 @@ describe("CLI", () => {
 
     expect(parsed.removed).toContain(".codex/hooks.json");
     expect(parsed.removed).toContain("AGENTS.md");
+    expect(parsed.removed).toContain(".mcp.json");
+    expect(parsed.removed).toContain(path.join(".gemini", "settings.json"));
+    expect(parsed.removed).toContain(path.join(".claude", "settings.local.json"));
     expect(parsed.changed).toContain(".vscode/mcp.json");
     expect(parsed.stateDeleted).toBe(true);
     expect(fs.existsSync(path.join(root, ".kairn"))).toBe(false);

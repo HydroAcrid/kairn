@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { getKairnPaths } from "../config/paths.js";
@@ -22,20 +23,23 @@ export type DoctorReport = {
   checks: DoctorCheck[];
 };
 
+export type DoctorTarget = "all" | "codex" | "claude-code" | "copilot-cli" | "gemini-cli" | "vscode" | "generic";
+
 export function runDoctor(input: {
   rootPath: string;
   runtime: KairnRuntime;
   codexCommand?: string | undefined;
+  target?: DoctorTarget | undefined;
 }): DoctorReport {
   const rootPath = path.resolve(input.rootPath);
+  const target = input.target ?? "all";
   const checks: DoctorCheck[] = [
     checkNodeVersion(),
     checkKairnCommand(),
     checkKairnState(rootPath),
     checkIndex(input.runtime),
-    checkCodex(input.codexCommand ?? process.env.KAIRN_CODEX_CMD ?? "codex"),
-    checkCodexHooks(rootPath, input.runtime),
-    checkMcpConfig(rootPath),
+    checkWindowsFriction(rootPath),
+    ...targetedChecks({ rootPath, runtime: input.runtime, target, codexCommand: input.codexCommand ?? process.env.KAIRN_CODEX_CMD ?? "codex" }),
     checkDaemon(rootPath),
     checkTelemetry(rootPath)
   ];
@@ -47,6 +51,41 @@ export function runDoctor(input: {
   };
 }
 
+function targetedChecks(input: {
+  rootPath: string;
+  runtime: KairnRuntime;
+  target: DoctorTarget;
+  codexCommand: string;
+}): DoctorCheck[] {
+  if (input.target === "codex") {
+    return [
+      checkCodex(input.codexCommand),
+      checkCodexHooks(input.rootPath, input.runtime),
+      checkMcpConfig(input.rootPath, "codex")
+    ];
+  }
+  if (input.target === "claude-code") {
+    return [checkBinary("claude", "claude_binary", "Claude Code"), checkMcpConfig(input.rootPath, "claude-code"), checkClaudeHooks(input.rootPath)];
+  }
+  if (input.target === "copilot-cli") {
+    return [checkBinary("copilot", "copilot_binary", "Copilot CLI"), checkMcpConfig(input.rootPath, "copilot-cli")];
+  }
+  if (input.target === "gemini-cli") {
+    return [checkBinary("gemini", "gemini_binary", "Gemini CLI"), checkMcpConfig(input.rootPath, "gemini-cli")];
+  }
+  if (input.target === "vscode") {
+    return [checkMcpConfig(input.rootPath, "vscode")];
+  }
+  if (input.target === "generic") {
+    return [checkMcpConfig(input.rootPath, "generic")];
+  }
+  return [
+    checkCodex(input.codexCommand),
+    checkCodexHooks(input.rootPath, input.runtime),
+    checkMcpConfig(input.rootPath)
+  ];
+}
+
 function checkNodeVersion(): DoctorCheck {
   const major = Number(process.versions.node.split(".")[0]);
   return {
@@ -54,6 +93,27 @@ function checkNodeVersion(): DoctorCheck {
     status: major >= 20 ? "ok" : "fail",
     summary: `Node ${process.versions.node}`,
     fix: major >= 20 ? undefined : "Install Node 20 or newer."
+  };
+}
+
+function checkWindowsFriction(rootPath: string): DoctorCheck {
+  if (process.platform !== "win32") {
+    return {
+      id: "platform_friction",
+      status: "ok",
+      summary: "No Windows-specific setup friction detected."
+    };
+  }
+  const warnings: string[] = [];
+  const major = Number(process.versions.node.split(".")[0]);
+  if (![20, 22, 24].includes(major)) warnings.push(`Node ${process.versions.node} is not an LTS beta recommendation.`);
+  if (/OneDrive/i.test(rootPath)) warnings.push("Repo is under OneDrive, which can slow or lock local index files.");
+  if (/[&|;<>()]/.test(rootPath)) warnings.push("Repo path contains shell metacharacters; quote paths in PowerShell/CMD.");
+  return {
+    id: "platform_friction",
+    status: warnings.length > 0 ? "warn" : "ok",
+    summary: warnings.length > 0 ? warnings.join(" ") : "Windows setup path looks normal.",
+    fix: warnings.length > 0 ? "Use quoted paths, prefer Node 20/22 LTS for beta, and use WSL if native Windows indexing remains unstable." : undefined
   };
 }
 
@@ -124,6 +184,17 @@ function checkCodex(command: string): DoctorCheck {
   };
 }
 
+function checkBinary(command: string, id: string, label: string): DoctorCheck {
+  const result = spawnSync(`${command} --version`, { encoding: "utf8", shell: true });
+  const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
+  return {
+    id,
+    status: result.status === 0 ? "ok" : "warn",
+    summary: result.status === 0 ? `${label} available: ${output || command}` : `${label} command not verified: ${command}`,
+    fix: result.status === 0 ? undefined : `Install ${label} or configure Kairn using generic MCP JSON.`
+  };
+}
+
 function checkCodexHooks(rootPath: string, runtime: KairnRuntime): DoctorCheck {
   const configPath = path.join(rootPath, ".codex", "config.toml");
   const hooksPath = path.join(rootPath, ".codex", "hooks.json");
@@ -183,44 +254,112 @@ function checkCodexHooks(rootPath: string, runtime: KairnRuntime): DoctorCheck {
   }
 }
 
-function checkMcpConfig(rootPath: string): DoctorCheck {
+function checkMcpConfig(rootPath: string, target: DoctorTarget = "all"): DoctorCheck {
   const configPath = path.join(rootPath, ".codex", "config.toml");
   const config = fs.existsSync(configPath) ? fs.readFileSync(configPath, "utf8") : "";
   const codexConfigured = config.includes("[mcp_servers.kairn]");
   const vscodeConfigPath = path.join(rootPath, ".vscode", "mcp.json");
-  const vscodeConfigured = hasVscodeMcpServer(vscodeConfigPath);
-  const configured = codexConfigured || vscodeConfigured;
+  const vscodeConfigured = hasMcpServer(vscodeConfigPath, "servers");
+  const claudeConfigured = hasMcpServer(path.join(rootPath, ".mcp.json"), "mcpServers");
+  const geminiConfigured = hasMcpServer(path.join(rootPath, ".gemini", "settings.json"), "mcpServers");
+  const copilotConfigured = hasCopilotMcpServer(rootPath);
+  const byTarget: Record<DoctorTarget, boolean> = {
+    all: codexConfigured || vscodeConfigured || claudeConfigured || geminiConfigured || copilotConfigured,
+    codex: codexConfigured,
+    "claude-code": claudeConfigured,
+    "copilot-cli": copilotConfigured,
+    "gemini-cli": geminiConfigured,
+    vscode: vscodeConfigured,
+    generic: false
+  };
+  const configured = byTarget[target];
   return {
     id: "mcp_config",
     status: configured ? "ok" : "warn",
     summary: configured
-      ? `Kairn MCP server is configured${codexConfigured && vscodeConfigured ? " for Codex and VS Code" : codexConfigured ? " for Codex" : " for VS Code"}.`
-      : "Kairn MCP server is not configured.",
-    fix: configured ? undefined : "Run kairn setup mcp --client vscode --root <repo> or kairn setup codex --mode mcp-first --root <repo>.",
+      ? `Kairn MCP server is configured for: ${configuredMcpTargets({ codexConfigured, vscodeConfigured, claudeConfigured, geminiConfigured, copilotConfigured }).join(", ")}.`
+      : target === "generic" ? "Generic MCP config is not persisted; run an MCP smoke test with the generated client config." : "Kairn MCP server is not configured for this target.",
+    fix: configured ? undefined : target === "generic"
+      ? "Run kairn setup mcp --client generic --root <repo> --json, copy the config, then run kairn bench mcp-smoke."
+      : `Run kairn setup mcp --client ${target === "all" || target === "codex" ? "vscode" : target} --root <repo>.`,
     metadata: {
       codexConfigured,
-      vscodeConfigured
+      vscodeConfigured,
+      claudeConfigured,
+      geminiConfigured,
+      copilotConfigured
     }
   };
 }
 
-function hasVscodeMcpServer(filePath: string): boolean {
+function hasMcpServer(filePath: string, key: "servers" | "mcpServers"): boolean {
   if (!fs.existsSync(filePath)) return false;
   try {
     const parsed = JSON.parse(fs.readFileSync(filePath, "utf8")) as unknown;
-    return Boolean(
-      parsed &&
-        typeof parsed === "object" &&
-        !Array.isArray(parsed) &&
-        "servers" in parsed &&
-        parsed.servers &&
-        typeof parsed.servers === "object" &&
-        !Array.isArray(parsed.servers) &&
-        "kairn" in parsed.servers
-    );
+    if (!isRecord(parsed)) return false;
+    const servers = parsed[key];
+    return Boolean(isRecord(servers) && "kairn" in servers);
   } catch {
     return false;
   }
+}
+
+function hasCopilotMcpServer(rootPath: string): boolean {
+  const filePath = path.join(os.homedir(), ".copilot", "mcp-config.json");
+  if (!fs.existsSync(filePath)) return false;
+  try {
+    const raw = fs.readFileSync(filePath, "utf8");
+    if (!raw.includes(rootPath)) return false;
+    const parsed = JSON.parse(raw) as unknown;
+    return Boolean(isRecord(parsed) && isRecord(parsed.mcpServers) && "kairn" in parsed.mcpServers);
+  } catch {
+    return false;
+  }
+}
+
+function checkClaudeHooks(rootPath: string): DoctorCheck {
+  const filePath = path.join(rootPath, ".claude", "settings.local.json");
+  if (!fs.existsSync(filePath)) {
+    return {
+      id: "claude_hooks",
+      status: "warn",
+      summary: "Claude Code hooks are not installed.",
+      fix: "Use Claude MCP by default, or run kairn setup claude --root <repo> for advanced hooks."
+    };
+  }
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, "utf8")) as unknown;
+    const configured = Boolean(isRecord(parsed) && isRecord(parsed.hooks) && Object.values(parsed.hooks).some(containsKairnCommand));
+    return {
+      id: "claude_hooks",
+      status: configured ? "ok" : "warn",
+      summary: configured ? "Claude Code Kairn hooks are configured." : "Claude settings exist but Kairn hooks are missing.",
+      fix: configured ? undefined : "Run kairn setup claude --root <repo>."
+    };
+  } catch {
+    return {
+      id: "claude_hooks",
+      status: "fail",
+      summary: "Claude settings.local.json is invalid JSON.",
+      fix: "Fix .claude/settings.local.json or remove it and rerun kairn setup claude."
+    };
+  }
+}
+
+function configuredMcpTargets(input: {
+  codexConfigured: boolean;
+  vscodeConfigured: boolean;
+  claudeConfigured: boolean;
+  geminiConfigured: boolean;
+  copilotConfigured: boolean;
+}): string[] {
+  return [
+    input.codexConfigured ? "codex" : "",
+    input.vscodeConfigured ? "vscode" : "",
+    input.claudeConfigured ? "claude-code" : "",
+    input.geminiConfigured ? "gemini-cli" : "",
+    input.copilotConfigured ? "copilot-cli" : ""
+  ].filter(Boolean);
 }
 
 function checkDaemon(rootPath: string): DoctorCheck {
@@ -256,4 +395,15 @@ function rollupStatus(checks: DoctorCheck[]): DoctorCheckStatus {
   if (checks.some((check) => check.status === "fail")) return "fail";
   if (checks.some((check) => check.status === "warn")) return "warn";
   return "ok";
+}
+
+function containsKairnCommand(value: unknown): boolean {
+  if (typeof value === "string") return /kairn|KAIRN_CMD/i.test(value);
+  if (Array.isArray(value)) return value.some(containsKairnCommand);
+  if (isRecord(value)) return Object.values(value).some(containsKairnCommand);
+  return false;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

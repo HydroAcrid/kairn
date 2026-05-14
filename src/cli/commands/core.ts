@@ -196,15 +196,22 @@ export function registerCoreCommands(program: Command): void {
     .command("refresh")
     .description("Force-refresh Kairn's index for the target repo.")
     .option("--root <path>", "target repository root", process.cwd())
+    .option("--safe", "refresh without WASM AST parsing; useful for Windows setup troubleshooting")
     .option("--json", "print JSON output")
-    .action(async (options: { root: string; json?: boolean }) => {
+    .action(async (options: { root: string; safe?: boolean; json?: boolean }) => {
       await withRuntime(options.root, async (runtime) => {
-        const status = await runtime.refreshIndexNow();
+        const restoreParserEnv = options.safe ? disableWasmParserForCommand() : () => {};
+        let status: IndexStateStats;
+        try {
+          status = await runtime.refreshIndexNow();
+        } finally {
+          restoreParserEnv();
+        }
         if (options.json) {
           printJson(status);
           return;
         }
-        process.stdout.write(["Kairn index refreshed.", formatIndexStatus(status)].join("\n"));
+        process.stdout.write([options.safe ? "Kairn index refreshed in safe mode." : "Kairn index refreshed.", formatIndexStatus(status)].join("\n"));
       });
     });
 
@@ -387,6 +394,18 @@ export function registerCoreCommands(program: Command): void {
         }
       });
     });
+}
+
+function disableWasmParserForCommand(): () => void {
+  const previous = process.env.KAIRN_DISABLE_WASM_PARSER;
+  process.env.KAIRN_DISABLE_WASM_PARSER = "1";
+  return () => {
+    if (previous === undefined) {
+      delete process.env.KAIRN_DISABLE_WASM_PARSER;
+      return;
+    }
+    process.env.KAIRN_DISABLE_WASM_PARSER = previous;
+  };
 }
 
 function formatIndexStatus(status: IndexStateStats): string {

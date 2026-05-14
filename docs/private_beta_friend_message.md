@@ -13,7 +13,7 @@ If you are open to testing it:
 ```bash
 nvm install 22
 nvm use 22
-npm install -g ./kairn-0.1.1.tgz
+npm install -g ./kairn-0.1.2.tgz
 cd /path/to/your/repo
 kairn setup wizard
 kairn doctor
@@ -23,7 +23,7 @@ kairn codex
 On Windows, install from the folder where the `.tgz` file actually downloaded, or use the full path:
 
 ```powershell
-npm install -g "$env:USERPROFILE\Downloads\kairn-0.1.1.tgz"
+npm install -g "$env:USERPROFILE\Downloads\kairn-0.1.2.tgz"
 ```
 
 Please use **Node 20 or 22 LTS** if you want the safest beta path. Node 20 through 25 should work now, and newer Node releases should no longer hit the old native Tree-sitter build failure because Kairn uses WASM Tree-sitter parsing.
@@ -75,13 +75,13 @@ If I send you a beta package:
 ```bash
 nvm install 22
 nvm use 22
-npm install -g ./kairn-0.1.1.tgz
+npm install -g ./kairn-0.1.2.tgz
 ```
 
 That command assumes the `.tgz` file is in the current directory. If it is in Downloads on Windows:
 
 ```powershell
-npm install -g "$env:USERPROFILE\Downloads\kairn-0.1.1.tgz"
+npm install -g "$env:USERPROFILE\Downloads\kairn-0.1.2.tgz"
 ```
 
 If it is available through npm:
@@ -98,7 +98,7 @@ kairn setup wizard
 kairn doctor
 ```
 
-The wizard lets you choose terminal Codex hooks, VS Code/editor MCP, or both.
+The wizard lets you choose terminal Codex hooks, Claude Code MCP, Copilot CLI MCP, Gemini CLI MCP, VS Code/Copilot MCP, generic MCP, or multiple clients at once.
 
 ## Normal Use
 
@@ -110,7 +110,15 @@ kairn codex
 
 You can type normally inside Codex. Kairn stays attached to that conversation and should stay quiet unless useful context is available.
 
-If you use VS Code or another MCP-capable editor, choose the MCP option in the setup wizard. That lets the editor/agent ask Kairn for focused context without needing the terminal Codex wrapper.
+If you use Claude Code, Copilot CLI, Gemini CLI, VS Code/Copilot, Antigravity, Avante, or another MCP-capable editor, choose the matching MCP option in the setup wizard. That lets the agent ask Kairn for focused context without needing the terminal Codex wrapper.
+
+If your client is not listed directly, use:
+
+```bash
+kairn setup mcp --client generic --json
+```
+
+Then paste the generated config into that client's MCP settings.
 
 Codex may ask you to approve Kairn hooks the first time. Open `/hooks` inside Codex and approve the Kairn hook if prompted.
 

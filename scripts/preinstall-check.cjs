@@ -10,7 +10,7 @@ if (Number.isNaN(major) || major < 20 || major >= 26) {
   console.error("Recommended fix with nvm:");
   console.error("  nvm install 22");
   console.error("  nvm use 22");
-  console.error("  npm install -g ./kairn-0.1.1.tgz");
+  console.error("  npm install -g ./kairn-0.1.2.tgz");
   console.error("");
   console.error("Node 20 or 22 LTS is still the recommended beta path.");
   console.error("");

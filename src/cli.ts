@@ -13,7 +13,7 @@ const program = new Command();
 program
   .name("kairn")
   .description("Local-first dynamic context runtime for software engineering agents.")
-  .version("0.1.1");
+  .version("0.1.2");
 
 registerCoreCommands(program);
 registerSetupCommands(program);

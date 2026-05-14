@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { Command } from "commander";
-import { runDoctor } from "../../doctor/doctor.js";
+import { Command, Option } from "commander";
+import { runDoctor, type DoctorTarget } from "../../doctor/doctor.js";
 import { buildDiagnosticExport, writeDiagnosticExport } from "../../telemetry/diagnostics.js";
 import { buildTelemetryPayload } from "../../telemetry/payload.js";
 import { buildBetaReport } from "../../telemetry/report.js";
@@ -19,14 +19,15 @@ export function registerBetaCommands(program: Command): void {
     .description("Check Kairn beta setup health for hooks, MCP, daemon, telemetry, and state.")
     .option("--root <path>", "target repository root", process.cwd())
     .option("--codex-command <command>", "Codex command to check", process.env.KAIRN_CODEX_CMD ?? "codex")
+    .addOption(new Option("--target <target>", "limit doctor checks to one client").choices(["all", "codex", "claude-code", "copilot-cli", "gemini-cli", "vscode", "generic"]).default("all"))
     .option("--fix-hooks", "rewrite Kairn-owned Codex hook files when safe")
     .option("--json", "print JSON output")
-    .action(async (options: { root: string; codexCommand: string; fixHooks?: boolean; json?: boolean }) => {
+    .action(async (options: { root: string; codexCommand: string; target: DoctorTarget; fixHooks?: boolean; json?: boolean }) => {
       await withRuntime(options.root, async (runtime) => {
         if (options.fixHooks) {
           fixHooksIfSafe(options.root);
         }
-        const report = runDoctor({ rootPath: options.root, runtime, codexCommand: options.codexCommand });
+        const report = runDoctor({ rootPath: options.root, runtime, codexCommand: options.codexCommand, target: options.target });
         if (options.json) {
           printJson(report);
           return;

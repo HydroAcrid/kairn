@@ -8,7 +8,7 @@ import {
   summarizeLanguageMix
 } from "./sanitize.js";
 
-const KAIRN_VERSION = "0.1.1";
+const KAIRN_VERSION = "0.1.2";
 
 export function buildTelemetryPayload(input: {
   runtime: KairnRuntime;
