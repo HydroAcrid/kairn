@@ -14,6 +14,7 @@ import { runBenchmarkEndurance, runBenchmarkEnduranceRepeats } from "../../bench
 import { buildSweBenchProPilot, fetchSweBenchProRows, loadSweBenchProRows, writeSweBenchProPilot } from "../../bench/sweBenchPro.js";
 import { buildSweAtlasQnaPilot, fetchSweAtlasQnaRows, loadSweAtlasQnaRows, writeSweAtlasQnaPilot } from "../../bench/sweAtlasQna.js";
 import { runBenchmarkMcpSmoke } from "../../bench/mcpSmoke.js";
+import { runPublicationCampaign } from "../../bench/publication.js";
 import { parsePositiveInt, withRuntime } from "../helpers.js";
 import { printJson } from "../output.js";
 
@@ -158,6 +159,52 @@ export function registerBenchCommands(program: Command): void {
       console.log(`Start files: ${report.prepare.startFiles.join(", ") || "none"}`);
       console.log(`Stop condition: ${report.prepare.stopCondition ?? "none"}`);
     });
+
+  benchCommand
+    .command("publication")
+    .description("Run a publication-grade evidence campaign and write reproducible aggregate artifacts.")
+    .requiredOption("--plan <path>", "publication plan JSON path")
+    .requiredOption("--out-dir <path>", "directory for raw artifacts, CSVs, manifest, and Markdown report")
+    .option("--model <model>", "live-agent model override")
+    .option("--repeat <n>", "default repeat count for entries that do not override it", parsePositiveInt)
+    .option("--resume", "skip completed valid raw artifacts")
+    .option("--only <id-or-class>", "run only one entry id, kind, repo id, task class, or context behavior")
+    .option("--dry-run", "write planned commands and report skeleton without running benchmarks")
+    .option("--json", "print JSON output")
+    .action(
+      async (options: {
+        plan: string;
+        outDir: string;
+        model?: string;
+        repeat?: number;
+        resume?: boolean;
+        only?: string;
+        dryRun?: boolean;
+        json?: boolean;
+      }) => {
+        const report = await runPublicationCampaign({
+          planPath: options.plan,
+          outDir: options.outDir,
+          model: options.model,
+          repeat: options.repeat,
+          resume: Boolean(options.resume),
+          only: options.only,
+          dryRun: Boolean(options.dryRun)
+        });
+        if (options.json) {
+          printJson(report);
+          return;
+        }
+        console.log(`Publication campaign: ${report.name}`);
+        console.log(`Entries: ${report.artifacts.length}${report.dryRun ? " planned" : ""}`);
+        console.log(`Rows: ${report.aggregate.resultRows}`);
+        console.log(`Quality pass rate: ${(report.aggregate.qualityPassRate * 100).toFixed(2)}%`);
+        console.log(`Median valid active savings: ${(report.aggregate.medianValidSavingsRate * 100).toFixed(2)}%`);
+        console.log(`Markdown: ${report.outputs.markdownPath}`);
+        console.log(`Results CSV: ${report.outputs.resultsCsvPath}`);
+        console.log(`Manifest: ${report.outputs.manifestPath}`);
+      }
+    );
 
   benchCommand
     .command("matrix")

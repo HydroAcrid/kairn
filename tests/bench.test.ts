@@ -19,6 +19,13 @@ import { runAgentBenchmarkCase } from "../src/bench/agent.js";
 import { classifyAssistance } from "../src/bench/assistClassification.js";
 import { buildSweBenchProPilot, loadSweBenchProRows, writeSweBenchProPilot } from "../src/bench/sweBenchPro.js";
 import { buildSweAtlasQnaPilot, loadSweAtlasQnaRows, writeSweAtlasQnaPilot } from "../src/bench/sweAtlasQna.js";
+import {
+  aggregatePublicationRows,
+  loadPublicationPlan,
+  runPublicationCampaign,
+  validatePublicationPlan,
+  type PublicationResultRow
+} from "../src/bench/publication.js";
 import { evaluateDiffScopes, evaluateSourceInvariants } from "../src/bench/sourceValidation.js";
 import { evaluateContextValue } from "../src/prime/contextValue.js";
 import { evaluatePrimeQuality, resolvePrimeProfile } from "../src/prime/quality.js";
@@ -381,6 +388,180 @@ describe("benchmark suite and scoring", () => {
     expect(official?.kairnMetricEligible).toBe(false);
     expect(official?.liveRisk).toBe("high");
     expect(pilot.summary.taskClasses.runtime_procedural).toBe(1);
+  });
+
+  it("validates publication plans and excludes passive savings from active claims", () => {
+    expect(() =>
+      validatePublicationPlan({
+        plan: {
+          id: "bad",
+          name: "Bad",
+          entries: [
+            {
+              id: "missing-matrix",
+              kind: "matrix"
+            }
+          ]
+        }
+      })
+    ).toThrow(/requires matrix/);
+
+    const aggregate = aggregatePublicationRows([
+      publicationRow({
+        mode: "baseline",
+        qualityPassed: true,
+        observedTokens: 1000,
+        assistanceStatus: "none",
+        active: false
+      }),
+      publicationRow({
+        mode: "kairn_codex_session",
+        qualityPassed: true,
+        baselineTokens: 1000,
+        observedTokens: 750,
+        savedTokens: 250,
+        savingsRate: 0.25,
+        validSavings: 250,
+        assistanceStatus: "active",
+        active: true,
+        claimEligible: true
+      }),
+      publicationRow({
+        mode: "real_mcp_first",
+        qualityPassed: true,
+        baselineTokens: 1000,
+        observedTokens: 800,
+        savedTokens: 200,
+        savingsRate: 0.2,
+        passiveSavings: 200,
+        assistanceStatus: "passive_suppressed",
+        active: false,
+        claimEligible: false,
+        correctAbstention: true
+      }),
+      publicationRow({
+        mode: "hook_full_prime",
+        qualityPassed: false,
+        baselineTokens: 1000,
+        observedTokens: 600,
+        savedTokens: 400,
+        savingsRate: 0.4,
+        invalidSavings: 400,
+        assistanceStatus: "active",
+        active: true,
+        claimEligible: false,
+        harmfulAssist: true,
+        failurePattern: "quality gate failed"
+      })
+    ]);
+
+    expect(aggregate.medianValidSavingsRate).toBe(0.25);
+    expect(aggregate.modes.kairn_codex_session?.validSavings).toBe(250);
+    expect(aggregate.modes.real_mcp_first?.passiveSavings).toBe(200);
+    expect(aggregate.modes.hook_full_prime?.invalidSavings).toBe(400);
+    expect(aggregate.failurePatterns[0]?.pattern).toBe("quality gate failed");
+  });
+
+  it("runs publication campaign dry-run and writes reproducibility artifacts", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-publication-dry-run-"));
+    try {
+      const planPath = path.join(root, "publication-plan.json");
+      const outDir = path.join(root, "out");
+      fs.writeFileSync(
+        planPath,
+        JSON.stringify({
+          id: "publication-test",
+          name: "Publication Test",
+          defaults: {
+            model: "gpt-test",
+            repeat: 2
+          },
+          entries: [
+            {
+              id: "mcp-smoke",
+              kind: "mcp_smoke",
+              root,
+              task: "Find src/user.ts",
+              repoId: "fixture",
+              language: "typescript",
+              taskClass: "mcp_delivery"
+            },
+            {
+              id: "matrix",
+              kind: "matrix",
+              matrix: "examples/bench/repo-matrix.json",
+              repoId: "fixture",
+              language: "mixed",
+              taskClass: "preflight"
+            }
+          ]
+        })
+      );
+
+      const plan = loadPublicationPlan(planPath);
+      expect(plan.entries).toHaveLength(2);
+
+      const report = await runPublicationCampaign({
+        planPath,
+        outDir,
+        dryRun: true,
+        only: "mcp-smoke"
+      });
+
+      expect(report.dryRun).toBe(true);
+      expect(report.artifacts).toHaveLength(1);
+      expect(report.artifacts[0]?.status).toBe("planned");
+      expect(report.artifacts[0]?.commands[0]).toContain("kairn bench mcp-smoke");
+      expect(report.rows).toEqual([]);
+      expect(fs.existsSync(report.outputs.markdownPath)).toBe(true);
+      expect(fs.existsSync(report.outputs.resultsCsvPath)).toBe(true);
+      const manifest = JSON.parse(fs.readFileSync(report.outputs.manifestPath, "utf8")) as {
+        artifacts: Array<{ entryId: string; commands: string[] }>;
+      };
+      expect(manifest.artifacts[0]?.entryId).toBe("mcp-smoke");
+      expect(manifest.artifacts[0]?.commands[0]).toContain("Find src/user.ts");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("supports publication CLI dry-run JSON output", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-publication-cli-"));
+    try {
+      const planPath = path.join(root, "publication-plan.json");
+      const outDir = path.join(root, "out");
+      fs.writeFileSync(
+        planPath,
+        JSON.stringify({
+          id: "publication-cli-test",
+          name: "Publication CLI Test",
+          entries: [
+            {
+              id: "mcp-smoke",
+              kind: "mcp_smoke",
+              root,
+              task: "Find src/user.ts",
+              repoId: "fixture",
+              language: "typescript",
+              taskClass: "mcp_delivery"
+            }
+          ]
+        })
+      );
+
+      const output = execFileSync(
+        CLI[0]!,
+        [...CLI.slice(1), "bench", "publication", "--plan", planPath, "--out-dir", outDir, "--dry-run", "--json"],
+        { cwd: process.cwd(), encoding: "utf8" }
+      );
+      const report = JSON.parse(output) as { dryRun: boolean; artifacts: Array<{ status: string }>; outputs: { markdownPath: string } };
+
+      expect(report.dryRun).toBe(true);
+      expect(report.artifacts[0]?.status).toBe("planned");
+      expect(fs.existsSync(report.outputs.markdownPath)).toBe(true);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("loads endurance benchmark suite examples", () => {
@@ -3567,6 +3748,34 @@ describe("benchmark runtime and CLI", () => {
     expect(fs.readFileSync(path.join(codexDir, "hooks.json"), "utf8")).toBe("{\"hooks\":{}}\n");
   });
 });
+
+function publicationRow(overrides: Partial<PublicationResultRow>): PublicationResultRow {
+  return {
+    entryId: "entry",
+    kind: "proof",
+    repoId: "fixture",
+    language: "typescript",
+    sizeClass: "small",
+    taskClass: "source_rescue",
+    behavior: "source_rescue",
+    mode: "baseline",
+    qualityPassed: true,
+    validSavings: 0,
+    passiveSavings: 0,
+    invalidSavings: 0,
+    active: false,
+    claimEligible: false,
+    mcpCalls: 0,
+    repeatedFilesAvoided: 0,
+    repeatedSnippetsAvoided: 0,
+    scopeViolations: 0,
+    overAssist: false,
+    harmfulAssist: false,
+    missedOpportunity: false,
+    correctAbstention: false,
+    ...overrides
+  };
+}
 
 function record(path: string, kind: "source" | "component" | "test") {
   return {

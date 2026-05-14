@@ -1,0 +1,96 @@
+{
+  "id": "kairn-publication-evidence-v1",
+  "name": "Kairn Publication Evidence Campaign v1",
+  "description": "Publication-grade campaign skeleton for controlled fresh-repo, endurance, MCP, SWE-Atlas/QnA, and SWE-Pro evidence. Use --dry-run first; live entries should run only after repo setup/preflight is valid.",
+  "defaults": {
+    "model": "gpt-5.4-mini",
+    "repeat": 3,
+    "agentTimeoutMs": 180000,
+    "turnTimeoutMs": 180000,
+    "workdir": "/tmp/kairn-publication-workdirs",
+    "modes": ["baseline", "kairn_codex_session", "real_mcp_first"],
+    "commands": {
+      "baseline": "codex -a never exec --model {model} --sandbox danger-full-access --disable hooks {prompt}",
+      "kairn_codex_session": "kairn codex --root {root} --session {session} --model {model} --sandbox danger-full-access {prompt}",
+      "real_mcp_first": "codex -a never exec --model {model} --sandbox danger-full-access --disable hooks {prompt}"
+    },
+    "setupCommands": {
+      "kairn_codex_session": "kairn setup codex --root {root} --mode savings --session {session} >/dev/null",
+      "real_mcp_first": "kairn setup codex --root {root} --mode mcp-first --session {session} >/dev/null",
+      "hybrid_mcp_brief": "kairn setup codex --root {root} --mode hybrid --session {session} >/dev/null"
+    }
+  },
+  "entries": [
+    {
+      "id": "fresh-holdout-v3-preflight",
+      "kind": "matrix",
+      "label": "Fresh holdout v3 repo-matrix preflight",
+      "repoId": "fresh-holdout-v3",
+      "taskClass": "mixed",
+      "matrix": "examples/bench/repo-matrix-private-beta-v3.json"
+    },
+    {
+      "id": "seeded-fresh-one-shot-live",
+      "kind": "proof",
+      "label": "Fresh one-shot live proof subset",
+      "repoId": "seeded-fresh-holdout-v2",
+      "language": "mixed",
+      "sizeClass": "mixed",
+      "taskClass": "source_rescue",
+      "root": ".",
+      "suite": "examples/bench/seeded-fresh-holdout-v2-20260511.json",
+      "repeat": 3,
+      "modes": ["baseline", "kairn_codex_session", "real_mcp_first"]
+    },
+    {
+      "id": "requests-10turn-endurance",
+      "kind": "endurance",
+      "label": "Requests 10-turn endurance proof",
+      "repoId": "requests",
+      "language": "python",
+      "sizeClass": "medium",
+      "taskClass": "session_repeat",
+      "contextBehavior": "source_rescue",
+      "root": ".",
+      "suite": "examples/bench/endurance-requests-10turn.json",
+      "repeat": 3,
+      "modes": ["baseline", "kairn_codex_session", "real_mcp_first", "hybrid_mcp_brief"]
+    },
+    {
+      "id": "local-mcp-smoke",
+      "kind": "mcp_smoke",
+      "label": "Local MCP protocol smoke",
+      "repoId": "local",
+      "language": "mixed",
+      "sizeClass": "unknown",
+      "taskClass": "mcp_delivery",
+      "root": ".",
+      "task": "Find the smallest useful Kairn source context for publication evidence reporting.",
+      "budget": 700,
+      "detail": "compact"
+    },
+    {
+      "id": "swe-atlas-qna-pilot",
+      "kind": "swe_atlas_qna_pilot",
+      "label": "SWE-Atlas/QnA retrieval and answer-grounding pilot",
+      "repoId": "swe-atlas-qna",
+      "language": "mixed",
+      "sizeClass": "mixed",
+      "taskClass": "source_grounded_answer",
+      "limit": 30,
+      "fetchLength": 60
+    },
+    {
+      "id": "swe-pro-clean-setup-pilot",
+      "kind": "swe_pro_pilot",
+      "label": "SWE-Bench Pro clean setup pilot",
+      "repoId": "swe-bench-pro",
+      "language": "mixed",
+      "sizeClass": "mixed",
+      "taskClass": "official_patch",
+      "limit": 10,
+      "fetchLength": 40,
+      "officialEvaluationRequired": true
+    }
+  ]
+}
