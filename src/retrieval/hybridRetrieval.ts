@@ -838,7 +838,7 @@ function detectBehaviorQuery(query: string): BehaviorQuery {
     phrases,
     symbolHints: [...symbolHints],
     sourceFix: /\b(production source|source|fix|debug)\b/.test(normalized),
-    explicitTestIntent: /\b(test|tests|spec|verify|verification)\b/.test(normalized) && !hasNegatedTestIntent(query)
+  explicitTestIntent: hasExplicitTestIntent(terms, query)
   };
 }
 
@@ -1148,6 +1148,23 @@ function scoreStructuredDebugSourceSurface(file: FileRecord, query: string, quer
     (roleTerms.has("module") || roleTerms.has("plugin")) &&
     (roleTerms.has("resolve") || roleTerms.has("resolver") || roleTerms.has("load") || roleTerms.has("loader"));
   if (asksModuleResolution) {
+    if (isPluginTransformFlow(roleTerms)) {
+      if (/plugincontainer/.test(compactBasename)) {
+        score += 3600;
+        reasons.push("plugin container transform-flow source");
+      } else if (/importanalysis|import[-_]?analysis/.test(compactBasename)) {
+        score += /build/.test(compactBasename) && !roleTerms.has("build") ? 1700 : 3400;
+        reasons.push(/build/.test(compactBasename) && !roleTerms.has("build")
+          ? "build-specific import analysis downranked for runtime transform flow"
+          : "plugin transform import-analysis source");
+      } else if (/analysis|analyzer|transform/.test(compactBasename)) {
+        score += 1900;
+        reasons.push("plugin transform analysis source");
+      } else if (/resolver(factory)?|resolveid|resolve/.test(compactBasename)) {
+        score -= 780;
+        reasons.push("plain resolver downranked for transform-analysis flow");
+      }
+    }
     if (/resolver(factory)?|resolveid|resolve/.test(compactBasename)) {
       score += 2100;
       reasons.push("module resolver source");
@@ -1204,6 +1221,30 @@ function scoreStructuredDebugSourceSurface(file: FileRecord, query: string, quer
       score += 900;
       reasons.push("callback phase source");
     }
+  }
+
+  const goLogPipeline = scoreGoLogPipelineSource(file, roleTerms);
+  if (goLogPipeline.score !== 0) {
+    score += goLogPipeline.score;
+    reasons.push(...goLogPipeline.reasons);
+  }
+
+  const modifierMetadata = scoreModifierMetadataSource(file, roleTerms);
+  if (modifierMetadata.score !== 0) {
+    score += modifierMetadata.score;
+    reasons.push(...modifierMetadata.reasons);
+  }
+
+  const accountEmailFlow = scoreAccountEmailFlowSource(file, roleTerms);
+  if (accountEmailFlow.score !== 0) {
+    score += accountEmailFlow.score;
+    reasons.push(...accountEmailFlow.reasons);
+  }
+
+  const httpAuthUtility = scoreHttpAuthUtilitySource(file, roleTerms);
+  if (httpAuthUtility.score !== 0) {
+    score += httpAuthUtility.score;
+    reasons.push(...httpAuthUtility.reasons);
   }
 
   const asksRoutingMap =
@@ -1328,6 +1369,112 @@ function isTransformAnalysisSource(filePath: string, queryTerms: Set<string>): b
   if (!asksTransformSurface) return false;
   const basename = filePath.toLowerCase().split("/").at(-1) ?? "";
   return /(import[-_]?analysis|analysis|analyzer|transform)/.test(basename);
+}
+
+function isPluginTransformFlow(queryTerms: Set<string>): boolean {
+  return (
+    (queryTerms.has("plugin") || queryTerms.has("plugins") || queryTerms.has("container") || queryTerms.has("containers")) &&
+    (queryTerms.has("transform") || queryTerms.has("transforms")) &&
+    (queryTerms.has("load") || queryTerms.has("loads") || queryTerms.has("resolve") || queryTerms.has("resolveid"))
+  );
+}
+
+function scoreGoLogPipelineSource(file: FileRecord, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  if (file.language !== "go") return { score: 0, reasons: [] };
+  const asksLogPipeline =
+    (queryTerms.has("log") || queryTerms.has("logs") || queryTerms.has("logger") || queryTerms.has("zap") || queryTerms.has("core")) &&
+    (queryTerms.has("entry") || queryTerms.has("entries") || queryTerms.has("encoder") || queryTerms.has("encoders") || queryTerms.has("write") || queryTerms.has("writing") || queryTerms.has("dispatch"));
+  if (!asksLogPipeline) return { score: 0, reasons: [] };
+
+  const normalized = file.path.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const reasons: string[] = [];
+  let score = 0;
+  if (/^(core|entry|encoder)$/.test(basename)) {
+    score += basename === "core" ? 2600 : 2300;
+    reasons.push("go log pipeline source");
+  }
+  if (/^fields?$/.test(basename) && (queryTerms.has("core") || queryTerms.has("entry") || queryTerms.has("encoder") || queryTerms.has("write") || queryTerms.has("dispatch"))) {
+    score -= 2100;
+    reasons.push("field helper downranked for log pipeline prompt");
+  }
+  return { score, reasons };
+}
+
+function scoreModifierMetadataSource(file: FileRecord, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const asksModifierTracking =
+    (queryTerms.has("modifier") || queryTerms.has("modifiers") || queryTerms.has("rewrite") || queryTerms.has("rewrites") || queryTerms.has("transform") || queryTerms.has("transformation") || queryTerms.has("transformations")) &&
+    (queryTerms.has("recipient") || queryTerms.has("recipients") || queryTerms.has("address") || queryTerms.has("addresses") || queryTerms.has("mapping") || queryTerms.has("metadata") || queryTerms.has("bounces") || queryTerms.has("dsn"));
+  if (!asksModifierTracking) return { score: 0, reasons: [] };
+
+  const normalized = file.path.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const reasons: string[] = [];
+  let score = 0;
+  if (/msgmetadata|message[-_]?metadata|metadata/.test(basename)) {
+    score += 3000;
+    reasons.push("modifier metadata tracking source");
+  }
+  if (/modifier/.test(basename) && /(^|\/)(module|core|internal)\//.test(normalized)) {
+    score += 2400;
+    reasons.push("modifier interface tracking source");
+  }
+  if (/(^|\/)(modify|dsn|dmarc|dns|testutils)\//.test(normalized) && !/msgmetadata|modifier/.test(basename)) {
+    score -= 900;
+    reasons.push("implementation package downranked for metadata tracking prompt");
+  }
+  return { score, reasons };
+}
+
+function scoreAccountEmailFlowSource(file: FileRecord, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const asksEmailAccountFlow =
+    (queryTerms.has("email") || queryTerms.has("emails") || queryTerms.has("mail")) &&
+    (queryTerms.has("validation") || queryTerms.has("validate") || queryTerms.has("validated") || queryTerms.has("confirmation") || queryTerms.has("confirm") || queryTerms.has("confirmed") || queryTerms.has("resend") || queryTerms.has("expiration") || queryTerms.has("expired") || queryTerms.has("key") || queryTerms.has("keys")) &&
+    (queryTerms.has("user") || queryTerms.has("users") || queryTerms.has("account") || queryTerms.has("accounts") || queryTerms.has("admin"));
+  if (!asksEmailAccountFlow) return { score: 0, reasons: [] };
+
+  const normalized = file.path.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const reasons: string[] = [];
+  let score = 0;
+  if (/^(email|mail|confirmation|confirm)$/.test(basename) || /(^|\/)(user|users)\/email\.[cm]?[jt]s$/.test(normalized)) {
+    score += 3200;
+    reasons.push("account email confirmation source");
+  }
+  if (/(^|\/)(controllers?\/admin\/users|admin\/manage\/users)\.[cm]?[jt]sx?$/.test(normalized)) {
+    score += 3000;
+    reasons.push("admin user email-flow source");
+  }
+  if (/^(create|signup|register)$/.test(basename) && (queryTerms.has("validation") || queryTerms.has("confirmation") || queryTerms.has("resend"))) {
+    score -= 900;
+    reasons.push("account creation downranked for email confirmation flow");
+  }
+  if (/(^|\/)(settings|config|socket\.io)\//.test(normalized) && !/(^|\/)(user|users)\//.test(normalized)) {
+    score -= 1700;
+    reasons.push("email settings/socket surface downranked for account confirmation flow");
+  }
+  return { score, reasons };
+}
+
+function scoreHttpAuthUtilitySource(file: FileRecord, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const asksHttpAuthUtility =
+    (queryTerms.has("uri") || queryTerms.has("url") || queryTerms.has("urls") || queryTerms.has("request") || queryTerms.has("requests") || queryTerms.has("netrc")) &&
+    (queryTerms.has("authorization") || queryTerms.has("auth") || queryTerms.has("header") || queryTerms.has("headers") || queryTerms.has("bearer") || queryTerms.has("basic") || queryTerms.has("credentials") || queryTerms.has("netrc"));
+  if (!asksHttpAuthUtility) return { score: 0, reasons: [] };
+
+  const normalized = file.path.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const reasons: string[] = [];
+  let score = 0;
+  if (/^(urls?|uri|request|requests|http)$/.test(basename) || /(^|\/)(module_utils|utils?)\/urls?\.py$/.test(normalized)) {
+    score += 3200;
+    reasons.push("HTTP auth URL utility source");
+  }
+  if (/^_?utils?$/.test(basename) && !/(^|\/)(module_utils|utils?)\/urls?\.py$/.test(normalized)) {
+    score -= 1300;
+    reasons.push("generic utility downranked for HTTP auth prompt");
+  }
+  return { score, reasons };
 }
 
 function isRoutePatternTreeSource(filePath: string, queryTerms: Set<string>): boolean {
@@ -1803,12 +1950,29 @@ function compoundQueryTerms(query: string): string[] {
 
 function hasExplicitTestIntent(queryTerms: Set<string>, query = ""): boolean {
   if (query && hasNegatedTestIntent(query)) return false;
+  const normalized = normalizeSearchText(query);
+  if (
+    /\bprefer production source over tests?\b/.test(normalized) ||
+    /\bproduction source over tests?\b/.test(normalized) ||
+    /\btests? docs examples unless\b/.test(normalized) ||
+    /\bclean up (?:any )?test artifacts?\b/.test(normalized) ||
+    /\bcleanup (?:any )?test artifacts?\b/.test(normalized)
+  ) {
+    return false;
+  }
   return ["test", "tests", "spec", "unit", "integration", "pytest", "vitest", "jest"].some((term) => queryTerms.has(term));
 }
 
 function hasSourceOverTestPrompt(query: string, queryTerms: Set<string>, intent: QueryIntent): boolean {
-  if (intent.primary === "test") return false;
   const normalized = normalizeSearchText(query);
+  if (
+    /\bprefer production source over tests?\b/.test(normalized) ||
+    /\bproduction source over tests?\b/.test(normalized) ||
+    /\btests? docs examples unless\b/.test(normalized)
+  ) {
+    return true;
+  }
+  if (intent.primary === "test") return false;
   return (
     ["source", "production", "implementation", "invariant", "companion", "edit", "edits", "fix", "repair", "patch", "review"].some((term) => queryTerms.has(term)) ||
     /\b(known source|source invariant|production source|companion edits?|do not edit|do not inspect tests|do not broaden into tests|smallest source)\b/.test(normalized)

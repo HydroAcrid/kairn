@@ -40,6 +40,7 @@ export type DecisionFeatures = {
   staleIndexState: boolean;
   failureState: boolean;
   verificationState: boolean;
+  explicitTestTarget: boolean;
   expectedContextCost: number;
   estimatedSearchCost: number;
 };
@@ -178,6 +179,7 @@ export function buildDecisionFeatures(input: GovernorInput): DecisionFeatures {
     staleIndexState: Boolean(input.staleIndexState),
     failureState: taskFrame === "failure_first" || input.profile === "failure_debug" || /\b(fail|failure|traceback|stack trace|exception|error)\b/i.test(input.task),
     verificationState: taskFrame === "verification_cleanup" || /\b(verify|verification|test|typecheck|lint|build|cleanup|review diff)\b/i.test(input.task),
+    explicitTestTarget: taskExplicitlyTargetsTests(input.task),
     expectedContextCost: input.estimatedContextCost,
     estimatedSearchCost: estimateSearchCost(input.repoFileCount, taskFrame, candidates)
   };
@@ -367,7 +369,12 @@ function hardSafetyDecision(
       evidenceRequest: evidenceRequestFor(features, "runtime_scope")
     };
   }
-  if (top && (top.role === "test" || top.role === "docs" || top.role === "example") && !taskExplicitlyAllowsRole(features.taskFrame, top.role)) {
+  if (
+    top &&
+    (top.role === "test" || top.role === "docs" || top.role === "example") &&
+    (!taskExplicitlyAllowsRole(features.taskFrame, top.role) ||
+      (top.role === "test" && features.taskFrame === "verification_cleanup" && !features.explicitTestTarget))
+  ) {
     return {
       action: "request_evidence",
       score: Math.min(baseDecision.score, 44),
@@ -560,6 +567,27 @@ function taskExplicitlyAllowsRole(taskFrame: TaskFrame, role: FileRoleV2): boole
   return false;
 }
 
+function taskExplicitlyTargetsTests(task: string): boolean {
+  const normalized = normalizeText(task);
+  if (
+    /\bprefer production source over tests?\b/.test(normalized) ||
+    /\bproduction source over tests?\b/.test(normalized) ||
+    /\btests? docs examples unless\b/.test(normalized) ||
+    /\bclean up (?:any )?test artifacts?\b/.test(normalized) ||
+    /\bcleanup (?:any )?test artifacts?\b/.test(normalized)
+  ) {
+    return false;
+  }
+  return (
+    /\b(failing|failed|failure|broken)\s+(test|tests|spec|specs)\b/.test(normalized) ||
+    /\b(test|tests|spec|specs|pytest|vitest|jest)\s+(output|failure|failures|trace|traceback|result|results)\b/.test(normalized) ||
+    /\b(inspect|read|open|explain|show)\b(?:\s+[a-z0-9._/-]+){0,8}\s+\b(test|tests|spec|specs|pytest|vitest|jest)\b/.test(normalized) ||
+    /(^|\/)(test|tests|testing|__tests__|spec|specs)\//.test(task.replaceAll("\\", "/").toLowerCase()) ||
+    /\.(test|spec)\.[cm]?[jt]sx?\b/.test(task.toLowerCase()) ||
+    /\btest_[a-z0-9_]+\.py\b/.test(task.toLowerCase())
+  );
+}
+
 function languageMix(files: FileRecord[]): Record<string, number> {
   const counts = new Map<string, number>();
   for (const file of files) {
@@ -656,6 +684,10 @@ function terms(value: string): string[] {
   return value.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
 }
 
+function normalizeText(value: string): string {
+  return terms(value).join(" ");
+}
+
 function languageFromPath(filePath: string): string {
   const normalized = filePath.toLowerCase();
   if (/\.(ts|tsx)$/.test(normalized)) return "typescript";
@@ -682,8 +714,8 @@ function isRuntimeProceduralTask(text: string): boolean {
   const asksForRuntimeObservation =
     /\b(how many|what happens (?:when|during)|runtime|execute|environment|config value|database state|server response|api response|latency|performance)\b/.test(text) ||
     /\b(run|build|start|launch|execute|measure|observe|create|instantiate)\b.{0,80}\b(command|test|tests|scan|server|application|packets?|script|fixture|wall-clock|time|output|logs?|dashboard|messages?|startup)\b/.test(text) ||
-    /\b(what should i see|what do i see|what initialization messages|startup messages|logs? or dashboard|computed destination|temporary scripts?|in memory)\b/.test(text);
-  return asksForRuntimeObservation && !/\b(fix|patch|edit|change production|source file)\b/.test(text);
+    /\b(set up (?:the )?(?:development )?environment|query (?:the )?database|observing system behavior|observe system behavior|what initialization messages|what should i see|what do i see|startup messages|logs? or dashboard|computed destination|temporary scripts?|in memory)\b/.test(text);
+  return asksForRuntimeObservation && !/\b(fix|patch|change production|source file|edit source|edit code|modify source|modify code)\b/.test(text);
 }
 
 function clamp01(value: number): number {

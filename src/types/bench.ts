@@ -333,6 +333,8 @@ export type BenchmarkMatrixCaseResult = {
   expectedTopKPassed: boolean;
   excludedFilesAvoided: boolean;
   suppressionPassed: boolean;
+  sourceQualityGatePassed: boolean;
+  latencyPassed: boolean;
   qualityGatePassed: boolean;
   summary: string;
   recommendations: string[];
@@ -376,6 +378,8 @@ export type BenchmarkMatrixReport = {
     skippedRepos: number;
     cases: number;
     qualityPassingCases: number;
+    sourceQualityPassingCases?: number;
+    latencyPassingCases?: number;
     statePassingRepos: number;
   };
   recommendations: string[];

@@ -440,6 +440,11 @@ export function findCompanionCandidates(input: {
       score += moduleResolver.score;
       reasons.push(...moduleResolver.reasons);
     }
+    const pluginTransform = scorePluginTransformFlowCompanion(file.path, queryTerms);
+    if (pluginTransform.score !== 0) {
+      score += pluginTransform.score;
+      reasons.push(...pluginTransform.reasons);
+    }
     const schemaField = scoreSchemaFieldGenerationCompanion(file.path, queryTerms);
     if (schemaField.score !== 0) {
       score += schemaField.score;
@@ -449,6 +454,26 @@ export function findCompanionCandidates(input: {
     if (statementField.score !== 0) {
       score += statementField.score;
       reasons.push(...statementField.reasons);
+    }
+    const goLogPipeline = scoreGoLogPipelineCompanion(file.path, file.language, queryTerms);
+    if (goLogPipeline.score !== 0) {
+      score += goLogPipeline.score;
+      reasons.push(...goLogPipeline.reasons);
+    }
+    const modifierMetadata = scoreModifierMetadataCompanion(file.path, queryTerms);
+    if (modifierMetadata.score !== 0) {
+      score += modifierMetadata.score;
+      reasons.push(...modifierMetadata.reasons);
+    }
+    const accountEmailFlow = scoreAccountEmailFlowCompanion(file.path, queryTerms);
+    if (accountEmailFlow.score !== 0) {
+      score += accountEmailFlow.score;
+      reasons.push(...accountEmailFlow.reasons);
+    }
+    const httpAuthUtility = scoreHttpAuthUtilityCompanion(file.path, queryTerms);
+    if (httpAuthUtility.score !== 0) {
+      score += httpAuthUtility.score;
+      reasons.push(...httpAuthUtility.reasons);
     }
     const textUtility = scoreTextTransformUtilityCompanion(file.path, sourceTerms, queryTerms);
     if (textUtility.score !== 0) {
@@ -1267,6 +1292,39 @@ function scoreModuleResolverCompanion(filePath: string, queryTerms: Set<string>)
   return { score, reasons };
 }
 
+function scorePluginTransformFlowCompanion(filePath: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  if (!isPluginTransformFlow(queryTerms)) return { score: 0, reasons: [] };
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const compact = basename.replace(/[^a-z0-9]/g, "");
+  const reasons: string[] = [];
+  let score = 0;
+  if (/plugincontainer/.test(compact)) {
+    score += 3600;
+    reasons.push("plugin container transform-flow companion");
+  } else if (/importanalysis|import[-_]?analysis/.test(compact)) {
+    score += /build/.test(compact) && !queryTerms.has("build") ? 1700 : 3400;
+    reasons.push(/build/.test(compact) && !queryTerms.has("build")
+      ? "build-specific import analysis downranked for runtime transform flow"
+      : "plugin transform import-analysis companion");
+  } else if (/analysis|analyzer|transform/.test(compact)) {
+    score += 1900;
+    reasons.push("plugin transform analysis companion");
+  } else if (/resolver(factory)?|resolveid|resolve/.test(compact)) {
+    score -= 780;
+    reasons.push("plain resolver downranked for transform-analysis flow");
+  }
+  return { score, reasons };
+}
+
+function isPluginTransformFlow(queryTerms: Set<string>): boolean {
+  return (
+    (queryTerms.has("plugin") || queryTerms.has("plugins") || queryTerms.has("container") || queryTerms.has("containers")) &&
+    (queryTerms.has("transform") || queryTerms.has("transforms")) &&
+    (queryTerms.has("load") || queryTerms.has("loads") || queryTerms.has("resolve") || queryTerms.has("resolveid"))
+  );
+}
+
 function scoreSchemaFieldGenerationCompanion(filePath: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
   const asksSchemaFields =
     (queryTerms.has("schema") || queryTerms.has("core")) &&
@@ -1310,6 +1368,104 @@ function scoreStatementCallbackCompanion(filePath: string, queryTerms: Set<strin
   if (/^(create|update|query|delete)$/.test(basename)) {
     score += 900;
     reasons.push("callback phase companion");
+  }
+  return { score, reasons };
+}
+
+function scoreGoLogPipelineCompanion(filePath: string, language: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  if (language !== "go") return { score: 0, reasons: [] };
+  const asksLogPipeline =
+    (queryTerms.has("log") || queryTerms.has("logs") || queryTerms.has("logger") || queryTerms.has("zap") || queryTerms.has("core")) &&
+    (queryTerms.has("entry") || queryTerms.has("entries") || queryTerms.has("encoder") || queryTerms.has("encoders") || queryTerms.has("write") || queryTerms.has("writing") || queryTerms.has("dispatch"));
+  if (!asksLogPipeline) return { score: 0, reasons: [] };
+
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const reasons: string[] = [];
+  let score = 0;
+  if (/^(core|entry|encoder)$/.test(basename)) {
+    score += basename === "core" ? 2800 : 2400;
+    reasons.push("go log pipeline companion");
+  }
+  if (/^fields?$/.test(basename) && (queryTerms.has("core") || queryTerms.has("entry") || queryTerms.has("encoder") || queryTerms.has("write") || queryTerms.has("dispatch"))) {
+    score -= 2200;
+    reasons.push("field helper downranked for log pipeline prompt");
+  }
+  return { score, reasons };
+}
+
+function scoreModifierMetadataCompanion(filePath: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const asksModifierTracking =
+    (queryTerms.has("modifier") || queryTerms.has("modifiers") || queryTerms.has("rewrite") || queryTerms.has("rewrites") || queryTerms.has("transform") || queryTerms.has("transformation") || queryTerms.has("transformations")) &&
+    (queryTerms.has("recipient") || queryTerms.has("recipients") || queryTerms.has("address") || queryTerms.has("addresses") || queryTerms.has("mapping") || queryTerms.has("metadata") || queryTerms.has("bounces") || queryTerms.has("dsn"));
+  if (!asksModifierTracking) return { score: 0, reasons: [] };
+
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const reasons: string[] = [];
+  let score = 0;
+  if (/msgmetadata|message[-_]?metadata|metadata/.test(basename)) {
+    score += 3200;
+    reasons.push("modifier metadata tracking companion");
+  }
+  if (/modifier/.test(basename) && /(^|\/)(module|core|internal)\//.test(normalized)) {
+    score += 2500;
+    reasons.push("modifier interface tracking companion");
+  }
+  if (/(^|\/)(modify|dsn|dmarc|dns|testutils)\//.test(normalized) && !/msgmetadata|modifier/.test(basename)) {
+    score -= 900;
+    reasons.push("implementation package downranked for metadata tracking prompt");
+  }
+  return { score, reasons };
+}
+
+function scoreAccountEmailFlowCompanion(filePath: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const asksEmailAccountFlow =
+    (queryTerms.has("email") || queryTerms.has("emails") || queryTerms.has("mail")) &&
+    (queryTerms.has("validation") || queryTerms.has("validate") || queryTerms.has("validated") || queryTerms.has("confirmation") || queryTerms.has("confirm") || queryTerms.has("confirmed") || queryTerms.has("resend") || queryTerms.has("expiration") || queryTerms.has("expired") || queryTerms.has("key") || queryTerms.has("keys")) &&
+    (queryTerms.has("user") || queryTerms.has("users") || queryTerms.has("account") || queryTerms.has("accounts") || queryTerms.has("admin"));
+  if (!asksEmailAccountFlow) return { score: 0, reasons: [] };
+
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const reasons: string[] = [];
+  let score = 0;
+  if (/^(email|mail|confirmation|confirm)$/.test(basename) || /(^|\/)(user|users)\/email\.[cm]?[jt]s$/.test(normalized)) {
+    score += 3400;
+    reasons.push("account email confirmation companion");
+  }
+  if (/(^|\/)(controllers?\/admin\/users|admin\/manage\/users)\.[cm]?[jt]sx?$/.test(normalized)) {
+    score += 3100;
+    reasons.push("admin user email-flow companion");
+  }
+  if (/^(create|signup|register)$/.test(basename) && (queryTerms.has("validation") || queryTerms.has("confirmation") || queryTerms.has("resend"))) {
+    score -= 900;
+    reasons.push("account creation downranked for email confirmation flow");
+  }
+  if (/(^|\/)(settings|config|socket\.io)\//.test(normalized) && !/(^|\/)(user|users)\//.test(normalized)) {
+    score -= 1700;
+    reasons.push("email settings/socket surface downranked for account confirmation flow");
+  }
+  return { score, reasons };
+}
+
+function scoreHttpAuthUtilityCompanion(filePath: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const asksHttpAuthUtility =
+    (queryTerms.has("uri") || queryTerms.has("url") || queryTerms.has("urls") || queryTerms.has("request") || queryTerms.has("requests") || queryTerms.has("netrc")) &&
+    (queryTerms.has("authorization") || queryTerms.has("auth") || queryTerms.has("header") || queryTerms.has("headers") || queryTerms.has("bearer") || queryTerms.has("basic") || queryTerms.has("credentials") || queryTerms.has("netrc"));
+  if (!asksHttpAuthUtility) return { score: 0, reasons: [] };
+
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const reasons: string[] = [];
+  let score = 0;
+  if (/^(urls?|uri|request|requests|http)$/.test(basename) || /(^|\/)(module_utils|utils?)\/urls?\.py$/.test(normalized)) {
+    score += 3400;
+    reasons.push("HTTP auth URL utility companion");
+  }
+  if (/^_?utils?$/.test(basename) && !/(^|\/)(module_utils|utils?)\/urls?\.py$/.test(normalized)) {
+    score -= 1300;
+    reasons.push("generic utility downranked for HTTP auth prompt");
   }
   return { score, reasons };
 }

@@ -61,6 +61,8 @@ export async function runBenchmarkRepoMatrix(input: {
     skippedRepos: repos.filter((repo) => repo.status === "skipped").length,
     cases: repos.reduce((sum, repo) => sum + repo.cases.length, 0),
     qualityPassingCases: repos.reduce((sum, repo) => sum + repo.cases.filter((item) => item.qualityGatePassed).length, 0),
+    sourceQualityPassingCases: repos.reduce((sum, repo) => sum + repo.cases.filter((item) => item.sourceQualityGatePassed).length, 0),
+    latencyPassingCases: repos.reduce((sum, repo) => sum + repo.cases.filter((item) => item.latencyPassed).length, 0),
     statePassingRepos: repos.filter((repo) => repo.stateWithinLimit).length
   };
 
@@ -211,7 +213,8 @@ async function runCasePreflight(input: {
   const companionGatePassed = evidenceRequestPassed || companionHits.length >= requiredCompanionHits;
   const excludedFilesAvoided = excludedHits.length === 0 && noisePrefixHits.length === 0;
   const latencyPassed = primeLatencyMs <= input.gates.maxPrimeLatencyMs;
-  const qualityGatePassed = expectedTopKPassed && companionGatePassed && excludedFilesAvoided && suppressionPassed && latencyPassed;
+  const sourceQualityGatePassed = expectedTopKPassed && companionGatePassed && excludedFilesAvoided && suppressionPassed;
+  const qualityGatePassed = sourceQualityGatePassed && latencyPassed;
   const recommendations: string[] = [];
 
   if (!expectedTopKPassed) {
@@ -237,6 +240,9 @@ async function runCasePreflight(input: {
   }
   if (evidenceRequestPassed) {
     recommendations.push(`Evidence request accepted for ${taskFrame} task (${evidenceRequestKind ?? "unknown"}).`);
+  }
+  if (sourceQualityGatePassed && !latencyPassed) {
+    recommendations.push("Source quality passed; only the latency gate failed.");
   }
   if (!latencyPassed) {
     recommendations.push(`Prime latency ${primeLatencyMs}ms exceeded ${input.gates.maxPrimeLatencyMs}ms gate.`);
@@ -272,6 +278,8 @@ async function runCasePreflight(input: {
     expectedTopKPassed,
     excludedFilesAvoided,
     suppressionPassed,
+    sourceQualityGatePassed,
+    latencyPassed,
     qualityGatePassed,
     summary: qualityGatePassed ? "Preflight quality gate passed." : "Preflight quality gate failed.",
     recommendations

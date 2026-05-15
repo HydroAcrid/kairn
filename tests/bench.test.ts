@@ -1124,6 +1124,163 @@ describe("benchmark suite and scoring", () => {
     expect(companions[0]).toBe("include/spdlog/spdlog-inl.h");
   });
 
+  it("prefers transform/import-analysis companions over plain resolvers for plugin transform flows", () => {
+    const files = [
+      sourceRecord("packages/vite/src/node/server/pluginContainer.ts", "typescript"),
+      sourceRecord("packages/vite/src/node/plugins/resolve.ts", "typescript"),
+      sourceRecord("packages/vite/src/node/plugins/importAnalysis.ts", "typescript")
+    ];
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query: "Debug Vite plugin container module resolution when resolveId and load hooks coordinate across dev server transforms.",
+      symbols: [],
+      chunks: [
+        chunkRecord("packages/vite/src/node/server/pluginContainer.ts", "PluginContainer", "resolveId load transform plugin hooks"),
+        chunkRecord("packages/vite/src/node/plugins/resolve.ts", "resolvePlugin", "resolve id resolver module resolution"),
+        chunkRecord("packages/vite/src/node/plugins/importAnalysis.ts", "importAnalysisPlugin", "import analysis transform dev server module graph")
+      ],
+      edges: [],
+      limit: 2
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions[0]).toBe("packages/vite/src/node/plugins/importAnalysis.ts");
+  });
+
+  it("routes Go logging pipelines to core entry encoder before field helpers", () => {
+    const files = [
+      sourceRecord("zapcore/core.go", "go"),
+      sourceRecord("zapcore/entry.go", "go"),
+      sourceRecord("zapcore/encoder.go", "go"),
+      sourceRecord("zapcore/field.go", "go"),
+      sourceRecord("field.go", "go")
+    ];
+    const ranked = hybridSearch({
+      files,
+      query: "Debug zap core entry writing when checked entries dispatch fields to the underlying core and encoder.",
+      symbols: [],
+      chunks: [
+        chunkRecord("zapcore/core.go", "Core", "core write entry checked entry dispatch to underlying core"),
+        chunkRecord("zapcore/entry.go", "CheckedEntry", "checked entry write dispatch fields"),
+        chunkRecord("zapcore/encoder.go", "Encoder", "encoder encodes entry fields"),
+        chunkRecord("zapcore/field.go", "Field", "field metadata helpers"),
+        chunkRecord("field.go", "Field", "top-level logger field helpers")
+      ],
+      vectors: [],
+      edges: []
+    });
+    const topThree = ranked.slice(0, 3).map((item) => item.path);
+
+    expect(topThree).toEqual(expect.arrayContaining(["zapcore/core.go", "zapcore/entry.go", "zapcore/encoder.go"]));
+    expect(ranked.findIndex((item) => item.path === "field.go")).toBeGreaterThan(2);
+  });
+
+  it("does not treat cleanup of test artifacts as explicit test-source intent", () => {
+    const files = [
+      { ...sourceRecord("src/documents/tests/test_api.py", "python"), kind: "test" as const },
+      sourceRecord("src/documents/tasks.py", "python"),
+      sourceRecord("src/documents/management/commands/document_index.py", "python")
+    ];
+    const ranked = hybridSearch({
+      files,
+      query:
+        "Answer SWE-Atlas/QnA repository question: what periodic tasks are registered with the scheduler and where is index optimization defined? Dataset language label: python. Prefer production source over tests/docs/examples unless the prompt explicitly asks for them. Don't modify source code; observing system behavior is fine, clean up any test artifacts when done.",
+      symbols: [],
+      chunks: [
+        chunkRecord("src/documents/tests/test_api.py", "DocumentApiTests", "test api document scheduled task"),
+        chunkRecord("src/documents/tasks.py", "index_optimize", "periodic task index optimize background task schedule"),
+        chunkRecord("src/documents/management/commands/document_index.py", "Command", "document index optimization command")
+      ],
+      vectors: [],
+      edges: []
+    });
+    const topTwo = ranked.slice(0, 2).map((item) => item.path);
+
+    expect(topTwo).toEqual(expect.arrayContaining(["src/documents/tasks.py", "src/documents/management/commands/document_index.py"]));
+    expect(ranked[0]?.path).not.toBe("src/documents/tests/test_api.py");
+  });
+
+  it("routes modifier address tracking questions to metadata and modifier interfaces", () => {
+    const files = [
+      sourceRecord("internal/module/modifier.go", "go"),
+      sourceRecord("internal/module/msgmetadata.go", "go"),
+      sourceRecord("internal/modify/alias_file.go", "go"),
+      sourceRecord("internal/dsn/dsn.go", "go")
+    ];
+    const ranked = hybridSearch({
+      files,
+      query:
+        "Trace how recipient address transformations are tracked when aliases rewrite addresses. Find the mapping direction each modifier builds and how bounces use it.",
+      symbols: [],
+      chunks: [
+        chunkRecord("internal/module/modifier.go", "ModifierState", "RewriteRcpt modifiers run in order and mutate recipient values"),
+        chunkRecord("internal/module/msgmetadata.go", "MsgMetadata", "OriginalRcpts mapping final recipient to original recipient used for DSN bounces"),
+        chunkRecord("internal/modify/alias_file.go", "RewriteRcpt", "alias file rewrite recipient address aliases map"),
+        chunkRecord("internal/dsn/dsn.go", "Format", "delivery status notification bounce recipient")
+      ],
+      vectors: [],
+      edges: []
+    });
+    const topTwo = ranked.slice(0, 2).map((item) => item.path);
+
+    expect(topTwo).toEqual(expect.arrayContaining(["internal/module/modifier.go", "internal/module/msgmetadata.go"]));
+  });
+
+  it("routes account email confirmation flows to user email modules over creation helpers", () => {
+    const files = [
+      sourceRecord("src/controllers/admin/users.js", "javascript"),
+      sourceRecord("src/user/email.js", "javascript"),
+      sourceRecord("src/user/create.js", "javascript")
+    ];
+    const ranked = hybridSearch({
+      files,
+      query:
+        "Debug admin user email validation and confirmation resend behavior when expired keys prevent locating the user email.",
+      symbols: [],
+      chunks: [
+        chunkRecord("src/controllers/admin/users.js", "validateEmail", "admin validate user email status"),
+        chunkRecord("src/user/email.js", "sendValidationEmail", "email confirmation validation expiry key resend user email"),
+        chunkRecord("src/user/create.js", "create", "create user account")
+      ],
+      vectors: [],
+      edges: []
+    });
+
+    expect(ranked.slice(0, 2).map((item) => item.path)).toEqual(
+      expect.arrayContaining(["src/controllers/admin/users.js", "src/user/email.js"])
+    );
+    expect(ranked.findIndex((item) => item.path === "src/user/create.js")).toBeGreaterThan(1);
+  });
+
+  it("routes URI authorization and netrc issues to URL request utilities over generic utils", () => {
+    const files = [
+      sourceRecord("lib/ansible/modules/get_url.py", "python"),
+      sourceRecord("lib/ansible/module_utils/urls.py", "python"),
+      sourceRecord("lib/ansible/module_utils/facts/utils.py", "python"),
+      sourceRecord("lib/ansible/module_utils/common/_utils.py", "python")
+    ];
+    const ranked = hybridSearch({
+      files,
+      query:
+        "Debug uri module .netrc credentials overriding an explicit Authorization header with Bearer auth in HTTP requests.",
+      symbols: [],
+      chunks: [
+        chunkRecord("lib/ansible/modules/get_url.py", "main", "module uses url request helper"),
+        chunkRecord("lib/ansible/module_utils/urls.py", "open_url", "uri url request headers authorization netrc bearer basic auth"),
+        chunkRecord("lib/ansible/module_utils/facts/utils.py", "get_file_content", "facts generic utils"),
+        chunkRecord("lib/ansible/module_utils/common/_utils.py", "get_all_subclasses", "common generic utils")
+      ],
+      vectors: [],
+      edges: []
+    });
+
+    expect(ranked.slice(0, 2).map((item) => item.path)).toEqual(
+      expect.arrayContaining(["lib/ansible/modules/get_url.py", "lib/ansible/module_utils/urls.py"])
+    );
+    const genericUtilityIndex = ranked.findIndex((item) => item.path === "lib/ansible/module_utils/facts/utils.py");
+    expect(genericUtilityIndex === -1 || genericUtilityIndex > 1).toBe(true);
+  });
+
   it("runs a fake-agent endurance suite in one workspace and reports ledger savings signals", async () => {
     const root = createFixtureRepo();
     const suitePath = path.join(root, "endurance-suite.json");
@@ -2036,6 +2193,46 @@ describe("benchmark suite and scoring", () => {
       ],
       repoFileCount: 3200,
       estimatedContextCost: 900
+    });
+
+    expect(decision.action).toBe("request_evidence");
+    expect(decision.evidenceRequest?.kind).toBe("runtime_scope");
+    expect(decision.featureSummary?.taskFrame).toBe("runtime_procedural");
+  });
+
+  it("treats product-data edits and background-worker observation as runtime evidence requests", () => {
+    const decision = evaluateContextValue({
+      task: "With the full environment running, what actually happens at runtime when a document gets modified through the API, and does a background worker pick up a job in response to the edit?",
+      profile: "generic",
+      context: {
+        mode: "snippets",
+        content: "- src/documents/tests/test_api.py (test, score 280): API edit mention\n- src/documents/tasks.py (source, score 210): worker mention",
+        files: ["src/documents/tests/test_api.py", "src/documents/tasks.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/documents/tests/test_api.py"],
+        rankedFiles: [
+          { path: "src/documents/tests/test_api.py", kind: "test", score: 280, reasons: ["API edit mention"] },
+          { path: "src/documents/tasks.py", kind: "source", score: 210, reasons: ["worker mention"] }
+        ],
+        tokenEstimate: 220
+      },
+      quality: {
+        score: 72,
+        action: "shrink",
+        reasons: ["runtime source ambiguity"],
+        topScore: 280,
+        topGap: 70,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      knownFiles: [
+        record("src/documents/tests/test_api.py", "test"),
+        record("src/documents/tasks.py", "source")
+      ],
+      repoFileCount: 2500,
+      estimatedContextCost: 800
     });
 
     expect(decision.action).toBe("request_evidence");
