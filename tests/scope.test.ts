@@ -56,6 +56,25 @@ describe("edit scope controller", () => {
     expect(scope.scopeSource).toBe("source_rescue");
   });
 
+  it("treats production header fixes as one-file source scope", () => {
+    const scope = decideEditScope({
+      task: "Debug the seeded failing C++ check. Fix the production header and do not edit unrelated files.",
+      candidateFiles: ["include/fmt/base.h", "include/fmt/format-inl.h"],
+      contextDecision: decision({
+        primaryFile: "include/fmt/base.h",
+        exactSourceHit: true,
+        sourceRescue: true,
+        multiSurfaceSignal: true,
+        companionSpecific: true,
+        recommendedDelivery: "multi_file_directive"
+      })
+    });
+
+    expect(scope.initialEditFiles).toEqual(["include/fmt/base.h"]);
+    expect(scope.readOnlyFiles).toContain("include/fmt/format-inl.h");
+    expect(scope.scopeSource).toBe("exact_source");
+  });
+
   it("allows test edits only when the task explicitly asks for them", () => {
     const scope = decideEditScope({
       task: "Update the snapshot tests for the new expected output.",

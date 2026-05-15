@@ -1,0 +1,4862 @@
+{
+  "baseline": {
+    "run": {
+      "id": "bench_6002ac87-3152-4a11-be34-2222aa8674b0",
+      "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+      "suiteId": "swe-atlas-qna-grounded-recheck",
+      "suiteName": "SWE-Atlas QnA Grounded Recheck",
+      "mode": "agent",
+      "status": "completed",
+      "startedAt": "2026-05-15T03:50:12.698Z",
+      "endedAt": "2026-05-15T03:53:22.198Z",
+      "metadata": {
+        "sessionId": "task_f5a53732-6db8-4fc0-8466-7bdfb650c72b",
+        "caseCount": 2,
+        "agentConfigured": true,
+        "assistanceMode": "baseline"
+      }
+    },
+    "results": [
+      {
+        "id": 997,
+        "runId": "bench_6002ac87-3152-4a11-be34-2222aa8674b0",
+        "caseId": "6905333b74f22949d97baa12",
+        "caseMode": "agent",
+        "score": 85,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 47614,
+        "observedCodexTokens": 48277,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "internal/module/modifier.go",
+          "internal/module/msgmetadata.go",
+          "internal/msgpipeline/msgpipeline.go"
+        ],
+        "actualFiles": [
+          "internal/module/modifier.go",
+          "internal/module/msgmetadata.go",
+          "internal/msgpipeline/msgpipeline.go"
+        ],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "gen/",
+          "node_modules/",
+          "dist/",
+          "build/",
+          "tests/",
+          "test/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 3.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "primeEmitted": 0,
+          "hookInvocations": 0,
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-tti9cI",
+          "promptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+          "outputHash": "8b3a137b501dcdebeedd8243d959b5f4d83a2bc3e9ea2310bf57b38d30fb3633",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 54961,
+          "codexElapsedMs": 54961,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/foxcpp/maddy.git",
+          "seedRef": "26452dd8dd787dc455278b0fdd296f4a5432c768",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 401,
+          "elapsedMs": 54984,
+          "codexUsage": {
+            "totalTokens": 48277,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "multi_file_debug",
+          "officialEvaluation": {
+            "source": "swe_atlas_qna",
+            "taskClass": "multi_file_debug",
+            "evaluator": "source_grounded_answer",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "reference answer cites 3 source files",
+              "question appears to span multiple source surfaces"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_atlas_qna",
+          "officialTaskClass": "multi_file_debug",
+          "officialEvaluator": "source_grounded_answer",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qnaEvaluation": {
+            "minSourceMentions": 1,
+            "requireNoRepoChanges": true
+          },
+          "qnaSourceMentions": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "qnaSourceMentionCount": 3,
+          "qnaMinSourceMentions": 1,
+          "qnaGroundingPassed": true,
+          "qnaNoRepoChangesPassed": true,
+          "qnaUnexpectedRepoChanges": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-15T03:51:08.087Z"
+      },
+      {
+        "id": 998,
+        "runId": "bench_6002ac87-3152-4a11-be34-2222aa8674b0",
+        "caseId": "6905333b74f22949d97ba9cf",
+        "caseMode": "agent",
+        "score": 85,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 248244,
+        "observedCodexTokens": 68166,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "scapy/arch/linux.py"
+        ],
+        "actualFiles": [
+          "scapy/arch/linux.py"
+        ],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "gen/",
+          "node_modules/",
+          "dist/",
+          "build/",
+          "tests/",
+          "test/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "primeEmitted": 0,
+          "hookInvocations": 0,
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-EbJc1q",
+          "promptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+          "outputHash": "f1d44f045bb405666b7b4c250c05ed8b99ce02b49d63634d1c86b8b6f8423135",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 132986,
+          "codexElapsedMs": 132986,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [
+            "scapy/arch/linux.py"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/secdev/scapy.git",
+          "seedRef": "0925ada485406684174d6f068dbd85c4154657b3",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 1009,
+          "elapsedMs": 133095,
+          "codexUsage": {
+            "totalTokens": 68166,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "failure_first",
+          "officialEvaluation": {
+            "source": "swe_atlas_qna",
+            "taskClass": "failure_first_debug",
+            "evaluator": "source_grounded_answer",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "question contains failure/debug signals and should use failure-first context if output exists"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_atlas_qna",
+          "officialTaskClass": "failure_first_debug",
+          "officialEvaluator": "source_grounded_answer",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "scapy/arch/linux.py"
+          ],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qnaEvaluation": {
+            "minSourceMentions": 1,
+            "requireNoRepoChanges": true
+          },
+          "qnaSourceMentions": [
+            "scapy/arch/linux.py"
+          ],
+          "qnaSourceMentionCount": 1,
+          "qnaMinSourceMentions": 1,
+          "qnaGroundingPassed": true,
+          "qnaNoRepoChangesPassed": true,
+          "qnaUnexpectedRepoChanges": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-15T03:53:22.197Z"
+      }
+    ],
+    "overallScore": 85,
+    "observed": {
+      "codexTokens": 116443,
+      "codexCaseCount": 2
+    },
+    "weakestCases": [
+      {
+        "id": 997,
+        "runId": "bench_6002ac87-3152-4a11-be34-2222aa8674b0",
+        "caseId": "6905333b74f22949d97baa12",
+        "caseMode": "agent",
+        "score": 85,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 47614,
+        "observedCodexTokens": 48277,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "internal/module/modifier.go",
+          "internal/module/msgmetadata.go",
+          "internal/msgpipeline/msgpipeline.go"
+        ],
+        "actualFiles": [
+          "internal/module/modifier.go",
+          "internal/module/msgmetadata.go",
+          "internal/msgpipeline/msgpipeline.go"
+        ],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "gen/",
+          "node_modules/",
+          "dist/",
+          "build/",
+          "tests/",
+          "test/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 3.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "primeEmitted": 0,
+          "hookInvocations": 0,
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-tti9cI",
+          "promptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+          "outputHash": "8b3a137b501dcdebeedd8243d959b5f4d83a2bc3e9ea2310bf57b38d30fb3633",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 54961,
+          "codexElapsedMs": 54961,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/foxcpp/maddy.git",
+          "seedRef": "26452dd8dd787dc455278b0fdd296f4a5432c768",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 401,
+          "elapsedMs": 54984,
+          "codexUsage": {
+            "totalTokens": 48277,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "multi_file_debug",
+          "officialEvaluation": {
+            "source": "swe_atlas_qna",
+            "taskClass": "multi_file_debug",
+            "evaluator": "source_grounded_answer",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "reference answer cites 3 source files",
+              "question appears to span multiple source surfaces"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_atlas_qna",
+          "officialTaskClass": "multi_file_debug",
+          "officialEvaluator": "source_grounded_answer",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qnaEvaluation": {
+            "minSourceMentions": 1,
+            "requireNoRepoChanges": true
+          },
+          "qnaSourceMentions": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "qnaSourceMentionCount": 3,
+          "qnaMinSourceMentions": 1,
+          "qnaGroundingPassed": true,
+          "qnaNoRepoChangesPassed": true,
+          "qnaUnexpectedRepoChanges": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-15T03:51:08.087Z"
+      },
+      {
+        "id": 998,
+        "runId": "bench_6002ac87-3152-4a11-be34-2222aa8674b0",
+        "caseId": "6905333b74f22949d97ba9cf",
+        "caseMode": "agent",
+        "score": 85,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 248244,
+        "observedCodexTokens": 68166,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "scapy/arch/linux.py"
+        ],
+        "actualFiles": [
+          "scapy/arch/linux.py"
+        ],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "gen/",
+          "node_modules/",
+          "dist/",
+          "build/",
+          "tests/",
+          "test/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "primeEmitted": 0,
+          "hookInvocations": 0,
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-EbJc1q",
+          "promptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+          "outputHash": "f1d44f045bb405666b7b4c250c05ed8b99ce02b49d63634d1c86b8b6f8423135",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 132986,
+          "codexElapsedMs": 132986,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [
+            "scapy/arch/linux.py"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/secdev/scapy.git",
+          "seedRef": "0925ada485406684174d6f068dbd85c4154657b3",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 1009,
+          "elapsedMs": 133095,
+          "codexUsage": {
+            "totalTokens": 68166,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "failure_first",
+          "officialEvaluation": {
+            "source": "swe_atlas_qna",
+            "taskClass": "failure_first_debug",
+            "evaluator": "source_grounded_answer",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "question contains failure/debug signals and should use failure-first context if output exists"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_atlas_qna",
+          "officialTaskClass": "failure_first_debug",
+          "officialEvaluator": "source_grounded_answer",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "scapy/arch/linux.py"
+          ],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qnaEvaluation": {
+            "minSourceMentions": 1,
+            "requireNoRepoChanges": true
+          },
+          "qnaSourceMentions": [
+            "scapy/arch/linux.py"
+          ],
+          "qnaSourceMentionCount": 1,
+          "qnaMinSourceMentions": 1,
+          "qnaGroundingPassed": true,
+          "qnaNoRepoChangesPassed": true,
+          "qnaUnexpectedRepoChanges": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-15T03:53:22.197Z"
+      }
+    ],
+    "recommendations": [
+      "Response exceeded the benchmark budget; tune response routing or snippets."
+    ],
+    "officialEvaluationSummary": {
+      "totalCases": 2,
+      "kairnMetricEligibleCases": 2,
+      "byTaskClass": {
+        "multi_file_debug": {
+          "cases": 1,
+          "qualityPasses": 1,
+          "observedCases": 1,
+          "observedTokens": 48277,
+          "averageScore": 85,
+          "kairnMetricEligibleCases": 1
+        },
+        "failure_first_debug": {
+          "cases": 1,
+          "qualityPasses": 1,
+          "observedCases": 1,
+          "observedTokens": 68166,
+          "averageScore": 85,
+          "kairnMetricEligibleCases": 1
+        }
+      },
+      "byEvaluator": {
+        "source_grounded_answer": {
+          "cases": 2,
+          "qualityPasses": 2,
+          "observedCases": 2,
+          "observedTokens": 116443,
+          "averageScore": 85,
+          "kairnMetricEligibleCases": 2
+        }
+      },
+      "byApplicability": {
+        "strong": {
+          "cases": 2,
+          "qualityPasses": 2,
+          "observedCases": 2,
+          "observedTokens": 116443,
+          "averageScore": 85,
+          "kairnMetricEligibleCases": 2
+        }
+      }
+    }
+  },
+  "kairnCodexSession": {
+    "run": {
+      "id": "bench_f546fa6c-2e8c-464b-b4d3-eaf3f5632858",
+      "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+      "suiteId": "swe-atlas-qna-grounded-recheck",
+      "suiteName": "SWE-Atlas QnA Grounded Recheck",
+      "mode": "agent",
+      "status": "completed",
+      "startedAt": "2026-05-15T03:47:16.692Z",
+      "endedAt": "2026-05-15T03:50:08.554Z",
+      "metadata": {
+        "sessionId": "task_93505fc7-1526-44fb-b4ab-0d9541f4de3e",
+        "caseCount": 2,
+        "agentConfigured": true,
+        "assistanceMode": "kairn_codex_session"
+      }
+    },
+    "results": [
+      {
+        "id": 995,
+        "runId": "bench_f546fa6c-2e8c-464b-b4d3-eaf3f5632858",
+        "caseId": "6905333b74f22949d97baa12",
+        "caseMode": "agent",
+        "score": 85,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 45105,
+        "observedCodexTokens": 47228,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "internal/module/modifier.go",
+          "internal/module/msgmetadata.go",
+          "internal/msgpipeline/msgpipeline.go"
+        ],
+        "actualFiles": [
+          "internal/module/modifier.go",
+          "internal/module/msgmetadata.go",
+          "internal/msgpipeline/msgpipeline.go"
+        ],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "gen/",
+          "node_modules/",
+          "dist/",
+          "build/",
+          "tests/",
+          "test/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 3.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "kairn_codex_session",
+          "kairnSessionCount": 1,
+          "primeAttempted": 1,
+          "primeEmitted": 0,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 1,
+          "primeTokens": 0,
+          "primeContextEvents": 1,
+          "primeQualityEvents": 1,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 0,
+          "mcpFilesReturned": [],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-YIl5Ch",
+          "promptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+          "outputHash": "f7eb603c989f31762dc5e25a03f9a3bdc288d53b50ee9fbf661e24f9bf6a0ef0",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+          "setupCommandHash": "6c8dbe0e26aff083963b3a2822cf63d8e46723574b57edbf94278afebfb8f4b0",
+          "setupCommandExitCode": 0,
+          "setupTimedOut": false,
+          "setupSignal": null,
+          "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "setupOutputTokens": 0,
+          "assistanceSetupMs": 317,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 85716,
+          "codexElapsedMs": 85716,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 1,
+          "expectedFileMentions": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/foxcpp/maddy.git",
+          "seedRef": "26452dd8dd787dc455278b0fdd296f4a5432c768",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 380,
+          "elapsedMs": 86075,
+          "codexUsage": {
+            "totalTokens": 47228,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "multi_file_debug",
+          "officialEvaluation": {
+            "source": "swe_atlas_qna",
+            "taskClass": "multi_file_debug",
+            "evaluator": "source_grounded_answer",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "reference answer cites 3 source files",
+              "question appears to span multiple source surfaces"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_atlas_qna",
+          "officialTaskClass": "multi_file_debug",
+          "officialEvaluator": "source_grounded_answer",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qnaEvaluation": {
+            "minSourceMentions": 1,
+            "requireNoRepoChanges": true
+          },
+          "qnaSourceMentions": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "qnaSourceMentionCount": 3,
+          "qnaMinSourceMentions": 1,
+          "qnaGroundingPassed": true,
+          "qnaNoRepoChangesPassed": true,
+          "qnaUnexpectedRepoChanges": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-15T03:48:43.184Z"
+      },
+      {
+        "id": 996,
+        "runId": "bench_f546fa6c-2e8c-464b-b4d3-eaf3f5632858",
+        "caseId": "6905333b74f22949d97ba9cf",
+        "caseMode": "agent",
+        "score": 85,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 56432,
+        "observedCodexTokens": 63528,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "scapy/arch/linux.py"
+        ],
+        "actualFiles": [
+          "scapy/arch/linux.py"
+        ],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "gen/",
+          "node_modules/",
+          "dist/",
+          "build/",
+          "tests/",
+          "test/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "kairn_codex_session",
+          "kairnSessionCount": 1,
+          "primeAttempted": 1,
+          "primeEmitted": 0,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 1,
+          "primeTokens": 0,
+          "primeContextEvents": 1,
+          "primeQualityEvents": 1,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 0,
+          "mcpFilesReturned": [],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-tSKO7s",
+          "promptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+          "outputHash": "971b486b501165ab52d839f073b281fddabf345031c06d80567687e6bcf4cd5b",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+          "setupCommandHash": "6c8dbe0e26aff083963b3a2822cf63d8e46723574b57edbf94278afebfb8f4b0",
+          "setupCommandExitCode": 0,
+          "setupTimedOut": false,
+          "setupSignal": null,
+          "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "setupOutputTokens": 0,
+          "assistanceSetupMs": 328,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 83773,
+          "codexElapsedMs": 83773,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [
+            "scapy/arch/linux.py"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/secdev/scapy.git",
+          "seedRef": "0925ada485406684174d6f068dbd85c4154657b3",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 1081,
+          "elapsedMs": 84182,
+          "codexUsage": {
+            "totalTokens": 63528,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "failure_first",
+          "officialEvaluation": {
+            "source": "swe_atlas_qna",
+            "taskClass": "failure_first_debug",
+            "evaluator": "source_grounded_answer",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "question contains failure/debug signals and should use failure-first context if output exists"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_atlas_qna",
+          "officialTaskClass": "failure_first_debug",
+          "officialEvaluator": "source_grounded_answer",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "scapy/arch/linux.py"
+          ],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qnaEvaluation": {
+            "minSourceMentions": 1,
+            "requireNoRepoChanges": true
+          },
+          "qnaSourceMentions": [
+            "scapy/arch/linux.py"
+          ],
+          "qnaSourceMentionCount": 1,
+          "qnaMinSourceMentions": 1,
+          "qnaGroundingPassed": true,
+          "qnaNoRepoChangesPassed": true,
+          "qnaUnexpectedRepoChanges": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-15T03:50:08.554Z"
+      }
+    ],
+    "overallScore": 85,
+    "observed": {
+      "codexTokens": 110756,
+      "codexCaseCount": 2
+    },
+    "weakestCases": [
+      {
+        "id": 995,
+        "runId": "bench_f546fa6c-2e8c-464b-b4d3-eaf3f5632858",
+        "caseId": "6905333b74f22949d97baa12",
+        "caseMode": "agent",
+        "score": 85,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 45105,
+        "observedCodexTokens": 47228,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "internal/module/modifier.go",
+          "internal/module/msgmetadata.go",
+          "internal/msgpipeline/msgpipeline.go"
+        ],
+        "actualFiles": [
+          "internal/module/modifier.go",
+          "internal/module/msgmetadata.go",
+          "internal/msgpipeline/msgpipeline.go"
+        ],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "gen/",
+          "node_modules/",
+          "dist/",
+          "build/",
+          "tests/",
+          "test/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 3.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "kairn_codex_session",
+          "kairnSessionCount": 1,
+          "primeAttempted": 1,
+          "primeEmitted": 0,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 1,
+          "primeTokens": 0,
+          "primeContextEvents": 1,
+          "primeQualityEvents": 1,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 0,
+          "mcpFilesReturned": [],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-YIl5Ch",
+          "promptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+          "outputHash": "f7eb603c989f31762dc5e25a03f9a3bdc288d53b50ee9fbf661e24f9bf6a0ef0",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+          "setupCommandHash": "6c8dbe0e26aff083963b3a2822cf63d8e46723574b57edbf94278afebfb8f4b0",
+          "setupCommandExitCode": 0,
+          "setupTimedOut": false,
+          "setupSignal": null,
+          "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "setupOutputTokens": 0,
+          "assistanceSetupMs": 317,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 85716,
+          "codexElapsedMs": 85716,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 1,
+          "expectedFileMentions": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/foxcpp/maddy.git",
+          "seedRef": "26452dd8dd787dc455278b0fdd296f4a5432c768",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 380,
+          "elapsedMs": 86075,
+          "codexUsage": {
+            "totalTokens": 47228,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "multi_file_debug",
+          "officialEvaluation": {
+            "source": "swe_atlas_qna",
+            "taskClass": "multi_file_debug",
+            "evaluator": "source_grounded_answer",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "reference answer cites 3 source files",
+              "question appears to span multiple source surfaces"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_atlas_qna",
+          "officialTaskClass": "multi_file_debug",
+          "officialEvaluator": "source_grounded_answer",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qnaEvaluation": {
+            "minSourceMentions": 1,
+            "requireNoRepoChanges": true
+          },
+          "qnaSourceMentions": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "qnaSourceMentionCount": 3,
+          "qnaMinSourceMentions": 1,
+          "qnaGroundingPassed": true,
+          "qnaNoRepoChangesPassed": true,
+          "qnaUnexpectedRepoChanges": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-15T03:48:43.184Z"
+      },
+      {
+        "id": 996,
+        "runId": "bench_f546fa6c-2e8c-464b-b4d3-eaf3f5632858",
+        "caseId": "6905333b74f22949d97ba9cf",
+        "caseMode": "agent",
+        "score": 85,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 56432,
+        "observedCodexTokens": 63528,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "scapy/arch/linux.py"
+        ],
+        "actualFiles": [
+          "scapy/arch/linux.py"
+        ],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "gen/",
+          "node_modules/",
+          "dist/",
+          "build/",
+          "tests/",
+          "test/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "kairn_codex_session",
+          "kairnSessionCount": 1,
+          "primeAttempted": 1,
+          "primeEmitted": 0,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 1,
+          "primeTokens": 0,
+          "primeContextEvents": 1,
+          "primeQualityEvents": 1,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 0,
+          "mcpFilesReturned": [],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-tSKO7s",
+          "promptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+          "outputHash": "971b486b501165ab52d839f073b281fddabf345031c06d80567687e6bcf4cd5b",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+          "setupCommandHash": "6c8dbe0e26aff083963b3a2822cf63d8e46723574b57edbf94278afebfb8f4b0",
+          "setupCommandExitCode": 0,
+          "setupTimedOut": false,
+          "setupSignal": null,
+          "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "setupOutputTokens": 0,
+          "assistanceSetupMs": 328,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 83773,
+          "codexElapsedMs": 83773,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [
+            "scapy/arch/linux.py"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/secdev/scapy.git",
+          "seedRef": "0925ada485406684174d6f068dbd85c4154657b3",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 1081,
+          "elapsedMs": 84182,
+          "codexUsage": {
+            "totalTokens": 63528,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "failure_first",
+          "officialEvaluation": {
+            "source": "swe_atlas_qna",
+            "taskClass": "failure_first_debug",
+            "evaluator": "source_grounded_answer",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "question contains failure/debug signals and should use failure-first context if output exists"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_atlas_qna",
+          "officialTaskClass": "failure_first_debug",
+          "officialEvaluator": "source_grounded_answer",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "scapy/arch/linux.py"
+          ],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qnaEvaluation": {
+            "minSourceMentions": 1,
+            "requireNoRepoChanges": true
+          },
+          "qnaSourceMentions": [
+            "scapy/arch/linux.py"
+          ],
+          "qnaSourceMentionCount": 1,
+          "qnaMinSourceMentions": 1,
+          "qnaGroundingPassed": true,
+          "qnaNoRepoChangesPassed": true,
+          "qnaUnexpectedRepoChanges": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-15T03:50:08.554Z"
+      }
+    ],
+    "recommendations": [
+      "Response exceeded the benchmark budget; tune response routing or snippets."
+    ],
+    "officialEvaluationSummary": {
+      "totalCases": 2,
+      "kairnMetricEligibleCases": 2,
+      "byTaskClass": {
+        "multi_file_debug": {
+          "cases": 1,
+          "qualityPasses": 1,
+          "observedCases": 1,
+          "observedTokens": 47228,
+          "averageScore": 85,
+          "kairnMetricEligibleCases": 1
+        },
+        "failure_first_debug": {
+          "cases": 1,
+          "qualityPasses": 1,
+          "observedCases": 1,
+          "observedTokens": 63528,
+          "averageScore": 85,
+          "kairnMetricEligibleCases": 1
+        }
+      },
+      "byEvaluator": {
+        "source_grounded_answer": {
+          "cases": 2,
+          "qualityPasses": 2,
+          "observedCases": 2,
+          "observedTokens": 110756,
+          "averageScore": 85,
+          "kairnMetricEligibleCases": 2
+        }
+      },
+      "byApplicability": {
+        "strong": {
+          "cases": 2,
+          "qualityPasses": 2,
+          "observedCases": 2,
+          "observedTokens": 110756,
+          "averageScore": 85,
+          "kairnMetricEligibleCases": 2
+        }
+      }
+    }
+  },
+  "passiveHooks": {
+    "run": {
+      "id": "bench_6002ac87-3152-4a11-be34-2222aa8674b0",
+      "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+      "suiteId": "swe-atlas-qna-grounded-recheck",
+      "suiteName": "SWE-Atlas QnA Grounded Recheck",
+      "mode": "agent",
+      "status": "completed",
+      "startedAt": "2026-05-15T03:50:12.698Z",
+      "endedAt": "2026-05-15T03:53:22.198Z",
+      "metadata": {
+        "sessionId": "task_f5a53732-6db8-4fc0-8466-7bdfb650c72b",
+        "caseCount": 2,
+        "agentConfigured": true,
+        "assistanceMode": "baseline"
+      }
+    },
+    "results": [
+      {
+        "id": 997,
+        "runId": "bench_6002ac87-3152-4a11-be34-2222aa8674b0",
+        "caseId": "6905333b74f22949d97baa12",
+        "caseMode": "agent",
+        "score": 85,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 47614,
+        "observedCodexTokens": 48277,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "internal/module/modifier.go",
+          "internal/module/msgmetadata.go",
+          "internal/msgpipeline/msgpipeline.go"
+        ],
+        "actualFiles": [
+          "internal/module/modifier.go",
+          "internal/module/msgmetadata.go",
+          "internal/msgpipeline/msgpipeline.go"
+        ],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "gen/",
+          "node_modules/",
+          "dist/",
+          "build/",
+          "tests/",
+          "test/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 3.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "primeEmitted": 0,
+          "hookInvocations": 0,
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-tti9cI",
+          "promptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+          "outputHash": "8b3a137b501dcdebeedd8243d959b5f4d83a2bc3e9ea2310bf57b38d30fb3633",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 54961,
+          "codexElapsedMs": 54961,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/foxcpp/maddy.git",
+          "seedRef": "26452dd8dd787dc455278b0fdd296f4a5432c768",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 401,
+          "elapsedMs": 54984,
+          "codexUsage": {
+            "totalTokens": 48277,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "multi_file_debug",
+          "officialEvaluation": {
+            "source": "swe_atlas_qna",
+            "taskClass": "multi_file_debug",
+            "evaluator": "source_grounded_answer",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "reference answer cites 3 source files",
+              "question appears to span multiple source surfaces"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_atlas_qna",
+          "officialTaskClass": "multi_file_debug",
+          "officialEvaluator": "source_grounded_answer",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qnaEvaluation": {
+            "minSourceMentions": 1,
+            "requireNoRepoChanges": true
+          },
+          "qnaSourceMentions": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "qnaSourceMentionCount": 3,
+          "qnaMinSourceMentions": 1,
+          "qnaGroundingPassed": true,
+          "qnaNoRepoChangesPassed": true,
+          "qnaUnexpectedRepoChanges": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-15T03:51:08.087Z"
+      },
+      {
+        "id": 998,
+        "runId": "bench_6002ac87-3152-4a11-be34-2222aa8674b0",
+        "caseId": "6905333b74f22949d97ba9cf",
+        "caseMode": "agent",
+        "score": 85,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 248244,
+        "observedCodexTokens": 68166,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "scapy/arch/linux.py"
+        ],
+        "actualFiles": [
+          "scapy/arch/linux.py"
+        ],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "gen/",
+          "node_modules/",
+          "dist/",
+          "build/",
+          "tests/",
+          "test/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "primeEmitted": 0,
+          "hookInvocations": 0,
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-EbJc1q",
+          "promptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+          "outputHash": "f1d44f045bb405666b7b4c250c05ed8b99ce02b49d63634d1c86b8b6f8423135",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 132986,
+          "codexElapsedMs": 132986,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [
+            "scapy/arch/linux.py"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/secdev/scapy.git",
+          "seedRef": "0925ada485406684174d6f068dbd85c4154657b3",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 1009,
+          "elapsedMs": 133095,
+          "codexUsage": {
+            "totalTokens": 68166,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "failure_first",
+          "officialEvaluation": {
+            "source": "swe_atlas_qna",
+            "taskClass": "failure_first_debug",
+            "evaluator": "source_grounded_answer",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "question contains failure/debug signals and should use failure-first context if output exists"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_atlas_qna",
+          "officialTaskClass": "failure_first_debug",
+          "officialEvaluator": "source_grounded_answer",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "scapy/arch/linux.py"
+          ],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qnaEvaluation": {
+            "minSourceMentions": 1,
+            "requireNoRepoChanges": true
+          },
+          "qnaSourceMentions": [
+            "scapy/arch/linux.py"
+          ],
+          "qnaSourceMentionCount": 1,
+          "qnaMinSourceMentions": 1,
+          "qnaGroundingPassed": true,
+          "qnaNoRepoChangesPassed": true,
+          "qnaUnexpectedRepoChanges": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-15T03:53:22.197Z"
+      }
+    ],
+    "overallScore": 85,
+    "observed": {
+      "codexTokens": 116443,
+      "codexCaseCount": 2
+    },
+    "weakestCases": [
+      {
+        "id": 997,
+        "runId": "bench_6002ac87-3152-4a11-be34-2222aa8674b0",
+        "caseId": "6905333b74f22949d97baa12",
+        "caseMode": "agent",
+        "score": 85,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 47614,
+        "observedCodexTokens": 48277,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "internal/module/modifier.go",
+          "internal/module/msgmetadata.go",
+          "internal/msgpipeline/msgpipeline.go"
+        ],
+        "actualFiles": [
+          "internal/module/modifier.go",
+          "internal/module/msgmetadata.go",
+          "internal/msgpipeline/msgpipeline.go"
+        ],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "gen/",
+          "node_modules/",
+          "dist/",
+          "build/",
+          "tests/",
+          "test/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 3.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "primeEmitted": 0,
+          "hookInvocations": 0,
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-tti9cI",
+          "promptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+          "outputHash": "8b3a137b501dcdebeedd8243d959b5f4d83a2bc3e9ea2310bf57b38d30fb3633",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 54961,
+          "codexElapsedMs": 54961,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/foxcpp/maddy.git",
+          "seedRef": "26452dd8dd787dc455278b0fdd296f4a5432c768",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 401,
+          "elapsedMs": 54984,
+          "codexUsage": {
+            "totalTokens": 48277,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "multi_file_debug",
+          "officialEvaluation": {
+            "source": "swe_atlas_qna",
+            "taskClass": "multi_file_debug",
+            "evaluator": "source_grounded_answer",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "reference answer cites 3 source files",
+              "question appears to span multiple source surfaces"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_atlas_qna",
+          "officialTaskClass": "multi_file_debug",
+          "officialEvaluator": "source_grounded_answer",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qnaEvaluation": {
+            "minSourceMentions": 1,
+            "requireNoRepoChanges": true
+          },
+          "qnaSourceMentions": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "qnaSourceMentionCount": 3,
+          "qnaMinSourceMentions": 1,
+          "qnaGroundingPassed": true,
+          "qnaNoRepoChangesPassed": true,
+          "qnaUnexpectedRepoChanges": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-15T03:51:08.087Z"
+      },
+      {
+        "id": 998,
+        "runId": "bench_6002ac87-3152-4a11-be34-2222aa8674b0",
+        "caseId": "6905333b74f22949d97ba9cf",
+        "caseMode": "agent",
+        "score": 85,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 248244,
+        "observedCodexTokens": 68166,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "scapy/arch/linux.py"
+        ],
+        "actualFiles": [
+          "scapy/arch/linux.py"
+        ],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "gen/",
+          "node_modules/",
+          "dist/",
+          "build/",
+          "tests/",
+          "test/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "primeEmitted": 0,
+          "hookInvocations": 0,
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-EbJc1q",
+          "promptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+          "outputHash": "f1d44f045bb405666b7b4c250c05ed8b99ce02b49d63634d1c86b8b6f8423135",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 132986,
+          "codexElapsedMs": 132986,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [
+            "scapy/arch/linux.py"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/secdev/scapy.git",
+          "seedRef": "0925ada485406684174d6f068dbd85c4154657b3",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 1009,
+          "elapsedMs": 133095,
+          "codexUsage": {
+            "totalTokens": 68166,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "failure_first",
+          "officialEvaluation": {
+            "source": "swe_atlas_qna",
+            "taskClass": "failure_first_debug",
+            "evaluator": "source_grounded_answer",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "question contains failure/debug signals and should use failure-first context if output exists"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_atlas_qna",
+          "officialTaskClass": "failure_first_debug",
+          "officialEvaluator": "source_grounded_answer",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "scapy/arch/linux.py"
+          ],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qnaEvaluation": {
+            "minSourceMentions": 1,
+            "requireNoRepoChanges": true
+          },
+          "qnaSourceMentions": [
+            "scapy/arch/linux.py"
+          ],
+          "qnaSourceMentionCount": 1,
+          "qnaMinSourceMentions": 1,
+          "qnaGroundingPassed": true,
+          "qnaNoRepoChangesPassed": true,
+          "qnaUnexpectedRepoChanges": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-15T03:53:22.197Z"
+      }
+    ],
+    "recommendations": [
+      "Response exceeded the benchmark budget; tune response routing or snippets."
+    ],
+    "officialEvaluationSummary": {
+      "totalCases": 2,
+      "kairnMetricEligibleCases": 2,
+      "byTaskClass": {
+        "multi_file_debug": {
+          "cases": 1,
+          "qualityPasses": 1,
+          "observedCases": 1,
+          "observedTokens": 48277,
+          "averageScore": 85,
+          "kairnMetricEligibleCases": 1
+        },
+        "failure_first_debug": {
+          "cases": 1,
+          "qualityPasses": 1,
+          "observedCases": 1,
+          "observedTokens": 68166,
+          "averageScore": 85,
+          "kairnMetricEligibleCases": 1
+        }
+      },
+      "byEvaluator": {
+        "source_grounded_answer": {
+          "cases": 2,
+          "qualityPasses": 2,
+          "observedCases": 2,
+          "observedTokens": 116443,
+          "averageScore": 85,
+          "kairnMetricEligibleCases": 2
+        }
+      },
+      "byApplicability": {
+        "strong": {
+          "cases": 2,
+          "qualityPasses": 2,
+          "observedCases": 2,
+          "observedTokens": 116443,
+          "averageScore": 85,
+          "kairnMetricEligibleCases": 2
+        }
+      }
+    }
+  },
+  "proactive": {
+    "run": {
+      "id": "bench_6002ac87-3152-4a11-be34-2222aa8674b0",
+      "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+      "suiteId": "swe-atlas-qna-grounded-recheck",
+      "suiteName": "SWE-Atlas QnA Grounded Recheck",
+      "mode": "agent",
+      "status": "completed",
+      "startedAt": "2026-05-15T03:50:12.698Z",
+      "endedAt": "2026-05-15T03:53:22.198Z",
+      "metadata": {
+        "sessionId": "task_f5a53732-6db8-4fc0-8466-7bdfb650c72b",
+        "caseCount": 2,
+        "agentConfigured": true,
+        "assistanceMode": "baseline"
+      }
+    },
+    "results": [
+      {
+        "id": 997,
+        "runId": "bench_6002ac87-3152-4a11-be34-2222aa8674b0",
+        "caseId": "6905333b74f22949d97baa12",
+        "caseMode": "agent",
+        "score": 85,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 47614,
+        "observedCodexTokens": 48277,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "internal/module/modifier.go",
+          "internal/module/msgmetadata.go",
+          "internal/msgpipeline/msgpipeline.go"
+        ],
+        "actualFiles": [
+          "internal/module/modifier.go",
+          "internal/module/msgmetadata.go",
+          "internal/msgpipeline/msgpipeline.go"
+        ],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "gen/",
+          "node_modules/",
+          "dist/",
+          "build/",
+          "tests/",
+          "test/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 3.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "primeEmitted": 0,
+          "hookInvocations": 0,
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-tti9cI",
+          "promptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+          "outputHash": "8b3a137b501dcdebeedd8243d959b5f4d83a2bc3e9ea2310bf57b38d30fb3633",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 54961,
+          "codexElapsedMs": 54961,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/foxcpp/maddy.git",
+          "seedRef": "26452dd8dd787dc455278b0fdd296f4a5432c768",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 401,
+          "elapsedMs": 54984,
+          "codexUsage": {
+            "totalTokens": 48277,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "multi_file_debug",
+          "officialEvaluation": {
+            "source": "swe_atlas_qna",
+            "taskClass": "multi_file_debug",
+            "evaluator": "source_grounded_answer",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "reference answer cites 3 source files",
+              "question appears to span multiple source surfaces"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_atlas_qna",
+          "officialTaskClass": "multi_file_debug",
+          "officialEvaluator": "source_grounded_answer",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qnaEvaluation": {
+            "minSourceMentions": 1,
+            "requireNoRepoChanges": true
+          },
+          "qnaSourceMentions": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "qnaSourceMentionCount": 3,
+          "qnaMinSourceMentions": 1,
+          "qnaGroundingPassed": true,
+          "qnaNoRepoChangesPassed": true,
+          "qnaUnexpectedRepoChanges": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-15T03:51:08.087Z"
+      },
+      {
+        "id": 998,
+        "runId": "bench_6002ac87-3152-4a11-be34-2222aa8674b0",
+        "caseId": "6905333b74f22949d97ba9cf",
+        "caseMode": "agent",
+        "score": 85,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 248244,
+        "observedCodexTokens": 68166,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "scapy/arch/linux.py"
+        ],
+        "actualFiles": [
+          "scapy/arch/linux.py"
+        ],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "gen/",
+          "node_modules/",
+          "dist/",
+          "build/",
+          "tests/",
+          "test/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "primeEmitted": 0,
+          "hookInvocations": 0,
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-EbJc1q",
+          "promptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+          "outputHash": "f1d44f045bb405666b7b4c250c05ed8b99ce02b49d63634d1c86b8b6f8423135",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 132986,
+          "codexElapsedMs": 132986,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [
+            "scapy/arch/linux.py"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/secdev/scapy.git",
+          "seedRef": "0925ada485406684174d6f068dbd85c4154657b3",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 1009,
+          "elapsedMs": 133095,
+          "codexUsage": {
+            "totalTokens": 68166,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "failure_first",
+          "officialEvaluation": {
+            "source": "swe_atlas_qna",
+            "taskClass": "failure_first_debug",
+            "evaluator": "source_grounded_answer",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "question contains failure/debug signals and should use failure-first context if output exists"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_atlas_qna",
+          "officialTaskClass": "failure_first_debug",
+          "officialEvaluator": "source_grounded_answer",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "scapy/arch/linux.py"
+          ],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qnaEvaluation": {
+            "minSourceMentions": 1,
+            "requireNoRepoChanges": true
+          },
+          "qnaSourceMentions": [
+            "scapy/arch/linux.py"
+          ],
+          "qnaSourceMentionCount": 1,
+          "qnaMinSourceMentions": 1,
+          "qnaGroundingPassed": true,
+          "qnaNoRepoChangesPassed": true,
+          "qnaUnexpectedRepoChanges": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-15T03:53:22.197Z"
+      }
+    ],
+    "overallScore": 85,
+    "observed": {
+      "codexTokens": 116443,
+      "codexCaseCount": 2
+    },
+    "weakestCases": [
+      {
+        "id": 997,
+        "runId": "bench_6002ac87-3152-4a11-be34-2222aa8674b0",
+        "caseId": "6905333b74f22949d97baa12",
+        "caseMode": "agent",
+        "score": 85,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 47614,
+        "observedCodexTokens": 48277,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "internal/module/modifier.go",
+          "internal/module/msgmetadata.go",
+          "internal/msgpipeline/msgpipeline.go"
+        ],
+        "actualFiles": [
+          "internal/module/modifier.go",
+          "internal/module/msgmetadata.go",
+          "internal/msgpipeline/msgpipeline.go"
+        ],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "gen/",
+          "node_modules/",
+          "dist/",
+          "build/",
+          "tests/",
+          "test/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 3.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "primeEmitted": 0,
+          "hookInvocations": 0,
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-tti9cI",
+          "promptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+          "outputHash": "8b3a137b501dcdebeedd8243d959b5f4d83a2bc3e9ea2310bf57b38d30fb3633",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 54961,
+          "codexElapsedMs": 54961,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/foxcpp/maddy.git",
+          "seedRef": "26452dd8dd787dc455278b0fdd296f4a5432c768",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 401,
+          "elapsedMs": 54984,
+          "codexUsage": {
+            "totalTokens": 48277,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "multi_file_debug",
+          "officialEvaluation": {
+            "source": "swe_atlas_qna",
+            "taskClass": "multi_file_debug",
+            "evaluator": "source_grounded_answer",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "reference answer cites 3 source files",
+              "question appears to span multiple source surfaces"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_atlas_qna",
+          "officialTaskClass": "multi_file_debug",
+          "officialEvaluator": "source_grounded_answer",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qnaEvaluation": {
+            "minSourceMentions": 1,
+            "requireNoRepoChanges": true
+          },
+          "qnaSourceMentions": [
+            "internal/module/modifier.go",
+            "internal/module/msgmetadata.go",
+            "internal/msgpipeline/msgpipeline.go"
+          ],
+          "qnaSourceMentionCount": 3,
+          "qnaMinSourceMentions": 1,
+          "qnaGroundingPassed": true,
+          "qnaNoRepoChangesPassed": true,
+          "qnaUnexpectedRepoChanges": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-15T03:51:08.087Z"
+      },
+      {
+        "id": 998,
+        "runId": "bench_6002ac87-3152-4a11-be34-2222aa8674b0",
+        "caseId": "6905333b74f22949d97ba9cf",
+        "caseMode": "agent",
+        "score": 85,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 248244,
+        "observedCodexTokens": 68166,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "scapy/arch/linux.py"
+        ],
+        "actualFiles": [
+          "scapy/arch/linux.py"
+        ],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "gen/",
+          "node_modules/",
+          "dist/",
+          "build/",
+          "tests/",
+          "test/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "primeEmitted": 0,
+          "hookInvocations": 0,
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-EbJc1q",
+          "promptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+          "outputHash": "f1d44f045bb405666b7b4c250c05ed8b99ce02b49d63634d1c86b8b6f8423135",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 132986,
+          "codexElapsedMs": 132986,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [
+            "scapy/arch/linux.py"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/secdev/scapy.git",
+          "seedRef": "0925ada485406684174d6f068dbd85c4154657b3",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 1009,
+          "elapsedMs": 133095,
+          "codexUsage": {
+            "totalTokens": 68166,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "failure_first",
+          "officialEvaluation": {
+            "source": "swe_atlas_qna",
+            "taskClass": "failure_first_debug",
+            "evaluator": "source_grounded_answer",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "question contains failure/debug signals and should use failure-first context if output exists"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_atlas_qna",
+          "officialTaskClass": "failure_first_debug",
+          "officialEvaluator": "source_grounded_answer",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "scapy/arch/linux.py"
+          ],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qnaEvaluation": {
+            "minSourceMentions": 1,
+            "requireNoRepoChanges": true
+          },
+          "qnaSourceMentions": [
+            "scapy/arch/linux.py"
+          ],
+          "qnaSourceMentionCount": 1,
+          "qnaMinSourceMentions": 1,
+          "qnaGroundingPassed": true,
+          "qnaNoRepoChangesPassed": true,
+          "qnaUnexpectedRepoChanges": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-15T03:53:22.197Z"
+      }
+    ],
+    "recommendations": [
+      "Response exceeded the benchmark budget; tune response routing or snippets."
+    ],
+    "officialEvaluationSummary": {
+      "totalCases": 2,
+      "kairnMetricEligibleCases": 2,
+      "byTaskClass": {
+        "multi_file_debug": {
+          "cases": 1,
+          "qualityPasses": 1,
+          "observedCases": 1,
+          "observedTokens": 48277,
+          "averageScore": 85,
+          "kairnMetricEligibleCases": 1
+        },
+        "failure_first_debug": {
+          "cases": 1,
+          "qualityPasses": 1,
+          "observedCases": 1,
+          "observedTokens": 68166,
+          "averageScore": 85,
+          "kairnMetricEligibleCases": 1
+        }
+      },
+      "byEvaluator": {
+        "source_grounded_answer": {
+          "cases": 2,
+          "qualityPasses": 2,
+          "observedCases": 2,
+          "observedTokens": 116443,
+          "averageScore": 85,
+          "kairnMetricEligibleCases": 2
+        }
+      },
+      "byApplicability": {
+        "strong": {
+          "cases": 2,
+          "qualityPasses": 2,
+          "observedCases": 2,
+          "observedTokens": 116443,
+          "averageScore": 85,
+          "kairnMetricEligibleCases": 2
+        }
+      }
+    }
+  },
+  "runs": {
+    "baseline": [
+      {
+        "run": {
+          "id": "bench_6002ac87-3152-4a11-be34-2222aa8674b0",
+          "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+          "suiteId": "swe-atlas-qna-grounded-recheck",
+          "suiteName": "SWE-Atlas QnA Grounded Recheck",
+          "mode": "agent",
+          "status": "completed",
+          "startedAt": "2026-05-15T03:50:12.698Z",
+          "endedAt": "2026-05-15T03:53:22.198Z",
+          "metadata": {
+            "sessionId": "task_f5a53732-6db8-4fc0-8466-7bdfb650c72b",
+            "caseCount": 2,
+            "agentConfigured": true,
+            "assistanceMode": "baseline"
+          }
+        },
+        "results": [
+          {
+            "id": 997,
+            "runId": "bench_6002ac87-3152-4a11-be34-2222aa8674b0",
+            "caseId": "6905333b74f22949d97baa12",
+            "caseMode": "agent",
+            "score": 85,
+            "expectedFileRecall": 1,
+            "topKHitRate": 1,
+            "unexpectedFileRate": 0,
+            "responseTokens": 47614,
+            "observedCodexTokens": 48277,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "pass",
+            "expectedFiles": [
+              "internal/module/modifier.go",
+              "internal/module/msgmetadata.go",
+              "internal/msgpipeline/msgpipeline.go"
+            ],
+            "actualFiles": [
+              "internal/module/modifier.go",
+              "internal/module/msgmetadata.go",
+              "internal/msgpipeline/msgpipeline.go"
+            ],
+            "excludedFiles": [
+              "docs/",
+              "doc/",
+              "examples/",
+              "example/",
+              "fixtures/",
+              "generated/",
+              "gen/",
+              "node_modules/",
+              "dist/",
+              "build/",
+              "tests/",
+              "test/"
+            ],
+            "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 3.",
+            "recommendations": [
+              "Response exceeded the benchmark budget; tune response routing or snippets."
+            ],
+            "metadata": {
+              "assistanceMode": "baseline",
+              "primeEmitted": 0,
+              "hookInvocations": 0,
+              "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-tti9cI",
+              "promptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+              "outputHash": "8b3a137b501dcdebeedd8243d959b5f4d83a2bc3e9ea2310bf57b38d30fb3633",
+              "adapter": "command",
+              "hookCompleted": 0,
+              "hookFailed": 0,
+              "kairnMcpToolMentions": 0,
+              "actualMcpToolCalls": 0,
+              "actualMcpToolNames": [],
+              "actualMcpToolCallSource": "none",
+              "actualMcpFiles": [],
+              "mcpReturnedFileCount": 0,
+              "mcpReturnedExpectedFileCount": 0,
+              "mcpReturnedNoiseFileCount": 0,
+              "mcpReturnedTestFanoutCount": 0,
+              "mcpContextEfficiency": 1,
+              "originalPromptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+              "assistanceSetupMs": 0,
+              "promptPrepareMs": 0,
+              "agentElapsedMs": 54961,
+              "codexElapsedMs": 54961,
+              "agentTimedOut": false,
+              "agentTimeoutMs": 240000,
+              "verificationElapsedMs": 0,
+              "expectedFileMentions": [
+                "internal/module/modifier.go",
+                "internal/module/msgmetadata.go",
+                "internal/msgpipeline/msgpipeline.go"
+              ],
+              "changedFiles": [],
+              "seedPatchFiles": [],
+              "setupChangedFiles": [],
+              "agentChangedFiles": [],
+              "requiredTouchedFiles": [],
+              "requiredTouchedSatisfied": true,
+              "missingRequiredTouchedFiles": [],
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "scopeViolations": [],
+              "sourceScopeDiscipline": "passed",
+              "unrelatedFilesTouched": [],
+              "testsEdited": [],
+              "scopeExpanded": false,
+              "scopeExpansionReason": null,
+              "seedConfigured": true,
+              "seedRepoUrl": "https://github.com/foxcpp/maddy.git",
+              "seedRef": "26452dd8dd787dc455278b0fdd296f4a5432c768",
+              "seedCloneDepth": 1,
+              "seedSetupCommandCount": 0,
+              "seedHasPatch": false,
+              "seedPatchFileHashes": {},
+              "seedCommandNormalization": {
+                "pythonToPython3": false
+              },
+              "workspaceSetupMs": 401,
+              "elapsedMs": 54984,
+              "codexUsage": {
+                "totalTokens": 48277,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "contextBehavior": "multi_file_debug",
+              "officialEvaluation": {
+                "source": "swe_atlas_qna",
+                "taskClass": "multi_file_debug",
+                "evaluator": "source_grounded_answer",
+                "kairnApplicability": "strong",
+                "kairnMetricEligible": true,
+                "liveRisk": "medium",
+                "reasons": [
+                  "reference answer cites 3 source files",
+                  "question appears to span multiple source surfaces"
+                ],
+                "recommendedModes": [
+                  "baseline",
+                  "kairn_codex_session",
+                  "real_mcp_first"
+                ]
+              },
+              "officialBenchmarkSource": "swe_atlas_qna",
+              "officialTaskClass": "multi_file_debug",
+              "officialEvaluator": "source_grounded_answer",
+              "kairnApplicability": "strong",
+              "kairnMetricEligible": true,
+              "officialLiveRisk": "medium",
+              "missedExpectedFiles": [],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [
+                "internal/module/modifier.go",
+                "internal/module/msgmetadata.go",
+                "internal/msgpipeline/msgpipeline.go"
+              ],
+              "minExpectedHits": 1,
+              "rawExpectedCoverageSatisfied": true,
+              "expectedCoverageSatisfied": true,
+              "sourceScopeCoverageOverride": false,
+              "effectiveExpectedFileRecall": 1,
+              "requiredTouchedFilesTouched": [],
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "productionOnlyScopeExpected": false,
+              "testEditViolationFiles": [],
+              "extraProductionEditViolationFiles": [],
+              "qnaEvaluation": {
+                "minSourceMentions": 1,
+                "requireNoRepoChanges": true
+              },
+              "qnaSourceMentions": [
+                "internal/module/modifier.go",
+                "internal/module/msgmetadata.go",
+                "internal/msgpipeline/msgpipeline.go"
+              ],
+              "qnaSourceMentionCount": 3,
+              "qnaMinSourceMentions": 1,
+              "qnaGroundingPassed": true,
+              "qnaNoRepoChangesPassed": true,
+              "qnaUnexpectedRepoChanges": [],
+              "qualityGatePassed": true,
+              "validSavings": true,
+              "invalidSavings": false
+            },
+            "createdAt": "2026-05-15T03:51:08.087Z"
+          },
+          {
+            "id": 998,
+            "runId": "bench_6002ac87-3152-4a11-be34-2222aa8674b0",
+            "caseId": "6905333b74f22949d97ba9cf",
+            "caseMode": "agent",
+            "score": 85,
+            "expectedFileRecall": 1,
+            "topKHitRate": 1,
+            "unexpectedFileRate": 0,
+            "responseTokens": 248244,
+            "observedCodexTokens": 68166,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "pass",
+            "expectedFiles": [
+              "scapy/arch/linux.py"
+            ],
+            "actualFiles": [
+              "scapy/arch/linux.py"
+            ],
+            "excludedFiles": [
+              "docs/",
+              "doc/",
+              "examples/",
+              "example/",
+              "fixtures/",
+              "generated/",
+              "gen/",
+              "node_modules/",
+              "dist/",
+              "build/",
+              "tests/",
+              "test/"
+            ],
+            "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+            "recommendations": [
+              "Response exceeded the benchmark budget; tune response routing or snippets."
+            ],
+            "metadata": {
+              "assistanceMode": "baseline",
+              "primeEmitted": 0,
+              "hookInvocations": 0,
+              "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-EbJc1q",
+              "promptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+              "outputHash": "f1d44f045bb405666b7b4c250c05ed8b99ce02b49d63634d1c86b8b6f8423135",
+              "adapter": "command",
+              "hookCompleted": 0,
+              "hookFailed": 0,
+              "kairnMcpToolMentions": 0,
+              "actualMcpToolCalls": 0,
+              "actualMcpToolNames": [],
+              "actualMcpToolCallSource": "none",
+              "actualMcpFiles": [],
+              "mcpReturnedFileCount": 0,
+              "mcpReturnedExpectedFileCount": 0,
+              "mcpReturnedNoiseFileCount": 0,
+              "mcpReturnedTestFanoutCount": 0,
+              "mcpContextEfficiency": 1,
+              "originalPromptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+              "assistanceSetupMs": 0,
+              "promptPrepareMs": 0,
+              "agentElapsedMs": 132986,
+              "codexElapsedMs": 132986,
+              "agentTimedOut": false,
+              "agentTimeoutMs": 240000,
+              "verificationElapsedMs": 0,
+              "expectedFileMentions": [
+                "scapy/arch/linux.py"
+              ],
+              "changedFiles": [],
+              "seedPatchFiles": [],
+              "setupChangedFiles": [],
+              "agentChangedFiles": [],
+              "requiredTouchedFiles": [],
+              "requiredTouchedSatisfied": true,
+              "missingRequiredTouchedFiles": [],
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "scopeViolations": [],
+              "sourceScopeDiscipline": "passed",
+              "unrelatedFilesTouched": [],
+              "testsEdited": [],
+              "scopeExpanded": false,
+              "scopeExpansionReason": null,
+              "seedConfigured": true,
+              "seedRepoUrl": "https://github.com/secdev/scapy.git",
+              "seedRef": "0925ada485406684174d6f068dbd85c4154657b3",
+              "seedCloneDepth": 1,
+              "seedSetupCommandCount": 0,
+              "seedHasPatch": false,
+              "seedPatchFileHashes": {},
+              "seedCommandNormalization": {
+                "pythonToPython3": false
+              },
+              "workspaceSetupMs": 1009,
+              "elapsedMs": 133095,
+              "codexUsage": {
+                "totalTokens": 68166,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "contextBehavior": "failure_first",
+              "officialEvaluation": {
+                "source": "swe_atlas_qna",
+                "taskClass": "failure_first_debug",
+                "evaluator": "source_grounded_answer",
+                "kairnApplicability": "strong",
+                "kairnMetricEligible": true,
+                "liveRisk": "medium",
+                "reasons": [
+                  "question contains failure/debug signals and should use failure-first context if output exists"
+                ],
+                "recommendedModes": [
+                  "baseline",
+                  "kairn_codex_session",
+                  "real_mcp_first"
+                ]
+              },
+              "officialBenchmarkSource": "swe_atlas_qna",
+              "officialTaskClass": "failure_first_debug",
+              "officialEvaluator": "source_grounded_answer",
+              "kairnApplicability": "strong",
+              "kairnMetricEligible": true,
+              "officialLiveRisk": "medium",
+              "missedExpectedFiles": [],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [
+                "scapy/arch/linux.py"
+              ],
+              "minExpectedHits": 1,
+              "rawExpectedCoverageSatisfied": true,
+              "expectedCoverageSatisfied": true,
+              "sourceScopeCoverageOverride": false,
+              "effectiveExpectedFileRecall": 1,
+              "requiredTouchedFilesTouched": [],
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "productionOnlyScopeExpected": false,
+              "testEditViolationFiles": [],
+              "extraProductionEditViolationFiles": [],
+              "qnaEvaluation": {
+                "minSourceMentions": 1,
+                "requireNoRepoChanges": true
+              },
+              "qnaSourceMentions": [
+                "scapy/arch/linux.py"
+              ],
+              "qnaSourceMentionCount": 1,
+              "qnaMinSourceMentions": 1,
+              "qnaGroundingPassed": true,
+              "qnaNoRepoChangesPassed": true,
+              "qnaUnexpectedRepoChanges": [],
+              "qualityGatePassed": true,
+              "validSavings": true,
+              "invalidSavings": false
+            },
+            "createdAt": "2026-05-15T03:53:22.197Z"
+          }
+        ],
+        "overallScore": 85,
+        "observed": {
+          "codexTokens": 116443,
+          "codexCaseCount": 2
+        },
+        "weakestCases": [
+          {
+            "id": 997,
+            "runId": "bench_6002ac87-3152-4a11-be34-2222aa8674b0",
+            "caseId": "6905333b74f22949d97baa12",
+            "caseMode": "agent",
+            "score": 85,
+            "expectedFileRecall": 1,
+            "topKHitRate": 1,
+            "unexpectedFileRate": 0,
+            "responseTokens": 47614,
+            "observedCodexTokens": 48277,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "pass",
+            "expectedFiles": [
+              "internal/module/modifier.go",
+              "internal/module/msgmetadata.go",
+              "internal/msgpipeline/msgpipeline.go"
+            ],
+            "actualFiles": [
+              "internal/module/modifier.go",
+              "internal/module/msgmetadata.go",
+              "internal/msgpipeline/msgpipeline.go"
+            ],
+            "excludedFiles": [
+              "docs/",
+              "doc/",
+              "examples/",
+              "example/",
+              "fixtures/",
+              "generated/",
+              "gen/",
+              "node_modules/",
+              "dist/",
+              "build/",
+              "tests/",
+              "test/"
+            ],
+            "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 3.",
+            "recommendations": [
+              "Response exceeded the benchmark budget; tune response routing or snippets."
+            ],
+            "metadata": {
+              "assistanceMode": "baseline",
+              "primeEmitted": 0,
+              "hookInvocations": 0,
+              "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-tti9cI",
+              "promptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+              "outputHash": "8b3a137b501dcdebeedd8243d959b5f4d83a2bc3e9ea2310bf57b38d30fb3633",
+              "adapter": "command",
+              "hookCompleted": 0,
+              "hookFailed": 0,
+              "kairnMcpToolMentions": 0,
+              "actualMcpToolCalls": 0,
+              "actualMcpToolNames": [],
+              "actualMcpToolCallSource": "none",
+              "actualMcpFiles": [],
+              "mcpReturnedFileCount": 0,
+              "mcpReturnedExpectedFileCount": 0,
+              "mcpReturnedNoiseFileCount": 0,
+              "mcpReturnedTestFanoutCount": 0,
+              "mcpContextEfficiency": 1,
+              "originalPromptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+              "assistanceSetupMs": 0,
+              "promptPrepareMs": 0,
+              "agentElapsedMs": 54961,
+              "codexElapsedMs": 54961,
+              "agentTimedOut": false,
+              "agentTimeoutMs": 240000,
+              "verificationElapsedMs": 0,
+              "expectedFileMentions": [
+                "internal/module/modifier.go",
+                "internal/module/msgmetadata.go",
+                "internal/msgpipeline/msgpipeline.go"
+              ],
+              "changedFiles": [],
+              "seedPatchFiles": [],
+              "setupChangedFiles": [],
+              "agentChangedFiles": [],
+              "requiredTouchedFiles": [],
+              "requiredTouchedSatisfied": true,
+              "missingRequiredTouchedFiles": [],
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "scopeViolations": [],
+              "sourceScopeDiscipline": "passed",
+              "unrelatedFilesTouched": [],
+              "testsEdited": [],
+              "scopeExpanded": false,
+              "scopeExpansionReason": null,
+              "seedConfigured": true,
+              "seedRepoUrl": "https://github.com/foxcpp/maddy.git",
+              "seedRef": "26452dd8dd787dc455278b0fdd296f4a5432c768",
+              "seedCloneDepth": 1,
+              "seedSetupCommandCount": 0,
+              "seedHasPatch": false,
+              "seedPatchFileHashes": {},
+              "seedCommandNormalization": {
+                "pythonToPython3": false
+              },
+              "workspaceSetupMs": 401,
+              "elapsedMs": 54984,
+              "codexUsage": {
+                "totalTokens": 48277,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "contextBehavior": "multi_file_debug",
+              "officialEvaluation": {
+                "source": "swe_atlas_qna",
+                "taskClass": "multi_file_debug",
+                "evaluator": "source_grounded_answer",
+                "kairnApplicability": "strong",
+                "kairnMetricEligible": true,
+                "liveRisk": "medium",
+                "reasons": [
+                  "reference answer cites 3 source files",
+                  "question appears to span multiple source surfaces"
+                ],
+                "recommendedModes": [
+                  "baseline",
+                  "kairn_codex_session",
+                  "real_mcp_first"
+                ]
+              },
+              "officialBenchmarkSource": "swe_atlas_qna",
+              "officialTaskClass": "multi_file_debug",
+              "officialEvaluator": "source_grounded_answer",
+              "kairnApplicability": "strong",
+              "kairnMetricEligible": true,
+              "officialLiveRisk": "medium",
+              "missedExpectedFiles": [],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [
+                "internal/module/modifier.go",
+                "internal/module/msgmetadata.go",
+                "internal/msgpipeline/msgpipeline.go"
+              ],
+              "minExpectedHits": 1,
+              "rawExpectedCoverageSatisfied": true,
+              "expectedCoverageSatisfied": true,
+              "sourceScopeCoverageOverride": false,
+              "effectiveExpectedFileRecall": 1,
+              "requiredTouchedFilesTouched": [],
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "productionOnlyScopeExpected": false,
+              "testEditViolationFiles": [],
+              "extraProductionEditViolationFiles": [],
+              "qnaEvaluation": {
+                "minSourceMentions": 1,
+                "requireNoRepoChanges": true
+              },
+              "qnaSourceMentions": [
+                "internal/module/modifier.go",
+                "internal/module/msgmetadata.go",
+                "internal/msgpipeline/msgpipeline.go"
+              ],
+              "qnaSourceMentionCount": 3,
+              "qnaMinSourceMentions": 1,
+              "qnaGroundingPassed": true,
+              "qnaNoRepoChangesPassed": true,
+              "qnaUnexpectedRepoChanges": [],
+              "qualityGatePassed": true,
+              "validSavings": true,
+              "invalidSavings": false
+            },
+            "createdAt": "2026-05-15T03:51:08.087Z"
+          },
+          {
+            "id": 998,
+            "runId": "bench_6002ac87-3152-4a11-be34-2222aa8674b0",
+            "caseId": "6905333b74f22949d97ba9cf",
+            "caseMode": "agent",
+            "score": 85,
+            "expectedFileRecall": 1,
+            "topKHitRate": 1,
+            "unexpectedFileRate": 0,
+            "responseTokens": 248244,
+            "observedCodexTokens": 68166,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "pass",
+            "expectedFiles": [
+              "scapy/arch/linux.py"
+            ],
+            "actualFiles": [
+              "scapy/arch/linux.py"
+            ],
+            "excludedFiles": [
+              "docs/",
+              "doc/",
+              "examples/",
+              "example/",
+              "fixtures/",
+              "generated/",
+              "gen/",
+              "node_modules/",
+              "dist/",
+              "build/",
+              "tests/",
+              "test/"
+            ],
+            "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+            "recommendations": [
+              "Response exceeded the benchmark budget; tune response routing or snippets."
+            ],
+            "metadata": {
+              "assistanceMode": "baseline",
+              "primeEmitted": 0,
+              "hookInvocations": 0,
+              "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-EbJc1q",
+              "promptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+              "outputHash": "f1d44f045bb405666b7b4c250c05ed8b99ce02b49d63634d1c86b8b6f8423135",
+              "adapter": "command",
+              "hookCompleted": 0,
+              "hookFailed": 0,
+              "kairnMcpToolMentions": 0,
+              "actualMcpToolCalls": 0,
+              "actualMcpToolNames": [],
+              "actualMcpToolCallSource": "none",
+              "actualMcpFiles": [],
+              "mcpReturnedFileCount": 0,
+              "mcpReturnedExpectedFileCount": 0,
+              "mcpReturnedNoiseFileCount": 0,
+              "mcpReturnedTestFanoutCount": 0,
+              "mcpContextEfficiency": 1,
+              "originalPromptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+              "assistanceSetupMs": 0,
+              "promptPrepareMs": 0,
+              "agentElapsedMs": 132986,
+              "codexElapsedMs": 132986,
+              "agentTimedOut": false,
+              "agentTimeoutMs": 240000,
+              "verificationElapsedMs": 0,
+              "expectedFileMentions": [
+                "scapy/arch/linux.py"
+              ],
+              "changedFiles": [],
+              "seedPatchFiles": [],
+              "setupChangedFiles": [],
+              "agentChangedFiles": [],
+              "requiredTouchedFiles": [],
+              "requiredTouchedSatisfied": true,
+              "missingRequiredTouchedFiles": [],
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "scopeViolations": [],
+              "sourceScopeDiscipline": "passed",
+              "unrelatedFilesTouched": [],
+              "testsEdited": [],
+              "scopeExpanded": false,
+              "scopeExpansionReason": null,
+              "seedConfigured": true,
+              "seedRepoUrl": "https://github.com/secdev/scapy.git",
+              "seedRef": "0925ada485406684174d6f068dbd85c4154657b3",
+              "seedCloneDepth": 1,
+              "seedSetupCommandCount": 0,
+              "seedHasPatch": false,
+              "seedPatchFileHashes": {},
+              "seedCommandNormalization": {
+                "pythonToPython3": false
+              },
+              "workspaceSetupMs": 1009,
+              "elapsedMs": 133095,
+              "codexUsage": {
+                "totalTokens": 68166,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "contextBehavior": "failure_first",
+              "officialEvaluation": {
+                "source": "swe_atlas_qna",
+                "taskClass": "failure_first_debug",
+                "evaluator": "source_grounded_answer",
+                "kairnApplicability": "strong",
+                "kairnMetricEligible": true,
+                "liveRisk": "medium",
+                "reasons": [
+                  "question contains failure/debug signals and should use failure-first context if output exists"
+                ],
+                "recommendedModes": [
+                  "baseline",
+                  "kairn_codex_session",
+                  "real_mcp_first"
+                ]
+              },
+              "officialBenchmarkSource": "swe_atlas_qna",
+              "officialTaskClass": "failure_first_debug",
+              "officialEvaluator": "source_grounded_answer",
+              "kairnApplicability": "strong",
+              "kairnMetricEligible": true,
+              "officialLiveRisk": "medium",
+              "missedExpectedFiles": [],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [
+                "scapy/arch/linux.py"
+              ],
+              "minExpectedHits": 1,
+              "rawExpectedCoverageSatisfied": true,
+              "expectedCoverageSatisfied": true,
+              "sourceScopeCoverageOverride": false,
+              "effectiveExpectedFileRecall": 1,
+              "requiredTouchedFilesTouched": [],
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "productionOnlyScopeExpected": false,
+              "testEditViolationFiles": [],
+              "extraProductionEditViolationFiles": [],
+              "qnaEvaluation": {
+                "minSourceMentions": 1,
+                "requireNoRepoChanges": true
+              },
+              "qnaSourceMentions": [
+                "scapy/arch/linux.py"
+              ],
+              "qnaSourceMentionCount": 1,
+              "qnaMinSourceMentions": 1,
+              "qnaGroundingPassed": true,
+              "qnaNoRepoChangesPassed": true,
+              "qnaUnexpectedRepoChanges": [],
+              "qualityGatePassed": true,
+              "validSavings": true,
+              "invalidSavings": false
+            },
+            "createdAt": "2026-05-15T03:53:22.197Z"
+          }
+        ],
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "officialEvaluationSummary": {
+          "totalCases": 2,
+          "kairnMetricEligibleCases": 2,
+          "byTaskClass": {
+            "multi_file_debug": {
+              "cases": 1,
+              "qualityPasses": 1,
+              "observedCases": 1,
+              "observedTokens": 48277,
+              "averageScore": 85,
+              "kairnMetricEligibleCases": 1
+            },
+            "failure_first_debug": {
+              "cases": 1,
+              "qualityPasses": 1,
+              "observedCases": 1,
+              "observedTokens": 68166,
+              "averageScore": 85,
+              "kairnMetricEligibleCases": 1
+            }
+          },
+          "byEvaluator": {
+            "source_grounded_answer": {
+              "cases": 2,
+              "qualityPasses": 2,
+              "observedCases": 2,
+              "observedTokens": 116443,
+              "averageScore": 85,
+              "kairnMetricEligibleCases": 2
+            }
+          },
+          "byApplicability": {
+            "strong": {
+              "cases": 2,
+              "qualityPasses": 2,
+              "observedCases": 2,
+              "observedTokens": 116443,
+              "averageScore": 85,
+              "kairnMetricEligibleCases": 2
+            }
+          }
+        }
+      }
+    ],
+    "prompt_only": [],
+    "prompt_plus_hooks": [],
+    "manual_prime": [],
+    "hook_full_prime": [],
+    "hook_tiny_directive": [],
+    "hook_tiny_with_failures": [],
+    "kairn_codex_session": [
+      {
+        "run": {
+          "id": "bench_f546fa6c-2e8c-464b-b4d3-eaf3f5632858",
+          "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+          "suiteId": "swe-atlas-qna-grounded-recheck",
+          "suiteName": "SWE-Atlas QnA Grounded Recheck",
+          "mode": "agent",
+          "status": "completed",
+          "startedAt": "2026-05-15T03:47:16.692Z",
+          "endedAt": "2026-05-15T03:50:08.554Z",
+          "metadata": {
+            "sessionId": "task_93505fc7-1526-44fb-b4ab-0d9541f4de3e",
+            "caseCount": 2,
+            "agentConfigured": true,
+            "assistanceMode": "kairn_codex_session"
+          }
+        },
+        "results": [
+          {
+            "id": 995,
+            "runId": "bench_f546fa6c-2e8c-464b-b4d3-eaf3f5632858",
+            "caseId": "6905333b74f22949d97baa12",
+            "caseMode": "agent",
+            "score": 85,
+            "expectedFileRecall": 1,
+            "topKHitRate": 1,
+            "unexpectedFileRate": 0,
+            "responseTokens": 45105,
+            "observedCodexTokens": 47228,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "pass",
+            "expectedFiles": [
+              "internal/module/modifier.go",
+              "internal/module/msgmetadata.go",
+              "internal/msgpipeline/msgpipeline.go"
+            ],
+            "actualFiles": [
+              "internal/module/modifier.go",
+              "internal/module/msgmetadata.go",
+              "internal/msgpipeline/msgpipeline.go"
+            ],
+            "excludedFiles": [
+              "docs/",
+              "doc/",
+              "examples/",
+              "example/",
+              "fixtures/",
+              "generated/",
+              "gen/",
+              "node_modules/",
+              "dist/",
+              "build/",
+              "tests/",
+              "test/"
+            ],
+            "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 3.",
+            "recommendations": [
+              "Response exceeded the benchmark budget; tune response routing or snippets."
+            ],
+            "metadata": {
+              "assistanceMode": "kairn_codex_session",
+              "kairnSessionCount": 1,
+              "primeAttempted": 1,
+              "primeEmitted": 0,
+              "primeSuppressed": 0,
+              "primeEvidenceRequested": 1,
+              "primeTokens": 0,
+              "primeContextEvents": 1,
+              "primeQualityEvents": 1,
+              "hookInvocations": 0,
+              "failureContextUsed": 0,
+              "mcpToolCalls": 0,
+              "mcpFilesReturned": [],
+              "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-YIl5Ch",
+              "promptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+              "outputHash": "f7eb603c989f31762dc5e25a03f9a3bdc288d53b50ee9fbf661e24f9bf6a0ef0",
+              "adapter": "command",
+              "hookCompleted": 0,
+              "hookFailed": 0,
+              "kairnMcpToolMentions": 0,
+              "actualMcpToolCalls": 0,
+              "actualMcpToolNames": [],
+              "actualMcpToolCallSource": "none",
+              "actualMcpFiles": [],
+              "mcpReturnedFileCount": 0,
+              "mcpReturnedExpectedFileCount": 0,
+              "mcpReturnedNoiseFileCount": 0,
+              "mcpReturnedTestFanoutCount": 0,
+              "mcpContextEfficiency": 1,
+              "originalPromptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+              "setupCommandHash": "6c8dbe0e26aff083963b3a2822cf63d8e46723574b57edbf94278afebfb8f4b0",
+              "setupCommandExitCode": 0,
+              "setupTimedOut": false,
+              "setupSignal": null,
+              "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "setupOutputTokens": 0,
+              "assistanceSetupMs": 317,
+              "promptPrepareMs": 0,
+              "agentElapsedMs": 85716,
+              "codexElapsedMs": 85716,
+              "agentTimedOut": false,
+              "agentTimeoutMs": 240000,
+              "verificationElapsedMs": 1,
+              "expectedFileMentions": [
+                "internal/module/modifier.go",
+                "internal/module/msgmetadata.go",
+                "internal/msgpipeline/msgpipeline.go"
+              ],
+              "changedFiles": [],
+              "seedPatchFiles": [],
+              "setupChangedFiles": [],
+              "agentChangedFiles": [],
+              "requiredTouchedFiles": [],
+              "requiredTouchedSatisfied": true,
+              "missingRequiredTouchedFiles": [],
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "scopeViolations": [],
+              "sourceScopeDiscipline": "passed",
+              "unrelatedFilesTouched": [],
+              "testsEdited": [],
+              "scopeExpanded": false,
+              "scopeExpansionReason": null,
+              "seedConfigured": true,
+              "seedRepoUrl": "https://github.com/foxcpp/maddy.git",
+              "seedRef": "26452dd8dd787dc455278b0fdd296f4a5432c768",
+              "seedCloneDepth": 1,
+              "seedSetupCommandCount": 0,
+              "seedHasPatch": false,
+              "seedPatchFileHashes": {},
+              "seedCommandNormalization": {
+                "pythonToPython3": false
+              },
+              "workspaceSetupMs": 380,
+              "elapsedMs": 86075,
+              "codexUsage": {
+                "totalTokens": 47228,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "contextBehavior": "multi_file_debug",
+              "officialEvaluation": {
+                "source": "swe_atlas_qna",
+                "taskClass": "multi_file_debug",
+                "evaluator": "source_grounded_answer",
+                "kairnApplicability": "strong",
+                "kairnMetricEligible": true,
+                "liveRisk": "medium",
+                "reasons": [
+                  "reference answer cites 3 source files",
+                  "question appears to span multiple source surfaces"
+                ],
+                "recommendedModes": [
+                  "baseline",
+                  "kairn_codex_session",
+                  "real_mcp_first"
+                ]
+              },
+              "officialBenchmarkSource": "swe_atlas_qna",
+              "officialTaskClass": "multi_file_debug",
+              "officialEvaluator": "source_grounded_answer",
+              "kairnApplicability": "strong",
+              "kairnMetricEligible": true,
+              "officialLiveRisk": "medium",
+              "missedExpectedFiles": [],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [
+                "internal/module/modifier.go",
+                "internal/module/msgmetadata.go",
+                "internal/msgpipeline/msgpipeline.go"
+              ],
+              "minExpectedHits": 1,
+              "rawExpectedCoverageSatisfied": true,
+              "expectedCoverageSatisfied": true,
+              "sourceScopeCoverageOverride": false,
+              "effectiveExpectedFileRecall": 1,
+              "requiredTouchedFilesTouched": [],
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "productionOnlyScopeExpected": false,
+              "testEditViolationFiles": [],
+              "extraProductionEditViolationFiles": [],
+              "qnaEvaluation": {
+                "minSourceMentions": 1,
+                "requireNoRepoChanges": true
+              },
+              "qnaSourceMentions": [
+                "internal/module/modifier.go",
+                "internal/module/msgmetadata.go",
+                "internal/msgpipeline/msgpipeline.go"
+              ],
+              "qnaSourceMentionCount": 3,
+              "qnaMinSourceMentions": 1,
+              "qnaGroundingPassed": true,
+              "qnaNoRepoChangesPassed": true,
+              "qnaUnexpectedRepoChanges": [],
+              "qualityGatePassed": true,
+              "validSavings": true,
+              "invalidSavings": false
+            },
+            "createdAt": "2026-05-15T03:48:43.184Z"
+          },
+          {
+            "id": 996,
+            "runId": "bench_f546fa6c-2e8c-464b-b4d3-eaf3f5632858",
+            "caseId": "6905333b74f22949d97ba9cf",
+            "caseMode": "agent",
+            "score": 85,
+            "expectedFileRecall": 1,
+            "topKHitRate": 1,
+            "unexpectedFileRate": 0,
+            "responseTokens": 56432,
+            "observedCodexTokens": 63528,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "pass",
+            "expectedFiles": [
+              "scapy/arch/linux.py"
+            ],
+            "actualFiles": [
+              "scapy/arch/linux.py"
+            ],
+            "excludedFiles": [
+              "docs/",
+              "doc/",
+              "examples/",
+              "example/",
+              "fixtures/",
+              "generated/",
+              "gen/",
+              "node_modules/",
+              "dist/",
+              "build/",
+              "tests/",
+              "test/"
+            ],
+            "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+            "recommendations": [
+              "Response exceeded the benchmark budget; tune response routing or snippets."
+            ],
+            "metadata": {
+              "assistanceMode": "kairn_codex_session",
+              "kairnSessionCount": 1,
+              "primeAttempted": 1,
+              "primeEmitted": 0,
+              "primeSuppressed": 0,
+              "primeEvidenceRequested": 1,
+              "primeTokens": 0,
+              "primeContextEvents": 1,
+              "primeQualityEvents": 1,
+              "hookInvocations": 0,
+              "failureContextUsed": 0,
+              "mcpToolCalls": 0,
+              "mcpFilesReturned": [],
+              "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-tSKO7s",
+              "promptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+              "outputHash": "971b486b501165ab52d839f073b281fddabf345031c06d80567687e6bcf4cd5b",
+              "adapter": "command",
+              "hookCompleted": 0,
+              "hookFailed": 0,
+              "kairnMcpToolMentions": 0,
+              "actualMcpToolCalls": 0,
+              "actualMcpToolNames": [],
+              "actualMcpToolCallSource": "none",
+              "actualMcpFiles": [],
+              "mcpReturnedFileCount": 0,
+              "mcpReturnedExpectedFileCount": 0,
+              "mcpReturnedNoiseFileCount": 0,
+              "mcpReturnedTestFanoutCount": 0,
+              "mcpContextEfficiency": 1,
+              "originalPromptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+              "setupCommandHash": "6c8dbe0e26aff083963b3a2822cf63d8e46723574b57edbf94278afebfb8f4b0",
+              "setupCommandExitCode": 0,
+              "setupTimedOut": false,
+              "setupSignal": null,
+              "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "setupOutputTokens": 0,
+              "assistanceSetupMs": 328,
+              "promptPrepareMs": 0,
+              "agentElapsedMs": 83773,
+              "codexElapsedMs": 83773,
+              "agentTimedOut": false,
+              "agentTimeoutMs": 240000,
+              "verificationElapsedMs": 0,
+              "expectedFileMentions": [
+                "scapy/arch/linux.py"
+              ],
+              "changedFiles": [],
+              "seedPatchFiles": [],
+              "setupChangedFiles": [],
+              "agentChangedFiles": [],
+              "requiredTouchedFiles": [],
+              "requiredTouchedSatisfied": true,
+              "missingRequiredTouchedFiles": [],
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "scopeViolations": [],
+              "sourceScopeDiscipline": "passed",
+              "unrelatedFilesTouched": [],
+              "testsEdited": [],
+              "scopeExpanded": false,
+              "scopeExpansionReason": null,
+              "seedConfigured": true,
+              "seedRepoUrl": "https://github.com/secdev/scapy.git",
+              "seedRef": "0925ada485406684174d6f068dbd85c4154657b3",
+              "seedCloneDepth": 1,
+              "seedSetupCommandCount": 0,
+              "seedHasPatch": false,
+              "seedPatchFileHashes": {},
+              "seedCommandNormalization": {
+                "pythonToPython3": false
+              },
+              "workspaceSetupMs": 1081,
+              "elapsedMs": 84182,
+              "codexUsage": {
+                "totalTokens": 63528,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "contextBehavior": "failure_first",
+              "officialEvaluation": {
+                "source": "swe_atlas_qna",
+                "taskClass": "failure_first_debug",
+                "evaluator": "source_grounded_answer",
+                "kairnApplicability": "strong",
+                "kairnMetricEligible": true,
+                "liveRisk": "medium",
+                "reasons": [
+                  "question contains failure/debug signals and should use failure-first context if output exists"
+                ],
+                "recommendedModes": [
+                  "baseline",
+                  "kairn_codex_session",
+                  "real_mcp_first"
+                ]
+              },
+              "officialBenchmarkSource": "swe_atlas_qna",
+              "officialTaskClass": "failure_first_debug",
+              "officialEvaluator": "source_grounded_answer",
+              "kairnApplicability": "strong",
+              "kairnMetricEligible": true,
+              "officialLiveRisk": "medium",
+              "missedExpectedFiles": [],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [
+                "scapy/arch/linux.py"
+              ],
+              "minExpectedHits": 1,
+              "rawExpectedCoverageSatisfied": true,
+              "expectedCoverageSatisfied": true,
+              "sourceScopeCoverageOverride": false,
+              "effectiveExpectedFileRecall": 1,
+              "requiredTouchedFilesTouched": [],
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "productionOnlyScopeExpected": false,
+              "testEditViolationFiles": [],
+              "extraProductionEditViolationFiles": [],
+              "qnaEvaluation": {
+                "minSourceMentions": 1,
+                "requireNoRepoChanges": true
+              },
+              "qnaSourceMentions": [
+                "scapy/arch/linux.py"
+              ],
+              "qnaSourceMentionCount": 1,
+              "qnaMinSourceMentions": 1,
+              "qnaGroundingPassed": true,
+              "qnaNoRepoChangesPassed": true,
+              "qnaUnexpectedRepoChanges": [],
+              "qualityGatePassed": true,
+              "validSavings": true,
+              "invalidSavings": false
+            },
+            "createdAt": "2026-05-15T03:50:08.554Z"
+          }
+        ],
+        "overallScore": 85,
+        "observed": {
+          "codexTokens": 110756,
+          "codexCaseCount": 2
+        },
+        "weakestCases": [
+          {
+            "id": 995,
+            "runId": "bench_f546fa6c-2e8c-464b-b4d3-eaf3f5632858",
+            "caseId": "6905333b74f22949d97baa12",
+            "caseMode": "agent",
+            "score": 85,
+            "expectedFileRecall": 1,
+            "topKHitRate": 1,
+            "unexpectedFileRate": 0,
+            "responseTokens": 45105,
+            "observedCodexTokens": 47228,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "pass",
+            "expectedFiles": [
+              "internal/module/modifier.go",
+              "internal/module/msgmetadata.go",
+              "internal/msgpipeline/msgpipeline.go"
+            ],
+            "actualFiles": [
+              "internal/module/modifier.go",
+              "internal/module/msgmetadata.go",
+              "internal/msgpipeline/msgpipeline.go"
+            ],
+            "excludedFiles": [
+              "docs/",
+              "doc/",
+              "examples/",
+              "example/",
+              "fixtures/",
+              "generated/",
+              "gen/",
+              "node_modules/",
+              "dist/",
+              "build/",
+              "tests/",
+              "test/"
+            ],
+            "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 3.",
+            "recommendations": [
+              "Response exceeded the benchmark budget; tune response routing or snippets."
+            ],
+            "metadata": {
+              "assistanceMode": "kairn_codex_session",
+              "kairnSessionCount": 1,
+              "primeAttempted": 1,
+              "primeEmitted": 0,
+              "primeSuppressed": 0,
+              "primeEvidenceRequested": 1,
+              "primeTokens": 0,
+              "primeContextEvents": 1,
+              "primeQualityEvents": 1,
+              "hookInvocations": 0,
+              "failureContextUsed": 0,
+              "mcpToolCalls": 0,
+              "mcpFilesReturned": [],
+              "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-YIl5Ch",
+              "promptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+              "outputHash": "f7eb603c989f31762dc5e25a03f9a3bdc288d53b50ee9fbf661e24f9bf6a0ef0",
+              "adapter": "command",
+              "hookCompleted": 0,
+              "hookFailed": 0,
+              "kairnMcpToolMentions": 0,
+              "actualMcpToolCalls": 0,
+              "actualMcpToolNames": [],
+              "actualMcpToolCallSource": "none",
+              "actualMcpFiles": [],
+              "mcpReturnedFileCount": 0,
+              "mcpReturnedExpectedFileCount": 0,
+              "mcpReturnedNoiseFileCount": 0,
+              "mcpReturnedTestFanoutCount": 0,
+              "mcpContextEfficiency": 1,
+              "originalPromptHash": "62812ac5206ced1b95e8be75e02991498a0d993446bb5c4cf498e812920eec5d",
+              "setupCommandHash": "6c8dbe0e26aff083963b3a2822cf63d8e46723574b57edbf94278afebfb8f4b0",
+              "setupCommandExitCode": 0,
+              "setupTimedOut": false,
+              "setupSignal": null,
+              "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "setupOutputTokens": 0,
+              "assistanceSetupMs": 317,
+              "promptPrepareMs": 0,
+              "agentElapsedMs": 85716,
+              "codexElapsedMs": 85716,
+              "agentTimedOut": false,
+              "agentTimeoutMs": 240000,
+              "verificationElapsedMs": 1,
+              "expectedFileMentions": [
+                "internal/module/modifier.go",
+                "internal/module/msgmetadata.go",
+                "internal/msgpipeline/msgpipeline.go"
+              ],
+              "changedFiles": [],
+              "seedPatchFiles": [],
+              "setupChangedFiles": [],
+              "agentChangedFiles": [],
+              "requiredTouchedFiles": [],
+              "requiredTouchedSatisfied": true,
+              "missingRequiredTouchedFiles": [],
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "scopeViolations": [],
+              "sourceScopeDiscipline": "passed",
+              "unrelatedFilesTouched": [],
+              "testsEdited": [],
+              "scopeExpanded": false,
+              "scopeExpansionReason": null,
+              "seedConfigured": true,
+              "seedRepoUrl": "https://github.com/foxcpp/maddy.git",
+              "seedRef": "26452dd8dd787dc455278b0fdd296f4a5432c768",
+              "seedCloneDepth": 1,
+              "seedSetupCommandCount": 0,
+              "seedHasPatch": false,
+              "seedPatchFileHashes": {},
+              "seedCommandNormalization": {
+                "pythonToPython3": false
+              },
+              "workspaceSetupMs": 380,
+              "elapsedMs": 86075,
+              "codexUsage": {
+                "totalTokens": 47228,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "contextBehavior": "multi_file_debug",
+              "officialEvaluation": {
+                "source": "swe_atlas_qna",
+                "taskClass": "multi_file_debug",
+                "evaluator": "source_grounded_answer",
+                "kairnApplicability": "strong",
+                "kairnMetricEligible": true,
+                "liveRisk": "medium",
+                "reasons": [
+                  "reference answer cites 3 source files",
+                  "question appears to span multiple source surfaces"
+                ],
+                "recommendedModes": [
+                  "baseline",
+                  "kairn_codex_session",
+                  "real_mcp_first"
+                ]
+              },
+              "officialBenchmarkSource": "swe_atlas_qna",
+              "officialTaskClass": "multi_file_debug",
+              "officialEvaluator": "source_grounded_answer",
+              "kairnApplicability": "strong",
+              "kairnMetricEligible": true,
+              "officialLiveRisk": "medium",
+              "missedExpectedFiles": [],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [
+                "internal/module/modifier.go",
+                "internal/module/msgmetadata.go",
+                "internal/msgpipeline/msgpipeline.go"
+              ],
+              "minExpectedHits": 1,
+              "rawExpectedCoverageSatisfied": true,
+              "expectedCoverageSatisfied": true,
+              "sourceScopeCoverageOverride": false,
+              "effectiveExpectedFileRecall": 1,
+              "requiredTouchedFilesTouched": [],
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "productionOnlyScopeExpected": false,
+              "testEditViolationFiles": [],
+              "extraProductionEditViolationFiles": [],
+              "qnaEvaluation": {
+                "minSourceMentions": 1,
+                "requireNoRepoChanges": true
+              },
+              "qnaSourceMentions": [
+                "internal/module/modifier.go",
+                "internal/module/msgmetadata.go",
+                "internal/msgpipeline/msgpipeline.go"
+              ],
+              "qnaSourceMentionCount": 3,
+              "qnaMinSourceMentions": 1,
+              "qnaGroundingPassed": true,
+              "qnaNoRepoChangesPassed": true,
+              "qnaUnexpectedRepoChanges": [],
+              "qualityGatePassed": true,
+              "validSavings": true,
+              "invalidSavings": false
+            },
+            "createdAt": "2026-05-15T03:48:43.184Z"
+          },
+          {
+            "id": 996,
+            "runId": "bench_f546fa6c-2e8c-464b-b4d3-eaf3f5632858",
+            "caseId": "6905333b74f22949d97ba9cf",
+            "caseMode": "agent",
+            "score": 85,
+            "expectedFileRecall": 1,
+            "topKHitRate": 1,
+            "unexpectedFileRate": 0,
+            "responseTokens": 56432,
+            "observedCodexTokens": 63528,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "pass",
+            "expectedFiles": [
+              "scapy/arch/linux.py"
+            ],
+            "actualFiles": [
+              "scapy/arch/linux.py"
+            ],
+            "excludedFiles": [
+              "docs/",
+              "doc/",
+              "examples/",
+              "example/",
+              "fixtures/",
+              "generated/",
+              "gen/",
+              "node_modules/",
+              "dist/",
+              "build/",
+              "tests/",
+              "test/"
+            ],
+            "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+            "recommendations": [
+              "Response exceeded the benchmark budget; tune response routing or snippets."
+            ],
+            "metadata": {
+              "assistanceMode": "kairn_codex_session",
+              "kairnSessionCount": 1,
+              "primeAttempted": 1,
+              "primeEmitted": 0,
+              "primeSuppressed": 0,
+              "primeEvidenceRequested": 1,
+              "primeTokens": 0,
+              "primeContextEvents": 1,
+              "primeQualityEvents": 1,
+              "hookInvocations": 0,
+              "failureContextUsed": 0,
+              "mcpToolCalls": 0,
+              "mcpFilesReturned": [],
+              "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-tSKO7s",
+              "promptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+              "outputHash": "971b486b501165ab52d839f073b281fddabf345031c06d80567687e6bcf4cd5b",
+              "adapter": "command",
+              "hookCompleted": 0,
+              "hookFailed": 0,
+              "kairnMcpToolMentions": 0,
+              "actualMcpToolCalls": 0,
+              "actualMcpToolNames": [],
+              "actualMcpToolCallSource": "none",
+              "actualMcpFiles": [],
+              "mcpReturnedFileCount": 0,
+              "mcpReturnedExpectedFileCount": 0,
+              "mcpReturnedNoiseFileCount": 0,
+              "mcpReturnedTestFanoutCount": 0,
+              "mcpContextEfficiency": 1,
+              "originalPromptHash": "0c8dd796d0f8e34ba8e65bdd0da55aedcaec536618bbb50cc574730799d833c1",
+              "setupCommandHash": "6c8dbe0e26aff083963b3a2822cf63d8e46723574b57edbf94278afebfb8f4b0",
+              "setupCommandExitCode": 0,
+              "setupTimedOut": false,
+              "setupSignal": null,
+              "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "setupOutputTokens": 0,
+              "assistanceSetupMs": 328,
+              "promptPrepareMs": 0,
+              "agentElapsedMs": 83773,
+              "codexElapsedMs": 83773,
+              "agentTimedOut": false,
+              "agentTimeoutMs": 240000,
+              "verificationElapsedMs": 0,
+              "expectedFileMentions": [
+                "scapy/arch/linux.py"
+              ],
+              "changedFiles": [],
+              "seedPatchFiles": [],
+              "setupChangedFiles": [],
+              "agentChangedFiles": [],
+              "requiredTouchedFiles": [],
+              "requiredTouchedSatisfied": true,
+              "missingRequiredTouchedFiles": [],
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "scopeViolations": [],
+              "sourceScopeDiscipline": "passed",
+              "unrelatedFilesTouched": [],
+              "testsEdited": [],
+              "scopeExpanded": false,
+              "scopeExpansionReason": null,
+              "seedConfigured": true,
+              "seedRepoUrl": "https://github.com/secdev/scapy.git",
+              "seedRef": "0925ada485406684174d6f068dbd85c4154657b3",
+              "seedCloneDepth": 1,
+              "seedSetupCommandCount": 0,
+              "seedHasPatch": false,
+              "seedPatchFileHashes": {},
+              "seedCommandNormalization": {
+                "pythonToPython3": false
+              },
+              "workspaceSetupMs": 1081,
+              "elapsedMs": 84182,
+              "codexUsage": {
+                "totalTokens": 63528,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "contextBehavior": "failure_first",
+              "officialEvaluation": {
+                "source": "swe_atlas_qna",
+                "taskClass": "failure_first_debug",
+                "evaluator": "source_grounded_answer",
+                "kairnApplicability": "strong",
+                "kairnMetricEligible": true,
+                "liveRisk": "medium",
+                "reasons": [
+                  "question contains failure/debug signals and should use failure-first context if output exists"
+                ],
+                "recommendedModes": [
+                  "baseline",
+                  "kairn_codex_session",
+                  "real_mcp_first"
+                ]
+              },
+              "officialBenchmarkSource": "swe_atlas_qna",
+              "officialTaskClass": "failure_first_debug",
+              "officialEvaluator": "source_grounded_answer",
+              "kairnApplicability": "strong",
+              "kairnMetricEligible": true,
+              "officialLiveRisk": "medium",
+              "missedExpectedFiles": [],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [
+                "scapy/arch/linux.py"
+              ],
+              "minExpectedHits": 1,
+              "rawExpectedCoverageSatisfied": true,
+              "expectedCoverageSatisfied": true,
+              "sourceScopeCoverageOverride": false,
+              "effectiveExpectedFileRecall": 1,
+              "requiredTouchedFilesTouched": [],
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "productionOnlyScopeExpected": false,
+              "testEditViolationFiles": [],
+              "extraProductionEditViolationFiles": [],
+              "qnaEvaluation": {
+                "minSourceMentions": 1,
+                "requireNoRepoChanges": true
+              },
+              "qnaSourceMentions": [
+                "scapy/arch/linux.py"
+              ],
+              "qnaSourceMentionCount": 1,
+              "qnaMinSourceMentions": 1,
+              "qnaGroundingPassed": true,
+              "qnaNoRepoChangesPassed": true,
+              "qnaUnexpectedRepoChanges": [],
+              "qualityGatePassed": true,
+              "validSavings": true,
+              "invalidSavings": false
+            },
+            "createdAt": "2026-05-15T03:50:08.554Z"
+          }
+        ],
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "officialEvaluationSummary": {
+          "totalCases": 2,
+          "kairnMetricEligibleCases": 2,
+          "byTaskClass": {
+            "multi_file_debug": {
+              "cases": 1,
+              "qualityPasses": 1,
+              "observedCases": 1,
+              "observedTokens": 47228,
+              "averageScore": 85,
+              "kairnMetricEligibleCases": 1
+            },
+            "failure_first_debug": {
+              "cases": 1,
+              "qualityPasses": 1,
+              "observedCases": 1,
+              "observedTokens": 63528,
+              "averageScore": 85,
+              "kairnMetricEligibleCases": 1
+            }
+          },
+          "byEvaluator": {
+            "source_grounded_answer": {
+              "cases": 2,
+              "qualityPasses": 2,
+              "observedCases": 2,
+              "observedTokens": 110756,
+              "averageScore": 85,
+              "kairnMetricEligibleCases": 2
+            }
+          },
+          "byApplicability": {
+            "strong": {
+              "cases": 2,
+              "qualityPasses": 2,
+              "observedCases": 2,
+              "observedTokens": 110756,
+              "averageScore": 85,
+              "kairnMetricEligibleCases": 2
+            }
+          }
+        }
+      }
+    ],
+    "mcp_first": [],
+    "real_mcp_first": [],
+    "mcp_first_plus_hook_full_prime": [],
+    "hybrid_mcp_brief": []
+  },
+  "aggregate": {
+    "repeat": 1,
+    "modes": {
+      "baseline": {
+        "reports": 1,
+        "meanTokens": 116443,
+        "medianTokens": 116443,
+        "qualityPassingReports": 1,
+        "caseCount": 2
+      },
+      "prompt_only": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "prompt_plus_hooks": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "manual_prime": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "hook_full_prime": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "hook_tiny_directive": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "hook_tiny_with_failures": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "kairn_codex_session": {
+        "reports": 1,
+        "meanTokens": 110756,
+        "medianTokens": 110756,
+        "qualityPassingReports": 1,
+        "caseCount": 2
+      },
+      "mcp_first": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "real_mcp_first": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "mcp_first_plus_hook_full_prime": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "hybrid_mcp_brief": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      }
+    },
+    "deltas": {
+      "promptOnlyVsBaseline": {},
+      "promptPlusHooksVsBaseline": {},
+      "manualPrimeVsBaseline": {},
+      "hookFullPrimeVsBaseline": {},
+      "kairnCodexSessionVsBaseline": {
+        "beforeMedianTokens": 116443,
+        "afterMedianTokens": 110756,
+        "savedTokens": 5687,
+        "savingsRate": 0.0488
+      },
+      "realMcpFirstVsBaseline": {},
+      "mcpFirstPlusHookFullPrimeVsBaseline": {},
+      "hybridMcpBriefVsBaseline": {}
+    }
+  },
+  "abstentionSummary": {
+    "neutral": 1
+  },
+  "behaviorTargetSummary": {
+    "multi_file_debug": {
+      "cases": 1,
+      "met": 0,
+      "missed": 1
+    },
+    "failure_first": {
+      "cases": 1,
+      "met": 0,
+      "missed": 1
+    }
+  },
+  "caseRepeatClassifications": [
+    {
+      "mode": "kairn_codex_session",
+      "caseId": "6905333b74f22949d97ba9cf",
+      "repeats": 1,
+      "qualityPasses": 1,
+      "activeRuns": 0,
+      "suppressedRuns": 0,
+      "baselineMedianTokens": 68166,
+      "modeMedianTokens": 63528,
+      "medianSavedTokens": 4638,
+      "medianSavingsRate": 0.068,
+      "classifications": {
+        "neutral": 1
+      },
+      "verdict": "insufficient_data",
+      "recommendation": "Only one repeat; treat kairn_codex_session/6905333b74f22949d97ba9cf as exploratory evidence."
+    },
+    {
+      "mode": "kairn_codex_session",
+      "caseId": "6905333b74f22949d97baa12",
+      "repeats": 1,
+      "qualityPasses": 1,
+      "activeRuns": 0,
+      "suppressedRuns": 0,
+      "baselineMedianTokens": 48277,
+      "modeMedianTokens": 47228,
+      "medianSavedTokens": 1049,
+      "medianSavingsRate": 0.0217,
+      "classifications": {
+        "neutral": 1
+      },
+      "verdict": "insufficient_data",
+      "recommendation": "Only one repeat; treat kairn_codex_session/6905333b74f22949d97baa12 as exploratory evidence."
+    }
+  ],
+  "observedTokenDeltas": {
+    "kairnCodexSessionVsBaseline": {
+      "beforeTokens": 116443,
+      "afterTokens": 110756,
+      "savedTokens": 5687,
+      "savingsRate": 0.0488,
+      "qualityGatePassed": true,
+      "assistanceStatus": "none",
+      "assistanceEligible": false,
+      "baselineDifficulty": "expensive_pass",
+      "baselineTokenCost": 116443,
+      "abstentionOutcome": "not_applicable",
+      "missedOpportunity": false,
+      "overAssist": false,
+      "harmfulAssist": false,
+      "assistClassification": "neutral",
+      "validSavings": 0,
+      "invalidSavings": 0,
+      "passiveSavings": 5687
+    }
+  },
+  "caseDeltas": [
+    {
+      "caseId": "6905333b74f22949d97baa12",
+      "baselineTokens": 48277,
+      "outcome": {
+        "baseline": "pass",
+        "passiveHooks": "skipped",
+        "proactive": "skipped"
+      }
+    },
+    {
+      "caseId": "6905333b74f22949d97ba9cf",
+      "baselineTokens": 68166,
+      "outcome": {
+        "baseline": "pass",
+        "passiveHooks": "skipped",
+        "proactive": "skipped"
+      }
+    }
+  ],
+  "recommendations": [
+    "Kairn Codex session median: saved 5687 observed Codex tokens by repeat median (5%).",
+    "Prompt-only hooks vs baseline: observed Codex usage unavailable.",
+    "Prompt+tool hooks vs baseline: observed Codex usage unavailable.",
+    "Manual prime vs baseline: observed Codex usage unavailable.",
+    "Hook full prime vs baseline: observed Codex usage unavailable.",
+    "Hook tiny directive vs baseline: observed Codex usage unavailable.",
+    "Hook tiny+failures vs baseline: observed Codex usage unavailable.",
+    "Kairn Codex session vs baseline: reduced 5687 observed Codex tokens, but this is neutral rather than Kairn-assisted savings.",
+    "MCP-first vs baseline: observed Codex usage unavailable.",
+    "Real MCP-first vs baseline: observed Codex usage unavailable.",
+    "MCP-first + full-prime hook vs baseline: observed Codex usage unavailable.",
+    "Hybrid MCP brief vs baseline: observed Codex usage unavailable.",
+    "kairn_codex_session/6905333b74f22949d97ba9cf: Only one repeat; treat kairn_codex_session/6905333b74f22949d97ba9cf as exploratory evidence.",
+    "kairn_codex_session/6905333b74f22949d97baa12: Only one repeat; treat kairn_codex_session/6905333b74f22949d97baa12 as exploratory evidence."
+  ]
+}

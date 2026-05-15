@@ -28,7 +28,13 @@ import {
 } from "../src/bench/publication.js";
 import { evaluateDiffScopes, evaluateSourceInvariants } from "../src/bench/sourceValidation.js";
 import { evaluateContextValue } from "../src/prime/contextValue.js";
-import { applyContextGovernor, classifyFileRoleV2, linearModelPrediction, buildDecisionFeatures } from "../src/prime/contextGovernor.js";
+import {
+  applyContextGovernor,
+  classifyFileRoleV2,
+  classifyTaskFrameFromTask,
+  linearModelPrediction,
+  buildDecisionFeatures
+} from "../src/prime/contextGovernor.js";
 import { formatShrunkPrimeContext } from "../src/prime/formatPrime.js";
 import { evaluatePrimeQuality, resolvePrimeProfile } from "../src/prime/quality.js";
 import { hybridSearch } from "../src/retrieval/hybridRetrieval.js";
@@ -2011,6 +2017,33 @@ describe("benchmark suite and scoring", () => {
     expect(scored.recommendations).not.toEqual(expect.arrayContaining([expect.stringContaining("Expected files missed")]));
   });
 
+  it("applies production-only scope accounting to production header fixes", () => {
+    const scored = scoreBenchmarkCase({
+      runId: "bench_prod_header",
+      benchmarkCase: {
+        id: "prod-header",
+        mode: "agent",
+        task: "Fix the production header and do not edit unrelated files.",
+        expectedFiles: ["include/fmt/base.h", "include/fmt/format-inl.h"],
+        requiredTouchedFiles: ["include/fmt/base.h"],
+        excludedFiles: []
+      },
+      actualFiles: ["include/fmt/base.h"],
+      responseTokens: 500,
+      taskOutcome: "pass",
+      summary: "Kairn kept the header edit scoped.",
+      metadata: {
+        agentChangedFiles: ["include/fmt/base.h"],
+        diffScopePassed: true,
+        scopeViolations: []
+      }
+    });
+
+    expect(scored.taskOutcome).toBe("pass");
+    expect(scored.metadata.productionOnlyScopeExpected).toBe(true);
+    expect(scored.metadata.sourceScopeCoverageOverride).toBe(true);
+  });
+
   it("scores QnA grounding by minimum source mentions instead of requiring every reference file", () => {
     const scored = scoreBenchmarkCase({
       runId: "qna_grounded",
@@ -2292,6 +2325,60 @@ describe("benchmark suite and scoring", () => {
     expect(decision.action).toBe("request_evidence");
     expect(decision.evidenceRequest?.kind).toBe("runtime_scope");
     expect(decision.featureSummary?.taskFrame).toBe("runtime_procedural");
+  });
+
+  it("distinguishes autonomous repo-grounded QnA from runtime measurement prompts", () => {
+    expect(classifyTaskFrameFromTask(
+      "Trace how recipient address tracking actually works. Answer using the checked-out repository as ground truth. Do not modify repository files.",
+      "generic"
+    )).toBe("qna_source_grounded");
+    expect(classifyTaskFrameFromTask(
+      "Build it from source and run a basic scan. What initialization messages appear about which detectors get registered?",
+      "generic"
+    )).toBe("runtime_procedural");
+    expect(classifyTaskFrameFromTask(
+      "Using the secdev/scapy repository, create a few packets in memory and convert them to raw bytes. Answer using the checked-out repository as ground truth. Do not modify repository files.",
+      "generic"
+    )).toBe("runtime_procedural");
+  });
+
+  it("keeps autonomous repo-grounded QnA from downgrading to a runtime evidence request", () => {
+    const decision = evaluateContextValue({
+      task: "Trace how recipient address tracking actually works, find tests that verify it, run them, and show me the actual data structure. Answer using the checked-out repository as ground truth. Do not modify repository files.",
+      profile: "generic",
+      context: {
+        mode: "snippets",
+        content: "- internal/module/modifier.go (source, score 440): address modifier\n- internal/module/msgmetadata.go (source, score 410): metadata tracking",
+        files: ["internal/module/modifier.go", "internal/module/msgmetadata.go"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["internal/module/modifier.go"],
+        rankedFiles: [
+          { path: "internal/module/modifier.go", kind: "source", score: 440, reasons: ["address modifier"] },
+          { path: "internal/module/msgmetadata.go", kind: "source", score: 410, reasons: ["metadata tracking"] }
+        ],
+        tokenEstimate: 260
+      },
+      quality: {
+        score: 86,
+        action: "shrink",
+        reasons: ["source-grounded answer with concrete source candidates"],
+        topScore: 440,
+        topGap: 30,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      knownFiles: [
+        record("internal/module/modifier.go", "source"),
+        record("internal/module/msgmetadata.go", "source")
+      ],
+      repoFileCount: 2100,
+      estimatedContextCost: 900
+    });
+
+    expect(decision.action).not.toBe("request_evidence");
+    expect(decision.featureSummary?.taskFrame).toBe("qna_source_grounded");
   });
 
   it("treats product-data edits and background-worker observation as runtime evidence requests", () => {

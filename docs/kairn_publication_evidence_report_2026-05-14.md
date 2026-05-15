@@ -34,6 +34,11 @@ Controlled artifacts:
 - `docs/publication-evidence-20260514/post-governor-live/seeded-fresh-repeat2-postfix.json`
 - `docs/publication-evidence-20260514/post-governor-live/chi-only-recheck-repeat4.json`
 - `docs/publication-evidence-20260514/post-governor-live/vite-only-recheck-repeat2.json`
+- `docs/publication-evidence-20260514/frozen-holdout/seeded-cross-language-repeat3.json`
+- `docs/publication-evidence-20260514/frozen-holdout/header-guardrail-recheck-repeat1.json`
+- `docs/publication-evidence-20260514/frozen-holdout/swe-atlas-qna-freeze-matrix.json`
+- `docs/publication-evidence-20260514/frozen-holdout/swe-pro-freeze-matrix.json`
+- `docs/publication-evidence-20260514/frozen-holdout/swe-atlas-qna-grounded-runtime-split-repeat1.json`
 
 ## Harness Fixes
 
@@ -229,6 +234,28 @@ Main finding:
 - Low QnA preflight is not a laptop issue. It is a task-shape mismatch plus a current retrieval weakness on long, vague, architecture-style questions with weak source anchors.
 - Do not spend live QnA tokens broadly yet. Use the 7/23 passing or strong-applicability subset for a small answer-grounding pilot only.
 
+Frozen post-governor deterministic rerun:
+
+| Suite | Repos | Cases | Source Quality Pass | Latency Pass | Overall Pass |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| SWE-Atlas/QnA | 10 | 23 | 23 / 23 | 23 / 23 | 23 / 23 |
+
+Frozen live QnA pilot on two strong-applicability source-grounded rows:
+
+| Mode | Tokens | Quality | Active Context | Classification |
+| --- | ---: | --- | ---: | --- |
+| baseline | 116,443 | 2 / 2 pass | 0 / 2 | control |
+| `kairn_codex_session` | 110,756 | 2 / 2 pass | 0 / 2 | passive/neutral |
+
+Observed savings were 5,687 tokens / 4.88%, but this is passive evidence because Kairn emitted evidence requests rather than source context. It should not be counted as an active Kairn savings claim.
+
+The QnA live loop exposed a useful task-frame split:
+
+- Repo-grounded source explanation should be eligible for compact source anchors.
+- Repo-grounded runtime experiments, such as creating packets in memory, running temporary scripts, or observing output/logs, should remain `runtime_procedural` and ask for evidence rather than injecting source.
+
+That split is now encoded as a general classifier rule.
+
 ### Dynamic Governor Follow-Up
 
 After adding the shared context governor and `request_evidence` action, the same SWE-Atlas/QnA preflight was rerun with runtime/procedural rows scored as correct evidence requests rather than static retrieval failures.
@@ -301,6 +328,45 @@ Targeted post-fix canaries:
 
 These canaries are intentionally not the headline claim because their baselines failed scope discipline in those repeats. They are useful as regression checks: Kairn avoided the exact over-assist patterns that previously caused invalid savings.
 
+### Frozen Holdout Repeat-3
+
+To reduce tuned-suite bias, Kairn was frozen and the seeded cross-language holdout was rerun repeat-3 with shuffled mode order.
+
+| Mode | Reports | Case Quality | Report Tokens |
+| --- | ---: | --- | --- |
+| baseline | 3 | 10 / 12 pass | 126,396; 189,471; 77,504 |
+| `kairn_codex_session` | 3 | 12 / 12 pass | 80,452; 98,711; 57,123 |
+
+The report-level median token delta is not a clean savings statistic because two baseline cases failed, and failed/partial runs can distort token use. On paired pass/pass cases only:
+
+| Metric | Result |
+| --- | ---: |
+| Paired pass/pass cases | 10 |
+| Positive token reductions | 6 / 10 |
+| Negative token reductions | 4 / 10 |
+| Mean paired savings | 23.11% |
+| Median paired savings | 37.12% |
+
+This is useful but not final publication evidence. It shows Kairn improved quality on the frozen slice and often saved tokens, but it also exposed one repeatable general failure: C++ production header tasks were not being treated as production-source-only. That allowed a companion header to become an editable target when the correct behavior was a one-file production guardrail.
+
+General fix made:
+
+- Production-only intent now recognizes `production header`, `production file`, `production module`, and `production code`, not only `production source`.
+
+Header guardrail recheck:
+
+| Mode | Tokens | Quality | Active | Scope Violations |
+| --- | ---: | --- | ---: | ---: |
+| baseline | 95,654 | 3 / 3 pass | 0 / 3 | 0 |
+| `kairn_codex_session` | 44,768 | 3 / 3 pass | 3 / 3 | 0 |
+
+| Metric | Result |
+| --- | ---: |
+| Valid active savings | 50,886 tokens |
+| Savings rate | 53.20% |
+
+This recheck included the C++ header case and confirmed the fix was not just a scoring change: Kairn emitted small production-only guardrails for TanStack, Commons Lang, and fmt.
+
 ### SWE-Bench Pro
 
 The SWE-Pro publication pilot generated 10 strong-applicability patch tasks across JS, Python, and Go.
@@ -321,6 +387,27 @@ The two remaining failures are latency-gate misses rather than source-quality mi
 - Ansible URL utility source: source-quality gate passed with URL/URI utility files, 7,444ms.
 
 SWE-Pro is therefore a better next official benchmark target than QnA, but no SWE-Pro token savings are counted in this report because official Docker evaluator acceptance is still required.
+
+Frozen official deterministic rerun:
+
+| Suite | Repos | Cases | Source Quality Pass | Latency Pass | Overall Pass |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| SWE-Pro pilot | 10 | 10 | 10 / 10 | 8 / 10 | 8 / 10 |
+
+The two failures remain latency-only misses, not source-routing misses.
+
+## Private Beta Telemetry Snapshot
+
+Private beta telemetry was checked separately in Supabase.
+
+| Metric | Result |
+| --- | ---: |
+| Uploaded sanitized events | 2 |
+| Installations | 1 |
+| First received | 2026-05-14 02:27 UTC |
+| Last received | 2026-05-14 02:39 UTC |
+
+Both uploaded events were zero-count setup/early telemetry payloads. This confirms ingest exists, but it does not yet provide useful product evidence. Private beta telemetry remains supporting evidence only; controlled benchmarks remain the main evidence source.
 
 ## Claim Status
 

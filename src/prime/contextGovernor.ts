@@ -138,7 +138,10 @@ export function applyContextGovernor(input: GovernorInput): ContextValueDecision
       : governed.action === "emit"
         ? input.baseDecision.recommendedDelivery ?? "full_prime"
         : governed.action === "shrink"
-          ? input.baseDecision.recommendedDelivery === "multi_file_directive" ? "multi_file_directive" : "one_file_directive"
+          ? input.baseDecision.recommendedDelivery === "multi_file_directive" ||
+            (features.taskFrame === "qna_source_grounded" && features.candidates.length > 1)
+            ? "multi_file_directive"
+            : "one_file_directive"
           : "none",
     reasons: [...reasons],
     taskFrame: features.taskFrame,
@@ -209,7 +212,10 @@ export function classifyFileRoleV2(filePath: string, kind?: FileRecord["kind"] |
 export function classifyTaskFrameFromTask(task: string, profile: ResolvedPrimeProfile): TaskFrame {
   const text = task.toLowerCase();
   if (/\bswe[- ]?bench|official evaluator|patch task\b/.test(text)) return "official_patch";
+  const autonomousRepoGrounded = isAutonomousRepoGroundedQna(text);
+  if (autonomousRepoGrounded && !isRuntimeExperimentTask(text)) return "qna_source_grounded";
   if (isRuntimeProceduralTask(text)) return "runtime_procedural";
+  if (autonomousRepoGrounded) return "qna_source_grounded";
   if (/\b(cleanup|clean up|review diff|final diff|summarize changes|verify|verification|typecheck|lint|build)\b/.test(text)) return "verification_cleanup";
   if (/\b(qna|question|answer|inspect|explain|read|open|show|which file|where is|what symbol|repository language|dataset language|source-grounded|source grounded)\b/.test(text)) return "qna_source_grounded";
   if ((profile === "failure_debug" || /\b(debug|failure|failing|regression|stack trace|traceback|exception)\b/.test(text)) &&
@@ -399,6 +405,18 @@ function hardSafetyDecision(
     };
   }
   if (
+    features.taskFrame === "qna_source_grounded" &&
+    features.candidates.length > 0 &&
+    baseDecision.action === "emit" &&
+    features.ambiguity >= 0.72
+  ) {
+    return {
+      action: "shrink",
+      score: Math.min(baseDecision.score, 62),
+      reasons: ["source-grounded QnA should use compact source anchors instead of broad context or evidence requests"]
+    };
+  }
+  if (
     features.ambiguity >= 0.72 &&
     features.estimatedSearchCost >= 55 &&
     baseDecision.action === "emit" &&
@@ -482,7 +500,10 @@ function classifyTaskFrame(input: {
 }): TaskFrame {
   const text = input.task.toLowerCase();
   if (input.context.metadata?.officialEvaluation || /\bswe[- ]?bench|official evaluator|patch task\b/.test(text)) return "official_patch";
+  const autonomousRepoGrounded = isAutonomousRepoGroundedQna(text);
+  if (autonomousRepoGrounded && !isRuntimeExperimentTask(text)) return "qna_source_grounded";
   if (isRuntimeProceduralTask(text)) return "runtime_procedural";
+  if (autonomousRepoGrounded) return "qna_source_grounded";
   if (/\b(cleanup|clean up|review diff|final diff|summarize changes|verify|verification|typecheck|lint|build)\b/.test(text)) return "verification_cleanup";
   if (/\b(qna|question|answer|inspect|explain|read|open|show|which file|where is|what symbol|repository language|dataset language|source-grounded|source grounded)\b/.test(text)) return "qna_source_grounded";
   if (input.decision.cheapSingleSource || input.decision.cheapExactSource) return "cheap_single_source";
@@ -608,8 +629,8 @@ export function taskHasProductionOnlyEditIntent(task: string): boolean {
   const normalized = normalizeText(task);
   return (
     /\bproduction source only\b/.test(normalized) ||
-    /\bfix (?:the )?production source\b/.test(normalized) ||
-    /\bsmallest production source fix\b/.test(normalized) ||
+    /\bfix (?:the )?production (?:source|header|file|module|code)\b/.test(normalized) ||
+    /\bsmallest production (?:source|header|file|module|code) fix\b/.test(normalized) ||
     /\bdo not edit tests\b/.test(normalized) ||
     /\btests are not touched\b/.test(normalized)
   );
@@ -752,6 +773,26 @@ function isRuntimeProceduralTask(text: string): boolean {
     /\b(run|build|start|launch|execute|measure|observe|create|instantiate)\b.{0,80}\b(command|test|tests|scan|server|application|packets?|script|fixture|wall-clock|time|output|logs?|dashboard|messages?|startup)\b/.test(text) ||
     /\b(set up (?:the )?(?:development )?environment|query (?:the )?database|observing system behavior|observe system behavior|what initialization messages|what should i see|what do i see|startup messages|logs? or dashboard|computed destination|temporary scripts?|in memory)\b/.test(text);
   return asksForRuntimeObservation && !/\b(fix|patch|change production|source file|edit source|edit code|modify source|modify code)\b/.test(text);
+}
+
+function isRuntimeExperimentTask(text: string): boolean {
+  return (
+    /\b(create|build|run|execute|try|convert|instantiate|observe|measure)\b.{0,100}\b(packet|packets|server|application|script|scripts|fixture|raw bytes|bytes|output|logs?|dashboard|runtime)\b/.test(text) ||
+    /\b(simple test packets?|payload sizes?|raw bytes and back|in memory|temporary scripts?|what .* shows? after|what .* prints?)\b/.test(text)
+  );
+}
+
+function isAutonomousRepoGroundedQna(text: string): boolean {
+  const repoGrounded =
+    /\banswer using the checked-out repository as ground truth\b/.test(text) ||
+    /\busing the checked-out repository\b/.test(text) ||
+    /\busing (?:the )?[a-z0-9_.-]+\/[a-z0-9_.-]+ repository\b/.test(text);
+  const noModify =
+    /\bdo not modify (?:repository )?(?:source )?files\b/.test(text) ||
+    /\bdon't modify (?:any )?(?:of )?(?:the )?(?:repository )?(?:source )?files\b/.test(text);
+  const sourceGroundingIntent =
+    /\b(trace|dig into|find tests?|find where|show me|clarify|understand how|what logic|where .* decides)\b/.test(text);
+  return repoGrounded && (noModify || sourceGroundingIntent);
 }
 
 function clamp01(value: number): number {
