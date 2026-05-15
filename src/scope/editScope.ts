@@ -9,6 +9,7 @@ import type {
 } from "../types.js";
 import { uniquePaths } from "../utils/collections.js";
 import { normalizeRelativePath } from "../utils/paths.js";
+import { hasExplicitMultiFileScopeRequest, taskHasProductionOnlyEditIntent } from "../prime/contextGovernor.js";
 
 export function decideEditScope(input: {
   task: string;
@@ -31,14 +32,20 @@ export function decideEditScope(input: {
   ]);
   const failureFiles = uniquePaths((input.failureFiles ?? []).map(normalizeRelativePath));
   const changedFiles = uniquePaths((input.changedFiles ?? []).map(normalizeRelativePath));
+  const productionOnlySingleFile = taskHasProductionOnlyEditIntent(task) && !hasExplicitMultiFileScopeRequest(task);
 
   const source = scopeSource({
     contextDecision: input.contextDecision,
     harnessFiles,
     failureFiles,
-    task
+    task,
+    productionOnlySingleFile
   });
-  const primaryLimit = input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug" ? 2 : 1;
+  const primaryLimit = productionOnlySingleFile
+    ? 1
+    : input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug"
+      ? 2
+      : 1;
   const sourceCandidates = uniquePaths([
     ...harnessFiles.filter((file) => isEditableByDefault(file, allowedTestEdits)),
     ...failureFiles.filter((file) => isProductionSourcePath(file)),
@@ -97,9 +104,16 @@ function scopeSource(input: {
   harnessFiles: string[];
   failureFiles: string[];
   task: string;
+  productionOnlySingleFile: boolean;
 }): EditScopeSource {
   if (input.harnessFiles.length > 0) return "official_harness";
   if (input.failureFiles.some(isProductionSourcePath)) return "failure_output";
+  if (
+    input.productionOnlySingleFile &&
+    (input.contextDecision?.sourceRescue || input.contextDecision?.canonicalSourceHit || input.contextDecision?.exactSourceHit || input.contextDecision?.cheapSingleSource)
+  ) {
+    return input.contextDecision?.exactSourceHit || input.contextDecision?.cheapSingleSource ? "exact_source" : "source_rescue";
+  }
   if (input.contextDecision?.recommendedDelivery === "multi_file_directive" || input.contextDecision?.multiSurfaceSignal || isMultiFileDebugTask(input.task)) {
     return "multi_file_debug";
   }

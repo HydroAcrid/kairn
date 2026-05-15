@@ -33,21 +33,32 @@ export function scoreBenchmarkCase(input: {
   const agentChangedFiles = stringArrayMetadata(input.metadata?.agentChangedFiles);
   const requiredTouchedHits = requiredTouchedFiles.filter((file) => agentChangedFiles.includes(file));
   const missingRequiredTouchedFiles = requiredTouchedFiles.filter((file) => !agentChangedFiles.includes(file));
+  const requestedOutcome = input.taskOutcome ?? "pass";
+  const requiredTouchedSatisfied = requiredTouchedFiles.length === 0 || missingRequiredTouchedFiles.length === 0;
+  const qnaEvaluation = input.benchmarkCase.qnaEvaluation;
+  const productionOnlyScopeExpected = benchmarkCaseRequiresProductionOnly(input.benchmarkCase);
   const topFive = actualFiles.slice(0, 5);
   const excludedHits = actualFiles.filter((file) => excludedFiles.some((excluded) => fileMatchesBenchmarkPattern(file, excluded)));
   const minExpectedHits = Math.max(0, Math.min(expectedFiles.length, input.benchmarkCase.minExpectedHits ?? expectedFiles.length));
-  const expectedCoverageSatisfied = expectedFiles.length === 0 || expectedHits.length >= minExpectedHits;
+  const rawExpectedCoverageSatisfied = expectedFiles.length === 0 || expectedHits.length >= minExpectedHits;
+  const sourceScopeCoverageOverride =
+    productionOnlyScopeExpected &&
+    !qnaEvaluation &&
+    requiredTouchedFiles.length > 0 &&
+    requiredTouchedSatisfied;
+  const expectedCoverageSatisfied = rawExpectedCoverageSatisfied || sourceScopeCoverageOverride;
   const expectedFileRecall = expectedFiles.length > 0 ? ratio(expectedHits.length, expectedFiles.length) : 1;
   const effectiveExpectedFileRecall =
-    expectedFiles.length > 0 && minExpectedHits > 0 ? ratio(Math.min(expectedHits.length, minExpectedHits), minExpectedHits) : 1;
+    sourceScopeCoverageOverride
+      ? 1
+      : expectedFiles.length > 0 && minExpectedHits > 0
+        ? ratio(Math.min(expectedHits.length, minExpectedHits), minExpectedHits)
+        : 1;
   const topKHitRate = expectedFiles.length > 0 ? (expectedFiles.some((file) => topFive.includes(file)) ? 1 : 0) : 1;
   const unexpectedFileRate = actualFiles.length > 0 ? ratio(excludedHits.length, actualFiles.length) : 0;
   const responsePenalty = Math.min(0.15, Math.max(0, input.responseTokens - (input.benchmarkCase.budget ?? 1200)) / 8000);
-  const requestedOutcome = input.taskOutcome ?? "pass";
-  const requiredTouchedSatisfied = requiredTouchedFiles.length === 0 || missingRequiredTouchedFiles.length === 0;
   const mcpRequired = requiresMcpSuccess(input.metadata);
   const mcpSuccess = !mcpRequired || numberMetadata(input.metadata?.actualMcpToolCalls ?? input.metadata?.mcpToolCalls) > 0;
-  const qnaEvaluation = input.benchmarkCase.qnaEvaluation;
   const qnaMinSourceMentions = Math.max(
     0,
     Math.min(expectedFiles.length, qnaEvaluation?.minSourceMentions ?? minExpectedHits)
@@ -57,7 +68,16 @@ export function scoreBenchmarkCase(input: {
   const sourceInvariantPassed = input.metadata?.sourceInvariantPassed !== false;
   const diffScopePassed = input.metadata?.diffScopePassed !== false;
   const scopeViolationCount = stringArrayMetadata(input.metadata?.scopeViolations ?? input.metadata?.diffScopeViolations).length;
-  const sourceScopeDisciplinePassed = diffScopePassed && scopeViolationCount === 0;
+  const testsEdited = stringArrayMetadata(input.metadata?.testsEdited);
+  const testEditViolationFiles = productionOnlyScopeExpected ? testsEdited : [];
+  const extraProductionEditViolationFiles =
+    productionOnlyScopeExpected && requiredTouchedFiles.length > 0 && !input.benchmarkCase.allowedDiffScopes?.length
+      ? agentChangedFiles.filter((file) => !requiredTouchedFiles.includes(file))
+      : [];
+  const sourceScopeDisciplinePassed = diffScopePassed &&
+    scopeViolationCount === 0 &&
+    testEditViolationFiles.length === 0 &&
+    extraProductionEditViolationFiles.length === 0;
   const qualityGatePassed =
     requestedOutcome === "pass" &&
     requiredTouchedSatisfied &&
@@ -119,6 +139,8 @@ export function scoreBenchmarkCase(input: {
       qnaSourceMentionCount: expectedHits.length,
       qnaUnexpectedRepoChanges: qnaEvaluation?.requireNoRepoChanges ? agentChangedFiles : [],
       scopeViolations: stringArrayMetadata(input.metadata?.scopeViolations ?? input.metadata?.diffScopeViolations),
+      testEditViolationFiles,
+      extraProductionEditViolationFiles,
       sourceScopeDisciplinePassed
     }),
     metadata: {
@@ -139,7 +161,9 @@ export function scoreBenchmarkCase(input: {
       irrelevantFilesRead: excludedHits,
       expectedFilesMentioned: expectedHits,
       minExpectedHits,
+      rawExpectedCoverageSatisfied,
       expectedCoverageSatisfied,
+      sourceScopeCoverageOverride,
       effectiveExpectedFileRecall,
       requiredTouchedFiles,
       requiredTouchedFilesTouched: requiredTouchedHits,
@@ -150,6 +174,9 @@ export function scoreBenchmarkCase(input: {
       sourceInvariantPassed,
       diffScopePassed,
       scopeViolations: stringArrayMetadata(input.metadata?.scopeViolations ?? input.metadata?.diffScopeViolations),
+      productionOnlyScopeExpected,
+      testEditViolationFiles,
+      extraProductionEditViolationFiles,
       sourceScopeDiscipline: sourceScopeDisciplinePassed ? "passed" : "failed",
       ...(qnaEvaluation
         ? {
@@ -461,6 +488,8 @@ function recommendationsFor(input: {
   qnaSourceMentionCount: number;
   qnaUnexpectedRepoChanges: string[];
   scopeViolations: string[];
+  testEditViolationFiles: string[];
+  extraProductionEditViolationFiles: string[];
   sourceScopeDisciplinePassed: boolean;
 }): string[] {
   const recommendations: string[] = [];
@@ -477,7 +506,12 @@ function recommendationsFor(input: {
     recommendations.push(`QnA task modified repo files: ${input.qnaUnexpectedRepoChanges.slice(0, 4).join(", ")}.`);
   }
   if (!input.sourceScopeDisciplinePassed) {
-    recommendations.push(`Diff scope violations: ${input.scopeViolations.slice(0, 4).join("; ")}.`);
+    const violations = [
+      ...input.scopeViolations,
+      ...input.testEditViolationFiles.map((file) => `${file}: test edit in production-source-only task`),
+      ...input.extraProductionEditViolationFiles.map((file) => `${file}: edit outside required production source scope`)
+    ];
+    recommendations.push(`Diff scope violations: ${violations.slice(0, 4).join("; ")}.`);
   }
   if (input.excludedHits.length > 0) {
     recommendations.push(`Unexpected files surfaced: ${input.excludedHits.slice(0, 4).join(", ")}.`);
@@ -563,6 +597,20 @@ function negativeEvidenceReason(input: {
   if (!input.sourceInvariantPassed) return "declared source invariants failed";
   if (!input.sourceScopeDisciplinePassed) return "agent edited outside the allowed source scope";
   return "quality gate failed";
+}
+
+function benchmarkCaseRequiresProductionOnly(benchmarkCase: BenchmarkCase): boolean {
+  const text = [
+    benchmarkCase.task,
+    benchmarkCase.query,
+    benchmarkCase.agentPrompt,
+    ...(benchmarkCase.successCriteria ?? [])
+  ].filter(Boolean).join(" ").toLowerCase();
+  if (/\b(test|tests|spec|specs)\s+(?:should|must|are|were)\s+not\s+(?:be\s+)?touched\b/.test(text)) return true;
+  if (/\bdo not (?:edit|touch|modify|change)\s+(?:tests?|specs?)\b/.test(text)) return true;
+  if (/\bproduction source only\b/.test(text)) return true;
+  if (/\bfix (?:the )?production source\b/.test(text) && /\bdo not edit unrelated files\b/.test(text)) return true;
+  return false;
 }
 
 function ratio(value: number, total: number): number {

@@ -28,7 +28,7 @@ import {
 } from "../src/bench/publication.js";
 import { evaluateDiffScopes, evaluateSourceInvariants } from "../src/bench/sourceValidation.js";
 import { evaluateContextValue } from "../src/prime/contextValue.js";
-import { classifyFileRoleV2, linearModelPrediction, buildDecisionFeatures } from "../src/prime/contextGovernor.js";
+import { applyContextGovernor, classifyFileRoleV2, linearModelPrediction, buildDecisionFeatures } from "../src/prime/contextGovernor.js";
 import { formatShrunkPrimeContext } from "../src/prime/formatPrime.js";
 import { evaluatePrimeQuality, resolvePrimeProfile } from "../src/prime/quality.js";
 import { hybridSearch } from "../src/retrieval/hybridRetrieval.js";
@@ -1917,6 +1917,100 @@ describe("benchmark suite and scoring", () => {
     expect(result.metadata.diffScopeViolations).toEqual(expect.arrayContaining([expect.stringContaining("src/user.ts")]));
   });
 
+  it("fails production-source-only benchmark scoring when tests are edited without an explicit test scope", () => {
+    const scored = scoreBenchmarkCase({
+      runId: "bench_prod_only_tests",
+      benchmarkCase: {
+        id: "prod-only",
+        mode: "agent",
+        task: "Fix the production source only and do not edit unrelated files.",
+        agentPrompt: "Fix production source only. Do not inspect or edit tests.",
+        expectedFiles: ["context.go"],
+        requiredTouchedFiles: ["context.go"],
+        excludedFiles: [],
+        successCriteria: ["Verification passes.", "Tests are not touched."]
+      },
+      actualFiles: ["context.go", "context_test.go"],
+      responseTokens: 500,
+      taskOutcome: "pass",
+      summary: "Agent edited source and a test.",
+      metadata: {
+        agentChangedFiles: ["context.go", "context_test.go"],
+        testsEdited: ["context_test.go"],
+        diffScopePassed: true,
+        scopeViolations: []
+      }
+    });
+
+    expect(scored.taskOutcome).toBe("partial");
+    expect(scored.metadata.qualityGatePassed).toBe(false);
+    expect(scored.metadata.productionOnlyScopeExpected).toBe(true);
+    expect(scored.metadata.testEditViolationFiles).toEqual(["context_test.go"]);
+    expect(scored.metadata.extraProductionEditViolationFiles).toEqual(["context_test.go"]);
+    expect(scored.metadata.sourceScopeDiscipline).toBe("failed");
+    expect(scored.recommendations).toEqual(expect.arrayContaining([expect.stringContaining("test edit in production-source-only task")]));
+  });
+
+  it("fails production-source-only benchmark scoring when extra production files are edited outside required scope", () => {
+    const scored = scoreBenchmarkCase({
+      runId: "bench_prod_only_extra_source",
+      benchmarkCase: {
+        id: "prod-only-extra-source",
+        mode: "agent",
+        task: "Fix the production source and do not edit unrelated files.",
+        expectedFiles: ["src/client.ts", "src/utils.ts"],
+        requiredTouchedFiles: ["src/client.ts"],
+        excludedFiles: []
+      },
+      actualFiles: ["src/client.ts", "src/utils.ts"],
+      responseTokens: 500,
+      taskOutcome: "pass",
+      summary: "Agent edited source and an extra source file.",
+      metadata: {
+        agentChangedFiles: ["src/client.ts", "src/utils.ts"],
+        testsEdited: [],
+        diffScopePassed: true,
+        scopeViolations: []
+      }
+    });
+
+    expect(scored.taskOutcome).toBe("partial");
+    expect(scored.metadata.qualityGatePassed).toBe(false);
+    expect(scored.metadata.extraProductionEditViolationFiles).toEqual(["src/utils.ts"]);
+    expect(scored.recommendations).toEqual(expect.arrayContaining([expect.stringContaining("outside required production source scope")]));
+  });
+
+  it("allows one-file production-source-only shrink scoring when required scope is satisfied", () => {
+    const scored = scoreBenchmarkCase({
+      runId: "bench_prod_only_one_file",
+      benchmarkCase: {
+        id: "prod-only-one-file",
+        mode: "agent",
+        task: "Fix the production source and do not edit unrelated files.",
+        expectedFiles: ["context.go", "mux.go", "tree.go"],
+        requiredTouchedFiles: ["context.go"],
+        excludedFiles: []
+      },
+      actualFiles: ["context.go"],
+      responseTokens: 500,
+      taskOutcome: "pass",
+      summary: "Kairn emitted the required production source only.",
+      metadata: {
+        agentChangedFiles: ["context.go"],
+        testsEdited: [],
+        diffScopePassed: true,
+        scopeViolations: []
+      }
+    });
+
+    expect(scored.taskOutcome).toBe("pass");
+    expect(scored.metadata.qualityGatePassed).toBe(true);
+    expect(scored.metadata.sourceScopeCoverageOverride).toBe(true);
+    expect(scored.metadata.expectedCoverageSatisfied).toBe(true);
+    expect(scored.metadata.rawExpectedCoverageSatisfied).toBe(false);
+    expect(scored.recommendations).not.toEqual(expect.arrayContaining([expect.stringContaining("Expected files missed")]));
+  });
+
   it("scores QnA grounding by minimum source mentions instead of requiring every reference file", () => {
     const scored = scoreBenchmarkCase({
       runId: "qna_grounded",
@@ -2367,6 +2461,57 @@ describe("benchmark suite and scoring", () => {
 
     expect(prediction.suggestedAction).toBe("shrink");
     expect(prediction.pUseful).toBeGreaterThan(0.9);
+  });
+
+  it("turns production-source-only suppression into a tiny edit-scope guardrail", () => {
+    const decision = applyContextGovernor({
+      task: "Fix the production source and do not edit tests or unrelated files.",
+      profile: "generic",
+      context: {
+        mode: "snippets",
+        content: "- context.go (source, score 210): canonical source routing",
+        files: ["context.go"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["context.go"],
+        rankedFiles: [{ path: "context.go", kind: "source", score: 210, reasons: ["canonical source routing"] }],
+        tokenEstimate: 120
+      },
+      quality: {
+        score: 60,
+        action: "suppress",
+        reasons: ["cheap exact source"],
+        topScore: 210,
+        topGap: 35,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "high"
+      },
+      baseDecision: {
+        score: 48,
+        action: "suppress",
+        reasons: ["cheap exact source"],
+        topScore: 210,
+        topGap: 35,
+        primaryFile: "context.go",
+        language: "go",
+        exactPathMentioned: false,
+        exactSourceHit: true,
+        sourceRescue: true,
+        recommendedDelivery: "none",
+        estimatedContextCost: 120,
+        expectedSavingsRisk: "high",
+        debugSignal: false,
+        easyTaskSignal: true
+      },
+      knownFiles: [sourceRecord("context.go", "go")],
+      repoFileCount: 120,
+      estimatedContextCost: 120
+    });
+
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("one_file_directive");
+    expect(decision.reasons).toEqual(expect.arrayContaining(["production-source-only task needs a tiny edit-scope guardrail"]));
   });
 
   it("shrinks high-confidence exact source hits instead of broad full-prime delivery", () => {
@@ -4347,7 +4492,9 @@ describe("benchmark runtime and CLI", () => {
     expect(instructions).toContain("# Existing Instructions");
     expect(instructions.match(/kairn:mcp-first:start/g)?.length).toBe(1);
     expect(dryRun.args[0]).toBe("exec");
-    expect(dryRun.args).not.toContain("hooks");
+    expect(dryRun.args).toContain("--disable");
+    expect(dryRun.args).toContain("hooks");
+    expect(dryRun.args).not.toContain("--enable");
     expect(dryRun.prompt).toContain("Kairn Proactive Context");
     expect(dryRun.prompt).toContain("User task:");
     expect(dryRun.prime.files).toContain("src/app/private/jobs/JobsApplicationsTable.tsx");

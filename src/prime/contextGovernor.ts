@@ -41,6 +41,7 @@ export type DecisionFeatures = {
   failureState: boolean;
   verificationState: boolean;
   explicitTestTarget: boolean;
+  productionOnlyEditIntent: boolean;
   expectedContextCost: number;
   estimatedSearchCost: number;
 };
@@ -180,6 +181,7 @@ export function buildDecisionFeatures(input: GovernorInput): DecisionFeatures {
     failureState: taskFrame === "failure_first" || input.profile === "failure_debug" || /\b(fail|failure|traceback|stack trace|exception|error)\b/i.test(input.task),
     verificationState: taskFrame === "verification_cleanup" || /\b(verify|verification|test|typecheck|lint|build|cleanup|review diff)\b/i.test(input.task),
     explicitTestTarget: taskExplicitlyTargetsTests(input.task),
+    productionOnlyEditIntent: taskHasProductionOnlyEditIntent(input.task),
     expectedContextCost: input.estimatedContextCost,
     estimatedSearchCost: estimateSearchCost(input.repoFileCount, taskFrame, candidates)
   };
@@ -335,6 +337,20 @@ function hardSafetyDecision(
       score: 0,
       reasons: ["governor found no usable source candidates"],
       ...(features.estimatedSearchCost >= 60 ? { evidenceRequest: evidenceRequestFor(features) } : {})
+    };
+  }
+  if (
+    baseDecision.action === "suppress" &&
+    features.productionOnlyEditIntent &&
+    !features.explicitTestTarget &&
+    top &&
+    (top.role === "production_source" || top.role === "public_api" || top.role === "route" || top.role === "entrypoint") &&
+    (baseDecision.exactSourceHit || baseDecision.sourceRescue || baseDecision.canonicalSourceHit || top.exactMatch)
+  ) {
+    return {
+      action: "shrink",
+      score: Math.max(baseDecision.score, 55),
+      reasons: ["production-source-only task needs a tiny edit-scope guardrail"]
     };
   }
   if (top && (top.role === "generated" || top.role === "vendor_dep") && baseDecision.action !== "suppress") {
@@ -585,6 +601,26 @@ function taskExplicitlyTargetsTests(task: string): boolean {
     /(^|\/)(test|tests|testing|__tests__|spec|specs)\//.test(task.replaceAll("\\", "/").toLowerCase()) ||
     /\.(test|spec)\.[cm]?[jt]sx?\b/.test(task.toLowerCase()) ||
     /\btest_[a-z0-9_]+\.py\b/.test(task.toLowerCase())
+  );
+}
+
+export function taskHasProductionOnlyEditIntent(task: string): boolean {
+  const normalized = normalizeText(task);
+  return (
+    /\bproduction source only\b/.test(normalized) ||
+    /\bfix (?:the )?production source\b/.test(normalized) ||
+    /\bsmallest production source fix\b/.test(normalized) ||
+    /\bdo not edit tests\b/.test(normalized) ||
+    /\btests are not touched\b/.test(normalized)
+  );
+}
+
+export function hasExplicitMultiFileScopeRequest(task: string): boolean {
+  const normalized = normalizeText(task);
+  return (
+    /\b(multiple|several|both|two|2)\s+(production\s+)?(files|sources|modules|components)\b/.test(normalized) ||
+    /\b(update|fix|change)\s+(both|all)\b/.test(normalized) ||
+    /\b(public api|type declaration|interface|caller|callers|adapter|companion|coordinated)\b/.test(normalized)
   );
 }
 

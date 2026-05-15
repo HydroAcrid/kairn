@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { codexExecArgs } from "../src/cli/helpers.js";
 import { createFixtureRepo } from "./helpers.js";
 
 const CLI = ["tsx", "src/cli.ts"];
@@ -310,5 +311,26 @@ describe("CLI", () => {
     expect(codexConfig).not.toContain("codex_hooks");
     expect(codexHooks).toContain("Priming Kairn context");
     expect(codexHooks).not.toContain("/old/kairn");
+  });
+
+  it("disables Codex hooks for noninteractive direct runs unless explicitly enabled", () => {
+    const disabled = codexExecArgs({
+      root: "/repo",
+      prompt: "fix bug",
+      sandbox: "danger-full-access",
+      enableHooks: false
+    });
+    const enabled = codexExecArgs({
+      root: "/repo",
+      prompt: "fix bug",
+      sandbox: "danger-full-access",
+      enableHooks: true
+    });
+
+    expect(disabled).toContain("--disable");
+    expect(disabled).toContain("hooks");
+    expect(enabled).toContain("--enable");
+    expect(enabled).toContain("hooks");
+    expect(enabled).not.toContain("--disable");
   });
 });

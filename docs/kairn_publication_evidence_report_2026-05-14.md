@@ -31,6 +31,9 @@ Controlled artifacts:
 - `/tmp/kairn-loop-private-beta-v3-final-latest.json`
 - `/tmp/kairn-loop-qna-final-latest.json`
 - `/tmp/kairn-loop-swe-pro-final4.json`
+- `docs/publication-evidence-20260514/post-governor-live/seeded-fresh-repeat2-postfix.json`
+- `docs/publication-evidence-20260514/post-governor-live/chi-only-recheck-repeat4.json`
+- `docs/publication-evidence-20260514/post-governor-live/vite-only-recheck-repeat2.json`
 
 ## Harness Fixes
 
@@ -264,6 +267,39 @@ General fixes made in this loop:
 - HTTP auth and netrc prompts now favor URL/request utility modules over generic utility files.
 
 The important result is behavioral, not benchmark-specific: Kairn now uses task frame, source/test intent, file role, companion evidence, and expected runtime evidence to choose between shrink, suppress, emit, and request-evidence.
+
+### Post-Governor Live Codex Rerun
+
+After the dynamic governor, production-only edit-scope fixes, and noninteractive `kairn codex` hook isolation, the 8-case seeded fresh holdout was rerun live with `baseline` versus `kairn_codex_session`.
+
+| Mode | Tokens | Quality | Active Kairn | Scope Violations |
+| --- | ---: | --- | ---: | ---: |
+| baseline | 179,394 | 8 / 8 pass | 0 / 8 | 0 |
+| `kairn_codex_session` | 94,559 | 8 / 8 pass | 8 / 8 | 0 |
+
+Aggregate observed savings:
+
+| Metric | Result |
+| --- | ---: |
+| Saved tokens | 84,835 |
+| Savings rate | 47.29% |
+| Valid active cases | 8 / 8 |
+
+This is the strongest broad post-governor live result so far. It is still repeat-1, not final publication evidence, but it shows that the governor improvements translated into measured token reduction rather than only static accuracy.
+
+The rerun also exposed two useful scoring and behavior fixes:
+
+- Production-source-only tasks should be validated by required production touch plus scope discipline. They should not be forced to mention every broad expected companion file when a one-file shrink is correct.
+- Production-source-only source-rescue should keep companions read-only unless the task explicitly asks for multi-file edits or verification names another source.
+
+Targeted post-fix canaries:
+
+| Case | Baseline Tokens | Kairn Tokens | Quality | Active | Notes |
+| --- | ---: | ---: | --- | --- | --- |
+| Chi `URLParam` | 25,456 | 13,200 | partial/pass | yes | Kairn emitted a 287-token edit-scope guardrail and avoided test edits. |
+| Vite `injectQuery` | 57,317 | 38,439 | partial/pass | yes | Kairn kept edit scope to `client.ts`; companion context remained read-only. |
+
+These canaries are intentionally not the headline claim because their baselines failed scope discipline in those repeats. They are useful as regression checks: Kairn avoided the exact over-assist patterns that previously caused invalid savings.
 
 ### SWE-Bench Pro
 

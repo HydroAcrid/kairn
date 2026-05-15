@@ -1,0 +1,3454 @@
+{
+  "baseline": {
+    "run": {
+      "id": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+      "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+      "suiteId": "seeded-fresh-post-governor-chi-scope-recheck",
+      "suiteName": "Seeded Fresh Post-Governor Chi Scope Recheck",
+      "mode": "agent",
+      "status": "completed",
+      "startedAt": "2026-05-15T00:24:13.961Z",
+      "endedAt": "2026-05-15T00:24:17.987Z",
+      "metadata": {
+        "sessionId": "task_ee9834f2-d556-4f08-a0c8-73563813f556",
+        "caseCount": 3,
+        "agentConfigured": true,
+        "assistanceMode": "baseline"
+      }
+    },
+    "results": [
+      {
+        "id": 911,
+        "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+        "caseId": "ts-zod-is-object-array",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "packages/zod/src/v4/core/util.ts"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "packages/docs/",
+          "packages/zod/src/v4/classic/tests/",
+          "packages/zod/src/v3/tests/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: packages/zod/src/v4/core/util.ts.",
+          "Required source files were not touched: packages/zod/src/v4/core/util.ts.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 439,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/zod-is-object-array.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "cheap_single_source",
+          "missedExpectedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 1,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:15.314Z"
+      },
+      {
+        "id": 912,
+        "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+        "caseId": "ts-vite-inject-query-relative",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "packages/vite/src/node/__tests__/",
+          "docs/",
+          "playground/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: packages/vite/src/client/client.ts, packages/vite/src/shared/utils.ts.",
+          "Required source files were not touched: packages/vite/src/client/client.ts.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 439,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/vite-inject-query-skip.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 2,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:17.060Z"
+      },
+      {
+        "id": 913,
+        "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+        "caseId": "go-chi-urlparam-latest",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "context.go",
+          "mux.go",
+          "tree.go"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "_examples/",
+          "middleware/",
+          "doc/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: context.go, mux.go, tree.go.",
+          "Required source files were not touched: context.go.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 439,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/chi-urlparam-latest.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "context.go",
+            "mux.go",
+            "tree.go"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 3,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:17.986Z"
+      }
+    ],
+    "overallScore": 9,
+    "weakestCases": [
+      {
+        "id": 911,
+        "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+        "caseId": "ts-zod-is-object-array",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "packages/zod/src/v4/core/util.ts"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "packages/docs/",
+          "packages/zod/src/v4/classic/tests/",
+          "packages/zod/src/v3/tests/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: packages/zod/src/v4/core/util.ts.",
+          "Required source files were not touched: packages/zod/src/v4/core/util.ts.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 439,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/zod-is-object-array.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "cheap_single_source",
+          "missedExpectedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 1,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:15.314Z"
+      },
+      {
+        "id": 912,
+        "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+        "caseId": "ts-vite-inject-query-relative",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "packages/vite/src/node/__tests__/",
+          "docs/",
+          "playground/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: packages/vite/src/client/client.ts, packages/vite/src/shared/utils.ts.",
+          "Required source files were not touched: packages/vite/src/client/client.ts.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 439,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/vite-inject-query-skip.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 2,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:17.060Z"
+      },
+      {
+        "id": 913,
+        "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+        "caseId": "go-chi-urlparam-latest",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "context.go",
+          "mux.go",
+          "tree.go"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "_examples/",
+          "middleware/",
+          "doc/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: context.go, mux.go, tree.go.",
+          "Required source files were not touched: context.go.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 439,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/chi-urlparam-latest.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "context.go",
+            "mux.go",
+            "tree.go"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 3,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:17.986Z"
+      }
+    ],
+    "recommendations": [
+      "Expected files missed: packages/zod/src/v4/core/util.ts.",
+      "Required source files were not touched: packages/zod/src/v4/core/util.ts.",
+      "Task outcome failed; inspect linked files and hook recommendations.",
+      "Observed token reductions for this case must be treated as invalid until the quality gate passes.",
+      "Expected files missed: packages/vite/src/client/client.ts, packages/vite/src/shared/utils.ts.",
+      "Required source files were not touched: packages/vite/src/client/client.ts.",
+      "Expected files missed: context.go, mux.go, tree.go.",
+      "Required source files were not touched: context.go.",
+      "Overall score is low; inspect weak cases before tuning retrieval."
+    ]
+  },
+  "kairnCodexSession": {
+    "run": {
+      "id": "bench_53e464aa-7f8b-4a21-99ed-d972aac2c16f",
+      "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+      "suiteId": "seeded-fresh-post-governor-chi-scope-recheck",
+      "suiteName": "Seeded Fresh Post-Governor Chi Scope Recheck",
+      "mode": "agent",
+      "status": "completed",
+      "startedAt": "2026-05-15T00:24:21.996Z",
+      "endedAt": "2026-05-15T00:24:26.172Z",
+      "metadata": {
+        "sessionId": "task_9d530a49-1455-4187-a486-56ce266529bd",
+        "caseCount": 3,
+        "agentConfigured": true,
+        "assistanceMode": "kairn_codex_session"
+      }
+    },
+    "results": [
+      {
+        "id": 914,
+        "runId": "bench_53e464aa-7f8b-4a21-99ed-d972aac2c16f",
+        "caseId": "ts-zod-is-object-array",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "packages/zod/src/v4/core/util.ts"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "packages/docs/",
+          "packages/zod/src/v4/classic/tests/",
+          "packages/zod/src/v3/tests/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: packages/zod/src/v4/core/util.ts.",
+          "Required source files were not touched: packages/zod/src/v4/core/util.ts.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "kairn_codex_session",
+          "kairnSessionCount": 440,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/zod-is-object-array.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "cheap_single_source",
+          "missedExpectedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 1,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:23.441Z"
+      },
+      {
+        "id": 915,
+        "runId": "bench_53e464aa-7f8b-4a21-99ed-d972aac2c16f",
+        "caseId": "ts-vite-inject-query-relative",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "packages/vite/src/node/__tests__/",
+          "docs/",
+          "playground/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: packages/vite/src/client/client.ts, packages/vite/src/shared/utils.ts.",
+          "Required source files were not touched: packages/vite/src/client/client.ts.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "kairn_codex_session",
+          "kairnSessionCount": 440,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/vite-inject-query-skip.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 2,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:25.213Z"
+      },
+      {
+        "id": 916,
+        "runId": "bench_53e464aa-7f8b-4a21-99ed-d972aac2c16f",
+        "caseId": "go-chi-urlparam-latest",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "context.go",
+          "mux.go",
+          "tree.go"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "_examples/",
+          "middleware/",
+          "doc/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: context.go, mux.go, tree.go.",
+          "Required source files were not touched: context.go.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "kairn_codex_session",
+          "kairnSessionCount": 440,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/chi-urlparam-latest.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "context.go",
+            "mux.go",
+            "tree.go"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 3,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:26.171Z"
+      }
+    ],
+    "overallScore": 9,
+    "weakestCases": [
+      {
+        "id": 914,
+        "runId": "bench_53e464aa-7f8b-4a21-99ed-d972aac2c16f",
+        "caseId": "ts-zod-is-object-array",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "packages/zod/src/v4/core/util.ts"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "packages/docs/",
+          "packages/zod/src/v4/classic/tests/",
+          "packages/zod/src/v3/tests/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: packages/zod/src/v4/core/util.ts.",
+          "Required source files were not touched: packages/zod/src/v4/core/util.ts.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "kairn_codex_session",
+          "kairnSessionCount": 440,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/zod-is-object-array.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "cheap_single_source",
+          "missedExpectedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 1,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:23.441Z"
+      },
+      {
+        "id": 915,
+        "runId": "bench_53e464aa-7f8b-4a21-99ed-d972aac2c16f",
+        "caseId": "ts-vite-inject-query-relative",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "packages/vite/src/node/__tests__/",
+          "docs/",
+          "playground/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: packages/vite/src/client/client.ts, packages/vite/src/shared/utils.ts.",
+          "Required source files were not touched: packages/vite/src/client/client.ts.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "kairn_codex_session",
+          "kairnSessionCount": 440,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/vite-inject-query-skip.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 2,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:25.213Z"
+      },
+      {
+        "id": 916,
+        "runId": "bench_53e464aa-7f8b-4a21-99ed-d972aac2c16f",
+        "caseId": "go-chi-urlparam-latest",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "context.go",
+          "mux.go",
+          "tree.go"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "_examples/",
+          "middleware/",
+          "doc/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: context.go, mux.go, tree.go.",
+          "Required source files were not touched: context.go.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "kairn_codex_session",
+          "kairnSessionCount": 440,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/chi-urlparam-latest.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "context.go",
+            "mux.go",
+            "tree.go"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 3,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:26.171Z"
+      }
+    ],
+    "recommendations": [
+      "Expected files missed: packages/zod/src/v4/core/util.ts.",
+      "Required source files were not touched: packages/zod/src/v4/core/util.ts.",
+      "Task outcome failed; inspect linked files and hook recommendations.",
+      "Observed token reductions for this case must be treated as invalid until the quality gate passes.",
+      "Expected files missed: packages/vite/src/client/client.ts, packages/vite/src/shared/utils.ts.",
+      "Required source files were not touched: packages/vite/src/client/client.ts.",
+      "Expected files missed: context.go, mux.go, tree.go.",
+      "Required source files were not touched: context.go.",
+      "Overall score is low; inspect weak cases before tuning retrieval."
+    ]
+  },
+  "passiveHooks": {
+    "run": {
+      "id": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+      "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+      "suiteId": "seeded-fresh-post-governor-chi-scope-recheck",
+      "suiteName": "Seeded Fresh Post-Governor Chi Scope Recheck",
+      "mode": "agent",
+      "status": "completed",
+      "startedAt": "2026-05-15T00:24:13.961Z",
+      "endedAt": "2026-05-15T00:24:17.987Z",
+      "metadata": {
+        "sessionId": "task_ee9834f2-d556-4f08-a0c8-73563813f556",
+        "caseCount": 3,
+        "agentConfigured": true,
+        "assistanceMode": "baseline"
+      }
+    },
+    "results": [
+      {
+        "id": 911,
+        "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+        "caseId": "ts-zod-is-object-array",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "packages/zod/src/v4/core/util.ts"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "packages/docs/",
+          "packages/zod/src/v4/classic/tests/",
+          "packages/zod/src/v3/tests/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: packages/zod/src/v4/core/util.ts.",
+          "Required source files were not touched: packages/zod/src/v4/core/util.ts.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 439,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/zod-is-object-array.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "cheap_single_source",
+          "missedExpectedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 1,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:15.314Z"
+      },
+      {
+        "id": 912,
+        "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+        "caseId": "ts-vite-inject-query-relative",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "packages/vite/src/node/__tests__/",
+          "docs/",
+          "playground/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: packages/vite/src/client/client.ts, packages/vite/src/shared/utils.ts.",
+          "Required source files were not touched: packages/vite/src/client/client.ts.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 439,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/vite-inject-query-skip.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 2,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:17.060Z"
+      },
+      {
+        "id": 913,
+        "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+        "caseId": "go-chi-urlparam-latest",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "context.go",
+          "mux.go",
+          "tree.go"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "_examples/",
+          "middleware/",
+          "doc/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: context.go, mux.go, tree.go.",
+          "Required source files were not touched: context.go.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 439,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/chi-urlparam-latest.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "context.go",
+            "mux.go",
+            "tree.go"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 3,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:17.986Z"
+      }
+    ],
+    "overallScore": 9,
+    "weakestCases": [
+      {
+        "id": 911,
+        "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+        "caseId": "ts-zod-is-object-array",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "packages/zod/src/v4/core/util.ts"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "packages/docs/",
+          "packages/zod/src/v4/classic/tests/",
+          "packages/zod/src/v3/tests/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: packages/zod/src/v4/core/util.ts.",
+          "Required source files were not touched: packages/zod/src/v4/core/util.ts.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 439,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/zod-is-object-array.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "cheap_single_source",
+          "missedExpectedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 1,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:15.314Z"
+      },
+      {
+        "id": 912,
+        "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+        "caseId": "ts-vite-inject-query-relative",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "packages/vite/src/node/__tests__/",
+          "docs/",
+          "playground/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: packages/vite/src/client/client.ts, packages/vite/src/shared/utils.ts.",
+          "Required source files were not touched: packages/vite/src/client/client.ts.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 439,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/vite-inject-query-skip.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 2,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:17.060Z"
+      },
+      {
+        "id": 913,
+        "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+        "caseId": "go-chi-urlparam-latest",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "context.go",
+          "mux.go",
+          "tree.go"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "_examples/",
+          "middleware/",
+          "doc/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: context.go, mux.go, tree.go.",
+          "Required source files were not touched: context.go.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 439,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/chi-urlparam-latest.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "context.go",
+            "mux.go",
+            "tree.go"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 3,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:17.986Z"
+      }
+    ],
+    "recommendations": [
+      "Expected files missed: packages/zod/src/v4/core/util.ts.",
+      "Required source files were not touched: packages/zod/src/v4/core/util.ts.",
+      "Task outcome failed; inspect linked files and hook recommendations.",
+      "Observed token reductions for this case must be treated as invalid until the quality gate passes.",
+      "Expected files missed: packages/vite/src/client/client.ts, packages/vite/src/shared/utils.ts.",
+      "Required source files were not touched: packages/vite/src/client/client.ts.",
+      "Expected files missed: context.go, mux.go, tree.go.",
+      "Required source files were not touched: context.go.",
+      "Overall score is low; inspect weak cases before tuning retrieval."
+    ]
+  },
+  "proactive": {
+    "run": {
+      "id": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+      "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+      "suiteId": "seeded-fresh-post-governor-chi-scope-recheck",
+      "suiteName": "Seeded Fresh Post-Governor Chi Scope Recheck",
+      "mode": "agent",
+      "status": "completed",
+      "startedAt": "2026-05-15T00:24:13.961Z",
+      "endedAt": "2026-05-15T00:24:17.987Z",
+      "metadata": {
+        "sessionId": "task_ee9834f2-d556-4f08-a0c8-73563813f556",
+        "caseCount": 3,
+        "agentConfigured": true,
+        "assistanceMode": "baseline"
+      }
+    },
+    "results": [
+      {
+        "id": 911,
+        "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+        "caseId": "ts-zod-is-object-array",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "packages/zod/src/v4/core/util.ts"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "packages/docs/",
+          "packages/zod/src/v4/classic/tests/",
+          "packages/zod/src/v3/tests/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: packages/zod/src/v4/core/util.ts.",
+          "Required source files were not touched: packages/zod/src/v4/core/util.ts.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 439,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/zod-is-object-array.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "cheap_single_source",
+          "missedExpectedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 1,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:15.314Z"
+      },
+      {
+        "id": 912,
+        "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+        "caseId": "ts-vite-inject-query-relative",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "packages/vite/src/node/__tests__/",
+          "docs/",
+          "playground/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: packages/vite/src/client/client.ts, packages/vite/src/shared/utils.ts.",
+          "Required source files were not touched: packages/vite/src/client/client.ts.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 439,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/vite-inject-query-skip.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 2,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:17.060Z"
+      },
+      {
+        "id": 913,
+        "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+        "caseId": "go-chi-urlparam-latest",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "context.go",
+          "mux.go",
+          "tree.go"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "_examples/",
+          "middleware/",
+          "doc/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: context.go, mux.go, tree.go.",
+          "Required source files were not touched: context.go.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 439,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/chi-urlparam-latest.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "context.go",
+            "mux.go",
+            "tree.go"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 3,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:17.986Z"
+      }
+    ],
+    "overallScore": 9,
+    "weakestCases": [
+      {
+        "id": 911,
+        "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+        "caseId": "ts-zod-is-object-array",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "packages/zod/src/v4/core/util.ts"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "packages/docs/",
+          "packages/zod/src/v4/classic/tests/",
+          "packages/zod/src/v3/tests/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: packages/zod/src/v4/core/util.ts.",
+          "Required source files were not touched: packages/zod/src/v4/core/util.ts.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 439,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/zod-is-object-array.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "cheap_single_source",
+          "missedExpectedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 1,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:15.314Z"
+      },
+      {
+        "id": 912,
+        "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+        "caseId": "ts-vite-inject-query-relative",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "packages/vite/src/node/__tests__/",
+          "docs/",
+          "playground/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: packages/vite/src/client/client.ts, packages/vite/src/shared/utils.ts.",
+          "Required source files were not touched: packages/vite/src/client/client.ts.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 439,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/vite-inject-query-skip.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 2,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:17.060Z"
+      },
+      {
+        "id": 913,
+        "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+        "caseId": "go-chi-urlparam-latest",
+        "caseMode": "agent",
+        "score": 9,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "context.go",
+          "mux.go",
+          "tree.go"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "_examples/",
+          "middleware/",
+          "doc/"
+        ],
+        "summary": "Benchmark workspace setup failed before the agent could run.",
+        "recommendations": [
+          "Expected files missed: context.go, mux.go, tree.go.",
+          "Required source files were not touched: context.go.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 439,
+          "primeAttempted": 32,
+          "primeEmitted": 16,
+          "primeSuppressed": 16,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 7412,
+          "primeContextEvents": 32,
+          "primeQualityEvents": 32,
+          "hookInvocations": 4,
+          "failureContextUsed": 1,
+          "mcpToolCalls": 16,
+          "mcpFilesReturned": [
+            "src/cli/commands/beta.ts",
+            "src/types/context.ts",
+            "src/parser/parseFile.ts",
+            "src/scope/editScope.ts"
+          ],
+          "promptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/chi-urlparam-latest.patch'",
+          "seedConfigured": true,
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "context.go",
+            "mux.go",
+            "tree.go"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 3,
+          "expectedCoverageSatisfied": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedFilesTouched": [],
+          "missingRequiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedSatisfied": false,
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "sourceInvariantPassed": true,
+          "diffScopePassed": true,
+          "scopeViolations": [],
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "sourceScopeDiscipline": "passed",
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-15T00:24:17.986Z"
+      }
+    ],
+    "recommendations": [
+      "Expected files missed: packages/zod/src/v4/core/util.ts.",
+      "Required source files were not touched: packages/zod/src/v4/core/util.ts.",
+      "Task outcome failed; inspect linked files and hook recommendations.",
+      "Observed token reductions for this case must be treated as invalid until the quality gate passes.",
+      "Expected files missed: packages/vite/src/client/client.ts, packages/vite/src/shared/utils.ts.",
+      "Required source files were not touched: packages/vite/src/client/client.ts.",
+      "Expected files missed: context.go, mux.go, tree.go.",
+      "Required source files were not touched: context.go.",
+      "Overall score is low; inspect weak cases before tuning retrieval."
+    ]
+  },
+  "runs": {
+    "baseline": [
+      {
+        "run": {
+          "id": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+          "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+          "suiteId": "seeded-fresh-post-governor-chi-scope-recheck",
+          "suiteName": "Seeded Fresh Post-Governor Chi Scope Recheck",
+          "mode": "agent",
+          "status": "completed",
+          "startedAt": "2026-05-15T00:24:13.961Z",
+          "endedAt": "2026-05-15T00:24:17.987Z",
+          "metadata": {
+            "sessionId": "task_ee9834f2-d556-4f08-a0c8-73563813f556",
+            "caseCount": 3,
+            "agentConfigured": true,
+            "assistanceMode": "baseline"
+          }
+        },
+        "results": [
+          {
+            "id": 911,
+            "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+            "caseId": "ts-zod-is-object-array",
+            "caseMode": "agent",
+            "score": 9,
+            "expectedFileRecall": 0,
+            "topKHitRate": 0,
+            "unexpectedFileRate": 0,
+            "responseTokens": 0,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "fail",
+            "expectedFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "actualFiles": [],
+            "excludedFiles": [
+              "packages/docs/",
+              "packages/zod/src/v4/classic/tests/",
+              "packages/zod/src/v3/tests/"
+            ],
+            "summary": "Benchmark workspace setup failed before the agent could run.",
+            "recommendations": [
+              "Expected files missed: packages/zod/src/v4/core/util.ts.",
+              "Required source files were not touched: packages/zod/src/v4/core/util.ts.",
+              "Task outcome failed; inspect linked files and hook recommendations.",
+              "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+            ],
+            "metadata": {
+              "assistanceMode": "baseline",
+              "kairnSessionCount": 439,
+              "primeAttempted": 32,
+              "primeEmitted": 16,
+              "primeSuppressed": 16,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 7412,
+              "primeContextEvents": 32,
+              "primeQualityEvents": 32,
+              "hookInvocations": 4,
+              "failureContextUsed": 1,
+              "mcpToolCalls": 16,
+              "mcpFilesReturned": [
+                "src/cli/commands/beta.ts",
+                "src/types/context.ts",
+                "src/parser/parseFile.ts",
+                "src/scope/editScope.ts"
+              ],
+              "promptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+              "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/zod-is-object-array.patch'",
+              "seedConfigured": true,
+              "contextBehavior": "cheap_single_source",
+              "missedExpectedFiles": [
+                "packages/zod/src/v4/core/util.ts"
+              ],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [],
+              "minExpectedHits": 1,
+              "expectedCoverageSatisfied": false,
+              "effectiveExpectedFileRecall": 0,
+              "requiredTouchedFiles": [
+                "packages/zod/src/v4/core/util.ts"
+              ],
+              "requiredTouchedFilesTouched": [],
+              "missingRequiredTouchedFiles": [
+                "packages/zod/src/v4/core/util.ts"
+              ],
+              "requiredTouchedSatisfied": false,
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "sourceInvariantPassed": true,
+              "diffScopePassed": true,
+              "scopeViolations": [],
+              "productionOnlyScopeExpected": true,
+              "testEditViolationFiles": [],
+              "sourceScopeDiscipline": "passed",
+              "qualityGatePassed": false,
+              "validSavings": false,
+              "invalidSavings": true,
+              "negativeEvidenceReason": "verification or requested task outcome did not pass"
+            },
+            "createdAt": "2026-05-15T00:24:15.314Z"
+          },
+          {
+            "id": 912,
+            "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+            "caseId": "ts-vite-inject-query-relative",
+            "caseMode": "agent",
+            "score": 9,
+            "expectedFileRecall": 0,
+            "topKHitRate": 0,
+            "unexpectedFileRate": 0,
+            "responseTokens": 0,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "fail",
+            "expectedFiles": [
+              "packages/vite/src/client/client.ts",
+              "packages/vite/src/shared/utils.ts"
+            ],
+            "actualFiles": [],
+            "excludedFiles": [
+              "packages/vite/src/node/__tests__/",
+              "docs/",
+              "playground/"
+            ],
+            "summary": "Benchmark workspace setup failed before the agent could run.",
+            "recommendations": [
+              "Expected files missed: packages/vite/src/client/client.ts, packages/vite/src/shared/utils.ts.",
+              "Required source files were not touched: packages/vite/src/client/client.ts.",
+              "Task outcome failed; inspect linked files and hook recommendations.",
+              "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+            ],
+            "metadata": {
+              "assistanceMode": "baseline",
+              "kairnSessionCount": 439,
+              "primeAttempted": 32,
+              "primeEmitted": 16,
+              "primeSuppressed": 16,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 7412,
+              "primeContextEvents": 32,
+              "primeQualityEvents": 32,
+              "hookInvocations": 4,
+              "failureContextUsed": 1,
+              "mcpToolCalls": 16,
+              "mcpFilesReturned": [
+                "src/cli/commands/beta.ts",
+                "src/types/context.ts",
+                "src/parser/parseFile.ts",
+                "src/scope/editScope.ts"
+              ],
+              "promptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+              "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/vite-inject-query-skip.patch'",
+              "seedConfigured": true,
+              "contextBehavior": "source_rescue",
+              "missedExpectedFiles": [
+                "packages/vite/src/client/client.ts",
+                "packages/vite/src/shared/utils.ts"
+              ],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [],
+              "minExpectedHits": 2,
+              "expectedCoverageSatisfied": false,
+              "effectiveExpectedFileRecall": 0,
+              "requiredTouchedFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "requiredTouchedFilesTouched": [],
+              "missingRequiredTouchedFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "requiredTouchedSatisfied": false,
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "sourceInvariantPassed": true,
+              "diffScopePassed": true,
+              "scopeViolations": [],
+              "productionOnlyScopeExpected": true,
+              "testEditViolationFiles": [],
+              "sourceScopeDiscipline": "passed",
+              "qualityGatePassed": false,
+              "validSavings": false,
+              "invalidSavings": true,
+              "negativeEvidenceReason": "verification or requested task outcome did not pass"
+            },
+            "createdAt": "2026-05-15T00:24:17.060Z"
+          },
+          {
+            "id": 913,
+            "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+            "caseId": "go-chi-urlparam-latest",
+            "caseMode": "agent",
+            "score": 9,
+            "expectedFileRecall": 0,
+            "topKHitRate": 0,
+            "unexpectedFileRate": 0,
+            "responseTokens": 0,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "fail",
+            "expectedFiles": [
+              "context.go",
+              "mux.go",
+              "tree.go"
+            ],
+            "actualFiles": [],
+            "excludedFiles": [
+              "_examples/",
+              "middleware/",
+              "doc/"
+            ],
+            "summary": "Benchmark workspace setup failed before the agent could run.",
+            "recommendations": [
+              "Expected files missed: context.go, mux.go, tree.go.",
+              "Required source files were not touched: context.go.",
+              "Task outcome failed; inspect linked files and hook recommendations.",
+              "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+            ],
+            "metadata": {
+              "assistanceMode": "baseline",
+              "kairnSessionCount": 439,
+              "primeAttempted": 32,
+              "primeEmitted": 16,
+              "primeSuppressed": 16,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 7412,
+              "primeContextEvents": 32,
+              "primeQualityEvents": 32,
+              "hookInvocations": 4,
+              "failureContextUsed": 1,
+              "mcpToolCalls": 16,
+              "mcpFilesReturned": [
+                "src/cli/commands/beta.ts",
+                "src/types/context.ts",
+                "src/parser/parseFile.ts",
+                "src/scope/editScope.ts"
+              ],
+              "promptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+              "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/chi-urlparam-latest.patch'",
+              "seedConfigured": true,
+              "contextBehavior": "source_rescue",
+              "missedExpectedFiles": [
+                "context.go",
+                "mux.go",
+                "tree.go"
+              ],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [],
+              "minExpectedHits": 3,
+              "expectedCoverageSatisfied": false,
+              "effectiveExpectedFileRecall": 0,
+              "requiredTouchedFiles": [
+                "context.go"
+              ],
+              "requiredTouchedFilesTouched": [],
+              "missingRequiredTouchedFiles": [
+                "context.go"
+              ],
+              "requiredTouchedSatisfied": false,
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "sourceInvariantPassed": true,
+              "diffScopePassed": true,
+              "scopeViolations": [],
+              "productionOnlyScopeExpected": true,
+              "testEditViolationFiles": [],
+              "sourceScopeDiscipline": "passed",
+              "qualityGatePassed": false,
+              "validSavings": false,
+              "invalidSavings": true,
+              "negativeEvidenceReason": "verification or requested task outcome did not pass"
+            },
+            "createdAt": "2026-05-15T00:24:17.986Z"
+          }
+        ],
+        "overallScore": 9,
+        "weakestCases": [
+          {
+            "id": 911,
+            "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+            "caseId": "ts-zod-is-object-array",
+            "caseMode": "agent",
+            "score": 9,
+            "expectedFileRecall": 0,
+            "topKHitRate": 0,
+            "unexpectedFileRate": 0,
+            "responseTokens": 0,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "fail",
+            "expectedFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "actualFiles": [],
+            "excludedFiles": [
+              "packages/docs/",
+              "packages/zod/src/v4/classic/tests/",
+              "packages/zod/src/v3/tests/"
+            ],
+            "summary": "Benchmark workspace setup failed before the agent could run.",
+            "recommendations": [
+              "Expected files missed: packages/zod/src/v4/core/util.ts.",
+              "Required source files were not touched: packages/zod/src/v4/core/util.ts.",
+              "Task outcome failed; inspect linked files and hook recommendations.",
+              "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+            ],
+            "metadata": {
+              "assistanceMode": "baseline",
+              "kairnSessionCount": 439,
+              "primeAttempted": 32,
+              "primeEmitted": 16,
+              "primeSuppressed": 16,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 7412,
+              "primeContextEvents": 32,
+              "primeQualityEvents": 32,
+              "hookInvocations": 4,
+              "failureContextUsed": 1,
+              "mcpToolCalls": 16,
+              "mcpFilesReturned": [
+                "src/cli/commands/beta.ts",
+                "src/types/context.ts",
+                "src/parser/parseFile.ts",
+                "src/scope/editScope.ts"
+              ],
+              "promptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+              "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/zod-is-object-array.patch'",
+              "seedConfigured": true,
+              "contextBehavior": "cheap_single_source",
+              "missedExpectedFiles": [
+                "packages/zod/src/v4/core/util.ts"
+              ],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [],
+              "minExpectedHits": 1,
+              "expectedCoverageSatisfied": false,
+              "effectiveExpectedFileRecall": 0,
+              "requiredTouchedFiles": [
+                "packages/zod/src/v4/core/util.ts"
+              ],
+              "requiredTouchedFilesTouched": [],
+              "missingRequiredTouchedFiles": [
+                "packages/zod/src/v4/core/util.ts"
+              ],
+              "requiredTouchedSatisfied": false,
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "sourceInvariantPassed": true,
+              "diffScopePassed": true,
+              "scopeViolations": [],
+              "productionOnlyScopeExpected": true,
+              "testEditViolationFiles": [],
+              "sourceScopeDiscipline": "passed",
+              "qualityGatePassed": false,
+              "validSavings": false,
+              "invalidSavings": true,
+              "negativeEvidenceReason": "verification or requested task outcome did not pass"
+            },
+            "createdAt": "2026-05-15T00:24:15.314Z"
+          },
+          {
+            "id": 912,
+            "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+            "caseId": "ts-vite-inject-query-relative",
+            "caseMode": "agent",
+            "score": 9,
+            "expectedFileRecall": 0,
+            "topKHitRate": 0,
+            "unexpectedFileRate": 0,
+            "responseTokens": 0,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "fail",
+            "expectedFiles": [
+              "packages/vite/src/client/client.ts",
+              "packages/vite/src/shared/utils.ts"
+            ],
+            "actualFiles": [],
+            "excludedFiles": [
+              "packages/vite/src/node/__tests__/",
+              "docs/",
+              "playground/"
+            ],
+            "summary": "Benchmark workspace setup failed before the agent could run.",
+            "recommendations": [
+              "Expected files missed: packages/vite/src/client/client.ts, packages/vite/src/shared/utils.ts.",
+              "Required source files were not touched: packages/vite/src/client/client.ts.",
+              "Task outcome failed; inspect linked files and hook recommendations.",
+              "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+            ],
+            "metadata": {
+              "assistanceMode": "baseline",
+              "kairnSessionCount": 439,
+              "primeAttempted": 32,
+              "primeEmitted": 16,
+              "primeSuppressed": 16,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 7412,
+              "primeContextEvents": 32,
+              "primeQualityEvents": 32,
+              "hookInvocations": 4,
+              "failureContextUsed": 1,
+              "mcpToolCalls": 16,
+              "mcpFilesReturned": [
+                "src/cli/commands/beta.ts",
+                "src/types/context.ts",
+                "src/parser/parseFile.ts",
+                "src/scope/editScope.ts"
+              ],
+              "promptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+              "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/vite-inject-query-skip.patch'",
+              "seedConfigured": true,
+              "contextBehavior": "source_rescue",
+              "missedExpectedFiles": [
+                "packages/vite/src/client/client.ts",
+                "packages/vite/src/shared/utils.ts"
+              ],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [],
+              "minExpectedHits": 2,
+              "expectedCoverageSatisfied": false,
+              "effectiveExpectedFileRecall": 0,
+              "requiredTouchedFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "requiredTouchedFilesTouched": [],
+              "missingRequiredTouchedFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "requiredTouchedSatisfied": false,
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "sourceInvariantPassed": true,
+              "diffScopePassed": true,
+              "scopeViolations": [],
+              "productionOnlyScopeExpected": true,
+              "testEditViolationFiles": [],
+              "sourceScopeDiscipline": "passed",
+              "qualityGatePassed": false,
+              "validSavings": false,
+              "invalidSavings": true,
+              "negativeEvidenceReason": "verification or requested task outcome did not pass"
+            },
+            "createdAt": "2026-05-15T00:24:17.060Z"
+          },
+          {
+            "id": 913,
+            "runId": "bench_66d3dcc5-c21e-46e3-9dda-4e47bab02e52",
+            "caseId": "go-chi-urlparam-latest",
+            "caseMode": "agent",
+            "score": 9,
+            "expectedFileRecall": 0,
+            "topKHitRate": 0,
+            "unexpectedFileRate": 0,
+            "responseTokens": 0,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "fail",
+            "expectedFiles": [
+              "context.go",
+              "mux.go",
+              "tree.go"
+            ],
+            "actualFiles": [],
+            "excludedFiles": [
+              "_examples/",
+              "middleware/",
+              "doc/"
+            ],
+            "summary": "Benchmark workspace setup failed before the agent could run.",
+            "recommendations": [
+              "Expected files missed: context.go, mux.go, tree.go.",
+              "Required source files were not touched: context.go.",
+              "Task outcome failed; inspect linked files and hook recommendations.",
+              "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+            ],
+            "metadata": {
+              "assistanceMode": "baseline",
+              "kairnSessionCount": 439,
+              "primeAttempted": 32,
+              "primeEmitted": 16,
+              "primeSuppressed": 16,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 7412,
+              "primeContextEvents": 32,
+              "primeQualityEvents": 32,
+              "hookInvocations": 4,
+              "failureContextUsed": 1,
+              "mcpToolCalls": 16,
+              "mcpFilesReturned": [
+                "src/cli/commands/beta.ts",
+                "src/types/context.ts",
+                "src/parser/parseFile.ts",
+                "src/scope/editScope.ts"
+              ],
+              "promptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+              "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/chi-urlparam-latest.patch'",
+              "seedConfigured": true,
+              "contextBehavior": "source_rescue",
+              "missedExpectedFiles": [
+                "context.go",
+                "mux.go",
+                "tree.go"
+              ],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [],
+              "minExpectedHits": 3,
+              "expectedCoverageSatisfied": false,
+              "effectiveExpectedFileRecall": 0,
+              "requiredTouchedFiles": [
+                "context.go"
+              ],
+              "requiredTouchedFilesTouched": [],
+              "missingRequiredTouchedFiles": [
+                "context.go"
+              ],
+              "requiredTouchedSatisfied": false,
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "sourceInvariantPassed": true,
+              "diffScopePassed": true,
+              "scopeViolations": [],
+              "productionOnlyScopeExpected": true,
+              "testEditViolationFiles": [],
+              "sourceScopeDiscipline": "passed",
+              "qualityGatePassed": false,
+              "validSavings": false,
+              "invalidSavings": true,
+              "negativeEvidenceReason": "verification or requested task outcome did not pass"
+            },
+            "createdAt": "2026-05-15T00:24:17.986Z"
+          }
+        ],
+        "recommendations": [
+          "Expected files missed: packages/zod/src/v4/core/util.ts.",
+          "Required source files were not touched: packages/zod/src/v4/core/util.ts.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes.",
+          "Expected files missed: packages/vite/src/client/client.ts, packages/vite/src/shared/utils.ts.",
+          "Required source files were not touched: packages/vite/src/client/client.ts.",
+          "Expected files missed: context.go, mux.go, tree.go.",
+          "Required source files were not touched: context.go.",
+          "Overall score is low; inspect weak cases before tuning retrieval."
+        ]
+      }
+    ],
+    "prompt_only": [],
+    "prompt_plus_hooks": [],
+    "manual_prime": [],
+    "hook_full_prime": [],
+    "hook_tiny_directive": [],
+    "hook_tiny_with_failures": [],
+    "kairn_codex_session": [
+      {
+        "run": {
+          "id": "bench_53e464aa-7f8b-4a21-99ed-d972aac2c16f",
+          "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+          "suiteId": "seeded-fresh-post-governor-chi-scope-recheck",
+          "suiteName": "Seeded Fresh Post-Governor Chi Scope Recheck",
+          "mode": "agent",
+          "status": "completed",
+          "startedAt": "2026-05-15T00:24:21.996Z",
+          "endedAt": "2026-05-15T00:24:26.172Z",
+          "metadata": {
+            "sessionId": "task_9d530a49-1455-4187-a486-56ce266529bd",
+            "caseCount": 3,
+            "agentConfigured": true,
+            "assistanceMode": "kairn_codex_session"
+          }
+        },
+        "results": [
+          {
+            "id": 914,
+            "runId": "bench_53e464aa-7f8b-4a21-99ed-d972aac2c16f",
+            "caseId": "ts-zod-is-object-array",
+            "caseMode": "agent",
+            "score": 9,
+            "expectedFileRecall": 0,
+            "topKHitRate": 0,
+            "unexpectedFileRate": 0,
+            "responseTokens": 0,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "fail",
+            "expectedFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "actualFiles": [],
+            "excludedFiles": [
+              "packages/docs/",
+              "packages/zod/src/v4/classic/tests/",
+              "packages/zod/src/v3/tests/"
+            ],
+            "summary": "Benchmark workspace setup failed before the agent could run.",
+            "recommendations": [
+              "Expected files missed: packages/zod/src/v4/core/util.ts.",
+              "Required source files were not touched: packages/zod/src/v4/core/util.ts.",
+              "Task outcome failed; inspect linked files and hook recommendations.",
+              "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+            ],
+            "metadata": {
+              "assistanceMode": "kairn_codex_session",
+              "kairnSessionCount": 440,
+              "primeAttempted": 32,
+              "primeEmitted": 16,
+              "primeSuppressed": 16,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 7412,
+              "primeContextEvents": 32,
+              "primeQualityEvents": 32,
+              "hookInvocations": 4,
+              "failureContextUsed": 1,
+              "mcpToolCalls": 16,
+              "mcpFilesReturned": [
+                "src/cli/commands/beta.ts",
+                "src/types/context.ts",
+                "src/parser/parseFile.ts",
+                "src/scope/editScope.ts"
+              ],
+              "promptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+              "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/zod-is-object-array.patch'",
+              "seedConfigured": true,
+              "contextBehavior": "cheap_single_source",
+              "missedExpectedFiles": [
+                "packages/zod/src/v4/core/util.ts"
+              ],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [],
+              "minExpectedHits": 1,
+              "expectedCoverageSatisfied": false,
+              "effectiveExpectedFileRecall": 0,
+              "requiredTouchedFiles": [
+                "packages/zod/src/v4/core/util.ts"
+              ],
+              "requiredTouchedFilesTouched": [],
+              "missingRequiredTouchedFiles": [
+                "packages/zod/src/v4/core/util.ts"
+              ],
+              "requiredTouchedSatisfied": false,
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "sourceInvariantPassed": true,
+              "diffScopePassed": true,
+              "scopeViolations": [],
+              "productionOnlyScopeExpected": true,
+              "testEditViolationFiles": [],
+              "sourceScopeDiscipline": "passed",
+              "qualityGatePassed": false,
+              "validSavings": false,
+              "invalidSavings": true,
+              "negativeEvidenceReason": "verification or requested task outcome did not pass"
+            },
+            "createdAt": "2026-05-15T00:24:23.441Z"
+          },
+          {
+            "id": 915,
+            "runId": "bench_53e464aa-7f8b-4a21-99ed-d972aac2c16f",
+            "caseId": "ts-vite-inject-query-relative",
+            "caseMode": "agent",
+            "score": 9,
+            "expectedFileRecall": 0,
+            "topKHitRate": 0,
+            "unexpectedFileRate": 0,
+            "responseTokens": 0,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "fail",
+            "expectedFiles": [
+              "packages/vite/src/client/client.ts",
+              "packages/vite/src/shared/utils.ts"
+            ],
+            "actualFiles": [],
+            "excludedFiles": [
+              "packages/vite/src/node/__tests__/",
+              "docs/",
+              "playground/"
+            ],
+            "summary": "Benchmark workspace setup failed before the agent could run.",
+            "recommendations": [
+              "Expected files missed: packages/vite/src/client/client.ts, packages/vite/src/shared/utils.ts.",
+              "Required source files were not touched: packages/vite/src/client/client.ts.",
+              "Task outcome failed; inspect linked files and hook recommendations.",
+              "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+            ],
+            "metadata": {
+              "assistanceMode": "kairn_codex_session",
+              "kairnSessionCount": 440,
+              "primeAttempted": 32,
+              "primeEmitted": 16,
+              "primeSuppressed": 16,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 7412,
+              "primeContextEvents": 32,
+              "primeQualityEvents": 32,
+              "hookInvocations": 4,
+              "failureContextUsed": 1,
+              "mcpToolCalls": 16,
+              "mcpFilesReturned": [
+                "src/cli/commands/beta.ts",
+                "src/types/context.ts",
+                "src/parser/parseFile.ts",
+                "src/scope/editScope.ts"
+              ],
+              "promptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+              "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/vite-inject-query-skip.patch'",
+              "seedConfigured": true,
+              "contextBehavior": "source_rescue",
+              "missedExpectedFiles": [
+                "packages/vite/src/client/client.ts",
+                "packages/vite/src/shared/utils.ts"
+              ],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [],
+              "minExpectedHits": 2,
+              "expectedCoverageSatisfied": false,
+              "effectiveExpectedFileRecall": 0,
+              "requiredTouchedFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "requiredTouchedFilesTouched": [],
+              "missingRequiredTouchedFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "requiredTouchedSatisfied": false,
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "sourceInvariantPassed": true,
+              "diffScopePassed": true,
+              "scopeViolations": [],
+              "productionOnlyScopeExpected": true,
+              "testEditViolationFiles": [],
+              "sourceScopeDiscipline": "passed",
+              "qualityGatePassed": false,
+              "validSavings": false,
+              "invalidSavings": true,
+              "negativeEvidenceReason": "verification or requested task outcome did not pass"
+            },
+            "createdAt": "2026-05-15T00:24:25.213Z"
+          },
+          {
+            "id": 916,
+            "runId": "bench_53e464aa-7f8b-4a21-99ed-d972aac2c16f",
+            "caseId": "go-chi-urlparam-latest",
+            "caseMode": "agent",
+            "score": 9,
+            "expectedFileRecall": 0,
+            "topKHitRate": 0,
+            "unexpectedFileRate": 0,
+            "responseTokens": 0,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "fail",
+            "expectedFiles": [
+              "context.go",
+              "mux.go",
+              "tree.go"
+            ],
+            "actualFiles": [],
+            "excludedFiles": [
+              "_examples/",
+              "middleware/",
+              "doc/"
+            ],
+            "summary": "Benchmark workspace setup failed before the agent could run.",
+            "recommendations": [
+              "Expected files missed: context.go, mux.go, tree.go.",
+              "Required source files were not touched: context.go.",
+              "Task outcome failed; inspect linked files and hook recommendations.",
+              "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+            ],
+            "metadata": {
+              "assistanceMode": "kairn_codex_session",
+              "kairnSessionCount": 440,
+              "primeAttempted": 32,
+              "primeEmitted": 16,
+              "primeSuppressed": 16,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 7412,
+              "primeContextEvents": 32,
+              "primeQualityEvents": 32,
+              "hookInvocations": 4,
+              "failureContextUsed": 1,
+              "mcpToolCalls": 16,
+              "mcpFilesReturned": [
+                "src/cli/commands/beta.ts",
+                "src/types/context.ts",
+                "src/parser/parseFile.ts",
+                "src/scope/editScope.ts"
+              ],
+              "promptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+              "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/chi-urlparam-latest.patch'",
+              "seedConfigured": true,
+              "contextBehavior": "source_rescue",
+              "missedExpectedFiles": [
+                "context.go",
+                "mux.go",
+                "tree.go"
+              ],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [],
+              "minExpectedHits": 3,
+              "expectedCoverageSatisfied": false,
+              "effectiveExpectedFileRecall": 0,
+              "requiredTouchedFiles": [
+                "context.go"
+              ],
+              "requiredTouchedFilesTouched": [],
+              "missingRequiredTouchedFiles": [
+                "context.go"
+              ],
+              "requiredTouchedSatisfied": false,
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "sourceInvariantPassed": true,
+              "diffScopePassed": true,
+              "scopeViolations": [],
+              "productionOnlyScopeExpected": true,
+              "testEditViolationFiles": [],
+              "sourceScopeDiscipline": "passed",
+              "qualityGatePassed": false,
+              "validSavings": false,
+              "invalidSavings": true,
+              "negativeEvidenceReason": "verification or requested task outcome did not pass"
+            },
+            "createdAt": "2026-05-15T00:24:26.171Z"
+          }
+        ],
+        "overallScore": 9,
+        "weakestCases": [
+          {
+            "id": 914,
+            "runId": "bench_53e464aa-7f8b-4a21-99ed-d972aac2c16f",
+            "caseId": "ts-zod-is-object-array",
+            "caseMode": "agent",
+            "score": 9,
+            "expectedFileRecall": 0,
+            "topKHitRate": 0,
+            "unexpectedFileRate": 0,
+            "responseTokens": 0,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "fail",
+            "expectedFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "actualFiles": [],
+            "excludedFiles": [
+              "packages/docs/",
+              "packages/zod/src/v4/classic/tests/",
+              "packages/zod/src/v3/tests/"
+            ],
+            "summary": "Benchmark workspace setup failed before the agent could run.",
+            "recommendations": [
+              "Expected files missed: packages/zod/src/v4/core/util.ts.",
+              "Required source files were not touched: packages/zod/src/v4/core/util.ts.",
+              "Task outcome failed; inspect linked files and hook recommendations.",
+              "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+            ],
+            "metadata": {
+              "assistanceMode": "kairn_codex_session",
+              "kairnSessionCount": 440,
+              "primeAttempted": 32,
+              "primeEmitted": 16,
+              "primeSuppressed": 16,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 7412,
+              "primeContextEvents": 32,
+              "primeQualityEvents": 32,
+              "hookInvocations": 4,
+              "failureContextUsed": 1,
+              "mcpToolCalls": 16,
+              "mcpFilesReturned": [
+                "src/cli/commands/beta.ts",
+                "src/types/context.ts",
+                "src/parser/parseFile.ts",
+                "src/scope/editScope.ts"
+              ],
+              "promptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+              "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/zod-is-object-array.patch'",
+              "seedConfigured": true,
+              "contextBehavior": "cheap_single_source",
+              "missedExpectedFiles": [
+                "packages/zod/src/v4/core/util.ts"
+              ],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [],
+              "minExpectedHits": 1,
+              "expectedCoverageSatisfied": false,
+              "effectiveExpectedFileRecall": 0,
+              "requiredTouchedFiles": [
+                "packages/zod/src/v4/core/util.ts"
+              ],
+              "requiredTouchedFilesTouched": [],
+              "missingRequiredTouchedFiles": [
+                "packages/zod/src/v4/core/util.ts"
+              ],
+              "requiredTouchedSatisfied": false,
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "sourceInvariantPassed": true,
+              "diffScopePassed": true,
+              "scopeViolations": [],
+              "productionOnlyScopeExpected": true,
+              "testEditViolationFiles": [],
+              "sourceScopeDiscipline": "passed",
+              "qualityGatePassed": false,
+              "validSavings": false,
+              "invalidSavings": true,
+              "negativeEvidenceReason": "verification or requested task outcome did not pass"
+            },
+            "createdAt": "2026-05-15T00:24:23.441Z"
+          },
+          {
+            "id": 915,
+            "runId": "bench_53e464aa-7f8b-4a21-99ed-d972aac2c16f",
+            "caseId": "ts-vite-inject-query-relative",
+            "caseMode": "agent",
+            "score": 9,
+            "expectedFileRecall": 0,
+            "topKHitRate": 0,
+            "unexpectedFileRate": 0,
+            "responseTokens": 0,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "fail",
+            "expectedFiles": [
+              "packages/vite/src/client/client.ts",
+              "packages/vite/src/shared/utils.ts"
+            ],
+            "actualFiles": [],
+            "excludedFiles": [
+              "packages/vite/src/node/__tests__/",
+              "docs/",
+              "playground/"
+            ],
+            "summary": "Benchmark workspace setup failed before the agent could run.",
+            "recommendations": [
+              "Expected files missed: packages/vite/src/client/client.ts, packages/vite/src/shared/utils.ts.",
+              "Required source files were not touched: packages/vite/src/client/client.ts.",
+              "Task outcome failed; inspect linked files and hook recommendations.",
+              "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+            ],
+            "metadata": {
+              "assistanceMode": "kairn_codex_session",
+              "kairnSessionCount": 440,
+              "primeAttempted": 32,
+              "primeEmitted": 16,
+              "primeSuppressed": 16,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 7412,
+              "primeContextEvents": 32,
+              "primeQualityEvents": 32,
+              "hookInvocations": 4,
+              "failureContextUsed": 1,
+              "mcpToolCalls": 16,
+              "mcpFilesReturned": [
+                "src/cli/commands/beta.ts",
+                "src/types/context.ts",
+                "src/parser/parseFile.ts",
+                "src/scope/editScope.ts"
+              ],
+              "promptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+              "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/vite-inject-query-skip.patch'",
+              "seedConfigured": true,
+              "contextBehavior": "source_rescue",
+              "missedExpectedFiles": [
+                "packages/vite/src/client/client.ts",
+                "packages/vite/src/shared/utils.ts"
+              ],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [],
+              "minExpectedHits": 2,
+              "expectedCoverageSatisfied": false,
+              "effectiveExpectedFileRecall": 0,
+              "requiredTouchedFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "requiredTouchedFilesTouched": [],
+              "missingRequiredTouchedFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "requiredTouchedSatisfied": false,
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "sourceInvariantPassed": true,
+              "diffScopePassed": true,
+              "scopeViolations": [],
+              "productionOnlyScopeExpected": true,
+              "testEditViolationFiles": [],
+              "sourceScopeDiscipline": "passed",
+              "qualityGatePassed": false,
+              "validSavings": false,
+              "invalidSavings": true,
+              "negativeEvidenceReason": "verification or requested task outcome did not pass"
+            },
+            "createdAt": "2026-05-15T00:24:25.213Z"
+          },
+          {
+            "id": 916,
+            "runId": "bench_53e464aa-7f8b-4a21-99ed-d972aac2c16f",
+            "caseId": "go-chi-urlparam-latest",
+            "caseMode": "agent",
+            "score": 9,
+            "expectedFileRecall": 0,
+            "topKHitRate": 0,
+            "unexpectedFileRate": 0,
+            "responseTokens": 0,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "fail",
+            "expectedFiles": [
+              "context.go",
+              "mux.go",
+              "tree.go"
+            ],
+            "actualFiles": [],
+            "excludedFiles": [
+              "_examples/",
+              "middleware/",
+              "doc/"
+            ],
+            "summary": "Benchmark workspace setup failed before the agent could run.",
+            "recommendations": [
+              "Expected files missed: context.go, mux.go, tree.go.",
+              "Required source files were not touched: context.go.",
+              "Task outcome failed; inspect linked files and hook recommendations.",
+              "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+            ],
+            "metadata": {
+              "assistanceMode": "kairn_codex_session",
+              "kairnSessionCount": 440,
+              "primeAttempted": 32,
+              "primeEmitted": 16,
+              "primeSuppressed": 16,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 7412,
+              "primeContextEvents": 32,
+              "primeQualityEvents": 32,
+              "hookInvocations": 4,
+              "failureContextUsed": 1,
+              "mcpToolCalls": 16,
+              "mcpFilesReturned": [
+                "src/cli/commands/beta.ts",
+                "src/types/context.ts",
+                "src/parser/parseFile.ts",
+                "src/scope/editScope.ts"
+              ],
+              "promptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+              "workspaceSetupError": "ENOENT: no such file or directory, open '/tmp/patches/chi-urlparam-latest.patch'",
+              "seedConfigured": true,
+              "contextBehavior": "source_rescue",
+              "missedExpectedFiles": [
+                "context.go",
+                "mux.go",
+                "tree.go"
+              ],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [],
+              "minExpectedHits": 3,
+              "expectedCoverageSatisfied": false,
+              "effectiveExpectedFileRecall": 0,
+              "requiredTouchedFiles": [
+                "context.go"
+              ],
+              "requiredTouchedFilesTouched": [],
+              "missingRequiredTouchedFiles": [
+                "context.go"
+              ],
+              "requiredTouchedSatisfied": false,
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "sourceInvariantPassed": true,
+              "diffScopePassed": true,
+              "scopeViolations": [],
+              "productionOnlyScopeExpected": true,
+              "testEditViolationFiles": [],
+              "sourceScopeDiscipline": "passed",
+              "qualityGatePassed": false,
+              "validSavings": false,
+              "invalidSavings": true,
+              "negativeEvidenceReason": "verification or requested task outcome did not pass"
+            },
+            "createdAt": "2026-05-15T00:24:26.171Z"
+          }
+        ],
+        "recommendations": [
+          "Expected files missed: packages/zod/src/v4/core/util.ts.",
+          "Required source files were not touched: packages/zod/src/v4/core/util.ts.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes.",
+          "Expected files missed: packages/vite/src/client/client.ts, packages/vite/src/shared/utils.ts.",
+          "Required source files were not touched: packages/vite/src/client/client.ts.",
+          "Expected files missed: context.go, mux.go, tree.go.",
+          "Required source files were not touched: context.go.",
+          "Overall score is low; inspect weak cases before tuning retrieval."
+        ]
+      }
+    ],
+    "mcp_first": [],
+    "real_mcp_first": [],
+    "mcp_first_plus_hook_full_prime": [],
+    "hybrid_mcp_brief": []
+  },
+  "aggregate": {
+    "repeat": 1,
+    "modes": {
+      "baseline": {
+        "reports": 1,
+        "qualityPassingReports": 0,
+        "caseCount": 3
+      },
+      "prompt_only": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "prompt_plus_hooks": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "manual_prime": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "hook_full_prime": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "hook_tiny_directive": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "hook_tiny_with_failures": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "kairn_codex_session": {
+        "reports": 1,
+        "qualityPassingReports": 0,
+        "caseCount": 3
+      },
+      "mcp_first": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "real_mcp_first": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "mcp_first_plus_hook_full_prime": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "hybrid_mcp_brief": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      }
+    },
+    "deltas": {
+      "promptOnlyVsBaseline": {},
+      "promptPlusHooksVsBaseline": {},
+      "manualPrimeVsBaseline": {},
+      "hookFullPrimeVsBaseline": {},
+      "kairnCodexSessionVsBaseline": {},
+      "realMcpFirstVsBaseline": {},
+      "mcpFirstPlusHookFullPrimeVsBaseline": {},
+      "hybridMcpBriefVsBaseline": {}
+    }
+  },
+  "abstentionSummary": {},
+  "behaviorTargetSummary": {
+    "cheap_single_source": {
+      "cases": 1,
+      "met": 0,
+      "missed": 1
+    },
+    "source_rescue": {
+      "cases": 2,
+      "met": 0,
+      "missed": 2
+    }
+  },
+  "caseRepeatClassifications": [
+    {
+      "mode": "kairn_codex_session",
+      "caseId": "go-chi-urlparam-latest",
+      "repeats": 1,
+      "qualityPasses": 0,
+      "activeRuns": 1,
+      "suppressedRuns": 0,
+      "classifications": {
+        "harmful_invalid_assist": 1
+      },
+      "verdict": "insufficient_data",
+      "recommendation": "Only one repeat; treat kairn_codex_session/go-chi-urlparam-latest as exploratory evidence."
+    },
+    {
+      "mode": "kairn_codex_session",
+      "caseId": "ts-vite-inject-query-relative",
+      "repeats": 1,
+      "qualityPasses": 0,
+      "activeRuns": 1,
+      "suppressedRuns": 0,
+      "classifications": {
+        "harmful_invalid_assist": 1
+      },
+      "verdict": "insufficient_data",
+      "recommendation": "Only one repeat; treat kairn_codex_session/ts-vite-inject-query-relative as exploratory evidence."
+    },
+    {
+      "mode": "kairn_codex_session",
+      "caseId": "ts-zod-is-object-array",
+      "repeats": 1,
+      "qualityPasses": 0,
+      "activeRuns": 1,
+      "suppressedRuns": 0,
+      "classifications": {
+        "harmful_invalid_assist": 1
+      },
+      "verdict": "insufficient_data",
+      "recommendation": "Only one repeat; treat kairn_codex_session/ts-zod-is-object-array as exploratory evidence."
+    }
+  ],
+  "observedTokenDeltas": {},
+  "caseDeltas": [
+    {
+      "caseId": "ts-zod-is-object-array",
+      "outcome": {
+        "baseline": "fail",
+        "passiveHooks": "skipped",
+        "proactive": "skipped"
+      }
+    },
+    {
+      "caseId": "ts-vite-inject-query-relative",
+      "outcome": {
+        "baseline": "fail",
+        "passiveHooks": "skipped",
+        "proactive": "skipped"
+      }
+    },
+    {
+      "caseId": "go-chi-urlparam-latest",
+      "outcome": {
+        "baseline": "fail",
+        "passiveHooks": "skipped",
+        "proactive": "skipped"
+      }
+    }
+  ],
+  "recommendations": [
+    "Prompt-only hooks vs baseline: observed Codex usage unavailable.",
+    "Prompt+tool hooks vs baseline: observed Codex usage unavailable.",
+    "Manual prime vs baseline: observed Codex usage unavailable.",
+    "Hook full prime vs baseline: observed Codex usage unavailable.",
+    "Hook tiny directive vs baseline: observed Codex usage unavailable.",
+    "Hook tiny+failures vs baseline: observed Codex usage unavailable.",
+    "Kairn Codex session vs baseline: observed Codex usage unavailable.",
+    "MCP-first vs baseline: observed Codex usage unavailable.",
+    "Real MCP-first vs baseline: observed Codex usage unavailable.",
+    "MCP-first + full-prime hook vs baseline: observed Codex usage unavailable.",
+    "Hybrid MCP brief vs baseline: observed Codex usage unavailable.",
+    "kairn_codex_session/go-chi-urlparam-latest: Only one repeat; treat kairn_codex_session/go-chi-urlparam-latest as exploratory evidence.",
+    "kairn_codex_session/ts-vite-inject-query-relative: Only one repeat; treat kairn_codex_session/ts-vite-inject-query-relative as exploratory evidence.",
+    "kairn_codex_session/ts-zod-is-object-array: Only one repeat; treat kairn_codex_session/ts-zod-is-object-array as exploratory evidence."
+  ]
+}

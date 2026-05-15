@@ -98,6 +98,25 @@ describe("KairnRuntime", () => {
     runtime.close();
   });
 
+  it("keeps a tiny edit-scope guardrail for automatic production-source-only tasks", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+
+    const prime = await runtime.primeContext({
+      task: "Debug the greeting helper. Names with whitespace should be trimmed before rendering. Fix the production source and do not edit unrelated files.",
+      budget: 900,
+      source: "codex"
+    });
+
+    expect(prime.contextDecision?.action).toBe("shrink");
+    expect(prime.contextDecision?.recommendedDelivery).toBe("one_file_directive");
+    expect(prime.content).toContain("Edit scope");
+    expect(prime.content).toContain("Initial edit scope");
+    expect(prime.files.length).toBeGreaterThanOrEqual(1);
+
+    runtime.close();
+  });
+
   it("tracks index freshness across repo changes and refreshes", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);

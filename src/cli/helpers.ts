@@ -30,7 +30,7 @@ export function codexExecArgs(input: {
     ...(input.model ? ["--model", input.model] : []),
     "--sandbox",
     input.sandbox,
-    ...(input.enableHooks ? ["--enable", "hooks"] : []),
+    ...(input.enableHooks ? ["--enable", "hooks"] : ["--disable", "hooks"]),
     "--cd",
     path.resolve(input.root),
     input.prompt

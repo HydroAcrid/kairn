@@ -78,7 +78,7 @@ import {
   resolvePrimeProfile
 } from "../prime/quality.js";
 import { evaluateContextValue } from "../prime/contextValue.js";
-import { classifyTaskFrameFromTask } from "../prime/contextGovernor.js";
+import { classifyTaskFrameFromTask, hasExplicitMultiFileScopeRequest, taskHasProductionOnlyEditIntent } from "../prime/contextGovernor.js";
 import { decideSessionContextPolicy, inferTaskPhase } from "../ledger/policy.js";
 import { summarizeSessionLedger } from "../ledger/summary.js";
 import {
@@ -512,6 +512,12 @@ export class KairnRuntime {
     const effectiveAction = forceMinimalSourceFocus
       ? "shrink"
       : strongestSuppressiveAction(quality.action, contextDecision.action, sessionPolicy.action);
+    const forceProductionOnlyOneFile =
+      effectiveAction === "shrink" &&
+      taskHasProductionOnlyEditIntent(resolvedTask) &&
+      !hasExplicitMultiFileScopeRequest(resolvedTask) &&
+      Boolean(directivePrimaryFile || primaryFile) &&
+      Boolean(contextDecision.exactSourceHit || contextDecision.canonicalSourceHit || contextDecision.sourceRescue);
     const effectiveQuality = {
       ...quality,
       action: effectiveAction,
@@ -520,7 +526,7 @@ export class KairnRuntime {
     const effectiveContextDecision = {
       ...contextDecision,
       action: effectiveAction,
-      recommendedDelivery: forceMinimalSourceFocus
+      recommendedDelivery: forceMinimalSourceFocus || forceProductionOnlyOneFile
         ? "one_file_directive" as const
         : effectiveAction === "emit"
         ? contextDecision.recommendedDelivery ?? "full_prime"
@@ -532,6 +538,8 @@ export class KairnRuntime {
     };
     const emittedFiles = !isFileEmittingAction(effectiveAction)
       ? []
+      : forceProductionOnlyOneFile
+        ? [directivePrimaryFile ?? primaryFile!]
       : effectiveAction === "shrink" && forceMinimalSourceFocus && sessionPolicy.files.length > 0
         ? sessionPolicy.files.slice(0, 1)
       : effectiveContextDecision.recommendedDelivery === "multi_file_directive"
@@ -3685,13 +3693,18 @@ function automaticPrimeSuppressionReason(input: {
 }): string | undefined {
   if (input.source !== "codex" && input.source !== "claude") return undefined;
   const sourceRescueGuardrail = shouldEmitAutomaticSourceRescueGuardrail(input.decision);
-  if (input.decision.cheapSingleSource && !input.decision.companionSpecific && !sourceRescueGuardrail) {
+  const productionOnlyGuardrail =
+    taskHasProductionOnlyEditIntent(input.task) &&
+    !input.decision.wrongContextRisk &&
+    !input.decision.cheapExactSource &&
+    (input.decision.exactSourceHit || input.decision.canonicalSourceHit || input.decision.sourceRescue);
+  if (input.decision.cheapSingleSource && !input.decision.companionSpecific && !sourceRescueGuardrail && !productionOnlyGuardrail) {
     return "automatic hook suppressed cheap single-source context to avoid over-assist";
   }
-  if (input.decision.cheapExactSource) {
+  if (input.decision.cheapExactSource && !productionOnlyGuardrail) {
     return "automatic hook suppressed cheap exact-source context to avoid over-assist";
   }
-  if (isCheapOneShotAutomaticTask(input.task) && input.decision.exactSourceHit && !input.decision.wrongContextRisk && !sourceRescueGuardrail) {
+  if (isCheapOneShotAutomaticTask(input.task) && input.decision.exactSourceHit && !input.decision.wrongContextRisk && !sourceRescueGuardrail && !productionOnlyGuardrail) {
     return "automatic hook suppressed obvious one-shot source context to avoid over-assist";
   }
   return undefined;

@@ -37,6 +37,25 @@ describe("edit scope controller", () => {
     expect(scope.initialEditFiles).not.toContain("examples/router.ts");
   });
 
+  it("keeps production-source-only source rescue to one edit file even with companion evidence", () => {
+    const scope = decideEditScope({
+      task: "Debug the seeded failing check. Fix the production source and do not edit unrelated files.",
+      candidateFiles: ["src/client.ts", "src/shared/utils.ts", "src/node/plugins/importAnalysis.ts"],
+      contextDecision: decision({
+        primaryFile: "src/client.ts",
+        sourceRescue: true,
+        canonicalSourceHit: true,
+        multiSurfaceSignal: true,
+        companionSpecific: true,
+        recommendedDelivery: "one_file_directive"
+      })
+    });
+
+    expect(scope.initialEditFiles).toEqual(["src/client.ts"]);
+    expect(scope.readOnlyFiles).toEqual(expect.arrayContaining(["src/shared/utils.ts", "src/node/plugins/importAnalysis.ts"]));
+    expect(scope.scopeSource).toBe("source_rescue");
+  });
+
   it("allows test edits only when the task explicitly asks for them", () => {
     const scope = decideEditScope({
       task: "Update the snapshot tests for the new expected output.",
