@@ -1,0 +1,19 @@
+{
+  "entryId": "fresh-unseen-v4-preflight",
+  "kind": "matrix",
+  "status": "planned",
+  "entryMetadata": {
+    "label": "Fresh unseen repo-matrix preflight",
+    "repoId": "fresh-holdout-v4",
+    "language": "mixed",
+    "sizeClass": "mixed",
+    "taskClass": "mixed",
+    "matrix": "examples/bench/repo-matrix-fresh-holdout-v4.json"
+  },
+  "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/raw/fresh-unseen-v4-preflight.json",
+  "startedAt": "2026-05-15T05:20:53.601Z",
+  "endedAt": "2026-05-15T05:20:53.602Z",
+  "commands": [
+    "kairn bench matrix --matrix examples/bench/repo-matrix-fresh-holdout-v4.json"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "entryId": "swe-pro-official-eval-pilot",
+  "kind": "swe_pro_official_eval",
+  "status": "planned",
+  "entryMetadata": {
+    "label": "SWE-Pro official evaluator setup gate",
+    "repoId": "swe-bench-pro",
+    "language": "mixed",
+    "sizeClass": "mixed",
+    "taskClass": "official_patch",
+    "input": "examples/bench/swe-pro-publication/swe-pro-pilot-raw.jsonl",
+    "officialRowIds": [
+      "instance_NodeBB__NodeBB-04998908ba6721d64eba79ae3b65a351dcfbc5b5-vnan",
+      "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
+      "instance_ansible__ansible-f327e65d11bb905ed9f15996024f857a95592629-vba6da65a0f3baefda7a058ebbd0a8dcafb8512f5"
+    ]
+  },
+  "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/raw/swe-pro-official-eval-pilot.json",
+  "startedAt": "2026-05-15T05:20:53.603Z",
+  "endedAt": "2026-05-15T05:20:53.603Z",
+  "commands": [
+    "kairn bench publication --only swe-pro-official-eval-pilot --plan <plan> --out-dir <out-dir>",
+    "Run the SWE-bench_Pro official Docker evaluator against generated baseline and Kairn patches; then set evaluatorResultsPath to the evaluator JSON."
+  ]
+}

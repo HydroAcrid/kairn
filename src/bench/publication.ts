@@ -1,4 +1,6 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import type {
   BenchmarkAssistClassification,
@@ -17,6 +19,8 @@ import { runBenchmarkMcpSmoke, type BenchmarkMcpSmokeReport } from "./mcpSmoke.j
 import { runBenchmarkRepoMatrix } from "./matrix.js";
 import { buildSweAtlasQnaPilot, fetchSweAtlasQnaRows, loadSweAtlasQnaRows, writeSweAtlasQnaPilot, type SweAtlasQnaPilot } from "./sweAtlasQna.js";
 import { buildSweBenchProPilot, fetchSweBenchProRows, loadSweBenchProRows, writeSweBenchProPilot, type SweBenchProPilot } from "./sweBenchPro.js";
+import { buildSweProOfficialEvalReport, type SweProOfficialEvalReport } from "./sweProOfficial.js";
+import { buildSweContextBenchPilot, loadSweContextBenchRows, writeSweContextBenchPilot, type SweContextBenchPilot } from "./sweContextBench.js";
 
 export type PublicationEntryKind =
   | "matrix"
@@ -24,7 +28,9 @@ export type PublicationEntryKind =
   | "endurance"
   | "mcp_smoke"
   | "swe_atlas_qna_pilot"
-  | "swe_pro_pilot";
+  | "swe_pro_pilot"
+  | "swe_pro_official_eval"
+  | "swe_context_pilot";
 
 export type PublicationMode =
   | "baseline"
@@ -40,7 +46,9 @@ const PUBLICATION_ENTRY_KINDS = new Set<PublicationEntryKind>([
   "endurance",
   "mcp_smoke",
   "swe_atlas_qna_pilot",
-  "swe_pro_pilot"
+  "swe_pro_pilot",
+  "swe_pro_official_eval",
+  "swe_context_pilot"
 ]);
 
 const PUBLICATION_MODES = new Set<PublicationMode>([
@@ -56,6 +64,7 @@ export type PublicationPlan = {
   id: string;
   name: string;
   description?: string | undefined;
+  reportDate?: string | undefined;
   defaults?: {
     model?: string | undefined;
     repeat?: number | undefined;
@@ -99,6 +108,10 @@ export type PublicationPlanEntry = {
   languages?: string[] | undefined;
   repos?: string[] | undefined;
   categories?: string[] | undefined;
+  rowIds?: string[] | undefined;
+  evaluatorResultsPath?: string | undefined;
+  officialRunnerCommand?: string | undefined;
+  shuffleOrder?: boolean | undefined;
   officialEvaluatorPassed?: boolean | undefined;
   officialEvaluationRequired?: boolean | undefined;
   commands?: Partial<Record<PublicationMode, string>> | undefined;
@@ -129,6 +142,10 @@ export type PublicationEntryArtifact = {
     sizeClass?: string | undefined;
     taskClass?: string | undefined;
     contextBehavior?: BenchmarkContextBehavior | undefined;
+    matrix?: string | undefined;
+    suite?: string | undefined;
+    input?: string | undefined;
+    officialRowIds?: string[] | undefined;
   };
   artifactPath?: string | undefined;
   startedAt: string;
@@ -254,7 +271,7 @@ export async function runPublicationCampaign(options: PublicationRunOptions): Pr
   }
   const rows = artifacts.flatMap((artifact) => artifactToRows(artifact, entryById(entries, artifact.entryId)));
   const aggregate = aggregatePublicationRows(rows);
-  const outputs = publicationOutputPaths(outDir);
+  const outputs = publicationOutputPaths(outDir, plan);
   const report: PublicationReport = {
     id: plan.id,
     name: plan.name,
@@ -305,6 +322,8 @@ export function validatePublicationPlan(input: { plan: PublicationPlan; entries?
     if (entry.kind === "proof" && (!entry.root || !entry.suite)) throw new Error(`${entry.id}: proof entry requires root and suite.`);
     if (entry.kind === "endurance" && (!entry.root || !entry.suite)) throw new Error(`${entry.id}: endurance entry requires root and suite.`);
     if (entry.kind === "mcp_smoke" && (!entry.root || !entry.task)) throw new Error(`${entry.id}: mcp_smoke entry requires root and task.`);
+    if (entry.kind === "swe_context_pilot" && !entry.input) throw new Error(`${entry.id}: swe_context_pilot entry requires input.`);
+    if (entry.kind === "swe_pro_official_eval" && !entry.input) throw new Error(`${entry.id}: swe_pro_official_eval entry requires input.`);
   }
 }
 
@@ -324,7 +343,7 @@ async function runPublicationEntry(input: {
   const commands = plannedCommands(input.plan, input.entry, input.model, input.repeat);
   input.onProgress?.(`[bench publication] ${input.entry.id}: start`);
   if (input.dryRun) {
-    return {
+    const artifact: PublicationEntryArtifact = {
       entryId: input.entry.id,
       kind: input.entry.kind,
       status: "planned",
@@ -334,6 +353,9 @@ async function runPublicationEntry(input: {
       endedAt: new Date().toISOString(),
       commands
     };
+    fs.mkdirSync(path.dirname(artifactPath), { recursive: true });
+    fs.writeFileSync(artifactPath, `${JSON.stringify(artifact, null, 2)}\n`);
+    return artifact;
   }
   if (input.resume && fs.existsSync(artifactPath)) {
     const existing = JSON.parse(fs.readFileSync(artifactPath, "utf8")) as PublicationEntryArtifact;
@@ -444,6 +466,7 @@ async function executePublicationEntry(
         ...(modes.includes("hybrid_mcp_brief") ? { hybridMcpBriefCommand: commandFor(plan, entry, "hybrid_mcp_brief", model), hybridMcpBriefSetupCommand: setupCommandFor(plan, entry, "hybrid_mcp_brief") } : {}),
         agentTimeoutMs: entry.timeoutMs ?? plan.defaults?.agentTimeoutMs,
         repeat: Math.max(1, Math.floor(entry.repeat ?? repeat)),
+        shuffleOrder: Boolean(entry.shuffleOrder),
         proofOutputPath: partialPath,
         onProgress
       });
@@ -472,6 +495,25 @@ async function executePublicationEntry(
     });
     return { pilot, outputs: writeSweBenchProPilot({ pilot, outDir: entry.outDir ?? path.join("examples", "bench", "swe-pro-publication") }) };
   }
+  if (entry.kind === "swe_pro_official_eval") {
+    return buildSweProOfficialEvalReport({
+      rowsPath: entry.input,
+      rowIds: entry.rowIds,
+      limit: entry.limit,
+      evaluatorResultsPath: entry.evaluatorResultsPath,
+      officialRunnerCommand: entry.officialRunnerCommand
+    });
+  }
+  if (entry.kind === "swe_context_pilot") {
+    const rows = loadSweContextBenchRows(entry.input!);
+    const pilot = buildSweContextBenchPilot({
+      rows,
+      limit: entry.limit ?? 30,
+      languages: entry.languages,
+      repos: entry.repos
+    });
+    return { pilot, outputs: writeSweContextBenchPilot({ pilot, outDir: entry.outDir ?? path.join("examples", "bench", "swe-contextbench-publication") }) };
+  }
   throw new Error(`Unsupported publication entry kind: ${entry.kind}`);
 }
 
@@ -490,7 +532,11 @@ function publicationEntryMetadata(entry: PublicationPlanEntry): PublicationEntry
     language: entry.language,
     sizeClass: entry.sizeClass,
     taskClass: entry.taskClass,
-    contextBehavior: entry.contextBehavior
+    contextBehavior: entry.contextBehavior,
+    matrix: entry.matrix,
+    suite: entry.suite,
+    input: entry.input,
+    officialRowIds: entry.rowIds
   };
 }
 
@@ -503,6 +549,8 @@ function artifactToRows(artifact: PublicationEntryArtifact, entry: PublicationPl
   if (artifact.kind === "mcp_smoke") return mcpSmokeRows(artifact.report as BenchmarkMcpSmokeReport, artifact, entry);
   if (artifact.kind === "swe_atlas_qna_pilot") return pilotRows((artifact.report as { pilot: SweAtlasQnaPilot }).pilot, artifact, entry);
   if (artifact.kind === "swe_pro_pilot") return pilotRows((artifact.report as { pilot: SweBenchProPilot }).pilot, artifact, entry);
+  if (artifact.kind === "swe_context_pilot") return sweContextPilotRows((artifact.report as { pilot: SweContextBenchPilot }).pilot, artifact, entry);
+  if (artifact.kind === "swe_pro_official_eval") return sweProOfficialRows(artifact.report as SweProOfficialEvalReport, artifact, entry);
   return [];
 }
 
@@ -635,6 +683,61 @@ function pilotRows(pilot: SweAtlasQnaPilot | SweBenchProPilot, artifact: Publica
       failurePattern: pilot.summary.warnings[0]
     })
   ];
+}
+
+function sweContextPilotRows(pilot: SweContextBenchPilot, artifact: PublicationEntryArtifact, entry: PublicationPlanEntry): PublicationResultRow[] {
+  return [
+    baseRow({
+      artifact,
+      entry,
+      mode: "swe_context_pilot",
+      qualityPassed: pilot.rows > 0 && pilot.pairs.length > 0,
+      observedTokens: pilot.rows,
+      active: false,
+      failurePattern: pilot.summary.warnings[0]
+    })
+  ];
+}
+
+function sweProOfficialRows(report: SweProOfficialEvalReport, artifact: PublicationEntryArtifact, entry: PublicationPlanEntry): PublicationResultRow[] {
+  if (report.results.length === 0) {
+    return [
+      baseRow({
+        artifact,
+        entry,
+        mode: "official_evaluator",
+        qualityPassed: false,
+        active: false,
+        failurePattern: report.warnings[0] ?? "No SWE-Pro official evaluator results were available."
+      })
+    ];
+  }
+  return report.results.map((result) =>
+    baseRow({
+      artifact,
+      entry,
+      mode: "official_evaluator",
+      qualityPassed: result.passed,
+      observedTokens: result.tokenMetrics?.assistedTokens,
+      baselineTokens: result.tokenMetrics?.baselineTokens,
+      savedTokens: result.tokenMetrics?.baselineTokens !== undefined && result.tokenMetrics.assistedTokens !== undefined
+        ? result.tokenMetrics.baselineTokens - result.tokenMetrics.assistedTokens
+        : undefined,
+      savingsRate: result.tokenMetrics?.baselineTokens && result.tokenMetrics.assistedTokens !== undefined
+        ? (result.tokenMetrics.baselineTokens - result.tokenMetrics.assistedTokens) / result.tokenMetrics.baselineTokens
+        : undefined,
+      validSavings: result.passed &&
+        result.touchedRequiredSource !== false &&
+        result.scopePassed !== false &&
+        result.tokenMetrics?.baselineTokens !== undefined &&
+        result.tokenMetrics.assistedTokens !== undefined
+        ? Math.max(0, result.tokenMetrics.baselineTokens - result.tokenMetrics.assistedTokens)
+        : 0,
+      active: false,
+      scopeViolations: result.scopePassed === false ? 1 : 0,
+      failurePattern: result.passed ? undefined : "Official SWE-Pro evaluator did not pass."
+    })
+  );
 }
 
 function failureArtifactRows(artifact: PublicationEntryArtifact, entry: PublicationPlanEntry): PublicationResultRow[] {
@@ -864,34 +967,117 @@ function writePublicationOutputs(report: PublicationReport): void {
   fs.writeFileSync(report.outputs.markdownPath, formatPublicationMarkdown(report));
 }
 
-function publicationOutputPaths(outDir: string): PublicationReport["outputs"] {
+function publicationOutputPaths(outDir: string, plan: PublicationPlan): PublicationReport["outputs"] {
+  const reportDate = plan.reportDate ?? "2026-05-14";
   return {
     summaryPath: path.join(outDir, "publication-summary.json"),
     resultsCsvPath: path.join(outDir, "publication-results.csv"),
     failuresCsvPath: path.join(outDir, "publication-failures.csv"),
     manifestPath: path.join(outDir, "publication-manifest.json"),
-    markdownPath: path.join(outDir, "kairn_publication_evidence_report_2026-05-14.md")
+    markdownPath: path.join(outDir, `kairn_publication_evidence_report_${reportDate}.md`)
   };
 }
 
 function publicationManifest(report: PublicationReport): Record<string, unknown> {
+  const packageJson = readPackageJson();
+  const entries = report.artifacts.map((artifact) => ({
+    entryId: artifact.entryId,
+    kind: artifact.kind,
+    status: artifact.status,
+    entryMetadata: artifact.entryMetadata,
+    artifactPath: artifact.artifactPath,
+    commands: artifact.commands
+  }));
   return {
     id: report.id,
     name: report.name,
     generatedAt: report.generatedAt,
     planPath: report.planPath,
+    kairnGitSha: gitSha(),
+    packageVersion: packageJson.version ?? "unknown",
+    nodeVersion: process.version,
+    os: {
+      platform: process.platform,
+      arch: process.arch,
+      release: os.release()
+    },
     model: report.model,
     repeat: report.repeat,
     dryRun: report.dryRun,
-    artifacts: report.artifacts.map((artifact) => ({
-      entryId: artifact.entryId,
-      kind: artifact.kind,
-      status: artifact.status,
-      entryMetadata: artifact.entryMetadata,
-      artifactPath: artifact.artifactPath,
-      commands: artifact.commands
-    }))
+    timestamps: {
+      generatedAt: report.generatedAt,
+      artifactStarts: Object.fromEntries(report.artifacts.map((artifact) => [artifact.entryId, artifact.startedAt])),
+      artifactEnds: Object.fromEntries(report.artifacts.map((artifact) => [artifact.entryId, artifact.endedAt]))
+    },
+    benchmarkSuitePaths: [...new Set(report.artifacts.flatMap((artifact) => [
+      ...benchmarkPathsFromCommands(artifact.commands),
+      artifact.entryMetadata.matrix,
+      artifact.entryMetadata.suite,
+      artifact.entryMetadata.input
+    ].filter((item): item is string => Boolean(item))))],
+    officialDatasetRowIds: officialDatasetRowIds(report.artifacts),
+    commandTemplates: Object.fromEntries(report.artifacts.map((artifact) => [artifact.entryId, artifact.commands])),
+    artifacts: entries
   };
+}
+
+function readPackageJson(): Record<string, string> {
+  try {
+    return JSON.parse(fs.readFileSync(path.resolve("package.json"), "utf8")) as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+function gitSha(): string {
+  try {
+    return execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+  } catch {
+    return "unknown";
+  }
+}
+
+function benchmarkPathsFromCommands(commands: string[]): string[] {
+  const paths: string[] = [];
+  for (const command of commands) {
+    const suite = command.match(/--suite\s+([^\s]+)/);
+    const matrix = command.match(/--matrix\s+([^\s]+)/);
+    const plan = command.match(/--plan\s+([^\s]+)/);
+    const input = command.match(/--input\s+([^\s]+)/);
+    for (const match of [suite, matrix, plan, input]) {
+      if (match?.[1] && !match[1].startsWith("<")) paths.push(match[1]);
+    }
+  }
+  return paths;
+}
+
+function officialDatasetRowIds(artifacts: PublicationEntryArtifact[]): string[] {
+  const ids = new Set<string>();
+  for (const artifact of artifacts) {
+    for (const rowId of artifact.entryMetadata.officialRowIds ?? []) {
+      ids.add(rowId);
+    }
+    const report = artifact.report;
+    if (artifact.kind === "swe_pro_official_eval" && isRecord(report)) {
+      const rowIds = report.rowIds;
+      if (Array.isArray(rowIds)) {
+        for (const rowId of rowIds) {
+          if (typeof rowId === "string") ids.add(rowId);
+        }
+      }
+    }
+    if ((artifact.kind === "swe_pro_pilot" || artifact.kind === "swe_atlas_qna_pilot") && isRecord(report) && isRecord(report.pilot)) {
+      const rawRows = report.pilot.rawRows;
+      if (Array.isArray(rawRows)) {
+        for (const row of rawRows) {
+          if (!isRecord(row)) continue;
+          const id = typeof row.instance_id === "string" ? row.instance_id : typeof row.task_id === "string" ? row.task_id : undefined;
+          if (id) ids.add(id);
+        }
+      }
+    }
+  }
+  return [...ids].sort();
 }
 
 function formatPublicationMarkdown(report: PublicationReport): string {
@@ -1052,6 +1238,15 @@ function plannedCommands(plan: PublicationPlan, entry: PublicationPlanEntry, mod
   if (entry.kind === "mcp_smoke") return [`kairn bench mcp-smoke --root ${entry.root} --task ${JSON.stringify(entry.task)}`];
   if (entry.kind === "swe_atlas_qna_pilot") return [`kairn bench swe-atlas-qna-pilot --limit ${entry.limit ?? 30}`];
   if (entry.kind === "swe_pro_pilot") return [`kairn bench swe-pro-pilot --limit ${entry.limit ?? 10}`];
+  if (entry.kind === "swe_context_pilot") {
+    return [`kairn bench swe-context-pilot --input ${entry.input} --limit ${entry.limit ?? 30}`];
+  }
+  if (entry.kind === "swe_pro_official_eval") {
+    return [
+      `kairn bench publication --only ${entry.id} --plan <plan> --out-dir <out-dir>`,
+      entry.officialRunnerCommand ?? "Run the SWE-bench_Pro official Docker evaluator, then attach evaluatorResultsPath."
+    ];
+  }
   const modes = publicationModes(plan, entry);
   return [
     `${entry.kind} repeat=${entry.repeat ?? repeat}`,

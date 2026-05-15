@@ -1,0 +1,169 @@
+{
+  "id": "swe-contextbench-pilot-live",
+  "name": "SWE-ContextBench Pilot Live Suite",
+  "cases": [
+    {
+      "id": "vite-base-resolve",
+      "mode": "agent",
+      "task": "Find the source files responsible for plugin resolveId dispatch in Vite dev server transforms.",
+      "agentPrompt": "Find the source files responsible for plugin resolveId dispatch in Vite dev server transforms.",
+      "contextBehavior": "multi_file_debug",
+      "expectedFiles": [
+        "packages/vite/src/node/server/pluginContainer.ts",
+        "packages/vite/src/node/plugins/importAnalysis.ts"
+      ],
+      "minExpectedHits": 1,
+      "excludedFiles": [
+        "docs/",
+        "examples/",
+        "test/",
+        "tests/",
+        "__tests__/",
+        "vendor/",
+        "node_modules/"
+      ],
+      "budget": 1000,
+      "successCriteria": [
+        "Kairn retrieves relevant source files from the current or related task.",
+        "Unrelated prior context is suppressed.",
+        "This pilot measures source grounding and context reuse, not leaderboard patch correctness."
+      ]
+    },
+    {
+      "id": "vite-related-load",
+      "mode": "agent",
+      "task": "For a related Vite task, reuse prior context only if it helps explain how load hooks feed transform and import analysis.",
+      "agentPrompt": "For a related Vite task, reuse prior context only if it helps explain how load hooks feed transform and import analysis.",
+      "contextBehavior": "multi_file_debug",
+      "expectedFiles": [
+        "packages/vite/src/node/server/pluginContainer.ts",
+        "packages/vite/src/node/plugins/importAnalysis.ts"
+      ],
+      "minExpectedHits": 1,
+      "excludedFiles": [
+        "docs/",
+        "examples/",
+        "test/",
+        "tests/",
+        "__tests__/",
+        "vendor/",
+        "node_modules/"
+      ],
+      "budget": 1000,
+      "successCriteria": [
+        "Kairn retrieves relevant source files from the current or related task.",
+        "Unrelated prior context is suppressed.",
+        "This pilot measures source grounding and context reuse, not leaderboard patch correctness."
+      ]
+    },
+    {
+      "id": "httpcore-base-pool",
+      "mode": "agent",
+      "task": "Find the httpcore source files that coordinate sync connection pool request dispatch and connection reuse.",
+      "agentPrompt": "Find the httpcore source files that coordinate sync connection pool request dispatch and connection reuse.",
+      "contextBehavior": "multi_file_debug",
+      "expectedFiles": [
+        "httpcore/_sync/connection_pool.py",
+        "httpcore/_sync/connection.py"
+      ],
+      "minExpectedHits": 1,
+      "excludedFiles": [
+        "docs/",
+        "examples/",
+        "test/",
+        "tests/",
+        "__tests__/",
+        "vendor/",
+        "node_modules/"
+      ],
+      "budget": 1000,
+      "successCriteria": [
+        "Kairn retrieves relevant source files from the current or related task.",
+        "Unrelated prior context is suppressed.",
+        "This pilot measures source grounding and context reuse, not leaderboard patch correctness."
+      ]
+    },
+    {
+      "id": "httpcore-related-retry",
+      "mode": "agent",
+      "task": "For a related httpcore task, decide whether prior connection-pool context should be reused for a retry-after-failure question.",
+      "agentPrompt": "For a related httpcore task, decide whether prior connection-pool context should be reused for a retry-after-failure question.",
+      "contextBehavior": "multi_file_debug",
+      "expectedFiles": [
+        "httpcore/_sync/connection_pool.py",
+        "httpcore/_sync/connection.py"
+      ],
+      "minExpectedHits": 1,
+      "excludedFiles": [
+        "docs/",
+        "examples/",
+        "test/",
+        "tests/",
+        "__tests__/",
+        "vendor/",
+        "node_modules/"
+      ],
+      "budget": 1000,
+      "successCriteria": [
+        "Kairn retrieves relevant source files from the current or related task.",
+        "Unrelated prior context is suppressed.",
+        "This pilot measures source grounding and context reuse, not leaderboard patch correctness."
+      ]
+    },
+    {
+      "id": "gorm-base-create",
+      "mode": "agent",
+      "task": "Find the GORM source files involved when create callbacks read schema fields from Statement before insert.",
+      "agentPrompt": "Find the GORM source files involved when create callbacks read schema fields from Statement before insert.",
+      "contextBehavior": "multi_file_debug",
+      "expectedFiles": [
+        "callbacks/create.go",
+        "statement.go",
+        "schema/field.go"
+      ],
+      "minExpectedHits": 1,
+      "excludedFiles": [
+        "docs/",
+        "examples/",
+        "test/",
+        "tests/",
+        "__tests__/",
+        "vendor/",
+        "node_modules/"
+      ],
+      "budget": 1000,
+      "successCriteria": [
+        "Kairn retrieves relevant source files from the current or related task.",
+        "Unrelated prior context is suppressed.",
+        "This pilot measures source grounding and context reuse, not leaderboard patch correctness."
+      ]
+    },
+    {
+      "id": "gorm-related-schema",
+      "mode": "agent",
+      "task": "For a related GORM task, reuse prior create callback context only if it points to schema field handling.",
+      "agentPrompt": "For a related GORM task, reuse prior create callback context only if it points to schema field handling.",
+      "contextBehavior": "multi_file_debug",
+      "expectedFiles": [
+        "callbacks/create.go",
+        "schema/field.go"
+      ],
+      "minExpectedHits": 1,
+      "excludedFiles": [
+        "docs/",
+        "examples/",
+        "test/",
+        "tests/",
+        "__tests__/",
+        "vendor/",
+        "node_modules/"
+      ],
+      "budget": 1000,
+      "successCriteria": [
+        "Kairn retrieves relevant source files from the current or related task.",
+        "Unrelated prior context is suppressed.",
+        "This pilot measures source grounding and context reuse, not leaderboard patch correctness."
+      ]
+    }
+  ]
+}

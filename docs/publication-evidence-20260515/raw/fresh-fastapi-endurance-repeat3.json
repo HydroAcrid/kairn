@@ -1,0 +1,24 @@
+{
+  "entryId": "fresh-fastapi-endurance-repeat3",
+  "kind": "endurance",
+  "status": "planned",
+  "entryMetadata": {
+    "label": "Fresh FastAPI endurance repeat-3",
+    "repoId": "fastapi",
+    "language": "python",
+    "sizeClass": "large",
+    "taskClass": "session_repeat",
+    "contextBehavior": "multi_file_debug",
+    "suite": "examples/bench/endurance-fastapi.json"
+  },
+  "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/raw/fresh-fastapi-endurance-repeat3.json",
+  "startedAt": "2026-05-15T05:20:53.603Z",
+  "endedAt": "2026-05-15T05:20:53.603Z",
+  "commands": [
+    "endurance repeat=3",
+    "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+    "kairn_codex_session: kairn codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}",
+    "real_mcp_first: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+    "hybrid_mcp_brief: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --enable hooks {prompt}"
+  ]
+}

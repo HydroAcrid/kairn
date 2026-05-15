@@ -1,0 +1,19 @@
+{
+  "entryId": "swe-contextbench-pilot",
+  "kind": "swe_context_pilot",
+  "status": "planned",
+  "entryMetadata": {
+    "label": "SWE-ContextBench related-task reuse pilot",
+    "repoId": "swe-contextbench",
+    "language": "mixed",
+    "sizeClass": "mixed",
+    "taskClass": "related_context_reuse",
+    "input": "examples/bench/swe-contextbench-pilot-sample.jsonl"
+  },
+  "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/raw/swe-contextbench-pilot.json",
+  "startedAt": "2026-05-15T05:20:53.603Z",
+  "endedAt": "2026-05-15T05:20:53.603Z",
+  "commands": [
+    "kairn bench swe-context-pilot --input examples/bench/swe-contextbench-pilot-sample.jsonl --limit 30"
+  ]
+}

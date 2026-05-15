@@ -5,6 +5,7 @@ import { fixDoctorIssues, type DoctorFixResult } from "../../doctor/fix.js";
 import { buildDiagnosticExport, writeDiagnosticExport } from "../../telemetry/diagnostics.js";
 import { buildTelemetryPayload } from "../../telemetry/payload.js";
 import { buildBetaReport } from "../../telemetry/report.js";
+import { buildPrivateBetaTelemetrySummary, writePrivateBetaTelemetrySummary } from "../../telemetry/summary.js";
 import { disableTelemetry, enableTelemetry, ensureTelemetryIdentity, getTelemetryStatus } from "../../telemetry/config.js";
 import { queueAndFlushTelemetrySnapshot } from "../../telemetry/autoFlush.js";
 import { enqueueTelemetryPayload } from "../../telemetry/queue.js";
@@ -125,6 +126,31 @@ export function registerBetaCommands(program: Command): void {
             ""
           ].filter(Boolean).join("\n")
         );
+      });
+    });
+
+  telemetry
+    .command("summary")
+    .description("Write a sanitized private-beta telemetry summary report.")
+    .option("--root <path>", "target repository root", process.cwd())
+    .option("--session <id>", "limit summary to one Kairn session")
+    .option("--out <path>", "Markdown output path", "docs/private-beta-telemetry-summary-20260515.md")
+    .option("--json", "print JSON output")
+    .action(async (options: { root: string; session?: string; out: string; json?: boolean }) => {
+      await withRuntime(options.root, async (runtime) => {
+        const identity = ensureTelemetryIdentity(options.root);
+        const summary = buildPrivateBetaTelemetrySummary({
+          runtime,
+          installationId: identity.installationId!,
+          repoSalt: identity.repoSalt!,
+          sessionId: options.session
+        });
+        writePrivateBetaTelemetrySummary({ summary, outPath: options.out });
+        if (options.json) {
+          printJson({ outPath: path.resolve(options.out), summary });
+          return;
+        }
+        process.stdout.write(`Kairn private-beta telemetry summary written: ${path.resolve(options.out)}\n`);
       });
     });
 

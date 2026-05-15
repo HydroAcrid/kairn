@@ -1,0 +1,19 @@
+{
+  "entryId": "swe-atlas-qna-source-grounding-v2",
+  "kind": "swe_atlas_qna_pilot",
+  "status": "planned",
+  "entryMetadata": {
+    "label": "SWE-Atlas/QnA source-grounding and evidence-request gate",
+    "repoId": "swe-atlas-qna",
+    "language": "mixed",
+    "sizeClass": "mixed",
+    "taskClass": "source_grounded_answer",
+    "input": "examples/bench/swe-atlas-qna-publication/swe-atlas-qna-pilot-raw.jsonl"
+  },
+  "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/raw/swe-atlas-qna-source-grounding-v2.json",
+  "startedAt": "2026-05-15T05:20:53.603Z",
+  "endedAt": "2026-05-15T05:20:53.603Z",
+  "commands": [
+    "kairn bench swe-atlas-qna-pilot --limit 30"
+  ]
+}

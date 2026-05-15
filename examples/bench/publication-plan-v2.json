@@ -1,0 +1,132 @@
+{
+  "id": "kairn-evidence-campaign-v2",
+  "name": "Kairn Evidence Campaign v2",
+  "description": "Frozen publication-grade campaign for fresh holdout, endurance, SWE-Pro official-eval setup, SWE-ContextBench, SWE-Atlas/QnA, MCP, and telemetry-supporting evidence.",
+  "reportDate": "2026-05-15",
+  "defaults": {
+    "model": "gpt-5.4-mini",
+    "repeat": 5,
+    "agentTimeoutMs": 240000,
+    "turnTimeoutMs": 240000,
+    "workdir": "/tmp/kairn-publication-v2-workdirs",
+    "modes": ["baseline", "kairn_codex_session", "real_mcp_first"],
+    "commands": {
+      "baseline": "codex -a never exec --model {model} --sandbox danger-full-access --disable hooks {prompt}",
+      "kairn_codex_session": "kairn codex --root {root} --model {model} --sandbox danger-full-access {prompt}",
+      "real_mcp_first": "codex -a never exec --model {model} --sandbox danger-full-access --disable hooks {prompt}",
+      "hybrid_mcp_brief": "codex -a never exec --model {model} --sandbox danger-full-access --enable hooks {prompt}"
+    },
+    "setupCommands": {
+      "kairn_codex_session": "kairn setup codex --root {root} --mode savings >/dev/null",
+      "real_mcp_first": "kairn setup codex --root {root} --mode mcp-first --session {session} >/dev/null",
+      "hybrid_mcp_brief": "kairn setup codex --root {root} --mode hybrid --session {session} >/dev/null"
+    }
+  },
+  "entries": [
+    {
+      "id": "fresh-unseen-v4-preflight",
+      "kind": "matrix",
+      "label": "Fresh unseen repo-matrix preflight",
+      "repoId": "fresh-holdout-v4",
+      "language": "mixed",
+      "sizeClass": "mixed",
+      "taskClass": "mixed",
+      "matrix": "examples/bench/repo-matrix-fresh-holdout-v4.json"
+    },
+    {
+      "id": "fresh-repeat5-one-shot",
+      "kind": "proof",
+      "label": "Fresh repeat-5 one-shot live proof",
+      "repoId": "seeded-fresh-holdout-v2",
+      "language": "mixed",
+      "sizeClass": "mixed",
+      "taskClass": "source_rescue",
+      "root": ".",
+      "suite": "examples/bench/seeded-fresh-holdout-v2-20260511.json",
+      "repeat": 5,
+      "shuffleOrder": true,
+      "modes": ["baseline", "kairn_codex_session", "real_mcp_first"]
+    },
+    {
+      "id": "requests-10turn-repeat3",
+      "kind": "endurance",
+      "label": "Requests 10-turn endurance repeat-3",
+      "repoId": "requests",
+      "language": "python",
+      "sizeClass": "medium",
+      "taskClass": "session_repeat",
+      "contextBehavior": "source_rescue",
+      "root": ".",
+      "suite": "examples/bench/endurance-requests-10turn.json",
+      "repeat": 3,
+      "modes": ["baseline", "kairn_codex_session", "real_mcp_first", "hybrid_mcp_brief"]
+    },
+    {
+      "id": "fresh-fastapi-endurance-repeat3",
+      "kind": "endurance",
+      "label": "Fresh FastAPI endurance repeat-3",
+      "repoId": "fastapi",
+      "language": "python",
+      "sizeClass": "large",
+      "taskClass": "session_repeat",
+      "contextBehavior": "multi_file_debug",
+      "root": ".",
+      "suite": "examples/bench/endurance-fastapi.json",
+      "repeat": 3,
+      "modes": ["baseline", "kairn_codex_session", "real_mcp_first", "hybrid_mcp_brief"]
+    },
+    {
+      "id": "local-mcp-smoke-v2",
+      "kind": "mcp_smoke",
+      "label": "Local MCP protocol smoke",
+      "repoId": "local",
+      "language": "mixed",
+      "sizeClass": "unknown",
+      "taskClass": "mcp_delivery",
+      "root": ".",
+      "task": "Find the smallest useful Kairn source context for evidence-campaign reporting.",
+      "budget": 700,
+      "detail": "compact"
+    },
+    {
+      "id": "swe-pro-official-eval-pilot",
+      "kind": "swe_pro_official_eval",
+      "label": "SWE-Pro official evaluator setup gate",
+      "repoId": "swe-bench-pro",
+      "language": "mixed",
+      "sizeClass": "mixed",
+      "taskClass": "official_patch",
+      "input": "examples/bench/swe-pro-publication/swe-pro-pilot-raw.jsonl",
+      "rowIds": [
+        "instance_NodeBB__NodeBB-04998908ba6721d64eba79ae3b65a351dcfbc5b5-vnan",
+        "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
+        "instance_ansible__ansible-f327e65d11bb905ed9f15996024f857a95592629-vba6da65a0f3baefda7a058ebbd0a8dcafb8512f5"
+      ],
+      "limit": 5,
+      "officialEvaluationRequired": true,
+      "officialRunnerCommand": "Run the SWE-bench_Pro official Docker evaluator against generated baseline and Kairn patches; then set evaluatorResultsPath to the evaluator JSON."
+    },
+    {
+      "id": "swe-contextbench-pilot",
+      "kind": "swe_context_pilot",
+      "label": "SWE-ContextBench related-task reuse pilot",
+      "repoId": "swe-contextbench",
+      "language": "mixed",
+      "sizeClass": "mixed",
+      "taskClass": "related_context_reuse",
+      "input": "examples/bench/swe-contextbench-pilot-sample.jsonl",
+      "limit": 30
+    },
+    {
+      "id": "swe-atlas-qna-source-grounding-v2",
+      "kind": "swe_atlas_qna_pilot",
+      "label": "SWE-Atlas/QnA source-grounding and evidence-request gate",
+      "repoId": "swe-atlas-qna",
+      "language": "mixed",
+      "sizeClass": "mixed",
+      "taskClass": "source_grounded_answer",
+      "input": "examples/bench/swe-atlas-qna-publication/swe-atlas-qna-pilot-raw.jsonl",
+      "limit": 30
+    }
+  ]
+}

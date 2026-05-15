@@ -19,6 +19,8 @@ import { runAgentBenchmarkCase } from "../src/bench/agent.js";
 import { classifyAssistance } from "../src/bench/assistClassification.js";
 import { buildSweBenchProPilot, loadSweBenchProRows, writeSweBenchProPilot } from "../src/bench/sweBenchPro.js";
 import { buildSweAtlasQnaPilot, loadSweAtlasQnaRows, writeSweAtlasQnaPilot } from "../src/bench/sweAtlasQna.js";
+import { buildSweContextBenchPilot, loadSweContextBenchRows, writeSweContextBenchPilot } from "../src/bench/sweContextBench.js";
+import { buildSweProOfficialEvalReport } from "../src/bench/sweProOfficial.js";
 import {
   aggregatePublicationRows,
   loadPublicationPlan,
@@ -310,6 +312,78 @@ describe("benchmark suite and scoring", () => {
     }
   });
 
+  it("plans SWE-Pro official evaluator evidence without counting unverified savings", () => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-swe-pro-official-"));
+    try {
+      const rowsPath = path.join(root, "rows.json");
+      fs.writeFileSync(rowsPath, JSON.stringify({ rows: [{
+        row: {
+          repo: "pallets/flask",
+          instance_id: "instance_pallets__flask-demo",
+          base_commit: "0123456789012345678901234567890123456789",
+          patch: "diff --git a/src/flask/app.py b/src/flask/app.py\n--- a/src/flask/app.py\n+++ b/src/flask/app.py",
+          test_patch: "diff --git a/tests/test_app.py b/tests/test_app.py\n--- a/tests/test_app.py\n+++ b/tests/test_app.py",
+          problem_statement: "Fix dispatch behavior.",
+          repo_language: "python"
+        }
+      }] }));
+
+      const report = buildSweProOfficialEvalReport({
+        rowsPath,
+        rowIds: ["instance_pallets__flask-demo"],
+        limit: 1
+      });
+
+      expect(report.status).toBe("planned");
+      expect(report.rowIds).toEqual(["instance_pallets__flask-demo"]);
+      expect(report.officialEvaluatorPassed).toBe(false);
+      expect(report.warnings.join(" ")).toContain("savings must remain invalid");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("builds SWE-ContextBench pilot pairs and repo-matrix files", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-swe-contextbench-"));
+    try {
+      const rowsPath = path.join(root, "rows.jsonl");
+      fs.writeFileSync(rowsPath, [
+        JSON.stringify({
+          task_id: "vite-base",
+          group_id: "vite-plugin-flow",
+          prompt: "Find Vite plugin resolve source.",
+          repository_url: "https://github.com/vitejs/vite.git",
+          repository_base_commit: "main",
+          language: "typescript",
+          expected_files: ["packages/vite/src/node/server/pluginContainer.ts"]
+        }),
+        JSON.stringify({
+          task_id: "vite-related",
+          group_id: "vite-plugin-flow",
+          base_task_id: "vite-base",
+          prompt: "Reuse prior Vite context only if it helps import analysis.",
+          repository_url: "https://github.com/vitejs/vite.git",
+          repository_base_commit: "main",
+          language: "typescript",
+          expected_files: ["packages/vite/src/node/server/pluginContainer.ts", "packages/vite/src/node/plugins/importAnalysis.ts"]
+        })
+      ].join("\n") + "\n");
+
+      const rows = loadSweContextBenchRows(rowsPath);
+      const pilot = buildSweContextBenchPilot({ rows, limit: 2 });
+      const outputs = writeSweContextBenchPilot({ pilot, outDir: path.join(root, "out") });
+
+      expect(pilot.rows).toBe(2);
+      expect(pilot.pairs[0]?.relatedTaskIds).toEqual(["vite-related"]);
+      expect(pilot.matrix.repos[0]?.cases).toHaveLength(2);
+      expect(pilot.suite.cases[1]?.contextBehavior).toBe("multi_file_debug");
+      expect(fs.existsSync(outputs.suitePath)).toBe(true);
+      expect(fs.existsSync(outputs.matrixPath)).toBe(true);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("builds SWE-Atlas QnA pilot suite and matrix files without leaking reference answers", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-swe-atlas-qna-pilot-"));
     try {
@@ -525,10 +599,58 @@ describe("benchmark suite and scoring", () => {
       expect(fs.existsSync(report.outputs.markdownPath)).toBe(true);
       expect(fs.existsSync(report.outputs.resultsCsvPath)).toBe(true);
       const manifest = JSON.parse(fs.readFileSync(report.outputs.manifestPath, "utf8")) as {
+        packageVersion?: string;
+        nodeVersion?: string;
         artifacts: Array<{ entryId: string; commands: string[] }>;
       };
       expect(manifest.artifacts[0]?.entryId).toBe("mcp-smoke");
       expect(manifest.artifacts[0]?.commands[0]).toContain("Find src/user.ts");
+      expect(manifest.packageVersion).toBeTruthy();
+      expect(manifest.nodeVersion).toMatch(/^v/);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("accepts publication v2 official and context-pilot entries in dry-run mode", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-publication-v2-dry-run-"));
+    try {
+      const planPath = path.join(root, "publication-plan.json");
+      const outDir = path.join(root, "out");
+      fs.writeFileSync(
+        planPath,
+        JSON.stringify({
+          id: "publication-v2-test",
+          name: "Publication V2 Test",
+          reportDate: "2026-05-15",
+          entries: [
+            {
+              id: "swe-pro-official",
+              kind: "swe_pro_official_eval",
+              input: "examples/bench/swe-pro-publication/swe-pro-pilot-raw.jsonl",
+              rowIds: ["instance_demo"],
+              repoId: "swe-pro",
+              taskClass: "official_patch",
+              officialEvaluationRequired: true
+            },
+            {
+              id: "swe-context",
+              kind: "swe_context_pilot",
+              input: "examples/bench/swe-contextbench-pilot-sample.jsonl",
+              repoId: "swe-contextbench",
+              taskClass: "related_context_reuse"
+            }
+          ]
+        })
+      );
+
+      const report = await runPublicationCampaign({ planPath, outDir, dryRun: true });
+
+      expect(report.artifacts.map((artifact) => artifact.kind)).toEqual(["swe_pro_official_eval", "swe_context_pilot"]);
+      expect(report.artifacts[0]?.commands.join(" ")).toContain("official Docker evaluator");
+      expect(report.artifacts[1]?.commands[0]).toContain("swe-context-pilot");
+      expect(report.outputs.markdownPath).toMatch(/2026-05-15\.md$/);
+      expect(fs.existsSync(report.outputs.markdownPath)).toBe(true);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }

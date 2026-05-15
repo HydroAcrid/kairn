@@ -13,6 +13,7 @@ import { runBenchmarkRepoMatrix } from "../../bench/matrix.js";
 import { runBenchmarkEndurance, runBenchmarkEnduranceRepeats } from "../../bench/endurance.js";
 import { buildSweBenchProPilot, fetchSweBenchProRows, loadSweBenchProRows, writeSweBenchProPilot } from "../../bench/sweBenchPro.js";
 import { buildSweAtlasQnaPilot, fetchSweAtlasQnaRows, loadSweAtlasQnaRows, writeSweAtlasQnaPilot } from "../../bench/sweAtlasQna.js";
+import { buildSweContextBenchPilot, loadSweContextBenchRows, writeSweContextBenchPilot } from "../../bench/sweContextBench.js";
 import { runBenchmarkMcpSmoke } from "../../bench/mcpSmoke.js";
 import { runPublicationCampaign } from "../../bench/publication.js";
 import { parsePositiveInt, withRuntime } from "../helpers.js";
@@ -158,6 +159,44 @@ export function registerBenchCommands(program: Command): void {
       console.log(`MCP tool calls recorded: ${report.metrics.mcpToolCalls}`);
       console.log(`Start files: ${report.prepare.startFiles.join(", ") || "none"}`);
       console.log(`Stop condition: ${report.prepare.stopCondition ?? "none"}`);
+    });
+
+  benchCommand
+    .command("swe-context-pilot")
+    .description("Generate a SWE-ContextBench pilot suite and repo-matrix preflight sample from local metadata.")
+    .requiredOption("--input <path>", "local SWE-ContextBench metadata JSON/JSONL export")
+    .option("--out-dir <path>", "directory for generated suite/matrix files", "examples/bench/swe-contextbench-pilot")
+    .option("--limit <n>", "maximum selected tasks", parsePositiveInt, 30)
+    .option("--languages <csv>", "optional comma-separated language filter")
+    .option("--repos <csv>", "optional comma-separated repo filter")
+    .option("--json", "print JSON output")
+    .action((options: { input: string; outDir: string; limit: number; languages?: string; repos?: string; json?: boolean }) => {
+      const rows = loadSweContextBenchRows(options.input);
+      const pilot = buildSweContextBenchPilot({
+        rows,
+        limit: options.limit,
+        languages: csvList(options.languages),
+        repos: csvList(options.repos)
+      });
+      const outputs = writeSweContextBenchPilot({ pilot, outDir: options.outDir });
+      const result = {
+        generatedAt: pilot.generatedAt,
+        source: pilot.source,
+        rows: pilot.rows,
+        summary: pilot.summary,
+        outputs
+      };
+      if (options.json) {
+        printJson(result);
+        return;
+      }
+      console.log(`Generated SWE-ContextBench pilot with ${pilot.rows} tasks and ${pilot.pairs.length} related-task pair(s).`);
+      console.log(`Suite: ${outputs.suitePath}`);
+      console.log(`Matrix: ${outputs.matrixPath}`);
+      console.log(`Summary: ${outputs.summaryPath}`);
+      for (const warning of pilot.summary.warnings) {
+        console.log(`Warning: ${warning}`);
+      }
     });
 
   benchCommand

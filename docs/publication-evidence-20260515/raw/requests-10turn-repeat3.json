@@ -1,0 +1,24 @@
+{
+  "entryId": "requests-10turn-repeat3",
+  "kind": "endurance",
+  "status": "planned",
+  "entryMetadata": {
+    "label": "Requests 10-turn endurance repeat-3",
+    "repoId": "requests",
+    "language": "python",
+    "sizeClass": "medium",
+    "taskClass": "session_repeat",
+    "contextBehavior": "source_rescue",
+    "suite": "examples/bench/endurance-requests-10turn.json"
+  },
+  "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/raw/requests-10turn-repeat3.json",
+  "startedAt": "2026-05-15T05:20:53.602Z",
+  "endedAt": "2026-05-15T05:20:53.602Z",
+  "commands": [
+    "endurance repeat=3",
+    "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+    "kairn_codex_session: kairn codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}",
+    "real_mcp_first: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+    "hybrid_mcp_brief: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --enable hooks {prompt}"
+  ]
+}

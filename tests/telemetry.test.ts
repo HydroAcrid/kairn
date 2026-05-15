@@ -9,6 +9,7 @@ import { disableTelemetry, enableTelemetry, ensureTelemetryIdentity, getTelemetr
 import { buildTelemetryPayload } from "../src/telemetry/payload.js";
 import { enqueueTelemetryPayload, flushTelemetryQueue, readTelemetryQueue } from "../src/telemetry/queue.js";
 import { buildBetaReport } from "../src/telemetry/report.js";
+import { buildPrivateBetaTelemetrySummary, formatPrivateBetaTelemetrySummary } from "../src/telemetry/summary.js";
 import { assertSafeTelemetryPayload, hashFileId } from "../src/telemetry/sanitize.js";
 import type { TelemetryPayload } from "../src/types.js";
 import { createFixtureRepo } from "./helpers.js";
@@ -120,6 +121,28 @@ describe("telemetry", () => {
     expect(diagnostics.root.redacted).toBe(true);
     expect(diagnostics.telemetry.queuePath).toBe("<redacted>/.kairn/telemetry-queue.jsonl");
     expect(JSON.stringify(diagnostics)).not.toContain(root);
+
+    runtime.close();
+  });
+
+  it("formats private beta telemetry summaries without raw repo details", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const { session } = await runtime.startTask("Update dashboard rendering");
+    await runtime.primeContext({ task: "Fix dashboard rendering in src/app.ts", sessionId: session.id, source: "codex" });
+    const identity = ensureTelemetryIdentity(root);
+
+    const summary = buildPrivateBetaTelemetrySummary({
+      runtime,
+      installationId: identity.installationId!,
+      repoSalt: identity.repoSalt!,
+      sessionId: session.id
+    });
+    const markdown = formatPrivateBetaTelemetrySummary(summary);
+
+    expect(markdown).toContain("Private Beta Telemetry Summary");
+    expect(markdown).not.toContain(root);
+    expect(markdown).not.toContain("src/app.ts");
 
     runtime.close();
   });

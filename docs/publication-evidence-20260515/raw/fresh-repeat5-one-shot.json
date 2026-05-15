@@ -1,0 +1,22 @@
+{
+  "entryId": "fresh-repeat5-one-shot",
+  "kind": "proof",
+  "status": "planned",
+  "entryMetadata": {
+    "label": "Fresh repeat-5 one-shot live proof",
+    "repoId": "seeded-fresh-holdout-v2",
+    "language": "mixed",
+    "sizeClass": "mixed",
+    "taskClass": "source_rescue",
+    "suite": "examples/bench/seeded-fresh-holdout-v2-20260511.json"
+  },
+  "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/raw/fresh-repeat5-one-shot.json",
+  "startedAt": "2026-05-15T05:20:53.602Z",
+  "endedAt": "2026-05-15T05:20:53.602Z",
+  "commands": [
+    "proof repeat=5",
+    "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+    "kairn_codex_session: kairn codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}",
+    "real_mcp_first: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}"
+  ]
+}

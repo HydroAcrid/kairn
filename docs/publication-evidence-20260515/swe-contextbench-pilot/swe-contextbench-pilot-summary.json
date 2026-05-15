@@ -1,0 +1,32 @@
+{
+  "generatedAt": "2026-05-15T05:17:57.719Z",
+  "source": "SWE-ContextBench metadata",
+  "rows": 6,
+  "summary": {
+    "repos": {
+      "vitejs/vite": 2,
+      "encode/httpcore": 2,
+      "go-gorm/gorm": 2
+    },
+    "languages": {
+      "typescript": 2,
+      "python": 2,
+      "go": 2
+    },
+    "taskTypes": {
+      "base": 3,
+      "related": 3
+    },
+    "pairs": 3,
+    "relatedRows": 3,
+    "skippedRows": 0,
+    "warnings": []
+  },
+  "outputs": {
+    "suitePath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/swe-contextbench-pilot/swe-contextbench-pilot-suite.json",
+    "matrixPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/swe-contextbench-pilot/swe-contextbench-pilot-matrix.json",
+    "summaryPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/swe-contextbench-pilot/swe-contextbench-pilot-summary.json",
+    "rowsPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/swe-contextbench-pilot/swe-contextbench-pilot-rows.json",
+    "rawRowsPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/swe-contextbench-pilot/swe-contextbench-pilot-raw.jsonl"
+  }
+}
