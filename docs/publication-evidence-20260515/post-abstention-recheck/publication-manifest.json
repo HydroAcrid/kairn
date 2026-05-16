@@ -1,0 +1,58 @@
+{
+  "id": "kairn-post-abstention-recheck",
+  "name": "Kairn Post Abstention Recheck",
+  "generatedAt": "2026-05-15T18:38:38.990Z",
+  "planPath": "/tmp/kairn-post-abstention-plan.json",
+  "kairnGitSha": "bace1e032784b0d2d362e41334e0fec0fbe4a1f6",
+  "packageVersion": "0.1.2",
+  "nodeVersion": "v24.7.0",
+  "os": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "release": "24.6.0"
+  },
+  "model": "gpt-5.4-mini",
+  "repeat": 2,
+  "dryRun": false,
+  "timestamps": {
+    "generatedAt": "2026-05-15T18:38:38.990Z",
+    "artifactStarts": {
+      "post-abstention-repeat2": "2026-05-15T18:26:14.626Z"
+    },
+    "artifactEnds": {
+      "post-abstention-repeat2": "2026-05-15T18:38:38.989Z"
+    }
+  },
+  "benchmarkSuitePaths": [
+    "/tmp/kairn-post-abstention-suite.json"
+  ],
+  "officialDatasetRowIds": [],
+  "commandTemplates": {
+    "post-abstention-repeat2": [
+      "proof repeat=2",
+      "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+      "kairn_codex_session: node '/Users/kevindotel/Documents/Projects/kairn/dist/cli.js' codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}"
+    ]
+  },
+  "artifacts": [
+    {
+      "entryId": "post-abstention-repeat2",
+      "kind": "proof",
+      "status": "passed",
+      "entryMetadata": {
+        "label": "Post-abstention affected and guard recheck",
+        "repoId": "seeded-fresh-holdout-v2-subset",
+        "language": "mixed",
+        "sizeClass": "mixed",
+        "taskClass": "source_rescue",
+        "suite": "/tmp/kairn-post-abstention-suite.json"
+      },
+      "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/post-abstention-recheck/raw/post-abstention-repeat2.json",
+      "commands": [
+        "proof repeat=2",
+        "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+        "kairn_codex_session: node '/Users/kevindotel/Documents/Projects/kairn/dist/cli.js' codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}"
+      ]
+    }
+  ]
+}

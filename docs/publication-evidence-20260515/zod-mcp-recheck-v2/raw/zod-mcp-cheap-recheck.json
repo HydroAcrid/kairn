@@ -1,0 +1,2328 @@
+{
+  "entryId": "zod-mcp-cheap-recheck",
+  "kind": "proof",
+  "status": "passed",
+  "entryMetadata": {
+    "label": "Zod MCP cheap one-shot recheck",
+    "repoId": "zod",
+    "language": "typescript",
+    "sizeClass": "medium",
+    "taskClass": "cheap_single_source",
+    "suite": "/tmp/kairn-mini-zod-suite.json"
+  },
+  "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/zod-mcp-recheck-v2/raw/zod-mcp-cheap-recheck.json",
+  "startedAt": "2026-05-15T14:15:58.440Z",
+  "endedAt": "2026-05-15T14:18:27.098Z",
+  "commands": [
+    "proof repeat=1",
+    "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+    "real_mcp_first: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}"
+  ],
+  "report": {
+    "baseline": {
+      "run": {
+        "id": "bench_490565cb-0adf-4fa3-9099-574eec004344",
+        "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+        "suiteId": "mini-zod-recheck",
+        "suiteName": "Mini Zod recheck",
+        "mode": "agent",
+        "status": "completed",
+        "startedAt": "2026-05-15T14:16:04.849Z",
+        "endedAt": "2026-05-15T14:17:35.624Z",
+        "metadata": {
+          "sessionId": "task_60908635-f465-4690-a7ba-92cc837e496f",
+          "caseCount": 1,
+          "agentConfigured": true,
+          "assistanceMode": "baseline"
+        }
+      },
+      "results": [
+        {
+          "id": 1058,
+          "runId": "bench_490565cb-0adf-4fa3-9099-574eec004344",
+          "caseId": "ts-zod-is-object-array",
+          "caseMode": "agent",
+          "score": 63.75,
+          "expectedFileRecall": 1,
+          "topKHitRate": 1,
+          "unexpectedFileRate": 0,
+          "responseTokens": 162581,
+          "observedCodexTokens": 30582,
+          "hookContextEmitted": 0,
+          "hookContextSuppressed": 0,
+          "taskOutcome": "partial",
+          "expectedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "actualFiles": [
+            "packages/zod/src/v4/core/tests/record-constructor.test.ts",
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "excludedFiles": [
+            "packages/docs/",
+            "packages/zod/src/v4/classic/tests/",
+            "packages/zod/src/v3/tests/"
+          ],
+          "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 2.",
+          "recommendations": [
+            "Diff scope violations: packages/zod/src/v4/core/tests/record-constructor.test.ts: test edit in production-source-only task; packages/zod/src/v4/core/tests/record-constructor.test.ts: edit outside required production source scope.",
+            "Response exceeded the benchmark budget; tune response routing or snippets.",
+            "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+          ],
+          "metadata": {
+            "assistanceMode": "baseline",
+            "primeEmitted": 0,
+            "hookInvocations": 0,
+            "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-0KTD24",
+            "promptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+            "outputHash": "222a85863eb293493810e7a344381260012bcbc376272cbc7b420e8de7a85187",
+            "adapter": "command",
+            "hookCompleted": 0,
+            "hookFailed": 0,
+            "kairnMcpToolMentions": 0,
+            "actualMcpToolCalls": 0,
+            "actualMcpToolNames": [],
+            "actualMcpToolCallSource": "none",
+            "actualMcpFiles": [],
+            "actualMcpContextActions": [],
+            "mcpReturnedFileCount": 0,
+            "mcpReturnedExpectedFileCount": 0,
+            "mcpReturnedNoiseFileCount": 0,
+            "mcpReturnedTestFanoutCount": 0,
+            "mcpContextEfficiency": 1,
+            "originalPromptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+            "assistanceSetupMs": 0,
+            "promptPrepareMs": 0,
+            "agentElapsedMs": 89893,
+            "codexElapsedMs": 89893,
+            "agentTimedOut": false,
+            "agentTimeoutMs": 180000,
+            "verificationElapsedMs": 51,
+            "expectedFileMentions": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "changedFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "seedPatchFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "setupChangedFiles": [],
+            "agentChangedFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts",
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "requiredTouchedFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "requiredTouchedSatisfied": true,
+            "missingRequiredTouchedFiles": [],
+            "sourceInvariantChecked": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopeChecked": false,
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "scopeViolations": [],
+            "sourceScopeDiscipline": "failed",
+            "unrelatedFilesTouched": [],
+            "testsEdited": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "scopeExpanded": false,
+            "scopeExpansionReason": null,
+            "seedTestCommandHash": "13043a88b2932b77814e0de2aa955653c913360bc46f27d82b37105e620bc3c1",
+            "seedTestExitCode": 0,
+            "seedTestTimedOut": false,
+            "seedTestSignal": null,
+            "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "seedTestOutputTokens": 0,
+            "seedConfigured": true,
+            "seedRepoUrl": "https://github.com/colinhacks/zod.git",
+            "seedRef": "b6071fc0ad2be94850ed57e07e418a6f902a9771",
+            "seedCloneDepth": 1,
+            "seedSetupCommandCount": 0,
+            "seedHasPatch": true,
+            "seedPatchFileHashes": {
+              "packages/zod/src/v4/core/util.ts": "c808635677d5b1541b0554cae6bbd90bb482b1b98e7eb54f4e2a559f0beecf01"
+            },
+            "seedCommandNormalization": {
+              "pythonToPython3": false
+            },
+            "seedExpectedFailureCommandHash": "4161d3dd0ab4ba67a588b7fc39a1dcd650f973acaaf876f778a00e1b774a6485",
+            "seedExpectedFailureExitCode": 0,
+            "seedExpectedFailurePassed": false,
+            "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "seedExpectedFailureOutputTokens": 0,
+            "workspaceSetupMs": 812,
+            "elapsedMs": 89957,
+            "codexUsage": {
+              "totalTokens": 30582,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "contextBehavior": "cheap_single_source",
+            "missedExpectedFiles": [],
+            "irrelevantFilesRead": [],
+            "expectedFilesMentioned": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "minExpectedHits": 1,
+            "rawExpectedCoverageSatisfied": true,
+            "expectedCoverageSatisfied": true,
+            "sourceScopeCoverageOverride": true,
+            "effectiveExpectedFileRecall": 1,
+            "requiredTouchedFilesTouched": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "mcpRequired": false,
+            "mcpSuccess": true,
+            "productionOnlyScopeExpected": true,
+            "testEditViolationFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "extraProductionEditViolationFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "qualityGatePassed": false,
+            "validSavings": false,
+            "invalidSavings": true,
+            "negativeEvidenceReason": "agent edited outside the allowed source scope"
+          },
+          "createdAt": "2026-05-15T14:17:35.624Z"
+        }
+      ],
+      "overallScore": 63.75,
+      "observed": {
+        "codexTokens": 30582,
+        "codexCaseCount": 1
+      },
+      "weakestCases": [
+        {
+          "id": 1058,
+          "runId": "bench_490565cb-0adf-4fa3-9099-574eec004344",
+          "caseId": "ts-zod-is-object-array",
+          "caseMode": "agent",
+          "score": 63.75,
+          "expectedFileRecall": 1,
+          "topKHitRate": 1,
+          "unexpectedFileRate": 0,
+          "responseTokens": 162581,
+          "observedCodexTokens": 30582,
+          "hookContextEmitted": 0,
+          "hookContextSuppressed": 0,
+          "taskOutcome": "partial",
+          "expectedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "actualFiles": [
+            "packages/zod/src/v4/core/tests/record-constructor.test.ts",
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "excludedFiles": [
+            "packages/docs/",
+            "packages/zod/src/v4/classic/tests/",
+            "packages/zod/src/v3/tests/"
+          ],
+          "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 2.",
+          "recommendations": [
+            "Diff scope violations: packages/zod/src/v4/core/tests/record-constructor.test.ts: test edit in production-source-only task; packages/zod/src/v4/core/tests/record-constructor.test.ts: edit outside required production source scope.",
+            "Response exceeded the benchmark budget; tune response routing or snippets.",
+            "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+          ],
+          "metadata": {
+            "assistanceMode": "baseline",
+            "primeEmitted": 0,
+            "hookInvocations": 0,
+            "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-0KTD24",
+            "promptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+            "outputHash": "222a85863eb293493810e7a344381260012bcbc376272cbc7b420e8de7a85187",
+            "adapter": "command",
+            "hookCompleted": 0,
+            "hookFailed": 0,
+            "kairnMcpToolMentions": 0,
+            "actualMcpToolCalls": 0,
+            "actualMcpToolNames": [],
+            "actualMcpToolCallSource": "none",
+            "actualMcpFiles": [],
+            "actualMcpContextActions": [],
+            "mcpReturnedFileCount": 0,
+            "mcpReturnedExpectedFileCount": 0,
+            "mcpReturnedNoiseFileCount": 0,
+            "mcpReturnedTestFanoutCount": 0,
+            "mcpContextEfficiency": 1,
+            "originalPromptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+            "assistanceSetupMs": 0,
+            "promptPrepareMs": 0,
+            "agentElapsedMs": 89893,
+            "codexElapsedMs": 89893,
+            "agentTimedOut": false,
+            "agentTimeoutMs": 180000,
+            "verificationElapsedMs": 51,
+            "expectedFileMentions": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "changedFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "seedPatchFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "setupChangedFiles": [],
+            "agentChangedFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts",
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "requiredTouchedFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "requiredTouchedSatisfied": true,
+            "missingRequiredTouchedFiles": [],
+            "sourceInvariantChecked": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopeChecked": false,
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "scopeViolations": [],
+            "sourceScopeDiscipline": "failed",
+            "unrelatedFilesTouched": [],
+            "testsEdited": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "scopeExpanded": false,
+            "scopeExpansionReason": null,
+            "seedTestCommandHash": "13043a88b2932b77814e0de2aa955653c913360bc46f27d82b37105e620bc3c1",
+            "seedTestExitCode": 0,
+            "seedTestTimedOut": false,
+            "seedTestSignal": null,
+            "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "seedTestOutputTokens": 0,
+            "seedConfigured": true,
+            "seedRepoUrl": "https://github.com/colinhacks/zod.git",
+            "seedRef": "b6071fc0ad2be94850ed57e07e418a6f902a9771",
+            "seedCloneDepth": 1,
+            "seedSetupCommandCount": 0,
+            "seedHasPatch": true,
+            "seedPatchFileHashes": {
+              "packages/zod/src/v4/core/util.ts": "c808635677d5b1541b0554cae6bbd90bb482b1b98e7eb54f4e2a559f0beecf01"
+            },
+            "seedCommandNormalization": {
+              "pythonToPython3": false
+            },
+            "seedExpectedFailureCommandHash": "4161d3dd0ab4ba67a588b7fc39a1dcd650f973acaaf876f778a00e1b774a6485",
+            "seedExpectedFailureExitCode": 0,
+            "seedExpectedFailurePassed": false,
+            "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "seedExpectedFailureOutputTokens": 0,
+            "workspaceSetupMs": 812,
+            "elapsedMs": 89957,
+            "codexUsage": {
+              "totalTokens": 30582,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "contextBehavior": "cheap_single_source",
+            "missedExpectedFiles": [],
+            "irrelevantFilesRead": [],
+            "expectedFilesMentioned": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "minExpectedHits": 1,
+            "rawExpectedCoverageSatisfied": true,
+            "expectedCoverageSatisfied": true,
+            "sourceScopeCoverageOverride": true,
+            "effectiveExpectedFileRecall": 1,
+            "requiredTouchedFilesTouched": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "mcpRequired": false,
+            "mcpSuccess": true,
+            "productionOnlyScopeExpected": true,
+            "testEditViolationFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "extraProductionEditViolationFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "qualityGatePassed": false,
+            "validSavings": false,
+            "invalidSavings": true,
+            "negativeEvidenceReason": "agent edited outside the allowed source scope"
+          },
+          "createdAt": "2026-05-15T14:17:35.624Z"
+        }
+      ],
+      "recommendations": [
+        "Diff scope violations: packages/zod/src/v4/core/tests/record-constructor.test.ts: test edit in production-source-only task; packages/zod/src/v4/core/tests/record-constructor.test.ts: edit outside required production source scope.",
+        "Response exceeded the benchmark budget; tune response routing or snippets.",
+        "Observed token reductions for this case must be treated as invalid until the quality gate passes.",
+        "Overall score is low; inspect weak cases before tuning retrieval."
+      ]
+    },
+    "realMcpFirst": {
+      "run": {
+        "id": "bench_b1016bcf-bd45-4b2f-a8e9-a87973944594",
+        "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+        "suiteId": "mini-zod-recheck",
+        "suiteName": "Mini Zod recheck",
+        "mode": "agent",
+        "status": "completed",
+        "startedAt": "2026-05-15T14:17:39.574Z",
+        "endedAt": "2026-05-15T14:18:27.094Z",
+        "metadata": {
+          "sessionId": "task_3fd0e47d-7a5c-408f-af7f-eb329d0a2b34",
+          "caseCount": 1,
+          "agentConfigured": true,
+          "assistanceMode": "real_mcp_first"
+        }
+      },
+      "results": [
+        {
+          "id": 1059,
+          "runId": "bench_b1016bcf-bd45-4b2f-a8e9-a87973944594",
+          "caseId": "ts-zod-is-object-array",
+          "caseMode": "agent",
+          "score": 85,
+          "expectedFileRecall": 1,
+          "topKHitRate": 1,
+          "unexpectedFileRate": 0,
+          "responseTokens": 40524,
+          "observedCodexTokens": 29271,
+          "hookContextEmitted": 0,
+          "hookContextSuppressed": 0,
+          "taskOutcome": "pass",
+          "expectedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "actualFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "excludedFiles": [
+            "packages/docs/",
+            "packages/zod/src/v4/classic/tests/",
+            "packages/zod/src/v3/tests/"
+          ],
+          "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+          "recommendations": [
+            "Response exceeded the benchmark budget; tune response routing or snippets."
+          ],
+          "metadata": {
+            "assistanceMode": "real_mcp_first",
+            "kairnSessionCount": 1,
+            "primeAttempted": 1,
+            "primeEmitted": 1,
+            "primeSuppressed": 0,
+            "primeEvidenceRequested": 0,
+            "primeTokens": 0,
+            "primeContextEvents": 1,
+            "primeQualityEvents": 1,
+            "hookInvocations": 0,
+            "failureContextUsed": 0,
+            "mcpToolCalls": 1,
+            "mcpFilesReturned": [],
+            "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-sY1VND",
+            "promptHash": "c6f19470d04f8f5b1674ea3a93c8fe4a090f8c41201a1972681a0e269bda3c29",
+            "outputHash": "62aef4cac6147c92b77f72e00da910ccfd4fea9e861816f7519855e4c0ab4a7c",
+            "adapter": "command",
+            "hookCompleted": 0,
+            "hookFailed": 0,
+            "kairnMcpToolMentions": 8,
+            "actualMcpToolCalls": 1,
+            "actualMcpToolNames": [
+              "kairn_prepare_task"
+            ],
+            "actualMcpToolCallSource": "workspace_metrics",
+            "actualMcpFiles": [],
+            "actualMcpContextActions": [
+              "suppress"
+            ],
+            "mcpReturnedFileCount": 0,
+            "mcpReturnedExpectedFileCount": 0,
+            "mcpReturnedNoiseFileCount": 0,
+            "mcpReturnedTestFanoutCount": 0,
+            "mcpContextEfficiency": 1,
+            "originalPromptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+            "setupCommandHash": "66f42c7433672d23bd54d20817096eedbb660dd4bb9591f63f1a5eebd59ec197",
+            "setupCommandExitCode": 0,
+            "setupTimedOut": false,
+            "setupSignal": null,
+            "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "setupOutputTokens": 0,
+            "assistanceSetupMs": 328,
+            "promptPrepareMs": 0,
+            "agentElapsedMs": 46318,
+            "codexElapsedMs": 46318,
+            "agentTimedOut": false,
+            "agentTimeoutMs": 180000,
+            "verificationElapsedMs": 48,
+            "expectedFileMentions": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "changedFiles": [
+              "AGENTS.md"
+            ],
+            "seedPatchFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "setupChangedFiles": [
+              "AGENTS.md",
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "agentChangedFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "requiredTouchedFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "requiredTouchedSatisfied": true,
+            "missingRequiredTouchedFiles": [],
+            "sourceInvariantChecked": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopeChecked": false,
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "scopeViolations": [],
+            "sourceScopeDiscipline": "passed",
+            "unrelatedFilesTouched": [],
+            "testsEdited": [],
+            "scopeExpanded": false,
+            "scopeExpansionReason": null,
+            "seedTestCommandHash": "13043a88b2932b77814e0de2aa955653c913360bc46f27d82b37105e620bc3c1",
+            "seedTestExitCode": 0,
+            "seedTestTimedOut": false,
+            "seedTestSignal": null,
+            "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "seedTestOutputTokens": 0,
+            "seedConfigured": true,
+            "seedRepoUrl": "https://github.com/colinhacks/zod.git",
+            "seedRef": "b6071fc0ad2be94850ed57e07e418a6f902a9771",
+            "seedCloneDepth": 1,
+            "seedSetupCommandCount": 0,
+            "seedHasPatch": true,
+            "seedPatchFileHashes": {
+              "packages/zod/src/v4/core/util.ts": "c808635677d5b1541b0554cae6bbd90bb482b1b98e7eb54f4e2a559f0beecf01"
+            },
+            "seedCommandNormalization": {
+              "pythonToPython3": false
+            },
+            "seedExpectedFailureCommandHash": "4161d3dd0ab4ba67a588b7fc39a1dcd650f973acaaf876f778a00e1b774a6485",
+            "seedExpectedFailureExitCode": 0,
+            "seedExpectedFailurePassed": false,
+            "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "seedExpectedFailureOutputTokens": 0,
+            "workspaceSetupMs": 783,
+            "mcpFirstInstructionsPrepended": true,
+            "elapsedMs": 46725,
+            "codexUsage": {
+              "totalTokens": 29271,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "contextBehavior": "cheap_single_source",
+            "missedExpectedFiles": [],
+            "irrelevantFilesRead": [],
+            "expectedFilesMentioned": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "minExpectedHits": 1,
+            "rawExpectedCoverageSatisfied": true,
+            "expectedCoverageSatisfied": true,
+            "sourceScopeCoverageOverride": true,
+            "effectiveExpectedFileRecall": 1,
+            "requiredTouchedFilesTouched": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "mcpRequired": true,
+            "mcpSuccess": true,
+            "productionOnlyScopeExpected": true,
+            "testEditViolationFiles": [],
+            "extraProductionEditViolationFiles": [],
+            "qualityGatePassed": true,
+            "validSavings": true,
+            "invalidSavings": false
+          },
+          "createdAt": "2026-05-15T14:18:27.094Z"
+        }
+      ],
+      "overallScore": 85,
+      "observed": {
+        "codexTokens": 29271,
+        "codexCaseCount": 1
+      },
+      "weakestCases": [
+        {
+          "id": 1059,
+          "runId": "bench_b1016bcf-bd45-4b2f-a8e9-a87973944594",
+          "caseId": "ts-zod-is-object-array",
+          "caseMode": "agent",
+          "score": 85,
+          "expectedFileRecall": 1,
+          "topKHitRate": 1,
+          "unexpectedFileRate": 0,
+          "responseTokens": 40524,
+          "observedCodexTokens": 29271,
+          "hookContextEmitted": 0,
+          "hookContextSuppressed": 0,
+          "taskOutcome": "pass",
+          "expectedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "actualFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "excludedFiles": [
+            "packages/docs/",
+            "packages/zod/src/v4/classic/tests/",
+            "packages/zod/src/v3/tests/"
+          ],
+          "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+          "recommendations": [
+            "Response exceeded the benchmark budget; tune response routing or snippets."
+          ],
+          "metadata": {
+            "assistanceMode": "real_mcp_first",
+            "kairnSessionCount": 1,
+            "primeAttempted": 1,
+            "primeEmitted": 1,
+            "primeSuppressed": 0,
+            "primeEvidenceRequested": 0,
+            "primeTokens": 0,
+            "primeContextEvents": 1,
+            "primeQualityEvents": 1,
+            "hookInvocations": 0,
+            "failureContextUsed": 0,
+            "mcpToolCalls": 1,
+            "mcpFilesReturned": [],
+            "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-sY1VND",
+            "promptHash": "c6f19470d04f8f5b1674ea3a93c8fe4a090f8c41201a1972681a0e269bda3c29",
+            "outputHash": "62aef4cac6147c92b77f72e00da910ccfd4fea9e861816f7519855e4c0ab4a7c",
+            "adapter": "command",
+            "hookCompleted": 0,
+            "hookFailed": 0,
+            "kairnMcpToolMentions": 8,
+            "actualMcpToolCalls": 1,
+            "actualMcpToolNames": [
+              "kairn_prepare_task"
+            ],
+            "actualMcpToolCallSource": "workspace_metrics",
+            "actualMcpFiles": [],
+            "actualMcpContextActions": [
+              "suppress"
+            ],
+            "mcpReturnedFileCount": 0,
+            "mcpReturnedExpectedFileCount": 0,
+            "mcpReturnedNoiseFileCount": 0,
+            "mcpReturnedTestFanoutCount": 0,
+            "mcpContextEfficiency": 1,
+            "originalPromptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+            "setupCommandHash": "66f42c7433672d23bd54d20817096eedbb660dd4bb9591f63f1a5eebd59ec197",
+            "setupCommandExitCode": 0,
+            "setupTimedOut": false,
+            "setupSignal": null,
+            "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "setupOutputTokens": 0,
+            "assistanceSetupMs": 328,
+            "promptPrepareMs": 0,
+            "agentElapsedMs": 46318,
+            "codexElapsedMs": 46318,
+            "agentTimedOut": false,
+            "agentTimeoutMs": 180000,
+            "verificationElapsedMs": 48,
+            "expectedFileMentions": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "changedFiles": [
+              "AGENTS.md"
+            ],
+            "seedPatchFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "setupChangedFiles": [
+              "AGENTS.md",
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "agentChangedFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "requiredTouchedFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "requiredTouchedSatisfied": true,
+            "missingRequiredTouchedFiles": [],
+            "sourceInvariantChecked": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopeChecked": false,
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "scopeViolations": [],
+            "sourceScopeDiscipline": "passed",
+            "unrelatedFilesTouched": [],
+            "testsEdited": [],
+            "scopeExpanded": false,
+            "scopeExpansionReason": null,
+            "seedTestCommandHash": "13043a88b2932b77814e0de2aa955653c913360bc46f27d82b37105e620bc3c1",
+            "seedTestExitCode": 0,
+            "seedTestTimedOut": false,
+            "seedTestSignal": null,
+            "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "seedTestOutputTokens": 0,
+            "seedConfigured": true,
+            "seedRepoUrl": "https://github.com/colinhacks/zod.git",
+            "seedRef": "b6071fc0ad2be94850ed57e07e418a6f902a9771",
+            "seedCloneDepth": 1,
+            "seedSetupCommandCount": 0,
+            "seedHasPatch": true,
+            "seedPatchFileHashes": {
+              "packages/zod/src/v4/core/util.ts": "c808635677d5b1541b0554cae6bbd90bb482b1b98e7eb54f4e2a559f0beecf01"
+            },
+            "seedCommandNormalization": {
+              "pythonToPython3": false
+            },
+            "seedExpectedFailureCommandHash": "4161d3dd0ab4ba67a588b7fc39a1dcd650f973acaaf876f778a00e1b774a6485",
+            "seedExpectedFailureExitCode": 0,
+            "seedExpectedFailurePassed": false,
+            "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "seedExpectedFailureOutputTokens": 0,
+            "workspaceSetupMs": 783,
+            "mcpFirstInstructionsPrepended": true,
+            "elapsedMs": 46725,
+            "codexUsage": {
+              "totalTokens": 29271,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "contextBehavior": "cheap_single_source",
+            "missedExpectedFiles": [],
+            "irrelevantFilesRead": [],
+            "expectedFilesMentioned": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "minExpectedHits": 1,
+            "rawExpectedCoverageSatisfied": true,
+            "expectedCoverageSatisfied": true,
+            "sourceScopeCoverageOverride": true,
+            "effectiveExpectedFileRecall": 1,
+            "requiredTouchedFilesTouched": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "mcpRequired": true,
+            "mcpSuccess": true,
+            "productionOnlyScopeExpected": true,
+            "testEditViolationFiles": [],
+            "extraProductionEditViolationFiles": [],
+            "qualityGatePassed": true,
+            "validSavings": true,
+            "invalidSavings": false
+          },
+          "createdAt": "2026-05-15T14:18:27.094Z"
+        }
+      ],
+      "recommendations": [
+        "Response exceeded the benchmark budget; tune response routing or snippets."
+      ]
+    },
+    "passiveHooks": {
+      "run": {
+        "id": "bench_490565cb-0adf-4fa3-9099-574eec004344",
+        "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+        "suiteId": "mini-zod-recheck",
+        "suiteName": "Mini Zod recheck",
+        "mode": "agent",
+        "status": "completed",
+        "startedAt": "2026-05-15T14:16:04.849Z",
+        "endedAt": "2026-05-15T14:17:35.624Z",
+        "metadata": {
+          "sessionId": "task_60908635-f465-4690-a7ba-92cc837e496f",
+          "caseCount": 1,
+          "agentConfigured": true,
+          "assistanceMode": "baseline"
+        }
+      },
+      "results": [
+        {
+          "id": 1058,
+          "runId": "bench_490565cb-0adf-4fa3-9099-574eec004344",
+          "caseId": "ts-zod-is-object-array",
+          "caseMode": "agent",
+          "score": 63.75,
+          "expectedFileRecall": 1,
+          "topKHitRate": 1,
+          "unexpectedFileRate": 0,
+          "responseTokens": 162581,
+          "observedCodexTokens": 30582,
+          "hookContextEmitted": 0,
+          "hookContextSuppressed": 0,
+          "taskOutcome": "partial",
+          "expectedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "actualFiles": [
+            "packages/zod/src/v4/core/tests/record-constructor.test.ts",
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "excludedFiles": [
+            "packages/docs/",
+            "packages/zod/src/v4/classic/tests/",
+            "packages/zod/src/v3/tests/"
+          ],
+          "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 2.",
+          "recommendations": [
+            "Diff scope violations: packages/zod/src/v4/core/tests/record-constructor.test.ts: test edit in production-source-only task; packages/zod/src/v4/core/tests/record-constructor.test.ts: edit outside required production source scope.",
+            "Response exceeded the benchmark budget; tune response routing or snippets.",
+            "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+          ],
+          "metadata": {
+            "assistanceMode": "baseline",
+            "primeEmitted": 0,
+            "hookInvocations": 0,
+            "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-0KTD24",
+            "promptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+            "outputHash": "222a85863eb293493810e7a344381260012bcbc376272cbc7b420e8de7a85187",
+            "adapter": "command",
+            "hookCompleted": 0,
+            "hookFailed": 0,
+            "kairnMcpToolMentions": 0,
+            "actualMcpToolCalls": 0,
+            "actualMcpToolNames": [],
+            "actualMcpToolCallSource": "none",
+            "actualMcpFiles": [],
+            "actualMcpContextActions": [],
+            "mcpReturnedFileCount": 0,
+            "mcpReturnedExpectedFileCount": 0,
+            "mcpReturnedNoiseFileCount": 0,
+            "mcpReturnedTestFanoutCount": 0,
+            "mcpContextEfficiency": 1,
+            "originalPromptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+            "assistanceSetupMs": 0,
+            "promptPrepareMs": 0,
+            "agentElapsedMs": 89893,
+            "codexElapsedMs": 89893,
+            "agentTimedOut": false,
+            "agentTimeoutMs": 180000,
+            "verificationElapsedMs": 51,
+            "expectedFileMentions": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "changedFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "seedPatchFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "setupChangedFiles": [],
+            "agentChangedFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts",
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "requiredTouchedFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "requiredTouchedSatisfied": true,
+            "missingRequiredTouchedFiles": [],
+            "sourceInvariantChecked": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopeChecked": false,
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "scopeViolations": [],
+            "sourceScopeDiscipline": "failed",
+            "unrelatedFilesTouched": [],
+            "testsEdited": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "scopeExpanded": false,
+            "scopeExpansionReason": null,
+            "seedTestCommandHash": "13043a88b2932b77814e0de2aa955653c913360bc46f27d82b37105e620bc3c1",
+            "seedTestExitCode": 0,
+            "seedTestTimedOut": false,
+            "seedTestSignal": null,
+            "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "seedTestOutputTokens": 0,
+            "seedConfigured": true,
+            "seedRepoUrl": "https://github.com/colinhacks/zod.git",
+            "seedRef": "b6071fc0ad2be94850ed57e07e418a6f902a9771",
+            "seedCloneDepth": 1,
+            "seedSetupCommandCount": 0,
+            "seedHasPatch": true,
+            "seedPatchFileHashes": {
+              "packages/zod/src/v4/core/util.ts": "c808635677d5b1541b0554cae6bbd90bb482b1b98e7eb54f4e2a559f0beecf01"
+            },
+            "seedCommandNormalization": {
+              "pythonToPython3": false
+            },
+            "seedExpectedFailureCommandHash": "4161d3dd0ab4ba67a588b7fc39a1dcd650f973acaaf876f778a00e1b774a6485",
+            "seedExpectedFailureExitCode": 0,
+            "seedExpectedFailurePassed": false,
+            "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "seedExpectedFailureOutputTokens": 0,
+            "workspaceSetupMs": 812,
+            "elapsedMs": 89957,
+            "codexUsage": {
+              "totalTokens": 30582,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "contextBehavior": "cheap_single_source",
+            "missedExpectedFiles": [],
+            "irrelevantFilesRead": [],
+            "expectedFilesMentioned": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "minExpectedHits": 1,
+            "rawExpectedCoverageSatisfied": true,
+            "expectedCoverageSatisfied": true,
+            "sourceScopeCoverageOverride": true,
+            "effectiveExpectedFileRecall": 1,
+            "requiredTouchedFilesTouched": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "mcpRequired": false,
+            "mcpSuccess": true,
+            "productionOnlyScopeExpected": true,
+            "testEditViolationFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "extraProductionEditViolationFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "qualityGatePassed": false,
+            "validSavings": false,
+            "invalidSavings": true,
+            "negativeEvidenceReason": "agent edited outside the allowed source scope"
+          },
+          "createdAt": "2026-05-15T14:17:35.624Z"
+        }
+      ],
+      "overallScore": 63.75,
+      "observed": {
+        "codexTokens": 30582,
+        "codexCaseCount": 1
+      },
+      "weakestCases": [
+        {
+          "id": 1058,
+          "runId": "bench_490565cb-0adf-4fa3-9099-574eec004344",
+          "caseId": "ts-zod-is-object-array",
+          "caseMode": "agent",
+          "score": 63.75,
+          "expectedFileRecall": 1,
+          "topKHitRate": 1,
+          "unexpectedFileRate": 0,
+          "responseTokens": 162581,
+          "observedCodexTokens": 30582,
+          "hookContextEmitted": 0,
+          "hookContextSuppressed": 0,
+          "taskOutcome": "partial",
+          "expectedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "actualFiles": [
+            "packages/zod/src/v4/core/tests/record-constructor.test.ts",
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "excludedFiles": [
+            "packages/docs/",
+            "packages/zod/src/v4/classic/tests/",
+            "packages/zod/src/v3/tests/"
+          ],
+          "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 2.",
+          "recommendations": [
+            "Diff scope violations: packages/zod/src/v4/core/tests/record-constructor.test.ts: test edit in production-source-only task; packages/zod/src/v4/core/tests/record-constructor.test.ts: edit outside required production source scope.",
+            "Response exceeded the benchmark budget; tune response routing or snippets.",
+            "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+          ],
+          "metadata": {
+            "assistanceMode": "baseline",
+            "primeEmitted": 0,
+            "hookInvocations": 0,
+            "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-0KTD24",
+            "promptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+            "outputHash": "222a85863eb293493810e7a344381260012bcbc376272cbc7b420e8de7a85187",
+            "adapter": "command",
+            "hookCompleted": 0,
+            "hookFailed": 0,
+            "kairnMcpToolMentions": 0,
+            "actualMcpToolCalls": 0,
+            "actualMcpToolNames": [],
+            "actualMcpToolCallSource": "none",
+            "actualMcpFiles": [],
+            "actualMcpContextActions": [],
+            "mcpReturnedFileCount": 0,
+            "mcpReturnedExpectedFileCount": 0,
+            "mcpReturnedNoiseFileCount": 0,
+            "mcpReturnedTestFanoutCount": 0,
+            "mcpContextEfficiency": 1,
+            "originalPromptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+            "assistanceSetupMs": 0,
+            "promptPrepareMs": 0,
+            "agentElapsedMs": 89893,
+            "codexElapsedMs": 89893,
+            "agentTimedOut": false,
+            "agentTimeoutMs": 180000,
+            "verificationElapsedMs": 51,
+            "expectedFileMentions": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "changedFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "seedPatchFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "setupChangedFiles": [],
+            "agentChangedFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts",
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "requiredTouchedFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "requiredTouchedSatisfied": true,
+            "missingRequiredTouchedFiles": [],
+            "sourceInvariantChecked": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopeChecked": false,
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "scopeViolations": [],
+            "sourceScopeDiscipline": "failed",
+            "unrelatedFilesTouched": [],
+            "testsEdited": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "scopeExpanded": false,
+            "scopeExpansionReason": null,
+            "seedTestCommandHash": "13043a88b2932b77814e0de2aa955653c913360bc46f27d82b37105e620bc3c1",
+            "seedTestExitCode": 0,
+            "seedTestTimedOut": false,
+            "seedTestSignal": null,
+            "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "seedTestOutputTokens": 0,
+            "seedConfigured": true,
+            "seedRepoUrl": "https://github.com/colinhacks/zod.git",
+            "seedRef": "b6071fc0ad2be94850ed57e07e418a6f902a9771",
+            "seedCloneDepth": 1,
+            "seedSetupCommandCount": 0,
+            "seedHasPatch": true,
+            "seedPatchFileHashes": {
+              "packages/zod/src/v4/core/util.ts": "c808635677d5b1541b0554cae6bbd90bb482b1b98e7eb54f4e2a559f0beecf01"
+            },
+            "seedCommandNormalization": {
+              "pythonToPython3": false
+            },
+            "seedExpectedFailureCommandHash": "4161d3dd0ab4ba67a588b7fc39a1dcd650f973acaaf876f778a00e1b774a6485",
+            "seedExpectedFailureExitCode": 0,
+            "seedExpectedFailurePassed": false,
+            "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "seedExpectedFailureOutputTokens": 0,
+            "workspaceSetupMs": 812,
+            "elapsedMs": 89957,
+            "codexUsage": {
+              "totalTokens": 30582,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "contextBehavior": "cheap_single_source",
+            "missedExpectedFiles": [],
+            "irrelevantFilesRead": [],
+            "expectedFilesMentioned": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "minExpectedHits": 1,
+            "rawExpectedCoverageSatisfied": true,
+            "expectedCoverageSatisfied": true,
+            "sourceScopeCoverageOverride": true,
+            "effectiveExpectedFileRecall": 1,
+            "requiredTouchedFilesTouched": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "mcpRequired": false,
+            "mcpSuccess": true,
+            "productionOnlyScopeExpected": true,
+            "testEditViolationFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "extraProductionEditViolationFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "qualityGatePassed": false,
+            "validSavings": false,
+            "invalidSavings": true,
+            "negativeEvidenceReason": "agent edited outside the allowed source scope"
+          },
+          "createdAt": "2026-05-15T14:17:35.624Z"
+        }
+      ],
+      "recommendations": [
+        "Diff scope violations: packages/zod/src/v4/core/tests/record-constructor.test.ts: test edit in production-source-only task; packages/zod/src/v4/core/tests/record-constructor.test.ts: edit outside required production source scope.",
+        "Response exceeded the benchmark budget; tune response routing or snippets.",
+        "Observed token reductions for this case must be treated as invalid until the quality gate passes.",
+        "Overall score is low; inspect weak cases before tuning retrieval."
+      ]
+    },
+    "proactive": {
+      "run": {
+        "id": "bench_490565cb-0adf-4fa3-9099-574eec004344",
+        "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+        "suiteId": "mini-zod-recheck",
+        "suiteName": "Mini Zod recheck",
+        "mode": "agent",
+        "status": "completed",
+        "startedAt": "2026-05-15T14:16:04.849Z",
+        "endedAt": "2026-05-15T14:17:35.624Z",
+        "metadata": {
+          "sessionId": "task_60908635-f465-4690-a7ba-92cc837e496f",
+          "caseCount": 1,
+          "agentConfigured": true,
+          "assistanceMode": "baseline"
+        }
+      },
+      "results": [
+        {
+          "id": 1058,
+          "runId": "bench_490565cb-0adf-4fa3-9099-574eec004344",
+          "caseId": "ts-zod-is-object-array",
+          "caseMode": "agent",
+          "score": 63.75,
+          "expectedFileRecall": 1,
+          "topKHitRate": 1,
+          "unexpectedFileRate": 0,
+          "responseTokens": 162581,
+          "observedCodexTokens": 30582,
+          "hookContextEmitted": 0,
+          "hookContextSuppressed": 0,
+          "taskOutcome": "partial",
+          "expectedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "actualFiles": [
+            "packages/zod/src/v4/core/tests/record-constructor.test.ts",
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "excludedFiles": [
+            "packages/docs/",
+            "packages/zod/src/v4/classic/tests/",
+            "packages/zod/src/v3/tests/"
+          ],
+          "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 2.",
+          "recommendations": [
+            "Diff scope violations: packages/zod/src/v4/core/tests/record-constructor.test.ts: test edit in production-source-only task; packages/zod/src/v4/core/tests/record-constructor.test.ts: edit outside required production source scope.",
+            "Response exceeded the benchmark budget; tune response routing or snippets.",
+            "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+          ],
+          "metadata": {
+            "assistanceMode": "baseline",
+            "primeEmitted": 0,
+            "hookInvocations": 0,
+            "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-0KTD24",
+            "promptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+            "outputHash": "222a85863eb293493810e7a344381260012bcbc376272cbc7b420e8de7a85187",
+            "adapter": "command",
+            "hookCompleted": 0,
+            "hookFailed": 0,
+            "kairnMcpToolMentions": 0,
+            "actualMcpToolCalls": 0,
+            "actualMcpToolNames": [],
+            "actualMcpToolCallSource": "none",
+            "actualMcpFiles": [],
+            "actualMcpContextActions": [],
+            "mcpReturnedFileCount": 0,
+            "mcpReturnedExpectedFileCount": 0,
+            "mcpReturnedNoiseFileCount": 0,
+            "mcpReturnedTestFanoutCount": 0,
+            "mcpContextEfficiency": 1,
+            "originalPromptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+            "assistanceSetupMs": 0,
+            "promptPrepareMs": 0,
+            "agentElapsedMs": 89893,
+            "codexElapsedMs": 89893,
+            "agentTimedOut": false,
+            "agentTimeoutMs": 180000,
+            "verificationElapsedMs": 51,
+            "expectedFileMentions": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "changedFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "seedPatchFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "setupChangedFiles": [],
+            "agentChangedFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts",
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "requiredTouchedFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "requiredTouchedSatisfied": true,
+            "missingRequiredTouchedFiles": [],
+            "sourceInvariantChecked": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopeChecked": false,
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "scopeViolations": [],
+            "sourceScopeDiscipline": "failed",
+            "unrelatedFilesTouched": [],
+            "testsEdited": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "scopeExpanded": false,
+            "scopeExpansionReason": null,
+            "seedTestCommandHash": "13043a88b2932b77814e0de2aa955653c913360bc46f27d82b37105e620bc3c1",
+            "seedTestExitCode": 0,
+            "seedTestTimedOut": false,
+            "seedTestSignal": null,
+            "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "seedTestOutputTokens": 0,
+            "seedConfigured": true,
+            "seedRepoUrl": "https://github.com/colinhacks/zod.git",
+            "seedRef": "b6071fc0ad2be94850ed57e07e418a6f902a9771",
+            "seedCloneDepth": 1,
+            "seedSetupCommandCount": 0,
+            "seedHasPatch": true,
+            "seedPatchFileHashes": {
+              "packages/zod/src/v4/core/util.ts": "c808635677d5b1541b0554cae6bbd90bb482b1b98e7eb54f4e2a559f0beecf01"
+            },
+            "seedCommandNormalization": {
+              "pythonToPython3": false
+            },
+            "seedExpectedFailureCommandHash": "4161d3dd0ab4ba67a588b7fc39a1dcd650f973acaaf876f778a00e1b774a6485",
+            "seedExpectedFailureExitCode": 0,
+            "seedExpectedFailurePassed": false,
+            "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "seedExpectedFailureOutputTokens": 0,
+            "workspaceSetupMs": 812,
+            "elapsedMs": 89957,
+            "codexUsage": {
+              "totalTokens": 30582,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "contextBehavior": "cheap_single_source",
+            "missedExpectedFiles": [],
+            "irrelevantFilesRead": [],
+            "expectedFilesMentioned": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "minExpectedHits": 1,
+            "rawExpectedCoverageSatisfied": true,
+            "expectedCoverageSatisfied": true,
+            "sourceScopeCoverageOverride": true,
+            "effectiveExpectedFileRecall": 1,
+            "requiredTouchedFilesTouched": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "mcpRequired": false,
+            "mcpSuccess": true,
+            "productionOnlyScopeExpected": true,
+            "testEditViolationFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "extraProductionEditViolationFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "qualityGatePassed": false,
+            "validSavings": false,
+            "invalidSavings": true,
+            "negativeEvidenceReason": "agent edited outside the allowed source scope"
+          },
+          "createdAt": "2026-05-15T14:17:35.624Z"
+        }
+      ],
+      "overallScore": 63.75,
+      "observed": {
+        "codexTokens": 30582,
+        "codexCaseCount": 1
+      },
+      "weakestCases": [
+        {
+          "id": 1058,
+          "runId": "bench_490565cb-0adf-4fa3-9099-574eec004344",
+          "caseId": "ts-zod-is-object-array",
+          "caseMode": "agent",
+          "score": 63.75,
+          "expectedFileRecall": 1,
+          "topKHitRate": 1,
+          "unexpectedFileRate": 0,
+          "responseTokens": 162581,
+          "observedCodexTokens": 30582,
+          "hookContextEmitted": 0,
+          "hookContextSuppressed": 0,
+          "taskOutcome": "partial",
+          "expectedFiles": [
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "actualFiles": [
+            "packages/zod/src/v4/core/tests/record-constructor.test.ts",
+            "packages/zod/src/v4/core/util.ts"
+          ],
+          "excludedFiles": [
+            "packages/docs/",
+            "packages/zod/src/v4/classic/tests/",
+            "packages/zod/src/v3/tests/"
+          ],
+          "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 2.",
+          "recommendations": [
+            "Diff scope violations: packages/zod/src/v4/core/tests/record-constructor.test.ts: test edit in production-source-only task; packages/zod/src/v4/core/tests/record-constructor.test.ts: edit outside required production source scope.",
+            "Response exceeded the benchmark budget; tune response routing or snippets.",
+            "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+          ],
+          "metadata": {
+            "assistanceMode": "baseline",
+            "primeEmitted": 0,
+            "hookInvocations": 0,
+            "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-0KTD24",
+            "promptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+            "outputHash": "222a85863eb293493810e7a344381260012bcbc376272cbc7b420e8de7a85187",
+            "adapter": "command",
+            "hookCompleted": 0,
+            "hookFailed": 0,
+            "kairnMcpToolMentions": 0,
+            "actualMcpToolCalls": 0,
+            "actualMcpToolNames": [],
+            "actualMcpToolCallSource": "none",
+            "actualMcpFiles": [],
+            "actualMcpContextActions": [],
+            "mcpReturnedFileCount": 0,
+            "mcpReturnedExpectedFileCount": 0,
+            "mcpReturnedNoiseFileCount": 0,
+            "mcpReturnedTestFanoutCount": 0,
+            "mcpContextEfficiency": 1,
+            "originalPromptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+            "assistanceSetupMs": 0,
+            "promptPrepareMs": 0,
+            "agentElapsedMs": 89893,
+            "codexElapsedMs": 89893,
+            "agentTimedOut": false,
+            "agentTimeoutMs": 180000,
+            "verificationElapsedMs": 51,
+            "expectedFileMentions": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "changedFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "seedPatchFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "setupChangedFiles": [],
+            "agentChangedFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts",
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "requiredTouchedFiles": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "requiredTouchedSatisfied": true,
+            "missingRequiredTouchedFiles": [],
+            "sourceInvariantChecked": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopeChecked": false,
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "scopeViolations": [],
+            "sourceScopeDiscipline": "failed",
+            "unrelatedFilesTouched": [],
+            "testsEdited": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "scopeExpanded": false,
+            "scopeExpansionReason": null,
+            "seedTestCommandHash": "13043a88b2932b77814e0de2aa955653c913360bc46f27d82b37105e620bc3c1",
+            "seedTestExitCode": 0,
+            "seedTestTimedOut": false,
+            "seedTestSignal": null,
+            "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "seedTestOutputTokens": 0,
+            "seedConfigured": true,
+            "seedRepoUrl": "https://github.com/colinhacks/zod.git",
+            "seedRef": "b6071fc0ad2be94850ed57e07e418a6f902a9771",
+            "seedCloneDepth": 1,
+            "seedSetupCommandCount": 0,
+            "seedHasPatch": true,
+            "seedPatchFileHashes": {
+              "packages/zod/src/v4/core/util.ts": "c808635677d5b1541b0554cae6bbd90bb482b1b98e7eb54f4e2a559f0beecf01"
+            },
+            "seedCommandNormalization": {
+              "pythonToPython3": false
+            },
+            "seedExpectedFailureCommandHash": "4161d3dd0ab4ba67a588b7fc39a1dcd650f973acaaf876f778a00e1b774a6485",
+            "seedExpectedFailureExitCode": 0,
+            "seedExpectedFailurePassed": false,
+            "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "seedExpectedFailureOutputTokens": 0,
+            "workspaceSetupMs": 812,
+            "elapsedMs": 89957,
+            "codexUsage": {
+              "totalTokens": 30582,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "contextBehavior": "cheap_single_source",
+            "missedExpectedFiles": [],
+            "irrelevantFilesRead": [],
+            "expectedFilesMentioned": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "minExpectedHits": 1,
+            "rawExpectedCoverageSatisfied": true,
+            "expectedCoverageSatisfied": true,
+            "sourceScopeCoverageOverride": true,
+            "effectiveExpectedFileRecall": 1,
+            "requiredTouchedFilesTouched": [
+              "packages/zod/src/v4/core/util.ts"
+            ],
+            "mcpRequired": false,
+            "mcpSuccess": true,
+            "productionOnlyScopeExpected": true,
+            "testEditViolationFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "extraProductionEditViolationFiles": [
+              "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+            ],
+            "qualityGatePassed": false,
+            "validSavings": false,
+            "invalidSavings": true,
+            "negativeEvidenceReason": "agent edited outside the allowed source scope"
+          },
+          "createdAt": "2026-05-15T14:17:35.624Z"
+        }
+      ],
+      "recommendations": [
+        "Diff scope violations: packages/zod/src/v4/core/tests/record-constructor.test.ts: test edit in production-source-only task; packages/zod/src/v4/core/tests/record-constructor.test.ts: edit outside required production source scope.",
+        "Response exceeded the benchmark budget; tune response routing or snippets.",
+        "Observed token reductions for this case must be treated as invalid until the quality gate passes.",
+        "Overall score is low; inspect weak cases before tuning retrieval."
+      ]
+    },
+    "runs": {
+      "baseline": [
+        {
+          "run": {
+            "id": "bench_490565cb-0adf-4fa3-9099-574eec004344",
+            "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+            "suiteId": "mini-zod-recheck",
+            "suiteName": "Mini Zod recheck",
+            "mode": "agent",
+            "status": "completed",
+            "startedAt": "2026-05-15T14:16:04.849Z",
+            "endedAt": "2026-05-15T14:17:35.624Z",
+            "metadata": {
+              "sessionId": "task_60908635-f465-4690-a7ba-92cc837e496f",
+              "caseCount": 1,
+              "agentConfigured": true,
+              "assistanceMode": "baseline"
+            }
+          },
+          "results": [
+            {
+              "id": 1058,
+              "runId": "bench_490565cb-0adf-4fa3-9099-574eec004344",
+              "caseId": "ts-zod-is-object-array",
+              "caseMode": "agent",
+              "score": 63.75,
+              "expectedFileRecall": 1,
+              "topKHitRate": 1,
+              "unexpectedFileRate": 0,
+              "responseTokens": 162581,
+              "observedCodexTokens": 30582,
+              "hookContextEmitted": 0,
+              "hookContextSuppressed": 0,
+              "taskOutcome": "partial",
+              "expectedFiles": [
+                "packages/zod/src/v4/core/util.ts"
+              ],
+              "actualFiles": [
+                "packages/zod/src/v4/core/tests/record-constructor.test.ts",
+                "packages/zod/src/v4/core/util.ts"
+              ],
+              "excludedFiles": [
+                "packages/docs/",
+                "packages/zod/src/v4/classic/tests/",
+                "packages/zod/src/v3/tests/"
+              ],
+              "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 2.",
+              "recommendations": [
+                "Diff scope violations: packages/zod/src/v4/core/tests/record-constructor.test.ts: test edit in production-source-only task; packages/zod/src/v4/core/tests/record-constructor.test.ts: edit outside required production source scope.",
+                "Response exceeded the benchmark budget; tune response routing or snippets.",
+                "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+              ],
+              "metadata": {
+                "assistanceMode": "baseline",
+                "primeEmitted": 0,
+                "hookInvocations": 0,
+                "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-0KTD24",
+                "promptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+                "outputHash": "222a85863eb293493810e7a344381260012bcbc376272cbc7b420e8de7a85187",
+                "adapter": "command",
+                "hookCompleted": 0,
+                "hookFailed": 0,
+                "kairnMcpToolMentions": 0,
+                "actualMcpToolCalls": 0,
+                "actualMcpToolNames": [],
+                "actualMcpToolCallSource": "none",
+                "actualMcpFiles": [],
+                "actualMcpContextActions": [],
+                "mcpReturnedFileCount": 0,
+                "mcpReturnedExpectedFileCount": 0,
+                "mcpReturnedNoiseFileCount": 0,
+                "mcpReturnedTestFanoutCount": 0,
+                "mcpContextEfficiency": 1,
+                "originalPromptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+                "assistanceSetupMs": 0,
+                "promptPrepareMs": 0,
+                "agentElapsedMs": 89893,
+                "codexElapsedMs": 89893,
+                "agentTimedOut": false,
+                "agentTimeoutMs": 180000,
+                "verificationElapsedMs": 51,
+                "expectedFileMentions": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "changedFiles": [
+                  "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+                ],
+                "seedPatchFiles": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "setupChangedFiles": [],
+                "agentChangedFiles": [
+                  "packages/zod/src/v4/core/tests/record-constructor.test.ts",
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "requiredTouchedFiles": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "requiredTouchedSatisfied": true,
+                "missingRequiredTouchedFiles": [],
+                "sourceInvariantChecked": false,
+                "sourceInvariantPassed": true,
+                "sourceInvariantFailures": [],
+                "diffScopeChecked": false,
+                "diffScopePassed": true,
+                "diffScopeViolations": [],
+                "diffScopeChangedFiles": [],
+                "scopeViolations": [],
+                "sourceScopeDiscipline": "failed",
+                "unrelatedFilesTouched": [],
+                "testsEdited": [
+                  "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+                ],
+                "scopeExpanded": false,
+                "scopeExpansionReason": null,
+                "seedTestCommandHash": "13043a88b2932b77814e0de2aa955653c913360bc46f27d82b37105e620bc3c1",
+                "seedTestExitCode": 0,
+                "seedTestTimedOut": false,
+                "seedTestSignal": null,
+                "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "seedTestOutputTokens": 0,
+                "seedConfigured": true,
+                "seedRepoUrl": "https://github.com/colinhacks/zod.git",
+                "seedRef": "b6071fc0ad2be94850ed57e07e418a6f902a9771",
+                "seedCloneDepth": 1,
+                "seedSetupCommandCount": 0,
+                "seedHasPatch": true,
+                "seedPatchFileHashes": {
+                  "packages/zod/src/v4/core/util.ts": "c808635677d5b1541b0554cae6bbd90bb482b1b98e7eb54f4e2a559f0beecf01"
+                },
+                "seedCommandNormalization": {
+                  "pythonToPython3": false
+                },
+                "seedExpectedFailureCommandHash": "4161d3dd0ab4ba67a588b7fc39a1dcd650f973acaaf876f778a00e1b774a6485",
+                "seedExpectedFailureExitCode": 0,
+                "seedExpectedFailurePassed": false,
+                "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "seedExpectedFailureOutputTokens": 0,
+                "workspaceSetupMs": 812,
+                "elapsedMs": 89957,
+                "codexUsage": {
+                  "totalTokens": 30582,
+                  "inputTokens": 0,
+                  "cachedInputTokens": 0,
+                  "outputTokens": 0,
+                  "source": "footer"
+                },
+                "contextBehavior": "cheap_single_source",
+                "missedExpectedFiles": [],
+                "irrelevantFilesRead": [],
+                "expectedFilesMentioned": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "minExpectedHits": 1,
+                "rawExpectedCoverageSatisfied": true,
+                "expectedCoverageSatisfied": true,
+                "sourceScopeCoverageOverride": true,
+                "effectiveExpectedFileRecall": 1,
+                "requiredTouchedFilesTouched": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "mcpRequired": false,
+                "mcpSuccess": true,
+                "productionOnlyScopeExpected": true,
+                "testEditViolationFiles": [
+                  "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+                ],
+                "extraProductionEditViolationFiles": [
+                  "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+                ],
+                "qualityGatePassed": false,
+                "validSavings": false,
+                "invalidSavings": true,
+                "negativeEvidenceReason": "agent edited outside the allowed source scope"
+              },
+              "createdAt": "2026-05-15T14:17:35.624Z"
+            }
+          ],
+          "overallScore": 63.75,
+          "observed": {
+            "codexTokens": 30582,
+            "codexCaseCount": 1
+          },
+          "weakestCases": [
+            {
+              "id": 1058,
+              "runId": "bench_490565cb-0adf-4fa3-9099-574eec004344",
+              "caseId": "ts-zod-is-object-array",
+              "caseMode": "agent",
+              "score": 63.75,
+              "expectedFileRecall": 1,
+              "topKHitRate": 1,
+              "unexpectedFileRate": 0,
+              "responseTokens": 162581,
+              "observedCodexTokens": 30582,
+              "hookContextEmitted": 0,
+              "hookContextSuppressed": 0,
+              "taskOutcome": "partial",
+              "expectedFiles": [
+                "packages/zod/src/v4/core/util.ts"
+              ],
+              "actualFiles": [
+                "packages/zod/src/v4/core/tests/record-constructor.test.ts",
+                "packages/zod/src/v4/core/util.ts"
+              ],
+              "excludedFiles": [
+                "packages/docs/",
+                "packages/zod/src/v4/classic/tests/",
+                "packages/zod/src/v3/tests/"
+              ],
+              "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 2.",
+              "recommendations": [
+                "Diff scope violations: packages/zod/src/v4/core/tests/record-constructor.test.ts: test edit in production-source-only task; packages/zod/src/v4/core/tests/record-constructor.test.ts: edit outside required production source scope.",
+                "Response exceeded the benchmark budget; tune response routing or snippets.",
+                "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+              ],
+              "metadata": {
+                "assistanceMode": "baseline",
+                "primeEmitted": 0,
+                "hookInvocations": 0,
+                "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-0KTD24",
+                "promptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+                "outputHash": "222a85863eb293493810e7a344381260012bcbc376272cbc7b420e8de7a85187",
+                "adapter": "command",
+                "hookCompleted": 0,
+                "hookFailed": 0,
+                "kairnMcpToolMentions": 0,
+                "actualMcpToolCalls": 0,
+                "actualMcpToolNames": [],
+                "actualMcpToolCallSource": "none",
+                "actualMcpFiles": [],
+                "actualMcpContextActions": [],
+                "mcpReturnedFileCount": 0,
+                "mcpReturnedExpectedFileCount": 0,
+                "mcpReturnedNoiseFileCount": 0,
+                "mcpReturnedTestFanoutCount": 0,
+                "mcpContextEfficiency": 1,
+                "originalPromptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+                "assistanceSetupMs": 0,
+                "promptPrepareMs": 0,
+                "agentElapsedMs": 89893,
+                "codexElapsedMs": 89893,
+                "agentTimedOut": false,
+                "agentTimeoutMs": 180000,
+                "verificationElapsedMs": 51,
+                "expectedFileMentions": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "changedFiles": [
+                  "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+                ],
+                "seedPatchFiles": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "setupChangedFiles": [],
+                "agentChangedFiles": [
+                  "packages/zod/src/v4/core/tests/record-constructor.test.ts",
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "requiredTouchedFiles": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "requiredTouchedSatisfied": true,
+                "missingRequiredTouchedFiles": [],
+                "sourceInvariantChecked": false,
+                "sourceInvariantPassed": true,
+                "sourceInvariantFailures": [],
+                "diffScopeChecked": false,
+                "diffScopePassed": true,
+                "diffScopeViolations": [],
+                "diffScopeChangedFiles": [],
+                "scopeViolations": [],
+                "sourceScopeDiscipline": "failed",
+                "unrelatedFilesTouched": [],
+                "testsEdited": [
+                  "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+                ],
+                "scopeExpanded": false,
+                "scopeExpansionReason": null,
+                "seedTestCommandHash": "13043a88b2932b77814e0de2aa955653c913360bc46f27d82b37105e620bc3c1",
+                "seedTestExitCode": 0,
+                "seedTestTimedOut": false,
+                "seedTestSignal": null,
+                "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "seedTestOutputTokens": 0,
+                "seedConfigured": true,
+                "seedRepoUrl": "https://github.com/colinhacks/zod.git",
+                "seedRef": "b6071fc0ad2be94850ed57e07e418a6f902a9771",
+                "seedCloneDepth": 1,
+                "seedSetupCommandCount": 0,
+                "seedHasPatch": true,
+                "seedPatchFileHashes": {
+                  "packages/zod/src/v4/core/util.ts": "c808635677d5b1541b0554cae6bbd90bb482b1b98e7eb54f4e2a559f0beecf01"
+                },
+                "seedCommandNormalization": {
+                  "pythonToPython3": false
+                },
+                "seedExpectedFailureCommandHash": "4161d3dd0ab4ba67a588b7fc39a1dcd650f973acaaf876f778a00e1b774a6485",
+                "seedExpectedFailureExitCode": 0,
+                "seedExpectedFailurePassed": false,
+                "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "seedExpectedFailureOutputTokens": 0,
+                "workspaceSetupMs": 812,
+                "elapsedMs": 89957,
+                "codexUsage": {
+                  "totalTokens": 30582,
+                  "inputTokens": 0,
+                  "cachedInputTokens": 0,
+                  "outputTokens": 0,
+                  "source": "footer"
+                },
+                "contextBehavior": "cheap_single_source",
+                "missedExpectedFiles": [],
+                "irrelevantFilesRead": [],
+                "expectedFilesMentioned": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "minExpectedHits": 1,
+                "rawExpectedCoverageSatisfied": true,
+                "expectedCoverageSatisfied": true,
+                "sourceScopeCoverageOverride": true,
+                "effectiveExpectedFileRecall": 1,
+                "requiredTouchedFilesTouched": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "mcpRequired": false,
+                "mcpSuccess": true,
+                "productionOnlyScopeExpected": true,
+                "testEditViolationFiles": [
+                  "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+                ],
+                "extraProductionEditViolationFiles": [
+                  "packages/zod/src/v4/core/tests/record-constructor.test.ts"
+                ],
+                "qualityGatePassed": false,
+                "validSavings": false,
+                "invalidSavings": true,
+                "negativeEvidenceReason": "agent edited outside the allowed source scope"
+              },
+              "createdAt": "2026-05-15T14:17:35.624Z"
+            }
+          ],
+          "recommendations": [
+            "Diff scope violations: packages/zod/src/v4/core/tests/record-constructor.test.ts: test edit in production-source-only task; packages/zod/src/v4/core/tests/record-constructor.test.ts: edit outside required production source scope.",
+            "Response exceeded the benchmark budget; tune response routing or snippets.",
+            "Observed token reductions for this case must be treated as invalid until the quality gate passes.",
+            "Overall score is low; inspect weak cases before tuning retrieval."
+          ]
+        }
+      ],
+      "prompt_only": [],
+      "prompt_plus_hooks": [],
+      "manual_prime": [],
+      "hook_full_prime": [],
+      "hook_tiny_directive": [],
+      "hook_tiny_with_failures": [],
+      "kairn_codex_session": [],
+      "mcp_first": [],
+      "real_mcp_first": [
+        {
+          "run": {
+            "id": "bench_b1016bcf-bd45-4b2f-a8e9-a87973944594",
+            "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+            "suiteId": "mini-zod-recheck",
+            "suiteName": "Mini Zod recheck",
+            "mode": "agent",
+            "status": "completed",
+            "startedAt": "2026-05-15T14:17:39.574Z",
+            "endedAt": "2026-05-15T14:18:27.094Z",
+            "metadata": {
+              "sessionId": "task_3fd0e47d-7a5c-408f-af7f-eb329d0a2b34",
+              "caseCount": 1,
+              "agentConfigured": true,
+              "assistanceMode": "real_mcp_first"
+            }
+          },
+          "results": [
+            {
+              "id": 1059,
+              "runId": "bench_b1016bcf-bd45-4b2f-a8e9-a87973944594",
+              "caseId": "ts-zod-is-object-array",
+              "caseMode": "agent",
+              "score": 85,
+              "expectedFileRecall": 1,
+              "topKHitRate": 1,
+              "unexpectedFileRate": 0,
+              "responseTokens": 40524,
+              "observedCodexTokens": 29271,
+              "hookContextEmitted": 0,
+              "hookContextSuppressed": 0,
+              "taskOutcome": "pass",
+              "expectedFiles": [
+                "packages/zod/src/v4/core/util.ts"
+              ],
+              "actualFiles": [
+                "packages/zod/src/v4/core/util.ts"
+              ],
+              "excludedFiles": [
+                "packages/docs/",
+                "packages/zod/src/v4/classic/tests/",
+                "packages/zod/src/v3/tests/"
+              ],
+              "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+              "recommendations": [
+                "Response exceeded the benchmark budget; tune response routing or snippets."
+              ],
+              "metadata": {
+                "assistanceMode": "real_mcp_first",
+                "kairnSessionCount": 1,
+                "primeAttempted": 1,
+                "primeEmitted": 1,
+                "primeSuppressed": 0,
+                "primeEvidenceRequested": 0,
+                "primeTokens": 0,
+                "primeContextEvents": 1,
+                "primeQualityEvents": 1,
+                "hookInvocations": 0,
+                "failureContextUsed": 0,
+                "mcpToolCalls": 1,
+                "mcpFilesReturned": [],
+                "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-sY1VND",
+                "promptHash": "c6f19470d04f8f5b1674ea3a93c8fe4a090f8c41201a1972681a0e269bda3c29",
+                "outputHash": "62aef4cac6147c92b77f72e00da910ccfd4fea9e861816f7519855e4c0ab4a7c",
+                "adapter": "command",
+                "hookCompleted": 0,
+                "hookFailed": 0,
+                "kairnMcpToolMentions": 8,
+                "actualMcpToolCalls": 1,
+                "actualMcpToolNames": [
+                  "kairn_prepare_task"
+                ],
+                "actualMcpToolCallSource": "workspace_metrics",
+                "actualMcpFiles": [],
+                "actualMcpContextActions": [
+                  "suppress"
+                ],
+                "mcpReturnedFileCount": 0,
+                "mcpReturnedExpectedFileCount": 0,
+                "mcpReturnedNoiseFileCount": 0,
+                "mcpReturnedTestFanoutCount": 0,
+                "mcpContextEfficiency": 1,
+                "originalPromptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+                "setupCommandHash": "66f42c7433672d23bd54d20817096eedbb660dd4bb9591f63f1a5eebd59ec197",
+                "setupCommandExitCode": 0,
+                "setupTimedOut": false,
+                "setupSignal": null,
+                "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "setupOutputTokens": 0,
+                "assistanceSetupMs": 328,
+                "promptPrepareMs": 0,
+                "agentElapsedMs": 46318,
+                "codexElapsedMs": 46318,
+                "agentTimedOut": false,
+                "agentTimeoutMs": 180000,
+                "verificationElapsedMs": 48,
+                "expectedFileMentions": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "changedFiles": [
+                  "AGENTS.md"
+                ],
+                "seedPatchFiles": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "setupChangedFiles": [
+                  "AGENTS.md",
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "agentChangedFiles": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "requiredTouchedFiles": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "requiredTouchedSatisfied": true,
+                "missingRequiredTouchedFiles": [],
+                "sourceInvariantChecked": false,
+                "sourceInvariantPassed": true,
+                "sourceInvariantFailures": [],
+                "diffScopeChecked": false,
+                "diffScopePassed": true,
+                "diffScopeViolations": [],
+                "diffScopeChangedFiles": [],
+                "scopeViolations": [],
+                "sourceScopeDiscipline": "passed",
+                "unrelatedFilesTouched": [],
+                "testsEdited": [],
+                "scopeExpanded": false,
+                "scopeExpansionReason": null,
+                "seedTestCommandHash": "13043a88b2932b77814e0de2aa955653c913360bc46f27d82b37105e620bc3c1",
+                "seedTestExitCode": 0,
+                "seedTestTimedOut": false,
+                "seedTestSignal": null,
+                "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "seedTestOutputTokens": 0,
+                "seedConfigured": true,
+                "seedRepoUrl": "https://github.com/colinhacks/zod.git",
+                "seedRef": "b6071fc0ad2be94850ed57e07e418a6f902a9771",
+                "seedCloneDepth": 1,
+                "seedSetupCommandCount": 0,
+                "seedHasPatch": true,
+                "seedPatchFileHashes": {
+                  "packages/zod/src/v4/core/util.ts": "c808635677d5b1541b0554cae6bbd90bb482b1b98e7eb54f4e2a559f0beecf01"
+                },
+                "seedCommandNormalization": {
+                  "pythonToPython3": false
+                },
+                "seedExpectedFailureCommandHash": "4161d3dd0ab4ba67a588b7fc39a1dcd650f973acaaf876f778a00e1b774a6485",
+                "seedExpectedFailureExitCode": 0,
+                "seedExpectedFailurePassed": false,
+                "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "seedExpectedFailureOutputTokens": 0,
+                "workspaceSetupMs": 783,
+                "mcpFirstInstructionsPrepended": true,
+                "elapsedMs": 46725,
+                "codexUsage": {
+                  "totalTokens": 29271,
+                  "inputTokens": 0,
+                  "cachedInputTokens": 0,
+                  "outputTokens": 0,
+                  "source": "footer"
+                },
+                "contextBehavior": "cheap_single_source",
+                "missedExpectedFiles": [],
+                "irrelevantFilesRead": [],
+                "expectedFilesMentioned": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "minExpectedHits": 1,
+                "rawExpectedCoverageSatisfied": true,
+                "expectedCoverageSatisfied": true,
+                "sourceScopeCoverageOverride": true,
+                "effectiveExpectedFileRecall": 1,
+                "requiredTouchedFilesTouched": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "mcpRequired": true,
+                "mcpSuccess": true,
+                "productionOnlyScopeExpected": true,
+                "testEditViolationFiles": [],
+                "extraProductionEditViolationFiles": [],
+                "qualityGatePassed": true,
+                "validSavings": true,
+                "invalidSavings": false
+              },
+              "createdAt": "2026-05-15T14:18:27.094Z"
+            }
+          ],
+          "overallScore": 85,
+          "observed": {
+            "codexTokens": 29271,
+            "codexCaseCount": 1
+          },
+          "weakestCases": [
+            {
+              "id": 1059,
+              "runId": "bench_b1016bcf-bd45-4b2f-a8e9-a87973944594",
+              "caseId": "ts-zod-is-object-array",
+              "caseMode": "agent",
+              "score": 85,
+              "expectedFileRecall": 1,
+              "topKHitRate": 1,
+              "unexpectedFileRate": 0,
+              "responseTokens": 40524,
+              "observedCodexTokens": 29271,
+              "hookContextEmitted": 0,
+              "hookContextSuppressed": 0,
+              "taskOutcome": "pass",
+              "expectedFiles": [
+                "packages/zod/src/v4/core/util.ts"
+              ],
+              "actualFiles": [
+                "packages/zod/src/v4/core/util.ts"
+              ],
+              "excludedFiles": [
+                "packages/docs/",
+                "packages/zod/src/v4/classic/tests/",
+                "packages/zod/src/v3/tests/"
+              ],
+              "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+              "recommendations": [
+                "Response exceeded the benchmark budget; tune response routing or snippets."
+              ],
+              "metadata": {
+                "assistanceMode": "real_mcp_first",
+                "kairnSessionCount": 1,
+                "primeAttempted": 1,
+                "primeEmitted": 1,
+                "primeSuppressed": 0,
+                "primeEvidenceRequested": 0,
+                "primeTokens": 0,
+                "primeContextEvents": 1,
+                "primeQualityEvents": 1,
+                "hookInvocations": 0,
+                "failureContextUsed": 0,
+                "mcpToolCalls": 1,
+                "mcpFilesReturned": [],
+                "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-sY1VND",
+                "promptHash": "c6f19470d04f8f5b1674ea3a93c8fe4a090f8c41201a1972681a0e269bda3c29",
+                "outputHash": "62aef4cac6147c92b77f72e00da910ccfd4fea9e861816f7519855e4c0ab4a7c",
+                "adapter": "command",
+                "hookCompleted": 0,
+                "hookFailed": 0,
+                "kairnMcpToolMentions": 8,
+                "actualMcpToolCalls": 1,
+                "actualMcpToolNames": [
+                  "kairn_prepare_task"
+                ],
+                "actualMcpToolCallSource": "workspace_metrics",
+                "actualMcpFiles": [],
+                "actualMcpContextActions": [
+                  "suppress"
+                ],
+                "mcpReturnedFileCount": 0,
+                "mcpReturnedExpectedFileCount": 0,
+                "mcpReturnedNoiseFileCount": 0,
+                "mcpReturnedTestFanoutCount": 0,
+                "mcpContextEfficiency": 1,
+                "originalPromptHash": "3f81660ad9e1b02ff50adca51ffa77f526ee35c4c8b438e825d99b35f7e5222b",
+                "setupCommandHash": "66f42c7433672d23bd54d20817096eedbb660dd4bb9591f63f1a5eebd59ec197",
+                "setupCommandExitCode": 0,
+                "setupTimedOut": false,
+                "setupSignal": null,
+                "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "setupOutputTokens": 0,
+                "assistanceSetupMs": 328,
+                "promptPrepareMs": 0,
+                "agentElapsedMs": 46318,
+                "codexElapsedMs": 46318,
+                "agentTimedOut": false,
+                "agentTimeoutMs": 180000,
+                "verificationElapsedMs": 48,
+                "expectedFileMentions": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "changedFiles": [
+                  "AGENTS.md"
+                ],
+                "seedPatchFiles": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "setupChangedFiles": [
+                  "AGENTS.md",
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "agentChangedFiles": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "requiredTouchedFiles": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "requiredTouchedSatisfied": true,
+                "missingRequiredTouchedFiles": [],
+                "sourceInvariantChecked": false,
+                "sourceInvariantPassed": true,
+                "sourceInvariantFailures": [],
+                "diffScopeChecked": false,
+                "diffScopePassed": true,
+                "diffScopeViolations": [],
+                "diffScopeChangedFiles": [],
+                "scopeViolations": [],
+                "sourceScopeDiscipline": "passed",
+                "unrelatedFilesTouched": [],
+                "testsEdited": [],
+                "scopeExpanded": false,
+                "scopeExpansionReason": null,
+                "seedTestCommandHash": "13043a88b2932b77814e0de2aa955653c913360bc46f27d82b37105e620bc3c1",
+                "seedTestExitCode": 0,
+                "seedTestTimedOut": false,
+                "seedTestSignal": null,
+                "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "seedTestOutputTokens": 0,
+                "seedConfigured": true,
+                "seedRepoUrl": "https://github.com/colinhacks/zod.git",
+                "seedRef": "b6071fc0ad2be94850ed57e07e418a6f902a9771",
+                "seedCloneDepth": 1,
+                "seedSetupCommandCount": 0,
+                "seedHasPatch": true,
+                "seedPatchFileHashes": {
+                  "packages/zod/src/v4/core/util.ts": "c808635677d5b1541b0554cae6bbd90bb482b1b98e7eb54f4e2a559f0beecf01"
+                },
+                "seedCommandNormalization": {
+                  "pythonToPython3": false
+                },
+                "seedExpectedFailureCommandHash": "4161d3dd0ab4ba67a588b7fc39a1dcd650f973acaaf876f778a00e1b774a6485",
+                "seedExpectedFailureExitCode": 0,
+                "seedExpectedFailurePassed": false,
+                "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "seedExpectedFailureOutputTokens": 0,
+                "workspaceSetupMs": 783,
+                "mcpFirstInstructionsPrepended": true,
+                "elapsedMs": 46725,
+                "codexUsage": {
+                  "totalTokens": 29271,
+                  "inputTokens": 0,
+                  "cachedInputTokens": 0,
+                  "outputTokens": 0,
+                  "source": "footer"
+                },
+                "contextBehavior": "cheap_single_source",
+                "missedExpectedFiles": [],
+                "irrelevantFilesRead": [],
+                "expectedFilesMentioned": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "minExpectedHits": 1,
+                "rawExpectedCoverageSatisfied": true,
+                "expectedCoverageSatisfied": true,
+                "sourceScopeCoverageOverride": true,
+                "effectiveExpectedFileRecall": 1,
+                "requiredTouchedFilesTouched": [
+                  "packages/zod/src/v4/core/util.ts"
+                ],
+                "mcpRequired": true,
+                "mcpSuccess": true,
+                "productionOnlyScopeExpected": true,
+                "testEditViolationFiles": [],
+                "extraProductionEditViolationFiles": [],
+                "qualityGatePassed": true,
+                "validSavings": true,
+                "invalidSavings": false
+              },
+              "createdAt": "2026-05-15T14:18:27.094Z"
+            }
+          ],
+          "recommendations": [
+            "Response exceeded the benchmark budget; tune response routing or snippets."
+          ]
+        }
+      ],
+      "mcp_first_plus_hook_full_prime": [],
+      "hybrid_mcp_brief": []
+    },
+    "aggregate": {
+      "repeat": 1,
+      "modes": {
+        "baseline": {
+          "reports": 1,
+          "meanTokens": 30582,
+          "medianTokens": 30582,
+          "qualityPassingReports": 0,
+          "caseCount": 1
+        },
+        "prompt_only": {
+          "reports": 0,
+          "qualityPassingReports": 0,
+          "caseCount": 0
+        },
+        "prompt_plus_hooks": {
+          "reports": 0,
+          "qualityPassingReports": 0,
+          "caseCount": 0
+        },
+        "manual_prime": {
+          "reports": 0,
+          "qualityPassingReports": 0,
+          "caseCount": 0
+        },
+        "hook_full_prime": {
+          "reports": 0,
+          "qualityPassingReports": 0,
+          "caseCount": 0
+        },
+        "hook_tiny_directive": {
+          "reports": 0,
+          "qualityPassingReports": 0,
+          "caseCount": 0
+        },
+        "hook_tiny_with_failures": {
+          "reports": 0,
+          "qualityPassingReports": 0,
+          "caseCount": 0
+        },
+        "kairn_codex_session": {
+          "reports": 0,
+          "qualityPassingReports": 0,
+          "caseCount": 0
+        },
+        "mcp_first": {
+          "reports": 0,
+          "qualityPassingReports": 0,
+          "caseCount": 0
+        },
+        "real_mcp_first": {
+          "reports": 1,
+          "meanTokens": 29271,
+          "medianTokens": 29271,
+          "qualityPassingReports": 1,
+          "caseCount": 1
+        },
+        "mcp_first_plus_hook_full_prime": {
+          "reports": 0,
+          "qualityPassingReports": 0,
+          "caseCount": 0
+        },
+        "hybrid_mcp_brief": {
+          "reports": 0,
+          "qualityPassingReports": 0,
+          "caseCount": 0
+        }
+      },
+      "deltas": {
+        "promptOnlyVsBaseline": {},
+        "promptPlusHooksVsBaseline": {},
+        "manualPrimeVsBaseline": {},
+        "hookFullPrimeVsBaseline": {},
+        "kairnCodexSessionVsBaseline": {},
+        "realMcpFirstVsBaseline": {
+          "beforeMedianTokens": 30582,
+          "afterMedianTokens": 29271,
+          "savedTokens": 1311,
+          "savingsRate": 0.0429
+        },
+        "mcpFirstPlusHookFullPrimeVsBaseline": {},
+        "hybridMcpBriefVsBaseline": {}
+      }
+    },
+    "abstentionSummary": {
+      "missed_quality_opportunity": 1
+    },
+    "behaviorTargetSummary": {
+      "cheap_single_source": {
+        "cases": 1,
+        "met": 1,
+        "missed": 0
+      }
+    },
+    "caseRepeatClassifications": [
+      {
+        "mode": "real_mcp_first",
+        "caseId": "ts-zod-is-object-array",
+        "repeats": 1,
+        "qualityPasses": 1,
+        "activeRuns": 1,
+        "suppressedRuns": 0,
+        "baselineMedianTokens": 30582,
+        "modeMedianTokens": 29271,
+        "medianSavedTokens": 1311,
+        "medianSavingsRate": 0.0429,
+        "classifications": {
+          "quality_rescue": 1
+        },
+        "verdict": "insufficient_data",
+        "recommendation": "Only one repeat; treat real_mcp_first/ts-zod-is-object-array as exploratory evidence."
+      }
+    ],
+    "observedTokenDeltas": {
+      "realMcpFirstVsBaseline": {
+        "beforeTokens": 30582,
+        "afterTokens": 29271,
+        "savedTokens": 1311,
+        "savingsRate": 0.0429,
+        "qualityGatePassed": true,
+        "assistanceStatus": "passive_suppressed",
+        "assistanceEligible": false,
+        "baselineDifficulty": "quality_fail",
+        "baselineTokenCost": 30582,
+        "abstentionOutcome": "missed_quality_opportunity",
+        "missedOpportunity": true,
+        "overAssist": false,
+        "harmfulAssist": false,
+        "assistClassification": "missed_quality_opportunity",
+        "validSavings": 0,
+        "invalidSavings": 0,
+        "passiveSavings": 1311,
+        "negativeEvidenceReason": "Kairn suppressed while baseline failed quality; this is a missed quality opportunity."
+      }
+    },
+    "caseDeltas": [
+      {
+        "caseId": "ts-zod-is-object-array",
+        "baselineTokens": 30582,
+        "outcome": {
+          "baseline": "partial",
+          "passiveHooks": "skipped",
+          "proactive": "skipped"
+        }
+      }
+    ],
+    "recommendations": [
+      "Real MCP-first median: saved 1311 observed Codex tokens by repeat median (4%).",
+      "Prompt-only hooks vs baseline: observed Codex usage unavailable.",
+      "Prompt+tool hooks vs baseline: observed Codex usage unavailable.",
+      "Manual prime vs baseline: observed Codex usage unavailable.",
+      "Hook full prime vs baseline: observed Codex usage unavailable.",
+      "Hook tiny directive vs baseline: observed Codex usage unavailable.",
+      "Hook tiny+failures vs baseline: observed Codex usage unavailable.",
+      "Kairn Codex session vs baseline: observed Codex usage unavailable.",
+      "MCP-first vs baseline: observed Codex usage unavailable.",
+      "Real MCP-first vs baseline: reduced 1311 observed Codex tokens, but this is missed_quality_opportunity rather than Kairn-assisted savings.",
+      "MCP-first + full-prime hook vs baseline: observed Codex usage unavailable.",
+      "Hybrid MCP brief vs baseline: observed Codex usage unavailable.",
+      "real_mcp_first/ts-zod-is-object-array: Only one repeat; treat real_mcp_first/ts-zod-is-object-array as exploratory evidence."
+    ]
+  }
+}

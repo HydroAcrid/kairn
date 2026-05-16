@@ -1,0 +1,58 @@
+{
+  "id": "kairn-zod-mcp-recheck",
+  "name": "Kairn Zod MCP Recheck",
+  "generatedAt": "2026-05-15T14:18:27.099Z",
+  "planPath": "/tmp/kairn-zod-mcp-recheck-plan.json",
+  "kairnGitSha": "bace1e032784b0d2d362e41334e0fec0fbe4a1f6",
+  "packageVersion": "0.1.2",
+  "nodeVersion": "v24.7.0",
+  "os": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "release": "24.6.0"
+  },
+  "model": "gpt-5.4-mini",
+  "repeat": 1,
+  "dryRun": false,
+  "timestamps": {
+    "generatedAt": "2026-05-15T14:18:27.099Z",
+    "artifactStarts": {
+      "zod-mcp-cheap-recheck": "2026-05-15T14:15:58.440Z"
+    },
+    "artifactEnds": {
+      "zod-mcp-cheap-recheck": "2026-05-15T14:18:27.098Z"
+    }
+  },
+  "benchmarkSuitePaths": [
+    "/tmp/kairn-mini-zod-suite.json"
+  ],
+  "officialDatasetRowIds": [],
+  "commandTemplates": {
+    "zod-mcp-cheap-recheck": [
+      "proof repeat=1",
+      "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+      "real_mcp_first: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}"
+    ]
+  },
+  "artifacts": [
+    {
+      "entryId": "zod-mcp-cheap-recheck",
+      "kind": "proof",
+      "status": "passed",
+      "entryMetadata": {
+        "label": "Zod MCP cheap one-shot recheck",
+        "repoId": "zod",
+        "language": "typescript",
+        "sizeClass": "medium",
+        "taskClass": "cheap_single_source",
+        "suite": "/tmp/kairn-mini-zod-suite.json"
+      },
+      "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/zod-mcp-recheck-v2/raw/zod-mcp-cheap-recheck.json",
+      "commands": [
+        "proof repeat=1",
+        "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+        "real_mcp_first: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}"
+      ]
+    }
+  ]
+}

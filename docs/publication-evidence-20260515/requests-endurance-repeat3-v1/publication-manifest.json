@@ -1,0 +1,63 @@
+{
+  "id": "kairn-evidence-campaign-v2",
+  "name": "Kairn Evidence Campaign v2",
+  "generatedAt": "2026-05-15T22:16:48.758Z",
+  "planPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/publication-plan-v2.json",
+  "kairnGitSha": "bace1e032784b0d2d362e41334e0fec0fbe4a1f6",
+  "packageVersion": "0.1.2",
+  "nodeVersion": "v24.7.0",
+  "os": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "release": "24.6.0"
+  },
+  "model": "gpt-5.4-mini",
+  "repeat": 5,
+  "dryRun": false,
+  "timestamps": {
+    "generatedAt": "2026-05-15T22:16:48.758Z",
+    "artifactStarts": {
+      "requests-10turn-repeat3": "2026-05-15T21:00:56.144Z"
+    },
+    "artifactEnds": {
+      "requests-10turn-repeat3": "2026-05-15T22:16:48.756Z"
+    }
+  },
+  "benchmarkSuitePaths": [
+    "examples/bench/endurance-requests-10turn.json"
+  ],
+  "officialDatasetRowIds": [],
+  "commandTemplates": {
+    "requests-10turn-repeat3": [
+      "endurance repeat=3",
+      "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+      "kairn_codex_session: node '/Users/kevindotel/Documents/Projects/kairn/dist/cli.js' codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}",
+      "real_mcp_first: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+      "hybrid_mcp_brief: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --enable hooks {prompt}"
+    ]
+  },
+  "artifacts": [
+    {
+      "entryId": "requests-10turn-repeat3",
+      "kind": "endurance",
+      "status": "passed",
+      "entryMetadata": {
+        "label": "Requests 10-turn endurance repeat-3",
+        "repoId": "requests",
+        "language": "python",
+        "sizeClass": "medium",
+        "taskClass": "session_repeat",
+        "contextBehavior": "source_rescue",
+        "suite": "examples/bench/endurance-requests-10turn.json"
+      },
+      "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/requests-endurance-repeat3-v1/raw/requests-10turn-repeat3.json",
+      "commands": [
+        "endurance repeat=3",
+        "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+        "kairn_codex_session: node '/Users/kevindotel/Documents/Projects/kairn/dist/cli.js' codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}",
+        "real_mcp_first: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+        "hybrid_mcp_brief: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --enable hooks {prompt}"
+      ]
+    }
+  ]
+}

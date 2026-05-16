@@ -37,6 +37,7 @@ export type BenchmarkAbstentionOutcome =
 export type BenchmarkAssistClassification =
   | "baseline"
   | "valid_assist"
+  | "quality_rescue"
   | "over_assist"
   | "harmful_invalid_assist"
   | "correct_abstention"

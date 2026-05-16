@@ -1,9 +1,9 @@
 {
   "id": "kairn-evidence-campaign-v2",
   "name": "Kairn Evidence Campaign v2",
-  "generatedAt": "2026-05-15T05:20:53.603Z",
+  "generatedAt": "2026-05-15T14:19:56.499Z",
   "planPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/publication-plan-v2.json",
-  "kairnGitSha": "9b017656a55b313ee36ef6c5f7487496beeb00b0",
+  "kairnGitSha": "bace1e032784b0d2d362e41334e0fec0fbe4a1f6",
   "packageVersion": "0.1.2",
   "nodeVersion": "v24.7.0",
   "os": {
@@ -15,98 +15,26 @@
   "repeat": 5,
   "dryRun": true,
   "timestamps": {
-    "generatedAt": "2026-05-15T05:20:53.603Z",
+    "generatedAt": "2026-05-15T14:19:56.499Z",
     "artifactStarts": {
-      "fresh-unseen-v4-preflight": "2026-05-15T05:20:53.601Z",
-      "fresh-repeat5-one-shot": "2026-05-15T05:20:53.602Z",
-      "requests-10turn-repeat3": "2026-05-15T05:20:53.602Z",
-      "fresh-fastapi-endurance-repeat3": "2026-05-15T05:20:53.603Z",
-      "local-mcp-smoke-v2": "2026-05-15T05:20:53.603Z",
-      "swe-pro-official-eval-pilot": "2026-05-15T05:20:53.603Z",
-      "swe-contextbench-pilot": "2026-05-15T05:20:53.603Z",
-      "swe-atlas-qna-source-grounding-v2": "2026-05-15T05:20:53.603Z"
+      "fresh-repeat5-one-shot": "2026-05-15T14:19:56.498Z"
     },
     "artifactEnds": {
-      "fresh-unseen-v4-preflight": "2026-05-15T05:20:53.602Z",
-      "fresh-repeat5-one-shot": "2026-05-15T05:20:53.602Z",
-      "requests-10turn-repeat3": "2026-05-15T05:20:53.602Z",
-      "fresh-fastapi-endurance-repeat3": "2026-05-15T05:20:53.603Z",
-      "local-mcp-smoke-v2": "2026-05-15T05:20:53.603Z",
-      "swe-pro-official-eval-pilot": "2026-05-15T05:20:53.603Z",
-      "swe-contextbench-pilot": "2026-05-15T05:20:53.603Z",
-      "swe-atlas-qna-source-grounding-v2": "2026-05-15T05:20:53.603Z"
+      "fresh-repeat5-one-shot": "2026-05-15T14:19:56.499Z"
     }
   },
   "benchmarkSuitePaths": [
-    "examples/bench/repo-matrix-fresh-holdout-v4.json",
-    "examples/bench/seeded-fresh-holdout-v2-20260511.json",
-    "examples/bench/endurance-requests-10turn.json",
-    "examples/bench/endurance-fastapi.json",
-    "examples/bench/swe-pro-publication/swe-pro-pilot-raw.jsonl",
-    "examples/bench/swe-contextbench-pilot-sample.jsonl",
-    "examples/bench/swe-atlas-qna-publication/swe-atlas-qna-pilot-raw.jsonl"
+    "examples/bench/seeded-fresh-holdout-v2-20260511.json"
   ],
-  "officialDatasetRowIds": [
-    "instance_NodeBB__NodeBB-04998908ba6721d64eba79ae3b65a351dcfbc5b5-vnan",
-    "instance_ansible__ansible-f327e65d11bb905ed9f15996024f857a95592629-vba6da65a0f3baefda7a058ebbd0a8dcafb8512f5",
-    "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c"
-  ],
+  "officialDatasetRowIds": [],
   "commandTemplates": {
-    "fresh-unseen-v4-preflight": [
-      "kairn bench matrix --matrix examples/bench/repo-matrix-fresh-holdout-v4.json"
-    ],
     "fresh-repeat5-one-shot": [
       "proof repeat=5",
       "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
-      "kairn_codex_session: kairn codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}",
-      "real_mcp_first: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}"
-    ],
-    "requests-10turn-repeat3": [
-      "endurance repeat=3",
-      "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
-      "kairn_codex_session: kairn codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}",
-      "real_mcp_first: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
-      "hybrid_mcp_brief: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --enable hooks {prompt}"
-    ],
-    "fresh-fastapi-endurance-repeat3": [
-      "endurance repeat=3",
-      "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
-      "kairn_codex_session: kairn codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}",
-      "real_mcp_first: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
-      "hybrid_mcp_brief: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --enable hooks {prompt}"
-    ],
-    "local-mcp-smoke-v2": [
-      "kairn bench mcp-smoke --root . --task \"Find the smallest useful Kairn source context for evidence-campaign reporting.\""
-    ],
-    "swe-pro-official-eval-pilot": [
-      "kairn bench publication --only swe-pro-official-eval-pilot --plan <plan> --out-dir <out-dir>",
-      "Run the SWE-bench_Pro official Docker evaluator against generated baseline and Kairn patches; then set evaluatorResultsPath to the evaluator JSON."
-    ],
-    "swe-contextbench-pilot": [
-      "kairn bench swe-context-pilot --input examples/bench/swe-contextbench-pilot-sample.jsonl --limit 30"
-    ],
-    "swe-atlas-qna-source-grounding-v2": [
-      "kairn bench swe-atlas-qna-pilot --limit 30"
+      "kairn_codex_session: node '/Users/kevindotel/Documents/Projects/kairn/dist/cli.js' codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}"
     ]
   },
   "artifacts": [
-    {
-      "entryId": "fresh-unseen-v4-preflight",
-      "kind": "matrix",
-      "status": "planned",
-      "entryMetadata": {
-        "label": "Fresh unseen repo-matrix preflight",
-        "repoId": "fresh-holdout-v4",
-        "language": "mixed",
-        "sizeClass": "mixed",
-        "taskClass": "mixed",
-        "matrix": "examples/bench/repo-matrix-fresh-holdout-v4.json"
-      },
-      "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/raw/fresh-unseen-v4-preflight.json",
-      "commands": [
-        "kairn bench matrix --matrix examples/bench/repo-matrix-fresh-holdout-v4.json"
-      ]
-    },
     {
       "entryId": "fresh-repeat5-one-shot",
       "kind": "proof",
@@ -123,125 +51,7 @@
       "commands": [
         "proof repeat=5",
         "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
-        "kairn_codex_session: kairn codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}",
-        "real_mcp_first: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}"
-      ]
-    },
-    {
-      "entryId": "requests-10turn-repeat3",
-      "kind": "endurance",
-      "status": "planned",
-      "entryMetadata": {
-        "label": "Requests 10-turn endurance repeat-3",
-        "repoId": "requests",
-        "language": "python",
-        "sizeClass": "medium",
-        "taskClass": "session_repeat",
-        "contextBehavior": "source_rescue",
-        "suite": "examples/bench/endurance-requests-10turn.json"
-      },
-      "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/raw/requests-10turn-repeat3.json",
-      "commands": [
-        "endurance repeat=3",
-        "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
-        "kairn_codex_session: kairn codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}",
-        "real_mcp_first: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
-        "hybrid_mcp_brief: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --enable hooks {prompt}"
-      ]
-    },
-    {
-      "entryId": "fresh-fastapi-endurance-repeat3",
-      "kind": "endurance",
-      "status": "planned",
-      "entryMetadata": {
-        "label": "Fresh FastAPI endurance repeat-3",
-        "repoId": "fastapi",
-        "language": "python",
-        "sizeClass": "large",
-        "taskClass": "session_repeat",
-        "contextBehavior": "multi_file_debug",
-        "suite": "examples/bench/endurance-fastapi.json"
-      },
-      "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/raw/fresh-fastapi-endurance-repeat3.json",
-      "commands": [
-        "endurance repeat=3",
-        "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
-        "kairn_codex_session: kairn codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}",
-        "real_mcp_first: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
-        "hybrid_mcp_brief: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --enable hooks {prompt}"
-      ]
-    },
-    {
-      "entryId": "local-mcp-smoke-v2",
-      "kind": "mcp_smoke",
-      "status": "planned",
-      "entryMetadata": {
-        "label": "Local MCP protocol smoke",
-        "repoId": "local",
-        "language": "mixed",
-        "sizeClass": "unknown",
-        "taskClass": "mcp_delivery"
-      },
-      "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/raw/local-mcp-smoke-v2.json",
-      "commands": [
-        "kairn bench mcp-smoke --root . --task \"Find the smallest useful Kairn source context for evidence-campaign reporting.\""
-      ]
-    },
-    {
-      "entryId": "swe-pro-official-eval-pilot",
-      "kind": "swe_pro_official_eval",
-      "status": "planned",
-      "entryMetadata": {
-        "label": "SWE-Pro official evaluator setup gate",
-        "repoId": "swe-bench-pro",
-        "language": "mixed",
-        "sizeClass": "mixed",
-        "taskClass": "official_patch",
-        "input": "examples/bench/swe-pro-publication/swe-pro-pilot-raw.jsonl",
-        "officialRowIds": [
-          "instance_NodeBB__NodeBB-04998908ba6721d64eba79ae3b65a351dcfbc5b5-vnan",
-          "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
-          "instance_ansible__ansible-f327e65d11bb905ed9f15996024f857a95592629-vba6da65a0f3baefda7a058ebbd0a8dcafb8512f5"
-        ]
-      },
-      "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/raw/swe-pro-official-eval-pilot.json",
-      "commands": [
-        "kairn bench publication --only swe-pro-official-eval-pilot --plan <plan> --out-dir <out-dir>",
-        "Run the SWE-bench_Pro official Docker evaluator against generated baseline and Kairn patches; then set evaluatorResultsPath to the evaluator JSON."
-      ]
-    },
-    {
-      "entryId": "swe-contextbench-pilot",
-      "kind": "swe_context_pilot",
-      "status": "planned",
-      "entryMetadata": {
-        "label": "SWE-ContextBench related-task reuse pilot",
-        "repoId": "swe-contextbench",
-        "language": "mixed",
-        "sizeClass": "mixed",
-        "taskClass": "related_context_reuse",
-        "input": "examples/bench/swe-contextbench-pilot-sample.jsonl"
-      },
-      "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/raw/swe-contextbench-pilot.json",
-      "commands": [
-        "kairn bench swe-context-pilot --input examples/bench/swe-contextbench-pilot-sample.jsonl --limit 30"
-      ]
-    },
-    {
-      "entryId": "swe-atlas-qna-source-grounding-v2",
-      "kind": "swe_atlas_qna_pilot",
-      "status": "planned",
-      "entryMetadata": {
-        "label": "SWE-Atlas/QnA source-grounding and evidence-request gate",
-        "repoId": "swe-atlas-qna",
-        "language": "mixed",
-        "sizeClass": "mixed",
-        "taskClass": "source_grounded_answer",
-        "input": "examples/bench/swe-atlas-qna-publication/swe-atlas-qna-pilot-raw.jsonl"
-      },
-      "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/raw/swe-atlas-qna-source-grounding-v2.json",
-      "commands": [
-        "kairn bench swe-atlas-qna-pilot --limit 30"
+        "kairn_codex_session: node '/Users/kevindotel/Documents/Projects/kairn/dist/cli.js' codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}"
       ]
     }
   ]

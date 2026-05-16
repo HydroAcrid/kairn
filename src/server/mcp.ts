@@ -321,18 +321,16 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
   }
   const cheapOneShotStop = mcpCheapOneShotAbstention(prime);
   if (cheapOneShotStop) {
-    const guardrailFiles = cheapOneShotStop.primaryFile ? [cheapOneShotStop.primaryFile] : [];
-    const contextSuppressed = guardrailFiles.length === 0;
-    const tokenEstimate = estimateCompactPrepareTokens(guardrailFiles, [], [], undefined);
+    const tokenEstimate = estimateCompactPrepareTokens([], [], [], undefined);
     return {
       detail: "compact",
-      contextSuppressed,
+      contextSuppressed: true,
       sessionId: prime.session.id,
       session: { id: prime.session.id, task: prime.session.task },
       task: prime.task,
       profile: prime.profile,
-      startFiles: guardrailFiles,
-      files: guardrailFiles,
+      startFiles: [],
+      files: [],
       companionFiles: [],
       fallbackFiles: [],
       exactSymbolHint: null,
@@ -352,22 +350,22 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
       quality: {
         ...(prime.quality ?? {
           score: prime.contextDecision?.score ?? 0,
-          action: contextSuppressed ? "suppress" : "shrink",
+          action: "suppress",
           reasons: [],
           topScore: prime.contextDecision?.topScore ?? 0,
           topGap: prime.contextDecision?.topGap ?? 0,
           exactPathMentioned: false,
           expectedSavingsRisk: "high"
         }),
-        action: contextSuppressed ? "suppress" : "shrink",
-        expectedSavingsRisk: contextSuppressed ? "high" : "medium",
+        action: "suppress",
+        expectedSavingsRisk: "high",
         reasons: uniqueValues([...(prime.quality?.reasons ?? []), cheapOneShotStop.reason])
       },
       contextDecision: {
         ...(decision ?? {}),
-        action: contextSuppressed ? "suppress" : "shrink",
-        recommendedDelivery: contextSuppressed ? "none" : "one_file_directive",
-        expectedSavingsRisk: contextSuppressed ? "high" : "medium",
+        action: "suppress",
+        recommendedDelivery: "none",
+        expectedSavingsRisk: "high",
         reasons: uniqueValues([...(decision?.reasons ?? []), cheapOneShotStop.reason])
       },
       warnings: uniqueValues([...prime.warnings, cheapOneShotStop.reason]),

@@ -1,0 +1,95 @@
+{
+  "id": "kairn-post-fix-java-recheck",
+  "name": "Kairn Post-Fix Java Recheck",
+  "generatedAt": "2026-05-15T15:27:00.479Z",
+  "planPath": "/tmp/kairn-post-fix-java-recheck-plan.json",
+  "outDir": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/post-fix-java-recheck",
+  "dryRun": false,
+  "model": "gpt-5.4-mini",
+  "repeat": 2,
+  "aggregate": {
+    "entries": 1,
+    "resultRows": 2,
+    "qualityPassRate": 1,
+    "medianValidSavingsRate": 0.6422,
+    "modes": {
+      "baseline": {
+        "rows": 1,
+        "qualityPasses": 1,
+        "activeRows": 0,
+        "passiveRows": 0,
+        "validSavingsRows": 0,
+        "validSavings": 0,
+        "passiveSavings": 0,
+        "invalidSavings": 0,
+        "medianSavingsRate": 0,
+        "overAssistRows": 0,
+        "harmfulRows": 0,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "requestEvidenceRows": 0,
+        "mcpCalls": 0,
+        "repeatedFilesAvoided": 0,
+        "scopeViolations": 0
+      },
+      "kairn_codex_session": {
+        "rows": 1,
+        "qualityPasses": 1,
+        "activeRows": 1,
+        "passiveRows": 0,
+        "validSavingsRows": 1,
+        "validSavings": 35934,
+        "passiveSavings": 0,
+        "invalidSavings": 0,
+        "medianSavingsRate": 0.6422,
+        "overAssistRows": 0,
+        "harmfulRows": 0,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "requestEvidenceRows": 0,
+        "mcpCalls": 0,
+        "repeatedFilesAvoided": 0,
+        "scopeViolations": 0
+      }
+    },
+    "byTaskClass": {
+      "source_rescue": {
+        "rows": 2,
+        "qualityPasses": 2,
+        "activeRows": 1,
+        "passiveRows": 0,
+        "validSavingsRows": 1,
+        "validSavings": 35934,
+        "passiveSavings": 0,
+        "invalidSavings": 0,
+        "medianSavingsRate": 0.3211,
+        "overAssistRows": 0,
+        "harmfulRows": 0,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "requestEvidenceRows": 0,
+        "mcpCalls": 0,
+        "repeatedFilesAvoided": 0,
+        "scopeViolations": 0
+      }
+    },
+    "classifications": {
+      "valid_assist": 1
+    },
+    "failurePatterns": [],
+    "successCriteria": {
+      "qualityWithinFivePoints": true,
+      "activeMedianSavingsAtLeast15": true,
+      "noRepeatedHarmfulPattern": true,
+      "hasMcpEvidence": false,
+      "hasEnduranceAfterTurnOneEvidence": false
+    }
+  },
+  "outputs": {
+    "summaryPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/post-fix-java-recheck/publication-summary.json",
+    "resultsCsvPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/post-fix-java-recheck/publication-results.csv",
+    "failuresCsvPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/post-fix-java-recheck/publication-failures.csv",
+    "manifestPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/post-fix-java-recheck/publication-manifest.json",
+    "markdownPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/post-fix-java-recheck/kairn_publication_evidence_report_2026-05-15.md"
+  }
+}

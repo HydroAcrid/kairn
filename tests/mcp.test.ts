@@ -364,12 +364,13 @@ describe("MCP server", () => {
       primaryReason: string;
     };
 
-    expect(parsed.contextSuppressed).toBe(false);
+    expect(parsed.contextSuppressed).toBe(true);
     expect(parsed.stopCondition).toBe("cheap_one_shot_guardrail");
-    expect(parsed.startFiles).toEqual(["src/flask/app.py"]);
-    expect(parsed.files).toEqual(["src/flask/app.py"]);
+    expect(parsed.startFiles).toEqual([]);
+    expect(parsed.files).toEqual([]);
     expect(parsed.nextToolCalls).toEqual([]);
     expect(parsed.primaryReason).toContain("ultra-minimal guardrail");
+    expect(parsed.primaryReason).toContain("src/flask/app.py");
 
     await client.close();
   });

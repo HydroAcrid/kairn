@@ -1,0 +1,39 @@
+[
+  {
+    "id": "vitejs-vite",
+    "repoUrl": "https://github.com/vitejs/vite.git",
+    "ref": "main",
+    "language": "typescript",
+    "expectedFiles": [
+      "packages/vite/src/node/server/pluginContainer.ts",
+      "packages/vite/src/node/plugins/importAnalysis.ts",
+      "packages/vite/src/node/server/pluginContainer.ts",
+      "packages/vite/src/node/plugins/importAnalysis.ts"
+    ]
+  },
+  {
+    "id": "encode-httpcore",
+    "repoUrl": "https://github.com/encode/httpcore.git",
+    "ref": "main",
+    "language": "python",
+    "expectedFiles": [
+      "httpcore/_sync/connection_pool.py",
+      "httpcore/_sync/connection.py",
+      "httpcore/_sync/connection_pool.py",
+      "httpcore/_sync/connection.py"
+    ]
+  },
+  {
+    "id": "go-gorm-gorm",
+    "repoUrl": "https://github.com/go-gorm/gorm.git",
+    "ref": "main",
+    "language": "go",
+    "expectedFiles": [
+      "callbacks/create.go",
+      "statement.go",
+      "schema/field.go",
+      "callbacks/create.go",
+      "schema/field.go"
+    ]
+  }
+]

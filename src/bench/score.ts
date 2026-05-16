@@ -409,19 +409,28 @@ function reportAssistanceStatus(report: BenchmarkReport): BenchmarkAssistanceSta
 }
 
 function resultAssistanceStatus(result: BenchmarkResultRecord): BenchmarkAssistanceStatus {
+  const mcpToolCalls = numberMetadata(result.metadata.actualMcpToolCalls ?? result.metadata.mcpToolCalls);
+  const mcpReturnedFileCount = numberMetadata(result.metadata.mcpReturnedFileCount);
+  const mcpContextActions = Array.isArray(result.metadata.actualMcpContextActions)
+    ? result.metadata.actualMcpContextActions.filter((item): item is string => typeof item === "string")
+    : [];
+  const mcpSuppressedOnly =
+    mcpToolCalls > 0 &&
+    mcpReturnedFileCount === 0 &&
+    mcpContextActions.some((action) => action === "suppress" || action === "request_evidence");
   const hasActiveAssistance =
     result.hookContextEmitted > 0 ||
-    (numberMetadata(result.metadata.actualMcpToolCalls ?? result.metadata.mcpToolCalls) > 0 &&
-      numberMetadata(result.metadata.mcpReturnedFileCount) > 0) ||
-    result.metadata.primeEmitted === true ||
-    numberMetadata(result.metadata.primeEmitted) > 0 ||
-    result.metadata.primeDecision === "emit" ||
-    result.metadata.primeDecision === "shrink" ||
-    result.metadata.contextDecision === "emit" ||
-    result.metadata.contextDecision === "shrink" ||
+    (mcpToolCalls > 0 && mcpReturnedFileCount > 0) ||
+    (!mcpSuppressedOnly && result.metadata.primeEmitted === true) ||
+    (!mcpSuppressedOnly && numberMetadata(result.metadata.primeEmitted) > 0) ||
+    (!mcpSuppressedOnly && result.metadata.primeDecision === "emit") ||
+    (!mcpSuppressedOnly && result.metadata.primeDecision === "shrink") ||
+    (!mcpSuppressedOnly && result.metadata.contextDecision === "emit") ||
+    (!mcpSuppressedOnly && result.metadata.contextDecision === "shrink") ||
     result.metadata.assistanceMode === "manual_prime";
   if (hasActiveAssistance) return "active";
   const hasSuppressedAssistance =
+    mcpSuppressedOnly ||
     result.hookContextSuppressed > 0 ||
     result.metadata.primeSuppressed === true ||
     numberMetadata(result.metadata.primeSuppressed) > 0 ||

@@ -1,6 +1,6 @@
 # Kairn Publication Evidence Report
 
-Generated: 2026-05-15T05:20:53.603Z
+Generated: 2026-05-15T14:19:56.499Z
 Plan: /Users/kevindotel/Documents/Projects/kairn/examples/bench/publication-plan-v2.json
 Model: gpt-5.4-mini
 Dry run: true

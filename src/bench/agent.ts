@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import Database from "better-sqlite3";
 import type { BenchmarkCase, BenchmarkSeedSpec, BenchmarkTaskOutcome } from "../types.js";
@@ -152,16 +152,10 @@ export async function runAgentBenchmarkCase(input: {
     const promptPrepareMs = Date.now() - prepareStartedAt;
     const command = commandWithPlaceholders(input.agentCommand, { prompt: prepared.prompt, root: workspacePath, session: commandSessionId });
     const agentStartedAt = Date.now();
-    const completed = spawnSync(command, {
-      cwd: workspacePath,
-      shell: true,
-      encoding: "utf8",
-      timeout: timeoutMs,
-      maxBuffer: 16 * 1024 * 1024
-    });
-    const agentTimedOut = spawnTimedOut(completed);
+    const completed = await runShellWithProcessGroupTimeout(command, workspacePath, timeoutMs, 16 * 1024 * 1024);
+    const agentTimedOut = completed.timedOut;
     const agentElapsedMs = Date.now() - agentStartedAt;
-    const output = [completed.stdout, completed.stderr, completed.error?.message].filter(Boolean).join("\n");
+    const output = completed.output;
     const verificationStartedAt = Date.now();
     const verification = runSeedVerification({
       workspacePath,
@@ -575,6 +569,86 @@ function spawnTimedOut(result: ReturnType<typeof spawnSync>): boolean {
   return error?.code === "ETIMEDOUT" || /ETIMEDOUT|timed out/i.test(error?.message ?? "");
 }
 
+async function runShellWithProcessGroupTimeout(
+  command: string,
+  cwd: string,
+  timeoutMs: number,
+  maxBuffer: number
+): Promise<{ status: number | null; output: string; timedOut: boolean; signal?: NodeJS.Signals | null; error?: Error | undefined }> {
+  return new Promise((resolve) => {
+    const child = spawn(command, {
+      cwd,
+      shell: true,
+      detached: process.platform !== "win32",
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    let output = "";
+    let settled = false;
+    let timedOut = false;
+    let spawnError: Error | undefined;
+    let forceTimer: NodeJS.Timeout | undefined;
+
+    const append = (chunk: Buffer | string): void => {
+      if (output.length >= maxBuffer) return;
+      const text = String(chunk);
+      const remaining = maxBuffer - output.length;
+      output += text.length > remaining ? text.slice(0, remaining) : text;
+    };
+
+    child.stdout?.on("data", append);
+    child.stderr?.on("data", append);
+    child.on("error", (error) => {
+      spawnError = error;
+      append(error.message);
+    });
+
+    const finish = (status: number | null, signal: NodeJS.Signals | null): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutTimer);
+      if (forceTimer) clearTimeout(forceTimer);
+      resolve({
+        status: status ?? (spawnError ? 1 : 0),
+        output,
+        timedOut,
+        signal,
+        ...(spawnError ? { error: spawnError } : {})
+      });
+    };
+
+    const timeoutTimer = setTimeout(() => {
+      timedOut = true;
+      terminateProcessTree(child.pid, "SIGTERM");
+      forceTimer = setTimeout(() => {
+        terminateProcessTree(child.pid, "SIGKILL");
+        child.stdout?.destroy();
+        child.stderr?.destroy();
+        child.unref();
+        finish(null, "SIGTERM");
+      }, 5000);
+    }, timeoutMs);
+
+    child.on("close", (status, signal) => finish(status, signal));
+  });
+}
+
+function terminateProcessTree(pid: number | undefined, signal: NodeJS.Signals): void {
+  if (!pid) return;
+  if (process.platform === "win32") {
+    spawnSync("taskkill", ["/pid", String(pid), "/T", "/F"], { stdio: "ignore" });
+    return;
+  }
+  try {
+    process.kill(-pid, signal);
+  } catch {
+    try {
+      process.kill(pid, signal);
+    } catch {
+      // Process already exited.
+    }
+  }
+}
+
 function depthArgs(depth: number): string[] {
   return depth > 0 ? ["--depth", String(Math.floor(depth))] : [];
 }
@@ -657,6 +731,7 @@ function metadataFromOutput(input: {
     actualMcpToolNames: unique([...workspaceMcp.toolNames, ...codexJsonlMcp.toolNames]),
     actualMcpToolCallSource: workspaceMcp.count > 0 ? "workspace_metrics" : codexJsonlMcp.count > 0 ? "codex_jsonl" : "none",
     actualMcpFiles: workspaceMcp.files,
+    actualMcpContextActions: workspaceMcp.contextActions,
     ...mcpReturnedQuality,
     ...(input.extraMetadata ?? {})
   };
@@ -724,10 +799,10 @@ function codexJsonlMcpCalls(output: string): { count: number; toolNames: string[
   };
 }
 
-function workspaceMcpCalls(workspacePath: string): { count: number; toolNames: string[]; files: string[] } {
+function workspaceMcpCalls(workspacePath: string): { count: number; toolNames: string[]; files: string[]; contextActions: string[] } {
   const dbPath = path.join(workspacePath, ".kairn", "kairn.sqlite");
   if (!fs.existsSync(dbPath)) {
-    return { count: 0, toolNames: [], files: [] };
+    return { count: 0, toolNames: [], files: [], contextActions: [] };
   }
 
   let db: Database.Database | undefined;
@@ -745,6 +820,7 @@ function workspaceMcpCalls(workspacePath: string): { count: number; toolNames: s
 
     const toolNames: string[] = [];
     const files: string[] = [];
+    const contextActions: string[] = [];
     for (const row of rows) {
       toolNames.push(row.event_name);
       for (const file of parseStringArray(row.files_json)) {
@@ -754,15 +830,20 @@ function workspaceMcpCalls(workspacePath: string): { count: number; toolNames: s
       if (typeof metadata.toolName === "string") {
         toolNames.push(metadata.toolName);
       }
+      const contextDecision = metadata.contextDecision;
+      if (isRecord(contextDecision) && typeof contextDecision.action === "string") {
+        contextActions.push(contextDecision.action);
+      }
     }
 
     return {
       count: rows.length,
       toolNames: unique(toolNames),
-      files: unique(files)
+      files: unique(files),
+      contextActions: unique(contextActions)
     };
   } catch {
-    return { count: 0, toolNames: [], files: [] };
+    return { count: 0, toolNames: [], files: [], contextActions: [] };
   } finally {
     db?.close();
   }
@@ -827,6 +908,10 @@ function parseJsonObject(value: string): Record<string, unknown> {
   } catch {
     return {};
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function unique(values: string[]): string[] {

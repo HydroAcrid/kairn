@@ -88,11 +88,17 @@ export function editScopeLine(scope: EditScopeDecision): string {
   return `Edit scope: ${initial} (${scope.scopeConfidence}, ${scope.scopeSource}). Expand only if ${scope.allowedExpansionTriggers[0] ?? "a focused check proves another file is required"}.`;
 }
 
-export function editScopeBlock(scope: EditScopeDecision, heading = "Edit scope"): string[] {
+export function editScopeBlock(
+  scope: EditScopeDecision,
+  heading = "Edit scope",
+  options: { includeReadOnly?: boolean | undefined } = {}
+): string[] {
+  const includeReadOnly = options.includeReadOnly ?? true;
   return [
     heading,
     `- Initial edit scope: ${scope.initialEditFiles.length > 0 ? scope.initialEditFiles.join(", ") : "none yet; identify a concrete source file first"}`,
-    scope.readOnlyFiles.length > 0 ? `- Read-only verification context: ${scope.readOnlyFiles.join(", ")}` : "",
+    scope.initialEditFiles.length > 0 ? "- Do not edit other production files unless an allowed expansion trigger occurs." : "",
+    includeReadOnly && scope.readOnlyFiles.length > 0 ? `- Read-only verification context: ${scope.readOnlyFiles.join(", ")}` : "",
     `- Allowed expansion: ${scope.allowedExpansionTriggers.join("; ")}`,
     `- Avoid editing: ${scope.forbiddenEditPatterns.join(", ")}`,
     `- Scope confidence: ${scope.scopeConfidence} (${scope.reason})`

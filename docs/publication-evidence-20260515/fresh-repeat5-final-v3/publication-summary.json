@@ -1,0 +1,82 @@
+{
+  "id": "kairn-evidence-campaign-v2",
+  "name": "Kairn Evidence Campaign v2",
+  "generatedAt": "2026-05-15T19:51:45.315Z",
+  "planPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/publication-plan-v2.json",
+  "outDir": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/fresh-repeat5-final-v3",
+  "dryRun": false,
+  "model": "gpt-5.4-mini",
+  "repeat": 5,
+  "aggregate": {
+    "entries": 1,
+    "resultRows": 1,
+    "qualityPassRate": 0,
+    "medianValidSavingsRate": 0,
+    "modes": {
+      "proof": {
+        "rows": 1,
+        "qualityPasses": 0,
+        "activeRows": 0,
+        "passiveRows": 0,
+        "validSavingsRows": 0,
+        "validSavings": 0,
+        "passiveSavings": 0,
+        "invalidSavings": 0,
+        "medianSavingsRate": 0,
+        "overAssistRows": 0,
+        "harmfulRows": 0,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "requestEvidenceRows": 0,
+        "mcpCalls": 0,
+        "repeatedFilesAvoided": 0,
+        "scopeViolations": 0
+      }
+    },
+    "byTaskClass": {
+      "source_rescue": {
+        "rows": 1,
+        "qualityPasses": 0,
+        "activeRows": 0,
+        "passiveRows": 0,
+        "validSavingsRows": 0,
+        "validSavings": 0,
+        "passiveSavings": 0,
+        "invalidSavings": 0,
+        "medianSavingsRate": 0,
+        "overAssistRows": 0,
+        "harmfulRows": 0,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "requestEvidenceRows": 0,
+        "mcpCalls": 0,
+        "repeatedFilesAvoided": 0,
+        "scopeViolations": 0
+      }
+    },
+    "classifications": {},
+    "failurePatterns": [
+      {
+        "pattern": "database or disk is full",
+        "count": 1,
+        "examples": [
+          "fresh-repeat5-one-shot:proof"
+        ]
+      }
+    ],
+    "successCriteria": {
+      "qualityWithinFivePoints": true,
+      "activeMedianSavingsAtLeast15": false,
+      "noRepeatedHarmfulPattern": true,
+      "hasMcpEvidence": false,
+      "hasEnduranceAfterTurnOneEvidence": false
+    }
+  },
+  "outputs": {
+    "summaryPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/fresh-repeat5-final-v3/publication-summary.json",
+    "resultsCsvPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/fresh-repeat5-final-v3/publication-results.csv",
+    "failuresCsvPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/fresh-repeat5-final-v3/publication-failures.csv",
+    "manifestPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/fresh-repeat5-final-v3/publication-manifest.json",
+    "markdownPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/fresh-repeat5-final-v3/kairn_publication_evidence_report_2026-05-15.md"
+  }
+}

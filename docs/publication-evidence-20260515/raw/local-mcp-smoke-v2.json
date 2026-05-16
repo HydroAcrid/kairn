@@ -1,7 +1,7 @@
 {
   "entryId": "local-mcp-smoke-v2",
   "kind": "mcp_smoke",
-  "status": "planned",
+  "status": "passed",
   "entryMetadata": {
     "label": "Local MCP protocol smoke",
     "repoId": "local",
@@ -10,9 +10,52 @@
     "taskClass": "mcp_delivery"
   },
   "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/raw/local-mcp-smoke-v2.json",
-  "startedAt": "2026-05-15T05:20:53.603Z",
-  "endedAt": "2026-05-15T05:20:53.603Z",
+  "startedAt": "2026-05-15T13:02:04.227Z",
+  "endedAt": "2026-05-15T13:02:08.794Z",
   "commands": [
     "kairn bench mcp-smoke --root . --task \"Find the smallest useful Kairn source context for evidence-campaign reporting.\""
-  ]
+  ],
+  "report": {
+    "startedAt": "2026-05-15T13:02:04.229Z",
+    "endedAt": "2026-05-15T13:02:08.721Z",
+    "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+    "task": "Find the smallest useful Kairn source context for evidence-campaign reporting.",
+    "serverCommand": "/Users/kevindotel/Documents/Projects/kairn/node_modules/.bin/tsx",
+    "serverArgs": [
+      "/Users/kevindotel/Documents/Projects/kairn/src/cli.ts",
+      "serve",
+      "--mcp",
+      "--root",
+      "/Users/kevindotel/Documents/Projects/kairn"
+    ],
+    "tools": [
+      "kairn_prepare_task",
+      "kairn_start_task",
+      "kairn_find_context",
+      "kairn_read_file",
+      "kairn_read_symbol",
+      "kairn_get_related_files",
+      "kairn_find_tests",
+      "kairn_review_diff",
+      "kairn_compress_output",
+      "kairn_get_next_context",
+      "kairn_get_failure_context",
+      "kairn_get_metrics",
+      "kairn_get_session_state"
+    ],
+    "sessionId": "task_6e926056-cac0-4752-ae79-fd57e3159b3a",
+    "prepare": {
+      "startFiles": [
+        "src/types/context.ts"
+      ],
+      "nextToolCalls": [],
+      "stopCondition": "source_evidence_sufficient",
+      "contextSuppressed": false,
+      "exactSourceHit": true
+    },
+    "metrics": {
+      "mcpToolCalls": 2,
+      "savedTokens": 53329
+    }
+  }
 }

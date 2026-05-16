@@ -117,6 +117,26 @@ describe("KairnRuntime", () => {
     runtime.close();
   });
 
+  it("uses an ultra-minimal one-file guardrail for high-confidence session source fixes", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+
+    const prime = await runtime.primeContext({
+      task: "Debug formatUser. formatUser should trim whitespace before rendering. Fix the production source and do not edit unrelated files.",
+      budget: 900
+    });
+
+    expect(prime.contextDecision?.action).toBe("shrink");
+    expect(prime.contextDecision?.recommendedDelivery).toBe("one_file_directive");
+    expect(prime.files).toEqual(["src/user.ts"]);
+    expect(prime.content).toContain("# Kairn Fix Guardrail");
+    expect(prime.content).toContain("Do not edit tests, snapshots, docs, examples, generated files, or sibling source files");
+    expect(prime.content).not.toContain("Focused context:");
+    expect(estimateTokens(prime.content)).toBeLessThan(360);
+
+    runtime.close();
+  });
+
   it("tracks index freshness across repo changes and refreshes", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);

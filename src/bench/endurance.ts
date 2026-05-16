@@ -7,6 +7,8 @@ import type {
   BenchmarkEnduranceSuite,
   BenchmarkEnduranceTurn,
   BenchmarkEnduranceTurnResult,
+  BenchmarkDiffScope,
+  BenchmarkSourceInvariant,
   BenchmarkAssistClassification,
   BenchmarkTaskOutcome,
   SessionLedgerSummary
@@ -359,7 +361,11 @@ async function runEnduranceTurn(input: {
       sessionId: input.sessionId,
       prompt,
       turnId: input.turn.id,
-      budget: input.turn.budget
+      budget: input.turn.budget,
+      editScopeHints: {
+        allowedDiffScopes: input.turn.allowedDiffScopes,
+        sourceInvariants: input.turn.sourceInvariants
+      }
     });
     primeMetadata = {
       hookSimulated: true,
@@ -658,6 +664,10 @@ async function runSessionBoundPromptHook(input: {
   prompt: string;
   turnId: string;
   budget?: number | undefined;
+  editScopeHints?: {
+    allowedDiffScopes?: BenchmarkDiffScope[] | undefined;
+    sourceInvariants?: BenchmarkSourceInvariant[] | undefined;
+  } | undefined;
 }): Promise<{
   content?: string | undefined;
   decision?: string | undefined;
@@ -683,7 +693,8 @@ async function runSessionBoundPromptHook(input: {
     event,
     primeBudget: input.budget,
     hookOutput: "full-prime",
-    refreshIndex: false
+    refreshIndex: false,
+    editScopeHints: input.editScopeHints
   });
   const content =
     result.prime?.content ??

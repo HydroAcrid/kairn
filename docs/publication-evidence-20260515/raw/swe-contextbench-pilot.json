@@ -1,7 +1,7 @@
 {
   "entryId": "swe-contextbench-pilot",
   "kind": "swe_context_pilot",
-  "status": "planned",
+  "status": "passed",
   "entryMetadata": {
     "label": "SWE-ContextBench related-task reuse pilot",
     "repoId": "swe-contextbench",
@@ -11,9 +11,527 @@
     "input": "examples/bench/swe-contextbench-pilot-sample.jsonl"
   },
   "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/raw/swe-contextbench-pilot.json",
-  "startedAt": "2026-05-15T05:20:53.603Z",
-  "endedAt": "2026-05-15T05:20:53.603Z",
+  "startedAt": "2026-05-15T13:02:04.227Z",
+  "endedAt": "2026-05-15T13:02:04.231Z",
   "commands": [
     "kairn bench swe-context-pilot --input examples/bench/swe-contextbench-pilot-sample.jsonl --limit 30"
-  ]
+  ],
+  "report": {
+    "pilot": {
+      "generatedAt": "2026-05-15T13:02:04.230Z",
+      "source": "SWE-ContextBench metadata",
+      "rows": 6,
+      "rawRows": [
+        {
+          "task_id": "vite-base-resolve",
+          "prompt": "Find the source files responsible for plugin resolveId dispatch in Vite dev server transforms.",
+          "repository_url": "https://github.com/vitejs/vite.git",
+          "repository_base_commit": "main",
+          "language": "typescript",
+          "group_id": "vite-plugin-flow",
+          "expected_files": [
+            "packages/vite/src/node/server/pluginContainer.ts",
+            "packages/vite/src/node/plugins/importAnalysis.ts"
+          ],
+          "task_type": "base"
+        },
+        {
+          "task_id": "vite-related-load",
+          "prompt": "For a related Vite task, reuse prior context only if it helps explain how load hooks feed transform and import analysis.",
+          "repository_url": "https://github.com/vitejs/vite.git",
+          "repository_base_commit": "main",
+          "language": "typescript",
+          "group_id": "vite-plugin-flow",
+          "base_task_id": "vite-base-resolve",
+          "expected_files": [
+            "packages/vite/src/node/server/pluginContainer.ts",
+            "packages/vite/src/node/plugins/importAnalysis.ts"
+          ],
+          "task_type": "related"
+        },
+        {
+          "task_id": "httpcore-base-pool",
+          "prompt": "Find the httpcore source files that coordinate sync connection pool request dispatch and connection reuse.",
+          "repository_url": "https://github.com/encode/httpcore.git",
+          "repository_base_commit": "main",
+          "language": "python",
+          "group_id": "httpcore-pool-flow",
+          "expected_files": [
+            "httpcore/_sync/connection_pool.py",
+            "httpcore/_sync/connection.py"
+          ],
+          "task_type": "base"
+        },
+        {
+          "task_id": "httpcore-related-retry",
+          "prompt": "For a related httpcore task, decide whether prior connection-pool context should be reused for a retry-after-failure question.",
+          "repository_url": "https://github.com/encode/httpcore.git",
+          "repository_base_commit": "main",
+          "language": "python",
+          "group_id": "httpcore-pool-flow",
+          "base_task_id": "httpcore-base-pool",
+          "expected_files": [
+            "httpcore/_sync/connection_pool.py",
+            "httpcore/_sync/connection.py"
+          ],
+          "task_type": "related"
+        },
+        {
+          "task_id": "gorm-base-create",
+          "prompt": "Find the GORM source files involved when create callbacks read schema fields from Statement before insert.",
+          "repository_url": "https://github.com/go-gorm/gorm.git",
+          "repository_base_commit": "main",
+          "language": "go",
+          "group_id": "gorm-create-flow",
+          "expected_files": [
+            "callbacks/create.go",
+            "statement.go",
+            "schema/field.go"
+          ],
+          "task_type": "base"
+        },
+        {
+          "task_id": "gorm-related-schema",
+          "prompt": "For a related GORM task, reuse prior create callback context only if it points to schema field handling.",
+          "repository_url": "https://github.com/go-gorm/gorm.git",
+          "repository_base_commit": "main",
+          "language": "go",
+          "group_id": "gorm-create-flow",
+          "base_task_id": "gorm-base-create",
+          "expected_files": [
+            "callbacks/create.go",
+            "schema/field.go"
+          ],
+          "task_type": "related"
+        }
+      ],
+      "pairs": [
+        {
+          "groupId": "vite-plugin-flow",
+          "baseTaskId": "vite-base-resolve",
+          "relatedTaskIds": [
+            "vite-related-load"
+          ]
+        },
+        {
+          "groupId": "httpcore-pool-flow",
+          "baseTaskId": "httpcore-base-pool",
+          "relatedTaskIds": [
+            "httpcore-related-retry"
+          ]
+        },
+        {
+          "groupId": "gorm-create-flow",
+          "baseTaskId": "gorm-base-create",
+          "relatedTaskIds": [
+            "gorm-related-schema"
+          ]
+        }
+      ],
+      "suite": {
+        "id": "swe-contextbench-pilot-live",
+        "name": "SWE-ContextBench Pilot Live Suite",
+        "cases": [
+          {
+            "id": "vite-base-resolve",
+            "mode": "agent",
+            "task": "Find the source files responsible for plugin resolveId dispatch in Vite dev server transforms.",
+            "agentPrompt": "Find the source files responsible for plugin resolveId dispatch in Vite dev server transforms.",
+            "contextBehavior": "multi_file_debug",
+            "expectedFiles": [
+              "packages/vite/src/node/server/pluginContainer.ts",
+              "packages/vite/src/node/plugins/importAnalysis.ts"
+            ],
+            "minExpectedHits": 1,
+            "excludedFiles": [
+              "docs/",
+              "examples/",
+              "test/",
+              "tests/",
+              "__tests__/",
+              "vendor/",
+              "node_modules/"
+            ],
+            "budget": 1000,
+            "successCriteria": [
+              "Kairn retrieves relevant source files from the current or related task.",
+              "Unrelated prior context is suppressed.",
+              "This pilot measures source grounding and context reuse, not leaderboard patch correctness."
+            ]
+          },
+          {
+            "id": "vite-related-load",
+            "mode": "agent",
+            "task": "For a related Vite task, reuse prior context only if it helps explain how load hooks feed transform and import analysis.",
+            "agentPrompt": "For a related Vite task, reuse prior context only if it helps explain how load hooks feed transform and import analysis.",
+            "contextBehavior": "multi_file_debug",
+            "expectedFiles": [
+              "packages/vite/src/node/server/pluginContainer.ts",
+              "packages/vite/src/node/plugins/importAnalysis.ts"
+            ],
+            "minExpectedHits": 1,
+            "excludedFiles": [
+              "docs/",
+              "examples/",
+              "test/",
+              "tests/",
+              "__tests__/",
+              "vendor/",
+              "node_modules/"
+            ],
+            "budget": 1000,
+            "successCriteria": [
+              "Kairn retrieves relevant source files from the current or related task.",
+              "Unrelated prior context is suppressed.",
+              "This pilot measures source grounding and context reuse, not leaderboard patch correctness."
+            ]
+          },
+          {
+            "id": "httpcore-base-pool",
+            "mode": "agent",
+            "task": "Find the httpcore source files that coordinate sync connection pool request dispatch and connection reuse.",
+            "agentPrompt": "Find the httpcore source files that coordinate sync connection pool request dispatch and connection reuse.",
+            "contextBehavior": "multi_file_debug",
+            "expectedFiles": [
+              "httpcore/_sync/connection_pool.py",
+              "httpcore/_sync/connection.py"
+            ],
+            "minExpectedHits": 1,
+            "excludedFiles": [
+              "docs/",
+              "examples/",
+              "test/",
+              "tests/",
+              "__tests__/",
+              "vendor/",
+              "node_modules/"
+            ],
+            "budget": 1000,
+            "successCriteria": [
+              "Kairn retrieves relevant source files from the current or related task.",
+              "Unrelated prior context is suppressed.",
+              "This pilot measures source grounding and context reuse, not leaderboard patch correctness."
+            ]
+          },
+          {
+            "id": "httpcore-related-retry",
+            "mode": "agent",
+            "task": "For a related httpcore task, decide whether prior connection-pool context should be reused for a retry-after-failure question.",
+            "agentPrompt": "For a related httpcore task, decide whether prior connection-pool context should be reused for a retry-after-failure question.",
+            "contextBehavior": "multi_file_debug",
+            "expectedFiles": [
+              "httpcore/_sync/connection_pool.py",
+              "httpcore/_sync/connection.py"
+            ],
+            "minExpectedHits": 1,
+            "excludedFiles": [
+              "docs/",
+              "examples/",
+              "test/",
+              "tests/",
+              "__tests__/",
+              "vendor/",
+              "node_modules/"
+            ],
+            "budget": 1000,
+            "successCriteria": [
+              "Kairn retrieves relevant source files from the current or related task.",
+              "Unrelated prior context is suppressed.",
+              "This pilot measures source grounding and context reuse, not leaderboard patch correctness."
+            ]
+          },
+          {
+            "id": "gorm-base-create",
+            "mode": "agent",
+            "task": "Find the GORM source files involved when create callbacks read schema fields from Statement before insert.",
+            "agentPrompt": "Find the GORM source files involved when create callbacks read schema fields from Statement before insert.",
+            "contextBehavior": "multi_file_debug",
+            "expectedFiles": [
+              "callbacks/create.go",
+              "statement.go",
+              "schema/field.go"
+            ],
+            "minExpectedHits": 1,
+            "excludedFiles": [
+              "docs/",
+              "examples/",
+              "test/",
+              "tests/",
+              "__tests__/",
+              "vendor/",
+              "node_modules/"
+            ],
+            "budget": 1000,
+            "successCriteria": [
+              "Kairn retrieves relevant source files from the current or related task.",
+              "Unrelated prior context is suppressed.",
+              "This pilot measures source grounding and context reuse, not leaderboard patch correctness."
+            ]
+          },
+          {
+            "id": "gorm-related-schema",
+            "mode": "agent",
+            "task": "For a related GORM task, reuse prior create callback context only if it points to schema field handling.",
+            "agentPrompt": "For a related GORM task, reuse prior create callback context only if it points to schema field handling.",
+            "contextBehavior": "multi_file_debug",
+            "expectedFiles": [
+              "callbacks/create.go",
+              "schema/field.go"
+            ],
+            "minExpectedHits": 1,
+            "excludedFiles": [
+              "docs/",
+              "examples/",
+              "test/",
+              "tests/",
+              "__tests__/",
+              "vendor/",
+              "node_modules/"
+            ],
+            "budget": 1000,
+            "successCriteria": [
+              "Kairn retrieves relevant source files from the current or related task.",
+              "Unrelated prior context is suppressed.",
+              "This pilot measures source grounding and context reuse, not leaderboard patch correctness."
+            ]
+          }
+        ]
+      },
+      "matrix": {
+        "id": "swe-contextbench-pilot-matrix",
+        "name": "SWE-ContextBench Pilot Repo Matrix",
+        "gates": {
+          "maxStateMb": 300,
+          "maxPrimeLatencyMs": 8000,
+          "expectedTopK": 5,
+          "requireSuppressionForWeakCases": true
+        },
+        "repos": [
+          {
+            "id": "vitejs-vite",
+            "name": "vitejs/vite",
+            "repoUrl": "https://github.com/vitejs/vite.git",
+            "ref": "main",
+            "cloneDepth": 1,
+            "language": "typescript",
+            "sizeClass": "medium",
+            "cases": [
+              {
+                "id": "vite-base-resolve",
+                "mode": "agent",
+                "task": "Find the source files responsible for plugin resolveId dispatch in Vite dev server transforms.",
+                "agentPrompt": "Find the source files responsible for plugin resolveId dispatch in Vite dev server transforms.",
+                "contextBehavior": "multi_file_debug",
+                "expectedFiles": [
+                  "packages/vite/src/node/server/pluginContainer.ts",
+                  "packages/vite/src/node/plugins/importAnalysis.ts"
+                ],
+                "minExpectedHits": 1,
+                "excludedFiles": [
+                  "docs/",
+                  "examples/",
+                  "test/",
+                  "tests/",
+                  "__tests__/",
+                  "vendor/",
+                  "node_modules/"
+                ],
+                "budget": 1000,
+                "successCriteria": [
+                  "Kairn retrieves relevant source files from the current or related task.",
+                  "Unrelated prior context is suppressed.",
+                  "This pilot measures source grounding and context reuse, not leaderboard patch correctness."
+                ]
+              },
+              {
+                "id": "vite-related-load",
+                "mode": "agent",
+                "task": "For a related Vite task, reuse prior context only if it helps explain how load hooks feed transform and import analysis.",
+                "agentPrompt": "For a related Vite task, reuse prior context only if it helps explain how load hooks feed transform and import analysis.",
+                "contextBehavior": "multi_file_debug",
+                "expectedFiles": [
+                  "packages/vite/src/node/server/pluginContainer.ts",
+                  "packages/vite/src/node/plugins/importAnalysis.ts"
+                ],
+                "minExpectedHits": 1,
+                "excludedFiles": [
+                  "docs/",
+                  "examples/",
+                  "test/",
+                  "tests/",
+                  "__tests__/",
+                  "vendor/",
+                  "node_modules/"
+                ],
+                "budget": 1000,
+                "successCriteria": [
+                  "Kairn retrieves relevant source files from the current or related task.",
+                  "Unrelated prior context is suppressed.",
+                  "This pilot measures source grounding and context reuse, not leaderboard patch correctness."
+                ]
+              }
+            ]
+          },
+          {
+            "id": "encode-httpcore",
+            "name": "encode/httpcore",
+            "repoUrl": "https://github.com/encode/httpcore.git",
+            "ref": "main",
+            "cloneDepth": 1,
+            "language": "python",
+            "sizeClass": "medium",
+            "cases": [
+              {
+                "id": "httpcore-base-pool",
+                "mode": "agent",
+                "task": "Find the httpcore source files that coordinate sync connection pool request dispatch and connection reuse.",
+                "agentPrompt": "Find the httpcore source files that coordinate sync connection pool request dispatch and connection reuse.",
+                "contextBehavior": "multi_file_debug",
+                "expectedFiles": [
+                  "httpcore/_sync/connection_pool.py",
+                  "httpcore/_sync/connection.py"
+                ],
+                "minExpectedHits": 1,
+                "excludedFiles": [
+                  "docs/",
+                  "examples/",
+                  "test/",
+                  "tests/",
+                  "__tests__/",
+                  "vendor/",
+                  "node_modules/"
+                ],
+                "budget": 1000,
+                "successCriteria": [
+                  "Kairn retrieves relevant source files from the current or related task.",
+                  "Unrelated prior context is suppressed.",
+                  "This pilot measures source grounding and context reuse, not leaderboard patch correctness."
+                ]
+              },
+              {
+                "id": "httpcore-related-retry",
+                "mode": "agent",
+                "task": "For a related httpcore task, decide whether prior connection-pool context should be reused for a retry-after-failure question.",
+                "agentPrompt": "For a related httpcore task, decide whether prior connection-pool context should be reused for a retry-after-failure question.",
+                "contextBehavior": "multi_file_debug",
+                "expectedFiles": [
+                  "httpcore/_sync/connection_pool.py",
+                  "httpcore/_sync/connection.py"
+                ],
+                "minExpectedHits": 1,
+                "excludedFiles": [
+                  "docs/",
+                  "examples/",
+                  "test/",
+                  "tests/",
+                  "__tests__/",
+                  "vendor/",
+                  "node_modules/"
+                ],
+                "budget": 1000,
+                "successCriteria": [
+                  "Kairn retrieves relevant source files from the current or related task.",
+                  "Unrelated prior context is suppressed.",
+                  "This pilot measures source grounding and context reuse, not leaderboard patch correctness."
+                ]
+              }
+            ]
+          },
+          {
+            "id": "go-gorm-gorm",
+            "name": "go-gorm/gorm",
+            "repoUrl": "https://github.com/go-gorm/gorm.git",
+            "ref": "main",
+            "cloneDepth": 1,
+            "language": "go",
+            "sizeClass": "medium",
+            "cases": [
+              {
+                "id": "gorm-base-create",
+                "mode": "agent",
+                "task": "Find the GORM source files involved when create callbacks read schema fields from Statement before insert.",
+                "agentPrompt": "Find the GORM source files involved when create callbacks read schema fields from Statement before insert.",
+                "contextBehavior": "multi_file_debug",
+                "expectedFiles": [
+                  "callbacks/create.go",
+                  "statement.go",
+                  "schema/field.go"
+                ],
+                "minExpectedHits": 1,
+                "excludedFiles": [
+                  "docs/",
+                  "examples/",
+                  "test/",
+                  "tests/",
+                  "__tests__/",
+                  "vendor/",
+                  "node_modules/"
+                ],
+                "budget": 1000,
+                "successCriteria": [
+                  "Kairn retrieves relevant source files from the current or related task.",
+                  "Unrelated prior context is suppressed.",
+                  "This pilot measures source grounding and context reuse, not leaderboard patch correctness."
+                ]
+              },
+              {
+                "id": "gorm-related-schema",
+                "mode": "agent",
+                "task": "For a related GORM task, reuse prior create callback context only if it points to schema field handling.",
+                "agentPrompt": "For a related GORM task, reuse prior create callback context only if it points to schema field handling.",
+                "contextBehavior": "multi_file_debug",
+                "expectedFiles": [
+                  "callbacks/create.go",
+                  "schema/field.go"
+                ],
+                "minExpectedHits": 1,
+                "excludedFiles": [
+                  "docs/",
+                  "examples/",
+                  "test/",
+                  "tests/",
+                  "__tests__/",
+                  "vendor/",
+                  "node_modules/"
+                ],
+                "budget": 1000,
+                "successCriteria": [
+                  "Kairn retrieves relevant source files from the current or related task.",
+                  "Unrelated prior context is suppressed.",
+                  "This pilot measures source grounding and context reuse, not leaderboard patch correctness."
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "summary": {
+        "repos": {
+          "vitejs/vite": 2,
+          "encode/httpcore": 2,
+          "go-gorm/gorm": 2
+        },
+        "languages": {
+          "typescript": 2,
+          "python": 2,
+          "go": 2
+        },
+        "taskTypes": {
+          "base": 3,
+          "related": 3
+        },
+        "pairs": 3,
+        "relatedRows": 3,
+        "skippedRows": 0,
+        "warnings": []
+      }
+    },
+    "outputs": {
+      "suitePath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/swe-contextbench-publication/swe-contextbench-pilot-suite.json",
+      "matrixPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/swe-contextbench-publication/swe-contextbench-pilot-matrix.json",
+      "summaryPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/swe-contextbench-publication/swe-contextbench-pilot-summary.json",
+      "rowsPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/swe-contextbench-publication/swe-contextbench-pilot-rows.json",
+      "rawRowsPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/swe-contextbench-publication/swe-contextbench-pilot-raw.jsonl"
+    }
+  }
 }

@@ -1,0 +1,103 @@
+{
+  "id": "kairn-post-build-scope-recheck",
+  "name": "Kairn Post-Build Scope Recheck",
+  "generatedAt": "2026-05-15T17:39:56.958Z",
+  "planPath": "/tmp/kairn-post-build-scope-plan.json",
+  "outDir": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/post-build-scope-recheck",
+  "dryRun": false,
+  "model": "gpt-5.4-mini",
+  "repeat": 2,
+  "aggregate": {
+    "entries": 1,
+    "resultRows": 2,
+    "qualityPassRate": 1,
+    "medianValidSavingsRate": 0.5747,
+    "modes": {
+      "baseline": {
+        "rows": 1,
+        "qualityPasses": 0,
+        "activeRows": 0,
+        "passiveRows": 0,
+        "validSavingsRows": 0,
+        "validSavings": 0,
+        "passiveSavings": 0,
+        "invalidSavings": 0,
+        "medianSavingsRate": 0,
+        "overAssistRows": 0,
+        "harmfulRows": 0,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "requestEvidenceRows": 0,
+        "mcpCalls": 0,
+        "repeatedFilesAvoided": 0,
+        "scopeViolations": 0
+      },
+      "kairn_codex_session": {
+        "rows": 1,
+        "qualityPasses": 1,
+        "activeRows": 1,
+        "passiveRows": 0,
+        "validSavingsRows": 1,
+        "validSavings": 48938,
+        "passiveSavings": 0,
+        "invalidSavings": 0,
+        "medianSavingsRate": 0.5747,
+        "overAssistRows": 0,
+        "harmfulRows": 0,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "requestEvidenceRows": 0,
+        "mcpCalls": 0,
+        "repeatedFilesAvoided": 0,
+        "scopeViolations": 0
+      }
+    },
+    "byTaskClass": {
+      "source_rescue": {
+        "rows": 2,
+        "qualityPasses": 1,
+        "activeRows": 1,
+        "passiveRows": 0,
+        "validSavingsRows": 1,
+        "validSavings": 48938,
+        "passiveSavings": 0,
+        "invalidSavings": 0,
+        "medianSavingsRate": 0.28735,
+        "overAssistRows": 0,
+        "harmfulRows": 0,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "requestEvidenceRows": 0,
+        "mcpCalls": 0,
+        "repeatedFilesAvoided": 0,
+        "scopeViolations": 0
+      }
+    },
+    "classifications": {
+      "quality_rescue": 1
+    },
+    "failurePatterns": [
+      {
+        "pattern": "quality gate failed",
+        "count": 1,
+        "examples": [
+          "post-build-scope-repeat2:baseline"
+        ]
+      }
+    ],
+    "successCriteria": {
+      "qualityWithinFivePoints": true,
+      "activeMedianSavingsAtLeast15": true,
+      "noRepeatedHarmfulPattern": true,
+      "hasMcpEvidence": false,
+      "hasEnduranceAfterTurnOneEvidence": false
+    }
+  },
+  "outputs": {
+    "summaryPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/post-build-scope-recheck/publication-summary.json",
+    "resultsCsvPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/post-build-scope-recheck/publication-results.csv",
+    "failuresCsvPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/post-build-scope-recheck/publication-failures.csv",
+    "manifestPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/post-build-scope-recheck/publication-manifest.json",
+    "markdownPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/post-build-scope-recheck/kairn_publication_evidence_report_2026-05-15.md"
+  }
+}

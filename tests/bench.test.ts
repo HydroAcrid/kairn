@@ -3074,6 +3074,51 @@ describe("benchmark suite and scoring", () => {
     expect(decision.recommendedDelivery).toBe("one_file_directive");
   });
 
+  it("uses a scope-only guardrail for low-cost non-canonical exact source-rescue tasks", () => {
+    const decision = evaluateContextValue({
+      task: "Debug the seeded failing Java check. Apache Commons Text CaseUtils.toCamelCase should treat a space character as the default delimiter when no delimiter characters are supplied. Fix the production source and do not edit unrelated files.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- src/main/java/org/apache/commons/text/CaseUtils.java (source, score 9732): symbol match CaseUtils; exact source behavior match",
+        files: ["src/main/java/org/apache/commons/text/CaseUtils.java"],
+        symbols: ["CaseUtils"],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/main/java/org/apache/commons/text/CaseUtils.java"],
+        tokenEstimate: 260,
+        rankedFiles: [
+          {
+            path: "src/main/java/org/apache/commons/text/CaseUtils.java",
+            kind: "source",
+            score: 9732,
+            reasons: ["symbol match CaseUtils", "exact source behavior match"],
+            scores: { bm25: 7200, keyword: 1200 }
+          }
+        ]
+      },
+      quality: {
+        score: 92,
+        action: "shrink",
+        reasons: ["high-confidence top retrieval score", "top result is clearly separated"],
+        topScore: 9732,
+        topGap: 5614,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      knownFiles: [record("src/main/java/org/apache/commons/text/CaseUtils.java", "source")],
+      repoFileCount: 260,
+      estimatedContextCost: 900,
+      companionCount: 0,
+      companionTopScore: 0,
+      companionSpecific: false
+    });
+
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("one_file_directive");
+    expect(decision.cheapSingleSource).toBe(true);
+  });
+
   it("does not classify relocation-style two-source debug tasks as cheap single-source", () => {
     const decision = evaluateContextValue({
       task: [
@@ -3743,7 +3788,7 @@ describe("benchmark suite and scoring", () => {
     expect(compareBenchmarkReports(before, after).observedTokenDelta).toMatchObject({
       qualityGatePassed: true,
       assistanceStatus: "active",
-      assistClassification: "valid_assist",
+      assistClassification: "quality_rescue",
       validSavings: 800,
       invalidSavings: 0
     });
@@ -3760,6 +3805,16 @@ describe("benchmark suite and scoring", () => {
         turnCount: 1
       }).assistClassification
     ).toBe("valid_assist");
+    expect(
+      classifyAssistance({
+        assistanceStatus: "active",
+        qualityGatePassed: true,
+        savedTokens: -200,
+        baselineTokens: 2000,
+        baselineQualityGatePassed: false,
+        turnCount: 1
+      })
+    ).toMatchObject({ assistClassification: "quality_rescue", overAssist: false, harmfulAssist: false });
     expect(
       classifyAssistance({
         assistanceStatus: "active",
@@ -4175,6 +4230,50 @@ describe("benchmark runtime and CLI", () => {
     expect(prime.content).toContain("Relative or non-absolute URLs");
     expect(prime.content).toContain("Stop condition");
     expect(prime.content).not.toContain("router.ts");
+
+    runtime.close();
+  });
+
+  it("prefers current source invariant metadata over stale session task text in exact-source primes", async () => {
+    const root = createFixtureRepo();
+    fs.mkdirSync(path.join(root, "src/requests"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "src/requests/sessions.py"),
+      [
+        "class Session:",
+        "    def send(self, request, **kwargs):",
+        "        allow_redirects = kwargs.pop('allow_redirects', True)",
+        "        if allow_redirects:",
+        "            return self.resolve_redirects(request)",
+        "        return request",
+        ""
+      ].join("\n")
+    );
+    const runtime = new KairnRuntime(root);
+    await runtime.init();
+    const session = (await runtime.startTask("Debug, fix, verify, and preserve a Requests allow_redirects regression across ten turns.")).session;
+
+    const prime = await runtime.primeContext({
+      sessionId: session.id,
+      task: "Fix the seeded Requests redirect regression in production source only. Keep edits inside src/requests/sessions.py.",
+      budget: 900,
+      editScopeHints: {
+        sourceInvariants: [
+          {
+            id: "session-send-honors-allow-redirects",
+            file: "src/requests/sessions.py",
+            description: "Session.send must resolve redirects when allow_redirects is true.",
+            requiredPresent: ["if allow_redirects:"],
+            requiredAbsent: ["if False and allow_redirects:"]
+          }
+        ]
+      }
+    });
+
+    expect(prime.contextDecision?.exactSourceHit).toBe(true);
+    expect(prime.invariants?.[0]?.statement).toBe("Session.send must resolve redirects when allow_redirects is true.");
+    expect(prime.content).toContain("Session.send must resolve redirects when allow_redirects is true.");
+    expect(prime.content).not.toContain("Debug, fix, verify");
 
     runtime.close();
   });

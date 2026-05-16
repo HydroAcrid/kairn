@@ -117,6 +117,12 @@ export function classifyAssistance(input: AssistanceClassificationInput): Assist
       assistClassification: "harmful_invalid_assist"
     };
   }
+  if (baselineDifficulty === "quality_fail") {
+    return {
+      ...base,
+      assistClassification: "quality_rescue"
+    };
+  }
   if (input.savedTokens !== undefined && input.savedTokens > 0) {
     return {
       ...base,

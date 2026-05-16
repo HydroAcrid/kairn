@@ -138,10 +138,10 @@ export function formatMcpBriefPrimeContext(input: {
     "",
     ...formatInvariantSections(input.invariants, "Invariant:"),
     "",
-    ...(input.editScope ? editScopeBlock(input.editScope, "Edit scope:") : []),
-    "",
     "Instruction: call `kairn_prepare_task` with this session id before broad, unclear, multi-file, failure-driven, or source-rescue reads. If it returns `stopCondition` or no `nextToolCalls`, continue from its files and do not call more Kairn unless a check fails or the target changes.",
     `Suggested MCP call: kairn_prepare_task({ "task": ${JSON.stringify(input.task)}, "sessionId": ${JSON.stringify(input.sessionId)}, "detail": "compact" })`,
+    "",
+    ...(input.editScope ? editScopeBlock(input.editScope, "Edit scope:") : []),
     "",
     `Quality: ${input.quality.score}/100 (${input.quality.action})`
   ];
@@ -207,6 +207,7 @@ export function formatShrunkPrimeContext(input: {
   editScope?: EditScopeDecision | undefined;
   includeSnippet?: boolean | undefined;
   minimal?: boolean | undefined;
+  includeVerification?: boolean | undefined;
 }): string {
   const topFiles = uniquePaths(
     input.files && input.files.length > 0
@@ -227,12 +228,13 @@ export function formatShrunkPrimeContext(input: {
       "Start file:",
       topFiles.length > 0 ? `- ${topFiles[0]}` : "- No high-confidence source file found.",
       "",
-      ...formatInvariantSections(input.invariants, "Invariant to preserve:"),
+      ...formatInvariantSections(input.invariants, "Invariant to preserve:", { includeVerification: input.includeVerification ?? false }),
       "",
-      "Smallest check: run the narrowest relevant compile/test command before finalizing; do not stop at an edit that has not compiled or passed its focused check.",
+      "Edit boundary: make the smallest production-source edit. Do not edit tests, snapshots, docs, examples, generated files, or sibling source files unless a focused verification failure explicitly proves they must change.",
+      "Verification hint: if you verify inside this turn, use the narrowest relevant compile/test command and avoid broad suite output.",
       "Stop condition: edit the start file only; avoid broad related-file/test scans unless this file cannot satisfy the invariant or a failure names another file.",
       "",
-      ...(input.editScope ? editScopeBlock(input.editScope, "Edit scope:") : [])
+      ...(input.editScope ? editScopeBlock(input.editScope, "Edit scope:", { includeReadOnly: false }) : [])
     ].filter(Boolean);
     return fitSectionsToBudget(sections, input.budget);
   }
@@ -250,13 +252,13 @@ export function formatShrunkPrimeContext(input: {
     topFiles[1] ? `- ${topFiles[1]} - ${primaryReasonForFile(input.context, topFiles[1])}` : "",
     symbolHints.length > 0 ? `Symbols: ${symbolHints.join(", ")}` : "",
     "",
-    ...formatInvariantSections(input.invariants, "Invariant to preserve:"),
+    ...formatInvariantSections(input.invariants, "Invariant to preserve:", { includeVerification: input.includeVerification ?? multiFileDirective }),
     "",
     multiFileDirective
       ? "Stop condition: inspect only these source files first; avoid broad related-file/test scans unless neither file can satisfy the invariant or a failure names another file."
       : "Stop condition: preserve the invariant in the start file first; avoid broad related-file/test scans unless this file cannot satisfy the invariant or a failure names another file.",
     "",
-    ...(input.editScope ? editScopeBlock(input.editScope, "Edit scope:") : []),
+    ...(input.editScope ? editScopeBlock(input.editScope, "Edit scope:", { includeReadOnly: multiFileDirective }) : []),
     focusedContext ? "" : "",
     focusedContext
   ].filter(Boolean);
@@ -313,14 +315,18 @@ function compactTaskLine(task: string): string {
   return truncateToBudget(task.replace(/\s+/g, " ").trim(), 72);
 }
 
-function formatInvariantSections(invariants: ContextInvariant[] | undefined, heading: string): string[] {
+function formatInvariantSections(
+  invariants: ContextInvariant[] | undefined,
+  heading: string,
+  options: { includeVerification?: boolean | undefined } = {}
+): string[] {
   const invariant = invariants?.[0];
   if (!invariant) return [];
   return [[
     heading,
     `- ${invariant.statement}`,
     invariant.evidence ? `Evidence: ${invariant.evidence}` : "",
-    invariant.verificationCommand ? `Verification: ${invariant.verificationCommand}` : ""
+    options.includeVerification !== false && invariant.verificationCommand ? `Verification: ${invariant.verificationCommand}` : ""
   ].filter(Boolean).join("\n")];
 }
 

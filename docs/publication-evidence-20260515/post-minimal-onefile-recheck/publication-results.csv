@@ -1,0 +1,3 @@
+entryId,kind,repoId,language,sizeClass,taskClass,behavior,mode,qualityPassed,observedTokens,baselineTokens,savedTokens,savingsRate,validSavings,passiveSavings,invalidSavings,assistanceStatus,assistClassification,active,claimEligible,mcpCalls,repeatedFilesAvoided,scopeViolations,overAssist,harmfulAssist,missedOpportunity,correctAbstention,requestEvidence,failurePattern
+post-minimal-onefile-repeat3,proof,seeded-fresh-holdout-v2-subset,mixed,mixed,source_rescue,unknown,baseline,false,88777,,,,0,0,0,,,false,false,0,0,0,false,false,false,false,false,
+post-minimal-onefile-repeat3,proof,seeded-fresh-holdout-v2-subset,mixed,mixed,source_rescue,unknown,kairn_codex_session,true,31999,88777,56778,0.6396,56778,0,0,active,quality_rescue,true,true,0,0,0,false,false,false,false,false,

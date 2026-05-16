@@ -63,9 +63,10 @@ export async function fetchSweBenchProRows(input: {
 export function loadSweBenchProRows(inputPath: string): SweBenchProRow[] {
   const absolute = path.resolve(inputPath);
   const text = fs.readFileSync(absolute, "utf8");
-  const parsed = text.trim().startsWith("[") || text.trim().startsWith("{")
+  const trimmed = text.trim();
+  const parsed = trimmed.startsWith("[") || (trimmed.startsWith("{") && !trimmed.includes("\n"))
     ? JSON.parse(text) as unknown
-    : text.split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line) as unknown);
+    : trimmed.split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line) as unknown);
 
   const candidates = Array.isArray(parsed)
     ? parsed

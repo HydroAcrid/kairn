@@ -1,0 +1,59 @@
+{
+  "id": "kairn-evidence-campaign-v2-requests-kairn-recheck",
+  "name": "Kairn Evidence Campaign v2 Requests Kairn Recheck",
+  "generatedAt": "2026-05-15T22:47:03.336Z",
+  "planPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/publication-plan-v2-requests-kairn-recheck.json",
+  "kairnGitSha": "bace1e032784b0d2d362e41334e0fec0fbe4a1f6",
+  "packageVersion": "0.1.2",
+  "nodeVersion": "v24.7.0",
+  "os": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "release": "24.6.0"
+  },
+  "model": "gpt-5.4-mini",
+  "repeat": 2,
+  "dryRun": false,
+  "timestamps": {
+    "generatedAt": "2026-05-15T22:47:03.336Z",
+    "artifactStarts": {
+      "requests-kairn-session-recheck": "2026-05-15T22:23:10.437Z"
+    },
+    "artifactEnds": {
+      "requests-kairn-session-recheck": "2026-05-15T22:47:03.335Z"
+    }
+  },
+  "benchmarkSuitePaths": [
+    "examples/bench/endurance-requests-10turn.json"
+  ],
+  "officialDatasetRowIds": [],
+  "commandTemplates": {
+    "requests-kairn-session-recheck": [
+      "endurance repeat=2",
+      "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+      "kairn_codex_session: node '/Users/kevindotel/Documents/Projects/kairn/dist/cli.js' codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}"
+    ]
+  },
+  "artifacts": [
+    {
+      "entryId": "requests-kairn-session-recheck",
+      "kind": "endurance",
+      "status": "passed",
+      "entryMetadata": {
+        "label": "Requests Kairn session endurance recheck",
+        "repoId": "requests",
+        "language": "python",
+        "sizeClass": "medium",
+        "taskClass": "session_repeat",
+        "contextBehavior": "source_rescue",
+        "suite": "examples/bench/endurance-requests-10turn.json"
+      },
+      "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/requests-kairn-session-recheck-v1/raw/requests-kairn-session-recheck.json",
+      "commands": [
+        "endurance repeat=2",
+        "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+        "kairn_codex_session: node '/Users/kevindotel/Documents/Projects/kairn/dist/cli.js' codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}"
+      ]
+    }
+  ]
+}

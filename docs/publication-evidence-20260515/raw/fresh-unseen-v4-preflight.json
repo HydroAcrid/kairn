@@ -1,7 +1,7 @@
 {
   "entryId": "fresh-unseen-v4-preflight",
   "kind": "matrix",
-  "status": "planned",
+  "status": "passed",
   "entryMetadata": {
     "label": "Fresh unseen repo-matrix preflight",
     "repoId": "fresh-holdout-v4",
@@ -11,9 +11,1219 @@
     "matrix": "examples/bench/repo-matrix-fresh-holdout-v4.json"
   },
   "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/raw/fresh-unseen-v4-preflight.json",
-  "startedAt": "2026-05-15T05:20:53.601Z",
-  "endedAt": "2026-05-15T05:20:53.602Z",
+  "startedAt": "2026-05-15T13:01:03.545Z",
+  "endedAt": "2026-05-15T13:01:46.586Z",
   "commands": [
     "kairn bench matrix --matrix examples/bench/repo-matrix-fresh-holdout-v4.json"
-  ]
+  ],
+  "report": {
+    "id": "repo-matrix-fresh-holdout-v4",
+    "name": "Kairn Fresh Holdout V4",
+    "startedAt": "2026-05-15T13:01:03.548Z",
+    "endedAt": "2026-05-15T13:01:46.586Z",
+    "repos": [
+      {
+        "repo": {
+          "id": "webpack",
+          "name": "webpack",
+          "repoUrl": "https://github.com/webpack/webpack.git",
+          "cloneDepth": 1,
+          "language": "javascript",
+          "sizeClass": "large",
+          "cases": [
+            {
+              "id": "normal-module-resolver",
+              "mode": "context",
+              "contextBehavior": "multi_file_debug",
+              "task": "Debug webpack NormalModuleFactory module resolution when requests are resolved through ResolverFactory and parser hooks.",
+              "expectedFiles": [
+                "lib/NormalModuleFactory.js",
+                "lib/ResolverFactory.js",
+                "lib/javascript/JavascriptParser.js"
+              ],
+              "excludedFiles": [
+                "test/",
+                "examples/",
+                "benchmark/",
+                "declarations/"
+              ],
+              "budget": 900
+            }
+          ]
+        },
+        "rootPath": "/tmp/kairn-publication-v2-workdirs/webpack",
+        "status": "passed",
+        "index": {
+          "files": 10375,
+          "totalSizeBytes": 70668392,
+          "totalSizeMb": 67.39,
+          "softMaxSizeMb": 250,
+          "hardMaxSizeMb": 1000,
+          "graphEdges": 5479,
+          "semanticChunks": 7500,
+          "lexicalTerms": 90000,
+          "tiers": {
+            "tier0": 2072,
+            "tier1": 0,
+            "tier2": 5303,
+            "tier3": 3000,
+            "tier4": 0
+          }
+        },
+        "gates": {
+          "maxStateMb": 350,
+          "maxPrimeLatencyMs": 12000,
+          "maxRepoPreflightMs": 120000,
+          "expectedTopK": 5,
+          "requireSuppressionForWeakCases": true
+        },
+        "stateWithinLimit": true,
+        "elapsedMs": 8977,
+        "cases": [
+          {
+            "repoId": "webpack",
+            "caseId": "normal-module-resolver",
+            "task": "Debug webpack NormalModuleFactory module resolution when requests are resolved through ResolverFactory and parser hooks.",
+            "profile": "failure_debug",
+            "expectedFiles": [
+              "lib/NormalModuleFactory.js",
+              "lib/ResolverFactory.js",
+              "lib/javascript/JavascriptParser.js"
+            ],
+            "returnedFiles": [
+              "lib/ResolverFactory.js",
+              "lib/NormalModuleFactory.js"
+            ],
+            "missingExpectedFiles": [
+              "lib/javascript/JavascriptParser.js"
+            ],
+            "companionFilesReturned": [
+              "lib/NormalModuleFactory.js"
+            ],
+            "missingCompanionFiles": [
+              "lib/javascript/JavascriptParser.js"
+            ],
+            "excludedFiles": [
+              "test/",
+              "examples/",
+              "benchmark/",
+              "declarations/"
+            ],
+            "excludedHits": [],
+            "noisePrefixHits": [],
+            "sourceVsTestDecision": "source_first",
+            "companionReasons": {
+              "lib/NormalModuleFactory.js": [
+                "role match: routing/dependency pair",
+                "role match: schema/parser pair",
+                "role match: plugin/transform analysis pair",
+                "role match: module/loader/resolver pair",
+                "role match: session/command/config pair",
+                "role match: parse/persist pair",
+                "role match: fiber/hooks/workloop pair",
+                "role path match: plugin/transform analysis pair",
+                "role path match: module/loader/resolver pair",
+                "canonical role basename anchor: normalmodule, modulefactory"
+              ],
+              "lib/NormalModule.js": [
+                "role match: routing/dependency pair",
+                "role match: schema/parser pair",
+                "role match: connection/pool pair",
+                "role match: plugin/transform analysis pair",
+                "role match: module/loader/resolver pair",
+                "role match: session/command/config pair",
+                "role match: parse/persist pair",
+                "role match: fiber/hooks/workloop pair",
+                "role path match: plugin/transform analysis pair",
+                "role path match: module/loader/resolver pair"
+              ]
+            },
+            "primeTokens": 503,
+            "primeLatencyMs": 2399,
+            "timings": {
+              "initialInventoryMs": 7,
+              "findContextMs": 2192,
+              "decisionMs": 7,
+              "formatMs": 0,
+              "totalPrimeMs": 2398
+            },
+            "contextDecision": "shrink",
+            "taskFrame": "source_rescue",
+            "qualityScore": 100,
+            "minExpectedHits": 2,
+            "requiredCompanionHits": 1,
+            "companionGatePassed": true,
+            "expectedTopKPassed": true,
+            "excludedFilesAvoided": true,
+            "suppressionPassed": true,
+            "sourceQualityGatePassed": true,
+            "latencyPassed": true,
+            "qualityGatePassed": true,
+            "summary": "Preflight quality gate passed.",
+            "recommendations": []
+          }
+        ],
+        "weakestCases": [],
+        "recommendations": []
+      },
+      {
+        "repo": {
+          "id": "rollup",
+          "name": "Rollup",
+          "repoUrl": "https://github.com/rollup/rollup.git",
+          "cloneDepth": 1,
+          "language": "typescript",
+          "sizeClass": "large",
+          "cases": [
+            {
+              "id": "module-loader-resolve-id",
+              "mode": "context",
+              "contextBehavior": "multi_file_debug",
+              "task": "Debug Rollup module loading when ModuleLoader resolves import ids through resolveId and links modules into the graph.",
+              "expectedFiles": [
+                "src/ModuleLoader.ts",
+                "src/utils/resolveId.ts",
+                "src/Graph.ts"
+              ],
+              "excludedFiles": [
+                "docs/",
+                "test/",
+                "perf/",
+                "browser/"
+              ],
+              "budget": 900
+            }
+          ]
+        },
+        "rootPath": "/tmp/kairn-publication-v2-workdirs/rollup",
+        "status": "passed",
+        "index": {
+          "files": 13226,
+          "totalSizeBytes": 82780264,
+          "totalSizeMb": 78.95,
+          "softMaxSizeMb": 250,
+          "hardMaxSizeMb": 1000,
+          "graphEdges": 4726,
+          "semanticChunks": 7500,
+          "lexicalTerms": 90000,
+          "tiers": {
+            "tier0": 708,
+            "tier1": 3351,
+            "tier2": 6167,
+            "tier3": 3000,
+            "tier4": 0
+          }
+        },
+        "gates": {
+          "maxStateMb": 350,
+          "maxPrimeLatencyMs": 12000,
+          "maxRepoPreflightMs": 120000,
+          "expectedTopK": 5,
+          "requireSuppressionForWeakCases": true
+        },
+        "stateWithinLimit": true,
+        "elapsedMs": 7534,
+        "cases": [
+          {
+            "repoId": "rollup",
+            "caseId": "module-loader-resolve-id",
+            "task": "Debug Rollup module loading when ModuleLoader resolves import ids through resolveId and links modules into the graph.",
+            "profile": "failure_debug",
+            "expectedFiles": [
+              "src/ModuleLoader.ts",
+              "src/utils/resolveId.ts",
+              "src/Graph.ts"
+            ],
+            "returnedFiles": [
+              "src/utils/resolveId.ts",
+              "src/ModuleLoader.ts"
+            ],
+            "missingExpectedFiles": [
+              "src/Graph.ts"
+            ],
+            "companionFilesReturned": [
+              "src/utils/resolveId.ts"
+            ],
+            "missingCompanionFiles": [
+              "src/Graph.ts"
+            ],
+            "excludedFiles": [
+              "docs/",
+              "test/",
+              "perf/",
+              "browser/"
+            ],
+            "excludedHits": [],
+            "noisePrefixHits": [],
+            "sourceVsTestDecision": "source_first",
+            "companionReasons": {
+              "src/utils/resolveId.ts": [
+                "role match: routing/dependency pair",
+                "role match: plugin/transform analysis pair",
+                "role match: module/loader/resolver pair",
+                "role path match: routing/dependency pair",
+                "role path match: plugin/transform analysis pair",
+                "role path match: module/loader/resolver pair",
+                "canonical role basename anchor: resolveid",
+                "primary source role anchor",
+                "specific task term match: rollup, module, loader, resolve",
+                "named source surface: resolveId"
+              ],
+              "src/utils/resolveIdViaPlugins.ts": [
+                "role match: routing/dependency pair",
+                "role match: plugin/transform analysis pair",
+                "role match: module/loader/resolver pair",
+                "role path match: routing/dependency pair",
+                "role path match: plugin/transform analysis pair",
+                "role path match: module/loader/resolver pair",
+                "canonical role basename anchor: resolveid",
+                "primary source role anchor",
+                "specific task term match: rollup, module, loader, resolve",
+                "specific path term match: resolve, id"
+              ]
+            },
+            "primeTokens": 502,
+            "primeLatencyMs": 2507,
+            "timings": {
+              "initialInventoryMs": 9,
+              "findContextMs": 2277,
+              "decisionMs": 6,
+              "formatMs": 0,
+              "totalPrimeMs": 2506
+            },
+            "contextDecision": "shrink",
+            "taskFrame": "source_rescue",
+            "qualityScore": 100,
+            "minExpectedHits": 2,
+            "requiredCompanionHits": 1,
+            "companionGatePassed": true,
+            "expectedTopKPassed": true,
+            "excludedFilesAvoided": true,
+            "suppressionPassed": true,
+            "sourceQualityGatePassed": true,
+            "latencyPassed": true,
+            "qualityGatePassed": true,
+            "summary": "Preflight quality gate passed.",
+            "recommendations": []
+          }
+        ],
+        "weakestCases": [],
+        "recommendations": []
+      },
+      {
+        "repo": {
+          "id": "pydantic",
+          "name": "Pydantic",
+          "repoUrl": "https://github.com/pydantic/pydantic.git",
+          "cloneDepth": 1,
+          "language": "python",
+          "sizeClass": "large",
+          "cases": [
+            {
+              "id": "field-schema-generation",
+              "mode": "context",
+              "contextBehavior": "multi_file_debug",
+              "task": "Debug Pydantic field schema generation when aliases and model fields are converted into core schema.",
+              "expectedFiles": [
+                "pydantic/_internal/_generate_schema.py",
+                "pydantic/_internal/_fields.py"
+              ],
+              "excludedFiles": [
+                "docs/",
+                "tests/",
+                "pydantic/v1/"
+              ],
+              "budget": 900
+            }
+          ]
+        },
+        "rootPath": "/tmp/kairn-publication-v2-workdirs/pydantic",
+        "status": "passed",
+        "index": {
+          "files": 712,
+          "totalSizeBytes": 71790696,
+          "totalSizeMb": 68.46,
+          "softMaxSizeMb": 250,
+          "hardMaxSizeMb": 1000,
+          "graphEdges": 987,
+          "semanticChunks": 7500,
+          "lexicalTerms": 90000,
+          "tiers": {
+            "tier0": 299,
+            "tier1": 0,
+            "tier2": 23,
+            "tier3": 390,
+            "tier4": 0
+          }
+        },
+        "gates": {
+          "maxStateMb": 350,
+          "maxPrimeLatencyMs": 12000,
+          "maxRepoPreflightMs": 120000,
+          "expectedTopK": 5,
+          "requireSuppressionForWeakCases": true
+        },
+        "stateWithinLimit": true,
+        "elapsedMs": 3746,
+        "cases": [
+          {
+            "repoId": "pydantic",
+            "caseId": "field-schema-generation",
+            "task": "Debug Pydantic field schema generation when aliases and model fields are converted into core schema.",
+            "profile": "failure_debug",
+            "expectedFiles": [
+              "pydantic/_internal/_generate_schema.py",
+              "pydantic/_internal/_fields.py"
+            ],
+            "returnedFiles": [
+              "pydantic/_internal/_generate_schema.py",
+              "pydantic/_internal/_fields.py"
+            ],
+            "missingExpectedFiles": [],
+            "companionFilesReturned": [
+              "pydantic/_internal/_fields.py"
+            ],
+            "missingCompanionFiles": [],
+            "excludedFiles": [
+              "docs/",
+              "tests/",
+              "pydantic/v1/"
+            ],
+            "excludedHits": [],
+            "noisePrefixHits": [],
+            "sourceVsTestDecision": "source_first",
+            "companionReasons": {
+              "pydantic/_internal/_fields.py": [
+                "role match: controller/repository/model pair",
+                "role match: schema/parser pair",
+                "role match: log/core/sink pair",
+                "role match: schema/field generation pair",
+                "role match: statement/callback/field pair",
+                "role match: session/adapter/model pair",
+                "role path match: log/core/sink pair",
+                "role path match: schema/field generation pair",
+                "role path match: statement/callback/field pair",
+                "canonical role basename anchor: fields, field"
+              ],
+              "pydantic/fields.py": [
+                "role match: controller/repository/model pair",
+                "role match: schema/parser pair",
+                "role match: log/core/sink pair",
+                "role match: schema/field generation pair",
+                "role match: statement/callback/field pair",
+                "role match: session/adapter/model pair",
+                "role path match: log/core/sink pair",
+                "role path match: schema/field generation pair",
+                "role path match: statement/callback/field pair",
+                "canonical role basename anchor: fields, field"
+              ]
+            },
+            "primeTokens": 443,
+            "primeLatencyMs": 778,
+            "timings": {
+              "initialInventoryMs": 0,
+              "findContextMs": 659,
+              "decisionMs": 3,
+              "formatMs": 0,
+              "totalPrimeMs": 777
+            },
+            "contextDecision": "shrink",
+            "taskFrame": "multi_file_debug",
+            "qualityScore": 100,
+            "minExpectedHits": 2,
+            "requiredCompanionHits": 1,
+            "companionGatePassed": true,
+            "expectedTopKPassed": true,
+            "excludedFilesAvoided": true,
+            "suppressionPassed": true,
+            "sourceQualityGatePassed": true,
+            "latencyPassed": true,
+            "qualityGatePassed": true,
+            "summary": "Preflight quality gate passed.",
+            "recommendations": []
+          }
+        ],
+        "weakestCases": [],
+        "recommendations": []
+      },
+      {
+        "repo": {
+          "id": "werkzeug",
+          "name": "Werkzeug",
+          "repoUrl": "https://github.com/pallets/werkzeug.git",
+          "cloneDepth": 1,
+          "language": "python",
+          "sizeClass": "medium",
+          "cases": [
+            {
+              "id": "routing-map-rule-match",
+              "mode": "context",
+              "contextBehavior": "multi_file_debug",
+              "task": "Debug Werkzeug routing when MapAdapter matches URL rules through converters and the state matcher.",
+              "expectedFiles": [
+                "src/werkzeug/routing/map.py",
+                "src/werkzeug/routing/converters.py",
+                "src/werkzeug/routing/rules.py",
+                "src/werkzeug/routing/matcher.py"
+              ],
+              "excludedFiles": [
+                "docs/",
+                "examples/",
+                "tests/"
+              ],
+              "budget": 900
+            }
+          ]
+        },
+        "rootPath": "/tmp/kairn-publication-v2-workdirs/werkzeug",
+        "status": "passed",
+        "index": {
+          "files": 270,
+          "totalSizeBytes": 49004648,
+          "totalSizeMb": 46.73,
+          "softMaxSizeMb": 250,
+          "hardMaxSizeMb": 1000,
+          "graphEdges": 223,
+          "semanticChunks": 2205,
+          "lexicalTerms": 90000,
+          "tiers": {
+            "tier0": 180,
+            "tier1": 0,
+            "tier2": 5,
+            "tier3": 85,
+            "tier4": 0
+          }
+        },
+        "gates": {
+          "maxStateMb": 350,
+          "maxPrimeLatencyMs": 12000,
+          "maxRepoPreflightMs": 120000,
+          "expectedTopK": 5,
+          "requireSuppressionForWeakCases": true
+        },
+        "stateWithinLimit": true,
+        "elapsedMs": 2083,
+        "cases": [
+          {
+            "repoId": "werkzeug",
+            "caseId": "routing-map-rule-match",
+            "task": "Debug Werkzeug routing when MapAdapter matches URL rules through converters and the state matcher.",
+            "profile": "failure_debug",
+            "expectedFiles": [
+              "src/werkzeug/routing/map.py",
+              "src/werkzeug/routing/converters.py",
+              "src/werkzeug/routing/rules.py",
+              "src/werkzeug/routing/matcher.py"
+            ],
+            "returnedFiles": [
+              "src/werkzeug/routing/map.py",
+              "src/werkzeug/routing/converters.py"
+            ],
+            "missingExpectedFiles": [
+              "src/werkzeug/routing/rules.py",
+              "src/werkzeug/routing/matcher.py"
+            ],
+            "companionFilesReturned": [
+              "src/werkzeug/routing/converters.py"
+            ],
+            "missingCompanionFiles": [
+              "src/werkzeug/routing/rules.py",
+              "src/werkzeug/routing/matcher.py"
+            ],
+            "excludedFiles": [
+              "docs/",
+              "examples/",
+              "tests/"
+            ],
+            "excludedHits": [],
+            "noisePrefixHits": [],
+            "sourceVsTestDecision": "source_first",
+            "companionReasons": {
+              "src/werkzeug/routing/converters.py": [
+                "role match: routing/dependency pair",
+                "role match: interceptor/dispatch/adapter pair",
+                "role match: group/context/handler pair",
+                "role match: string/matcher pair",
+                "role path match: routing/dependency pair",
+                "role path match: group/context/handler pair",
+                "canonical role basename anchor: converters, converter",
+                "primary source role anchor",
+                "exact canonical role file",
+                "specific task term match: werkzeug, routing, map, matches"
+              ],
+              "src/werkzeug/utils.py": [
+                "role match: routing/dependency pair",
+                "role match: interceptor/dispatch/adapter pair",
+                "role match: session/adapter/model pair",
+                "role match: string/matcher pair",
+                "specific task term match: werkzeug, map, url",
+                "specific path term match: werkzeug",
+                "routing/dependency pair",
+                "interceptor/dispatch/adapter pair",
+                "session/adapter/model pair",
+                "string/matcher pair"
+              ]
+            },
+            "primeTokens": 503,
+            "primeLatencyMs": 534,
+            "timings": {
+              "initialInventoryMs": 0,
+              "findContextMs": 424,
+              "decisionMs": 1,
+              "formatMs": 0,
+              "totalPrimeMs": 534
+            },
+            "contextDecision": "shrink",
+            "taskFrame": "source_rescue",
+            "qualityScore": 100,
+            "minExpectedHits": 2,
+            "requiredCompanionHits": 1,
+            "companionGatePassed": true,
+            "expectedTopKPassed": true,
+            "excludedFilesAvoided": true,
+            "suppressionPassed": true,
+            "sourceQualityGatePassed": true,
+            "latencyPassed": true,
+            "qualityGatePassed": true,
+            "summary": "Preflight quality gate passed.",
+            "recommendations": []
+          }
+        ],
+        "weakestCases": [],
+        "recommendations": []
+      },
+      {
+        "repo": {
+          "id": "gorm",
+          "name": "GORM",
+          "repoUrl": "https://github.com/go-gorm/gorm.git",
+          "cloneDepth": 1,
+          "language": "go",
+          "sizeClass": "medium",
+          "cases": [
+            {
+              "id": "create-callback-statement",
+              "mode": "context",
+              "contextBehavior": "multi_file_debug",
+              "task": "Debug GORM create callback behavior when schema fields are read from Statement values before inserting rows.",
+              "expectedFiles": [
+                "callbacks/create.go",
+                "statement.go",
+                "schema/field.go"
+              ],
+              "excludedFiles": [
+                "tests/",
+                "*/tests/",
+                "*_test.go"
+              ],
+              "budget": 850
+            }
+          ]
+        },
+        "rootPath": "/tmp/kairn-publication-v2-workdirs/gorm",
+        "status": "passed",
+        "index": {
+          "files": 185,
+          "totalSizeBytes": 8527976,
+          "totalSizeMb": 8.13,
+          "softMaxSizeMb": 250,
+          "hardMaxSizeMb": 1000,
+          "graphEdges": 388,
+          "semanticChunks": 165,
+          "lexicalTerms": 18666,
+          "tiers": {
+            "tier0": 20,
+            "tier1": 0,
+            "tier2": 13,
+            "tier3": 152,
+            "tier4": 0
+          }
+        },
+        "gates": {
+          "maxStateMb": 350,
+          "maxPrimeLatencyMs": 12000,
+          "maxRepoPreflightMs": 120000,
+          "expectedTopK": 5,
+          "requireSuppressionForWeakCases": true
+        },
+        "stateWithinLimit": true,
+        "elapsedMs": 742,
+        "cases": [
+          {
+            "repoId": "gorm",
+            "caseId": "create-callback-statement",
+            "task": "Debug GORM create callback behavior when schema fields are read from Statement values before inserting rows.",
+            "profile": "failure_debug",
+            "expectedFiles": [
+              "callbacks/create.go",
+              "statement.go",
+              "schema/field.go"
+            ],
+            "returnedFiles": [
+              "schema/field.go",
+              "statement.go"
+            ],
+            "missingExpectedFiles": [
+              "callbacks/create.go"
+            ],
+            "companionFilesReturned": [
+              "statement.go"
+            ],
+            "missingCompanionFiles": [],
+            "excludedFiles": [
+              "tests/",
+              "*/tests/",
+              "*_test.go"
+            ],
+            "excludedHits": [],
+            "noisePrefixHits": [],
+            "sourceVsTestDecision": "source_first",
+            "companionReasons": {
+              "statement.go": [
+                "role match: controller/repository/model pair",
+                "role match: schema/parser pair",
+                "role match: log/core/sink pair",
+                "role match: schema/field generation pair",
+                "role match: statement/callback/field pair",
+                "role path match: statement/callback/field pair",
+                "canonical role basename anchor: statement",
+                "primary source role anchor",
+                "exact canonical role file",
+                "specific task term match: gorm, schema, statement, value"
+              ],
+              "schema/schema.go": [
+                "role match: controller/repository/model pair",
+                "role match: scheduler/renderer pair",
+                "role match: interceptor/dispatch/adapter pair",
+                "role match: schema/parser pair",
+                "role match: log/core/sink pair",
+                "role match: schema/field generation pair",
+                "role match: statement/callback/field pair",
+                "role match: validation/callback pair",
+                "role path match: controller/repository/model pair",
+                "role path match: schema/parser pair"
+              ]
+            },
+            "primeTokens": 504,
+            "primeLatencyMs": 246,
+            "timings": {
+              "initialInventoryMs": 0,
+              "findContextMs": 137,
+              "decisionMs": 0,
+              "formatMs": 0,
+              "totalPrimeMs": 245
+            },
+            "contextDecision": "shrink",
+            "taskFrame": "qna_source_grounded",
+            "qualityScore": 100,
+            "minExpectedHits": 2,
+            "requiredCompanionHits": 1,
+            "companionGatePassed": true,
+            "expectedTopKPassed": true,
+            "excludedFilesAvoided": true,
+            "suppressionPassed": true,
+            "sourceQualityGatePassed": true,
+            "latencyPassed": true,
+            "qualityGatePassed": true,
+            "summary": "Preflight quality gate passed.",
+            "recommendations": []
+          }
+        ],
+        "weakestCases": [],
+        "recommendations": []
+      },
+      {
+        "repo": {
+          "id": "cobra",
+          "name": "Cobra",
+          "repoUrl": "https://github.com/spf13/cobra.git",
+          "cloneDepth": 1,
+          "language": "go",
+          "sizeClass": "medium",
+          "cases": [
+            {
+              "id": "command-args-validation",
+              "mode": "context",
+              "contextBehavior": "source_rescue",
+              "task": "Debug Cobra command execution when argument validation and command dispatch interact in the Command implementation.",
+              "expectedFiles": [
+                "command.go",
+                "args.go"
+              ],
+              "excludedFiles": [
+                "site/",
+                "doc/",
+                "*_test.go"
+              ],
+              "budget": 800
+            }
+          ]
+        },
+        "rootPath": "/tmp/kairn-publication-v2-workdirs/cobra",
+        "status": "passed",
+        "index": {
+          "files": 65,
+          "totalSizeBytes": 3620968,
+          "totalSizeMb": 3.45,
+          "softMaxSizeMb": 250,
+          "hardMaxSizeMb": 1000,
+          "graphEdges": 132,
+          "semanticChunks": 28,
+          "lexicalTerms": 8074,
+          "tiers": {
+            "tier0": 37,
+            "tier1": 0,
+            "tier2": 3,
+            "tier3": 25,
+            "tier4": 0
+          }
+        },
+        "gates": {
+          "maxStateMb": 350,
+          "maxPrimeLatencyMs": 12000,
+          "maxRepoPreflightMs": 120000,
+          "expectedTopK": 5,
+          "requireSuppressionForWeakCases": true
+        },
+        "stateWithinLimit": true,
+        "elapsedMs": 653,
+        "cases": [
+          {
+            "repoId": "cobra",
+            "caseId": "command-args-validation",
+            "task": "Debug Cobra command execution when argument validation and command dispatch interact in the Command implementation.",
+            "profile": "failure_debug",
+            "expectedFiles": [
+              "command.go",
+              "args.go"
+            ],
+            "returnedFiles": [
+              "command.go",
+              "cobra.go"
+            ],
+            "missingExpectedFiles": [
+              "args.go"
+            ],
+            "companionFilesReturned": [
+              "cobra.go"
+            ],
+            "missingCompanionFiles": [
+              "args.go"
+            ],
+            "excludedFiles": [
+              "site/",
+              "doc/",
+              "*_test.go"
+            ],
+            "excludedHits": [],
+            "noisePrefixHits": [],
+            "sourceVsTestDecision": "source_first",
+            "companionReasons": {
+              "cobra.go": [
+                "role match: session/command/config pair",
+                "canonical role basename anchor: cobra",
+                "primary source role anchor",
+                "exact canonical role file",
+                "specific task term match: cobra",
+                "specific path term match: cobra",
+                "session/command/config pair"
+              ],
+              "args.go": [
+                "role match: schema/parser pair",
+                "role match: session/command/config pair",
+                "role match: validation/callback pair",
+                "role path match: session/command/config pair",
+                "specific task term match: cobra, command, validation",
+                "schema/parser pair",
+                "session/command/config pair",
+                "validation/callback pair"
+              ]
+            },
+            "primeTokens": 503,
+            "primeLatencyMs": 180,
+            "timings": {
+              "initialInventoryMs": 1,
+              "findContextMs": 80,
+              "decisionMs": 1,
+              "formatMs": 0,
+              "totalPrimeMs": 179
+            },
+            "contextDecision": "shrink",
+            "taskFrame": "source_rescue",
+            "qualityScore": 100,
+            "minExpectedHits": 1,
+            "requiredCompanionHits": 0,
+            "companionGatePassed": true,
+            "expectedTopKPassed": true,
+            "excludedFilesAvoided": true,
+            "suppressionPassed": true,
+            "sourceQualityGatePassed": true,
+            "latencyPassed": true,
+            "qualityGatePassed": true,
+            "summary": "Preflight quality gate passed.",
+            "recommendations": []
+          }
+        ],
+        "weakestCases": [],
+        "recommendations": []
+      },
+      {
+        "repo": {
+          "id": "guava",
+          "name": "Guava",
+          "repoUrl": "https://github.com/google/guava.git",
+          "cloneDepth": 1,
+          "language": "java",
+          "sizeClass": "large",
+          "cases": [
+            {
+              "id": "strings-null-empty",
+              "mode": "context",
+              "contextBehavior": "cheap_single_source",
+              "task": "Fix Guava Strings nullToEmpty and isNullOrEmpty edge-case behavior in the source utility.",
+              "expectedFiles": [
+                "guava/src/com/google/common/base/Strings.java"
+              ],
+              "excludedFiles": [
+                "guava-tests/",
+                "android/guava-tests/",
+                "docs/"
+              ],
+              "budget": 700
+            }
+          ]
+        },
+        "rootPath": "/tmp/kairn-publication-v2-workdirs/guava",
+        "status": "passed",
+        "index": {
+          "files": 3311,
+          "totalSizeBytes": 110239848,
+          "totalSizeMb": 105.13,
+          "softMaxSizeMb": 250,
+          "hardMaxSizeMb": 1000,
+          "graphEdges": 3050,
+          "semanticChunks": 7500,
+          "lexicalTerms": 90000,
+          "tiers": {
+            "tier0": 77,
+            "tier1": 0,
+            "tier2": 1081,
+            "tier3": 2153,
+            "tier4": 0
+          }
+        },
+        "gates": {
+          "maxStateMb": 350,
+          "maxPrimeLatencyMs": 12000,
+          "maxRepoPreflightMs": 120000,
+          "expectedTopK": 5,
+          "requireSuppressionForWeakCases": true
+        },
+        "stateWithinLimit": true,
+        "elapsedMs": 9497,
+        "cases": [
+          {
+            "repoId": "guava",
+            "caseId": "strings-null-empty",
+            "task": "Fix Guava Strings nullToEmpty and isNullOrEmpty edge-case behavior in the source utility.",
+            "profile": "generic",
+            "expectedFiles": [
+              "guava/src/com/google/common/base/Strings.java"
+            ],
+            "returnedFiles": [
+              "guava/src/com/google/common/base/Strings.java"
+            ],
+            "missingExpectedFiles": [],
+            "companionFilesReturned": [],
+            "missingCompanionFiles": [],
+            "excludedFiles": [
+              "guava-tests/",
+              "android/guava-tests/",
+              "docs/"
+            ],
+            "excludedHits": [],
+            "noisePrefixHits": [],
+            "sourceVsTestDecision": "source_first",
+            "companionReasons": {
+              "guava/src/com/google/common/base/CharMatcher.java": [
+                "role match: string/matcher pair",
+                "role path match: string/matcher pair",
+                "specific task term match: guava, null, case",
+                "specific path term match: guava",
+                "string/matcher pair",
+                "string/matcher role complement",
+                "same package"
+              ],
+              "guava/src/com/google/common/base/SmallCharMatcher.java": [
+                "role match: string/matcher pair",
+                "role path match: string/matcher pair",
+                "specific task term match: guava",
+                "specific path term match: guava",
+                "string/matcher pair",
+                "string/matcher role complement",
+                "same package"
+              ]
+            },
+            "primeTokens": 380,
+            "primeLatencyMs": 1301,
+            "timings": {
+              "initialInventoryMs": 2,
+              "findContextMs": 1161,
+              "decisionMs": 4,
+              "formatMs": 0,
+              "totalPrimeMs": 1301
+            },
+            "contextDecision": "shrink",
+            "taskFrame": "source_rescue",
+            "qualityScore": 90,
+            "minExpectedHits": 1,
+            "requiredCompanionHits": 0,
+            "companionGatePassed": true,
+            "expectedTopKPassed": true,
+            "excludedFilesAvoided": true,
+            "suppressionPassed": true,
+            "sourceQualityGatePassed": true,
+            "latencyPassed": true,
+            "qualityGatePassed": true,
+            "summary": "Preflight quality gate passed.",
+            "recommendations": []
+          }
+        ],
+        "weakestCases": [],
+        "recommendations": []
+      },
+      {
+        "repo": {
+          "id": "catch2",
+          "name": "Catch2",
+          "repoUrl": "https://github.com/catchorg/Catch2.git",
+          "cloneDepth": 1,
+          "language": "cpp",
+          "sizeClass": "medium",
+          "cases": [
+            {
+              "id": "session-commandline-config",
+              "mode": "context",
+              "contextBehavior": "multi_file_debug",
+              "task": "Debug Catch2 session startup when command line parsing populates config before tests execute.",
+              "expectedFiles": [
+                "src/catch2/catch_session.cpp",
+                "src/catch2/catch_config.cpp",
+                "src/catch2/internal/catch_commandline.cpp"
+              ],
+              "excludedFiles": [
+                "tests/",
+                "docs/",
+                "examples/",
+                "extras/"
+              ],
+              "budget": 900
+            }
+          ]
+        },
+        "rootPath": "/tmp/kairn-publication-v2-workdirs/catch2",
+        "status": "passed",
+        "index": {
+          "files": 573,
+          "totalSizeBytes": 59912296,
+          "totalSizeMb": 57.14,
+          "softMaxSizeMb": 250,
+          "hardMaxSizeMb": 1000,
+          "graphEdges": 1281,
+          "semanticChunks": 3636,
+          "lexicalTerms": 90000,
+          "tiers": {
+            "tier0": 140,
+            "tier1": 0,
+            "tier2": 5,
+            "tier3": 428,
+            "tier4": 0
+          }
+        },
+        "gates": {
+          "maxStateMb": 350,
+          "maxPrimeLatencyMs": 12000,
+          "maxRepoPreflightMs": 120000,
+          "expectedTopK": 5,
+          "requireSuppressionForWeakCases": true
+        },
+        "stateWithinLimit": true,
+        "elapsedMs": 1719,
+        "cases": [
+          {
+            "repoId": "catch2",
+            "caseId": "session-commandline-config",
+            "task": "Debug Catch2 session startup when command line parsing populates config before tests execute.",
+            "profile": "failure_debug",
+            "expectedFiles": [
+              "src/catch2/catch_session.cpp",
+              "src/catch2/catch_config.cpp",
+              "src/catch2/internal/catch_commandline.cpp"
+            ],
+            "returnedFiles": [],
+            "missingExpectedFiles": [
+              "src/catch2/catch_session.cpp",
+              "src/catch2/catch_config.cpp",
+              "src/catch2/internal/catch_commandline.cpp"
+            ],
+            "companionFilesReturned": [],
+            "missingCompanionFiles": [
+              "src/catch2/catch_config.cpp",
+              "src/catch2/internal/catch_commandline.cpp"
+            ],
+            "excludedFiles": [
+              "tests/",
+              "docs/",
+              "examples/",
+              "extras/"
+            ],
+            "excludedHits": [],
+            "noisePrefixHits": [],
+            "sourceVsTestDecision": "no_files",
+            "companionReasons": {},
+            "primeTokens": 141,
+            "primeLatencyMs": 43,
+            "timings": {
+              "initialInventoryMs": 1,
+              "totalPrimeMs": 43
+            },
+            "contextDecision": "request_evidence",
+            "taskFrame": "runtime_procedural",
+            "evidenceRequestKind": "runtime_scope",
+            "qualityScore": 42,
+            "minExpectedHits": 2,
+            "requiredCompanionHits": 1,
+            "companionGatePassed": true,
+            "expectedTopKPassed": true,
+            "excludedFilesAvoided": true,
+            "suppressionPassed": true,
+            "sourceQualityGatePassed": true,
+            "latencyPassed": true,
+            "qualityGatePassed": true,
+            "summary": "Preflight quality gate passed.",
+            "recommendations": [
+              "Evidence request accepted for runtime_procedural task (runtime_scope)."
+            ]
+          }
+        ],
+        "weakestCases": [],
+        "recommendations": []
+      },
+      {
+        "repo": {
+          "id": "weak-signal-canary",
+          "name": "Rollup Weak Signal Canary",
+          "repoUrl": "https://github.com/rollup/rollup.git",
+          "cloneDepth": 1,
+          "language": "typescript",
+          "sizeClass": "large",
+          "cases": [
+            {
+              "id": "vague-refactor",
+              "mode": "context",
+              "contextBehavior": "weak_signal",
+              "task": "Clean this up and make the confusing part better.",
+              "expectedFiles": [],
+              "excludedFiles": [
+                "docs/",
+                "test/"
+              ],
+              "successCriteria": [
+                "suppress low-confidence context"
+              ],
+              "budget": 500
+            }
+          ]
+        },
+        "rootPath": "/tmp/kairn-publication-v2-workdirs/weak-signal-canary",
+        "status": "passed",
+        "index": {
+          "files": 13226,
+          "totalSizeBytes": 88580200,
+          "totalSizeMb": 84.48,
+          "softMaxSizeMb": 250,
+          "hardMaxSizeMb": 1000,
+          "graphEdges": 4726,
+          "semanticChunks": 7500,
+          "lexicalTerms": 90000,
+          "tiers": {
+            "tier0": 708,
+            "tier1": 3351,
+            "tier2": 6167,
+            "tier3": 3000,
+            "tier4": 0
+          }
+        },
+        "gates": {
+          "maxStateMb": 350,
+          "maxPrimeLatencyMs": 12000,
+          "maxRepoPreflightMs": 120000,
+          "expectedTopK": 5,
+          "requireSuppressionForWeakCases": true
+        },
+        "stateWithinLimit": true,
+        "elapsedMs": 8068,
+        "cases": [
+          {
+            "repoId": "weak-signal-canary",
+            "caseId": "vague-refactor",
+            "task": "Clean this up and make the confusing part better.",
+            "profile": "generic",
+            "expectedFiles": [],
+            "returnedFiles": [],
+            "missingExpectedFiles": [],
+            "companionFilesReturned": [],
+            "missingCompanionFiles": [],
+            "excludedFiles": [
+              "docs/",
+              "test/"
+            ],
+            "excludedHits": [],
+            "noisePrefixHits": [],
+            "sourceVsTestDecision": "no_files",
+            "companionReasons": {},
+            "primeTokens": 120,
+            "primeLatencyMs": 2422,
+            "timings": {
+              "initialInventoryMs": 8,
+              "findContextMs": 2198,
+              "decisionMs": 3,
+              "formatMs": 0,
+              "totalPrimeMs": 2422
+            },
+            "contextDecision": "suppress",
+            "taskFrame": "weak_signal",
+            "qualityScore": 58,
+            "minExpectedHits": 0,
+            "requiredCompanionHits": 0,
+            "companionGatePassed": true,
+            "expectedTopKPassed": true,
+            "excludedFilesAvoided": true,
+            "suppressionPassed": true,
+            "sourceQualityGatePassed": true,
+            "latencyPassed": true,
+            "qualityGatePassed": true,
+            "summary": "Preflight quality gate passed.",
+            "recommendations": []
+          }
+        ],
+        "weakestCases": [],
+        "recommendations": []
+      }
+    ],
+    "totals": {
+      "repos": 9,
+      "passedRepos": 9,
+      "failedRepos": 0,
+      "skippedRepos": 0,
+      "cases": 9,
+      "qualityPassingCases": 9,
+      "sourceQualityPassingCases": 9,
+      "latencyPassingCases": 9,
+      "statePassingRepos": 9
+    },
+    "recommendations": [
+      "Matrix preflight passed current quality and state gates."
+    ]
+  }
 }

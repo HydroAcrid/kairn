@@ -1,0 +1,2 @@
+entryId,kind,repoId,language,sizeClass,taskClass,behavior,mode,qualityPassed,observedTokens,baselineTokens,savedTokens,savingsRate,validSavings,passiveSavings,invalidSavings,assistanceStatus,assistClassification,active,claimEligible,mcpCalls,repeatedFilesAvoided,scopeViolations,overAssist,harmfulAssist,missedOpportunity,correctAbstention,requestEvidence,failurePattern
+fresh-repeat5-one-shot,proof,seeded-fresh-holdout-v2,mixed,mixed,source_rescue,unknown,proof,false,,,,,0,0,0,,,false,false,0,0,0,false,false,false,false,false,database or disk is full

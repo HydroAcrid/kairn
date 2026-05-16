@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decideEditScope } from "../src/scope/editScope.js";
+import { decideEditScope, editScopeBlock } from "../src/scope/editScope.js";
 import type { ContextValueDecision } from "../src/types.js";
 
 describe("edit scope controller", () => {
@@ -54,6 +54,7 @@ describe("edit scope controller", () => {
     expect(scope.initialEditFiles).toEqual(["src/client.ts"]);
     expect(scope.readOnlyFiles).toEqual(expect.arrayContaining(["src/shared/utils.ts", "src/node/plugins/importAnalysis.ts"]));
     expect(scope.scopeSource).toBe("source_rescue");
+    expect(editScopeBlock(scope).join("\n")).toContain("Do not edit other production files unless an allowed expansion trigger occurs.");
   });
 
   it("treats production header fixes as one-file source scope", () => {

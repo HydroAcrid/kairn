@@ -1,0 +1,2 @@
+entryId,kind,repoId,language,sizeClass,taskClass,behavior,mode,qualityPassed,observedTokens,baselineTokens,savedTokens,savingsRate,validSavings,passiveSavings,invalidSavings,assistanceStatus,assistClassification,active,claimEligible,mcpCalls,repeatedFilesAvoided,scopeViolations,overAssist,harmfulAssist,missedOpportunity,correctAbstention,requestEvidence,failurePattern
+post-scope-wording-repeat2,proof,seeded-fresh-holdout-v2-subset,mixed,mixed,source_rescue,unknown,baseline,false,57818,,,,0,0,0,,,false,false,0,0,0,false,false,false,false,false,

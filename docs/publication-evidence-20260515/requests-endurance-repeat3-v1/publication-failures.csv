@@ -1,0 +1,2 @@
+entryId,kind,repoId,language,sizeClass,taskClass,behavior,mode,qualityPassed,observedTokens,baselineTokens,savedTokens,savingsRate,validSavings,passiveSavings,invalidSavings,assistanceStatus,assistClassification,active,claimEligible,mcpCalls,repeatedFilesAvoided,scopeViolations,overAssist,harmfulAssist,missedOpportunity,correctAbstention,requestEvidence,failurePattern
+requests-10turn-repeat3,endurance,requests,python,medium,session_repeat,source_rescue,kairn_codex_session,false,196734,,20228,0.09323291636323411,20228,0,0,active,,true,false,0,6,0,false,true,false,false,false,

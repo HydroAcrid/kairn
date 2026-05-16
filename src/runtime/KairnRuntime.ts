@@ -13,6 +13,7 @@ import type {
   BenchmarkRunMode,
   ContextPrime,
   ContextQueryMode,
+  ContextInvariant,
   ContextRankedFile,
   ContextResponse,
   ContextResponseMode,
@@ -426,7 +427,8 @@ export class KairnRuntime {
     let invariants = directivePrimaryFile && (contextDecision.exactSourceHit || contextDecision.cheapSingleSource || contextDecision.recommendedDelivery === "multi_file_directive")
       ? [
           contextDecision.exactSourceHit
-            ? this.getExactSourceEvidence({ sessionId: session.id, file: directivePrimaryFile, budget: 180 }).invariant
+            ? sourceInvariantContextForFile(input.editScopeHints?.sourceInvariants, directivePrimaryFile) ??
+              this.getExactSourceEvidence({ sessionId: session.id, file: directivePrimaryFile, budget: 180, task: resolvedTask }).invariant
             : buildContextInvariant({ task: resolvedTask, file: directivePrimaryFile })
         ].filter((invariant): invariant is NonNullable<typeof invariant> => Boolean(invariant))
       : [];
@@ -549,11 +551,18 @@ export class KairnRuntime {
       : effectiveAction === "shrink" && includeCompanionContext
         ? files.slice(0, 3)
         : files;
+    const useMinimalOneFileDirective = shouldUseMinimalOneFileDirective({
+      task: resolvedTask,
+      action: effectiveAction,
+      decision: effectiveContextDecision,
+      emittedFiles
+    });
     const invariantFilesMatchDelivery = invariants.every((invariant) => emittedFiles.includes(invariant.file));
     const deliveredPrimaryFile = emittedFiles[0];
     if (isFileEmittingAction(effectiveAction) && deliveredPrimaryFile && !invariantFilesMatchDelivery) {
       const deliveredInvariant = contextDecision.exactSourceHit && deliveredPrimaryFile === directivePrimaryFile
-        ? this.getExactSourceEvidence({ sessionId: session.id, file: deliveredPrimaryFile, budget: 180 }).invariant
+        ? sourceInvariantContextForFile(input.editScopeHints?.sourceInvariants, deliveredPrimaryFile) ??
+          this.getExactSourceEvidence({ sessionId: session.id, file: deliveredPrimaryFile, budget: 180, task: resolvedTask }).invariant
         : buildContextInvariant({ task: resolvedTask, file: deliveredPrimaryFile });
       invariants = deliveredInvariant ? [deliveredInvariant] : [];
     }
@@ -651,13 +660,15 @@ export class KairnRuntime {
               invariants,
               editScope,
               includeSnippet:
+                !useMinimalOneFileDirective &&
                 sessionPolicy.reason !== "verified_context_shrunk" &&
                 sessionPolicy.reason !== "active_source_context_shrunk" &&
                 !contextDecision.cheapSingleSource &&
                 !contextDecision.wrongContextRisk &&
                 !isAutomaticExactSourceHook({ source: input.source, decision: contextDecision }),
               minimal: sessionPolicy.reason === "active_source_context_shrunk" ||
-                isAutomaticCheapSingleSourceHook({ source: input.source, decision: contextDecision })
+                isAutomaticCheapSingleSourceHook({ source: input.source, decision: contextDecision }) ||
+                useMinimalOneFileDirective
             })
           : formatPrimeContext({
               task: resolvedTask,
@@ -2411,20 +2422,22 @@ export class KairnRuntime {
     sessionId: string;
     file: string;
     budget?: number | undefined;
+    task?: string | undefined;
   }): ExactSourceEvidence {
     const session = this.store.getSession(input.sessionId);
     const target = normalizeRelativePath(input.file);
     const content = readTextFile(session.rootPath, target);
-    const symbol = chooseEvidenceSymbol(this.store.listSymbolsForFile(session.rootPath, target), session.task);
+    const task = input.task ?? session.task;
+    const symbol = chooseEvidenceSymbol(this.store.listSymbolsForFile(session.rootPath, target), task);
     const lineCount = content.split(/\r?\n/).length;
-    const snippetStart = symbol ? Math.max(1, symbol.startLine - 2) : firstMatchingLine(content, session.task);
+    const snippetStart = symbol ? Math.max(1, symbol.startLine - 2) : firstMatchingLine(content, task);
     const snippetEnd = symbol ? Math.min(lineCount, symbol.endLine + 2) : Math.min(lineCount, snippetStart + 8);
     const rawSnippet = sliceLines(content, snippetStart, snippetEnd);
     const snippet = truncateToBudget(rawSnippet, input.budget ?? 220);
-    const evidenceSymbol = chooseSnippetIdentifier(rawSnippet, session.task) ?? symbol?.name;
+    const evidenceSymbol = chooseSnippetIdentifier(rawSnippet, task) ?? symbol?.name;
     const verificationCommand = inferVerificationCommand(session.rootPath, target);
     const invariant = buildContextInvariant({
-      task: session.task,
+      task,
       file: target,
       symbol: evidenceSymbol,
       snippet: rawSnippet,
@@ -2438,7 +2451,7 @@ export class KairnRuntime {
       expectedBehavior: invariant.statement,
       invariant,
       verificationCommand,
-      tokenEstimate: estimateTokens(snippet) + estimateTokens(session.task)
+      tokenEstimate: estimateTokens(snippet) + estimateTokens(task)
     };
   }
 
@@ -2597,6 +2610,11 @@ export class KairnRuntime {
     daemonAttempted?: boolean | undefined;
     daemonHit?: boolean | undefined;
     refreshIndex?: boolean | undefined;
+    editScopeHints?: {
+      allowedDiffScopes?: BenchmarkDiffScope[] | undefined;
+      sourceInvariants?: BenchmarkSourceInvariant[] | undefined;
+      failureFiles?: string[] | undefined;
+    } | undefined;
   }): Promise<HookHandlingResult> {
     const hookStartedAt = Date.now();
     const hookOutput = input.hookOutput ?? "full-prime";
@@ -2697,6 +2715,7 @@ export class KairnRuntime {
               source: input.event.source,
               eventName: "prime_context_hook",
               refreshIndex: shouldRefreshIndex,
+              editScopeHints: input.editScopeHints,
               metadata: {
                 promptHash,
                 hostSessionId: input.event.hostSessionId ?? null,
@@ -3736,6 +3755,25 @@ function isAutomaticCheapSingleSourceHook(input: {
   return Boolean(input.decision.cheapSingleSource || input.decision.cheapExactSource);
 }
 
+function shouldUseMinimalOneFileDirective(input: {
+  task: string;
+  action: ContextValueDecision["action"];
+  decision: ContextValueDecision;
+  emittedFiles: string[];
+}): boolean {
+  if (input.action !== "shrink") return false;
+  if (input.decision.recommendedDelivery !== "one_file_directive") return false;
+  if (input.emittedFiles.length !== 1) return false;
+  if (!taskHasProductionOnlyEditIntent(input.task)) return false;
+  if (hasExplicitMultiFileScopeRequest(input.task)) return false;
+  if (input.decision.wrongContextRisk) return false;
+  if (input.decision.taskFrame === "multi_file_debug" || input.decision.taskFrame === "official_patch") return false;
+  if (!input.decision.exactSourceHit && !input.decision.canonicalSourceHit && !input.decision.sourceRescue && !input.decision.cheapSingleSource && !input.decision.cheapExactSource) return false;
+  if (input.decision.topScore < 180 || input.decision.topGap < 25) return false;
+  if (input.task.length > 520) return false;
+  return true;
+}
+
 function isCheapOneShotAutomaticTask(task: string): boolean {
   const normalized = task.toLowerCase();
   if (task.length > 420) return false;
@@ -3848,6 +3886,29 @@ function collectWorkspaceKairnMetrics(workspacePath: string): Record<string, unk
 
 function recordValue(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function sourceInvariantContextForFile(invariants: BenchmarkSourceInvariant[] | undefined, file: string): ContextInvariant | undefined {
+  const normalizedFile = normalizeRelativePath(file);
+  const invariant = (invariants ?? []).find((item) => normalizeRelativePath(item.file) === normalizedFile);
+  if (!invariant) return undefined;
+  const statement =
+    invariant.description?.trim() ||
+    [
+      invariant.requiredPresent?.length ? `Required source text: ${invariant.requiredPresent.slice(0, 2).join(", ")}` : "",
+      invariant.requiredAbsent?.length ? `Forbidden source text: ${invariant.requiredAbsent.slice(0, 2).join(", ")}` : "",
+      invariant.requiredAny?.length ? `One required source behavior: ${invariant.requiredAny.slice(0, 2).join(", ")}` : "",
+      invariant.requiredRegex?.length ? "Required source pattern must match." : "",
+      invariant.requiredAnyRegex?.length ? "At least one required source pattern must match." : ""
+    ].filter(Boolean).join(" ");
+  if (!statement) return undefined;
+  return {
+    file: normalizedFile,
+    statement,
+    ...(invariant.id ? { evidence: invariant.id } : {}),
+    confidence: 96,
+    source: "seed"
+  };
 }
 
 function exactPathCandidates(files: FileRecord[], query: string): string[] {

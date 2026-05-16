@@ -346,6 +346,25 @@ function hardSafetyDecision(
     };
   }
   if (
+    (baseDecision.action === "shrink" || baseDecision.action === "suppress") &&
+    (features.taskFrame === "cheap_single_source" || features.taskFrame === "source_rescue") &&
+    features.productionOnlyEditIntent &&
+    !features.explicitTestTarget &&
+    top &&
+    top.role === "production_source" &&
+    baseDecision.exactSourceHit &&
+    !baseDecision.canonicalSourceHit &&
+    features.confidenceGap >= 800 &&
+    features.estimatedSearchCost <= 35 &&
+    !baseDecision.wrongContextRisk
+  ) {
+    return {
+      action: "shrink",
+      score: Math.max(baseDecision.score, 55),
+      reasons: ["low-cost exact source-rescue task should use a scope-only guardrail"]
+    };
+  }
+  if (
     baseDecision.action === "suppress" &&
     features.productionOnlyEditIntent &&
     !features.explicitTestTarget &&

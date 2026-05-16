@@ -1,0 +1,5 @@
+entryId,kind,repoId,language,sizeClass,taskClass,behavior,mode,qualityPassed,observedTokens,baselineTokens,savedTokens,savingsRate,validSavings,passiveSavings,invalidSavings,assistanceStatus,assistClassification,active,claimEligible,mcpCalls,repeatedFilesAvoided,scopeViolations,overAssist,harmfulAssist,missedOpportunity,correctAbstention,requestEvidence,failurePattern
+requests-10turn-repeat3,endurance,requests,python,medium,session_repeat,source_rescue,baseline,true,241999,,,,0,0,0,none,,false,false,0,0,0,false,false,false,false,false,
+requests-10turn-repeat3,endurance,requests,python,medium,session_repeat,source_rescue,kairn_codex_session,false,196734,,20228,0.09323291636323411,20228,0,0,active,,true,false,0,6,0,false,true,false,false,false,
+requests-10turn-repeat3,endurance,requests,python,medium,session_repeat,source_rescue,real_mcp_first,true,171625,,85099,0.33053418214162256,0,0,0,active,,true,false,0,0,0,false,false,false,false,false,
+requests-10turn-repeat3,endurance,requests,python,medium,session_repeat,source_rescue,hybrid_mcp_brief,true,156088,,85911,0.3550055991966909,85911,0,0,active,,true,true,0,0,0,false,false,false,false,false,

@@ -45,7 +45,7 @@
       "suite": "examples/bench/seeded-fresh-holdout-v2-20260511.json",
       "repeat": 5,
       "shuffleOrder": true,
-      "modes": ["baseline", "kairn_codex_session", "real_mcp_first"]
+      "modes": ["baseline", "kairn_codex_session"]
     },
     {
       "id": "requests-10turn-repeat3",

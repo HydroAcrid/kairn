@@ -59,7 +59,7 @@ export function loadSweAtlasQnaRows(inputPath: string): SweAtlasQnaRow[] {
   const text = fs.readFileSync(absolute, "utf8");
   const trimmed = text.trim();
   if (!trimmed) return [];
-  const parsed = trimmed.startsWith("[") || trimmed.startsWith("{")
+  const parsed = trimmed.startsWith("[") || (trimmed.startsWith("{") && !trimmed.includes("\n"))
     ? JSON.parse(trimmed) as unknown
     : trimmed.split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line) as unknown);
   const candidates = Array.isArray(parsed)

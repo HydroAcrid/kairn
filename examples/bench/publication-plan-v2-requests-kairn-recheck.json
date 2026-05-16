@@ -1,0 +1,37 @@
+{
+  "id": "kairn-evidence-campaign-v2-requests-kairn-recheck",
+  "name": "Kairn Evidence Campaign v2 Requests Kairn Recheck",
+  "description": "Focused recheck for session-bound Requests endurance after current-turn invariant routing fixes.",
+  "reportDate": "2026-05-15",
+  "defaults": {
+    "model": "gpt-5.4-mini",
+    "repeat": 2,
+    "agentTimeoutMs": 240000,
+    "turnTimeoutMs": 240000,
+    "workdir": "/tmp/kairn-publication-v2-workdirs",
+    "modes": ["baseline", "kairn_codex_session"],
+    "commands": {
+      "baseline": "codex -a never exec --model {model} --sandbox danger-full-access --disable hooks {prompt}",
+      "kairn_codex_session": "kairn codex --root {root} --model {model} --sandbox danger-full-access {prompt}"
+    },
+    "setupCommands": {
+      "kairn_codex_session": "kairn setup codex --root {root} --mode savings >/dev/null"
+    }
+  },
+  "entries": [
+    {
+      "id": "requests-kairn-session-recheck",
+      "kind": "endurance",
+      "label": "Requests Kairn session endurance recheck",
+      "repoId": "requests",
+      "language": "python",
+      "sizeClass": "medium",
+      "taskClass": "session_repeat",
+      "contextBehavior": "source_rescue",
+      "root": ".",
+      "suite": "examples/bench/endurance-requests-10turn.json",
+      "repeat": 2,
+      "modes": ["baseline", "kairn_codex_session"]
+    }
+  ]
+}

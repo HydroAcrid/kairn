@@ -1256,17 +1256,18 @@ function plannedCommands(plan: PublicationPlan, entry: PublicationPlanEntry, mod
 
 function commandFor(plan: PublicationPlan, entry: PublicationPlanEntry, mode: PublicationMode, model: string): string {
   const command = entry.commands?.[mode] ?? plan.defaults?.commands?.[mode] ?? defaultCommand(mode, model);
-  return command.replaceAll("{model}", model);
+  return expandPublicationCommand(command.replaceAll("{model}", model));
 }
 
 function setupCommandFor(plan: PublicationPlan, entry: PublicationPlanEntry, mode: Exclude<PublicationMode, "baseline" | "manual_prime">): string | undefined {
-  return entry.setupCommands?.[mode] ?? plan.defaults?.setupCommands?.[mode] ?? defaultSetupCommand(mode);
+  const command = entry.setupCommands?.[mode] ?? plan.defaults?.setupCommands?.[mode] ?? defaultSetupCommand(mode);
+  return command ? expandPublicationCommand(command) : undefined;
 }
 
 function defaultCommand(mode: PublicationMode, model: string): string {
   const base = `codex -a never exec --model ${model} --sandbox danger-full-access --disable hooks {prompt}`;
   if (mode === "kairn_codex_session") {
-    return `kairn codex --root {root} --model ${model} --sandbox danger-full-access {prompt}`;
+    return `{kairn} codex --root {root} --model ${model} --sandbox danger-full-access {prompt}`;
   }
   if (mode === "hook_full_prime" || mode === "hybrid_mcp_brief") {
     return `codex -a never exec --model ${model} --sandbox danger-full-access --enable hooks {prompt}`;
@@ -1275,10 +1276,28 @@ function defaultCommand(mode: PublicationMode, model: string): string {
 }
 
 function defaultSetupCommand(mode: Exclude<PublicationMode, "baseline" | "manual_prime">): string | undefined {
-  if (mode === "real_mcp_first") return "kairn setup codex --root {root} --mode mcp-first >/dev/null";
-  if (mode === "hybrid_mcp_brief") return "kairn setup codex --root {root} --mode hybrid --session {session} >/dev/null";
-  if (mode === "hook_full_prime") return "kairn setup codex --root {root} --mode savings --hook-output full-prime >/dev/null";
+  if (mode === "real_mcp_first") return "{kairn} setup codex --root {root} --mode mcp-first >/dev/null";
+  if (mode === "hybrid_mcp_brief") return "{kairn} setup codex --root {root} --mode hybrid --session {session} >/dev/null";
+  if (mode === "hook_full_prime") return "{kairn} setup codex --root {root} --mode savings --hook-output full-prime >/dev/null";
   return undefined;
+}
+
+function expandPublicationCommand(command: string): string {
+  const kairnCommand = resolveKairnCommand();
+  if (command.includes("{kairn}")) return command.replaceAll("{kairn}", kairnCommand);
+  return command.replace(/^kairn(?=\s)/, kairnCommand);
+}
+
+function resolveKairnCommand(): string {
+  if (process.env.KAIRN_BENCH_KAIRN_CMD?.trim()) return process.env.KAIRN_BENCH_KAIRN_CMD.trim();
+  if (process.env.KAIRN_CMD?.trim()) return process.env.KAIRN_CMD.trim();
+  const distCli = path.resolve("dist", "cli.js");
+  if (fs.existsSync(distCli)) return `node ${quoteShellArg(distCli)}`;
+  return `pnpm exec tsx ${quoteShellArg(path.resolve("src", "cli.ts"))}`;
+}
+
+function quoteShellArg(value: string): string {
+  return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
 function publicationModes(plan: PublicationPlan, entry: PublicationPlanEntry): PublicationMode[] {
