@@ -1,0 +1,146 @@
+{
+  "id": "kairn-scientific-evidence-v3",
+  "name": "Kairn Scientific Evidence Campaign v3",
+  "description": "Frozen pre-announcement evidence bundle excluding private beta telemetry. It separates fresh preflight, pass/pass live canaries, MCP endurance proof, no-governor ablation, and official SWE-Pro evaluator readiness.",
+  "reportDate": "2026-05-18",
+  "defaults": {
+    "model": "gpt-5.4-mini",
+    "repeat": 3,
+    "agentTimeoutMs": 240000,
+    "turnTimeoutMs": 240000,
+    "workdir": "/tmp/kairn-publication-v3-workdirs",
+    "modes": ["baseline", "kairn_codex_session"],
+    "commands": {
+      "baseline": "codex -a never exec --model {model} --sandbox danger-full-access --disable hooks {prompt}",
+      "kairn_codex_session": "kairn codex --root {root} --model {model} --sandbox danger-full-access {prompt}",
+      "kairn_codex_session_no_governor": "codex -a never exec --model {model} --sandbox danger-full-access --disable hooks {prompt}",
+      "real_mcp_first": "codex -a never exec --model {model} --sandbox danger-full-access --disable hooks {prompt}",
+      "hybrid_mcp_brief": "codex -a never exec --model {model} --sandbox danger-full-access --enable hooks {prompt}"
+    },
+    "setupCommands": {
+      "kairn_codex_session": "kairn setup codex --root {root} --mode savings >/dev/null",
+      "real_mcp_first": "kairn setup codex --root {root} --mode mcp-first --session {session} >/dev/null",
+      "hybrid_mcp_brief": "kairn setup codex --root {root} --mode hybrid --session {session} >/dev/null"
+    }
+  },
+  "entries": [
+    {
+      "id": "fresh-publication-v3-preflight",
+      "kind": "matrix",
+      "label": "Frozen fresh repo preflight",
+      "repoId": "fresh-publication-v3",
+      "language": "mixed",
+      "sizeClass": "mixed",
+      "taskClass": "fresh_preflight",
+      "matrix": "examples/bench/repo-matrix-publication-v3.json"
+    },
+    {
+      "id": "fresh-live-repeat3-canary",
+      "kind": "proof",
+      "label": "Repeat-3 live seeded canary for pass/pass token savings",
+      "repoId": "seeded-fresh-holdout-v2",
+      "language": "mixed",
+      "sizeClass": "mixed",
+      "taskClass": "source_rescue",
+      "root": ".",
+      "suite": "examples/bench/seeded-fresh-holdout-v2-20260511.json",
+      "repeat": 3,
+      "shuffleOrder": true,
+      "modes": ["baseline", "kairn_codex_session"]
+    },
+    {
+      "id": "ablation-proof-repeat3",
+      "kind": "proof",
+      "label": "Governor ablation on seeded one-shot tasks",
+      "repoId": "seeded-ablation-canary",
+      "language": "mixed",
+      "sizeClass": "mixed",
+      "taskClass": "ablation",
+      "root": ".",
+      "suite": "examples/bench/seeded-fresh-holdout-20260510.json",
+      "repeat": 3,
+      "shuffleOrder": true,
+      "modes": ["baseline", "kairn_codex_session", "kairn_codex_session_no_governor"]
+    },
+    {
+      "id": "requests-endurance-ablation-repeat3",
+      "kind": "endurance",
+      "label": "Requests 10-turn governor ablation",
+      "repoId": "requests",
+      "language": "python",
+      "sizeClass": "medium",
+      "taskClass": "session_repeat",
+      "contextBehavior": "session_repeat",
+      "root": ".",
+      "suite": "examples/bench/endurance-requests-10turn.json",
+      "repeat": 3,
+      "modes": ["baseline", "kairn_codex_session", "kairn_codex_session_no_governor"]
+    },
+    {
+      "id": "httpcore-mcp-endurance-repeat3",
+      "kind": "endurance",
+      "label": "Fresh httpcore MCP endurance repeat-3",
+      "repoId": "httpcore",
+      "language": "python",
+      "sizeClass": "medium",
+      "taskClass": "session_repeat",
+      "contextBehavior": "source_rescue",
+      "root": ".",
+      "suite": "examples/bench/endurance-httpcore.json",
+      "repeat": 3,
+      "modes": ["baseline", "real_mcp_first"]
+    },
+    {
+      "id": "requests-mcp-endurance-repeat3",
+      "kind": "endurance",
+      "label": "Requests MCP endurance repeat-3 regression proof",
+      "repoId": "requests",
+      "language": "python",
+      "sizeClass": "medium",
+      "taskClass": "session_repeat",
+      "contextBehavior": "source_rescue",
+      "root": ".",
+      "suite": "examples/bench/endurance-requests-10turn.json",
+      "repeat": 3,
+      "modes": ["baseline", "real_mcp_first", "hybrid_mcp_brief"]
+    },
+    {
+      "id": "local-mcp-smoke-v3",
+      "kind": "mcp_smoke",
+      "label": "Local MCP protocol smoke",
+      "repoId": "local",
+      "language": "mixed",
+      "sizeClass": "unknown",
+      "taskClass": "mcp_delivery",
+      "root": ".",
+      "task": "Find the smallest useful Kairn source context for evidence-campaign reporting.",
+      "budget": 700,
+      "detail": "compact"
+    },
+    {
+      "id": "swe-pro-official-eval-v3",
+      "kind": "swe_pro_official_eval",
+      "label": "SWE-Pro official evaluator slice",
+      "repoId": "swe-bench-pro",
+      "language": "mixed",
+      "sizeClass": "mixed",
+      "taskClass": "official_patch",
+      "input": "examples/bench/swe-pro-publication/swe-pro-pilot-raw.jsonl",
+      "rowIds": [
+        "instance_NodeBB__NodeBB-04998908ba6721d64eba79ae3b65a351dcfbc5b5-vnan",
+        "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
+        "instance_NodeBB__NodeBB-51d8f3b195bddb13a13ddc0de110722774d9bb1b-vf2cf3cbd463b7ad942381f1c6d077626485a1e9e",
+        "instance_qutebrowser__qutebrowser-c580ebf0801e5a3ecabc54f327498bb753c6d5f2-v2ef375ac784985212b1805e1d0431dc8f1b3c171",
+        "instance_ansible__ansible-f327e65d11bb905ed9f15996024f857a95592629-vba6da65a0f3baefda7a058ebbd0a8dcafb8512f5",
+        "instance_ansible__ansible-a26c325bd8f6e2822d9d7e62f77a424c1db4fbf6-v0f01c69f1e2528b935359cfe578530722bca2c59",
+        "instance_internetarchive__openlibrary-4a5d2a7d24c9e4c11d3069220c0685b736d5ecde-v13642507b4fc1f8d234172bf8129942da2c2ca26",
+        "instance_qutebrowser__qutebrowser-f631cd4422744160d9dcf7a0455da532ce973315-v35616345bb8052ea303186706cec663146f0f184",
+        "instance_gravitational__teleport-3fa6904377c006497169945428e8197158667910-v626ec2a48416b10a88641359a169d99e935ff037",
+        "instance_navidrome__navidrome-7073d18b54da7e53274d11c9e2baef1242e8769e"
+      ],
+      "limit": 10,
+      "officialEvaluationRequired": true,
+      "officialRunnerCommand": "Run the SWE-bench_Pro official Docker evaluator against generated baseline and Kairn patches; set evaluatorResultsPath before counting any SWE-Pro savings."
+    }
+  ]
+}

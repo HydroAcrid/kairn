@@ -1,0 +1,18 @@
+{
+  "entryId": "local-mcp-smoke-v3",
+  "kind": "mcp_smoke",
+  "status": "planned",
+  "entryMetadata": {
+    "label": "Local MCP protocol smoke",
+    "repoId": "local",
+    "language": "mixed",
+    "sizeClass": "unknown",
+    "taskClass": "mcp_delivery"
+  },
+  "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/raw/local-mcp-smoke-v3.json",
+  "startedAt": "2026-05-18T15:19:30.143Z",
+  "endedAt": "2026-05-18T15:19:30.143Z",
+  "commands": [
+    "kairn bench mcp-smoke --root . --task \"Find the smallest useful Kairn source context for evidence-campaign reporting.\""
+  ]
+}

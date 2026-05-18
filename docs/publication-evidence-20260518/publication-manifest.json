@@ -1,0 +1,266 @@
+{
+  "id": "kairn-scientific-evidence-v3",
+  "name": "Kairn Scientific Evidence Campaign v3",
+  "generatedAt": "2026-05-18T15:19:30.143Z",
+  "planPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/publication-plan-v3.json",
+  "kairnGitSha": "e02ab9207727f2f22ef48a58345ec8606299a581",
+  "packageVersion": "0.1.2",
+  "nodeVersion": "v24.7.0",
+  "os": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "release": "24.6.0"
+  },
+  "model": "gpt-5.4-mini",
+  "repeat": 3,
+  "dryRun": true,
+  "timestamps": {
+    "generatedAt": "2026-05-18T15:19:30.143Z",
+    "artifactStarts": {
+      "fresh-publication-v3-preflight": "2026-05-18T15:19:30.141Z",
+      "fresh-live-repeat3-canary": "2026-05-18T15:19:30.142Z",
+      "ablation-proof-repeat3": "2026-05-18T15:19:30.142Z",
+      "requests-endurance-ablation-repeat3": "2026-05-18T15:19:30.143Z",
+      "httpcore-mcp-endurance-repeat3": "2026-05-18T15:19:30.143Z",
+      "requests-mcp-endurance-repeat3": "2026-05-18T15:19:30.143Z",
+      "local-mcp-smoke-v3": "2026-05-18T15:19:30.143Z",
+      "swe-pro-official-eval-v3": "2026-05-18T15:19:30.143Z"
+    },
+    "artifactEnds": {
+      "fresh-publication-v3-preflight": "2026-05-18T15:19:30.142Z",
+      "fresh-live-repeat3-canary": "2026-05-18T15:19:30.142Z",
+      "ablation-proof-repeat3": "2026-05-18T15:19:30.142Z",
+      "requests-endurance-ablation-repeat3": "2026-05-18T15:19:30.143Z",
+      "httpcore-mcp-endurance-repeat3": "2026-05-18T15:19:30.143Z",
+      "requests-mcp-endurance-repeat3": "2026-05-18T15:19:30.143Z",
+      "local-mcp-smoke-v3": "2026-05-18T15:19:30.143Z",
+      "swe-pro-official-eval-v3": "2026-05-18T15:19:30.143Z"
+    }
+  },
+  "benchmarkSuitePaths": [
+    "examples/bench/repo-matrix-publication-v3.json",
+    "examples/bench/seeded-fresh-holdout-v2-20260511.json",
+    "examples/bench/seeded-fresh-holdout-20260510.json",
+    "examples/bench/endurance-requests-10turn.json",
+    "examples/bench/endurance-httpcore.json",
+    "examples/bench/swe-pro-publication/swe-pro-pilot-raw.jsonl"
+  ],
+  "officialDatasetRowIds": [
+    "instance_NodeBB__NodeBB-04998908ba6721d64eba79ae3b65a351dcfbc5b5-vnan",
+    "instance_NodeBB__NodeBB-51d8f3b195bddb13a13ddc0de110722774d9bb1b-vf2cf3cbd463b7ad942381f1c6d077626485a1e9e",
+    "instance_ansible__ansible-a26c325bd8f6e2822d9d7e62f77a424c1db4fbf6-v0f01c69f1e2528b935359cfe578530722bca2c59",
+    "instance_ansible__ansible-f327e65d11bb905ed9f15996024f857a95592629-vba6da65a0f3baefda7a058ebbd0a8dcafb8512f5",
+    "instance_gravitational__teleport-3fa6904377c006497169945428e8197158667910-v626ec2a48416b10a88641359a169d99e935ff037",
+    "instance_internetarchive__openlibrary-4a5d2a7d24c9e4c11d3069220c0685b736d5ecde-v13642507b4fc1f8d234172bf8129942da2c2ca26",
+    "instance_navidrome__navidrome-7073d18b54da7e53274d11c9e2baef1242e8769e",
+    "instance_qutebrowser__qutebrowser-c580ebf0801e5a3ecabc54f327498bb753c6d5f2-v2ef375ac784985212b1805e1d0431dc8f1b3c171",
+    "instance_qutebrowser__qutebrowser-f631cd4422744160d9dcf7a0455da532ce973315-v35616345bb8052ea303186706cec663146f0f184",
+    "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c"
+  ],
+  "commandTemplates": {
+    "fresh-publication-v3-preflight": [
+      "kairn bench matrix --matrix examples/bench/repo-matrix-publication-v3.json"
+    ],
+    "fresh-live-repeat3-canary": [
+      "proof repeat=3",
+      "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+      "kairn_codex_session: node '/Users/kevindotel/Documents/Projects/kairn/dist/cli.js' codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}"
+    ],
+    "ablation-proof-repeat3": [
+      "proof repeat=3",
+      "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+      "kairn_codex_session: node '/Users/kevindotel/Documents/Projects/kairn/dist/cli.js' codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}",
+      "kairn_codex_session_no_governor: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}"
+    ],
+    "requests-endurance-ablation-repeat3": [
+      "endurance repeat=3",
+      "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+      "kairn_codex_session: node '/Users/kevindotel/Documents/Projects/kairn/dist/cli.js' codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}",
+      "kairn_codex_session_no_governor: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}"
+    ],
+    "httpcore-mcp-endurance-repeat3": [
+      "endurance repeat=3",
+      "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+      "real_mcp_first: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}"
+    ],
+    "requests-mcp-endurance-repeat3": [
+      "endurance repeat=3",
+      "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+      "real_mcp_first: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+      "hybrid_mcp_brief: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --enable hooks {prompt}"
+    ],
+    "local-mcp-smoke-v3": [
+      "kairn bench mcp-smoke --root . --task \"Find the smallest useful Kairn source context for evidence-campaign reporting.\""
+    ],
+    "swe-pro-official-eval-v3": [
+      "kairn bench publication --only swe-pro-official-eval-v3 --plan <plan> --out-dir <out-dir>",
+      "Run the SWE-bench_Pro official Docker evaluator against generated baseline and Kairn patches; set evaluatorResultsPath before counting any SWE-Pro savings."
+    ]
+  },
+  "artifacts": [
+    {
+      "entryId": "fresh-publication-v3-preflight",
+      "kind": "matrix",
+      "status": "planned",
+      "entryMetadata": {
+        "label": "Frozen fresh repo preflight",
+        "repoId": "fresh-publication-v3",
+        "language": "mixed",
+        "sizeClass": "mixed",
+        "taskClass": "fresh_preflight",
+        "matrix": "examples/bench/repo-matrix-publication-v3.json"
+      },
+      "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/raw/fresh-publication-v3-preflight.json",
+      "commands": [
+        "kairn bench matrix --matrix examples/bench/repo-matrix-publication-v3.json"
+      ]
+    },
+    {
+      "entryId": "fresh-live-repeat3-canary",
+      "kind": "proof",
+      "status": "planned",
+      "entryMetadata": {
+        "label": "Repeat-3 live seeded canary for pass/pass token savings",
+        "repoId": "seeded-fresh-holdout-v2",
+        "language": "mixed",
+        "sizeClass": "mixed",
+        "taskClass": "source_rescue",
+        "suite": "examples/bench/seeded-fresh-holdout-v2-20260511.json"
+      },
+      "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/raw/fresh-live-repeat3-canary.json",
+      "commands": [
+        "proof repeat=3",
+        "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+        "kairn_codex_session: node '/Users/kevindotel/Documents/Projects/kairn/dist/cli.js' codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}"
+      ]
+    },
+    {
+      "entryId": "ablation-proof-repeat3",
+      "kind": "proof",
+      "status": "planned",
+      "entryMetadata": {
+        "label": "Governor ablation on seeded one-shot tasks",
+        "repoId": "seeded-ablation-canary",
+        "language": "mixed",
+        "sizeClass": "mixed",
+        "taskClass": "ablation",
+        "suite": "examples/bench/seeded-fresh-holdout-20260510.json"
+      },
+      "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/raw/ablation-proof-repeat3.json",
+      "commands": [
+        "proof repeat=3",
+        "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+        "kairn_codex_session: node '/Users/kevindotel/Documents/Projects/kairn/dist/cli.js' codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}",
+        "kairn_codex_session_no_governor: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}"
+      ]
+    },
+    {
+      "entryId": "requests-endurance-ablation-repeat3",
+      "kind": "endurance",
+      "status": "planned",
+      "entryMetadata": {
+        "label": "Requests 10-turn governor ablation",
+        "repoId": "requests",
+        "language": "python",
+        "sizeClass": "medium",
+        "taskClass": "session_repeat",
+        "contextBehavior": "session_repeat",
+        "suite": "examples/bench/endurance-requests-10turn.json"
+      },
+      "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/raw/requests-endurance-ablation-repeat3.json",
+      "commands": [
+        "endurance repeat=3",
+        "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+        "kairn_codex_session: node '/Users/kevindotel/Documents/Projects/kairn/dist/cli.js' codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}",
+        "kairn_codex_session_no_governor: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}"
+      ]
+    },
+    {
+      "entryId": "httpcore-mcp-endurance-repeat3",
+      "kind": "endurance",
+      "status": "planned",
+      "entryMetadata": {
+        "label": "Fresh httpcore MCP endurance repeat-3",
+        "repoId": "httpcore",
+        "language": "python",
+        "sizeClass": "medium",
+        "taskClass": "session_repeat",
+        "contextBehavior": "source_rescue",
+        "suite": "examples/bench/endurance-httpcore.json"
+      },
+      "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/raw/httpcore-mcp-endurance-repeat3.json",
+      "commands": [
+        "endurance repeat=3",
+        "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+        "real_mcp_first: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}"
+      ]
+    },
+    {
+      "entryId": "requests-mcp-endurance-repeat3",
+      "kind": "endurance",
+      "status": "planned",
+      "entryMetadata": {
+        "label": "Requests MCP endurance repeat-3 regression proof",
+        "repoId": "requests",
+        "language": "python",
+        "sizeClass": "medium",
+        "taskClass": "session_repeat",
+        "contextBehavior": "source_rescue",
+        "suite": "examples/bench/endurance-requests-10turn.json"
+      },
+      "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/raw/requests-mcp-endurance-repeat3.json",
+      "commands": [
+        "endurance repeat=3",
+        "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+        "real_mcp_first: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+        "hybrid_mcp_brief: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --enable hooks {prompt}"
+      ]
+    },
+    {
+      "entryId": "local-mcp-smoke-v3",
+      "kind": "mcp_smoke",
+      "status": "planned",
+      "entryMetadata": {
+        "label": "Local MCP protocol smoke",
+        "repoId": "local",
+        "language": "mixed",
+        "sizeClass": "unknown",
+        "taskClass": "mcp_delivery"
+      },
+      "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/raw/local-mcp-smoke-v3.json",
+      "commands": [
+        "kairn bench mcp-smoke --root . --task \"Find the smallest useful Kairn source context for evidence-campaign reporting.\""
+      ]
+    },
+    {
+      "entryId": "swe-pro-official-eval-v3",
+      "kind": "swe_pro_official_eval",
+      "status": "planned",
+      "entryMetadata": {
+        "label": "SWE-Pro official evaluator slice",
+        "repoId": "swe-bench-pro",
+        "language": "mixed",
+        "sizeClass": "mixed",
+        "taskClass": "official_patch",
+        "input": "examples/bench/swe-pro-publication/swe-pro-pilot-raw.jsonl",
+        "officialRowIds": [
+          "instance_NodeBB__NodeBB-04998908ba6721d64eba79ae3b65a351dcfbc5b5-vnan",
+          "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
+          "instance_NodeBB__NodeBB-51d8f3b195bddb13a13ddc0de110722774d9bb1b-vf2cf3cbd463b7ad942381f1c6d077626485a1e9e",
+          "instance_qutebrowser__qutebrowser-c580ebf0801e5a3ecabc54f327498bb753c6d5f2-v2ef375ac784985212b1805e1d0431dc8f1b3c171",
+          "instance_ansible__ansible-f327e65d11bb905ed9f15996024f857a95592629-vba6da65a0f3baefda7a058ebbd0a8dcafb8512f5",
+          "instance_ansible__ansible-a26c325bd8f6e2822d9d7e62f77a424c1db4fbf6-v0f01c69f1e2528b935359cfe578530722bca2c59",
+          "instance_internetarchive__openlibrary-4a5d2a7d24c9e4c11d3069220c0685b736d5ecde-v13642507b4fc1f8d234172bf8129942da2c2ca26",
+          "instance_qutebrowser__qutebrowser-f631cd4422744160d9dcf7a0455da532ce973315-v35616345bb8052ea303186706cec663146f0f184",
+          "instance_gravitational__teleport-3fa6904377c006497169945428e8197158667910-v626ec2a48416b10a88641359a169d99e935ff037",
+          "instance_navidrome__navidrome-7073d18b54da7e53274d11c9e2baef1242e8769e"
+        ]
+      },
+      "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/raw/swe-pro-official-eval-v3.json",
+      "commands": [
+        "kairn bench publication --only swe-pro-official-eval-v3 --plan <plan> --out-dir <out-dir>",
+        "Run the SWE-bench_Pro official Docker evaluator against generated baseline and Kairn patches; set evaluatorResultsPath before counting any SWE-Pro savings."
+      ]
+    }
+  ]
+}

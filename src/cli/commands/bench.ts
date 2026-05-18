@@ -276,6 +276,8 @@ export function registerBenchCommands(program: Command): void {
     .option("--hook-full-prime-setup-command <command>", "hook full-prime setup command timed separately before endurance turns")
     .option("--kairn-codex-session-command <command>", "session-bound kairn codex equivalent command with {prompt}, {root}, {session}, and {turn} placeholders")
     .option("--kairn-codex-session-setup-command <command>", "session-bound kairn codex setup command timed separately before endurance turns")
+    .option("--kairn-codex-session-no-governor-command <command>", "benchmark-only Kairn session ablation command with governor disabled")
+    .option("--kairn-codex-session-no-governor-setup-command <command>", "benchmark-only no-governor setup command timed separately before endurance turns")
     .option("--real-mcp-first-command <command>", "real MCP-first endurance command with {prompt}, {root}, {session}, and {turn} placeholders")
     .option("--real-mcp-first-setup-command <command>", "real MCP-first setup command timed separately before endurance turns")
     .option("--hybrid-mcp-brief-command <command>", "hybrid MCP brief endurance command with {prompt}, {root}, {session}, and {turn} placeholders")
@@ -294,6 +296,8 @@ export function registerBenchCommands(program: Command): void {
         hookFullPrimeSetupCommand?: string;
         kairnCodexSessionCommand?: string;
         kairnCodexSessionSetupCommand?: string;
+        kairnCodexSessionNoGovernorCommand?: string;
+        kairnCodexSessionNoGovernorSetupCommand?: string;
         realMcpFirstCommand?: string;
         realMcpFirstSetupCommand?: string;
         hybridMcpBriefCommand?: string;
@@ -312,6 +316,8 @@ export function registerBenchCommands(program: Command): void {
           hookFullPrimeSetupCommand: options.hookFullPrimeSetupCommand,
           kairnCodexSessionCommand: options.kairnCodexSessionCommand,
           kairnCodexSessionSetupCommand: options.kairnCodexSessionSetupCommand,
+          kairnCodexSessionNoGovernorCommand: options.kairnCodexSessionNoGovernorCommand,
+          kairnCodexSessionNoGovernorSetupCommand: options.kairnCodexSessionNoGovernorSetupCommand,
           realMcpFirstCommand: options.realMcpFirstCommand,
           realMcpFirstSetupCommand: options.realMcpFirstSetupCommand,
           hybridMcpBriefCommand: options.hybridMcpBriefCommand,
@@ -432,6 +438,8 @@ export function registerBenchCommands(program: Command): void {
     .option("--hook-tiny-with-failures-setup-command <command>", "hook tiny-with-failures setup command timed separately before the live-agent command")
     .option("--kairn-codex-session-command <command>", "session-bound kairn codex wrapper command with {prompt} and {root} placeholders")
     .option("--kairn-codex-session-setup-command <command>", "session-bound kairn codex setup command timed separately before the live-agent command")
+    .option("--kairn-codex-session-no-governor-command <command>", "benchmark-only Kairn session command with suppression/evidence governor disabled")
+    .option("--kairn-codex-session-no-governor-setup-command <command>", "benchmark-only no-governor setup command timed separately before the live-agent command")
     .option("--mcp-first-command <command>", "MCP-first live-agent command with {prompt} and {root} placeholders")
     .option("--mcp-first-setup-command <command>", "MCP-first setup command timed separately before the live-agent command")
     .option("--real-mcp-first-command <command>", "real MCP-first live-agent command with {prompt} and {root} placeholders")
@@ -468,6 +476,8 @@ export function registerBenchCommands(program: Command): void {
         hookTinyWithFailuresSetupCommand?: string;
         kairnCodexSessionCommand?: string;
         kairnCodexSessionSetupCommand?: string;
+        kairnCodexSessionNoGovernorCommand?: string;
+        kairnCodexSessionNoGovernorSetupCommand?: string;
         mcpFirstCommand?: string;
         mcpFirstSetupCommand?: string;
         realMcpFirstCommand?: string;
@@ -504,6 +514,8 @@ export function registerBenchCommands(program: Command): void {
             hookTinyWithFailuresSetupCommand: options.hookTinyWithFailuresSetupCommand,
             kairnCodexSessionCommand: options.kairnCodexSessionCommand,
             kairnCodexSessionSetupCommand: options.kairnCodexSessionSetupCommand,
+            kairnCodexSessionNoGovernorCommand: options.kairnCodexSessionNoGovernorCommand,
+            kairnCodexSessionNoGovernorSetupCommand: options.kairnCodexSessionNoGovernorSetupCommand,
             mcpFirstCommand: options.mcpFirstCommand,
             mcpFirstSetupCommand: options.mcpFirstSetupCommand,
             realMcpFirstCommand: options.realMcpFirstCommand,

@@ -1013,6 +1013,8 @@ export class KairnRuntime {
     hookTinyWithFailuresSetupCommand?: string | undefined;
     kairnCodexSessionCommand?: string | undefined;
     kairnCodexSessionSetupCommand?: string | undefined;
+    kairnCodexSessionNoGovernorCommand?: string | undefined;
+    kairnCodexSessionNoGovernorSetupCommand?: string | undefined;
     mcpFirstCommand?: string | undefined;
     mcpFirstSetupCommand?: string | undefined;
     realMcpFirstCommand?: string | undefined;
@@ -1043,6 +1045,7 @@ export class KairnRuntime {
       ...(input.hookTinyDirectiveCommand ? [{ mode: "hook_tiny_directive" as const, command: input.hookTinyDirectiveCommand, setupCommand: input.hookTinyDirectiveSetupCommand }] : []),
       ...(input.hookTinyWithFailuresCommand ? [{ mode: "hook_tiny_with_failures" as const, command: input.hookTinyWithFailuresCommand, setupCommand: input.hookTinyWithFailuresSetupCommand }] : []),
       ...(input.kairnCodexSessionCommand ? [{ mode: "kairn_codex_session" as const, command: input.kairnCodexSessionCommand, setupCommand: input.kairnCodexSessionSetupCommand }] : []),
+      ...(input.kairnCodexSessionNoGovernorCommand ? [{ mode: "kairn_codex_session_no_governor" as const, command: input.kairnCodexSessionNoGovernorCommand, setupCommand: input.kairnCodexSessionNoGovernorSetupCommand }] : []),
       ...(input.mcpFirstCommand ? [{ mode: "mcp_first" as const, command: input.mcpFirstCommand, setupCommand: input.mcpFirstSetupCommand }] : []),
       ...(input.realMcpFirstCommand ? [{ mode: "real_mcp_first" as const, command: input.realMcpFirstCommand, setupCommand: input.realMcpFirstSetupCommand }] : []),
       ...(input.mcpFirstPlusHookFullPrimeCommand ? [{ mode: "mcp_first_plus_hook_full_prime" as const, command: input.mcpFirstPlusHookFullPrimeCommand, setupCommand: input.mcpFirstPlusHookFullPrimeSetupCommand }] : []),
@@ -1056,6 +1059,7 @@ export class KairnRuntime {
     const hookTinyDirectiveReports: BenchmarkReport[] = [];
     const hookTinyWithFailuresReports: BenchmarkReport[] = [];
     const kairnCodexSessionReports: BenchmarkReport[] = [];
+    const kairnCodexSessionNoGovernorReports: BenchmarkReport[] = [];
     const mcpFirstReports: BenchmarkReport[] = [];
     const realMcpFirstReports: BenchmarkReport[] = [];
     const mcpFirstPlusHookFullPrimeReports: BenchmarkReport[] = [];
@@ -1092,6 +1096,7 @@ export class KairnRuntime {
         if (item.mode === "hook_tiny_directive") hookTinyDirectiveReports.push(report);
         if (item.mode === "hook_tiny_with_failures") hookTinyWithFailuresReports.push(report);
         if (item.mode === "kairn_codex_session") kairnCodexSessionReports.push(report);
+        if (item.mode === "kairn_codex_session_no_governor") kairnCodexSessionNoGovernorReports.push(report);
         if (item.mode === "mcp_first") mcpFirstReports.push(report);
         if (item.mode === "real_mcp_first") realMcpFirstReports.push(report);
         if (item.mode === "mcp_first_plus_hook_full_prime") mcpFirstPlusHookFullPrimeReports.push(report);
@@ -1106,6 +1111,7 @@ export class KairnRuntime {
           hookTinyDirectiveReports,
           hookTinyWithFailuresReports,
           kairnCodexSessionReports,
+          kairnCodexSessionNoGovernorReports,
           mcpFirstReports,
           realMcpFirstReports,
           mcpFirstPlusHookFullPrimeReports,
@@ -1134,6 +1140,7 @@ export class KairnRuntime {
       hookTinyDirective: hookTinyDirectiveReports,
       hookTinyWithFailures: hookTinyWithFailuresReports,
       kairnCodexSession: kairnCodexSessionReports,
+      kairnCodexSessionNoGovernor: kairnCodexSessionNoGovernorReports,
       mcpFirst: mcpFirstReports,
       realMcpFirst: realMcpFirstReports,
       mcpFirstPlusHookFullPrime: mcpFirstPlusHookFullPrimeReports,
@@ -1154,6 +1161,7 @@ export class KairnRuntime {
     hookTinyDirectiveReports: BenchmarkReport[];
     hookTinyWithFailuresReports: BenchmarkReport[];
     kairnCodexSessionReports: BenchmarkReport[];
+    kairnCodexSessionNoGovernorReports: BenchmarkReport[];
     mcpFirstReports: BenchmarkReport[];
     realMcpFirstReports: BenchmarkReport[];
     mcpFirstPlusHookFullPrimeReports: BenchmarkReport[];
@@ -1170,6 +1178,7 @@ export class KairnRuntime {
       hookTinyDirective: input.hookTinyDirectiveReports,
       hookTinyWithFailures: input.hookTinyWithFailuresReports,
       kairnCodexSession: input.kairnCodexSessionReports,
+      kairnCodexSessionNoGovernor: input.kairnCodexSessionNoGovernorReports,
       mcpFirst: input.mcpFirstReports,
       realMcpFirst: input.realMcpFirstReports,
       mcpFirstPlusHookFullPrime: input.mcpFirstPlusHookFullPrimeReports,
@@ -3131,8 +3140,48 @@ export class KairnRuntime {
                 };
               } finally {
                 workspaceRuntime.close();
-              }
             }
+          }
+          : input.assistanceMode === "kairn_codex_session_no_governor"
+            ? async ({ workspacePath, prompt }) => {
+                const workspaceRuntime = new KairnRuntime(workspacePath);
+                try {
+                  const { session } = await workspaceRuntime.startTask(prompt);
+                  const response = await workspaceRuntime.findContext({
+                    sessionId: session.id,
+                    query: prompt,
+                    requestType: "initial_brief",
+                    budget: input.benchmarkCase.budget,
+                    refreshIndex: false
+                  });
+                  return {
+                    prompt: [
+                      response.content,
+                      "",
+                      "User task:",
+                      prompt,
+                      "",
+                      "Use this Kairn context first. This publication ablation intentionally disables the context governor, so treat the provided files as candidate context rather than an edit-scope policy."
+                    ].join("\n"),
+                    metadata: {
+                      assistanceMode: "kairn_codex_session_no_governor",
+                      noGovernorAblation: true,
+                      noGovernorSessionId: session.id,
+                      noGovernorMode: response.mode,
+                      noGovernorTokenEstimate: response.tokenEstimate,
+                      noGovernorFiles: response.files,
+                      noGovernorWarnings: response.warnings,
+                      contextDecision: "emit",
+                      primeDecision: "emit",
+                      primeEmitted: true,
+                      primeTokenEstimate: response.tokenEstimate,
+                      primeFiles: response.files
+                    }
+                  };
+                } finally {
+                  workspaceRuntime.close();
+                }
+              }
           : input.assistanceMode === "mcp_first" ||
               input.assistanceMode === "real_mcp_first" ||
               input.assistanceMode === "mcp_first_plus_hook_full_prime"

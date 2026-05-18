@@ -20,6 +20,7 @@ export function buildBenchmarkProofReport(input: {
   hookTinyDirective: BenchmarkReport[];
   hookTinyWithFailures: BenchmarkReport[];
   kairnCodexSession: BenchmarkReport[];
+  kairnCodexSessionNoGovernor: BenchmarkReport[];
   mcpFirst: BenchmarkReport[];
   realMcpFirst: BenchmarkReport[];
   mcpFirstPlusHookFullPrime: BenchmarkReport[];
@@ -34,6 +35,7 @@ export function buildBenchmarkProofReport(input: {
   const hookTinyDirective = optionalLatestReport(input.hookTinyDirective);
   const hookTinyWithFailures = optionalLatestReport(input.hookTinyWithFailures);
   const kairnCodexSession = optionalLatestReport(input.kairnCodexSession);
+  const kairnCodexSessionNoGovernor = optionalLatestReport(input.kairnCodexSessionNoGovernor);
   const mcpFirst = optionalLatestReport(input.mcpFirst);
   const realMcpFirst = optionalLatestReport(input.realMcpFirst);
   const mcpFirstPlusHookFullPrime = optionalLatestReport(input.mcpFirstPlusHookFullPrime);
@@ -47,6 +49,7 @@ export function buildBenchmarkProofReport(input: {
   const hookTinyDirectiveVsBaseline = hookTinyDirective ? compareBenchmarkReports(baseline, hookTinyDirective) : undefined;
   const hookTinyWithFailuresVsBaseline = hookTinyWithFailures ? compareBenchmarkReports(baseline, hookTinyWithFailures) : undefined;
   const kairnCodexSessionVsBaseline = kairnCodexSession ? compareBenchmarkReports(baseline, kairnCodexSession) : undefined;
+  const kairnCodexSessionNoGovernorVsBaseline = kairnCodexSessionNoGovernor ? compareBenchmarkReports(baseline, kairnCodexSessionNoGovernor) : undefined;
   const mcpFirstVsBaseline = mcpFirst ? compareBenchmarkReports(baseline, mcpFirst) : undefined;
   const realMcpFirstVsBaseline = realMcpFirst ? compareBenchmarkReports(baseline, realMcpFirst) : undefined;
   const mcpFirstPlusHookFullPrimeVsBaseline = mcpFirstPlusHookFullPrime ? compareBenchmarkReports(baseline, mcpFirstPlusHookFullPrime) : undefined;
@@ -90,6 +93,7 @@ export function buildBenchmarkProofReport(input: {
       hook_tiny_directive: input.hookTinyDirective,
       hook_tiny_with_failures: input.hookTinyWithFailures,
       kairn_codex_session: input.kairnCodexSession,
+      kairn_codex_session_no_governor: input.kairnCodexSessionNoGovernor,
       mcp_first: input.mcpFirst,
       real_mcp_first: input.realMcpFirst,
       mcp_first_plus_hook_full_prime: input.mcpFirstPlusHookFullPrime,
@@ -106,6 +110,7 @@ export function buildBenchmarkProofReport(input: {
       hook_tiny_directive: input.hookTinyDirective,
       hook_tiny_with_failures: input.hookTinyWithFailures,
       kairn_codex_session: input.kairnCodexSession,
+      kairn_codex_session_no_governor: input.kairnCodexSessionNoGovernor,
       mcp_first: input.mcpFirst,
       real_mcp_first: input.realMcpFirst,
       mcp_first_plus_hook_full_prime: input.mcpFirstPlusHookFullPrime,
@@ -124,6 +129,7 @@ export function buildBenchmarkProofReport(input: {
     recommendationForDelta("Hook tiny directive vs baseline", hookTinyDirectiveVsBaseline?.observedTokenDelta),
     recommendationForDelta("Hook tiny+failures vs baseline", hookTinyWithFailuresVsBaseline?.observedTokenDelta),
     recommendationForDelta("Kairn Codex session vs baseline", kairnCodexSessionVsBaseline?.observedTokenDelta),
+    recommendationForDelta("Kairn Codex session no-governor vs baseline", kairnCodexSessionNoGovernorVsBaseline?.observedTokenDelta),
     recommendationForDelta("MCP-first vs baseline", mcpFirstVsBaseline?.observedTokenDelta),
     recommendationForDelta("Real MCP-first vs baseline", realMcpFirstVsBaseline?.observedTokenDelta),
     recommendationForDelta("MCP-first + full-prime hook vs baseline", mcpFirstPlusHookFullPrimeVsBaseline?.observedTokenDelta),
@@ -142,6 +148,7 @@ export function buildBenchmarkProofReport(input: {
     ...(hookTinyDirectiveVsBaseline?.observedTokenDelta ? { hookTinyDirectiveVsBaseline: hookTinyDirectiveVsBaseline.observedTokenDelta } : {}),
     ...(hookTinyWithFailuresVsBaseline?.observedTokenDelta ? { hookTinyWithFailuresVsBaseline: hookTinyWithFailuresVsBaseline.observedTokenDelta } : {}),
     ...(kairnCodexSessionVsBaseline?.observedTokenDelta ? { kairnCodexSessionVsBaseline: kairnCodexSessionVsBaseline.observedTokenDelta } : {}),
+    ...(kairnCodexSessionNoGovernorVsBaseline?.observedTokenDelta ? { kairnCodexSessionNoGovernorVsBaseline: kairnCodexSessionNoGovernorVsBaseline.observedTokenDelta } : {}),
     ...(mcpFirstVsBaseline?.observedTokenDelta ? { mcpFirstVsBaseline: mcpFirstVsBaseline.observedTokenDelta } : {}),
     ...(realMcpFirstVsBaseline?.observedTokenDelta ? { realMcpFirstVsBaseline: realMcpFirstVsBaseline.observedTokenDelta } : {}),
     ...(mcpFirstPlusHookFullPrimeVsBaseline?.observedTokenDelta ? { mcpFirstPlusHookFullPrimeVsBaseline: mcpFirstPlusHookFullPrimeVsBaseline.observedTokenDelta } : {}),
@@ -160,6 +167,7 @@ export function buildBenchmarkProofReport(input: {
     ...(hookTinyDirective ? { hookTinyDirective } : {}),
     ...(hookTinyWithFailures ? { hookTinyWithFailures } : {}),
     ...(kairnCodexSession ? { kairnCodexSession } : {}),
+    ...(kairnCodexSessionNoGovernor ? { kairnCodexSessionNoGovernor } : {}),
     ...(mcpFirst ? { mcpFirst } : {}),
     ...(realMcpFirst ? { realMcpFirst } : {}),
     ...(mcpFirstPlusHookFullPrime ? { mcpFirstPlusHookFullPrime } : {}),
@@ -175,6 +183,7 @@ export function buildBenchmarkProofReport(input: {
       hook_tiny_directive: input.hookTinyDirective,
       hook_tiny_with_failures: input.hookTinyWithFailures,
       kairn_codex_session: input.kairnCodexSession,
+      kairn_codex_session_no_governor: input.kairnCodexSessionNoGovernor,
       mcp_first: input.mcpFirst,
       real_mcp_first: input.realMcpFirst,
       mcp_first_plus_hook_full_prime: input.mcpFirstPlusHookFullPrime,
@@ -190,6 +199,7 @@ export function buildBenchmarkProofReport(input: {
       hookTinyDirectiveVsBaseline,
       hookTinyWithFailuresVsBaseline,
       kairnCodexSessionVsBaseline,
+      kairnCodexSessionNoGovernorVsBaseline,
       mcpFirstVsBaseline,
       realMcpFirstVsBaseline,
       mcpFirstPlusHookFullPrimeVsBaseline,
@@ -248,6 +258,7 @@ function buildProofAggregate(input: {
       manualPrimeVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.manual_prime?.medianTokens),
       hookFullPrimeVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.hook_full_prime?.medianTokens),
       kairnCodexSessionVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.kairn_codex_session?.medianTokens),
+      kairnCodexSessionNoGovernorVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.kairn_codex_session_no_governor?.medianTokens),
       realMcpFirstVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.real_mcp_first?.medianTokens),
       mcpFirstPlusHookFullPrimeVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.mcp_first_plus_hook_full_prime?.medianTokens),
       hybridMcpBriefVsBaseline: aggregateDelta(modes.baseline?.medianTokens, modes.hybrid_mcp_brief?.medianTokens)
@@ -451,6 +462,7 @@ function aggregateRecommendations(aggregate: NonNullable<BenchmarkProofReport["a
     manualPrimeVsBaseline: "Manual prime median",
     hookFullPrimeVsBaseline: "Hook full-prime median",
     kairnCodexSessionVsBaseline: "Kairn Codex session median",
+    kairnCodexSessionNoGovernorVsBaseline: "Kairn no-governor median",
     realMcpFirstVsBaseline: "Real MCP-first median",
     mcpFirstPlusHookFullPrimeVsBaseline: "MCP-first + hook median",
     hybridMcpBriefVsBaseline: "Hybrid MCP brief median"

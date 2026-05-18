@@ -1,0 +1,19 @@
+{
+  "entryId": "fresh-publication-v3-preflight",
+  "kind": "matrix",
+  "status": "planned",
+  "entryMetadata": {
+    "label": "Frozen fresh repo preflight",
+    "repoId": "fresh-publication-v3",
+    "language": "mixed",
+    "sizeClass": "mixed",
+    "taskClass": "fresh_preflight",
+    "matrix": "examples/bench/repo-matrix-publication-v3.json"
+  },
+  "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/raw/fresh-publication-v3-preflight.json",
+  "startedAt": "2026-05-18T15:19:30.141Z",
+  "endedAt": "2026-05-18T15:19:30.142Z",
+  "commands": [
+    "kairn bench matrix --matrix examples/bench/repo-matrix-publication-v3.json"
+  ]
+}

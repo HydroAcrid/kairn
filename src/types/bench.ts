@@ -9,6 +9,7 @@ export type BenchmarkAssistanceMode =
   | "hook_tiny_directive"
   | "hook_tiny_with_failures"
   | "kairn_codex_session"
+  | "kairn_codex_session_no_governor"
   | "mcp_first"
   | "real_mcp_first"
   | "mcp_first_plus_hook_full_prime"
@@ -161,7 +162,7 @@ export type BenchmarkDiffScope = {
 
 export type BenchmarkEnduranceTurnResult = {
   turnId: string;
-  mode: "baseline" | "kairn" | "mcp" | "hook_full_prime" | "kairn_codex_session" | "real_mcp_first" | "hybrid_mcp_brief";
+  mode: "baseline" | "kairn" | "mcp" | "hook_full_prime" | "kairn_codex_session" | "kairn_codex_session_no_governor" | "real_mcp_first" | "hybrid_mcp_brief";
   outcome: BenchmarkTaskOutcome;
   observedCodexTokens?: number;
   responseTokens: number;
@@ -179,7 +180,7 @@ export type BenchmarkEnduranceTurnResult = {
 };
 
 export type BenchmarkEnduranceModeReport = {
-  mode: "baseline" | "kairn" | "mcp" | "hook_full_prime" | "kairn_codex_session" | "real_mcp_first" | "hybrid_mcp_brief";
+  mode: "baseline" | "kairn" | "mcp" | "hook_full_prime" | "kairn_codex_session" | "kairn_codex_session_no_governor" | "real_mcp_first" | "hybrid_mcp_brief";
   workspacePath: string;
   sessionId?: string;
   turns: BenchmarkEnduranceTurnResult[];
@@ -230,7 +231,7 @@ export type BenchmarkEnduranceReport = {
 };
 
 export type BenchmarkEnduranceRepeatModeAggregate = {
-  mode: "baseline" | "kairn" | "mcp" | "hook_full_prime" | "kairn_codex_session" | "real_mcp_first" | "hybrid_mcp_brief";
+  mode: "baseline" | "kairn" | "mcp" | "hook_full_prime" | "kairn_codex_session" | "kairn_codex_session_no_governor" | "real_mcp_first" | "hybrid_mcp_brief";
   repeats: number;
   qualityPasses: number;
   activeRuns: number;
@@ -517,6 +518,7 @@ export type BenchmarkProofReport = {
   hookTinyDirective?: BenchmarkReport;
   hookTinyWithFailures?: BenchmarkReport;
   kairnCodexSession?: BenchmarkReport;
+  kairnCodexSessionNoGovernor?: BenchmarkReport;
   mcpFirst?: BenchmarkReport;
   realMcpFirst?: BenchmarkReport;
   mcpFirstPlusHookFullPrime?: BenchmarkReport;
@@ -579,6 +581,7 @@ export type BenchmarkProofReport = {
     hookTinyDirectiveVsBaseline?: BenchmarkComparison["observedTokenDelta"];
     hookTinyWithFailuresVsBaseline?: BenchmarkComparison["observedTokenDelta"];
     kairnCodexSessionVsBaseline?: BenchmarkComparison["observedTokenDelta"];
+    kairnCodexSessionNoGovernorVsBaseline?: BenchmarkComparison["observedTokenDelta"];
     mcpFirstVsBaseline?: BenchmarkComparison["observedTokenDelta"];
     realMcpFirstVsBaseline?: BenchmarkComparison["observedTokenDelta"];
     mcpFirstPlusHookFullPrimeVsBaseline?: BenchmarkComparison["observedTokenDelta"];

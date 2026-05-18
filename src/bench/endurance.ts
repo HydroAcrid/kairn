@@ -35,6 +35,7 @@ type EnduranceMode =
   | "mcp"
   | "hook_full_prime"
   | "kairn_codex_session"
+  | "kairn_codex_session_no_governor"
   | "real_mcp_first"
   | "hybrid_mcp_brief";
 
@@ -65,6 +66,8 @@ type BenchmarkEnduranceInput = {
   hookFullPrimeSetupCommand?: string | undefined;
   kairnCodexSessionCommand?: string | undefined;
   kairnCodexSessionSetupCommand?: string | undefined;
+  kairnCodexSessionNoGovernorCommand?: string | undefined;
+  kairnCodexSessionNoGovernorSetupCommand?: string | undefined;
   realMcpFirstCommand?: string | undefined;
   realMcpFirstSetupCommand?: string | undefined;
   hybridMcpBriefCommand?: string | undefined;
@@ -85,6 +88,9 @@ export async function runBenchmarkEndurance(input: BenchmarkEnduranceInput): Pro
       : []),
     ...(input.kairnCodexSessionCommand
       ? [{ mode: "kairn_codex_session" as const, command: input.kairnCodexSessionCommand, setupCommand: input.kairnCodexSessionSetupCommand }]
+      : []),
+    ...(input.kairnCodexSessionNoGovernorCommand
+      ? [{ mode: "kairn_codex_session_no_governor" as const, command: input.kairnCodexSessionNoGovernorCommand, setupCommand: input.kairnCodexSessionNoGovernorSetupCommand }]
       : []),
     ...(input.realMcpFirstCommand
       ? [{ mode: "real_mcp_first" as const, command: input.realMcpFirstCommand, setupCommand: input.realMcpFirstSetupCommand }]
@@ -157,6 +163,7 @@ async function runEnduranceMode(input: {
     input.mode === "mcp" ||
     input.mode === "hook_full_prime" ||
     input.mode === "kairn_codex_session" ||
+    input.mode === "kairn_codex_session_no_governor" ||
     input.mode === "real_mcp_first" ||
     input.mode === "hybrid_mcp_brief";
   const runtime = needsRuntime ? new KairnRuntime(workspace.workspacePath) : undefined;
@@ -388,6 +395,33 @@ async function runEnduranceTurn(input: {
           "This context was delivered by Kairn's session-bound Codex prompt hook. Continue normally and do not reread already-shown files unless they changed or verification fails."
         ].join("\n")
       : prompt;
+  } else if (input.runtime && input.sessionId && input.mode === "kairn_codex_session_no_governor") {
+    const response = await input.runtime.findContext({
+      sessionId: input.sessionId,
+      query: prompt,
+      requestType: "initial_brief",
+      budget: input.turn.budget,
+      refreshIndex: false
+    });
+    primeMetadata = {
+      noGovernorAblation: true,
+      noGovernorMode: response.mode,
+      noGovernorFiles: response.files,
+      noGovernorTokenEstimate: response.tokenEstimate,
+      noGovernorWarnings: response.warnings,
+      primeDecision: "emit",
+      primeFiles: response.files,
+      primeTokenEstimate: response.tokenEstimate,
+      primeEmitted: true
+    };
+    preparedPrompt = [
+      response.content,
+      "",
+      "User task:",
+      prompt,
+      "",
+      "Use this Kairn context first. This publication ablation intentionally disables suppression and session stop decisions."
+    ].join("\n");
   } else if (
     input.runtime &&
     input.sessionId &&

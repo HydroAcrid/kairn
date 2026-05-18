@@ -224,6 +224,7 @@ function normalizeOfficialEvaluation(value: unknown): BenchmarkCase["officialEva
         "hook_tiny_directive",
         "hook_tiny_with_failures",
         "kairn_codex_session",
+        "kairn_codex_session_no_governor",
         "mcp_first",
         "real_mcp_first",
         "mcp_first_plus_hook_full_prime",

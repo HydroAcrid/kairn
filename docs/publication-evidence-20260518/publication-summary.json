@@ -1,0 +1,43 @@
+{
+  "id": "kairn-scientific-evidence-v3",
+  "name": "Kairn Scientific Evidence Campaign v3",
+  "generatedAt": "2026-05-18T15:19:30.143Z",
+  "planPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/publication-plan-v3.json",
+  "outDir": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518",
+  "dryRun": true,
+  "model": "gpt-5.4-mini",
+  "repeat": 3,
+  "aggregate": {
+    "entries": 0,
+    "resultRows": 0,
+    "qualityPassRate": 0,
+    "medianValidSavingsRate": 0,
+    "modes": {},
+    "byTaskClass": {},
+    "classifications": {},
+    "failurePatterns": [],
+    "successCriteria": {
+      "qualityWithinFivePoints": true,
+      "activeMedianSavingsAtLeast15": false,
+      "noRepeatedHarmfulPattern": true,
+      "hasMcpEvidence": false,
+      "hasEnduranceAfterTurnOneEvidence": false
+    },
+    "overhead": {
+      "setupTimeMsMedian": 0,
+      "indexRefreshMsMedian": 0,
+      "hookOrPromptLatencyMsMedian": 0,
+      "hookOrMcpLatencyMsP95": 0,
+      "mcpCallsPerSuccessfulRunMedian": 0,
+      "kairnContextTokensMedian": 0,
+      "netTokenSavings": 0
+    }
+  },
+  "outputs": {
+    "summaryPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/publication-summary.json",
+    "resultsCsvPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/publication-results.csv",
+    "failuresCsvPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/publication-failures.csv",
+    "manifestPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/publication-manifest.json",
+    "markdownPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/kairn_publication_evidence_report_2026-05-18.md"
+  }
+}

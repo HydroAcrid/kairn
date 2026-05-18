@@ -1,0 +1,174 @@
+{
+  "id": "repo-matrix-publication-v3",
+  "name": "Kairn Publication V3 Fresh Holdout",
+  "gates": {
+    "maxStateMb": 400,
+    "maxPrimeLatencyMs": 12000,
+    "maxRepoPreflightMs": 180000,
+    "expectedTopK": 5,
+    "requireSuppressionForWeakCases": true
+  },
+  "repos": [
+    {
+      "id": "webpack",
+      "name": "webpack",
+      "repoUrl": "https://github.com/webpack/webpack.git",
+      "ref": "5d4859590a0f9ca41d17a35a0d0023b1326943ed",
+      "cloneDepth": 1,
+      "language": "javascript",
+      "sizeClass": "large",
+      "cases": [
+        {
+          "id": "normal-module-factory-resolver",
+          "mode": "context",
+          "contextBehavior": "multi_file_debug",
+          "task": "Debug webpack module resolution when NormalModuleFactory coordinates resolver creation, parser hooks, and dependency factories.",
+          "expectedFiles": ["lib/NormalModuleFactory.js", "lib/ResolverFactory.js", "lib/javascript/JavascriptParser.js"],
+          "excludedFiles": ["test/", "examples/", "benchmark/", "declarations/"],
+          "budget": 900
+        }
+      ]
+    },
+    {
+      "id": "httpcore",
+      "name": "httpcore",
+      "repoUrl": "https://github.com/encode/httpcore.git",
+      "ref": "10a658221deb38a4c5b16db55ab554b0bf731707",
+      "cloneDepth": 1,
+      "language": "python",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "sync-connection-pool-dispatch",
+          "mode": "context",
+          "contextBehavior": "failure_first",
+          "task": "Debug httpcore sync request dispatch after connection failure output points at the connection pool and HTTPConnection retry state.",
+          "expectedFiles": ["httpcore/_sync/connection_pool.py", "httpcore/_sync/connection.py"],
+          "excludedFiles": ["docs/", "tests/"],
+          "budget": 850
+        }
+      ]
+    },
+    {
+      "id": "sqlalchemy",
+      "name": "SQLAlchemy",
+      "repoUrl": "https://github.com/sqlalchemy/sqlalchemy.git",
+      "ref": "7f46c2bace398cd00a0587468904c549bdc1ea03",
+      "cloneDepth": 1,
+      "language": "python",
+      "sizeClass": "large",
+      "cases": [
+        {
+          "id": "orm-session-unitofwork-flush",
+          "mode": "context",
+          "contextBehavior": "multi_file_debug",
+          "task": "Debug SQLAlchemy ORM flush behavior when Session coordinates unit-of-work persistence and state synchronization.",
+          "expectedFiles": ["lib/sqlalchemy/orm/session.py", "lib/sqlalchemy/orm/unitofwork.py", "lib/sqlalchemy/orm/persistence.py"],
+          "excludedFiles": ["test/", "doc/", "examples/"],
+          "budget": 900
+        }
+      ]
+    },
+    {
+      "id": "gorm",
+      "name": "GORM",
+      "repoUrl": "https://github.com/go-gorm/gorm.git",
+      "ref": "d0ee5e2296150d691364c5f4f7f2b32abde04545",
+      "cloneDepth": 1,
+      "language": "go",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "create-callback-statement",
+          "mode": "context",
+          "contextBehavior": "multi_file_debug",
+          "task": "Debug GORM create callback behavior when schema fields are read from Statement values before inserting rows.",
+          "expectedFiles": ["callbacks/create.go", "statement.go", "schema/field.go"],
+          "excludedFiles": ["tests/", "*/tests/", "*_test.go"],
+          "budget": 850
+        }
+      ]
+    },
+    {
+      "id": "cobra",
+      "name": "Cobra",
+      "repoUrl": "https://github.com/spf13/cobra.git",
+      "ref": "ad460ea8f249db69c943a365fb84f3a59042d54e",
+      "cloneDepth": 1,
+      "language": "go",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "command-args-validation",
+          "mode": "context",
+          "contextBehavior": "source_rescue",
+          "task": "Debug Cobra command execution when argument validation and command dispatch interact in the Command implementation.",
+          "expectedFiles": ["command.go", "args.go"],
+          "excludedFiles": ["site/", "doc/", "*_test.go"],
+          "budget": 800
+        }
+      ]
+    },
+    {
+      "id": "okhttp",
+      "name": "OkHttp",
+      "repoUrl": "https://github.com/square/okhttp.git",
+      "ref": "1d9a8ba6c335355da9c71586abf82c9516e1bac5",
+      "cloneDepth": 1,
+      "language": "java-kotlin",
+      "sizeClass": "large",
+      "cases": [
+        {
+          "id": "real-interceptor-chain",
+          "mode": "context",
+          "contextBehavior": "multi_file_debug",
+          "task": "Debug OkHttp interceptor chain behavior when real calls proceed through application and network interceptors.",
+          "expectedFiles": ["okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/http/RealInterceptorChain.kt", "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/connection/RealCall.kt"],
+          "excludedFiles": ["**/src/test/", "docs/", "samples/"],
+          "budget": 900
+        }
+      ]
+    },
+    {
+      "id": "catch2",
+      "name": "Catch2",
+      "repoUrl": "https://github.com/catchorg/Catch2.git",
+      "ref": "69e0473f6e98d47c93518424c08ee69ee632c0f0",
+      "cloneDepth": 1,
+      "language": "cpp",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "session-commandline-config",
+          "mode": "context",
+          "contextBehavior": "multi_file_debug",
+          "task": "Debug Catch2 session startup when command line parsing populates config before tests execute.",
+          "expectedFiles": ["src/catch2/catch_session.cpp", "src/catch2/catch_config.cpp", "src/catch2/internal/catch_commandline.cpp"],
+          "excludedFiles": ["tests/", "docs/", "examples/", "extras/"],
+          "budget": 900
+        }
+      ]
+    },
+    {
+      "id": "weak-signal-canary",
+      "name": "webpack weak-signal canary",
+      "repoUrl": "https://github.com/webpack/webpack.git",
+      "ref": "5d4859590a0f9ca41d17a35a0d0023b1326943ed",
+      "cloneDepth": 1,
+      "language": "javascript",
+      "sizeClass": "large",
+      "cases": [
+        {
+          "id": "vague-cleanup",
+          "mode": "context",
+          "contextBehavior": "weak_signal",
+          "task": "Clean this up and make the confusing part better.",
+          "expectedFiles": [],
+          "excludedFiles": ["test/", "examples/", "benchmark/"],
+          "successCriteria": ["suppress low-confidence context"],
+          "budget": 500
+        }
+      ]
+    }
+  ]
+}

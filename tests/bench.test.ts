@@ -656,6 +656,15 @@ describe("benchmark suite and scoring", () => {
     }
   });
 
+  it("accepts publication v3 plan with no-governor ablation mode", () => {
+    const plan = loadPublicationPlan("examples/bench/publication-plan-v3.json");
+    expect(() => validatePublicationPlan({ plan })).not.toThrow();
+    const ablation = plan.entries?.find((entry) => entry.id === "ablation-proof-repeat3");
+    expect(ablation?.modes).toContain("kairn_codex_session_no_governor");
+    const mcpEndurance = plan.entries?.find((entry) => entry.id === "httpcore-mcp-endurance-repeat3");
+    expect(mcpEndurance?.suite).toBe("examples/bench/endurance-httpcore.json");
+  });
+
   it("supports publication CLI dry-run JSON output", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-publication-cli-"));
     try {
@@ -717,6 +726,9 @@ describe("benchmark suite and scoring", () => {
     const requestsLong = loadBenchmarkEnduranceSuite({
       suitePath: path.resolve("examples/bench/endurance-requests-10turn.json")
     });
+    const httpcore = loadBenchmarkEnduranceSuite({
+      suitePath: path.resolve("examples/bench/endurance-httpcore.json")
+    });
 
     expect(axios.turns.map((turn) => turn.id)).toEqual(["diagnose", "fix", "verify", "cleanup"]);
     expect(flask.seed?.setupPatchFile).toMatch(/flask-dispatch-request-view\.patch$/);
@@ -730,6 +742,8 @@ describe("benchmark suite and scoring", () => {
     expect(gin.finalSourceInvariants?.[0]?.requiredPresent).toContain("Handlers: group.combineHandlers(handlers),");
     expect(requestsLong.turns).toHaveLength(10);
     expect(requestsLong.turns.map((turn) => turn.id)).toContain("repeat-context-check");
+    expect(httpcore.seed?.setupPatchFile).toMatch(/httpcore-connect-failed-initial-state\.patch$/);
+    expect(httpcore.turns).toHaveLength(6);
   });
 
   it("cleans weak ledger invariants for endurance MCP guidance", () => {

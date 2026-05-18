@@ -35,6 +35,7 @@ export type PublicationEntryKind =
 export type PublicationMode =
   | "baseline"
   | "kairn_codex_session"
+  | "kairn_codex_session_no_governor"
   | "real_mcp_first"
   | "hybrid_mcp_brief"
   | "hook_full_prime"
@@ -54,6 +55,7 @@ const PUBLICATION_ENTRY_KINDS = new Set<PublicationEntryKind>([
 const PUBLICATION_MODES = new Set<PublicationMode>([
   "baseline",
   "kairn_codex_session",
+  "kairn_codex_session_no_governor",
   "real_mcp_first",
   "hybrid_mcp_brief",
   "hook_full_prime",
@@ -204,6 +206,7 @@ export type PublicationAggregate = {
     hasMcpEvidence: boolean;
     hasEnduranceAfterTurnOneEvidence: boolean;
   };
+  overhead: PublicationOverheadSummary;
 };
 
 export type PublicationModeAggregate = {
@@ -224,6 +227,16 @@ export type PublicationModeAggregate = {
   mcpCalls: number;
   repeatedFilesAvoided: number;
   scopeViolations: number;
+};
+
+export type PublicationOverheadSummary = {
+  setupTimeMsMedian: number;
+  indexRefreshMsMedian: number;
+  hookOrPromptLatencyMsMedian: number;
+  hookOrMcpLatencyMsP95: number;
+  mcpCallsPerSuccessfulRunMedian: number;
+  kairnContextTokensMedian: number;
+  netTokenSavings: number;
 };
 
 export type PublicationReport = {
@@ -270,7 +283,7 @@ export async function runPublicationCampaign(options: PublicationRunOptions): Pr
     }));
   }
   const rows = artifacts.flatMap((artifact) => artifactToRows(artifact, entryById(entries, artifact.entryId)));
-  const aggregate = aggregatePublicationRows(rows);
+  const aggregate = aggregatePublicationRows(rows, artifacts);
   const outputs = publicationOutputPaths(outDir, plan);
   const report: PublicationReport = {
     id: plan.id,
@@ -434,6 +447,12 @@ async function executePublicationEntry(
             kairnCodexSessionSetupCommand: setupCommandFor(plan, entry, "kairn_codex_session")
           }
         : {}),
+      ...(modes.includes("kairn_codex_session_no_governor")
+        ? {
+            kairnCodexSessionNoGovernorCommand: commandFor(plan, entry, "kairn_codex_session_no_governor", model),
+            kairnCodexSessionNoGovernorSetupCommand: setupCommandFor(plan, entry, "kairn_codex_session_no_governor")
+          }
+        : {}),
       ...(modes.includes("real_mcp_first")
         ? {
             realMcpFirstCommand: commandFor(plan, entry, "real_mcp_first", model),
@@ -462,6 +481,7 @@ async function executePublicationEntry(
         ...(modes.includes("manual_prime") ? { manualPrimeCommand: commandFor(plan, entry, "manual_prime", model) } : {}),
         ...(modes.includes("hook_full_prime") ? { hookFullPrimeCommand: commandFor(plan, entry, "hook_full_prime", model), hookFullPrimeSetupCommand: setupCommandFor(plan, entry, "hook_full_prime") } : {}),
         ...(modes.includes("kairn_codex_session") ? { kairnCodexSessionCommand: commandFor(plan, entry, "kairn_codex_session", model), kairnCodexSessionSetupCommand: setupCommandFor(plan, entry, "kairn_codex_session") } : {}),
+        ...(modes.includes("kairn_codex_session_no_governor") ? { kairnCodexSessionNoGovernorCommand: commandFor(plan, entry, "kairn_codex_session_no_governor", model), kairnCodexSessionNoGovernorSetupCommand: setupCommandFor(plan, entry, "kairn_codex_session_no_governor") } : {}),
         ...(modes.includes("real_mcp_first") ? { realMcpFirstCommand: commandFor(plan, entry, "real_mcp_first", model), realMcpFirstSetupCommand: setupCommandFor(plan, entry, "real_mcp_first") } : {}),
         ...(modes.includes("hybrid_mcp_brief") ? { hybridMcpBriefCommand: commandFor(plan, entry, "hybrid_mcp_brief", model), hybridMcpBriefSetupCommand: setupCommandFor(plan, entry, "hybrid_mcp_brief") } : {}),
         agentTimeoutMs: entry.timeoutMs ?? plan.defaults?.agentTimeoutMs,
@@ -568,6 +588,7 @@ function proofRows(report: BenchmarkProofReport, artifact: PublicationEntryArtif
     ["manual_prime", report.observedTokenDeltas.manualPrimeVsBaseline, report.manualPrime],
     ["hook_full_prime", report.observedTokenDeltas.hookFullPrimeVsBaseline, report.hookFullPrime],
     ["kairn_codex_session", report.observedTokenDeltas.kairnCodexSessionVsBaseline, report.kairnCodexSession],
+    ["kairn_codex_session_no_governor", report.observedTokenDeltas.kairnCodexSessionNoGovernorVsBaseline, report.kairnCodexSessionNoGovernor],
     ["real_mcp_first", report.observedTokenDeltas.realMcpFirstVsBaseline, report.realMcpFirst],
     ["hybrid_mcp_brief", report.observedTokenDeltas.hybridMcpBriefVsBaseline, report.hybridMcpBrief]
   ];
@@ -850,7 +871,7 @@ function baseRow(input: {
   };
 }
 
-export function aggregatePublicationRows(rows: PublicationResultRow[]): PublicationAggregate {
+export function aggregatePublicationRows(rows: PublicationResultRow[], artifacts: PublicationEntryArtifact[] = []): PublicationAggregate {
   const modes: Record<string, PublicationModeAggregate> = {};
   const byTaskClass: Record<string, PublicationModeAggregate> = {};
   const classifications: Partial<Record<BenchmarkAssistClassification, number>> = {};
@@ -882,9 +903,10 @@ export function aggregatePublicationRows(rows: PublicationResultRow[]): Publicat
       qualityWithinFivePoints: baselineRows.length === 0 || assistedPassRate + 0.05 >= baselinePassRate,
       activeMedianSavingsAtLeast15: median(activeSavingsRates) >= 0.15,
       noRepeatedHarmfulPattern: !failures.some((failure) => /harmful/i.test(failure.pattern) && failure.count > 1),
-      hasMcpEvidence: rows.some((row) => row.mcpCalls > 0 || row.mode.includes("mcp")),
+      hasMcpEvidence: rows.some((row) => row.mcpCalls > 0),
       hasEnduranceAfterTurnOneEvidence: rows.some((row) => row.kind === "endurance" && row.repeatedFilesAvoided > 0)
-    }
+    },
+    overhead: aggregatePublicationOverhead(rows, artifacts)
   };
 }
 
@@ -958,8 +980,67 @@ function failurePatterns(rows: PublicationResultRow[]): Array<{ pattern: string;
     .sort((a, b) => b.count - a.count || a.pattern.localeCompare(b.pattern));
 }
 
+function aggregatePublicationOverhead(rows: PublicationResultRow[], artifacts: PublicationEntryArtifact[]): PublicationOverheadSummary {
+  const samples = {
+    setupMs: [] as number[],
+    indexMs: [] as number[],
+    latencyMs: [] as number[],
+    contextTokens: [] as number[]
+  };
+  for (const artifact of artifacts) {
+    collectOverheadSamples(artifact.report, samples, 0);
+  }
+  const mcpCallsPerSuccessfulRun = rows
+    .filter((row) => row.qualityPassed && row.mcpCalls > 0)
+    .map((row) => row.mcpCalls);
+  const validSavings = rows.reduce((total, row) => total + row.validSavings, 0);
+  const invalidSavings = rows.reduce((total, row) => total + row.invalidSavings, 0);
+  const emittedContextTokens = samples.contextTokens.reduce((total, value) => total + value, 0);
+  return {
+    setupTimeMsMedian: Math.round(median(samples.setupMs)),
+    indexRefreshMsMedian: Math.round(median(samples.indexMs)),
+    hookOrPromptLatencyMsMedian: Math.round(median(samples.latencyMs)),
+    hookOrMcpLatencyMsP95: Math.round(percentile(samples.latencyMs, 0.95)),
+    mcpCallsPerSuccessfulRunMedian: median(mcpCallsPerSuccessfulRun),
+    kairnContextTokensMedian: Math.round(median(samples.contextTokens)),
+    netTokenSavings: Math.round(validSavings - invalidSavings - emittedContextTokens)
+  };
+}
+
+function collectOverheadSamples(
+  value: unknown,
+  samples: {
+    setupMs: number[];
+    indexMs: number[];
+    latencyMs: number[];
+    contextTokens: number[];
+  },
+  depth: number
+): void {
+  if (depth > 10 || value === null || value === undefined) return;
+  if (Array.isArray(value)) {
+    for (const item of value) collectOverheadSamples(item, samples, depth + 1);
+    return;
+  }
+  if (!isRecord(value)) return;
+  for (const [key, item] of Object.entries(value)) {
+    const numeric = numberMetadata(item);
+    if (numeric > 0) {
+      if (["workspaceSetupMs", "assistanceSetupMs", "setupElapsedMs", "setupTimeMs"].includes(key)) samples.setupMs.push(numeric);
+      if (/index.*Ms$/i.test(key) || ["initMs", "refreshedInventoryMs"].includes(key)) samples.indexMs.push(numeric);
+      if (["promptPrepareMs", "primeLatencyMs", "hookLatencyMs", "mcpLatencyMs", "mcpToolElapsedMs", "contextLatencyMs"].includes(key)) {
+        samples.latencyMs.push(numeric);
+      }
+      if (["primeTokenEstimate", "hookOutputTokens", "noGovernorTokenEstimate", "contextTokenEstimate", "kairnContextTokens"].includes(key)) {
+        samples.contextTokens.push(numeric);
+      }
+    }
+    collectOverheadSamples(item, samples, depth + 1);
+  }
+}
+
 function writePublicationOutputs(report: PublicationReport): void {
-  report.aggregate = aggregatePublicationRows(report.rows);
+  report.aggregate = aggregatePublicationRows(report.rows, report.artifacts);
   fs.writeFileSync(report.outputs.summaryPath, `${JSON.stringify({ ...report, rows: undefined, artifacts: undefined }, null, 2)}\n`);
   fs.writeFileSync(report.outputs.resultsCsvPath, rowsToCsv(report.rows));
   fs.writeFileSync(report.outputs.failuresCsvPath, rowsToCsv(report.rows.filter((row) => row.failurePattern || row.harmfulAssist || row.overAssist || !row.qualityPassed)));
@@ -1098,6 +1179,7 @@ function formatPublicationMarkdown(report: PublicationReport): string {
     `- Active median savings >= 15%: ${report.aggregate.successCriteria.activeMedianSavingsAtLeast15}`,
     `- MCP evidence present: ${report.aggregate.successCriteria.hasMcpEvidence}`,
     `- Endurance repeat evidence present: ${report.aggregate.successCriteria.hasEnduranceAfterTurnOneEvidence}`,
+    `- Net token savings after emitted Kairn context estimate: ${Math.round(report.aggregate.overhead.netTokenSavings)}`,
     "",
     "## Entry Results",
     "",
@@ -1135,6 +1217,21 @@ function formatPublicationMarkdown(report: PublicationReport): string {
         String(item.requestEvidenceRows),
         String(item.scopeViolations)
       ])
+    ),
+    "",
+    "## Overhead",
+    "",
+    markdownTable(
+      ["Metric", "Value"],
+      [
+        ["Median setup time", `${report.aggregate.overhead.setupTimeMsMedian}ms`],
+        ["Median index refresh time", `${report.aggregate.overhead.indexRefreshMsMedian}ms`],
+        ["Median hook/prompt latency", `${report.aggregate.overhead.hookOrPromptLatencyMsMedian}ms`],
+        ["p95 hook/MCP latency", `${report.aggregate.overhead.hookOrMcpLatencyMsP95}ms`],
+        ["Median MCP calls per successful run", String(report.aggregate.overhead.mcpCallsPerSuccessfulRunMedian)],
+        ["Median Kairn context tokens emitted", String(report.aggregate.overhead.kairnContextTokensMedian)],
+        ["Net token savings after Kairn output estimate", String(Math.round(report.aggregate.overhead.netTokenSavings))]
+      ]
     ),
     "",
     "## Task Class Results",
@@ -1345,6 +1442,13 @@ function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const middle = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 0 ? ((sorted[middle - 1] ?? 0) + (sorted[middle] ?? 0)) / 2 : sorted[middle] ?? 0;
+}
+
+function percentile(values: number[], p: number): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * p) - 1));
+  return sorted[index] ?? 0;
 }
 
 function ratio(numerator: number, denominator: number): number {

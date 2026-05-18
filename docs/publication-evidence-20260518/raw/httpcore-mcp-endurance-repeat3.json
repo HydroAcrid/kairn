@@ -1,0 +1,22 @@
+{
+  "entryId": "httpcore-mcp-endurance-repeat3",
+  "kind": "endurance",
+  "status": "planned",
+  "entryMetadata": {
+    "label": "Fresh httpcore MCP endurance repeat-3",
+    "repoId": "httpcore",
+    "language": "python",
+    "sizeClass": "medium",
+    "taskClass": "session_repeat",
+    "contextBehavior": "source_rescue",
+    "suite": "examples/bench/endurance-httpcore.json"
+  },
+  "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/raw/httpcore-mcp-endurance-repeat3.json",
+  "startedAt": "2026-05-18T15:19:30.143Z",
+  "endedAt": "2026-05-18T15:19:30.143Z",
+  "commands": [
+    "endurance repeat=3",
+    "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+    "real_mcp_first: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}"
+  ]
+}

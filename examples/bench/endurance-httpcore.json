@@ -1,0 +1,101 @@
+{
+  "id": "endurance-httpcore-connection-state",
+  "name": "httpcore Connection State Endurance",
+  "task": "Debug a seeded httpcore connection-state regression across a longer source-rescue session.",
+  "seed": {
+    "repoUrl": "https://github.com/encode/httpcore.git",
+    "ref": "10a658221deb38a4c5b16db55ab554b0bf731707",
+    "cloneDepth": 1,
+    "setupPatchFile": "./patches/httpcore-connect-failed-initial-state.patch",
+    "expectedFailureCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('httpcore/_sync/connection.py').read_text()\nfixed = 'self._connect_failed: bool = False' in source and 'self._connect_failed: bool = True' not in source\nraise SystemExit(1 if fixed else 0)\nPY",
+    "testCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('httpcore/_sync/connection.py').read_text()\nfixed = 'self._connect_failed: bool = False' in source and 'self._connect_failed: bool = True' not in source\nraise SystemExit(0 if fixed else 1)\nPY"
+  },
+  "turns": [
+    {
+      "id": "diagnose",
+      "task": "Diagnose why a fresh sync HTTPConnection starts as failed before any connection attempt.",
+      "agentPrompt": "Diagnose the seeded httpcore sync connection regression. A fresh HTTPConnection should not start in a failed state before any connection attempt. Identify the smallest production source file involved; do not edit yet.",
+      "expectedFiles": ["httpcore/_sync/connection.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["tests/", "docs/"],
+      "budget": 800
+    },
+    {
+      "id": "fix-source",
+      "task": "Fix the sync HTTPConnection initial failure-state regression.",
+      "agentPrompt": "Fix the seeded regression in the smallest production source file. A new sync HTTPConnection should initialize _connect_failed to False. Do not edit tests, docs, generated files, or unrelated connection pool files.",
+      "expectedFiles": ["httpcore/_sync/connection.py"],
+      "requiredTouchedFiles": ["httpcore/_sync/connection.py"],
+      "excludedFiles": ["tests/", "docs/"],
+      "verificationCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('httpcore/_sync/connection.py').read_text()\nfixed = 'self._connect_failed: bool = False' in source and 'self._connect_failed: bool = True' not in source\nraise SystemExit(0 if fixed else 1)\nPY",
+      "sourceInvariants": [
+        {
+          "file": "httpcore/_sync/connection.py",
+          "requiredPresent": ["self._connect_failed: bool = False"],
+          "requiredAbsent": ["self._connect_failed: bool = True"]
+        }
+      ],
+      "allowedDiffScopes": [
+        {
+          "file": "httpcore/_sync/connection.py",
+          "symbols": ["HTTPConnection.__init__"],
+          "allowWholeFile": true
+        }
+      ],
+      "budget": 800
+    },
+    {
+      "id": "verification-failure",
+      "task": "Handle verification output without broadening scope.",
+      "agentPrompt": "Run the smallest verification check for the connection-state fix. If it passes, keep the source scope unchanged. If it fails, use the failure output before reading new files.",
+      "expectedFiles": ["httpcore/_sync/connection.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["tests/", "docs/", "httpcore/_sync/connection_pool.py"],
+      "verificationCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('httpcore/_sync/connection.py').read_text()\nfixed = 'self._connect_failed: bool = False' in source and 'self._connect_failed: bool = True' not in source\nraise SystemExit(0 if fixed else 1)\nPY",
+      "budget": 650
+    },
+    {
+      "id": "review-diff",
+      "task": "Review the diff and confirm scope discipline.",
+      "agentPrompt": "Review the current diff. Confirm the fix stayed in the sync HTTPConnection production source and did not edit tests, docs, or connection_pool.py.",
+      "expectedFiles": ["httpcore/_sync/connection.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["tests/", "docs/", "httpcore/_sync/connection_pool.py"],
+      "budget": 600
+    },
+    {
+      "id": "repeat-context",
+      "task": "Avoid rereading unchanged context.",
+      "agentPrompt": "Continue from the known source and summarize the invariant for future turns. Do not reread unchanged files unless the verification target changed.",
+      "expectedFiles": ["httpcore/_sync/connection.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["tests/", "docs/", "httpcore/_sync/connection_pool.py"],
+      "budget": 500
+    },
+    {
+      "id": "cleanup",
+      "task": "Final cleanup check.",
+      "agentPrompt": "Perform a final cleanup check: the only intended production change is the _connect_failed initial state in sync HTTPConnection. Keep any response concise.",
+      "expectedFiles": ["httpcore/_sync/connection.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["tests/", "docs/", "httpcore/_sync/connection_pool.py"],
+      "verificationCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('httpcore/_sync/connection.py').read_text()\nfixed = 'self._connect_failed: bool = False' in source and 'self._connect_failed: bool = True' not in source\nraise SystemExit(0 if fixed else 1)\nPY",
+      "budget": 500
+    }
+  ],
+  "finalVerificationCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('httpcore/_sync/connection.py').read_text()\nfixed = 'self._connect_failed: bool = False' in source and 'self._connect_failed: bool = True' not in source\nraise SystemExit(0 if fixed else 1)\nPY",
+  "finalSourceInvariants": [
+    {
+      "file": "httpcore/_sync/connection.py",
+      "requiredPresent": ["self._connect_failed: bool = False"],
+      "requiredAbsent": ["self._connect_failed: bool = True"]
+    }
+  ],
+  "allowedDiffScopes": [
+    {
+      "file": "httpcore/_sync/connection.py",
+      "symbols": ["HTTPConnection.__init__"],
+      "allowWholeFile": true
+    }
+  ]
+}

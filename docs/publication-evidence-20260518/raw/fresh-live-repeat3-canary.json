@@ -1,0 +1,21 @@
+{
+  "entryId": "fresh-live-repeat3-canary",
+  "kind": "proof",
+  "status": "planned",
+  "entryMetadata": {
+    "label": "Repeat-3 live seeded canary for pass/pass token savings",
+    "repoId": "seeded-fresh-holdout-v2",
+    "language": "mixed",
+    "sizeClass": "mixed",
+    "taskClass": "source_rescue",
+    "suite": "examples/bench/seeded-fresh-holdout-v2-20260511.json"
+  },
+  "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/raw/fresh-live-repeat3-canary.json",
+  "startedAt": "2026-05-18T15:19:30.142Z",
+  "endedAt": "2026-05-18T15:19:30.142Z",
+  "commands": [
+    "proof repeat=3",
+    "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+    "kairn_codex_session: node '/Users/kevindotel/Documents/Projects/kairn/dist/cli.js' codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}"
+  ]
+}

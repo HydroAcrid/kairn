@@ -1,0 +1,22 @@
+{
+  "entryId": "ablation-proof-repeat3",
+  "kind": "proof",
+  "status": "planned",
+  "entryMetadata": {
+    "label": "Governor ablation on seeded one-shot tasks",
+    "repoId": "seeded-ablation-canary",
+    "language": "mixed",
+    "sizeClass": "mixed",
+    "taskClass": "ablation",
+    "suite": "examples/bench/seeded-fresh-holdout-20260510.json"
+  },
+  "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/raw/ablation-proof-repeat3.json",
+  "startedAt": "2026-05-18T15:19:30.142Z",
+  "endedAt": "2026-05-18T15:19:30.142Z",
+  "commands": [
+    "proof repeat=3",
+    "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
+    "kairn_codex_session: node '/Users/kevindotel/Documents/Projects/kairn/dist/cli.js' codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}",
+    "kairn_codex_session_no_governor: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}"
+  ]
+}
