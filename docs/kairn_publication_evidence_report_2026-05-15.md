@@ -145,13 +145,53 @@ Interpretation:
 - MCP now has clean protocol evidence and one live proof that an actual MCP call can return the right source with no noise and rescue quality.
 - The campaign still needs repeat-3 or repeat-5 pass/pass MCP cases before claiming MCP token savings. The next MCP slice should use broad/failure/endurance cases where Kairn is expected to emit or shrink, not cheap one-shot tasks where correct behavior is often suppression.
 
+### Scoped MCP Endurance Repeat-3
+
+Repeat-3 MCP artifacts:
+
+- Summary: `docs/publication-evidence-20260515/mcp-repeat-subset-v1/mcp-repeat3-summary.json`
+- Requests raw runs:
+  - `docs/publication-evidence-20260515/mcp-repeat-subset-v1/raw/requests-real-mcp-repeat2.json`
+  - `docs/publication-evidence-20260515/mcp-repeat-subset-v1/raw/requests-real-mcp-repeat3-extra.json`
+- FastAPI raw runs:
+  - `docs/publication-evidence-20260515/mcp-repeat-subset-v1/raw/fastapi-real-mcp-repeat2.json`
+  - `docs/publication-evidence-20260515/mcp-repeat-subset-v1/raw/fastapi-real-mcp-repeat3-extra.json`
+
+Results:
+
+| Suite | Repeats | Baseline quality | MCP quality | Pass/pass savings rows | Median pass/pass savings | MCP calls | MCP useful files |
+| --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| Requests 10-turn | 3 | 2/3 | 3/3 | 2/3 | 36.75% | 1, 1, 3 | `src/requests/sessions.py` |
+| FastAPI 4-turn | 3 | 3/3 | 3/3 | 3/3 | 64.72% | 1, 1, 1 | `fastapi/routing.py` |
+
+Combined pass/pass rows:
+
+- Pass/pass rows: 5.
+- Median pass/pass savings: 50.79%.
+- Aggregate pass/pass savings: 382,234 tokens / 50.07%.
+- MCP returned exactly the active production source in every run.
+- Harmful MCP runs: 0.
+- Over-assist MCP runs: 0.
+
+Additional evidence:
+
+- One Requests repeat was a quality-rescue row: baseline failed by touching `tests/test_requests.py` during repeated-context turns, while MCP passed. It is not counted as pass/pass savings, but it is positive quality evidence.
+- In every run, MCP established source on the first diagnose/source-rescue turn and then switched subsequent turns to `continue_known_source` guidance.
+- One Requests quality-rescue run had 3 MCP tool calls: `kairn_prepare_task`, `kairn_read_file`, and `kairn_find_context`, all clustered at the start and all returning only `src/requests/sessions.py`. This is still sparse over a 10-turn session and did not create file fanout.
+
+Interpretation:
+
+- MCP now has repeat-3 endurance evidence on two repos with actual recorded MCP tool calls.
+- This is the first clean MCP token-savings claim in the campaign: 5 pass/pass rows, median 50.79% savings, with no harmful or over-assist rows.
+- The strongest product lesson is that MCP is working best as a long-session source/invariant latch: call once at the beginning, then carry forward the active source and stop asking unless failure or scope changes.
+
 ### Current Interpretation
 
 - The governor upgrade is holding for source-rescue in session mode across mixed fresh repos.
 - Cheap/source-rescue boundary tasks still have variance: Kairn can rescue quality or save heavily, but can over-assist when baseline already solves unusually cheaply. The current run shows this is not repeated enough to justify another rule yet.
 - Endurance evidence now supports the long-session story after the current-turn invariant fix: Kairn can stay active after turn 1 while emitting less context.
-- MCP/hybrid now has clean protocol evidence and one live quality-rescue proof, but it still needs pass/pass repeat evidence before making a strong MCP savings claim.
-- Next campaign work should run a repeat MCP subset on broad/failure/endurance tasks and then continue to FastAPI endurance or SWE-Pro official evaluation. Do not keep tuning the one-shot slice unless the same cheap-boundary over-assist repeats on new repos.
+- MCP/hybrid now has clean protocol evidence and repeat-3 endurance evidence with actual tool calls. It is now reasonable to claim MCP savings for long-session source-rescue/debug workflows, not just protocol delivery.
+- Next campaign work should continue to SWE-Pro official evaluation and a broader fresh MCP holdout, not more tuning on Requests/FastAPI unless a new repeated failure appears.
 
 ## Verification
 

@@ -1,0 +1,512 @@
+{
+  "generatedAt": "2026-05-18T14:27:11.226Z",
+  "summaryBySuite": [
+    {
+      "suite": "requests",
+      "repeats": 3,
+      "baselineQualityPasses": 2,
+      "mcpQualityPasses": 3,
+      "validSavingsRuns": 2,
+      "medianBaselineTokens": 230096,
+      "medianMcpTokens": 153215,
+      "medianSavedTokens": 89023,
+      "medianSavingsRate": 0.3675022085717352,
+      "aggregateBaselineTokens": 687322,
+      "aggregateMcpTokens": 462071,
+      "aggregateSavedTokens": 225251,
+      "aggregateSavingsRate": 0.32772266856000537,
+      "mcpToolCalls": [
+        1,
+        1,
+        3
+      ],
+      "mcpReturnedFiles": [
+        "src/requests/sessions.py"
+      ],
+      "mcpReturnedUsefulFileCounts": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "suite": "fastapi",
+      "repeats": 3,
+      "baselineQualityPasses": 3,
+      "mcpQualityPasses": 3,
+      "validSavingsRuns": 3,
+      "medianBaselineTokens": 100833,
+      "medianMcpTokens": 36676,
+      "medianSavedTokens": 66002,
+      "medianSavingsRate": 0.6471980343433078,
+      "aggregateBaselineTokens": 306222,
+      "aggregateMcpTokens": 122193,
+      "aggregateSavedTokens": 184029,
+      "aggregateSavingsRate": 0.6009659658678997,
+      "mcpToolCalls": [
+        1,
+        1,
+        1
+      ],
+      "mcpReturnedFiles": [
+        "fastapi/routing.py"
+      ],
+      "mcpReturnedUsefulFileCounts": [
+        1,
+        1,
+        1
+      ]
+    }
+  ],
+  "overall": {
+    "suites": 2,
+    "repeats": 6,
+    "baselineQualityPasses": 5,
+    "mcpQualityPasses": 6,
+    "validSavingsRuns": 5,
+    "medianBaselineTokens": 179327.5,
+    "medianMcpTokens": 78246,
+    "medianSavedTokens": 77512.5,
+    "medianSavingsRate": 0.456819420288805,
+    "totalBaselineTokens": 993544,
+    "totalMcpTokens": 584264,
+    "totalSavedTokens": 409280,
+    "aggregateSavingsRate": 0.4119394812912161,
+    "mcpToolCalls": [
+      1,
+      1,
+      3,
+      1,
+      1,
+      1
+    ],
+    "mcpReturnedFiles": [
+      "src/requests/sessions.py",
+      "fastapi/routing.py"
+    ],
+    "harmfulRuns": 0,
+    "overAssistRuns": 0
+  },
+  "rows": [
+    {
+      "suite": "requests",
+      "artifact": "docs/publication-evidence-20260515/mcp-repeat-subset-v1/raw/requests-real-mcp-repeat2.json",
+      "runStartedAt": "2026-05-18T13:22:49.463Z",
+      "baselineQuality": true,
+      "mcpQuality": true,
+      "baselineTokens": 242238,
+      "mcpTokens": 153215,
+      "savedTokens": 89023,
+      "savingsRate": 0.3675022085717352,
+      "mcpToolCalls": 1,
+      "mcpFilesReturned": [
+        "src/requests/sessions.py"
+      ],
+      "mcpReturnedFileCount": 1,
+      "mcpReturnedUsefulFileCount": 1,
+      "mcpGuidance": [
+        {
+          "turn": "diagnose",
+          "guidance": "prepare_first",
+          "shouldCallPrepare": true,
+          "quality": true,
+          "tokens": 17411
+        },
+        {
+          "turn": "source-invariant",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 7836
+        },
+        {
+          "turn": "fix",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 54262
+        },
+        {
+          "turn": "verify-source",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 3708
+        },
+        {
+          "turn": "edge-case-review",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 22501
+        },
+        {
+          "turn": "failure-recovery",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 6015
+        },
+        {
+          "turn": "repeat-context-check",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 34738
+        },
+        {
+          "turn": "diff-review",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 2516
+        },
+        {
+          "turn": "summary",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 881
+        },
+        {
+          "turn": "final-cleanup",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 3347
+        }
+      ],
+      "finalVerificationPassed": true,
+      "classification": "valid_assist"
+    },
+    {
+      "suite": "requests",
+      "artifact": "docs/publication-evidence-20260515/mcp-repeat-subset-v1/raw/requests-real-mcp-repeat2.json",
+      "runStartedAt": "2026-05-18T13:36:47.614Z",
+      "baselineQuality": true,
+      "mcpQuality": true,
+      "baselineTokens": 214988,
+      "mcpTokens": 105806,
+      "savedTokens": 109182,
+      "savingsRate": 0.5078516010195918,
+      "mcpToolCalls": 1,
+      "mcpFilesReturned": [
+        "src/requests/sessions.py"
+      ],
+      "mcpReturnedFileCount": 1,
+      "mcpReturnedUsefulFileCount": 1,
+      "mcpGuidance": [
+        {
+          "turn": "diagnose",
+          "guidance": "prepare_first",
+          "shouldCallPrepare": true,
+          "quality": true,
+          "tokens": 11401
+        },
+        {
+          "turn": "source-invariant",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 8304
+        },
+        {
+          "turn": "fix",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 31595
+        },
+        {
+          "turn": "verify-source",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 5614
+        },
+        {
+          "turn": "edge-case-review",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 20466
+        },
+        {
+          "turn": "failure-recovery",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 3014
+        },
+        {
+          "turn": "repeat-context-check",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 17771
+        },
+        {
+          "turn": "diff-review",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 2255
+        },
+        {
+          "turn": "summary",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 946
+        },
+        {
+          "turn": "final-cleanup",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 4440
+        }
+      ],
+      "finalVerificationPassed": true,
+      "classification": "valid_assist"
+    },
+    {
+      "suite": "requests",
+      "artifact": "docs/publication-evidence-20260515/mcp-repeat-subset-v1/raw/requests-real-mcp-repeat3-extra.json",
+      "runStartedAt": "2026-05-18T14:02:22.029Z",
+      "baselineQuality": false,
+      "mcpQuality": true,
+      "baselineTokens": 230096,
+      "mcpTokens": 203050,
+      "savedTokens": 27046,
+      "savingsRate": 0.11754224323760518,
+      "mcpToolCalls": 3,
+      "mcpFilesReturned": [
+        "src/requests/sessions.py"
+      ],
+      "mcpReturnedFileCount": 1,
+      "mcpReturnedUsefulFileCount": 1,
+      "mcpGuidance": [
+        {
+          "turn": "diagnose",
+          "guidance": "prepare_first",
+          "shouldCallPrepare": true,
+          "quality": true,
+          "tokens": 14512
+        },
+        {
+          "turn": "source-invariant",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 7333
+        },
+        {
+          "turn": "fix",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 57353
+        },
+        {
+          "turn": "verify-source",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 9589
+        },
+        {
+          "turn": "edge-case-review",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 26301
+        },
+        {
+          "turn": "failure-recovery",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 47513
+        },
+        {
+          "turn": "repeat-context-check",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 19237
+        },
+        {
+          "turn": "diff-review",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 3032
+        },
+        {
+          "turn": "summary",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 2689
+        },
+        {
+          "turn": "final-cleanup",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 15491
+        }
+      ],
+      "finalVerificationPassed": true,
+      "classification": "unknown"
+    },
+    {
+      "suite": "fastapi",
+      "artifact": "docs/publication-evidence-20260515/mcp-repeat-subset-v1/raw/fastapi-real-mcp-repeat2.json",
+      "runStartedAt": "2026-05-18T13:50:43.138Z",
+      "baselineQuality": true,
+      "mcpQuality": true,
+      "baselineTokens": 143667,
+      "mcpTokens": 50686,
+      "savedTokens": 92981,
+      "savingsRate": 0.6471980343433078,
+      "mcpToolCalls": 1,
+      "mcpFilesReturned": [
+        "fastapi/routing.py"
+      ],
+      "mcpReturnedFileCount": 1,
+      "mcpReturnedUsefulFileCount": 1,
+      "mcpGuidance": [
+        {
+          "turn": "diagnose",
+          "guidance": "prepare_first",
+          "shouldCallPrepare": true,
+          "quality": true,
+          "tokens": 26250
+        },
+        {
+          "turn": "fix",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 17778
+        },
+        {
+          "turn": "verify",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 3837
+        },
+        {
+          "turn": "cleanup",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 2821
+        }
+      ],
+      "finalVerificationPassed": true,
+      "classification": "valid_assist"
+    },
+    {
+      "suite": "fastapi",
+      "artifact": "docs/publication-evidence-20260515/mcp-repeat-subset-v1/raw/fastapi-real-mcp-repeat2.json",
+      "runStartedAt": "2026-05-18T13:55:56.310Z",
+      "baselineQuality": true,
+      "mcpQuality": true,
+      "baselineTokens": 61722,
+      "mcpTokens": 36676,
+      "savedTokens": 25046,
+      "savingsRate": 0.4057872395580182,
+      "mcpToolCalls": 1,
+      "mcpFilesReturned": [
+        "fastapi/routing.py"
+      ],
+      "mcpReturnedFileCount": 1,
+      "mcpReturnedUsefulFileCount": 1,
+      "mcpGuidance": [
+        {
+          "turn": "diagnose",
+          "guidance": "prepare_first",
+          "shouldCallPrepare": true,
+          "quality": true,
+          "tokens": 10459
+        },
+        {
+          "turn": "fix",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 12036
+        },
+        {
+          "turn": "verify",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 11776
+        },
+        {
+          "turn": "cleanup",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 2405
+        }
+      ],
+      "finalVerificationPassed": true,
+      "classification": "valid_assist"
+    },
+    {
+      "suite": "fastapi",
+      "artifact": "docs/publication-evidence-20260515/mcp-repeat-subset-v1/raw/fastapi-real-mcp-repeat3-extra.json",
+      "runStartedAt": "2026-05-18T14:20:05.840Z",
+      "baselineQuality": true,
+      "mcpQuality": true,
+      "baselineTokens": 100833,
+      "mcpTokens": 34831,
+      "savedTokens": 66002,
+      "savingsRate": 0.6545674531155475,
+      "mcpToolCalls": 1,
+      "mcpFilesReturned": [
+        "fastapi/routing.py"
+      ],
+      "mcpReturnedFileCount": 1,
+      "mcpReturnedUsefulFileCount": 1,
+      "mcpGuidance": [
+        {
+          "turn": "diagnose",
+          "guidance": "prepare_first",
+          "shouldCallPrepare": true,
+          "quality": true,
+          "tokens": 14219
+        },
+        {
+          "turn": "fix",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 6390
+        },
+        {
+          "turn": "verify",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 11513
+        },
+        {
+          "turn": "cleanup",
+          "guidance": "continue_known_source",
+          "shouldCallPrepare": false,
+          "quality": true,
+          "tokens": 2709
+        }
+      ],
+      "finalVerificationPassed": true,
+      "classification": "valid_assist"
+    }
+  ]
+}

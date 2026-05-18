@@ -1,0 +1,1000 @@
+{
+  "suiteId": "endurance-fastapi",
+  "suiteName": "FastAPI Request Response Endurance",
+  "startedAt": "2026-05-18T14:20:05.840Z",
+  "endedAt": "2026-05-18T14:25:47.742Z",
+  "reports": [
+    {
+      "mode": "baseline",
+      "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-9T6GDj",
+      "turns": [
+        {
+          "turnId": "diagnose",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 47454,
+          "responseTokens": 280172,
+          "elapsedMs": 76961,
+          "actualFiles": [
+            "fastapi/routing.py"
+          ],
+          "agentTouchedFiles": [],
+          "expectedFiles": [
+            "fastapi/routing.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "236e4ffc57967ab23763c3d8333bcac37051e6d97a01dd8667ff4e45796b7963",
+            "preparedPromptHash": "236e4ffc57967ab23763c3d8333bcac37051e6d97a01dd8667ff4e45796b7963",
+            "commandHash": "670645c6ad52b7d0375145ed5e5d79ae4b685dba039c499c346bfac0abd25f24",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "e86390516e03d8b91f79478566b1c6ddcdc5114c58a05c8e347138613fd6acd8",
+            "expectedFileMentions": [
+              "fastapi/routing.py"
+            ],
+            "changedFiles": [
+              "fastapi/routing.py"
+            ],
+            "seedPatchFiles": [
+              "fastapi/routing.py"
+            ],
+            "agentTouchedFiles": [],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 47454,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "fix",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 17452,
+          "responseTokens": 71230,
+          "elapsedMs": 30611,
+          "actualFiles": [
+            "fastapi/routing.py"
+          ],
+          "agentTouchedFiles": [
+            "fastapi/routing.py"
+          ],
+          "expectedFiles": [
+            "fastapi/routing.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "d6cdac0a00bc93c41ed73b1385b9a759cd50b989cbba9667094840195b509462",
+            "preparedPromptHash": "d6cdac0a00bc93c41ed73b1385b9a759cd50b989cbba9667094840195b509462",
+            "commandHash": "c0b181099a75dacc0580f3aabfa950f9529b920afe872a576bdd859c229b605c",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "6d4e3654c6e64161500dd2df9de152ce04df40f094f4ba68de4d344722638dfb",
+            "expectedFileMentions": [
+              "fastapi/routing.py"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "fastapi/routing.py"
+            ],
+            "agentTouchedFiles": [
+              "fastapi/routing.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 17452,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "verify",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 24200,
+          "responseTokens": 250169,
+          "elapsedMs": 101741,
+          "actualFiles": [
+            "fastapi/routing.py"
+          ],
+          "agentTouchedFiles": [
+            "fastapi/routing.py"
+          ],
+          "expectedFiles": [
+            "fastapi/routing.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "70aacdcef1e6186e968f8c35b7365ee142d45b44c88e40f89ca9ad919d3419b5",
+            "preparedPromptHash": "70aacdcef1e6186e968f8c35b7365ee142d45b44c88e40f89ca9ad919d3419b5",
+            "commandHash": "ef3ddfe7ac28ecd414b9e7c33204027d029e11d5d7aa71cb445860c13b3ab96f",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "784f5eee7908512ae906921192f647c9d1808a74116261f11163f5b967b6e077",
+            "expectedFileMentions": [
+              "fastapi/routing.py"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "fastapi/routing.py"
+            ],
+            "agentTouchedFiles": [
+              "fastapi/routing.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 24200,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "cleanup",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 11727,
+          "responseTokens": 2900,
+          "elapsedMs": 10550,
+          "actualFiles": [
+            "fastapi/routing.py"
+          ],
+          "agentTouchedFiles": [
+            "fastapi/routing.py"
+          ],
+          "expectedFiles": [
+            "fastapi/routing.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "6e131e3f2a5985b7c7a45beb6abf220efaf6dd1382943d71a4425ec42e8c9d6f",
+            "preparedPromptHash": "6e131e3f2a5985b7c7a45beb6abf220efaf6dd1382943d71a4425ec42e8c9d6f",
+            "commandHash": "94d32efecbd185e7632b93d6a03003a5eb2b0d647005d59ef7b58b0b9a5cd5b1",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "5204e037929b20475fb705756e151fc553a659b9e8260d940f0cceaded93cbf7",
+            "expectedFileMentions": [],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "fastapi/routing.py"
+            ],
+            "agentTouchedFiles": [
+              "fastapi/routing.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 11727,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        }
+      ],
+      "totalObservedCodexTokens": 100833,
+      "totalResponseTokens": 604471,
+      "totalElapsedMs": 219888,
+      "qualityGatePassed": true,
+      "finalVerificationPassed": true,
+      "assistanceStatus": "none",
+      "assistanceActions": {
+        "emitted": 0,
+        "shrunk": 0,
+        "suppressed": 0,
+        "mcpCalls": 0,
+        "failureContexts": 0
+      },
+      "metadata": {
+        "finalVerificationCommandPassed": true,
+        "finalSourceInvariantPassed": true,
+        "finalSourceInvariantFailures": [],
+        "finalDiffScopePassed": true,
+        "finalDiffScopeViolations": [],
+        "finalChangedFiles": [],
+        "setupElapsedMs": 0,
+        "kairnSessionCount": 0,
+        "primeEmitted": 0,
+        "primeSuppressed": 0,
+        "hookInvocations": 0,
+        "failureContextUsed": 0,
+        "mcpToolCalls": 0,
+        "mcpFilesReturned": [],
+        "mcpReturnedFileCount": 0,
+        "mcpReturnedUsefulFileCount": 0
+      }
+    },
+    {
+      "mode": "real_mcp_first",
+      "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-uMxz3s",
+      "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+      "turns": [
+        {
+          "turnId": "diagnose",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 14219,
+          "responseTokens": 13663,
+          "elapsedMs": 45008,
+          "actualFiles": [
+            "fastapi/routing.py"
+          ],
+          "agentTouchedFiles": [],
+          "expectedFiles": [
+            "fastapi/routing.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "236e4ffc57967ab23763c3d8333bcac37051e6d97a01dd8667ff4e45796b7963",
+            "preparedPromptHash": "8e14e5e51605ccc27fb6dec2db1b1393ca73297b8922e2ade26165c8fa72fc29",
+            "commandHash": "3d77f526425c328eb829c79a62e7ef27f4d40eee3c853a39f1c35a8c12488a93",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "118825cb4ca1f05da1090abb965f3b91ad78290d6de013573f9b6b57e1dcd07f",
+            "expectedFileMentions": [
+              "fastapi/routing.py"
+            ],
+            "changedFiles": [
+              "fastapi/routing.py"
+            ],
+            "seedPatchFiles": [
+              "fastapi/routing.py"
+            ],
+            "agentTouchedFiles": [],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 14219,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "prepare_first",
+            "mcpShouldCallPrepare": true
+          }
+        },
+        {
+          "turnId": "fix",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 6390,
+          "responseTokens": 10032,
+          "elapsedMs": 29732,
+          "actualFiles": [
+            "fastapi/routing.py"
+          ],
+          "agentTouchedFiles": [
+            "fastapi/routing.py"
+          ],
+          "expectedFiles": [
+            "fastapi/routing.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "d6cdac0a00bc93c41ed73b1385b9a759cd50b989cbba9667094840195b509462",
+            "preparedPromptHash": "f7b8dd32a6f0c0bbdf3c25edd46c3c4dbe48d0e95bdbafbe7703f458db3e27ac",
+            "commandHash": "dd5e5ac30329cb949546128ea12d1688ad4c265f7dbda006cf6069b6a4aa877f",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "98fe248260311bbf8940b20eea300e433050fcd75d93a0a30f7b4a50257ea470",
+            "expectedFileMentions": [
+              "fastapi/routing.py"
+            ],
+            "changedFiles": [
+              "fastapi/routing.py"
+            ],
+            "seedPatchFiles": [
+              "fastapi/routing.py"
+            ],
+            "agentTouchedFiles": [
+              "fastapi/routing.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [
+              "fastapi/routing.py"
+            ],
+            "codexUsage": {
+              "totalTokens": 6390,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "continue_known_source",
+            "mcpKnownSource": "fastapi/routing.py",
+            "mcpShouldCallPrepare": false
+          }
+        },
+        {
+          "turnId": "verify",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 11513,
+          "responseTokens": 14436,
+          "elapsedMs": 23462,
+          "actualFiles": [
+            "fastapi/routing.py"
+          ],
+          "agentTouchedFiles": [
+            "fastapi/routing.py"
+          ],
+          "expectedFiles": [
+            "fastapi/routing.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "70aacdcef1e6186e968f8c35b7365ee142d45b44c88e40f89ca9ad919d3419b5",
+            "preparedPromptHash": "180dd8b8951ccc485501abd5e48861167ddf3d2dfbe64701fd0f3b205206d8ba",
+            "commandHash": "33ce5eba94ff89b865a9d99754367d668802f02e6d3ab35aa084fe4c22c557e9",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "91a14b5a0d2a49313aeb3f027b143b6fc00414d2ed1fd69b221b54b81b4faefc",
+            "expectedFileMentions": [
+              "fastapi/routing.py"
+            ],
+            "changedFiles": [
+              "fastapi/routing.py"
+            ],
+            "seedPatchFiles": [
+              "fastapi/routing.py"
+            ],
+            "agentTouchedFiles": [
+              "fastapi/routing.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [
+              "fastapi/routing.py"
+            ],
+            "codexUsage": {
+              "totalTokens": 11513,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "continue_known_source",
+            "mcpKnownSource": "fastapi/routing.py",
+            "mcpShouldCallPrepare": false
+          }
+        },
+        {
+          "turnId": "cleanup",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 2709,
+          "responseTokens": 3373,
+          "elapsedMs": 13276,
+          "actualFiles": [
+            "fastapi/routing.py"
+          ],
+          "agentTouchedFiles": [
+            "fastapi/routing.py"
+          ],
+          "expectedFiles": [
+            "fastapi/routing.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "6e131e3f2a5985b7c7a45beb6abf220efaf6dd1382943d71a4425ec42e8c9d6f",
+            "preparedPromptHash": "1beb27bbb394b803745e22d0ff4dca1b8134b6f70145d742a85b5e41968cfd55",
+            "commandHash": "3e5e08bac720f75d5e1c6f146906923f0e5196793fbb094fbcfde494aa4a01e5",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "2f91b76f140479a62084a540f453b4c751c8c4ceb36ac8c35d43fcd0333c075c",
+            "expectedFileMentions": [
+              "fastapi/routing.py"
+            ],
+            "changedFiles": [
+              "fastapi/routing.py"
+            ],
+            "seedPatchFiles": [
+              "fastapi/routing.py"
+            ],
+            "agentTouchedFiles": [
+              "fastapi/routing.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [
+              "fastapi/routing.py"
+            ],
+            "codexUsage": {
+              "totalTokens": 2709,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "continue_known_source",
+            "mcpKnownSource": "fastapi/routing.py",
+            "mcpShouldCallPrepare": false
+          }
+        }
+      ],
+      "totalObservedCodexTokens": 34831,
+      "totalResponseTokens": 41504,
+      "totalElapsedMs": 115817,
+      "qualityGatePassed": true,
+      "finalVerificationPassed": true,
+      "assistanceStatus": "active",
+      "assistanceActions": {
+        "emitted": 0,
+        "shrunk": 0,
+        "suppressed": 0,
+        "mcpCalls": 1,
+        "failureContexts": 2
+      },
+      "ledger": {
+        "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+        "events": 26,
+        "currentPhase": "debugging",
+        "recommendedFiles": [
+          "fastapi/routing.py",
+          "fastapi/requests.py",
+          "fastapi/middleware/asyncexitstack.py",
+          "fastapi/exceptions.py"
+        ],
+        "shownFiles": [
+          "fastapi/routing.py",
+          "fastapi/requests.py"
+        ],
+        "agentMentionedFiles": [
+          "fastapi/routing.py"
+        ],
+        "agentTouchedFiles": [
+          "fastapi/routing.py"
+        ],
+        "repeatedFilesAvoided": 0,
+        "repeatedSnippetsAvoided": 0,
+        "recommendedFilesUsed": [
+          "fastapi/routing.py"
+        ],
+        "repeatedlyTouchedFiles": [
+          "fastapi/routing.py"
+        ],
+        "unresolvedFailures": 0,
+        "workingSet": {
+          "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+          "currentPhase": "debugging",
+          "activeFiles": [
+            "fastapi/routing.py",
+            "fastapi/requests.py"
+          ],
+          "recentlyTouchedFiles": [
+            "fastapi/routing.py"
+          ],
+          "shownFiles": [
+            "fastapi/routing.py",
+            "fastapi/requests.py"
+          ],
+          "ignoredRecommendedFiles": [
+            "fastapi/requests.py",
+            "fastapi/middleware/asyncexitstack.py",
+            "fastapi/exceptions.py"
+          ],
+          "ruledOutFiles": [],
+          "staleFiles": [],
+          "currentInvariant": {
+            "statement": "Diagnose the FastAPI request_response regression where synchronous endpoint functions should be wrapped with run_in_threadpool before the ASGI app awaits them.",
+            "filePath": "fastapi/requests.py",
+            "confidence": 100,
+            "sourceEventId": 8
+          },
+          "lastPassingVerification": {
+            "summary": "Final endurance verification passed.",
+            "createdAt": "2026-05-18T14:25:47.729Z"
+          },
+          "openRisks": []
+        },
+        "recentEvents": [
+          {
+            "id": 7,
+            "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+            "kind": "context_shown",
+            "filePath": "fastapi/routing.py",
+            "contentHash": "7fda1688e261027674c292f14bc88c00c5d1c4c4d6968bec245686e343e571a5",
+            "tokenEstimate": 498,
+            "source": "mcp",
+            "summary": "Kairn showed context for fastapi/routing.py",
+            "metadata": {
+              "taskHash": "572d3bff3dadc3db4b381952acdb1d0b41ea2c936cae5e7355ae7b375b437bb3",
+              "phase": "debugging",
+              "policyReason": "failure_reemitted",
+              "policyAction": "emit",
+              "invariant": {
+                "file": "fastapi/routing.py",
+                "symbol": "request_response",
+                "statement": "Diagnose the FastAPI request_response regression where synchronous endpoint functions should be wrapped with run_in_threadpool before the ASGI app awaits them.",
+                "evidence": "# Copy of starlette.routing.request_response modified to include the",
+                "verificationCommand": "python3 -m pytest",
+                "confidence": 100,
+                "source": "seed"
+              },
+              "workingSetActiveFiles": []
+            },
+            "createdAt": "2026-05-18T14:24:09.722Z"
+          },
+          {
+            "id": 8,
+            "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+            "kind": "context_shown",
+            "filePath": "fastapi/requests.py",
+            "contentHash": "7fda1688e261027674c292f14bc88c00c5d1c4c4d6968bec245686e343e571a5",
+            "tokenEstimate": 498,
+            "source": "mcp",
+            "summary": "Kairn showed context for fastapi/requests.py",
+            "metadata": {
+              "taskHash": "572d3bff3dadc3db4b381952acdb1d0b41ea2c936cae5e7355ae7b375b437bb3",
+              "phase": "debugging",
+              "policyReason": "failure_reemitted",
+              "policyAction": "emit",
+              "invariant": {
+                "file": "fastapi/routing.py",
+                "symbol": "request_response",
+                "statement": "Diagnose the FastAPI request_response regression where synchronous endpoint functions should be wrapped with run_in_threadpool before the ASGI app awaits them.",
+                "evidence": "# Copy of starlette.routing.request_response modified to include the",
+                "verificationCommand": "python3 -m pytest",
+                "confidence": 100,
+                "source": "seed"
+              },
+              "workingSetActiveFiles": []
+            },
+            "createdAt": "2026-05-18T14:24:09.722Z"
+          },
+          {
+            "id": 9,
+            "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+            "kind": "command_run",
+            "turnId": "diagnose",
+            "contentHash": "c180faca5eb97019e6ac886b9c9da1d7e03b99c42122b00aa1b35fe1d7b05468",
+            "tokenEstimate": 13,
+            "source": "agent",
+            "summary": "Agent command for endurance turn diagnose exited 0.",
+            "metadata": {
+              "commandHash": "3d77f526425c328eb829c79a62e7ef27f4d40eee3c853a39f1c35a8c12488a93",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "118825cb4ca1f05da1090abb965f3b91ad78290d6de013573f9b6b57e1dcd07f"
+            },
+            "createdAt": "2026-05-18T14:24:41.224Z"
+          },
+          {
+            "id": 10,
+            "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+            "kind": "agent_file_mentioned",
+            "turnId": "diagnose",
+            "filePath": "fastapi/routing.py",
+            "contentHash": "3b89a2ff75723081503f68aec544ce8ff6fb1401d62147a544858bbda439ff05",
+            "tokenEstimate": 9,
+            "source": "agent",
+            "summary": "Agent mentioned fastapi/routing.py.",
+            "metadata": {
+              "turnId": "diagnose"
+            },
+            "createdAt": "2026-05-18T14:24:41.225Z"
+          },
+          {
+            "id": 11,
+            "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+            "kind": "command_run",
+            "turnId": "fix",
+            "contentHash": "cef7fec4ee1d329dc8fb313ea5414cff2dd081b35bc3169cde061e5f9e9c9522",
+            "tokenEstimate": 12,
+            "source": "agent",
+            "summary": "Agent command for endurance turn fix exited 0.",
+            "metadata": {
+              "commandHash": "dd5e5ac30329cb949546128ea12d1688ad4c265f7dbda006cf6069b6a4aa877f",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "98fe248260311bbf8940b20eea300e433050fcd75d93a0a30f7b4a50257ea470"
+            },
+            "createdAt": "2026-05-18T14:25:10.957Z"
+          },
+          {
+            "id": 12,
+            "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+            "kind": "agent_file_mentioned",
+            "turnId": "fix",
+            "filePath": "fastapi/routing.py",
+            "contentHash": "3b89a2ff75723081503f68aec544ce8ff6fb1401d62147a544858bbda439ff05",
+            "tokenEstimate": 9,
+            "source": "agent",
+            "summary": "Agent mentioned fastapi/routing.py.",
+            "metadata": {
+              "turnId": "fix"
+            },
+            "createdAt": "2026-05-18T14:25:10.958Z"
+          },
+          {
+            "id": 13,
+            "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+            "kind": "agent_file_touched",
+            "turnId": "fix",
+            "filePath": "fastapi/routing.py",
+            "contentHash": "269ba6e09df2c8b0b8af38036265dc76f06437245bc1ef6ca9705e319f21f5bf",
+            "tokenEstimate": 9,
+            "source": "agent",
+            "summary": "Agent touched fastapi/routing.py.",
+            "metadata": {
+              "turnId": "fix"
+            },
+            "createdAt": "2026-05-18T14:25:10.958Z"
+          },
+          {
+            "id": 14,
+            "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+            "kind": "diff_seen",
+            "turnId": "fix",
+            "filePath": "fastapi/routing.py",
+            "contentHash": "a823611f243809ed3cbee0253bee401981e485a50a7724cbe2f66b775e0807a5",
+            "tokenEstimate": 15,
+            "source": "agent",
+            "summary": "Diff touched fastapi/routing.py during endurance turn fix.",
+            "metadata": {
+              "turnId": "fix"
+            },
+            "createdAt": "2026-05-18T14:25:10.958Z"
+          },
+          {
+            "id": 15,
+            "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+            "kind": "verification_passed",
+            "turnId": "fix",
+            "filePath": "fastapi/routing.py",
+            "contentHash": "d484bc65411afbd42de0c412d99ff0cf5404de268192631cb333f329a64a9972",
+            "tokenEstimate": 11,
+            "source": "bench",
+            "summary": "Verification passed for endurance turn fix.",
+            "metadata": {
+              "verificationCommandHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "sourceInvariantChecked": true,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": true,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "qualityGatePassed": true
+            },
+            "createdAt": "2026-05-18T14:25:10.958Z"
+          },
+          {
+            "id": 16,
+            "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+            "kind": "command_run",
+            "turnId": "verify",
+            "contentHash": "dcc1f2b836fca6650fd903a3a1d3d0c045876c1f670d250153b59f7ac3c1d8c2",
+            "tokenEstimate": 13,
+            "source": "agent",
+            "summary": "Agent command for endurance turn verify exited 0.",
+            "metadata": {
+              "commandHash": "33ce5eba94ff89b865a9d99754367d668802f02e6d3ab35aa084fe4c22c557e9",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "91a14b5a0d2a49313aeb3f027b143b6fc00414d2ed1fd69b221b54b81b4faefc"
+            },
+            "createdAt": "2026-05-18T14:25:34.419Z"
+          },
+          {
+            "id": 17,
+            "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+            "kind": "agent_file_mentioned",
+            "turnId": "verify",
+            "filePath": "fastapi/routing.py",
+            "contentHash": "3b89a2ff75723081503f68aec544ce8ff6fb1401d62147a544858bbda439ff05",
+            "tokenEstimate": 9,
+            "source": "agent",
+            "summary": "Agent mentioned fastapi/routing.py.",
+            "metadata": {
+              "turnId": "verify"
+            },
+            "createdAt": "2026-05-18T14:25:34.420Z"
+          },
+          {
+            "id": 18,
+            "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+            "kind": "agent_file_touched",
+            "turnId": "verify",
+            "filePath": "fastapi/routing.py",
+            "contentHash": "269ba6e09df2c8b0b8af38036265dc76f06437245bc1ef6ca9705e319f21f5bf",
+            "tokenEstimate": 9,
+            "source": "agent",
+            "summary": "Agent touched fastapi/routing.py.",
+            "metadata": {
+              "turnId": "verify"
+            },
+            "createdAt": "2026-05-18T14:25:34.420Z"
+          },
+          {
+            "id": 19,
+            "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+            "kind": "diff_seen",
+            "turnId": "verify",
+            "filePath": "fastapi/routing.py",
+            "contentHash": "b0e9a4db4c1de217848450c5bd3d08b0e2496059a1808392b86c85b8893b2430",
+            "tokenEstimate": 16,
+            "source": "agent",
+            "summary": "Diff touched fastapi/routing.py during endurance turn verify.",
+            "metadata": {
+              "turnId": "verify"
+            },
+            "createdAt": "2026-05-18T14:25:34.420Z"
+          },
+          {
+            "id": 20,
+            "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+            "kind": "verification_passed",
+            "turnId": "verify",
+            "filePath": "fastapi/routing.py",
+            "contentHash": "ad908578aa55c94ea1f497e8980bc8e2096ec1dea2a06e87acd70db157bd0424",
+            "tokenEstimate": 12,
+            "source": "bench",
+            "summary": "Verification passed for endurance turn verify.",
+            "metadata": {
+              "verificationCommandHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "sourceInvariantChecked": true,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": true,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "qualityGatePassed": true
+            },
+            "createdAt": "2026-05-18T14:25:34.420Z"
+          },
+          {
+            "id": 21,
+            "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+            "kind": "command_run",
+            "turnId": "cleanup",
+            "contentHash": "aa82543403e6d6d80f7ad4f930251feea8b5dd96837aeb7cb66bb5a8ebe7099b",
+            "tokenEstimate": 13,
+            "source": "agent",
+            "summary": "Agent command for endurance turn cleanup exited 0.",
+            "metadata": {
+              "commandHash": "3e5e08bac720f75d5e1c6f146906923f0e5196793fbb094fbcfde494aa4a01e5",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "2f91b76f140479a62084a540f453b4c751c8c4ceb36ac8c35d43fcd0333c075c"
+            },
+            "createdAt": "2026-05-18T14:25:47.695Z"
+          },
+          {
+            "id": 22,
+            "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+            "kind": "agent_file_mentioned",
+            "turnId": "cleanup",
+            "filePath": "fastapi/routing.py",
+            "contentHash": "3b89a2ff75723081503f68aec544ce8ff6fb1401d62147a544858bbda439ff05",
+            "tokenEstimate": 9,
+            "source": "agent",
+            "summary": "Agent mentioned fastapi/routing.py.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-18T14:25:47.695Z"
+          },
+          {
+            "id": 23,
+            "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+            "kind": "agent_file_touched",
+            "turnId": "cleanup",
+            "filePath": "fastapi/routing.py",
+            "contentHash": "269ba6e09df2c8b0b8af38036265dc76f06437245bc1ef6ca9705e319f21f5bf",
+            "tokenEstimate": 9,
+            "source": "agent",
+            "summary": "Agent touched fastapi/routing.py.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-18T14:25:47.695Z"
+          },
+          {
+            "id": 24,
+            "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+            "kind": "diff_seen",
+            "turnId": "cleanup",
+            "filePath": "fastapi/routing.py",
+            "contentHash": "149d395932db64d363a3b0e5ab7e00c38d894593eb438f925b62371bc1c91f38",
+            "tokenEstimate": 16,
+            "source": "agent",
+            "summary": "Diff touched fastapi/routing.py during endurance turn cleanup.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-18T14:25:47.695Z"
+          },
+          {
+            "id": 25,
+            "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+            "kind": "verification_passed",
+            "turnId": "cleanup",
+            "filePath": "fastapi/routing.py",
+            "contentHash": "40158d03ab86b93fc65be709063730f364b3cc035e71ea3c960be3b6189b5ae4",
+            "tokenEstimate": 12,
+            "source": "bench",
+            "summary": "Verification passed for endurance turn cleanup.",
+            "metadata": {
+              "verificationCommandHash": "8334b7325b78add02aa291c0e0ff2d187e8e0e7ffe0246210a82d9f8d6e0aa92",
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantChecked": true,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": true,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "qualityGatePassed": true
+            },
+            "createdAt": "2026-05-18T14:25:47.696Z"
+          },
+          {
+            "id": 26,
+            "sessionId": "task_6b898879-023d-425d-b787-617120a1298f",
+            "kind": "verification_passed",
+            "contentHash": "01686a52d490ab8e273bc13297bc95ca3a956265b15943a23c3c2801a08de538",
+            "tokenEstimate": 9,
+            "source": "bench",
+            "summary": "Final endurance verification passed.",
+            "metadata": {
+              "finalVerificationCommandHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "finalVerificationOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "finalSourceInvariantPassed": true,
+              "finalSourceInvariantFailures": [],
+              "finalDiffScopePassed": true,
+              "finalDiffScopeViolations": []
+            },
+            "createdAt": "2026-05-18T14:25:47.729Z"
+          }
+        ]
+      },
+      "metadata": {
+        "finalVerificationCommandPassed": true,
+        "finalSourceInvariantPassed": true,
+        "finalSourceInvariantFailures": [],
+        "finalDiffScopePassed": true,
+        "finalDiffScopeViolations": [],
+        "finalChangedFiles": [
+          "fastapi/routing.py"
+        ],
+        "setupElapsedMs": 349,
+        "setupCommandHash": "834ebc2ac2cb9d632d7b9387836fb0f69844c26b3fdcc1dde0e310df7db4da76",
+        "setupExitCode": 0,
+        "setupTimedOut": false,
+        "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "setupOutputTokens": 0,
+        "kairnSessionCount": 1,
+        "primeEmitted": 0,
+        "primeSuppressed": 0,
+        "hookInvocations": 0,
+        "failureContextUsed": 0,
+        "mcpToolCalls": 1,
+        "mcpFilesReturned": [
+          "fastapi/routing.py"
+        ],
+        "mcpReturnedFileCount": 1,
+        "mcpReturnedUsefulFileCount": 1,
+        "mcpObservedTokensPerCall": 34831,
+        "mcpObservedTokensPerUsefulFile": 34831
+      }
+    }
+  ],
+  "deltas": {
+    "real_mcp_first": {
+      "baselineTokens": 100833,
+      "modeTokens": 34831,
+      "savedTokens": 66002,
+      "savingsRate": 0.6545674531155475,
+      "qualityGatePassed": true,
+      "assistanceStatus": "active",
+      "assistanceEligible": true,
+      "baselineDifficulty": "expensive_pass",
+      "baselineTokenCost": 100833,
+      "abstentionOutcome": "not_applicable",
+      "missedOpportunity": false,
+      "overAssist": false,
+      "harmfulAssist": false,
+      "assistClassification": "valid_assist",
+      "validSavings": 66002
+    }
+  },
+  "recommendations": [
+    "real_mcp_first: repeatedly touched files suggest a follow-up focused cleanup context: fastapi/routing.py."
+  ]
+}
