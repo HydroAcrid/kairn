@@ -569,7 +569,7 @@ function spawnTimedOut(result: ReturnType<typeof spawnSync>): boolean {
   return error?.code === "ETIMEDOUT" || /ETIMEDOUT|timed out/i.test(error?.message ?? "");
 }
 
-async function runShellWithProcessGroupTimeout(
+export async function runShellWithProcessGroupTimeout(
   command: string,
   cwd: string,
   timeoutMs: number,
@@ -579,7 +579,7 @@ async function runShellWithProcessGroupTimeout(
     const child = spawn(command, {
       cwd,
       shell: true,
-      detached: process.platform !== "win32",
+      detached: false,
       stdio: ["ignore", "pipe", "pipe"]
     });
     let output = "";
@@ -587,6 +587,7 @@ async function runShellWithProcessGroupTimeout(
     let timedOut = false;
     let spawnError: Error | undefined;
     let forceTimer: NodeJS.Timeout | undefined;
+    let watchdogTimer: NodeJS.Timeout | undefined;
 
     const append = (chunk: Buffer | string): void => {
       if (output.length >= maxBuffer) return;
@@ -607,6 +608,7 @@ async function runShellWithProcessGroupTimeout(
       settled = true;
       clearTimeout(timeoutTimer);
       if (forceTimer) clearTimeout(forceTimer);
+      if (watchdogTimer) clearInterval(watchdogTimer);
       resolve({
         status: status ?? (spawnError ? 1 : 0),
         output,
@@ -628,7 +630,19 @@ async function runShellWithProcessGroupTimeout(
       }, 5000);
     }, timeoutMs);
 
+    child.on("exit", (status, signal) => finish(status, signal));
     child.on("close", (status, signal) => finish(status, signal));
+    watchdogTimer = setInterval(() => {
+      if (settled) return;
+      if (child.exitCode !== null || child.signalCode !== null) {
+        finish(child.exitCode, child.signalCode);
+        return;
+      }
+      if (child.pid && !processExists(child.pid)) {
+        finish(0, null);
+      }
+    }, 1000);
+    watchdogTimer.unref?.();
   });
 }
 
@@ -646,6 +660,15 @@ function terminateProcessTree(pid: number | undefined, signal: NodeJS.Signals): 
     } catch {
       // Process already exited.
     }
+  }
+}
+
+function processExists(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
   }
 }
 

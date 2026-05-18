@@ -1,7 +1,7 @@
 {
   "entryId": "local-mcp-smoke-v3",
   "kind": "mcp_smoke",
-  "status": "planned",
+  "status": "passed",
   "entryMetadata": {
     "label": "Local MCP protocol smoke",
     "repoId": "local",
@@ -10,9 +10,52 @@
     "taskClass": "mcp_delivery"
   },
   "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/raw/local-mcp-smoke-v3.json",
-  "startedAt": "2026-05-18T15:19:30.143Z",
-  "endedAt": "2026-05-18T15:19:30.143Z",
+  "startedAt": "2026-05-18T19:36:09.943Z",
+  "endedAt": "2026-05-18T19:36:13.780Z",
   "commands": [
     "kairn bench mcp-smoke --root . --task \"Find the smallest useful Kairn source context for evidence-campaign reporting.\""
-  ]
+  ],
+  "report": {
+    "startedAt": "2026-05-18T19:36:09.944Z",
+    "endedAt": "2026-05-18T19:36:13.709Z",
+    "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+    "task": "Find the smallest useful Kairn source context for evidence-campaign reporting.",
+    "serverCommand": "/opt/homebrew/Cellar/node/24.7.0/bin/node",
+    "serverArgs": [
+      "/Users/kevindotel/Documents/Projects/kairn/dist/cli.js",
+      "serve",
+      "--mcp",
+      "--root",
+      "/Users/kevindotel/Documents/Projects/kairn"
+    ],
+    "tools": [
+      "kairn_prepare_task",
+      "kairn_start_task",
+      "kairn_find_context",
+      "kairn_read_file",
+      "kairn_read_symbol",
+      "kairn_get_related_files",
+      "kairn_find_tests",
+      "kairn_review_diff",
+      "kairn_compress_output",
+      "kairn_get_next_context",
+      "kairn_get_failure_context",
+      "kairn_get_metrics",
+      "kairn_get_session_state"
+    ],
+    "sessionId": "task_7f69de71-d9ca-4752-81cf-e0b1e010dd09",
+    "prepare": {
+      "startFiles": [
+        "src/types/context.ts"
+      ],
+      "nextToolCalls": [],
+      "stopCondition": "source_evidence_sufficient",
+      "contextSuppressed": false,
+      "exactSourceHit": true
+    },
+    "metrics": {
+      "mcpToolCalls": 2,
+      "savedTokens": 56722
+    }
+  }
 }

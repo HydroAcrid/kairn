@@ -1289,6 +1289,84 @@ describe("benchmark suite and scoring", () => {
     expect(companions[0]).toBe("packages/vite/src/node/plugins/importAnalysis.ts");
   });
 
+  it("keeps named module factories distinct from generic suffix files", () => {
+    const files = [
+      sourceRecord("lib/ModuleFactory.js", "javascript"),
+      sourceRecord("lib/NormalModuleFactory.js", "javascript"),
+      sourceRecord("lib/ResolverFactory.js", "javascript"),
+      sourceRecord("lib/javascript/JavascriptParser.js", "javascript")
+    ];
+    const query = "Debug webpack NormalModuleFactory module resolution when requests are resolved through ResolverFactory and parser hooks.";
+    const chunks = [
+      chunkRecord("lib/ModuleFactory.js", "ModuleFactory", "generic module factory base class"),
+      chunkRecord("lib/NormalModuleFactory.js", "NormalModuleFactory", "normal module factory create module resolution parser hooks"),
+      chunkRecord("lib/ResolverFactory.js", "ResolverFactory", "resolver factory resolve module requests"),
+      chunkRecord("lib/javascript/JavascriptParser.js", "JavascriptParser", "javascript parser hooks module parser")
+    ];
+    const ranked = hybridSearch({
+      files,
+      query,
+      symbols: [],
+      chunks,
+      vectors: [],
+      edges: []
+    }).map((result) => result.path);
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[1]!)],
+      query,
+      symbols: [],
+      chunks,
+      edges: [],
+      limit: 2
+    }).map((candidate) => candidate.file.path);
+
+    expect(ranked.slice(0, 3)).toEqual(
+      expect.arrayContaining(["lib/NormalModuleFactory.js", "lib/ResolverFactory.js", "lib/javascript/JavascriptParser.js"])
+    );
+    expect(ranked.slice(0, 2)).not.toContain("lib/ModuleFactory.js");
+    expect(companions).toEqual(expect.arrayContaining(["lib/ResolverFactory.js", "lib/javascript/JavascriptParser.js"]));
+  });
+
+  it("uses ORM package anchors for session unit-of-work and persistence flows", () => {
+    const files = [
+      sourceRecord("lib/sqlalchemy/ext/asyncio/session.py", "python"),
+      sourceRecord("lib/sqlalchemy/orm/session.py", "python"),
+      sourceRecord("lib/sqlalchemy/orm/unitofwork.py", "python"),
+      sourceRecord("lib/sqlalchemy/orm/persistence.py", "python")
+    ];
+    const query = "Debug SQLAlchemy ORM Session flush behavior when unit-of-work and persistence coordinate mapper state.";
+    const chunks = [
+      chunkRecord("lib/sqlalchemy/ext/asyncio/session.py", "AsyncSession", "async session delegates to sync session"),
+      chunkRecord("lib/sqlalchemy/orm/session.py", "Session", "ORM Session flush unit of work persistence mapper state"),
+      chunkRecord("lib/sqlalchemy/orm/unitofwork.py", "UOWTransaction", "unit of work flush dependency processing"),
+      chunkRecord("lib/sqlalchemy/orm/persistence.py", "save_obj", "persistence mapper state during flush")
+    ];
+    const ranked = hybridSearch({
+      files,
+      query,
+      symbols: [],
+      chunks,
+      vectors: [],
+      edges: []
+    }).map((result) => result.path);
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[1]!)],
+      query,
+      symbols: [],
+      chunks,
+      edges: [],
+      limit: 2
+    }).map((candidate) => candidate.file.path);
+
+    expect(ranked.slice(0, 3)).toEqual(
+      expect.arrayContaining(["lib/sqlalchemy/orm/session.py", "lib/sqlalchemy/orm/unitofwork.py", "lib/sqlalchemy/orm/persistence.py"])
+    );
+    expect(ranked[0]).not.toBe("lib/sqlalchemy/ext/asyncio/session.py");
+    expect(companions).toEqual(expect.arrayContaining(["lib/sqlalchemy/orm/unitofwork.py", "lib/sqlalchemy/orm/persistence.py"]));
+  });
+
   it("routes Go logging pipelines to core entry encoder before field helpers", () => {
     const files = [
       sourceRecord("zapcore/core.go", "go"),

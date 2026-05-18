@@ -618,7 +618,10 @@ function enduranceRows(report: BenchmarkEnduranceReport | BenchmarkEnduranceRepe
         harmfulAssist: mode.harmfulRuns > 0,
         missedOpportunity: mode.missedOpportunityRuns > 0,
         correctAbstention: mode.correctAbstentionRuns > 0,
-        repeatedFilesAvoided: repeatedFilesAvoidedForMode(report, mode.mode)
+        mcpCalls: mode.mcpCalls,
+        repeatedFilesAvoided: mode.repeatedFilesAvoided,
+        repeatedSnippetsAvoided: mode.repeatedSnippetsAvoided,
+        scopeViolations: mode.scopeViolations
       });
     });
   }

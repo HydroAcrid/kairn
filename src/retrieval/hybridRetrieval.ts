@@ -1048,6 +1048,7 @@ function scoreNamedFileSurface(file: FileRecord, query: string): { score: number
   if (!basename || basename.length < 5 || /^(index|main|core|base|utils?|helpers?)$/i.test(basename)) return { score: 0, reasons: [] };
   const normalizedBasename = normalizeSearchText(basename);
   if (!normalizedBasename || normalizedBasename.split(" ").length < 2) return { score: 0, reasons: [] };
+  if (isSuffixOfLongerNamedIdentifier(basename, query)) return { score: 0, reasons: [] };
   if (!normalizeSearchText(query).includes(normalizedBasename)) return { score: 0, reasons: [] };
   return {
     score: 2600,
@@ -1166,7 +1167,7 @@ function scoreStructuredDebugSourceSurface(file: FileRecord, query: string, quer
       }
     }
     if (/resolver(factory)?|resolveid|resolve/.test(compactBasename)) {
-      score += 2100;
+      score += /resolverfactory/.test(compactBasename) ? 3400 : 2400;
       reasons.push("module resolver source");
     }
     if (/moduleloader|loader/.test(compactBasename)) {
@@ -1178,7 +1179,7 @@ function scoreStructuredDebugSourceSurface(file: FileRecord, query: string, quer
       reasons.push("module graph source");
     }
     if (/javascriptparser|[a-z0-9]+parser/.test(compactBasename)) {
-      score += 620;
+      score += roleTerms.has("parser") || roleTerms.has("hook") ? 2200 : 980;
       reasons.push("specific parser source");
     } else if (compactBasename === "parser") {
       score -= 620;
@@ -1277,6 +1278,42 @@ function scoreStructuredDebugSourceSurface(file: FileRecord, query: string, quer
     }
   }
 
+  const ormUnitOfWork = scoreOrmUnitOfWorkSource(file, roleTerms);
+  if (ormUnitOfWork.score !== 0) {
+    score += ormUnitOfWork.score;
+    reasons.push(...ormUnitOfWork.reasons);
+  }
+
+  return { score, reasons };
+}
+
+function scoreOrmUnitOfWorkSource(file: FileRecord, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const asksOrmFlush =
+    (queryTerms.has("orm") || queryTerms.has("session") || queryTerms.has("unitofwork") || (queryTerms.has("unit") && queryTerms.has("work"))) &&
+    (queryTerms.has("flush") || queryTerms.has("flushed") || queryTerms.has("unitofwork") || queryTerms.has("persistence") || queryTerms.has("persist") || queryTerms.has("mapper"));
+  if (!asksOrmFlush) return { score: 0, reasons: [] };
+
+  const normalized = file.path.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const pathTerms = new Set(tokenizeLexical(normalized).map(canonicalRoleTerm));
+  const reasons: string[] = [];
+  let score = 0;
+  if (pathTerms.has("orm") && /session/.test(basename)) {
+    score += 3200;
+    reasons.push("ORM session source");
+  }
+  if (/unit[-_]?of[-_]?work|unitofwork/.test(basename)) {
+    score += 3600;
+    reasons.push("unit-of-work source");
+  }
+  if (/persistence|persist/.test(basename)) {
+    score += 3000;
+    reasons.push("persistence source");
+  }
+  if ((pathTerms.has("asyncio") || pathTerms.has("async")) && queryTerms.has("orm") && !queryTerms.has("async") && !queryTerms.has("asyncio")) {
+    score -= 1800;
+    reasons.push("async variant downranked for ORM source prompt");
+  }
   return { score, reasons };
 }
 
@@ -1924,6 +1961,24 @@ function normalizeSearchText(input: string): string {
     .trim();
 }
 
+function isSuffixOfLongerNamedIdentifier(basename: string, query: string): boolean {
+  const normalizedBasename = normalizeSearchText(basename);
+  const basenameCompact = normalizedBasename.replace(/\s+/g, "");
+  if (basenameCompact.length < 6) return false;
+  const identifiers = namedIdentifierCompacts(query);
+  if (identifiers.has(basenameCompact)) return false;
+  return [...identifiers].some((identifier) => identifier.endsWith(basenameCompact) && identifier.length >= basenameCompact.length + 3);
+}
+
+function namedIdentifierCompacts(query: string): Set<string> {
+  const identifiers = new Set<string>();
+  for (const match of query.matchAll(/\b[A-Z][A-Za-z0-9]*[A-Z][A-Za-z0-9]*\b/g)) {
+    const compact = normalizeSearchText(match[0] ?? "").replace(/\s+/g, "");
+    if (compact.length >= 5) identifiers.add(compact);
+  }
+  return identifiers;
+}
+
 function stripExampleLiterals(query: string): string {
   return query.replace(/\b[A-Za-z_][\w.]*\(([^)]{1,120})\)/g, (match) => match.replace(/\(([^)]*)\)/, "()"));
 }
@@ -2115,6 +2170,8 @@ function canonicalRoleTerm(term: string): string {
   if (term === "routes") return "route";
   if (term === "patterns") return "pattern";
   if (term === "middlewares") return "middleware";
+  if (term === "flushed") return "flush";
+  if (term === "persisted") return "persist";
   return term;
 }
 

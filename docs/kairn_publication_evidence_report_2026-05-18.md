@@ -1,80 +1,99 @@
 # Kairn Publication Evidence Report 2026-05-18
 
-Status: v3 campaign harness prepared; live campaign results pending.
+Status: live v3 campaign partially complete. Private beta telemetry is excluded from these claims.
 
-This report is the public-facing landing point for the frozen 2026-05-18 evidence bundle. The dry-run artifacts are in `docs/publication-evidence-20260518/` and validate that the campaign plan, command templates, official row IDs, no-governor ablation mode, MCP endurance slice, and reproducibility manifest are wired correctly.
+## Summary
 
-## Campaign Scope
+The 2026-05-18 campaign strengthened the main claim, with caveats:
 
-The v3 campaign excludes private beta telemetry from scientific claims. It is designed to validate:
+> Kairn reduces token use on source-rescue, debug, and long-session coding work while preserving quality through selective context, suppression, MCP/session memory, and edit-scope discipline.
 
-- fresh repo preflight on pinned holdout repos,
-- pass/pass token savings on repeat-3 live canaries,
-- governor impact through a benchmark-only no-governor ablation,
-- MCP usefulness through repeat-3 endurance with actual MCP calls,
-- SWE-Pro official evaluator readiness with 10 selected row IDs,
-- overhead: setup time, index time, hook/MCP latency, MCP calls, emitted context tokens, and net savings.
+The strongest clean evidence is now MCP/session endurance:
 
-## Planned Evidence Slices
+| Slice | Result | Claim Status |
+| --- | --- | --- |
+| Fresh preflight v3 | 8/8 repos passed after general companion/source routing fixes | Valid routing gate |
+| Fresh live repeat-3 canary | Kairn 3/3 quality, baseline 0/3 report-level quality; 58% fewer median tokens | Quality-rescue evidence, not pass/pass savings |
+| Governed vs no-governor ablation | Governed Kairn: 17.85% valid pass/pass savings; no-governor: 32.36% but repeated over-assist | Governor improves safety; no-governor is not beta-safe |
+| Fresh httpcore MCP endurance repeat-3 | 100% quality, 18.46% median valid active savings, 5 MCP calls, 2 useful returned files, 0 scope violations | Clean MCP evidence |
+| Requests MCP endurance repeat-3 | Hybrid: 100% quality, 48.78% median valid savings; real MCP-first had one harmful test edit | Strong but mixed; led to a general MCP scope fix |
+| Requests MCP post-fix repeat-1 | MCP-first: 34.84% savings; hybrid: 21.03%; both passed, 0 scope violations | Positive recheck, needs repeat-3 confirmation |
+| MCP protocol smoke | Passed; 2 MCP tool calls recorded | Delivery gate passed |
+| SWE-Pro official slice | 10 row IDs selected, but no official evaluator result JSON attached | No SWE-Pro savings counted |
 
-| Slice | Entry | Modes | Repeat | Claim Role |
-| --- | --- | --- | --- | --- |
-| Fresh repo preflight | `fresh-publication-v3-preflight` | matrix | n/a | Unseen source-routing gate |
-| Live seeded canary | `fresh-live-repeat3-canary` | baseline, Kairn session | 3 | Pass/pass savings evidence |
-| One-shot ablation | `ablation-proof-repeat3` | baseline, Kairn session, no-governor | 3 | Decision-layer proof |
-| Endurance ablation | `requests-endurance-ablation-repeat3` | baseline, Kairn session, no-governor | 3 | Session/governor proof |
-| Fresh MCP endurance | `httpcore-mcp-endurance-repeat3` | baseline, real MCP-first | 3 | Fresh MCP evidence |
-| MCP regression proof | `requests-mcp-endurance-repeat3` | baseline, real MCP-first, hybrid | 3 | Existing strong MCP slice |
-| MCP protocol smoke | `local-mcp-smoke-v3` | MCP smoke | n/a | Tool-call delivery gate |
-| SWE-Pro official | `swe-pro-official-eval-v3` | official evaluator | 10 rows | External credibility gate |
+## Key Findings
 
-## Claim Rules
+Fresh unseen preflight is clean after behavior-class fixes. Webpack needed better companion routing for module factory/resolver/parser flows. SQLAlchemy needed ORM session/unit-of-work/persistence routing. These were fixed as general source-routing rules, not repo-specific task memorization.
 
-- Headline savings use only pass/pass rows.
-- Active savings count only when quality passes, Kairn assistance is active, scope discipline passes, and emitted context is useful.
-- MCP claims require recorded MCP tool calls and returned useful production files.
-- SWE-Pro savings do not count unless the official evaluator passes.
-- Suppressed or passive savings are abstention evidence, not active Kairn wins.
-- Quality-rescue rows support usefulness but are not clean token-savings claims.
+The governor is doing useful work. In the ablation subset, no-governor sometimes spent fewer tokens, but it repeatedly over-assisted. The governed path gave lower headline savings than no-governor, but it preserved safer behavior and still produced 17.85% valid pass/pass savings.
 
-## Current Dry-Run Verification
+MCP is now a real second wedge. The httpcore endurance run recorded actual MCP tool calls and pass/pass savings. Requests hybrid also showed large savings, but the first full repeat exposed a real failure class: MCP guidance was not explicit enough about read-only tests. Kairn now emits a compact edit-scope directive through MCP and long-session prompts.
 
-The dry run generated:
+SWE-Pro remains a credibility blocker, not a product blocker. The official row slice is selected, but no official evaluator JSON was provided. Per claim rules, SWE-Pro savings remain invalid until official evaluator passes are attached.
 
-- `docs/publication-evidence-20260518/publication-summary.json`
-- `docs/publication-evidence-20260518/publication-results.csv`
-- `docs/publication-evidence-20260518/publication-failures.csv`
-- `docs/publication-evidence-20260518/publication-manifest.json`
-- `docs/publication-evidence-20260518/kairn_publication_evidence_report_2026-05-18.md`
-- raw planned artifacts under `docs/publication-evidence-20260518/raw/`
+## Improvements Made During Campaign
 
-Because this is a dry run, metric tables are intentionally empty. Populate this report after the live v3 campaign completes.
+- Hardened the live shell runner so publication/endurance commands do not wedge after Codex child processes exit.
+- Added repeat-level MCP evidence fields to publication aggregation: MCP calls, returned file counts, useful returned file counts, repeated context, and scope violations.
+- Improved companion/source routing for:
+  - Webpack module factory/resolver/parser flows.
+  - SQLAlchemy ORM session/unit-of-work/persistence flows.
+- Tightened MCP scope delivery:
+  - MCP compact responses now include `editScopeDirective`.
+  - Known-source MCP endurance prompts now state tests/docs/examples/fixtures/snapshots/generated/vendor are read-only unless a focused verification failure proves otherwise.
+  - Prompts instruct agents to revert out-of-scope edits before finalizing.
 
-## Live Run Order
+## Current Evidence Artifacts
 
-1. Run pre-live verification: `pnpm test`, `pnpm typecheck`, `pnpm build`, `git diff --check`.
-2. Run the fresh repo matrix preflight.
-3. Run the repeat-3 live seeded canary.
-4. Run the no-governor ablation subset.
-5. Run the fresh httpcore MCP endurance repeat-3.
-6. Run the SWE-Pro official evaluator slice only after evaluator setup is clean.
-7. Copy final aggregate results into the LinkedIn/website brief.
+Primary artifacts live under `docs/publication-evidence-20260518/`.
 
-## Findings Placeholder
-
-| Metric | Result |
+| Artifact | Purpose |
 | --- | --- |
-| Quality pass rate delta vs baseline | TBD |
-| Active pass/pass median savings | TBD |
-| Debug/endurance median savings | TBD |
-| Correct abstention count | TBD |
-| Evidence request count | TBD |
-| Harmful assist count | TBD |
-| Repeated harmful pattern | TBD |
-| MCP calls recorded | TBD |
-| SWE-Pro official passes | TBD |
-| Median hook/MCP latency | TBD |
+| `raw/fresh-publication-v3-preflight.json` | Fresh repo deterministic preflight |
+| `raw/fresh-live-repeat3-canary.json` | Fresh live canary |
+| `raw/ablation-proof-repeat3.json` | Governed vs no-governor proof |
+| `raw/httpcore-mcp-endurance-repeat3.json` | Fresh MCP endurance proof |
+| `raw/requests-mcp-endurance-repeat3.json` | Requests MCP/hybrid endurance proof before final scope fix |
+| `requests-mcp-scope-fix-postbuild-repeat1.json` | Post-fix Requests MCP recheck |
+| `raw/local-mcp-smoke-v3.json` | MCP protocol smoke |
+| `raw/swe-pro-official-eval-v3.json` | SWE-Pro official-eval placeholder/status |
 
-## Publication Readiness
+## Conservative Claim Matrix
 
-Current status: not final. The v3 evidence machinery is ready, but the scientific/public-preview claims should wait for the live artifacts to replace this dry-run placeholder.
+Safe to claim:
+
+- Controlled tests show Kairn can reduce token use while preserving quality on source-rescue and endurance tasks.
+- MCP and session-bound modes both have positive evidence.
+- Kairn often stays focused by suppressing repeated or low-value context.
+- Private beta should target Codex/session and MCP workflows first.
+
+Do not claim yet:
+
+- Universal 20-70% savings.
+- Public “works anywhere” reliability.
+- Official SWE-Pro savings.
+- Month-long reliability.
+- Claude/Gemini/Copilot performance parity; MCP compatibility is configured, but Codex is the most-tested live path.
+
+## Next Evidence Needed
+
+1. Rerun Requests MCP post-scope-fix as repeat-3.
+2. Run one additional fresh MCP endurance repo if time allows.
+3. Attach real SWE-Pro official evaluator outputs before making SWE-Pro claims.
+4. Run a small strongest-model confirmation slice after the mini-model campaign is stable.
+5. Keep private beta telemetry separate from scientific claims, using it only to discover real-world failure classes.
+
+## Verification
+
+Completed during the campaign:
+
+- `pnpm test tests/mcp.test.ts`
+- `pnpm test tests/bench.test.ts`
+- `pnpm typecheck`
+- `pnpm build`
+
+Remaining before packaging a final evidence bundle:
+
+- `pnpm test`
+- `git diff --check`
+- Repeat-3 Requests MCP post-fix confirmation.

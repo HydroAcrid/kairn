@@ -300,7 +300,8 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
       verificationCommand: null,
       workingSet,
       editScope,
-      primaryReason: priorSourceStop.reason,
+      primaryReason: `${priorSourceStop.reason} ${mcpEditScopeDirective(editScope, priorMcpSource)}`,
+      editScopeDirective: mcpEditScopeDirective(editScope, priorMcpSource),
       stopCondition: priorSourceStop.stopCondition,
       nextToolCalls: [],
       recommendedToolCalls: [],
@@ -341,7 +342,8 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
       verificationCommand: null,
       workingSet,
       editScope,
-      primaryReason: cheapOneShotStop.reason,
+      primaryReason: `${cheapOneShotStop.reason} ${mcpEditScopeDirective(editScope, cheapOneShotStop.primaryFile)}`,
+      editScopeDirective: mcpEditScopeDirective(editScope, cheapOneShotStop.primaryFile),
       stopCondition: cheapOneShotStop.stopCondition,
       nextToolCalls: [],
       recommendedToolCalls: [],
@@ -394,7 +396,8 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
       workingSet,
       editScope,
       evidenceRequest: decision.evidenceRequest ?? null,
-      primaryReason: decision.evidenceRequest?.reason ?? "Kairn needs one more concrete signal before returning source context.",
+      primaryReason: `${decision.evidenceRequest?.reason ?? "Kairn needs one more concrete signal before returning source context."} ${mcpEditScopeDirective(editScope)}`,
+      editScopeDirective: mcpEditScopeDirective(editScope),
       stopCondition: "evidence_required",
       nextToolCalls: [],
       recommendedToolCalls: [],
@@ -417,7 +420,8 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
       startFiles: [],
       files: [],
       exactSymbolHint: null,
-      primaryReason: "Kairn does not have high-confidence context yet; continue normally and call Kairn again after a failure, diff, or more specific target.",
+      primaryReason: `Kairn does not have high-confidence context yet; continue normally and call Kairn again after a failure, diff, or more specific target. ${mcpEditScopeDirective(editScope)}`,
+      editScopeDirective: mcpEditScopeDirective(editScope),
       nextToolCalls: [],
       recommendedToolCalls: [],
       likelyTests: [],
@@ -450,7 +454,8 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
       startFiles: [],
       files: [],
       exactSymbolHint: null,
-      primaryReason: "Kairn found possible context, but the top source signal is risky for this task. Continue normally; call Kairn again after a concrete failure, diff, or exact target.",
+      primaryReason: `Kairn found possible context, but the top source signal is risky for this task. Continue normally; call Kairn again after a concrete failure, diff, or exact target. ${mcpEditScopeDirective(editScope)}`,
+      editScopeDirective: mcpEditScopeDirective(editScope),
       stopCondition: "context_risk_abstention",
       nextToolCalls: [],
       recommendedToolCalls: [],
@@ -497,6 +502,7 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
     : undefined;
   const symbolHint = exactSourceEvidence?.symbol ?? extractSymbolHints(prime.content)[0];
   const sourceEvidenceStop = Boolean(primaryFile);
+  const editScopeDirective = mcpEditScopeDirective(editScope, primaryFile);
   const nextToolCalls = sourceEvidenceStop
     ? []
     : [
@@ -528,11 +534,12 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
     editScope,
     primaryReason: primaryFile
       ? sourceEvidenceStop
-        ? `Source evidence stop: use ${primaryFile}; do not call more Kairn unless a check fails, the file changes, or the task target changes.`
+        ? `Source evidence stop: use ${primaryFile}; do not call more Kairn unless a check fails, the file changes, or the task target changes. ${editScopeDirective}`
         : companionFiles[0]
-        ? `Start with ${primaryFile}; ${companionFiles[0]} is the one capped companion for this multi-surface task.`
-        : `Start with ${primaryFile}; it is Kairn's highest-confidence unshown file for this task.`
+        ? `Start with ${primaryFile}; ${companionFiles[0]} is the one capped companion for this multi-surface task. ${editScopeDirective}`
+        : `Start with ${primaryFile}; it is Kairn's highest-confidence unshown file for this task. ${editScopeDirective}`
       : "Kairn did not find a high-confidence start file.",
+    editScopeDirective,
     stopCondition: sourceEvidenceStop ? "source_evidence_sufficient" : null,
     nextToolCalls,
     recommendedToolCalls: nextToolCalls,
@@ -572,6 +579,19 @@ function fullPrepareResult(prime: PrimeContextResult) {
     recommendedToolCalls,
     nextToolCalls: recommendedToolCalls.slice(0, 2)
   };
+}
+
+function mcpEditScopeDirective(scope: unknown, fallbackSource?: string | undefined): string {
+  const record = isRecord(scope) ? scope : undefined;
+  const initialFiles = stringArray(record?.initialEditFiles);
+  const forbiddenPatterns = stringArray(record?.forbiddenEditPatterns);
+  const expansionTriggers = stringArray(record?.allowedExpansionTriggers);
+  const initial = initialFiles.length > 0 ? initialFiles.join(", ") : fallbackSource ?? "no edit target yet";
+  const forbidden = forbiddenPatterns.length > 0
+    ? forbiddenPatterns.join(", ")
+    : "tests/, test/, __tests__/, docs/, examples/, generated/, dist/, vendor/, node_modules/";
+  const expansion = expansionTriggers[0] ?? "a focused verification failure names another required production source file";
+  return `Edit scope: ${initial}. Treat ${forbidden} as read-only unless ${expansion}. If any out-of-scope file changed while exploring, revert it before finalizing.`;
 }
 
 function uniqueValues(values: string[]): string[] {
@@ -746,6 +766,10 @@ function extractSymbolHints(content: string): string[] {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
 function mcpToolResult(runtime: KairnRuntime, toolName: string, input: unknown, value: unknown) {

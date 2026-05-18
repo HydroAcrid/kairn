@@ -240,6 +240,7 @@ describe("MCP server", () => {
         readOnlyFiles: string[];
         allowedExpansionTriggers: string[];
       };
+      editScopeDirective?: string;
     };
     expect(preparedParsed.contextDecision?.exactSourceHit).toBe(true);
     expect(preparedParsed.startFiles).toEqual(["include/fmt/base.h"]);
@@ -252,6 +253,9 @@ describe("MCP server", () => {
     expect(preparedParsed.exactSourceEvidence?.verificationCommand).toBeTruthy();
     expect(preparedParsed.editScope?.initialEditFiles).toEqual(["include/fmt/base.h"]);
     expect(preparedParsed.editScope?.allowedExpansionTriggers.length).toBeGreaterThan(0);
+    expect(preparedParsed.editScopeDirective).toContain("include/fmt/base.h");
+    expect(preparedParsed.editScopeDirective).toContain("tests/");
+    expect(preparedParsed.editScopeDirective).toContain("revert");
 
     const repeatedPrepare = await client.callTool({
       name: "kairn_prepare_task",
@@ -268,6 +272,7 @@ describe("MCP server", () => {
       files: string[];
       nextToolCalls: unknown[];
       primaryReason: string;
+      editScopeDirective?: string;
     };
     expect(repeatedPrepareParsed.contextSuppressed).toBe(true);
     expect(repeatedPrepareParsed.stopCondition).toBe("source_evidence_already_shown");
@@ -275,6 +280,8 @@ describe("MCP server", () => {
     expect(repeatedPrepareParsed.files).toEqual([]);
     expect(repeatedPrepareParsed.nextToolCalls).toEqual([]);
     expect(repeatedPrepareParsed.primaryReason).toContain("include/fmt/base.h");
+    expect(repeatedPrepareParsed.primaryReason).toContain("out-of-scope");
+    expect(repeatedPrepareParsed.editScopeDirective).toContain("include/fmt/base.h");
 
     const next = await client.callTool({
       name: "kairn_get_next_context",

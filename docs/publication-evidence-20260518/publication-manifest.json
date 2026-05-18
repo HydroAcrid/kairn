@@ -1,9 +1,9 @@
 {
-  "id": "kairn-scientific-evidence-v3",
-  "name": "Kairn Scientific Evidence Campaign v3",
-  "generatedAt": "2026-05-18T15:19:30.143Z",
-  "planPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/publication-plan-v3.json",
-  "kairnGitSha": "e02ab9207727f2f22ef48a58345ec8606299a581",
+  "id": "kairn-scientific-evidence-v3-completed",
+  "name": "Kairn Scientific Evidence Campaign v3 Completed Slice",
+  "generatedAt": "2026-05-18T19:39:15.063Z",
+  "planPath": "/tmp/kairn-publication-plan-v3-completed.json",
+  "kairnGitSha": "2b90db0b43e538a4eb544d2be276cda3b45674fb",
   "packageVersion": "0.1.2",
   "nodeVersion": "v24.7.0",
   "os": {
@@ -13,36 +13,34 @@
   },
   "model": "gpt-5.4-mini",
   "repeat": 3,
-  "dryRun": true,
+  "dryRun": false,
   "timestamps": {
-    "generatedAt": "2026-05-18T15:19:30.143Z",
+    "generatedAt": "2026-05-18T19:39:15.063Z",
     "artifactStarts": {
-      "fresh-publication-v3-preflight": "2026-05-18T15:19:30.141Z",
-      "fresh-live-repeat3-canary": "2026-05-18T15:19:30.142Z",
-      "ablation-proof-repeat3": "2026-05-18T15:19:30.142Z",
-      "requests-endurance-ablation-repeat3": "2026-05-18T15:19:30.143Z",
-      "httpcore-mcp-endurance-repeat3": "2026-05-18T15:19:30.143Z",
-      "requests-mcp-endurance-repeat3": "2026-05-18T15:19:30.143Z",
-      "local-mcp-smoke-v3": "2026-05-18T15:19:30.143Z",
-      "swe-pro-official-eval-v3": "2026-05-18T15:19:30.143Z"
+      "fresh-publication-v3-preflight": "2026-05-18T15:44:13.342Z",
+      "fresh-live-repeat3-canary": "2026-05-18T16:50:04.512Z",
+      "ablation-proof-repeat3": "2026-05-18T17:25:59.112Z",
+      "httpcore-mcp-endurance-repeat3": "2026-05-18T18:06:22.720Z",
+      "requests-mcp-endurance-repeat3": "2026-05-18T18:21:24.665Z",
+      "local-mcp-smoke-v3": "2026-05-18T19:36:09.943Z",
+      "swe-pro-official-eval-v3": "2026-05-18T19:36:22.795Z"
     },
     "artifactEnds": {
-      "fresh-publication-v3-preflight": "2026-05-18T15:19:30.142Z",
-      "fresh-live-repeat3-canary": "2026-05-18T15:19:30.142Z",
-      "ablation-proof-repeat3": "2026-05-18T15:19:30.142Z",
-      "requests-endurance-ablation-repeat3": "2026-05-18T15:19:30.143Z",
-      "httpcore-mcp-endurance-repeat3": "2026-05-18T15:19:30.143Z",
-      "requests-mcp-endurance-repeat3": "2026-05-18T15:19:30.143Z",
-      "local-mcp-smoke-v3": "2026-05-18T15:19:30.143Z",
-      "swe-pro-official-eval-v3": "2026-05-18T15:19:30.143Z"
+      "fresh-publication-v3-preflight": "2026-05-18T15:44:39.468Z",
+      "fresh-live-repeat3-canary": "2026-05-18T17:25:02.491Z",
+      "ablation-proof-repeat3": "2026-05-18T17:48:07.811Z",
+      "httpcore-mcp-endurance-repeat3": "2026-05-18T18:18:18.315Z",
+      "requests-mcp-endurance-repeat3": "2026-05-18T19:16:10.666Z",
+      "local-mcp-smoke-v3": "2026-05-18T19:36:13.780Z",
+      "swe-pro-official-eval-v3": "2026-05-18T19:36:22.797Z"
     }
   },
   "benchmarkSuitePaths": [
     "examples/bench/repo-matrix-publication-v3.json",
     "examples/bench/seeded-fresh-holdout-v2-20260511.json",
     "examples/bench/seeded-fresh-holdout-20260510.json",
-    "examples/bench/endurance-requests-10turn.json",
     "examples/bench/endurance-httpcore.json",
+    "examples/bench/endurance-requests-10turn.json",
     "examples/bench/swe-pro-publication/swe-pro-pilot-raw.jsonl"
   ],
   "officialDatasetRowIds": [
@@ -72,12 +70,6 @@
       "kairn_codex_session: node '/Users/kevindotel/Documents/Projects/kairn/dist/cli.js' codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}",
       "kairn_codex_session_no_governor: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}"
     ],
-    "requests-endurance-ablation-repeat3": [
-      "endurance repeat=3",
-      "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
-      "kairn_codex_session: node '/Users/kevindotel/Documents/Projects/kairn/dist/cli.js' codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}",
-      "kairn_codex_session_no_governor: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}"
-    ],
     "httpcore-mcp-endurance-repeat3": [
       "endurance repeat=3",
       "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
@@ -101,7 +93,7 @@
     {
       "entryId": "fresh-publication-v3-preflight",
       "kind": "matrix",
-      "status": "planned",
+      "status": "skipped",
       "entryMetadata": {
         "label": "Frozen fresh repo preflight",
         "repoId": "fresh-publication-v3",
@@ -118,7 +110,7 @@
     {
       "entryId": "fresh-live-repeat3-canary",
       "kind": "proof",
-      "status": "planned",
+      "status": "skipped",
       "entryMetadata": {
         "label": "Repeat-3 live seeded canary for pass/pass token savings",
         "repoId": "seeded-fresh-holdout-v2",
@@ -137,7 +129,7 @@
     {
       "entryId": "ablation-proof-repeat3",
       "kind": "proof",
-      "status": "planned",
+      "status": "skipped",
       "entryMetadata": {
         "label": "Governor ablation on seeded one-shot tasks",
         "repoId": "seeded-ablation-canary",
@@ -155,30 +147,9 @@
       ]
     },
     {
-      "entryId": "requests-endurance-ablation-repeat3",
-      "kind": "endurance",
-      "status": "planned",
-      "entryMetadata": {
-        "label": "Requests 10-turn governor ablation",
-        "repoId": "requests",
-        "language": "python",
-        "sizeClass": "medium",
-        "taskClass": "session_repeat",
-        "contextBehavior": "session_repeat",
-        "suite": "examples/bench/endurance-requests-10turn.json"
-      },
-      "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/raw/requests-endurance-ablation-repeat3.json",
-      "commands": [
-        "endurance repeat=3",
-        "baseline: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}",
-        "kairn_codex_session: node '/Users/kevindotel/Documents/Projects/kairn/dist/cli.js' codex --root {root} --model gpt-5.4-mini --sandbox danger-full-access {prompt}",
-        "kairn_codex_session_no_governor: codex -a never exec --model gpt-5.4-mini --sandbox danger-full-access --disable hooks {prompt}"
-      ]
-    },
-    {
       "entryId": "httpcore-mcp-endurance-repeat3",
       "kind": "endurance",
-      "status": "planned",
+      "status": "skipped",
       "entryMetadata": {
         "label": "Fresh httpcore MCP endurance repeat-3",
         "repoId": "httpcore",
@@ -198,7 +169,7 @@
     {
       "entryId": "requests-mcp-endurance-repeat3",
       "kind": "endurance",
-      "status": "planned",
+      "status": "skipped",
       "entryMetadata": {
         "label": "Requests MCP endurance repeat-3 regression proof",
         "repoId": "requests",
@@ -219,7 +190,7 @@
     {
       "entryId": "local-mcp-smoke-v3",
       "kind": "mcp_smoke",
-      "status": "planned",
+      "status": "skipped",
       "entryMetadata": {
         "label": "Local MCP protocol smoke",
         "repoId": "local",
@@ -235,7 +206,7 @@
     {
       "entryId": "swe-pro-official-eval-v3",
       "kind": "swe_pro_official_eval",
-      "status": "planned",
+      "status": "skipped",
       "entryMetadata": {
         "label": "SWE-Pro official evaluator slice",
         "repoId": "swe-bench-pro",

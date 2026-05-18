@@ -1,57 +1,107 @@
 # Kairn Publication Evidence Report
 
-Generated: 2026-05-18T15:19:30.143Z
-Plan: /Users/kevindotel/Documents/Projects/kairn/examples/bench/publication-plan-v3.json
+Generated: 2026-05-18T19:39:15.063Z
+Plan: /tmp/kairn-publication-plan-v3-completed.json
 Model: gpt-5.4-mini
-Dry run: true
+Dry run: false
 
 ## Summary
 
-- Entries: 0
-- Result rows: 0
-- Quality pass rate: 0.00%
-- Median valid active savings: 0.00%
-- Active median savings >= 15%: false
-- MCP evidence present: false
+- Entries: 7
+- Result rows: 29
+- Quality pass rate: 56.00%
+- Median valid active savings: 18.46%
+- Active median savings >= 15%: true
+- MCP evidence present: true
 - Endurance repeat evidence present: false
-- Net token savings after emitted Kairn context estimate: 0
+- Net token savings after emitted Kairn context estimate: 152222
 
 ## Entry Results
 
 | Entry | Repo | Task Class | Mode | Quality | Valid Savings | Classification | Failure Pattern |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| fresh-publication-v3-preflight | fresh-publication-v3 | fresh_preflight | matrix_preflight | pass | 0 |  |  |
+| fresh-publication-v3-preflight | fresh-publication-v3 | fresh_preflight | matrix_preflight | pass | 0 |  |  |
+| fresh-publication-v3-preflight | fresh-publication-v3 | fresh_preflight | matrix_preflight | pass | 0 |  |  |
+| fresh-publication-v3-preflight | fresh-publication-v3 | fresh_preflight | matrix_preflight | pass | 0 |  |  |
+| fresh-publication-v3-preflight | fresh-publication-v3 | fresh_preflight | matrix_preflight | pass | 0 |  |  |
+| fresh-publication-v3-preflight | fresh-publication-v3 | fresh_preflight | matrix_preflight | pass | 0 |  |  |
+| fresh-publication-v3-preflight | fresh-publication-v3 | fresh_preflight | matrix_preflight | pass | 0 |  |  |
+| fresh-publication-v3-preflight | fresh-publication-v3 | fresh_preflight | matrix_preflight | pass | 0 |  |  |
+| fresh-live-repeat3-canary | seeded-fresh-holdout-v2 | source_rescue | baseline | fail | 0 |  |  |
+| fresh-live-repeat3-canary | seeded-fresh-holdout-v2 | source_rescue | kairn_codex_session | pass | 2430 | quality_rescue |  |
+| ablation-proof-repeat3 | seeded-ablation-canary | ablation | baseline | pass | 0 |  |  |
+| ablation-proof-repeat3 | seeded-ablation-canary | ablation | kairn_codex_session | pass | 12606 | valid_assist |  |
+| ablation-proof-repeat3 | seeded-ablation-canary | ablation | kairn_codex_session_no_governor | pass | 22846 | valid_assist |  |
+| httpcore-mcp-endurance-repeat3 | httpcore | session_repeat | baseline | pass | 0 | none |  |
+| httpcore-mcp-endurance-repeat3 | httpcore | session_repeat | real_mcp_first | pass | 8889 | active |  |
+| requests-mcp-endurance-repeat3 | requests | session_repeat | baseline | pass | 0 | none |  |
+| requests-mcp-endurance-repeat3 | requests | session_repeat | real_mcp_first | fail | 54622 | active |  |
+| requests-mcp-endurance-repeat3 | requests | session_repeat | hybrid_mcp_brief | pass | 113229 | active |  |
+| local-mcp-smoke-v3 | local | mcp_delivery | mcp_smoke | pass | 0 |  |  |
+| swe-pro-official-eval-v3 | swe-bench-pro | official_patch | official_evaluator | fail | 0 |  | Official SWE-Pro evaluator did not pass. |
+| swe-pro-official-eval-v3 | swe-bench-pro | official_patch | official_evaluator | fail | 0 |  | Official SWE-Pro evaluator did not pass. |
+| swe-pro-official-eval-v3 | swe-bench-pro | official_patch | official_evaluator | fail | 0 |  | Official SWE-Pro evaluator did not pass. |
+| swe-pro-official-eval-v3 | swe-bench-pro | official_patch | official_evaluator | fail | 0 |  | Official SWE-Pro evaluator did not pass. |
+| swe-pro-official-eval-v3 | swe-bench-pro | official_patch | official_evaluator | fail | 0 |  | Official SWE-Pro evaluator did not pass. |
+| swe-pro-official-eval-v3 | swe-bench-pro | official_patch | official_evaluator | fail | 0 |  | Official SWE-Pro evaluator did not pass. |
+| swe-pro-official-eval-v3 | swe-bench-pro | official_patch | official_evaluator | fail | 0 |  | Official SWE-Pro evaluator did not pass. |
+| swe-pro-official-eval-v3 | swe-bench-pro | official_patch | official_evaluator | fail | 0 |  | Official SWE-Pro evaluator did not pass. |
+| swe-pro-official-eval-v3 | swe-bench-pro | official_patch | official_evaluator | fail | 0 |  | Official SWE-Pro evaluator did not pass. |
+| swe-pro-official-eval-v3 | swe-bench-pro | official_patch | official_evaluator | fail | 0 |  | Official SWE-Pro evaluator did not pass. |
 
 ## Mode Results
 
 | Mode | Rows | Quality | Active | Valid Savings | Passive | Invalid | MCP Calls | Over | Harmful | Missed | Abstain | Evidence | Scope Violations |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| matrix_preflight | 8 | 100.00% | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
+| baseline | 4 | 75.00% | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| kairn_codex_session | 2 | 100.00% | 2 | 15036 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| kairn_codex_session_no_governor | 1 | 100.00% | 1 | 22846 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| real_mcp_first | 2 | 50.00% | 2 | 63511 | 0 | 0 | 9 | 0 | 1 | 0 | 0 | 0 | 1 |
+| hybrid_mcp_brief | 1 | 100.00% | 1 | 113229 | 0 | 0 | 3 | 1 | 0 | 0 | 0 | 0 | 0 |
+| mcp_smoke | 1 | 100.00% | 1 | 0 | 0 | 0 | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
+| official_evaluator | 10 | 0.00% | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 
 ## Overhead
 
 | Metric | Value |
 | --- | --- |
-| Median setup time | 0ms |
+| Median setup time | 532ms |
 | Median index refresh time | 0ms |
-| Median hook/prompt latency | 0ms |
-| p95 hook/MCP latency | 0ms |
-| Median MCP calls per successful run | 0 |
-| Median Kairn context tokens emitted | 0 |
-| Net token savings after Kairn output estimate | 0 |
+| Median hook/prompt latency | 748ms |
+| p95 hook/MCP latency | 8488ms |
+| Median MCP calls per successful run | 3 |
+| Median Kairn context tokens emitted | 1000 |
+| Net token savings after Kairn output estimate | 152222 |
 
 ## Task Class Results
 
 | Task Class | Rows | Quality | Active | Median Savings | Harmful | Missed | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| fresh_preflight | 8 | 100.00% | 6 | 0.00% | 0 | 0 | 1 |
+| source_rescue | 2 | 50.00% | 1 | 0.83% | 0 | 0 | 0 |
+| ablation | 3 | 100.00% | 2 | 17.85% | 0 | 0 | 0 |
+| session_repeat | 5 | 80.00% | 3 | 18.46% | 1 | 0 | 0 |
+| mcp_delivery | 1 | 100.00% | 1 | 0.00% | 0 | 0 | 0 |
+| official_patch | 10 | 0.00% | 0 | 0.00% | 0 | 0 | 0 |
 
 ## Failure Patterns
 
-No repeated failure patterns recorded.
+| Pattern | Count | Examples |
+| --- | --- | --- |
+| Official SWE-Pro evaluator did not pass. | 10 | swe-pro-official-eval-v3:official_evaluator, swe-pro-official-eval-v3:official_evaluator, swe-pro-official-eval-v3:official_evaluator, swe-pro-official-eval-v3:official_evaluator, swe-pro-official-eval-v3:official_evaluator |
+| harmful assist | 1 | requests-mcp-endurance-repeat3:real_mcp_first |
+| over-assist | 1 | requests-mcp-endurance-repeat3:hybrid_mcp_brief |
+| quality gate failed | 1 | fresh-live-repeat3-canary:baseline |
 
 ## Improvement Recommendations
 
-- Active median savings did not reach 15%; inspect missed opportunities and over-assist classes before increasing live spend.
-- No real MCP evidence was recorded; run the MCP smoke or a live MCP subset before making MCP claims.
+- Quality pass rate fell more than five percentage points below baseline; treat savings as blocked until failure patterns are addressed.
 - No repeated-context endurance evidence was recorded; run a 6-10 turn suite before making long-session claims.
+- Investigate repeated pattern "Official SWE-Pro evaluator did not pass." across 10 row(s).
+- Investigate repeated pattern "harmful assist" across 1 row(s).
+- Investigate repeated pattern "over-assist" across 1 row(s).
 
 ## Claim Rules
 

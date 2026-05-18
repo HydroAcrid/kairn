@@ -23,7 +23,8 @@ import {
   agentTouchedFiles,
   changedFiles,
   createBenchmarkWorkspace,
-  runShell
+  runShell,
+  runShellWithProcessGroupTimeout
 } from "./agent.js";
 import { classificationNegativeEvidenceReason, classifyAssistance } from "./assistClassification.js";
 import { loadBenchmarkEnduranceSuite } from "./enduranceSuite.js";
@@ -179,7 +180,7 @@ async function runEnduranceMode(input: {
 
     const setupStartedAt = Date.now();
     const setupResult = input.setupCommand
-      ? runShell(enduranceCommandWithPlaceholders(input.setupCommand, {
+      ? await runEnduranceShell(enduranceCommandWithPlaceholders(input.setupCommand, {
           prompt: input.suite.task,
           root: workspace.workspacePath,
           session: sessionId ?? "",
@@ -232,7 +233,7 @@ async function runEnduranceMode(input: {
     }
 
     const finalVerification = input.suite.finalVerificationCommand
-      ? runShell(input.suite.finalVerificationCommand, workspace.workspacePath, timeoutMs)
+      ? await runEnduranceShell(input.suite.finalVerificationCommand, workspace.workspacePath, timeoutMs)
       : undefined;
     const finalSourceInvariantResult = evaluateSourceInvariants({
       rootPath: workspace.workspacePath,
@@ -447,8 +448,8 @@ async function runEnduranceTurn(input: {
     session: input.sessionId ?? "",
     turn: input.turn.id
   });
-  const result = runShell(command, input.workspacePath, input.timeoutMs);
-  const verification = input.turn.verificationCommand ? runShell(input.turn.verificationCommand, input.workspacePath, input.timeoutMs) : undefined;
+  const result = await runEnduranceShell(command, input.workspacePath, input.timeoutMs);
+  const verification = input.turn.verificationCommand ? await runEnduranceShell(input.turn.verificationCommand, input.workspacePath, input.timeoutMs) : undefined;
   const output = [result.output, verification?.output].filter(Boolean).join("\n");
   const usage = parseCodexUsageFooter(output);
   const expectedMentions = mentionedExpectedFiles(output, input.turn.expectedFiles);
@@ -586,6 +587,7 @@ function buildMcpEndurancePrompt(input: {
         `Use Kairn session ${input.sessionId}.`,
         `Known active source: ${knownSource}.`,
         invariant ? `Known invariant: ${invariant}` : undefined,
+        ...mcpSourceOnlyScopeLines(knownSource),
         "Do not call kairn_prepare_task for this turn; source discovery is already complete.",
         "If there is concrete failure output, call kairn_get_failure_context once with that output. Otherwise continue from the known source and run the smallest check.",
         "Do not call kairn_get_next_context unless the failure context explicitly asks for it.",
@@ -604,6 +606,7 @@ function buildMcpEndurancePrompt(input: {
         `Kairn session ${input.sessionId}: source already found.`,
         `Source: ${knownSource}.`,
         invariant ? `Invariant: ${invariant}` : undefined,
+        ...mcpSourceOnlyScopeLines(knownSource),
         "Do not call Kairn again unless a real check fails or the target changes.",
         "",
         "User task:",
@@ -635,6 +638,7 @@ function buildMcpEndurancePrompt(input: {
       "No active source has been established yet. For this diagnose/source-rescue turn, call kairn_prepare_task once before manual source reads.",
       "For an obvious single-source symbol task, inspect the likely source directly and do not call Kairn just to confirm it.",
       "If it returns stopCondition or no nextToolCalls, continue from its files and do not call more Kairn unless a check fails or the target changes.",
+      "Obey Kairn's edit-scope guidance: tests, docs, examples, fixtures, snapshots, generated files, and vendor/dependency files are read-only unless a focused verification failure proves they must change.",
       "Only call kairn_get_next_context when prepare explicitly returns it; call kairn_get_failure_context once after real failures.",
       "Prefer the smallest Kairn-provided source read and avoid repeating files already shown by Kairn.",
       "",
@@ -642,6 +646,14 @@ function buildMcpEndurancePrompt(input: {
       input.prompt
     ].join("\n")
   };
+}
+
+function mcpSourceOnlyScopeLines(sourceFile: string): string[] {
+  return [
+    `Edit scope: ${sourceFile} only unless a focused verification failure names another production source file.`,
+    "Treat tests, docs, examples, fixtures, snapshots, generated files, and vendor/dependency files as read-only unless the user explicitly asks to edit them or verification proves expected-output drift.",
+    "If any out-of-scope file changed while exploring, revert it before finalizing."
+  ];
 }
 
 export function enduranceInvariantForPrompt(ledgerInvariant: string | undefined, prompt: string): string | undefined {
@@ -1059,6 +1071,19 @@ function buildEnduranceRepeatAggregate(runs: BenchmarkEnduranceReport[]): Benchm
       .map((delta) => delta.savingsRate)
       .filter((value): value is number => typeof value === "number");
     const classifications = countRepeatClassifications(modeDeltas.map((delta) => delta.assistClassification));
+    const repeatedFilesAvoided = modeReports.reduce((total, report) => {
+      return total + report.turns.reduce((turnTotal, turn) => turnTotal + turn.repeatedFilesAvoided, 0);
+    }, 0);
+    const repeatedSnippetsAvoided = modeReports.reduce((total, report) => {
+      return total + report.turns.reduce((turnTotal, turn) => turnTotal + turn.repeatedSnippetsAvoided, 0);
+    }, 0);
+    const scopeViolations = modeReports.reduce((total, report) => {
+      const finalViolations = stringArrayMetadata(report.metadata?.finalDiffScopeViolations).length;
+      const turnViolations = report.turns.reduce((turnTotal, turn) => {
+        return turnTotal + stringArrayMetadata(turn.metadata.diffScopeViolations).length;
+      }, 0);
+      return total + finalViolations + turnViolations;
+    }, 0);
     const summary: BenchmarkEnduranceRepeatModeAggregate = {
       mode,
       repeats: modeReports.length,
@@ -1073,6 +1098,12 @@ function buildEnduranceRepeatAggregate(runs: BenchmarkEnduranceReport[]): Benchm
       harmfulRuns: modeDeltas.filter((delta) => delta.harmfulAssist).length,
       missedOpportunityRuns: modeDeltas.filter((delta) => delta.missedOpportunity).length,
       correctAbstentionRuns: modeDeltas.filter((delta) => delta.assistClassification === "correct_abstention").length,
+      mcpCalls: modeReports.reduce((total, report) => total + report.assistanceActions.mcpCalls, 0),
+      mcpReturnedFileCount: modeReports.reduce((total, report) => total + numberMetadata(report.metadata?.mcpReturnedFileCount), 0),
+      mcpReturnedUsefulFileCount: modeReports.reduce((total, report) => total + numberMetadata(report.metadata?.mcpReturnedUsefulFileCount), 0),
+      repeatedFilesAvoided,
+      repeatedSnippetsAvoided,
+      scopeViolations,
       classifications,
       verdict: "insufficient_data"
     };
@@ -1133,6 +1164,14 @@ function medianNumber(values: number[]): number {
 
 function meanNumber(values: number[]): number {
   return values.length === 0 ? 0 : values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+function numberMetadata(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function stringArrayMetadata(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
 function formatPercent(value: number | undefined): string {
@@ -1257,6 +1296,16 @@ function enduranceCommandWithPlaceholders(command: string, input: { prompt: stri
     .replaceAll("{root}", shellQuote(input.root))
     .replaceAll("{session}", shellQuote(input.session))
     .replaceAll("{turn}", shellQuote(input.turn));
+}
+
+async function runEnduranceShell(command: string, cwd: string, timeoutMs: number): Promise<{ status: number; output: string; timedOut: boolean; signal?: NodeJS.Signals | null }> {
+  const result = await runShellWithProcessGroupTimeout(command, cwd, timeoutMs, 16 * 1024 * 1024);
+  return {
+    status: result.status ?? 1,
+    output: result.output,
+    timedOut: result.timedOut,
+    ...(result.signal !== undefined ? { signal: result.signal } : {})
+  };
 }
 
 function shellQuote(value: string): string {

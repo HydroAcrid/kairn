@@ -1,1 +1,30 @@
 entryId,kind,repoId,language,sizeClass,taskClass,behavior,mode,qualityPassed,observedTokens,baselineTokens,savedTokens,savingsRate,validSavings,passiveSavings,invalidSavings,assistanceStatus,assistClassification,active,claimEligible,mcpCalls,repeatedFilesAvoided,scopeViolations,overAssist,harmfulAssist,missedOpportunity,correctAbstention,requestEvidence,failurePattern
+fresh-publication-v3-preflight,matrix,fresh-publication-v3,mixed,mixed,fresh_preflight,unknown,matrix_preflight,true,456,,,,0,0,0,,,true,false,0,0,0,false,false,false,false,false,
+fresh-publication-v3-preflight,matrix,fresh-publication-v3,mixed,mixed,fresh_preflight,unknown,matrix_preflight,true,488,,,,0,0,0,,,true,false,0,0,0,false,false,false,false,false,
+fresh-publication-v3-preflight,matrix,fresh-publication-v3,mixed,mixed,fresh_preflight,unknown,matrix_preflight,true,481,,,,0,0,0,,,true,false,0,0,0,false,false,false,false,false,
+fresh-publication-v3-preflight,matrix,fresh-publication-v3,mixed,mixed,fresh_preflight,unknown,matrix_preflight,true,504,,,,0,0,0,,,true,false,0,0,0,false,false,false,false,false,
+fresh-publication-v3-preflight,matrix,fresh-publication-v3,mixed,mixed,fresh_preflight,unknown,matrix_preflight,true,453,,,,0,0,0,,,true,false,0,0,0,false,false,false,false,false,
+fresh-publication-v3-preflight,matrix,fresh-publication-v3,mixed,mixed,fresh_preflight,unknown,matrix_preflight,true,445,,,,0,0,0,,,true,false,0,0,0,false,false,false,false,false,
+fresh-publication-v3-preflight,matrix,fresh-publication-v3,mixed,mixed,fresh_preflight,unknown,matrix_preflight,true,141,,,,0,0,0,,,false,false,0,0,0,false,false,false,false,true,
+fresh-publication-v3-preflight,matrix,fresh-publication-v3,mixed,mixed,fresh_preflight,unknown,matrix_preflight,true,145,,,,0,0,0,,,false,false,0,0,0,false,false,false,false,false,
+fresh-live-repeat3-canary,proof,seeded-fresh-holdout-v2,mixed,mixed,source_rescue,unknown,baseline,false,147529,,,,0,0,0,,,false,false,0,0,0,false,false,false,false,false,
+fresh-live-repeat3-canary,proof,seeded-fresh-holdout-v2,mixed,mixed,source_rescue,unknown,kairn_codex_session,true,145099,147529,2430,0.0165,2430,0,0,active,quality_rescue,true,true,0,0,0,false,false,false,false,false,
+ablation-proof-repeat3,proof,seeded-ablation-canary,mixed,mixed,ablation,unknown,baseline,true,70605,,,,0,0,0,,,false,false,0,0,0,false,false,false,false,false,
+ablation-proof-repeat3,proof,seeded-ablation-canary,mixed,mixed,ablation,unknown,kairn_codex_session,true,57999,70605,12606,0.1785,12606,0,0,active,valid_assist,true,true,0,0,0,false,false,false,false,false,
+ablation-proof-repeat3,proof,seeded-ablation-canary,mixed,mixed,ablation,unknown,kairn_codex_session_no_governor,true,47759,70605,22846,0.3236,22846,0,0,active,valid_assist,true,true,0,0,0,false,false,false,false,false,
+httpcore-mcp-endurance-repeat3,endurance,httpcore,python,medium,session_repeat,source_rescue,baseline,true,48164,,,,0,0,0,none,,false,false,0,0,0,false,false,false,false,false,
+httpcore-mcp-endurance-repeat3,endurance,httpcore,python,medium,session_repeat,source_rescue,real_mcp_first,true,38643,,8889,0.18455693048750105,8889,0,0,active,,true,true,5,0,0,false,false,false,false,false,
+requests-mcp-endurance-repeat3,endurance,requests,python,medium,session_repeat,source_rescue,baseline,true,215483,,,,0,0,0,none,,false,false,0,0,0,false,false,false,false,false,
+requests-mcp-endurance-repeat3,endurance,requests,python,medium,session_repeat,source_rescue,real_mcp_first,false,130976,,54622,0.25348635391190955,54622,0,0,active,,true,false,4,0,1,false,true,false,false,false,
+requests-mcp-endurance-repeat3,endurance,requests,python,medium,session_repeat,source_rescue,hybrid_mcp_brief,true,118903,,113229,0.4877785053331725,113229,0,0,active,,true,true,3,0,0,true,false,false,false,false,
+local-mcp-smoke-v3,mcp_smoke,local,mixed,unknown,mcp_delivery,unknown,mcp_smoke,true,,,,,0,0,0,,,true,false,2,0,0,false,false,false,false,false,
+swe-pro-official-eval-v3,swe_pro_official_eval,swe-bench-pro,mixed,mixed,official_patch,unknown,official_evaluator,false,,,,,0,0,0,,,false,false,0,0,0,false,false,false,false,false,Official SWE-Pro evaluator did not pass.
+swe-pro-official-eval-v3,swe_pro_official_eval,swe-bench-pro,mixed,mixed,official_patch,unknown,official_evaluator,false,,,,,0,0,0,,,false,false,0,0,0,false,false,false,false,false,Official SWE-Pro evaluator did not pass.
+swe-pro-official-eval-v3,swe_pro_official_eval,swe-bench-pro,mixed,mixed,official_patch,unknown,official_evaluator,false,,,,,0,0,0,,,false,false,0,0,0,false,false,false,false,false,Official SWE-Pro evaluator did not pass.
+swe-pro-official-eval-v3,swe_pro_official_eval,swe-bench-pro,mixed,mixed,official_patch,unknown,official_evaluator,false,,,,,0,0,0,,,false,false,0,0,0,false,false,false,false,false,Official SWE-Pro evaluator did not pass.
+swe-pro-official-eval-v3,swe_pro_official_eval,swe-bench-pro,mixed,mixed,official_patch,unknown,official_evaluator,false,,,,,0,0,0,,,false,false,0,0,0,false,false,false,false,false,Official SWE-Pro evaluator did not pass.
+swe-pro-official-eval-v3,swe_pro_official_eval,swe-bench-pro,mixed,mixed,official_patch,unknown,official_evaluator,false,,,,,0,0,0,,,false,false,0,0,0,false,false,false,false,false,Official SWE-Pro evaluator did not pass.
+swe-pro-official-eval-v3,swe_pro_official_eval,swe-bench-pro,mixed,mixed,official_patch,unknown,official_evaluator,false,,,,,0,0,0,,,false,false,0,0,0,false,false,false,false,false,Official SWE-Pro evaluator did not pass.
+swe-pro-official-eval-v3,swe_pro_official_eval,swe-bench-pro,mixed,mixed,official_patch,unknown,official_evaluator,false,,,,,0,0,0,,,false,false,0,0,0,false,false,false,false,false,Official SWE-Pro evaluator did not pass.
+swe-pro-official-eval-v3,swe_pro_official_eval,swe-bench-pro,mixed,mixed,official_patch,unknown,official_evaluator,false,,,,,0,0,0,,,false,false,0,0,0,false,false,false,false,false,Official SWE-Pro evaluator did not pass.
+swe-pro-official-eval-v3,swe_pro_official_eval,swe-bench-pro,mixed,mixed,official_patch,unknown,official_evaluator,false,,,,,0,0,0,,,false,false,0,0,0,false,false,false,false,false,Official SWE-Pro evaluator did not pass.

@@ -108,6 +108,11 @@ const ROLE_GROUPS: CompanionRole[] = [
     reason: "session/command/config pair"
   },
   {
+    id: "orm-unit-persistence",
+    terms: ["orm", "session", "sessions", "flush", "flushed", "unit", "unitofwork", "work", "persistence", "persist", "mapper", "mappers"],
+    reason: "ORM unit-of-work/persistence pair"
+  },
+  {
     id: "parse-persist",
     terms: ["parse", "parser", "parsed", "persist", "persistence", "repository", "repositories", "events", "event", "ingest", "store", "storage"],
     reason: "parse/persist pair"
@@ -485,6 +490,11 @@ export function findCompanionCandidates(input: {
       score += commandConfig.score;
       reasons.push(...commandConfig.reasons);
     }
+    const ormUnitOfWork = scoreOrmUnitOfWorkCompanion(file.path, queryTerms);
+    if (ormUnitOfWork.score !== 0) {
+      score += ormUnitOfWork.score;
+      reasons.push(...ormUnitOfWork.reasons);
+    }
     if (isRoutingMapRuleCompanion(file.path, queryTerms)) {
       score += 980;
       reasons.push("routing map/rule companion");
@@ -710,6 +720,7 @@ function scoreNamedFileSurface(filePath: string, query: string): { score: number
   if (!basename || basename.length < 5 || /^(index|main|core|base|utils?|helpers?)$/i.test(basename)) return { score: 0, reasons: [] };
   const normalizedBasename = normalizeText(basename);
   if (!normalizedBasename || normalizedBasename.split(" ").length < 2) return { score: 0, reasons: [] };
+  if (isSuffixOfLongerNamedIdentifier(basename, query)) return { score: 0, reasons: [] };
   if (!normalizeText(query).includes(normalizedBasename)) return { score: 0, reasons: [] };
   return {
     score: 2600,
@@ -985,6 +996,8 @@ function isComplementaryRole(left: string, right: string): boolean {
     (pair.has("interceptor") && (pair.has("dispatch") || pair.has("adapter") || pair.has("chain") || pair.has("call"))) ||
     (pair.has("chain") && pair.has("call")) ||
     (pair.has("pool") && pair.has("connection")) ||
+    (pair.has("session") && (pair.has("unitofwork") || pair.has("persistence"))) ||
+    (pair.has("unitofwork") && pair.has("persistence")) ||
     (pair.has("core") && (pair.has("entry") || pair.has("encoder") || pair.has("sink") || pair.has("logger"))) ||
     (pair.has("logger") && pair.has("sink")) ||
     (pair.has("sink") && pair.has("encoder")) ||
@@ -1069,6 +1082,8 @@ function roleCategory(filePath: string): string | undefined {
   if (/mcp/.test(normalized.split("/").at(-1) ?? "") || /(^|\/)mcp\//.test(normalized)) return "mcp";
   if (/runtime/.test(normalized.split("/").at(-1) ?? "")) return "runtime";
   if (/(^|\/)sessions?\.[a-z0-9]+$/.test(normalized) || /(^|\/)sessions?\//.test(normalized)) return "session";
+  if (/unit[-_]?of[-_]?work|unitofwork/.test(normalized)) return "unitofwork";
+  if (/persistence|persist/.test(normalized.split("/").at(-1) ?? "")) return "persistence";
   if (/proxy/.test(normalized.split("/").at(-1) ?? "")) return "proxy";
   if (/pool/.test(normalized.split("/").at(-1) ?? "")) return "pool";
   if (/connection/.test(normalized.split("/").at(-1) ?? "")) return "connection";
@@ -1271,7 +1286,7 @@ function scoreModuleResolverCompanion(filePath: string, queryTerms: Set<string>)
   let score = 0;
   const reasons: string[] = [];
   if (/resolver(factory)?|resolveid|resolve/.test(compact)) {
-    score += 2100;
+    score += /resolverfactory/.test(compact) ? 3400 : 2400;
     reasons.push("module resolver companion");
   }
   if (/moduleloader|loader/.test(compact)) {
@@ -1283,7 +1298,7 @@ function scoreModuleResolverCompanion(filePath: string, queryTerms: Set<string>)
     reasons.push("module graph companion");
   }
   if (/javascriptparser|[a-z0-9]+parser/.test(compact)) {
-    score += 760;
+    score += queryTerms.has("parser") || queryTerms.has("hook") || queryTerms.has("hooks") ? 2200 : 980;
     reasons.push("specific parser companion");
   } else if (compact === "parser") {
     score -= 520;
@@ -1494,6 +1509,36 @@ function scoreSessionCommandConfigCompanion(filePath: string, queryTerms: Set<st
   if (/\.(h|hh|hpp|hxx)$/.test(normalized) && !queryTerms.has("header")) {
     score -= 1500;
     reasons.push("header downranked for implementation companion");
+  }
+  return { score, reasons };
+}
+
+function scoreOrmUnitOfWorkCompanion(filePath: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const asksOrmFlush =
+    (queryTerms.has("orm") || queryTerms.has("session") || queryTerms.has("unitofwork") || (queryTerms.has("unit") && queryTerms.has("work"))) &&
+    (queryTerms.has("flush") || queryTerms.has("flushed") || queryTerms.has("unitofwork") || queryTerms.has("persistence") || queryTerms.has("persist") || queryTerms.has("mapper"));
+  if (!asksOrmFlush) return { score: 0, reasons: [] };
+
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const pathTerms = termSet(normalized);
+  const reasons: string[] = [];
+  let score = 0;
+  if (pathTerms.has("orm") && /session/.test(basename)) {
+    score += 3200;
+    reasons.push("ORM session source companion");
+  }
+  if (/unit[-_]?of[-_]?work|unitofwork/.test(basename)) {
+    score += 3600;
+    reasons.push("unit-of-work source companion");
+  }
+  if (/persistence|persist/.test(basename)) {
+    score += 3000;
+    reasons.push("persistence source companion");
+  }
+  if ((pathTerms.has("asyncio") || pathTerms.has("async")) && queryTerms.has("orm") && !queryTerms.has("async") && !queryTerms.has("asyncio")) {
+    score -= 1800;
+    reasons.push("async variant downranked for ORM source prompt");
   }
   return { score, reasons };
 }
@@ -1721,6 +1766,24 @@ function normalizeText(input: string): string {
     .trim();
 }
 
+function isSuffixOfLongerNamedIdentifier(basename: string, query: string): boolean {
+  const normalizedBasename = normalizeText(basename);
+  const basenameCompact = normalizedBasename.replace(/\s+/g, "");
+  if (basenameCompact.length < 6) return false;
+  const identifiers = namedIdentifierCompacts(query);
+  if (identifiers.has(basenameCompact)) return false;
+  return [...identifiers].some((identifier) => identifier.endsWith(basenameCompact) && identifier.length >= basenameCompact.length + 3);
+}
+
+function namedIdentifierCompacts(query: string): Set<string> {
+  const identifiers = new Set<string>();
+  for (const match of query.matchAll(/\b[A-Z][A-Za-z0-9]*[A-Z][A-Za-z0-9]*\b/g)) {
+    const compact = normalizeText(match[0] ?? "").replace(/\s+/g, "");
+    if (compact.length >= 5) identifiers.add(compact);
+  }
+  return identifiers;
+}
+
 function compoundQueryTerms(query: string): string[] {
   const terms = tokenizeLexical(query).map(canonicalTerm);
   const compounds = new Set<string>();
@@ -1800,6 +1863,9 @@ function canonicalTerm(term: string): string {
   if (term === "requests") return "request";
   if (term === "responses") return "response";
   if (term === "sessions") return "session";
+  if (term === "flushed") return "flush";
+  if (term === "persisted") return "persist";
+  if (term === "unit-of-work" || term === "unit_of_work") return "unitofwork";
   if (term === "hooks") return "hook";
   if (term === "effects") return "effect";
   if (term === "strings") return "string";

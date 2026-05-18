@@ -245,6 +245,12 @@ export type BenchmarkEnduranceRepeatModeAggregate = {
   harmfulRuns: number;
   missedOpportunityRuns: number;
   correctAbstentionRuns: number;
+  mcpCalls: number;
+  mcpReturnedFileCount: number;
+  mcpReturnedUsefulFileCount: number;
+  repeatedFilesAvoided: number;
+  repeatedSnippetsAvoided: number;
+  scopeViolations: number;
   classifications: Partial<Record<BenchmarkAssistClassification, number>>;
   verdict:
     | "baseline"
