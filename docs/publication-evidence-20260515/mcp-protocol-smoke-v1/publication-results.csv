@@ -1,0 +1,2 @@
+entryId,kind,repoId,language,sizeClass,taskClass,behavior,mode,qualityPassed,observedTokens,baselineTokens,savedTokens,savingsRate,validSavings,passiveSavings,invalidSavings,assistanceStatus,assistClassification,active,claimEligible,mcpCalls,repeatedFilesAvoided,scopeViolations,overAssist,harmfulAssist,missedOpportunity,correctAbstention,requestEvidence,failurePattern
+local-mcp-smoke-v2,mcp_smoke,local,mixed,unknown,mcp_delivery,unknown,mcp_smoke,true,,,,,0,0,0,,,true,false,2,0,0,false,false,false,false,false,

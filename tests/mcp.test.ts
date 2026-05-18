@@ -374,6 +374,82 @@ describe("MCP server", () => {
 
     await client.close();
   });
+
+  it("does not collapse multi-surface source-rescue MCP context into a cheap guardrail", async () => {
+    const root = createFixtureRepo();
+    fs.mkdirSync(path.join(root, "packages/vite/src/client"), { recursive: true });
+    fs.mkdirSync(path.join(root, "packages/vite/src/shared"), { recursive: true });
+    fs.mkdirSync(path.join(root, "packages/vite/src/node"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "packages/vite/src/client/client.ts"),
+      [
+        "import { isExternalUrl } from '../shared/utils';",
+        "export function injectQuery(url: string, queryToInject: string) {",
+        "  if (isExternalUrl(url)) return url;",
+        "  if (url[0] === '.' || url[0] === '/') return url;",
+        "  return `${url}${queryToInject}`;",
+        "}",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(root, "packages/vite/src/shared/utils.ts"),
+      [
+        "export function isExternalUrl(url: string) {",
+        "  return /^https?:/.test(url);",
+        "}",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(root, "packages/vite/src/node/utils.ts"),
+      [
+        "export function injectQueryForNode(url: string, queryToInject: string) {",
+        "  return `${url}${queryToInject}`;",
+        "}",
+        ""
+      ].join("\n")
+    );
+
+    const client = new Client({
+      name: "kairn-test-client",
+      version: "0.1.0"
+    });
+    const transport = new StdioClientTransport({
+      command: path.join(process.cwd(), "node_modules/.bin/tsx"),
+      args: ["src/cli.ts", "serve", "--mcp", "--root", root],
+      cwd: process.cwd(),
+      stderr: "pipe"
+    });
+
+    await client.connect(transport);
+
+    const prepared = await client.callTool({
+      name: "kairn_prepare_task",
+      arguments: {
+        task: "Debug the seeded failing TypeScript check. Vite injectQuery should skip external URLs, but relative URLs like ./dep.js and absolute URLs like /src/main.ts must receive the injected query. Fix the production source and do not edit unrelated files.",
+        budget: 700
+      }
+    });
+    const parsed = JSON.parse(firstTextContent(prepared)!) as {
+      contextSuppressed?: boolean;
+      stopCondition?: string | null;
+      startFiles: string[];
+      files: string[];
+      companionFiles: string[];
+      contextDecision?: {
+        taskFrame?: string;
+        recommendedDelivery?: string;
+      };
+    };
+
+    expect(parsed.contextDecision?.taskFrame).toBe("source_rescue");
+    expect(parsed.contextSuppressed).not.toBe(true);
+    expect(parsed.stopCondition ?? "").not.toMatch(/cheap_one_shot/);
+    expect([...parsed.startFiles, ...parsed.files, ...parsed.companionFiles].length).toBeGreaterThan(0);
+
+    await client.close();
+  });
 });
 
 function firstTextContent(result: unknown): string | undefined {

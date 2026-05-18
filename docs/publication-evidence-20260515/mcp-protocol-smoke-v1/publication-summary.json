@@ -1,0 +1,74 @@
+{
+  "id": "kairn-evidence-campaign-v2",
+  "name": "Kairn Evidence Campaign v2",
+  "generatedAt": "2026-05-16T14:27:43.227Z",
+  "planPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/publication-plan-v2.json",
+  "outDir": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/mcp-protocol-smoke-v1",
+  "dryRun": false,
+  "model": "gpt-5.4-mini",
+  "repeat": 5,
+  "aggregate": {
+    "entries": 1,
+    "resultRows": 1,
+    "qualityPassRate": 1,
+    "medianValidSavingsRate": 0,
+    "modes": {
+      "mcp_smoke": {
+        "rows": 1,
+        "qualityPasses": 1,
+        "activeRows": 1,
+        "passiveRows": 0,
+        "validSavingsRows": 0,
+        "validSavings": 0,
+        "passiveSavings": 0,
+        "invalidSavings": 0,
+        "medianSavingsRate": 0,
+        "overAssistRows": 0,
+        "harmfulRows": 0,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "requestEvidenceRows": 0,
+        "mcpCalls": 2,
+        "repeatedFilesAvoided": 0,
+        "scopeViolations": 0
+      }
+    },
+    "byTaskClass": {
+      "mcp_delivery": {
+        "rows": 1,
+        "qualityPasses": 1,
+        "activeRows": 1,
+        "passiveRows": 0,
+        "validSavingsRows": 0,
+        "validSavings": 0,
+        "passiveSavings": 0,
+        "invalidSavings": 0,
+        "medianSavingsRate": 0,
+        "overAssistRows": 0,
+        "harmfulRows": 0,
+        "missedOpportunityRows": 0,
+        "correctAbstentionRows": 0,
+        "requestEvidenceRows": 0,
+        "mcpCalls": 2,
+        "repeatedFilesAvoided": 0,
+        "scopeViolations": 0
+      }
+    },
+    "classifications": {},
+    "failurePatterns": [],
+    "successCriteria": {
+      "qualityWithinFivePoints": true,
+      "activeMedianSavingsAtLeast15": false,
+      "noRepeatedHarmfulPattern": true,
+      "hasMcpEvidence": true,
+      "hasEnduranceAfterTurnOneEvidence": false
+    }
+  },
+  "outputs": {
+    "summaryPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/mcp-protocol-smoke-v1/publication-summary.json",
+    "resultsCsvPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/mcp-protocol-smoke-v1/publication-results.csv",
+    "failuresCsvPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/mcp-protocol-smoke-v1/publication-failures.csv",
+    "manifestPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/mcp-protocol-smoke-v1/publication-manifest.json",
+    "markdownPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/mcp-protocol-smoke-v1/kairn_publication_evidence_report_2026-05-15.md"
+  }
+}

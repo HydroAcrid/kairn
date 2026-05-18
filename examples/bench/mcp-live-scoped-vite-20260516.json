@@ -1,0 +1,39 @@
+{
+  "id": "mcp-live-scoped-vite-20260516",
+  "name": "MCP Live Scoped Vite Subset 2026-05-16",
+  "cases": [
+    {
+      "id": "ts-vite-inject-query-relative",
+      "mode": "agent",
+      "task": "Debug a seeded Vite client regression: injectQuery no longer injects query parameters into relative or absolute browser-handled URLs. Fix production source only.",
+      "agentPrompt": "Debug the seeded failing TypeScript check. Vite injectQuery should skip external URLs, but relative URLs like ./dep.js and absolute URLs like /src/main.ts must receive the injected query. Fix the production source and do not edit unrelated files.",
+      "contextBehavior": "source_rescue",
+      "expectedFiles": [
+        "packages/vite/src/client/client.ts",
+        "packages/vite/src/shared/utils.ts"
+      ],
+      "requiredTouchedFiles": [
+        "packages/vite/src/client/client.ts"
+      ],
+      "excludedFiles": [
+        "packages/vite/src/node/__tests__/",
+        "docs/",
+        "playground/"
+      ],
+      "budget": 1000,
+      "seed": {
+        "repoUrl": "https://github.com/vitejs/vite.git",
+        "ref": "7190cca9e02a873fa6b635145e04f318ed5f7bf4",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/vite-inject-query-skip.patch",
+        "expectedFailureCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('packages/vite/src/client/client.ts', 'utf8');\nconst stillBroken = source.includes(\"if (url[0] === '.' || url[0] === '/')\");\nconst keepsInjection = source.includes('queryToInject') && source.includes('new URL(url,');\nconst fixed = keepsInjection && !stillBroken;\nprocess.exit(fixed ? 1 : 0);\nNODE",
+        "testCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('packages/vite/src/client/client.ts', 'utf8');\nconst stillBroken = source.includes(\"if (url[0] === '.' || url[0] === '/')\");\nconst keepsInjection = source.includes('queryToInject') && source.includes('new URL(url,');\nconst fixed = keepsInjection && !stillBroken;\nprocess.exit(fixed ? 0 : 1);\nNODE"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Vite client source is touched.",
+        "Tests/docs/playground files are not touched."
+      ]
+    }
+  ]
+}

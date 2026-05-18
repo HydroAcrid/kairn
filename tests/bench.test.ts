@@ -3494,6 +3494,118 @@ describe("benchmark suite and scoring", () => {
     expect(result.metadata.mcpContextEfficiency).toBeCloseTo(1 / 3, 4);
   });
 
+  it("does not contaminate setup-failure proof metrics with the caller cwd Kairn database", async () => {
+    const metricsRoot = createFixtureRepo();
+    const contaminatingRuntime = new KairnRuntime(metricsRoot);
+    await contaminatingRuntime.init();
+    const task = await contaminatingRuntime.startTask("unrelated MCP session");
+    contaminatingRuntime.recordMcpToolCall({
+      toolName: "kairn_prepare_task",
+      input: { task: "unrelated" },
+      result: { startFiles: ["src/app.ts"] }
+    });
+    contaminatingRuntime.close();
+
+    const root = createFixtureRepo();
+    const suitePath = path.join(root, "missing-patch-suite.json");
+    fs.writeFileSync(
+      suitePath,
+      JSON.stringify({
+        id: "missing-patch-suite",
+        name: "Missing Patch Suite",
+        cases: [
+          {
+            id: "missing-patch",
+            mode: "agent",
+            task: "Debug missing patch setup",
+            expectedFiles: ["src/app.ts"],
+            excludedFiles: [],
+            seed: {
+              repoUrl: root,
+              ref: "HEAD",
+              cloneDepth: 1,
+              setupPatchFile: "./does-not-exist.patch",
+              testCommand: "node -e \"process.exit(0)\""
+            }
+          }
+        ]
+      })
+    );
+
+    const originalCwd = process.cwd();
+    process.chdir(metricsRoot);
+    try {
+      const runtime = new KairnRuntime(root);
+      await runtime.init();
+      const proof = await runtime.proveBenchmark({
+        suitePath,
+        baselineCommand: "node -e \"process.exit(0)\""
+      });
+      runtime.close();
+
+      const result = proof.baseline.results[0];
+      expect(result?.taskOutcome).toBe("fail");
+      expect(result?.summary).toContain("Benchmark workspace setup failed");
+      expect(result?.metadata.mcpToolCalls).toBe(0);
+      expect(result?.metadata.mcpFilesReturned).toEqual([]);
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  it("makes MCP-first live benchmark prompts explicit for source-rescue cases", async () => {
+    const root = createFixtureRepo();
+    const suitePath = path.join(root, "mcp-source-rescue-suite.json");
+    fs.writeFileSync(
+      suitePath,
+      JSON.stringify({
+        id: "mcp-source-rescue-suite",
+        name: "MCP Source Rescue Suite",
+        cases: [
+          {
+            id: "source-rescue",
+            mode: "agent",
+            task: "Debug a broad source-rescue issue",
+            contextBehavior: "source_rescue",
+            expectedFiles: [],
+            excludedFiles: []
+          }
+        ]
+      })
+    );
+    fs.writeFileSync(
+      path.join(root, "check-mcp-prompt.cjs"),
+      [
+        "const fs = require('fs');",
+        "const Database = require('better-sqlite3');",
+        "const prompt = process.argv[2] || '';",
+        "if (!prompt.includes('classified as source_rescue')) process.exit(2);",
+        "if (!prompt.includes('first action before manual source reads must be to call')) process.exit(3);",
+        "fs.mkdirSync('.kairn', { recursive: true });",
+        "const db = new Database('.kairn/kairn.sqlite');",
+        "db.exec(`create table if not exists metrics_events (id integer primary key autoincrement, session_id text not null, root_path text not null, event_kind text not null, event_name text not null, source text not null, response_mode text, baseline_tokens integer not null, output_tokens integer not null, saved_tokens integer not null, files_json text not null, metadata_json text not null default '{}', created_at text not null)`);",
+        "db.prepare(`insert into metrics_events (session_id, root_path, event_kind, event_name, source, response_mode, baseline_tokens, output_tokens, saved_tokens, files_json, metadata_json, created_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run('task_test', process.cwd(), 'mcp_tool_call', 'kairn_prepare_task', 'mcp', null, 100, 25, 75, JSON.stringify(['src/app.ts']), JSON.stringify({ toolName: 'kairn_prepare_task' }), new Date().toISOString());",
+        "db.close();",
+        "console.log('Token usage: total=10 input=8 output=2');"
+      ].join("\n")
+    );
+
+    const runtime = new KairnRuntime(root);
+    await runtime.init();
+    try {
+      const proof = await runtime.proveBenchmark({
+        suitePath,
+        baselineCommand: "node -e \"console.log('Token usage: total=10 input=8 output=2')\"",
+        realMcpFirstCommand: `NODE_PATH=${JSON.stringify(path.resolve("node_modules"))} node check-mcp-prompt.cjs {prompt}`
+      });
+
+      expect(proof.realMcpFirst?.results[0]?.taskOutcome).toBe("pass");
+      expect(proof.realMcpFirst?.results[0]?.metadata.mcpFirstInstructionsPrepended).toBe(true);
+    } finally {
+      runtime.close();
+    }
+  });
+
   it("adds recommendations for broad MCP fanout even when quality passes", () => {
     const scored = scoreBenchmarkCase({
       runId: "bench_mcp_fanout",

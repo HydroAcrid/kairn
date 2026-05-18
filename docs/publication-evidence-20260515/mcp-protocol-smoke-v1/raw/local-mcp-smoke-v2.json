@@ -1,0 +1,61 @@
+{
+  "entryId": "local-mcp-smoke-v2",
+  "kind": "mcp_smoke",
+  "status": "passed",
+  "entryMetadata": {
+    "label": "Local MCP protocol smoke",
+    "repoId": "local",
+    "language": "mixed",
+    "sizeClass": "unknown",
+    "taskClass": "mcp_delivery"
+  },
+  "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/mcp-protocol-smoke-v1/raw/local-mcp-smoke-v2.json",
+  "startedAt": "2026-05-16T14:27:38.421Z",
+  "endedAt": "2026-05-16T14:27:43.226Z",
+  "commands": [
+    "kairn bench mcp-smoke --root . --task \"Find the smallest useful Kairn source context for evidence-campaign reporting.\""
+  ],
+  "report": {
+    "startedAt": "2026-05-16T14:27:38.424Z",
+    "endedAt": "2026-05-16T14:27:43.181Z",
+    "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+    "task": "Find the smallest useful Kairn source context for evidence-campaign reporting.",
+    "serverCommand": "/Users/kevindotel/Documents/Projects/kairn/node_modules/.bin/tsx",
+    "serverArgs": [
+      "/Users/kevindotel/Documents/Projects/kairn/src/cli.ts",
+      "serve",
+      "--mcp",
+      "--root",
+      "/Users/kevindotel/Documents/Projects/kairn"
+    ],
+    "tools": [
+      "kairn_prepare_task",
+      "kairn_start_task",
+      "kairn_find_context",
+      "kairn_read_file",
+      "kairn_read_symbol",
+      "kairn_get_related_files",
+      "kairn_find_tests",
+      "kairn_review_diff",
+      "kairn_compress_output",
+      "kairn_get_next_context",
+      "kairn_get_failure_context",
+      "kairn_get_metrics",
+      "kairn_get_session_state"
+    ],
+    "sessionId": "task_927ba621-2a63-47ff-a699-138455e33469",
+    "prepare": {
+      "startFiles": [
+        "src/types/context.ts"
+      ],
+      "nextToolCalls": [],
+      "stopCondition": "source_evidence_sufficient",
+      "contextSuppressed": false,
+      "exactSourceHit": true
+    },
+    "metrics": {
+      "mcpToolCalls": 2,
+      "savedTokens": 54154
+    }
+  }
+}

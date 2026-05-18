@@ -1,0 +1,2421 @@
+{
+  "baseline": {
+    "run": {
+      "id": "bench_b2be4d3f-5f83-4d9e-a588-f0dc9565224b",
+      "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+      "suiteId": "mcp-live-scoped-vite-20260516",
+      "suiteName": "MCP Live Scoped Vite Subset 2026-05-16",
+      "mode": "agent",
+      "status": "completed",
+      "startedAt": "2026-05-16T14:45:43.207Z",
+      "endedAt": "2026-05-16T14:46:39.490Z",
+      "metadata": {
+        "sessionId": "task_0cfc0035-4529-48c0-8514-f86be6448e3d",
+        "caseCount": 1,
+        "agentConfigured": true,
+        "assistanceMode": "baseline"
+      }
+    },
+    "results": [
+      {
+        "id": 1536,
+        "runId": "bench_b2be4d3f-5f83-4d9e-a588-f0dc9565224b",
+        "caseId": "ts-vite-inject-query-relative",
+        "caseMode": "agent",
+        "score": 63.75,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 127318,
+        "observedCodexTokens": 30735,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "partial",
+        "expectedFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "actualFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/node/utils.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "excludedFiles": [
+          "packages/vite/src/node/__tests__/",
+          "docs/",
+          "playground/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 3.",
+        "recommendations": [
+          "Diff scope violations: packages/vite/src/node/utils.ts: edit outside required production source scope.",
+          "Response exceeded the benchmark budget; tune response routing or snippets.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 0,
+          "primeAttempted": 0,
+          "primeEmitted": 0,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 0,
+          "primeContextEvents": 0,
+          "primeQualityEvents": 0,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 0,
+          "mcpFilesReturned": [],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-ALxEHK",
+          "promptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "outputHash": "8d295d1a4d0312192a3baa448521616aae64e23ea1f8541af5bdc596e7c9d423",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 54996,
+          "codexElapsedMs": 54996,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 47,
+          "expectedFileMentions": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "changedFiles": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/node/utils.ts"
+          ],
+          "seedPatchFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/node/utils.ts"
+          ],
+          "requiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "failed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedTestCommandHash": "0cbf903cb16a881bbe1624ba115dc2a9d533ae7c2cd13cfddab0312f1271c27c",
+          "seedTestExitCode": 0,
+          "seedTestTimedOut": false,
+          "seedTestSignal": null,
+          "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedTestOutputTokens": 0,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/vitejs/vite.git",
+          "seedRef": "7190cca9e02a873fa6b635145e04f318ed5f7bf4",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": true,
+          "seedPatchFileHashes": {
+            "packages/vite/src/client/client.ts": "820a4bc5634c4d2e56cd5f72f7d62d885be80387ec87ea2d94493272c75c3d9e"
+          },
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "seedExpectedFailureCommandHash": "955cba31e2af3d31686a8d9f422112617a36e03e827da606397ccc67cd557287",
+          "seedExpectedFailureExitCode": 0,
+          "seedExpectedFailurePassed": false,
+          "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedExpectedFailureOutputTokens": 0,
+          "workspaceSetupMs": 1219,
+          "elapsedMs": 55057,
+          "codexUsage": {
+            "totalTokens": 30735,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "minExpectedHits": 2,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": true,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [
+            "packages/vite/src/node/utils.ts"
+          ],
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "agent edited outside the allowed source scope"
+        },
+        "createdAt": "2026-05-16T14:46:39.489Z"
+      }
+    ],
+    "overallScore": 63.75,
+    "observed": {
+      "codexTokens": 30735,
+      "codexCaseCount": 1
+    },
+    "weakestCases": [
+      {
+        "id": 1536,
+        "runId": "bench_b2be4d3f-5f83-4d9e-a588-f0dc9565224b",
+        "caseId": "ts-vite-inject-query-relative",
+        "caseMode": "agent",
+        "score": 63.75,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 127318,
+        "observedCodexTokens": 30735,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "partial",
+        "expectedFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "actualFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/node/utils.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "excludedFiles": [
+          "packages/vite/src/node/__tests__/",
+          "docs/",
+          "playground/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 3.",
+        "recommendations": [
+          "Diff scope violations: packages/vite/src/node/utils.ts: edit outside required production source scope.",
+          "Response exceeded the benchmark budget; tune response routing or snippets.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 0,
+          "primeAttempted": 0,
+          "primeEmitted": 0,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 0,
+          "primeContextEvents": 0,
+          "primeQualityEvents": 0,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 0,
+          "mcpFilesReturned": [],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-ALxEHK",
+          "promptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "outputHash": "8d295d1a4d0312192a3baa448521616aae64e23ea1f8541af5bdc596e7c9d423",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 54996,
+          "codexElapsedMs": 54996,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 47,
+          "expectedFileMentions": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "changedFiles": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/node/utils.ts"
+          ],
+          "seedPatchFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/node/utils.ts"
+          ],
+          "requiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "failed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedTestCommandHash": "0cbf903cb16a881bbe1624ba115dc2a9d533ae7c2cd13cfddab0312f1271c27c",
+          "seedTestExitCode": 0,
+          "seedTestTimedOut": false,
+          "seedTestSignal": null,
+          "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedTestOutputTokens": 0,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/vitejs/vite.git",
+          "seedRef": "7190cca9e02a873fa6b635145e04f318ed5f7bf4",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": true,
+          "seedPatchFileHashes": {
+            "packages/vite/src/client/client.ts": "820a4bc5634c4d2e56cd5f72f7d62d885be80387ec87ea2d94493272c75c3d9e"
+          },
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "seedExpectedFailureCommandHash": "955cba31e2af3d31686a8d9f422112617a36e03e827da606397ccc67cd557287",
+          "seedExpectedFailureExitCode": 0,
+          "seedExpectedFailurePassed": false,
+          "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedExpectedFailureOutputTokens": 0,
+          "workspaceSetupMs": 1219,
+          "elapsedMs": 55057,
+          "codexUsage": {
+            "totalTokens": 30735,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "minExpectedHits": 2,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": true,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [
+            "packages/vite/src/node/utils.ts"
+          ],
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "agent edited outside the allowed source scope"
+        },
+        "createdAt": "2026-05-16T14:46:39.489Z"
+      }
+    ],
+    "recommendations": [
+      "Diff scope violations: packages/vite/src/node/utils.ts: edit outside required production source scope.",
+      "Response exceeded the benchmark budget; tune response routing or snippets.",
+      "Observed token reductions for this case must be treated as invalid until the quality gate passes.",
+      "Overall score is low; inspect weak cases before tuning retrieval."
+    ]
+  },
+  "realMcpFirst": {
+    "run": {
+      "id": "bench_8ff1af11-87a2-4a72-90a7-4dbe0de3ac85",
+      "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+      "suiteId": "mcp-live-scoped-vite-20260516",
+      "suiteName": "MCP Live Scoped Vite Subset 2026-05-16",
+      "mode": "agent",
+      "status": "completed",
+      "startedAt": "2026-05-16T14:46:43.597Z",
+      "endedAt": "2026-05-16T14:47:43.745Z",
+      "metadata": {
+        "sessionId": "task_b9a07230-8582-418b-b17b-fe45dcde84c4",
+        "caseCount": 1,
+        "agentConfigured": true,
+        "assistanceMode": "real_mcp_first"
+      }
+    },
+    "results": [
+      {
+        "id": 1537,
+        "runId": "bench_8ff1af11-87a2-4a72-90a7-4dbe0de3ac85",
+        "caseId": "ts-vite-inject-query-relative",
+        "caseMode": "agent",
+        "score": 85,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 24079,
+        "observedCodexTokens": 34116,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "actualFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "excludedFiles": [
+          "packages/vite/src/node/__tests__/",
+          "docs/",
+          "playground/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 2.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "real_mcp_first",
+          "kairnSessionCount": 1,
+          "primeAttempted": 1,
+          "primeEmitted": 1,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 0,
+          "primeContextEvents": 1,
+          "primeQualityEvents": 1,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 1,
+          "mcpFilesReturned": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-ahgKt6",
+          "promptHash": "d93c9e2b30d9302458507826b291e12ff896e83d6f7f22c8081e204c5fb0b3d0",
+          "outputHash": "5b79120edbfbaf554101872c77205f6bc4c03967f72f8ad0e6c628d5a1496d07",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 9,
+          "actualMcpToolCalls": 1,
+          "actualMcpToolNames": [
+            "kairn_prepare_task"
+          ],
+          "actualMcpToolCallSource": "workspace_metrics",
+          "actualMcpFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "actualMcpContextActions": [
+            "shrink"
+          ],
+          "mcpReturnedFileCount": 1,
+          "mcpReturnedExpectedFileCount": 1,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "setupCommandHash": "834ebc2ac2cb9d632d7b9387836fb0f69844c26b3fdcc1dde0e310df7db4da76",
+          "setupCommandExitCode": 0,
+          "setupTimedOut": false,
+          "setupSignal": null,
+          "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "setupOutputTokens": 0,
+          "assistanceSetupMs": 297,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 58410,
+          "codexElapsedMs": 58410,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 46,
+          "expectedFileMentions": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "changedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "seedPatchFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "setupChangedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "agentChangedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedTestCommandHash": "0cbf903cb16a881bbe1624ba115dc2a9d533ae7c2cd13cfddab0312f1271c27c",
+          "seedTestExitCode": 0,
+          "seedTestTimedOut": false,
+          "seedTestSignal": null,
+          "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedTestOutputTokens": 0,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/vitejs/vite.git",
+          "seedRef": "7190cca9e02a873fa6b635145e04f318ed5f7bf4",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": true,
+          "seedPatchFileHashes": {
+            "packages/vite/src/client/client.ts": "820a4bc5634c4d2e56cd5f72f7d62d885be80387ec87ea2d94493272c75c3d9e"
+          },
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "seedExpectedFailureCommandHash": "955cba31e2af3d31686a8d9f422112617a36e03e827da606397ccc67cd557287",
+          "seedExpectedFailureExitCode": 0,
+          "seedExpectedFailurePassed": false,
+          "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedExpectedFailureOutputTokens": 0,
+          "workspaceSetupMs": 1217,
+          "mcpFirstInstructionsPrepended": true,
+          "elapsedMs": 58850,
+          "codexUsage": {
+            "totalTokens": 34116,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "minExpectedHits": 2,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": true,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "mcpRequired": true,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-16T14:47:43.744Z"
+      }
+    ],
+    "overallScore": 85,
+    "observed": {
+      "codexTokens": 34116,
+      "codexCaseCount": 1
+    },
+    "weakestCases": [
+      {
+        "id": 1537,
+        "runId": "bench_8ff1af11-87a2-4a72-90a7-4dbe0de3ac85",
+        "caseId": "ts-vite-inject-query-relative",
+        "caseMode": "agent",
+        "score": 85,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 24079,
+        "observedCodexTokens": 34116,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "actualFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "excludedFiles": [
+          "packages/vite/src/node/__tests__/",
+          "docs/",
+          "playground/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 2.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "real_mcp_first",
+          "kairnSessionCount": 1,
+          "primeAttempted": 1,
+          "primeEmitted": 1,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 0,
+          "primeContextEvents": 1,
+          "primeQualityEvents": 1,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 1,
+          "mcpFilesReturned": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-ahgKt6",
+          "promptHash": "d93c9e2b30d9302458507826b291e12ff896e83d6f7f22c8081e204c5fb0b3d0",
+          "outputHash": "5b79120edbfbaf554101872c77205f6bc4c03967f72f8ad0e6c628d5a1496d07",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 9,
+          "actualMcpToolCalls": 1,
+          "actualMcpToolNames": [
+            "kairn_prepare_task"
+          ],
+          "actualMcpToolCallSource": "workspace_metrics",
+          "actualMcpFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "actualMcpContextActions": [
+            "shrink"
+          ],
+          "mcpReturnedFileCount": 1,
+          "mcpReturnedExpectedFileCount": 1,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "setupCommandHash": "834ebc2ac2cb9d632d7b9387836fb0f69844c26b3fdcc1dde0e310df7db4da76",
+          "setupCommandExitCode": 0,
+          "setupTimedOut": false,
+          "setupSignal": null,
+          "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "setupOutputTokens": 0,
+          "assistanceSetupMs": 297,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 58410,
+          "codexElapsedMs": 58410,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 46,
+          "expectedFileMentions": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "changedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "seedPatchFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "setupChangedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "agentChangedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedTestCommandHash": "0cbf903cb16a881bbe1624ba115dc2a9d533ae7c2cd13cfddab0312f1271c27c",
+          "seedTestExitCode": 0,
+          "seedTestTimedOut": false,
+          "seedTestSignal": null,
+          "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedTestOutputTokens": 0,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/vitejs/vite.git",
+          "seedRef": "7190cca9e02a873fa6b635145e04f318ed5f7bf4",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": true,
+          "seedPatchFileHashes": {
+            "packages/vite/src/client/client.ts": "820a4bc5634c4d2e56cd5f72f7d62d885be80387ec87ea2d94493272c75c3d9e"
+          },
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "seedExpectedFailureCommandHash": "955cba31e2af3d31686a8d9f422112617a36e03e827da606397ccc67cd557287",
+          "seedExpectedFailureExitCode": 0,
+          "seedExpectedFailurePassed": false,
+          "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedExpectedFailureOutputTokens": 0,
+          "workspaceSetupMs": 1217,
+          "mcpFirstInstructionsPrepended": true,
+          "elapsedMs": 58850,
+          "codexUsage": {
+            "totalTokens": 34116,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "minExpectedHits": 2,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": true,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "mcpRequired": true,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-16T14:47:43.744Z"
+      }
+    ],
+    "recommendations": [
+      "Response exceeded the benchmark budget; tune response routing or snippets."
+    ]
+  },
+  "passiveHooks": {
+    "run": {
+      "id": "bench_b2be4d3f-5f83-4d9e-a588-f0dc9565224b",
+      "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+      "suiteId": "mcp-live-scoped-vite-20260516",
+      "suiteName": "MCP Live Scoped Vite Subset 2026-05-16",
+      "mode": "agent",
+      "status": "completed",
+      "startedAt": "2026-05-16T14:45:43.207Z",
+      "endedAt": "2026-05-16T14:46:39.490Z",
+      "metadata": {
+        "sessionId": "task_0cfc0035-4529-48c0-8514-f86be6448e3d",
+        "caseCount": 1,
+        "agentConfigured": true,
+        "assistanceMode": "baseline"
+      }
+    },
+    "results": [
+      {
+        "id": 1536,
+        "runId": "bench_b2be4d3f-5f83-4d9e-a588-f0dc9565224b",
+        "caseId": "ts-vite-inject-query-relative",
+        "caseMode": "agent",
+        "score": 63.75,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 127318,
+        "observedCodexTokens": 30735,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "partial",
+        "expectedFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "actualFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/node/utils.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "excludedFiles": [
+          "packages/vite/src/node/__tests__/",
+          "docs/",
+          "playground/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 3.",
+        "recommendations": [
+          "Diff scope violations: packages/vite/src/node/utils.ts: edit outside required production source scope.",
+          "Response exceeded the benchmark budget; tune response routing or snippets.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 0,
+          "primeAttempted": 0,
+          "primeEmitted": 0,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 0,
+          "primeContextEvents": 0,
+          "primeQualityEvents": 0,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 0,
+          "mcpFilesReturned": [],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-ALxEHK",
+          "promptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "outputHash": "8d295d1a4d0312192a3baa448521616aae64e23ea1f8541af5bdc596e7c9d423",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 54996,
+          "codexElapsedMs": 54996,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 47,
+          "expectedFileMentions": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "changedFiles": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/node/utils.ts"
+          ],
+          "seedPatchFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/node/utils.ts"
+          ],
+          "requiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "failed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedTestCommandHash": "0cbf903cb16a881bbe1624ba115dc2a9d533ae7c2cd13cfddab0312f1271c27c",
+          "seedTestExitCode": 0,
+          "seedTestTimedOut": false,
+          "seedTestSignal": null,
+          "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedTestOutputTokens": 0,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/vitejs/vite.git",
+          "seedRef": "7190cca9e02a873fa6b635145e04f318ed5f7bf4",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": true,
+          "seedPatchFileHashes": {
+            "packages/vite/src/client/client.ts": "820a4bc5634c4d2e56cd5f72f7d62d885be80387ec87ea2d94493272c75c3d9e"
+          },
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "seedExpectedFailureCommandHash": "955cba31e2af3d31686a8d9f422112617a36e03e827da606397ccc67cd557287",
+          "seedExpectedFailureExitCode": 0,
+          "seedExpectedFailurePassed": false,
+          "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedExpectedFailureOutputTokens": 0,
+          "workspaceSetupMs": 1219,
+          "elapsedMs": 55057,
+          "codexUsage": {
+            "totalTokens": 30735,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "minExpectedHits": 2,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": true,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [
+            "packages/vite/src/node/utils.ts"
+          ],
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "agent edited outside the allowed source scope"
+        },
+        "createdAt": "2026-05-16T14:46:39.489Z"
+      }
+    ],
+    "overallScore": 63.75,
+    "observed": {
+      "codexTokens": 30735,
+      "codexCaseCount": 1
+    },
+    "weakestCases": [
+      {
+        "id": 1536,
+        "runId": "bench_b2be4d3f-5f83-4d9e-a588-f0dc9565224b",
+        "caseId": "ts-vite-inject-query-relative",
+        "caseMode": "agent",
+        "score": 63.75,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 127318,
+        "observedCodexTokens": 30735,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "partial",
+        "expectedFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "actualFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/node/utils.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "excludedFiles": [
+          "packages/vite/src/node/__tests__/",
+          "docs/",
+          "playground/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 3.",
+        "recommendations": [
+          "Diff scope violations: packages/vite/src/node/utils.ts: edit outside required production source scope.",
+          "Response exceeded the benchmark budget; tune response routing or snippets.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 0,
+          "primeAttempted": 0,
+          "primeEmitted": 0,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 0,
+          "primeContextEvents": 0,
+          "primeQualityEvents": 0,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 0,
+          "mcpFilesReturned": [],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-ALxEHK",
+          "promptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "outputHash": "8d295d1a4d0312192a3baa448521616aae64e23ea1f8541af5bdc596e7c9d423",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 54996,
+          "codexElapsedMs": 54996,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 47,
+          "expectedFileMentions": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "changedFiles": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/node/utils.ts"
+          ],
+          "seedPatchFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/node/utils.ts"
+          ],
+          "requiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "failed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedTestCommandHash": "0cbf903cb16a881bbe1624ba115dc2a9d533ae7c2cd13cfddab0312f1271c27c",
+          "seedTestExitCode": 0,
+          "seedTestTimedOut": false,
+          "seedTestSignal": null,
+          "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedTestOutputTokens": 0,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/vitejs/vite.git",
+          "seedRef": "7190cca9e02a873fa6b635145e04f318ed5f7bf4",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": true,
+          "seedPatchFileHashes": {
+            "packages/vite/src/client/client.ts": "820a4bc5634c4d2e56cd5f72f7d62d885be80387ec87ea2d94493272c75c3d9e"
+          },
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "seedExpectedFailureCommandHash": "955cba31e2af3d31686a8d9f422112617a36e03e827da606397ccc67cd557287",
+          "seedExpectedFailureExitCode": 0,
+          "seedExpectedFailurePassed": false,
+          "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedExpectedFailureOutputTokens": 0,
+          "workspaceSetupMs": 1219,
+          "elapsedMs": 55057,
+          "codexUsage": {
+            "totalTokens": 30735,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "minExpectedHits": 2,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": true,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [
+            "packages/vite/src/node/utils.ts"
+          ],
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "agent edited outside the allowed source scope"
+        },
+        "createdAt": "2026-05-16T14:46:39.489Z"
+      }
+    ],
+    "recommendations": [
+      "Diff scope violations: packages/vite/src/node/utils.ts: edit outside required production source scope.",
+      "Response exceeded the benchmark budget; tune response routing or snippets.",
+      "Observed token reductions for this case must be treated as invalid until the quality gate passes.",
+      "Overall score is low; inspect weak cases before tuning retrieval."
+    ]
+  },
+  "proactive": {
+    "run": {
+      "id": "bench_b2be4d3f-5f83-4d9e-a588-f0dc9565224b",
+      "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+      "suiteId": "mcp-live-scoped-vite-20260516",
+      "suiteName": "MCP Live Scoped Vite Subset 2026-05-16",
+      "mode": "agent",
+      "status": "completed",
+      "startedAt": "2026-05-16T14:45:43.207Z",
+      "endedAt": "2026-05-16T14:46:39.490Z",
+      "metadata": {
+        "sessionId": "task_0cfc0035-4529-48c0-8514-f86be6448e3d",
+        "caseCount": 1,
+        "agentConfigured": true,
+        "assistanceMode": "baseline"
+      }
+    },
+    "results": [
+      {
+        "id": 1536,
+        "runId": "bench_b2be4d3f-5f83-4d9e-a588-f0dc9565224b",
+        "caseId": "ts-vite-inject-query-relative",
+        "caseMode": "agent",
+        "score": 63.75,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 127318,
+        "observedCodexTokens": 30735,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "partial",
+        "expectedFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "actualFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/node/utils.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "excludedFiles": [
+          "packages/vite/src/node/__tests__/",
+          "docs/",
+          "playground/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 3.",
+        "recommendations": [
+          "Diff scope violations: packages/vite/src/node/utils.ts: edit outside required production source scope.",
+          "Response exceeded the benchmark budget; tune response routing or snippets.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 0,
+          "primeAttempted": 0,
+          "primeEmitted": 0,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 0,
+          "primeContextEvents": 0,
+          "primeQualityEvents": 0,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 0,
+          "mcpFilesReturned": [],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-ALxEHK",
+          "promptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "outputHash": "8d295d1a4d0312192a3baa448521616aae64e23ea1f8541af5bdc596e7c9d423",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 54996,
+          "codexElapsedMs": 54996,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 47,
+          "expectedFileMentions": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "changedFiles": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/node/utils.ts"
+          ],
+          "seedPatchFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/node/utils.ts"
+          ],
+          "requiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "failed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedTestCommandHash": "0cbf903cb16a881bbe1624ba115dc2a9d533ae7c2cd13cfddab0312f1271c27c",
+          "seedTestExitCode": 0,
+          "seedTestTimedOut": false,
+          "seedTestSignal": null,
+          "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedTestOutputTokens": 0,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/vitejs/vite.git",
+          "seedRef": "7190cca9e02a873fa6b635145e04f318ed5f7bf4",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": true,
+          "seedPatchFileHashes": {
+            "packages/vite/src/client/client.ts": "820a4bc5634c4d2e56cd5f72f7d62d885be80387ec87ea2d94493272c75c3d9e"
+          },
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "seedExpectedFailureCommandHash": "955cba31e2af3d31686a8d9f422112617a36e03e827da606397ccc67cd557287",
+          "seedExpectedFailureExitCode": 0,
+          "seedExpectedFailurePassed": false,
+          "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedExpectedFailureOutputTokens": 0,
+          "workspaceSetupMs": 1219,
+          "elapsedMs": 55057,
+          "codexUsage": {
+            "totalTokens": 30735,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "minExpectedHits": 2,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": true,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [
+            "packages/vite/src/node/utils.ts"
+          ],
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "agent edited outside the allowed source scope"
+        },
+        "createdAt": "2026-05-16T14:46:39.489Z"
+      }
+    ],
+    "overallScore": 63.75,
+    "observed": {
+      "codexTokens": 30735,
+      "codexCaseCount": 1
+    },
+    "weakestCases": [
+      {
+        "id": 1536,
+        "runId": "bench_b2be4d3f-5f83-4d9e-a588-f0dc9565224b",
+        "caseId": "ts-vite-inject-query-relative",
+        "caseMode": "agent",
+        "score": 63.75,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 127318,
+        "observedCodexTokens": 30735,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "partial",
+        "expectedFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "actualFiles": [
+          "packages/vite/src/client/client.ts",
+          "packages/vite/src/node/utils.ts",
+          "packages/vite/src/shared/utils.ts"
+        ],
+        "excludedFiles": [
+          "packages/vite/src/node/__tests__/",
+          "docs/",
+          "playground/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 3.",
+        "recommendations": [
+          "Diff scope violations: packages/vite/src/node/utils.ts: edit outside required production source scope.",
+          "Response exceeded the benchmark budget; tune response routing or snippets.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 0,
+          "primeAttempted": 0,
+          "primeEmitted": 0,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 0,
+          "primeContextEvents": 0,
+          "primeQualityEvents": 0,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 0,
+          "mcpFilesReturned": [],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-ALxEHK",
+          "promptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "outputHash": "8d295d1a4d0312192a3baa448521616aae64e23ea1f8541af5bdc596e7c9d423",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 54996,
+          "codexElapsedMs": 54996,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 47,
+          "expectedFileMentions": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "changedFiles": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/node/utils.ts"
+          ],
+          "seedPatchFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/node/utils.ts"
+          ],
+          "requiredTouchedFiles": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "failed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedTestCommandHash": "0cbf903cb16a881bbe1624ba115dc2a9d533ae7c2cd13cfddab0312f1271c27c",
+          "seedTestExitCode": 0,
+          "seedTestTimedOut": false,
+          "seedTestSignal": null,
+          "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedTestOutputTokens": 0,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/vitejs/vite.git",
+          "seedRef": "7190cca9e02a873fa6b635145e04f318ed5f7bf4",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": true,
+          "seedPatchFileHashes": {
+            "packages/vite/src/client/client.ts": "820a4bc5634c4d2e56cd5f72f7d62d885be80387ec87ea2d94493272c75c3d9e"
+          },
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "seedExpectedFailureCommandHash": "955cba31e2af3d31686a8d9f422112617a36e03e827da606397ccc67cd557287",
+          "seedExpectedFailureExitCode": 0,
+          "seedExpectedFailurePassed": false,
+          "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedExpectedFailureOutputTokens": 0,
+          "workspaceSetupMs": 1219,
+          "elapsedMs": 55057,
+          "codexUsage": {
+            "totalTokens": 30735,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "packages/vite/src/client/client.ts",
+            "packages/vite/src/shared/utils.ts"
+          ],
+          "minExpectedHits": 2,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": true,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [
+            "packages/vite/src/client/client.ts"
+          ],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [
+            "packages/vite/src/node/utils.ts"
+          ],
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "agent edited outside the allowed source scope"
+        },
+        "createdAt": "2026-05-16T14:46:39.489Z"
+      }
+    ],
+    "recommendations": [
+      "Diff scope violations: packages/vite/src/node/utils.ts: edit outside required production source scope.",
+      "Response exceeded the benchmark budget; tune response routing or snippets.",
+      "Observed token reductions for this case must be treated as invalid until the quality gate passes.",
+      "Overall score is low; inspect weak cases before tuning retrieval."
+    ]
+  },
+  "runs": {
+    "baseline": [
+      {
+        "run": {
+          "id": "bench_b2be4d3f-5f83-4d9e-a588-f0dc9565224b",
+          "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+          "suiteId": "mcp-live-scoped-vite-20260516",
+          "suiteName": "MCP Live Scoped Vite Subset 2026-05-16",
+          "mode": "agent",
+          "status": "completed",
+          "startedAt": "2026-05-16T14:45:43.207Z",
+          "endedAt": "2026-05-16T14:46:39.490Z",
+          "metadata": {
+            "sessionId": "task_0cfc0035-4529-48c0-8514-f86be6448e3d",
+            "caseCount": 1,
+            "agentConfigured": true,
+            "assistanceMode": "baseline"
+          }
+        },
+        "results": [
+          {
+            "id": 1536,
+            "runId": "bench_b2be4d3f-5f83-4d9e-a588-f0dc9565224b",
+            "caseId": "ts-vite-inject-query-relative",
+            "caseMode": "agent",
+            "score": 63.75,
+            "expectedFileRecall": 1,
+            "topKHitRate": 1,
+            "unexpectedFileRate": 0,
+            "responseTokens": 127318,
+            "observedCodexTokens": 30735,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "partial",
+            "expectedFiles": [
+              "packages/vite/src/client/client.ts",
+              "packages/vite/src/shared/utils.ts"
+            ],
+            "actualFiles": [
+              "packages/vite/src/client/client.ts",
+              "packages/vite/src/node/utils.ts",
+              "packages/vite/src/shared/utils.ts"
+            ],
+            "excludedFiles": [
+              "packages/vite/src/node/__tests__/",
+              "docs/",
+              "playground/"
+            ],
+            "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 3.",
+            "recommendations": [
+              "Diff scope violations: packages/vite/src/node/utils.ts: edit outside required production source scope.",
+              "Response exceeded the benchmark budget; tune response routing or snippets.",
+              "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+            ],
+            "metadata": {
+              "assistanceMode": "baseline",
+              "kairnSessionCount": 0,
+              "primeAttempted": 0,
+              "primeEmitted": 0,
+              "primeSuppressed": 0,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 0,
+              "primeContextEvents": 0,
+              "primeQualityEvents": 0,
+              "hookInvocations": 0,
+              "failureContextUsed": 0,
+              "mcpToolCalls": 0,
+              "mcpFilesReturned": [],
+              "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-ALxEHK",
+              "promptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+              "outputHash": "8d295d1a4d0312192a3baa448521616aae64e23ea1f8541af5bdc596e7c9d423",
+              "adapter": "command",
+              "hookCompleted": 0,
+              "hookFailed": 0,
+              "kairnMcpToolMentions": 0,
+              "actualMcpToolCalls": 0,
+              "actualMcpToolNames": [],
+              "actualMcpToolCallSource": "none",
+              "actualMcpFiles": [],
+              "actualMcpContextActions": [],
+              "mcpReturnedFileCount": 0,
+              "mcpReturnedExpectedFileCount": 0,
+              "mcpReturnedNoiseFileCount": 0,
+              "mcpReturnedTestFanoutCount": 0,
+              "mcpContextEfficiency": 1,
+              "originalPromptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+              "assistanceSetupMs": 0,
+              "promptPrepareMs": 0,
+              "agentElapsedMs": 54996,
+              "codexElapsedMs": 54996,
+              "agentTimedOut": false,
+              "agentTimeoutMs": 240000,
+              "verificationElapsedMs": 47,
+              "expectedFileMentions": [
+                "packages/vite/src/client/client.ts",
+                "packages/vite/src/shared/utils.ts"
+              ],
+              "changedFiles": [
+                "packages/vite/src/client/client.ts",
+                "packages/vite/src/node/utils.ts"
+              ],
+              "seedPatchFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "setupChangedFiles": [],
+              "agentChangedFiles": [
+                "packages/vite/src/client/client.ts",
+                "packages/vite/src/node/utils.ts"
+              ],
+              "requiredTouchedFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "requiredTouchedSatisfied": true,
+              "missingRequiredTouchedFiles": [],
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "scopeViolations": [],
+              "sourceScopeDiscipline": "failed",
+              "unrelatedFilesTouched": [],
+              "testsEdited": [],
+              "scopeExpanded": false,
+              "scopeExpansionReason": null,
+              "seedTestCommandHash": "0cbf903cb16a881bbe1624ba115dc2a9d533ae7c2cd13cfddab0312f1271c27c",
+              "seedTestExitCode": 0,
+              "seedTestTimedOut": false,
+              "seedTestSignal": null,
+              "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "seedTestOutputTokens": 0,
+              "seedConfigured": true,
+              "seedRepoUrl": "https://github.com/vitejs/vite.git",
+              "seedRef": "7190cca9e02a873fa6b635145e04f318ed5f7bf4",
+              "seedCloneDepth": 1,
+              "seedSetupCommandCount": 0,
+              "seedHasPatch": true,
+              "seedPatchFileHashes": {
+                "packages/vite/src/client/client.ts": "820a4bc5634c4d2e56cd5f72f7d62d885be80387ec87ea2d94493272c75c3d9e"
+              },
+              "seedCommandNormalization": {
+                "pythonToPython3": false
+              },
+              "seedExpectedFailureCommandHash": "955cba31e2af3d31686a8d9f422112617a36e03e827da606397ccc67cd557287",
+              "seedExpectedFailureExitCode": 0,
+              "seedExpectedFailurePassed": false,
+              "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "seedExpectedFailureOutputTokens": 0,
+              "workspaceSetupMs": 1219,
+              "elapsedMs": 55057,
+              "codexUsage": {
+                "totalTokens": 30735,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "contextBehavior": "source_rescue",
+              "missedExpectedFiles": [],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [
+                "packages/vite/src/client/client.ts",
+                "packages/vite/src/shared/utils.ts"
+              ],
+              "minExpectedHits": 2,
+              "rawExpectedCoverageSatisfied": true,
+              "expectedCoverageSatisfied": true,
+              "sourceScopeCoverageOverride": true,
+              "effectiveExpectedFileRecall": 1,
+              "requiredTouchedFilesTouched": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "productionOnlyScopeExpected": true,
+              "testEditViolationFiles": [],
+              "extraProductionEditViolationFiles": [
+                "packages/vite/src/node/utils.ts"
+              ],
+              "qualityGatePassed": false,
+              "validSavings": false,
+              "invalidSavings": true,
+              "negativeEvidenceReason": "agent edited outside the allowed source scope"
+            },
+            "createdAt": "2026-05-16T14:46:39.489Z"
+          }
+        ],
+        "overallScore": 63.75,
+        "observed": {
+          "codexTokens": 30735,
+          "codexCaseCount": 1
+        },
+        "weakestCases": [
+          {
+            "id": 1536,
+            "runId": "bench_b2be4d3f-5f83-4d9e-a588-f0dc9565224b",
+            "caseId": "ts-vite-inject-query-relative",
+            "caseMode": "agent",
+            "score": 63.75,
+            "expectedFileRecall": 1,
+            "topKHitRate": 1,
+            "unexpectedFileRate": 0,
+            "responseTokens": 127318,
+            "observedCodexTokens": 30735,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "partial",
+            "expectedFiles": [
+              "packages/vite/src/client/client.ts",
+              "packages/vite/src/shared/utils.ts"
+            ],
+            "actualFiles": [
+              "packages/vite/src/client/client.ts",
+              "packages/vite/src/node/utils.ts",
+              "packages/vite/src/shared/utils.ts"
+            ],
+            "excludedFiles": [
+              "packages/vite/src/node/__tests__/",
+              "docs/",
+              "playground/"
+            ],
+            "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 3.",
+            "recommendations": [
+              "Diff scope violations: packages/vite/src/node/utils.ts: edit outside required production source scope.",
+              "Response exceeded the benchmark budget; tune response routing or snippets.",
+              "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+            ],
+            "metadata": {
+              "assistanceMode": "baseline",
+              "kairnSessionCount": 0,
+              "primeAttempted": 0,
+              "primeEmitted": 0,
+              "primeSuppressed": 0,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 0,
+              "primeContextEvents": 0,
+              "primeQualityEvents": 0,
+              "hookInvocations": 0,
+              "failureContextUsed": 0,
+              "mcpToolCalls": 0,
+              "mcpFilesReturned": [],
+              "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-ALxEHK",
+              "promptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+              "outputHash": "8d295d1a4d0312192a3baa448521616aae64e23ea1f8541af5bdc596e7c9d423",
+              "adapter": "command",
+              "hookCompleted": 0,
+              "hookFailed": 0,
+              "kairnMcpToolMentions": 0,
+              "actualMcpToolCalls": 0,
+              "actualMcpToolNames": [],
+              "actualMcpToolCallSource": "none",
+              "actualMcpFiles": [],
+              "actualMcpContextActions": [],
+              "mcpReturnedFileCount": 0,
+              "mcpReturnedExpectedFileCount": 0,
+              "mcpReturnedNoiseFileCount": 0,
+              "mcpReturnedTestFanoutCount": 0,
+              "mcpContextEfficiency": 1,
+              "originalPromptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+              "assistanceSetupMs": 0,
+              "promptPrepareMs": 0,
+              "agentElapsedMs": 54996,
+              "codexElapsedMs": 54996,
+              "agentTimedOut": false,
+              "agentTimeoutMs": 240000,
+              "verificationElapsedMs": 47,
+              "expectedFileMentions": [
+                "packages/vite/src/client/client.ts",
+                "packages/vite/src/shared/utils.ts"
+              ],
+              "changedFiles": [
+                "packages/vite/src/client/client.ts",
+                "packages/vite/src/node/utils.ts"
+              ],
+              "seedPatchFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "setupChangedFiles": [],
+              "agentChangedFiles": [
+                "packages/vite/src/client/client.ts",
+                "packages/vite/src/node/utils.ts"
+              ],
+              "requiredTouchedFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "requiredTouchedSatisfied": true,
+              "missingRequiredTouchedFiles": [],
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "scopeViolations": [],
+              "sourceScopeDiscipline": "failed",
+              "unrelatedFilesTouched": [],
+              "testsEdited": [],
+              "scopeExpanded": false,
+              "scopeExpansionReason": null,
+              "seedTestCommandHash": "0cbf903cb16a881bbe1624ba115dc2a9d533ae7c2cd13cfddab0312f1271c27c",
+              "seedTestExitCode": 0,
+              "seedTestTimedOut": false,
+              "seedTestSignal": null,
+              "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "seedTestOutputTokens": 0,
+              "seedConfigured": true,
+              "seedRepoUrl": "https://github.com/vitejs/vite.git",
+              "seedRef": "7190cca9e02a873fa6b635145e04f318ed5f7bf4",
+              "seedCloneDepth": 1,
+              "seedSetupCommandCount": 0,
+              "seedHasPatch": true,
+              "seedPatchFileHashes": {
+                "packages/vite/src/client/client.ts": "820a4bc5634c4d2e56cd5f72f7d62d885be80387ec87ea2d94493272c75c3d9e"
+              },
+              "seedCommandNormalization": {
+                "pythonToPython3": false
+              },
+              "seedExpectedFailureCommandHash": "955cba31e2af3d31686a8d9f422112617a36e03e827da606397ccc67cd557287",
+              "seedExpectedFailureExitCode": 0,
+              "seedExpectedFailurePassed": false,
+              "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "seedExpectedFailureOutputTokens": 0,
+              "workspaceSetupMs": 1219,
+              "elapsedMs": 55057,
+              "codexUsage": {
+                "totalTokens": 30735,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "contextBehavior": "source_rescue",
+              "missedExpectedFiles": [],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [
+                "packages/vite/src/client/client.ts",
+                "packages/vite/src/shared/utils.ts"
+              ],
+              "minExpectedHits": 2,
+              "rawExpectedCoverageSatisfied": true,
+              "expectedCoverageSatisfied": true,
+              "sourceScopeCoverageOverride": true,
+              "effectiveExpectedFileRecall": 1,
+              "requiredTouchedFilesTouched": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "productionOnlyScopeExpected": true,
+              "testEditViolationFiles": [],
+              "extraProductionEditViolationFiles": [
+                "packages/vite/src/node/utils.ts"
+              ],
+              "qualityGatePassed": false,
+              "validSavings": false,
+              "invalidSavings": true,
+              "negativeEvidenceReason": "agent edited outside the allowed source scope"
+            },
+            "createdAt": "2026-05-16T14:46:39.489Z"
+          }
+        ],
+        "recommendations": [
+          "Diff scope violations: packages/vite/src/node/utils.ts: edit outside required production source scope.",
+          "Response exceeded the benchmark budget; tune response routing or snippets.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes.",
+          "Overall score is low; inspect weak cases before tuning retrieval."
+        ]
+      }
+    ],
+    "prompt_only": [],
+    "prompt_plus_hooks": [],
+    "manual_prime": [],
+    "hook_full_prime": [],
+    "hook_tiny_directive": [],
+    "hook_tiny_with_failures": [],
+    "kairn_codex_session": [],
+    "mcp_first": [],
+    "real_mcp_first": [
+      {
+        "run": {
+          "id": "bench_8ff1af11-87a2-4a72-90a7-4dbe0de3ac85",
+          "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+          "suiteId": "mcp-live-scoped-vite-20260516",
+          "suiteName": "MCP Live Scoped Vite Subset 2026-05-16",
+          "mode": "agent",
+          "status": "completed",
+          "startedAt": "2026-05-16T14:46:43.597Z",
+          "endedAt": "2026-05-16T14:47:43.745Z",
+          "metadata": {
+            "sessionId": "task_b9a07230-8582-418b-b17b-fe45dcde84c4",
+            "caseCount": 1,
+            "agentConfigured": true,
+            "assistanceMode": "real_mcp_first"
+          }
+        },
+        "results": [
+          {
+            "id": 1537,
+            "runId": "bench_8ff1af11-87a2-4a72-90a7-4dbe0de3ac85",
+            "caseId": "ts-vite-inject-query-relative",
+            "caseMode": "agent",
+            "score": 85,
+            "expectedFileRecall": 1,
+            "topKHitRate": 1,
+            "unexpectedFileRate": 0,
+            "responseTokens": 24079,
+            "observedCodexTokens": 34116,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "pass",
+            "expectedFiles": [
+              "packages/vite/src/client/client.ts",
+              "packages/vite/src/shared/utils.ts"
+            ],
+            "actualFiles": [
+              "packages/vite/src/client/client.ts",
+              "packages/vite/src/shared/utils.ts"
+            ],
+            "excludedFiles": [
+              "packages/vite/src/node/__tests__/",
+              "docs/",
+              "playground/"
+            ],
+            "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 2.",
+            "recommendations": [
+              "Response exceeded the benchmark budget; tune response routing or snippets."
+            ],
+            "metadata": {
+              "assistanceMode": "real_mcp_first",
+              "kairnSessionCount": 1,
+              "primeAttempted": 1,
+              "primeEmitted": 1,
+              "primeSuppressed": 0,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 0,
+              "primeContextEvents": 1,
+              "primeQualityEvents": 1,
+              "hookInvocations": 0,
+              "failureContextUsed": 0,
+              "mcpToolCalls": 1,
+              "mcpFilesReturned": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-ahgKt6",
+              "promptHash": "d93c9e2b30d9302458507826b291e12ff896e83d6f7f22c8081e204c5fb0b3d0",
+              "outputHash": "5b79120edbfbaf554101872c77205f6bc4c03967f72f8ad0e6c628d5a1496d07",
+              "adapter": "command",
+              "hookCompleted": 0,
+              "hookFailed": 0,
+              "kairnMcpToolMentions": 9,
+              "actualMcpToolCalls": 1,
+              "actualMcpToolNames": [
+                "kairn_prepare_task"
+              ],
+              "actualMcpToolCallSource": "workspace_metrics",
+              "actualMcpFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "actualMcpContextActions": [
+                "shrink"
+              ],
+              "mcpReturnedFileCount": 1,
+              "mcpReturnedExpectedFileCount": 1,
+              "mcpReturnedNoiseFileCount": 0,
+              "mcpReturnedTestFanoutCount": 0,
+              "mcpContextEfficiency": 1,
+              "originalPromptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+              "setupCommandHash": "834ebc2ac2cb9d632d7b9387836fb0f69844c26b3fdcc1dde0e310df7db4da76",
+              "setupCommandExitCode": 0,
+              "setupTimedOut": false,
+              "setupSignal": null,
+              "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "setupOutputTokens": 0,
+              "assistanceSetupMs": 297,
+              "promptPrepareMs": 0,
+              "agentElapsedMs": 58410,
+              "codexElapsedMs": 58410,
+              "agentTimedOut": false,
+              "agentTimeoutMs": 240000,
+              "verificationElapsedMs": 46,
+              "expectedFileMentions": [
+                "packages/vite/src/client/client.ts",
+                "packages/vite/src/shared/utils.ts"
+              ],
+              "changedFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "seedPatchFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "setupChangedFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "agentChangedFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "requiredTouchedFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "requiredTouchedSatisfied": true,
+              "missingRequiredTouchedFiles": [],
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "scopeViolations": [],
+              "sourceScopeDiscipline": "passed",
+              "unrelatedFilesTouched": [],
+              "testsEdited": [],
+              "scopeExpanded": false,
+              "scopeExpansionReason": null,
+              "seedTestCommandHash": "0cbf903cb16a881bbe1624ba115dc2a9d533ae7c2cd13cfddab0312f1271c27c",
+              "seedTestExitCode": 0,
+              "seedTestTimedOut": false,
+              "seedTestSignal": null,
+              "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "seedTestOutputTokens": 0,
+              "seedConfigured": true,
+              "seedRepoUrl": "https://github.com/vitejs/vite.git",
+              "seedRef": "7190cca9e02a873fa6b635145e04f318ed5f7bf4",
+              "seedCloneDepth": 1,
+              "seedSetupCommandCount": 0,
+              "seedHasPatch": true,
+              "seedPatchFileHashes": {
+                "packages/vite/src/client/client.ts": "820a4bc5634c4d2e56cd5f72f7d62d885be80387ec87ea2d94493272c75c3d9e"
+              },
+              "seedCommandNormalization": {
+                "pythonToPython3": false
+              },
+              "seedExpectedFailureCommandHash": "955cba31e2af3d31686a8d9f422112617a36e03e827da606397ccc67cd557287",
+              "seedExpectedFailureExitCode": 0,
+              "seedExpectedFailurePassed": false,
+              "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "seedExpectedFailureOutputTokens": 0,
+              "workspaceSetupMs": 1217,
+              "mcpFirstInstructionsPrepended": true,
+              "elapsedMs": 58850,
+              "codexUsage": {
+                "totalTokens": 34116,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "contextBehavior": "source_rescue",
+              "missedExpectedFiles": [],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [
+                "packages/vite/src/client/client.ts",
+                "packages/vite/src/shared/utils.ts"
+              ],
+              "minExpectedHits": 2,
+              "rawExpectedCoverageSatisfied": true,
+              "expectedCoverageSatisfied": true,
+              "sourceScopeCoverageOverride": true,
+              "effectiveExpectedFileRecall": 1,
+              "requiredTouchedFilesTouched": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "mcpRequired": true,
+              "mcpSuccess": true,
+              "productionOnlyScopeExpected": true,
+              "testEditViolationFiles": [],
+              "extraProductionEditViolationFiles": [],
+              "qualityGatePassed": true,
+              "validSavings": true,
+              "invalidSavings": false
+            },
+            "createdAt": "2026-05-16T14:47:43.744Z"
+          }
+        ],
+        "overallScore": 85,
+        "observed": {
+          "codexTokens": 34116,
+          "codexCaseCount": 1
+        },
+        "weakestCases": [
+          {
+            "id": 1537,
+            "runId": "bench_8ff1af11-87a2-4a72-90a7-4dbe0de3ac85",
+            "caseId": "ts-vite-inject-query-relative",
+            "caseMode": "agent",
+            "score": 85,
+            "expectedFileRecall": 1,
+            "topKHitRate": 1,
+            "unexpectedFileRate": 0,
+            "responseTokens": 24079,
+            "observedCodexTokens": 34116,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "pass",
+            "expectedFiles": [
+              "packages/vite/src/client/client.ts",
+              "packages/vite/src/shared/utils.ts"
+            ],
+            "actualFiles": [
+              "packages/vite/src/client/client.ts",
+              "packages/vite/src/shared/utils.ts"
+            ],
+            "excludedFiles": [
+              "packages/vite/src/node/__tests__/",
+              "docs/",
+              "playground/"
+            ],
+            "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 2.",
+            "recommendations": [
+              "Response exceeded the benchmark budget; tune response routing or snippets."
+            ],
+            "metadata": {
+              "assistanceMode": "real_mcp_first",
+              "kairnSessionCount": 1,
+              "primeAttempted": 1,
+              "primeEmitted": 1,
+              "primeSuppressed": 0,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 0,
+              "primeContextEvents": 1,
+              "primeQualityEvents": 1,
+              "hookInvocations": 0,
+              "failureContextUsed": 0,
+              "mcpToolCalls": 1,
+              "mcpFilesReturned": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-ahgKt6",
+              "promptHash": "d93c9e2b30d9302458507826b291e12ff896e83d6f7f22c8081e204c5fb0b3d0",
+              "outputHash": "5b79120edbfbaf554101872c77205f6bc4c03967f72f8ad0e6c628d5a1496d07",
+              "adapter": "command",
+              "hookCompleted": 0,
+              "hookFailed": 0,
+              "kairnMcpToolMentions": 9,
+              "actualMcpToolCalls": 1,
+              "actualMcpToolNames": [
+                "kairn_prepare_task"
+              ],
+              "actualMcpToolCallSource": "workspace_metrics",
+              "actualMcpFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "actualMcpContextActions": [
+                "shrink"
+              ],
+              "mcpReturnedFileCount": 1,
+              "mcpReturnedExpectedFileCount": 1,
+              "mcpReturnedNoiseFileCount": 0,
+              "mcpReturnedTestFanoutCount": 0,
+              "mcpContextEfficiency": 1,
+              "originalPromptHash": "c8b024510d8195908f0c0367db30b7e3b773a949ec86de29eb4ca97f2d27a5b7",
+              "setupCommandHash": "834ebc2ac2cb9d632d7b9387836fb0f69844c26b3fdcc1dde0e310df7db4da76",
+              "setupCommandExitCode": 0,
+              "setupTimedOut": false,
+              "setupSignal": null,
+              "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "setupOutputTokens": 0,
+              "assistanceSetupMs": 297,
+              "promptPrepareMs": 0,
+              "agentElapsedMs": 58410,
+              "codexElapsedMs": 58410,
+              "agentTimedOut": false,
+              "agentTimeoutMs": 240000,
+              "verificationElapsedMs": 46,
+              "expectedFileMentions": [
+                "packages/vite/src/client/client.ts",
+                "packages/vite/src/shared/utils.ts"
+              ],
+              "changedFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "seedPatchFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "setupChangedFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "agentChangedFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "requiredTouchedFiles": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "requiredTouchedSatisfied": true,
+              "missingRequiredTouchedFiles": [],
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "scopeViolations": [],
+              "sourceScopeDiscipline": "passed",
+              "unrelatedFilesTouched": [],
+              "testsEdited": [],
+              "scopeExpanded": false,
+              "scopeExpansionReason": null,
+              "seedTestCommandHash": "0cbf903cb16a881bbe1624ba115dc2a9d533ae7c2cd13cfddab0312f1271c27c",
+              "seedTestExitCode": 0,
+              "seedTestTimedOut": false,
+              "seedTestSignal": null,
+              "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "seedTestOutputTokens": 0,
+              "seedConfigured": true,
+              "seedRepoUrl": "https://github.com/vitejs/vite.git",
+              "seedRef": "7190cca9e02a873fa6b635145e04f318ed5f7bf4",
+              "seedCloneDepth": 1,
+              "seedSetupCommandCount": 0,
+              "seedHasPatch": true,
+              "seedPatchFileHashes": {
+                "packages/vite/src/client/client.ts": "820a4bc5634c4d2e56cd5f72f7d62d885be80387ec87ea2d94493272c75c3d9e"
+              },
+              "seedCommandNormalization": {
+                "pythonToPython3": false
+              },
+              "seedExpectedFailureCommandHash": "955cba31e2af3d31686a8d9f422112617a36e03e827da606397ccc67cd557287",
+              "seedExpectedFailureExitCode": 0,
+              "seedExpectedFailurePassed": false,
+              "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "seedExpectedFailureOutputTokens": 0,
+              "workspaceSetupMs": 1217,
+              "mcpFirstInstructionsPrepended": true,
+              "elapsedMs": 58850,
+              "codexUsage": {
+                "totalTokens": 34116,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "contextBehavior": "source_rescue",
+              "missedExpectedFiles": [],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [
+                "packages/vite/src/client/client.ts",
+                "packages/vite/src/shared/utils.ts"
+              ],
+              "minExpectedHits": 2,
+              "rawExpectedCoverageSatisfied": true,
+              "expectedCoverageSatisfied": true,
+              "sourceScopeCoverageOverride": true,
+              "effectiveExpectedFileRecall": 1,
+              "requiredTouchedFilesTouched": [
+                "packages/vite/src/client/client.ts"
+              ],
+              "mcpRequired": true,
+              "mcpSuccess": true,
+              "productionOnlyScopeExpected": true,
+              "testEditViolationFiles": [],
+              "extraProductionEditViolationFiles": [],
+              "qualityGatePassed": true,
+              "validSavings": true,
+              "invalidSavings": false
+            },
+            "createdAt": "2026-05-16T14:47:43.744Z"
+          }
+        ],
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ]
+      }
+    ],
+    "mcp_first_plus_hook_full_prime": [],
+    "hybrid_mcp_brief": []
+  },
+  "aggregate": {
+    "repeat": 1,
+    "modes": {
+      "baseline": {
+        "reports": 1,
+        "meanTokens": 30735,
+        "medianTokens": 30735,
+        "qualityPassingReports": 0,
+        "caseCount": 1
+      },
+      "prompt_only": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "prompt_plus_hooks": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "manual_prime": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "hook_full_prime": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "hook_tiny_directive": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "hook_tiny_with_failures": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "kairn_codex_session": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "mcp_first": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "real_mcp_first": {
+        "reports": 1,
+        "meanTokens": 34116,
+        "medianTokens": 34116,
+        "qualityPassingReports": 1,
+        "caseCount": 1
+      },
+      "mcp_first_plus_hook_full_prime": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "hybrid_mcp_brief": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      }
+    },
+    "deltas": {
+      "promptOnlyVsBaseline": {},
+      "promptPlusHooksVsBaseline": {},
+      "manualPrimeVsBaseline": {},
+      "hookFullPrimeVsBaseline": {},
+      "kairnCodexSessionVsBaseline": {},
+      "realMcpFirstVsBaseline": {
+        "beforeMedianTokens": 30735,
+        "afterMedianTokens": 34116,
+        "savedTokens": -3381,
+        "savingsRate": -0.11
+      },
+      "mcpFirstPlusHookFullPrimeVsBaseline": {},
+      "hybridMcpBriefVsBaseline": {}
+    }
+  },
+  "abstentionSummary": {
+    "quality_rescue": 1
+  },
+  "behaviorTargetSummary": {
+    "source_rescue": {
+      "cases": 1,
+      "met": 1,
+      "missed": 0
+    }
+  },
+  "caseRepeatClassifications": [
+    {
+      "mode": "real_mcp_first",
+      "caseId": "ts-vite-inject-query-relative",
+      "repeats": 1,
+      "qualityPasses": 1,
+      "activeRuns": 1,
+      "suppressedRuns": 0,
+      "baselineMedianTokens": 30735,
+      "modeMedianTokens": 34116,
+      "medianSavedTokens": -3381,
+      "medianSavingsRate": -0.11,
+      "classifications": {
+        "quality_rescue": 1
+      },
+      "verdict": "insufficient_data",
+      "recommendation": "Only one repeat; treat real_mcp_first/ts-vite-inject-query-relative as exploratory evidence."
+    }
+  ],
+  "observedTokenDeltas": {
+    "realMcpFirstVsBaseline": {
+      "beforeTokens": 30735,
+      "afterTokens": 34116,
+      "savedTokens": -3381,
+      "savingsRate": -0.11,
+      "qualityGatePassed": true,
+      "assistanceStatus": "active",
+      "assistanceEligible": true,
+      "baselineDifficulty": "quality_fail",
+      "baselineTokenCost": 30735,
+      "abstentionOutcome": "not_applicable",
+      "missedOpportunity": false,
+      "overAssist": false,
+      "harmfulAssist": false,
+      "assistClassification": "quality_rescue",
+      "validSavings": 0,
+      "invalidSavings": 0
+    }
+  },
+  "caseDeltas": [
+    {
+      "caseId": "ts-vite-inject-query-relative",
+      "baselineTokens": 30735,
+      "outcome": {
+        "baseline": "partial",
+        "passiveHooks": "skipped",
+        "proactive": "skipped"
+      }
+    }
+  ],
+  "recommendations": [
+    "Real MCP-first median: increased observed Codex tokens by repeat median 3381 (11%).",
+    "Prompt-only hooks vs baseline: observed Codex usage unavailable.",
+    "Prompt+tool hooks vs baseline: observed Codex usage unavailable.",
+    "Manual prime vs baseline: observed Codex usage unavailable.",
+    "Hook full prime vs baseline: observed Codex usage unavailable.",
+    "Hook tiny directive vs baseline: observed Codex usage unavailable.",
+    "Hook tiny+failures vs baseline: observed Codex usage unavailable.",
+    "Kairn Codex session vs baseline: observed Codex usage unavailable.",
+    "MCP-first vs baseline: observed Codex usage unavailable.",
+    "Real MCP-first vs baseline: increased observed Codex usage by 3381 tokens (11%).",
+    "MCP-first + full-prime hook vs baseline: observed Codex usage unavailable.",
+    "Hybrid MCP brief vs baseline: observed Codex usage unavailable.",
+    "real_mcp_first/ts-vite-inject-query-relative: Only one repeat; treat real_mcp_first/ts-vite-inject-query-relative as exploratory evidence."
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "id": "mcp-live-scoped-chi-20260516",
+  "name": "MCP Live Scoped Chi Subset 2026-05-16",
+  "cases": [
+    {
+      "id": "go-chi-urlparam-latest",
+      "mode": "agent",
+      "task": "Debug a seeded Chi regression: URLParam now returns the oldest duplicate route parameter instead of the innermost/latest match. Fix production source only.",
+      "agentPrompt": "Debug the seeded failing Go check. Chi Context.URLParam should search route params from the end so nested routes return the innermost/latest value for duplicate parameter keys. Fix the production source and do not edit unrelated files.",
+      "contextBehavior": "source_rescue",
+      "expectedFiles": [
+        "context.go",
+        "mux.go",
+        "tree.go"
+      ],
+      "requiredTouchedFiles": [
+        "context.go"
+      ],
+      "excludedFiles": [
+        "_examples/",
+        "middleware/",
+        "doc/"
+      ],
+      "budget": 1000,
+      "seed": {
+        "repoUrl": "https://github.com/go-chi/chi.git",
+        "ref": "a54874f0e2f12647a19e82ee70dfa8185014100c",
+        "cloneDepth": 1,
+        "setupPatchFile": "./patches/chi-urlparam-latest.patch",
+        "expectedFailureCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('context.go', 'utf8');\nconst fixed = source.includes('for k := len(x.URLParams.Keys) - 1; k >= 0; k--') && !source.includes('for k := 0; k < len(x.URLParams.Keys); k++');\nprocess.exit(fixed ? 1 : 0);\nNODE",
+        "testCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('context.go', 'utf8');\nconst fixed = source.includes('for k := len(x.URLParams.Keys) - 1; k >= 0; k--') && !source.includes('for k := 0; k < len(x.URLParams.Keys); k++');\nprocess.exit(fixed ? 0 : 1);\nNODE"
+      },
+      "successCriteria": [
+        "Verification passes.",
+        "Chi context source is touched.",
+        "Examples/middleware/docs are not touched."
+      ]
+    }
+  ]
+}

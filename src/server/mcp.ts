@@ -669,6 +669,19 @@ function mcpCheapOneShotAbstention(prime: PrimeContextResult): { stopCondition: 
   if (!isMcpCheapOneShotTask(prime.task)) return undefined;
   if (decision.wrongContextRisk) return undefined;
   if (hasMcpExplicitMultiFileSignal(prime.task)) return undefined;
+  if (
+    decision.sourceRescue &&
+    !decision.cheapSingleSource &&
+    !decision.cheapExactSource &&
+    (
+      decision.recommendedDelivery === "multi_file_directive" ||
+      decision.companionSpecific ||
+      decision.multiSurfaceSignal ||
+      (typeof decision.companionCount === "number" && decision.companionCount > 0)
+    )
+  ) {
+    return undefined;
+  }
   const primaryFile = uniqueValues([
     ...(decision.primaryFile ? [decision.primaryFile] : []),
     ...prime.files

@@ -1,0 +1,51 @@
+{
+  "id": "kairn-evidence-campaign-v2",
+  "name": "Kairn Evidence Campaign v2",
+  "generatedAt": "2026-05-16T14:27:43.227Z",
+  "planPath": "/Users/kevindotel/Documents/Projects/kairn/examples/bench/publication-plan-v2.json",
+  "kairnGitSha": "9bd8ddf727453ab9dacd0482e6b3184e0353c380",
+  "packageVersion": "0.1.2",
+  "nodeVersion": "v24.7.0",
+  "os": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "release": "24.6.0"
+  },
+  "model": "gpt-5.4-mini",
+  "repeat": 5,
+  "dryRun": false,
+  "timestamps": {
+    "generatedAt": "2026-05-16T14:27:43.227Z",
+    "artifactStarts": {
+      "local-mcp-smoke-v2": "2026-05-16T14:27:38.421Z"
+    },
+    "artifactEnds": {
+      "local-mcp-smoke-v2": "2026-05-16T14:27:43.226Z"
+    }
+  },
+  "benchmarkSuitePaths": [],
+  "officialDatasetRowIds": [],
+  "commandTemplates": {
+    "local-mcp-smoke-v2": [
+      "kairn bench mcp-smoke --root . --task \"Find the smallest useful Kairn source context for evidence-campaign reporting.\""
+    ]
+  },
+  "artifacts": [
+    {
+      "entryId": "local-mcp-smoke-v2",
+      "kind": "mcp_smoke",
+      "status": "passed",
+      "entryMetadata": {
+        "label": "Local MCP protocol smoke",
+        "repoId": "local",
+        "language": "mixed",
+        "sizeClass": "unknown",
+        "taskClass": "mcp_delivery"
+      },
+      "artifactPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260515/mcp-protocol-smoke-v1/raw/local-mcp-smoke-v2.json",
+      "commands": [
+        "kairn bench mcp-smoke --root . --task \"Find the smallest useful Kairn source context for evidence-campaign reporting.\""
+      ]
+    }
+  ]
+}

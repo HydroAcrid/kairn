@@ -119,17 +119,43 @@ Findings:
   - Repeated context avoided: 4.
   - Kairn actions: emitted 1, shrank 3, suppressed 3 per successful run, showing active after-turn-1 memory discipline.
 
+### Scoped MCP Protocol And Live Subset
+
+Scoped MCP proof artifacts:
+
+- Protocol smoke: `docs/publication-evidence-20260515/mcp-protocol-smoke-v1/`
+- Chi live subset: `docs/publication-evidence-20260515/mcp-live-subset-v2/raw/chi-real-mcp-live-proof.json`
+- Vite live subset after fixes: `docs/publication-evidence-20260515/mcp-live-subset-v4/raw/vite-real-mcp-live-proof.json`
+
+Findings:
+
+- Local MCP protocol smoke passed. The server listed all Kairn MCP tools, `kairn_prepare_task` returned compact context, and `kairn_get_metrics` recorded 2 MCP tool calls.
+- Chi live was pass/pass and recorded 1 real MCP call to `kairn_prepare_task`. Kairn correctly suppressed file payloads for the cheap single-source case. Tokens increased from 17,968 to 20,555, so this is correct-abstention/protocol evidence, not savings evidence.
+- Vite initially exposed two general MCP evidence problems:
+  - failed setup runs could accidentally read the caller repo's `.kairn` database when the disposable workspace path was empty;
+  - broad source-rescue MCP prompts were not forcing a real first MCP call, and the cheap-one-shot guardrail could wrongly collapse multi-surface source-rescue context into suppression.
+- General fixes:
+  - workspace MCP metrics now return zero metrics when the proof workspace path is empty or invalid;
+  - MCP-first benchmark prompts now explicitly require one `kairn_prepare_task` call for source-rescue, multi-file, failure-first, and session-repeat cases, while preserving abstention for cheap/weak cases;
+  - MCP cheap-one-shot collapse no longer suppresses source-rescue decisions with companion or multi-surface evidence.
+- Vite live after fixes recorded 1 real MCP call, returned the expected source file `packages/vite/src/client/client.ts`, returned zero noisy files, returned zero test fanout, passed source-scope discipline, and passed quality. Baseline was only partial because it edited an unrelated source file. This is a clean MCP quality-rescue proof, not an MCP token-savings proof: Kairn used 34,116 tokens versus the failed baseline's 30,735 tokens.
+
+Interpretation:
+
+- MCP now has clean protocol evidence and one live proof that an actual MCP call can return the right source with no noise and rescue quality.
+- The campaign still needs repeat-3 or repeat-5 pass/pass MCP cases before claiming MCP token savings. The next MCP slice should use broad/failure/endurance cases where Kairn is expected to emit or shrink, not cheap one-shot tasks where correct behavior is often suppression.
+
 ### Current Interpretation
 
 - The governor upgrade is holding for source-rescue in session mode across mixed fresh repos.
 - Cheap/source-rescue boundary tasks still have variance: Kairn can rescue quality or save heavily, but can over-assist when baseline already solves unusually cheaply. The current run shows this is not repeated enough to justify another rule yet.
 - Endurance evidence now supports the long-session story after the current-turn invariant fix: Kairn can stay active after turn 1 while emitting less context.
-- MCP/hybrid needs one more protocol-level live check before making a strong MCP claim. The Requests endurance harness showed hybrid wins, but `real_mcp_first` did not record actual MCP tool calls, so that evidence is not yet a clean MCP proof.
-- Next campaign work should run a scoped MCP protocol/live subset and then continue to FastAPI endurance or SWE-Pro official evaluation. Do not keep tuning the one-shot slice unless the same cheap-boundary over-assist repeats on new repos.
+- MCP/hybrid now has clean protocol evidence and one live quality-rescue proof, but it still needs pass/pass repeat evidence before making a strong MCP savings claim.
+- Next campaign work should run a repeat MCP subset on broad/failure/endurance tasks and then continue to FastAPI endurance or SWE-Pro official evaluation. Do not keep tuning the one-shot slice unless the same cheap-boundary over-assist repeats on new repos.
 
 ## Verification
 
-- `pnpm test`: passed, 250 tests.
+- `pnpm test`: passed, 253 tests.
 - `pnpm typecheck`: passed.
 - `pnpm build`: passed.
 - `git diff --check`: passed.

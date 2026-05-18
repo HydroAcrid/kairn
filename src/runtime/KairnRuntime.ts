@@ -50,6 +50,7 @@ import type {
   WatchRecommendation,
   WatchSnapshot
 } from "../types.js";
+import type { BenchmarkCase } from "../types/bench.js";
 import { ensureKairnDir, getKairnPaths } from "../config/paths.js";
 import { SqliteStore } from "../store/sqliteStore.js";
 import { compressOutput as compressOutputText } from "../compression/compressOutput.js";
@@ -3138,6 +3139,7 @@ export class KairnRuntime {
             ? ({ prompt }) => ({
                 prompt: [
                   "Kairn MCP-first instruction:",
+                  ...mcpFirstBenchmarkInstructionLines(input.benchmarkCase),
                   "Call `kairn_prepare_task` before broad, unclear, multi-file, or failure-driven file scans.",
                   "For diagnose, investigate, audit, trace, or source-rescue tasks that do not name an exact production path, call `kairn_prepare_task` once before manual source reads.",
                   "For short obvious single-source symbol tasks, inspect the likely source first and call Kairn only if that guess fails or the task broadens.",
@@ -3163,7 +3165,7 @@ export class KairnRuntime {
                   hybridMcpInstructionsConditional: true
                 }
               })
-          : undefined
+            : undefined
     });
     const workspaceMetrics = collectWorkspaceKairnMetrics(result.workspacePath);
     return scoreBenchmarkCase({
@@ -3818,17 +3820,33 @@ function languageMixForGovernorSummary(files: FileRecord[]): Record<string, numb
   return Object.fromEntries([...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8));
 }
 
+function mcpFirstBenchmarkInstructionLines(benchmarkCase: BenchmarkCase): string[] {
+  const behavior = benchmarkCase.contextBehavior;
+  if (behavior === "cheap_single_source" || behavior === "weak_signal") {
+    return [
+      "This benchmark case is classified as cheap/weak. Do not call Kairn just to confirm an obvious single source; call it only after the first source guess fails, a verification failure appears, or the task broadens."
+    ];
+  }
+  if (behavior === "source_rescue" || behavior === "multi_file_debug" || behavior === "failure_first" || behavior === "session_repeat") {
+    return [
+      `This benchmark case is classified as ${behavior}. Your first action before manual source reads must be to call \`kairn_prepare_task\` once.`,
+      "After that call, obey its stop condition and edit-scope guidance; do not expand into tests, generated files, or unrelated production files unless Kairn or verification output gives a concrete expansion reason."
+    ];
+  }
+  return [];
+}
+
 function minimalSourceFocusOverridesSuppression(reason: SessionContextPolicyDecision["reason"]): boolean {
   return reason === "active_source_context_shrunk";
 }
 
 function collectWorkspaceKairnMetrics(workspacePath: string): Record<string, unknown> {
+  if (!workspacePath || !path.isAbsolute(workspacePath)) {
+    return emptyWorkspaceKairnMetrics();
+  }
   const databasePath = path.join(workspacePath, ".kairn", "kairn.sqlite");
   if (!fs.existsSync(databasePath)) {
-    return {
-      primeEmitted: 0,
-      hookInvocations: 0
-    };
+    return emptyWorkspaceKairnMetrics();
   }
 
   const runtime = new KairnRuntime(workspacePath);
@@ -3875,13 +3893,27 @@ function collectWorkspaceKairnMetrics(workspacePath: string): Record<string, unk
       )
     };
   } catch {
-    return {
-      primeEmitted: 0,
-      hookInvocations: 0
-    };
+    return emptyWorkspaceKairnMetrics();
   } finally {
     runtime.close();
   }
+}
+
+function emptyWorkspaceKairnMetrics(): Record<string, unknown> {
+  return {
+    kairnSessionCount: 0,
+    primeAttempted: 0,
+    primeEmitted: 0,
+    primeSuppressed: 0,
+    primeEvidenceRequested: 0,
+    primeTokens: 0,
+    primeContextEvents: 0,
+    primeQualityEvents: 0,
+    hookInvocations: 0,
+    failureContextUsed: 0,
+    mcpToolCalls: 0,
+    mcpFilesReturned: []
+  };
 }
 
 function recordValue(value: unknown): Record<string, unknown> {

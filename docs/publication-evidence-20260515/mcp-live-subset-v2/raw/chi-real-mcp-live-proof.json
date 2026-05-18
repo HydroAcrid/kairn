@@ -1,0 +1,2244 @@
+{
+  "baseline": {
+    "run": {
+      "id": "bench_2fc88a0f-2d3f-4a46-877a-d96fc747ab3b",
+      "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+      "suiteId": "mcp-live-scoped-chi-20260516",
+      "suiteName": "MCP Live Scoped Chi Subset 2026-05-16",
+      "mode": "agent",
+      "status": "completed",
+      "startedAt": "2026-05-16T14:31:52.457Z",
+      "endedAt": "2026-05-16T14:32:40.706Z",
+      "metadata": {
+        "sessionId": "task_a3aabae9-b454-4aa3-8450-94a351153503",
+        "caseCount": 1,
+        "agentConfigured": true,
+        "assistanceMode": "baseline"
+      }
+    },
+    "results": [
+      {
+        "id": 1530,
+        "runId": "bench_2fc88a0f-2d3f-4a46-877a-d96fc747ab3b",
+        "caseId": "go-chi-urlparam-latest",
+        "caseMode": "agent",
+        "score": 50.33,
+        "expectedFileRecall": 0.3333,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 12312,
+        "observedCodexTokens": 17968,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "context.go",
+          "mux.go",
+          "tree.go"
+        ],
+        "actualFiles": [
+          "context.go"
+        ],
+        "excludedFiles": [
+          "_examples/",
+          "middleware/",
+          "doc/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "primeEmitted": 0,
+          "hookInvocations": 0,
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-4ODvRY",
+          "promptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "outputHash": "f32f5814c910d0dc68ebec6585781ffb637f56fe0567d0ed5216c679212b2725",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 47746,
+          "codexElapsedMs": 47746,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 52,
+          "expectedFileMentions": [
+            "context.go"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [
+            "context.go"
+          ],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedTestCommandHash": "95c3f28db0748109f7d6d1ee676f253bedd05e86aaf17bb7d84b7da7f362c99c",
+          "seedTestExitCode": 0,
+          "seedTestTimedOut": false,
+          "seedTestSignal": null,
+          "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedTestOutputTokens": 0,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/go-chi/chi.git",
+          "seedRef": "a54874f0e2f12647a19e82ee70dfa8185014100c",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": true,
+          "seedPatchFileHashes": {
+            "context.go": "1a7b05941d23c390301e8f7de0d6a81deb78365d57ea6231e5c215f9e0a7bf1f"
+          },
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "seedExpectedFailureCommandHash": "d79aa983bd652690b6b66cceee1c1441648fa3048a4ff50fd45177931bc7ebdb",
+          "seedExpectedFailureExitCode": 0,
+          "seedExpectedFailurePassed": false,
+          "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedExpectedFailureOutputTokens": 0,
+          "workspaceSetupMs": 436,
+          "elapsedMs": 47809,
+          "codexUsage": {
+            "totalTokens": 17968,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "mux.go",
+            "tree.go"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "context.go"
+          ],
+          "minExpectedHits": 3,
+          "rawExpectedCoverageSatisfied": false,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": true,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [
+            "context.go"
+          ],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-16T14:32:40.705Z"
+      }
+    ],
+    "overallScore": 50.33,
+    "observed": {
+      "codexTokens": 17968,
+      "codexCaseCount": 1
+    },
+    "weakestCases": [
+      {
+        "id": 1530,
+        "runId": "bench_2fc88a0f-2d3f-4a46-877a-d96fc747ab3b",
+        "caseId": "go-chi-urlparam-latest",
+        "caseMode": "agent",
+        "score": 50.33,
+        "expectedFileRecall": 0.3333,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 12312,
+        "observedCodexTokens": 17968,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "context.go",
+          "mux.go",
+          "tree.go"
+        ],
+        "actualFiles": [
+          "context.go"
+        ],
+        "excludedFiles": [
+          "_examples/",
+          "middleware/",
+          "doc/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "primeEmitted": 0,
+          "hookInvocations": 0,
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-4ODvRY",
+          "promptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "outputHash": "f32f5814c910d0dc68ebec6585781ffb637f56fe0567d0ed5216c679212b2725",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 47746,
+          "codexElapsedMs": 47746,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 52,
+          "expectedFileMentions": [
+            "context.go"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [
+            "context.go"
+          ],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedTestCommandHash": "95c3f28db0748109f7d6d1ee676f253bedd05e86aaf17bb7d84b7da7f362c99c",
+          "seedTestExitCode": 0,
+          "seedTestTimedOut": false,
+          "seedTestSignal": null,
+          "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedTestOutputTokens": 0,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/go-chi/chi.git",
+          "seedRef": "a54874f0e2f12647a19e82ee70dfa8185014100c",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": true,
+          "seedPatchFileHashes": {
+            "context.go": "1a7b05941d23c390301e8f7de0d6a81deb78365d57ea6231e5c215f9e0a7bf1f"
+          },
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "seedExpectedFailureCommandHash": "d79aa983bd652690b6b66cceee1c1441648fa3048a4ff50fd45177931bc7ebdb",
+          "seedExpectedFailureExitCode": 0,
+          "seedExpectedFailurePassed": false,
+          "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedExpectedFailureOutputTokens": 0,
+          "workspaceSetupMs": 436,
+          "elapsedMs": 47809,
+          "codexUsage": {
+            "totalTokens": 17968,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "mux.go",
+            "tree.go"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "context.go"
+          ],
+          "minExpectedHits": 3,
+          "rawExpectedCoverageSatisfied": false,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": true,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [
+            "context.go"
+          ],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-16T14:32:40.705Z"
+      }
+    ],
+    "recommendations": [
+      "Response exceeded the benchmark budget; tune response routing or snippets.",
+      "Overall score is low; inspect weak cases before tuning retrieval."
+    ]
+  },
+  "realMcpFirst": {
+    "run": {
+      "id": "bench_c78ee565-3ec7-497f-902f-3c9baa88b75b",
+      "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+      "suiteId": "mcp-live-scoped-chi-20260516",
+      "suiteName": "MCP Live Scoped Chi Subset 2026-05-16",
+      "mode": "agent",
+      "status": "completed",
+      "startedAt": "2026-05-16T14:32:45.059Z",
+      "endedAt": "2026-05-16T14:33:33.346Z",
+      "metadata": {
+        "sessionId": "task_d5229527-029e-47d9-9c8c-9dac79bc7c1c",
+        "caseCount": 1,
+        "agentConfigured": true,
+        "assistanceMode": "real_mcp_first"
+      }
+    },
+    "results": [
+      {
+        "id": 1531,
+        "runId": "bench_c78ee565-3ec7-497f-902f-3c9baa88b75b",
+        "caseId": "go-chi-urlparam-latest",
+        "caseMode": "agent",
+        "score": 50.33,
+        "expectedFileRecall": 0.3333,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 12732,
+        "observedCodexTokens": 20555,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "context.go",
+          "mux.go",
+          "tree.go"
+        ],
+        "actualFiles": [
+          "context.go"
+        ],
+        "excludedFiles": [
+          "_examples/",
+          "middleware/",
+          "doc/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "real_mcp_first",
+          "kairnSessionCount": 1,
+          "primeAttempted": 1,
+          "primeEmitted": 1,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 345,
+          "primeContextEvents": 1,
+          "primeQualityEvents": 1,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 1,
+          "mcpFilesReturned": [],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-fC89Cz",
+          "promptHash": "5480e8f5e71640e1b180e12c3b8cc4b28395ee7247d69629d76bee76ec82c2cd",
+          "outputHash": "4b718f750fa423afd47dac5a6ce0a6a2f6b3c4358ec1ebca2754dbc43c15497d",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 8,
+          "actualMcpToolCalls": 1,
+          "actualMcpToolNames": [
+            "kairn_prepare_task"
+          ],
+          "actualMcpToolCallSource": "workspace_metrics",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [
+            "suppress"
+          ],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "setupCommandHash": "834ebc2ac2cb9d632d7b9387836fb0f69844c26b3fdcc1dde0e310df7db4da76",
+          "setupCommandExitCode": 0,
+          "setupTimedOut": false,
+          "setupSignal": null,
+          "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "setupOutputTokens": 0,
+          "assistanceSetupMs": 295,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 47466,
+          "codexElapsedMs": 47466,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 55,
+          "expectedFileMentions": [
+            "context.go"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [
+            "context.go"
+          ],
+          "setupChangedFiles": [
+            "context.go"
+          ],
+          "agentChangedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedTestCommandHash": "95c3f28db0748109f7d6d1ee676f253bedd05e86aaf17bb7d84b7da7f362c99c",
+          "seedTestExitCode": 0,
+          "seedTestTimedOut": false,
+          "seedTestSignal": null,
+          "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedTestOutputTokens": 0,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/go-chi/chi.git",
+          "seedRef": "a54874f0e2f12647a19e82ee70dfa8185014100c",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": true,
+          "seedPatchFileHashes": {
+            "context.go": "1a7b05941d23c390301e8f7de0d6a81deb78365d57ea6231e5c215f9e0a7bf1f"
+          },
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "seedExpectedFailureCommandHash": "d79aa983bd652690b6b66cceee1c1441648fa3048a4ff50fd45177931bc7ebdb",
+          "seedExpectedFailureExitCode": 0,
+          "seedExpectedFailurePassed": false,
+          "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedExpectedFailureOutputTokens": 0,
+          "workspaceSetupMs": 428,
+          "mcpFirstInstructionsPrepended": true,
+          "elapsedMs": 47838,
+          "codexUsage": {
+            "totalTokens": 20555,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "mux.go",
+            "tree.go"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "context.go"
+          ],
+          "minExpectedHits": 3,
+          "rawExpectedCoverageSatisfied": false,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": true,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [
+            "context.go"
+          ],
+          "mcpRequired": true,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-16T14:33:33.345Z"
+      }
+    ],
+    "overallScore": 50.33,
+    "observed": {
+      "codexTokens": 20555,
+      "codexCaseCount": 1
+    },
+    "weakestCases": [
+      {
+        "id": 1531,
+        "runId": "bench_c78ee565-3ec7-497f-902f-3c9baa88b75b",
+        "caseId": "go-chi-urlparam-latest",
+        "caseMode": "agent",
+        "score": 50.33,
+        "expectedFileRecall": 0.3333,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 12732,
+        "observedCodexTokens": 20555,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "context.go",
+          "mux.go",
+          "tree.go"
+        ],
+        "actualFiles": [
+          "context.go"
+        ],
+        "excludedFiles": [
+          "_examples/",
+          "middleware/",
+          "doc/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "real_mcp_first",
+          "kairnSessionCount": 1,
+          "primeAttempted": 1,
+          "primeEmitted": 1,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 345,
+          "primeContextEvents": 1,
+          "primeQualityEvents": 1,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 1,
+          "mcpFilesReturned": [],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-fC89Cz",
+          "promptHash": "5480e8f5e71640e1b180e12c3b8cc4b28395ee7247d69629d76bee76ec82c2cd",
+          "outputHash": "4b718f750fa423afd47dac5a6ce0a6a2f6b3c4358ec1ebca2754dbc43c15497d",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 8,
+          "actualMcpToolCalls": 1,
+          "actualMcpToolNames": [
+            "kairn_prepare_task"
+          ],
+          "actualMcpToolCallSource": "workspace_metrics",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [
+            "suppress"
+          ],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "setupCommandHash": "834ebc2ac2cb9d632d7b9387836fb0f69844c26b3fdcc1dde0e310df7db4da76",
+          "setupCommandExitCode": 0,
+          "setupTimedOut": false,
+          "setupSignal": null,
+          "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "setupOutputTokens": 0,
+          "assistanceSetupMs": 295,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 47466,
+          "codexElapsedMs": 47466,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 55,
+          "expectedFileMentions": [
+            "context.go"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [
+            "context.go"
+          ],
+          "setupChangedFiles": [
+            "context.go"
+          ],
+          "agentChangedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedTestCommandHash": "95c3f28db0748109f7d6d1ee676f253bedd05e86aaf17bb7d84b7da7f362c99c",
+          "seedTestExitCode": 0,
+          "seedTestTimedOut": false,
+          "seedTestSignal": null,
+          "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedTestOutputTokens": 0,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/go-chi/chi.git",
+          "seedRef": "a54874f0e2f12647a19e82ee70dfa8185014100c",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": true,
+          "seedPatchFileHashes": {
+            "context.go": "1a7b05941d23c390301e8f7de0d6a81deb78365d57ea6231e5c215f9e0a7bf1f"
+          },
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "seedExpectedFailureCommandHash": "d79aa983bd652690b6b66cceee1c1441648fa3048a4ff50fd45177931bc7ebdb",
+          "seedExpectedFailureExitCode": 0,
+          "seedExpectedFailurePassed": false,
+          "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedExpectedFailureOutputTokens": 0,
+          "workspaceSetupMs": 428,
+          "mcpFirstInstructionsPrepended": true,
+          "elapsedMs": 47838,
+          "codexUsage": {
+            "totalTokens": 20555,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "mux.go",
+            "tree.go"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "context.go"
+          ],
+          "minExpectedHits": 3,
+          "rawExpectedCoverageSatisfied": false,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": true,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [
+            "context.go"
+          ],
+          "mcpRequired": true,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-16T14:33:33.345Z"
+      }
+    ],
+    "recommendations": [
+      "Response exceeded the benchmark budget; tune response routing or snippets.",
+      "Overall score is low; inspect weak cases before tuning retrieval."
+    ]
+  },
+  "passiveHooks": {
+    "run": {
+      "id": "bench_2fc88a0f-2d3f-4a46-877a-d96fc747ab3b",
+      "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+      "suiteId": "mcp-live-scoped-chi-20260516",
+      "suiteName": "MCP Live Scoped Chi Subset 2026-05-16",
+      "mode": "agent",
+      "status": "completed",
+      "startedAt": "2026-05-16T14:31:52.457Z",
+      "endedAt": "2026-05-16T14:32:40.706Z",
+      "metadata": {
+        "sessionId": "task_a3aabae9-b454-4aa3-8450-94a351153503",
+        "caseCount": 1,
+        "agentConfigured": true,
+        "assistanceMode": "baseline"
+      }
+    },
+    "results": [
+      {
+        "id": 1530,
+        "runId": "bench_2fc88a0f-2d3f-4a46-877a-d96fc747ab3b",
+        "caseId": "go-chi-urlparam-latest",
+        "caseMode": "agent",
+        "score": 50.33,
+        "expectedFileRecall": 0.3333,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 12312,
+        "observedCodexTokens": 17968,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "context.go",
+          "mux.go",
+          "tree.go"
+        ],
+        "actualFiles": [
+          "context.go"
+        ],
+        "excludedFiles": [
+          "_examples/",
+          "middleware/",
+          "doc/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "primeEmitted": 0,
+          "hookInvocations": 0,
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-4ODvRY",
+          "promptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "outputHash": "f32f5814c910d0dc68ebec6585781ffb637f56fe0567d0ed5216c679212b2725",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 47746,
+          "codexElapsedMs": 47746,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 52,
+          "expectedFileMentions": [
+            "context.go"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [
+            "context.go"
+          ],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedTestCommandHash": "95c3f28db0748109f7d6d1ee676f253bedd05e86aaf17bb7d84b7da7f362c99c",
+          "seedTestExitCode": 0,
+          "seedTestTimedOut": false,
+          "seedTestSignal": null,
+          "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedTestOutputTokens": 0,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/go-chi/chi.git",
+          "seedRef": "a54874f0e2f12647a19e82ee70dfa8185014100c",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": true,
+          "seedPatchFileHashes": {
+            "context.go": "1a7b05941d23c390301e8f7de0d6a81deb78365d57ea6231e5c215f9e0a7bf1f"
+          },
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "seedExpectedFailureCommandHash": "d79aa983bd652690b6b66cceee1c1441648fa3048a4ff50fd45177931bc7ebdb",
+          "seedExpectedFailureExitCode": 0,
+          "seedExpectedFailurePassed": false,
+          "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedExpectedFailureOutputTokens": 0,
+          "workspaceSetupMs": 436,
+          "elapsedMs": 47809,
+          "codexUsage": {
+            "totalTokens": 17968,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "mux.go",
+            "tree.go"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "context.go"
+          ],
+          "minExpectedHits": 3,
+          "rawExpectedCoverageSatisfied": false,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": true,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [
+            "context.go"
+          ],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-16T14:32:40.705Z"
+      }
+    ],
+    "overallScore": 50.33,
+    "observed": {
+      "codexTokens": 17968,
+      "codexCaseCount": 1
+    },
+    "weakestCases": [
+      {
+        "id": 1530,
+        "runId": "bench_2fc88a0f-2d3f-4a46-877a-d96fc747ab3b",
+        "caseId": "go-chi-urlparam-latest",
+        "caseMode": "agent",
+        "score": 50.33,
+        "expectedFileRecall": 0.3333,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 12312,
+        "observedCodexTokens": 17968,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "context.go",
+          "mux.go",
+          "tree.go"
+        ],
+        "actualFiles": [
+          "context.go"
+        ],
+        "excludedFiles": [
+          "_examples/",
+          "middleware/",
+          "doc/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "primeEmitted": 0,
+          "hookInvocations": 0,
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-4ODvRY",
+          "promptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "outputHash": "f32f5814c910d0dc68ebec6585781ffb637f56fe0567d0ed5216c679212b2725",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 47746,
+          "codexElapsedMs": 47746,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 52,
+          "expectedFileMentions": [
+            "context.go"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [
+            "context.go"
+          ],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedTestCommandHash": "95c3f28db0748109f7d6d1ee676f253bedd05e86aaf17bb7d84b7da7f362c99c",
+          "seedTestExitCode": 0,
+          "seedTestTimedOut": false,
+          "seedTestSignal": null,
+          "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedTestOutputTokens": 0,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/go-chi/chi.git",
+          "seedRef": "a54874f0e2f12647a19e82ee70dfa8185014100c",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": true,
+          "seedPatchFileHashes": {
+            "context.go": "1a7b05941d23c390301e8f7de0d6a81deb78365d57ea6231e5c215f9e0a7bf1f"
+          },
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "seedExpectedFailureCommandHash": "d79aa983bd652690b6b66cceee1c1441648fa3048a4ff50fd45177931bc7ebdb",
+          "seedExpectedFailureExitCode": 0,
+          "seedExpectedFailurePassed": false,
+          "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedExpectedFailureOutputTokens": 0,
+          "workspaceSetupMs": 436,
+          "elapsedMs": 47809,
+          "codexUsage": {
+            "totalTokens": 17968,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "mux.go",
+            "tree.go"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "context.go"
+          ],
+          "minExpectedHits": 3,
+          "rawExpectedCoverageSatisfied": false,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": true,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [
+            "context.go"
+          ],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-16T14:32:40.705Z"
+      }
+    ],
+    "recommendations": [
+      "Response exceeded the benchmark budget; tune response routing or snippets.",
+      "Overall score is low; inspect weak cases before tuning retrieval."
+    ]
+  },
+  "proactive": {
+    "run": {
+      "id": "bench_2fc88a0f-2d3f-4a46-877a-d96fc747ab3b",
+      "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+      "suiteId": "mcp-live-scoped-chi-20260516",
+      "suiteName": "MCP Live Scoped Chi Subset 2026-05-16",
+      "mode": "agent",
+      "status": "completed",
+      "startedAt": "2026-05-16T14:31:52.457Z",
+      "endedAt": "2026-05-16T14:32:40.706Z",
+      "metadata": {
+        "sessionId": "task_a3aabae9-b454-4aa3-8450-94a351153503",
+        "caseCount": 1,
+        "agentConfigured": true,
+        "assistanceMode": "baseline"
+      }
+    },
+    "results": [
+      {
+        "id": 1530,
+        "runId": "bench_2fc88a0f-2d3f-4a46-877a-d96fc747ab3b",
+        "caseId": "go-chi-urlparam-latest",
+        "caseMode": "agent",
+        "score": 50.33,
+        "expectedFileRecall": 0.3333,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 12312,
+        "observedCodexTokens": 17968,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "context.go",
+          "mux.go",
+          "tree.go"
+        ],
+        "actualFiles": [
+          "context.go"
+        ],
+        "excludedFiles": [
+          "_examples/",
+          "middleware/",
+          "doc/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "primeEmitted": 0,
+          "hookInvocations": 0,
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-4ODvRY",
+          "promptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "outputHash": "f32f5814c910d0dc68ebec6585781ffb637f56fe0567d0ed5216c679212b2725",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 47746,
+          "codexElapsedMs": 47746,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 52,
+          "expectedFileMentions": [
+            "context.go"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [
+            "context.go"
+          ],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedTestCommandHash": "95c3f28db0748109f7d6d1ee676f253bedd05e86aaf17bb7d84b7da7f362c99c",
+          "seedTestExitCode": 0,
+          "seedTestTimedOut": false,
+          "seedTestSignal": null,
+          "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedTestOutputTokens": 0,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/go-chi/chi.git",
+          "seedRef": "a54874f0e2f12647a19e82ee70dfa8185014100c",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": true,
+          "seedPatchFileHashes": {
+            "context.go": "1a7b05941d23c390301e8f7de0d6a81deb78365d57ea6231e5c215f9e0a7bf1f"
+          },
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "seedExpectedFailureCommandHash": "d79aa983bd652690b6b66cceee1c1441648fa3048a4ff50fd45177931bc7ebdb",
+          "seedExpectedFailureExitCode": 0,
+          "seedExpectedFailurePassed": false,
+          "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedExpectedFailureOutputTokens": 0,
+          "workspaceSetupMs": 436,
+          "elapsedMs": 47809,
+          "codexUsage": {
+            "totalTokens": 17968,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "mux.go",
+            "tree.go"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "context.go"
+          ],
+          "minExpectedHits": 3,
+          "rawExpectedCoverageSatisfied": false,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": true,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [
+            "context.go"
+          ],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-16T14:32:40.705Z"
+      }
+    ],
+    "overallScore": 50.33,
+    "observed": {
+      "codexTokens": 17968,
+      "codexCaseCount": 1
+    },
+    "weakestCases": [
+      {
+        "id": 1530,
+        "runId": "bench_2fc88a0f-2d3f-4a46-877a-d96fc747ab3b",
+        "caseId": "go-chi-urlparam-latest",
+        "caseMode": "agent",
+        "score": 50.33,
+        "expectedFileRecall": 0.3333,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 12312,
+        "observedCodexTokens": 17968,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "pass",
+        "expectedFiles": [
+          "context.go",
+          "mux.go",
+          "tree.go"
+        ],
+        "actualFiles": [
+          "context.go"
+        ],
+        "excludedFiles": [
+          "_examples/",
+          "middleware/",
+          "doc/"
+        ],
+        "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "primeEmitted": 0,
+          "hookInvocations": 0,
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-4ODvRY",
+          "promptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "outputHash": "f32f5814c910d0dc68ebec6585781ffb637f56fe0567d0ed5216c679212b2725",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 47746,
+          "codexElapsedMs": 47746,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 240000,
+          "verificationElapsedMs": 52,
+          "expectedFileMentions": [
+            "context.go"
+          ],
+          "changedFiles": [],
+          "seedPatchFiles": [
+            "context.go"
+          ],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedFiles": [
+            "context.go"
+          ],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": false,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedTestCommandHash": "95c3f28db0748109f7d6d1ee676f253bedd05e86aaf17bb7d84b7da7f362c99c",
+          "seedTestExitCode": 0,
+          "seedTestTimedOut": false,
+          "seedTestSignal": null,
+          "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedTestOutputTokens": 0,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/go-chi/chi.git",
+          "seedRef": "a54874f0e2f12647a19e82ee70dfa8185014100c",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 0,
+          "seedHasPatch": true,
+          "seedPatchFileHashes": {
+            "context.go": "1a7b05941d23c390301e8f7de0d6a81deb78365d57ea6231e5c215f9e0a7bf1f"
+          },
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "seedExpectedFailureCommandHash": "d79aa983bd652690b6b66cceee1c1441648fa3048a4ff50fd45177931bc7ebdb",
+          "seedExpectedFailureExitCode": 0,
+          "seedExpectedFailurePassed": false,
+          "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "seedExpectedFailureOutputTokens": 0,
+          "workspaceSetupMs": 436,
+          "elapsedMs": 47809,
+          "codexUsage": {
+            "totalTokens": 17968,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "source_rescue",
+          "missedExpectedFiles": [
+            "mux.go",
+            "tree.go"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "context.go"
+          ],
+          "minExpectedHits": 3,
+          "rawExpectedCoverageSatisfied": false,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": true,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [
+            "context.go"
+          ],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": true,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qualityGatePassed": true,
+          "validSavings": true,
+          "invalidSavings": false
+        },
+        "createdAt": "2026-05-16T14:32:40.705Z"
+      }
+    ],
+    "recommendations": [
+      "Response exceeded the benchmark budget; tune response routing or snippets.",
+      "Overall score is low; inspect weak cases before tuning retrieval."
+    ]
+  },
+  "runs": {
+    "baseline": [
+      {
+        "run": {
+          "id": "bench_2fc88a0f-2d3f-4a46-877a-d96fc747ab3b",
+          "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+          "suiteId": "mcp-live-scoped-chi-20260516",
+          "suiteName": "MCP Live Scoped Chi Subset 2026-05-16",
+          "mode": "agent",
+          "status": "completed",
+          "startedAt": "2026-05-16T14:31:52.457Z",
+          "endedAt": "2026-05-16T14:32:40.706Z",
+          "metadata": {
+            "sessionId": "task_a3aabae9-b454-4aa3-8450-94a351153503",
+            "caseCount": 1,
+            "agentConfigured": true,
+            "assistanceMode": "baseline"
+          }
+        },
+        "results": [
+          {
+            "id": 1530,
+            "runId": "bench_2fc88a0f-2d3f-4a46-877a-d96fc747ab3b",
+            "caseId": "go-chi-urlparam-latest",
+            "caseMode": "agent",
+            "score": 50.33,
+            "expectedFileRecall": 0.3333,
+            "topKHitRate": 1,
+            "unexpectedFileRate": 0,
+            "responseTokens": 12312,
+            "observedCodexTokens": 17968,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "pass",
+            "expectedFiles": [
+              "context.go",
+              "mux.go",
+              "tree.go"
+            ],
+            "actualFiles": [
+              "context.go"
+            ],
+            "excludedFiles": [
+              "_examples/",
+              "middleware/",
+              "doc/"
+            ],
+            "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+            "recommendations": [
+              "Response exceeded the benchmark budget; tune response routing or snippets."
+            ],
+            "metadata": {
+              "assistanceMode": "baseline",
+              "primeEmitted": 0,
+              "hookInvocations": 0,
+              "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-4ODvRY",
+              "promptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+              "outputHash": "f32f5814c910d0dc68ebec6585781ffb637f56fe0567d0ed5216c679212b2725",
+              "adapter": "command",
+              "hookCompleted": 0,
+              "hookFailed": 0,
+              "kairnMcpToolMentions": 0,
+              "actualMcpToolCalls": 0,
+              "actualMcpToolNames": [],
+              "actualMcpToolCallSource": "none",
+              "actualMcpFiles": [],
+              "actualMcpContextActions": [],
+              "mcpReturnedFileCount": 0,
+              "mcpReturnedExpectedFileCount": 0,
+              "mcpReturnedNoiseFileCount": 0,
+              "mcpReturnedTestFanoutCount": 0,
+              "mcpContextEfficiency": 1,
+              "originalPromptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+              "assistanceSetupMs": 0,
+              "promptPrepareMs": 0,
+              "agentElapsedMs": 47746,
+              "codexElapsedMs": 47746,
+              "agentTimedOut": false,
+              "agentTimeoutMs": 240000,
+              "verificationElapsedMs": 52,
+              "expectedFileMentions": [
+                "context.go"
+              ],
+              "changedFiles": [],
+              "seedPatchFiles": [
+                "context.go"
+              ],
+              "setupChangedFiles": [],
+              "agentChangedFiles": [
+                "context.go"
+              ],
+              "requiredTouchedFiles": [
+                "context.go"
+              ],
+              "requiredTouchedSatisfied": true,
+              "missingRequiredTouchedFiles": [],
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "scopeViolations": [],
+              "sourceScopeDiscipline": "passed",
+              "unrelatedFilesTouched": [],
+              "testsEdited": [],
+              "scopeExpanded": false,
+              "scopeExpansionReason": null,
+              "seedTestCommandHash": "95c3f28db0748109f7d6d1ee676f253bedd05e86aaf17bb7d84b7da7f362c99c",
+              "seedTestExitCode": 0,
+              "seedTestTimedOut": false,
+              "seedTestSignal": null,
+              "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "seedTestOutputTokens": 0,
+              "seedConfigured": true,
+              "seedRepoUrl": "https://github.com/go-chi/chi.git",
+              "seedRef": "a54874f0e2f12647a19e82ee70dfa8185014100c",
+              "seedCloneDepth": 1,
+              "seedSetupCommandCount": 0,
+              "seedHasPatch": true,
+              "seedPatchFileHashes": {
+                "context.go": "1a7b05941d23c390301e8f7de0d6a81deb78365d57ea6231e5c215f9e0a7bf1f"
+              },
+              "seedCommandNormalization": {
+                "pythonToPython3": false
+              },
+              "seedExpectedFailureCommandHash": "d79aa983bd652690b6b66cceee1c1441648fa3048a4ff50fd45177931bc7ebdb",
+              "seedExpectedFailureExitCode": 0,
+              "seedExpectedFailurePassed": false,
+              "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "seedExpectedFailureOutputTokens": 0,
+              "workspaceSetupMs": 436,
+              "elapsedMs": 47809,
+              "codexUsage": {
+                "totalTokens": 17968,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "contextBehavior": "source_rescue",
+              "missedExpectedFiles": [
+                "mux.go",
+                "tree.go"
+              ],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [
+                "context.go"
+              ],
+              "minExpectedHits": 3,
+              "rawExpectedCoverageSatisfied": false,
+              "expectedCoverageSatisfied": true,
+              "sourceScopeCoverageOverride": true,
+              "effectiveExpectedFileRecall": 1,
+              "requiredTouchedFilesTouched": [
+                "context.go"
+              ],
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "productionOnlyScopeExpected": true,
+              "testEditViolationFiles": [],
+              "extraProductionEditViolationFiles": [],
+              "qualityGatePassed": true,
+              "validSavings": true,
+              "invalidSavings": false
+            },
+            "createdAt": "2026-05-16T14:32:40.705Z"
+          }
+        ],
+        "overallScore": 50.33,
+        "observed": {
+          "codexTokens": 17968,
+          "codexCaseCount": 1
+        },
+        "weakestCases": [
+          {
+            "id": 1530,
+            "runId": "bench_2fc88a0f-2d3f-4a46-877a-d96fc747ab3b",
+            "caseId": "go-chi-urlparam-latest",
+            "caseMode": "agent",
+            "score": 50.33,
+            "expectedFileRecall": 0.3333,
+            "topKHitRate": 1,
+            "unexpectedFileRate": 0,
+            "responseTokens": 12312,
+            "observedCodexTokens": 17968,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "pass",
+            "expectedFiles": [
+              "context.go",
+              "mux.go",
+              "tree.go"
+            ],
+            "actualFiles": [
+              "context.go"
+            ],
+            "excludedFiles": [
+              "_examples/",
+              "middleware/",
+              "doc/"
+            ],
+            "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+            "recommendations": [
+              "Response exceeded the benchmark budget; tune response routing or snippets."
+            ],
+            "metadata": {
+              "assistanceMode": "baseline",
+              "primeEmitted": 0,
+              "hookInvocations": 0,
+              "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-4ODvRY",
+              "promptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+              "outputHash": "f32f5814c910d0dc68ebec6585781ffb637f56fe0567d0ed5216c679212b2725",
+              "adapter": "command",
+              "hookCompleted": 0,
+              "hookFailed": 0,
+              "kairnMcpToolMentions": 0,
+              "actualMcpToolCalls": 0,
+              "actualMcpToolNames": [],
+              "actualMcpToolCallSource": "none",
+              "actualMcpFiles": [],
+              "actualMcpContextActions": [],
+              "mcpReturnedFileCount": 0,
+              "mcpReturnedExpectedFileCount": 0,
+              "mcpReturnedNoiseFileCount": 0,
+              "mcpReturnedTestFanoutCount": 0,
+              "mcpContextEfficiency": 1,
+              "originalPromptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+              "assistanceSetupMs": 0,
+              "promptPrepareMs": 0,
+              "agentElapsedMs": 47746,
+              "codexElapsedMs": 47746,
+              "agentTimedOut": false,
+              "agentTimeoutMs": 240000,
+              "verificationElapsedMs": 52,
+              "expectedFileMentions": [
+                "context.go"
+              ],
+              "changedFiles": [],
+              "seedPatchFiles": [
+                "context.go"
+              ],
+              "setupChangedFiles": [],
+              "agentChangedFiles": [
+                "context.go"
+              ],
+              "requiredTouchedFiles": [
+                "context.go"
+              ],
+              "requiredTouchedSatisfied": true,
+              "missingRequiredTouchedFiles": [],
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "scopeViolations": [],
+              "sourceScopeDiscipline": "passed",
+              "unrelatedFilesTouched": [],
+              "testsEdited": [],
+              "scopeExpanded": false,
+              "scopeExpansionReason": null,
+              "seedTestCommandHash": "95c3f28db0748109f7d6d1ee676f253bedd05e86aaf17bb7d84b7da7f362c99c",
+              "seedTestExitCode": 0,
+              "seedTestTimedOut": false,
+              "seedTestSignal": null,
+              "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "seedTestOutputTokens": 0,
+              "seedConfigured": true,
+              "seedRepoUrl": "https://github.com/go-chi/chi.git",
+              "seedRef": "a54874f0e2f12647a19e82ee70dfa8185014100c",
+              "seedCloneDepth": 1,
+              "seedSetupCommandCount": 0,
+              "seedHasPatch": true,
+              "seedPatchFileHashes": {
+                "context.go": "1a7b05941d23c390301e8f7de0d6a81deb78365d57ea6231e5c215f9e0a7bf1f"
+              },
+              "seedCommandNormalization": {
+                "pythonToPython3": false
+              },
+              "seedExpectedFailureCommandHash": "d79aa983bd652690b6b66cceee1c1441648fa3048a4ff50fd45177931bc7ebdb",
+              "seedExpectedFailureExitCode": 0,
+              "seedExpectedFailurePassed": false,
+              "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "seedExpectedFailureOutputTokens": 0,
+              "workspaceSetupMs": 436,
+              "elapsedMs": 47809,
+              "codexUsage": {
+                "totalTokens": 17968,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "contextBehavior": "source_rescue",
+              "missedExpectedFiles": [
+                "mux.go",
+                "tree.go"
+              ],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [
+                "context.go"
+              ],
+              "minExpectedHits": 3,
+              "rawExpectedCoverageSatisfied": false,
+              "expectedCoverageSatisfied": true,
+              "sourceScopeCoverageOverride": true,
+              "effectiveExpectedFileRecall": 1,
+              "requiredTouchedFilesTouched": [
+                "context.go"
+              ],
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "productionOnlyScopeExpected": true,
+              "testEditViolationFiles": [],
+              "extraProductionEditViolationFiles": [],
+              "qualityGatePassed": true,
+              "validSavings": true,
+              "invalidSavings": false
+            },
+            "createdAt": "2026-05-16T14:32:40.705Z"
+          }
+        ],
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets.",
+          "Overall score is low; inspect weak cases before tuning retrieval."
+        ]
+      }
+    ],
+    "prompt_only": [],
+    "prompt_plus_hooks": [],
+    "manual_prime": [],
+    "hook_full_prime": [],
+    "hook_tiny_directive": [],
+    "hook_tiny_with_failures": [],
+    "kairn_codex_session": [],
+    "mcp_first": [],
+    "real_mcp_first": [
+      {
+        "run": {
+          "id": "bench_c78ee565-3ec7-497f-902f-3c9baa88b75b",
+          "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+          "suiteId": "mcp-live-scoped-chi-20260516",
+          "suiteName": "MCP Live Scoped Chi Subset 2026-05-16",
+          "mode": "agent",
+          "status": "completed",
+          "startedAt": "2026-05-16T14:32:45.059Z",
+          "endedAt": "2026-05-16T14:33:33.346Z",
+          "metadata": {
+            "sessionId": "task_d5229527-029e-47d9-9c8c-9dac79bc7c1c",
+            "caseCount": 1,
+            "agentConfigured": true,
+            "assistanceMode": "real_mcp_first"
+          }
+        },
+        "results": [
+          {
+            "id": 1531,
+            "runId": "bench_c78ee565-3ec7-497f-902f-3c9baa88b75b",
+            "caseId": "go-chi-urlparam-latest",
+            "caseMode": "agent",
+            "score": 50.33,
+            "expectedFileRecall": 0.3333,
+            "topKHitRate": 1,
+            "unexpectedFileRate": 0,
+            "responseTokens": 12732,
+            "observedCodexTokens": 20555,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "pass",
+            "expectedFiles": [
+              "context.go",
+              "mux.go",
+              "tree.go"
+            ],
+            "actualFiles": [
+              "context.go"
+            ],
+            "excludedFiles": [
+              "_examples/",
+              "middleware/",
+              "doc/"
+            ],
+            "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+            "recommendations": [
+              "Response exceeded the benchmark budget; tune response routing or snippets."
+            ],
+            "metadata": {
+              "assistanceMode": "real_mcp_first",
+              "kairnSessionCount": 1,
+              "primeAttempted": 1,
+              "primeEmitted": 1,
+              "primeSuppressed": 0,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 345,
+              "primeContextEvents": 1,
+              "primeQualityEvents": 1,
+              "hookInvocations": 0,
+              "failureContextUsed": 0,
+              "mcpToolCalls": 1,
+              "mcpFilesReturned": [],
+              "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-fC89Cz",
+              "promptHash": "5480e8f5e71640e1b180e12c3b8cc4b28395ee7247d69629d76bee76ec82c2cd",
+              "outputHash": "4b718f750fa423afd47dac5a6ce0a6a2f6b3c4358ec1ebca2754dbc43c15497d",
+              "adapter": "command",
+              "hookCompleted": 0,
+              "hookFailed": 0,
+              "kairnMcpToolMentions": 8,
+              "actualMcpToolCalls": 1,
+              "actualMcpToolNames": [
+                "kairn_prepare_task"
+              ],
+              "actualMcpToolCallSource": "workspace_metrics",
+              "actualMcpFiles": [],
+              "actualMcpContextActions": [
+                "suppress"
+              ],
+              "mcpReturnedFileCount": 0,
+              "mcpReturnedExpectedFileCount": 0,
+              "mcpReturnedNoiseFileCount": 0,
+              "mcpReturnedTestFanoutCount": 0,
+              "mcpContextEfficiency": 1,
+              "originalPromptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+              "setupCommandHash": "834ebc2ac2cb9d632d7b9387836fb0f69844c26b3fdcc1dde0e310df7db4da76",
+              "setupCommandExitCode": 0,
+              "setupTimedOut": false,
+              "setupSignal": null,
+              "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "setupOutputTokens": 0,
+              "assistanceSetupMs": 295,
+              "promptPrepareMs": 0,
+              "agentElapsedMs": 47466,
+              "codexElapsedMs": 47466,
+              "agentTimedOut": false,
+              "agentTimeoutMs": 240000,
+              "verificationElapsedMs": 55,
+              "expectedFileMentions": [
+                "context.go"
+              ],
+              "changedFiles": [],
+              "seedPatchFiles": [
+                "context.go"
+              ],
+              "setupChangedFiles": [
+                "context.go"
+              ],
+              "agentChangedFiles": [
+                "context.go"
+              ],
+              "requiredTouchedFiles": [
+                "context.go"
+              ],
+              "requiredTouchedSatisfied": true,
+              "missingRequiredTouchedFiles": [],
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "scopeViolations": [],
+              "sourceScopeDiscipline": "passed",
+              "unrelatedFilesTouched": [],
+              "testsEdited": [],
+              "scopeExpanded": false,
+              "scopeExpansionReason": null,
+              "seedTestCommandHash": "95c3f28db0748109f7d6d1ee676f253bedd05e86aaf17bb7d84b7da7f362c99c",
+              "seedTestExitCode": 0,
+              "seedTestTimedOut": false,
+              "seedTestSignal": null,
+              "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "seedTestOutputTokens": 0,
+              "seedConfigured": true,
+              "seedRepoUrl": "https://github.com/go-chi/chi.git",
+              "seedRef": "a54874f0e2f12647a19e82ee70dfa8185014100c",
+              "seedCloneDepth": 1,
+              "seedSetupCommandCount": 0,
+              "seedHasPatch": true,
+              "seedPatchFileHashes": {
+                "context.go": "1a7b05941d23c390301e8f7de0d6a81deb78365d57ea6231e5c215f9e0a7bf1f"
+              },
+              "seedCommandNormalization": {
+                "pythonToPython3": false
+              },
+              "seedExpectedFailureCommandHash": "d79aa983bd652690b6b66cceee1c1441648fa3048a4ff50fd45177931bc7ebdb",
+              "seedExpectedFailureExitCode": 0,
+              "seedExpectedFailurePassed": false,
+              "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "seedExpectedFailureOutputTokens": 0,
+              "workspaceSetupMs": 428,
+              "mcpFirstInstructionsPrepended": true,
+              "elapsedMs": 47838,
+              "codexUsage": {
+                "totalTokens": 20555,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "contextBehavior": "source_rescue",
+              "missedExpectedFiles": [
+                "mux.go",
+                "tree.go"
+              ],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [
+                "context.go"
+              ],
+              "minExpectedHits": 3,
+              "rawExpectedCoverageSatisfied": false,
+              "expectedCoverageSatisfied": true,
+              "sourceScopeCoverageOverride": true,
+              "effectiveExpectedFileRecall": 1,
+              "requiredTouchedFilesTouched": [
+                "context.go"
+              ],
+              "mcpRequired": true,
+              "mcpSuccess": true,
+              "productionOnlyScopeExpected": true,
+              "testEditViolationFiles": [],
+              "extraProductionEditViolationFiles": [],
+              "qualityGatePassed": true,
+              "validSavings": true,
+              "invalidSavings": false
+            },
+            "createdAt": "2026-05-16T14:33:33.345Z"
+          }
+        ],
+        "overallScore": 50.33,
+        "observed": {
+          "codexTokens": 20555,
+          "codexCaseCount": 1
+        },
+        "weakestCases": [
+          {
+            "id": 1531,
+            "runId": "bench_c78ee565-3ec7-497f-902f-3c9baa88b75b",
+            "caseId": "go-chi-urlparam-latest",
+            "caseMode": "agent",
+            "score": 50.33,
+            "expectedFileRecall": 0.3333,
+            "topKHitRate": 1,
+            "unexpectedFileRate": 0,
+            "responseTokens": 12732,
+            "observedCodexTokens": 20555,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "pass",
+            "expectedFiles": [
+              "context.go",
+              "mux.go",
+              "tree.go"
+            ],
+            "actualFiles": [
+              "context.go"
+            ],
+            "excludedFiles": [
+              "_examples/",
+              "middleware/",
+              "doc/"
+            ],
+            "summary": "Agent command completed in disposable workspace. Relevant files surfaced: 1.",
+            "recommendations": [
+              "Response exceeded the benchmark budget; tune response routing or snippets."
+            ],
+            "metadata": {
+              "assistanceMode": "real_mcp_first",
+              "kairnSessionCount": 1,
+              "primeAttempted": 1,
+              "primeEmitted": 1,
+              "primeSuppressed": 0,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 345,
+              "primeContextEvents": 1,
+              "primeQualityEvents": 1,
+              "hookInvocations": 0,
+              "failureContextUsed": 0,
+              "mcpToolCalls": 1,
+              "mcpFilesReturned": [],
+              "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-fC89Cz",
+              "promptHash": "5480e8f5e71640e1b180e12c3b8cc4b28395ee7247d69629d76bee76ec82c2cd",
+              "outputHash": "4b718f750fa423afd47dac5a6ce0a6a2f6b3c4358ec1ebca2754dbc43c15497d",
+              "adapter": "command",
+              "hookCompleted": 0,
+              "hookFailed": 0,
+              "kairnMcpToolMentions": 8,
+              "actualMcpToolCalls": 1,
+              "actualMcpToolNames": [
+                "kairn_prepare_task"
+              ],
+              "actualMcpToolCallSource": "workspace_metrics",
+              "actualMcpFiles": [],
+              "actualMcpContextActions": [
+                "suppress"
+              ],
+              "mcpReturnedFileCount": 0,
+              "mcpReturnedExpectedFileCount": 0,
+              "mcpReturnedNoiseFileCount": 0,
+              "mcpReturnedTestFanoutCount": 0,
+              "mcpContextEfficiency": 1,
+              "originalPromptHash": "ca4794a67f9bd0373ccb7269090c7620774bd442a1cffde64f1c9d2ce4cd837e",
+              "setupCommandHash": "834ebc2ac2cb9d632d7b9387836fb0f69844c26b3fdcc1dde0e310df7db4da76",
+              "setupCommandExitCode": 0,
+              "setupTimedOut": false,
+              "setupSignal": null,
+              "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "setupOutputTokens": 0,
+              "assistanceSetupMs": 295,
+              "promptPrepareMs": 0,
+              "agentElapsedMs": 47466,
+              "codexElapsedMs": 47466,
+              "agentTimedOut": false,
+              "agentTimeoutMs": 240000,
+              "verificationElapsedMs": 55,
+              "expectedFileMentions": [
+                "context.go"
+              ],
+              "changedFiles": [],
+              "seedPatchFiles": [
+                "context.go"
+              ],
+              "setupChangedFiles": [
+                "context.go"
+              ],
+              "agentChangedFiles": [
+                "context.go"
+              ],
+              "requiredTouchedFiles": [
+                "context.go"
+              ],
+              "requiredTouchedSatisfied": true,
+              "missingRequiredTouchedFiles": [],
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "scopeViolations": [],
+              "sourceScopeDiscipline": "passed",
+              "unrelatedFilesTouched": [],
+              "testsEdited": [],
+              "scopeExpanded": false,
+              "scopeExpansionReason": null,
+              "seedTestCommandHash": "95c3f28db0748109f7d6d1ee676f253bedd05e86aaf17bb7d84b7da7f362c99c",
+              "seedTestExitCode": 0,
+              "seedTestTimedOut": false,
+              "seedTestSignal": null,
+              "seedTestOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "seedTestOutputTokens": 0,
+              "seedConfigured": true,
+              "seedRepoUrl": "https://github.com/go-chi/chi.git",
+              "seedRef": "a54874f0e2f12647a19e82ee70dfa8185014100c",
+              "seedCloneDepth": 1,
+              "seedSetupCommandCount": 0,
+              "seedHasPatch": true,
+              "seedPatchFileHashes": {
+                "context.go": "1a7b05941d23c390301e8f7de0d6a81deb78365d57ea6231e5c215f9e0a7bf1f"
+              },
+              "seedCommandNormalization": {
+                "pythonToPython3": false
+              },
+              "seedExpectedFailureCommandHash": "d79aa983bd652690b6b66cceee1c1441648fa3048a4ff50fd45177931bc7ebdb",
+              "seedExpectedFailureExitCode": 0,
+              "seedExpectedFailurePassed": false,
+              "seedExpectedFailureOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "seedExpectedFailureOutputTokens": 0,
+              "workspaceSetupMs": 428,
+              "mcpFirstInstructionsPrepended": true,
+              "elapsedMs": 47838,
+              "codexUsage": {
+                "totalTokens": 20555,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "contextBehavior": "source_rescue",
+              "missedExpectedFiles": [
+                "mux.go",
+                "tree.go"
+              ],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [
+                "context.go"
+              ],
+              "minExpectedHits": 3,
+              "rawExpectedCoverageSatisfied": false,
+              "expectedCoverageSatisfied": true,
+              "sourceScopeCoverageOverride": true,
+              "effectiveExpectedFileRecall": 1,
+              "requiredTouchedFilesTouched": [
+                "context.go"
+              ],
+              "mcpRequired": true,
+              "mcpSuccess": true,
+              "productionOnlyScopeExpected": true,
+              "testEditViolationFiles": [],
+              "extraProductionEditViolationFiles": [],
+              "qualityGatePassed": true,
+              "validSavings": true,
+              "invalidSavings": false
+            },
+            "createdAt": "2026-05-16T14:33:33.345Z"
+          }
+        ],
+        "recommendations": [
+          "Response exceeded the benchmark budget; tune response routing or snippets.",
+          "Overall score is low; inspect weak cases before tuning retrieval."
+        ]
+      }
+    ],
+    "mcp_first_plus_hook_full_prime": [],
+    "hybrid_mcp_brief": []
+  },
+  "aggregate": {
+    "repeat": 1,
+    "modes": {
+      "baseline": {
+        "reports": 1,
+        "meanTokens": 17968,
+        "medianTokens": 17968,
+        "qualityPassingReports": 1,
+        "caseCount": 1
+      },
+      "prompt_only": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "prompt_plus_hooks": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "manual_prime": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "hook_full_prime": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "hook_tiny_directive": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "hook_tiny_with_failures": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "kairn_codex_session": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "mcp_first": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "real_mcp_first": {
+        "reports": 1,
+        "meanTokens": 20555,
+        "medianTokens": 20555,
+        "qualityPassingReports": 1,
+        "caseCount": 1
+      },
+      "mcp_first_plus_hook_full_prime": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "hybrid_mcp_brief": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      }
+    },
+    "deltas": {
+      "promptOnlyVsBaseline": {},
+      "promptPlusHooksVsBaseline": {},
+      "manualPrimeVsBaseline": {},
+      "hookFullPrimeVsBaseline": {},
+      "kairnCodexSessionVsBaseline": {},
+      "realMcpFirstVsBaseline": {
+        "beforeMedianTokens": 17968,
+        "afterMedianTokens": 20555,
+        "savedTokens": -2587,
+        "savingsRate": -0.144
+      },
+      "mcpFirstPlusHookFullPrimeVsBaseline": {},
+      "hybridMcpBriefVsBaseline": {}
+    }
+  },
+  "abstentionSummary": {
+    "passive_token_regression": 1
+  },
+  "behaviorTargetSummary": {
+    "source_rescue": {
+      "cases": 1,
+      "met": 0,
+      "missed": 1
+    }
+  },
+  "caseRepeatClassifications": [
+    {
+      "mode": "real_mcp_first",
+      "caseId": "go-chi-urlparam-latest",
+      "repeats": 1,
+      "qualityPasses": 1,
+      "activeRuns": 0,
+      "suppressedRuns": 1,
+      "baselineMedianTokens": 17968,
+      "modeMedianTokens": 20555,
+      "medianSavedTokens": -2587,
+      "medianSavingsRate": -0.144,
+      "classifications": {
+        "passive_token_regression": 1
+      },
+      "verdict": "insufficient_data",
+      "recommendation": "Only one repeat; treat real_mcp_first/go-chi-urlparam-latest as exploratory evidence."
+    }
+  ],
+  "observedTokenDeltas": {
+    "realMcpFirstVsBaseline": {
+      "beforeTokens": 17968,
+      "afterTokens": 20555,
+      "savedTokens": -2587,
+      "savingsRate": -0.144,
+      "qualityGatePassed": true,
+      "assistanceStatus": "passive_suppressed",
+      "assistanceEligible": false,
+      "baselineDifficulty": "expensive_pass",
+      "baselineTokenCost": 17968,
+      "abstentionOutcome": "passive_token_regression",
+      "missedOpportunity": false,
+      "overAssist": true,
+      "harmfulAssist": false,
+      "assistClassification": "passive_token_regression",
+      "validSavings": 0,
+      "invalidSavings": 0,
+      "negativeEvidenceReason": "Kairn was passive/suppressed, but the integration used more observed tokens than baseline."
+    }
+  },
+  "caseDeltas": [
+    {
+      "caseId": "go-chi-urlparam-latest",
+      "baselineTokens": 17968,
+      "outcome": {
+        "baseline": "pass",
+        "passiveHooks": "skipped",
+        "proactive": "skipped"
+      }
+    }
+  ],
+  "recommendations": [
+    "Real MCP-first median: increased observed Codex tokens by repeat median 2587 (14%).",
+    "Prompt-only hooks vs baseline: observed Codex usage unavailable.",
+    "Prompt+tool hooks vs baseline: observed Codex usage unavailable.",
+    "Manual prime vs baseline: observed Codex usage unavailable.",
+    "Hook full prime vs baseline: observed Codex usage unavailable.",
+    "Hook tiny directive vs baseline: observed Codex usage unavailable.",
+    "Hook tiny+failures vs baseline: observed Codex usage unavailable.",
+    "Kairn Codex session vs baseline: observed Codex usage unavailable.",
+    "MCP-first vs baseline: observed Codex usage unavailable.",
+    "Real MCP-first vs baseline: increased observed Codex usage by 2587 tokens (14%).",
+    "MCP-first + full-prime hook vs baseline: observed Codex usage unavailable.",
+    "Hybrid MCP brief vs baseline: observed Codex usage unavailable.",
+    "real_mcp_first/go-chi-urlparam-latest: Only one repeat; treat real_mcp_first/go-chi-urlparam-latest as exploratory evidence."
+  ]
+}
