@@ -1,0 +1,27 @@
+{
+  "baseline": {
+    "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-cg85l1",
+    "changedFiles": [
+      "qutebrowser/components/hostblock.py",
+      "qutebrowser/config/configutils.py",
+      "qutebrowser/utils/urlutils.py",
+      "tests/unit/components/test_hostblock.py"
+    ],
+    "patchBytes": 4678,
+    "tokens": 47104,
+    "qualityGatePassed": false,
+    "scopePassed": false
+  },
+  "kairn_codex_session": {
+    "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-tzDqux",
+    "changedFiles": [
+      "qutebrowser/components/hostblock.py",
+      "qutebrowser/config/configutils.py"
+    ],
+    "patchBytes": 3111,
+    "tokens": 77768,
+    "qualityGatePassed": true,
+    "scopePassed": true,
+    "primeTokens": 449
+  }
+}

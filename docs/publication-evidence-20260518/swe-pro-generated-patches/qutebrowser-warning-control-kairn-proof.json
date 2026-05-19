@@ -1,0 +1,2620 @@
+{
+  "baseline": {
+    "run": {
+      "id": "bench_a33f2e55-67db-4eae-9d84-72e6db1486ca",
+      "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+      "suiteId": "swe-bench-pro-pilot-live",
+      "suiteName": "SWE-Bench Pro Pilot Live Suite",
+      "mode": "agent",
+      "status": "completed",
+      "startedAt": "2026-05-19T17:42:17.383Z",
+      "endedAt": "2026-05-19T17:42:19.463Z",
+      "metadata": {
+        "sessionId": "task_0abc4859-dcca-4389-aac7-104dfe349a8c",
+        "caseCount": 1,
+        "agentConfigured": true,
+        "assistanceMode": "baseline"
+      }
+    },
+    "results": [
+      {
+        "id": 1694,
+        "runId": "bench_a33f2e55-67db-4eae-9d84-72e6db1486ca",
+        "caseId": "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
+        "caseMode": "agent",
+        "score": 15,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "partial",
+        "expectedFiles": [
+          "qutebrowser/utils/qtlog.py",
+          "qutebrowser/utils/log.py"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "node_modules/",
+          "dist/",
+          "build/"
+        ],
+        "summary": "Agent command passed verification, but did not touch required source file(s): qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+        "recommendations": [
+          "Expected files missed: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+          "Required source files were not touched: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 0,
+          "primeAttempted": 0,
+          "primeEmitted": 0,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 0,
+          "primeContextEvents": 0,
+          "primeQualityEvents": 0,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 0,
+          "mcpFilesReturned": [],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-ulBwnL",
+          "promptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+          "outputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 2,
+          "codexElapsedMs": 2,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 360000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "requiredTouchedSatisfied": false,
+          "missingRequiredTouchedFiles": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": true,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/qutebrowser/qutebrowser.git",
+          "seedRef": "ebfe9b7aa0c4ba9d451f993e08955004aaec4345",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 3,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 2054,
+          "elapsedMs": 22,
+          "contextBehavior": "multi_file_debug",
+          "officialEvaluation": {
+            "source": "swe_bench_pro",
+            "taskClass": "multi_file_debug",
+            "evaluator": "patch_verification",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "golden patch touches 2 production source file(s)",
+              "selected tests are available for verification setup",
+              "official before_repo_set_cmd is available"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_bench_pro",
+          "officialTaskClass": "multi_file_debug",
+          "officialEvaluator": "patch_verification",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": false,
+          "expectedCoverageSatisfied": false,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-19T17:42:19.462Z"
+      }
+    ],
+    "overallScore": 15,
+    "weakestCases": [
+      {
+        "id": 1694,
+        "runId": "bench_a33f2e55-67db-4eae-9d84-72e6db1486ca",
+        "caseId": "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
+        "caseMode": "agent",
+        "score": 15,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "partial",
+        "expectedFiles": [
+          "qutebrowser/utils/qtlog.py",
+          "qutebrowser/utils/log.py"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "node_modules/",
+          "dist/",
+          "build/"
+        ],
+        "summary": "Agent command passed verification, but did not touch required source file(s): qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+        "recommendations": [
+          "Expected files missed: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+          "Required source files were not touched: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 0,
+          "primeAttempted": 0,
+          "primeEmitted": 0,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 0,
+          "primeContextEvents": 0,
+          "primeQualityEvents": 0,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 0,
+          "mcpFilesReturned": [],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-ulBwnL",
+          "promptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+          "outputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 2,
+          "codexElapsedMs": 2,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 360000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "requiredTouchedSatisfied": false,
+          "missingRequiredTouchedFiles": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": true,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/qutebrowser/qutebrowser.git",
+          "seedRef": "ebfe9b7aa0c4ba9d451f993e08955004aaec4345",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 3,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 2054,
+          "elapsedMs": 22,
+          "contextBehavior": "multi_file_debug",
+          "officialEvaluation": {
+            "source": "swe_bench_pro",
+            "taskClass": "multi_file_debug",
+            "evaluator": "patch_verification",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "golden patch touches 2 production source file(s)",
+              "selected tests are available for verification setup",
+              "official before_repo_set_cmd is available"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_bench_pro",
+          "officialTaskClass": "multi_file_debug",
+          "officialEvaluator": "patch_verification",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": false,
+          "expectedCoverageSatisfied": false,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-19T17:42:19.462Z"
+      }
+    ],
+    "recommendations": [
+      "Expected files missed: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+      "Required source files were not touched: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+      "Observed token reductions for this case must be treated as invalid until the quality gate passes.",
+      "Overall score is low; inspect weak cases before tuning retrieval."
+    ],
+    "officialEvaluationSummary": {
+      "totalCases": 1,
+      "kairnMetricEligibleCases": 1,
+      "byTaskClass": {
+        "multi_file_debug": {
+          "cases": 1,
+          "qualityPasses": 0,
+          "observedCases": 0,
+          "observedTokens": 0,
+          "averageScore": 15,
+          "kairnMetricEligibleCases": 1
+        }
+      },
+      "byEvaluator": {
+        "patch_verification": {
+          "cases": 1,
+          "qualityPasses": 0,
+          "observedCases": 0,
+          "observedTokens": 0,
+          "averageScore": 15,
+          "kairnMetricEligibleCases": 1
+        }
+      },
+      "byApplicability": {
+        "strong": {
+          "cases": 1,
+          "qualityPasses": 0,
+          "observedCases": 0,
+          "observedTokens": 0,
+          "averageScore": 15,
+          "kairnMetricEligibleCases": 1
+        }
+      }
+    }
+  },
+  "kairnCodexSession": {
+    "run": {
+      "id": "bench_a742105c-06a3-47e9-85df-4a38d882e3fb",
+      "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+      "suiteId": "swe-bench-pro-pilot-live",
+      "suiteName": "SWE-Bench Pro Pilot Live Suite",
+      "mode": "agent",
+      "status": "completed",
+      "startedAt": "2026-05-19T17:42:23.609Z",
+      "endedAt": "2026-05-19T17:43:31.684Z",
+      "metadata": {
+        "sessionId": "task_f1c1d619-0c24-49a0-92c2-99b6dd0e7dba",
+        "caseCount": 1,
+        "agentConfigured": true,
+        "assistanceMode": "kairn_codex_session"
+      }
+    },
+    "results": [
+      {
+        "id": 1695,
+        "runId": "bench_a742105c-06a3-47e9-85df-4a38d882e3fb",
+        "caseId": "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
+        "caseMode": "agent",
+        "score": 38.25,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 37423,
+        "observedCodexTokens": 36212,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "qutebrowser/utils/qtlog.py",
+          "qutebrowser/utils/log.py"
+        ],
+        "actualFiles": [
+          "qutebrowser/utils/log.py",
+          "qutebrowser/utils/qtlog.py",
+          "scripts/dev/run_vulture.py"
+        ],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "node_modules/",
+          "dist/",
+          "build/"
+        ],
+        "summary": "Agent command completed, but semantic source validation failed: scripts/dev/run_vulture.py: changed outside allowed diff scopes.",
+        "recommendations": [
+          "Diff scope violations: scripts/dev/run_vulture.py: changed outside allowed diff scopes.",
+          "Response exceeded the benchmark budget; tune response routing or snippets.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "kairn_codex_session",
+          "kairnSessionCount": 1,
+          "primeAttempted": 1,
+          "primeEmitted": 1,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 503,
+          "primeContextEvents": 1,
+          "primeQualityEvents": 1,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 0,
+          "mcpFilesReturned": [],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-BRgy36",
+          "promptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+          "outputHash": "2149b70d8470135ce0e6ba0faacf9b5c18814c6e9cf98a58946152525bbe4bfe",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 65932,
+          "codexElapsedMs": 65932,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 360000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "changedFiles": [
+            "qutebrowser/utils/log.py",
+            "qutebrowser/utils/qtlog.py",
+            "scripts/dev/run_vulture.py"
+          ],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [
+            "qutebrowser/utils/log.py",
+            "qutebrowser/utils/qtlog.py",
+            "scripts/dev/run_vulture.py"
+          ],
+          "requiredTouchedFiles": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": true,
+          "diffScopePassed": false,
+          "diffScopeViolations": [
+            "scripts/dev/run_vulture.py: changed outside allowed diff scopes"
+          ],
+          "diffScopeChangedFiles": [
+            "qutebrowser/utils/log.py",
+            "qutebrowser/utils/qtlog.py",
+            "scripts/dev/run_vulture.py"
+          ],
+          "scopeViolations": [
+            "scripts/dev/run_vulture.py: changed outside allowed diff scopes"
+          ],
+          "sourceScopeDiscipline": "failed",
+          "unrelatedFilesTouched": [
+            "scripts/dev/run_vulture.py"
+          ],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/qutebrowser/qutebrowser.git",
+          "seedRef": "ebfe9b7aa0c4ba9d451f993e08955004aaec4345",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 3,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 2056,
+          "elapsedMs": 65956,
+          "codexUsage": {
+            "totalTokens": 36212,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "multi_file_debug",
+          "officialEvaluation": {
+            "source": "swe_bench_pro",
+            "taskClass": "multi_file_debug",
+            "evaluator": "patch_verification",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "golden patch touches 2 production source file(s)",
+              "selected tests are available for verification setup",
+              "official before_repo_set_cmd is available"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_bench_pro",
+          "officialTaskClass": "multi_file_debug",
+          "officialEvaluator": "patch_verification",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-19T17:43:31.684Z"
+      }
+    ],
+    "overallScore": 38.25,
+    "observed": {
+      "codexTokens": 36212,
+      "codexCaseCount": 1
+    },
+    "weakestCases": [
+      {
+        "id": 1695,
+        "runId": "bench_a742105c-06a3-47e9-85df-4a38d882e3fb",
+        "caseId": "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
+        "caseMode": "agent",
+        "score": 38.25,
+        "expectedFileRecall": 1,
+        "topKHitRate": 1,
+        "unexpectedFileRate": 0,
+        "responseTokens": 37423,
+        "observedCodexTokens": 36212,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "fail",
+        "expectedFiles": [
+          "qutebrowser/utils/qtlog.py",
+          "qutebrowser/utils/log.py"
+        ],
+        "actualFiles": [
+          "qutebrowser/utils/log.py",
+          "qutebrowser/utils/qtlog.py",
+          "scripts/dev/run_vulture.py"
+        ],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "node_modules/",
+          "dist/",
+          "build/"
+        ],
+        "summary": "Agent command completed, but semantic source validation failed: scripts/dev/run_vulture.py: changed outside allowed diff scopes.",
+        "recommendations": [
+          "Diff scope violations: scripts/dev/run_vulture.py: changed outside allowed diff scopes.",
+          "Response exceeded the benchmark budget; tune response routing or snippets.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "kairn_codex_session",
+          "kairnSessionCount": 1,
+          "primeAttempted": 1,
+          "primeEmitted": 1,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 503,
+          "primeContextEvents": 1,
+          "primeQualityEvents": 1,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 0,
+          "mcpFilesReturned": [],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-BRgy36",
+          "promptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+          "outputHash": "2149b70d8470135ce0e6ba0faacf9b5c18814c6e9cf98a58946152525bbe4bfe",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 65932,
+          "codexElapsedMs": 65932,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 360000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "changedFiles": [
+            "qutebrowser/utils/log.py",
+            "qutebrowser/utils/qtlog.py",
+            "scripts/dev/run_vulture.py"
+          ],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [
+            "qutebrowser/utils/log.py",
+            "qutebrowser/utils/qtlog.py",
+            "scripts/dev/run_vulture.py"
+          ],
+          "requiredTouchedFiles": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "requiredTouchedSatisfied": true,
+          "missingRequiredTouchedFiles": [],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": true,
+          "diffScopePassed": false,
+          "diffScopeViolations": [
+            "scripts/dev/run_vulture.py: changed outside allowed diff scopes"
+          ],
+          "diffScopeChangedFiles": [
+            "qutebrowser/utils/log.py",
+            "qutebrowser/utils/qtlog.py",
+            "scripts/dev/run_vulture.py"
+          ],
+          "scopeViolations": [
+            "scripts/dev/run_vulture.py: changed outside allowed diff scopes"
+          ],
+          "sourceScopeDiscipline": "failed",
+          "unrelatedFilesTouched": [
+            "scripts/dev/run_vulture.py"
+          ],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/qutebrowser/qutebrowser.git",
+          "seedRef": "ebfe9b7aa0c4ba9d451f993e08955004aaec4345",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 3,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 2056,
+          "elapsedMs": 65956,
+          "codexUsage": {
+            "totalTokens": 36212,
+            "inputTokens": 0,
+            "cachedInputTokens": 0,
+            "outputTokens": 0,
+            "source": "footer"
+          },
+          "contextBehavior": "multi_file_debug",
+          "officialEvaluation": {
+            "source": "swe_bench_pro",
+            "taskClass": "multi_file_debug",
+            "evaluator": "patch_verification",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "golden patch touches 2 production source file(s)",
+              "selected tests are available for verification setup",
+              "official before_repo_set_cmd is available"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_bench_pro",
+          "officialTaskClass": "multi_file_debug",
+          "officialEvaluator": "patch_verification",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": true,
+          "expectedCoverageSatisfied": true,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 1,
+          "requiredTouchedFilesTouched": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-19T17:43:31.684Z"
+      }
+    ],
+    "recommendations": [
+      "Diff scope violations: scripts/dev/run_vulture.py: changed outside allowed diff scopes.",
+      "Response exceeded the benchmark budget; tune response routing or snippets.",
+      "Task outcome failed; inspect linked files and hook recommendations.",
+      "Observed token reductions for this case must be treated as invalid until the quality gate passes.",
+      "Overall score is low; inspect weak cases before tuning retrieval."
+    ],
+    "officialEvaluationSummary": {
+      "totalCases": 1,
+      "kairnMetricEligibleCases": 1,
+      "byTaskClass": {
+        "multi_file_debug": {
+          "cases": 1,
+          "qualityPasses": 0,
+          "observedCases": 1,
+          "observedTokens": 36212,
+          "averageScore": 38.25,
+          "kairnMetricEligibleCases": 1
+        }
+      },
+      "byEvaluator": {
+        "patch_verification": {
+          "cases": 1,
+          "qualityPasses": 0,
+          "observedCases": 1,
+          "observedTokens": 36212,
+          "averageScore": 38.25,
+          "kairnMetricEligibleCases": 1
+        }
+      },
+      "byApplicability": {
+        "strong": {
+          "cases": 1,
+          "qualityPasses": 0,
+          "observedCases": 1,
+          "observedTokens": 36212,
+          "averageScore": 38.25,
+          "kairnMetricEligibleCases": 1
+        }
+      }
+    }
+  },
+  "passiveHooks": {
+    "run": {
+      "id": "bench_a33f2e55-67db-4eae-9d84-72e6db1486ca",
+      "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+      "suiteId": "swe-bench-pro-pilot-live",
+      "suiteName": "SWE-Bench Pro Pilot Live Suite",
+      "mode": "agent",
+      "status": "completed",
+      "startedAt": "2026-05-19T17:42:17.383Z",
+      "endedAt": "2026-05-19T17:42:19.463Z",
+      "metadata": {
+        "sessionId": "task_0abc4859-dcca-4389-aac7-104dfe349a8c",
+        "caseCount": 1,
+        "agentConfigured": true,
+        "assistanceMode": "baseline"
+      }
+    },
+    "results": [
+      {
+        "id": 1694,
+        "runId": "bench_a33f2e55-67db-4eae-9d84-72e6db1486ca",
+        "caseId": "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
+        "caseMode": "agent",
+        "score": 15,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "partial",
+        "expectedFiles": [
+          "qutebrowser/utils/qtlog.py",
+          "qutebrowser/utils/log.py"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "node_modules/",
+          "dist/",
+          "build/"
+        ],
+        "summary": "Agent command passed verification, but did not touch required source file(s): qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+        "recommendations": [
+          "Expected files missed: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+          "Required source files were not touched: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 0,
+          "primeAttempted": 0,
+          "primeEmitted": 0,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 0,
+          "primeContextEvents": 0,
+          "primeQualityEvents": 0,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 0,
+          "mcpFilesReturned": [],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-ulBwnL",
+          "promptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+          "outputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 2,
+          "codexElapsedMs": 2,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 360000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "requiredTouchedSatisfied": false,
+          "missingRequiredTouchedFiles": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": true,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/qutebrowser/qutebrowser.git",
+          "seedRef": "ebfe9b7aa0c4ba9d451f993e08955004aaec4345",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 3,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 2054,
+          "elapsedMs": 22,
+          "contextBehavior": "multi_file_debug",
+          "officialEvaluation": {
+            "source": "swe_bench_pro",
+            "taskClass": "multi_file_debug",
+            "evaluator": "patch_verification",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "golden patch touches 2 production source file(s)",
+              "selected tests are available for verification setup",
+              "official before_repo_set_cmd is available"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_bench_pro",
+          "officialTaskClass": "multi_file_debug",
+          "officialEvaluator": "patch_verification",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": false,
+          "expectedCoverageSatisfied": false,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-19T17:42:19.462Z"
+      }
+    ],
+    "overallScore": 15,
+    "weakestCases": [
+      {
+        "id": 1694,
+        "runId": "bench_a33f2e55-67db-4eae-9d84-72e6db1486ca",
+        "caseId": "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
+        "caseMode": "agent",
+        "score": 15,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "partial",
+        "expectedFiles": [
+          "qutebrowser/utils/qtlog.py",
+          "qutebrowser/utils/log.py"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "node_modules/",
+          "dist/",
+          "build/"
+        ],
+        "summary": "Agent command passed verification, but did not touch required source file(s): qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+        "recommendations": [
+          "Expected files missed: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+          "Required source files were not touched: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 0,
+          "primeAttempted": 0,
+          "primeEmitted": 0,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 0,
+          "primeContextEvents": 0,
+          "primeQualityEvents": 0,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 0,
+          "mcpFilesReturned": [],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-ulBwnL",
+          "promptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+          "outputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 2,
+          "codexElapsedMs": 2,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 360000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "requiredTouchedSatisfied": false,
+          "missingRequiredTouchedFiles": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": true,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/qutebrowser/qutebrowser.git",
+          "seedRef": "ebfe9b7aa0c4ba9d451f993e08955004aaec4345",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 3,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 2054,
+          "elapsedMs": 22,
+          "contextBehavior": "multi_file_debug",
+          "officialEvaluation": {
+            "source": "swe_bench_pro",
+            "taskClass": "multi_file_debug",
+            "evaluator": "patch_verification",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "golden patch touches 2 production source file(s)",
+              "selected tests are available for verification setup",
+              "official before_repo_set_cmd is available"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_bench_pro",
+          "officialTaskClass": "multi_file_debug",
+          "officialEvaluator": "patch_verification",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": false,
+          "expectedCoverageSatisfied": false,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-19T17:42:19.462Z"
+      }
+    ],
+    "recommendations": [
+      "Expected files missed: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+      "Required source files were not touched: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+      "Observed token reductions for this case must be treated as invalid until the quality gate passes.",
+      "Overall score is low; inspect weak cases before tuning retrieval."
+    ],
+    "officialEvaluationSummary": {
+      "totalCases": 1,
+      "kairnMetricEligibleCases": 1,
+      "byTaskClass": {
+        "multi_file_debug": {
+          "cases": 1,
+          "qualityPasses": 0,
+          "observedCases": 0,
+          "observedTokens": 0,
+          "averageScore": 15,
+          "kairnMetricEligibleCases": 1
+        }
+      },
+      "byEvaluator": {
+        "patch_verification": {
+          "cases": 1,
+          "qualityPasses": 0,
+          "observedCases": 0,
+          "observedTokens": 0,
+          "averageScore": 15,
+          "kairnMetricEligibleCases": 1
+        }
+      },
+      "byApplicability": {
+        "strong": {
+          "cases": 1,
+          "qualityPasses": 0,
+          "observedCases": 0,
+          "observedTokens": 0,
+          "averageScore": 15,
+          "kairnMetricEligibleCases": 1
+        }
+      }
+    }
+  },
+  "proactive": {
+    "run": {
+      "id": "bench_a33f2e55-67db-4eae-9d84-72e6db1486ca",
+      "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+      "suiteId": "swe-bench-pro-pilot-live",
+      "suiteName": "SWE-Bench Pro Pilot Live Suite",
+      "mode": "agent",
+      "status": "completed",
+      "startedAt": "2026-05-19T17:42:17.383Z",
+      "endedAt": "2026-05-19T17:42:19.463Z",
+      "metadata": {
+        "sessionId": "task_0abc4859-dcca-4389-aac7-104dfe349a8c",
+        "caseCount": 1,
+        "agentConfigured": true,
+        "assistanceMode": "baseline"
+      }
+    },
+    "results": [
+      {
+        "id": 1694,
+        "runId": "bench_a33f2e55-67db-4eae-9d84-72e6db1486ca",
+        "caseId": "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
+        "caseMode": "agent",
+        "score": 15,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "partial",
+        "expectedFiles": [
+          "qutebrowser/utils/qtlog.py",
+          "qutebrowser/utils/log.py"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "node_modules/",
+          "dist/",
+          "build/"
+        ],
+        "summary": "Agent command passed verification, but did not touch required source file(s): qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+        "recommendations": [
+          "Expected files missed: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+          "Required source files were not touched: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 0,
+          "primeAttempted": 0,
+          "primeEmitted": 0,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 0,
+          "primeContextEvents": 0,
+          "primeQualityEvents": 0,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 0,
+          "mcpFilesReturned": [],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-ulBwnL",
+          "promptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+          "outputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 2,
+          "codexElapsedMs": 2,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 360000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "requiredTouchedSatisfied": false,
+          "missingRequiredTouchedFiles": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": true,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/qutebrowser/qutebrowser.git",
+          "seedRef": "ebfe9b7aa0c4ba9d451f993e08955004aaec4345",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 3,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 2054,
+          "elapsedMs": 22,
+          "contextBehavior": "multi_file_debug",
+          "officialEvaluation": {
+            "source": "swe_bench_pro",
+            "taskClass": "multi_file_debug",
+            "evaluator": "patch_verification",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "golden patch touches 2 production source file(s)",
+              "selected tests are available for verification setup",
+              "official before_repo_set_cmd is available"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_bench_pro",
+          "officialTaskClass": "multi_file_debug",
+          "officialEvaluator": "patch_verification",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": false,
+          "expectedCoverageSatisfied": false,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-19T17:42:19.462Z"
+      }
+    ],
+    "overallScore": 15,
+    "weakestCases": [
+      {
+        "id": 1694,
+        "runId": "bench_a33f2e55-67db-4eae-9d84-72e6db1486ca",
+        "caseId": "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
+        "caseMode": "agent",
+        "score": 15,
+        "expectedFileRecall": 0,
+        "topKHitRate": 0,
+        "unexpectedFileRate": 0,
+        "responseTokens": 0,
+        "hookContextEmitted": 0,
+        "hookContextSuppressed": 0,
+        "taskOutcome": "partial",
+        "expectedFiles": [
+          "qutebrowser/utils/qtlog.py",
+          "qutebrowser/utils/log.py"
+        ],
+        "actualFiles": [],
+        "excludedFiles": [
+          "docs/",
+          "doc/",
+          "examples/",
+          "example/",
+          "fixtures/",
+          "generated/",
+          "node_modules/",
+          "dist/",
+          "build/"
+        ],
+        "summary": "Agent command passed verification, but did not touch required source file(s): qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+        "recommendations": [
+          "Expected files missed: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+          "Required source files were not touched: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+        ],
+        "metadata": {
+          "assistanceMode": "baseline",
+          "kairnSessionCount": 0,
+          "primeAttempted": 0,
+          "primeEmitted": 0,
+          "primeSuppressed": 0,
+          "primeEvidenceRequested": 0,
+          "primeTokens": 0,
+          "primeContextEvents": 0,
+          "primeQualityEvents": 0,
+          "hookInvocations": 0,
+          "failureContextUsed": 0,
+          "mcpToolCalls": 0,
+          "mcpFilesReturned": [],
+          "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-ulBwnL",
+          "promptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+          "outputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "adapter": "command",
+          "hookCompleted": 0,
+          "hookFailed": 0,
+          "kairnMcpToolMentions": 0,
+          "actualMcpToolCalls": 0,
+          "actualMcpToolNames": [],
+          "actualMcpToolCallSource": "none",
+          "actualMcpFiles": [],
+          "actualMcpContextActions": [],
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedExpectedFileCount": 0,
+          "mcpReturnedNoiseFileCount": 0,
+          "mcpReturnedTestFanoutCount": 0,
+          "mcpContextEfficiency": 1,
+          "originalPromptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+          "assistanceSetupMs": 0,
+          "promptPrepareMs": 0,
+          "agentElapsedMs": 2,
+          "codexElapsedMs": 2,
+          "agentTimedOut": false,
+          "agentTimeoutMs": 360000,
+          "verificationElapsedMs": 0,
+          "expectedFileMentions": [],
+          "changedFiles": [],
+          "seedPatchFiles": [],
+          "setupChangedFiles": [],
+          "agentChangedFiles": [],
+          "requiredTouchedFiles": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "requiredTouchedSatisfied": false,
+          "missingRequiredTouchedFiles": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "sourceInvariantChecked": false,
+          "sourceInvariantPassed": true,
+          "sourceInvariantFailures": [],
+          "diffScopeChecked": true,
+          "diffScopePassed": true,
+          "diffScopeViolations": [],
+          "diffScopeChangedFiles": [],
+          "scopeViolations": [],
+          "sourceScopeDiscipline": "passed",
+          "unrelatedFilesTouched": [],
+          "testsEdited": [],
+          "scopeExpanded": false,
+          "scopeExpansionReason": null,
+          "seedConfigured": true,
+          "seedRepoUrl": "https://github.com/qutebrowser/qutebrowser.git",
+          "seedRef": "ebfe9b7aa0c4ba9d451f993e08955004aaec4345",
+          "seedCloneDepth": 1,
+          "seedSetupCommandCount": 3,
+          "seedHasPatch": false,
+          "seedPatchFileHashes": {},
+          "seedCommandNormalization": {
+            "pythonToPython3": false
+          },
+          "workspaceSetupMs": 2054,
+          "elapsedMs": 22,
+          "contextBehavior": "multi_file_debug",
+          "officialEvaluation": {
+            "source": "swe_bench_pro",
+            "taskClass": "multi_file_debug",
+            "evaluator": "patch_verification",
+            "kairnApplicability": "strong",
+            "kairnMetricEligible": true,
+            "liveRisk": "medium",
+            "reasons": [
+              "golden patch touches 2 production source file(s)",
+              "selected tests are available for verification setup",
+              "official before_repo_set_cmd is available"
+            ],
+            "recommendedModes": [
+              "baseline",
+              "kairn_codex_session",
+              "real_mcp_first"
+            ]
+          },
+          "officialBenchmarkSource": "swe_bench_pro",
+          "officialTaskClass": "multi_file_debug",
+          "officialEvaluator": "patch_verification",
+          "kairnApplicability": "strong",
+          "kairnMetricEligible": true,
+          "officialLiveRisk": "medium",
+          "missedExpectedFiles": [
+            "qutebrowser/utils/qtlog.py",
+            "qutebrowser/utils/log.py"
+          ],
+          "irrelevantFilesRead": [],
+          "expectedFilesMentioned": [],
+          "minExpectedHits": 1,
+          "rawExpectedCoverageSatisfied": false,
+          "expectedCoverageSatisfied": false,
+          "sourceScopeCoverageOverride": false,
+          "effectiveExpectedFileRecall": 0,
+          "requiredTouchedFilesTouched": [],
+          "mcpRequired": false,
+          "mcpSuccess": true,
+          "productionOnlyScopeExpected": false,
+          "testEditViolationFiles": [],
+          "extraProductionEditViolationFiles": [],
+          "qualityGatePassed": false,
+          "validSavings": false,
+          "invalidSavings": true,
+          "negativeEvidenceReason": "verification or requested task outcome did not pass"
+        },
+        "createdAt": "2026-05-19T17:42:19.462Z"
+      }
+    ],
+    "recommendations": [
+      "Expected files missed: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+      "Required source files were not touched: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+      "Observed token reductions for this case must be treated as invalid until the quality gate passes.",
+      "Overall score is low; inspect weak cases before tuning retrieval."
+    ],
+    "officialEvaluationSummary": {
+      "totalCases": 1,
+      "kairnMetricEligibleCases": 1,
+      "byTaskClass": {
+        "multi_file_debug": {
+          "cases": 1,
+          "qualityPasses": 0,
+          "observedCases": 0,
+          "observedTokens": 0,
+          "averageScore": 15,
+          "kairnMetricEligibleCases": 1
+        }
+      },
+      "byEvaluator": {
+        "patch_verification": {
+          "cases": 1,
+          "qualityPasses": 0,
+          "observedCases": 0,
+          "observedTokens": 0,
+          "averageScore": 15,
+          "kairnMetricEligibleCases": 1
+        }
+      },
+      "byApplicability": {
+        "strong": {
+          "cases": 1,
+          "qualityPasses": 0,
+          "observedCases": 0,
+          "observedTokens": 0,
+          "averageScore": 15,
+          "kairnMetricEligibleCases": 1
+        }
+      }
+    }
+  },
+  "runs": {
+    "baseline": [
+      {
+        "run": {
+          "id": "bench_a33f2e55-67db-4eae-9d84-72e6db1486ca",
+          "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+          "suiteId": "swe-bench-pro-pilot-live",
+          "suiteName": "SWE-Bench Pro Pilot Live Suite",
+          "mode": "agent",
+          "status": "completed",
+          "startedAt": "2026-05-19T17:42:17.383Z",
+          "endedAt": "2026-05-19T17:42:19.463Z",
+          "metadata": {
+            "sessionId": "task_0abc4859-dcca-4389-aac7-104dfe349a8c",
+            "caseCount": 1,
+            "agentConfigured": true,
+            "assistanceMode": "baseline"
+          }
+        },
+        "results": [
+          {
+            "id": 1694,
+            "runId": "bench_a33f2e55-67db-4eae-9d84-72e6db1486ca",
+            "caseId": "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
+            "caseMode": "agent",
+            "score": 15,
+            "expectedFileRecall": 0,
+            "topKHitRate": 0,
+            "unexpectedFileRate": 0,
+            "responseTokens": 0,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "partial",
+            "expectedFiles": [
+              "qutebrowser/utils/qtlog.py",
+              "qutebrowser/utils/log.py"
+            ],
+            "actualFiles": [],
+            "excludedFiles": [
+              "docs/",
+              "doc/",
+              "examples/",
+              "example/",
+              "fixtures/",
+              "generated/",
+              "node_modules/",
+              "dist/",
+              "build/"
+            ],
+            "summary": "Agent command passed verification, but did not touch required source file(s): qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+            "recommendations": [
+              "Expected files missed: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+              "Required source files were not touched: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+              "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+            ],
+            "metadata": {
+              "assistanceMode": "baseline",
+              "kairnSessionCount": 0,
+              "primeAttempted": 0,
+              "primeEmitted": 0,
+              "primeSuppressed": 0,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 0,
+              "primeContextEvents": 0,
+              "primeQualityEvents": 0,
+              "hookInvocations": 0,
+              "failureContextUsed": 0,
+              "mcpToolCalls": 0,
+              "mcpFilesReturned": [],
+              "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-ulBwnL",
+              "promptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+              "outputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "adapter": "command",
+              "hookCompleted": 0,
+              "hookFailed": 0,
+              "kairnMcpToolMentions": 0,
+              "actualMcpToolCalls": 0,
+              "actualMcpToolNames": [],
+              "actualMcpToolCallSource": "none",
+              "actualMcpFiles": [],
+              "actualMcpContextActions": [],
+              "mcpReturnedFileCount": 0,
+              "mcpReturnedExpectedFileCount": 0,
+              "mcpReturnedNoiseFileCount": 0,
+              "mcpReturnedTestFanoutCount": 0,
+              "mcpContextEfficiency": 1,
+              "originalPromptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+              "assistanceSetupMs": 0,
+              "promptPrepareMs": 0,
+              "agentElapsedMs": 2,
+              "codexElapsedMs": 2,
+              "agentTimedOut": false,
+              "agentTimeoutMs": 360000,
+              "verificationElapsedMs": 0,
+              "expectedFileMentions": [],
+              "changedFiles": [],
+              "seedPatchFiles": [],
+              "setupChangedFiles": [],
+              "agentChangedFiles": [],
+              "requiredTouchedFiles": [
+                "qutebrowser/utils/qtlog.py",
+                "qutebrowser/utils/log.py"
+              ],
+              "requiredTouchedSatisfied": false,
+              "missingRequiredTouchedFiles": [
+                "qutebrowser/utils/qtlog.py",
+                "qutebrowser/utils/log.py"
+              ],
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": true,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "scopeViolations": [],
+              "sourceScopeDiscipline": "passed",
+              "unrelatedFilesTouched": [],
+              "testsEdited": [],
+              "scopeExpanded": false,
+              "scopeExpansionReason": null,
+              "seedConfigured": true,
+              "seedRepoUrl": "https://github.com/qutebrowser/qutebrowser.git",
+              "seedRef": "ebfe9b7aa0c4ba9d451f993e08955004aaec4345",
+              "seedCloneDepth": 1,
+              "seedSetupCommandCount": 3,
+              "seedHasPatch": false,
+              "seedPatchFileHashes": {},
+              "seedCommandNormalization": {
+                "pythonToPython3": false
+              },
+              "workspaceSetupMs": 2054,
+              "elapsedMs": 22,
+              "contextBehavior": "multi_file_debug",
+              "officialEvaluation": {
+                "source": "swe_bench_pro",
+                "taskClass": "multi_file_debug",
+                "evaluator": "patch_verification",
+                "kairnApplicability": "strong",
+                "kairnMetricEligible": true,
+                "liveRisk": "medium",
+                "reasons": [
+                  "golden patch touches 2 production source file(s)",
+                  "selected tests are available for verification setup",
+                  "official before_repo_set_cmd is available"
+                ],
+                "recommendedModes": [
+                  "baseline",
+                  "kairn_codex_session",
+                  "real_mcp_first"
+                ]
+              },
+              "officialBenchmarkSource": "swe_bench_pro",
+              "officialTaskClass": "multi_file_debug",
+              "officialEvaluator": "patch_verification",
+              "kairnApplicability": "strong",
+              "kairnMetricEligible": true,
+              "officialLiveRisk": "medium",
+              "missedExpectedFiles": [
+                "qutebrowser/utils/qtlog.py",
+                "qutebrowser/utils/log.py"
+              ],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [],
+              "minExpectedHits": 1,
+              "rawExpectedCoverageSatisfied": false,
+              "expectedCoverageSatisfied": false,
+              "sourceScopeCoverageOverride": false,
+              "effectiveExpectedFileRecall": 0,
+              "requiredTouchedFilesTouched": [],
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "productionOnlyScopeExpected": false,
+              "testEditViolationFiles": [],
+              "extraProductionEditViolationFiles": [],
+              "qualityGatePassed": false,
+              "validSavings": false,
+              "invalidSavings": true,
+              "negativeEvidenceReason": "verification or requested task outcome did not pass"
+            },
+            "createdAt": "2026-05-19T17:42:19.462Z"
+          }
+        ],
+        "overallScore": 15,
+        "weakestCases": [
+          {
+            "id": 1694,
+            "runId": "bench_a33f2e55-67db-4eae-9d84-72e6db1486ca",
+            "caseId": "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
+            "caseMode": "agent",
+            "score": 15,
+            "expectedFileRecall": 0,
+            "topKHitRate": 0,
+            "unexpectedFileRate": 0,
+            "responseTokens": 0,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "partial",
+            "expectedFiles": [
+              "qutebrowser/utils/qtlog.py",
+              "qutebrowser/utils/log.py"
+            ],
+            "actualFiles": [],
+            "excludedFiles": [
+              "docs/",
+              "doc/",
+              "examples/",
+              "example/",
+              "fixtures/",
+              "generated/",
+              "node_modules/",
+              "dist/",
+              "build/"
+            ],
+            "summary": "Agent command passed verification, but did not touch required source file(s): qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+            "recommendations": [
+              "Expected files missed: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+              "Required source files were not touched: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+              "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+            ],
+            "metadata": {
+              "assistanceMode": "baseline",
+              "kairnSessionCount": 0,
+              "primeAttempted": 0,
+              "primeEmitted": 0,
+              "primeSuppressed": 0,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 0,
+              "primeContextEvents": 0,
+              "primeQualityEvents": 0,
+              "hookInvocations": 0,
+              "failureContextUsed": 0,
+              "mcpToolCalls": 0,
+              "mcpFilesReturned": [],
+              "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-ulBwnL",
+              "promptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+              "outputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "adapter": "command",
+              "hookCompleted": 0,
+              "hookFailed": 0,
+              "kairnMcpToolMentions": 0,
+              "actualMcpToolCalls": 0,
+              "actualMcpToolNames": [],
+              "actualMcpToolCallSource": "none",
+              "actualMcpFiles": [],
+              "actualMcpContextActions": [],
+              "mcpReturnedFileCount": 0,
+              "mcpReturnedExpectedFileCount": 0,
+              "mcpReturnedNoiseFileCount": 0,
+              "mcpReturnedTestFanoutCount": 0,
+              "mcpContextEfficiency": 1,
+              "originalPromptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+              "assistanceSetupMs": 0,
+              "promptPrepareMs": 0,
+              "agentElapsedMs": 2,
+              "codexElapsedMs": 2,
+              "agentTimedOut": false,
+              "agentTimeoutMs": 360000,
+              "verificationElapsedMs": 0,
+              "expectedFileMentions": [],
+              "changedFiles": [],
+              "seedPatchFiles": [],
+              "setupChangedFiles": [],
+              "agentChangedFiles": [],
+              "requiredTouchedFiles": [
+                "qutebrowser/utils/qtlog.py",
+                "qutebrowser/utils/log.py"
+              ],
+              "requiredTouchedSatisfied": false,
+              "missingRequiredTouchedFiles": [
+                "qutebrowser/utils/qtlog.py",
+                "qutebrowser/utils/log.py"
+              ],
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": true,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "diffScopeChangedFiles": [],
+              "scopeViolations": [],
+              "sourceScopeDiscipline": "passed",
+              "unrelatedFilesTouched": [],
+              "testsEdited": [],
+              "scopeExpanded": false,
+              "scopeExpansionReason": null,
+              "seedConfigured": true,
+              "seedRepoUrl": "https://github.com/qutebrowser/qutebrowser.git",
+              "seedRef": "ebfe9b7aa0c4ba9d451f993e08955004aaec4345",
+              "seedCloneDepth": 1,
+              "seedSetupCommandCount": 3,
+              "seedHasPatch": false,
+              "seedPatchFileHashes": {},
+              "seedCommandNormalization": {
+                "pythonToPython3": false
+              },
+              "workspaceSetupMs": 2054,
+              "elapsedMs": 22,
+              "contextBehavior": "multi_file_debug",
+              "officialEvaluation": {
+                "source": "swe_bench_pro",
+                "taskClass": "multi_file_debug",
+                "evaluator": "patch_verification",
+                "kairnApplicability": "strong",
+                "kairnMetricEligible": true,
+                "liveRisk": "medium",
+                "reasons": [
+                  "golden patch touches 2 production source file(s)",
+                  "selected tests are available for verification setup",
+                  "official before_repo_set_cmd is available"
+                ],
+                "recommendedModes": [
+                  "baseline",
+                  "kairn_codex_session",
+                  "real_mcp_first"
+                ]
+              },
+              "officialBenchmarkSource": "swe_bench_pro",
+              "officialTaskClass": "multi_file_debug",
+              "officialEvaluator": "patch_verification",
+              "kairnApplicability": "strong",
+              "kairnMetricEligible": true,
+              "officialLiveRisk": "medium",
+              "missedExpectedFiles": [
+                "qutebrowser/utils/qtlog.py",
+                "qutebrowser/utils/log.py"
+              ],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [],
+              "minExpectedHits": 1,
+              "rawExpectedCoverageSatisfied": false,
+              "expectedCoverageSatisfied": false,
+              "sourceScopeCoverageOverride": false,
+              "effectiveExpectedFileRecall": 0,
+              "requiredTouchedFilesTouched": [],
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "productionOnlyScopeExpected": false,
+              "testEditViolationFiles": [],
+              "extraProductionEditViolationFiles": [],
+              "qualityGatePassed": false,
+              "validSavings": false,
+              "invalidSavings": true,
+              "negativeEvidenceReason": "verification or requested task outcome did not pass"
+            },
+            "createdAt": "2026-05-19T17:42:19.462Z"
+          }
+        ],
+        "recommendations": [
+          "Expected files missed: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+          "Required source files were not touched: qutebrowser/utils/qtlog.py, qutebrowser/utils/log.py.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes.",
+          "Overall score is low; inspect weak cases before tuning retrieval."
+        ],
+        "officialEvaluationSummary": {
+          "totalCases": 1,
+          "kairnMetricEligibleCases": 1,
+          "byTaskClass": {
+            "multi_file_debug": {
+              "cases": 1,
+              "qualityPasses": 0,
+              "observedCases": 0,
+              "observedTokens": 0,
+              "averageScore": 15,
+              "kairnMetricEligibleCases": 1
+            }
+          },
+          "byEvaluator": {
+            "patch_verification": {
+              "cases": 1,
+              "qualityPasses": 0,
+              "observedCases": 0,
+              "observedTokens": 0,
+              "averageScore": 15,
+              "kairnMetricEligibleCases": 1
+            }
+          },
+          "byApplicability": {
+            "strong": {
+              "cases": 1,
+              "qualityPasses": 0,
+              "observedCases": 0,
+              "observedTokens": 0,
+              "averageScore": 15,
+              "kairnMetricEligibleCases": 1
+            }
+          }
+        }
+      }
+    ],
+    "prompt_only": [],
+    "prompt_plus_hooks": [],
+    "manual_prime": [],
+    "hook_full_prime": [],
+    "hook_tiny_directive": [],
+    "hook_tiny_with_failures": [],
+    "kairn_codex_session": [
+      {
+        "run": {
+          "id": "bench_a742105c-06a3-47e9-85df-4a38d882e3fb",
+          "rootPath": "/Users/kevindotel/Documents/Projects/kairn",
+          "suiteId": "swe-bench-pro-pilot-live",
+          "suiteName": "SWE-Bench Pro Pilot Live Suite",
+          "mode": "agent",
+          "status": "completed",
+          "startedAt": "2026-05-19T17:42:23.609Z",
+          "endedAt": "2026-05-19T17:43:31.684Z",
+          "metadata": {
+            "sessionId": "task_f1c1d619-0c24-49a0-92c2-99b6dd0e7dba",
+            "caseCount": 1,
+            "agentConfigured": true,
+            "assistanceMode": "kairn_codex_session"
+          }
+        },
+        "results": [
+          {
+            "id": 1695,
+            "runId": "bench_a742105c-06a3-47e9-85df-4a38d882e3fb",
+            "caseId": "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
+            "caseMode": "agent",
+            "score": 38.25,
+            "expectedFileRecall": 1,
+            "topKHitRate": 1,
+            "unexpectedFileRate": 0,
+            "responseTokens": 37423,
+            "observedCodexTokens": 36212,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "fail",
+            "expectedFiles": [
+              "qutebrowser/utils/qtlog.py",
+              "qutebrowser/utils/log.py"
+            ],
+            "actualFiles": [
+              "qutebrowser/utils/log.py",
+              "qutebrowser/utils/qtlog.py",
+              "scripts/dev/run_vulture.py"
+            ],
+            "excludedFiles": [
+              "docs/",
+              "doc/",
+              "examples/",
+              "example/",
+              "fixtures/",
+              "generated/",
+              "node_modules/",
+              "dist/",
+              "build/"
+            ],
+            "summary": "Agent command completed, but semantic source validation failed: scripts/dev/run_vulture.py: changed outside allowed diff scopes.",
+            "recommendations": [
+              "Diff scope violations: scripts/dev/run_vulture.py: changed outside allowed diff scopes.",
+              "Response exceeded the benchmark budget; tune response routing or snippets.",
+              "Task outcome failed; inspect linked files and hook recommendations.",
+              "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+            ],
+            "metadata": {
+              "assistanceMode": "kairn_codex_session",
+              "kairnSessionCount": 1,
+              "primeAttempted": 1,
+              "primeEmitted": 1,
+              "primeSuppressed": 0,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 503,
+              "primeContextEvents": 1,
+              "primeQualityEvents": 1,
+              "hookInvocations": 0,
+              "failureContextUsed": 0,
+              "mcpToolCalls": 0,
+              "mcpFilesReturned": [],
+              "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-BRgy36",
+              "promptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+              "outputHash": "2149b70d8470135ce0e6ba0faacf9b5c18814c6e9cf98a58946152525bbe4bfe",
+              "adapter": "command",
+              "hookCompleted": 0,
+              "hookFailed": 0,
+              "kairnMcpToolMentions": 0,
+              "actualMcpToolCalls": 0,
+              "actualMcpToolNames": [],
+              "actualMcpToolCallSource": "none",
+              "actualMcpFiles": [],
+              "actualMcpContextActions": [],
+              "mcpReturnedFileCount": 0,
+              "mcpReturnedExpectedFileCount": 0,
+              "mcpReturnedNoiseFileCount": 0,
+              "mcpReturnedTestFanoutCount": 0,
+              "mcpContextEfficiency": 1,
+              "originalPromptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+              "assistanceSetupMs": 0,
+              "promptPrepareMs": 0,
+              "agentElapsedMs": 65932,
+              "codexElapsedMs": 65932,
+              "agentTimedOut": false,
+              "agentTimeoutMs": 360000,
+              "verificationElapsedMs": 0,
+              "expectedFileMentions": [
+                "qutebrowser/utils/qtlog.py",
+                "qutebrowser/utils/log.py"
+              ],
+              "changedFiles": [
+                "qutebrowser/utils/log.py",
+                "qutebrowser/utils/qtlog.py",
+                "scripts/dev/run_vulture.py"
+              ],
+              "seedPatchFiles": [],
+              "setupChangedFiles": [],
+              "agentChangedFiles": [
+                "qutebrowser/utils/log.py",
+                "qutebrowser/utils/qtlog.py",
+                "scripts/dev/run_vulture.py"
+              ],
+              "requiredTouchedFiles": [
+                "qutebrowser/utils/qtlog.py",
+                "qutebrowser/utils/log.py"
+              ],
+              "requiredTouchedSatisfied": true,
+              "missingRequiredTouchedFiles": [],
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": true,
+              "diffScopePassed": false,
+              "diffScopeViolations": [
+                "scripts/dev/run_vulture.py: changed outside allowed diff scopes"
+              ],
+              "diffScopeChangedFiles": [
+                "qutebrowser/utils/log.py",
+                "qutebrowser/utils/qtlog.py",
+                "scripts/dev/run_vulture.py"
+              ],
+              "scopeViolations": [
+                "scripts/dev/run_vulture.py: changed outside allowed diff scopes"
+              ],
+              "sourceScopeDiscipline": "failed",
+              "unrelatedFilesTouched": [
+                "scripts/dev/run_vulture.py"
+              ],
+              "testsEdited": [],
+              "scopeExpanded": false,
+              "scopeExpansionReason": null,
+              "seedConfigured": true,
+              "seedRepoUrl": "https://github.com/qutebrowser/qutebrowser.git",
+              "seedRef": "ebfe9b7aa0c4ba9d451f993e08955004aaec4345",
+              "seedCloneDepth": 1,
+              "seedSetupCommandCount": 3,
+              "seedHasPatch": false,
+              "seedPatchFileHashes": {},
+              "seedCommandNormalization": {
+                "pythonToPython3": false
+              },
+              "workspaceSetupMs": 2056,
+              "elapsedMs": 65956,
+              "codexUsage": {
+                "totalTokens": 36212,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "contextBehavior": "multi_file_debug",
+              "officialEvaluation": {
+                "source": "swe_bench_pro",
+                "taskClass": "multi_file_debug",
+                "evaluator": "patch_verification",
+                "kairnApplicability": "strong",
+                "kairnMetricEligible": true,
+                "liveRisk": "medium",
+                "reasons": [
+                  "golden patch touches 2 production source file(s)",
+                  "selected tests are available for verification setup",
+                  "official before_repo_set_cmd is available"
+                ],
+                "recommendedModes": [
+                  "baseline",
+                  "kairn_codex_session",
+                  "real_mcp_first"
+                ]
+              },
+              "officialBenchmarkSource": "swe_bench_pro",
+              "officialTaskClass": "multi_file_debug",
+              "officialEvaluator": "patch_verification",
+              "kairnApplicability": "strong",
+              "kairnMetricEligible": true,
+              "officialLiveRisk": "medium",
+              "missedExpectedFiles": [],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [
+                "qutebrowser/utils/qtlog.py",
+                "qutebrowser/utils/log.py"
+              ],
+              "minExpectedHits": 1,
+              "rawExpectedCoverageSatisfied": true,
+              "expectedCoverageSatisfied": true,
+              "sourceScopeCoverageOverride": false,
+              "effectiveExpectedFileRecall": 1,
+              "requiredTouchedFilesTouched": [
+                "qutebrowser/utils/qtlog.py",
+                "qutebrowser/utils/log.py"
+              ],
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "productionOnlyScopeExpected": false,
+              "testEditViolationFiles": [],
+              "extraProductionEditViolationFiles": [],
+              "qualityGatePassed": false,
+              "validSavings": false,
+              "invalidSavings": true,
+              "negativeEvidenceReason": "verification or requested task outcome did not pass"
+            },
+            "createdAt": "2026-05-19T17:43:31.684Z"
+          }
+        ],
+        "overallScore": 38.25,
+        "observed": {
+          "codexTokens": 36212,
+          "codexCaseCount": 1
+        },
+        "weakestCases": [
+          {
+            "id": 1695,
+            "runId": "bench_a742105c-06a3-47e9-85df-4a38d882e3fb",
+            "caseId": "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
+            "caseMode": "agent",
+            "score": 38.25,
+            "expectedFileRecall": 1,
+            "topKHitRate": 1,
+            "unexpectedFileRate": 0,
+            "responseTokens": 37423,
+            "observedCodexTokens": 36212,
+            "hookContextEmitted": 0,
+            "hookContextSuppressed": 0,
+            "taskOutcome": "fail",
+            "expectedFiles": [
+              "qutebrowser/utils/qtlog.py",
+              "qutebrowser/utils/log.py"
+            ],
+            "actualFiles": [
+              "qutebrowser/utils/log.py",
+              "qutebrowser/utils/qtlog.py",
+              "scripts/dev/run_vulture.py"
+            ],
+            "excludedFiles": [
+              "docs/",
+              "doc/",
+              "examples/",
+              "example/",
+              "fixtures/",
+              "generated/",
+              "node_modules/",
+              "dist/",
+              "build/"
+            ],
+            "summary": "Agent command completed, but semantic source validation failed: scripts/dev/run_vulture.py: changed outside allowed diff scopes.",
+            "recommendations": [
+              "Diff scope violations: scripts/dev/run_vulture.py: changed outside allowed diff scopes.",
+              "Response exceeded the benchmark budget; tune response routing or snippets.",
+              "Task outcome failed; inspect linked files and hook recommendations.",
+              "Observed token reductions for this case must be treated as invalid until the quality gate passes."
+            ],
+            "metadata": {
+              "assistanceMode": "kairn_codex_session",
+              "kairnSessionCount": 1,
+              "primeAttempted": 1,
+              "primeEmitted": 1,
+              "primeSuppressed": 0,
+              "primeEvidenceRequested": 0,
+              "primeTokens": 503,
+              "primeContextEvents": 1,
+              "primeQualityEvents": 1,
+              "hookInvocations": 0,
+              "failureContextUsed": 0,
+              "mcpToolCalls": 0,
+              "mcpFilesReturned": [],
+              "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-BRgy36",
+              "promptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+              "outputHash": "2149b70d8470135ce0e6ba0faacf9b5c18814c6e9cf98a58946152525bbe4bfe",
+              "adapter": "command",
+              "hookCompleted": 0,
+              "hookFailed": 0,
+              "kairnMcpToolMentions": 0,
+              "actualMcpToolCalls": 0,
+              "actualMcpToolNames": [],
+              "actualMcpToolCallSource": "none",
+              "actualMcpFiles": [],
+              "actualMcpContextActions": [],
+              "mcpReturnedFileCount": 0,
+              "mcpReturnedExpectedFileCount": 0,
+              "mcpReturnedNoiseFileCount": 0,
+              "mcpReturnedTestFanoutCount": 0,
+              "mcpContextEfficiency": 1,
+              "originalPromptHash": "2d3580272419053c8a72ab424892328cc9a97a3fe1acc806abc0c165dab47cc7",
+              "assistanceSetupMs": 0,
+              "promptPrepareMs": 0,
+              "agentElapsedMs": 65932,
+              "codexElapsedMs": 65932,
+              "agentTimedOut": false,
+              "agentTimeoutMs": 360000,
+              "verificationElapsedMs": 0,
+              "expectedFileMentions": [
+                "qutebrowser/utils/qtlog.py",
+                "qutebrowser/utils/log.py"
+              ],
+              "changedFiles": [
+                "qutebrowser/utils/log.py",
+                "qutebrowser/utils/qtlog.py",
+                "scripts/dev/run_vulture.py"
+              ],
+              "seedPatchFiles": [],
+              "setupChangedFiles": [],
+              "agentChangedFiles": [
+                "qutebrowser/utils/log.py",
+                "qutebrowser/utils/qtlog.py",
+                "scripts/dev/run_vulture.py"
+              ],
+              "requiredTouchedFiles": [
+                "qutebrowser/utils/qtlog.py",
+                "qutebrowser/utils/log.py"
+              ],
+              "requiredTouchedSatisfied": true,
+              "missingRequiredTouchedFiles": [],
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": true,
+              "diffScopePassed": false,
+              "diffScopeViolations": [
+                "scripts/dev/run_vulture.py: changed outside allowed diff scopes"
+              ],
+              "diffScopeChangedFiles": [
+                "qutebrowser/utils/log.py",
+                "qutebrowser/utils/qtlog.py",
+                "scripts/dev/run_vulture.py"
+              ],
+              "scopeViolations": [
+                "scripts/dev/run_vulture.py: changed outside allowed diff scopes"
+              ],
+              "sourceScopeDiscipline": "failed",
+              "unrelatedFilesTouched": [
+                "scripts/dev/run_vulture.py"
+              ],
+              "testsEdited": [],
+              "scopeExpanded": false,
+              "scopeExpansionReason": null,
+              "seedConfigured": true,
+              "seedRepoUrl": "https://github.com/qutebrowser/qutebrowser.git",
+              "seedRef": "ebfe9b7aa0c4ba9d451f993e08955004aaec4345",
+              "seedCloneDepth": 1,
+              "seedSetupCommandCount": 3,
+              "seedHasPatch": false,
+              "seedPatchFileHashes": {},
+              "seedCommandNormalization": {
+                "pythonToPython3": false
+              },
+              "workspaceSetupMs": 2056,
+              "elapsedMs": 65956,
+              "codexUsage": {
+                "totalTokens": 36212,
+                "inputTokens": 0,
+                "cachedInputTokens": 0,
+                "outputTokens": 0,
+                "source": "footer"
+              },
+              "contextBehavior": "multi_file_debug",
+              "officialEvaluation": {
+                "source": "swe_bench_pro",
+                "taskClass": "multi_file_debug",
+                "evaluator": "patch_verification",
+                "kairnApplicability": "strong",
+                "kairnMetricEligible": true,
+                "liveRisk": "medium",
+                "reasons": [
+                  "golden patch touches 2 production source file(s)",
+                  "selected tests are available for verification setup",
+                  "official before_repo_set_cmd is available"
+                ],
+                "recommendedModes": [
+                  "baseline",
+                  "kairn_codex_session",
+                  "real_mcp_first"
+                ]
+              },
+              "officialBenchmarkSource": "swe_bench_pro",
+              "officialTaskClass": "multi_file_debug",
+              "officialEvaluator": "patch_verification",
+              "kairnApplicability": "strong",
+              "kairnMetricEligible": true,
+              "officialLiveRisk": "medium",
+              "missedExpectedFiles": [],
+              "irrelevantFilesRead": [],
+              "expectedFilesMentioned": [
+                "qutebrowser/utils/qtlog.py",
+                "qutebrowser/utils/log.py"
+              ],
+              "minExpectedHits": 1,
+              "rawExpectedCoverageSatisfied": true,
+              "expectedCoverageSatisfied": true,
+              "sourceScopeCoverageOverride": false,
+              "effectiveExpectedFileRecall": 1,
+              "requiredTouchedFilesTouched": [
+                "qutebrowser/utils/qtlog.py",
+                "qutebrowser/utils/log.py"
+              ],
+              "mcpRequired": false,
+              "mcpSuccess": true,
+              "productionOnlyScopeExpected": false,
+              "testEditViolationFiles": [],
+              "extraProductionEditViolationFiles": [],
+              "qualityGatePassed": false,
+              "validSavings": false,
+              "invalidSavings": true,
+              "negativeEvidenceReason": "verification or requested task outcome did not pass"
+            },
+            "createdAt": "2026-05-19T17:43:31.684Z"
+          }
+        ],
+        "recommendations": [
+          "Diff scope violations: scripts/dev/run_vulture.py: changed outside allowed diff scopes.",
+          "Response exceeded the benchmark budget; tune response routing or snippets.",
+          "Task outcome failed; inspect linked files and hook recommendations.",
+          "Observed token reductions for this case must be treated as invalid until the quality gate passes.",
+          "Overall score is low; inspect weak cases before tuning retrieval."
+        ],
+        "officialEvaluationSummary": {
+          "totalCases": 1,
+          "kairnMetricEligibleCases": 1,
+          "byTaskClass": {
+            "multi_file_debug": {
+              "cases": 1,
+              "qualityPasses": 0,
+              "observedCases": 1,
+              "observedTokens": 36212,
+              "averageScore": 38.25,
+              "kairnMetricEligibleCases": 1
+            }
+          },
+          "byEvaluator": {
+            "patch_verification": {
+              "cases": 1,
+              "qualityPasses": 0,
+              "observedCases": 1,
+              "observedTokens": 36212,
+              "averageScore": 38.25,
+              "kairnMetricEligibleCases": 1
+            }
+          },
+          "byApplicability": {
+            "strong": {
+              "cases": 1,
+              "qualityPasses": 0,
+              "observedCases": 1,
+              "observedTokens": 36212,
+              "averageScore": 38.25,
+              "kairnMetricEligibleCases": 1
+            }
+          }
+        }
+      }
+    ],
+    "kairn_codex_session_no_governor": [],
+    "mcp_first": [],
+    "real_mcp_first": [],
+    "mcp_first_plus_hook_full_prime": [],
+    "hybrid_mcp_brief": []
+  },
+  "aggregate": {
+    "repeat": 1,
+    "modes": {
+      "baseline": {
+        "reports": 1,
+        "qualityPassingReports": 0,
+        "caseCount": 1
+      },
+      "prompt_only": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "prompt_plus_hooks": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "manual_prime": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "hook_full_prime": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "hook_tiny_directive": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "hook_tiny_with_failures": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "kairn_codex_session": {
+        "reports": 1,
+        "meanTokens": 36212,
+        "medianTokens": 36212,
+        "qualityPassingReports": 0,
+        "caseCount": 1
+      },
+      "kairn_codex_session_no_governor": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "mcp_first": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "real_mcp_first": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "mcp_first_plus_hook_full_prime": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      },
+      "hybrid_mcp_brief": {
+        "reports": 0,
+        "qualityPassingReports": 0,
+        "caseCount": 0
+      }
+    },
+    "deltas": {
+      "promptOnlyVsBaseline": {},
+      "promptPlusHooksVsBaseline": {},
+      "manualPrimeVsBaseline": {},
+      "hookFullPrimeVsBaseline": {},
+      "kairnCodexSessionVsBaseline": {},
+      "kairnCodexSessionNoGovernorVsBaseline": {},
+      "realMcpFirstVsBaseline": {},
+      "mcpFirstPlusHookFullPrimeVsBaseline": {},
+      "hybridMcpBriefVsBaseline": {}
+    }
+  },
+  "abstentionSummary": {},
+  "behaviorTargetSummary": {
+    "multi_file_debug": {
+      "cases": 1,
+      "met": 0,
+      "missed": 1
+    }
+  },
+  "caseRepeatClassifications": [
+    {
+      "mode": "kairn_codex_session",
+      "caseId": "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
+      "repeats": 1,
+      "qualityPasses": 0,
+      "activeRuns": 1,
+      "suppressedRuns": 0,
+      "modeMedianTokens": 36212,
+      "classifications": {
+        "harmful_invalid_assist": 1
+      },
+      "verdict": "insufficient_data",
+      "recommendation": "Only one repeat; treat kairn_codex_session/instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c as exploratory evidence."
+    }
+  ],
+  "observedTokenDeltas": {},
+  "caseDeltas": [
+    {
+      "caseId": "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
+      "outcome": {
+        "baseline": "partial",
+        "passiveHooks": "skipped",
+        "proactive": "skipped"
+      }
+    }
+  ],
+  "recommendations": [
+    "Prompt-only hooks vs baseline: observed Codex usage unavailable.",
+    "Prompt+tool hooks vs baseline: observed Codex usage unavailable.",
+    "Manual prime vs baseline: observed Codex usage unavailable.",
+    "Hook full prime vs baseline: observed Codex usage unavailable.",
+    "Hook tiny directive vs baseline: observed Codex usage unavailable.",
+    "Hook tiny+failures vs baseline: observed Codex usage unavailable.",
+    "Kairn Codex session vs baseline: observed Codex usage unavailable.",
+    "Kairn Codex session no-governor vs baseline: observed Codex usage unavailable.",
+    "MCP-first vs baseline: observed Codex usage unavailable.",
+    "Real MCP-first vs baseline: observed Codex usage unavailable.",
+    "MCP-first + full-prime hook vs baseline: observed Codex usage unavailable.",
+    "Hybrid MCP brief vs baseline: observed Codex usage unavailable.",
+    "kairn_codex_session/instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c: Only one repeat; treat kairn_codex_session/instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c as exploratory evidence."
+  ]
+}

@@ -1,0 +1,120 @@
+diff --git a/qutebrowser/components/hostblock.py b/qutebrowser/components/hostblock.py
+index 8a01745..983af5b 100644
+--- a/qutebrowser/components/hostblock.py
++++ b/qutebrowser/components/hostblock.py
+@@ -37,7 +37,7 @@ from qutebrowser.api import (
+     qtutils,
+ )
+ from qutebrowser.components.utils import blockutils
+-from qutebrowser.utils import version  # FIXME: Move needed parts into api namespace?
++from qutebrowser.utils import urlutils, version  # FIXME: Move needed parts into api namespace?
+ 
+ 
+ logger = logging.getLogger("network")
+@@ -124,10 +124,18 @@ class HostBlocker:
+         if not config.get("content.blocking.enabled", url=first_party_url):
+             return False
+ 
+-        host = request_url.host()
+-        return (
+-            host in self._blocked_hosts or host in self._config_blocked_hosts
+-        ) and not blockutils.is_whitelisted_url(request_url)
++        if blockutils.is_whitelisted_url(request_url):
++            return False
++
++        host = request_url.host().rstrip(".")
++        for widened_host in urlutils.widened_hostnames(host):
++            if (
++                widened_host in self._blocked_hosts or
++                widened_host in self._config_blocked_hosts
++            ):
++                return True
++
++        return False
+ 
+     def filter_request(self, info: interceptor.Request) -> None:
+         """Block the given request if necessary."""
+@@ -170,8 +178,13 @@ class HostBlocker:
+ 
+         filtered_hosts = set()
+         for host in hosts:
+-            if "." in host and not host.endswith(".localdomain") and host != "0.0.0.0":
+-                filtered_hosts.update([host])
++            normalized_host = host.rstrip(".")
++            if (
++                "." in normalized_host and
++                not normalized_host.endswith(".localdomain") and
++                normalized_host != "0.0.0.0"
++            ):
++                filtered_hosts.update([normalized_host])
+ 
+         return filtered_hosts
+ 
+diff --git a/qutebrowser/config/configutils.py b/qutebrowser/config/configutils.py
+index d619eb2..84c7fc6 100644
+--- a/qutebrowser/config/configutils.py
++++ b/qutebrowser/config/configutils.py
+@@ -32,20 +32,16 @@ from PyQt5.QtCore import QUrl
+ from PyQt5.QtGui import QFontDatabase
+ from PyQt5.QtWidgets import QApplication
+ 
+-from qutebrowser.utils import utils, urlmatch, usertypes, qtutils
++from qutebrowser.utils import utils, urlmatch, usertypes, qtutils, urlutils
+ from qutebrowser.config import configexc
+ 
+ if TYPE_CHECKING:
+     from qutebrowser.config import configdata
+ 
+ 
+-def _widened_hostnames(hostname: str) -> Iterable[str]:
+-    """A generator for widening string hostnames.
+-
+-    Ex: a.c.foo -> [a.c.foo, c.foo, foo]"""
+-    while hostname:
+-        yield hostname
+-        hostname = hostname.partition(".")[-1]
++def _widened_hostnames(hostname: Optional[str]) -> Iterable[str]:
++    """A generator for widening string hostnames."""
++    return urlutils.widened_hostnames(hostname)
+ 
+ 
+ class ScopedValue:
+diff --git a/qutebrowser/utils/urlutils.py b/qutebrowser/utils/urlutils.py
+index 0459816..608a736 100644
+--- a/qutebrowser/utils/urlutils.py
++++ b/qutebrowser/utils/urlutils.py
+@@ -26,7 +26,7 @@ import ipaddress
+ import posixpath
+ import urllib.parse
+ import mimetypes
+-from typing import Optional, Tuple, Union
++from typing import Iterable, Optional, Tuple, Union
+ 
+ from PyQt5.QtCore import QUrl
+ from PyQt5.QtNetwork import QHostInfo, QHostAddress, QNetworkProxy
+@@ -73,6 +73,13 @@ class InvalidUrlError(Error):
+         super().__init__(self.msg)
+ 
+ 
++def widened_hostnames(hostname: Optional[str]) -> Iterable[str]:
++    """Yield hostname variants by successively stripping the leftmost label."""
++    while hostname:
++        yield hostname
++        hostname = hostname.partition(".")[-1]
++
++
+ def _parse_search_term(s: str) -> Tuple[Optional[str], Optional[str]]:
+     """Get a search engine name and search term from a string.
+ 
+diff --git a/tests/unit/components/test_hostblock.py b/tests/unit/components/test_hostblock.py
+index 00a7a5f..d1aede3 100644
+--- a/tests/unit/components/test_hostblock.py
++++ b/tests/unit/components/test_hostblock.py
+@@ -570,4 +570,7 @@ def test_subdomain_blocking(config_stub, host_blocker_factory):
+     config_stub.val.content.blocking.hosts.lists = None
+     host_blocker = host_blocker_factory()
+     host_blocker._blocked_hosts.add("example.com")
++    assert host_blocker._is_blocked(QUrl("https://example.com"))
+     assert host_blocker._is_blocked(QUrl("https://subdomain.example.com"))
++    assert host_blocker._is_blocked(QUrl("https://a.b.example.com"))
++    assert host_blocker._is_blocked(QUrl("https://subdomain.example.com."))

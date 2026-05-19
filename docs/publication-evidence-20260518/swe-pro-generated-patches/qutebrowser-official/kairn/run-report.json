@@ -1,0 +1,35 @@
+{
+  "generatedAt": "2026-05-19T15:52:28.782Z",
+  "source": "ScaleAI/SWE-bench_Pro",
+  "status": "completed",
+  "rowsSelected": 1,
+  "rowIds": [
+    "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c"
+  ],
+  "officialRepoPath": "/Users/kevindotel/Documents/Projects/kairn/.kairn/eval/SWE-bench_Pro-os",
+  "outputDir": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/swe-pro-generated-patches/qutebrowser-official/kairn",
+  "rawSamplePath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/swe-pro-generated-patches/qutebrowser-official/kairn/swe-pro-raw-sample.jsonl",
+  "patchPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/swe-pro-generated-patches/qutebrowser-official/kairn-patches.json",
+  "evaluatorOutputDir": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/swe-pro-generated-patches/qutebrowser-official/kairn/eval-output",
+  "patchMode": "provided",
+  "missingAssets": [],
+  "warnings": [],
+  "commands": [
+    "/Users/kevindotel/Documents/Projects/kairn/.kairn/eval/swe-pro-venv/bin/python /Users/kevindotel/Documents/Projects/kairn/.kairn/eval/SWE-bench_Pro-os/swe_bench_pro_eval.py --raw_sample_path /Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/swe-pro-generated-patches/qutebrowser-official/kairn/swe-pro-raw-sample.jsonl --patch_path /Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/swe-pro-generated-patches/qutebrowser-official/kairn-patches.json --output_dir /Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/swe-pro-generated-patches/qutebrowser-official/kairn/eval-output --scripts_dir /Users/kevindotel/Documents/Projects/kairn/.kairn/eval/SWE-bench_Pro-os/run_scripts --num_workers 1 --dockerhub_username jefzda --use_local_docker --docker_platform linux/amd64 --redo",
+    "When evaluating generated agent patches, replace --patch_path with the baseline/Kairn patch JSON and keep gold patches out of prompts."
+  ],
+  "evaluator": {
+    "ran": true,
+    "exitCode": 0,
+    "stdoutPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/swe-pro-generated-patches/qutebrowser-official/kairn/evaluator.stdout.log",
+    "stderrPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/swe-pro-generated-patches/qutebrowser-official/kairn/evaluator.stderr.log",
+    "evalResultsPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/swe-pro-generated-patches/qutebrowser-official/kairn/eval-output/eval_results.json",
+    "results": [
+      {
+        "rowId": "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
+        "passed": true,
+        "resultPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/swe-pro-generated-patches/qutebrowser-official/kairn/eval-output/eval_results.json"
+      }
+    ]
+  }
+}

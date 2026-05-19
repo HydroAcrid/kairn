@@ -3728,7 +3728,25 @@ function multiFileDirectiveFileLimit(
     roleFamilyHits >= 3 &&
     /\b(framework|architecture|across|spans|flow|pipeline|lifecycle|integration)\b/.test(normalized) &&
     /\b(debug|fix|regression|behavior|dispatch|send|matching|scheduling|trimming|prefix|suffix)\b/.test(normalized);
-  return explicitlySpansFrameworkTriple ? 3 : 2;
+  const selectedTestFanout = selectedTestPathCount(task) >= 3 && /\b(selected|failing|failed|failure)\s+tests?\b/.test(normalized);
+  return explicitlySpansFrameworkTriple || selectedTestFanout ? 3 : 2;
+}
+
+function selectedTestPathCount(task: string): number {
+  const paths = new Set<string>();
+  for (const match of task.matchAll(/\b[A-Za-z0-9_.@+~/-]+?\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)\b/g)) {
+    const filePath = (match[0] ?? "").toLowerCase();
+    if (
+      /(^|\/)(tests?|specs?|__tests__|testing)\//.test(filePath) ||
+      /(^|\/)src\/test\//.test(filePath) ||
+      /(^|\/)(test|spec)[_-]/.test(filePath.split("/").at(-1) ?? filePath) ||
+      /[._-](test|spec)\./.test(filePath.split("/").at(-1) ?? filePath) ||
+      /_test\.go$/.test(filePath)
+    ) {
+      paths.add(filePath);
+    }
+  }
+  return paths.size;
 }
 
 function isLikelyProductionSourceFile(filePath: string): boolean {

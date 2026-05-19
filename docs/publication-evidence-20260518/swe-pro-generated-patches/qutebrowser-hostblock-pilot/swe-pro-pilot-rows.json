@@ -1,0 +1,12 @@
+[
+  {
+    "id": "instance_qutebrowser__qutebrowser-c580ebf0801e5a3ecabc54f327498bb753c6d5f2-v2ef375ac784985212b1805e1d0431dc8f1b3c171",
+    "repoUrl": "https://github.com/qutebrowser/qutebrowser.git",
+    "ref": "0b8cc812fd0b73e296a3f93db02ce5d0b35714fc",
+    "language": "python",
+    "expectedFiles": [
+      "qutebrowser/components/hostblock.py",
+      "qutebrowser/config/configutils.py"
+    ]
+  }
+]

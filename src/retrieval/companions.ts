@@ -337,6 +337,10 @@ export function findCompanionCandidates(input: {
       score += 3200;
       reasons.push(`mentioned source filename: ${basename}`);
     }
+    if (mentionedSourceBasenames.size > 0 && !mentionedBasename && isGenericUtilityBasename(basename)) {
+      score -= 2600;
+      reasons.push("generic utility downranked because specific source filenames were named");
+    }
     const routeAnchorHits = routeAnchors.filter((anchor) => basename.includes(anchor) || pathTerms.has(anchor));
     if (routeAnchorHits.length > 0) {
       score += Math.min(2200, routeAnchorHits.length * 1900);
@@ -1570,6 +1574,10 @@ function isGenericHelperForRoleCompanion(filePath: string, queryTerms: Set<strin
   const normalized = filePath.toLowerCase();
   if (!/(^|\/)(helpers?|utils?|support)\//.test(normalized)) return false;
   return !["helper", "helpers", "utility", "utils", "support"].some((term) => queryTerms.has(term));
+}
+
+function isGenericUtilityBasename(basename: string): boolean {
+  return /^(utils?|helpers?|common|shared|support)\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(basename);
 }
 
 function isUnaskedConverterCompanion(filePath: string, queryTerms: Set<string>): boolean {

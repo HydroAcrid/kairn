@@ -20,7 +20,7 @@ The strongest clean evidence is now MCP/session endurance:
 | Requests MCP post-fix repeat-3 | MCP-first: 100% quality, 28.05% median valid savings, 3/3 useful MCP file returns, 0 scope violations | Clean MCP evidence |
 | Requests hybrid post-fix repeat-3 | 100% quality, 34.39% median savings, 0 scope violations, 1/3 over-assist | Supporting evidence; not the primary MCP claim |
 | MCP protocol smoke | Passed; 2 MCP tool calls recorded | Delivery gate passed |
-| SWE-Pro official slice | 10 row IDs selected; official assets validated; one-row qutebrowser gold-patch official smoke passed | Evaluator path proven; no generated-patch savings counted yet |
+| SWE-Pro official slice | 10 row IDs selected; official assets validated; gold-patch smoke passed; 2 generated qutebrowser rows evaluated | Credibility layer started; Kairn passed both generated rows, baseline failed both |
 
 ## Key Findings
 
@@ -32,7 +32,9 @@ MCP is now a real second wedge. The httpcore endurance run recorded actual MCP t
 
 Hybrid remains useful but less clean. The post-fix hybrid repeat-3 had higher median savings than MCP-first at 34.39%, but one repeat over-assisted and spent more than baseline. For beta defaults, MCP-first is currently the safer portable MCP path; hybrid should remain optional/supporting until more holdout endurance runs are clean.
 
-SWE-Pro remains the next credibility layer. The official row slice is selected and all selected rows now have official run scripts, parser scripts, and Dockerfiles available locally. Kairn now has a `bench swe-pro-official` command that prepares official raw-sample JSONL, patch JSON, and the exact `swe_bench_pro_eval.py` command. After restarting stale Docker Desktop backend processes, the one-row qutebrowser gold-patch smoke passed with official evaluator accuracy 100%. This proves the evaluator path, but no generated baseline/Kairn SWE-Pro savings are counted yet.
+SWE-Pro is now a real credibility layer, not just a planned one. The official row slice is selected and all selected rows now have official run scripts, parser scripts, and Dockerfiles available locally. Kairn now has a `bench swe-pro-official` command that prepares official raw-sample JSONL, patch JSON, and the exact `swe_bench_pro_eval.py` command. After restarting stale Docker Desktop backend processes, the one-row qutebrowser gold-patch smoke passed with official evaluator accuracy 100%.
+
+Two generated qutebrowser rows were then evaluated. On `qt-warning-filtering`, baseline failed official eval after 40,467 tokens and edited out of scope; after named-source routing was tightened, `kairn_codex_session` passed official eval after 21,802 tokens and edited only the two expected production files. On `hostblock-subdomains`, baseline failed official eval after 47,104 tokens and edited a test file; after all-production scope, selected-test counterpart routing, and dynamic three-file directives, Kairn passed official eval after 43,313 tokens and edited only the three required production files. These rows are quality-rescue evidence, not pass/pass savings, because baseline failed official eval in both cases.
 
 ## Improvements Made During Campaign
 
@@ -49,6 +51,14 @@ SWE-Pro remains the next credibility layer. The official row slice is selected a
   - `kairn bench swe-pro-official`
   - official row selection, raw-sample generation, patch JSON generation, asset validation, and optional evaluator run mode.
   - single-row gold-patch smoke artifact records Docker infrastructure failure separately from model/Kairn quality.
+- Fixed SWE-Pro pilot scope accounting:
+  - official patch tasks now preserve all production source files from the gold patch for scoring and allowed-diff metadata.
+  - golden paths remain excluded from the agent prompt.
+  - this prevents false local passes when an official patch spans more than two production files.
+- Added general SWE-Pro routing fixes:
+  - selected failing test paths now boost production source counterparts without making tests edit targets.
+  - multi-file directives can expand to three production files when multiple selected tests imply separate source counterparts.
+  - named source files are kept ahead of generic utility/helper files.
 
 ## Current Evidence Artifacts
 
@@ -65,6 +75,7 @@ Primary artifacts live under `docs/publication-evidence-20260518/`.
 | `raw/local-mcp-smoke-v3.json` | MCP protocol smoke |
 | `raw/swe-pro-official-eval-v3.json` | SWE-Pro official-eval placeholder/status |
 | `swe-pro-official-gold-smoke/run-report.json` | Official evaluator gold-patch smoke; qutebrowser row passed |
+| `swe-pro-generated-patches/official-generated-summary.json` | Baseline vs Kairn generated patch official-eval summary for two qutebrowser rows |
 
 ## Conservative Claim Matrix
 
@@ -79,14 +90,14 @@ Do not claim yet:
 
 - Universal 20-70% savings.
 - Public “works anywhere” reliability.
-- Official SWE-Pro savings.
+- Official SWE-Pro pass/pass savings.
 - Month-long reliability.
 - Claude/Gemini/Copilot performance parity; MCP compatibility is configured, but Codex is the most-tested live path.
 
 ## Next Evidence Needed
 
-1. Generate baseline and Kairn patch JSON for 1-2 SWE-Pro rows.
-2. Run official evaluator on those generated patches and count only pass/pass rows.
+1. Add 3-5 more official SWE-Pro rows outside qutebrowser and count only evaluator-passing pass/pass rows as savings.
+2. Keep quality-rescue rows separate from pass/pass savings in the final report.
 3. Run one additional fresh MCP endurance repo if time allows.
 4. Run a small strongest-model confirmation slice after the mini-model campaign is stable.
 5. Keep private beta telemetry separate from scientific claims, using it only to discover real-world failure classes.

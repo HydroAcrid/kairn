@@ -1,0 +1,14 @@
+{
+  "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-HkJo4u",
+  "changedFiles": [
+    "qutebrowser/components/hostblock.py",
+    "qutebrowser/config/configutils.py",
+    "qutebrowser/utils/urlutils.py"
+  ],
+  "patchBytes": 3847,
+  "tokens": 43313,
+  "qualityGatePassed": true,
+  "scopePassed": true,
+  "primeTokens": 457,
+  "missingRequiredTouchedFiles": []
+}

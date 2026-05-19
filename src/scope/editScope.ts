@@ -43,9 +43,11 @@ export function decideEditScope(input: {
   });
   const primaryLimit = productionOnlySingleFile
     ? 1
-    : input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug"
-      ? 2
-      : 1;
+    : source === "multi_file_debug" && selectedTestPathCount(task) >= 3
+      ? 3
+      : input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug"
+        ? 2
+        : 1;
   const sourceCandidates = uniquePaths([
     ...harnessFiles.filter((file) => isEditableByDefault(file, allowedTestEdits)),
     ...failureFiles.filter((file) => isProductionSourcePath(file)),
@@ -202,4 +204,22 @@ function taskAllowsTestEdits(task: string): boolean {
 
 function isMultiFileDebugTask(task: string): boolean {
   return /\b(multi[- ]file|multiple files|across files|integration|workflow|pipeline|router|routing|dependency|controller|repository|scheduler|renderer|interceptor|dispatch|adapter|validation|callback)\b/.test(task);
+}
+
+function selectedTestPathCount(task: string): number {
+  const paths = new Set<string>();
+  for (const match of task.matchAll(/\b[A-Za-z0-9_.@+~/-]+?\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)\b/g)) {
+    const filePath = (match[0] ?? "").toLowerCase();
+    const basename = filePath.split("/").at(-1) ?? filePath;
+    if (
+      /(^|\/)(tests?|specs?|__tests__|testing)\//.test(filePath) ||
+      /(^|\/)src\/test\//.test(filePath) ||
+      /^(test|spec)[_-]/.test(basename) ||
+      /[._-](test|spec)\./.test(basename) ||
+      /_test\.go$/.test(basename)
+    ) {
+      paths.add(filePath);
+    }
+  }
+  return paths.size;
 }

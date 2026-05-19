@@ -1,0 +1,13 @@
+{
+  "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-f9CKpT",
+  "changedFiles": [
+    "qutebrowser/utils/log.py",
+    "qutebrowser/utils/qtlog.py"
+  ],
+  "patchBytes": 2976,
+  "tokens": 21802,
+  "qualityGatePassed": true,
+  "scopePassed": true,
+  "primeTokens": 503,
+  "missingRequiredTouchedFiles": []
+}

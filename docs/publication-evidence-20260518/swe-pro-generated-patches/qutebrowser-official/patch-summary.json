@@ -1,0 +1,20 @@
+{
+  "baseline": {
+    "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-DeUCTJ",
+    "changedFiles": [
+      "qutebrowser/browser/qtnetworkdownloads.py",
+      "qutebrowser/utils/log.py",
+      "qutebrowser/utils/qtlog.py",
+      "tests/unit/utils/test_qtlog.py"
+    ],
+    "patchBytes": 5335
+  },
+  "kairn_codex_session": {
+    "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-gU1G0G",
+    "changedFiles": [
+      "qutebrowser/utils/log.py",
+      "qutebrowser/utils/qtlog.py"
+    ],
+    "patchBytes": 3650
+  }
+}

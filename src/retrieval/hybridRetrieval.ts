@@ -51,6 +51,7 @@ export function hybridSearch(input: {
   const retrievalTerms = new Set(tokenizeLexical(retrievalQuery));
   const explicitTestIntentForQuery = hasExplicitTestIntent(retrievalTerms, input.query);
   const sourceOverTestPrompt = hasSourceOverTestPrompt(input.query, retrievalTerms, intent);
+  const testCounterpartHints = sourceCounterpartHintsFromTestPaths(input.query);
   const debugSourcePrompt =
     ["debug", "fix", "regression", "bug", "broken", "failing", "failure"].some((term) => retrievalTerms.has(term)) &&
     ["source", "production", "implementation", "helper", "utility"].some((term) => retrievalTerms.has(term));
@@ -63,6 +64,10 @@ export function hybridSearch(input: {
       const intentMatch = intentScores.get(file.path);
       const behaviorMatch = behaviorScores.get(file.path);
       const sourcePriority = sourcePriorityScores.get(file.path);
+      const testCounterpart = scoreTestCounterpartHint(file, testCounterpartHints, {
+        explicitTestIntent: explicitTestIntentForQuery,
+        sourceOverTestPrompt
+      });
       const graphScore = graphScores.get(file.path) ?? 0;
       const sessionScore = shownFiles.has(file.path) ? -3 : 0;
       const generatedFilePenalty = isGeneratedFilenameSurface(file.path) ? -1800 : 0;
@@ -94,6 +99,7 @@ export function hybridSearch(input: {
         ...(intentMatch?.reasons ?? []),
         ...(behaviorMatch?.reasons ?? []),
         ...(sourcePriority?.reasons ?? []),
+        ...testCounterpart.reasons,
         ...(semantic && semantic.score > 0.06 ? semanticReasons(semantic.chunks) : []),
         ...(graphScore > 0 ? ["graph neighbor"] : []),
         ...(shownFiles.has(file.path) ? ["already shown"] : []),
@@ -108,6 +114,7 @@ export function hybridSearch(input: {
         semanticScore * 42 +
         behaviorScore +
         sourcePriorityScore +
+        testCounterpart.score +
         intentScore +
         graphScore +
         sessionScore +
@@ -252,6 +259,16 @@ function scoreSourcePriority(
     let score = 0;
     const basename = file.path.toLowerCase().split("/").at(-1) ?? "";
     const exactSymbolMatches = exactSymbolMatchesForQuery(queryTerms, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (
+      mentionedSourceBasenames.size > 0 &&
+      !mentionedSourceBasenames.has(basename) &&
+      isGenericUtilityBasename(basename) &&
+      isLanguageSourceSurface(file) &&
+      file.kind !== "test"
+    ) {
+      score -= 1800;
+      reasons.push("generic utility downranked because specific source filenames were named");
+    }
 
     if (
       implementationIntent &&
@@ -2074,6 +2091,146 @@ function isLikelyMentionedTestBasename(basename: string): boolean {
 
 function isGenericMentionedSourceBasename(basename: string): boolean {
   return /^(main|index)\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(basename);
+}
+
+function isGenericUtilityBasename(basename: string): boolean {
+  return /^(utils?|helpers?|common|shared|support)\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(basename);
+}
+
+type TestCounterpartHint = {
+  basenames: string[];
+  suffixes: string[];
+};
+
+function sourceCounterpartHintsFromTestPaths(query: string): TestCounterpartHint[] {
+  const hints: TestCounterpartHint[] = [];
+  const seen = new Set<string>();
+  const pattern = /(?:^|[\s"'`,:;([\{])([A-Za-z0-9_.@+~/-]+?\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx))(?:\b|::|#|[\])},;."'`])/g;
+  for (const match of query.matchAll(pattern)) {
+    const rawPath = normalizeSlashPath(match[1] ?? "");
+    if (!rawPath || !isLikelyTestPathMention(rawPath)) continue;
+    const hint = sourceCounterpartHintFromTestPath(rawPath);
+    if (!hint || hint.basenames.length === 0) continue;
+    const key = [...hint.basenames, ...hint.suffixes].join("|");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    hints.push(hint);
+  }
+  return hints;
+}
+
+function sourceCounterpartHintFromTestPath(testPath: string): TestCounterpartHint | undefined {
+  const segments = testPath.split("/").filter(Boolean);
+  const basename = segments.at(-1);
+  if (!basename) return undefined;
+  const extensionMatch = /\.(ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)$/i.exec(basename);
+  if (!extensionMatch) return undefined;
+  const extension = extensionMatch[1]!.toLowerCase();
+  const rawStem = basename.slice(0, -extensionMatch[0]!.length);
+  const sourceStem = sourceStemFromTestStem(rawStem);
+  if (!sourceStem || /^(test|tests|spec|specs)$/.test(sourceStem)) return undefined;
+  const basenames = sourceBasenamesForTestStem(sourceStem, extension);
+  const suffixes = sourceSuffixesForTestPath(segments, basenames);
+  return {
+    basenames: uniqueStrings(basenames.map((item) => item.toLowerCase())),
+    suffixes: uniqueStrings(suffixes.map((item) => normalizeSlashPath(item.toLowerCase())))
+  };
+}
+
+function sourceStemFromTestStem(stem: string): string {
+  return stem
+    .replace(/^(test|spec)[_-]/i, "")
+    .replace(/[._-](test|spec)$/i, "")
+    .replace(/(Test|Spec)$/i, "")
+    .replace(/[_-]tests?$/i, "")
+    .trim();
+}
+
+function sourceBasenamesForTestStem(stem: string, extension: string): string[] {
+  if (["ts", "tsx", "js", "jsx", "mjs", "cjs"].includes(extension)) {
+    return uniqueStrings([`${stem}.${extension}`, `${stem}.ts`, `${stem}.tsx`, `${stem}.js`, `${stem}.jsx`, `${stem}.mjs`, `${stem}.cjs`]);
+  }
+  if (["kt", "kts"].includes(extension)) return [`${stem}.kt`, `${stem}.kts`];
+  if (["cc", "cpp", "cxx"].includes(extension)) return [`${stem}.${extension}`, `${stem}.cc`, `${stem}.cpp`, `${stem}.cxx`, `${stem}.h`, `${stem}.hpp`];
+  if (["h", "hh", "hpp", "hxx"].includes(extension)) return [`${stem}.${extension}`, `${stem}.h`, `${stem}.hh`, `${stem}.hpp`, `${stem}.hxx`, `${stem}.cc`, `${stem}.cpp`];
+  return [`${stem}.${extension}`];
+}
+
+function sourceSuffixesForTestPath(segments: string[], basenames: string[]): string[] {
+  const suffixes = [...basenames];
+  const lowerSegments = segments.map((segment) => segment.toLowerCase());
+  const basename = segments.at(-1);
+  if (!basename) return suffixes;
+  const directorySegments = segments.slice(0, -1);
+
+  const srcTestIndex = lowerSegments.findIndex((segment, index) => segment === "src" && lowerSegments[index + 1] === "test");
+  if (srcTestIndex >= 0) {
+    const afterTest = directorySegments.slice(srcTestIndex + 2);
+    for (const sourceRoot of [["src", "main"], ["src"]]) {
+      for (const sourceBase of basenames) {
+        suffixes.push([...sourceRoot, ...afterTest, sourceBase].join("/"));
+      }
+    }
+  }
+
+  const testIndex = lowerSegments.findIndex((segment) => /^(tests?|specs?|__tests__|testing)$/.test(segment));
+  const afterTest = testIndex >= 0 ? directorySegments.slice(testIndex + 1) : directorySegments;
+  const sourceDirs = afterTest.filter((segment) => !/^(unit|integration|integrations|functional|e2e|acceptance|system|component|components?)$/i.test(segment));
+  for (const sourceBase of basenames) {
+    if (sourceDirs.length > 0) suffixes.push([...sourceDirs, sourceBase].join("/"));
+    const withComponent = afterTest.filter((segment) => !/^(unit|integration|integrations|functional|e2e|acceptance|system)$/i.test(segment));
+    if (withComponent.length > 0) suffixes.push([...withComponent, sourceBase].join("/"));
+  }
+
+  return uniqueStrings(suffixes);
+}
+
+function scoreTestCounterpartHint(
+  file: FileRecord,
+  hints: TestCounterpartHint[],
+  input: { explicitTestIntent: boolean; sourceOverTestPrompt: boolean }
+): { score: number; reasons: string[] } {
+  if (hints.length === 0) return { score: 0, reasons: [] };
+  if (input.explicitTestIntent && !input.sourceOverTestPrompt) return { score: 0, reasons: [] };
+  if (file.kind === "test" || !isLanguageSourceSurface(file) || isNoisyImplementationSurface(file)) return { score: 0, reasons: [] };
+
+  const normalizedPath = normalizeSlashPath(file.path.toLowerCase());
+  const basename = normalizedPath.split("/").at(-1) ?? normalizedPath;
+  const reasons: string[] = [];
+  let score = 0;
+  for (const hint of hints) {
+    if (hint.suffixes.some((suffix) => pathSuffixMatches(normalizedPath, suffix))) {
+      score += 3200;
+      reasons.push("selected test path source counterpart");
+      continue;
+    }
+    if (hint.basenames.includes(basename)) {
+      score += 1800;
+      reasons.push("selected test basename source counterpart");
+    }
+  }
+  return { score: Math.min(score, 5200), reasons: mergeReasons(reasons) };
+}
+
+function pathSuffixMatches(filePath: string, suffix: string): boolean {
+  return filePath === suffix || filePath.endsWith(`/${suffix}`);
+}
+
+function isLikelyTestPathMention(filePath: string): boolean {
+  const normalized = normalizeSlashPath(filePath.toLowerCase());
+  const basename = normalized.split("/").at(-1) ?? normalized;
+  return (
+    /(^|\/)(tests?|specs?|__tests__|testing)\//.test(normalized) ||
+    /(^|\/)src\/test\//.test(normalized) ||
+    /^(test|spec)[_-]/.test(basename) ||
+    /[._-](test|spec)\./.test(basename) ||
+    /_test\.go$/.test(basename) ||
+    /(test|spec)\.(java|kt|kts)$/.test(basename)
+  );
+}
+
+function normalizeSlashPath(value: string): string {
+  return value.replace(/\\/g, "/").replace(/^\.\/+/, "").replace(/\/+/g, "/");
 }
 
 const GENERIC_DOMAIN_TERMS = new Set(["api", "app", "apps", "application", "applications", "feature", "page", "screen"]);

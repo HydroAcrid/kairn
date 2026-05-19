@@ -203,7 +203,7 @@ export function writeSweBenchProPilot(input: {
 }
 
 function sweBenchRowToCase(row: SweBenchProRow): BenchmarkCase {
-  const patchFiles = primaryPatchFiles(row, 2);
+  const patchFiles = officialPatchScopeFiles(row, 8);
   const testFiles = diffFiles(row.test_patch).filter(isLikelyTestPath);
   const selectedTests = parseStringList(row.selected_test_files_to_run);
   const setupCommands = sweBenchSetupCommands(row, selectedTests);
@@ -500,6 +500,13 @@ function normalizeDatasetRow(input: unknown): SweBenchProRow | undefined {
 
 function productionPatchFiles(patch: string): string[] {
   return diffFiles(patch).filter((file) => isProductionPath(file)).slice(0, 12);
+}
+
+function officialPatchScopeFiles(row: SweBenchProRow, limit: number): string[] {
+  const productionFiles = productionPatchFiles(row.patch);
+  const sourceFiles = productionFiles.filter(isSourceCodePath);
+  const candidates = sourceFiles.length > 0 ? sourceFiles : productionFiles;
+  return candidates.slice(0, Math.max(1, limit));
 }
 
 function primaryPatchFiles(row: SweBenchProRow, limit: number): string[] {

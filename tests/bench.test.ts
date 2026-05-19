@@ -253,7 +253,13 @@ describe("benchmark suite and scoring", () => {
                   "+++ b/src/flask/app.py",
                   "@@ -1 +1 @@",
                   "-return None",
-                  "+return self.ensure_sync(view_func)(**view_args)"
+                  "+return self.ensure_sync(view_func)(**view_args)",
+                  "diff --git a/src/flask/helpers.py b/src/flask/helpers.py",
+                  "--- a/src/flask/helpers.py",
+                  "+++ b/src/flask/helpers.py",
+                  "@@ -1 +1 @@",
+                  "-def helper(): pass",
+                  "+def helper(): return True"
                 ].join("\n"),
                 test_patch: [
                   "diff --git a/tests/test_app.py b/tests/test_app.py",
@@ -287,8 +293,10 @@ describe("benchmark suite and scoring", () => {
       const pilot = buildSweBenchProPilot({ rows, limit: 1 });
       const outputs = writeSweBenchProPilot({ pilot, outDir: path.join(root, "out") });
 
-      expect(pilot.suite.cases[0]?.expectedFiles).toEqual(["src/flask/app.py"]);
-      expect(pilot.suite.cases[0]?.contextBehavior).toBe("source_rescue");
+      expect(pilot.suite.cases[0]?.expectedFiles).toEqual(["src/flask/app.py", "src/flask/helpers.py"]);
+      expect(pilot.suite.cases[0]?.requiredTouchedFiles).toEqual(["src/flask/app.py", "src/flask/helpers.py"]);
+      expect(pilot.suite.cases[0]?.allowedDiffScopes?.map((scope) => scope.file)).toEqual(["src/flask/app.py", "src/flask/helpers.py"]);
+      expect(pilot.suite.cases[0]?.contextBehavior).toBe("multi_file_debug");
       expect(pilot.suite.cases[0]?.officialEvaluation?.source).toBe("swe_bench_pro");
       expect(pilot.suite.cases[0]?.officialEvaluation?.evaluator).toBe("patch_verification");
       expect(pilot.suite.cases[0]?.officialEvaluation?.kairnMetricEligible).toBe(true);
@@ -299,7 +307,7 @@ describe("benchmark suite and scoring", () => {
       expect(pilot.suite.cases[0]?.seed?.setupCommands?.at(-1)).toContain("kairn-seed-tests");
       expect(pilot.suite.cases[0]?.seed?.testCommand).toBeUndefined();
       expect(pilot.matrix.repos[0]?.cases[0]?.mode).toBe("context");
-      expect(pilot.matrix.repos[0]?.cases[0]?.contextBehavior).toBe("source_rescue");
+      expect(pilot.matrix.repos[0]?.cases[0]?.contextBehavior).toBe("multi_file_debug");
       expect(pilot.matrix.repos[0]?.cases[0]?.query).toContain("dispatch");
       expect(pilot.matrix.repos[0]?.cases[0]?.query).toContain("Likely production basename hints");
       expect(pilot.matrix.repos[0]?.cases[0]?.query).not.toContain("src/flask/app.py");
@@ -1244,6 +1252,72 @@ describe("benchmark suite and scoring", () => {
 
     expect(ranked[0]?.path).toBe("kitty/key_encoding.c");
     expect(ranked[0]?.reasons).toEqual(expect.arrayContaining([expect.stringContaining("expected language")]));
+  });
+
+  it("uses selected failing test paths as production source counterpart hints", () => {
+    const files: FileRecord[] = [
+      sourceRecord("qutebrowser/components/hostblock.py", "python"),
+      sourceRecord("qutebrowser/config/configutils.py", "python"),
+      sourceRecord("qutebrowser/utils/urlutils.py", "python"),
+      { ...sourceRecord("tests/unit/components/test_hostblock.py", "python"), kind: "test" },
+      { ...sourceRecord("tests/unit/config/test_configutils.py", "python"), kind: "test" },
+      { ...sourceRecord("tests/unit/utils/test_urlutils.py", "python"), kind: "test" }
+    ];
+    const ranked = hybridSearch({
+      files,
+      query: [
+        "Fix host blocking for subdomains in production source.",
+        "Selected tests from SWE-Bench Pro metadata: tests/unit/components/test_hostblock.py, tests/unit/utils/test_urlutils.py, tests/unit/config/test_configutils.py",
+        "Interface notes: widened_hostnames(hostname: str) -> Iterable[str]. Do not edit tests."
+      ].join("\n"),
+      symbols: [],
+      chunks: [
+        chunkRecord("qutebrowser/components/hostblock.py", "HostBlocker", "host blocking whitelist subdomains"),
+        chunkRecord("qutebrowser/config/configutils.py", "ScopedValue", "config host widening"),
+        chunkRecord("qutebrowser/utils/urlutils.py", "url helpers", "URL hostname utility helpers"),
+        chunkRecord("tests/unit/utils/test_urlutils.py", "tests", "widened_hostnames tests")
+      ],
+      vectors: [],
+      edges: []
+    });
+
+    expect(ranked.slice(0, 3).map((item) => item.path)).toEqual(
+      expect.arrayContaining([
+        "qutebrowser/components/hostblock.py",
+        "qutebrowser/config/configutils.py",
+        "qutebrowser/utils/urlutils.py"
+      ])
+    );
+    expect(ranked.find((item) => item.path === "qutebrowser/utils/urlutils.py")?.reasons).toEqual(
+      expect.arrayContaining([expect.stringContaining("selected test path source counterpart")])
+    );
+    expect(ranked.find((item) => item.path === "tests/unit/utils/test_urlutils.py")).toBeUndefined();
+  });
+
+  it("keeps named relocation source files ahead of generic same-package utilities", () => {
+    const files = [
+      sourceRecord("qutebrowser/utils/log.py", "python"),
+      sourceRecord("qutebrowser/utils/qtlog.py", "python"),
+      sourceRecord("qutebrowser/utils/utils.py", "python")
+    ];
+    const ranked = hybridSearch({
+      files,
+      query:
+        "Debug/fix: hide_qt_warning and QtWarningFilter moved from log.py to qtlog.py. Preserve behavior in production source and do not edit unrelated files.",
+      symbols: [],
+      chunks: [
+        chunkRecord("qutebrowser/utils/log.py", "hide_qt_warning", "logging filter context manager"),
+        chunkRecord("qutebrowser/utils/qtlog.py", "qt_message_handler", "Qt logging warning handler"),
+        chunkRecord("qutebrowser/utils/utils.py", "utils", "generic helpers")
+      ],
+      vectors: [],
+      edges: []
+    });
+
+    expect(ranked.slice(0, 2).map((item) => item.path)).toEqual(
+      expect.arrayContaining(["qutebrowser/utils/log.py", "qutebrowser/utils/qtlog.py"])
+    );
+    expect(ranked.findIndex((item) => item.path === "qutebrowser/utils/utils.py")).toBeLessThan(0);
   });
 
   it("downranks generated filename surfaces even outside generated directories", () => {

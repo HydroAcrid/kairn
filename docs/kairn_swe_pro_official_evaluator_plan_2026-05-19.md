@@ -1,6 +1,6 @@
 # Kairn SWE-Pro Official Evaluator Plan 2026-05-19
 
-Status: implementation started.
+Status: generated-patch slice completed for two qutebrowser rows.
 
 ## Goal
 
@@ -69,6 +69,14 @@ Current smoke result:
 - After force-restarting Docker Desktop, `docker ps`, `hello-world`, and the Python Docker SDK work.
 - The one-row qutebrowser gold-patch official smoke passes with evaluator accuracy 100%.
 - This proves the evaluator path only; it is not a Kairn/model savings result.
+
+Generated patch result:
+
+- `qt-warning-filtering`: baseline failed official eval after 40,467 tokens and changed out-of-scope files. After named-source routing was tightened, `kairn_codex_session` passed official eval after 21,802 tokens and changed only `qutebrowser/utils/log.py` and `qutebrowser/utils/qtlog.py`.
+- `hostblock-subdomains`: baseline failed official eval after 47,104 tokens and edited a test file. The first Kairn attempt passed the local harness after 77,768 tokens but failed official eval because it omitted the `urlutils` helper required by official tests.
+- The hostblock miss exposed a general harness issue: the pilot suite limited official production patch files to two. The suite builder now keeps all production source patch files in scoring/scope metadata while still excluding golden paths from the agent prompt.
+- After all-production scope, selected-test source-counterpart routing, and dynamic three-file directives, `kairn_codex_session` passed official eval for `hostblock-subdomains` after 43,313 tokens and changed only `qutebrowser/components/hostblock.py`, `qutebrowser/config/configutils.py`, and `qutebrowser/utils/urlutils.py`.
+- Both generated rows count as quality-rescue evidence only, not pass/pass savings, because baseline failed official eval in both cases.
 
 ## Risks
 

@@ -1,0 +1,70 @@
+[
+  {
+    "task": "qt-warning-filtering",
+    "baseline": {
+      "officialPassed": false,
+      "tokens": 40467,
+      "changedFiles": [
+        "qutebrowser/browser/qtnetworkdownloads.py",
+        "qutebrowser/utils/log.py",
+        "qutebrowser/utils/qtlog.py",
+        "tests/unit/utils/test_qtlog.py"
+      ],
+      "scopePassed": false,
+      "qualityGatePassed": false
+    },
+    "kairn_codex_session": {
+      "officialPassed": true,
+      "tokens": 21802,
+      "changedFiles": [
+        "qutebrowser/utils/log.py",
+        "qutebrowser/utils/qtlog.py"
+      ],
+      "scopePassed": true,
+      "qualityGatePassed": true,
+      "primeTokens": 503
+    },
+    "classification": "quality_rescue",
+    "notes": "Baseline failed official eval and edited out of scope; Kairn passed official eval after named-source routing fix."
+  },
+  {
+    "task": "hostblock-subdomains",
+    "baseline": {
+      "officialPassed": false,
+      "tokens": 47104,
+      "changedFiles": [
+        "qutebrowser/components/hostblock.py",
+        "qutebrowser/config/configutils.py",
+        "qutebrowser/utils/urlutils.py",
+        "tests/unit/components/test_hostblock.py"
+      ],
+      "scopePassed": false,
+      "qualityGatePassed": false
+    },
+    "kairn_before_fix": {
+      "officialPassed": false,
+      "tokens": 77768,
+      "changedFiles": [
+        "qutebrowser/components/hostblock.py",
+        "qutebrowser/config/configutils.py"
+      ],
+      "scopePassed": true,
+      "qualityGatePassed": true,
+      "primeTokens": 449
+    },
+    "kairn_codex_session": {
+      "officialPassed": true,
+      "tokens": 43313,
+      "changedFiles": [
+        "qutebrowser/components/hostblock.py",
+        "qutebrowser/config/configutils.py",
+        "qutebrowser/utils/urlutils.py"
+      ],
+      "scopePassed": true,
+      "qualityGatePassed": true,
+      "primeTokens": 457
+    },
+    "classification": "quality_rescue_after_general_fix",
+    "notes": "Initial Kairn miss exposed a two-file official-scope cap. After all-production scope, test-counterpart routing, and dynamic three-file directives, Kairn passed official eval."
+  }
+]

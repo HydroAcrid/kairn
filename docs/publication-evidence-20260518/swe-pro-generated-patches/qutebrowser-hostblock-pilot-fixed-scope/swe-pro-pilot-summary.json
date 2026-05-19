@@ -1,0 +1,33 @@
+{
+  "generatedAt": "2026-05-19T16:06:15.867Z",
+  "source": "ScaleAI/SWE-bench_Pro",
+  "rows": 1,
+  "summary": {
+    "languages": {
+      "python": 1
+    },
+    "repos": {
+      "qutebrowser/qutebrowser": 1
+    },
+    "taskClasses": {
+      "multi_file_debug": 1
+    },
+    "evaluators": {
+      "patch_verification": 1
+    },
+    "applicability": {
+      "strong": 1
+    },
+    "skippedRows": 0,
+    "warnings": [
+      "Generated live suites are pilot scaffolds. Full SWE-Bench Pro verification should use Docker evaluator metadata before making leaderboard-style claims."
+    ]
+  },
+  "outputs": {
+    "suitePath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/swe-pro-generated-patches/qutebrowser-hostblock-pilot-fixed-scope/swe-pro-pilot-suite.json",
+    "matrixPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/swe-pro-generated-patches/qutebrowser-hostblock-pilot-fixed-scope/swe-pro-pilot-matrix.json",
+    "summaryPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/swe-pro-generated-patches/qutebrowser-hostblock-pilot-fixed-scope/swe-pro-pilot-summary.json",
+    "rowsPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/swe-pro-generated-patches/qutebrowser-hostblock-pilot-fixed-scope/swe-pro-pilot-rows.json",
+    "rawRowsPath": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518/swe-pro-generated-patches/qutebrowser-hostblock-pilot-fixed-scope/swe-pro-pilot-raw.jsonl"
+  }
+}

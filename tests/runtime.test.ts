@@ -137,6 +137,53 @@ describe("KairnRuntime", () => {
     runtime.close();
   });
 
+  it("allows a three-file directive when selected failing tests imply three production counterparts", async () => {
+    const root = fs.mkdtempSync(path.join(process.cwd(), ".tmp-kairn-runtime-"));
+    fs.mkdirSync(path.join(root, "qutebrowser/components"), { recursive: true });
+    fs.mkdirSync(path.join(root, "qutebrowser/config"), { recursive: true });
+    fs.mkdirSync(path.join(root, "qutebrowser/utils"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests/unit/components"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests/unit/config"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tests/unit/utils"), { recursive: true });
+    fs.writeFileSync(path.join(root, "qutebrowser/components/hostblock.py"), "class HostBlocker:\n    def _is_blocked(self, request_url):\n        return request_url.host() in self._blocked_hosts\n");
+    fs.writeFileSync(path.join(root, "qutebrowser/config/configutils.py"), "def _widened_hostnames(hostname):\n    while hostname:\n        yield hostname\n        hostname = hostname.partition('.')[2]\n");
+    fs.writeFileSync(path.join(root, "qutebrowser/utils/urlutils.py"), "def widened_hostnames(hostname):\n    while hostname:\n        yield hostname\n        hostname = hostname.partition('.')[2]\n");
+    fs.writeFileSync(path.join(root, "tests/unit/components/test_hostblock.py"), "def test_hostblock(): pass\n");
+    fs.writeFileSync(path.join(root, "tests/unit/config/test_configutils.py"), "def test_configutils(): pass\n");
+    fs.writeFileSync(path.join(root, "tests/unit/utils/test_urlutils.py"), "def test_urlutils(): pass\n");
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "Fix host blocking for subdomains in production source.",
+          "Selected tests from SWE-Bench Pro metadata: tests/unit/components/test_hostblock.py, tests/unit/utils/test_urlutils.py, tests/unit/config/test_configutils.py",
+          "Interface notes: widened_hostnames(hostname: str) -> Iterable[str]. Do not edit tests."
+        ].join("\n"),
+        budget: 1200
+      });
+
+      expect(prime.contextDecision?.recommendedDelivery).toBe("multi_file_directive");
+      expect(prime.files).toEqual(
+        expect.arrayContaining([
+          "qutebrowser/components/hostblock.py",
+          "qutebrowser/config/configutils.py",
+          "qutebrowser/utils/urlutils.py"
+        ])
+      );
+      expect(prime.editScope?.initialEditFiles).toEqual(
+        expect.arrayContaining([
+          "qutebrowser/components/hostblock.py",
+          "qutebrowser/config/configutils.py",
+          "qutebrowser/utils/urlutils.py"
+        ])
+      );
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("tracks index freshness across repo changes and refreshes", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);
