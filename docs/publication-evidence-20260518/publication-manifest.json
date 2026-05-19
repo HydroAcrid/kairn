@@ -1,9 +1,9 @@
 {
   "id": "kairn-scientific-evidence-v3-completed",
   "name": "Kairn Scientific Evidence Campaign v3 Completed Slice",
-  "generatedAt": "2026-05-18T19:39:15.063Z",
+  "generatedAt": "2026-05-19T15:03:29.353Z",
   "planPath": "/tmp/kairn-publication-plan-v3-completed.json",
-  "kairnGitSha": "2b90db0b43e538a4eb544d2be276cda3b45674fb",
+  "kairnGitSha": "73ef0641b450ba8693358da171599e84f4e6ae64",
   "packageVersion": "0.1.2",
   "nodeVersion": "v24.7.0",
   "os": {
@@ -15,13 +15,13 @@
   "repeat": 3,
   "dryRun": false,
   "timestamps": {
-    "generatedAt": "2026-05-18T19:39:15.063Z",
+    "generatedAt": "2026-05-19T15:03:29.353Z",
     "artifactStarts": {
       "fresh-publication-v3-preflight": "2026-05-18T15:44:13.342Z",
       "fresh-live-repeat3-canary": "2026-05-18T16:50:04.512Z",
       "ablation-proof-repeat3": "2026-05-18T17:25:59.112Z",
       "httpcore-mcp-endurance-repeat3": "2026-05-18T18:06:22.720Z",
-      "requests-mcp-endurance-repeat3": "2026-05-18T18:21:24.665Z",
+      "requests-mcp-endurance-repeat3": "2026-05-19T13:47:10.440Z",
       "local-mcp-smoke-v3": "2026-05-18T19:36:09.943Z",
       "swe-pro-official-eval-v3": "2026-05-18T19:36:22.795Z"
     },
@@ -30,7 +30,7 @@
       "fresh-live-repeat3-canary": "2026-05-18T17:25:02.491Z",
       "ablation-proof-repeat3": "2026-05-18T17:48:07.811Z",
       "httpcore-mcp-endurance-repeat3": "2026-05-18T18:18:18.315Z",
-      "requests-mcp-endurance-repeat3": "2026-05-18T19:16:10.666Z",
+      "requests-mcp-endurance-repeat3": "2026-05-19T15:01:20.138Z",
       "local-mcp-smoke-v3": "2026-05-18T19:36:13.780Z",
       "swe-pro-official-eval-v3": "2026-05-18T19:36:22.797Z"
     }

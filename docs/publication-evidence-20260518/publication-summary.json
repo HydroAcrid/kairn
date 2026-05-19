@@ -1,7 +1,7 @@
 {
   "id": "kairn-scientific-evidence-v3-completed",
   "name": "Kairn Scientific Evidence Campaign v3 Completed Slice",
-  "generatedAt": "2026-05-18T19:39:15.063Z",
+  "generatedAt": "2026-05-19T15:03:29.353Z",
   "planPath": "/tmp/kairn-publication-plan-v3-completed.json",
   "outDir": "/Users/kevindotel/Documents/Projects/kairn/docs/publication-evidence-20260518",
   "dryRun": false,
@@ -10,8 +10,8 @@
   "aggregate": {
     "entries": 7,
     "resultRows": 29,
-    "qualityPassRate": 0.56,
-    "medianValidSavingsRate": 0.18455693048750105,
+    "qualityPassRate": 0.6,
+    "medianValidSavingsRate": 0.23253547664992402,
     "modes": {
       "matrix_preflight": {
         "rows": 8,
@@ -91,22 +91,22 @@
       },
       "real_mcp_first": {
         "rows": 2,
-        "qualityPasses": 1,
+        "qualityPasses": 2,
         "activeRows": 2,
         "passiveRows": 0,
         "validSavingsRows": 2,
-        "validSavings": 63511,
+        "validSavings": 92696,
         "passiveSavings": 0,
         "invalidSavings": 0,
-        "medianSavingsRate": 0.2190216421997053,
+        "medianSavingsRate": 0.23253547664992402,
         "overAssistRows": 0,
-        "harmfulRows": 1,
+        "harmfulRows": 0,
         "missedOpportunityRows": 0,
         "correctAbstentionRows": 0,
         "requestEvidenceRows": 0,
-        "mcpCalls": 9,
+        "mcpCalls": 8,
         "repeatedFilesAvoided": 0,
-        "scopeViolations": 1
+        "scopeViolations": 0
       },
       "hybrid_mcp_brief": {
         "rows": 1,
@@ -114,10 +114,10 @@
         "activeRows": 1,
         "passiveRows": 0,
         "validSavingsRows": 1,
-        "validSavings": 113229,
+        "validSavings": 78274,
         "passiveSavings": 0,
         "invalidSavings": 0,
-        "medianSavingsRate": 0.4877785053331725,
+        "medianSavingsRate": 0.3439421036211601,
         "overAssistRows": 1,
         "harmfulRows": 0,
         "missedOpportunityRows": 0,
@@ -226,22 +226,22 @@
       },
       "session_repeat": {
         "rows": 5,
-        "qualityPasses": 4,
+        "qualityPasses": 5,
         "activeRows": 3,
         "passiveRows": 0,
         "validSavingsRows": 3,
-        "validSavings": 176740,
+        "validSavings": 170970,
         "passiveSavings": 0,
         "invalidSavings": 0,
         "medianSavingsRate": 0.18455693048750105,
         "overAssistRows": 1,
-        "harmfulRows": 1,
+        "harmfulRows": 0,
         "missedOpportunityRows": 0,
         "correctAbstentionRows": 0,
         "requestEvidenceRows": 0,
-        "mcpCalls": 12,
+        "mcpCalls": 11,
         "repeatedFilesAvoided": 0,
-        "scopeViolations": 1
+        "scopeViolations": 0
       },
       "mcp_delivery": {
         "rows": 1,
@@ -299,13 +299,6 @@
         ]
       },
       {
-        "pattern": "harmful assist",
-        "count": 1,
-        "examples": [
-          "requests-mcp-endurance-repeat3:real_mcp_first"
-        ]
-      },
-      {
         "pattern": "over-assist",
         "count": 1,
         "examples": [
@@ -334,7 +327,7 @@
       "hookOrMcpLatencyMsP95": 8488,
       "mcpCallsPerSuccessfulRunMedian": 3,
       "kairnContextTokensMedian": 1000,
-      "netTokenSavings": 152222
+      "netTokenSavings": 146452
     }
   },
   "outputs": {
