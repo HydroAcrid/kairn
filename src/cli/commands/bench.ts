@@ -12,6 +12,7 @@ import {
 import { runBenchmarkRepoMatrix } from "../../bench/matrix.js";
 import { runBenchmarkEndurance, runBenchmarkEnduranceRepeats } from "../../bench/endurance.js";
 import { buildSweBenchProPilot, fetchSweBenchProRows, loadSweBenchProRows, writeSweBenchProPilot } from "../../bench/sweBenchPro.js";
+import { prepareSweProOfficialEvaluator } from "../../bench/sweProOfficial.js";
 import { buildSweAtlasQnaPilot, fetchSweAtlasQnaRows, loadSweAtlasQnaRows, writeSweAtlasQnaPilot } from "../../bench/sweAtlasQna.js";
 import { buildSweContextBenchPilot, loadSweContextBenchRows, writeSweContextBenchPilot } from "../../bench/sweContextBench.js";
 import { runBenchmarkMcpSmoke } from "../../bench/mcpSmoke.js";
@@ -132,6 +133,76 @@ export function registerBenchCommands(program: Command): void {
         }
       }
     );
+
+  benchCommand
+    .command("swe-pro-official")
+    .description("Prepare or run SWE-Bench Pro official evaluator inputs for a selected row slice.")
+    .requiredOption("--input <path>", "local SWE-Bench Pro rows JSON/JSONL export")
+    .option("--out-dir <path>", "directory for official evaluator inputs and outputs", "docs/publication-evidence-20260518/swe-pro-official")
+    .option("--official-repo <path>", "local scaleapi/SWE-bench_Pro-os checkout", ".kairn/eval/SWE-bench_Pro-os")
+    .option("--row-ids <csv>", "comma-separated SWE-Pro instance ids to select")
+    .option("--limit <n>", "maximum selected rows", parsePositiveInt, 1)
+    .addOption(new Option("--patch-mode <mode>", "generated patch mode").choices(["empty", "gold"]).default("empty"))
+    .option("--patch-path <path>", "existing patch JSON in official evaluator format")
+    .option("--python <cmd>", "Python command for the official evaluator", "python3")
+    .option("--dockerhub-username <name>", "Docker Hub username/repository namespace for SWE-Pro images", "jefzda")
+    .option("--num-workers <n>", "official evaluator workers", parsePositiveInt, 1)
+    .option("--use-local-docker", "run evaluator locally with Docker instead of Modal")
+    .option("--docker-platform <platform>", "Docker platform override, for example linux/amd64")
+    .option("--run", "actually run the official evaluator; otherwise prepare files and print command")
+    .option("--redo", "pass --redo to the official evaluator")
+    .option("--json", "print JSON output")
+    .action((options: {
+      input: string;
+      outDir: string;
+      officialRepo: string;
+      rowIds?: string;
+      limit: number;
+      patchMode: "empty" | "gold";
+      patchPath?: string;
+      python: string;
+      dockerhubUsername: string;
+      numWorkers: number;
+      useLocalDocker?: boolean;
+      dockerPlatform?: string;
+      run?: boolean;
+      redo?: boolean;
+      json?: boolean;
+    }) => {
+      const report = prepareSweProOfficialEvaluator({
+        rowsPath: options.input,
+        rowIds: csvList(options.rowIds),
+        limit: options.limit,
+        outputDir: options.outDir,
+        officialRepoPath: options.officialRepo,
+        patchPath: options.patchPath,
+        patchMode: options.patchMode,
+        pythonCommand: options.python,
+        dockerhubUsername: options.dockerhubUsername,
+        numWorkers: options.numWorkers,
+        useLocalDocker: options.useLocalDocker ?? true,
+        dockerPlatform: options.dockerPlatform,
+        run: Boolean(options.run),
+        redo: Boolean(options.redo)
+      });
+      if (options.json) {
+        printJson(report);
+        return;
+      }
+      console.log(`SWE-Pro official evaluator ${report.status}.`);
+      console.log(`Rows: ${report.rowsSelected}`);
+      console.log(`Raw sample: ${report.rawSamplePath}`);
+      console.log(`Patch JSON: ${report.patchPath}`);
+      console.log(`Evaluator output: ${report.evaluatorOutputDir}`);
+      console.log(`Command: ${report.commands[0]}`);
+      for (const warning of report.warnings) {
+        console.log(`Warning: ${warning}`);
+      }
+      if (report.evaluator?.ran) {
+        console.log(`Evaluator exit code: ${report.evaluator.exitCode ?? "unknown"}`);
+        console.log(`Evaluator results: ${report.evaluator.evalResultsPath ?? "none"}`);
+      }
+    });
 
   benchCommand
     .command("mcp-smoke")

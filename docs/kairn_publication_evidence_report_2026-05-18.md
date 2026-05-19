@@ -20,7 +20,7 @@ The strongest clean evidence is now MCP/session endurance:
 | Requests MCP post-fix repeat-3 | MCP-first: 100% quality, 28.05% median valid savings, 3/3 useful MCP file returns, 0 scope violations | Clean MCP evidence |
 | Requests hybrid post-fix repeat-3 | 100% quality, 34.39% median savings, 0 scope violations, 1/3 over-assist | Supporting evidence; not the primary MCP claim |
 | MCP protocol smoke | Passed; 2 MCP tool calls recorded | Delivery gate passed |
-| SWE-Pro official slice | 10 row IDs selected, but no official evaluator result JSON attached | No SWE-Pro savings counted |
+| SWE-Pro official slice | 10 row IDs selected; official assets validated; one-row qutebrowser gold-patch official smoke passed | Evaluator path proven; no generated-patch savings counted yet |
 
 ## Key Findings
 
@@ -32,7 +32,7 @@ MCP is now a real second wedge. The httpcore endurance run recorded actual MCP t
 
 Hybrid remains useful but less clean. The post-fix hybrid repeat-3 had higher median savings than MCP-first at 34.39%, but one repeat over-assisted and spent more than baseline. For beta defaults, MCP-first is currently the safer portable MCP path; hybrid should remain optional/supporting until more holdout endurance runs are clean.
 
-SWE-Pro remains a credibility blocker, not a product blocker. The official row slice is selected, but no official evaluator JSON was provided. Per claim rules, SWE-Pro savings remain invalid until official evaluator passes are attached.
+SWE-Pro remains the next credibility layer. The official row slice is selected and all selected rows now have official run scripts, parser scripts, and Dockerfiles available locally. Kairn now has a `bench swe-pro-official` command that prepares official raw-sample JSONL, patch JSON, and the exact `swe_bench_pro_eval.py` command. After restarting stale Docker Desktop backend processes, the one-row qutebrowser gold-patch smoke passed with official evaluator accuracy 100%. This proves the evaluator path, but no generated baseline/Kairn SWE-Pro savings are counted yet.
 
 ## Improvements Made During Campaign
 
@@ -45,6 +45,10 @@ SWE-Pro remains a credibility blocker, not a product blocker. The official row s
   - MCP compact responses now include `editScopeDirective`.
   - Known-source MCP endurance prompts now state tests/docs/examples/fixtures/snapshots/generated/vendor are read-only unless a focused verification failure proves otherwise.
   - Prompts instruct agents to revert out-of-scope edits before finalizing.
+- Added official SWE-Pro evaluator preparation:
+  - `kairn bench swe-pro-official`
+  - official row selection, raw-sample generation, patch JSON generation, asset validation, and optional evaluator run mode.
+  - single-row gold-patch smoke artifact records Docker infrastructure failure separately from model/Kairn quality.
 
 ## Current Evidence Artifacts
 
@@ -60,6 +64,7 @@ Primary artifacts live under `docs/publication-evidence-20260518/`.
 | `raw/requests-mcp-endurance-repeat3.json` | Post-fix Requests MCP/hybrid endurance repeat-3 proof |
 | `raw/local-mcp-smoke-v3.json` | MCP protocol smoke |
 | `raw/swe-pro-official-eval-v3.json` | SWE-Pro official-eval placeholder/status |
+| `swe-pro-official-gold-smoke/run-report.json` | Official evaluator gold-patch smoke; qutebrowser row passed |
 
 ## Conservative Claim Matrix
 
@@ -80,10 +85,11 @@ Do not claim yet:
 
 ## Next Evidence Needed
 
-1. Run one additional fresh MCP endurance repo if time allows.
-2. Attach real SWE-Pro official evaluator outputs before making SWE-Pro claims.
-3. Run a small strongest-model confirmation slice after the mini-model campaign is stable.
-4. Keep private beta telemetry separate from scientific claims, using it only to discover real-world failure classes.
+1. Generate baseline and Kairn patch JSON for 1-2 SWE-Pro rows.
+2. Run official evaluator on those generated patches and count only pass/pass rows.
+3. Run one additional fresh MCP endurance repo if time allows.
+4. Run a small strongest-model confirmation slice after the mini-model campaign is stable.
+5. Keep private beta telemetry separate from scientific claims, using it only to discover real-world failure classes.
 
 ## Verification
 

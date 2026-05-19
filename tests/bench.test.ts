@@ -20,7 +20,7 @@ import { classifyAssistance } from "../src/bench/assistClassification.js";
 import { buildSweBenchProPilot, loadSweBenchProRows, writeSweBenchProPilot } from "../src/bench/sweBenchPro.js";
 import { buildSweAtlasQnaPilot, loadSweAtlasQnaRows, writeSweAtlasQnaPilot } from "../src/bench/sweAtlasQna.js";
 import { buildSweContextBenchPilot, loadSweContextBenchRows, writeSweContextBenchPilot } from "../src/bench/sweContextBench.js";
-import { buildSweProOfficialEvalReport } from "../src/bench/sweProOfficial.js";
+import { buildSweProOfficialEvalReport, prepareSweProOfficialEvaluator } from "../src/bench/sweProOfficial.js";
 import {
   aggregatePublicationRows,
   loadPublicationPlan,
@@ -338,6 +338,58 @@ describe("benchmark suite and scoring", () => {
       expect(report.rowIds).toEqual(["instance_pallets__flask-demo"]);
       expect(report.officialEvaluatorPassed).toBe(false);
       expect(report.warnings.join(" ")).toContain("savings must remain invalid");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("prepares SWE-Pro official evaluator raw sample and patch JSON without running Docker", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-swe-pro-official-prep-"));
+    try {
+      const rowsPath = path.join(root, "rows.jsonl");
+      const officialRepo = path.join(root, "official");
+      const rowId = "instance_pallets__flask-demo";
+      fs.mkdirSync(path.join(officialRepo, "run_scripts", rowId), { recursive: true });
+      fs.mkdirSync(path.join(officialRepo, "dockerfiles", "base_dockerfile", rowId), { recursive: true });
+      fs.mkdirSync(path.join(officialRepo, "dockerfiles", "instance_dockerfile", rowId), { recursive: true });
+      fs.writeFileSync(path.join(officialRepo, "swe_bench_pro_eval.py"), "print('ok')\n");
+      fs.writeFileSync(path.join(officialRepo, "run_scripts", rowId, "run_script.sh"), "true\n");
+      fs.writeFileSync(path.join(officialRepo, "run_scripts", rowId, "parser.py"), "print('ok')\n");
+      fs.writeFileSync(path.join(officialRepo, "dockerfiles", "base_dockerfile", rowId, "Dockerfile"), "FROM scratch\n");
+      fs.writeFileSync(path.join(officialRepo, "dockerfiles", "instance_dockerfile", rowId, "Dockerfile"), "FROM scratch\n");
+      fs.writeFileSync(rowsPath, `${JSON.stringify({
+        repo: "pallets/flask",
+        instance_id: rowId,
+        base_commit: "0123456789012345678901234567890123456789",
+        patch: "diff --git a/src/flask/app.py b/src/flask/app.py\n--- a/src/flask/app.py\n+++ b/src/flask/app.py",
+        test_patch: "diff --git a/tests/test_app.py b/tests/test_app.py\n--- a/tests/test_app.py\n+++ b/tests/test_app.py",
+        problem_statement: "Fix dispatch behavior.",
+        repo_language: "python",
+        before_repo_set_cmd: "python -m pytest tests/test_app.py",
+        selected_test_files_to_run: "[\"tests/test_app.py\"]",
+        dockerhub_tag: "pallets.flask-demo"
+      })}\n`);
+
+      const report = prepareSweProOfficialEvaluator({
+        rowsPath,
+        rowIds: [rowId],
+        limit: 1,
+        outputDir: path.join(root, "out"),
+        officialRepoPath: officialRepo,
+        patchMode: "gold"
+      });
+
+      expect(report.status).toBe("ready");
+      expect(report.rowsSelected).toBe(1);
+      expect(report.missingAssets).toEqual([]);
+      expect(report.commands[0]).toContain("swe_bench_pro_eval.py");
+      expect(fs.existsSync(report.rawSamplePath)).toBe(true);
+      expect(fs.existsSync(report.patchPath)).toBe(true);
+      const patches = JSON.parse(fs.readFileSync(report.patchPath, "utf8")) as Array<{ instance_id: string; patch: string; prefix: string }>;
+      expect(patches[0]?.instance_id).toBe(rowId);
+      expect(patches[0]?.patch).toContain("src/flask/app.py");
+      expect(patches[0]?.prefix).toBe("gold");
+      expect(report.warnings.join(" ")).toContain("setup smoke only");
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }

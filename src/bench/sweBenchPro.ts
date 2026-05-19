@@ -70,6 +70,8 @@ export function loadSweBenchProRows(inputPath: string): SweBenchProRow[] {
 
   const candidates = Array.isArray(parsed)
     ? parsed
+    : isRecord(parsed) && typeof parsed.instance_id === "string"
+      ? [parsed]
     : isRecord(parsed) && Array.isArray(parsed.rows)
       ? parsed.rows
       : isRecord(parsed) && Array.isArray(parsed.data)
