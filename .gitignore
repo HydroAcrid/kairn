@@ -8,3 +8,21 @@ coverage/
 *.log
 .kairn/
 supabase/.temp/
+
+# Generated benchmark/evaluator artifacts. Keep curated reports and compact
+# summaries tracked explicitly; archive raw bundles outside normal commits.
+docs/publication-evidence-*/**/eval-output/
+docs/publication-evidence-*/**/workspace/
+docs/publication-evidence-*/**/*.patch
+docs/publication-evidence-*/**/*.diff
+docs/publication-evidence-*/**/*.stdout.json
+docs/publication-evidence-*/**/*proof*.json
+docs/publication-evidence-*/**/*raw*.jsonl
+docs/publication-evidence-*/**/*.partial.json
+docs/publication-evidence-*/**/*patches*.json
+docs/publication-evidence-*/**/*-patches.json
+docs/publication-evidence-*/**/empty-patches.json
+docs/publication-evidence-*/**/swe-pro-pilot-*.json
+docs/publication-evidence-*/**/swe-pro-*-suite.json
+docs/publication-evidence-*/**/swe-pro-*-matrix.json
+docs/publication-evidence-*/**/swe-pro-*-rows.json

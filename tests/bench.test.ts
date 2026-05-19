@@ -15,7 +15,7 @@ import {
 } from "../src/bench/matrix.js";
 import { loadBenchmarkEnduranceSuite } from "../src/bench/enduranceSuite.js";
 import { enduranceInvariantForPrompt, runBenchmarkEndurance, runBenchmarkEnduranceRepeats } from "../src/bench/endurance.js";
-import { runAgentBenchmarkCase } from "../src/bench/agent.js";
+import { changedFiles, runAgentBenchmarkCase } from "../src/bench/agent.js";
 import { classifyAssistance } from "../src/bench/assistClassification.js";
 import { buildSweBenchProPilot, loadSweBenchProRows, writeSweBenchProPilot } from "../src/bench/sweBenchPro.js";
 import { buildSweAtlasQnaPilot, loadSweAtlasQnaRows, writeSweAtlasQnaPilot } from "../src/bench/sweAtlasQna.js";
@@ -29,6 +29,7 @@ import {
   type PublicationResultRow
 } from "../src/bench/publication.js";
 import { evaluateDiffScopes, evaluateSourceInvariants } from "../src/bench/sourceValidation.js";
+import { inferInvariantStatement } from "../src/context/invariants.js";
 import { evaluateContextValue } from "../src/prime/contextValue.js";
 import {
   applyContextGovernor,
@@ -906,6 +907,42 @@ describe("benchmark suite and scoring", () => {
 
       expect(result.passed).toBe(false);
       expect(result.violations.join("\n")).toContain("outside allowed symbols");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects untracked files outside allowed diff scopes", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-diff-scope-untracked-"));
+    try {
+      fs.mkdirSync(path.join(root, "src/routes"), { recursive: true });
+      fs.writeFileSync(path.join(root, "src/routes/index.js"), "module.exports = {};\n");
+      execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["add", "."], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["commit", "-m", "initial"], {
+        cwd: root,
+        stdio: "ignore",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: "Kairn Test",
+          GIT_AUTHOR_EMAIL: "test@example.com",
+          GIT_COMMITTER_NAME: "Kairn Test",
+          GIT_COMMITTER_EMAIL: "test@example.com"
+        }
+      });
+      fs.writeFileSync(path.join(root, "src/routes/well-known.js"), "module.exports = {};\n");
+      fs.mkdirSync(path.join(root, ".kairn"), { recursive: true });
+      fs.writeFileSync(path.join(root, ".kairn/config.json"), "{}\n");
+
+      const result = await evaluateDiffScopes({
+        rootPath: root,
+        scopes: [{ file: "src/routes/index.js", allowWholeFile: true }]
+      });
+
+      expect(result.passed).toBe(false);
+      expect(result.changedFiles).toContain("src/routes/well-known.js");
+      expect(result.changedFiles).not.toContain(".kairn/config.json");
+      expect(result.violations.join("\n")).toContain("src/routes/well-known.js: changed outside allowed diff scopes");
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -2016,6 +2053,36 @@ describe("benchmark suite and scoring", () => {
       expect(result.metadata.seedPatchFileHashes).toBeDefined();
       expect(result.metadata.agentChangedFiles).toEqual([]);
       expect(result.actualFiles).not.toContain("src/app.ts");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("counts untracked files as changed benchmark files", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-agent-untracked-"));
+    try {
+      fs.mkdirSync(path.join(root, "src/routes"), { recursive: true });
+      fs.writeFileSync(path.join(root, "src/routes/index.js"), "module.exports = {};\n");
+      execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["add", "."], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["commit", "-m", "initial"], {
+        cwd: root,
+        stdio: "ignore",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: "Kairn Test",
+          GIT_AUTHOR_EMAIL: "test@example.com",
+          GIT_COMMITTER_NAME: "Kairn Test",
+          GIT_COMMITTER_EMAIL: "test@example.com"
+        }
+      });
+
+      fs.writeFileSync(path.join(root, "src/routes/well-known.js"), "module.exports = function wellKnown() {};\n");
+      fs.mkdirSync(path.join(root, ".kairn"), { recursive: true });
+      fs.writeFileSync(path.join(root, ".kairn/config.json"), "{}\n");
+
+      expect(changedFiles(root)).toContain("src/routes/well-known.js");
+      expect(changedFiles(root)).not.toContain(".kairn/config.json");
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -4562,6 +4629,18 @@ describe("benchmark runtime and CLI", () => {
     expect(prime.content).not.toContain("router.ts");
 
     runtime.close();
+  });
+
+  it("adds invalid-input path guardrails for validation predicate tasks", () => {
+    const statement = inferInvariantStatement([
+      "Collection Name Validation Accepts Python Keywords.",
+      "The validation system should reject reserved keywords in either namespace or collection name.",
+      "The validity check must return a boolean True/False result."
+    ].join(" "));
+
+    expect(statement).toContain("reject newly invalid inputs");
+    expect(statement).toContain("invalid-input rejection paths");
+    expect(statement).toContain("fall through");
   });
 
   it("prefers current source invariant metadata over stale session task text in exact-source primes", async () => {

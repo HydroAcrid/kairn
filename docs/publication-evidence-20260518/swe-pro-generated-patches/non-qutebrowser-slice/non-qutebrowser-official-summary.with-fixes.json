@@ -1,0 +1,98 @@
+{
+  "generatedAt": "2026-05-19T18:51:58.577Z",
+  "source": "ScaleAI/SWE-bench_Pro official evaluator, non-qutebrowser generated patch slice",
+  "notes": [
+    "NodeBB Kairn official pass required exporter accounting for untracked created files.",
+    "Ansible initial Kairn patch failed official eval; after a general validation-invariant guardrail, rerun passed official eval.",
+    "OpenLibrary is the only clean pass/pass token-savings row in this 3-row slice."
+  ],
+  "rows": [
+    {
+      "short": "nodebb",
+      "rowId": "instance_NodeBB__NodeBB-51d8f3b195bddb13a13ddc0de110722774d9bb1b-vf2cf3cbd463b7ad942381f1c6d077626485a1e9e",
+      "baseline": {
+        "officialPassed": false,
+        "observedTokens": 61212,
+        "localOutcome": "fail",
+        "scope": "failed",
+        "changedFiles": [
+          "src/controllers/index.js",
+          "src/routes/index.js",
+          "src/routes/user.js",
+          "test/controllers.js"
+        ]
+      },
+      "kairn": {
+        "officialPassed": true,
+        "observedTokens": 78456,
+        "localOutcome": "partial",
+        "scope": "passed",
+        "changedFiles": [
+          "src/controllers/index.js",
+          "src/routes/index.js",
+          "src/routes/user.js"
+        ],
+        "primeTokens": 0
+      },
+      "interpretation": "quality_rescue_official_pass"
+    },
+    {
+      "short": "ansible",
+      "rowId": "instance_ansible__ansible-f327e65d11bb905ed9f15996024f857a95592629-vba6da65a0f3baefda7a058ebbd0a8dcafb8512f5",
+      "baseline": {
+        "officialPassed": true,
+        "observedTokens": 48716,
+        "localOutcome": "fail",
+        "scope": "failed",
+        "changedFiles": [
+          "lib/ansible/galaxy/dependency_resolution/dataclasses.py",
+          "lib/ansible/utils/collection_loader/_collection_finder.py",
+          "test/units/cli/test_galaxy.py"
+        ]
+      },
+      "kairn": {
+        "officialPassed": true,
+        "observedTokens": 53747,
+        "localOutcome": "pass",
+        "scope": "passed",
+        "changedFiles": [
+          "lib/ansible/galaxy/dependency_resolution/dataclasses.py",
+          "lib/ansible/utils/collection_loader/_collection_finder.py"
+        ],
+        "primeTokens": 504
+      },
+      "interpretation": "scope_clean_official_pass_after_guardrail_no_token_win"
+    },
+    {
+      "short": "openlibrary",
+      "rowId": "instance_internetarchive__openlibrary-4a5d2a7d24c9e4c11d3069220c0685b736d5ecde-v13642507b4fc1f8d234172bf8129942da2c2ca26",
+      "baseline": {
+        "officialPassed": true,
+        "observedTokens": 21932,
+        "localOutcome": "pass",
+        "scope": "passed",
+        "changedFiles": [
+          "openlibrary/core/wikidata.py"
+        ]
+      },
+      "kairn": {
+        "officialPassed": true,
+        "observedTokens": 10048,
+        "localOutcome": "pass",
+        "scope": "passed",
+        "changedFiles": [
+          "openlibrary/core/wikidata.py"
+        ],
+        "primeTokens": 443
+      },
+      "interpretation": "clean_pass_pass_savings"
+    }
+  ],
+  "aggregate": {
+    "baselineOfficialPasses": 2,
+    "kairnOfficialPasses": 3,
+    "cleanPassPassSavingsRows": 1,
+    "qualityRescueRows": 1,
+    "noTokenWinRows": 1
+  }
+}

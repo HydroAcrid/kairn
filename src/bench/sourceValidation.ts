@@ -124,13 +124,22 @@ function regexFromString(pattern: string): RegExp {
 
 function gitChangedFiles(rootPath: string): string[] {
   try {
-    return execFileSync("git", ["diff", "--name-only"], { cwd: rootPath, encoding: "utf8" })
+    const tracked = execFileSync("git", ["diff", "--name-only"], { cwd: rootPath, encoding: "utf8" })
       .split(/\r?\n/)
       .map((line) => normalizeRelativePath(line.trim()))
-      .filter(Boolean);
+      .filter((file) => file && !isBenchmarkInternalPath(file));
+    const untracked = execFileSync("git", ["ls-files", "--others", "--exclude-standard"], { cwd: rootPath, encoding: "utf8" })
+      .split(/\r?\n/)
+      .map((line) => normalizeRelativePath(line.trim()))
+      .filter((file) => file && !isBenchmarkInternalPath(file));
+    return [...new Set([...tracked, ...untracked])].sort();
   } catch {
     return [];
   }
+}
+
+function isBenchmarkInternalPath(filePath: string): boolean {
+  return filePath === ".kairn" || filePath.startsWith(".kairn/");
 }
 
 function changedLinesForFile(rootPath: string, file: string): ChangedLine[] {

@@ -95,6 +95,12 @@ function behaviorTemplateForTask(task: string): string | undefined {
   if (/\bisblank\b/.test(normalized) && /\bwhitespace\b/.test(normalized)) {
     return "isBlank must use the language whitespace semantics, not only literal spaces.";
   }
+  if (
+    /\b(validat(e|ion)|valid|invalid|reject|accept)\b/.test(normalized) &&
+    /\b(identifier|keyword|reserved|name|fqcn|collection name|namespace)\b/.test(normalized)
+  ) {
+    return "Validation changes must reject newly invalid inputs while preserving existing invalid-input rejection paths; invalid values must not fall through to later runtime branches.";
+  }
   if (/\bhash\b/.test(normalized) && /\b(order|properties|query keys?)\b/.test(normalized)) {
     return "Equivalent object keys must hash consistently regardless of property order.";
   }

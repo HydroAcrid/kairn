@@ -20,7 +20,8 @@ The strongest clean evidence is now MCP/session endurance:
 | Requests MCP post-fix repeat-3 | MCP-first: 100% quality, 28.05% median valid savings, 3/3 useful MCP file returns, 0 scope violations | Clean MCP evidence |
 | Requests hybrid post-fix repeat-3 | 100% quality, 34.39% median savings, 0 scope violations, 1/3 over-assist | Supporting evidence; not the primary MCP claim |
 | MCP protocol smoke | Passed; 2 MCP tool calls recorded | Delivery gate passed |
-| SWE-Pro official slice | 10 row IDs selected; official assets validated; gold-patch smoke passed; 2 generated qutebrowser rows evaluated | Credibility layer started; Kairn passed both generated rows, baseline failed both |
+| SWE-Pro qutebrowser official slice | 10 row IDs selected; official assets validated; gold-patch smoke passed; 2 generated qutebrowser rows evaluated | Credibility layer started; Kairn passed both generated rows, baseline failed both |
+| SWE-Pro non-qutebrowser official slice | 3 generated rows evaluated: NodeBB, Ansible, OpenLibrary | Kairn official pass 3/3 after general fixes; baseline official pass 2/3; one clean pass/pass savings row |
 
 ## Key Findings
 
@@ -35,6 +36,8 @@ Hybrid remains useful but less clean. The post-fix hybrid repeat-3 had higher me
 SWE-Pro is now a real credibility layer, not just a planned one. The official row slice is selected and all selected rows now have official run scripts, parser scripts, and Dockerfiles available locally. Kairn now has a `bench swe-pro-official` command that prepares official raw-sample JSONL, patch JSON, and the exact `swe_bench_pro_eval.py` command. After restarting stale Docker Desktop backend processes, the one-row qutebrowser gold-patch smoke passed with official evaluator accuracy 100%.
 
 Two generated qutebrowser rows were then evaluated. On `qt-warning-filtering`, baseline failed official eval after 40,467 tokens and edited out of scope; after named-source routing was tightened, `kairn_codex_session` passed official eval after 21,802 tokens and edited only the two expected production files. On `hostblock-subdomains`, baseline failed official eval after 47,104 tokens and edited a test file; after all-production scope, selected-test counterpart routing, and dynamic three-file directives, Kairn passed official eval after 43,313 tokens and edited only the three required production files. These rows are quality-rescue evidence, not pass/pass savings, because baseline failed official eval in both cases.
+
+Three non-qutebrowser SWE-Pro rows were then evaluated through the official Docker path. On the NodeBB `.well-known` row, baseline failed official eval after 61,212 tokens while Kairn passed official eval after 78,456 tokens once the harness exported newly created files; this is quality-rescue evidence, not a savings row. On the Ansible FQCN validation row, baseline passed official eval after 48,716 tokens but edited a test file; the first Kairn patch failed official eval because it rewrote validation control flow and let invalid inputs fall through. A general validation-invariant guardrail was added, and the Kairn rerun passed official eval after 53,747 tokens while editing only production files. This is a scope/quality fix, not a token win. On the OpenLibrary Wikidata row, both baseline and Kairn passed official eval; Kairn used 10,048 tokens versus baseline's 21,932 tokens, a clean 54.19% pass/pass savings row.
 
 ## Improvements Made During Campaign
 
@@ -59,6 +62,12 @@ Two generated qutebrowser rows were then evaluated. On `qt-warning-filtering`, b
   - selected failing test paths now boost production source counterparts without making tests edit targets.
   - multi-file directives can expand to three production files when multiple selected tests imply separate source counterparts.
   - named source files are kept ahead of generic utility/helper files.
+- Fixed generated-patch harness accounting:
+  - benchmark changed-file and diff-scope checks now include untracked files, so newly created source files count correctly.
+  - Kairn internal `.kairn/` state is excluded from benchmark changed-file accounting.
+- Added a general validation-invariant guardrail:
+  - validation/name/identifier/keyword tasks now warn agents to preserve existing invalid-input rejection paths and avoid fallthrough into later runtime branches.
+  - this converted the Ansible FQCN Kairn rerun from official fail to official pass.
 
 ## Current Evidence Artifacts
 
@@ -76,6 +85,7 @@ Primary artifacts live under `docs/publication-evidence-20260518/`.
 | `raw/swe-pro-official-eval-v3.json` | SWE-Pro official-eval placeholder/status |
 | `swe-pro-official-gold-smoke/run-report.json` | Official evaluator gold-patch smoke; qutebrowser row passed |
 | `swe-pro-generated-patches/official-generated-summary.json` | Baseline vs Kairn generated patch official-eval summary for two qutebrowser rows |
+| `swe-pro-generated-patches/non-qutebrowser-slice/non-qutebrowser-official-summary.with-fixes.json` | Baseline vs Kairn official summary for NodeBB, Ansible, and OpenLibrary rows |
 
 ## Conservative Claim Matrix
 
@@ -96,7 +106,7 @@ Do not claim yet:
 
 ## Next Evidence Needed
 
-1. Add 3-5 more official SWE-Pro rows outside qutebrowser and count only evaluator-passing pass/pass rows as savings.
+1. Expand the non-qutebrowser SWE-Pro slice beyond the first 3 rows, prioritizing rows where both baseline and Kairn can pass official eval so savings can be measured cleanly.
 2. Keep quality-rescue rows separate from pass/pass savings in the final report.
 3. Run one additional fresh MCP endurance repo if time allows.
 4. Run a small strongest-model confirmation slice after the mini-model campaign is stable.

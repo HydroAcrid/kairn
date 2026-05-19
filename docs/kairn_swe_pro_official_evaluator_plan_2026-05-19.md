@@ -1,6 +1,6 @@
 # Kairn SWE-Pro Official Evaluator Plan 2026-05-19
 
-Status: generated-patch slice completed for two qutebrowser rows.
+Status: generated-patch slice completed for two qutebrowser rows and three non-qutebrowser rows.
 
 ## Goal
 
@@ -77,6 +77,17 @@ Generated patch result:
 - The hostblock miss exposed a general harness issue: the pilot suite limited official production patch files to two. The suite builder now keeps all production source patch files in scoring/scope metadata while still excluding golden paths from the agent prompt.
 - After all-production scope, selected-test source-counterpart routing, and dynamic three-file directives, `kairn_codex_session` passed official eval for `hostblock-subdomains` after 43,313 tokens and changed only `qutebrowser/components/hostblock.py`, `qutebrowser/config/configutils.py`, and `qutebrowser/utils/urlutils.py`.
 - Both generated rows count as quality-rescue evidence only, not pass/pass savings, because baseline failed official eval in both cases.
+
+Non-qutebrowser generated patch result:
+
+- `NodeBB .well-known`: baseline failed official eval after 61,212 tokens. Kairn passed official eval after 78,456 tokens once the harness exported newly created source files. This is quality-rescue evidence, not a savings row.
+- `Ansible FQCN validation`: baseline passed official eval after 48,716 tokens but edited a test file. The first Kairn attempt failed official eval because it rewrote validation control flow and allowed invalid inputs to fall through into a later `src_path` path. A general validation-invariant guardrail was added: validation/name/identifier/keyword tasks now preserve existing invalid-input rejection paths. The rerun passed official eval after 53,747 tokens while editing only production files. This is a scope/quality fix, not a token win.
+- `OpenLibrary Wikidata`: baseline and Kairn both passed official eval. Baseline used 21,932 tokens; Kairn used 10,048 tokens. This is the first clean non-qutebrowser official pass/pass savings row: 54.19%.
+
+Harness fixes from this slice:
+
+- Generated patch export and benchmark changed-file accounting now include untracked files, so new source files are not dropped.
+- Benchmark diff-scope accounting excludes Kairn internal `.kairn/` state so Kairn bookkeeping does not appear as an agent edit.
 
 ## Risks
 

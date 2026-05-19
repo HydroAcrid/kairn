@@ -679,16 +679,28 @@ function depthArgs(depth: number): string[] {
 export function changedFiles(workspacePath: string): string[] {
   if (!workspacePath) return [];
   try {
-    return execFileSync("git", ["-C", workspacePath, "diff", "--name-only"], {
+    const tracked = execFileSync("git", ["-C", workspacePath, "diff", "--name-only"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"]
     })
       .split(/\r?\n/)
       .map((line) => normalizeRelativePath(line.trim()))
-      .filter(Boolean);
+      .filter((file) => file && !isBenchmarkInternalPath(file));
+    const untracked = execFileSync("git", ["-C", workspacePath, "ls-files", "--others", "--exclude-standard"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    })
+      .split(/\r?\n/)
+      .map((line) => normalizeRelativePath(line.trim()))
+      .filter((file) => file && !isBenchmarkInternalPath(file));
+    return [...new Set([...tracked, ...untracked])].sort();
   } catch {
     return [];
   }
+}
+
+function isBenchmarkInternalPath(filePath: string): boolean {
+  return filePath === ".kairn" || filePath.startsWith(".kairn/");
 }
 
 function mentionedExpectedFiles(output: string, expectedFiles: string[]): string[] {
