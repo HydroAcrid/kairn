@@ -40,6 +40,7 @@ export function evaluateSourceInvariants(input: {
 export async function evaluateDiffScopes(input: {
   rootPath: string;
   scopes?: BenchmarkDiffScope[] | undefined;
+  ignoreFiles?: string[] | undefined;
 }): Promise<DiffScopeResult> {
   const scopes = input.scopes ?? [];
   if (scopes.length === 0) {
@@ -50,7 +51,8 @@ export async function evaluateDiffScopes(input: {
     };
   }
 
-  const changedFiles = gitChangedFiles(input.rootPath);
+  const ignored = new Set((input.ignoreFiles ?? []).map(normalizeRelativePath));
+  const changedFiles = gitChangedFiles(input.rootPath).filter((file) => !ignored.has(file));
   const scopeByFile = new Map(scopes.map((scope) => [normalizeRelativePath(scope.file), scope]));
   const violations: string[] = [];
 

@@ -476,26 +476,70 @@ function failureText(row: SweBenchProRow): string {
 function normalizeDatasetRow(input: unknown): SweBenchProRow | undefined {
   const row = isRecord(input) && isRecord(input.row) ? input.row : input;
   if (!isRecord(row)) return undefined;
-  const required = ["repo", "instance_id", "base_commit", "patch", "test_patch", "problem_statement", "repo_language"];
+  const required = ["repo", "instance_id", "base_commit", "patch", "test_patch", "problem_statement"];
   if (!required.every((key) => typeof row[key] === "string")) return undefined;
+  const repo = row.repo as string;
+  const patch = row.patch as string;
+  const testPatch = row.test_patch as string;
   return {
-    repo: row.repo as string,
+    repo,
     instance_id: row.instance_id as string,
     base_commit: row.base_commit as string,
-    patch: row.patch as string,
-    test_patch: row.test_patch as string,
+    patch,
+    test_patch: testPatch,
     problem_statement: row.problem_statement as string,
-    repo_language: row.repo_language as string,
+    repo_language: typeof row.repo_language === "string" && row.repo_language.trim()
+      ? row.repo_language
+      : inferRepoLanguage(repo, patch),
     ...(typeof row.requirements === "string" ? { requirements: row.requirements } : {}),
     ...(typeof row.interface === "string" ? { interface: row.interface } : {}),
-    ...(typeof row.fail_to_pass === "string" ? { fail_to_pass: row.fail_to_pass } : {}),
-    ...(typeof row.pass_to_pass === "string" ? { pass_to_pass: row.pass_to_pass } : {}),
+    ...optionalListString("fail_to_pass", row.fail_to_pass ?? row.FAIL_TO_PASS),
+    ...optionalListString("pass_to_pass", row.pass_to_pass ?? row.PASS_TO_PASS),
     ...(typeof row.issue_specificity === "string" ? { issue_specificity: row.issue_specificity } : {}),
     ...(typeof row.issue_categories === "string" ? { issue_categories: row.issue_categories } : {}),
     ...(typeof row.before_repo_set_cmd === "string" ? { before_repo_set_cmd: row.before_repo_set_cmd } : {}),
-    ...(typeof row.selected_test_files_to_run === "string" ? { selected_test_files_to_run: row.selected_test_files_to_run } : {}),
-    ...(typeof row.dockerhub_tag === "string" ? { dockerhub_tag: row.dockerhub_tag } : {})
+    ...optionalListString("selected_test_files_to_run", row.selected_test_files_to_run),
+    ...(typeof row.dockerhub_tag === "string" ? { dockerhub_tag: row.dockerhub_tag } : {}),
+    ...(typeof row.image_name === "string" && typeof row.dockerhub_tag !== "string" ? { dockerhub_tag: row.image_name } : {})
   };
+}
+
+function optionalListString<T extends "fail_to_pass" | "pass_to_pass" | "selected_test_files_to_run">(
+  key: T,
+  value: unknown
+): Pick<SweBenchProRow, T> | Record<string, never> {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return {};
+    return { [key]: trimmed } as Pick<SweBenchProRow, T>;
+  }
+  if (Array.isArray(value)) {
+    return { [key]: JSON.stringify(value.filter((item): item is string => typeof item === "string")) } as Pick<SweBenchProRow, T>;
+  }
+  return {};
+}
+
+function inferRepoLanguage(repo: string, patch: string): string {
+  const files = diffFiles(patch);
+  const extensionCounts = new Map<string, number>();
+  for (const file of files) {
+    const extension = path.extname(file).toLowerCase();
+    if (!extension) continue;
+    extensionCounts.set(extension, (extensionCounts.get(extension) ?? 0) + 1);
+  }
+  const extension = [...extensionCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  if (extension && [".js", ".jsx", ".mjs", ".cjs"].includes(extension)) return "js";
+  if (extension && [".ts", ".tsx"].includes(extension)) return "ts";
+  if (extension === ".py") return "python";
+  if (extension === ".go") return "go";
+  if (extension === ".java" || extension === ".kt" || extension === ".kts") return "java";
+  if (extension && [".c", ".cc", ".cpp", ".cxx", ".h", ".hpp", ".hh"].includes(extension)) return "cpp";
+
+  const normalizedRepo = repo.toLowerCase();
+  if (normalizedRepo.includes("nodebb") || normalizedRepo.includes("element-web") || normalizedRepo.includes("webclients")) return "js";
+  if (normalizedRepo.includes("ansible") || normalizedRepo.includes("openlibrary")) return "python";
+  if (normalizedRepo.includes("teleport") || normalizedRepo.includes("flipt") || normalizedRepo.includes("vuls") || normalizedRepo.includes("navidrome")) return "go";
+  return "mixed";
 }
 
 function productionPatchFiles(patch: string): string[] {

@@ -518,7 +518,7 @@ export function agentTouchedFiles(input: {
   return [...touched].sort();
 }
 
-function fileHashes(workspacePath: string, files: string[]): Record<string, string> {
+export function fileHashes(workspacePath: string, files: string[]): Record<string, string> {
   const hashes: Record<string, string> = {};
   for (const file of files) {
     hashes[file] = currentFileHash(workspacePath, file);

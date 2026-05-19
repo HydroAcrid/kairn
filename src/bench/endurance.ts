@@ -23,6 +23,7 @@ import {
   agentTouchedFiles,
   changedFiles,
   createBenchmarkWorkspace,
+  fileHashes,
   runShell,
   runShellWithProcessGroupTimeout
 } from "./agent.js";
@@ -178,7 +179,7 @@ async function runEnduranceMode(input: {
       sessionId = (await runtime.startTask(input.suite.task)).session.id;
     }
 
-    const setupStartedAt = Date.now();
+  const setupStartedAt = Date.now();
     const setupResult = input.setupCommand
       ? await runEnduranceShell(enduranceCommandWithPlaceholders(input.setupCommand, {
           prompt: input.suite.task,
@@ -188,6 +189,12 @@ async function runEnduranceMode(input: {
         }), workspace.workspacePath, timeoutMs)
       : undefined;
     const setupElapsedMs = Date.now() - setupStartedAt;
+    const setupChangedFiles = setupResult && setupResult.status === 0 && !setupResult.timedOut
+      ? changedFiles(workspace.workspacePath)
+      : [];
+    const setupChangedFileHashes = setupChangedFiles.length > 0
+      ? fileHashes(workspace.workspacePath, setupChangedFiles)
+      : {};
 
     if (setupResult && (setupResult.status !== 0 || setupResult.timedOut)) {
       return {
@@ -226,6 +233,8 @@ async function runEnduranceMode(input: {
         command: input.command,
         workspacePath: workspace.workspacePath,
         seedMetadata: workspace.metadata,
+        setupChangedFiles,
+        setupChangedFileHashes,
         timeoutMs,
         runtime,
         sessionId
@@ -241,7 +250,8 @@ async function runEnduranceMode(input: {
     });
     const finalDiffScopeResult = await evaluateDiffScopes({
       rootPath: workspace.workspacePath,
-      scopes: input.suite.allowedDiffScopes
+      scopes: input.suite.allowedDiffScopes,
+      ignoreFiles: unchangedSetupFiles(workspace.workspacePath, setupChangedFileHashes)
     });
     const finalVerificationCommandPassed = finalVerification ? finalVerification.status === 0 && !finalVerification.timedOut : true;
     const finalVerificationPassed = finalVerificationCommandPassed && finalSourceInvariantResult.passed && finalDiffScopeResult.passed;
@@ -301,7 +311,8 @@ async function runEnduranceMode(input: {
               setupExitCode: setupResult.status,
               setupTimedOut: setupResult.timedOut,
               setupOutputHash: sha256(setupResult.output),
-              setupOutputTokens: estimateTokens(setupResult.output)
+              setupOutputTokens: estimateTokens(setupResult.output),
+              setupChangedFiles
             }
           : {}),
         ...workspaceMetrics,
@@ -327,6 +338,8 @@ async function runEnduranceTurn(input: {
   command: string;
   workspacePath: string;
   seedMetadata: Record<string, unknown>;
+  setupChangedFiles: string[];
+  setupChangedFileHashes: Record<string, string>;
   timeoutMs: number;
   runtime?: KairnRuntime | undefined;
   sessionId?: string | undefined;
@@ -454,8 +467,11 @@ async function runEnduranceTurn(input: {
   const usage = parseCodexUsageFooter(output);
   const expectedMentions = mentionedExpectedFiles(output, input.turn.expectedFiles);
   const changed = changedFiles(input.workspacePath);
-  const seedPatchFiles = stringList(input.seedMetadata.seedPatchFiles);
-  const seedPatchFileHashes = stringRecord(input.seedMetadata.seedPatchFileHashes);
+  const seedPatchFiles = uniquePaths([...stringList(input.seedMetadata.seedPatchFiles), ...input.setupChangedFiles]);
+  const seedPatchFileHashes = {
+    ...stringRecord(input.seedMetadata.seedPatchFileHashes),
+    ...input.setupChangedFileHashes
+  };
   const touched = agentTouchedFiles({
     workspacePath: input.workspacePath,
     changedFiles: changed,
@@ -474,7 +490,8 @@ async function runEnduranceTurn(input: {
   });
   const diffScopeResult = await evaluateDiffScopes({
     rootPath: input.workspacePath,
-    scopes: input.turn.allowedDiffScopes
+    scopes: input.turn.allowedDiffScopes,
+    ignoreFiles: unchangedSetupFiles(input.workspacePath, input.setupChangedFileHashes)
   });
   const requiredTouchedSatisfied = missingRequiredTouchedFiles.length === 0;
   const qualityGatePassed =
@@ -1342,6 +1359,13 @@ function sumDefined(values: Array<number | undefined>): number {
 
 function uniquePaths(values: string[]): string[] {
   return [...new Set(values.map(normalizeRelativePath).filter(Boolean))];
+}
+
+function unchangedSetupFiles(workspacePath: string, setupChangedFileHashes: Record<string, string>): string[] {
+  const files = Object.keys(setupChangedFileHashes);
+  if (files.length === 0) return [];
+  const current = fileHashes(workspacePath, files);
+  return files.filter((file) => current[file] === setupChangedFileHashes[file]);
 }
 
 function uniqueStrings(values: string[]): string[] {

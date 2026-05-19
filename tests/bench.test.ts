@@ -321,6 +321,51 @@ describe("benchmark suite and scoring", () => {
     }
   });
 
+  it("normalizes SWE-Pro official helper rows with inferred language and uppercase test lists", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-swe-pro-helper-row-"));
+    try {
+      const rowsPath = path.join(root, "rows.jsonl");
+      fs.writeFileSync(
+        rowsPath,
+        `${JSON.stringify({
+          repo: "future-architect/vuls",
+          instance_id: "instance_future-architect__vuls-demo",
+          base_commit: "0123456789012345678901234567890123456789",
+          patch: [
+            "diff --git a/contrib/trivy/pkg/converter.go b/contrib/trivy/pkg/converter.go",
+            "--- a/contrib/trivy/pkg/converter.go",
+            "+++ b/contrib/trivy/pkg/converter.go",
+            "@@ -1 +1 @@",
+            "-return nil",
+            "+return converted"
+          ].join("\n"),
+          test_patch: "",
+          problem_statement: "Fix duplicate conversion records.",
+          FAIL_TO_PASS: ["TestParse"],
+          PASS_TO_PASS: ["TestExisting"],
+          before_repo_set_cmd: "git reset --hard 0123456789012345678901234567890123456789",
+          selected_test_files_to_run: ["TestParse"],
+          image_name: "example/image:tag"
+        })}\n`
+      );
+
+      const rows = loadSweBenchProRows(rowsPath);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.repo_language).toBe("go");
+      expect(rows[0]?.fail_to_pass).toBe("[\"TestParse\"]");
+      expect(rows[0]?.pass_to_pass).toBe("[\"TestExisting\"]");
+      expect(rows[0]?.selected_test_files_to_run).toBe("[\"TestParse\"]");
+      expect(rows[0]?.dockerhub_tag).toBe("example/image:tag");
+
+      const pilot = buildSweBenchProPilot({ rows, limit: 1 });
+      expect(pilot.summary.languages.go).toBe(1);
+      expect(pilot.suite.cases[0]?.expectedFiles).toEqual(["contrib/trivy/pkg/converter.go"]);
+      expect(pilot.suite.cases[0]?.agentPrompt).toContain("Selected tests from SWE-Bench Pro metadata: TestParse");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("plans SWE-Pro official evaluator evidence without counting unverified savings", () => {
       const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-swe-pro-official-"));
     try {
