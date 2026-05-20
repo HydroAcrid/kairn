@@ -649,7 +649,10 @@ export function taskHasProductionOnlyEditIntent(task: string): boolean {
   return (
     /\bproduction source only\b/.test(normalized) ||
     /\bfix (?:the )?production (?:source|header|file|module|code)\b/.test(normalized) ||
+    /\bfix\b.{0,80}\bin production (?:source|header|file|module|code)\b/.test(normalized) ||
+    /\b(?:patch|change|update)\b.{0,80}\bproduction (?:source|header|file|module|code)\b/.test(normalized) ||
     /\bsmallest production (?:source|header|file|module|code) fix\b/.test(normalized) ||
+    (/\bproduction (?:source|header|file|module|code)\b/.test(normalized) && /\bdo not (?:edit|touch|modify|change) unrelated files\b/.test(normalized)) ||
     /\bdo not edit tests\b/.test(normalized) ||
     /\btests are not touched\b/.test(normalized)
   );
@@ -660,6 +663,8 @@ export function hasExplicitMultiFileScopeRequest(task: string): boolean {
   return (
     /\b(multiple|several|both|two|2)\s+(production\s+)?(files|sources|modules|components)\b/.test(normalized) ||
     /\b(update|fix|change)\s+(both|all)\b/.test(normalized) ||
+    /\b(move|moved|relocate|relocated|relocation)\b.{0,120}\b(from|to|between)\b/.test(normalized) ||
+    /\bfrom\b.{0,80}\bto\b/.test(normalized) ||
     /\b(public api|type declaration|interface|caller|callers|adapter|companion|coordinated)\b/.test(normalized)
   );
 }

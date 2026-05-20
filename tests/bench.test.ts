@@ -3004,7 +3004,7 @@ describe("benchmark suite and scoring", () => {
 
   it("turns production-source-only suppression into a tiny edit-scope guardrail", () => {
     const decision = applyContextGovernor({
-      task: "Fix the production source and do not edit tests or unrelated files.",
+      task: "Selected tests from SWE-Bench Pro metadata: TestParse\n\nFix the issue in production source. Do not edit unrelated files. Avoid broad scans once the relevant source surface is known.",
       profile: "generic",
       context: {
         mode: "snippets",

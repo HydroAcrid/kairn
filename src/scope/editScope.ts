@@ -99,7 +99,7 @@ export function editScopeBlock(
   return [
     heading,
     `- Initial edit scope: ${scope.initialEditFiles.length > 0 ? scope.initialEditFiles.join(", ") : "none yet; identify a concrete source file first"}`,
-    scope.initialEditFiles.length > 0 ? "- Do not edit other production files unless an allowed expansion trigger occurs." : "",
+    scope.initialEditFiles.length > 0 ? "- Edit only the initial scope first; do not create or edit other production, test, docs, generated, or sibling files unless an allowed expansion trigger occurs." : "",
     includeReadOnly && scope.readOnlyFiles.length > 0 ? `- Read-only verification context: ${scope.readOnlyFiles.join(", ")}` : "",
     `- Allowed expansion: ${scope.allowedExpansionTriggers.join("; ")}`,
     `- Avoid editing: ${scope.forbiddenEditPatterns.join(", ")}`,

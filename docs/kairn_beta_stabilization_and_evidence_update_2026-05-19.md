@@ -63,6 +63,38 @@ Interpretation:
 - It is not clean SWE-Pro savings evidence yet because savings require both official evaluator pass and local scope discipline pass.
 - The next SWE-Pro step is scope-discipline recheck on official pass/pass rows plus additional one-file rows with valid Docker images.
 
+### 2026-05-20 Scope Recheck
+
+Artifacts:
+
+- `docs/publication-evidence-20260520/swe-pro-scope-recheck/scope-recheck-summary.json`
+- `docs/publication-evidence-20260520/swe-pro-scope-recheck/proof.json`
+- `docs/publication-evidence-20260520/swe-pro-scope-recheck/kairn-scope-recheck-patches-official-ids.json`
+
+General fix made:
+
+- Broadened production-source-only detection from only `fix the production source` to benchmark/user phrasing such as `fix the issue in production source` plus `do not edit unrelated files`.
+- Strengthened edit-scope wording so the model is told to edit only the initial source scope first, not tests, docs, generated files, or sibling files.
+- Preserved legitimate multi-file relocation behavior so true cross-file tasks are not forced into one-file scope.
+
+Scope recheck result:
+
+| Result | Count |
+| --- | ---: |
+| Kairn local quality/scope passes | 3/3 |
+| Kairn official evaluator passes | 3/3 |
+| Clean active pass/pass savings rows | 0 |
+| Scope-rescue official-pass rows | 1 |
+| Quality-rescue official-pass rows | 1 |
+| Clean pass/pass neutral/passive rows | 1 |
+
+Interpretation:
+
+- This closes the scope-discipline failure found in the 2026-05-19 SWE-Pro expansion.
+- It is stronger official credibility evidence: Kairn now produced three one-file production patches, all accepted by the official evaluator.
+- It is still not a clean SWE-Pro savings headline. One pass/pass row was passive/neutral, one row is scope rescue, and one row is quality rescue.
+- The next SWE-Pro evidence step is fresh one-file rows where both baseline and Kairn pass official eval and local scope, so clean savings can be measured without rescue caveats.
+
 ## MCP Endurance
 
 Added:

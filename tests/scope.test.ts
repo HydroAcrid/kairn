@@ -54,7 +54,27 @@ describe("edit scope controller", () => {
     expect(scope.initialEditFiles).toEqual(["src/client.ts"]);
     expect(scope.readOnlyFiles).toEqual(expect.arrayContaining(["src/shared/utils.ts", "src/node/plugins/importAnalysis.ts"]));
     expect(scope.scopeSource).toBe("source_rescue");
-    expect(editScopeBlock(scope).join("\n")).toContain("Do not edit other production files unless an allowed expansion trigger occurs.");
+    expect(editScopeBlock(scope).join("\n")).toContain("Edit only the initial scope first");
+  });
+
+  it("treats benchmark-style production-source instructions as one-file scope", () => {
+    const scope = decideEditScope({
+      task: "Selected tests from SWE-Bench Pro metadata: TestParse\n\nFix the issue in production source. Do not edit unrelated files. Avoid broad scans once the relevant source surface is known.",
+      candidateFiles: ["contrib/trivy/pkg/converter.go", "contrib/trivy/pkg/converter_test.go", "scanner/trivy/jar/parse.go"],
+      contextDecision: decision({
+        primaryFile: "contrib/trivy/pkg/converter.go",
+        sourceRescue: true,
+        canonicalSourceHit: true,
+        multiSurfaceSignal: true,
+        companionSpecific: true,
+        recommendedDelivery: "multi_file_directive"
+      })
+    });
+
+    expect(scope.initialEditFiles).toEqual(["contrib/trivy/pkg/converter.go"]);
+    expect(scope.readOnlyFiles).toContain("contrib/trivy/pkg/converter_test.go");
+    expect(scope.readOnlyFiles).toContain("scanner/trivy/jar/parse.go");
+    expect(scope.forbiddenEditPatterns).toContain("tests/");
   });
 
   it("treats production header fixes as one-file source scope", () => {

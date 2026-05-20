@@ -619,6 +619,8 @@ function benchmarkCaseRequiresProductionOnly(benchmarkCase: BenchmarkCase): bool
   if (/\bdo not (?:edit|touch|modify|change)\s+(?:tests?|specs?)\b/.test(text)) return true;
   if (/\bproduction source only\b/.test(text)) return true;
   if (/\bfix (?:the )?production (?:source|header|file|module|code)\b/.test(text) && /\bdo not edit unrelated files\b/.test(text)) return true;
+  if (/\bfix\b.{0,80}\bin production (?:source|header|file|module|code)\b/.test(text) && /\bdo not (?:edit|touch|modify|change) unrelated files\b/.test(text)) return true;
+  if (/\bproduction (?:source|header|file|module|code)\b/.test(text) && /\bdo not (?:edit|touch|modify|change) unrelated files\b/.test(text)) return true;
   return false;
 }
 

@@ -53,9 +53,16 @@ Current 2026-05-19 expansion:
 - Clean pass/pass savings rows: 0, because the two pass/pass rows had local scope violations.
 - Quality rescue rows: 1.
 
+2026-05-20 scope recheck:
+
+- Added a general production-source-only scope fix for prompts that say `fix the issue in production source` and `do not edit unrelated files`.
+- Kairn reran the tractable three-row slice and produced one-file production patches for all rows.
+- Official evaluator result: Kairn passed 3/3.
+- Local scope result: Kairn passed 3/3.
+- Clean active pass/pass savings rows remain 0; this is official pass-rate, quality-rescue, and scope-rescue evidence rather than a savings headline.
+
 Next SWE-Pro step:
 
-- Add a scope-discipline recheck on the two official pass/pass rows before drawing savings conclusions.
 - Prefer new rows with one production edit file, valid Docker images, and non-procedural problem statements.
 - Keep SWE-Pro as credibility evidence, not the only product proof.
 
