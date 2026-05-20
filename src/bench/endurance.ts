@@ -275,6 +275,11 @@ async function runEnduranceMode(input: {
     const ledgerEvents = runtime && sessionId ? runtime.getSessionLedger(sessionId) : [];
     const ledger = runtime && sessionId ? runtime.summarizeSessionLedger(sessionId) : undefined;
     const workspaceMetrics = collectEnduranceWorkspaceMetrics(workspace.workspacePath, runtime);
+    const mcpGuidedSourceFiles = mcpGuidedSourceFilesFromTurns(turnResults);
+    const mcpAttributedSourceFiles = uniquePaths([...workspaceMetrics.mcpFilesReturned, ...mcpGuidedSourceFiles]);
+    const mcpReturnedUsefulFileCount = usefulReturnedFileCount(workspaceMetrics.mcpFilesReturned, turnResults);
+    const mcpGuidedUsefulFileCount = usefulReturnedFileCount(mcpGuidedSourceFiles, turnResults);
+    const mcpAttributedUsefulFileCount = usefulReturnedFileCount(mcpAttributedSourceFiles, turnResults);
     const assistanceActions = buildAssistanceActions({
       mode: input.mode,
       turns: turnResults,
@@ -316,13 +321,17 @@ async function runEnduranceMode(input: {
             }
           : {}),
         ...workspaceMetrics,
-        mcpReturnedUsefulFileCount: usefulReturnedFileCount(workspaceMetrics.mcpFilesReturned, turnResults),
+        mcpGuidedSourceFiles,
+        mcpAttributedSourceFiles,
+        mcpReturnedUsefulFileCount,
+        mcpGuidedUsefulFileCount,
+        mcpAttributedUsefulFileCount,
         mcpObservedTokensPerCall: workspaceMetrics.mcpToolCalls > 0 && turnResults.some((turn) => turn.observedCodexTokens !== undefined)
           ? sumDefined(turnResults.map((turn) => turn.observedCodexTokens)) / workspaceMetrics.mcpToolCalls
           : undefined,
         mcpObservedTokensPerUsefulFile:
-          usefulReturnedFileCount(workspaceMetrics.mcpFilesReturned, turnResults) > 0 && turnResults.some((turn) => turn.observedCodexTokens !== undefined)
-            ? sumDefined(turnResults.map((turn) => turn.observedCodexTokens)) / usefulReturnedFileCount(workspaceMetrics.mcpFilesReturned, turnResults)
+          mcpAttributedUsefulFileCount > 0 && turnResults.some((turn) => turn.observedCodexTokens !== undefined)
+            ? sumDefined(turnResults.map((turn) => turn.observedCodexTokens)) / mcpAttributedUsefulFileCount
             : undefined
       } as Record<string, unknown>
     };
@@ -864,6 +873,14 @@ function usefulReturnedFileCount(files: string[], turns: BenchmarkEnduranceTurnR
   return uniquePaths(files).filter((file) => usefulFiles.has(file)).length;
 }
 
+function mcpGuidedSourceFilesFromTurns(turns: BenchmarkEnduranceTurnResult[]): string[] {
+  return uniquePaths(
+    turns
+      .map((turn) => turn.metadata.mcpKnownSource)
+      .filter((value): value is string => typeof value === "string" && value.length > 0)
+  );
+}
+
 function isLikelyBenchmarkSource(filePath: string | undefined): filePath is string {
   if (!filePath) return false;
   if (!/\.(?:[cm]?[jt]sx?|py|java|go|rs|c|cc|cpp|cxx|h|hh|hpp|hxx)$/i.test(filePath)) return false;
@@ -1119,6 +1136,7 @@ function buildEnduranceRepeatAggregate(runs: BenchmarkEnduranceReport[]): Benchm
       mcpCalls: modeReports.reduce((total, report) => total + report.assistanceActions.mcpCalls, 0),
       mcpReturnedFileCount: modeReports.reduce((total, report) => total + numberMetadata(report.metadata?.mcpReturnedFileCount), 0),
       mcpReturnedUsefulFileCount: modeReports.reduce((total, report) => total + numberMetadata(report.metadata?.mcpReturnedUsefulFileCount), 0),
+      mcpAttributedUsefulFileCount: modeReports.reduce((total, report) => total + numberMetadata(report.metadata?.mcpAttributedUsefulFileCount), 0),
       repeatedFilesAvoided,
       repeatedSnippetsAvoided,
       scopeViolations,
@@ -1245,7 +1263,10 @@ function enduranceUsefulAssistanceEligible(report: BenchmarkEnduranceModeReport,
   const usefulMcpFiles = typeof report.metadata?.mcpReturnedUsefulFileCount === "number"
     ? report.metadata.mcpReturnedUsefulFileCount
     : 0;
-  return usefulMcpFiles > 0;
+  const usefulMcpAttributedFiles = typeof report.metadata?.mcpAttributedUsefulFileCount === "number"
+    ? report.metadata.mcpAttributedUsefulFileCount
+    : usefulMcpFiles;
+  return usefulMcpFiles > 0 || usefulMcpAttributedFiles > 0;
 }
 
 function enduranceNegativeEvidenceReason(input: {
@@ -1256,7 +1277,7 @@ function enduranceNegativeEvidenceReason(input: {
   if (input.savedTokens === undefined || input.savedTokens <= 0) return undefined;
   if (!input.report.qualityGatePassed) return "Token reduction is invalid because the endurance quality gate failed.";
   if (input.report.assistanceStatus === "active" && !input.assistanceEligible) {
-    return "Token reduction is invalid because active MCP did not return an expected or later-used source file.";
+    return "Token reduction is invalid because active MCP did not return or guide an expected or later-used source file.";
   }
   if (!input.assistanceEligible) return "Token reduction is passive evidence because Kairn emitted no useful context, MCP call, or failure context.";
   return undefined;

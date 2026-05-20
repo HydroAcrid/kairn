@@ -1,6 +1,5 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
-import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -46,7 +45,6 @@ import { createFixtureRepo } from "./helpers.js";
 import type { FileRecord, HybridScoredResult, SemanticChunkRecord } from "../src/types.js";
 
 const CLI = ["tsx", "src/cli.ts"];
-const requireFromTest = createRequire(import.meta.url);
 
 describe("benchmark suite and scoring", () => {
   it("routes explicit debug/regression prompts to the failure-debug prime profile", () => {
@@ -1818,15 +1816,15 @@ describe("benchmark suite and scoring", () => {
         ]
       })
     );
-    const sqliteModule = requireFromTest.resolve("better-sqlite3");
     const baselineCommand = "node -e \"console.log('src/user.ts'); console.log('Token usage: total=1000 input=900 output=100')\"";
-    const insertMetricSql = "insert into metrics_events (session_id, root_path, event_kind, event_name, source, response_mode, baseline_tokens, output_tokens, saved_tokens, files_json, metadata_json, created_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    const tsxCommand = JSON.stringify(path.resolve("node_modules/.bin/tsx"));
+    const runtimeModule = path.resolve("src/runtime/KairnRuntime.ts").replaceAll("'", "\\'");
     const realMcpCommand = [
-      "node -e \"",
-      `const Database=require(${JSON.stringify(sqliteModule)});`,
-      "const db=new Database('.kairn/kairn.sqlite');",
-      `db.prepare(${JSON.stringify(insertMetricSql)}).run('task_mcp', process.cwd(), 'mcp_tool_call', 'kairn_prepare_task', 'mcp', null, 100, 25, 75, JSON.stringify(['src/wrong.ts']), JSON.stringify({ toolName: 'kairn_prepare_task' }), new Date().toISOString());`,
-      "db.close();",
+      `${tsxCommand} -e \"`,
+      `import { KairnRuntime } from '${runtimeModule}';`,
+      "const rt = new KairnRuntime(process.cwd());",
+      "rt.recordMcpToolCall({ toolName: 'kairn_prepare_task', sessionId: {session}, result: { sessionId: {session}, files: ['src/wrong.ts'] } });",
+      "rt.close();",
       "console.log('src/user.ts');",
       "console.log('Token usage: total=100 input=80 output=20');",
       "\""
@@ -1847,6 +1845,137 @@ describe("benchmark suite and scoring", () => {
     });
     expect(report.deltas.real_mcp_first?.validSavings).toBeUndefined();
     expect(report.deltas.real_mcp_first?.negativeEvidenceReason).toBeTruthy();
+  });
+
+  it("counts MCP savings as valid when compact attribution names the expected source file", async () => {
+    const root = createFixtureRepo();
+    const suitePath = path.join(root, "endurance-mcp-attribution-suite.json");
+    fs.writeFileSync(
+      suitePath,
+      JSON.stringify({
+        id: "fixture-endurance-mcp-attribution",
+        name: "Fixture Endurance MCP Attribution",
+        task: "Keep src/user.ts context focused.",
+        seed: {
+          repoUrl: root,
+          ref: "HEAD",
+          cloneDepth: 1
+        },
+        turns: [
+          {
+            id: "diagnose",
+            task: "Find src/user.ts behavior.",
+            agentPrompt: "Find src/user.ts behavior.",
+            expectedFiles: ["src/user.ts"],
+            requiredTouchedFiles: [],
+            excludedFiles: [],
+            budget: 500
+          }
+        ]
+      })
+    );
+    const baselineCommand = "node -e \"console.log('src/user.ts'); console.log('Token usage: total=1000 input=900 output=100')\"";
+    const tsxCommand = JSON.stringify(path.resolve("node_modules/.bin/tsx"));
+    const runtimeModule = path.resolve("src/runtime/KairnRuntime.ts").replaceAll("'", "\\'");
+    const realMcpCommand = [
+      `${tsxCommand} -e \"`,
+      `import { KairnRuntime } from '${runtimeModule}';`,
+      "const rt = new KairnRuntime(process.cwd());",
+      "rt.recordMcpToolCall({ toolName: 'kairn_prepare_task', sessionId: {session}, result: { sessionId: {session}, contextSuppressed: true, attributedFiles: ['src/user.ts'] } });",
+      "rt.close();",
+      "console.log('src/user.ts');",
+      "console.log('Token usage: total=100 input=80 output=20');",
+      "\""
+    ].join("");
+
+    const report = await runBenchmarkEndurance({
+      rootPath: root,
+      suitePath,
+      baselineCommand,
+      realMcpFirstCommand: realMcpCommand,
+      turnTimeoutMs: 30000
+    });
+
+    expect(report.reports.find((item) => item.mode === "real_mcp_first")?.metadata?.mcpReturnedUsefulFileCount).toBe(1);
+    expect(report.deltas.real_mcp_first).toMatchObject({
+      savedTokens: 900,
+      assistanceEligible: true,
+      validSavings: 900
+    });
+    expect(report.deltas.real_mcp_first?.invalidSavings).toBeUndefined();
+  });
+
+  it("counts MCP savings as valid when source-only session guidance names the expected source file", async () => {
+    const root = createFixtureRepo();
+    const suitePath = path.join(root, "endurance-mcp-guided-source-suite.json");
+    fs.writeFileSync(
+      suitePath,
+      JSON.stringify({
+        id: "fixture-endurance-mcp-guided-source",
+        name: "Fixture Endurance MCP Guided Source",
+        task: "Keep src/user.ts context focused across turns.",
+        seed: {
+          repoUrl: root,
+          ref: "HEAD",
+          cloneDepth: 1
+        },
+        turns: [
+          {
+            id: "diagnose",
+            task: "Find src/user.ts behavior.",
+            agentPrompt: "Find src/user.ts behavior.",
+            expectedFiles: ["src/user.ts"],
+            requiredTouchedFiles: [],
+            excludedFiles: [],
+            budget: 500
+          },
+          {
+            id: "cleanup",
+            task: "Summarize the known source without rereading unrelated files.",
+            agentPrompt: "Summarize the known source without rereading unrelated files.",
+            expectedFiles: ["src/user.ts"],
+            requiredTouchedFiles: [],
+            excludedFiles: [],
+            budget: 500
+          }
+        ]
+      })
+    );
+    const baselineCommand = "node -e \"console.log('src/user.ts'); console.log('Token usage: total=1000 input=900 output=100')\"";
+    const tsxCommand = JSON.stringify(path.resolve("node_modules/.bin/tsx"));
+    const runtimeModule = path.resolve("src/runtime/KairnRuntime.ts").replaceAll("'", "\\'");
+    const realMcpCommand = [
+      `${tsxCommand} -e \"`,
+      `import { KairnRuntime } from '${runtimeModule}';`,
+      "const turn = {turn};",
+      "if (turn === 'diagnose') {",
+      "const rt = new KairnRuntime(process.cwd());",
+      "rt.recordMcpToolCall({ toolName: 'kairn_prepare_task', sessionId: {session}, result: { sessionId: {session}, files: [] } });",
+      "rt.close();",
+      "}",
+      "console.log('src/user.ts');",
+      "console.log('Token usage: total=100 input=80 output=20');",
+      "\""
+    ].join("");
+
+    const report = await runBenchmarkEndurance({
+      rootPath: root,
+      suitePath,
+      baselineCommand,
+      realMcpFirstCommand: realMcpCommand,
+      turnTimeoutMs: 30000
+    });
+
+    const realMcp = report.reports.find((item) => item.mode === "real_mcp_first");
+    expect(realMcp?.metadata?.mcpReturnedUsefulFileCount).toBe(0);
+    expect(realMcp?.metadata?.mcpGuidedUsefulFileCount).toBe(1);
+    expect(realMcp?.metadata?.mcpAttributedUsefulFileCount).toBe(1);
+    expect(report.deltas.real_mcp_first).toMatchObject({
+      savedTokens: 1800,
+      assistanceEligible: true,
+      validSavings: 1800
+    });
+    expect(report.deltas.real_mcp_first?.invalidSavings).toBeUndefined();
   });
 
   it("aggregates repeated endurance runs by median savings and classifications", async () => {

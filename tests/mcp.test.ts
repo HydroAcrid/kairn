@@ -21,6 +21,15 @@ describe("MCP server", () => {
 
     expect(
       filesFromMcpValue({
+        contextSuppressed: true,
+        files: [],
+        attributedFiles: ["lib/core/Axios.js"],
+        failureFiles: ["tests/browser/interceptors.browser.test.js"]
+      })
+    ).toEqual(["lib/core/Axios.js"]);
+
+    expect(
+      filesFromMcpValue({
         files: ["lib/core/Axios.js"],
         changedFiles: ["AGENTS.md"]
       })
@@ -270,6 +279,7 @@ describe("MCP server", () => {
       stopCondition?: string | null;
       startFiles: string[];
       files: string[];
+      attributedFiles?: string[];
       nextToolCalls: unknown[];
       primaryReason: string;
       editScopeDirective?: string;
@@ -278,6 +288,7 @@ describe("MCP server", () => {
     expect(repeatedPrepareParsed.stopCondition).toBe("source_evidence_already_shown");
     expect(repeatedPrepareParsed.startFiles).toEqual([]);
     expect(repeatedPrepareParsed.files).toEqual([]);
+    expect(repeatedPrepareParsed.attributedFiles).toEqual(["include/fmt/base.h"]);
     expect(repeatedPrepareParsed.nextToolCalls).toEqual([]);
     expect(repeatedPrepareParsed.primaryReason).toContain("include/fmt/base.h");
     expect(repeatedPrepareParsed.primaryReason).toContain("out-of-scope");
@@ -367,6 +378,7 @@ describe("MCP server", () => {
       stopCondition?: string | null;
       startFiles: string[];
       files: string[];
+      attributedFiles?: string[];
       nextToolCalls: unknown[];
       primaryReason: string;
     };
@@ -375,6 +387,7 @@ describe("MCP server", () => {
     expect(parsed.stopCondition).toBe("cheap_one_shot_guardrail");
     expect(parsed.startFiles).toEqual([]);
     expect(parsed.files).toEqual([]);
+    expect(parsed.attributedFiles).toEqual(["src/flask/app.py"]);
     expect(parsed.nextToolCalls).toEqual([]);
     expect(parsed.primaryReason).toContain("ultra-minimal guardrail");
     expect(parsed.primaryReason).toContain("src/flask/app.py");

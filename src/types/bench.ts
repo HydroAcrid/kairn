@@ -248,6 +248,7 @@ export type BenchmarkEnduranceRepeatModeAggregate = {
   mcpCalls: number;
   mcpReturnedFileCount: number;
   mcpReturnedUsefulFileCount: number;
+  mcpAttributedUsefulFileCount?: number;
   repeatedFilesAvoided: number;
   repeatedSnippetsAvoided: number;
   scopeViolations: number;

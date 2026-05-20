@@ -5,6 +5,7 @@ import type {
   WatchEventSource
 } from "../../types.js";
 import {
+  attributedFilesFromMcpValue,
   filesFromMcpValue,
   responseModeFromMcpValue,
   sessionIdFromMcpValue,
@@ -110,6 +111,7 @@ export class MetricsService {
     const resultFiles = uniquePaths(filesFromMcpValue(input.result));
     const inputFiles = uniquePaths(filesFromMcpValue(input.input));
     const files = resultFiles;
+    const attributedFiles = attributedFilesFromMcpValue(input.result);
     const returnedSourceFiles = files.filter(isLikelySourceFileForMetrics);
     const returnedNoiseFiles = files.filter(isLikelyNoiseFileForMetrics);
     const returnedTestFiles = files.filter(isLikelyTestFileForMetrics);
@@ -130,6 +132,7 @@ export class MetricsService {
       metadata: {
         toolName: input.toolName,
         resultFileCount: files.length,
+        attributedFileCount: attributedFiles.length,
         inputFileCount: inputFiles.length,
         resultSourceFileCount: returnedSourceFiles.length,
         resultNoiseFileCount: returnedNoiseFiles.length,

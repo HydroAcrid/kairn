@@ -87,12 +87,13 @@ Next endurance step:
 - Real MCP-first median valid savings: 52.6%, with 3/3 valid savings runs, 4 actual MCP calls, 3 useful returned files, and 0 scope violations.
 - The run produced a general active-source continuation fix: known session source now beats fresh one-file candidates during later turns.
 - Completed a second fresh repeat-3 pass/pass slice outside Python on `npm/node-semver`.
-- SemVer result: all modes passed 3/3; Kairn Codex session median savings was 16.4% with 2/3 valid savings runs; real MCP-first showed 48.6% observed savings but is treated as supporting evidence because useful returned files were not captured.
+- SemVer result: all modes passed 3/3; Kairn Codex session median savings was 16.4% with 2/3 valid savings runs; real MCP-first showed 48.6% observed savings but is treated as supporting evidence in that artifact because useful returned files were not captured.
+- Completed a general MCP attribution fix after the SemVer run: compact guardrail/known-source MCP responses now expose explicit `attributedFiles`, so future runs can credit useful source-file guidance without scraping text or counting noisy suppressed failure metadata.
 
 Next endurance step:
 
 - Keep MCP proof fields visible: actual MCP calls, useful returned files, suppressed repeated context, scope violations, and after-turn-1 behavior.
-- Improve MCP accounting so rows with actual tool calls and known-source continuation do not lose useful-file attribution when the compact tool result is not captured in stdout.
+- Rerun one compact-guardrail MCP slice if we want to convert the SemVer-style observed savings into active-valid MCP savings under the new attribution accounting.
 
 ## Evidence Roadmap
 

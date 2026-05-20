@@ -16,11 +16,22 @@ export function sessionIdFromMcpValue(value: unknown): string | undefined {
 export function filesFromMcpValue(value: unknown): string[] {
   if (!value || typeof value !== "object") return [];
   const record = value as Record<string, unknown>;
-  if (record.contextSuppressed === true) return [];
-  const fields = [record.files, record.related, record.suggestedNextContext, record.failureFiles, record.testFiles];
+  const attributedFiles = attributedFilesFromMcpValue(value);
+  if (record.contextSuppressed === true) {
+    return attributedFiles;
+  }
+  const fields = [record.files, record.related, record.suggestedNextContext, record.failureFiles, record.testFiles, attributedFiles];
   return uniquePaths(
     fields.flatMap((field) => Array.isArray(field) ? field.filter((item): item is string => typeof item === "string") : [])
   );
+}
+
+export function attributedFilesFromMcpValue(value: unknown): string[] {
+  if (!value || typeof value !== "object") return [];
+  const attributedFiles = (value as Record<string, unknown>).attributedFiles;
+  return Array.isArray(attributedFiles)
+    ? uniquePaths(attributedFiles.filter((item): item is string => typeof item === "string"))
+    : [];
 }
 
 export function tokenEstimateFromMcpValue(value: unknown): number {

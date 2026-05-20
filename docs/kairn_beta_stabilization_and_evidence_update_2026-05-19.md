@@ -165,8 +165,30 @@ Interpretation:
 
 - This is a second clean pass/pass endurance row outside Python.
 - Kairn Codex session clears the 15% median savings threshold, though with one over-assist repeat.
-- Real MCP-first had large observed token reductions, but this SemVer row did not capture useful returned files from the MCP tool calls, so it is supporting/passive evidence rather than a valid active MCP savings row.
+- Real MCP-first had large observed token reductions, but this SemVer row did not capture useful returned files from the MCP tool calls, so it is supporting/passive evidence rather than a valid active MCP savings row in this artifact.
 - Click remains the cleaner MCP proof because it recorded useful returned files; SemVer strengthens the broader pass/pass endurance pattern.
+
+Follow-up fix:
+
+- Added explicit `attributedFiles` to compact MCP guardrail and known-source stop responses.
+- Metrics now treats those attributed files as MCP-returned files while still ignoring noisy suppressed failure/test metadata.
+- Future compact-guardrail MCP runs can be classified as active-valid when the attributed file overlaps the expected/later-used source file.
+
+Verification canary:
+
+- artifact before fix: `docs/publication-evidence-20260520/endurance-node-semver/repeat1-after-mcp-attribution.json`
+- artifact after fix: `docs/publication-evidence-20260520/endurance-node-semver/repeat2-after-mcp-guided-attribution.json`
+- baseline passed quality at `75,383` observed tokens,
+- real MCP-first passed quality at `30,738` observed tokens,
+- Kairn recorded `functions/satisfies.js` as a guided/attributed useful source,
+- classification changed from invalid savings to `valid_assist`,
+- valid savings: `44,645` tokens, `59.2%`,
+- scope violations: `0`.
+
+Interpretation:
+
+- SemVer-style MCP runs no longer lose active-valid savings credit just because the useful guidance is a compact source-only stop/continue directive instead of a full file list.
+- The report now keeps actual returned files separate from guided/attributed source files, so this does not inflate MCP tool-return counts.
 
 ## General Fixes Made
 
