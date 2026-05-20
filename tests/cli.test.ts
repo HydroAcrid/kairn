@@ -223,6 +223,26 @@ describe("CLI", () => {
     expect(parsedBetaReport.verdict).toBeTruthy();
   }, 30_000);
 
+  it("accepts whitespace-separated setup wizard targets from PowerShell-style argument lists", () => {
+    const root = createFixtureRepo();
+    const setupWizardWhitespaceTargets = execFileSync(
+      CLI[0]!,
+      [...CLI.slice(1), "setup", "wizard", "--root", root, "--targets", "vscode generic", "--yes", "--no-index", "--json"],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8"
+      }
+    );
+    const parsed = JSON.parse(setupWizardWhitespaceTargets) as {
+      targets: string[];
+      integrations: Array<{ kind: string; target?: string; configPath?: string }>;
+    };
+
+    expect(parsed.targets).toEqual(["vscode", "generic"]);
+    expect(parsed.integrations.some((integration) => integration.target === "vscode" && integration.configPath?.endsWith(".vscode/mcp.json"))).toBe(true);
+    expect(parsed.integrations.some((integration) => integration.target === "generic")).toBe(true);
+  });
+
   it("removes Kairn-owned setup without removing unrelated client config", () => {
     const root = createFixtureRepo();
     const vscodeDir = path.join(root, ".vscode");

@@ -443,7 +443,7 @@ function parseYesNo(answer: string, defaultValue: boolean): boolean {
 
 function parseTargets(value: string | undefined): SetupWizardTarget[] {
   const targets = (value ?? "")
-    .split(",")
+    .split(/[,\s]+/)
     .map((entry) => entry.trim().toLowerCase())
     .filter(Boolean)
     .map((entry) => {

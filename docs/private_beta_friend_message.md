@@ -1,140 +1,169 @@
-# Kairn Private Beta Message
+# Kairn Private Beta Instructions
 
-## Short Version
+I am privately testing **Kairn**, a local-first context governor for AI coding agents.
 
-I am privately testing **Kairn**, a local-first tool that helps Codex and other AI coding agents use fewer tokens by giving them only the repo context that actually matters, or staying silent when extra context would just be noise.
+Kairn indexes your repo locally and helps agents like Codex, VS Code/Copilot MCP, Claude Code, Gemini, and other MCP clients avoid rereading unnecessary repo context. It may provide focused source context, shrink to a small edit-scope directive, ask for better evidence, or stay silent when extra context would be noise.
 
-In private tests, I have seen quality-passing token reductions around **20% to 70%+** on the kinds of work Kairn is designed for: debugging, larger repos, multi-file tasks, and longer coding sessions. I am not claiming that on every task. The goal of this beta is to prove where it helps, where it should stay quiet, and how it behaves on real projects.
+This is private beta software. The goal is to learn where Kairn helps, where it should stay quiet, and where setup still needs work.
 
-Your code stays local. Kairn creates a `.kairn/` index in your repo and can connect through Codex hooks or MCP for editors like VS Code.
+## Before You Start
 
-If you are open to testing it:
+Use **Node 22 or Node 24 LTS** if possible.
+
+Supported range: **Node 20.19 or newer, below Node 26**.
+
+Check:
 
 ```bash
-nvm install 22
-nvm use 22
-npm install -g ./kairn-0.1.2.tgz
+node -v
+npm -v
+git --version
+```
+
+If I sent you a tarball, it will look like:
+
+```text
+kairn-0.1.2.tgz
+```
+
+Use the full path to that file during install if you are not in the same directory.
+
+## macOS Or Linux
+
+Install Node with your normal Node manager. With `nvm`:
+
+```bash
+nvm install 24
+nvm use 24
+```
+
+Install Kairn:
+
+```bash
+npm uninstall -g kairn || true
+npm install -g ~/Downloads/kairn-0.1.2.tgz
+kairn --version
+```
+
+Set up a repo:
+
+```bash
 cd /path/to/your/repo
 kairn setup wizard
 kairn doctor
+```
+
+For terminal Codex users:
+
+```bash
 kairn codex
 ```
 
-On Windows, install from the folder where the `.tgz` file actually downloaded, or use the full path:
+For editor or non-Codex users, choose the MCP option for your client in the setup wizard. Supported setup targets include Codex, VS Code/Copilot MCP, Claude Code MCP, Gemini MCP, Copilot CLI MCP, and generic MCP.
+
+## Windows PowerShell
+
+Use normal **PowerShell**, not WSL, for native Windows testing.
+
+Install Node 22 or 24 LTS from nodejs.org, or use Winget:
 
 ```powershell
-npm install -g "$env:USERPROFILE\Downloads\kairn-0.1.2.tgz"
+winget install --id OpenJS.NodeJS.LTS --source winget
 ```
 
-Please use **Node 20 or 22 LTS** if you want the safest beta path. Node 20 through 25 should work now, and newer Node releases should no longer hit the old native Tree-sitter build failure because Kairn uses WASM Tree-sitter parsing.
+Close and reopen PowerShell after installing Node.
 
-Telemetry is optional but very helpful. It is sanitized and does **not** upload source code, prompts, diffs, filenames, repo names, raw command output, usernames, branch names, or machine paths. It only sends aggregate signals like whether Kairn helped, stayed silent, over-assisted, hit hook/MCP errors, or saved estimated tokens.
+Check:
 
-If you enable telemetry:
-
-```bash
-kairn telemetry enable --destination supabase
+```powershell
+node -v
+npm -v
+git --version
 ```
 
-After telemetry is enabled, Kairn automatically uploads sanitized snapshots when `kairn codex` exits or when you run `kairn beta report`. You can still force a send with `kairn telemetry flush`.
+Install Kairn from Downloads:
 
-You can see whether it helped with:
+```powershell
+$Tarball = "$env:USERPROFILE\Downloads\kairn-0.1.2.tgz"
+Test-Path $Tarball
+npm uninstall -g kairn
+npm install -g $Tarball
+kairn --version
+```
 
-```bash
+Set up a repo:
+
+```powershell
+cd C:\path\to\your\repo
+kairn setup wizard --targets vscode,generic --yes --index-mode safe
+kairn doctor --target vscode
 kairn beta report
 ```
 
-This is private beta software, so feedback on setup, confusion, bad context, silence, latency, or real token savings is exactly what I need.
+Notes:
 
-Please keep this private for now. I am still validating the idea before making broader claims or a public launch.
-
-## Full Version
-
-I am private testing a tool called **Kairn**.
-
-Kairn runs locally beside Codex and other AI coding agents. Its job is to reduce wasted tokens by giving the agent the smallest useful repo context for a task, or by staying silent when the task is already obvious.
-
-In private tests, I have seen quality-passing token reductions from roughly **20% to 70%+** on the kinds of work Kairn is built for: debugging, large repos, multi-file tasks, and longer coding sessions. I am not claiming it saves that much on every request. On cheap/easy tasks, the correct behavior is often for Kairn to do nothing.
-
-What Kairn tries to decide:
-
-- which source file matters,
-- whether a companion file matters,
-- what invariant needs to be preserved,
-- what check or test is most relevant,
-- and when extra context would just add noise.
-
-Kairn is **local-first**. Your code stays on your machine. It creates a local `.kairn/` index inside the repo and uses that to guide Codex, hooks, or MCP. It is designed to be quiet and low-latency: after the first setup/index step, it should only add context when it has high-confidence value.
-
-## Install
-
-For beta, **Node 20 or 22 LTS** is recommended.
-
-If I send you a beta package:
-
-```bash
-nvm install 22
-nvm use 22
-npm install -g ./kairn-0.1.2.tgz
-```
-
-That command assumes the `.tgz` file is in the current directory. If it is in Downloads on Windows:
+- Avoid OneDrive paths for the first test if possible.
+- Avoid paths containing `&`, `(`, `)`, `|`, or `;` for the first test.
+- If `kairn` works in PowerShell but not inside VS Code, fully restart VS Code.
+- If needed, check npm global PATH:
 
 ```powershell
-npm install -g "$env:USERPROFILE\Downloads\kairn-0.1.2.tgz"
+npm config get prefix
+$env:Path -split ';' | Select-String npm
 ```
 
-If it is available through npm:
+## WSL Ubuntu
+
+Use WSL for Linux-style workflows on Windows. Put the tarball in the Linux filesystem if possible.
+
+Install Node 22 or 24 with your WSL Node manager. With `nvm`:
 
 ```bash
-npm install -g kairn
+nvm install 24
+nvm use 24
 ```
 
-Then, inside your repo:
+Important: make sure `node` and `npm` come from the same install.
+
+```bash
+which node
+node -v
+which npm
+npm -v
+```
+
+Copy the tarball into WSL if it is in Windows Downloads:
+
+```bash
+mkdir -p ~/kairn-beta
+cp /mnt/c/Users/<you>/Downloads/kairn-0.1.2.tgz ~/kairn-beta/
+```
+
+Install:
+
+```bash
+npm uninstall -g kairn || true
+npm install -g ~/kairn-beta/kairn-0.1.2.tgz
+command -v kairn
+kairn --version
+```
+
+Set up a repo:
 
 ```bash
 cd /path/to/your/repo
-kairn setup wizard
-kairn doctor
+kairn setup wizard --targets generic --yes --index-mode full
+kairn doctor --target generic
+kairn beta report
 ```
 
-The wizard lets you choose terminal Codex hooks, Claude Code MCP, Copilot CLI MCP, Gemini CLI MCP, VS Code/Copilot MCP, generic MCP, or multiple clients at once.
-
-If I send you a newer beta tarball later, reinstall it and then run this inside each repo using Kairn:
-
-```bash
-kairn doctor --fix
-```
-
-That refreshes Kairn-owned hooks/MCP config to the current installed `kairn` command while preserving unrelated editor or agent config.
-
-## Normal Use
-
-If you use Codex in the terminal, start a session with:
-
-```bash
-kairn codex
-```
-
-You can type normally inside Codex. Kairn stays attached to that conversation and should stay quiet unless useful context is available.
-
-If you use Claude Code, Copilot CLI, Gemini CLI, VS Code/Copilot, Antigravity, Avante, or another MCP-capable editor, choose the matching MCP option in the setup wizard. That lets the agent ask Kairn for focused context without needing the terminal Codex wrapper.
-
-If your client is not listed directly, use:
-
-```bash
-kairn setup mcp --client generic --json
-```
-
-Then paste the generated config into that client's MCP settings.
-
-Codex may ask you to approve Kairn hooks the first time. Open `/hooks` inside Codex and approve the Kairn hook if prompted.
+If `npm install -g` succeeds but `command -v kairn` prints nothing, your WSL `node` and `npm` are probably coming from different installations. Fix your shell PATH so they both come from the same nvm/asdf/Volta/system Node install, then reinstall.
 
 ## Optional Telemetry
 
-Telemetry is optional, but I would really appreciate it if you enable it during the beta. It helps me improve Kairn without seeing your work.
+Telemetry is optional, but useful during beta.
 
-Telemetry does **not** upload:
+It does **not** upload:
 
 - source code,
 - prompts,
@@ -146,36 +175,19 @@ Telemetry does **not** upload:
 - branch names,
 - machine paths.
 
-It only sends sanitized aggregate signals like:
-
-- whether Kairn emitted, shrank, or suppressed context,
-- estimated token savings,
-- language mix and repo size bucket,
-- hook/MCP errors,
-- latency,
-- whether Kairn seemed helpful, passive, or overactive.
+It sends sanitized aggregate signals such as whether Kairn emitted, shrank, suppressed, or requested evidence; estimated token savings; hook/MCP errors; and local quality/scope counters.
 
 Enable telemetry from inside your repo:
 
 ```bash
 kairn telemetry enable --destination supabase
-```
-
-Check telemetry:
-
-```bash
 kairn telemetry status
+kairn telemetry flush --dry-run --json
 ```
 
-Send queued sanitized metrics:
+Telemetry uploads only at safe command boundaries, such as when `kairn codex` exits or when you run `kairn beta report`. It does not upload during prompt hooks or MCP tool calls.
 
-```bash
-kairn telemetry flush
-```
-
-Telemetry also flushes automatically at safe points after it is enabled, such as when a `kairn codex` session exits or when you run `kairn beta report`. It does not upload during prompt hooks.
-
-## See Whether Kairn Helped
+## Check Whether Kairn Helped
 
 From inside your repo:
 
@@ -183,27 +195,64 @@ From inside your repo:
 kairn beta report
 ```
 
-For deeper session metrics:
+This report is local. It summarizes whether Kairn helped, stayed silent, over-assisted, missed opportunities, or has no useful session data yet.
+
+## Update Kairn
+
+When I send a newer tarball:
 
 ```bash
-kairn metrics --session <session-id>
+npm install -g /full/path/to/kairn-0.1.2.tgz
 ```
 
-The numbers are estimates, not exact billing totals, but they help show whether Kairn was active, stayed silent, avoided repeated context, or may have over-assisted.
+Then run inside each repo where Kairn is configured:
+
+```bash
+kairn doctor --fix
+kairn doctor
+```
+
+`doctor --fix` refreshes Kairn-owned hook/MCP entries to the current installed command while preserving unrelated user config.
 
 ## Remove Kairn
 
-From inside your repo:
+From inside a repo:
 
 ```bash
 kairn setup remove --delete-state
+```
+
+Then uninstall globally:
+
+```bash
 npm uninstall -g kairn
 ```
 
-That removes Kairn-owned hook/MCP config and deletes the local `.kairn/` state.
+`setup remove --delete-state` removes Kairn-owned hook/MCP config and deletes `.kairn/`. It is designed to preserve unrelated editor, agent, and repo config.
 
-## Beta Framing
+## What To Send Back
 
-This is still a private beta. The goal is not to prove Kairn magically helps every task. The goal is to prove it consistently helps more than it hurts, especially on large-repo, debug-heavy, and longer coding sessions.
+Please send:
 
-If it feels useful, confusing, too quiet, too noisy, or breaks setup, I want to know. That feedback is exactly what this beta is for.
+- your OS and terminal: macOS/Linux/Windows PowerShell/WSL,
+- `node -v`,
+- `npm -v`,
+- whether install worked,
+- whether `kairn setup wizard` worked,
+- `kairn doctor` output or JSON,
+- `kairn beta report` output or JSON,
+- what felt confusing, noisy, too quiet, slow, or useful.
+
+Please do **not** send source code, prompts, diffs, `.kairn/`, repo files, raw agent outputs, branch names, repo names, or private paths unless we explicitly agree to debug something together.
+
+## Quick Troubleshooting
+
+- `npm install -g` cannot find the tarball: use the absolute path to `kairn-0.1.2.tgz`.
+- `kairn` is not found after install: restart the terminal, then check `npm config get prefix` and PATH.
+- Windows VS Code terminal cannot find `kairn`: fully restart VS Code after install.
+- WSL install succeeds but `kairn` is missing: make sure `which node` and `which npm` point to the same Node installation.
+- Windows path issues: try a repo under `C:\Users\<you>\kairn-test` before testing OneDrive or paths with shell metacharacters.
+- Doctor warns about daemon: that is usually okay; the daemon is an optional latency improvement.
+- Doctor warns telemetry is disabled: that is okay unless you want to opt in.
+
+Please keep this private for now.
