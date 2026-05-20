@@ -1819,18 +1819,35 @@ describe("benchmark suite and scoring", () => {
       })
     );
     const sqliteModule = requireFromTest.resolve("better-sqlite3");
-    const baselineCommand = "node -e \"console.log('src/user.ts'); console.log('Token usage: total=1000 input=900 output=100')\"";
     const insertMetricSql = "insert into metrics_events (session_id, root_path, event_kind, event_name, source, response_mode, baseline_tokens, output_tokens, saved_tokens, files_json, metadata_json, created_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    const realMcpCommand = [
-      "node -e \"",
-      `const Database=require(${JSON.stringify(sqliteModule)});`,
-      "const db=new Database('.kairn/kairn.sqlite');",
-      `db.prepare(${JSON.stringify(insertMetricSql)}).run('task_mcp', process.cwd(), 'mcp_tool_call', 'kairn_prepare_task', 'mcp', null, 100, 25, 75, JSON.stringify(['src/wrong.ts']), JSON.stringify({ toolName: 'kairn_prepare_task' }), new Date().toISOString());`,
-      "db.close();",
-      "console.log('src/user.ts');",
-      "console.log('Token usage: total=100 input=80 output=20');",
-      "\""
-    ].join("");
+    fs.writeFileSync(
+      path.join(root, "write-mcp-wrong-metric.cjs"),
+      [
+        `const Database=require(${JSON.stringify(sqliteModule)});`,
+        "const sessionId = process.argv[2];",
+        "if (!sessionId) process.exit(2);",
+        "const db=new Database('.kairn/kairn.sqlite');",
+        `db.prepare(${JSON.stringify(insertMetricSql)}).run(sessionId, process.cwd(), 'mcp_tool_call', 'kairn_prepare_task', 'mcp', null, 100, 25, 75, JSON.stringify(['src/wrong.ts']), JSON.stringify({ toolName: 'kairn_prepare_task' }), new Date().toISOString());`,
+        "db.close();",
+        "console.log('src/user.ts');",
+        "console.log('Token usage: total=100 input=80 output=20');",
+        ""
+      ].join("\n")
+    );
+    execFileSync("git", ["add", "write-mcp-wrong-metric.cjs"], { cwd: root, stdio: "ignore" });
+    execFileSync("git", ["commit", "-m", "add mcp metric fixture"], {
+      cwd: root,
+      stdio: "ignore",
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: "Kairn Test",
+        GIT_AUTHOR_EMAIL: "test@example.com",
+        GIT_COMMITTER_NAME: "Kairn Test",
+        GIT_COMMITTER_EMAIL: "test@example.com"
+      }
+    });
+    const baselineCommand = "node -e \"console.log('src/user.ts'); console.log('Token usage: total=1000 input=900 output=100')\"";
+    const realMcpCommand = "node write-mcp-wrong-metric.cjs {session}";
 
     const report = await runBenchmarkEndurance({
       rootPath: root,
