@@ -27,6 +27,7 @@ Required checks:
 Current result:
 
 - Local tarball smoke on Node 24 passed install, reinstall/update, wizard, target-specific doctor, telemetry enable/auto-flush through beta report, setup removal, and uninstall.
+- Windows/WSL tester handoff: `docs/kairn_windows_wsl_beta_smoke_handoff_2026-05-20.md`.
 - Remaining before wider beta: one native Windows smoke and one WSL smoke from a real user machine.
 
 ### 2. Small SWE-Pro Expansion
