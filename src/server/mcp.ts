@@ -534,7 +534,7 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
     editScope,
     primaryReason: primaryFile
       ? sourceEvidenceStop
-        ? `Source evidence stop: use ${primaryFile}; do not call more Kairn unless a check fails, the file changes, or the task target changes. ${editScopeDirective}`
+        ? `Source evidence stop: use ${primaryFile}; do not call more Kairn unless a check fails, the file changes, or the task target changes. Do not run broad repo search or read unrelated files for repeat/cleanup turns. ${editScopeDirective}`
         : companionFiles[0]
         ? `Start with ${primaryFile}; ${companionFiles[0]} is the one capped companion for this multi-surface task. ${editScopeDirective}`
         : `Start with ${primaryFile}; it is Kairn's highest-confidence unshown file for this task. ${editScopeDirective}`
@@ -665,13 +665,13 @@ function mcpPrepareStopAfterPriorSource(input: {
   if (lastPassingVerification && (phase === "verification" || phase === "cleanup")) {
     return {
       stopCondition: "verification_already_passed",
-      reason: `Kairn already returned ${input.sourceFile} and the latest verification passed. Continue from the existing source and invariant${invariant ? `: ${invariant}` : ""}; do not call more Kairn unless a new check fails or the target changes.`
+      reason: `Kairn already returned ${input.sourceFile} and the latest verification passed. Continue from the existing source and invariant${invariant ? `: ${invariant}` : ""}; do not call more Kairn, run broad repo search, or read unrelated files unless a new check fails or the target changes.`
     };
   }
   if (phase === "verification" || phase === "cleanup") {
     return {
       stopCondition: "source_evidence_already_shown",
-      reason: `Kairn already returned ${input.sourceFile}. Run the smallest verification or cleanup check from that source; do not request more Kairn context unless it fails.`
+      reason: `Kairn already returned ${input.sourceFile}. Run the smallest verification or cleanup check from that source; do not request more Kairn context, run broad repo search, or read unrelated files unless it fails.`
     };
   }
   if (phase === "implementation" || phase === "debugging") {

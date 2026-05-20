@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import { buildSessionWorkingSet } from "../src/ledger/workingSet.js";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
@@ -337,6 +338,44 @@ describe("KairnRuntime", () => {
     expect(prime.content).not.toContain("src/user.ts");
     expect(prime.content).toContain("Kairn Fix Guardrail");
     expect(prime.content).not.toContain("Quality score");
+
+    runtime.close();
+  });
+
+  it("keeps the active session source ahead of fresh one-file production candidates", async () => {
+    const root = createFixtureRepo();
+    execFileSync("git", ["checkout", "--", "src/app.ts"], { cwd: root, stdio: "ignore" });
+    const runtime = new KairnRuntime(root);
+    const { session } = await runtime.startTask("Investigate formatUser whitespace fallback");
+
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "context_shown",
+      filePath: "src/user.ts",
+      source: "runtime",
+      summary: "Known source invariant",
+      metadata: {
+        invariant: {
+          statement: "formatUser must trim whitespace",
+          confidence: 0.9
+        }
+      }
+    });
+
+    const prime = await runtime.primeContext({
+      task: "Fix the src/app.ts dashboard formatting regression in the production source.",
+      sessionId: session.id,
+      budget: 500,
+      source: "bench"
+    });
+    const sessionPolicy = prime.metadata?.sessionPolicy as { reason?: string; files?: string[] } | undefined;
+
+    expect(sessionPolicy?.reason).toBe("active_source_context_shrunk");
+    expect(sessionPolicy?.files).toEqual(["src/user.ts"]);
+    expect(prime.contextDecision?.action).toBe("shrink");
+    expect(prime.files).toEqual(["src/user.ts"]);
+    expect(prime.content).toContain("src/user.ts");
+    expect(prime.content).not.toContain("Start file:\n- src/app.ts");
 
     runtime.close();
   });

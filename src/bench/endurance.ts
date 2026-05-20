@@ -625,6 +625,7 @@ function buildMcpEndurancePrompt(input: {
         invariant ? `Invariant: ${invariant}` : undefined,
         ...mcpSourceOnlyScopeLines(knownSource),
         "Do not call Kairn again unless a real check fails or the target changes.",
+        "Do not run broad repo search or reread unrelated files; for repeat, cleanup, or diff-review turns, answer from the known source/current diff in a short bounded response.",
         "",
         "User task:",
         input.prompt

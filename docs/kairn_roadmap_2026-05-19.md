@@ -80,7 +80,15 @@ Current 2026-05-19 result:
 
 Next endurance step:
 
-- Run one repeat-3 on a fresh or less-used repo where baseline and Kairn both pass, so the comparison can measure clean savings.
+- Completed one fresh repeat-3 pass/pass slice on Click compatibility encoding.
+- Result: baseline, Kairn Codex session, and real MCP-first all passed 3/3 final quality.
+- Kairn Codex session median valid savings: 42.7%, with one over-assist repeat caused by a high-token repeat-context turn after Kairn had already suppressed context.
+- Real MCP-first median valid savings: 52.6%, with 3/3 valid savings runs, 4 actual MCP calls, 3 useful returned files, and 0 scope violations.
+- The run produced a general active-source continuation fix: known session source now beats fresh one-file candidates during later turns.
+
+Next endurance step:
+
+- Add one more fresh pass/pass row outside Python if time allows.
 - Keep MCP proof fields visible: actual MCP calls, useful returned files, suppressed repeated context, scope violations, and after-turn-1 behavior.
 
 ## Evidence Roadmap
@@ -163,7 +171,7 @@ Secondary CTA: Read the evidence report.
 | Slice | Modes | Quality | Median Valid Savings | Notes |
 | --- | --- | --- | --- | --- |
 | Fresh holdout | baseline vs Kairn session | TBD | TBD | Pass/pass rows only |
-| MCP endurance | baseline vs real MCP-first | TBD | TBD | Requires actual MCP calls |
+| MCP endurance | baseline vs real MCP-first | 3/3 vs 3/3 on Click | 52.6% | Actual MCP calls recorded; 0 scope violations |
 | Governor ablation | governed vs no-governor | TBD | TBD | Shows decision-layer impact |
 | SWE-Pro official | official evaluator | TBD | TBD | Count only evaluator + scope pass |
 

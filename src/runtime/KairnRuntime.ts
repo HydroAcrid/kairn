@@ -541,10 +541,10 @@ export class KairnRuntime {
     };
     const emittedFiles = !isFileEmittingAction(effectiveAction)
       ? []
-      : forceProductionOnlyOneFile
-        ? [directivePrimaryFile ?? primaryFile!]
       : effectiveAction === "shrink" && forceMinimalSourceFocus && sessionPolicy.files.length > 0
         ? sessionPolicy.files.slice(0, 1)
+      : forceProductionOnlyOneFile
+        ? [directivePrimaryFile ?? primaryFile!]
       : effectiveContextDecision.recommendedDelivery === "multi_file_directive"
         ? files.slice(0, multiFileLimit)
       : effectiveAction === "shrink" && sessionPolicy.files.length > 0

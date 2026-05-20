@@ -28,6 +28,7 @@ export function writeMcpInstructionsSetup(input: { root: string; mode?: "mcp-fir
       ? ["- Prefer silence over unnecessary Kairn calls when the hook has not supplied useful context."]
       : [
           "- If `kairn_prepare_task` returns `cheap_one_shot_guardrail`, `cheap_one_shot_abstention`, any other `stopCondition`, or no `nextToolCalls`, continue normally and do not call more Kairn unless a check fails, a file changes, or the target changes.",
+          "- When Kairn has already identified the source file, do not run broad repo search or read unrelated files on repeat, verification, cleanup, or diff-review turns.",
           "- Only call `kairn_get_next_context` when `kairn_prepare_task` explicitly returns it as a next tool call.",
           "- Prefer the smallest Kairn-recommended read that can answer the immediate question."
         ]),

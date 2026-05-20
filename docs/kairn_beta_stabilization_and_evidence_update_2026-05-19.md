@@ -100,6 +100,7 @@ Interpretation:
 Added:
 
 - `examples/bench/endurance-commons-text.json`
+- `examples/bench/endurance-click.json`
 
 Post-fix run:
 
@@ -114,7 +115,35 @@ Interpretation:
 
 - This supports the product claim that MCP can rescue longer source-rescue sessions.
 - It does not support a savings headline because baseline failed quality.
-- A repeat-3 pass/pass endurance slice is still needed for a clean savings row.
+
+### 2026-05-20 Click Repeat-3 Pass/Pass Slice
+
+Artifacts:
+
+- `docs/publication-evidence-20260520/endurance-click/repeat3-after-active-source-fix.json`
+- `docs/publication-evidence-20260520/endurance-click/click-repeat3-summary.json`
+
+Fresh repeat-3 endurance result on Click compatibility encoding:
+
+| Mode | Quality | Median observed tokens | Median savings | Valid savings runs | Scope violations |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Baseline | 3/3 | 90,733 | n/a | n/a | 0 |
+| Kairn Codex session | 3/3 | 61,528 | 42.7% | 2/3 | 0 |
+| Real MCP-first | 3/3 | 41,949 | 52.6% | 3/3 | 0 |
+
+MCP proof fields:
+
+- actual MCP tool calls: 4,
+- returned files: 3,
+- useful returned files: 3,
+- repeated later turns used `continue_known_source` guidance.
+
+Interpretation:
+
+- This is clean pass/pass endurance savings evidence because all modes passed final quality.
+- Real MCP-first is the strongest row: consistent savings across all three repeats with actual useful MCP calls recorded.
+- Kairn Codex session also shows strong median savings, but one repeat was an over-assist from a high-token repeat-context turn where Kairn had suppressed context. That is model variance/supporting noise, not a harmful Kairn edit.
+- The run exposed and verified a general continuation fix: active session source now outranks fresh one-file candidates when Kairn already has a source/invariant.
 
 ## General Fixes Made
 
@@ -139,5 +168,5 @@ This prevents MCP/Codex setup files such as `.codex/config.toml`, `.codex/hooks.
 
 1. Run native Windows and WSL package smoke with a real user machine.
 2. Rerun a small SWE-Pro scope-discipline slice on official pass/pass rows.
-3. Run repeat-3 endurance on a fresh or less-used repo where both baseline and Kairn can pass.
+3. Add one more fresh pass/pass endurance row if time allows, ideally outside Python, to show the Click result is not isolated.
 4. Keep private beta rollout moving in parallel; more real install feedback is now more valuable than another broad one-shot matrix.
