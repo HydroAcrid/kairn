@@ -85,11 +85,13 @@ Next endurance step:
 - Kairn Codex session median valid savings: 42.7%, with one over-assist repeat caused by a high-token repeat-context turn after Kairn had already suppressed context.
 - Real MCP-first median valid savings: 52.6%, with 3/3 valid savings runs, 4 actual MCP calls, 3 useful returned files, and 0 scope violations.
 - The run produced a general active-source continuation fix: known session source now beats fresh one-file candidates during later turns.
+- Completed a second fresh repeat-3 pass/pass slice outside Python on `npm/node-semver`.
+- SemVer result: all modes passed 3/3; Kairn Codex session median savings was 16.4% with 2/3 valid savings runs; real MCP-first showed 48.6% observed savings but is treated as supporting evidence because useful returned files were not captured.
 
 Next endurance step:
 
-- Add one more fresh pass/pass row outside Python if time allows.
 - Keep MCP proof fields visible: actual MCP calls, useful returned files, suppressed repeated context, scope violations, and after-turn-1 behavior.
+- Improve MCP accounting so rows with actual tool calls and known-source continuation do not lose useful-file attribution when the compact tool result is not captured in stdout.
 
 ## Evidence Roadmap
 
@@ -171,7 +173,8 @@ Secondary CTA: Read the evidence report.
 | Slice | Modes | Quality | Median Valid Savings | Notes |
 | --- | --- | --- | --- | --- |
 | Fresh holdout | baseline vs Kairn session | TBD | TBD | Pass/pass rows only |
-| MCP endurance | baseline vs real MCP-first | 3/3 vs 3/3 on Click | 52.6% | Actual MCP calls recorded; 0 scope violations |
+| MCP endurance | baseline vs real MCP-first | 3/3 vs 3/3 on Click | 52.6% | Actual MCP calls and useful files recorded; 0 scope violations |
+| JS endurance | baseline vs Kairn session | 3/3 vs 3/3 on node-semver | 16.4% | Second pass/pass endurance row outside Python |
 | Governor ablation | governed vs no-governor | TBD | TBD | Shows decision-layer impact |
 | SWE-Pro official | official evaluator | TBD | TBD | Count only evaluator + scope pass |
 

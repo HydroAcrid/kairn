@@ -101,6 +101,7 @@ Added:
 
 - `examples/bench/endurance-commons-text.json`
 - `examples/bench/endurance-click.json`
+- `examples/bench/endurance-node-semver.json`
 
 Post-fix run:
 
@@ -145,6 +146,28 @@ Interpretation:
 - Kairn Codex session also shows strong median savings, but one repeat was an over-assist from a high-token repeat-context turn where Kairn had suppressed context. That is model variance/supporting noise, not a harmful Kairn edit.
 - The run exposed and verified a general continuation fix: active session source now outranks fresh one-file candidates when Kairn already has a source/invariant.
 
+### 2026-05-20 Node SemVer Repeat-3 Pass/Pass Slice
+
+Artifacts:
+
+- `docs/publication-evidence-20260520/endurance-node-semver/repeat3.json`
+- `docs/publication-evidence-20260520/endurance-node-semver/node-semver-repeat3-summary.json`
+
+Fresh repeat-3 endurance result on `npm/node-semver`:
+
+| Mode | Quality | Median observed tokens | Median savings | Valid savings runs | Scope violations |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Baseline | 3/3 | 69,513 | n/a | n/a | 0 |
+| Kairn Codex session | 3/3 | 58,142 | 16.4% | 2/3 | 0 |
+| Real MCP-first | 3/3 | 29,808 | 48.6% observed | 0/3 active-valid | 0 |
+
+Interpretation:
+
+- This is a second clean pass/pass endurance row outside Python.
+- Kairn Codex session clears the 15% median savings threshold, though with one over-assist repeat.
+- Real MCP-first had large observed token reductions, but this SemVer row did not capture useful returned files from the MCP tool calls, so it is supporting/passive evidence rather than a valid active MCP savings row.
+- Click remains the cleaner MCP proof because it recorded useful returned files; SemVer strengthens the broader pass/pass endurance pattern.
+
 ## General Fixes Made
 
 ### SWE-Pro Loader Robustness
@@ -168,5 +191,4 @@ This prevents MCP/Codex setup files such as `.codex/config.toml`, `.codex/hooks.
 
 1. Run native Windows and WSL package smoke with a real user machine.
 2. Rerun a small SWE-Pro scope-discipline slice on official pass/pass rows.
-3. Add one more fresh pass/pass endurance row if time allows, ideally outside Python, to show the Click result is not isolated.
-4. Keep private beta rollout moving in parallel; more real install feedback is now more valuable than another broad one-shot matrix.
+3. Keep private beta rollout moving in parallel; more real install feedback is now more valuable than another broad one-shot matrix.
