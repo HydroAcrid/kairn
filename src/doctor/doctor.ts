@@ -87,12 +87,12 @@ function targetedChecks(input: {
 }
 
 function checkNodeVersion(): DoctorCheck {
-  const major = Number(process.versions.node.split(".")[0]);
+  const { supported } = currentNodeSupport();
   return {
     id: "node_version",
-    status: major >= 20 ? "ok" : "fail",
+    status: supported ? "ok" : "fail",
     summary: `Node ${process.versions.node}`,
-    fix: major >= 20 ? undefined : "Install Node 20 or newer."
+    fix: supported ? undefined : "Install Node 20.19 or newer, below Node 26. Node 22 or 24 LTS is recommended for beta."
   };
 }
 
@@ -105,8 +105,9 @@ function checkWindowsFriction(rootPath: string): DoctorCheck {
     };
   }
   const warnings: string[] = [];
-  const major = Number(process.versions.node.split(".")[0]);
-  if (![20, 22, 24].includes(major)) warnings.push(`Node ${process.versions.node} is not an LTS beta recommendation.`);
+  const { major, supported } = currentNodeSupport();
+  if (!supported) warnings.push(`Node ${process.versions.node} is outside Kairn's supported beta range.`);
+  if (supported && ![22, 24].includes(major)) warnings.push(`Node ${process.versions.node} is supported, but Node 22 or 24 LTS is recommended for beta.`);
   if (/OneDrive/i.test(rootPath)) warnings.push("Repo is under OneDrive, which can slow or lock local index files.");
   if (/[&|;<>()]/.test(rootPath)) warnings.push("Repo path contains shell metacharacters; quote paths in PowerShell/CMD.");
   return {
@@ -114,6 +115,17 @@ function checkWindowsFriction(rootPath: string): DoctorCheck {
     status: warnings.length > 0 ? "warn" : "ok",
     summary: warnings.length > 0 ? warnings.join(" ") : "Windows setup path looks normal.",
     fix: warnings.length > 0 ? "Use quoted paths, prefer Node 20/22 LTS for beta, and use WSL if native Windows indexing remains unstable." : undefined
+  };
+}
+
+function currentNodeSupport(): { major: number; minor: number; supported: boolean } {
+  const [majorRaw, minorRaw] = process.versions.node.split(".");
+  const major = Number(majorRaw);
+  const minor = Number(minorRaw);
+  return {
+    major,
+    minor,
+    supported: Number.isFinite(major) && Number.isFinite(minor) && major < 26 && (major > 20 || (major === 20 && minor >= 19))
   };
 }
 

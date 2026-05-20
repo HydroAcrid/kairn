@@ -51,7 +51,7 @@ Open a normal PowerShell terminal, not WSL.
 
 ### 1. Environment
 
-Recommended Node for beta smoke: Node 22 or Node 24. Node 23/25 may work, but LTS is preferred for support.
+Recommended Node for beta smoke: Node 22 or Node 24. Node 20.19+, 23, and 25 are inside the supported range, but LTS is preferred for support.
 
 ```powershell
 $Smoke = "$env:USERPROFILE\kairn-smoke-native"
@@ -237,7 +237,7 @@ npm -v
 git --version
 ```
 
-If Node is missing, install Node 22 or 24 using your normal Node manager.
+If Node is missing, install Node 22 or 24 using your normal Node manager. In WSL, make sure `which node` and `which npm` resolve to the same Node manager installation before installing globally.
 
 Copy the tarball into WSL, for example:
 
@@ -287,6 +287,7 @@ Record the exact command and attach the transcript if any of these happen:
 - `kairn` works in PowerShell but not VS Code terminal.
 - `npm install -g` cannot find the tarball.
 - `npm install -g` fails on native dependency build.
+- WSL `npm install -g` succeeds but `kairn` is not on PATH because `node` and `npm` come from different installations.
 - wizard repeats `Aborted()`.
 - `kairn setup wizard --targets ... --yes` fails noninteractively.
 - `doctor --target vscode` warns about unrelated Codex setup.

@@ -30,7 +30,7 @@
   "author": "Kevin Dotel",
   "license": "UNLICENSED",
   "engines": {
-    "node": ">=20 <26"
+    "node": ">=20.19 <26"
   },
   "packageManager": "pnpm@10.31.0",
   "pnpm": {
