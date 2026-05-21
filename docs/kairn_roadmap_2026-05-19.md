@@ -147,6 +147,50 @@ Beta requirements:
 - opt-in telemetry,
 - user-facing `kairn beta report` for local savings/status.
 
+## Business Model Direction
+
+Recommended framing:
+
+> Kairn is free for individual developers. Teams pay when they want visibility, policy, and rollout control across many developers and repos.
+
+Short-term:
+
+- keep Kairn closed-source and free during private beta,
+- distribute invite-only beta tarballs rather than public npm until setup/support is smoother,
+- use the waitlist to control rollout pace and collect user profile data,
+- optimize for learning, install success, and real workflow evidence rather than monetization.
+
+Likely long-term model:
+
+- Free Individual:
+  - local CLI,
+  - local MCP server,
+  - Codex/Claude/Copilot/Gemini setup paths,
+  - local beta reports,
+  - opt-in personal telemetry,
+  - no hosted dependency required.
+- Pro / Team:
+  - shared team dashboard,
+  - aggregate token savings by repo, team, and mode,
+  - install health across machines,
+  - hook/MCP failure monitoring,
+  - shared context-governance policy presets,
+  - team-wide benchmark and evidence reports.
+- Enterprise:
+  - SSO/SAML,
+  - self-hosted telemetry collector,
+  - centralized policy management,
+  - audit logs,
+  - approved agent/client integrations,
+  - admin controls for telemetry/privacy,
+  - custom benchmark and evaluation support.
+
+Rationale:
+
+- Individuals drive adoption and trust.
+- Companies feel AI-agent token waste, failed runs, setup friction, and governance problems at scale.
+- The paid product should be coordination, observability, governance, and rollout control, not a tax on local individual use.
+
 ## Website SPA Plan
 
 ### Hero
