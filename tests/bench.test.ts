@@ -37,12 +37,12 @@ import {
   linearModelPrediction,
   buildDecisionFeatures
 } from "../src/prime/contextGovernor.js";
-import { formatShrunkPrimeContext } from "../src/prime/formatPrime.js";
+import { formatShrunkPrimeContext, withTinyDirectivePrime } from "../src/prime/formatPrime.js";
 import { evaluatePrimeQuality, resolvePrimeProfile } from "../src/prime/quality.js";
 import { hybridSearch } from "../src/retrieval/hybridRetrieval.js";
 import { findCompanionCandidates } from "../src/retrieval/companions.js";
 import { createFixtureRepo } from "./helpers.js";
-import type { FileRecord, HybridScoredResult, SemanticChunkRecord } from "../src/types.js";
+import type { ContextPrime, FileRecord, HybridScoredResult, SemanticChunkRecord } from "../src/types.js";
 
 const CLI = ["tsx", "src/cli.ts"];
 
@@ -68,6 +68,56 @@ describe("benchmark suite and scoring", () => {
       "src/app/private/jobs/JobsApplicationsTable.tsx"
     );
     expect(suite.cases.find((item) => item.id === "diff-review")?.expectedFiles).toEqual([]);
+  });
+
+  it("keeps start files and edit scope inside tiny directives for long official prompts", () => {
+    const longTask = [
+      "PosthogAnalytics fails to reliably handle initialization, anonymity, and event tracking under different configuration and privacy scenarios.",
+      "Selected tests from SWE-Bench Pro metadata: test/PosthogAnalytics-test.ts.",
+      "Fix the issue in production source. Do not edit unrelated files.",
+      "Additional context ".repeat(120)
+    ].join("\n\n");
+    const prime: ContextPrime = {
+      session: {
+        id: "task_tiny",
+        rootPath: "/tmp/repo",
+        task: longTask,
+        status: "active",
+        createdAt: "2026-05-21T00:00:00.000Z",
+        updatedAt: "2026-05-21T00:00:00.000Z",
+        filesShown: [],
+        symbolsShown: [],
+        commandsRun: [],
+        diffsObserved: [],
+        watchEvents: [],
+        risks: [],
+        verificationHints: []
+      },
+      task: longTask,
+      profile: "failure_debug",
+      content: "symbol match: PosthogAnalytics",
+      files: ["src/PosthogAnalytics.ts"],
+      tokenEstimate: 0,
+      warnings: [],
+      suggestedCommands: [],
+      editScope: {
+        initialEditFiles: ["src/PosthogAnalytics.ts"],
+        readOnlyFiles: ["test/PosthogAnalytics-test.ts"],
+        allowedExpansionTriggers: ["a failing check names another production source file"],
+        forbiddenEditPatterns: ["test/", "docs/", "generated/"],
+        scopeConfidence: "high",
+        scopeSource: "official_harness",
+        reason: "benchmark or official task metadata supplied allowed production patch files",
+        dynamic: true
+      }
+    };
+
+    const tiny = withTinyDirectivePrime(prime, 320);
+
+    expect(tiny.content).toContain("src/PosthogAnalytics.ts");
+    expect(tiny.content).toContain("Edit scope:");
+    expect(tiny.content).toContain("Read-only verification context: test/PosthogAnalytics-test.ts");
+    expect(tiny.content).not.toContain("Additional context Additional context Additional context Additional context");
   });
 
   it("loads the focused job-tracker benchmark suite example", () => {

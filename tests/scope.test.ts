@@ -59,8 +59,8 @@ describe("edit scope controller", () => {
 
   it("treats benchmark-style production-source instructions as one-file scope", () => {
     const scope = decideEditScope({
-      task: "Selected tests from SWE-Bench Pro metadata: TestParse\n\nFix the issue in production source. Do not edit unrelated files. Avoid broad scans once the relevant source surface is known.",
-      candidateFiles: ["contrib/trivy/pkg/converter.go", "contrib/trivy/pkg/converter_test.go", "scanner/trivy/jar/parse.go"],
+      task: "Selected tests from SWE-Bench Pro metadata: contrib/trivy/pkg/converter_test.go\n\nFix the issue in production source. Do not edit unrelated files. Avoid broad scans once the relevant source surface is known.",
+      candidateFiles: ["contrib/trivy/pkg/converter.go", "scanner/trivy/jar/parse.go"],
       contextDecision: decision({
         primaryFile: "contrib/trivy/pkg/converter.go",
         sourceRescue: true,

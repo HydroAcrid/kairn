@@ -30,6 +30,7 @@ export function decideEditScope(input: {
     ...(input.invariants ?? []).map((invariant) => normalizeRelativePath(invariant.file)),
     ...(input.sourceInvariants ?? []).map((invariant) => normalizeRelativePath(invariant.file))
   ]);
+  const taskMentionedTestFiles = extractTaskMentionedTestFiles(input.task);
   const failureFiles = uniquePaths((input.failureFiles ?? []).map(normalizeRelativePath));
   const changedFiles = uniquePaths((input.changedFiles ?? []).map(normalizeRelativePath));
   const productionOnlySingleFile = taskHasProductionOnlyEditIntent(task) && !hasExplicitMultiFileScopeRequest(task);
@@ -59,6 +60,7 @@ export function decideEditScope(input: {
     .filter((file) => isEditableByDefault(file, allowedTestEdits))
     .slice(0, source === "official_harness" ? Math.max(1, harnessFiles.length) : primaryLimit);
   const readOnlyFiles = uniquePaths([
+    ...taskMentionedTestFiles,
     ...candidateFiles,
     ...harnessFiles,
     ...invariantFiles,
@@ -208,12 +210,21 @@ function isMultiFileDebugTask(task: string): boolean {
 
 function selectedTestPathCount(task: string): number {
   const paths = new Set<string>();
+  for (const filePath of extractTaskMentionedTestFiles(task)) {
+    paths.add(filePath.toLowerCase());
+  }
+  return paths.size;
+}
+
+function extractTaskMentionedTestFiles(task: string): string[] {
+  const paths = new Set<string>();
   for (const match of task.matchAll(/\b[A-Za-z0-9_.@+~/-]+?\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)\b/g)) {
-    const filePath = (match[0] ?? "").toLowerCase();
-    const basename = filePath.split("/").at(-1) ?? filePath;
+    const filePath = normalizeRelativePath(match[0] ?? "");
+    const normalized = filePath.toLowerCase();
+    const basename = normalized.split("/").at(-1) ?? normalized;
     if (
-      /(^|\/)(tests?|specs?|__tests__|testing)\//.test(filePath) ||
-      /(^|\/)src\/test\//.test(filePath) ||
+      /(^|\/)(tests?|specs?|__tests__|testing)\//.test(normalized) ||
+      /(^|\/)src\/test\//.test(normalized) ||
       /^(test|spec)[_-]/.test(basename) ||
       /[._-](test|spec)\./.test(basename) ||
       /_test\.go$/.test(basename)
@@ -221,5 +232,5 @@ function selectedTestPathCount(task: string): number {
       paths.add(filePath);
     }
   }
-  return paths.size;
+  return [...paths];
 }

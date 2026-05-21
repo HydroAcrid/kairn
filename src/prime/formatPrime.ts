@@ -293,7 +293,7 @@ function formatTinyDirectivePrime(input: { prime: ContextPrime; budget: number }
     "",
     "Use these before broad repo search.",
     "",
-    `Task: ${input.prime.task}`,
+    `Task: ${compactTaskLine(input.prime.task)}`,
     `Session: ${input.prime.session.id}`,
     "",
     "Start here:",
