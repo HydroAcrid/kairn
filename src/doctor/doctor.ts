@@ -5,6 +5,7 @@ import { spawnSync } from "node:child_process";
 import { getKairnPaths } from "../config/paths.js";
 import { loadTelemetryConfig } from "../telemetry/config.js";
 import type { KairnRuntime } from "../runtime/KairnRuntime.js";
+import { commandInvocation, commandSpawnInvocation } from "../utils/command.js";
 
 export type DoctorCheckStatus = "ok" | "warn" | "fail";
 
@@ -114,7 +115,7 @@ function checkWindowsFriction(rootPath: string): DoctorCheck {
     id: "platform_friction",
     status: warnings.length > 0 ? "warn" : "ok",
     summary: warnings.length > 0 ? warnings.join(" ") : "Windows setup path looks normal.",
-    fix: warnings.length > 0 ? "Use quoted paths, prefer Node 20/22 LTS for beta, and use WSL if native Windows indexing remains unstable." : undefined
+    fix: warnings.length > 0 ? "Use quoted paths, prefer Node 22 or 24 LTS for beta, and use WSL if native Windows indexing remains unstable." : undefined
   };
 }
 
@@ -186,7 +187,11 @@ function checkIndex(runtime: KairnRuntime): DoctorCheck {
 }
 
 function checkCodex(command: string): DoctorCheck {
-  const result = spawnSync(`${command} --version`, { encoding: "utf8", shell: true });
+  const invocation = commandSpawnInvocation(commandInvocation(command, ["--version"]));
+  const result = spawnSync(invocation.command, invocation.args, {
+    encoding: "utf8",
+    env: invocation.env ? { ...process.env, ...invocation.env } : undefined
+  });
   const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
   return {
     id: "codex_binary",
@@ -197,7 +202,11 @@ function checkCodex(command: string): DoctorCheck {
 }
 
 function checkBinary(command: string, id: string, label: string): DoctorCheck {
-  const result = spawnSync(`${command} --version`, { encoding: "utf8", shell: true });
+  const invocation = commandSpawnInvocation(commandInvocation(command, ["--version"]));
+  const result = spawnSync(invocation.command, invocation.args, {
+    encoding: "utf8",
+    env: invocation.env ? { ...process.env, ...invocation.env } : undefined
+  });
   const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
   return {
     id,

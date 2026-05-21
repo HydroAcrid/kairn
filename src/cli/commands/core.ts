@@ -6,8 +6,9 @@ import { startKairnDaemon } from "../../daemon/server.js";
 import { startMcpServer } from "../../server/mcp.js";
 import { queueAndFlushTelemetrySnapshot } from "../../telemetry/autoFlush.js";
 import type { CodexSetupMode, HookOutputProfile, IndexStateStats, PrimeProfile } from "../../types.js";
+import { commandInvocation, commandSpawnInvocation } from "../../utils/command.js";
 import { printContextPrime } from "../formatters.js";
-import { codexExecArgs, codexInteractiveArgs, parsePositiveInt, shellQuote, waitForShutdown, withRuntime } from "../helpers.js";
+import { codexExecArgs, codexInteractiveArgs, parsePositiveInt, waitForShutdown, withRuntime } from "../helpers.js";
 import { printContextResponse, printJson } from "../output.js";
 import { writeCodexSetup } from "../setup/codexSetup.js";
 
@@ -368,10 +369,10 @@ export function registerCoreCommands(program: Command): void {
               ].join("\n")
             );
           }
-          const command = [options.codexCommand, ...result.args.map(shellQuote)].join(" ");
-          const completed = spawnSync(command, {
+          const invocation = commandSpawnInvocation(commandInvocation(options.codexCommand, result.args));
+          const completed = spawnSync(invocation.command, invocation.args, {
             cwd: result.rootPath,
-            shell: true,
+            env: invocation.env ? { ...process.env, ...invocation.env } : undefined,
             stdio: "inherit"
           });
           process.exitCode = completed.status ?? (completed.error ? 1 : 0);
