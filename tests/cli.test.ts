@@ -243,6 +243,29 @@ describe("CLI", () => {
     expect(parsed.integrations.some((integration) => integration.target === "generic")).toBe(true);
   });
 
+  it("keeps the setup doctor index check fresh after wizard-generated files are written", () => {
+    const root = createFixtureRepo();
+    const setupWizard = execFileSync(
+      CLI[0]!,
+      [...CLI.slice(1), "setup", "wizard", "--root", root, "--targets", "vscode generic", "--yes", "--index-mode", "safe", "--json"],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8"
+      }
+    );
+    const parsed = JSON.parse(setupWizard) as {
+      indexed: boolean;
+      doctor: {
+        checks: Array<{ id: string; status: string; summary: string }>;
+      };
+    };
+    const indexCheck = parsed.doctor.checks.find((check) => check.id === "index_state");
+
+    expect(parsed.indexed).toBe(true);
+    expect(indexCheck?.status).toBe("ok");
+    expect(indexCheck?.summary).toContain("fresh");
+  });
+
   it("removes Kairn-owned setup without removing unrelated client config", () => {
     const root = createFixtureRepo();
     const vscodeDir = path.join(root, ".vscode");

@@ -84,18 +84,6 @@ export async function runSetupWizard(inputOptions: {
     const integrations: SetupWizardResult["integrations"] = [];
     let indexed = false;
     let indexError: string | undefined;
-    if (answers.index) {
-      const restoreParserEnv = useSafeWizardIndexing(answers.indexMode);
-      try {
-        if (interactive) output.write(pc.dim(`Indexing repo (${answers.indexMode})...\n`));
-        await runtime.init();
-        indexed = true;
-      } catch (error) {
-        indexError = error instanceof Error ? error.message : String(error);
-      } finally {
-        restoreParserEnv();
-      }
-    }
 
     if (answers.targets.includes("codex")) {
       const setup = writeCodexSetup({
@@ -149,6 +137,19 @@ export async function runSetupWizard(inputOptions: {
         destination: "supabase",
         endpoint: inputOptions.telemetryEndpoint
       });
+    }
+
+    if (answers.index) {
+      const restoreParserEnv = useSafeWizardIndexing(answers.indexMode);
+      try {
+        if (interactive) output.write(pc.dim(`Indexing repo (${answers.indexMode})...\n`));
+        await runtime.init();
+        indexed = true;
+      } catch (error) {
+        indexError = error instanceof Error ? error.message : String(error);
+      } finally {
+        restoreParserEnv();
+      }
     }
 
     const doctor = runDoctor({ rootPath, runtime });
