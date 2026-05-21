@@ -55,10 +55,6 @@ export function codexInteractiveArgs(input: {
   ];
 }
 
-export function shellQuote(value: string): string {
-  return `'${value.replaceAll("'", "'\\''")}'`;
-}
-
 export async function waitForShutdown(close: () => Promise<void>): Promise<void> {
   await new Promise<void>((resolve) => {
     let closed = false;

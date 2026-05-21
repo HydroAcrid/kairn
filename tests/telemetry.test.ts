@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
 import { queueAndFlushTelemetrySnapshot } from "../src/telemetry/autoFlush.js";
-import { buildDiagnosticExport } from "../src/telemetry/diagnostics.js";
+import { buildDiagnosticExport, writeDiagnosticExport } from "../src/telemetry/diagnostics.js";
 import { disableTelemetry, enableTelemetry, ensureTelemetryIdentity, getTelemetryStatus } from "../src/telemetry/config.js";
 import { buildTelemetryPayload } from "../src/telemetry/payload.js";
 import { enqueueTelemetryPayload, flushTelemetryQueue, readTelemetryQueue } from "../src/telemetry/queue.js";
@@ -121,6 +121,47 @@ describe("telemetry", () => {
     expect(diagnostics.root.redacted).toBe(true);
     expect(diagnostics.telemetry.queuePath).toBe("<redacted>/.kairn/telemetry-queue.jsonl");
     expect(JSON.stringify(diagnostics)).not.toContain(root);
+
+    runtime.close();
+  });
+
+  it("redacts doctor paths from diagnostics and creates output directories", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    await runtime.startTask("Update dashboard rendering");
+    const identity = ensureTelemetryIdentity(root);
+    const previousCwd = process.cwd();
+    let diagnostics: ReturnType<typeof buildDiagnosticExport>;
+    try {
+      process.chdir(root);
+      diagnostics = buildDiagnosticExport({
+        runtime,
+        rootPath: ".",
+        installationId: identity.installationId!,
+        repoSalt: identity.repoSalt!,
+        doctor: {
+          rootPath: root,
+          checks: [
+            {
+              id: "kairn_state",
+              status: "ok",
+              summary: `State path: ${path.join(root, ".kairn")}`,
+              fix: `Check ${path.join(root, ".kairn", "config.json")}`
+            }
+          ]
+        }
+      });
+    } finally {
+      process.chdir(previousCwd);
+    }
+    const outputPath = path.join(root, "nested", "diagnostics.json");
+
+    writeDiagnosticExport({ outPath: outputPath, exportData: diagnostics });
+
+    const serialized = JSON.stringify(diagnostics);
+    expect(serialized).not.toContain(root);
+    expect(serialized).toContain("<redacted-root>");
+    expect(fs.existsSync(outputPath)).toBe(true);
 
     runtime.close();
   });

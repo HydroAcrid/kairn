@@ -1,4 +1,6 @@
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import type { KairnRuntime } from "../runtime/KairnRuntime.js";
 import type { DiagnosticExport, TelemetryStatus } from "../types.js";
 import { getTelemetryStatus } from "./config.js";
@@ -12,6 +14,7 @@ export function buildDiagnosticExport(input: {
   repoSalt: string;
   doctor?: unknown;
 }): DiagnosticExport {
+  const rootPath = path.resolve(input.rootPath);
   const payloadPreview = buildTelemetryPayload({
     runtime: input.runtime,
     installationId: input.installationId,
@@ -23,8 +26,8 @@ export function buildDiagnosticExport(input: {
     root: {
       redacted: true
     },
-    telemetry: redactTelemetryStatus(getTelemetryStatus(input.rootPath)),
-    ...(input.doctor ? { doctor: input.doctor } : {}),
+    telemetry: redactTelemetryStatus(getTelemetryStatus(rootPath)),
+    ...(input.doctor ? { doctor: redactDiagnosticValue(input.doctor, rootPath) } : {}),
     betaReport: buildBetaReport({ runtime: input.runtime }),
     payloadPreview
   };
@@ -42,5 +45,33 @@ export function writeDiagnosticExport(input: {
   outPath: string;
   exportData: DiagnosticExport;
 }): void {
+  fs.mkdirSync(path.dirname(path.resolve(input.outPath)), { recursive: true });
   fs.writeFileSync(input.outPath, `${JSON.stringify(input.exportData, null, 2)}\n`);
+}
+
+function redactDiagnosticValue(value: unknown, rootPath: string): unknown {
+  if (typeof value === "string") return redactDiagnosticString(value, rootPath);
+  if (Array.isArray(value)) return value.map((item) => redactDiagnosticValue(item, rootPath));
+  if (typeof value === "object" && value !== null) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, redactDiagnosticValue(item, rootPath)])
+    );
+  }
+  return value;
+}
+
+function redactDiagnosticString(value: string, rootPath: string): string {
+  let output = value;
+  const markers: Array<readonly [string, string]> = [
+    [rootPath, "<redacted-root>"],
+    [rootPath.replaceAll("\\", "/"), "<redacted-root>"],
+    [os.homedir(), "<redacted-home>"],
+    [os.homedir().replaceAll("\\", "/"), "<redacted-home>"]
+  ];
+  for (const [marker, replacement] of markers) {
+    if (marker.length > 3) output = output.split(marker).join(replacement);
+  }
+  return output
+    .replace(/(^|[\s"'`])\/[^\s"'`]+/g, "$1<redacted-path>")
+    .replace(/[A-Za-z]:\\[^\r\n"'`]+/g, "<redacted-path>");
 }

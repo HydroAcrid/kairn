@@ -4,6 +4,8 @@ import { KairnRuntime } from "../runtime/KairnRuntime.js";
 import type { HookHandlingResult, HookOutputProfile, NormalizedHookEvent, PrimeProfile } from "../types.js";
 import { resolveRoot } from "../utils/paths.js";
 
+const MAX_DAEMON_BODY_BYTES = 1_000_000;
+
 export type KairnDaemon = {
   rootPath: string;
   port: number;
@@ -25,6 +27,11 @@ export async function startKairnDaemon(input: { root?: string | undefined; port?
       }
 
       if (request.method === "POST" && request.url === "/hook") {
+        if (contentLengthTooLarge(request)) {
+          request.resume();
+          sendJson(response, 413, { error: "request body too large" });
+          return;
+        }
         const body = await readJsonBody(request);
         const event = body.event as NormalizedHookEvent;
         const result = await runtime.handleHookEvent({
@@ -44,7 +51,8 @@ export async function startKairnDaemon(input: { root?: string | undefined; port?
 
       sendJson(response, 404, { error: "not found" });
     } catch (error) {
-      sendJson(response, 500, { error: error instanceof Error ? error.message : String(error) });
+      const status = error instanceof HttpError ? error.status : 500;
+      sendJson(response, status, { error: error instanceof Error ? error.message : String(error) });
     }
   });
 
@@ -140,8 +148,14 @@ export function daemonPortForRoot(root: string): number {
 
 async function readJsonBody(request: http.IncomingMessage): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = [];
+  let size = 0;
   for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    size += buffer.length;
+    if (size > MAX_DAEMON_BODY_BYTES) {
+      throw new HttpError(413, "request body too large");
+    }
+    chunks.push(buffer);
   }
   const text = Buffer.concat(chunks).toString("utf8").trim();
   if (!text) return {};
@@ -156,6 +170,14 @@ function sendJson(response: http.ServerResponse, status: number, payload: unknow
     "content-length": Buffer.byteLength(body)
   });
   response.end(body);
+}
+
+function contentLengthTooLarge(request: http.IncomingMessage): boolean {
+  const raw = request.headers["content-length"];
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (!value) return false;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > MAX_DAEMON_BODY_BYTES;
 }
 
 function optionalString(value: unknown): string | undefined {
@@ -176,4 +198,13 @@ function optionalHookOutput(value: unknown): HookOutputProfile | undefined {
 
 function isPrimeProfile(value: unknown): value is PrimeProfile {
   return value === "auto" || value === "ui" || value === "workflow" || value === "backend" || value === "test" || value === "failure_debug" || value === "generic";
+}
+
+class HttpError extends Error {
+  constructor(
+    readonly status: number,
+    message: string
+  ) {
+    super(message);
+  }
 }

@@ -1,3 +1,4 @@
+import http from "node:http";
 import { describe, expect, it } from "vitest";
 import { handleHookWithDaemon, startKairnDaemon } from "../src/daemon/server.js";
 import { normalizeHookPayload } from "../src/watch/normalizeHook.js";
@@ -55,4 +56,55 @@ describe("daemon hook transport", () => {
       await daemon.close();
     }
   });
+
+  it("rejects oversized hook payloads", async () => {
+    const root = createFixtureRepo();
+    const daemon = await startKairnDaemon({ root });
+    try {
+      const response = await postJson(daemon.port, "/hook", {
+        event: {
+          source: "codex",
+          eventName: "UserPromptSubmit",
+          prompt: "x".repeat(1_100_000),
+          files: [],
+          metadata: {}
+        }
+      });
+
+      expect(response.statusCode).toBe(413);
+      expect(response.body).toContain("request body too large");
+    } finally {
+      await daemon.close();
+    }
+  });
 });
+
+function postJson(port: number, path: string, payload: unknown): Promise<{ statusCode: number; body: string }> {
+  const body = JSON.stringify(payload);
+  return new Promise((resolve, reject) => {
+    const request = http.request(
+      {
+        hostname: "127.0.0.1",
+        port,
+        path,
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "content-length": Buffer.byteLength(body)
+        }
+      },
+      (response) => {
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk: Buffer) => chunks.push(chunk));
+        response.on("end", () => {
+          resolve({
+            statusCode: response.statusCode ?? 0,
+            body: Buffer.concat(chunks).toString("utf8")
+          });
+        });
+      }
+    );
+    request.on("error", reject);
+    request.end(body);
+  });
+}

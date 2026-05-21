@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { CodexSetupMode, HookOutputProfile, PrimeProfile } from "../../types.js";
+import { commandInvocation } from "../../utils/command.js";
 import { writeMcpInstructionsSetup } from "./mcpInstructions.js";
 
 export function writeCodexSetup(input: {
@@ -91,35 +92,52 @@ export function resolveKairnMcpCommand(): { command: string; argsPrefix: string[
 function findExecutableNearEntrypoint(name: string, entrypoint: string): string | undefined {
   let current = path.dirname(entrypoint);
   while (current && current !== path.dirname(current)) {
-    const candidate = path.join(current, "node_modules", ".bin", name);
-    try {
-      fs.accessSync(candidate, fs.constants.X_OK);
-      return path.resolve(candidate);
-    } catch {
-      current = path.dirname(current);
+    for (const executableName of executableNames(name)) {
+      const candidate = path.join(current, "node_modules", ".bin", executableName);
+      try {
+        fs.accessSync(candidate, fs.constants.X_OK);
+        return path.resolve(candidate);
+      } catch {
+        // Keep searching this directory.
+      }
     }
+    current = path.dirname(current);
   }
   return undefined;
 }
 
 function splitCommandForMcp(command: string): { command: string; argsPrefix: string[] } {
-  const parts = command.match(/"[^"]+"|'[^']+'|\S+/g)?.map((part) => part.replace(/^['"]|['"]$/g, "")) ?? [];
-  if (parts.length === 0) return { command: "kairn", argsPrefix: [] };
-  return { command: parts[0]!, argsPrefix: parts.slice(1) };
+  try {
+    const invocation = commandInvocation(command);
+    return { command: invocation.command, argsPrefix: invocation.args };
+  } catch {
+    return { command: "kairn", argsPrefix: [] };
+  }
 }
 
 function findExecutableOnPath(name: string): string | undefined {
   const pathDirs = process.env.PATH?.split(path.delimiter) ?? [];
   for (const dir of pathDirs) {
-    const candidate = path.join(dir, name);
-    try {
-      fs.accessSync(candidate, fs.constants.X_OK);
-      return path.resolve(candidate);
-    } catch {
-      // Keep searching.
+    for (const executableName of executableNames(name)) {
+      const candidate = path.join(dir, executableName);
+      try {
+        fs.accessSync(candidate, fs.constants.X_OK);
+        return path.resolve(candidate);
+      } catch {
+        // Keep searching.
+      }
     }
   }
   return undefined;
+}
+
+function executableNames(name: string): string[] {
+  if (path.extname(name) || process.platform !== "win32") return [name];
+  const extensions = (process.env.PATHEXT ?? ".EXE;.CMD;.BAT;.COM")
+    .split(";")
+    .map((extension) => extension.trim().toLowerCase())
+    .filter(Boolean);
+  return [name, ...extensions.map((extension) => `${name}${extension}`)];
 }
 
 function upsertFeatureFlag(config: string, key: string, value: boolean): string {
