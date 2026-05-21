@@ -63,15 +63,30 @@ function redactDiagnosticValue(value: unknown, rootPath: string): unknown {
 function redactDiagnosticString(value: string, rootPath: string): string {
   let output = value;
   const markers: Array<readonly [string, string]> = [
-    [rootPath, "<redacted-root>"],
-    [rootPath.replaceAll("\\", "/"), "<redacted-root>"],
+    ...rootRedactionAliases(rootPath).map((alias) => [alias, "<redacted-root>"] as const),
     [os.homedir(), "<redacted-home>"],
     [os.homedir().replaceAll("\\", "/"), "<redacted-home>"]
   ];
-  for (const [marker, replacement] of markers) {
+  for (const [marker, replacement] of markers.sort((left, right) => right[0].length - left[0].length)) {
     if (marker.length > 3) output = output.split(marker).join(replacement);
   }
   return output
     .replace(/(^|[\s"'`])\/[^\s"'`]+/g, "$1<redacted-path>")
     .replace(/[A-Za-z]:\\[^\r\n"'`]+/g, "<redacted-path>");
+}
+
+function rootRedactionAliases(rootPath: string): string[] {
+  const aliases = new Set<string>([rootPath, rootPath.replaceAll("\\", "/")]);
+  try {
+    const realPath = fs.realpathSync.native(rootPath);
+    aliases.add(realPath);
+    aliases.add(realPath.replaceAll("\\", "/"));
+  } catch {
+    // Best-effort redaction still covers the resolved path and generic absolute paths.
+  }
+  for (const alias of [...aliases]) {
+    if (alias.startsWith("/private/")) aliases.add(alias.slice("/private".length));
+    if (alias.startsWith("/var/")) aliases.add(`/private${alias}`);
+  }
+  return [...aliases];
 }

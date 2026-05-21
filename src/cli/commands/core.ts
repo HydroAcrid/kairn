@@ -372,6 +372,7 @@ export function registerCoreCommands(program: Command): void {
           const invocation = commandSpawnInvocation(commandInvocation(options.codexCommand, result.args));
           const completed = spawnSync(invocation.command, invocation.args, {
             cwd: result.rootPath,
+            env: invocation.env ? { ...process.env, ...invocation.env } : undefined,
             stdio: "inherit"
           });
           process.exitCode = completed.status ?? (completed.error ? 1 : 0);

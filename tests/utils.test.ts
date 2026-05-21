@@ -43,8 +43,37 @@ describe("command utilities", () => {
     });
     expect(shim).toEqual({
       command: "cmd.exe",
-      args: ["/d", "/s", "/v:off", "/c", "\"C:\\Users\\dev\\AppData\\Roaming\\npm\\codex.CMD\" \"--version\""]
+      args: ["/d", "/s", "/v:off", "/c", "%KAIRN_CMD_COMMAND% %KAIRN_CMD_ARG_0%"],
+      env: {
+        KAIRN_CMD_COMMAND: "\"C:\\Users\\dev\\AppData\\Roaming\\npm\\codex.CMD\"",
+        KAIRN_CMD_ARG_0: "\"--version\""
+      }
     });
+  });
+
+  it("keeps Windows cmd shim metacharacters out of the cmd.exe command line", () => {
+    const prompt = "Fix %USERPROFILE% & echo nope ^ \"quoted\"";
+    const shim = commandSpawnInvocation(commandInvocation("codex", [prompt, "literal%PATH%"]), {
+      platform: "win32",
+      envPath: "C:\\Users\\dev\\AppData\\Roaming\\npm",
+      pathext: ".COM;.EXE;.BAT;.CMD",
+      comspec: "cmd.exe",
+      exists: (filePath) => filePath === "C:\\Users\\dev\\AppData\\Roaming\\npm\\codex.CMD"
+    });
+
+    expect(shim).toEqual({
+      command: "cmd.exe",
+      args: ["/d", "/s", "/v:off", "/c", "%KAIRN_CMD_COMMAND% %KAIRN_CMD_ARG_0% %KAIRN_CMD_ARG_1%"],
+      env: {
+        KAIRN_CMD_COMMAND: "\"C:\\Users\\dev\\AppData\\Roaming\\npm\\codex.CMD\"",
+        KAIRN_CMD_ARG_0: '"Fix %USERPROFILE% & echo nope ^ ""quoted"""',
+        KAIRN_CMD_ARG_1: "\"literal%PATH%\""
+      }
+    });
+    expect(shim.args[4]).not.toContain("%USERPROFILE%");
+    expect(shim.args[4]).not.toContain("& echo nope");
+    expect(shim.args[4]).not.toContain("^");
+    expect(shim.args[4]).not.toContain("\"quoted\"");
   });
 });
 

@@ -188,7 +188,10 @@ function checkIndex(runtime: KairnRuntime): DoctorCheck {
 
 function checkCodex(command: string): DoctorCheck {
   const invocation = commandSpawnInvocation(commandInvocation(command, ["--version"]));
-  const result = spawnSync(invocation.command, invocation.args, { encoding: "utf8" });
+  const result = spawnSync(invocation.command, invocation.args, {
+    encoding: "utf8",
+    env: invocation.env ? { ...process.env, ...invocation.env } : undefined
+  });
   const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
   return {
     id: "codex_binary",
@@ -200,7 +203,10 @@ function checkCodex(command: string): DoctorCheck {
 
 function checkBinary(command: string, id: string, label: string): DoctorCheck {
   const invocation = commandSpawnInvocation(commandInvocation(command, ["--version"]));
-  const result = spawnSync(invocation.command, invocation.args, { encoding: "utf8" });
+  const result = spawnSync(invocation.command, invocation.args, {
+    encoding: "utf8",
+    env: invocation.env ? { ...process.env, ...invocation.env } : undefined
+  });
   const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
   return {
     id,

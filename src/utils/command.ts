@@ -6,7 +6,9 @@ export type CommandInvocation = {
   args: string[];
 };
 
-export type SpawnCommandInvocation = CommandInvocation;
+export type SpawnCommandInvocation = CommandInvocation & {
+  env?: Record<string, string> | undefined;
+};
 
 type SpawnCommandOptions = {
   platform?: NodeJS.Platform | undefined;
@@ -92,9 +94,11 @@ export function commandSpawnInvocation(invocation: CommandInvocation, options: S
     return { command, args: invocation.args };
   }
 
+  const env = windowsCmdEnv(command, invocation.args);
   return {
     command: options.comspec ?? process.env.ComSpec ?? "cmd.exe",
-    args: ["/d", "/s", "/v:off", "/c", [quoteWindowsCmdArg(command), ...invocation.args.map(quoteWindowsCmdArg)].join(" ")]
+    args: ["/d", "/s", "/v:off", "/c", ["%KAIRN_CMD_COMMAND%", ...invocation.args.map((_, index) => `%KAIRN_CMD_ARG_${index}%`)].join(" ")],
+    env
   };
 }
 
@@ -136,4 +140,11 @@ function windowsCommandCandidates(command: string, pathext = process.env.PATHEXT
 
 function quoteWindowsCmdArg(value: string): string {
   return `"${value.replace(/"/g, "\"\"")}"`;
+}
+
+function windowsCmdEnv(command: string, args: string[]): Record<string, string> {
+  return Object.fromEntries([
+    ["KAIRN_CMD_COMMAND", quoteWindowsCmdArg(command)],
+    ...args.map((arg, index) => [`KAIRN_CMD_ARG_${index}`, quoteWindowsCmdArg(arg)] as const)
+  ]);
 }
