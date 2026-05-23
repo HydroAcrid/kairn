@@ -273,9 +273,13 @@ describe("cross-language parser adapters", () => {
   it("classifies Python, Java, and C++ source/test files", () => {
     expect(detectLanguage("click/utils.py")).toBe("python");
     expect(detectLanguage("src/main/java/org/example/App.java")).toBe("java");
+    expect(detectLanguage("crates/core/search.rs")).toBe("rust");
     expect(detectLanguage("include/fmt/base.h")).toBe("cpp");
     expect(detectLanguage("src/core.cpp")).toBe("cpp");
     expect(classifyFile("tests/test_utils.py")).toBe("test");
+    expect(classifyFile("src/_pytest/python.py")).toBe("source");
+    expect(classifyFile("src/_pytest/fixtures.py")).toBe("source");
+    expect(classifyFile("crates/core/search.rs")).toBe("source");
     expect(classifyFile("src/test/java/org/example/StringUtilsTest.java")).toBe("test");
     expect(classifyFile("test/base_test.cc")).toBe("test");
     expect(classifyFile("src/main/java/org/example/StringUtils.java")).toBe("source");

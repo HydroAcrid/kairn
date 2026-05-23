@@ -48,7 +48,7 @@ export function classifyFile(filePath: string): FileKind {
     normalized.includes("__tests__/") ||
     /^test_.*\.pyi?$/.test(basename) ||
     /_test\.pyi?$/.test(basename) ||
-    /tests?\//.test(normalized) && /\.pyi?$/.test(basename) ||
+    /(^|\/)tests?\//.test(normalized) && /\.pyi?$/.test(basename) ||
     /(test|tests)\.java$/.test(basename) ||
     /(test|tests)\.kt$/.test(basename) ||
     /(^|\/)src\/test\/java\//.test(normalized) ||
@@ -98,6 +98,7 @@ export function classifyFile(filePath: string): FileKind {
   if (
     /\.[cm]?[jt]sx?$/.test(basename) ||
     /\.pyi?$/.test(basename) ||
+    /\.rs$/.test(basename) ||
     /\.java$/.test(basename) ||
     /\.kts?$/.test(basename) ||
     /\.(c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(basename) ||

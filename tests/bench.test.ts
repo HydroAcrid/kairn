@@ -1297,6 +1297,89 @@ describe("benchmark suite and scoring", () => {
     expect(companions).not.toContain("test/router.js");
   });
 
+  it("prefers routing core companions over broad package URL utilities", () => {
+    const files = [
+      sourceRecord("src/werkzeug/routing/rules.py", "python"),
+      sourceRecord("src/werkzeug/routing/map.py", "python"),
+      sourceRecord("src/werkzeug/routing/matcher.py", "python"),
+      sourceRecord("src/werkzeug/utils.py", "python")
+    ];
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query: "Debug Werkzeug routing when Map binds URL rules and Rule matching fails to route a method-specific endpoint.",
+      symbols: [],
+      chunks: [],
+      edges: [],
+      limit: 2
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions).toEqual(expect.arrayContaining(["src/werkzeug/routing/map.py", "src/werkzeug/routing/matcher.py"]));
+    expect(companions).not.toContain("src/werkzeug/utils.py");
+  });
+
+  it("prefers line/comment formatting companions over generic output files", () => {
+    const files = [
+      sourceRecord("src/black/lines.py", "python"),
+      sourceRecord("src/black/linegen.py", "python"),
+      sourceRecord("src/black/comments.py", "python"),
+      sourceRecord("src/black/output.py", "python")
+    ];
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query: "Debug Black formatting when LineGenerator creates output lines and comment handling changes line splitting behavior.",
+      symbols: [],
+      chunks: [],
+      edges: [],
+      limit: 2
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions).toEqual(expect.arrayContaining(["src/black/linegen.py", "src/black/comments.py"]));
+    expect(companions).not.toContain("src/black/output.py");
+  });
+
+  it("adds search/printer output companions for Rust search flows", () => {
+    const files = [
+      sourceRecord("crates/searcher/src/searcher/core.rs", "rust"),
+      sourceRecord("crates/core/search.rs", "rust"),
+      sourceRecord("crates/printer/src/json.rs", "rust"),
+      sourceRecord("crates/printer/src/path.rs", "rust")
+    ];
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query: "Debug ripgrep JSON output when core search emits matches and the printer formats paths and match events.",
+      symbols: [],
+      chunks: [],
+      edges: [],
+      limit: 3
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions).toEqual(expect.arrayContaining(["crates/core/search.rs", "crates/printer/src/json.rs", "crates/printer/src/path.rs"]));
+  });
+
+  it("adds fixture runner companions from source packages without treating _pytest as tests", () => {
+    const files = [
+      sourceRecord("src/_pytest/python.py", "python"),
+      sourceRecord("src/_pytest/fixtures.py", "python"),
+      sourceRecord("src/_pytest/runner.py", "python"),
+      sourceRecord("testing/python/fixtures.py", "python")
+    ];
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query: "Debug pytest fixture resolution when collected Python test nodes request fixture values during runner setup.",
+      symbols: [],
+      chunks: [],
+      edges: [],
+      limit: 2
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions).toEqual(expect.arrayContaining(["src/_pytest/fixtures.py", "src/_pytest/runner.py"]));
+    expect(companions).not.toContain("testing/python/fixtures.py");
+  });
+
   it("adds fiber hooks/workloop companions ahead of generic component surfaces", () => {
     const files = [
       sourceRecord("packages/react-reconciler/src/ReactFiberWorkLoop.js", "javascript"),

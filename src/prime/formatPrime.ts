@@ -228,13 +228,13 @@ export function formatShrunkPrimeContext(input: {
       "Start file:",
       topFiles.length > 0 ? `- ${topFiles[0]}` : "- No high-confidence source file found.",
       "",
-      ...formatInvariantSections(input.invariants, "Invariant to preserve:", { includeVerification: input.includeVerification ?? false }),
+      ...formatMinimalInvariantSections(input.invariants, "Invariant to preserve:"),
       "",
-      "Edit boundary: make the smallest production-source edit. Do not edit tests, snapshots, docs, examples, generated files, or sibling source files unless a focused verification failure explicitly proves they must change.",
-      "Verification hint: if you verify inside this turn, use the narrowest relevant compile/test command and avoid broad suite output.",
-      "Stop condition: edit the start file only; avoid broad related-file/test scans unless this file cannot satisfy the invariant or a failure names another file.",
+      "Edit boundary: make the smallest production-source edit. Do not edit tests, snapshots, docs, examples, generated files, or sibling source files unless a focused failure proves expansion.",
+      "Verification hint: use the narrowest relevant check.",
+      "Stop condition: stop after the start-file edit unless a failure names another source file.",
       "",
-      ...(input.editScope ? editScopeBlock(input.editScope, "Edit scope:", { includeReadOnly: false }) : [])
+      ...formatMinimalEditScope(input.editScope)
     ].filter(Boolean);
     return fitSectionsToBudget(sections, input.budget);
   }
@@ -328,6 +328,22 @@ function formatInvariantSections(
     invariant.evidence ? `Evidence: ${invariant.evidence}` : "",
     options.includeVerification !== false && invariant.verificationCommand ? `Verification: ${invariant.verificationCommand}` : ""
   ].filter(Boolean).join("\n")];
+}
+
+function formatMinimalInvariantSections(invariants: ContextInvariant[] | undefined, heading: string): string[] {
+  const invariant = invariants?.[0];
+  if (!invariant) return [];
+  return [[heading, `- ${truncateToBudget(invariant.statement, 36)}`].join("\n")];
+}
+
+function formatMinimalEditScope(scope: EditScopeDecision | undefined): string[] {
+  if (!scope) return [];
+  const initial = scope.initialEditFiles.length > 0 ? scope.initialEditFiles.join(", ") : "none yet";
+  const firstTrigger = truncateToBudget(
+    scope.allowedExpansionTriggers[0] ?? "a focused check proves another file is required",
+    28
+  );
+  return ["Edit scope:", `- Initial edit scope: ${initial}`, `- Expand only if ${firstTrigger}.`];
 }
 
 function primaryReasonForFile(context: ContextResponse, filePath: string): string {

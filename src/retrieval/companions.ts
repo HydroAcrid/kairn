@@ -53,6 +53,21 @@ const ROLE_GROUPS: CompanionRole[] = [
     reason: "routing/dependency pair"
   },
   {
+    id: "search-printer-output",
+    terms: ["search", "searcher", "match", "matches", "printer", "print", "json", "path", "paths", "event", "events", "output"],
+    reason: "search/printer output pair"
+  },
+  {
+    id: "line-comment-formatting",
+    terms: ["line", "lines", "linegen", "generator", "generate", "output", "comment", "comments", "split", "splitting", "format", "formatting"],
+    reason: "line/comment formatting pair"
+  },
+  {
+    id: "fixture-runner-resolution",
+    terms: ["fixture", "fixtures", "resolution", "resolve", "collected", "node", "nodes", "runner", "setup", "value", "values", "request"],
+    reason: "fixture/runner resolution pair"
+  },
+  {
     id: "controller-repository-model",
     terms: ["controller", "controllers", "repository", "repositories", "repo", "repos", "dao", "model", "models", "schema", "service", "services"],
     reason: "controller/repository/model pair"
@@ -260,6 +275,14 @@ const STRONG_CANONICAL_BASENAME_TERMS = new Set([
   "mux",
   "context",
   "route",
+  "search",
+  "printer",
+  "json",
+  "line",
+  "linegen",
+  "comment",
+  "fixture",
+  "runner",
   "parser",
   "repository"
 ]);
@@ -498,6 +521,26 @@ export function findCompanionCandidates(input: {
     if (ormUnitOfWork.score !== 0) {
       score += ormUnitOfWork.score;
       reasons.push(...ormUnitOfWork.reasons);
+    }
+    const routingMapRule = scoreRoutingMapRuleSourceCompanion(file.path, queryTerms);
+    if (routingMapRule.score !== 0) {
+      score += routingMapRule.score;
+      reasons.push(...routingMapRule.reasons);
+    }
+    const lineFormatting = scoreLineCommentFormattingCompanion(file.path, queryTerms);
+    if (lineFormatting.score !== 0) {
+      score += lineFormatting.score;
+      reasons.push(...lineFormatting.reasons);
+    }
+    const searchPrinter = scoreSearchPrinterOutputCompanion(file.path, queryTerms);
+    if (searchPrinter.score !== 0) {
+      score += searchPrinter.score;
+      reasons.push(...searchPrinter.reasons);
+    }
+    const fixtureRunner = scoreFixtureRunnerResolutionCompanion(file.path, queryTerms);
+    if (fixtureRunner.score !== 0) {
+      score += fixtureRunner.score;
+      reasons.push(...fixtureRunner.reasons);
     }
     if (isRoutingMapRuleCompanion(file.path, queryTerms)) {
       score += 980;
@@ -827,7 +870,7 @@ function isNoisyCompanionFile(file: FileRecord): boolean {
 
 function isUniversalSourceFile(file: Pick<FileRecord, "path" | "kind" | "language">): boolean {
   if (["source", "component", "route"].includes(file.kind)) return true;
-  return /\.(ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|c|cc|cpp|cxx|h|hh|hpp|hxx|go|rb)$/.test(file.path.toLowerCase());
+  return /\.(ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|rs|c|cc|cpp|cxx|h|hh|hpp|hxx|go|rb)$/.test(file.path.toLowerCase());
 }
 
 function isPrimaryUniversalSourcePath(file: Pick<FileRecord, "path" | "language">): boolean {
@@ -877,7 +920,7 @@ function routePathAnchors(query: string): string[] {
 
 function mentionedSourceFileBasenames(query: string): Set<string> {
   const basenames = new Set<string>();
-  const pattern = /\b[A-Za-z0-9_.-]+\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)\b/g;
+  const pattern = /\b[A-Za-z0-9_.-]+\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|rs|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)\b/g;
   for (const match of query.matchAll(pattern)) {
     const basename = match[0]!.toLowerCase().split(/[\\/]/).at(-1);
     if (!basename || isLikelyTestPath(basename) || isGenericMentionedBasename(basename)) continue;
@@ -1547,6 +1590,90 @@ function scoreOrmUnitOfWorkCompanion(filePath: string, queryTerms: Set<string>):
   return { score, reasons };
 }
 
+function scoreRoutingMapRuleSourceCompanion(filePath: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const asksRoutingCore =
+    (queryTerms.has("routing") || queryTerms.has("route") || queryTerms.has("url")) &&
+    (queryTerms.has("map") || queryTerms.has("rule") || queryTerms.has("matcher") || queryTerms.has("matching") || queryTerms.has("method") || queryTerms.has("endpoint"));
+  if (!asksRoutingCore) return { score: 0, reasons: [] };
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const reasons: string[] = [];
+  let score = 0;
+  if (/(^|\/)routing\//.test(normalized) && /^(map|rules?|matcher)$/.test(basename)) {
+    score += basename === "matcher" ? 4400 : 3900;
+    reasons.push("routing map/rule/matcher source companion");
+  }
+  if (/^utils?$/.test(basename) && !/(^|\/)routing\//.test(normalized)) {
+    score -= 3600;
+    reasons.push("generic URL utility downranked for routing core prompt");
+  }
+  return { score, reasons };
+}
+
+function scoreLineCommentFormattingCompanion(filePath: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const asksLineCommentFlow =
+    (queryTerms.has("line") || queryTerms.has("lines") || queryTerms.has("linegen") || queryTerms.has("generator") || queryTerms.has("output")) &&
+    (queryTerms.has("comment") || queryTerms.has("comments") || queryTerms.has("split") || queryTerms.has("splitting") || queryTerms.has("format") || queryTerms.has("formatting"));
+  if (!asksLineCommentFlow) return { score: 0, reasons: [] };
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const reasons: string[] = [];
+  let score = 0;
+  if (/^(linegen|lines?|comments?)$/.test(basename)) {
+    score += basename === "linegen" ? 4600 : 3800;
+    reasons.push("line/comment formatting source companion");
+  }
+  if (/^(output|debug|report)$/.test(basename) && (queryTerms.has("line") || queryTerms.has("linegen") || queryTerms.has("comment"))) {
+    score -= 2600;
+    reasons.push("generic output surface downranked for line/comment prompt");
+  }
+  return { score, reasons };
+}
+
+function scoreSearchPrinterOutputCompanion(filePath: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const asksSearchPrinter =
+    (queryTerms.has("search") || queryTerms.has("searcher") || queryTerms.has("match") || queryTerms.has("matches")) &&
+    (queryTerms.has("printer") || queryTerms.has("json") || queryTerms.has("path") || queryTerms.has("paths") || queryTerms.has("event") || queryTerms.has("events") || queryTerms.has("output"));
+  if (!asksSearchPrinter) return { score: 0, reasons: [] };
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const reasons: string[] = [];
+  let score = 0;
+  if (/(^|\/)crates\/core\//.test(normalized) && basename === "search") {
+    score += 4700;
+    reasons.push("core search source companion");
+  }
+  if (/(^|\/)printer\//.test(normalized) && /^(json|path|paths?)$/.test(basename)) {
+    score += basename === "json" ? 4600 : 4000;
+    reasons.push("printer output source companion");
+  }
+  if (/(^|\/)searcher\//.test(normalized) && basename === "core" && queryTerms.has("printer")) {
+    score -= 900;
+    reasons.push("searcher core downranked when printer output is requested");
+  }
+  return { score, reasons };
+}
+
+function scoreFixtureRunnerResolutionCompanion(filePath: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const asksFixtureRunner =
+    (queryTerms.has("fixture") || queryTerms.has("fixtures") || queryTerms.has("collected") || queryTerms.has("nodes")) &&
+    (queryTerms.has("runner") || queryTerms.has("setup") || queryTerms.has("resolution") || queryTerms.has("resolve") || queryTerms.has("value") || queryTerms.has("values"));
+  if (!asksFixtureRunner) return { score: 0, reasons: [] };
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const reasons: string[] = [];
+  let score = 0;
+  if (/(^|\/)_pytest\//.test(normalized) && /^(fixtures|python|runner)$/.test(basename)) {
+    score += basename === "fixtures" ? 4300 : 3600;
+    reasons.push("fixture/runner source companion");
+  }
+  if (/(^|\/)_pytest\//.test(normalized) && basename === "nodes" && queryTerms.has("fixture")) {
+    score -= 500;
+    reasons.push("node metadata downranked behind fixture/runner flow");
+  }
+  return { score, reasons };
+}
+
 function isTransformAnalysisCompanion(filePath: string, queryTerms: Set<string>): boolean {
   const asksTransformSurface =
     (queryTerms.has("plugin") || queryTerms.has("plugins") || queryTerms.has("module") || queryTerms.has("modules")) &&
@@ -1652,7 +1779,18 @@ function scoreUtilitySiblingCompanion(seedPath: string, candidatePath: string, q
   }
 
   const urlPathTask = ["url", "urls", "relative", "absolute", "external", "query", "path", "paths", "browser"].some((term) => queryTerms.has(term));
+  const routingCoreTask =
+    (queryTerms.has("routing") || queryTerms.has("route")) &&
+    (queryTerms.has("map") || queryTerms.has("rule") || queryTerms.has("matcher") || queryTerms.has("matching") || queryTerms.has("endpoint"));
   if (
+    urlPathTask &&
+    /utils?$/.test(candidateBase) &&
+    routingCoreTask &&
+    !/(^|\/)routing\//.test(normalizedCandidate)
+  ) {
+    score -= 3600;
+    reasons.push("generic URL utility downranked for routing core prompt");
+  } else if (
     urlPathTask &&
     /utils?$/.test(candidateBase) &&
     !/(^|\/)(templates?|examples?|playground|fixtures?)\//.test(normalizedCandidate)
@@ -1883,5 +2021,14 @@ function canonicalTerm(term: string): string {
   if (term === "tools") return "tool";
   if (term === "tabs") return "tab";
   if (term === "filters") return "filter";
+  if (term === "lines") return "line";
+  if (term === "comments") return "comment";
+  if (term === "matches" || term === "matching") return "match";
+  if (term === "printers") return "printer";
+  if (term === "paths") return "path";
+  if (term === "events") return "event";
+  if (term === "nodes") return "node";
+  if (term === "runners") return "runner";
+  if (term === "values") return "value";
   return term;
 }

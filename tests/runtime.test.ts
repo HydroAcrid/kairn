@@ -138,6 +138,59 @@ describe("KairnRuntime", () => {
     runtime.close();
   });
 
+  it("uses a scope-only guardrail for long official exact-source patch prompts", async () => {
+    const root = createFixtureRepo();
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "src/PosthogAnalytics.ts"),
+      [
+        "export class PosthogAnalytics {",
+        "  initialize(enabled: boolean) {",
+        "    return enabled;",
+        "  }",
+        "  trackEvent(name: string) {",
+        "    return name;",
+        "  }",
+        "}",
+        ""
+      ].join("\n")
+    );
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(path.join(root, "test/PosthogAnalytics-test.ts"), "test('posthog analytics', () => {})\n");
+    const runtime = new KairnRuntime(root);
+
+    const prime = await runtime.primeContext({
+      task: [
+        "Title: PosthogAnalytics event tracking ignores privacy state.",
+        "",
+        "Requirements:",
+        "- Update PosthogAnalytics so initialization and event tracking respect the enabled flag.",
+        "- Fix the issue in production source. Do not edit unrelated files.",
+        "",
+        "Interface notes, not necessarily edit targets:",
+        "No new interfaces are introduced.",
+        "",
+        "Selected tests from SWE-Bench Pro metadata: test/PosthogAnalytics-test.ts",
+        "",
+        "Additional detail ".repeat(120)
+      ].join("\n"),
+      budget: 900,
+      source: "codex"
+    });
+
+    expect(prime.contextDecision?.taskFrame).toBe("official_patch");
+    expect(prime.contextDecision?.action).toBe("shrink");
+    expect(prime.contextDecision?.recommendedDelivery).toBe("one_file_directive");
+    expect(prime.files).toEqual(["src/PosthogAnalytics.ts"]);
+    expect(prime.content).toContain("# Kairn Fix Guardrail");
+    expect(prime.content).toContain("src/PosthogAnalytics.ts");
+    expect(prime.content).not.toContain("Focused context:");
+    expect(prime.content).not.toContain("Additional detail Additional detail");
+    expect(estimateTokens(prime.content)).toBeLessThan(320);
+
+    runtime.close();
+  });
+
   it("allows a three-file directive when selected failing tests imply three production counterparts", async () => {
     const root = fs.mkdtempSync(path.join(process.cwd(), ".tmp-kairn-runtime-"));
     fs.mkdirSync(path.join(root, "qutebrowser/components"), { recursive: true });

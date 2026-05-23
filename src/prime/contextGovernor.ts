@@ -219,7 +219,7 @@ export function classifyTaskFrameFromTask(task: string, profile: ResolvedPrimePr
   if (/\b(cleanup|clean up|review diff|final diff|summarize changes|verify|verification|typecheck|lint|build)\b/.test(text)) return "verification_cleanup";
   if (/\b(qna|question|answer|inspect|explain|read|open|show|which file|where is|what symbol|repository language|dataset language|source-grounded|source grounded)\b/.test(text)) return "qna_source_grounded";
   if ((profile === "failure_debug" || /\b(debug|failure|failing|regression|stack trace|traceback|exception)\b/.test(text)) &&
-    /\b(across|multiple files|multi[-\s]?file|companion|controller|repository|router|adapter|dispatch)\b/.test(text)) {
+    hasMultiSurfaceDebugLanguage(text)) {
     return "multi_file_debug";
   }
   if (profile === "failure_debug" || /\b(debug|failure|failing|regression|stack trace|traceback|exception|error)\b/.test(text)) return "failure_first";
@@ -526,15 +526,31 @@ function classifyTaskFrame(input: {
   if (/\b(cleanup|clean up|review diff|final diff|summarize changes|verify|verification|typecheck|lint|build)\b/.test(text)) return "verification_cleanup";
   if (/\b(qna|question|answer|inspect|explain|read|open|show|which file|where is|what symbol|repository language|dataset language|source-grounded|source grounded)\b/.test(text)) return "qna_source_grounded";
   if (input.decision.cheapSingleSource || input.decision.cheapExactSource) return "cheap_single_source";
-  if (input.decision.exactSourceHit || input.decision.sourceRescue || input.decision.canonicalSourceHit) return "source_rescue";
+  const explicitMultiSurface = hasMultiSurfaceDebugLanguage(text);
+  const strongSingleSource =
+    Boolean(input.decision.exactSourceHit || input.decision.sourceRescue || input.decision.canonicalSourceHit) &&
+    !explicitMultiSurface;
   if ((input.profile === "failure_debug" || /\b(debug|failure|failing|regression|stack trace|traceback|exception)\b/.test(text)) &&
-    (input.decision.multiSurfaceSignal || input.companionCount > 0 || input.companionTopScore >= 420 || /\b(across|multiple files|multi[-\s]?file|companion|controller|repository|router|adapter|dispatch)\b/.test(text))) {
+    (explicitMultiSurface || (!strongSingleSource && (input.decision.multiSurfaceSignal || input.companionCount > 0 || input.companionTopScore >= 420)))) {
     return "multi_file_debug";
   }
+  if (input.decision.exactSourceHit || input.decision.sourceRescue || input.decision.canonicalSourceHit) return "source_rescue";
   if (input.profile === "failure_debug" || /\b(debug|failure|failing|regression|stack trace|traceback|exception|error)\b/.test(text)) return "failure_first";
   if (input.decision.easyTaskSignal && input.candidates.length <= 1) return "cheap_single_source";
   if (input.candidates.length === 0 || input.decision.score < 38 || /\b(improve|better|stuff|things|general cleanup)\b/.test(text)) return "weak_signal";
   return "source_rescue";
+}
+
+function hasMultiSurfaceDebugLanguage(text: string): boolean {
+  return (
+    /\b(across|multiple files|multi[-\s]?file|companion|controller|repository|router|routing|adapter|dispatch|route matching|module resolution|module loading|loader|resolver|fixture resolution|runner setup|line splitting|comment handling|json output)\b/.test(text) ||
+    /\b(search|matches?)\b.*\b(printer|json|paths?|events?)\b/.test(text) ||
+    /\b(printer|json|paths?|events?)\b.*\b(search|matches?)\b/.test(text) ||
+    /\b(line generator|linegen|output lines?)\b.*\b(comments?|splitting|formatting)\b/.test(text) ||
+    /\b(comments?|splitting|formatting)\b.*\b(line generator|linegen|output lines?)\b/.test(text) ||
+    /\b(fixtures?|collected|nodes?)\b.*\b(runner|setup|resolution|values?)\b/.test(text) ||
+    /\b(runner|setup|resolution|values?)\b.*\b(fixtures?|collected|nodes?)\b/.test(text)
+  );
 }
 
 function evidenceRequestFor(features: DecisionFeatures, preferredKind?: EvidenceRequest["kind"]): EvidenceRequest {
@@ -660,12 +676,16 @@ export function taskHasProductionOnlyEditIntent(task: string): boolean {
 
 export function hasExplicitMultiFileScopeRequest(task: string): boolean {
   const normalized = normalizeText(task);
+  const interfaceExpansionRequested =
+    /\b(public api|type declaration|caller|callers|adapter|companion|coordinated)\b/.test(normalized) ||
+    (/\binterfaces?\b/.test(normalized) &&
+      !/\b(no new interfaces?|no interface changes?|interface notes?,? not necessarily edit targets)\b/.test(normalized));
   return (
     /\b(multiple|several|both|two|2)\s+(production\s+)?(files|sources|modules|components)\b/.test(normalized) ||
     /\b(update|fix|change)\s+(both|all)\b/.test(normalized) ||
     /\b(move|moved|relocate|relocated|relocation)\b.{0,120}\b(from|to|between)\b/.test(normalized) ||
     /\bfrom\b.{0,80}\bto\b/.test(normalized) ||
-    /\b(public api|type declaration|interface|caller|callers|adapter|companion|coordinated)\b/.test(normalized)
+    interfaceExpansionRequested
   );
 }
 

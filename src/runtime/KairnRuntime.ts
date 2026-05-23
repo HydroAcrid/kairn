@@ -3721,7 +3721,10 @@ function multiFileDirectiveFileLimit(
     /\b(controller|repository|model)\b/,
     /\b(scheduler|renderer|work loop|workloop)\b/,
     /\b(interceptor|dispatch|adapter)\b/,
-    /\b(runtime|mcp|server|client)\b/
+    /\b(runtime|mcp|server|client)\b/,
+    /\b(search|printer|json|match|matches|event|events)\b/,
+    /\b(linegen|line generator|line|lines|comment|comments|splitting)\b/,
+    /\b(fixture|fixtures|runner|collected|nodes|setup)\b/
   ];
   const roleFamilyHits = roleFamilies.filter((pattern) => pattern.test(normalized)).length;
   const explicitlySpansFrameworkTriple =
@@ -3729,7 +3732,12 @@ function multiFileDirectiveFileLimit(
     /\b(framework|architecture|across|spans|flow|pipeline|lifecycle|integration)\b/.test(normalized) &&
     /\b(debug|fix|regression|behavior|dispatch|send|matching|scheduling|trimming|prefix|suffix)\b/.test(normalized);
   const selectedTestFanout = selectedTestPathCount(task) >= 3 && /\b(selected|failing|failed|failure)\s+tests?\b/.test(normalized);
-  return explicitlySpansFrameworkTriple || selectedTestFanout ? 3 : 2;
+  const queryLocalTriple =
+    /\b(routing|route)\b/.test(normalized) && /\b(map|rules?|matcher|endpoint)\b/.test(normalized) ||
+    /\b(search|matches?)\b/.test(normalized) && /\b(printer|json|paths?|events?)\b/.test(normalized) ||
+    /\b(line generator|linegen|output lines?)\b/.test(normalized) && /\b(comments?|splitting|formatting)\b/.test(normalized) ||
+    /\b(fixtures?|collected|nodes?)\b/.test(normalized) && /\b(runner|setup|resolution|values?)\b/.test(normalized);
+  return explicitlySpansFrameworkTriple || selectedTestFanout || queryLocalTriple ? 3 : 2;
 }
 
 function selectedTestPathCount(task: string): number {
@@ -3836,11 +3844,26 @@ function shouldUseMinimalOneFileDirective(input: {
   if (!taskHasProductionOnlyEditIntent(input.task)) return false;
   if (hasExplicitMultiFileScopeRequest(input.task)) return false;
   if (input.decision.wrongContextRisk) return false;
-  if (input.decision.taskFrame === "multi_file_debug" || input.decision.taskFrame === "official_patch") return false;
+  const narrowOfficialPatch = isNarrowOfficialExactSourcePatch(input);
+  if (input.decision.taskFrame === "multi_file_debug") return false;
+  if (input.decision.taskFrame === "official_patch" && !narrowOfficialPatch) return false;
   if (!input.decision.exactSourceHit && !input.decision.canonicalSourceHit && !input.decision.sourceRescue && !input.decision.cheapSingleSource && !input.decision.cheapExactSource) return false;
   if (input.decision.topScore < 180 || input.decision.topGap < 25) return false;
-  if (input.task.length > 520) return false;
+  if (input.task.length > 520 && !narrowOfficialPatch) return false;
   return true;
+}
+
+function isNarrowOfficialExactSourcePatch(input: {
+  task: string;
+  decision: ContextValueDecision;
+  emittedFiles: string[];
+}): boolean {
+  if (input.decision.taskFrame !== "official_patch") return false;
+  if (input.emittedFiles.length !== 1) return false;
+  if (input.decision.wrongContextRisk) return false;
+  if (!taskHasProductionOnlyEditIntent(input.task)) return false;
+  if (!input.decision.exactSourceHit && !input.decision.canonicalSourceHit && !input.decision.sourceRescue) return false;
+  return input.decision.topScore >= 180 && input.decision.topGap >= 25;
 }
 
 function isCheapOneShotAutomaticTask(task: string): boolean {
@@ -3862,7 +3885,7 @@ function hasSpecificCompanionEvidence(value: unknown): boolean {
       .join("; ")
       .toLowerCase()
     : "";
-  return /mentioned source filename|direct role basename anchor|route\/path surface anchor|same package|same module|import neighbor|controller\/repository|scheduler\/renderer|interceptor\/dispatch|validation\/callback|named peer client companion|user\/email companion|exact user\/email companion|proxy\/service companion|kubernetes service companion|keyboard shortcut companion|module resolver companion|schema generation companion|field definition companion|statement state companion|field metadata companion|command-line parser companion|config companion|routing map\/rule companion|named source surface|compound path term match|same-package utility sibling companion|shared URL\/path utility companion|inline\/header companion/.test(reasons);
+  return /mentioned source filename|direct role basename anchor|route\/path surface anchor|same package|same module|import neighbor|controller\/repository|scheduler\/renderer|interceptor\/dispatch|validation\/callback|named peer client companion|user\/email companion|exact user\/email companion|proxy\/service companion|kubernetes service companion|keyboard shortcut companion|module resolver companion|schema generation companion|field definition companion|statement state companion|field metadata companion|command-line parser companion|config companion|routing map\/rule|routing map\/rule\/matcher source companion|line\/comment formatting source companion|core search source companion|printer output source companion|fixture\/runner source companion|named source surface|compound path term match|same-package utility sibling companion|shared URL\/path utility companion|inline\/header companion/.test(reasons);
 }
 
 function strongestSuppressiveAction(
@@ -4076,6 +4099,11 @@ function preferredStructuredDebugPrimary(primaryFile: string | undefined, compan
         reason.includes("command-line parser companion") ||
         reason.includes("config companion") ||
         reason.includes("routing map/rule companion") ||
+        reason.includes("routing map/rule/matcher source companion") ||
+        reason.includes("line/comment formatting source companion") ||
+        reason.includes("core search source companion") ||
+        reason.includes("printer output source companion") ||
+        reason.includes("fixture/runner source companion") ||
         reason.includes("named source surface") ||
         reason.includes("compound path term match")
       )

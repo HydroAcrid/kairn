@@ -549,7 +549,13 @@ function isVagueImprovementTask(task: string): boolean {
 
 function isMultiFileTask(task: string): boolean {
   const normalized = task.toLowerCase();
-  return /\b(end-to-end|e2e|integration|workflow|flow|pipeline|refactor|feature|migration|api and ui|frontend and backend|full stack|system|ui|mobile|layout|responsive|drawer|sheet|tabs|dashboard|screen|component|filter|filters|card|cards|routing|dependency|dependencies|route handler|route matching|module resolution|module loading|loader|resolver|graph|schema generation|field schema|statement|callback|command line|command-line|matcher|mcp|tool|tools|runtime|follow-up|next context|proxy|response controller|interceptor|interceptors|guard|guards|pipe|pipes|case sensitivity|extension matching|move|moved|relocate|relocated|relocation|centralize|centralized|shared)\b/.test(normalized) ||
+  return /\b(end-to-end|e2e|integration|workflow|flow|pipeline|refactor|feature|migration|api and ui|frontend and backend|full stack|system|ui|mobile|layout|responsive|drawer|sheet|tabs|dashboard|screen|component|filter|filters|card|cards|routing|dependency|dependencies|route handler|route matching|module resolution|module loading|loader|resolver|graph|schema generation|field schema|statement|callback|command line|command-line|matcher|mcp|tool|tools|runtime|follow-up|next context|proxy|response controller|interceptor|interceptors|guard|guards|pipe|pipes|case sensitivity|extension matching|move|moved|relocate|relocated|relocation|centralize|centralized|shared|fixture resolution|runner setup|line splitting|comment handling|json output)\b/.test(normalized) ||
+    /\b(search|matches?)\b.*\b(printer|json|paths?|events?)\b/.test(normalized) ||
+    /\b(printer|json|paths?|events?)\b.*\b(search|matches?)\b/.test(normalized) ||
+    /\b(line generator|linegen|output lines?)\b.*\b(comments?|splitting|formatting)\b/.test(normalized) ||
+    /\b(comments?|splitting|formatting)\b.*\b(line generator|linegen|output lines?)\b/.test(normalized) ||
+    /\b(fixtures?|collected|nodes?)\b.*\b(runner|setup|resolution|values?)\b/.test(normalized) ||
+    /\b(runner|setup|resolution|values?)\b.*\b(fixtures?|collected|nodes?)\b/.test(normalized) ||
     /\b(coordinate|coordinates|coordinated|interact|interacts|interaction)\b.*\bacross\b/.test(normalized) ||
     /\bacross\s+(files?|modules?|components?|surfaces?|packages?|services?|layers?)\b/.test(normalized) ||
     /\bmultiple\s+(files?|modules?|components?|surfaces?|packages?|services?|layers?)\b/.test(normalized);
