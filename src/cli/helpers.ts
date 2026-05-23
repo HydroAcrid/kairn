@@ -24,12 +24,14 @@ export function codexExecArgs(input: {
   model?: string | undefined;
   sandbox: string;
   enableHooks?: boolean | undefined;
+  skipGitRepoCheck?: boolean | undefined;
 }): string[] {
   return [
     "exec",
     ...(input.model ? ["--model", input.model] : []),
     "--sandbox",
     input.sandbox,
+    ...(input.skipGitRepoCheck ? ["--skip-git-repo-check"] : []),
     ...(input.enableHooks ? ["--enable", "hooks"] : ["--disable", "hooks"]),
     "--cd",
     path.resolve(input.root),
@@ -43,11 +45,13 @@ export function codexInteractiveArgs(input: {
   model?: string | undefined;
   sandbox: string;
   enableHooks?: boolean | undefined;
+  skipGitRepoCheck?: boolean | undefined;
 }): string[] {
   return [
     ...(input.model ? ["--model", input.model] : []),
     "--sandbox",
     input.sandbox,
+    ...(input.skipGitRepoCheck ? ["--skip-git-repo-check"] : []),
     ...(input.enableHooks ? ["--enable", "hooks"] : []),
     "--cd",
     path.resolve(input.root),

@@ -80,7 +80,7 @@ import {
   resolvePrimeProfile
 } from "../prime/quality.js";
 import { evaluateContextValue } from "../prime/contextValue.js";
-import { classifyTaskFrameFromTask, hasExplicitMultiFileScopeRequest, taskHasProductionOnlyEditIntent } from "../prime/contextGovernor.js";
+import { classifyTaskFrameFromTask, hasExplicitMultiFileScopeRequest, taskHasProductionOnlyEditIntent, taskIsReadOnlySourceRouting } from "../prime/contextGovernor.js";
 import { decideSessionContextPolicy, inferTaskPhase } from "../ledger/policy.js";
 import { summarizeSessionLedger } from "../ledger/summary.js";
 import {
@@ -88,6 +88,7 @@ import {
   formatMcpBriefPrimeContext,
   formatPrimeContext,
   formatShrunkPrimeContext,
+  formatSourceRoutingPrimeContext,
   formatSuppressedPrimeContext,
   withTinyDirectivePrime
 } from "../prime/formatPrime.js";
@@ -415,6 +416,7 @@ export class KairnRuntime {
       reasons: contextDecision.reasons,
       expectedSavingsRisk: contextDecision.expectedSavingsRisk
     };
+    const readOnlySourceRouting = taskIsReadOnlySourceRouting(resolvedTask);
     if (freshness?.stale && input.refreshIndex === false) {
       quality.reasons = uniqueStrings([...quality.reasons, `index freshness: ${freshness.reason}`]);
     }
@@ -425,7 +427,7 @@ export class KairnRuntime {
     const directivePrimaryFile = contextDecision.recommendedDelivery === "multi_file_directive" && !contextDecision.exactSourceHit && !contextDecision.canonicalSourceHit
       ? preferredStructuredDebugPrimary(structuredPrimaryCandidate, companionMetadata)
       : primaryFile;
-    let invariants = directivePrimaryFile && (contextDecision.exactSourceHit || contextDecision.cheapSingleSource || contextDecision.recommendedDelivery === "multi_file_directive")
+    let invariants = !readOnlySourceRouting && directivePrimaryFile && (contextDecision.exactSourceHit || contextDecision.cheapSingleSource || contextDecision.recommendedDelivery === "multi_file_directive")
       ? [
           contextDecision.exactSourceHit
             ? sourceInvariantContextForFile(input.editScopeHints?.sourceInvariants, directivePrimaryFile) ??
@@ -487,6 +489,14 @@ export class KairnRuntime {
           ...(related?.related ?? []).slice(0, limits.relatedFiles),
           ...(tests?.files ?? []).slice(0, limits.testFiles)
         ]);
+    const readOnlySourceRoutingFiles = readOnlySourceRouting
+      ? uniquePaths([
+          ...companionPaths,
+          ...context.suggestedNextContext,
+          ...context.files,
+          ...(context.rankedFiles ?? []).map((file) => file.path)
+        ]).filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
+      : [];
     const suggestedCommands = [
       `kairn context --session ${session.id} --root <repo> --query "${resolvedTask.replaceAll('"', '\\"')}" --mode snippets`,
       ...(primaryFile ? [`kairn context --session ${session.id} --root <repo> --related ${primaryFile}`] : []),
@@ -541,6 +551,8 @@ export class KairnRuntime {
     };
     const emittedFiles = !isFileEmittingAction(effectiveAction)
       ? []
+      : readOnlySourceRouting
+        ? readOnlySourceRoutingFiles
       : effectiveAction === "shrink" && forceMinimalSourceFocus && sessionPolicy.files.length > 0
         ? sessionPolicy.files.slice(0, 1)
       : forceProductionOnlyOneFile
@@ -567,17 +579,19 @@ export class KairnRuntime {
         : buildContextInvariant({ task: resolvedTask, file: deliveredPrimaryFile });
       invariants = deliveredInvariant ? [deliveredInvariant] : [];
     }
-    const editScope = decideEditScope({
-      task: resolvedTask,
-      candidateFiles: !isFileEmittingAction(effectiveAction) ? files : uniquePaths([...emittedFiles, ...files, ...(tests?.files ?? [])]),
-      contextDecision: effectiveContextDecision,
-      invariants,
-      knownFiles: sessionFiles,
-      allowedDiffScopes: input.editScopeHints?.allowedDiffScopes,
-      sourceInvariants: input.editScopeHints?.sourceInvariants,
-      failureFiles: uniquePaths([...(input.editScopeHints?.failureFiles ?? []), ...failureFilesForPolicy]),
-      changedFiles: [...changedFilesForPolicy]
-    });
+    const editScope = readOnlySourceRouting
+      ? undefined
+      : decideEditScope({
+          task: resolvedTask,
+          candidateFiles: !isFileEmittingAction(effectiveAction) ? files : uniquePaths([...emittedFiles, ...files, ...(tests?.files ?? [])]),
+          contextDecision: effectiveContextDecision,
+          invariants,
+          knownFiles: sessionFiles,
+          allowedDiffScopes: input.editScopeHints?.allowedDiffScopes,
+          sourceInvariants: input.editScopeHints?.sourceInvariants,
+          failureFiles: uniquePaths([...(input.editScopeHints?.failureFiles ?? []), ...failureFilesForPolicy]),
+          changedFiles: [...changedFilesForPolicy]
+        });
     for (const file of files) {
       this.recordLedgerEvent({
         sessionId: session.id,
@@ -597,7 +611,7 @@ export class KairnRuntime {
         }
       });
     }
-    if (isFileEmittingAction(effectiveAction) && editScope.initialEditFiles.length > 0) {
+    if (isFileEmittingAction(effectiveAction) && editScope && editScope.initialEditFiles.length > 0) {
       this.recordLedgerEvent({
         sessionId: session.id,
         kind: "edit_scope_changed",
@@ -649,6 +663,15 @@ export class KairnRuntime {
               quality: effectiveQuality,
               evidenceRequest: effectiveContextDecision.evidenceRequest
             })
+        : effectiveAction === "shrink" && readOnlySourceRouting
+          ? formatSourceRoutingPrimeContext({
+              task: resolvedTask,
+              sessionId: session.id,
+              profile,
+              context,
+              files: emittedFiles,
+              budget: Math.min(budget, 260)
+            })
         : effectiveAction === "shrink"
           ? formatShrunkPrimeContext({
               task: resolvedTask,
@@ -666,6 +689,7 @@ export class KairnRuntime {
                 sessionPolicy.reason !== "active_source_context_shrunk" &&
                 !contextDecision.cheapSingleSource &&
                 !contextDecision.wrongContextRisk &&
+                !readOnlySourceRouting &&
                 !isAutomaticExactSourceHook({ source: input.source, decision: contextDecision }),
               minimal: sessionPolicy.reason === "active_source_context_shrunk" ||
                 isAutomaticCheapSingleSourceHook({ source: input.source, decision: contextDecision }) ||
@@ -815,7 +839,7 @@ export class KairnRuntime {
       invariants,
       quality: effectiveQuality,
       contextDecision: effectiveContextDecision,
-      editScope,
+      ...(editScope ? { editScope } : {}),
       timings,
       metadata: {
         companionCandidates: companionMetadata,

@@ -42,6 +42,7 @@ export type DecisionFeatures = {
   verificationState: boolean;
   explicitTestTarget: boolean;
   productionOnlyEditIntent: boolean;
+  readOnlySourceRoutingIntent: boolean;
   expectedContextCost: number;
   estimatedSearchCost: number;
 };
@@ -116,8 +117,19 @@ export function applyContextGovernor(input: GovernorInput): ContextValueDecision
     modelPrediction
   });
   const featureSummary = summarizeDecisionFeatures(features);
+  const readOnlySourceCandidateCount = features.candidates.filter((candidate) =>
+    candidate.role === "production_source" ||
+    candidate.role === "public_api" ||
+    candidate.role === "route" ||
+    candidate.role === "entrypoint"
+  ).length;
+  const shouldUpgradeReadOnlyDelivery =
+    features.readOnlySourceRoutingIntent &&
+    readOnlySourceCandidateCount > 1 &&
+    input.baseDecision.recommendedDelivery !== "multi_file_directive" &&
+    (governed.action === "emit" || governed.action === "shrink" || input.baseDecision.action === "shrink");
 
-  if (governed.action === input.baseDecision.action && governed.action !== "request_evidence") {
+  if (governed.action === input.baseDecision.action && governed.action !== "request_evidence" && !shouldUpgradeReadOnlyDelivery) {
     return {
       ...input.baseDecision,
       taskFrame: features.taskFrame,
@@ -128,6 +140,9 @@ export function applyContextGovernor(input: GovernorInput): ContextValueDecision
 
   const reasons = new Set(input.baseDecision.reasons);
   for (const reason of governed.reasons) reasons.add(reason);
+  if (shouldUpgradeReadOnlyDelivery) {
+    reasons.add("read-only source-routing task should use a compact source map instead of full context");
+  }
   return {
     ...input.baseDecision,
     score: governed.score,
@@ -139,6 +154,7 @@ export function applyContextGovernor(input: GovernorInput): ContextValueDecision
         ? input.baseDecision.recommendedDelivery ?? "full_prime"
         : governed.action === "shrink"
           ? input.baseDecision.recommendedDelivery === "multi_file_directive" ||
+            (features.readOnlySourceRoutingIntent && readOnlySourceCandidateCount > 1) ||
             (features.taskFrame === "qna_source_grounded" && features.candidates.length > 1)
             ? "multi_file_directive"
             : "one_file_directive"
@@ -185,6 +201,7 @@ export function buildDecisionFeatures(input: GovernorInput): DecisionFeatures {
     verificationState: taskFrame === "verification_cleanup" || /\b(verify|verification|test|typecheck|lint|build|cleanup|review diff)\b/i.test(input.task),
     explicitTestTarget: taskExplicitlyTargetsTests(input.task),
     productionOnlyEditIntent: taskHasProductionOnlyEditIntent(input.task),
+    readOnlySourceRoutingIntent: taskIsReadOnlySourceRouting(input.task),
     expectedContextCost: input.estimatedContextCost,
     estimatedSearchCost: estimateSearchCost(input.repoFileCount, taskFrame, candidates)
   };
@@ -329,6 +346,12 @@ function hardSafetyDecision(
   prediction: ContextGovernorModelPrediction
 ): ReturnType<typeof chooseGovernedAction> | undefined {
   const top = features.candidates[0];
+  const hasSourceCandidate = features.candidates.some((candidate) =>
+    candidate.role === "production_source" ||
+    candidate.role === "public_api" ||
+    candidate.role === "route" ||
+    candidate.role === "entrypoint"
+  );
   if (features.staleIndexState && baseDecision.action === "emit") {
     return {
       action: "request_evidence",
@@ -376,6 +399,18 @@ function hardSafetyDecision(
       action: "shrink",
       score: Math.max(baseDecision.score, 55),
       reasons: ["production-source-only task needs a tiny edit-scope guardrail"]
+    };
+  }
+  if (
+    features.readOnlySourceRoutingIntent &&
+    hasSourceCandidate &&
+    baseDecision.action !== "suppress" &&
+    baseDecision.action !== "request_evidence"
+  ) {
+    return {
+      action: "shrink",
+      score: Math.min(baseDecision.score, 64),
+      reasons: ["read-only source-routing task should use a compact source map instead of full context"]
     };
   }
   if (top && (top.role === "generated" || top.role === "vendor_dep") && baseDecision.action !== "suppress") {
@@ -687,6 +722,24 @@ export function hasExplicitMultiFileScopeRequest(task: string): boolean {
     /\bfrom\b.{0,80}\bto\b/.test(normalized) ||
     interfaceExpansionRequested
   );
+}
+
+export function taskIsReadOnlySourceRouting(task: string): boolean {
+  const normalized = normalizeText(task);
+  const asksForSourceMap =
+    /\b(identify|diagnose|find|return|list|name)\b.{0,80}\b(source|production source|files?|file paths?|paths?|ownership|owner|relevant files?)\b/.test(normalized) ||
+    /\bsource ownership\b/.test(normalized) ||
+    /\bsmallest production source files?\b/.test(normalized) ||
+    /\brelevant file paths?\b/.test(normalized);
+  const readOnly =
+    /\bdo not (?:edit|modify|change|touch|patch) files?\b/.test(normalized) ||
+    /\bdo not (?:edit|modify|change|touch|patch)\b/.test(normalized) ||
+    /\bread only\b/.test(normalized) ||
+    /\bno edits?\b/.test(normalized);
+  const patchIntent =
+    /\b(fix|patch|implement|update|change|modify|edit|repair)\b/.test(normalized) &&
+    !/\bdo not (?:edit|modify|change|touch|patch)\b/.test(normalized);
+  return asksForSourceMap && readOnly && !patchIntent;
 }
 
 function languageMix(files: FileRecord[]): Record<string, number> {

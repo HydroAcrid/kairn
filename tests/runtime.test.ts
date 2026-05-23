@@ -118,6 +118,36 @@ describe("KairnRuntime", () => {
     runtime.close();
   });
 
+  it("uses a compact source map for read-only source-routing prompts", async () => {
+    const root = fs.mkdtempSync(path.join(process.cwd(), ".tmp-kairn-runtime-"));
+    fs.mkdirSync(path.join(root, "src/black"), { recursive: true });
+    fs.writeFileSync(path.join(root, "src/black/lines.py"), "class Line:\n    pass\n\ndef append_comment(line):\n    return line\n");
+    fs.writeFileSync(path.join(root, "src/black/comments.py"), "def normalize_fmt_off(comment):\n    return comment\n");
+    fs.writeFileSync(path.join(root, "src/black/linegen.py"), "class LineGenerator:\n    def visit_default(self, node):\n        return node\n");
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: "Diagnose source ownership only: identify the smallest production source files involved when Black LineGenerator creates output lines and comment handling changes line splitting behavior. Do not edit files. Return the relevant file paths and a short reason for each.",
+        budget: 900,
+        source: "codex"
+      });
+
+      expect(prime.contextDecision?.action).toBe("shrink");
+      expect(prime.contextDecision?.recommendedDelivery).toBe("multi_file_directive");
+      expect(prime.content).toContain("# Kairn Source Map");
+      expect(prime.content).toContain("Relevant source files:");
+      expect(prime.content).toContain("Do not edit files");
+      expect(prime.content).not.toContain("## Targeted Context");
+      expect(prime.content).not.toContain("Edit scope");
+      expect(prime.editScope).toBeUndefined();
+      expect(estimateTokens(prime.content)).toBeLessThan(260);
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("uses an ultra-minimal one-file guardrail for high-confidence session source fixes", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);

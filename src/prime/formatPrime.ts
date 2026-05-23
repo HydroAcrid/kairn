@@ -195,6 +195,31 @@ export function formatEvidenceRequestPrimeContext(input: {
   ].join("\n");
 }
 
+export function formatSourceRoutingPrimeContext(input: {
+  task: string;
+  sessionId: string;
+  profile: ResolvedPrimeProfile;
+  context: ContextResponse;
+  files: string[];
+  budget: number;
+}): string {
+  const files = uniquePaths(input.files).slice(0, 4);
+  const sections = [
+    "# Kairn Source Map",
+    "",
+    "Read-only source-identification task. Return the paths with short reasons unless a targeted read proves them wrong. Do not edit files or run broad repo scans.",
+    "",
+    "Relevant source files:",
+    files.length > 0
+      ? files.map((file, index) => `${index + 1}. ${file} - ${sourceMapReasonForFile(input.context, file)}`).join("\n")
+      : "No high-confidence source files found.",
+    "",
+    `Session: ${input.sessionId}`
+  ];
+
+  return fitSectionsToBudget(sections, input.budget);
+}
+
 export function formatShrunkPrimeContext(input: {
   task: string;
   sessionId: string;
@@ -352,6 +377,18 @@ function primaryReasonForFile(context: ContextResponse, filePath: string): strin
     .find((entry) => entry.includes(filePath) && entry.includes(":"));
   if (!line) return `Top Kairn-ranked file for this task: ${filePath}`;
   return truncateToBudget(line.replace(/^[-*\s]+/, ""), 48);
+}
+
+function sourceMapReasonForFile(context: ContextResponse, filePath: string): string {
+  const ranked = context.rankedFiles?.find((file) => file.path === filePath);
+  const rankedReason = ranked?.reasons.find((reason) => !/\b(score|bm25|semantic|keyword)\b/i.test(reason));
+  if (rankedReason) return truncateToBudget(rankedReason.replace(/\s+/g, " "), 18);
+  const line = context.content
+    .split(/\r?\n/)
+    .find((entry) => entry.includes(filePath) && entry.includes(":"));
+  if (!line) return "Kairn-ranked source for this task.";
+  const afterScore = line.includes("):") ? line.split("):").slice(1).join("):") : line.split(":").slice(1).join(":");
+  return truncateToBudget(afterScore.replace(/^[-*\s]+/, "").replace(/\s+/g, " ").trim(), 18) || "Kairn-ranked source for this task.";
 }
 
 function extractPrimeSymbolHints(content: string): string[] {

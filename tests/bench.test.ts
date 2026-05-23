@@ -3315,6 +3315,107 @@ describe("benchmark suite and scoring", () => {
     expect(decision.reasons).toEqual(expect.arrayContaining(["production-source-only task needs a tiny edit-scope guardrail"]));
   });
 
+  it("shrinks read-only source-routing prompts into compact multi-file directives", () => {
+    const decision = evaluateContextValue({
+      task: "Diagnose source ownership only: identify the smallest production source files involved when Black LineGenerator creates output lines and comment handling changes line splitting behavior. Do not edit files. Return the relevant file paths and a short reason for each.",
+      profile: "generic",
+      context: {
+        mode: "snippets",
+        content: [
+          "- src/black/lines.py (source, score 4600): line splitting source match",
+          "- src/black/comments.py (source, score 2800): comment handling companion",
+          "- src/black/linegen.py (source, score 2500): LineGenerator output line source"
+        ].join("\n"),
+        files: ["src/black/lines.py", "src/black/comments.py", "src/black/linegen.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/black/lines.py", "src/black/comments.py", "src/black/linegen.py"],
+        rankedFiles: [
+          { path: "src/black/lines.py", kind: "source", score: 4600, reasons: ["line splitting source match"] },
+          { path: "src/black/comments.py", kind: "source", score: 2800, reasons: ["comment handling companion"] },
+          { path: "src/black/linegen.py", kind: "source", score: 2500, reasons: ["LineGenerator output line source"] }
+        ],
+        tokenEstimate: 640
+      },
+      quality: {
+        score: 100,
+        action: "emit",
+        reasons: ["high-confidence top retrieval score"],
+        topScore: 4600,
+        topGap: 1800,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      knownFiles: [
+        sourceRecord("src/black/lines.py", "python"),
+        sourceRecord("src/black/comments.py", "python"),
+        sourceRecord("src/black/linegen.py", "python")
+      ],
+      repoFileCount: 460,
+      estimatedContextCost: 900,
+      companionCount: 2,
+      companionTopScore: 5800
+    });
+
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+    expect(decision.reasons).toEqual(
+      expect.arrayContaining(["read-only source-routing task should use a compact source map instead of full context"])
+    );
+  });
+
+  it("routes read-only production source maps through source companions when tests rank first", () => {
+    const decision = evaluateContextValue({
+      task: "Diagnose source ownership only: identify the smallest production source files involved when collected Python test nodes request fixture values during pytest runner setup. Do not edit files. Return the relevant file paths and a short reason for each.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: [
+          "- testing/test_capture.py (test, score 2500): test node lexical match",
+          "- src/_pytest/fixtures.py (source, score 2500): fixture setup source companion",
+          "- src/_pytest/runner.py (source, score 2400): runner behavior source companion"
+        ].join("\n"),
+        files: ["testing/test_capture.py", "src/_pytest/fixtures.py", "src/_pytest/runner.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["testing/test_capture.py", "src/_pytest/fixtures.py", "src/_pytest/runner.py"],
+        rankedFiles: [
+          { path: "testing/test_capture.py", kind: "test", score: 2500, reasons: ["test node lexical match"] },
+          { path: "src/_pytest/fixtures.py", kind: "source", score: 2500, reasons: ["fixture setup source companion"] },
+          { path: "src/_pytest/runner.py", kind: "source", score: 2400, reasons: ["runner behavior source companion"] }
+        ],
+        tokenEstimate: 640
+      },
+      quality: {
+        score: 94,
+        action: "emit",
+        reasons: ["high-confidence top retrieval score"],
+        topScore: 2500,
+        topGap: 0,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      knownFiles: [
+        { ...sourceRecord("testing/test_capture.py", "python"), kind: "test" },
+        sourceRecord("src/_pytest/fixtures.py", "python"),
+        sourceRecord("src/_pytest/runner.py", "python")
+      ],
+      repoFileCount: 664,
+      estimatedContextCost: 900,
+      companionCount: 2,
+      companionTopScore: 7000,
+      companionSpecific: true
+    });
+
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+    expect(decision.reasons).toEqual(
+      expect.arrayContaining(["read-only source-routing task should use a compact source map instead of full context"])
+    );
+  });
+
   it("shrinks high-confidence exact source hits instead of broad full-prime delivery", () => {
     const decision = evaluateContextValue({
       task: "Debug a seeded failing C++ check. basic_string_view::starts_with should return true. Fix the production header.",
@@ -5497,6 +5598,7 @@ describe("benchmark runtime and CLI", () => {
           "Improve job tracker mobile layout bottom sheet behavior",
           "--root",
           root,
+          "--skip-git-repo-check",
           "--session",
           dryRun.sessionId,
           "--bind-hooks",
@@ -5519,6 +5621,7 @@ describe("benchmark runtime and CLI", () => {
     expect(dryRun.args).toContain("--disable");
     expect(dryRun.args).toContain("hooks");
     expect(dryRun.args).not.toContain("--enable");
+    expect(boundDryRun.args).toContain("--skip-git-repo-check");
     expect(dryRun.prompt).toContain("Kairn Proactive Context");
     expect(dryRun.prompt).toContain("User task:");
     expect(dryRun.prime.files).toContain("src/app/private/jobs/JobsApplicationsTable.tsx");

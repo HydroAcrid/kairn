@@ -252,6 +252,7 @@ export function registerCoreCommands(program: Command): void {
     .option("--codex-command <command>", "Codex command to execute", process.env.KAIRN_CODEX_CMD ?? "codex")
     .option("--model <model>", "Codex model")
     .addOption(new Option("--sandbox <mode>", "Codex sandbox mode").choices(["read-only", "workspace-write", "danger-full-access"]).default("workspace-write"))
+    .option("--skip-git-repo-check", "pass Codex --skip-git-repo-check for disposable or non-git workspaces")
     .option("--bind-hooks", "install Codex hooks bound to this Kairn session before launching")
     .addOption(new Option("--hook-mode <mode>", "Codex setup mode to use with --bind-hooks").choices(["savings", "hybrid"]).default("savings"))
     .addOption(new Option("--hook-output <profile>", "prompt-submit hook output profile for --bind-hooks").choices(["full-prime", "tiny-directive", "failure-only", "mcp-brief"]).default("full-prime"))
@@ -265,6 +266,7 @@ export function registerCoreCommands(program: Command): void {
       codexCommand: string;
       model?: string;
       sandbox: string;
+      skipGitRepoCheck?: boolean;
       bindHooks?: boolean;
       hookMode: "savings" | "hybrid";
       hookOutput: HookOutputProfile;
@@ -329,14 +331,16 @@ export function registerCoreCommands(program: Command): void {
                 root: options.root,
                 model: options.model,
                 sandbox: options.sandbox,
-                enableHooks: bindHooks
+                enableHooks: bindHooks,
+                skipGitRepoCheck: Boolean(options.skipGitRepoCheck)
               })
             : codexExecArgs({
                 root: options.root,
                 prompt: prompt!,
                 model: options.model,
                 sandbox: options.sandbox,
-                enableHooks: bindHooks
+                enableHooks: bindHooks,
+                skipGitRepoCheck: Boolean(options.skipGitRepoCheck)
               }),
           ...(prompt ? { prompt } : {}),
           ...(prime ? { prime } : {}),

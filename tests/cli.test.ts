@@ -376,4 +376,17 @@ describe("CLI", () => {
     expect(enabled).toContain("hooks");
     expect(enabled).not.toContain("--disable");
   });
+
+  it("passes through Codex skip git repo checks for disposable workspaces", () => {
+    const args = codexExecArgs({
+      root: "/repo",
+      prompt: "identify source files",
+      sandbox: "danger-full-access",
+      enableHooks: false,
+      skipGitRepoCheck: true
+    });
+
+    expect(args).toContain("--skip-git-repo-check");
+    expect(args.indexOf("--skip-git-repo-check")).toBeLessThan(args.indexOf("--cd"));
+  });
 });
