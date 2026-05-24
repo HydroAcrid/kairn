@@ -1,0 +1,45 @@
+{
+  "suite": "endurance-node-semver-satisfies",
+  "repo": "npm/node-semver",
+  "ref": "efa4be6096c1f9b77d9d27d6132f6220c43b4e31",
+  "artifact": "docs/publication-evidence-20260520/endurance-node-semver/repeat3.json",
+  "comparison": "baseline vs kairn_codex_session vs real_mcp_first",
+  "repeat": 3,
+  "turnsPerRun": 6,
+  "quality": {
+    "baseline": "3/3",
+    "kairn_codex_session": "3/3",
+    "real_mcp_first": "3/3"
+  },
+  "medianObservedTokens": {
+    "baseline": 69513,
+    "kairn_codex_session": 58142,
+    "real_mcp_first": 29808
+  },
+  "medianSavings": {
+    "kairn_codex_session": {
+      "tokens": 11371,
+      "rate": 0.16358091292276264
+    },
+    "real_mcp_first_observed": {
+      "tokens": 33774,
+      "rate": 0.485865953131069
+    }
+  },
+  "validSavingsRuns": {
+    "kairn_codex_session": "2/3",
+    "real_mcp_first": "0/3"
+  },
+  "mcpAccounting": {
+    "mcpCalls": 3,
+    "returnedFilesCaptured": 0,
+    "returnedUsefulFilesCaptured": 0,
+    "classification": "neutral despite lower observed tokens because useful returned files were not captured"
+  },
+  "notes": [
+    "This is a clean pass/pass endurance row outside Python because all modes passed final quality.",
+    "Kairn Codex session produced valid median savings above the 15% threshold but had one over-assist repeat.",
+    "Real MCP-first produced large observed token reductions, but the benchmark did not capture useful returned files, so it should be treated as supporting/passive MCP evidence rather than a valid active MCP savings row.",
+    "Click remains the cleaner MCP-proof endurance row because it recorded actual useful returned files."
+  ]
+}

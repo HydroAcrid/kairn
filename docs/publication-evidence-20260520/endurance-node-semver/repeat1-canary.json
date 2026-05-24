@@ -1,0 +1,2561 @@
+{
+  "suiteId": "endurance-node-semver-satisfies",
+  "suiteName": "Node SemVer Satisfies Endurance",
+  "startedAt": "2026-05-20T18:46:28.343Z",
+  "endedAt": "2026-05-20T18:54:54.669Z",
+  "reports": [
+    {
+      "mode": "baseline",
+      "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-6kDxi6",
+      "turns": [
+        {
+          "turnId": "diagnose",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 23579,
+          "responseTokens": 18247,
+          "elapsedMs": 32719,
+          "actualFiles": [
+            "functions/satisfies.js"
+          ],
+          "agentTouchedFiles": [],
+          "expectedFiles": [
+            "functions/satisfies.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "ac7f53c3be3ca2a539276078b8bc089b3c12254c3fdd727aad9c49e82dbe3b86",
+            "preparedPromptHash": "ac7f53c3be3ca2a539276078b8bc089b3c12254c3fdd727aad9c49e82dbe3b86",
+            "commandHash": "e3a84f453d8d2dd093ac86b85a21c3797af5cc6950ebb94cf5a7bcea7b8a8276",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "5d9097b8f96deb08163b98bc9d4fb009cbee65160dcdd4ef9e0b30b1253b1e74",
+            "expectedFileMentions": [
+              "functions/satisfies.js"
+            ],
+            "changedFiles": [
+              "functions/satisfies.js"
+            ],
+            "seedPatchFiles": [
+              "functions/satisfies.js"
+            ],
+            "agentTouchedFiles": [],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 23579,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "fix-source",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 7369,
+          "responseTokens": 12400,
+          "elapsedMs": 19795,
+          "actualFiles": [
+            "functions/satisfies.js"
+          ],
+          "agentTouchedFiles": [
+            "functions/satisfies.js"
+          ],
+          "expectedFiles": [
+            "functions/satisfies.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "4b8b58ae6f1919d24895eebacfc30f494a6296ace9102de52bd5f2eb26b906fa",
+            "preparedPromptHash": "4b8b58ae6f1919d24895eebacfc30f494a6296ace9102de52bd5f2eb26b906fa",
+            "commandHash": "16d2106e0036826c1d50b4b4613715ba2dfba524c775f2f1809e52f2b2e8a297",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "172144e0959c123b740b2ef30dbcc25fa99343f3aad586ca8ddad4c003771da2",
+            "expectedFileMentions": [
+              "functions/satisfies.js"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "functions/satisfies.js"
+            ],
+            "agentTouchedFiles": [
+              "functions/satisfies.js"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 7369,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "verify",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 36879,
+          "responseTokens": 35436,
+          "elapsedMs": 113827,
+          "actualFiles": [
+            "functions/satisfies.js"
+          ],
+          "agentTouchedFiles": [
+            "functions/satisfies.js"
+          ],
+          "expectedFiles": [
+            "functions/satisfies.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "2f6b2c34a1ec29f9743d14cbe892839bddc2302085a559bf46040053d3827892",
+            "preparedPromptHash": "2f6b2c34a1ec29f9743d14cbe892839bddc2302085a559bf46040053d3827892",
+            "commandHash": "f109496da43678c5dac65dd4ff9e0bba45098f37b1ac547fe1dc2c6856d6a6af",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "0673ee93185531625c904175d230b36ce5c96d0c020c23858da9bed548ce4b0b",
+            "expectedFileMentions": [
+              "functions/satisfies.js"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "functions/satisfies.js"
+            ],
+            "agentTouchedFiles": [
+              "functions/satisfies.js"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 36879,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "diff-review",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 31409,
+          "responseTokens": 66134,
+          "elapsedMs": 53743,
+          "actualFiles": [
+            "functions/satisfies.js"
+          ],
+          "agentTouchedFiles": [
+            "functions/satisfies.js"
+          ],
+          "expectedFiles": [
+            "functions/satisfies.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "92fae1e16986900ddc4faf74fc00aa04d89b7c2b7bb505cc25b5f89fb6adcc8a",
+            "preparedPromptHash": "92fae1e16986900ddc4faf74fc00aa04d89b7c2b7bb505cc25b5f89fb6adcc8a",
+            "commandHash": "7bb0ff8905088a1bbd8ad91a76da0764567516b7e4b6a33df54a5aabacc998b2",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "3aaeac434fd8e266e6cc6412034f390394ff11f2163d2b8fdc9a7af651bcce68",
+            "expectedFileMentions": [
+              "functions/satisfies.js"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "functions/satisfies.js"
+            ],
+            "agentTouchedFiles": [
+              "functions/satisfies.js"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 31409,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "repeat-context",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 4645,
+          "responseTokens": 5423,
+          "elapsedMs": 25317,
+          "actualFiles": [
+            "functions/satisfies.js"
+          ],
+          "agentTouchedFiles": [
+            "functions/satisfies.js"
+          ],
+          "expectedFiles": [
+            "functions/satisfies.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "3242e0cfaadf368bf561e637c41aac1ff7075b1c237bf8f53c91fb4c84425b1f",
+            "preparedPromptHash": "3242e0cfaadf368bf561e637c41aac1ff7075b1c237bf8f53c91fb4c84425b1f",
+            "commandHash": "75cc07feeb351529e96db3d1c86ae5b71d2f23c5642e51307b9b8a4228779c7a",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "bc4fa5e48e6af7375d8edf4109ee9d84faf5e049f8515a8056884f0cfeb81990",
+            "expectedFileMentions": [
+              "functions/satisfies.js"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "functions/satisfies.js"
+            ],
+            "agentTouchedFiles": [
+              "functions/satisfies.js"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 4645,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "cleanup",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 5869,
+          "responseTokens": 5476,
+          "elapsedMs": 25391,
+          "actualFiles": [
+            "functions/satisfies.js"
+          ],
+          "agentTouchedFiles": [
+            "functions/satisfies.js"
+          ],
+          "expectedFiles": [
+            "functions/satisfies.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "601d14142ac01af5c393be6f75c0f995e4d1ba4abb240e93575fca3eaf3bb44a",
+            "preparedPromptHash": "601d14142ac01af5c393be6f75c0f995e4d1ba4abb240e93575fca3eaf3bb44a",
+            "commandHash": "83e621419448cd4148c2b4358cba2d783ee5586e196e1557c7fcca4f5f48d663",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "d260215921b89feaae90be7a254c68f1d8f69c22d25d18957a2310950fbe518b",
+            "expectedFileMentions": [
+              "functions/satisfies.js"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "functions/satisfies.js"
+            ],
+            "agentTouchedFiles": [
+              "functions/satisfies.js"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 5869,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        }
+      ],
+      "totalObservedCodexTokens": 109750,
+      "totalResponseTokens": 143116,
+      "totalElapsedMs": 270863,
+      "qualityGatePassed": true,
+      "finalVerificationPassed": true,
+      "assistanceStatus": "none",
+      "assistanceActions": {
+        "emitted": 0,
+        "shrunk": 0,
+        "suppressed": 0,
+        "mcpCalls": 0,
+        "failureContexts": 0
+      },
+      "metadata": {
+        "finalVerificationCommandPassed": true,
+        "finalSourceInvariantPassed": true,
+        "finalSourceInvariantFailures": [],
+        "finalDiffScopePassed": true,
+        "finalDiffScopeViolations": [],
+        "finalChangedFiles": [],
+        "setupElapsedMs": 0,
+        "kairnSessionCount": 0,
+        "primeEmitted": 0,
+        "primeSuppressed": 0,
+        "hookInvocations": 0,
+        "failureContextUsed": 0,
+        "mcpToolCalls": 0,
+        "mcpFilesReturned": [],
+        "mcpReturnedFileCount": 0,
+        "mcpReturnedUsefulFileCount": 0
+      }
+    },
+    {
+      "mode": "kairn_codex_session",
+      "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-5oVXer",
+      "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+      "turns": [
+        {
+          "turnId": "diagnose",
+          "mode": "kairn_codex_session",
+          "outcome": "pass",
+          "observedCodexTokens": 11394,
+          "responseTokens": 12400,
+          "elapsedMs": 24528,
+          "actualFiles": [
+            "functions/satisfies.js"
+          ],
+          "agentTouchedFiles": [],
+          "expectedFiles": [
+            "functions/satisfies.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "ac7f53c3be3ca2a539276078b8bc089b3c12254c3fdd727aad9c49e82dbe3b86",
+            "preparedPromptHash": "ac7f53c3be3ca2a539276078b8bc089b3c12254c3fdd727aad9c49e82dbe3b86",
+            "commandHash": "e3a84f453d8d2dd093ac86b85a21c3797af5cc6950ebb94cf5a7bcea7b8a8276",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "5f4afc903252454219b52f7f9f1c2af9e63d4b6c2a6bc2240980b25ae7001172",
+            "expectedFileMentions": [
+              "functions/satisfies.js"
+            ],
+            "changedFiles": [
+              "functions/satisfies.js"
+            ],
+            "seedPatchFiles": [
+              "functions/satisfies.js"
+            ],
+            "agentTouchedFiles": [],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 11394,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "hookSimulated": true,
+            "hookDeliveredContext": false,
+            "hookDecision": "suppress",
+            "primeDecision": "suppress",
+            "hookRecommendation": "prime_quality_suppressed_silent",
+            "primeFiles": [],
+            "hookFiles": [],
+            "hookOutputTokens": 0,
+            "hookSignalMetadata": {
+              "eventName": "UserPromptSubmit",
+              "hookKind": "hook",
+              "outputKind": "generic",
+              "hookOutput": "full-prime",
+              "transport": "cli",
+              "daemonAttempted": false,
+              "daemonHit": false,
+              "daemonMiss": false,
+              "indexRefreshSkipped": true,
+              "refreshIndexMs": 0,
+              "primeElapsedMs": 134,
+              "hookLatencyMs": 135,
+              "linkedFiles": 0,
+              "recommendation": "prime_quality_suppressed_silent",
+              "primeAttempted": true,
+              "primeContextDelivered": false,
+              "primeSuppressed": true,
+              "hostAdditionalContextBytes": 0,
+              "proactivePrime": false,
+              "primeQuality": {
+                "score": 55,
+                "action": "suppress",
+                "reasons": [
+                  "high-confidence top retrieval score",
+                  "debug/failure task can benefit from targeted context",
+                  "top result is risky for a production-source fix",
+                  "session policy: failure_reemitted"
+                ],
+                "topScore": 2092.348,
+                "topGap": 65.986,
+                "exactPathMentioned": false,
+                "expectedSavingsRisk": "high"
+              },
+              "contextDecision": {
+                "score": 55,
+                "action": "suppress",
+                "reasons": [
+                  "high-confidence top retrieval score",
+                  "debug/failure task can benefit from targeted context",
+                  "top result is risky for a production-source fix"
+                ],
+                "topScore": 2092.348,
+                "topGap": 65.986,
+                "primaryFile": "index.js",
+                "language": "javascript",
+                "exactPathMentioned": false,
+                "exactSourceHit": false,
+                "sourceRescue": true,
+                "canonicalSourceHit": true,
+                "cheapSingleSource": false,
+                "cheapExactSource": false,
+                "companionSpecific": false,
+                "multiSurfaceSignal": false,
+                "companionCount": 0,
+                "companionTopScore": 0,
+                "recommendedDelivery": "none",
+                "estimatedContextCost": 800,
+                "expectedSavingsRisk": "high",
+                "debugSignal": true,
+                "easyTaskSignal": false,
+                "wrongContextRisk": true,
+                "taskFrame": "source_rescue",
+                "modelPrediction": {
+                  "pUseful": 0.18,
+                  "pHarm": 0.4630421187594329,
+                  "pNeedMoreEvidence": 0.22,
+                  "suggestedAction": "suppress",
+                  "confidence": 0.4630421187594329,
+                  "source": "deterministic"
+                },
+                "featureSummary": {
+                  "taskFrame": "source_rescue",
+                  "candidateCount": 12,
+                  "fileRoleCounts": {
+                    "entrypoint": 1,
+                    "production_source": 8,
+                    "test": 3
+                  },
+                  "repoLanguageMix": {
+                    "javascript": 126,
+                    "yaml": 14,
+                    "text": 5,
+                    "markdown": 5,
+                    "json": 4
+                  },
+                  "topRole": "entrypoint",
+                  "topLanguage": "javascript",
+                  "confidenceGap": 66,
+                  "candidateEntropy": 0.985,
+                  "ambiguity": 0.65,
+                  "expectedContextCost": 800,
+                  "estimatedSearchCost": 21
+                }
+              },
+              "decision": "suppress",
+              "decisionScore": 55,
+              "decisionReasons": [
+                "high-confidence top retrieval score",
+                "debug/failure task can benefit from targeted context",
+                "top result is risky for a production-source fix"
+              ],
+              "estimatedContextCost": 800,
+              "expectedSavingsRisk": "high",
+              "failureContext": false,
+              "duplicatePromptPrime": false,
+              "compressedOutput": false,
+              "trivialSuccessfulOutput": true
+            }
+          }
+        },
+        {
+          "turnId": "fix-source",
+          "mode": "kairn_codex_session",
+          "outcome": "pass",
+          "observedCodexTokens": 3577,
+          "responseTokens": 6808,
+          "elapsedMs": 19995,
+          "actualFiles": [
+            "functions/satisfies.js"
+          ],
+          "agentTouchedFiles": [
+            "functions/satisfies.js"
+          ],
+          "expectedFiles": [
+            "functions/satisfies.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "4b8b58ae6f1919d24895eebacfc30f494a6296ace9102de52bd5f2eb26b906fa",
+            "preparedPromptHash": "b4e367e894cb38ba9a05b532a7c846c77b6628b9929314089092c6d658422ce6",
+            "commandHash": "e8874408dfdbac886c0a8ff11cbb3139c72cd0c0b4f57282509c738792e3a25b",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "70392450f3ab6e51d05a72537b7b3e22e75ce32c1df725407fe11d3aeaddcb9c",
+            "expectedFileMentions": [
+              "functions/satisfies.js"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "functions/satisfies.js"
+            ],
+            "agentTouchedFiles": [
+              "functions/satisfies.js"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 3577,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "hookSimulated": true,
+            "hookDeliveredContext": true,
+            "hookDecision": "shrink",
+            "primeDecision": "shrink",
+            "hookRecommendation": "prime_emitted",
+            "primeFiles": [
+              "functions/satisfies.js"
+            ],
+            "hookFiles": [
+              "functions/satisfies.js"
+            ],
+            "hookOutputTokens": 373,
+            "hookSignalMetadata": {
+              "eventName": "UserPromptSubmit",
+              "hookKind": "hook",
+              "outputKind": "test",
+              "hookOutput": "full-prime",
+              "transport": "cli",
+              "daemonAttempted": false,
+              "daemonHit": false,
+              "daemonMiss": false,
+              "indexRefreshSkipped": true,
+              "refreshIndexMs": 0,
+              "primeElapsedMs": 175,
+              "hookLatencyMs": 176,
+              "linkedFiles": 0,
+              "recommendation": "prime_emitted",
+              "primeAttempted": true,
+              "primeContextDelivered": true,
+              "primeSuppressed": false,
+              "hostAdditionalContextBytes": 1492,
+              "proactivePrime": true,
+              "primeQuality": {
+                "score": 76,
+                "action": "shrink",
+                "reasons": [
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "debug/failure task can benefit from targeted context",
+                  "query-local companion evidence supports multi-surface context",
+                  "top result is risky for a production-source fix",
+                  "session policy: phase_shift_reemitted"
+                ],
+                "topScore": 1569.484,
+                "topGap": 415.26,
+                "exactPathMentioned": false,
+                "expectedSavingsRisk": "medium"
+              },
+              "contextDecision": {
+                "score": 76,
+                "action": "shrink",
+                "reasons": [
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "debug/failure task can benefit from targeted context",
+                  "query-local companion evidence supports multi-surface context",
+                  "top result is risky for a production-source fix"
+                ],
+                "topScore": 1569.484,
+                "topGap": 415.26,
+                "primaryFile": "functions/satisfies.js",
+                "language": "javascript",
+                "exactPathMentioned": false,
+                "exactSourceHit": false,
+                "sourceRescue": true,
+                "canonicalSourceHit": false,
+                "cheapSingleSource": false,
+                "cheapExactSource": false,
+                "companionSpecific": true,
+                "multiSurfaceSignal": true,
+                "companionCount": 2,
+                "companionTopScore": 1028,
+                "recommendedDelivery": "one_file_directive",
+                "estimatedContextCost": 800,
+                "expectedSavingsRisk": "medium",
+                "debugSignal": true,
+                "easyTaskSignal": false,
+                "wrongContextRisk": true,
+                "taskFrame": "source_rescue",
+                "modelPrediction": {
+                  "pUseful": 0.62,
+                  "pHarm": 0.4176376627949548,
+                  "pNeedMoreEvidence": 0,
+                  "suggestedAction": "shrink",
+                  "confidence": 0.62,
+                  "source": "deterministic"
+                },
+                "featureSummary": {
+                  "taskFrame": "source_rescue",
+                  "candidateCount": 12,
+                  "fileRoleCounts": {
+                    "production_source": 9,
+                    "entrypoint": 1,
+                    "test": 2
+                  },
+                  "repoLanguageMix": {
+                    "javascript": 126,
+                    "yaml": 14,
+                    "text": 5,
+                    "markdown": 5,
+                    "json": 4
+                  },
+                  "topRole": "production_source",
+                  "topLanguage": "javascript",
+                  "confidenceGap": 415,
+                  "candidateEntropy": 0.994,
+                  "ambiguity": 0.444,
+                  "expectedContextCost": 800,
+                  "estimatedSearchCost": 21
+                }
+              },
+              "decision": "shrink",
+              "decisionScore": 76,
+              "decisionReasons": [
+                "high-confidence top retrieval score",
+                "top result is clearly separated",
+                "debug/failure task can benefit from targeted context",
+                "query-local companion evidence supports multi-surface context",
+                "top result is risky for a production-source fix"
+              ],
+              "estimatedContextCost": 800,
+              "expectedSavingsRisk": "medium",
+              "failureContext": false,
+              "duplicatePromptPrime": false,
+              "compressedOutput": false,
+              "trivialSuccessfulOutput": true
+            }
+          }
+        },
+        {
+          "turnId": "verify",
+          "mode": "kairn_codex_session",
+          "outcome": "pass",
+          "observedCodexTokens": 21042,
+          "responseTokens": 23954,
+          "elapsedMs": 44295,
+          "actualFiles": [
+            "functions/satisfies.js"
+          ],
+          "agentTouchedFiles": [
+            "functions/satisfies.js"
+          ],
+          "expectedFiles": [
+            "functions/satisfies.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "2f6b2c34a1ec29f9743d14cbe892839bddc2302085a559bf46040053d3827892",
+            "preparedPromptHash": "2f6b2c34a1ec29f9743d14cbe892839bddc2302085a559bf46040053d3827892",
+            "commandHash": "f109496da43678c5dac65dd4ff9e0bba45098f37b1ac547fe1dc2c6856d6a6af",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "40476616ab3e6021b3b21b5269c2e9c37a43466b31205d1f9cbdae84650793ac",
+            "expectedFileMentions": [
+              "functions/satisfies.js"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "functions/satisfies.js"
+            ],
+            "agentTouchedFiles": [
+              "functions/satisfies.js"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 21042,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "hookSimulated": true,
+            "hookDeliveredContext": false,
+            "hookRecommendation": "prompt_suppressed",
+            "primeFiles": [],
+            "hookFiles": [],
+            "hookOutputTokens": 0,
+            "hookSignalMetadata": {
+              "eventName": "UserPromptSubmit",
+              "hookKind": "hook",
+              "outputKind": "generic",
+              "hookOutput": "full-prime",
+              "transport": "cli",
+              "daemonAttempted": false,
+              "daemonHit": false,
+              "daemonMiss": false,
+              "indexRefreshSkipped": true,
+              "refreshIndexMs": 0,
+              "primeElapsedMs": 0,
+              "hookLatencyMs": 0,
+              "linkedFiles": 0,
+              "recommendation": "prompt_suppressed",
+              "primeAttempted": false,
+              "primeContextDelivered": false,
+              "primeSuppressed": false,
+              "hostAdditionalContextBytes": 0,
+              "proactivePrime": false,
+              "failureContext": false,
+              "duplicatePromptPrime": false,
+              "compressedOutput": false,
+              "trivialSuccessfulOutput": true
+            }
+          }
+        },
+        {
+          "turnId": "diff-review",
+          "mode": "kairn_codex_session",
+          "outcome": "pass",
+          "observedCodexTokens": 10738,
+          "responseTokens": 20785,
+          "elapsedMs": 24879,
+          "actualFiles": [
+            "functions/satisfies.js"
+          ],
+          "agentTouchedFiles": [
+            "functions/satisfies.js"
+          ],
+          "expectedFiles": [
+            "functions/satisfies.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 1,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "92fae1e16986900ddc4faf74fc00aa04d89b7c2b7bb505cc25b5f89fb6adcc8a",
+            "preparedPromptHash": "92fae1e16986900ddc4faf74fc00aa04d89b7c2b7bb505cc25b5f89fb6adcc8a",
+            "commandHash": "7bb0ff8905088a1bbd8ad91a76da0764567516b7e4b6a33df54a5aabacc998b2",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "7a0ecf7f4779125eff060cf14cfc4927d8b9e2fb7f0dddc6e30f8b80c49b2969",
+            "expectedFileMentions": [
+              "functions/satisfies.js"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "functions/satisfies.js"
+            ],
+            "agentTouchedFiles": [
+              "functions/satisfies.js"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 10738,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "hookSimulated": true,
+            "hookDeliveredContext": false,
+            "hookDecision": "suppress",
+            "primeDecision": "suppress",
+            "hookRecommendation": "prime_quality_suppressed_silent",
+            "primeFiles": [],
+            "hookFiles": [],
+            "hookOutputTokens": 0,
+            "hookSignalMetadata": {
+              "eventName": "UserPromptSubmit",
+              "hookKind": "hook",
+              "outputKind": "test",
+              "hookOutput": "full-prime",
+              "transport": "cli",
+              "daemonAttempted": false,
+              "daemonHit": false,
+              "daemonMiss": false,
+              "indexRefreshSkipped": true,
+              "refreshIndexMs": 0,
+              "primeElapsedMs": 296,
+              "hookLatencyMs": 296,
+              "linkedFiles": 0,
+              "recommendation": "prime_quality_suppressed_silent",
+              "primeAttempted": true,
+              "primeContextDelivered": false,
+              "primeSuppressed": true,
+              "hostAdditionalContextBytes": 0,
+              "proactivePrime": false,
+              "primeQuality": {
+                "score": 56,
+                "action": "suppress",
+                "reasons": [
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "query-local companion evidence supports multi-surface context",
+                  "top result is risky for a production-source fix",
+                  "index freshness: dirty_state_changed",
+                  "session policy: verified_context_suppressed"
+                ],
+                "topScore": 1819.648,
+                "topGap": 114.571,
+                "exactPathMentioned": false,
+                "expectedSavingsRisk": "medium"
+              },
+              "contextDecision": {
+                "score": 56,
+                "action": "suppress",
+                "reasons": [
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "query-local companion evidence supports multi-surface context",
+                  "top result is risky for a production-source fix"
+                ],
+                "topScore": 1819.648,
+                "topGap": 114.571,
+                "primaryFile": "index.js",
+                "language": "javascript",
+                "exactPathMentioned": false,
+                "exactSourceHit": false,
+                "sourceRescue": true,
+                "canonicalSourceHit": false,
+                "cheapSingleSource": false,
+                "cheapExactSource": false,
+                "companionSpecific": true,
+                "multiSurfaceSignal": true,
+                "companionCount": 2,
+                "companionTopScore": 942,
+                "recommendedDelivery": "none",
+                "estimatedContextCost": 500,
+                "expectedSavingsRisk": "medium",
+                "debugSignal": false,
+                "easyTaskSignal": false,
+                "wrongContextRisk": true,
+                "taskFrame": "source_rescue",
+                "modelPrediction": {
+                  "pUseful": 0.62,
+                  "pHarm": 0.4229427631923908,
+                  "pNeedMoreEvidence": 0,
+                  "suggestedAction": "shrink",
+                  "confidence": 0.62,
+                  "source": "deterministic"
+                },
+                "featureSummary": {
+                  "taskFrame": "source_rescue",
+                  "candidateCount": 12,
+                  "fileRoleCounts": {
+                    "entrypoint": 1,
+                    "production_source": 9,
+                    "test": 2
+                  },
+                  "repoLanguageMix": {
+                    "javascript": 126,
+                    "yaml": 14,
+                    "text": 5,
+                    "markdown": 5,
+                    "json": 4
+                  },
+                  "topRole": "entrypoint",
+                  "topLanguage": "javascript",
+                  "confidenceGap": 115,
+                  "candidateEntropy": 0.984,
+                  "ambiguity": 0.468,
+                  "expectedContextCost": 500,
+                  "estimatedSearchCost": 21
+                }
+              },
+              "decision": "suppress",
+              "decisionScore": 56,
+              "decisionReasons": [
+                "high-confidence top retrieval score",
+                "top result is clearly separated",
+                "query-local companion evidence supports multi-surface context",
+                "top result is risky for a production-source fix"
+              ],
+              "estimatedContextCost": 500,
+              "expectedSavingsRisk": "medium",
+              "failureContext": false,
+              "duplicatePromptPrime": false,
+              "compressedOutput": false,
+              "trivialSuccessfulOutput": true
+            }
+          }
+        },
+        {
+          "turnId": "repeat-context",
+          "mode": "kairn_codex_session",
+          "outcome": "pass",
+          "observedCodexTokens": 6908,
+          "responseTokens": 7712,
+          "elapsedMs": 17279,
+          "actualFiles": [
+            "functions/satisfies.js"
+          ],
+          "agentTouchedFiles": [
+            "functions/satisfies.js"
+          ],
+          "expectedFiles": [
+            "functions/satisfies.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "3242e0cfaadf368bf561e637c41aac1ff7075b1c237bf8f53c91fb4c84425b1f",
+            "preparedPromptHash": "3242e0cfaadf368bf561e637c41aac1ff7075b1c237bf8f53c91fb4c84425b1f",
+            "commandHash": "75cc07feeb351529e96db3d1c86ae5b71d2f23c5642e51307b9b8a4228779c7a",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "3685ffdbea27a600a36c43dc6fbad435cf1a1c77fc9733d5d269791e2c6034af",
+            "expectedFileMentions": [
+              "functions/satisfies.js"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "functions/satisfies.js"
+            ],
+            "agentTouchedFiles": [
+              "functions/satisfies.js"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 6908,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "hookSimulated": true,
+            "hookDeliveredContext": false,
+            "hookRecommendation": "prompt_suppressed",
+            "primeFiles": [],
+            "hookFiles": [],
+            "hookOutputTokens": 0,
+            "hookSignalMetadata": {
+              "eventName": "UserPromptSubmit",
+              "hookKind": "hook",
+              "outputKind": "generic",
+              "hookOutput": "full-prime",
+              "transport": "cli",
+              "daemonAttempted": false,
+              "daemonHit": false,
+              "daemonMiss": false,
+              "indexRefreshSkipped": true,
+              "refreshIndexMs": 0,
+              "primeElapsedMs": 0,
+              "hookLatencyMs": 1,
+              "linkedFiles": 0,
+              "recommendation": "prompt_suppressed",
+              "primeAttempted": false,
+              "primeContextDelivered": false,
+              "primeSuppressed": false,
+              "hostAdditionalContextBytes": 0,
+              "proactivePrime": false,
+              "failureContext": false,
+              "duplicatePromptPrime": false,
+              "compressedOutput": false,
+              "trivialSuccessfulOutput": true
+            }
+          }
+        },
+        {
+          "turnId": "cleanup",
+          "mode": "kairn_codex_session",
+          "outcome": "pass",
+          "observedCodexTokens": 3301,
+          "responseTokens": 4469,
+          "elapsedMs": 11405,
+          "actualFiles": [
+            "functions/satisfies.js"
+          ],
+          "agentTouchedFiles": [
+            "functions/satisfies.js"
+          ],
+          "expectedFiles": [
+            "functions/satisfies.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 1,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "601d14142ac01af5c393be6f75c0f995e4d1ba4abb240e93575fca3eaf3bb44a",
+            "preparedPromptHash": "601d14142ac01af5c393be6f75c0f995e4d1ba4abb240e93575fca3eaf3bb44a",
+            "commandHash": "83e621419448cd4148c2b4358cba2d783ee5586e196e1557c7fcca4f5f48d663",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "4a0ecb6327ebc3a41f9e8bbf1d02008d3634c82cb0e99a8a17bbb9b67cf1321b",
+            "expectedFileMentions": [
+              "functions/satisfies.js"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "functions/satisfies.js"
+            ],
+            "agentTouchedFiles": [
+              "functions/satisfies.js"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 3301,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "hookSimulated": true,
+            "hookDeliveredContext": false,
+            "hookDecision": "suppress",
+            "primeDecision": "suppress",
+            "hookRecommendation": "prime_quality_suppressed_silent",
+            "primeFiles": [],
+            "hookFiles": [],
+            "hookOutputTokens": 0,
+            "hookSignalMetadata": {
+              "eventName": "UserPromptSubmit",
+              "hookKind": "hook",
+              "outputKind": "test",
+              "hookOutput": "full-prime",
+              "transport": "cli",
+              "daemonAttempted": false,
+              "daemonHit": false,
+              "daemonMiss": false,
+              "indexRefreshSkipped": true,
+              "refreshIndexMs": 0,
+              "primeElapsedMs": 309,
+              "hookLatencyMs": 310,
+              "linkedFiles": 0,
+              "recommendation": "prime_quality_suppressed_silent",
+              "primeAttempted": true,
+              "primeContextDelivered": false,
+              "primeSuppressed": true,
+              "hostAdditionalContextBytes": 0,
+              "proactivePrime": false,
+              "primeQuality": {
+                "score": 100,
+                "action": "suppress",
+                "reasons": [
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "query-local companion evidence supports multi-surface context",
+                  "index freshness: dirty_state_changed",
+                  "session policy: verified_context_suppressed"
+                ],
+                "topScore": 1833.196,
+                "topGap": 324.298,
+                "exactPathMentioned": false,
+                "expectedSavingsRisk": "low"
+              },
+              "contextDecision": {
+                "score": 100,
+                "action": "suppress",
+                "reasons": [
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "query-local companion evidence supports multi-surface context"
+                ],
+                "topScore": 1833.196,
+                "topGap": 324.298,
+                "primaryFile": "ranges/subset.js",
+                "language": "javascript",
+                "exactPathMentioned": false,
+                "exactSourceHit": false,
+                "sourceRescue": true,
+                "canonicalSourceHit": false,
+                "cheapSingleSource": false,
+                "cheapExactSource": false,
+                "companionSpecific": true,
+                "multiSurfaceSignal": true,
+                "companionCount": 2,
+                "companionTopScore": 942,
+                "recommendedDelivery": "none",
+                "estimatedContextCost": 500,
+                "expectedSavingsRisk": "low",
+                "debugSignal": false,
+                "easyTaskSignal": false,
+                "wrongContextRisk": false,
+                "taskFrame": "verification_cleanup",
+                "modelPrediction": {
+                  "pUseful": 0.78,
+                  "pHarm": 0.14729145985561043,
+                  "pNeedMoreEvidence": 0,
+                  "suggestedAction": "emit",
+                  "confidence": 0.78,
+                  "source": "deterministic"
+                },
+                "featureSummary": {
+                  "taskFrame": "verification_cleanup",
+                  "candidateCount": 12,
+                  "fileRoleCounts": {
+                    "production_source": 9,
+                    "entrypoint": 1,
+                    "test": 2
+                  },
+                  "repoLanguageMix": {
+                    "javascript": 126,
+                    "yaml": 14,
+                    "text": 5,
+                    "markdown": 5,
+                    "json": 4
+                  },
+                  "topRole": "production_source",
+                  "topLanguage": "javascript",
+                  "confidenceGap": 324,
+                  "candidateEntropy": 0.987,
+                  "ambiguity": 0.442,
+                  "expectedContextCost": 500,
+                  "estimatedSearchCost": 21
+                }
+              },
+              "decision": "suppress",
+              "decisionScore": 100,
+              "decisionReasons": [
+                "high-confidence top retrieval score",
+                "top result is clearly separated",
+                "query-local companion evidence supports multi-surface context"
+              ],
+              "estimatedContextCost": 500,
+              "expectedSavingsRisk": "low",
+              "failureContext": false,
+              "duplicatePromptPrime": false,
+              "compressedOutput": false,
+              "trivialSuccessfulOutput": true
+            }
+          }
+        }
+      ],
+      "totalObservedCodexTokens": 56960,
+      "totalResponseTokens": 76128,
+      "totalElapsedMs": 143975,
+      "qualityGatePassed": true,
+      "finalVerificationPassed": true,
+      "assistanceStatus": "active",
+      "assistanceActions": {
+        "emitted": 0,
+        "shrunk": 1,
+        "suppressed": 5,
+        "mcpCalls": 0,
+        "failureContexts": 0
+      },
+      "ledger": {
+        "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+        "events": 45,
+        "currentPhase": "cleanup",
+        "recommendedFiles": [
+          "index.js",
+          "functions/satisfies.js",
+          "classes/range.js",
+          "classes/semver.js",
+          "bin/semver.js",
+          "ranges/outside.js",
+          "ranges/subset.js"
+        ],
+        "shownFiles": [
+          "functions/satisfies.js"
+        ],
+        "agentMentionedFiles": [
+          "functions/satisfies.js"
+        ],
+        "agentTouchedFiles": [
+          "functions/satisfies.js"
+        ],
+        "repeatedFilesAvoided": 2,
+        "repeatedSnippetsAvoided": 0,
+        "recommendedFilesUsed": [
+          "functions/satisfies.js"
+        ],
+        "repeatedlyTouchedFiles": [
+          "functions/satisfies.js"
+        ],
+        "unresolvedFailures": 0,
+        "workingSet": {
+          "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+          "currentPhase": "cleanup",
+          "activeFiles": [
+            "functions/satisfies.js"
+          ],
+          "recentlyTouchedFiles": [
+            "functions/satisfies.js"
+          ],
+          "shownFiles": [
+            "functions/satisfies.js"
+          ],
+          "ignoredRecommendedFiles": [
+            "index.js",
+            "classes/range.js",
+            "classes/semver.js",
+            "bin/semver.js",
+            "ranges/outside.js",
+            "ranges/subset.js"
+          ],
+          "ruledOutFiles": [],
+          "staleFiles": [],
+          "lastPassingVerification": {
+            "summary": "Final endurance verification passed.",
+            "createdAt": "2026-05-20T18:53:24.041Z"
+          },
+          "openRisks": []
+        },
+        "recentEvents": [
+          {
+            "id": 26,
+            "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+            "kind": "test_run",
+            "turnId": "diff-review",
+            "contentHash": "7fc05d92fcae3d89c1f6feac5a6d8e9ae434b96731092906527f89692bb327cd",
+            "tokenEstimate": 14,
+            "source": "agent",
+            "summary": "Agent command for endurance turn diff-review exited 0.",
+            "metadata": {
+              "commandHash": "7bb0ff8905088a1bbd8ad91a76da0764567516b7e4b6a33df54a5aabacc998b2",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "7a0ecf7f4779125eff060cf14cfc4927d8b9e2fb7f0dddc6e30f8b80c49b2969"
+            },
+            "createdAt": "2026-05-20T18:52:55.309Z"
+          },
+          {
+            "id": 27,
+            "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+            "kind": "agent_file_mentioned",
+            "turnId": "diff-review",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "2889062a9cf9af833aef4869dace49ac3624db8cf0358efcafe1c39b78804fd9",
+            "tokenEstimate": 10,
+            "source": "agent",
+            "summary": "Agent mentioned functions/satisfies.js.",
+            "metadata": {
+              "turnId": "diff-review"
+            },
+            "createdAt": "2026-05-20T18:52:55.309Z"
+          },
+          {
+            "id": 28,
+            "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+            "kind": "agent_file_touched",
+            "turnId": "diff-review",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "c8a623ce2bb9e2b6607a11339c00ff1c8fee0095c505b8ac336967d643585b4e",
+            "tokenEstimate": 10,
+            "source": "agent",
+            "summary": "Agent touched functions/satisfies.js.",
+            "metadata": {
+              "turnId": "diff-review"
+            },
+            "createdAt": "2026-05-20T18:52:55.309Z"
+          },
+          {
+            "id": 29,
+            "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+            "kind": "diff_seen",
+            "turnId": "diff-review",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "50864237864154532c3fb000004fc90055e80c4eb836894de017d45f13ad19ab",
+            "tokenEstimate": 18,
+            "source": "agent",
+            "summary": "Diff touched functions/satisfies.js during endurance turn diff-review.",
+            "metadata": {
+              "turnId": "diff-review"
+            },
+            "createdAt": "2026-05-20T18:52:55.309Z"
+          },
+          {
+            "id": 30,
+            "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+            "kind": "command_run",
+            "turnId": "repeat-context",
+            "contentHash": "0a2d142b64aa1f3c64e2dd27ca2905bc6bd3e8f76b6ab218028e4a7034edaaac",
+            "tokenEstimate": 15,
+            "source": "agent",
+            "summary": "Agent command for endurance turn repeat-context exited 0.",
+            "metadata": {
+              "commandHash": "75cc07feeb351529e96db3d1c86ae5b71d2f23c5642e51307b9b8a4228779c7a",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "3685ffdbea27a600a36c43dc6fbad435cf1a1c77fc9733d5d269791e2c6034af"
+            },
+            "createdAt": "2026-05-20T18:53:12.588Z"
+          },
+          {
+            "id": 31,
+            "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+            "kind": "agent_file_mentioned",
+            "turnId": "repeat-context",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "2889062a9cf9af833aef4869dace49ac3624db8cf0358efcafe1c39b78804fd9",
+            "tokenEstimate": 10,
+            "source": "agent",
+            "summary": "Agent mentioned functions/satisfies.js.",
+            "metadata": {
+              "turnId": "repeat-context"
+            },
+            "createdAt": "2026-05-20T18:53:12.589Z"
+          },
+          {
+            "id": 32,
+            "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+            "kind": "agent_file_touched",
+            "turnId": "repeat-context",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "c8a623ce2bb9e2b6607a11339c00ff1c8fee0095c505b8ac336967d643585b4e",
+            "tokenEstimate": 10,
+            "source": "agent",
+            "summary": "Agent touched functions/satisfies.js.",
+            "metadata": {
+              "turnId": "repeat-context"
+            },
+            "createdAt": "2026-05-20T18:53:12.589Z"
+          },
+          {
+            "id": 33,
+            "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+            "kind": "diff_seen",
+            "turnId": "repeat-context",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "9cce45b6ec9c2d02da5df22aff74374992652c1f1b0a699dac126e48c861e9f5",
+            "tokenEstimate": 19,
+            "source": "agent",
+            "summary": "Diff touched functions/satisfies.js during endurance turn repeat-context.",
+            "metadata": {
+              "turnId": "repeat-context"
+            },
+            "createdAt": "2026-05-20T18:53:12.589Z"
+          },
+          {
+            "id": 34,
+            "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+            "kind": "context_recommended",
+            "filePath": "ranges/subset.js",
+            "contentHash": "4a433847d76c93f3507efa22eeba011b120a279ce82680be44a50597261af858",
+            "tokenEstimate": 0,
+            "source": "codex",
+            "summary": "Kairn recommended ranges/subset.js",
+            "metadata": {
+              "taskHash": "601d14142ac01af5c393be6f75c0f995e4d1ba4abb240e93575fca3eaf3bb44a",
+              "phase": "cleanup",
+              "policyReason": "verified_context_suppressed",
+              "emitted": false,
+              "workingSetActiveFiles": [
+                "functions/satisfies.js"
+              ],
+              "nextSmallestUsefulRead": {
+                "filePath": "functions/satisfies.js",
+                "reason": "file changed after Kairn last showed it",
+                "source": "changed_file"
+              }
+            },
+            "createdAt": "2026-05-20T18:53:12.899Z"
+          },
+          {
+            "id": 35,
+            "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+            "kind": "context_recommended",
+            "filePath": "classes/range.js",
+            "contentHash": "9a1e304bdef634a9c6c45ed1e68a473418690d20375ac8dd829a4a8ebe7cafb4",
+            "tokenEstimate": 0,
+            "source": "codex",
+            "summary": "Kairn recommended classes/range.js",
+            "metadata": {
+              "taskHash": "601d14142ac01af5c393be6f75c0f995e4d1ba4abb240e93575fca3eaf3bb44a",
+              "phase": "cleanup",
+              "policyReason": "verified_context_suppressed",
+              "emitted": false,
+              "workingSetActiveFiles": [
+                "functions/satisfies.js"
+              ],
+              "nextSmallestUsefulRead": {
+                "filePath": "functions/satisfies.js",
+                "reason": "file changed after Kairn last showed it",
+                "source": "changed_file"
+              }
+            },
+            "createdAt": "2026-05-20T18:53:12.899Z"
+          },
+          {
+            "id": 36,
+            "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+            "kind": "context_recommended",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "b007807dd8e94924833a83e24699f7925279172b6733f4c45054c4df60a9351d",
+            "tokenEstimate": 0,
+            "source": "codex",
+            "summary": "Kairn recommended functions/satisfies.js",
+            "metadata": {
+              "taskHash": "601d14142ac01af5c393be6f75c0f995e4d1ba4abb240e93575fca3eaf3bb44a",
+              "phase": "cleanup",
+              "policyReason": "verified_context_suppressed",
+              "emitted": false,
+              "workingSetActiveFiles": [
+                "functions/satisfies.js"
+              ],
+              "nextSmallestUsefulRead": {
+                "filePath": "functions/satisfies.js",
+                "reason": "file changed after Kairn last showed it",
+                "source": "changed_file"
+              }
+            },
+            "createdAt": "2026-05-20T18:53:12.899Z"
+          },
+          {
+            "id": 37,
+            "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+            "kind": "context_recommended",
+            "filePath": "ranges/outside.js",
+            "contentHash": "f2f6df1dd249c64b6043cb902640eecfa02398d72dbf91ee334d861c0ab17310",
+            "tokenEstimate": 0,
+            "source": "codex",
+            "summary": "Kairn recommended ranges/outside.js",
+            "metadata": {
+              "taskHash": "601d14142ac01af5c393be6f75c0f995e4d1ba4abb240e93575fca3eaf3bb44a",
+              "phase": "cleanup",
+              "policyReason": "verified_context_suppressed",
+              "emitted": false,
+              "workingSetActiveFiles": [
+                "functions/satisfies.js"
+              ],
+              "nextSmallestUsefulRead": {
+                "filePath": "functions/satisfies.js",
+                "reason": "file changed after Kairn last showed it",
+                "source": "changed_file"
+              }
+            },
+            "createdAt": "2026-05-20T18:53:12.899Z"
+          },
+          {
+            "id": 38,
+            "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+            "kind": "phase_change",
+            "contentHash": "74fadecbd5601597595b890deafb23fcab9ed2143c97058dcb60f2a78603265e",
+            "tokenEstimate": 0,
+            "source": "codex",
+            "summary": "Phase changed from verification to cleanup",
+            "metadata": {
+              "previousPhase": "verification",
+              "phase": "cleanup"
+            },
+            "createdAt": "2026-05-20T18:53:12.899Z"
+          },
+          {
+            "id": 39,
+            "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+            "kind": "context_shown",
+            "contentHash": "fd125fed34546cf44d4e007fb60f8601c1fe104ccc3e91160bb93d6adcfd0cfb",
+            "tokenEstimate": 150,
+            "source": "codex",
+            "summary": "Kairn suppressed repeated or low-value context",
+            "metadata": {
+              "taskHash": "601d14142ac01af5c393be6f75c0f995e4d1ba4abb240e93575fca3eaf3bb44a",
+              "phase": "cleanup",
+              "policyReason": "verified_context_suppressed",
+              "repeatedFilesAvoided": 1,
+              "repeatedSnippetsAvoided": 0,
+              "workingSetActiveFiles": [
+                "functions/satisfies.js"
+              ],
+              "nextSmallestUsefulRead": {
+                "filePath": "functions/satisfies.js",
+                "reason": "file changed after Kairn last showed it",
+                "source": "changed_file"
+              }
+            },
+            "createdAt": "2026-05-20T18:53:12.900Z"
+          },
+          {
+            "id": 40,
+            "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+            "kind": "test_run",
+            "turnId": "cleanup",
+            "contentHash": "25bc38a4b4a054885fb490222949134ffa62b481ad5554f2be4c7d965c856a78",
+            "tokenEstimate": 13,
+            "source": "agent",
+            "summary": "Agent command for endurance turn cleanup exited 0.",
+            "metadata": {
+              "commandHash": "83e621419448cd4148c2b4358cba2d783ee5586e196e1557c7fcca4f5f48d663",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "4a0ecb6327ebc3a41f9e8bbf1d02008d3634c82cb0e99a8a17bbb9b67cf1321b"
+            },
+            "createdAt": "2026-05-20T18:53:23.993Z"
+          },
+          {
+            "id": 41,
+            "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+            "kind": "agent_file_mentioned",
+            "turnId": "cleanup",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "2889062a9cf9af833aef4869dace49ac3624db8cf0358efcafe1c39b78804fd9",
+            "tokenEstimate": 10,
+            "source": "agent",
+            "summary": "Agent mentioned functions/satisfies.js.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-20T18:53:23.994Z"
+          },
+          {
+            "id": 42,
+            "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+            "kind": "agent_file_touched",
+            "turnId": "cleanup",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "c8a623ce2bb9e2b6607a11339c00ff1c8fee0095c505b8ac336967d643585b4e",
+            "tokenEstimate": 10,
+            "source": "agent",
+            "summary": "Agent touched functions/satisfies.js.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-20T18:53:23.994Z"
+          },
+          {
+            "id": 43,
+            "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+            "kind": "diff_seen",
+            "turnId": "cleanup",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "bbf210813ce680cae953a23119b3e9c2ad00110076ea4ae5b71924828bee1d75",
+            "tokenEstimate": 17,
+            "source": "agent",
+            "summary": "Diff touched functions/satisfies.js during endurance turn cleanup.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-20T18:53:23.994Z"
+          },
+          {
+            "id": 44,
+            "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+            "kind": "verification_passed",
+            "turnId": "cleanup",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "eeb3550a8d54d6cadda087d4db1e6f9b09d23e596042974b137767763e7a318f",
+            "tokenEstimate": 12,
+            "source": "bench",
+            "summary": "Verification passed for endurance turn cleanup.",
+            "metadata": {
+              "verificationCommandHash": "189fab1958491c7d8fe7dec052165360d53f931eab5f091b90e095502ee28aa4",
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "qualityGatePassed": true
+            },
+            "createdAt": "2026-05-20T18:53:23.994Z"
+          },
+          {
+            "id": 45,
+            "sessionId": "task_3872a63b-e572-4127-853d-909dabc601ca",
+            "kind": "verification_passed",
+            "contentHash": "01686a52d490ab8e273bc13297bc95ca3a956265b15943a23c3c2801a08de538",
+            "tokenEstimate": 9,
+            "source": "bench",
+            "summary": "Final endurance verification passed.",
+            "metadata": {
+              "finalVerificationCommandHash": "189fab1958491c7d8fe7dec052165360d53f931eab5f091b90e095502ee28aa4",
+              "finalVerificationExitCode": 0,
+              "finalVerificationOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "finalSourceInvariantPassed": true,
+              "finalSourceInvariantFailures": [],
+              "finalDiffScopePassed": true,
+              "finalDiffScopeViolations": []
+            },
+            "createdAt": "2026-05-20T18:53:24.041Z"
+          }
+        ]
+      },
+      "metadata": {
+        "finalVerificationCommandPassed": true,
+        "finalSourceInvariantPassed": true,
+        "finalSourceInvariantFailures": [],
+        "finalDiffScopePassed": true,
+        "finalDiffScopeViolations": [],
+        "finalChangedFiles": [],
+        "setupElapsedMs": 0,
+        "kairnSessionCount": 1,
+        "primeEmitted": 0,
+        "primeSuppressed": 2,
+        "hookInvocations": 6,
+        "failureContextUsed": 0,
+        "mcpToolCalls": 0,
+        "mcpFilesReturned": [],
+        "mcpReturnedFileCount": 0,
+        "mcpReturnedUsefulFileCount": 0
+      }
+    },
+    {
+      "mode": "real_mcp_first",
+      "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-LLFTg0",
+      "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+      "turns": [
+        {
+          "turnId": "diagnose",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 8914,
+          "responseTokens": 7884,
+          "elapsedMs": 22448,
+          "actualFiles": [
+            "functions/satisfies.js"
+          ],
+          "agentTouchedFiles": [],
+          "expectedFiles": [
+            "functions/satisfies.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "ac7f53c3be3ca2a539276078b8bc089b3c12254c3fdd727aad9c49e82dbe3b86",
+            "preparedPromptHash": "0c59fd33b1801946a75aed0e6f5da796b4153cfd02c1c283ccafb4217feb0d3c",
+            "commandHash": "ca77c34e8478f2b527ce83b3a40c1126928d863597b8e66a15a4289ea52f2d79",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "06322166165e5ae3e83cfc0dbfcc13c011c97fd022e4c378c713a088c40fc135",
+            "expectedFileMentions": [
+              "functions/satisfies.js"
+            ],
+            "changedFiles": [
+              "functions/satisfies.js"
+            ],
+            "seedPatchFiles": [
+              "functions/satisfies.js"
+            ],
+            "agentTouchedFiles": [],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 8914,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "prepare_first",
+            "mcpShouldCallPrepare": true
+          }
+        },
+        {
+          "turnId": "fix-source",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 3116,
+          "responseTokens": 5314,
+          "elapsedMs": 12522,
+          "actualFiles": [
+            "functions/satisfies.js"
+          ],
+          "agentTouchedFiles": [
+            "functions/satisfies.js"
+          ],
+          "expectedFiles": [
+            "functions/satisfies.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "4b8b58ae6f1919d24895eebacfc30f494a6296ace9102de52bd5f2eb26b906fa",
+            "preparedPromptHash": "996e91901b162d8e3eb00b47e87cb2a0c7da92825b04cfe70a778879afe884ea",
+            "commandHash": "50e7e54a5d3ca910b5b5ca13c28ab3fa4e6345af9ea8283305e2d6adadc76295",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "dd2ff0cb72324383ebb31b9c7f971a10db6ee0747ff92bd18fc0709400c4e287",
+            "expectedFileMentions": [
+              "functions/satisfies.js"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "functions/satisfies.js"
+            ],
+            "agentTouchedFiles": [
+              "functions/satisfies.js"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 3116,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "continue_known_source",
+            "mcpKnownSource": "functions/satisfies.js",
+            "mcpShouldCallPrepare": false
+          }
+        },
+        {
+          "turnId": "verify",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 4814,
+          "responseTokens": 6502,
+          "elapsedMs": 18948,
+          "actualFiles": [
+            "functions/satisfies.js"
+          ],
+          "agentTouchedFiles": [
+            "functions/satisfies.js"
+          ],
+          "expectedFiles": [
+            "functions/satisfies.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "2f6b2c34a1ec29f9743d14cbe892839bddc2302085a559bf46040053d3827892",
+            "preparedPromptHash": "eae54e923283241982dd0dc92a15dad0ff1ccf720908d7db9e0f1a9b6dc3dc5d",
+            "commandHash": "7fd047b20ec47d6a1f994f6d3ffce8b5f4013e907fa17fa8a23aeba431708e10",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "0e2e005fcd77d91310517ddb926deabecfc9ebae6dd38a367a467274cd1ebe00",
+            "expectedFileMentions": [
+              "functions/satisfies.js"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "functions/satisfies.js"
+            ],
+            "agentTouchedFiles": [
+              "functions/satisfies.js"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 4814,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "failure_gateway",
+            "mcpKnownSource": "functions/satisfies.js",
+            "mcpShouldCallPrepare": false
+          }
+        },
+        {
+          "turnId": "diff-review",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 3258,
+          "responseTokens": 4908,
+          "elapsedMs": 12574,
+          "actualFiles": [
+            "functions/satisfies.js"
+          ],
+          "agentTouchedFiles": [
+            "functions/satisfies.js"
+          ],
+          "expectedFiles": [
+            "functions/satisfies.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "92fae1e16986900ddc4faf74fc00aa04d89b7c2b7bb505cc25b5f89fb6adcc8a",
+            "preparedPromptHash": "314d3629b55bfca9db50a5199029c734a4c2c4293cc3f986a88baaae427a0b8d",
+            "commandHash": "0d6c2b1f2487cdcc5b40de74166ca70beaec7a975eee49f077c8032511c8e646",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "87db1f300a5a740758332fdf864fefd610fb7693d0ed026dc00485fe99e5a00b",
+            "expectedFileMentions": [
+              "functions/satisfies.js"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "functions/satisfies.js"
+            ],
+            "agentTouchedFiles": [
+              "functions/satisfies.js"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 3258,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "continue_known_source",
+            "mcpKnownSource": "functions/satisfies.js",
+            "mcpShouldCallPrepare": false
+          }
+        },
+        {
+          "turnId": "repeat-context",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 638,
+          "responseTokens": 2410,
+          "elapsedMs": 8102,
+          "actualFiles": [
+            "functions/satisfies.js"
+          ],
+          "agentTouchedFiles": [
+            "functions/satisfies.js"
+          ],
+          "expectedFiles": [
+            "functions/satisfies.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "3242e0cfaadf368bf561e637c41aac1ff7075b1c237bf8f53c91fb4c84425b1f",
+            "preparedPromptHash": "f2a99297a75de3eb5539a2e9f229ef13713e321703d9ff951fd74014d6e5b9f3",
+            "commandHash": "730a8450fafbc9a797cc70bedcf7903e99935d20611fe366dbfbbcd7bd528f08",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "1d235ab9979d1a8319d5a974f8ce4f9430c31a9e652c108efe9379d59e00796b",
+            "expectedFileMentions": [
+              "functions/satisfies.js"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "functions/satisfies.js"
+            ],
+            "agentTouchedFiles": [
+              "functions/satisfies.js"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 638,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "continue_known_source",
+            "mcpKnownSource": "functions/satisfies.js",
+            "mcpShouldCallPrepare": false
+          }
+        },
+        {
+          "turnId": "cleanup",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 1129,
+          "responseTokens": 3934,
+          "elapsedMs": 13813,
+          "actualFiles": [
+            "functions/satisfies.js"
+          ],
+          "agentTouchedFiles": [
+            "functions/satisfies.js"
+          ],
+          "expectedFiles": [
+            "functions/satisfies.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "601d14142ac01af5c393be6f75c0f995e4d1ba4abb240e93575fca3eaf3bb44a",
+            "preparedPromptHash": "4debba1c93e6390f32f40a46cdf3070e569ae39ea18f2c448294262bc5182ad1",
+            "commandHash": "7b6594b3e490ac9528b7a2177d54e857a600c0e0408c87e853a6d0a0a616571c",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "c0e0faa27b7c26276bf0384e77678875ff5e01fa62515ea2c8be7be55e3384ce",
+            "expectedFileMentions": [
+              "functions/satisfies.js"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "functions/satisfies.js"
+            ],
+            "agentTouchedFiles": [
+              "functions/satisfies.js"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 1129,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "continue_known_source",
+            "mcpKnownSource": "functions/satisfies.js",
+            "mcpShouldCallPrepare": false
+          }
+        }
+      ],
+      "totalObservedCodexTokens": 21869,
+      "totalResponseTokens": 30952,
+      "totalElapsedMs": 90145,
+      "qualityGatePassed": true,
+      "finalVerificationPassed": true,
+      "assistanceStatus": "active",
+      "assistanceActions": {
+        "emitted": 0,
+        "shrunk": 0,
+        "suppressed": 0,
+        "mcpCalls": 1,
+        "failureContexts": 0
+      },
+      "ledger": {
+        "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+        "events": 30,
+        "currentPhase": "debugging",
+        "recommendedFiles": [
+          "index.js",
+          "functions/satisfies.js",
+          "bin/semver.js"
+        ],
+        "shownFiles": [],
+        "agentMentionedFiles": [
+          "functions/satisfies.js"
+        ],
+        "agentTouchedFiles": [
+          "functions/satisfies.js"
+        ],
+        "repeatedFilesAvoided": 0,
+        "repeatedSnippetsAvoided": 0,
+        "recommendedFilesUsed": [
+          "functions/satisfies.js"
+        ],
+        "repeatedlyTouchedFiles": [
+          "functions/satisfies.js"
+        ],
+        "unresolvedFailures": 0,
+        "workingSet": {
+          "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+          "currentPhase": "debugging",
+          "activeFiles": [
+            "functions/satisfies.js"
+          ],
+          "recentlyTouchedFiles": [
+            "functions/satisfies.js"
+          ],
+          "shownFiles": [],
+          "ignoredRecommendedFiles": [
+            "index.js",
+            "bin/semver.js"
+          ],
+          "ruledOutFiles": [],
+          "staleFiles": [],
+          "lastPassingVerification": {
+            "summary": "Final endurance verification passed.",
+            "createdAt": "2026-05-20T18:54:54.666Z"
+          },
+          "nextSmallestUsefulRead": {
+            "filePath": "functions/satisfies.js",
+            "reason": "active session file has not been shown yet",
+            "source": "active_file"
+          },
+          "openRisks": []
+        },
+        "recentEvents": [
+          {
+            "id": 11,
+            "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+            "kind": "verification_passed",
+            "turnId": "fix-source",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "ede28e71710c11c547a1fedb4833b8021ae65d4d5c9b5d2759f0171350e86eaa",
+            "tokenEstimate": 13,
+            "source": "bench",
+            "summary": "Verification passed for endurance turn fix-source.",
+            "metadata": {
+              "verificationCommandHash": "189fab1958491c7d8fe7dec052165360d53f931eab5f091b90e095502ee28aa4",
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantChecked": true,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": true,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "qualityGatePassed": true
+            },
+            "createdAt": "2026-05-20T18:54:01.181Z"
+          },
+          {
+            "id": 12,
+            "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+            "kind": "test_run",
+            "turnId": "verify",
+            "contentHash": "c8029656c22eb691d685bae7733579bb65927f5b5097e9a5d784cf50a73a9638",
+            "tokenEstimate": 13,
+            "source": "agent",
+            "summary": "Agent command for endurance turn verify exited 0.",
+            "metadata": {
+              "commandHash": "7fd047b20ec47d6a1f994f6d3ffce8b5f4013e907fa17fa8a23aeba431708e10",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "0e2e005fcd77d91310517ddb926deabecfc9ebae6dd38a367a467274cd1ebe00"
+            },
+            "createdAt": "2026-05-20T18:54:20.129Z"
+          },
+          {
+            "id": 13,
+            "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+            "kind": "agent_file_mentioned",
+            "turnId": "verify",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "2889062a9cf9af833aef4869dace49ac3624db8cf0358efcafe1c39b78804fd9",
+            "tokenEstimate": 10,
+            "source": "agent",
+            "summary": "Agent mentioned functions/satisfies.js.",
+            "metadata": {
+              "turnId": "verify"
+            },
+            "createdAt": "2026-05-20T18:54:20.129Z"
+          },
+          {
+            "id": 14,
+            "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+            "kind": "agent_file_touched",
+            "turnId": "verify",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "c8a623ce2bb9e2b6607a11339c00ff1c8fee0095c505b8ac336967d643585b4e",
+            "tokenEstimate": 10,
+            "source": "agent",
+            "summary": "Agent touched functions/satisfies.js.",
+            "metadata": {
+              "turnId": "verify"
+            },
+            "createdAt": "2026-05-20T18:54:20.129Z"
+          },
+          {
+            "id": 15,
+            "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+            "kind": "diff_seen",
+            "turnId": "verify",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "6ac947316ef43dffe62caa77eb97567378ab8d93ef3288ad1f610e06f062bca0",
+            "tokenEstimate": 17,
+            "source": "agent",
+            "summary": "Diff touched functions/satisfies.js during endurance turn verify.",
+            "metadata": {
+              "turnId": "verify"
+            },
+            "createdAt": "2026-05-20T18:54:20.129Z"
+          },
+          {
+            "id": 16,
+            "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+            "kind": "verification_passed",
+            "turnId": "verify",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "a6b45e0b4ca45b4f5a64a434ca5852a318d355c40fff0442b76b839b451dc58f",
+            "tokenEstimate": 12,
+            "source": "bench",
+            "summary": "Verification passed for endurance turn verify.",
+            "metadata": {
+              "verificationCommandHash": "189fab1958491c7d8fe7dec052165360d53f931eab5f091b90e095502ee28aa4",
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "qualityGatePassed": true
+            },
+            "createdAt": "2026-05-20T18:54:20.129Z"
+          },
+          {
+            "id": 17,
+            "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+            "kind": "test_run",
+            "turnId": "diff-review",
+            "contentHash": "7fc05d92fcae3d89c1f6feac5a6d8e9ae434b96731092906527f89692bb327cd",
+            "tokenEstimate": 14,
+            "source": "agent",
+            "summary": "Agent command for endurance turn diff-review exited 0.",
+            "metadata": {
+              "commandHash": "0d6c2b1f2487cdcc5b40de74166ca70beaec7a975eee49f077c8032511c8e646",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "87db1f300a5a740758332fdf864fefd610fb7693d0ed026dc00485fe99e5a00b"
+            },
+            "createdAt": "2026-05-20T18:54:32.702Z"
+          },
+          {
+            "id": 18,
+            "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+            "kind": "agent_file_mentioned",
+            "turnId": "diff-review",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "2889062a9cf9af833aef4869dace49ac3624db8cf0358efcafe1c39b78804fd9",
+            "tokenEstimate": 10,
+            "source": "agent",
+            "summary": "Agent mentioned functions/satisfies.js.",
+            "metadata": {
+              "turnId": "diff-review"
+            },
+            "createdAt": "2026-05-20T18:54:32.702Z"
+          },
+          {
+            "id": 19,
+            "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+            "kind": "agent_file_touched",
+            "turnId": "diff-review",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "c8a623ce2bb9e2b6607a11339c00ff1c8fee0095c505b8ac336967d643585b4e",
+            "tokenEstimate": 10,
+            "source": "agent",
+            "summary": "Agent touched functions/satisfies.js.",
+            "metadata": {
+              "turnId": "diff-review"
+            },
+            "createdAt": "2026-05-20T18:54:32.703Z"
+          },
+          {
+            "id": 20,
+            "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+            "kind": "diff_seen",
+            "turnId": "diff-review",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "50864237864154532c3fb000004fc90055e80c4eb836894de017d45f13ad19ab",
+            "tokenEstimate": 18,
+            "source": "agent",
+            "summary": "Diff touched functions/satisfies.js during endurance turn diff-review.",
+            "metadata": {
+              "turnId": "diff-review"
+            },
+            "createdAt": "2026-05-20T18:54:32.703Z"
+          },
+          {
+            "id": 21,
+            "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+            "kind": "test_run",
+            "turnId": "repeat-context",
+            "contentHash": "16343e1a223aa2a91e56d027f41361ad2f9a440516acd93d3701c95d2064e1cc",
+            "tokenEstimate": 15,
+            "source": "agent",
+            "summary": "Agent command for endurance turn repeat-context exited 0.",
+            "metadata": {
+              "commandHash": "730a8450fafbc9a797cc70bedcf7903e99935d20611fe366dbfbbcd7bd528f08",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "1d235ab9979d1a8319d5a974f8ce4f9430c31a9e652c108efe9379d59e00796b"
+            },
+            "createdAt": "2026-05-20T18:54:40.805Z"
+          },
+          {
+            "id": 22,
+            "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+            "kind": "agent_file_mentioned",
+            "turnId": "repeat-context",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "2889062a9cf9af833aef4869dace49ac3624db8cf0358efcafe1c39b78804fd9",
+            "tokenEstimate": 10,
+            "source": "agent",
+            "summary": "Agent mentioned functions/satisfies.js.",
+            "metadata": {
+              "turnId": "repeat-context"
+            },
+            "createdAt": "2026-05-20T18:54:40.805Z"
+          },
+          {
+            "id": 23,
+            "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+            "kind": "agent_file_touched",
+            "turnId": "repeat-context",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "c8a623ce2bb9e2b6607a11339c00ff1c8fee0095c505b8ac336967d643585b4e",
+            "tokenEstimate": 10,
+            "source": "agent",
+            "summary": "Agent touched functions/satisfies.js.",
+            "metadata": {
+              "turnId": "repeat-context"
+            },
+            "createdAt": "2026-05-20T18:54:40.805Z"
+          },
+          {
+            "id": 24,
+            "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+            "kind": "diff_seen",
+            "turnId": "repeat-context",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "9cce45b6ec9c2d02da5df22aff74374992652c1f1b0a699dac126e48c861e9f5",
+            "tokenEstimate": 19,
+            "source": "agent",
+            "summary": "Diff touched functions/satisfies.js during endurance turn repeat-context.",
+            "metadata": {
+              "turnId": "repeat-context"
+            },
+            "createdAt": "2026-05-20T18:54:40.805Z"
+          },
+          {
+            "id": 25,
+            "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+            "kind": "test_run",
+            "turnId": "cleanup",
+            "contentHash": "25bc38a4b4a054885fb490222949134ffa62b481ad5554f2be4c7d965c856a78",
+            "tokenEstimate": 13,
+            "source": "agent",
+            "summary": "Agent command for endurance turn cleanup exited 0.",
+            "metadata": {
+              "commandHash": "7b6594b3e490ac9528b7a2177d54e857a600c0e0408c87e853a6d0a0a616571c",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "c0e0faa27b7c26276bf0384e77678875ff5e01fa62515ea2c8be7be55e3384ce"
+            },
+            "createdAt": "2026-05-20T18:54:54.617Z"
+          },
+          {
+            "id": 26,
+            "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+            "kind": "agent_file_mentioned",
+            "turnId": "cleanup",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "2889062a9cf9af833aef4869dace49ac3624db8cf0358efcafe1c39b78804fd9",
+            "tokenEstimate": 10,
+            "source": "agent",
+            "summary": "Agent mentioned functions/satisfies.js.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-20T18:54:54.618Z"
+          },
+          {
+            "id": 27,
+            "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+            "kind": "agent_file_touched",
+            "turnId": "cleanup",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "c8a623ce2bb9e2b6607a11339c00ff1c8fee0095c505b8ac336967d643585b4e",
+            "tokenEstimate": 10,
+            "source": "agent",
+            "summary": "Agent touched functions/satisfies.js.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-20T18:54:54.618Z"
+          },
+          {
+            "id": 28,
+            "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+            "kind": "diff_seen",
+            "turnId": "cleanup",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "bbf210813ce680cae953a23119b3e9c2ad00110076ea4ae5b71924828bee1d75",
+            "tokenEstimate": 17,
+            "source": "agent",
+            "summary": "Diff touched functions/satisfies.js during endurance turn cleanup.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-20T18:54:54.618Z"
+          },
+          {
+            "id": 29,
+            "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+            "kind": "verification_passed",
+            "turnId": "cleanup",
+            "filePath": "functions/satisfies.js",
+            "contentHash": "eeb3550a8d54d6cadda087d4db1e6f9b09d23e596042974b137767763e7a318f",
+            "tokenEstimate": 12,
+            "source": "bench",
+            "summary": "Verification passed for endurance turn cleanup.",
+            "metadata": {
+              "verificationCommandHash": "189fab1958491c7d8fe7dec052165360d53f931eab5f091b90e095502ee28aa4",
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "qualityGatePassed": true
+            },
+            "createdAt": "2026-05-20T18:54:54.618Z"
+          },
+          {
+            "id": 30,
+            "sessionId": "task_b7a9d35b-bb0b-4c15-8c51-f17da8813f4f",
+            "kind": "verification_passed",
+            "contentHash": "01686a52d490ab8e273bc13297bc95ca3a956265b15943a23c3c2801a08de538",
+            "tokenEstimate": 9,
+            "source": "bench",
+            "summary": "Final endurance verification passed.",
+            "metadata": {
+              "finalVerificationCommandHash": "189fab1958491c7d8fe7dec052165360d53f931eab5f091b90e095502ee28aa4",
+              "finalVerificationExitCode": 0,
+              "finalVerificationOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "finalSourceInvariantPassed": true,
+              "finalSourceInvariantFailures": [],
+              "finalDiffScopePassed": true,
+              "finalDiffScopeViolations": []
+            },
+            "createdAt": "2026-05-20T18:54:54.666Z"
+          }
+        ]
+      },
+      "metadata": {
+        "finalVerificationCommandPassed": true,
+        "finalSourceInvariantPassed": true,
+        "finalSourceInvariantFailures": [],
+        "finalDiffScopePassed": true,
+        "finalDiffScopeViolations": [],
+        "finalChangedFiles": [],
+        "setupElapsedMs": 341,
+        "setupCommandHash": "a79595c0fc1edbbaa2c2f9f810ffcd4c54fd5ccb94ed9ff0275c268f13aa27b4",
+        "setupExitCode": 0,
+        "setupTimedOut": false,
+        "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "setupOutputTokens": 0,
+        "setupChangedFiles": [
+          "functions/satisfies.js"
+        ],
+        "kairnSessionCount": 1,
+        "primeEmitted": 0,
+        "primeSuppressed": 0,
+        "hookInvocations": 0,
+        "failureContextUsed": 0,
+        "mcpToolCalls": 1,
+        "mcpFilesReturned": [],
+        "mcpReturnedFileCount": 0,
+        "mcpReturnedUsefulFileCount": 0,
+        "mcpObservedTokensPerCall": 21869
+      }
+    }
+  ],
+  "deltas": {
+    "kairn_codex_session": {
+      "baselineTokens": 109750,
+      "modeTokens": 56960,
+      "savedTokens": 52790,
+      "savingsRate": 0.48100227790432803,
+      "qualityGatePassed": true,
+      "assistanceStatus": "active",
+      "assistanceEligible": true,
+      "baselineDifficulty": "expensive_pass",
+      "baselineTokenCost": 109750,
+      "abstentionOutcome": "not_applicable",
+      "missedOpportunity": false,
+      "overAssist": false,
+      "harmfulAssist": false,
+      "assistClassification": "valid_assist",
+      "validSavings": 52790
+    },
+    "real_mcp_first": {
+      "baselineTokens": 109750,
+      "modeTokens": 21869,
+      "savedTokens": 87881,
+      "savingsRate": 0.8007380410022779,
+      "qualityGatePassed": true,
+      "assistanceStatus": "active",
+      "assistanceEligible": false,
+      "baselineDifficulty": "expensive_pass",
+      "baselineTokenCost": 109750,
+      "abstentionOutcome": "not_applicable",
+      "missedOpportunity": false,
+      "overAssist": false,
+      "harmfulAssist": false,
+      "assistClassification": "neutral",
+      "invalidSavings": 87881,
+      "negativeEvidenceReason": "Token reduction is invalid because active MCP did not return an expected or later-used source file."
+    }
+  },
+  "recommendations": [
+    "kairn_codex_session: ledger avoided 2 repeated file context event(s).",
+    "kairn_codex_session: repeatedly touched files suggest a follow-up focused cleanup context: functions/satisfies.js.",
+    "real_mcp_first: working set next read is functions/satisfies.js.",
+    "real_mcp_first: repeatedly touched files suggest a follow-up focused cleanup context: functions/satisfies.js."
+  ]
+}

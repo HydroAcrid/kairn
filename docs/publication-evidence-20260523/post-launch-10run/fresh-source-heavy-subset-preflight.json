@@ -1,0 +1,442 @@
+{
+  "id": "post-launch-10run-fresh-source-heavy-subset",
+  "name": "Post-launch 10-run fresh source-heavy subset",
+  "startedAt": "2026-05-23T11:50:46.352Z",
+  "endedAt": "2026-05-23T11:50:59.056Z",
+  "repos": [
+    {
+      "repo": {
+        "id": "webpack",
+        "name": "webpack",
+        "repoUrl": "https://github.com/webpack/webpack.git",
+        "ref": "5d4859590a0f9ca41d17a35a0d0023b1326943ed",
+        "cloneDepth": 1,
+        "language": "javascript",
+        "sizeClass": "large",
+        "cases": [
+          {
+            "id": "normal-module-factory-resolver",
+            "mode": "context",
+            "contextBehavior": "multi_file_debug",
+            "task": "Debug webpack module resolution when NormalModuleFactory coordinates resolver creation, parser hooks, and dependency factories.",
+            "expectedFiles": [
+              "lib/NormalModuleFactory.js",
+              "lib/ResolverFactory.js",
+              "lib/javascript/JavascriptParser.js"
+            ],
+            "excludedFiles": [
+              "test/",
+              "examples/",
+              "benchmark/",
+              "declarations/"
+            ],
+            "budget": 900
+          }
+        ]
+      },
+      "rootPath": "/tmp/kairn-post-launch-10run-fresh-source/webpack",
+      "status": "passed",
+      "index": {
+        "files": 10398,
+        "totalSizeBytes": 74432616,
+        "totalSizeMb": 70.98,
+        "softMaxSizeMb": 250,
+        "hardMaxSizeMb": 1000,
+        "graphEdges": 5492,
+        "semanticChunks": 7500,
+        "lexicalTerms": 90000,
+        "tiers": {
+          "tier0": 2082,
+          "tier1": 0,
+          "tier2": 5316,
+          "tier3": 3000,
+          "tier4": 0
+        }
+      },
+      "gates": {
+        "maxStateMb": 400,
+        "maxPrimeLatencyMs": 12000,
+        "maxRepoPreflightMs": 180000,
+        "expectedTopK": 5,
+        "requireSuppressionForWeakCases": true
+      },
+      "stateWithinLimit": true,
+      "elapsedMs": 9804,
+      "cases": [
+        {
+          "repoId": "webpack",
+          "caseId": "normal-module-factory-resolver",
+          "task": "Debug webpack module resolution when NormalModuleFactory coordinates resolver creation, parser hooks, and dependency factories.",
+          "profile": "failure_debug",
+          "expectedFiles": [
+            "lib/NormalModuleFactory.js",
+            "lib/ResolverFactory.js",
+            "lib/javascript/JavascriptParser.js"
+          ],
+          "returnedFiles": [
+            "lib/NormalModuleFactory.js",
+            "lib/ResolverFactory.js"
+          ],
+          "missingExpectedFiles": [
+            "lib/javascript/JavascriptParser.js"
+          ],
+          "companionFilesReturned": [
+            "lib/ResolverFactory.js"
+          ],
+          "missingCompanionFiles": [
+            "lib/javascript/JavascriptParser.js"
+          ],
+          "excludedFiles": [
+            "test/",
+            "examples/",
+            "benchmark/",
+            "declarations/"
+          ],
+          "excludedHits": [],
+          "noisePrefixHits": [],
+          "sourceVsTestDecision": "source_first",
+          "companionReasons": {
+            "lib/ResolverFactory.js": [
+              "role match: routing/dependency pair",
+              "role match: plugin/transform analysis pair",
+              "role match: module/loader/resolver pair",
+              "role path match: routing/dependency pair",
+              "role path match: plugin/transform analysis pair",
+              "role path match: module/loader/resolver pair",
+              "specific task term match: factory, resolver",
+              "specific path term match: factory, resolver",
+              "routing/dependency pair",
+              "plugin/transform analysis pair"
+            ],
+            "lib/dependencies/HarmonyImportDependencyParserPlugin.js": [
+              "role match: routing/dependency pair",
+              "role match: schema/parser pair",
+              "role match: plugin/transform analysis pair",
+              "role match: module/loader/resolver pair",
+              "role match: session/command/config pair",
+              "role match: parse/persist pair",
+              "role match: fiber/hooks/workloop pair",
+              "role path match: routing/dependency pair",
+              "role path match: schema/parser pair",
+              "role path match: plugin/transform analysis pair"
+            ]
+          },
+          "primeTokens": 476,
+          "primeLatencyMs": 2447,
+          "timings": {
+            "initialInventoryMs": 7,
+            "findContextMs": 2249,
+            "decisionMs": 7,
+            "formatMs": 0,
+            "totalPrimeMs": 2445
+          },
+          "contextDecision": "shrink",
+          "taskFrame": "source_rescue",
+          "qualityScore": 100,
+          "minExpectedHits": 2,
+          "requiredCompanionHits": 1,
+          "companionGatePassed": true,
+          "expectedTopKPassed": true,
+          "excludedFilesAvoided": true,
+          "suppressionPassed": true,
+          "sourceQualityGatePassed": true,
+          "latencyPassed": true,
+          "qualityGatePassed": true,
+          "summary": "Preflight quality gate passed.",
+          "recommendations": []
+        }
+      ],
+      "weakestCases": [],
+      "recommendations": []
+    },
+    {
+      "repo": {
+        "id": "gorm",
+        "name": "GORM",
+        "repoUrl": "https://github.com/go-gorm/gorm.git",
+        "ref": "d0ee5e2296150d691364c5f4f7f2b32abde04545",
+        "cloneDepth": 1,
+        "language": "go",
+        "sizeClass": "medium",
+        "cases": [
+          {
+            "id": "create-callback-statement",
+            "mode": "context",
+            "contextBehavior": "multi_file_debug",
+            "task": "Debug GORM create callback behavior when schema fields are read from Statement values before inserting rows.",
+            "expectedFiles": [
+              "callbacks/create.go",
+              "statement.go",
+              "schema/field.go"
+            ],
+            "excludedFiles": [
+              "tests/",
+              "*/tests/",
+              "*_test.go"
+            ],
+            "budget": 850
+          }
+        ]
+      },
+      "rootPath": "/tmp/kairn-post-launch-10run-fresh-source/gorm",
+      "status": "passed",
+      "index": {
+        "files": 185,
+        "totalSizeBytes": 9183336,
+        "totalSizeMb": 8.76,
+        "softMaxSizeMb": 250,
+        "hardMaxSizeMb": 1000,
+        "graphEdges": 388,
+        "semanticChunks": 165,
+        "lexicalTerms": 18666,
+        "tiers": {
+          "tier0": 20,
+          "tier1": 0,
+          "tier2": 13,
+          "tier3": 152,
+          "tier4": 0
+        }
+      },
+      "gates": {
+        "maxStateMb": 400,
+        "maxPrimeLatencyMs": 12000,
+        "maxRepoPreflightMs": 180000,
+        "expectedTopK": 5,
+        "requireSuppressionForWeakCases": true
+      },
+      "stateWithinLimit": true,
+      "elapsedMs": 881,
+      "cases": [
+        {
+          "repoId": "gorm",
+          "caseId": "create-callback-statement",
+          "task": "Debug GORM create callback behavior when schema fields are read from Statement values before inserting rows.",
+          "profile": "failure_debug",
+          "expectedFiles": [
+            "callbacks/create.go",
+            "statement.go",
+            "schema/field.go"
+          ],
+          "returnedFiles": [
+            "schema/field.go",
+            "statement.go"
+          ],
+          "missingExpectedFiles": [
+            "callbacks/create.go"
+          ],
+          "companionFilesReturned": [
+            "statement.go"
+          ],
+          "missingCompanionFiles": [],
+          "excludedFiles": [
+            "tests/",
+            "*/tests/",
+            "*_test.go"
+          ],
+          "excludedHits": [],
+          "noisePrefixHits": [],
+          "sourceVsTestDecision": "source_first",
+          "companionReasons": {
+            "statement.go": [
+              "role match: controller/repository/model pair",
+              "role match: schema/parser pair",
+              "role match: log/core/sink pair",
+              "role match: schema/field generation pair",
+              "role match: statement/callback/field pair",
+              "role match: ORM unit-of-work/persistence pair",
+              "role path match: statement/callback/field pair",
+              "canonical role basename anchor: statement",
+              "primary source role anchor",
+              "exact canonical role file"
+            ],
+            "schema/schema.go": [
+              "role match: controller/repository/model pair",
+              "role match: scheduler/renderer pair",
+              "role match: interceptor/dispatch/adapter pair",
+              "role match: schema/parser pair",
+              "role match: log/core/sink pair",
+              "role match: schema/field generation pair",
+              "role match: statement/callback/field pair",
+              "role match: ORM unit-of-work/persistence pair",
+              "role match: validation/callback pair",
+              "role path match: controller/repository/model pair"
+            ]
+          },
+          "primeTokens": 447,
+          "primeLatencyMs": 244,
+          "timings": {
+            "initialInventoryMs": 1,
+            "findContextMs": 138,
+            "decisionMs": 1,
+            "formatMs": 0,
+            "totalPrimeMs": 244
+          },
+          "contextDecision": "shrink",
+          "taskFrame": "qna_source_grounded",
+          "qualityScore": 100,
+          "minExpectedHits": 2,
+          "requiredCompanionHits": 1,
+          "companionGatePassed": true,
+          "expectedTopKPassed": true,
+          "excludedFilesAvoided": true,
+          "suppressionPassed": true,
+          "sourceQualityGatePassed": true,
+          "latencyPassed": true,
+          "qualityGatePassed": true,
+          "summary": "Preflight quality gate passed.",
+          "recommendations": []
+        }
+      ],
+      "weakestCases": [],
+      "recommendations": []
+    },
+    {
+      "repo": {
+        "id": "okhttp",
+        "name": "OkHttp",
+        "repoUrl": "https://github.com/square/okhttp.git",
+        "ref": "1d9a8ba6c335355da9c71586abf82c9516e1bac5",
+        "cloneDepth": 1,
+        "language": "java-kotlin",
+        "sizeClass": "large",
+        "cases": [
+          {
+            "id": "real-interceptor-chain",
+            "mode": "context",
+            "contextBehavior": "multi_file_debug",
+            "task": "Debug OkHttp interceptor chain behavior when real calls proceed through application and network interceptors.",
+            "expectedFiles": [
+              "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/http/RealInterceptorChain.kt",
+              "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/connection/RealCall.kt"
+            ],
+            "excludedFiles": [
+              "**/src/test/",
+              "docs/",
+              "samples/"
+            ],
+            "budget": 900
+          }
+        ]
+      },
+      "rootPath": "/tmp/kairn-post-launch-10run-fresh-source/okhttp",
+      "status": "passed",
+      "index": {
+        "files": 783,
+        "totalSizeBytes": 50917480,
+        "totalSizeMb": 48.56,
+        "softMaxSizeMb": 250,
+        "hardMaxSizeMb": 1000,
+        "graphEdges": 290,
+        "semanticChunks": 933,
+        "lexicalTerms": 72030,
+        "tiers": {
+          "tier0": 138,
+          "tier1": 0,
+          "tier2": 5,
+          "tier3": 640,
+          "tier4": 0
+        }
+      },
+      "gates": {
+        "maxStateMb": 400,
+        "maxPrimeLatencyMs": 12000,
+        "maxRepoPreflightMs": 180000,
+        "expectedTopK": 5,
+        "requireSuppressionForWeakCases": true
+      },
+      "stateWithinLimit": true,
+      "elapsedMs": 2012,
+      "cases": [
+        {
+          "repoId": "okhttp",
+          "caseId": "real-interceptor-chain",
+          "task": "Debug OkHttp interceptor chain behavior when real calls proceed through application and network interceptors.",
+          "profile": "failure_debug",
+          "expectedFiles": [
+            "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/http/RealInterceptorChain.kt",
+            "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/connection/RealCall.kt"
+          ],
+          "returnedFiles": [
+            "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/connection/RealCall.kt",
+            "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/http/RealInterceptorChain.kt"
+          ],
+          "missingExpectedFiles": [],
+          "companionFilesReturned": [
+            "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/http/RealInterceptorChain.kt"
+          ],
+          "missingCompanionFiles": [],
+          "excludedFiles": [
+            "**/src/test/",
+            "docs/",
+            "samples/"
+          ],
+          "excludedHits": [],
+          "noisePrefixHits": [],
+          "sourceVsTestDecision": "source_first",
+          "companionReasons": {
+            "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/http/RealInterceptorChain.kt": [
+              "role match: interceptor/dispatch/adapter pair",
+              "role match: group/context/handler pair",
+              "role path match: interceptor/dispatch/adapter pair",
+              "role path match: group/context/handler pair",
+              "canonical role basename anchor: interceptorchain",
+              "specific task term match: http, interceptor, chain, real",
+              "specific path term match: http, interceptor, chain, real",
+              "compound path term match: okhttp",
+              "interceptor/dispatch/adapter pair",
+              "group/context/handler pair"
+            ],
+            "okhttp/src/commonJvmAndroid/kotlin/okhttp3/OkHttp.kt": [
+              "canonical role basename anchor: okhttp",
+              "specific task term match: ok, http",
+              "named source surface: OkHttp",
+              "specific path term match: ok, http",
+              "compound path term match: okhttp",
+              "unmentioned specialized surface downranked",
+              "same module surface"
+            ]
+          },
+          "primeTokens": 445,
+          "primeLatencyMs": 468,
+          "timings": {
+            "initialInventoryMs": 0,
+            "findContextMs": 359,
+            "decisionMs": 1,
+            "formatMs": 0,
+            "totalPrimeMs": 468
+          },
+          "contextDecision": "shrink",
+          "taskFrame": "source_rescue",
+          "qualityScore": 100,
+          "minExpectedHits": 2,
+          "requiredCompanionHits": 1,
+          "companionGatePassed": true,
+          "expectedTopKPassed": true,
+          "excludedFilesAvoided": true,
+          "suppressionPassed": true,
+          "sourceQualityGatePassed": true,
+          "latencyPassed": true,
+          "qualityGatePassed": true,
+          "summary": "Preflight quality gate passed.",
+          "recommendations": []
+        }
+      ],
+      "weakestCases": [],
+      "recommendations": []
+    }
+  ],
+  "totals": {
+    "repos": 3,
+    "passedRepos": 3,
+    "failedRepos": 0,
+    "skippedRepos": 0,
+    "cases": 3,
+    "qualityPassingCases": 3,
+    "sourceQualityPassingCases": 3,
+    "latencyPassingCases": 3,
+    "statePassingRepos": 3
+  },
+  "recommendations": [
+    "Matrix preflight passed current quality and state gates."
+  ]
+}

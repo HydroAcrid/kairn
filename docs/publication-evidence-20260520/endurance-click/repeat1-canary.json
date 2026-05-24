@@ -1,0 +1,2580 @@
+{
+  "suiteId": "endurance-click-compat-encoding",
+  "suiteName": "Click Compatibility Encoding Endurance",
+  "startedAt": "2026-05-20T17:03:11.974Z",
+  "endedAt": "2026-05-20T17:11:40.777Z",
+  "reports": [
+    {
+      "mode": "baseline",
+      "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-31YLyS",
+      "turns": [
+        {
+          "turnId": "diagnose",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 28940,
+          "responseTokens": 23533,
+          "elapsedMs": 39709,
+          "actualFiles": [
+            "src/click/_compat.py"
+          ],
+          "agentTouchedFiles": [],
+          "expectedFiles": [
+            "src/click/_compat.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "3b35412294aaeab26a220b5818a85df64d5db80edf70f506e39bb650974ae325",
+            "preparedPromptHash": "3b35412294aaeab26a220b5818a85df64d5db80edf70f506e39bb650974ae325",
+            "commandHash": "bf208a75fe4234842c2ebf6854ea4a146825e9fd7339cdcccc250e42bb5727e3",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "b7aa8c18a012968e69f877d02de284a90762c0338b7b101cc37ab73efdc76b72",
+            "expectedFileMentions": [
+              "src/click/_compat.py"
+            ],
+            "changedFiles": [
+              "src/click/_compat.py"
+            ],
+            "seedPatchFiles": [
+              "src/click/_compat.py"
+            ],
+            "agentTouchedFiles": [],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 28940,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "fix-source",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 19222,
+          "responseTokens": 22141,
+          "elapsedMs": 41494,
+          "actualFiles": [
+            "src/click/_compat.py"
+          ],
+          "agentTouchedFiles": [
+            "src/click/_compat.py"
+          ],
+          "expectedFiles": [
+            "src/click/_compat.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "069a3799a9ba55140a4c9df3c5836b66264dbd5ac8b6d959d60a0c14cc855ef6",
+            "preparedPromptHash": "069a3799a9ba55140a4c9df3c5836b66264dbd5ac8b6d959d60a0c14cc855ef6",
+            "commandHash": "5985486f8048c02a449f74fd1184dcd856f465fb1c338c3455f5b86b81dde055",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "0a5e73290e8371bff527315fb12dd811f038d8828d5b19433d8543912039a8e3",
+            "expectedFileMentions": [
+              "src/click/_compat.py"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "src/click/_compat.py"
+            ],
+            "agentTouchedFiles": [
+              "src/click/_compat.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 19222,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "verify",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 20733,
+          "responseTokens": 20445,
+          "elapsedMs": 25265,
+          "actualFiles": [
+            "src/click/_compat.py"
+          ],
+          "agentTouchedFiles": [
+            "src/click/_compat.py"
+          ],
+          "expectedFiles": [
+            "src/click/_compat.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "b3db37cc513d6d2d35a5eab8e66e0c3da5df0ab24d6b9173dea94b0f17a1b1ce",
+            "preparedPromptHash": "b3db37cc513d6d2d35a5eab8e66e0c3da5df0ab24d6b9173dea94b0f17a1b1ce",
+            "commandHash": "8c031557dfd0d729f8ff414bf0077d907e264a3901814fc0f12bb568cd9d299b",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "b7a9e3820669a7978f6096cdb9cb0989325f5167541dc5e49331a1903dffd548",
+            "expectedFileMentions": [
+              "src/click/_compat.py"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "src/click/_compat.py"
+            ],
+            "agentTouchedFiles": [
+              "src/click/_compat.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 20733,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "diff-review",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 26003,
+          "responseTokens": 60524,
+          "elapsedMs": 42526,
+          "actualFiles": [
+            "src/click/_compat.py"
+          ],
+          "agentTouchedFiles": [
+            "src/click/_compat.py"
+          ],
+          "expectedFiles": [
+            "src/click/_compat.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "47e251ecff01c007d724b81ac3491a307aef0ad75e947637fa9e2cd62797a395",
+            "preparedPromptHash": "47e251ecff01c007d724b81ac3491a307aef0ad75e947637fa9e2cd62797a395",
+            "commandHash": "78968074c497d91b107caac71af36be265354b93268c4760b17f4fef355f6ef7",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "92f472aaab6bece9862f3d618f184d1d37970dbe6d8efdb094bcb33c9e79f7f6",
+            "expectedFileMentions": [
+              "src/click/_compat.py"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "src/click/_compat.py"
+            ],
+            "agentTouchedFiles": [
+              "src/click/_compat.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 26003,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "repeat-context",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 14153,
+          "responseTokens": 19251,
+          "elapsedMs": 22296,
+          "actualFiles": [
+            "src/click/_compat.py"
+          ],
+          "agentTouchedFiles": [
+            "src/click/_compat.py"
+          ],
+          "expectedFiles": [
+            "src/click/_compat.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "840247a370fde897b73aafa374d1b7b00b4ba1910e5ff42282ba34ee5bbb7bc1",
+            "preparedPromptHash": "840247a370fde897b73aafa374d1b7b00b4ba1910e5ff42282ba34ee5bbb7bc1",
+            "commandHash": "ef2a3b06f3ece485dee06f5648c1c1ec811f141e5e6a3127e35750b274368512",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "e39ea20a483acd5bc782dc9108557de74162019466b9463bb2de0b7d6e768057",
+            "expectedFileMentions": [
+              "src/click/_compat.py"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "src/click/_compat.py"
+            ],
+            "agentTouchedFiles": [
+              "src/click/_compat.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 14153,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "cleanup",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 17479,
+          "responseTokens": 8377,
+          "elapsedMs": 17674,
+          "actualFiles": [
+            "src/click/_compat.py"
+          ],
+          "agentTouchedFiles": [
+            "src/click/_compat.py"
+          ],
+          "expectedFiles": [
+            "src/click/_compat.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "1eccd052cc326da3abf79aa55bebb6392ff44a979a517adaa0ffcd28e478a319",
+            "preparedPromptHash": "1eccd052cc326da3abf79aa55bebb6392ff44a979a517adaa0ffcd28e478a319",
+            "commandHash": "eabf3aa1890c6dfa18f1a652976f225f5fc1512c73978f3233354545832f88fe",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "aa7b8c7e8ae1bba9f173ee99b02032d88fa246dd993010349c99c3c557e8320e",
+            "expectedFileMentions": [
+              "src/click/_compat.py"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "src/click/_compat.py"
+            ],
+            "agentTouchedFiles": [
+              "src/click/_compat.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 17479,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        }
+      ],
+      "totalObservedCodexTokens": 126530,
+      "totalResponseTokens": 154271,
+      "totalElapsedMs": 189013,
+      "qualityGatePassed": true,
+      "finalVerificationPassed": true,
+      "assistanceStatus": "none",
+      "assistanceActions": {
+        "emitted": 0,
+        "shrunk": 0,
+        "suppressed": 0,
+        "mcpCalls": 0,
+        "failureContexts": 0
+      },
+      "metadata": {
+        "finalVerificationCommandPassed": true,
+        "finalSourceInvariantPassed": true,
+        "finalSourceInvariantFailures": [],
+        "finalDiffScopePassed": true,
+        "finalDiffScopeViolations": [],
+        "finalChangedFiles": [],
+        "setupElapsedMs": 0,
+        "kairnSessionCount": 0,
+        "primeEmitted": 0,
+        "primeSuppressed": 0,
+        "hookInvocations": 0,
+        "failureContextUsed": 0,
+        "mcpToolCalls": 0,
+        "mcpFilesReturned": [],
+        "mcpReturnedFileCount": 0,
+        "mcpReturnedUsefulFileCount": 0
+      }
+    },
+    {
+      "mode": "kairn_codex_session",
+      "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-5EP9qt",
+      "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+      "turns": [
+        {
+          "turnId": "diagnose",
+          "mode": "kairn_codex_session",
+          "outcome": "pass",
+          "observedCodexTokens": 6446,
+          "responseTokens": 7925,
+          "elapsedMs": 20875,
+          "actualFiles": [
+            "src/click/_compat.py"
+          ],
+          "agentTouchedFiles": [],
+          "expectedFiles": [
+            "src/click/_compat.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "3b35412294aaeab26a220b5818a85df64d5db80edf70f506e39bb650974ae325",
+            "preparedPromptHash": "82f8678a1e48fd132a38357c3ec56d0b72ba986bd38e45fdbd4a9656ac012502",
+            "commandHash": "39c15af4ae6261658b21b904f074a99ed4cfbfe383eacb06a4431553d58741c9",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "c2d5962e869e46b377e0799ed424ae27e3c27ef59284108108fc67574abe07f9",
+            "expectedFileMentions": [
+              "src/click/_compat.py"
+            ],
+            "changedFiles": [
+              "src/click/_compat.py"
+            ],
+            "seedPatchFiles": [
+              "src/click/_compat.py"
+            ],
+            "agentTouchedFiles": [],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 6446,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "hookSimulated": true,
+            "hookDeliveredContext": true,
+            "hookDecision": "shrink",
+            "primeDecision": "shrink",
+            "hookRecommendation": "prime_emitted",
+            "primeFiles": [
+              "src/click/_compat.py"
+            ],
+            "hookFiles": [
+              "src/click/_compat.py"
+            ],
+            "hookOutputTokens": 412,
+            "hookSignalMetadata": {
+              "eventName": "UserPromptSubmit",
+              "hookKind": "hook",
+              "outputKind": "generic",
+              "hookOutput": "full-prime",
+              "transport": "cli",
+              "daemonAttempted": false,
+              "daemonHit": false,
+              "daemonMiss": false,
+              "indexRefreshSkipped": true,
+              "refreshIndexMs": 0,
+              "primeElapsedMs": 243,
+              "hookLatencyMs": 244,
+              "linkedFiles": 0,
+              "recommendation": "prime_emitted",
+              "primeAttempted": true,
+              "primeContextDelivered": true,
+              "primeSuppressed": false,
+              "hostAdditionalContextBytes": 1645,
+              "proactivePrime": true,
+              "primeQuality": {
+                "score": 100,
+                "action": "shrink",
+                "reasons": [
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "debug/failure task can benefit from targeted context",
+                  "top result is a production source file",
+                  "high-confidence exact source target supports compact context",
+                  "exact source hit should use focused context",
+                  "source-rescue signal supports an active one-file guardrail",
+                  "canonical source routing supports focused context",
+                  "single-source fix should not receive broad context expansion",
+                  "query-local companion evidence supports multi-surface context",
+                  "session policy: failure_reemitted"
+                ],
+                "topScore": 3037.838,
+                "topGap": 1951.99,
+                "exactPathMentioned": false,
+                "expectedSavingsRisk": "medium"
+              },
+              "contextDecision": {
+                "score": 100,
+                "action": "shrink",
+                "reasons": [
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "debug/failure task can benefit from targeted context",
+                  "top result is a production source file",
+                  "high-confidence exact source target supports compact context",
+                  "exact source hit should use focused context",
+                  "source-rescue signal supports an active one-file guardrail",
+                  "canonical source routing supports focused context",
+                  "single-source fix should not receive broad context expansion",
+                  "query-local companion evidence supports multi-surface context"
+                ],
+                "topScore": 3037.838,
+                "topGap": 1951.99,
+                "primaryFile": "src/click/_compat.py",
+                "language": "python",
+                "exactPathMentioned": false,
+                "exactSourceHit": true,
+                "sourceRescue": true,
+                "canonicalSourceHit": true,
+                "cheapSingleSource": false,
+                "cheapExactSource": false,
+                "companionSpecific": true,
+                "multiSurfaceSignal": true,
+                "companionCount": 2,
+                "companionTopScore": 414,
+                "recommendedDelivery": "one_file_directive",
+                "estimatedContextCost": 800,
+                "expectedSavingsRisk": "medium",
+                "debugSignal": true,
+                "easyTaskSignal": false,
+                "wrongContextRisk": false,
+                "taskFrame": "source_rescue",
+                "modelPrediction": {
+                  "pUseful": 0.62,
+                  "pHarm": 0.14477411671843465,
+                  "pNeedMoreEvidence": 0,
+                  "suggestedAction": "shrink",
+                  "confidence": 0.62,
+                  "source": "deterministic"
+                },
+                "featureSummary": {
+                  "taskFrame": "source_rescue",
+                  "candidateCount": 12,
+                  "fileRoleCounts": {
+                    "production_source": 11,
+                    "public_api": 1
+                  },
+                  "repoLanguageMix": {
+                    "python": 63,
+                    "markdown": 41,
+                    "text": 23,
+                    "toml": 11,
+                    "yaml": 8,
+                    "json": 1
+                  },
+                  "topRole": "production_source",
+                  "topLanguage": "python",
+                  "confidenceGap": 1952,
+                  "candidateEntropy": 0.971,
+                  "ambiguity": 0.431,
+                  "expectedContextCost": 800,
+                  "estimatedSearchCost": 21
+                }
+              },
+              "decision": "shrink",
+              "decisionScore": 100,
+              "decisionReasons": [
+                "high-confidence top retrieval score",
+                "top result is clearly separated",
+                "debug/failure task can benefit from targeted context",
+                "top result is a production source file",
+                "high-confidence exact source target supports compact context",
+                "exact source hit should use focused context",
+                "source-rescue signal supports an active one-file guardrail",
+                "canonical source routing supports focused context",
+                "single-source fix should not receive broad context expansion",
+                "query-local companion evidence supports multi-surface context"
+              ],
+              "estimatedContextCost": 800,
+              "expectedSavingsRisk": "medium",
+              "failureContext": false,
+              "duplicatePromptPrime": false,
+              "compressedOutput": false,
+              "trivialSuccessfulOutput": true
+            }
+          }
+        },
+        {
+          "turnId": "fix-source",
+          "mode": "kairn_codex_session",
+          "outcome": "pass",
+          "observedCodexTokens": 10571,
+          "responseTokens": 13411,
+          "elapsedMs": 20484,
+          "actualFiles": [
+            "src/click/_compat.py"
+          ],
+          "agentTouchedFiles": [
+            "src/click/_compat.py"
+          ],
+          "expectedFiles": [
+            "src/click/_compat.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "069a3799a9ba55140a4c9df3c5836b66264dbd5ac8b6d959d60a0c14cc855ef6",
+            "preparedPromptHash": "85eb640e1c6760e96b0c33abcfff87a5eeaff56c8013d7959fde6f2db4c1db20",
+            "commandHash": "6079215a9e8506d5d0b5968b733b6b588a71fd99d7ed26b2025042a5e3099d14",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "f85ab5c3d5bae808d5e0013ceb4439992ba2be21837fde73e9fffcd43eb96748",
+            "expectedFileMentions": [
+              "src/click/_compat.py"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "src/click/_compat.py"
+            ],
+            "agentTouchedFiles": [
+              "src/click/_compat.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 10571,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "hookSimulated": true,
+            "hookDeliveredContext": true,
+            "hookDecision": "shrink",
+            "primeDecision": "shrink",
+            "hookRecommendation": "prime_emitted",
+            "primeFiles": [
+              "src/click/_termui_impl.py"
+            ],
+            "hookFiles": [
+              "src/click/_termui_impl.py"
+            ],
+            "hookOutputTokens": 387,
+            "hookSignalMetadata": {
+              "eventName": "UserPromptSubmit",
+              "hookKind": "hook",
+              "outputKind": "generic",
+              "hookOutput": "full-prime",
+              "transport": "cli",
+              "daemonAttempted": false,
+              "daemonHit": false,
+              "daemonMiss": false,
+              "indexRefreshSkipped": true,
+              "refreshIndexMs": 0,
+              "primeElapsedMs": 226,
+              "hookLatencyMs": 228,
+              "linkedFiles": 0,
+              "recommendation": "prime_emitted",
+              "primeAttempted": true,
+              "primeContextDelivered": true,
+              "primeSuppressed": false,
+              "hostAdditionalContextBytes": 1546,
+              "proactivePrime": true,
+              "primeQuality": {
+                "score": 100,
+                "action": "shrink",
+                "reasons": [
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "debug/failure task can benefit from targeted context",
+                  "top result is a production source file",
+                  "high-confidence exact source target supports compact context",
+                  "exact source hit should use focused context",
+                  "single-source fix should not receive broad context expansion",
+                  "query-local companion evidence supports multi-surface context",
+                  "debug companion context should stay directive instead of full-prime",
+                  "session policy: active_source_context_shrunk"
+                ],
+                "topScore": 1616.463,
+                "topGap": 879.045,
+                "exactPathMentioned": false,
+                "expectedSavingsRisk": "medium"
+              },
+              "contextDecision": {
+                "score": 100,
+                "action": "shrink",
+                "reasons": [
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "debug/failure task can benefit from targeted context",
+                  "top result is a production source file",
+                  "high-confidence exact source target supports compact context",
+                  "exact source hit should use focused context",
+                  "single-source fix should not receive broad context expansion",
+                  "query-local companion evidence supports multi-surface context",
+                  "debug companion context should stay directive instead of full-prime"
+                ],
+                "topScore": 1616.463,
+                "topGap": 879.045,
+                "primaryFile": "src/click/_termui_impl.py",
+                "language": "python",
+                "exactPathMentioned": false,
+                "exactSourceHit": true,
+                "sourceRescue": false,
+                "canonicalSourceHit": false,
+                "cheapSingleSource": false,
+                "cheapExactSource": false,
+                "companionSpecific": true,
+                "multiSurfaceSignal": true,
+                "companionCount": 2,
+                "companionTopScore": 854,
+                "recommendedDelivery": "one_file_directive",
+                "estimatedContextCost": 800,
+                "expectedSavingsRisk": "medium",
+                "debugSignal": true,
+                "easyTaskSignal": false,
+                "wrongContextRisk": false,
+                "taskFrame": "source_rescue",
+                "modelPrediction": {
+                  "pUseful": 0.62,
+                  "pHarm": 0.1451989113848771,
+                  "pNeedMoreEvidence": 0,
+                  "suggestedAction": "shrink",
+                  "confidence": 0.62,
+                  "source": "deterministic"
+                },
+                "featureSummary": {
+                  "taskFrame": "source_rescue",
+                  "candidateCount": 12,
+                  "fileRoleCounts": {
+                    "production_source": 9,
+                    "docs": 3
+                  },
+                  "repoLanguageMix": {
+                    "python": 63,
+                    "markdown": 41,
+                    "text": 23,
+                    "toml": 11,
+                    "yaml": 8,
+                    "json": 1
+                  },
+                  "topRole": "production_source",
+                  "topLanguage": "python",
+                  "confidenceGap": 879,
+                  "candidateEntropy": 0.957,
+                  "ambiguity": 0.433,
+                  "expectedContextCost": 800,
+                  "estimatedSearchCost": 21
+                }
+              },
+              "decision": "shrink",
+              "decisionScore": 100,
+              "decisionReasons": [
+                "high-confidence top retrieval score",
+                "top result is clearly separated",
+                "debug/failure task can benefit from targeted context",
+                "top result is a production source file",
+                "high-confidence exact source target supports compact context",
+                "exact source hit should use focused context",
+                "single-source fix should not receive broad context expansion",
+                "query-local companion evidence supports multi-surface context",
+                "debug companion context should stay directive instead of full-prime"
+              ],
+              "estimatedContextCost": 800,
+              "expectedSavingsRisk": "medium",
+              "failureContext": false,
+              "duplicatePromptPrime": false,
+              "compressedOutput": false,
+              "trivialSuccessfulOutput": true
+            }
+          }
+        },
+        {
+          "turnId": "verify",
+          "mode": "kairn_codex_session",
+          "outcome": "pass",
+          "observedCodexTokens": 26483,
+          "responseTokens": 17730,
+          "elapsedMs": 31255,
+          "actualFiles": [
+            "src/click/_compat.py"
+          ],
+          "agentTouchedFiles": [
+            "src/click/_compat.py"
+          ],
+          "expectedFiles": [
+            "src/click/_compat.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "b3db37cc513d6d2d35a5eab8e66e0c3da5df0ab24d6b9173dea94b0f17a1b1ce",
+            "preparedPromptHash": "b3db37cc513d6d2d35a5eab8e66e0c3da5df0ab24d6b9173dea94b0f17a1b1ce",
+            "commandHash": "8c031557dfd0d729f8ff414bf0077d907e264a3901814fc0f12bb568cd9d299b",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "8e106351623214a7529d11b573e2ea1736277bc8d69f6d5e572b853fc15cc128",
+            "expectedFileMentions": [
+              "src/click/_compat.py"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "src/click/_compat.py"
+            ],
+            "agentTouchedFiles": [
+              "src/click/_compat.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 26483,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "hookSimulated": true,
+            "hookDeliveredContext": false,
+            "hookRecommendation": "prompt_suppressed",
+            "primeFiles": [],
+            "hookFiles": [],
+            "hookOutputTokens": 0,
+            "hookSignalMetadata": {
+              "eventName": "UserPromptSubmit",
+              "hookKind": "hook",
+              "outputKind": "generic",
+              "hookOutput": "full-prime",
+              "transport": "cli",
+              "daemonAttempted": false,
+              "daemonHit": false,
+              "daemonMiss": false,
+              "indexRefreshSkipped": true,
+              "refreshIndexMs": 0,
+              "primeElapsedMs": 0,
+              "hookLatencyMs": 0,
+              "linkedFiles": 0,
+              "recommendation": "prompt_suppressed",
+              "primeAttempted": false,
+              "primeContextDelivered": false,
+              "primeSuppressed": false,
+              "hostAdditionalContextBytes": 0,
+              "proactivePrime": false,
+              "failureContext": false,
+              "duplicatePromptPrime": false,
+              "compressedOutput": false,
+              "trivialSuccessfulOutput": true
+            }
+          }
+        },
+        {
+          "turnId": "diff-review",
+          "mode": "kairn_codex_session",
+          "outcome": "pass",
+          "observedCodexTokens": 11966,
+          "responseTokens": 13731,
+          "elapsedMs": 28322,
+          "actualFiles": [
+            "src/click/_compat.py"
+          ],
+          "agentTouchedFiles": [
+            "src/click/_compat.py"
+          ],
+          "expectedFiles": [
+            "src/click/_compat.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "47e251ecff01c007d724b81ac3491a307aef0ad75e947637fa9e2cd62797a395",
+            "preparedPromptHash": "04b190c1bfe9c8f254dc8e98acc65de1c9e40cbca0326e02d32f0b2bdaea3c0a",
+            "commandHash": "92db5620ab08e27281b2f96199c9e92b8fe2b4f0fd935f0add26066e7896e317",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "243259edbf1a9e3ea558dd95ae50a1f8668f86401e27d291c8395498737fa44d",
+            "expectedFileMentions": [
+              "src/click/_compat.py"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "src/click/_compat.py"
+            ],
+            "agentTouchedFiles": [
+              "src/click/_compat.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 11966,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "hookSimulated": true,
+            "hookDeliveredContext": true,
+            "hookDecision": "shrink",
+            "primeDecision": "shrink",
+            "hookRecommendation": "prime_emitted",
+            "primeFiles": [
+              "src/click/termui.py"
+            ],
+            "hookFiles": [
+              "src/click/termui.py"
+            ],
+            "hookOutputTokens": 384,
+            "hookSignalMetadata": {
+              "eventName": "UserPromptSubmit",
+              "hookKind": "hook",
+              "outputKind": "generic",
+              "hookOutput": "full-prime",
+              "transport": "cli",
+              "daemonAttempted": false,
+              "daemonHit": false,
+              "daemonMiss": false,
+              "indexRefreshSkipped": true,
+              "refreshIndexMs": 0,
+              "primeElapsedMs": 312,
+              "hookLatencyMs": 313,
+              "linkedFiles": 0,
+              "recommendation": "prime_emitted",
+              "primeAttempted": true,
+              "primeContextDelivered": true,
+              "primeSuppressed": false,
+              "hostAdditionalContextBytes": 1534,
+              "proactivePrime": true,
+              "primeQuality": {
+                "score": 94,
+                "action": "shrink",
+                "reasons": [
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "top result is a production source file",
+                  "high-confidence exact source target supports compact context",
+                  "exact source hit should use focused context",
+                  "canonical source routing supports focused context",
+                  "single-source fix should not receive broad context expansion",
+                  "index freshness: dirty_state_changed",
+                  "session policy: failure_reemitted"
+                ],
+                "topScore": 1805.89,
+                "topGap": 929.816,
+                "exactPathMentioned": false,
+                "expectedSavingsRisk": "medium"
+              },
+              "contextDecision": {
+                "score": 94,
+                "action": "shrink",
+                "reasons": [
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "top result is a production source file",
+                  "high-confidence exact source target supports compact context",
+                  "exact source hit should use focused context",
+                  "canonical source routing supports focused context",
+                  "single-source fix should not receive broad context expansion"
+                ],
+                "topScore": 1805.89,
+                "topGap": 929.816,
+                "primaryFile": "src/click/termui.py",
+                "language": "python",
+                "exactPathMentioned": false,
+                "exactSourceHit": true,
+                "sourceRescue": false,
+                "canonicalSourceHit": true,
+                "cheapSingleSource": false,
+                "cheapExactSource": false,
+                "companionSpecific": true,
+                "multiSurfaceSignal": false,
+                "companionCount": 2,
+                "companionTopScore": 740,
+                "recommendedDelivery": "one_file_directive",
+                "estimatedContextCost": 500,
+                "expectedSavingsRisk": "medium",
+                "debugSignal": false,
+                "easyTaskSignal": false,
+                "wrongContextRisk": false,
+                "taskFrame": "source_rescue",
+                "modelPrediction": {
+                  "pUseful": 0.62,
+                  "pHarm": 0.14664700113024443,
+                  "pNeedMoreEvidence": 0,
+                  "suggestedAction": "shrink",
+                  "confidence": 0.62,
+                  "source": "deterministic"
+                },
+                "featureSummary": {
+                  "taskFrame": "source_rescue",
+                  "candidateCount": 12,
+                  "fileRoleCounts": {
+                    "production_source": 12
+                  },
+                  "repoLanguageMix": {
+                    "python": 63,
+                    "markdown": 41,
+                    "text": 23,
+                    "toml": 11,
+                    "yaml": 8,
+                    "json": 1
+                  },
+                  "topRole": "production_source",
+                  "topLanguage": "python",
+                  "confidenceGap": 930,
+                  "candidateEntropy": 0.987,
+                  "ambiguity": 0.439,
+                  "expectedContextCost": 500,
+                  "estimatedSearchCost": 21
+                }
+              },
+              "decision": "shrink",
+              "decisionScore": 94,
+              "decisionReasons": [
+                "high-confidence top retrieval score",
+                "top result is clearly separated",
+                "top result is a production source file",
+                "high-confidence exact source target supports compact context",
+                "exact source hit should use focused context",
+                "canonical source routing supports focused context",
+                "single-source fix should not receive broad context expansion"
+              ],
+              "estimatedContextCost": 500,
+              "expectedSavingsRisk": "medium",
+              "failureContext": false,
+              "duplicatePromptPrime": false,
+              "compressedOutput": false,
+              "trivialSuccessfulOutput": true
+            }
+          }
+        },
+        {
+          "turnId": "repeat-context",
+          "mode": "kairn_codex_session",
+          "outcome": "pass",
+          "observedCodexTokens": 24930,
+          "responseTokens": 65819,
+          "elapsedMs": 28838,
+          "actualFiles": [
+            "src/click/_compat.py"
+          ],
+          "agentTouchedFiles": [
+            "src/click/_compat.py"
+          ],
+          "expectedFiles": [
+            "src/click/_compat.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "840247a370fde897b73aafa374d1b7b00b4ba1910e5ff42282ba34ee5bbb7bc1",
+            "preparedPromptHash": "840247a370fde897b73aafa374d1b7b00b4ba1910e5ff42282ba34ee5bbb7bc1",
+            "commandHash": "ef2a3b06f3ece485dee06f5648c1c1ec811f141e5e6a3127e35750b274368512",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "e7cea93dbc5b80bf72b150b4f8708b0afcb5d7c50728712c61c910aa030c2adc",
+            "expectedFileMentions": [
+              "src/click/_compat.py"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "src/click/_compat.py"
+            ],
+            "agentTouchedFiles": [
+              "src/click/_compat.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 24930,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "hookSimulated": true,
+            "hookDeliveredContext": false,
+            "hookRecommendation": "prompt_suppressed",
+            "primeFiles": [],
+            "hookFiles": [],
+            "hookOutputTokens": 0,
+            "hookSignalMetadata": {
+              "eventName": "UserPromptSubmit",
+              "hookKind": "hook",
+              "outputKind": "generic",
+              "hookOutput": "full-prime",
+              "transport": "cli",
+              "daemonAttempted": false,
+              "daemonHit": false,
+              "daemonMiss": false,
+              "indexRefreshSkipped": true,
+              "refreshIndexMs": 0,
+              "primeElapsedMs": 0,
+              "hookLatencyMs": 0,
+              "linkedFiles": 0,
+              "recommendation": "prompt_suppressed",
+              "primeAttempted": false,
+              "primeContextDelivered": false,
+              "primeSuppressed": false,
+              "hostAdditionalContextBytes": 0,
+              "proactivePrime": false,
+              "failureContext": false,
+              "duplicatePromptPrime": false,
+              "compressedOutput": false,
+              "trivialSuccessfulOutput": true
+            }
+          }
+        },
+        {
+          "turnId": "cleanup",
+          "mode": "kairn_codex_session",
+          "outcome": "pass",
+          "observedCodexTokens": 8510,
+          "responseTokens": 11049,
+          "elapsedMs": 23862,
+          "actualFiles": [
+            "src/click/_compat.py"
+          ],
+          "agentTouchedFiles": [
+            "src/click/_compat.py"
+          ],
+          "expectedFiles": [
+            "src/click/_compat.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "1eccd052cc326da3abf79aa55bebb6392ff44a979a517adaa0ffcd28e478a319",
+            "preparedPromptHash": "1eccd052cc326da3abf79aa55bebb6392ff44a979a517adaa0ffcd28e478a319",
+            "commandHash": "eabf3aa1890c6dfa18f1a652976f225f5fc1512c73978f3233354545832f88fe",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "201cdadeac5f7002edd95c3fa04e46973960bb875b06066d22d0deb75d82d7bf",
+            "expectedFileMentions": [
+              "src/click/_compat.py"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "src/click/_compat.py"
+            ],
+            "agentTouchedFiles": [
+              "src/click/_compat.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 8510,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "hookSimulated": true,
+            "hookDeliveredContext": false,
+            "hookRecommendation": "prompt_suppressed",
+            "primeFiles": [],
+            "hookFiles": [],
+            "hookOutputTokens": 0,
+            "hookSignalMetadata": {
+              "eventName": "UserPromptSubmit",
+              "hookKind": "hook",
+              "outputKind": "generic",
+              "hookOutput": "full-prime",
+              "transport": "cli",
+              "daemonAttempted": false,
+              "daemonHit": false,
+              "daemonMiss": false,
+              "indexRefreshSkipped": true,
+              "refreshIndexMs": 0,
+              "primeElapsedMs": 0,
+              "hookLatencyMs": 0,
+              "linkedFiles": 0,
+              "recommendation": "prompt_suppressed",
+              "primeAttempted": false,
+              "primeContextDelivered": false,
+              "primeSuppressed": false,
+              "hostAdditionalContextBytes": 0,
+              "proactivePrime": false,
+              "failureContext": false,
+              "duplicatePromptPrime": false,
+              "compressedOutput": false,
+              "trivialSuccessfulOutput": true
+            }
+          }
+        }
+      ],
+      "totalObservedCodexTokens": 88906,
+      "totalResponseTokens": 129665,
+      "totalElapsedMs": 155436,
+      "qualityGatePassed": true,
+      "finalVerificationPassed": true,
+      "assistanceStatus": "active",
+      "assistanceActions": {
+        "emitted": 2,
+        "shrunk": 3,
+        "suppressed": 0,
+        "mcpCalls": 0,
+        "failureContexts": 2
+      },
+      "ledger": {
+        "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+        "events": 37,
+        "currentPhase": "debugging",
+        "recommendedFiles": [
+          "src/click/_compat.py",
+          "src/click/_termui_impl.py",
+          "src/click/core.py",
+          "src/click/termui.py"
+        ],
+        "shownFiles": [
+          "src/click/_compat.py",
+          "src/click/_termui_impl.py",
+          "src/click/termui.py"
+        ],
+        "agentMentionedFiles": [
+          "src/click/_compat.py"
+        ],
+        "agentTouchedFiles": [
+          "src/click/_compat.py"
+        ],
+        "repeatedFilesAvoided": 0,
+        "repeatedSnippetsAvoided": 0,
+        "recommendedFilesUsed": [
+          "src/click/_compat.py"
+        ],
+        "repeatedlyTouchedFiles": [
+          "src/click/_compat.py"
+        ],
+        "unresolvedFailures": 0,
+        "workingSet": {
+          "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+          "currentPhase": "debugging",
+          "activeFiles": [
+            "src/click/_compat.py",
+            "src/click/termui.py",
+            "src/click/_termui_impl.py"
+          ],
+          "recentlyTouchedFiles": [
+            "src/click/_compat.py"
+          ],
+          "shownFiles": [
+            "src/click/_compat.py",
+            "src/click/_termui_impl.py",
+            "src/click/termui.py"
+          ],
+          "ignoredRecommendedFiles": [
+            "src/click/_termui_impl.py",
+            "src/click/core.py",
+            "src/click/termui.py"
+          ],
+          "ruledOutFiles": [],
+          "staleFiles": [],
+          "currentInvariant": {
+            "statement": "confirm must preserve the task behavior: Review the current diff and confirm it only restores the UTF-8 fallback in Click production source.",
+            "filePath": "src/click/termui.py",
+            "confidence": 74,
+            "sourceEventId": 23
+          },
+          "lastPassingVerification": {
+            "summary": "Final endurance verification passed.",
+            "createdAt": "2026-05-20T17:08:57.791Z"
+          },
+          "openRisks": []
+        },
+        "recentEvents": [
+          {
+            "id": 18,
+            "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+            "kind": "agent_file_touched",
+            "turnId": "verify",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "106407e07998d153abf188633897c0029019681f8d09e7c6b50fb9e2b20c8248",
+            "tokenEstimate": 9,
+            "source": "agent",
+            "summary": "Agent touched src/click/_compat.py.",
+            "metadata": {
+              "turnId": "verify"
+            },
+            "createdAt": "2026-05-20T17:07:36.730Z"
+          },
+          {
+            "id": 19,
+            "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+            "kind": "diff_seen",
+            "turnId": "verify",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "c4fab56f13d5b57a17b73d7a25a9537a323beb9ed12b7374eca412c1b54bce3f",
+            "tokenEstimate": 16,
+            "source": "agent",
+            "summary": "Diff touched src/click/_compat.py during endurance turn verify.",
+            "metadata": {
+              "turnId": "verify"
+            },
+            "createdAt": "2026-05-20T17:07:36.730Z"
+          },
+          {
+            "id": 20,
+            "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+            "kind": "verification_passed",
+            "turnId": "verify",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "5f82603375703cc67e9dd066084ac48bd0af4f6dc8254df16da45dfc61518fd3",
+            "tokenEstimate": 12,
+            "source": "bench",
+            "summary": "Verification passed for endurance turn verify.",
+            "metadata": {
+              "verificationCommandHash": "7a296974c4d4166190394528eb5ead364895e3d9ee343701e2018133b0bf3d79",
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "qualityGatePassed": true
+            },
+            "createdAt": "2026-05-20T17:07:36.730Z"
+          },
+          {
+            "id": 21,
+            "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+            "kind": "context_recommended",
+            "filePath": "src/click/termui.py",
+            "contentHash": "370aa6bf9212fbfeabc27a5b452a1c94a019f238f125800f66d16ccf35445afc",
+            "tokenEstimate": 0,
+            "source": "codex",
+            "summary": "Kairn recommended src/click/termui.py",
+            "metadata": {
+              "taskHash": "47e251ecff01c007d724b81ac3491a307aef0ad75e947637fa9e2cd62797a395",
+              "phase": "debugging",
+              "policyReason": "failure_reemitted",
+              "emitted": true,
+              "workingSetActiveFiles": [
+                "src/click/_compat.py",
+                "src/click/_termui_impl.py"
+              ]
+            },
+            "createdAt": "2026-05-20T17:07:37.043Z"
+          },
+          {
+            "id": 22,
+            "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+            "kind": "edit_scope_changed",
+            "contentHash": "c257bbb36d843062e3e57f3cb48c3f76b6a9bbf6633fa1ce71c4bb8de575c527",
+            "tokenEstimate": 0,
+            "source": "codex",
+            "summary": "Initial edit scope: src/click/termui.py",
+            "metadata": {
+              "taskHash": "47e251ecff01c007d724b81ac3491a307aef0ad75e947637fa9e2cd62797a395",
+              "phase": "debugging",
+              "editScope": {
+                "initialEditFiles": [
+                  "src/click/termui.py"
+                ],
+                "readOnlyFiles": [],
+                "allowedExpansionTriggers": [
+                  "a failing check names another production source file",
+                  "a public API/type/interface change requires callers or declarations",
+                  "the target file changes or the task target changes",
+                  "verification proves a fixture, snapshot, or test expectation must change"
+                ],
+                "forbiddenEditPatterns": [
+                  "tests/",
+                  "test/",
+                  "__tests__/",
+                  "docs/",
+                  "examples/",
+                  "generated/",
+                  "dist/",
+                  "vendor/",
+                  "node_modules/"
+                ],
+                "scopeConfidence": "high",
+                "scopeSource": "exact_source",
+                "reason": "one source file dominates retrieval",
+                "dynamic": true
+              }
+            },
+            "createdAt": "2026-05-20T17:07:37.043Z"
+          },
+          {
+            "id": 23,
+            "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+            "kind": "context_shown",
+            "filePath": "src/click/termui.py",
+            "contentHash": "71319c16cf2d6b756af3783eab9a64acdbc6487d4f0cfe81891c0db5f1a457c7",
+            "tokenEstimate": 384,
+            "source": "codex",
+            "summary": "Kairn showed context for src/click/termui.py",
+            "metadata": {
+              "taskHash": "47e251ecff01c007d724b81ac3491a307aef0ad75e947637fa9e2cd62797a395",
+              "phase": "debugging",
+              "policyReason": "failure_reemitted",
+              "policyAction": "emit",
+              "invariant": {
+                "file": "src/click/termui.py",
+                "symbol": "confirm",
+                "statement": "confirm must preserve the task behavior: Review the current diff and confirm it only restores the UTF-8 fallback in Click production source.",
+                "evidence": "def confirm(",
+                "verificationCommand": "python3 -m pytest tests/test_termui.py",
+                "confidence": 74,
+                "source": "symbol"
+              },
+              "workingSetActiveFiles": [
+                "src/click/_compat.py",
+                "src/click/_termui_impl.py"
+              ]
+            },
+            "createdAt": "2026-05-20T17:07:37.043Z"
+          },
+          {
+            "id": 24,
+            "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+            "kind": "test_run",
+            "turnId": "diff-review",
+            "contentHash": "7fc05d92fcae3d89c1f6feac5a6d8e9ae434b96731092906527f89692bb327cd",
+            "tokenEstimate": 14,
+            "source": "agent",
+            "summary": "Agent command for endurance turn diff-review exited 0.",
+            "metadata": {
+              "commandHash": "92db5620ab08e27281b2f96199c9e92b8fe2b4f0fd935f0add26066e7896e317",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "243259edbf1a9e3ea558dd95ae50a1f8668f86401e27d291c8395498737fa44d"
+            },
+            "createdAt": "2026-05-20T17:08:05.051Z"
+          },
+          {
+            "id": 25,
+            "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+            "kind": "agent_file_mentioned",
+            "turnId": "diff-review",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "24f60e6af3511e8e3040554ec2d560b02e998857e3dad6c2e18e80bacf6f17b1",
+            "tokenEstimate": 10,
+            "source": "agent",
+            "summary": "Agent mentioned src/click/_compat.py.",
+            "metadata": {
+              "turnId": "diff-review"
+            },
+            "createdAt": "2026-05-20T17:08:05.052Z"
+          },
+          {
+            "id": 26,
+            "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+            "kind": "agent_file_touched",
+            "turnId": "diff-review",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "106407e07998d153abf188633897c0029019681f8d09e7c6b50fb9e2b20c8248",
+            "tokenEstimate": 9,
+            "source": "agent",
+            "summary": "Agent touched src/click/_compat.py.",
+            "metadata": {
+              "turnId": "diff-review"
+            },
+            "createdAt": "2026-05-20T17:08:05.052Z"
+          },
+          {
+            "id": 27,
+            "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+            "kind": "diff_seen",
+            "turnId": "diff-review",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "ecbb3295a51a4d2b32373c3b8ba5bc0c0cb6e749468d23128a3faae1ba042a85",
+            "tokenEstimate": 17,
+            "source": "agent",
+            "summary": "Diff touched src/click/_compat.py during endurance turn diff-review.",
+            "metadata": {
+              "turnId": "diff-review"
+            },
+            "createdAt": "2026-05-20T17:08:05.052Z"
+          },
+          {
+            "id": 28,
+            "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+            "kind": "command_run",
+            "turnId": "repeat-context",
+            "contentHash": "0a2d142b64aa1f3c64e2dd27ca2905bc6bd3e8f76b6ab218028e4a7034edaaac",
+            "tokenEstimate": 15,
+            "source": "agent",
+            "summary": "Agent command for endurance turn repeat-context exited 0.",
+            "metadata": {
+              "commandHash": "ef2a3b06f3ece485dee06f5648c1c1ec811f141e5e6a3127e35750b274368512",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "e7cea93dbc5b80bf72b150b4f8708b0afcb5d7c50728712c61c910aa030c2adc"
+            },
+            "createdAt": "2026-05-20T17:08:33.889Z"
+          },
+          {
+            "id": 29,
+            "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+            "kind": "agent_file_mentioned",
+            "turnId": "repeat-context",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "24f60e6af3511e8e3040554ec2d560b02e998857e3dad6c2e18e80bacf6f17b1",
+            "tokenEstimate": 10,
+            "source": "agent",
+            "summary": "Agent mentioned src/click/_compat.py.",
+            "metadata": {
+              "turnId": "repeat-context"
+            },
+            "createdAt": "2026-05-20T17:08:33.889Z"
+          },
+          {
+            "id": 30,
+            "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+            "kind": "agent_file_touched",
+            "turnId": "repeat-context",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "106407e07998d153abf188633897c0029019681f8d09e7c6b50fb9e2b20c8248",
+            "tokenEstimate": 9,
+            "source": "agent",
+            "summary": "Agent touched src/click/_compat.py.",
+            "metadata": {
+              "turnId": "repeat-context"
+            },
+            "createdAt": "2026-05-20T17:08:33.889Z"
+          },
+          {
+            "id": 31,
+            "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+            "kind": "diff_seen",
+            "turnId": "repeat-context",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "f38a639f3636085b643fc2278a60e3f83f21fac3876c565033cab5a96903ca81",
+            "tokenEstimate": 18,
+            "source": "agent",
+            "summary": "Diff touched src/click/_compat.py during endurance turn repeat-context.",
+            "metadata": {
+              "turnId": "repeat-context"
+            },
+            "createdAt": "2026-05-20T17:08:33.889Z"
+          },
+          {
+            "id": 32,
+            "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+            "kind": "command_run",
+            "turnId": "cleanup",
+            "contentHash": "aa82543403e6d6d80f7ad4f930251feea8b5dd96837aeb7cb66bb5a8ebe7099b",
+            "tokenEstimate": 13,
+            "source": "agent",
+            "summary": "Agent command for endurance turn cleanup exited 0.",
+            "metadata": {
+              "commandHash": "eabf3aa1890c6dfa18f1a652976f225f5fc1512c73978f3233354545832f88fe",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "201cdadeac5f7002edd95c3fa04e46973960bb875b06066d22d0deb75d82d7bf"
+            },
+            "createdAt": "2026-05-20T17:08:57.751Z"
+          },
+          {
+            "id": 33,
+            "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+            "kind": "agent_file_mentioned",
+            "turnId": "cleanup",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "24f60e6af3511e8e3040554ec2d560b02e998857e3dad6c2e18e80bacf6f17b1",
+            "tokenEstimate": 10,
+            "source": "agent",
+            "summary": "Agent mentioned src/click/_compat.py.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-20T17:08:57.752Z"
+          },
+          {
+            "id": 34,
+            "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+            "kind": "agent_file_touched",
+            "turnId": "cleanup",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "106407e07998d153abf188633897c0029019681f8d09e7c6b50fb9e2b20c8248",
+            "tokenEstimate": 9,
+            "source": "agent",
+            "summary": "Agent touched src/click/_compat.py.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-20T17:08:57.752Z"
+          },
+          {
+            "id": 35,
+            "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+            "kind": "diff_seen",
+            "turnId": "cleanup",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "6386bb85cff5174c74d2c54ab10aa68e4b77123d445e9c1cff024b9bbb376a68",
+            "tokenEstimate": 16,
+            "source": "agent",
+            "summary": "Diff touched src/click/_compat.py during endurance turn cleanup.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-20T17:08:57.752Z"
+          },
+          {
+            "id": 36,
+            "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+            "kind": "verification_passed",
+            "turnId": "cleanup",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "e2ec842b22454df5144698dee4a40634322afd0e9389eaa414d9e1b5e297d812",
+            "tokenEstimate": 12,
+            "source": "bench",
+            "summary": "Verification passed for endurance turn cleanup.",
+            "metadata": {
+              "verificationCommandHash": "7a296974c4d4166190394528eb5ead364895e3d9ee343701e2018133b0bf3d79",
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "qualityGatePassed": true
+            },
+            "createdAt": "2026-05-20T17:08:57.752Z"
+          },
+          {
+            "id": 37,
+            "sessionId": "task_f4bffc5d-5406-499e-a239-d5b7a3e25fdf",
+            "kind": "verification_passed",
+            "contentHash": "01686a52d490ab8e273bc13297bc95ca3a956265b15943a23c3c2801a08de538",
+            "tokenEstimate": 9,
+            "source": "bench",
+            "summary": "Final endurance verification passed.",
+            "metadata": {
+              "finalVerificationCommandHash": "7a296974c4d4166190394528eb5ead364895e3d9ee343701e2018133b0bf3d79",
+              "finalVerificationExitCode": 0,
+              "finalVerificationOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "finalSourceInvariantPassed": true,
+              "finalSourceInvariantFailures": [],
+              "finalDiffScopePassed": true,
+              "finalDiffScopeViolations": []
+            },
+            "createdAt": "2026-05-20T17:08:57.791Z"
+          }
+        ]
+      },
+      "metadata": {
+        "finalVerificationCommandPassed": true,
+        "finalSourceInvariantPassed": true,
+        "finalSourceInvariantFailures": [],
+        "finalDiffScopePassed": true,
+        "finalDiffScopeViolations": [],
+        "finalChangedFiles": [],
+        "setupElapsedMs": 0,
+        "kairnSessionCount": 1,
+        "primeEmitted": 2,
+        "primeSuppressed": 0,
+        "hookInvocations": 6,
+        "failureContextUsed": 0,
+        "mcpToolCalls": 0,
+        "mcpFilesReturned": [],
+        "mcpReturnedFileCount": 0,
+        "mcpReturnedUsefulFileCount": 0
+      }
+    },
+    {
+      "mode": "real_mcp_first",
+      "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-9ga1Iv",
+      "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+      "turns": [
+        {
+          "turnId": "diagnose",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 12901,
+          "responseTokens": 7589,
+          "elapsedMs": 23790,
+          "actualFiles": [
+            "src/click/_compat.py"
+          ],
+          "agentTouchedFiles": [],
+          "expectedFiles": [
+            "src/click/_compat.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "3b35412294aaeab26a220b5818a85df64d5db80edf70f506e39bb650974ae325",
+            "preparedPromptHash": "4899750f208b0f12cd525b2790f589c9ea24100ac5a4ba1ea158f8465980d725",
+            "commandHash": "baffcd0b85bd7cfda6318aa740f6e709ca86e72c945a1992ffdeee4dbcdc71f3",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "1548fd50037df224417cae2a2a111336ee122914b27e3872539368c42eb64210",
+            "expectedFileMentions": [
+              "src/click/_compat.py"
+            ],
+            "changedFiles": [
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md",
+              "src/click/_compat.py"
+            ],
+            "seedPatchFiles": [
+              "src/click/_compat.py",
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "agentTouchedFiles": [],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 12901,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "prepare_first",
+            "mcpShouldCallPrepare": true
+          }
+        },
+        {
+          "turnId": "fix-source",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 8156,
+          "responseTokens": 11406,
+          "elapsedMs": 15862,
+          "actualFiles": [
+            "src/click/_compat.py"
+          ],
+          "agentTouchedFiles": [
+            "src/click/_compat.py"
+          ],
+          "expectedFiles": [
+            "src/click/_compat.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "069a3799a9ba55140a4c9df3c5836b66264dbd5ac8b6d959d60a0c14cc855ef6",
+            "preparedPromptHash": "2cd864c9b1d5f33d711b46b492a4788623bce3488cf15640892c9c65d110da11",
+            "commandHash": "8636d2494c2343b5e194628b08c3b40312b4ebb844ccf38ae8d43bee046f16b3",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "877edf6b3fb45b09707b5bafc9e89dc3d790e5264b5ba271998075a8c9bd1e7f",
+            "expectedFileMentions": [
+              "src/click/_compat.py"
+            ],
+            "changedFiles": [
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "seedPatchFiles": [
+              "src/click/_compat.py",
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "agentTouchedFiles": [
+              "src/click/_compat.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 8156,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "continue_known_source",
+            "mcpKnownSource": "src/click/_compat.py",
+            "mcpShouldCallPrepare": false
+          }
+        },
+        {
+          "turnId": "verify",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 8869,
+          "responseTokens": 10790,
+          "elapsedMs": 20825,
+          "actualFiles": [
+            "src/click/_compat.py"
+          ],
+          "agentTouchedFiles": [
+            "src/click/_compat.py"
+          ],
+          "expectedFiles": [
+            "src/click/_compat.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "b3db37cc513d6d2d35a5eab8e66e0c3da5df0ab24d6b9173dea94b0f17a1b1ce",
+            "preparedPromptHash": "49ee77918faabe18633eaa7f4b2b8da098d8ff0c5385e720030dbb8c8fa1d660",
+            "commandHash": "d42b3500e7f9ef3759b712e610bc9a628b16fd3d6feff150925b76c483e3d338",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "6b1fbdf7b17944a6d9c3af199e523741c9080eabf72c7715cf51589bc0abd66d",
+            "expectedFileMentions": [
+              "src/click/_compat.py"
+            ],
+            "changedFiles": [
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "seedPatchFiles": [
+              "src/click/_compat.py",
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "agentTouchedFiles": [
+              "src/click/_compat.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 8869,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "failure_gateway",
+            "mcpKnownSource": "src/click/_compat.py",
+            "mcpShouldCallPrepare": false
+          }
+        },
+        {
+          "turnId": "diff-review",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 12391,
+          "responseTokens": 8832,
+          "elapsedMs": 25535,
+          "actualFiles": [
+            "src/click/_compat.py"
+          ],
+          "agentTouchedFiles": [
+            "src/click/_compat.py"
+          ],
+          "expectedFiles": [
+            "src/click/_compat.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "47e251ecff01c007d724b81ac3491a307aef0ad75e947637fa9e2cd62797a395",
+            "preparedPromptHash": "7fe3cd109e46cd2e3ee8b38f732ab4b86fdb95bab5c9a39c3e71418a3edae898",
+            "commandHash": "7906513d7fcd2090da036cd79163a3c38d601da98e19463d0160b5b16c55ab17",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "52d06983c42fbe138875c42bc7e2673297f397ac34c6fcef15a73b3ec3ddb26e",
+            "expectedFileMentions": [
+              "src/click/_compat.py"
+            ],
+            "changedFiles": [
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "seedPatchFiles": [
+              "src/click/_compat.py",
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "agentTouchedFiles": [
+              "src/click/_compat.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 12391,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "continue_known_source",
+            "mcpKnownSource": "src/click/_compat.py",
+            "mcpShouldCallPrepare": false
+          }
+        },
+        {
+          "turnId": "repeat-context",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 13884,
+          "responseTokens": 15075,
+          "elapsedMs": 60011,
+          "actualFiles": [
+            "src/click/_compat.py"
+          ],
+          "agentTouchedFiles": [
+            "src/click/_compat.py"
+          ],
+          "expectedFiles": [
+            "src/click/_compat.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "840247a370fde897b73aafa374d1b7b00b4ba1910e5ff42282ba34ee5bbb7bc1",
+            "preparedPromptHash": "abcbf8cd2d35b8d0fc3962075c488229f07f8bb2e721611135c5809776b8fa8b",
+            "commandHash": "68e649c6e94dbcfb2e46081141e526cd35a8757bf23317db635ff8791977408b",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "f666a9b93da828219369b0c198dd5de4df7cb955153a4ee8678a22716f13d763",
+            "expectedFileMentions": [
+              "src/click/_compat.py"
+            ],
+            "changedFiles": [
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "seedPatchFiles": [
+              "src/click/_compat.py",
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "agentTouchedFiles": [
+              "src/click/_compat.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 13884,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "continue_known_source",
+            "mcpKnownSource": "src/click/_compat.py",
+            "mcpShouldCallPrepare": false
+          }
+        },
+        {
+          "turnId": "cleanup",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 9632,
+          "responseTokens": 5756,
+          "elapsedMs": 14402,
+          "actualFiles": [
+            "src/click/_compat.py"
+          ],
+          "agentTouchedFiles": [
+            "src/click/_compat.py"
+          ],
+          "expectedFiles": [
+            "src/click/_compat.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "1eccd052cc326da3abf79aa55bebb6392ff44a979a517adaa0ffcd28e478a319",
+            "preparedPromptHash": "84a52b751cdc4a08820e015429f493ffcabd9d8762f28b0f7c710ef110c2df64",
+            "commandHash": "01288e3b1341c25d2a9285583ea4d2cb465cd3bbf452ac0d8064b73c9e676841",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "605cdc87ed1bbc844e37e72f4722432075f9df30634b215a5a9159ef5ea9bfdd",
+            "expectedFileMentions": [
+              "src/click/_compat.py"
+            ],
+            "changedFiles": [
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "seedPatchFiles": [
+              "src/click/_compat.py",
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "agentTouchedFiles": [
+              "src/click/_compat.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 9632,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "continue_known_source",
+            "mcpKnownSource": "src/click/_compat.py",
+            "mcpShouldCallPrepare": false
+          }
+        }
+      ],
+      "totalObservedCodexTokens": 65833,
+      "totalResponseTokens": 59448,
+      "totalElapsedMs": 162429,
+      "qualityGatePassed": true,
+      "finalVerificationPassed": true,
+      "assistanceStatus": "active",
+      "assistanceActions": {
+        "emitted": 0,
+        "shrunk": 0,
+        "suppressed": 0,
+        "mcpCalls": 1,
+        "failureContexts": 1
+      },
+      "ledger": {
+        "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+        "events": 30,
+        "currentPhase": "debugging",
+        "recommendedFiles": [
+          "src/click/_compat.py"
+        ],
+        "shownFiles": [
+          "src/click/_compat.py"
+        ],
+        "agentMentionedFiles": [
+          "src/click/_compat.py"
+        ],
+        "agentTouchedFiles": [
+          "src/click/_compat.py"
+        ],
+        "repeatedFilesAvoided": 0,
+        "repeatedSnippetsAvoided": 0,
+        "recommendedFilesUsed": [
+          "src/click/_compat.py"
+        ],
+        "repeatedlyTouchedFiles": [
+          "src/click/_compat.py"
+        ],
+        "unresolvedFailures": 0,
+        "workingSet": {
+          "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+          "currentPhase": "debugging",
+          "activeFiles": [
+            "src/click/_compat.py"
+          ],
+          "recentlyTouchedFiles": [
+            "src/click/_compat.py"
+          ],
+          "shownFiles": [
+            "src/click/_compat.py"
+          ],
+          "ignoredRecommendedFiles": [],
+          "ruledOutFiles": [],
+          "staleFiles": [],
+          "currentInvariant": {
+            "statement": "Diagnose Click compatibility regression: when a stream reports an ASCII encoding, Click should fall back to UTF-8.",
+            "filePath": "src/click/_compat.py",
+            "confidence": 90,
+            "sourceEventId": 4
+          },
+          "lastPassingVerification": {
+            "summary": "Final endurance verification passed.",
+            "createdAt": "2026-05-20T17:11:40.771Z"
+          },
+          "openRisks": []
+        },
+        "recentEvents": [
+          {
+            "id": 11,
+            "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+            "kind": "verification_passed",
+            "turnId": "fix-source",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "b68435a3b6e6fd6ccd2f99db1178ec53ae91765f0382e325123872d30d589651",
+            "tokenEstimate": 13,
+            "source": "bench",
+            "summary": "Verification passed for endurance turn fix-source.",
+            "metadata": {
+              "verificationCommandHash": "7a296974c4d4166190394528eb5ead364895e3d9ee343701e2018133b0bf3d79",
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantChecked": true,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": true,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "qualityGatePassed": true
+            },
+            "createdAt": "2026-05-20T17:09:39.959Z"
+          },
+          {
+            "id": 12,
+            "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+            "kind": "test_run",
+            "turnId": "verify",
+            "contentHash": "c8029656c22eb691d685bae7733579bb65927f5b5097e9a5d784cf50a73a9638",
+            "tokenEstimate": 13,
+            "source": "agent",
+            "summary": "Agent command for endurance turn verify exited 0.",
+            "metadata": {
+              "commandHash": "d42b3500e7f9ef3759b712e610bc9a628b16fd3d6feff150925b76c483e3d338",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "6b1fbdf7b17944a6d9c3af199e523741c9080eabf72c7715cf51589bc0abd66d"
+            },
+            "createdAt": "2026-05-20T17:10:00.784Z"
+          },
+          {
+            "id": 13,
+            "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+            "kind": "agent_file_mentioned",
+            "turnId": "verify",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "24f60e6af3511e8e3040554ec2d560b02e998857e3dad6c2e18e80bacf6f17b1",
+            "tokenEstimate": 10,
+            "source": "agent",
+            "summary": "Agent mentioned src/click/_compat.py.",
+            "metadata": {
+              "turnId": "verify"
+            },
+            "createdAt": "2026-05-20T17:10:00.784Z"
+          },
+          {
+            "id": 14,
+            "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+            "kind": "agent_file_touched",
+            "turnId": "verify",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "106407e07998d153abf188633897c0029019681f8d09e7c6b50fb9e2b20c8248",
+            "tokenEstimate": 9,
+            "source": "agent",
+            "summary": "Agent touched src/click/_compat.py.",
+            "metadata": {
+              "turnId": "verify"
+            },
+            "createdAt": "2026-05-20T17:10:00.784Z"
+          },
+          {
+            "id": 15,
+            "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+            "kind": "diff_seen",
+            "turnId": "verify",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "c4fab56f13d5b57a17b73d7a25a9537a323beb9ed12b7374eca412c1b54bce3f",
+            "tokenEstimate": 16,
+            "source": "agent",
+            "summary": "Diff touched src/click/_compat.py during endurance turn verify.",
+            "metadata": {
+              "turnId": "verify"
+            },
+            "createdAt": "2026-05-20T17:10:00.784Z"
+          },
+          {
+            "id": 16,
+            "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+            "kind": "verification_passed",
+            "turnId": "verify",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "5f82603375703cc67e9dd066084ac48bd0af4f6dc8254df16da45dfc61518fd3",
+            "tokenEstimate": 12,
+            "source": "bench",
+            "summary": "Verification passed for endurance turn verify.",
+            "metadata": {
+              "verificationCommandHash": "7a296974c4d4166190394528eb5ead364895e3d9ee343701e2018133b0bf3d79",
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "qualityGatePassed": true
+            },
+            "createdAt": "2026-05-20T17:10:00.784Z"
+          },
+          {
+            "id": 17,
+            "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+            "kind": "test_run",
+            "turnId": "diff-review",
+            "contentHash": "7fc05d92fcae3d89c1f6feac5a6d8e9ae434b96731092906527f89692bb327cd",
+            "tokenEstimate": 14,
+            "source": "agent",
+            "summary": "Agent command for endurance turn diff-review exited 0.",
+            "metadata": {
+              "commandHash": "7906513d7fcd2090da036cd79163a3c38d601da98e19463d0160b5b16c55ab17",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "52d06983c42fbe138875c42bc7e2673297f397ac34c6fcef15a73b3ec3ddb26e"
+            },
+            "createdAt": "2026-05-20T17:10:26.318Z"
+          },
+          {
+            "id": 18,
+            "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+            "kind": "agent_file_mentioned",
+            "turnId": "diff-review",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "24f60e6af3511e8e3040554ec2d560b02e998857e3dad6c2e18e80bacf6f17b1",
+            "tokenEstimate": 10,
+            "source": "agent",
+            "summary": "Agent mentioned src/click/_compat.py.",
+            "metadata": {
+              "turnId": "diff-review"
+            },
+            "createdAt": "2026-05-20T17:10:26.318Z"
+          },
+          {
+            "id": 19,
+            "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+            "kind": "agent_file_touched",
+            "turnId": "diff-review",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "106407e07998d153abf188633897c0029019681f8d09e7c6b50fb9e2b20c8248",
+            "tokenEstimate": 9,
+            "source": "agent",
+            "summary": "Agent touched src/click/_compat.py.",
+            "metadata": {
+              "turnId": "diff-review"
+            },
+            "createdAt": "2026-05-20T17:10:26.318Z"
+          },
+          {
+            "id": 20,
+            "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+            "kind": "diff_seen",
+            "turnId": "diff-review",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "ecbb3295a51a4d2b32373c3b8ba5bc0c0cb6e749468d23128a3faae1ba042a85",
+            "tokenEstimate": 17,
+            "source": "agent",
+            "summary": "Diff touched src/click/_compat.py during endurance turn diff-review.",
+            "metadata": {
+              "turnId": "diff-review"
+            },
+            "createdAt": "2026-05-20T17:10:26.319Z"
+          },
+          {
+            "id": 21,
+            "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+            "kind": "test_run",
+            "turnId": "repeat-context",
+            "contentHash": "16343e1a223aa2a91e56d027f41361ad2f9a440516acd93d3701c95d2064e1cc",
+            "tokenEstimate": 15,
+            "source": "agent",
+            "summary": "Agent command for endurance turn repeat-context exited 0.",
+            "metadata": {
+              "commandHash": "68e649c6e94dbcfb2e46081141e526cd35a8757bf23317db635ff8791977408b",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "f666a9b93da828219369b0c198dd5de4df7cb955153a4ee8678a22716f13d763"
+            },
+            "createdAt": "2026-05-20T17:11:26.329Z"
+          },
+          {
+            "id": 22,
+            "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+            "kind": "agent_file_mentioned",
+            "turnId": "repeat-context",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "24f60e6af3511e8e3040554ec2d560b02e998857e3dad6c2e18e80bacf6f17b1",
+            "tokenEstimate": 10,
+            "source": "agent",
+            "summary": "Agent mentioned src/click/_compat.py.",
+            "metadata": {
+              "turnId": "repeat-context"
+            },
+            "createdAt": "2026-05-20T17:11:26.329Z"
+          },
+          {
+            "id": 23,
+            "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+            "kind": "agent_file_touched",
+            "turnId": "repeat-context",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "106407e07998d153abf188633897c0029019681f8d09e7c6b50fb9e2b20c8248",
+            "tokenEstimate": 9,
+            "source": "agent",
+            "summary": "Agent touched src/click/_compat.py.",
+            "metadata": {
+              "turnId": "repeat-context"
+            },
+            "createdAt": "2026-05-20T17:11:26.329Z"
+          },
+          {
+            "id": 24,
+            "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+            "kind": "diff_seen",
+            "turnId": "repeat-context",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "f38a639f3636085b643fc2278a60e3f83f21fac3876c565033cab5a96903ca81",
+            "tokenEstimate": 18,
+            "source": "agent",
+            "summary": "Diff touched src/click/_compat.py during endurance turn repeat-context.",
+            "metadata": {
+              "turnId": "repeat-context"
+            },
+            "createdAt": "2026-05-20T17:11:26.330Z"
+          },
+          {
+            "id": 25,
+            "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+            "kind": "test_run",
+            "turnId": "cleanup",
+            "contentHash": "25bc38a4b4a054885fb490222949134ffa62b481ad5554f2be4c7d965c856a78",
+            "tokenEstimate": 13,
+            "source": "agent",
+            "summary": "Agent command for endurance turn cleanup exited 0.",
+            "metadata": {
+              "commandHash": "01288e3b1341c25d2a9285583ea4d2cb465cd3bbf452ac0d8064b73c9e676841",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "605cdc87ed1bbc844e37e72f4722432075f9df30634b215a5a9159ef5ea9bfdd"
+            },
+            "createdAt": "2026-05-20T17:11:40.731Z"
+          },
+          {
+            "id": 26,
+            "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+            "kind": "agent_file_mentioned",
+            "turnId": "cleanup",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "24f60e6af3511e8e3040554ec2d560b02e998857e3dad6c2e18e80bacf6f17b1",
+            "tokenEstimate": 10,
+            "source": "agent",
+            "summary": "Agent mentioned src/click/_compat.py.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-20T17:11:40.731Z"
+          },
+          {
+            "id": 27,
+            "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+            "kind": "agent_file_touched",
+            "turnId": "cleanup",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "106407e07998d153abf188633897c0029019681f8d09e7c6b50fb9e2b20c8248",
+            "tokenEstimate": 9,
+            "source": "agent",
+            "summary": "Agent touched src/click/_compat.py.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-20T17:11:40.731Z"
+          },
+          {
+            "id": 28,
+            "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+            "kind": "diff_seen",
+            "turnId": "cleanup",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "6386bb85cff5174c74d2c54ab10aa68e4b77123d445e9c1cff024b9bbb376a68",
+            "tokenEstimate": 16,
+            "source": "agent",
+            "summary": "Diff touched src/click/_compat.py during endurance turn cleanup.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-20T17:11:40.731Z"
+          },
+          {
+            "id": 29,
+            "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+            "kind": "verification_passed",
+            "turnId": "cleanup",
+            "filePath": "src/click/_compat.py",
+            "contentHash": "e2ec842b22454df5144698dee4a40634322afd0e9389eaa414d9e1b5e297d812",
+            "tokenEstimate": 12,
+            "source": "bench",
+            "summary": "Verification passed for endurance turn cleanup.",
+            "metadata": {
+              "verificationCommandHash": "7a296974c4d4166190394528eb5ead364895e3d9ee343701e2018133b0bf3d79",
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "qualityGatePassed": true
+            },
+            "createdAt": "2026-05-20T17:11:40.731Z"
+          },
+          {
+            "id": 30,
+            "sessionId": "task_cd5a8b64-c731-4f65-b358-e467741dac65",
+            "kind": "verification_passed",
+            "contentHash": "01686a52d490ab8e273bc13297bc95ca3a956265b15943a23c3c2801a08de538",
+            "tokenEstimate": 9,
+            "source": "bench",
+            "summary": "Final endurance verification passed.",
+            "metadata": {
+              "finalVerificationCommandHash": "7a296974c4d4166190394528eb5ead364895e3d9ee343701e2018133b0bf3d79",
+              "finalVerificationExitCode": 0,
+              "finalVerificationOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "finalSourceInvariantPassed": true,
+              "finalSourceInvariantFailures": [],
+              "finalDiffScopePassed": true,
+              "finalDiffScopeViolations": []
+            },
+            "createdAt": "2026-05-20T17:11:40.771Z"
+          }
+        ]
+      },
+      "metadata": {
+        "finalVerificationCommandPassed": true,
+        "finalSourceInvariantPassed": true,
+        "finalSourceInvariantFailures": [],
+        "finalDiffScopePassed": true,
+        "finalDiffScopeViolations": [],
+        "finalChangedFiles": [],
+        "setupElapsedMs": 279,
+        "setupCommandHash": "a79595c0fc1edbbaa2c2f9f810ffcd4c54fd5ccb94ed9ff0275c268f13aa27b4",
+        "setupExitCode": 0,
+        "setupTimedOut": false,
+        "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "setupOutputTokens": 0,
+        "setupChangedFiles": [
+          ".codex/config.toml",
+          ".codex/hooks.json",
+          "AGENTS.md",
+          "src/click/_compat.py"
+        ],
+        "kairnSessionCount": 1,
+        "primeEmitted": 0,
+        "primeSuppressed": 0,
+        "hookInvocations": 0,
+        "failureContextUsed": 0,
+        "mcpToolCalls": 1,
+        "mcpFilesReturned": [
+          "src/click/_compat.py"
+        ],
+        "mcpReturnedFileCount": 1,
+        "mcpReturnedUsefulFileCount": 1,
+        "mcpObservedTokensPerCall": 65833,
+        "mcpObservedTokensPerUsefulFile": 65833
+      }
+    }
+  ],
+  "deltas": {
+    "kairn_codex_session": {
+      "baselineTokens": 126530,
+      "modeTokens": 88906,
+      "savedTokens": 37624,
+      "savingsRate": 0.29735240654390266,
+      "qualityGatePassed": true,
+      "assistanceStatus": "active",
+      "assistanceEligible": true,
+      "baselineDifficulty": "expensive_pass",
+      "baselineTokenCost": 126530,
+      "abstentionOutcome": "not_applicable",
+      "missedOpportunity": false,
+      "overAssist": false,
+      "harmfulAssist": false,
+      "assistClassification": "valid_assist",
+      "validSavings": 37624
+    },
+    "real_mcp_first": {
+      "baselineTokens": 126530,
+      "modeTokens": 65833,
+      "savedTokens": 60697,
+      "savingsRate": 0.4797044179246029,
+      "qualityGatePassed": true,
+      "assistanceStatus": "active",
+      "assistanceEligible": true,
+      "baselineDifficulty": "expensive_pass",
+      "baselineTokenCost": 126530,
+      "abstentionOutcome": "not_applicable",
+      "missedOpportunity": false,
+      "overAssist": false,
+      "harmfulAssist": false,
+      "assistClassification": "valid_assist",
+      "validSavings": 60697
+    }
+  },
+  "recommendations": [
+    "kairn_codex_session: repeatedly touched files suggest a follow-up focused cleanup context: src/click/_compat.py.",
+    "real_mcp_first: repeatedly touched files suggest a follow-up focused cleanup context: src/click/_compat.py."
+  ]
+}

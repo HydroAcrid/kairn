@@ -1,0 +1,1132 @@
+{
+  "generatedAt": "2026-05-24T03:08:38.504Z",
+  "source": "merged from candidate-20 and replacements-r1 deterministic matrix preflight",
+  "totals": {
+    "rows": 20,
+    "sourceQualityPassingRows": 20,
+    "qualityPassingRows": 15,
+    "latencyPassingRows": 15
+  },
+  "sourceQualityPass": true,
+  "latencyOnlyRows": [
+    {
+      "caseId": "instance_element-hq__element-web-2760bfc8369f1bee640d6d7a7e910783143d4c5f-vnan",
+      "repoName": "element-hq/element-web instance_element-hq__element-web-2760bfc8369f1bee640d6d7a7e910783143d4c5f-vnan",
+      "primeLatencyMs": 6732,
+      "expectedFiles": [
+        "src/components/views/right_panel/UserInfo.tsx"
+      ],
+      "returnedFiles": [
+        "src/voice-broadcast/components/molecules/VoiceBroadcastRecordingBody.tsx",
+        "src/components/views/right_panel/UserInfo.tsx"
+      ]
+    },
+    {
+      "caseId": "instance_element-hq__element-web-1077729a19c0ce902e713cf6fab42c91fb7907f1-vnan",
+      "repoName": "element-hq/element-web instance_element-hq__element-web-1077729a19c0ce902e713cf6fab42c91fb7907f1-vnan",
+      "primeLatencyMs": 6436,
+      "expectedFiles": [
+        "src/components/viewmodels/roomlist/useStickyRoomList.tsx",
+        "src/stores/spaces/SpaceStore.ts"
+      ],
+      "returnedFiles": [
+        "src/stores/spaces/SpaceStore.ts",
+        "src/components/viewmodels/roomlist/useStickyRoomList.tsx"
+      ]
+    },
+    {
+      "caseId": "instance_ansible__ansible-12734fa21c08a0ce8c84e533abdc560db2eb1955-v7eee2454f617569fd6889f2211f75bc02a35f9f8",
+      "repoName": "ansible/ansible instance_ansible__ansible-12734fa21c08a0ce8c84e533abdc560db2eb1955-v7eee2454f617569fd6889f2211f75bc02a35f9f8",
+      "primeLatencyMs": 8461,
+      "expectedFiles": [
+        "lib/ansible/parsing/yaml/dumper.py",
+        "lib/ansible/plugins/filter/core.py"
+      ],
+      "returnedFiles": [
+        "lib/ansible/plugins/filter/core.py",
+        "lib/ansible/module_utils/facts/utils.py",
+        "lib/ansible/module_utils/json_utils.py"
+      ]
+    },
+    {
+      "caseId": "instance_ansible__ansible-0fd88717c953b92ed8a50495d55e630eb5d59166-vba6da65a0f3baefda7a058ebbd0a8dcafb8512f5",
+      "repoName": "ansible/ansible instance_ansible__ansible-0fd88717c953b92ed8a50495d55e630eb5d59166-vba6da65a0f3baefda7a058ebbd0a8dcafb8512f5",
+      "primeLatencyMs": 6306,
+      "expectedFiles": [
+        "lib/ansible/plugins/lookup/password.py",
+        "lib/ansible/utils/encrypt.py"
+      ],
+      "returnedFiles": [
+        "lib/ansible/plugins/lookup/password.py",
+        "lib/ansible/plugins/filter/core.py"
+      ]
+    },
+    {
+      "caseId": "instance_ansible__ansible-5f4e332e3762999d94af27746db29ff1729252c1-v0f01c69f1e2528b935359cfe578530722bca2c59",
+      "repoName": "ansible/ansible instance_ansible__ansible-5f4e332e3762999d94af27746db29ff1729252c1-v0f01c69f1e2528b935359cfe578530722bca2c59",
+      "primeLatencyMs": 5800,
+      "expectedFiles": [
+        "lib/ansible/config/manager.py"
+      ],
+      "returnedFiles": [
+        "lib/ansible/config/manager.py",
+        "lib/ansible/module_utils/facts/utils.py"
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "repoId": "instance_internetarchive__openlibrary-5c6c22f3d2edf2f1b10f5dc335e32cb6a5f40341-v76304ecdb3a5954fcf13feb710e8c40fcf24b73c",
+      "repoName": "internetarchive/openlibrary instance_internetarchive__openlibrary-5c6c22f3d2edf2f1b10f5dc335e32cb6a5f40341-v76304ecdb3a5954fcf13feb710e8c40fcf24b73c",
+      "repoUrl": "https://github.com/internetarchive/openlibrary.git",
+      "ref": "31d6ecf3c04c8e365e557f2a9a6a65df2b8d01a3",
+      "caseId": "instance_internetarchive__openlibrary-5c6c22f3d2edf2f1b10f5dc335e32cb6a5f40341-v76304ecdb3a5954fcf13feb710e8c40fcf24b73c",
+      "language": "python",
+      "taskClass": "official_patch",
+      "status": "pass",
+      "qualityGatePassed": true,
+      "sourceQualityGatePassed": true,
+      "latencyPassed": true,
+      "expectedTopKPassed": true,
+      "companionGatePassed": true,
+      "suppressionPassed": true,
+      "returnedFiles": [
+        "openlibrary/plugins/upstream/utils.py",
+        "openlibrary/catalog/get_ia.py"
+      ],
+      "expectedFiles": [
+        "openlibrary/plugins/importapi/code.py",
+        "openlibrary/plugins/upstream/utils.py"
+      ],
+      "missingExpectedFiles": [
+        "openlibrary/plugins/importapi/code.py"
+      ],
+      "companionFilesReturned": [
+        "openlibrary/catalog/get_ia.py"
+      ],
+      "missingCompanionFiles": [],
+      "recommendations": [],
+      "contextDecision": "shrink",
+      "primeLatencyMs": 3692,
+      "primeTokens": 506,
+      "qualityScore": 56,
+      "officialEvaluation": {
+        "source": "swe_bench_pro",
+        "taskClass": "multi_file_debug",
+        "evaluator": "patch_verification",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "golden patch touches 2 production source file(s)",
+          "selected tests are available for verification setup",
+          "official before_repo_set_cmd is available"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      }
+    },
+    {
+      "repoId": "instance_element-hq__element-web-75c2c1a572fa45d1ea1d1a96e9e36e303332ecaa-vnan",
+      "repoName": "element-hq/element-web instance_element-hq__element-web-75c2c1a572fa45d1ea1d1a96e9e36e303332ecaa-vnan",
+      "repoUrl": "https://github.com/element-hq/element-web.git",
+      "ref": "1f8fbc819795b9c19c567b4737109183acf86162",
+      "caseId": "instance_element-hq__element-web-75c2c1a572fa45d1ea1d1a96e9e36e303332ecaa-vnan",
+      "language": "ts",
+      "taskClass": "official_patch",
+      "status": "pass",
+      "qualityGatePassed": true,
+      "sourceQualityGatePassed": true,
+      "latencyPassed": true,
+      "expectedTopKPassed": true,
+      "companionGatePassed": true,
+      "suppressionPassed": true,
+      "returnedFiles": [
+        "src/voice-broadcast/stores/VoiceBroadcastPlaybacksStore.ts",
+        "src/audio/VoiceRecording.ts"
+      ],
+      "expectedFiles": [
+        "src/audio/RecorderWorklet.ts",
+        "src/audio/VoiceRecording.ts"
+      ],
+      "missingExpectedFiles": [
+        "src/audio/RecorderWorklet.ts"
+      ],
+      "companionFilesReturned": [
+        "src/voice-broadcast/stores/VoiceBroadcastPlaybacksStore.ts"
+      ],
+      "missingCompanionFiles": [],
+      "recommendations": [],
+      "contextDecision": "shrink",
+      "primeLatencyMs": 3172,
+      "primeTokens": 456,
+      "qualityScore": 62,
+      "officialEvaluation": {
+        "source": "swe_bench_pro",
+        "taskClass": "multi_file_debug",
+        "evaluator": "patch_verification",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "golden patch touches 2 production source file(s)",
+          "selected tests are available for verification setup",
+          "official before_repo_set_cmd is available"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      }
+    },
+    {
+      "repoId": "instance_element-hq__element-web-2760bfc8369f1bee640d6d7a7e910783143d4c5f-vnan",
+      "repoName": "element-hq/element-web instance_element-hq__element-web-2760bfc8369f1bee640d6d7a7e910783143d4c5f-vnan",
+      "repoUrl": "https://github.com/element-hq/element-web.git",
+      "ref": "cdffd1ca1f7b60334a8ca3bba64d0a4e6d2b68d0",
+      "caseId": "instance_element-hq__element-web-2760bfc8369f1bee640d6d7a7e910783143d4c5f-vnan",
+      "language": "ts",
+      "taskClass": "official_patch",
+      "status": "fail",
+      "qualityGatePassed": false,
+      "sourceQualityGatePassed": true,
+      "latencyPassed": false,
+      "expectedTopKPassed": true,
+      "companionGatePassed": true,
+      "suppressionPassed": true,
+      "returnedFiles": [
+        "src/voice-broadcast/components/molecules/VoiceBroadcastRecordingBody.tsx",
+        "src/components/views/right_panel/UserInfo.tsx"
+      ],
+      "expectedFiles": [
+        "src/components/views/right_panel/UserInfo.tsx"
+      ],
+      "missingExpectedFiles": [],
+      "companionFilesReturned": [
+        "src/voice-broadcast/components/molecules/VoiceBroadcastRecordingBody.tsx"
+      ],
+      "missingCompanionFiles": [],
+      "recommendations": [
+        "Source quality passed; only the latency gate failed.",
+        "Prime latency 6732ms exceeded 5000ms gate."
+      ],
+      "contextDecision": "shrink",
+      "primeLatencyMs": 6732,
+      "primeTokens": 506,
+      "qualityScore": 100,
+      "officialEvaluation": {
+        "source": "swe_bench_pro",
+        "taskClass": "failure_first_debug",
+        "evaluator": "patch_verification",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "golden patch touches 1 production source file(s)",
+          "selected tests are available for verification setup",
+          "official before_repo_set_cmd is available"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      }
+    },
+    {
+      "repoId": "instance_element-hq__element-web-1077729a19c0ce902e713cf6fab42c91fb7907f1-vnan",
+      "repoName": "element-hq/element-web instance_element-hq__element-web-1077729a19c0ce902e713cf6fab42c91fb7907f1-vnan",
+      "repoUrl": "https://github.com/element-hq/element-web.git",
+      "ref": "4f32727829c1087e9d3d9955785d8a6255457c7d",
+      "caseId": "instance_element-hq__element-web-1077729a19c0ce902e713cf6fab42c91fb7907f1-vnan",
+      "language": "ts",
+      "taskClass": "official_patch",
+      "status": "fail",
+      "qualityGatePassed": false,
+      "sourceQualityGatePassed": true,
+      "latencyPassed": false,
+      "expectedTopKPassed": true,
+      "companionGatePassed": true,
+      "suppressionPassed": true,
+      "returnedFiles": [
+        "src/stores/spaces/SpaceStore.ts",
+        "src/components/viewmodels/roomlist/useStickyRoomList.tsx"
+      ],
+      "expectedFiles": [
+        "src/components/viewmodels/roomlist/useStickyRoomList.tsx",
+        "src/stores/spaces/SpaceStore.ts"
+      ],
+      "missingExpectedFiles": [],
+      "companionFilesReturned": [
+        "src/components/viewmodels/roomlist/useStickyRoomList.tsx"
+      ],
+      "missingCompanionFiles": [],
+      "recommendations": [
+        "Source quality passed; only the latency gate failed.",
+        "Prime latency 6436ms exceeded 5000ms gate."
+      ],
+      "contextDecision": "shrink",
+      "primeLatencyMs": 6436,
+      "primeTokens": 506,
+      "qualityScore": 62,
+      "officialEvaluation": {
+        "source": "swe_bench_pro",
+        "taskClass": "multi_file_debug",
+        "evaluator": "patch_verification",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "golden patch touches 2 production source file(s)",
+          "selected tests are available for verification setup",
+          "official before_repo_set_cmd is available"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      }
+    },
+    {
+      "repoId": "instance_ansible__ansible-12734fa21c08a0ce8c84e533abdc560db2eb1955-v7eee2454f617569fd6889f2211f75bc02a35f9f8",
+      "repoName": "ansible/ansible instance_ansible__ansible-12734fa21c08a0ce8c84e533abdc560db2eb1955-v7eee2454f617569fd6889f2211f75bc02a35f9f8",
+      "repoUrl": "https://github.com/ansible/ansible.git",
+      "ref": "de01db08d00c8d2438e1ba5989c313ba16a145b0",
+      "caseId": "instance_ansible__ansible-12734fa21c08a0ce8c84e533abdc560db2eb1955-v7eee2454f617569fd6889f2211f75bc02a35f9f8",
+      "language": "python",
+      "taskClass": "official_patch",
+      "status": "fail",
+      "qualityGatePassed": false,
+      "sourceQualityGatePassed": true,
+      "latencyPassed": false,
+      "expectedTopKPassed": true,
+      "companionGatePassed": true,
+      "suppressionPassed": true,
+      "returnedFiles": [
+        "lib/ansible/plugins/filter/core.py",
+        "lib/ansible/module_utils/facts/utils.py",
+        "lib/ansible/module_utils/json_utils.py"
+      ],
+      "expectedFiles": [
+        "lib/ansible/parsing/yaml/dumper.py",
+        "lib/ansible/plugins/filter/core.py"
+      ],
+      "missingExpectedFiles": [
+        "lib/ansible/parsing/yaml/dumper.py"
+      ],
+      "companionFilesReturned": [
+        "lib/ansible/module_utils/facts/utils.py",
+        "lib/ansible/module_utils/json_utils.py"
+      ],
+      "missingCompanionFiles": [],
+      "recommendations": [
+        "Source quality passed; only the latency gate failed.",
+        "Prime latency 8461ms exceeded 5000ms gate."
+      ],
+      "contextDecision": "shrink",
+      "primeLatencyMs": 8461,
+      "primeTokens": 491,
+      "qualityScore": 100,
+      "officialEvaluation": {
+        "source": "swe_bench_pro",
+        "taskClass": "multi_file_debug",
+        "evaluator": "patch_verification",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "golden patch touches 2 production source file(s)",
+          "selected tests are available for verification setup",
+          "official before_repo_set_cmd is available"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      }
+    },
+    {
+      "repoId": "instance_ansible__ansible-0fd88717c953b92ed8a50495d55e630eb5d59166-vba6da65a0f3baefda7a058ebbd0a8dcafb8512f5",
+      "repoName": "ansible/ansible instance_ansible__ansible-0fd88717c953b92ed8a50495d55e630eb5d59166-vba6da65a0f3baefda7a058ebbd0a8dcafb8512f5",
+      "repoUrl": "https://github.com/ansible/ansible.git",
+      "ref": "016b7f71b10539c90ddbb3246f19f9cbf0e65428",
+      "caseId": "instance_ansible__ansible-0fd88717c953b92ed8a50495d55e630eb5d59166-vba6da65a0f3baefda7a058ebbd0a8dcafb8512f5",
+      "language": "python",
+      "taskClass": "official_patch",
+      "status": "fail",
+      "qualityGatePassed": false,
+      "sourceQualityGatePassed": true,
+      "latencyPassed": false,
+      "expectedTopKPassed": true,
+      "companionGatePassed": true,
+      "suppressionPassed": true,
+      "returnedFiles": [
+        "lib/ansible/plugins/lookup/password.py",
+        "lib/ansible/plugins/filter/core.py"
+      ],
+      "expectedFiles": [
+        "lib/ansible/plugins/lookup/password.py",
+        "lib/ansible/utils/encrypt.py"
+      ],
+      "missingExpectedFiles": [
+        "lib/ansible/utils/encrypt.py"
+      ],
+      "companionFilesReturned": [
+        "lib/ansible/plugins/filter/core.py"
+      ],
+      "missingCompanionFiles": [
+        "lib/ansible/utils/encrypt.py"
+      ],
+      "recommendations": [
+        "Source quality passed; only the latency gate failed.",
+        "Prime latency 6306ms exceeded 5000ms gate."
+      ],
+      "contextDecision": "shrink",
+      "primeLatencyMs": 6306,
+      "primeTokens": 485,
+      "qualityScore": 100,
+      "officialEvaluation": {
+        "source": "swe_bench_pro",
+        "taskClass": "multi_file_debug",
+        "evaluator": "patch_verification",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "golden patch touches 2 production source file(s)",
+          "selected tests are available for verification setup",
+          "official before_repo_set_cmd is available"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      }
+    },
+    {
+      "repoId": "instance_ansible__ansible-5f4e332e3762999d94af27746db29ff1729252c1-v0f01c69f1e2528b935359cfe578530722bca2c59",
+      "repoName": "ansible/ansible instance_ansible__ansible-5f4e332e3762999d94af27746db29ff1729252c1-v0f01c69f1e2528b935359cfe578530722bca2c59",
+      "repoUrl": "https://github.com/ansible/ansible.git",
+      "ref": "a870e7d0c6368dbc4c8f1f088f540e8be07223e1",
+      "caseId": "instance_ansible__ansible-5f4e332e3762999d94af27746db29ff1729252c1-v0f01c69f1e2528b935359cfe578530722bca2c59",
+      "language": "python",
+      "taskClass": "official_patch",
+      "status": "fail",
+      "qualityGatePassed": false,
+      "sourceQualityGatePassed": true,
+      "latencyPassed": false,
+      "expectedTopKPassed": true,
+      "companionGatePassed": true,
+      "suppressionPassed": true,
+      "returnedFiles": [
+        "lib/ansible/config/manager.py",
+        "lib/ansible/module_utils/facts/utils.py"
+      ],
+      "expectedFiles": [
+        "lib/ansible/config/manager.py"
+      ],
+      "missingExpectedFiles": [],
+      "companionFilesReturned": [
+        "lib/ansible/module_utils/facts/utils.py"
+      ],
+      "missingCompanionFiles": [],
+      "recommendations": [
+        "Source quality passed; only the latency gate failed.",
+        "Prime latency 5800ms exceeded 5000ms gate."
+      ],
+      "contextDecision": "shrink",
+      "primeLatencyMs": 5800,
+      "primeTokens": 482,
+      "qualityScore": 100,
+      "officialEvaluation": {
+        "source": "swe_bench_pro",
+        "taskClass": "failure_first_debug",
+        "evaluator": "patch_verification",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "golden patch touches 1 production source file(s)",
+          "selected tests are available for verification setup",
+          "official before_repo_set_cmd is available"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      }
+    },
+    {
+      "repoId": "instance_ansible__ansible-0ea40e09d1b35bcb69ff4d9cecf3d0defa4b36e8-v30a923fb5c164d6cd18280c02422f75e611e8fb2",
+      "repoName": "ansible/ansible instance_ansible__ansible-0ea40e09d1b35bcb69ff4d9cecf3d0defa4b36e8-v30a923fb5c164d6cd18280c02422f75e611e8fb2",
+      "repoUrl": "https://github.com/ansible/ansible.git",
+      "ref": "f7234968d241d7171aadb1e873a67510753f3163",
+      "caseId": "instance_ansible__ansible-0ea40e09d1b35bcb69ff4d9cecf3d0defa4b36e8-v30a923fb5c164d6cd18280c02422f75e611e8fb2",
+      "language": "python",
+      "taskClass": "official_patch",
+      "status": "pass",
+      "qualityGatePassed": true,
+      "sourceQualityGatePassed": true,
+      "latencyPassed": true,
+      "expectedTopKPassed": true,
+      "companionGatePassed": true,
+      "suppressionPassed": true,
+      "returnedFiles": [
+        "lib/ansible/utils/vars.py",
+        "lib/ansible/module_utils/json_utils.py"
+      ],
+      "expectedFiles": [
+        "lib/ansible/utils/vars.py",
+        "lib/ansible/vars/manager.py"
+      ],
+      "missingExpectedFiles": [
+        "lib/ansible/vars/manager.py"
+      ],
+      "companionFilesReturned": [
+        "lib/ansible/module_utils/json_utils.py"
+      ],
+      "missingCompanionFiles": [
+        "lib/ansible/vars/manager.py"
+      ],
+      "recommendations": [],
+      "contextDecision": "shrink",
+      "primeLatencyMs": 4281,
+      "primeTokens": 466,
+      "qualityScore": 100,
+      "officialEvaluation": {
+        "source": "swe_bench_pro",
+        "taskClass": "multi_file_debug",
+        "evaluator": "patch_verification",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "golden patch touches 2 production source file(s)",
+          "selected tests are available for verification setup",
+          "official before_repo_set_cmd is available"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      }
+    },
+    {
+      "repoId": "instance_internetarchive__openlibrary-fad4a40acf5ff5f06cd7441a5c7baf41a7d81fe4-vfa6ff903cb27f336e17654595dd900fa943dcd91",
+      "repoName": "internetarchive/openlibrary instance_internetarchive__openlibrary-fad4a40acf5ff5f06cd7441a5c7baf41a7d81fe4-vfa6ff903cb27f336e17654595dd900fa943dcd91",
+      "repoUrl": "https://github.com/internetarchive/openlibrary.git",
+      "ref": "afb819f8166c6dff4295c6802cc0b55b67f05731",
+      "caseId": "instance_internetarchive__openlibrary-fad4a40acf5ff5f06cd7441a5c7baf41a7d81fe4-vfa6ff903cb27f336e17654595dd900fa943dcd91",
+      "language": "python",
+      "taskClass": "official_patch",
+      "status": "pass",
+      "qualityGatePassed": true,
+      "sourceQualityGatePassed": true,
+      "latencyPassed": true,
+      "expectedTopKPassed": true,
+      "companionGatePassed": true,
+      "suppressionPassed": true,
+      "returnedFiles": [
+        "openlibrary/catalog/get_ia.py",
+        "openlibrary/catalog/marc/parse.py"
+      ],
+      "expectedFiles": [
+        "openlibrary/catalog/get_ia.py",
+        "openlibrary/catalog/marc/marc_subject.py"
+      ],
+      "missingExpectedFiles": [
+        "openlibrary/catalog/marc/marc_subject.py"
+      ],
+      "companionFilesReturned": [
+        "openlibrary/catalog/marc/parse.py"
+      ],
+      "missingCompanionFiles": [
+        "openlibrary/catalog/marc/marc_subject.py"
+      ],
+      "recommendations": [],
+      "contextDecision": "shrink",
+      "primeLatencyMs": 985,
+      "primeTokens": 487,
+      "qualityScore": 56,
+      "officialEvaluation": {
+        "source": "swe_bench_pro",
+        "taskClass": "multi_file_debug",
+        "evaluator": "patch_verification",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "golden patch touches 2 production source file(s)",
+          "selected tests are available for verification setup",
+          "official before_repo_set_cmd is available"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      }
+    },
+    {
+      "repoId": "instance_flipt-io__flipt-5ffba3406a7993d97ced4cc13658bee66150fcca",
+      "repoName": "flipt-io/flipt instance_flipt-io__flipt-5ffba3406a7993d97ced4cc13658bee66150fcca",
+      "repoUrl": "https://github.com/flipt-io/flipt.git",
+      "ref": "02f5a1f8ef79565d6f4efed09259e7bf6541437a",
+      "caseId": "instance_flipt-io__flipt-5ffba3406a7993d97ced4cc13658bee66150fcca",
+      "language": "go",
+      "taskClass": "official_patch",
+      "status": "pass",
+      "qualityGatePassed": true,
+      "sourceQualityGatePassed": true,
+      "latencyPassed": true,
+      "expectedTopKPassed": true,
+      "companionGatePassed": true,
+      "suppressionPassed": true,
+      "returnedFiles": [
+        "config/config.go",
+        "ui/qawolf.config.js"
+      ],
+      "expectedFiles": [
+        "cmd/flipt/flipt.go",
+        "config/config.go"
+      ],
+      "missingExpectedFiles": [
+        "cmd/flipt/flipt.go"
+      ],
+      "companionFilesReturned": [
+        "ui/qawolf.config.js"
+      ],
+      "missingCompanionFiles": [],
+      "recommendations": [],
+      "contextDecision": "shrink",
+      "primeLatencyMs": 448,
+      "primeTokens": 445,
+      "qualityScore": 100,
+      "officialEvaluation": {
+        "source": "swe_bench_pro",
+        "taskClass": "multi_file_debug",
+        "evaluator": "patch_verification",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "golden patch touches 2 production source file(s)",
+          "selected tests are available for verification setup",
+          "official before_repo_set_cmd is available"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      }
+    },
+    {
+      "repoId": "instance_future-architect__vuls-8659668177f1feb65963db7a967347a79c5f9c40",
+      "repoName": "future-architect/vuls instance_future-architect__vuls-8659668177f1feb65963db7a967347a79c5f9c40",
+      "repoUrl": "https://github.com/future-architect/vuls.git",
+      "ref": "e07b6a916080426af5ad92e13383ca72c31330d1",
+      "caseId": "instance_future-architect__vuls-8659668177f1feb65963db7a967347a79c5f9c40",
+      "language": "go",
+      "taskClass": "official_patch",
+      "status": "pass",
+      "qualityGatePassed": true,
+      "sourceQualityGatePassed": true,
+      "latencyPassed": true,
+      "expectedTopKPassed": true,
+      "companionGatePassed": true,
+      "suppressionPassed": true,
+      "returnedFiles": [
+        "models/vulninfos.go",
+        "models/models.go"
+      ],
+      "expectedFiles": [
+        "detector/detector.go",
+        "models/vulninfos.go"
+      ],
+      "missingExpectedFiles": [
+        "detector/detector.go"
+      ],
+      "companionFilesReturned": [
+        "models/models.go"
+      ],
+      "missingCompanionFiles": [],
+      "recommendations": [],
+      "contextDecision": "shrink",
+      "primeLatencyMs": 389,
+      "primeTokens": 514,
+      "qualityScore": 56,
+      "officialEvaluation": {
+        "source": "swe_bench_pro",
+        "taskClass": "multi_file_debug",
+        "evaluator": "patch_verification",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "golden patch touches 2 production source file(s)",
+          "selected tests are available for verification setup",
+          "official before_repo_set_cmd is available"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      }
+    },
+    {
+      "repoId": "instance_internetarchive__openlibrary-f343c08f89c772f7ba6c0246f384b9e6c3dc0add-v08d8e8889ec945ab821fb156c04c7d2e2810debb",
+      "repoName": "internetarchive/openlibrary instance_internetarchive__openlibrary-f343c08f89c772f7ba6c0246f384b9e6c3dc0add-v08d8e8889ec945ab821fb156c04c7d2e2810debb",
+      "repoUrl": "https://github.com/internetarchive/openlibrary.git",
+      "ref": "53d376b148897466bb86d5accb51912bbbe9a8ed",
+      "caseId": "instance_internetarchive__openlibrary-f343c08f89c772f7ba6c0246f384b9e6c3dc0add-v08d8e8889ec945ab821fb156c04c7d2e2810debb",
+      "language": "python",
+      "taskClass": "official_patch",
+      "status": "pass",
+      "qualityGatePassed": true,
+      "sourceQualityGatePassed": true,
+      "latencyPassed": true,
+      "expectedTopKPassed": true,
+      "companionGatePassed": true,
+      "suppressionPassed": true,
+      "returnedFiles": [
+        "openlibrary/catalog/add_book/load_book.py",
+        "openlibrary/solr/query_utils.py"
+      ],
+      "expectedFiles": [
+        "openlibrary/catalog/add_book/load_book.py",
+        "openlibrary/core/helpers.py"
+      ],
+      "missingExpectedFiles": [
+        "openlibrary/core/helpers.py"
+      ],
+      "companionFilesReturned": [
+        "openlibrary/solr/query_utils.py"
+      ],
+      "missingCompanionFiles": [
+        "openlibrary/core/helpers.py"
+      ],
+      "recommendations": [],
+      "contextDecision": "shrink",
+      "primeLatencyMs": 1963,
+      "primeTokens": 510,
+      "qualityScore": 56,
+      "officialEvaluation": {
+        "source": "swe_bench_pro",
+        "taskClass": "multi_file_debug",
+        "evaluator": "patch_verification",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "golden patch touches 2 production source file(s)",
+          "selected tests are available for verification setup",
+          "official before_repo_set_cmd is available"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      }
+    },
+    {
+      "repoId": "instance_future-architect__vuls-999529a05b202b0fd29c6fca5039a4c47a3766bb",
+      "repoName": "future-architect/vuls instance_future-architect__vuls-999529a05b202b0fd29c6fca5039a4c47a3766bb",
+      "repoUrl": "https://github.com/future-architect/vuls.git",
+      "ref": "847d820af7fb48131086afe43f79ce79f61122c7",
+      "caseId": "instance_future-architect__vuls-999529a05b202b0fd29c6fca5039a4c47a3766bb",
+      "language": "go",
+      "taskClass": "official_patch",
+      "status": "pass",
+      "qualityGatePassed": true,
+      "sourceQualityGatePassed": true,
+      "latencyPassed": true,
+      "expectedTopKPassed": true,
+      "companionGatePassed": true,
+      "suppressionPassed": true,
+      "returnedFiles": [
+        "scanner/scanner.go",
+        "config/config.go"
+      ],
+      "expectedFiles": [
+        "scanner/scanner.go"
+      ],
+      "missingExpectedFiles": [],
+      "companionFilesReturned": [
+        "config/config.go"
+      ],
+      "missingCompanionFiles": [],
+      "recommendations": [],
+      "contextDecision": "shrink",
+      "primeLatencyMs": 380,
+      "primeTokens": 514,
+      "qualityScore": 100,
+      "officialEvaluation": {
+        "source": "swe_bench_pro",
+        "taskClass": "failure_first_debug",
+        "evaluator": "patch_verification",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "golden patch touches 1 production source file(s)",
+          "selected tests are available for verification setup",
+          "official before_repo_set_cmd is available"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      }
+    },
+    {
+      "repoId": "instance_flipt-io__flipt-b6cef5cdc0daff3ee99e5974ed60a1dc6b4b0d67",
+      "repoName": "flipt-io/flipt instance_flipt-io__flipt-b6cef5cdc0daff3ee99e5974ed60a1dc6b4b0d67",
+      "repoUrl": "https://github.com/flipt-io/flipt.git",
+      "ref": "1bd9924b177927fa51d016a71a4353ab9c0d32e7",
+      "caseId": "instance_flipt-io__flipt-b6cef5cdc0daff3ee99e5974ed60a1dc6b4b0d67",
+      "language": "go",
+      "taskClass": "official_patch",
+      "status": "pass",
+      "qualityGatePassed": true,
+      "sourceQualityGatePassed": true,
+      "latencyPassed": true,
+      "expectedTopKPassed": true,
+      "companionGatePassed": true,
+      "suppressionPassed": true,
+      "returnedFiles": [
+        "internal/cmd/http.go",
+        "internal/server/auth/method/oidc/http.go",
+        "internal/server/auth/http.go"
+      ],
+      "expectedFiles": [
+        "internal/cmd/auth.go",
+        "internal/server/auth/http.go"
+      ],
+      "missingExpectedFiles": [
+        "internal/cmd/auth.go"
+      ],
+      "companionFilesReturned": [
+        "internal/server/auth/http.go",
+        "internal/cmd/http.go"
+      ],
+      "missingCompanionFiles": [],
+      "recommendations": [],
+      "contextDecision": "shrink",
+      "primeLatencyMs": 619,
+      "primeTokens": 479,
+      "qualityScore": 56,
+      "officialEvaluation": {
+        "source": "swe_bench_pro",
+        "taskClass": "multi_file_debug",
+        "evaluator": "patch_verification",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "golden patch touches 2 production source file(s)",
+          "selected tests are available for verification setup",
+          "official before_repo_set_cmd is available"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      }
+    },
+    {
+      "repoId": "instance_flipt-io__flipt-690672523398c2b6f6e4562f0bf9868664ab894f",
+      "repoName": "flipt-io/flipt instance_flipt-io__flipt-690672523398c2b6f6e4562f0bf9868664ab894f",
+      "repoUrl": "https://github.com/flipt-io/flipt.git",
+      "ref": "6da20eb7afb693a1cbee2482272e3aee2fbd43ee",
+      "caseId": "instance_flipt-io__flipt-690672523398c2b6f6e4562f0bf9868664ab894f",
+      "language": "go",
+      "taskClass": "official_patch",
+      "status": "pass",
+      "qualityGatePassed": true,
+      "sourceQualityGatePassed": true,
+      "latencyPassed": true,
+      "expectedTopKPassed": true,
+      "companionGatePassed": true,
+      "suppressionPassed": true,
+      "returnedFiles": [
+        "internal/cmd/protoc-gen-go-flipt-sdk/grpc.go",
+        "internal/cmd/grpc.go",
+        "internal/server/analytics/clickhouse/client.go"
+      ],
+      "expectedFiles": [
+        "internal/cmd/grpc.go",
+        "internal/tracing/tracing.go"
+      ],
+      "missingExpectedFiles": [],
+      "companionFilesReturned": [
+        "internal/cmd/protoc-gen-go-flipt-sdk/grpc.go",
+        "internal/server/analytics/clickhouse/client.go"
+      ],
+      "missingCompanionFiles": [],
+      "recommendations": [
+        "Expected files absent from base checkout and not scored for retrieval: internal/tracing/tracing.go"
+      ],
+      "contextDecision": "shrink",
+      "primeLatencyMs": 1080,
+      "primeTokens": 512,
+      "qualityScore": 56,
+      "officialEvaluation": {
+        "source": "swe_bench_pro",
+        "taskClass": "multi_file_debug",
+        "evaluator": "patch_verification",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "golden patch touches 2 production source file(s)",
+          "selected tests are available for verification setup",
+          "official before_repo_set_cmd is available"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      }
+    },
+    {
+      "repoId": "instance_gravitational__teleport-0cb341c926713bdfcbb490c69659a9b101df99eb",
+      "repoName": "gravitational/teleport instance_gravitational__teleport-0cb341c926713bdfcbb490c69659a9b101df99eb",
+      "repoUrl": "https://github.com/gravitational/teleport.git",
+      "ref": "2839d2aa27c8cdcd9bc3a78d7bd831fee8e9ab65",
+      "caseId": "instance_gravitational__teleport-0cb341c926713bdfcbb490c69659a9b101df99eb",
+      "language": "go",
+      "taskClass": "official_patch",
+      "qualityGatePassed": true,
+      "sourceQualityGatePassed": true,
+      "latencyPassed": true,
+      "expectedTopKPassed": true,
+      "companionGatePassed": true,
+      "returnedFiles": [
+        "roles.go",
+        "lib/services/presence.go"
+      ],
+      "expectedFiles": [
+        "roles.go"
+      ],
+      "missingExpectedFiles": [],
+      "recommendations": [],
+      "contextDecision": "shrink",
+      "primeLatencyMs": 1745,
+      "primeTokens": 442,
+      "qualityScore": 100,
+      "officialEvaluation": {
+        "source": "swe_bench_pro",
+        "taskClass": "failure_first_debug",
+        "evaluator": "patch_verification",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "golden patch touches 1 production source file(s)",
+          "selected tests are available for verification setup",
+          "official before_repo_set_cmd is available"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      }
+    },
+    {
+      "repoId": "instance_nodebb__nodebb-05f2236193f407cf8e2072757fbd6bb170bc13f0-vf2cf3cbd463b7ad942381f1c6d077626485a1e9e",
+      "repoName": "NodeBB/NodeBB instance_NodeBB__NodeBB-05f2236193f407cf8e2072757fbd6bb170bc13f0-vf2cf3cbd463b7ad942381f1c6d077626485a1e9e",
+      "repoUrl": "https://github.com/NodeBB/NodeBB.git",
+      "ref": "c5ae8a70e1b0305af324ad7b1b0911d4023f1338",
+      "caseId": "instance_nodebb__nodebb-05f2236193f407cf8e2072757fbd6bb170bc13f0-vf2cf3cbd463b7ad942381f1c6d077626485a1e9e",
+      "language": "js",
+      "taskClass": "official_patch",
+      "qualityGatePassed": true,
+      "sourceQualityGatePassed": true,
+      "latencyPassed": true,
+      "expectedTopKPassed": true,
+      "companionGatePassed": true,
+      "returnedFiles": [
+        "src/topics/sorted.js",
+        "src/controllers/write/topics.js"
+      ],
+      "expectedFiles": [
+        "src/topics/sorted.js"
+      ],
+      "missingExpectedFiles": [],
+      "recommendations": [],
+      "contextDecision": "shrink",
+      "primeLatencyMs": 4295,
+      "primeTokens": 457,
+      "qualityScore": 100,
+      "officialEvaluation": {
+        "source": "swe_bench_pro",
+        "taskClass": "failure_first_debug",
+        "evaluator": "patch_verification",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "golden patch touches 1 production source file(s)",
+          "selected tests are available for verification setup",
+          "official before_repo_set_cmd is available"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      }
+    },
+    {
+      "repoId": "instance_protonmail__webclients-c5a2089ca2bfe9aa1d85a664b8ad87ef843a1c9c",
+      "repoName": "protonmail/webclients instance_protonmail__webclients-c5a2089ca2bfe9aa1d85a664b8ad87ef843a1c9c",
+      "repoUrl": "https://github.com/protonmail/webclients.git",
+      "ref": "83c2b47478a5224db61c6557ad326c2bbda18645",
+      "caseId": "instance_protonmail__webclients-c5a2089ca2bfe9aa1d85a664b8ad87ef843a1c9c",
+      "language": "ts",
+      "taskClass": "official_patch",
+      "qualityGatePassed": true,
+      "sourceQualityGatePassed": true,
+      "latencyPassed": true,
+      "expectedTopKPassed": true,
+      "companionGatePassed": true,
+      "returnedFiles": [
+        "applications/drive/src/app/store/_links/useLink.ts",
+        "applications/drive/src/app/store/_api/useDebouncedRequest.ts"
+      ],
+      "expectedFiles": [
+        "applications/drive/src/app/store/_links/useLink.ts"
+      ],
+      "missingExpectedFiles": [],
+      "recommendations": [],
+      "contextDecision": "shrink",
+      "primeLatencyMs": 4916,
+      "primeTokens": 478,
+      "qualityScore": 62,
+      "officialEvaluation": {
+        "source": "swe_bench_pro",
+        "taskClass": "failure_first_debug",
+        "evaluator": "patch_verification",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "golden patch touches 1 production source file(s)",
+          "selected tests are available for verification setup",
+          "official before_repo_set_cmd is available"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      }
+    },
+    {
+      "repoId": "instance_tutao__tutanota-219bc8f05d7b980e038bc1524cb021bf56397a1b-vee878bb72091875e912c52fc32bc60ec3760227b",
+      "repoName": "tutao/tutanota instance_tutao__tutanota-219bc8f05d7b980e038bc1524cb021bf56397a1b-vee878bb72091875e912c52fc32bc60ec3760227b",
+      "repoUrl": "https://github.com/tutao/tutanota.git",
+      "ref": "9dfb7c231f98a2d3bf48a99577d8a55cfdb2480b",
+      "caseId": "instance_tutao__tutanota-219bc8f05d7b980e038bc1524cb021bf56397a1b-vee878bb72091875e912c52fc32bc60ec3760227b",
+      "language": "ts",
+      "taskClass": "official_patch",
+      "qualityGatePassed": true,
+      "sourceQualityGatePassed": true,
+      "latencyPassed": true,
+      "expectedTopKPassed": true,
+      "companionGatePassed": true,
+      "returnedFiles": [
+        "src/api/worker/EventBusClient.ts",
+        "src/api/worker/rest/EntityRestCache.ts"
+      ],
+      "expectedFiles": [
+        "src/api/worker/EventBusClient.ts"
+      ],
+      "missingExpectedFiles": [],
+      "recommendations": [],
+      "contextDecision": "shrink",
+      "primeLatencyMs": 3032,
+      "primeTokens": 509,
+      "qualityScore": 62,
+      "officialEvaluation": {
+        "source": "swe_bench_pro",
+        "taskClass": "failure_first_debug",
+        "evaluator": "patch_verification",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "golden patch touches 1 production source file(s)",
+          "selected tests are available for verification setup",
+          "official before_repo_set_cmd is available"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      }
+    },
+    {
+      "repoId": "instance_internetarchive__openlibrary-2abe28b472ffed563a87cfe83685b161b35263b0-v13642507b4fc1f8d234172bf8129942da2c2ca26",
+      "repoName": "internetarchive/openlibrary instance_internetarchive__openlibrary-2abe28b472ffed563a87cfe83685b161b35263b0-v13642507b4fc1f8d234172bf8129942da2c2ca26",
+      "repoUrl": "https://github.com/internetarchive/openlibrary.git",
+      "ref": "eb8da9e755f4bf59f8f0bd2b021d3e49a87ccf4e",
+      "caseId": "instance_internetarchive__openlibrary-2abe28b472ffed563a87cfe83685b161b35263b0-v13642507b4fc1f8d234172bf8129942da2c2ca26",
+      "language": "python",
+      "taskClass": "official_patch",
+      "qualityGatePassed": true,
+      "sourceQualityGatePassed": true,
+      "latencyPassed": true,
+      "expectedTopKPassed": true,
+      "companionGatePassed": true,
+      "returnedFiles": [
+        "openlibrary/core/vendors.py",
+        "openlibrary/core/imports.py"
+      ],
+      "expectedFiles": [
+        "openlibrary/core/vendors.py"
+      ],
+      "missingExpectedFiles": [],
+      "recommendations": [],
+      "contextDecision": "shrink",
+      "primeLatencyMs": 2350,
+      "primeTokens": 451,
+      "qualityScore": 62,
+      "officialEvaluation": {
+        "source": "swe_bench_pro",
+        "taskClass": "failure_first_debug",
+        "evaluator": "patch_verification",
+        "kairnApplicability": "strong",
+        "kairnMetricEligible": true,
+        "liveRisk": "medium",
+        "reasons": [
+          "golden patch touches 1 production source file(s)",
+          "selected tests are available for verification setup",
+          "official before_repo_set_cmd is available"
+        ],
+        "recommendedModes": [
+          "baseline",
+          "kairn_codex_session",
+          "real_mcp_first"
+        ]
+      }
+    }
+  ]
+}

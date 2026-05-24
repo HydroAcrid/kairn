@@ -1,0 +1,29 @@
+{
+  "id": "post-launch-pytest-source-routing-live",
+  "name": "Post-Launch pytest Source Routing Live",
+  "cases": [
+    {
+      "id": "fixture-resolution-node-identify-source",
+      "mode": "agent",
+      "contextBehavior": "multi_file_debug",
+      "task": "Identify the smallest production source files involved when collected Python test nodes request fixture values during pytest runner setup. Do not edit files.",
+      "agentPrompt": "Diagnose source ownership only: identify the smallest production source files involved when collected Python test nodes request fixture values during pytest runner setup. Do not edit files. Return the relevant file paths and a short reason for each.",
+      "expectedFiles": [
+        "src/_pytest/fixtures.py",
+        "src/_pytest/python.py",
+        "src/_pytest/runner.py"
+      ],
+      "minExpectedHits": 2,
+      "excludedFiles": [
+        "testing/",
+        "doc/",
+        "scripts/"
+      ],
+      "qnaEvaluation": {
+        "minSourceMentions": 2,
+        "requireNoRepoChanges": true
+      },
+      "budget": 900
+    }
+  ]
+}

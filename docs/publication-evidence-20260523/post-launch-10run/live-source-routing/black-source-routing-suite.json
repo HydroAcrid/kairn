@@ -1,0 +1,29 @@
+{
+  "id": "post-launch-black-source-routing-live",
+  "name": "Post-Launch Black Source Routing Live",
+  "cases": [
+    {
+      "id": "line-generator-comments-identify-source",
+      "mode": "agent",
+      "contextBehavior": "multi_file_debug",
+      "task": "Identify the smallest production source files involved when Black LineGenerator creates output lines and comment handling changes line splitting behavior. Do not edit files.",
+      "agentPrompt": "Diagnose source ownership only: identify the smallest production source files involved when Black LineGenerator creates output lines and comment handling changes line splitting behavior. Do not edit files. Return the relevant file paths and a short reason for each.",
+      "expectedFiles": [
+        "src/black/linegen.py",
+        "src/black/lines.py",
+        "src/black/comments.py"
+      ],
+      "minExpectedHits": 2,
+      "excludedFiles": [
+        "tests/",
+        "docs/",
+        "profiling/"
+      ],
+      "qnaEvaluation": {
+        "minSourceMentions": 2,
+        "requireNoRepoChanges": true
+      },
+      "budget": 850
+    }
+  ]
+}

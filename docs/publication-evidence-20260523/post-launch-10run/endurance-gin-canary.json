@@ -1,0 +1,1020 @@
+{
+  "suiteId": "endurance-gin",
+  "suiteName": "Gin Router Group Endurance",
+  "startedAt": "2026-05-23T11:45:06.498Z",
+  "endedAt": "2026-05-23T11:49:39.277Z",
+  "reports": [
+    {
+      "mode": "baseline",
+      "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-OuC3Ch",
+      "turns": [
+        {
+          "turnId": "diagnose",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 28633,
+          "responseTokens": 25851,
+          "elapsedMs": 49931,
+          "actualFiles": [
+            "routergroup.go",
+            "gin.go",
+            "context.go"
+          ],
+          "agentTouchedFiles": [],
+          "expectedFiles": [
+            "routergroup.go",
+            "gin.go",
+            "context.go"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "fca03e5f8a61c960df298551dd05555fcf52587d823197a61cd0953fc8d123ae",
+            "preparedPromptHash": "fca03e5f8a61c960df298551dd05555fcf52587d823197a61cd0953fc8d123ae",
+            "commandHash": "de6364ec663212d0c4943bbfd6949d2326d8e67821477291507d3c4a3ec6c306",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "30cc3cb678622c2b58ff34bea6ab949893f8ca75971e64ac49a4a025a27a71be",
+            "expectedFileMentions": [
+              "routergroup.go",
+              "gin.go",
+              "context.go"
+            ],
+            "changedFiles": [
+              "routergroup.go"
+            ],
+            "seedPatchFiles": [
+              "routergroup.go"
+            ],
+            "agentTouchedFiles": [],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 28633,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "fix",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 19801,
+          "responseTokens": 10629,
+          "elapsedMs": 31024,
+          "actualFiles": [
+            "routergroup.go"
+          ],
+          "agentTouchedFiles": [
+            "routergroup.go"
+          ],
+          "expectedFiles": [
+            "routergroup.go"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "14f494784181cf9dbdb4eeb06877924a47589aeb5eb2329eebb003206de0d7ad",
+            "preparedPromptHash": "14f494784181cf9dbdb4eeb06877924a47589aeb5eb2329eebb003206de0d7ad",
+            "commandHash": "49a774a643a51821c25726a5892affb619bbc3541a16458c8c26b30708890bcf",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "45ff5b1ff62374c045b60b0113133418ae3a16dc9680976094a256890544ab23",
+            "expectedFileMentions": [
+              "routergroup.go"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "routergroup.go"
+            ],
+            "agentTouchedFiles": [
+              "routergroup.go"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 19801,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "verify",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 15672,
+          "responseTokens": 40806,
+          "elapsedMs": 49152,
+          "actualFiles": [
+            "routergroup.go"
+          ],
+          "agentTouchedFiles": [
+            "routergroup.go"
+          ],
+          "expectedFiles": [
+            "routergroup.go"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "e2abfa7fb2fa488bbdb5248c62f08575e443b2c3fadd2ddb2d742fb0df770ce8",
+            "preparedPromptHash": "e2abfa7fb2fa488bbdb5248c62f08575e443b2c3fadd2ddb2d742fb0df770ce8",
+            "commandHash": "5653397703121445d48784ee196d9a5feabd8ca7f06074dc1b12c25cf2ee3a15",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "6028663295a880897c5d3a025381657875036c914697a7cef4ec8409a4199e76",
+            "expectedFileMentions": [
+              "routergroup.go"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "routergroup.go"
+            ],
+            "agentTouchedFiles": [
+              "routergroup.go"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 15672,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "cleanup",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 5833,
+          "responseTokens": 4487,
+          "elapsedMs": 32055,
+          "actualFiles": [
+            "routergroup.go"
+          ],
+          "agentTouchedFiles": [
+            "routergroup.go"
+          ],
+          "expectedFiles": [
+            "routergroup.go"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "ad75ef143403784fb4f8a3cc2fe72f6fd03ab9a2935caef5ca83db87b517db55",
+            "preparedPromptHash": "ad75ef143403784fb4f8a3cc2fe72f6fd03ab9a2935caef5ca83db87b517db55",
+            "commandHash": "86598ec7f38bcf7caea88282687d5529151ba5bc8f1a4ae85d97117e93b9daf4",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "2aebb8d08553deaee14e8b2c59c486eabd25f813690270a7a29d63f285d2288a",
+            "expectedFileMentions": [
+              "routergroup.go"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "routergroup.go"
+            ],
+            "agentTouchedFiles": [
+              "routergroup.go"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 5833,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        }
+      ],
+      "totalObservedCodexTokens": 69939,
+      "totalResponseTokens": 81773,
+      "totalElapsedMs": 162192,
+      "qualityGatePassed": true,
+      "finalVerificationPassed": true,
+      "assistanceStatus": "none",
+      "assistanceActions": {
+        "emitted": 0,
+        "shrunk": 0,
+        "suppressed": 0,
+        "mcpCalls": 0,
+        "failureContexts": 0
+      },
+      "metadata": {
+        "finalVerificationCommandPassed": true,
+        "finalSourceInvariantPassed": true,
+        "finalSourceInvariantFailures": [],
+        "finalDiffScopePassed": true,
+        "finalDiffScopeViolations": [],
+        "finalChangedFiles": [],
+        "setupElapsedMs": 0,
+        "kairnSessionCount": 0,
+        "primeEmitted": 0,
+        "primeSuppressed": 0,
+        "hookInvocations": 0,
+        "failureContextUsed": 0,
+        "mcpToolCalls": 0,
+        "mcpFilesReturned": [],
+        "mcpReturnedFileCount": 0,
+        "mcpGuidedSourceFiles": [],
+        "mcpAttributedSourceFiles": [],
+        "mcpReturnedUsefulFileCount": 0,
+        "mcpGuidedUsefulFileCount": 0,
+        "mcpAttributedUsefulFileCount": 0
+      }
+    },
+    {
+      "mode": "real_mcp_first",
+      "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-GoMppt",
+      "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+      "turns": [
+        {
+          "turnId": "diagnose",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 19110,
+          "responseTokens": 6429,
+          "elapsedMs": 19614,
+          "actualFiles": [
+            "routergroup.go"
+          ],
+          "agentTouchedFiles": [],
+          "expectedFiles": [
+            "routergroup.go",
+            "gin.go",
+            "context.go"
+          ],
+          "missingExpectedFiles": [
+            "gin.go",
+            "context.go"
+          ],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "fca03e5f8a61c960df298551dd05555fcf52587d823197a61cd0953fc8d123ae",
+            "preparedPromptHash": "bbfed8e4a58f1dd671d8ec4b3690b957285e824e984491c8279661773b0de822",
+            "commandHash": "1e8461b636ee75cb2435c09ab9c4718ed706ecad8948215cb6fb13acf08169d1",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "9e60f6c18443c06c3a9d61152f54240bb34f813532fb23e954629bd74f927610",
+            "expectedFileMentions": [
+              "routergroup.go"
+            ],
+            "changedFiles": [
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md",
+              "routergroup.go"
+            ],
+            "seedPatchFiles": [
+              "routergroup.go",
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "agentTouchedFiles": [],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 19110,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "prepare_first",
+            "mcpShouldCallPrepare": true
+          }
+        },
+        {
+          "turnId": "fix",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 9053,
+          "responseTokens": 9252,
+          "elapsedMs": 30589,
+          "actualFiles": [
+            "routergroup.go"
+          ],
+          "agentTouchedFiles": [
+            "routergroup.go"
+          ],
+          "expectedFiles": [
+            "routergroup.go"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "14f494784181cf9dbdb4eeb06877924a47589aeb5eb2329eebb003206de0d7ad",
+            "preparedPromptHash": "9f20c63379cf0965675f92564ced30d1eaf9fc2d8e8f0e45e54131c277ea6cdd",
+            "commandHash": "e457fde0ac81e9a74c1f34d5b7450fc2c2befe14d784a0b22012f8e3d81e151f",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "a2c1edd2846ed0f29eb002a7c13c812fe967aab933ded37377405b1a57b46a89",
+            "expectedFileMentions": [
+              "routergroup.go"
+            ],
+            "changedFiles": [
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "seedPatchFiles": [
+              "routergroup.go",
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "agentTouchedFiles": [
+              "routergroup.go"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 9053,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "continue_known_source",
+            "mcpKnownSource": "routergroup.go",
+            "mcpShouldCallPrepare": false
+          }
+        },
+        {
+          "turnId": "verify",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 18577,
+          "responseTokens": 8480,
+          "elapsedMs": 37872,
+          "actualFiles": [
+            "routergroup.go"
+          ],
+          "agentTouchedFiles": [
+            "routergroup.go"
+          ],
+          "expectedFiles": [
+            "routergroup.go"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "e2abfa7fb2fa488bbdb5248c62f08575e443b2c3fadd2ddb2d742fb0df770ce8",
+            "preparedPromptHash": "2508df9c3709ad47da03b78f05f30d648ede229af1099fc6359b606402019a1a",
+            "commandHash": "b417650db4dda8e15f604ea9cd5c05a546c02ceef3033f834891fddfe425b562",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "23aa992cc4e2484d817ded6503379ab83422308257397f4c21c58968fad35691",
+            "expectedFileMentions": [
+              "routergroup.go"
+            ],
+            "changedFiles": [
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "seedPatchFiles": [
+              "routergroup.go",
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "agentTouchedFiles": [
+              "routergroup.go"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 18577,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "continue_known_source",
+            "mcpKnownSource": "routergroup.go",
+            "mcpShouldCallPrepare": false
+          }
+        },
+        {
+          "turnId": "cleanup",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 2992,
+          "responseTokens": 2274,
+          "elapsedMs": 20469,
+          "actualFiles": [
+            "routergroup.go"
+          ],
+          "agentTouchedFiles": [
+            "routergroup.go"
+          ],
+          "expectedFiles": [
+            "routergroup.go"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "ad75ef143403784fb4f8a3cc2fe72f6fd03ab9a2935caef5ca83db87b517db55",
+            "preparedPromptHash": "b2d2636fdd3c1f9cbb48d751c7e7886b811b4fe91164c75b3b069c694a5d6d6a",
+            "commandHash": "ec51f51cd2f0bda89502abcada8c51bea4792a58eabf9599a9191df232a829c8",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "865681783fda5ad627b6feee469fda45bd3e946b4f0bf8bda2d90f19e1b9caa6",
+            "expectedFileMentions": [
+              "routergroup.go"
+            ],
+            "changedFiles": [
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "seedPatchFiles": [
+              "routergroup.go",
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "agentTouchedFiles": [
+              "routergroup.go"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 2992,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "continue_known_source",
+            "mcpKnownSource": "routergroup.go",
+            "mcpShouldCallPrepare": false
+          }
+        }
+      ],
+      "totalObservedCodexTokens": 49732,
+      "totalResponseTokens": 26435,
+      "totalElapsedMs": 109393,
+      "qualityGatePassed": true,
+      "finalVerificationPassed": true,
+      "assistanceStatus": "active",
+      "assistanceActions": {
+        "emitted": 0,
+        "shrunk": 0,
+        "suppressed": 0,
+        "mcpCalls": 1,
+        "failureContexts": 1
+      },
+      "ledger": {
+        "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+        "events": 22,
+        "currentPhase": "debugging",
+        "recommendedFiles": [
+          "routergroup.go"
+        ],
+        "shownFiles": [
+          "routergroup.go"
+        ],
+        "agentMentionedFiles": [
+          "routergroup.go"
+        ],
+        "agentTouchedFiles": [
+          "routergroup.go"
+        ],
+        "repeatedFilesAvoided": 0,
+        "repeatedSnippetsAvoided": 0,
+        "recommendedFilesUsed": [
+          "routergroup.go"
+        ],
+        "repeatedlyTouchedFiles": [
+          "routergroup.go"
+        ],
+        "unresolvedFailures": 0,
+        "workingSet": {
+          "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+          "currentPhase": "debugging",
+          "activeFiles": [
+            "routergroup.go"
+          ],
+          "recentlyTouchedFiles": [
+            "routergroup.go"
+          ],
+          "shownFiles": [
+            "routergroup.go"
+          ],
+          "ignoredRecommendedFiles": [],
+          "ruledOutFiles": [],
+          "staleFiles": [],
+          "currentInvariant": {
+            "statement": "Diagnose the Gin RouterGroup regression where child groups should inherit parent middleware by combining handlers.",
+            "filePath": "routergroup.go",
+            "confidence": 90,
+            "sourceEventId": 4
+          },
+          "lastPassingVerification": {
+            "summary": "Final endurance verification passed.",
+            "createdAt": "2026-05-23T11:49:39.273Z"
+          },
+          "openRisks": []
+        },
+        "recentEvents": [
+          {
+            "id": 3,
+            "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+            "kind": "phase_change",
+            "contentHash": "62e7211a3dfe1b20d60137d220bfcea619479ec6619968c7f64fb8bc5fc6bc73",
+            "tokenEstimate": 0,
+            "source": "mcp",
+            "summary": "Phase changed from discovery to debugging",
+            "metadata": {
+              "previousPhase": "discovery",
+              "phase": "debugging"
+            },
+            "createdAt": "2026-05-23T11:47:58.623Z"
+          },
+          {
+            "id": 4,
+            "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+            "kind": "context_shown",
+            "filePath": "routergroup.go",
+            "contentHash": "f60c23c22009748200aeecf21801dff35d422f8a595b6ce51d725b1cb1b59a73",
+            "tokenEstimate": 779,
+            "source": "mcp",
+            "summary": "Kairn showed context for routergroup.go",
+            "metadata": {
+              "taskHash": "af7a0dcaa415c0628f6cd5696340f1fda96fdbba17aa07907496daca6d4a03fe",
+              "phase": "debugging",
+              "policyReason": "failure_reemitted",
+              "policyAction": "emit",
+              "invariant": {
+                "file": "routergroup.go",
+                "statement": "Diagnose the Gin RouterGroup regression where child groups should inherit parent middleware by combining handlers.",
+                "evidence": "// Use of this source code is governed by a MIT style",
+                "verificationCommand": "Run the narrowest failing check from the task.",
+                "confidence": 90,
+                "source": "seed"
+              },
+              "workingSetActiveFiles": []
+            },
+            "createdAt": "2026-05-23T11:47:58.623Z"
+          },
+          {
+            "id": 5,
+            "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+            "kind": "test_run",
+            "turnId": "diagnose",
+            "contentHash": "713d2f71b7f0869baf561405f4ee4646752483338e415bcd01b6442ddfcbeef9",
+            "tokenEstimate": 13,
+            "source": "agent",
+            "summary": "Agent command for endurance turn diagnose exited 0.",
+            "metadata": {
+              "commandHash": "1e8461b636ee75cb2435c09ab9c4718ed706ecad8948215cb6fb13acf08169d1",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "9e60f6c18443c06c3a9d61152f54240bb34f813532fb23e954629bd74f927610"
+            },
+            "createdAt": "2026-05-23T11:48:10.325Z"
+          },
+          {
+            "id": 6,
+            "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+            "kind": "agent_file_mentioned",
+            "turnId": "diagnose",
+            "filePath": "routergroup.go",
+            "contentHash": "448fca94dfa7886fe8c8639d78a7cff051e6a50a1969d15e868817bf3626c145",
+            "tokenEstimate": 8,
+            "source": "agent",
+            "summary": "Agent mentioned routergroup.go.",
+            "metadata": {
+              "turnId": "diagnose"
+            },
+            "createdAt": "2026-05-23T11:48:10.326Z"
+          },
+          {
+            "id": 7,
+            "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+            "kind": "test_run",
+            "turnId": "fix",
+            "contentHash": "bf3bd5cf9d6b3696411fceb86b9f10a4125489b63cb0a05037ed4b0ae46e889e",
+            "tokenEstimate": 12,
+            "source": "agent",
+            "summary": "Agent command for endurance turn fix exited 0.",
+            "metadata": {
+              "commandHash": "e457fde0ac81e9a74c1f34d5b7450fc2c2befe14d784a0b22012f8e3d81e151f",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "a2c1edd2846ed0f29eb002a7c13c812fe967aab933ded37377405b1a57b46a89"
+            },
+            "createdAt": "2026-05-23T11:48:40.914Z"
+          },
+          {
+            "id": 8,
+            "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+            "kind": "agent_file_mentioned",
+            "turnId": "fix",
+            "filePath": "routergroup.go",
+            "contentHash": "448fca94dfa7886fe8c8639d78a7cff051e6a50a1969d15e868817bf3626c145",
+            "tokenEstimate": 8,
+            "source": "agent",
+            "summary": "Agent mentioned routergroup.go.",
+            "metadata": {
+              "turnId": "fix"
+            },
+            "createdAt": "2026-05-23T11:48:40.915Z"
+          },
+          {
+            "id": 9,
+            "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+            "kind": "agent_file_touched",
+            "turnId": "fix",
+            "filePath": "routergroup.go",
+            "contentHash": "a734a4e6ee07c31984aa3d264d904964f0a3186f637818f5c71c86d38188310d",
+            "tokenEstimate": 8,
+            "source": "agent",
+            "summary": "Agent touched routergroup.go.",
+            "metadata": {
+              "turnId": "fix"
+            },
+            "createdAt": "2026-05-23T11:48:40.915Z"
+          },
+          {
+            "id": 10,
+            "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+            "kind": "diff_seen",
+            "turnId": "fix",
+            "filePath": "routergroup.go",
+            "contentHash": "368d09fc0d79da7317cdd4a4cb60263a52f130a7488284f4768c1dd84d3446d4",
+            "tokenEstimate": 14,
+            "source": "agent",
+            "summary": "Diff touched routergroup.go during endurance turn fix.",
+            "metadata": {
+              "turnId": "fix"
+            },
+            "createdAt": "2026-05-23T11:48:40.915Z"
+          },
+          {
+            "id": 11,
+            "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+            "kind": "verification_passed",
+            "turnId": "fix",
+            "filePath": "routergroup.go",
+            "contentHash": "8798a3c810af3c14b3549ba0fac6a0ac22ff669accc8acbd41a29b54dd82a266",
+            "tokenEstimate": 11,
+            "source": "bench",
+            "summary": "Verification passed for endurance turn fix.",
+            "metadata": {
+              "verificationCommandHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "sourceInvariantChecked": true,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": true,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "qualityGatePassed": true
+            },
+            "createdAt": "2026-05-23T11:48:40.915Z"
+          },
+          {
+            "id": 12,
+            "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+            "kind": "test_run",
+            "turnId": "verify",
+            "contentHash": "c8029656c22eb691d685bae7733579bb65927f5b5097e9a5d784cf50a73a9638",
+            "tokenEstimate": 13,
+            "source": "agent",
+            "summary": "Agent command for endurance turn verify exited 0.",
+            "metadata": {
+              "commandHash": "b417650db4dda8e15f604ea9cd5c05a546c02ceef3033f834891fddfe425b562",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "23aa992cc4e2484d817ded6503379ab83422308257397f4c21c58968fad35691"
+            },
+            "createdAt": "2026-05-23T11:49:18.786Z"
+          },
+          {
+            "id": 13,
+            "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+            "kind": "agent_file_mentioned",
+            "turnId": "verify",
+            "filePath": "routergroup.go",
+            "contentHash": "448fca94dfa7886fe8c8639d78a7cff051e6a50a1969d15e868817bf3626c145",
+            "tokenEstimate": 8,
+            "source": "agent",
+            "summary": "Agent mentioned routergroup.go.",
+            "metadata": {
+              "turnId": "verify"
+            },
+            "createdAt": "2026-05-23T11:49:18.786Z"
+          },
+          {
+            "id": 14,
+            "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+            "kind": "agent_file_touched",
+            "turnId": "verify",
+            "filePath": "routergroup.go",
+            "contentHash": "a734a4e6ee07c31984aa3d264d904964f0a3186f637818f5c71c86d38188310d",
+            "tokenEstimate": 8,
+            "source": "agent",
+            "summary": "Agent touched routergroup.go.",
+            "metadata": {
+              "turnId": "verify"
+            },
+            "createdAt": "2026-05-23T11:49:18.787Z"
+          },
+          {
+            "id": 15,
+            "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+            "kind": "diff_seen",
+            "turnId": "verify",
+            "filePath": "routergroup.go",
+            "contentHash": "fee2d95c4571df61cc70c979f55137e0d050469d9a86b6b32dfe7d6669754090",
+            "tokenEstimate": 15,
+            "source": "agent",
+            "summary": "Diff touched routergroup.go during endurance turn verify.",
+            "metadata": {
+              "turnId": "verify"
+            },
+            "createdAt": "2026-05-23T11:49:18.787Z"
+          },
+          {
+            "id": 16,
+            "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+            "kind": "verification_passed",
+            "turnId": "verify",
+            "filePath": "routergroup.go",
+            "contentHash": "8605106192b9b8eb855d0aaec06e257503bbf955aa4fb414b6a7b60be4613b43",
+            "tokenEstimate": 12,
+            "source": "bench",
+            "summary": "Verification passed for endurance turn verify.",
+            "metadata": {
+              "verificationCommandHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "sourceInvariantChecked": true,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": true,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "qualityGatePassed": true
+            },
+            "createdAt": "2026-05-23T11:49:18.787Z"
+          },
+          {
+            "id": 17,
+            "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+            "kind": "test_run",
+            "turnId": "cleanup",
+            "contentHash": "25bc38a4b4a054885fb490222949134ffa62b481ad5554f2be4c7d965c856a78",
+            "tokenEstimate": 13,
+            "source": "agent",
+            "summary": "Agent command for endurance turn cleanup exited 0.",
+            "metadata": {
+              "commandHash": "ec51f51cd2f0bda89502abcada8c51bea4792a58eabf9599a9191df232a829c8",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "865681783fda5ad627b6feee469fda45bd3e946b4f0bf8bda2d90f19e1b9caa6"
+            },
+            "createdAt": "2026-05-23T11:49:39.255Z"
+          },
+          {
+            "id": 18,
+            "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+            "kind": "agent_file_mentioned",
+            "turnId": "cleanup",
+            "filePath": "routergroup.go",
+            "contentHash": "448fca94dfa7886fe8c8639d78a7cff051e6a50a1969d15e868817bf3626c145",
+            "tokenEstimate": 8,
+            "source": "agent",
+            "summary": "Agent mentioned routergroup.go.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-23T11:49:39.256Z"
+          },
+          {
+            "id": 19,
+            "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+            "kind": "agent_file_touched",
+            "turnId": "cleanup",
+            "filePath": "routergroup.go",
+            "contentHash": "a734a4e6ee07c31984aa3d264d904964f0a3186f637818f5c71c86d38188310d",
+            "tokenEstimate": 8,
+            "source": "agent",
+            "summary": "Agent touched routergroup.go.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-23T11:49:39.256Z"
+          },
+          {
+            "id": 20,
+            "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+            "kind": "diff_seen",
+            "turnId": "cleanup",
+            "filePath": "routergroup.go",
+            "contentHash": "059a0c9e23dbe0008445b4a9da86357455e9fb82a161ae03dad6291632bcd6df",
+            "tokenEstimate": 15,
+            "source": "agent",
+            "summary": "Diff touched routergroup.go during endurance turn cleanup.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-23T11:49:39.256Z"
+          },
+          {
+            "id": 21,
+            "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+            "kind": "verification_passed",
+            "turnId": "cleanup",
+            "filePath": "routergroup.go",
+            "contentHash": "f9a048be4dd4ede3a07772ed78426e864fc69b14269081608ca1d719c24ae210",
+            "tokenEstimate": 12,
+            "source": "bench",
+            "summary": "Verification passed for endurance turn cleanup.",
+            "metadata": {
+              "verificationCommandHash": "20ff7dd0bd060f1f2986bfced2c5cce51f91b038f236ebea99c2dfdd19d613ba",
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantChecked": true,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": true,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "qualityGatePassed": true
+            },
+            "createdAt": "2026-05-23T11:49:39.256Z"
+          },
+          {
+            "id": 22,
+            "sessionId": "task_b58f2c9a-3a70-47f4-8339-e2df7a492f73",
+            "kind": "verification_passed",
+            "contentHash": "01686a52d490ab8e273bc13297bc95ca3a956265b15943a23c3c2801a08de538",
+            "tokenEstimate": 9,
+            "source": "bench",
+            "summary": "Final endurance verification passed.",
+            "metadata": {
+              "finalVerificationCommandHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "finalVerificationOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "finalSourceInvariantPassed": true,
+              "finalSourceInvariantFailures": [],
+              "finalDiffScopePassed": true,
+              "finalDiffScopeViolations": []
+            },
+            "createdAt": "2026-05-23T11:49:39.273Z"
+          }
+        ]
+      },
+      "metadata": {
+        "finalVerificationCommandPassed": true,
+        "finalSourceInvariantPassed": true,
+        "finalSourceInvariantFailures": [],
+        "finalDiffScopePassed": true,
+        "finalDiffScopeViolations": [],
+        "finalChangedFiles": [],
+        "setupElapsedMs": 374,
+        "setupCommandHash": "834ebc2ac2cb9d632d7b9387836fb0f69844c26b3fdcc1dde0e310df7db4da76",
+        "setupExitCode": 0,
+        "setupTimedOut": false,
+        "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "setupOutputTokens": 0,
+        "setupChangedFiles": [
+          ".codex/config.toml",
+          ".codex/hooks.json",
+          "AGENTS.md",
+          "routergroup.go"
+        ],
+        "kairnSessionCount": 1,
+        "primeEmitted": 0,
+        "primeSuppressed": 0,
+        "hookInvocations": 0,
+        "failureContextUsed": 0,
+        "mcpToolCalls": 1,
+        "mcpFilesReturned": [
+          "routergroup.go"
+        ],
+        "mcpReturnedFileCount": 1,
+        "mcpGuidedSourceFiles": [
+          "routergroup.go"
+        ],
+        "mcpAttributedSourceFiles": [
+          "routergroup.go"
+        ],
+        "mcpReturnedUsefulFileCount": 1,
+        "mcpGuidedUsefulFileCount": 1,
+        "mcpAttributedUsefulFileCount": 1,
+        "mcpObservedTokensPerCall": 49732,
+        "mcpObservedTokensPerUsefulFile": 49732
+      }
+    }
+  ],
+  "deltas": {
+    "real_mcp_first": {
+      "baselineTokens": 69939,
+      "modeTokens": 49732,
+      "savedTokens": 20207,
+      "savingsRate": 0.2889232045067845,
+      "qualityGatePassed": true,
+      "assistanceStatus": "active",
+      "assistanceEligible": true,
+      "baselineDifficulty": "expensive_pass",
+      "baselineTokenCost": 69939,
+      "abstentionOutcome": "not_applicable",
+      "missedOpportunity": false,
+      "overAssist": false,
+      "harmfulAssist": false,
+      "assistClassification": "valid_assist",
+      "validSavings": 20207
+    }
+  },
+  "recommendations": [
+    "real_mcp_first: repeatedly touched files suggest a follow-up focused cleanup context: routergroup.go."
+  ]
+}

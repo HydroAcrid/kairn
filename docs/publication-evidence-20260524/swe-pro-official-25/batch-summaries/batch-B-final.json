@@ -1,0 +1,123 @@
+{
+  "generatedAt": "2026-05-24T09:42:40.603Z",
+  "batch": "B",
+  "run": "post-scope-stopcondition-rerun5",
+  "baselineReference": "after-selected-test-filter.exec-order-rerun2",
+  "summary": {
+    "total": 4,
+    "clean_official_savings": 3,
+    "official_token_regression": 1,
+    "baselineOfficialPasses": 4,
+    "kairnOfficialPasses": 4,
+    "cleanSavingsTokens": 36906,
+    "cleanSavingsMedianReductionPct": 21.6
+  },
+  "regressionsByClass": {
+    "multi_file_debug": 1
+  },
+  "pauseTriggered": false,
+  "rows": [
+    {
+      "rowId": "instance_ansible__ansible-0fd88717c953b92ed8a50495d55e630eb5d59166-vba6da65a0f3baefda7a058ebbd0a8dcafb8512f5",
+      "taskClass": "multi_file_debug",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": true,
+      "baselineScopePass": true,
+      "kairnScopePass": true,
+      "baselineTokens": 52126,
+      "kairnTokens": 40852,
+      "tokenDelta": 11274,
+      "reductionPct": 21.6,
+      "classification": "clean_official_savings",
+      "kairnPrimeEmitted": 1,
+      "kairnPrimeSuppressed": 0,
+      "kairnPrimeTokens": 215,
+      "baselineChangedFiles": [
+        "lib/ansible/plugins/lookup/password.py"
+      ],
+      "kairnChangedFiles": [
+        "lib/ansible/plugins/lookup/password.py"
+      ],
+      "kairnRequiredTouchedSatisfied": false,
+      "kairnMissingRequiredTouchedFiles": [
+        "lib/ansible/utils/encrypt.py"
+      ]
+    },
+    {
+      "rowId": "instance_ansible__ansible-5f4e332e3762999d94af27746db29ff1729252c1-v0f01c69f1e2528b935359cfe578530722bca2c59",
+      "taskClass": "failure_first_debug",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": true,
+      "baselineScopePass": true,
+      "kairnScopePass": true,
+      "baselineTokens": 56658,
+      "kairnTokens": 34347,
+      "tokenDelta": 22311,
+      "reductionPct": 39.4,
+      "classification": "clean_official_savings",
+      "kairnPrimeEmitted": 1,
+      "kairnPrimeSuppressed": 0,
+      "kairnPrimeTokens": 460,
+      "baselineChangedFiles": [
+        "lib/ansible/config/manager.py"
+      ],
+      "kairnChangedFiles": [
+        "lib/ansible/config/manager.py"
+      ],
+      "kairnRequiredTouchedSatisfied": true,
+      "kairnMissingRequiredTouchedFiles": []
+    },
+    {
+      "rowId": "instance_ansible__ansible-0ea40e09d1b35bcb69ff4d9cecf3d0defa4b36e8-v30a923fb5c164d6cd18280c02422f75e611e8fb2",
+      "taskClass": "multi_file_debug",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": true,
+      "baselineScopePass": true,
+      "kairnScopePass": true,
+      "baselineTokens": 23797,
+      "kairnTokens": 34257,
+      "tokenDelta": -10460,
+      "reductionPct": -44,
+      "classification": "official_token_regression",
+      "kairnPrimeEmitted": 1,
+      "kairnPrimeSuppressed": 0,
+      "kairnPrimeTokens": 512,
+      "baselineChangedFiles": [
+        "lib/ansible/vars/manager.py"
+      ],
+      "kairnChangedFiles": [
+        "lib/ansible/vars/manager.py"
+      ],
+      "kairnRequiredTouchedSatisfied": false,
+      "kairnMissingRequiredTouchedFiles": [
+        "lib/ansible/utils/vars.py"
+      ]
+    },
+    {
+      "rowId": "instance_internetarchive__openlibrary-fad4a40acf5ff5f06cd7441a5c7baf41a7d81fe4-vfa6ff903cb27f336e17654595dd900fa943dcd91",
+      "taskClass": "multi_file_debug",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": true,
+      "baselineScopePass": true,
+      "kairnScopePass": true,
+      "baselineTokens": 39663,
+      "kairnTokens": 36342,
+      "tokenDelta": 3321,
+      "reductionPct": 8.4,
+      "classification": "clean_official_savings",
+      "kairnPrimeEmitted": 1,
+      "kairnPrimeSuppressed": 0,
+      "kairnPrimeTokens": 196,
+      "baselineChangedFiles": [
+        "openlibrary/catalog/get_ia.py"
+      ],
+      "kairnChangedFiles": [
+        "openlibrary/catalog/get_ia.py"
+      ],
+      "kairnRequiredTouchedSatisfied": false,
+      "kairnMissingRequiredTouchedFiles": [
+        "openlibrary/catalog/marc/marc_subject.py"
+      ]
+    }
+  ]
+}

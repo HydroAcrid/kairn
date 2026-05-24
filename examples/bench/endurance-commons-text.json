@@ -1,0 +1,104 @@
+{
+  "id": "endurance-commons-text-caseutils",
+  "name": "Commons Text CaseUtils Endurance",
+  "task": "Debug and verify a seeded Commons Text CaseUtils delimiter regression across a source-rescue session.",
+  "seed": {
+    "repoUrl": "https://github.com/apache/commons-text.git",
+    "ref": "896c524302cf6b2481c08573ad2e3e2ae19e1582",
+    "cloneDepth": 1,
+    "setupPatchFile": "./patches/commons-text-caseutils-space-delimiter.patch",
+    "expectedFailureCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('src/main/java/org/apache/commons/text/CaseUtils.java', 'utf8');\nconst restoresDefaultSpace = /^\\s*delimiterHashSet\\.add\\((Character\\.codePointAt\\(new char\\[\\]\\s*\\{' '\\}, 0\\)|\\(int\\) ' ')\\);/m.test(source);\nconst stillCommented = source.includes(\"// delimiterHashSet.add(Character.codePointAt(new char[]{' '}, 0));\");\nconst fixed = restoresDefaultSpace && !stillCommented;\nprocess.exit(fixed ? 1 : 0);\nNODE",
+    "testCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('src/main/java/org/apache/commons/text/CaseUtils.java', 'utf8');\nconst restoresDefaultSpace = /^\\s*delimiterHashSet\\.add\\((Character\\.codePointAt\\(new char\\[\\]\\s*\\{' '\\}, 0\\)|\\(int\\) ' ')\\);/m.test(source);\nconst stillCommented = source.includes(\"// delimiterHashSet.add(Character.codePointAt(new char[]{' '}, 0));\");\nconst fixed = restoresDefaultSpace && !stillCommented;\nprocess.exit(fixed ? 0 : 1);\nNODE"
+  },
+  "turns": [
+    {
+      "id": "diagnose",
+      "task": "Diagnose why CaseUtils.toCamelCase no longer treats whitespace as the default delimiter.",
+      "agentPrompt": "Diagnose the seeded Commons Text regression. CaseUtils.toCamelCase should treat space as the default delimiter when no delimiter characters are provided. Identify the smallest production source file involved; do not edit yet.",
+      "expectedFiles": [
+        "src/main/java/org/apache/commons/text/CaseUtils.java",
+        "src/main/java/org/apache/commons/text/WordUtils.java"
+      ],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["src/test/", "src/site/", "src/main/javadoc/"],
+      "budget": 800
+    },
+    {
+      "id": "fix-source",
+      "task": "Fix the default-space delimiter regression in production source.",
+      "agentPrompt": "Fix the seeded CaseUtils.toCamelCase regression in production source only. Restore the default space delimiter behavior. Do not edit tests, site docs, javadocs, generated files, or unrelated text utilities.",
+      "expectedFiles": ["src/main/java/org/apache/commons/text/CaseUtils.java"],
+      "requiredTouchedFiles": ["src/main/java/org/apache/commons/text/CaseUtils.java"],
+      "excludedFiles": ["src/test/", "src/site/", "src/main/javadoc/"],
+      "verificationCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('src/main/java/org/apache/commons/text/CaseUtils.java', 'utf8');\nconst restoresDefaultSpace = /^\\s*delimiterHashSet\\.add\\((Character\\.codePointAt\\(new char\\[\\]\\s*\\{' '\\}, 0\\)|\\(int\\) ' ')\\);/m.test(source);\nconst stillCommented = source.includes(\"// delimiterHashSet.add(Character.codePointAt(new char[]{' '}, 0));\");\nconst fixed = restoresDefaultSpace && !stillCommented;\nprocess.exit(fixed ? 0 : 1);\nNODE",
+      "sourceInvariants": [
+        {
+          "file": "src/main/java/org/apache/commons/text/CaseUtils.java",
+          "requiredPresent": ["delimiterHashSet.add"],
+          "requiredAbsent": ["// delimiterHashSet.add(Character.codePointAt(new char[]{' '}, 0));"]
+        }
+      ],
+      "allowedDiffScopes": [
+        {
+          "file": "src/main/java/org/apache/commons/text/CaseUtils.java",
+          "symbols": ["toDelimiterSet"],
+          "allowWholeFile": true
+        }
+      ],
+      "budget": 800
+    },
+    {
+      "id": "verify",
+      "task": "Verify the source invariant without broadening scope.",
+      "agentPrompt": "Run the smallest source-invariant verification for the CaseUtils fix. If it passes, keep the edit scope unchanged. If it fails, use the failure output before reading new files.",
+      "expectedFiles": ["src/main/java/org/apache/commons/text/CaseUtils.java"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["src/test/", "src/site/", "src/main/javadoc/"],
+      "verificationCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('src/main/java/org/apache/commons/text/CaseUtils.java', 'utf8');\nconst restoresDefaultSpace = /^\\s*delimiterHashSet\\.add\\((Character\\.codePointAt\\(new char\\[\\]\\s*\\{' '\\}, 0\\)|\\(int\\) ' ')\\);/m.test(source);\nconst stillCommented = source.includes(\"// delimiterHashSet.add(Character.codePointAt(new char[]{' '}, 0));\");\nconst fixed = restoresDefaultSpace && !stillCommented;\nprocess.exit(fixed ? 0 : 1);\nNODE",
+      "budget": 600
+    },
+    {
+      "id": "diff-review",
+      "task": "Review the diff for scope discipline.",
+      "agentPrompt": "Review the current diff and confirm it only changes the CaseUtils production source needed for the delimiter regression.",
+      "expectedFiles": ["src/main/java/org/apache/commons/text/CaseUtils.java"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["src/test/", "src/site/", "src/main/javadoc/"],
+      "budget": 500
+    },
+    {
+      "id": "repeat-context",
+      "task": "Avoid rereading unchanged source context.",
+      "agentPrompt": "Continue from the known CaseUtils source and summarize the invariant for future turns. Do not reread unchanged files unless verification fails or scope expands.",
+      "expectedFiles": ["src/main/java/org/apache/commons/text/CaseUtils.java"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["src/test/", "src/site/", "src/main/javadoc/"],
+      "budget": 500
+    },
+    {
+      "id": "cleanup",
+      "task": "Final cleanup check.",
+      "agentPrompt": "Perform a final cleanup check. The only intended production change is restoring the default space delimiter in CaseUtils.toDelimiterSet. Keep any response concise.",
+      "expectedFiles": ["src/main/java/org/apache/commons/text/CaseUtils.java"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["src/test/", "src/site/", "src/main/javadoc/"],
+      "verificationCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('src/main/java/org/apache/commons/text/CaseUtils.java', 'utf8');\nconst restoresDefaultSpace = /^\\s*delimiterHashSet\\.add\\((Character\\.codePointAt\\(new char\\[\\]\\s*\\{' '\\}, 0\\)|\\(int\\) ' ')\\);/m.test(source);\nconst stillCommented = source.includes(\"// delimiterHashSet.add(Character.codePointAt(new char[]{' '}, 0));\");\nconst fixed = restoresDefaultSpace && !stillCommented;\nprocess.exit(fixed ? 0 : 1);\nNODE",
+      "budget": 500
+    }
+  ],
+  "finalVerificationCommand": "node - <<'NODE'\nconst fs = require('fs');\nconst source = fs.readFileSync('src/main/java/org/apache/commons/text/CaseUtils.java', 'utf8');\nconst restoresDefaultSpace = /^\\s*delimiterHashSet\\.add\\((Character\\.codePointAt\\(new char\\[\\]\\s*\\{' '\\}, 0\\)|\\(int\\) ' ')\\);/m.test(source);\nconst stillCommented = source.includes(\"// delimiterHashSet.add(Character.codePointAt(new char[]{' '}, 0));\");\nconst fixed = restoresDefaultSpace && !stillCommented;\nprocess.exit(fixed ? 0 : 1);\nNODE",
+  "finalSourceInvariants": [
+    {
+      "file": "src/main/java/org/apache/commons/text/CaseUtils.java",
+      "requiredPresent": ["delimiterHashSet.add"],
+      "requiredAbsent": ["// delimiterHashSet.add(Character.codePointAt(new char[]{' '}, 0));"]
+    }
+  ],
+  "allowedDiffScopes": [
+    {
+      "file": "src/main/java/org/apache/commons/text/CaseUtils.java",
+      "symbols": ["toDelimiterSet"],
+      "allowWholeFile": true
+    }
+  ]
+}

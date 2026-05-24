@@ -1,0 +1,338 @@
+[
+  {
+    "instance_id": "instance_element-hq__element-web-4c6b0d35add7ae8d58f71ea1711587e31081444b-vnan",
+    "repo": "element-hq/element-web",
+    "language": "js",
+    "prodFiles": [
+      "src/PosthogAnalytics.ts"
+    ],
+    "allFiles": [
+      "src/PosthogAnalytics.ts"
+    ],
+    "selected_test_files_to_run": "[\"test/PosthogAnalytics-test.ts\"]",
+    "dockerhub_tag": "element-hq.element-element-hq__element-web-4c6b0d35add7ae8d58f71ea1711587e31081444b",
+    "problem": "\"# Title:\\n\\nPosthogAnalytics fails to reliably handle initialization, anonymity, and event tracking under different configuration and privacy scenarios\\n\\n## Description\\n\\nThe `PosthogAnalytics` module does not consistently enforce correc"
+  },
+  {
+    "instance_id": "instance_gravitational__teleport-3ff75e29fb2153a2637fe7f83e49dc04b1c99c9f",
+    "repo": "gravitational/teleport",
+    "language": "go",
+    "prodFiles": [
+      "lib/auth/grpcserver.go"
+    ],
+    "allFiles": [
+      "lib/auth/grpcserver.go"
+    ],
+    "selected_test_files_to_run": "[\"TestDeleteLastMFADevice\"]",
+    "dockerhub_tag": "gravitational.teleport-gravitational__teleport-3ff75e29fb2153a2637fe7f83e49dc04b1c99c9f",
+    "problem": "## Title: Users can delete their only MFA device when multi factor authentication is required "
+  },
+  {
+    "instance_id": "instance_gravitational__teleport-37c3724d0d6637e959e39408ee351565d73afe71-vee9b09fb20c43af7e520f57e9239bbcf46b7113d",
+    "repo": "gravitational/teleport",
+    "language": "go",
+    "prodFiles": [
+      "lib/backend/firestore/firestorebk.go"
+    ],
+    "allFiles": [
+      "lib/backend/firestore/firestorebk.go"
+    ],
+    "selected_test_files_to_run": "[\"TestFirestoreDB\"]",
+    "dockerhub_tag": "gravitational.teleport-gravitational__teleport-37c3724d0d6637e959e39408ee351565d73afe71-vee9b09fb20c43af7e520f57e9239bbcf46b7113",
+    "problem": "# Marshal binary values as `[]byte` to ensure Firestore compatibility "
+  },
+  {
+    "instance_id": "instance_internetarchive__openlibrary-f8cc11d9c1575fdba5ac66aee0befca970da8d64-v13642507b4fc1f8d234172bf8129942da2c2ca26",
+    "repo": "internetarchive/openlibrary",
+    "language": "python",
+    "prodFiles": [
+      "scripts/import_open_textbook_library.py"
+    ],
+    "allFiles": [
+      "scripts/import_open_textbook_library.py"
+    ],
+    "selected_test_files_to_run": "[\"scripts/tests/test_import_open_textbook_library.py\"]",
+    "dockerhub_tag": "internetarchive.openlibrary-internetarchive__openlibrary-f8cc11d9c1575fdba5ac66aee0befca970da8d64-v13642507b4fc1f8d234172bf81299",
+    "problem": "# Open Library Lacks Automated Import Support for Open Textbook Library Content"
+  },
+  {
+    "instance_id": "instance_internetarchive__openlibrary-798055d1a19b8fa0983153b709f460be97e33064-v13642507b4fc1f8d234172bf8129942da2c2ca26",
+    "repo": "internetarchive/openlibrary",
+    "language": "python",
+    "prodFiles": [
+      "scripts/import_standard_ebooks.py"
+    ],
+    "allFiles": [
+      "scripts/import_standard_ebooks.py"
+    ],
+    "selected_test_files_to_run": "[\"scripts/tests/test_import_standard_ebooks.py\"]",
+    "dockerhub_tag": "internetarchive.openlibrary-internetarchive__openlibrary-798055d1a19b8fa0983153b709f460be97e33064-v13642507b4fc1f8d234172bf81299",
+    "problem": "\"# Bug Report: `map_data` fails with dictionary-based feed entries\\n\\n## Problem\\n\\nThe `map_data` function cannot handle Standard Ebooks feed entries because it assumes attribute-style access (for example, `entry.id`, `entry.language`). Th"
+  },
+  {
+    "instance_id": "instance_internetarchive__openlibrary-43f9e7e0d56a4f1d487533543c17040a029ac501-v0f5aece3601a5b4419f7ccec1dbda2071be28ee4",
+    "repo": "internetarchive/openlibrary",
+    "language": "python",
+    "prodFiles": [
+      "openlibrary/catalog/add_book/__init__.py"
+    ],
+    "allFiles": [
+      "openlibrary/catalog/add_book/__init__.py"
+    ],
+    "selected_test_files_to_run": "[\"openlibrary/catalog/add_book/tests/test_add_book.py\"]",
+    "dockerhub_tag": "internetarchive.openlibrary-internetarchive__openlibrary-43f9e7e0d56a4f1d487533543c17040a029ac501-v0f5aece3601a5b4419f7ccec1dbda",
+    "problem": "**Bug Report:** Mismatching of Editions for Wikisource Imports "
+  },
+  {
+    "instance_id": "instance_internetarchive__openlibrary-03095f2680f7516fca35a58e665bf2a41f006273-v8717e18970bcdc4e0d2cea3b1527752b21e74866",
+    "repo": "internetarchive/openlibrary",
+    "language": "python",
+    "prodFiles": [
+      "scripts/new-solr-updater.py"
+    ],
+    "allFiles": [
+      "scripts/new-solr-updater.py"
+    ],
+    "selected_test_files_to_run": "[\"scripts/tests/test_new_solr_updater.py\"]",
+    "dockerhub_tag": "internetarchive.openlibrary-internetarchive__openlibrary-03095f2680f7516fca35a58e665bf2a41f006273-v8717e18970bcdc4e0d2cea3b15277",
+    "problem": "# Fix source work not reindexed in `Solr` when moving editions."
+  },
+  {
+    "instance_id": "instance_internetarchive__openlibrary-3c48b4bb782189e0858e6c3fc7956046cf3e1cfb-v2d9a6c849c60ed19fd0858ce9e40b7cc8e097e59",
+    "repo": "internetarchive/openlibrary",
+    "language": "python",
+    "prodFiles": [
+      "openlibrary/catalog/marc/parse.py"
+    ],
+    "allFiles": [
+      "openlibrary/catalog/marc/parse.py"
+    ],
+    "selected_test_files_to_run": "[\"openlibrary/catalog/marc/tests/test_parse.py\"]",
+    "dockerhub_tag": "internetarchive.openlibrary-internetarchive__openlibrary-3c48b4bb782189e0858e6c3fc7956046cf3e1cfb-v2d9a6c849c60ed19fd0858ce9e40b",
+    "problem": "# Enhance Language Parsing in MARC Records "
+  },
+  {
+    "instance_id": "instance_internetarchive__openlibrary-de6ae10512f1b5ef585c8341b451bc49c9fd4996-vfa6ff903cb27f336e17654595dd900fa943dcd91",
+    "repo": "internetarchive/openlibrary",
+    "language": "python",
+    "prodFiles": [
+      "scripts/partner_batch_imports.py"
+    ],
+    "allFiles": [
+      "scripts/partner_batch_imports.py"
+    ],
+    "selected_test_files_to_run": "[\"scripts/tests/test_partner_batch_imports.py\"]",
+    "dockerhub_tag": "internetarchive.openlibrary-internetarchive__openlibrary-de6ae10512f1b5ef585c8341b451bc49c9fd4996-vfa6ff903cb27f336e17654595dd90",
+    "problem": "\"# Low-quality notebook publishers and misleading titles are polluting Open Library’s import pipeline\\n\\n# Description: \\n\\n A large number of low-quality books from notebook publishers and misleading reprints are entering Open Library thro"
+  },
+  {
+    "instance_id": "instance_internetarchive__openlibrary-6afdb09df692223c3a31df65cfa92f15e5614c01-v08d8e8889ec945ab821fb156c04c7d2e2810debb",
+    "repo": "internetarchive/openlibrary",
+    "language": "python",
+    "prodFiles": [
+      "scripts/solr_builder/solr_builder/fn_to_cli.py"
+    ],
+    "allFiles": [
+      "scripts/solr_builder/solr_builder/fn_to_cli.py"
+    ],
+    "selected_test_files_to_run": "[\"scripts/solr_builder/tests/test_fn_to_cli.py\"]",
+    "dockerhub_tag": "internetarchive.openlibrary-internetarchive__openlibrary-6afdb09df692223c3a31df65cfa92f15e5614c01-v08d8e8889ec945ab821fb156c04c7",
+    "problem": "## Title: Add support for `Path` and typed lists in `FnToCLI` arguments"
+  },
+  {
+    "instance_id": "instance_internetarchive__openlibrary-0d13e6b4bf80bced6c0946b969b9a1b6963f6bce-v76304ecdb3a5954fcf13feb710e8c40fcf24b73c",
+    "repo": "internetarchive/openlibrary",
+    "language": "python",
+    "prodFiles": [
+      "openlibrary/catalog/add_book/load_book.py"
+    ],
+    "allFiles": [
+      "openlibrary/catalog/add_book/load_book.py"
+    ],
+    "selected_test_files_to_run": "[\"openlibrary/catalog/add_book/tests/test_load_book.py\"]",
+    "dockerhub_tag": "internetarchive.openlibrary-internetarchive__openlibrary-0d13e6b4bf80bced6c0946b969b9a1b6963f6bce-v76304ecdb3a5954fcf13feb710e8c",
+    "problem": "## Title: Strip honorifics from imported author names during query building to prevent duplicates"
+  },
+  {
+    "instance_id": "instance_internetarchive__openlibrary-9cd47f4dc21e273320d9e30d889c864f8cb20ccf-v0f5aece3601a5b4419f7ccec1dbda2071be28ee4",
+    "repo": "internetarchive/openlibrary",
+    "language": "python",
+    "prodFiles": [
+      "openlibrary/catalog/add_book/__init__.py"
+    ],
+    "allFiles": [
+      "openlibrary/catalog/add_book/__init__.py"
+    ],
+    "selected_test_files_to_run": "[\"openlibrary/catalog/add_book/tests/test_add_book.py\"]",
+    "dockerhub_tag": "internetarchive.openlibrary-internetarchive__openlibrary-9cd47f4dc21e273320d9e30d889c864f8cb20ccf-v0f5aece3601a5b4419f7ccec1dbda",
+    "problem": "## Title: Book import may hang or timeout when processing cover images from unsupported hosts"
+  },
+  {
+    "instance_id": "instance_internetarchive__openlibrary-e390c1212055dd84a262a798e53487e771d3fb64-v8717e18970bcdc4e0d2cea3b1527752b21e74866",
+    "repo": "internetarchive/openlibrary",
+    "language": "python",
+    "prodFiles": [
+      "openlibrary/solr/update_work.py"
+    ],
+    "allFiles": [
+      "openlibrary/solr/update_work.py"
+    ],
+    "selected_test_files_to_run": "[\"openlibrary/tests/solr/test_update_work.py\"]",
+    "dockerhub_tag": "internetarchive.openlibrary-internetarchive__openlibrary-e390c1212055dd84a262a798e53487e771d3fb64-v8717e18970bcdc4e0d2cea3b15277",
+    "problem": "## Title:"
+  },
+  {
+    "instance_id": "instance_internetarchive__openlibrary-89e4b4431fe7506c365a6f6eb6f6d048d04c044c-v08d8e8889ec945ab821fb156c04c7d2e2810debb",
+    "repo": "internetarchive/openlibrary",
+    "language": "python",
+    "prodFiles": [
+      "openlibrary/plugins/upstream/addbook.py"
+    ],
+    "allFiles": [
+      "openlibrary/plugins/upstream/addbook.py"
+    ],
+    "selected_test_files_to_run": "[\"openlibrary/plugins/upstream/tests/test_addbook.py\"]",
+    "dockerhub_tag": "internetarchive.openlibrary-internetarchive__openlibrary-89e4b4431fe7506c365a6f6eb6f6d048d04c044c-v08d8e8889ec945ab821fb156c04c7",
+    "problem": "# Title:"
+  },
+  {
+    "instance_id": "instance_internetarchive__openlibrary-a48fd6ba9482c527602bc081491d9e8ae6e8226c-vfa6ff903cb27f336e17654595dd900fa943dcd91",
+    "repo": "internetarchive/openlibrary",
+    "language": "python",
+    "prodFiles": [
+      "openlibrary/plugins/worksearch/code.py"
+    ],
+    "allFiles": [
+      "openlibrary/plugins/worksearch/code.py"
+    ],
+    "selected_test_files_to_run": "[\"openlibrary/plugins/worksearch/tests/test_worksearch.py\"]",
+    "dockerhub_tag": "internetarchive.openlibrary-internetarchive__openlibrary-a48fd6ba9482c527602bc081491d9e8ae6e8226c-vfa6ff903cb27f336e17654595dd90",
+    "problem": "# Remove legacy XML parsing of solr output"
+  },
+  {
+    "instance_id": "instance_internetarchive__openlibrary-e8084193a895d8ee81200f49093389a3887479ce-ve8c8d62a2b60610a3c4631f5f23ed866bada9818",
+    "repo": "internetarchive/openlibrary",
+    "language": "python",
+    "prodFiles": [
+      "openlibrary/catalog/marc/parse.py"
+    ],
+    "allFiles": [
+      "openlibrary/catalog/marc/parse.py"
+    ],
+    "selected_test_files_to_run": "[\"openlibrary/catalog/marc/tests/test_parse.py\"]",
+    "dockerhub_tag": "internetarchive.openlibrary-internetarchive__openlibrary-e8084193a895d8ee81200f49093389a3887479ce-ve8c8d62a2b60610a3c4631f5f23ed",
+    "problem": "\"# Title: Retain Common Publisher Abbreviation [s.n.] in MARC Records\\n\\n## Description \\nWhen parsing MARC publication data, the output for the unknown publisher abbreviation is not following the standard presentation. For “sine nomine” (u"
+  },
+  {
+    "instance_id": "instance_internetarchive__openlibrary-0dc5b20fa186f9714f8a838178597e69f549d026-v2d9a6c849c60ed19fd0858ce9e40b7cc8e097e59",
+    "repo": "internetarchive/openlibrary",
+    "language": "python",
+    "prodFiles": [
+      "openlibrary/catalog/marc/parse.py"
+    ],
+    "allFiles": [
+      "openlibrary/catalog/marc/parse.py"
+    ],
+    "selected_test_files_to_run": "[\"openlibrary/catalog/marc/tests/test_parse.py\"]",
+    "dockerhub_tag": "internetarchive.openlibrary-internetarchive__openlibrary-0dc5b20fa186f9714f8a838178597e69f549d026-v2d9a6c849c60ed19fd0858ce9e40b",
+    "problem": "\"# Title: Import alternate-script author names\\n\\n## Describe the problem\\n\\nThe current MARC parsing only extracts names from field 100 (Main Entry – Personal Name). Author entries provided in alternate scripts through MARC 880 fields link"
+  },
+  {
+    "instance_id": "instance_navidrome__navidrome-1e96b858a91c640fe64e84c5e5ad8cc0954ea38d",
+    "repo": "navidrome/navidrome",
+    "language": "go",
+    "prodFiles": [
+      "server/subsonic/middlewares.go"
+    ],
+    "allFiles": [
+      "server/subsonic/middlewares.go"
+    ],
+    "selected_test_files_to_run": "[\"TestSubsonicApi\"]",
+    "dockerhub_tag": "navidrome.navidrome-navidrome__navidrome-1e96b858a91c640fe64e84c5e5ad8cc0954ea38d",
+    "problem": "\"# **Add support for Reverse Proxy authentication in Subsonic endpoint**\\n\\n\\n\\n\\n### **Version:**\\n\\n0.49.3 / 2cd4358\\n\\n\\n\\n\\n### **Current Behavior:**\\n\\nThe navidrome webapp can be configured to delegate authentication to a reverse prox"
+  },
+  {
+    "instance_id": "instance_navidrome__navidrome-6c6223f2f9db2c8c253e0d40a192e3519c9037d1",
+    "repo": "navidrome/navidrome",
+    "language": "go",
+    "prodFiles": [
+      "core/media_streamer.go"
+    ],
+    "allFiles": [
+      "core/media_streamer.go"
+    ],
+    "selected_test_files_to_run": "[\"TestCore\"]",
+    "dockerhub_tag": "navidrome.navidrome-navidrome__navidrome-6c6223f2f9db2c8c253e0d40a192e3519c9037d1",
+    "problem": "**Issue Title:** Player `MaxBitRate` configuration not overriding transcoding `DefaultBitRate`"
+  },
+  {
+    "instance_id": "instance_navidrome__navidrome-de90152a7173039677ac808f5bfb1e644d761336",
+    "repo": "navidrome/navidrome",
+    "language": "go",
+    "prodFiles": [
+      "persistence/album_repository.go"
+    ],
+    "allFiles": [
+      "persistence/album_repository.go"
+    ],
+    "selected_test_files_to_run": "[\"TestPersistence\"]",
+    "dockerhub_tag": "navidrome.navidrome-navidrome__navidrome-de90152a7173039677ac808f5bfb1e644d761336",
+    "problem": "## Title:"
+  },
+  {
+    "instance_id": "instance_navidrome__navidrome-56303cde23a4122d2447cbb266f942601a78d7e4",
+    "repo": "navidrome/navidrome",
+    "language": "go",
+    "prodFiles": [
+      "scanner/metadata/metadata.go"
+    ],
+    "allFiles": [
+      "scanner/metadata/metadata.go"
+    ],
+    "selected_test_files_to_run": "[\"TestMetadata\"]",
+    "dockerhub_tag": "navidrome.navidrome-navidrome__navidrome-56303cde23a4122d2447cbb266f942601a78d7e4",
+    "problem": "\"# Title\\n\\nScanner does not support R128 gain tags for track and album\\n\\n## Description\\n\\nThe metadata scanner only reads `ReplayGain `tags for gain values. It ignores R128 gain tags (`r128_track_gain`, `r128_album_gain`), which are comm"
+  },
+  {
+    "instance_id": "instance_navidrome__navidrome-23bebe4e06124becf1000e88472ae71a6ca7de4c",
+    "repo": "navidrome/navidrome",
+    "language": "go",
+    "prodFiles": [
+      "server/subsonic/api.go"
+    ],
+    "allFiles": [
+      "server/subsonic/api.go"
+    ],
+    "selected_test_files_to_run": "[\"TestSubsonicApi\"]",
+    "dockerhub_tag": "navidrome.navidrome-navidrome__navidrome-23bebe4e06124becf1000e88472ae71a6ca7de4c",
+    "problem": "# **Title: `getOpenSubsonicExtensions` Endpoint Requires Authentication Despite Intended Public Access**"
+  },
+  {
+    "instance_id": "instance_future-architect__vuls-01441351c3407abfc21c48a38e28828e1b504e0c",
+    "repo": "future-architect/vuls",
+    "language": "go",
+    "prodFiles": [
+      "contrib/snmp2cpe/pkg/cpe/cpe.go"
+    ],
+    "allFiles": [
+      "contrib/snmp2cpe/pkg/cpe/cpe.go"
+    ],
+    "selected_test_files_to_run": "[\"TestConvert\", \"TestConvert/FortiSwitch-108E\"]",
+    "dockerhub_tag": "future-architect.vuls-future-architect__vuls-01441351c3407abfc21c48a38e28828e1b504e0c",
+    "problem": "\"# SNMP2CPE fails to emit correct CPEs for Fortinet – FortiSwitch-108E case\\n\\n## Description:\\n\\nWhen converting SNMP responses for Fortinet gear, the tool recognizes FortiGate but not other lines, producing incomplete CPE output or an inc"
+  },
+  {
+    "instance_id": "instance_gravitational__teleport-1b08e7d0dbe68fe530a0f08ad408ec198b7c53fc-vee9b09fb20c43af7e520f57e9239bbcf46b7113d",
+    "repo": "gravitational/teleport",
+    "language": "go",
+    "prodFiles": [
+      "lib/sshutils/x11/display.go"
+    ],
+    "allFiles": [
+      "lib/sshutils/x11/display.go"
+    ],
+    "selected_test_files_to_run": "[\"TestDisplay\", \"TestDisplay/unix_socket_full_path\"]",
+    "dockerhub_tag": "gravitational.teleport-gravitational__teleport-1b08e7d0dbe68fe530a0f08ad408ec198b7c53fc-vee9b09fb20c43af7e520f57e9239bbcf46b7113",
+    "problem": "###Title: x11 forwarding fails on mac with xquartz"
+  }
+]

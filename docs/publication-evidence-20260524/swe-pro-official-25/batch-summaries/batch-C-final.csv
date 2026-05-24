@@ -1,0 +1,5 @@
+rowId,classification,baselineOfficialPass,kairnOfficialPass,baselineScopePass,kairnScopePass,baselineTimedOut,kairnTimedOut,baselineTokens,kairnTokens,tokenDelta,reductionPct,taskClass
+instance_future-architect__vuls-8659668177f1feb65963db7a967347a79c5f9c40,official_token_regression,true,true,true,true,false,false,47599,56323,-8724,-18.3,multi_file_debug
+instance_future-architect__vuls-999529a05b202b0fd29c6fca5039a4c47a3766bb,quality_source_focus_rescue,true,true,false,true,false,false,58935,52233,6702,11.4,failure_first
+instance_flipt-io__flipt-b6cef5cdc0daff3ee99e5974ed60a1dc6b4b0d67,clean_official_savings,true,true,true,true,false,false,51891,40173,11718,22.6,multi_file_debug
+instance_flipt-io__flipt-690672523398c2b6f6e4562f0bf9868664ab894f,official_pass_token_unavailable,true,true,true,true,true,false,,62840,,,multi_file_debug

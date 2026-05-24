@@ -1,0 +1,101 @@
+{
+  "id": "endurance-rich-cell-cache",
+  "name": "Rich Cell Length Cache Endurance",
+  "task": "Debug a seeded Rich terminal cell-width cache regression across a longer source-rescue session.",
+  "seed": {
+    "repoUrl": "https://github.com/Textualize/rich.git",
+    "ref": "46cebbb032f920eb096efbaf23cdc6fe9dd541f7",
+    "cloneDepth": 1,
+    "setupPatchFile": "./patches/rich-cell-len-cache.patch",
+    "expectedFailureCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('rich/cells.py').read_text()\nfixed = 'if len(text) < 512:' in source and 'if len(text) < 0:' not in source\nraise SystemExit(1 if fixed else 0)\nPY",
+    "testCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('rich/cells.py').read_text()\nfixed = 'if len(text) < 512:' in source and 'if len(text) < 0:' not in source\nraise SystemExit(0 if fixed else 1)\nPY"
+  },
+  "turns": [
+    {
+      "id": "diagnose",
+      "task": "Diagnose why Rich stopped using the cached cell-width path for normal strings.",
+      "agentPrompt": "Diagnose the seeded Rich cell-width regression. Normal short strings should still use the cached_cell_len path before falling back to _cell_len. Identify the smallest production source file involved; do not edit yet.",
+      "expectedFiles": ["rich/cells.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["tests/", "docs/"],
+      "budget": 750
+    },
+    {
+      "id": "fix-source",
+      "task": "Fix the Rich cell length cache threshold regression.",
+      "agentPrompt": "Fix the seeded regression in the smallest production source file. Short strings should use cached_cell_len again. Do not edit tests, docs, generated files, or unrelated console/render files.",
+      "expectedFiles": ["rich/cells.py"],
+      "requiredTouchedFiles": ["rich/cells.py"],
+      "excludedFiles": ["tests/", "docs/", "rich/console.py", "rich/text.py"],
+      "verificationCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('rich/cells.py').read_text()\nfixed = 'if len(text) < 512:' in source and 'if len(text) < 0:' not in source\nraise SystemExit(0 if fixed else 1)\nPY",
+      "sourceInvariants": [
+        {
+          "file": "rich/cells.py",
+          "requiredPresent": ["if len(text) < 512:"],
+          "requiredAbsent": ["if len(text) < 0:"]
+        }
+      ],
+      "allowedDiffScopes": [
+        {
+          "file": "rich/cells.py",
+          "symbols": ["cell_len"],
+          "allowWholeFile": true
+        }
+      ],
+      "budget": 750
+    },
+    {
+      "id": "verify",
+      "task": "Verify the cache threshold fix without widening scope.",
+      "agentPrompt": "Run the smallest verification check for the Rich cell-width cache fix. If it passes, keep the source scope unchanged. If it fails, use the failure output before reading new files.",
+      "expectedFiles": ["rich/cells.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["tests/", "docs/", "rich/console.py", "rich/text.py"],
+      "verificationCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('rich/cells.py').read_text()\nfixed = 'if len(text) < 512:' in source and 'if len(text) < 0:' not in source\nraise SystemExit(0 if fixed else 1)\nPY",
+      "budget": 600
+    },
+    {
+      "id": "review-diff",
+      "task": "Review the diff and confirm source scope.",
+      "agentPrompt": "Review the current diff. Confirm the fix stayed in rich/cells.py and did not edit tests, docs, console, or text rendering files.",
+      "expectedFiles": ["rich/cells.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["tests/", "docs/", "rich/console.py", "rich/text.py"],
+      "budget": 550
+    },
+    {
+      "id": "repeat-context",
+      "task": "Avoid rereading unchanged Rich context.",
+      "agentPrompt": "Continue from the known Rich cell-width source and summarize the invariant for future turns. Do not reread unchanged files unless the verification target changed.",
+      "expectedFiles": ["rich/cells.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["tests/", "docs/", "rich/console.py", "rich/text.py"],
+      "budget": 500
+    },
+    {
+      "id": "cleanup",
+      "task": "Final cleanup check for the Rich cache fix.",
+      "agentPrompt": "Perform a final cleanup check: the only intended production change is restoring the short-string cache threshold in rich/cells.py. Keep any response concise.",
+      "expectedFiles": ["rich/cells.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["tests/", "docs/", "rich/console.py", "rich/text.py"],
+      "verificationCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('rich/cells.py').read_text()\nfixed = 'if len(text) < 512:' in source and 'if len(text) < 0:' not in source\nraise SystemExit(0 if fixed else 1)\nPY",
+      "budget": 500
+    }
+  ],
+  "finalVerificationCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('rich/cells.py').read_text()\nfixed = 'if len(text) < 512:' in source and 'if len(text) < 0:' not in source\nraise SystemExit(0 if fixed else 1)\nPY",
+  "finalSourceInvariants": [
+    {
+      "file": "rich/cells.py",
+      "requiredPresent": ["if len(text) < 512:"],
+      "requiredAbsent": ["if len(text) < 0:"]
+    }
+  ],
+  "allowedDiffScopes": [
+    {
+      "file": "rich/cells.py",
+      "symbols": ["cell_len"],
+      "allowWholeFile": true
+    }
+  ]
+}

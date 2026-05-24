@@ -1,0 +1,97 @@
+{
+  "id": "post-launch-10run-fresh-source-heavy-subset",
+  "name": "Post-launch 10-run fresh source-heavy subset",
+  "gates": {
+    "maxStateMb": 400,
+    "maxPrimeLatencyMs": 12000,
+    "maxRepoPreflightMs": 180000,
+    "expectedTopK": 5,
+    "requireSuppressionForWeakCases": true
+  },
+  "repos": [
+    {
+      "id": "webpack",
+      "name": "webpack",
+      "repoUrl": "https://github.com/webpack/webpack.git",
+      "ref": "5d4859590a0f9ca41d17a35a0d0023b1326943ed",
+      "cloneDepth": 1,
+      "language": "javascript",
+      "sizeClass": "large",
+      "cases": [
+        {
+          "id": "normal-module-factory-resolver",
+          "mode": "context",
+          "contextBehavior": "multi_file_debug",
+          "task": "Debug webpack module resolution when NormalModuleFactory coordinates resolver creation, parser hooks, and dependency factories.",
+          "expectedFiles": [
+            "lib/NormalModuleFactory.js",
+            "lib/ResolverFactory.js",
+            "lib/javascript/JavascriptParser.js"
+          ],
+          "excludedFiles": [
+            "test/",
+            "examples/",
+            "benchmark/",
+            "declarations/"
+          ],
+          "budget": 900
+        }
+      ]
+    },
+    {
+      "id": "gorm",
+      "name": "GORM",
+      "repoUrl": "https://github.com/go-gorm/gorm.git",
+      "ref": "d0ee5e2296150d691364c5f4f7f2b32abde04545",
+      "cloneDepth": 1,
+      "language": "go",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "create-callback-statement",
+          "mode": "context",
+          "contextBehavior": "multi_file_debug",
+          "task": "Debug GORM create callback behavior when schema fields are read from Statement values before inserting rows.",
+          "expectedFiles": [
+            "callbacks/create.go",
+            "statement.go",
+            "schema/field.go"
+          ],
+          "excludedFiles": [
+            "tests/",
+            "*/tests/",
+            "*_test.go"
+          ],
+          "budget": 850
+        }
+      ]
+    },
+    {
+      "id": "okhttp",
+      "name": "OkHttp",
+      "repoUrl": "https://github.com/square/okhttp.git",
+      "ref": "1d9a8ba6c335355da9c71586abf82c9516e1bac5",
+      "cloneDepth": 1,
+      "language": "java-kotlin",
+      "sizeClass": "large",
+      "cases": [
+        {
+          "id": "real-interceptor-chain",
+          "mode": "context",
+          "contextBehavior": "multi_file_debug",
+          "task": "Debug OkHttp interceptor chain behavior when real calls proceed through application and network interceptors.",
+          "expectedFiles": [
+            "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/http/RealInterceptorChain.kt",
+            "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/connection/RealCall.kt"
+          ],
+          "excludedFiles": [
+            "**/src/test/",
+            "docs/",
+            "samples/"
+          ],
+          "budget": 900
+        }
+      ]
+    }
+  ]
+}

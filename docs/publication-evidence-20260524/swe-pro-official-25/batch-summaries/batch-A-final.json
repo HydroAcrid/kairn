@@ -1,0 +1,73 @@
+{
+  "generatedAt": "2026-05-24T07:07:25.742Z",
+  "batch": "A",
+  "run": "after-companion-scope-fix-rerun4",
+  "summary": {
+    "total": 3,
+    "baselineOfficialPasses": 2,
+    "kairnOfficialPasses": 2,
+    "clean_official_savings": 1,
+    "invalid_savings": 1,
+    "official_token_regression": 1
+  },
+  "rows": [
+    {
+      "rowId": "instance_internetarchive__openlibrary-5c6c22f3d2edf2f1b10f5dc335e32cb6a5f40341-v76304ecdb3a5954fcf13feb710e8c40fcf24b73c",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": true,
+      "baselineScopePass": true,
+      "kairnScopePass": true,
+      "baselineTokens": 43689,
+      "kairnTokens": 40804,
+      "tokenDelta": 2885,
+      "reductionPct": 6.6,
+      "classification": "clean_official_savings",
+      "baselineChangedFiles": [
+        "openlibrary/plugins/importapi/code.py",
+        "openlibrary/plugins/upstream/utils.py"
+      ],
+      "kairnChangedFiles": [
+        "openlibrary/plugins/importapi/code.py",
+        "openlibrary/plugins/upstream/utils.py"
+      ]
+    },
+    {
+      "rowId": "instance_element-hq__element-web-2760bfc8369f1bee640d6d7a7e910783143d4c5f-vnan",
+      "baselineOfficialPass": false,
+      "kairnOfficialPass": false,
+      "baselineScopePass": true,
+      "kairnScopePass": true,
+      "baselineTokens": 113227,
+      "kairnTokens": 74095,
+      "tokenDelta": 39132,
+      "reductionPct": 34.6,
+      "classification": "invalid_savings",
+      "baselineChangedFiles": [
+        "src/components/views/right_panel/UserInfo.tsx"
+      ],
+      "kairnChangedFiles": [
+        "src/components/views/right_panel/UserInfo.tsx"
+      ]
+    },
+    {
+      "rowId": "instance_ansible__ansible-12734fa21c08a0ce8c84e533abdc560db2eb1955-v7eee2454f617569fd6889f2211f75bc02a35f9f8",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": true,
+      "baselineScopePass": true,
+      "kairnScopePass": true,
+      "baselineTokens": 38649,
+      "kairnTokens": 43173,
+      "tokenDelta": -4524,
+      "reductionPct": -11.7,
+      "classification": "official_token_regression",
+      "baselineChangedFiles": [
+        "lib/ansible/parsing/yaml/dumper.py",
+        "lib/ansible/plugins/filter/core.py"
+      ],
+      "kairnChangedFiles": [
+        "lib/ansible/parsing/yaml/dumper.py",
+        "lib/ansible/plugins/filter/core.py"
+      ]
+    }
+  ]
+}

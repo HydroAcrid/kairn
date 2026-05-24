@@ -1,0 +1,4 @@
+rowId,classification,baselineOfficialPass,kairnOfficialPass,baselineScopePass,kairnScopePass,baselineTokens,kairnTokens,tokenDelta,reductionPct
+"instance_internetarchive__openlibrary-5c6c22f3d2edf2f1b10f5dc335e32cb6a5f40341-v76304ecdb3a5954fcf13feb710e8c40fcf24b73c","clean_official_savings",true,true,true,true,43689,40804,2885,6.6
+"instance_element-hq__element-web-2760bfc8369f1bee640d6d7a7e910783143d4c5f-vnan","invalid_savings",false,false,true,true,113227,74095,39132,34.6
+"instance_ansible__ansible-12734fa21c08a0ce8c84e533abdc560db2eb1955-v7eee2454f617569fd6889f2211f75bc02a35f9f8","official_token_regression",true,true,true,true,38649,43173,-4524,-11.7

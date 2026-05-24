@@ -11,6 +11,12 @@ supabase/.temp/
 
 # Generated benchmark/evaluator artifacts. Keep curated reports and compact
 # summaries tracked explicitly; archive raw bundles outside normal commits.
+docs/publication-evidence-*/**/batches/
+docs/publication-evidence-*/**/preflight/
+docs/publication-evidence-*/**/final-preflight*/
+docs/publication-evidence-*/**/gold-smoke*/
+docs/publication-evidence-*/**/raw/
+docs/publication-evidence-*/**/workdir/
 docs/publication-evidence-*/**/eval-output/
 docs/publication-evidence-*/**/workspace/
 docs/publication-evidence-*/**/*.patch

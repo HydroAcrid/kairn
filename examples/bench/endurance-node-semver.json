@@ -1,0 +1,101 @@
+{
+  "id": "endurance-node-semver-satisfies",
+  "name": "Node SemVer Satisfies Endurance",
+  "task": "Debug and verify a seeded node-semver satisfies regression across a source-rescue session.",
+  "seed": {
+    "repoUrl": "https://github.com/npm/node-semver.git",
+    "ref": "efa4be6096c1f9b77d9d27d6132f6220c43b4e31",
+    "cloneDepth": 1,
+    "setupPatchFile": "./patches/node-semver-satisfies-always-false.patch",
+    "expectedFailureCommand": "node - <<'NODE'\nconst semver = require('./');\nconst source = require('fs').readFileSync('functions/satisfies.js', 'utf8');\nconst broken = source.includes('return false && range.test(version)');\nconst behaviorBroken = semver.satisfies('1.2.3', '^1.0.0') === false;\nprocess.exit(broken && behaviorBroken ? 0 : 1);\nNODE",
+    "testCommand": "node - <<'NODE'\nconst semver = require('./');\nconst source = require('fs').readFileSync('functions/satisfies.js', 'utf8');\nconst fixedSource = source.includes('return range.test(version)') && !source.includes('return false && range.test(version)');\nconst fixedBehavior = semver.satisfies('1.2.3', '^1.0.0') === true && semver.satisfies('2.0.0', '^1.0.0') === false;\nprocess.exit(fixedSource && fixedBehavior ? 0 : 1);\nNODE"
+  },
+  "turns": [
+    {
+      "id": "diagnose",
+      "task": "Diagnose why semver.satisfies rejects versions that should satisfy a valid range.",
+      "agentPrompt": "Diagnose the seeded node-semver regression. semver.satisfies('1.2.3', '^1.0.0') should return true, but it now returns false. Identify the smallest production source file involved; do not edit yet.",
+      "expectedFiles": ["functions/satisfies.js"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["test/", "docs/", "benchmarks/"],
+      "budget": 800
+    },
+    {
+      "id": "fix-source",
+      "task": "Fix the satisfies range-test regression in production source.",
+      "agentPrompt": "Fix the seeded node-semver satisfies regression in production source only. Restore the normal range.test(version) behavior. Do not edit tests, docs, benchmarks, generated files, or unrelated range/comparator internals.",
+      "expectedFiles": ["functions/satisfies.js"],
+      "requiredTouchedFiles": ["functions/satisfies.js"],
+      "excludedFiles": ["test/", "docs/", "benchmarks/"],
+      "verificationCommand": "node - <<'NODE'\nconst semver = require('./');\nconst source = require('fs').readFileSync('functions/satisfies.js', 'utf8');\nconst fixedSource = source.includes('return range.test(version)') && !source.includes('return false && range.test(version)');\nconst fixedBehavior = semver.satisfies('1.2.3', '^1.0.0') === true && semver.satisfies('2.0.0', '^1.0.0') === false;\nprocess.exit(fixedSource && fixedBehavior ? 0 : 1);\nNODE",
+      "sourceInvariants": [
+        {
+          "file": "functions/satisfies.js",
+          "requiredPresent": ["return range.test(version)"],
+          "requiredAbsent": ["return false && range.test(version)"]
+        }
+      ],
+      "allowedDiffScopes": [
+        {
+          "file": "functions/satisfies.js",
+          "symbols": ["satisfies"],
+          "allowWholeFile": true
+        }
+      ],
+      "budget": 800
+    },
+    {
+      "id": "verify",
+      "task": "Verify the satisfies behavior without broadening scope.",
+      "agentPrompt": "Run the smallest source/behavior verification for the node-semver satisfies fix. If it passes, keep the edit scope unchanged. If it fails, use the failure output before reading new files.",
+      "expectedFiles": ["functions/satisfies.js"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["test/", "docs/", "benchmarks/"],
+      "verificationCommand": "node - <<'NODE'\nconst semver = require('./');\nconst source = require('fs').readFileSync('functions/satisfies.js', 'utf8');\nconst fixedSource = source.includes('return range.test(version)') && !source.includes('return false && range.test(version)');\nconst fixedBehavior = semver.satisfies('1.2.3', '^1.0.0') === true && semver.satisfies('2.0.0', '^1.0.0') === false;\nprocess.exit(fixedSource && fixedBehavior ? 0 : 1);\nNODE",
+      "budget": 600
+    },
+    {
+      "id": "diff-review",
+      "task": "Review the diff for scope discipline.",
+      "agentPrompt": "Review the current diff and confirm it only restores semver.satisfies delegating to the Range test result in production source.",
+      "expectedFiles": ["functions/satisfies.js"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["test/", "docs/", "benchmarks/"],
+      "budget": 500
+    },
+    {
+      "id": "repeat-context",
+      "task": "Avoid rereading unchanged source context.",
+      "agentPrompt": "Continue from the known node-semver satisfies source and summarize the invariant for future turns. Do not reread unchanged files unless verification fails or scope expands.",
+      "expectedFiles": ["functions/satisfies.js"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["test/", "docs/", "benchmarks/"],
+      "budget": 500
+    },
+    {
+      "id": "cleanup",
+      "task": "Final cleanup check.",
+      "agentPrompt": "Perform a final cleanup check. The only intended production change is restoring semver.satisfies to return range.test(version). Keep any response concise.",
+      "expectedFiles": ["functions/satisfies.js"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["test/", "docs/", "benchmarks/"],
+      "verificationCommand": "node - <<'NODE'\nconst semver = require('./');\nconst source = require('fs').readFileSync('functions/satisfies.js', 'utf8');\nconst fixedSource = source.includes('return range.test(version)') && !source.includes('return false && range.test(version)');\nconst fixedBehavior = semver.satisfies('1.2.3', '^1.0.0') === true && semver.satisfies('2.0.0', '^1.0.0') === false;\nprocess.exit(fixedSource && fixedBehavior ? 0 : 1);\nNODE",
+      "budget": 500
+    }
+  ],
+  "finalVerificationCommand": "node - <<'NODE'\nconst semver = require('./');\nconst source = require('fs').readFileSync('functions/satisfies.js', 'utf8');\nconst fixedSource = source.includes('return range.test(version)') && !source.includes('return false && range.test(version)');\nconst fixedBehavior = semver.satisfies('1.2.3', '^1.0.0') === true && semver.satisfies('2.0.0', '^1.0.0') === false;\nprocess.exit(fixedSource && fixedBehavior ? 0 : 1);\nNODE",
+  "finalSourceInvariants": [
+    {
+      "file": "functions/satisfies.js",
+      "requiredPresent": ["return range.test(version)"],
+      "requiredAbsent": ["return false && range.test(version)"]
+    }
+  ],
+  "allowedDiffScopes": [
+    {
+      "file": "functions/satisfies.js",
+      "symbols": ["satisfies"],
+      "allowWholeFile": true
+    }
+  ]
+}
