@@ -28,6 +28,7 @@ import type {
   HybridScoredResult,
   HookHandlingResult,
   HookOutputProfile,
+  ImpactStats,
   InitResult,
   IndexCompactionResult,
   IndexStateStats,
@@ -862,6 +863,10 @@ export class KairnRuntime {
 
   getMetrics(sessionId: string): MetricsSummary {
     return this.metricsService.getMetrics(sessionId);
+  }
+
+  getImpactStats(sessionId?: string | undefined): ImpactStats {
+    return this.metricsService.getImpactStats(sessionId);
   }
 
   getCoordinationState(sessionId: string): MetricsSummary["coordination"] {

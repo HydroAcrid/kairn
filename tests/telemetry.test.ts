@@ -38,6 +38,8 @@ describe("telemetry", () => {
     expect(() => assertSafeTelemetryPayload(payload)).not.toThrow();
     expect(JSON.stringify(payload)).not.toContain("src/app.ts");
     expect(payload.fileSignals.hashedFileIds.length).toBeGreaterThan(0);
+    expect(payload.impact.countersVersion).toBe(1);
+    expect(payload.impact.events).toBeGreaterThan(0);
 
     runtime.close();
   });
@@ -223,6 +225,27 @@ function minimalPayload(): TelemetryPayload {
     governor: { requestEvidence: 0, taskFrames: {}, fileRoles: {} },
     assistance: { active: 1, passiveSuppressed: 0, none: 0, validAssist: 0, overAssist: 0, missedOpportunity: 0, harmfulAssist: 0 },
     tokens: { estimatedBaseline: 100, estimatedOutput: 30, estimatedSaved: 70, activeEstimatedSaved: 70, passiveEstimatedSaved: 0 },
+    impact: {
+      countersVersion: 1,
+      estimatedBaselineTokens: 100,
+      estimatedOutputTokens: 30,
+      estimatedActiveSavedTokens: 70,
+      estimatedPassiveSavedTokens: 0,
+      estimatedTotalSavedTokens: 70,
+      repeatedFilesAvoided: 0,
+      repeatedSnippetsAvoided: 0,
+      quietDecisions: 1,
+      evidenceRequests: 0,
+      usefulMcpCalls: 0,
+      hookInvocations: 1,
+      hookFailures: 0,
+      scopeViolations: 0,
+      overAssistEvents: 0,
+      missedOpportunityEvents: 0,
+      harmfulAssistEvents: 0,
+      sessions: 1,
+      events: 1
+    },
     hooks: { invocations: 1, failures: 0, daemonHits: 0, daemonMisses: 0 },
     mcp: { calls: 0, returnedSourceFiles: 0, returnedTestFiles: 0, returnedNoiseFiles: 0 },
     ledger: { events: 1, repeatedFilesAvoided: 0, repeatedSnippetsAvoided: 0, unresolvedFailures: 0 },

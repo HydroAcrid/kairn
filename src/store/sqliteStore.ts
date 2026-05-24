@@ -1147,6 +1147,19 @@ export class SqliteStore {
     return rows.map(mapMetricsEventRow).reverse();
   }
 
+  listMetricsEventsForRoot(rootPath: string, limit?: number): MetricsEventRecord[] {
+    const rows = this.db
+      .prepare(`
+        select * from metrics_events
+        where root_path = ?
+        order by created_at desc, id desc
+        ${limit ? "limit ?" : ""}
+      `)
+      .all(...(limit ? [rootPath, limit] : [rootPath])) as MetricsEventRow[];
+
+    return rows.map(mapMetricsEventRow).reverse();
+  }
+
   recordSessionLedgerEvent(record: Omit<SessionLedgerEvent, "id" | "createdAt">): SessionLedgerEvent {
     const timestamp = nowIso();
     const result = this.db

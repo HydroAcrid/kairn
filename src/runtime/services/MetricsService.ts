@@ -1,5 +1,6 @@
 import type {
   ContextResponseMode,
+  ImpactStats,
   MetricsEventKind,
   MetricsSummary,
   WatchEventSource
@@ -12,6 +13,7 @@ import {
   tokenEstimateFromMcpValue
 } from "../../mcp/resultExtractors.js";
 import { loadIndexingConfig } from "../../config/indexing.js";
+import { buildImpactStats } from "../../metrics/impact.js";
 import { groupMetrics, summarizeCoordinationMetrics, summarizeMetrics } from "../../metrics/summary.js";
 import { codexUsageFromObservation } from "../../eval/usageObservation.js";
 import { summarizeSessionLedger } from "../../ledger/summary.js";
@@ -84,6 +86,17 @@ export class MetricsService {
       },
       recentEvents: events.slice(-10)
     };
+  }
+
+  getImpactStats(sessionId?: string | undefined): ImpactStats {
+    const sessions = sessionId
+      ? [this.deps.store.getSession(sessionId)]
+      : this.deps.store.listSessions({ rootPath: this.deps.rootPath });
+    const metrics = sessions.map((session) => this.getMetrics(session.id));
+    const events = sessionId
+      ? this.deps.store.listMetricsEvents(sessionId)
+      : this.deps.store.listMetricsEventsForRoot(this.deps.rootPath);
+    return buildImpactStats({ metrics, events });
   }
 
   getCoordinationState(sessionId: string): MetricsSummary["coordination"] {

@@ -3,6 +3,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { Command, Option } from "commander";
 import { startKairnDaemon } from "../../daemon/server.js";
+import { formatImpactReportMarkdown, formatImpactStats } from "../../metrics/impact.js";
 import { startMcpServer } from "../../server/mcp.js";
 import { queueAndFlushTelemetrySnapshot } from "../../telemetry/autoFlush.js";
 import type { CodexSetupMode, HookOutputProfile, IndexStateStats, PrimeProfile } from "../../types.js";
@@ -170,6 +171,44 @@ export function registerCoreCommands(program: Command): void {
             ""
           ].join("\n")
         );
+      });
+    });
+
+  const stats = program
+    .command("stats")
+    .description("Show local cumulative Kairn impact stats.")
+    .option("--root <path>", "target repository root", process.cwd())
+    .option("--session <id>", "limit stats to one Kairn task session")
+    .option("--json", "print JSON output")
+    .action(async (options: { root: string; session?: string; json?: boolean }) => {
+      await withRuntime(options.root, async (runtime) => {
+        const impact = runtime.getImpactStats(options.session);
+        if (options.json) {
+          printJson(impact);
+          return;
+        }
+        process.stdout.write(`${formatImpactStats(impact)}\n`);
+      });
+    });
+
+  stats
+    .command("report")
+    .description("Write a local aggregate Kairn impact report.")
+    .requiredOption("--out <path>", "output report path")
+    .option("--root <path>", "target repository root", process.cwd())
+    .option("--session <id>", "limit stats to one Kairn task session")
+    .option("--json", "print JSON output")
+    .action(async (options: { out: string; root: string; session?: string; json?: boolean }) => {
+      await withRuntime(options.root, async (runtime) => {
+        const impact = runtime.getImpactStats(options.session);
+        const outPath = path.resolve(options.out);
+        fs.mkdirSync(path.dirname(outPath), { recursive: true });
+        fs.writeFileSync(outPath, `${formatImpactReportMarkdown(impact)}\n`);
+        if (options.json || stats.opts<{ json?: boolean }>().json) {
+          printJson({ outPath, impact });
+          return;
+        }
+        process.stdout.write(`Wrote Kairn impact report: ${outPath}\n`);
       });
     });
 

@@ -96,3 +96,26 @@ export type MetricsSummary = {
   };
   recentEvents: MetricsEventRecord[];
 };
+
+export type ImpactStats = {
+  countersVersion: 1;
+  estimatedBaselineTokens: number;
+  estimatedOutputTokens: number;
+  estimatedActiveSavedTokens: number;
+  estimatedPassiveSavedTokens: number;
+  estimatedTotalSavedTokens: number;
+  repeatedFilesAvoided: number;
+  repeatedSnippetsAvoided: number;
+  quietDecisions: number;
+  evidenceRequests: number;
+  usefulMcpCalls: number;
+  hookInvocations: number;
+  hookFailures: number;
+  scopeViolations: number;
+  overAssistEvents: number;
+  missedOpportunityEvents: number;
+  harmfulAssistEvents: number;
+  sessions: number;
+  events: number;
+  averageHookLatencyMs?: number;
+};

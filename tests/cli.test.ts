@@ -66,6 +66,17 @@ describe("CLI", () => {
       [...CLI.slice(1), "metrics", "--session", parsed.session.id, "--root", root, "--json"],
       { cwd: process.cwd(), encoding: "utf8" }
     );
+    const stats = execFileSync(
+      CLI[0]!,
+      [...CLI.slice(1), "stats", "--session", parsed.session.id, "--root", root, "--json"],
+      { cwd: process.cwd(), encoding: "utf8" }
+    );
+    const statsReportPath = path.join(root, "kairn-impact.md");
+    const statsReport = execFileSync(
+      CLI[0]!,
+      [...CLI.slice(1), "stats", "report", "--session", parsed.session.id, "--root", root, "--out", statsReportPath, "--json"],
+      { cwd: process.cwd(), encoding: "utf8" }
+    );
     const indexStatus = execFileSync(CLI[0]!, [...CLI.slice(1), "index", "status", "--root", root, "--json"], {
       cwd: process.cwd(),
       encoding: "utf8"
@@ -146,6 +157,8 @@ describe("CLI", () => {
       totals: { events: number; savedTokens: number };
       bySource: Record<string, { events: number }>;
     };
+    const parsedStats = JSON.parse(stats) as { countersVersion: number; events: number; estimatedTotalSavedTokens: number };
+    const parsedStatsReport = JSON.parse(statsReport) as { outPath: string; impact: { countersVersion: number } };
     const parsedStatus = JSON.parse(indexStatus) as { fileCount: number; graphEdgeCount: number; tiers: Record<string, number> };
     const parsedCompact = JSON.parse(indexCompact) as { after: { fileCount: number }; walCheckpointed: boolean };
     const parsedSafeRefresh = JSON.parse(indexSafeRefresh) as { fileCount: number };
@@ -181,6 +194,12 @@ describe("CLI", () => {
     expect(parsedMetrics.totals.events).toBeGreaterThan(0);
     expect(parsedMetrics.totals.savedTokens).toBeGreaterThanOrEqual(0);
     expect(parsedMetrics.bySource.cli?.events).toBe(1);
+    expect(parsedStats.countersVersion).toBe(1);
+    expect(parsedStats.events).toBe(parsedMetrics.totals.events);
+    expect(parsedStats.estimatedTotalSavedTokens).toBe(parsedMetrics.totals.savedTokens);
+    expect(parsedStatsReport.outPath).toBe(statsReportPath);
+    expect(fs.readFileSync(statsReportPath, "utf8")).toContain("Estimated context tokens avoided");
+    expect(fs.readFileSync(statsReportPath, "utf8")).not.toContain("src/app.ts");
     expect(parsedStatus.fileCount).toBeGreaterThan(0);
     expect(parsedStatus.graphEdgeCount).toBeGreaterThanOrEqual(0);
     expect(parsedStatus.tiers.tier0).toBeGreaterThanOrEqual(0);

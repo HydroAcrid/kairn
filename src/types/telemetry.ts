@@ -66,6 +66,7 @@ export type TelemetryPayload = {
     passiveEstimatedSaved: number;
     observedTotal?: number;
   };
+  impact: import("./metrics.js").ImpactStats;
   hooks: {
     invocations: number;
     failures: number;
