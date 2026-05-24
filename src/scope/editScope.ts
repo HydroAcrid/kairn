@@ -9,7 +9,7 @@ import type {
 } from "../types.js";
 import { uniquePaths } from "../utils/collections.js";
 import { normalizeRelativePath } from "../utils/paths.js";
-import { hasExplicitMultiFileScopeRequest, taskHasProductionOnlyEditIntent } from "../prime/contextGovernor.js";
+import { hasExplicitMultiFileScopeRequest, taskHasProductionOnlyEditIntent, taskIsOfficialProductionPatchPrompt } from "../prime/contextGovernor.js";
 
 export function decideEditScope(input: {
   task: string;
@@ -25,7 +25,10 @@ export function decideEditScope(input: {
   const task = input.task.toLowerCase();
   const candidateFiles = uniquePaths(input.candidateFiles.map(normalizeRelativePath));
   const allowedTestEdits = taskAllowsTestEdits(task);
-  const harnessFiles = uniquePaths((input.allowedDiffScopes ?? []).map((scope) => normalizeRelativePath(scope.file)));
+  const officialPatchPrompt = taskIsOfficialProductionPatchPrompt(input.task);
+  const allowedHarnessFiles = uniquePaths((input.allowedDiffScopes ?? []).map((scope) => normalizeRelativePath(scope.file)));
+  const officialPromptFiles = officialPatchPrompt ? extractOfficialPromptSourceFiles(input.task) : [];
+  const harnessFiles = uniquePaths([...allowedHarnessFiles, ...officialPromptFiles]);
   const invariantFiles = uniquePaths([
     ...(input.invariants ?? []).map((invariant) => normalizeRelativePath(invariant.file)),
     ...(input.sourceInvariants ?? []).map((invariant) => normalizeRelativePath(invariant.file))
@@ -33,7 +36,8 @@ export function decideEditScope(input: {
   const taskMentionedTestFiles = extractTaskMentionedTestFiles(input.task);
   const failureFiles = uniquePaths((input.failureFiles ?? []).map(normalizeRelativePath));
   const changedFiles = uniquePaths((input.changedFiles ?? []).map(normalizeRelativePath));
-  const productionOnlySingleFile = taskHasProductionOnlyEditIntent(task) && !hasExplicitMultiFileScopeRequest(task);
+  const explicitMultiFileScope = hasExplicitMultiFileScopeRequest(input.task);
+  const productionOnlySingleFile = taskHasProductionOnlyEditIntent(task) && !explicitMultiFileScope;
 
   const source = scopeSource({
     contextDecision: input.contextDecision,
@@ -56,9 +60,16 @@ export function decideEditScope(input: {
     ...(input.contextDecision?.primaryFile ? [normalizeRelativePath(input.contextDecision.primaryFile)] : []),
     ...candidateFiles
   ]);
-  const initialEditFiles = sourceCandidates
+  const protectedSourceFiles = new Set([...harnessFiles, ...failureFiles, ...invariantFiles]);
+  const editCandidates = sourceCandidates.filter((file) => protectedSourceFiles.has(file) || !(officialPatchPrompt && isUnmentionedVariantPath(file, input.task)));
+  const officialInitialLimit = allowedHarnessFiles.length > 0
+    ? Math.max(1, allowedHarnessFiles.length)
+    : officialPatchPrompt
+      ? officialPromptFiles.length > 0 ? 2 : explicitMultiFileScope ? primaryLimit : 1
+      : primaryLimit;
+  const initialEditFiles = editCandidates
     .filter((file) => isEditableByDefault(file, allowedTestEdits))
-    .slice(0, source === "official_harness" ? Math.max(1, harnessFiles.length) : primaryLimit);
+    .slice(0, source === "official_harness" || officialPatchPrompt ? officialInitialLimit : primaryLimit);
   const readOnlyFiles = uniquePaths([
     ...taskMentionedTestFiles,
     ...candidateFiles,
@@ -78,17 +89,21 @@ export function decideEditScope(input: {
   return {
     initialEditFiles,
     readOnlyFiles: readOnlyFiles.slice(0, 4),
-    allowedExpansionTriggers: expansionTriggers({ task, allowedTestEdits }),
+    allowedExpansionTriggers: expansionTriggers({ task, allowedTestEdits, source, officialPatchPrompt }),
     forbiddenEditPatterns: forbiddenEditPatterns(allowedTestEdits),
     scopeConfidence,
     scopeSource: initialEditFiles.length > 0 ? source : "weak_signal",
     reason: scopeReason({ source, initialEditFiles, allowedTestEdits }),
+    strictBoundary: source === "official_harness" || (officialPatchPrompt && initialEditFiles.length > 0),
     dynamic: true
   };
 }
 
 export function editScopeLine(scope: EditScopeDecision): string {
   const initial = scope.initialEditFiles.length > 0 ? scope.initialEditFiles.join(", ") : "none yet";
+  if (scope.strictBoundary) {
+    return `Edit scope: ${initial} (${scope.scopeConfidence}, ${scope.scopeSource}). Hard boundary: do not edit outside this scope in this turn.`;
+  }
   return `Edit scope: ${initial} (${scope.scopeConfidence}, ${scope.scopeSource}). Expand only if ${scope.allowedExpansionTriggers[0] ?? "a focused check proves another file is required"}.`;
 }
 
@@ -101,9 +116,11 @@ export function editScopeBlock(
   return [
     heading,
     `- Initial edit scope: ${scope.initialEditFiles.length > 0 ? scope.initialEditFiles.join(", ") : "none yet; identify a concrete source file first"}`,
-    scope.initialEditFiles.length > 0 ? "- Edit only the initial scope first; do not create or edit other production, test, docs, generated, or sibling files unless an allowed expansion trigger occurs." : "",
+    scope.strictBoundary && scope.initialEditFiles.length > 0
+      ? "- Hard boundary: edit only the initial scope in this turn. Do not create or edit sibling/helper production files outside this list."
+      : scope.initialEditFiles.length > 0 ? "- Edit only the initial scope first; do not create or edit other production, test, docs, generated, or sibling files unless an allowed expansion trigger occurs." : "",
     includeReadOnly && scope.readOnlyFiles.length > 0 ? `- Read-only verification context: ${scope.readOnlyFiles.join(", ")}` : "",
-    `- Allowed expansion: ${scope.allowedExpansionTriggers.join("; ")}`,
+    scope.strictBoundary ? `- Expansion policy: ${scope.allowedExpansionTriggers.join("; ")}` : `- Allowed expansion: ${scope.allowedExpansionTriggers.join("; ")}`,
     `- Avoid editing: ${scope.forbiddenEditPatterns.join(", ")}`,
     `- Scope confidence: ${scope.scopeConfidence} (${scope.reason})`
   ].filter(Boolean);
@@ -134,7 +151,7 @@ function scopeSource(input: {
 
 function scopeReason(input: { source: EditScopeSource; initialEditFiles: string[]; allowedTestEdits: boolean }): string {
   if (input.initialEditFiles.length === 0) return "no concrete production source is safe to edit yet";
-  if (input.source === "official_harness") return "benchmark or official task metadata supplied allowed production patch files";
+  if (input.source === "official_harness") return "benchmark or official task metadata supplied production patch files";
   if (input.source === "failure_output") return "failure output linked the scope to source files";
   if (input.source === "multi_file_debug") return "task has multi-surface debug evidence";
   if (input.source === "exact_source") return "one source file dominates retrieval";
@@ -142,7 +159,12 @@ function scopeReason(input: { source: EditScopeSource; initialEditFiles: string[
   return "Kairn selected the smallest source edit set";
 }
 
-function expansionTriggers(input: { task: string; allowedTestEdits: boolean }): string[] {
+function expansionTriggers(input: { task: string; allowedTestEdits: boolean; source: EditScopeSource; officialPatchPrompt: boolean }): string[] {
+  if (input.source === "official_harness" || input.officialPatchPrompt) {
+    return [
+      "do not expand edit scope in this turn; if another source file seems necessary, keep it read-only and report the missing evidence instead of editing it"
+    ];
+  }
   const triggers = [
     "a failing check names another production source file",
     "a public API/type/interface change requires callers or declarations",
@@ -154,6 +176,27 @@ function expansionTriggers(input: { task: string; allowedTestEdits: boolean }): 
     triggers.push("verification proves a fixture, snapshot, or test expectation must change");
   }
   return triggers;
+}
+
+function extractOfficialPromptSourceFiles(task: string): string[] {
+  const paths = new Set<string>();
+  const sourceLines = task
+    .replaceAll("\\", "/")
+    .split(/\r?\n/)
+    .filter((line) => {
+      const normalized = line.toLowerCase();
+      if (/selected (verification )?tests? from swe-bench pro metadata/.test(normalized)) return false;
+      return true;
+    });
+
+  for (const line of sourceLines) {
+    for (const match of line.matchAll(/\b[A-Za-z0-9_.@+~/-]+?\.(?:[cm]?[jt]sx?|pyi?|go|java|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|rb|php|cs)\b/g)) {
+      const filePath = normalizeRelativePath(match[0] ?? "");
+      if (!filePath.includes("/")) continue;
+      if (isProductionSourcePath(filePath)) paths.add(filePath);
+    }
+  }
+  return [...paths];
 }
 
 function forbiddenEditPatterns(allowedTestEdits: boolean): string[] {
@@ -197,6 +240,16 @@ function isTestLikePath(filePath: string): boolean {
 function isNoisyPath(filePath: string): boolean {
   const normalized = filePath.toLowerCase();
   return /(^|\/)(docs?|documentation|examples?|demo|demos|devtools|codemods|fixtures?|generated|gen|dist|build|coverage|website|site|playground|storybook|vendor|node_modules)\//.test(normalized);
+}
+
+function isUnmentionedVariantPath(filePath: string, task: string): boolean {
+  const normalized = filePath.toLowerCase();
+  const match = /\/(?:method|methods|provider|providers|strategy|strategies|adapter|adapters)\/([^/]+)/.exec(normalized);
+  if (!match?.[1]) return false;
+  const variant = match[1].replace(/\.[^.]+$/, "");
+  const normalizedTask = task.toLowerCase().replace(/[^a-z0-9]+/g, " ");
+  const variantWords = variant.replace(/[-_]+/g, " ");
+  return !normalizedTask.includes(variant.toLowerCase()) && !normalizedTask.includes(variantWords.toLowerCase());
 }
 
 function taskAllowsTestEdits(task: string): boolean {

@@ -246,6 +246,7 @@ export function formatShrunkPrimeContext(input: {
   const focusedContext = input.includeSnippet === false
     ? ""
     : formatFocusedContextBlock(input.context.content, Math.max(100, Math.floor(input.budget * 0.24)));
+  const strictOfficialScope = input.editScope?.strictBoundary === true;
   if (input.minimal) {
     const sections = [
       "# Kairn Fix Guardrail",
@@ -255,9 +256,13 @@ export function formatShrunkPrimeContext(input: {
       "",
       ...formatMinimalInvariantSections(input.invariants, "Invariant to preserve:"),
       "",
-      "Edit boundary: make the smallest production-source edit. Do not edit tests, snapshots, docs, examples, generated files, or sibling source files unless a focused failure proves expansion.",
+      strictOfficialScope
+        ? "Edit boundary: patch only the official edit scope. Do not edit sibling/helper production files outside that scope."
+        : "Edit boundary: make the smallest production-source edit. Do not edit tests, snapshots, docs, examples, generated files, or sibling source files unless a focused failure proves expansion.",
       "Verification hint: use the narrowest relevant check.",
-      "Stop condition: stop after the start-file edit unless a failure names another source file.",
+      strictOfficialScope
+        ? "Stop condition: if the scope seems incomplete, stop and report the missing evidence instead of expanding edits."
+        : "Stop condition: start with this file; expand only to a directly imported or called production helper when this file cannot satisfy the invariant.",
       "",
       ...formatMinimalEditScope(input.editScope)
     ].filter(Boolean);
@@ -279,7 +284,9 @@ export function formatShrunkPrimeContext(input: {
     "",
     ...formatInvariantSections(input.invariants, "Invariant to preserve:", { includeVerification: input.includeVerification ?? multiFileDirective }),
     "",
-    multiFileDirective
+    strictOfficialScope
+      ? "Stop condition: patch only the official edit scope; if another source file seems necessary, stop and report the missing evidence instead of editing it."
+      : multiFileDirective
       ? "Stop condition: inspect only these source files first; avoid broad related-file/test scans unless neither file can satisfy the invariant or a failure names another file."
       : "Stop condition: preserve the invariant in the start file first; avoid broad related-file/test scans unless this file cannot satisfy the invariant or a failure names another file.",
     "",
@@ -364,6 +371,14 @@ function formatMinimalInvariantSections(invariants: ContextInvariant[] | undefin
 function formatMinimalEditScope(scope: EditScopeDecision | undefined): string[] {
   if (!scope) return [];
   const initial = scope.initialEditFiles.length > 0 ? scope.initialEditFiles.join(", ") : "none yet";
+  if (scope.strictBoundary) {
+    return [
+      "Edit scope:",
+      `- Initial edit scope: ${initial}`,
+      "- Hard boundary: do not edit outside the initial scope in this turn.",
+      "- If another source file seems necessary, leave it read-only and report the missing evidence."
+    ];
+  }
   const firstTrigger = truncateToBudget(
     scope.allowedExpansionTriggers[0] ?? "a focused check proves another file is required",
     28

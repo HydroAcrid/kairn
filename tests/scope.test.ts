@@ -77,6 +77,109 @@ describe("edit scope controller", () => {
     expect(scope.forbiddenEditPatterns).toContain("tests/");
   });
 
+  it("treats official harness scopes as hard edit boundaries", () => {
+    const scope = decideEditScope({
+      task: "Selected tests from SWE-Pro metadata: scanner/scanner_test.go\n\nFix the issue in production source. Do not edit unrelated files.",
+      candidateFiles: ["scanner/scanner.go", "scanner/ssh_helpers.go", "scanner/scanner_test.go"],
+      allowedDiffScopes: [{ file: "scanner/scanner.go" }],
+      contextDecision: decision({
+        primaryFile: "scanner/scanner.go",
+        sourceRescue: true,
+        canonicalSourceHit: true,
+        multiSurfaceSignal: true,
+        companionSpecific: true,
+        recommendedDelivery: "multi_file_directive"
+      })
+    });
+
+    expect(scope.initialEditFiles).toEqual(["scanner/scanner.go"]);
+    expect(scope.readOnlyFiles).toContain("scanner/ssh_helpers.go");
+    expect(scope.strictBoundary).toBe(true);
+    expect(scope.allowedExpansionTriggers.join(" ")).toContain("do not expand edit scope");
+    const block = editScopeBlock(scope).join("\n");
+    expect(block).toContain("Hard boundary");
+    expect(block).toContain("Do not create or edit sibling/helper production files");
+    expect(block).toContain("Expansion policy:");
+  });
+
+  it("uses official prompt source metadata as strict patch scope", () => {
+    const task = [
+      "Affected Scope: Server initialization in `internal/cmd/grpc.go`",
+      "New Interface: NewProvider Function",
+      "File Path: internal/tracing/tracing.go",
+      "Selected verification tests from SWE-Bench Pro metadata: TestGetTraceExporter, TestNewResourceDefault",
+      "These tests are verification targets only; do not edit tests.",
+      "Fix the issue in production source only."
+    ].join("\n");
+    const scope = decideEditScope({
+      task,
+      candidateFiles: ["internal/cmd/grpc.go", "internal/config/tracing.go", "internal/tracing/tracing.go"],
+      contextDecision: decision({
+        primaryFile: "internal/cmd/grpc.go",
+        sourceRescue: true,
+        multiSurfaceSignal: true,
+        recommendedDelivery: "multi_file_directive"
+      })
+    });
+
+    expect(scope.initialEditFiles).toEqual(["internal/cmd/grpc.go", "internal/tracing/tracing.go"]);
+    expect(scope.readOnlyFiles).toContain("internal/config/tracing.go");
+    expect(scope.strictBoundary).toBe(true);
+    expect(scope.scopeSource).toBe("official_harness");
+  });
+
+  it("keeps official production prompts without source metadata to one strict source file", () => {
+    const task = [
+      "Selected verification tests from SWE-Bench Pro metadata: TestScannerHostKeys",
+      "These tests are verification targets only; do not edit tests.",
+      "Fix the issue in production source only."
+    ].join("\n");
+    const scope = decideEditScope({
+      task,
+      candidateFiles: ["scanner/scanner.go", "scanner/ssh_helpers.go"],
+      contextDecision: decision({
+        primaryFile: "scanner/scanner.go",
+        sourceRescue: true,
+        canonicalSourceHit: true,
+        multiSurfaceSignal: true,
+        recommendedDelivery: "multi_file_directive"
+      })
+    });
+
+    expect(scope.initialEditFiles).toEqual(["scanner/scanner.go"]);
+    expect(scope.readOnlyFiles).toContain("scanner/ssh_helpers.go");
+    expect(scope.strictBoundary).toBe(true);
+    expect(scope.allowedExpansionTriggers.join(" ")).toContain("do not expand edit scope");
+  });
+
+  it("keeps unmentioned provider variants out of official edit scope", () => {
+    const task = [
+      "Location: `internal/server/auth/http.go`",
+      "Selected verification tests from SWE-Bench Pro metadata: TestErrorHandler, TestHandler",
+      "These tests are verification targets only; do not edit tests.",
+      "Fix the issue in production source only."
+    ].join("\n");
+    const scope = decideEditScope({
+      task,
+      candidateFiles: [
+        "internal/server/auth/http.go",
+        "internal/server/auth/method/oidc/http.go",
+        "internal/cmd/auth.go"
+      ],
+      contextDecision: decision({
+        primaryFile: "internal/server/auth/http.go",
+        sourceRescue: true,
+        multiSurfaceSignal: true,
+        recommendedDelivery: "multi_file_directive"
+      })
+    });
+
+    expect(scope.initialEditFiles).toEqual(["internal/server/auth/http.go", "internal/cmd/auth.go"]);
+    expect(scope.initialEditFiles).not.toContain("internal/server/auth/method/oidc/http.go");
+    expect(scope.readOnlyFiles).toContain("internal/server/auth/method/oidc/http.go");
+    expect(scope.strictBoundary).toBe(true);
+  });
+
   it("treats production header fixes as one-file source scope", () => {
     const scope = decideEditScope({
       task: "Debug the seeded failing C++ check. Fix the production header and do not edit unrelated files.",

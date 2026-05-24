@@ -3818,12 +3818,19 @@ function automaticPrimeSuppressionReason(input: {
 }): string | undefined {
   if (input.source !== "codex" && input.source !== "claude") return undefined;
   const sourceRescueGuardrail = shouldEmitAutomaticSourceRescueGuardrail(input.decision);
+  const officialPatchGuardrail = shouldEmitAutomaticOfficialPatchGuardrail(input.task, input.decision);
   const productionOnlyGuardrail =
     taskHasProductionOnlyEditIntent(input.task) &&
     !input.decision.wrongContextRisk &&
     !input.decision.cheapExactSource &&
     (input.decision.exactSourceHit || input.decision.canonicalSourceHit || input.decision.sourceRescue);
-  if (input.decision.cheapSingleSource && !input.decision.companionSpecific && !sourceRescueGuardrail && !productionOnlyGuardrail) {
+  if (
+    input.decision.cheapSingleSource &&
+    !input.decision.companionSpecific &&
+    !sourceRescueGuardrail &&
+    !productionOnlyGuardrail &&
+    !officialPatchGuardrail
+  ) {
     return "automatic hook suppressed cheap single-source context to avoid over-assist";
   }
   if (input.decision.cheapExactSource && !productionOnlyGuardrail) {
@@ -3833,6 +3840,16 @@ function automaticPrimeSuppressionReason(input: {
     return "automatic hook suppressed obvious one-shot source context to avoid over-assist";
   }
   return undefined;
+}
+
+function shouldEmitAutomaticOfficialPatchGuardrail(task: string, decision: ContextValueDecision): boolean {
+  if (decision.taskFrame !== "official_patch") return false;
+  if (!taskHasProductionOnlyEditIntent(task)) return false;
+  if (!decision.debugSignal) return false;
+  if (!decision.cheapSingleSource || decision.cheapExactSource || decision.companionSpecific) return false;
+  if (decision.wrongContextRisk) return false;
+  if (decision.topScore < 220 || decision.topGap < 35) return false;
+  return decision.recommendedDelivery === "one_file_directive" || decision.action === "shrink";
 }
 
 function shouldEmitAutomaticSourceRescueGuardrail(decision: ContextValueDecision): boolean {

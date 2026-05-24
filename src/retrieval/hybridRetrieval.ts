@@ -31,8 +31,9 @@ export function hybridSearch(input: {
   shown?: ContextShownRecord[];
   changedFiles?: Set<string>;
 }): HybridScoredResult[] {
-  const intent = classifyQueryIntent(input.query);
-  const retrievalQuery = stripNegatedContextTargets(stripExampleLiterals(input.query));
+  const routingQuery = stripBenchmarkVerificationMetadata(input.query);
+  const intent = classifyQueryIntent(routingQuery);
+  const retrievalQuery = stripNegatedContextTargets(stripExampleLiterals(routingQuery));
   const keywordScores = new Map(scoreFiles(input.files, retrievalQuery, input.symbols).map((file) => [file.path, file]));
   const bm25Scores = scoreBm25Files({
     query: retrievalQuery,
@@ -49,9 +50,11 @@ export function hybridSearch(input: {
   const graphScores = scoreGraphNeighbors(input.edges, keywordScores, semanticScores, intentScores, intent, input.files);
   const shownFiles = new Set((input.shown ?? []).map((record) => record.filePath).filter((filePath): filePath is string => Boolean(filePath)));
   const retrievalTerms = new Set(tokenizeLexical(retrievalQuery));
-  const explicitTestIntentForQuery = hasExplicitTestIntent(retrievalTerms, input.query);
+  const qualifiedGenericModuleHints = qualifiedGenericModulePathHints(retrievalQuery);
+  const explicitTestIntentForQuery = hasExplicitTestIntent(retrievalTerms, routingQuery);
   const sourceOverTestPrompt = hasSourceOverTestPrompt(input.query, retrievalTerms, intent);
   const testCounterpartHints = sourceCounterpartHintsFromTestPaths(input.query);
+  const explicitSourcePathHints = sourcePathHintsFromQuery(retrievalQuery);
   const debugSourcePrompt =
     ["debug", "fix", "regression", "bug", "broken", "failing", "failure"].some((term) => retrievalTerms.has(term)) &&
     ["source", "production", "implementation", "helper", "utility"].some((term) => retrievalTerms.has(term));
@@ -66,8 +69,10 @@ export function hybridSearch(input: {
       const sourcePriority = sourcePriorityScores.get(file.path);
       const testCounterpart = scoreTestCounterpartHint(file, testCounterpartHints, {
         explicitTestIntent: explicitTestIntentForQuery,
-        sourceOverTestPrompt
+        sourceOverTestPrompt,
+        queryTerms: retrievalTerms
       });
+      const explicitSourcePath = scoreExplicitSourcePathHint(file, explicitSourcePathHints);
       const graphScore = graphScores.get(file.path) ?? 0;
       const sessionScore = shownFiles.has(file.path) ? -3 : 0;
       const generatedFilePenalty = isGeneratedFilenameSurface(file.path) ? -1800 : 0;
@@ -93,6 +98,7 @@ export function hybridSearch(input: {
       const sourcePriorityScore = sourcePriority?.score ?? 0;
       const importanceScore = file.importance;
       const sourceOverTestPenalty = file.kind === "test" && !explicitTestIntentForQuery && sourceOverTestPrompt ? -2600 : 0;
+      const qualifiedGenericModulePenalty = scoreQualifiedGenericModuleMismatch(file.path, qualifiedGenericModuleHints);
       const reasons = mergeReasons([
         ...(keyword?.reasons ?? []),
         ...(bm25?.reasons ?? []),
@@ -100,11 +106,13 @@ export function hybridSearch(input: {
         ...(behaviorMatch?.reasons ?? []),
         ...(sourcePriority?.reasons ?? []),
         ...testCounterpart.reasons,
+        ...explicitSourcePath.reasons,
         ...(semantic && semantic.score > 0.06 ? semanticReasons(semantic.chunks) : []),
         ...(graphScore > 0 ? ["graph neighbor"] : []),
         ...(shownFiles.has(file.path) ? ["already shown"] : []),
         ...(generatedFilePenalty < 0 ? ["generated file downranked"] : []),
         ...(sourceOverTestPenalty < 0 ? ["test downranked for source/invariant prompt"] : []),
+        ...(qualifiedGenericModulePenalty < 0 ? ["generic utility downranked because qualified utility module was named"] : []),
         ...(gitScore > 0 ? [changedExactSymbolMatch ? "changed exact-symbol source target" : gitScore > 40 ? "changed source target" : "changed in diff"] : [])
       ]);
       const score =
@@ -115,11 +123,13 @@ export function hybridSearch(input: {
         behaviorScore +
         sourcePriorityScore +
         testCounterpart.score +
+        explicitSourcePath.score +
         intentScore +
         graphScore +
         sessionScore +
         gitScore +
         sourceOverTestPenalty +
+        qualifiedGenericModulePenalty +
         generatedFilePenalty;
 
       return {
@@ -1073,6 +1083,27 @@ function scoreNamedFileSurface(file: FileRecord, query: string): { score: number
   };
 }
 
+const GENERIC_GO_PACKAGE_ENTRY_TERMS = new Set([
+  "config",
+  "configs",
+  "configuration",
+  "server",
+  "models",
+  "model",
+  "types",
+  "type",
+  "common",
+  "shared",
+  "util",
+  "utils",
+  "helper",
+  "helpers",
+  "internal",
+  "defaults",
+  "default",
+  "json"
+]);
+
 function scorePackageRoleSurface(file: FileRecord, queryTerms: Set<string>): { score: number; reasons: string[] } {
   if (!isLanguageSourceSurface(file)) return { score: 0, reasons: [] };
   const normalized = file.path.toLowerCase();
@@ -1086,8 +1117,14 @@ function scorePackageRoleSurface(file: FileRecord, queryTerms: Set<string>): { s
   let score = 0;
 
   if (file.language === "go" && (basename === parent || basename === "common" || basename === "json" || basename === "defaults")) {
-    score += Math.min(1100, matchedTerms.length * 260 + 420);
+    const exactPackageEntry =
+      basename === parent &&
+      parent.length >= 3 &&
+      queryTerms.has(parent) &&
+      !GENERIC_GO_PACKAGE_ENTRY_TERMS.has(parent);
+    score += exactPackageEntry ? 3200 : Math.min(1100, matchedTerms.length * 260 + 420);
     reasons.push(`go package role surface: ${matchedTerms.slice(0, 4).join(", ")}`);
+    if (exactPackageEntry) reasons.push("go package entry named by task");
   }
 
   if (/\/management\/commands\//.test(normalized) && matchedTerms.length >= 2) {
@@ -2007,6 +2044,17 @@ function stripNegatedContextTargets(query: string): string {
     .replace(/\b(?:avoid|skip)\s+broad(?:en|ly)?\s+(?:into\s+)?(?:tests?|docs?|examples?)\b/gi, " ");
 }
 
+function stripBenchmarkVerificationMetadata(query: string): string {
+  return query
+    .split(/\r?\n/)
+    .filter((line) => {
+      const normalized = line.toLowerCase();
+      return !/selected (verification )?tests? from swe-bench pro metadata/.test(normalized) &&
+        !/these tests are verification targets only/.test(normalized);
+    })
+    .join("\n");
+}
+
 function compoundQueryTerms(query: string): string[] {
   const terms = tokenizeLexical(query).map(canonicalRoleTerm);
   const compounds = new Set<string>();
@@ -2100,7 +2148,62 @@ function isGenericUtilityBasename(basename: string): boolean {
 type TestCounterpartHint = {
   basenames: string[];
   suffixes: string[];
+  stemTerms: string[];
+  generic: boolean;
 };
+
+type SourcePathHint = {
+  path: string;
+  basename: string;
+  labeled: boolean;
+};
+
+function sourcePathHintsFromQuery(query: string): SourcePathHint[] {
+  const hints: SourcePathHint[] = [];
+  const seen = new Set<string>();
+  const pattern = /(?:^|[\s"'`,:;([\{])([A-Za-z0-9_.@+~/-]+?\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx))(?:\b|::|#|[\])},;."'`])/g;
+  for (const match of query.matchAll(pattern)) {
+    const rawPath = normalizeSlashPath(match[1] ?? "").toLowerCase();
+    if (!rawPath || isLikelyTestPathMention(rawPath) || isNoisyMentionedSourcePath(rawPath)) continue;
+    const basename = rawPath.split("/").at(-1) ?? rawPath;
+    if (!basename || isGenericMentionedSourceBasename(basename)) continue;
+    const matchIndex = match.index ?? 0;
+    const labelWindow = query.slice(Math.max(0, matchIndex - 48), matchIndex).toLowerCase();
+    const labeled = /\b(location|source|implementation|file|path|target|interface|module)\b\s*:?\s*$/.test(labelWindow);
+    const hasDirectory = rawPath.includes("/");
+    if (!hasDirectory && !labeled) continue;
+    if (seen.has(rawPath)) continue;
+    seen.add(rawPath);
+    hints.push({ path: rawPath, basename, labeled });
+  }
+  return hints;
+}
+
+function scoreExplicitSourcePathHint(file: FileRecord, hints: SourcePathHint[]): { score: number; reasons: string[] } {
+  if (hints.length === 0 || file.kind === "test" || !isLanguageSourceSurface(file) || isNoisyImplementationSurface(file)) {
+    return { score: 0, reasons: [] };
+  }
+  const normalizedPath = normalizeSlashPath(file.path.toLowerCase());
+  const basename = normalizedPath.split("/").at(-1) ?? normalizedPath;
+  const reasons: string[] = [];
+  let score = 0;
+  for (const hint of hints) {
+    if (normalizedPath === hint.path || pathSuffixMatches(normalizedPath, hint.path)) {
+      score += hint.labeled ? 11200 : 5600;
+      reasons.push(hint.labeled ? "explicit source location path" : "explicit source path");
+      continue;
+    }
+    if (hint.labeled && hint.basename === basename) {
+      score += 1800;
+      reasons.push("explicit source location filename");
+    }
+  }
+  return { score: Math.min(score, 9600), reasons: mergeReasons(reasons) };
+}
+
+function isNoisyMentionedSourcePath(filePath: string): boolean {
+  return /(^|\/)(docs?|examples?|fixtures?|testdata|generated|vendor|node_modules|dist|build)\//.test(filePath);
+}
 
 function sourceCounterpartHintsFromTestPaths(query: string): TestCounterpartHint[] {
   const hints: TestCounterpartHint[] = [];
@@ -2131,9 +2234,15 @@ function sourceCounterpartHintFromTestPath(testPath: string): TestCounterpartHin
   if (!sourceStem || /^(test|tests|spec|specs)$/.test(sourceStem)) return undefined;
   const basenames = sourceBasenamesForTestStem(sourceStem, extension);
   const suffixes = sourceSuffixesForTestPath(segments, basenames);
+  const stemTerms = tokenizeLexical(sourceStem.toLowerCase()).filter((term) => term.length > 1);
   return {
     basenames: uniqueStrings(basenames.map((item) => item.toLowerCase())),
-    suffixes: uniqueStrings(suffixes.map((item) => normalizeSlashPath(item.toLowerCase())))
+    suffixes: uniqueStrings(suffixes.map((item) => normalizeSlashPath(item.toLowerCase()))),
+    stemTerms: uniqueStrings(stemTerms),
+    generic:
+      stemTerms.length === 0 ||
+      stemTerms.every((term) => GENERIC_COUNTERPART_STEMS.has(term)) ||
+      basenames.every((item) => isGenericCounterpartBasename(item.toLowerCase()))
   };
 }
 
@@ -2174,6 +2283,12 @@ function sourceSuffixesForTestPath(segments: string[], basenames: string[]): str
   }
 
   const testIndex = lowerSegments.findIndex((segment) => /^(tests?|specs?|__tests__|testing)$/.test(segment));
+  if (testIndex >= 0) {
+    const beforeTest = directorySegments.slice(0, testIndex);
+    for (const sourceBase of basenames) {
+      if (beforeTest.length > 0) suffixes.push([...beforeTest, sourceBase].join("/"));
+    }
+  }
   const afterTest = testIndex >= 0 ? directorySegments.slice(testIndex + 1) : directorySegments;
   const sourceDirs = afterTest.filter((segment) => !/^(unit|integration|integrations|functional|e2e|acceptance|system|component|components?)$/i.test(segment));
   for (const sourceBase of basenames) {
@@ -2188,7 +2303,7 @@ function sourceSuffixesForTestPath(segments: string[], basenames: string[]): str
 function scoreTestCounterpartHint(
   file: FileRecord,
   hints: TestCounterpartHint[],
-  input: { explicitTestIntent: boolean; sourceOverTestPrompt: boolean }
+  input: { explicitTestIntent: boolean; sourceOverTestPrompt: boolean; queryTerms: Set<string> }
 ): { score: number; reasons: string[] } {
   if (hints.length === 0) return { score: 0, reasons: [] };
   if (input.explicitTestIntent && !input.sourceOverTestPrompt) return { score: 0, reasons: [] };
@@ -2199,18 +2314,73 @@ function scoreTestCounterpartHint(
   const reasons: string[] = [];
   let score = 0;
   for (const hint of hints) {
-    if (hint.suffixes.some((suffix) => pathSuffixMatches(normalizedPath, suffix))) {
-      score += 3200;
-      reasons.push("selected test path source counterpart");
+    const genericCounterpart = hint.generic || isGenericCounterpartBasename(basename);
+    const hasSpecificPathHit = hasSpecificCounterpartPathHit(normalizedPath, input.queryTerms, hint);
+    if (hint.suffixes.some((suffix) => pathSuffixMatches(normalizedPath, suffix) && (suffix.includes("/") || !isGenericCounterpartBasename(suffix)))) {
+      score += genericCounterpart && !hasSpecificPathHit ? 650 : 3200;
+      reasons.push(genericCounterpart && !hasSpecificPathHit ? "selected test generic source counterpart" : "selected test path source counterpart");
       continue;
     }
     if (hint.basenames.includes(basename)) {
-      score += 1800;
-      reasons.push("selected test basename source counterpart");
+      score += genericCounterpart ? 450 : 1800;
+      reasons.push(genericCounterpart ? "selected test generic basename counterpart" : "selected test basename source counterpart");
     }
   }
   return { score: Math.min(score, 5200), reasons: mergeReasons(reasons) };
 }
+
+function isGenericCounterpartBasename(basename: string): boolean {
+  if (/^(code|utils?|helpers?|common|shared|support|index|main)\.[a-z0-9]+$/i.test(basename)) return true;
+  const stem = basename.replace(/\.[a-z0-9]+$/i, "");
+  const terms = tokenizeLexical(stem);
+  return terms.length > 0 && terms.every((term) => GENERIC_COUNTERPART_STEMS.has(term));
+}
+
+function hasSpecificCounterpartPathHit(normalizedPath: string, queryTerms: Set<string>, hint: TestCounterpartHint): boolean {
+  const pathTerms = new Set(tokenizeLexical(normalizedPath));
+  const hintTerms = new Set(hint.stemTerms);
+  return [...queryTerms].some(
+    (term) => isSpecificDomainPathTerm(term) && !hintTerms.has(term) && pathTerms.has(term)
+  );
+}
+
+const GENERIC_COUNTERPART_STEMS = new Set([
+  "api",
+  "apis",
+  "app",
+  "apps",
+  "category",
+  "categories",
+  "code",
+  "common",
+  "controller",
+  "controllers",
+  "data",
+  "group",
+  "groups",
+  "helper",
+  "helpers",
+  "index",
+  "main",
+  "model",
+  "models",
+  "post",
+  "posts",
+  "route",
+  "routes",
+  "service",
+  "services",
+  "shared",
+  "support",
+  "tag",
+  "tags",
+  "topic",
+  "topics",
+  "user",
+  "users",
+  "util",
+  "utils"
+]);
 
 function pathSuffixMatches(filePath: string, suffix: string): boolean {
   return filePath === suffix || filePath.endsWith(`/${suffix}`);
@@ -2360,6 +2530,7 @@ type PreciseSourceRescue = {
   terms: string[];
   phraseTerms: string[];
   qualifiedSymbolTerms: string[][];
+  qualifiedGenericModuleTerms: string[][];
   helperIntent: boolean;
 };
 
@@ -2376,11 +2547,13 @@ function detectPreciseSourceRescue(query: string): PreciseSourceRescue {
   const helperIntent = /\b(helper|utility|utils?|source|implementation|debug|fix|regression|relative|absolute|local)\b/.test(normalized);
   const specificTerms = [...new Set([...terms, ...phraseTerms])];
   const qualifiedSymbolTerms = extractQualifiedSymbolTerms(query);
+  const qualifiedGenericModuleTerms = qualifiedSymbolTerms.filter(isQualifiedGenericModuleTerms);
   return {
     active: (helperIntent && specificTerms.length >= 2) || qualifiedSymbolTerms.length > 0,
     terms: specificTerms,
     phraseTerms: [...phraseTerms],
     qualifiedSymbolTerms,
+    qualifiedGenericModuleTerms,
     helperIntent
   };
 }
@@ -2419,7 +2592,9 @@ function preciseSourceScore(
   const symbolHits = rescue.terms.filter((term) => symbolText.includes(term));
   const chunkHits = rescue.phraseTerms.filter((term) => chunkText.includes(term));
   const qualifiedMatches = rescue.qualifiedSymbolTerms.filter((terms) =>
-    terms.every((term) => symbolText.includes(term) || qualifiedChunkText.includes(term) || pathText.includes(term))
+    isQualifiedGenericModuleTerms(terms)
+      ? terms.every((term) => pathTerms.has(term) || pathText.includes(term))
+      : terms.every((term) => symbolText.includes(term) || qualifiedChunkText.includes(term) || pathText.includes(term))
   );
   const lowerPath = file.path.toLowerCase();
   const exactUtilityPath =
@@ -2481,6 +2656,26 @@ function broadSourcePenalty(file: HybridScoredResult, rescue: PreciseSourceRescu
     penalty += 120;
   }
   return penalty;
+}
+
+function qualifiedGenericModulePathHints(query: string): string[][] {
+  return extractQualifiedSymbolTerms(query).filter(isQualifiedGenericModuleTerms);
+}
+
+function isQualifiedGenericModuleTerms(terms: string[]): boolean {
+  if (terms.length < 3) return false;
+  const last = terms.at(-1) ?? "";
+  return /^(utils?|helpers?|common|shared|support|code|index|main)$/.test(last);
+}
+
+function scoreQualifiedGenericModuleMismatch(filePath: string, hints: string[][]): number {
+  if (hints.length === 0) return 0;
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  if (!/^(utils?|helpers?|common|shared|support)$/.test(basename)) return 0;
+  const pathTerms = new Set(tokenizeLexical(normalized));
+  const matchesNamedModule = hints.some((terms) => terms.every((term) => pathTerms.has(term) || normalized.includes(term)));
+  return matchesNamedModule ? 0 : -12000;
 }
 
 const PRECISE_RESCUE_STOP_TERMS = new Set([

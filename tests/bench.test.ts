@@ -14,7 +14,7 @@ import {
 } from "../src/bench/matrix.js";
 import { loadBenchmarkEnduranceSuite } from "../src/bench/enduranceSuite.js";
 import { enduranceInvariantForPrompt, runBenchmarkEndurance, runBenchmarkEnduranceRepeats } from "../src/bench/endurance.js";
-import { changedFiles, runAgentBenchmarkCase } from "../src/bench/agent.js";
+import { changedFiles, runAgentBenchmarkCase, runShellWithProcessGroupTimeout } from "../src/bench/agent.js";
 import { classifyAssistance } from "../src/bench/assistClassification.js";
 import { buildSweBenchProPilot, loadSweBenchProRows, writeSweBenchProPilot } from "../src/bench/sweBenchPro.js";
 import { buildSweAtlasQnaPilot, loadSweAtlasQnaRows, writeSweAtlasQnaPilot } from "../src/bench/sweAtlasQna.js";
@@ -35,14 +35,17 @@ import {
   classifyFileRoleV2,
   classifyTaskFrameFromTask,
   linearModelPrediction,
-  buildDecisionFeatures
+  buildDecisionFeatures,
+  hasExplicitMultiFileScopeRequest,
+  taskIsReadOnlySourceRouting
 } from "../src/prime/contextGovernor.js";
 import { formatShrunkPrimeContext, withTinyDirectivePrime } from "../src/prime/formatPrime.js";
 import { evaluatePrimeQuality, resolvePrimeProfile } from "../src/prime/quality.js";
 import { hybridSearch } from "../src/retrieval/hybridRetrieval.js";
 import { findCompanionCandidates } from "../src/retrieval/companions.js";
+import { decideEditScope } from "../src/scope/editScope.js";
 import { createFixtureRepo } from "./helpers.js";
-import type { ContextPrime, FileRecord, HybridScoredResult, SemanticChunkRecord } from "../src/types.js";
+import type { ContextPrime, FileRecord, HybridScoredResult, SemanticChunkRecord, SymbolRecord } from "../src/types.js";
 
 const CLI = ["tsx", "src/cli.ts"];
 
@@ -103,11 +106,14 @@ describe("benchmark suite and scoring", () => {
       editScope: {
         initialEditFiles: ["src/PosthogAnalytics.ts"],
         readOnlyFiles: ["test/PosthogAnalytics-test.ts"],
-        allowedExpansionTriggers: ["a failing check names another production source file"],
+        allowedExpansionTriggers: [
+          "do not expand edit scope in this turn; if another source file seems necessary, keep it read-only and report the missing evidence instead of editing it"
+        ],
         forbiddenEditPatterns: ["test/", "docs/", "generated/"],
         scopeConfidence: "high",
         scopeSource: "official_harness",
         reason: "benchmark or official task metadata supplied allowed production patch files",
+        strictBoundary: true,
         dynamic: true
       }
     };
@@ -116,6 +122,8 @@ describe("benchmark suite and scoring", () => {
 
     expect(tiny.content).toContain("src/PosthogAnalytics.ts");
     expect(tiny.content).toContain("Edit scope:");
+    expect(tiny.content).toContain("Hard boundary");
+    expect(tiny.content).toContain("report the missing evidence");
     expect(tiny.content).toContain("Read-only verification context: test/PosthogAnalytics-test.ts");
     expect(tiny.content).not.toContain("Additional context Additional context Additional context Additional context");
   });
@@ -342,6 +350,7 @@ describe("benchmark suite and scoring", () => {
       const pilot = buildSweBenchProPilot({ rows, limit: 1 });
       const outputs = writeSweBenchProPilot({ pilot, outDir: path.join(root, "out") });
 
+      expect(pilot.suite.cases[0]?.id).toBe("instance_pallets__flask-demo");
       expect(pilot.suite.cases[0]?.expectedFiles).toEqual(["src/flask/app.py", "src/flask/helpers.py"]);
       expect(pilot.suite.cases[0]?.requiredTouchedFiles).toEqual(["src/flask/app.py", "src/flask/helpers.py"]);
       expect(pilot.suite.cases[0]?.allowedDiffScopes?.map((scope) => scope.file)).toEqual(["src/flask/app.py", "src/flask/helpers.py"]);
@@ -351,9 +360,12 @@ describe("benchmark suite and scoring", () => {
       expect(pilot.suite.cases[0]?.officialEvaluation?.kairnMetricEligible).toBe(true);
       expect(pilot.summary.evaluators.patch_verification).toBe(1);
       expect(pilot.suite.cases[0]?.agentPrompt).not.toContain("src/flask/app.py");
+      expect(pilot.suite.cases[0]?.agentPrompt).toContain("These tests are verification targets only; do not edit tests");
+      expect(pilot.suite.cases[0]?.agentPrompt).toContain("Fix the issue in production source only");
       expect(pilot.suite.cases[0]?.seed?.setupPatch).toBeUndefined();
       expect(pilot.suite.cases[0]?.seed?.setupCommands?.[0]).toContain("git fetch origin");
       expect(pilot.suite.cases[0]?.seed?.setupCommands?.at(-1)).toContain("kairn-seed-tests");
+      expect(pilot.suite.cases[0]?.seed?.setupCommands?.at(-1)).toContain("fs.existsSync");
       expect(pilot.suite.cases[0]?.seed?.testCommand).toBeUndefined();
       expect(pilot.matrix.repos[0]?.cases[0]?.mode).toBe("context");
       expect(pilot.matrix.repos[0]?.cases[0]?.contextBehavior).toBe("multi_file_debug");
@@ -364,6 +376,43 @@ describe("benchmark suite and scoring", () => {
       expect(fs.existsSync(outputs.suitePath)).toBe(true);
       expect(fs.existsSync(outputs.matrixPath)).toBe(true);
       expect(fs.existsSync(outputs.rawRowsPath)).toBe(true);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves official SWE-Pro instance id casing in live suite cases", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-swe-pro-id-case-"));
+    try {
+      const rowsPath = path.join(root, "rows.jsonl");
+      const rowId = "instance_NodeBB__NodeBB-05f2236193f407cf8e2072757fbd6bb170bc13f0-vf2cf3cbd463b7ad942381f1c6d077626485a1e9e";
+      fs.writeFileSync(
+        rowsPath,
+        `${JSON.stringify({
+          repo: "NodeBB/NodeBB",
+          instance_id: rowId,
+          base_commit: "0123456789012345678901234567890123456789",
+          patch: [
+            "diff --git a/src/topics/sorted.js b/src/topics/sorted.js",
+            "--- a/src/topics/sorted.js",
+            "+++ b/src/topics/sorted.js",
+            "@@ -1 +1 @@",
+            "-return recent",
+            "+return old"
+          ].join("\n"),
+          test_patch: "diff --git a/test/topics.js b/test/topics.js\n--- a/test/topics.js\n+++ b/test/topics.js",
+          problem_statement: "Support old topic sorting.",
+          repo_language: "js",
+          before_repo_set_cmd: "",
+          selected_test_files_to_run: "[\"test/topics.js\"]"
+        })}\n`
+      );
+
+      const rows = loadSweBenchProRows(rowsPath);
+      const pilot = buildSweBenchProPilot({ rows, limit: 1 });
+
+      expect(pilot.suite.cases[0]?.id).toBe(rowId);
+      expect(pilot.suite.cases[0]?.id).not.toBe(rowId.toLowerCase());
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -408,7 +457,57 @@ describe("benchmark suite and scoring", () => {
       const pilot = buildSweBenchProPilot({ rows, limit: 1 });
       expect(pilot.summary.languages.go).toBe(1);
       expect(pilot.suite.cases[0]?.expectedFiles).toEqual(["contrib/trivy/pkg/converter.go"]);
-      expect(pilot.suite.cases[0]?.agentPrompt).toContain("Selected tests from SWE-Bench Pro metadata: TestParse");
+      expect(pilot.suite.cases[0]?.agentPrompt).toContain("Selected verification tests from SWE-Bench Pro metadata: TestParse");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("filters noisy SWE-Pro selected tests before adding them to prompts", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-swe-pro-selected-tests-"));
+    try {
+      const rowsPath = path.join(root, "rows.jsonl");
+      fs.writeFileSync(
+        rowsPath,
+        `${JSON.stringify({
+          repo: "element-hq/element-web",
+          instance_id: "instance_element-noisy-selected-tests",
+          base_commit: "0123456789012345678901234567890123456789",
+          patch: [
+            "diff --git a/src/components/views/right_panel/UserInfo.tsx b/src/components/views/right_panel/UserInfo.tsx",
+            "--- a/src/components/views/right_panel/UserInfo.tsx",
+            "+++ b/src/components/views/right_panel/UserInfo.tsx",
+            "@@ -1 +1 @@",
+            "-onClick={kick}",
+            "+onClick={isPending ? undefined : kick}"
+          ].join("\n"),
+          test_patch: "",
+          problem_statement: "Admin action buttons Kick, Ban, and Mute trigger multiple times on rapid clicks in the user info panel.",
+          requirements: "Disable admin action controls while an action is pending.",
+          repo_language: "ts",
+          fail_to_pass: JSON.stringify([
+            "test/audio/VoiceMessageRecording-test.ts",
+            "test/components/views/right_panel/UserInfo-test.tsx",
+            "test/components/views/rooms/RoomPreviewBar-test.ts"
+          ]),
+          selected_test_files_to_run: JSON.stringify([
+            "test/audio/VoiceMessageRecording-test.ts",
+            "test/components/views/right_panel/UserInfo-test.tsx",
+            "test/components/views/rooms/RoomPreviewBar-test.ts"
+          ]),
+          before_repo_set_cmd: ""
+        })}\n`
+      );
+
+      const rows = loadSweBenchProRows(rowsPath);
+      const pilot = buildSweBenchProPilot({ rows, limit: 1 });
+      const prompt = pilot.suite.cases[0]?.agentPrompt ?? "";
+
+      expect(prompt).toContain("Selected verification tests from SWE-Bench Pro metadata");
+      expect(prompt).toContain("UserInfo-test.tsx");
+      expect(prompt).not.toContain("VoiceMessageRecording-test.ts");
+      expect(prompt).not.toContain("RoomPreviewBar-test.ts");
+      expect(prompt).toContain("These tests are verification targets only; do not edit tests");
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -1026,6 +1125,9 @@ describe("benchmark suite and scoring", () => {
       fs.writeFileSync(path.join(root, "src/routes/well-known.js"), "module.exports = {};\n");
       fs.mkdirSync(path.join(root, ".kairn"), { recursive: true });
       fs.writeFileSync(path.join(root, ".kairn/config.json"), "{}\n");
+      fs.mkdirSync(path.join(root, ".codex"), { recursive: true });
+      fs.writeFileSync(path.join(root, ".codex/hooks.json"), "{}\n");
+      fs.writeFileSync(path.join(root, "go.work.sum"), "module checksum churn\n");
 
       const result = await evaluateDiffScopes({
         rootPath: root,
@@ -1035,6 +1137,8 @@ describe("benchmark suite and scoring", () => {
       expect(result.passed).toBe(false);
       expect(result.changedFiles).toContain("src/routes/well-known.js");
       expect(result.changedFiles).not.toContain(".kairn/config.json");
+      expect(result.changedFiles).not.toContain(".codex/hooks.json");
+      expect(result.changedFiles).not.toContain("go.work.sum");
       expect(result.violations.join("\n")).toContain("src/routes/well-known.js: changed outside allowed diff scopes");
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
@@ -1209,6 +1313,100 @@ describe("benchmark suite and scoring", () => {
 
     expect(companions).toContain("core/agents/lastfm/client.go");
     expect(companions).not.toContain("model/request/request.go");
+  });
+
+  it("promotes import-linked helpers when task terms match the imported surface", () => {
+    const files = [
+      sourceRecord("lib/ansible/plugins/lookup/password.py", "python"),
+      sourceRecord("lib/ansible/utils/encrypt.py", "python"),
+      sourceRecord("lib/ansible/executor/task_queue_manager.py", "python")
+    ];
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query:
+        "Fix password lookup bcrypt hashing. Salt and ident values should be preserved when the encrypted password is reused.",
+      symbols: [
+        symbolRecord("lib/ansible/plugins/lookup/password.py", "LookupModule"),
+        symbolRecord("lib/ansible/utils/encrypt.py", "do_encrypt"),
+        symbolRecord("lib/ansible/utils/encrypt.py", "random_salt"),
+        symbolRecord("lib/ansible/executor/task_queue_manager.py", "TaskQueueManager")
+      ],
+      chunks: [
+        chunkRecord("lib/ansible/plugins/lookup/password.py", "password", "password lookup plugin encrypts saved passwords"),
+        chunkRecord("lib/ansible/utils/encrypt.py", "encrypt", "bcrypt hash salt ident BaseHash do_encrypt random_salt"),
+        chunkRecord("lib/ansible/executor/task_queue_manager.py", "queue", "task execution queue manager password variable handling")
+      ],
+      edges: [
+        {
+          rootPath: "",
+          fromFile: "lib/ansible/plugins/lookup/password.py",
+          toFile: "lib/ansible/utils/encrypt.py",
+          type: "imports",
+          metadata: {}
+        }
+      ],
+      limit: 2
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions[0]).toBe("lib/ansible/utils/encrypt.py");
+    expect(companions).not.toContain("lib/ansible/executor/task_queue_manager.py");
+  });
+
+  it("does not treat all functionality inside one named source file as multi-file scope", () => {
+    const task = [
+      "Refactor openlibrary/catalog/get_ia.py to use requests instead of urllib.",
+      "All urllib and urllib2 based functionality should be replaced with requests.",
+      "Fix the issue in production source only. Avoid broad scans once the relevant source surface is known."
+    ].join("\n");
+    const scope = decideEditScope({
+      task,
+      candidateFiles: ["openlibrary/catalog/get_ia.py", "openlibrary/plugins/importapi/code.py"],
+      contextDecision: {
+        action: "shrink",
+        recommendedDelivery: "one_file_directive",
+        primaryFile: "openlibrary/catalog/get_ia.py",
+        cheapSingleSource: true,
+        exactPathMentioned: true
+      } as any
+    });
+
+    expect(hasExplicitMultiFileScopeRequest(task)).toBe(false);
+    expect(scope.initialEditFiles).toEqual(["openlibrary/catalog/get_ia.py"]);
+  });
+
+  it("uses explicit interface location paths as high-confidence source hints", () => {
+    const files = [
+      sourceRecord("lib/ansible/utils/vars.py", "python"),
+      sourceRecord("lib/ansible/vars/manager.py", "python"),
+      sourceRecord("lib/ansible/template/vars.py", "python"),
+      sourceRecord("test/units/utils/test_vars.py", "python")
+    ];
+    const query = [
+      "Fix TypeError combining VarsWithSources and dict in combine_vars.",
+      "Actual Behavior: ansible/utils/vars.py line ~91 result = a | b.",
+      "New public interface Location: lib/ansible/vars/manager.py Description: implement __or__, __ror__, and __ior__.",
+      "Selected verification tests from SWE-Bench Pro metadata: test/units/utils/test_vars.py.",
+      "Fix the issue in production source only."
+    ].join("\n");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols: [
+        symbolRecord("lib/ansible/utils/vars.py", "combine_vars"),
+        symbolRecord("lib/ansible/vars/manager.py", "VarsWithSources")
+      ],
+      chunks: [
+        chunkRecord("lib/ansible/utils/vars.py", "combine_vars", "def combine_vars(a, b, merge=None): result = a | b"),
+        chunkRecord("lib/ansible/vars/manager.py", "VarsWithSources", "class VarsWithSources: mapping source tracking")
+      ],
+      vectors: [],
+      edges: []
+    }).map((result) => result.path);
+
+    expect(results[0]).toBe("lib/ansible/vars/manager.py");
+    expect(results.indexOf("lib/ansible/vars/manager.py")).toBeLessThan(results.indexOf("lib/ansible/template/vars.py"));
+    expect(results.indexOf("test/units/utils/test_vars.py")).toBeGreaterThan(results.indexOf("lib/ansible/vars/manager.py"));
   });
 
   it("prefers user/email companions over generic database main files", () => {
@@ -1507,6 +1705,43 @@ describe("benchmark suite and scoring", () => {
     expect(ranked.find((item) => item.path === "tests/unit/utils/test_urlutils.py")).toBeUndefined();
   });
 
+  it("keeps task-specific implementation files ahead of generic selected-test counterparts", () => {
+    const files: FileRecord[] = [
+      sourceRecord("src/controllers/topics.js", "javascript"),
+      sourceRecord("src/topics/sorted.js", "javascript"),
+      { ...sourceRecord("test/topics.js", "javascript"), kind: "test" }
+    ];
+    const ranked = hybridSearch({
+      files,
+      query: [
+        "Fix getSortedTopics so params.sort old returns topics in ascending lastposttime order.",
+        "The old sort must be the inverse of recent across unfiltered, tag-based, and category-based topic lists.",
+        "Selected verification tests from SWE-Bench Pro metadata: test/topics.js",
+        "These tests are verification targets only; do not edit tests."
+      ].join("\n"),
+      symbols: [
+        symbolRecord("src/controllers/topics.js", "addTags"),
+        symbolRecord("src/controllers/topics.js", "addOldCategory"),
+        symbolRecord("src/topics/sorted.js", "getTids"),
+        symbolRecord("src/topics/sorted.js", "getTagTids"),
+        symbolRecord("src/topics/sorted.js", "getCidTids"),
+        symbolRecord("src/topics/sorted.js", "sortRecent")
+      ],
+      chunks: [
+        chunkRecord("src/controllers/topics.js", "controller", "topic controller routes add tags old category response"),
+        chunkRecord("src/topics/sorted.js", "sorted", "get sorted topics by sort recent posts votes lastposttime range reverse range category tags")
+      ],
+      vectors: [],
+      edges: []
+    });
+
+    expect(ranked[0]?.path).toBe("src/topics/sorted.js");
+    expect(ranked.find((item) => item.path === "src/controllers/topics.js")?.reasons).toEqual(
+      expect.arrayContaining([expect.stringContaining("selected test generic")])
+    );
+    expect(ranked.find((item) => item.path === "test/topics.js")).toBeUndefined();
+  });
+
   it("keeps named relocation source files ahead of generic same-package utilities", () => {
     const files = [
       sourceRecord("qutebrowser/utils/log.py", "python"),
@@ -1531,6 +1766,113 @@ describe("benchmark suite and scoring", () => {
       expect.arrayContaining(["qutebrowser/utils/log.py", "qutebrowser/utils/qtlog.py"])
     );
     expect(ranked.findIndex((item) => item.path === "qutebrowser/utils/utils.py")).toBeLessThan(0);
+  });
+
+  it("keeps qualified utility module prompts from drifting into sibling generic utility files", () => {
+    const files = [
+      sourceRecord("openlibrary/plugins/importapi/code.py", "python"),
+      sourceRecord("openlibrary/plugins/upstream/utils.py", "python"),
+      sourceRecord("openlibrary/plugins/openlibrary/utils.py", "python"),
+      sourceRecord("openlibrary/coverstore/utils.py", "python")
+    ];
+    const query = [
+      "Fix IA metadata imports. The get_ia_record(metadata) function must split isbn into isbn_10/isbn_13 and split publisher into publishers and publish_places.",
+      "Public utilities must exist in openlibrary.plugins.upstream.utils and be importable from openlibrary.plugins.upstream.utils.",
+      "Selected verification tests from SWE-Bench Pro metadata: openlibrary/plugins/upstream/tests/test_utils.py, openlibrary/plugins/importapi/tests/test_code.py.",
+      "Fix production source only; do not edit tests."
+    ].join("\n");
+    const ranked = hybridSearch({
+      files,
+      query,
+      symbols: [
+        symbolRecord("openlibrary/plugins/importapi/code.py", "get_ia_record"),
+        symbolRecord("openlibrary/plugins/upstream/utils.py", "normalize_isbn"),
+        symbolRecord("openlibrary/plugins/openlibrary/utils.py", "validate"),
+        symbolRecord("openlibrary/coverstore/utils.py", "get_cover_id")
+      ],
+      chunks: [
+        chunkRecord("openlibrary/plugins/importapi/code.py", "get_ia_record", "Internet Archive metadata import creates Open Library edition fields"),
+        chunkRecord("openlibrary/plugins/upstream/utils.py", "normalize_isbn", "upstream utility module normalize isbn publisher"),
+        chunkRecord("openlibrary/plugins/openlibrary/utils.py", "validate", "generic openlibrary validation helpers publisher isbn"),
+        chunkRecord("openlibrary/coverstore/utils.py", "covers", "generic cover utilities")
+      ],
+      vectors: [],
+      edges: []
+    });
+
+    expect(ranked.slice(0, 2).map((item) => item.path)).toEqual(
+      expect.arrayContaining(["openlibrary/plugins/importapi/code.py", "openlibrary/plugins/upstream/utils.py"])
+    );
+    const siblingGenericIndex = ranked.findIndex((item) => item.path === "openlibrary/plugins/openlibrary/utils.py");
+    const unrelatedGenericIndex = ranked.findIndex((item) => item.path === "openlibrary/coverstore/utils.py");
+    expect(siblingGenericIndex === -1 || siblingGenericIndex > 1).toBe(true);
+    expect(unrelatedGenericIndex === -1 || unrelatedGenericIndex > 1).toBe(true);
+  });
+
+  it("routes selected test counterparts by path before generic code or utility companions", () => {
+    const files = [
+      sourceRecord("openlibrary/plugins/upstream/utils.py", "python"),
+      sourceRecord("openlibrary/plugins/importapi/code.py", "python"),
+      sourceRecord("openlibrary/plugins/upstream/code.py", "python"),
+      sourceRecord("openlibrary/plugins/admin/code.py", "python"),
+      sourceRecord("openlibrary/solr/query_utils.py", "python")
+    ];
+    const query = [
+      "Public utilities must exist in openlibrary.plugins.upstream.utils and be importable from openlibrary.plugins.upstream.utils.",
+      "Selected verification tests from SWE-Bench Pro metadata: openlibrary/plugins/upstream/tests/test_utils.py, openlibrary/plugins/importapi/tests/test_code.py.",
+      "Fix production source only; do not edit tests."
+    ].join("\n");
+
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query,
+      symbols: [],
+      chunks: [],
+      edges: [],
+      limit: 2
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions[0]).toBe("openlibrary/plugins/importapi/code.py");
+    expect(companions).not.toContain("openlibrary/plugins/upstream/code.py");
+    expect(companions).not.toContain("openlibrary/plugins/admin/code.py");
+    expect(companions).not.toContain("openlibrary/solr/query_utils.py");
+  });
+
+  it("does not let SWE-Pro selected test names dominate production-source routing", () => {
+    const files = [
+      sourceRecord("scanner/scanner.go", "go"),
+      sourceRecord("config/portscan.go", "go"),
+      sourceRecord("config/config.go", "go")
+    ];
+    const query = [
+      "scanner host key validation is unreliable because SSH config and keys are not read correctly",
+      "Must implement parseSSHConfiguration, parseSSHScan, and parseSSHKeygen in production source.",
+      "Selected verification tests from SWE-Bench Pro metadata: Test_findPortScanSuccessOn/single_match, Test_findPortScanSuccessOn/open_empty",
+      "These tests are verification targets only; do not edit tests.",
+      "Fix the issue in production source only."
+    ].join("\n");
+
+    const ranked = hybridSearch({
+      files,
+      query,
+      symbols: [
+        symbolRecord("scanner/scanner.go", "parseSSHConfiguration"),
+        symbolRecord("scanner/scanner.go", "parseSSHScan"),
+        symbolRecord("scanner/scanner.go", "parseSSHKeygen"),
+        symbolRecord("config/portscan.go", "PortScan")
+      ],
+      chunks: [
+        chunkRecord("scanner/scanner.go", "ssh", "scanner ssh host key known_hosts parseSSHConfiguration parseSSHScan parseSSHKeygen"),
+        chunkRecord("config/portscan.go", "portscan", "port scan configuration find port scan success"),
+        chunkRecord("config/config.go", "config", "generic config")
+      ],
+      vectors: [],
+      edges: []
+    }).map((item) => item.path);
+
+    expect(ranked[0]).toBe("scanner/scanner.go");
+    expect(ranked.indexOf("scanner/scanner.go")).toBeLessThan(ranked.indexOf("config/portscan.go"));
   });
 
   it("downranks generated filename surfaces even outside generated directories", () => {
@@ -1732,6 +2074,30 @@ describe("benchmark suite and scoring", () => {
 
     expect(topThree).toEqual(expect.arrayContaining(["zapcore/core.go", "zapcore/entry.go", "zapcore/encoder.go"]));
     expect(ranked.findIndex((item) => item.path === "field.go")).toBeGreaterThan(2);
+  });
+
+  it("prefers a named Go package entry over generic config files for component bugs", () => {
+    const files = [
+      sourceRecord("scanner/scanner.go", "go"),
+      sourceRecord("config/config.go", "go"),
+      sourceRecord("models/server.go", "go")
+    ];
+    const ranked = hybridSearch({
+      files,
+      query:
+        "Fix scanner host key validation when SSH configuration output and known_hosts parsing are unreliable. Implement parseSSHConfiguration and parseSSHKeygen in production source.",
+      symbols: [],
+      chunks: [
+        chunkRecord("scanner/scanner.go", "validateSSHConfig", "scanner validates ssh host keys known hosts keygen scan output mismatch"),
+        chunkRecord("config/config.go", "Config", "configuration server info ssh config settings host key alias known hosts"),
+        chunkRecord("models/server.go", "ServerInfo", "server model host key metadata")
+      ],
+      vectors: [],
+      edges: []
+    });
+
+    expect(ranked[0]?.path).toBe("scanner/scanner.go");
+    expect(ranked[0]?.reasons).toEqual(expect.arrayContaining(["go package entry named by task"]));
   });
 
   it("does not treat cleanup of test artifacts as explicit test-source intent", () => {
@@ -2365,6 +2731,24 @@ describe("benchmark suite and scoring", () => {
     }
   });
 
+  it("returns promptly when an agent command exceeds the process-group timeout", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-agent-timeout-"));
+    try {
+      const startedAt = Date.now();
+      const result = await runShellWithProcessGroupTimeout(
+        `${process.execPath} -e "setTimeout(() => {}, 5000)"`,
+        root,
+        100,
+        1024
+      );
+
+      expect(result.timedOut).toBe(true);
+      expect(Date.now() - startedAt).toBeLessThan(3000);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("counts untracked files as changed benchmark files", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-agent-untracked-"));
     try {
@@ -2387,9 +2771,14 @@ describe("benchmark suite and scoring", () => {
       fs.writeFileSync(path.join(root, "src/routes/well-known.js"), "module.exports = function wellKnown() {};\n");
       fs.mkdirSync(path.join(root, ".kairn"), { recursive: true });
       fs.writeFileSync(path.join(root, ".kairn/config.json"), "{}\n");
+      fs.mkdirSync(path.join(root, ".codex"), { recursive: true });
+      fs.writeFileSync(path.join(root, ".codex/config.toml"), "approval = 'never'\n");
+      fs.writeFileSync(path.join(root, "go.work.sum"), "module checksum churn\n");
 
       expect(changedFiles(root)).toContain("src/routes/well-known.js");
       expect(changedFiles(root)).not.toContain(".kairn/config.json");
+      expect(changedFiles(root)).not.toContain(".codex/config.toml");
+      expect(changedFiles(root)).not.toContain("go.work.sum");
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -2635,6 +3024,33 @@ describe("benchmark suite and scoring", () => {
     expect(result.outcome).toBe("fail");
     expect(result.metadata.diffScopePassed).toBe(false);
     expect(result.metadata.diffScopeViolations).toEqual(expect.arrayContaining([expect.stringContaining("src/user.ts")]));
+  });
+
+  it("does not count setup command files as live-agent diff-scope violations", async () => {
+    const root = createFixtureRepo();
+    const result = await runAgentBenchmarkCase({
+      rootPath: root,
+      benchmarkCase: {
+        id: "diff-scope-setup-baseline",
+        mode: "agent",
+        task: "Edit only the allowed source file.",
+        expectedFiles: ["src/app.ts"],
+        requiredTouchedFiles: ["src/app.ts"],
+        excludedFiles: [],
+        allowedDiffScopes: [{ file: "src/app.ts", allowWholeFile: true }],
+        seed: {
+          repoUrl: root,
+          ref: "HEAD"
+        }
+      },
+      setupCommand: "node -e \"require('fs').mkdirSync('.codex',{recursive:true}); require('fs').writeFileSync('.codex/config.toml','mode=\\\"savings\\\"\\n')\"",
+      agentCommand: "node -e \"require('fs').appendFileSync('src/app.ts', '\\nexport const ok = true;\\n'); console.error('Token usage: total=100 input=80 output=20')\""
+    });
+
+    expect(result.outcome).toBe("pass");
+    expect(result.metadata.diffScopePassed).toBe(true);
+    expect(result.metadata.setupChangedFiles).toEqual([]);
+    expect(result.metadata.agentChangedFiles).toEqual(["src/app.ts"]);
   });
 
   it("fails production-source-only benchmark scoring when tests are edited without an explicit test scope", () => {
@@ -3363,6 +3779,25 @@ describe("benchmark suite and scoring", () => {
     expect(decision.reasons).toEqual(
       expect.arrayContaining(["read-only source-routing task should use a compact source map instead of full context"])
     );
+  });
+
+  it("does not treat official production-fix prompts with test-edit bans as read-only source routing", () => {
+    expect(
+      taskIsReadOnlySourceRouting(
+        [
+          "Fix the YAML dumper undefined-variable behavior in production source.",
+          "New interfaces introduced: Name: represent_undefined Path: lib/ansible/parsing/yaml/dumper.py.",
+          "Selected verification tests from SWE-Bench Pro metadata: test/units/parsing/yaml/test_dumper.py",
+          "These tests are verification targets only; do not edit tests, snapshots, docs, examples, generated files, or unrelated files.",
+          "Fix the issue in production source only."
+        ].join("\n")
+      )
+    ).toBe(false);
+    expect(
+      taskIsReadOnlySourceRouting(
+        "Diagnose source ownership only: identify the smallest production source files involved. Do not edit files. Return the relevant file paths."
+      )
+    ).toBe(true);
   });
 
   it("routes read-only production source maps through source companions when tests rank first", () => {
@@ -5628,9 +6063,65 @@ describe("benchmark runtime and CLI", () => {
     expect(boundDryRun.sessionId).toBe(dryRun.sessionId);
     expect(boundDryRun.args).toContain("--enable");
     expect(boundDryRun.args).toContain("hooks");
-    expect(boundDryRun.prompt).toContain(`Kairn conversation session: ${dryRun.sessionId}`);
+    expect(boundDryRun.prompt).toBe("Improve job tracker mobile layout bottom sheet behavior");
+    expect(boundDryRun.prompt).not.toContain(`Kairn conversation session: ${dryRun.sessionId}`);
     expect(boundDryRun.hookBinding.dryRun).toBe(true);
     expect(boundDryRun.hookBinding.sessionId).toBe(dryRun.sessionId);
+
+    const suppressedBoundDryRun = JSON.parse(
+      execFileSync(
+        CLI[0]!,
+        [
+          ...CLI.slice(1),
+          "codex",
+          "Open src/app.ts and explain what it does",
+          "--root",
+          root,
+          "--skip-git-repo-check",
+          "--bind-hooks",
+          "--dry-run",
+          "--json"
+        ],
+        { cwd: process.cwd(), encoding: "utf8" }
+      )
+    ) as { args: string[]; prompt: string; prime: { contextDecision?: { action?: string } }; hookBinding: { dryRun: boolean } };
+    expect(suppressedBoundDryRun.prime.contextDecision?.action).toBe("suppress");
+    expect(suppressedBoundDryRun.args).toContain("--enable");
+    expect(suppressedBoundDryRun.args).toContain("hooks");
+    expect(suppressedBoundDryRun.prompt).toBe("Open src/app.ts and explain what it does");
+    expect(suppressedBoundDryRun.prompt).not.toContain("Kairn conversation session:");
+
+    const officialPatchGuardrailDryRun = JSON.parse(
+      execFileSync(
+        CLI[0]!,
+        [
+          ...CLI.slice(1),
+          "codex",
+          [
+            "Debug renderDashboard greeting behavior.",
+            "Selected verification tests from SWE-Bench Pro metadata: src/app.test.ts",
+            "These tests are verification targets only; do not edit tests.",
+            "Fix the issue in production source only. Avoid broad scans once the relevant source surface is known."
+          ].join("\n"),
+          "--root",
+          root,
+          "--skip-git-repo-check",
+          "--bind-hooks",
+          "--hook-mode",
+          "savings",
+          "--hook-output",
+          "tiny-directive",
+          "--dry-run",
+          "--json"
+        ],
+        { cwd: process.cwd(), encoding: "utf8" }
+      )
+    ) as { prompt: string; prime: { files: string[]; contextDecision?: { action?: string; recommendedDelivery?: string } } };
+    expect(officialPatchGuardrailDryRun.prime.contextDecision?.action).toBe("shrink");
+    expect(officialPatchGuardrailDryRun.prime.contextDecision?.recommendedDelivery).toBe("one_file_directive");
+    expect(officialPatchGuardrailDryRun.prime.files).toContain("src/app.ts");
+    expect(officialPatchGuardrailDryRun.prompt).toContain("# Kairn Fix Guardrail");
+
     expect(interactiveDryRun.mode).toBe("interactive");
     expect(interactiveDryRun.args).not.toContain("exec");
     expect(interactiveDryRun.args).toContain("--enable");
@@ -5747,5 +6238,18 @@ function chunkRecord(filePath: string, symbolName: string, text: string): Semant
     text,
     tokenEstimate: Math.max(1, Math.ceil(text.length / 4)),
     hash: `${filePath}:${symbolName}`
+  };
+}
+
+function symbolRecord(filePath: string, name: string): SymbolRecord {
+  return {
+    rootPath: "/repo",
+    filePath,
+    name,
+    kind: "function",
+    exported: true,
+    startLine: 1,
+    endLine: 5,
+    signature: `${name}()`
   };
 }

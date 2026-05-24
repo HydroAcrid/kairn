@@ -144,6 +144,9 @@ export async function runAgentBenchmarkCase(input: {
     }
     const setupChangedFiles = setupResult ? changedFiles(workspacePath) : [];
     const setupChangedFileHashes = setupResult ? fileHashes(workspacePath, setupChangedFiles) : {};
+    if (setupChangedFiles.length > 0) {
+      commitBenchmarkBaseline(workspacePath, setupChangedFiles, "kairn-benchmark-setup");
+    }
 
     const prepareStartedAt = Date.now();
     const prepared = input.preparePrompt
@@ -318,6 +321,7 @@ function createTempWorkspace(rootPath: string): string {
       const normalized = normalizeRelativePath(relative);
       return !normalized.startsWith(".git") &&
         !normalized.startsWith(".kairn") &&
+        !normalized.startsWith(".codex") &&
         !normalized.includes("/node_modules/") &&
         normalized !== "node_modules";
     }
@@ -411,6 +415,22 @@ function applySeedPatch(input: { workspacePath: string; seed: BenchmarkSeedSpec 
   if ((result.status ?? 0) !== 0 || result.error) {
     throw new Error(`seed setup patch failed: ${result.stderr || result.error?.message || "unknown git apply error"}`);
   }
+}
+
+function commitBenchmarkBaseline(workspacePath: string, files: string[], message: string): void {
+  const existingFiles = files.filter((file) => fs.existsSync(path.join(workspacePath, file)));
+  if (existingFiles.length === 0) return;
+  runRequired("git", ["add", "--", ...existingFiles], { cwd: workspacePath, label: "git add benchmark setup changes" });
+  const diffResult = spawnSync("git", ["diff", "--cached", "--quiet"], {
+    cwd: workspacePath,
+    encoding: "utf8",
+    maxBuffer: 1024 * 1024
+  });
+  if ((diffResult.status ?? 0) === 0) return;
+  runRequired("git", ["-c", "user.email=kairn@example.com", "-c", "user.name=Kairn", "commit", "-m", message, "--no-verify"], {
+    cwd: workspacePath,
+    label: "git commit benchmark setup changes"
+  });
 }
 
 export function runSeedVerification(input: {
@@ -579,7 +599,7 @@ export async function runShellWithProcessGroupTimeout(
     const child = spawn(command, {
       cwd,
       shell: true,
-      detached: false,
+      detached: process.platform !== "win32",
       stdio: ["ignore", "pipe", "pipe"]
     });
     let output = "";
@@ -700,7 +720,11 @@ export function changedFiles(workspacePath: string): string[] {
 }
 
 function isBenchmarkInternalPath(filePath: string): boolean {
-  return filePath === ".kairn" || filePath.startsWith(".kairn/");
+  return filePath === ".kairn" ||
+    filePath.startsWith(".kairn/") ||
+    filePath === ".codex" ||
+    filePath.startsWith(".codex/") ||
+    filePath === "go.work.sum";
 }
 
 function mentionedExpectedFiles(output: string, expectedFiles: string[]): string[] {

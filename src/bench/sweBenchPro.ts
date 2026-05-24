@@ -226,7 +226,7 @@ function sweBenchRowToCase(row: SweBenchProRow): BenchmarkCase {
     ...(testCommand ? { testCommand } : {})
   };
   return {
-    id: normalizeId(row.instance_id),
+    id: row.instance_id,
     mode: "agent",
     task: firstMeaningfulLine(row.problem_statement) ?? row.instance_id,
     contextBehavior,
@@ -405,10 +405,23 @@ function sweBenchSetupCommands(row: SweBenchProRow, selectedTests: string[]): st
   return [
     ...(setupCommit ? [`git fetch origin ${setupCommit} --depth 1`] : []),
     beforeCommand,
-    ...(testFiles.length > 0
-      ? [`git add ${testFiles.map(shellQuote).join(" ")} && git -c user.email=kairn@example.com -c user.name=Kairn commit -m kairn-seed-tests --no-verify`]
-      : [])
+    ...(testFiles.length > 0 ? [commitExistingSetupFilesCommand(testFiles)] : [])
   ];
+}
+
+function commitExistingSetupFilesCommand(files: string[]): string {
+  const script = [
+    "const fs=require('fs');",
+    "const {spawnSync}=require('child_process');",
+    `const files=${JSON.stringify(unique(files))}.filter((file)=>fs.existsSync(file));`,
+    "if(files.length===0) process.exit(0);",
+    "const add=spawnSync('git',['add',...files],{stdio:'inherit'});",
+    "process.exit(add.status ?? 1);"
+  ].join("");
+  return [
+    `node -e ${shellQuote(script)}`,
+    "git diff --cached --quiet || git -c user.email=kairn@example.com -c user.name=Kairn commit -m kairn-seed-tests --no-verify"
+  ].join(" && ");
 }
 
 function referencedSetupCommit(command: string, baseCommit: string): string | undefined {
@@ -437,14 +450,77 @@ function looksLikeTestFilePath(value: string): boolean {
 }
 
 function buildAgentPrompt(row: SweBenchProRow, patchFiles: string[], selectedTests: string[]): string {
+  const promptSelectedTests = selectedTestsForPrompt(row, selectedTests);
   const sections = [
     row.problem_statement.trim(),
     row.requirements ? `Requirements:\n${row.requirements.trim()}` : "",
     row.interface ? `Interface notes, not necessarily edit targets:\n${stripInterfacePathHints(row.interface).trim()}` : "",
-    selectedTests.length > 0 ? `Selected tests from SWE-Bench Pro metadata: ${selectedTests.slice(0, 12).join(", ")}` : "",
-    "Fix the issue in production source. Do not edit unrelated files. Avoid broad scans once the relevant source surface is known."
+    promptSelectedTests.length > 0
+      ? `Selected verification tests from SWE-Bench Pro metadata: ${promptSelectedTests.join(", ")}\nThese tests are verification targets only; do not edit tests, snapshots, docs, examples, generated files, or unrelated files.`
+      : "",
+    "Fix the issue in production source only. Avoid broad scans once the relevant source surface is known."
   ].filter(Boolean);
   return sections.join("\n\n");
+}
+
+function selectedTestsForPrompt(row: SweBenchProRow, selectedTests: string[]): string[] {
+  const tests = unique(selectedTests.filter(Boolean));
+  if (tests.length <= 1) return tests;
+  const issueTerms = selectedTestIssueTerms(row);
+  const scored = tests
+    .map((test, index) => ({ test, index, score: scoreSelectedTestForPrompt(test, issueTerms) }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map((item) => item.test);
+  return (scored.length > 0 ? scored : tests.slice(0, 3)).slice(0, 6);
+}
+
+function selectedTestIssueTerms(row: SweBenchProRow): Set<string> {
+  const text = [
+    row.problem_statement,
+    row.requirements ?? "",
+    stripInterfacePathHints(row.interface ?? "")
+  ].join("\n");
+  const terms = new Set(extractIssueIdentifiers(text).map(normalizePromptTerm).filter((term): term is string => Boolean(term)));
+  for (const token of text.split(/[^A-Za-z0-9_]+/)) {
+    const term = normalizePromptTerm(token);
+    if (term && term.length >= 4) terms.add(term);
+  }
+  return terms;
+}
+
+function scoreSelectedTestForPrompt(testRef: string, issueTerms: Set<string>): number {
+  const normalizedPath = normalizePromptTerm(testRef.replace(/[\\/]+/g, " ")) ?? "";
+  const pathTerms = new Set<string>();
+  for (const token of testRef.split(/[:/.\[\]#|\s_-]+/)) {
+    const term = normalizePromptTerm(token);
+    if (term) pathTerms.add(term);
+  }
+  for (const hint of sourceNameHintsFromSelectedTest(testRef)) {
+    const term = normalizePromptTerm(hint);
+    if (term) pathTerms.add(term);
+  }
+
+  let score = 0;
+  for (const term of issueTerms) {
+    if (term.length < 4) continue;
+    if (pathTerms.has(term)) score += 8;
+    else if (normalizedPath.includes(term)) score += 5;
+  }
+  return score;
+}
+
+function normalizePromptTerm(value: string): string | undefined {
+  const term = value
+    .trim()
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, "");
+  if (term.length < 3) return undefined;
+  if (/^(the|and|for|with|from|into|this|that|when|then|than|tests?|unit|integration|specs?|utils?|helpers?|components?|views?|stores?|files?|metadata|selected|official|expected|current|behavior|requirements?|actions?|buttons?|clicks?|dialogs?|messages?|rooms?)$/.test(term)) {
+    return undefined;
+  }
+  return term;
 }
 
 function mentionsPatchSurface(row: SweBenchProRow, filePath: string): boolean {

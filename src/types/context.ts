@@ -202,6 +202,7 @@ export type EditScopeDecision = {
   scopeConfidence: EditScopeConfidence;
   scopeSource: EditScopeSource;
   reason: string;
+  strictBoundary?: boolean;
   dynamic: true;
 };
 

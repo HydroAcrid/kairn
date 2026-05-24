@@ -141,7 +141,11 @@ function gitChangedFiles(rootPath: string): string[] {
 }
 
 function isBenchmarkInternalPath(filePath: string): boolean {
-  return filePath === ".kairn" || filePath.startsWith(".kairn/");
+  return filePath === ".kairn" ||
+    filePath.startsWith(".kairn/") ||
+    filePath === ".codex" ||
+    filePath.startsWith(".codex/") ||
+    filePath === "go.work.sum";
 }
 
 function changedLinesForFile(rootPath: string, file: string): ChangedLine[] {

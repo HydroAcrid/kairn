@@ -709,17 +709,26 @@ export function taskHasProductionOnlyEditIntent(task: string): boolean {
   );
 }
 
+export function taskIsOfficialProductionPatchPrompt(task: string): boolean {
+  const normalized = normalizeText(task);
+  return /\bselected (?:verification )?tests? from swe bench pro metadata\b/.test(normalized) && taskHasProductionOnlyEditIntent(task);
+}
+
 export function hasExplicitMultiFileScopeRequest(task: string): boolean {
   const normalized = normalizeText(task);
+  const explicitMultiFileScope =
+    /\b(multiple|several|both|two|2)\s+(production\s+)?(files|sources|modules|components)\b/.test(normalized) ||
+    /\b(update|fix|change)\s+(both|all)\s+(?:production\s+)?(files|sources|modules|components)\b/.test(normalized) ||
+    /\b(move|moved|relocate|relocated|relocation)\b.{0,120}\b(from|to|between)\b/.test(normalized);
+  if (taskIsOfficialProductionPatchPrompt(task)) {
+    return explicitMultiFileScope;
+  }
   const interfaceExpansionRequested =
     /\b(public api|type declaration|caller|callers|adapter|companion|coordinated)\b/.test(normalized) ||
     (/\binterfaces?\b/.test(normalized) &&
       !/\b(no new interfaces?|no interface changes?|interface notes?,? not necessarily edit targets)\b/.test(normalized));
   return (
-    /\b(multiple|several|both|two|2)\s+(production\s+)?(files|sources|modules|components)\b/.test(normalized) ||
-    /\b(update|fix|change)\s+(both|all)\b/.test(normalized) ||
-    /\b(move|moved|relocate|relocated|relocation)\b.{0,120}\b(from|to|between)\b/.test(normalized) ||
-    /\bfrom\b.{0,80}\bto\b/.test(normalized) ||
+    explicitMultiFileScope ||
     interfaceExpansionRequested
   );
 }
@@ -733,12 +742,11 @@ export function taskIsReadOnlySourceRouting(task: string): boolean {
     /\brelevant file paths?\b/.test(normalized);
   const readOnly =
     /\bdo not (?:edit|modify|change|touch|patch) files?\b/.test(normalized) ||
-    /\bdo not (?:edit|modify|change|touch|patch)\b/.test(normalized) ||
     /\bread only\b/.test(normalized) ||
     /\bno edits?\b/.test(normalized);
   const patchIntent =
     /\b(fix|patch|implement|update|change|modify|edit|repair)\b/.test(normalized) &&
-    !/\bdo not (?:edit|modify|change|touch|patch)\b/.test(normalized);
+    !/\bdo not (?:edit|modify|change|touch|patch) files?\b/.test(normalized);
   return asksForSourceMap && readOnly && !patchIntent;
 }
 

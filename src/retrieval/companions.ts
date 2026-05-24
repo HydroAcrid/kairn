@@ -176,6 +176,11 @@ const ROLE_GROUPS: CompanionRole[] = [
     id: "string-matcher",
     terms: ["string", "strings", "char", "character", "matcher", "matching", "prefix", "suffix", "surrogate"],
     reason: "string/matcher pair"
+  },
+  {
+    id: "crypto-hash-helper",
+    terms: ["password", "passwords", "encrypt", "encryption", "hash", "hashes", "hashing", "bcrypt", "salt", "salts", "ident", "secret", "random"],
+    reason: "password/hash helper pair"
   }
 ];
 
@@ -304,6 +309,14 @@ export function findCompanionCandidates(input: {
   if (roleSignals.length === 0 && !hasMultiSurfaceQuerySignal(queryTerms)) return [];
   const routeAnchors = routePathAnchors(input.query);
   const mentionedSourceBasenames = mentionedSourceFileBasenames(input.query);
+  const qualifiedGenericModuleHints = qualifiedGenericModulePathHints(input.query);
+  const testCounterpartHints = sourceCounterpartHintsFromTestPaths(input.query);
+  const explicitSourcePathHints = sourcePathHintsFromQuery(input.query);
+  const preciseSourceSurfacePresent =
+    mentionedSourceBasenames.size > 0 ||
+    qualifiedGenericModuleHints.length > 0 ||
+    testCounterpartHints.length > 0 ||
+    explicitSourcePathHints.length > 0;
 
   const symbolsByFile = groupByFile(input.symbols, (symbol) => symbol.filePath);
   const chunksByFile = groupByFile(input.chunks, (chunk) => chunk.filePath);
@@ -315,6 +328,7 @@ export function findCompanionCandidates(input: {
 
   const seedPaths = new Set(seedFiles.map((file) => file.path));
   const edgeNeighbors = buildEdgeNeighborMap(input.edges);
+  const importNeighbors = buildImportNeighborMap(input.edges);
   const candidates: CompanionCandidate[] = [];
 
   for (const file of input.files) {
@@ -333,6 +347,8 @@ export function findCompanionCandidates(input: {
     const rolePathMatches = roleSignals.filter((role) => role.terms.some((term) => pathTerms.has(canonicalTerm(term))));
     const pathQueryHits = [...queryTerms].filter((term) => !COMPANION_STOP_TERMS.has(term) && pathTerms.has(term));
     const compoundPathHits = compoundQueryTerms(input.query).filter((term) => pathTerms.has(term));
+    const testCounterpart = scoreTestCounterpartHint(file, testCounterpartHints, queryTerms);
+    const explicitSourcePath = scoreExplicitSourcePathHint(file, explicitSourcePathHints);
 
     let score = sourceScore.score + canonicalRoleScore.score;
     const reasons = [...sourceScore.reasons, ...canonicalRoleScore.reasons];
@@ -354,6 +370,14 @@ export function findCompanionCandidates(input: {
       score += Math.min(620, compoundPathHits.length * 360);
       reasons.push(`compound path term match: ${compoundPathHits.slice(0, 3).join(", ")}`);
     }
+    if (testCounterpart.score !== 0) {
+      score += testCounterpart.score;
+      reasons.push(...testCounterpart.reasons);
+    }
+    if (explicitSourcePath.score !== 0) {
+      score += explicitSourcePath.score;
+      reasons.push(...explicitSourcePath.reasons);
+    }
     const basename = file.path.toLowerCase().split("/").at(-1) ?? "";
     const mentionedBasename = mentionedSourceBasenames.has(basename);
     if (mentionedBasename) {
@@ -363,6 +387,11 @@ export function findCompanionCandidates(input: {
     if (mentionedSourceBasenames.size > 0 && !mentionedBasename && isGenericUtilityBasename(basename)) {
       score -= 2600;
       reasons.push("generic utility downranked because specific source filenames were named");
+    }
+    const qualifiedGenericModulePenalty = scoreQualifiedGenericModuleMismatch(file.path, qualifiedGenericModuleHints);
+    if (qualifiedGenericModulePenalty < 0) {
+      score += qualifiedGenericModulePenalty;
+      reasons.push("generic utility downranked because qualified utility module was named");
     }
     const routeAnchorHits = routeAnchors.filter((anchor) => basename.includes(anchor) || pathTerms.has(anchor));
     if (routeAnchorHits.length > 0) {
@@ -414,6 +443,10 @@ export function findCompanionCandidates(input: {
     if (isGenericHelperForRoleCompanion(file.path, queryTerms)) {
       score -= 340;
       reasons.push("helper companion downranked in favor of direct source surface");
+    }
+    if (isExecutionCoordinatorForCryptoTask(file.path, queryTerms)) {
+      score -= 2600;
+      reasons.push("execution coordinator downranked for password/hash helper task");
     }
     if (isUnaskedConverterCompanion(file.path, queryTerms)) {
       score -= 520;
@@ -567,6 +600,17 @@ export function findCompanionCandidates(input: {
       score -= 3200;
       reasons.push("generic service/request path downranked for kubernetes task");
     }
+    if (
+      preciseSourceSurfacePresent &&
+      testCounterpart.score === 0 &&
+      namedFileSurface.score === 0 &&
+      !mentionedBasename &&
+      routeAnchorHits.length === 0 &&
+      !matchesQualifiedGenericModule(file.path, qualifiedGenericModuleHints)
+    ) {
+      score -= 30000;
+      reasons.push("companion downranked because prompt names a more specific source surface");
+    }
 
     for (const seed of seedFiles) {
       const seedRoles = matchRoleSignals(seed, roleSignals, symbolsByFile.get(seed.path) ?? [], chunksByFile.get(seed.path) ?? []);
@@ -589,9 +633,23 @@ export function findCompanionCandidates(input: {
         reasons.push("same module surface");
       }
 
+      const importNeighbor = importNeighbors.get(seed.path)?.has(file.path) ?? false;
       if (edgeNeighbors.get(seed.path)?.has(file.path)) {
         score += 60;
         reasons.push("import neighbor");
+      }
+      if (importNeighbor) {
+        const importScore = scoreImportLinkedTaskCompanion({
+          candidatePathTerms: pathTerms,
+          candidateTerms: sourceTerms,
+          pathQueryHits,
+          queryTerms,
+          specificQueryHits
+        });
+        if (importScore.score !== 0) {
+          score += importScore.score;
+          reasons.push(...importScore.reasons);
+        }
       }
       if (sameRoleCategory(seed.path, file.path)) {
         const penalty = sameRoleDuplicatePenalty(seed.path, file.path, queryTerms);
@@ -922,6 +980,8 @@ function mentionedSourceFileBasenames(query: string): Set<string> {
   const basenames = new Set<string>();
   const pattern = /\b[A-Za-z0-9_.-]+\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|rs|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)\b/g;
   for (const match of query.matchAll(pattern)) {
+    const start = match.index ?? 0;
+    if (start > 0 && query[start - 1] === "/") continue;
     const basename = match[0]!.toLowerCase().split(/[\\/]/).at(-1);
     if (!basename || isLikelyTestPath(basename) || isGenericMentionedBasename(basename)) continue;
     basenames.add(basename);
@@ -1703,8 +1763,302 @@ function isGenericHelperForRoleCompanion(filePath: string, queryTerms: Set<strin
   return !["helper", "helpers", "utility", "utils", "support"].some((term) => queryTerms.has(term));
 }
 
+function isExecutionCoordinatorForCryptoTask(filePath: string, queryTerms: Set<string>): boolean {
+  const asksCrypto =
+    ["password", "passwords", "encrypt", "encryption", "hash", "hashes", "hashing", "bcrypt", "salt", "salts", "ident"].some((term) =>
+      queryTerms.has(term)
+    );
+  if (!asksCrypto) return false;
+  return /(^|\/)(executor|execution|queue|scheduler|task_queue|taskqueue)\//.test(filePath.toLowerCase()) ||
+    /(^|\/)task[_-]?queue[_-]?manager\.(?:py|pyi?|ts|tsx|js|jsx|java|go|rb)$/.test(filePath.toLowerCase());
+}
+
 function isGenericUtilityBasename(basename: string): boolean {
   return /^(utils?|helpers?|common|shared|support)\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(basename);
+}
+
+function isGenericMentionedSourceBasename(basename: string): boolean {
+  return /^(main|index)\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(basename);
+}
+
+function qualifiedGenericModulePathHints(query: string): string[][] {
+  const hints: string[][] = [];
+  for (const match of query.matchAll(/\b[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+\b/g)) {
+    const terms = tokenizeLexical(match[0] ?? "").filter((term) => term.length > 1);
+    if (terms.length >= 3 && /^(utils?|helpers?|common|shared|support|code|index|main)$/.test(terms.at(-1) ?? "")) {
+      hints.push(terms);
+    }
+  }
+  return hints;
+}
+
+function scoreQualifiedGenericModuleMismatch(filePath: string, hints: string[][]): number {
+  if (hints.length === 0) return 0;
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  if (!/^(utils?|helpers?|common|shared|support)$/.test(basename)) return 0;
+  const pathTerms = termSet(normalized);
+  const matchesNamedModule = hints.some((terms) => terms.every((term) => pathTerms.has(term) || normalized.includes(term)));
+  return matchesNamedModule ? 0 : -12000;
+}
+
+function matchesQualifiedGenericModule(filePath: string, hints: string[][]): boolean {
+  if (hints.length === 0) return false;
+  const normalized = normalizeSlashPath(filePath.toLowerCase());
+  const pathTerms = termSet(normalized);
+  return hints.some((terms) => terms.every((term) => pathTerms.has(term) || normalized.includes(term)));
+}
+
+type TestCounterpartHint = {
+  basenames: string[];
+  suffixes: string[];
+  stemTerms: string[];
+  generic: boolean;
+};
+
+type SourcePathHint = {
+  path: string;
+  basename: string;
+  labeled: boolean;
+};
+
+function sourcePathHintsFromQuery(query: string): SourcePathHint[] {
+  const hints: SourcePathHint[] = [];
+  const seen = new Set<string>();
+  const pattern = /(?:^|[\s"'`,:;([\{])([A-Za-z0-9_.@+~/-]+?\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx))(?:\b|::|#|[\])},;."'`])/g;
+  for (const match of query.matchAll(pattern)) {
+    const rawPath = normalizeSlashPath(match[1] ?? "").toLowerCase();
+    if (!rawPath || isLikelyTestPathMention(rawPath) || isNoisyMentionedSourcePath(rawPath)) continue;
+    const basename = rawPath.split("/").at(-1) ?? rawPath;
+    if (!basename || isGenericMentionedSourceBasename(basename)) continue;
+    const labelWindow = query.slice(Math.max(0, (match.index ?? 0) - 48), match.index ?? 0).toLowerCase();
+    const labeled = /\b(location|source|implementation|file|path|target|interface|module)\b\s*:?\s*$/.test(labelWindow);
+    const hasDirectory = rawPath.includes("/");
+    if (!hasDirectory && !labeled) continue;
+    if (seen.has(rawPath)) continue;
+    seen.add(rawPath);
+    hints.push({ path: rawPath, basename, labeled });
+  }
+  return hints;
+}
+
+function scoreExplicitSourcePathHint(file: FileRecord, hints: SourcePathHint[]): { score: number; reasons: string[] } {
+  if (hints.length === 0 || file.kind === "test" || !isUniversalSourceFile(file) || isNoisyCompanionFile(file)) {
+    return { score: 0, reasons: [] };
+  }
+  const normalizedPath = normalizeSlashPath(file.path.toLowerCase());
+  const basename = normalizedPath.split("/").at(-1) ?? normalizedPath;
+  const reasons: string[] = [];
+  let score = 0;
+  for (const hint of hints) {
+    if (normalizedPath === hint.path || pathSuffixMatches(normalizedPath, hint.path)) {
+      score += hint.labeled ? 7200 : 5600;
+      reasons.push(hint.labeled ? "explicit source location path" : "explicit source path");
+      continue;
+    }
+    if (hint.labeled && hint.basename === basename) {
+      score += 1800;
+      reasons.push("explicit source location filename");
+    }
+  }
+  return { score: Math.min(score, 9600), reasons: uniqueReasons(reasons) };
+}
+
+function isNoisyMentionedSourcePath(filePath: string): boolean {
+  return /(^|\/)(docs?|examples?|fixtures?|testdata|generated|vendor|node_modules|dist|build)\//.test(filePath);
+}
+
+function sourceCounterpartHintsFromTestPaths(query: string): TestCounterpartHint[] {
+  const hints: TestCounterpartHint[] = [];
+  const seen = new Set<string>();
+  const pattern = /(?:^|[\s"'`,:;([\{])([A-Za-z0-9_.@+~/-]+?\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx))(?:\b|::|#|[\])},;."'`])/g;
+  for (const match of query.matchAll(pattern)) {
+    const rawPath = normalizeSlashPath(match[1] ?? "");
+    if (!rawPath || !isLikelyTestPathMention(rawPath)) continue;
+    const hint = sourceCounterpartHintFromTestPath(rawPath);
+    if (!hint || hint.basenames.length === 0) continue;
+    const key = [...hint.basenames, ...hint.suffixes].join("|");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    hints.push(hint);
+  }
+  return hints;
+}
+
+function sourceCounterpartHintFromTestPath(testPath: string): TestCounterpartHint | undefined {
+  const segments = testPath.split("/").filter(Boolean);
+  const basename = segments.at(-1);
+  if (!basename) return undefined;
+  const extensionMatch = /\.(ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)$/i.exec(basename);
+  if (!extensionMatch) return undefined;
+  const extension = extensionMatch[1]!.toLowerCase();
+  const rawStem = basename.slice(0, -extensionMatch[0]!.length);
+  const sourceStem = sourceStemFromTestStem(rawStem);
+  if (!sourceStem || /^(test|tests|spec|specs)$/.test(sourceStem)) return undefined;
+  const basenames = sourceBasenamesForTestStem(sourceStem, extension);
+  const suffixes = sourceSuffixesForTestPath(segments, basenames);
+  const stemTerms = [...termSet(sourceStem.toLowerCase())].filter((term) => term.length > 1);
+  return {
+    basenames: uniqueStrings(basenames.map((item) => item.toLowerCase())),
+    suffixes: uniqueStrings(suffixes.map((item) => normalizeSlashPath(item.toLowerCase()))),
+    stemTerms: uniqueStrings(stemTerms),
+    generic:
+      stemTerms.length === 0 ||
+      stemTerms.every((term) => GENERIC_COUNTERPART_STEMS.has(term)) ||
+      basenames.every((item) => isGenericCounterpartBasename(item.toLowerCase()))
+  };
+}
+
+function sourceStemFromTestStem(stem: string): string {
+  return stem
+    .replace(/^(test|spec)[_-]/i, "")
+    .replace(/[._-](test|spec)$/i, "")
+    .replace(/(Test|Spec)$/i, "")
+    .replace(/[_-]tests?$/i, "")
+    .trim();
+}
+
+function sourceBasenamesForTestStem(stem: string, extension: string): string[] {
+  if (["ts", "tsx", "js", "jsx", "mjs", "cjs"].includes(extension)) {
+    return uniqueStrings([`${stem}.${extension}`, `${stem}.ts`, `${stem}.tsx`, `${stem}.js`, `${stem}.jsx`, `${stem}.mjs`, `${stem}.cjs`]);
+  }
+  if (["kt", "kts"].includes(extension)) return [`${stem}.kt`, `${stem}.kts`];
+  if (["cc", "cpp", "cxx"].includes(extension)) return [`${stem}.${extension}`, `${stem}.cc`, `${stem}.cpp`, `${stem}.cxx`, `${stem}.h`, `${stem}.hpp`];
+  if (["h", "hh", "hpp", "hxx"].includes(extension)) return [`${stem}.${extension}`, `${stem}.h`, `${stem}.hh`, `${stem}.hpp`, `${stem}.hxx`, `${stem}.cc`, `${stem}.cpp`];
+  return [`${stem}.${extension}`];
+}
+
+function sourceSuffixesForTestPath(segments: string[], basenames: string[]): string[] {
+  const suffixes = [...basenames];
+  const lowerSegments = segments.map((segment) => segment.toLowerCase());
+  const basename = segments.at(-1);
+  if (!basename) return suffixes;
+  const directorySegments = segments.slice(0, -1);
+
+  const srcTestIndex = lowerSegments.findIndex((segment, index) => segment === "src" && lowerSegments[index + 1] === "test");
+  if (srcTestIndex >= 0) {
+    const afterTest = directorySegments.slice(srcTestIndex + 2);
+    for (const sourceRoot of [["src", "main"], ["src"]]) {
+      for (const sourceBase of basenames) {
+        suffixes.push([...sourceRoot, ...afterTest, sourceBase].join("/"));
+      }
+    }
+  }
+
+  const testIndex = lowerSegments.findIndex((segment) => /^(tests?|specs?|__tests__|testing)$/.test(segment));
+  if (testIndex >= 0) {
+    const beforeTest = directorySegments.slice(0, testIndex);
+    for (const sourceBase of basenames) {
+      if (beforeTest.length > 0) suffixes.push([...beforeTest, sourceBase].join("/"));
+    }
+  }
+  const afterTest = testIndex >= 0 ? directorySegments.slice(testIndex + 1) : directorySegments;
+  const sourceDirs = afterTest.filter((segment) => !/^(unit|integration|integrations|functional|e2e|acceptance|system|component|components?)$/i.test(segment));
+  for (const sourceBase of basenames) {
+    if (sourceDirs.length > 0) suffixes.push([...sourceDirs, sourceBase].join("/"));
+    const withComponent = afterTest.filter((segment) => !/^(unit|integration|integrations|functional|e2e|acceptance|system)$/i.test(segment));
+    if (withComponent.length > 0) suffixes.push([...withComponent, sourceBase].join("/"));
+  }
+
+  return uniqueStrings(suffixes);
+}
+
+function scoreTestCounterpartHint(file: FileRecord, hints: TestCounterpartHint[], queryTerms: Set<string>): { score: number; reasons: string[] } {
+  if (hints.length === 0) return { score: 0, reasons: [] };
+  if (file.kind === "test" || !isUniversalSourceFile(file) || isNoisySourcePath(file.path)) return { score: 0, reasons: [] };
+
+  const normalizedPath = normalizeSlashPath(file.path.toLowerCase());
+  const basename = normalizedPath.split("/").at(-1) ?? normalizedPath;
+  const reasons: string[] = [];
+  let score = 0;
+  for (const hint of hints) {
+    const genericCounterpart = hint.generic || isGenericCounterpartBasename(basename);
+    const hasSpecificPathHit = hasSpecificCounterpartPathHit(normalizedPath, queryTerms, hint);
+    if (hint.suffixes.some((suffix) => pathSuffixMatches(normalizedPath, suffix) && (suffix.includes("/") || !isGenericCounterpartBasename(suffix)))) {
+      score += genericCounterpart && !hasSpecificPathHit ? 650 : 3200;
+      reasons.push(genericCounterpart && !hasSpecificPathHit ? "selected test generic source counterpart" : "selected test path source counterpart");
+      continue;
+    }
+    if (hint.basenames.includes(basename)) {
+      if (!genericCounterpart) {
+        score += 1800;
+        reasons.push("selected test basename source counterpart");
+      }
+    }
+  }
+  return { score: Math.min(score, 5200), reasons: uniqueReasons(reasons) };
+}
+
+function isGenericCounterpartBasename(basename: string): boolean {
+  if (/^(code|utils?|helpers?|common|shared|support|index|main)\.[a-z0-9]+$/i.test(basename)) return true;
+  const stem = basename.replace(/\.[a-z0-9]+$/i, "");
+  const terms = [...termSet(stem)];
+  return terms.length > 0 && terms.every((term) => GENERIC_COUNTERPART_STEMS.has(term));
+}
+
+function hasSpecificCounterpartPathHit(normalizedPath: string, queryTerms: Set<string>, hint: TestCounterpartHint): boolean {
+  const pathTerms = termSet(normalizedPath);
+  const hintTerms = new Set(hint.stemTerms);
+  return [...queryTerms].some(
+    (term) => !COMPANION_STOP_TERMS.has(term) && !hintTerms.has(term) && pathTerms.has(term)
+  );
+}
+
+const GENERIC_COUNTERPART_STEMS = new Set([
+  "api",
+  "apis",
+  "app",
+  "apps",
+  "category",
+  "categories",
+  "code",
+  "common",
+  "controller",
+  "controllers",
+  "data",
+  "group",
+  "groups",
+  "helper",
+  "helpers",
+  "index",
+  "main",
+  "model",
+  "models",
+  "post",
+  "posts",
+  "route",
+  "routes",
+  "service",
+  "services",
+  "shared",
+  "support",
+  "tag",
+  "tags",
+  "topic",
+  "topics",
+  "user",
+  "users",
+  "util",
+  "utils"
+]);
+
+function pathSuffixMatches(filePath: string, suffix: string): boolean {
+  return filePath === suffix || filePath.endsWith(`/${suffix}`);
+}
+
+function isLikelyTestPathMention(filePath: string): boolean {
+  const normalized = normalizeSlashPath(filePath.toLowerCase());
+  const basename = normalized.split("/").at(-1) ?? normalized;
+  return (
+    /(^|\/)(tests?|specs?|__tests__|testing|testdata|fixtures?)\//.test(normalized) ||
+    /^test[_-]/.test(basename) ||
+    /(?:^|[._-])(test|spec)(?:[._-]|$)/.test(basename) ||
+    /_test\./.test(basename)
+  );
+}
+
+function normalizeSlashPath(input: string): string {
+  return input.replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\.\//, "");
 }
 
 function isUnaskedConverterCompanion(filePath: string, queryTerms: Set<string>): boolean {
@@ -1880,6 +2234,42 @@ function buildEdgeNeighborMap(edges: GraphEdgeRecord[]): Map<string, Set<string>
   return map;
 }
 
+function buildImportNeighborMap(edges: GraphEdgeRecord[]): Map<string, Set<string>> {
+  const map = new Map<string, Set<string>>();
+  for (const edge of edges) {
+    if (edge.type !== "imports" && edge.type !== "imported_by") continue;
+    map.set(edge.fromFile, new Set([...(map.get(edge.fromFile) ?? []), edge.toFile]));
+    map.set(edge.toFile, new Set([...(map.get(edge.toFile) ?? []), edge.fromFile]));
+  }
+  return map;
+}
+
+function scoreImportLinkedTaskCompanion(input: {
+  candidatePathTerms: Set<string>;
+  candidateTerms: Set<string>;
+  pathQueryHits: string[];
+  queryTerms: Set<string>;
+  specificQueryHits: string[];
+}): { score: number; reasons: string[] } {
+  const taskOverlap = [...input.queryTerms].filter((term) => {
+    if (COMPANION_STOP_TERMS.has(term)) return false;
+    return input.candidatePathTerms.has(term) || input.candidateTerms.has(term);
+  });
+  if (taskOverlap.length === 0 && input.pathQueryHits.length === 0 && input.specificQueryHits.length === 0) {
+    return { score: 0, reasons: [] };
+  }
+
+  const score =
+    360 +
+    Math.min(2800, taskOverlap.length * 700) +
+    Math.min(1200, input.pathQueryHits.length * 600) +
+    Math.min(900, input.specificQueryHits.length * 300);
+  return {
+    score,
+    reasons: [`import-linked task companion: ${taskOverlap.slice(0, 4).join(", ") || input.pathQueryHits.slice(0, 3).join(", ")}`]
+  };
+}
+
 function groupByFile<T>(records: T[], filePathFor: (record: T) => string): Map<string, T[]> {
   const grouped = new Map<string, T[]>();
   for (const record of records) {
@@ -1900,6 +2290,10 @@ function uniqueResults(results: HybridScoredResult[]): HybridScoredResult[] {
 
 function uniqueReasons(reasons: string[]): string[] {
   return [...new Set(reasons.filter(Boolean))];
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))];
 }
 
 function normalizeText(input: string): string {

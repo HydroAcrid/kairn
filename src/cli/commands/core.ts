@@ -348,18 +348,19 @@ export function registerCoreCommands(program: Command): void {
         const shouldInjectPrime = Boolean(prime && shouldInjectPrimeIntoCodexPrompt(prime.contextDecision?.action));
         const prompt = interactive
           ? undefined
-          : [
-              ...(shouldInjectPrime ? [prime!.content, ""] : []),
-              bindHooks ? `Kairn conversation session: ${sessionId}` : "",
-              bindHooks ? "Session-bound hooks are installed for follow-up turns in this conversation." : "",
-              bindHooks ? "" : "",
-              "User task:",
-              task,
-              "",
-              shouldInjectPrime
-                ? "Use the Kairn context above first. Avoid broad scans unless the provided files are insufficient."
-                : ""
-            ].join("\n");
+          : shouldInjectPrime
+            ? [
+                prime!.content,
+                "",
+                bindHooks ? `Kairn conversation session: ${sessionId}` : "",
+                bindHooks ? "Session-bound hooks are installed for follow-up turns in this conversation." : "",
+                bindHooks ? "" : "",
+                "User task:",
+                task,
+                "",
+                "Use the Kairn context above first. Avoid broad scans unless the provided files are insufficient."
+              ].join("\n")
+            : task;
         const result = {
           rootPath: path.resolve(options.root),
           sessionId,
