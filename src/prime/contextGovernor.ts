@@ -129,7 +129,12 @@ export function applyContextGovernor(input: GovernorInput): ContextValueDecision
     input.baseDecision.recommendedDelivery !== "multi_file_directive" &&
     (governed.action === "emit" || governed.action === "shrink" || input.baseDecision.action === "shrink");
 
-  if (governed.action === input.baseDecision.action && governed.action !== "request_evidence" && !shouldUpgradeReadOnlyDelivery) {
+  if (
+    governed.action === input.baseDecision.action &&
+    governed.action !== "request_evidence" &&
+    !shouldUpgradeReadOnlyDelivery &&
+    !governed.directiveStyle
+  ) {
     return {
       ...input.baseDecision,
       taskFrame: features.taskFrame,
@@ -156,11 +161,14 @@ export function applyContextGovernor(input: GovernorInput): ContextValueDecision
           ? input.baseDecision.recommendedDelivery === "multi_file_directive" ||
             (features.readOnlySourceRoutingIntent && readOnlySourceCandidateCount > 1) ||
             (features.taskFrame === "qna_source_grounded" && features.candidates.length > 1)
-            ? "multi_file_directive"
-            : "one_file_directive"
-          : "none",
+          ? "multi_file_directive"
+          : "one_file_directive"
+        : "none",
     reasons: [...reasons],
     taskFrame: features.taskFrame,
+    ...(governed.directiveStyle || shouldUpgradeReadOnlyDelivery || input.baseDecision.directiveStyle
+      ? { directiveStyle: governed.directiveStyle ?? (shouldUpgradeReadOnlyDelivery ? "source_map" : input.baseDecision.directiveStyle) }
+      : {}),
     ...(governed.evidenceRequest ? { evidenceRequest: governed.evidenceRequest } : {}),
     modelPrediction,
     featureSummary
@@ -307,6 +315,7 @@ function chooseGovernedAction(input: {
   score: number;
   reasons: string[];
   evidenceRequest?: EvidenceRequest;
+  directiveStyle?: ContextValueDecision["directiveStyle"];
 } {
   const { baseDecision, features, deterministic, modelPrediction } = input;
   const hard = hardSafetyDecision(baseDecision, features, deterministic);
@@ -366,6 +375,30 @@ function hardSafetyDecision(
       score: 0,
       reasons: ["governor found no usable source candidates"],
       ...(features.estimatedSearchCost >= 60 ? { evidenceRequest: evidenceRequestFor(features) } : {})
+    };
+  }
+  if (isEstablishedOfficialExactSourceState(baseDecision, features)) {
+    return {
+      action: "suppress",
+      score: Math.min(baseDecision.score, 28),
+      reasons: ["official exact-source scope is already established; staying silent"],
+      directiveStyle: "scope_guardrail"
+    };
+  }
+  if (isNarrowOfficialExactSourcePatch(baseDecision, features)) {
+    return {
+      action: "shrink",
+      score: Math.min(Math.max(baseDecision.score, 55), 64),
+      reasons: ["narrow official exact-source patch should use a scope-only guardrail"],
+      directiveStyle: "scope_guardrail"
+    };
+  }
+  if (isAmbiguousFrontendPatch(baseDecision, features)) {
+    return {
+      action: "request_evidence",
+      score: Math.min(baseDecision.score, 48),
+      reasons: ["large frontend patch has no dominant source owner; asking for an exact source signal"],
+      evidenceRequest: evidenceRequestFor(features, "exact_source")
     };
   }
   if (
@@ -674,11 +707,65 @@ function taskExplicitlyAllowsRole(taskFrame: TaskFrame, role: FileRoleV2): boole
   return false;
 }
 
+function isNarrowOfficialExactSourcePatch(baseDecision: ContextValueDecision, features: DecisionFeatures): boolean {
+  const top = features.candidates[0];
+  if (!top) return false;
+  if (features.taskFrame !== "official_patch") return false;
+  if (!features.productionOnlyEditIntent) return false;
+  if (features.explicitTestTarget) return false;
+  if (baseDecision.wrongContextRisk) return false;
+  if (baseDecision.recommendedDelivery === "multi_file_directive" || baseDecision.multiSurfaceSignal || baseDecision.companionSpecific) return false;
+  if (!isProductionCandidateRole(top.role)) return false;
+  const exactSourceSignal =
+    baseDecision.exactSourceHit ||
+    baseDecision.sourceRescue ||
+    baseDecision.canonicalSourceHit ||
+    baseDecision.exactPathMentioned ||
+    top.exactMatch;
+  if (!exactSourceSignal) return false;
+  const sourceCandidateCount = features.candidates.slice(0, 4).filter((candidate) => isProductionCandidateRole(candidate.role)).length;
+  const clearlyDominant = features.confidenceGap >= 80 || sourceCandidateCount <= 1 || features.candidates.length <= 2;
+  return clearlyDominant && features.ambiguity < 0.7;
+}
+
+function isEstablishedOfficialExactSourceState(baseDecision: ContextValueDecision, features: DecisionFeatures): boolean {
+  if (!features.activeSourceState) return false;
+  if (features.failureState || features.verificationState || features.staleIndexState) return false;
+  return isNarrowOfficialExactSourcePatch(baseDecision, features);
+}
+
+function isAmbiguousFrontendPatch(baseDecision: ContextValueDecision, features: DecisionFeatures): boolean {
+  if (features.taskFrame !== "official_patch" && features.taskFrame !== "source_rescue") return false;
+  if (baseDecision.action !== "emit") return false;
+  if (baseDecision.exactSourceHit || baseDecision.sourceRescue || baseDecision.canonicalSourceHit || baseDecision.exactPathMentioned) return false;
+  const topUiCandidates = features.candidates.slice(0, 5).filter((candidate) =>
+    candidate.role === "ui_surface" ||
+    candidate.role === "route" ||
+    candidate.language === "typescript" ||
+    candidate.language === "javascript"
+  );
+  if (topUiCandidates.length < 2) return false;
+  return features.ambiguity >= 0.55 || features.confidenceGap < 80;
+}
+
+function isProductionCandidateRole(role: FileRoleV2): boolean {
+  return role === "production_source" ||
+    role === "public_api" ||
+    role === "entrypoint" ||
+    role === "route" ||
+    role === "ui_surface" ||
+    role === "platform_variant" ||
+    role === "schema";
+}
+
 function taskExplicitlyTargetsTests(task: string): boolean {
   const normalized = normalizeText(task);
   if (
     /\bprefer production source over tests?\b/.test(normalized) ||
     /\bproduction source over tests?\b/.test(normalized) ||
+    /\bdo not edit tests?\b/.test(normalized) ||
+    /\btests? (?:are|is) verification targets? only\b/.test(normalized) ||
+    /\bselected (?:verification )?tests? from swe bench pro metadata\b/.test(normalized) ||
     /\btests? docs examples unless\b/.test(normalized) ||
     /\bclean up (?:any )?test artifacts?\b/.test(normalized) ||
     /\bcleanup (?:any )?test artifacts?\b/.test(normalized)

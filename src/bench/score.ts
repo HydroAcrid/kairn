@@ -307,6 +307,7 @@ function addOfficialBucket<T extends string>(
     qualityPasses: 0,
     observedCases: 0,
     observedTokens: 0,
+    tokenUnavailableOfficialPasses: 0,
     averageScore: 0,
     kairnMetricEligibleCases: 0
   };
@@ -315,6 +316,8 @@ function addOfficialBucket<T extends string>(
   if (result.observedCodexTokens !== undefined) {
     existing.observedCases += 1;
     existing.observedTokens += result.observedCodexTokens;
+  } else if (result.metadata.qualityGatePassed === true) {
+    existing.tokenUnavailableOfficialPasses += 1;
   }
   existing.averageScore += result.score;
   if (official.kairnMetricEligible) existing.kairnMetricEligibleCases += 1;

@@ -251,6 +251,9 @@ export function formatShrunkPrimeContext(input: {
     const sections = [
       "# Kairn Fix Guardrail",
       "",
+      `Task: ${compactTaskLine(input.task)}`,
+      `Session: ${input.sessionId}`,
+      "",
       "Start file:",
       topFiles.length > 0 ? `- ${topFiles[0]}` : "- No high-confidence source file found.",
       "",
@@ -263,6 +266,8 @@ export function formatShrunkPrimeContext(input: {
       strictOfficialScope
         ? "Stop condition: if the scope seems incomplete, stop and report the missing evidence instead of expanding edits."
         : "Stop condition: start with this file; expand only to a directly imported or called production helper when this file cannot satisfy the invariant.",
+      "",
+      ...formatMinimalReadOnlyScope(input.editScope),
       "",
       ...formatMinimalEditScope(input.editScope)
     ].filter(Boolean);
@@ -384,6 +389,11 @@ function formatMinimalEditScope(scope: EditScopeDecision | undefined): string[] 
     28
   );
   return ["Edit scope:", `- Initial edit scope: ${initial}`, `- Expand only if ${firstTrigger}.`];
+}
+
+function formatMinimalReadOnlyScope(scope: EditScopeDecision | undefined): string[] {
+  if (!scope?.readOnlyFiles.length) return [];
+  return ["Read-only verification:", `- ${scope.readOnlyFiles.slice(0, 2).join(", ")}`];
 }
 
 function primaryReasonForFile(context: ContextResponse, filePath: string): string {

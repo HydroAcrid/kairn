@@ -466,6 +466,7 @@ export type BenchmarkOfficialEvaluationBucket = {
   qualityPasses: number;
   observedCases: number;
   observedTokens: number;
+  tokenUnavailableOfficialPasses: number;
   averageScore: number;
   kairnMetricEligibleCases: number;
 };

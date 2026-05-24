@@ -37,7 +37,8 @@ export function decideEditScope(input: {
   const failureFiles = uniquePaths((input.failureFiles ?? []).map(normalizeRelativePath));
   const changedFiles = uniquePaths((input.changedFiles ?? []).map(normalizeRelativePath));
   const explicitMultiFileScope = hasExplicitMultiFileScopeRequest(input.task);
-  const productionOnlySingleFile = taskHasProductionOnlyEditIntent(task) && !explicitMultiFileScope;
+  const selectedTestFanout = selectedTestPathCount(task) >= 3 && input.contextDecision?.recommendedDelivery === "multi_file_directive";
+  const productionOnlySingleFile = taskHasProductionOnlyEditIntent(task) && !explicitMultiFileScope && !selectedTestFanout;
 
   const source = scopeSource({
     contextDecision: input.contextDecision,
@@ -65,7 +66,7 @@ export function decideEditScope(input: {
   const officialInitialLimit = allowedHarnessFiles.length > 0
     ? Math.max(1, allowedHarnessFiles.length)
     : officialPatchPrompt
-      ? officialPromptFiles.length > 0 ? 2 : explicitMultiFileScope ? primaryLimit : 1
+      ? selectedTestFanout ? primaryLimit : officialPromptFiles.length > 0 ? 2 : explicitMultiFileScope ? primaryLimit : 1
       : primaryLimit;
   const initialEditFiles = editCandidates
     .filter((file) => isEditableByDefault(file, allowedTestEdits))

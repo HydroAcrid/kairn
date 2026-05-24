@@ -530,6 +530,7 @@ export class KairnRuntime {
       effectiveAction === "shrink" &&
       taskHasProductionOnlyEditIntent(resolvedTask) &&
       !hasExplicitMultiFileScopeRequest(resolvedTask) &&
+      !(contextDecision.taskFrame === "official_patch" && contextDecision.recommendedDelivery === "multi_file_directive") &&
       Boolean(directivePrimaryFile || primaryFile) &&
       Boolean(contextDecision.exactSourceHit || contextDecision.canonicalSourceHit || contextDecision.sourceRescue);
     const effectiveQuality = {
@@ -571,6 +572,7 @@ export class KairnRuntime {
       decision: effectiveContextDecision,
       emittedFiles
     });
+    const scopeOnlyGuardrail = effectiveContextDecision.directiveStyle === "scope_guardrail";
     const invariantFilesMatchDelivery = invariants.every((invariant) => emittedFiles.includes(invariant.file));
     const deliveredPrimaryFile = emittedFiles[0];
     if (isFileEmittingAction(effectiveAction) && deliveredPrimaryFile && !invariantFilesMatchDelivery) {
@@ -681,10 +683,11 @@ export class KairnRuntime {
               quality: effectiveQuality,
               context,
               files: emittedFiles,
-              budget: Math.min(budget, effectiveContextDecision.recommendedDelivery === "multi_file_directive" ? 520 : 420),
+              budget: Math.min(budget, scopeOnlyGuardrail ? 280 : effectiveContextDecision.recommendedDelivery === "multi_file_directive" ? 520 : 420),
               invariants,
               editScope,
               includeSnippet:
+                !scopeOnlyGuardrail &&
                 !useMinimalOneFileDirective &&
                 sessionPolicy.reason !== "verified_context_shrunk" &&
                 sessionPolicy.reason !== "active_source_context_shrunk" &&
@@ -692,7 +695,8 @@ export class KairnRuntime {
                 !contextDecision.wrongContextRisk &&
                 !readOnlySourceRouting &&
                 !isAutomaticExactSourceHook({ source: input.source, decision: contextDecision }),
-              minimal: sessionPolicy.reason === "active_source_context_shrunk" ||
+              minimal: scopeOnlyGuardrail ||
+                sessionPolicy.reason === "active_source_context_shrunk" ||
                 isAutomaticCheapSingleSourceHook({ source: input.source, decision: contextDecision }) ||
                 useMinimalOneFileDirective
             })
@@ -3844,6 +3848,7 @@ function automaticPrimeSuppressionReason(input: {
 
 function shouldEmitAutomaticOfficialPatchGuardrail(task: string, decision: ContextValueDecision): boolean {
   if (decision.taskFrame !== "official_patch") return false;
+  if (decision.directiveStyle === "scope_guardrail") return true;
   if (!taskHasProductionOnlyEditIntent(task)) return false;
   if (!decision.debugSignal) return false;
   if (!decision.cheapSingleSource || decision.cheapExactSource || decision.companionSpecific) return false;

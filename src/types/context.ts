@@ -172,6 +172,7 @@ export type ContextValueDecision = {
   companionCount?: number;
   companionTopScore?: number;
   recommendedDelivery?: "full_prime" | "one_file_directive" | "multi_file_directive" | "evidence_request" | "none";
+  directiveStyle?: "standard" | "scope_guardrail" | "source_map";
   estimatedContextCost: number;
   expectedSavingsRisk: "low" | "medium" | "high";
   debugSignal: boolean;

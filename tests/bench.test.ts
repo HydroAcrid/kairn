@@ -3276,6 +3276,52 @@ describe("benchmark suite and scoring", () => {
     expect(report.officialEvaluationSummary?.kairnMetricEligibleCases).toBe(1);
     expect(report.officialEvaluationSummary?.byTaskClass.source_grounded_explanation?.qualityPasses).toBe(1);
     expect(report.officialEvaluationSummary?.byEvaluator.source_grounded_answer?.observedTokens).toBe(1200);
+    expect(report.officialEvaluationSummary?.byEvaluator.source_grounded_answer?.tokenUnavailableOfficialPasses).toBe(0);
+  });
+
+  it("tracks official pass rows with unavailable token accounting separately", () => {
+    const result = scoreBenchmarkCase({
+      runId: "official_missing_tokens",
+      benchmarkCase: {
+        id: "official-patch",
+        mode: "agent",
+        task: "Fix production source.",
+        expectedFiles: ["src/app.py"],
+        minExpectedHits: 1,
+        excludedFiles: [],
+        officialEvaluation: {
+          source: "swe_bench_pro",
+          taskClass: "patch_verification",
+          evaluator: "patch_verification",
+          kairnApplicability: "strong",
+          kairnMetricEligible: true,
+          liveRisk: "medium",
+          reasons: ["official patch"]
+        }
+      },
+      actualFiles: ["src/app.py"],
+      responseTokens: 300,
+      taskOutcome: "pass",
+      summary: "official patch passed",
+      metadata: { qualityGatePassed: true }
+    });
+    const report = buildBenchmarkReport({
+      run: {
+        id: "run",
+        rootPath: "/repo",
+        suiteId: "suite",
+        suiteName: "suite",
+        mode: "agent",
+        status: "completed",
+        startedAt: "now",
+        metadata: {}
+      },
+      results: [{ ...result, id: 1, createdAt: "now" }]
+    });
+
+    expect(report.officialEvaluationSummary?.byTaskClass.patch_verification?.qualityPasses).toBe(1);
+    expect(report.officialEvaluationSummary?.byTaskClass.patch_verification?.observedCases).toBe(0);
+    expect(report.officialEvaluationSummary?.byTaskClass.patch_verification?.tokenUnavailableOfficialPasses).toBe(1);
   });
 
   it("treats directory exclusions as nested path segments in repo matrices", async () => {
@@ -3728,7 +3774,189 @@ describe("benchmark suite and scoring", () => {
 
     expect(decision.action).toBe("shrink");
     expect(decision.recommendedDelivery).toBe("one_file_directive");
-    expect(decision.reasons).toEqual(expect.arrayContaining(["production-source-only task needs a tiny edit-scope guardrail"]));
+    expect(decision.directiveStyle).toBe("scope_guardrail");
+    expect(decision.reasons).toEqual(expect.arrayContaining(["narrow official exact-source patch should use a scope-only guardrail"]));
+  });
+
+  it("shrinks narrow official exact-source patch prompts into a scope-only guardrail", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "Fix the issue in production source only.",
+        "Selected tests from SWE-Bench Pro metadata: test/units/parsing/yaml/test_dumper.py",
+        "These tests are verification targets only; do not edit tests, snapshots, docs, examples, generated files, or unrelated files."
+      ].join("\n"),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- lib/ansible/parsing/yaml/dumper.py (source, score 460): exact dumper production source",
+        files: ["lib/ansible/parsing/yaml/dumper.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["lib/ansible/parsing/yaml/dumper.py"],
+        rankedFiles: [
+          { path: "lib/ansible/parsing/yaml/dumper.py", kind: "source", score: 460, reasons: ["exact production source"] }
+        ],
+        tokenEstimate: 260
+      },
+      quality: {
+        score: 92,
+        action: "emit",
+        reasons: ["high-confidence top retrieval score"],
+        topScore: 460,
+        topGap: 220,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 88,
+        action: "emit",
+        reasons: ["high-confidence top retrieval score"],
+        topScore: 460,
+        topGap: 220,
+        primaryFile: "lib/ansible/parsing/yaml/dumper.py",
+        language: "python",
+        exactPathMentioned: false,
+        exactSourceHit: true,
+        sourceRescue: true,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 900,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [sourceRecord("lib/ansible/parsing/yaml/dumper.py", "python")],
+      repoFileCount: 1800,
+      estimatedContextCost: 900
+    });
+
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("one_file_directive");
+    expect(decision.directiveStyle).toBe("scope_guardrail");
+    expect(decision.reasons).toEqual(
+      expect.arrayContaining(["narrow official exact-source patch should use a scope-only guardrail"])
+    );
+  });
+
+  it("suppresses repeated official exact-source scope after the source is established", () => {
+    const decision = applyContextGovernor({
+      task: "Fix the issue in production source only. Selected tests from SWE-Bench Pro metadata: test_foo.py. Do not edit tests or unrelated files.",
+      profile: "generic",
+      context: {
+        mode: "snippets",
+        content: "- src/foo.py (source, score 500): exact foo production source",
+        files: ["src/foo.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/foo.py"],
+        rankedFiles: [{ path: "src/foo.py", kind: "source", score: 500, reasons: ["exact production source"] }],
+        tokenEstimate: 200
+      },
+      quality: {
+        score: 90,
+        action: "emit",
+        reasons: ["high-confidence top retrieval score"],
+        topScore: 500,
+        topGap: 260,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 84,
+        action: "shrink",
+        reasons: ["exact source hit should use focused context"],
+        topScore: 500,
+        topGap: 260,
+        primaryFile: "src/foo.py",
+        language: "python",
+        exactPathMentioned: false,
+        exactSourceHit: true,
+        sourceRescue: true,
+        recommendedDelivery: "one_file_directive",
+        estimatedContextCost: 900,
+        expectedSavingsRisk: "medium",
+        debugSignal: false,
+        easyTaskSignal: false
+      },
+      knownFiles: [sourceRecord("src/foo.py", "python")],
+      repoFileCount: 1200,
+      estimatedContextCost: 900,
+      activeSourceState: true
+    });
+
+    expect(decision.action).toBe("suppress");
+    expect(decision.recommendedDelivery).toBe("none");
+    expect(decision.reasons).toEqual(
+      expect.arrayContaining(["official exact-source scope is already established; staying silent"])
+    );
+  });
+
+  it("requests source evidence for ambiguous large frontend official patch prompts", () => {
+    const decision = applyContextGovernor({
+      task: "Fix the Matrix room composer behavior in production source. Selected tests from SWE-Bench Pro metadata: test/Composer-test.ts. Do not edit tests.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: [
+          "- src/components/views/rooms/MessageComposer.tsx (source, score 300): UI composer lexical match",
+          "- src/components/views/rooms/RoomView.tsx (source, score 292): UI room lexical match",
+          "- src/stores/RoomViewStore.ts (source, score 288): UI state lexical match"
+        ].join("\n"),
+        files: [
+          "src/components/views/rooms/MessageComposer.tsx",
+          "src/components/views/rooms/RoomView.tsx",
+          "src/stores/RoomViewStore.ts"
+        ],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/components/views/rooms/MessageComposer.tsx"],
+        rankedFiles: [
+          { path: "src/components/views/rooms/MessageComposer.tsx", kind: "component", score: 300, reasons: ["UI composer lexical match"] },
+          { path: "src/components/views/rooms/RoomView.tsx", kind: "component", score: 292, reasons: ["UI room lexical match"] },
+          { path: "src/stores/RoomViewStore.ts", kind: "source", score: 288, reasons: ["UI state lexical match"] }
+        ],
+        tokenEstimate: 760
+      },
+      quality: {
+        score: 80,
+        action: "emit",
+        reasons: ["top retrieval score"],
+        topScore: 300,
+        topGap: 8,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 78,
+        action: "emit",
+        reasons: ["debug/failure task can benefit from targeted context"],
+        topScore: 300,
+        topGap: 8,
+        primaryFile: "src/components/views/rooms/MessageComposer.tsx",
+        language: "typescript",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 1200,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        { ...sourceRecord("src/components/views/rooms/MessageComposer.tsx", "typescript"), kind: "component" },
+        { ...sourceRecord("src/components/views/rooms/RoomView.tsx", "typescript"), kind: "component" },
+        sourceRecord("src/stores/RoomViewStore.ts", "typescript")
+      ],
+      repoFileCount: 6200,
+      estimatedContextCost: 1200
+    });
+
+    expect(decision.action).toBe("request_evidence");
+    expect(decision.evidenceRequest?.kind).toBe("exact_source");
+    expect(decision.reasons).toEqual(
+      expect.arrayContaining(["large frontend patch has no dominant source owner; asking for an exact source signal"])
+    );
   });
 
   it("shrinks read-only source-routing prompts into compact multi-file directives", () => {

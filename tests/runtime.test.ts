@@ -211,8 +211,10 @@ describe("KairnRuntime", () => {
     expect(prime.contextDecision?.taskFrame).toBe("official_patch");
     expect(prime.contextDecision?.action).toBe("shrink");
     expect(prime.contextDecision?.recommendedDelivery).toBe("one_file_directive");
+    expect(prime.contextDecision?.directiveStyle).toBe("scope_guardrail");
     expect(prime.files).toEqual(["src/PosthogAnalytics.ts"]);
     expect(prime.content).toContain("# Kairn Fix Guardrail");
+    expect(prime.content).toContain("Task:");
     expect(prime.content).toContain("src/PosthogAnalytics.ts");
     expect(prime.content).not.toContain("Focused context:");
     expect(prime.content).not.toContain("Additional detail Additional detail");
