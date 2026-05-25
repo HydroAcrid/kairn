@@ -223,6 +223,52 @@ describe("KairnRuntime", () => {
     runtime.close();
   });
 
+  it("does not auto-suppress cheap exact-source official patch guardrails", async () => {
+    const root = createFixtureRepo();
+    fs.mkdirSync(path.join(root, "openlibrary/core"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "openlibrary/core/vendors.py"),
+      [
+        "def serialize(product):",
+        "    metadata = {}",
+        "    return metadata",
+        "",
+        "def clean_amazon_metadata_for_load(metadata):",
+        "    accepted = ['title', 'authors']",
+        "    return {key: value for key, value in metadata.items() if key in accepted}",
+        ""
+      ].join("\n")
+    );
+    fs.mkdirSync(path.join(root, "openlibrary/tests/core"), { recursive: true });
+    fs.writeFileSync(path.join(root, "openlibrary/tests/core/test_vendors.py"), "def test_vendors(): pass\n");
+    const runtime = new KairnRuntime(root);
+
+    const prime = await runtime.primeContext({
+      task: [
+        "## Amazon imports are missing language metadata from editions",
+        "",
+        "Requirements:",
+        "- The function `serialize(product)` in `openlibrary/core/vendors.py` must include a key \"languages\" in its output when Amazon metadata provides language information.",
+        "- The function `clean_amazon_metadata_for_load(metadata)` must preserve the \"languages\" field by including it in the list of accepted metadata keys.",
+        "",
+        "Selected tests from SWE-Bench Pro metadata: openlibrary/tests/core/sample_amazon_record.py, openlibrary/tests/core/test_vendors.py",
+        "",
+        "Fix the issue in production source. Do not edit unrelated files. Avoid broad scans once the relevant source surface is known."
+      ].join("\n"),
+      budget: 900,
+      source: "codex"
+    });
+
+    expect(prime.contextDecision?.taskFrame).toBe("official_patch");
+    expect(prime.contextDecision?.action).toBe("shrink");
+    expect(prime.contextDecision?.directiveStyle).toBe("scope_guardrail");
+    expect(prime.files).toEqual(["openlibrary/core/vendors.py"]);
+    expect(prime.content).toContain("openlibrary/core/vendors.py");
+    expect(prime.content).not.toContain("Focused context:");
+
+    runtime.close();
+  });
+
   it("allows a three-file directive when selected failing tests imply three production counterparts", async () => {
     const root = fs.mkdtempSync(path.join(process.cwd(), ".tmp-kairn-runtime-"));
     fs.mkdirSync(path.join(root, "qutebrowser/components"), { recursive: true });

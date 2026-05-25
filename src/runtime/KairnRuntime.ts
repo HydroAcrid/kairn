@@ -3837,10 +3837,10 @@ function automaticPrimeSuppressionReason(input: {
   ) {
     return "automatic hook suppressed cheap single-source context to avoid over-assist";
   }
-  if (input.decision.cheapExactSource && !productionOnlyGuardrail) {
+  if (input.decision.cheapExactSource && !productionOnlyGuardrail && !officialPatchGuardrail) {
     return "automatic hook suppressed cheap exact-source context to avoid over-assist";
   }
-  if (isCheapOneShotAutomaticTask(input.task) && input.decision.exactSourceHit && !input.decision.wrongContextRisk && !sourceRescueGuardrail && !productionOnlyGuardrail) {
+  if (isCheapOneShotAutomaticTask(input.task) && input.decision.exactSourceHit && !input.decision.wrongContextRisk && !sourceRescueGuardrail && !productionOnlyGuardrail && !officialPatchGuardrail) {
     return "automatic hook suppressed obvious one-shot source context to avoid over-assist";
   }
   return undefined;

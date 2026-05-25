@@ -6319,18 +6319,19 @@ describe("benchmark runtime and CLI", () => {
     expect(suppressedBoundDryRun.prompt).toBe("Open src/app.ts and explain what it does");
     expect(suppressedBoundDryRun.prompt).not.toContain("Kairn conversation session:");
 
+    const officialPatchTask = [
+      "Debug renderDashboard greeting behavior.",
+      "Selected verification tests from SWE-Bench Pro metadata: src/app.test.ts",
+      "These tests are verification targets only; do not edit tests.",
+      "Fix the issue in production source only. Avoid broad scans once the relevant source surface is known."
+    ].join("\n");
     const officialPatchGuardrailDryRun = JSON.parse(
       execFileSync(
         CLI[0]!,
         [
           ...CLI.slice(1),
           "codex",
-          [
-            "Debug renderDashboard greeting behavior.",
-            "Selected verification tests from SWE-Bench Pro metadata: src/app.test.ts",
-            "These tests are verification targets only; do not edit tests.",
-            "Fix the issue in production source only. Avoid broad scans once the relevant source surface is known."
-          ].join("\n"),
+          officialPatchTask,
           "--root",
           root,
           "--skip-git-repo-check",
@@ -6344,11 +6345,32 @@ describe("benchmark runtime and CLI", () => {
         ],
         { cwd: process.cwd(), encoding: "utf8" }
       )
-    ) as { prompt: string; prime: { files: string[]; contextDecision?: { action?: string; recommendedDelivery?: string } } };
+    ) as { prompt: string; prime: { files: string[]; contextDecision?: { action?: string; directiveStyle?: string; recommendedDelivery?: string } } };
     expect(officialPatchGuardrailDryRun.prime.contextDecision?.action).toBe("shrink");
+    expect(officialPatchGuardrailDryRun.prime.contextDecision?.directiveStyle).toBe("scope_guardrail");
     expect(officialPatchGuardrailDryRun.prime.contextDecision?.recommendedDelivery).toBe("one_file_directive");
     expect(officialPatchGuardrailDryRun.prime.files).toContain("src/app.ts");
     expect(officialPatchGuardrailDryRun.prompt).toContain("# Kairn Fix Guardrail");
+    const unboundOfficialPatchGuardrailDryRun = JSON.parse(
+      execFileSync(
+        CLI[0]!,
+        [
+          ...CLI.slice(1),
+          "codex",
+          officialPatchTask,
+          "--root",
+          root,
+          "--skip-git-repo-check",
+          "--hook-output",
+          "tiny-directive",
+          "--dry-run",
+          "--json"
+        ],
+        { cwd: process.cwd(), encoding: "utf8" }
+      )
+    ) as { prompt: string; prime: { contextDecision?: { directiveStyle?: string } } };
+    expect(unboundOfficialPatchGuardrailDryRun.prime.contextDecision?.directiveStyle).toBe("scope_guardrail");
+    expect(unboundOfficialPatchGuardrailDryRun.prompt).toContain("# Kairn Fix Guardrail");
 
     expect(interactiveDryRun.mode).toBe("interactive");
     expect(interactiveDryRun.args).not.toContain("exec");
