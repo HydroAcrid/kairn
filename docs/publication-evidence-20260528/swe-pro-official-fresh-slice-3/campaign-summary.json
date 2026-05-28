@@ -3,20 +3,20 @@
   "branch": "fix/export-command-companion-routing",
   "purpose": "Fresh 10-row SWE-Pro slice after export-command companion routing and prompt-derived multi-file scope fixes.",
   "publicClaimEligible": false,
-  "publicClaimReason": "Official evaluator produced zero official passes for both baseline and Kairn in this selected row set; local results are mixed and include routing misses.",
+  "publicClaimReason": "Official evaluator was blocked because the Docker daemon was unavailable; local results are mixed and include routing misses.",
   "checks": {
     "pnpmTest": "passed",
     "pnpmTypecheck": "passed",
     "pnpmBuild": "passed",
     "gitDiffCheck": "passed"
   },
-  "baselineOfficialStatus": "failed",
-  "kairnOfficialStatus": "failed",
+  "baselineOfficialStatus": "harness_blocked",
+  "kairnOfficialStatus": "harness_blocked",
   "baselineOfficialWarnings": [
-    "Official evaluator run failed before producing valid test results; inspect evaluator stdout/stderr."
+    "Official evaluator could not connect to the Docker daemon and did not produce valid test results."
   ],
   "kairnOfficialWarnings": [
-    "Official evaluator run failed before producing valid test results; inspect evaluator stdout/stderr."
+    "Official evaluator could not connect to the Docker daemon and did not produce valid test results."
   ],
   "aggregate": {
     "baselineLocalPass": 4,
@@ -31,7 +31,8 @@
     "Flipt export-command row no longer empty-patches but still failed official eval in the targeted recheck.",
     "HSM/KMS routing no longer points at unrelated frontend code; isolated one-row recheck passed local quality with both backend files touched.",
     "Full fresh slice still showed HSM/KMS variance: the Kairn run found both files but edited only testhelpers.go, so it stayed local-partial.",
-    "Fresh slice exposed additional routing weaknesses: OpenLibrary autocomplete selected an unrelated addbook file, Ansible deprecation-date selected date/url helpers, and Element voice-broadcast still violated scope.",
+    "Fresh local slice exposed additional routing weaknesses: OpenLibrary autocomplete selected an unrelated addbook file, Ansible deprecation-date selected date/url helpers, and Element voice-broadcast still violated scope.",
+    "Official pass/fail remains unknown for this slice until Docker is running and the official evaluator is rerun.",
     "No public evidence update should be made from this slice."
   ],
   "rows": [
