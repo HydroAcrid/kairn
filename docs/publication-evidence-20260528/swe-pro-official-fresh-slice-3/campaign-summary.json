@@ -1,351 +1,146 @@
 {
-  "generatedAt": "2026-05-28T16:42:53.123Z",
+  "generatedAt": "2026-05-28T18:06:02.085Z",
   "branch": "fix/export-command-companion-routing",
-  "purpose": "Fresh 10-row SWE-Pro slice after export-command companion routing and prompt-derived multi-file scope fixes.",
+  "purpose": "Fresh 10-row SWE-Pro official evaluator slice after export-command companion routing and prompt-derived multi-file scope fixes.",
   "publicClaimEligible": false,
-  "publicClaimReason": "Official evaluator was blocked because the Docker daemon was unavailable; local results are mixed and include routing misses.",
+  "publicClaimReason": "Kairn passed fewer official rows than baseline in this fresh slice. This branch is not safe to treat as a net benchmark improvement.",
   "checks": {
     "pnpmTest": "passed",
     "pnpmTypecheck": "passed",
     "pnpmBuild": "passed",
-    "gitDiffCheck": "passed"
+    "gitDiffCheck": "passed",
+    "dockerEvaluator": "completed"
   },
-  "baselineOfficialStatus": "harness_blocked",
-  "kairnOfficialStatus": "harness_blocked",
-  "baselineOfficialWarnings": [
-    "Official evaluator could not connect to the Docker daemon and did not produce valid test results."
-  ],
-  "kairnOfficialWarnings": [
-    "Official evaluator could not connect to the Docker daemon and did not produce valid test results."
-  ],
-  "aggregate": {
-    "baselineLocalPass": 4,
-    "kairnLocalPass": 4,
-    "baselineOfficialPass": 0,
-    "kairnOfficialPass": 0,
-    "localPassPassSavings": 3,
-    "localQualityRescue": 1,
-    "noDiffRows": 1
+  "officialEvaluation": {
+    "baselineOutput": "official-baseline-live-10-after-docker.stdout.json",
+    "kairnOutput": "official-kairn-live-10-after-routing-fixes-after-docker.stdout.json",
+    "baselineOfficialPass": 7,
+    "kairnOfficialPass": 4,
+    "cleanOfficialSavingsRows": 4,
+    "officialTokenRegressionRows": 0,
+    "officialRescueRows": 0,
+    "baselinePassKairnFailRows": 3,
+    "bothFailRows": 3,
+    "cleanSavingsTotalTokens": 243914,
+    "cleanSavingsMedianReductionPct": 60.7
   },
   "keyFindings": [
-    "Flipt export-command row no longer empty-patches but still failed official eval in the targeted recheck.",
-    "HSM/KMS routing no longer points at unrelated frontend code; isolated one-row recheck passed local quality with both backend files touched.",
-    "Full fresh slice still showed HSM/KMS variance: the Kairn run found both files but edited only testhelpers.go, so it stayed local-partial.",
-    "Fresh local slice exposed additional routing weaknesses: OpenLibrary autocomplete selected an unrelated addbook file, Ansible deprecation-date selected date/url helpers, and Element voice-broadcast still violated scope.",
-    "Official pass/fail remains unknown for this slice until Docker is running and the official evaluator is rerun.",
-    "No public evidence update should be made from this slice."
+    "Flipt export-command row no longer empty-patches and now touches the expected command/exporter files, but its official evaluator result is still fail.",
+    "The fresh 10-row official slice is a regression signal: baseline passed 7/10 official rows while Kairn passed 4/10.",
+    "Kairn produced 4 clean official pass/pass savings rows with 243,914 observed tokens saved and 60.7% median reduction among those clean rows.",
+    "The clean savings are outweighed by 3 baseline-pass/Kairn-fail rows in this slice, so public claims must not be updated from this campaign.",
+    "The next fixes should target the baseline-pass/Kairn-fail classes before another fresh official slice."
   ],
   "rows": [
     {
       "index": 1,
-      "rowId": "instance_qutebrowser__qutebrowser-305e7c96d5e2fdb3b248b27dfb21042fb2b7e0b8-v2ef375ac784985212b1805e1d0431dc8f1b3c171",
-      "baseline": {
-        "officialPass": false,
-        "localOutcome": "pass",
-        "tokens": 60217,
-        "changedFiles": [
-          "qutebrowser/browser/commands.py",
-          "qutebrowser/completion/models/miscmodels.py"
-        ]
-      },
-      "kairn": {
-        "officialPass": false,
-        "localOutcome": "pass",
-        "tokens": 20161,
-        "changedFiles": [
-          "qutebrowser/browser/commands.py",
-          "qutebrowser/completion/models/miscmodels.py"
-        ],
-        "requiredTouchedSatisfied": true,
-        "scopePassed": true,
-        "primeFiles": [
-          "qutebrowser/browser/commands.py",
-          "qutebrowser/completion/models/miscmodels.py"
-        ]
-      },
+      "label": "qutebrowser tab focus",
+      "baselineOfficialPass": false,
+      "kairnOfficialPass": false,
+      "baselineTokens": 60217,
+      "kairnTokens": 20161,
       "tokenDelta": 40056,
       "tokenDeltaPct": 66.5,
-      "classification": "local_passpass_savings_only"
+      "classification": "both_fail"
     },
     {
       "index": 2,
-      "rowId": "instance_qutebrowser__qutebrowser-233cb1cc48635130e5602549856a6fa4ab4c087f-v35616345bb8052ea303186706cec663146f0f184",
-      "baseline": {
-        "officialPass": false,
-        "localOutcome": "fail",
-        "tokens": 64875,
-        "changedFiles": [
-          "qutebrowser/config/configdata.yml",
-          "qutebrowser/config/configfiles.py",
-          "qutebrowser/config/configinit.py"
-        ]
-      },
-      "kairn": {
-        "officialPass": false,
-        "localOutcome": "partial",
-        "tokens": 122959,
-        "changedFiles": [
-          "qutebrowser/config/configfiles.py",
-          "qutebrowser/config/configinit.py"
-        ],
-        "requiredTouchedSatisfied": false,
-        "scopePassed": true,
-        "primeFiles": [
-          "qutebrowser/config/configfiles.py",
-          "qutebrowser/config/configinit.py"
-        ]
-      },
+      "label": "qutebrowser config overlay",
+      "baselineOfficialPass": false,
+      "kairnOfficialPass": false,
+      "baselineTokens": 64875,
+      "kairnTokens": 122959,
       "tokenDelta": -58084,
       "tokenDeltaPct": -89.5,
-      "classification": "official_fail_both"
+      "classification": "both_fail"
     },
     {
       "index": 3,
-      "rowId": "instance_ansible__ansible-77658704217d5f166404fc67997203c25381cb6e-v390e508d27db7a51eece36bb6d9698b63a5b638a",
-      "baseline": {
-        "officialPass": false,
-        "localOutcome": "pass",
-        "tokens": 48151,
-        "changedFiles": [
-          "lib/ansible/modules/network/nxos/nxos_vrf_af.py"
-        ]
-      },
-      "kairn": {
-        "officialPass": false,
-        "localOutcome": "pass",
-        "tokens": 40428,
-        "changedFiles": [
-          "lib/ansible/modules/network/nxos/nxos_vrf_af.py"
-        ],
-        "requiredTouchedSatisfied": true,
-        "scopePassed": true,
-        "primeFiles": [
-          "lib/ansible/modules/network/nxos/nxos_vrf_af.py",
-          "lib/ansible/module_utils/network/iosxr/providers/cli/config/bgp/address_family.py",
-          "lib/ansible/module_utils/network/frr/providers/cli/config/bgp/address_family.py"
-        ]
-      },
+      "label": "ansible nxos route target",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": true,
+      "baselineTokens": 48151,
+      "kairnTokens": 40428,
       "tokenDelta": 7723,
-      "tokenDeltaPct": 16,
-      "classification": "local_passpass_savings_only"
+      "tokenDeltaPct": 16.0,
+      "classification": "clean_official_savings"
     },
     {
       "index": 4,
-      "rowId": "instance_protonmail__webclients-fc9d535e9beb3ae30a52a7146398cadfd6e30606",
-      "baseline": {
-        "officialPass": false,
-        "localOutcome": "partial",
-        "tokens": 61136,
-        "changedFiles": [
-          "applications/mail/src/app/hooks/useMoveSystemFolders.helpers.ts"
-        ]
-      },
-      "kairn": {
-        "officialPass": false,
-        "localOutcome": "partial",
-        "tokens": 33938,
-        "changedFiles": [
-          "applications/mail/src/app/hooks/useMoveSystemFolders.helpers.ts"
-        ],
-        "requiredTouchedSatisfied": false,
-        "scopePassed": true,
-        "primeFiles": [
-          "applications/mail/src/app/hooks/useMoveSystemFolders.helpers.ts",
-          "applications/mail/src/app/hooks/useMoveSystemFolders.ts"
-        ]
-      },
+      "label": "ProtonMail Sent reorder",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": true,
+      "baselineTokens": 61136,
+      "kairnTokens": 33938,
       "tokenDelta": 27198,
       "tokenDeltaPct": 44.5,
-      "classification": "official_fail_both"
+      "classification": "clean_official_savings"
     },
     {
       "index": 5,
-      "rowId": "instance_gravitational__teleport-baeb2697c4e4870c9850ff0cd5c7a2d08e1401c9-vee9b09fb20c43af7e520f57e9239bbcf46b7113d",
-      "baseline": {
-        "officialPass": false,
-        "localOutcome": "partial",
-        "tokens": 250800,
-        "changedFiles": [
-          "lib/auth/keystore/testhelpers.go"
-        ]
-      },
-      "kairn": {
-        "officialPass": false,
-        "localOutcome": "partial",
-        "tokens": 98560,
-        "changedFiles": [
-          "lib/auth/keystore/testhelpers.go"
-        ],
-        "requiredTouchedSatisfied": false,
-        "scopePassed": true,
-        "primeFiles": [
-          "lib/auth/keystore/pkcs11.go",
-          "lib/auth/keystore/testhelpers.go"
-        ]
-      },
+      "label": "Teleport HSM/KMS config",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": true,
+      "baselineTokens": 250800,
+      "kairnTokens": 98560,
       "tokenDelta": 152240,
       "tokenDeltaPct": 60.7,
-      "classification": "official_fail_both"
+      "classification": "clean_official_savings"
     },
     {
       "index": 6,
-      "rowId": "instance_qutebrowser__qutebrowser-f8e7fea0becae25ae20606f1422068137189fe9e",
-      "baseline": {
-        "officialPass": false,
-        "localOutcome": "fail",
-        "tokens": 73083,
-        "changedFiles": [
-          "qutebrowser/config/configdata.yml",
-          "qutebrowser/config/qtargs.py"
-        ]
-      },
-      "kairn": {
-        "officialPass": false,
-        "localOutcome": "pass",
-        "tokens": 43944,
-        "changedFiles": [
-          "qutebrowser/config/qtargs.py"
-        ],
-        "requiredTouchedSatisfied": true,
-        "scopePassed": true,
-        "primeFiles": [
-          "qutebrowser/config/qtargs.py",
-          "qutebrowser/config/configfiles.py"
-        ]
-      },
+      "label": "qutebrowser QtWebEngine args",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": false,
+      "baselineTokens": 73083,
+      "kairnTokens": 43944,
       "tokenDelta": 29139,
       "tokenDeltaPct": 39.9,
-      "classification": "local_quality_rescue_only"
+      "classification": "baseline_pass_kairn_fail"
     },
     {
       "index": 7,
-      "rowId": "instance_internetarchive__openlibrary-7edd1ef09d91fe0b435707633c5cc9af41dedddf-v76304ecdb3a5954fcf13feb710e8c40fcf24b73c",
-      "baseline": {
-        "officialPass": false,
-        "localOutcome": "pass",
-        "tokens": 67098,
-        "changedFiles": [
-          "openlibrary/plugins/worksearch/autocomplete.py",
-          "openlibrary/utils/__init__.py"
-        ]
-      },
-      "kairn": {
-        "officialPass": false,
-        "localOutcome": "partial",
-        "tokens": 45950,
-        "changedFiles": [
-          "openlibrary/plugins/worksearch/autocomplete.py"
-        ],
-        "requiredTouchedSatisfied": false,
-        "scopePassed": true,
-        "primeFiles": [
-          "openlibrary/plugins/upstream/addbook.py",
-          "openlibrary/plugins/worksearch/autocomplete.py",
-          "openlibrary/solr/update_work.py"
-        ]
-      },
+      "label": "OpenLibrary autocomplete",
+      "baselineOfficialPass": false,
+      "kairnOfficialPass": false,
+      "baselineTokens": 67098,
+      "kairnTokens": 45950,
       "tokenDelta": 21148,
       "tokenDeltaPct": 31.5,
-      "classification": "official_fail_both"
+      "classification": "both_fail"
     },
     {
       "index": 8,
-      "rowId": "instance_ansible__ansible-ea04e0048dbb3b63f876aad7020e1de8eee9f362-v1055803c3a812189a1133297f7f5468579283f86",
-      "baseline": {
-        "officialPass": false,
-        "localOutcome": "partial",
-        "tokens": 84330,
-        "changedFiles": [
-          "lib/ansible/module_utils/basic.py",
-          "lib/ansible/module_utils/common/parameters.py",
-          "lib/ansible/module_utils/common/warnings.py",
-          "lib/ansible/module_utils/csharp/Ansible.Basic.cs"
-        ]
-      },
-      "kairn": {
-        "officialPass": false,
-        "localOutcome": "partial",
-        "tokens": 16502,
-        "changedFiles": [],
-        "requiredTouchedSatisfied": false,
-        "scopePassed": true,
-        "primeFiles": [
-          "lib/ansible/module_utils/facts/system/date_time.py",
-          "lib/ansible/module_utils/urls.py"
-        ]
-      },
+      "label": "Ansible deprecation date",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": false,
+      "baselineTokens": 84330,
+      "kairnTokens": 16502,
       "tokenDelta": 67828,
       "tokenDeltaPct": 80.4,
-      "classification": "no_diff_or_empty_patch"
+      "classification": "baseline_pass_kairn_fail"
     },
     {
       "index": 9,
-      "rowId": "instance_element-hq__element-web-cf3c899dd1f221aa1a1f4c5a80dffc05b9c21c85-vnan",
-      "baseline": {
-        "officialPass": false,
-        "localOutcome": "fail",
-        "tokens": 98513,
-        "changedFiles": [
-          "res/css/voice-broadcast/atoms/_LiveBadge.pcss",
-          "src/voice-broadcast/components/atoms/LiveBadge.tsx",
-          "src/voice-broadcast/components/atoms/VoiceBroadcastHeader.tsx",
-          "src/voice-broadcast/components/molecules/VoiceBroadcastPlaybackBody.tsx",
-          "src/voice-broadcast/components/molecules/VoiceBroadcastPreRecordingPip.tsx",
-          "src/voice-broadcast/components/molecules/VoiceBroadcastRecordingBody.tsx",
-          "src/voice-broadcast/components/molecules/VoiceBroadcastRecordingPip.tsx",
-          "src/voice-broadcast/hooks/useVoiceBroadcastPlayback.ts",
-          "src/voice-broadcast/index.ts",
-          "src/voice-broadcast/models/VoiceBroadcastPlayback.ts",
-          "src/voice-broadcast/utils/VoiceBroadcastChunkEvents.ts"
-        ]
-      },
-      "kairn": {
-        "officialPass": false,
-        "localOutcome": "fail",
-        "tokens": 27405,
-        "changedFiles": [
-          "src/voice-broadcast/index.ts",
-          "src/voice-broadcast/utils/VoiceBroadcastChunkEvents.ts"
-        ],
-        "requiredTouchedSatisfied": false,
-        "scopePassed": false,
-        "primeFiles": [
-          "src/voice-broadcast/utils/VoiceBroadcastChunkEvents.ts",
-          "src/voice-broadcast/models/VoiceBroadcastPlayback.ts"
-        ]
-      },
+      "label": "Element voice broadcast",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": false,
+      "baselineTokens": 98513,
+      "kairnTokens": 27405,
       "tokenDelta": 71108,
       "tokenDeltaPct": 72.2,
-      "classification": "official_fail_both"
+      "classification": "baseline_pass_kairn_fail"
     },
     {
       "index": 10,
-      "rowId": "instance_gravitational__teleport-47530e1fd8bfb84ec096ebcbbc29990f30829655-vee9b09fb20c43af7e520f57e9239bbcf46b7113d",
-      "baseline": {
-        "officialPass": false,
-        "localOutcome": "pass",
-        "tokens": 80593,
-        "changedFiles": [
-          "lib/utils/replace.go"
-        ]
-      },
-      "kairn": {
-        "officialPass": false,
-        "localOutcome": "pass",
-        "tokens": 23840,
-        "changedFiles": [
-          "lib/utils/replace.go"
-        ],
-        "requiredTouchedSatisfied": true,
-        "scopePassed": true,
-        "primeFiles": [
-          "lib/service/kubernetes.go",
-          "lib/srv/db/cloud/users/users.go"
-        ]
-      },
+      "label": "Teleport Kubernetes RBAC",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": true,
+      "baselineTokens": 80593,
+      "kairnTokens": 23840,
       "tokenDelta": 56753,
       "tokenDeltaPct": 70.4,
-      "classification": "local_passpass_savings_only"
+      "classification": "clean_official_savings"
     }
   ]
 }
