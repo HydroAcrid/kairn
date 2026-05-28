@@ -774,10 +774,12 @@ function metadataFromOutput(input: {
   const kairnMcpToolMentions = countMatches(input.output, /\bkairn_(prepare_task|get_next_context|get_failure_context|find_context|read_file|read_symbol)\b/g);
   const codexJsonlMcp = codexJsonlMcpCalls(input.output);
   const workspaceMcp = workspaceMcpCalls(input.workspacePath);
+  const workspacePrime = workspacePrimeMetadata(input.workspacePath);
   const actualMcpToolCalls = workspaceMcp.count > 0 ? workspaceMcp.count : codexJsonlMcp.count;
   const mcpReturnedQuality = input.benchmarkCase
     ? mcpReturnedFileQuality(input.benchmarkCase, workspaceMcp.files)
     : {};
+  const kairnDryRunMetadata = kairnCodexDryRunMetadata(input.output);
   const metadata: Record<string, unknown> = {
     workspacePath: input.workspacePath,
     promptHash: sha256(input.prompt),
@@ -792,6 +794,8 @@ function metadataFromOutput(input: {
     actualMcpFiles: workspaceMcp.files,
     actualMcpContextActions: workspaceMcp.contextActions,
     ...mcpReturnedQuality,
+    ...workspacePrime,
+    ...kairnDryRunMetadata,
     ...(input.extraMetadata ?? {})
   };
 
@@ -817,6 +821,37 @@ function outputFromExecError(error: unknown): string {
     return [bufferLikeToString(error.stdout), bufferLikeToString(error.stderr), error.message].filter(Boolean).join("\n");
   }
   return error instanceof Error ? error.message : String(error);
+}
+
+function kairnCodexDryRunMetadata(output: string): Record<string, unknown> {
+  const parsed = parseJsonObject(output.trim());
+  const prime = isRecord(parsed.prime) ? parsed.prime : undefined;
+  if (!prime) return {};
+
+  const primeMetadata = isRecord(prime.metadata) ? prime.metadata : {};
+  const contextDecision = isRecord(prime.contextDecision) ? prime.contextDecision : {};
+  const files = Array.isArray(prime.files) ? prime.files.filter((item): item is string => typeof item === "string") : [];
+  const tokenEstimate = typeof prime.tokenEstimate === "number" ? prime.tokenEstimate : undefined;
+  const guardrailVariant = typeof primeMetadata.guardrailVariant === "string" ? primeMetadata.guardrailVariant : undefined;
+  const guardrailDirectiveStyle = typeof primeMetadata.guardrailDirectiveStyle === "string"
+    ? primeMetadata.guardrailDirectiveStyle
+    : typeof contextDecision.directiveStyle === "string"
+      ? contextDecision.directiveStyle
+      : undefined;
+
+  return {
+    kairnDryRun: true,
+    ...(tokenEstimate !== undefined ? { primeTokens: tokenEstimate } : {}),
+    ...(typeof contextDecision.action === "string" ? { primeDecision: contextDecision.action } : {}),
+    ...(typeof contextDecision.recommendedDelivery === "string" ? { primeDelivery: contextDecision.recommendedDelivery } : {}),
+    ...(guardrailDirectiveStyle ? { primeDirectiveStyle: guardrailDirectiveStyle } : {}),
+    ...(guardrailVariant ? { guardrailVariant } : {}),
+    ...(typeof primeMetadata.guardrailFileCount === "number" ? { guardrailFileCount: primeMetadata.guardrailFileCount } : {}),
+    ...(typeof primeMetadata.guardrailInvariantCount === "number" ? { guardrailInvariantCount: primeMetadata.guardrailInvariantCount } : {}),
+    ...(typeof primeMetadata.guardrailTokenBudget === "number" ? { guardrailTokenBudget: primeMetadata.guardrailTokenBudget } : {}),
+    ...(typeof primeMetadata.guardrailStrictOfficialScope === "boolean" ? { guardrailStrictOfficialScope: primeMetadata.guardrailStrictOfficialScope } : {}),
+    primeFiles: files
+  };
 }
 
 function isExecError(value: unknown): value is Error & { stdout?: unknown; stderr?: unknown } {
@@ -903,6 +938,50 @@ function workspaceMcpCalls(workspacePath: string): { count: number; toolNames: s
     };
   } catch {
     return { count: 0, toolNames: [], files: [], contextActions: [] };
+  } finally {
+    db?.close();
+  }
+}
+
+function workspacePrimeMetadata(workspacePath: string): Record<string, unknown> {
+  const dbPath = path.join(workspacePath, ".kairn", "kairn.sqlite");
+  if (!fs.existsSync(dbPath)) return {};
+
+  let db: Database.Database | undefined;
+  try {
+    db = new Database(dbPath, { readonly: true, fileMustExist: true });
+    const row = db
+      .prepare(
+        `
+          select event_name, output_tokens, files_json, metadata_json
+          from metrics_events
+          where event_kind = 'prime_context'
+          order by created_at desc, id desc
+          limit 1
+        `
+      )
+      .get() as { event_name: string; output_tokens: number; files_json: string; metadata_json: string } | undefined;
+    if (!row) return {};
+
+    const metadata = parseJsonObject(row.metadata_json);
+    const contextDecision = isRecord(metadata.contextDecision) ? metadata.contextDecision : {};
+    return {
+      primeDecision: typeof contextDecision.action === "string" ? contextDecision.action : row.event_name,
+      ...(typeof contextDecision.recommendedDelivery === "string" ? { primeDelivery: contextDecision.recommendedDelivery } : {}),
+      ...(typeof contextDecision.directiveStyle === "string" ? { primeDirectiveStyle: contextDecision.directiveStyle } : {}),
+      primeTokens: row.output_tokens,
+      primeFiles: parseStringArray(row.files_json),
+      ...(typeof metadata.guardrailVariant === "string" ? { guardrailVariant: metadata.guardrailVariant } : {}),
+      ...(typeof metadata.guardrailFileCount === "number" ? { guardrailFileCount: metadata.guardrailFileCount } : {}),
+      ...(typeof metadata.guardrailInvariantCount === "number" ? { guardrailInvariantCount: metadata.guardrailInvariantCount } : {}),
+      ...(typeof metadata.guardrailTokenBudget === "number" ? { guardrailTokenBudget: metadata.guardrailTokenBudget } : {}),
+      ...(typeof metadata.guardrailStrictOfficialScope === "boolean" ? { guardrailStrictOfficialScope: metadata.guardrailStrictOfficialScope } : {}),
+      ...(typeof metadata.officialPatchScopeFileCount === "number" ? { officialPatchScopeFileCount: metadata.officialPatchScopeFileCount } : {}),
+      ...(typeof metadata.forceOfficialMultiFileScope === "boolean" ? { forceOfficialMultiFileScope: metadata.forceOfficialMultiFileScope } : {}),
+      ...(typeof metadata.forceProductionOnlyOneFile === "boolean" ? { forceProductionOnlyOneFile: metadata.forceProductionOnlyOneFile } : {})
+    };
+  } catch {
+    return {};
   } finally {
     db?.close();
   }

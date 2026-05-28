@@ -9,7 +9,12 @@ import type {
 } from "../types.js";
 import { uniquePaths } from "../utils/collections.js";
 import { normalizeRelativePath } from "../utils/paths.js";
-import { hasExplicitMultiFileScopeRequest, taskHasProductionOnlyEditIntent, taskIsOfficialProductionPatchPrompt } from "../prime/contextGovernor.js";
+import {
+  hasExplicitMultiFileScopeRequest,
+  hasPromptDerivedMultiFileScope,
+  taskHasProductionOnlyEditIntent,
+  taskIsOfficialProductionPatchPrompt
+} from "../prime/contextGovernor.js";
 
 export function decideEditScope(input: {
   task: string;
@@ -37,8 +42,9 @@ export function decideEditScope(input: {
   const failureFiles = uniquePaths((input.failureFiles ?? []).map(normalizeRelativePath));
   const changedFiles = uniquePaths((input.changedFiles ?? []).map(normalizeRelativePath));
   const explicitMultiFileScope = hasExplicitMultiFileScopeRequest(input.task);
+  const promptDerivedMultiFileScope = hasPromptDerivedMultiFileScope(input.task);
   const selectedTestFanout = selectedTestPathCount(task) >= 3 && input.contextDecision?.recommendedDelivery === "multi_file_directive";
-  const productionOnlySingleFile = taskHasProductionOnlyEditIntent(task) && !explicitMultiFileScope && !selectedTestFanout;
+  const productionOnlySingleFile = taskHasProductionOnlyEditIntent(task) && !explicitMultiFileScope && !promptDerivedMultiFileScope && !selectedTestFanout;
 
   const source = scopeSource({
     contextDecision: input.contextDecision,
@@ -66,7 +72,7 @@ export function decideEditScope(input: {
   const officialInitialLimit = allowedHarnessFiles.length > 0
     ? Math.max(1, allowedHarnessFiles.length)
     : officialPatchPrompt
-      ? selectedTestFanout ? primaryLimit : officialPromptFiles.length > 0 ? 2 : explicitMultiFileScope ? primaryLimit : 1
+      ? selectedTestFanout ? primaryLimit : officialPromptFiles.length > 0 ? 2 : (explicitMultiFileScope || promptDerivedMultiFileScope) ? primaryLimit : 1
       : primaryLimit;
   const initialEditFiles = editCandidates
     .filter((file) => isEditableByDefault(file, allowedTestEdits))

@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-05-28T14:14:20.107Z",
+  "status": "empty_patch_fixed_official_fail",
+  "branch": "fix/export-command-companion-routing",
+  "rowId": "instance_flipt-io__flipt-b3cd920bbb25e01fdb2dab66a5a913363bc62f6c",
+  "repo": "flipt-io/flipt",
+  "previousIssue": "empty_patch_unresolved",
+  "targetedFix": "generic export-command companion routing prefers exporter implementation over storage backends unless storage is explicitly requested",
+  "localOutcome": "pass",
+  "officialPass": false,
+  "observedCodexTokens": 22030,
+  "primeFiles": [
+    "cmd/flipt/export.go",
+    "internal/ext/exporter.go"
+  ],
+  "changedFiles": [
+    "cmd/flipt/export.go",
+    "internal/ext/exporter.go"
+  ],
+  "requiredTouchedSatisfied": true,
+  "sourceScopeDiscipline": "passed",
+  "classification": "routing_repair_official_fail",
+  "publicClaimEligible": false,
+  "notes": [
+    "The row no longer empty-patches and touches the expected production files.",
+    "Official evaluator still fails, so this is a routing robustness fix, not public official-pass evidence.",
+    "Run a fresh 10-15 row official slice before treating this as a net improvement."
+  ]
+}

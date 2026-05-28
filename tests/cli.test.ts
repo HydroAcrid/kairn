@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { buildCodexNoDiffRecoveryPrompt, relevantWorkspaceDiffFiles, shouldRetryCodexNoDiff } from "../src/cli/codexRecovery.js";
 import { codexExecArgs } from "../src/cli/helpers.js";
 import { createFixtureRepo } from "./helpers.js";
 
@@ -407,5 +408,107 @@ describe("CLI", () => {
 
     expect(args).toContain("--skip-git-repo-check");
     expect(args.indexOf("--skip-git-repo-check")).toBeLessThan(args.indexOf("--cd"));
+  });
+
+  it("builds a bounded official no-diff recovery prompt without widening scope", () => {
+    const task = [
+      "Selected verification tests from SWE-Bench Pro metadata: tests/test_redhat.py",
+      "Fix the issue in production source only. Do not edit tests."
+    ].join("\n");
+    const session = {
+      id: "task_1",
+      rootPath: "/repo",
+      task,
+      status: "active" as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      filesShown: [],
+      symbolsShown: [],
+      commandsRun: [],
+      diffsObserved: [],
+      watchEvents: [],
+      risks: [],
+      verificationHints: []
+    };
+    const prime = {
+      task,
+      session,
+      profile: "generic" as const,
+      content: "# Kairn Fix Guardrail",
+      files: ["scanner/redhatbase.go"],
+      tokenEstimate: 40,
+      quality: {
+        score: 60,
+        action: "shrink" as const,
+        reasons: [],
+        topScore: 100,
+        topGap: 100,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low" as const
+      },
+      contextDecision: {
+        action: "shrink" as const,
+        score: 60,
+        reasons: [],
+        topScore: 100,
+        topGap: 100,
+        language: "go" as const,
+        exactPathMentioned: false,
+        estimatedTokensIn: 400,
+        estimatedTokensOut: 100,
+        estimatedSavings: 300,
+        estimatedContextCost: 400,
+        estimatedCostIfWrong: 0,
+        expectedSavingsRisk: "low" as const,
+        debugSignal: false,
+        easyTaskSignal: false,
+        wrongContextRisk: false,
+        recommendedDelivery: "one_file_directive" as const,
+        taskFrame: "official_patch" as const,
+        directiveStyle: "scope_guardrail" as const
+      },
+      editScope: {
+        initialEditFiles: ["scanner/redhatbase.go"],
+        readOnlyFiles: ["scanner/redhatbase_test.go"],
+        allowedExpansionTriggers: ["only if failure names another production file"],
+        forbiddenEditPatterns: ["tests/**", "docs/**"],
+        scopeConfidence: "high" as const,
+        scopeSource: "official_harness" as const,
+        reason: "official metadata supplied production scope",
+        strictBoundary: true,
+        dynamic: true as const
+      },
+      warnings: [],
+      suggestedCommands: []
+    };
+    const retry = shouldRetryCodexNoDiff({
+      task,
+      interactive: false,
+      exitCode: 0,
+      changedFiles: [],
+      prime
+    });
+    expect(retry).toBe(true);
+
+    const prompt = buildCodexNoDiffRecoveryPrompt({
+      task,
+      prime
+    });
+    expect(prompt).toContain("previous agent run exited without a production source diff");
+    expect(prompt).toContain("Edit scope: scanner/redhatbase.go");
+    expect(prompt).toContain("Do not edit tests");
+    expect(prompt).not.toContain("broad scans");
+  });
+
+  it("ignores Kairn-owned files when checking whether Codex produced a diff", () => {
+    const root = fs.mkdtempSync(path.join(process.cwd(), ".tmp-kairn-cli-diff-"));
+    execFileSync("git", ["init"], { cwd: root });
+    fs.mkdirSync(path.join(root, ".codex"), { recursive: true });
+    fs.writeFileSync(path.join(root, ".codex/hooks.json"), "{}\n");
+    expect(relevantWorkspaceDiffFiles(root)).toEqual([]);
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.writeFileSync(path.join(root, "src/app.ts"), "export const value = 1;\n");
+    expect(relevantWorkspaceDiffFiles(root)).toContain("src/app.ts");
+    fs.rmSync(root, { recursive: true, force: true });
   });
 });

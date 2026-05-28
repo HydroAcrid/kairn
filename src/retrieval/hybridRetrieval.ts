@@ -260,8 +260,9 @@ function scoreSourcePriority(
   const explicitDocsIntent = intent.primary === "docs" || ["docs", "doc", "readme", "example", "examples", "demo"].some((term) => queryTerms.has(term));
   const explicitTestIntent = hasExplicitTestIntent(queryTerms, query);
   const debugImplementationIntent = ["debug", "fix", "regression", "bug", "broken"].some((term) => queryTerms.has(term));
+  const hsmKmsConfigIntent = isHsmKmsConfigQuery(query);
   const implementationIntent =
-    !explicitDocsIntent && (debugImplementationIntent || ["generic", "backend", "data", "auth", "workflow", "ui"].includes(intent.primary));
+    !explicitDocsIntent && (debugImplementationIntent || hsmKmsConfigIntent || ["generic", "backend", "data", "auth", "workflow", "ui"].includes(intent.primary));
   const mentionedSourceBasenames = mentionedSourceFileBasenames(query);
 
   for (const file of files) {
@@ -357,6 +358,18 @@ function scoreSourcePriority(
     if (implementationIntent && protocolFlow.score !== 0) {
       score += protocolFlow.score;
       reasons.push(...protocolFlow.reasons);
+    }
+
+    const commandExportSurface = scoreCommandExportSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && commandExportSurface.score !== 0) {
+      score += commandExportSurface.score;
+      reasons.push(...commandExportSurface.reasons);
+    }
+
+    const hsmKmsConfigSurface = scoreHsmKmsConfigSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && hsmKmsConfigSurface.score !== 0) {
+      score += hsmKmsConfigSurface.score;
+      reasons.push(...hsmKmsConfigSurface.reasons);
     }
 
     if (implementationIntent && isLanguageSourceSurface(file)) {
@@ -1996,6 +2009,124 @@ function scoreGoPackageRoutingSurface(file: FileRecord, queryTerms: Set<string>)
     return { score: -900, reasons: ["go middleware package downranked for router/context prompt"] };
   }
   return { score: 0, reasons: [] };
+}
+
+function scoreCommandExportSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  const exportIntent =
+    /\bexport(?:er|ers|ing|ed)?\b/.test(normalizedQuery) &&
+    (/\b(command|cli|flag|backend|declarative|resource|namespace|sort|deterministic)\b/.test(normalizedQuery) ||
+      /--[a-z0-9-]*sort[a-z0-9-]*/i.test(query));
+  if (!exportIntent || !isLanguageSourceSurface(file)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 500)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/^cmd\/[^/]+\/export\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /(^|\/)cmd\/.*\/export\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 2600;
+    reasons.push("CLI export command surface");
+  }
+  if (
+    /(^|\/)(exporter|export)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) ||
+    /(^|\/)(export|exporter)\//.test(normalizedPath) ||
+    /^internal\/ext\/exporter\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)
+  ) {
+    score += 2100;
+    reasons.push("exporter implementation surface");
+  }
+  if (/\b(new exporter|exporter|export)\b/.test(normalizedSource)) {
+    score += 520;
+    reasons.push("exporter symbol/content match");
+  }
+  if (/\b(sort|deterministic|namespace|variant|flag|segment)\b/.test(normalizedQuery) && /\b(sort|namespace|variant|flag|segment)\b/.test(normalizedSource)) {
+    score += 320;
+    reasons.push("export sorting domain match");
+  }
+  if (/^internal\/storage\//.test(normalizedPath) && !/(^|\/)(exporter|export)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score -= 900;
+    reasons.push("storage backend downranked for command/exporter prompt");
+  }
+
+  return { score, reasons };
+}
+
+function scoreHsmKmsConfigSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  const normalizedPath = file.path.toLowerCase();
+  const hsmKmsBackendHelper = isHsmKmsBackendHelperSource(normalizedPath);
+  if (!isHsmKmsConfigQuery(normalizedQuery) || (!isLanguageSourceSurface(file) && !hsmKmsBackendHelper)) return { score: 0, reasons: [] };
+
+  const centralConfigIntent = /\b(unified|central|centralize|centralized|reusable|duplicated|duplication|consistent|selector|detect|detects|available)\b/.test(normalizedQuery);
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 500)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/\/keystore\//.test(normalizedPath) || /\bkeystore\b/.test(normalizedSource)) {
+    score += 4200;
+    reasons.push("HSM/KMS keystore config surface");
+  }
+  if (/(^|\/)(pkcs11|testhelpers?|test_helpers?)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 2600;
+    reasons.push("HSM/KMS backend helper surface");
+  }
+  if (centralConfigIntent && /(^|\/)(testhelpers?|test_helpers?)\.go$/.test(normalizedPath)) {
+    score += 12000;
+    reasons.push("central HSM/KMS test configuration helper");
+  }
+  if (/(\b|_)hsmtestconfig(\b|_)|\bhsm test config\b/.test(normalizedSource)) {
+    score += 7000;
+    reasons.push("HSMTestConfig target surface");
+  }
+  if (/(^|\/)pkcs11\.go$/.test(normalizedPath)) {
+    score += 18000;
+    reasons.push("PKCS11 HSM backend surface");
+  }
+  if (/\b(hsmtestconfig|setupsofthsmtest|softhsm|yubihsm|cloudhsm|awskms|gcpkms|pkcs11)\b/.test(normalizedSource)) {
+    score += 1100;
+    reasons.push("HSM/KMS configuration symbol/content match");
+  }
+  if (/\b(teleport_test|backend|backends|environment|env|config)\b/.test(normalizedSource)) {
+    score += 420;
+    reasons.push("backend test configuration content match");
+  }
+  if (/^web\/|\/web\/|\/tdp\//.test(normalizedPath) && !/\/keystore\//.test(normalizedPath)) {
+    score -= 9000;
+    reasons.push("web/TDP surface downranked for HSM/KMS backend config task");
+  }
+  if (centralConfigIntent && /\/keystore\/(aws_kms|gcp_kms|cloudhsm|yubihsm|softhsm)\.go$/.test(normalizedPath)) {
+    score -= 8000;
+    reasons.push("single-provider backend downranked for central HSM/KMS config task");
+  }
+
+  return { score, reasons };
+}
+
+function isHsmKmsConfigQuery(query: string): boolean {
+  const normalizedQuery = normalizeSearchText(query);
+  return (
+    /\b(hsm|kms|softhsm|yubihsm|cloudhsm|pkcs11)\b/.test(normalizedQuery) &&
+    /\b(test|tests|testing|backend|backends|configuration|config|environment|env)\b/.test(normalizedQuery)
+  );
+}
+
+function isHsmKmsBackendHelperSource(normalizedPath: string): boolean {
+  return /\/keystore\/(pkcs11|testhelpers?|test_helpers?)\.go$/.test(normalizedPath.toLowerCase());
 }
 
 function phraseMatches(normalizedFileText: string, phrase: string, fileTerms: Set<string>): boolean {

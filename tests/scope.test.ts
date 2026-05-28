@@ -152,6 +152,34 @@ describe("edit scope controller", () => {
     expect(scope.allowedExpansionTriggers.join(" ")).toContain("do not expand edit scope");
   });
 
+  it("allows prompt-derived multi-file official scope for central backend configuration tasks", () => {
+    const task = [
+      "Teleport HSM and KMS test configuration logic is duplicated across backend test files.",
+      "Requirements:",
+      "- Provide a unified HSMTestConfig function that automatically detects available HSM/KMS backends.",
+      "- Add dedicated configuration functions for SoftHSM, YubiHSM, CloudHSM, AWS KMS, and GCP KMS.",
+      "- Centralize backend detection and environment validation logic.",
+      "Selected verification tests from SWE-Bench Pro metadata: TestBackends, TestBackends/fake_gcp_kms, TestBackends/fake_aws_kms",
+      "These tests are verification targets only; do not edit tests.",
+      "Fix the issue in production source only."
+    ].join("\n");
+    const scope = decideEditScope({
+      task,
+      candidateFiles: ["lib/auth/keystore/pkcs11.go", "lib/auth/keystore/testhelpers.go"],
+      contextDecision: decision({
+        primaryFile: "lib/auth/keystore/pkcs11.go",
+        sourceRescue: true,
+        canonicalSourceHit: true,
+        multiSurfaceSignal: true,
+        recommendedDelivery: "multi_file_directive"
+      })
+    });
+
+    expect(scope.initialEditFiles).toEqual(["lib/auth/keystore/pkcs11.go", "lib/auth/keystore/testhelpers.go"]);
+    expect(scope.strictBoundary).toBe(true);
+    expect(scope.readOnlyFiles).not.toContain("lib/auth/keystore/testhelpers.go");
+  });
+
   it("keeps unmentioned provider variants out of official edit scope", () => {
     const task = [
       "Location: `internal/server/auth/http.go`",

@@ -822,6 +822,163 @@ describe("hybridSearch", () => {
     expect(merged.slice(0, 4).map((result) => result.path)).not.toContain("test/specs/interceptors.spec.js");
   });
 
+  it("routes CLI export sorting tasks to command and exporter sources before storage backends", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "cmd/flipt/export.go", "source", "go"),
+      file(rootPath, "internal/ext/exporter.go", "source", "go"),
+      file(rootPath, "internal/storage/fs/store/store.go", "source", "go"),
+      file(rootPath, "internal/storage/sql/common/segment.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "cmd/flipt/export.go", "newExportCommand"),
+      symbol(rootPath, "internal/ext/exporter.go", "NewExporter"),
+      symbol(rootPath, "internal/storage/fs/store/store.go", "ListFlags"),
+      symbol(rootPath, "internal/storage/sql/common/segment.go", "ListSegments")
+    ];
+    const chunks = [
+      chunk(rootPath, "cmd/flipt/export.go", "newExportCommand", "export command flag all namespaces output"),
+      chunk(rootPath, "internal/ext/exporter.go", "NewExporter", "Exporter writes namespaces flags segments variants resources"),
+      chunk(rootPath, "internal/storage/fs/store/store.go", "ListFlags", "storage backend lists flags segments by key"),
+      chunk(rootPath, "internal/storage/sql/common/segment.go", "ListSegments", "storage segment list order created at")
+    ];
+    const results = hybridSearch({
+      files,
+      query: "Implement --sort-by-key for the export command. NewExporter should sort namespaces flags segments and variants deterministically.",
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 2).map((result) => result.path)).toEqual(["cmd/flipt/export.go", "internal/ext/exporter.go"]);
+    expect(results.slice(0, 2).map((result) => result.path)).not.toContain("internal/storage/fs/store/store.go");
+  });
+
+  it("uses exporter implementation as the companion for export command sorting tasks", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "cmd/flipt/export.go", "source", "go"),
+      file(rootPath, "internal/ext/exporter.go", "source", "go"),
+      file(rootPath, "internal/storage/fs/store/store.go", "source", "go"),
+      file(rootPath, "internal/storage/sql/common/segment.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "cmd/flipt/export.go", "newExportCommand"),
+      symbol(rootPath, "internal/ext/exporter.go", "NewExporter"),
+      symbol(rootPath, "internal/storage/fs/store/store.go", "ListFlags"),
+      symbol(rootPath, "internal/storage/sql/common/segment.go", "ListSegments")
+    ];
+    const chunks = [
+      chunk(rootPath, "cmd/flipt/export.go", "newExportCommand", "export command flag all namespaces output"),
+      chunk(rootPath, "internal/ext/exporter.go", "NewExporter", "Exporter writes namespaces flags segments variants resources and sort by key"),
+      chunk(rootPath, "internal/storage/fs/store/store.go", "ListFlags", "storage backend lists flags segments by key"),
+      chunk(rootPath, "internal/storage/sql/common/segment.go", "ListSegments", "storage segment list order created at")
+    ];
+    const query = "Implement --sort-by-key for the export command. NewExporter should sort namespaces flags segments and variants deterministically.";
+    const ranked = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+    const companions = findCompanionCandidates({
+      files,
+      ranked,
+      query,
+      symbols,
+      chunks,
+      edges: [],
+      limit: 2
+    });
+
+    expect(companions[0]?.file.path).toBe("internal/ext/exporter.go");
+    expect(companions.map((candidate) => candidate.file.path)).not.toContain("internal/storage/sql/common/segment.go");
+  });
+
+  it("routes HSM/KMS backend test configuration tasks to keystore sources before unrelated web code", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "lib/auth/keystore/testhelpers.go", "source", "go"),
+      file(rootPath, "lib/auth/keystore/pkcs11.go", "source", "go"),
+      file(rootPath, "web/packages/teleport/src/lib/tdp/codec.ts", "source", "typescript"),
+      file(rootPath, "web/packages/teleport/src/lib/tdp/sharedDirectoryManager.ts", "source", "typescript")
+    ];
+    const symbols = [
+      symbol(rootPath, "lib/auth/keystore/testhelpers.go", "HSMTestConfig"),
+      symbol(rootPath, "lib/auth/keystore/pkcs11.go", "SetupSoftHSMTest"),
+      symbol(rootPath, "web/packages/teleport/src/lib/tdp/codec.ts", "validateSharedDirectory"),
+      symbol(rootPath, "web/packages/teleport/src/lib/tdp/sharedDirectoryManager.ts", "SharedDirectoryManager")
+    ];
+    const chunks = [
+      chunk(rootPath, "lib/auth/keystore/testhelpers.go", "HSMTestConfig", "HSM KMS backend test configuration TELEPORT_TEST SoftHSM YubiHSM CloudHSM AWS KMS GCP KMS environment"),
+      chunk(rootPath, "lib/auth/keystore/pkcs11.go", "SetupSoftHSMTest", "pkcs11 SoftHSM backend config keystore HSM test helper"),
+      chunk(rootPath, "web/packages/teleport/src/lib/tdp/codec.ts", "validateSharedDirectory", "validation config shared directory codec"),
+      chunk(rootPath, "web/packages/teleport/src/lib/tdp/sharedDirectoryManager.ts", "SharedDirectoryManager", "web TDP shared directory manager validation")
+    ];
+    const query = "Teleport HSM and KMS test configuration logic is duplicated across backend test files. Add HSMTestConfig for SoftHSM, YubiHSM, CloudHSM, AWS KMS, and GCP KMS.";
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 2).map((result) => result.path).sort()).toEqual(["lib/auth/keystore/pkcs11.go", "lib/auth/keystore/testhelpers.go"]);
+    expect(results.slice(0, 2).map((result) => result.path)).not.toContain("web/packages/teleport/src/lib/tdp/codec.ts");
+  });
+
+  it("keeps HSM/KMS keystore helpers as companions for backend test configuration tasks", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "lib/auth/keystore/testhelpers.go", "source", "go"),
+      file(rootPath, "lib/auth/keystore/pkcs11.go", "source", "go"),
+      file(rootPath, "web/packages/teleport/src/lib/tdp/codec.ts", "source", "typescript"),
+      file(rootPath, "web/packages/teleport/src/lib/tdp/sharedDirectoryManager.ts", "source", "typescript")
+    ];
+    const symbols = [
+      symbol(rootPath, "lib/auth/keystore/testhelpers.go", "HSMTestConfig"),
+      symbol(rootPath, "lib/auth/keystore/pkcs11.go", "SetupSoftHSMTest"),
+      symbol(rootPath, "web/packages/teleport/src/lib/tdp/codec.ts", "validateSharedDirectory"),
+      symbol(rootPath, "web/packages/teleport/src/lib/tdp/sharedDirectoryManager.ts", "SharedDirectoryManager")
+    ];
+    const chunks = [
+      chunk(rootPath, "lib/auth/keystore/testhelpers.go", "HSMTestConfig", "HSM KMS backend test configuration TELEPORT_TEST SoftHSM YubiHSM CloudHSM AWS KMS GCP KMS environment"),
+      chunk(rootPath, "lib/auth/keystore/pkcs11.go", "SetupSoftHSMTest", "pkcs11 SoftHSM backend config keystore HSM test helper"),
+      chunk(rootPath, "web/packages/teleport/src/lib/tdp/codec.ts", "validateSharedDirectory", "validation config shared directory codec"),
+      chunk(rootPath, "web/packages/teleport/src/lib/tdp/sharedDirectoryManager.ts", "SharedDirectoryManager", "web TDP shared directory manager validation")
+    ];
+    const query = "Teleport HSM and KMS test configuration logic is duplicated across backend test files. Add HSMTestConfig for SoftHSM, YubiHSM, CloudHSM, AWS KMS, and GCP KMS.";
+    const ranked = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+    const companions = findCompanionCandidates({
+      files,
+      ranked,
+      query,
+      symbols,
+      chunks,
+      edges: [],
+      limit: 2
+    });
+
+    expect(companions[0]?.file.path).toBe("lib/auth/keystore/testhelpers.go");
+    expect(companions.map((candidate) => candidate.file.path)).not.toContain("web/packages/teleport/src/lib/tdp/sharedDirectoryManager.ts");
+  });
+
   it("keeps exact C source ahead of vendored dependency surfaces for short identifier prompts", () => {
     const rootPath = "/repo";
     const files = [

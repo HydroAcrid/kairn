@@ -3,6 +3,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import { buildSessionWorkingSet } from "../src/ledger/workingSet.js";
+import { formatShrunkPrimeContext, officialGuardrailVariantFor } from "../src/prime/formatPrime.js";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
 import type { SessionLedgerEvent } from "../src/types.js";
 import { estimateTokens } from "../src/utils/tokens.js";
@@ -216,9 +217,19 @@ describe("KairnRuntime", () => {
     expect(prime.content).toContain("# Kairn Fix Guardrail");
     expect(prime.content).toContain("Task:");
     expect(prime.content).toContain("src/PosthogAnalytics.ts");
+    expect(prime.content).toContain("Edit only: src/PosthogAnalytics.ts");
+    expect(prime.content).toContain("Boundary: do not edit tests");
+    expect(prime.content).toContain("Verify read-only: test/PosthogAnalytics-test.ts");
+    expect(prime.content).toContain("report the missing evidence");
+    expect(prime.content).not.toContain("Session:");
+    expect(prime.content).not.toContain("Invariant to preserve:");
+    expect(prime.content).not.toContain("Edit scope:");
     expect(prime.content).not.toContain("Focused context:");
     expect(prime.content).not.toContain("Additional detail Additional detail");
-    expect(estimateTokens(prime.content)).toBeLessThan(320);
+    expect(prime.metadata?.guardrailVariant).toBe("compact_official");
+    expect(prime.metadata?.guardrailDirectiveStyle).toBe("scope_guardrail");
+    expect(prime.metadata?.guardrailStrictOfficialScope).toBe(true);
+    expect(estimateTokens(prime.content)).toBeLessThan(190);
 
     runtime.close();
   });
@@ -264,9 +275,257 @@ describe("KairnRuntime", () => {
     expect(prime.contextDecision?.directiveStyle).toBe("scope_guardrail");
     expect(prime.files).toEqual(["openlibrary/core/vendors.py"]);
     expect(prime.content).toContain("openlibrary/core/vendors.py");
+    expect(prime.content).toContain("Edit only: openlibrary/core/vendors.py");
+    expect(prime.content).toContain("Boundary: do not edit tests");
+    expect(prime.content).toContain("Verify read-only:");
+    expect(prime.content).toContain("openlibrary/tests/core/test_vendors.py");
+    expect(prime.content).not.toContain("Session:");
+    expect(prime.content).not.toContain("Invariant to preserve:");
+    expect(prime.content).not.toContain("Edit scope:");
     expect(prime.content).not.toContain("Focused context:");
+    expect(prime.metadata?.guardrailVariant).toBe("compact_official");
+    expect(estimateTokens(prime.content)).toBeLessThan(190);
 
     runtime.close();
+  });
+
+  it("keeps normal codex official prompts multi-file when the prompt implies multiple production surfaces", async () => {
+    const root = fs.mkdtempSync(path.join(process.cwd(), ".tmp-kairn-runtime-"));
+    fs.mkdirSync(path.join(root, "lib/ansible/plugins/lookup"), { recursive: true });
+    fs.mkdirSync(path.join(root, "lib/ansible/utils"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test/units/plugins/lookup"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test/units/utils"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "lib/ansible/plugins/lookup/password.py"),
+      [
+        "def lookup_password(path, chars, encrypt=None, salt=None, ident=None):",
+        "    stored = read_password_file(path)",
+        "    if stored:",
+        "        return stored",
+        "    password = generate_password(chars)",
+        "    return password",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(root, "lib/ansible/utils/encrypt.py"),
+      [
+        "def encrypt_secret(secret, salt=None, ident=None):",
+        "    return f'{ident}:{salt}:{secret}'",
+        "",
+        "def validate_salt_ident(salt, ident):",
+        "    return bool(salt and ident)",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(path.join(root, "test/units/plugins/lookup/test_password.py"), "def test_password_lookup(): pass\n");
+    fs.writeFileSync(path.join(root, "test/units/utils/test_encrypt.py"), "def test_encrypt_secret(): pass\n");
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "Title: password lookup should preserve encrypted stored passwords.",
+          "",
+          "Requirements:",
+          "- Reuse the existing password file when it is present and readable.",
+          "- Generate a password when no stored value exists.",
+          "- Encrypt the generated password with the requested salt and ident.",
+          "- Write the stored value atomically and keep error messages clear.",
+          "",
+          "Selected tests from SWE-Bench Pro metadata: test/units/plugins/lookup/test_password.py, test/units/utils/test_encrypt.py",
+          "Fix the issue in production source. Do not edit unrelated files."
+        ].join("\n"),
+        budget: 1200,
+        source: "codex"
+      });
+
+      expect(prime.contextDecision?.taskFrame).toBe("official_patch");
+      expect(prime.contextDecision?.recommendedDelivery).toBe("multi_file_directive");
+      expect(prime.files).toEqual(
+        expect.arrayContaining([
+          "lib/ansible/plugins/lookup/password.py",
+          "lib/ansible/utils/encrypt.py"
+        ])
+      );
+      expect(prime.metadata?.guardrailVariant).not.toBe("compact_official");
+      expect(prime.content).toContain("lib/ansible/plugins/lookup/password.py");
+      expect(prime.content).toContain("lib/ansible/utils/encrypt.py");
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("reports official guardrail variants without formatting the body", () => {
+    const editScope = {
+      initialEditFiles: ["lib/ansible/vars/manager.py", "lib/ansible/utils/vars.py"],
+      readOnlyFiles: ["test/units/vars/test_manager.py"],
+      allowedExpansionTriggers: ["only if a focused failure names another production file"],
+      forbiddenEditPatterns: ["tests/**", "docs/**"],
+      scopeConfidence: "high" as const,
+      scopeSource: "official_harness" as const,
+      reason: "official metadata supplied production scope",
+      strictBoundary: true,
+      dynamic: true as const
+    };
+
+    expect(officialGuardrailVariantFor({
+      task: "TypeError combining VarsWithSources and dict in combine_vars.",
+      files: ["lib/ansible/vars/manager.py", "lib/ansible/utils/vars.py"],
+      editScope,
+      invariants: [
+        {
+          file: "lib/ansible/vars/manager.py",
+          statement: "Preserve dict-like behavior when combining VarsWithSources with normal dict values.",
+          confidence: 0.85,
+          source: "heuristic"
+        }
+      ]
+    })).toBe("semantic_official");
+
+    expect(officialGuardrailVariantFor({
+      task: "Undefined template variable should raise a clear undefined-variable error.",
+      files: ["lib/ansible/parsing/yaml/dumper.py", "lib/ansible/plugins/filter/core.py"],
+      editScope: {
+        ...editScope,
+        initialEditFiles: ["lib/ansible/parsing/yaml/dumper.py", "lib/ansible/plugins/filter/core.py"],
+        readOnlyFiles: ["test/units/plugins/filter/test_core.py"]
+      },
+      invariants: [
+        {
+          file: "lib/ansible/plugins/filter/core.py",
+          statement: "Preserve clear undefined-variable errors for template filters.",
+          confidence: 0.85,
+          source: "heuristic"
+        }
+      ]
+    })).toBe("compact_official");
+  });
+
+  it("keeps semantic guardrail detail for multi-file official patch scope", () => {
+    const content = formatShrunkPrimeContext({
+      task: [
+        "## Title",
+        "",
+        "TypeError combining `VarsWithSources` and `dict` in `combine_vars`.",
+        "Fix the issue in production source. Do not edit unrelated files."
+      ].join("\n"),
+      sessionId: "task_semantic_guardrail",
+      profile: "generic",
+      quality: {
+        score: 64,
+        action: "shrink",
+        reasons: [],
+        topScore: 400,
+        topGap: 180,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      context: {
+        mode: "snippets",
+        content: "",
+        files: ["lib/ansible/vars/manager.py", "lib/ansible/utils/vars.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["lib/ansible/vars/manager.py", "lib/ansible/utils/vars.py"],
+        rankedFiles: [],
+        tokenEstimate: 0
+      },
+      files: ["lib/ansible/vars/manager.py", "lib/ansible/utils/vars.py"],
+      budget: 900,
+      minimal: true,
+      invariants: [
+        {
+          file: "lib/ansible/vars/manager.py",
+          statement: "Preserve dict-like behavior when combining VarsWithSources with normal dict values.",
+          evidence: "Official patch task describes unsupported operand behavior.",
+          confidence: 0.85,
+          source: "heuristic"
+        }
+      ],
+      editScope: {
+        initialEditFiles: ["lib/ansible/vars/manager.py", "lib/ansible/utils/vars.py"],
+        readOnlyFiles: ["test/units/vars/test_manager.py"],
+        allowedExpansionTriggers: ["only if a focused failure names another production file"],
+        forbiddenEditPatterns: ["tests/**", "docs/**"],
+        scopeConfidence: "high",
+        scopeSource: "official_harness",
+        reason: "official metadata supplied production scope",
+        strictBoundary: true,
+        dynamic: true
+      }
+    });
+
+    expect(content).toContain("Edit only: lib/ansible/vars/manager.py, lib/ansible/utils/vars.py");
+    expect(content).toContain("Preserve:");
+    expect(content).toContain("VarsWithSources");
+    expect(content).toContain("Verify read-only: test/units/vars/test_manager.py");
+    expect(content).not.toContain("Session:");
+    expect(content).not.toContain("Focused context:");
+    expect(estimateTokens(content)).toBeLessThan(280);
+  });
+
+  it("allows compact guardrails for trivial two-file official patch scope", () => {
+    const content = formatShrunkPrimeContext({
+      task: [
+        "Undefined template variable should raise a clear undefined-variable error.",
+        "Fix the issue in production source. Do not edit unrelated files."
+      ].join("\n"),
+      sessionId: "task_compact_two_file_guardrail",
+      profile: "generic",
+      quality: {
+        score: 64,
+        action: "shrink",
+        reasons: [],
+        topScore: 400,
+        topGap: 180,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      context: {
+        mode: "snippets",
+        content: "",
+        files: ["lib/ansible/parsing/yaml/dumper.py", "lib/ansible/plugins/filter/core.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["lib/ansible/parsing/yaml/dumper.py", "lib/ansible/plugins/filter/core.py"],
+        rankedFiles: [],
+        tokenEstimate: 0
+      },
+      files: ["lib/ansible/parsing/yaml/dumper.py", "lib/ansible/plugins/filter/core.py"],
+      budget: 900,
+      minimal: true,
+      invariants: [
+        {
+          file: "lib/ansible/plugins/filter/core.py",
+          statement: "Preserve clear undefined-variable errors for template filters.",
+          evidence: "Official patch task describes unclear undefined-variable behavior.",
+          confidence: 0.85,
+          source: "heuristic"
+        }
+      ],
+      editScope: {
+        initialEditFiles: ["lib/ansible/parsing/yaml/dumper.py", "lib/ansible/plugins/filter/core.py"],
+        readOnlyFiles: ["test/units/plugins/filter/test_core.py"],
+        allowedExpansionTriggers: ["only if a focused failure names another production file"],
+        forbiddenEditPatterns: ["tests/**", "docs/**"],
+        scopeConfidence: "high",
+        scopeSource: "official_harness",
+        reason: "official metadata supplied production scope",
+        strictBoundary: true,
+        dynamic: true
+      }
+    });
+
+    expect(content).toContain("Edit only: lib/ansible/parsing/yaml/dumper.py, lib/ansible/plugins/filter/core.py");
+    expect(content).toContain("Boundary: do not edit tests");
+    expect(content).not.toContain("Preserve:");
+    expect(content).not.toContain("Session:");
+    expect(content).not.toContain("Focused context:");
+    expect(estimateTokens(content)).toBeLessThan(190);
   });
 
   it("allows a three-file directive when selected failing tests imply three production counterparts", async () => {

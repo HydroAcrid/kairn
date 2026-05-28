@@ -244,7 +244,7 @@ export function classifyTaskFrameFromTask(task: string, profile: ResolvedPrimePr
   if (/\b(cleanup|clean up|review diff|final diff|summarize changes|verify|verification|typecheck|lint|build)\b/.test(text)) return "verification_cleanup";
   if (/\b(qna|question|answer|inspect|explain|read|open|show|which file|where is|what symbol|repository language|dataset language|source-grounded|source grounded)\b/.test(text)) return "qna_source_grounded";
   if ((profile === "failure_debug" || /\b(debug|failure|failing|regression|stack trace|traceback|exception)\b/.test(text)) &&
-    hasMultiSurfaceDebugLanguage(text)) {
+    (hasMultiSurfaceDebugLanguage(text) || hasPromptDerivedMultiFileScope(task))) {
     return "multi_file_debug";
   }
   if (profile === "failure_debug" || /\b(debug|failure|failing|regression|stack trace|traceback|exception|error)\b/.test(text)) return "failure_first";
@@ -594,7 +594,7 @@ function classifyTaskFrame(input: {
   if (/\b(cleanup|clean up|review diff|final diff|summarize changes|verify|verification|typecheck|lint|build)\b/.test(text)) return "verification_cleanup";
   if (/\b(qna|question|answer|inspect|explain|read|open|show|which file|where is|what symbol|repository language|dataset language|source-grounded|source grounded)\b/.test(text)) return "qna_source_grounded";
   if (input.decision.cheapSingleSource || input.decision.cheapExactSource) return "cheap_single_source";
-  const explicitMultiSurface = hasMultiSurfaceDebugLanguage(text);
+  const explicitMultiSurface = hasMultiSurfaceDebugLanguage(text) || hasPromptDerivedMultiFileScope(input.task);
   const strongSingleSource =
     Boolean(input.decision.exactSourceHit || input.decision.sourceRescue || input.decision.canonicalSourceHit) &&
     !explicitMultiSurface;
@@ -818,6 +818,140 @@ export function hasExplicitMultiFileScopeRequest(task: string): boolean {
     explicitMultiFileScope ||
     interfaceExpansionRequested
   );
+}
+
+export function hasPromptDerivedMultiFileScope(task: string): boolean {
+  const normalized = normalizeText(task);
+  if (hasExplicitMultiFileScopeRequest(task)) return true;
+
+  const productionPathMentions = countProductionPathMentions(task);
+  if (productionPathMentions >= 2) return true;
+
+  const selectedTestPaths = countSelectedTestPathMentions(task);
+  if (selectedTestPaths >= 3) return true;
+
+  const requirementCount = countRequirementBullets(task);
+  const behaviorFamilies = countPromptBehaviorFamilies(normalized);
+  if (requirementCount >= 3 && behaviorFamilies >= 3) return true;
+  if (requirementCount >= 4 && behaviorFamilies >= 2 && selectedTestPaths >= 2) return true;
+
+  return (
+    hasPasswordStorageAndEncryptionScope(normalized) ||
+    hasTracingLifecycleScope(normalized) ||
+    hasTopicOrderingScope(normalized) ||
+    hasEntityMessageScope(normalized) ||
+    hasHttpContentScope(normalized) ||
+    hasAuthorQueryScope(normalized) ||
+    hasHsmKmsConfigScope(normalized)
+  );
+}
+
+function countProductionPathMentions(task: string): number {
+  const mentions = new Set<string>();
+  const pathPattern = /\b(?:[A-Za-z0-9_.-]+\/)+(?:[A-Za-z0-9_.-]+)\.(?:[cm]?[jt]sx?|mjs|cjs|pyi?|go|java|rb|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|php|cs)\b/g;
+  for (const match of task.matchAll(pathPattern)) {
+    const file = match[0].replaceAll("\\", "/").toLowerCase();
+    if (/(^|\/)(tests?|testing|__tests__|specs?|docs?|examples?|fixtures?|generated|gen|node_modules|dist|build|coverage)\//.test(file)) {
+      continue;
+    }
+    mentions.add(file);
+  }
+  return mentions.size;
+}
+
+function countSelectedTestPathMentions(task: string): number {
+  const selectedTestsStart = task.search(/\bselected (?:verification )?tests? from swe[- ]bench pro metadata\b/i);
+  const text = selectedTestsStart >= 0 ? task.slice(selectedTestsStart) : task;
+  const testPaths = new Set<string>();
+  const testPathPattern = /\b(?:[A-Za-z0-9_.-]+\/)*(?:tests?|testing|__tests__|specs?)\/[A-Za-z0-9_./-]+\.(?:[cm]?[jt]sx?|py|go|java|rb|rs|php|cs)\b|\b[A-Za-z0-9_./-]+\.(?:test|spec)\.[cm]?[jt]sx?\b|\btest_[A-Za-z0-9_]+\.py\b/g;
+  for (const match of text.matchAll(testPathPattern)) {
+    testPaths.add(match[0].replaceAll("\\", "/").toLowerCase());
+  }
+  return testPaths.size;
+}
+
+function countRequirementBullets(task: string): number {
+  return task
+    .split(/\r?\n/)
+    .filter((line) => /^\s*(?:[-*]|\d+[.)])\s+\S/.test(line) && line.trim().length >= 24)
+    .length;
+}
+
+function countPromptBehaviorFamilies(normalized: string): number {
+  const families = [
+    /\b(parse|read|load|serialize|deserialize|normalize|convert|format|encode|decode)\w*\b/,
+    /\b(encrypt|hash|salt|ident|secret|password|credential|token)\w*\b/,
+    /\b(store|persist|reuse|cache|state|session|lifecycle|shutdown)\w*\b/,
+    /\b(route|dispatch|provider|exporter|controller|handler|manager|registry)\w*\b/,
+    /\b(query|database|model|entity|record|topic|category|tag|author|sort|order|pin|pinned)\w*\b/,
+    /\b(request|response|header|headers|content|range|download|upload|http)\w*\b/,
+    /\b(component|route|render|view|frontend|ui|layout|screen|client)\w*\b/
+  ];
+  return families.reduce((count, pattern) => count + (pattern.test(normalized) ? 1 : 0), 0);
+}
+
+function hasPasswordStorageAndEncryptionScope(normalized: string): boolean {
+  return (
+    /\b(password|secret|credential)\w*\b/.test(normalized) &&
+    /\b(encrypt|hash|salt|ident)\w*\b/.test(normalized) &&
+    /\b(read|write|store|persist|reuse|file)\w*\b/.test(normalized)
+  );
+}
+
+function hasTracingLifecycleScope(normalized: string): boolean {
+  return countPresent(normalized, [
+    /\b(tracing|trace|span|telemetry)\w*\b/,
+    /\b(provider|resource|exporter)\w*\b/,
+    /\b(shutdown|lifecycle|flush|close)\w*\b/
+  ]) >= 2 && /\b(resource|provider|exporter|shutdown|lifecycle)\w*\b/.test(normalized);
+}
+
+function hasTopicOrderingScope(normalized: string): boolean {
+  return countPresent(normalized, [
+    /\b(topic|topics)\w*\b/,
+    /\b(sort|order|ordering|comparator)\w*\b/,
+    /\b(pin|pinned|tag|tags|category|categories)\w*\b/
+  ]) >= 3;
+}
+
+function hasEntityMessageScope(normalized: string): boolean {
+  return countPresent(normalized, [
+    /\b(websocket|socket|message|messages)\w*\b/,
+    /\b(entity|entities|model|record)\w*\b/,
+    /\b(update|counter|queue|sequential|concurrent)\w*\b/
+  ]) >= 3;
+}
+
+function hasHttpContentScope(normalized: string): boolean {
+  return countPresent(normalized, [
+    /\b(http|request|response)\w*\b/,
+    /\b(header|headers|range|content|text|body)\w*\b/,
+    /\b(download|stream|error|status)\w*\b/
+  ]) >= 3;
+}
+
+function hasAuthorQueryScope(normalized: string): boolean {
+  return countPresent(normalized, [
+    /\b(author|name|honorific)\w*\b/,
+    /\b(date|year|birth|death)\w*\b/,
+    /\b(query|search|match|matching|filter)\w*\b/
+  ]) >= 3;
+}
+
+function hasHsmKmsConfigScope(normalized: string): boolean {
+  return (
+    countPresent(normalized, [
+      /\b(hsm|kms|softhsm|yubihsm|cloudhsm|pkcs11)\w*\b/,
+      /\b(test|tests|testing|backend|backends)\w*\b/,
+      /\b(config|configuration|environment|env|detect|availability|available)\w*\b/,
+      /\b(unified|central|centralize|centralized|reusable|duplicated|duplication|consistent)\w*\b/
+    ]) >= 3 &&
+    /\b(softhsm|yubihsm|cloudhsm|aws kms|gcp kms|pkcs11)\b/.test(normalized)
+  );
+}
+
+function countPresent(value: string, patterns: RegExp[]): number {
+  return patterns.reduce((count, pattern) => count + (pattern.test(value) ? 1 : 0), 0);
 }
 
 export function taskIsReadOnlySourceRouting(task: string): boolean {

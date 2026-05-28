@@ -37,6 +37,7 @@ import {
   linearModelPrediction,
   buildDecisionFeatures,
   hasExplicitMultiFileScopeRequest,
+  hasPromptDerivedMultiFileScope,
   taskIsReadOnlySourceRouting
 } from "../src/prime/contextGovernor.js";
 import { formatShrunkPrimeContext, withTinyDirectivePrime } from "../src/prime/formatPrime.js";
@@ -4026,6 +4027,114 @@ describe("benchmark suite and scoring", () => {
         "Diagnose source ownership only: identify the smallest production source files involved. Do not edit files. Return the relevant file paths."
       )
     ).toBe(true);
+  });
+
+  it("infers multi-file production scope from prompt-visible behavior requirements", () => {
+    const task = [
+      "Title: password lookup should preserve encrypted stored passwords.",
+      "",
+      "Requirements:",
+      "- Reuse the existing password file when it is present and readable.",
+      "- Generate a password when no stored value exists.",
+      "- Encrypt the generated password with the requested salt and ident.",
+      "- Write the stored value atomically and keep error messages clear.",
+      "",
+      "Selected tests from SWE-Bench Pro metadata: test/units/plugins/lookup/test_password.py, test/units/utils/test_encrypt.py",
+      "Fix the issue in production source. Do not edit unrelated files."
+    ].join("\n");
+
+    expect(hasExplicitMultiFileScopeRequest(task)).toBe(false);
+    expect(hasPromptDerivedMultiFileScope(task)).toBe(true);
+  });
+
+  it("keeps simple official exact-source prompts out of prompt-derived multi-file scope", () => {
+    const task = [
+      "Title: PosthogAnalytics event tracking ignores privacy state.",
+      "",
+      "Requirements:",
+      "- Update PosthogAnalytics so initialization and event tracking respect the enabled flag.",
+      "- Fix the issue in production source. Do not edit unrelated files.",
+      "",
+      "Interface notes, not necessarily edit targets:",
+      "No new interfaces are introduced.",
+      "",
+      "Selected tests from SWE-Bench Pro metadata: test/PosthogAnalytics-test.ts"
+    ].join("\n");
+
+    expect(hasPromptDerivedMultiFileScope(task)).toBe(false);
+  });
+
+  it("infers multi-file scope for central HSM/KMS backend test configuration prompts", () => {
+    const task = [
+      "Title: HSM/KMS test configuration logic is duplicated across backend test files.",
+      "",
+      "Requirements:",
+      "- Provide a unified HSMTestConfig function that automatically detects available HSM/KMS backends.",
+      "- Add dedicated configuration functions for SoftHSM, YubiHSM, CloudHSM, AWS KMS, and GCP KMS.",
+      "- Centralize backend detection and environment validation logic.",
+      "",
+      "Selected verification tests from SWE-Bench Pro metadata: TestBackends, TestBackends/fake_gcp_kms, TestBackends/fake_aws_kms",
+      "Fix the issue in production source. Do not edit unrelated files."
+    ].join("\n");
+
+    expect(hasExplicitMultiFileScopeRequest(task)).toBe(false);
+    expect(hasPromptDerivedMultiFileScope(task)).toBe(true);
+  });
+
+  it("uses prompt-derived multi-file scope when multiple production candidates are visible", () => {
+    const task = [
+      "Title: password lookup should preserve encrypted stored passwords.",
+      "",
+      "Requirements:",
+      "- Reuse the existing password file when it is present and readable.",
+      "- Generate a password when no stored value exists.",
+      "- Encrypt the generated password with the requested salt and ident.",
+      "- Write the stored value atomically and keep error messages clear.",
+      "",
+      "Selected tests from SWE-Bench Pro metadata: test/units/plugins/lookup/test_password.py, test/units/utils/test_encrypt.py",
+      "Fix the issue in production source. Do not edit unrelated files."
+    ].join("\n");
+    const decision = evaluateContextValue({
+      task,
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: [
+          "- lib/ansible/plugins/lookup/password.py (source, score 880): password lookup source match",
+          "- lib/ansible/utils/encrypt.py (source, score 720): encryption salt ident companion"
+        ].join("\n"),
+        files: ["lib/ansible/plugins/lookup/password.py", "lib/ansible/utils/encrypt.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["lib/ansible/plugins/lookup/password.py", "lib/ansible/utils/encrypt.py"],
+        rankedFiles: [
+          { path: "lib/ansible/plugins/lookup/password.py", kind: "source", score: 880, reasons: ["password lookup source match"] },
+          { path: "lib/ansible/utils/encrypt.py", kind: "source", score: 720, reasons: ["encryption salt ident companion"] }
+        ],
+        tokenEstimate: 360
+      },
+      quality: {
+        score: 84,
+        action: "emit",
+        reasons: ["high-confidence top retrieval score", "top result is clearly separated"],
+        topScore: 880,
+        topGap: 160,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      knownFiles: [
+        record("lib/ansible/plugins/lookup/password.py", "source"),
+        record("lib/ansible/utils/encrypt.py", "source")
+      ],
+      repoFileCount: 1900,
+      estimatedContextCost: 900
+    });
+
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+    expect(decision.multiSurfaceSignal).toBe(true);
+    expect(decision.reasons).toEqual(expect.arrayContaining(["prompt implies multiple production surfaces"]));
   });
 
   it("routes read-only production source maps through source companions when tests rank first", () => {

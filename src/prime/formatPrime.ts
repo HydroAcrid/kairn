@@ -4,6 +4,8 @@ import { estimateTokens, truncateToBudget } from "../utils/tokens.js";
 import { uniquePaths, uniqueStrings } from "../utils/collections.js";
 import type { PrimeProfileLimits, ResolvedPrimeProfile } from "./quality.js";
 
+export type OfficialGuardrailVariant = "compact_official" | "semantic_official";
+
 export function formatPrimeContext(input: {
   task: string;
   sessionId: string;
@@ -248,6 +250,18 @@ export function formatShrunkPrimeContext(input: {
     : formatFocusedContextBlock(input.context.content, Math.max(100, Math.floor(input.budget * 0.24)));
   const strictOfficialScope = input.editScope?.strictBoundary === true;
   if (input.minimal) {
+    if (strictOfficialScope) {
+      const guardrailInput = {
+        task: input.task,
+        files: topFiles,
+        editScope: input.editScope,
+        invariants: input.invariants,
+        budget: input.budget
+      };
+      return officialGuardrailVariantFor(guardrailInput) === "compact_official"
+        ? formatCompactOfficialGuardrail(guardrailInput)
+        : formatSemanticOfficialGuardrail(guardrailInput);
+    }
     const sections = [
       "# Kairn Fix Guardrail",
       "",
@@ -302,6 +316,80 @@ export function formatShrunkPrimeContext(input: {
   return fitSectionsToBudget(sections, input.budget);
 }
 
+function formatCompactOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const startFile = input.files[0] ?? input.editScope?.initialEditFiles[0];
+  const editFiles = uniquePaths([...(startFile ? [startFile] : []), ...(input.editScope?.initialEditFiles ?? [])]).slice(0, 3);
+  const readOnly = input.editScope?.readOnlyFiles.slice(0, 2) ?? [];
+  const sections = [
+    "# Kairn Fix Guardrail",
+    `Task: ${compactTaskLine(input.task, 40)}`,
+    "Action: make the smallest production-source edit; do not stop after analysis if this scope is sufficient.",
+    editFiles.length > 0 ? `Edit only: ${editFiles.join(", ")}` : "Edit only: the official production source scope.",
+    "Boundary: do not edit tests, docs, examples, generated files, or sibling source.",
+    readOnly.length > 0 ? `Verify read-only: ${readOnly.join(", ")}` : "Verify with the narrowest relevant check.",
+    "If another source file seems necessary, stop and report the missing evidence."
+  ];
+  return fitSectionsToBudget(sections, Math.min(input.budget, 190));
+}
+
+function formatSemanticOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const startFiles = uniquePaths([
+    ...input.files,
+    ...(input.editScope?.initialEditFiles ?? [])
+  ]).slice(0, 3);
+  const readOnly = input.editScope?.readOnlyFiles.slice(0, 2) ?? [];
+  const invariant = input.invariants?.[0];
+  const sections = [
+    "# Kairn Fix Guardrail",
+    `Task: ${compactTaskLine(input.task, 48)}`,
+    "Action: make the smallest production-source edit; do not stop after analysis if this scope is sufficient.",
+    startFiles.length > 0 ? `Edit only: ${startFiles.join(", ")}` : "Edit only: the official production source scope.",
+    invariant ? `Preserve: ${truncateToBudget(invariant.statement, 52)}` : "Preserve the failure/behavior invariant described by the task.",
+    "Boundary: no tests, docs, examples, generated files, or sibling source unless a failure proves the scope is incomplete.",
+    readOnly.length > 0 ? `Verify read-only: ${readOnly.join(", ")}` : "Verify with the narrowest relevant check.",
+    "If another source file seems necessary, stop and report the missing evidence."
+  ];
+  return fitSectionsToBudget(sections, Math.min(input.budget, 280));
+}
+
+export function officialGuardrailVariantFor(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+}): OfficialGuardrailVariant {
+  const editFiles = uniquePaths([
+    ...input.files,
+    ...(input.editScope?.initialEditFiles ?? [])
+  ]);
+  if (editFiles.length < 1 || editFiles.length > 2) return "semantic_official";
+  if ((input.invariants?.length ?? 0) === 0) return "compact_official";
+  return isTrivialExactSourceOfficialTask(input.task) ? "compact_official" : "semantic_official";
+}
+
+function isTrivialExactSourceOfficialTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  if (/\b(typeerror|traceback|stack trace|unsupported operand|combine|merge|interact|interaction|pipeline|lifecycle|flow|config(?:uration)?|session|cookie|auth|counts?|logging)\b/.test(normalized)) {
+    return false;
+  }
+  if (/\b(two|three|multiple|several|both|across)\s+(?:production\s+)?(?:files?|sources?|functions?|modules?)\b/.test(normalized)) {
+    return false;
+  }
+  return true;
+}
+
 export function fitSectionsToBudget(sections: string[], budget: number): string {
   const accepted: string[] = [];
   let used = 0;
@@ -348,8 +436,11 @@ function formatTinyDirectivePrime(input: { prime: ContextPrime; budget: number }
   return fitSectionsToBudget(lines, input.budget);
 }
 
-function compactTaskLine(task: string): string {
-  return truncateToBudget(task.replace(/\s+/g, " ").trim(), 72);
+function compactTaskLine(task: string, budget = 72): string {
+  const normalized = task.replace(/\s+/g, " ").trim();
+  const maxChars = Math.max(80, budget * 4);
+  if (normalized.length <= maxChars) return normalized;
+  return `${normalized.slice(0, Math.max(0, maxChars - 3)).trimEnd()}...`;
 }
 
 function formatInvariantSections(

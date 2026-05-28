@@ -81,12 +81,19 @@ import {
   resolvePrimeProfile
 } from "../prime/quality.js";
 import { evaluateContextValue } from "../prime/contextValue.js";
-import { classifyTaskFrameFromTask, hasExplicitMultiFileScopeRequest, taskHasProductionOnlyEditIntent, taskIsReadOnlySourceRouting } from "../prime/contextGovernor.js";
+import {
+  classifyTaskFrameFromTask,
+  hasExplicitMultiFileScopeRequest,
+  hasPromptDerivedMultiFileScope,
+  taskHasProductionOnlyEditIntent,
+  taskIsReadOnlySourceRouting
+} from "../prime/contextGovernor.js";
 import { decideSessionContextPolicy, inferTaskPhase } from "../ledger/policy.js";
 import { summarizeSessionLedger } from "../ledger/summary.js";
 import {
   formatEvidenceRequestPrimeContext,
   formatMcpBriefPrimeContext,
+  officialGuardrailVariantFor,
   formatPrimeContext,
   formatShrunkPrimeContext,
   formatSourceRoutingPrimeContext,
@@ -418,6 +425,7 @@ export class KairnRuntime {
       expectedSavingsRisk: contextDecision.expectedSavingsRisk
     };
     const readOnlySourceRouting = taskIsReadOnlySourceRouting(resolvedTask);
+    const promptDerivedMultiFileScope = hasPromptDerivedMultiFileScope(resolvedTask);
     if (freshness?.stale && input.refreshIndex === false) {
       quality.reasons = uniqueStrings([...quality.reasons, `index freshness: ${freshness.reason}`]);
     }
@@ -498,6 +506,10 @@ export class KairnRuntime {
           ...(context.rankedFiles ?? []).map((file) => file.path)
         ]).filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
       : [];
+    const officialPatchScopeFiles = contextDecision.taskFrame === "official_patch"
+      ? uniquePaths((input.editScopeHints?.allowedDiffScopes ?? []).map((scope) => scope.file).filter(isLikelyProductionSourceFile))
+      : [];
+    const hasOfficialMultiFilePatchScope = officialPatchScopeFiles.length > 1;
     const suggestedCommands = [
       `kairn context --session ${session.id} --root <repo> --query "${resolvedTask.replaceAll('"', '\\"')}" --mode snippets`,
       ...(primaryFile ? [`kairn context --session ${session.id} --root <repo> --related ${primaryFile}`] : []),
@@ -530,9 +542,20 @@ export class KairnRuntime {
       effectiveAction === "shrink" &&
       taskHasProductionOnlyEditIntent(resolvedTask) &&
       !hasExplicitMultiFileScopeRequest(resolvedTask) &&
+      !promptDerivedMultiFileScope &&
+      !hasOfficialMultiFilePatchScope &&
       !(contextDecision.taskFrame === "official_patch" && contextDecision.recommendedDelivery === "multi_file_directive") &&
       Boolean(directivePrimaryFile || primaryFile) &&
       Boolean(contextDecision.exactSourceHit || contextDecision.canonicalSourceHit || contextDecision.sourceRescue);
+    const forceOfficialMultiFileScope =
+      effectiveAction === "shrink" &&
+      hasOfficialMultiFilePatchScope &&
+      !readOnlySourceRouting;
+    const forcePromptDerivedMultiFileScope =
+      effectiveAction === "shrink" &&
+      promptDerivedMultiFileScope &&
+      files.filter(isLikelyProductionSourceFile).length > 1 &&
+      !readOnlySourceRouting;
     const effectiveQuality = {
       ...quality,
       action: effectiveAction,
@@ -541,7 +564,11 @@ export class KairnRuntime {
     const effectiveContextDecision = {
       ...contextDecision,
       action: effectiveAction,
-      recommendedDelivery: forceMinimalSourceFocus || forceProductionOnlyOneFile
+      recommendedDelivery: forceOfficialMultiFileScope
+        ? "multi_file_directive" as const
+        : forcePromptDerivedMultiFileScope
+          ? "multi_file_directive" as const
+        : forceMinimalSourceFocus || forceProductionOnlyOneFile
         ? "one_file_directive" as const
         : effectiveAction === "emit"
         ? contextDecision.recommendedDelivery ?? "full_prime"
@@ -557,6 +584,10 @@ export class KairnRuntime {
         ? readOnlySourceRoutingFiles
       : effectiveAction === "shrink" && forceMinimalSourceFocus && sessionPolicy.files.length > 0
         ? sessionPolicy.files.slice(0, 1)
+      : forceOfficialMultiFileScope
+        ? uniquePaths([...officialPatchScopeFiles, ...files]).slice(0, Math.max(multiFileLimit, officialPatchScopeFiles.length))
+      : forcePromptDerivedMultiFileScope
+        ? files.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
       : forceProductionOnlyOneFile
         ? [directivePrimaryFile ?? primaryFile!]
       : effectiveContextDecision.recommendedDelivery === "multi_file_directive"
@@ -595,6 +626,29 @@ export class KairnRuntime {
           failureFiles: uniquePaths([...(input.editScopeHints?.failureFiles ?? []), ...failureFilesForPolicy]),
           changedFiles: [...changedFilesForPolicy]
         });
+    const guardrailVariant = effectiveAction === "shrink" && scopeOnlyGuardrail && editScope?.strictBoundary === true
+      ? officialGuardrailVariantFor({
+          task: resolvedTask,
+          files: emittedFiles,
+          editScope,
+          invariants
+        })
+      : undefined;
+    const guardrailMetadata = guardrailVariant
+      ? {
+          guardrailVariant,
+          guardrailDirectiveStyle: "scope_guardrail",
+          guardrailStrictOfficialScope: true,
+          guardrailFileCount: emittedFiles.length,
+          guardrailInvariantCount: invariants.length,
+          guardrailTokenBudget: Math.min(budget, 280)
+        }
+      : {};
+    const deliveryPolicyMetadata = {
+      officialPatchScopeFileCount: officialPatchScopeFiles.length,
+      forceOfficialMultiFileScope,
+      forceProductionOnlyOneFile
+    };
     for (const file of files) {
       this.recordLedgerEvent({
         sessionId: session.id,
@@ -609,6 +663,8 @@ export class KairnRuntime {
           phase: sessionPolicy.phase,
           policyReason: sessionPolicy.reason,
           emitted: emittedFiles.includes(file),
+          ...guardrailMetadata,
+          ...deliveryPolicyMetadata,
           workingSetActiveFiles: ledgerSummary.workingSet.activeFiles.slice(0, 6),
           nextSmallestUsefulRead: ledgerSummary.workingSet.nextSmallestUsefulRead
         }
@@ -735,6 +791,8 @@ export class KairnRuntime {
           phase: sessionPolicy.phase,
           policyReason: sessionPolicy.reason,
           policyAction: sessionPolicy.action,
+          ...guardrailMetadata,
+          ...deliveryPolicyMetadata,
           ...(invariants[0] ? { invariant: invariants[0] } : {}),
           workingSetActiveFiles: ledgerSummary.workingSet.activeFiles.slice(0, 6),
           nextSmallestUsefulRead: ledgerSummary.workingSet.nextSmallestUsefulRead
@@ -753,6 +811,8 @@ export class KairnRuntime {
           taskHash: sha256(resolvedTask),
           phase: sessionPolicy.phase,
           policyReason: sessionPolicy.reason,
+          ...guardrailMetadata,
+          ...deliveryPolicyMetadata,
           repeatedFilesAvoided: policyRepeatedFilesAvoided,
           repeatedSnippetsAvoided: sessionPolicy.reason === "repeated_context_suppressed" ? 1 : 0,
           workingSetActiveFiles: ledgerSummary.workingSet.activeFiles.slice(0, 6),
@@ -780,6 +840,8 @@ export class KairnRuntime {
         contextDecision: effectiveContextDecision,
         editScope,
         sessionPolicy,
+        ...guardrailMetadata,
+        ...deliveryPolicyMetadata,
         workingSet: ledgerSummary.workingSet,
         invariants,
         timings,
@@ -805,6 +867,8 @@ export class KairnRuntime {
         contextDecision: effectiveContextDecision,
         editScope,
         sessionPolicy,
+        ...guardrailMetadata,
+        ...deliveryPolicyMetadata,
         workingSet: ledgerSummary.workingSet,
         invariants,
         timings,
@@ -826,6 +890,8 @@ export class KairnRuntime {
         ...effectiveContextDecision,
         editScope,
         sessionPolicy,
+        ...guardrailMetadata,
+        ...deliveryPolicyMetadata,
         workingSet: ledgerSummary.workingSet,
         invariants,
         timings,
@@ -850,6 +916,8 @@ export class KairnRuntime {
         companionCandidates: companionMetadata,
         sessionPolicy,
         editScope,
+        ...guardrailMetadata,
+        ...deliveryPolicyMetadata,
         workingSet: ledgerSummary.workingSet
       },
       warnings: uniqueStrings([...context.warnings, ...(related?.warnings ?? []), ...(tests?.warnings ?? [])]),
@@ -3894,6 +3962,7 @@ function shouldUseMinimalOneFileDirective(input: {
   if (input.emittedFiles.length !== 1) return false;
   if (!taskHasProductionOnlyEditIntent(input.task)) return false;
   if (hasExplicitMultiFileScopeRequest(input.task)) return false;
+  if (hasPromptDerivedMultiFileScope(input.task)) return false;
   if (input.decision.wrongContextRisk) return false;
   const narrowOfficialPatch = isNarrowOfficialExactSourcePatch(input);
   if (input.decision.taskFrame === "multi_file_debug") return false;

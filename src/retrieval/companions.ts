@@ -306,7 +306,8 @@ export function findCompanionCandidates(input: {
 
   const queryTerms = termSet(input.query);
   const roleSignals = detectRoleSignals(queryTerms, input.query);
-  if (roleSignals.length === 0 && !hasMultiSurfaceQuerySignal(queryTerms)) return [];
+  const hsmKmsConfigTask = isHsmKmsConfigTask(input.query);
+  if (roleSignals.length === 0 && !hasMultiSurfaceQuerySignal(queryTerms) && !hsmKmsConfigTask) return [];
   const routeAnchors = routePathAnchors(input.query);
   const mentionedSourceBasenames = mentionedSourceFileBasenames(input.query);
   const qualifiedGenericModuleHints = qualifiedGenericModulePathHints(input.query);
@@ -322,7 +323,7 @@ export function findCompanionCandidates(input: {
   const chunksByFile = groupByFile(input.chunks, (chunk) => chunk.filePath);
   const filesByPath = new Map(input.files.map((file) => [file.path, file]));
   const seedFiles = input.ranked
-    .filter((file) => isCompanionSeed(file))
+    .filter((file) => isCompanionSeed(file) || (hsmKmsConfigTask && isHsmKmsBackendHelperPath(file.path)))
     .slice(0, 1);
   if (seedFiles.length === 0) return [];
 
@@ -332,7 +333,8 @@ export function findCompanionCandidates(input: {
   const candidates: CompanionCandidate[] = [];
 
   for (const file of input.files) {
-    if (seedPaths.has(file.path) || isNoisyCompanionFile(file) || isLikelyTestPath(file.path)) continue;
+    const hsmKmsBackendHelper = hsmKmsConfigTask && isHsmKmsBackendHelperPath(file.path);
+    if (seedPaths.has(file.path) || isNoisyCompanionFile(file) || (isLikelyTestPath(file.path) && !hsmKmsBackendHelper)) continue;
     if (!isUniversalSourceFile(file)) continue;
     if ((file.kind === "component" || file.kind === "route") && !hasUiQuerySignal(queryTerms)) continue;
     if (isPlatformVariantPath(file.path)) continue;
@@ -349,6 +351,8 @@ export function findCompanionCandidates(input: {
     const compoundPathHits = compoundQueryTerms(input.query).filter((term) => pathTerms.has(term));
     const testCounterpart = scoreTestCounterpartHint(file, testCounterpartHints, queryTerms);
     const explicitSourcePath = scoreExplicitSourcePathHint(file, explicitSourcePathHints);
+    const commandExporter = scoreCommandExporterCompanion(file.path, input.query, queryTerms, sourceTerms);
+    const hsmKmsConfig = scoreHsmKmsConfigCompanion(file.path, input.query, sourceTerms);
 
     let score = sourceScore.score + canonicalRoleScore.score;
     const reasons = [...sourceScore.reasons, ...canonicalRoleScore.reasons];
@@ -377,6 +381,14 @@ export function findCompanionCandidates(input: {
     if (explicitSourcePath.score !== 0) {
       score += explicitSourcePath.score;
       reasons.push(...explicitSourcePath.reasons);
+    }
+    if (commandExporter.score !== 0) {
+      score += commandExporter.score;
+      reasons.push(...commandExporter.reasons);
+    }
+    if (hsmKmsConfig.score !== 0) {
+      score += hsmKmsConfig.score;
+      reasons.push(...hsmKmsConfig.reasons);
     }
     const basename = file.path.toLowerCase().split("/").at(-1) ?? "";
     const mentionedBasename = mentionedSourceBasenames.has(basename);
@@ -781,6 +793,132 @@ export function scoreSourceRoleHints(
       ...pathMatches.map((match) => `role path match: ${match.reason}`)
     ])
   };
+}
+
+function scoreCommandExporterCompanion(
+  filePath: string,
+  query: string,
+  queryTerms: Set<string>,
+  sourceTerms: Set<string>
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeText(query);
+  const exportCommandTask =
+    /\bexport(?:er|ers|ing|ed)?\b/.test(normalizedQuery) &&
+    (/\b(command|cli|flag|declarative|resource|namespace|variant|segment|sort|sorted|sorting|deterministic)\b/.test(normalizedQuery) ||
+      /--[a-z0-9-]*sort[a-z0-9-]*/i.test(query));
+  if (!exportCommandTask) return { score: 0, reasons: [] };
+
+  const normalizedPath = filePath.toLowerCase();
+  const explicitStorageEdit =
+    /\b(?:edit|modify|change|update|fix|implement)\b(?:\s+[a-z0-9]+){0,8}\s+\b(?:storage|store|backend|database|sqlite|mysql|postgres|relational)\b/.test(normalizedQuery) ||
+    /\b(?:storage|store|backend|database|sqlite|mysql|postgres|relational)\b(?:\s+[a-z0-9]+){0,8}\s+\b(?:edit|modify|change|update|fix|implement)\b/.test(normalizedQuery);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (isCommandExportPath(normalizedPath)) {
+    score += 2600;
+    reasons.push("export command companion");
+  }
+
+  if (isExporterImplementationPath(normalizedPath)) {
+    score += 5600;
+    reasons.push("exporter implementation companion");
+  }
+
+  if (
+    isExporterImplementationPath(normalizedPath) &&
+    ["namespace", "flag", "segment", "variant", "resource", "sort", "deterministic"].some((term) => queryTerms.has(term) && sourceTerms.has(term))
+  ) {
+    score += 900;
+    reasons.push("export sorting domain companion");
+  }
+
+  if (isStorageBackendPath(normalizedPath) && !explicitStorageEdit && !isExporterImplementationPath(normalizedPath)) {
+    score -= 6200;
+    reasons.push("storage backend downranked for export-command companion");
+  }
+
+  return { score, reasons };
+}
+
+function isCommandExportPath(normalizedPath: string): boolean {
+  return /^cmd\/[^/]+\/export\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /(^|\/)cmd\/.*\/export\.(go|ts|js|py|rb|rs)$/.test(normalizedPath);
+}
+
+function isExporterImplementationPath(normalizedPath: string): boolean {
+  return (
+    /(^|\/)(exporter|export)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) ||
+    /(^|\/)(export|exporter)\//.test(normalizedPath) ||
+    /(^|\/)(internal\/)?ext\/exporter\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)
+  );
+}
+
+function isStorageBackendPath(normalizedPath: string): boolean {
+  return /(^|\/)(internal\/)?storage\//.test(normalizedPath) || /(^|\/)(stores?|backends?|database|db)\//.test(normalizedPath);
+}
+
+function scoreHsmKmsConfigCompanion(
+  filePath: string,
+  query: string,
+  sourceTerms: Set<string>
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeText(query);
+  if (!isHsmKmsConfigTask(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = filePath.toLowerCase();
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/\/keystore\//.test(normalizedPath) || sourceTerms.has("keystore")) {
+    score += 4600;
+    reasons.push("HSM/KMS keystore companion");
+  }
+  if (isHsmKmsBackendHelperPath(normalizedPath)) {
+    score += 2600;
+    reasons.push("HSM/KMS backend helper companion");
+  }
+  if (isCentralHsmKmsConfigTask(normalizedQuery) && /(^|\/)(testhelpers?|test_helpers?)\.go$/.test(normalizedPath)) {
+    score += 12000;
+    reasons.push("central HSM/KMS test configuration helper companion");
+  }
+  if (sourceTerms.has("hsmtestconfig") || (sourceTerms.has("hsm") && sourceTerms.has("test") && sourceTerms.has("config"))) {
+    score += 7000;
+    reasons.push("HSMTestConfig target companion");
+  }
+  if (/(^|\/)pkcs11\.go$/.test(normalizedPath)) {
+    score += 7000;
+    reasons.push("PKCS11 HSM backend companion");
+  }
+  if (["hsmtestconfig", "softhsm", "yubihsm", "cloudhsm", "awskms", "gcpkms", "pkcs11"].some((term) => sourceTerms.has(term))) {
+    score += 1200;
+    reasons.push("HSM/KMS configuration content companion");
+  }
+  if (/^web\/|\/web\/|\/tdp\//.test(normalizedPath) && !/\/keystore\//.test(normalizedPath)) {
+    score -= 9000;
+    reasons.push("web/TDP companion downranked for HSM/KMS backend config task");
+  }
+  if (isCentralHsmKmsConfigTask(normalizedQuery) && /\/keystore\/(aws_kms|gcp_kms|cloudhsm|yubihsm|softhsm)\.go$/.test(normalizedPath)) {
+    score -= 8000;
+    reasons.push("single-provider backend downranked for central HSM/KMS config task");
+  }
+
+  return { score, reasons };
+}
+
+function isHsmKmsConfigTask(query: string): boolean {
+  const normalizedQuery = normalizeText(query);
+  return (
+    /\b(hsm|kms|softhsm|yubihsm|cloudhsm|pkcs11)\b/.test(normalizedQuery) &&
+    /\b(test|tests|testing|backend|backends|configuration|config|environment|env)\b/.test(normalizedQuery)
+  );
+}
+
+function isCentralHsmKmsConfigTask(normalizedQuery: string): boolean {
+  return /\b(unified|central|centralize|centralized|reusable|duplicated|duplication|consistent|selector|detect|detects|available)\b/.test(normalizedQuery);
+}
+
+function isHsmKmsBackendHelperPath(normalizedPath: string): boolean {
+  return /(^|\/)(pkcs11|testhelpers?|test_helpers?)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath.toLowerCase());
 }
 
 export function isNoisySourcePath(filePath: string): boolean {
