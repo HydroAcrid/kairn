@@ -307,7 +307,17 @@ export function findCompanionCandidates(input: {
   const queryTerms = termSet(input.query);
   const roleSignals = detectRoleSignals(queryTerms, input.query);
   const hsmKmsConfigTask = isHsmKmsConfigTask(input.query);
-  if (roleSignals.length === 0 && !hasMultiSurfaceQuerySignal(queryTerms) && !hsmKmsConfigTask) return [];
+  const configOptionTask = isConfigOptionSchemaTask(input.query);
+  const deprecationLifecycleTask = isDeprecationLifecycleTask(input.query);
+  const uiFeedbackTask = isUiFeedbackOwnershipTask(input.query);
+  if (
+    roleSignals.length === 0 &&
+    !hasMultiSurfaceQuerySignal(queryTerms) &&
+    !hsmKmsConfigTask &&
+    !configOptionTask &&
+    !deprecationLifecycleTask &&
+    !uiFeedbackTask
+  ) return [];
   const routeAnchors = routePathAnchors(input.query);
   const mentionedSourceBasenames = mentionedSourceFileBasenames(input.query);
   const qualifiedGenericModuleHints = qualifiedGenericModulePathHints(input.query);
@@ -323,7 +333,12 @@ export function findCompanionCandidates(input: {
   const chunksByFile = groupByFile(input.chunks, (chunk) => chunk.filePath);
   const filesByPath = new Map(input.files.map((file) => [file.path, file]));
   const seedFiles = input.ranked
-    .filter((file) => isCompanionSeed(file) || (hsmKmsConfigTask && isHsmKmsBackendHelperPath(file.path)))
+    .filter((file) =>
+      isCompanionSeed(file) ||
+      (hsmKmsConfigTask && isHsmKmsBackendHelperPath(file.path)) ||
+      (configOptionTask && (isUniversalSourceFile(file) || isDeclarativeConfigSchemaFile(file.path))) ||
+      ((deprecationLifecycleTask || uiFeedbackTask) && isUniversalSourceFile(file))
+    )
     .slice(0, 1);
   if (seedFiles.length === 0) return [];
 
@@ -334,8 +349,10 @@ export function findCompanionCandidates(input: {
 
   for (const file of input.files) {
     const hsmKmsBackendHelper = hsmKmsConfigTask && isHsmKmsBackendHelperPath(file.path);
+    const declarativeConfigSchema = configOptionTask && isDeclarativeConfigSchemaFile(file.path);
+    if (hsmKmsConfigTask && isUnrelatedHsmKmsGenericTestHelper(file.path, input.query)) continue;
     if (seedPaths.has(file.path) || isNoisyCompanionFile(file) || (isLikelyTestPath(file.path) && !hsmKmsBackendHelper)) continue;
-    if (!isUniversalSourceFile(file)) continue;
+    if (!isUniversalSourceFile(file) && !declarativeConfigSchema) continue;
     if ((file.kind === "component" || file.kind === "route") && !hasUiQuerySignal(queryTerms)) continue;
     if (isPlatformVariantPath(file.path)) continue;
 
@@ -344,6 +361,7 @@ export function findCompanionCandidates(input: {
     const roleMatches = matchRoleSignals(file, roleSignals, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
     const sourceText = searchableText(file, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
     const sourceTerms = termSet(sourceText);
+    if (deprecationLifecycleTask && isUnrelatedDeprecationLifecycleCompanion(file.path, sourceTerms)) continue;
     const pathTerms = termSet(file.path);
     const specificQueryHits = [...queryTerms].filter((term) => !COMPANION_STOP_TERMS.has(term) && sourceTerms.has(term));
     const rolePathMatches = roleSignals.filter((role) => role.terms.some((term) => pathTerms.has(canonicalTerm(term))));
@@ -353,6 +371,11 @@ export function findCompanionCandidates(input: {
     const explicitSourcePath = scoreExplicitSourcePathHint(file, explicitSourcePathHints);
     const commandExporter = scoreCommandExporterCompanion(file.path, input.query, queryTerms, sourceTerms);
     const hsmKmsConfig = scoreHsmKmsConfigCompanion(file.path, input.query, sourceTerms);
+    const backendAutocomplete = scoreBackendAutocompleteCompanion(file.path, input.query, sourceTerms);
+    const configOptionSchema = scoreConfigOptionSchemaCompanion(file.path, input.query, sourceTerms);
+    const deprecationLifecycle = scoreDeprecationLifecycleCompanion(file.path, input.query, sourceTerms);
+    const kubernetesRbacMatcher = scoreKubernetesRbacMatcherCompanion(file.path, input.query, sourceTerms);
+    const uiFeedbackOwnership = scoreUiFeedbackOwnershipCompanion(file.path, input.query, sourceTerms);
 
     let score = sourceScore.score + canonicalRoleScore.score;
     const reasons = [...sourceScore.reasons, ...canonicalRoleScore.reasons];
@@ -389,6 +412,26 @@ export function findCompanionCandidates(input: {
     if (hsmKmsConfig.score !== 0) {
       score += hsmKmsConfig.score;
       reasons.push(...hsmKmsConfig.reasons);
+    }
+    if (backendAutocomplete.score !== 0) {
+      score += backendAutocomplete.score;
+      reasons.push(...backendAutocomplete.reasons);
+    }
+    if (configOptionSchema.score !== 0) {
+      score += configOptionSchema.score;
+      reasons.push(...configOptionSchema.reasons);
+    }
+    if (deprecationLifecycle.score !== 0) {
+      score += deprecationLifecycle.score;
+      reasons.push(...deprecationLifecycle.reasons);
+    }
+    if (kubernetesRbacMatcher.score !== 0) {
+      score += kubernetesRbacMatcher.score;
+      reasons.push(...kubernetesRbacMatcher.reasons);
+    }
+    if (uiFeedbackOwnership.score !== 0) {
+      score += uiFeedbackOwnership.score;
+      reasons.push(...uiFeedbackOwnership.reasons);
     }
     const basename = file.path.toLowerCase().split("/").at(-1) ?? "";
     const mentionedBasename = mentionedSourceBasenames.has(basename);
@@ -618,7 +661,8 @@ export function findCompanionCandidates(input: {
       namedFileSurface.score === 0 &&
       !mentionedBasename &&
       routeAnchorHits.length === 0 &&
-      !matchesQualifiedGenericModule(file.path, qualifiedGenericModuleHints)
+      !matchesQualifiedGenericModule(file.path, qualifiedGenericModuleHints) &&
+      !(configOptionTask && declarativeConfigSchema)
     ) {
       score -= 30000;
       reasons.push("companion downranked because prompt names a more specific source surface");
@@ -868,8 +912,9 @@ function scoreHsmKmsConfigCompanion(
   const normalizedPath = filePath.toLowerCase();
   const reasons: string[] = [];
   let score = 0;
+  const keystoreSurface = /\/keystore\//.test(normalizedPath) || isHsmKmsBackendHelperPath(normalizedPath) || sourceTerms.has("keystore");
 
-  if (/\/keystore\//.test(normalizedPath) || sourceTerms.has("keystore")) {
+  if (keystoreSurface) {
     score += 4600;
     reasons.push("HSM/KMS keystore companion");
   }
@@ -893,6 +938,10 @@ function scoreHsmKmsConfigCompanion(
     score += 1200;
     reasons.push("HSM/KMS configuration content companion");
   }
+  if (!keystoreSurface) {
+    score -= /(^|\/)test\.go$/.test(normalizedPath) ? 12_000 : 7_000;
+    reasons.push("non-keystore companion downranked for HSM/KMS backend config task");
+  }
   if (/^web\/|\/web\/|\/tdp\//.test(normalizedPath) && !/\/keystore\//.test(normalizedPath)) {
     score -= 9000;
     reasons.push("web/TDP companion downranked for HSM/KMS backend config task");
@@ -905,12 +954,324 @@ function scoreHsmKmsConfigCompanion(
   return { score, reasons };
 }
 
+function isUnrelatedHsmKmsGenericTestHelper(filePath: string, query: string): boolean {
+  const normalizedPath = filePath.toLowerCase();
+  const normalizedQuery = normalizeText(query);
+  if (!/(^|\/)test\.go$/.test(normalizedPath)) return false;
+  if (!isHsmKmsConfigTask(normalizedQuery)) return false;
+  return !/\/keystore\//.test(normalizedPath);
+}
+
+function scoreBackendAutocompleteCompanion(
+  filePath: string,
+  query: string,
+  sourceTerms: Set<string>
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeText(query);
+  if (!isBackendAutocompleteCompanionQuery(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = filePath.toLowerCase();
+  const basename = normalizedPath.split("/").at(-1) ?? normalizedPath;
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/^autocomplete\.(py|rb|go|rs|php|java|ts)$/.test(basename)) {
+    score += 30_000;
+    reasons.push("backend autocomplete endpoint companion");
+  }
+  if (["findolid", "find_olid", "olidtokey", "olid_to_key", "dbfetch", "db_fetch", "solr", "autocomplete"].some((term) => sourceTerms.has(term))) {
+    score += 2_800;
+    reasons.push("backend autocomplete source companion");
+  }
+  if (/\/js\/autocomplete\.[cm]?js$/.test(normalizedPath) || /\/client\/|\/frontend\/|\/static\/|\/assets\//.test(normalizedPath)) {
+    score -= 50_000;
+    reasons.push("frontend autocomplete companion downranked for backend endpoint task");
+  }
+  if (!/autocomplete/.test(basename) && !["findolid", "find_olid", "olidtokey", "olid_to_key", "dbfetch", "db_fetch"].some((term) => sourceTerms.has(term))) {
+    score -= 20_000;
+    reasons.push("non-autocomplete companion downranked for backend autocomplete task");
+  }
+
+  return { score, reasons };
+}
+
+function isBackendAutocompleteCompanionQuery(normalizedQuery: string): boolean {
+  return /\bautocomplete\b/.test(normalizedQuery) &&
+    /\b(endpoint|route|routes|solr|olid|olids|query string|fallback|db|base class|page class|works|authors|subjects)\b/.test(normalizedQuery) &&
+    !/\b(ui|frontend|client|browser widget|dropdown|input component|visual|style|css)\b/.test(normalizedQuery);
+}
+
+function scoreConfigOptionSchemaCompanion(
+  filePath: string,
+  query: string,
+  sourceTerms: Set<string>
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeText(query);
+  if (!isConfigOptionSchemaTask(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = filePath.toLowerCase();
+  const qtWebEngineTask = /\b(qtwebengine|qt webengine|webengine|chromium|accelerated|canvas|pdf|sheets|rendering|glitches?)\b/.test(normalizedQuery);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/(^|\/)(qtargs|chromium_args|webengine_args)\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) {
+    score += qtWebEngineTask ? 5800 : 2600;
+    reasons.push("config argument companion");
+  }
+  if (/(^|\/)(configdata|config_data|configschema|config_schema|settings|options)\.(ya?ml|json|toml)$/.test(normalizedPath)) {
+    score += 4200;
+    reasons.push("config source-of-truth schema/data companion");
+  }
+  if (/(^|\/)(configdata|config_data|configschema|config_schema|settings|options)\.(ya?ml|json|toml|py|ts|js)$/.test(normalizedPath)) {
+    score += 5200;
+    reasons.push("config schema/data companion");
+  }
+  if (
+    /(^|\/)(configdata|config_data|configschema|config_schema|settings|options)\.py$/.test(normalizedPath) &&
+    (sourceTerms.has("yaml") || sourceTerms.has("parsed") || sourceTerms.has("generated"))
+  ) {
+    score -= 2800;
+    reasons.push("generated config artifact downranked for declarative schema companion");
+  }
+  if (["qtwebengine", "chromium", "webengine", "accelerated", "canvas", "workaround", "settings", "option"].some((term) => sourceTerms.has(term))) {
+    score += qtWebEngineTask ? 1600 : 520;
+    reasons.push("config option content companion");
+  }
+  if (
+    /(^|\/)(configfiles?|config_file|configloader|loader|init)\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) &&
+    !/\b(load|loader|loading|parse|parsing|config file|config files|startup|init|initialize)\b/.test(normalizedQuery)
+  ) {
+    score -= 2600;
+    reasons.push("config file loader downranked for option/schema companion");
+  }
+  if (isConfigDiagnosticProblemSurface(normalizedPath) && !/\b(backend problem|backend issue|diagnostic|diagnostics|problem report)\b/.test(normalizedQuery)) {
+    score -= 7200;
+    reasons.push("diagnostic/problem surface downranked for config schema companion");
+  }
+
+  return { score, reasons };
+}
+
+function scoreDeprecationLifecycleCompanion(
+  filePath: string,
+  query: string,
+  sourceTerms: Set<string>
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeText(query);
+  if (!isDeprecationLifecycleTask(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = filePath.toLowerCase();
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (
+    /(^|\/)(module|module_utils|modules?|runtime)[^/]*(\/|$).*\/?basic\.(py|cs|ts|js)$/.test(normalizedPath) ||
+    (/(^|\/)basic\.(py|cs|ts|js)$/.test(normalizedPath) && (sourceTerms.has("argument") || sourceTerms.has("spec") || sourceTerms.has("deprecated")))
+  ) {
+    score += 32_000;
+    reasons.push("module deprecation API companion");
+  }
+  if (/(^|\/)(common\/)?parameters\.(py|ts|js|go|rb|rs|cs)$/.test(normalizedPath)) {
+    score += 54_000;
+    reasons.push("parameter validation companion");
+  }
+  if (/(^|\/)(common\/)?warnings\.(py|ts|js|go|rb|rs|cs)$/.test(normalizedPath)) {
+    score += 38_000;
+    reasons.push("deprecation warning companion");
+  }
+  if (/(^|\/)display\.(py|ts|js|go|rb|rs|cs)$/.test(normalizedPath) || /(^|\/)utils\/display\.(py|ts|js|go|rb|rs|cs)$/.test(normalizedPath)) {
+    score += 30_000;
+    reasons.push("deprecation display companion");
+  }
+  if (/(^|\/)[a-z0-9_.-]*basic\.(cs|ts|js)$/.test(normalizedPath) && (sourceTerms.has("deprecated_aliases") || sourceTerms.has("validateargumentspec") || sourceTerms.has("removed_in_version"))) {
+    score += 46_000;
+    reasons.push("module deprecation runtime mirror companion");
+  }
+  if (["deprecated", "deprecation", "aliases", "warning", "display", "version", "date"].some((term) => sourceTerms.has(term))) {
+    score += 900;
+    reasons.push("deprecation lifecycle content companion");
+  }
+  if (/(^|\/)(date_time|datetime|urls?)\.(py|ts|js|go|rb|rs|cs)$/.test(normalizedPath) && !/\b(date parser|parse date|url|urls|uri|http)\b/.test(normalizedQuery)) {
+    score -= 82_000;
+    reasons.push("generic date/url helper downranked for deprecation lifecycle companion");
+  }
+  if (/(^|\/)modules\/[^/]+\.py$/.test(normalizedPath) && !sourceTerms.has("deprecated_aliases") && !sourceTerms.has("removed_in_version")) {
+    score -= 62_000;
+    reasons.push("leaf module downranked for shared deprecation lifecycle companion");
+  }
+
+  return { score, reasons };
+}
+
+function scoreKubernetesRbacMatcherCompanion(
+  filePath: string,
+  query: string,
+  sourceTerms: Set<string>
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeText(query);
+  if (!isKubernetesRbacResourceMatcherTask(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = filePath.toLowerCase();
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (sourceTerms.has("kuberesourcematchesregex") || (sourceTerms.has("kubernetesresource") && sourceTerms.has("namespace"))) {
+    score += 82_000;
+    reasons.push("Kubernetes RBAC resource matcher companion");
+  }
+  if (
+    ["kind", "namespace", "verb", "verbs", "get", "list", "watch", "create", "update", "delete"].some((term) => sourceTerms.has(term)) &&
+    ["match", "matcher", "regexp", "regex", "wildcard", "glob"].some((term) => sourceTerms.has(term))
+  ) {
+    score += 24_000;
+    reasons.push("Kubernetes resource rule matching companion");
+  }
+  if (/^lib\/utils\/replace\.go$/.test(normalizedPath) || /\/utils?\/(replace|match|matcher|regexp|regex)\.go$/.test(normalizedPath)) {
+    score += 30_000;
+    reasons.push("resource matcher utility companion");
+  }
+  if (/^lib\/service\/kubernetes\.go$/.test(normalizedPath) || /\/service\/kubernetes\.(go|ts|js)$/.test(normalizedPath)) {
+    score -= 82_000;
+    reasons.push("Kubernetes service startup downranked for RBAC matcher companion");
+  }
+  if (/(^|\/)(backend|cloud|users?|storage|db)\//.test(normalizedPath) && !sourceTerms.has("kuberesourcematchesregex") && !sourceTerms.has("kubernetesresource")) {
+    score -= 34_000;
+    reasons.push("non-matcher backend downranked for Kubernetes RBAC companion");
+  }
+
+  return { score, reasons };
+}
+
+function scoreUiFeedbackOwnershipCompanion(
+  filePath: string,
+  query: string,
+  sourceTerms: Set<string>
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeText(query);
+  if (!isUiFeedbackOwnershipTask(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = filePath.toLowerCase();
+  const namedSurfaceHits = namedUiSurfaceHits(filePath, query);
+  const directBasenameHit = namedUiSurfaceBasenameHit(filePath, query);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/(^|\/)(components?|atoms?|molecules?|organisms?|views?|screens?|routes?)\//.test(normalizedPath)) {
+    score += 4400;
+    reasons.push("UI feedback component ownership companion");
+  }
+  if (/(^|\/)hooks?\//.test(normalizedPath)) {
+    score += 3000;
+    reasons.push("UI feedback hook ownership companion");
+  }
+  if (/(^|\/)index\.(ts|tsx|js|jsx)$/.test(normalizedPath) && sharedFeatureTerms(filePath, normalizedQuery).length > 0) {
+    score += 1700;
+    reasons.push("feature export companion");
+  }
+  const sharedTerms = sharedFeatureTerms(filePath, normalizedQuery);
+  if (sharedTerms.length > 0) {
+    score += Math.min(2600, sharedTerms.length * 900);
+    reasons.push(`UI feature path companion: ${sharedTerms.slice(0, 3).join(", ")}`);
+  }
+  if (namedSurfaceHits.length > 0) {
+    score += Math.min(7200, namedSurfaceHits.length * 3600);
+    reasons.push(`named UI surface companion: ${namedSurfaceHits.slice(0, 3).join(", ")}`);
+  }
+  if (directBasenameHit) {
+    score += 5200;
+    reasons.push(`direct UI basename companion: ${directBasenameHit}`);
+  }
+  if (["live", "liveness", "badge", "icon", "header", "body", "recording", "playback", "feedback", "state"].some((term) => sourceTerms.has(term))) {
+    score += 900;
+    reasons.push("UI feedback content companion");
+  }
+  const stateOwnerNeeded = /\b(liveness|live|state|status|playback|recording|broadcast)\b/.test(normalizedQuery);
+  if (/(^|\/)(models?|stores?)\//.test(normalizedPath) && stateOwnerNeeded) {
+    score += 2200;
+    reasons.push("UI state owner companion");
+  }
+  if (
+    /(^|\/)(utils?|services?)\//.test(normalizedPath) &&
+    !/\b(utility|utils?|event ordering|events?|protocol|serialization|service)\b/.test(normalizedQuery)
+  ) {
+    score -= 5200;
+    reasons.push("utility/service companion downranked for UI feedback task");
+  }
+
+  return { score, reasons };
+}
+
 function isHsmKmsConfigTask(query: string): boolean {
   const normalizedQuery = normalizeText(query);
   return (
     /\b(hsm|kms|softhsm|yubihsm|cloudhsm|pkcs11)\b/.test(normalizedQuery) &&
     /\b(test|tests|testing|backend|backends|configuration|config|environment|env)\b/.test(normalizedQuery)
   );
+}
+
+function isConfigOptionSchemaTask(query: string): boolean {
+  const normalizedQuery = normalizeText(query);
+  const explicitConfigOption =
+    /\b(config|configuration|settings?|options?|workarounds?)\b/.test(normalizedQuery) &&
+    /\b(add|support|implement|define|schema|metadata|option|setting|workaround|argument|args?)\b/.test(normalizedQuery);
+  const renderingConfigWorkaround =
+    /\b(qtwebengine|qt webengine|webengine|chromium)\b/.test(normalizedQuery) &&
+    /\b(rendering|glitch|glitches|pdf|sheets|canvas|accelerated|workaround|settings?|args?)\b/.test(normalizedQuery);
+  return explicitConfigOption || renderingConfigWorkaround;
+}
+
+function isDeprecationLifecycleTask(query: string): boolean {
+  const normalizedQuery = normalizeText(query);
+  return (
+    /\b(deprecat\w*|deprecated aliases?|removed[_ ](?:at[_ ])?date|removed[_ ]in[_ ]version|internal error)\b/.test(normalizedQuery) &&
+    /\b(date|version|module|modules|parameter|parameters|alias|aliases|warning|warnings|display|validate|validation|runtime)\b/.test(normalizedQuery)
+  );
+}
+
+function isKubernetesRbacResourceMatcherTask(query: string): boolean {
+  const normalizedQuery = normalizeText(query);
+  return (
+    /\b(kubernetes|kubectl|kube)\b/.test(normalizedQuery) &&
+    /\b(rbac|role|rule|rules|access|permission|permissions|resource|resources|namespace|namespaces)\b/.test(normalizedQuery) &&
+    /\b(kind|namespace|namespaces|verbs?|get|list|watch|create|update|delete|read only|read-only)\b/.test(normalizedQuery)
+  );
+}
+
+function isUnrelatedDeprecationLifecycleCompanion(filePath: string, sourceTerms: Set<string>): boolean {
+  const normalizedPath = filePath.toLowerCase();
+  if (/(^|\/)(date_time|datetime|urls?)\.(py|ts|js|go|rb|rs|cs)$/.test(normalizedPath)) return true;
+  if (/(^|\/)modules\/[^/]+\.py$/.test(normalizedPath) && !sourceTerms.has("deprecated_aliases") && !sourceTerms.has("removed_in_version")) return true;
+  return false;
+}
+
+function isUiFeedbackOwnershipTask(query: string): boolean {
+  const normalizedQuery = normalizeText(query);
+  const explicitUiTerms = /\b(ui|component|components|icon|badge|view|screen|state|feedback|visual|liveness|live)\b/.test(normalizedQuery);
+  const headerBodyUiTerms =
+    /\b(header|body)\b/.test(normalizedQuery) &&
+    /\b(ui|component|components|icon|badge|view|screen|visual|render|display)\b/.test(normalizedQuery);
+  const uiTerms = explicitUiTerms || headerBodyUiTerms;
+  const featureStateTerms = /\b(recording|playback|voice|broadcast|room|message|notification|presence)\b/.test(normalizedQuery);
+  return uiTerms && (featureStateTerms || /\b(inconsistent|feedback|icon|badge|liveness|visible|display|shown|render)\b/.test(normalizedQuery));
+}
+
+function sharedFeatureTerms(filePath: string, normalizedQuery: string): string[] {
+  const pathTerms = termSet(filePath);
+  const stopTerms = new Set(["component", "components", "source", "debug", "fix", "state", "feedback", "icon", "badge", "header", "body"]);
+  return [...termSet(normalizedQuery)].filter((term) => term.length >= 4 && !stopTerms.has(term) && pathTerms.has(term));
+}
+
+function namedUiSurfaceHits(filePath: string, query: string): string[] {
+  const normalizedQuery = normalizeText(query);
+  const basename = filePath.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const compactBasename = basename.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const normalizedBasename = normalizeText(basename);
+  if (normalizedBasename.length < 4) return [];
+  return normalizedQuery.includes(normalizedBasename) || normalizedQuery.includes(compactBasename) ? [basename] : [];
+}
+
+function namedUiSurfaceBasenameHit(filePath: string, query: string): string | undefined {
+  return namedUiSurfaceHits(filePath, query)[0];
 }
 
 function isCentralHsmKmsConfigTask(normalizedQuery: string): boolean {
@@ -1067,6 +1428,14 @@ function isNoisyCompanionFile(file: FileRecord): boolean {
 function isUniversalSourceFile(file: Pick<FileRecord, "path" | "kind" | "language">): boolean {
   if (["source", "component", "route"].includes(file.kind)) return true;
   return /\.(ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|rs|c|cc|cpp|cxx|h|hh|hpp|hxx|go|rb)$/.test(file.path.toLowerCase());
+}
+
+function isDeclarativeConfigSchemaFile(filePath: string): boolean {
+  return /(^|\/)(configdata|config_data|configschema|config_schema|settings|options)\.(ya?ml|json|toml)$/.test(filePath.toLowerCase());
+}
+
+function isConfigDiagnosticProblemSurface(normalizedPath: string): boolean {
+  return /(^|\/)(backendproblem|backend_problem|problem|diagnostic|diagnostics)\.(py|ts|js|go|rb|rs)$/.test(normalizedPath);
 }
 
 function isPrimaryUniversalSourcePath(file: Pick<FileRecord, "path" | "language">): boolean {

@@ -467,6 +467,49 @@ describe("KairnRuntime", () => {
     expect(estimateTokens(content)).toBeLessThan(280);
   });
 
+  it("keeps multiple visible UI surfaces in broad feedback guardrails", () => {
+    const files = [
+      "src/voice-broadcast/components/atoms/LiveBadge.tsx",
+      "src/voice-broadcast/components/atoms/VoiceBroadcastHeader.tsx",
+      "src/voice-broadcast/components/molecules/VoiceBroadcastPlaybackBody.tsx",
+      "src/voice-broadcast/components/molecules/VoiceBroadcastRecordingBody.tsx",
+      "src/voice-broadcast/components/molecules/VoiceBroadcastRecordingPip.tsx"
+    ];
+    const content = formatShrunkPrimeContext({
+      task: "Fix voice broadcast liveness icon inconsistent feedback while recording and playback are active.",
+      sessionId: "task_ui_multi_surface",
+      profile: "generic",
+      quality: {
+        score: 68,
+        action: "shrink",
+        reasons: [],
+        topScore: 500,
+        topGap: 40,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      context: {
+        mode: "snippets",
+        content: "",
+        files,
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: files,
+        rankedFiles: [],
+        tokenEstimate: 0
+      },
+      files,
+      budget: 900
+    });
+
+    expect(content).toContain("src/voice-broadcast/components/atoms/LiveBadge.tsx");
+    expect(content).toContain("src/voice-broadcast/components/atoms/VoiceBroadcastHeader.tsx");
+    expect(content).toContain("src/voice-broadcast/components/molecules/VoiceBroadcastRecordingBody.tsx");
+    expect(content).toContain("src/voice-broadcast/components/molecules/VoiceBroadcastRecordingPip.tsx");
+    expect(content).not.toContain("Focused context:");
+  });
+
   it("allows compact guardrails for trivial two-file official patch scope", () => {
     const content = formatShrunkPrimeContext({
       task: [

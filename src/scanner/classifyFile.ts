@@ -29,6 +29,7 @@ const LANGUAGE_BY_EXTENSION: Record<string, string> = {
   ".hh": "cpp",
   ".hpp": "cpp",
   ".hxx": "cpp",
+  ".cs": "csharp",
   ".rb": "ruby",
   ".yml": "yaml",
   ".yaml": "yaml",
@@ -102,6 +103,7 @@ export function classifyFile(filePath: string): FileKind {
     /\.java$/.test(basename) ||
     /\.kts?$/.test(basename) ||
     /\.(c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(basename) ||
+    /\.cs$/.test(basename) ||
     /\.go$/.test(basename) ||
     /\.rb$/.test(basename)
   ) {

@@ -4,7 +4,12 @@ import { estimateTokens, truncateToBudget } from "../utils/tokens.js";
 import { uniquePaths, uniqueStrings } from "../utils/collections.js";
 import type { PrimeProfileLimits, ResolvedPrimeProfile } from "./quality.js";
 
-export type OfficialGuardrailVariant = "compact_official" | "semantic_official";
+export type OfficialGuardrailVariant =
+  | "compact_official"
+  | "semantic_official"
+  | "paired_contract_compact"
+  | "lifecycle_policy_compact"
+  | "frontend_owner_map_compact";
 
 export function formatPrimeContext(input: {
   task: string;
@@ -236,19 +241,27 @@ export function formatShrunkPrimeContext(input: {
   minimal?: boolean | undefined;
   includeVerification?: boolean | undefined;
 }): string {
-  const topFiles = uniquePaths(
+  const candidateFiles = uniquePaths(
     input.files && input.files.length > 0
       ? input.files
       : input.context.suggestedNextContext.length > 0
         ? input.context.suggestedNextContext
         : input.context.files
-  ).slice(0, input.files && input.files.length > 1 ? 2 : 1);
+  );
+  const topFileLimit = input.files && input.files.length > 1
+    ? isUiFeedbackMultiSurfaceTask(input.task)
+      ? 5
+      : 2
+    : 1;
+  const topFiles = candidateFiles.slice(0, topFileLimit);
   const symbolHints = extractPrimeSymbolHints(input.context.content).slice(0, 2);
   const multiFileDirective = topFiles.length > 1;
+  const additionalTopFiles = topFiles.slice(2);
   const focusedContext = input.includeSnippet === false
     ? ""
     : formatFocusedContextBlock(input.context.content, Math.max(100, Math.floor(input.budget * 0.24)));
   const strictOfficialScope = input.editScope?.strictBoundary === true;
+  const orderingGuardrail = configOrderingGuardrail(input.task);
   if (input.minimal) {
     if (strictOfficialScope) {
       const guardrailInput = {
@@ -258,9 +271,12 @@ export function formatShrunkPrimeContext(input: {
         invariants: input.invariants,
         budget: input.budget
       };
-      return officialGuardrailVariantFor(guardrailInput) === "compact_official"
-        ? formatCompactOfficialGuardrail(guardrailInput)
-        : formatSemanticOfficialGuardrail(guardrailInput);
+      const variant = officialGuardrailVariantFor(guardrailInput);
+      if (variant === "compact_official") return formatCompactOfficialGuardrail(guardrailInput);
+      if (variant === "paired_contract_compact") return formatPairedContractOfficialGuardrail(guardrailInput);
+      if (variant === "lifecycle_policy_compact") return formatLifecyclePolicyOfficialGuardrail(guardrailInput);
+      if (variant === "frontend_owner_map_compact") return formatFrontendOwnerMapOfficialGuardrail(guardrailInput);
+      return formatSemanticOfficialGuardrail(guardrailInput);
     }
     const sections = [
       "# Kairn Fix Guardrail",
@@ -272,6 +288,7 @@ export function formatShrunkPrimeContext(input: {
       topFiles.length > 0 ? `- ${topFiles[0]}` : "- No high-confidence source file found.",
       "",
       ...formatMinimalInvariantSections(input.invariants, "Invariant to preserve:"),
+      orderingGuardrail,
       "",
       strictOfficialScope
         ? "Edit boundary: patch only the official edit scope. Do not edit sibling/helper production files outside that scope."
@@ -299,9 +316,14 @@ export function formatShrunkPrimeContext(input: {
     topFiles[0] ? `- ${topFiles[0]} - ${primaryReasonForFile(input.context, topFiles[0])}` : "- No high-confidence source file found.",
     topFiles[1] ? "Companion source:" : "",
     topFiles[1] ? `- ${topFiles[1]} - ${primaryReasonForFile(input.context, topFiles[1])}` : "",
+    additionalTopFiles.length > 0 ? "Additional source surfaces:" : "",
+    additionalTopFiles.length > 0
+      ? additionalTopFiles.map((file) => `- ${file} - ${primaryReasonForFile(input.context, file)}`).join("\n")
+      : "",
     symbolHints.length > 0 ? `Symbols: ${symbolHints.join(", ")}` : "",
     "",
     ...formatInvariantSections(input.invariants, "Invariant to preserve:", { includeVerification: input.includeVerification ?? multiFileDirective }),
+    orderingGuardrail,
     "",
     strictOfficialScope
       ? "Stop condition: patch only the official edit scope; if another source file seems necessary, stop and report the missing evidence instead of editing it."
@@ -331,6 +353,7 @@ function formatCompactOfficialGuardrail(input: {
     `Task: ${compactTaskLine(input.task, 40)}`,
     "Action: make the smallest production-source edit; do not stop after analysis if this scope is sufficient.",
     editFiles.length > 0 ? `Edit only: ${editFiles.join(", ")}` : "Edit only: the official production source scope.",
+    configOrderingGuardrail(input.task),
     "Boundary: do not edit tests, docs, examples, generated files, or sibling source.",
     readOnly.length > 0 ? `Verify read-only: ${readOnly.join(", ")}` : "Verify with the narrowest relevant check.",
     "If another source file seems necessary, stop and report the missing evidence."
@@ -357,11 +380,102 @@ function formatSemanticOfficialGuardrail(input: {
     "Action: make the smallest production-source edit; do not stop after analysis if this scope is sufficient.",
     startFiles.length > 0 ? `Edit only: ${startFiles.join(", ")}` : "Edit only: the official production source scope.",
     invariant ? `Preserve: ${truncateToBudget(invariant.statement, 52)}` : "Preserve the failure/behavior invariant described by the task.",
+    configOrderingGuardrail(input.task),
     "Boundary: no tests, docs, examples, generated files, or sibling source unless a failure proves the scope is incomplete.",
     readOnly.length > 0 ? `Verify read-only: ${readOnly.join(", ")}` : "Verify with the narrowest relevant check.",
     "If another source file seems necessary, stop and report the missing evidence."
   ];
   return fitSectionsToBudget(sections, Math.min(input.budget, 280));
+}
+
+function formatPairedContractOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const editFiles = officialEditFiles(input).slice(0, 5);
+  const readOnly = input.editScope?.readOnlyFiles.slice(0, 2) ?? [];
+  const invariant = input.invariants?.[0];
+  const sections = [
+    "# Kairn Paired Scope",
+    `Task: ${compactTaskLine(input.task, 42)}`,
+    "Action: patch only the command/contract surfaces below; do not expand to backend/storage helpers unless the prompt names them.",
+    editFiles.length > 0 ? `Edit scope: ${editFiles.map((file) => `${file} (${officialFileRole(file)})`).join(", ")}` : "Edit scope: the official production source surfaces.",
+    invariant ? `Invariant: ${truncateToBudget(invariant.statement, 42)}` : "",
+    configOrderingGuardrail(input.task),
+    "Boundary: no tests, docs, examples, generated files, or sibling source.",
+    readOnly.length > 0 ? `Read-only check: ${readOnly.join(", ")}` : "Verify with the narrowest relevant check.",
+    "If a different production file appears necessary, stop and report the missing evidence."
+  ];
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 240));
+}
+
+function formatLifecyclePolicyOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const editFiles = officialEditFiles(input).filter((file) => !isGenericDateUrlHelper(file)).slice(0, 5);
+  const readOnly = (input.editScope?.readOnlyFiles ?? []).filter((file) => !isGenericDateUrlHelper(file)).slice(0, 2);
+  const invariant = input.invariants?.[0];
+  const sections = [
+    "# Kairn Policy Scope",
+    `Task: ${compactTaskLine(input.task, 42)}`,
+    "Action: update the lifecycle/deprecation contract in the policy/source surfaces only.",
+    editFiles.length > 0 ? `Edit scope: ${editFiles.map((file) => `${file} (${lifecycleRole(file)})`).join(", ")}` : "Edit scope: the official lifecycle policy/source surfaces.",
+    invariant ? `Preserve: ${truncateToBudget(invariant.statement, 38)}` : "Preserve existing version/date warning behavior while adding the requested lifecycle path.",
+    "Boundary: do not edit generic date/url helpers, leaf modules, tests, docs, examples, or generated files unless explicitly requested.",
+    readOnly.length > 0 ? `Read-only check: ${readOnly.join(", ")}` : "Verify with the narrowest relevant deprecation/policy check.",
+    "If another source file seems necessary, stop and report the missing evidence."
+  ];
+  return fitSectionsToBudget(sections, Math.min(input.budget, 230));
+}
+
+function formatFrontendOwnerMapOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const editFiles = officialEditFiles(input);
+  const visible = editFiles.filter(isVisibleUiOwner).slice(0, 5);
+  const supporting = editFiles.filter((file) => !isVisibleUiOwner(file) && isExplicitFrontendSupportSurface(file, input.task)).slice(0, 4);
+  const ownerMap = uniquePaths([...visible, ...supporting]);
+  const invariant = input.invariants?.[0];
+  const sections = [
+    "# Kairn Owner Map",
+    `Task: ${compactTaskLine(input.task, 42)}`,
+    "Action: patch only the visible owner cluster and explicitly required state/export surfaces.",
+    ownerMap.length > 0 ? `Owner scope: ${ownerMap.map((file) => `${file} (${frontendRole(file)})`).join(", ")}` : "Owner scope: the official frontend owner surfaces.",
+    invariant ? `Preserve: ${truncateToBudget(invariant.statement, 36)}` : "",
+    "Boundary: skip style files, tests, snapshots, pre-recording variants, broad containers, and unrelated UI shells unless directly named.",
+    "Verify with the narrowest component/model check.",
+    "If ownership is unclear, stop and ask for a source-owner signal instead of broadening."
+  ];
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 260));
+}
+
+function isUiFeedbackMultiSurfaceTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  return (
+    /\b(voice|broadcast)\b/.test(normalized) &&
+    /\b(ui|component|render|rendering|badge|header|icon|label|visible|visual|view|screen|frontend)\b/.test(normalized) &&
+    /\b(live|liveness|state|status|feedback|recording|playback|call)\b/.test(normalized)
+  );
+}
+
+function configOrderingGuardrail(task: string): string {
+  const normalized = task.toLowerCase();
+  const configTask =
+    /\b(config|configuration|setting|settings|option|options|workaround|workarounds)\b/.test(normalized) &&
+    /\b(add|support|implement|define|schema|metadata|accept|values?|default|argument|args?)\b/.test(normalized);
+  if (!configTask) return "";
+  return "Preserve ordering: for existing config/settings maps, append new entries unless nearby code explicitly sorts keys.";
 }
 
 export function officialGuardrailVariantFor(input: {
@@ -374,9 +488,82 @@ export function officialGuardrailVariantFor(input: {
     ...input.files,
     ...(input.editScope?.initialEditFiles ?? [])
   ]);
+  if (isLifecyclePolicyTask(input.task)) return "lifecycle_policy_compact";
+  if (isUiFeedbackMultiSurfaceTask(input.task)) return "frontend_owner_map_compact";
+  if (isPairedContractTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
   if (editFiles.length < 1 || editFiles.length > 2) return "semantic_official";
   if ((input.invariants?.length ?? 0) === 0) return "compact_official";
   return isTrivialExactSourceOfficialTask(input.task) ? "compact_official" : "semantic_official";
+}
+
+function officialEditFiles(input: {
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+}): string[] {
+  return uniquePaths([
+    ...input.files,
+    ...(input.editScope?.initialEditFiles ?? [])
+  ]);
+}
+
+function isPairedContractTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  return /\b(command|commands?|cli|flag|flags|argument|arguments|args?|namespace|namespaces|variant|variants|sorting|sort|export|exports?|startup|runtime option|configuration|config|setting|settings|schema)\b/.test(normalized);
+}
+
+function isLifecyclePolicyTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  return /\b(deprecat(?:e|ed|ion)|removed?_?(?:in|at)|removal|lifecycle|alias|aliases|warning|warnings)\b/.test(normalized) &&
+    /\b(date|version|policy|module|plugin|schema|metadata|validate|validation|warn|warning|removed)\b/.test(normalized);
+}
+
+function isGenericDateUrlHelper(file: string): boolean {
+  const normalized = file.toLowerCase();
+  return /(?:^|\/)(?:date|date_time|time|url|urlutils|utils?)\.(?:py|ts|tsx|js|go|rb|java|cs|cpp|c|h)$/.test(normalized) ||
+    /\/facts\/(?:system\/)?date_time\./.test(normalized);
+}
+
+function officialFileRole(file: string): string {
+  const normalized = file.toLowerCase();
+  if (/\b(configdata|settings?|schema|options?)\b/.test(normalized)) return "schema/config";
+  if (/\b(command|cmd|cli|args?|flags?)\b/.test(normalized)) return "command";
+  if (/\b(export|serializer|writer)\b/.test(normalized)) return "exporter";
+  if (/\b(runtime|launcher|startup)\b/.test(normalized)) return "runtime";
+  return "source";
+}
+
+function lifecycleRole(file: string): string {
+  const normalized = file.toLowerCase();
+  if (/\b(schema|metadata|parameters?|argument_spec|configdata)\b/.test(normalized)) return "policy/schema";
+  if (/\b(warning|warnings|display|deprecat)\b/.test(normalized)) return "warning path";
+  if (/\b(basic|module_utils|module)\b/.test(normalized)) return "runtime contract";
+  return "source";
+}
+
+function isVisibleUiOwner(file: string): boolean {
+  const normalized = file.toLowerCase();
+  return /\.(tsx|jsx|vue|svelte)$/.test(normalized) &&
+    /\b(component|components|view|views|atoms|molecules|organisms|page|pages|screen|screens)\b/.test(normalized) &&
+    !/\b(test|spec|snapshot|style|css|scss|pcss|pre[-_]?recording)\b/.test(normalized);
+}
+
+function isExplicitFrontendSupportSurface(file: string, task: string): boolean {
+  const normalized = file.toLowerCase();
+  const normalizedTask = task.toLowerCase();
+  if (/\b(test|spec|snapshot|style|css|scss|pcss|pre[-_]?recording)\b/.test(normalized)) return false;
+  if (/\b(hooks?|models?|stores?|actions?|selectors?|utils?|index)\b/.test(normalized)) {
+    return /\b(state|model|hook|export|type|event|events|playback|recording|liveness|live)\b/.test(normalizedTask);
+  }
+  return false;
+}
+
+function frontendRole(file: string): string {
+  const normalized = file.toLowerCase();
+  if (/\bhooks?\b/.test(normalized)) return "hook";
+  if (/\bmodels?\b/.test(normalized)) return "model";
+  if (/(?:^|\/)index\./.test(normalized)) return "export";
+  if (/\butils?\b/.test(normalized)) return "utility";
+  return "visible component";
 }
 
 function isTrivialExactSourceOfficialTask(task: string): boolean {

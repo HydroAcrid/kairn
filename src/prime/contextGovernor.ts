@@ -10,7 +10,9 @@ import type {
   FileRecord,
   FileRoleV2,
   PrimeQuality,
-  TaskFrame
+  RequiredSurface,
+  TaskFrame,
+  TaskShapeSignal
 } from "../types.js";
 import type { ResolvedPrimeProfile } from "./quality.js";
 
@@ -31,6 +33,8 @@ export type CandidateFeatures = {
 
 export type DecisionFeatures = {
   taskFrame: TaskFrame;
+  taskShapeSignal?: TaskShapeSignal;
+  requiredSurface: RequiredSurface;
   repoLanguageMix: Record<string, number>;
   candidates: CandidateFeatures[];
   confidenceGap: number;
@@ -138,6 +142,8 @@ export function applyContextGovernor(input: GovernorInput): ContextValueDecision
     return {
       ...input.baseDecision,
       taskFrame: features.taskFrame,
+      ...(features.taskShapeSignal ? { taskShapeSignal: features.taskShapeSignal } : {}),
+      requiredSurface: features.requiredSurface,
       modelPrediction,
       featureSummary
     };
@@ -159,6 +165,8 @@ export function applyContextGovernor(input: GovernorInput): ContextValueDecision
         ? input.baseDecision.recommendedDelivery ?? "full_prime"
         : governed.action === "shrink"
           ? input.baseDecision.recommendedDelivery === "multi_file_directive" ||
+            features.requiredSurface === "paired_contract" ||
+            features.requiredSurface === "feature_cluster" ||
             (features.readOnlySourceRoutingIntent && readOnlySourceCandidateCount > 1) ||
             (features.taskFrame === "qna_source_grounded" && features.candidates.length > 1)
           ? "multi_file_directive"
@@ -166,6 +174,8 @@ export function applyContextGovernor(input: GovernorInput): ContextValueDecision
         : "none",
     reasons: [...reasons],
     taskFrame: features.taskFrame,
+    ...(features.taskShapeSignal ? { taskShapeSignal: features.taskShapeSignal } : {}),
+    requiredSurface: features.requiredSurface,
     ...(governed.directiveStyle || shouldUpgradeReadOnlyDelivery || input.baseDecision.directiveStyle
       ? { directiveStyle: governed.directiveStyle ?? (shouldUpgradeReadOnlyDelivery ? "source_map" : input.baseDecision.directiveStyle) }
       : {}),
@@ -196,8 +206,12 @@ export function buildDecisionFeatures(input: GovernorInput): DecisionFeatures {
     companionCount: input.companionCount ?? 0,
     companionTopScore: input.companionTopScore ?? 0
   });
+  const taskShapeSignal = inferTaskShapeSignal(input.task, taskFrame, input.baseDecision, candidates);
+  const requiredSurface = inferRequiredSurface(input.task, taskFrame, taskShapeSignal, input.baseDecision, candidates);
   return {
     taskFrame,
+    ...(taskShapeSignal ? { taskShapeSignal } : {}),
+    requiredSurface,
     repoLanguageMix,
     candidates,
     confidenceGap: Math.max(0, input.baseDecision.topGap),
@@ -375,6 +389,36 @@ function hardSafetyDecision(
       score: 0,
       reasons: ["governor found no usable source candidates"],
       ...(features.estimatedSearchCost >= 60 ? { evidenceRequest: evidenceRequestFor(features) } : {})
+    };
+  }
+  if (features.requiredSurface === "evidence_needed") {
+    return {
+      action: "request_evidence",
+      score: Math.min(baseDecision.score, 48),
+      reasons: ["task shape has weak source ownership; asking for an exact source signal"],
+      evidenceRequest: evidenceRequestFor(features, "exact_source")
+    };
+  }
+  if (
+    features.requiredSurface === "paired_contract" &&
+    baseDecision.action !== "suppress" &&
+    baseDecision.action !== "request_evidence"
+  ) {
+    return {
+      action: "shrink",
+      score: Math.min(Math.max(baseDecision.score, 56), 66),
+      reasons: [`${features.taskShapeSignal ?? "multi-surface"} task should use a compact paired-source directive`]
+    };
+  }
+  if (
+    features.requiredSurface === "feature_cluster" &&
+    baseDecision.action === "emit" &&
+    features.estimatedSearchCost >= 45
+  ) {
+    return {
+      action: "shrink",
+      score: Math.min(baseDecision.score, 66),
+      reasons: [`${features.taskShapeSignal ?? "feature-cluster"} task should use a compact owner map`]
     };
   }
   if (isEstablishedOfficialExactSourceState(baseDecision, features)) {
@@ -609,6 +653,98 @@ function classifyTaskFrame(input: {
   return "source_rescue";
 }
 
+function inferTaskShapeSignal(
+  task: string,
+  taskFrame: TaskFrame,
+  baseDecision: ContextValueDecision,
+  candidates: CandidateFeatures[]
+): TaskShapeSignal | undefined {
+  const normalized = normalizeText(task);
+  if (hasDeprecationLifecycleScope(normalized)) return "lifecycle_policy";
+  if (isCommandContractTask(normalized)) return "command_contract";
+  if (isFrontendOwnershipTask(normalized, candidates)) {
+    return hasWeakFrontendOwnership(baseDecision, candidates) ? "ambiguous_frontend_ownership" : "frontend_ownership";
+  }
+  if (taskFrame === "official_patch" && isAmbiguousFrontendPatch(baseDecision, {
+    taskFrame,
+    repoLanguageMix: {},
+    candidates,
+    confidenceGap: baseDecision.topGap,
+    candidateEntropy: candidateEntropy(candidates),
+    ambiguity: candidateAmbiguity(candidates, baseDecision.topGap),
+    activeSourceState: false,
+    staleIndexState: false,
+    failureState: false,
+    verificationState: false,
+    explicitTestTarget: taskExplicitlyTargetsTests(task),
+    productionOnlyEditIntent: taskHasProductionOnlyEditIntent(task),
+    readOnlySourceRoutingIntent: taskIsReadOnlySourceRouting(task),
+    expectedContextCost: baseDecision.estimatedContextCost,
+    estimatedSearchCost: 0,
+    requiredSurface: "single_file"
+  })) {
+    return "ambiguous_frontend_ownership";
+  }
+  return undefined;
+}
+
+function inferRequiredSurface(
+  task: string,
+  taskFrame: TaskFrame,
+  taskShapeSignal: TaskShapeSignal | undefined,
+  baseDecision: ContextValueDecision,
+  candidates: CandidateFeatures[]
+): RequiredSurface {
+  if (taskShapeSignal === "ambiguous_frontend_ownership") return "evidence_needed";
+  if (taskShapeSignal === "command_contract" || taskShapeSignal === "lifecycle_policy") return "paired_contract";
+  if (taskShapeSignal === "frontend_ownership") return "feature_cluster";
+  if (taskFrame === "official_patch" && hasPromptDerivedMultiFileScope(task)) return "paired_contract";
+  if (
+    baseDecision.multiSurfaceSignal ||
+    baseDecision.companionSpecific ||
+    baseDecision.recommendedDelivery === "multi_file_directive"
+  ) {
+    return "feature_cluster";
+  }
+  return "single_file";
+}
+
+function isCommandContractTask(normalized: string): boolean {
+  const commandTerms = /\b(command|commands|cli|flag|flags|option|options|args?|arguments|argv|export|exporter|namespace|namespaces|variant|variants|sort|sorted|sorting|deterministic|startup|launch|runtime)\b/.test(normalized);
+  const contractTerms = /\b(add|implement|support|honou?r|pass|apply|propagate|parse|wire|preserve|order|dedupe|stable|workaround|setting|configuration|schema)\b/.test(normalized);
+  const backendStorageOnly = /\b(storage|database|db|repository|persistence)\b/.test(normalized) &&
+    !/\b(command|cli|flag|args?|export|namespace|variant|sort|startup|runtime)\b/.test(normalized);
+  return commandTerms && contractTerms && !backendStorageOnly;
+}
+
+function isFrontendOwnershipTask(normalized: string, candidates: CandidateFeatures[]): boolean {
+  const explicitUiPrompt =
+    /\b(ui|frontend|component|components|view|views|screen|route|render|display|visual|badge|icon|panel|drawer|composer|voice|broadcast|room|message|notification|presence|playback|recording|liveness|live)\b/.test(normalized);
+  const headerBodyUiPrompt =
+    /\b(header|body)\b/.test(normalized) &&
+    /\b(ui|frontend|component|components|view|views|screen|render|display|visual|badge|icon)\b/.test(normalized);
+  const uiPrompt = explicitUiPrompt || headerBodyUiPrompt;
+  if (!uiPrompt) return false;
+  return candidates.slice(0, 6).some((candidate) =>
+    candidate.role === "ui_surface" ||
+    candidate.role === "route" ||
+    candidate.language === "typescript" ||
+    candidate.language === "javascript"
+  );
+}
+
+function hasWeakFrontendOwnership(baseDecision: ContextValueDecision, candidates: CandidateFeatures[]): boolean {
+  const uiCandidates = candidates.slice(0, 6).filter((candidate) =>
+    candidate.role === "ui_surface" ||
+    candidate.role === "route" ||
+    candidate.language === "typescript" ||
+    candidate.language === "javascript"
+  );
+  if (uiCandidates.length < 2) return false;
+  if (baseDecision.exactSourceHit || baseDecision.sourceRescue || baseDecision.canonicalSourceHit || baseDecision.exactPathMentioned) return false;
+  return baseDecision.topGap < 80 || candidateAmbiguity(candidates, baseDecision.topGap) >= 0.55;
+}
+
 function hasMultiSurfaceDebugLanguage(text: string): boolean {
   return (
     /\b(across|multiple files|multi[-\s]?file|companion|controller|repository|router|routing|adapter|dispatch|route matching|module resolution|module loading|loader|resolver|fixture resolution|runner setup|line splitting|comment handling|json output)\b/.test(text) ||
@@ -651,6 +787,8 @@ function summarizeDecisionFeatures(features: DecisionFeatures): ContextGovernorF
   const top = features.candidates[0];
   return {
     taskFrame: features.taskFrame,
+    ...(features.taskShapeSignal ? { taskShapeSignal: features.taskShapeSignal } : {}),
+    requiredSurface: features.requiredSurface,
     candidateCount: features.candidates.length,
     fileRoleCounts,
     repoLanguageMix: features.repoLanguageMix,
@@ -842,7 +980,9 @@ export function hasPromptDerivedMultiFileScope(task: string): boolean {
     hasEntityMessageScope(normalized) ||
     hasHttpContentScope(normalized) ||
     hasAuthorQueryScope(normalized) ||
-    hasHsmKmsConfigScope(normalized)
+    hasHsmKmsConfigScope(normalized) ||
+    hasConfigOptionRuntimeScope(normalized) ||
+    hasDeprecationLifecycleScope(normalized)
   );
 }
 
@@ -948,6 +1088,26 @@ function hasHsmKmsConfigScope(normalized: string): boolean {
     ]) >= 3 &&
     /\b(softhsm|yubihsm|cloudhsm|aws kms|gcp kms|pkcs11)\b/.test(normalized)
   );
+}
+
+function hasConfigOptionRuntimeScope(normalized: string): boolean {
+  const explicitConfigOption =
+    /\b(?:config(?:uration)?\s+)?(?:setting|settings|option|options|workaround|workarounds)\b/.test(normalized) ||
+    /\b(?:setting|option|workaround)\s+(?:named|called|must|should|can|to)\b/.test(normalized);
+  const schemaOrContract =
+    /\b(schema|accept|values?|valid values?|default|required|restart|metadata|define|add|support)\w*\b/.test(normalized);
+  const runtimeOrArgument =
+    /\b(runtime|argument|arguments|args?|apply|disable|enable|backend|qtwebengine|chromium|webengine)\w*\b/.test(normalized);
+  return explicitConfigOption && schemaOrContract && runtimeOrArgument;
+}
+
+export function hasDeprecationLifecycleScope(task: string): boolean {
+  const normalized = normalizeText(task);
+  return countPresent(normalized, [
+    /\b(deprecat\w*|deprecated aliases?|removed in version|removed_in_version|removed at date|removed_at_date|removed_in_date)\b/,
+    /\b(date|version|module|modules|parameter|parameters|alias|aliases)\b/,
+    /\b(validate|validation|internal error|warning|warnings|display|runtime)\b/
+  ]) >= 3;
 }
 
 function countPresent(value: string, patterns: RegExp[]): number {

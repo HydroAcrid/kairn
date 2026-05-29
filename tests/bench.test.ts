@@ -3955,9 +3955,187 @@ describe("benchmark suite and scoring", () => {
 
     expect(decision.action).toBe("request_evidence");
     expect(decision.evidenceRequest?.kind).toBe("exact_source");
+    expect(decision.taskShapeSignal).toBe("ambiguous_frontend_ownership");
+    expect(decision.requiredSurface).toBe("evidence_needed");
     expect(decision.reasons).toEqual(
-      expect.arrayContaining(["large frontend patch has no dominant source owner; asking for an exact source signal"])
+      expect.arrayContaining(["task shape has weak source ownership; asking for an exact source signal"])
     );
+  });
+
+  it("marks command contract tasks as compact paired-source directives", () => {
+    const decision = applyContextGovernor({
+      task: "Implement --sort-by-key for the export command. NewExporter should sort namespaces, flags, segments, and variants deterministically. Fix production source only.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- cmd/flipt/export.go\n- internal/ext/exporter.go\n",
+        files: ["cmd/flipt/export.go", "internal/ext/exporter.go"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["cmd/flipt/export.go", "internal/ext/exporter.go"],
+        rankedFiles: [
+          { path: "cmd/flipt/export.go", kind: "source", score: 500, reasons: ["CLI export command surface"] },
+          { path: "internal/ext/exporter.go", kind: "source", score: 470, reasons: ["exporter implementation companion"] },
+          { path: "internal/storage/backend.go", kind: "source", score: 120, reasons: ["storage backend"] }
+        ],
+        tokenEstimate: 700
+      },
+      quality: {
+        score: 76,
+        action: "emit",
+        reasons: ["top retrieval score"],
+        topScore: 500,
+        topGap: 30,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 74,
+        action: "emit",
+        reasons: ["debug/failure task can benefit from targeted context"],
+        topScore: 500,
+        topGap: 30,
+        primaryFile: "cmd/flipt/export.go",
+        language: "go",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 980,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("cmd/flipt/export.go", "go"),
+        sourceRecord("internal/ext/exporter.go", "go"),
+        sourceRecord("internal/storage/backend.go", "go")
+      ],
+      repoFileCount: 1400,
+      estimatedContextCost: 980
+    });
+
+    expect(decision.taskShapeSignal).toBe("command_contract");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
+  it("marks deprecation lifecycle tasks as compact paired-source directives", () => {
+    const decision = applyContextGovernor({
+      task: "Support deprecation by date in modules. Deprecated aliases should validate version or date and display warnings. Fix production source only.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- lib/module_utils/common/parameters.py\n- lib/module_utils/common/warnings.py\n- lib/utils/display.py\n",
+        files: [
+          "lib/module_utils/common/parameters.py",
+          "lib/module_utils/common/warnings.py",
+          "lib/utils/display.py"
+        ],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["lib/module_utils/common/parameters.py", "lib/module_utils/common/warnings.py"],
+        rankedFiles: [
+          { path: "lib/module_utils/common/parameters.py", kind: "source", score: 520, reasons: ["parameter validation surface"] },
+          { path: "lib/module_utils/common/warnings.py", kind: "source", score: 500, reasons: ["deprecation warning companion"] },
+          { path: "lib/utils/display.py", kind: "source", score: 470, reasons: ["deprecation display surface"] }
+        ],
+        tokenEstimate: 760
+      },
+      quality: {
+        score: 80,
+        action: "emit",
+        reasons: ["top retrieval score"],
+        topScore: 520,
+        topGap: 20,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 78,
+        action: "emit",
+        reasons: ["debug/failure task can benefit from targeted context"],
+        topScore: 520,
+        topGap: 20,
+        primaryFile: "lib/module_utils/common/parameters.py",
+        language: "python",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 1100,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("lib/module_utils/common/parameters.py", "python"),
+        sourceRecord("lib/module_utils/common/warnings.py", "python"),
+        sourceRecord("lib/utils/display.py", "python")
+      ],
+      repoFileCount: 1800,
+      estimatedContextCost: 1100
+    });
+
+    expect(decision.taskShapeSignal).toBe("lifecycle_policy");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
+  it("marks strong frontend ownership tasks as compact feature clusters", () => {
+    const decision = applyContextGovernor({
+      task: "Fix voice broadcast liveness feedback in the room composer UI. Production source only; do not edit tests.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- src/components/views/rooms/MessageComposer.tsx\n- src/stores/RoomViewStore.ts\n",
+        files: ["src/components/views/rooms/MessageComposer.tsx", "src/stores/RoomViewStore.ts"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/components/views/rooms/MessageComposer.tsx", "src/stores/RoomViewStore.ts"],
+        rankedFiles: [
+          { path: "src/components/views/rooms/MessageComposer.tsx", kind: "component", score: 600, reasons: ["named UI surface match"] },
+          { path: "src/stores/RoomViewStore.ts", kind: "source", score: 470, reasons: ["UI state owner surface"] }
+        ],
+        tokenEstimate: 880
+      },
+      quality: {
+        score: 82,
+        action: "emit",
+        reasons: ["top retrieval score"],
+        topScore: 600,
+        topGap: 130,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 80,
+        action: "emit",
+        reasons: ["debug/failure task can benefit from targeted context"],
+        topScore: 600,
+        topGap: 130,
+        primaryFile: "src/components/views/rooms/MessageComposer.tsx",
+        language: "typescript",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 1300,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        { ...sourceRecord("src/components/views/rooms/MessageComposer.tsx", "typescript"), kind: "component" },
+        sourceRecord("src/stores/RoomViewStore.ts", "typescript")
+      ],
+      repoFileCount: 6200,
+      estimatedContextCost: 1300
+    });
+
+    expect(decision.taskShapeSignal).toBe("frontend_ownership");
+    expect(decision.requiredSurface).toBe("feature_cluster");
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
   });
 
   it("shrinks read-only source-routing prompts into compact multi-file directives", () => {
@@ -5821,6 +5999,78 @@ describe("benchmark runtime and CLI", () => {
     expect(statement).toContain("reject newly invalid inputs");
     expect(statement).toContain("invalid-input rejection paths");
     expect(statement).toContain("fall through");
+  });
+
+  it("does not apply voice-broadcast invariants to generic UI ordering tasks", () => {
+    const statement = inferInvariantStatement([
+      "Reordering Sent should also reposition All Sent together.",
+      "All Sent stays hidden but its position is updated.",
+      "Preserve each item's non-order properties, including display section."
+    ].join(" "));
+
+    expect(statement).not.toContain("Voice broadcast");
+    expect(statement).toContain("non-order properties");
+  });
+
+  it("does not apply invalid-identifier guardrails to backend environment validation tasks", () => {
+    const statement = inferInvariantStatement([
+      "HSM/KMS test configuration logic is duplicated across backend test files.",
+      "Configuration functions should handle environment variable validation.",
+      "Support SoftHSM, YubiHSM, CloudHSM, GCP KMS, and AWS KMS backends."
+    ].join(" "));
+
+    expect(statement).not.toContain("invalid-input rejection paths");
+    expect(statement).toContain("environment variable validation");
+  });
+
+  it("does not emit unrelated generic test helpers for central HSM/KMS backend config tasks", async () => {
+    const root = createFixtureRepo();
+    fs.mkdirSync(path.join(root, "lib/auth/keystore"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "lib/auth/keystore/pkcs11.go"),
+      [
+        "package keystore",
+        "",
+        "func SetupSoftHSMTest() Config {",
+        "  return Config{}",
+        "}",
+        ""
+      ].join("\n")
+    );
+    fs.mkdirSync(path.join(root, "api/utils/sshutils"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "api/utils/sshutils/test.go"),
+      [
+        "package sshutils",
+        "",
+        "func TestBackends() []string {",
+        "  return []string{\"ssh\"}",
+        "}",
+        ""
+      ].join("\n")
+    );
+    const runtime = new KairnRuntime(root);
+
+    const prime = await runtime.primeContext({
+      task: [
+        "HSM/KMS test configuration logic is duplicated across backend test files.",
+        "Requirements:",
+        "- Provide a unified HSMTestConfig function that automatically detects available HSM/KMS backends.",
+        "- Add dedicated configuration functions for SoftHSM, YubiHSM, CloudHSM, AWS KMS, and GCP KMS.",
+        "Selected verification tests from SWE-Bench Pro metadata: TestBackends, TestBackends/fake_gcp_kms, TestBackends/fake_aws_kms",
+        "These tests are verification targets only; do not edit tests.",
+        "Fix the issue in production source only. Avoid broad scans once the relevant source surface is known."
+      ].join("\n"),
+      profile: "failure_debug",
+      budget: 900
+    });
+
+    expect(prime.files).toContain("lib/auth/keystore/pkcs11.go");
+    expect(prime.files).not.toContain("api/utils/sshutils/test.go");
+    expect(prime.content).not.toContain("Companion source:\n- api/utils/sshutils/test.go");
+    expect(prime.editScope?.initialEditFiles).not.toContain("api/utils/sshutils/test.go");
+
+    runtime.close();
   });
 
   it("prefers current source invariant metadata over stale session task text in exact-source primes", async () => {

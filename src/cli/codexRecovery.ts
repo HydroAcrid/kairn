@@ -40,10 +40,13 @@ export function buildCodexNoDiffRecoveryPrompt(input: {
   task: string;
   prime?: ContextPrime | undefined;
 }): string {
-  const files = uniquePaths([
-    ...(input.prime?.editScope?.initialEditFiles ?? []),
-    ...(input.prime?.files ?? [])
-  ]).slice(0, 4);
+  const scopedFiles = uniquePaths(input.prime?.editScope?.initialEditFiles ?? []);
+  const fallbackFiles = uniquePaths(input.prime?.files ?? []);
+  const files = uniquePaths(
+    taskIsOfficialProductionPatchPrompt(input.task) && scopedFiles.length > 0
+      ? scopedFiles
+      : [...scopedFiles, ...fallbackFiles]
+  ).slice(0, 4);
   const readOnly = uniquePaths(input.prime?.editScope?.readOnlyFiles ?? []).slice(0, 3);
   const invariant = input.prime?.invariants?.[0]?.statement;
   return [

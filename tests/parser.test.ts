@@ -276,6 +276,7 @@ describe("cross-language parser adapters", () => {
     expect(detectLanguage("crates/core/search.rs")).toBe("rust");
     expect(detectLanguage("include/fmt/base.h")).toBe("cpp");
     expect(detectLanguage("src/core.cpp")).toBe("cpp");
+    expect(detectLanguage("lib/Ansible.Basic.cs")).toBe("csharp");
     expect(classifyFile("tests/test_utils.py")).toBe("test");
     expect(classifyFile("src/_pytest/python.py")).toBe("source");
     expect(classifyFile("src/_pytest/fixtures.py")).toBe("source");
@@ -283,6 +284,7 @@ describe("cross-language parser adapters", () => {
     expect(classifyFile("src/test/java/org/example/StringUtilsTest.java")).toBe("test");
     expect(classifyFile("test/base_test.cc")).toBe("test");
     expect(classifyFile("src/main/java/org/example/StringUtils.java")).toBe("source");
+    expect(classifyFile("lib/Ansible.Basic.cs")).toBe("source");
   });
 
   it("indexes cross-language symbol chunks and graph test edges", async () => {

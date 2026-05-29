@@ -96,8 +96,14 @@ function behaviorTemplateForTask(task: string): string | undefined {
     return "isBlank must use the language whitespace semantics, not only literal spaces.";
   }
   if (
+    /\b(voice|broadcast)\b/.test(normalized) &&
+    /\b(liveness|live|badge|icon|feedback|visual|recording|playback|paused|grey|gray)\b/.test(normalized)
+  ) {
+    return "Voice broadcast UI state must distinguish live, paused/grey, and not-live states consistently across playback and recording surfaces.";
+  }
+  if (
     /\b(validat(e|ion)|valid|invalid|reject|accept)\b/.test(normalized) &&
-    /\b(identifier|keyword|reserved|name|fqcn|collection name|namespace)\b/.test(normalized)
+    /\b(identifier|keyword|reserved|fqcn|collection name|namespace)\b/.test(normalized)
   ) {
     return "Validation changes must reject newly invalid inputs while preserving existing invalid-input rejection paths; invalid values must not fall through to later runtime branches.";
   }

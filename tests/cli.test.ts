@@ -454,11 +454,7 @@ describe("CLI", () => {
         topGap: 100,
         language: "go" as const,
         exactPathMentioned: false,
-        estimatedTokensIn: 400,
-        estimatedTokensOut: 100,
-        estimatedSavings: 300,
         estimatedContextCost: 400,
-        estimatedCostIfWrong: 0,
         expectedSavingsRisk: "low" as const,
         debugSignal: false,
         easyTaskSignal: false,
@@ -498,6 +494,82 @@ describe("CLI", () => {
     expect(prompt).toContain("Edit scope: scanner/redhatbase.go");
     expect(prompt).toContain("Do not edit tests");
     expect(prompt).not.toContain("broad scans");
+  });
+
+  it("does not widen official no-diff recovery scope with noisy emitted files", () => {
+    const task = [
+      "Title: HSM/KMS test configuration logic is duplicated across backend test files.",
+      "Selected verification tests from SWE-Bench Pro metadata: TestBackends, TestBackends/fake_gcp_kms, TestBackends/fake_aws_kms",
+      "Fix the issue in production source only. Avoid broad scans once the relevant source surface is known."
+    ].join("\n");
+    const session = {
+      id: "task_hsm",
+      rootPath: "/repo",
+      task,
+      status: "active" as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      filesShown: [],
+      symbolsShown: [],
+      commandsRun: [],
+      diffsObserved: [],
+      watchEvents: [],
+      risks: [],
+      verificationHints: []
+    };
+    const prompt = buildCodexNoDiffRecoveryPrompt({
+      task,
+      prime: {
+        task,
+        session,
+        profile: "generic" as const,
+        content: "# Kairn Fix Guardrail",
+        files: ["lib/auth/keystore/pkcs11.go", "api/utils/sshutils/test.go"],
+        tokenEstimate: 40,
+        quality: {
+          score: 60,
+          action: "shrink" as const,
+          reasons: [],
+          topScore: 100,
+          topGap: 100,
+          exactPathMentioned: false,
+          expectedSavingsRisk: "low" as const
+        },
+        contextDecision: {
+          action: "shrink" as const,
+          score: 60,
+          reasons: [],
+          topScore: 100,
+          topGap: 100,
+          language: "go" as const,
+          exactPathMentioned: false,
+          estimatedContextCost: 400,
+          expectedSavingsRisk: "low" as const,
+          debugSignal: false,
+          easyTaskSignal: false,
+          wrongContextRisk: false,
+          recommendedDelivery: "multi_file_directive" as const,
+          taskFrame: "official_patch" as const,
+          directiveStyle: "scope_guardrail" as const
+        },
+        editScope: {
+          initialEditFiles: ["lib/auth/keystore/pkcs11.go"],
+          readOnlyFiles: ["api/utils/sshutils/test.go"],
+          allowedExpansionTriggers: ["only if failure names another production file"],
+          forbiddenEditPatterns: ["tests/**", "docs/**"],
+          scopeConfidence: "high" as const,
+          scopeSource: "official_harness" as const,
+          reason: "official metadata supplied production scope",
+          strictBoundary: true,
+          dynamic: true as const
+        },
+        warnings: [],
+        suggestedCommands: []
+      }
+    });
+
+    expect(prompt).toContain("Edit scope: lib/auth/keystore/pkcs11.go");
+    expect(prompt).not.toContain("Edit scope: lib/auth/keystore/pkcs11.go, api/utils/sshutils/test.go");
   });
 
   it("ignores Kairn-owned files when checking whether Codex produced a diff", () => {

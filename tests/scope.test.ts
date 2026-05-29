@@ -180,6 +180,214 @@ describe("edit scope controller", () => {
     expect(scope.readOnlyFiles).not.toContain("lib/auth/keystore/testhelpers.go");
   });
 
+  it("keeps unrelated generic test helpers out of central backend configuration edit scope", () => {
+    const task = [
+      "Teleport HSM and KMS test configuration logic is duplicated across backend test files.",
+      "Requirements:",
+      "- Provide a unified HSMTestConfig function that automatically detects available HSM/KMS backends.",
+      "- Add dedicated configuration functions for SoftHSM, YubiHSM, CloudHSM, AWS KMS, and GCP KMS.",
+      "Selected verification tests from SWE-Bench Pro metadata: TestBackends, TestBackends/fake_gcp_kms, TestBackends/fake_aws_kms",
+      "These tests are verification targets only; do not edit tests.",
+      "Fix the issue in production source only."
+    ].join("\n");
+    const scope = decideEditScope({
+      task,
+      candidateFiles: ["lib/auth/keystore/pkcs11.go", "api/utils/sshutils/test.go"],
+      contextDecision: decision({
+        primaryFile: "lib/auth/keystore/pkcs11.go",
+        sourceRescue: true,
+        canonicalSourceHit: true,
+        multiSurfaceSignal: true,
+        recommendedDelivery: "multi_file_directive"
+      })
+    });
+
+    expect(scope.initialEditFiles).toEqual(["lib/auth/keystore/pkcs11.go"]);
+    expect(scope.initialEditFiles).not.toContain("api/utils/sshutils/test.go");
+  });
+
+  it("keeps frontend autocomplete and tests out of backend autocomplete official edit scope", () => {
+    const task = [
+      "Autocomplete endpoints lack unified logic and flexible OLID handling.",
+      "The file ‘autocomplete.py’ must define a reusable page class named autocomplete.",
+      "The function find_olid_in_string must extract an OLID and olid_to_key must convert it.",
+      "Selected verification tests from SWE-Bench Pro metadata: openlibrary/plugins/worksearch/tests/test_autocomplete.py",
+      "These tests are verification targets only; do not edit tests, snapshots, docs, examples, generated files, or unrelated files.",
+      "Fix the issue in production source only."
+    ].join("\n");
+    const scope = decideEditScope({
+      task,
+      candidateFiles: [
+        "openlibrary/plugins/worksearch/autocomplete.py",
+        "openlibrary/utils/schema.py",
+        "openlibrary/plugins/openlibrary/js/autocomplete.js",
+        "openlibrary/catalog/add_book/tests/test_add_book.py"
+      ],
+      contextDecision: decision({
+        primaryFile: "openlibrary/plugins/worksearch/autocomplete.py",
+        sourceRescue: true,
+        canonicalSourceHit: true,
+        multiSurfaceSignal: true,
+        recommendedDelivery: "multi_file_directive"
+      })
+    });
+
+    expect(scope.initialEditFiles).toEqual(["openlibrary/plugins/worksearch/autocomplete.py"]);
+    expect(scope.initialEditFiles).not.toContain("openlibrary/utils/schema.py");
+    expect(scope.initialEditFiles).not.toContain("openlibrary/plugins/openlibrary/js/autocomplete.js");
+    expect(scope.initialEditFiles).not.toContain("openlibrary/catalog/add_book/tests/test_add_book.py");
+  });
+
+  it("keeps generic date helpers and leaf modules out of deprecation lifecycle official edit scope", () => {
+    const task = [
+      "Support deprecation by date in modules.",
+      "Deprecated aliases should validate version or date and display warnings.",
+      "Internal errors should mention removed_in_version and removed_at_date.",
+      "Selected verification tests from SWE-Bench Pro metadata: test/lib/ansible_test/_internal/sanity/validate_modules.py, test/lib/ansible_test/_data/sanity/validate-modules/validate_modules/schema.py, test/lib/ansible_test/_data/sanity/validate-modules/validate_modules/main.py, test/lib/ansible_test/_data/sanity/validate-modules/validate_modules/utils.py.",
+      "Fix the issue in production source only."
+    ].join(" ");
+    const scope = decideEditScope({
+      task,
+      candidateFiles: [
+        "lib/ansible/module_utils/common/parameters.py",
+        "lib/ansible/module_utils/basic.py",
+        "lib/ansible/module_utils/facts/system/date_time.py",
+        "lib/ansible/module_utils/facts/utils.py",
+        "lib/ansible/modules/assert.py",
+        "lib/ansible/module_utils/common/warnings.py",
+        "lib/ansible/module_utils/csharp/Ansible.Basic.cs",
+        "lib/ansible/utils/display.py"
+      ],
+      contextDecision: decision({
+        primaryFile: "lib/ansible/module_utils/common/parameters.py",
+        sourceRescue: true,
+        canonicalSourceHit: true,
+        multiSurfaceSignal: true,
+        recommendedDelivery: "multi_file_directive"
+      })
+    });
+
+    expect(scope.initialEditFiles).toEqual([
+      "lib/ansible/module_utils/common/parameters.py",
+      "lib/ansible/module_utils/basic.py",
+      "lib/ansible/module_utils/common/warnings.py",
+      "lib/ansible/module_utils/csharp/Ansible.Basic.cs",
+      "lib/ansible/utils/display.py"
+    ]);
+    expect(scope.initialEditFiles).not.toContain("lib/ansible/module_utils/facts/system/date_time.py");
+    expect(scope.initialEditFiles).not.toContain("lib/ansible/module_utils/facts/utils.py");
+    expect(scope.initialEditFiles).not.toContain("lib/ansible/modules/assert.py");
+  });
+
+  it("allows prompt-derived schema companions into official config-setting edit scope", () => {
+    const task = [
+      "Requirements:",
+      "- A configuration setting named `qt.workarounds.disable_accelerated_2d_canvas` must exist.",
+      "- The setting must accept `always`, `never`, and `auto`.",
+      "- The setting must affect QtWebEngine accelerated 2D canvas arguments at runtime.",
+      "Selected verification tests from SWE-Bench Pro metadata: tests/unit/config/test_qtargs.py",
+      "These tests are verification targets only; do not edit tests.",
+      "Fix the issue in production source only."
+    ].join("\n");
+    const scope = decideEditScope({
+      task,
+      candidateFiles: ["qutebrowser/config/configdata.yml", "qutebrowser/config/qtargs.py"],
+      allowedDiffScopes: [{ file: "qutebrowser/config/qtargs.py", allowWholeFile: true }],
+      contextDecision: decision({
+        primaryFile: "qutebrowser/config/configdata.yml",
+        sourceRescue: true,
+        canonicalSourceHit: true,
+        multiSurfaceSignal: true,
+        companionSpecific: true,
+        recommendedDelivery: "multi_file_directive"
+      })
+    });
+
+    expect(scope.initialEditFiles).toEqual(["qutebrowser/config/qtargs.py", "qutebrowser/config/configdata.yml"]);
+    expect(scope.readOnlyFiles).not.toContain("qutebrowser/config/configdata.yml");
+    expect(scope.strictBoundary).toBe(true);
+  });
+
+  it("keeps unrelated selected-test schema companions read-only when the prompt does not require schema changes", () => {
+    const task = [
+      "Fix QtWebEngine accelerated 2D canvas arguments at runtime.",
+      "Selected verification tests from SWE-Bench Pro metadata: tests/unit/config/test_qtargs.py",
+      "These tests are verification targets only; do not edit tests.",
+      "Fix the issue in production source only."
+    ].join("\n");
+    const scope = decideEditScope({
+      task,
+      candidateFiles: ["qutebrowser/config/configdata.yml", "qutebrowser/config/qtargs.py"],
+      allowedDiffScopes: [{ file: "qutebrowser/config/qtargs.py", allowWholeFile: true }],
+      contextDecision: decision({
+        primaryFile: "qutebrowser/config/qtargs.py",
+        sourceRescue: true,
+        canonicalSourceHit: true,
+        companionSpecific: true,
+        recommendedDelivery: "multi_file_directive"
+      })
+    });
+
+    expect(scope.initialEditFiles).toEqual(["qutebrowser/config/qtargs.py"]);
+    expect(scope.readOnlyFiles).toContain("qutebrowser/config/configdata.yml");
+    expect(scope.strictBoundary).toBe(true);
+  });
+
+  it("allows prompt-derived UI surface scope to expand narrow official prompt metadata", () => {
+    const task = [
+      "Voice broadcast liveness icon provides inconsistent feedback.",
+      "Requirements:",
+      "- Add an optional grey prop to the LiveBadge component.",
+      "- Update VoiceBroadcastHeader to accept a VoiceBroadcastLiveness value.",
+      "- Define VoiceBroadcastLiveness in src/voice-broadcast/index.ts.",
+      "- Implement liveness state management inside VoiceBroadcastPlayback.",
+      "- Expose liveness in the useVoiceBroadcastPlayback hook.",
+      "- Add isLast(event) in VoiceBroadcastChunkEvents.",
+      "- Update playback and recording call sites to pass the right liveness state.",
+      "Selected verification tests from SWE-Bench Pro metadata: test/voice-broadcast/components/atoms/LiveBadge-test.tsx, test/voice-broadcast/models/VoiceBroadcastPlayback-test.ts, test/voice-broadcast/components/molecules/VoiceBroadcastPlaybackBody-test.tsx",
+      "These tests are verification targets only; do not edit tests.",
+      "Fix the issue in production source only."
+    ].join("\n");
+    const scope = decideEditScope({
+      task,
+      candidateFiles: [
+        "src/voice-broadcast/components/atoms/LiveBadge.tsx",
+        "src/voice-broadcast/components/atoms/VoiceBroadcastHeader.tsx",
+        "src/voice-broadcast/components/molecules/VoiceBroadcastPlaybackBody.tsx",
+        "src/voice-broadcast/components/molecules/VoiceBroadcastRecordingBody.tsx",
+        "src/voice-broadcast/components/molecules/VoiceBroadcastRecordingPip.tsx",
+        "src/voice-broadcast/components/molecules/VoiceBroadcastPreRecordingPip.tsx",
+        "src/voice-broadcast/hooks/useVoiceBroadcastPlayback.ts",
+        "src/voice-broadcast/index.ts",
+        "src/voice-broadcast/models/VoiceBroadcastPlayback.ts",
+        "src/voice-broadcast/utils/VoiceBroadcastChunkEvents.ts",
+        "res/css/voice-broadcast/atoms/_LiveBadge.pcss"
+      ],
+      contextDecision: decision({
+        primaryFile: "src/voice-broadcast/components/atoms/LiveBadge.tsx",
+        sourceRescue: true,
+        multiSurfaceSignal: true,
+        recommendedDelivery: "multi_file_directive"
+      })
+    });
+
+    expect(scope.initialEditFiles).toEqual([
+      "src/voice-broadcast/components/atoms/LiveBadge.tsx",
+      "src/voice-broadcast/components/atoms/VoiceBroadcastHeader.tsx",
+      "src/voice-broadcast/components/molecules/VoiceBroadcastPlaybackBody.tsx",
+      "src/voice-broadcast/components/molecules/VoiceBroadcastRecordingBody.tsx",
+      "src/voice-broadcast/components/molecules/VoiceBroadcastRecordingPip.tsx",
+      "src/voice-broadcast/index.ts",
+      "src/voice-broadcast/hooks/useVoiceBroadcastPlayback.ts",
+      "src/voice-broadcast/models/VoiceBroadcastPlayback.ts",
+      "src/voice-broadcast/utils/VoiceBroadcastChunkEvents.ts"
+    ]);
+    expect(scope.initialEditFiles).not.toContain("src/voice-broadcast/components/molecules/VoiceBroadcastPreRecordingPip.tsx");
+    expect(scope.initialEditFiles).not.toContain("res/css/voice-broadcast/atoms/_LiveBadge.pcss");
+    expect(scope.forbiddenEditPatterns).toEqual(expect.arrayContaining(["res/css/", "*.pcss"]));
+    expect(scope.strictBoundary).toBe(true);
+  });
+
   it("keeps unmentioned provider variants out of official edit scope", () => {
     const task = [
       "Location: `internal/server/auth/http.go`",

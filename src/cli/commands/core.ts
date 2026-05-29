@@ -347,6 +347,13 @@ export function registerCoreCommands(program: Command): void {
             })
           : undefined;
         const shouldInjectPrime = Boolean(prime && shouldInjectPrimeIntoCodexPrompt(prime.contextDecision?.action));
+        const strictBoundaryReminder = prime?.editScope?.strictBoundary === true && (prime.editScope.initialEditFiles?.length ?? 0) > 0
+          ? [
+              "Kairn edit scope is authoritative for this turn:",
+              `- Edit only: ${prime.editScope.initialEditFiles.join(", ")}`,
+              "- If the task appears to require another source file, keep it read-only and report the missing evidence instead of editing it."
+            ].join("\n")
+          : undefined;
         const prompt = interactive
           ? undefined
           : shouldInjectPrime
@@ -359,7 +366,7 @@ export function registerCoreCommands(program: Command): void {
                 "User task:",
                 task,
                 "",
-                "Use the Kairn context above first. Avoid broad scans unless the provided files are insufficient."
+                strictBoundaryReminder ?? "Use the Kairn context above first. Avoid broad scans unless the provided files are insufficient."
               ].join("\n")
             : task;
         const result = {
