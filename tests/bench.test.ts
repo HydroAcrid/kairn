@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
 import { createDefaultBenchmarkSuite, loadBenchmarkSuite } from "../src/bench/suite.js";
 import { buildBenchmarkReport, compareBenchmarkReports, scoreBenchmarkCase } from "../src/bench/score.js";
+import { summarizeOfficialPairRows } from "../src/bench/officialPairAggregate.js";
 import {
   effectiveMatrixMinExpectedHits,
   effectiveMatrixRequiredCompanionHits,
@@ -14,7 +15,7 @@ import {
 } from "../src/bench/matrix.js";
 import { loadBenchmarkEnduranceSuite } from "../src/bench/enduranceSuite.js";
 import { enduranceInvariantForPrompt, runBenchmarkEndurance, runBenchmarkEnduranceRepeats } from "../src/bench/endurance.js";
-import { changedFiles, runAgentBenchmarkCase, runShellWithProcessGroupTimeout } from "../src/bench/agent.js";
+import { changedFiles, runAgentBenchmarkCase, runShellWithProcessGroupTimeout, workspacePatch } from "../src/bench/agent.js";
 import { classifyAssistance } from "../src/bench/assistClassification.js";
 import { buildSweBenchProPilot, loadSweBenchProRows, writeSweBenchProPilot } from "../src/bench/sweBenchPro.js";
 import { buildSweAtlasQnaPilot, loadSweAtlasQnaRows, writeSweAtlasQnaPilot } from "../src/bench/sweAtlasQna.js";
@@ -1146,6 +1147,102 @@ describe("benchmark suite and scoring", () => {
     }
   });
 
+  it("allows prompt-required declarative config schema companions in local diff scope", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-diff-scope-config-schema-"));
+    try {
+      fs.mkdirSync(path.join(root, "qutebrowser/config"), { recursive: true });
+      fs.writeFileSync(path.join(root, "qutebrowser/config/qtargs.py"), "def args():\n    return []\n");
+      fs.writeFileSync(path.join(root, "qutebrowser/config/configdata.yml"), "qt.existing:\n  default: true\n");
+      execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["add", "."], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["commit", "-m", "initial"], {
+        cwd: root,
+        stdio: "ignore",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: "Kairn Test",
+          GIT_AUTHOR_EMAIL: "test@example.com",
+          GIT_COMMITTER_NAME: "Kairn Test",
+          GIT_COMMITTER_EMAIL: "test@example.com"
+        }
+      });
+      fs.appendFileSync(path.join(root, "qutebrowser/config/qtargs.py"), "\n# runtime workaround\n");
+      fs.appendFileSync(path.join(root, "qutebrowser/config/configdata.yml"), "\nqt.workarounds.disable_accelerated_2d_canvas:\n  default: auto\n");
+
+      const result = await evaluateDiffScopes({
+        rootPath: root,
+        scopes: [{ file: "qutebrowser/config/qtargs.py", allowWholeFile: true }],
+        task: [
+          "A configuration setting named `qt.workarounds.disable_accelerated_2d_canvas` must exist.",
+          "The setting must accept `always`, `never`, and `auto`.",
+          "Selected verification tests from SWE-Bench Pro metadata: tests/unit/config/test_qtargs.py"
+        ].join("\n")
+      });
+
+      expect(result.passed).toBe(true);
+      expect(result.changedFiles).toEqual([
+        "qutebrowser/config/configdata.yml",
+        "qutebrowser/config/qtargs.py"
+      ]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("allows prompt-named frontend feature companions in local diff scope", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-diff-scope-frontend-companions-"));
+    try {
+      const files = [
+        "src/voice-broadcast/components/atoms/LiveBadge.tsx",
+        "src/voice-broadcast/components/atoms/VoiceBroadcastHeader.tsx",
+        "src/voice-broadcast/hooks/useVoiceBroadcastPlayback.ts",
+        "src/voice-broadcast/index.ts",
+        "src/voice-broadcast/models/VoiceBroadcastPlayback.ts",
+        "src/voice-broadcast/utils/VoiceBroadcastChunkEvents.ts"
+      ];
+      for (const file of files) {
+        fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+        fs.writeFileSync(path.join(root, file), `export const marker = ${JSON.stringify(file)};\n`);
+      }
+      execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["add", "."], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["commit", "-m", "initial"], {
+        cwd: root,
+        stdio: "ignore",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: "Kairn Test",
+          GIT_AUTHOR_EMAIL: "test@example.com",
+          GIT_COMMITTER_NAME: "Kairn Test",
+          GIT_COMMITTER_EMAIL: "test@example.com"
+        }
+      });
+      for (const file of files) {
+        fs.appendFileSync(path.join(root, file), `export const changed_${path.basename(file).replace(/[^a-z0-9]/gi, "_")} = true;\n`);
+      }
+
+      const result = await evaluateDiffScopes({
+        rootPath: root,
+        scopes: [
+          { file: "src/voice-broadcast/components/atoms/LiveBadge.tsx", allowWholeFile: true },
+          { file: "src/voice-broadcast/components/atoms/VoiceBroadcastHeader.tsx", allowWholeFile: true }
+        ],
+        task: [
+          "Update VoiceBroadcastHeader and LiveBadge for broadcast liveness.",
+          "Define a union type VoiceBroadcastLiveness in src/voice-broadcast/index.ts.",
+          "Expose liveness in the useVoiceBroadcastPlayback hook.",
+          "Implement liveness state management inside VoiceBroadcastPlayback.",
+          "Add isLast(event) in VoiceBroadcastChunkEvents."
+        ].join("\n")
+      });
+
+      expect(result.passed).toBe(true);
+      expect(result.changedFiles).toEqual(files);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("loads the broad repo-matrix preflight example", () => {
     const matrix = loadBenchmarkRepoMatrix({
       matrixPath: path.resolve("examples/bench/repo-matrix.json")
@@ -1374,6 +1471,39 @@ describe("benchmark suite and scoring", () => {
 
     expect(hasExplicitMultiFileScopeRequest(task)).toBe(false);
     expect(scope.initialEditFiles).toEqual(["openlibrary/catalog/get_ia.py"]);
+  });
+
+  it("keeps required config schema surfaces editable even when no public interface is expected", () => {
+    const task = [
+      "Title: Rendering glitches on Google Sheets and PDF.js with `QtWebEngine`.",
+      "A configuration setting named `qt.workarounds.disable_accelerated_2d_canvas` must exist.",
+      "When the value is `auto`, disable accelerated 2D canvas only for affected Qt/Chromium runtime versions.",
+      "Interface notes, not necessarily edit targets:",
+      "No new interfaces are introduced.",
+      "Selected verification tests from SWE-Bench Pro metadata: tests/unit/config/test_qtargs.py",
+      "These tests are verification targets only; do not edit tests, snapshots, docs, examples, generated files, or unrelated files.",
+      "Fix the issue in production source only. Avoid broad scans once the relevant source surface is known."
+    ].join("\n");
+    const scope = decideEditScope({
+      task,
+      candidateFiles: [
+        "qutebrowser/config/qtargs.py",
+        "qutebrowser/config/configdata.yml"
+      ],
+      contextDecision: {
+        action: "shrink",
+        recommendedDelivery: "multi_file_directive",
+        primaryFile: "qutebrowser/config/qtargs.py",
+        taskShapeSignal: "command_contract",
+        requiredSurface: "paired_contract"
+      } as any
+    });
+
+    expect(scope.initialEditFiles).toEqual([
+      "qutebrowser/config/qtargs.py",
+      "qutebrowser/config/configdata.yml"
+    ]);
+    expect(scope.readOnlyFiles).not.toContain("qutebrowser/config/configdata.yml");
   });
 
   it("uses explicit interface location paths as high-confidence source hints", () => {
@@ -2785,6 +2915,36 @@ describe("benchmark suite and scoring", () => {
     }
   });
 
+  it("includes untracked files in benchmark workspace patches", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-agent-patch-untracked-"));
+    try {
+      fs.mkdirSync(path.join(root, "src"), { recursive: true });
+      fs.writeFileSync(path.join(root, "src/app.js"), "module.exports = {};\n");
+      execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["add", "."], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["commit", "-m", "initial"], {
+        cwd: root,
+        stdio: "ignore",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: "Kairn Test",
+          GIT_AUTHOR_EMAIL: "test@example.com",
+          GIT_COMMITTER_NAME: "Kairn Test",
+          GIT_COMMITTER_EMAIL: "test@example.com"
+        }
+      });
+
+      fs.writeFileSync(path.join(root, "src/new-module.js"), "exports.value = 1;\n");
+
+      const patch = workspacePatch(root);
+      expect(patch).toContain("diff --git a/src/new-module.js b/src/new-module.js");
+      expect(patch).toContain("new file mode");
+      expect(patch).toContain("+exports.value = 1;");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("counts seeded files as agent-touched when content changes after seeding", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-seed-agent-touch-"));
     try {
@@ -3323,6 +3483,69 @@ describe("benchmark suite and scoring", () => {
     expect(report.officialEvaluationSummary?.byTaskClass.patch_verification?.qualityPasses).toBe(1);
     expect(report.officialEvaluationSummary?.byTaskClass.patch_verification?.observedCases).toBe(0);
     expect(report.officialEvaluationSummary?.byTaskClass.patch_verification?.tokenUnavailableOfficialPasses).toBe(1);
+  });
+
+  it("classifies official paired-row savings, regressions, and missing token data", () => {
+    const aggregate = summarizeOfficialPairRows([
+      {
+        id: "clean",
+        baselineOfficialPass: true,
+        kairnOfficialPass: true,
+        baselineScopePass: true,
+        kairnScopePass: true,
+        baselineTokens: 1000,
+        kairnTokens: 700,
+        emittedFileCount: 1
+      },
+      {
+        id: "regression",
+        baselineOfficialPass: true,
+        kairnOfficialPass: true,
+        baselineScopePass: true,
+        kairnScopePass: true,
+        baselineTokens: 1000,
+        kairnTokens: 1100,
+        emittedFileCount: 4
+      },
+      {
+        id: "missing",
+        baselineOfficialPass: true,
+        kairnOfficialPass: true,
+        baselineScopePass: true,
+        kairnScopePass: true,
+        baselineTokens: 900
+      },
+      {
+        id: "rescue",
+        baselineOfficialPass: false,
+        kairnOfficialPass: true
+      },
+      {
+        id: "drop",
+        baselineOfficialPass: true,
+        kairnOfficialPass: false
+      }
+    ]);
+
+    expect(aggregate.baselinePasses).toBe(4);
+    expect(aggregate.kairnPasses).toBe(4);
+    expect(aggregate.passPassRows).toBe(3);
+    expect(aggregate.cleanSavingsRows).toBe(1);
+    expect(aggregate.officialTokenRegressions).toBe(1);
+    expect(aggregate.missingTokenPassPassRows).toBe(1);
+    expect(aggregate.qualityRescues).toBe(1);
+    expect(aggregate.qualityDrops).toBe(1);
+    expect(aggregate.passPassMedianReductionPct).toBe(10);
+    expect(aggregate.cleanSavingsMedianReductionPct).toBe(30);
+    expect(aggregate.emittedFileCounts).toEqual([1, 4]);
+    expect(aggregate.validationErrors).toEqual(["missing: pass/pass official row lacks complete token data"]);
+    expect(aggregate.rows.map((row) => row.classification)).toEqual([
+      "clean_savings",
+      "official_token_regression",
+      "official_pass_token_unavailable",
+      "quality_rescue",
+      "quality_drop"
+    ]);
   });
 
   it("treats directory exclusions as nested path segments in repo matrices", async () => {
@@ -4020,6 +4243,254 @@ describe("benchmark suite and scoring", () => {
     expect(decision.recommendedDelivery).toBe("multi_file_directive");
   });
 
+  it("marks multi-value datastore collection mutations as paired backend surfaces", () => {
+    const decision = applyContextGovernor({
+      task: "List operations do not support removing multiple distinct elements in a single call. Fix production source only.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- src/database/mongo/list.js\n- src/database/postgres/list.js\n- src/database/redis/list.js\n",
+        files: ["src/database/mongo/list.js", "src/database/postgres/list.js", "src/database/redis/list.js"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/database/mongo/list.js"],
+        rankedFiles: [
+          { path: "src/database/mongo/list.js", kind: "source", score: 640, reasons: ["list implementation"] },
+          { path: "src/database/postgres/list.js", kind: "source", score: 210, reasons: ["backend peer"] },
+          { path: "src/database/redis/list.js", kind: "source", score: 190, reasons: ["backend peer"] }
+        ],
+        tokenEstimate: 760
+      },
+      quality: {
+        score: 74,
+        action: "emit",
+        reasons: ["top retrieval score"],
+        topScore: 640,
+        topGap: 430,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 74,
+        action: "emit",
+        reasons: ["debug/failure task can benefit from targeted context"],
+        topScore: 640,
+        topGap: 430,
+        primaryFile: "src/database/mongo/list.js",
+        language: "javascript",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 920,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("src/database/mongo/list.js", "javascript"),
+        sourceRecord("src/database/postgres/list.js", "javascript"),
+        sourceRecord("src/database/redis/list.js", "javascript")
+      ],
+      repoFileCount: 1300,
+      estimatedContextCost: 920
+    });
+
+    expect(decision.taskShapeSignal).toBe("backend_parity");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
+  it("does not treat generic startup/session notification bugs as command contracts", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "Unverified device notifications are not consistent for existing vs. new sessions.",
+        "Maintain startup device state, refresh after key downloads, and fix production source only.",
+        "Selected verification tests from SWE-Bench Pro metadata: test/DeviceListener-test.ts. Do not edit tests."
+      ].join("\n"),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- src/DeviceListener.ts\n- src/stores/notifications/NotificationState.ts\n",
+        files: ["src/DeviceListener.ts", "src/stores/notifications/NotificationState.ts"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/DeviceListener.ts"],
+        rankedFiles: [
+          { path: "src/DeviceListener.ts", kind: "source", score: 780, reasons: ["device listener owner"] },
+          { path: "src/stores/notifications/NotificationState.ts", kind: "source", score: 220, reasons: ["notification neighbor"] }
+        ],
+        tokenEstimate: 720
+      },
+      quality: {
+        score: 82,
+        action: "emit",
+        reasons: ["strong source owner"],
+        topScore: 780,
+        topGap: 560,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 82,
+        action: "emit",
+        reasons: ["strong source owner"],
+        topScore: 780,
+        topGap: 560,
+        primaryFile: "src/DeviceListener.ts",
+        language: "typescript",
+        exactPathMentioned: false,
+        sourceRescue: true,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 720,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("src/DeviceListener.ts", "typescript"),
+        sourceRecord("src/stores/notifications/NotificationState.ts", "typescript")
+      ],
+      repoFileCount: 4200,
+      estimatedContextCost: 720
+    });
+
+    expect(decision.taskShapeSignal).not.toBe("command_contract");
+    expect(decision.requiredSurface).toBe("single_file");
+  });
+
+  it("does not treat route-target import/export domain language as an exporter command contract", () => {
+    const decision = applyContextGovernor({
+      task: "Add manual route-target import and route-target export values to nxos_vrf_af. Fix production source only.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- lib/ansible/modules/network/nxos/nxos_vrf_af.py\n- lib/ansible/modules/network/nxos/nxos_vrf.py\n",
+        files: [
+          "lib/ansible/modules/network/nxos/nxos_vrf_af.py",
+          "lib/ansible/modules/network/nxos/nxos_vrf.py"
+        ],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["lib/ansible/modules/network/nxos/nxos_vrf_af.py"],
+        rankedFiles: [
+          { path: "lib/ansible/modules/network/nxos/nxos_vrf_af.py", kind: "source", score: 620, reasons: ["exact module"] },
+          { path: "lib/ansible/modules/network/nxos/nxos_vrf.py", kind: "source", score: 310, reasons: ["nearby module"] }
+        ],
+        tokenEstimate: 720
+      },
+      quality: {
+        score: 85,
+        action: "emit",
+        reasons: ["exact module"],
+        topScore: 620,
+        topGap: 310,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 83,
+        action: "emit",
+        reasons: ["exact source"],
+        topScore: 620,
+        topGap: 310,
+        primaryFile: "lib/ansible/modules/network/nxos/nxos_vrf_af.py",
+        language: "python",
+        exactPathMentioned: false,
+        exactSourceHit: true,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 720,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("lib/ansible/modules/network/nxos/nxos_vrf_af.py", "python"),
+        sourceRecord("lib/ansible/modules/network/nxos/nxos_vrf.py", "python")
+      ],
+      repoFileCount: 1800,
+      estimatedContextCost: 720
+    });
+
+    expect(decision.taskShapeSignal).not.toBe("command_contract");
+    expect(decision.requiredSurface).toBe("single_file");
+  });
+
+  it("does not treat RBAC namespace visibility tasks as frontend ownership because they say view", () => {
+    const decision = applyContextGovernor({
+      task: "Kubernetes RBAC namespace rules should grant read-only get/list/watch visibility for a namespace when the user has resource access. Fix production source only.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- lib/utils/replace.go\n- api/types/namespace.go\n",
+        files: ["lib/utils/replace.go", "api/types/namespace.go"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["lib/utils/replace.go"],
+        rankedFiles: [
+          { path: "lib/utils/replace.go", kind: "source", score: 590, reasons: ["KubeResourceMatchesRegex"] },
+          { path: "api/types/namespace.go", kind: "source", score: 330, reasons: ["namespace type"] }
+        ],
+        tokenEstimate: 720
+      },
+      quality: {
+        score: 82,
+        action: "emit",
+        reasons: ["source match"],
+        topScore: 590,
+        topGap: 260,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 81,
+        action: "emit",
+        reasons: ["source match"],
+        topScore: 590,
+        topGap: 260,
+        primaryFile: "lib/utils/replace.go",
+        language: "go",
+        exactPathMentioned: false,
+        exactSourceHit: true,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 720,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("lib/utils/replace.go", "go"),
+        sourceRecord("api/types/namespace.go", "go")
+      ],
+      repoFileCount: 2200,
+      estimatedContextCost: 720
+    });
+
+    expect(decision.taskShapeSignal).not.toBe("frontend_ownership");
+    expect(decision.requiredSurface).toBe("single_file");
+  });
+
+  it("does not infer official multi-file scope from requirement bullets alone", () => {
+    const task = [
+      "## Title: Kubernetes RBAC namespace rules should grant expected resource access",
+      "",
+      "Requirements:",
+      "- The KubeResourceMatchesRegex function must grant read-only access.",
+      "- The function must not grant write-level access unless explicitly defined.",
+      "- The isVerbAllowed function should continue to enforce verb permissions.",
+      "",
+      "Selected verification tests from SWE-Bench Pro metadata: TestKubeResourceMatchesRegex/list_namespace_with_resource_giving_read_access_to_namespace",
+      "These tests are verification targets only; do not edit tests, snapshots, docs, examples, generated files, or unrelated files.",
+      "",
+      "Fix the issue in production source only. Avoid broad scans once the relevant source surface is known."
+    ].join("\n");
+
+    expect(hasPromptDerivedMultiFileScope(task)).toBe(false);
+  });
+
   it("marks deprecation lifecycle tasks as compact paired-source directives", () => {
     const decision = applyContextGovernor({
       task: "Support deprecation by date in modules. Deprecated aliases should validate version or date and display warnings. Fix production source only.",
@@ -4077,6 +4548,69 @@ describe("benchmark suite and scoring", () => {
     });
 
     expect(decision.taskShapeSignal).toBe("lifecycle_policy");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
+  it("marks package source mapping tasks as compact paired-source directives", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "Alpine Linux vulnerability detection incorrectly handles source vs binary packages.",
+        "The scanner should parse apk list output, map binary packages to source package names,",
+        "and OVAL vulnerability matching should assess source packages accordingly."
+      ].join(" "),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- scanner/alpine.go\n- oval/util.go\n- scanner/scanner.go\n",
+        files: ["scanner/alpine.go", "oval/util.go", "scanner/scanner.go"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["scanner/alpine.go", "oval/util.go", "scanner/scanner.go"],
+        rankedFiles: [
+          { path: "scanner/alpine.go", kind: "source", score: 640, reasons: ["apk scanner surface"] },
+          { path: "oval/util.go", kind: "source", score: 600, reasons: ["OVAL source package matcher"] },
+          { path: "scanner/scanner.go", kind: "source", score: 520, reasons: ["scanner dispatch"] }
+        ],
+        tokenEstimate: 840
+      },
+      quality: {
+        score: 82,
+        action: "emit",
+        reasons: ["top retrieval score"],
+        topScore: 640,
+        topGap: 40,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 80,
+        action: "emit",
+        reasons: ["debug/failure task can benefit from targeted context"],
+        topScore: 640,
+        topGap: 40,
+        primaryFile: "scanner/alpine.go",
+        language: "go",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 1100,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("scanner/alpine.go", "go"),
+        sourceRecord("oval/util.go", "go"),
+        sourceRecord("scanner/scanner.go", "go"),
+        sourceRecord("contrib/trivy/pkg/converter.go", "go")
+      ],
+      repoFileCount: 900,
+      estimatedContextCost: 1100
+    });
+
+    expect(decision.taskShapeSignal).toBe("package_source_mapping");
     expect(decision.requiredSurface).toBe("paired_contract");
     expect(decision.action).toBe("shrink");
     expect(decision.recommendedDelivery).toBe("multi_file_directive");

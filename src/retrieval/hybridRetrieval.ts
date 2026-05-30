@@ -262,8 +262,12 @@ function scoreSourcePriority(
   const debugImplementationIntent = ["debug", "fix", "regression", "bug", "broken"].some((term) => queryTerms.has(term));
   const hsmKmsConfigIntent = isHsmKmsConfigQuery(query);
   const deprecationLifecycleIntent = isDeprecationLifecycleQuery(normalizeSearchText(query));
+  const formUnflattenRequestIntent = isFormUnflattenRequestQuery(normalizeSearchText(query));
+  const kubernetesExecForwarderIntent = isKubernetesExecForwarderQuery(normalizeSearchText(query));
   const kubernetesRbacMatcherIntent = isKubernetesRbacResourceMatcherQuery(normalizeSearchText(query));
-  const specializedImplementationIntent = hsmKmsConfigIntent || deprecationLifecycleIntent || kubernetesRbacMatcherIntent;
+  const packageSourceMappingIntent = isPackageSourceMappingQuery(normalizeSearchText(query));
+  const specializedImplementationIntent =
+    hsmKmsConfigIntent || deprecationLifecycleIntent || formUnflattenRequestIntent || kubernetesExecForwarderIntent || kubernetesRbacMatcherIntent || packageSourceMappingIntent;
   const implementationIntent =
     specializedImplementationIntent || (!explicitDocsIntent && (
       debugImplementationIntent ||
@@ -384,6 +388,12 @@ function scoreSourcePriority(
       reasons.push(...backendAutocompleteSurface.reasons);
     }
 
+    const formUnflattenRequestSurface = scoreFormUnflattenRequestSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && formUnflattenRequestSurface.score !== 0) {
+      score += formUnflattenRequestSurface.score;
+      reasons.push(...formUnflattenRequestSurface.reasons);
+    }
+
     const configOptionSchemaSurface = scoreConfigOptionSchemaSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
     if (implementationIntent && configOptionSchemaSurface.score !== 0) {
       score += configOptionSchemaSurface.score;
@@ -400,6 +410,18 @@ function scoreSourcePriority(
     if (implementationIntent && kubernetesRbacMatcherSurface.score !== 0) {
       score += kubernetesRbacMatcherSurface.score;
       reasons.push(...kubernetesRbacMatcherSurface.reasons);
+    }
+
+    const packageSourceMappingSurface = scorePackageSourceMappingSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && packageSourceMappingSurface.score !== 0) {
+      score += packageSourceMappingSurface.score;
+      reasons.push(...packageSourceMappingSurface.reasons);
+    }
+
+    const kubernetesExecForwarderSurface = scoreKubernetesExecForwarderSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && kubernetesExecForwarderSurface.score !== 0) {
+      score += kubernetesExecForwarderSurface.score;
+      reasons.push(...kubernetesExecForwarderSurface.reasons);
     }
 
     const uiFeedbackOwnershipSurface = scoreUiFeedbackOwnershipSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
@@ -2205,6 +2227,102 @@ function isBackendAutocompleteQuery(normalizedQuery: string): boolean {
     !/\b(ui|frontend|client|browser widget|dropdown|input component|visual|style|css)\b/.test(normalizedQuery);
 }
 
+function scoreFormUnflattenRequestSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isFormUnflattenRequestQuery(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/\/plugins\/upstream\/utils\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) || /(^|\/)(unflatten|flatten|forms?|request)_?utils?\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) {
+    score += 86_000;
+    reasons.push("form unflatten utility surface");
+  }
+  if (/\/plugins\/openlibrary\/lists\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) || /(^|\/)lists\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) {
+    score += 76_000;
+    reasons.push("form route/list handler surface");
+  }
+  if (/\b(unflatten|flattened|nested|indexed|parent keys?|defaults?|form data|body data|query parameters?|request body|post)\b/.test(normalizedSource)) {
+    score += 18_000;
+    reasons.push("form request reconstruction content match");
+  }
+  if (/\/core\/lists\/model\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) || /\/models?\//.test(normalizedPath)) {
+    score -= 46_000;
+    reasons.push("list model downranked for request reconstruction task");
+  }
+  if (/\/plugins\/openlibrary\/utils\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) && !/\bunflatten\b/.test(normalizedSource)) {
+    score -= 22_000;
+    reasons.push("generic openlibrary utility downranked for form reconstruction task");
+  }
+
+  return { score, reasons };
+}
+
+function isFormUnflattenRequestQuery(normalizedQuery: string): boolean {
+  return (
+    /\b(unflatten|flattened|nested|indexed|parent keys?|form data|body data|query parameters?|query string|request body|duplicate (?:simple )?keys?|assignments?)\b/.test(normalizedQuery) &&
+    /\b(post|form|body|request|endpoint|route|handler|list|lists|seeds?|defaults?)\b/.test(normalizedQuery)
+  );
+}
+
+function scorePackageSourceMappingSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isPackageSourceMappingQuery(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/^scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 96_000;
+    reasons.push("package manager source/binary scanner surface");
+  }
+  if (/^oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 88_000;
+    reasons.push("package source vulnerability matching utility");
+  }
+  if (/^scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 72_000;
+    reasons.push("scanner dispatch/source package integration surface");
+  }
+  if (/^oval\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/oval\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 48_000;
+    reasons.push("alpine oval family surface");
+  }
+  if (/\b(source packages?|binary packages?|src packages?|apk list|apk info|apk index|upgradable|oval|vulnerabilit(?:y|ies))\b/.test(normalizedSource)) {
+    score += 12_000;
+    reasons.push("package source mapping content match");
+  }
+  if (/\/scanner\/trivy\//.test(normalizedPath) || /\/parser\//.test(normalizedPath) || /\/contrib\//.test(normalizedPath)) {
+    score -= 48_000;
+    reasons.push("unrelated package parser downranked for OS package source mapping");
+  }
+
+  return { score, reasons };
+}
+
+function isPackageSourceMappingQuery(normalizedQuery: string): boolean {
+  return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|apk|alpine)\b/.test(normalizedQuery) &&
+    /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?)\b/.test(normalizedQuery);
+}
+
 function scoreConfigOptionSchemaSurface(
   file: FileRecord,
   query: string,
@@ -2360,6 +2478,76 @@ function scoreKubernetesRbacMatcherSurface(
   return { score, reasons };
 }
 
+function scoreKubernetesExecForwarderSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isKubernetesExecForwarderQuery(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/^lib\/kube\/proxy\/forwarder\.go$/.test(normalizedPath) || /\/kube\/proxy\/forwarder\.(go|ts|js)$/.test(normalizedPath)) {
+    score += 95_000;
+    reasons.push("Kubernetes exec forwarder surface");
+  }
+  if (/^lib\/service\/kubernetes\.go$/.test(normalizedPath) || /\/service\/kubernetes\.(go|ts|js)$/.test(normalizedPath)) {
+    score += 70_000;
+    reasons.push("Kubernetes service session surface");
+  }
+  if (/\/kube\/proxy\/(server|handler|session|audit|auth)\.(go|ts|js)$/.test(normalizedPath)) {
+    score += 34_000;
+    reasons.push("Kubernetes proxy companion surface");
+  }
+  if (/^lib\/service\/service\.go$/.test(normalizedPath) || /\/service\/service\.(go|ts|js)$/.test(normalizedPath)) {
+    score += 18_000;
+    reasons.push("service initialization companion surface");
+  }
+
+  const forwarderHits = [
+    /\bforwarderconfig\b/,
+    /\bforwarder\b/,
+    /\bservehttp\b/,
+    /\bexec\b/,
+    /\bportforward\b/,
+    /\bcatchall\b/,
+    /\bauthz\b/,
+    /\bcachingauthclient\b/,
+    /\bgetkubeservices\b/,
+    /\bgetclusterconfig\b/,
+    /\breversetunnelsrv\b/,
+    /\broute to cluster\b/,
+    /\bsession uploader\b/,
+    /\bsession recordings?\b/,
+    /\basync upload\b/,
+    /\bupload directory\b/,
+    /\baudit events?\b/,
+    /\bclient disconnect\b/
+  ].filter((pattern) => pattern.test(normalizedSource)).length;
+  if (forwarderHits > 0) {
+    score += Math.min(72_000, forwarderHits * 12_000);
+    reasons.push("Kubernetes exec/session content match");
+  }
+
+  if (/^lib\/utils\/replace\.go$/.test(normalizedPath) || /\/utils?\/(replace|match|matcher|regexp|regex)\.go$/.test(normalizedPath)) {
+    score -= 95_000;
+    reasons.push("resource matcher utility downranked for Kubernetes exec/session task");
+  }
+  if (/(^|\/)(backend|cloud|users?|storage|db)\//.test(normalizedPath) && !/\b(session uploader|audit events?|forwarder|exec|portforward)\b/.test(normalizedSource)) {
+    score -= 24_000;
+    reasons.push("backend/storage surface downranked for Kubernetes exec/session task");
+  }
+
+  return { score, reasons };
+}
+
 function scoreUiFeedbackOwnershipSurface(
   file: FileRecord,
   query: string,
@@ -2476,10 +2664,23 @@ function isDeprecationLifecycleQuery(normalizedQuery: string): boolean {
 }
 
 function isKubernetesRbacResourceMatcherQuery(normalizedQuery: string): boolean {
+  if (isKubernetesExecForwarderQuery(normalizedQuery)) return false;
   return (
     /\b(kubernetes|kubectl|kube)\b/.test(normalizedQuery) &&
     /\b(rbac|role|rule|rules|access|permission|permissions|resource|resources|namespace|namespaces)\b/.test(normalizedQuery) &&
     /\b(kind|namespace|namespaces|verbs?|get|list|watch|create|update|delete|read only|read-only)\b/.test(normalizedQuery)
+  );
+}
+
+function isKubernetesExecForwarderQuery(normalizedQuery: string): boolean {
+  const compactQuery = normalizedQuery.replace(/\s+/g, "");
+  return (
+    /\b(kubernetes|kubectl|kube)\b/.test(normalizedQuery) &&
+    (
+      /\b(exec|forwarder|forwarder config|session uploader|session recording|recordings?|streaming|upload directory|async upload|audit event|audit events|client disconnect|reverse tunnel|route to cluster)\b/.test(normalizedQuery) ||
+      /\b(port forward|catch all)\b/.test(normalizedQuery) ||
+      /\b(portforward|catchall|forwarderconfig|reversetunnelsrv|routetocluster|getkubeservices|getclusterconfig)\b/.test(compactQuery)
+    )
   );
 }
 

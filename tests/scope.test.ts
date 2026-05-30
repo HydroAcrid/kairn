@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { decideEditScope, editScopeBlock } from "../src/scope/editScope.js";
-import type { ContextValueDecision } from "../src/types.js";
+import type { ContextValueDecision, FileRecord } from "../src/types.js";
 
 describe("edit scope controller", () => {
   it("keeps cheap exact-source tasks to one production file with tests read-only", () => {
@@ -126,6 +126,38 @@ describe("edit scope controller", () => {
     expect(scope.readOnlyFiles).toContain("internal/config/tracing.go");
     expect(scope.strictBoundary).toBe(true);
     expect(scope.scopeSource).toBe("official_harness");
+  });
+
+  it("does not treat non-existent log source paths as official edit scope", () => {
+    const task = [
+      "kubectl exec fails with a streaming error.",
+      "Debug logs:",
+      "WARN executor failed proxy/forwarder.go:773",
+      "Selected verification tests from SWE-Bench Pro metadata: TestAuthenticate/local_user_and_remote_cluster",
+      "These tests are verification targets only; do not edit tests.",
+      "Fix the issue in production source only."
+    ].join("\n");
+    const scope = decideEditScope({
+      task,
+      candidateFiles: ["lib/utils/replace.go", "lib/kube/proxy/forwarder.go"],
+      knownFiles: [
+        file("lib/kube/proxy/forwarder.go"),
+        file("lib/kube/proxy/server.go"),
+        file("lib/utils/replace.go")
+      ],
+      contextDecision: decision({
+        primaryFile: "lib/kube/proxy/forwarder.go",
+        sourceRescue: true,
+        canonicalSourceHit: true,
+        recommendedDelivery: "one_file_directive"
+      })
+    });
+
+    expect(scope.initialEditFiles).toEqual(["lib/kube/proxy/forwarder.go"]);
+    expect(scope.initialEditFiles).not.toContain("proxy/forwarder.go");
+    expect(scope.initialEditFiles).not.toContain("lib/utils/replace.go");
+    expect(scope.readOnlyFiles).toContain("lib/utils/replace.go");
+    expect(scope.strictBoundary).toBe(true);
   });
 
   it("keeps official production prompts without source metadata to one strict source file", () => {
@@ -465,5 +497,18 @@ function decision(overrides: Partial<ContextValueDecision>): ContextValueDecisio
     debugSignal: true,
     easyTaskSignal: false,
     ...overrides
+  };
+}
+
+function file(filePath: string): FileRecord {
+  return {
+    rootPath: "/repo",
+    path: filePath,
+    language: filePath.endsWith(".go") ? "go" : "typescript",
+    kind: "source",
+    size: 100,
+    hash: filePath,
+    importance: 1,
+    updatedAt: "2026-05-30T00:00:00.000Z"
   };
 }

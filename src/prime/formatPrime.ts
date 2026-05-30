@@ -8,6 +8,8 @@ export type OfficialGuardrailVariant =
   | "compact_official"
   | "semantic_official"
   | "paired_contract_compact"
+  | "request_body_form_compact"
+  | "package_source_mapping_compact"
   | "lifecycle_policy_compact"
   | "frontend_owner_map_compact";
 
@@ -274,6 +276,8 @@ export function formatShrunkPrimeContext(input: {
       const variant = officialGuardrailVariantFor(guardrailInput);
       if (variant === "compact_official") return formatCompactOfficialGuardrail(guardrailInput);
       if (variant === "paired_contract_compact") return formatPairedContractOfficialGuardrail(guardrailInput);
+      if (variant === "request_body_form_compact") return formatRequestBodyFormOfficialGuardrail(guardrailInput);
+      if (variant === "package_source_mapping_compact") return formatPackageSourceMappingOfficialGuardrail(guardrailInput);
       if (variant === "lifecycle_policy_compact") return formatLifecyclePolicyOfficialGuardrail(guardrailInput);
       if (variant === "frontend_owner_map_compact") return formatFrontendOwnerMapOfficialGuardrail(guardrailInput);
       return formatSemanticOfficialGuardrail(guardrailInput);
@@ -398,18 +402,79 @@ function formatPairedContractOfficialGuardrail(input: {
   const editFiles = officialEditFiles(input).slice(0, 5);
   const readOnly = input.editScope?.readOnlyFiles.slice(0, 2) ?? [];
   const invariant = input.invariants?.[0];
+  const backendParity = isDatastoreBackendParityTask(input.task);
   const sections = [
     "# Kairn Paired Scope",
     `Task: ${compactTaskLine(input.task, 42)}`,
-    "Action: patch only the command/contract surfaces below; do not expand to backend/storage helpers unless the prompt names them.",
-    editFiles.length > 0 ? `Edit scope: ${editFiles.map((file) => `${file} (${officialFileRole(file)})`).join(", ")}` : "Edit scope: the official production source surfaces.",
+    backendParity
+      ? "Action: apply the same collection-operation behavior across every datastore backend surface listed below."
+      : "Action: patch only the command/contract surfaces below; do not expand to backend/storage helpers unless the prompt names them.",
+    editFiles.length > 0
+      ? backendParity
+        ? `Required backend edits: ${editFiles.map((file) => `${file} (${officialFileRole(file)})`).join(", ")}`
+        : `Edit scope: ${editFiles.map((file) => `${file} (${officialFileRole(file)})`).join(", ")}`
+      : backendParity
+        ? "Required backend edits: every datastore backend surface implementing this operation."
+        : "Edit scope: the official production source surfaces.",
     invariant ? `Invariant: ${truncateToBudget(invariant.statement, 42)}` : "",
+    backendParity ? "Backend parity: patch every listed backend; do not stop after only the first backend passes locally." : "",
     configOrderingGuardrail(input.task),
     "Boundary: no tests, docs, examples, generated files, or sibling source.",
     readOnly.length > 0 ? `Read-only check: ${readOnly.join(", ")}` : "Verify with the narrowest relevant check.",
     "If a different production file appears necessary, stop and report the missing evidence."
   ];
   return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 240));
+}
+
+function formatRequestBodyFormOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const editFiles = officialEditFiles(input).slice(0, 4);
+  const readOnly = input.editScope?.readOnlyFiles.slice(0, 2) ?? [];
+  const invariant = input.invariants?.[0];
+  const sections = [
+    "# Kairn Request Scope",
+    `Task: ${compactTaskLine(input.task, 42)}`,
+    "Action: patch only the route/form parser and flattened-data reconstruction surfaces.",
+    editFiles.length > 0 ? `Edit scope: ${editFiles.map((file) => `${file} (${requestBodyFormRole(file)})`).join(", ")}` : "Edit scope: the official request/form reconstruction source surfaces.",
+    invariant ? `Invariant: ${truncateToBudget(invariant.statement, 58)}` : "Invariant: body data wins over query string data, ordered duplicate keys are preserved until reconstruction, and later simple-key assignments win.",
+    "Precedence: body data wins over query string data; do not merge URL query parameters into body submissions.",
+    "Body parsing: keep request-body fields as ordered pairs until unflattening; do not coerce the body into an unordered dict/storage first.",
+    "Defaults: fill only missing keys that are not ancestors of provided nested/indexed keys.",
+    "Boundary: no tests, docs, examples, generated files, models, or sibling utilities outside the edit scope.",
+    readOnly.length > 0 ? `Read-only check: ${readOnly.join(", ")}` : "Verify with the narrowest relevant request/form check.",
+    "If a different production file appears necessary, stop and report the missing evidence."
+  ];
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 280));
+}
+
+function formatPackageSourceMappingOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const editFiles = officialEditFiles(input).slice(0, 5);
+  const readOnly = input.editScope?.readOnlyFiles.slice(0, 2) ?? [];
+  const invariant = input.invariants?.[0];
+  const sections = [
+    "# Kairn Package Scope",
+    `Task: ${compactTaskLine(input.task, 42)}`,
+    "Action: patch only the scanner/package parsing and vulnerability matching surfaces below.",
+    editFiles.length > 0 ? `Edit scope: ${editFiles.map((file) => `${file} (${packageSourceRole(file)})`).join(", ")}` : "Edit scope: the package scanner and vulnerability matching source surfaces.",
+    invariant ? `Invariant: ${truncateToBudget(invariant.statement, 54)}` : "Invariant: preserve binary package identity while recording source-package associations and matching vulnerabilities against source packages when needed.",
+    "Scanner side: parse installed/upgradable package manager output into binary packages plus source package associations.",
+    "Matching side: make OVAL/vulnerability checks consider source packages without losing binary package names.",
+    "Boundary: no tests, docs, examples, generated files, unrelated parsers, or package formats outside this task.",
+    readOnly.length > 0 ? `Read-only check: ${readOnly.join(", ")}` : "Verify with the narrowest relevant package scanner/OVAL check.",
+    "If a different production file appears necessary, stop and report the missing evidence."
+  ];
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 300));
 }
 
 function formatLifecyclePolicyOfficialGuardrail(input: {
@@ -490,7 +555,11 @@ export function officialGuardrailVariantFor(input: {
   ]);
   if (isLifecyclePolicyTask(input.task)) return "lifecycle_policy_compact";
   if (isUiFeedbackMultiSurfaceTask(input.task)) return "frontend_owner_map_compact";
+  if (isRequestBodyFormTask(input.task) && editFiles.length > 1) return "request_body_form_compact";
+  if (isPackageSourceMappingTask(input.task) && editFiles.length > 1) return "package_source_mapping_compact";
+  if (isDatastoreBackendParityTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
   if (isPairedContractTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
+  if (editFiles.length > 1 && isRequirementHeavyMultiSurfaceTask(input.task)) return "paired_contract_compact";
   if (editFiles.length < 1 || editFiles.length > 2) return "semantic_official";
   if ((input.invariants?.length ?? 0) === 0) return "compact_official";
   return isTrivialExactSourceOfficialTask(input.task) ? "compact_official" : "semantic_official";
@@ -508,7 +577,36 @@ function officialEditFiles(input: {
 
 function isPairedContractTask(task: string): boolean {
   const normalized = task.toLowerCase();
-  return /\b(command|commands?|cli|flag|flags|argument|arguments|args?|namespace|namespaces|variant|variants|sorting|sort|export|exports?|startup|runtime option|configuration|config|setting|settings|schema)\b/.test(normalized);
+  return /\b(command|commands?|cli|flag|flags|argument|arguments|args?|namespace|namespaces|variant|variants|sorting|sort|export|exports?|startup|runtime option|configuration|config|setting|settings|schema|session renewal|renew(?:ing)? session|websession|web session|certificate|access request)\b/.test(normalized);
+}
+
+function isRequestBodyFormTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  return /\b(unflatten|flattened|nested|indexed|parent keys?|form data|body data|request body|query string|query parameters?|duplicate (?:simple )?keys?|assignments?)\b/.test(normalized) &&
+    /\b(post|form|body|request|endpoint|route|handler|seeds?|defaults?)\b/.test(normalized);
+}
+
+function isPackageSourceMappingTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|apk|alpine)\b/.test(normalized) &&
+    /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?)\b/.test(normalized);
+}
+
+function isDatastoreBackendParityTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  const collectionMutation =
+    /\b(list|lists|set|sets|zset|hash|queue|collection|collections)\b/.test(normalized) &&
+    /\b(remove|removing|delete|deleting|del|discard|pull|pop|trim|add|insert|push)\b/.test(normalized);
+  const multiValue =
+    /\b(multiple|distinct|array|arrays|elements?|values?|batch|bulk|several)\b/.test(normalized) ||
+    /\[[^\]]+,[^\]]+\]/.test(task);
+  return collectionMutation && multiValue;
+}
+
+function isRequirementHeavyMultiSurfaceTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  const requirementMarkers = (normalized.match(/\n\s*-\s+/g) ?? []).length;
+  return requirementMarkers >= 3 && /\b(requirements?|interface notes?|selected (?:verification )?tests)\b/.test(normalized);
 }
 
 function isLifecyclePolicyTask(task: string): boolean {
@@ -529,6 +627,22 @@ function officialFileRole(file: string): string {
   if (/\b(command|cmd|cli|args?|flags?)\b/.test(normalized)) return "command";
   if (/\b(export|serializer|writer)\b/.test(normalized)) return "exporter";
   if (/\b(runtime|launcher|startup)\b/.test(normalized)) return "runtime";
+  return "source";
+}
+
+function requestBodyFormRole(file: string): string {
+  const normalized = file.toLowerCase();
+  if (/\b(list|lists|route|routes|handler|controller|view|views)\b/.test(normalized)) return "route/form handler";
+  if (/\b(unflatten|flatten|form|forms|request|utils?)\b/.test(normalized)) return "flattened-data utility";
+  return "source";
+}
+
+function packageSourceRole(file: string): string {
+  const normalized = file.toLowerCase();
+  if (/\bscanner\/alpine\b|\balpine\./.test(normalized)) return "package manager scanner";
+  if (/\bscanner\/scanner\b/.test(normalized)) return "scanner dispatch";
+  if (/\boval\/util\b/.test(normalized)) return "vulnerability matcher";
+  if (/\boval\/alpine\b/.test(normalized)) return "alpine OVAL surface";
   return "source";
 }
 

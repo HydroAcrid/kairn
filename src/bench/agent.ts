@@ -172,7 +172,8 @@ export async function runAgentBenchmarkCase(input: {
     });
     const diffScopeResult = await evaluateDiffScopes({
       rootPath: workspacePath,
-      scopes: input.benchmarkCase.allowedDiffScopes
+      scopes: input.benchmarkCase.allowedDiffScopes,
+      task: prompt
     });
     const semanticVerificationFailed = !sourceInvariantResult.passed || !diffScopeResult.passed;
     const combinedOutput = [output, verification.output].filter(Boolean).join("\n");
@@ -719,6 +720,44 @@ export function changedFiles(workspacePath: string): string[] {
   }
 }
 
+export function workspacePatch(workspacePath: string): string {
+  if (!workspacePath) return "";
+  let untracked: string[] = [];
+  try {
+    untracked = execFileSync("git", ["-C", workspacePath, "ls-files", "--others", "--exclude-standard"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    })
+      .split(/\r?\n/)
+      .map((line) => normalizeRelativePath(line.trim()))
+      .filter((file) => file && !isBenchmarkInternalPath(file));
+
+    if (untracked.length > 0) {
+      execFileSync("git", ["-C", workspacePath, "add", "-N", "--", ...untracked], {
+        stdio: ["ignore", "ignore", "ignore"]
+      });
+    }
+
+    return execFileSync("git", ["-C", workspacePath, "diff", "--binary"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      maxBuffer: 64 * 1024 * 1024
+    });
+  } catch {
+    return "";
+  } finally {
+    if (untracked.length > 0) {
+      try {
+        execFileSync("git", ["-C", workspacePath, "reset", "-q", "--", ...untracked], {
+          stdio: ["ignore", "ignore", "ignore"]
+        });
+      } catch {
+        // Best-effort cleanup for disposable benchmark workspaces.
+      }
+    }
+  }
+}
+
 function isBenchmarkInternalPath(filePath: string): boolean {
   return filePath === ".kairn" ||
     filePath.startsWith(".kairn/") ||
@@ -965,10 +1004,21 @@ function workspacePrimeMetadata(workspacePath: string): Record<string, unknown> 
 
     const metadata = parseJsonObject(row.metadata_json);
     const contextDecision = isRecord(metadata.contextDecision) ? metadata.contextDecision : {};
+    const deliveryTrace = isRecord(metadata.deliveryTrace) ? metadata.deliveryTrace : {};
     return {
       primeDecision: typeof contextDecision.action === "string" ? contextDecision.action : row.event_name,
       ...(typeof contextDecision.recommendedDelivery === "string" ? { primeDelivery: contextDecision.recommendedDelivery } : {}),
       ...(typeof contextDecision.directiveStyle === "string" ? { primeDirectiveStyle: contextDecision.directiveStyle } : {}),
+      ...(typeof deliveryTrace.taskShapeSignal === "string" ? { taskShapeSignal: deliveryTrace.taskShapeSignal } : {}),
+      ...(typeof deliveryTrace.requiredSurface === "string" ? { requiredSurface: deliveryTrace.requiredSurface } : {}),
+      ...(typeof deliveryTrace.directiveStyle === "string" ? { directiveStyle: deliveryTrace.directiveStyle } : {}),
+      ...(typeof deliveryTrace.guardrailVariant === "string" ? { traceGuardrailVariant: deliveryTrace.guardrailVariant } : {}),
+      ...(typeof deliveryTrace.emittedFileCount === "number" ? { emittedFileCount: deliveryTrace.emittedFileCount } : {}),
+      ...(isRecord(deliveryTrace.emittedFileRoleSummary) ? { emittedFileRoleSummary: deliveryTrace.emittedFileRoleSummary } : {}),
+      ...(typeof deliveryTrace.editScopeSource === "string" ? { editScopeSource: deliveryTrace.editScopeSource } : {}),
+      ...(typeof deliveryTrace.estimatedDirectiveTokens === "number" ? { estimatedDirectiveTokens: deliveryTrace.estimatedDirectiveTokens } : {}),
+      ...(typeof deliveryTrace.estimatedSourceContextTokens === "number" ? { estimatedSourceContextTokens: deliveryTrace.estimatedSourceContextTokens } : {}),
+      ...(typeof deliveryTrace.sizingReason === "string" ? { sizingReason: deliveryTrace.sizingReason } : {}),
       primeTokens: row.output_tokens,
       primeFiles: parseStringArray(row.files_json),
       ...(typeof metadata.guardrailVariant === "string" ? { guardrailVariant: metadata.guardrailVariant } : {}),

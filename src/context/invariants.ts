@@ -107,6 +107,18 @@ function behaviorTemplateForTask(task: string): string | undefined {
   ) {
     return "Validation changes must reject newly invalid inputs while preserving existing invalid-input rejection paths; invalid values must not fall through to later runtime branches.";
   }
+  if (
+    /\b(unflatten|flattened|nested|indexed|parent keys?|form data|body data|request body|query string|query parameters?|duplicate (?:simple )?keys?|assignments?)\b/.test(normalized) &&
+    /\b(post|form|body|request|endpoint|route|handler|seeds?|defaults?)\b/.test(normalized)
+  ) {
+    return "Request-body reconstruction must use body data without merging query parameters, preserve ordered key/value pairs through unflattening, skip ancestor defaults for nested keys, and let later duplicate simple keys win.";
+  }
+  if (
+    /\b(source packages?|binary packages?|src packages?|package source|source package associations?|apk|alpine)\b/.test(normalized) &&
+    /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?)\b/.test(normalized)
+  ) {
+    return "Package scanning must preserve binary package identity while recording source-package associations, and vulnerability matching must assess source packages when binaries derive from them.";
+  }
   if (/\bhash\b/.test(normalized) && /\b(order|properties|query keys?)\b/.test(normalized)) {
     return "Equivalent object keys must hash consistently regardless of property order.";
   }

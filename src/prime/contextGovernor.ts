@@ -661,7 +661,11 @@ function inferTaskShapeSignal(
 ): TaskShapeSignal | undefined {
   const normalized = normalizeText(task);
   if (hasDeprecationLifecycleScope(normalized)) return "lifecycle_policy";
+  if (isAccessPolicyTask(normalized)) return undefined;
   if (isCommandContractTask(normalized)) return "command_contract";
+  if (isPackageSourceMappingTask(normalized)) return "package_source_mapping";
+  if (isBackendParityTask(normalized, candidates)) return "backend_parity";
+  if (taskFrame === "official_patch" && hasPrimarySelectedTestCounterpartOwner(task, baseDecision, candidates)) return undefined;
   if (isFrontendOwnershipTask(normalized, candidates)) {
     return hasWeakFrontendOwnership(baseDecision, candidates) ? "ambiguous_frontend_ownership" : "frontend_ownership";
   }
@@ -696,9 +700,15 @@ function inferRequiredSurface(
   candidates: CandidateFeatures[]
 ): RequiredSurface {
   if (taskShapeSignal === "ambiguous_frontend_ownership") return "evidence_needed";
-  if (taskShapeSignal === "command_contract" || taskShapeSignal === "lifecycle_policy") return "paired_contract";
+  if (
+    taskShapeSignal === "command_contract" ||
+    taskShapeSignal === "lifecycle_policy" ||
+    taskShapeSignal === "package_source_mapping" ||
+    taskShapeSignal === "backend_parity"
+  ) return "paired_contract";
   if (taskShapeSignal === "frontend_ownership") return "feature_cluster";
   if (taskFrame === "official_patch" && hasPromptDerivedMultiFileScope(task)) return "paired_contract";
+  if (taskFrame === "official_patch") return "single_file";
   if (
     baseDecision.multiSurfaceSignal ||
     baseDecision.companionSpecific ||
@@ -710,20 +720,120 @@ function inferRequiredSurface(
 }
 
 function isCommandContractTask(normalized: string): boolean {
-  const commandTerms = /\b(command|commands|cli|flag|flags|option|options|args?|arguments|argv|export|exporter|namespace|namespaces|variant|variants|sort|sorted|sorting|deterministic|startup|launch|runtime)\b/.test(normalized);
+  const directCommandTerms = /\b(command|commands|cli|flag|flags|option|options|args?|arguments|argv|exporter|sort|sorted|sorting|deterministic)\b/.test(normalized);
+  const runtimeOptionTerms =
+    /\b(startup|launch|runtime)\b.{0,80}\b(command|commands|cli|flag|flags|option|options|args?|arguments|argv|export(?:er|ers|ing)?|namespace|namespaces|variant|variants|sort|sorted|sorting|deterministic|setting|settings|configuration|config|schema)\b/.test(normalized) ||
+    /\b(command|commands|cli|flag|flags|option|options|args?|arguments|argv|export(?:er|ers|ing)?|namespace|namespaces|variant|variants|sort|sorted|sorting|deterministic|setting|settings|configuration|config|schema)\b.{0,80}\b(startup|launch|runtime)\b/.test(normalized);
+  const exportContractTerms =
+    /\bexport(?:er|ers|ing)?\b.{0,80}\b(json|ya?ml|csv|file|files|output|writer|serializer|command|cli)\b/.test(normalized) ||
+    /\b(json|ya?ml|csv|file|files|output|writer|serializer|command|cli)\b.{0,80}\bexport(?:er|ers|ing)?\b/.test(normalized);
+  const namespaceVariantContractTerms =
+    /\b(namespace|namespaces|variant|variants)\b/.test(normalized) &&
+    /\b(command|commands|cli|flag|flags|option|options|args?|arguments|argv|exporter|startup|launch|runtime)\b/.test(normalized);
+  const commandTerms = directCommandTerms || runtimeOptionTerms || exportContractTerms || namespaceVariantContractTerms;
   const contractTerms = /\b(add|implement|support|honou?r|pass|apply|propagate|parse|wire|preserve|order|dedupe|stable|workaround|setting|configuration|schema)\b/.test(normalized);
   const backendStorageOnly = /\b(storage|database|db|repository|persistence)\b/.test(normalized) &&
     !/\b(command|cli|flag|args?|export|namespace|variant|sort|startup|runtime)\b/.test(normalized);
   return commandTerms && contractTerms && !backendStorageOnly;
 }
 
+function isPackageSourceMappingTask(normalized: string): boolean {
+  return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|apk|alpine)\b/.test(normalized) &&
+    /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?)\b/.test(normalized);
+}
+
+function isBackendParityTask(normalized: string, candidates: CandidateFeatures[]): boolean {
+  const collectionMutation =
+    /\b(list|lists|set|sets|sorted set|zset|hash|queue|collection|collections)\b/.test(normalized) &&
+    /\b(remove|removing|delete|deleting|del|discard|pull|pop|trim|add|insert|push)\b/.test(normalized);
+  const multiValue =
+    /\b(multiple|distinct|array|arrays|elements?|values?|batch|bulk|several)\b/.test(normalized) ||
+    /\[[^\]]+,[^\]]+\]/.test(normalized);
+  if (!collectionMutation || !multiValue) return false;
+  return candidates.some((candidate) => datastoreBackendSurface(candidate.path) !== undefined);
+}
+
+function hasPrimarySelectedTestCounterpartOwner(
+  task: string,
+  baseDecision: ContextValueDecision,
+  candidates: CandidateFeatures[]
+): boolean {
+  const counterpartBasenames = selectedTestCounterpartBasenames(task);
+  if (counterpartBasenames.size === 0) return false;
+  const primaryPath = baseDecision.primaryFile ?? candidates[0]?.path;
+  if (!primaryPath) return false;
+  const primaryBasename = sourceBasenameWithoutExtension(primaryPath);
+  if (!counterpartBasenames.has(primaryBasename)) return false;
+  const topScore = baseDecision.topScore ?? candidates[0]?.score ?? 0;
+  const topGap = baseDecision.topGap ?? 0;
+  return Boolean(baseDecision.sourceRescue || baseDecision.exactSourceHit || baseDecision.canonicalSourceHit || topScore >= 58 || topGap >= 18);
+}
+
+function selectedTestCounterpartBasenames(task: string): Set<string> {
+  const names = new Set<string>();
+  for (const match of task.matchAll(/\b[A-Za-z0-9_.@+~/-]+?\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)\b/g)) {
+    const filePath = normalizePath(match[0] ?? "").toLowerCase();
+    if (!isTestLikePromptPath(filePath)) continue;
+    const basename = sourceBasenameWithoutExtension(filePath)
+      .replace(/^(test|spec)[_-]/, "")
+      .replace(/[._-](test|spec)$/, "")
+      .replace(/[-_](test|spec)$/, "");
+    if (basename.length >= 3) names.add(basename);
+  }
+  return names;
+}
+
+function sourceBasenameWithoutExtension(filePath: string): string {
+  const basename = normalizePath(filePath).toLowerCase().split("/").at(-1) ?? "";
+  return basename
+    .replace(/\.d\.ts$/, "")
+    .replace(/\.(?:[cm]?[jt]sx?|mjs|cjs|pyi?|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|php|cs)$/, "");
+}
+
+function isTestLikePromptPath(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  return /(^|\/)(tests?|specs?|__tests__|testing)\//.test(normalized) ||
+    /(^|\/)src\/test\//.test(normalized) ||
+    /(^|\/)(test|spec)[_-]/.test(normalized.split("/").at(-1) ?? normalized) ||
+    /[._-](test|spec)\./.test(normalized.split("/").at(-1) ?? normalized) ||
+    /_test\.go$/.test(normalized);
+}
+
+function normalizePath(value: string): string {
+  return value.replaceAll("\\", "/").replace(/^\.?\//, "");
+}
+
+function datastoreBackendSurface(filePath: string): { prefix: string; backend: string; suffix: string } | undefined {
+  const parts = filePath.replaceAll("\\", "/").toLowerCase().split("/").filter(Boolean);
+  const backendNames = new Set(["mongo", "mongodb", "redis", "postgres", "postgresql", "mysql", "sqlite", "memory", "inmemory"]);
+  const rootNames = new Set(["database", "databases", "db", "storage", "stores", "backends"]);
+  for (let index = 0; index < parts.length - 1; index += 1) {
+    const part = parts[index];
+    if (!part || !backendNames.has(part)) continue;
+    const rootIndex = Math.max(0, index - 2);
+    const hasDatastoreRoot = parts.slice(rootIndex, index).some((segment) => rootNames.has(segment));
+    if (!hasDatastoreRoot) continue;
+    const suffix = parts.slice(index + 1).join("/");
+    if (!suffix) continue;
+    return {
+      prefix: parts.slice(0, index).join("/"),
+      backend: part,
+      suffix
+    };
+  }
+  return undefined;
+}
+
 function isFrontendOwnershipTask(normalized: string, candidates: CandidateFeatures[]): boolean {
-  const explicitUiPrompt =
-    /\b(ui|frontend|component|components|view|views|screen|route|render|display|visual|badge|icon|panel|drawer|composer|voice|broadcast|room|message|notification|presence|playback|recording|liveness|live)\b/.test(normalized);
+  const strongUiPrompt =
+    /\b(ui|frontend|component|components|screen|render|visual|badge|icon|panel|drawer|composer|voice|broadcast|room|message|notification|presence|playback|recording|liveness|live)\b/.test(normalized);
+  const weakUiPrompt =
+    /\b(view|views|route|routes|display)\b/.test(normalized);
+  if (!strongUiPrompt && isAccessPolicyTask(normalized)) return false;
   const headerBodyUiPrompt =
     /\b(header|body)\b/.test(normalized) &&
     /\b(ui|frontend|component|components|view|views|screen|render|display|visual|badge|icon)\b/.test(normalized);
-  const uiPrompt = explicitUiPrompt || headerBodyUiPrompt;
+  const uiPrompt = strongUiPrompt || headerBodyUiPrompt || weakUiPrompt;
   if (!uiPrompt) return false;
   return candidates.slice(0, 6).some((candidate) =>
     candidate.role === "ui_surface" ||
@@ -731,6 +841,14 @@ function isFrontendOwnershipTask(normalized: string, candidates: CandidateFeatur
     candidate.language === "typescript" ||
     candidate.language === "javascript"
   );
+}
+
+function isAccessPolicyTask(normalized: string): boolean {
+  return countPresent(normalized, [
+    /\b(rbac|role rules?|roles?|permissions?|access control|authorization|authorisation)\b/,
+    /\b(namespace|namespaces|resources?|verbs?|get|list|watch|create|update|delete)\b/,
+    /\b(grant|allow|deny|denied|read-only|write|policy|rule|rules)\b/
+  ]) >= 2;
 }
 
 function hasWeakFrontendOwnership(baseDecision: ContextValueDecision, candidates: CandidateFeatures[]): boolean {
@@ -968,6 +1086,20 @@ export function hasPromptDerivedMultiFileScope(task: string): boolean {
   const selectedTestPaths = countSelectedTestPathMentions(task);
   if (selectedTestPaths >= 3) return true;
 
+  if (taskIsOfficialProductionPatchPrompt(task)) {
+    return (
+      hasPasswordStorageAndEncryptionScope(normalized) ||
+      hasTracingLifecycleScope(normalized) ||
+      hasTopicOrderingScope(normalized) ||
+      hasEntityMessageScope(normalized) ||
+      hasHttpContentScope(normalized) ||
+      hasAuthorQueryScope(normalized) ||
+      hasHsmKmsConfigScope(normalized) ||
+      hasConfigOptionRuntimeScope(normalized) ||
+      hasDeprecationLifecycleScope(normalized)
+    );
+  }
+
   const requirementCount = countRequirementBullets(task);
   const behaviorFamilies = countPromptBehaviorFamilies(normalized);
   if (requirementCount >= 3 && behaviorFamilies >= 3) return true;
@@ -1090,9 +1222,11 @@ function hasHsmKmsConfigScope(normalized: string): boolean {
   );
 }
 
-function hasConfigOptionRuntimeScope(normalized: string): boolean {
+export function hasConfigOptionRuntimeScope(task: string): boolean {
+  const normalized = normalizeText(task);
   const explicitConfigOption =
-    /\b(?:config(?:uration)?\s+)?(?:setting|settings|option|options|workaround|workarounds)\b/.test(normalized) ||
+    /\b(?:config(?:uration)?\s+)?(?:setting|settings|workaround|workarounds)\b/.test(normalized) ||
+    /\b(?:config(?:uration)?\s+)?options?\s+(?:named|called|must|should|can|to|that|which|for)\b/.test(normalized) ||
     /\b(?:setting|option|workaround)\s+(?:named|called|must|should|can|to)\b/.test(normalized);
   const schemaOrContract =
     /\b(schema|accept|values?|valid values?|default|required|restart|metadata|define|add|support)\w*\b/.test(normalized);

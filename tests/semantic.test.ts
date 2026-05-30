@@ -856,6 +856,57 @@ describe("hybridSearch", () => {
     expect(results.slice(0, 2).map((result) => result.path)).not.toContain("internal/storage/fs/store/store.go");
   });
 
+  it("keeps datastore backend peers together for multi-value collection mutations", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "src/database/mongo/list.js", "source", "javascript"),
+      file(rootPath, "src/database/postgres/list.js", "source", "javascript"),
+      file(rootPath, "src/database/redis/list.js", "source", "javascript"),
+      file(rootPath, "src/database/mongo/sorted.js", "source", "javascript")
+    ];
+    const symbols = [
+      symbol(rootPath, "src/database/mongo/list.js", "remove"),
+      symbol(rootPath, "src/database/postgres/list.js", "remove"),
+      symbol(rootPath, "src/database/redis/list.js", "remove"),
+      symbol(rootPath, "src/database/mongo/sorted.js", "removeSorted")
+    ];
+    const chunks = [
+      chunk(rootPath, "src/database/mongo/list.js", "remove", "list remove element from mongo backend"),
+      chunk(rootPath, "src/database/postgres/list.js", "remove", "list remove element from postgres backend"),
+      chunk(rootPath, "src/database/redis/list.js", "remove", "list remove element from redis backend"),
+      chunk(rootPath, "src/database/mongo/sorted.js", "removeSorted", "sorted set remove element from mongo backend")
+    ];
+    const query = "List operations do not support removing multiple distinct elements in a single call.";
+    const ranked = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+    const companions = findCompanionCandidates({
+      files,
+      ranked,
+      query,
+      symbols,
+      chunks,
+      edges: [],
+      limit: 3
+    });
+    const merged = applyCompanionCandidatesToResults(ranked, companions);
+
+    expect(merged.slice(0, 3).map((result) => result.path)).toEqual(
+      expect.arrayContaining([
+        "src/database/mongo/list.js",
+        "src/database/postgres/list.js",
+        "src/database/redis/list.js"
+      ])
+    );
+    expect(merged.slice(0, 3).map((result) => result.path)).not.toContain("src/database/mongo/sorted.js");
+  });
+
   it("uses exporter implementation as the companion for export command sorting tasks", () => {
     const rootPath = "/repo";
     const files = [
@@ -1178,6 +1229,67 @@ describe("hybridSearch", () => {
     expect(results.slice(0, 2).map((result) => result.path)).not.toContain("lib/service/kubernetes.go");
   });
 
+  it("routes Kubernetes exec/session uploader tasks to forwarder and service surfaces before matchers", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "lib/kube/proxy/forwarder.go", "source", "go"),
+      file(rootPath, "lib/service/kubernetes.go", "source", "go"),
+      file(rootPath, "lib/auth/init.go", "source", "go"),
+      file(rootPath, "lib/utils/replace.go", "source", "go"),
+      file(rootPath, "lib/srv/db/cloud/users/users.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "lib/kube/proxy/forwarder.go", "ForwarderConfig"),
+      symbol(rootPath, "lib/kube/proxy/forwarder.go", "ServeHTTP"),
+      symbol(rootPath, "lib/kube/proxy/forwarder.go", "exec"),
+      symbol(rootPath, "lib/service/kubernetes.go", "initKubernetesService"),
+      symbol(rootPath, "lib/auth/init.go", "NewAuthServer"),
+      symbol(rootPath, "lib/utils/replace.go", "KubeResourceMatchesRegex"),
+      symbol(rootPath, "lib/srv/db/cloud/users/users.go", "GetUsers")
+    ];
+    const chunks = [
+      chunk(
+        rootPath,
+        "lib/kube/proxy/forwarder.go",
+        "ForwarderConfig",
+        "ForwarderConfig Authz CachingAuthClient GetClusterConfig GetKubeServices ReverseTunnelSrv exec portForward catchAll audit events client disconnect"
+      ),
+      chunk(rootPath, "lib/service/kubernetes.go", "initKubernetesService", "Kubernetes service initializes session uploader async upload directory for session recordings"),
+      chunk(rootPath, "lib/auth/init.go", "NewAuthServer", "auth server session initialization user credentials certificates"),
+      chunk(rootPath, "lib/utils/replace.go", "KubeResourceMatchesRegex", "KubernetesResource kind namespace verbs get list watch create update delete wildcard MatchString regexp"),
+      chunk(rootPath, "lib/srv/db/cloud/users/users.go", "GetUsers", "cloud users backend storage")
+    ];
+    const results = hybridSearch({
+      files,
+      query:
+        "kubectl exec interactive sessions fail because Kubernetes service misses session uploader initialization. Forwarder should keep audit events for exec, portForward, and catchAll when the client disconnects.",
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 2).map((result) => result.path)).toEqual([
+      "lib/kube/proxy/forwarder.go",
+      "lib/service/kubernetes.go"
+    ]);
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("lib/utils/replace.go");
+
+    const companions = findCompanionCandidates({
+      files,
+      ranked: results.filter((result) => result.path === "lib/kube/proxy/forwarder.go"),
+      query:
+        "kubectl exec interactive sessions fail because Kubernetes service misses session uploader initialization. Forwarder should keep audit events for exec, portForward, and catchAll when the client disconnects.",
+      symbols,
+      chunks,
+      edges: [],
+      limit: 2
+    });
+    expect(companions[0]?.file.path).toBe("lib/service/kubernetes.go");
+    expect(companions.map((candidate) => candidate.file.path)).not.toContain("lib/auth/init.go");
+  });
+
   it("routes large UI feedback/liveness tasks to visible components and hooks before models or utilities", () => {
     const rootPath = "/repo";
     const files = [
@@ -1223,6 +1335,121 @@ describe("hybridSearch", () => {
       ])
     );
     expect(results.slice(0, 5).map((result) => result.path)).not.toContain("src/voice-broadcast/utils/VoiceBroadcastChunkEvents.ts");
+  });
+
+  it("routes form unflatten request failures to route handlers and unflatten utilities before models", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "openlibrary/plugins/openlibrary/lists.py", "source", "python"),
+      file(rootPath, "openlibrary/plugins/upstream/utils.py", "source", "python"),
+      file(rootPath, "openlibrary/core/lists/model.py", "source", "python"),
+      file(rootPath, "openlibrary/plugins/openlibrary/utils.py", "source", "python")
+    ];
+    const symbols = [
+      symbol(rootPath, "openlibrary/plugins/openlibrary/lists.py", "POST"),
+      symbol(rootPath, "openlibrary/plugins/upstream/utils.py", "unflatten"),
+      symbol(rootPath, "openlibrary/core/lists/model.py", "List"),
+      symbol(rootPath, "openlibrary/plugins/openlibrary/utils.py", "safeint")
+    ];
+    const chunks = [
+      chunk(rootPath, "openlibrary/plugins/openlibrary/lists.py", "POST", "POST /lists/add form data body query parameters seeds defaults request handler"),
+      chunk(rootPath, "openlibrary/plugins/upstream/utils.py", "unflatten", "unflatten flattened form data nested indexed keys parent defaults reconstruction"),
+      chunk(rootPath, "openlibrary/core/lists/model.py", "List", "list model seed entries persistence"),
+      chunk(rootPath, "openlibrary/plugins/openlibrary/utils.py", "safeint", "generic openlibrary utility helpers")
+    ];
+    const query = [
+      "/lists/add returns 500 when POST body data conflicts with query parameters.",
+      "When body data is present, do not pre-populate parent keys before unflatten.",
+      "Nested indexed seeds fields should reconstruct from flattened form input."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 2).map((result) => result.path).sort()).toEqual([
+      "openlibrary/plugins/openlibrary/lists.py",
+      "openlibrary/plugins/upstream/utils.py"
+    ]);
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("openlibrary/core/lists/model.py");
+
+    const companions = findCompanionCandidates({
+      files,
+      ranked: results.filter((result) => result.path === "openlibrary/plugins/openlibrary/lists.py"),
+      query,
+      symbols,
+      chunks,
+      edges: [],
+      limit: 2
+    });
+    expect(companions[0]?.file.path).toBe("openlibrary/plugins/upstream/utils.py");
+    expect(companions.map((candidate) => candidate.file.path)).not.toContain("openlibrary/core/lists/model.py");
+  });
+
+  it("routes Alpine source/binary package mapping to scanner and OVAL matcher surfaces", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "scanner/alpine.go", "source", "go"),
+      file(rootPath, "oval/util.go", "source", "go"),
+      file(rootPath, "scanner/scanner.go", "source", "go"),
+      file(rootPath, "oval/alpine.go", "source", "go"),
+      file(rootPath, "contrib/trivy/pkg/converter.go", "source", "go"),
+      file(rootPath, "scanner/parser/generic.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "scanner/alpine.go", "parseApkInfo"),
+      symbol(rootPath, "oval/util.go", "matchSourcePackage"),
+      symbol(rootPath, "scanner/scanner.go", "Detect"),
+      symbol(rootPath, "oval/alpine.go", "NewAlpine"),
+      symbol(rootPath, "contrib/trivy/pkg/converter.go", "Convert"),
+      symbol(rootPath, "scanner/parser/generic.go", "Parse")
+    ];
+    const chunks = [
+      chunk(rootPath, "scanner/alpine.go", "parseApkInfo", "Alpine apk list output binary package source package upgradable installed package manager scanner"),
+      chunk(rootPath, "oval/util.go", "matchSourcePackage", "OVAL vulnerability matching source package binary package affected ranges"),
+      chunk(rootPath, "scanner/scanner.go", "Detect", "scanner dispatch package vulnerability detection source packages"),
+      chunk(rootPath, "oval/alpine.go", "NewAlpine", "Alpine OVAL source vulnerability definitions"),
+      chunk(rootPath, "contrib/trivy/pkg/converter.go", "Convert", "Trivy converter package output"),
+      chunk(rootPath, "scanner/parser/generic.go", "Parse", "generic package parser helper")
+    ];
+    const query = [
+      "Alpine Linux vulnerability detection incorrectly handles source vs binary packages.",
+      "The scanner should parse apk list output and upgradable package information,",
+      "map binary packages to source packages, and OVAL vulnerability matching should assess source packages accordingly."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 4).map((result) => result.path)).toEqual(
+      expect.arrayContaining(["scanner/alpine.go", "oval/util.go", "scanner/scanner.go"])
+    );
+    expect(results.slice(0, 4).map((result) => result.path)).not.toContain("contrib/trivy/pkg/converter.go");
+    expect(results.slice(0, 4).map((result) => result.path)).not.toContain("scanner/parser/generic.go");
+
+    const companions = findCompanionCandidates({
+      files,
+      ranked: results.filter((result) => result.path === "scanner/alpine.go"),
+      query,
+      symbols,
+      chunks,
+      edges: [],
+      limit: 3
+    });
+    expect(companions.map((candidate) => candidate.file.path)).toEqual(
+      expect.arrayContaining(["oval/util.go", "scanner/scanner.go"])
+    );
   });
 
   it("keeps exact C source ahead of vendored dependency surfaces for short identifier prompts", () => {
