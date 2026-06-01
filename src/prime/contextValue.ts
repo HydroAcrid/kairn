@@ -1,7 +1,7 @@
 import type { ContextResponse, ContextValueDecision, FileRecord, PrimeQuality } from "../types.js";
 import type { ResolvedPrimeProfile } from "./quality.js";
 import { isFailureDebugTask } from "./quality.js";
-import { applyContextGovernor } from "./contextGovernor.js";
+import { applyContextGovernor, hasPromptDerivedMultiFileScope } from "./contextGovernor.js";
 
 export function evaluateContextValue(input: {
   task: string;
@@ -23,8 +23,13 @@ export function evaluateContextValue(input: {
   const sourceFixSignal = isSourceFixTask(input.task);
   const easyTaskSignal = isEasyTask(input.task);
   const vagueImprovementSignal = isVagueImprovementTask(input.task);
-  const multiFileSignal = isMultiFileTask(input.task);
-  const companionSignal = Boolean(input.companionCount && input.companionCount > 0 && (multiFileSignal || (input.companionTopScore ?? 0) >= 360));
+  const promptDerivedMultiFileScope = hasPromptDerivedMultiFileScope(input.task);
+  const multiFileSignal = isMultiFileTask(input.task) || promptDerivedMultiFileScope;
+  const directMultiFileContext = multiFileSignal && input.context.files.filter((file) => isPrimarySourcePath(file)).length > 1;
+  const companionSignal = Boolean(
+    directMultiFileContext ||
+      (input.companionCount && input.companionCount > 0 && (multiFileSignal || (input.companionTopScore ?? 0) >= 360))
+  );
   const companionSpecific = Boolean(input.companionSpecific);
   const wrongContextRisk = Boolean(
     primaryFile &&
@@ -40,6 +45,9 @@ export function evaluateContextValue(input: {
   if (debugSignal) {
     score += 12;
     reasons.add("debug/failure task can benefit from targeted context");
+  }
+  if (promptDerivedMultiFileScope) {
+    reasons.add("prompt implies multiple production surfaces");
   }
   if (primaryFile && isPrimarySourcePath(primaryFile)) {
     score += 8;
@@ -79,7 +87,9 @@ export function evaluateContextValue(input: {
   const effectiveCompanionSignal = companionSignal && (!exactSourceHit || structuredCompanionAllowed);
   if (effectiveCompanionSignal) {
     score += Math.min(18, Math.max(8, Math.floor((input.companionTopScore ?? 0) / 120)));
-    reasons.add("query-local companion evidence supports multi-surface context");
+    reasons.add(directMultiFileContext
+      ? "prompt-derived multi-file scope has multiple production candidates"
+      : "query-local companion evidence supports multi-surface context");
   }
   if (wrongContextRisk) {
     score -= input.repoFileCount >= 1500 ? 58 : 38;

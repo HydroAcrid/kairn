@@ -260,8 +260,19 @@ function scoreSourcePriority(
   const explicitDocsIntent = intent.primary === "docs" || ["docs", "doc", "readme", "example", "examples", "demo"].some((term) => queryTerms.has(term));
   const explicitTestIntent = hasExplicitTestIntent(queryTerms, query);
   const debugImplementationIntent = ["debug", "fix", "regression", "bug", "broken"].some((term) => queryTerms.has(term));
+  const hsmKmsConfigIntent = isHsmKmsConfigQuery(query);
+  const deprecationLifecycleIntent = isDeprecationLifecycleQuery(normalizeSearchText(query));
+  const formUnflattenRequestIntent = isFormUnflattenRequestQuery(normalizeSearchText(query));
+  const kubernetesExecForwarderIntent = isKubernetesExecForwarderQuery(normalizeSearchText(query));
+  const kubernetesRbacMatcherIntent = isKubernetesRbacResourceMatcherQuery(normalizeSearchText(query));
+  const packageSourceMappingIntent = isPackageSourceMappingQuery(normalizeSearchText(query));
+  const specializedImplementationIntent =
+    hsmKmsConfigIntent || deprecationLifecycleIntent || formUnflattenRequestIntent || kubernetesExecForwarderIntent || kubernetesRbacMatcherIntent || packageSourceMappingIntent;
   const implementationIntent =
-    !explicitDocsIntent && (debugImplementationIntent || ["generic", "backend", "data", "auth", "workflow", "ui"].includes(intent.primary));
+    specializedImplementationIntent || (!explicitDocsIntent && (
+      debugImplementationIntent ||
+      ["generic", "backend", "data", "auth", "workflow", "ui"].includes(intent.primary)
+    ));
   const mentionedSourceBasenames = mentionedSourceFileBasenames(query);
 
   for (const file of files) {
@@ -357,6 +368,66 @@ function scoreSourcePriority(
     if (implementationIntent && protocolFlow.score !== 0) {
       score += protocolFlow.score;
       reasons.push(...protocolFlow.reasons);
+    }
+
+    const commandExportSurface = scoreCommandExportSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && commandExportSurface.score !== 0) {
+      score += commandExportSurface.score;
+      reasons.push(...commandExportSurface.reasons);
+    }
+
+    const hsmKmsConfigSurface = scoreHsmKmsConfigSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && hsmKmsConfigSurface.score !== 0) {
+      score += hsmKmsConfigSurface.score;
+      reasons.push(...hsmKmsConfigSurface.reasons);
+    }
+
+    const backendAutocompleteSurface = scoreBackendAutocompleteSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (backendAutocompleteSurface.score !== 0) {
+      score += backendAutocompleteSurface.score;
+      reasons.push(...backendAutocompleteSurface.reasons);
+    }
+
+    const formUnflattenRequestSurface = scoreFormUnflattenRequestSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && formUnflattenRequestSurface.score !== 0) {
+      score += formUnflattenRequestSurface.score;
+      reasons.push(...formUnflattenRequestSurface.reasons);
+    }
+
+    const configOptionSchemaSurface = scoreConfigOptionSchemaSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && configOptionSchemaSurface.score !== 0) {
+      score += configOptionSchemaSurface.score;
+      reasons.push(...configOptionSchemaSurface.reasons);
+    }
+
+    const deprecationLifecycleSurface = scoreDeprecationLifecycleSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && deprecationLifecycleSurface.score !== 0) {
+      score += deprecationLifecycleSurface.score;
+      reasons.push(...deprecationLifecycleSurface.reasons);
+    }
+
+    const kubernetesRbacMatcherSurface = scoreKubernetesRbacMatcherSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && kubernetesRbacMatcherSurface.score !== 0) {
+      score += kubernetesRbacMatcherSurface.score;
+      reasons.push(...kubernetesRbacMatcherSurface.reasons);
+    }
+
+    const packageSourceMappingSurface = scorePackageSourceMappingSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && packageSourceMappingSurface.score !== 0) {
+      score += packageSourceMappingSurface.score;
+      reasons.push(...packageSourceMappingSurface.reasons);
+    }
+
+    const kubernetesExecForwarderSurface = scoreKubernetesExecForwarderSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && kubernetesExecForwarderSurface.score !== 0) {
+      score += kubernetesExecForwarderSurface.score;
+      reasons.push(...kubernetesExecForwarderSurface.reasons);
+    }
+
+    const uiFeedbackOwnershipSurface = scoreUiFeedbackOwnershipSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && uiFeedbackOwnershipSurface.score !== 0) {
+      score += uiFeedbackOwnershipSurface.score;
+      reasons.push(...uiFeedbackOwnershipSurface.reasons);
     }
 
     if (implementationIntent && isLanguageSourceSurface(file)) {
@@ -980,7 +1051,7 @@ function hasSpecificQuerySymbol(queryTerms: Set<string>): boolean {
 function isLanguageSourceSurface(file: FileRecord): boolean {
   return (
     file.kind === "source" &&
-    ["python", "java", "kotlin", "c", "cpp", "typescript", "javascript", "go", "ruby"].includes(file.language) &&
+    ["python", "java", "kotlin", "c", "cpp", "csharp", "typescript", "javascript", "go", "ruby"].includes(file.language) &&
     !isNoisyImplementationSurface(file)
   );
 }
@@ -1996,6 +2067,642 @@ function scoreGoPackageRoutingSurface(file: FileRecord, queryTerms: Set<string>)
     return { score: -900, reasons: ["go middleware package downranked for router/context prompt"] };
   }
   return { score: 0, reasons: [] };
+}
+
+function scoreCommandExportSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  const exportIntent =
+    /\bexport(?:er|ers|ing|ed)?\b/.test(normalizedQuery) &&
+    (/\b(command|cli|flag|backend|declarative|resource|namespace|sort|deterministic)\b/.test(normalizedQuery) ||
+      /--[a-z0-9-]*sort[a-z0-9-]*/i.test(query));
+  if (!exportIntent || !isLanguageSourceSurface(file)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 500)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/^cmd\/[^/]+\/export\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /(^|\/)cmd\/.*\/export\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 2600;
+    reasons.push("CLI export command surface");
+  }
+  if (
+    /(^|\/)(exporter|export)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) ||
+    /(^|\/)(export|exporter)\//.test(normalizedPath) ||
+    /^internal\/ext\/exporter\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)
+  ) {
+    score += 2100;
+    reasons.push("exporter implementation surface");
+  }
+  if (/\b(new exporter|exporter|export)\b/.test(normalizedSource)) {
+    score += 520;
+    reasons.push("exporter symbol/content match");
+  }
+  if (/\b(sort|deterministic|namespace|variant|flag|segment)\b/.test(normalizedQuery) && /\b(sort|namespace|variant|flag|segment)\b/.test(normalizedSource)) {
+    score += 320;
+    reasons.push("export sorting domain match");
+  }
+  if (/^internal\/storage\//.test(normalizedPath) && !/(^|\/)(exporter|export)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score -= 900;
+    reasons.push("storage backend downranked for command/exporter prompt");
+  }
+
+  return { score, reasons };
+}
+
+function scoreHsmKmsConfigSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  const normalizedPath = file.path.toLowerCase();
+  const hsmKmsBackendHelper = isHsmKmsBackendHelperSource(normalizedPath);
+  if (!isHsmKmsConfigQuery(normalizedQuery) || (!isLanguageSourceSurface(file) && !hsmKmsBackendHelper)) return { score: 0, reasons: [] };
+
+  const centralConfigIntent = /\b(unified|central|centralize|centralized|reusable|duplicated|duplication|consistent|selector|detect|detects|available)\b/.test(normalizedQuery);
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 500)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+  const keystoreSurface = /\/keystore\//.test(normalizedPath) || hsmKmsBackendHelper || /\bkeystore\b/.test(normalizedSource);
+
+  if (keystoreSurface) {
+    score += 4200;
+    reasons.push("HSM/KMS keystore config surface");
+  }
+  if (/(^|\/)(pkcs11|testhelpers?|test_helpers?)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 2600;
+    reasons.push("HSM/KMS backend helper surface");
+  }
+  if (centralConfigIntent && /(^|\/)(testhelpers?|test_helpers?)\.go$/.test(normalizedPath)) {
+    score += 12000;
+    reasons.push("central HSM/KMS test configuration helper");
+  }
+  if (/(\b|_)hsmtestconfig(\b|_)|\bhsm test config\b/.test(normalizedSource)) {
+    score += 7000;
+    reasons.push("HSMTestConfig target surface");
+  }
+  if (/(^|\/)pkcs11\.go$/.test(normalizedPath)) {
+    score += 18000;
+    reasons.push("PKCS11 HSM backend surface");
+  }
+  if (/\b(hsmtestconfig|setupsofthsmtest|softhsm|yubihsm|cloudhsm|awskms|gcpkms|pkcs11)\b/.test(normalizedSource)) {
+    score += 1100;
+    reasons.push("HSM/KMS configuration symbol/content match");
+  }
+  if (/\b(teleport_test|backend|backends|environment|env|config)\b/.test(normalizedSource)) {
+    score += 420;
+    reasons.push("backend test configuration content match");
+  }
+  if (!keystoreSurface) {
+    score -= /(^|\/)test\.go$/.test(normalizedPath) ? 50_000 : 7_000;
+    reasons.push("non-keystore surface downranked for HSM/KMS backend config task");
+  }
+  if (/^web\/|\/web\/|\/tdp\//.test(normalizedPath) && !/\/keystore\//.test(normalizedPath)) {
+    score -= 9000;
+    reasons.push("web/TDP surface downranked for HSM/KMS backend config task");
+  }
+  if (centralConfigIntent && /\/keystore\/(aws_kms|gcp_kms|cloudhsm|yubihsm|softhsm)\.go$/.test(normalizedPath)) {
+    score -= 8000;
+    reasons.push("single-provider backend downranked for central HSM/KMS config task");
+  }
+
+  return { score, reasons };
+}
+
+function scoreBackendAutocompleteSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isBackendAutocompleteQuery(normalizedQuery) || !isLanguageSourceSurface(file)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const basename = normalizedPath.split("/").at(-1) ?? normalizedPath;
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 500)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/^autocomplete\.(py|rb|go|rs|php|java|ts)$/.test(basename)) {
+    score += 50_000;
+    reasons.push("backend autocomplete endpoint implementation");
+  }
+  if (/\b(find_?olid|olid_?to_?key|db_?fetch|as_?fake_?solr_?record|solr|web ctx site|get)\b/.test(normalizedSource)) {
+    score += 5_000;
+    reasons.push("backend autocomplete OLID/Solr source");
+  }
+  if (/\b(works?_autocomplete|authors?_autocomplete|subjects?_autocomplete|autocomplete)\b/.test(normalizedSource)) {
+    score += 3_200;
+    reasons.push("backend autocomplete endpoint symbols");
+  }
+  if (/\/js\/autocomplete\.[cm]?js$/.test(normalizedPath) || /\/client\/|\/frontend\/|\/static\/|\/assets\//.test(normalizedPath)) {
+    score -= 50_000;
+    reasons.push("frontend autocomplete surface downranked for backend endpoint task");
+  }
+  if (!/autocomplete/.test(basename) && !/\b(find_?olid|olid_?to_?key|db_?fetch)\b/.test(normalizedSource)) {
+    score -= 20_000;
+    reasons.push("non-autocomplete source downranked for backend autocomplete task");
+  }
+
+  return { score, reasons };
+}
+
+function isBackendAutocompleteQuery(normalizedQuery: string): boolean {
+  return /\bautocomplete\b/.test(normalizedQuery) &&
+    /\b(endpoint|route|routes|solr|olid|olids|query string|fallback|db|base class|page class|works|authors|subjects)\b/.test(normalizedQuery) &&
+    !/\b(ui|frontend|client|browser widget|dropdown|input component|visual|style|css)\b/.test(normalizedQuery);
+}
+
+function scoreFormUnflattenRequestSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isFormUnflattenRequestQuery(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/\/plugins\/upstream\/utils\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) || /(^|\/)(unflatten|flatten|forms?|request)_?utils?\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) {
+    score += 86_000;
+    reasons.push("form unflatten utility surface");
+  }
+  if (/\/plugins\/openlibrary\/lists\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) || /(^|\/)lists\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) {
+    score += 76_000;
+    reasons.push("form route/list handler surface");
+  }
+  if (/\b(unflatten|flattened|nested|indexed|parent keys?|defaults?|form data|body data|query parameters?|request body|post)\b/.test(normalizedSource)) {
+    score += 18_000;
+    reasons.push("form request reconstruction content match");
+  }
+  if (/\/core\/lists\/model\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) || /\/models?\//.test(normalizedPath)) {
+    score -= 46_000;
+    reasons.push("list model downranked for request reconstruction task");
+  }
+  if (/\/plugins\/openlibrary\/utils\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) && !/\bunflatten\b/.test(normalizedSource)) {
+    score -= 22_000;
+    reasons.push("generic openlibrary utility downranked for form reconstruction task");
+  }
+
+  return { score, reasons };
+}
+
+function isFormUnflattenRequestQuery(normalizedQuery: string): boolean {
+  return (
+    /\b(unflatten|flattened|nested|indexed|parent keys?|form data|body data|query parameters?|query string|request body|duplicate (?:simple )?keys?|assignments?)\b/.test(normalizedQuery) &&
+    /\b(post|form|body|request|endpoint|route|handler|list|lists|seeds?|defaults?)\b/.test(normalizedQuery)
+  );
+}
+
+function scorePackageSourceMappingSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isPackageSourceMappingQuery(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/^scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 96_000;
+    reasons.push("package manager source/binary scanner surface");
+  }
+  if (/^oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 88_000;
+    reasons.push("package source vulnerability matching utility");
+  }
+  if (/^scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 72_000;
+    reasons.push("scanner dispatch/source package integration surface");
+  }
+  if (/^oval\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/oval\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 48_000;
+    reasons.push("alpine oval family surface");
+  }
+  if (/\b(source packages?|binary packages?|src packages?|apk list|apk info|apk index|upgradable|oval|vulnerabilit(?:y|ies))\b/.test(normalizedSource)) {
+    score += 12_000;
+    reasons.push("package source mapping content match");
+  }
+  if (/\/scanner\/trivy\//.test(normalizedPath) || /\/parser\//.test(normalizedPath) || /\/contrib\//.test(normalizedPath)) {
+    score -= 48_000;
+    reasons.push("unrelated package parser downranked for OS package source mapping");
+  }
+
+  return { score, reasons };
+}
+
+function isPackageSourceMappingQuery(normalizedQuery: string): boolean {
+  return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|apk|alpine)\b/.test(normalizedQuery) &&
+    /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?)\b/.test(normalizedQuery);
+}
+
+function scoreConfigOptionSchemaSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isConfigOptionSchemaQuery(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 500)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const queryHasQtWebEngine =
+    /\b(qtwebengine|qt webengine|webengine|chromium|accelerated|canvas|pdf|sheets|rendering|glitches?)\b/.test(normalizedQuery);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/(^|\/)(qtargs|chromium_args|webengine_args)\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) {
+    score += queryHasQtWebEngine ? 5200 : 2600;
+    reasons.push("config runtime argument surface");
+  }
+  if (/\b(qtwebengine|chromium|webengine|accelerated|canvas|settings args|workaround)\b/.test(normalizedSource)) {
+    score += queryHasQtWebEngine ? 1800 : 420;
+    reasons.push("config option implementation match");
+  }
+  if (/(^|\/)(configdata|config_data|configschema|config_schema|settings|options)\.(ya?ml|json|toml)$/.test(normalizedPath)) {
+    score += 3800;
+    reasons.push("config source-of-truth schema/data");
+  }
+  if (/(^|\/)(configdata|config_data|configschema|config_schema|settings|options)\.(ya?ml|json|toml|py|ts|js)$/.test(normalizedPath)) {
+    score += 4600;
+    reasons.push("config schema/data companion");
+  }
+  if (
+    /(^|\/)(configdata|config_data|configschema|config_schema|settings|options)\.py$/.test(normalizedPath) &&
+    /\b(read yaml|read_yaml|yaml|parsed|generated|source data)\b/.test(normalizedSource)
+  ) {
+    score -= 2400;
+    reasons.push("generated config artifact downranked for declarative schema task");
+  }
+  if (/\b(config data|config schema|config option|settings?|workaround)\b/.test(normalizedSource)) {
+    score += 900;
+    reasons.push("config schema/content match");
+  }
+  if (
+    /(^|\/)(configfiles?|config_file|configloader|loader|init)\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) &&
+    !/\b(load|loader|loading|parse|parsing|config file|config files|startup|init|initialize)\b/.test(normalizedQuery)
+  ) {
+    score -= 2400;
+    reasons.push("config file loader downranked for option/schema task");
+  }
+  if (isConfigDiagnosticProblemSurface(normalizedPath) && !/\b(backend problem|backend issue|diagnostic|diagnostics|problem report)\b/.test(normalizedQuery)) {
+    score -= 7200;
+    reasons.push("diagnostic/problem surface downranked for config schema task");
+  }
+
+  return { score, reasons };
+}
+
+function scoreDeprecationLifecycleSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isDeprecationLifecycleQuery(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 500)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (
+    /(^|\/)(module|module_utils|modules?|runtime)[^/]*(\/|$).*\/?basic\.(py|cs|ts|js)$/.test(normalizedPath) ||
+    (/(^|\/)basic\.(py|cs|ts|js)$/.test(normalizedPath) && /\b(argument spec|argumentspec|deprecated|deprecation)\b/.test(normalizedSource))
+  ) {
+    score += 30_000;
+    reasons.push("module deprecation API surface");
+  }
+  if (/(^|\/)(common\/)?parameters\.(py|ts|js|go|rb|rs|cs)$/.test(normalizedPath)) {
+    score += 52_000;
+    reasons.push("parameter validation surface");
+  }
+  if (/(^|\/)(common\/)?warnings\.(py|ts|js|go|rb|rs|cs)$/.test(normalizedPath)) {
+    score += 36_000;
+    reasons.push("deprecation warning surface");
+  }
+  if (/(^|\/)display\.(py|ts|js|go|rb|rs|cs)$/.test(normalizedPath) || /(^|\/)utils\/display\.(py|ts|js|go|rb|rs|cs)$/.test(normalizedPath)) {
+    score += 28_000;
+    reasons.push("deprecation display surface");
+  }
+  if (/(^|\/)[a-z0-9_.-]*basic\.(cs|ts|js)$/.test(normalizedPath) && /\b(validateargumentspec|deprecated_aliases|removed_in_version)\b/.test(normalizedSource)) {
+    score += 44_000;
+    reasons.push("module deprecation runtime mirror");
+  }
+  if (/\b(deprecat\w*|deprecated aliases?|removed at date|removed in version|date time object|warn|warning|display)\b/.test(normalizedSource)) {
+    score += 900;
+    reasons.push("deprecation lifecycle content match");
+  }
+  if (/(^|\/)(date_time|datetime|urls?)\.(py|ts|js|go|rb|rs|cs)$/.test(normalizedPath) && !/\b(date parser|parse date|url|urls|uri|http)\b/.test(normalizedQuery)) {
+    score -= 80_000;
+    reasons.push("generic date/url helper downranked for deprecation lifecycle task");
+  }
+  if (/(^|\/)modules\/[^/]+\.py$/.test(normalizedPath) && !/\b(deprecated_aliases|removed_in_version|removed_at_date|removed_in_date)\b/.test(normalizedSource)) {
+    score -= 60_000;
+    reasons.push("leaf module downranked for shared deprecation lifecycle task");
+  }
+
+  return { score, reasons };
+}
+
+function scoreKubernetesRbacMatcherSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isKubernetesRbacResourceMatcherQuery(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 500)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/\bkube(resource)?matchesregex\b|\bkuberesourcematchesregex\b|\bkubernetesresource\b/.test(normalizedSource)) {
+    score += 80_000;
+    reasons.push("Kubernetes RBAC resource matcher surface");
+  }
+  if (/\b(kind|namespace|verbs?|get|list|watch|create|update|delete)\b/.test(normalizedSource) && /\b(match|string|regexp|wildcard|glob)\b/.test(normalizedSource)) {
+    score += 22_000;
+    reasons.push("Kubernetes resource rule matching content");
+  }
+  if (/^lib\/utils\/replace\.go$/.test(normalizedPath) || /\/utils?\/(replace|match|matcher|regexp|regex)\.go$/.test(normalizedPath)) {
+    score += 28_000;
+    reasons.push("resource matcher utility path");
+  }
+  if (/^lib\/service\/kubernetes\.go$/.test(normalizedPath) || /\/service\/kubernetes\.(go|ts|js)$/.test(normalizedPath)) {
+    score -= 80_000;
+    reasons.push("Kubernetes service startup downranked for RBAC matcher task");
+  }
+  if (/(^|\/)(backend|cloud|users?|storage|db)\//.test(normalizedPath) && !/\bkube(resource)?matchesregex\b|\bkubernetesresource\b/.test(normalizedSource)) {
+    score -= 32_000;
+    reasons.push("non-matcher backend downranked for Kubernetes RBAC task");
+  }
+
+  return { score, reasons };
+}
+
+function scoreKubernetesExecForwarderSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isKubernetesExecForwarderQuery(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/^lib\/kube\/proxy\/forwarder\.go$/.test(normalizedPath) || /\/kube\/proxy\/forwarder\.(go|ts|js)$/.test(normalizedPath)) {
+    score += 95_000;
+    reasons.push("Kubernetes exec forwarder surface");
+  }
+  if (/^lib\/service\/kubernetes\.go$/.test(normalizedPath) || /\/service\/kubernetes\.(go|ts|js)$/.test(normalizedPath)) {
+    score += 70_000;
+    reasons.push("Kubernetes service session surface");
+  }
+  if (/\/kube\/proxy\/(server|handler|session|audit|auth)\.(go|ts|js)$/.test(normalizedPath)) {
+    score += 34_000;
+    reasons.push("Kubernetes proxy companion surface");
+  }
+  if (/^lib\/service\/service\.go$/.test(normalizedPath) || /\/service\/service\.(go|ts|js)$/.test(normalizedPath)) {
+    score += 18_000;
+    reasons.push("service initialization companion surface");
+  }
+
+  const forwarderHits = [
+    /\bforwarderconfig\b/,
+    /\bforwarder\b/,
+    /\bservehttp\b/,
+    /\bexec\b/,
+    /\bportforward\b/,
+    /\bcatchall\b/,
+    /\bauthz\b/,
+    /\bcachingauthclient\b/,
+    /\bgetkubeservices\b/,
+    /\bgetclusterconfig\b/,
+    /\breversetunnelsrv\b/,
+    /\broute to cluster\b/,
+    /\bsession uploader\b/,
+    /\bsession recordings?\b/,
+    /\basync upload\b/,
+    /\bupload directory\b/,
+    /\baudit events?\b/,
+    /\bclient disconnect\b/
+  ].filter((pattern) => pattern.test(normalizedSource)).length;
+  if (forwarderHits > 0) {
+    score += Math.min(72_000, forwarderHits * 12_000);
+    reasons.push("Kubernetes exec/session content match");
+  }
+
+  if (/^lib\/utils\/replace\.go$/.test(normalizedPath) || /\/utils?\/(replace|match|matcher|regexp|regex)\.go$/.test(normalizedPath)) {
+    score -= 95_000;
+    reasons.push("resource matcher utility downranked for Kubernetes exec/session task");
+  }
+  if (/(^|\/)(backend|cloud|users?|storage|db)\//.test(normalizedPath) && !/\b(session uploader|audit events?|forwarder|exec|portforward)\b/.test(normalizedSource)) {
+    score -= 24_000;
+    reasons.push("backend/storage surface downranked for Kubernetes exec/session task");
+  }
+
+  return { score, reasons };
+}
+
+function scoreUiFeedbackOwnershipSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isUiFeedbackOwnershipQuery(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 500)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const namedSurfaceHits = namedUiSurfaceHits(file.path, symbolText, query);
+  const directBasenameHit = namedUiSurfaceBasenameHit(file.path, query);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/(^|\/)(components?|atoms?|molecules?|organisms?|views?|screens?|routes?)\//.test(normalizedPath) || file.kind === "component" || file.kind === "route") {
+    score += 3800;
+    reasons.push("UI feedback component ownership surface");
+  }
+  if (/(^|\/)hooks?\//.test(normalizedPath) || /\buse[A-Z]/.test(symbolText)) {
+    score += 2800;
+    reasons.push("UI feedback hook ownership surface");
+  }
+  if (/(^|\/)index\.(ts|tsx|js|jsx)$/.test(normalizedPath) && sharedFeatureTerms(normalizedPath, normalizedQuery).length > 0) {
+    score += 1800;
+    reasons.push("feature export surface");
+  }
+  const sharedTerms = sharedFeatureTerms(normalizedPath, normalizedQuery);
+  if (sharedTerms.length > 0) {
+    score += Math.min(2600, sharedTerms.length * 900);
+    reasons.push(`UI feature path match: ${sharedTerms.slice(0, 3).join(", ")}`);
+  }
+  if (namedSurfaceHits.length > 0) {
+    score += Math.min(7200, namedSurfaceHits.length * 3600);
+    reasons.push(`named UI surface match: ${namedSurfaceHits.slice(0, 3).join(", ")}`);
+  }
+  if (directBasenameHit) {
+    score += 5200;
+    reasons.push(`direct UI basename match: ${directBasenameHit}`);
+  }
+  if (/\b(live|liveness|badge|icon|header|body|recording|playback|feedback|state)\b/.test(normalizedSource)) {
+    score += 1100;
+    reasons.push("UI feedback content match");
+  }
+  const stateOwnerNeeded = /\b(liveness|live|state|status|playback|recording|broadcast)\b/.test(normalizedQuery);
+  if (/(^|\/)(models?|stores?)\//.test(normalizedPath) && stateOwnerNeeded) {
+    score += 2200;
+    reasons.push("UI state owner surface");
+  }
+  if (
+    /(^|\/)(utils?|services?)\//.test(normalizedPath) &&
+    !/\b(utility|utils?|event ordering|events?|protocol|serialization|service)\b/.test(normalizedQuery)
+  ) {
+    score -= 5200;
+    reasons.push("utility/service surface downranked for UI feedback task");
+  }
+
+  return { score, reasons };
+}
+
+function isConfigDiagnosticProblemSurface(normalizedPath: string): boolean {
+  return /(^|\/)(backendproblem|backend_problem|problem|diagnostic|diagnostics)\.(py|ts|js|go|rb|rs)$/.test(normalizedPath);
+}
+
+function namedUiSurfaceHits(filePath: string, symbolText: string, query: string): string[] {
+  const normalizedQuery = normalizeSearchText(query);
+  const basename = filePath.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const candidateNames = uniqueStrings([
+    basename,
+    ...(symbolText.match(/\b[A-Z][A-Za-z0-9_]{3,}\b/g) ?? [])
+  ]);
+  return candidateNames.filter((name) => {
+    const normalized = normalizeSearchText(name);
+    const compact = name.toLowerCase().replace(/[^a-z0-9]+/g, "");
+    return normalized.length >= 4 && (normalizedQuery.includes(normalized) || normalizedQuery.includes(compact));
+  });
+}
+
+function namedUiSurfaceBasenameHit(filePath: string, query: string): string | undefined {
+  const normalizedQuery = normalizeSearchText(query);
+  const basename = filePath.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  if (basename.length < 4) return undefined;
+  const normalized = normalizeSearchText(basename);
+  const compact = basename.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  return normalized.length >= 4 && (normalizedQuery.includes(normalized) || normalizedQuery.includes(compact)) ? basename : undefined;
+}
+
+function isHsmKmsConfigQuery(query: string): boolean {
+  const normalizedQuery = normalizeSearchText(query);
+  return (
+    /\b(hsm|kms|softhsm|yubihsm|cloudhsm|pkcs11)\b/.test(normalizedQuery) &&
+    /\b(test|tests|testing|backend|backends|configuration|config|environment|env)\b/.test(normalizedQuery)
+  );
+}
+
+function isConfigOptionSchemaQuery(normalizedQuery: string): boolean {
+  const explicitConfigOption =
+    /\b(config|configuration|settings?|options?|workarounds?)\b/.test(normalizedQuery) &&
+    /\b(add|support|implement|define|schema|metadata|option|setting|workaround|argument|args?)\b/.test(normalizedQuery);
+  const renderingConfigWorkaround =
+    /\b(qtwebengine|qt webengine|webengine|chromium)\b/.test(normalizedQuery) &&
+    /\b(rendering|glitch|glitches|pdf|sheets|canvas|accelerated|workaround|settings?|args?)\b/.test(normalizedQuery);
+  return explicitConfigOption || renderingConfigWorkaround;
+}
+
+function isDeprecationLifecycleQuery(normalizedQuery: string): boolean {
+  return (
+    /\b(deprecat\w*|deprecated aliases?|removed[_ ](?:at[_ ])?date|removed[_ ]in[_ ]version|internal error)\b/.test(normalizedQuery) &&
+    /\b(date|version|module|modules|parameter|parameters|alias|aliases|warning|warnings|display|validate|validation|runtime)\b/.test(normalizedQuery)
+  );
+}
+
+function isKubernetesRbacResourceMatcherQuery(normalizedQuery: string): boolean {
+  if (isKubernetesExecForwarderQuery(normalizedQuery)) return false;
+  return (
+    /\b(kubernetes|kubectl|kube)\b/.test(normalizedQuery) &&
+    /\b(rbac|role|rule|rules|access|permission|permissions|resource|resources|namespace|namespaces)\b/.test(normalizedQuery) &&
+    /\b(kind|namespace|namespaces|verbs?|get|list|watch|create|update|delete|read only|read-only)\b/.test(normalizedQuery)
+  );
+}
+
+function isKubernetesExecForwarderQuery(normalizedQuery: string): boolean {
+  const compactQuery = normalizedQuery.replace(/\s+/g, "");
+  return (
+    /\b(kubernetes|kubectl|kube)\b/.test(normalizedQuery) &&
+    (
+      /\b(exec|forwarder|forwarder config|session uploader|session recording|recordings?|streaming|upload directory|async upload|audit event|audit events|client disconnect|reverse tunnel|route to cluster)\b/.test(normalizedQuery) ||
+      /\b(port forward|catch all)\b/.test(normalizedQuery) ||
+      /\b(portforward|catchall|forwarderconfig|reversetunnelsrv|routetocluster|getkubeservices|getclusterconfig)\b/.test(compactQuery)
+    )
+  );
+}
+
+function isUiFeedbackOwnershipQuery(normalizedQuery: string): boolean {
+  const explicitUiTerms = /\b(ui|component|components|icon|badge|view|screen|state|feedback|visual|liveness|live)\b/.test(normalizedQuery);
+  const headerBodyUiTerms =
+    /\b(header|body)\b/.test(normalizedQuery) &&
+    /\b(ui|component|components|icon|badge|view|screen|visual|render|display)\b/.test(normalizedQuery);
+  const uiTerms = explicitUiTerms || headerBodyUiTerms;
+  const featureStateTerms = /\b(recording|playback|voice|broadcast|room|message|notification|presence)\b/.test(normalizedQuery);
+  return uiTerms && (featureStateTerms || /\b(inconsistent|feedback|icon|badge|liveness|visible|display|shown|render)\b/.test(normalizedQuery));
+}
+
+function sharedFeatureTerms(normalizedPath: string, normalizedQuery: string): string[] {
+  const pathTerms = new Set(tokenizeLexical(normalizedPath));
+  const queryTerms = tokenizeLexical(normalizedQuery).filter((term) => term.length >= 4);
+  const stopTerms = new Set(["component", "components", "source", "debug", "fix", "state", "feedback", "icon", "badge", "header", "body"]);
+  return uniqueStrings(queryTerms.filter((term) => !stopTerms.has(term) && pathTerms.has(term)));
+}
+
+function isHsmKmsBackendHelperSource(normalizedPath: string): boolean {
+  return /\/keystore\/(pkcs11|testhelpers?|test_helpers?)\.go$/.test(normalizedPath.toLowerCase());
 }
 
 function phraseMatches(normalizedFileText: string, phrase: string, fileTerms: Set<string>): boolean {

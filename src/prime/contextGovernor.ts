@@ -10,7 +10,9 @@ import type {
   FileRecord,
   FileRoleV2,
   PrimeQuality,
-  TaskFrame
+  RequiredSurface,
+  TaskFrame,
+  TaskShapeSignal
 } from "../types.js";
 import type { ResolvedPrimeProfile } from "./quality.js";
 
@@ -31,6 +33,8 @@ export type CandidateFeatures = {
 
 export type DecisionFeatures = {
   taskFrame: TaskFrame;
+  taskShapeSignal?: TaskShapeSignal;
+  requiredSurface: RequiredSurface;
   repoLanguageMix: Record<string, number>;
   candidates: CandidateFeatures[];
   confidenceGap: number;
@@ -138,6 +142,8 @@ export function applyContextGovernor(input: GovernorInput): ContextValueDecision
     return {
       ...input.baseDecision,
       taskFrame: features.taskFrame,
+      ...(features.taskShapeSignal ? { taskShapeSignal: features.taskShapeSignal } : {}),
+      requiredSurface: features.requiredSurface,
       modelPrediction,
       featureSummary
     };
@@ -159,6 +165,8 @@ export function applyContextGovernor(input: GovernorInput): ContextValueDecision
         ? input.baseDecision.recommendedDelivery ?? "full_prime"
         : governed.action === "shrink"
           ? input.baseDecision.recommendedDelivery === "multi_file_directive" ||
+            features.requiredSurface === "paired_contract" ||
+            features.requiredSurface === "feature_cluster" ||
             (features.readOnlySourceRoutingIntent && readOnlySourceCandidateCount > 1) ||
             (features.taskFrame === "qna_source_grounded" && features.candidates.length > 1)
           ? "multi_file_directive"
@@ -166,6 +174,8 @@ export function applyContextGovernor(input: GovernorInput): ContextValueDecision
         : "none",
     reasons: [...reasons],
     taskFrame: features.taskFrame,
+    ...(features.taskShapeSignal ? { taskShapeSignal: features.taskShapeSignal } : {}),
+    requiredSurface: features.requiredSurface,
     ...(governed.directiveStyle || shouldUpgradeReadOnlyDelivery || input.baseDecision.directiveStyle
       ? { directiveStyle: governed.directiveStyle ?? (shouldUpgradeReadOnlyDelivery ? "source_map" : input.baseDecision.directiveStyle) }
       : {}),
@@ -196,8 +206,12 @@ export function buildDecisionFeatures(input: GovernorInput): DecisionFeatures {
     companionCount: input.companionCount ?? 0,
     companionTopScore: input.companionTopScore ?? 0
   });
+  const taskShapeSignal = inferTaskShapeSignal(input.task, taskFrame, input.baseDecision, candidates);
+  const requiredSurface = inferRequiredSurface(input.task, taskFrame, taskShapeSignal, input.baseDecision, candidates);
   return {
     taskFrame,
+    ...(taskShapeSignal ? { taskShapeSignal } : {}),
+    requiredSurface,
     repoLanguageMix,
     candidates,
     confidenceGap: Math.max(0, input.baseDecision.topGap),
@@ -244,7 +258,7 @@ export function classifyTaskFrameFromTask(task: string, profile: ResolvedPrimePr
   if (/\b(cleanup|clean up|review diff|final diff|summarize changes|verify|verification|typecheck|lint|build)\b/.test(text)) return "verification_cleanup";
   if (/\b(qna|question|answer|inspect|explain|read|open|show|which file|where is|what symbol|repository language|dataset language|source-grounded|source grounded)\b/.test(text)) return "qna_source_grounded";
   if ((profile === "failure_debug" || /\b(debug|failure|failing|regression|stack trace|traceback|exception)\b/.test(text)) &&
-    hasMultiSurfaceDebugLanguage(text)) {
+    (hasMultiSurfaceDebugLanguage(text) || hasPromptDerivedMultiFileScope(task))) {
     return "multi_file_debug";
   }
   if (profile === "failure_debug" || /\b(debug|failure|failing|regression|stack trace|traceback|exception|error)\b/.test(text)) return "failure_first";
@@ -375,6 +389,36 @@ function hardSafetyDecision(
       score: 0,
       reasons: ["governor found no usable source candidates"],
       ...(features.estimatedSearchCost >= 60 ? { evidenceRequest: evidenceRequestFor(features) } : {})
+    };
+  }
+  if (features.requiredSurface === "evidence_needed") {
+    return {
+      action: "request_evidence",
+      score: Math.min(baseDecision.score, 48),
+      reasons: ["task shape has weak source ownership; asking for an exact source signal"],
+      evidenceRequest: evidenceRequestFor(features, "exact_source")
+    };
+  }
+  if (
+    features.requiredSurface === "paired_contract" &&
+    baseDecision.action !== "suppress" &&
+    baseDecision.action !== "request_evidence"
+  ) {
+    return {
+      action: "shrink",
+      score: Math.min(Math.max(baseDecision.score, 56), 66),
+      reasons: [`${features.taskShapeSignal ?? "multi-surface"} task should use a compact paired-source directive`]
+    };
+  }
+  if (
+    features.requiredSurface === "feature_cluster" &&
+    baseDecision.action === "emit" &&
+    features.estimatedSearchCost >= 45
+  ) {
+    return {
+      action: "shrink",
+      score: Math.min(baseDecision.score, 66),
+      reasons: [`${features.taskShapeSignal ?? "feature-cluster"} task should use a compact owner map`]
     };
   }
   if (isEstablishedOfficialExactSourceState(baseDecision, features)) {
@@ -594,7 +638,7 @@ function classifyTaskFrame(input: {
   if (/\b(cleanup|clean up|review diff|final diff|summarize changes|verify|verification|typecheck|lint|build)\b/.test(text)) return "verification_cleanup";
   if (/\b(qna|question|answer|inspect|explain|read|open|show|which file|where is|what symbol|repository language|dataset language|source-grounded|source grounded)\b/.test(text)) return "qna_source_grounded";
   if (input.decision.cheapSingleSource || input.decision.cheapExactSource) return "cheap_single_source";
-  const explicitMultiSurface = hasMultiSurfaceDebugLanguage(text);
+  const explicitMultiSurface = hasMultiSurfaceDebugLanguage(text) || hasPromptDerivedMultiFileScope(input.task);
   const strongSingleSource =
     Boolean(input.decision.exactSourceHit || input.decision.sourceRescue || input.decision.canonicalSourceHit) &&
     !explicitMultiSurface;
@@ -607,6 +651,216 @@ function classifyTaskFrame(input: {
   if (input.decision.easyTaskSignal && input.candidates.length <= 1) return "cheap_single_source";
   if (input.candidates.length === 0 || input.decision.score < 38 || /\b(improve|better|stuff|things|general cleanup)\b/.test(text)) return "weak_signal";
   return "source_rescue";
+}
+
+function inferTaskShapeSignal(
+  task: string,
+  taskFrame: TaskFrame,
+  baseDecision: ContextValueDecision,
+  candidates: CandidateFeatures[]
+): TaskShapeSignal | undefined {
+  const normalized = normalizeText(task);
+  if (hasDeprecationLifecycleScope(normalized)) return "lifecycle_policy";
+  if (isAccessPolicyTask(normalized)) return undefined;
+  if (isCommandContractTask(normalized)) return "command_contract";
+  if (isPackageSourceMappingTask(normalized)) return "package_source_mapping";
+  if (isBackendParityTask(normalized, candidates)) return "backend_parity";
+  if (taskFrame === "official_patch" && hasPrimarySelectedTestCounterpartOwner(task, baseDecision, candidates)) return undefined;
+  if (isFrontendOwnershipTask(normalized, candidates)) {
+    return hasWeakFrontendOwnership(baseDecision, candidates) ? "ambiguous_frontend_ownership" : "frontend_ownership";
+  }
+  if (taskFrame === "official_patch" && isAmbiguousFrontendPatch(baseDecision, {
+    taskFrame,
+    repoLanguageMix: {},
+    candidates,
+    confidenceGap: baseDecision.topGap,
+    candidateEntropy: candidateEntropy(candidates),
+    ambiguity: candidateAmbiguity(candidates, baseDecision.topGap),
+    activeSourceState: false,
+    staleIndexState: false,
+    failureState: false,
+    verificationState: false,
+    explicitTestTarget: taskExplicitlyTargetsTests(task),
+    productionOnlyEditIntent: taskHasProductionOnlyEditIntent(task),
+    readOnlySourceRoutingIntent: taskIsReadOnlySourceRouting(task),
+    expectedContextCost: baseDecision.estimatedContextCost,
+    estimatedSearchCost: 0,
+    requiredSurface: "single_file"
+  })) {
+    return "ambiguous_frontend_ownership";
+  }
+  return undefined;
+}
+
+function inferRequiredSurface(
+  task: string,
+  taskFrame: TaskFrame,
+  taskShapeSignal: TaskShapeSignal | undefined,
+  baseDecision: ContextValueDecision,
+  candidates: CandidateFeatures[]
+): RequiredSurface {
+  if (taskShapeSignal === "ambiguous_frontend_ownership") return "evidence_needed";
+  if (
+    taskShapeSignal === "command_contract" ||
+    taskShapeSignal === "lifecycle_policy" ||
+    taskShapeSignal === "package_source_mapping" ||
+    taskShapeSignal === "backend_parity"
+  ) return "paired_contract";
+  if (taskShapeSignal === "frontend_ownership") return "feature_cluster";
+  if (taskFrame === "official_patch" && hasPromptDerivedMultiFileScope(task)) return "paired_contract";
+  if (taskFrame === "official_patch") return "single_file";
+  if (
+    baseDecision.multiSurfaceSignal ||
+    baseDecision.companionSpecific ||
+    baseDecision.recommendedDelivery === "multi_file_directive"
+  ) {
+    return "feature_cluster";
+  }
+  return "single_file";
+}
+
+function isCommandContractTask(normalized: string): boolean {
+  const directCommandTerms = /\b(command|commands|cli|flag|flags|option|options|args?|arguments|argv|exporter|sort|sorted|sorting|deterministic)\b/.test(normalized);
+  const runtimeOptionTerms =
+    /\b(startup|launch|runtime)\b.{0,80}\b(command|commands|cli|flag|flags|option|options|args?|arguments|argv|export(?:er|ers|ing)?|namespace|namespaces|variant|variants|sort|sorted|sorting|deterministic|setting|settings|configuration|config|schema)\b/.test(normalized) ||
+    /\b(command|commands|cli|flag|flags|option|options|args?|arguments|argv|export(?:er|ers|ing)?|namespace|namespaces|variant|variants|sort|sorted|sorting|deterministic|setting|settings|configuration|config|schema)\b.{0,80}\b(startup|launch|runtime)\b/.test(normalized);
+  const exportContractTerms =
+    /\bexport(?:er|ers|ing)?\b.{0,80}\b(json|ya?ml|csv|file|files|output|writer|serializer|command|cli)\b/.test(normalized) ||
+    /\b(json|ya?ml|csv|file|files|output|writer|serializer|command|cli)\b.{0,80}\bexport(?:er|ers|ing)?\b/.test(normalized);
+  const namespaceVariantContractTerms =
+    /\b(namespace|namespaces|variant|variants)\b/.test(normalized) &&
+    /\b(command|commands|cli|flag|flags|option|options|args?|arguments|argv|exporter|startup|launch|runtime)\b/.test(normalized);
+  const commandTerms = directCommandTerms || runtimeOptionTerms || exportContractTerms || namespaceVariantContractTerms;
+  const contractTerms = /\b(add|implement|support|honou?r|pass|apply|propagate|parse|wire|preserve|order|dedupe|stable|workaround|setting|configuration|schema)\b/.test(normalized);
+  const backendStorageOnly = /\b(storage|database|db|repository|persistence)\b/.test(normalized) &&
+    !/\b(command|cli|flag|args?|export|namespace|variant|sort|startup|runtime)\b/.test(normalized);
+  return commandTerms && contractTerms && !backendStorageOnly;
+}
+
+function isPackageSourceMappingTask(normalized: string): boolean {
+  return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|apk|alpine)\b/.test(normalized) &&
+    /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?)\b/.test(normalized);
+}
+
+function isBackendParityTask(normalized: string, candidates: CandidateFeatures[]): boolean {
+  const collectionMutation =
+    /\b(list|lists|set|sets|sorted set|zset|hash|queue|collection|collections)\b/.test(normalized) &&
+    /\b(remove|removing|delete|deleting|del|discard|pull|pop|trim|add|insert|push)\b/.test(normalized);
+  const multiValue =
+    /\b(multiple|distinct|array|arrays|elements?|values?|batch|bulk|several)\b/.test(normalized) ||
+    /\[[^\]]+,[^\]]+\]/.test(normalized);
+  if (!collectionMutation || !multiValue) return false;
+  return candidates.some((candidate) => datastoreBackendSurface(candidate.path) !== undefined);
+}
+
+function hasPrimarySelectedTestCounterpartOwner(
+  task: string,
+  baseDecision: ContextValueDecision,
+  candidates: CandidateFeatures[]
+): boolean {
+  const counterpartBasenames = selectedTestCounterpartBasenames(task);
+  if (counterpartBasenames.size === 0) return false;
+  const primaryPath = baseDecision.primaryFile ?? candidates[0]?.path;
+  if (!primaryPath) return false;
+  const primaryBasename = sourceBasenameWithoutExtension(primaryPath);
+  if (!counterpartBasenames.has(primaryBasename)) return false;
+  const topScore = baseDecision.topScore ?? candidates[0]?.score ?? 0;
+  const topGap = baseDecision.topGap ?? 0;
+  return Boolean(baseDecision.sourceRescue || baseDecision.exactSourceHit || baseDecision.canonicalSourceHit || topScore >= 58 || topGap >= 18);
+}
+
+function selectedTestCounterpartBasenames(task: string): Set<string> {
+  const names = new Set<string>();
+  for (const match of task.matchAll(/\b[A-Za-z0-9_.@+~/-]+?\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)\b/g)) {
+    const filePath = normalizePath(match[0] ?? "").toLowerCase();
+    if (!isTestLikePromptPath(filePath)) continue;
+    const basename = sourceBasenameWithoutExtension(filePath)
+      .replace(/^(test|spec)[_-]/, "")
+      .replace(/[._-](test|spec)$/, "")
+      .replace(/[-_](test|spec)$/, "");
+    if (basename.length >= 3) names.add(basename);
+  }
+  return names;
+}
+
+function sourceBasenameWithoutExtension(filePath: string): string {
+  const basename = normalizePath(filePath).toLowerCase().split("/").at(-1) ?? "";
+  return basename
+    .replace(/\.d\.ts$/, "")
+    .replace(/\.(?:[cm]?[jt]sx?|mjs|cjs|pyi?|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|php|cs)$/, "");
+}
+
+function isTestLikePromptPath(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  return /(^|\/)(tests?|specs?|__tests__|testing)\//.test(normalized) ||
+    /(^|\/)src\/test\//.test(normalized) ||
+    /(^|\/)(test|spec)[_-]/.test(normalized.split("/").at(-1) ?? normalized) ||
+    /[._-](test|spec)\./.test(normalized.split("/").at(-1) ?? normalized) ||
+    /_test\.go$/.test(normalized);
+}
+
+function normalizePath(value: string): string {
+  return value.replaceAll("\\", "/").replace(/^\.?\//, "");
+}
+
+function datastoreBackendSurface(filePath: string): { prefix: string; backend: string; suffix: string } | undefined {
+  const parts = filePath.replaceAll("\\", "/").toLowerCase().split("/").filter(Boolean);
+  const backendNames = new Set(["mongo", "mongodb", "redis", "postgres", "postgresql", "mysql", "sqlite", "memory", "inmemory"]);
+  const rootNames = new Set(["database", "databases", "db", "storage", "stores", "backends"]);
+  for (let index = 0; index < parts.length - 1; index += 1) {
+    const part = parts[index];
+    if (!part || !backendNames.has(part)) continue;
+    const rootIndex = Math.max(0, index - 2);
+    const hasDatastoreRoot = parts.slice(rootIndex, index).some((segment) => rootNames.has(segment));
+    if (!hasDatastoreRoot) continue;
+    const suffix = parts.slice(index + 1).join("/");
+    if (!suffix) continue;
+    return {
+      prefix: parts.slice(0, index).join("/"),
+      backend: part,
+      suffix
+    };
+  }
+  return undefined;
+}
+
+function isFrontendOwnershipTask(normalized: string, candidates: CandidateFeatures[]): boolean {
+  const strongUiPrompt =
+    /\b(ui|frontend|component|components|screen|render|visual|badge|icon|panel|drawer|composer|voice|broadcast|room|message|notification|presence|playback|recording|liveness|live)\b/.test(normalized);
+  const weakUiPrompt =
+    /\b(view|views|route|routes|display)\b/.test(normalized);
+  if (!strongUiPrompt && isAccessPolicyTask(normalized)) return false;
+  const headerBodyUiPrompt =
+    /\b(header|body)\b/.test(normalized) &&
+    /\b(ui|frontend|component|components|view|views|screen|render|display|visual|badge|icon)\b/.test(normalized);
+  const uiPrompt = strongUiPrompt || headerBodyUiPrompt || weakUiPrompt;
+  if (!uiPrompt) return false;
+  return candidates.slice(0, 6).some((candidate) =>
+    candidate.role === "ui_surface" ||
+    candidate.role === "route" ||
+    candidate.language === "typescript" ||
+    candidate.language === "javascript"
+  );
+}
+
+function isAccessPolicyTask(normalized: string): boolean {
+  return countPresent(normalized, [
+    /\b(rbac|role rules?|roles?|permissions?|access control|authorization|authorisation)\b/,
+    /\b(namespace|namespaces|resources?|verbs?|get|list|watch|create|update|delete)\b/,
+    /\b(grant|allow|deny|denied|read-only|write|policy|rule|rules)\b/
+  ]) >= 2;
+}
+
+function hasWeakFrontendOwnership(baseDecision: ContextValueDecision, candidates: CandidateFeatures[]): boolean {
+  const uiCandidates = candidates.slice(0, 6).filter((candidate) =>
+    candidate.role === "ui_surface" ||
+    candidate.role === "route" ||
+    candidate.language === "typescript" ||
+    candidate.language === "javascript"
+  );
+  if (uiCandidates.length < 2) return false;
+  if (baseDecision.exactSourceHit || baseDecision.sourceRescue || baseDecision.canonicalSourceHit || baseDecision.exactPathMentioned) return false;
+  return baseDecision.topGap < 80 || candidateAmbiguity(candidates, baseDecision.topGap) >= 0.55;
 }
 
 function hasMultiSurfaceDebugLanguage(text: string): boolean {
@@ -651,6 +905,8 @@ function summarizeDecisionFeatures(features: DecisionFeatures): ContextGovernorF
   const top = features.candidates[0];
   return {
     taskFrame: features.taskFrame,
+    ...(features.taskShapeSignal ? { taskShapeSignal: features.taskShapeSignal } : {}),
+    requiredSurface: features.requiredSurface,
     candidateCount: features.candidates.length,
     fileRoleCounts,
     repoLanguageMix: features.repoLanguageMix,
@@ -818,6 +1074,178 @@ export function hasExplicitMultiFileScopeRequest(task: string): boolean {
     explicitMultiFileScope ||
     interfaceExpansionRequested
   );
+}
+
+export function hasPromptDerivedMultiFileScope(task: string): boolean {
+  const normalized = normalizeText(task);
+  if (hasExplicitMultiFileScopeRequest(task)) return true;
+
+  const productionPathMentions = countProductionPathMentions(task);
+  if (productionPathMentions >= 2) return true;
+
+  const selectedTestPaths = countSelectedTestPathMentions(task);
+  if (selectedTestPaths >= 3) return true;
+
+  if (taskIsOfficialProductionPatchPrompt(task)) {
+    return (
+      hasPasswordStorageAndEncryptionScope(normalized) ||
+      hasTracingLifecycleScope(normalized) ||
+      hasTopicOrderingScope(normalized) ||
+      hasEntityMessageScope(normalized) ||
+      hasHttpContentScope(normalized) ||
+      hasAuthorQueryScope(normalized) ||
+      hasHsmKmsConfigScope(normalized) ||
+      hasConfigOptionRuntimeScope(normalized) ||
+      hasDeprecationLifecycleScope(normalized)
+    );
+  }
+
+  const requirementCount = countRequirementBullets(task);
+  const behaviorFamilies = countPromptBehaviorFamilies(normalized);
+  if (requirementCount >= 3 && behaviorFamilies >= 3) return true;
+  if (requirementCount >= 4 && behaviorFamilies >= 2 && selectedTestPaths >= 2) return true;
+
+  return (
+    hasPasswordStorageAndEncryptionScope(normalized) ||
+    hasTracingLifecycleScope(normalized) ||
+    hasTopicOrderingScope(normalized) ||
+    hasEntityMessageScope(normalized) ||
+    hasHttpContentScope(normalized) ||
+    hasAuthorQueryScope(normalized) ||
+    hasHsmKmsConfigScope(normalized) ||
+    hasConfigOptionRuntimeScope(normalized) ||
+    hasDeprecationLifecycleScope(normalized)
+  );
+}
+
+function countProductionPathMentions(task: string): number {
+  const mentions = new Set<string>();
+  const pathPattern = /\b(?:[A-Za-z0-9_.-]+\/)+(?:[A-Za-z0-9_.-]+)\.(?:[cm]?[jt]sx?|mjs|cjs|pyi?|go|java|rb|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|php|cs)\b/g;
+  for (const match of task.matchAll(pathPattern)) {
+    const file = match[0].replaceAll("\\", "/").toLowerCase();
+    if (/(^|\/)(tests?|testing|__tests__|specs?|docs?|examples?|fixtures?|generated|gen|node_modules|dist|build|coverage)\//.test(file)) {
+      continue;
+    }
+    mentions.add(file);
+  }
+  return mentions.size;
+}
+
+function countSelectedTestPathMentions(task: string): number {
+  const selectedTestsStart = task.search(/\bselected (?:verification )?tests? from swe[- ]bench pro metadata\b/i);
+  const text = selectedTestsStart >= 0 ? task.slice(selectedTestsStart) : task;
+  const testPaths = new Set<string>();
+  const testPathPattern = /\b(?:[A-Za-z0-9_.-]+\/)*(?:tests?|testing|__tests__|specs?)\/[A-Za-z0-9_./-]+\.(?:[cm]?[jt]sx?|py|go|java|rb|rs|php|cs)\b|\b[A-Za-z0-9_./-]+\.(?:test|spec)\.[cm]?[jt]sx?\b|\btest_[A-Za-z0-9_]+\.py\b/g;
+  for (const match of text.matchAll(testPathPattern)) {
+    testPaths.add(match[0].replaceAll("\\", "/").toLowerCase());
+  }
+  return testPaths.size;
+}
+
+function countRequirementBullets(task: string): number {
+  return task
+    .split(/\r?\n/)
+    .filter((line) => /^\s*(?:[-*]|\d+[.)])\s+\S/.test(line) && line.trim().length >= 24)
+    .length;
+}
+
+function countPromptBehaviorFamilies(normalized: string): number {
+  const families = [
+    /\b(parse|read|load|serialize|deserialize|normalize|convert|format|encode|decode)\w*\b/,
+    /\b(encrypt|hash|salt|ident|secret|password|credential|token)\w*\b/,
+    /\b(store|persist|reuse|cache|state|session|lifecycle|shutdown)\w*\b/,
+    /\b(route|dispatch|provider|exporter|controller|handler|manager|registry)\w*\b/,
+    /\b(query|database|model|entity|record|topic|category|tag|author|sort|order|pin|pinned)\w*\b/,
+    /\b(request|response|header|headers|content|range|download|upload|http)\w*\b/,
+    /\b(component|route|render|view|frontend|ui|layout|screen|client)\w*\b/
+  ];
+  return families.reduce((count, pattern) => count + (pattern.test(normalized) ? 1 : 0), 0);
+}
+
+function hasPasswordStorageAndEncryptionScope(normalized: string): boolean {
+  return (
+    /\b(password|secret|credential)\w*\b/.test(normalized) &&
+    /\b(encrypt|hash|salt|ident)\w*\b/.test(normalized) &&
+    /\b(read|write|store|persist|reuse|file)\w*\b/.test(normalized)
+  );
+}
+
+function hasTracingLifecycleScope(normalized: string): boolean {
+  return countPresent(normalized, [
+    /\b(tracing|trace|span|telemetry)\w*\b/,
+    /\b(provider|resource|exporter)\w*\b/,
+    /\b(shutdown|lifecycle|flush|close)\w*\b/
+  ]) >= 2 && /\b(resource|provider|exporter|shutdown|lifecycle)\w*\b/.test(normalized);
+}
+
+function hasTopicOrderingScope(normalized: string): boolean {
+  return countPresent(normalized, [
+    /\b(topic|topics)\w*\b/,
+    /\b(sort|order|ordering|comparator)\w*\b/,
+    /\b(pin|pinned|tag|tags|category|categories)\w*\b/
+  ]) >= 3;
+}
+
+function hasEntityMessageScope(normalized: string): boolean {
+  return countPresent(normalized, [
+    /\b(websocket|socket|message|messages)\w*\b/,
+    /\b(entity|entities|model|record)\w*\b/,
+    /\b(update|counter|queue|sequential|concurrent)\w*\b/
+  ]) >= 3;
+}
+
+function hasHttpContentScope(normalized: string): boolean {
+  return countPresent(normalized, [
+    /\b(http|request|response)\w*\b/,
+    /\b(header|headers|range|content|text|body)\w*\b/,
+    /\b(download|stream|error|status)\w*\b/
+  ]) >= 3;
+}
+
+function hasAuthorQueryScope(normalized: string): boolean {
+  return countPresent(normalized, [
+    /\b(author|name|honorific)\w*\b/,
+    /\b(date|year|birth|death)\w*\b/,
+    /\b(query|search|match|matching|filter)\w*\b/
+  ]) >= 3;
+}
+
+function hasHsmKmsConfigScope(normalized: string): boolean {
+  return (
+    countPresent(normalized, [
+      /\b(hsm|kms|softhsm|yubihsm|cloudhsm|pkcs11)\w*\b/,
+      /\b(test|tests|testing|backend|backends)\w*\b/,
+      /\b(config|configuration|environment|env|detect|availability|available)\w*\b/,
+      /\b(unified|central|centralize|centralized|reusable|duplicated|duplication|consistent)\w*\b/
+    ]) >= 3 &&
+    /\b(softhsm|yubihsm|cloudhsm|aws kms|gcp kms|pkcs11)\b/.test(normalized)
+  );
+}
+
+export function hasConfigOptionRuntimeScope(task: string): boolean {
+  const normalized = normalizeText(task);
+  const explicitConfigOption =
+    /\b(?:config(?:uration)?\s+)?(?:setting|settings|workaround|workarounds)\b/.test(normalized) ||
+    /\b(?:config(?:uration)?\s+)?options?\s+(?:named|called|must|should|can|to|that|which|for)\b/.test(normalized) ||
+    /\b(?:setting|option|workaround)\s+(?:named|called|must|should|can|to)\b/.test(normalized);
+  const schemaOrContract =
+    /\b(schema|accept|values?|valid values?|default|required|restart|metadata|define|add|support)\w*\b/.test(normalized);
+  const runtimeOrArgument =
+    /\b(runtime|argument|arguments|args?|apply|disable|enable|backend|qtwebengine|chromium|webengine)\w*\b/.test(normalized);
+  return explicitConfigOption && schemaOrContract && runtimeOrArgument;
+}
+
+export function hasDeprecationLifecycleScope(task: string): boolean {
+  const normalized = normalizeText(task);
+  return countPresent(normalized, [
+    /\b(deprecat\w*|deprecated aliases?|removed in version|removed_in_version|removed at date|removed_at_date|removed_in_date)\b/,
+    /\b(date|version|module|modules|parameter|parameters|alias|aliases)\b/,
+    /\b(validate|validation|internal error|warning|warnings|display|runtime)\b/
+  ]) >= 3;
+}
+
+function countPresent(value: string, patterns: RegExp[]): number {
+  return patterns.reduce((count, pattern) => count + (pattern.test(value) ? 1 : 0), 0);
 }
 
 export function taskIsReadOnlySourceRouting(task: string): boolean {

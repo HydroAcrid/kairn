@@ -1,0 +1,55 @@
+{
+  "campaign": "swe-pro-official-fresh-slice-post-governor",
+  "generatedAt": "2026-05-30",
+  "branch": "fix/export-command-companion-routing",
+  "status": "completed_with_caveats",
+  "rowsSelected": 10,
+  "kairnLocalPasses": {
+    "passes": 10,
+    "total": 10
+  },
+  "kairnOfficialValidEvaluations": {
+    "passes": 9,
+    "total": 9,
+    "excluded": [
+      {
+        "row": 5,
+        "reason": "official evaluator/image availability issue"
+      }
+    ]
+  },
+  "baselineLocalKnown": {
+    "passes": 4,
+    "total": 8,
+    "notRun": [5, 6]
+  },
+  "baselineOfficialKnown": {
+    "passes": 3,
+    "total": 4,
+    "notRunOrUnavailable": [1, 5, 6, 7, 8, 9]
+  },
+  "cleanOfficialPassPassSavings": {
+    "rows": [2, 3, 10],
+    "count": 3,
+    "medianReductionPct": 9.3,
+    "aggregateBaselineTokens": 174620,
+    "aggregateKairnTokens": 154627,
+    "aggregateSavedTokens": 19993,
+    "aggregateReductionPct": 11.4
+  },
+  "localPassPassSupportingSavings": {
+    "rows": [2, 3, 7, 10],
+    "count": 4,
+    "medianReductionPct": 18.9,
+    "aggregateBaselineTokens": 235830,
+    "aggregateKairnTokens": 193453,
+    "aggregateSavedTokens": 42377,
+    "aggregateReductionPct": 18.0
+  },
+  "qualityOrScopeRescueRows": [1, 4, 8, 9],
+  "kairnOnlyOfficialPassRows": [6],
+  "officialHarnessIssueRows": [5],
+  "tokenRegressions": 0,
+  "harmfulAssists": 0,
+  "publicClaimRecommendation": "Do not update public headline savings from this slice alone. It supports merge review and the quality/source-focus story, while clean official savings remain modest but positive."
+}

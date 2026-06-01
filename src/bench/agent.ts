@@ -172,7 +172,8 @@ export async function runAgentBenchmarkCase(input: {
     });
     const diffScopeResult = await evaluateDiffScopes({
       rootPath: workspacePath,
-      scopes: input.benchmarkCase.allowedDiffScopes
+      scopes: input.benchmarkCase.allowedDiffScopes,
+      task: prompt
     });
     const semanticVerificationFailed = !sourceInvariantResult.passed || !diffScopeResult.passed;
     const combinedOutput = [output, verification.output].filter(Boolean).join("\n");
@@ -719,6 +720,44 @@ export function changedFiles(workspacePath: string): string[] {
   }
 }
 
+export function workspacePatch(workspacePath: string): string {
+  if (!workspacePath) return "";
+  let untracked: string[] = [];
+  try {
+    untracked = execFileSync("git", ["-C", workspacePath, "ls-files", "--others", "--exclude-standard"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    })
+      .split(/\r?\n/)
+      .map((line) => normalizeRelativePath(line.trim()))
+      .filter((file) => file && !isBenchmarkInternalPath(file));
+
+    if (untracked.length > 0) {
+      execFileSync("git", ["-C", workspacePath, "add", "-N", "--", ...untracked], {
+        stdio: ["ignore", "ignore", "ignore"]
+      });
+    }
+
+    return execFileSync("git", ["-C", workspacePath, "diff", "--binary"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      maxBuffer: 64 * 1024 * 1024
+    });
+  } catch {
+    return "";
+  } finally {
+    if (untracked.length > 0) {
+      try {
+        execFileSync("git", ["-C", workspacePath, "reset", "-q", "--", ...untracked], {
+          stdio: ["ignore", "ignore", "ignore"]
+        });
+      } catch {
+        // Best-effort cleanup for disposable benchmark workspaces.
+      }
+    }
+  }
+}
+
 function isBenchmarkInternalPath(filePath: string): boolean {
   return filePath === ".kairn" ||
     filePath.startsWith(".kairn/") ||
@@ -774,10 +813,12 @@ function metadataFromOutput(input: {
   const kairnMcpToolMentions = countMatches(input.output, /\bkairn_(prepare_task|get_next_context|get_failure_context|find_context|read_file|read_symbol)\b/g);
   const codexJsonlMcp = codexJsonlMcpCalls(input.output);
   const workspaceMcp = workspaceMcpCalls(input.workspacePath);
+  const workspacePrime = workspacePrimeMetadata(input.workspacePath);
   const actualMcpToolCalls = workspaceMcp.count > 0 ? workspaceMcp.count : codexJsonlMcp.count;
   const mcpReturnedQuality = input.benchmarkCase
     ? mcpReturnedFileQuality(input.benchmarkCase, workspaceMcp.files)
     : {};
+  const kairnDryRunMetadata = kairnCodexDryRunMetadata(input.output);
   const metadata: Record<string, unknown> = {
     workspacePath: input.workspacePath,
     promptHash: sha256(input.prompt),
@@ -792,6 +833,8 @@ function metadataFromOutput(input: {
     actualMcpFiles: workspaceMcp.files,
     actualMcpContextActions: workspaceMcp.contextActions,
     ...mcpReturnedQuality,
+    ...workspacePrime,
+    ...kairnDryRunMetadata,
     ...(input.extraMetadata ?? {})
   };
 
@@ -817,6 +860,37 @@ function outputFromExecError(error: unknown): string {
     return [bufferLikeToString(error.stdout), bufferLikeToString(error.stderr), error.message].filter(Boolean).join("\n");
   }
   return error instanceof Error ? error.message : String(error);
+}
+
+function kairnCodexDryRunMetadata(output: string): Record<string, unknown> {
+  const parsed = parseJsonObject(output.trim());
+  const prime = isRecord(parsed.prime) ? parsed.prime : undefined;
+  if (!prime) return {};
+
+  const primeMetadata = isRecord(prime.metadata) ? prime.metadata : {};
+  const contextDecision = isRecord(prime.contextDecision) ? prime.contextDecision : {};
+  const files = Array.isArray(prime.files) ? prime.files.filter((item): item is string => typeof item === "string") : [];
+  const tokenEstimate = typeof prime.tokenEstimate === "number" ? prime.tokenEstimate : undefined;
+  const guardrailVariant = typeof primeMetadata.guardrailVariant === "string" ? primeMetadata.guardrailVariant : undefined;
+  const guardrailDirectiveStyle = typeof primeMetadata.guardrailDirectiveStyle === "string"
+    ? primeMetadata.guardrailDirectiveStyle
+    : typeof contextDecision.directiveStyle === "string"
+      ? contextDecision.directiveStyle
+      : undefined;
+
+  return {
+    kairnDryRun: true,
+    ...(tokenEstimate !== undefined ? { primeTokens: tokenEstimate } : {}),
+    ...(typeof contextDecision.action === "string" ? { primeDecision: contextDecision.action } : {}),
+    ...(typeof contextDecision.recommendedDelivery === "string" ? { primeDelivery: contextDecision.recommendedDelivery } : {}),
+    ...(guardrailDirectiveStyle ? { primeDirectiveStyle: guardrailDirectiveStyle } : {}),
+    ...(guardrailVariant ? { guardrailVariant } : {}),
+    ...(typeof primeMetadata.guardrailFileCount === "number" ? { guardrailFileCount: primeMetadata.guardrailFileCount } : {}),
+    ...(typeof primeMetadata.guardrailInvariantCount === "number" ? { guardrailInvariantCount: primeMetadata.guardrailInvariantCount } : {}),
+    ...(typeof primeMetadata.guardrailTokenBudget === "number" ? { guardrailTokenBudget: primeMetadata.guardrailTokenBudget } : {}),
+    ...(typeof primeMetadata.guardrailStrictOfficialScope === "boolean" ? { guardrailStrictOfficialScope: primeMetadata.guardrailStrictOfficialScope } : {}),
+    primeFiles: files
+  };
 }
 
 function isExecError(value: unknown): value is Error & { stdout?: unknown; stderr?: unknown } {
@@ -903,6 +977,61 @@ function workspaceMcpCalls(workspacePath: string): { count: number; toolNames: s
     };
   } catch {
     return { count: 0, toolNames: [], files: [], contextActions: [] };
+  } finally {
+    db?.close();
+  }
+}
+
+function workspacePrimeMetadata(workspacePath: string): Record<string, unknown> {
+  const dbPath = path.join(workspacePath, ".kairn", "kairn.sqlite");
+  if (!fs.existsSync(dbPath)) return {};
+
+  let db: Database.Database | undefined;
+  try {
+    db = new Database(dbPath, { readonly: true, fileMustExist: true });
+    const row = db
+      .prepare(
+        `
+          select event_name, output_tokens, files_json, metadata_json
+          from metrics_events
+          where event_kind = 'prime_context'
+          order by created_at desc, id desc
+          limit 1
+        `
+      )
+      .get() as { event_name: string; output_tokens: number; files_json: string; metadata_json: string } | undefined;
+    if (!row) return {};
+
+    const metadata = parseJsonObject(row.metadata_json);
+    const contextDecision = isRecord(metadata.contextDecision) ? metadata.contextDecision : {};
+    const deliveryTrace = isRecord(metadata.deliveryTrace) ? metadata.deliveryTrace : {};
+    return {
+      primeDecision: typeof contextDecision.action === "string" ? contextDecision.action : row.event_name,
+      ...(typeof contextDecision.recommendedDelivery === "string" ? { primeDelivery: contextDecision.recommendedDelivery } : {}),
+      ...(typeof contextDecision.directiveStyle === "string" ? { primeDirectiveStyle: contextDecision.directiveStyle } : {}),
+      ...(typeof deliveryTrace.taskShapeSignal === "string" ? { taskShapeSignal: deliveryTrace.taskShapeSignal } : {}),
+      ...(typeof deliveryTrace.requiredSurface === "string" ? { requiredSurface: deliveryTrace.requiredSurface } : {}),
+      ...(typeof deliveryTrace.directiveStyle === "string" ? { directiveStyle: deliveryTrace.directiveStyle } : {}),
+      ...(typeof deliveryTrace.guardrailVariant === "string" ? { traceGuardrailVariant: deliveryTrace.guardrailVariant } : {}),
+      ...(typeof deliveryTrace.emittedFileCount === "number" ? { emittedFileCount: deliveryTrace.emittedFileCount } : {}),
+      ...(isRecord(deliveryTrace.emittedFileRoleSummary) ? { emittedFileRoleSummary: deliveryTrace.emittedFileRoleSummary } : {}),
+      ...(typeof deliveryTrace.editScopeSource === "string" ? { editScopeSource: deliveryTrace.editScopeSource } : {}),
+      ...(typeof deliveryTrace.estimatedDirectiveTokens === "number" ? { estimatedDirectiveTokens: deliveryTrace.estimatedDirectiveTokens } : {}),
+      ...(typeof deliveryTrace.estimatedSourceContextTokens === "number" ? { estimatedSourceContextTokens: deliveryTrace.estimatedSourceContextTokens } : {}),
+      ...(typeof deliveryTrace.sizingReason === "string" ? { sizingReason: deliveryTrace.sizingReason } : {}),
+      primeTokens: row.output_tokens,
+      primeFiles: parseStringArray(row.files_json),
+      ...(typeof metadata.guardrailVariant === "string" ? { guardrailVariant: metadata.guardrailVariant } : {}),
+      ...(typeof metadata.guardrailFileCount === "number" ? { guardrailFileCount: metadata.guardrailFileCount } : {}),
+      ...(typeof metadata.guardrailInvariantCount === "number" ? { guardrailInvariantCount: metadata.guardrailInvariantCount } : {}),
+      ...(typeof metadata.guardrailTokenBudget === "number" ? { guardrailTokenBudget: metadata.guardrailTokenBudget } : {}),
+      ...(typeof metadata.guardrailStrictOfficialScope === "boolean" ? { guardrailStrictOfficialScope: metadata.guardrailStrictOfficialScope } : {}),
+      ...(typeof metadata.officialPatchScopeFileCount === "number" ? { officialPatchScopeFileCount: metadata.officialPatchScopeFileCount } : {}),
+      ...(typeof metadata.forceOfficialMultiFileScope === "boolean" ? { forceOfficialMultiFileScope: metadata.forceOfficialMultiFileScope } : {}),
+      ...(typeof metadata.forceProductionOnlyOneFile === "boolean" ? { forceProductionOnlyOneFile: metadata.forceProductionOnlyOneFile } : {})
+    };
+  } catch {
+    return {};
   } finally {
     db?.close();
   }

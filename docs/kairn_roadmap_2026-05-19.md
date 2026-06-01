@@ -126,6 +126,52 @@ Every report should separate:
 
 Headline savings must use only pass/pass rows.
 
+## Future Technical Improvements
+
+These are product/architecture directions, not current public claims. Each should land behind behavior-class tests and fresh holdout evidence before being used in launch copy.
+
+### Temporal Awareness
+
+Status: partially implemented.
+
+Kairn already tracks session ledger state, active files, stale index status, repeated-context suppression, changed files, and known source after earlier turns. The next improvement is to make this more explicit in retrieval and delivery policy:
+
+- identify source files that are active in the current session,
+- deprioritize stale or previously rejected context,
+- prefer verified current-session source over fresh but weaker retrieval hits,
+- decay old context unless it remains connected to changed files, failure output, or active scope,
+- report repeated-context avoidance as an impact metric.
+
+Why it matters: long sessions should get narrower and more stable over time instead of repeatedly rebuilding repo context.
+
+### Semantic Slicing
+
+Status: important next technical unlock.
+
+Kairn currently uses compact snippets and heuristic focused context. The stronger version is AST/function/class-level slicing:
+
+- slice exact functions/classes/types instead of whole files,
+- include only nearby imports, call sites, and type definitions needed for the task,
+- keep edit scope separate from read-only verification context,
+- avoid sending generated/test/doc neighbors unless the task explicitly targets them,
+- preserve language-specific structure for Python, TS/JS, Go, Java/Kotlin, and C/C++.
+
+Why it matters: if Kairn can send the right semantic unit instead of the right file, it can reduce token waste without weakening quality.
+
+### Failure Correction
+
+Status: partially implemented.
+
+Kairn already has failure-debug routing and evidence requests. The next step is automatic aperture expansion after concrete failure output:
+
+- start narrow when source confidence is high,
+- detect when tests, typecheck, lint, or runtime output names missing context,
+- expand only to the smallest connected source surface,
+- keep expansions tied to failure evidence rather than broad related-file retrieval,
+- record when failure correction rescued a run versus when the original context was already sufficient.
+
+Why it matters: narrow guardrails are good until they omit required context. Kairn should widen deliberately after a real failure signal, not before.
+
 ## Private Beta Rollout
 
 Target users:

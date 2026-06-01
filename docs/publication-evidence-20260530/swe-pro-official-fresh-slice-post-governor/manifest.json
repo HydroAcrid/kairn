@@ -1,0 +1,101 @@
+{
+  "generatedAt": "2026-05-30T04:54:49.995Z",
+  "campaign": "swe-pro-official-fresh-slice-post-governor",
+  "branch": "fix/export-command-companion-routing",
+  "gitHead": "c37cb8c623542f89f031ef9f205e2ea9d3b9a9f8",
+  "includesUncommittedChanges": true,
+  "sourceDataset": ".kairn/eval/SWE-bench_Pro-os/helper_code/sweap_eval_full_v2.jsonl",
+  "excludedUsedInstanceIds": 35,
+  "filters": {
+    "excludePreviouslyUsed": true,
+    "excludeQutebrowser": true,
+    "requireBeforeRepoSetCmd": true,
+    "requireSelectedTests": true,
+    "sourceFilesOnly": true,
+    "patchProductionSourceFileRange": "1-4",
+    "maxRowsPerRepo": 2,
+    "maxRowsPerLanguageFamily": 4
+  },
+  "rows": [
+    {
+      "row": 1,
+      "instanceId": "instance_gravitational__teleport-3fa6904377c006497169945428e8197158667910-v626ec2a48416b10a88641359a169d99e935ff037",
+      "repo": "gravitational/teleport",
+      "languageFamily": "go",
+      "sourceFileCount": 4,
+      "publicProblemTitle": "**Title: kubectl exec interactive sessions fail due to missing session uploader initialization in Kubernetes service ** **Expected behavior:"
+    },
+    {
+      "row": 2,
+      "instanceId": "instance_internetarchive__openlibrary-dbbd9d539c6d4fd45d5be9662aa19b6d664b5137-v08d8e8889ec945ab821fb156c04c7d2e2810debb",
+      "repo": "internetarchive/openlibrary",
+      "languageFamily": "python",
+      "sourceFileCount": 2,
+      "publicProblemTitle": "# ‘/lists/add’ returns 500 error when POST data conflicts with query parameters # Description: When submitting a form to the /lists/add endp"
+    },
+    {
+      "row": 3,
+      "instanceId": "instance_future-architect__vuls-407407d306e9431d6aa0ab566baa6e44e5ba2904",
+      "repo": "future-architect/vuls",
+      "languageFamily": "go",
+      "sourceFileCount": 1,
+      "publicProblemTitle": "# Title: trivy-to-vuls generates duplicate objects in cveContents and splits Debian severities into separate records ### What did you do? (r"
+    },
+    {
+      "row": 4,
+      "instanceId": "instance_future-architect__vuls-e6c0da61324a0c04026ffd1c031436ee2be9503a",
+      "repo": "future-architect/vuls",
+      "languageFamily": "go",
+      "sourceFileCount": 3,
+      "publicProblemTitle": "# Alpine Linux vulnerability detection incorrectly handles source vs binary packages ## Description The current Alpine Linux package scanner"
+    },
+    {
+      "row": 5,
+      "instanceId": "instance_gravitational__teleport-e6d86299a855687b21970504fbf06f52a8f80c74-vce94f93ad1030e3136852817f2423c1b3ac37bc4",
+      "repo": "gravitational/teleport",
+      "languageFamily": "go",
+      "sourceFileCount": 4,
+      "publicProblemTitle": "## Title: Update user traits when renewing session ### Issue type Bug ### Description When a user updates their traits (such as logins or da"
+    },
+    {
+      "row": 6,
+      "instanceId": "instance_internetarchive__openlibrary-25858f9f0c165df25742acf8309ce909773f0cdd-v13642507b4fc1f8d234172bf8129942da2c2ca26",
+      "repo": "internetarchive/openlibrary",
+      "languageFamily": "python",
+      "sourceFileCount": 4,
+      "publicProblemTitle": "\"# Enhancement: Refactor Solr Utility Logic to Improve Maintainability\\n\\n## Problem / Opportunity\\n\\nCurrently, Solr-related utility functi"
+    },
+    {
+      "row": 7,
+      "instanceId": "instance_NodeBB__NodeBB-397835a05a8e2897324e566b41c5e616e172b4af-v89631a1cdb318276acb48860c5d78077211397c6",
+      "repo": "NodeBB/NodeBB",
+      "languageFamily": "js-ts",
+      "sourceFileCount": 3,
+      "publicProblemTitle": "\"## Title: \\n\\nList operations do not support removing multiple distinct elements in a single call \\n\\n#### Description: \\n\\nCurrently, the "
+    },
+    {
+      "row": 8,
+      "instanceId": "instance_NodeBB__NodeBB-f9ce92df988db7c1ae55d9ef96d247d27478bc70-vf2cf3cbd463b7ad942381f1c6d077626485a1e9e",
+      "repo": "NodeBB/NodeBB",
+      "languageFamily": "js-ts",
+      "sourceFileCount": 1,
+      "publicProblemTitle": "\"# Title\\n\\nFile upload fails to validate target directory existence\\n\\n## Problem Description\\n\\nThe admin file upload endpoint accepts fil"
+    },
+    {
+      "row": 9,
+      "instanceId": "instance_element-hq__element-web-5e8488c2838ff4268f39db4a8cca7d74eecf5a7e-vnan",
+      "repo": "element-hq/element-web",
+      "languageFamily": "js-ts",
+      "sourceFileCount": 1,
+      "publicProblemTitle": "## Title: Unverified device notifications not consistent for existing vs. new sessions #### Description: Notifications about unverified sess"
+    },
+    {
+      "row": 10,
+      "instanceId": "instance_element-hq__element-web-41dfec20bfe9b62cddbbbf621bef2e9aa9685157-vnan",
+      "repo": "element-hq/element-web",
+      "languageFamily": "js-ts",
+      "sourceFileCount": 2,
+      "publicProblemTitle": "# Discovery omits delegated authentication metadata advertised under m.authentication. ## Description During homeserver discovery, the app b"
+    }
+  ]
+}

@@ -3,6 +3,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import { buildSessionWorkingSet } from "../src/ledger/workingSet.js";
+import { formatShrunkPrimeContext, officialGuardrailVariantFor } from "../src/prime/formatPrime.js";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
 import type { SessionLedgerEvent } from "../src/types.js";
 import { estimateTokens } from "../src/utils/tokens.js";
@@ -216,11 +217,801 @@ describe("KairnRuntime", () => {
     expect(prime.content).toContain("# Kairn Fix Guardrail");
     expect(prime.content).toContain("Task:");
     expect(prime.content).toContain("src/PosthogAnalytics.ts");
+    expect(prime.content).toContain("Edit only: src/PosthogAnalytics.ts");
+    expect(prime.content).toContain("Boundary: do not edit tests");
+    expect(prime.content).toContain("Verify read-only: test/PosthogAnalytics-test.ts");
+    expect(prime.content).toContain("report the missing evidence");
+    expect(prime.content).not.toContain("Session:");
+    expect(prime.content).not.toContain("Invariant to preserve:");
+    expect(prime.content).not.toContain("Edit scope:");
     expect(prime.content).not.toContain("Focused context:");
     expect(prime.content).not.toContain("Additional detail Additional detail");
-    expect(estimateTokens(prime.content)).toBeLessThan(320);
+    expect(prime.metadata?.guardrailVariant).toBe("compact_official");
+    expect(prime.metadata?.guardrailDirectiveStyle).toBe("scope_guardrail");
+    expect(prime.metadata?.guardrailStrictOfficialScope).toBe(true);
+    expect(prime.metadata?.deliveryTrace).toMatchObject({
+      requiredSurface: "single_file",
+      directiveStyle: "scope_guardrail",
+      guardrailVariant: "compact_official",
+      emittedFileCount: 1,
+      editScopeSource: "exact_source",
+      sizingReason: "official compact official"
+    });
+    expect((prime.metadata?.deliveryTrace as { estimatedDirectiveTokens?: number } | undefined)?.estimatedDirectiveTokens).toBeGreaterThan(0);
+    expect((prime.metadata?.deliveryTrace as { estimatedSourceContextTokens?: number } | undefined)?.estimatedSourceContextTokens).toBeGreaterThanOrEqual(0);
+    expect(estimateTokens(prime.content)).toBeLessThan(190);
 
     runtime.close();
+  });
+
+  it("does not auto-suppress cheap exact-source official patch guardrails", async () => {
+    const root = createFixtureRepo();
+    fs.mkdirSync(path.join(root, "openlibrary/core"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "openlibrary/core/vendors.py"),
+      [
+        "def serialize(product):",
+        "    metadata = {}",
+        "    return metadata",
+        "",
+        "def clean_amazon_metadata_for_load(metadata):",
+        "    accepted = ['title', 'authors']",
+        "    return {key: value for key, value in metadata.items() if key in accepted}",
+        ""
+      ].join("\n")
+    );
+    fs.mkdirSync(path.join(root, "openlibrary/tests/core"), { recursive: true });
+    fs.writeFileSync(path.join(root, "openlibrary/tests/core/test_vendors.py"), "def test_vendors(): pass\n");
+    const runtime = new KairnRuntime(root);
+
+    const prime = await runtime.primeContext({
+      task: [
+        "## Amazon imports are missing language metadata from editions",
+        "",
+        "Requirements:",
+        "- The function `serialize(product)` in `openlibrary/core/vendors.py` must include a key \"languages\" in its output when Amazon metadata provides language information.",
+        "- The function `clean_amazon_metadata_for_load(metadata)` must preserve the \"languages\" field by including it in the list of accepted metadata keys.",
+        "",
+        "Selected tests from SWE-Bench Pro metadata: openlibrary/tests/core/sample_amazon_record.py, openlibrary/tests/core/test_vendors.py",
+        "",
+        "Fix the issue in production source. Do not edit unrelated files. Avoid broad scans once the relevant source surface is known."
+      ].join("\n"),
+      budget: 900,
+      source: "codex"
+    });
+
+    expect(prime.contextDecision?.taskFrame).toBe("official_patch");
+    expect(prime.contextDecision?.action).toBe("shrink");
+    expect(prime.contextDecision?.directiveStyle).toBe("scope_guardrail");
+    expect(prime.files).toEqual(["openlibrary/core/vendors.py"]);
+    expect(prime.content).toContain("openlibrary/core/vendors.py");
+    expect(prime.content).toContain("Edit only: openlibrary/core/vendors.py");
+    expect(prime.content).toContain("Boundary: do not edit tests");
+    expect(prime.content).toContain("Verify read-only:");
+    expect(prime.content).toContain("openlibrary/tests/core/test_vendors.py");
+    expect(prime.content).not.toContain("Session:");
+    expect(prime.content).not.toContain("Invariant to preserve:");
+    expect(prime.content).not.toContain("Edit scope:");
+    expect(prime.content).not.toContain("Focused context:");
+    expect(prime.metadata?.guardrailVariant).toBe("compact_official");
+    expect(prime.metadata?.deliveryTrace).toMatchObject({
+      requiredSurface: "single_file",
+      guardrailVariant: "compact_official",
+      emittedFileRoleSummary: { production_source: 1 }
+    });
+    expect(estimateTokens(prime.content)).toBeLessThan(190);
+
+    runtime.close();
+  });
+
+  it("keeps normal codex official prompts multi-file when the prompt implies multiple production surfaces", async () => {
+    const root = fs.mkdtempSync(path.join(process.cwd(), ".tmp-kairn-runtime-"));
+    fs.mkdirSync(path.join(root, "lib/ansible/plugins/lookup"), { recursive: true });
+    fs.mkdirSync(path.join(root, "lib/ansible/utils"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test/units/plugins/lookup"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test/units/utils"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "lib/ansible/plugins/lookup/password.py"),
+      [
+        "def lookup_password(path, chars, encrypt=None, salt=None, ident=None):",
+        "    stored = read_password_file(path)",
+        "    if stored:",
+        "        return stored",
+        "    password = generate_password(chars)",
+        "    return password",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(root, "lib/ansible/utils/encrypt.py"),
+      [
+        "def encrypt_secret(secret, salt=None, ident=None):",
+        "    return f'{ident}:{salt}:{secret}'",
+        "",
+        "def validate_salt_ident(salt, ident):",
+        "    return bool(salt and ident)",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(path.join(root, "test/units/plugins/lookup/test_password.py"), "def test_password_lookup(): pass\n");
+    fs.writeFileSync(path.join(root, "test/units/utils/test_encrypt.py"), "def test_encrypt_secret(): pass\n");
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "Title: password lookup should preserve encrypted stored passwords.",
+          "",
+          "Requirements:",
+          "- Reuse the existing password file when it is present and readable.",
+          "- Generate a password when no stored value exists.",
+          "- Encrypt the generated password with the requested salt and ident.",
+          "- Write the stored value atomically and keep error messages clear.",
+          "",
+          "Selected tests from SWE-Bench Pro metadata: test/units/plugins/lookup/test_password.py, test/units/utils/test_encrypt.py",
+          "Fix the issue in production source. Do not edit unrelated files."
+        ].join("\n"),
+        budget: 1200,
+        source: "codex"
+      });
+
+      expect(prime.contextDecision?.taskFrame).toBe("official_patch");
+      expect(prime.contextDecision?.recommendedDelivery).toBe("multi_file_directive");
+      expect(prime.files).toEqual(
+        expect.arrayContaining([
+          "lib/ansible/plugins/lookup/password.py",
+          "lib/ansible/utils/encrypt.py"
+        ])
+      );
+      expect(prime.metadata?.guardrailVariant).not.toBe("compact_official");
+      expect(prime.content).toContain("lib/ansible/plugins/lookup/password.py");
+      expect(prime.content).toContain("lib/ansible/utils/encrypt.py");
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("reports official guardrail variants without formatting the body", () => {
+    const editScope = {
+      initialEditFiles: ["lib/ansible/vars/manager.py", "lib/ansible/utils/vars.py"],
+      readOnlyFiles: ["test/units/vars/test_manager.py"],
+      allowedExpansionTriggers: ["only if a focused failure names another production file"],
+      forbiddenEditPatterns: ["tests/**", "docs/**"],
+      scopeConfidence: "high" as const,
+      scopeSource: "official_harness" as const,
+      reason: "official metadata supplied production scope",
+      strictBoundary: true,
+      dynamic: true as const
+    };
+
+    expect(officialGuardrailVariantFor({
+      task: "TypeError combining VarsWithSources and dict in combine_vars.",
+      files: ["lib/ansible/vars/manager.py", "lib/ansible/utils/vars.py"],
+      editScope,
+      invariants: [
+        {
+          file: "lib/ansible/vars/manager.py",
+          statement: "Preserve dict-like behavior when combining VarsWithSources with normal dict values.",
+          confidence: 0.85,
+          source: "heuristic"
+        }
+      ]
+    })).toBe("semantic_official");
+
+    expect(officialGuardrailVariantFor({
+      task: "Undefined template variable should raise a clear undefined-variable error.",
+      files: ["lib/ansible/parsing/yaml/dumper.py", "lib/ansible/plugins/filter/core.py"],
+      editScope: {
+        ...editScope,
+        initialEditFiles: ["lib/ansible/parsing/yaml/dumper.py", "lib/ansible/plugins/filter/core.py"],
+        readOnlyFiles: ["test/units/plugins/filter/test_core.py"]
+      },
+      invariants: [
+        {
+          file: "lib/ansible/plugins/filter/core.py",
+          statement: "Preserve clear undefined-variable errors for template filters.",
+          confidence: 0.85,
+          source: "heuristic"
+        }
+      ]
+    })).toBe("compact_official");
+  });
+
+  it("keeps semantic guardrail detail for multi-file official patch scope", () => {
+    const content = formatShrunkPrimeContext({
+      task: [
+        "## Title",
+        "",
+        "TypeError combining `VarsWithSources` and `dict` in `combine_vars`.",
+        "Fix the issue in production source. Do not edit unrelated files."
+      ].join("\n"),
+      sessionId: "task_semantic_guardrail",
+      profile: "generic",
+      quality: {
+        score: 64,
+        action: "shrink",
+        reasons: [],
+        topScore: 400,
+        topGap: 180,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      context: {
+        mode: "snippets",
+        content: "",
+        files: ["lib/ansible/vars/manager.py", "lib/ansible/utils/vars.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["lib/ansible/vars/manager.py", "lib/ansible/utils/vars.py"],
+        rankedFiles: [],
+        tokenEstimate: 0
+      },
+      files: ["lib/ansible/vars/manager.py", "lib/ansible/utils/vars.py"],
+      budget: 900,
+      minimal: true,
+      invariants: [
+        {
+          file: "lib/ansible/vars/manager.py",
+          statement: "Preserve dict-like behavior when combining VarsWithSources with normal dict values.",
+          evidence: "Official patch task describes unsupported operand behavior.",
+          confidence: 0.85,
+          source: "heuristic"
+        }
+      ],
+      editScope: {
+        initialEditFiles: ["lib/ansible/vars/manager.py", "lib/ansible/utils/vars.py"],
+        readOnlyFiles: ["test/units/vars/test_manager.py"],
+        allowedExpansionTriggers: ["only if a focused failure names another production file"],
+        forbiddenEditPatterns: ["tests/**", "docs/**"],
+        scopeConfidence: "high",
+        scopeSource: "official_harness",
+        reason: "official metadata supplied production scope",
+        strictBoundary: true,
+        dynamic: true
+      }
+    });
+
+    expect(content).toContain("Edit only: lib/ansible/vars/manager.py, lib/ansible/utils/vars.py");
+    expect(content).toContain("Preserve:");
+    expect(content).toContain("VarsWithSources");
+    expect(content).toContain("Verify read-only: test/units/vars/test_manager.py");
+    expect(content).not.toContain("Session:");
+    expect(content).not.toContain("Focused context:");
+    expect(estimateTokens(content)).toBeLessThan(280);
+  });
+
+  it("uses a compact lifecycle policy guardrail for deprecation-date official patch scope", () => {
+    const editScope = {
+      initialEditFiles: [
+        "lib/ansible/module_utils/common/parameters.py",
+        "lib/ansible/module_utils/basic.py",
+        "lib/ansible/module_utils/common/warnings.py",
+        "lib/ansible/module_utils/csharp/Ansible.Basic.cs",
+        "lib/ansible/utils/display.py"
+      ],
+      readOnlyFiles: [
+        "lib/ansible/module_utils/facts/system/date_time.py",
+        "test/lib/ansible_test/_internal/sanity/validate_modules.py"
+      ],
+      allowedExpansionTriggers: ["only if a focused failure names another production file"],
+      forbiddenEditPatterns: ["tests/**", "docs/**"],
+      scopeConfidence: "high" as const,
+      scopeSource: "official_harness" as const,
+      reason: "official metadata supplied production scope",
+      strictBoundary: true,
+      dynamic: true as const
+    };
+    const task = [
+      "Support deprecation by date in modules.",
+      "Deprecated aliases should validate version or date and display warnings.",
+      "Internal errors should mention removed_in_version and removed_at_date.",
+      "Fix the issue in production source only."
+    ].join(" ");
+
+    expect(officialGuardrailVariantFor({
+      task,
+      files: editScope.initialEditFiles,
+      editScope,
+      invariants: [
+        {
+          file: "lib/ansible/module_utils/common/parameters.py",
+          statement: "Preserve existing version deprecation behavior while adding removed-at-date support.",
+          confidence: 0.85,
+          source: "heuristic"
+        }
+      ]
+    })).toBe("lifecycle_policy_compact");
+
+    const content = formatShrunkPrimeContext({
+      task,
+      sessionId: "task_lifecycle_guardrail",
+      profile: "generic",
+      quality: {
+        score: 68,
+        action: "shrink",
+        reasons: [],
+        topScore: 600,
+        topGap: 70,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      context: {
+        mode: "snippets",
+        content: "",
+        files: editScope.initialEditFiles,
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: editScope.initialEditFiles,
+        rankedFiles: [],
+        tokenEstimate: 0
+      },
+      files: editScope.initialEditFiles,
+      budget: 900,
+      minimal: true,
+      invariants: [
+        {
+          file: "lib/ansible/module_utils/common/parameters.py",
+          statement: "Preserve existing version deprecation behavior while adding removed-at-date support.",
+          confidence: 0.85,
+          source: "heuristic"
+        }
+      ],
+      editScope
+    });
+
+    expect(content).toContain("# Kairn Policy Scope");
+    expect(content).toContain("policy/source surfaces only");
+    expect(content).toContain("lib/ansible/module_utils/common/parameters.py");
+    expect(content).toContain("lib/ansible/module_utils/common/warnings.py");
+    expect(content).not.toContain("lib/ansible/module_utils/facts/system/date_time.py");
+    expect(content).not.toContain("Focused context:");
+    expect(estimateTokens(content)).toBeLessThan(230);
+  });
+
+  it("uses a compact frontend owner map and filters style/test/variant files", () => {
+    const task = [
+      "Voice broadcast liveness icon provides inconsistent feedback.",
+      "Add an optional grey prop to LiveBadge.",
+      "Expose liveness in the playback hook and model.",
+      "Fix the issue in production source only."
+    ].join(" ");
+    const editScope = {
+      initialEditFiles: [
+        "src/voice-broadcast/components/atoms/LiveBadge.tsx",
+        "src/voice-broadcast/components/atoms/VoiceBroadcastHeader.tsx",
+        "src/voice-broadcast/components/molecules/VoiceBroadcastPlaybackBody.tsx",
+        "src/voice-broadcast/components/molecules/VoiceBroadcastRecordingBody.tsx",
+        "src/voice-broadcast/components/molecules/VoiceBroadcastRecordingPip.tsx",
+        "src/voice-broadcast/components/molecules/VoiceBroadcastPreRecordingPip.tsx",
+        "src/voice-broadcast/hooks/useVoiceBroadcastPlayback.ts",
+        "src/voice-broadcast/index.ts",
+        "src/voice-broadcast/models/VoiceBroadcastPlayback.ts",
+        "src/voice-broadcast/utils/VoiceBroadcastChunkEvents.ts",
+        "res/css/voice-broadcast/atoms/_LiveBadge.pcss"
+      ],
+      readOnlyFiles: ["test/voice-broadcast/components/atoms/LiveBadge-test.tsx"],
+      allowedExpansionTriggers: ["only if a focused failure names another production file"],
+      forbiddenEditPatterns: ["tests/**", "res/css/"],
+      scopeConfidence: "high" as const,
+      scopeSource: "official_harness" as const,
+      reason: "official metadata supplied production scope",
+      strictBoundary: true,
+      dynamic: true as const
+    };
+    const content = formatShrunkPrimeContext({
+      task,
+      sessionId: "task_frontend_owner_map",
+      profile: "generic",
+      quality: {
+        score: 70,
+        action: "shrink",
+        reasons: [],
+        topScore: 600,
+        topGap: 40,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      context: {
+        mode: "snippets",
+        content: "",
+        files: editScope.initialEditFiles,
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: editScope.initialEditFiles,
+        rankedFiles: [],
+        tokenEstimate: 0
+      },
+      files: editScope.initialEditFiles,
+      budget: 900,
+      minimal: true,
+      editScope
+    });
+
+    expect(content).toContain("# Kairn Owner Map");
+    expect(content).toContain("src/voice-broadcast/components/atoms/LiveBadge.tsx");
+    expect(content).toContain("src/voice-broadcast/hooks/useVoiceBroadcastPlayback.ts");
+    expect(content).toContain("src/voice-broadcast/models/VoiceBroadcastPlayback.ts");
+    expect(content).not.toContain("VoiceBroadcastPreRecordingPip");
+    expect(content).not.toContain("_LiveBadge.pcss");
+    expect(content).not.toContain("Focused context:");
+    expect(estimateTokens(content)).toBeLessThan(260);
+  });
+
+  it("keeps multiple visible UI surfaces in broad feedback guardrails", () => {
+    const files = [
+      "src/voice-broadcast/components/atoms/LiveBadge.tsx",
+      "src/voice-broadcast/components/atoms/VoiceBroadcastHeader.tsx",
+      "src/voice-broadcast/components/molecules/VoiceBroadcastPlaybackBody.tsx",
+      "src/voice-broadcast/components/molecules/VoiceBroadcastRecordingBody.tsx",
+      "src/voice-broadcast/components/molecules/VoiceBroadcastRecordingPip.tsx"
+    ];
+    const content = formatShrunkPrimeContext({
+      task: "Fix voice broadcast liveness icon inconsistent feedback while recording and playback are active.",
+      sessionId: "task_ui_multi_surface",
+      profile: "generic",
+      quality: {
+        score: 68,
+        action: "shrink",
+        reasons: [],
+        topScore: 500,
+        topGap: 40,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      context: {
+        mode: "snippets",
+        content: "",
+        files,
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: files,
+        rankedFiles: [],
+        tokenEstimate: 0
+      },
+      files,
+      budget: 900
+    });
+
+    expect(content).toContain("src/voice-broadcast/components/atoms/LiveBadge.tsx");
+    expect(content).toContain("src/voice-broadcast/components/atoms/VoiceBroadcastHeader.tsx");
+    expect(content).toContain("src/voice-broadcast/components/molecules/VoiceBroadcastRecordingBody.tsx");
+    expect(content).toContain("src/voice-broadcast/components/molecules/VoiceBroadcastRecordingPip.tsx");
+    expect(content).not.toContain("Focused context:");
+  });
+
+  it("allows compact guardrails for trivial two-file official patch scope", () => {
+    const content = formatShrunkPrimeContext({
+      task: [
+        "Undefined template variable should raise a clear undefined-variable error.",
+        "Fix the issue in production source. Do not edit unrelated files."
+      ].join("\n"),
+      sessionId: "task_compact_two_file_guardrail",
+      profile: "generic",
+      quality: {
+        score: 64,
+        action: "shrink",
+        reasons: [],
+        topScore: 400,
+        topGap: 180,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      context: {
+        mode: "snippets",
+        content: "",
+        files: ["lib/ansible/parsing/yaml/dumper.py", "lib/ansible/plugins/filter/core.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["lib/ansible/parsing/yaml/dumper.py", "lib/ansible/plugins/filter/core.py"],
+        rankedFiles: [],
+        tokenEstimate: 0
+      },
+      files: ["lib/ansible/parsing/yaml/dumper.py", "lib/ansible/plugins/filter/core.py"],
+      budget: 900,
+      minimal: true,
+      invariants: [
+        {
+          file: "lib/ansible/plugins/filter/core.py",
+          statement: "Preserve clear undefined-variable errors for template filters.",
+          evidence: "Official patch task describes unclear undefined-variable behavior.",
+          confidence: 0.85,
+          source: "heuristic"
+        }
+      ],
+      editScope: {
+        initialEditFiles: ["lib/ansible/parsing/yaml/dumper.py", "lib/ansible/plugins/filter/core.py"],
+        readOnlyFiles: ["test/units/plugins/filter/test_core.py"],
+        allowedExpansionTriggers: ["only if a focused failure names another production file"],
+        forbiddenEditPatterns: ["tests/**", "docs/**"],
+        scopeConfidence: "high",
+        scopeSource: "official_harness",
+        reason: "official metadata supplied production scope",
+        strictBoundary: true,
+        dynamic: true
+      }
+    });
+
+    expect(content).toContain("Edit only: lib/ansible/parsing/yaml/dumper.py, lib/ansible/plugins/filter/core.py");
+    expect(content).toContain("Boundary: do not edit tests");
+    expect(content).not.toContain("Preserve:");
+    expect(content).not.toContain("Session:");
+    expect(content).not.toContain("Focused context:");
+    expect(estimateTokens(content)).toBeLessThan(190);
+  });
+
+  it("keeps request-body reconstruction semantics in compact form guardrails", () => {
+    const content = formatShrunkPrimeContext({
+      task: [
+        "/lists/add returns 500 when POST body data conflicts with query parameters.",
+        "Requirements:",
+        "- When body data is present, prefer the body exclusively; the query string must not be merged.",
+        "- Defaults may only fill keys that are absent and not ancestors of nested/indexed keys.",
+        "- During reconstruction, later assignments to the same simple key must win.",
+        "Selected tests from SWE-Bench Pro metadata: openlibrary/plugins/openlibrary/tests/test_lists.py"
+      ].join("\n"),
+      sessionId: "task_form_reconstruction_guardrail",
+      profile: "generic",
+      quality: {
+        score: 74,
+        action: "shrink",
+        reasons: [],
+        topScore: 500,
+        topGap: 80,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      context: {
+        mode: "snippets",
+        content: "",
+        files: ["openlibrary/plugins/openlibrary/lists.py", "openlibrary/plugins/upstream/utils.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["openlibrary/plugins/openlibrary/lists.py", "openlibrary/plugins/upstream/utils.py"],
+        rankedFiles: [],
+        tokenEstimate: 0
+      },
+      files: ["openlibrary/plugins/openlibrary/lists.py", "openlibrary/plugins/upstream/utils.py"],
+      budget: 900,
+      minimal: true,
+      invariants: [
+        {
+          file: "openlibrary/plugins/upstream/utils.py",
+          statement: "Request-body reconstruction must use body data without merging query parameters, preserve ordered key/value pairs through unflattening, skip ancestor defaults for nested keys, and let later duplicate simple keys win.",
+          confidence: 88,
+          source: "heuristic"
+        }
+      ],
+      editScope: {
+        initialEditFiles: ["openlibrary/plugins/openlibrary/lists.py", "openlibrary/plugins/upstream/utils.py"],
+        readOnlyFiles: ["openlibrary/plugins/openlibrary/tests/test_lists.py"],
+        allowedExpansionTriggers: ["only if a focused failure names another production file"],
+        forbiddenEditPatterns: ["tests/**", "docs/**"],
+        scopeConfidence: "medium",
+        scopeSource: "multi_file_debug",
+        reason: "request-body reconstruction spans route and unflatten helper",
+        strictBoundary: true,
+        dynamic: true
+      }
+    });
+
+    expect(content).toContain("# Kairn Request Scope");
+    expect(content).toContain("ordered pairs");
+    expect(content).toContain("do not coerce the body into an unordered dict/storage first");
+    expect(content).toContain("body data wins over query");
+    expect(content).not.toContain("Focused context:");
+    expect(estimateTokens(content)).toBeLessThan(300);
+  });
+
+  it("keeps package source mapping semantics in compact package guardrails", () => {
+    const content = formatShrunkPrimeContext({
+      task: [
+        "Alpine Linux vulnerability detection incorrectly handles source vs binary packages.",
+        "Requirements:",
+        "- OVAL vulnerability detection logic should identify source packages and assess vulnerabilities accordingly.",
+        "- Alpine scanner should parse apk list output to extract binary details and source package names.",
+        "- Alpine scanner should parse package index mapping between binary and source packages.",
+        "- Alpine scanner should parse upgradable package information using apk list --upgradable."
+      ].join("\n"),
+      sessionId: "task_package_source_mapping_guardrail",
+      profile: "generic",
+      quality: {
+        score: 74,
+        action: "shrink",
+        reasons: [],
+        topScore: 500,
+        topGap: 80,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      context: {
+        mode: "snippets",
+        content: "",
+        files: ["scanner/alpine.go", "oval/util.go", "scanner/scanner.go"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["scanner/alpine.go", "oval/util.go", "scanner/scanner.go"],
+        rankedFiles: [],
+        tokenEstimate: 0
+      },
+      files: ["scanner/alpine.go", "oval/util.go", "scanner/scanner.go"],
+      budget: 900,
+      minimal: true,
+      invariants: [
+        {
+          file: "oval/util.go",
+          statement: "Package scanning must preserve binary package identity while recording source-package associations, and vulnerability matching must assess source packages when binaries derive from them.",
+          confidence: 88,
+          source: "heuristic"
+        }
+      ],
+      editScope: {
+        initialEditFiles: ["scanner/alpine.go", "oval/util.go", "scanner/scanner.go"],
+        readOnlyFiles: ["scanner/alpine_test.go", "oval/util_test.go"],
+        allowedExpansionTriggers: ["only if a focused failure names another production file"],
+        forbiddenEditPatterns: ["tests/**", "docs/**"],
+        scopeConfidence: "medium",
+        scopeSource: "multi_file_debug",
+        reason: "package source mapping spans scanner and OVAL matcher surfaces",
+        strictBoundary: true,
+        dynamic: true
+      }
+    });
+
+    expect(content).toContain("# Kairn Package Scope");
+    expect(content).toContain("scanner/alpine.go");
+    expect(content).toContain("oval/util.go");
+    expect(content).toContain("scanner/scanner.go");
+    expect(content).toContain("source-package associations");
+    expect(content).toContain("OVAL/vulnerability checks");
+    expect(content).not.toContain("Focused context:");
+    expect(estimateTokens(content)).toBeLessThan(320);
+  });
+
+  it("routes web session renewal tasks to web/auth session surfaces instead of constants", async () => {
+    const root = fs.mkdtempSync(path.join(process.cwd(), ".tmp-kairn-runtime-"));
+    fs.mkdirSync(path.join(root, "lib/web"), { recursive: true });
+    fs.mkdirSync(path.join(root, "lib/auth"), { recursive: true });
+    fs.mkdirSync(path.join(root, "api/types"), { recursive: true });
+    fs.writeFileSync(path.join(root, "lib/web/sessions.go"), "type WebSessionReq struct { PrevSessionID string }\nfunc renewWebSession() {}\n");
+    fs.writeFileSync(path.join(root, "lib/web/apiserver.go"), "func webSessionHandler() { renewWebSession() }\n");
+    fs.writeFileSync(path.join(root, "lib/auth/apiserver.go"), "func ReloadUser() {}\n");
+    fs.writeFileSync(path.join(root, "lib/auth/auth.go"), "func issueCertificatesForRoles() {}\n");
+    fs.writeFileSync(path.join(root, "api/types/constants.go"), "const SessionRenewalDefault = true\n");
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "Fix web session renewal after user traits update.",
+          "Renewing a WebSessionReq with PrevSessionID must reload the user record from the backend.",
+          "The renewed session should preserve Switchback, active access requests, certificate roles, allowed resources, login time, and expiry.",
+          "Patch production source only."
+        ].join("\n"),
+        budget: 1200
+      });
+
+      expect(prime.contextDecision?.recommendedDelivery).toBe("multi_file_directive");
+      expect(prime.files).toEqual(
+        expect.arrayContaining([
+          "lib/web/sessions.go",
+          "lib/web/apiserver.go",
+          "lib/auth/apiserver.go",
+          "lib/auth/auth.go"
+        ])
+      );
+      expect(prime.files).not.toContain("api/types/constants.go");
+      expect(prime.content).not.toContain("# Kairn Request Scope");
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps exact prompt-mentioned Solr source paths together", async () => {
+    const root = fs.mkdtempSync(path.join(process.cwd(), ".tmp-kairn-runtime-"));
+    fs.mkdirSync(path.join(root, "openlibrary/solr"), { recursive: true });
+    fs.mkdirSync(path.join(root, "scripts/solr_builder/solr_builder"), { recursive: true });
+    fs.mkdirSync(path.join(root, "openlibrary/components/LibraryExplorer"), { recursive: true });
+    fs.writeFileSync(path.join(root, "openlibrary/solr/update_work.py"), "def update_work():\n    pass\n");
+    fs.writeFileSync(path.join(root, "openlibrary/solr/update_edition.py"), "def update_edition():\n    pass\n");
+    fs.writeFileSync(path.join(root, "openlibrary/solr/utils.py"), "def solr_field(value):\n    return value\n");
+    fs.writeFileSync(path.join(root, "scripts/solr_builder/solr_builder/index_subjects.py"), "def index_subjects():\n    pass\n");
+    fs.writeFileSync(path.join(root, "openlibrary/components/LibraryExplorer/utils.js"), "export function clientOnlyExplorerUtility() {}\n");
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "Refactor shared Solr utility logic across these production files:",
+          "openlibrary/solr/update_work.py",
+          "openlibrary/solr/update_edition.py",
+          "openlibrary/solr/utils.py",
+          "scripts/solr_builder/solr_builder/index_subjects.py",
+          "Keep the existing behavior and do not edit frontend utilities."
+        ].join("\n"),
+        budget: 1200
+      });
+
+      expect(prime.contextDecision?.recommendedDelivery).toBe("multi_file_directive");
+      expect(prime.files).toEqual(
+        expect.arrayContaining([
+          "openlibrary/solr/update_work.py",
+          "openlibrary/solr/update_edition.py",
+          "openlibrary/solr/utils.py",
+          "scripts/solr_builder/solr_builder/index_subjects.py"
+        ])
+      );
+      expect(prime.files).not.toContain("openlibrary/components/LibraryExplorer/utils.js");
+      expect(prime.editScope?.initialEditFiles).toEqual(
+        expect.arrayContaining([
+          "openlibrary/solr/update_work.py",
+          "openlibrary/solr/update_edition.py",
+          "openlibrary/solr/utils.py",
+          "scripts/solr_builder/solr_builder/index_subjects.py"
+        ])
+      );
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps datastore backend parity scopes required and drops unrelated same-name client files", async () => {
+    const root = fs.mkdtempSync(path.join(process.cwd(), ".tmp-kairn-runtime-"));
+    fs.mkdirSync(path.join(root, "src/database/mongo"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src/database/postgres"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src/database/redis"), { recursive: true });
+    fs.mkdirSync(path.join(root, "public/src/client/flags"), { recursive: true });
+    fs.writeFileSync(path.join(root, "src/database/mongo/list.js"), "exports.listRemove = async function(list, value) { return list.pull(value); };\n");
+    fs.writeFileSync(path.join(root, "src/database/postgres/list.js"), "exports.listRemove = async function(list, value) { return list.remove(value); };\n");
+    fs.writeFileSync(path.join(root, "src/database/redis/list.js"), "exports.listRemove = async function(list, value) { return list.srem(value); };\n");
+    fs.writeFileSync(path.join(root, "public/src/client/flags/list.js"), "export function flagList() {}\n");
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "Fix listRemove so it can remove multiple distinct values from a list in one call.",
+          "Apply the same behavior across the Mongo, Postgres, and Redis database backends.",
+          "Selected verification tests from SWE Bench Pro metadata: test/database/list.js.",
+          "Patch production source only and do not edit frontend files."
+        ].join("\n"),
+        budget: 1200,
+        source: "codex"
+      });
+
+      expect(prime.contextDecision?.taskShapeSignal).toBe("backend_parity");
+      expect(prime.contextDecision?.recommendedDelivery).toBe("multi_file_directive");
+      expect(prime.files).toHaveLength(3);
+      expect(prime.files).toEqual(
+        expect.arrayContaining([
+          "src/database/mongo/list.js",
+          "src/database/postgres/list.js",
+          "src/database/redis/list.js"
+        ])
+      );
+      expect(prime.files).not.toContain("public/src/client/flags/list.js");
+      expect(prime.content).toContain("Required backend edits:");
+      expect(prime.content).toContain("patch every listed backend");
+      expect(prime.editScope?.initialEditFiles).toEqual(
+        expect.arrayContaining([
+          "src/database/mongo/list.js",
+          "src/database/postgres/list.js",
+          "src/database/redis/list.js"
+        ])
+      );
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("allows a three-file directive when selected failing tests imply three production counterparts", async () => {

@@ -90,6 +90,20 @@ export type TaskFrame =
   | "official_patch"
   | "qna_source_grounded";
 
+export type TaskShapeSignal =
+  | "command_contract"
+  | "lifecycle_policy"
+  | "package_source_mapping"
+  | "backend_parity"
+  | "frontend_ownership"
+  | "ambiguous_frontend_ownership";
+
+export type RequiredSurface =
+  | "single_file"
+  | "paired_contract"
+  | "feature_cluster"
+  | "evidence_needed";
+
 export type FileRoleV2 =
   | "production_source"
   | "test"
@@ -131,6 +145,8 @@ export type ContextGovernorModelPrediction = {
 
 export type ContextGovernorFeatureSummary = {
   taskFrame: TaskFrame;
+  taskShapeSignal?: TaskShapeSignal;
+  requiredSurface: RequiredSurface;
   candidateCount: number;
   fileRoleCounts: Partial<Record<FileRoleV2, number>>;
   repoLanguageMix: Record<string, number>;
@@ -179,6 +195,8 @@ export type ContextValueDecision = {
   easyTaskSignal: boolean;
   wrongContextRisk?: boolean;
   taskFrame?: TaskFrame;
+  taskShapeSignal?: TaskShapeSignal;
+  requiredSurface?: RequiredSurface;
   evidenceRequest?: EvidenceRequest;
   modelPrediction?: ContextGovernorModelPrediction;
   featureSummary?: ContextGovernorFeatureSummary;

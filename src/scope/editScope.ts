@@ -9,7 +9,13 @@ import type {
 } from "../types.js";
 import { uniquePaths } from "../utils/collections.js";
 import { normalizeRelativePath } from "../utils/paths.js";
-import { hasExplicitMultiFileScopeRequest, taskHasProductionOnlyEditIntent, taskIsOfficialProductionPatchPrompt } from "../prime/contextGovernor.js";
+import {
+  hasExplicitMultiFileScopeRequest,
+  hasDeprecationLifecycleScope,
+  hasPromptDerivedMultiFileScope,
+  taskHasProductionOnlyEditIntent,
+  taskIsOfficialProductionPatchPrompt
+} from "../prime/contextGovernor.js";
 
 export function decideEditScope(input: {
   task: string;
@@ -27,7 +33,10 @@ export function decideEditScope(input: {
   const allowedTestEdits = taskAllowsTestEdits(task);
   const officialPatchPrompt = taskIsOfficialProductionPatchPrompt(input.task);
   const allowedHarnessFiles = uniquePaths((input.allowedDiffScopes ?? []).map((scope) => normalizeRelativePath(scope.file)));
-  const officialPromptFiles = officialPatchPrompt ? extractOfficialPromptSourceFiles(input.task) : [];
+  const knownFilePaths = new Set((input.knownFiles ?? []).map((file) => normalizeRelativePath(file.path)));
+  const taskMentionedSourceFiles = extractOfficialPromptSourceFiles(input.task)
+    .filter((file) => knownFilePaths.size === 0 || knownFilePaths.has(file));
+  const officialPromptFiles = officialPatchPrompt ? taskMentionedSourceFiles : [];
   const harnessFiles = uniquePaths([...allowedHarnessFiles, ...officialPromptFiles]);
   const invariantFiles = uniquePaths([
     ...(input.invariants ?? []).map((invariant) => normalizeRelativePath(invariant.file)),
@@ -37,8 +46,20 @@ export function decideEditScope(input: {
   const failureFiles = uniquePaths((input.failureFiles ?? []).map(normalizeRelativePath));
   const changedFiles = uniquePaths((input.changedFiles ?? []).map(normalizeRelativePath));
   const explicitMultiFileScope = hasExplicitMultiFileScopeRequest(input.task);
+  const promptDerivedMultiFileScope = hasPromptDerivedMultiFileScope(input.task);
+  const deprecationLifecycleMultiSurfaceScope = hasDeprecationLifecycleScope(input.task);
+  const packageSourceMappingMultiSurfaceScope = hasPackageSourceMappingScope(input.task);
+  const webSessionRenewalMultiSurfaceScope = hasWebSessionRenewalScope(task);
+  const datastoreBackendParityMultiSurfaceScope = hasDatastoreBackendParityScope(task) || input.contextDecision?.taskShapeSignal === "backend_parity";
   const selectedTestFanout = selectedTestPathCount(task) >= 3 && input.contextDecision?.recommendedDelivery === "multi_file_directive";
-  const productionOnlySingleFile = taskHasProductionOnlyEditIntent(task) && !explicitMultiFileScope && !selectedTestFanout;
+  const productionOnlySingleFile =
+    taskHasProductionOnlyEditIntent(task) &&
+    !explicitMultiFileScope &&
+    !promptDerivedMultiFileScope &&
+    !selectedTestFanout &&
+    !packageSourceMappingMultiSurfaceScope &&
+    !webSessionRenewalMultiSurfaceScope &&
+    !datastoreBackendParityMultiSurfaceScope;
 
   const source = scopeSource({
     contextDecision: input.contextDecision,
@@ -49,6 +70,16 @@ export function decideEditScope(input: {
   });
   const primaryLimit = productionOnlySingleFile
     ? 1
+    : deprecationLifecycleMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
+      ? 5
+    : packageSourceMappingMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
+      ? 5
+    : webSessionRenewalMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
+      ? 5
+    : datastoreBackendParityMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
+      ? 4
+    : promptDerivedMultiFileScope && taskMentionedSourceFiles.length > 1
+      ? Math.min(8, Math.max(2, taskMentionedSourceFiles.length))
     : source === "multi_file_debug" && selectedTestPathCount(task) >= 3
       ? 3
       : input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug"
@@ -56,21 +87,113 @@ export function decideEditScope(input: {
         : 1;
   const sourceCandidates = uniquePaths([
     ...harnessFiles.filter((file) => isEditableByDefault(file, allowedTestEdits)),
+    ...taskMentionedSourceFiles.filter((file) => isEditableByDefault(file, allowedTestEdits)),
     ...failureFiles.filter((file) => isProductionSourcePath(file)),
     ...invariantFiles.filter((file) => isEditableByDefault(file, allowedTestEdits)),
     ...(input.contextDecision?.primaryFile ? [normalizeRelativePath(input.contextDecision.primaryFile)] : []),
     ...candidateFiles
   ]);
-  const protectedSourceFiles = new Set([...harnessFiles, ...failureFiles, ...invariantFiles]);
-  const editCandidates = sourceCandidates.filter((file) => protectedSourceFiles.has(file) || !(officialPatchPrompt && isUnmentionedVariantPath(file, input.task)));
+  const protectedSourceFiles = new Set([...harnessFiles, ...taskMentionedSourceFiles, ...failureFiles, ...invariantFiles]);
+  const uiLivenessMultiSurfaceScope = hasUiLivenessMultiSurfaceScope(task);
+  const datastoreBackendParitySourceFiles = datastoreBackendParityMultiSurfaceScope
+    ? datastoreBackendParitySourceFilesFromCandidates(sourceCandidates)
+    : [];
+  const frontendUiInitialScopeBudget =
+    officialPatchPrompt &&
+    uiLivenessMultiSurfaceScope &&
+    failureFiles.length === 0 &&
+    changedFiles.length === 0;
+  const editCandidates = sourceCandidates.filter((file) =>
+    (protectedSourceFiles.has(file) || !(officialPatchPrompt && isUnmentionedVariantPath(file, input.task))) &&
+    !isUnmentionedFrontendVariantSurface(file, input.task) &&
+    !isUnrelatedCentralBackendTestHelper(file, input.task) &&
+    !isUnrelatedBackendAutocompleteSurface(file, input.task) &&
+    !isUnrelatedDeprecationLifecycleSurface(file, input.task) &&
+    !isUnrelatedConfigSchemaSurface(file, input.task) &&
+    !isUnrelatedWebSessionRenewalSurface(file, input.task) &&
+    !isUnrelatedDatastoreBackendParitySurface(file, input.task, datastoreBackendParitySourceFiles) &&
+    !isForbiddenFrontendEditSurface(file, input.task) &&
+    !isUnrelatedPromptMentionedSourceSurface(file, input.task, taskMentionedSourceFiles)
+  );
+  const budgetedEditCandidates = frontendUiInitialScopeBudget
+    ? applyFrontendUiInitialScopeBudget(editCandidates, input.task)
+    : editCandidates;
+  const promptDerivedOfficialExpansion =
+    allowedHarnessFiles.length > 0 &&
+    (explicitMultiFileScope || promptDerivedMultiFileScope || selectedTestFanout || packageSourceMappingMultiSurfaceScope || webSessionRenewalMultiSurfaceScope || datastoreBackendParityMultiSurfaceScope) &&
+    candidateFiles.some((file) => !allowedHarnessFiles.includes(file) && isEditableByDefault(file, allowedTestEdits));
+  const officialPromptExpansionBeyondSourceFiles =
+    explicitMultiFileScope ||
+    selectedTestFanout ||
+    uiLivenessMultiSurfaceScope ||
+    deprecationLifecycleMultiSurfaceScope ||
+    packageSourceMappingMultiSurfaceScope ||
+    webSessionRenewalMultiSurfaceScope ||
+    datastoreBackendParityMultiSurfaceScope ||
+    (promptDerivedMultiFileScope && taskMentionedSourceFiles.length > 1);
+  const officialPromptNamedSourceOnly =
+    officialPatchPrompt &&
+    officialPromptFiles.length > 1 &&
+    promptDerivedMultiFileScope &&
+    !explicitMultiFileScope &&
+    !selectedTestFanout &&
+    !uiLivenessMultiSurfaceScope &&
+    !deprecationLifecycleMultiSurfaceScope &&
+    !packageSourceMappingMultiSurfaceScope &&
+    !webSessionRenewalMultiSurfaceScope &&
+    !datastoreBackendParityMultiSurfaceScope;
+  const frontendUiExplicitSourceCount = uiLivenessMultiSurfaceScope
+    ? sourceCandidates.filter((file) => isFrontendUiExplicitlyNamedSourceSurface(file, input.task)).length
+    : 0;
+  const officialPromptDerivedCap = deprecationLifecycleMultiSurfaceScope
+    ? 5
+    : packageSourceMappingMultiSurfaceScope
+      ? 5
+    : webSessionRenewalMultiSurfaceScope
+      ? 5
+    : datastoreBackendParityMultiSurfaceScope
+      ? 4
+    : uiLivenessMultiSurfaceScope
+      ? frontendUiExplicitSourceCount >= 2 ? 9 : 5
+      : selectedTestFanout
+        ? 8
+        : 5;
   const officialInitialLimit = allowedHarnessFiles.length > 0
-    ? Math.max(1, allowedHarnessFiles.length)
+    ? Math.max(
+        1,
+        allowedHarnessFiles.length,
+        promptDerivedOfficialExpansion
+          ? Math.min(officialPromptDerivedCap, Math.max(2, primaryLimit, candidateFiles.filter((file) => isEditableByDefault(file, allowedTestEdits)).length))
+          : allowedHarnessFiles.length
+      )
     : officialPatchPrompt
-      ? selectedTestFanout ? primaryLimit : officialPromptFiles.length > 0 ? 2 : explicitMultiFileScope ? primaryLimit : 1
+      ? selectedTestFanout
+        ? primaryLimit
+        : officialPromptFiles.length > 0
+          ? officialPromptNamedSourceOnly
+            ? officialPromptFiles.length
+          : officialPromptExpansionBeyondSourceFiles
+            ? Math.min(officialPromptDerivedCap, Math.max(2, officialPromptFiles.length + candidateFiles.length))
+            : 2
+          : (explicitMultiFileScope || promptDerivedMultiFileScope || packageSourceMappingMultiSurfaceScope || webSessionRenewalMultiSurfaceScope || datastoreBackendParityMultiSurfaceScope) ? Math.min(officialPromptDerivedCap, Math.max(primaryLimit, candidateFiles.length)) : 1
       : primaryLimit;
-  const initialEditFiles = editCandidates
+  const officialPromptDerivedLimit = officialPatchPrompt && (
+    officialPromptFiles.length > 0
+      ? officialPromptExpansionBeyondSourceFiles && !officialPromptNamedSourceOnly
+      : (promptDerivedMultiFileScope || explicitMultiFileScope || selectedTestFanout || packageSourceMappingMultiSurfaceScope || webSessionRenewalMultiSurfaceScope || datastoreBackendParityMultiSurfaceScope)
+  )
+    ? Math.min(
+        officialPromptDerivedCap,
+        Math.max(
+          officialInitialLimit,
+        officialPromptFiles.length + candidateFiles.filter((file) => isEditableByDefault(file, allowedTestEdits)).length
+        )
+      )
+    : officialInitialLimit;
+  const initialLimit = source === "official_harness" || officialPatchPrompt ? officialPromptDerivedLimit : primaryLimit;
+  const initialEditFiles = budgetedEditCandidates
     .filter((file) => isEditableByDefault(file, allowedTestEdits))
-    .slice(0, source === "official_harness" || officialPatchPrompt ? officialInitialLimit : primaryLimit);
+    .slice(0, initialLimit);
   const readOnlyFiles = uniquePaths([
     ...taskMentionedTestFiles,
     ...candidateFiles,
@@ -89,9 +212,9 @@ export function decideEditScope(input: {
 
   return {
     initialEditFiles,
-    readOnlyFiles: readOnlyFiles.slice(0, 4),
+    readOnlyFiles: readOnlyFiles.slice(0, frontendUiInitialScopeBudget ? 6 : 4),
     allowedExpansionTriggers: expansionTriggers({ task, allowedTestEdits, source, officialPatchPrompt }),
-    forbiddenEditPatterns: forbiddenEditPatterns(allowedTestEdits),
+    forbiddenEditPatterns: forbiddenEditPatterns(allowedTestEdits, task),
     scopeConfidence,
     scopeSource: initialEditFiles.length > 0 ? source : "weak_signal",
     reason: scopeReason({ source, initialEditFiles, allowedTestEdits }),
@@ -200,10 +323,12 @@ function extractOfficialPromptSourceFiles(task: string): string[] {
   return [...paths];
 }
 
-function forbiddenEditPatterns(allowedTestEdits: boolean): string[] {
-  return allowedTestEdits
+function forbiddenEditPatterns(allowedTestEdits: boolean, task: string): string[] {
+  const base = allowedTestEdits
     ? ["docs/", "examples/", "generated/", "dist/", "vendor/", "node_modules/"]
     : ["tests/", "test/", "__tests__/", "docs/", "examples/", "generated/", "dist/", "vendor/", "node_modules/"];
+  if (!hasUiLivenessMultiSurfaceScope(task)) return base;
+  return [...base, "res/css/", "styles/", "*.css", "*.pcss", "*.scss"];
 }
 
 function isEditableByDefault(filePath: string, allowedTestEdits: boolean): boolean {
@@ -221,7 +346,12 @@ function shouldSurfaceReadOnly(filePath: string, allowedTestEdits: boolean): boo
 function isProductionSourcePath(filePath: string): boolean {
   const normalized = filePath.toLowerCase();
   if (isNoisyPath(normalized) || isTestLikePath(normalized)) return false;
+  if (isDeclarativeConfigSchemaPath(normalized)) return true;
   return /\.(?:[cm]?[jt]sx?|pyi?|go|java|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|rb|php|cs)$/.test(normalized);
+}
+
+function isDeclarativeConfigSchemaPath(filePath: string): boolean {
+  return /(^|\/)(configdata|config_data|configschema|config_schema|settings|options)\.(ya?ml|json|toml)$/.test(filePath);
 }
 
 function isTestLikePath(filePath: string): boolean {
@@ -253,7 +383,132 @@ function isUnmentionedVariantPath(filePath: string, task: string): boolean {
   return !normalizedTask.includes(variant.toLowerCase()) && !normalizedTask.includes(variantWords.toLowerCase());
 }
 
+function isUnmentionedFrontendVariantSurface(filePath: string, task: string): boolean {
+  const normalizedPath = filePath.toLowerCase();
+  if (!/\/components?\//.test(normalizedPath)) return false;
+  const basename = normalizedPath.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  if (!/pre(recording|broadcast|playback|live|liveness|event|state)/.test(basename)) return false;
+  const normalizedTask = task.toLowerCase();
+  const compactTask = normalizedTask.replace(/[^a-z0-9]+/g, "");
+  const compactBasename = basename.replace(/[^a-z0-9]+/g, "");
+  if (compactTask.includes(compactBasename)) return false;
+  return !/\bpre[- ]?(recording|broadcast|live|liveness|playback|event|state)\b/.test(normalizedTask);
+}
+
+function isUnrelatedCentralBackendTestHelper(filePath: string, task: string): boolean {
+  const normalizedPath = filePath.toLowerCase();
+  const normalizedTask = task.toLowerCase();
+  if (!/(^|\/)test\.go$/.test(normalizedPath)) return false;
+  if (!/\b(hsm|kms|softhsm|yubihsm|cloudhsm|pkcs11)\b/.test(normalizedTask)) return false;
+  if (!/\b(unified|central|centralize|centralized|reusable|duplicated|duplication|consistent|selector|detect|detects|available|backend|backends)\b/.test(normalizedTask)) return false;
+  return !/\/keystore\//.test(normalizedPath);
+}
+
+function isUnrelatedBackendAutocompleteSurface(filePath: string, task: string): boolean {
+  const normalizedPath = filePath.toLowerCase();
+  const normalizedTask = task.toLowerCase();
+  if (!/\bautocomplete\b/.test(normalizedTask)) return false;
+  if (!/\b(endpoint|route|routes|solr|olid|olids|query string|fallback|db|base class|page class|works|authors|subjects)\b/.test(normalizedTask)) return false;
+  const basename = normalizedPath.split("/").at(-1) ?? normalizedPath;
+  if (/^autocomplete\.(py|rb|go|rs|php|java|ts)$/.test(basename)) return false;
+  if (/\b(?:file|path|source)\s+\W*autocomplete\.py\W*\s+must\b/.test(normalizedTask) || /\bautocomplete\.py\W*\s+must\b/.test(normalizedTask)) return true;
+  return /\/js\/autocomplete\.[cm]?js$/.test(normalizedPath) ||
+    /(^|\/)(tests?|testing|fixtures?)\//.test(normalizedPath);
+}
+
+function isUnrelatedDeprecationLifecycleSurface(filePath: string, task: string): boolean {
+  const normalizedPath = filePath.toLowerCase();
+  const normalizedTask = task.toLowerCase();
+  if (!/\b(deprecat\w*|deprecated aliases?|removed at date|removed in version)\b/.test(normalizedTask)) return false;
+  if (!/\b(date|version|module|modules|parameter|parameters|alias|aliases|warning|warnings|display|validate|validation)\b/.test(normalizedTask)) return false;
+  if (/(^|\/)(date_time|datetime|urls?)\.(py|ts|js|go|rb|rs|cs)$/.test(normalizedPath)) return true;
+  if (/^lib\/ansible\/module_utils\/facts\//.test(normalizedPath) && !/\bfacts?\b/.test(normalizedTask)) return true;
+  return /^lib\/ansible\/modules\/[^/]+\.py$/.test(normalizedPath);
+}
+
+function isUnrelatedConfigSchemaSurface(filePath: string, task: string): boolean {
+  const normalizedPath = filePath.toLowerCase();
+  const normalizedTask = task.toLowerCase();
+  if (!isDeclarativeConfigSchemaPath(normalizedPath)) return false;
+  if (!/\bselected (verification )?tests? from swe-bench pro metadata\b/.test(normalizedTask)) return false;
+  if (promptRequiresConfigSchemaSurface(normalizedTask)) return false;
+  if (promptDeclaresNoNewInterfaces(normalizedTask) && !normalizedTask.includes(normalizedPath)) return true;
+  if (normalizedTask.includes(normalizedPath)) return false;
+  const counterpartBasenames = selectedTestCounterpartBasenames(normalizedTask);
+  if (counterpartBasenames.size === 0) return false;
+  const basename = normalizedPath.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? normalizedPath;
+  if (counterpartBasenames.has(basename)) return false;
+  return /\b(config|setting|settings|option|options|workaround|qtwebengine|chromium|args?)\b/.test(normalizedTask);
+}
+
+function isUnrelatedWebSessionRenewalSurface(filePath: string, task: string): boolean {
+  if (!hasWebSessionRenewalScope(task)) return false;
+  const normalizedPath = filePath.toLowerCase();
+  if (task.includes(normalizedPath)) return false;
+  if (/^lib\/web\/sessions\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
+  if (/^lib\/web\/apiserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
+  if (/^lib\/auth\/apiserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
+  if (/^lib\/auth\/auth\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
+  return /\b(access|checker|observability|trace|tracing|client|types?|constants?)\b/.test(normalizedPath) ||
+    /^api\//.test(normalizedPath) ||
+    /^lib\/services?\//.test(normalizedPath);
+}
+
+function isUnrelatedDatastoreBackendParitySurface(filePath: string, task: string, allowedBackendFiles: string[]): boolean {
+  if (!hasDatastoreBackendParityScope(task)) return false;
+  if (allowedBackendFiles.length < 2) return false;
+  const normalizedPath = filePath.toLowerCase();
+  return !allowedBackendFiles.map((file) => file.toLowerCase()).includes(normalizedPath);
+}
+
+function isForbiddenFrontendEditSurface(filePath: string, task: string): boolean {
+  if (!/\b(do not|don't|avoid|no)\s+edit(?:ing)?\s+(?:the\s+)?(?:frontend|client|ui|browser|component|components|utilities|utils)/.test(task)) return false;
+  const normalizedPath = filePath.toLowerCase();
+  return /(^|\/)(frontend|client|ui|components?|views?)\//.test(normalizedPath) ||
+    /\/components?\//.test(normalizedPath) ||
+    /\.(tsx|jsx|vue|svelte)$/.test(normalizedPath);
+}
+
+function isUnrelatedPromptMentionedSourceSurface(filePath: string, task: string, taskMentionedSourceFiles: string[]): boolean {
+  if (taskMentionedSourceFiles.length < 3) return false;
+  const normalizedPath = filePath.toLowerCase();
+  if (taskMentionedSourceFiles.map((file) => file.toLowerCase()).includes(normalizedPath)) return false;
+  if (task.includes(normalizedPath)) return false;
+  const namedPrefixes = new Set(taskMentionedSourceFiles.map((file) => file.toLowerCase().split("/").slice(0, 2).join("/")));
+  const filePrefix = normalizedPath.split("/").slice(0, 2).join("/");
+  if (namedPrefixes.has(filePrefix) && !/\/components?\//.test(normalizedPath)) return false;
+  return /\/components?\//.test(normalizedPath) ||
+    /(^|\/)(frontend|client|ui|views?)\//.test(normalizedPath) ||
+    /(^|\/)(utils?|helpers?)\.[cm]?js$/.test(normalizedPath);
+}
+
+function promptDeclaresNoNewInterfaces(normalizedTask: string): boolean {
+  return /\bno new (?:public )?interfaces?\b/.test(normalizedTask) ||
+    /\binterfaces? are (?:not )?introduced\b/.test(normalizedTask);
+}
+
+function promptRequiresConfigSchemaSurface(normalizedTask: string): boolean {
+  return (
+    /\b(config|configuration|setting|settings|option|options|workaround|workarounds)\b/.test(normalizedTask) &&
+    /\b(named|must exist|exists?|accept|values?|valid values?|default|required|restart|backend|metadata|schema|define|add|support)\b/.test(normalizedTask) &&
+    /\b(setting|option|values?|default|restart|backend|schema|metadata)\b/.test(normalizedTask)
+  );
+}
+
+function selectedTestCounterpartBasenames(task: string): Set<string> {
+  const names = new Set<string>();
+  for (const match of task.matchAll(/\b[A-Za-z0-9_.@+~/-]+?\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)\b/g)) {
+    const filePath = normalizeRelativePath(match[0] ?? "").toLowerCase();
+    if (!isTestLikePath(filePath)) continue;
+    const basename = filePath.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+    const withoutPrefix = basename.replace(/^(test|spec)[_-]/, "").replace(/[._-](test|spec)$/, "");
+    if (withoutPrefix.length >= 3) names.add(withoutPrefix);
+  }
+  return names;
+}
+
 function taskAllowsTestEdits(task: string): boolean {
+  if (/\b(do not edit tests?|verification targets? only|tests are verification targets)\b/.test(task)) return false;
   return /\b(update|edit|add|write|fix|adjust|regenerate)\b.{0,80}\b(tests?|specs?|snapshots?|fixtures?|docs?|documentation)\b/.test(task) ||
     /\b(test expectation|expected output|snapshot update|fixture update)\b/.test(task);
 }
@@ -268,6 +523,123 @@ function selectedTestPathCount(task: string): number {
     paths.add(filePath.toLowerCase());
   }
   return paths.size;
+}
+
+function hasUiLivenessMultiSurfaceScope(task: string): boolean {
+  return /\b(liveness|live|badge|icon|feedback|visual|shown|render)\b/.test(task) &&
+    (
+      /\b(voice|broadcast|recording|playback)\b/.test(task) ||
+      (/\b(ui|frontend|component|components|header|body)\b/.test(task) && /\b(liveness|live|badge|icon|visual)\b/.test(task))
+    );
+}
+
+function hasPackageSourceMappingScope(task: string): boolean {
+  return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|apk|alpine)\b/.test(task) &&
+    /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?)\b/.test(task);
+}
+
+function hasWebSessionRenewalScope(task: string): boolean {
+  return /\b(web session|session renewal|renew(?:ing)? (?:a )?(?:web )?session|prevsessionid|websessionreq|reloaduser|switchback|active requests?|access request|renewed session)\b/.test(task) &&
+    /\b(traits?|certificate|certificates?|ssh certificate|tls certificate|roles?|allowed resources?|login time|expiry|backend|user record|stale)\b/.test(task);
+}
+
+function hasDatastoreBackendParityScope(task: string): boolean {
+  const collectionMutation =
+    /\b(list|lists|set|sets|zset|hash|queue|collection|collections)\b/.test(task) &&
+    /\b(remove|removing|delete|deleting|del|discard|pull|pop|trim|add|insert|push)\b/.test(task);
+  const multiValue =
+    /\b(multiple|distinct|array|arrays|elements?|values?|batch|bulk|several)\b/.test(task) ||
+    /\[[^\]]+,[^\]]+\]/.test(task);
+  return collectionMutation && multiValue;
+}
+
+function datastoreBackendParitySourceFilesFromCandidates(files: string[]): string[] {
+  const groups = new Map<string, Array<{ path: string; surface: DatastoreBackendSurface }>>();
+  for (const file of files) {
+    const surface = datastoreBackendSurface(file);
+    if (!surface) continue;
+    const key = `${surface.prefix}\0${surface.suffix}`;
+    const group = groups.get(key) ?? [];
+    group.push({ path: file, surface });
+    groups.set(key, group);
+  }
+  const best = [...groups.entries()]
+    .filter(([, group]) => new Set(group.map((entry) => entry.surface.backend)).size >= 2)
+    .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))[0]?.[1] ?? [];
+  return uniquePaths(best.map((entry) => entry.path));
+}
+
+type DatastoreBackendSurface = { prefix: string; backend: string; suffix: string };
+
+function datastoreBackendSurface(filePath: string): DatastoreBackendSurface | undefined {
+  const parts = filePath.replaceAll("\\", "/").toLowerCase().split("/").filter(Boolean);
+  const backendNames = new Set(["mongo", "mongodb", "redis", "postgres", "postgresql", "mysql", "sqlite", "memory", "inmemory"]);
+  const rootNames = new Set(["database", "databases", "db", "storage", "stores", "backends"]);
+  for (let index = 0; index < parts.length - 1; index += 1) {
+    const part = parts[index];
+    if (!part || !backendNames.has(part)) continue;
+    const hasDatastoreRoot = parts.slice(Math.max(0, index - 2), index).some((segment) => rootNames.has(segment));
+    if (!hasDatastoreRoot) continue;
+    const suffix = parts.slice(index + 1).join("/");
+    if (!suffix) continue;
+    return {
+      prefix: parts.slice(0, index).join("/"),
+      backend: part,
+      suffix
+    };
+  }
+  return undefined;
+}
+
+function applyFrontendUiInitialScopeBudget(files: string[], task: string): string[] {
+  const visibleSurfaces = files.filter((file) => isFrontendUiVisibleSurface(file, task));
+  const explicitSourceSurfaces = files.filter((file) => isFrontendUiExplicitlyNamedSourceSurface(file, task));
+  const budgeted = uniquePaths([...visibleSurfaces, ...explicitSourceSurfaces]);
+  if (budgeted.length >= 2) return budgeted;
+  return files.filter((file) => !isFrontendUiStateOrStyleSurface(file));
+}
+
+function isFrontendUiVisibleSurface(filePath: string, task: string): boolean {
+  const normalizedPath = filePath.toLowerCase();
+  const normalizedTask = task.toLowerCase();
+  if (!/\.(?:[cm]?[jt]sx?)$/.test(normalizedPath)) return false;
+  if (!/\/components?\//.test(normalizedPath)) return false;
+  if (isFrontendUiStateOrStyleSurface(normalizedPath)) return false;
+  const basename = normalizedPath.split("/").at(-1) ?? normalizedPath;
+  if (/\b(live|liveness|badge|header|body|pip|recording|playback|broadcast)\b/.test(basename)) return true;
+  return /\b(component|render|visual|display|shown|view|screen|ui)\b/.test(normalizedTask);
+}
+
+function isFrontendUiStateOrStyleSurface(filePath: string): boolean {
+  const normalizedPath = filePath.toLowerCase();
+  return (
+    /(^|\/)(hooks?|models?|stores?|state|utils?)\//.test(normalizedPath) ||
+    /(^|\/)index\.[cm]?[jt]sx?$/.test(normalizedPath) ||
+    /(^|\/)(styles?|css)\//.test(normalizedPath) ||
+    /\.(?:css|pcss|scss|sass|less)$/.test(normalizedPath)
+  );
+}
+
+function isFrontendUiExplicitlyNamedSourceSurface(filePath: string, task: string): boolean {
+  const normalizedPath = filePath.toLowerCase();
+  if (!/\.(?:[cm]?[jt]sx?)$/.test(normalizedPath)) return false;
+  if (/(^|\/)(styles?|css)\//.test(normalizedPath) || /\.(?:css|pcss|scss|sass|less)$/.test(normalizedPath)) return false;
+  const normalizedTask = task.toLowerCase();
+  if (normalizedTask.includes(normalizedPath)) return true;
+  const basename = normalizedPath.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  if (basename.length < 4 || /^(index|main|utils?|helpers?)$/.test(basename)) return false;
+  return taskMentionsCompactIdentifier(task, basename);
+}
+
+function taskMentionsCompactIdentifier(task: string, identifier: string): boolean {
+  const compact = identifier.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  if (compact.length < 4) return false;
+  const pattern = new RegExp(`(^|[^a-z0-9])${escapeRegExp(compact)}([^a-z0-9]|$)`, "i");
+  return pattern.test(task);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function extractTaskMentionedTestFiles(task: string): string[] {

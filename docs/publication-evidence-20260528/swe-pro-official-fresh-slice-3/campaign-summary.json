@@ -1,0 +1,146 @@
+{
+  "generatedAt": "2026-05-28T18:06:02.085Z",
+  "branch": "fix/export-command-companion-routing",
+  "purpose": "Fresh 10-row SWE-Pro official evaluator slice after export-command companion routing and prompt-derived multi-file scope fixes.",
+  "publicClaimEligible": false,
+  "publicClaimReason": "Kairn passed fewer official rows than baseline in this fresh slice. This branch is not safe to treat as a net benchmark improvement.",
+  "checks": {
+    "pnpmTest": "passed",
+    "pnpmTypecheck": "passed",
+    "pnpmBuild": "passed",
+    "gitDiffCheck": "passed",
+    "dockerEvaluator": "completed"
+  },
+  "officialEvaluation": {
+    "baselineOutput": "official-baseline-live-10-after-docker.stdout.json",
+    "kairnOutput": "official-kairn-live-10-after-routing-fixes-after-docker.stdout.json",
+    "baselineOfficialPass": 7,
+    "kairnOfficialPass": 4,
+    "cleanOfficialSavingsRows": 4,
+    "officialTokenRegressionRows": 0,
+    "officialRescueRows": 0,
+    "baselinePassKairnFailRows": 3,
+    "bothFailRows": 3,
+    "cleanSavingsTotalTokens": 243914,
+    "cleanSavingsMedianReductionPct": 60.7
+  },
+  "keyFindings": [
+    "Flipt export-command row no longer empty-patches and now touches the expected command/exporter files, but its official evaluator result is still fail.",
+    "The fresh 10-row official slice is a regression signal: baseline passed 7/10 official rows while Kairn passed 4/10.",
+    "Kairn produced 4 clean official pass/pass savings rows with 243,914 observed tokens saved and 60.7% median reduction among those clean rows.",
+    "The clean savings are outweighed by 3 baseline-pass/Kairn-fail rows in this slice, so public claims must not be updated from this campaign.",
+    "The next fixes should target the baseline-pass/Kairn-fail classes before another fresh official slice."
+  ],
+  "rows": [
+    {
+      "index": 1,
+      "label": "qutebrowser tab focus",
+      "baselineOfficialPass": false,
+      "kairnOfficialPass": false,
+      "baselineTokens": 60217,
+      "kairnTokens": 20161,
+      "tokenDelta": 40056,
+      "tokenDeltaPct": 66.5,
+      "classification": "both_fail"
+    },
+    {
+      "index": 2,
+      "label": "qutebrowser config overlay",
+      "baselineOfficialPass": false,
+      "kairnOfficialPass": false,
+      "baselineTokens": 64875,
+      "kairnTokens": 122959,
+      "tokenDelta": -58084,
+      "tokenDeltaPct": -89.5,
+      "classification": "both_fail"
+    },
+    {
+      "index": 3,
+      "label": "ansible nxos route target",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": true,
+      "baselineTokens": 48151,
+      "kairnTokens": 40428,
+      "tokenDelta": 7723,
+      "tokenDeltaPct": 16.0,
+      "classification": "clean_official_savings"
+    },
+    {
+      "index": 4,
+      "label": "ProtonMail Sent reorder",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": true,
+      "baselineTokens": 61136,
+      "kairnTokens": 33938,
+      "tokenDelta": 27198,
+      "tokenDeltaPct": 44.5,
+      "classification": "clean_official_savings"
+    },
+    {
+      "index": 5,
+      "label": "Teleport HSM/KMS config",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": true,
+      "baselineTokens": 250800,
+      "kairnTokens": 98560,
+      "tokenDelta": 152240,
+      "tokenDeltaPct": 60.7,
+      "classification": "clean_official_savings"
+    },
+    {
+      "index": 6,
+      "label": "qutebrowser QtWebEngine args",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": false,
+      "baselineTokens": 73083,
+      "kairnTokens": 43944,
+      "tokenDelta": 29139,
+      "tokenDeltaPct": 39.9,
+      "classification": "baseline_pass_kairn_fail"
+    },
+    {
+      "index": 7,
+      "label": "OpenLibrary autocomplete",
+      "baselineOfficialPass": false,
+      "kairnOfficialPass": false,
+      "baselineTokens": 67098,
+      "kairnTokens": 45950,
+      "tokenDelta": 21148,
+      "tokenDeltaPct": 31.5,
+      "classification": "both_fail"
+    },
+    {
+      "index": 8,
+      "label": "Ansible deprecation date",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": false,
+      "baselineTokens": 84330,
+      "kairnTokens": 16502,
+      "tokenDelta": 67828,
+      "tokenDeltaPct": 80.4,
+      "classification": "baseline_pass_kairn_fail"
+    },
+    {
+      "index": 9,
+      "label": "Element voice broadcast",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": false,
+      "baselineTokens": 98513,
+      "kairnTokens": 27405,
+      "tokenDelta": 71108,
+      "tokenDeltaPct": 72.2,
+      "classification": "baseline_pass_kairn_fail"
+    },
+    {
+      "index": 10,
+      "label": "Teleport Kubernetes RBAC",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": true,
+      "baselineTokens": 80593,
+      "kairnTokens": 23840,
+      "tokenDelta": 56753,
+      "tokenDeltaPct": 70.4,
+      "classification": "clean_official_savings"
+    }
+  ]
+}
