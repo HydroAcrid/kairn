@@ -357,16 +357,22 @@ function createSeededWorkspace(seed: BenchmarkSeedSpec): { workspacePath: string
   if (seed.ref) {
     runRequired("git", ["init"], { cwd: workspacePath, label: "git init" });
     runRequired("git", ["remote", "add", "origin", seed.repoUrl], { cwd: workspacePath, label: "git remote add" });
-    runRequired("git", ["fetch", ...depthArgs(cloneDepth), "origin", seed.ref], {
+    runRequiredWithRetry("git", ["fetch", ...depthArgs(cloneDepth), "origin", seed.ref], {
       cwd: workspacePath,
-      label: `git fetch ${seed.ref}`
+      label: `git fetch ${seed.ref}`,
+      attempts: 3,
+      retryDelayMs: 2000,
+      retryOn: isTransientGitFailure
     });
     runRequired("git", ["checkout", "--detach", "FETCH_HEAD"], { cwd: workspacePath, label: "git checkout" });
   } else {
     fs.rmSync(workspacePath, { recursive: true, force: true });
-    runRequired("git", ["clone", ...depthArgs(cloneDepth), seed.repoUrl, workspacePath], {
+    runRequiredWithRetry("git", ["clone", ...depthArgs(cloneDepth), seed.repoUrl, workspacePath], {
       cwd: os.tmpdir(),
-      label: "git clone"
+      label: "git clone",
+      attempts: 3,
+      retryDelayMs: 2000,
+      retryOn: isTransientGitFailure
     });
   }
 
@@ -567,6 +573,40 @@ function runRequired(
   if ((result.status ?? 0) !== 0 || result.error) {
     throw new Error(`${input.label} failed: ${result.stderr || result.error?.message || result.stdout || "unknown error"}`);
   }
+}
+
+function runRequiredWithRetry(
+  command: string,
+  args: string[],
+  input: {
+    cwd: string;
+    label: string;
+    shell?: boolean | undefined;
+    attempts: number;
+    retryDelayMs: number;
+    retryOn: (message: string) => boolean;
+  }
+): void {
+  let lastError: Error | undefined;
+  for (let attempt = 1; attempt <= input.attempts; attempt += 1) {
+    try {
+      runRequired(command, args, input);
+      return;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      if (attempt >= input.attempts || !input.retryOn(lastError.message)) break;
+      sleepSync(input.retryDelayMs);
+    }
+  }
+  throw lastError ?? new Error(`${input.label} failed`);
+}
+
+function isTransientGitFailure(message: string): boolean {
+  return /RPC failed|Recv failure|Connection reset|protocol error|bad pack header|early EOF|remote end hung up|network/i.test(message);
+}
+
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
 export function runShell(command: string, cwd: string, timeoutMs: number): { status: number; output: string; timedOut: boolean; signal?: NodeJS.Signals | null } {

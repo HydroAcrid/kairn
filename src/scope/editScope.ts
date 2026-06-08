@@ -16,6 +16,7 @@ import {
   taskHasProductionOnlyEditIntent,
   taskIsOfficialProductionPatchPrompt
 } from "../prime/contextGovernor.js";
+import { isUnrelatedDeprecationLifecyclePath } from "./lifecycleSurfaces.js";
 
 export function decideEditScope(input: {
   task: string;
@@ -417,13 +418,7 @@ function isUnrelatedBackendAutocompleteSurface(filePath: string, task: string): 
 }
 
 function isUnrelatedDeprecationLifecycleSurface(filePath: string, task: string): boolean {
-  const normalizedPath = filePath.toLowerCase();
-  const normalizedTask = task.toLowerCase();
-  if (!/\b(deprecat\w*|deprecated aliases?|removed at date|removed in version)\b/.test(normalizedTask)) return false;
-  if (!/\b(date|version|module|modules|parameter|parameters|alias|aliases|warning|warnings|display|validate|validation)\b/.test(normalizedTask)) return false;
-  if (/(^|\/)(date_time|datetime|urls?)\.(py|ts|js|go|rb|rs|cs)$/.test(normalizedPath)) return true;
-  if (/^lib\/ansible\/module_utils\/facts\//.test(normalizedPath) && !/\bfacts?\b/.test(normalizedTask)) return true;
-  return /^lib\/ansible\/modules\/[^/]+\.py$/.test(normalizedPath);
+  return isUnrelatedDeprecationLifecyclePath(filePath, task);
 }
 
 function isUnrelatedConfigSchemaSurface(filePath: string, task: string): boolean {

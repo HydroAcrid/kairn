@@ -124,6 +124,7 @@ import { IndexService } from "./services/IndexService.js";
 import { MetricsService } from "./services/MetricsService.js";
 import { EvalService } from "./services/EvalService.js";
 import { decideEditScope } from "../scope/editScope.js";
+import { isUnrelatedDeprecationLifecyclePath, scoreDeprecationLifecyclePath } from "../scope/lifecycleSurfaces.js";
 
 type PrimeDeliveryTrace = {
   taskShapeSignal?: ContextValueDecision["taskShapeSignal"];
@@ -4142,13 +4143,7 @@ function isUnrelatedBackendAutocompleteSurface(filePath: string, task: string): 
 }
 
 function isUnrelatedDeprecationLifecycleSurface(filePath: string, task: string): boolean {
-  const normalizedPath = filePath.toLowerCase();
-  const normalizedTask = task.toLowerCase();
-  if (!/\b(deprecat\w*|deprecated aliases?|removed at date|removed in version)\b/.test(normalizedTask)) return false;
-  if (!/\b(date|version|module|modules|parameter|parameters|alias|aliases|warning|warnings|display|validate|validation)\b/.test(normalizedTask)) return false;
-  if (/(^|\/)(date_time|datetime|urls?)\.(py|ts|js|go|rb|rs|cs)$/.test(normalizedPath)) return true;
-  if (/^lib\/ansible\/module_utils\/facts\//.test(normalizedPath) && !/\bfacts?\b/.test(normalizedTask)) return true;
-  return /^lib\/ansible\/modules\/[^/]+\.py$/.test(normalizedPath);
+  return isUnrelatedDeprecationLifecyclePath(filePath, task);
 }
 
 function isUnrelatedConfigSchemaSurface(filePath: string, task: string, selectedCounterparts: string[]): boolean {
@@ -4796,26 +4791,10 @@ function isTestLikePath(filePath: string): boolean {
 }
 
 function deprecationLifecycleSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  const normalizedQuery = query.toLowerCase();
-  const displayRequired = /\b(display|warning systems?|warnings?|output\['deprecations'\]|deprecations?\s+(?:list|output|entry|entries|message|messages))\b/.test(normalizedQuery);
   const scored = files
     .filter((file) => isLikelyProductionSourceFile(file.path))
     .map((file) => {
-      const normalized = file.path.toLowerCase();
-      let score = 0;
-      if (/^lib\/ansible\/module_utils\/common\/parameters\.py$/.test(normalized)) score += 600;
-      if (/^lib\/ansible\/module_utils\/basic\.py$/.test(normalized)) score += 560;
-      if (/^lib\/ansible\/module_utils\/common\/warnings\.py$/.test(normalized)) score += 520;
-      if (/^lib\/ansible\/utils\/display\.py$/.test(normalized)) score += displayRequired ? 540 : 420;
-      if (/^lib\/ansible\/module_utils\/csharp\/ansible\.basic\.cs$/.test(normalized)) score += 500;
-      if (/(^|\/)(common\/)?parameters\.(py|ts|js|go|rb|rs|cs)$/.test(normalized)) score += 180;
-      if (/(^|\/)(module|module_utils).*\/basic\.(py|ts|js|go|rb|rs|cs)$/.test(normalized)) score += 160;
-      if (/(^|\/)(common\/)?warnings\.(py|ts|js|go|rb|rs|cs)$/.test(normalized)) score += 140;
-      if (/(^|\/)(utils\/)?display\.(py|ts|js|go|rb|rs|cs)$/.test(normalized)) score += displayRequired ? 180 : 110;
-      if (/(^|\/)ansible\.basic\.cs$/.test(normalized)) score += 120;
-      if (/(^|\/)(date_time|datetime|urls?)\.(py|ts|js|go|rb|rs|cs)$/.test(normalized)) score -= 1000;
-      if (/^lib\/ansible\/modules\/[^/]+\.py$/.test(normalized)) score -= 1000;
-      return { path: file.path, score };
+      return { path: file.path, score: scoreDeprecationLifecyclePath({ filePath: file.path, query }) };
     })
     .filter((file) => file.score > 0)
     .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))

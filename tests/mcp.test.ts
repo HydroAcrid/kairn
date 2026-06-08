@@ -23,7 +23,19 @@ describe("MCP server", () => {
       filesFromMcpValue({
         contextSuppressed: true,
         files: [],
+        startFiles: [],
         attributedFiles: ["lib/core/Axios.js"],
+        failureFiles: ["tests/browser/interceptors.browser.test.js"]
+      })
+    ).toEqual(["lib/core/Axios.js"]);
+
+    expect(
+      filesFromMcpValue({
+        contextSuppressed: true,
+        files: ["lib/core/Axios.js"],
+        startFiles: ["lib/core/Axios.js"],
+        attributedFiles: ["lib/core/Axios.js"],
+        changedFiles: ["AGENTS.md"],
         failureFiles: ["tests/browser/interceptors.browser.test.js"]
       })
     ).toEqual(["lib/core/Axios.js"]);
@@ -385,8 +397,8 @@ describe("MCP server", () => {
 
     expect(parsed.contextSuppressed).toBe(true);
     expect(parsed.stopCondition).toBe("cheap_one_shot_guardrail");
-    expect(parsed.startFiles).toEqual([]);
-    expect(parsed.files).toEqual([]);
+    expect(parsed.startFiles).toEqual(["src/flask/app.py"]);
+    expect(parsed.files).toEqual(["src/flask/app.py"]);
     expect(parsed.attributedFiles).toEqual(["src/flask/app.py"]);
     expect(parsed.nextToolCalls).toEqual([]);
     expect(parsed.primaryReason).toContain("ultra-minimal guardrail");

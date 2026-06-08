@@ -323,7 +323,8 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
   }
   const cheapOneShotStop = mcpCheapOneShotAbstention(prime);
   if (cheapOneShotStop) {
-    const tokenEstimate = estimateCompactPrepareTokens([], [], [], undefined);
+    const startFiles = cheapOneShotStop.primaryFile ? [cheapOneShotStop.primaryFile] : [];
+    const tokenEstimate = estimateCompactPrepareTokens(startFiles, [], [], undefined);
     return {
       detail: "compact",
       contextSuppressed: true,
@@ -331,9 +332,9 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
       session: { id: prime.session.id, task: prime.session.task },
       task: prime.task,
       profile: prime.profile,
-      startFiles: [],
-      files: [],
-      attributedFiles: cheapOneShotStop.primaryFile ? [cheapOneShotStop.primaryFile] : [],
+      startFiles,
+      files: startFiles,
+      attributedFiles: startFiles,
       companionFiles: [],
       fallbackFiles: [],
       exactSymbolHint: null,

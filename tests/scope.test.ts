@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { decideEditScope, editScopeBlock } from "../src/scope/editScope.js";
+import { scoreDeprecationLifecyclePath } from "../src/scope/lifecycleSurfaces.js";
 import type { ContextValueDecision, FileRecord } from "../src/types.js";
 
 describe("edit scope controller", () => {
@@ -309,6 +310,64 @@ describe("edit scope controller", () => {
     expect(scope.initialEditFiles).not.toContain("lib/ansible/module_utils/facts/system/date_time.py");
     expect(scope.initialEditFiles).not.toContain("lib/ansible/module_utils/facts/utils.py");
     expect(scope.initialEditFiles).not.toContain("lib/ansible/modules/assert.py");
+  });
+
+  it("applies deprecation lifecycle edit scope to generic framework surfaces", () => {
+    const task = [
+      "Support deprecation by date in plugin modules.",
+      "Deprecated aliases should validate version or date and display warnings.",
+      "Internal errors should mention removed_in_version and removed_at_date.",
+      "Selected verification tests from SWE-Bench Pro metadata: tests/validate_modules.ts.",
+      "Fix the issue in production source only."
+    ].join(" ");
+    const scope = decideEditScope({
+      task,
+      candidateFiles: [
+        "packages/runtime/common/parameters.ts",
+        "packages/runtime/basic.ts",
+        "packages/runtime/common/warnings.ts",
+        "packages/runtime/display.ts",
+        "packages/runtime/facts/system/date_time.ts",
+        "packages/runtime/modules/assert.ts",
+        "packages/runtime/urls.ts"
+      ],
+      contextDecision: decision({
+        primaryFile: "packages/runtime/common/parameters.ts",
+        sourceRescue: true,
+        canonicalSourceHit: true,
+        multiSurfaceSignal: true,
+        recommendedDelivery: "multi_file_directive"
+      })
+    });
+
+    expect(scope.initialEditFiles).toEqual([
+      "packages/runtime/common/parameters.ts",
+      "packages/runtime/basic.ts",
+      "packages/runtime/common/warnings.ts",
+      "packages/runtime/display.ts"
+    ]);
+    expect(scope.initialEditFiles).not.toContain("packages/runtime/facts/system/date_time.ts");
+    expect(scope.initialEditFiles).not.toContain("packages/runtime/modules/assert.ts");
+    expect(scope.initialEditFiles).not.toContain("packages/runtime/urls.ts");
+  });
+
+  it("scores generic deprecation lifecycle surfaces above helper and leaf-module files", () => {
+    const query = "Support deprecation by date in plugin modules. Deprecated aliases should validate version or date and display warnings.";
+    const scores = new Map([
+      ["packages/runtime/common/parameters.ts", scoreDeprecationLifecyclePath({ filePath: "packages/runtime/common/parameters.ts", query })],
+      ["packages/runtime/basic.ts", scoreDeprecationLifecyclePath({ filePath: "packages/runtime/basic.ts", query, sourceText: "validateArgumentSpec deprecated_aliases removed_at_date" })],
+      ["packages/runtime/common/warnings.ts", scoreDeprecationLifecyclePath({ filePath: "packages/runtime/common/warnings.ts", query })],
+      ["packages/runtime/display.ts", scoreDeprecationLifecyclePath({ filePath: "packages/runtime/display.ts", query })],
+      ["packages/runtime/facts/system/date_time.ts", scoreDeprecationLifecyclePath({ filePath: "packages/runtime/facts/system/date_time.ts", query })],
+      ["packages/runtime/modules/assert.ts", scoreDeprecationLifecyclePath({ filePath: "packages/runtime/modules/assert.ts", query })]
+    ]);
+
+    expect(scores.get("packages/runtime/common/parameters.ts")).toBeGreaterThan(0);
+    expect(scores.get("packages/runtime/basic.ts")).toBeGreaterThan(0);
+    expect(scores.get("packages/runtime/common/warnings.ts")).toBeGreaterThan(0);
+    expect(scores.get("packages/runtime/display.ts")).toBeGreaterThan(0);
+    expect(scores.get("packages/runtime/facts/system/date_time.ts")).toBeLessThan(0);
+    expect(scores.get("packages/runtime/modules/assert.ts")).toBeLessThan(0);
   });
 
   it("allows prompt-derived schema companions into official config-setting edit scope", () => {
