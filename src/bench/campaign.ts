@@ -68,6 +68,7 @@ export type CampaignEntry = {
   evaluatorResultsPath?: string | undefined;
   officialRunnerCommand?: string | undefined;
   task?: string | undefined;
+  expectedFiles?: string[] | undefined;
   budget?: number | undefined;
   detail?: "compact" | "full" | undefined;
   modes?: BenchmarkAssistanceMode[] | undefined;
@@ -268,9 +269,38 @@ export async function runCampaign(options: CampaignRunOptions): Promise<Campaign
 }
 
 export function summarizeCampaign(outDir: string): CampaignReport {
-  const summaryPath = campaignOutputPaths(path.resolve(outDir)).summaryPath;
-  if (!fs.existsSync(summaryPath)) throw new Error(`No campaign summary found at ${summaryPath}`);
-  return JSON.parse(fs.readFileSync(summaryPath, "utf8")) as CampaignReport;
+  const absoluteOutDir = path.resolve(outDir);
+  const outputs = campaignOutputPaths(absoluteOutDir);
+  if (fs.existsSync(outputs.manifestPath) && fs.existsSync(outputs.rawDir)) {
+    const manifest = loadCampaignManifest(outputs.manifestPath);
+    validateCampaignManifest(manifest);
+    const artifacts = loadRawCampaignArtifacts(outputs.rawDir);
+    if (artifacts.length > 0) {
+      const ordered = orderedArtifacts(manifest.entries, artifacts);
+      const rows = ordered.map(artifactToRow);
+      const aggregate = aggregateCampaignRows(rows, ordered, manifest);
+      const report: CampaignReport = {
+        id: manifest.id,
+        name: manifest.name,
+        generatedAt: new Date().toISOString(),
+        manifestPath: outputs.manifestPath,
+        outDir: absoluteOutDir,
+        stage: "all",
+        dryRun: ordered.every((artifact) => artifact.status === "planned"),
+        parallel: Math.max(1, Math.floor(manifest.defaults?.parallel ?? 3)),
+        paused: aggregate.pauseRuleStatus.paused,
+        pauseReasons: aggregate.pauseRuleStatus.reasons,
+        artifacts: ordered,
+        rows,
+        aggregate,
+        outputs
+      };
+      writeCampaignOutputs({ manifest, report });
+      return sanitizedCampaignReport(report);
+    }
+  }
+  if (!fs.existsSync(outputs.summaryPath)) throw new Error(`No campaign summary found at ${outputs.summaryPath}`);
+  return JSON.parse(fs.readFileSync(outputs.summaryPath, "utf8")) as CampaignReport;
 }
 
 export function cleanupCampaign(outDir: string, input: { dryRun?: boolean | undefined } = {}): CampaignCleanupReport {
@@ -299,6 +329,15 @@ export function loadCampaignManifest(manifestPath: string): CampaignManifest {
   return parsed as CampaignManifest;
 }
 
+function loadRawCampaignArtifacts(rawDir: string): CampaignArtifact[] {
+  if (!fs.existsSync(rawDir)) return [];
+  return fs.readdirSync(rawDir)
+    .filter((name) => name.endsWith(".json"))
+    .map((name) => path.join(rawDir, name))
+    .map((artifactPath) => JSON.parse(fs.readFileSync(artifactPath, "utf8")) as CampaignArtifact)
+    .filter((artifact) => Boolean(artifact.entryId));
+}
+
 export function validateCampaignManifest(manifest: CampaignManifest): void {
   if (!manifest.id) throw new Error("Campaign manifest requires id.");
   if (!manifest.name) throw new Error("Campaign manifest requires name.");
@@ -315,6 +354,10 @@ export function validateCampaignManifest(manifest: CampaignManifest): void {
     if (entry.kind === "endurance" && !entry.suite) throw new Error(`${entry.id}: endurance entry requires suite.`);
     if (entry.kind === "mcp_smoke" && !entry.task) throw new Error(`${entry.id}: mcp_smoke entry requires task.`);
     if (entry.kind === "official_eval" && !entry.input) throw new Error(`${entry.id}: official_eval entry requires input.`);
+    if (entry.expectedFiles !== undefined && !Array.isArray(entry.expectedFiles)) throw new Error(`${entry.id}: expectedFiles must be an array.`);
+    for (const expectedFile of entry.expectedFiles ?? []) {
+      if (typeof expectedFile !== "string" || expectedFile.trim().length === 0) throw new Error(`${entry.id}: expectedFiles must contain non-empty strings.`);
+    }
     for (const mode of entry.modes ?? []) {
       if (!isBenchmarkAssistanceMode(mode)) throw new Error(`${entry.id}: unsupported campaign mode: ${mode}`);
     }
@@ -501,6 +544,11 @@ async function runProxyEntry(manifest: CampaignManifest, entry: CampaignEntry): 
     const deliveryTrace = isRecord(prime.metadata?.deliveryTrace) ? prime.metadata.deliveryTrace : {};
     const editScope = isRecord(prime.editScope) ? prime.editScope : undefined;
     const emittedFileCount = Array.isArray(prime.files) ? prime.files.length : 0;
+    const initialEditFiles = Array.isArray(editScope?.initialEditFiles) ? stringArray(editScope.initialEditFiles) : [];
+    const readOnlyFiles = Array.isArray(editScope?.readOnlyFiles) ? stringArray(editScope.readOnlyFiles) : [];
+    const expectedFiles = stringArray(entry.expectedFiles);
+    const surfaceFiles = uniqueStrings([...prime.files, ...initialEditFiles, ...readOnlyFiles]);
+    const expectedFilesMatched = expectedFiles.filter((expectedFile) => surfaceFiles.some((file) => pathsMatch(file, expectedFile)));
     const estimatedDirectiveTokens = numberValue(deliveryTrace.estimatedDirectiveTokens) ?? prime.tokenEstimate;
     const classifications = classifyProxy({
       action: stringValue(deliveryTrace.action),
@@ -509,7 +557,9 @@ async function runProxyEntry(manifest: CampaignManifest, entry: CampaignEntry): 
       taskShapeSignal: stringValue(deliveryTrace.taskShapeSignal),
       emittedFileCount,
       strictBoundary: Boolean(editScope?.strictBoundary),
-      estimatedDirectiveTokens
+      estimatedDirectiveTokens,
+      expectedFileCount: expectedFiles.length,
+      expectedFilesMatchedCount: expectedFilesMatched.length
     });
     return {
       entryId: entry.id,
@@ -524,8 +574,10 @@ async function runProxyEntry(manifest: CampaignManifest, entry: CampaignEntry): 
       emittedFileCount,
       emittedFileRoleSummary: recordValue(deliveryTrace.emittedFileRoleSummary),
       editScopeSource: stringValue(editScope?.scopeSource),
-      initialEditFileCount: Array.isArray(editScope?.initialEditFiles) ? editScope.initialEditFiles.length : 0,
-      readOnlyFileCount: Array.isArray(editScope?.readOnlyFiles) ? editScope.readOnlyFiles.length : 0,
+      initialEditFileCount: initialEditFiles.length,
+      readOnlyFileCount: readOnlyFiles.length,
+      expectedFileCount: expectedFiles.length,
+      expectedFilesMatchedCount: expectedFilesMatched.length,
       estimatedDirectiveTokens,
       estimatedSourceContextTokens: numberValue(deliveryTrace.estimatedSourceContextTokens),
       classifications
@@ -550,6 +602,8 @@ type CampaignProxyReport = {
   editScopeSource?: string | undefined;
   initialEditFileCount: number;
   readOnlyFileCount: number;
+  expectedFileCount: number;
+  expectedFilesMatchedCount: number;
   estimatedDirectiveTokens: number;
   estimatedSourceContextTokens?: number | undefined;
   classifications: CampaignProxyClassification[];
@@ -563,6 +617,8 @@ function classifyProxy(input: {
   emittedFileCount: number;
   strictBoundary: boolean;
   estimatedDirectiveTokens: number;
+  expectedFileCount: number;
+  expectedFilesMatchedCount: number;
 }): CampaignProxyClassification[] {
   const classes: CampaignProxyClassification[] = [];
   if (input.action === "request_evidence" || input.requiredSurface === "evidence_needed") classes.push("evidence_needed");
@@ -570,6 +626,7 @@ function classifyProxy(input: {
   if (input.directiveStyle === "scope_guardrail" || input.strictBoundary) classes.push("valid_guardrail");
   if (input.emittedFileCount > 6) classes.push("scope_too_broad");
   if (input.estimatedDirectiveTokens > 900) classes.push("would_over_assist");
+  if (input.expectedFileCount > 0 && input.expectedFilesMatchedCount === 0) classes.push("wrong_surface_risk");
   if (input.taskShapeSignal === "ambiguous_frontend_ownership" && input.action !== "request_evidence") classes.push("wrong_surface_risk");
   if (classes.length === 0) classes.push("proxy_pass");
   return [...new Set(classes)];
@@ -1043,6 +1100,16 @@ function rootFor(entry: CampaignEntry): string {
 function matchesOnly(entry: CampaignEntry, only: string | undefined): boolean {
   if (!only) return true;
   return entry.id === only || entry.kind === only || (entry.tags ?? []).includes(only) || entry.contextBehavior === only;
+}
+
+function pathsMatch(actual: string, expected: string): boolean {
+  const normalizedActual = actual.replaceAll("\\", "/");
+  const normalizedExpected = expected.replaceAll("\\", "/");
+  return (
+    normalizedActual === normalizedExpected ||
+    normalizedActual.endsWith(`/${normalizedExpected}`) ||
+    normalizedExpected.endsWith(`/${normalizedActual}`)
+  );
 }
 
 export async function runCampaignTaskPool<T>(tasks: Array<() => Promise<T>>, parallel: number): Promise<T[]> {

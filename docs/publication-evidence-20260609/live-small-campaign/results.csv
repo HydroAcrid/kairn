@@ -1,0 +1,9 @@
+entry_id,kind,stage,status,tags,quality_passed,observed_tokens,baseline_tokens,saved_tokens,savings_rate,clean_passpass,token_regression,quality_drop,quality_rescue,harmful_assist,scope_violations,mcp_calls,mcp_useful_attribution,classifications,elapsed_ms
+proxy-swe-row-2-openlibrary,proxy,proxy,passed,swe-pro;proxy;clean-control;python,true,648,,,,false,false,false,false,false,0,0,0,proxy_pass,25500
+proxy-swe-row-3-vuls,proxy,proxy,passed,swe-pro;proxy;clean-control;go,false,414,,,,false,false,false,false,false,0,0,0,wrong_surface_risk,3382
+proxy-swe-row-9-element-device,proxy,proxy,passed,swe-pro;proxy;frontend-ownership;typescript,false,678,,,,false,false,false,false,false,0,0,0,wrong_surface_risk,25496
+proxy-swe-row-10-element-discovery,proxy,proxy,passed,swe-pro;proxy;clean-control;typescript,true,410,,,,false,false,false,false,false,0,0,0,proxy_pass,22171
+live-swe-row-2-openlibrary,control,live,passed,swe-pro;live;clean-control;python,true,54229,43173,-11056,-0.2561,false,true,false,false,false,0,0,0,official_token_regression,356003
+live-swe-row-10-element-discovery,control,live,passed,swe-pro;live;clean-control;typescript,true,25991,37640,11649,0.3095,true,false,false,false,false,0,0,0,clean_passpass,414293
+mcp-smoke-local-context,mcp_smoke,live,passed,mcp;smoke;protocol,true,,,,,false,false,false,false,false,0,2,1,mcp_useful_attribution,4584
+endurance-fastify-mcp-repeat1,endurance,live,passed,mcp;endurance;js-server;fastify,true,36060,122141,86081,0.7047674409084582,true,false,false,false,false,0,2,2,clean_passpass;mcp_useful_attribution,353377

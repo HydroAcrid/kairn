@@ -28,6 +28,7 @@ import {
   validatePublicationPlan,
   type PublicationResultRow
 } from "../src/bench/publication.js";
+import { runCampaign, summarizeCampaign } from "../src/bench/campaign.js";
 import { evaluateDiffScopes, evaluateSourceInvariants } from "../src/bench/sourceValidation.js";
 import { inferInvariantStatement } from "../src/context/invariants.js";
 import { evaluateContextValue } from "../src/prime/contextValue.js";
@@ -862,6 +863,38 @@ describe("benchmark suite and scoring", () => {
       expect(manifest.artifacts[0]?.commands[0]).toContain("Find src/user.ts");
       expect(manifest.packageVersion).toBeTruthy();
       expect(manifest.nodeVersion).toMatch(/^v/);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("summarizes campaign rows from raw artifacts after separate only-runs", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-campaign-raw-summary-"));
+    try {
+      const manifestPath = path.resolve("examples/bench/campaign-fixtures/mock-live-campaign.json");
+      const outDir = path.join(root, "out");
+
+      await runCampaign({
+        manifestPath,
+        outDir,
+        stage: "live",
+        only: "mock-live-a",
+        parallel: 1
+      });
+      await runCampaign({
+        manifestPath,
+        outDir,
+        stage: "live",
+        only: "mock-live-b",
+        parallel: 1
+      });
+
+      const report = summarizeCampaign(outDir);
+
+      expect(report.rows.map((row) => row.entryId)).toEqual(["mock-live-a", "mock-live-b"]);
+      expect(report.aggregate.cleanPassPassRows).toBe(2);
+      expect(report.aggregate.medianSavedTokens).toBe(300);
+      expect(fs.readFileSync(path.join(outDir, report.outputs.resultsCsvPath), "utf8")).toContain("mock-live-b");
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
