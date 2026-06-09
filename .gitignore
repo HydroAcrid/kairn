@@ -40,7 +40,10 @@ docs/publication-evidence-*/**/kairn-*.json
 docs/publication-evidence-*/**/*.csv
 docs/publication-evidence-*/**/*.json
 !docs/publication-evidence-*/**/campaign-summary.json
+!docs/publication-evidence-*/**/campaign-manifest.json
 !docs/publication-evidence-*/**/results.csv
+!docs/publication-evidence-*/**/failures.csv
+!docs/publication-evidence-*/**/proxy-results.csv
 docs/publication-evidence-*/**/*patches*.json
 docs/publication-evidence-*/**/*-patches.json
 docs/publication-evidence-*/**/empty-patches.json

@@ -1,0 +1,24 @@
+{
+  "id": "campaign-smoke-proxy",
+  "name": "Campaign Proxy Smoke",
+  "description": "Fast proxy-only campaign fixture for campaign harness validation.",
+  "defaults": {
+    "parallel": 2,
+    "cleanup": "never"
+  },
+  "pauseRules": {
+    "maxScopeViolations": 0,
+    "maxRepeatedFailureClass": 1,
+    "stopOnHarnessFailure": true
+  },
+  "entries": [
+    {
+      "id": "proxy-exact-source",
+      "kind": "proxy",
+      "tags": ["proxy", "routing"],
+      "root": ".",
+      "task": "Fix src/bench/agent.ts retry behavior without broad scans.",
+      "budget": 700
+    }
+  ]
+}
