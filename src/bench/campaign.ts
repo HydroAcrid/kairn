@@ -764,10 +764,51 @@ function evaluatePauseRules(manifest: CampaignManifest, artifacts: CampaignArtif
 function writeCampaignOutputs(input: { manifest: CampaignManifest; report: CampaignReport }): void {
   const outputs = input.report.outputs;
   writeJsonAtomic(outputs.manifestPath, input.manifest);
-  writeJsonAtomic(outputs.summaryPath, input.report);
+  writeJsonAtomic(outputs.summaryPath, sanitizedCampaignReport(input.report));
   fs.writeFileSync(outputs.resultsCsvPath, campaignRowsCsv(input.report.rows));
   fs.writeFileSync(outputs.failuresCsvPath, campaignRowsCsv(input.report.rows.filter((row) => row.status === "failed" || row.qualityDrop || row.harmfulAssist || row.scopeViolations > 0)));
   fs.writeFileSync(outputs.proxyResultsCsvPath, campaignRowsCsv(input.report.rows.filter((row) => row.kind === "proxy")));
+}
+
+function sanitizedCampaignReport(report: CampaignReport): CampaignReport {
+  return {
+    ...report,
+    manifestPath: path.basename(report.outputs.manifestPath),
+    outDir: ".",
+    artifacts: report.artifacts.map((artifact) => {
+      const sanitized: CampaignArtifact = {
+        entryId: artifact.entryId,
+        kind: artifact.kind,
+        stage: artifact.stage,
+        status: artifact.status,
+        tags: artifact.tags,
+        startedAt: artifact.startedAt,
+        endedAt: artifact.endedAt,
+        artifactPath: `raw/${path.basename(artifact.artifactPath)}`,
+        ...(artifact.workerPacketPath ? { workerPacketPath: `worker-packets/${path.basename(artifact.workerPacketPath)}` } : {}),
+        commands: [],
+        classifications: artifact.classifications,
+        ...(artifact.error ? { error: redactLocalPaths(artifact.error) } : {}),
+        workspacePaths: [],
+        metrics: artifact.metrics
+      };
+      return sanitized;
+    }),
+    outputs: {
+      manifestPath: path.basename(report.outputs.manifestPath),
+      summaryPath: path.basename(report.outputs.summaryPath),
+      resultsCsvPath: path.basename(report.outputs.resultsCsvPath),
+      failuresCsvPath: path.basename(report.outputs.failuresCsvPath),
+      proxyResultsCsvPath: path.basename(report.outputs.proxyResultsCsvPath),
+      workerPacketsDir: path.basename(report.outputs.workerPacketsDir),
+      rawDir: path.basename(report.outputs.rawDir),
+      workDir: path.basename(report.outputs.workDir)
+    }
+  };
+}
+
+function redactLocalPaths(value: string): string {
+  return value.replace(/\/Users\/[^/\s]+\/[^\s"']+/g, "<path>");
 }
 
 function campaignRowsCsv(rows: CampaignResultRow[]): string {

@@ -1,0 +1,6 @@
+entry_id,kind,stage,status,tags,quality_passed,observed_tokens,baseline_tokens,saved_tokens,savings_rate,clean_passpass,token_regression,quality_drop,quality_rescue,harmful_assist,scope_violations,mcp_calls,mcp_useful_attribution,classifications,elapsed_ms
+proxy-command-contract-qutebrowser-args,proxy,proxy,passed,swe-pro-risk;command-contract;qutebrowser;token-regression-risk,true,466,,,,false,false,false,false,false,0,0,0,proxy_pass,18800
+proxy-lifecycle-policy-ansible-date,proxy,proxy,passed,swe-pro-risk;lifecycle-policy;ansible;token-regression-risk,true,502,,,,false,false,false,false,false,0,0,0,proxy_pass,16364
+proxy-frontend-ownership-element-voice,proxy,proxy,passed,swe-pro-risk;frontend-ownership;element;quality-risk,true,398,,,,false,false,false,false,false,0,0,0,proxy_pass,18797
+proxy-clean-control-teleport-rbac,proxy,proxy,passed,clean-control;rbac;source-focus,true,643,,,,false,false,false,false,false,0,0,0,proxy_pass,11752
+proxy-clean-control-openlibrary-list-conflict,proxy,proxy,passed,clean-control;python;request-routing,true,697,,,,false,false,false,false,false,0,0,0,proxy_pass,9390

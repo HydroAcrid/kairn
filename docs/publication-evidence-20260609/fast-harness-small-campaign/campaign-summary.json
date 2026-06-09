@@ -1,0 +1,363 @@
+{
+  "id": "fast-harness-small-campaign-20260609",
+  "name": "Fast Harness Small Campaign 2026-06-09",
+  "generatedAt": "2026-06-09T21:21:34.778Z",
+  "manifestPath": "campaign-manifest.json",
+  "outDir": ".",
+  "stage": "all",
+  "dryRun": false,
+  "parallel": 3,
+  "paused": false,
+  "pauseReasons": [],
+  "artifacts": [
+    {
+      "entryId": "proxy-command-contract-qutebrowser-args",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": [
+        "swe-pro-risk",
+        "command-contract",
+        "qutebrowser",
+        "token-regression-risk"
+      ],
+      "startedAt": "2026-06-09T21:15:34.890Z",
+      "endedAt": "2026-06-09T21:15:53.690Z",
+      "artifactPath": "raw/proxy-command-contract-qutebrowser-args.json",
+      "workerPacketPath": "worker-packets/proxy-command-contract-qutebrowser-args.json",
+      "commands": [],
+      "classifications": [
+        "proxy_pass"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": true,
+        "cleanPassPass": false,
+        "tokenRegression": false,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 0,
+        "mcpUsefulAttribution": 0,
+        "elapsedMs": 18800,
+        "observedTokens": 466
+      }
+    },
+    {
+      "entryId": "proxy-lifecycle-policy-ansible-date",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": [
+        "swe-pro-risk",
+        "lifecycle-policy",
+        "ansible",
+        "token-regression-risk"
+      ],
+      "startedAt": "2026-06-09T21:15:34.897Z",
+      "endedAt": "2026-06-09T21:15:51.261Z",
+      "artifactPath": "raw/proxy-lifecycle-policy-ansible-date.json",
+      "workerPacketPath": "worker-packets/proxy-lifecycle-policy-ansible-date.json",
+      "commands": [],
+      "classifications": [
+        "proxy_pass"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": true,
+        "cleanPassPass": false,
+        "tokenRegression": false,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 0,
+        "mcpUsefulAttribution": 0,
+        "elapsedMs": 16364,
+        "observedTokens": 502
+      }
+    },
+    {
+      "entryId": "proxy-frontend-ownership-element-voice",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": [
+        "swe-pro-risk",
+        "frontend-ownership",
+        "element",
+        "quality-risk"
+      ],
+      "startedAt": "2026-06-09T21:15:34.898Z",
+      "endedAt": "2026-06-09T21:15:53.695Z",
+      "artifactPath": "raw/proxy-frontend-ownership-element-voice.json",
+      "workerPacketPath": "worker-packets/proxy-frontend-ownership-element-voice.json",
+      "commands": [],
+      "classifications": [
+        "proxy_pass"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": true,
+        "cleanPassPass": false,
+        "tokenRegression": false,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 0,
+        "mcpUsefulAttribution": 0,
+        "elapsedMs": 18797,
+        "observedTokens": 398
+      }
+    },
+    {
+      "entryId": "proxy-clean-control-teleport-rbac",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": [
+        "clean-control",
+        "rbac",
+        "source-focus"
+      ],
+      "startedAt": "2026-06-09T21:15:51.262Z",
+      "endedAt": "2026-06-09T21:16:03.014Z",
+      "artifactPath": "raw/proxy-clean-control-teleport-rbac.json",
+      "workerPacketPath": "worker-packets/proxy-clean-control-teleport-rbac.json",
+      "commands": [],
+      "classifications": [
+        "proxy_pass"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": true,
+        "cleanPassPass": false,
+        "tokenRegression": false,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 0,
+        "mcpUsefulAttribution": 0,
+        "elapsedMs": 11752,
+        "observedTokens": 643
+      }
+    },
+    {
+      "entryId": "proxy-clean-control-openlibrary-list-conflict",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": [
+        "clean-control",
+        "python",
+        "request-routing"
+      ],
+      "startedAt": "2026-06-09T21:15:53.691Z",
+      "endedAt": "2026-06-09T21:16:03.081Z",
+      "artifactPath": "raw/proxy-clean-control-openlibrary-list-conflict.json",
+      "workerPacketPath": "worker-packets/proxy-clean-control-openlibrary-list-conflict.json",
+      "commands": [],
+      "classifications": [
+        "proxy_pass"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": true,
+        "cleanPassPass": false,
+        "tokenRegression": false,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 0,
+        "mcpUsefulAttribution": 0,
+        "elapsedMs": 9390,
+        "observedTokens": 697
+      }
+    },
+    {
+      "entryId": "mcp-smoke-current-repo",
+      "kind": "mcp_smoke",
+      "stage": "live",
+      "status": "passed",
+      "tags": [
+        "mcp",
+        "setup-control",
+        "current-repo"
+      ],
+      "startedAt": "2026-06-09T21:15:53.695Z",
+      "endedAt": "2026-06-09T21:16:03.050Z",
+      "artifactPath": "raw/mcp-smoke-current-repo.json",
+      "workerPacketPath": "worker-packets/mcp-smoke-current-repo.json",
+      "commands": [],
+      "classifications": [
+        "mcp_useful_attribution"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": true,
+        "cleanPassPass": false,
+        "tokenRegression": false,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 2,
+        "mcpUsefulAttribution": 1,
+        "elapsedMs": 9355
+      }
+    }
+  ],
+  "rows": [
+    {
+      "entryId": "proxy-command-contract-qutebrowser-args",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": "swe-pro-risk;command-contract;qutebrowser;token-regression-risk",
+      "qualityPassed": true,
+      "observedTokens": 466,
+      "cleanPassPass": false,
+      "tokenRegression": false,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 0,
+      "mcpUsefulAttribution": 0,
+      "classifications": "proxy_pass",
+      "elapsedMs": 18800
+    },
+    {
+      "entryId": "proxy-lifecycle-policy-ansible-date",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": "swe-pro-risk;lifecycle-policy;ansible;token-regression-risk",
+      "qualityPassed": true,
+      "observedTokens": 502,
+      "cleanPassPass": false,
+      "tokenRegression": false,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 0,
+      "mcpUsefulAttribution": 0,
+      "classifications": "proxy_pass",
+      "elapsedMs": 16364
+    },
+    {
+      "entryId": "proxy-frontend-ownership-element-voice",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": "swe-pro-risk;frontend-ownership;element;quality-risk",
+      "qualityPassed": true,
+      "observedTokens": 398,
+      "cleanPassPass": false,
+      "tokenRegression": false,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 0,
+      "mcpUsefulAttribution": 0,
+      "classifications": "proxy_pass",
+      "elapsedMs": 18797
+    },
+    {
+      "entryId": "proxy-clean-control-teleport-rbac",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": "clean-control;rbac;source-focus",
+      "qualityPassed": true,
+      "observedTokens": 643,
+      "cleanPassPass": false,
+      "tokenRegression": false,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 0,
+      "mcpUsefulAttribution": 0,
+      "classifications": "proxy_pass",
+      "elapsedMs": 11752
+    },
+    {
+      "entryId": "proxy-clean-control-openlibrary-list-conflict",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": "clean-control;python;request-routing",
+      "qualityPassed": true,
+      "observedTokens": 697,
+      "cleanPassPass": false,
+      "tokenRegression": false,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 0,
+      "mcpUsefulAttribution": 0,
+      "classifications": "proxy_pass",
+      "elapsedMs": 9390
+    },
+    {
+      "entryId": "mcp-smoke-current-repo",
+      "kind": "mcp_smoke",
+      "stage": "live",
+      "status": "passed",
+      "tags": "mcp;setup-control;current-repo",
+      "qualityPassed": true,
+      "cleanPassPass": false,
+      "tokenRegression": false,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 2,
+      "mcpUsefulAttribution": 1,
+      "classifications": "mcp_useful_attribution",
+      "elapsedMs": 9355
+    }
+  ],
+  "aggregate": {
+    "entries": 6,
+    "completedEntries": 6,
+    "failedEntries": 0,
+    "qualityPassRate": 1,
+    "cleanPassPassRows": 0,
+    "tokenRegressionRows": 0,
+    "qualityRescueRows": 0,
+    "harmfulRows": 0,
+    "scopeViolations": 0,
+    "mcpCalls": 2,
+    "mcpUsefulAttribution": 1,
+    "medianSavedTokens": 0,
+    "medianSavingsRate": 0,
+    "medianElapsedMsByStage": {
+      "proxy": 16364,
+      "live": 9355
+    },
+    "repeatedFailureClasses": [],
+    "pauseRuleStatus": {
+      "paused": false,
+      "reasons": []
+    }
+  },
+  "outputs": {
+    "manifestPath": "campaign-manifest.json",
+    "summaryPath": "campaign-summary.json",
+    "resultsCsvPath": "results.csv",
+    "failuresCsvPath": "failures.csv",
+    "proxyResultsCsvPath": "proxy-results.csv",
+    "workerPacketsDir": "worker-packets",
+    "rawDir": "raw",
+    "workDir": "work"
+  }
+}

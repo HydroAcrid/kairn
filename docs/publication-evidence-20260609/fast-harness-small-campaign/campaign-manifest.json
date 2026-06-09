@@ -1,0 +1,99 @@
+{
+  "id": "fast-harness-small-campaign-20260609",
+  "name": "Fast Harness Small Campaign 2026-06-09",
+  "description": "Proxy-first validation for known governance/routing risk classes plus MCP smoke before spending live Codex or official SWE-Pro evaluator time.",
+  "defaults": {
+    "parallel": 3,
+    "cleanup": "on_success"
+  },
+  "pauseRules": {
+    "maxQualityDrops": 0,
+    "maxScopeViolations": 0,
+    "maxRepeatedFailureClass": 1,
+    "maxTokenRegressionClass": 1,
+    "stopOnHarnessFailure": true
+  },
+  "entries": [
+    {
+      "id": "proxy-command-contract-qutebrowser-args",
+      "kind": "proxy",
+      "tags": [
+        "swe-pro-risk",
+        "command-contract",
+        "qutebrowser",
+        "token-regression-risk"
+      ],
+      "root": ".",
+      "task": "Official patch task shape: Fix QtWebEngine rendering glitches by adding a Chromium workaround setting. Prefer runtime args plus config schema surfaces; avoid broad backend diagnostic context.",
+      "budget": 700,
+      "contextBehavior": "active_valid"
+    },
+    {
+      "id": "proxy-lifecycle-policy-ansible-date",
+      "kind": "proxy",
+      "tags": [
+        "swe-pro-risk",
+        "lifecycle-policy",
+        "ansible",
+        "token-regression-risk"
+      ],
+      "root": ".",
+      "task": "Official patch task shape: Support deprecation by date in modules. Deprecated aliases should validate version or date and display warnings. Avoid generic date/url helpers unless parsing helpers are explicitly requested.",
+      "budget": 700,
+      "contextBehavior": "active_valid"
+    },
+    {
+      "id": "proxy-frontend-ownership-element-voice",
+      "kind": "proxy",
+      "tags": [
+        "swe-pro-risk",
+        "frontend-ownership",
+        "element",
+        "quality-risk"
+      ],
+      "root": ".",
+      "task": "Official patch task shape: Fix voice broadcast liveness icon inconsistent feedback while recording and playback are active. Prefer visible component ownership and only include hooks/models/index surfaces when state or shared types are required.",
+      "budget": 700,
+      "contextBehavior": "active_valid"
+    },
+    {
+      "id": "proxy-clean-control-teleport-rbac",
+      "kind": "proxy",
+      "tags": [
+        "clean-control",
+        "rbac",
+        "source-focus"
+      ],
+      "root": ".",
+      "task": "Control task shape: Kubernetes RBAC namespace rules should grant expected resource access. A role rule with kind namespace grants get list watch resources in the namespace. Prefer resource matchers before service startup code.",
+      "budget": 700,
+      "contextBehavior": "active_valid"
+    },
+    {
+      "id": "proxy-clean-control-openlibrary-list-conflict",
+      "kind": "proxy",
+      "tags": [
+        "clean-control",
+        "python",
+        "request-routing"
+      ],
+      "root": ".",
+      "task": "Control task shape: /lists/add returns a 500 when POST data conflicts with query parameters. Prefer request/form conflict handling and nearby tests; avoid broad unrelated utility context.",
+      "budget": 700,
+      "contextBehavior": "active_valid"
+    },
+    {
+      "id": "mcp-smoke-current-repo",
+      "kind": "mcp_smoke",
+      "tags": [
+        "mcp",
+        "setup-control",
+        "current-repo"
+      ],
+      "root": ".",
+      "task": "Find the benchmark MCP delivery source before broad scans",
+      "budget": 700,
+      "detail": "compact"
+    }
+  ]
+}

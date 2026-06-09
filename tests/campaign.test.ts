@@ -78,6 +78,13 @@ describe("benchmark campaign harness", () => {
     expect(fs.existsSync(report.outputs.summaryPath)).toBe(true);
     expect(fs.existsSync(report.outputs.resultsCsvPath)).toBe(true);
     expect(fs.existsSync(report.outputs.proxyResultsCsvPath)).toBe(true);
+
+    const summaryText = fs.readFileSync(report.outputs.summaryPath, "utf8");
+    const summary = JSON.parse(summaryText) as typeof report;
+    expect(summaryText).not.toContain("/Users/");
+    expect(summary.artifacts[0]?.commands).toEqual([]);
+    expect(summary.artifacts[0]).not.toHaveProperty("report");
+    expect(summary.outputs.summaryPath).toBe("campaign-summary.json");
   });
 
   it("runs proxy entries and resumes completed proxy artifacts", async () => {
