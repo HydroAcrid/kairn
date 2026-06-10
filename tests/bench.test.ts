@@ -900,6 +900,110 @@ describe("benchmark suite and scoring", () => {
     }
   });
 
+  it("flags proxy expected-file misses as wrong surface risk", async () => {
+    const root = createFixtureRepo();
+    const outRoot = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-campaign-proxy-surface-"));
+    try {
+      const manifestPath = path.join(outRoot, "campaign-manifest.json");
+      const outDir = path.join(outRoot, "out");
+      fs.writeFileSync(
+        manifestPath,
+        JSON.stringify({
+          id: "proxy-surface-test",
+          name: "Proxy Surface Test",
+          entries: [
+            {
+              id: "proxy-app-partial",
+              kind: "proxy",
+              root,
+              task: "Fix renderDashboard in src/app.ts without changing unrelated files.",
+              expectedFiles: ["src/app.ts", "src/missing-required.ts"],
+              budget: 500
+            }
+          ]
+        })
+      );
+
+      const report = await runCampaign({
+        manifestPath,
+        outDir,
+        stage: "proxy",
+        parallel: 1
+      });
+      const row = report.rows[0];
+      const artifact = report.artifacts[0];
+      const proxyReport = artifact?.report as { expectedFileCount?: number; expectedFilesMatchedCount?: number } | undefined;
+
+      expect(row?.classifications).toContain("wrong_surface_risk");
+      expect(row?.qualityPassed).toBe(false);
+      expect(report.paused).toBe(true);
+      expect(report.pauseReasons).toContain("proxy quality gate failed");
+      expect(proxyReport?.expectedFileCount).toBe(2);
+      expect(proxyReport?.expectedFilesMatchedCount).toBeLessThan(2);
+      expect(fs.readFileSync(path.join(outDir, "failures.csv"), "utf8")).toContain("proxy-app-partial");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+      fs.rmSync(outRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("allows expected-file misses when high-clue discovery proxy intentionally suppresses", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-campaign-proxy-discovery-"));
+    const outRoot = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-campaign-proxy-discovery-out-"));
+    try {
+      fs.mkdirSync(path.join(root, "src/utils"), { recursive: true });
+      fs.writeFileSync(
+        path.join(root, "src/utils/AutoDiscoveryUtils.tsx"),
+        "export function buildValidatedConfig(discoveryResult: unknown) { return discoveryResult; }\n"
+      );
+      fs.writeFileSync(
+        path.join(root, "src/utils/ValidatedServerConfig.ts"),
+        "export interface ValidatedServerConfig { baseUrl: string; }\n"
+      );
+      const manifestPath = path.join(outRoot, "campaign-manifest.json");
+      const outDir = path.join(outRoot, "out");
+      fs.writeFileSync(
+        manifestPath,
+        JSON.stringify({
+          id: "proxy-discovery-suppress-test",
+          name: "Proxy Discovery Suppress Test",
+          entries: [
+            {
+              id: "proxy-discovery-high-clue",
+              kind: "proxy",
+              root,
+              task: [
+                "SWE-Bench Pro metadata. Selected verification tests from SWE-Bench Pro metadata:",
+                "test/utils/AutoDiscoveryUtils-test.tsx",
+                "Fix homeserver discovery so delegated authentication metadata advertised under m.authentication is preserved in the validated server configuration.",
+                "The public interface ValidatedServerConfig must optionally declare delegatedAuthentication.",
+                "Keep edits to production source only."
+              ].join("\n"),
+              expectedFiles: ["src/utils/AutoDiscoveryUtils.tsx", "src/utils/ValidatedServerConfig.ts"],
+              budget: 500
+            }
+          ]
+        })
+      );
+
+      const report = await runCampaign({
+        manifestPath,
+        outDir,
+        stage: "proxy",
+        parallel: 1
+      });
+      const row = report.rows[0];
+
+      expect(row?.classifications).toContain("suppression_expected");
+      expect(row?.classifications).not.toContain("wrong_surface_risk");
+      expect(row?.qualityPassed).toBe(true);
+      expect(report.paused).toBe(false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+      fs.rmSync(outRoot, { recursive: true, force: true });
+    }
+  });
+
   it("accepts publication v2 official and context-pilot entries in dry-run mode", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-publication-v2-dry-run-"));
     try {
@@ -4391,6 +4495,307 @@ describe("benchmark suite and scoring", () => {
 
     expect(decision.taskShapeSignal).not.toBe("command_contract");
     expect(decision.requiredSurface).toBe("single_file");
+  });
+
+  it("marks discovery authentication config tasks as paired contract scope", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "Discovery omits delegated authentication metadata advertised under m.authentication.",
+        "When building the validated configuration from a discovery result, preserve delegatedAuthentication fields.",
+        "The public interface ValidatedServerConfig must optionally declare the delegatedAuthentication property.",
+        "Fix production source only."
+      ].join("\n"),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- src/utils/AutoDiscoveryUtils.tsx\n- src/utils/ValidatedServerConfig.ts\n",
+        files: ["src/utils/AutoDiscoveryUtils.tsx", "src/utils/ValidatedServerConfig.ts"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/utils/AutoDiscoveryUtils.tsx", "src/utils/ValidatedServerConfig.ts"],
+        rankedFiles: [
+          { path: "src/utils/AutoDiscoveryUtils.tsx", kind: "source", score: 720, reasons: ["discovery config owner"] },
+          { path: "src/utils/ValidatedServerConfig.ts", kind: "source", score: 690, reasons: ["validated config contract"] },
+          { path: "cypress/support/settings.ts", kind: "source", score: 160, reasons: ["settings"] }
+        ],
+        tokenEstimate: 700
+      },
+      quality: {
+        score: 82,
+        action: "emit",
+        reasons: ["discovery config source"],
+        topScore: 720,
+        topGap: 30,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 82,
+        action: "emit",
+        reasons: ["discovery config source"],
+        topScore: 720,
+        topGap: 30,
+        primaryFile: "src/utils/AutoDiscoveryUtils.tsx",
+        language: "typescript",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 700,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("src/utils/AutoDiscoveryUtils.tsx", "typescript"),
+        sourceRecord("src/utils/ValidatedServerConfig.ts", "typescript"),
+        sourceRecord("cypress/support/settings.ts", "typescript")
+      ],
+      repoFileCount: 5200,
+      estimatedContextCost: 700
+    });
+
+    expect(decision.taskShapeSignal).toBe("discovery_config");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
+  it("suppresses high-clue official discovery config prompts after the prompt names the contract and verification surface", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "SWE-Bench Pro metadata. Selected verification tests from SWE-Bench Pro metadata:",
+        "test/utils/AutoDiscoveryUtils-test.tsx",
+        "Fix homeserver discovery so delegated authentication metadata advertised under m.authentication is preserved in the validated server configuration.",
+        "The public interface ValidatedServerConfig must optionally declare delegatedAuthentication.",
+        "Keep edits to production source only."
+      ].join("\n"),
+      profile: "generic",
+      context: {
+        mode: "snippets",
+        content: "- src/utils/AutoDiscoveryUtils.tsx\n- src/utils/ValidatedServerConfig.ts\n",
+        files: ["src/utils/AutoDiscoveryUtils.tsx", "src/utils/ValidatedServerConfig.ts"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/utils/AutoDiscoveryUtils.tsx", "src/utils/ValidatedServerConfig.ts"],
+        rankedFiles: [
+          { path: "src/utils/AutoDiscoveryUtils.tsx", kind: "source", score: 720, reasons: ["discovery config owner"] },
+          { path: "src/utils/ValidatedServerConfig.ts", kind: "source", score: 690, reasons: ["validated config contract"] }
+        ],
+        tokenEstimate: 700,
+        metadata: { officialEvaluation: { source: "swe_bench_pro" } }
+      },
+      quality: {
+        score: 82,
+        action: "emit",
+        reasons: ["discovery config source"],
+        topScore: 720,
+        topGap: 30,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 82,
+        action: "emit",
+        reasons: ["discovery config source"],
+        topScore: 720,
+        topGap: 30,
+        primaryFile: "src/utils/AutoDiscoveryUtils.tsx",
+        language: "typescript",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 700,
+        expectedSavingsRisk: "low",
+        debugSignal: false,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("src/utils/AutoDiscoveryUtils.tsx", "typescript"),
+        sourceRecord("src/utils/ValidatedServerConfig.ts", "typescript")
+      ],
+      repoFileCount: 5200,
+      estimatedContextCost: 700
+    });
+
+    expect(decision.taskFrame).toBe("official_patch");
+    expect(decision.taskShapeSignal).toBe("discovery_config");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.action).toBe("suppress");
+    expect(decision.recommendedDelivery).toBe("none");
+  });
+
+  it("marks request body/form reconstruction as compact paired source scope", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "/lists/add returns 500 when POST body data conflicts with query parameters.",
+        "When body data is present, do not pre-populate parent keys before unflatten.",
+        "Nested indexed seeds fields should reconstruct from flattened form input.",
+        "Fix production source only."
+      ].join(" "),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- openlibrary/plugins/openlibrary/lists.py\n- openlibrary/plugins/upstream/utils.py\n",
+        files: ["openlibrary/plugins/openlibrary/lists.py", "openlibrary/plugins/upstream/utils.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["openlibrary/plugins/openlibrary/lists.py"],
+        rankedFiles: [
+          { path: "openlibrary/plugins/openlibrary/lists.py", kind: "source", score: 720, reasons: ["form route/list handler surface"] },
+          { path: "openlibrary/plugins/upstream/utils.py", kind: "source", score: 690, reasons: ["form unflatten utility surface"] }
+        ],
+        tokenEstimate: 720
+      },
+      quality: {
+        score: 78,
+        action: "emit",
+        reasons: ["strong request source surface"],
+        topScore: 720,
+        topGap: 30,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 78,
+        action: "emit",
+        reasons: ["strong request source surface"],
+        topScore: 720,
+        topGap: 30,
+        primaryFile: "openlibrary/plugins/openlibrary/lists.py",
+        language: "python",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 820,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("openlibrary/plugins/openlibrary/lists.py", "python"),
+        sourceRecord("openlibrary/plugins/upstream/utils.py", "python")
+      ],
+      repoFileCount: 4100,
+      estimatedContextCost: 820
+    });
+
+    expect(decision.taskShapeSignal).toBe("request_body_form");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
+  it("marks compressed request/query conflict wording as compact paired source scope", () => {
+    const decision = applyContextGovernor({
+      task: "Fix the /lists/add POST conflict bug. The task involves list request handling and upstream request/query handling.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- openlibrary/plugins/openlibrary/lists.py\n- openlibrary/plugins/upstream/utils.py\n",
+        files: ["openlibrary/plugins/openlibrary/lists.py", "openlibrary/plugins/upstream/utils.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["openlibrary/plugins/openlibrary/lists.py"],
+        rankedFiles: [
+          { path: "openlibrary/plugins/openlibrary/lists.py", kind: "source", score: 720, reasons: ["request handler surface"] },
+          { path: "openlibrary/plugins/upstream/utils.py", kind: "source", score: 690, reasons: ["request utility surface"] }
+        ],
+        tokenEstimate: 720
+      },
+      quality: {
+        score: 78,
+        action: "emit",
+        reasons: ["strong request source surface"],
+        topScore: 720,
+        topGap: 30,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 78,
+        action: "emit",
+        reasons: ["strong request source surface"],
+        topScore: 720,
+        topGap: 30,
+        primaryFile: "openlibrary/plugins/openlibrary/lists.py",
+        language: "python",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 820,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("openlibrary/plugins/openlibrary/lists.py", "python"),
+        sourceRecord("openlibrary/plugins/upstream/utils.py", "python")
+      ],
+      repoFileCount: 4100,
+      estimatedContextCost: 820
+    });
+
+    expect(decision.taskShapeSignal).toBe("request_body_form");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.action).toBe("shrink");
+  });
+
+  it("marks dominant converter output bugs as single-file scope guardrails", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "Selected tests from SWE-Bench Pro metadata: contrib/trivy/pkg/converter_test.go.",
+        "Fix the trivy-to-vuls converter output.",
+        "cveContents should not duplicate Debian severity records when conversion builds Vuls JSON findings.",
+        "Fix production source only."
+      ].join(" "),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- contrib/trivy/pkg/converter.go\n",
+        files: ["contrib/trivy/pkg/converter.go"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["contrib/trivy/pkg/converter.go"],
+        rankedFiles: [
+          { path: "contrib/trivy/pkg/converter.go", kind: "source", score: 980, reasons: ["converter output implementation surface"] }
+        ],
+        tokenEstimate: 320
+      },
+      quality: {
+        score: 82,
+        action: "emit",
+        reasons: ["converter output implementation surface"],
+        topScore: 980,
+        topGap: 520,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 82,
+        action: "emit",
+        reasons: ["converter output implementation surface"],
+        topScore: 980,
+        topGap: 520,
+        primaryFile: "contrib/trivy/pkg/converter.go",
+        language: "go",
+        exactPathMentioned: false,
+        sourceRescue: true,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 620,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [sourceRecord("contrib/trivy/pkg/converter.go", "go")],
+      repoFileCount: 2400,
+      estimatedContextCost: 620
+    });
+
+    expect(decision.taskShapeSignal).toBe("converter_output");
+    expect(decision.requiredSurface).toBe("single_file");
+    expect(decision.action).toBe("shrink");
+    expect(decision.directiveStyle).toBe("scope_guardrail");
+    expect(decision.recommendedDelivery).toBe("one_file_directive");
   });
 
   it("does not treat route-target import/export domain language as an exporter command contract", () => {

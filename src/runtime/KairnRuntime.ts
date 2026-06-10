@@ -127,6 +127,7 @@ import { decideEditScope } from "../scope/editScope.js";
 import { isUnrelatedDeprecationLifecyclePath, scoreDeprecationLifecyclePath } from "../scope/lifecycleSurfaces.js";
 
 type PrimeDeliveryTrace = {
+  action: ContextValueDecision["action"];
   taskShapeSignal?: ContextValueDecision["taskShapeSignal"];
   requiredSurface?: ContextValueDecision["requiredSurface"];
   directiveStyle?: ContextValueDecision["directiveStyle"];
@@ -509,6 +510,21 @@ export class KairnRuntime {
     const webSessionRenewalSourceFiles = hasWebSessionRenewalScope(resolvedTask)
       ? webSessionRenewalSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 6)
       : [];
+    const requestBodyFormSourceFiles = hasRequestBodyFormScope(resolvedTask)
+      ? requestBodyFormSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
+      : [];
+    const converterOutputSourceFiles = hasConverterOutputScope(resolvedTask)
+      ? converterOutputSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
+      : [];
+    const converterOutputDeliveryFiles = contextDecision.requiredSurface === "single_file"
+      ? converterOutputSourceFiles.filter(isLikelyProductionSourceFile).slice(0, 1)
+      : converterOutputSourceFiles;
+    const discoveryConfigSourceFiles = hasDiscoveryConfigScope(resolvedTask)
+      ? discoveryConfigSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
+      : [];
+    const deviceSessionListenerSourceFiles = hasDeviceSessionListenerScope(resolvedTask)
+      ? deviceSessionListenerSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
+      : [];
 	    const packageSourceMappingSourceFiles = hasPackageSourceMappingScope(resolvedTask)
 	      ? packageSourceMappingSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 6)
 	      : [];
@@ -534,6 +550,18 @@ export class KairnRuntime {
 		        : contextDecision.recommendedDelivery === "multi_file_directive" &&
 		            webSessionRenewalSourceFiles.length >= 3
 		          ? Math.min(6, Math.max(baseMultiFileLimit, webSessionRenewalSourceFiles.length))
+          : contextDecision.recommendedDelivery === "multi_file_directive" &&
+              requestBodyFormSourceFiles.length >= 2
+            ? Math.min(requestBodyFormSourceFiles.length, Math.max(baseMultiFileLimit, requestBodyFormSourceFiles.length))
+          : contextDecision.recommendedDelivery === "multi_file_directive" &&
+              converterOutputSourceFiles.length >= 1
+            ? Math.min(4, Math.max(baseMultiFileLimit, converterOutputSourceFiles.length))
+          : contextDecision.recommendedDelivery === "multi_file_directive" &&
+              discoveryConfigSourceFiles.length >= 2
+            ? Math.min(4, Math.max(baseMultiFileLimit, discoveryConfigSourceFiles.length))
+          : contextDecision.recommendedDelivery === "multi_file_directive" &&
+              deviceSessionListenerSourceFiles.length >= 1
+            ? Math.min(5, Math.max(baseMultiFileLimit, deviceSessionListenerSourceFiles.length))
           : contextDecision.recommendedDelivery === "multi_file_directive" &&
               datastoreBackendParitySourceFiles.length >= 2
             ? Math.min(6, Math.max(baseMultiFileLimit, datastoreBackendParitySourceFiles.length))
@@ -565,6 +593,10 @@ export class KairnRuntime {
             ...promptMentionedSourceFiles,
 	            ...kubernetesExecSourceFiles,
             ...webSessionRenewalSourceFiles,
+            ...requestBodyFormSourceFiles,
+            ...converterOutputSourceFiles,
+            ...discoveryConfigSourceFiles,
+            ...deviceSessionListenerSourceFiles,
 	            ...packageSourceMappingSourceFiles,
             ...datastoreBackendParitySourceFiles,
 	            ...promptNamedSourceFiles,
@@ -579,6 +611,10 @@ export class KairnRuntime {
 	          ...selectedTestCounterpartSourceFiles,
 	          ...kubernetesExecSourceFiles,
           ...webSessionRenewalSourceFiles,
+          ...requestBodyFormSourceFiles,
+          ...converterOutputSourceFiles,
+          ...discoveryConfigSourceFiles,
+          ...deviceSessionListenerSourceFiles,
 	          ...packageSourceMappingSourceFiles,
           ...datastoreBackendParitySourceFiles,
 	          ...promptNamedSourceFiles,
@@ -608,6 +644,8 @@ export class KairnRuntime {
       !promptMentionsMultipleProductionSourceFiles &&
 	      !hasDeprecationLifecycleScope(resolvedTask) &&
       !hasWebSessionRenewalScope(resolvedTask) &&
+      !hasRequestBodyFormScope(resolvedTask) &&
+      !hasDiscoveryConfigScope(resolvedTask) &&
 	      !hasPackageSourceMappingScope(resolvedTask) &&
 	      !hasConfigOptionRuntimeScope(resolvedTask);
     const governorSingleFilePatchScope =
@@ -615,8 +653,10 @@ export class KairnRuntime {
       contextDecision.requiredSurface === "single_file" &&
 	      !hasExplicitMultiFileScopeRequest(resolvedTask) &&
       !promptMentionsMultipleProductionSourceFiles &&
-	      !hasDeprecationLifecycleScope(resolvedTask) &&
+      !hasDeprecationLifecycleScope(resolvedTask) &&
       !hasWebSessionRenewalScope(resolvedTask) &&
+      !hasRequestBodyFormScope(resolvedTask) &&
+      !hasDiscoveryConfigScope(resolvedTask) &&
 	      !hasPackageSourceMappingScope(resolvedTask) &&
 	      !hasConfigOptionRuntimeScope(resolvedTask);
     const officialSingleFileDirective = officialSingleFilePatchScope ? officialPatchScopeFiles[0] : undefined;
@@ -683,7 +723,18 @@ export class KairnRuntime {
     const forceRequestBodyFormScope =
       effectiveAction === "shrink" &&
       hasRequestBodyFormScope(resolvedTask) &&
-      files.filter(isLikelyProductionSourceFile).length > 1 &&
+      requestBodyFormSourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
+      !readOnlySourceRouting;
+    const forceConverterOutputScope =
+      effectiveAction === "shrink" &&
+      hasConverterOutputScope(resolvedTask) &&
+      contextDecision.requiredSurface !== "single_file" &&
+      converterOutputDeliveryFiles.filter(isLikelyProductionSourceFile).length > 0 &&
+      !readOnlySourceRouting;
+    const forceDiscoveryConfigScope =
+      effectiveAction === "shrink" &&
+      hasDiscoveryConfigScope(resolvedTask) &&
+      discoveryConfigSourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
       !readOnlySourceRouting;
     const forceWebSessionRenewalScope =
       effectiveAction === "shrink" &&
@@ -718,6 +769,10 @@ export class KairnRuntime {
           ? "multi_file_directive" as const
         : forceRequestBodyFormScope
           ? "multi_file_directive" as const
+        : forceConverterOutputScope
+          ? converterOutputDeliveryFiles.length > 1 ? "multi_file_directive" as const : "one_file_directive" as const
+        : forceDiscoveryConfigScope
+          ? "multi_file_directive" as const
         : forceWebSessionRenewalScope
           ? "multi_file_directive" as const
         : forcePackageSourceMappingScope
@@ -742,6 +797,10 @@ export class KairnRuntime {
       ...deprecationLifecycleSourceFiles,
       ...promptMentionedSourceFiles,
       ...webSessionRenewalSourceFiles,
+      ...requestBodyFormSourceFiles,
+      ...converterOutputDeliveryFiles,
+      ...discoveryConfigSourceFiles,
+      ...deviceSessionListenerSourceFiles,
       ...packageSourceMappingSourceFiles,
       ...datastoreBackendParitySourceFiles,
       ...files
@@ -751,6 +810,7 @@ export class KairnRuntime {
       !isUnrelatedDeprecationLifecycleSurface(file, resolvedTask) &&
       !isUnrelatedConfigSchemaSurface(file, resolvedTask, selectedTestCounterpartSourceFiles) &&
       !isUnrelatedWebSessionRenewalSurface(file, resolvedTask) &&
+      !isUnrelatedRequestBodyFormSurface(file, resolvedTask, requestBodyFormSourceFiles) &&
       !isForbiddenFrontendEditSurface(file, resolvedTask) &&
       !isUnrelatedDatastoreBackendParitySurface(file, resolvedTask, datastoreBackendParitySourceFiles) &&
       !isUnrelatedPromptMentionedSourceSurface(file, resolvedTask, promptMentionedSourceFiles)
@@ -766,7 +826,11 @@ export class KairnRuntime {
       : forceDeprecationLifecycleScope
         ? sourceDeliveryFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
       : forceRequestBodyFormScope
-        ? sourceDeliveryFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
+        ? requestBodyFormSourceFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
+      : forceConverterOutputScope
+        ? sourceDeliveryFiles.filter(isLikelyProductionSourceFile).slice(0, Math.max(1, Math.min(multiFileLimit, converterOutputDeliveryFiles.length || 1)))
+      : forceDiscoveryConfigScope
+        ? discoveryConfigSourceFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
       : forceWebSessionRenewalScope
         ? sourceDeliveryFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
       : forcePackageSourceMappingScope
@@ -822,6 +886,7 @@ export class KairnRuntime {
         effectiveContextDecision.taskShapeSignal === "frontend_ownership" ||
         effectiveContextDecision.requiredSurface === "feature_cluster" ||
         forceRequestBodyFormScope ||
+        forceDiscoveryConfigScope ||
         forceWebSessionRenewalScope ||
         forcePackageSourceMappingScope ||
         forceDatastoreBackendParityScope
@@ -850,6 +915,7 @@ export class KairnRuntime {
       forceOfficialMultiFileScope,
       forceDeprecationLifecycleScope,
       forceRequestBodyFormScope,
+      forceDiscoveryConfigScope,
       forceWebSessionRenewalScope,
       forcePackageSourceMappingScope,
       forceProductionOnlyOneFile
@@ -3512,7 +3578,7 @@ export class KairnRuntime {
                   ...mcpFirstBenchmarkInstructionLines(input.benchmarkCase),
                   "Call `kairn_prepare_task` before broad, unclear, multi-file, or failure-driven file scans.",
                   "For diagnose, investigate, audit, trace, or source-rescue tasks that do not name an exact production path, call `kairn_prepare_task` once before manual source reads.",
-                  "For short obvious single-source symbol tasks, inspect the likely source first and call Kairn only if that guess fails or the task broadens.",
+                  "Do not skip Kairn merely because a task feels small; skip the first prepare call only when the user names an exact production file or exact symbol.",
                   "If `kairn_prepare_task` returns `stopCondition` or no `nextToolCalls`, continue from its files and do not call more Kairn unless a check fails or the target changes.",
                   "Only call `kairn_get_next_context` when `kairn_prepare_task` explicitly returns it as a next tool call.",
                   "For real failures, call `kairn_get_failure_context` once before broad debugging searches.",
@@ -4173,6 +4239,22 @@ function isUnrelatedWebSessionRenewalSurface(filePath: string, task: string): bo
     /^lib\/services?\//.test(normalizedPath);
 }
 
+function isUnrelatedRequestBodyFormSurface(filePath: string, task: string, allowedRequestFiles: string[]): boolean {
+  if (!hasRequestBodyFormScope(task)) return false;
+  const normalizedPath = filePath.toLowerCase();
+  const normalizedTask = task.toLowerCase();
+  const allowed = new Set(allowedRequestFiles.map((file) => file.toLowerCase()));
+  if (allowed.has(normalizedPath)) return false;
+  if (normalizedTask.includes(normalizedPath)) return false;
+  const basename = normalizedPath.split("/").at(-1) ?? normalizedPath;
+  if (/^lists?\.(py|ts|js|go|rb|rs)$/.test(basename)) return false;
+  if (/\b(upstream|remote|external|proxy|forward|unflatten|flatten|form|request|body|params?|query)\b/.test(normalizedPath)) return false;
+  return /(^|\/)(admin|admins|administration|management|staff)(\/|$)/.test(normalizedPath) ||
+    /\b(utils?|helpers?)\.(py|ts|js|go|rb|rs)$/.test(basename) ||
+    /(^|\/)(utils?|helpers?|shared|common)\//.test(normalizedPath) ||
+    /\/models?\//.test(normalizedPath);
+}
+
 function isUnrelatedDatastoreBackendParitySurface(filePath: string, task: string, allowedBackendFiles: string[]): boolean {
   if (!hasDatastoreBackendParityScope(task)) return false;
   if (allowedBackendFiles.length < 2) return false;
@@ -4639,6 +4721,131 @@ function packageSourceMappingSourceFilesFromKnownFiles(files: FileRecord[], quer
   return uniquePaths(scored);
 }
 
+function requestBodyFormSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
+  if (!hasRequestBodyFormScope(query)) return [];
+  const normalizedQuery = normalizeCandidateText(query);
+  const scored = files
+    .filter((file) => isLikelyProductionSourceFile(file.path))
+    .map((file) => {
+      const normalizedPath = file.path.toLowerCase();
+      const base = path.posix.basename(normalizedPath);
+      let score = 0;
+      let role: "handler" | "utility" | undefined;
+      const isListTask = /\b(list|lists)\b/.test(normalizedQuery) || /\/lists?\//.test(normalizedQuery);
+      const handlerPath = /(^|\/)(routes?|handlers?|controllers?|views?|endpoints?|resources?|plugins?)\//.test(normalizedPath);
+      const handlerName = /\b(post|get|put|patch|delete|create|update|add|submit|request|form|body|params?|lists?)\b/.test(base);
+      const utilityPath = /(^|\/)(utils?|helpers?|shared|common)\//.test(normalizedPath) || /\b(utils?|helpers?)\.(py|ts|js|go|rb|rs)$/.test(base);
+      const reconstructionName = /\b(unflatten|flatten|form|forms|request|body|params?|query)\b/.test(normalizedPath);
+      const upstreamRequestUtility = /\b(upstream|remote|external|prox(?:y|ied)?|forward(?:ed|ing)?)\b/.test(normalizedPath);
+      const explicitReconstructionQuery = /\b(unflatten|flattened|nested|indexed|parent keys?|ordered pairs?)\b/.test(normalizedQuery);
+      const genericAdminUtility = /(^|\/)(admin|admins|administration|management|staff)(\/|$)/.test(normalizedPath) && utilityPath;
+      const adminRequested = /\b(admin|administration|management|staff)\b/.test(normalizedQuery);
+      const utilityOwnsRequestSurface = reconstructionName || upstreamRequestUtility;
+      if ((handlerPath && handlerName) || (isListTask && /\blists?\.(py|ts|js|go|rb|rs)$/.test(base))) {
+        role = "handler";
+        score += 900;
+      }
+      if (
+        (utilityPath && utilityOwnsRequestSurface) ||
+        (utilityPath && explicitReconstructionQuery && !genericAdminUtility) ||
+        /\b(unflatten|flatten|forms?|request)_?utils?\.(py|ts|js|go|rb|rs)$/.test(base)
+      ) {
+        role = "utility";
+        score += 860;
+      }
+      if (role === "handler" && /\b(post|add|submit|body|form|request)\b/.test(normalizedQuery)) score += 100;
+      if (role === "utility" && explicitReconstructionQuery) score += 120;
+      if (role === "utility" && upstreamRequestUtility) score += 240;
+      if (role === "utility" && /\b(upstream|remote|external|prox(?:y|ied)|forward(?:ed|ing)?)\b/.test(normalizedQuery) && /\b(upstream|remote|external|proxy|forward)\b/.test(normalizedPath)) score += 180;
+      if (role === "utility" && genericAdminUtility && !adminRequested) score -= 1100;
+      if (role === "utility" && /\b(query|url|solr|search)\b/.test(base) && !/\b(unflatten|flatten|form|body|request)\b/.test(base)) score -= 500;
+      if (/\/js\/|\/client\/|\/browser\/|\/static\//.test(normalizedPath) && !/\b(javascript|frontend|browser|client)\b/.test(normalizedQuery)) score -= 500;
+      if (/\/models?\//.test(normalizedPath) || /\/core\/lists\/model\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) score -= 560;
+      return { path: file.path, score, role };
+    })
+    .filter((file) => file.score > 0 && file.role)
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
+  const handler = scored.find((file) => file.role === "handler")?.path;
+  const utility = scored.find((file) => file.role === "utility")?.path;
+  return uniquePaths([handler, utility].filter(Boolean) as string[]);
+}
+
+function converterOutputSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
+  if (!hasConverterOutputScope(query)) return [];
+  const scored = files
+    .filter((file) => isLikelyProductionSourceFile(file.path))
+    .map((file) => {
+      const normalizedPath = file.path.toLowerCase();
+      let score = 0;
+      if (/convert(or|er)|converter|convertor/.test(normalizedPath)) score += 1000;
+      if (/\b(trivy|vuls|cve|severity|severities|output|json)\b/.test(normalizedPath)) score += 120;
+      if (/^scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score -= 520;
+      if (/(^|\/)(storage|store|stores|db|database|backend|backends)\//.test(normalizedPath) && !/convert(or|er)|converter|convertor/.test(normalizedPath)) score -= 460;
+      if (/\/scanner\/(alpine|debian|redhat|ubuntu|amazon|oracle|suse)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score -= 360;
+      return { path: file.path, score };
+    })
+    .filter((file) => file.score > 0)
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
+    .map((file) => file.path);
+  return uniquePaths(scored);
+}
+
+function discoveryConfigSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
+  if (!hasDiscoveryConfigScope(query)) return [];
+  const normalizedQuery = normalizeCandidateText(query);
+  const scored = files
+    .filter((file) => isLikelyProductionSourceFile(file.path))
+    .map((file) => {
+      const normalizedPath = file.path.toLowerCase();
+      const base = path.posix.basename(normalizedPath).replace(/\.[^.]+$/, "");
+      const compactBase = base.replace(/[^a-z0-9]+/g, "");
+      let score = 0;
+      let role: "discovery" | "contract" | undefined;
+      const autoDiscoveryOwner = compactBase.includes("autodiscovery") || compactBase.includes("discovery") || compactBase.includes("homeserver");
+      const supportingWellKnown = compactBase.includes("wellknown") || normalizedPath.includes("/well-known/") || normalizedPath.includes("/wellknown/");
+      if (autoDiscoveryOwner || supportingWellKnown || /\/(discovery|autodiscovery|well-known|wellknown)\//.test(normalizedPath)) {
+        role = "discovery";
+        score += autoDiscoveryOwner ? 1120 : 760;
+      }
+      if (/\b(validatedserverconfig|serverconfig)\b/.test(compactBase) || (compactBase.includes("validated") && compactBase.includes("config")) || (compactBase.includes("server") && compactBase.includes("config"))) {
+        role = "contract";
+        score += 940;
+      }
+      if (role === "discovery" && /\b(discovery|homeserver|well[- ]?known)\b/.test(normalizedQuery)) score += 140;
+      if (role === "contract" && /\b(validated|configuration|config|public interface|optional object)\b/.test(normalizedQuery)) score += 160;
+      if (/\b(authentication|delegated|issuer|authorization|registration|token|account)\b/.test(normalizedPath)) score += 80;
+      if (/(^|\/)(cypress|tests?|testing|support)\//.test(normalizedPath)) score -= 900;
+      if ((/(^|\/)(settings|preferences)\//.test(normalizedPath) || /\/settings\//.test(normalizedPath)) && !/\b(settings?|preferences?)\b/.test(normalizedQuery)) score -= 1200;
+      return { path: file.path, score, role };
+    })
+    .filter((file) => file.score > 0 && file.role)
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+  const discovery = scored.find((file) => file.role === "discovery")?.path;
+  const contract = scored.find((file) => file.role === "contract")?.path;
+  return uniquePaths([discovery, contract].filter(Boolean) as string[]);
+}
+
+function deviceSessionListenerSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
+  if (!hasDeviceSessionListenerScope(query)) return [];
+  const scored = files
+    .filter((file) => isLikelyProductionSourceFile(file.path))
+    .map((file) => {
+      const normalizedPath = file.path.toLowerCase();
+      let score = 0;
+      if (/listener|observer|watcher|subscriber|notifier/.test(normalizedPath)) score += 1000;
+      if (/\b(device|devices|session|sessions|notification|notifications|unverified)\b/.test(normalizedPath)) score += 160;
+      if (/\/(stores?|state|models?)\//.test(normalizedPath) && /\b(session|sessions|notification|notifications|device|devices)\b/.test(normalizedPath)) score += 120;
+      if (/(^|\/)(settings|tabs?|views?)\//.test(normalizedPath)) score -= 460;
+      if (/\/toasts?\//.test(normalizedPath)) score -= 360;
+      if (/\/models?\/call\.(ts|tsx|js|jsx)$/.test(normalizedPath)) score -= 320;
+      return { path: file.path, score };
+    })
+    .filter((file) => file.score > 0)
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
+    .map((file) => file.path);
+  return uniquePaths(scored);
+}
+
 function datastoreBackendParitySourceFilesFromKnownFiles(files: FileRecord[], query: string, seedFiles: string[]): string[] {
   if (!hasDatastoreBackendParityScope(query)) return [];
   const groups = new Map<string, Array<{ path: string; surface: DatastoreBackendSurface }>>();
@@ -4728,8 +4935,47 @@ function hasWebSessionRenewalScope(query: string): boolean {
 
 function hasRequestBodyFormScope(query: string): boolean {
   const normalized = normalizeCandidateText(query);
-  return /\b(unflatten|flattened|nested|indexed|parent keys?|form data|body data|request body|query string|query parameters?|duplicate (?:simple )?keys?|assignments?)\b/.test(normalized) &&
-    /\b(post|form|body|request|endpoint|route|handler|seeds?|defaults?)\b/.test(normalized);
+  const explicitFormSignal = /\b(unflatten|flattened|nested|indexed|parent keys?|form data|body data|request body|query string|query parameters?|duplicate (?:simple )?keys?|assignments?)\b/.test(normalized);
+  const requestQueryConflict =
+    /\b(post|form|body|request|endpoint|route|handler|list|lists)\b/.test(normalized) &&
+    /\b(query|params?|parameters?)\b/.test(normalized) &&
+    /\b(conflict|conflicts|merge|merged|handling|precedence|wins?|prefer|preferential)\b/.test(normalized);
+  return (explicitFormSignal || requestQueryConflict) &&
+    /\b(post|form|body|request|endpoint|route|handler|list|lists|seeds?|defaults?)\b/.test(normalized);
+}
+
+function hasConverterOutputScope(query: string): boolean {
+  const normalized = normalizeCandidateText(query);
+  if (hasPackageSourceMappingScope(normalized)) return false;
+  const converterSignal =
+    /\b(convert|converts|converted|converter|converters|conversion|adapter|adapters)\b/.test(normalized) ||
+    /\b(trivy to vuls|trivy-to-vuls)\b/.test(normalized);
+  const outputSignal =
+    /\b(output|outputs|json|record|records|finding|findings|report|reports|contents?|cve|cves|severity|severities|debian|vuls|trivy)\b/.test(normalized);
+  return converterSignal && outputSignal;
+}
+
+function hasDiscoveryConfigScope(query: string): boolean {
+  const normalized = normalizeCandidateText(query);
+  return countPresent(normalized, [
+    /\b(discovery|discover|autodiscovery|well[- ]?known|homeserver|server discovery)\b/,
+    /\b(authentication|delegated auth|delegated authentication|m authentication|issuer|authorization endpoint|registration endpoint|token endpoint|account)\b/,
+    /\b(validated config|validated configuration|server config|configuration|config|preserve|expose|optional object|public interface)\b/
+  ]) >= 2;
+}
+
+function hasDeviceSessionListenerScope(query: string): boolean {
+  const normalized = normalizeCandidateText(query);
+  return countPresent(normalized, [
+    /\b(device|devices)\b/,
+    /\b(session|sessions)\b/,
+    /\b(notification|notifications|unverified)\b/,
+    /\b(listener|listeners|startup|existing|new|download|downloads|refresh|state)\b/
+  ]) >= 3;
+}
+
+function countPresent(value: string, patterns: RegExp[]): number {
+  return patterns.reduce((count, pattern) => count + (pattern.test(value) ? 1 : 0), 0);
 }
 
 function queryMentionsCompactIdentifier(query: string, identifier: string): boolean {
@@ -4846,6 +5092,7 @@ function buildPrimeDeliveryTrace(input: {
     emittedFileRoleSummary[role] = (emittedFileRoleSummary[role] ?? 0) + 1;
   }
   return {
+    action: input.decision.action,
     ...(input.decision.taskShapeSignal ? { taskShapeSignal: input.decision.taskShapeSignal } : {}),
     ...(input.decision.requiredSurface ? { requiredSurface: input.decision.requiredSurface } : {}),
     ...(input.decision.directiveStyle ? { directiveStyle: input.decision.directiveStyle } : {}),

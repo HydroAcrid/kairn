@@ -42,6 +42,7 @@ export type DecisionFeatures = {
   ambiguity: number;
   activeSourceState: boolean;
   staleIndexState: boolean;
+  highClueDiscoveryConfigState: boolean;
   failureState: boolean;
   verificationState: boolean;
   explicitTestTarget: boolean;
@@ -219,6 +220,7 @@ export function buildDecisionFeatures(input: GovernorInput): DecisionFeatures {
     ambiguity: candidateAmbiguity(candidates, input.baseDecision.topGap),
     activeSourceState: Boolean(input.activeSourceState),
     staleIndexState: Boolean(input.staleIndexState),
+    highClueDiscoveryConfigState: hasHighClueDiscoveryConfigState(input.task),
     failureState: taskFrame === "failure_first" || input.profile === "failure_debug" || /\b(fail|failure|traceback|stack trace|exception|error)\b/i.test(input.task),
     verificationState: taskFrame === "verification_cleanup" || /\b(verify|verification|test|typecheck|lint|build|cleanup|review diff)\b/i.test(input.task),
     explicitTestTarget: taskExplicitlyTargetsTests(input.task),
@@ -400,6 +402,19 @@ function hardSafetyDecision(
     };
   }
   if (
+    features.taskFrame === "official_patch" &&
+    features.taskShapeSignal === "discovery_config" &&
+    features.highClueDiscoveryConfigState &&
+    baseDecision.action !== "suppress" &&
+    baseDecision.action !== "request_evidence"
+  ) {
+    return {
+      action: "suppress",
+      score: Math.min(baseDecision.score, 30),
+      reasons: ["high-clue discovery/config official prompt already names the contract and verification surface"]
+    };
+  }
+  if (
     features.requiredSurface === "paired_contract" &&
     baseDecision.action !== "suppress" &&
     baseDecision.action !== "request_evidence"
@@ -408,6 +423,19 @@ function hardSafetyDecision(
       action: "shrink",
       score: Math.min(Math.max(baseDecision.score, 56), 66),
       reasons: [`${features.taskShapeSignal ?? "multi-surface"} task should use a compact paired-source directive`]
+    };
+  }
+  if (
+    features.taskShapeSignal === "converter_output" &&
+    features.requiredSurface === "single_file" &&
+    baseDecision.action !== "suppress" &&
+    baseDecision.action !== "request_evidence"
+  ) {
+    return {
+      action: "shrink",
+      score: Math.min(Math.max(baseDecision.score, 55), 64),
+      reasons: ["dominant converter-output implementation should use a single-file guardrail"],
+      directiveStyle: "scope_guardrail"
     };
   }
   if (
@@ -660,8 +688,11 @@ function inferTaskShapeSignal(
   candidates: CandidateFeatures[]
 ): TaskShapeSignal | undefined {
   const normalized = normalizeText(task);
+  if (isDiscoveryConfigTask(normalized)) return "discovery_config";
   if (hasDeprecationLifecycleScope(normalized)) return "lifecycle_policy";
   if (isAccessPolicyTask(normalized)) return undefined;
+  if (isRequestBodyFormTask(normalized)) return "request_body_form";
+  if (isConverterOutputTask(normalized)) return "converter_output";
   if (isCommandContractTask(normalized)) return "command_contract";
   if (isPackageSourceMappingTask(normalized)) return "package_source_mapping";
   if (isBackendParityTask(normalized, candidates)) return "backend_parity";
@@ -678,6 +709,7 @@ function inferTaskShapeSignal(
     ambiguity: candidateAmbiguity(candidates, baseDecision.topGap),
     activeSourceState: false,
     staleIndexState: false,
+    highClueDiscoveryConfigState: hasHighClueDiscoveryConfigState(task),
     failureState: false,
     verificationState: false,
     explicitTestTarget: taskExplicitlyTargetsTests(task),
@@ -700,9 +732,15 @@ function inferRequiredSurface(
   candidates: CandidateFeatures[]
 ): RequiredSurface {
   if (taskShapeSignal === "ambiguous_frontend_ownership") return "evidence_needed";
+  if (taskShapeSignal === "converter_output" && hasDominantConverterImplementation(task, candidates, baseDecision)) {
+    return "single_file";
+  }
   if (
     taskShapeSignal === "command_contract" ||
+    taskShapeSignal === "converter_output" ||
+    taskShapeSignal === "discovery_config" ||
     taskShapeSignal === "lifecycle_policy" ||
+    taskShapeSignal === "request_body_form" ||
     taskShapeSignal === "package_source_mapping" ||
     taskShapeSignal === "backend_parity"
   ) return "paired_contract";
@@ -717,6 +755,40 @@ function inferRequiredSurface(
     return "feature_cluster";
   }
   return "single_file";
+}
+
+function hasDominantConverterImplementation(
+  task: string,
+  candidates: CandidateFeatures[],
+  baseDecision: ContextValueDecision
+): boolean {
+  const top = candidates[0];
+  if (!top || !isProductionCandidateRole(top.role)) return false;
+  if (!isConverterImplementationPath(top.path)) return false;
+  if (hasExplicitMultiFileScopeRequest(task)) return false;
+  const converterCandidates = candidates
+    .slice(0, 5)
+    .filter((candidate) => isProductionCandidateRole(candidate.role) && isConverterImplementationPath(candidate.path));
+  const commandCandidates = candidates
+    .slice(0, 5)
+    .filter((candidate) => candidate.role === "entrypoint" || isCommandEntrypointPath(candidate.path));
+  const clearlyDominant =
+    baseDecision.topGap >= 180 ||
+    top.score - (candidates[1]?.score ?? 0) >= 180 ||
+    (converterCandidates.length === 1 && commandCandidates.length === 0);
+  return clearlyDominant;
+}
+
+function isConverterImplementationPath(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  return /(^|\/)[^/]*(convert(or|er)|converter|convertor)[^/]*\.(go|ts|tsx|js|jsx|py|rb|rs|java|kt|cs|php)$/.test(normalized) ||
+    /\/(converter|convertor|converters|convertors)\//.test(normalized);
+}
+
+function isCommandEntrypointPath(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  return /(^|\/)(cmd|bin|cli|commands?|entrypoints?)\//.test(normalized) ||
+    /(^|\/)(main|cli|command|commands)\.(go|ts|tsx|js|jsx|py|rb|rs|java|kt|cs|php)$/.test(normalized);
 }
 
 function isCommandContractTask(normalized: string): boolean {
@@ -740,6 +812,51 @@ function isCommandContractTask(normalized: string): boolean {
 function isPackageSourceMappingTask(normalized: string): boolean {
   return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|apk|alpine)\b/.test(normalized) &&
     /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?)\b/.test(normalized);
+}
+
+function isRequestBodyFormTask(normalized: string): boolean {
+  const explicitFormSignal = /\b(unflatten|flattened|nested|indexed|parent keys?|form data|body data|request body|query string|query parameters?|duplicate (?:simple )?keys?|assignments?)\b/.test(normalized);
+  const requestQueryConflict =
+    /\b(post|form|body|request|endpoint|route|handler|list|lists)\b/.test(normalized) &&
+    /\b(query|params?|parameters?)\b/.test(normalized) &&
+    /\b(conflict|conflicts|merge|merged|handling|precedence|wins?|prefer|preferential)\b/.test(normalized);
+  return (explicitFormSignal || requestQueryConflict) &&
+    /\b(post|form|body|request|endpoint|route|handler|list|lists|seeds?|defaults?)\b/.test(normalized);
+}
+
+function isConverterOutputTask(normalized: string): boolean {
+  if (isPackageSourceMappingTask(normalized)) return false;
+  const converterSignal =
+    /\b(convert|converts|converted|converter|converters|conversion|adapter|adapters)\b/.test(normalized) ||
+    /\b(trivy to vuls|trivy-to-vuls)\b/.test(normalized);
+  const outputSignal =
+    /\b(output|outputs|json|record|records|finding|findings|report|reports|contents?|cve|cves|severity|severities|debian|vuls|trivy)\b/.test(normalized);
+  return converterSignal && outputSignal;
+}
+
+function isDiscoveryConfigTask(normalized: string): boolean {
+  return countPresent(normalized, [
+    /\b(discovery|discover|autodiscovery|well[- ]?known|homeserver|server discovery)\b/,
+    /\b(authentication|delegated auth|delegated authentication|m authentication|issuer|authorization endpoint|registration endpoint|token endpoint|account)\b/,
+    /\b(validated config|validated configuration|server config|configuration|config|preserve|expose|optional object|public interface)\b/
+  ]) >= 2;
+}
+
+function hasHighClueDiscoveryConfigState(task: string): boolean {
+  const normalized = normalizeText(task);
+  const raw = task.toLowerCase();
+  if (!isDiscoveryConfigTask(normalized)) return false;
+  const namesContract =
+    /\b(validatedserverconfig|validated server config|public interface|delegatedauthentication|delegated authentication|m authentication|issuer|authorization endpoint|registration endpoint|token endpoint)\b/.test(normalized) ||
+    raw.includes("m.authentication") ||
+    raw.includes("validatedserverconfig");
+  const namesDiscoverySurface =
+    /\b(autodiscoveryutils|auto discovery utils|homeserver discovery|well known discovery|well-known discovery|discovery result)\b/.test(normalized) ||
+    raw.includes("autodiscoveryutils");
+  const namesVerification =
+    /\b(selected verification tests?|verification targets? only|swe bench pro metadata|swe-pro metadata|swepro metadata)\b/.test(normalized) ||
+    /test\/utils\/autodiscoveryutils-test\.(tsx?|jsx?)/.test(raw);
+  return namesContract && namesDiscoverySurface && namesVerification;
 }
 
 function isBackendParityTask(normalized: string, candidates: CandidateFeatures[]): boolean {

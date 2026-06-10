@@ -263,11 +263,12 @@ function scoreSourcePriority(
   const hsmKmsConfigIntent = isHsmKmsConfigQuery(query);
   const deprecationLifecycleIntent = isDeprecationLifecycleQuery(normalizeSearchText(query));
   const formUnflattenRequestIntent = isFormUnflattenRequestQuery(normalizeSearchText(query));
+  const converterOutputIntent = isConverterOutputQuery(normalizeSearchText(query));
   const kubernetesExecForwarderIntent = isKubernetesExecForwarderQuery(normalizeSearchText(query));
   const kubernetesRbacMatcherIntent = isKubernetesRbacResourceMatcherQuery(normalizeSearchText(query));
   const packageSourceMappingIntent = isPackageSourceMappingQuery(normalizeSearchText(query));
   const specializedImplementationIntent =
-    hsmKmsConfigIntent || deprecationLifecycleIntent || formUnflattenRequestIntent || kubernetesExecForwarderIntent || kubernetesRbacMatcherIntent || packageSourceMappingIntent;
+    hsmKmsConfigIntent || deprecationLifecycleIntent || formUnflattenRequestIntent || converterOutputIntent || kubernetesExecForwarderIntent || kubernetesRbacMatcherIntent || packageSourceMappingIntent;
   const implementationIntent =
     specializedImplementationIntent || (!explicitDocsIntent && (
       debugImplementationIntent ||
@@ -394,10 +395,22 @@ function scoreSourcePriority(
       reasons.push(...formUnflattenRequestSurface.reasons);
     }
 
+    const converterOutputSurface = scoreConverterOutputSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && converterOutputSurface.score !== 0) {
+      score += converterOutputSurface.score;
+      reasons.push(...converterOutputSurface.reasons);
+    }
+
     const configOptionSchemaSurface = scoreConfigOptionSchemaSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
     if (implementationIntent && configOptionSchemaSurface.score !== 0) {
       score += configOptionSchemaSurface.score;
       reasons.push(...configOptionSchemaSurface.reasons);
+    }
+
+    const discoveryConfigSurface = scoreDiscoveryConfigSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && discoveryConfigSurface.score !== 0) {
+      score += discoveryConfigSurface.score;
+      reasons.push(...discoveryConfigSurface.reasons);
     }
 
     const deprecationLifecycleSurface = scoreDeprecationLifecycleSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
@@ -428,6 +441,12 @@ function scoreSourcePriority(
     if (implementationIntent && uiFeedbackOwnershipSurface.score !== 0) {
       score += uiFeedbackOwnershipSurface.score;
       reasons.push(...uiFeedbackOwnershipSurface.reasons);
+    }
+
+    const deviceSessionListenerSurface = scoreDeviceSessionListenerSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && deviceSessionListenerSurface.score !== 0) {
+      score += deviceSessionListenerSurface.score;
+      reasons.push(...deviceSessionListenerSurface.reasons);
     }
 
     if (implementationIntent && isLanguageSourceSurface(file)) {
@@ -2268,10 +2287,66 @@ function scoreFormUnflattenRequestSurface(
 }
 
 function isFormUnflattenRequestQuery(normalizedQuery: string): boolean {
+  const explicitFormSignal = /\b(unflatten|flattened|nested|indexed|parent keys?|form data|body data|query parameters?|query string|request body|duplicate (?:simple )?keys?|assignments?)\b/.test(normalizedQuery);
+  const requestQueryConflict =
+    /\b(post|form|body|request|endpoint|route|handler|list|lists)\b/.test(normalizedQuery) &&
+    /\b(query|params?|parameters?)\b/.test(normalizedQuery) &&
+    /\b(conflict|conflicts|merge|merged|handling|precedence|wins?|prefer|preferential)\b/.test(normalizedQuery);
   return (
-    /\b(unflatten|flattened|nested|indexed|parent keys?|form data|body data|query parameters?|query string|request body|duplicate (?:simple )?keys?|assignments?)\b/.test(normalizedQuery) &&
+    (explicitFormSignal || requestQueryConflict) &&
     /\b(post|form|body|request|endpoint|route|handler|list|lists|seeds?|defaults?)\b/.test(normalizedQuery)
   );
+}
+
+function scoreConverterOutputSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isConverterOutputQuery(normalizedQuery) || !isLanguageSourceSurface(file)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const basename = normalizedPath.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/convert(or|er)|converter|convertor/.test(normalizedPath) || /^convert$/.test(basename)) {
+    score += 90_000;
+    reasons.push("converter output implementation surface");
+  }
+  if (/\b(convert|converter|conversion|trivy|vuls|cve contents|cve|severity|severities|debian|json|output|result|results)\b/.test(normalizedSource)) {
+    score += 18_000;
+    reasons.push("converter output content match");
+  }
+  if (/^scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score -= 42_000;
+    reasons.push("scanner dispatcher downranked for converter-output task");
+  }
+  if (/(^|\/)(storage|store|stores|db|database|backend|backends)\//.test(normalizedPath) && !/convert(or|er)|converter|convertor/.test(normalizedPath)) {
+    score -= 36_000;
+    reasons.push("storage/backend surface downranked for converter-output task");
+  }
+  if (/\/scanner\/(alpine|debian|redhat|ubuntu|amazon|oracle|suse)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score -= 28_000;
+    reasons.push("package scanner surface downranked for converter-output task");
+  }
+
+  return { score, reasons };
+}
+
+function isConverterOutputQuery(normalizedQuery: string): boolean {
+  if (isPackageSourceMappingQuery(normalizedQuery)) return false;
+  const converterSignal =
+    /\b(convert|converts|converted|converter|converters|conversion|adapter|adapters)\b/.test(normalizedQuery) ||
+    /\b(trivy to vuls|trivy-to-vuls)\b/.test(normalizedQuery);
+  const outputSignal =
+    /\b(output|outputs|json|record|records|finding|findings|report|reports|contents?|cve|cves|severity|severities|debian|vuls|trivy)\b/.test(normalizedQuery);
+  return converterSignal && outputSignal;
 }
 
 function scorePackageSourceMappingSurface(
@@ -2611,6 +2686,121 @@ function scoreUiFeedbackOwnershipSurface(
   return { score, reasons };
 }
 
+function scoreDeviceSessionListenerSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isDeviceSessionListenerQuery(normalizedQuery) || (!isLanguageSourceSurface(file) && file.kind !== "component" && file.kind !== "route")) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const basename = normalizedPath.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/listener|observer|watcher|subscriber|notifier/.test(basename) || /(^|\/)(listeners?|observers?|watchers?)\//.test(normalizedPath)) {
+    score += 78_000;
+    reasons.push("device/session listener owner surface");
+  }
+  if (/\b(device listener|session listener|notification listener|unverified sessions?|downloaded keys?|key download|existing sessions?|new sessions?)\b/.test(normalizedSource)) {
+    score += 18_000;
+    reasons.push("device/session listener content match");
+  }
+  if (/\/(stores?|state|models?)\//.test(normalizedPath) && /\b(device|session|sessions|notification|notifications|unverified)\b/.test(normalizedSource)) {
+    score += 6_000;
+    reasons.push("notification/session state owner surface");
+  }
+  if (/(^|\/)(settings|tabs?|views?)\//.test(normalizedPath) && !/\b(settings?|preferences?|tab|tabs?|screen|view)\b/.test(normalizedQuery)) {
+    score -= 38_000;
+    reasons.push("settings UI surface downranked for listener ownership task");
+  }
+  if (/\/toasts?\//.test(normalizedPath) && !/\b(toast|banner|notification ui|visual)\b/.test(normalizedQuery)) {
+    score -= 28_000;
+    reasons.push("toast UI surface downranked for listener ownership task");
+  }
+  if (/\/models?\/call\.(ts|tsx|js|jsx)$/.test(normalizedPath) && !/\b(call|voice|room)\b/.test(normalizedQuery)) {
+    score -= 30_000;
+    reasons.push("call model downranked for device/session listener task");
+  }
+
+  return { score, reasons };
+}
+
+function scoreDiscoveryConfigSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isDiscoveryConfigQuery(normalizedQuery) || (!isLanguageSourceSurface(file) && file.kind !== "component" && file.kind !== "route")) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const basename = normalizedPath.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  const compactBase = basename.replace(/[^a-z0-9]+/g, "");
+  const autoDiscoveryOwner = compactBase.includes("autodiscovery") || compactBase.includes("discovery") || compactBase.includes("homeserver");
+  const supportingWellKnown = compactBase.includes("wellknown") || normalizedPath.includes("/well-known/") || normalizedPath.includes("/wellknown/");
+  if (autoDiscoveryOwner || supportingWellKnown || /\/(discovery|autodiscovery|well-known|wellknown)\//.test(normalizedPath)) {
+    score += autoDiscoveryOwner ? 92_000 : 58_000;
+    reasons.push(autoDiscoveryOwner ? "discovery builder owner surface" : "supporting well-known discovery surface");
+  }
+  if (
+    (/\b(validatedserverconfig|serverconfig)\b/.test(compactBase) ||
+      (compactBase.includes("validated") && compactBase.includes("config")) ||
+      (compactBase.includes("server") && compactBase.includes("config"))) &&
+    /\b(config|configuration|serverconfig|validatedserverconfig)\b/.test(normalizedSource)
+  ) {
+    score += 68_000;
+    reasons.push("validated config contract surface");
+  }
+  if (/\b(authentication|delegated auth|delegated authentication|issuer|authorization endpoint|registration endpoint|token endpoint|account|m authentication)\b/.test(normalizedSource)) {
+    score += 20_000;
+    reasons.push("delegated authentication config content match");
+  }
+  if (/\b(discovery|autodiscovery|homeserver|well[- ]?known)\b/.test(normalizedSource) && /\b(config|configuration|validated|server)\b/.test(normalizedSource)) {
+    score += 14_000;
+    reasons.push("discovery config content match");
+  }
+  if (/(^|\/)(cypress|tests?|testing|support)\//.test(normalizedPath) && !/\b(cypress|test support|support settings|test settings)\b/.test(normalizedQuery)) {
+    score -= 90_000;
+    reasons.push("test/support settings surface downranked for discovery config task");
+  }
+  if ((/(^|\/)(settings|preferences)\//.test(normalizedPath) || /\/settings\//.test(normalizedPath)) && !/\b(settings?|preferences?)\b/.test(normalizedQuery)) {
+    score -= 120_000;
+    reasons.push("settings UI surface downranked for discovery config task");
+  }
+
+  return { score, reasons };
+}
+
+function isDiscoveryConfigQuery(normalizedQuery: string): boolean {
+  return countPresent(normalizedQuery, [
+    /\b(discovery|discover|autodiscovery|well known|well-known|homeserver|server discovery)\b/,
+    /\b(authentication|delegated auth|delegated authentication|m authentication|issuer|authorization endpoint|registration endpoint|token endpoint|account)\b/,
+    /\b(validated config|validated configuration|server config|configuration|config|preserve|expose|public interface)\b/
+  ]) >= 2;
+}
+
+function isDeviceSessionListenerQuery(normalizedQuery: string): boolean {
+  return countPresent(normalizedQuery, [
+    /\b(device|devices)\b/,
+    /\b(session|sessions)\b/,
+    /\b(notification|notifications|unverified)\b/,
+    /\b(listener|listeners|startup|existing|new|download|downloads|refresh|state)\b/
+  ]) >= 3;
+}
+
 function isConfigDiagnosticProblemSurface(normalizedPath: string): boolean {
   return /(^|\/)(backendproblem|backend_problem|problem|diagnostic|diagnostics)\.(py|ts|js|go|rb|rs)$/.test(normalizedPath);
 }
@@ -2720,6 +2910,10 @@ function normalizeSearchText(input: string): string {
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function countPresent(value: string, patterns: RegExp[]): number {
+  return patterns.reduce((count, pattern) => count + (pattern.test(value) ? 1 : 0), 0);
 }
 
 function isSuffixOfLongerNamedIdentifier(basename: string, query: string): boolean {

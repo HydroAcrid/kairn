@@ -802,11 +802,269 @@ describe("KairnRuntime", () => {
     });
 
     expect(content).toContain("# Kairn Request Scope");
-    expect(content).toContain("ordered pairs");
-    expect(content).toContain("do not coerce the body into an unordered dict/storage first");
-    expect(content).toContain("body data wins over query");
+    expect(content).toContain("preserve pair order");
+    expect(content).toContain("body wins over query");
+    expect(content).toContain("absent non-ancestor keys");
     expect(content).not.toContain("Focused context:");
-    expect(estimateTokens(content)).toBeLessThan(300);
+    expect(estimateTokens(content)).toBeLessThan(150);
+  });
+
+  it("keeps discovery metadata contracts in compact discovery guardrails", () => {
+    const task = [
+      "Homeserver discovery should preserve delegated authentication metadata.",
+      "When m.authentication appears in .well-known discovery, the validated server configuration must expose it.",
+      "Fix the issue in production source only."
+    ].join(" ");
+    const editScope = {
+      initialEditFiles: ["src/utils/AutoDiscoveryUtils.tsx", "src/utils/ValidatedServerConfig.ts"],
+      readOnlyFiles: ["test/utils/AutoDiscoveryUtils-test.ts"],
+      allowedExpansionTriggers: ["only if a focused failure names another production file"],
+      forbiddenEditPatterns: ["tests/**", "docs/**"],
+      scopeConfidence: "high" as const,
+      scopeSource: "official_harness" as const,
+      reason: "discovery metadata spans parser and validated config contract",
+      strictBoundary: true,
+      dynamic: true as const
+    };
+
+    expect(officialGuardrailVariantFor({
+      task,
+      files: editScope.initialEditFiles,
+      editScope,
+      invariants: [
+        {
+          file: "src/utils/ValidatedServerConfig.ts",
+          statement: "Preserve delegated authentication metadata in the validated server config contract.",
+          confidence: 0.85,
+          source: "heuristic"
+        }
+      ]
+    })).toBe("discovery_config_compact");
+
+    const content = formatShrunkPrimeContext({
+      task,
+      sessionId: "task_discovery_config_guardrail",
+      profile: "generic",
+      quality: {
+        score: 74,
+        action: "shrink",
+        reasons: [],
+        topScore: 500,
+        topGap: 80,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      context: {
+        mode: "snippets",
+        content: "",
+        files: editScope.initialEditFiles,
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: editScope.initialEditFiles,
+        rankedFiles: [],
+        tokenEstimate: 0
+      },
+      files: editScope.initialEditFiles,
+      budget: 900,
+      minimal: true,
+      invariants: [
+        {
+          file: "src/utils/ValidatedServerConfig.ts",
+          statement: "Preserve delegated authentication metadata in the validated server config contract.",
+          confidence: 0.85,
+          source: "heuristic"
+        }
+      ],
+      editScope
+    });
+
+    expect(content).toContain("# Kairn Discovery Scope");
+    expect(content).toContain("Edit both:");
+    expect(content).toContain("src/utils/AutoDiscoveryUtils.tsx");
+    expect(content).toContain("src/utils/ValidatedServerConfig.ts");
+    expect(content).toContain("m.authentication");
+    expect(content).not.toContain("Focused context:");
+    expect(estimateTokens(content)).toBeLessThan(170);
+  });
+
+  it("routes request-body form guardrails to upstream utilities instead of generic admin utilities", async () => {
+    const root = fs.mkdtempSync(path.join(process.cwd(), ".tmp-kairn-runtime-"));
+    fs.mkdirSync(path.join(root, "openlibrary/plugins/openlibrary"), { recursive: true });
+    fs.mkdirSync(path.join(root, "openlibrary/plugins/upstream"), { recursive: true });
+    fs.mkdirSync(path.join(root, "openlibrary/admin"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "openlibrary/plugins/openlibrary/lists.py"),
+      [
+        "def add_list(request):",
+        "    data = request.form",
+        "    query = request.query",
+        "    return data, query",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(root, "openlibrary/plugins/upstream/utils.py"),
+      [
+        "def rebuild_upstream_request(form_pairs):",
+        "    return form_pairs",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(root, "openlibrary/admin/utils.py"),
+      [
+        "def admin_helper(value):",
+        "    return value",
+        ""
+      ].join("\n")
+    );
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: "Fix the /lists/add POST conflict bug. The task involves list request handling and upstream request/query handling. Keep edits to production source that directly controls the add-list request flow.",
+        budget: 900,
+        source: "codex"
+      });
+
+      expect(prime.contextDecision?.taskShapeSignal).toBe("request_body_form");
+      expect(prime.contextDecision?.recommendedDelivery).toBe("multi_file_directive");
+      expect(prime.files).toContain("openlibrary/plugins/openlibrary/lists.py");
+      expect(prime.files).toContain("openlibrary/plugins/upstream/utils.py");
+      expect(prime.files).not.toContain("openlibrary/admin/utils.py");
+      expect(prime.content).not.toContain("openlibrary/admin/utils.py");
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps dominant converter-output official tasks to a single converter guardrail", async () => {
+    const root = fs.mkdtempSync(path.join(process.cwd(), ".tmp-kairn-runtime-"));
+    fs.mkdirSync(path.join(root, "contrib/trivy/pkg"), { recursive: true });
+    fs.mkdirSync(path.join(root, "cmd/vuls"), { recursive: true });
+    fs.mkdirSync(path.join(root, "scanner/trivy/jar"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "contrib/trivy/pkg/converter.go"),
+      [
+        "package pkg",
+        "",
+        "func Convert(contents []CVEContent) []Finding {",
+        "    return buildFindings(contents)",
+        "}",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(root, "cmd/vuls/main.go"),
+      [
+        "package main",
+        "",
+        "func main() {",
+        "    runCLI()",
+        "}",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(root, "scanner/trivy/jar/parse.go"),
+      [
+        "package jar",
+        "",
+        "func ParseJar() {}",
+        ""
+      ].join("\n")
+    );
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "Selected tests from SWE-Bench Pro metadata: contrib/trivy/pkg/converter_test.go.",
+          "Fix the trivy-to-vuls converter output.",
+          "cveContents should not duplicate Debian severity records when conversion builds Vuls JSON findings.",
+          "Fix production source only."
+        ].join(" "),
+        budget: 900,
+        source: "codex"
+      });
+
+      expect(prime.contextDecision?.taskShapeSignal).toBe("converter_output");
+      expect(prime.contextDecision?.requiredSurface).toBe("single_file");
+      expect(prime.contextDecision?.directiveStyle).toBe("scope_guardrail");
+      expect(prime.contextDecision?.recommendedDelivery).toBe("one_file_directive");
+      expect(prime.files).toEqual(["contrib/trivy/pkg/converter.go"]);
+      expect(prime.content).toContain("# Kairn Fix Guardrail");
+      expect(prime.content).toContain("contrib/trivy/pkg/converter.go");
+      expect(prime.content).not.toContain("cmd/vuls/main.go");
+      expect(prime.content).not.toContain("scanner/trivy/jar/parse.go");
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps discovery config contracts in authoritative edit scope", async () => {
+    const root = fs.mkdtempSync(path.join(process.cwd(), ".tmp-kairn-runtime-"));
+    fs.mkdirSync(path.join(root, "src/utils"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "src/utils/AutoDiscoveryUtils.tsx"),
+      [
+        "export function buildValidatedConfig(discovery: any) {",
+        "  return { homeserver: discovery.mHomeserver };",
+        "}",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(root, "src/utils/ValidatedServerConfig.ts"),
+      [
+        "export interface ValidatedServerConfig {",
+        "  homeserver?: unknown;",
+        "  warning?: string;",
+        "}",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(root, "src/utils/WellKnownUtils.ts"),
+      [
+        "export function parseWellKnown(value: unknown) {",
+        "  return value;",
+        "}",
+        ""
+      ].join("\n")
+    );
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "Discovery omits delegated authentication metadata advertised under m.authentication.",
+          "When building validated configuration from homeserver discovery, preserve delegatedAuthentication.",
+          "The public interface ValidatedServerConfig must optionally declare the delegatedAuthentication property.",
+          "Fix the issue in production source only."
+        ].join(" "),
+        budget: 900,
+        source: "codex"
+      });
+
+      expect(prime.contextDecision?.taskShapeSignal).toBe("discovery_config");
+      expect(prime.contextDecision?.recommendedDelivery).toBe("multi_file_directive");
+      expect(prime.editScope?.initialEditFiles).toEqual(
+        expect.arrayContaining([
+          "src/utils/AutoDiscoveryUtils.tsx",
+          "src/utils/ValidatedServerConfig.ts"
+        ])
+      );
+      expect(prime.editScope?.initialEditFiles).not.toContain("src/utils/WellKnownUtils.ts");
+      expect(prime.content).toContain("src/utils/AutoDiscoveryUtils.tsx");
+      expect(prime.content).toContain("src/utils/ValidatedServerConfig.ts");
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("keeps package source mapping semantics in compact package guardrails", () => {

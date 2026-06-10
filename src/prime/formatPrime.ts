@@ -9,6 +9,7 @@ export type OfficialGuardrailVariant =
   | "semantic_official"
   | "paired_contract_compact"
   | "request_body_form_compact"
+  | "discovery_config_compact"
   | "package_source_mapping_compact"
   | "lifecycle_policy_compact"
   | "frontend_owner_map_compact";
@@ -277,6 +278,7 @@ export function formatShrunkPrimeContext(input: {
       if (variant === "compact_official") return formatCompactOfficialGuardrail(guardrailInput);
       if (variant === "paired_contract_compact") return formatPairedContractOfficialGuardrail(guardrailInput);
       if (variant === "request_body_form_compact") return formatRequestBodyFormOfficialGuardrail(guardrailInput);
+      if (variant === "discovery_config_compact") return formatDiscoveryConfigOfficialGuardrail(guardrailInput);
       if (variant === "package_source_mapping_compact") return formatPackageSourceMappingOfficialGuardrail(guardrailInput);
       if (variant === "lifecycle_policy_compact") return formatLifecyclePolicyOfficialGuardrail(guardrailInput);
       if (variant === "frontend_owner_map_compact") return formatFrontendOwnerMapOfficialGuardrail(guardrailInput);
@@ -435,21 +437,37 @@ function formatRequestBodyFormOfficialGuardrail(input: {
 }): string {
   const editFiles = officialEditFiles(input).slice(0, 4);
   const readOnly = input.editScope?.readOnlyFiles.slice(0, 2) ?? [];
-  const invariant = input.invariants?.[0];
   const sections = [
     "# Kairn Request Scope",
-    `Task: ${compactTaskLine(input.task, 42)}`,
-    "Action: patch only the route/form parser and flattened-data reconstruction surfaces.",
-    editFiles.length > 0 ? `Edit scope: ${editFiles.map((file) => `${file} (${requestBodyFormRole(file)})`).join(", ")}` : "Edit scope: the official request/form reconstruction source surfaces.",
-    invariant ? `Invariant: ${truncateToBudget(invariant.statement, 58)}` : "Invariant: body data wins over query string data, ordered duplicate keys are preserved until reconstruction, and later simple-key assignments win.",
-    "Precedence: body data wins over query string data; do not merge URL query parameters into body submissions.",
-    "Body parsing: keep request-body fields as ordered pairs until unflattening; do not coerce the body into an unordered dict/storage first.",
-    "Defaults: fill only missing keys that are not ancestors of provided nested/indexed keys.",
-    "Boundary: no tests, docs, examples, generated files, models, or sibling utilities outside the edit scope.",
-    readOnly.length > 0 ? `Read-only check: ${readOnly.join(", ")}` : "Verify with the narrowest relevant request/form check.",
-    "If a different production file appears necessary, stop and report the missing evidence."
+    editFiles.length > 0 ? `Edit only: ${editFiles.map((file) => `${file} (${requestBodyFormRole(file)})`).join(", ")}` : "Edit only the request handler and reconstruction utility.",
+    "Rules: body wins over query; preserve pair order; defaults only fill absent non-ancestor keys; later duplicate keys win.",
+    "Boundary: no tests, models, admin, docs, generated, or sibling utilities.",
+    readOnly.length > 0 ? `Verify read-only: ${readOnly.join(", ")}` : "Verify with the narrowest request/form check.",
+    "Need another file? Report evidence first."
   ];
-  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 280));
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 150));
+}
+
+function formatDiscoveryConfigOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const editFiles = officialEditFiles(input).slice(0, 4);
+  const readOnly = input.editScope?.readOnlyFiles.slice(0, 2) ?? [];
+  const sections = [
+    "# Kairn Discovery Scope",
+    editFiles.length > 0
+      ? `Edit both: ${editFiles.map((file) => `${file} (${discoveryConfigRole(file)})`).join(", ")}`
+      : "Edit both the discovery parser and validated server config contract.",
+    "Rule: preserve delegated auth / m.authentication metadata through validated server configuration.",
+    "Boundary: no settings UI, tests, docs, generated files, or unrelated discovery surfaces.",
+    readOnly.length > 0 ? `Verify read-only: ${readOnly.join(", ")}` : "Verify with the narrowest discovery/config check.",
+    "Need another file? Report evidence first."
+  ];
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 170));
 }
 
 function formatPackageSourceMappingOfficialGuardrail(input: {
@@ -553,9 +571,11 @@ export function officialGuardrailVariantFor(input: {
     ...input.files,
     ...(input.editScope?.initialEditFiles ?? [])
   ]);
+  if (isDiscoveryConfigTask(input.task) && editFiles.length > 1) return "discovery_config_compact";
   if (isLifecyclePolicyTask(input.task)) return "lifecycle_policy_compact";
   if (isUiFeedbackMultiSurfaceTask(input.task)) return "frontend_owner_map_compact";
   if (isRequestBodyFormTask(input.task) && editFiles.length > 1) return "request_body_form_compact";
+  if (isConverterOutputTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
   if (isPackageSourceMappingTask(input.task) && editFiles.length > 1) return "package_source_mapping_compact";
   if (isDatastoreBackendParityTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
   if (isPairedContractTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
@@ -590,6 +610,23 @@ function isPackageSourceMappingTask(task: string): boolean {
   const normalized = task.toLowerCase();
   return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|apk|alpine)\b/.test(normalized) &&
     /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?)\b/.test(normalized);
+}
+
+function isDiscoveryConfigTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  return /\b(discovery|discover|autodiscovery|well[- ]?known|homeserver|server discovery)\b/.test(normalized) &&
+    /\b(config|configuration|validated|validate|delegated|authentication|auth|metadata|contract|m\.authentication)\b/.test(normalized);
+}
+
+function isConverterOutputTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  if (isPackageSourceMappingTask(task)) return false;
+  const converterSignal =
+    /\b(convert|converts|converted|converter|converters|conversion|adapter|adapters)\b/.test(normalized) ||
+    /\b(trivy to vuls|trivy-to-vuls)\b/.test(normalized);
+  const outputSignal =
+    /\b(output|outputs|json|record|records|finding|findings|report|reports|contents?|cve|cves|severity|severities|debian|vuls|trivy)\b/.test(normalized);
+  return converterSignal && outputSignal;
 }
 
 function isDatastoreBackendParityTask(task: string): boolean {
@@ -634,6 +671,13 @@ function requestBodyFormRole(file: string): string {
   const normalized = file.toLowerCase();
   if (/\b(list|lists|route|routes|handler|controller|view|views)\b/.test(normalized)) return "route/form handler";
   if (/\b(unflatten|flatten|form|forms|request|utils?)\b/.test(normalized)) return "flattened-data utility";
+  return "source";
+}
+
+function discoveryConfigRole(file: string): string {
+  const normalized = file.toLowerCase();
+  if (/\bvalidated|serverconfig|server_config|config(?:uration)?\b/.test(normalized)) return "validated config contract";
+  if (/\b(auto)?discovery|wellknown|well-known|homeserver\b/.test(normalized)) return "discovery parser";
   return "source";
 }
 

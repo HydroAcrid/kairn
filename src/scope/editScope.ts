@@ -50,6 +50,7 @@ export function decideEditScope(input: {
   const promptDerivedMultiFileScope = hasPromptDerivedMultiFileScope(input.task);
   const deprecationLifecycleMultiSurfaceScope = hasDeprecationLifecycleScope(input.task);
   const packageSourceMappingMultiSurfaceScope = hasPackageSourceMappingScope(input.task);
+  const discoveryConfigMultiSurfaceScope = hasDiscoveryConfigScope(task) || input.contextDecision?.taskShapeSignal === "discovery_config";
   const webSessionRenewalMultiSurfaceScope = hasWebSessionRenewalScope(task);
   const datastoreBackendParityMultiSurfaceScope = hasDatastoreBackendParityScope(task) || input.contextDecision?.taskShapeSignal === "backend_parity";
   const selectedTestFanout = selectedTestPathCount(task) >= 3 && input.contextDecision?.recommendedDelivery === "multi_file_directive";
@@ -58,6 +59,7 @@ export function decideEditScope(input: {
     !explicitMultiFileScope &&
     !promptDerivedMultiFileScope &&
     !selectedTestFanout &&
+    !discoveryConfigMultiSurfaceScope &&
     !packageSourceMappingMultiSurfaceScope &&
     !webSessionRenewalMultiSurfaceScope &&
     !datastoreBackendParityMultiSurfaceScope;
@@ -75,6 +77,8 @@ export function decideEditScope(input: {
       ? 5
     : packageSourceMappingMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
       ? 5
+    : discoveryConfigMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
+      ? 2
     : webSessionRenewalMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
       ? 5
     : datastoreBackendParityMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
@@ -116,12 +120,14 @@ export function decideEditScope(input: {
     !isForbiddenFrontendEditSurface(file, input.task) &&
     !isUnrelatedPromptMentionedSourceSurface(file, input.task, taskMentionedSourceFiles)
   );
-  const budgetedEditCandidates = frontendUiInitialScopeBudget
-    ? applyFrontendUiInitialScopeBudget(editCandidates, input.task)
-    : editCandidates;
+  const budgetedEditCandidates = discoveryConfigMultiSurfaceScope
+    ? applyDiscoveryConfigInitialScopeBudget(editCandidates)
+    : frontendUiInitialScopeBudget
+      ? applyFrontendUiInitialScopeBudget(editCandidates, input.task)
+      : editCandidates;
   const promptDerivedOfficialExpansion =
     allowedHarnessFiles.length > 0 &&
-    (explicitMultiFileScope || promptDerivedMultiFileScope || selectedTestFanout || packageSourceMappingMultiSurfaceScope || webSessionRenewalMultiSurfaceScope || datastoreBackendParityMultiSurfaceScope) &&
+    (explicitMultiFileScope || promptDerivedMultiFileScope || selectedTestFanout || discoveryConfigMultiSurfaceScope || packageSourceMappingMultiSurfaceScope || webSessionRenewalMultiSurfaceScope || datastoreBackendParityMultiSurfaceScope) &&
     candidateFiles.some((file) => !allowedHarnessFiles.includes(file) && isEditableByDefault(file, allowedTestEdits));
   const officialPromptExpansionBeyondSourceFiles =
     explicitMultiFileScope ||
@@ -129,6 +135,7 @@ export function decideEditScope(input: {
     uiLivenessMultiSurfaceScope ||
     deprecationLifecycleMultiSurfaceScope ||
     packageSourceMappingMultiSurfaceScope ||
+    discoveryConfigMultiSurfaceScope ||
     webSessionRenewalMultiSurfaceScope ||
     datastoreBackendParityMultiSurfaceScope ||
     (promptDerivedMultiFileScope && taskMentionedSourceFiles.length > 1);
@@ -140,6 +147,7 @@ export function decideEditScope(input: {
     !selectedTestFanout &&
     !uiLivenessMultiSurfaceScope &&
     !deprecationLifecycleMultiSurfaceScope &&
+    !discoveryConfigMultiSurfaceScope &&
     !packageSourceMappingMultiSurfaceScope &&
     !webSessionRenewalMultiSurfaceScope &&
     !datastoreBackendParityMultiSurfaceScope;
@@ -150,6 +158,8 @@ export function decideEditScope(input: {
     ? 5
     : packageSourceMappingMultiSurfaceScope
       ? 5
+    : discoveryConfigMultiSurfaceScope
+      ? 2
     : webSessionRenewalMultiSurfaceScope
       ? 5
     : datastoreBackendParityMultiSurfaceScope
@@ -176,12 +186,12 @@ export function decideEditScope(input: {
           : officialPromptExpansionBeyondSourceFiles
             ? Math.min(officialPromptDerivedCap, Math.max(2, officialPromptFiles.length + candidateFiles.length))
             : 2
-          : (explicitMultiFileScope || promptDerivedMultiFileScope || packageSourceMappingMultiSurfaceScope || webSessionRenewalMultiSurfaceScope || datastoreBackendParityMultiSurfaceScope) ? Math.min(officialPromptDerivedCap, Math.max(primaryLimit, candidateFiles.length)) : 1
+          : (explicitMultiFileScope || promptDerivedMultiFileScope || discoveryConfigMultiSurfaceScope || packageSourceMappingMultiSurfaceScope || webSessionRenewalMultiSurfaceScope || datastoreBackendParityMultiSurfaceScope) ? Math.min(officialPromptDerivedCap, Math.max(primaryLimit, candidateFiles.length)) : 1
       : primaryLimit;
   const officialPromptDerivedLimit = officialPatchPrompt && (
     officialPromptFiles.length > 0
       ? officialPromptExpansionBeyondSourceFiles && !officialPromptNamedSourceOnly
-      : (promptDerivedMultiFileScope || explicitMultiFileScope || selectedTestFanout || packageSourceMappingMultiSurfaceScope || webSessionRenewalMultiSurfaceScope || datastoreBackendParityMultiSurfaceScope)
+      : (promptDerivedMultiFileScope || explicitMultiFileScope || selectedTestFanout || discoveryConfigMultiSurfaceScope || packageSourceMappingMultiSurfaceScope || webSessionRenewalMultiSurfaceScope || datastoreBackendParityMultiSurfaceScope)
   )
     ? Math.min(
         officialPromptDerivedCap,
@@ -531,6 +541,64 @@ function hasUiLivenessMultiSurfaceScope(task: string): boolean {
 function hasPackageSourceMappingScope(task: string): boolean {
   return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|apk|alpine)\b/.test(task) &&
     /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?)\b/.test(task);
+}
+
+function hasDiscoveryConfigScope(task: string): boolean {
+  return /\b(discovery|discover|autodiscovery|well[- ]?known|homeserver|server discovery)\b/.test(task) &&
+    /\b(config|configuration|validated|validate|delegated|authentication|auth|metadata|contract|m\.authentication)\b/.test(task);
+}
+
+function applyDiscoveryConfigInitialScopeBudget(files: string[]): string[] {
+  const scored = files
+    .map((file, index) => {
+      const role = discoveryConfigSurfaceRole(file);
+      return { file, role, index, score: discoveryConfigSurfaceScore(file, role) };
+    })
+    .filter((entry) => entry.role)
+    .sort((a, b) => b.score - a.score || a.index - b.index);
+  const discovery = scored.find((entry) => entry.role === "discovery")?.file;
+  const contract = scored.find((entry) => entry.role === "contract")?.file;
+  return uniquePaths([
+    ...(discovery ? [discovery] : []),
+    ...(contract ? [contract] : []),
+    ...files
+  ]);
+}
+
+function discoveryConfigSurfaceRole(filePath: string): "discovery" | "contract" | undefined {
+  const normalized = filePath.toLowerCase();
+  const base = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const compactBase = base.replace(/[^a-z0-9]+/g, "");
+  if (
+    /\b(validatedserverconfig|serverconfig)\b/.test(compactBase) ||
+    (compactBase.includes("validated") && compactBase.includes("config")) ||
+    (compactBase.includes("server") && compactBase.includes("config"))
+  ) {
+    return "contract";
+  }
+  if (
+    compactBase.includes("autodiscovery") ||
+    compactBase.includes("discovery") ||
+    compactBase.includes("homeserver") ||
+    compactBase.includes("wellknown") ||
+    normalized.includes("/well-known/") ||
+    normalized.includes("/wellknown/")
+  ) {
+    return "discovery";
+  }
+  return undefined;
+}
+
+function discoveryConfigSurfaceScore(filePath: string, role: "discovery" | "contract" | undefined): number {
+  const normalized = filePath.toLowerCase();
+  const base = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const compactBase = base.replace(/[^a-z0-9]+/g, "");
+  if (role === "contract") return 900;
+  if (role !== "discovery") return 0;
+  if (compactBase.includes("autodiscovery") || compactBase.includes("discovery")) return 1100;
+  if (compactBase.includes("homeserver")) return 980;
+  if (compactBase.includes("wellknown") || normalized.includes("/well-known/") || normalized.includes("/wellknown/")) return 720;
+  return 500;
 }
 
 function hasWebSessionRenewalScope(task: string): boolean {

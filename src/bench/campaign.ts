@@ -274,7 +274,11 @@ export function summarizeCampaign(outDir: string): CampaignReport {
   if (fs.existsSync(outputs.manifestPath) && fs.existsSync(outputs.rawDir)) {
     const manifest = loadCampaignManifest(outputs.manifestPath);
     validateCampaignManifest(manifest);
-    const artifacts = loadRawCampaignArtifacts(outputs.rawDir);
+    const entriesById = new Map(manifest.entries.map((entry) => [entry.id, entry]));
+    const artifacts = loadRawCampaignArtifacts(outputs.rawDir).map((artifact) => {
+      const entry = entriesById.get(artifact.entryId);
+      return entry ? refreshArtifactMetrics(entry, artifact) : artifact;
+    });
     if (artifacts.length > 0) {
       const ordered = orderedArtifacts(manifest.entries, artifacts);
       const rows = ordered.map(artifactToRow);
@@ -338,6 +342,16 @@ function loadRawCampaignArtifacts(rawDir: string): CampaignArtifact[] {
     .filter((artifact) => Boolean(artifact.entryId));
 }
 
+function refreshArtifactMetrics(entry: CampaignEntry, artifact: CampaignArtifact): CampaignArtifact {
+  if (artifact.report === undefined || artifact.status !== "passed") return artifact;
+  const metrics = metricsFromReport(entry, artifact.report, artifact.metrics.elapsedMs);
+  return {
+    ...artifact,
+    metrics,
+    classifications: classificationsFromMetrics(entry, metrics, artifact.report)
+  };
+}
+
 export function validateCampaignManifest(manifest: CampaignManifest): void {
   if (!manifest.id) throw new Error("Campaign manifest requires id.");
   if (!manifest.name) throw new Error("Campaign manifest requires name.");
@@ -377,8 +391,13 @@ async function runCampaignEntry(input: {
   if (input.resume && fs.existsSync(artifactPath)) {
     const existing = JSON.parse(fs.readFileSync(artifactPath, "utf8")) as CampaignArtifact;
     if (existing.status === "passed") {
+      const refreshed = refreshArtifactMetrics(input.entry, existing);
+      if (JSON.stringify(refreshed.metrics) !== JSON.stringify(existing.metrics) ||
+        refreshed.classifications.join("\0") !== existing.classifications.join("\0")) {
+        writeJsonAtomic(artifactPath, refreshed);
+      }
       input.onProgress?.(`[bench campaign] ${input.entry.id}: resume skipped`);
-      return existing;
+      return refreshed;
     }
   }
   const startedAt = new Date().toISOString();
@@ -626,7 +645,15 @@ function classifyProxy(input: {
   if (input.directiveStyle === "scope_guardrail" || input.strictBoundary) classes.push("valid_guardrail");
   if (input.emittedFileCount > 6) classes.push("scope_too_broad");
   if (input.estimatedDirectiveTokens > 900) classes.push("would_over_assist");
-  if (input.expectedFileCount > 0 && input.expectedFilesMatchedCount === 0) classes.push("wrong_surface_risk");
+  const intentionalDiscoverySuppression =
+    input.action === "suppress" &&
+    input.taskShapeSignal === "discovery_config" &&
+    input.requiredSurface === "paired_contract";
+  if (
+    input.expectedFileCount > 0 &&
+    input.expectedFilesMatchedCount < input.expectedFileCount &&
+    !intentionalDiscoverySuppression
+  ) classes.push("wrong_surface_risk");
   if (input.taskShapeSignal === "ambiguous_frontend_ownership" && input.action !== "request_evidence") classes.push("wrong_surface_risk");
   if (classes.length === 0) classes.push("proxy_pass");
   return [...new Set(classes)];
@@ -713,6 +740,8 @@ function proofMetrics(report: BenchmarkProofReport, elapsedMs: number): Campaign
   const baselinePassed = report.baseline.results.every(resultQualityPassed);
   const qualityPassed = nonBaseline.length > 0 && nonBaseline.every((item) => item.report.results.every(resultQualityPassed));
   const delta = bestProofDelta(report);
+  const observedDeltas = Object.values(report.observedTokenDeltas)
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
   const savedTokens = delta?.savedTokens;
   return {
     ...emptyMetrics(elapsedMs),
@@ -724,8 +753,9 @@ function proofMetrics(report: BenchmarkProofReport, elapsedMs: number): Campaign
     cleanPassPass: baselinePassed && qualityPassed && (savedTokens ?? 0) > 0,
     tokenRegression: (savedTokens ?? 0) < 0,
     qualityDrop: baselinePassed && nonBaseline.some((item) => item.report.results.some((result) => !resultQualityPassed(result))),
-    qualityRescue: !baselinePassed && qualityPassed,
-    harmfulAssist: nonBaseline.some((item) => item.report.results.some((result) => result.metadata.assistClassification === "harmful_invalid_assist")),
+    qualityRescue: !baselinePassed && qualityPassed || observedDeltas.some((item) => item.assistClassification === "quality_rescue"),
+    harmfulAssist: nonBaseline.some((item) => item.report.results.some((result) => result.metadata.assistClassification === "harmful_invalid_assist")) ||
+      observedDeltas.some((item) => Boolean(item.harmfulAssist) || item.assistClassification === "harmful_invalid_assist"),
     mcpCalls: sum(nonBaseline.map((item) => benchmarkReportMcpCalls(item.report)))
   };
 }
@@ -775,6 +805,7 @@ function classificationsFromMetrics(entry: CampaignEntry, metrics: CampaignEntry
   if (metrics.harmfulAssist) classes.push("harmful_invalid_assist");
   if (metrics.scopeViolations > 0) classes.push("scope_violation");
   if (metrics.mcpCalls > 0) classes.push(metrics.mcpUsefulAttribution > 0 ? "mcp_useful_attribution" : "mcp_missing_attribution");
+  if (!metrics.qualityPassed) classes.push(metrics.mcpCalls > 0 ? "mcp_quality_incomplete" : "quality_incomplete");
   if (classes.length === 0) classes.push(metrics.qualityPassed ? "pass" : "neutral");
   return classes;
 }
@@ -810,6 +841,7 @@ function evaluatePauseRules(manifest: CampaignManifest, artifacts: CampaignArtif
   if (rules.maxQualityDrops !== undefined && rows.filter((row) => row.qualityDrop).length > rules.maxQualityDrops) reasons.push("quality drop limit exceeded");
   if (rules.maxScopeViolations !== undefined && sum(rows.map((row) => row.scopeViolations)) > rules.maxScopeViolations) reasons.push("scope violation limit exceeded");
   if (rules.maxTokenRegressionClass !== undefined && rows.filter((row) => row.tokenRegression).length > rules.maxTokenRegressionClass) reasons.push("token regression limit exceeded");
+  if (rows.some((row) => row.kind === "proxy" && !row.qualityPassed)) reasons.push("proxy quality gate failed");
   if (rules.maxRepeatedFailureClass !== undefined) {
     const repeated = repeatedFailureClasses(rows).filter((item) => item.count > rules.maxRepeatedFailureClass!);
     for (const item of repeated) reasons.push(`repeated failure class: ${item.classification}`);
@@ -823,7 +855,10 @@ function writeCampaignOutputs(input: { manifest: CampaignManifest; report: Campa
   writeJsonAtomic(outputs.manifestPath, input.manifest);
   writeJsonAtomic(outputs.summaryPath, sanitizedCampaignReport(input.report));
   fs.writeFileSync(outputs.resultsCsvPath, campaignRowsCsv(input.report.rows));
-  fs.writeFileSync(outputs.failuresCsvPath, campaignRowsCsv(input.report.rows.filter((row) => row.status === "failed" || row.qualityDrop || row.harmfulAssist || row.scopeViolations > 0)));
+  fs.writeFileSync(
+    outputs.failuresCsvPath,
+    campaignRowsCsv(input.report.rows.filter((row) => row.status === "failed" || !row.qualityPassed || row.qualityDrop || row.harmfulAssist || row.scopeViolations > 0))
+  );
   fs.writeFileSync(outputs.proxyResultsCsvPath, campaignRowsCsv(input.report.rows.filter((row) => row.kind === "proxy")));
 }
 
@@ -1217,7 +1252,15 @@ function proofModeReports(report: BenchmarkProofReport): Array<{ mode: Benchmark
     ["passive_hooks", report.passiveHooks],
     ["proactive", report.proactive]
   ];
-  return entries.flatMap(([mode, modeReport]) => (modeReport ? [{ mode, report: modeReport }] : []));
+  const baselineRunId = report.baseline.run.id;
+  return entries.flatMap(([mode, modeReport]) => {
+    if (!modeReport) return [];
+    if (
+      mode !== "baseline" &&
+      (modeReport.run.id === baselineRunId || modeReport.run.metadata?.assistanceMode === "baseline")
+    ) return [];
+    return [{ mode, report: modeReport }];
+  });
 }
 
 function bestProofDelta(report: BenchmarkProofReport): BenchmarkComparison["observedTokenDelta"] | undefined {

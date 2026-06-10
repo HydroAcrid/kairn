@@ -662,8 +662,8 @@ function buildMcpEndurancePrompt(input: {
     prompt: [
       "Kairn long-session instruction:",
       `Use Kairn session ${input.sessionId}.`,
-      "No active source has been established yet. For this diagnose/source-rescue turn, call kairn_prepare_task once before manual source reads.",
-      "For an obvious single-source symbol task, inspect the likely source directly and do not call Kairn just to confirm it.",
+      "No active source has been established yet. Call kairn_prepare_task once now before manual source reads.",
+      "Do this even if the task seems likely to be one file, unless the user already named an exact production path or exact symbol.",
       "If it returns stopCondition or no nextToolCalls, continue from its files and do not call more Kairn unless a check fails or the target changes.",
       "Obey Kairn's edit-scope guidance: tests, docs, examples, fixtures, snapshots, generated files, and vendor/dependency files are read-only unless a focused verification failure proves they must change.",
       "Only call kairn_get_next_context when prepare explicitly returns it; call kairn_get_failure_context once after real failures.",

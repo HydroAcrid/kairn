@@ -1452,6 +1452,130 @@ describe("hybridSearch", () => {
     );
   });
 
+  it("routes converter output bugs to converter implementation over scanner dispatch", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "contrib/trivy/pkg/converter.go", "source", "go"),
+      file(rootPath, "scanner/scanner.go", "source", "go"),
+      file(rootPath, "scanner/trivy/jar/parse.go", "source", "go"),
+      file(rootPath, "storage/backend.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "contrib/trivy/pkg/converter.go", "Convert"),
+      symbol(rootPath, "scanner/scanner.go", "Detect"),
+      symbol(rootPath, "scanner/trivy/jar/parse.go", "Parse"),
+      symbol(rootPath, "storage/backend.go", "Store")
+    ];
+    const chunks = [
+      chunk(rootPath, "contrib/trivy/pkg/converter.go", "Convert", "Trivy to Vuls converter output cveContents severity Debian records JSON findings"),
+      chunk(rootPath, "scanner/scanner.go", "Detect", "scanner dispatch package vulnerability detection source packages"),
+      chunk(rootPath, "scanner/trivy/jar/parse.go", "Parse", "Trivy jar parser package details"),
+      chunk(rootPath, "storage/backend.go", "Store", "storage backend vulnerability records")
+    ];
+    const query = [
+      "Fix the trivy-to-vuls converter output.",
+      "cveContents should not duplicate Debian severity records when conversion builds Vuls JSON findings."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.path).toBe("contrib/trivy/pkg/converter.go");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("scanner/scanner.go");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("storage/backend.go");
+  });
+
+  it("routes device session notification ownership to listener source over UI shells", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "src/DeviceListener.ts", "source", "typescript"),
+      file(rootPath, "src/components/views/settings/devices/OtherSessionsSectionHeading.tsx", "component", "typescript"),
+      file(rootPath, "src/toasts/BulkUnverifiedSessionsToast.ts", "source", "typescript"),
+      file(rootPath, "src/models/Call.ts", "source", "typescript"),
+      file(rootPath, "src/stores/notifications/NotificationState.ts", "source", "typescript")
+    ];
+    const symbols = [
+      symbol(rootPath, "src/DeviceListener.ts", "DeviceListener"),
+      symbol(rootPath, "src/components/views/settings/devices/OtherSessionsSectionHeading.tsx", "OtherSessionsSectionHeading"),
+      symbol(rootPath, "src/toasts/BulkUnverifiedSessionsToast.ts", "BulkUnverifiedSessionsToast"),
+      symbol(rootPath, "src/models/Call.ts", "Call"),
+      symbol(rootPath, "src/stores/notifications/NotificationState.ts", "NotificationState")
+    ];
+    const chunks = [
+      chunk(rootPath, "src/DeviceListener.ts", "DeviceListener", "device listener handles unverified sessions notification state after key download startup existing sessions new sessions"),
+      chunk(rootPath, "src/components/views/settings/devices/OtherSessionsSectionHeading.tsx", "OtherSessionsSectionHeading", "settings devices heading other sessions UI"),
+      chunk(rootPath, "src/toasts/BulkUnverifiedSessionsToast.ts", "BulkUnverifiedSessionsToast", "toast UI for bulk unverified sessions"),
+      chunk(rootPath, "src/models/Call.ts", "Call", "call model voice room session"),
+      chunk(rootPath, "src/stores/notifications/NotificationState.ts", "NotificationState", "notification state store")
+    ];
+    const query = [
+      "Unverified device notifications are inconsistent for existing versus new sessions.",
+      "Maintain startup device state and refresh after key downloads in the device/session notification owner."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.path).toBe("src/DeviceListener.ts");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("src/components/views/settings/devices/OtherSessionsSectionHeading.tsx");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("src/toasts/BulkUnverifiedSessionsToast.ts");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("src/models/Call.ts");
+  });
+
+  it("routes discovery authentication config to discovery and validated config owners", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "src/utils/AutoDiscoveryUtils.tsx", "source", "typescript"),
+      file(rootPath, "src/utils/ValidatedServerConfig.ts", "source", "typescript"),
+      file(rootPath, "cypress/support/settings.ts", "source", "typescript"),
+      file(rootPath, "src/components/views/settings/ServerSettings.tsx", "component", "typescript")
+    ];
+    const symbols = [
+      symbol(rootPath, "src/utils/AutoDiscoveryUtils.tsx", "AutoDiscovery"),
+      symbol(rootPath, "src/utils/ValidatedServerConfig.ts", "ValidatedServerConfig"),
+      symbol(rootPath, "cypress/support/settings.ts", "settings"),
+      symbol(rootPath, "src/components/views/settings/ServerSettings.tsx", "ServerSettings")
+    ];
+    const chunks = [
+      chunk(rootPath, "src/utils/AutoDiscoveryUtils.tsx", "AutoDiscovery", "homeserver discovery builds validated configuration from m.authentication delegated authentication issuer endpoints account"),
+      chunk(rootPath, "src/utils/ValidatedServerConfig.ts", "ValidatedServerConfig", "validated server config public interface delegatedAuthentication optional object issuer token endpoint authorization endpoint"),
+      chunk(rootPath, "cypress/support/settings.ts", "settings", "cypress support settings test config"),
+      chunk(rootPath, "src/components/views/settings/ServerSettings.tsx", "ServerSettings", "settings screen UI")
+    ];
+    const query = [
+      "Discovery omits delegated authentication metadata advertised under m.authentication.",
+      "Preserve delegatedAuthentication fields in the validated server configuration."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 2).map((result) => result.path)).toEqual([
+      "src/utils/AutoDiscoveryUtils.tsx",
+      "src/utils/ValidatedServerConfig.ts"
+    ]);
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("cypress/support/settings.ts");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("src/components/views/settings/ServerSettings.tsx");
+  });
+
   it("keeps exact C source ahead of vendored dependency surfaces for short identifier prompts", () => {
     const rootPath = "/repo";
     const files = [

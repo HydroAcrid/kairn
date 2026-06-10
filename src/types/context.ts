@@ -92,7 +92,10 @@ export type TaskFrame =
 
 export type TaskShapeSignal =
   | "command_contract"
+  | "converter_output"
+  | "discovery_config"
   | "lifecycle_policy"
+  | "request_body_form"
   | "package_source_mapping"
   | "backend_parity"
   | "frontend_ownership"
