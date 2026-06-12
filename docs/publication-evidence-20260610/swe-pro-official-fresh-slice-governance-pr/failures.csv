@@ -1,0 +1,4 @@
+entry_id,kind,stage,status,tags,quality_passed,observed_tokens,baseline_tokens,saved_tokens,savings_rate,clean_passpass,token_regression,quality_drop,quality_rescue,harmful_assist,scope_violations,mcp_calls,mcp_useful_attribution,classifications,elapsed_ms
+live-swe-row-2,proof,live,passed,swe-pro;fresh-slice;live,false,23178,32699,9521,0.2912,false,false,false,false,false,0,0,0,quality_incomplete,323960
+live-swe-row-6,proof,live,passed,swe-pro;fresh-slice;live,false,35443,40685,5242,0.1288,false,false,false,false,false,0,0,0,quality_incomplete,164432
+live-swe-row-12,proof,live,passed,swe-pro;fresh-slice;live,false,34800,46130,11330,0.2456,false,false,false,false,false,0,0,0,quality_incomplete,170975

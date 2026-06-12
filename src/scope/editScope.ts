@@ -53,6 +53,8 @@ export function decideEditScope(input: {
   const discoveryConfigMultiSurfaceScope = hasDiscoveryConfigScope(task) || input.contextDecision?.taskShapeSignal === "discovery_config";
   const webSessionRenewalMultiSurfaceScope = hasWebSessionRenewalScope(task);
   const datastoreBackendParityMultiSurfaceScope = hasDatastoreBackendParityScope(task) || input.contextDecision?.taskShapeSignal === "backend_parity";
+  const topicOrderingMultiSurfaceScope = input.contextDecision?.taskShapeSignal === "topic_ordering";
+  const collectionNameValidationMultiSurfaceScope = input.contextDecision?.taskShapeSignal === "collection_name_validation";
   const selectedTestFanout = selectedTestPathCount(task) >= 3 && input.contextDecision?.recommendedDelivery === "multi_file_directive";
   const productionOnlySingleFile =
     taskHasProductionOnlyEditIntent(task) &&
@@ -62,7 +64,9 @@ export function decideEditScope(input: {
     !discoveryConfigMultiSurfaceScope &&
     !packageSourceMappingMultiSurfaceScope &&
     !webSessionRenewalMultiSurfaceScope &&
-    !datastoreBackendParityMultiSurfaceScope;
+    !datastoreBackendParityMultiSurfaceScope &&
+    !topicOrderingMultiSurfaceScope &&
+    !collectionNameValidationMultiSurfaceScope;
 
   const source = scopeSource({
     contextDecision: input.contextDecision,
@@ -83,6 +87,10 @@ export function decideEditScope(input: {
       ? 5
     : datastoreBackendParityMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
       ? 4
+    : topicOrderingMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
+      ? 3
+    : collectionNameValidationMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
+      ? 2
     : promptDerivedMultiFileScope && taskMentionedSourceFiles.length > 1
       ? Math.min(8, Math.max(2, taskMentionedSourceFiles.length))
     : source === "multi_file_debug" && selectedTestPathCount(task) >= 3
@@ -127,7 +135,7 @@ export function decideEditScope(input: {
       : editCandidates;
   const promptDerivedOfficialExpansion =
     allowedHarnessFiles.length > 0 &&
-    (explicitMultiFileScope || promptDerivedMultiFileScope || selectedTestFanout || discoveryConfigMultiSurfaceScope || packageSourceMappingMultiSurfaceScope || webSessionRenewalMultiSurfaceScope || datastoreBackendParityMultiSurfaceScope) &&
+    (explicitMultiFileScope || promptDerivedMultiFileScope || selectedTestFanout || discoveryConfigMultiSurfaceScope || packageSourceMappingMultiSurfaceScope || webSessionRenewalMultiSurfaceScope || datastoreBackendParityMultiSurfaceScope || topicOrderingMultiSurfaceScope || collectionNameValidationMultiSurfaceScope) &&
     candidateFiles.some((file) => !allowedHarnessFiles.includes(file) && isEditableByDefault(file, allowedTestEdits));
   const officialPromptExpansionBeyondSourceFiles =
     explicitMultiFileScope ||
@@ -138,6 +146,8 @@ export function decideEditScope(input: {
     discoveryConfigMultiSurfaceScope ||
     webSessionRenewalMultiSurfaceScope ||
     datastoreBackendParityMultiSurfaceScope ||
+    topicOrderingMultiSurfaceScope ||
+    collectionNameValidationMultiSurfaceScope ||
     (promptDerivedMultiFileScope && taskMentionedSourceFiles.length > 1);
   const officialPromptNamedSourceOnly =
     officialPatchPrompt &&
@@ -150,7 +160,9 @@ export function decideEditScope(input: {
     !discoveryConfigMultiSurfaceScope &&
     !packageSourceMappingMultiSurfaceScope &&
     !webSessionRenewalMultiSurfaceScope &&
-    !datastoreBackendParityMultiSurfaceScope;
+    !datastoreBackendParityMultiSurfaceScope &&
+    !topicOrderingMultiSurfaceScope &&
+    !collectionNameValidationMultiSurfaceScope;
   const frontendUiExplicitSourceCount = uiLivenessMultiSurfaceScope
     ? sourceCandidates.filter((file) => isFrontendUiExplicitlyNamedSourceSurface(file, input.task)).length
     : 0;
@@ -164,6 +176,10 @@ export function decideEditScope(input: {
       ? 5
     : datastoreBackendParityMultiSurfaceScope
       ? 4
+    : topicOrderingMultiSurfaceScope
+      ? 3
+    : collectionNameValidationMultiSurfaceScope
+      ? 2
     : uiLivenessMultiSurfaceScope
       ? frontendUiExplicitSourceCount >= 2 ? 9 : 5
       : selectedTestFanout
@@ -185,13 +201,15 @@ export function decideEditScope(input: {
             ? officialPromptFiles.length
           : officialPromptExpansionBeyondSourceFiles
             ? Math.min(officialPromptDerivedCap, Math.max(2, officialPromptFiles.length + candidateFiles.length))
-            : 2
-          : (explicitMultiFileScope || promptDerivedMultiFileScope || discoveryConfigMultiSurfaceScope || packageSourceMappingMultiSurfaceScope || webSessionRenewalMultiSurfaceScope || datastoreBackendParityMultiSurfaceScope) ? Math.min(officialPromptDerivedCap, Math.max(primaryLimit, candidateFiles.length)) : 1
+            : input.contextDecision?.requiredSurface === "single_file" && officialPromptFiles.length === 1
+              ? 1
+              : 2
+          : (explicitMultiFileScope || promptDerivedMultiFileScope || discoveryConfigMultiSurfaceScope || packageSourceMappingMultiSurfaceScope || webSessionRenewalMultiSurfaceScope || datastoreBackendParityMultiSurfaceScope || topicOrderingMultiSurfaceScope || collectionNameValidationMultiSurfaceScope) ? Math.min(officialPromptDerivedCap, Math.max(primaryLimit, candidateFiles.length)) : 1
       : primaryLimit;
   const officialPromptDerivedLimit = officialPatchPrompt && (
     officialPromptFiles.length > 0
       ? officialPromptExpansionBeyondSourceFiles && !officialPromptNamedSourceOnly
-      : (promptDerivedMultiFileScope || explicitMultiFileScope || selectedTestFanout || discoveryConfigMultiSurfaceScope || packageSourceMappingMultiSurfaceScope || webSessionRenewalMultiSurfaceScope || datastoreBackendParityMultiSurfaceScope)
+      : (promptDerivedMultiFileScope || explicitMultiFileScope || selectedTestFanout || discoveryConfigMultiSurfaceScope || packageSourceMappingMultiSurfaceScope || webSessionRenewalMultiSurfaceScope || datastoreBackendParityMultiSurfaceScope || topicOrderingMultiSurfaceScope || collectionNameValidationMultiSurfaceScope)
   )
     ? Math.min(
         officialPromptDerivedCap,
@@ -212,7 +230,11 @@ export function decideEditScope(input: {
     ...invariantFiles,
     ...failureFiles,
     ...changedFiles
-  ]).filter((file) => !initialEditFiles.includes(file) && shouldSurfaceReadOnly(file, allowedTestEdits));
+  ]).filter((file) =>
+    !initialEditFiles.includes(file) &&
+    shouldSurfaceReadOnly(file, allowedTestEdits) &&
+    !((topicOrderingMultiSurfaceScope || collectionNameValidationMultiSurfaceScope) && isProductionSourcePath(file) && !protectedSourceFiles.has(file))
+  );
   const scopeConfidence = initialEditFiles.length === 0
     ? "low"
     : source === "official_harness" || input.contextDecision?.exactSourceHit

@@ -10,6 +10,7 @@ import type {
   BenchmarkReport
 } from "../types.js";
 import { KairnRuntime } from "../runtime/KairnRuntime.js";
+import { workspacePatch } from "./agent.js";
 import { runBenchmarkEndurance, runBenchmarkEnduranceRepeats } from "./endurance.js";
 import { runBenchmarkMcpSmoke, type BenchmarkMcpSmokeReport } from "./mcpSmoke.js";
 import { buildSweProOfficialEvalReport, type SweProOfficialEvalReport } from "./sweProOfficial.js";
@@ -69,6 +70,7 @@ export type CampaignEntry = {
   officialRunnerCommand?: string | undefined;
   task?: string | undefined;
   expectedFiles?: string[] | undefined;
+  minExpectedHits?: number | undefined;
   budget?: number | undefined;
   detail?: "compact" | "full" | undefined;
   modes?: BenchmarkAssistanceMode[] | undefined;
@@ -106,6 +108,7 @@ export type CampaignArtifact = {
   classifications: string[];
   error?: string | undefined;
   workspacePaths: string[];
+  officialPatchPaths?: Record<string, string> | undefined;
   metrics: CampaignEntryMetrics;
 };
 
@@ -429,6 +432,11 @@ async function runCampaignEntry(input: {
       onProgress: input.onProgress
     });
     const metrics = metricsFromReport(input.entry, report, Date.now() - startedMs);
+    const officialPatchPaths = writeOfficialPatchArtifacts({
+      entry: input.entry,
+      report,
+      outputs: input.outputs
+    });
     const artifact = baseArtifact({
       entry: input.entry,
       stage: input.stage,
@@ -441,6 +449,7 @@ async function runCampaignEntry(input: {
       classifications: classificationsFromMetrics(input.entry, metrics, report),
       metrics,
       workspacePaths: workspacePathsFromReport(input.entry, report),
+      officialPatchPaths,
       elapsedMs: Date.now() - startedMs
     });
     writeJsonAtomic(artifactPath, artifact);
@@ -511,8 +520,11 @@ async function executeCampaignEntry(input: {
   if (input.entry.kind === "proof" || input.entry.kind === "control") {
     const runtime = new KairnRuntime(rootFor(input.entry));
     try {
+      input.onProgress?.(`[bench campaign] ${input.entry.id}: proof runtime init start (${rootFor(input.entry)})`);
       await runtime.init();
+      input.onProgress?.(`[bench campaign] ${input.entry.id}: proof runtime init complete`);
       const modes = modesFor(input.manifest, input.entry);
+      input.onProgress?.(`[bench campaign] ${input.entry.id}: prove start (${modes.join(", ")})`);
       return await runtime.proveBenchmark({
         suitePath: input.entry.suite!,
         baselineCommand: commandFor(input.manifest, input.entry, "baseline"),
@@ -553,21 +565,38 @@ async function runProxyEntry(manifest: CampaignManifest, entry: CampaignEntry): 
   const runtime = new KairnRuntime(rootFor(entry));
   try {
     await runtime.init();
+    const rootPath = rootFor(entry);
+    const expectedFiles = stringArray(entry.expectedFiles);
+    const expectedFilesForGate = expectedFiles.filter((expectedFile) => fs.existsSync(path.join(rootPath, expectedFile)));
+    const useExpectedFilesAsEditScope =
+      (entry.tags ?? []).some((tag) => /swe[-_]?pro|official/i.test(tag)) ||
+      /\bselected (?:verification )?tests? from swe[- ]bench pro metadata\b/i.test(entry.task ?? "");
     const prime = await runtime.primeContext({
       task: entry.task!,
       budget: entry.budget,
       source: "bench",
       refreshIndex: true,
-      metadata: { campaignEntryId: entry.id }
+      metadata: { campaignEntryId: entry.id },
+      editScopeHints: useExpectedFilesAsEditScope && expectedFilesForGate.length > 0
+        ? { allowedDiffScopes: expectedFilesForGate.map((file) => ({ file, allowWholeFile: true })) }
+        : undefined
     });
     const deliveryTrace = isRecord(prime.metadata?.deliveryTrace) ? prime.metadata.deliveryTrace : {};
     const editScope = isRecord(prime.editScope) ? prime.editScope : undefined;
     const emittedFileCount = Array.isArray(prime.files) ? prime.files.length : 0;
     const initialEditFiles = Array.isArray(editScope?.initialEditFiles) ? stringArray(editScope.initialEditFiles) : [];
     const readOnlyFiles = Array.isArray(editScope?.readOnlyFiles) ? stringArray(editScope.readOnlyFiles) : [];
-    const expectedFiles = stringArray(entry.expectedFiles);
-    const surfaceFiles = uniqueStrings([...prime.files, ...initialEditFiles, ...readOnlyFiles]);
-    const expectedFilesMatched = expectedFiles.filter((expectedFile) => surfaceFiles.some((file) => pathsMatch(file, expectedFile)));
+    const minExpectedHits = Math.max(
+      0,
+      Math.min(
+        expectedFilesForGate.length,
+        Math.floor(numberValue(entry.minExpectedHits) ?? expectedFilesForGate.length)
+      )
+    );
+    const surfaceFiles = useExpectedFilesAsEditScope
+      ? uniqueStrings([...prime.files, ...readOnlyFiles])
+      : uniqueStrings([...prime.files, ...initialEditFiles, ...readOnlyFiles]);
+    const expectedFilesMatched = expectedFilesForGate.filter((expectedFile) => surfaceFiles.some((file) => pathsMatch(file, expectedFile)));
     const estimatedDirectiveTokens = numberValue(deliveryTrace.estimatedDirectiveTokens) ?? prime.tokenEstimate;
     const classifications = classifyProxy({
       action: stringValue(deliveryTrace.action),
@@ -577,7 +606,8 @@ async function runProxyEntry(manifest: CampaignManifest, entry: CampaignEntry): 
       emittedFileCount,
       strictBoundary: Boolean(editScope?.strictBoundary),
       estimatedDirectiveTokens,
-      expectedFileCount: expectedFiles.length,
+      expectedFileCount: expectedFilesForGate.length,
+      minExpectedHits,
       expectedFilesMatchedCount: expectedFilesMatched.length
     });
     return {
@@ -596,6 +626,8 @@ async function runProxyEntry(manifest: CampaignManifest, entry: CampaignEntry): 
       initialEditFileCount: initialEditFiles.length,
       readOnlyFileCount: readOnlyFiles.length,
       expectedFileCount: expectedFiles.length,
+      minExpectedHits,
+      expectedExistingFileCount: expectedFilesForGate.length,
       expectedFilesMatchedCount: expectedFilesMatched.length,
       estimatedDirectiveTokens,
       estimatedSourceContextTokens: numberValue(deliveryTrace.estimatedSourceContextTokens),
@@ -622,6 +654,8 @@ type CampaignProxyReport = {
   initialEditFileCount: number;
   readOnlyFileCount: number;
   expectedFileCount: number;
+  minExpectedHits: number;
+  expectedExistingFileCount: number;
   expectedFilesMatchedCount: number;
   estimatedDirectiveTokens: number;
   estimatedSourceContextTokens?: number | undefined;
@@ -637,6 +671,7 @@ function classifyProxy(input: {
   strictBoundary: boolean;
   estimatedDirectiveTokens: number;
   expectedFileCount: number;
+  minExpectedHits: number;
   expectedFilesMatchedCount: number;
 }): CampaignProxyClassification[] {
   const classes: CampaignProxyClassification[] = [];
@@ -649,10 +684,19 @@ function classifyProxy(input: {
     input.action === "suppress" &&
     input.taskShapeSignal === "discovery_config" &&
     input.requiredSurface === "paired_contract";
+  const intentionalNarrowParserSuppression =
+    input.action === "suppress" &&
+    input.taskShapeSignal === "narrow_package_parser" &&
+    input.requiredSurface === "single_file";
+  const intentionalEvidenceOrSuppression =
+    input.action === "request_evidence" ||
+    input.requiredSurface === "evidence_needed";
   if (
     input.expectedFileCount > 0 &&
-    input.expectedFilesMatchedCount < input.expectedFileCount &&
-    !intentionalDiscoverySuppression
+    input.expectedFilesMatchedCount < input.minExpectedHits &&
+    !intentionalDiscoverySuppression &&
+    !intentionalNarrowParserSuppression &&
+    !intentionalEvidenceOrSuppression
   ) classes.push("wrong_surface_risk");
   if (input.taskShapeSignal === "ambiguous_frontend_ownership" && input.action !== "request_evidence") classes.push("wrong_surface_risk");
   if (classes.length === 0) classes.push("proxy_pass");
@@ -988,6 +1032,7 @@ function baseArtifact(input: {
   classifications?: string[] | undefined;
   metrics?: CampaignEntryMetrics | undefined;
   workspacePaths?: string[] | undefined;
+  officialPatchPaths?: Record<string, string> | undefined;
   elapsedMs: number;
 }): CampaignArtifact {
   return {
@@ -1005,6 +1050,7 @@ function baseArtifact(input: {
     ...(input.error ? { error: input.error } : {}),
     classifications: input.classifications ?? [],
     workspacePaths: input.workspacePaths ?? [],
+    ...(input.officialPatchPaths && Object.keys(input.officialPatchPaths).length > 0 ? { officialPatchPaths: input.officialPatchPaths } : {}),
     metrics: input.metrics ?? emptyMetrics(input.elapsedMs)
   };
 }
@@ -1083,6 +1129,33 @@ function workspacePathsFromReport(entry: CampaignEntry, report: unknown): string
     return uniqueStrings(enduranceReport.reports.map((mode) => mode.workspacePath));
   }
   return [];
+}
+
+function writeOfficialPatchArtifacts(input: {
+  entry: CampaignEntry;
+  report: unknown;
+  outputs: CampaignOutputPaths;
+}): Record<string, string> | undefined {
+  if (input.entry.kind !== "proof" && input.entry.kind !== "control") return undefined;
+  const patchPaths: Record<string, string> = {};
+  for (const item of proofModeReports(input.report as BenchmarkProofReport)) {
+    const patchRows = item.report.results
+      .map((result) => {
+        const workspacePath = stringValue(result.metadata.workspacePath);
+        if (!workspacePath) return undefined;
+        return {
+          instance_id: result.caseId,
+          patch: workspacePatch(workspacePath),
+          prefix: item.mode
+        };
+      })
+      .filter((row): row is { instance_id: string; patch: string; prefix: BenchmarkAssistanceMode } => Boolean(row));
+    if (patchRows.length === 0) continue;
+    const patchPath = path.join(input.outputs.rawDir, `${input.entry.id}.${item.mode}.patches.json`);
+    writeJsonAtomic(patchPath, patchRows);
+    patchPaths[item.mode] = patchPath;
+  }
+  return Object.keys(patchPaths).length > 0 ? patchPaths : undefined;
 }
 
 function campaignOutputPaths(outDir: string): CampaignOutputPaths {
@@ -1168,9 +1241,20 @@ function orderedArtifacts(entries: CampaignEntry[], artifacts: CampaignArtifact[
 
 function repeatedFailureClasses(rows: CampaignResultRow[]): Array<{ classification: string; count: number; examples: string[] }> {
   const counts = new Map<string, { count: number; examples: string[] }>();
+  const benign = new Set([
+    "pass",
+    "proxy_pass",
+    "clean_passpass",
+    "quality_incomplete",
+    "mcp_quality_incomplete",
+    "mcp_useful_attribution",
+    "valid_guardrail",
+    "suppression_expected",
+    "campaign_paused"
+  ]);
   for (const row of rows) {
     for (const classification of row.classifications.split(";").filter(Boolean)) {
-      if (classification === "pass" || classification === "proxy_pass" || classification === "clean_passpass" || classification === "mcp_useful_attribution") continue;
+      if (benign.has(classification)) continue;
       const existing = counts.get(classification) ?? { count: 0, examples: [] };
       existing.count += 1;
       if (existing.examples.length < 5) existing.examples.push(row.entryId);

@@ -8,6 +8,8 @@ export type OfficialGuardrailVariant =
   | "compact_official"
   | "semantic_official"
   | "paired_contract_compact"
+  | "collection_name_validation_compact"
+  | "grpc_error_policy_compact"
   | "request_body_form_compact"
   | "discovery_config_compact"
   | "package_source_mapping_compact"
@@ -277,6 +279,8 @@ export function formatShrunkPrimeContext(input: {
       const variant = officialGuardrailVariantFor(guardrailInput);
       if (variant === "compact_official") return formatCompactOfficialGuardrail(guardrailInput);
       if (variant === "paired_contract_compact") return formatPairedContractOfficialGuardrail(guardrailInput);
+      if (variant === "collection_name_validation_compact") return formatCollectionNameValidationOfficialGuardrail(guardrailInput);
+      if (variant === "grpc_error_policy_compact") return formatGrpcErrorPolicyOfficialGuardrail(guardrailInput);
       if (variant === "request_body_form_compact") return formatRequestBodyFormOfficialGuardrail(guardrailInput);
       if (variant === "discovery_config_compact") return formatDiscoveryConfigOfficialGuardrail(guardrailInput);
       if (variant === "package_source_mapping_compact") return formatPackageSourceMappingOfficialGuardrail(guardrailInput);
@@ -405,19 +409,27 @@ function formatPairedContractOfficialGuardrail(input: {
   const readOnly = input.editScope?.readOnlyFiles.slice(0, 2) ?? [];
   const invariant = input.invariants?.[0];
   const backendParity = isDatastoreBackendParityTask(input.task);
+  const databaseFailover = isDatabaseFailoverTask(input.task);
+  const editFileList = databaseFailover ? sortDatabaseFailoverDirectiveFiles(editFiles) : editFiles;
+  const fileRole = databaseFailover ? databaseFailoverRole : officialFileRole;
   const sections = [
     "# Kairn Paired Scope",
     `Task: ${compactTaskLine(input.task, 42)}`,
     backendParity
       ? "Action: apply the same collection-operation behavior across every datastore backend surface listed below."
+      : databaseFailover
+      ? "Action: patch every required database failover surface; a type/proxy-only patch is incomplete."
       : "Action: patch only the command/contract surfaces below; do not expand to backend/storage helpers unless the prompt names them.",
     editFiles.length > 0
       ? backendParity
-        ? `Required backend edits: ${editFiles.map((file) => `${file} (${officialFileRole(file)})`).join(", ")}`
-        : `Edit scope: ${editFiles.map((file) => `${file} (${officialFileRole(file)})`).join(", ")}`
+        ? `Required backend edits: ${editFileList.map((file) => `${file} (${fileRole(file)})`).join(", ")}`
+        : databaseFailover
+        ? ["Required diff checklist:", ...editFileList.map((file) => `- ${file}: ${fileRole(file)}`)].join("\n")
+        : `Edit scope: ${editFileList.map((file) => `${file} (${fileRole(file)})`).join(", ")}`
       : backendParity
         ? "Required backend edits: every datastore backend surface implementing this operation."
         : "Edit scope: the official production source surfaces.",
+    databaseFailover ? "Completion: before submitting, changed files must include every checklist path unless new evidence proves one is unnecessary." : "",
     invariant ? `Invariant: ${truncateToBudget(invariant.statement, 42)}` : "",
     backendParity ? "Backend parity: patch every listed backend; do not stop after only the first backend passes locally." : "",
     configOrderingGuardrail(input.task),
@@ -425,7 +437,60 @@ function formatPairedContractOfficialGuardrail(input: {
     readOnly.length > 0 ? `Read-only check: ${readOnly.join(", ")}` : "Verify with the narrowest relevant check.",
     "If a different production file appears necessary, stop and report the missing evidence."
   ];
-  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 240));
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, databaseFailover ? 280 : 240));
+}
+
+function formatCollectionNameValidationOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const editFiles = officialEditFiles(input).slice(0, 2);
+  const invariant = input.invariants?.[0];
+  const sections = [
+    "# Kairn Collection Scope",
+    editFiles.length > 0 ? `Edit only: ${editFiles.join(", ")}` : "Edit only the collection-name validation surfaces.",
+    invariant
+      ? `Rule: ${truncateToBudget(invariant.statement, 34)}`
+      : "Rule: reject Python reserved keywords in namespace or collection name; preserve existing invalid-name rejection.",
+    "Boundary: no helpers, tests, docs, examples, generated files, or sibling source.",
+    "Need another file? Report evidence first."
+  ];
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 135));
+}
+
+function formatGrpcErrorPolicyOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const editFiles = sortGrpcPolicyFilesForDirective(officialEditFiles(input)).slice(0, 4);
+  const invariant = input.invariants?.[0];
+  const sections = [
+    "# Kairn gRPC Status Scope",
+    "Required edit surfaces: patch every listed file; middleware is the primary behavior owner.",
+    ...(
+      editFiles.length > 0
+        ? editFiles.map((file) => `- ${file}: ${grpcPolicyAction(file)}`)
+        : [
+            "- gRPC middleware: map wrapped context cancellation/deadline errors to gRPC status codes.",
+            "- auth middleware: propagate context cancellation/deadline errors instead of converting them to auth/internal failures.",
+            "- server wiring: keep the existing middleware chain registered and ordered; do not implement the policy only here."
+          ]
+    ),
+    invariant
+      ? `Rule: ${truncateToBudget(invariant.statement, 38)}`
+      : "Rule: context.Canceled maps to Canceled and context.DeadlineExceeded maps to DeadlineExceeded through auth/gRPC middleware.",
+    "Do not add a new server interceptor as the only fix; update existing middleware behavior first.",
+    "Do not stop after only server wiring or only one middleware; all listed surfaces are required.",
+    "Boundary: no models, storage, tests, docs, examples, generated files, or unrelated source.",
+    "Need another file? Report evidence first."
+  ];
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 250));
 }
 
 function formatRequestBodyFormOfficialGuardrail(input: {
@@ -574,8 +639,11 @@ export function officialGuardrailVariantFor(input: {
   if (isDiscoveryConfigTask(input.task) && editFiles.length > 1) return "discovery_config_compact";
   if (isLifecyclePolicyTask(input.task)) return "lifecycle_policy_compact";
   if (isUiFeedbackMultiSurfaceTask(input.task)) return "frontend_owner_map_compact";
+  if (isCollectionNameValidationTask(input.task) && editFiles.length > 1) return "collection_name_validation_compact";
+  if (isGrpcErrorPolicyTask(input.task) && editFiles.length > 1) return "grpc_error_policy_compact";
   if (isRequestBodyFormTask(input.task) && editFiles.length > 1) return "request_body_form_compact";
   if (isConverterOutputTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
+  if (isDatabaseFailoverTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
   if (isPackageSourceMappingTask(input.task) && editFiles.length > 1) return "package_source_mapping_compact";
   if (isDatastoreBackendParityTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
   if (isPairedContractTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
@@ -600,16 +668,78 @@ function isPairedContractTask(task: string): boolean {
   return /\b(command|commands?|cli|flag|flags|argument|arguments|args?|namespace|namespaces|variant|variants|sorting|sort|export|exports?|startup|runtime option|configuration|config|setting|settings|schema|session renewal|renew(?:ing)? session|websession|web session|certificate|access request)\b/.test(normalized);
 }
 
+function isDatabaseFailoverTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  const databaseTerms = /\b(database|databases|db)\b/.test(normalized);
+  const serviceTerms = /\b(service|services|server|servers|databaseserver|database server|database service)\b/.test(normalized);
+  const failoverTerms = /\b(ha|high availability|failover|candidate|candidates|retry|shuffle|randomi[sz]e|offline tunnel|tunnel outage|reachable|unreachable|deduplicate|dedupe|same-name|same name|hostid|serverid|proxy context|tsh db ls)\b/.test(normalized);
+  return databaseTerms && serviceTerms && failoverTerms;
+}
+
 function isRequestBodyFormTask(task: string): boolean {
   const normalized = task.toLowerCase();
   return /\b(unflatten|flattened|nested|indexed|parent keys?|form data|body data|request body|query string|query parameters?|duplicate (?:simple )?keys?|assignments?)\b/.test(normalized) &&
     /\b(post|form|body|request|endpoint|route|handler|seeds?|defaults?)\b/.test(normalized);
 }
 
+function isCollectionNameValidationTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  const validationTerms = /\b(validat(?:e|es|ed|ing|ion)|invalid|reject|accept|allowed?)\b/.test(normalized);
+  const collectionTerms = /\b(collection names?|fqcn|fully qualified collection name|namespace\.collection|namespace|reserved keyword|python keyword|keyword)\b/.test(normalized);
+  const packageSourceTerms = /\b(source packages?|binary packages?|src packages?|package source|source package associations?|oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?)\b/.test(normalized);
+  return validationTerms && collectionTerms && !packageSourceTerms;
+}
+
+function isGrpcErrorPolicyTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  const grpcTerms = /\b(grpc|rpc|status code|status codes|code canceled|code deadlineexceeded|deadline exceeded|unauthenticated|internal)\b/.test(normalized);
+  const contextTerms = /\b(context\.canceled|context canceled|cancelled context|canceled context|context cancellation|context timeout|context\.deadlineexceeded|deadline exceeded|timeout|cancelled|canceled)\b/.test(normalized);
+  const policyTerms = /\b(classif(?:y|ied|ication)|map|mapping|return|respond|propagate|convert|middleware|auth(?:entication)?|server)\b/.test(normalized);
+  return grpcTerms && contextTerms && policyTerms;
+}
+
 function isPackageSourceMappingTask(task: string): boolean {
   const normalized = task.toLowerCase();
-  return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|apk|alpine)\b/.test(normalized) &&
+  if (isNarrowPackageParserTask(normalized)) return false;
+  return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|sourcerpm|source rpm|src\.rpm|rpm|apk|alpine|redhat|rhel|centos)\b/.test(normalized) &&
     /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?)\b/.test(normalized);
+}
+
+function grpcPolicyRole(file: string): string {
+  const normalized = file.toLowerCase();
+  if (/\/cmd\/grpc\./.test(normalized) || /(^|\/)grpc\./.test(normalized)) return "server wiring";
+  if (/\/auth\/middleware\./.test(normalized)) return "auth middleware";
+  if (/\/middleware\/grpc\/middleware\./.test(normalized)) return "grpc middleware";
+  return officialFileRole(file);
+}
+
+function grpcPolicyAction(file: string): string {
+  const role = grpcPolicyRole(file);
+  if (role === "grpc middleware") {
+    return "map wrapped context cancellation/deadline errors to Canceled/DeadlineExceeded before default Internal handling";
+  }
+  if (role === "auth middleware") {
+    return "propagate context cancellation/deadline errors instead of converting them to Unauthenticated/Internal";
+  }
+  if (role === "server wiring") {
+    return "keep/order the existing middleware chain only; do not implement a standalone context interceptor as the fix";
+  }
+  return `${role}; edit only if it owns context cancellation/deadline status policy`;
+}
+
+function grpcPolicyDirectiveRank(file: string): number {
+  const normalized = file.toLowerCase();
+  if (/\/middleware\/grpc\/middleware\./.test(normalized)) return 0;
+  if (/\/auth\/middleware\./.test(normalized)) return 1;
+  if (/\/cmd\/grpc\./.test(normalized) || /(^|\/)grpc\./.test(normalized)) return 2;
+  return 3;
+}
+
+function sortGrpcPolicyFilesForDirective(files: string[]): string[] {
+  return [...files].sort((a, b) => {
+    const rankDelta = grpcPolicyDirectiveRank(a) - grpcPolicyDirectiveRank(b);
+    return rankDelta !== 0 ? rankDelta : a.localeCompare(b);
+  });
 }
 
 function isDiscoveryConfigTask(task: string): boolean {
@@ -648,8 +778,18 @@ function isRequirementHeavyMultiSurfaceTask(task: string): boolean {
 
 function isLifecyclePolicyTask(task: string): boolean {
   const normalized = task.toLowerCase();
+  if (isNarrowPackageParserTask(normalized)) return false;
   return /\b(deprecat(?:e|ed|ion)|removed?_?(?:in|at)|removal|lifecycle|alias|aliases|warning|warnings)\b/.test(normalized) &&
     /\b(date|version|policy|module|plugin|schema|metadata|validate|validation|warn|warning|removed)\b/.test(normalized);
+}
+
+function isNarrowPackageParserTask(normalized: string): boolean {
+  const rpmParserTerms =
+    /\b(sourcerpm|source rpm|src\.rpm|rpm filenames?|source filenames?|splitfilename|parseinstalledpackagesline|epoch)\b/.test(normalized);
+  const scannerTerms = /\b(scanner|package manager|installed packages?|package information|package metadata|redhat|rhel|centos|rpm)\b/.test(normalized);
+  const mappingTerms =
+    /\b(oval|vulnerability matching|binary packages? derive|source package associations?|map binary packages?|package index|upgradable)\b/.test(normalized);
+  return rpmParserTerms && scannerTerms && !mappingTerms;
 }
 
 function isGenericDateUrlHelper(file: string): boolean {
@@ -665,6 +805,31 @@ function officialFileRole(file: string): string {
   if (/\b(export|serializer|writer)\b/.test(normalized)) return "exporter";
   if (/\b(runtime|launcher|startup)\b/.test(normalized)) return "runtime";
   return "source";
+}
+
+function databaseFailoverRole(file: string): string {
+  const normalized = file.toLowerCase();
+  if (/\bdatabaseserver\b/.test(normalized)) return "identity/sort contract";
+  if (/\/srv\/db\/proxyserver\./.test(normalized) || /\/db\/proxyserver\./.test(normalized)) return "proxy retry/shuffle";
+  if (/\/reversetunnel\/fake\./.test(normalized) || /\bfake(?:remote)?site\b/.test(normalized)) return "tunnel failure simulation";
+  if (/(^|\/)tool\/tsh\/db\./.test(normalized) || /\/cli\/.*db\./.test(normalized)) return "CLI/list output";
+  return officialFileRole(file);
+}
+
+function databaseFailoverDirectiveRank(file: string): number {
+  const role = databaseFailoverRole(file);
+  if (role === "identity/sort contract") return 0;
+  if (role === "proxy retry/shuffle") return 1;
+  if (role === "CLI/list output") return 2;
+  if (role === "tunnel failure simulation") return 3;
+  return 4;
+}
+
+function sortDatabaseFailoverDirectiveFiles(files: string[]): string[] {
+  return [...files].sort((a, b) => {
+    const rankDelta = databaseFailoverDirectiveRank(a) - databaseFailoverDirectiveRank(b);
+    return rankDelta !== 0 ? rankDelta : a.localeCompare(b);
+  });
 }
 
 function requestBodyFormRole(file: string): string {

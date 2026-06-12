@@ -8,7 +8,14 @@ import { startMcpServer } from "../../server/mcp.js";
 import { queueAndFlushTelemetrySnapshot } from "../../telemetry/autoFlush.js";
 import type { CodexSetupMode, HookOutputProfile, IndexStateStats, PrimeProfile } from "../../types.js";
 import { commandInvocation, commandSpawnInvocation } from "../../utils/command.js";
-import { buildCodexNoDiffRecoveryPrompt, relevantWorkspaceDiffFiles, shouldRetryCodexNoDiff } from "../codexRecovery.js";
+import {
+  buildCodexNoDiffRecoveryPrompt,
+  buildCodexPartialScopeRecoveryPrompt,
+  missingRequiredScopeFiles,
+  relevantWorkspaceDiffFiles,
+  shouldRetryCodexNoDiff,
+  shouldRetryCodexPartialScope
+} from "../codexRecovery.js";
 import { printContextPrime } from "../formatters.js";
 import { codexExecArgs, codexInteractiveArgs, parsePositiveInt, waitForShutdown, withRuntime } from "../helpers.js";
 import { printContextResponse, printJson } from "../output.js";
@@ -471,7 +478,7 @@ export function registerCoreCommands(program: Command): void {
           });
           let exitCode = completed.status ?? (completed.error ? 1 : 0);
           if (!interactive && task.length > 0) {
-            const changedFiles = relevantWorkspaceDiffFiles(result.rootPath);
+            let changedFiles = relevantWorkspaceDiffFiles(result.rootPath);
             if (
               shouldRetryCodexNoDiff({
                 task,
@@ -483,6 +490,50 @@ export function registerCoreCommands(program: Command): void {
             ) {
               process.stderr.write("Kairn no-diff recovery: retrying once with a stricter production-edit prompt.\n");
               const recoveryPrompt = buildCodexNoDiffRecoveryPrompt({ task, prime });
+              const recoveryInvocation = commandSpawnInvocation(
+                commandInvocation(
+                  options.codexCommand,
+                  codexExecArgs({
+                    root: options.root,
+                    prompt: recoveryPrompt,
+                    model: options.model,
+                    sandbox: options.sandbox,
+                    enableHooks: bindHooks,
+                    skipGitRepoCheck: Boolean(options.skipGitRepoCheck)
+                  })
+                )
+              );
+              const recovered = spawnSync(recoveryInvocation.command, recoveryInvocation.args, {
+                cwd: result.rootPath,
+                env: recoveryInvocation.env ? { ...process.env, ...recoveryInvocation.env } : undefined,
+                stdio: "inherit"
+              });
+              exitCode = recovered.status ?? (recovered.error ? 1 : 0);
+              changedFiles = relevantWorkspaceDiffFiles(result.rootPath);
+            }
+            if (
+              shouldRetryCodexPartialScope({
+                task,
+                interactive,
+                exitCode,
+                prime,
+                changedFiles
+              })
+            ) {
+              const missingFiles = missingRequiredScopeFiles({
+                task,
+                interactive,
+                exitCode,
+                prime,
+                changedFiles
+              });
+              process.stderr.write(`Kairn partial-scope recovery: retrying once for missing required file(s): ${missingFiles.join(", ")}.\n`);
+              const recoveryPrompt = buildCodexPartialScopeRecoveryPrompt({
+                task,
+                prime,
+                changedFiles,
+                missingFiles
+              });
               const recoveryInvocation = commandSpawnInvocation(
                 commandInvocation(
                   options.codexCommand,

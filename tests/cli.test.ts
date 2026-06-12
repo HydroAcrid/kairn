@@ -2,7 +2,14 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildCodexNoDiffRecoveryPrompt, relevantWorkspaceDiffFiles, shouldRetryCodexNoDiff } from "../src/cli/codexRecovery.js";
+import {
+  buildCodexNoDiffRecoveryPrompt,
+  buildCodexPartialScopeRecoveryPrompt,
+  missingRequiredScopeFiles,
+  relevantWorkspaceDiffFiles,
+  shouldRetryCodexNoDiff,
+  shouldRetryCodexPartialScope
+} from "../src/cli/codexRecovery.js";
 import { codexExecArgs } from "../src/cli/helpers.js";
 import { createFixtureRepo } from "./helpers.js";
 
@@ -568,6 +575,115 @@ describe("CLI", () => {
     expect(prompt).toContain("Edit scope: scanner/redhatbase.go");
     expect(prompt).toContain("Do not edit tests");
     expect(prompt).not.toContain("broad scans");
+  });
+
+  it("builds a bounded official partial-scope recovery prompt for missing required files", () => {
+    const task = [
+      "Selected verification tests from SWE-Bench Pro metadata: TestDatabaseFailover",
+      "Fix database failover when multiple database services share the same service name.",
+      "Fix the issue in production source only. Do not edit tests."
+    ].join("\n");
+    const session = {
+      id: "task_db",
+      rootPath: "/repo",
+      task,
+      status: "active" as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      filesShown: [],
+      symbolsShown: [],
+      commandsRun: [],
+      diffsObserved: [],
+      watchEvents: [],
+      risks: [],
+      verificationHints: []
+    };
+    const prime = {
+      task,
+      session,
+      profile: "generic" as const,
+      content: "# Kairn Paired Scope",
+      files: [
+        "api/types/databaseserver.go",
+        "lib/srv/db/proxyserver.go",
+        "lib/reversetunnel/fake.go",
+        "tool/tsh/db.go"
+      ],
+      tokenEstimate: 80,
+      quality: {
+        score: 70,
+        action: "shrink" as const,
+        reasons: [],
+        topScore: 100,
+        topGap: 100,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low" as const
+      },
+      contextDecision: {
+        action: "shrink" as const,
+        score: 70,
+        reasons: [],
+        topScore: 100,
+        topGap: 100,
+        language: "go" as const,
+        exactPathMentioned: false,
+        estimatedContextCost: 500,
+        expectedSavingsRisk: "low" as const,
+        debugSignal: true,
+        easyTaskSignal: false,
+        wrongContextRisk: false,
+        recommendedDelivery: "multi_file_directive" as const,
+        taskFrame: "official_patch" as const,
+        directiveStyle: "scope_guardrail" as const
+      },
+      editScope: {
+        initialEditFiles: [
+          "api/types/databaseserver.go",
+          "lib/srv/db/proxyserver.go",
+          "lib/reversetunnel/fake.go",
+          "tool/tsh/db.go"
+        ],
+        readOnlyFiles: [],
+        allowedExpansionTriggers: ["only if failure names another production file"],
+        forbiddenEditPatterns: ["tests/**", "docs/**"],
+        scopeConfidence: "high" as const,
+        scopeSource: "official_harness" as const,
+        reason: "official metadata supplied production scope",
+        strictBoundary: true,
+        dynamic: true as const
+      },
+      warnings: [],
+      suggestedCommands: []
+    };
+    const changedFiles = ["api/types/databaseserver.go", "lib/srv/db/proxyserver.go"];
+    const missing = missingRequiredScopeFiles({
+      task,
+      interactive: false,
+      exitCode: 0,
+      prime,
+      changedFiles
+    });
+
+    expect(missing).toEqual(["lib/reversetunnel/fake.go", "tool/tsh/db.go"]);
+    expect(shouldRetryCodexPartialScope({
+      task,
+      interactive: false,
+      exitCode: 0,
+      prime,
+      changedFiles
+    })).toBe(true);
+
+    const prompt = buildCodexPartialScopeRecoveryPrompt({
+      task,
+      prime,
+      changedFiles,
+      missingFiles: missing
+    });
+    expect(prompt).toContain("previous agent run produced a partial production diff");
+    expect(prompt).toContain("Already changed: api/types/databaseserver.go, lib/srv/db/proxyserver.go");
+    expect(prompt).toContain("Missing required edits: lib/reversetunnel/fake.go, tool/tsh/db.go");
+    expect(prompt).toContain("Do not restart from scratch");
+    expect(prompt).not.toContain("node_modules");
   });
 
   it("does not widen official no-diff recovery scope with noisy emitted files", () => {

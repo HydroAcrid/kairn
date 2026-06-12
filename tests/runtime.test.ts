@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
@@ -940,6 +941,406 @@ describe("KairnRuntime", () => {
     }
   });
 
+  it("keeps official single-location Wikidata prompts to one production file", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-runtime-wikidata-"));
+    fs.mkdirSync(path.join(root, "openlibrary/core"), { recursive: true });
+    fs.mkdirSync(path.join(root, "openlibrary/plugins/openlibrary"), { recursive: true });
+    fs.mkdirSync(path.join(root, "openlibrary/plugins/upstream"), { recursive: true });
+    fs.mkdirSync(path.join(root, "openlibrary/tests/core"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "openlibrary/core/wikidata.py"),
+      [
+        "class WikidataEntity:",
+        "    def get_statement_values(self, property_id):",
+        "        return []",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(root, "openlibrary/plugins/openlibrary/lists.py"),
+      [
+        "def add_list(request):",
+        "    return request",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(root, "openlibrary/plugins/upstream/utils.py"),
+      [
+        "def rebuild_upstream_request(form_pairs):",
+        "    return form_pairs",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(root, "openlibrary/tests/core/test_wikidata.py"),
+      [
+        "def test_get_statement_values():",
+        "    assert True",
+        ""
+      ].join("\n")
+    );
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "Incomplete Retrieval of Property Statement Values in Wikidata Entities.",
+          "The WikidataEntity class should provide get_statement_values.",
+          "The method should iterate over nested statement objects and return a list of string values.",
+          "New interfaces introduced:",
+          "Type: Method Name: get_statement_values Location: openlibrary/core/wikidata.py",
+          "Selected verification tests from SWE-Bench Pro metadata: openlibrary/tests/core/test_wikidata.py",
+          "Fix the issue in production source only. Avoid broad scans once the relevant source surface is known."
+        ].join("\n"),
+        budget: 900,
+        source: "bench"
+      });
+
+      expect(prime.contextDecision?.requiredSurface).toBe("single_file");
+      expect(prime.contextDecision?.recommendedDelivery).toBe("one_file_directive");
+      expect(prime.files).toEqual(["openlibrary/core/wikidata.py"]);
+      expect(prime.editScope?.initialEditFiles).toEqual(["openlibrary/core/wikidata.py"]);
+      expect(prime.editScope?.readOnlyFiles).toContain("openlibrary/tests/core/test_wikidata.py");
+      expect(prime.editScope?.readOnlyFiles).not.toContain("openlibrary/plugins/openlibrary/lists.py");
+      expect(prime.editScope?.readOnlyFiles).not.toContain("openlibrary/plugins/upstream/utils.py");
+      expect(prime.content).toContain("openlibrary/core/wikidata.py");
+      expect(prime.content).not.toContain("openlibrary/plugins/openlibrary/lists.py");
+      expect(prime.content).not.toContain("openlibrary/plugins/upstream/utils.py");
+      expect(prime.metadata?.deliveryTrace).toMatchObject({
+        requiredSurface: "single_file",
+        emittedFileCount: 1
+      });
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps pinned topic reorder guardrails to topic owner files", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-runtime-topic-ordering-"));
+    fs.mkdirSync(path.join(root, "public/src/client/category"), { recursive: true });
+    fs.mkdirSync(path.join(root, "public/src/client/account"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src/socket.io/topics"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src/topics"), { recursive: true });
+    fs.mkdirSync(path.join(root, "test"), { recursive: true });
+    fs.writeFileSync(path.join(root, "public/src/client/category/tools.js"), "export function orderPinnedTopics() {}\n");
+    fs.writeFileSync(path.join(root, "src/socket.io/topics/tools.js"), "exports.orderPinnedTopics = async function() {};\n");
+    fs.writeFileSync(path.join(root, "src/topics/tools.js"), "exports.orderPinnedTopics = async function() {};\n");
+    fs.writeFileSync(path.join(root, "public/src/client/account/topics.js"), "export function accountTopics() {}\n");
+    fs.writeFileSync(path.join(root, "public/src/client/topic.js"), "export function topicPage() {}\n");
+    fs.writeFileSync(path.join(root, "test/topics.js"), "describe('topics', () => {});\n");
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "Reordering pinned topics does not behave correctly for all cases.",
+          "Maintain authorization so only moderator or admin users can request reordering of pinned topics.",
+          "Unprivileged users should fail without changing pinned ordering or membership.",
+          "If a topic is not pinned, attempting to reorder it should not change the pinned list.",
+          "When multiple topics are pinned, reordering one should update their relative order correctly.",
+          "Selected verification tests from SWE-Bench Pro metadata: test/topics.js",
+          "Fix the issue in production source only. Avoid broad scans once the relevant source surface is known."
+        ].join("\n"),
+        budget: 1200,
+        source: "bench"
+      });
+
+      expect(prime.contextDecision?.taskShapeSignal).toBe("topic_ordering");
+      expect(prime.contextDecision?.requiredSurface).toBe("paired_contract");
+      expect(prime.files).toEqual([
+        "src/topics/tools.js",
+        "src/socket.io/topics/tools.js",
+        "public/src/client/category/tools.js"
+      ]);
+      expect(prime.editScope?.initialEditFiles).toEqual([
+        "src/topics/tools.js",
+        "src/socket.io/topics/tools.js",
+        "public/src/client/category/tools.js"
+      ]);
+      expect(prime.files).not.toContain("public/src/client/account/topics.js");
+      expect(prime.files).not.toContain("public/src/client/topic.js");
+      expect(prime.content).not.toContain("public/src/client/account/topics.js");
+      expect(prime.content).not.toContain("public/src/client/topic.js");
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps collection-name validation guardrails to authoritative validation files", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-runtime-collection-validation-"));
+    fs.mkdirSync(path.join(root, "lib/ansible/galaxy/dependency_resolution"), { recursive: true });
+    fs.mkdirSync(path.join(root, "lib/ansible/utils/collection_loader"), { recursive: true });
+    fs.mkdirSync(path.join(root, "lib/ansible/module_utils/facts"), { recursive: true });
+    fs.mkdirSync(path.join(root, "lib/ansible/utils"), { recursive: true });
+    fs.writeFileSync(path.join(root, "lib/ansible/galaxy/dependency_resolution/dataclasses.py"), "def is_valid_requirement(value):\n    return True\n");
+    fs.writeFileSync(path.join(root, "lib/ansible/utils/collection_loader/_collection_finder.py"), "class AnsibleCollectionRef:\n    pass\n");
+    fs.writeFileSync(path.join(root, "lib/ansible/module_utils/facts/namespace.py"), "def namespace(value):\n    return value\n");
+    fs.writeFileSync(path.join(root, "lib/ansible/utils/fqcn.py"), "def parse_fqcn(value):\n    return value\n");
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "Collection Name Validation Accepts Python Keywords.",
+          "The validation system for Fully Qualified Collection Names incorrectly accepts collection names with Python reserved keywords.",
+          "Collection names like def.collection, return.module, assert.test, and import.utils should be rejected.",
+          "The validation system should reject any collection name that contains a Python reserved keyword in either namespace or collection name.",
+          "Fix production source only."
+        ].join(" "),
+        budget: 900,
+        source: "bench"
+      });
+
+      expect(prime.contextDecision?.taskShapeSignal).toBe("collection_name_validation");
+      expect(prime.contextDecision?.requiredSurface).toBe("paired_contract");
+      expect(prime.files).toEqual([
+        "lib/ansible/utils/collection_loader/_collection_finder.py",
+        "lib/ansible/galaxy/dependency_resolution/dataclasses.py"
+      ]);
+      expect(prime.editScope?.initialEditFiles).toEqual([
+        "lib/ansible/utils/collection_loader/_collection_finder.py",
+        "lib/ansible/galaxy/dependency_resolution/dataclasses.py"
+      ]);
+      expect(prime.files).not.toContain("lib/ansible/module_utils/facts/namespace.py");
+      expect(prime.files).not.toContain("lib/ansible/utils/fqcn.py");
+      expect(prime.editScope?.readOnlyFiles).not.toContain("lib/ansible/module_utils/facts/namespace.py");
+      expect(prime.editScope?.readOnlyFiles).not.toContain("lib/ansible/utils/fqcn.py");
+      expect(prime.content).not.toContain("lib/ansible/module_utils/facts/namespace.py");
+      expect(prime.content).not.toContain("lib/ansible/utils/fqcn.py");
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("suppresses first-turn gRPC context status policy when failure evidence is missing", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-runtime-grpc-status-"));
+    fs.mkdirSync(path.join(root, "internal/cmd"), { recursive: true });
+    fs.mkdirSync(path.join(root, "internal/server/auth"), { recursive: true });
+    fs.mkdirSync(path.join(root, "internal/server/middleware/grpc"), { recursive: true });
+    fs.mkdirSync(path.join(root, "internal/server"), { recursive: true });
+    fs.writeFileSync(path.join(root, "internal/cmd/grpc.go"), "package cmd\nfunc NewGRPCServer() {}\n");
+    fs.writeFileSync(path.join(root, "internal/cmd/auth.go"), "package cmd\nfunc AuthConfig() {}\n");
+    fs.writeFileSync(path.join(root, "internal/server/auth/middleware.go"), "package auth\nfunc Middleware() {}\n");
+    fs.writeFileSync(path.join(root, "internal/server/middleware/grpc/middleware.go"), "package grpc\nfunc ErrorUnaryInterceptor() {}\n");
+    fs.writeFileSync(path.join(root, "internal/server/segment.go"), "package server\nfunc Segment() {}\n");
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "Context cancellation and deadline exceeded errors are incorrectly classified as Internal or Unauthenticated in gRPC responses.",
+          "Return Canceled and DeadlineExceeded from middleware/authentication when errors wrap context.Canceled or context.DeadlineExceeded.",
+          "Fix production source only."
+        ].join(" "),
+        budget: 900,
+        source: "bench",
+        editScopeHints: {
+          allowedDiffScopes: [
+            { file: "internal/cmd/grpc.go", allowWholeFile: true },
+            { file: "internal/server/auth/middleware.go", allowWholeFile: true },
+            { file: "internal/server/middleware/grpc/middleware.go", allowWholeFile: true }
+          ]
+        }
+      });
+
+      expect(prime.contextDecision?.action).toBe("suppress");
+      expect(prime.contextDecision?.taskShapeSignal).toBe("grpc_error_policy");
+      expect(prime.contextDecision?.requiredSurface).toBe("evidence_needed");
+      expect(prime.metadata?.guardrailVariant).toBeUndefined();
+      expect(prime.files).toEqual([]);
+      expect(prime.editScope?.initialEditFiles).toEqual([
+        "internal/cmd/grpc.go",
+        "internal/server/auth/middleware.go",
+        "internal/server/middleware/grpc/middleware.go"
+      ]);
+      expect(prime.content).toContain("# Kairn Prime Suppressed");
+      expect(prime.content).not.toContain("internal/cmd/auth.go");
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps HTTP auth netrc guardrails to request modules unless action plugin is requested", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-runtime-http-auth-"));
+    fs.mkdirSync(path.join(root, "lib/ansible/module_utils"), { recursive: true });
+    fs.mkdirSync(path.join(root, "lib/ansible/modules"), { recursive: true });
+    fs.mkdirSync(path.join(root, "lib/ansible/plugins/lookup"), { recursive: true });
+    fs.mkdirSync(path.join(root, "lib/ansible/plugins/action"), { recursive: true });
+    fs.writeFileSync(path.join(root, "lib/ansible/module_utils/urls.py"), "def open_url(url, headers=None, use_netrc=True):\n    return url\n");
+    fs.writeFileSync(path.join(root, "lib/ansible/modules/uri.py"), "def main():\n    pass\n");
+    fs.writeFileSync(path.join(root, "lib/ansible/modules/get_url.py"), "def main():\n    pass\n");
+    fs.writeFileSync(path.join(root, "lib/ansible/plugins/lookup/url.py"), "class LookupModule:\n    def run(self):\n        pass\n");
+    fs.writeFileSync(path.join(root, "lib/ansible/plugins/action/uri.py"), "class ActionModule:\n    def run(self):\n        pass\n");
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "The uri module uses .netrc to overwrite an explicit Authorization header.",
+          "Add a use_netrc parameter to Request.open and open_url, default enabled, and forward it through uri, get_url, and url lookup.",
+          "Fix production source only."
+        ].join(" "),
+        budget: 900,
+        source: "bench",
+        editScopeHints: {
+          allowedDiffScopes: [
+            { file: "lib/ansible/module_utils/urls.py", allowWholeFile: true },
+            { file: "lib/ansible/modules/get_url.py", allowWholeFile: true },
+            { file: "lib/ansible/modules/uri.py", allowWholeFile: true },
+            { file: "lib/ansible/plugins/lookup/url.py", allowWholeFile: true }
+          ]
+        }
+      });
+
+      expect(prime.contextDecision?.taskShapeSignal).toBe("http_auth_policy");
+      expect(prime.contextDecision?.requiredSurface).toBe("paired_contract");
+      expect(prime.files).toHaveLength(4);
+      expect(prime.files).toEqual(expect.arrayContaining([
+        "lib/ansible/module_utils/urls.py",
+        "lib/ansible/modules/uri.py",
+        "lib/ansible/modules/get_url.py",
+        "lib/ansible/plugins/lookup/url.py"
+      ]));
+      expect(prime.files).not.toContain("lib/ansible/plugins/action/uri.py");
+      expect(prime.editScope?.initialEditFiles).toHaveLength(4);
+      expect(prime.editScope?.initialEditFiles).toEqual(expect.arrayContaining([
+        "lib/ansible/module_utils/urls.py",
+        "lib/ansible/modules/get_url.py",
+        "lib/ansible/modules/uri.py",
+        "lib/ansible/plugins/lookup/url.py"
+      ]));
+      expect(prime.content).not.toContain("lib/ansible/plugins/action/uri.py");
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps execution state migrations to iterator and strategy owners", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-runtime-exec-state-"));
+    fs.mkdirSync(path.join(root, "lib/ansible/executor"), { recursive: true });
+    fs.mkdirSync(path.join(root, "lib/ansible/plugins/strategy"), { recursive: true });
+    fs.mkdirSync(path.join(root, "lib/ansible/module_utils"), { recursive: true });
+    fs.writeFileSync(path.join(root, "lib/ansible/executor/play_iterator.py"), "class PlayIterator:\n    pass\nclass HostState:\n    pass\n");
+    fs.writeFileSync(path.join(root, "lib/ansible/plugins/strategy/__init__.py"), "class StrategyBase:\n    pass\n");
+    fs.writeFileSync(path.join(root, "lib/ansible/plugins/strategy/linear.py"), "class StrategyModule:\n    pass\n");
+    fs.writeFileSync(path.join(root, "lib/ansible/plugins/strategy/debug.py"), "class StrategyModule:\n    pass\n");
+    fs.writeFileSync(path.join(root, "lib/ansible/module_utils/basic.py"), "def helper():\n    pass\n");
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "Standardize PlayIterator state representation with public IteratingStates and FailedStates enums.",
+          "Update the strategy plugins that consume the iterator state.",
+          "Preserve legacy constants, HostState string output, and third-party strategy plugin compatibility.",
+          "Fix production source only."
+        ].join(" "),
+        budget: 900,
+        source: "bench",
+        editScopeHints: {
+          allowedDiffScopes: [
+            { file: "lib/ansible/executor/play_iterator.py", allowWholeFile: true },
+            { file: "lib/ansible/plugins/strategy/__init__.py", allowWholeFile: true },
+            { file: "lib/ansible/plugins/strategy/linear.py", allowWholeFile: true }
+          ]
+        }
+      });
+
+      expect(prime.contextDecision?.taskShapeSignal).toBe("execution_state_migration");
+      expect(prime.contextDecision?.requiredSurface).toBe("paired_contract");
+      expect(prime.files.length).toBeGreaterThanOrEqual(2);
+      expect(prime.files.length).toBeLessThanOrEqual(3);
+      expect(prime.files).toEqual(expect.arrayContaining([
+        "lib/ansible/executor/play_iterator.py",
+        "lib/ansible/plugins/strategy/__init__.py"
+      ]));
+      expect(prime.files).not.toContain("lib/ansible/plugins/strategy/debug.py");
+      expect(prime.files).not.toContain("lib/ansible/module_utils/basic.py");
+      expect(prime.editScope?.initialEditFiles).toEqual(expect.arrayContaining([
+        "lib/ansible/executor/play_iterator.py",
+        "lib/ansible/plugins/strategy/__init__.py"
+      ]));
+      expect(prime.editScope?.initialEditFiles).not.toContain("lib/ansible/plugins/strategy/debug.py");
+      expect(prime.editScope?.initialEditFiles).not.toContain("lib/ansible/module_utils/basic.py");
+      expect(prime.content).not.toContain("lib/ansible/plugins/strategy/debug.py");
+      expect(prime.content).not.toContain("lib/ansible/module_utils/basic.py");
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps database failover tasks to proxy, type, fake tunnel, and CLI owners", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-runtime-db-failover-"));
+    fs.mkdirSync(path.join(root, "api/types"), { recursive: true });
+    fs.mkdirSync(path.join(root, "lib/srv/db"), { recursive: true });
+    fs.mkdirSync(path.join(root, "lib/reversetunnel"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tool/tsh"), { recursive: true });
+    fs.mkdirSync(path.join(root, "lib/events"), { recursive: true });
+    fs.writeFileSync(path.join(root, "api/types/databaseserver.go"), "package types\ntype DatabaseServerV3 struct { HostID string }\n");
+    fs.writeFileSync(path.join(root, "lib/srv/db/proxyserver.go"), "package db\nfunc connectCandidateServers() {}\n");
+    fs.writeFileSync(path.join(root, "lib/reversetunnel/fake.go"), "package reversetunnel\ntype FakeRemoteSite struct{}\nfunc OfflineTunnels() {}\n");
+    fs.writeFileSync(path.join(root, "lib/reversetunnel/agent.go"), "package reversetunnel\ntype Agent struct{}\nfunc KeepAlive() {}\n");
+    fs.writeFileSync(path.join(root, "tool/tsh/db.go"), "package tsh\nfunc onListDatabases() {}\n");
+    fs.writeFileSync(path.join(root, "lib/events/auditlog.go"), "package events\ntype ServerID string\n");
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "Better handle HA database access when multiple database services share the same service name.",
+          "Proxy should shuffle candidate database servers, retry on tunnel connection failures, deduplicate tsh db ls, and include HostID.",
+          "Fix production source only."
+        ].join(" "),
+        budget: 900,
+        source: "bench",
+        editScopeHints: {
+          allowedDiffScopes: [
+            { file: "api/types/databaseserver.go", allowWholeFile: true },
+            { file: "lib/srv/db/proxyserver.go", allowWholeFile: true },
+            { file: "lib/reversetunnel/fake.go", allowWholeFile: true },
+            { file: "tool/tsh/db.go", allowWholeFile: true }
+          ]
+        }
+      });
+
+      expect(prime.contextDecision?.taskShapeSignal).toBe("database_failover");
+      expect(prime.contextDecision?.requiredSurface).toBe("paired_contract");
+      expect(prime.files).toHaveLength(4);
+      expect(prime.files).toEqual(expect.arrayContaining([
+        "api/types/databaseserver.go",
+        "lib/srv/db/proxyserver.go",
+        "lib/reversetunnel/fake.go",
+        "tool/tsh/db.go"
+      ]));
+      expect(prime.files).not.toContain("lib/reversetunnel/agent.go");
+      expect(prime.files).not.toContain("lib/events/auditlog.go");
+      expect(prime.editScope?.initialEditFiles).toEqual(expect.arrayContaining([
+        "api/types/databaseserver.go",
+        "lib/srv/db/proxyserver.go",
+        "lib/reversetunnel/fake.go",
+        "tool/tsh/db.go"
+      ]));
+      expect(prime.editScope?.initialEditFiles).not.toContain("lib/reversetunnel/agent.go");
+      expect(prime.content).not.toContain("lib/reversetunnel/agent.go");
+      expect(prime.content).toContain("Required diff checklist");
+      expect(prime.content).toContain("identity/sort");
+      expect(prime.content).toContain("proxy retry/shuffle");
+      expect(prime.content).toContain("tunnel failure simulation");
+      expect(prime.content).toContain("CLI/list output");
+      expect(prime.content).toContain("changed files must include every checklist path");
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("keeps dominant converter-output official tasks to a single converter guardrail", async () => {
     const root = fs.mkdtempSync(path.join(process.cwd(), ".tmp-kairn-runtime-"));
     fs.mkdirSync(path.join(root, "contrib/trivy/pkg"), { recursive: true });
@@ -999,6 +1400,96 @@ describe("KairnRuntime", () => {
       expect(prime.content).toContain("contrib/trivy/pkg/converter.go");
       expect(prime.content).not.toContain("cmd/vuls/main.go");
       expect(prime.content).not.toContain("scanner/trivy/jar/parse.go");
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps benchmark generator guardrails off generic command entrypoints", async () => {
+    const root = fs.mkdtempSync(path.join(process.cwd(), ".tmp-kairn-runtime-"));
+    fs.mkdirSync(path.join(root, "lib/client"), { recursive: true });
+    fs.mkdirSync(path.join(root, "lib/benchmark"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tool/tsh"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tool/tctl"), { recursive: true });
+    fs.mkdirSync(path.join(root, "tool/teleport"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "lib/client/bench.go"),
+      [
+        "package client",
+        "",
+        "func BenchmarkCommand() {",
+        "    // benchmark command configuration",
+        "}",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(root, "lib/benchmark/linear_test.go"),
+      [
+        "package benchmark",
+        "",
+        "func TestGetBenchmark() {}",
+        "func TestValidateConfig() {}",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(root, "tool/tsh/tsh.go"),
+      [
+        "package tsh",
+        "",
+        "func onBenchmark() {",
+        "    // benchmark CLI command",
+        "}",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(root, "tool/tctl/main.go"),
+      [
+        "package main",
+        "",
+        "func main() {",
+        "    // generic benchmark launcher",
+        "}",
+        ""
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(root, "tool/teleport/main.go"),
+      [
+        "package main",
+        "",
+        "func main() {",
+        "    // generic benchmark launcher",
+        "}",
+        ""
+      ].join("\n")
+    );
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "Add linear benchmark generator for progressive request rate configurations.",
+          "New file: lib/benchmark/linear.go.",
+          "The Linear struct and GetBenchmark method should produce benchmark configurations.",
+          "Selected verification tests from SWE-Bench Pro metadata: TestGetBenchmark, TestValidateConfig.",
+          "Fix production source only. Avoid broad scans once the relevant source surface is known."
+        ].join(" "),
+        budget: 900,
+        source: "codex"
+      });
+
+      expect(prime.contextDecision?.taskShapeSignal).toBe("benchmark_generator");
+      expect(prime.contextDecision?.requiredSurface).toBe("paired_contract");
+      expect(prime.files).toContain("lib/client/bench.go");
+      expect(prime.files).toContain("tool/tsh/tsh.go");
+      expect(prime.files).not.toContain("tool/tctl/main.go");
+      expect(prime.files).not.toContain("tool/teleport/main.go");
+      expect(prime.editScope?.initialEditFiles).not.toContain("tool/tctl/main.go");
+      expect(prime.editScope?.initialEditFiles).not.toContain("tool/teleport/main.go");
     } finally {
       runtime.close();
       fs.rmSync(root, { recursive: true, force: true });
@@ -1131,6 +1622,49 @@ describe("KairnRuntime", () => {
     expect(content).toContain("OVAL/vulnerability checks");
     expect(content).not.toContain("Focused context:");
     expect(estimateTokens(content)).toBeLessThan(320);
+  });
+
+  it("suppresses narrow RPM source-package parser official prompts", async () => {
+    const root = fs.mkdtempSync(path.join(process.cwd(), ".tmp-kairn-runtime-"));
+    fs.mkdirSync(path.join(root, "scanner"), { recursive: true });
+    fs.mkdirSync(path.join(root, "oval"), { recursive: true });
+    fs.writeFileSync(path.join(root, "scanner/redhatbase.go"), "func parseInstalledPackagesLine() {}\nfunc splitFileName() {}\n");
+    fs.writeFileSync(path.join(root, "scanner/centos.go"), "func centosScanner() {}\n");
+    fs.writeFileSync(path.join(root, "scanner/rhel.go"), "func rhelScanner() {}\n");
+    fs.writeFileSync(path.join(root, "scanner/scanner.go"), "func Detect() {}\n");
+    fs.writeFileSync(path.join(root, "oval/util.go"), "func matchSourcePackage() {}\n");
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "Scanner fails on non-standard source RPM filenames and epoch handling.",
+          "Update parseInstalledPackagesLine to append warnings for unparseable SOURCERPM filenames without aborting.",
+          "Implement splitFileName handling for source RPM filenames with epoch values.",
+          "Selected verification tests from SWE-Bench Pro metadata: Test_redhatBase_parseInstalledPackagesLine",
+          "Fix the issue in production source only."
+        ].join("\n"),
+        budget: 900,
+        source: "bench",
+        editScopeHints: {
+          allowedDiffScopes: [{ file: "scanner/redhatbase.go", allowWholeFile: true }]
+        }
+      });
+
+      expect(prime.contextDecision?.action).toBe("suppress");
+      expect(prime.contextDecision?.requiredSurface).toBe("single_file");
+      expect(prime.contextDecision?.taskShapeSignal).toBe("narrow_package_parser");
+      expect(prime.files).toEqual([]);
+      expect(prime.editScope?.initialEditFiles).toEqual(["scanner/redhatbase.go"]);
+      expect(prime.editScope?.readOnlyFiles).toEqual([]);
+      expect(prime.content).not.toContain("# Kairn Package Scope");
+      expect(prime.content).not.toContain("# Kairn Policy Scope");
+      expect(prime.content).not.toContain("scanner/centos.go");
+      expect(prime.content).not.toContain("oval/util.go");
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("routes web session renewal tasks to web/auth session surfaces instead of constants", async () => {

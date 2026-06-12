@@ -900,10 +900,76 @@ describe("benchmark suite and scoring", () => {
     }
   });
 
+  it("reports repeated neutral incomplete rows without pausing the campaign", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-campaign-neutral-incomplete-"));
+    try {
+      const outDir = path.join(root, "out");
+      const rawDir = path.join(outDir, "raw");
+      fs.mkdirSync(rawDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(outDir, "campaign-manifest.json"),
+        JSON.stringify({
+          id: "neutral-incomplete-test",
+          name: "Neutral Incomplete Test",
+          pauseRules: {
+            maxRepeatedFailureClass: 1
+          },
+          entries: [
+            { id: "row-a", kind: "proof", suite: "suite-a.json" },
+            { id: "row-b", kind: "proof", suite: "suite-b.json" }
+          ]
+        })
+      );
+      for (const entryId of ["row-a", "row-b"]) {
+        fs.writeFileSync(
+          path.join(rawDir, `${entryId}.json`),
+          JSON.stringify({
+            entryId,
+            kind: "proof",
+            stage: "live",
+            status: "passed",
+            tags: [],
+            startedAt: new Date(0).toISOString(),
+            endedAt: new Date(0).toISOString(),
+            artifactPath: path.join(rawDir, `${entryId}.json`),
+            commands: [],
+            classifications: ["quality_incomplete"],
+            workspacePaths: [],
+            metrics: {
+              qualityPassed: false,
+              cleanPassPass: false,
+              tokenRegression: false,
+              qualityDrop: false,
+              qualityRescue: false,
+              harmfulAssist: false,
+              scopeViolations: 0,
+              mcpCalls: 0,
+              mcpUsefulAttribution: 0,
+              elapsedMs: 1
+            }
+          })
+        );
+      }
+
+      const report = summarizeCampaign(outDir);
+
+      expect(report.rows.map((row) => row.classifications)).toEqual(["quality_incomplete", "quality_incomplete"]);
+      expect(report.aggregate.repeatedFailureClasses).toEqual([]);
+      expect(report.paused).toBe(false);
+      expect(report.pauseReasons).toEqual([]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("flags proxy expected-file misses as wrong surface risk", async () => {
     const root = createFixtureRepo();
     const outRoot = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-campaign-proxy-surface-"));
     try {
+      fs.writeFileSync(
+        path.join(root, "src/missing-required.ts"),
+        "export function requiredCompanionSurface() { return 'required'; }\n"
+      );
       const manifestPath = path.join(outRoot, "campaign-manifest.json");
       const outDir = path.join(outRoot, "out");
       fs.writeFileSync(
@@ -941,6 +1007,61 @@ describe("benchmark suite and scoring", () => {
       expect(proxyReport?.expectedFileCount).toBe(2);
       expect(proxyReport?.expectedFilesMatchedCount).toBeLessThan(2);
       expect(fs.readFileSync(path.join(outDir, "failures.csv"), "utf8")).toContain("proxy-app-partial");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+      fs.rmSync(outRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("allows proxy expected-file misses up to the configured minimum hit threshold", async () => {
+    const root = createFixtureRepo();
+    const outRoot = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-campaign-proxy-min-hits-"));
+    try {
+      fs.writeFileSync(
+        path.join(root, "src/missing-required.ts"),
+        "export function requiredCompanionSurface() { return 'required'; }\n"
+      );
+      const manifestPath = path.join(outRoot, "campaign-manifest.json");
+      const outDir = path.join(outRoot, "out");
+      fs.writeFileSync(
+        manifestPath,
+        JSON.stringify({
+          id: "proxy-min-hits-test",
+          name: "Proxy Min Hits Test",
+          entries: [
+            {
+              id: "proxy-app-min-hit",
+              kind: "proxy",
+              root,
+              task: "Fix renderDashboard in src/app.ts without changing unrelated files.",
+              expectedFiles: ["src/app.ts", "src/missing-required.ts"],
+              minExpectedHits: 1,
+              budget: 500
+            }
+          ]
+        })
+      );
+
+      const report = await runCampaign({
+        manifestPath,
+        outDir,
+        stage: "proxy",
+        parallel: 1
+      });
+      const row = report.rows[0];
+      const artifact = report.artifacts[0];
+      const proxyReport = artifact?.report as {
+        expectedFileCount?: number;
+        expectedFilesMatchedCount?: number;
+        minExpectedHits?: number;
+      } | undefined;
+
+      expect(row?.classifications).not.toContain("wrong_surface_risk");
+      expect(row?.qualityPassed).toBe(true);
+      expect(report.paused).toBe(false);
+      expect(proxyReport?.expectedFileCount).toBe(2);
+      expect(proxyReport?.minExpectedHits).toBe(1);
+      expect(proxyReport?.expectedFilesMatchedCount).toBeGreaterThanOrEqual(1);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
       fs.rmSync(outRoot, { recursive: true, force: true });
@@ -1973,6 +2094,57 @@ describe("benchmark suite and scoring", () => {
     expect(ranked.find((item) => item.path === "tests/unit/utils/test_urlutils.py")).toBeUndefined();
   });
 
+  it("uses named new source files to rescue existing package contract surfaces", () => {
+    const files: FileRecord[] = [
+      sourceRecord("lib/benchmark/benchmark.go", "go"),
+      sourceRecord("lib/client/bench.go", "go"),
+      sourceRecord("tool/tsh/tsh.go", "go"),
+      sourceRecord("tool/tctl/main.go", "go"),
+      sourceRecord("tool/teleport/main.go", "go")
+    ];
+    const ranked = hybridSearch({
+      files,
+      query: [
+        "Add linear benchmark generator for progressive request rate configurations.",
+        "New file: lib/benchmark/linear.go",
+        "Public interfaces: Linear struct and (*Linear).GetBenchmark() *Config.",
+        "The method must return a *Config with Rate, Threads, MinimumWindow, MinimumMeasurements, and Command copied from the initial configuration.",
+        "Selected verification tests from SWE-Bench Pro metadata: TestGetBenchmark, TestValidateConfig.",
+        "Fix the issue in production source only. Avoid broad scans once the relevant source surface is known."
+      ].join("\n"),
+      symbols: [
+        symbolRecord("lib/benchmark/benchmark.go", "Config"),
+        symbolRecord("lib/benchmark/benchmark.go", "Command"),
+        symbolRecord("lib/client/bench.go", "BenchmarkCommand"),
+        symbolRecord("tool/tsh/tsh.go", "onBenchmark")
+      ],
+      chunks: [
+        chunkRecord("lib/benchmark/benchmark.go", "Config", "type Config struct { Rate int Threads int MinimumWindow time.Duration MinimumMeasurements int Command string }"),
+        chunkRecord("lib/client/bench.go", "bench", "benchmark client command configuration"),
+        chunkRecord("tool/tsh/tsh.go", "tsh", "benchmark CLI command")
+      ],
+      vectors: [],
+      edges: []
+    });
+
+    expect(ranked.slice(0, 3).map((item) => item.path)).toContain("lib/benchmark/benchmark.go");
+    expect(ranked.find((item) => item.path === "lib/benchmark/benchmark.go")?.reasons).toEqual(
+      expect.arrayContaining([expect.stringContaining("go package contract owner")])
+    );
+    const tshIndex = ranked.findIndex((item) => item.path === "tool/tsh/tsh.go");
+    const tctlIndex = ranked.findIndex((item) => item.path === "tool/tctl/main.go");
+    expect(tshIndex).toBeGreaterThanOrEqual(0);
+    expect(tctlIndex === -1 || tshIndex < tctlIndex).toBe(true);
+    const benchmarkIndex = ranked.findIndex((item) => item.path === "lib/benchmark/benchmark.go");
+    const teleportIndex = ranked.findIndex((item) => item.path === "tool/teleport/main.go");
+    expect(benchmarkIndex).toBeGreaterThanOrEqual(0);
+    expect(teleportIndex === -1 || benchmarkIndex < teleportIndex).toBe(true);
+    const tctl = ranked.find((item) => item.path === "tool/tctl/main.go");
+    if (tctl) {
+      expect(tctl.reasons).toEqual(expect.arrayContaining([expect.stringContaining("generic benchmark entrypoint downranked")]));
+    }
+  });
+
   it("keeps task-specific implementation files ahead of generic selected-test counterparts", () => {
     const files: FileRecord[] = [
       sourceRecord("src/controllers/topics.js", "javascript"),
@@ -2449,6 +2621,7 @@ describe("benchmark suite and scoring", () => {
     const files = [
       sourceRecord("lib/ansible/modules/get_url.py", "python"),
       sourceRecord("lib/ansible/module_utils/urls.py", "python"),
+      sourceRecord("lib/ansible/plugins/action/uri.py", "python"),
       sourceRecord("lib/ansible/module_utils/facts/utils.py", "python"),
       sourceRecord("lib/ansible/module_utils/common/_utils.py", "python")
     ];
@@ -2460,6 +2633,7 @@ describe("benchmark suite and scoring", () => {
       chunks: [
         chunkRecord("lib/ansible/modules/get_url.py", "main", "module uses url request helper"),
         chunkRecord("lib/ansible/module_utils/urls.py", "open_url", "uri url request headers authorization netrc bearer basic auth"),
+        chunkRecord("lib/ansible/plugins/action/uri.py", "run", "uri action plugin request headers authorization netrc bearer basic auth"),
         chunkRecord("lib/ansible/module_utils/facts/utils.py", "get_file_content", "facts generic utils"),
         chunkRecord("lib/ansible/module_utils/common/_utils.py", "get_all_subclasses", "common generic utils")
       ],
@@ -2470,6 +2644,7 @@ describe("benchmark suite and scoring", () => {
     expect(ranked.slice(0, 2).map((item) => item.path)).toEqual(
       expect.arrayContaining(["lib/ansible/modules/get_url.py", "lib/ansible/module_utils/urls.py"])
     );
+    expect(ranked.slice(0, 2).map((item) => item.path)).not.toContain("lib/ansible/plugins/action/uri.py");
     const genericUtilityIndex = ranked.findIndex((item) => item.path === "lib/ansible/module_utils/facts/utils.py");
     expect(genericUtilityIndex === -1 || genericUtilityIndex > 1).toBe(true);
   });
@@ -3295,6 +3470,63 @@ describe("benchmark suite and scoring", () => {
       });
       expect(scored.taskOutcome).toBe("partial");
       expect(scored.metadata.qualityGatePassed).toBe(false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("ignores absent required files unless the prompt explicitly creates them", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-required-touch-absent-"));
+    try {
+      fs.mkdirSync(path.join(root, "src"), { recursive: true });
+      fs.writeFileSync(path.join(root, "src/existing.ts"), "export const value = 1;\n");
+      execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["add", "."], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["commit", "-m", "initial"], {
+        cwd: root,
+        stdio: "ignore",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: "Kairn Test",
+          GIT_AUTHOR_EMAIL: "test@example.com",
+          GIT_COMMITTER_NAME: "Kairn Test",
+          GIT_COMMITTER_EMAIL: "test@example.com"
+        }
+      });
+
+      const result = await runAgentBenchmarkCase({
+        rootPath: root,
+        benchmarkCase: {
+          id: "required-absent",
+          mode: "agent",
+          task: [
+            "Update the existing source and add one generated companion.",
+            "New file: src/new-file.ts"
+          ].join("\n"),
+          expectedFiles: ["src/existing.ts", "src/new-file.ts"],
+          requiredTouchedFiles: ["src/existing.ts", "src/new-file.ts", "src/missing.ts"],
+          excludedFiles: [],
+          seed: {
+            repoUrl: root,
+            ref: "HEAD",
+            testCommand:
+              "node -e \"const fs=require('fs'); if(!fs.existsSync('src/new-file.ts')) process.exit(1); if(!fs.readFileSync('src/existing.ts','utf8').includes('value = 2')) process.exit(1)\""
+          }
+        },
+        agentCommand:
+          "node -e \"const fs=require('fs'); fs.writeFileSync('src/existing.ts','export const value = 2;\\\\n'); fs.writeFileSync('src/new-file.ts','export const generated = true;\\\\n')\" {prompt}"
+      });
+
+      expect(result.outcome).toBe("pass");
+      expect(result.metadata.originalRequiredTouchedFiles).toEqual([
+        "src/existing.ts",
+        "src/new-file.ts",
+        "src/missing.ts"
+      ]);
+      expect(result.metadata.requiredTouchedFiles).toEqual(["src/existing.ts", "src/new-file.ts"]);
+      expect(result.metadata.ignoredAbsentRequiredTouchedFiles).toEqual(["src/missing.ts"]);
+      expect(result.metadata.missingRequiredTouchedFiles).toEqual([]);
+      expect(result.metadata.requiredTouchedSatisfied).toBe(true);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -4739,6 +4971,137 @@ describe("benchmark suite and scoring", () => {
     expect(decision.action).toBe("shrink");
   });
 
+  it("does not treat nested model statement list retrieval as request body form scope", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "Incomplete Retrieval of Property Statement Values in Wikidata Entities.",
+        "The WikidataEntity class should provide get_statement_values.",
+        "The method should iterate over nested statement objects and return a list of string values.",
+        "Location: openlibrary/core/wikidata.py.",
+        "Selected verification tests from SWE-Bench Pro metadata: openlibrary/tests/core/test_wikidata.py.",
+        "Fix the issue in production source only."
+      ].join(" "),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- openlibrary/core/wikidata.py\n",
+        files: ["openlibrary/core/wikidata.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["openlibrary/core/wikidata.py"],
+        rankedFiles: [
+          { path: "openlibrary/core/wikidata.py", kind: "source", score: 810, reasons: ["exact location surface"] }
+        ],
+        tokenEstimate: 420
+      },
+      quality: {
+        score: 86,
+        action: "emit",
+        reasons: ["exact source surface"],
+        topScore: 810,
+        topGap: 410,
+        exactPathMentioned: true,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 86,
+        action: "emit",
+        reasons: ["exact source surface"],
+        topScore: 810,
+        topGap: 410,
+        primaryFile: "openlibrary/core/wikidata.py",
+        language: "python",
+        exactPathMentioned: true,
+        exactSourceHit: true,
+        recommendedDelivery: "one_file_directive",
+        estimatedContextCost: 420,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("openlibrary/core/wikidata.py", "python"),
+        sourceRecord("openlibrary/plugins/openlibrary/lists.py", "python"),
+        sourceRecord("openlibrary/plugins/upstream/utils.py", "python")
+      ],
+      repoFileCount: 4100,
+      estimatedContextCost: 420
+    });
+
+    expect(decision.taskShapeSignal).not.toBe("request_body_form");
+    expect(decision.requiredSurface).toBe("single_file");
+    expect(decision.recommendedDelivery).toBe("one_file_directive");
+  });
+
+  it("classifies pinned topic authorization wording as topic ordering, not HTTP auth", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "Reordering pinned topics does not behave correctly for all cases.",
+        "Maintain authorization so only moderator or admin users can reorder pinned topics.",
+        "Unprivileged users should fail without changing pinned membership or order.",
+        "Moving one pinned topic should place it at the target position while preserving other pinned topics.",
+        "Selected verification tests from SWE-Bench Pro metadata: test/topics.js.",
+        "Fix the issue in production source only."
+      ].join(" "),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- src/topics/tools.js\n- src/socket.io/topics/tools.js\n- public/src/client/category/tools.js\n",
+        files: ["src/topics/tools.js", "src/socket.io/topics/tools.js", "public/src/client/category/tools.js"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/topics/tools.js", "src/socket.io/topics/tools.js", "public/src/client/category/tools.js"],
+        rankedFiles: [
+          { path: "src/topics/tools.js", kind: "source", score: 960, reasons: ["topic tools ordering owner"] },
+          { path: "src/socket.io/topics/tools.js", kind: "source", score: 920, reasons: ["topic socket ordering owner"] },
+          { path: "public/src/client/category/tools.js", kind: "source", score: 890, reasons: ["category client pinned-topic owner"] }
+        ],
+        tokenEstimate: 720
+      },
+      quality: {
+        score: 86,
+        action: "emit",
+        reasons: ["topic ordering owners"],
+        topScore: 960,
+        topGap: 40,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 86,
+        action: "emit",
+        reasons: ["topic ordering owners"],
+        topScore: 960,
+        topGap: 40,
+        primaryFile: "src/topics/tools.js",
+        language: "javascript",
+        exactPathMentioned: false,
+        sourceRescue: true,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 720,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("src/topics/tools.js", "javascript"),
+        sourceRecord("src/socket.io/topics/tools.js", "javascript"),
+        sourceRecord("public/src/client/category/tools.js", "javascript"),
+        sourceRecord("public/src/client/account/topics.js", "javascript"),
+        sourceRecord("public/src/client/topic.js", "javascript")
+      ],
+      repoFileCount: 2400,
+      estimatedContextCost: 720
+    });
+
+    expect(decision.taskShapeSignal).toBe("topic_ordering");
+    expect(decision.taskShapeSignal).not.toBe("http_auth_policy");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
   it("marks dominant converter output bugs as single-file scope guardrails", () => {
     const decision = applyContextGovernor({
       task: [
@@ -5052,6 +5415,73 @@ describe("benchmark suite and scoring", () => {
     expect(decision.requiredSurface).toBe("paired_contract");
     expect(decision.action).toBe("shrink");
     expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
+  it("keeps narrow RPM source-package parser tasks single-file", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "Scanner fails on non-standard source RPM filenames and epoch handling.",
+        "Update parseInstalledPackagesLine to append warnings for unparseable SOURCERPM filenames without aborting.",
+        "Implement splitFileName handling for source RPM filenames with epoch values."
+      ].join(" "),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- scanner/redhatbase.go\n- scanner/centos.go\n- scanner/rhel.go\n- oval/util.go\n- scanner/scanner.go\n",
+        files: ["scanner/redhatbase.go", "scanner/centos.go", "scanner/rhel.go", "oval/util.go", "scanner/scanner.go"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["scanner/redhatbase.go"],
+        rankedFiles: [
+          { path: "scanner/redhatbase.go", kind: "source", score: 980, reasons: ["RPM source package scanner surface"] },
+          { path: "scanner/centos.go", kind: "source", score: 500, reasons: ["RPM source package scanner surface"] },
+          { path: "scanner/rhel.go", kind: "source", score: 480, reasons: ["RPM source package scanner surface"] },
+          { path: "oval/util.go", kind: "source", score: 350, reasons: ["source package matcher"] },
+          { path: "scanner/scanner.go", kind: "source", score: 300, reasons: ["scanner dispatch"] }
+        ],
+        tokenEstimate: 900
+      },
+      quality: {
+        score: 88,
+        action: "emit",
+        reasons: ["top retrieval score"],
+        topScore: 980,
+        topGap: 480,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 86,
+        action: "emit",
+        reasons: ["dominant source parser surface"],
+        topScore: 980,
+        topGap: 480,
+        primaryFile: "scanner/redhatbase.go",
+        language: "go",
+        exactPathMentioned: false,
+        sourceRescue: true,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 1000,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("scanner/redhatbase.go", "go"),
+        sourceRecord("scanner/centos.go", "go"),
+        sourceRecord("scanner/rhel.go", "go"),
+        sourceRecord("oval/util.go", "go"),
+        sourceRecord("scanner/scanner.go", "go")
+      ],
+      repoFileCount: 600,
+      estimatedContextCost: 1000
+    });
+
+    expect(decision.taskShapeSignal).toBe("narrow_package_parser");
+    expect(decision.taskShapeSignal).not.toBe("lifecycle_policy");
+    expect(decision.requiredSurface).toBe("single_file");
+    expect(decision.recommendedDelivery).not.toBe("multi_file_directive");
   });
 
   it("marks strong frontend ownership tasks as compact feature clusters", () => {
@@ -6564,6 +6994,16 @@ describe("benchmark suite and scoring", () => {
     ).toMatchObject({ assistClassification: "harmful_invalid_assist", harmfulAssist: true });
     expect(
       classifyAssistance({
+        assistanceStatus: "active",
+        qualityGatePassed: false,
+        savedTokens: 500,
+        baselineTokens: 2000,
+        baselineQualityGatePassed: false,
+        turnCount: 1
+      })
+    ).toMatchObject({ assistClassification: "neutral", harmfulAssist: false });
+    expect(
+      classifyAssistance({
         assistanceStatus: "passive_suppressed",
         qualityGatePassed: true,
         savedTokens: 100,
@@ -6982,6 +7422,19 @@ describe("benchmark runtime and CLI", () => {
 
     expect(statement).not.toContain("Voice broadcast");
     expect(statement).toContain("non-order properties");
+  });
+
+  it("uses pinned-topic ordering invariants before generic invalid-input wording", () => {
+    const statement = inferInvariantStatement([
+      "Reordering pinned topics does not behave correctly for all cases.",
+      "Only moderator or admin users can request reordering of pinned topics.",
+      "Invalid or nonexistent topic identifiers must not change pinned ordering.",
+      "Unpinned topics should be a no-op and category isolation must be preserved."
+    ].join(" "));
+
+    expect(statement).toContain("Pinned-topic reordering");
+    expect(statement).toContain("category isolation");
+    expect(statement).not.toContain("invalid-input rejection paths");
   });
 
   it("does not apply invalid-identifier guardrails to backend environment validation tasks", () => {

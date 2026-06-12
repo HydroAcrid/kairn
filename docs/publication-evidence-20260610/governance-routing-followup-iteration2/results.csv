@@ -1,0 +1,17 @@
+entry_id,kind,stage,status,tags,quality_passed,observed_tokens,baseline_tokens,saved_tokens,savings_rate,clean_passpass,token_regression,quality_drop,quality_rescue,harmful_assist,scope_violations,mcp_calls,mcp_useful_attribution,classifications,elapsed_ms
+proxy-swe-row-2-openlibrary,proxy,proxy,passed,swe-pro;proxy;clean-control;python,true,500,,,,false,false,false,false,false,0,0,0,proxy_pass,6563
+proxy-swe-row-3-vuls,proxy,proxy,passed,swe-pro;proxy;clean-control;go,true,483,,,,false,false,false,false,false,0,0,0,proxy_pass,842
+proxy-swe-row-9-element-device,proxy,proxy,passed,swe-pro;proxy;frontend-ownership;typescript,true,645,,,,false,false,false,false,false,0,0,0,proxy_pass,10207
+proxy-swe-row-10-element-discovery,proxy,proxy,passed,swe-pro;proxy;clean-control;typescript,true,478,,,,false,false,false,false,false,0,0,0,proxy_pass,9890
+live-swe-row-2-openlibrary,control,live,passed,swe-pro;live;clean-control;python,true,41820,115576,73756,0.6382,true,false,false,false,false,0,0,0,clean_passpass,450329
+live-swe-row-3-vuls,control,live,passed,swe-pro;live;clean-control;go,true,109859,113677,3818,0.0336,false,false,false,true,false,0,0,0,quality_rescue,535299
+live-swe-row-9-element-device,proof,live,passed,swe-pro;live;frontend-ownership;typescript,true,80107,148847,68740,0.4618,true,false,false,false,false,0,0,0,clean_passpass,760771
+live-swe-row-10-element-discovery,control,live,passed,swe-pro;live;clean-control;typescript,true,66701,40526,-26175,-0.6459,false,true,false,false,false,0,0,0,official_token_regression,353401
+mcp-smoke-local-context,mcp_smoke,live,passed,mcp;smoke;protocol,true,,,,,false,false,false,false,false,0,2,1,mcp_useful_attribution,4371
+endurance-fastify-mcp-repeat1,endurance,live,passed,mcp;endurance;js-server;fastify,true,34835,128015,93180,0.7278834511580674,true,false,false,false,false,0,3,2,clean_passpass;mcp_useful_attribution,410231
+endurance-fastify-mcp-repeat3,endurance,live,passed,mcp;endurance;js-server;fastify;repeat3,false,57735.5,116527,71600.5,0.5505256625187593,false,false,false,false,false,0,4,6,mcp_useful_attribution;mcp_quality_incomplete,1118943
+endurance-node-semver-mcp-repeat3,endurance,live,passed,mcp;endurance;js;node-semver;repeat3,false,,,,,false,false,false,false,false,0,0,0,quality_incomplete,365364
+endurance-click-mcp-repeat3,endurance,live,passed,mcp;endurance;python;click;repeat3,false,34332,,,,false,false,false,true,false,0,1,1,quality_rescue;mcp_useful_attribution;mcp_quality_incomplete,663289
+endurance-click-mcp-repeat1-after-activation,endurance,live,passed,mcp;endurance;python;click;activation-recheck,true,68715,161243,92528,0.5738419652325992,true,false,false,false,false,0,2,2,clean_passpass;mcp_useful_attribution,583622
+endurance-click-mcp-repeat3-after-activation,endurance,live,passed,mcp;endurance;python;click;repeat3;activation-recheck,true,101007,163319,62312,0.38153552250503614,true,false,false,false,false,0,8,6,clean_passpass;mcp_useful_attribution,1967393
+endurance-fastify-mcp-repeat3-after-activation,endurance,live,passed,mcp;endurance;js-server;fastify;repeat3;activation-recheck,true,42841,102999,61754,0.5840639229507083,true,false,false,false,false,0,6,6,clean_passpass;mcp_useful_attribution,1237414

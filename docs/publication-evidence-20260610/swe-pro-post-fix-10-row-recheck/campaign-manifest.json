@@ -1,0 +1,204 @@
+{
+  "id": "swe-pro-post-fix-10-row-recheck-20260610",
+  "name": "SWE-Pro Post-Fix 10-Row Recheck",
+  "description": "Post-governance-routing follow-up recheck using the 2026-05-30 10-row SWE-Pro slice configs. This is patch-generation/local proof input for later official evaluator aggregation, not a new public headline benchmark by itself.",
+  "defaults": {
+    "model": "gpt-5.4-mini",
+    "parallel": 1,
+    "agentTimeoutMs": 900000,
+    "turnTimeoutMs": 480000,
+    "cleanup": "never",
+    "commands": {
+      "baseline": "codex -a never exec --model {model} --sandbox danger-full-access --disable hooks {prompt}",
+      "kairn_codex_session": "node \"$KAIRN_CLI_PATH\" codex --root {root} --model {model} --sandbox danger-full-access --skip-git-repo-check {prompt}"
+    }
+  },
+  "pauseRules": {
+    "maxQualityDrops": 0,
+    "maxScopeViolations": 0,
+    "maxRepeatedFailureClass": 1,
+    "maxTokenRegressionClass": 1,
+    "stopOnHarnessFailure": true
+  },
+  "entries": [
+    {
+      "id": "swe-row-1-teleport-kubectl",
+      "kind": "proof",
+      "tags": [
+        "swe-pro",
+        "post-fix-recheck",
+        "go",
+        "teleport",
+        "multi-file"
+      ],
+      "root": ".",
+      "suite": "docs/publication-evidence-20260530/swe-pro-official-fresh-slice-post-governor/rows/row-1.json",
+      "modes": [
+        "baseline",
+        "kairn_codex_session"
+      ],
+      "repeat": 1
+    },
+    {
+      "id": "swe-row-2-openlibrary-lists",
+      "kind": "control",
+      "tags": [
+        "swe-pro",
+        "post-fix-recheck",
+        "python",
+        "openlibrary",
+        "clean-control"
+      ],
+      "root": ".",
+      "suite": "docs/publication-evidence-20260530/swe-pro-official-fresh-slice-post-governor/rows/row-2.json",
+      "modes": [
+        "baseline",
+        "kairn_codex_session"
+      ],
+      "repeat": 1
+    },
+    {
+      "id": "swe-row-3-vuls-converter",
+      "kind": "control",
+      "tags": [
+        "swe-pro",
+        "post-fix-recheck",
+        "go",
+        "vuls",
+        "converter"
+      ],
+      "root": ".",
+      "suite": "docs/publication-evidence-20260530/swe-pro-official-fresh-slice-post-governor/rows/row-3.json",
+      "modes": [
+        "baseline",
+        "kairn_codex_session"
+      ],
+      "repeat": 1
+    },
+    {
+      "id": "swe-row-4-vuls-alpine",
+      "kind": "proof",
+      "tags": [
+        "swe-pro",
+        "post-fix-recheck",
+        "go",
+        "vuls",
+        "quality-rescue-control"
+      ],
+      "root": ".",
+      "suite": "docs/publication-evidence-20260530/swe-pro-official-fresh-slice-post-governor/rows/row-4.json",
+      "modes": [
+        "baseline",
+        "kairn_codex_session"
+      ],
+      "repeat": 1
+    },
+    {
+      "id": "swe-row-5-teleport-session",
+      "kind": "proof",
+      "tags": [
+        "swe-pro",
+        "post-fix-recheck",
+        "go",
+        "teleport",
+        "harness-risk"
+      ],
+      "root": ".",
+      "suite": "docs/publication-evidence-20260530/swe-pro-official-fresh-slice-post-governor/rows/row-5.json",
+      "modes": [
+        "baseline",
+        "kairn_codex_session"
+      ],
+      "repeat": 1
+    },
+    {
+      "id": "swe-row-6-openlibrary-solr",
+      "kind": "control",
+      "tags": [
+        "swe-pro",
+        "post-fix-recheck",
+        "python",
+        "openlibrary"
+      ],
+      "root": ".",
+      "suite": "docs/publication-evidence-20260530/swe-pro-official-fresh-slice-post-governor/rows/row-6.json",
+      "modes": [
+        "baseline",
+        "kairn_codex_session"
+      ],
+      "repeat": 1
+    },
+    {
+      "id": "swe-row-7-nodebb-list-remove",
+      "kind": "control",
+      "tags": [
+        "swe-pro",
+        "post-fix-recheck",
+        "js-ts",
+        "nodebb",
+        "clean-control"
+      ],
+      "root": ".",
+      "suite": "docs/publication-evidence-20260530/swe-pro-official-fresh-slice-post-governor/rows/row-7.json",
+      "modes": [
+        "baseline",
+        "kairn_codex_session"
+      ],
+      "repeat": 1
+    },
+    {
+      "id": "swe-row-8-nodebb-upload-target",
+      "kind": "proof",
+      "tags": [
+        "swe-pro",
+        "post-fix-recheck",
+        "js-ts",
+        "nodebb",
+        "quality-rescue-control"
+      ],
+      "root": ".",
+      "suite": "docs/publication-evidence-20260530/swe-pro-official-fresh-slice-post-governor/rows/row-8.json",
+      "modes": [
+        "baseline",
+        "kairn_codex_session"
+      ],
+      "repeat": 1
+    },
+    {
+      "id": "swe-row-9-element-device",
+      "kind": "proof",
+      "tags": [
+        "swe-pro",
+        "post-fix-recheck",
+        "js-ts",
+        "element",
+        "frontend-ownership"
+      ],
+      "root": ".",
+      "suite": "docs/publication-evidence-20260530/swe-pro-official-fresh-slice-post-governor/rows/row-9.json",
+      "modes": [
+        "baseline",
+        "kairn_codex_session"
+      ],
+      "repeat": 1
+    },
+    {
+      "id": "swe-row-10-element-discovery",
+      "kind": "control",
+      "tags": [
+        "swe-pro",
+        "post-fix-recheck",
+        "js-ts",
+        "element",
+        "discovery-config"
+      ],
+      "root": ".",
+      "suite": "docs/publication-evidence-20260530/swe-pro-official-fresh-slice-post-governor/rows/row-10.json",
+      "modes": [
+        "baseline",
+        "kairn_codex_session"
+      ],
+      "repeat": 1
+    }
+  ]
+}

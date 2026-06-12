@@ -1,0 +1,229 @@
+{
+  "id": "swe-pro-post-fix-10-row-recheck-20260610",
+  "name": "SWE-Pro Post-Fix 10-Row Recheck",
+  "generatedAt": "2026-06-11T20:06:13.479Z",
+  "manifestPath": "campaign-manifest.json",
+  "outDir": ".",
+  "stage": "all",
+  "dryRun": false,
+  "parallel": 1,
+  "paused": false,
+  "pauseReasons": [],
+  "artifacts": [
+    {
+      "entryId": "swe-row-1-teleport-kubectl",
+      "kind": "proof",
+      "stage": "live",
+      "status": "passed",
+      "tags": [
+        "swe-pro",
+        "post-fix-recheck",
+        "go",
+        "teleport",
+        "multi-file"
+      ],
+      "startedAt": "2026-06-11T12:12:25.601Z",
+      "endedAt": "2026-06-11T12:38:12.043Z",
+      "artifactPath": "raw/swe-row-1-teleport-kubectl.json",
+      "workerPacketPath": "worker-packets/swe-row-1-teleport-kubectl.json",
+      "commands": [],
+      "classifications": [
+        "quality_incomplete"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": false,
+        "cleanPassPass": false,
+        "tokenRegression": false,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 0,
+        "mcpUsefulAttribution": 0,
+        "elapsedMs": 1546272,
+        "observedTokens": 295676,
+        "baselineTokens": 387760,
+        "savedTokens": 92084,
+        "savingsRate": 0.2375
+      }
+    },
+    {
+      "entryId": "swe-row-2-openlibrary-lists",
+      "kind": "control",
+      "stage": "live",
+      "status": "passed",
+      "tags": [
+        "swe-pro",
+        "post-fix-recheck",
+        "python",
+        "openlibrary",
+        "clean-control"
+      ],
+      "startedAt": "2026-06-10T10:23:13.131Z",
+      "endedAt": "2026-06-10T10:32:58.181Z",
+      "artifactPath": "raw/swe-row-2-openlibrary-lists.json",
+      "workerPacketPath": "worker-packets/swe-row-2-openlibrary-lists.json",
+      "commands": [],
+      "classifications": [
+        "clean_passpass"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": true,
+        "cleanPassPass": true,
+        "tokenRegression": false,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 0,
+        "mcpUsefulAttribution": 0,
+        "elapsedMs": 585050,
+        "observedTokens": 55466,
+        "baselineTokens": 120590,
+        "savedTokens": 65124,
+        "savingsRate": 0.54
+      }
+    },
+    {
+      "entryId": "swe-row-3-vuls-converter",
+      "kind": "control",
+      "stage": "live",
+      "status": "passed",
+      "tags": [
+        "swe-pro",
+        "post-fix-recheck",
+        "go",
+        "vuls",
+        "converter"
+      ],
+      "startedAt": "2026-06-11T12:05:25.840Z",
+      "endedAt": "2026-06-11T12:11:26.035Z",
+      "artifactPath": "raw/swe-row-3-vuls-converter.json",
+      "workerPacketPath": "worker-packets/swe-row-3-vuls-converter.json",
+      "commands": [],
+      "classifications": [
+        "clean_passpass"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": true,
+        "cleanPassPass": true,
+        "tokenRegression": false,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 0,
+        "mcpUsefulAttribution": 0,
+        "elapsedMs": 360152,
+        "observedTokens": 50057,
+        "baselineTokens": 75084,
+        "savedTokens": 25027,
+        "savingsRate": 0.3333
+      }
+    }
+  ],
+  "rows": [
+    {
+      "entryId": "swe-row-1-teleport-kubectl",
+      "kind": "proof",
+      "stage": "live",
+      "status": "passed",
+      "tags": "swe-pro;post-fix-recheck;go;teleport;multi-file",
+      "qualityPassed": false,
+      "observedTokens": 295676,
+      "baselineTokens": 387760,
+      "savedTokens": 92084,
+      "savingsRate": 0.2375,
+      "cleanPassPass": false,
+      "tokenRegression": false,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 0,
+      "mcpUsefulAttribution": 0,
+      "classifications": "quality_incomplete",
+      "elapsedMs": 1546272
+    },
+    {
+      "entryId": "swe-row-2-openlibrary-lists",
+      "kind": "control",
+      "stage": "live",
+      "status": "passed",
+      "tags": "swe-pro;post-fix-recheck;python;openlibrary;clean-control",
+      "qualityPassed": true,
+      "observedTokens": 55466,
+      "baselineTokens": 120590,
+      "savedTokens": 65124,
+      "savingsRate": 0.54,
+      "cleanPassPass": true,
+      "tokenRegression": false,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 0,
+      "mcpUsefulAttribution": 0,
+      "classifications": "clean_passpass",
+      "elapsedMs": 585050
+    },
+    {
+      "entryId": "swe-row-3-vuls-converter",
+      "kind": "control",
+      "stage": "live",
+      "status": "passed",
+      "tags": "swe-pro;post-fix-recheck;go;vuls;converter",
+      "qualityPassed": true,
+      "observedTokens": 50057,
+      "baselineTokens": 75084,
+      "savedTokens": 25027,
+      "savingsRate": 0.3333,
+      "cleanPassPass": true,
+      "tokenRegression": false,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 0,
+      "mcpUsefulAttribution": 0,
+      "classifications": "clean_passpass",
+      "elapsedMs": 360152
+    }
+  ],
+  "aggregate": {
+    "entries": 3,
+    "completedEntries": 3,
+    "failedEntries": 0,
+    "qualityPassRate": 0.6666666666666666,
+    "cleanPassPassRows": 2,
+    "tokenRegressionRows": 0,
+    "qualityRescueRows": 0,
+    "harmfulRows": 0,
+    "scopeViolations": 0,
+    "mcpCalls": 0,
+    "mcpUsefulAttribution": 0,
+    "medianSavedTokens": 65124,
+    "medianSavingsRate": 0.3333,
+    "medianElapsedMsByStage": {
+      "live": 585050
+    },
+    "repeatedFailureClasses": [],
+    "pauseRuleStatus": {
+      "paused": false,
+      "reasons": []
+    }
+  },
+  "outputs": {
+    "manifestPath": "campaign-manifest.json",
+    "summaryPath": "campaign-summary.json",
+    "resultsCsvPath": "results.csv",
+    "failuresCsvPath": "failures.csv",
+    "proxyResultsCsvPath": "proxy-results.csv",
+    "workerPacketsDir": "worker-packets",
+    "rawDir": "raw",
+    "workDir": "work"
+  }
+}

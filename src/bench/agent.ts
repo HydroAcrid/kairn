@@ -191,7 +191,13 @@ export async function runAgentBenchmarkCase(input: {
         ...setupChangedFileHashes
       }
     });
-    const requiredTouchedFiles = input.benchmarkCase.requiredTouchedFiles ?? [];
+    const originalRequiredTouchedFiles = input.benchmarkCase.requiredTouchedFiles ?? [];
+    const requiredTouchPlan = effectiveRequiredTouchedFiles({
+      workspacePath,
+      prompt,
+      requiredTouchedFiles: originalRequiredTouchedFiles
+    });
+    const requiredTouchedFiles = requiredTouchPlan.requiredTouchedFiles;
     const missingRequiredTouchedFiles = requiredTouchedFiles.filter((file) => !agentChangedFiles.includes(file));
     const requiredTouchedSatisfied = missingRequiredTouchedFiles.length === 0;
     const actualFiles = unique([...agentChangedFiles, ...expectedFileMentions]);
@@ -222,6 +228,8 @@ export async function runAgentBenchmarkCase(input: {
         seedPatchFiles,
         setupChangedFiles,
         agentChangedFiles,
+        originalRequiredTouchedFiles,
+        ignoredAbsentRequiredTouchedFiles: requiredTouchPlan.ignoredAbsentRequiredTouchedFiles,
         requiredTouchedFiles,
         requiredTouchedSatisfied,
         missingRequiredTouchedFiles,
@@ -282,7 +290,13 @@ export async function runAgentBenchmarkCase(input: {
       seedPatchFiles,
       seedPatchFileHashes
     });
-    const requiredTouchedFiles = input.benchmarkCase.requiredTouchedFiles ?? [];
+    const originalRequiredTouchedFiles = input.benchmarkCase.requiredTouchedFiles ?? [];
+    const requiredTouchPlan = effectiveRequiredTouchedFiles({
+      workspacePath,
+      prompt,
+      requiredTouchedFiles: originalRequiredTouchedFiles
+    });
+    const requiredTouchedFiles = requiredTouchPlan.requiredTouchedFiles;
     const missingRequiredTouchedFiles = requiredTouchedFiles.filter((file) => !agentChangedFiles.includes(file));
     const metadata = metadataFromOutput({
       output,
@@ -295,6 +309,8 @@ export async function runAgentBenchmarkCase(input: {
         seedPatchFiles,
         changedFiles: changedFileList,
         agentChangedFiles,
+        originalRequiredTouchedFiles,
+        ignoredAbsentRequiredTouchedFiles: requiredTouchPlan.ignoredAbsentRequiredTouchedFiles,
         requiredTouchedFiles,
         requiredTouchedSatisfied: missingRequiredTouchedFiles.length === 0,
         missingRequiredTouchedFiles
@@ -310,6 +326,36 @@ export async function runAgentBenchmarkCase(input: {
       metadata: metadata.metadata
     };
   }
+}
+
+function effectiveRequiredTouchedFiles(input: {
+  workspacePath: string;
+  prompt: string;
+  requiredTouchedFiles: string[];
+}): { requiredTouchedFiles: string[]; ignoredAbsentRequiredTouchedFiles: string[] } {
+  const explicitNewFiles = explicitNewSourceFiles(input.prompt);
+  const requiredTouchedFiles: string[] = [];
+  const ignoredAbsentRequiredTouchedFiles: string[] = [];
+  for (const file of unique(input.requiredTouchedFiles)) {
+    const normalized = normalizeRelativePath(file);
+    const exists = fs.existsSync(path.join(input.workspacePath, normalized));
+    if (exists || explicitNewFiles.has(normalized)) {
+      requiredTouchedFiles.push(normalized);
+    } else {
+      ignoredAbsentRequiredTouchedFiles.push(normalized);
+    }
+  }
+  return { requiredTouchedFiles, ignoredAbsentRequiredTouchedFiles };
+}
+
+function explicitNewSourceFiles(prompt: string): Set<string> {
+  const files = new Set<string>();
+  const pattern = /\bnew\s+file\s*:?\s*`?([A-Za-z0-9_.@+~/-]+?\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx))`?/gi;
+  for (const match of prompt.matchAll(pattern)) {
+    const file = normalizeRelativePath(match[1] ?? "");
+    if (file) files.add(file);
+  }
+  return files;
 }
 
 function createTempWorkspace(rootPath: string): string {

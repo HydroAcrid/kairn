@@ -36,6 +36,35 @@ export function shouldRetryCodexNoDiff(input: {
   return true;
 }
 
+export function missingRequiredScopeFiles(input: {
+  task: string;
+  interactive: boolean;
+  exitCode: number | null;
+  prime?: ContextPrime | undefined;
+  changedFiles: string[];
+}): string[] {
+  if (input.interactive) return [];
+  if ((input.exitCode ?? 1) !== 0) return [];
+  if (!taskIsOfficialProductionPatchPrompt(input.task)) return [];
+  if (input.prime?.editScope?.strictBoundary !== true) return [];
+  if (input.prime.editScope.scopeSource !== "official_harness") return [];
+  const required = uniquePaths(input.prime.editScope.initialEditFiles ?? []);
+  if (required.length < 2) return [];
+  if (input.changedFiles.length === 0) return [];
+  const changed = new Set(input.changedFiles);
+  return required.filter((file) => !changed.has(file));
+}
+
+export function shouldRetryCodexPartialScope(input: {
+  task: string;
+  interactive: boolean;
+  exitCode: number | null;
+  prime?: ContextPrime | undefined;
+  changedFiles: string[];
+}): boolean {
+  return missingRequiredScopeFiles(input).length > 0;
+}
+
 export function buildCodexNoDiffRecoveryPrompt(input: {
   task: string;
   prime?: ContextPrime | undefined;
@@ -61,6 +90,36 @@ export function buildCodexNoDiffRecoveryPrompt(input: {
     "",
     "Do not edit tests, docs, examples, generated files, or unrelated sibling source.",
     "If the edit scope is genuinely incomplete, say exactly which production file or runtime evidence is missing instead of broad scanning.",
+    "",
+    "Original task:",
+    input.task
+  ].join("\n");
+}
+
+export function buildCodexPartialScopeRecoveryPrompt(input: {
+  task: string;
+  prime?: ContextPrime | undefined;
+  changedFiles: string[];
+  missingFiles?: string[] | undefined;
+}): string {
+  const scopedFiles = uniquePaths(input.prime?.editScope?.initialEditFiles ?? []);
+  const changedFiles = uniquePaths(input.changedFiles);
+  const missingFiles = uniquePaths(input.missingFiles ?? scopedFiles.filter((file) => !changedFiles.includes(file)));
+  const invariant = input.prime?.invariants?.[0]?.statement;
+  return [
+    "# Kairn Required-Scope Recovery",
+    "",
+    "The previous agent run produced a partial production diff but missed required source surfaces.",
+    "Keep the existing patch unless it is wrong. Add the smallest missing production edits needed for the original task.",
+    "",
+    changedFiles.length > 0 ? `Already changed: ${changedFiles.slice(0, 6).join(", ")}` : "Already changed: none detected.",
+    missingFiles.length > 0 ? `Missing required edits: ${missingFiles.slice(0, 6).join(", ")}` : "Missing required edits: any strict edit-scope file not yet touched.",
+    scopedFiles.length > 0 ? `Full required scope: ${scopedFiles.slice(0, 8).join(", ")}` : "Full required scope: the strict production source scope.",
+    invariant ? `Preserve: ${invariant}` : "Preserve the behavior described by the task.",
+    "",
+    "Do not edit tests, docs, examples, generated files, or unrelated sibling source.",
+    "Do not restart from scratch. Patch the missing required files and any minimal already-changed integration point only if needed.",
+    "If a listed required file is genuinely unnecessary, say why with evidence instead of leaving it silently untouched.",
     "",
     "Original task:",
     input.task

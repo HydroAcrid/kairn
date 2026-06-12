@@ -25,7 +25,12 @@ export function scoreBenchmarkCase(input: {
   metadata?: Record<string, unknown> | undefined;
 }): Omit<BenchmarkResultRecord, "id" | "createdAt"> {
   const expectedFiles = unique(input.benchmarkCase.expectedFiles);
-  const requiredTouchedFiles = unique(input.benchmarkCase.requiredTouchedFiles ?? []);
+  const metadataHasRequiredTouchedFiles = Object.prototype.hasOwnProperty.call(input.metadata ?? {}, "requiredTouchedFiles");
+  const requiredTouchedFiles = unique(
+    metadataHasRequiredTouchedFiles
+      ? stringArrayMetadata(input.metadata?.requiredTouchedFiles)
+      : input.benchmarkCase.requiredTouchedFiles ?? []
+  );
   const actualFiles = unique(input.actualFiles);
   const excludedFiles = unique(input.benchmarkCase.excludedFiles);
   const expectedHits = expectedFiles.filter((file) => actualFiles.includes(file));
