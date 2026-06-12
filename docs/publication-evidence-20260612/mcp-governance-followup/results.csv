@@ -1,0 +1,7 @@
+suite,suiteName,language,repeat,baselinePassed,mcpPassed,baselineTokens,mcpTokens,savedTokens,savingsRate,classification,mcpCalls,usefulAttributedFiles,mcpReturnedFiles
+"click-real-mcp-repeat3","Click compatibility encoding","Python",1,true,true,129900,47514,82386,0.6342263279445728,"valid_assist",1,1,1
+"click-real-mcp-repeat3","Click compatibility encoding","Python",2,true,true,109425,42467,66958,0.6119076993374457,"valid_assist",1,1,1
+"click-real-mcp-repeat3","Click compatibility encoding","Python",3,true,true,106003,50395,55608,0.5245889267284888,"valid_assist",1,1,1
+"fastify-real-mcp-repeat3","Fastify HEAD route onSend","JavaScript",1,true,true,76673,47833,28840,0.37614284037405604,"valid_assist",1,1,1
+"fastify-real-mcp-repeat3","Fastify HEAD route onSend","JavaScript",2,true,true,69204,42837,26367,0.38100398820877407,"valid_assist",3,1,2
+"fastify-real-mcp-repeat3","Fastify HEAD route onSend","JavaScript",3,true,true,115738,23229,92509,0.7992966873455564,"valid_assist",2,1,1

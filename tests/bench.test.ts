@@ -14,7 +14,12 @@ import {
   runBenchmarkRepoMatrix
 } from "../src/bench/matrix.js";
 import { loadBenchmarkEnduranceSuite } from "../src/bench/enduranceSuite.js";
-import { enduranceInvariantForPrompt, runBenchmarkEndurance, runBenchmarkEnduranceRepeats } from "../src/bench/endurance.js";
+import {
+  enduranceInvariantForPrompt,
+  runBenchmarkEndurance,
+  runBenchmarkEnduranceRepeats,
+  selectMcpEnduranceKnownSource
+} from "../src/bench/endurance.js";
 import { changedFiles, runAgentBenchmarkCase, runShellWithProcessGroupTimeout, workspacePatch } from "../src/bench/agent.js";
 import { classifyAssistance } from "../src/bench/assistClassification.js";
 import { buildSweBenchProPilot, loadSweBenchProRows, writeSweBenchProPilot } from "../src/bench/sweBenchPro.js";
@@ -48,7 +53,14 @@ import { hybridSearch } from "../src/retrieval/hybridRetrieval.js";
 import { findCompanionCandidates } from "../src/retrieval/companions.js";
 import { decideEditScope } from "../src/scope/editScope.js";
 import { createFixtureRepo } from "./helpers.js";
-import type { ContextPrime, FileRecord, HybridScoredResult, SemanticChunkRecord, SymbolRecord } from "../src/types.js";
+import type {
+  ContextPrime,
+  FileRecord,
+  HybridScoredResult,
+  SemanticChunkRecord,
+  SessionLedgerSummary,
+  SymbolRecord
+} from "../src/types.js";
 
 const CLI = ["tsx", "src/cli.ts"];
 
@@ -1273,6 +1285,117 @@ describe("benchmark suite and scoring", () => {
         "Continue from the known source."
       )
     ).toBe("Session.send must call resolve_redirects when allow_redirects is true.");
+  });
+
+  it("prefers verified or mentioned MCP endurance source over stale MCP fanout", () => {
+    const ledger: SessionLedgerSummary = {
+      sessionId: "task_click",
+      events: 8,
+      currentPhase: "implementation",
+      recommendedFiles: ["src/click/_termui_impl.py"],
+      shownFiles: ["src/click/_termui_impl.py"],
+      agentMentionedFiles: ["src/click/_compat.py"],
+      agentTouchedFiles: [],
+      repeatedFilesAvoided: 0,
+      repeatedSnippetsAvoided: 0,
+      recommendedFilesUsed: [],
+      repeatedlyTouchedFiles: [],
+      unresolvedFailures: 0,
+      workingSet: {
+        sessionId: "task_click",
+        currentPhase: "implementation",
+        activeFiles: ["src/click/_compat.py", "src/click/_termui_impl.py"],
+        recentlyTouchedFiles: [],
+        shownFiles: ["src/click/_termui_impl.py"],
+        ignoredRecommendedFiles: [],
+        ruledOutFiles: [],
+        staleFiles: [],
+        currentInvariant: {
+          statement: "Diagnose the Click compatibility regression where ASCII encoding should fall back to UTF-8.",
+          filePath: "src/click/_termui_impl.py",
+          confidence: 90
+        },
+        openRisks: []
+      },
+      recentEvents: [
+        {
+          sessionId: "task_click",
+          kind: "agent_file_mentioned",
+          turnId: "diagnose",
+          filePath: "src/click/_compat.py",
+          contentHash: "",
+          tokenEstimate: 0,
+          source: "agent",
+          summary: "Agent mentioned src/click/_compat.py.",
+          metadata: {},
+          createdAt: "2026-06-12T00:00:00.000Z"
+        }
+      ]
+    };
+
+    expect(selectMcpEnduranceKnownSource(ledger, ["src/click/_termui_impl.py"])).toBe("src/click/_compat.py");
+  });
+
+  it("does not promote recently touched files while MCP endurance failures remain unresolved", () => {
+    const ledger: SessionLedgerSummary = {
+      sessionId: "task_click",
+      events: 12,
+      currentPhase: "debugging",
+      recommendedFiles: ["src/click/_compat.py"],
+      shownFiles: ["src/click/_compat.py"],
+      agentMentionedFiles: ["src/click/_compat.py"],
+      agentTouchedFiles: ["src/click/_termui_impl.py"],
+      repeatedFilesAvoided: 0,
+      repeatedSnippetsAvoided: 0,
+      recommendedFilesUsed: [],
+      repeatedlyTouchedFiles: [],
+      unresolvedFailures: 1,
+      workingSet: {
+        sessionId: "task_click",
+        currentPhase: "debugging",
+        activeFiles: ["src/click/_termui_impl.py", "src/click/_compat.py"],
+        recentlyTouchedFiles: ["src/click/_termui_impl.py"],
+        shownFiles: ["src/click/_compat.py"],
+        ignoredRecommendedFiles: [],
+        ruledOutFiles: [],
+        staleFiles: [],
+        lastFailure: {
+          turnId: "fix-source",
+          filePath: "src/click/_termui_impl.py",
+          summary: "Verification failed for endurance turn fix-source.",
+          createdAt: "2026-06-12T00:01:00.000Z"
+        },
+        openRisks: ["latest failure has not been followed by a passing verification"]
+      },
+      recentEvents: [
+        {
+          sessionId: "task_click",
+          kind: "agent_file_mentioned",
+          turnId: "diagnose",
+          filePath: "src/click/_compat.py",
+          contentHash: "",
+          tokenEstimate: 0,
+          source: "agent",
+          summary: "Agent mentioned src/click/_compat.py.",
+          metadata: {},
+          createdAt: "2026-06-12T00:00:00.000Z"
+        },
+        {
+          sessionId: "task_click",
+          kind: "agent_file_touched",
+          turnId: "fix-source",
+          filePath: "src/click/_termui_impl.py",
+          contentHash: "",
+          tokenEstimate: 0,
+          source: "agent",
+          summary: "Agent touched src/click/_termui_impl.py.",
+          metadata: {},
+          createdAt: "2026-06-12T00:01:00.000Z"
+        }
+      ]
+    };
+
+    expect(selectMcpEnduranceKnownSource(ledger)).toBe("src/click/_compat.py");
   });
 
   it("validates equivalent semantic source repairs", () => {
