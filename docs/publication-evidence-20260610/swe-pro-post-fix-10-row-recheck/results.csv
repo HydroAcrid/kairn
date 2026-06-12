@@ -2,3 +2,10 @@ entry_id,kind,stage,status,tags,quality_passed,observed_tokens,baseline_tokens,s
 swe-row-1-teleport-kubectl,proof,live,passed,swe-pro;post-fix-recheck;go;teleport;multi-file,false,295676,387760,92084,0.2375,false,false,false,false,false,0,0,0,quality_incomplete,1546272
 swe-row-2-openlibrary-lists,control,live,passed,swe-pro;post-fix-recheck;python;openlibrary;clean-control,true,55466,120590,65124,0.54,true,false,false,false,false,0,0,0,clean_passpass,585050
 swe-row-3-vuls-converter,control,live,passed,swe-pro;post-fix-recheck;go;vuls;converter,true,50057,75084,25027,0.3333,true,false,false,false,false,0,0,0,clean_passpass,360152
+swe-row-4-vuls-alpine,proof,live,passed,swe-pro;post-fix-recheck;go;vuls;quality-rescue-control,false,110566,111370,804,0.0072,false,false,false,false,false,0,0,0,quality_incomplete,677791
+swe-row-5-teleport-session,proof,live,passed,swe-pro;post-fix-recheck;go;teleport;harness-risk,true,122879,176341,53462,0.3032,true,false,false,false,false,0,0,0,clean_passpass,570626
+swe-row-6-openlibrary-solr,control,live,passed,swe-pro;post-fix-recheck;python;openlibrary,false,45467,97493,52026,0.5336,false,false,false,false,false,0,0,0,quality_incomplete,841022
+swe-row-7-nodebb-list-remove,control,live,passed,swe-pro;post-fix-recheck;js-ts;nodebb;clean-control,true,58616,86202,27586,0.32,true,false,false,false,false,0,0,0,clean_passpass,308452
+swe-row-8-nodebb-upload-target,proof,live,passed,swe-pro;post-fix-recheck;js-ts;nodebb;quality-rescue-control,true,20420,123583,103163,0.8348,false,false,false,true,false,0,0,0,quality_rescue,211746
+swe-row-9-element-device,proof,live,passed,swe-pro;post-fix-recheck;js-ts;element;frontend-ownership,true,121123,136909,15786,0.1153,true,false,false,false,false,0,0,0,clean_passpass,610864
+swe-row-10-element-discovery,control,live,passed,swe-pro;post-fix-recheck;js-ts;element;discovery-config,true,41566,71243,29677,0.4166,true,false,false,false,false,0,0,0,clean_passpass,302902

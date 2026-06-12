@@ -795,7 +795,7 @@ function proofMetrics(report: BenchmarkProofReport, elapsedMs: number): Campaign
     savedTokens,
     savingsRate: delta?.savingsRate,
     cleanPassPass: baselinePassed && qualityPassed && (savedTokens ?? 0) > 0,
-    tokenRegression: (savedTokens ?? 0) < 0,
+    tokenRegression: baselinePassed && qualityPassed && (savedTokens ?? 0) < 0,
     qualityDrop: baselinePassed && nonBaseline.some((item) => item.report.results.some((result) => !resultQualityPassed(result))),
     qualityRescue: !baselinePassed && qualityPassed || observedDeltas.some((item) => item.assistClassification === "quality_rescue"),
     harmfulAssist: nonBaseline.some((item) => item.report.results.some((result) => result.metadata.assistClassification === "harmful_invalid_assist")) ||
@@ -1245,6 +1245,7 @@ function repeatedFailureClasses(rows: CampaignResultRow[]): Array<{ classificati
     "pass",
     "proxy_pass",
     "clean_passpass",
+    "quality_rescue",
     "quality_incomplete",
     "mcp_quality_incomplete",
     "mcp_useful_attribution",

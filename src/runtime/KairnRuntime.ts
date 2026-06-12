@@ -553,9 +553,9 @@ export class KairnRuntime {
     const deviceSessionListenerSourceFiles = hasDeviceSessionListenerScope(resolvedTask)
       ? deviceSessionListenerSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
       : [];
-	    const packageSourceMappingSourceFiles = hasPackageSourceMappingScope(resolvedTask)
-	      ? packageSourceMappingSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 6)
-	      : [];
+    const packageSourceMappingSourceFiles = hasPackageSourceMappingScope(resolvedTask)
+      ? packageSourceMappingSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 6)
+      : [];
     const datastoreBackendParitySourceFiles = hasDatastoreBackendParityScope(resolvedTask)
       ? datastoreBackendParitySourceFilesFromKnownFiles(
           sessionFiles,
@@ -641,6 +641,7 @@ export class KairnRuntime {
       ? [directivePrimaryFile]
       : contextDecision.recommendedDelivery === "multi_file_directive" && directivePrimaryFile
         ? uniquePaths([
+            ...packageSourceMappingSourceFiles,
 	            ...selectedTestCounterpartSourceFiles,
 	            directivePrimaryFile,
 	            ...(primaryFile && primaryFile !== directivePrimaryFile ? [primaryFile] : []),
@@ -660,7 +661,6 @@ export class KairnRuntime {
             ...executionStateMigrationSourceFiles,
             ...discoveryConfigSourceFiles,
             ...deviceSessionListenerSourceFiles,
-	            ...packageSourceMappingSourceFiles,
             ...datastoreBackendParitySourceFiles,
 	            ...promptNamedSourceFiles,
             ...deprecationLifecycleSourceFiles,
@@ -669,6 +669,7 @@ export class KairnRuntime {
             ...context.files
           ]).slice(0, Math.max(multiFileLimit, topFileLimit))
       : uniquePaths([
+          ...packageSourceMappingSourceFiles,
           ...context.suggestedNextContext.slice(0, topFileLimit),
           ...promptMentionedSourceFiles,
 	          ...selectedTestCounterpartSourceFiles,
@@ -687,7 +688,6 @@ export class KairnRuntime {
           ...executionStateMigrationSourceFiles,
           ...discoveryConfigSourceFiles,
           ...deviceSessionListenerSourceFiles,
-	          ...packageSourceMappingSourceFiles,
           ...datastoreBackendParitySourceFiles,
 	          ...promptNamedSourceFiles,
           ...deprecationLifecycleSourceFiles,
@@ -993,7 +993,8 @@ export class KairnRuntime {
           ? "evidence_request" as const
         : "none" as const
     };
-    const sourceDeliveryFiles = uniquePaths([
+    const rawSourceDeliveryFiles = uniquePaths([
+      ...packageSourceMappingSourceFiles,
       ...deprecationLifecycleSourceFiles,
       ...promptMentionedSourceFiles,
       ...webSessionRenewalSourceFiles,
@@ -1010,7 +1011,6 @@ export class KairnRuntime {
       ...executionStateMigrationSourceFiles,
       ...discoveryConfigSourceFiles,
       ...deviceSessionListenerSourceFiles,
-      ...packageSourceMappingSourceFiles,
       ...datastoreBackendParitySourceFiles,
       ...files
     ]).filter((file) =>
@@ -1031,6 +1031,9 @@ export class KairnRuntime {
       !isUnrelatedDatastoreBackendParitySurface(file, resolvedTask, datastoreBackendParitySourceFiles) &&
       !isUnrelatedPromptMentionedSourceSurface(file, resolvedTask, promptMentionedSourceFiles)
     );
+    const sourceDeliveryFiles = hasPackageSourceMappingScope(resolvedTask)
+      ? orderPackageSourceMappingFiles(rawSourceDeliveryFiles, resolvedTask)
+      : rawSourceDeliveryFiles;
     const emittedFiles = !isFileEmittingAction(effectiveAction)
       ? []
       : readOnlySourceRouting
@@ -1105,12 +1108,15 @@ export class KairnRuntime {
       : forceProductionOnlyOneFile
         ? emittedFiles
         : uniquePaths([...emittedFiles, ...sourceDeliveryFiles, ...(tests?.files ?? [])]);
+    const editScopeContextDecision = hasPackageSourceMappingScope(resolvedTask) && emittedFiles[0]
+      ? { ...effectiveContextDecision, primaryFile: emittedFiles[0] }
+      : effectiveContextDecision;
     const baseEditScope = readOnlySourceRouting
       ? undefined
       : decideEditScope({
           task: resolvedTask,
           candidateFiles: editScopeCandidateFiles,
-          contextDecision: effectiveContextDecision,
+          contextDecision: editScopeContextDecision,
           invariants,
           knownFiles: sessionFiles,
           allowedDiffScopes: input.editScopeHints?.allowedDiffScopes,
@@ -5083,12 +5089,12 @@ function packageSourceMappingSourceFilesFromKnownFiles(files: FileRecord[], quer
       const base = path.posix.basename(normalizedPath);
       let score = 0;
       if (rpmQuery && (/^scanner\/(redhat|redhatbase|rpm|rhel|centos)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/(redhat|redhatbase|rpm|rhel|centos)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath))) score += 1320;
-      if (alpineQuery && (/^scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath))) score += 1000;
-      if (/^oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 920;
-      if (/^scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 780;
+      if (alpineQuery && (/^scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath))) score += 1800;
+      if (/^oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += alpineQuery ? 1120 : 920;
+      if (/^scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += alpineQuery ? 1000 : 780;
       if (alpineQuery && (/^oval\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/oval\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath))) score += 520;
       if (rpmQuery && /(alpine|apk)/.test(base)) score -= 760;
-      if (alpineQuery && /(redhat|redhatbase|rpm|rhel|centos)/.test(base)) score -= 520;
+      if (alpineQuery && /(redhat|redhatbase|rpm|rhel|centos)/.test(base)) score -= 3_000;
       if (/\/scanner\/trivy\//.test(normalizedPath) || /\/parser\//.test(normalizedPath) || /\/contrib\//.test(normalizedPath)) score -= 520;
       return { path: file.path, score };
     })
@@ -5096,6 +5102,31 @@ function packageSourceMappingSourceFilesFromKnownFiles(files: FileRecord[], quer
     .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
     .map((file) => file.path);
   return uniquePaths(scored);
+}
+
+function orderPackageSourceMappingFiles(files: string[], query: string): string[] {
+  const normalizedQuery = normalizeCandidateText(query);
+  const rpmQuery = /\b(sourcerpm|source rpm|src\.rpm|rpm|epoch|redhat|rhel|centos)\b/.test(normalizedQuery);
+  const alpineQuery = /\b(apk|alpine)\b/.test(normalizedQuery);
+  const isOtherDistroScanner = (file: string): boolean => {
+    const base = path.posix.basename(file.toLowerCase());
+    if (alpineQuery && /(redhat|redhatbase|rpm|rhel|centos)/.test(base)) return true;
+    if (rpmQuery && !alpineQuery && /(alpine|apk)/.test(base)) return true;
+    return false;
+  };
+  const score = (file: string): number => {
+    const normalizedPath = file.toLowerCase();
+    const base = path.posix.basename(normalizedPath);
+    let value = 0;
+    if (alpineQuery && (/^scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath))) value += 5_000;
+    if (rpmQuery && !alpineQuery && (/^scanner\/(redhat|redhatbase|rpm|rhel|centos)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/(redhat|redhatbase|rpm|rhel|centos)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath))) value += 5_000;
+    if (/^oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) value += 4_500;
+    if (/^scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) value += 4_000;
+    if (alpineQuery && /(redhat|redhatbase|rpm|rhel|centos)/.test(base)) value -= 2_000;
+    if (rpmQuery && !alpineQuery && /(alpine|apk)/.test(base)) value -= 2_000;
+    return value;
+  };
+  return uniquePaths(files).filter((file) => !isOtherDistroScanner(file)).sort((a, b) => score(b) - score(a) || a.localeCompare(b));
 }
 
 function benchmarkGeneratorSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {

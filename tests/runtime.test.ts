@@ -1624,6 +1624,49 @@ describe("KairnRuntime", () => {
     expect(estimateTokens(content)).toBeLessThan(320);
   });
 
+  it("keeps explicit Alpine package-source owner files ahead of other distro scanner surfaces", async () => {
+    const root = fs.mkdtempSync(path.join(process.cwd(), ".tmp-kairn-runtime-"));
+    fs.mkdirSync(path.join(root, "scanner"), { recursive: true });
+    fs.mkdirSync(path.join(root, "oval"), { recursive: true });
+    fs.writeFileSync(path.join(root, "scanner/alpine.go"), "func parseApkInfo() {}\nfunc parseApkUpgradableList() {}\n");
+    fs.writeFileSync(path.join(root, "oval/util.go"), "func matchSourcePackage() {}\n");
+    fs.writeFileSync(path.join(root, "scanner/scanner.go"), "func dispatchScanner() {}\n");
+    fs.writeFileSync(path.join(root, "scanner/centos.go"), "func centosScanner() {}\n");
+    fs.writeFileSync(path.join(root, "scanner/redhatbase.go"), "func parseInstalledPackagesLine() {}\n");
+    fs.writeFileSync(path.join(root, "scanner/rhel.go"), "func rhelScanner() {}\n");
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "Alpine Linux vulnerability detection incorrectly handles source vs binary packages.",
+          "The Alpine scanner should parse apk list output to extract binary details and source package names.",
+          "The Alpine scanner should parse package index information to build binary to source package mapping.",
+          "The Alpine scanner should parse upgradable package information using apk list --upgradable.",
+          "OVAL vulnerability detection should assess source packages when binaries derive from them.",
+          "Selected verification tests: Test_alpine_parseApkUpgradableList, TestParseInstalledPackagesLinesRedhat.",
+          "Fix the issue in production source only."
+        ].join(" "),
+        budget: 900,
+        source: "codex"
+      });
+
+      expect(prime.contextDecision?.taskShapeSignal).toBe("package_source_mapping");
+      expect(prime.contextDecision?.recommendedDelivery).toBe("multi_file_directive");
+      expect(prime.files.slice(0, 3)).toEqual(["scanner/alpine.go", "oval/util.go", "scanner/scanner.go"]);
+      expect(prime.editScope?.initialEditFiles).toEqual(
+        expect.arrayContaining(["scanner/alpine.go", "oval/util.go", "scanner/scanner.go"])
+      );
+      expect(prime.editScope?.initialEditFiles).not.toContain("scanner/centos.go");
+      expect(prime.editScope?.initialEditFiles).not.toContain("scanner/redhatbase.go");
+      expect(prime.editScope?.initialEditFiles).not.toContain("scanner/rhel.go");
+      expect(prime.content).toContain("Initial edit scope: scanner/alpine.go, oval/util.go, scanner/scanner.go");
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("suppresses narrow RPM source-package parser official prompts", async () => {
     const root = fs.mkdtempSync(path.join(process.cwd(), ".tmp-kairn-runtime-"));
     fs.mkdirSync(path.join(root, "scanner"), { recursive: true });

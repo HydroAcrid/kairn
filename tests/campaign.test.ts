@@ -6,6 +6,7 @@ import {
   cleanupCampaign,
   runCampaign,
   runCampaignTaskPool,
+  summarizeCampaign,
   validateCampaignManifest,
   type CampaignManifest
 } from "../src/bench/campaign.js";
@@ -170,6 +171,53 @@ describe("benchmark campaign harness", () => {
     expect(fs.existsSync(campaignWorkspace)).toBe(false);
     expect(fs.existsSync(unrelatedWorkspace)).toBe(true);
   });
+
+  it("does not pause on repeated quality rescues", () => {
+    const dir = tempDir("kairn-campaign-quality-rescue-");
+    const outDir = path.join(dir, "out");
+    const rawDir = path.join(outDir, "raw");
+    fs.mkdirSync(rawDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(outDir, "campaign-manifest.json"),
+      `${JSON.stringify(
+        {
+          id: "quality-rescue",
+          name: "Quality Rescue",
+          pauseRules: {
+            maxRepeatedFailureClass: 1,
+            maxTokenRegressionClass: 0
+          },
+          entries: [
+            { id: "rescue-a", kind: "proof", suite: "suite-a.json" },
+            { id: "rescue-b", kind: "proof", suite: "suite-b.json" }
+          ]
+        },
+        null,
+        2
+      )}\n`
+    );
+
+    for (const entryId of ["rescue-a", "rescue-b"]) {
+      writeRawArtifact(rawDir, entryId, {
+        qualityPassed: true,
+        qualityRescue: true,
+        baselineTokens: 100,
+        observedTokens: 150,
+        savedTokens: -50,
+        savingsRate: -0.5
+      });
+    }
+
+    const report = summarizeCampaign(outDir);
+
+    expect(report.aggregate.qualityRescueRows).toBe(2);
+    expect(report.aggregate.tokenRegressionRows).toBe(0);
+    expect(report.aggregate.repeatedFailureClasses).toEqual([]);
+    expect(report.paused).toBe(false);
+    expect(report.pauseReasons).toEqual([]);
+
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
 });
 
 function tempDir(prefix: string): string {
@@ -180,4 +228,70 @@ function writeManifest(dir: string, manifest: CampaignManifest): string {
   const manifestPath = path.join(dir, "campaign.json");
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   return manifestPath;
+}
+
+function writeRawArtifact(
+  rawDir: string,
+  entryId: string,
+  metrics: Partial<{
+    qualityPassed: boolean;
+    cleanPassPass: boolean;
+    tokenRegression: boolean;
+    qualityDrop: boolean;
+    qualityRescue: boolean;
+    harmfulAssist: boolean;
+    scopeViolations: number;
+    mcpCalls: number;
+    mcpUsefulAttribution: number;
+    elapsedMs: number;
+    observedTokens: number;
+    baselineTokens: number;
+    savedTokens: number;
+    savingsRate: number;
+  }>
+): void {
+  const fullMetrics = {
+    qualityPassed: false,
+    cleanPassPass: false,
+    tokenRegression: false,
+    qualityDrop: false,
+    qualityRescue: false,
+    harmfulAssist: false,
+    scopeViolations: 0,
+    mcpCalls: 0,
+    mcpUsefulAttribution: 0,
+    elapsedMs: 1,
+    ...metrics
+  };
+  const classifications = [
+    fullMetrics.cleanPassPass ? "clean_passpass" : undefined,
+    fullMetrics.tokenRegression ? "official_token_regression" : undefined,
+    fullMetrics.qualityDrop ? "quality_drop" : undefined,
+    fullMetrics.qualityRescue ? "quality_rescue" : undefined,
+    fullMetrics.harmfulAssist ? "harmful_invalid_assist" : undefined,
+    fullMetrics.scopeViolations > 0 ? "scope_violation" : undefined,
+    !fullMetrics.qualityPassed ? "quality_incomplete" : undefined
+  ].filter(Boolean);
+
+  fs.writeFileSync(
+    path.join(rawDir, `${entryId}.json`),
+    `${JSON.stringify(
+      {
+        entryId,
+        kind: "proof",
+        stage: "live",
+        status: "passed",
+        tags: [],
+        startedAt: new Date(0).toISOString(),
+        endedAt: new Date(0).toISOString(),
+        artifactPath: path.join(rawDir, `${entryId}.json`),
+        commands: [],
+        classifications,
+        workspacePaths: [],
+        metrics: fullMetrics
+      },
+      null,
+      2
+    )}\n`
+  );
 }
