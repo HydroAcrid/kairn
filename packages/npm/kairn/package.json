@@ -1,0 +1,24 @@
+{
+  "name": "usekairn",
+  "version": "0.1.2",
+  "description": "Public beta launcher for Kairn, a local-first context runtime for coding agents.",
+  "license": "UNLICENSED",
+  "bin": {
+    "kairn": "./bin/kairn.cjs"
+  },
+  "files": [
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20.19 <26"
+  },
+  "optionalDependencies": {
+    "usekairn-darwin-arm64": "0.1.2",
+    "usekairn-darwin-x64": "0.1.2",
+    "usekairn-linux-arm64": "0.1.2",
+    "usekairn-linux-x64": "0.1.2",
+    "usekairn-win32-x64": "0.1.2"
+  }
+}

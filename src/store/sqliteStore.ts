@@ -1,4 +1,4 @@
-import Database from "better-sqlite3";
+import { openSqliteDatabase, type SqliteDatabase } from "./sqliteNative.js";
 import type {
   BenchmarkCaseMode,
   BenchmarkResultRecord,
@@ -281,12 +281,12 @@ type BenchmarkResultRow = {
 };
 
 export class SqliteStore {
-  private readonly db: Database.Database;
+  private readonly db: SqliteDatabase;
   private readonly databasePath: string;
 
   constructor(databasePath: string) {
     this.databasePath = databasePath;
-    this.db = new Database(databasePath);
+    this.db = openSqliteDatabase(databasePath);
     this.db.pragma("journal_mode = WAL");
     this.migrate();
   }

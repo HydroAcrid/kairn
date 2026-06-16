@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { KairnRuntime } from "../runtime/KairnRuntime.js";
 import type { OutputKind } from "../types.js";
+import { KAIRN_VERSION } from "../version.js";
 
 const outputKindSchema = z.enum(["test", "lint", "typecheck", "generic"]);
 const contextModeSchema = z.enum(["brief", "snippets", "summary", "exact"]);
@@ -17,7 +18,7 @@ export async function startMcpServer(options: { root?: string }): Promise<void> 
 export function createMcpServer(options: { root?: string }): McpServer {
   const server = new McpServer({
     name: "kairn",
-    version: "0.1.2"
+    version: KAIRN_VERSION
   });
 
   const runtime = new KairnRuntime(options.root);
