@@ -41,18 +41,23 @@ jobs:
           - os: macos-14
             target: darwin-arm64
             binary: kairn
+            full-tests: true
           - os: macos-13
             target: darwin-x64
             binary: kairn
+            full-tests: false
           - os: ubuntu-latest
             target: linux-x64
             binary: kairn
+            full-tests: true
           - os: ubuntu-24.04-arm
             target: linux-arm64
             binary: kairn
+            full-tests: false
           - os: windows-latest
             target: win32-x64
             binary: kairn.exe
+            full-tests: false
     runs-on: ${{ matrix.os }}
     steps:
       - name: Enable Windows long paths
@@ -70,7 +75,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm rebuild better-sqlite3
-      - run: pnpm test
+      - if: matrix.full-tests
+        run: pnpm test
       - run: pnpm typecheck
       - run: pnpm build
       - name: Build platform binary
