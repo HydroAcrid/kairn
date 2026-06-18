@@ -86,7 +86,9 @@ jobs:
           ".release/npm/kairn-${{ matrix.target }}/bin/${{ matrix.binary }}" index refresh --root "$tmp/repo" --json
       - if: inputs.publish == 'true'
         shell: bash
-        run: npm publish ".release/npm/kairn-${{ matrix.target }}" --tag beta
+        run: |
+          export NODE_AUTH_TOKEN="$(printf '%s' "$NODE_AUTH_TOKEN" | tr -d '\r\n')"
+          npm publish ".release/npm/kairn-${{ matrix.target }}" --tag beta
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -108,6 +110,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm release:validate-npm
-      - run: npm publish packages/npm/kairn --tag beta
+      - shell: bash
+        run: |
+          export NODE_AUTH_TOKEN="$(printf '%s' "$NODE_AUTH_TOKEN" | tr -d '\r\n')"
+          npm publish packages/npm/kairn --tag beta
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
