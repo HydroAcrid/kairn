@@ -87,7 +87,7 @@ jobs:
       - if: inputs.publish == 'true'
         shell: bash
         run: |
-          export NODE_AUTH_TOKEN="$(printf '%s' "$NODE_AUTH_TOKEN" | tr -d '\r\n')"
+          export NODE_AUTH_TOKEN="$(printf '%s' "$NODE_AUTH_TOKEN" | LC_ALL=C tr -cd 'A-Za-z0-9_.-')"
           npm publish ".release/npm/kairn-${{ matrix.target }}" --tag beta
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -112,7 +112,7 @@ jobs:
       - run: pnpm release:validate-npm
       - shell: bash
         run: |
-          export NODE_AUTH_TOKEN="$(printf '%s' "$NODE_AUTH_TOKEN" | tr -d '\r\n')"
+          export NODE_AUTH_TOKEN="$(printf '%s' "$NODE_AUTH_TOKEN" | LC_ALL=C tr -cd 'A-Za-z0-9_.-')"
           npm publish packages/npm/kairn --tag beta
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
