@@ -55,6 +55,10 @@ jobs:
             binary: kairn.exe
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Enable Windows long paths
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: git config --global core.longpaths true
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
