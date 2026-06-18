@@ -38,10 +38,6 @@ jobs:
             target: darwin-arm64
             binary: kairn
             full-tests: true
-          - os: macos-13
-            target: darwin-x64
-            binary: kairn
-            full-tests: false
           - os: ubuntu-latest
             target: linux-x64
             binary: kairn

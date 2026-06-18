@@ -14,9 +14,9 @@ The public `usekairn` npm package must stay a small launcher. It should not publ
 
 - `usekairn`: public launcher package with the `kairn` bin shim.
 - `usekairn-darwin-arm64`
-- `usekairn-darwin-x64`
 - `usekairn-linux-arm64`
 - `usekairn-linux-x64`
+- Intel Mac is deferred for the first npm beta until the x64 macOS binary smoke is stable.
 - Native Windows is deferred for the first npm beta. Windows users should use WSL or the private beta fallback until the native binary smoke is stable.
 
 The launcher has no install-time download behavior. If the platform package is missing, it prints the exact reinstall command and exits.

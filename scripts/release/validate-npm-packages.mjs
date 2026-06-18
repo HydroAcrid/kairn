@@ -9,7 +9,6 @@ const platformDir = path.join(root, "packages", "npm", "platforms");
 
 const expectedPlatforms = new Map([
   ["usekairn-darwin-arm64", { os: "darwin", cpu: "arm64", binary: "bin/kairn" }],
-  ["usekairn-darwin-x64", { os: "darwin", cpu: "x64", binary: "bin/kairn" }],
   ["usekairn-linux-arm64", { os: "linux", cpu: "arm64", binary: "bin/kairn" }],
   ["usekairn-linux-x64", { os: "linux", cpu: "x64", binary: "bin/kairn" }]
 ]);
