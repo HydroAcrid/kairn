@@ -13,8 +13,7 @@ const platformPackages = {
   "darwin-arm64": "usekairn-darwin-arm64",
   "darwin-x64": "usekairn-darwin-x64",
   "linux-arm64": "usekairn-linux-arm64",
-  "linux-x64": "usekairn-linux-x64",
-  "win32-x64": "usekairn-win32-x64"
+  "linux-x64": "usekairn-linux-x64"
 };
 
 function main() {
@@ -53,7 +52,16 @@ function resolveBinary(target) {
 
   const packageName = platformPackages[target];
   if (!packageName) {
-    fail(`Unsupported platform: ${target}`);
+    fail(
+      [
+        `Unsupported npm beta platform: ${target}.`,
+        "",
+        "This beta currently supports macOS arm64/x64 and Linux arm64/x64.",
+        "On Windows, use WSL with the Linux package or the private beta fallback until the native Windows binary is ready.",
+        "",
+        "Docs: https://usekairn.com/docs/install-and-update"
+      ].join("\n")
+    );
   }
 
   const binaryName = process.platform === "win32" ? "kairn.exe" : "kairn";
