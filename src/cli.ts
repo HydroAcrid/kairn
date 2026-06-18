@@ -7,13 +7,14 @@ import { registerCoreCommands } from "./cli/commands/core.js";
 import { registerEvalCommands } from "./cli/commands/eval.js";
 import { registerSetupCommands } from "./cli/commands/setup.js";
 import { registerWatchCommands } from "./cli/commands/watch.js";
+import { formatKairnVersionText } from "./version.js";
 
 const program = new Command();
 
 program
   .name("kairn")
   .description("Local-first dynamic context runtime for software engineering agents.")
-  .version("0.1.2");
+  .version(formatKairnVersionText());
 
 registerCoreCommands(program);
 registerSetupCommands(program);

@@ -6,6 +6,7 @@ import { getKairnPaths } from "../config/paths.js";
 import { loadTelemetryConfig } from "../telemetry/config.js";
 import type { KairnRuntime } from "../runtime/KairnRuntime.js";
 import { commandInvocation, commandSpawnInvocation } from "../utils/command.js";
+import { getKairnBuildInfo } from "../version.js";
 
 export type DoctorCheckStatus = "ok" | "warn" | "fail";
 
@@ -36,6 +37,7 @@ export function runDoctor(input: {
   const target = input.target ?? "all";
   const checks: DoctorCheck[] = [
     checkNodeVersion(),
+    checkKairnInstall(),
     checkKairnCommand(),
     checkKairnState(rootPath),
     checkIndex(input.runtime),
@@ -49,6 +51,18 @@ export function runDoctor(input: {
     rootPath,
     status: rollupStatus(checks),
     checks
+  };
+}
+
+function checkKairnInstall(): DoctorCheck {
+  const info = getKairnBuildInfo();
+  const npmBetaWithoutPlatform = info.channel === "npm-beta" && !info.platformPackage;
+  return {
+    id: "kairn_install",
+    status: npmBetaWithoutPlatform ? "warn" : "ok",
+    summary: `Kairn ${info.version} (${info.channel}, ${info.target})${info.platformPackage ? ` via ${info.platformPackage}` : ""}.`,
+    fix: npmBetaWithoutPlatform ? "Reinstall with npm install -g usekairn@beta so npm can install the matching platform package." : undefined,
+    metadata: info
   };
 }
 

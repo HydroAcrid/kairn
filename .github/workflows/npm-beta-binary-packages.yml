@@ -1,0 +1,97 @@
+name: npm beta binary packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish packages to npm with the beta tag"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+jobs:
+  launcher:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.31.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm release:validate-npm
+      - run: npm pack --dry-run packages/npm/kairn
+      - if: inputs.publish == 'true'
+        run: npm publish packages/npm/kairn --tag beta
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  platform:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: darwin-arm64
+            binary: kairn
+          - os: macos-13
+            target: darwin-x64
+            binary: kairn
+          - os: ubuntu-latest
+            target: linux-x64
+            binary: kairn
+          - os: ubuntu-24.04-arm
+            target: linux-arm64
+            binary: kairn
+          - os: windows-latest
+            target: win32-x64
+            binary: kairn.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.31.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm rebuild better-sqlite3
+      - run: pnpm test
+      - run: pnpm typecheck
+      - run: pnpm build
+      - name: Build platform binary
+        shell: bash
+        run: |
+          pnpm release:build-binary -- --target "${{ matrix.target }}" --out ".release/binaries/${{ matrix.target }}/${{ matrix.binary }}"
+      - name: Stage platform package
+        shell: bash
+        run: |
+          pnpm release:stage-platform -- --target "${{ matrix.target }}" --binary ".release/binaries/${{ matrix.target }}/${{ matrix.binary }}" --out-dir ".release/npm"
+      - name: Pack platform package
+        shell: bash
+        run: |
+          npm pack --dry-run ".release/npm/kairn-${{ matrix.target }}"
+      - name: Smoke binary
+        shell: bash
+        run: |
+          ".release/npm/kairn-${{ matrix.target }}/bin/${{ matrix.binary }}" --version
+          tmp="$(mktemp -d)"
+          ".release/npm/kairn-${{ matrix.target }}/bin/${{ matrix.binary }}" doctor --root "$tmp/repo" --json
+          mkdir -p "$tmp/repo"
+          printf 'export const value = 1;\n' > "$tmp/repo/index.ts"
+          ".release/npm/kairn-${{ matrix.target }}/bin/${{ matrix.binary }}" index refresh --root "$tmp/repo" --json
+      - if: inputs.publish == 'true'
+        shell: bash
+        run: npm publish ".release/npm/kairn-${{ matrix.target }}" --tag beta
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

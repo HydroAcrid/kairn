@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import Database from "better-sqlite3";
+import { openSqliteDatabase, type SqliteDatabase } from "../store/sqliteNative.js";
 import type { BenchmarkCase, BenchmarkSeedSpec, BenchmarkTaskOutcome } from "../types.js";
 import { parseCodexUsageFooter } from "../eval/codexUsage.js";
 import { sha256 } from "../utils/hash.js";
@@ -978,9 +978,9 @@ function workspaceMcpCalls(workspacePath: string): { count: number; toolNames: s
     return { count: 0, toolNames: [], files: [], contextActions: [] };
   }
 
-  let db: Database.Database | undefined;
+  let db: SqliteDatabase | undefined;
   try {
-    db = new Database(dbPath, { readonly: true, fileMustExist: true });
+    db = openSqliteDatabase(dbPath, { readonly: true, fileMustExist: true });
     const rows = db
       .prepare(
         `
@@ -1026,9 +1026,9 @@ function workspacePrimeMetadata(workspacePath: string): Record<string, unknown> 
   const dbPath = path.join(workspacePath, ".kairn", "kairn.sqlite");
   if (!fs.existsSync(dbPath)) return {};
 
-  let db: Database.Database | undefined;
+  let db: SqliteDatabase | undefined;
   try {
-    db = new Database(dbPath, { readonly: true, fileMustExist: true });
+    db = openSqliteDatabase(dbPath, { readonly: true, fileMustExist: true });
     const row = db
       .prepare(
         `

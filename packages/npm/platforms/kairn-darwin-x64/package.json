@@ -1,0 +1,22 @@
+{
+  "name": "usekairn-darwin-x64",
+  "version": "0.1.2",
+  "description": "Kairn public beta binary for macOS x64.",
+  "license": "UNLICENSED",
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "bin/kairn",
+    "README.md",
+    "LICENSE",
+    "checksums.txt",
+    "bin/assets/**"
+  ],
+  "scripts": {
+    "prepack": "node ../../../../scripts/release/validate-platform-package.mjs"
+  }
+}

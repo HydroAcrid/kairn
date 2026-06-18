@@ -12,7 +12,7 @@ For a full map of the current layers and data flow, see `docs/kairn_architecture
 
 ## Install And Guided Setup
 
-Kairn's beta-friendly distribution path is npm first because it works across macOS, Linux, and Windows with one Node-based CLI. Homebrew and other native package managers can come later, but npm is the lowest-friction cross-platform path for the private beta.
+Kairn's beta-friendly distribution path is npm first because it works across macOS, Linux, and Windows with one command. For public beta, the `kairn` npm package is a small launcher that resolves a platform-specific binary package. Homebrew and other native package managers can come later.
 
 Requirements:
 
@@ -20,11 +20,24 @@ Requirements:
 - Git
 - Codex CLI for the terminal hook/session path, or an MCP-capable client such as Claude Code, GitHub Copilot CLI, Gemini CLI, VS Code/Copilot, Antigravity, Avante/MCPHub, or another MCP client
 
-Once Kairn is published:
+Once the public beta is published:
 
 ```bash
-npm install -g kairn
+npm install -g usekairn@beta
 kairn setup wizard --root /path/to/repo
+```
+
+What npm installs:
+
+- `kairn`: a small launcher package that owns the `kairn` command.
+- One optional platform package such as `usekairn-darwin-arm64`, containing the Kairn executable plus native/WASM runtime assets.
+- No install-time remote download. If npm does not install the matching platform package, `kairn` prints a clear reinstall command.
+- Telemetry remains opt-in during setup. Installing Kairn does not enable telemetry or mutate agent configs.
+
+Update public beta installs with:
+
+```bash
+npm update -g usekairn@beta
 ```
 
 For private beta tarballs or local source builds:
@@ -81,7 +94,7 @@ npm uninstall -g kairn
 
 On Windows, the wizard defaults to a safe setup index that avoids WASM AST parsing during first setup. If native indexing still misbehaves, run `kairn setup wizard --no-index`, then use `kairn index refresh --safe --root <repo>` or WSL as a fallback.
 
-Homebrew, Winget, and signed native installers are packaging targets, not the first beta path. They are useful once the npm path, hook review flow, MCP setup, and `kairn doctor` checks are stable on other machines.
+Homebrew, Winget, and signed native installers are packaging targets, not the first beta path. They are useful once the npm binary path, hook review flow, MCP setup, and `kairn doctor` checks are stable on other machines.
 
 ## Quick Start
 
