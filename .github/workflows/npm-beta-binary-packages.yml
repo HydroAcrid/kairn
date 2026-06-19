@@ -42,7 +42,7 @@ jobs:
             binary: kairn
             package: usekairn-darwin-arm64
             full-tests: true
-          - os: macos-13
+          - os: macos-15-intel
             target: darwin-x64
             binary: kairn
             package: usekairn-darwin-x64
