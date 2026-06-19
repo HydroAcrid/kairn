@@ -21,6 +21,25 @@ The public `usekairn` npm package must stay a small launcher. It should not publ
 
 The launcher has no install-time download behavior. If the platform package is missing, it prints the exact reinstall command and exits.
 
+## Current Beta Status
+
+Published on 2026-06-19:
+
+- `usekairn@0.1.2`
+- `usekairn-darwin-arm64@0.1.2`
+- `usekairn-linux-x64@0.1.2`
+- `usekairn-linux-arm64@0.1.2`
+
+The verified public install path is:
+
+```bash
+npm install -g usekairn@beta
+```
+
+Smoke install passed on macOS arm64. `kairn --version` reported `0.1.2`, target `darwin-arm64`, channel `npm-beta`, and platform package `usekairn-darwin-arm64`.
+
+npm also assigned `latest` to `0.1.2` during the first publish even though the publish command used `--tag beta`. Keep docs and beta emails pointed at `usekairn@beta`; do not advertise default `npm install -g usekairn` until the release is intentionally promoted.
+
 ## Release Safety
 
 - The root source package is marked `private: true` to block accidental public JS publication.
