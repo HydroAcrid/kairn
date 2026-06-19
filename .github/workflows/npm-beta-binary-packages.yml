@@ -3,6 +3,9 @@ name: npm beta binary packages
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   launcher-validate:
     runs-on: ubuntu-latest
@@ -37,17 +40,33 @@ jobs:
           - os: macos-14
             target: darwin-arm64
             binary: kairn
+            package: usekairn-darwin-arm64
             full-tests: true
+          - os: macos-13
+            target: darwin-x64
+            binary: kairn
+            package: usekairn-darwin-x64
+            full-tests: false
           - os: ubuntu-latest
             target: linux-x64
             binary: kairn
+            package: usekairn-linux-x64
             full-tests: true
           - os: ubuntu-24.04-arm
             target: linux-arm64
             binary: kairn
+            package: usekairn-linux-arm64
+            full-tests: false
+          - os: windows-latest
+            target: win32-x64
+            binary: kairn.exe
+            package: usekairn-win32-x64
             full-tests: false
     runs-on: ${{ matrix.os }}
     steps:
+      - if: runner.os == 'Windows'
+        shell: bash
+        run: git config --global core.longpaths true
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
@@ -81,10 +100,27 @@ jobs:
         run: |
           ".release/npm/kairn-${{ matrix.target }}/bin/${{ matrix.binary }}" --version
           tmp="$(mktemp -d)"
-          ".release/npm/kairn-${{ matrix.target }}/bin/${{ matrix.binary }}" doctor --root "$tmp/repo" --json
           mkdir -p "$tmp/repo"
           printf 'export const value = 1;\n' > "$tmp/repo/index.ts"
+          ".release/npm/kairn-${{ matrix.target }}/bin/${{ matrix.binary }}" doctor --root "$tmp/repo" --json
           ".release/npm/kairn-${{ matrix.target }}/bin/${{ matrix.binary }}" index refresh --root "$tmp/repo" --json
+      - name: Smoke packed install
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .release/install-smoke
+          npm pack packages/npm/kairn --pack-destination ".release/install-smoke"
+          launcher_tgz="$(find .release/install-smoke -maxdepth 1 -name 'usekairn-[0-9]*.tgz' | sort | head -n 1)"
+          platform_tgz="$(find .release/artifacts -name '${{ matrix.package }}-*.tgz' | sort | head -n 1)"
+          test -n "$launcher_tgz"
+          test -n "$platform_tgz"
+
+          prefix_root="$(mktemp -d)"
+          export NPM_CONFIG_PREFIX="$prefix_root/prefix"
+          npm install -g "$platform_tgz" "$launcher_tgz"
+
+          kairn_bin="$(node -e "const fs=require('fs'); const path=require('path'); const p=process.env.NPM_CONFIG_PREFIX; const c=[path.join(p,'bin','kairn'),path.join(p,'kairn.cmd'),path.join(p,'kairn')]; const f=c.find(x=>fs.existsSync(x)); if(!f){console.error(c.join('\\n')); process.exit(1)} console.log(f)")"
+          "$kairn_bin" --version
       - uses: actions/upload-artifact@v4
         with:
           name: npm-platform-${{ matrix.target }}

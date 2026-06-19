@@ -11,6 +11,7 @@ const args = parseArgs(process.argv.slice(2));
 const target = args.target ?? `${process.platform}-${process.arch}`;
 const out = path.resolve(args.out ?? path.join(root, ".release", "binaries", target, target.startsWith("win32-") ? "kairn.exe" : "kairn"));
 const localTarget = `${process.platform}-${process.arch}`;
+const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 
 if (target !== localTarget) {
   fail(`target ${target} must be built on matching host ${localTarget} because Kairn ships native assets`);
@@ -24,7 +25,7 @@ fs.rmSync(bundleDir, { recursive: true, force: true });
 fs.mkdirSync(bundleDir, { recursive: true });
 fs.mkdirSync(path.dirname(out), { recursive: true });
 
-run("pnpm", [
+run(pnpmCommand, [
   "exec",
   "esbuild",
   "src/cli.ts",
@@ -37,7 +38,7 @@ run("pnpm", [
   "--external:typescript"
 ]);
 
-run("pnpm", [
+run(pnpmCommand, [
   "dlx",
   "@yao-pkg/pkg@6.20.0",
   bundlePath,
@@ -92,9 +93,15 @@ function run(command, commandArgs) {
   const result = spawnSync(command, commandArgs, {
     cwd: root,
     stdio: "inherit",
-    env: process.env
+    env: process.env,
+    shell: process.platform === "win32"
   });
-  if (result.status !== 0) process.exit(result.status ?? 1);
+  if (result.error) {
+    fail(`failed to run ${command}: ${result.error.message}`);
+  }
+  if (result.status !== 0) {
+    fail(`${command} ${commandArgs.join(" ")} failed with exit ${result.status ?? 1}`);
+  }
 }
 
 function parseArgs(raw) {
