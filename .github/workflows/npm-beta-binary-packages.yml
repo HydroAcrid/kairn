@@ -2,15 +2,6 @@ name: npm beta binary packages
 
 on:
   workflow_dispatch:
-    inputs:
-      publish:
-        description: "Publish packages to npm with the beta tag"
-        required: true
-        default: "false"
-        type: choice
-        options:
-          - "false"
-          - "true"
 
 jobs:
   launcher-validate:
@@ -27,7 +18,16 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm release:validate-npm
-      - run: npm pack --dry-run packages/npm/kairn
+      - name: Pack launcher package
+        shell: bash
+        run: |
+          mkdir -p .release/artifacts
+          npm pack packages/npm/kairn --pack-destination .release/artifacts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-launcher-usekairn
+          path: .release/artifacts/*.tgz
+          if-no-files-found: error
 
   platform:
     strategy:
@@ -71,10 +71,11 @@ jobs:
         shell: bash
         run: |
           pnpm release:stage-platform -- --target "${{ matrix.target }}" --binary ".release/binaries/${{ matrix.target }}/${{ matrix.binary }}" --out-dir ".release/npm"
-      - name: Pack platform package
+      - name: Pack platform package artifact
         shell: bash
         run: |
-          npm pack --dry-run ".release/npm/kairn-${{ matrix.target }}"
+          mkdir -p .release/artifacts
+          npm pack ".release/npm/kairn-${{ matrix.target }}" --pack-destination ".release/artifacts"
       - name: Smoke binary
         shell: bash
         run: |
@@ -84,35 +85,8 @@ jobs:
           mkdir -p "$tmp/repo"
           printf 'export const value = 1;\n' > "$tmp/repo/index.ts"
           ".release/npm/kairn-${{ matrix.target }}/bin/${{ matrix.binary }}" index refresh --root "$tmp/repo" --json
-      - if: inputs.publish == 'true'
-        shell: bash
-        run: |
-          export NODE_AUTH_TOKEN="$(printf '%s' "$NODE_AUTH_TOKEN" | LC_ALL=C tr -cd 'A-Za-z0-9_.-')"
-          npm publish ".release/npm/kairn-${{ matrix.target }}" --tag beta
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-  launcher-publish:
-    if: inputs.publish == 'true'
-    needs:
-      - launcher-validate
-      - platform
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/upload-artifact@v4
         with:
-          version: 10.31.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          registry-url: "https://registry.npmjs.org"
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm release:validate-npm
-      - shell: bash
-        run: |
-          export NODE_AUTH_TOKEN="$(printf '%s' "$NODE_AUTH_TOKEN" | LC_ALL=C tr -cd 'A-Za-z0-9_.-')"
-          npm publish packages/npm/kairn --tag beta
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          name: npm-platform-${{ matrix.target }}
+          path: .release/artifacts/*.tgz
+          if-no-files-found: error

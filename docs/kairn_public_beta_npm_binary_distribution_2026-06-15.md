@@ -32,6 +32,60 @@ The launcher has no install-time download behavior. If the platform package is m
 
 ## Maintainer Flow
 
+### First public beta publish
+
+The first npm beta should be published manually from CI-built tarballs. This avoids long-lived publish tokens and lets npm 2FA create the package names cleanly. Future releases should move to npm Trusted Publishing after the package names exist.
+
+Run the GitHub Actions workflow:
+
+```bash
+gh workflow run npm-beta-binary-packages.yml --repo HydroAcrid/kairn --ref main
+```
+
+Wait for the workflow to pass, then download all package artifacts:
+
+```bash
+run_id="<workflow-run-id>"
+mkdir -p .release/manual-publish
+gh run download "$run_id" --repo HydroAcrid/kairn --dir .release/manual-publish
+find .release/manual-publish -maxdepth 3 -type f -name "*.tgz" | sort
+```
+
+Publish platform packages first, then the launcher last. Use a fresh OTP if the previous code expires:
+
+```bash
+OTP=123456
+
+npm publish .release/manual-publish/npm-platform-darwin-arm64/usekairn-darwin-arm64-0.1.2.tgz --tag beta --otp "$OTP"
+npm publish .release/manual-publish/npm-platform-linux-x64/usekairn-linux-x64-0.1.2.tgz --tag beta --otp "$OTP"
+npm publish .release/manual-publish/npm-platform-linux-arm64/usekairn-linux-arm64-0.1.2.tgz --tag beta --otp "$OTP"
+npm publish .release/manual-publish/npm-launcher-usekairn/usekairn-0.1.2.tgz --tag beta --otp "$OTP"
+```
+
+Verify the beta packages:
+
+```bash
+npm view usekairn dist-tags versions --json
+npm view usekairn-darwin-arm64 version --json
+npm view usekairn-linux-x64 version --json
+npm view usekairn-linux-arm64 version --json
+```
+
+Smoke install with a temporary global prefix:
+
+```bash
+tmp="$(mktemp -d)"
+export NPM_CONFIG_PREFIX="$tmp/prefix"
+npm install -g usekairn@beta
+"$tmp/prefix/bin/kairn" --version
+mkdir -p "$tmp/repo"
+printf 'export const value = 1;\n' > "$tmp/repo/index.ts"
+"$tmp/prefix/bin/kairn" doctor --root "$tmp/repo" --json
+"$tmp/prefix/bin/kairn" index refresh --root "$tmp/repo" --json
+```
+
+After this first publish, configure npm Trusted Publishing for all four packages and switch CI back to automated `npm publish --tag beta` without `NPM_TOKEN`.
+
 Validate package metadata:
 
 ```bash
@@ -56,18 +110,18 @@ Stage the platform package. If `.release/binaries/darwin-arm64/assets` exists, i
 pnpm release:stage-platform -- --target darwin-arm64 --binary .release/binaries/darwin-arm64/kairn --out-dir .release/npm
 ```
 
-Dry-run pack:
+Local dry-run pack:
 
 ```bash
 npm pack --dry-run packages/npm/kairn
 npm pack --dry-run .release/npm/kairn-darwin-arm64
 ```
 
-Publish only with the `beta` tag until platform smoke tests pass:
+Local direct publishing is only for emergency/manual releases. Publish platform packages before the launcher:
 
 ```bash
-npm publish packages/npm/kairn --tag beta
 npm publish .release/npm/kairn-darwin-arm64 --tag beta
+npm publish packages/npm/kairn --tag beta
 ```
 
 ## Smoke Test
