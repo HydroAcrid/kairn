@@ -1,0 +1,112 @@
+name: ci
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source:
+    name: source tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.31.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm typecheck
+      - run: pnpm build
+      - run: pnpm release:validate-npm
+      - run: npm pack packages/npm/kairn --dry-run
+
+  platform-package-smoke:
+    name: package smoke (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: darwin-arm64
+            binary: kairn
+            package: usekairn-darwin-arm64
+          - os: macos-15-intel
+            target: darwin-x64
+            binary: kairn
+            package: usekairn-darwin-x64
+          - os: ubuntu-latest
+            target: linux-x64
+            binary: kairn
+            package: usekairn-linux-x64
+          - os: ubuntu-24.04-arm
+            target: linux-arm64
+            binary: kairn
+            package: usekairn-linux-arm64
+          - os: windows-latest
+            target: win32-x64
+            binary: kairn.exe
+            package: usekairn-win32-x64
+    steps:
+      - if: runner.os == 'Windows'
+        shell: bash
+        run: git config --global core.longpaths true
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.31.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm rebuild better-sqlite3
+      - run: pnpm build
+      - name: Build platform binary
+        shell: bash
+        run: |
+          pnpm release:build-binary -- --target "${{ matrix.target }}" --out ".release/binaries/${{ matrix.target }}/${{ matrix.binary }}"
+      - name: Stage and pack packages
+        shell: bash
+        run: |
+          pnpm release:stage-platform -- --target "${{ matrix.target }}" --binary ".release/binaries/${{ matrix.target }}/${{ matrix.binary }}" --out-dir ".release/npm"
+          mkdir -p .release/artifacts
+          npm pack packages/npm/kairn --pack-destination .release/artifacts
+          npm pack ".release/npm/kairn-${{ matrix.target }}" --pack-destination .release/artifacts
+      - name: Smoke tarball install
+        shell: bash
+        run: |
+          set -euo pipefail
+          launcher_tgz="$(find .release/artifacts -maxdepth 1 -name 'usekairn-[0-9]*.tgz' | sort | head -n 1)"
+          platform_tgz="$(find .release/artifacts -name '${{ matrix.package }}-*.tgz' | sort | head -n 1)"
+          test -n "$launcher_tgz"
+          test -n "$platform_tgz"
+
+          prefix_root="$(mktemp -d)"
+          export NPM_CONFIG_PREFIX="$prefix_root/prefix"
+          npm install -g "$platform_tgz" "$launcher_tgz"
+
+          kairn_bin="$(node -e "const fs=require('fs'); const path=require('path'); const p=process.env.NPM_CONFIG_PREFIX; const c=[path.join(p,'bin','kairn'),path.join(p,'kairn.cmd'),path.join(p,'kairn')]; const f=c.find(x=>fs.existsSync(x)); if(!f){console.error(c.join('\\n')); process.exit(1)} console.log(f)")"
+          "$kairn_bin" --version
+
+          repo="$prefix_root/repo"
+          mkdir -p "$repo"
+          printf 'export const value = 1;\n' > "$repo/index.ts"
+          "$kairn_bin" doctor --root "$repo" --json
+          "$kairn_bin" index refresh --root "$repo" --json
