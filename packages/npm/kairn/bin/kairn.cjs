@@ -7,7 +7,7 @@ const { createRequire } = require("node:module");
 const path = require("node:path");
 
 const launcherRequire = createRequire(__filename);
-const launcherPackage = "usekairn@0.1.2";
+const launcherPackage = "usekairn@0.1.3";
 
 const platformPackages = {
   "darwin-arm64": "usekairn-darwin-arm64",
@@ -79,7 +79,7 @@ function resolveBinary(target) {
         "  npm install -g usekairn@beta",
         "",
         "If npm omitted optional dependencies, install the platform package explicitly:",
-        `  npm install -g usekairn@beta ${packageName}@0.1.2`,
+        `  npm install -g usekairn@beta ${packageName}@0.1.3`,
         "",
         "Docs: https://usekairn.com/docs/install-and-update"
       ].join("\n")

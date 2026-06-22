@@ -5,6 +5,10 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
+const launcherPackageJson = JSON.parse(fs.readFileSync("packages/npm/kairn/package.json", "utf8")) as {
+  version: string;
+};
+
 describe("npm binary distribution", () => {
   it("validates the public launcher and platform package metadata", () => {
     const output = execFileSync("node", ["scripts/release/validate-npm-packages.mjs"], {
@@ -50,7 +54,7 @@ describe("npm binary distribution", () => {
     expect(parsed.channel).toBe("npm-beta");
     expect(parsed.target).toBe(`${process.platform}-${process.arch}`);
     expect(parsed.platformPackage).toBe("KAIRN_BINARY_PATH");
-    expect(parsed.launcherPackage).toBe("usekairn@0.1.2");
+    expect(parsed.launcherPackage).toBe(`usekairn@${launcherPackageJson.version}`);
   });
 
   it("stages platform packages with checksums and validates them before pack", () => {
@@ -98,7 +102,7 @@ describe("npm binary distribution", () => {
       cwd: process.cwd(),
       encoding: "utf8"
     });
-    expect(packOutput).toContain("usekairn-linux-x64-0.1.2.tgz");
+    expect(packOutput).toContain(`usekairn-linux-x64-${launcherPackageJson.version}.tgz`);
   });
 
   it("rejects cross-target pkg binary builds because native assets are target-specific", () => {

@@ -53,7 +53,7 @@ npm pack
 # beta user
 nvm install 24
 nvm use 24
-npm install -g ./kairn-0.1.2.tgz
+npm install -g ./kairn-0.1.3.tgz
 cd /path/to/repo
 kairn init
 kairn doctor

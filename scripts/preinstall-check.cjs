@@ -13,7 +13,7 @@ if (!supported) {
   console.error("Recommended fix with nvm:");
   console.error("  nvm install 24");
   console.error("  nvm use 24");
-  console.error("  npm install -g ./kairn-0.1.2.tgz");
+  console.error("  npm install -g ./kairn-0.1.3.tgz");
   console.error("");
   console.error("Node 22 or 24 LTS is the recommended beta path.");
   console.error("");
