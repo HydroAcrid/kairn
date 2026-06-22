@@ -53,17 +53,16 @@ Intel Mac is covered by CI and should be published in `0.1.3`. Native Windows is
 
 Normal development should go through pull requests into `main`. The `ci` workflow verifies source tests, typecheck, build, npm package metadata, and packed-install smoke across supported platform targets. A merge to `main` should not automatically publish npm packages.
 
-Beta releases use the manual `npm beta binary packages` workflow. That workflow builds platform tarballs, stages package artifacts, validates the binary/runtime assets, and smokes install from packed tarballs. Publish only after the workflow passes on every platform intended for that beta version. For the current public beta, the required platform set is macOS arm64/x64 and Linux arm64/x64.
+Beta releases use the manual `npm beta binary packages` workflow. That workflow builds platform tarballs, stages package artifacts, validates the binary/runtime assets, and smokes install from packed tarballs. By default it does not publish. Run it with `publish=true` only after the version bump is merged to `main`. For the current public beta, the required platform set is macOS arm64/x64 and Linux arm64/x64.
 
 The intended release sequence is:
 
 1. Merge tested code to `main`.
 2. Bump the package version.
-3. Run the manual npm beta binary workflow.
-4. Download artifacts.
-5. Publish platform packages first, launcher last, under `--tag beta`.
-6. Smoke `npm install -g usekairn@beta`.
-7. Update site and email copy only when install instructions or release notes changed.
+3. Run the manual npm beta binary workflow with `publish=true`.
+4. Confirm the workflow publishes platform packages first, launcher last, under the `beta` dist-tag.
+5. Smoke `npm install -g usekairn@beta`.
+6. Update site and email copy only when install instructions or release notes changed.
 
 ## Release Safety
 
@@ -80,10 +79,20 @@ The intended release sequence is:
 
 The first npm beta should be published manually from CI-built tarballs. This avoids long-lived publish tokens and lets npm 2FA create the package names cleanly. Future releases should move to npm Trusted Publishing after the package names exist.
 
-Run the GitHub Actions workflow:
+Run the GitHub Actions workflow in build-only mode when you want package artifacts without publishing:
 
 ```bash
 gh workflow run npm-beta-binary-packages.yml --repo HydroAcrid/kairn --ref main
+```
+
+Run the same workflow in publish mode for a beta release:
+
+```bash
+gh workflow run npm-beta-binary-packages.yml \
+  --repo HydroAcrid/kairn \
+  --ref main \
+  -f publish=true \
+  -f tag=beta
 ```
 
 Wait for the workflow to pass, then download all package artifacts:

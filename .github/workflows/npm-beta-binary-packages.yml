@@ -2,6 +2,22 @@ name: npm beta binary packages
 
 on:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish packages to npm after all smoke tests pass"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      tag:
+        description: "npm dist-tag to publish"
+        required: false
+        default: "beta"
+        type: choice
+        options:
+          - beta
 
 permissions:
   contents: read
@@ -118,3 +134,49 @@ jobs:
           name: npm-platform-${{ matrix.target }}
           path: .release/artifacts/*.tgz
           if-no-files-found: error
+
+  publish:
+    needs:
+      - launcher-validate
+      - platform
+    if: ${{ github.event.inputs.publish == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+      - uses: actions/download-artifact@v4
+        with:
+          path: .release/publish
+      - name: Publish npm beta packages
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "NPM_TOKEN secret is required for publishing." >&2
+            exit 1
+          fi
+
+          find .release/publish -maxdepth 3 -type f -name "*.tgz" | sort
+
+          publish_one() {
+            local artifact_dir="$1"
+            local package_glob="$2"
+            local tarball
+            tarball="$(find ".release/publish/${artifact_dir}" -maxdepth 1 -type f -name "${package_glob}" | sort | head -n 1)"
+            if [ -z "$tarball" ]; then
+              echo "Missing package artifact: ${artifact_dir}/${package_glob}" >&2
+              exit 1
+            fi
+            npm publish "$tarball" --tag "$NPM_TAG"
+          }
+
+          publish_one npm-platform-darwin-arm64 "usekairn-darwin-arm64-*.tgz"
+          publish_one npm-platform-darwin-x64 "usekairn-darwin-x64-*.tgz"
+          publish_one npm-platform-linux-x64 "usekairn-linux-x64-*.tgz"
+          publish_one npm-platform-linux-arm64 "usekairn-linux-arm64-*.tgz"
+          publish_one npm-launcher-usekairn "usekairn-*.tgz"
