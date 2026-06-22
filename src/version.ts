@@ -1,4 +1,4 @@
-export const KAIRN_VERSION = "0.1.2";
+export const KAIRN_VERSION = "0.1.4";
 
 export type KairnBuildInfo = {
   version: string;
