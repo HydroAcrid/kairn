@@ -24,7 +24,9 @@ Once the public beta is published:
 
 ```bash
 npm install -g usekairn@beta
-kairn setup wizard --root /path/to/repo
+cd /path/to/repo
+kairn init
+kairn doctor
 ```
 
 What npm installs:
@@ -37,7 +39,7 @@ What npm installs:
 Update public beta installs with:
 
 ```bash
-npm update -g usekairn@beta
+npm install -g usekairn@beta
 ```
 
 For private beta tarballs or local source builds:
@@ -52,10 +54,12 @@ npm pack
 nvm install 24
 nvm use 24
 npm install -g ./kairn-0.1.2.tgz
-kairn setup wizard --root /path/to/repo
+cd /path/to/repo
+kairn init
+kairn doctor
 ```
 
-The wizard asks which agents/clients to configure and supports multi-select:
+`kairn init` runs the guided setup wizard. It asks which agents/clients to configure and supports multi-select:
 
 | Choice | Best for | What it configures |
 | --- | --- | --- |
@@ -66,12 +70,12 @@ The wizard asks which agents/clients to configure and supports multi-select:
 | VS Code / Copilot MCP | Editor users or users who do not want hooks | `.vscode/mcp.json` and MCP-first `AGENTS.md` guidance. |
 | Generic MCP | Antigravity, Avante/MCPHub, or other clients | JSON config output to paste into that client's MCP settings. |
 
-Scriptable setup is available for docs, CI, and support:
+Scriptable setup is available for docs, CI, and support. `kairn setup wizard` is the explicit advanced form of the same guided setup:
 
 ```bash
-kairn setup wizard --root /path/to/repo --choice codex --yes
-kairn setup wizard --root /path/to/repo --choice mcp --yes
-kairn setup wizard --root /path/to/repo --targets claude-code,gemini-cli --yes --no-index
+kairn init --root /path/to/repo --choice codex --yes
+kairn init --root /path/to/repo --choice mcp --yes
+kairn init --root /path/to/repo --targets claude-code,gemini-cli --yes --no-index
 kairn setup mcp --root /path/to/repo --client copilot-cli --json
 kairn doctor --root /path/to/repo
 kairn doctor --root /path/to/repo --target gemini-cli
@@ -87,12 +91,12 @@ To remove Kairn from a repo:
 ```bash
 kairn setup remove --root /path/to/repo
 kairn setup remove --root /path/to/repo --delete-state
-npm uninstall -g kairn
+npm uninstall -g usekairn
 ```
 
 `setup remove` deletes Kairn-owned Codex hooks, Claude hooks, MCP config, and the Kairn block in `AGENTS.md` while preserving unrelated user config. Without `--delete-state`, it keeps `.kairn/` local indexes, metrics, and session ledger data but disables telemetry upload. With `--delete-state`, it removes `.kairn/` too.
 
-On Windows, the wizard defaults to a safe setup index that avoids WASM AST parsing during first setup. If native indexing still misbehaves, run `kairn setup wizard --no-index`, then use `kairn index refresh --safe --root <repo>` or WSL as a fallback.
+On Windows, the wizard defaults to a safe setup index that avoids WASM AST parsing during first setup. If native indexing still misbehaves, run `kairn init --no-index`, then use `kairn index refresh --safe --root <repo>` or WSL as a fallback.
 
 Homebrew, Winget, and signed native installers are packaging targets, not the first beta path. They are useful once the npm binary path, hook review flow, MCP setup, and `kairn doctor` checks are stable on other machines.
 
@@ -101,7 +105,7 @@ Homebrew, Winget, and signed native installers are packaging targets, not the fi
 ```bash
 pnpm install
 pnpm build
-pnpm kairn init --root /path/to/repo
+pnpm kairn init --state-only --root /path/to/repo
 pnpm kairn start "Add filtering to the dashboard" --root /path/to/repo
 pnpm kairn serve --mcp --root /path/to/repo
 ```
@@ -109,7 +113,7 @@ pnpm kairn serve --mcp --root /path/to/repo
 During local development, use:
 
 ```bash
-pnpm dev -- init --root /path/to/repo
+pnpm dev -- init --state-only --root /path/to/repo
 pnpm dev -- start "Add filtering to the dashboard" --root /path/to/repo
 pnpm dev -- context --session <session-id> --file src/app.ts --root /path/to/repo
 pnpm dev -- watch --session <session-id> --root /path/to/repo --once
@@ -246,7 +250,7 @@ Beta users have two supported integration paths:
 For most users, start with the guided setup:
 
 ```bash
-kairn setup wizard --root /path/to/repo
+kairn init --root /path/to/repo
 ```
 
 Recommended choice:

@@ -193,8 +193,8 @@ function checkIndex(runtime: KairnRuntime): DoctorCheck {
     return {
       id: "index_state",
       status: "warn",
-      summary: "Index status is unavailable; run kairn init.",
-      fix: "Run kairn init --root <repo>.",
+      summary: "Index status is unavailable; refresh the Kairn index.",
+      fix: "Run kairn index refresh --root <repo>.",
       metadata: { error: error instanceof Error ? error.message : String(error) }
     };
   }

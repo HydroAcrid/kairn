@@ -12,7 +12,7 @@ describe("CLI", () => {
   it("supports init, start, context, diff, and compress", () => {
     const root = createFixtureRepo();
 
-    const init = execFileSync(CLI[0]!, [...CLI.slice(1), "init", "--root", root], {
+    const init = execFileSync(CLI[0]!, [...CLI.slice(1), "init", "--state-only", "--root", root], {
       cwd: process.cwd(),
       encoding: "utf8"
     });
@@ -242,6 +242,80 @@ describe("CLI", () => {
     expect(parsedBetaReport.sessions).toBeGreaterThan(0);
     expect(parsedBetaReport.verdict).toBeTruthy();
   }, 120_000);
+
+  it("uses init as the friendly guided setup entrypoint", () => {
+    const root = createFixtureRepo();
+    const init = execFileSync(
+      CLI[0]!,
+      [...CLI.slice(1), "init", "--choice", "codex", "--yes", "--no-index", "--root", root, "--json"],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8"
+      }
+    );
+    const parsed = JSON.parse(init) as {
+      choice: string;
+      targets: string[];
+      indexed: boolean;
+      integrations: Array<{ kind: string; hooksPath?: string }>;
+      nextSteps: string[];
+    };
+
+    expect(parsed.choice).toBe("codex");
+    expect(parsed.targets).toEqual(["codex"]);
+    expect(parsed.indexed).toBe(false);
+    expect(parsed.integrations.some((integration) => integration.kind === "codex" && integration.hooksPath?.endsWith(".codex/hooks.json"))).toBe(true);
+    expect(parsed.nextSteps[0]).toContain("kairn doctor");
+  });
+
+  it("supports MCP targets through init", () => {
+    const root = createFixtureRepo();
+    const init = execFileSync(
+      CLI[0]!,
+      [...CLI.slice(1), "init", "--targets", "vscode", "--yes", "--no-index", "--root", root, "--json"],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8"
+      }
+    );
+    const parsed = JSON.parse(init) as {
+      targets: string[];
+      integrations: Array<{ kind: string; target?: string; configPath?: string }>;
+    };
+
+    expect(parsed.targets).toEqual(["vscode"]);
+    expect(parsed.integrations.some((integration) => integration.kind === "mcp" && integration.target === "vscode" && integration.configPath?.endsWith(".vscode/mcp.json"))).toBe(true);
+  });
+
+  it("preserves state-only initialization behind init --state-only", () => {
+    const root = createFixtureRepo();
+    const init = execFileSync(CLI[0]!, [...CLI.slice(1), "init", "--state-only", "--root", root, "--json"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+    const parsed = JSON.parse(init) as { rootPath: string; kairnDir: string; scan: { files: unknown[] } };
+
+    expect(fs.realpathSync(parsed.rootPath)).toBe(fs.realpathSync(root));
+    expect(parsed.kairnDir.endsWith(".kairn")).toBe(true);
+    expect(parsed.scan.files.length).toBeGreaterThan(0);
+  });
+
+  it("emits wizard-shaped JSON from init by default", () => {
+    const root = createFixtureRepo();
+    const init = execFileSync(
+      CLI[0]!,
+      [...CLI.slice(1), "init", "--choice", "doctor", "--yes", "--no-index", "--root", root, "--json"],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8"
+      }
+    );
+    const parsed = JSON.parse(init) as { choice?: string; integrations?: unknown[]; scan?: unknown };
+
+    expect(parsed.choice).toBe("doctor");
+    expect(Array.isArray(parsed.integrations)).toBe(true);
+    expect(parsed.scan).toBeUndefined();
+  });
 
   it("accepts whitespace-separated setup wizard targets from PowerShell-style argument lists", () => {
     const root = createFixtureRepo();
