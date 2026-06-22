@@ -13,8 +13,7 @@ const platformPackages = {
   "darwin-arm64": "usekairn-darwin-arm64",
   "darwin-x64": "usekairn-darwin-x64",
   "linux-arm64": "usekairn-linux-arm64",
-  "linux-x64": "usekairn-linux-x64",
-  "win32-x64": "usekairn-win32-x64"
+  "linux-x64": "usekairn-linux-x64"
 };
 
 function main() {
@@ -57,8 +56,8 @@ function resolveBinary(target) {
       [
         `Unsupported npm beta platform: ${target}.`,
         "",
-        "This beta currently supports macOS arm64/x64, Linux arm64/x64, and Windows x64.",
-        "On unsupported Windows setups, WSL can use the Linux package.",
+        "This beta currently supports macOS arm64/x64 and Linux arm64/x64.",
+        "Windows users should use WSL during beta.",
         "",
         "Docs: https://usekairn.com/docs/install-and-update"
       ].join("\n")
