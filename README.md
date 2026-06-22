@@ -12,7 +12,7 @@ For a full map of the current layers and data flow, see `docs/kairn_architecture
 
 ## Install And Guided Setup
 
-Kairn's beta-friendly distribution path is npm first because it works across macOS, Linux, and Windows with one command. For public beta, the `kairn` npm package is a small launcher that resolves a platform-specific binary package. Homebrew and other native package managers can come later.
+Kairn's beta-friendly distribution path is npm first because it works across supported macOS and Linux targets with one command. Windows users should use WSL during beta while the native Windows binary path is hardened. For public beta, the `kairn` npm package is a small launcher that resolves a platform-specific binary package. Homebrew and other native package managers can come later.
 
 Requirements:
 
@@ -96,7 +96,7 @@ npm uninstall -g usekairn
 
 `setup remove` deletes Kairn-owned Codex hooks, Claude hooks, MCP config, and the Kairn block in `AGENTS.md` while preserving unrelated user config. Without `--delete-state`, it keeps `.kairn/` local indexes, metrics, and session ledger data but disables telemetry upload. With `--delete-state`, it removes `.kairn/` too.
 
-On Windows, the wizard defaults to a safe setup index that avoids WASM AST parsing during first setup. If native indexing still misbehaves, run `kairn init --no-index`, then use `kairn index refresh --safe --root <repo>` or WSL as a fallback.
+On Windows, use WSL during beta. Native Windows packaging is not part of the required public beta matrix until the `.exe` build path is consistently fast and reliable.
 
 Homebrew, Winget, and signed native installers are packaging targets, not the first beta path. They are useful once the npm binary path, hook review flow, MCP setup, and `kairn doctor` checks are stable on other machines.
 

@@ -17,7 +17,6 @@ The public `usekairn` npm package must stay a small launcher. It should not publ
 - `usekairn-darwin-x64`
 - `usekairn-linux-arm64`
 - `usekairn-linux-x64`
-- `usekairn-win32-x64`
 
 The launcher has no install-time download behavior. If the platform package is missing, it prints the exact reinstall command and exits.
 
@@ -40,13 +39,13 @@ Smoke install passed on macOS arm64. `kairn --version` reported `0.1.2`, target 
 
 npm also assigned `latest` to `0.1.2` during the first publish even though the publish command used `--tag beta`. Keep docs and beta emails pointed at `usekairn@beta`; do not advertise default `npm install -g usekairn` until the release is intentionally promoted.
 
-Intel Mac and native Windows are not published in `0.1.2`. The package stubs and CI smoke coverage are in place for the next beta version; publish them only after their platform jobs pass from packed tarballs.
+Intel Mac is covered by CI and should be published in the next beta version. Native Windows is not part of the required beta matrix yet because the `.exe` build path is too slow on hosted CI. Windows users should use WSL during beta.
 
 ## GitHub Actions Policy
 
 Normal development should go through pull requests into `main`. The `ci` workflow verifies source tests, typecheck, build, npm package metadata, and packed-install smoke across supported platform targets. A merge to `main` should not automatically publish npm packages.
 
-Beta releases use the manual `npm beta binary packages` workflow. That workflow builds platform tarballs, stages package artifacts, validates the binary/runtime assets, and smokes install from packed tarballs. Publish only after the workflow passes on every platform intended for that beta version.
+Beta releases use the manual `npm beta binary packages` workflow. That workflow builds platform tarballs, stages package artifacts, validates the binary/runtime assets, and smokes install from packed tarballs. Publish only after the workflow passes on every platform intended for that beta version. For the current public beta, the required platform set is macOS arm64/x64 and Linux arm64/x64.
 
 The intended release sequence is:
 

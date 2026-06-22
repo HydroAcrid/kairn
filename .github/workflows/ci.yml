@@ -59,14 +59,7 @@ jobs:
             target: linux-arm64
             binary: kairn
             package: usekairn-linux-arm64
-          - os: windows-latest
-            target: win32-x64
-            binary: kairn.exe
-            package: usekairn-win32-x64
     steps:
-      - if: runner.os == 'Windows'
-        shell: bash
-        run: git config --global core.longpaths true
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
