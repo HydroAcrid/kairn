@@ -31,11 +31,11 @@ Published on 2026-06-19:
 
 Next beta release target:
 
-- `usekairn@0.1.3`
-- `usekairn-darwin-arm64@0.1.3`
-- `usekairn-darwin-x64@0.1.3`
-- `usekairn-linux-x64@0.1.3`
-- `usekairn-linux-arm64@0.1.3`
+- `usekairn@0.1.4`
+- `usekairn-darwin-arm64@0.1.4`
+- `usekairn-darwin-x64@0.1.4`
+- `usekairn-linux-x64@0.1.4`
+- `usekairn-linux-arm64@0.1.4`
 
 The verified public install path is:
 
@@ -47,7 +47,7 @@ Smoke install passed on macOS arm64. `kairn --version` reported `0.1.2`, target 
 
 npm also assigned `latest` to `0.1.2` during the first publish even though the publish command used `--tag beta`. Keep docs and beta emails pointed at `usekairn@beta`; do not advertise default `npm install -g usekairn` until the release is intentionally promoted.
 
-Intel Mac is covered by CI and should be published in `0.1.3`. Native Windows is not part of the required beta matrix yet because the `.exe` build path is too slow on hosted CI. Windows users should use WSL during beta.
+Intel Mac is covered by CI and should be published in `0.1.4`. Native Windows is not part of the required beta matrix yet because the `.exe` build path is too slow on hosted CI. Windows users should use WSL during beta.
 
 ## GitHub Actions Policy
 
@@ -109,11 +109,11 @@ Publish platform packages first, then the launcher last. Use a fresh OTP if the 
 ```bash
 OTP=123456
 
-npm publish .release/manual-publish/npm-platform-darwin-arm64/usekairn-darwin-arm64-0.1.3.tgz --tag beta --otp "$OTP"
-npm publish .release/manual-publish/npm-platform-darwin-x64/usekairn-darwin-x64-0.1.3.tgz --tag beta --otp "$OTP"
-npm publish .release/manual-publish/npm-platform-linux-x64/usekairn-linux-x64-0.1.3.tgz --tag beta --otp "$OTP"
-npm publish .release/manual-publish/npm-platform-linux-arm64/usekairn-linux-arm64-0.1.3.tgz --tag beta --otp "$OTP"
-npm publish .release/manual-publish/npm-launcher-usekairn/usekairn-0.1.3.tgz --tag beta --otp "$OTP"
+npm publish .release/manual-publish/npm-platform-darwin-arm64/usekairn-darwin-arm64-0.1.4.tgz --tag beta --otp "$OTP"
+npm publish .release/manual-publish/npm-platform-darwin-x64/usekairn-darwin-x64-0.1.4.tgz --tag beta --otp "$OTP"
+npm publish .release/manual-publish/npm-platform-linux-x64/usekairn-linux-x64-0.1.4.tgz --tag beta --otp "$OTP"
+npm publish .release/manual-publish/npm-platform-linux-arm64/usekairn-linux-arm64-0.1.4.tgz --tag beta --otp "$OTP"
+npm publish .release/manual-publish/npm-launcher-usekairn/usekairn-0.1.4.tgz --tag beta --otp "$OTP"
 ```
 
 Verify the beta packages:
@@ -185,7 +185,7 @@ Use a temp global prefix and the packed local packages:
 
 ```bash
 export NPM_CONFIG_PREFIX="$(mktemp -d)"
-npm install -g ./usekairn-0.1.3.tgz ./usekairn-darwin-arm64-0.1.3.tgz
+npm install -g ./usekairn-0.1.4.tgz ./usekairn-darwin-arm64-0.1.4.tgz
 kairn --version
 kairn doctor --root /tmp
 kairn index refresh --root /path/to/fixture --json
