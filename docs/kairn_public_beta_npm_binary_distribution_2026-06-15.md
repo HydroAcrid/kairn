@@ -176,7 +176,7 @@ kairn index refresh --root /path/to/fixture --json
 Then run a fixture setup and MCP smoke before publishing:
 
 ```bash
-kairn setup wizard --root /path/to/fixture --choice mcp --yes --no-index
+kairn init --root /path/to/fixture --choice mcp --yes --no-index
 kairn bench mcp-smoke --root /path/to/fixture --task "Find the main source file" --json
 ```
 

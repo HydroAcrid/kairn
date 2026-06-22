@@ -495,7 +495,7 @@ function buildNextSteps(
   },
   rootPath: string
 ): string[] {
-  const steps: string[] = [];
+  const steps: string[] = [`Run: kairn doctor --root ${shellPath(rootPath)}`];
   if (answers.targets.includes("codex")) {
     steps.push(`For terminal Codex work, run: kairn codex --root ${shellPath(rootPath)}`);
     steps.push("Inside Codex, review/approve the Kairn hook if prompted.");
@@ -515,9 +515,6 @@ function buildNextSteps(
   }
   if (answers.targets.includes("generic")) {
     steps.push("Copy the generated clientConfig/serverConfig into your MCP client's config.");
-  }
-  if (answers.targets.includes("doctor")) {
-    steps.push("Run: kairn doctor --root <repo>");
   }
   steps.push("Run: kairn bench mcp-smoke --root <repo> --task \"Find the main source files\" --json to verify MCP transport.");
   steps.push("Run: kairn beta report --root <repo> after a few sessions to see whether Kairn helped or stayed silent.");

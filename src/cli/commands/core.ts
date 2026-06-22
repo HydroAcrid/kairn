@@ -13,14 +13,56 @@ import { printContextPrime } from "../formatters.js";
 import { codexExecArgs, codexInteractiveArgs, parsePositiveInt, waitForShutdown, withRuntime } from "../helpers.js";
 import { printContextResponse, printJson } from "../output.js";
 import { writeCodexSetup } from "../setup/codexSetup.js";
+import { formatSetupWizardResult, runSetupWizard, type SetupWizardChoice, type SetupWizardIndexMode } from "../setup/wizard.js";
 
 export function registerCoreCommands(program: Command): void {
   program
     .command("init")
-    .description("Initialize Kairn state in a target repo.")
+    .description("Set up Kairn in a target repo.")
     .option("--root <path>", "target repository root", process.cwd())
+    .addOption(new Option("--choice <choice>", "non-interactive setup choice").choices(["codex", "mcp", "both", "hybrid", "doctor"]))
+    .option("--targets <targets>", "comma-separated setup targets: codex,claude-code,copilot-cli,gemini-cli,vscode,generic")
+    .option("--yes", "accept defaults for non-interactive setup")
+    .option("--no-index", "skip indexing during setup")
+    .addOption(new Option("--index-mode <mode>", "indexing mode during setup").choices(["safe", "full", "skip"]))
+    .option("--state-only", "only initialize Kairn local state and index, without installing agent integrations")
+    .option("--telemetry", "enable opt-in sanitized telemetry upload")
+    .option("--telemetry-endpoint <url>", "telemetry ingest endpoint override")
     .option("--json", "print JSON output")
-    .action(async (options: { root: string; json?: boolean }) => {
+    .action(async (options: {
+      root: string;
+      choice?: SetupWizardChoice;
+      targets?: string;
+      yes?: boolean;
+      index?: boolean;
+      indexMode?: SetupWizardIndexMode;
+      stateOnly?: boolean;
+      telemetry?: boolean;
+      telemetryEndpoint?: string;
+      json?: boolean;
+    }, command: Command) => {
+      if (!options.stateOnly) {
+        const indexSource = command.getOptionValueSource("index");
+        const indexModeSource = command.getOptionValueSource("indexMode");
+        const indexMode = indexModeSource ? options.indexMode : undefined;
+        const result = await runSetupWizard({
+          root: options.root,
+          choice: options.choice,
+          targets: options.targets,
+          yes: options.yes,
+          index: indexMode === "skip" ? false : indexSource === "default" ? undefined : options.index,
+          indexMode,
+          telemetry: options.telemetry,
+          telemetryEndpoint: options.telemetryEndpoint
+        });
+        if (options.json) {
+          printJson(result);
+          return;
+        }
+        process.stdout.write(formatSetupWizardResult(result));
+        return;
+      }
+
       await withRuntime(options.root, async (runtime) => {
         const result = await runtime.init();
         if (options.json) {
