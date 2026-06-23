@@ -1017,7 +1017,7 @@ describe("KairnRuntime", () => {
     }
   });
 
-  it("keeps pinned topic reorder guardrails to topic owner files", async () => {
+  it("suppresses pinned topic reorder guardrails when the exact owner surface is already known", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-runtime-topic-ordering-"));
     fs.mkdirSync(path.join(root, "public/src/client/category"), { recursive: true });
     fs.mkdirSync(path.join(root, "public/src/client/account"), { recursive: true });
@@ -1044,16 +1044,28 @@ describe("KairnRuntime", () => {
           "Fix the issue in production source only. Avoid broad scans once the relevant source surface is known."
         ].join("\n"),
         budget: 1200,
-        source: "bench"
+        source: "bench",
+        editScopeHints: {
+          allowedDiffScopes: [
+            { file: "src/topics/tools.js", allowWholeFile: true },
+            { file: "src/socket.io/topics/tools.js", allowWholeFile: true },
+            { file: "public/src/client/category/tools.js", allowWholeFile: true }
+          ]
+        }
       });
 
       expect(prime.contextDecision?.taskShapeSignal).toBe("topic_ordering");
       expect(prime.contextDecision?.requiredSurface).toBe("paired_contract");
-      expect(prime.files).toEqual([
-        "src/topics/tools.js",
-        "src/socket.io/topics/tools.js",
-        "public/src/client/category/tools.js"
-      ]);
+      expect(prime.contextDecision?.action).toBe("suppress");
+      expect(prime.contextDecision?.recommendedDelivery).toBe("none");
+      expect(prime.metadata?.guardrailVariant).toBeUndefined();
+      expect(prime.metadata?.deliveryTrace).toMatchObject({
+        action: "suppress",
+        taskShapeSignal: "topic_ordering",
+        requiredSurface: "paired_contract",
+        emittedFileCount: 0
+      });
+      expect(prime.files).toEqual([]);
       expect(prime.editScope?.initialEditFiles).toEqual([
         "src/topics/tools.js",
         "src/socket.io/topics/tools.js",
@@ -1063,13 +1075,17 @@ describe("KairnRuntime", () => {
       expect(prime.files).not.toContain("public/src/client/topic.js");
       expect(prime.content).not.toContain("public/src/client/account/topics.js");
       expect(prime.content).not.toContain("public/src/client/topic.js");
+      expect(prime.content).toContain("# Kairn Prime Suppressed");
+      expect(prime.content).not.toContain("# Kairn Topic Ordering Scope");
+      expect(prime.content).not.toContain("Start scope:");
+      expect(prime.content).not.toContain("Edit only:");
     } finally {
       runtime.close();
       fs.rmSync(root, { recursive: true, force: true });
     }
   });
 
-  it("keeps collection-name validation guardrails to authoritative validation files", async () => {
+  it("suppresses collection-name validation guardrails when the exact validation surface is already known", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-runtime-collection-validation-"));
     fs.mkdirSync(path.join(root, "lib/ansible/galaxy/dependency_resolution"), { recursive: true });
     fs.mkdirSync(path.join(root, "lib/ansible/utils/collection_loader"), { recursive: true });
@@ -1091,15 +1107,27 @@ describe("KairnRuntime", () => {
           "Fix production source only."
         ].join(" "),
         budget: 900,
-        source: "bench"
+        source: "bench",
+        editScopeHints: {
+          allowedDiffScopes: [
+            { file: "lib/ansible/utils/collection_loader/_collection_finder.py", allowWholeFile: true },
+            { file: "lib/ansible/galaxy/dependency_resolution/dataclasses.py", allowWholeFile: true }
+          ]
+        }
       });
 
       expect(prime.contextDecision?.taskShapeSignal).toBe("collection_name_validation");
       expect(prime.contextDecision?.requiredSurface).toBe("paired_contract");
-      expect(prime.files).toEqual([
-        "lib/ansible/utils/collection_loader/_collection_finder.py",
-        "lib/ansible/galaxy/dependency_resolution/dataclasses.py"
-      ]);
+      expect(prime.contextDecision?.action).toBe("suppress");
+      expect(prime.contextDecision?.recommendedDelivery).toBe("none");
+      expect(prime.metadata?.guardrailVariant).toBeUndefined();
+      expect(prime.metadata?.deliveryTrace).toMatchObject({
+        action: "suppress",
+        taskShapeSignal: "collection_name_validation",
+        requiredSurface: "paired_contract",
+        emittedFileCount: 0
+      });
+      expect(prime.files).toEqual([]);
       expect(prime.editScope?.initialEditFiles).toEqual([
         "lib/ansible/utils/collection_loader/_collection_finder.py",
         "lib/ansible/galaxy/dependency_resolution/dataclasses.py"
@@ -1110,13 +1138,17 @@ describe("KairnRuntime", () => {
       expect(prime.editScope?.readOnlyFiles).not.toContain("lib/ansible/utils/fqcn.py");
       expect(prime.content).not.toContain("lib/ansible/module_utils/facts/namespace.py");
       expect(prime.content).not.toContain("lib/ansible/utils/fqcn.py");
+      expect(prime.content).toContain("# Kairn Prime Suppressed");
+      expect(prime.content).not.toContain("# Kairn Collection Scope");
+      expect(prime.content).not.toContain("Start scope:");
+      expect(prime.content).not.toContain("Edit only:");
     } finally {
       runtime.close();
       fs.rmSync(root, { recursive: true, force: true });
     }
   });
 
-  it("suppresses first-turn gRPC context status policy when failure evidence is missing", async () => {
+  it("emits compact gRPC context status policy scope when official multi-file scope is known", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-runtime-grpc-status-"));
     fs.mkdirSync(path.join(root, "internal/cmd"), { recursive: true });
     fs.mkdirSync(path.join(root, "internal/server/auth"), { recursive: true });
@@ -1147,18 +1179,67 @@ describe("KairnRuntime", () => {
         }
       });
 
-      expect(prime.contextDecision?.action).toBe("suppress");
+      expect(prime.contextDecision?.action).toBe("shrink");
       expect(prime.contextDecision?.taskShapeSignal).toBe("grpc_error_policy");
-      expect(prime.contextDecision?.requiredSurface).toBe("evidence_needed");
-      expect(prime.metadata?.guardrailVariant).toBeUndefined();
-      expect(prime.files).toEqual([]);
+      expect(prime.contextDecision?.requiredSurface).toBe("paired_contract");
+      expect(prime.metadata?.guardrailVariant).toBe("grpc_error_policy_compact");
+      expect(prime.files).toEqual(expect.arrayContaining([
+        "internal/cmd/grpc.go",
+        "internal/server/auth/middleware.go",
+        "internal/server/middleware/grpc/middleware.go"
+      ]));
+      expect(prime.files).toHaveLength(3);
       expect(prime.editScope?.initialEditFiles).toEqual([
         "internal/cmd/grpc.go",
         "internal/server/auth/middleware.go",
         "internal/server/middleware/grpc/middleware.go"
       ]);
-      expect(prime.content).toContain("# Kairn Prime Suppressed");
+      expect(prime.content).toContain("# Kairn gRPC Status Scope");
       expect(prime.content).not.toContain("internal/cmd/auth.go");
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("does not suppress gRPC policy scope when prompt names multiple production files", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-runtime-grpc-status-prompt-"));
+    fs.mkdirSync(path.join(root, "internal/cmd"), { recursive: true });
+    fs.mkdirSync(path.join(root, "internal/server/auth"), { recursive: true });
+    fs.mkdirSync(path.join(root, "internal/server/middleware/grpc"), { recursive: true });
+    fs.writeFileSync(path.join(root, "internal/cmd/grpc.go"), "package cmd\nfunc NewGRPCServer() {}\n");
+    fs.writeFileSync(path.join(root, "internal/server/auth/middleware.go"), "package auth\nfunc Middleware() {}\n");
+    fs.writeFileSync(path.join(root, "internal/server/middleware/grpc/middleware.go"), "package grpc\nfunc ErrorUnaryInterceptor() {}\n");
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "Title: gRPC context cancellation maps to the wrong status.",
+          "Context cancellation and deadline exceeded errors are incorrectly classified as Internal or Unauthenticated.",
+          "Relevant production files:",
+          "internal/cmd/grpc.go",
+          "internal/server/auth/middleware.go",
+          "internal/server/middleware/grpc/middleware.go",
+          "Fix production source only. Do not edit tests."
+        ].join("\n"),
+        budget: 900,
+        source: "codex"
+      });
+
+      expect(prime.contextDecision?.action).toBe("shrink");
+      expect(prime.contextDecision?.taskShapeSignal).toBe("grpc_error_policy");
+      expect(prime.contextDecision?.requiredSurface).toBe("paired_contract");
+      expect(prime.metadata?.guardrailVariant).toBe("grpc_error_policy_compact");
+      expect(prime.files).toEqual(expect.arrayContaining([
+        "internal/cmd/grpc.go",
+        "internal/server/auth/middleware.go",
+        "internal/server/middleware/grpc/middleware.go"
+      ]));
+      expect(prime.files).toHaveLength(3);
+      expect(prime.content).toContain("# Kairn gRPC Status Scope");
+      expect(prime.content).toContain("Required edit surfaces");
+      expect(prime.content).not.toContain("Kairn Prime Suppressed");
     } finally {
       runtime.close();
       fs.rmSync(root, { recursive: true, force: true });
@@ -1475,21 +1556,46 @@ describe("KairnRuntime", () => {
           "Add linear benchmark generator for progressive request rate configurations.",
           "New file: lib/benchmark/linear.go.",
           "The Linear struct and GetBenchmark method should produce benchmark configurations.",
+          "New file: lib/benchmark/linear_test.go.",
+          "Description: Unit tests that assert the stepping behavior and configuration validation.",
           "Selected verification tests from SWE-Bench Pro metadata: TestGetBenchmark, TestValidateConfig.",
           "Fix production source only. Avoid broad scans once the relevant source surface is known."
         ].join(" "),
         budget: 900,
-        source: "codex"
+        source: "codex",
+        editScopeHints: {
+          allowedDiffScopes: [
+            { file: "lib/benchmark/benchmark.go", allowWholeFile: true },
+            { file: "lib/benchmark/linear.go", allowWholeFile: true },
+            { file: "lib/client/bench.go", allowWholeFile: true },
+            { file: "tool/tsh/tsh.go", allowWholeFile: true }
+          ]
+        }
       });
 
       expect(prime.contextDecision?.taskShapeSignal).toBe("benchmark_generator");
       expect(prime.contextDecision?.requiredSurface).toBe("paired_contract");
+      expect(prime.files).toContain("lib/benchmark/linear.go");
       expect(prime.files).toContain("lib/client/bench.go");
       expect(prime.files).toContain("tool/tsh/tsh.go");
+      expect(prime.files).not.toContain("lib/benchmark/linear_test.go");
+      expect(prime.editScope?.initialEditFiles).toContain("lib/benchmark/linear.go");
+      expect(prime.editScope?.initialEditFiles).not.toContain("lib/benchmark/linear_test.go");
+      expect(prime.content).not.toMatch(/Required (?:backend )?edits?:[^\n]*lib\/benchmark\/linear_test\.go/);
+      expect(prime.content).not.toMatch(/Edit scope:[^\n]*lib\/benchmark\/linear_test\.go/);
       expect(prime.files).not.toContain("tool/tctl/main.go");
       expect(prime.files).not.toContain("tool/teleport/main.go");
       expect(prime.editScope?.initialEditFiles).not.toContain("tool/tctl/main.go");
       expect(prime.editScope?.initialEditFiles).not.toContain("tool/teleport/main.go");
+      expect(prime.content).toContain("# Kairn Benchmark Generator Scope");
+      expect(prime.content).toContain("Core edit now: lib/benchmark/linear.go");
+      expect(prime.content).toMatch(/Wire only after core implementation: lib\/client\/bench\.go .*tool\/tsh\/tsh\.go/);
+      expect(prime.content).toContain("edit the core generator now");
+      expect(prime.content).toContain("leave a correct core generator patch rather than no patch");
+      expect(prime.content).not.toContain("Required source edits:");
+      expect(prime.content).not.toContain("Required backend edits:");
+      expect(prime.content).not.toContain("Backend parity:");
+      expect(prime.content).not.toContain("datastore backend");
     } finally {
       runtime.close();
       fs.rmSync(root, { recursive: true, force: true });

@@ -6,7 +6,7 @@ import { startKairnDaemon } from "../../daemon/server.js";
 import { formatImpactReportMarkdown, formatImpactStats } from "../../metrics/impact.js";
 import { startMcpServer } from "../../server/mcp.js";
 import { queueAndFlushTelemetrySnapshot } from "../../telemetry/autoFlush.js";
-import type { CodexSetupMode, HookOutputProfile, IndexStateStats, PrimeProfile } from "../../types.js";
+import type { CodexSetupMode, ContextPrime, HookOutputProfile, IndexStateStats, PrimeProfile } from "../../types.js";
 import { commandInvocation, commandSpawnInvocation } from "../../utils/command.js";
 import {
   buildCodexNoDiffRecoveryPrompt,
@@ -17,10 +17,30 @@ import {
   shouldRetryCodexPartialScope
 } from "../codexRecovery.js";
 import { printContextPrime } from "../formatters.js";
-import { codexExecArgs, codexInteractiveArgs, parsePositiveInt, waitForShutdown, withRuntime } from "../helpers.js";
+import { codexExecArgs, codexInteractiveArgs, parsePositiveInt, waitForShutdown, withKairnInternalStateHidden, withRuntime } from "../helpers.js";
 import { printContextResponse, printJson } from "../output.js";
 import { writeCodexSetup } from "../setup/codexSetup.js";
 import { formatSetupWizardResult, runSetupWizard, type SetupWizardChoice, type SetupWizardIndexMode } from "../setup/wizard.js";
+
+export function formatCodexEditScopeReminder(prime: ContextPrime | undefined): string | undefined {
+  if (!prime?.editScope || prime.editScope.strictBoundary !== true || prime.editScope.initialEditFiles.length === 0) return undefined;
+  if (typeof prime.metadata?.guardrailVariant === "string") return undefined;
+  const files = prime.editScope.initialEditFiles.join(", ");
+  const taskShape = prime.contextDecision?.taskShapeSignal;
+  if (taskShape === "topic_ordering" || taskShape === "collection_name_validation") {
+    return [
+      "Kairn focused source candidates for this turn:",
+      `- Start with: ${files}`,
+      "- Patch the smallest necessary production surface first; touch companions only when the behavior contract requires it.",
+      "- Keep tests, docs, generated files, and unrelated sibling source out of scope."
+    ].join("\n");
+  }
+  return [
+    "Kairn edit scope is authoritative for this turn:",
+    `- Edit only: ${files}`,
+    "- If the task appears to require another source file, keep it read-only and report the missing evidence instead of editing it."
+  ].join("\n");
+}
 
 export function registerCoreCommands(program: Command): void {
   program
@@ -396,13 +416,7 @@ export function registerCoreCommands(program: Command): void {
             })
           : undefined;
         const shouldInjectPrime = Boolean(prime && shouldInjectPrimeIntoCodexPrompt(prime.contextDecision?.action));
-        const strictBoundaryReminder = prime?.editScope?.strictBoundary === true && (prime.editScope.initialEditFiles?.length ?? 0) > 0
-          ? [
-              "Kairn edit scope is authoritative for this turn:",
-              `- Edit only: ${prime.editScope.initialEditFiles.join(", ")}`,
-              "- If the task appears to require another source file, keep it read-only and report the missing evidence instead of editing it."
-            ].join("\n")
-          : undefined;
+        const strictBoundaryReminder = formatCodexEditScopeReminder(prime);
         const prompt = interactive
           ? undefined
           : shouldInjectPrime
@@ -471,11 +485,14 @@ export function registerCoreCommands(program: Command): void {
             );
           }
           const invocation = commandSpawnInvocation(commandInvocation(options.codexCommand, result.args));
-          const completed = spawnSync(invocation.command, invocation.args, {
-            cwd: result.rootPath,
-            env: invocation.env ? { ...process.env, ...invocation.env } : undefined,
-            stdio: "inherit"
-          });
+          const hideInternalState = !interactive && !shouldInjectPrime && !bindHooks;
+          const completed = withKairnInternalStateHidden(result.rootPath, hideInternalState, () =>
+            spawnSync(invocation.command, invocation.args, {
+              cwd: result.rootPath,
+              env: invocation.env ? { ...process.env, ...invocation.env } : undefined,
+              stdio: "inherit"
+            })
+          );
           let exitCode = completed.status ?? (completed.error ? 1 : 0);
           if (!interactive && task.length > 0) {
             let changedFiles = relevantWorkspaceDiffFiles(result.rootPath);

@@ -704,9 +704,11 @@ export class KairnRuntime {
           ...(context.rankedFiles ?? []).map((file) => file.path)
         ]).filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
       : [];
-    const officialPatchScopeFiles = contextDecision.taskFrame === "official_patch"
-      ? uniquePaths((input.editScopeHints?.allowedDiffScopes ?? []).map((scope) => scope.file).filter(isLikelyProductionSourceFile))
-      : [];
+    const officialPatchScopeFiles = uniquePaths(
+      (input.editScopeHints?.allowedDiffScopes ?? [])
+        .map((scope) => scope.file)
+        .filter(isLikelyProductionSourceFile)
+    );
     const hasOfficialMultiFilePatchScope = officialPatchScopeFiles.length > 1;
     const promptMentionsMultipleProductionSourceFiles = promptMentionedSourceFiles.length > 1;
     const officialSingleFilePatchScope =
@@ -807,14 +809,32 @@ export class KairnRuntime {
       failureFilesForPolicy.length === 0;
     const grpcErrorPolicyTask = hasGrpcErrorPolicyScope(resolvedTask);
     const strictMultiFileEditScopeHint = (input.editScopeHints?.allowedDiffScopes ?? []).filter((scope) => isLikelyProductionSourceFile(scope.file)).length > 1;
+    const concreteGrpcPolicyFileCount = grpcErrorPolicySourceFiles.filter(isLikelyProductionSourceFile).length;
     const suppressGrpcErrorPolicyGuardrail =
-      (contextDecision.taskFrame === "official_patch" || strictMultiFileEditScopeHint) &&
+      contextDecision.taskFrame === "official_patch" &&
+      !strictMultiFileEditScopeHint &&
+      concreteGrpcPolicyFileCount <= 1 &&
+      !promptMentionsMultipleProductionSourceFiles &&
       grpcErrorPolicyTask &&
+      !readOnlySourceRouting &&
+      failureFilesForPolicy.length === 0;
+    const suppressCollectionNameValidationGuardrail =
+      (contextDecision.taskShapeSignal === "collection_name_validation" || hasCollectionNameValidationScope(resolvedTask)) &&
+      collectionNameValidationSourceFiles.filter(isLikelyProductionSourceFile).length >= 2 &&
+      !readOnlySourceRouting &&
+      failureFilesForPolicy.length === 0;
+    const suppressTopicOrderingGuardrail =
+      (contextDecision.taskShapeSignal === "topic_ordering" || hasTopicOrderingScope(resolvedTask)) &&
+      topicOrderingSourceFiles.filter(isLikelyProductionSourceFile).length >= 3 &&
       !readOnlySourceRouting &&
       failureFilesForPolicy.length === 0;
     const effectiveAction = suppressNarrowPackageParserGuardrail
       ? "suppress"
       : suppressGrpcErrorPolicyGuardrail
+      ? "suppress"
+      : suppressCollectionNameValidationGuardrail
+      ? "suppress"
+      : suppressTopicOrderingGuardrail
       ? "suppress"
       : forceMinimalSourceFocus || forcePromptMentionedMultiFileScope
       ? "shrink"
@@ -935,7 +955,12 @@ export class KairnRuntime {
     const effectiveContextDecision = {
       ...contextDecision,
       ...(narrowPackageParserTask ? { taskShapeSignal: "narrow_package_parser" as const, requiredSurface: "single_file" as const } : {}),
-      ...(grpcErrorPolicyTask ? { taskShapeSignal: "grpc_error_policy" as const, requiredSurface: "evidence_needed" as const } : {}),
+      ...(grpcErrorPolicyTask
+        ? {
+            taskShapeSignal: "grpc_error_policy" as const,
+            requiredSurface: suppressGrpcErrorPolicyGuardrail ? "evidence_needed" as const : "paired_contract" as const
+          }
+        : {}),
       ...(forceCollectionNameValidationScope ? { taskShapeSignal: "collection_name_validation" as const, requiredSurface: "paired_contract" as const } : {}),
       ...(officialSingleFilePatchScope || officialPromptSingleFilePatchScope || governorSingleFilePatchScope
         ? { requiredSurface: "single_file" as const }
@@ -1145,7 +1170,7 @@ export class KairnRuntime {
       : baseEditScope;
     const officialSizedGuardrail =
       effectiveAction === "shrink" &&
-      editScope?.strictBoundary === true &&
+      (editScope?.strictBoundary === true || forceGrpcErrorPolicyScope) &&
       (
         scopeOnlyGuardrail ||
         effectiveContextDecision.taskShapeSignal === "lifecycle_policy" ||
@@ -5021,14 +5046,21 @@ function promptNamedSourceFilesFromKnownFiles(files: FileRecord[], query: string
 }
 
 function promptMentionedProductionSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  const known = new Set(files.map((file) => normalizeRelativePath(file.path).toLowerCase()));
   const paths = new Set<string>();
-  for (const match of query.replaceAll("\\", "/").matchAll(/\b[A-Za-z0-9_.@+~/-]+?\.(?:[cm]?[jt]sx?|pyi?|go|java|kt|kts|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|rb|php|cs)\b/g)) {
-    const filePath = normalizeRelativePath(match[0] ?? "");
-    if (!filePath.includes("/")) continue;
-    if (!isLikelyProductionSourceFile(filePath)) continue;
-    if (known.size > 0 && !known.has(filePath.toLowerCase())) continue;
-    paths.add(filePath);
+  const sourceLines = query
+    .replaceAll("\\", "/")
+    .split(/\r?\n/)
+    .filter((line) => {
+      const normalized = line.toLowerCase();
+      return !/selected (?:verification )?tests? from swe[- ]bench pro metadata/.test(normalized);
+    });
+  for (const line of sourceLines) {
+    for (const match of line.matchAll(/\b[A-Za-z0-9_.@+~/-]+?\.(?:[cm]?[jt]sx?|pyi?|go|java|kt|kts|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|rb|php|cs)\b/g)) {
+      const filePath = normalizeRelativePath(match[0] ?? "");
+      if (!filePath.includes("/")) continue;
+      if (!isLikelyProductionSourceFile(filePath)) continue;
+      paths.add(filePath);
+    }
   }
   return uniquePaths([...paths]);
 }

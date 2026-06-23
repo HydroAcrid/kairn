@@ -115,6 +115,42 @@ describe("benchmark campaign harness", () => {
     expect(second.rows[0]?.entryId).toBe("proxy-app");
   });
 
+  it("serializes proxy-only campaigns because proxy runtime work is CPU-bound in-process", async () => {
+    const root = createFixtureRepo();
+    const dir = tempDir("kairn-campaign-proxy-parallel-");
+    const manifestPath = writeManifest(dir, {
+      id: "proxy-parallel",
+      name: "Proxy Parallel Campaign",
+      entries: [
+        {
+          id: "proxy-app",
+          kind: "proxy",
+          root,
+          task: "Fix src/app.ts dashboard rendering without touching tests.",
+          budget: 700
+        },
+        {
+          id: "proxy-user",
+          kind: "proxy",
+          root,
+          task: "Fix src/user.ts parsing without touching tests.",
+          budget: 700
+        }
+      ]
+    });
+
+    const report = await runCampaign({
+      manifestPath,
+      outDir: path.join(dir, "out"),
+      stage: "proxy",
+      parallel: 3,
+      dryRun: true
+    });
+
+    expect(report.parallel).toBe(1);
+    expect(report.artifacts).toHaveLength(2);
+  });
+
   it("runs the mock live fixture campaign and records clean savings rows", async () => {
     const dir = tempDir("kairn-campaign-live-");
     const manifestPath = path.resolve("examples/bench/campaign-fixtures/mock-live-campaign.json");

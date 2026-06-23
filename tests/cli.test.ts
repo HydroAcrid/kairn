@@ -10,12 +10,119 @@ import {
   shouldRetryCodexNoDiff,
   shouldRetryCodexPartialScope
 } from "../src/cli/codexRecovery.js";
-import { codexExecArgs } from "../src/cli/helpers.js";
+import { formatCodexEditScopeReminder } from "../src/cli/commands/core.js";
+import { codexExecArgs, withKairnInternalStateHidden } from "../src/cli/helpers.js";
 import { createFixtureRepo } from "./helpers.js";
 
 const CLI = ["tsx", "src/cli.ts"];
 
 describe("CLI", () => {
+  it("hides Kairn internal state from git-aware agent scans", () => {
+    const root = createFixtureRepo();
+    const excludePath = path.join(root, ".git", "info", "exclude");
+
+    execFileSync(CLI[0]!, [...CLI.slice(1), "init", "--state-only", "--root", root], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+    execFileSync(CLI[0]!, [...CLI.slice(1), "start", "Check routing", "--root", root, "--json"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+
+    const exclude = fs.readFileSync(excludePath, "utf8");
+    expect(exclude.match(/^\.kairn\/$/gm)).toHaveLength(1);
+  });
+
+  it("temporarily moves Kairn internal state out of the working tree for no-op Codex runs", () => {
+    const root = createFixtureRepo();
+    const stateDir = path.join(root, ".kairn");
+    fs.mkdirSync(stateDir, { recursive: true });
+    fs.writeFileSync(path.join(stateDir, "kairn.sqlite"), "state");
+
+    let hiddenEntries: string[] = [];
+    withKairnInternalStateHidden(root, true, () => {
+      expect(fs.existsSync(stateDir)).toBe(false);
+      hiddenEntries = fs.readdirSync(path.join(root, ".git")).filter((entry) => entry.startsWith("kairn-state-hidden-"));
+      expect(hiddenEntries).toHaveLength(1);
+    });
+
+    expect(fs.existsSync(path.join(stateDir, "kairn.sqlite"))).toBe(true);
+    for (const entry of hiddenEntries) {
+      expect(fs.existsSync(path.join(root, ".git", entry))).toBe(false);
+    }
+  });
+
+  it("keeps candidate paired scopes soft in Codex wrapper reminders", () => {
+    const reminder = formatCodexEditScopeReminder({
+      editScope: {
+        initialEditFiles: ["src/topics/tools.js", "src/socket.io/topics/tools.js"],
+        readOnlyFiles: [],
+        allowedExpansionTriggers: [],
+        forbiddenEditPatterns: [],
+        scopeConfidence: "high",
+        scopeSource: "official_harness",
+        reason: "test",
+        strictBoundary: true,
+        dynamic: true
+      },
+      contextDecision: {
+        taskShapeSignal: "topic_ordering"
+      }
+    } as any);
+
+    expect(reminder).toContain("Kairn focused source candidates");
+    expect(reminder).toContain("Start with: src/topics/tools.js, src/socket.io/topics/tools.js");
+    expect(reminder).not.toContain("Kairn edit scope is authoritative");
+    expect(reminder).not.toContain("Edit only:");
+  });
+
+  it("keeps required multi-surface scopes hard in Codex wrapper reminders", () => {
+    const reminder = formatCodexEditScopeReminder({
+      editScope: {
+        initialEditFiles: ["internal/cmd/grpc.go", "internal/server/auth/middleware.go"],
+        readOnlyFiles: [],
+        allowedExpansionTriggers: [],
+        forbiddenEditPatterns: [],
+        scopeConfidence: "high",
+        scopeSource: "official_harness",
+        reason: "test",
+        strictBoundary: true,
+        dynamic: true
+      },
+      contextDecision: {
+        taskShapeSignal: "grpc_error_policy"
+      }
+    } as any);
+
+    expect(reminder).toContain("Kairn edit scope is authoritative");
+    expect(reminder).toContain("Edit only: internal/cmd/grpc.go, internal/server/auth/middleware.go");
+  });
+
+  it("does not append duplicate wrapper reminders when a guardrail prime is already emitted", () => {
+    const reminder = formatCodexEditScopeReminder({
+      metadata: {
+        guardrailVariant: "topic_ordering_compact"
+      },
+      editScope: {
+        initialEditFiles: ["src/topics/tools.js", "src/socket.io/topics/tools.js"],
+        readOnlyFiles: [],
+        allowedExpansionTriggers: [],
+        forbiddenEditPatterns: [],
+        scopeConfidence: "high",
+        scopeSource: "official_harness",
+        reason: "test",
+        strictBoundary: true,
+        dynamic: true
+      },
+      contextDecision: {
+        taskShapeSignal: "topic_ordering"
+      }
+    } as any);
+
+    expect(reminder).toBeUndefined();
+  });
+
   it("supports init, start, context, diff, and compress", () => {
     const root = createFixtureRepo();
 

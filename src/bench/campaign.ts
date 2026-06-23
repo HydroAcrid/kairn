@@ -219,8 +219,9 @@ export async function runCampaign(options: CampaignRunOptions): Promise<Campaign
   fs.mkdirSync(outputs.rawDir, { recursive: true });
   fs.mkdirSync(outputs.workerPacketsDir, { recursive: true });
   fs.mkdirSync(outputs.workDir, { recursive: true });
-  const parallel = Math.max(1, Math.floor(options.parallel ?? manifest.defaults?.parallel ?? 3));
   const entries = manifest.entries.filter((entry) => entryMatchesStage(entry, stage)).filter((entry) => matchesOnly(entry, options.only));
+  const requestedParallel = Math.max(1, Math.floor(options.parallel ?? manifest.defaults?.parallel ?? 3));
+  const parallel = effectiveCampaignParallel(stage, entries, requestedParallel);
   const artifacts: CampaignArtifact[] = [];
   let paused = false;
   let pauseReasons: string[] = [];
@@ -586,6 +587,7 @@ async function runProxyEntry(manifest: CampaignManifest, entry: CampaignEntry): 
     const emittedFileCount = Array.isArray(prime.files) ? prime.files.length : 0;
     const initialEditFiles = Array.isArray(editScope?.initialEditFiles) ? stringArray(editScope.initialEditFiles) : [];
     const readOnlyFiles = Array.isArray(editScope?.readOnlyFiles) ? stringArray(editScope.readOnlyFiles) : [];
+    const deliveryAction = stringValue(deliveryTrace.action);
     const minExpectedHits = Math.max(
       0,
       Math.min(
@@ -594,12 +596,16 @@ async function runProxyEntry(manifest: CampaignManifest, entry: CampaignEntry): 
       )
     );
     const surfaceFiles = useExpectedFilesAsEditScope
-      ? uniqueStrings([...prime.files, ...readOnlyFiles])
+      ? uniqueStrings([
+          ...prime.files,
+          ...(deliveryAction === "suppress" ? initialEditFiles : []),
+          ...readOnlyFiles
+        ])
       : uniqueStrings([...prime.files, ...initialEditFiles, ...readOnlyFiles]);
     const expectedFilesMatched = expectedFilesForGate.filter((expectedFile) => surfaceFiles.some((file) => pathsMatch(file, expectedFile)));
     const estimatedDirectiveTokens = numberValue(deliveryTrace.estimatedDirectiveTokens) ?? prime.tokenEstimate;
     const classifications = classifyProxy({
-      action: stringValue(deliveryTrace.action),
+      action: deliveryAction,
       directiveStyle: stringValue(deliveryTrace.directiveStyle),
       requiredSurface: stringValue(deliveryTrace.requiredSurface),
       taskShapeSignal: stringValue(deliveryTrace.taskShapeSignal),
@@ -679,7 +685,7 @@ function classifyProxy(input: {
   if (input.action === "suppress") classes.push("suppression_expected");
   if (input.directiveStyle === "scope_guardrail" || input.strictBoundary) classes.push("valid_guardrail");
   if (input.emittedFileCount > 6) classes.push("scope_too_broad");
-  if (input.estimatedDirectiveTokens > 900) classes.push("would_over_assist");
+  if (input.action !== "suppress" && input.estimatedDirectiveTokens > 900) classes.push("would_over_assist");
   const intentionalDiscoverySuppression =
     input.action === "suppress" &&
     input.taskShapeSignal === "discovery_config" &&
@@ -688,6 +694,14 @@ function classifyProxy(input: {
     input.action === "suppress" &&
     input.taskShapeSignal === "narrow_package_parser" &&
     input.requiredSurface === "single_file";
+  const intentionalCollectionNameValidationSuppression =
+    input.action === "suppress" &&
+    input.taskShapeSignal === "collection_name_validation" &&
+    input.requiredSurface === "paired_contract";
+  const intentionalTopicOrderingSuppression =
+    input.action === "suppress" &&
+    input.taskShapeSignal === "topic_ordering" &&
+    input.requiredSurface === "paired_contract";
   const intentionalEvidenceOrSuppression =
     input.action === "request_evidence" ||
     input.requiredSurface === "evidence_needed";
@@ -696,6 +710,8 @@ function classifyProxy(input: {
     input.expectedFilesMatchedCount < input.minExpectedHits &&
     !intentionalDiscoverySuppression &&
     !intentionalNarrowParserSuppression &&
+    !intentionalCollectionNameValidationSuppression &&
+    !intentionalTopicOrderingSuppression &&
     !intentionalEvidenceOrSuppression
   ) classes.push("wrong_surface_risk");
   if (input.taskShapeSignal === "ambiguous_frontend_ownership" && input.action !== "request_evidence") classes.push("wrong_surface_risk");
@@ -787,6 +803,7 @@ function proofMetrics(report: BenchmarkProofReport, elapsedMs: number): Campaign
   const observedDeltas = Object.values(report.observedTokenDeltas)
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
   const savedTokens = delta?.savedTokens;
+  const passiveTokenRegression = delta?.assistClassification === "passive_token_regression";
   return {
     ...emptyMetrics(elapsedMs),
     qualityPassed,
@@ -795,7 +812,7 @@ function proofMetrics(report: BenchmarkProofReport, elapsedMs: number): Campaign
     savedTokens,
     savingsRate: delta?.savingsRate,
     cleanPassPass: baselinePassed && qualityPassed && (savedTokens ?? 0) > 0,
-    tokenRegression: baselinePassed && qualityPassed && (savedTokens ?? 0) < 0,
+    tokenRegression: baselinePassed && qualityPassed && (savedTokens ?? 0) < 0 && !passiveTokenRegression,
     qualityDrop: baselinePassed && nonBaseline.some((item) => item.report.results.some((result) => !resultQualityPassed(result))),
     qualityRescue: !baselinePassed && qualityPassed || observedDeltas.some((item) => item.assistClassification === "quality_rescue"),
     harmfulAssist: nonBaseline.some((item) => item.report.results.some((result) => result.metadata.assistClassification === "harmful_invalid_assist")) ||
@@ -842,7 +859,13 @@ function emptyMetrics(elapsedMs: number): CampaignEntryMetrics {
 function classificationsFromMetrics(entry: CampaignEntry, metrics: CampaignEntryMetrics, report: unknown): string[] {
   if (entry.kind === "proxy") return (report as CampaignProxyReport).classifications;
   const classes: string[] = [];
+  const proofAssistClassifications = entry.kind === "proof" || entry.kind === "control"
+    ? Object.values((report as BenchmarkProofReport).observedTokenDeltas ?? {})
+        .filter((delta): delta is NonNullable<typeof delta> => Boolean(delta))
+        .map((delta) => delta.assistClassification)
+    : [];
   if (metrics.cleanPassPass) classes.push("clean_passpass");
+  if (proofAssistClassifications.includes("passive_token_regression")) classes.push("passive_token_regression");
   if (metrics.tokenRegression) classes.push("official_token_regression");
   if (metrics.qualityDrop) classes.push("quality_drop");
   if (metrics.qualityRescue) classes.push("quality_rescue");
@@ -1175,6 +1198,11 @@ function validateStage(stage: CampaignStage): void {
   if (!CAMPAIGN_STAGES.has(stage)) throw new Error(`Unsupported campaign stage: ${stage}`);
 }
 
+function effectiveCampaignParallel(stage: CampaignStage, entries: CampaignEntry[], requestedParallel: number): number {
+  if (stage === "proxy" || entries.every((entry) => stageForEntry(entry, stage) === "proxy")) return 1;
+  return requestedParallel;
+}
+
 function entryMatchesStage(entry: CampaignEntry, stage: CampaignStage): boolean {
   if (stage === "all") return true;
   return stageForEntry(entry, stage) === stage;
@@ -1251,6 +1279,8 @@ function repeatedFailureClasses(rows: CampaignResultRow[]): Array<{ classificati
     "mcp_useful_attribution",
     "valid_guardrail",
     "suppression_expected",
+    "passive_token_regression",
+    "missed_savings_opportunity",
     "campaign_paused"
   ]);
   for (const row of rows) {

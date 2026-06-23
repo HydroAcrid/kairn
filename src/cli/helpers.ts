@@ -1,7 +1,10 @@
+import fs from "node:fs";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { KairnRuntime } from "../runtime/KairnRuntime.js";
 
 export async function withRuntime<T>(root: string, cb: (runtime: KairnRuntime) => Promise<T>): Promise<T> {
+  ensureKairnInternalStateExcluded(root);
   const runtime = new KairnRuntime(root);
   try {
     return await cb(runtime);
@@ -77,4 +80,47 @@ export function parseCsv(value: string | undefined): string[] {
     .split(",")
     .map((entry) => entry.trim())
     .filter(Boolean);
+}
+
+export function ensureKairnInternalStateExcluded(root: string): boolean {
+  const rootPath = path.resolve(root);
+  const gitDir = path.join(rootPath, ".git");
+  if (!fs.existsSync(gitDir) || !fs.statSync(gitDir).isDirectory()) return false;
+
+  const infoDir = path.join(gitDir, "info");
+  const excludePath = path.join(infoDir, "exclude");
+  fs.mkdirSync(infoDir, { recursive: true });
+
+  const existing = fs.existsSync(excludePath) ? fs.readFileSync(excludePath, "utf8") : "";
+  if (/^\.kairn\/?$/m.test(existing)) return false;
+
+  const prefix = existing.length > 0 && !existing.endsWith("\n") ? "\n" : "";
+  fs.writeFileSync(excludePath, `${existing}${prefix}.kairn/\n`);
+  return true;
+}
+
+export function withKairnInternalStateHidden<T>(root: string, enabled: boolean, cb: () => T): T {
+  const rootPath = path.resolve(root);
+  const stateDir = path.join(rootPath, ".kairn");
+  const gitDir = path.join(rootPath, ".git");
+  if (!enabled || !fs.existsSync(stateDir) || !fs.existsSync(gitDir) || !fs.statSync(gitDir).isDirectory()) {
+    return cb();
+  }
+
+  const hiddenDir = path.join(gitDir, `kairn-state-hidden-${process.pid}-${randomUUID()}`);
+  let hidden = false;
+  try {
+    fs.renameSync(stateDir, hiddenDir);
+    hidden = true;
+  } catch {
+    return cb();
+  }
+
+  try {
+    return cb();
+  } finally {
+    if (hidden && fs.existsSync(hiddenDir) && !fs.existsSync(stateDir)) {
+      fs.renameSync(hiddenDir, stateDir);
+    }
+  }
 }

@@ -7,7 +7,9 @@ import type { PrimeProfileLimits, ResolvedPrimeProfile } from "./quality.js";
 export type OfficialGuardrailVariant =
   | "compact_official"
   | "semantic_official"
+  | "topic_ordering_compact"
   | "paired_contract_compact"
+  | "benchmark_generator_compact"
   | "collection_name_validation_compact"
   | "grpc_error_policy_compact"
   | "request_body_form_compact"
@@ -278,6 +280,8 @@ export function formatShrunkPrimeContext(input: {
       };
       const variant = officialGuardrailVariantFor(guardrailInput);
       if (variant === "compact_official") return formatCompactOfficialGuardrail(guardrailInput);
+      if (variant === "topic_ordering_compact") return formatTopicOrderingOfficialGuardrail(guardrailInput);
+      if (variant === "benchmark_generator_compact") return formatBenchmarkGeneratorOfficialGuardrail(guardrailInput);
       if (variant === "paired_contract_compact") return formatPairedContractOfficialGuardrail(guardrailInput);
       if (variant === "collection_name_validation_compact") return formatCollectionNameValidationOfficialGuardrail(guardrailInput);
       if (variant === "grpc_error_policy_compact") return formatGrpcErrorPolicyOfficialGuardrail(guardrailInput);
@@ -440,6 +444,79 @@ function formatPairedContractOfficialGuardrail(input: {
   return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, databaseFailover ? 280 : 240));
 }
 
+function formatBenchmarkGeneratorOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const editFiles = sortBenchmarkGeneratorDirectiveFiles(officialEditFiles(input)).slice(0, 5);
+  const coreFiles = benchmarkGeneratorCoreFiles(editFiles).slice(0, 2);
+  const wiringFiles = editFiles
+    .filter((file) => !coreFiles.includes(file))
+    .filter((file) => coreFiles.length === 0 || !isGenericBenchmarkRegistryFile(file))
+    .slice(0, 3);
+  const readOnly = input.editScope?.readOnlyFiles.slice(0, 2) ?? [];
+  const invariant = input.invariants?.[0];
+  const sections = [
+    "# Kairn Benchmark Generator Scope",
+    `Task: ${compactTaskLine(input.task, 42)}`,
+    "Action: edit the core generator now. Do not spend the first pass analyzing registration surfaces.",
+    coreFiles.length > 0
+      ? `Core edit now: ${coreFiles.map((file) => `${file} (${officialFileRole(file)})`).join(", ")}`
+      : "Core edit now: the production benchmark generator implementation.",
+    wiringFiles.length > 0
+      ? `Wire only after core implementation: ${wiringFiles.map((file) => `${file} (${officialFileRole(file)})`).join(", ")}`
+      : "",
+    invariant ? `Invariant: ${truncateToBudget(invariant.statement, 42)}` : "",
+    "Boundary: no tests, docs, examples, generated files, or unrelated command surfaces.",
+    readOnly.length > 0 ? `Read-only check: ${readOnly.join(", ")}` : "Verify with the narrowest benchmark/unit check.",
+    "If time is tight, leave a correct core generator patch rather than no patch."
+  ];
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 240));
+}
+
+function sortBenchmarkGeneratorDirectiveFiles(files: string[]): string[] {
+  return [...files].sort((left, right) => benchmarkGeneratorFileRank(left) - benchmarkGeneratorFileRank(right));
+}
+
+function benchmarkGeneratorCoreFiles(files: string[]): string[] {
+  const sorted = sortBenchmarkGeneratorDirectiveFiles(files);
+  const namedGeneratorFiles = sorted.filter((file) => {
+    const normalized = file.toLowerCase();
+    const basename = normalized.split("/").at(-1) ?? normalized;
+    return /\/benchmark\/.*\.(?:[cm]?[jt]sx?|pyi?|go|java|kt|kts|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|rb|php|cs)$/.test(normalized) &&
+      !isGenericBenchmarkRegistryBasename(basename);
+  });
+  if (namedGeneratorFiles.length > 0) return namedGeneratorFiles;
+  const benchmarkFiles = sorted.filter((file) => /\/benchmark\/.*\.(?:[cm]?[jt]sx?|pyi?|go|java|kt|kts|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|rb|php|cs)$/.test(file.toLowerCase()));
+  return benchmarkFiles.length > 0 ? benchmarkFiles : sorted.slice(0, 1);
+}
+
+function benchmarkGeneratorFileRank(filePath: string): number {
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1) ?? normalized;
+  if (/\/benchmark\/.*\.(?:[cm]?[jt]sx?|pyi?|go|java|kt|kts|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|rb|php|cs)$/.test(normalized)) {
+    if (isGenericBenchmarkRegistryBasename(basename)) return 1;
+    return 0;
+  }
+  if (/(^|\/)(client|api|sdk)\//.test(normalized) || /\/client\//.test(normalized)) return 2;
+  if (/(^|\/)(cmd|cli|tool|tools|bin)\//.test(normalized) || /\/(cmd|cli|tool|tools|bin)\//.test(normalized)) return 3;
+  return 4;
+}
+
+function isGenericBenchmarkRegistryFile(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1) ?? normalized;
+  return /\/benchmark\/.*\.(?:[cm]?[jt]sx?|pyi?|go|java|kt|kts|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|rb|php|cs)$/.test(normalized) &&
+    isGenericBenchmarkRegistryBasename(basename);
+}
+
+function isGenericBenchmarkRegistryBasename(basename: string): boolean {
+  return /^(benchmark|benchmarks|index|registry|register|main)\./.test(basename);
+}
+
 function formatCollectionNameValidationOfficialGuardrail(input: {
   task: string;
   files: string[];
@@ -451,14 +528,60 @@ function formatCollectionNameValidationOfficialGuardrail(input: {
   const invariant = input.invariants?.[0];
   const sections = [
     "# Kairn Collection Scope",
-    editFiles.length > 0 ? `Edit only: ${editFiles.join(", ")}` : "Edit only the collection-name validation surfaces.",
+    editFiles.length > 0 ? `Start scope: ${editFiles.join(", ")}` : "Start with the collection-name validation surfaces.",
     invariant
       ? `Rule: ${truncateToBudget(invariant.statement, 34)}`
       : "Rule: reject Python reserved keywords in namespace or collection name; preserve existing invalid-name rejection.",
+    "Patch the smallest necessary validation surface first; touch its companion only if the contract requires it.",
     "Boundary: no helpers, tests, docs, examples, generated files, or sibling source.",
     "Need another file? Report evidence first."
   ];
-  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 135));
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 150));
+}
+
+function formatTopicOrderingOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const editFiles = sortTopicOrderingDirectiveFiles(officialEditFiles(input)).slice(0, 4);
+  const invariant = input.invariants?.[0];
+  const sections = [
+    "# Kairn Topic Ordering Scope",
+    editFiles.length > 0
+      ? `Start scope: ${editFiles.map((file) => `${file} (${topicOrderingRole(file)})`).join(", ")}`
+      : "Start with the pinned-topic owner surfaces.",
+    invariant
+      ? `Rule: ${truncateToBudget(invariant.statement, 36)}`
+      : "Rule: preserve authorization, category isolation, no-op behavior, and deterministic pinned-topic order.",
+    "Patch the primary owner first; touch client/socket companions only when behavior crosses that boundary.",
+    "Boundary: no tests, account/topic-page shells, docs, generated files, or unrelated topic surfaces.",
+    "Need another file? Report evidence first."
+  ];
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 170));
+}
+
+function sortTopicOrderingDirectiveFiles(files: string[]): string[] {
+  return [...files].sort((left, right) => topicOrderingFileRank(left) - topicOrderingFileRank(right));
+}
+
+function topicOrderingFileRank(filePath: string): number {
+  const normalized = filePath.toLowerCase();
+  if (/src\/topics\/tools\.[cm]?[jt]s$/.test(normalized)) return 0;
+  if (/src\/socket\.io\/topics\/tools\.[cm]?[jt]s$/.test(normalized)) return 1;
+  if (/public\/src\/client\/category\/tools\.[cm]?[jt]s$/.test(normalized)) return 2;
+  if (/category\/tools\.[cm]?[jt]s$/.test(normalized)) return 3;
+  return 4;
+}
+
+function topicOrderingRole(filePath: string): string {
+  const normalized = filePath.toLowerCase();
+  if (/src\/topics\/tools\.[cm]?[jt]s$/.test(normalized)) return "topic order owner";
+  if (/src\/socket\.io\/topics\/tools\.[cm]?[jt]s$/.test(normalized)) return "socket contract";
+  if (/public\/src\/client\/category\/tools\.[cm]?[jt]s$/.test(normalized)) return "client caller";
+  return officialFileRole(filePath);
 }
 
 function formatGrpcErrorPolicyOfficialGuardrail(input: {
@@ -639,10 +762,12 @@ export function officialGuardrailVariantFor(input: {
   if (isDiscoveryConfigTask(input.task) && editFiles.length > 1) return "discovery_config_compact";
   if (isLifecyclePolicyTask(input.task)) return "lifecycle_policy_compact";
   if (isUiFeedbackMultiSurfaceTask(input.task)) return "frontend_owner_map_compact";
+  if (isTopicOrderingTask(input.task) && editFiles.length > 1) return "topic_ordering_compact";
   if (isCollectionNameValidationTask(input.task) && editFiles.length > 1) return "collection_name_validation_compact";
   if (isGrpcErrorPolicyTask(input.task) && editFiles.length > 1) return "grpc_error_policy_compact";
   if (isRequestBodyFormTask(input.task) && editFiles.length > 1) return "request_body_form_compact";
   if (isConverterOutputTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
+  if (isBenchmarkGeneratorTask(input.task) && editFiles.length > 1) return "benchmark_generator_compact";
   if (isDatabaseFailoverTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
   if (isPackageSourceMappingTask(input.task) && editFiles.length > 1) return "package_source_mapping_compact";
   if (isDatastoreBackendParityTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
@@ -660,12 +785,28 @@ function officialEditFiles(input: {
   return uniquePaths([
     ...input.files,
     ...(input.editScope?.initialEditFiles ?? [])
-  ]);
+  ]).filter(isOfficialProductionEditFile);
+}
+
+function isOfficialProductionEditFile(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  if (/(^|\/)(tests?|testing|__tests__|spec|specs|fixtures?|testdata)\//.test(normalized)) return false;
+  if (/\.(test|spec)\.[cm]?[jt]sx?$/.test(normalized)) return false;
+  if (/(_test|_spec|_tests)\.(py|go|rb|cc|cpp|cxx|c|hpp|hh|hxx)$/.test(normalized)) return false;
+  if (/(test|tests)\.java$/.test(normalized.split("/").at(-1) ?? "")) return false;
+  return true;
 }
 
 function isPairedContractTask(task: string): boolean {
   const normalized = task.toLowerCase();
   return /\b(command|commands?|cli|flag|flags|argument|arguments|args?|namespace|namespaces|variant|variants|sorting|sort|export|exports?|startup|runtime option|configuration|config|setting|settings|schema|session renewal|renew(?:ing)? session|websession|web session|certificate|access request)\b/.test(normalized);
+}
+
+function isTopicOrderingTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  return /\b(topic|topics)\b/.test(normalized) &&
+    /\b(pin|pinned|unpin|unpinned)\b/.test(normalized) &&
+    /\b(order|ordering|reorder|reordering|position|relative)\b/.test(normalized);
 }
 
 function isDatabaseFailoverTask(task: string): boolean {
@@ -688,6 +829,13 @@ function isCollectionNameValidationTask(task: string): boolean {
   const collectionTerms = /\b(collection names?|fqcn|fully qualified collection name|namespace\.collection|namespace|reserved keyword|python keyword|keyword)\b/.test(normalized);
   const packageSourceTerms = /\b(source packages?|binary packages?|src packages?|package source|source package associations?|oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?)\b/.test(normalized);
   return validationTerms && collectionTerms && !packageSourceTerms;
+}
+
+function isBenchmarkGeneratorTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  const benchmarkTerms = /\b(benchmark|benchmarks|benchmarking|performance benchmark|load test|request rate|requests per second|rps)\b/.test(normalized);
+  const generatorTerms = /\b(generator|generate|sequence|progression|linear|lower bound|upper bound|step size|minimum measurements|minimum window|getbenchmark|configuration|configurations)\b/.test(normalized);
+  return benchmarkTerms && generatorTerms;
 }
 
 function isGrpcErrorPolicyTask(task: string): boolean {
