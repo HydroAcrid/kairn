@@ -3574,6 +3574,7 @@ describe("benchmark suite and scoring", () => {
       expect(result.outcome).toBe("partial");
       expect(result.metadata.requiredTouchedSatisfied).toBe(false);
       expect(result.metadata.missingRequiredTouchedFiles).toEqual(["src/app.ts"]);
+      expect(result.actualFiles).not.toContain("src/app.ts");
 
       const scored = scoreBenchmarkCase({
         runId: "bench_required",
@@ -3592,6 +3593,7 @@ describe("benchmark suite and scoring", () => {
         metadata: result.metadata
       });
       expect(scored.taskOutcome).toBe("partial");
+      expect(scored.expectedFileRecall).toBe(0);
       expect(scored.metadata.qualityGatePassed).toBe(false);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
@@ -8284,6 +8286,40 @@ describe("benchmark runtime and CLI", () => {
     ) as { prompt: string; prime: { contextDecision?: { directiveStyle?: string } } };
     expect(unboundOfficialPatchGuardrailDryRun.prime.contextDecision?.directiveStyle).toBe("scope_guardrail");
     expect(unboundOfficialPatchGuardrailDryRun.prompt).toContain("# Kairn Fix Guardrail");
+
+    const benchmarkScopedDryRun = JSON.parse(
+      execFileSync(
+        CLI[0]!,
+        [
+          ...CLI.slice(1),
+          "codex",
+          officialPatchTask,
+          "--root",
+          root,
+          "--skip-git-repo-check",
+          "--dry-run",
+          "--json"
+        ],
+        {
+          cwd: process.cwd(),
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            KAIRN_BENCH_EDIT_SCOPE_HINTS: JSON.stringify({
+              allowedDiffScopes: [
+                { file: "src/app.ts", allowWholeFile: true },
+                { file: "src/app/private/jobs/JobsApplicationsTable.tsx", allowWholeFile: true }
+              ]
+            })
+          }
+        }
+      )
+    ) as { prime: { editScope?: { initialEditFiles?: string[]; scopeSource?: string; strictBoundary?: boolean } } };
+    expect(benchmarkScopedDryRun.prime.editScope?.scopeSource).toBe("official_harness");
+    expect(benchmarkScopedDryRun.prime.editScope?.strictBoundary).toBe(true);
+    expect(benchmarkScopedDryRun.prime.editScope?.initialEditFiles).toEqual(
+      expect.arrayContaining(["src/app.ts", "src/app/private/jobs/JobsApplicationsTable.tsx"])
+    );
 
     expect(interactiveDryRun.mode).toBe("interactive");
     expect(interactiveDryRun.args).not.toContain("exec");

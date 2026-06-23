@@ -27,6 +27,7 @@ export async function runAgentBenchmarkCase(input: {
   agentCommand?: string | undefined;
   setupCommand?: string | undefined;
   timeoutMs?: number | undefined;
+  agentEnv?: Record<string, string> | undefined;
   preparePrompt?: ((input: {
     workspacePath: string;
     prompt: string;
@@ -155,7 +156,7 @@ export async function runAgentBenchmarkCase(input: {
     const promptPrepareMs = Date.now() - prepareStartedAt;
     const command = commandWithPlaceholders(input.agentCommand, { prompt: prepared.prompt, root: workspacePath, session: commandSessionId });
     const agentStartedAt = Date.now();
-    const completed = await runShellWithProcessGroupTimeout(command, workspacePath, timeoutMs, 16 * 1024 * 1024);
+    const completed = await runShellWithProcessGroupTimeout(command, workspacePath, timeoutMs, 16 * 1024 * 1024, input.agentEnv);
     const agentTimedOut = completed.timedOut;
     const agentElapsedMs = Date.now() - agentStartedAt;
     const output = completed.output;
@@ -200,7 +201,11 @@ export async function runAgentBenchmarkCase(input: {
     const requiredTouchedFiles = requiredTouchPlan.requiredTouchedFiles;
     const missingRequiredTouchedFiles = requiredTouchedFiles.filter((file) => !agentChangedFiles.includes(file));
     const requiredTouchedSatisfied = missingRequiredTouchedFiles.length === 0;
-    const actualFiles = unique([...agentChangedFiles, ...expectedFileMentions]);
+    const actualFiles = actualFilesForAgentResult({
+      agentChangedFiles,
+      expectedFileMentions,
+      requiredTouchedFiles
+    });
     const scopeViolations = diffScopeResult.violations;
     const testsEdited = agentChangedFiles.filter(isTestPath);
     const unrelatedFilesTouched = diffScopeResult.passed
@@ -318,7 +323,11 @@ export async function runAgentBenchmarkCase(input: {
     });
     return {
       workspacePath,
-      actualFiles: unique([...agentChangedFiles, ...mentionedExpectedFiles(output, input.benchmarkCase.expectedFiles)]),
+      actualFiles: actualFilesForAgentResult({
+        agentChangedFiles,
+        expectedFileMentions: mentionedExpectedFiles(output, input.benchmarkCase.expectedFiles),
+        requiredTouchedFiles
+      }),
       responseTokens: estimateTokens(output),
       ...(metadata.observedCodexTokens !== undefined ? { observedCodexTokens: metadata.observedCodexTokens } : {}),
       outcome: "fail",
@@ -326,6 +335,17 @@ export async function runAgentBenchmarkCase(input: {
       metadata: metadata.metadata
     };
   }
+}
+
+function actualFilesForAgentResult(input: {
+  agentChangedFiles: string[];
+  expectedFileMentions: string[];
+  requiredTouchedFiles: string[];
+}): string[] {
+  if (input.requiredTouchedFiles.length > 0) {
+    return unique(input.agentChangedFiles);
+  }
+  return unique([...input.agentChangedFiles, ...input.expectedFileMentions]);
 }
 
 function effectiveRequiredTouchedFiles(input: {
@@ -680,12 +700,14 @@ export async function runShellWithProcessGroupTimeout(
   command: string,
   cwd: string,
   timeoutMs: number,
-  maxBuffer: number
+  maxBuffer: number,
+  env?: Record<string, string> | undefined
 ): Promise<{ status: number | null; output: string; timedOut: boolean; signal?: NodeJS.Signals | null; error?: Error | undefined }> {
   return new Promise((resolve) => {
     const child = spawn(command, {
       cwd,
       shell: true,
+      env: env ? { ...process.env, ...env } : undefined,
       detached: process.platform !== "win32",
       stdio: ["ignore", "pipe", "pipe"]
     });

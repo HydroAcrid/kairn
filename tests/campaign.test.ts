@@ -171,6 +171,76 @@ describe("benchmark campaign harness", () => {
     expect(rawFiles.some((file) => file.endsWith(".partial.json"))).toBe(false);
   });
 
+  it("carries proof diff-scope violations into campaign summary metrics", async () => {
+    const dir = tempDir("kairn-campaign-proof-scope-");
+    const root = createFixtureRepo();
+    const suitePath = path.join(dir, "suite.json");
+    fs.writeFileSync(
+      suitePath,
+      `${JSON.stringify(
+        {
+          id: "scope-suite",
+          name: "Scope Suite",
+          cases: [
+            {
+              id: "scope-row",
+              mode: "agent",
+              task: "Edit only src/app.ts.",
+              expectedFiles: ["src/app.ts"],
+              requiredTouchedFiles: ["src/app.ts"],
+              excludedFiles: [],
+              allowedDiffScopes: [{ file: "src/app.ts", allowWholeFile: true }],
+              seed: {
+                repoUrl: root,
+                ref: "HEAD"
+              }
+            }
+          ]
+        },
+        null,
+        2
+      )}\n`
+    );
+    const manifestPath = writeManifest(dir, {
+      id: "proof-scope-summary",
+      name: "Proof Scope Summary",
+      defaults: {
+        agentTimeoutMs: 10000,
+        cleanup: "always",
+        commands: {
+          baseline:
+            "node -e \"const fs=require('fs'); fs.appendFileSync('src/app.ts', '\\nexport const ok = true;\\n'); console.log('src/app.ts'); console.log('tokens used 1000')\"",
+          kairn_codex_session:
+            "node -e \"const fs=require('fs'); fs.appendFileSync('src/app.ts', '\\nexport const ok = true;\\n'); fs.writeFileSync('src/user.ts', 'export const drift = true;\\n'); console.log('src/app.ts'); console.log('src/user.ts'); console.log('tokens used 700')\""
+        }
+      },
+      entries: [
+        {
+          id: "scope-row",
+          kind: "proof",
+          root,
+          suite: suitePath,
+          modes: ["baseline", "kairn_codex_session"],
+          repeat: 1
+        }
+      ]
+    });
+
+    const report = await runCampaign({
+      manifestPath,
+      outDir: path.join(dir, "out"),
+      stage: "live",
+      parallel: 1
+    });
+
+    expect(report.rows[0]?.scopeViolations).toBeGreaterThan(0);
+    expect(report.rows[0]?.classifications).toContain("scope_violation");
+    expect(report.aggregate.scopeViolations).toBeGreaterThan(0);
+
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
   it("reuses cached baseline reports for Kairn-only live reruns", async () => {
     const dir = tempDir("kairn-campaign-baseline-cache-");
     const markerPath = path.join(dir, "baseline-runs.txt");
@@ -253,6 +323,43 @@ describe("benchmark campaign harness", () => {
 
     expect(report.aggregate.failedEntries).toBe(1);
     expect(report.artifacts[0]?.error).toMatch(/missing cached baseline artifact/);
+  });
+
+  it("flags passing proof rows with missing comparable token data", async () => {
+    const dir = tempDir("kairn-campaign-token-unavailable-");
+    const manifestPath = writeManifest(dir, {
+      id: "token-unavailable",
+      name: "Token Unavailable",
+      defaults: {
+        agentTimeoutMs: 10000,
+        cleanup: "always",
+        commands: {
+          baseline: 'node -e "console.log(\'src/app.ts\')"',
+          kairn_codex_session: 'node -e "console.log(\'src/app.ts\'); console.log(\'tokens used 700\')"'
+        }
+      },
+      entries: [
+        {
+          id: "token-row",
+          kind: "proof",
+          root: "examples/bench/campaign-fixtures/mock-repo",
+          suite: "examples/bench/campaign-fixtures/mock-suite.json",
+          modes: ["baseline", "kairn_codex_session"],
+          repeat: 1
+        }
+      ]
+    });
+
+    const report = await runCampaign({
+      manifestPath,
+      outDir: path.join(dir, "out"),
+      stage: "live",
+      parallel: 1
+    });
+
+    expect(report.rows[0]?.qualityPassed).toBe(true);
+    expect(report.rows[0]?.classifications).toContain("official_pass_token_unavailable");
+    expect(fs.readFileSync(report.outputs.failuresCsvPath, "utf8")).toContain("official_pass_token_unavailable");
   });
 
   it("limits campaign worker concurrency", async () => {

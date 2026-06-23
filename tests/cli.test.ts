@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCodexNoDiffRecoveryPrompt,
   buildCodexPartialScopeRecoveryPrompt,
+  extraStrictScopeFiles,
   missingRequiredScopeFiles,
   relevantWorkspaceDiffFiles,
   shouldRetryCodexNoDiff,
@@ -793,6 +794,110 @@ describe("CLI", () => {
     expect(prompt).not.toContain("node_modules");
   });
 
+  it("builds strict-scope recovery prompts that revert out-of-scope edits", () => {
+    const task = [
+      "Selected verification tests from SWE-Bench Pro metadata: TestDatabaseFailover",
+      "Fix database failover when multiple database services share the same service name.",
+      "Fix the issue in production source only. Do not edit tests."
+    ].join("\n");
+    const session = {
+      id: "task_db_extra",
+      rootPath: "/repo",
+      task,
+      status: "active" as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      filesShown: [],
+      symbolsShown: [],
+      commandsRun: [],
+      diffsObserved: [],
+      watchEvents: [],
+      risks: [],
+      verificationHints: []
+    };
+    const prime = {
+      task,
+      session,
+      profile: "generic" as const,
+      content: "# Kairn Paired Scope",
+      files: ["api/types/databaseserver.go", "lib/srv/db/proxyserver.go", "lib/srv/db/extra.go"],
+      tokenEstimate: 80,
+      quality: {
+        score: 70,
+        action: "shrink" as const,
+        reasons: [],
+        topScore: 100,
+        topGap: 100,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low" as const
+      },
+      contextDecision: {
+        action: "shrink" as const,
+        score: 70,
+        reasons: [],
+        topScore: 100,
+        topGap: 100,
+        language: "go" as const,
+        exactPathMentioned: false,
+        estimatedContextCost: 500,
+        expectedSavingsRisk: "low" as const,
+        debugSignal: true,
+        easyTaskSignal: false,
+        wrongContextRisk: false,
+        recommendedDelivery: "multi_file_directive" as const,
+        taskFrame: "official_patch" as const,
+        directiveStyle: "scope_guardrail" as const
+      },
+      editScope: {
+        initialEditFiles: ["api/types/databaseserver.go", "lib/srv/db/proxyserver.go"],
+        readOnlyFiles: ["lib/srv/db/extra.go"],
+        allowedExpansionTriggers: ["do not expand edit scope"],
+        forbiddenEditPatterns: ["tests/**", "docs/**"],
+        scopeConfidence: "high" as const,
+        scopeSource: "official_harness" as const,
+        reason: "official metadata supplied production scope",
+        strictBoundary: true,
+        dynamic: true as const
+      },
+      warnings: [],
+      suggestedCommands: []
+    };
+    const changedFiles = ["api/types/databaseserver.go", "lib/srv/db/extra.go"];
+    const extra = extraStrictScopeFiles({
+      task,
+      interactive: false,
+      exitCode: 0,
+      prime,
+      changedFiles
+    });
+
+    expect(extra).toEqual(["lib/srv/db/extra.go"]);
+    expect(shouldRetryCodexPartialScope({
+      task,
+      interactive: false,
+      exitCode: 0,
+      prime,
+      changedFiles
+    })).toBe(true);
+
+    const prompt = buildCodexPartialScopeRecoveryPrompt({
+      task,
+      prime,
+      changedFiles,
+      missingFiles: missingRequiredScopeFiles({
+        task,
+        interactive: false,
+        exitCode: 0,
+        prime,
+        changedFiles
+      }),
+      extraFiles: extra
+    });
+    expect(prompt).toContain("touched source outside the strict edit scope");
+    expect(prompt).toContain("Out-of-scope edits to revert: lib/srv/db/extra.go");
+    expect(prompt).toContain("Final diff must contain only files in the full required scope");
+  });
+
   it("does not widen official no-diff recovery scope with noisy emitted files", () => {
     const task = [
       "Title: HSM/KMS test configuration logic is duplicated across backend test files.",
@@ -878,6 +983,13 @@ describe("CLI", () => {
     fs.mkdirSync(path.join(root, "src"), { recursive: true });
     fs.writeFileSync(path.join(root, "src/app.ts"), "export const value = 1;\n");
     expect(relevantWorkspaceDiffFiles(root)).toContain("src/app.ts");
+    fs.mkdirSync(path.join(root, "public/src/client"), { recursive: true });
+    fs.writeFileSync(path.join(root, "public/src/client/topic.js"), "export const topic = true;\n");
+    const changed = relevantWorkspaceDiffFiles(root);
+    expect(changed).toContain("src/app.ts");
+    expect(changed).toContain("public/src/client/topic.js");
+    expect(changed).not.toContain("rc/app.ts");
+    expect(changed).not.toContain("ublic/src/client/topic.js");
     fs.rmSync(root, { recursive: true, force: true });
   });
 });

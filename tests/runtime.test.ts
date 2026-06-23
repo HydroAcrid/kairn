@@ -1363,6 +1363,115 @@ describe("KairnRuntime", () => {
     }
   });
 
+  it("keeps plugin activation validation to owner and client flag consumers", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-runtime-plugin-activation-"));
+    fs.mkdirSync(path.join(root, "src/plugins"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src/socket.io/admin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "public/src/client"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src/topics"), { recursive: true });
+    fs.writeFileSync(path.join(root, "src/plugins/install.js"), "function toggleActive(pluginId) { return pluginId.trim(); }\n");
+    fs.writeFileSync(path.join(root, "src/socket.io/admin/plugins.js"), "function toggleActive(pluginId) { return pluginId; }\n");
+    fs.writeFileSync(path.join(root, "public/src/client/topic.js"), "function activatePlugin(pluginId) { return pluginId; }\n");
+    fs.writeFileSync(path.join(root, "src/flags.js"), "exports.isValidPluginId = function (pluginId) { return !!pluginId; };\n");
+    fs.writeFileSync(path.join(root, "src/topics/index.js"), "function unrelatedTopic() {}\n");
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "Plugin activation accepts malformed plugin identifiers.",
+          "Validate plugin ids before toggleActive/admin.plugins.toggleActive can activate an invalid-plugin-id.",
+          "Update the client topic and flags consumers that can trigger activation.",
+          "Fix production source only."
+        ].join(" "),
+        budget: 900,
+        source: "bench",
+        editScopeHints: {
+          allowedDiffScopes: [
+            { file: "src/plugins/install.js", allowWholeFile: true },
+            { file: "public/src/client/topic.js", allowWholeFile: true },
+            { file: "src/flags.js", allowWholeFile: true }
+          ]
+        }
+      });
+
+      expect(prime.contextDecision?.taskShapeSignal).toBe("plugin_activation_validation");
+      expect(prime.contextDecision?.requiredSurface).toBe("paired_contract");
+      expect(prime.files).toEqual(expect.arrayContaining([
+        "src/plugins/install.js",
+        "public/src/client/topic.js",
+        "src/flags.js"
+      ]));
+      expect(prime.content).toContain("# Kairn Plugin Activation Scope");
+      expect(prime.content).toContain("Required diff checklist:");
+      expect(prime.content).toContain("final diff must touch every checklist path");
+      expect(prime.content).toContain("public/src/client/topic.js");
+      expect(prime.content).toContain("src/flags.js");
+      expect(prime.content).not.toContain("src/socket.io/admin/plugins.js");
+      expect(prime.content).not.toContain("src/topics/index.js");
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("suppresses hidden plugin activation consumer scope when the prompt lacks consumer evidence", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-runtime-plugin-hidden-consumers-"));
+    fs.mkdirSync(path.join(root, "src/plugins"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src/socket.io/admin"), { recursive: true });
+    fs.mkdirSync(path.join(root, "public/src/client"), { recursive: true });
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.writeFileSync(path.join(root, "src/plugins/install.js"), "function toggleActive(pluginId) { return pluginId.trim(); }\n");
+    fs.writeFileSync(path.join(root, "src/socket.io/admin/plugins.js"), "function toggleActive(pluginId) { return pluginId; }\n");
+    fs.writeFileSync(path.join(root, "public/src/client/topic.js"), "function activatePlugin(pluginId) { return pluginId; }\n");
+    fs.writeFileSync(path.join(root, "src/flags.js"), "exports.isValidPluginId = function (pluginId) { return !!pluginId; };\n");
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "Plugin activation accepts invalid plugin identifiers without validation.",
+          "NodeBB plugin activation system processes malformed plugin identifiers without proper validation.",
+          "Plugin activation operations accept any string as a plugin identifier, including malformed names with whitespace, special characters, or incorrect formats.",
+          "Plugin activation operations should validate plugin identifiers against established naming patterns and reject invalid identifiers with clear error messages.",
+          "The system must validate plugin identifiers during activation operations in Plugins.toggleActive.",
+          "Plugin activation requests with invalid identifiers must be rejected with [[error:invalid-plugin-id]].",
+          "Plugin identifier validation must occur before any plugin state changes are attempted.",
+          "Selected verification tests from SWE-Bench Pro metadata: test/plugins.js.",
+          "Fix the issue in production source only."
+        ].join(" "),
+        budget: 900,
+        source: "bench",
+        editScopeHints: {
+          allowedDiffScopes: [
+            { file: "public/src/client/topic.js", allowWholeFile: true },
+            { file: "src/flags.js", allowWholeFile: true },
+            { file: "src/plugins/install.js", allowWholeFile: true }
+          ]
+        }
+      });
+
+      expect(prime.contextDecision?.taskShapeSignal).toBe("plugin_activation_validation");
+      expect(prime.contextDecision?.requiredSurface).toBe("paired_contract");
+      expect(prime.contextDecision?.action).toBe("suppress");
+      expect(prime.contextDecision?.recommendedDelivery).toBe("none");
+      expect(prime.metadata?.guardrailVariant).toBeUndefined();
+      expect(prime.files).toEqual([]);
+      expect(prime.editScope?.initialEditFiles).toEqual([
+        "public/src/client/topic.js",
+        "src/flags.js",
+        "src/plugins/install.js"
+      ]);
+      expect(prime.content).toContain("# Kairn Prime Suppressed");
+      expect(prime.content).not.toContain("# Kairn Plugin Activation Scope");
+      expect(prime.content).not.toContain("Required diff checklist:");
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("keeps database failover tasks to proxy, type, fake tunnel, and CLI owners", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-runtime-db-failover-"));
     fs.mkdirSync(path.join(root, "api/types"), { recursive: true });

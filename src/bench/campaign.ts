@@ -871,6 +871,7 @@ function proofMetrics(report: BenchmarkProofReport, elapsedMs: number): Campaign
     qualityRescue: !baselinePassed && qualityPassed || observedDeltas.some((item) => item.assistClassification === "quality_rescue"),
     harmfulAssist: nonBaseline.some((item) => item.report.results.some((result) => result.metadata.assistClassification === "harmful_invalid_assist")) ||
       observedDeltas.some((item) => Boolean(item.harmfulAssist) || item.assistClassification === "harmful_invalid_assist"),
+    scopeViolations: sum(nonBaseline.flatMap((item) => item.report.results.map((result) => stringArray(result.metadata.diffScopeViolations).length))),
     mcpCalls: sum(nonBaseline.map((item) => benchmarkReportMcpCalls(item.report)))
   };
 }
@@ -926,6 +927,13 @@ function classificationsFromMetrics(entry: CampaignEntry, metrics: CampaignEntry
   if (metrics.harmfulAssist) classes.push("harmful_invalid_assist");
   if (metrics.scopeViolations > 0) classes.push("scope_violation");
   if (metrics.mcpCalls > 0) classes.push(metrics.mcpUsefulAttribution > 0 ? "mcp_useful_attribution" : "mcp_missing_attribution");
+  if (
+    (entry.kind === "proof" || entry.kind === "control" || entry.kind === "official_eval") &&
+    metrics.qualityPassed &&
+    (metrics.observedTokens === undefined || metrics.baselineTokens === undefined)
+  ) {
+    classes.push("official_pass_token_unavailable");
+  }
   if (!metrics.qualityPassed) classes.push(metrics.mcpCalls > 0 ? "mcp_quality_incomplete" : "quality_incomplete");
   if (classes.length === 0) classes.push(metrics.qualityPassed ? "pass" : "neutral");
   return classes;
@@ -985,6 +993,7 @@ function writeCampaignOutputs(input: { manifest: CampaignManifest; report: Campa
       row.qualityDrop ||
       row.harmfulAssist ||
       row.scopeViolations > 0 ||
+      row.classifications.split(";").includes("official_pass_token_unavailable") ||
       row.classifications.split(";").includes("passive_token_regression")
     ))
   );

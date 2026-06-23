@@ -17,6 +17,7 @@ export type OfficialGuardrailVariant =
   | "discovery_config_compact"
   | "package_source_mapping_compact"
   | "lifecycle_policy_compact"
+  | "plugin_activation_validation_compact"
   | "frontend_owner_map_compact";
 
 export function formatPrimeContext(input: {
@@ -261,6 +262,8 @@ export function formatShrunkPrimeContext(input: {
       ? 5
       : isExecutionStateMigrationTask(input.task)
       ? 3
+      : isPluginActivationValidationTask(input.task)
+      ? 4
       : 2
     : 1;
   const topFiles = candidateFiles.slice(0, topFileLimit);
@@ -293,6 +296,7 @@ export function formatShrunkPrimeContext(input: {
       if (variant === "discovery_config_compact") return formatDiscoveryConfigOfficialGuardrail(guardrailInput);
       if (variant === "package_source_mapping_compact") return formatPackageSourceMappingOfficialGuardrail(guardrailInput);
       if (variant === "lifecycle_policy_compact") return formatLifecyclePolicyOfficialGuardrail(guardrailInput);
+      if (variant === "plugin_activation_validation_compact") return formatPluginActivationValidationOfficialGuardrail(guardrailInput);
       if (variant === "frontend_owner_map_compact") return formatFrontendOwnerMapOfficialGuardrail(guardrailInput);
       return formatSemanticOfficialGuardrail(guardrailInput);
     }
@@ -339,6 +343,7 @@ export function formatShrunkPrimeContext(input: {
       ? additionalTopFiles.map((file) => `- ${file} - ${primaryReasonForFile(input.context, file)}`).join("\n")
       : "",
     ...executionStateMigrationDirectiveLines(input.task, topFiles),
+    ...pluginActivationValidationDirectiveLines(input.task, topFiles, input.editScope),
     symbolHints.length > 0 ? `Symbols: ${symbolHints.join(", ")}` : "",
     "",
     ...formatInvariantSections(input.invariants, "Invariant to preserve:", { includeVerification: input.includeVerification ?? multiFileDirective }),
@@ -366,6 +371,24 @@ function executionStateMigrationDirectiveLines(task: string, files: string[]): s
     ownerFiles.length > 0 ? `State owner: ${ownerFiles.join(", ")}` : "",
     consumerFiles.length > 0 ? `Consumer surfaces: ${consumerFiles.join(", ")}` : "",
     "Do not stop after adding enums/metaclass compatibility; update consumer comparisons and assignments in the same patch."
+  ].filter(Boolean);
+}
+
+function pluginActivationValidationDirectiveLines(task: string, files: string[], editScope: EditScopeDecision | undefined): string[] {
+  if (!isPluginActivationValidationTask(task) || files.length < 2) return [];
+  const editableFiles = uniquePaths(editScope?.strictBoundary && editScope.initialEditFiles.length > 0 ? editScope.initialEditFiles : files);
+  const readOnlyFiles = files.filter((file) => !editableFiles.includes(file));
+  const ownerFiles = editableFiles.filter(isPluginActivationOwnerFile);
+  const consumerFiles = editableFiles.filter((file) => !isPluginActivationOwnerFile(file));
+  const readOnlyConsumers = readOnlyFiles.filter((file) => !isPluginActivationOwnerFile(file));
+  return [
+    "Required activation validation edits: final diff must touch every editable activation owner/client/flag surface in scope.",
+    ownerFiles.length > 0 ? `Activation owner: ${ownerFiles.join(", ")}` : "",
+    consumerFiles.length > 0 ? `Editable client/flag consumers: ${consumerFiles.join(", ")}` : "",
+    readOnlyConsumers.length > 0 ? `Read-only activation consumers: ${readOnlyConsumers.join(", ")}; use them to verify the contract, not as edit targets.` : "",
+    consumerFiles.length > 0
+      ? "Do not stop after server-side plugin validation; server-only or owner-only activation validation is incomplete."
+      : "Do not edit read-only consumers; if validation cannot be completed in the editable scope, report the missing edit evidence."
   ].filter(Boolean);
 }
 
@@ -614,6 +637,67 @@ function executionStateMigrationRole(filePath: string): string {
   return officialFileRole(filePath);
 }
 
+function formatPluginActivationValidationOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const editFiles = sortPluginActivationDirectiveFiles(officialEditFiles(input)).slice(0, 5);
+  const invariant = input.invariants?.[0];
+  const checklist = editFiles.map((file) => `- ${file}: ${pluginActivationChecklistAction(file)}`);
+  const sections = [
+    "# Kairn Plugin Activation Scope",
+    "Required diff checklist:",
+    checklist.length > 0 ? checklist.join("\n") : "- Every editable activation owner/client/flag surface in the strict scope.",
+    invariant
+      ? `Rule: ${truncateToBudget(invariant.statement, 40)}`
+      : "Rule: reject malformed plugin identifiers everywhere activation can be triggered.",
+    "Completion: final diff must touch every checklist path; server-only or owner-only validation is incomplete.",
+    "Boundary: no tests, docs, examples, generated files, unrelated topic/post surfaces, or plugin metadata lists.",
+    "Need another file? Report evidence first."
+  ];
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 300));
+}
+
+function sortPluginActivationDirectiveFiles(files: string[]): string[] {
+  return [...files].sort((left, right) => pluginActivationFileRank(left) - pluginActivationFileRank(right));
+}
+
+function pluginActivationFileRank(filePath: string): number {
+  const normalized = filePath.toLowerCase();
+  if (isPluginActivationOwnerFile(normalized)) return 0;
+  if (/\/flags\.(?:[cm]?[jt]sx?|py|go|rs|rb|php|java|kt|cs)$/.test(normalized)) return 1;
+  if (/\/client\/topic\.(?:[cm]?[jt]sx?|py|go|rs|rb|php|java|kt|cs)$/.test(normalized)) return 2;
+  if (/(^|\/)(public|client|ui|frontend)\//.test(normalized)) return 3;
+  return 4;
+}
+
+function isPluginActivationOwnerFile(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  return /\/plugins\/install\.(?:[cm]?[jt]sx?|py|go|rs|rb|php|java|kt|cs)$/.test(normalized) ||
+    /\/socket\.io\/admin\/plugins\.(?:[cm]?[jt]sx?|py|go|rs|rb|php|java|kt|cs)$/.test(normalized);
+}
+
+function pluginActivationRole(filePath: string): string {
+  const normalized = filePath.toLowerCase();
+  if (isPluginActivationOwnerFile(normalized)) return "activation owner";
+  if (/\/flags\./.test(normalized)) return "feature flag consumer";
+  if (/\/client\/topic\./.test(normalized)) return "client activation consumer";
+  if (/(^|\/)(public|client|ui|frontend)\//.test(normalized)) return "client consumer";
+  return officialFileRole(filePath);
+}
+
+function pluginActivationChecklistAction(filePath: string): string {
+  const normalized = filePath.toLowerCase();
+  if (isPluginActivationOwnerFile(normalized)) return "validate plugin id before activation state changes";
+  if (/\/flags\./.test(normalized)) return "carry the invalid-plugin-id validation/error contract through flag activation helpers";
+  if (/\/client\/topic\./.test(normalized)) return "carry the invalid-plugin-id validation/error contract through client activation";
+  if (/(^|\/)(public|client|ui|frontend)\//.test(normalized)) return "carry the invalid-plugin-id validation/error contract through client activation";
+  return `${pluginActivationRole(filePath)} validation surface`;
+}
+
 function formatTopicOrderingOfficialGuardrail(input: {
   task: string;
   files: string[];
@@ -827,6 +911,14 @@ function isExecutionStateMigrationTask(task: string): boolean {
   return stateTerms && migrationTerms && behaviorTerms;
 }
 
+function isPluginActivationValidationTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  const pluginTerms = /\b(plugin|plugins|plugin id|plugin identifier|plugin identifiers|package name)\b/.test(normalized);
+  const activationTerms = /\b(activate|activation|toggleactive|toggle active|deactivate|admin\.plugins\.toggleactive)\b/.test(normalized);
+  const validationTerms = /\b(validate|validation|valid|invalid|malformed|whitespace|special characters?|naming pattern|identifier|invalid-plugin-id)\b/.test(normalized);
+  return pluginTerms && activationTerms && validationTerms;
+}
+
 function configOrderingGuardrail(task: string): string {
   const normalized = task.toLowerCase();
   const configTask =
@@ -858,6 +950,7 @@ export function officialGuardrailVariantFor(input: {
   if (isBenchmarkGeneratorTask(input.task) && editFiles.length > 1) return "benchmark_generator_compact";
   if (isDatabaseFailoverTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
   if (isPackageSourceMappingTask(input.task) && editFiles.length > 1) return "package_source_mapping_compact";
+  if (isPluginActivationValidationTask(input.task) && editFiles.length > 1) return "plugin_activation_validation_compact";
   if (isDatastoreBackendParityTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
   if (isPairedContractTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
   if (editFiles.length > 1 && isRequirementHeavyMultiSurfaceTask(input.task)) return "paired_contract_compact";
@@ -870,6 +963,9 @@ function officialEditFiles(input: {
   files: string[];
   editScope: EditScopeDecision | undefined;
 }): string[] {
+  if (input.editScope?.strictBoundary === true && input.editScope.initialEditFiles.length > 0) {
+    return uniquePaths(input.editScope.initialEditFiles).filter(isOfficialProductionEditFile);
+  }
   return uniquePaths([
     ...input.files,
     ...(input.editScope?.initialEditFiles ?? [])

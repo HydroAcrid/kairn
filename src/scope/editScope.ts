@@ -52,6 +52,7 @@ export function decideEditScope(input: {
   const discoveryConfigMultiSurfaceScope = hasDiscoveryConfigScope(task) || input.contextDecision?.taskShapeSignal === "discovery_config";
   const webSessionRenewalMultiSurfaceScope = hasWebSessionRenewalScope(task);
   const datastoreBackendParityMultiSurfaceScope = hasDatastoreBackendParityScope(task) || input.contextDecision?.taskShapeSignal === "backend_parity";
+  const pluginActivationValidationMultiSurfaceScope = hasPluginActivationValidationScope(task) || input.contextDecision?.taskShapeSignal === "plugin_activation_validation";
   const topicOrderingMultiSurfaceScope = input.contextDecision?.taskShapeSignal === "topic_ordering";
   const collectionNameValidationMultiSurfaceScope = input.contextDecision?.taskShapeSignal === "collection_name_validation";
   const grpcErrorPolicyMultiSurfaceScope = input.contextDecision?.taskShapeSignal === "grpc_error_policy";
@@ -64,6 +65,7 @@ export function decideEditScope(input: {
     packageSourceMappingMultiSurfaceScope ||
     webSessionRenewalMultiSurfaceScope ||
     datastoreBackendParityMultiSurfaceScope ||
+    pluginActivationValidationMultiSurfaceScope ||
     topicOrderingMultiSurfaceScope ||
     collectionNameValidationMultiSurfaceScope ||
     grpcErrorPolicyMultiSurfaceScope;
@@ -76,6 +78,7 @@ export function decideEditScope(input: {
     !packageSourceMappingMultiSurfaceScope &&
     !webSessionRenewalMultiSurfaceScope &&
     !datastoreBackendParityMultiSurfaceScope &&
+    !pluginActivationValidationMultiSurfaceScope &&
     !topicOrderingMultiSurfaceScope &&
     !collectionNameValidationMultiSurfaceScope &&
     !grpcErrorPolicyMultiSurfaceScope;
@@ -98,6 +101,8 @@ export function decideEditScope(input: {
     : webSessionRenewalMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
       ? 5
     : datastoreBackendParityMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
+      ? 4
+    : pluginActivationValidationMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
       ? 4
     : topicOrderingMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
       ? 3
@@ -150,6 +155,7 @@ export function decideEditScope(input: {
   const promptDerivedOfficialExpansion =
     allowedHarnessFiles.length > 0 &&
     officialMultiSurfaceExpansion &&
+    !pluginActivationValidationMultiSurfaceScope &&
     candidateFiles.some((file) => !allowedHarnessFiles.includes(file) && isEditableByDefault(file, allowedTestEdits));
   const officialPromptExpansionBeyondSourceFiles =
     explicitMultiFileScope ||
@@ -160,6 +166,7 @@ export function decideEditScope(input: {
     discoveryConfigMultiSurfaceScope ||
     webSessionRenewalMultiSurfaceScope ||
     datastoreBackendParityMultiSurfaceScope ||
+    pluginActivationValidationMultiSurfaceScope ||
     topicOrderingMultiSurfaceScope ||
     collectionNameValidationMultiSurfaceScope ||
     grpcErrorPolicyMultiSurfaceScope ||
@@ -176,6 +183,7 @@ export function decideEditScope(input: {
     !packageSourceMappingMultiSurfaceScope &&
     !webSessionRenewalMultiSurfaceScope &&
     !datastoreBackendParityMultiSurfaceScope &&
+    !pluginActivationValidationMultiSurfaceScope &&
     !topicOrderingMultiSurfaceScope &&
     !collectionNameValidationMultiSurfaceScope &&
     !grpcErrorPolicyMultiSurfaceScope;
@@ -191,6 +199,8 @@ export function decideEditScope(input: {
     : webSessionRenewalMultiSurfaceScope
       ? 5
     : datastoreBackendParityMultiSurfaceScope
+      ? 4
+    : pluginActivationValidationMultiSurfaceScope
       ? 4
     : topicOrderingMultiSurfaceScope
       ? 3
@@ -238,9 +248,16 @@ export function decideEditScope(input: {
       )
     : officialInitialLimit;
   const initialLimit = source === "official_harness" || officialPatchPrompt ? officialPromptDerivedLimit : primaryLimit;
-  const initialEditFiles = budgetedEditCandidates
-    .filter((file) => isEditableByDefault(file, allowedTestEdits))
-    .slice(0, initialLimit);
+  const officialHarnessEditCandidates = promptDerivedOfficialExpansion
+    ? uniquePaths([...allowedHarnessFiles, ...budgetedEditCandidates])
+    : allowedHarnessFiles;
+  const initialEditFiles = allowedHarnessFiles.length > 0
+    ? officialHarnessEditCandidates
+        .filter((file) => isEditableByDefault(file, allowedTestEdits))
+        .slice(0, initialLimit)
+    : budgetedEditCandidates
+        .filter((file) => isEditableByDefault(file, allowedTestEdits))
+        .slice(0, initialLimit);
   const readOnlyFiles = uniquePaths([
     ...taskMentionedTestFiles,
     ...candidateFiles,
@@ -659,6 +676,12 @@ function hasDatastoreBackendParityScope(task: string): boolean {
     /\b(multiple|distinct|array|arrays|elements?|values?|batch|bulk|several)\b/.test(task) ||
     /\[[^\]]+,[^\]]+\]/.test(task);
   return collectionMutation && multiValue;
+}
+
+function hasPluginActivationValidationScope(task: string): boolean {
+  return /\b(plugin|plugins|plugin id|plugin identifier|package name)\b/.test(task) &&
+    /\b(activate|activation|toggleactive|toggle active|deactivate|admin\.plugins\.toggleactive)\b/.test(task) &&
+    /\b(validate|validation|valid|invalid|malformed|whitespace|special characters?|naming pattern|identifier|invalid-plugin-id)\b/.test(task);
 }
 
 function datastoreBackendParitySourceFilesFromCandidates(files: string[]): string[] {

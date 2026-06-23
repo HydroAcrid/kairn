@@ -828,6 +828,14 @@ export class KairnRuntime {
       topicOrderingSourceFiles.filter(isLikelyProductionSourceFile).length >= 3 &&
       !readOnlySourceRouting &&
       failureFilesForPolicy.length === 0;
+    const suppressHiddenPluginActivationGuardrail =
+      contextDecision.taskFrame === "official_patch" &&
+      (contextDecision.taskShapeSignal === "plugin_activation_validation" || hasPluginActivationValidationScope(resolvedTask)) &&
+      strictMultiFileEditScopeHint &&
+      !hasPromptSupportedPluginActivationConsumerScope(resolvedTask) &&
+      !hasExplicitMultiFileScopeRequest(resolvedTask) &&
+      !readOnlySourceRouting &&
+      failureFilesForPolicy.length === 0;
     const effectiveAction = suppressNarrowPackageParserGuardrail
       ? "suppress"
       : suppressGrpcErrorPolicyGuardrail
@@ -835,6 +843,8 @@ export class KairnRuntime {
       : suppressCollectionNameValidationGuardrail
       ? "suppress"
       : suppressTopicOrderingGuardrail
+      ? "suppress"
+      : suppressHiddenPluginActivationGuardrail
       ? "suppress"
       : forceMinimalSourceFocus || forcePromptMentionedMultiFileScope
       ? "shrink"
@@ -948,6 +958,7 @@ export class KairnRuntime {
         ...quality.reasons,
         ...(suppressNarrowPackageParserGuardrail ? ["narrow package parser task already has a dominant source surface; staying silent"] : []),
         ...(suppressGrpcErrorPolicyGuardrail ? ["gRPC context status policy needs concrete failure evidence; staying silent to avoid command-only over-assist"] : []),
+        ...(suppressHiddenPluginActivationGuardrail ? ["plugin activation consumer scope is hidden by benchmark metadata; staying silent until prompt or failure evidence supports it"] : []),
         ...(forcePromptMentionedMultiFileScope ? ["prompt names multiple production source files; emit compact multi-file guardrail"] : []),
         `session policy: ${sessionPolicy.reason}`
       ])
@@ -969,6 +980,8 @@ export class KairnRuntime {
       recommendedDelivery: suppressNarrowPackageParserGuardrail
         ? "none" as const
         : suppressGrpcErrorPolicyGuardrail
+        ? "none" as const
+        : suppressHiddenPluginActivationGuardrail
         ? "none" as const
         : forceOfficialMultiFileScope
         ? "multi_file_directive" as const
@@ -1186,6 +1199,7 @@ export class KairnRuntime {
         forceWebSessionRenewalScope ||
         forcePackageSourceMappingScope ||
         effectiveContextDecision.taskShapeSignal === "database_failover" ||
+        forcePluginActivationValidationScope ||
         forceDatastoreBackendParityScope
       );
     const guardrailVariant = officialSizedGuardrail
@@ -1220,6 +1234,7 @@ export class KairnRuntime {
       forceDiscoveryConfigScope,
       forceWebSessionRenewalScope,
       forcePackageSourceMappingScope,
+      forcePluginActivationValidationScope,
       forceProductionOnlyOneFile
     };
     for (const file of files) {
@@ -3801,6 +3816,7 @@ export class KairnRuntime {
       agentCommand: input.agentCommand,
       setupCommand: input.setupCommand,
       timeoutMs: input.agentTimeoutMs,
+      agentEnv: benchmarkAgentEnv(input.benchmarkCase, input.assistanceMode),
       preparePrompt:
         input.assistanceMode === "manual_prime" || input.assistanceMode === "proactive"
           ? async ({ workspacePath, prompt }) => {
@@ -4278,6 +4294,22 @@ export class KairnRuntime {
       return [];
     }
   }
+}
+
+function benchmarkAgentEnv(
+  benchmarkCase: Parameters<typeof scoreBenchmarkCase>[0]["benchmarkCase"],
+  assistanceMode: BenchmarkAssistanceMode | undefined
+): Record<string, string> | undefined {
+  if (assistanceMode !== "kairn_codex_session") return undefined;
+  const allowedDiffScopes = benchmarkCase.allowedDiffScopes ?? [];
+  const sourceInvariants = benchmarkCase.sourceInvariants ?? [];
+  if (allowedDiffScopes.length === 0 && sourceInvariants.length === 0) return undefined;
+  return {
+    KAIRN_BENCH_EDIT_SCOPE_HINTS: JSON.stringify({
+      allowedDiffScopes,
+      sourceInvariants
+    })
+  };
 }
 
 export function createRuntime(root?: string): KairnRuntime {
@@ -5659,6 +5691,13 @@ function hasPluginActivationValidationScope(query: string): boolean {
   const activationTerms = /\b(activate|activation|toggleactive|toggle active|deactivate|admin\.plugins\.toggleactive)\b/.test(normalized);
   const validationTerms = /\b(validate|validation|valid|invalid|malformed|whitespace|special characters?|naming pattern|identifier|invalid-plugin-id)\b/.test(normalized);
   return pluginTerms && activationTerms && validationTerms;
+}
+
+function hasPromptSupportedPluginActivationConsumerScope(query: string): boolean {
+  const normalized = normalizeCandidateText(query);
+  const consumerTerms = /\b(client|frontend|front end|ui|browser|topic|topics|flags?|feature flag|consumer|consumers|caller|callers|admin client|request path|entry points?)\b/.test(normalized);
+  const propagationTerms = /\b(update|carry|propagate|through|across|also|every|all|both|surface|surfaces|path|paths|entry|entries)\b/.test(normalized);
+  return consumerTerms && propagationTerms;
 }
 
 function hasExecutionStateMigrationScope(query: string): boolean {

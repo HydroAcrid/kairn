@@ -33,16 +33,21 @@ export function scoreBenchmarkCase(input: {
   );
   const actualFiles = unique(input.actualFiles);
   const excludedFiles = unique(input.benchmarkCase.excludedFiles);
-  const expectedHits = expectedFiles.filter((file) => actualFiles.includes(file));
-  const missedExpectedFiles = expectedFiles.filter((file) => !actualFiles.includes(file));
+  const metadataHasAgentChangedFiles = Object.prototype.hasOwnProperty.call(input.metadata ?? {}, "agentChangedFiles");
   const agentChangedFiles = stringArrayMetadata(input.metadata?.agentChangedFiles);
+  const qnaEvaluation = input.benchmarkCase.qnaEvaluation;
+  const expectedCoverageFiles =
+    requiredTouchedFiles.length > 0 && !qnaEvaluation && metadataHasAgentChangedFiles
+      ? unique(agentChangedFiles)
+      : actualFiles;
+  const expectedHits = expectedFiles.filter((file) => expectedCoverageFiles.includes(file));
+  const missedExpectedFiles = expectedFiles.filter((file) => !expectedCoverageFiles.includes(file));
   const requiredTouchedHits = requiredTouchedFiles.filter((file) => agentChangedFiles.includes(file));
   const missingRequiredTouchedFiles = requiredTouchedFiles.filter((file) => !agentChangedFiles.includes(file));
   const requestedOutcome = input.taskOutcome ?? "pass";
   const requiredTouchedSatisfied = requiredTouchedFiles.length === 0 || missingRequiredTouchedFiles.length === 0;
-  const qnaEvaluation = input.benchmarkCase.qnaEvaluation;
   const productionOnlyScopeExpected = benchmarkCaseRequiresProductionOnly(input.benchmarkCase);
-  const topFive = actualFiles.slice(0, 5);
+  const topFive = expectedCoverageFiles.slice(0, 5);
   const excludedHits = actualFiles.filter((file) => excludedFiles.some((excluded) => fileMatchesBenchmarkPattern(file, excluded)));
   const minExpectedHits = Math.max(0, Math.min(expectedFiles.length, input.benchmarkCase.minExpectedHits ?? expectedFiles.length));
   const rawExpectedCoverageSatisfied = expectedFiles.length === 0 || expectedHits.length >= minExpectedHits;

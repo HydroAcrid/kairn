@@ -6,11 +6,12 @@ import { startKairnDaemon } from "../../daemon/server.js";
 import { formatImpactReportMarkdown, formatImpactStats } from "../../metrics/impact.js";
 import { startMcpServer } from "../../server/mcp.js";
 import { queueAndFlushTelemetrySnapshot } from "../../telemetry/autoFlush.js";
-import type { CodexSetupMode, ContextPrime, HookOutputProfile, IndexStateStats, PrimeProfile } from "../../types.js";
+import type { BenchmarkDiffScope, BenchmarkSourceInvariant, CodexSetupMode, ContextPrime, HookOutputProfile, IndexStateStats, PrimeProfile } from "../../types.js";
 import { commandInvocation, commandSpawnInvocation } from "../../utils/command.js";
 import {
   buildCodexNoDiffRecoveryPrompt,
   buildCodexPartialScopeRecoveryPrompt,
+  extraStrictScopeFiles,
   missingRequiredScopeFiles,
   relevantWorkspaceDiffFiles,
   shouldRetryCodexNoDiff,
@@ -387,6 +388,7 @@ export function registerCoreCommands(program: Command): void {
       const task = taskParts.join(" ").trim();
       await withRuntime(options.root, async (runtime) => {
         const interactive = task.length === 0;
+        const benchmarkEditScopeHints = parseBenchmarkEditScopeHintsFromEnv();
         const prime = interactive
           ? undefined
           : await runtime.primeContext({
@@ -394,7 +396,8 @@ export function registerCoreCommands(program: Command): void {
               sessionId: options.session,
               profile: options.profile,
               budget: options.budget,
-              source: "codex"
+              source: "codex",
+              editScopeHints: benchmarkEditScopeHints
             });
         const session = interactive
           ? options.session
@@ -550,12 +553,24 @@ export function registerCoreCommands(program: Command): void {
                 prime,
                 changedFiles
               });
-              process.stderr.write(`Kairn partial-scope recovery: retrying once for missing required file(s): ${missingFiles.join(", ")}.\n`);
+              const extraFiles = extraStrictScopeFiles({
+                task,
+                interactive,
+                exitCode,
+                prime,
+                changedFiles
+              });
+              process.stderr.write(
+                extraFiles.length > 0
+                  ? `Kairn strict-scope recovery: retrying once to revert out-of-scope file(s): ${extraFiles.join(", ")}.\n`
+                  : `Kairn partial-scope recovery: retrying once for missing required file(s): ${missingFiles.join(", ")}.\n`
+              );
               const recoveryPrompt = buildCodexPartialScopeRecoveryPrompt({
                 task,
                 prime,
                 changedFiles,
-                missingFiles
+                missingFiles,
+                extraFiles
               });
               const recoveryInvocation = commandSpawnInvocation(
                 commandInvocation(
@@ -602,6 +617,59 @@ export function registerCoreCommands(program: Command): void {
         }
       });
     });
+}
+
+function parseBenchmarkEditScopeHintsFromEnv():
+  | { allowedDiffScopes?: BenchmarkDiffScope[] | undefined; sourceInvariants?: BenchmarkSourceInvariant[] | undefined }
+  | undefined {
+  const raw = process.env.KAIRN_BENCH_EDIT_SCOPE_HINTS;
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as {
+      allowedDiffScopes?: unknown;
+      sourceInvariants?: unknown;
+    };
+    const allowedDiffScopes = Array.isArray(parsed.allowedDiffScopes)
+      ? parsed.allowedDiffScopes
+          .map((item) => {
+            if (!item || typeof item !== "object") return undefined;
+            const record = item as { file?: unknown; allowWholeFile?: unknown; symbols?: unknown };
+            if (typeof record.file !== "string" || record.file.trim().length === 0) return undefined;
+            return {
+              file: record.file,
+              ...(typeof record.allowWholeFile === "boolean" ? { allowWholeFile: record.allowWholeFile } : {}),
+              ...(Array.isArray(record.symbols) ? { symbols: record.symbols.filter((symbol): symbol is string => typeof symbol === "string") } : {})
+            };
+          })
+          .filter((item): item is BenchmarkDiffScope => Boolean(item))
+      : [];
+    const sourceInvariants = Array.isArray(parsed.sourceInvariants)
+      ? parsed.sourceInvariants
+          .map((item) => {
+            if (!item || typeof item !== "object") return undefined;
+            const record = item as Record<string, unknown>;
+            if (typeof record.file !== "string" || record.file.trim().length === 0) return undefined;
+            return {
+              file: record.file,
+              ...(typeof record.id === "string" ? { id: record.id } : {}),
+              ...(typeof record.description === "string" ? { description: record.description } : {}),
+              ...(Array.isArray(record.requiredPresent) ? { requiredPresent: record.requiredPresent.filter((value): value is string => typeof value === "string") } : {}),
+              ...(Array.isArray(record.requiredAbsent) ? { requiredAbsent: record.requiredAbsent.filter((value): value is string => typeof value === "string") } : {}),
+              ...(Array.isArray(record.requiredRegex) ? { requiredRegex: record.requiredRegex.filter((value): value is string => typeof value === "string") } : {}),
+              ...(Array.isArray(record.requiredAny) ? { requiredAny: record.requiredAny.filter((value): value is string => typeof value === "string") } : {}),
+              ...(Array.isArray(record.requiredAnyRegex) ? { requiredAnyRegex: record.requiredAnyRegex.filter((value): value is string => typeof value === "string") } : {})
+            };
+          })
+          .filter((item): item is BenchmarkSourceInvariant => Boolean(item))
+      : [];
+    if (allowedDiffScopes.length === 0 && sourceInvariants.length === 0) return undefined;
+    return {
+      ...(allowedDiffScopes.length > 0 ? { allowedDiffScopes } : {}),
+      ...(sourceInvariants.length > 0 ? { sourceInvariants } : {})
+    };
+  } catch {
+    return undefined;
+  }
 }
 
 function disableWasmParserForCommand(): () => void {
