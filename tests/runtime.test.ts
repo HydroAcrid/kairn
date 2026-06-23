@@ -1349,6 +1349,12 @@ describe("KairnRuntime", () => {
       ]));
       expect(prime.editScope?.initialEditFiles).not.toContain("lib/ansible/plugins/strategy/debug.py");
       expect(prime.editScope?.initialEditFiles).not.toContain("lib/ansible/module_utils/basic.py");
+      expect(prime.content).toContain("Required migration edits:");
+      expect(prime.content).toContain("patch the state owner and every listed strategy/executor consumer");
+      expect(prime.content).toContain("Consumer surfaces:");
+      expect(prime.content).toContain("lib/ansible/plugins/strategy/__init__.py");
+      expect(prime.content).toContain("lib/ansible/plugins/strategy/linear.py");
+      expect(prime.content).toContain("Do not stop after adding enums");
       expect(prime.content).not.toContain("lib/ansible/plugins/strategy/debug.py");
       expect(prime.content).not.toContain("lib/ansible/module_utils/basic.py");
     } finally {

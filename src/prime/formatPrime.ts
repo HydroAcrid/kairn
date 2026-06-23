@@ -11,6 +11,7 @@ export type OfficialGuardrailVariant =
   | "paired_contract_compact"
   | "benchmark_generator_compact"
   | "collection_name_validation_compact"
+  | "execution_state_migration_compact"
   | "grpc_error_policy_compact"
   | "request_body_form_compact"
   | "discovery_config_compact"
@@ -258,6 +259,8 @@ export function formatShrunkPrimeContext(input: {
   const topFileLimit = input.files && input.files.length > 1
     ? isUiFeedbackMultiSurfaceTask(input.task)
       ? 5
+      : isExecutionStateMigrationTask(input.task)
+      ? 3
       : 2
     : 1;
   const topFiles = candidateFiles.slice(0, topFileLimit);
@@ -284,6 +287,7 @@ export function formatShrunkPrimeContext(input: {
       if (variant === "benchmark_generator_compact") return formatBenchmarkGeneratorOfficialGuardrail(guardrailInput);
       if (variant === "paired_contract_compact") return formatPairedContractOfficialGuardrail(guardrailInput);
       if (variant === "collection_name_validation_compact") return formatCollectionNameValidationOfficialGuardrail(guardrailInput);
+      if (variant === "execution_state_migration_compact") return formatExecutionStateMigrationOfficialGuardrail(guardrailInput);
       if (variant === "grpc_error_policy_compact") return formatGrpcErrorPolicyOfficialGuardrail(guardrailInput);
       if (variant === "request_body_form_compact") return formatRequestBodyFormOfficialGuardrail(guardrailInput);
       if (variant === "discovery_config_compact") return formatDiscoveryConfigOfficialGuardrail(guardrailInput);
@@ -334,6 +338,7 @@ export function formatShrunkPrimeContext(input: {
     additionalTopFiles.length > 0
       ? additionalTopFiles.map((file) => `- ${file} - ${primaryReasonForFile(input.context, file)}`).join("\n")
       : "",
+    ...executionStateMigrationDirectiveLines(input.task, topFiles),
     symbolHints.length > 0 ? `Symbols: ${symbolHints.join(", ")}` : "",
     "",
     ...formatInvariantSections(input.invariants, "Invariant to preserve:", { includeVerification: input.includeVerification ?? multiFileDirective }),
@@ -350,6 +355,18 @@ export function formatShrunkPrimeContext(input: {
     focusedContext
   ].filter(Boolean);
   return fitSectionsToBudget(sections, input.budget);
+}
+
+function executionStateMigrationDirectiveLines(task: string, files: string[]): string[] {
+  if (!isExecutionStateMigrationTask(task) || files.length < 2) return [];
+  const ownerFiles = files.filter(isExecutionStateOwnerFile);
+  const consumerFiles = files.filter((file) => !isExecutionStateOwnerFile(file));
+  return [
+    "Required migration edits: patch the state owner and every listed strategy/executor consumer; owner-only enum changes are incomplete.",
+    ownerFiles.length > 0 ? `State owner: ${ownerFiles.join(", ")}` : "",
+    consumerFiles.length > 0 ? `Consumer surfaces: ${consumerFiles.join(", ")}` : "",
+    "Do not stop after adding enums/metaclass compatibility; update consumer comparisons and assignments in the same patch."
+  ].filter(Boolean);
 }
 
 function formatCompactOfficialGuardrail(input: {
@@ -537,6 +554,64 @@ function formatCollectionNameValidationOfficialGuardrail(input: {
     "Need another file? Report evidence first."
   ];
   return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 150));
+}
+
+function formatExecutionStateMigrationOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const editFiles = sortExecutionStateMigrationDirectiveFiles(officialEditFiles(input)).slice(0, 5);
+  const invariant = input.invariants?.[0];
+  const ownerFiles = editFiles.filter(isExecutionStateOwnerFile);
+  const consumerFiles = editFiles.filter((file) => !isExecutionStateOwnerFile(file));
+  const sections = [
+    "# Kairn State Migration Scope",
+    "Required edit surfaces: patch the state owner and every listed consumer surface; owner-only enum changes are incomplete.",
+    ownerFiles.length > 0
+      ? `State owner: ${ownerFiles.map((file) => `${file} (${executionStateMigrationRole(file)})`).join(", ")}`
+      : "State owner: the file defining the public state representation.",
+    consumerFiles.length > 0
+      ? `Required consumers: ${consumerFiles.map((file) => `${file} (${executionStateMigrationRole(file)})`).join(", ")}`
+      : "Required consumers: every strategy/executor surface that compares or assigns the migrated state.",
+    invariant
+      ? `Rule: ${truncateToBudget(invariant.statement, 40)}`
+      : "Rule: preserve behavior while moving comparisons, assignments, display, and compatibility shims to the new state type.",
+    "Do not stop after adding enums/metaclass compatibility; update the consumer comparisons and assignments in the same patch.",
+    "Boundary: no tests, docs, examples, generated files, or unrelated strategy plugins.",
+    "Need another file? Report evidence first."
+  ];
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 260));
+}
+
+function sortExecutionStateMigrationDirectiveFiles(files: string[]): string[] {
+  return [...files].sort((left, right) => executionStateMigrationFileRank(left) - executionStateMigrationFileRank(right));
+}
+
+function executionStateMigrationFileRank(filePath: string): number {
+  const normalized = filePath.toLowerCase();
+  if (isExecutionStateOwnerFile(normalized)) return 0;
+  if (/(^|\/)strategy\/__init__\.(?:py|[cm]?[jt]sx?|go|rs|rb|php|java|kt|cs)$/.test(normalized)) return 1;
+  if (/(^|\/)strategy\/linear\.(?:py|[cm]?[jt]sx?|go|rs|rb|php|java|kt|cs)$/.test(normalized)) return 2;
+  if (/(^|\/)(strategy|strategies|executor|executors)\//.test(normalized)) return 3;
+  return 4;
+}
+
+function isExecutionStateOwnerFile(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  return /\b(play_iterator|playiterator|host_state|hoststate|state_machine|statemachine|iterator)\b/.test(normalized);
+}
+
+function executionStateMigrationRole(filePath: string): string {
+  const normalized = filePath.toLowerCase();
+  if (isExecutionStateOwnerFile(normalized)) return "state owner";
+  if (/(^|\/)strategy\/__init__\./.test(normalized)) return "strategy state consumer";
+  if (/(^|\/)strategy\/linear\./.test(normalized)) return "linear strategy consumer";
+  if (/(^|\/)(strategy|strategies)\//.test(normalized)) return "strategy consumer";
+  if (/(^|\/)(executor|executors)\//.test(normalized)) return "executor consumer";
+  return officialFileRole(filePath);
 }
 
 function formatTopicOrderingOfficialGuardrail(input: {
@@ -740,6 +815,18 @@ function isUiFeedbackMultiSurfaceTask(task: string): boolean {
   );
 }
 
+function isExecutionStateMigrationTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  const stateTerms =
+    /\b(playiterator|play iterator|hoststate|host state|run_state|run state|fail_state|failure state|execution state|iterator state|state representation|strategy plugin|strategy plugins)\b/.test(normalized) ||
+    /\b(iteratingstates|failedstates|iterating_tasks|iterating_setup|failed_setup|failed_tasks)\b/.test(normalized);
+  const migrationTerms =
+    /\b(enum|enums|enumeration|intenum|intflag|public type|public representation|namespaced|legacy constants?|deprecated constants?|deprecation warning|backward compatibility|third-party|strategy\/linear|strategy\/__init__|metaclass|attribute access|string output)\b/.test(normalized);
+  const behaviorTerms =
+    /\b(preserve|redirect|emit|warn|compare|transition|assignment|bitwise|combinable|state descriptions?|readable state names?)\b/.test(normalized);
+  return stateTerms && migrationTerms && behaviorTerms;
+}
+
 function configOrderingGuardrail(task: string): string {
   const normalized = task.toLowerCase();
   const configTask =
@@ -764,6 +851,7 @@ export function officialGuardrailVariantFor(input: {
   if (isUiFeedbackMultiSurfaceTask(input.task)) return "frontend_owner_map_compact";
   if (isTopicOrderingTask(input.task) && editFiles.length > 1) return "topic_ordering_compact";
   if (isCollectionNameValidationTask(input.task) && editFiles.length > 1) return "collection_name_validation_compact";
+  if (isExecutionStateMigrationTask(input.task) && editFiles.length > 1) return "execution_state_migration_compact";
   if (isGrpcErrorPolicyTask(input.task) && editFiles.length > 1) return "grpc_error_policy_compact";
   if (isRequestBodyFormTask(input.task) && editFiles.length > 1) return "request_body_form_compact";
   if (isConverterOutputTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
