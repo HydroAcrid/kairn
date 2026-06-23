@@ -375,6 +375,7 @@ export function registerBenchCommands(program: Command): void {
         console.log(`Quality pass rate: ${(report.aggregate.qualityPassRate * 100).toFixed(2)}%`);
         console.log(`Clean pass/pass rows: ${report.aggregate.cleanPassPassRows}`);
         console.log(`Token regressions: ${report.aggregate.tokenRegressionRows}`);
+        console.log(`Passive token regressions: ${report.aggregate.passiveTokenRegressionRows}`);
         console.log(`Paused: ${report.paused ? report.pauseReasons.join("; ") || "yes" : "no"}`);
         console.log(`Summary: ${report.outputs.summaryPath}`);
         console.log(`Results CSV: ${report.outputs.resultsCsvPath}`);
@@ -399,6 +400,7 @@ export function registerBenchCommands(program: Command): void {
       console.log(`Failed: ${report.aggregate.failedEntries}`);
       console.log(`Quality pass rate: ${(report.aggregate.qualityPassRate * 100).toFixed(2)}%`);
       console.log(`Median saved tokens: ${report.aggregate.medianSavedTokens}`);
+      console.log(`Passive token regressions: ${report.aggregate.passiveTokenRegressionRows}`);
       console.log(`Paused: ${report.paused ? report.pauseReasons.join("; ") || "yes" : "no"}`);
     });
 

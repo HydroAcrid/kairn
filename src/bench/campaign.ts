@@ -181,6 +181,7 @@ export type CampaignAggregate = {
   qualityPassRate: number;
   cleanPassPassRows: number;
   tokenRegressionRows: number;
+  passiveTokenRegressionRows: number;
   qualityRescueRows: number;
   harmfulRows: number;
   scopeViolations: number;
@@ -941,6 +942,7 @@ function aggregateCampaignRows(rows: CampaignResultRow[], artifacts: CampaignArt
     qualityPassRate: qualityRows.length > 0 ? qualityRows.filter((row) => row.qualityPassed).length / qualityRows.length : 0,
     cleanPassPassRows: rows.filter((row) => row.cleanPassPass).length,
     tokenRegressionRows: rows.filter((row) => row.tokenRegression).length,
+    passiveTokenRegressionRows: rows.filter((row) => row.classifications.split(";").includes("passive_token_regression")).length,
     qualityRescueRows: rows.filter((row) => row.qualityRescue).length,
     harmfulRows: rows.filter((row) => row.harmfulAssist).length,
     scopeViolations: sum(rows.map((row) => row.scopeViolations)),
@@ -977,7 +979,14 @@ function writeCampaignOutputs(input: { manifest: CampaignManifest; report: Campa
   fs.writeFileSync(outputs.resultsCsvPath, campaignRowsCsv(input.report.rows));
   fs.writeFileSync(
     outputs.failuresCsvPath,
-    campaignRowsCsv(input.report.rows.filter((row) => row.status === "failed" || !row.qualityPassed || row.qualityDrop || row.harmfulAssist || row.scopeViolations > 0))
+    campaignRowsCsv(input.report.rows.filter((row) =>
+      row.status === "failed" ||
+      !row.qualityPassed ||
+      row.qualityDrop ||
+      row.harmfulAssist ||
+      row.scopeViolations > 0 ||
+      row.classifications.split(";").includes("passive_token_regression")
+    ))
   );
   fs.writeFileSync(outputs.proxyResultsCsvPath, campaignRowsCsv(input.report.rows.filter((row) => row.kind === "proxy")));
 }
