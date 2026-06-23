@@ -642,6 +642,7 @@ async function runProxyEntry(manifest: CampaignManifest, entry: CampaignEntry): 
     const initialEditFiles = Array.isArray(editScope?.initialEditFiles) ? stringArray(editScope.initialEditFiles) : [];
     const readOnlyFiles = Array.isArray(editScope?.readOnlyFiles) ? stringArray(editScope.readOnlyFiles) : [];
     const deliveryAction = stringValue(deliveryTrace.action);
+    const recommendedDelivery = stringValue(deliveryTrace.recommendedDelivery);
     const minExpectedHits = Math.max(
       0,
       Math.min(
@@ -676,6 +677,8 @@ async function runProxyEntry(manifest: CampaignManifest, entry: CampaignEntry): 
       profile: prime.profile,
       tokenEstimate: prime.tokenEstimate,
       files: prime.files,
+      action: deliveryAction,
+      recommendedDelivery,
       taskShapeSignal: stringValue(deliveryTrace.taskShapeSignal),
       requiredSurface: stringValue(deliveryTrace.requiredSurface),
       directiveStyle: stringValue(deliveryTrace.directiveStyle),
@@ -704,6 +707,8 @@ type CampaignProxyReport = {
   profile: string;
   tokenEstimate: number;
   files: string[];
+  action?: string | undefined;
+  recommendedDelivery?: string | undefined;
   taskShapeSignal?: string | undefined;
   requiredSurface?: string | undefined;
   directiveStyle?: string | undefined;
@@ -740,10 +745,6 @@ function classifyProxy(input: {
   if (input.directiveStyle === "scope_guardrail" || input.strictBoundary) classes.push("valid_guardrail");
   if (input.emittedFileCount > 6) classes.push("scope_too_broad");
   if (input.action !== "suppress" && input.estimatedDirectiveTokens > 900) classes.push("would_over_assist");
-  const intentionalDiscoverySuppression =
-    input.action === "suppress" &&
-    input.taskShapeSignal === "discovery_config" &&
-    input.requiredSurface === "paired_contract";
   const intentionalNarrowParserSuppression =
     input.action === "suppress" &&
     input.taskShapeSignal === "narrow_package_parser" &&
@@ -762,11 +763,15 @@ function classifyProxy(input: {
   if (
     input.expectedFileCount > 0 &&
     input.expectedFilesMatchedCount < input.minExpectedHits &&
-    !intentionalDiscoverySuppression &&
     !intentionalNarrowParserSuppression &&
     !intentionalCollectionNameValidationSuppression &&
     !intentionalTopicOrderingSuppression &&
     !intentionalEvidenceOrSuppression
+  ) classes.push("wrong_surface_risk");
+  if (
+    input.action === "suppress" &&
+    input.taskShapeSignal === "discovery_config" &&
+    input.requiredSurface === "paired_contract"
   ) classes.push("wrong_surface_risk");
   if (input.taskShapeSignal === "ambiguous_frontend_ownership" && input.action !== "request_evidence") classes.push("wrong_surface_risk");
   if (classes.length === 0) classes.push("proxy_pass");
@@ -1430,8 +1435,6 @@ function repeatedFailureClasses(rows: CampaignResultRow[]): Array<{ classificati
     "proxy_pass",
     "clean_passpass",
     "quality_rescue",
-    "quality_incomplete",
-    "mcp_quality_incomplete",
     "mcp_useful_attribution",
     "valid_guardrail",
     "suppression_expected",

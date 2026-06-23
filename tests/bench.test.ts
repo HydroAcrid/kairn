@@ -912,7 +912,7 @@ describe("benchmark suite and scoring", () => {
     }
   });
 
-  it("reports repeated neutral incomplete rows without pausing the campaign", () => {
+  it("counts repeated incomplete quality rows for pause rules", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-campaign-neutral-incomplete-"));
     try {
       const outDir = path.join(root, "out");
@@ -966,9 +966,11 @@ describe("benchmark suite and scoring", () => {
       const report = summarizeCampaign(outDir);
 
       expect(report.rows.map((row) => row.classifications)).toEqual(["quality_incomplete", "quality_incomplete"]);
-      expect(report.aggregate.repeatedFailureClasses).toEqual([]);
-      expect(report.paused).toBe(false);
-      expect(report.pauseReasons).toEqual([]);
+      expect(report.aggregate.repeatedFailureClasses).toEqual([
+        { classification: "quality_incomplete", count: 2, examples: ["row-a", "row-b"] }
+      ]);
+      expect(report.paused).toBe(true);
+      expect(report.pauseReasons).toEqual(["repeated failure class: quality_incomplete"]);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -1080,7 +1082,7 @@ describe("benchmark suite and scoring", () => {
     }
   });
 
-  it("allows expected-file misses when high-clue discovery proxy intentionally suppresses", async () => {
+  it("keeps high-clue discovery proxy in compact paired scope instead of suppressing", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-campaign-proxy-discovery-"));
     const outRoot = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-campaign-proxy-discovery-out-"));
     try {
@@ -1126,11 +1128,20 @@ describe("benchmark suite and scoring", () => {
         parallel: 1
       });
       const row = report.rows[0];
+      const artifact = report.artifacts[0];
+      const proxyReport = artifact?.report as {
+        action?: string;
+        recommendedDelivery?: string;
+        expectedFilesMatchedCount?: number;
+      } | undefined;
 
-      expect(row?.classifications).toContain("suppression_expected");
+      expect(row?.classifications).not.toContain("suppression_expected");
       expect(row?.classifications).not.toContain("wrong_surface_risk");
       expect(row?.qualityPassed).toBe(true);
       expect(report.paused).toBe(false);
+      expect(proxyReport?.action).toBe("shrink");
+      expect(proxyReport?.recommendedDelivery).toBe("multi_file_directive");
+      expect(proxyReport?.expectedFilesMatchedCount).toBe(2);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
       fs.rmSync(outRoot, { recursive: true, force: true });
@@ -4916,7 +4927,7 @@ describe("benchmark suite and scoring", () => {
     expect(decision.recommendedDelivery).toBe("multi_file_directive");
   });
 
-  it("suppresses high-clue official discovery config prompts after the prompt names the contract and verification surface", () => {
+  it("uses compact paired guardrail for high-clue official discovery config prompts", () => {
     const decision = applyContextGovernor({
       task: [
         "SWE-Bench Pro metadata. Selected verification tests from SWE-Bench Pro metadata:",
@@ -4976,8 +4987,8 @@ describe("benchmark suite and scoring", () => {
     expect(decision.taskFrame).toBe("official_patch");
     expect(decision.taskShapeSignal).toBe("discovery_config");
     expect(decision.requiredSurface).toBe("paired_contract");
-    expect(decision.action).toBe("suppress");
-    expect(decision.recommendedDelivery).toBe("none");
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
   });
 
   it("marks request body/form reconstruction as compact paired source scope", () => {

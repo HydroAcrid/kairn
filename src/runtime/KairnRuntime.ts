@@ -129,6 +129,7 @@ import { isUnrelatedDeprecationLifecyclePath, scoreDeprecationLifecyclePath } fr
 
 type PrimeDeliveryTrace = {
   action: ContextValueDecision["action"];
+  recommendedDelivery?: ContextValueDecision["recommendedDelivery"];
   taskShapeSignal?: ContextValueDecision["taskShapeSignal"];
   requiredSurface?: ContextValueDecision["requiredSurface"];
   directiveStyle?: ContextValueDecision["directiveStyle"];
@@ -5878,6 +5879,7 @@ function buildPrimeDeliveryTrace(input: {
   }
   return {
     action: input.decision.action,
+    ...(input.decision.recommendedDelivery ? { recommendedDelivery: input.decision.recommendedDelivery } : {}),
     ...(input.decision.taskShapeSignal ? { taskShapeSignal: input.decision.taskShapeSignal } : {}),
     ...(input.decision.requiredSurface ? { requiredSurface: input.decision.requiredSurface } : {}),
     ...(input.decision.directiveStyle ? { directiveStyle: input.decision.directiveStyle } : {}),

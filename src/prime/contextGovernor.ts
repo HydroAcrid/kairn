@@ -42,7 +42,6 @@ export type DecisionFeatures = {
   ambiguity: number;
   activeSourceState: boolean;
   staleIndexState: boolean;
-  highClueDiscoveryConfigState: boolean;
   failureState: boolean;
   verificationState: boolean;
   explicitTestTarget: boolean;
@@ -220,7 +219,6 @@ export function buildDecisionFeatures(input: GovernorInput): DecisionFeatures {
     ambiguity: candidateAmbiguity(candidates, input.baseDecision.topGap),
     activeSourceState: Boolean(input.activeSourceState),
     staleIndexState: Boolean(input.staleIndexState),
-    highClueDiscoveryConfigState: hasHighClueDiscoveryConfigState(input.task),
     failureState: taskFrame === "failure_first" || input.profile === "failure_debug" || /\b(fail|failure|traceback|stack trace|exception|error)\b/i.test(input.task),
     verificationState: taskFrame === "verification_cleanup" || /\b(verify|verification|test|typecheck|lint|build|cleanup|review diff)\b/i.test(input.task),
     explicitTestTarget: taskExplicitlyTargetsTests(input.task),
@@ -399,19 +397,6 @@ function hardSafetyDecision(
       score: Math.min(baseDecision.score, 48),
       reasons: ["task shape has weak source ownership; asking for an exact source signal"],
       evidenceRequest: evidenceRequestFor(features, "exact_source")
-    };
-  }
-  if (
-    features.taskFrame === "official_patch" &&
-    features.taskShapeSignal === "discovery_config" &&
-    features.highClueDiscoveryConfigState &&
-    baseDecision.action !== "suppress" &&
-    baseDecision.action !== "request_evidence"
-  ) {
-    return {
-      action: "suppress",
-      score: Math.min(baseDecision.score, 30),
-      reasons: ["high-clue discovery/config official prompt already names the contract and verification surface"]
     };
   }
   if (
@@ -719,7 +704,6 @@ function inferTaskShapeSignal(
     ambiguity: candidateAmbiguity(candidates, baseDecision.topGap),
     activeSourceState: false,
     staleIndexState: false,
-    highClueDiscoveryConfigState: hasHighClueDiscoveryConfigState(task),
     failureState: false,
     verificationState: false,
     explicitTestTarget: taskExplicitlyTargetsTests(task),
@@ -935,23 +919,6 @@ function isDiscoveryConfigTask(normalized: string): boolean {
     /\b(authentication|delegated auth|delegated authentication|m authentication|issuer|authorization endpoint|registration endpoint|token endpoint|account)\b/,
     /\b(validated config|validated configuration|server config|configuration|config|preserve|expose|optional object|public interface)\b/
   ]) >= 2;
-}
-
-function hasHighClueDiscoveryConfigState(task: string): boolean {
-  const normalized = normalizeText(task);
-  const raw = task.toLowerCase();
-  if (!isDiscoveryConfigTask(normalized)) return false;
-  const namesContract =
-    /\b(validatedserverconfig|validated server config|public interface|delegatedauthentication|delegated authentication|m authentication|issuer|authorization endpoint|registration endpoint|token endpoint)\b/.test(normalized) ||
-    raw.includes("m.authentication") ||
-    raw.includes("validatedserverconfig");
-  const namesDiscoverySurface =
-    /\b(autodiscoveryutils|auto discovery utils|homeserver discovery|well known discovery|well-known discovery|discovery result)\b/.test(normalized) ||
-    raw.includes("autodiscoveryutils");
-  const namesVerification =
-    /\b(selected verification tests?|verification targets? only|swe bench pro metadata|swe-pro metadata|swepro metadata)\b/.test(normalized) ||
-    /test\/utils\/autodiscoveryutils-test\.(tsx?|jsx?)/.test(raw);
-  return namesContract && namesDiscoverySurface && namesVerification;
 }
 
 function isBackendParityTask(normalized: string, candidates: CandidateFeatures[]): boolean {
