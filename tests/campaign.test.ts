@@ -171,6 +171,90 @@ describe("benchmark campaign harness", () => {
     expect(rawFiles.some((file) => file.endsWith(".partial.json"))).toBe(false);
   });
 
+  it("reuses cached baseline reports for Kairn-only live reruns", async () => {
+    const dir = tempDir("kairn-campaign-baseline-cache-");
+    const markerPath = path.join(dir, "baseline-runs.txt");
+    const outDir = path.join(dir, "out");
+    const baselineCommand = [
+      "node -e",
+      quoteShell(`require("fs").appendFileSync(${JSON.stringify(markerPath)}, "x"); console.log("src/app.ts"); console.log("tokens used 1000");`)
+    ].join(" ");
+    const manifestPath = writeManifest(dir, {
+      id: "baseline-cache",
+      name: "Baseline Cache",
+      defaults: {
+        agentTimeoutMs: 10000,
+        cleanup: "always",
+        commands: {
+          baseline: baselineCommand,
+          kairn_codex_session: 'node -e "console.log(\'src/app.ts\'); console.log(\'tokens used 700\')"'
+        }
+      },
+      entries: [
+        {
+          id: "cache-row",
+          kind: "proof",
+          root: "examples/bench/campaign-fixtures/mock-repo",
+          suite: "examples/bench/campaign-fixtures/mock-suite.json",
+          modes: ["baseline", "kairn_codex_session"],
+          repeat: 1
+        }
+      ]
+    });
+
+    const first = await runCampaign({ manifestPath, outDir, stage: "live" });
+    expect(first.aggregate.failedEntries).toBe(0);
+    expect(fs.readFileSync(markerPath, "utf8")).toBe("x");
+    expect(fs.readdirSync(first.outputs.baselineCacheDir).some((file) => file.endsWith(".baseline.json"))).toBe(true);
+
+    const second = await runCampaign({
+      manifestPath,
+      outDir,
+      stage: "live",
+      kairnOnlyAgainstBaseline: true
+    });
+
+    expect(second.aggregate.failedEntries).toBe(0);
+    expect(fs.readFileSync(markerPath, "utf8")).toBe("x");
+    expect(second.artifacts[0]?.classifications).toContain("clean_passpass");
+  });
+
+  it("fails fast when Kairn-only live reruns do not have cached baselines", async () => {
+    const dir = tempDir("kairn-campaign-missing-baseline-cache-");
+    const manifestPath = writeManifest(dir, {
+      id: "missing-baseline-cache",
+      name: "Missing Baseline Cache",
+      defaults: {
+        agentTimeoutMs: 10000,
+        cleanup: "always",
+        commands: {
+          baseline: 'node -e "console.log(\'src/app.ts\'); console.log(\'tokens used 1000\')"',
+          kairn_codex_session: 'node -e "console.log(\'src/app.ts\'); console.log(\'tokens used 700\')"'
+        }
+      },
+      entries: [
+        {
+          id: "cache-row",
+          kind: "proof",
+          root: "examples/bench/campaign-fixtures/mock-repo",
+          suite: "examples/bench/campaign-fixtures/mock-suite.json",
+          modes: ["baseline", "kairn_codex_session"],
+          repeat: 1
+        }
+      ]
+    });
+
+    const report = await runCampaign({
+      manifestPath,
+      outDir: path.join(dir, "out"),
+      stage: "live",
+      kairnOnlyAgainstBaseline: true
+    });
+
+    expect(report.aggregate.failedEntries).toBe(1);
+    expect(report.artifacts[0]?.error).toMatch(/missing cached baseline artifact/);
+  });
+
   it("limits campaign worker concurrency", async () => {
     let active = 0;
     let maxActive = 0;
@@ -264,6 +348,10 @@ function writeManifest(dir: string, manifest: CampaignManifest): string {
   const manifestPath = path.join(dir, "campaign.json");
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   return manifestPath;
+}
+
+function quoteShell(value: string): string {
+  return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
 function writeRawArtifact(

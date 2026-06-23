@@ -1719,12 +1719,14 @@ export class KairnRuntime {
     agentTimeoutMs?: number | undefined;
     repeat?: number | undefined;
     shuffleOrder?: boolean | undefined;
+    cachedBaselineReports?: BenchmarkReport[] | undefined;
     proofOutputPath?: string | undefined;
     onProgress?: ((message: string) => void) | undefined;
   }): Promise<BenchmarkProofReport> {
     const repeat = Math.max(1, Math.floor(Number(input.repeat ?? 1) || 1));
+    const cachedBaselineReports = input.cachedBaselineReports?.filter(Boolean) ?? [];
     const modeCommands: Array<{ mode: BenchmarkAssistanceMode; command: string; setupCommand?: string | undefined }> = [
-      { mode: "baseline", command: input.baselineCommand, setupCommand: input.baselineSetupCommand },
+      ...(cachedBaselineReports.length > 0 ? [] : [{ mode: "baseline" as const, command: input.baselineCommand, setupCommand: input.baselineSetupCommand }]),
       ...(input.promptOnlyCommand ?? input.passiveCommand ? [{ mode: "prompt_only" as const, command: (input.promptOnlyCommand ?? input.passiveCommand)!, setupCommand: input.promptOnlySetupCommand ?? input.passiveSetupCommand }] : []),
       ...(input.promptPlusHooksCommand ?? input.passiveCommand
         ? [{ mode: "prompt_plus_hooks" as const, command: (input.promptPlusHooksCommand ?? input.passiveCommand)!, setupCommand: input.promptPlusHooksSetupCommand ?? input.passiveSetupCommand }]
@@ -1740,7 +1742,10 @@ export class KairnRuntime {
       ...(input.mcpFirstPlusHookFullPrimeCommand ? [{ mode: "mcp_first_plus_hook_full_prime" as const, command: input.mcpFirstPlusHookFullPrimeCommand, setupCommand: input.mcpFirstPlusHookFullPrimeSetupCommand }] : []),
       ...(input.hybridMcpBriefCommand ? [{ mode: "hybrid_mcp_brief" as const, command: input.hybridMcpBriefCommand, setupCommand: input.hybridMcpBriefSetupCommand }] : [])
     ];
-    const baselineReports: BenchmarkReport[] = [];
+    const baselineReports: BenchmarkReport[] = [...cachedBaselineReports];
+    if (cachedBaselineReports.length > 0) {
+      input.onProgress?.(`[bench prove] baseline: reused ${cachedBaselineReports.length} cached report(s)`);
+    }
     const promptOnlyReports: BenchmarkReport[] = [];
     const promptPlusHooksReports: BenchmarkReport[] = [];
     const manualPrimeReports: BenchmarkReport[] = [];

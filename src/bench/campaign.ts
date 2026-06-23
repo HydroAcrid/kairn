@@ -17,6 +17,7 @@ import { buildSweProOfficialEvalReport, type SweProOfficialEvalReport } from "./
 import { sha256 } from "../utils/hash.js";
 
 export type CampaignStage = "proxy" | "live" | "official" | "all";
+export type CampaignRunProfile = "default" | "fast-live" | "proof" | "publication";
 export type CampaignCleanupMode = "never" | "on_success" | "always";
 export type CampaignEntryKind = "proxy" | "proof" | "endurance" | "mcp_smoke" | "official_eval" | "control";
 export type CampaignEntryStatus = "planned" | "passed" | "failed" | "skipped";
@@ -86,10 +87,14 @@ export type CampaignRunOptions = {
   manifestPath: string;
   outDir: string;
   stage?: CampaignStage | undefined;
+  profile?: CampaignRunProfile | undefined;
   parallel?: number | undefined;
   resume?: boolean | undefined;
   only?: string | undefined;
   dryRun?: boolean | undefined;
+  reuseBaseline?: boolean | undefined;
+  baselineCacheDir?: string | undefined;
+  kairnOnlyAgainstBaseline?: boolean | undefined;
   onProgress?: ((message: string) => void) | undefined;
 };
 
@@ -200,6 +205,7 @@ export type CampaignOutputPaths = {
   workerPacketsDir: string;
   rawDir: string;
   workDir: string;
+  baselineCacheDir: string;
 };
 
 export type CampaignCleanupReport = {
@@ -209,16 +215,33 @@ export type CampaignCleanupReport = {
   skipped: string[];
 };
 
+type CampaignBaselineCacheArtifact = {
+  version: 1;
+  cacheKey: string;
+  entryId: string;
+  createdAt: string;
+  root: string;
+  suitePath: string;
+  suiteHash: string;
+  baselineCommandHash: string;
+  baselineSetupCommandHash?: string | undefined;
+  repeat: number;
+  reports: BenchmarkReport[];
+};
+
 export async function runCampaign(options: CampaignRunOptions): Promise<CampaignReport> {
   const manifest = loadCampaignManifest(options.manifestPath);
   const stage = options.stage ?? "all";
+  const profile = options.profile ?? "default";
   validateCampaignManifest(manifest);
   validateStage(stage);
+  validateProfile(profile);
   const outDir = path.resolve(options.outDir);
-  const outputs = campaignOutputPaths(outDir);
+  const outputs = campaignOutputPaths(outDir, options.baselineCacheDir);
   fs.mkdirSync(outputs.rawDir, { recursive: true });
   fs.mkdirSync(outputs.workerPacketsDir, { recursive: true });
   fs.mkdirSync(outputs.workDir, { recursive: true });
+  fs.mkdirSync(outputs.baselineCacheDir, { recursive: true });
   const entries = manifest.entries.filter((entry) => entryMatchesStage(entry, stage)).filter((entry) => matchesOnly(entry, options.only));
   const requestedParallel = Math.max(1, Math.floor(options.parallel ?? manifest.defaults?.parallel ?? 3));
   const parallel = effectiveCampaignParallel(stage, entries, requestedParallel);
@@ -238,6 +261,9 @@ export async function runCampaign(options: CampaignRunOptions): Promise<Campaign
       outputs,
       resume: Boolean(options.resume),
       dryRun: Boolean(options.dryRun),
+      profile,
+      reuseBaseline: Boolean(options.reuseBaseline),
+      kairnOnlyAgainstBaseline: Boolean(options.kairnOnlyAgainstBaseline),
       onProgress: options.onProgress
     });
     artifacts.push(artifact);
@@ -389,6 +415,9 @@ async function runCampaignEntry(input: {
   outputs: CampaignOutputPaths;
   resume: boolean;
   dryRun: boolean;
+  profile: CampaignRunProfile;
+  reuseBaseline: boolean;
+  kairnOnlyAgainstBaseline: boolean;
   onProgress?: ((message: string) => void) | undefined;
 }): Promise<CampaignArtifact> {
   const artifactPath = path.join(input.outputs.rawDir, `${input.entry.id}.json`);
@@ -430,6 +459,9 @@ async function runCampaignEntry(input: {
       outputs: input.outputs,
       artifactPath,
       commands,
+      profile: input.profile,
+      reuseBaseline: input.reuseBaseline,
+      kairnOnlyAgainstBaseline: input.kairnOnlyAgainstBaseline,
       onProgress: input.onProgress
     });
     const metrics = metricsFromReport(input.entry, report, Date.now() - startedMs);
@@ -487,6 +519,9 @@ async function executeCampaignEntry(input: {
   outputs: CampaignOutputPaths;
   artifactPath: string;
   commands: string[];
+  profile: CampaignRunProfile;
+  reuseBaseline: boolean;
+  kairnOnlyAgainstBaseline: boolean;
   onProgress?: ((message: string) => void) | undefined;
 }): Promise<unknown> {
   if (input.entry.kind === "proxy") return runProxyEntry(input.manifest, input.entry);
@@ -525,8 +560,16 @@ async function executeCampaignEntry(input: {
       await runtime.init();
       input.onProgress?.(`[bench campaign] ${input.entry.id}: proof runtime init complete`);
       const modes = modesFor(input.manifest, input.entry);
+      const baselineCache = input.reuseBaseline || input.kairnOnlyAgainstBaseline
+        ? readBaselineCache({
+            manifest: input.manifest,
+            entry: input.entry,
+            outputs: input.outputs,
+            requireCache: input.kairnOnlyAgainstBaseline
+          })
+        : undefined;
       input.onProgress?.(`[bench campaign] ${input.entry.id}: prove start (${modes.join(", ")})`);
-      return await runtime.proveBenchmark({
+      const proof = await runtime.proveBenchmark({
         suitePath: input.entry.suite!,
         baselineCommand: commandFor(input.manifest, input.entry, "baseline"),
         baselineSetupCommand: setupCommandFor(input.manifest, input.entry, "baseline"),
@@ -542,11 +585,21 @@ async function executeCampaignEntry(input: {
         ...(modes.includes("real_mcp_first") ? { realMcpFirstCommand: commandFor(input.manifest, input.entry, "real_mcp_first"), realMcpFirstSetupCommand: setupCommandFor(input.manifest, input.entry, "real_mcp_first") } : {}),
         ...(modes.includes("mcp_first_plus_hook_full_prime") ? { mcpFirstPlusHookFullPrimeCommand: commandFor(input.manifest, input.entry, "mcp_first_plus_hook_full_prime"), mcpFirstPlusHookFullPrimeSetupCommand: setupCommandFor(input.manifest, input.entry, "mcp_first_plus_hook_full_prime") } : {}),
         ...(modes.includes("hybrid_mcp_brief") ? { hybridMcpBriefCommand: commandFor(input.manifest, input.entry, "hybrid_mcp_brief"), hybridMcpBriefSetupCommand: setupCommandFor(input.manifest, input.entry, "hybrid_mcp_brief") } : {}),
-        agentTimeoutMs: input.entry.timeoutMs ?? input.manifest.defaults?.agentTimeoutMs,
+        agentTimeoutMs: agentTimeoutFor(input.manifest, input.entry, input.profile),
         repeat: Math.max(1, Math.floor(input.entry.repeat ?? 1)),
+        cachedBaselineReports: baselineCache?.reports,
         proofOutputPath: `${input.artifactPath}.partial.json`,
         onProgress: input.onProgress
       });
+      if (!baselineCache) {
+        writeBaselineCache({
+          manifest: input.manifest,
+          entry: input.entry,
+          outputs: input.outputs,
+          proof
+        });
+      }
+      return proof;
     } finally {
       runtime.close();
     }
@@ -961,7 +1014,8 @@ function sanitizedCampaignReport(report: CampaignReport): CampaignReport {
       proxyResultsCsvPath: path.basename(report.outputs.proxyResultsCsvPath),
       workerPacketsDir: path.basename(report.outputs.workerPacketsDir),
       rawDir: path.basename(report.outputs.rawDir),
-      workDir: path.basename(report.outputs.workDir)
+      workDir: path.basename(report.outputs.workDir),
+      baselineCacheDir: path.basename(report.outputs.baselineCacheDir)
     }
   };
 }
@@ -1136,6 +1190,85 @@ function cleanupEntryWorkspaces(manifest: CampaignManifest, artifact: CampaignAr
   }
 }
 
+function readBaselineCache(input: {
+  manifest: CampaignManifest;
+  entry: CampaignEntry;
+  outputs: CampaignOutputPaths;
+  requireCache: boolean;
+}): CampaignBaselineCacheArtifact | undefined {
+  const cacheKey = baselineCacheKey(input.manifest, input.entry);
+  const cachePath = baselineCachePath(input.outputs, cacheKey);
+  if (!fs.existsSync(cachePath)) {
+    if (input.requireCache) throw new Error(`${input.entry.id}: missing cached baseline artifact (${cachePath})`);
+    return undefined;
+  }
+  const parsed = JSON.parse(fs.readFileSync(cachePath, "utf8")) as Partial<CampaignBaselineCacheArtifact>;
+  if (parsed.version !== 1 || parsed.cacheKey !== cacheKey || !Array.isArray(parsed.reports) || parsed.reports.length === 0) {
+    if (input.requireCache) throw new Error(`${input.entry.id}: invalid cached baseline artifact (${cachePath})`);
+    return undefined;
+  }
+  return parsed as CampaignBaselineCacheArtifact;
+}
+
+function writeBaselineCache(input: {
+  manifest: CampaignManifest;
+  entry: CampaignEntry;
+  outputs: CampaignOutputPaths;
+  proof: BenchmarkProofReport;
+}): void {
+  const reports = input.proof.runs?.baseline ?? [input.proof.baseline];
+  if (reports.length === 0) return;
+  const cacheKey = baselineCacheKey(input.manifest, input.entry);
+  const suitePath = path.resolve(input.entry.suite!);
+  const suiteHash = fileHashOrValue(suitePath);
+  const baselineSetupCommand = setupCommandFor(input.manifest, input.entry, "baseline");
+  const artifact: CampaignBaselineCacheArtifact = {
+    version: 1,
+    cacheKey,
+    entryId: input.entry.id,
+    createdAt: new Date().toISOString(),
+    root: rootFor(input.entry),
+    suitePath,
+    suiteHash,
+    baselineCommandHash: sha256(commandFor(input.manifest, input.entry, "baseline")),
+    ...(baselineSetupCommand ? { baselineSetupCommandHash: sha256(baselineSetupCommand) } : {}),
+    repeat: Math.max(1, Math.floor(input.entry.repeat ?? 1)),
+    reports
+  };
+  writeJsonAtomic(baselineCachePath(input.outputs, cacheKey), artifact);
+}
+
+function baselineCachePath(outputs: CampaignOutputPaths, cacheKey: string): string {
+  return path.join(outputs.baselineCacheDir, `${cacheKey}.baseline.json`);
+}
+
+function baselineCacheKey(manifest: CampaignManifest, entry: CampaignEntry): string {
+  const suitePath = path.resolve(entry.suite!);
+  const baselineSetupCommand = setupCommandFor(manifest, entry, "baseline");
+  return sha256(JSON.stringify({
+    version: 1,
+    kind: entry.kind,
+    root: rootFor(entry),
+    suitePath,
+    suiteHash: fileHashOrValue(suitePath),
+    baselineCommand: commandFor(manifest, entry, "baseline"),
+    baselineSetupCommand: baselineSetupCommand ?? "",
+    repeat: Math.max(1, Math.floor(entry.repeat ?? 1))
+  }));
+}
+
+function fileHashOrValue(filePath: string): string {
+  return fs.existsSync(filePath) ? sha256(fs.readFileSync(filePath)) : sha256(filePath);
+}
+
+function agentTimeoutFor(manifest: CampaignManifest, entry: CampaignEntry, profile: CampaignRunProfile): number | undefined {
+  const configured = entry.timeoutMs ?? manifest.defaults?.agentTimeoutMs;
+  if (profile === "fast-live") return Math.min(configured ?? 480_000, 480_000);
+  if (profile === "proof") return configured ?? 900_000;
+  if (profile === "publication") return configured ?? 1_200_000;
+  return configured;
+}
+
 function workspacePathsFromReport(entry: CampaignEntry, report: unknown): string[] {
   if (entry.kind === "proof" || entry.kind === "control") {
     return uniqueStrings(
@@ -1181,7 +1314,7 @@ function writeOfficialPatchArtifacts(input: {
   return Object.keys(patchPaths).length > 0 ? patchPaths : undefined;
 }
 
-function campaignOutputPaths(outDir: string): CampaignOutputPaths {
+function campaignOutputPaths(outDir: string, baselineCacheDir?: string | undefined): CampaignOutputPaths {
   return {
     manifestPath: path.join(outDir, "campaign-manifest.json"),
     summaryPath: path.join(outDir, "campaign-summary.json"),
@@ -1190,12 +1323,17 @@ function campaignOutputPaths(outDir: string): CampaignOutputPaths {
     proxyResultsCsvPath: path.join(outDir, "proxy-results.csv"),
     workerPacketsDir: path.join(outDir, "worker-packets"),
     rawDir: path.join(outDir, "raw"),
-    workDir: path.join(outDir, "work")
+    workDir: path.join(outDir, "work"),
+    baselineCacheDir: path.resolve(baselineCacheDir ?? path.join(outDir, "baseline-cache"))
   };
 }
 
 function validateStage(stage: CampaignStage): void {
   if (!CAMPAIGN_STAGES.has(stage)) throw new Error(`Unsupported campaign stage: ${stage}`);
+}
+
+function validateProfile(profile: CampaignRunProfile): void {
+  if (!["default", "fast-live", "proof", "publication"].includes(profile)) throw new Error(`Unsupported campaign profile: ${profile}`);
 }
 
 function effectiveCampaignParallel(stage: CampaignStage, entries: CampaignEntry[], requestedParallel: number): number {

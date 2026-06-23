@@ -328,30 +328,42 @@ export function registerBenchCommands(program: Command): void {
     .requiredOption("--manifest <path>", "campaign manifest JSON path")
     .requiredOption("--out-dir <path>", "directory for campaign artifacts and summaries")
     .addOption(new Option("--stage <stage>", "campaign stage").choices(["proxy", "live", "official", "all"]).default("all"))
+    .addOption(new Option("--profile <profile>", "campaign timeout/speed profile").choices(["default", "fast-live", "proof", "publication"]).default("default"))
     .option("--parallel <n>", "maximum concurrent entries", parsePositiveInt, 3)
     .option("--resume", "skip completed passed raw artifacts")
     .option("--only <id-or-tag>", "run one entry id, kind, tag, or context behavior")
     .option("--dry-run", "write planned commands and artifact skeletons without running live commands")
+    .option("--reuse-baseline", "reuse matching cached baseline reports when available")
+    .option("--baseline-cache-dir <path>", "directory for reusable baseline artifacts")
+    .option("--kairn-only-against-baseline", "require cached baseline reports and run only assisted modes against them")
     .option("--json", "print JSON output")
     .action(
       async (options: {
         manifest: string;
         outDir: string;
         stage: "proxy" | "live" | "official" | "all";
+        profile: "default" | "fast-live" | "proof" | "publication";
         parallel: number;
         resume?: boolean;
         only?: string;
         dryRun?: boolean;
+        reuseBaseline?: boolean;
+        baselineCacheDir?: string;
+        kairnOnlyAgainstBaseline?: boolean;
         json?: boolean;
       }) => {
         const report = await runCampaign({
           manifestPath: options.manifest,
           outDir: options.outDir,
           stage: options.stage,
+          profile: options.profile,
           parallel: options.parallel,
           resume: Boolean(options.resume),
           only: options.only,
           dryRun: Boolean(options.dryRun),
+          reuseBaseline: Boolean(options.reuseBaseline),
+          baselineCacheDir: options.baselineCacheDir,
+          kairnOnlyAgainstBaseline: Boolean(options.kairnOnlyAgainstBaseline),
           onProgress: (message) => process.stderr.write(`${message}\n`)
         });
         if (options.json) {
