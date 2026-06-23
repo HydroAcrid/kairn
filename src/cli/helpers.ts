@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import { randomUUID } from "node:crypto";
+import os from "node:os";
 import path from "node:path";
 import { KairnRuntime } from "../runtime/KairnRuntime.js";
 
@@ -26,10 +27,12 @@ export function codexExecArgs(input: {
   prompt: string;
   model?: string | undefined;
   sandbox: string;
+  approval?: string | undefined;
   enableHooks?: boolean | undefined;
   skipGitRepoCheck?: boolean | undefined;
 }): string[] {
   return [
+    ...(input.approval ? ["-a", input.approval] : []),
     "exec",
     ...(input.model ? ["--model", input.model] : []),
     "--sandbox",
@@ -47,6 +50,7 @@ export function codexInteractiveArgs(input: {
   initialPrompt?: string | undefined;
   model?: string | undefined;
   sandbox: string;
+  approval?: string | undefined;
   enableHooks?: boolean | undefined;
   skipGitRepoCheck?: boolean | undefined;
 }): string[] {
@@ -54,6 +58,7 @@ export function codexInteractiveArgs(input: {
     ...(input.model ? ["--model", input.model] : []),
     "--sandbox",
     input.sandbox,
+    ...(input.approval ? ["-a", input.approval] : []),
     ...(input.skipGitRepoCheck ? ["--skip-git-repo-check"] : []),
     ...(input.enableHooks ? ["--enable", "hooks"] : []),
     "--cd",
@@ -107,12 +112,18 @@ export function withKairnInternalStateHidden<T>(root: string, enabled: boolean, 
     return cb();
   }
 
-  const hiddenDir = path.join(gitDir, `kairn-state-hidden-${process.pid}-${randomUUID()}`);
+  const hiddenParent = fs.mkdtempSync(path.join(os.tmpdir(), `kairn-state-hidden-${process.pid}-`));
+  const hiddenDir = path.join(hiddenParent, randomUUID());
   let hidden = false;
   try {
     fs.renameSync(stateDir, hiddenDir);
     hidden = true;
   } catch {
+    try {
+      if (fs.existsSync(hiddenParent) && fs.readdirSync(hiddenParent).length === 0) fs.rmdirSync(hiddenParent);
+    } catch {
+      // Best-effort cleanup only.
+    }
     return cb();
   }
 
@@ -121,6 +132,11 @@ export function withKairnInternalStateHidden<T>(root: string, enabled: boolean, 
   } finally {
     if (hidden && fs.existsSync(hiddenDir) && !fs.existsSync(stateDir)) {
       fs.renameSync(hiddenDir, stateDir);
+    }
+    try {
+      if (fs.existsSync(hiddenParent) && fs.readdirSync(hiddenParent).length === 0) fs.rmdirSync(hiddenParent);
+    } catch {
+      // Best-effort cleanup only; never interfere with restoring Kairn state.
     }
   }
 }

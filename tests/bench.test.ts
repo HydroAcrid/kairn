@@ -8187,11 +8187,17 @@ describe("benchmark runtime and CLI", () => {
 
     expect(instructions).toContain("# Existing Instructions");
     expect(instructions.match(/kairn:mcp-first:start/g)?.length).toBe(1);
-    expect(dryRun.args[0]).toBe("exec");
+    expect(dryRun.args).toContain("exec");
+    expect(dryRun.args).toContain("-a");
+    expect(dryRun.args).toContain("never");
+    expect(dryRun.args.indexOf("-a")).toBeLessThan(dryRun.args.indexOf("exec"));
     expect(dryRun.args).toContain("--disable");
     expect(dryRun.args).toContain("hooks");
     expect(dryRun.args).not.toContain("--enable");
     expect(boundDryRun.args).toContain("--skip-git-repo-check");
+    expect(boundDryRun.args).toContain("-a");
+    expect(boundDryRun.args).toContain("never");
+    expect(boundDryRun.args.indexOf("-a")).toBeLessThan(boundDryRun.args.indexOf("exec"));
     expect(dryRun.prompt).toContain("Kairn Proactive Context");
     expect(dryRun.prompt).toContain("User task:");
     expect(dryRun.prime.files).toContain("src/app/private/jobs/JobsApplicationsTable.tsx");
@@ -8281,6 +8287,8 @@ describe("benchmark runtime and CLI", () => {
 
     expect(interactiveDryRun.mode).toBe("interactive");
     expect(interactiveDryRun.args).not.toContain("exec");
+    expect(interactiveDryRun.args).not.toContain("-a");
+    expect(interactiveDryRun.args).not.toContain("never");
     expect(interactiveDryRun.args).toContain("--enable");
     expect(interactiveDryRun.args).toContain("hooks");
     expect(interactiveDryRun.args).toContain("--cd");

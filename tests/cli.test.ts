@@ -40,17 +40,13 @@ describe("CLI", () => {
     fs.mkdirSync(stateDir, { recursive: true });
     fs.writeFileSync(path.join(stateDir, "kairn.sqlite"), "state");
 
-    let hiddenEntries: string[] = [];
     withKairnInternalStateHidden(root, true, () => {
       expect(fs.existsSync(stateDir)).toBe(false);
-      hiddenEntries = fs.readdirSync(path.join(root, ".git")).filter((entry) => entry.startsWith("kairn-state-hidden-"));
-      expect(hiddenEntries).toHaveLength(1);
+      const hiddenGitEntries = fs.readdirSync(path.join(root, ".git")).filter((entry) => entry.startsWith("kairn-state-hidden-"));
+      expect(hiddenGitEntries).toHaveLength(0);
     });
 
     expect(fs.existsSync(path.join(stateDir, "kairn.sqlite"))).toBe(true);
-    for (const entry of hiddenEntries) {
-      expect(fs.existsSync(path.join(root, ".git", entry))).toBe(false);
-    }
   });
 
   it("keeps candidate paired scopes soft in Codex wrapper reminders", () => {
@@ -569,6 +565,7 @@ describe("CLI", () => {
       root: "/repo",
       prompt: "fix bug",
       sandbox: "danger-full-access",
+      approval: "never",
       enableHooks: false
     });
     const enabled = codexExecArgs({
@@ -580,6 +577,9 @@ describe("CLI", () => {
 
     expect(disabled).toContain("--disable");
     expect(disabled).toContain("hooks");
+    expect(disabled).toContain("-a");
+    expect(disabled).toContain("never");
+    expect(disabled.indexOf("-a")).toBeLessThan(disabled.indexOf("exec"));
     expect(enabled).toContain("--enable");
     expect(enabled).toContain("hooks");
     expect(enabled).not.toContain("--disable");

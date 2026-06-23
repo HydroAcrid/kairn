@@ -361,6 +361,7 @@ export function registerCoreCommands(program: Command): void {
     .option("--codex-command <command>", "Codex command to execute", process.env.KAIRN_CODEX_CMD ?? "codex")
     .option("--model <model>", "Codex model")
     .addOption(new Option("--sandbox <mode>", "Codex sandbox mode").choices(["read-only", "workspace-write", "danger-full-access"]).default("workspace-write"))
+    .addOption(new Option("--approval <policy>", "Codex approval policy").choices(["untrusted", "on-failure", "on-request", "never"]))
     .option("--skip-git-repo-check", "pass Codex --skip-git-repo-check for disposable or non-git workspaces")
     .option("--bind-hooks", "install Codex hooks bound to this Kairn session before launching")
     .addOption(new Option("--hook-mode <mode>", "Codex setup mode to use with --bind-hooks").choices(["savings", "hybrid"]).default("savings"))
@@ -375,6 +376,7 @@ export function registerCoreCommands(program: Command): void {
       codexCommand: string;
       model?: string;
       sandbox: string;
+      approval?: string;
       skipGitRepoCheck?: boolean;
       bindHooks?: boolean;
       hookMode: "savings" | "hybrid";
@@ -417,6 +419,7 @@ export function registerCoreCommands(program: Command): void {
           : undefined;
         const shouldInjectPrime = Boolean(prime && shouldInjectPrimeIntoCodexPrompt(prime.contextDecision?.action));
         const strictBoundaryReminder = formatCodexEditScopeReminder(prime);
+        const approval = options.approval ?? (interactive ? undefined : "never");
         const prompt = interactive
           ? undefined
           : shouldInjectPrime
@@ -442,6 +445,7 @@ export function registerCoreCommands(program: Command): void {
                 root: options.root,
                 model: options.model,
                 sandbox: options.sandbox,
+                approval,
                 enableHooks: bindHooks,
                 skipGitRepoCheck: Boolean(options.skipGitRepoCheck)
               })
@@ -450,6 +454,7 @@ export function registerCoreCommands(program: Command): void {
                 prompt: prompt!,
                 model: options.model,
                 sandbox: options.sandbox,
+                approval,
                 enableHooks: bindHooks,
                 skipGitRepoCheck: Boolean(options.skipGitRepoCheck)
               }),
@@ -515,6 +520,7 @@ export function registerCoreCommands(program: Command): void {
                     prompt: recoveryPrompt,
                     model: options.model,
                     sandbox: options.sandbox,
+                    approval,
                     enableHooks: bindHooks,
                     skipGitRepoCheck: Boolean(options.skipGitRepoCheck)
                   })
@@ -559,6 +565,7 @@ export function registerCoreCommands(program: Command): void {
                     prompt: recoveryPrompt,
                     model: options.model,
                     sandbox: options.sandbox,
+                    approval,
                     enableHooks: bindHooks,
                     skipGitRepoCheck: Boolean(options.skipGitRepoCheck)
                   })
