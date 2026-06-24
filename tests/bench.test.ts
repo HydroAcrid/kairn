@@ -4013,6 +4013,26 @@ describe("benchmark suite and scoring", () => {
         emittedFileCount: 4
       },
       {
+        id: "passive",
+        baselineOfficialPass: true,
+        kairnOfficialPass: true,
+        baselineScopePass: true,
+        kairnScopePass: true,
+        baselineTokens: 1000,
+        kairnTokens: 1200,
+        assistClassification: "passive_token_regression"
+      },
+      {
+        id: "quality-support",
+        baselineOfficialPass: true,
+        kairnOfficialPass: true,
+        baselineScopePass: true,
+        kairnScopePass: true,
+        baselineTokens: 1000,
+        kairnTokens: 1300,
+        assistClassification: "quality_rescue"
+      },
+      {
         id: "missing",
         baselineOfficialPass: true,
         kairnOfficialPass: true,
@@ -4032,21 +4052,25 @@ describe("benchmark suite and scoring", () => {
       }
     ]);
 
-    expect(aggregate.baselinePasses).toBe(4);
-    expect(aggregate.kairnPasses).toBe(4);
-    expect(aggregate.passPassRows).toBe(3);
+    expect(aggregate.baselinePasses).toBe(6);
+    expect(aggregate.kairnPasses).toBe(6);
+    expect(aggregate.passPassRows).toBe(5);
     expect(aggregate.cleanSavingsRows).toBe(1);
     expect(aggregate.officialTokenRegressions).toBe(1);
+    expect(aggregate.passiveTokenRegressions).toBe(1);
+    expect(aggregate.qualitySupportTokenRegressions).toBe(1);
     expect(aggregate.missingTokenPassPassRows).toBe(1);
     expect(aggregate.qualityRescues).toBe(1);
     expect(aggregate.qualityDrops).toBe(1);
-    expect(aggregate.passPassMedianReductionPct).toBe(10);
+    expect(aggregate.passPassMedianReductionPct).toBe(-15);
     expect(aggregate.cleanSavingsMedianReductionPct).toBe(30);
     expect(aggregate.emittedFileCounts).toEqual([1, 4]);
     expect(aggregate.validationErrors).toEqual(["missing: pass/pass official row lacks complete token data"]);
     expect(aggregate.rows.map((row) => row.classification)).toEqual([
       "clean_savings",
       "official_token_regression",
+      "passive_token_regression",
+      "quality_support_token_regression",
       "official_pass_token_unavailable",
       "quality_rescue",
       "quality_drop"
