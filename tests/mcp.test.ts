@@ -407,41 +407,17 @@ describe("MCP server", () => {
     await client.close();
   });
 
-  it("does not collapse multi-surface source-rescue MCP context into a cheap guardrail", async () => {
+  it("returns a compact multi-file source surface for paired-contract MCP context", async () => {
     const root = createFixtureRepo();
-    fs.mkdirSync(path.join(root, "packages/vite/src/client"), { recursive: true });
-    fs.mkdirSync(path.join(root, "packages/vite/src/shared"), { recursive: true });
-    fs.mkdirSync(path.join(root, "packages/vite/src/node"), { recursive: true });
-    fs.writeFileSync(
-      path.join(root, "packages/vite/src/client/client.ts"),
-      [
-        "import { isExternalUrl } from '../shared/utils';",
-        "export function injectQuery(url: string, queryToInject: string) {",
-        "  if (isExternalUrl(url)) return url;",
-        "  if (url[0] === '.' || url[0] === '/') return url;",
-        "  return `${url}${queryToInject}`;",
-        "}",
-        ""
-      ].join("\n")
-    );
-    fs.writeFileSync(
-      path.join(root, "packages/vite/src/shared/utils.ts"),
-      [
-        "export function isExternalUrl(url: string) {",
-        "  return /^https?:/.test(url);",
-        "}",
-        ""
-      ].join("\n")
-    );
-    fs.writeFileSync(
-      path.join(root, "packages/vite/src/node/utils.ts"),
-      [
-        "export function injectQueryForNode(url: string, queryToInject: string) {",
-        "  return `${url}${queryToInject}`;",
-        "}",
-        ""
-      ].join("\n")
-    );
+    fs.mkdirSync(path.join(root, "lib/ansible/module_utils"), { recursive: true });
+    fs.mkdirSync(path.join(root, "lib/ansible/modules"), { recursive: true });
+    fs.mkdirSync(path.join(root, "lib/ansible/plugins/lookup"), { recursive: true });
+    fs.mkdirSync(path.join(root, "lib/ansible/plugins/action"), { recursive: true });
+    fs.writeFileSync(path.join(root, "lib/ansible/module_utils/urls.py"), "def open_url(url, headers=None, use_netrc=True):\n    return url\n");
+    fs.writeFileSync(path.join(root, "lib/ansible/modules/uri.py"), "def main():\n    pass\n");
+    fs.writeFileSync(path.join(root, "lib/ansible/modules/get_url.py"), "def main():\n    pass\n");
+    fs.writeFileSync(path.join(root, "lib/ansible/plugins/lookup/url.py"), "class LookupModule:\n    def run(self):\n        pass\n");
+    fs.writeFileSync(path.join(root, "lib/ansible/plugins/action/uri.py"), "class ActionModule:\n    def run(self):\n        pass\n");
 
     const client = new Client({
       name: "kairn-test-client",
@@ -459,8 +435,17 @@ describe("MCP server", () => {
     const prepared = await client.callTool({
       name: "kairn_prepare_task",
       arguments: {
-        task: "Debug the seeded failing TypeScript check. Vite injectQuery should skip external URLs, but relative URLs like ./dep.js and absolute URLs like /src/main.ts must receive the injected query. Fix the production source and do not edit unrelated files.",
-        budget: 700
+        task: [
+          "The uri module uses .netrc to overwrite an explicit Authorization header.",
+          "Add a use_netrc parameter to Request.open and open_url, default enabled, and forward it through uri, get_url, and url lookup.",
+          "Relevant production files:",
+          "lib/ansible/module_utils/urls.py",
+          "lib/ansible/modules/get_url.py",
+          "lib/ansible/modules/uri.py",
+          "lib/ansible/plugins/lookup/url.py",
+          "Fix production source only."
+        ].join("\n"),
+        budget: 900
       }
     });
     const parsed = JSON.parse(firstTextContent(prepared)!) as {
@@ -468,17 +453,26 @@ describe("MCP server", () => {
       stopCondition?: string | null;
       startFiles: string[];
       files: string[];
+      attributedFiles?: string[];
       companionFiles: string[];
       contextDecision?: {
-        taskFrame?: string;
-        recommendedDelivery?: string;
+        requiredSurface?: string;
       };
     };
 
-    expect(parsed.contextDecision?.taskFrame).toBe("source_rescue");
+    expect(parsed.contextDecision?.requiredSurface).toBe("paired_contract");
     expect(parsed.contextSuppressed).not.toBe(true);
     expect(parsed.stopCondition ?? "").not.toMatch(/cheap_one_shot/);
-    expect([...parsed.startFiles, ...parsed.files, ...parsed.companionFiles].length).toBeGreaterThan(0);
+    expect(parsed.stopCondition).toBe("source_surface_sufficient");
+    expect(parsed.attributedFiles).toEqual(parsed.files);
+    expect(parsed.files).toEqual(expect.arrayContaining([
+      "lib/ansible/module_utils/urls.py",
+      "lib/ansible/modules/uri.py",
+      "lib/ansible/modules/get_url.py",
+      "lib/ansible/plugins/lookup/url.py"
+    ]));
+    expect(parsed.files).toHaveLength(4);
+    expect(parsed.files).not.toContain("lib/ansible/plugins/action/uri.py");
 
     await client.close();
   });

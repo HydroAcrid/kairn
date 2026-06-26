@@ -1,12 +1,12 @@
 {
   "id": "governance-pr-mcp-swe-row-7-20260626",
   "name": "Governance PR MCP SWE Row 7 Check",
-  "generatedAt": "2026-06-26T15:26:54.977Z",
+  "generatedAt": "2026-06-26T17:48:06.048Z",
   "manifestPath": "campaign-manifest.json",
   "outDir": ".",
-  "stage": "live",
+  "stage": "all",
   "dryRun": false,
-  "parallel": 3,
+  "parallel": 1,
   "paused": false,
   "pauseReasons": [],
   "artifacts": [
@@ -21,8 +21,8 @@
         "real_mcp_first",
         "ansible__ansible"
       ],
-      "startedAt": "2026-06-26T15:16:08.070Z",
-      "endedAt": "2026-06-26T15:26:54.976Z",
+      "startedAt": "2026-06-26T17:22:36.336Z",
+      "endedAt": "2026-06-26T17:33:06.845Z",
       "artifactPath": "raw/mcp-swe-row-7.json",
       "workerPacketPath": "worker-packets/mcp-swe-row-7.json",
       "commands": [],
@@ -39,13 +39,14 @@
         "qualityRescue": false,
         "harmfulAssist": false,
         "scopeViolations": 0,
-        "mcpCalls": 1,
-        "mcpUsefulAttribution": 1,
-        "elapsedMs": 646692,
-        "observedTokens": 221764,
+        "mcpCalls": 2,
+        "mcpUsefulAttribution": 4,
+        "elapsedMs": 630286,
+        "observedTokens": 212362,
         "baselineTokens": 176844,
-        "savedTokens": -44920,
-        "savingsRate": -0.254
+        "savedTokens": -35518,
+        "savingsRate": -0.2008,
+        "tokenAccounting": "observed"
       }
     }
   ],
@@ -57,20 +58,21 @@
       "status": "passed",
       "tags": "swe-pro;mcp;real_mcp_first;ansible__ansible",
       "qualityPassed": true,
-      "observedTokens": 221764,
+      "observedTokens": 212362,
       "baselineTokens": 176844,
-      "savedTokens": -44920,
-      "savingsRate": -0.254,
+      "savedTokens": -35518,
+      "savingsRate": -0.2008,
+      "tokenAccounting": "observed",
       "cleanPassPass": false,
       "tokenRegression": true,
       "qualityDrop": false,
       "qualityRescue": false,
       "harmfulAssist": false,
       "scopeViolations": 0,
-      "mcpCalls": 1,
-      "mcpUsefulAttribution": 1,
+      "mcpCalls": 2,
+      "mcpUsefulAttribution": 4,
       "classifications": "official_token_regression;mcp_useful_attribution",
-      "elapsedMs": 646692
+      "elapsedMs": 630286
     }
   ],
   "aggregate": {
@@ -84,12 +86,12 @@
     "qualityRescueRows": 0,
     "harmfulRows": 0,
     "scopeViolations": 0,
-    "mcpCalls": 1,
-    "mcpUsefulAttribution": 1,
-    "medianSavedTokens": -44920,
-    "medianSavingsRate": -0.254,
+    "mcpCalls": 2,
+    "mcpUsefulAttribution": 4,
+    "medianSavedTokens": -35518,
+    "medianSavingsRate": -0.2008,
     "medianElapsedMsByStage": {
-      "live": 646692
+      "live": 630286
     },
     "repeatedFailureClasses": [],
     "pauseRuleStatus": {

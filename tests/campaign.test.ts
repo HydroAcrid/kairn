@@ -465,6 +465,57 @@ describe("benchmark campaign harness", () => {
     expect(fs.readFileSync(report.outputs.failuresCsvPath, "utf8")).toContain("official_pass_token_unavailable");
   });
 
+  it("records timeout-estimated token accounting separately from observed token data", async () => {
+    const dir = tempDir("kairn-campaign-timeout-estimated-");
+    const timeoutCommand = [
+      "node -e",
+      quoteShell(
+        "const fs=require('fs'); fs.appendFileSync('src/app.ts', '\\nexport const timeoutEstimate = true;\\n'); console.log('src/app.ts'); setTimeout(()=>{}, 5000);"
+      )
+    ].join(" ");
+    const manifestPath = writeManifest(dir, {
+      id: "timeout-estimated",
+      name: "Timeout Estimated",
+      defaults: {
+        agentTimeoutMs: 80,
+        cleanup: "always",
+        commands: {
+          baseline: timeoutCommand,
+          kairn_codex_session: timeoutCommand
+        }
+      },
+      entries: [
+        {
+          id: "timeout-row",
+          kind: "proof",
+          root: "examples/bench/campaign-fixtures/mock-repo",
+          suite: "examples/bench/campaign-fixtures/mock-suite.json",
+          modes: ["baseline", "kairn_codex_session"],
+          repeat: 1
+        }
+      ]
+    });
+
+    const report = await runCampaign({
+      manifestPath,
+      outDir: path.join(dir, "out"),
+      stage: "live",
+      parallel: 1
+    });
+
+    const row = report.rows[0];
+    expect(row?.qualityPassed).toBe(true);
+    expect(row?.classifications).toContain("timeout_pass_estimated_tokens");
+    expect(row?.classifications).not.toContain("official_pass_token_unavailable");
+    expect(row?.tokenAccounting).toBe("timeout_estimate");
+    expect(row?.observedTokens).toBeUndefined();
+    expect(row?.baselineTokens).toBeUndefined();
+    expect(row?.estimatedObservedTokens).toBeGreaterThan(0);
+    expect(row?.estimatedBaselineTokens).toBeGreaterThan(0);
+    expect(report.aggregate.medianSavedTokens).toBe(0);
+    expect(fs.readFileSync(report.outputs.failuresCsvPath, "utf8")).toContain("timeout_pass_estimated_tokens");
+  });
+
   it("limits campaign worker concurrency", async () => {
     let active = 0;
     let maxActive = 0;

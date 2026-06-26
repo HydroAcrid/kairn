@@ -4,9 +4,9 @@
 
 Targeted recheck for PR #3 focused on rows 1, 6, 7, row 8 accounting, and MCP real-mode safety.
 
-Result: row 7 now has a compact HTTP auth policy guardrail and reruns as clean pass/pass savings in the live harness. The latest row 7 Kairn patch also passes the official SWE-Pro evaluator. Row 1 remains a valid suppression case. Row 6 remains a compact quality-support case. Row 8 was rerun and still has unavailable observed token data because both baseline and Kairn hit the agent timeout boundary; it is excluded from token aggregates.
+Result: row 7 now has a compact HTTP auth policy guardrail and reruns as clean pass/pass savings in the Codex-session live harness. The latest row 7 Kairn patch also passes the official SWE-Pro evaluator. Row 1 remains a valid suppression case. Row 6 remains a compact quality-support case. Row 8 was rerun and now has explicit timeout-estimated token accounting because both baseline and Kairn hit the agent timeout boundary; it is excluded from observed-token aggregates.
 
-The dedicated MCP checks split cleanly: SWE-mode MCP passed quality/scope and recorded useful attribution, but regressed tokens on row 7; endurance-mode MCP passed quality/scope and produced clean savings on the Click control suite.
+The dedicated MCP checks split cleanly: SWE-mode MCP passed quality/scope and now records the full 4/4 useful source surface on row 7, but still regressed tokens; endurance-mode MCP passed quality/scope and produced clean savings on the Click control suite.
 
 No public claims should change from this pass alone.
 
@@ -40,9 +40,15 @@ Notes:
 
 ## Row 8 Accounting
 
-Row 8 is still classified as `official_pass_token_unavailable` after a fresh rerun.
+Row 8 is now classified as `timeout_pass_estimated_tokens` after refreshing the campaign summary from the fresh rerun artifact.
 
-The stored baseline artifact had a passing patch but did not contain observed Codex token data. A fresh row 8 baseline/Kairn rerun completed with both modes passing local quality/scope, but both mode executions reached the 900s timeout boundary and still reported observed Codex usage as unavailable. Row 8 should remain valid for quality/scope evidence only and must stay out of clean savings/token-regression aggregates.
+The stored baseline artifact had a passing patch but did not contain observed Codex token data. A fresh row 8 baseline/Kairn rerun completed with both modes passing local quality/scope, but both mode executions reached the 900s timeout boundary and did not emit exact observed Codex usage. The harness now records separate timeout-estimated columns instead of calling the row unavailable:
+
+| Row | Estimated Baseline Tokens | Estimated Kairn Tokens | Estimated Saved | Estimated Reduction | Quality | Classification |
+| --- | ---: | ---: | ---: | ---: | --- | --- |
+| 8 | 464,264 | 415,339 | 48,925 | 10.5% | pass/pass | `timeout_pass_estimated_tokens` |
+
+Row 8 should remain valid for quality/scope evidence and timeout-estimated accounting only. It must stay out of observed clean savings/token-regression aggregates.
 
 ## MCP Check
 
@@ -56,13 +62,13 @@ This verifies the MCP server/tool path still works on the branch.
 
 ### SWE-Mode MCP
 
-The dedicated row 7 `real_mcp_first` SWE proof passed local quality/scope and recorded useful MCP attribution, but it used more tokens than the cached baseline.
+The dedicated row 7 `real_mcp_first` SWE proof passed local quality/scope and now records the full useful MCP source surface, but it used more tokens than the cached baseline.
 
 | Row | Mode | Baseline Tokens | MCP Tokens | Saved | Reduction | Quality | MCP Calls | Useful Attribution | Classification |
 | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
-| 7 | `real_mcp_first` | 176,844 | 221,764 | -44,920 | -25.4% | pass/pass | 1 | 1 | `official_token_regression`, `mcp_useful_attribution` |
+| 7 | `real_mcp_first` | 176,844 | 212,362 | -35,518 | -20.1% | pass/pass | 2 | 4 | `official_token_regression`, `mcp_useful_attribution` |
 
-This is useful mechanics evidence, not positive token evidence. It shows MCP works in SWE-style proof mode, but row 7 is a poor token-saving MCP case after the compact Codex-session guardrail.
+This is useful mechanics evidence, not positive token evidence. It shows MCP works in SWE-style proof mode and returns all expected source files, but row 7 remains a poor token-saving MCP case after the compact Codex-session guardrail.
 
 ### Endurance MCP
 
@@ -85,8 +91,8 @@ Final validation on the PR branch passed after the targeted evidence runs:
 
 ## PR Readiness
 
-This targeted pass resolves the previous PR blockers for row 7, row 8 accounting disposition, and MCP real-mode verification. The remaining caveats are evidence-scoping caveats rather than merge blockers:
+This targeted pass resolves the previous PR blockers for Codex-session row 7, row 8 accounting disposition, and MCP real-mode attribution mechanics. The remaining caveats are evidence-scoping caveats rather than merge blockers:
 
-- Row 8 remains excluded from token aggregates because observed token usage is unavailable after rerun.
-- SWE-mode MCP on row 7 is pass/pass but token-negative.
+- Row 8 remains excluded from observed-token aggregates because observed token usage is unavailable after rerun; timeout estimates are reported separately.
+- SWE-mode MCP on row 7 is pass/pass with 4/4 useful source attribution, but token-negative.
 - The full 12-row official aggregate should not be republished as a new public claim from this targeted pass alone.

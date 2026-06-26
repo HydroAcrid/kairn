@@ -123,6 +123,11 @@ export type CampaignEntryMetrics = {
   baselineTokens?: number | undefined;
   savedTokens?: number | undefined;
   savingsRate?: number | undefined;
+  estimatedObservedTokens?: number | undefined;
+  estimatedBaselineTokens?: number | undefined;
+  estimatedSavedTokens?: number | undefined;
+  estimatedSavingsRate?: number | undefined;
+  tokenAccounting?: "observed" | "timeout_estimate" | undefined;
   cleanPassPass: boolean;
   tokenRegression: boolean;
   qualityDrop: boolean;
@@ -162,6 +167,11 @@ export type CampaignResultRow = {
   baselineTokens?: number | undefined;
   savedTokens?: number | undefined;
   savingsRate?: number | undefined;
+  estimatedObservedTokens?: number | undefined;
+  estimatedBaselineTokens?: number | undefined;
+  estimatedSavedTokens?: number | undefined;
+  estimatedSavingsRate?: number | undefined;
+  tokenAccounting?: "observed" | "timeout_estimate" | undefined;
   cleanPassPass: boolean;
   tokenRegression: boolean;
   qualityDrop: boolean;
@@ -859,6 +869,7 @@ function proofMetrics(report: BenchmarkProofReport, elapsedMs: number): Campaign
   const baselinePassed = report.baseline.results.every(resultQualityPassed);
   const qualityPassed = nonBaseline.length > 0 && nonBaseline.every((item) => item.report.results.every(resultQualityPassed));
   const delta = bestProofDelta(report);
+  const estimatedDelta = delta ? undefined : bestTimeoutEstimatedProofDelta(report, nonBaseline);
   const observedDeltas = Object.values(report.observedTokenDeltas)
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
   const savedTokens = delta?.savedTokens;
@@ -870,6 +881,11 @@ function proofMetrics(report: BenchmarkProofReport, elapsedMs: number): Campaign
     baselineTokens: report.baseline.observed?.codexTokens,
     savedTokens,
     savingsRate: delta?.savingsRate,
+    estimatedObservedTokens: estimatedDelta?.observedTokens,
+    estimatedBaselineTokens: estimatedDelta?.baselineTokens,
+    estimatedSavedTokens: estimatedDelta?.savedTokens,
+    estimatedSavingsRate: estimatedDelta?.savingsRate,
+    tokenAccounting: delta ? "observed" : estimatedDelta ? "timeout_estimate" : undefined,
     cleanPassPass: baselinePassed && qualityPassed && (savedTokens ?? 0) > 0,
     tokenRegression: baselinePassed && qualityPassed && (savedTokens ?? 0) < 0 && !passiveTokenRegression,
     qualityDrop: baselinePassed && nonBaseline.some((item) => item.report.results.some((result) => !resultQualityPassed(result))),
@@ -933,9 +949,11 @@ function classificationsFromMetrics(entry: CampaignEntry, metrics: CampaignEntry
   if (metrics.harmfulAssist) classes.push("harmful_invalid_assist");
   if (metrics.scopeViolations > 0) classes.push("scope_violation");
   if (metrics.mcpCalls > 0) classes.push(metrics.mcpUsefulAttribution > 0 ? "mcp_useful_attribution" : "mcp_missing_attribution");
+  if (metrics.tokenAccounting === "timeout_estimate") classes.push("timeout_pass_estimated_tokens");
   if (
     (entry.kind === "proof" || entry.kind === "control" || entry.kind === "official_eval") &&
     metrics.qualityPassed &&
+    metrics.tokenAccounting !== "timeout_estimate" &&
     (metrics.observedTokens === undefined || metrics.baselineTokens === undefined)
   ) {
     classes.push("official_pass_token_unavailable");
@@ -962,8 +980,8 @@ function aggregateCampaignRows(rows: CampaignResultRow[], artifacts: CampaignArt
     scopeViolations: sum(rows.map((row) => row.scopeViolations)),
     mcpCalls: sum(rows.map((row) => row.mcpCalls)),
     mcpUsefulAttribution: sum(rows.map((row) => row.mcpUsefulAttribution)),
-    medianSavedTokens: median(rows.map((row) => row.savedTokens).filter(isNumber)),
-    medianSavingsRate: median(rows.map((row) => row.savingsRate).filter(isNumber)),
+    medianSavedTokens: median(rows.filter((row) => row.tokenAccounting !== "timeout_estimate").map((row) => row.savedTokens).filter(isNumber)),
+    medianSavingsRate: median(rows.filter((row) => row.tokenAccounting !== "timeout_estimate").map((row) => row.savingsRate).filter(isNumber)),
     medianElapsedMsByStage: medianElapsedByStage(rows),
     repeatedFailureClasses: repeated,
     pauseRuleStatus: pause
@@ -1000,6 +1018,7 @@ function writeCampaignOutputs(input: { manifest: CampaignManifest; report: Campa
       row.harmfulAssist ||
       row.scopeViolations > 0 ||
       row.classifications.split(";").includes("official_pass_token_unavailable") ||
+      row.classifications.split(";").includes("timeout_pass_estimated_tokens") ||
       row.classifications.split(";").includes("passive_token_regression")
     ))
   );
@@ -1060,6 +1079,11 @@ function campaignRowsCsv(rows: CampaignResultRow[]): string {
     "baseline_tokens",
     "saved_tokens",
     "savings_rate",
+    "estimated_observed_tokens",
+    "estimated_baseline_tokens",
+    "estimated_saved_tokens",
+    "estimated_savings_rate",
+    "token_accounting",
     "clean_passpass",
     "token_regression",
     "quality_drop",
@@ -1082,6 +1106,11 @@ function campaignRowsCsv(rows: CampaignResultRow[]): string {
     optionalNumber(row.baselineTokens),
     optionalNumber(row.savedTokens),
     optionalNumber(row.savingsRate),
+    optionalNumber(row.estimatedObservedTokens),
+    optionalNumber(row.estimatedBaselineTokens),
+    optionalNumber(row.estimatedSavedTokens),
+    optionalNumber(row.estimatedSavingsRate),
+    row.tokenAccounting ?? "",
     String(row.cleanPassPass),
     String(row.tokenRegression),
     String(row.qualityDrop),
@@ -1107,6 +1136,11 @@ function artifactToRow(artifact: CampaignArtifact): CampaignResultRow {
     baselineTokens: artifact.metrics.baselineTokens,
     savedTokens: artifact.metrics.savedTokens,
     savingsRate: artifact.metrics.savingsRate,
+    estimatedObservedTokens: artifact.metrics.estimatedObservedTokens,
+    estimatedBaselineTokens: artifact.metrics.estimatedBaselineTokens,
+    estimatedSavedTokens: artifact.metrics.estimatedSavedTokens,
+    estimatedSavingsRate: artifact.metrics.estimatedSavingsRate,
+    tokenAccounting: artifact.metrics.tokenAccounting,
     cleanPassPass: artifact.metrics.cleanPassPass,
     tokenRegression: artifact.metrics.tokenRegression,
     qualityDrop: artifact.metrics.qualityDrop,
@@ -1553,6 +1587,43 @@ function bestProofDelta(report: BenchmarkProofReport): BenchmarkComparison["obse
   return Object.values(report.observedTokenDeltas)
     .filter((delta): delta is NonNullable<typeof delta> => Boolean(delta))
     .sort((a, b) => (b.savedTokens ?? Number.NEGATIVE_INFINITY) - (a.savedTokens ?? Number.NEGATIVE_INFINITY))[0];
+}
+
+function bestTimeoutEstimatedProofDelta(
+  report: BenchmarkProofReport,
+  candidates: Array<{ mode: BenchmarkAssistanceMode; report: BenchmarkReport }>
+): { mode: BenchmarkAssistanceMode; baselineTokens: number; observedTokens: number; savedTokens: number; savingsRate: number } | undefined {
+  const baselineTokens = reportResponseTokens(report.baseline);
+  if (baselineTokens === undefined || baselineTokens <= 0) return undefined;
+  if (report.baseline.observed?.codexTokens !== undefined) return undefined;
+
+  const baselineTimedOut = reportHasAgentTimeout(report.baseline);
+  return candidates
+    .flatMap((candidate) => {
+      if (candidate.report.observed?.codexTokens !== undefined) return [];
+      if (!baselineTimedOut && !reportHasAgentTimeout(candidate.report)) return [];
+      if (!candidate.report.results.every(resultQualityPassed)) return [];
+      const observedTokens = reportResponseTokens(candidate.report);
+      if (observedTokens === undefined || observedTokens <= 0) return [];
+      const savedTokens = baselineTokens - observedTokens;
+      return [{
+        mode: candidate.mode,
+        baselineTokens,
+        observedTokens,
+        savedTokens,
+        savingsRate: savedTokens / baselineTokens
+      }];
+    })
+    .sort((a, b) => b.savedTokens - a.savedTokens)[0];
+}
+
+function reportResponseTokens(report: BenchmarkReport): number | undefined {
+  const tokens = sum(report.results.map((result) => result.responseTokens).filter(isNumber));
+  return tokens > 0 ? tokens : undefined;
+}
+
+function reportHasAgentTimeout(report: BenchmarkReport): boolean {
+  return report.results.some((result) => result.metadata.agentTimedOut === true);
 }
 
 function stringArray(value: unknown): string[] {
