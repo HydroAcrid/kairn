@@ -366,12 +366,12 @@ export function formatShrunkPrimeContext(input: {
 
 function executionStateMigrationDirectiveLines(task: string, files: string[]): string[] {
   if (!isExecutionStateMigrationTask(task) || files.length < 2) return [];
-  const ownerFiles = files.filter(isExecutionStateOwnerFile);
-  const consumerFiles = files.filter((file) => !isExecutionStateOwnerFile(file));
+  const checklist = sortExecutionStateMigrationDirectiveFiles(files)
+    .map((file) => `- ${file}: ${executionStateMigrationAction(file)}`);
   return [
-    "Required migration edits: patch the state owner and every listed strategy/executor consumer; owner-only enum changes are incomplete.",
-    ownerFiles.length > 0 ? `State owner: ${ownerFiles.join(", ")}` : "",
-    consumerFiles.length > 0 ? `Consumer surfaces: ${consumerFiles.join(", ")}` : "",
+    "Required diff checklist:",
+    checklist.join("\n"),
+    "Completion: final diff must touch every checklist path unless new evidence proves one is unnecessary.",
     "Do not stop after adding enums/metaclass compatibility; update consumer comparisons and assignments in the same patch."
   ].filter(Boolean);
 }
@@ -590,25 +590,20 @@ function formatExecutionStateMigrationOfficialGuardrail(input: {
 }): string {
   const editFiles = sortExecutionStateMigrationDirectiveFiles(officialEditFiles(input)).slice(0, 5);
   const invariant = input.invariants?.[0];
-  const ownerFiles = editFiles.filter(isExecutionStateOwnerFile);
-  const consumerFiles = editFiles.filter((file) => !isExecutionStateOwnerFile(file));
+  const checklist = editFiles.map((file) => `- ${file}: ${executionStateMigrationAction(file)}`);
   const sections = [
     "# Kairn State Migration Scope",
-    "Required edit surfaces: patch the state owner and every listed consumer surface; owner-only enum changes are incomplete.",
-    ownerFiles.length > 0
-      ? `State owner: ${ownerFiles.map((file) => `${file} (${executionStateMigrationRole(file)})`).join(", ")}`
-      : "State owner: the file defining the public state representation.",
-    consumerFiles.length > 0
-      ? `Required consumers: ${consumerFiles.map((file) => `${file} (${executionStateMigrationRole(file)})`).join(", ")}`
-      : "Required consumers: every strategy/executor surface that compares or assigns the migrated state.",
+    "Required diff checklist:",
+    checklist.length > 0 ? checklist.join("\n") : "- State owner plus every strategy/executor consumer that compares or assigns the migrated state.",
     invariant
       ? `Rule: ${truncateToBudget(invariant.statement, 40)}`
       : "Rule: preserve behavior while moving comparisons, assignments, display, and compatibility shims to the new state type.",
-    "Do not stop after adding enums/metaclass compatibility; update the consumer comparisons and assignments in the same patch.",
+    "Completion: final diff must touch every checklist path unless new evidence proves one is unnecessary.",
+    "Do not stop after adding enums/metaclass compatibility; update consumer comparisons and assignments in the same patch.",
     "Boundary: no tests, docs, examples, generated files, or unrelated strategy plugins.",
     "Need another file? Report evidence first."
   ];
-  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 260));
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 300));
 }
 
 function sortExecutionStateMigrationDirectiveFiles(files: string[]): string[] {
@@ -637,6 +632,16 @@ function executionStateMigrationRole(filePath: string): string {
   if (/(^|\/)(strategy|strategies)\//.test(normalized)) return "strategy consumer";
   if (/(^|\/)(executor|executors)\//.test(normalized)) return "executor consumer";
   return officialFileRole(filePath);
+}
+
+function executionStateMigrationAction(filePath: string): string {
+  const role = executionStateMigrationRole(filePath);
+  if (role === "state owner") return "define the migrated state representation and compatibility surface";
+  if (role === "strategy state consumer") return "update strategy state comparisons, assignments, and compatibility access";
+  if (role === "linear strategy consumer") return "update linear strategy state comparisons and transitions";
+  if (role === "strategy consumer") return "update strategy state comparisons and assignments";
+  if (role === "executor consumer") return "update executor state comparisons and assignments";
+  return `${role}; edit only if it owns migrated state comparisons or assignments`;
 }
 
 function formatPluginActivationValidationOfficialGuardrail(input: {

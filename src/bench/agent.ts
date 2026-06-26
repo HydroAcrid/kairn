@@ -5,7 +5,7 @@ import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { openSqliteDatabase, type SqliteDatabase } from "../store/sqliteNative.js";
 import type { BenchmarkCase, BenchmarkSeedSpec, BenchmarkTaskOutcome } from "../types.js";
-import { parseCodexUsageFooter } from "../eval/codexUsage.js";
+import { mergeCodexUsage, parseCodexUsageFooter, readCodexTranscript } from "../eval/codexUsage.js";
 import { sha256 } from "../utils/hash.js";
 import { normalizeRelativePath } from "../utils/paths.js";
 import { estimateTokens } from "../utils/tokens.js";
@@ -915,16 +915,20 @@ function metadataFromOutput(input: {
   observedCodexTokens?: number;
   metadata: Record<string, unknown>;
 } {
-  const usage = parseCodexUsageFooter(input.output);
+  const transcript = readCodexTranscriptFromOutput(input.output);
+  const usage = codexUsageFromBenchmarkOutput(input.output, transcript);
   const hookCompleted = countMatches(input.output, /\bhook \(completed\)|hook:\s*[\w.-]+\s+Completed\b|hook context:/gi);
   const hookFailed = countMatches(input.output, /\bhook \(failed\)|error:\s*hook exited with code/gi);
   const kairnMcpToolMentions = countMatches(input.output, /\bkairn_(prepare_task|get_next_context|get_failure_context|find_context|read_file|read_symbol)\b/g);
   const codexJsonlMcp = codexJsonlMcpCalls(input.output);
   const workspaceMcp = workspaceMcpCalls(input.workspacePath);
+  const transcriptMcp = transcript?.mcp ?? emptyMcpCalls();
   const workspacePrime = workspacePrimeMetadata(input.workspacePath);
-  const actualMcpToolCalls = workspaceMcp.count > 0 ? workspaceMcp.count : codexJsonlMcp.count;
+  const actualMcpToolCalls = workspaceMcp.count > 0 ? workspaceMcp.count : transcriptMcp.count > 0 ? transcriptMcp.count : codexJsonlMcp.count;
+  const actualMcpFiles = workspaceMcp.files.length > 0 ? workspaceMcp.files : unique([...transcriptMcp.files, ...transcriptMcp.attributedFiles]);
+  const actualMcpContextActions = workspaceMcp.contextActions.length > 0 ? workspaceMcp.contextActions : transcriptMcp.contextActions;
   const mcpReturnedQuality = input.benchmarkCase
-    ? mcpReturnedFileQuality(input.benchmarkCase, workspaceMcp.files)
+    ? mcpReturnedFileQuality(input.benchmarkCase, actualMcpFiles)
     : {};
   const kairnDryRunMetadata = kairnCodexDryRunMetadata(input.output);
   const metadata: Record<string, unknown> = {
@@ -936,10 +940,13 @@ function metadataFromOutput(input: {
     hookFailed,
     kairnMcpToolMentions,
     actualMcpToolCalls,
-    actualMcpToolNames: unique([...workspaceMcp.toolNames, ...codexJsonlMcp.toolNames]),
-    actualMcpToolCallSource: workspaceMcp.count > 0 ? "workspace_metrics" : codexJsonlMcp.count > 0 ? "codex_jsonl" : "none",
-    actualMcpFiles: workspaceMcp.files,
-    actualMcpContextActions: workspaceMcp.contextActions,
+    actualMcpToolNames: unique([...workspaceMcp.toolNames, ...transcriptMcp.toolNames, ...codexJsonlMcp.toolNames]),
+    actualMcpToolCallSource:
+      workspaceMcp.count > 0 ? "workspace_metrics" : transcriptMcp.count > 0 ? "codex_transcript" : codexJsonlMcp.count > 0 ? "codex_jsonl" : "none",
+    actualMcpFiles,
+    actualMcpAttributedFiles: transcriptMcp.attributedFiles,
+    actualMcpContextActions,
+    actualMcpStopConditions: transcriptMcp.stopConditions,
     ...mcpReturnedQuality,
     ...workspacePrime,
     ...kairnDryRunMetadata,
@@ -952,8 +959,7 @@ function metadataFromOutput(input: {
 
   if (usage) {
     metadata.codexUsage = {
-      ...usage,
-      source: "footer"
+      ...usage
     };
   }
 
@@ -961,6 +967,66 @@ function metadataFromOutput(input: {
     ...(usage ? { observedCodexTokens: usage.totalTokens } : {}),
     metadata
   };
+}
+
+function codexUsageFromBenchmarkOutput(output: string, transcript?: ReturnType<typeof readCodexTranscript>): ReturnType<typeof mergeCodexUsage> {
+  const footerUsage = parseCodexUsageFooter(output);
+  return mergeCodexUsage({
+    footerUsage,
+    transcriptUsage: transcript?.usage,
+    transcriptMetadata: transcript?.metadata,
+    transcriptHash: transcript?.transcriptHash
+  });
+}
+
+function emptyMcpCalls(): { count: number; toolNames: string[]; files: string[]; attributedFiles: string[]; contextActions: string[]; stopConditions: string[] } {
+  return {
+    count: 0,
+    toolNames: [],
+    files: [],
+    attributedFiles: [],
+    contextActions: [],
+    stopConditions: []
+  };
+}
+
+function readCodexTranscriptFromOutput(output: string): ReturnType<typeof readCodexTranscript> | undefined {
+  const sessionId = codexSessionIdFromOutput(output);
+  if (!sessionId) return undefined;
+  const transcriptPath = findCodexTranscriptPath(sessionId);
+  if (!transcriptPath) return undefined;
+  try {
+    return readCodexTranscript({ transcriptPath });
+  } catch {
+    return undefined;
+  }
+}
+
+function codexSessionIdFromOutput(output: string): string | undefined {
+  const match = output.match(/\bsession id:\s*([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/i);
+  return match?.[1];
+}
+
+function findCodexTranscriptPath(sessionId: string): string | undefined {
+  const root = path.join(process.env.CODEX_HOME || path.join(os.homedir(), ".codex"), "sessions");
+  if (!fs.existsSync(root)) return undefined;
+  const expectedSuffix = `${sessionId}.jsonl`;
+  const stack: Array<{ dir: string; depth: number }> = [{ dir: root, depth: 0 }];
+  while (stack.length > 0) {
+    const current = stack.pop()!;
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(current.dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const entryPath = path.join(current.dir, entry.name);
+      if (entry.isFile() && entry.name.endsWith(expectedSuffix)) return entryPath;
+      if (entry.isDirectory() && current.depth < 5) stack.push({ dir: entryPath, depth: current.depth + 1 });
+    }
+  }
+  return undefined;
 }
 
 function outputFromExecError(error: unknown): string {

@@ -230,7 +230,7 @@ export class KairnRuntime {
     const budget = input.budget ?? adaptivePrimeBudget({ profile, task, repoFileCount });
     const limits = primeProfileLimits(profile);
     const session = input.sessionId
-      ? this.store.getSession(input.sessionId)
+      ? this.getOrCreatePrimeSession(input.sessionId, input.task)
       : this.store.createSession({
           id: `task_${randomUUID()}`,
           rootPath: this.rootPath,
@@ -837,6 +837,13 @@ export class KairnRuntime {
       !hasExplicitMultiFileScopeRequest(resolvedTask) &&
       !readOnlySourceRouting &&
       failureFilesForPolicy.length === 0;
+    const suppressSelfContainedExecutionStateMigrationGuardrail =
+      (contextDecision.taskShapeSignal === "execution_state_migration" || hasExecutionStateMigrationScope(resolvedTask)) &&
+      strictMultiFileEditScopeHint &&
+      officialPatchScopeFiles.length > 1 &&
+      hasSelfContainedExecutionStateMigrationPrompt(resolvedTask) &&
+      !readOnlySourceRouting &&
+      failureFilesForPolicy.length === 0;
     const effectiveAction = suppressNarrowPackageParserGuardrail
       ? "suppress"
       : suppressGrpcErrorPolicyGuardrail
@@ -846,6 +853,8 @@ export class KairnRuntime {
       : suppressTopicOrderingGuardrail
       ? "suppress"
       : suppressHiddenPluginActivationGuardrail
+      ? "suppress"
+      : suppressSelfContainedExecutionStateMigrationGuardrail
       ? "suppress"
       : forceMinimalSourceFocus || forcePromptMentionedMultiFileScope
       ? "shrink"
@@ -960,6 +969,7 @@ export class KairnRuntime {
         ...(suppressNarrowPackageParserGuardrail ? ["narrow package parser task already has a dominant source surface; staying silent"] : []),
         ...(suppressGrpcErrorPolicyGuardrail ? ["gRPC context status policy needs concrete failure evidence; staying silent to avoid command-only over-assist"] : []),
         ...(suppressHiddenPluginActivationGuardrail ? ["plugin activation consumer scope is hidden by benchmark metadata; staying silent until prompt or failure evidence supports it"] : []),
+        ...(suppressSelfContainedExecutionStateMigrationGuardrail ? ["execution-state migration prompt is already self-contained; staying silent to avoid over-assist"] : []),
         ...(forcePromptMentionedMultiFileScope ? ["prompt names multiple production source files; emit compact multi-file guardrail"] : []),
         `session policy: ${sessionPolicy.reason}`
       ])
@@ -983,6 +993,8 @@ export class KairnRuntime {
         : suppressGrpcErrorPolicyGuardrail
         ? "none" as const
         : suppressHiddenPluginActivationGuardrail
+        ? "none" as const
+        : suppressSelfContainedExecutionStateMigrationGuardrail
         ? "none" as const
         : forceOfficialMultiFileScope
         ? "multi_file_directive" as const
@@ -1531,6 +1543,22 @@ export class KairnRuntime {
 
   getSession(sessionId: string): TaskSession {
     return this.store.getSession(sessionId);
+  }
+
+  private getOrCreatePrimeSession(sessionId: string, task: string): TaskSession {
+    try {
+      return this.store.getSession(sessionId);
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.startsWith("Unknown Kairn session:")) {
+        throw error;
+      }
+      return this.store.createSession({
+        id: sessionId,
+        rootPath: this.rootPath,
+        task,
+        verificationHints: ["Start from Kairn prime context", "Avoid broad scans unless the prime is insufficient", "Run related tests before finalizing"]
+      });
+    }
   }
 
   listSessions(input?: { limit?: number | undefined; allRoots?: boolean | undefined }): TaskSession[] {
@@ -3903,9 +3931,9 @@ export class KairnRuntime {
                   "Call `kairn_prepare_task` before broad, unclear, multi-file, or failure-driven file scans.",
                   "For diagnose, investigate, audit, trace, or source-rescue tasks that do not name an exact production path, call `kairn_prepare_task` once before manual source reads.",
                   "Do not skip Kairn merely because a task feels small; skip the first prepare call only when the user names an exact production file or exact symbol.",
-                  "If `kairn_prepare_task` returns `stopCondition` or no `nextToolCalls`, continue from its files and do not call more Kairn unless a check fails or the target changes.",
+                  "If `kairn_prepare_task` returns `stopCondition` or no `nextToolCalls`, continue from its files and do not call more Kairn unless a check fails with a concrete missing source outside the returned files or the target changes.",
                   "Only call `kairn_get_next_context` when `kairn_prepare_task` explicitly returns it as a next tool call.",
-                  "For real failures, call `kairn_get_failure_context` once before broad debugging searches.",
+                  "For real failures, call `kairn_get_failure_context` only when `kairn_prepare_task` did not return a sufficient source surface or the failure output names a new file/symbol outside the returned files.",
                   "Use the smallest Kairn-recommended read before `rg --files`, large `sed`, or full-file reads.",
                   "",
                   "User task:",
@@ -5711,6 +5739,32 @@ function hasExecutionStateMigrationScope(query: string): boolean {
   const behaviorTerms =
     /\b(preserve|redirect|emit|warn|compare|transition|assignment|bitwise|combinable|state descriptions?|readable state names?)\b/.test(normalized);
   return stateTerms && migrationTerms && behaviorTerms;
+}
+
+function hasSelfContainedExecutionStateMigrationPrompt(query: string): boolean {
+  const normalized = normalizeCandidateText(query);
+  const requirementBullets = (query.match(/\n\s*-\s+/g) ?? []).length;
+  const interfaceDetail = countPresent(normalized, [
+    /\biterating states\b/,
+    /\bfailed states\b/,
+    /\bmeta play iterator\b/,
+    /\bint enum\b/,
+    /\bint flag\b/,
+    /\bnew interfaces introduced\b/
+  ]);
+  const compatibilityDetail = countPresent(normalized, [
+    /\blegacy constants?\b/,
+    /\bclass and instance\b/,
+    /\bthird party\b/,
+    /\bdeprecation warnings?\b/,
+    /\bhost state\b/
+  ]);
+  const surfaceDetail = countPresent(normalized, [
+    /\bplay iterator py\b/,
+    /\bstrategy init py\b/,
+    /\bstrategy linear py\b/
+  ]);
+  return requirementBullets >= 4 && interfaceDetail >= 2 && compatibilityDetail >= 2 && surfaceDetail >= 3;
 }
 
 function hasWebSessionRenewalScope(query: string): boolean {

@@ -1,0 +1,89 @@
+{
+  "id": "swe-pro-official-fresh-slice-governance-pr-20260610",
+  "name": "SWE-Pro Official Fresh Slice Governance PR",
+  "description": "Fresh 12-row SWE-Pro slice on governance-routing follow-up branch. Proxy first, then live patch generation for official evaluator inputs.",
+  "defaults": {
+    "model": "gpt-5.4-mini",
+    "parallel": 2,
+    "agentTimeoutMs": 900000,
+    "turnTimeoutMs": 480000,
+    "cleanup": "never",
+    "commands": {
+      "baseline": "codex -a never exec --model {model} --sandbox danger-full-access --disable hooks {prompt}",
+      "kairn_codex_session": "node \"$KAIRN_CLI_PATH\" codex --root {root} --model {model} --sandbox danger-full-access --skip-git-repo-check {prompt}"
+    }
+  },
+  "pauseRules": {
+    "maxQualityDrops": 0,
+    "maxScopeViolations": 0,
+    "maxRepeatedFailureClass": 1,
+    "maxTokenRegressionClass": 1,
+    "stopOnHarnessFailure": true
+  },
+  "entries": [
+    {
+      "id": "live-swe-row-3",
+      "kind": "proof",
+      "tags": [
+        "swe-pro",
+        "fresh-slice",
+        "live"
+      ],
+      "root": ".",
+      "suite": "docs/publication-evidence-20260610/swe-pro-official-fresh-slice-governance-pr/rows/row-3.json",
+      "modes": [
+        "baseline",
+        "kairn_codex_session"
+      ],
+      "repeat": 1
+    },
+    {
+      "id": "live-swe-row-8",
+      "kind": "proof",
+      "tags": [
+        "swe-pro",
+        "fresh-slice",
+        "live"
+      ],
+      "root": ".",
+      "suite": "docs/publication-evidence-20260610/swe-pro-official-fresh-slice-governance-pr/rows/row-8.json",
+      "modes": [
+        "baseline",
+        "kairn_codex_session"
+      ],
+      "repeat": 1
+    },
+    {
+      "id": "live-swe-row-10",
+      "kind": "proof",
+      "tags": [
+        "swe-pro",
+        "fresh-slice",
+        "live"
+      ],
+      "root": ".",
+      "suite": "docs/publication-evidence-20260610/swe-pro-official-fresh-slice-governance-pr/rows/row-10.json",
+      "modes": [
+        "baseline",
+        "kairn_codex_session"
+      ],
+      "repeat": 1
+    },
+    {
+      "id": "live-swe-row-12",
+      "kind": "proof",
+      "tags": [
+        "swe-pro",
+        "fresh-slice",
+        "live"
+      ],
+      "root": ".",
+      "suite": "docs/publication-evidence-20260610/swe-pro-official-fresh-slice-governance-pr/rows/row-12.json",
+      "modes": [
+        "baseline",
+        "kairn_codex_session"
+      ],
+      "repeat": 1
+    }
+  ]
+}

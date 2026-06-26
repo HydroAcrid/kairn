@@ -483,6 +483,76 @@ describe("KairnRuntime", () => {
     expect(estimateTokens(content)).toBeLessThan(280);
   });
 
+  it("uses a required diff checklist for execution-state official migrations", () => {
+    const editScope = {
+      initialEditFiles: [
+        "lib/ansible/executor/play_iterator.py",
+        "lib/ansible/plugins/strategy/__init__.py",
+        "lib/ansible/plugins/strategy/linear.py"
+      ],
+      readOnlyFiles: ["test/units/executor/test_play_iterator.py"],
+      allowedExpansionTriggers: ["only if a focused failure names another production file"],
+      forbiddenEditPatterns: ["tests/**", "docs/**"],
+      scopeConfidence: "high" as const,
+      scopeSource: "official_harness" as const,
+      reason: "official metadata supplied production scope",
+      strictBoundary: true,
+      dynamic: true as const
+    };
+    const task = [
+      "Standardize PlayIterator state representation with public IteratingStates and FailedStates enums.",
+      "Update strategy plugins that consume the iterator state.",
+      "Preserve legacy constants, HostState string output, and third-party strategy plugin compatibility.",
+      "Fix production source only."
+    ].join(" ");
+
+    expect(officialGuardrailVariantFor({
+      task,
+      files: editScope.initialEditFiles,
+      editScope
+    })).toBe("execution_state_migration_compact");
+
+    const content = formatShrunkPrimeContext({
+      task,
+      sessionId: "task_exec_state_checklist",
+      profile: "generic",
+      quality: {
+        score: 70,
+        action: "shrink",
+        reasons: [],
+        topScore: 600,
+        topGap: 80,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "medium"
+      },
+      context: {
+        mode: "snippets",
+        content: "",
+        files: editScope.initialEditFiles,
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: editScope.initialEditFiles,
+        rankedFiles: [],
+        tokenEstimate: 0
+      },
+      files: editScope.initialEditFiles,
+      budget: 900,
+      minimal: true,
+      editScope
+    });
+
+    expect(content).toContain("# Kairn State Migration Scope");
+    expect(content).toContain("Required diff checklist:");
+    expect(content).toContain("lib/ansible/executor/play_iterator.py: define the migrated state representation");
+    expect(content).toContain("lib/ansible/plugins/strategy/__init__.py: update strategy state comparisons");
+    expect(content).toContain("lib/ansible/plugins/strategy/linear.py: update linear strategy state comparisons");
+    expect(content).toContain("final diff must touch every checklist path");
+    expect(content).toContain("Do not stop after adding enums");
+    expect(content).not.toContain("Focused context:");
+    expect(estimateTokens(content)).toBeLessThan(320);
+  });
+
   it("uses a compact lifecycle policy guardrail for deprecation-date official patch scope", () => {
     const editScope = {
       initialEditFiles: [
@@ -1354,14 +1424,74 @@ describe("KairnRuntime", () => {
       ]));
       expect(prime.editScope?.initialEditFiles).not.toContain("lib/ansible/plugins/strategy/debug.py");
       expect(prime.editScope?.initialEditFiles).not.toContain("lib/ansible/module_utils/basic.py");
-      expect(prime.content).toContain("Required migration edits:");
-      expect(prime.content).toContain("patch the state owner and every listed strategy/executor consumer");
-      expect(prime.content).toContain("Consumer surfaces:");
+      expect(prime.content).toContain("Required diff checklist:");
+      expect(prime.content).toContain("final diff must touch every checklist path");
+      expect(prime.content).toContain("lib/ansible/executor/play_iterator.py: define the migrated state representation");
+      expect(prime.content).toContain("lib/ansible/plugins/strategy/__init__.py: update strategy state comparisons");
+      expect(prime.content).toContain("lib/ansible/plugins/strategy/linear.py: update linear strategy state comparisons");
       expect(prime.content).toContain("lib/ansible/plugins/strategy/__init__.py");
       expect(prime.content).toContain("lib/ansible/plugins/strategy/linear.py");
       expect(prime.content).toContain("Do not stop after adding enums");
       expect(prime.content).not.toContain("lib/ansible/plugins/strategy/debug.py");
       expect(prime.content).not.toContain("lib/ansible/module_utils/basic.py");
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("suppresses self-contained execution-state migration prompts that already name all edit surfaces", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-runtime-exec-state-self-contained-"));
+    fs.mkdirSync(path.join(root, "lib/ansible/executor"), { recursive: true });
+    fs.mkdirSync(path.join(root, "lib/ansible/plugins/strategy"), { recursive: true });
+    fs.writeFileSync(path.join(root, "lib/ansible/executor/play_iterator.py"), "class PlayIterator:\n    pass\nclass HostState:\n    pass\n");
+    fs.writeFileSync(path.join(root, "lib/ansible/plugins/strategy/__init__.py"), "class StrategyBase:\n    pass\n");
+    fs.writeFileSync(path.join(root, "lib/ansible/plugins/strategy/linear.py"), "class StrategyModule:\n    pass\n");
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const prime = await runtime.primeContext({
+        task: [
+          "Standardize PlayIterator state representation with a public type and preserve backward compatibility.",
+          "Requirements:",
+          "- The module lib/ansible/executor/play_iterator.py must expose IteratingStates as an IntEnum.",
+          "- The module lib/ansible/executor/play_iterator.py must expose FailedStates as an IntFlag.",
+          "- lib/ansible/plugins/strategy/__init__.py must use the new state values for comparisons and assignments.",
+          "- lib/ansible/plugins/strategy/linear.py must use the new state values for transitions.",
+          "- Legacy constants must keep working through class and instance attribute access.",
+          "- HostState string output should show readable state names.",
+          "New interfaces introduced: IteratingStates, FailedStates, MetaPlayIterator.",
+          "Fix production source only."
+        ].join("\n"),
+        budget: 900,
+        source: "bench",
+        editScopeHints: {
+          allowedDiffScopes: [
+            { file: "lib/ansible/executor/play_iterator.py", allowWholeFile: true },
+            { file: "lib/ansible/plugins/strategy/__init__.py", allowWholeFile: true },
+            { file: "lib/ansible/plugins/strategy/linear.py", allowWholeFile: true }
+          ]
+        }
+      });
+
+      expect(prime.contextDecision?.taskShapeSignal).toBe("execution_state_migration");
+      expect(prime.contextDecision?.requiredSurface).toBe("paired_contract");
+      expect(prime.contextDecision?.action).toBe("suppress");
+      expect(prime.contextDecision?.recommendedDelivery).toBe("none");
+      expect(prime.files).toEqual([]);
+      expect(prime.editScope?.initialEditFiles).toEqual([
+        "lib/ansible/executor/play_iterator.py",
+        "lib/ansible/plugins/strategy/__init__.py",
+        "lib/ansible/plugins/strategy/linear.py"
+      ]);
+      expect(prime.content).toContain("# Kairn Prime Suppressed");
+      expect(prime.content).not.toContain("Required diff checklist:");
+      expect(prime.metadata?.deliveryTrace).toMatchObject({
+        action: "suppress",
+        taskShapeSignal: "execution_state_migration",
+        requiredSurface: "paired_contract",
+        emittedFileCount: 0
+      });
     } finally {
       runtime.close();
       fs.rmSync(root, { recursive: true, force: true });
