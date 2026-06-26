@@ -1,0 +1,124 @@
+{
+  "id": "headroom-kairn-combo-20260626",
+  "name": "Kairn + Headroom Competitive Learning And Combo Evaluation",
+  "description": "Research manifest for comparing direct baseline, Headroom-only compression, Kairn-only governance, and Kairn-plus-Headroom composition.",
+  "createdAt": "2026-06-26",
+  "kairn": {
+    "branch": "research/headroom-combo-eval",
+    "commit": "8af1e7d9348c8426020d234ee0f04aff77048196",
+    "version": "0.1.4"
+  },
+  "headroom": {
+    "repo": "https://github.com/headroomlabs-ai/headroom",
+    "reviewCommit": "9f772378d3e1f1f5145af6c1868c6c6bd4b6f557",
+    "package": "headroom-ai",
+    "version": "0.27.0",
+    "license": "Apache-2.0"
+  },
+  "arms": [
+    {
+      "id": "baseline_direct",
+      "description": "Codex/agent run with no Kairn and no Headroom."
+    },
+    {
+      "id": "headroom_passthrough",
+      "description": "Headroom proxy path with optimization disabled, used to isolate proxy-hop cost."
+    },
+    {
+      "id": "headroom_only",
+      "description": "Headroom compression/proxy/wrapper enabled without Kairn governance."
+    },
+    {
+      "id": "kairn_only",
+      "description": "Existing Kairn Codex-session or real MCP mode."
+    },
+    {
+      "id": "kairn_plus_headroom",
+      "description": "Kairn selects/governs context first; Headroom compresses downstream noisy payloads/tool output where feasible."
+    }
+  ],
+  "smokeChecks": [
+    {
+      "id": "headroom-install-mcp",
+      "command": "pip install \"headroom-ai[mcp]\"",
+      "status": "passed"
+    },
+    {
+      "id": "headroom-install-proxy",
+      "command": "pip install \"headroom-ai[proxy]\"",
+      "status": "passed"
+    },
+    {
+      "id": "headroom-version",
+      "command": "headroom --version",
+      "status": "passed"
+    },
+    {
+      "id": "headroom-mcp-status",
+      "command": "headroom mcp status",
+      "status": "passed_with_expected_missing_user_config"
+    },
+    {
+      "id": "headroom-mcp-initialize",
+      "command": "headroom mcp serve",
+      "status": "partial",
+      "note": "Initialize returned server info and tool capability; raw tools/list probe needs SDK retry."
+    },
+    {
+      "id": "headroom-proxy-passthrough",
+      "command": "headroom proxy --port 18787 --no-optimize --no-cache",
+      "status": "passed"
+    },
+    {
+      "id": "kairn-build-version",
+      "command": "pnpm build && node dist/cli.js --version",
+      "status": "passed"
+    }
+  ],
+  "plannedLiveRows": [
+    {
+      "id": "swe-narrow-exact-source",
+      "class": "narrow_exact_source_patch",
+      "arms": ["baseline_direct", "headroom_passthrough", "headroom_only", "kairn_only", "kairn_plus_headroom"],
+      "gate": "Run only after passthrough and token accounting smoke are stable."
+    },
+    {
+      "id": "swe-multi-file-source-governance",
+      "class": "multi_file_source_surface",
+      "arms": ["baseline_direct", "headroom_passthrough", "headroom_only", "kairn_only", "kairn_plus_headroom"],
+      "gate": "Kairn must keep source attribution before Headroom compression is applied."
+    },
+    {
+      "id": "swe-noisy-failure-output",
+      "class": "failure_or_log_heavy",
+      "arms": ["baseline_direct", "headroom_passthrough", "headroom_only", "kairn_only", "kairn_plus_headroom"],
+      "gate": "Most likely combo win class; requires quality pass and valid token accounting."
+    },
+    {
+      "id": "swe-frontend-ownership",
+      "class": "large_frontend_ownership",
+      "arms": ["baseline_direct", "headroom_passthrough", "headroom_only", "kairn_only", "kairn_plus_headroom"],
+      "gate": "Stop if compression hides route/component/test ownership evidence."
+    }
+  ],
+  "plannedMcpSuites": [
+    {
+      "id": "known-good-mcp-control",
+      "repeat": 1,
+      "arms": ["baseline_direct", "headroom_only", "kairn_only", "kairn_plus_headroom"]
+    },
+    {
+      "id": "js-ts-server-workflow",
+      "repeat": 1,
+      "arms": ["baseline_direct", "headroom_only", "kairn_only", "kairn_plus_headroom"]
+    }
+  ],
+  "acceptanceGates": {
+    "comboQualityAtLeastKairnOnly": true,
+    "comboLowerTokensThanKairnOnlyOnAtLeastRows": 2,
+    "noLostSourceAttribution": true,
+    "noScopeViolations": true,
+    "validTokenAccounting": true,
+    "mcpUsefulAttributionPreserved": true
+  }
+}

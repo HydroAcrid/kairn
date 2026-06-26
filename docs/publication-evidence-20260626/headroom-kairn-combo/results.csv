@@ -1,0 +1,9 @@
+entry_id,stage,arm,status,quality,scope,tokens_before,tokens_after,tokens_saved,reduction_pct,mcp_calls,useful_attribution,classification,notes
+headroom-repo-refresh,inventory,headroom_only,passed,,,,,,,,,repo_inventory,Reviewed Headroom commit 9f772378d3e1f1f5145af6c1868c6c6bd4b6f557.
+headroom-install-mcp,smoke,headroom_only,passed,,,,,,,,,install_pass,Installed headroom-ai[mcp] in temporary venv.
+headroom-install-proxy,smoke,headroom_only,passed,,,,,,,,,install_pass,Installed headroom-ai[proxy] in temporary venv.
+headroom-version,smoke,headroom_only,passed,,,,,,,,,version_pass,headroom version 0.27.0.
+headroom-mcp-status,smoke,headroom_only,passed,,,,,,,0,0,mcp_available_no_user_config,MCP SDK available; no Claude config and proxy not running, expected for non-mutating smoke.
+headroom-mcp-initialize,smoke,headroom_only,partial,,,,,,,0,0,mcp_init_pass_tools_list_inconclusive,Initialize returned serverInfo and tool capability; raw tools/list probe did not return and needs SDK retry.
+headroom-proxy-passthrough,smoke,headroom_passthrough,passed,,,,,,,,,proxy_health_pass,/livez returned HTTP 200 on port 18787.
+kairn-build-version,smoke,kairn_only,passed,,,,,,,,,kairn_build_pass,Kairn built and reported version 0.1.4.

@@ -1,0 +1,69 @@
+{
+  "id": "headroom-kairn-combo-20260626",
+  "status": "smoke_complete_live_not_started",
+  "createdAt": "2026-06-26",
+  "summary": {
+    "inventoryRows": 1,
+    "smokeRows": 7,
+    "liveRows": 0,
+    "officialRows": 0,
+    "mcpInitialization": "partial",
+    "proxyPassthrough": "passed",
+    "kairnBuild": "passed"
+  },
+  "results": [
+    {
+      "entryId": "headroom-repo-refresh",
+      "stage": "inventory",
+      "arm": "headroom_only",
+      "status": "passed",
+      "classification": "repo_inventory"
+    },
+    {
+      "entryId": "headroom-install-mcp",
+      "stage": "smoke",
+      "arm": "headroom_only",
+      "status": "passed",
+      "classification": "install_pass"
+    },
+    {
+      "entryId": "headroom-install-proxy",
+      "stage": "smoke",
+      "arm": "headroom_only",
+      "status": "passed",
+      "classification": "install_pass"
+    },
+    {
+      "entryId": "headroom-mcp-initialize",
+      "stage": "smoke",
+      "arm": "headroom_only",
+      "status": "partial",
+      "classification": "mcp_init_pass_tools_list_inconclusive"
+    },
+    {
+      "entryId": "headroom-proxy-passthrough",
+      "stage": "smoke",
+      "arm": "headroom_passthrough",
+      "status": "passed",
+      "classification": "proxy_health_pass"
+    },
+    {
+      "entryId": "kairn-build-version",
+      "stage": "smoke",
+      "arm": "kairn_only",
+      "status": "passed",
+      "classification": "kairn_build_pass"
+    }
+  ],
+  "gates": {
+    "safeToRunLiveCombo": false,
+    "reason": "Headroom MCP raw tools/list probe is inconclusive and no passthrough-vs-direct token-accounting check has been run yet.",
+    "publicClaimsAllowed": false
+  },
+  "nextActions": [
+    "Retry Headroom MCP tools/list and one headroom_compress call through an SDK-backed MCP client.",
+    "Run a tiny direct vs Headroom passthrough agent command to confirm token accounting and wrapper overhead.",
+    "If passthrough is stable, run the four-arm small SWE-Pro sample.",
+    "If SWE sample is stable, run two MCP/endurance single-run suites."
+  ]
+}
