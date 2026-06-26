@@ -70,6 +70,31 @@ describe("MCP server", () => {
     expect(tools.tools.map((tool) => tool.name)).toContain("kairn_get_failure_context");
     expect(tools.tools.map((tool) => tool.name)).toContain("kairn_get_next_context");
 
+    const clientSessionPrepared = await client.callTool({
+      name: "kairn_prepare_task",
+      arguments: {
+        task: "Update dashboard rendering",
+        sessionId: "client-session-1",
+        budget: 700
+      }
+    });
+    const clientSessionPreparedText = firstTextContent(clientSessionPrepared);
+    const clientSessionPreparedParsed = JSON.parse(clientSessionPreparedText!) as {
+      sessionId: string;
+      startFiles: string[];
+    };
+    expect(clientSessionPreparedParsed.sessionId).toBe("client-session-1");
+    expect(clientSessionPreparedParsed.startFiles.length).toBeLessThanOrEqual(1);
+
+    const clientSessionState = await client.callTool({
+      name: "kairn_get_session_state",
+      arguments: {
+        sessionId: "client-session-1"
+      }
+    });
+    const clientSessionStateText = firstTextContent(clientSessionState);
+    expect(clientSessionStateText).toContain("client-session-1");
+
     const started = await client.callTool({
       name: "kairn_start_task",
       arguments: {
@@ -455,6 +480,7 @@ describe("MCP server", () => {
       files: string[];
       attributedFiles?: string[];
       companionFiles: string[];
+      primaryReason?: string;
       contextDecision?: {
         requiredSurface?: string;
       };
@@ -473,6 +499,8 @@ describe("MCP server", () => {
     ]));
     expect(parsed.files).toHaveLength(4);
     expect(parsed.files).not.toContain("lib/ansible/plugins/action/uri.py");
+    expect(parsed.primaryReason).toContain("do not call more Kairn or kairn_get_failure_context");
+    expect(parsed.primaryReason).toContain("concrete missing source outside these files");
 
     await client.close();
   });

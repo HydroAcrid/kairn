@@ -6699,6 +6699,104 @@ describe("benchmark suite and scoring", () => {
     expect(result.metadata.mcpContextEfficiency).toBeCloseTo(1 / 3, 4);
   });
 
+  it("counts actual MCP tool calls and returned files from Codex transcripts", async () => {
+    const root = createFixtureRepo();
+    const previousCodexHome = process.env.CODEX_HOME;
+    const codexHome = path.join(root, "codex-home");
+    const sessionId = "019f052e-b307-7b52-a0e7-c4ccf6552ffa";
+    const transcriptDir = path.join(codexHome, "sessions", "2026", "06", "26");
+    const mcpResult = {
+      files: ["src/app.ts", "src/app.test.ts", "docs/readme.md"],
+      attributedFiles: ["src/app.ts", "src/app.test.ts"],
+      contextDecision: { action: "shrink" },
+      stopCondition: "source_surface_sufficient"
+    };
+    fs.mkdirSync(transcriptDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(transcriptDir, `rollout-2026-06-26T14-26-14-${sessionId}.jsonl`),
+      [
+        JSON.stringify({
+          usage: {
+            total_tokens: 1234,
+            input_tokens: 1000,
+            cached_input_tokens: 700,
+            output_tokens: 234
+          }
+        }),
+        JSON.stringify({
+          type: "response_item",
+          payload: {
+            type: "function_call",
+            name: "kairn_prepare_task",
+            namespace: "mcp__kairn__",
+            call_id: "call_1"
+          }
+        }),
+        JSON.stringify({
+          type: "event_msg",
+          payload: {
+            type: "mcp_tool_call_end",
+            invocation: {
+              server: "kairn",
+              tool: "kairn_prepare_task",
+              call_id: "call_1"
+            },
+            result: {
+              Ok: {
+                content: [
+                  {
+                    type: "text",
+                    text: JSON.stringify(mcpResult)
+                  }
+                ]
+              }
+            }
+          }
+        })
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(root, "emit-transcript-session.cjs"),
+      [
+        "const fs = require('fs');",
+        "fs.writeFileSync('src/app.ts', 'export const changedByTranscriptMcp = true;\\n');",
+        `console.log('session id: ${sessionId}');`
+      ].join("\n")
+    );
+    process.env.CODEX_HOME = codexHome;
+
+    try {
+      const result = await runAgentBenchmarkCase({
+        rootPath: root,
+        benchmarkCase: {
+          id: "mcp-transcript",
+          mode: "agent",
+          task: "Use Kairn MCP from Codex transcript",
+          expectedFiles: ["src/app.ts"],
+          excludedFiles: ["docs/"]
+        },
+        agentCommand: "node emit-transcript-session.cjs"
+      });
+
+      expect(result.observedCodexTokens).toBe(1234);
+      expect(result.metadata.actualMcpToolCalls).toBe(1);
+      expect(result.metadata.actualMcpToolCallSource).toBe("codex_transcript");
+      expect(result.metadata.actualMcpToolNames).toEqual(["kairn_prepare_task"]);
+      expect(result.metadata.actualMcpFiles).toEqual(["docs/readme.md", "src/app.test.ts", "src/app.ts"]);
+      expect(result.metadata.actualMcpAttributedFiles).toEqual(["src/app.test.ts", "src/app.ts"]);
+      expect(result.metadata.actualMcpContextActions).toEqual(["shrink"]);
+      expect(result.metadata.actualMcpStopConditions).toEqual(["source_surface_sufficient"]);
+      expect(result.metadata.mcpReturnedFileCount).toBe(3);
+      expect(result.metadata.mcpReturnedExpectedFileCount).toBe(1);
+      expect(result.metadata.mcpReturnedNoiseFileCount).toBe(1);
+      expect(result.metadata.mcpReturnedTestFanoutCount).toBe(1);
+      expect(result.metadata.mcpContextEfficiency).toBeCloseTo(1 / 3, 4);
+    } finally {
+      if (previousCodexHome === undefined) delete process.env.CODEX_HOME;
+      else process.env.CODEX_HOME = previousCodexHome;
+    }
+  });
+
   it("does not contaminate setup-failure proof metrics with the caller cwd Kairn database", async () => {
     const metricsRoot = createFixtureRepo();
     const contaminatingRuntime = new KairnRuntime(metricsRoot);
@@ -7975,6 +8073,67 @@ describe("benchmark runtime and CLI", () => {
     });
 
     runtime.close();
+  });
+
+  it("falls back to Codex transcript usage when live-agent output has no usage footer", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const previousCodexHome = process.env.CODEX_HOME;
+    const codexHome = path.join(root, "codex-home");
+    const sessionId = "019f0520-0733-72d2-a564-44e00095ace3";
+    const transcriptDir = path.join(codexHome, "sessions", "2026", "06", "26");
+    fs.mkdirSync(transcriptDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(transcriptDir, `rollout-2026-06-26T14-10-12-${sessionId}.jsonl`),
+      [
+        JSON.stringify({
+          usage: {
+            total_tokens: 100,
+            input_tokens: 80,
+            cached_input_tokens: 60,
+            output_tokens: 20
+          }
+        }),
+        JSON.stringify({
+          payload: {
+            type: "token_count",
+            info: {
+              total_token_usage: {
+                total_tokens: 4321,
+                input_tokens: 4000,
+                cached_input_tokens: 3000,
+                output_tokens: 321
+              }
+            }
+          }
+        })
+      ].join("\n")
+    );
+    process.env.CODEX_HOME = codexHome;
+
+    try {
+      const report = await runtime.runBenchmark({
+        mode: "agent",
+        agentCommand: `printf 'session id: ${sessionId}\\nagent completed without footer\\n'`
+      });
+
+      expect(report.observed).toEqual({
+        codexTokens: 4321,
+        codexCaseCount: 1
+      });
+      expect(report.results[0]?.observedCodexTokens).toBe(4321);
+      expect(report.results[0]?.metadata.codexUsage).toMatchObject({
+        totalTokens: 4321,
+        inputTokens: 4000,
+        cachedInputTokens: 3000,
+        outputTokens: 321,
+        source: "transcript"
+      });
+    } finally {
+      if (previousCodexHome === undefined) delete process.env.CODEX_HOME;
+      else process.env.CODEX_HOME = previousCodexHome;
+      runtime.close();
+    }
   });
 
   it("parses Codex token footers from failed live-agent benchmark output", async () => {

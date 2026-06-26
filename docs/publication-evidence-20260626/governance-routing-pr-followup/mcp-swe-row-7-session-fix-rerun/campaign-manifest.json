@@ -1,0 +1,44 @@
+{
+  "id": "governance-pr-mcp-swe-row-7-20260626",
+  "name": "Governance PR MCP SWE Row 7 Check",
+  "description": "Dedicated SWE-style real MCP check for the HTTP auth policy row using cached baseline data.",
+  "defaults": {
+    "model": "gpt-5.4-mini",
+    "parallel": 1,
+    "agentTimeoutMs": 900000,
+    "turnTimeoutMs": 480000,
+    "cleanup": "never",
+    "commands": {
+      "baseline": "codex -a never exec --model {model} --sandbox danger-full-access --disable hooks {prompt}",
+      "real_mcp_first": "codex -a never exec --model {model} --sandbox danger-full-access --disable hooks {prompt}"
+    },
+    "setupCommands": {
+      "real_mcp_first": "node \"$KAIRN_CLI_PATH\" setup codex --root {root} --mode mcp-first >/dev/null"
+    }
+  },
+  "pauseRules": {
+    "maxQualityDrops": 0,
+    "maxScopeViolations": 0,
+    "maxRepeatedFailureClass": 1,
+    "maxTokenRegressionClass": 1,
+    "stopOnHarnessFailure": true
+  },
+  "entries": [
+    {
+      "id": "mcp-swe-row-7",
+      "kind": "proof",
+      "tags": [
+        "swe-pro",
+        "mcp",
+        "real_mcp_first",
+        "ansible__ansible"
+      ],
+      "root": ".",
+      "suite": "docs/publication-evidence-20260610/swe-pro-official-fresh-slice-governance-pr/rows/row-7.json",
+      "modes": [
+        "real_mcp_first"
+      ],
+      "repeat": 1
+    }
+  ]
+}

@@ -541,9 +541,9 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
     editScope,
     primaryReason: primaryFile
       ? sourceEvidenceStop && returnedFiles.length > 1
-        ? `Source surface stop: use this compact source map (${returnedFiles.join(", ")}); do not call more Kairn unless a check fails, the files change, or the task target changes. Do not run broad repo search or read unrelated files for repeat/cleanup turns. ${editScopeDirective}`
+        ? `Source surface stop: use this compact source map (${returnedFiles.join(", ")}); do not call more Kairn or kairn_get_failure_context unless a check fails with a concrete missing source outside these files, the files change, or the task target changes. Do not run broad repo search or read unrelated files for repeat/cleanup turns. ${editScopeDirective}`
         : sourceEvidenceStop
-        ? `Source evidence stop: use ${primaryFile}; do not call more Kairn unless a check fails, the file changes, or the task target changes. Do not run broad repo search or read unrelated files for repeat/cleanup turns. ${editScopeDirective}`
+        ? `Source evidence stop: use ${primaryFile}; do not call more Kairn or kairn_get_failure_context unless a check fails with a concrete missing source outside this file, the file changes, or the task target changes. Do not run broad repo search or read unrelated files for repeat/cleanup turns. ${editScopeDirective}`
         : companionFiles[0]
         ? `Start with ${primaryFile}; ${companionFiles[0]} is the one capped companion for this multi-surface task. ${editScopeDirective}`
         : `Start with ${primaryFile}; it is Kairn's highest-confidence unshown file for this task. ${editScopeDirective}`
