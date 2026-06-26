@@ -830,7 +830,7 @@ describe("watch and hook CLI", () => {
     expect(mcpInstructions).toContain("kairn_prepare_task");
     expect(mcpInstructions).toContain("cheap one-shot source fixes");
     expect(mcpInstructions).toContain("diagnose, investigate, audit, or trace");
-    expect(mcpInstructions).toContain("Do not call Kairn solely because a prompt says debug");
+    expect(mcpInstructions).toContain("Do not skip Kairn merely because a task feels small");
     expect(mcpInstructions).toContain("cheap_one_shot_guardrail");
     expect(hybrid.mcpConfigured).toBe(true);
     expect(hybrid.hookOutput).toBe("mcp-brief");

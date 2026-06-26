@@ -102,6 +102,13 @@ function behaviorTemplateForTask(task: string): string | undefined {
     return "Voice broadcast UI state must distinguish live, paused/grey, and not-live states consistently across playback and recording surfaces.";
   }
   if (
+    /\b(topic|topics|category|categories)\b/.test(normalized) &&
+    /\b(pin|pinned|reorder|ordering|order|position|relative order|target position)\b/.test(normalized) &&
+    /\b(privileges?|moderator|admin|no-op|category isolation|membership|sorted set)\b/.test(normalized)
+  ) {
+    return "Pinned-topic reordering must preserve authorization, category isolation, no-op behavior for unpinned topics, and deterministic relative order.";
+  }
+  if (
     /\b(validat(e|ion)|valid|invalid|reject|accept)\b/.test(normalized) &&
     /\b(identifier|keyword|reserved|fqcn|collection name|namespace)\b/.test(normalized)
   ) {

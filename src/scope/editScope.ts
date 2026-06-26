@@ -35,8 +35,7 @@ export function decideEditScope(input: {
   const officialPatchPrompt = taskIsOfficialProductionPatchPrompt(input.task);
   const allowedHarnessFiles = uniquePaths((input.allowedDiffScopes ?? []).map((scope) => normalizeRelativePath(scope.file)));
   const knownFilePaths = new Set((input.knownFiles ?? []).map((file) => normalizeRelativePath(file.path)));
-  const taskMentionedSourceFiles = extractOfficialPromptSourceFiles(input.task)
-    .filter((file) => knownFilePaths.size === 0 || knownFilePaths.has(file));
+  const taskMentionedSourceFiles = extractOfficialPromptSourceFiles(input.task, knownFilePaths);
   const officialPromptFiles = officialPatchPrompt ? taskMentionedSourceFiles : [];
   const harnessFiles = uniquePaths([...allowedHarnessFiles, ...officialPromptFiles]);
   const invariantFiles = uniquePaths([
@@ -50,17 +49,39 @@ export function decideEditScope(input: {
   const promptDerivedMultiFileScope = hasPromptDerivedMultiFileScope(input.task);
   const deprecationLifecycleMultiSurfaceScope = hasDeprecationLifecycleScope(input.task);
   const packageSourceMappingMultiSurfaceScope = hasPackageSourceMappingScope(input.task);
+  const discoveryConfigMultiSurfaceScope = hasDiscoveryConfigScope(task) || input.contextDecision?.taskShapeSignal === "discovery_config";
   const webSessionRenewalMultiSurfaceScope = hasWebSessionRenewalScope(task);
   const datastoreBackendParityMultiSurfaceScope = hasDatastoreBackendParityScope(task) || input.contextDecision?.taskShapeSignal === "backend_parity";
+  const pluginActivationValidationMultiSurfaceScope = hasPluginActivationValidationScope(task) || input.contextDecision?.taskShapeSignal === "plugin_activation_validation";
+  const topicOrderingMultiSurfaceScope = input.contextDecision?.taskShapeSignal === "topic_ordering";
+  const collectionNameValidationMultiSurfaceScope = input.contextDecision?.taskShapeSignal === "collection_name_validation";
+  const grpcErrorPolicyMultiSurfaceScope = input.contextDecision?.taskShapeSignal === "grpc_error_policy";
   const selectedTestFanout = selectedTestPathCount(task) >= 3 && input.contextDecision?.recommendedDelivery === "multi_file_directive";
+  const officialMultiSurfaceExpansion =
+    explicitMultiFileScope ||
+    promptDerivedMultiFileScope ||
+    selectedTestFanout ||
+    discoveryConfigMultiSurfaceScope ||
+    packageSourceMappingMultiSurfaceScope ||
+    webSessionRenewalMultiSurfaceScope ||
+    datastoreBackendParityMultiSurfaceScope ||
+    pluginActivationValidationMultiSurfaceScope ||
+    topicOrderingMultiSurfaceScope ||
+    collectionNameValidationMultiSurfaceScope ||
+    grpcErrorPolicyMultiSurfaceScope;
   const productionOnlySingleFile =
     taskHasProductionOnlyEditIntent(task) &&
     !explicitMultiFileScope &&
     !promptDerivedMultiFileScope &&
     !selectedTestFanout &&
+    !discoveryConfigMultiSurfaceScope &&
     !packageSourceMappingMultiSurfaceScope &&
     !webSessionRenewalMultiSurfaceScope &&
-    !datastoreBackendParityMultiSurfaceScope;
+    !datastoreBackendParityMultiSurfaceScope &&
+    !pluginActivationValidationMultiSurfaceScope &&
+    !topicOrderingMultiSurfaceScope &&
+    !collectionNameValidationMultiSurfaceScope &&
+    !grpcErrorPolicyMultiSurfaceScope;
 
   const source = scopeSource({
     contextDecision: input.contextDecision,
@@ -75,10 +96,20 @@ export function decideEditScope(input: {
       ? 5
     : packageSourceMappingMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
       ? 5
+    : discoveryConfigMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
+      ? 2
     : webSessionRenewalMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
       ? 5
     : datastoreBackendParityMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
       ? 4
+    : pluginActivationValidationMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
+      ? 4
+    : topicOrderingMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
+      ? 3
+    : collectionNameValidationMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
+      ? 2
+    : grpcErrorPolicyMultiSurfaceScope && (input.contextDecision?.recommendedDelivery === "multi_file_directive" || source === "multi_file_debug")
+      ? 3
     : promptDerivedMultiFileScope && taskMentionedSourceFiles.length > 1
       ? Math.min(8, Math.max(2, taskMentionedSourceFiles.length))
     : source === "multi_file_debug" && selectedTestPathCount(task) >= 3
@@ -116,12 +147,15 @@ export function decideEditScope(input: {
     !isForbiddenFrontendEditSurface(file, input.task) &&
     !isUnrelatedPromptMentionedSourceSurface(file, input.task, taskMentionedSourceFiles)
   );
-  const budgetedEditCandidates = frontendUiInitialScopeBudget
-    ? applyFrontendUiInitialScopeBudget(editCandidates, input.task)
-    : editCandidates;
+  const budgetedEditCandidates = discoveryConfigMultiSurfaceScope
+    ? applyDiscoveryConfigInitialScopeBudget(editCandidates)
+    : frontendUiInitialScopeBudget
+      ? applyFrontendUiInitialScopeBudget(editCandidates, input.task)
+      : editCandidates;
   const promptDerivedOfficialExpansion =
     allowedHarnessFiles.length > 0 &&
-    (explicitMultiFileScope || promptDerivedMultiFileScope || selectedTestFanout || packageSourceMappingMultiSurfaceScope || webSessionRenewalMultiSurfaceScope || datastoreBackendParityMultiSurfaceScope) &&
+    officialMultiSurfaceExpansion &&
+    !pluginActivationValidationMultiSurfaceScope &&
     candidateFiles.some((file) => !allowedHarnessFiles.includes(file) && isEditableByDefault(file, allowedTestEdits));
   const officialPromptExpansionBeyondSourceFiles =
     explicitMultiFileScope ||
@@ -129,8 +163,13 @@ export function decideEditScope(input: {
     uiLivenessMultiSurfaceScope ||
     deprecationLifecycleMultiSurfaceScope ||
     packageSourceMappingMultiSurfaceScope ||
+    discoveryConfigMultiSurfaceScope ||
     webSessionRenewalMultiSurfaceScope ||
     datastoreBackendParityMultiSurfaceScope ||
+    pluginActivationValidationMultiSurfaceScope ||
+    topicOrderingMultiSurfaceScope ||
+    collectionNameValidationMultiSurfaceScope ||
+    grpcErrorPolicyMultiSurfaceScope ||
     (promptDerivedMultiFileScope && taskMentionedSourceFiles.length > 1);
   const officialPromptNamedSourceOnly =
     officialPatchPrompt &&
@@ -140,9 +179,14 @@ export function decideEditScope(input: {
     !selectedTestFanout &&
     !uiLivenessMultiSurfaceScope &&
     !deprecationLifecycleMultiSurfaceScope &&
+    !discoveryConfigMultiSurfaceScope &&
     !packageSourceMappingMultiSurfaceScope &&
     !webSessionRenewalMultiSurfaceScope &&
-    !datastoreBackendParityMultiSurfaceScope;
+    !datastoreBackendParityMultiSurfaceScope &&
+    !pluginActivationValidationMultiSurfaceScope &&
+    !topicOrderingMultiSurfaceScope &&
+    !collectionNameValidationMultiSurfaceScope &&
+    !grpcErrorPolicyMultiSurfaceScope;
   const frontendUiExplicitSourceCount = uiLivenessMultiSurfaceScope
     ? sourceCandidates.filter((file) => isFrontendUiExplicitlyNamedSourceSurface(file, input.task)).length
     : 0;
@@ -150,10 +194,20 @@ export function decideEditScope(input: {
     ? 5
     : packageSourceMappingMultiSurfaceScope
       ? 5
+    : discoveryConfigMultiSurfaceScope
+      ? 2
     : webSessionRenewalMultiSurfaceScope
       ? 5
     : datastoreBackendParityMultiSurfaceScope
       ? 4
+    : pluginActivationValidationMultiSurfaceScope
+      ? 4
+    : topicOrderingMultiSurfaceScope
+      ? 3
+    : collectionNameValidationMultiSurfaceScope
+      ? 2
+    : grpcErrorPolicyMultiSurfaceScope
+      ? 3
     : uiLivenessMultiSurfaceScope
       ? frontendUiExplicitSourceCount >= 2 ? 9 : 5
       : selectedTestFanout
@@ -170,18 +224,20 @@ export function decideEditScope(input: {
     : officialPatchPrompt
       ? selectedTestFanout
         ? primaryLimit
-        : officialPromptFiles.length > 0
-          ? officialPromptNamedSourceOnly
-            ? officialPromptFiles.length
+          : officialPromptFiles.length > 0
+            ? officialPromptNamedSourceOnly
+              ? officialPromptFiles.length
           : officialPromptExpansionBeyondSourceFiles
             ? Math.min(officialPromptDerivedCap, Math.max(2, officialPromptFiles.length + candidateFiles.length))
-            : 2
-          : (explicitMultiFileScope || promptDerivedMultiFileScope || packageSourceMappingMultiSurfaceScope || webSessionRenewalMultiSurfaceScope || datastoreBackendParityMultiSurfaceScope) ? Math.min(officialPromptDerivedCap, Math.max(primaryLimit, candidateFiles.length)) : 1
+            : input.contextDecision?.requiredSurface === "single_file" && officialPromptFiles.length === 1
+              ? 1
+              : 2
+          : officialMultiSurfaceExpansion ? Math.min(officialPromptDerivedCap, Math.max(primaryLimit, candidateFiles.length)) : 1
       : primaryLimit;
   const officialPromptDerivedLimit = officialPatchPrompt && (
     officialPromptFiles.length > 0
       ? officialPromptExpansionBeyondSourceFiles && !officialPromptNamedSourceOnly
-      : (promptDerivedMultiFileScope || explicitMultiFileScope || selectedTestFanout || packageSourceMappingMultiSurfaceScope || webSessionRenewalMultiSurfaceScope || datastoreBackendParityMultiSurfaceScope)
+      : officialMultiSurfaceExpansion
   )
     ? Math.min(
         officialPromptDerivedCap,
@@ -192,9 +248,16 @@ export function decideEditScope(input: {
       )
     : officialInitialLimit;
   const initialLimit = source === "official_harness" || officialPatchPrompt ? officialPromptDerivedLimit : primaryLimit;
-  const initialEditFiles = budgetedEditCandidates
-    .filter((file) => isEditableByDefault(file, allowedTestEdits))
-    .slice(0, initialLimit);
+  const officialHarnessEditCandidates = promptDerivedOfficialExpansion
+    ? uniquePaths([...allowedHarnessFiles, ...budgetedEditCandidates])
+    : allowedHarnessFiles;
+  const initialEditFiles = allowedHarnessFiles.length > 0
+    ? officialHarnessEditCandidates
+        .filter((file) => isEditableByDefault(file, allowedTestEdits))
+        .slice(0, initialLimit)
+    : budgetedEditCandidates
+        .filter((file) => isEditableByDefault(file, allowedTestEdits))
+        .slice(0, initialLimit);
   const readOnlyFiles = uniquePaths([
     ...taskMentionedTestFiles,
     ...candidateFiles,
@@ -202,7 +265,11 @@ export function decideEditScope(input: {
     ...invariantFiles,
     ...failureFiles,
     ...changedFiles
-  ]).filter((file) => !initialEditFiles.includes(file) && shouldSurfaceReadOnly(file, allowedTestEdits));
+  ]).filter((file) =>
+    !initialEditFiles.includes(file) &&
+    shouldSurfaceReadOnly(file, allowedTestEdits) &&
+    !((topicOrderingMultiSurfaceScope || collectionNameValidationMultiSurfaceScope) && isProductionSourcePath(file) && !protectedSourceFiles.has(file))
+  );
   const scopeConfidence = initialEditFiles.length === 0
     ? "low"
     : source === "official_harness" || input.contextDecision?.exactSourceHit
@@ -219,7 +286,7 @@ export function decideEditScope(input: {
     scopeConfidence,
     scopeSource: initialEditFiles.length > 0 ? source : "weak_signal",
     reason: scopeReason({ source, initialEditFiles, allowedTestEdits }),
-    strictBoundary: source === "official_harness" || (officialPatchPrompt && initialEditFiles.length > 0),
+    strictBoundary: source === "official_harness" || (officialPatchPrompt && initialEditFiles.length > 0) || (grpcErrorPolicyMultiSurfaceScope && initialEditFiles.length > 0),
     dynamic: true
   };
 }
@@ -303,7 +370,7 @@ function expansionTriggers(input: { task: string; allowedTestEdits: boolean; sou
   return triggers;
 }
 
-function extractOfficialPromptSourceFiles(task: string): string[] {
+function extractOfficialPromptSourceFiles(task: string, knownFilePaths: Set<string>): string[] {
   const paths = new Set<string>();
   const sourceLines = task
     .replaceAll("\\", "/")
@@ -315,9 +382,13 @@ function extractOfficialPromptSourceFiles(task: string): string[] {
     });
 
   for (const line of sourceLines) {
+    const allowsUnknownSourceFile =
+      /\b(?:new|create|created|add|added|introduce|introduced)\s+file\b/i.test(line) ||
+      /\bfile\s+(?:to\s+)?(?:create|add|introduce)\b/i.test(line);
     for (const match of line.matchAll(/\b[A-Za-z0-9_.@+~/-]+?\.(?:[cm]?[jt]sx?|pyi?|go|java|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|rb|php|cs)\b/g)) {
       const filePath = normalizeRelativePath(match[0] ?? "");
       if (!filePath.includes("/")) continue;
+      if (knownFilePaths.size > 0 && !knownFilePaths.has(filePath) && !allowsUnknownSourceFile) continue;
       if (isProductionSourcePath(filePath)) paths.add(filePath);
     }
   }
@@ -362,6 +433,7 @@ function isTestLikePath(filePath: string): boolean {
     normalized.includes("__tests__/") ||
     /^test_.*\.pyi?$/.test(normalized.split("/").at(-1) ?? normalized) ||
     /_test\.pyi?$/.test(normalized) ||
+    /_test\.go$/.test(normalized) ||
     /(test|tests)\.java$/.test(normalized) ||
     normalized.includes("/src/test/java/") ||
     /(_test|_tests|_unittest)\.(cc|cpp|cxx|c|hh|hpp|hxx)$/.test(normalized) ||
@@ -533,6 +605,64 @@ function hasPackageSourceMappingScope(task: string): boolean {
     /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?)\b/.test(task);
 }
 
+function hasDiscoveryConfigScope(task: string): boolean {
+  return /\b(discovery|discover|autodiscovery|well[- ]?known|homeserver|server discovery)\b/.test(task) &&
+    /\b(config|configuration|validated|validate|delegated|authentication|auth|metadata|contract|m\.authentication)\b/.test(task);
+}
+
+function applyDiscoveryConfigInitialScopeBudget(files: string[]): string[] {
+  const scored = files
+    .map((file, index) => {
+      const role = discoveryConfigSurfaceRole(file);
+      return { file, role, index, score: discoveryConfigSurfaceScore(file, role) };
+    })
+    .filter((entry) => entry.role)
+    .sort((a, b) => b.score - a.score || a.index - b.index);
+  const discovery = scored.find((entry) => entry.role === "discovery")?.file;
+  const contract = scored.find((entry) => entry.role === "contract")?.file;
+  return uniquePaths([
+    ...(discovery ? [discovery] : []),
+    ...(contract ? [contract] : []),
+    ...files
+  ]);
+}
+
+function discoveryConfigSurfaceRole(filePath: string): "discovery" | "contract" | undefined {
+  const normalized = filePath.toLowerCase();
+  const base = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const compactBase = base.replace(/[^a-z0-9]+/g, "");
+  if (
+    /\b(validatedserverconfig|serverconfig)\b/.test(compactBase) ||
+    (compactBase.includes("validated") && compactBase.includes("config")) ||
+    (compactBase.includes("server") && compactBase.includes("config"))
+  ) {
+    return "contract";
+  }
+  if (
+    compactBase.includes("autodiscovery") ||
+    compactBase.includes("discovery") ||
+    compactBase.includes("homeserver") ||
+    compactBase.includes("wellknown") ||
+    normalized.includes("/well-known/") ||
+    normalized.includes("/wellknown/")
+  ) {
+    return "discovery";
+  }
+  return undefined;
+}
+
+function discoveryConfigSurfaceScore(filePath: string, role: "discovery" | "contract" | undefined): number {
+  const normalized = filePath.toLowerCase();
+  const base = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const compactBase = base.replace(/[^a-z0-9]+/g, "");
+  if (role === "contract") return 900;
+  if (role !== "discovery") return 0;
+  if (compactBase.includes("autodiscovery") || compactBase.includes("discovery")) return 1100;
+  if (compactBase.includes("homeserver")) return 980;
+  if (compactBase.includes("wellknown") || normalized.includes("/well-known/") || normalized.includes("/wellknown/")) return 720;
+  return 500;
+}
+
 function hasWebSessionRenewalScope(task: string): boolean {
   return /\b(web session|session renewal|renew(?:ing)? (?:a )?(?:web )?session|prevsessionid|websessionreq|reloaduser|switchback|active requests?|access request|renewed session)\b/.test(task) &&
     /\b(traits?|certificate|certificates?|ssh certificate|tls certificate|roles?|allowed resources?|login time|expiry|backend|user record|stale)\b/.test(task);
@@ -546,6 +676,12 @@ function hasDatastoreBackendParityScope(task: string): boolean {
     /\b(multiple|distinct|array|arrays|elements?|values?|batch|bulk|several)\b/.test(task) ||
     /\[[^\]]+,[^\]]+\]/.test(task);
   return collectionMutation && multiValue;
+}
+
+function hasPluginActivationValidationScope(task: string): boolean {
+  return /\b(plugin|plugins|plugin id|plugin identifier|package name)\b/.test(task) &&
+    /\b(activate|activation|toggleactive|toggle active|deactivate|admin\.plugins\.toggleactive)\b/.test(task) &&
+    /\b(validate|validation|valid|invalid|malformed|whitespace|special characters?|naming pattern|identifier|invalid-plugin-id)\b/.test(task);
 }
 
 function datastoreBackendParitySourceFilesFromCandidates(files: string[]): string[] {

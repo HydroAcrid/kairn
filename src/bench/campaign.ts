@@ -10,12 +10,14 @@ import type {
   BenchmarkReport
 } from "../types.js";
 import { KairnRuntime } from "../runtime/KairnRuntime.js";
+import { workspacePatch } from "./agent.js";
 import { runBenchmarkEndurance, runBenchmarkEnduranceRepeats } from "./endurance.js";
 import { runBenchmarkMcpSmoke, type BenchmarkMcpSmokeReport } from "./mcpSmoke.js";
 import { buildSweProOfficialEvalReport, type SweProOfficialEvalReport } from "./sweProOfficial.js";
 import { sha256 } from "../utils/hash.js";
 
 export type CampaignStage = "proxy" | "live" | "official" | "all";
+export type CampaignRunProfile = "default" | "fast-live" | "proof" | "publication";
 export type CampaignCleanupMode = "never" | "on_success" | "always";
 export type CampaignEntryKind = "proxy" | "proof" | "endurance" | "mcp_smoke" | "official_eval" | "control";
 export type CampaignEntryStatus = "planned" | "passed" | "failed" | "skipped";
@@ -69,6 +71,7 @@ export type CampaignEntry = {
   officialRunnerCommand?: string | undefined;
   task?: string | undefined;
   expectedFiles?: string[] | undefined;
+  minExpectedHits?: number | undefined;
   budget?: number | undefined;
   detail?: "compact" | "full" | undefined;
   modes?: BenchmarkAssistanceMode[] | undefined;
@@ -84,10 +87,14 @@ export type CampaignRunOptions = {
   manifestPath: string;
   outDir: string;
   stage?: CampaignStage | undefined;
+  profile?: CampaignRunProfile | undefined;
   parallel?: number | undefined;
   resume?: boolean | undefined;
   only?: string | undefined;
   dryRun?: boolean | undefined;
+  reuseBaseline?: boolean | undefined;
+  baselineCacheDir?: string | undefined;
+  kairnOnlyAgainstBaseline?: boolean | undefined;
   onProgress?: ((message: string) => void) | undefined;
 };
 
@@ -106,6 +113,7 @@ export type CampaignArtifact = {
   classifications: string[];
   error?: string | undefined;
   workspacePaths: string[];
+  officialPatchPaths?: Record<string, string> | undefined;
   metrics: CampaignEntryMetrics;
 };
 
@@ -115,6 +123,11 @@ export type CampaignEntryMetrics = {
   baselineTokens?: number | undefined;
   savedTokens?: number | undefined;
   savingsRate?: number | undefined;
+  estimatedObservedTokens?: number | undefined;
+  estimatedBaselineTokens?: number | undefined;
+  estimatedSavedTokens?: number | undefined;
+  estimatedSavingsRate?: number | undefined;
+  tokenAccounting?: "observed" | "timeout_estimate" | undefined;
   cleanPassPass: boolean;
   tokenRegression: boolean;
   qualityDrop: boolean;
@@ -154,6 +167,11 @@ export type CampaignResultRow = {
   baselineTokens?: number | undefined;
   savedTokens?: number | undefined;
   savingsRate?: number | undefined;
+  estimatedObservedTokens?: number | undefined;
+  estimatedBaselineTokens?: number | undefined;
+  estimatedSavedTokens?: number | undefined;
+  estimatedSavingsRate?: number | undefined;
+  tokenAccounting?: "observed" | "timeout_estimate" | undefined;
   cleanPassPass: boolean;
   tokenRegression: boolean;
   qualityDrop: boolean;
@@ -173,6 +191,7 @@ export type CampaignAggregate = {
   qualityPassRate: number;
   cleanPassPassRows: number;
   tokenRegressionRows: number;
+  passiveTokenRegressionRows: number;
   qualityRescueRows: number;
   harmfulRows: number;
   scopeViolations: number;
@@ -197,6 +216,7 @@ export type CampaignOutputPaths = {
   workerPacketsDir: string;
   rawDir: string;
   workDir: string;
+  baselineCacheDir: string;
 };
 
 export type CampaignCleanupReport = {
@@ -206,18 +226,36 @@ export type CampaignCleanupReport = {
   skipped: string[];
 };
 
+type CampaignBaselineCacheArtifact = {
+  version: 1;
+  cacheKey: string;
+  entryId: string;
+  createdAt: string;
+  root: string;
+  suitePath: string;
+  suiteHash: string;
+  baselineCommandHash: string;
+  baselineSetupCommandHash?: string | undefined;
+  repeat: number;
+  reports: BenchmarkReport[];
+};
+
 export async function runCampaign(options: CampaignRunOptions): Promise<CampaignReport> {
   const manifest = loadCampaignManifest(options.manifestPath);
   const stage = options.stage ?? "all";
+  const profile = options.profile ?? "default";
   validateCampaignManifest(manifest);
   validateStage(stage);
+  validateProfile(profile);
   const outDir = path.resolve(options.outDir);
-  const outputs = campaignOutputPaths(outDir);
+  const outputs = campaignOutputPaths(outDir, options.baselineCacheDir);
   fs.mkdirSync(outputs.rawDir, { recursive: true });
   fs.mkdirSync(outputs.workerPacketsDir, { recursive: true });
   fs.mkdirSync(outputs.workDir, { recursive: true });
-  const parallel = Math.max(1, Math.floor(options.parallel ?? manifest.defaults?.parallel ?? 3));
+  fs.mkdirSync(outputs.baselineCacheDir, { recursive: true });
   const entries = manifest.entries.filter((entry) => entryMatchesStage(entry, stage)).filter((entry) => matchesOnly(entry, options.only));
+  const requestedParallel = Math.max(1, Math.floor(options.parallel ?? manifest.defaults?.parallel ?? 3));
+  const parallel = effectiveCampaignParallel(stage, entries, requestedParallel);
   const artifacts: CampaignArtifact[] = [];
   let paused = false;
   let pauseReasons: string[] = [];
@@ -234,6 +272,9 @@ export async function runCampaign(options: CampaignRunOptions): Promise<Campaign
       outputs,
       resume: Boolean(options.resume),
       dryRun: Boolean(options.dryRun),
+      profile,
+      reuseBaseline: Boolean(options.reuseBaseline),
+      kairnOnlyAgainstBaseline: Boolean(options.kairnOnlyAgainstBaseline),
       onProgress: options.onProgress
     });
     artifacts.push(artifact);
@@ -274,7 +315,11 @@ export function summarizeCampaign(outDir: string): CampaignReport {
   if (fs.existsSync(outputs.manifestPath) && fs.existsSync(outputs.rawDir)) {
     const manifest = loadCampaignManifest(outputs.manifestPath);
     validateCampaignManifest(manifest);
-    const artifacts = loadRawCampaignArtifacts(outputs.rawDir);
+    const entriesById = new Map(manifest.entries.map((entry) => [entry.id, entry]));
+    const artifacts = loadRawCampaignArtifacts(outputs.rawDir).map((artifact) => {
+      const entry = entriesById.get(artifact.entryId);
+      return entry ? refreshArtifactMetrics(entry, artifact) : artifact;
+    });
     if (artifacts.length > 0) {
       const ordered = orderedArtifacts(manifest.entries, artifacts);
       const rows = ordered.map(artifactToRow);
@@ -338,6 +383,16 @@ function loadRawCampaignArtifacts(rawDir: string): CampaignArtifact[] {
     .filter((artifact) => Boolean(artifact.entryId));
 }
 
+function refreshArtifactMetrics(entry: CampaignEntry, artifact: CampaignArtifact): CampaignArtifact {
+  if (artifact.report === undefined || artifact.status !== "passed") return artifact;
+  const metrics = metricsFromReport(entry, artifact.report, artifact.metrics.elapsedMs);
+  return {
+    ...artifact,
+    metrics,
+    classifications: classificationsFromMetrics(entry, metrics, artifact.report)
+  };
+}
+
 export function validateCampaignManifest(manifest: CampaignManifest): void {
   if (!manifest.id) throw new Error("Campaign manifest requires id.");
   if (!manifest.name) throw new Error("Campaign manifest requires name.");
@@ -371,14 +426,22 @@ async function runCampaignEntry(input: {
   outputs: CampaignOutputPaths;
   resume: boolean;
   dryRun: boolean;
+  profile: CampaignRunProfile;
+  reuseBaseline: boolean;
+  kairnOnlyAgainstBaseline: boolean;
   onProgress?: ((message: string) => void) | undefined;
 }): Promise<CampaignArtifact> {
   const artifactPath = path.join(input.outputs.rawDir, `${input.entry.id}.json`);
   if (input.resume && fs.existsSync(artifactPath)) {
     const existing = JSON.parse(fs.readFileSync(artifactPath, "utf8")) as CampaignArtifact;
     if (existing.status === "passed") {
+      const refreshed = refreshArtifactMetrics(input.entry, existing);
+      if (JSON.stringify(refreshed.metrics) !== JSON.stringify(existing.metrics) ||
+        refreshed.classifications.join("\0") !== existing.classifications.join("\0")) {
+        writeJsonAtomic(artifactPath, refreshed);
+      }
       input.onProgress?.(`[bench campaign] ${input.entry.id}: resume skipped`);
-      return existing;
+      return refreshed;
     }
   }
   const startedAt = new Date().toISOString();
@@ -407,9 +470,17 @@ async function runCampaignEntry(input: {
       outputs: input.outputs,
       artifactPath,
       commands,
+      profile: input.profile,
+      reuseBaseline: input.reuseBaseline,
+      kairnOnlyAgainstBaseline: input.kairnOnlyAgainstBaseline,
       onProgress: input.onProgress
     });
     const metrics = metricsFromReport(input.entry, report, Date.now() - startedMs);
+    const officialPatchPaths = writeOfficialPatchArtifacts({
+      entry: input.entry,
+      report,
+      outputs: input.outputs
+    });
     const artifact = baseArtifact({
       entry: input.entry,
       stage: input.stage,
@@ -422,6 +493,7 @@ async function runCampaignEntry(input: {
       classifications: classificationsFromMetrics(input.entry, metrics, report),
       metrics,
       workspacePaths: workspacePathsFromReport(input.entry, report),
+      officialPatchPaths,
       elapsedMs: Date.now() - startedMs
     });
     writeJsonAtomic(artifactPath, artifact);
@@ -458,6 +530,9 @@ async function executeCampaignEntry(input: {
   outputs: CampaignOutputPaths;
   artifactPath: string;
   commands: string[];
+  profile: CampaignRunProfile;
+  reuseBaseline: boolean;
+  kairnOnlyAgainstBaseline: boolean;
   onProgress?: ((message: string) => void) | undefined;
 }): Promise<unknown> {
   if (input.entry.kind === "proxy") return runProxyEntry(input.manifest, input.entry);
@@ -492,9 +567,20 @@ async function executeCampaignEntry(input: {
   if (input.entry.kind === "proof" || input.entry.kind === "control") {
     const runtime = new KairnRuntime(rootFor(input.entry));
     try {
+      input.onProgress?.(`[bench campaign] ${input.entry.id}: proof runtime init start (${rootFor(input.entry)})`);
       await runtime.init();
+      input.onProgress?.(`[bench campaign] ${input.entry.id}: proof runtime init complete`);
       const modes = modesFor(input.manifest, input.entry);
-      return await runtime.proveBenchmark({
+      const baselineCache = input.reuseBaseline || input.kairnOnlyAgainstBaseline
+        ? readBaselineCache({
+            manifest: input.manifest,
+            entry: input.entry,
+            outputs: input.outputs,
+            requireCache: input.kairnOnlyAgainstBaseline
+          })
+        : undefined;
+      input.onProgress?.(`[bench campaign] ${input.entry.id}: prove start (${modes.join(", ")})`);
+      const proof = await runtime.proveBenchmark({
         suitePath: input.entry.suite!,
         baselineCommand: commandFor(input.manifest, input.entry, "baseline"),
         baselineSetupCommand: setupCommandFor(input.manifest, input.entry, "baseline"),
@@ -510,11 +596,21 @@ async function executeCampaignEntry(input: {
         ...(modes.includes("real_mcp_first") ? { realMcpFirstCommand: commandFor(input.manifest, input.entry, "real_mcp_first"), realMcpFirstSetupCommand: setupCommandFor(input.manifest, input.entry, "real_mcp_first") } : {}),
         ...(modes.includes("mcp_first_plus_hook_full_prime") ? { mcpFirstPlusHookFullPrimeCommand: commandFor(input.manifest, input.entry, "mcp_first_plus_hook_full_prime"), mcpFirstPlusHookFullPrimeSetupCommand: setupCommandFor(input.manifest, input.entry, "mcp_first_plus_hook_full_prime") } : {}),
         ...(modes.includes("hybrid_mcp_brief") ? { hybridMcpBriefCommand: commandFor(input.manifest, input.entry, "hybrid_mcp_brief"), hybridMcpBriefSetupCommand: setupCommandFor(input.manifest, input.entry, "hybrid_mcp_brief") } : {}),
-        agentTimeoutMs: input.entry.timeoutMs ?? input.manifest.defaults?.agentTimeoutMs,
+        agentTimeoutMs: agentTimeoutFor(input.manifest, input.entry, input.profile),
         repeat: Math.max(1, Math.floor(input.entry.repeat ?? 1)),
+        cachedBaselineReports: baselineCache?.reports,
         proofOutputPath: `${input.artifactPath}.partial.json`,
         onProgress: input.onProgress
       });
+      if (!baselineCache) {
+        writeBaselineCache({
+          manifest: input.manifest,
+          entry: input.entry,
+          outputs: input.outputs,
+          proof
+        });
+      }
+      return proof;
     } finally {
       runtime.close();
     }
@@ -534,31 +630,55 @@ async function runProxyEntry(manifest: CampaignManifest, entry: CampaignEntry): 
   const runtime = new KairnRuntime(rootFor(entry));
   try {
     await runtime.init();
+    const rootPath = rootFor(entry);
+    const expectedFiles = stringArray(entry.expectedFiles);
+    const expectedFilesForGate = expectedFiles.filter((expectedFile) => fs.existsSync(path.join(rootPath, expectedFile)));
+    const useExpectedFilesAsEditScope =
+      (entry.tags ?? []).some((tag) => /swe[-_]?pro|official/i.test(tag)) ||
+      /\bselected (?:verification )?tests? from swe[- ]bench pro metadata\b/i.test(entry.task ?? "");
     const prime = await runtime.primeContext({
       task: entry.task!,
       budget: entry.budget,
       source: "bench",
       refreshIndex: true,
-      metadata: { campaignEntryId: entry.id }
+      metadata: { campaignEntryId: entry.id },
+      editScopeHints: useExpectedFilesAsEditScope && expectedFilesForGate.length > 0
+        ? { allowedDiffScopes: expectedFilesForGate.map((file) => ({ file, allowWholeFile: true })) }
+        : undefined
     });
     const deliveryTrace = isRecord(prime.metadata?.deliveryTrace) ? prime.metadata.deliveryTrace : {};
     const editScope = isRecord(prime.editScope) ? prime.editScope : undefined;
     const emittedFileCount = Array.isArray(prime.files) ? prime.files.length : 0;
     const initialEditFiles = Array.isArray(editScope?.initialEditFiles) ? stringArray(editScope.initialEditFiles) : [];
     const readOnlyFiles = Array.isArray(editScope?.readOnlyFiles) ? stringArray(editScope.readOnlyFiles) : [];
-    const expectedFiles = stringArray(entry.expectedFiles);
-    const surfaceFiles = uniqueStrings([...prime.files, ...initialEditFiles, ...readOnlyFiles]);
-    const expectedFilesMatched = expectedFiles.filter((expectedFile) => surfaceFiles.some((file) => pathsMatch(file, expectedFile)));
+    const deliveryAction = stringValue(deliveryTrace.action);
+    const recommendedDelivery = stringValue(deliveryTrace.recommendedDelivery);
+    const minExpectedHits = Math.max(
+      0,
+      Math.min(
+        expectedFilesForGate.length,
+        Math.floor(numberValue(entry.minExpectedHits) ?? expectedFilesForGate.length)
+      )
+    );
+    const surfaceFiles = useExpectedFilesAsEditScope
+      ? uniqueStrings([
+          ...prime.files,
+          ...(deliveryAction === "suppress" ? initialEditFiles : []),
+          ...readOnlyFiles
+        ])
+      : uniqueStrings([...prime.files, ...initialEditFiles, ...readOnlyFiles]);
+    const expectedFilesMatched = expectedFilesForGate.filter((expectedFile) => surfaceFiles.some((file) => pathsMatch(file, expectedFile)));
     const estimatedDirectiveTokens = numberValue(deliveryTrace.estimatedDirectiveTokens) ?? prime.tokenEstimate;
     const classifications = classifyProxy({
-      action: stringValue(deliveryTrace.action),
+      action: deliveryAction,
       directiveStyle: stringValue(deliveryTrace.directiveStyle),
       requiredSurface: stringValue(deliveryTrace.requiredSurface),
       taskShapeSignal: stringValue(deliveryTrace.taskShapeSignal),
       emittedFileCount,
       strictBoundary: Boolean(editScope?.strictBoundary),
       estimatedDirectiveTokens,
-      expectedFileCount: expectedFiles.length,
+      expectedFileCount: expectedFilesForGate.length,
+      minExpectedHits,
       expectedFilesMatchedCount: expectedFilesMatched.length
     });
     return {
@@ -567,6 +687,8 @@ async function runProxyEntry(manifest: CampaignManifest, entry: CampaignEntry): 
       profile: prime.profile,
       tokenEstimate: prime.tokenEstimate,
       files: prime.files,
+      action: deliveryAction,
+      recommendedDelivery,
       taskShapeSignal: stringValue(deliveryTrace.taskShapeSignal),
       requiredSurface: stringValue(deliveryTrace.requiredSurface),
       directiveStyle: stringValue(deliveryTrace.directiveStyle),
@@ -577,6 +699,8 @@ async function runProxyEntry(manifest: CampaignManifest, entry: CampaignEntry): 
       initialEditFileCount: initialEditFiles.length,
       readOnlyFileCount: readOnlyFiles.length,
       expectedFileCount: expectedFiles.length,
+      minExpectedHits,
+      expectedExistingFileCount: expectedFilesForGate.length,
       expectedFilesMatchedCount: expectedFilesMatched.length,
       estimatedDirectiveTokens,
       estimatedSourceContextTokens: numberValue(deliveryTrace.estimatedSourceContextTokens),
@@ -593,6 +717,8 @@ type CampaignProxyReport = {
   profile: string;
   tokenEstimate: number;
   files: string[];
+  action?: string | undefined;
+  recommendedDelivery?: string | undefined;
   taskShapeSignal?: string | undefined;
   requiredSurface?: string | undefined;
   directiveStyle?: string | undefined;
@@ -603,6 +729,8 @@ type CampaignProxyReport = {
   initialEditFileCount: number;
   readOnlyFileCount: number;
   expectedFileCount: number;
+  minExpectedHits: number;
+  expectedExistingFileCount: number;
   expectedFilesMatchedCount: number;
   estimatedDirectiveTokens: number;
   estimatedSourceContextTokens?: number | undefined;
@@ -618,6 +746,7 @@ function classifyProxy(input: {
   strictBoundary: boolean;
   estimatedDirectiveTokens: number;
   expectedFileCount: number;
+  minExpectedHits: number;
   expectedFilesMatchedCount: number;
 }): CampaignProxyClassification[] {
   const classes: CampaignProxyClassification[] = [];
@@ -625,8 +754,35 @@ function classifyProxy(input: {
   if (input.action === "suppress") classes.push("suppression_expected");
   if (input.directiveStyle === "scope_guardrail" || input.strictBoundary) classes.push("valid_guardrail");
   if (input.emittedFileCount > 6) classes.push("scope_too_broad");
-  if (input.estimatedDirectiveTokens > 900) classes.push("would_over_assist");
-  if (input.expectedFileCount > 0 && input.expectedFilesMatchedCount === 0) classes.push("wrong_surface_risk");
+  if (input.action !== "suppress" && input.estimatedDirectiveTokens > 900) classes.push("would_over_assist");
+  const intentionalNarrowParserSuppression =
+    input.action === "suppress" &&
+    input.taskShapeSignal === "narrow_package_parser" &&
+    input.requiredSurface === "single_file";
+  const intentionalCollectionNameValidationSuppression =
+    input.action === "suppress" &&
+    input.taskShapeSignal === "collection_name_validation" &&
+    input.requiredSurface === "paired_contract";
+  const intentionalTopicOrderingSuppression =
+    input.action === "suppress" &&
+    input.taskShapeSignal === "topic_ordering" &&
+    input.requiredSurface === "paired_contract";
+  const intentionalEvidenceOrSuppression =
+    input.action === "request_evidence" ||
+    input.requiredSurface === "evidence_needed";
+  if (
+    input.expectedFileCount > 0 &&
+    input.expectedFilesMatchedCount < input.minExpectedHits &&
+    !intentionalNarrowParserSuppression &&
+    !intentionalCollectionNameValidationSuppression &&
+    !intentionalTopicOrderingSuppression &&
+    !intentionalEvidenceOrSuppression
+  ) classes.push("wrong_surface_risk");
+  if (
+    input.action === "suppress" &&
+    input.taskShapeSignal === "discovery_config" &&
+    input.requiredSurface === "paired_contract"
+  ) classes.push("wrong_surface_risk");
   if (input.taskShapeSignal === "ambiguous_frontend_ownership" && input.action !== "request_evidence") classes.push("wrong_surface_risk");
   if (classes.length === 0) classes.push("proxy_pass");
   return [...new Set(classes)];
@@ -713,7 +869,11 @@ function proofMetrics(report: BenchmarkProofReport, elapsedMs: number): Campaign
   const baselinePassed = report.baseline.results.every(resultQualityPassed);
   const qualityPassed = nonBaseline.length > 0 && nonBaseline.every((item) => item.report.results.every(resultQualityPassed));
   const delta = bestProofDelta(report);
+  const estimatedDelta = delta ? undefined : bestTimeoutEstimatedProofDelta(report, nonBaseline);
+  const observedDeltas = Object.values(report.observedTokenDeltas)
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
   const savedTokens = delta?.savedTokens;
+  const passiveTokenRegression = delta?.assistClassification === "passive_token_regression";
   return {
     ...emptyMetrics(elapsedMs),
     qualityPassed,
@@ -721,12 +881,20 @@ function proofMetrics(report: BenchmarkProofReport, elapsedMs: number): Campaign
     baselineTokens: report.baseline.observed?.codexTokens,
     savedTokens,
     savingsRate: delta?.savingsRate,
+    estimatedObservedTokens: estimatedDelta?.observedTokens,
+    estimatedBaselineTokens: estimatedDelta?.baselineTokens,
+    estimatedSavedTokens: estimatedDelta?.savedTokens,
+    estimatedSavingsRate: estimatedDelta?.savingsRate,
+    tokenAccounting: delta ? "observed" : estimatedDelta ? "timeout_estimate" : undefined,
     cleanPassPass: baselinePassed && qualityPassed && (savedTokens ?? 0) > 0,
-    tokenRegression: (savedTokens ?? 0) < 0,
+    tokenRegression: baselinePassed && qualityPassed && (savedTokens ?? 0) < 0 && !passiveTokenRegression,
     qualityDrop: baselinePassed && nonBaseline.some((item) => item.report.results.some((result) => !resultQualityPassed(result))),
-    qualityRescue: !baselinePassed && qualityPassed,
-    harmfulAssist: nonBaseline.some((item) => item.report.results.some((result) => result.metadata.assistClassification === "harmful_invalid_assist")),
-    mcpCalls: sum(nonBaseline.map((item) => benchmarkReportMcpCalls(item.report)))
+    qualityRescue: !baselinePassed && qualityPassed || observedDeltas.some((item) => item.assistClassification === "quality_rescue"),
+    harmfulAssist: nonBaseline.some((item) => item.report.results.some((result) => result.metadata.assistClassification === "harmful_invalid_assist")) ||
+      observedDeltas.some((item) => Boolean(item.harmfulAssist) || item.assistClassification === "harmful_invalid_assist"),
+    scopeViolations: sum(nonBaseline.flatMap((item) => item.report.results.map((result) => stringArray(result.metadata.diffScopeViolations).length))),
+    mcpCalls: sum(nonBaseline.map((item) => benchmarkReportMcpCalls(item.report))),
+    mcpUsefulAttribution: sum(nonBaseline.map((item) => benchmarkReportMcpUsefulAttribution(item.report)))
   };
 }
 
@@ -768,13 +936,29 @@ function emptyMetrics(elapsedMs: number): CampaignEntryMetrics {
 function classificationsFromMetrics(entry: CampaignEntry, metrics: CampaignEntryMetrics, report: unknown): string[] {
   if (entry.kind === "proxy") return (report as CampaignProxyReport).classifications;
   const classes: string[] = [];
+  const proofAssistClassifications = entry.kind === "proof" || entry.kind === "control"
+    ? Object.values((report as BenchmarkProofReport).observedTokenDeltas ?? {})
+        .filter((delta): delta is NonNullable<typeof delta> => Boolean(delta))
+        .map((delta) => delta.assistClassification)
+    : [];
   if (metrics.cleanPassPass) classes.push("clean_passpass");
+  if (proofAssistClassifications.includes("passive_token_regression")) classes.push("passive_token_regression");
   if (metrics.tokenRegression) classes.push("official_token_regression");
   if (metrics.qualityDrop) classes.push("quality_drop");
   if (metrics.qualityRescue) classes.push("quality_rescue");
   if (metrics.harmfulAssist) classes.push("harmful_invalid_assist");
   if (metrics.scopeViolations > 0) classes.push("scope_violation");
   if (metrics.mcpCalls > 0) classes.push(metrics.mcpUsefulAttribution > 0 ? "mcp_useful_attribution" : "mcp_missing_attribution");
+  if (metrics.tokenAccounting === "timeout_estimate") classes.push("timeout_pass_estimated_tokens");
+  if (
+    (entry.kind === "proof" || entry.kind === "control" || entry.kind === "official_eval") &&
+    metrics.qualityPassed &&
+    metrics.tokenAccounting !== "timeout_estimate" &&
+    (metrics.observedTokens === undefined || metrics.baselineTokens === undefined)
+  ) {
+    classes.push("official_pass_token_unavailable");
+  }
+  if (!metrics.qualityPassed) classes.push(metrics.mcpCalls > 0 ? "mcp_quality_incomplete" : "quality_incomplete");
   if (classes.length === 0) classes.push(metrics.qualityPassed ? "pass" : "neutral");
   return classes;
 }
@@ -790,13 +974,14 @@ function aggregateCampaignRows(rows: CampaignResultRow[], artifacts: CampaignArt
     qualityPassRate: qualityRows.length > 0 ? qualityRows.filter((row) => row.qualityPassed).length / qualityRows.length : 0,
     cleanPassPassRows: rows.filter((row) => row.cleanPassPass).length,
     tokenRegressionRows: rows.filter((row) => row.tokenRegression).length,
+    passiveTokenRegressionRows: rows.filter((row) => row.classifications.split(";").includes("passive_token_regression")).length,
     qualityRescueRows: rows.filter((row) => row.qualityRescue).length,
     harmfulRows: rows.filter((row) => row.harmfulAssist).length,
     scopeViolations: sum(rows.map((row) => row.scopeViolations)),
     mcpCalls: sum(rows.map((row) => row.mcpCalls)),
     mcpUsefulAttribution: sum(rows.map((row) => row.mcpUsefulAttribution)),
-    medianSavedTokens: median(rows.map((row) => row.savedTokens).filter(isNumber)),
-    medianSavingsRate: median(rows.map((row) => row.savingsRate).filter(isNumber)),
+    medianSavedTokens: median(rows.filter((row) => row.tokenAccounting !== "timeout_estimate").map((row) => row.savedTokens).filter(isNumber)),
+    medianSavingsRate: median(rows.filter((row) => row.tokenAccounting !== "timeout_estimate").map((row) => row.savingsRate).filter(isNumber)),
     medianElapsedMsByStage: medianElapsedByStage(rows),
     repeatedFailureClasses: repeated,
     pauseRuleStatus: pause
@@ -810,6 +995,7 @@ function evaluatePauseRules(manifest: CampaignManifest, artifacts: CampaignArtif
   if (rules.maxQualityDrops !== undefined && rows.filter((row) => row.qualityDrop).length > rules.maxQualityDrops) reasons.push("quality drop limit exceeded");
   if (rules.maxScopeViolations !== undefined && sum(rows.map((row) => row.scopeViolations)) > rules.maxScopeViolations) reasons.push("scope violation limit exceeded");
   if (rules.maxTokenRegressionClass !== undefined && rows.filter((row) => row.tokenRegression).length > rules.maxTokenRegressionClass) reasons.push("token regression limit exceeded");
+  if (rows.some((row) => row.kind === "proxy" && !row.qualityPassed)) reasons.push("proxy quality gate failed");
   if (rules.maxRepeatedFailureClass !== undefined) {
     const repeated = repeatedFailureClasses(rows).filter((item) => item.count > rules.maxRepeatedFailureClass!);
     for (const item of repeated) reasons.push(`repeated failure class: ${item.classification}`);
@@ -823,7 +1009,19 @@ function writeCampaignOutputs(input: { manifest: CampaignManifest; report: Campa
   writeJsonAtomic(outputs.manifestPath, input.manifest);
   writeJsonAtomic(outputs.summaryPath, sanitizedCampaignReport(input.report));
   fs.writeFileSync(outputs.resultsCsvPath, campaignRowsCsv(input.report.rows));
-  fs.writeFileSync(outputs.failuresCsvPath, campaignRowsCsv(input.report.rows.filter((row) => row.status === "failed" || row.qualityDrop || row.harmfulAssist || row.scopeViolations > 0)));
+  fs.writeFileSync(
+    outputs.failuresCsvPath,
+    campaignRowsCsv(input.report.rows.filter((row) =>
+      row.status === "failed" ||
+      !row.qualityPassed ||
+      row.qualityDrop ||
+      row.harmfulAssist ||
+      row.scopeViolations > 0 ||
+      row.classifications.split(";").includes("official_pass_token_unavailable") ||
+      row.classifications.split(";").includes("timeout_pass_estimated_tokens") ||
+      row.classifications.split(";").includes("passive_token_regression")
+    ))
+  );
   fs.writeFileSync(outputs.proxyResultsCsvPath, campaignRowsCsv(input.report.rows.filter((row) => row.kind === "proxy")));
 }
 
@@ -859,7 +1057,8 @@ function sanitizedCampaignReport(report: CampaignReport): CampaignReport {
       proxyResultsCsvPath: path.basename(report.outputs.proxyResultsCsvPath),
       workerPacketsDir: path.basename(report.outputs.workerPacketsDir),
       rawDir: path.basename(report.outputs.rawDir),
-      workDir: path.basename(report.outputs.workDir)
+      workDir: path.basename(report.outputs.workDir),
+      baselineCacheDir: path.basename(report.outputs.baselineCacheDir)
     }
   };
 }
@@ -880,6 +1079,11 @@ function campaignRowsCsv(rows: CampaignResultRow[]): string {
     "baseline_tokens",
     "saved_tokens",
     "savings_rate",
+    "estimated_observed_tokens",
+    "estimated_baseline_tokens",
+    "estimated_saved_tokens",
+    "estimated_savings_rate",
+    "token_accounting",
     "clean_passpass",
     "token_regression",
     "quality_drop",
@@ -902,6 +1106,11 @@ function campaignRowsCsv(rows: CampaignResultRow[]): string {
     optionalNumber(row.baselineTokens),
     optionalNumber(row.savedTokens),
     optionalNumber(row.savingsRate),
+    optionalNumber(row.estimatedObservedTokens),
+    optionalNumber(row.estimatedBaselineTokens),
+    optionalNumber(row.estimatedSavedTokens),
+    optionalNumber(row.estimatedSavingsRate),
+    row.tokenAccounting ?? "",
     String(row.cleanPassPass),
     String(row.tokenRegression),
     String(row.qualityDrop),
@@ -927,6 +1136,11 @@ function artifactToRow(artifact: CampaignArtifact): CampaignResultRow {
     baselineTokens: artifact.metrics.baselineTokens,
     savedTokens: artifact.metrics.savedTokens,
     savingsRate: artifact.metrics.savingsRate,
+    estimatedObservedTokens: artifact.metrics.estimatedObservedTokens,
+    estimatedBaselineTokens: artifact.metrics.estimatedBaselineTokens,
+    estimatedSavedTokens: artifact.metrics.estimatedSavedTokens,
+    estimatedSavingsRate: artifact.metrics.estimatedSavingsRate,
+    tokenAccounting: artifact.metrics.tokenAccounting,
     cleanPassPass: artifact.metrics.cleanPassPass,
     tokenRegression: artifact.metrics.tokenRegression,
     qualityDrop: artifact.metrics.qualityDrop,
@@ -953,6 +1167,7 @@ function baseArtifact(input: {
   classifications?: string[] | undefined;
   metrics?: CampaignEntryMetrics | undefined;
   workspacePaths?: string[] | undefined;
+  officialPatchPaths?: Record<string, string> | undefined;
   elapsedMs: number;
 }): CampaignArtifact {
   return {
@@ -970,6 +1185,7 @@ function baseArtifact(input: {
     ...(input.error ? { error: input.error } : {}),
     classifications: input.classifications ?? [],
     workspacePaths: input.workspacePaths ?? [],
+    ...(input.officialPatchPaths && Object.keys(input.officialPatchPaths).length > 0 ? { officialPatchPaths: input.officialPatchPaths } : {}),
     metrics: input.metrics ?? emptyMetrics(input.elapsedMs)
   };
 }
@@ -1032,6 +1248,85 @@ function cleanupEntryWorkspaces(manifest: CampaignManifest, artifact: CampaignAr
   }
 }
 
+function readBaselineCache(input: {
+  manifest: CampaignManifest;
+  entry: CampaignEntry;
+  outputs: CampaignOutputPaths;
+  requireCache: boolean;
+}): CampaignBaselineCacheArtifact | undefined {
+  const cacheKey = baselineCacheKey(input.manifest, input.entry);
+  const cachePath = baselineCachePath(input.outputs, cacheKey);
+  if (!fs.existsSync(cachePath)) {
+    if (input.requireCache) throw new Error(`${input.entry.id}: missing cached baseline artifact (${cachePath})`);
+    return undefined;
+  }
+  const parsed = JSON.parse(fs.readFileSync(cachePath, "utf8")) as Partial<CampaignBaselineCacheArtifact>;
+  if (parsed.version !== 1 || parsed.cacheKey !== cacheKey || !Array.isArray(parsed.reports) || parsed.reports.length === 0) {
+    if (input.requireCache) throw new Error(`${input.entry.id}: invalid cached baseline artifact (${cachePath})`);
+    return undefined;
+  }
+  return parsed as CampaignBaselineCacheArtifact;
+}
+
+function writeBaselineCache(input: {
+  manifest: CampaignManifest;
+  entry: CampaignEntry;
+  outputs: CampaignOutputPaths;
+  proof: BenchmarkProofReport;
+}): void {
+  const reports = input.proof.runs?.baseline ?? [input.proof.baseline];
+  if (reports.length === 0) return;
+  const cacheKey = baselineCacheKey(input.manifest, input.entry);
+  const suitePath = path.resolve(input.entry.suite!);
+  const suiteHash = fileHashOrValue(suitePath);
+  const baselineSetupCommand = setupCommandFor(input.manifest, input.entry, "baseline");
+  const artifact: CampaignBaselineCacheArtifact = {
+    version: 1,
+    cacheKey,
+    entryId: input.entry.id,
+    createdAt: new Date().toISOString(),
+    root: rootFor(input.entry),
+    suitePath,
+    suiteHash,
+    baselineCommandHash: sha256(commandFor(input.manifest, input.entry, "baseline")),
+    ...(baselineSetupCommand ? { baselineSetupCommandHash: sha256(baselineSetupCommand) } : {}),
+    repeat: Math.max(1, Math.floor(input.entry.repeat ?? 1)),
+    reports
+  };
+  writeJsonAtomic(baselineCachePath(input.outputs, cacheKey), artifact);
+}
+
+function baselineCachePath(outputs: CampaignOutputPaths, cacheKey: string): string {
+  return path.join(outputs.baselineCacheDir, `${cacheKey}.baseline.json`);
+}
+
+function baselineCacheKey(manifest: CampaignManifest, entry: CampaignEntry): string {
+  const suitePath = path.resolve(entry.suite!);
+  const baselineSetupCommand = setupCommandFor(manifest, entry, "baseline");
+  return sha256(JSON.stringify({
+    version: 1,
+    kind: entry.kind,
+    root: rootFor(entry),
+    suitePath,
+    suiteHash: fileHashOrValue(suitePath),
+    baselineCommand: commandFor(manifest, entry, "baseline"),
+    baselineSetupCommand: baselineSetupCommand ?? "",
+    repeat: Math.max(1, Math.floor(entry.repeat ?? 1))
+  }));
+}
+
+function fileHashOrValue(filePath: string): string {
+  return fs.existsSync(filePath) ? sha256(fs.readFileSync(filePath)) : sha256(filePath);
+}
+
+function agentTimeoutFor(manifest: CampaignManifest, entry: CampaignEntry, profile: CampaignRunProfile): number | undefined {
+  const configured = entry.timeoutMs ?? manifest.defaults?.agentTimeoutMs;
+  if (profile === "fast-live") return Math.min(configured ?? 480_000, 480_000);
+  if (profile === "proof") return configured ?? 900_000;
+  if (profile === "publication") return configured ?? 1_200_000;
+  return configured;
+}
+
 function workspacePathsFromReport(entry: CampaignEntry, report: unknown): string[] {
   if (entry.kind === "proof" || entry.kind === "control") {
     return uniqueStrings(
@@ -1050,7 +1345,34 @@ function workspacePathsFromReport(entry: CampaignEntry, report: unknown): string
   return [];
 }
 
-function campaignOutputPaths(outDir: string): CampaignOutputPaths {
+function writeOfficialPatchArtifacts(input: {
+  entry: CampaignEntry;
+  report: unknown;
+  outputs: CampaignOutputPaths;
+}): Record<string, string> | undefined {
+  if (input.entry.kind !== "proof" && input.entry.kind !== "control") return undefined;
+  const patchPaths: Record<string, string> = {};
+  for (const item of proofModeReports(input.report as BenchmarkProofReport)) {
+    const patchRows = item.report.results
+      .map((result) => {
+        const workspacePath = stringValue(result.metadata.workspacePath);
+        if (!workspacePath) return undefined;
+        return {
+          instance_id: result.caseId,
+          patch: workspacePatch(workspacePath),
+          prefix: item.mode
+        };
+      })
+      .filter((row): row is { instance_id: string; patch: string; prefix: BenchmarkAssistanceMode } => Boolean(row));
+    if (patchRows.length === 0) continue;
+    const patchPath = path.join(input.outputs.rawDir, `${input.entry.id}.${item.mode}.patches.json`);
+    writeJsonAtomic(patchPath, patchRows);
+    patchPaths[item.mode] = patchPath;
+  }
+  return Object.keys(patchPaths).length > 0 ? patchPaths : undefined;
+}
+
+function campaignOutputPaths(outDir: string, baselineCacheDir?: string | undefined): CampaignOutputPaths {
   return {
     manifestPath: path.join(outDir, "campaign-manifest.json"),
     summaryPath: path.join(outDir, "campaign-summary.json"),
@@ -1059,12 +1381,22 @@ function campaignOutputPaths(outDir: string): CampaignOutputPaths {
     proxyResultsCsvPath: path.join(outDir, "proxy-results.csv"),
     workerPacketsDir: path.join(outDir, "worker-packets"),
     rawDir: path.join(outDir, "raw"),
-    workDir: path.join(outDir, "work")
+    workDir: path.join(outDir, "work"),
+    baselineCacheDir: path.resolve(baselineCacheDir ?? path.join(outDir, "baseline-cache"))
   };
 }
 
 function validateStage(stage: CampaignStage): void {
   if (!CAMPAIGN_STAGES.has(stage)) throw new Error(`Unsupported campaign stage: ${stage}`);
+}
+
+function validateProfile(profile: CampaignRunProfile): void {
+  if (!["default", "fast-live", "proof", "publication"].includes(profile)) throw new Error(`Unsupported campaign profile: ${profile}`);
+}
+
+function effectiveCampaignParallel(stage: CampaignStage, entries: CampaignEntry[], requestedParallel: number): number {
+  if (stage === "proxy" || entries.every((entry) => stageForEntry(entry, stage) === "proxy")) return 1;
+  return requestedParallel;
 }
 
 function entryMatchesStage(entry: CampaignEntry, stage: CampaignStage): boolean {
@@ -1133,9 +1465,21 @@ function orderedArtifacts(entries: CampaignEntry[], artifacts: CampaignArtifact[
 
 function repeatedFailureClasses(rows: CampaignResultRow[]): Array<{ classification: string; count: number; examples: string[] }> {
   const counts = new Map<string, { count: number; examples: string[] }>();
+  const benign = new Set([
+    "pass",
+    "proxy_pass",
+    "clean_passpass",
+    "quality_rescue",
+    "mcp_useful_attribution",
+    "valid_guardrail",
+    "suppression_expected",
+    "passive_token_regression",
+    "missed_savings_opportunity",
+    "campaign_paused"
+  ]);
   for (const row of rows) {
     for (const classification of row.classifications.split(";").filter(Boolean)) {
-      if (classification === "pass" || classification === "proxy_pass" || classification === "clean_passpass" || classification === "mcp_useful_attribution") continue;
+      if (benign.has(classification)) continue;
       const existing = counts.get(classification) ?? { count: 0, examples: [] };
       existing.count += 1;
       if (existing.examples.length < 5) existing.examples.push(row.entryId);
@@ -1199,6 +1543,17 @@ function benchmarkReportMcpCalls(report: BenchmarkReport | undefined): number {
   }, 0) ?? 0;
 }
 
+function benchmarkReportMcpUsefulAttribution(report: BenchmarkReport | undefined): number {
+  return report?.results.reduce((total, result) => {
+    return total + (
+      numberValue(result.metadata.mcpAttributedUsefulFileCount) ??
+      numberValue(result.metadata.mcpReturnedUsefulFileCount) ??
+      numberValue(result.metadata.mcpReturnedExpectedFileCount) ??
+      0
+    );
+  }, 0) ?? 0;
+}
+
 function proofModeReports(report: BenchmarkProofReport): Array<{ mode: BenchmarkAssistanceMode; report: BenchmarkReport }> {
   const entries: Array<[BenchmarkAssistanceMode, BenchmarkReport | undefined]> = [
     ["baseline", report.baseline],
@@ -1217,13 +1572,58 @@ function proofModeReports(report: BenchmarkProofReport): Array<{ mode: Benchmark
     ["passive_hooks", report.passiveHooks],
     ["proactive", report.proactive]
   ];
-  return entries.flatMap(([mode, modeReport]) => (modeReport ? [{ mode, report: modeReport }] : []));
+  const baselineRunId = report.baseline.run.id;
+  return entries.flatMap(([mode, modeReport]) => {
+    if (!modeReport) return [];
+    if (
+      mode !== "baseline" &&
+      (modeReport.run.id === baselineRunId || modeReport.run.metadata?.assistanceMode === "baseline")
+    ) return [];
+    return [{ mode, report: modeReport }];
+  });
 }
 
 function bestProofDelta(report: BenchmarkProofReport): BenchmarkComparison["observedTokenDelta"] | undefined {
   return Object.values(report.observedTokenDeltas)
     .filter((delta): delta is NonNullable<typeof delta> => Boolean(delta))
     .sort((a, b) => (b.savedTokens ?? Number.NEGATIVE_INFINITY) - (a.savedTokens ?? Number.NEGATIVE_INFINITY))[0];
+}
+
+function bestTimeoutEstimatedProofDelta(
+  report: BenchmarkProofReport,
+  candidates: Array<{ mode: BenchmarkAssistanceMode; report: BenchmarkReport }>
+): { mode: BenchmarkAssistanceMode; baselineTokens: number; observedTokens: number; savedTokens: number; savingsRate: number } | undefined {
+  const baselineTokens = reportResponseTokens(report.baseline);
+  if (baselineTokens === undefined || baselineTokens <= 0) return undefined;
+  if (report.baseline.observed?.codexTokens !== undefined) return undefined;
+
+  const baselineTimedOut = reportHasAgentTimeout(report.baseline);
+  return candidates
+    .flatMap((candidate) => {
+      if (candidate.report.observed?.codexTokens !== undefined) return [];
+      if (!baselineTimedOut && !reportHasAgentTimeout(candidate.report)) return [];
+      if (!candidate.report.results.every(resultQualityPassed)) return [];
+      const observedTokens = reportResponseTokens(candidate.report);
+      if (observedTokens === undefined || observedTokens <= 0) return [];
+      const savedTokens = baselineTokens - observedTokens;
+      return [{
+        mode: candidate.mode,
+        baselineTokens,
+        observedTokens,
+        savedTokens,
+        savingsRate: savedTokens / baselineTokens
+      }];
+    })
+    .sort((a, b) => b.savedTokens - a.savedTokens)[0];
+}
+
+function reportResponseTokens(report: BenchmarkReport): number | undefined {
+  const tokens = sum(report.results.map((result) => result.responseTokens).filter(isNumber));
+  return tokens > 0 ? tokens : undefined;
+}
+
+function reportHasAgentTimeout(report: BenchmarkReport): boolean {
+  return report.results.some((result) => result.metadata.agentTimedOut === true);
 }
 
 function stringArray(value: unknown): string[] {

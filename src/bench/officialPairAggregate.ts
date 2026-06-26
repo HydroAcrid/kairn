@@ -1,6 +1,10 @@
+import type { BenchmarkAssistClassification } from "../types.js";
+
 export type OfficialPairClassification =
   | "clean_savings"
   | "official_token_regression"
+  | "passive_token_regression"
+  | "quality_support_token_regression"
   | "neutral_pass_pass"
   | "official_pass_token_unavailable"
   | "quality_rescue"
@@ -17,6 +21,8 @@ export type OfficialPairRowInput = {
   baselineTokens?: number | undefined;
   kairnTokens?: number | undefined;
   emittedFileCount?: number | undefined;
+  assistClassification?: BenchmarkAssistClassification | undefined;
+  taskShapeSignal?: string | undefined;
 };
 
 export type OfficialPairRowResult = OfficialPairRowInput & {
@@ -33,6 +39,8 @@ export type OfficialPairAggregate = {
   passPassRowsWithTokenData: number;
   cleanSavingsRows: number;
   officialTokenRegressions: number;
+  passiveTokenRegressions: number;
+  qualitySupportTokenRegressions: number;
   qualityRescues: number;
   qualityDrops: number;
   missingTokenPassPassRows: number;
@@ -58,6 +66,12 @@ export function classifyOfficialPairRow(row: OfficialPairRowInput): OfficialPair
       ? Number(((savedTokens / row.baselineTokens) * 100).toFixed(1))
       : 0;
     if (savedTokens > 0) return { ...row, classification: "clean_savings", savedTokens, reductionPct };
+    if (savedTokens < 0 && row.assistClassification === "passive_token_regression") {
+      return { ...row, classification: "passive_token_regression", savedTokens, reductionPct };
+    }
+    if (savedTokens < 0 && row.assistClassification === "quality_rescue") {
+      return { ...row, classification: "quality_support_token_regression", savedTokens, reductionPct };
+    }
     if (savedTokens < 0) return { ...row, classification: "official_token_regression", savedTokens, reductionPct };
     return { ...row, classification: "neutral_pass_pass", savedTokens, reductionPct };
   }
@@ -94,6 +108,8 @@ export function summarizeOfficialPairRows(rows: OfficialPairRowInput[]): Officia
     passPassRowsWithTokenData: passPassRowsWithTokenData.length,
     cleanSavingsRows: cleanSavingsRows.length,
     officialTokenRegressions: classified.filter((row) => row.classification === "official_token_regression").length,
+    passiveTokenRegressions: classified.filter((row) => row.classification === "passive_token_regression").length,
+    qualitySupportTokenRegressions: classified.filter((row) => row.classification === "quality_support_token_regression").length,
     qualityRescues: classified.filter((row) => row.classification === "quality_rescue").length,
     qualityDrops: classified.filter((row) => row.classification === "quality_drop").length,
     missingTokenPassPassRows: missingTokenPassPassRows.length,

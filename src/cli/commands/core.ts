@@ -6,14 +6,42 @@ import { startKairnDaemon } from "../../daemon/server.js";
 import { formatImpactReportMarkdown, formatImpactStats } from "../../metrics/impact.js";
 import { startMcpServer } from "../../server/mcp.js";
 import { queueAndFlushTelemetrySnapshot } from "../../telemetry/autoFlush.js";
-import type { CodexSetupMode, HookOutputProfile, IndexStateStats, PrimeProfile } from "../../types.js";
+import type { BenchmarkDiffScope, BenchmarkSourceInvariant, CodexSetupMode, ContextPrime, HookOutputProfile, IndexStateStats, PrimeProfile } from "../../types.js";
 import { commandInvocation, commandSpawnInvocation } from "../../utils/command.js";
-import { buildCodexNoDiffRecoveryPrompt, relevantWorkspaceDiffFiles, shouldRetryCodexNoDiff } from "../codexRecovery.js";
+import {
+  buildCodexNoDiffRecoveryPrompt,
+  buildCodexPartialScopeRecoveryPrompt,
+  extraStrictScopeFiles,
+  missingRequiredScopeFiles,
+  relevantWorkspaceDiffFiles,
+  shouldRetryCodexNoDiff,
+  shouldRetryCodexPartialScope
+} from "../codexRecovery.js";
 import { printContextPrime } from "../formatters.js";
-import { codexExecArgs, codexInteractiveArgs, parsePositiveInt, waitForShutdown, withRuntime } from "../helpers.js";
+import { codexExecArgs, codexInteractiveArgs, parsePositiveInt, waitForShutdown, withKairnInternalStateHidden, withRuntime } from "../helpers.js";
 import { printContextResponse, printJson } from "../output.js";
 import { writeCodexSetup } from "../setup/codexSetup.js";
 import { formatSetupWizardResult, runSetupWizard, type SetupWizardChoice, type SetupWizardIndexMode } from "../setup/wizard.js";
+
+export function formatCodexEditScopeReminder(prime: ContextPrime | undefined): string | undefined {
+  if (!prime?.editScope || prime.editScope.strictBoundary !== true || prime.editScope.initialEditFiles.length === 0) return undefined;
+  if (typeof prime.metadata?.guardrailVariant === "string") return undefined;
+  const files = prime.editScope.initialEditFiles.join(", ");
+  const taskShape = prime.contextDecision?.taskShapeSignal;
+  if (taskShape === "topic_ordering" || taskShape === "collection_name_validation") {
+    return [
+      "Kairn focused source candidates for this turn:",
+      `- Start with: ${files}`,
+      "- Patch the smallest necessary production surface first; touch companions only when the behavior contract requires it.",
+      "- Keep tests, docs, generated files, and unrelated sibling source out of scope."
+    ].join("\n");
+  }
+  return [
+    "Kairn edit scope is authoritative for this turn:",
+    `- Edit only: ${files}`,
+    "- If the task appears to require another source file, keep it read-only and report the missing evidence instead of editing it."
+  ].join("\n");
+}
 
 export function registerCoreCommands(program: Command): void {
   program
@@ -334,6 +362,7 @@ export function registerCoreCommands(program: Command): void {
     .option("--codex-command <command>", "Codex command to execute", process.env.KAIRN_CODEX_CMD ?? "codex")
     .option("--model <model>", "Codex model")
     .addOption(new Option("--sandbox <mode>", "Codex sandbox mode").choices(["read-only", "workspace-write", "danger-full-access"]).default("workspace-write"))
+    .addOption(new Option("--approval <policy>", "Codex approval policy").choices(["untrusted", "on-failure", "on-request", "never"]))
     .option("--skip-git-repo-check", "pass Codex --skip-git-repo-check for disposable or non-git workspaces")
     .option("--bind-hooks", "install Codex hooks bound to this Kairn session before launching")
     .addOption(new Option("--hook-mode <mode>", "Codex setup mode to use with --bind-hooks").choices(["savings", "hybrid"]).default("savings"))
@@ -348,6 +377,7 @@ export function registerCoreCommands(program: Command): void {
       codexCommand: string;
       model?: string;
       sandbox: string;
+      approval?: string;
       skipGitRepoCheck?: boolean;
       bindHooks?: boolean;
       hookMode: "savings" | "hybrid";
@@ -358,6 +388,7 @@ export function registerCoreCommands(program: Command): void {
       const task = taskParts.join(" ").trim();
       await withRuntime(options.root, async (runtime) => {
         const interactive = task.length === 0;
+        const benchmarkEditScopeHints = parseBenchmarkEditScopeHintsFromEnv();
         const prime = interactive
           ? undefined
           : await runtime.primeContext({
@@ -365,7 +396,8 @@ export function registerCoreCommands(program: Command): void {
               sessionId: options.session,
               profile: options.profile,
               budget: options.budget,
-              source: "codex"
+              source: "codex",
+              editScopeHints: benchmarkEditScopeHints
             });
         const session = interactive
           ? options.session
@@ -389,13 +421,8 @@ export function registerCoreCommands(program: Command): void {
             })
           : undefined;
         const shouldInjectPrime = Boolean(prime && shouldInjectPrimeIntoCodexPrompt(prime.contextDecision?.action));
-        const strictBoundaryReminder = prime?.editScope?.strictBoundary === true && (prime.editScope.initialEditFiles?.length ?? 0) > 0
-          ? [
-              "Kairn edit scope is authoritative for this turn:",
-              `- Edit only: ${prime.editScope.initialEditFiles.join(", ")}`,
-              "- If the task appears to require another source file, keep it read-only and report the missing evidence instead of editing it."
-            ].join("\n")
-          : undefined;
+        const strictBoundaryReminder = formatCodexEditScopeReminder(prime);
+        const approval = options.approval ?? (interactive ? undefined : "never");
         const prompt = interactive
           ? undefined
           : shouldInjectPrime
@@ -421,6 +448,7 @@ export function registerCoreCommands(program: Command): void {
                 root: options.root,
                 model: options.model,
                 sandbox: options.sandbox,
+                approval,
                 enableHooks: bindHooks,
                 skipGitRepoCheck: Boolean(options.skipGitRepoCheck)
               })
@@ -429,6 +457,7 @@ export function registerCoreCommands(program: Command): void {
                 prompt: prompt!,
                 model: options.model,
                 sandbox: options.sandbox,
+                approval,
                 enableHooks: bindHooks,
                 skipGitRepoCheck: Boolean(options.skipGitRepoCheck)
               }),
@@ -464,14 +493,17 @@ export function registerCoreCommands(program: Command): void {
             );
           }
           const invocation = commandSpawnInvocation(commandInvocation(options.codexCommand, result.args));
-          const completed = spawnSync(invocation.command, invocation.args, {
-            cwd: result.rootPath,
-            env: invocation.env ? { ...process.env, ...invocation.env } : undefined,
-            stdio: "inherit"
-          });
+          const hideInternalState = !interactive && !shouldInjectPrime && !bindHooks;
+          const completed = withKairnInternalStateHidden(result.rootPath, hideInternalState, () =>
+            spawnSync(invocation.command, invocation.args, {
+              cwd: result.rootPath,
+              env: invocation.env ? { ...process.env, ...invocation.env } : undefined,
+              stdio: "inherit"
+            })
+          );
           let exitCode = completed.status ?? (completed.error ? 1 : 0);
           if (!interactive && task.length > 0) {
-            const changedFiles = relevantWorkspaceDiffFiles(result.rootPath);
+            let changedFiles = relevantWorkspaceDiffFiles(result.rootPath);
             if (
               shouldRetryCodexNoDiff({
                 task,
@@ -491,6 +523,64 @@ export function registerCoreCommands(program: Command): void {
                     prompt: recoveryPrompt,
                     model: options.model,
                     sandbox: options.sandbox,
+                    approval,
+                    enableHooks: bindHooks,
+                    skipGitRepoCheck: Boolean(options.skipGitRepoCheck)
+                  })
+                )
+              );
+              const recovered = spawnSync(recoveryInvocation.command, recoveryInvocation.args, {
+                cwd: result.rootPath,
+                env: recoveryInvocation.env ? { ...process.env, ...recoveryInvocation.env } : undefined,
+                stdio: "inherit"
+              });
+              exitCode = recovered.status ?? (recovered.error ? 1 : 0);
+              changedFiles = relevantWorkspaceDiffFiles(result.rootPath);
+            }
+            if (
+              shouldRetryCodexPartialScope({
+                task,
+                interactive,
+                exitCode,
+                prime,
+                changedFiles
+              })
+            ) {
+              const missingFiles = missingRequiredScopeFiles({
+                task,
+                interactive,
+                exitCode,
+                prime,
+                changedFiles
+              });
+              const extraFiles = extraStrictScopeFiles({
+                task,
+                interactive,
+                exitCode,
+                prime,
+                changedFiles
+              });
+              process.stderr.write(
+                extraFiles.length > 0
+                  ? `Kairn strict-scope recovery: retrying once to revert out-of-scope file(s): ${extraFiles.join(", ")}.\n`
+                  : `Kairn partial-scope recovery: retrying once for missing required file(s): ${missingFiles.join(", ")}.\n`
+              );
+              const recoveryPrompt = buildCodexPartialScopeRecoveryPrompt({
+                task,
+                prime,
+                changedFiles,
+                missingFiles,
+                extraFiles
+              });
+              const recoveryInvocation = commandSpawnInvocation(
+                commandInvocation(
+                  options.codexCommand,
+                  codexExecArgs({
+                    root: options.root,
+                    prompt: recoveryPrompt,
+                    model: options.model,
+                    sandbox: options.sandbox,
+                    approval,
                     enableHooks: bindHooks,
                     skipGitRepoCheck: Boolean(options.skipGitRepoCheck)
                   })
@@ -527,6 +617,59 @@ export function registerCoreCommands(program: Command): void {
         }
       });
     });
+}
+
+function parseBenchmarkEditScopeHintsFromEnv():
+  | { allowedDiffScopes?: BenchmarkDiffScope[] | undefined; sourceInvariants?: BenchmarkSourceInvariant[] | undefined }
+  | undefined {
+  const raw = process.env.KAIRN_BENCH_EDIT_SCOPE_HINTS;
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as {
+      allowedDiffScopes?: unknown;
+      sourceInvariants?: unknown;
+    };
+    const allowedDiffScopes = Array.isArray(parsed.allowedDiffScopes)
+      ? parsed.allowedDiffScopes
+          .map((item) => {
+            if (!item || typeof item !== "object") return undefined;
+            const record = item as { file?: unknown; allowWholeFile?: unknown; symbols?: unknown };
+            if (typeof record.file !== "string" || record.file.trim().length === 0) return undefined;
+            return {
+              file: record.file,
+              ...(typeof record.allowWholeFile === "boolean" ? { allowWholeFile: record.allowWholeFile } : {}),
+              ...(Array.isArray(record.symbols) ? { symbols: record.symbols.filter((symbol): symbol is string => typeof symbol === "string") } : {})
+            };
+          })
+          .filter((item): item is BenchmarkDiffScope => Boolean(item))
+      : [];
+    const sourceInvariants = Array.isArray(parsed.sourceInvariants)
+      ? parsed.sourceInvariants
+          .map((item) => {
+            if (!item || typeof item !== "object") return undefined;
+            const record = item as Record<string, unknown>;
+            if (typeof record.file !== "string" || record.file.trim().length === 0) return undefined;
+            return {
+              file: record.file,
+              ...(typeof record.id === "string" ? { id: record.id } : {}),
+              ...(typeof record.description === "string" ? { description: record.description } : {}),
+              ...(Array.isArray(record.requiredPresent) ? { requiredPresent: record.requiredPresent.filter((value): value is string => typeof value === "string") } : {}),
+              ...(Array.isArray(record.requiredAbsent) ? { requiredAbsent: record.requiredAbsent.filter((value): value is string => typeof value === "string") } : {}),
+              ...(Array.isArray(record.requiredRegex) ? { requiredRegex: record.requiredRegex.filter((value): value is string => typeof value === "string") } : {}),
+              ...(Array.isArray(record.requiredAny) ? { requiredAny: record.requiredAny.filter((value): value is string => typeof value === "string") } : {}),
+              ...(Array.isArray(record.requiredAnyRegex) ? { requiredAnyRegex: record.requiredAnyRegex.filter((value): value is string => typeof value === "string") } : {})
+            };
+          })
+          .filter((item): item is BenchmarkSourceInvariant => Boolean(item))
+      : [];
+    if (allowedDiffScopes.length === 0 && sourceInvariants.length === 0) return undefined;
+    return {
+      ...(allowedDiffScopes.length > 0 ? { allowedDiffScopes } : {}),
+      ...(sourceInvariants.length > 0 ? { sourceInvariants } : {})
+    };
+  } catch {
+    return undefined;
+  }
 }
 
 function disableWasmParserForCommand(): () => void {

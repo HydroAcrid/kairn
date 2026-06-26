@@ -14,7 +14,12 @@ import {
   runBenchmarkRepoMatrix
 } from "../src/bench/matrix.js";
 import { loadBenchmarkEnduranceSuite } from "../src/bench/enduranceSuite.js";
-import { enduranceInvariantForPrompt, runBenchmarkEndurance, runBenchmarkEnduranceRepeats } from "../src/bench/endurance.js";
+import {
+  enduranceInvariantForPrompt,
+  runBenchmarkEndurance,
+  runBenchmarkEnduranceRepeats,
+  selectMcpEnduranceKnownSource
+} from "../src/bench/endurance.js";
 import { changedFiles, runAgentBenchmarkCase, runShellWithProcessGroupTimeout, workspacePatch } from "../src/bench/agent.js";
 import { classifyAssistance } from "../src/bench/assistClassification.js";
 import { buildSweBenchProPilot, loadSweBenchProRows, writeSweBenchProPilot } from "../src/bench/sweBenchPro.js";
@@ -48,7 +53,14 @@ import { hybridSearch } from "../src/retrieval/hybridRetrieval.js";
 import { findCompanionCandidates } from "../src/retrieval/companions.js";
 import { decideEditScope } from "../src/scope/editScope.js";
 import { createFixtureRepo } from "./helpers.js";
-import type { ContextPrime, FileRecord, HybridScoredResult, SemanticChunkRecord, SymbolRecord } from "../src/types.js";
+import type {
+  ContextPrime,
+  FileRecord,
+  HybridScoredResult,
+  SemanticChunkRecord,
+  SessionLedgerSummary,
+  SymbolRecord
+} from "../src/types.js";
 
 const CLI = ["tsx", "src/cli.ts"];
 
@@ -900,6 +912,242 @@ describe("benchmark suite and scoring", () => {
     }
   });
 
+  it("counts repeated incomplete quality rows for pause rules", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-campaign-neutral-incomplete-"));
+    try {
+      const outDir = path.join(root, "out");
+      const rawDir = path.join(outDir, "raw");
+      fs.mkdirSync(rawDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(outDir, "campaign-manifest.json"),
+        JSON.stringify({
+          id: "neutral-incomplete-test",
+          name: "Neutral Incomplete Test",
+          pauseRules: {
+            maxRepeatedFailureClass: 1
+          },
+          entries: [
+            { id: "row-a", kind: "proof", suite: "suite-a.json" },
+            { id: "row-b", kind: "proof", suite: "suite-b.json" }
+          ]
+        })
+      );
+      for (const entryId of ["row-a", "row-b"]) {
+        fs.writeFileSync(
+          path.join(rawDir, `${entryId}.json`),
+          JSON.stringify({
+            entryId,
+            kind: "proof",
+            stage: "live",
+            status: "passed",
+            tags: [],
+            startedAt: new Date(0).toISOString(),
+            endedAt: new Date(0).toISOString(),
+            artifactPath: path.join(rawDir, `${entryId}.json`),
+            commands: [],
+            classifications: ["quality_incomplete"],
+            workspacePaths: [],
+            metrics: {
+              qualityPassed: false,
+              cleanPassPass: false,
+              tokenRegression: false,
+              qualityDrop: false,
+              qualityRescue: false,
+              harmfulAssist: false,
+              scopeViolations: 0,
+              mcpCalls: 0,
+              mcpUsefulAttribution: 0,
+              elapsedMs: 1
+            }
+          })
+        );
+      }
+
+      const report = summarizeCampaign(outDir);
+
+      expect(report.rows.map((row) => row.classifications)).toEqual(["quality_incomplete", "quality_incomplete"]);
+      expect(report.aggregate.repeatedFailureClasses).toEqual([
+        { classification: "quality_incomplete", count: 2, examples: ["row-a", "row-b"] }
+      ]);
+      expect(report.paused).toBe(true);
+      expect(report.pauseReasons).toEqual(["repeated failure class: quality_incomplete"]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("flags proxy expected-file misses as wrong surface risk", async () => {
+    const root = createFixtureRepo();
+    const outRoot = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-campaign-proxy-surface-"));
+    try {
+      fs.writeFileSync(
+        path.join(root, "src/missing-required.ts"),
+        "export function requiredCompanionSurface() { return 'required'; }\n"
+      );
+      const manifestPath = path.join(outRoot, "campaign-manifest.json");
+      const outDir = path.join(outRoot, "out");
+      fs.writeFileSync(
+        manifestPath,
+        JSON.stringify({
+          id: "proxy-surface-test",
+          name: "Proxy Surface Test",
+          entries: [
+            {
+              id: "proxy-app-partial",
+              kind: "proxy",
+              root,
+              task: "Fix renderDashboard in src/app.ts without changing unrelated files.",
+              expectedFiles: ["src/app.ts", "src/missing-required.ts"],
+              budget: 500
+            }
+          ]
+        })
+      );
+
+      const report = await runCampaign({
+        manifestPath,
+        outDir,
+        stage: "proxy",
+        parallel: 1
+      });
+      const row = report.rows[0];
+      const artifact = report.artifacts[0];
+      const proxyReport = artifact?.report as { expectedFileCount?: number; expectedFilesMatchedCount?: number } | undefined;
+
+      expect(row?.classifications).toContain("wrong_surface_risk");
+      expect(row?.qualityPassed).toBe(false);
+      expect(report.paused).toBe(true);
+      expect(report.pauseReasons).toContain("proxy quality gate failed");
+      expect(proxyReport?.expectedFileCount).toBe(2);
+      expect(proxyReport?.expectedFilesMatchedCount).toBeLessThan(2);
+      expect(fs.readFileSync(path.join(outDir, "failures.csv"), "utf8")).toContain("proxy-app-partial");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+      fs.rmSync(outRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("allows proxy expected-file misses up to the configured minimum hit threshold", async () => {
+    const root = createFixtureRepo();
+    const outRoot = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-campaign-proxy-min-hits-"));
+    try {
+      fs.writeFileSync(
+        path.join(root, "src/missing-required.ts"),
+        "export function requiredCompanionSurface() { return 'required'; }\n"
+      );
+      const manifestPath = path.join(outRoot, "campaign-manifest.json");
+      const outDir = path.join(outRoot, "out");
+      fs.writeFileSync(
+        manifestPath,
+        JSON.stringify({
+          id: "proxy-min-hits-test",
+          name: "Proxy Min Hits Test",
+          entries: [
+            {
+              id: "proxy-app-min-hit",
+              kind: "proxy",
+              root,
+              task: "Fix renderDashboard in src/app.ts without changing unrelated files.",
+              expectedFiles: ["src/app.ts", "src/missing-required.ts"],
+              minExpectedHits: 1,
+              budget: 500
+            }
+          ]
+        })
+      );
+
+      const report = await runCampaign({
+        manifestPath,
+        outDir,
+        stage: "proxy",
+        parallel: 1
+      });
+      const row = report.rows[0];
+      const artifact = report.artifacts[0];
+      const proxyReport = artifact?.report as {
+        expectedFileCount?: number;
+        expectedFilesMatchedCount?: number;
+        minExpectedHits?: number;
+      } | undefined;
+
+      expect(row?.classifications).not.toContain("wrong_surface_risk");
+      expect(row?.qualityPassed).toBe(true);
+      expect(report.paused).toBe(false);
+      expect(proxyReport?.expectedFileCount).toBe(2);
+      expect(proxyReport?.minExpectedHits).toBe(1);
+      expect(proxyReport?.expectedFilesMatchedCount).toBeGreaterThanOrEqual(1);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+      fs.rmSync(outRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps high-clue discovery proxy in compact paired scope instead of suppressing", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-campaign-proxy-discovery-"));
+    const outRoot = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-campaign-proxy-discovery-out-"));
+    try {
+      fs.mkdirSync(path.join(root, "src/utils"), { recursive: true });
+      fs.writeFileSync(
+        path.join(root, "src/utils/AutoDiscoveryUtils.tsx"),
+        "export function buildValidatedConfig(discoveryResult: unknown) { return discoveryResult; }\n"
+      );
+      fs.writeFileSync(
+        path.join(root, "src/utils/ValidatedServerConfig.ts"),
+        "export interface ValidatedServerConfig { baseUrl: string; }\n"
+      );
+      const manifestPath = path.join(outRoot, "campaign-manifest.json");
+      const outDir = path.join(outRoot, "out");
+      fs.writeFileSync(
+        manifestPath,
+        JSON.stringify({
+          id: "proxy-discovery-suppress-test",
+          name: "Proxy Discovery Suppress Test",
+          entries: [
+            {
+              id: "proxy-discovery-high-clue",
+              kind: "proxy",
+              root,
+              task: [
+                "SWE-Bench Pro metadata. Selected verification tests from SWE-Bench Pro metadata:",
+                "test/utils/AutoDiscoveryUtils-test.tsx",
+                "Fix homeserver discovery so delegated authentication metadata advertised under m.authentication is preserved in the validated server configuration.",
+                "The public interface ValidatedServerConfig must optionally declare delegatedAuthentication.",
+                "Keep edits to production source only."
+              ].join("\n"),
+              expectedFiles: ["src/utils/AutoDiscoveryUtils.tsx", "src/utils/ValidatedServerConfig.ts"],
+              budget: 500
+            }
+          ]
+        })
+      );
+
+      const report = await runCampaign({
+        manifestPath,
+        outDir,
+        stage: "proxy",
+        parallel: 1
+      });
+      const row = report.rows[0];
+      const artifact = report.artifacts[0];
+      const proxyReport = artifact?.report as {
+        action?: string;
+        recommendedDelivery?: string;
+        expectedFilesMatchedCount?: number;
+      } | undefined;
+
+      expect(row?.classifications).not.toContain("suppression_expected");
+      expect(row?.classifications).not.toContain("wrong_surface_risk");
+      expect(row?.qualityPassed).toBe(true);
+      expect(report.paused).toBe(false);
+      expect(proxyReport?.action).toBe("shrink");
+      expect(proxyReport?.recommendedDelivery).toBe("multi_file_directive");
+      expect(proxyReport?.expectedFilesMatchedCount).toBe(2);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+      fs.rmSync(outRoot, { recursive: true, force: true });
+    }
+  });
+
   it("accepts publication v2 official and context-pilot entries in dry-run mode", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-publication-v2-dry-run-"));
     try {
@@ -1048,6 +1296,117 @@ describe("benchmark suite and scoring", () => {
         "Continue from the known source."
       )
     ).toBe("Session.send must call resolve_redirects when allow_redirects is true.");
+  });
+
+  it("prefers verified or mentioned MCP endurance source over stale MCP fanout", () => {
+    const ledger: SessionLedgerSummary = {
+      sessionId: "task_click",
+      events: 8,
+      currentPhase: "implementation",
+      recommendedFiles: ["src/click/_termui_impl.py"],
+      shownFiles: ["src/click/_termui_impl.py"],
+      agentMentionedFiles: ["src/click/_compat.py"],
+      agentTouchedFiles: [],
+      repeatedFilesAvoided: 0,
+      repeatedSnippetsAvoided: 0,
+      recommendedFilesUsed: [],
+      repeatedlyTouchedFiles: [],
+      unresolvedFailures: 0,
+      workingSet: {
+        sessionId: "task_click",
+        currentPhase: "implementation",
+        activeFiles: ["src/click/_compat.py", "src/click/_termui_impl.py"],
+        recentlyTouchedFiles: [],
+        shownFiles: ["src/click/_termui_impl.py"],
+        ignoredRecommendedFiles: [],
+        ruledOutFiles: [],
+        staleFiles: [],
+        currentInvariant: {
+          statement: "Diagnose the Click compatibility regression where ASCII encoding should fall back to UTF-8.",
+          filePath: "src/click/_termui_impl.py",
+          confidence: 90
+        },
+        openRisks: []
+      },
+      recentEvents: [
+        {
+          sessionId: "task_click",
+          kind: "agent_file_mentioned",
+          turnId: "diagnose",
+          filePath: "src/click/_compat.py",
+          contentHash: "",
+          tokenEstimate: 0,
+          source: "agent",
+          summary: "Agent mentioned src/click/_compat.py.",
+          metadata: {},
+          createdAt: "2026-06-12T00:00:00.000Z"
+        }
+      ]
+    };
+
+    expect(selectMcpEnduranceKnownSource(ledger, ["src/click/_termui_impl.py"])).toBe("src/click/_compat.py");
+  });
+
+  it("does not promote recently touched files while MCP endurance failures remain unresolved", () => {
+    const ledger: SessionLedgerSummary = {
+      sessionId: "task_click",
+      events: 12,
+      currentPhase: "debugging",
+      recommendedFiles: ["src/click/_compat.py"],
+      shownFiles: ["src/click/_compat.py"],
+      agentMentionedFiles: ["src/click/_compat.py"],
+      agentTouchedFiles: ["src/click/_termui_impl.py"],
+      repeatedFilesAvoided: 0,
+      repeatedSnippetsAvoided: 0,
+      recommendedFilesUsed: [],
+      repeatedlyTouchedFiles: [],
+      unresolvedFailures: 1,
+      workingSet: {
+        sessionId: "task_click",
+        currentPhase: "debugging",
+        activeFiles: ["src/click/_termui_impl.py", "src/click/_compat.py"],
+        recentlyTouchedFiles: ["src/click/_termui_impl.py"],
+        shownFiles: ["src/click/_compat.py"],
+        ignoredRecommendedFiles: [],
+        ruledOutFiles: [],
+        staleFiles: [],
+        lastFailure: {
+          turnId: "fix-source",
+          filePath: "src/click/_termui_impl.py",
+          summary: "Verification failed for endurance turn fix-source.",
+          createdAt: "2026-06-12T00:01:00.000Z"
+        },
+        openRisks: ["latest failure has not been followed by a passing verification"]
+      },
+      recentEvents: [
+        {
+          sessionId: "task_click",
+          kind: "agent_file_mentioned",
+          turnId: "diagnose",
+          filePath: "src/click/_compat.py",
+          contentHash: "",
+          tokenEstimate: 0,
+          source: "agent",
+          summary: "Agent mentioned src/click/_compat.py.",
+          metadata: {},
+          createdAt: "2026-06-12T00:00:00.000Z"
+        },
+        {
+          sessionId: "task_click",
+          kind: "agent_file_touched",
+          turnId: "fix-source",
+          filePath: "src/click/_termui_impl.py",
+          contentHash: "",
+          tokenEstimate: 0,
+          source: "agent",
+          summary: "Agent touched src/click/_termui_impl.py.",
+          metadata: {},
+          createdAt: "2026-06-12T00:01:00.000Z"
+        }
+      ]
+    };
+
+    expect(selectMcpEnduranceKnownSource(ledger)).toBe("src/click/_compat.py");
   });
 
   it("validates equivalent semantic source repairs", () => {
@@ -1869,6 +2228,57 @@ describe("benchmark suite and scoring", () => {
     expect(ranked.find((item) => item.path === "tests/unit/utils/test_urlutils.py")).toBeUndefined();
   });
 
+  it("uses named new source files to rescue existing package contract surfaces", () => {
+    const files: FileRecord[] = [
+      sourceRecord("lib/benchmark/benchmark.go", "go"),
+      sourceRecord("lib/client/bench.go", "go"),
+      sourceRecord("tool/tsh/tsh.go", "go"),
+      sourceRecord("tool/tctl/main.go", "go"),
+      sourceRecord("tool/teleport/main.go", "go")
+    ];
+    const ranked = hybridSearch({
+      files,
+      query: [
+        "Add linear benchmark generator for progressive request rate configurations.",
+        "New file: lib/benchmark/linear.go",
+        "Public interfaces: Linear struct and (*Linear).GetBenchmark() *Config.",
+        "The method must return a *Config with Rate, Threads, MinimumWindow, MinimumMeasurements, and Command copied from the initial configuration.",
+        "Selected verification tests from SWE-Bench Pro metadata: TestGetBenchmark, TestValidateConfig.",
+        "Fix the issue in production source only. Avoid broad scans once the relevant source surface is known."
+      ].join("\n"),
+      symbols: [
+        symbolRecord("lib/benchmark/benchmark.go", "Config"),
+        symbolRecord("lib/benchmark/benchmark.go", "Command"),
+        symbolRecord("lib/client/bench.go", "BenchmarkCommand"),
+        symbolRecord("tool/tsh/tsh.go", "onBenchmark")
+      ],
+      chunks: [
+        chunkRecord("lib/benchmark/benchmark.go", "Config", "type Config struct { Rate int Threads int MinimumWindow time.Duration MinimumMeasurements int Command string }"),
+        chunkRecord("lib/client/bench.go", "bench", "benchmark client command configuration"),
+        chunkRecord("tool/tsh/tsh.go", "tsh", "benchmark CLI command")
+      ],
+      vectors: [],
+      edges: []
+    });
+
+    expect(ranked.slice(0, 3).map((item) => item.path)).toContain("lib/benchmark/benchmark.go");
+    expect(ranked.find((item) => item.path === "lib/benchmark/benchmark.go")?.reasons).toEqual(
+      expect.arrayContaining([expect.stringContaining("go package contract owner")])
+    );
+    const tshIndex = ranked.findIndex((item) => item.path === "tool/tsh/tsh.go");
+    const tctlIndex = ranked.findIndex((item) => item.path === "tool/tctl/main.go");
+    expect(tshIndex).toBeGreaterThanOrEqual(0);
+    expect(tctlIndex === -1 || tshIndex < tctlIndex).toBe(true);
+    const benchmarkIndex = ranked.findIndex((item) => item.path === "lib/benchmark/benchmark.go");
+    const teleportIndex = ranked.findIndex((item) => item.path === "tool/teleport/main.go");
+    expect(benchmarkIndex).toBeGreaterThanOrEqual(0);
+    expect(teleportIndex === -1 || benchmarkIndex < teleportIndex).toBe(true);
+    const tctl = ranked.find((item) => item.path === "tool/tctl/main.go");
+    if (tctl) {
+      expect(tctl.reasons).toEqual(expect.arrayContaining([expect.stringContaining("generic benchmark entrypoint downranked")]));
+    }
+  });
+
   it("keeps task-specific implementation files ahead of generic selected-test counterparts", () => {
     const files: FileRecord[] = [
       sourceRecord("src/controllers/topics.js", "javascript"),
@@ -2345,6 +2755,7 @@ describe("benchmark suite and scoring", () => {
     const files = [
       sourceRecord("lib/ansible/modules/get_url.py", "python"),
       sourceRecord("lib/ansible/module_utils/urls.py", "python"),
+      sourceRecord("lib/ansible/plugins/action/uri.py", "python"),
       sourceRecord("lib/ansible/module_utils/facts/utils.py", "python"),
       sourceRecord("lib/ansible/module_utils/common/_utils.py", "python")
     ];
@@ -2356,6 +2767,7 @@ describe("benchmark suite and scoring", () => {
       chunks: [
         chunkRecord("lib/ansible/modules/get_url.py", "main", "module uses url request helper"),
         chunkRecord("lib/ansible/module_utils/urls.py", "open_url", "uri url request headers authorization netrc bearer basic auth"),
+        chunkRecord("lib/ansible/plugins/action/uri.py", "run", "uri action plugin request headers authorization netrc bearer basic auth"),
         chunkRecord("lib/ansible/module_utils/facts/utils.py", "get_file_content", "facts generic utils"),
         chunkRecord("lib/ansible/module_utils/common/_utils.py", "get_all_subclasses", "common generic utils")
       ],
@@ -2366,6 +2778,7 @@ describe("benchmark suite and scoring", () => {
     expect(ranked.slice(0, 2).map((item) => item.path)).toEqual(
       expect.arrayContaining(["lib/ansible/modules/get_url.py", "lib/ansible/module_utils/urls.py"])
     );
+    expect(ranked.slice(0, 2).map((item) => item.path)).not.toContain("lib/ansible/plugins/action/uri.py");
     const genericUtilityIndex = ranked.findIndex((item) => item.path === "lib/ansible/module_utils/facts/utils.py");
     expect(genericUtilityIndex === -1 || genericUtilityIndex > 1).toBe(true);
   });
@@ -3172,6 +3585,7 @@ describe("benchmark suite and scoring", () => {
       expect(result.outcome).toBe("partial");
       expect(result.metadata.requiredTouchedSatisfied).toBe(false);
       expect(result.metadata.missingRequiredTouchedFiles).toEqual(["src/app.ts"]);
+      expect(result.actualFiles).not.toContain("src/app.ts");
 
       const scored = scoreBenchmarkCase({
         runId: "bench_required",
@@ -3190,7 +3604,65 @@ describe("benchmark suite and scoring", () => {
         metadata: result.metadata
       });
       expect(scored.taskOutcome).toBe("partial");
+      expect(scored.expectedFileRecall).toBe(0);
       expect(scored.metadata.qualityGatePassed).toBe(false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("ignores absent required files unless the prompt explicitly creates them", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-required-touch-absent-"));
+    try {
+      fs.mkdirSync(path.join(root, "src"), { recursive: true });
+      fs.writeFileSync(path.join(root, "src/existing.ts"), "export const value = 1;\n");
+      execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["add", "."], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["commit", "-m", "initial"], {
+        cwd: root,
+        stdio: "ignore",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: "Kairn Test",
+          GIT_AUTHOR_EMAIL: "test@example.com",
+          GIT_COMMITTER_NAME: "Kairn Test",
+          GIT_COMMITTER_EMAIL: "test@example.com"
+        }
+      });
+
+      const result = await runAgentBenchmarkCase({
+        rootPath: root,
+        benchmarkCase: {
+          id: "required-absent",
+          mode: "agent",
+          task: [
+            "Update the existing source and add one generated companion.",
+            "New file: src/new-file.ts"
+          ].join("\n"),
+          expectedFiles: ["src/existing.ts", "src/new-file.ts"],
+          requiredTouchedFiles: ["src/existing.ts", "src/new-file.ts", "src/missing.ts"],
+          excludedFiles: [],
+          seed: {
+            repoUrl: root,
+            ref: "HEAD",
+            testCommand:
+              "node -e \"const fs=require('fs'); if(!fs.existsSync('src/new-file.ts')) process.exit(1); if(!fs.readFileSync('src/existing.ts','utf8').includes('value = 2')) process.exit(1)\""
+          }
+        },
+        agentCommand:
+          "node -e \"const fs=require('fs'); fs.writeFileSync('src/existing.ts','export const value = 2;\\\\n'); fs.writeFileSync('src/new-file.ts','export const generated = true;\\\\n')\" {prompt}"
+      });
+
+      expect(result.outcome).toBe("pass");
+      expect(result.metadata.originalRequiredTouchedFiles).toEqual([
+        "src/existing.ts",
+        "src/new-file.ts",
+        "src/missing.ts"
+      ]);
+      expect(result.metadata.requiredTouchedFiles).toEqual(["src/existing.ts", "src/new-file.ts"]);
+      expect(result.metadata.ignoredAbsentRequiredTouchedFiles).toEqual(["src/missing.ts"]);
+      expect(result.metadata.missingRequiredTouchedFiles).toEqual([]);
+      expect(result.metadata.requiredTouchedSatisfied).toBe(true);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -3541,6 +4013,26 @@ describe("benchmark suite and scoring", () => {
         emittedFileCount: 4
       },
       {
+        id: "passive",
+        baselineOfficialPass: true,
+        kairnOfficialPass: true,
+        baselineScopePass: true,
+        kairnScopePass: true,
+        baselineTokens: 1000,
+        kairnTokens: 1200,
+        assistClassification: "passive_token_regression"
+      },
+      {
+        id: "quality-support",
+        baselineOfficialPass: true,
+        kairnOfficialPass: true,
+        baselineScopePass: true,
+        kairnScopePass: true,
+        baselineTokens: 1000,
+        kairnTokens: 1300,
+        assistClassification: "quality_rescue"
+      },
+      {
         id: "missing",
         baselineOfficialPass: true,
         kairnOfficialPass: true,
@@ -3560,21 +4052,25 @@ describe("benchmark suite and scoring", () => {
       }
     ]);
 
-    expect(aggregate.baselinePasses).toBe(4);
-    expect(aggregate.kairnPasses).toBe(4);
-    expect(aggregate.passPassRows).toBe(3);
+    expect(aggregate.baselinePasses).toBe(6);
+    expect(aggregate.kairnPasses).toBe(6);
+    expect(aggregate.passPassRows).toBe(5);
     expect(aggregate.cleanSavingsRows).toBe(1);
     expect(aggregate.officialTokenRegressions).toBe(1);
+    expect(aggregate.passiveTokenRegressions).toBe(1);
+    expect(aggregate.qualitySupportTokenRegressions).toBe(1);
     expect(aggregate.missingTokenPassPassRows).toBe(1);
     expect(aggregate.qualityRescues).toBe(1);
     expect(aggregate.qualityDrops).toBe(1);
-    expect(aggregate.passPassMedianReductionPct).toBe(10);
+    expect(aggregate.passPassMedianReductionPct).toBe(-15);
     expect(aggregate.cleanSavingsMedianReductionPct).toBe(30);
     expect(aggregate.emittedFileCounts).toEqual([1, 4]);
     expect(aggregate.validationErrors).toEqual(["missing: pass/pass official row lacks complete token data"]);
     expect(aggregate.rows.map((row) => row.classification)).toEqual([
       "clean_savings",
       "official_token_regression",
+      "passive_token_regression",
+      "quality_support_token_regression",
       "official_pass_token_unavailable",
       "quality_rescue",
       "quality_drop"
@@ -4393,6 +4889,438 @@ describe("benchmark suite and scoring", () => {
     expect(decision.requiredSurface).toBe("single_file");
   });
 
+  it("marks discovery authentication config tasks as paired contract scope", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "Discovery omits delegated authentication metadata advertised under m.authentication.",
+        "When building the validated configuration from a discovery result, preserve delegatedAuthentication fields.",
+        "The public interface ValidatedServerConfig must optionally declare the delegatedAuthentication property.",
+        "Fix production source only."
+      ].join("\n"),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- src/utils/AutoDiscoveryUtils.tsx\n- src/utils/ValidatedServerConfig.ts\n",
+        files: ["src/utils/AutoDiscoveryUtils.tsx", "src/utils/ValidatedServerConfig.ts"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/utils/AutoDiscoveryUtils.tsx", "src/utils/ValidatedServerConfig.ts"],
+        rankedFiles: [
+          { path: "src/utils/AutoDiscoveryUtils.tsx", kind: "source", score: 720, reasons: ["discovery config owner"] },
+          { path: "src/utils/ValidatedServerConfig.ts", kind: "source", score: 690, reasons: ["validated config contract"] },
+          { path: "cypress/support/settings.ts", kind: "source", score: 160, reasons: ["settings"] }
+        ],
+        tokenEstimate: 700
+      },
+      quality: {
+        score: 82,
+        action: "emit",
+        reasons: ["discovery config source"],
+        topScore: 720,
+        topGap: 30,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 82,
+        action: "emit",
+        reasons: ["discovery config source"],
+        topScore: 720,
+        topGap: 30,
+        primaryFile: "src/utils/AutoDiscoveryUtils.tsx",
+        language: "typescript",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 700,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("src/utils/AutoDiscoveryUtils.tsx", "typescript"),
+        sourceRecord("src/utils/ValidatedServerConfig.ts", "typescript"),
+        sourceRecord("cypress/support/settings.ts", "typescript")
+      ],
+      repoFileCount: 5200,
+      estimatedContextCost: 700
+    });
+
+    expect(decision.taskShapeSignal).toBe("discovery_config");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
+  it("uses compact paired guardrail for high-clue official discovery config prompts", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "SWE-Bench Pro metadata. Selected verification tests from SWE-Bench Pro metadata:",
+        "test/utils/AutoDiscoveryUtils-test.tsx",
+        "Fix homeserver discovery so delegated authentication metadata advertised under m.authentication is preserved in the validated server configuration.",
+        "The public interface ValidatedServerConfig must optionally declare delegatedAuthentication.",
+        "Keep edits to production source only."
+      ].join("\n"),
+      profile: "generic",
+      context: {
+        mode: "snippets",
+        content: "- src/utils/AutoDiscoveryUtils.tsx\n- src/utils/ValidatedServerConfig.ts\n",
+        files: ["src/utils/AutoDiscoveryUtils.tsx", "src/utils/ValidatedServerConfig.ts"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/utils/AutoDiscoveryUtils.tsx", "src/utils/ValidatedServerConfig.ts"],
+        rankedFiles: [
+          { path: "src/utils/AutoDiscoveryUtils.tsx", kind: "source", score: 720, reasons: ["discovery config owner"] },
+          { path: "src/utils/ValidatedServerConfig.ts", kind: "source", score: 690, reasons: ["validated config contract"] }
+        ],
+        tokenEstimate: 700,
+        metadata: { officialEvaluation: { source: "swe_bench_pro" } }
+      },
+      quality: {
+        score: 82,
+        action: "emit",
+        reasons: ["discovery config source"],
+        topScore: 720,
+        topGap: 30,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 82,
+        action: "emit",
+        reasons: ["discovery config source"],
+        topScore: 720,
+        topGap: 30,
+        primaryFile: "src/utils/AutoDiscoveryUtils.tsx",
+        language: "typescript",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 700,
+        expectedSavingsRisk: "low",
+        debugSignal: false,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("src/utils/AutoDiscoveryUtils.tsx", "typescript"),
+        sourceRecord("src/utils/ValidatedServerConfig.ts", "typescript")
+      ],
+      repoFileCount: 5200,
+      estimatedContextCost: 700
+    });
+
+    expect(decision.taskFrame).toBe("official_patch");
+    expect(decision.taskShapeSignal).toBe("discovery_config");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
+  it("marks request body/form reconstruction as compact paired source scope", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "/lists/add returns 500 when POST body data conflicts with query parameters.",
+        "When body data is present, do not pre-populate parent keys before unflatten.",
+        "Nested indexed seeds fields should reconstruct from flattened form input.",
+        "Fix production source only."
+      ].join(" "),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- openlibrary/plugins/openlibrary/lists.py\n- openlibrary/plugins/upstream/utils.py\n",
+        files: ["openlibrary/plugins/openlibrary/lists.py", "openlibrary/plugins/upstream/utils.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["openlibrary/plugins/openlibrary/lists.py"],
+        rankedFiles: [
+          { path: "openlibrary/plugins/openlibrary/lists.py", kind: "source", score: 720, reasons: ["form route/list handler surface"] },
+          { path: "openlibrary/plugins/upstream/utils.py", kind: "source", score: 690, reasons: ["form unflatten utility surface"] }
+        ],
+        tokenEstimate: 720
+      },
+      quality: {
+        score: 78,
+        action: "emit",
+        reasons: ["strong request source surface"],
+        topScore: 720,
+        topGap: 30,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 78,
+        action: "emit",
+        reasons: ["strong request source surface"],
+        topScore: 720,
+        topGap: 30,
+        primaryFile: "openlibrary/plugins/openlibrary/lists.py",
+        language: "python",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 820,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("openlibrary/plugins/openlibrary/lists.py", "python"),
+        sourceRecord("openlibrary/plugins/upstream/utils.py", "python")
+      ],
+      repoFileCount: 4100,
+      estimatedContextCost: 820
+    });
+
+    expect(decision.taskShapeSignal).toBe("request_body_form");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
+  it("marks compressed request/query conflict wording as compact paired source scope", () => {
+    const decision = applyContextGovernor({
+      task: "Fix the /lists/add POST conflict bug. The task involves list request handling and upstream request/query handling.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- openlibrary/plugins/openlibrary/lists.py\n- openlibrary/plugins/upstream/utils.py\n",
+        files: ["openlibrary/plugins/openlibrary/lists.py", "openlibrary/plugins/upstream/utils.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["openlibrary/plugins/openlibrary/lists.py"],
+        rankedFiles: [
+          { path: "openlibrary/plugins/openlibrary/lists.py", kind: "source", score: 720, reasons: ["request handler surface"] },
+          { path: "openlibrary/plugins/upstream/utils.py", kind: "source", score: 690, reasons: ["request utility surface"] }
+        ],
+        tokenEstimate: 720
+      },
+      quality: {
+        score: 78,
+        action: "emit",
+        reasons: ["strong request source surface"],
+        topScore: 720,
+        topGap: 30,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 78,
+        action: "emit",
+        reasons: ["strong request source surface"],
+        topScore: 720,
+        topGap: 30,
+        primaryFile: "openlibrary/plugins/openlibrary/lists.py",
+        language: "python",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 820,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("openlibrary/plugins/openlibrary/lists.py", "python"),
+        sourceRecord("openlibrary/plugins/upstream/utils.py", "python")
+      ],
+      repoFileCount: 4100,
+      estimatedContextCost: 820
+    });
+
+    expect(decision.taskShapeSignal).toBe("request_body_form");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.action).toBe("shrink");
+  });
+
+  it("does not treat nested model statement list retrieval as request body form scope", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "Incomplete Retrieval of Property Statement Values in Wikidata Entities.",
+        "The WikidataEntity class should provide get_statement_values.",
+        "The method should iterate over nested statement objects and return a list of string values.",
+        "Location: openlibrary/core/wikidata.py.",
+        "Selected verification tests from SWE-Bench Pro metadata: openlibrary/tests/core/test_wikidata.py.",
+        "Fix the issue in production source only."
+      ].join(" "),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- openlibrary/core/wikidata.py\n",
+        files: ["openlibrary/core/wikidata.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["openlibrary/core/wikidata.py"],
+        rankedFiles: [
+          { path: "openlibrary/core/wikidata.py", kind: "source", score: 810, reasons: ["exact location surface"] }
+        ],
+        tokenEstimate: 420
+      },
+      quality: {
+        score: 86,
+        action: "emit",
+        reasons: ["exact source surface"],
+        topScore: 810,
+        topGap: 410,
+        exactPathMentioned: true,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 86,
+        action: "emit",
+        reasons: ["exact source surface"],
+        topScore: 810,
+        topGap: 410,
+        primaryFile: "openlibrary/core/wikidata.py",
+        language: "python",
+        exactPathMentioned: true,
+        exactSourceHit: true,
+        recommendedDelivery: "one_file_directive",
+        estimatedContextCost: 420,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("openlibrary/core/wikidata.py", "python"),
+        sourceRecord("openlibrary/plugins/openlibrary/lists.py", "python"),
+        sourceRecord("openlibrary/plugins/upstream/utils.py", "python")
+      ],
+      repoFileCount: 4100,
+      estimatedContextCost: 420
+    });
+
+    expect(decision.taskShapeSignal).not.toBe("request_body_form");
+    expect(decision.requiredSurface).toBe("single_file");
+    expect(decision.recommendedDelivery).toBe("one_file_directive");
+  });
+
+  it("classifies pinned topic authorization wording as topic ordering, not HTTP auth", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "Reordering pinned topics does not behave correctly for all cases.",
+        "Maintain authorization so only moderator or admin users can reorder pinned topics.",
+        "Unprivileged users should fail without changing pinned membership or order.",
+        "Moving one pinned topic should place it at the target position while preserving other pinned topics.",
+        "Selected verification tests from SWE-Bench Pro metadata: test/topics.js.",
+        "Fix the issue in production source only."
+      ].join(" "),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- src/topics/tools.js\n- src/socket.io/topics/tools.js\n- public/src/client/category/tools.js\n",
+        files: ["src/topics/tools.js", "src/socket.io/topics/tools.js", "public/src/client/category/tools.js"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/topics/tools.js", "src/socket.io/topics/tools.js", "public/src/client/category/tools.js"],
+        rankedFiles: [
+          { path: "src/topics/tools.js", kind: "source", score: 960, reasons: ["topic tools ordering owner"] },
+          { path: "src/socket.io/topics/tools.js", kind: "source", score: 920, reasons: ["topic socket ordering owner"] },
+          { path: "public/src/client/category/tools.js", kind: "source", score: 890, reasons: ["category client pinned-topic owner"] }
+        ],
+        tokenEstimate: 720
+      },
+      quality: {
+        score: 86,
+        action: "emit",
+        reasons: ["topic ordering owners"],
+        topScore: 960,
+        topGap: 40,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 86,
+        action: "emit",
+        reasons: ["topic ordering owners"],
+        topScore: 960,
+        topGap: 40,
+        primaryFile: "src/topics/tools.js",
+        language: "javascript",
+        exactPathMentioned: false,
+        sourceRescue: true,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 720,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("src/topics/tools.js", "javascript"),
+        sourceRecord("src/socket.io/topics/tools.js", "javascript"),
+        sourceRecord("public/src/client/category/tools.js", "javascript"),
+        sourceRecord("public/src/client/account/topics.js", "javascript"),
+        sourceRecord("public/src/client/topic.js", "javascript")
+      ],
+      repoFileCount: 2400,
+      estimatedContextCost: 720
+    });
+
+    expect(decision.taskShapeSignal).toBe("topic_ordering");
+    expect(decision.taskShapeSignal).not.toBe("http_auth_policy");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
+  it("marks dominant converter output bugs as single-file scope guardrails", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "Selected tests from SWE-Bench Pro metadata: contrib/trivy/pkg/converter_test.go.",
+        "Fix the trivy-to-vuls converter output.",
+        "cveContents should not duplicate Debian severity records when conversion builds Vuls JSON findings.",
+        "Fix production source only."
+      ].join(" "),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- contrib/trivy/pkg/converter.go\n",
+        files: ["contrib/trivy/pkg/converter.go"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["contrib/trivy/pkg/converter.go"],
+        rankedFiles: [
+          { path: "contrib/trivy/pkg/converter.go", kind: "source", score: 980, reasons: ["converter output implementation surface"] }
+        ],
+        tokenEstimate: 320
+      },
+      quality: {
+        score: 82,
+        action: "emit",
+        reasons: ["converter output implementation surface"],
+        topScore: 980,
+        topGap: 520,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 82,
+        action: "emit",
+        reasons: ["converter output implementation surface"],
+        topScore: 980,
+        topGap: 520,
+        primaryFile: "contrib/trivy/pkg/converter.go",
+        language: "go",
+        exactPathMentioned: false,
+        sourceRescue: true,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 620,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [sourceRecord("contrib/trivy/pkg/converter.go", "go")],
+      repoFileCount: 2400,
+      estimatedContextCost: 620
+    });
+
+    expect(decision.taskShapeSignal).toBe("converter_output");
+    expect(decision.requiredSurface).toBe("single_file");
+    expect(decision.action).toBe("shrink");
+    expect(decision.directiveStyle).toBe("scope_guardrail");
+    expect(decision.recommendedDelivery).toBe("one_file_directive");
+  });
+
   it("does not treat route-target import/export domain language as an exporter command contract", () => {
     const decision = applyContextGovernor({
       task: "Add manual route-target import and route-target export values to nxos_vrf_af. Fix production source only.",
@@ -4647,6 +5575,73 @@ describe("benchmark suite and scoring", () => {
     expect(decision.requiredSurface).toBe("paired_contract");
     expect(decision.action).toBe("shrink");
     expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
+  it("keeps narrow RPM source-package parser tasks single-file", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "Scanner fails on non-standard source RPM filenames and epoch handling.",
+        "Update parseInstalledPackagesLine to append warnings for unparseable SOURCERPM filenames without aborting.",
+        "Implement splitFileName handling for source RPM filenames with epoch values."
+      ].join(" "),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- scanner/redhatbase.go\n- scanner/centos.go\n- scanner/rhel.go\n- oval/util.go\n- scanner/scanner.go\n",
+        files: ["scanner/redhatbase.go", "scanner/centos.go", "scanner/rhel.go", "oval/util.go", "scanner/scanner.go"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["scanner/redhatbase.go"],
+        rankedFiles: [
+          { path: "scanner/redhatbase.go", kind: "source", score: 980, reasons: ["RPM source package scanner surface"] },
+          { path: "scanner/centos.go", kind: "source", score: 500, reasons: ["RPM source package scanner surface"] },
+          { path: "scanner/rhel.go", kind: "source", score: 480, reasons: ["RPM source package scanner surface"] },
+          { path: "oval/util.go", kind: "source", score: 350, reasons: ["source package matcher"] },
+          { path: "scanner/scanner.go", kind: "source", score: 300, reasons: ["scanner dispatch"] }
+        ],
+        tokenEstimate: 900
+      },
+      quality: {
+        score: 88,
+        action: "emit",
+        reasons: ["top retrieval score"],
+        topScore: 980,
+        topGap: 480,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 86,
+        action: "emit",
+        reasons: ["dominant source parser surface"],
+        topScore: 980,
+        topGap: 480,
+        primaryFile: "scanner/redhatbase.go",
+        language: "go",
+        exactPathMentioned: false,
+        sourceRescue: true,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 1000,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("scanner/redhatbase.go", "go"),
+        sourceRecord("scanner/centos.go", "go"),
+        sourceRecord("scanner/rhel.go", "go"),
+        sourceRecord("oval/util.go", "go"),
+        sourceRecord("scanner/scanner.go", "go")
+      ],
+      repoFileCount: 600,
+      estimatedContextCost: 1000
+    });
+
+    expect(decision.taskShapeSignal).toBe("narrow_package_parser");
+    expect(decision.taskShapeSignal).not.toBe("lifecycle_policy");
+    expect(decision.requiredSurface).toBe("single_file");
+    expect(decision.recommendedDelivery).not.toBe("multi_file_directive");
   });
 
   it("marks strong frontend ownership tasks as compact feature clusters", () => {
@@ -6159,6 +7154,16 @@ describe("benchmark suite and scoring", () => {
     ).toMatchObject({ assistClassification: "harmful_invalid_assist", harmfulAssist: true });
     expect(
       classifyAssistance({
+        assistanceStatus: "active",
+        qualityGatePassed: false,
+        savedTokens: 500,
+        baselineTokens: 2000,
+        baselineQualityGatePassed: false,
+        turnCount: 1
+      })
+    ).toMatchObject({ assistClassification: "neutral", harmfulAssist: false });
+    expect(
+      classifyAssistance({
         assistanceStatus: "passive_suppressed",
         qualityGatePassed: true,
         savedTokens: 100,
@@ -6577,6 +7582,19 @@ describe("benchmark runtime and CLI", () => {
 
     expect(statement).not.toContain("Voice broadcast");
     expect(statement).toContain("non-order properties");
+  });
+
+  it("uses pinned-topic ordering invariants before generic invalid-input wording", () => {
+    const statement = inferInvariantStatement([
+      "Reordering pinned topics does not behave correctly for all cases.",
+      "Only moderator or admin users can request reordering of pinned topics.",
+      "Invalid or nonexistent topic identifiers must not change pinned ordering.",
+      "Unpinned topics should be a no-op and category isolation must be preserved."
+    ].join(" "));
+
+    expect(statement).toContain("Pinned-topic reordering");
+    expect(statement).toContain("category isolation");
+    expect(statement).not.toContain("invalid-input rejection paths");
   });
 
   it("does not apply invalid-identifier guardrails to backend environment validation tasks", () => {
@@ -7206,11 +8224,17 @@ describe("benchmark runtime and CLI", () => {
 
     expect(instructions).toContain("# Existing Instructions");
     expect(instructions.match(/kairn:mcp-first:start/g)?.length).toBe(1);
-    expect(dryRun.args[0]).toBe("exec");
+    expect(dryRun.args).toContain("exec");
+    expect(dryRun.args).toContain("-a");
+    expect(dryRun.args).toContain("never");
+    expect(dryRun.args.indexOf("-a")).toBeLessThan(dryRun.args.indexOf("exec"));
     expect(dryRun.args).toContain("--disable");
     expect(dryRun.args).toContain("hooks");
     expect(dryRun.args).not.toContain("--enable");
     expect(boundDryRun.args).toContain("--skip-git-repo-check");
+    expect(boundDryRun.args).toContain("-a");
+    expect(boundDryRun.args).toContain("never");
+    expect(boundDryRun.args.indexOf("-a")).toBeLessThan(boundDryRun.args.indexOf("exec"));
     expect(dryRun.prompt).toContain("Kairn Proactive Context");
     expect(dryRun.prompt).toContain("User task:");
     expect(dryRun.prime.files).toContain("src/app/private/jobs/JobsApplicationsTable.tsx");
@@ -7298,8 +8322,44 @@ describe("benchmark runtime and CLI", () => {
     expect(unboundOfficialPatchGuardrailDryRun.prime.contextDecision?.directiveStyle).toBe("scope_guardrail");
     expect(unboundOfficialPatchGuardrailDryRun.prompt).toContain("# Kairn Fix Guardrail");
 
+    const benchmarkScopedDryRun = JSON.parse(
+      execFileSync(
+        CLI[0]!,
+        [
+          ...CLI.slice(1),
+          "codex",
+          officialPatchTask,
+          "--root",
+          root,
+          "--skip-git-repo-check",
+          "--dry-run",
+          "--json"
+        ],
+        {
+          cwd: process.cwd(),
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            KAIRN_BENCH_EDIT_SCOPE_HINTS: JSON.stringify({
+              allowedDiffScopes: [
+                { file: "src/app.ts", allowWholeFile: true },
+                { file: "src/app/private/jobs/JobsApplicationsTable.tsx", allowWholeFile: true }
+              ]
+            })
+          }
+        }
+      )
+    ) as { prime: { editScope?: { initialEditFiles?: string[]; scopeSource?: string; strictBoundary?: boolean } } };
+    expect(benchmarkScopedDryRun.prime.editScope?.scopeSource).toBe("official_harness");
+    expect(benchmarkScopedDryRun.prime.editScope?.strictBoundary).toBe(true);
+    expect(benchmarkScopedDryRun.prime.editScope?.initialEditFiles).toEqual(
+      expect.arrayContaining(["src/app.ts", "src/app/private/jobs/JobsApplicationsTable.tsx"])
+    );
+
     expect(interactiveDryRun.mode).toBe("interactive");
     expect(interactiveDryRun.args).not.toContain("exec");
+    expect(interactiveDryRun.args).not.toContain("-a");
+    expect(interactiveDryRun.args).not.toContain("never");
     expect(interactiveDryRun.args).toContain("--enable");
     expect(interactiveDryRun.args).toContain("hooks");
     expect(interactiveDryRun.args).toContain("--cd");

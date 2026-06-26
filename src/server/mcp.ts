@@ -494,9 +494,11 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
     ...prime.files.filter((file) => !isMcpLikelyTestFile(file) && !isMcpNoisyFile(file))
   ]);
   const startFiles = sourceCandidates.slice(0, 1);
+  const sourceSurfaceLimit = mcpSourceSurfaceLimit(prime);
   const companionFiles = sourceCandidates
     .filter((file) => !startFiles.includes(file))
-    .slice(0, shouldIncludeMcpCompanion(prime) ? 1 : 0);
+    .slice(0, Math.max(0, sourceSurfaceLimit - startFiles.length));
+  const returnedFiles = uniqueValues([...startFiles, ...companionFiles]);
   const likelyTests = shouldIncludeMcpLikelyTests(prime)
     ? uniqueValues(prime.files.filter(isMcpLikelyTestFile)).slice(0, 1)
     : [];
@@ -525,7 +527,8 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
     task: prime.task,
     profile: prime.profile,
     startFiles,
-    files: uniqueValues([...startFiles, ...companionFiles]),
+    files: returnedFiles,
+    attributedFiles: returnedFiles,
     companionFiles,
     fallbackFiles: companionFiles,
     exactSymbolHint: symbolHint ?? null,
@@ -537,18 +540,20 @@ function compactPrepareResult(runtime: KairnRuntime, prime: PrimeContextResult) 
     workingSet,
     editScope,
     primaryReason: primaryFile
-      ? sourceEvidenceStop
+      ? sourceEvidenceStop && returnedFiles.length > 1
+        ? `Source surface stop: use this compact source map (${returnedFiles.join(", ")}); do not call more Kairn unless a check fails, the files change, or the task target changes. Do not run broad repo search or read unrelated files for repeat/cleanup turns. ${editScopeDirective}`
+        : sourceEvidenceStop
         ? `Source evidence stop: use ${primaryFile}; do not call more Kairn unless a check fails, the file changes, or the task target changes. Do not run broad repo search or read unrelated files for repeat/cleanup turns. ${editScopeDirective}`
         : companionFiles[0]
         ? `Start with ${primaryFile}; ${companionFiles[0]} is the one capped companion for this multi-surface task. ${editScopeDirective}`
         : `Start with ${primaryFile}; it is Kairn's highest-confidence unshown file for this task. ${editScopeDirective}`
       : "Kairn did not find a high-confidence start file.",
     editScopeDirective,
-    stopCondition: sourceEvidenceStop ? "source_evidence_sufficient" : null,
+    stopCondition: sourceEvidenceStop ? returnedFiles.length > 1 ? "source_surface_sufficient" : "source_evidence_sufficient" : null,
     nextToolCalls,
     recommendedToolCalls: nextToolCalls,
     likelyTests,
-    tokenEstimate: estimateCompactPrepareTokens(uniqueValues([...startFiles, ...companionFiles]), likelyTests, nextToolCalls, exactSourceEvidence),
+    tokenEstimate: estimateCompactPrepareTokens(returnedFiles, likelyTests, nextToolCalls, exactSourceEvidence),
     quality: prime.quality,
     contextDecision: decision,
     warnings: prime.warnings,
@@ -646,6 +651,30 @@ function shouldIncludeMcpCompanion(prime: PrimeContextResult): boolean {
   if (prime.contextDecision?.exactSourceHit) return false;
   return /\b(route|routing|dependency|dependencies|controller|repository|model|scheduler|renderer|interceptor|dispatch|adapter|validation|callback|group|context|handler|middleware|fixture|framework|flow|request|response)\b/i.test(
     prime.task
+  );
+}
+
+function mcpSourceSurfaceLimit(prime: PrimeContextResult): number {
+  if (shouldReturnMcpSourceSurface(prime)) return 4;
+  if (prime.contextDecision?.exactSourceHit) return 1;
+  return shouldIncludeMcpCompanion(prime) ? 2 : 1;
+}
+
+function shouldReturnMcpSourceSurface(prime: PrimeContextResult): boolean {
+  const decision = prime.contextDecision;
+  const deliveryTrace = isRecord(prime.metadata?.deliveryTrace) ? prime.metadata.deliveryTrace : undefined;
+  const requiredSurface = typeof decision?.requiredSurface === "string"
+    ? decision.requiredSurface
+    : typeof deliveryTrace?.requiredSurface === "string"
+      ? deliveryTrace.requiredSurface
+      : undefined;
+  return (
+    requiredSurface === "paired_contract" ||
+    requiredSurface === "feature_cluster" ||
+    decision?.recommendedDelivery === "multi_file_directive" ||
+    decision?.multiSurfaceSignal === true ||
+    decision?.companionSpecific === true ||
+    (typeof decision?.companionCount === "number" && decision.companionCount > 0)
   );
 }
 

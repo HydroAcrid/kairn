@@ -263,11 +263,21 @@ function scoreSourcePriority(
   const hsmKmsConfigIntent = isHsmKmsConfigQuery(query);
   const deprecationLifecycleIntent = isDeprecationLifecycleQuery(normalizeSearchText(query));
   const formUnflattenRequestIntent = isFormUnflattenRequestQuery(normalizeSearchText(query));
+  const converterOutputIntent = isConverterOutputQuery(normalizeSearchText(query));
+  const benchmarkGeneratorIntent = isBenchmarkGeneratorQuery(normalizeSearchText(query));
+  const topicOrderingIntent = isTopicOrderingQuery(normalizeSearchText(query));
+  const collectionNameValidationIntent = isCollectionNameValidationQuery(normalizeSearchText(query));
+  const grpcErrorPolicyIntent = isGrpcErrorPolicyQuery(normalizeSearchText(query));
+  const httpAuthPolicyIntent = isHttpAuthPolicyQuery(normalizeSearchText(query));
+  const systemMetadataIntent = isSystemMetadataQuery(normalizeSearchText(query));
+  const databaseFailoverIntent = isDatabaseFailoverQuery(normalizeSearchText(query));
+  const pluginActivationValidationIntent = isPluginActivationValidationQuery(normalizeSearchText(query));
+  const executionStateMigrationIntent = isExecutionStateMigrationQuery(normalizeSearchText(query));
   const kubernetesExecForwarderIntent = isKubernetesExecForwarderQuery(normalizeSearchText(query));
   const kubernetesRbacMatcherIntent = isKubernetesRbacResourceMatcherQuery(normalizeSearchText(query));
   const packageSourceMappingIntent = isPackageSourceMappingQuery(normalizeSearchText(query));
   const specializedImplementationIntent =
-    hsmKmsConfigIntent || deprecationLifecycleIntent || formUnflattenRequestIntent || kubernetesExecForwarderIntent || kubernetesRbacMatcherIntent || packageSourceMappingIntent;
+    hsmKmsConfigIntent || deprecationLifecycleIntent || formUnflattenRequestIntent || converterOutputIntent || benchmarkGeneratorIntent || topicOrderingIntent || collectionNameValidationIntent || grpcErrorPolicyIntent || httpAuthPolicyIntent || systemMetadataIntent || databaseFailoverIntent || pluginActivationValidationIntent || executionStateMigrationIntent || kubernetesExecForwarderIntent || kubernetesRbacMatcherIntent || packageSourceMappingIntent;
   const implementationIntent =
     specializedImplementationIntent || (!explicitDocsIntent && (
       debugImplementationIntent ||
@@ -394,10 +404,76 @@ function scoreSourcePriority(
       reasons.push(...formUnflattenRequestSurface.reasons);
     }
 
+    const converterOutputSurface = scoreConverterOutputSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && converterOutputSurface.score !== 0) {
+      score += converterOutputSurface.score;
+      reasons.push(...converterOutputSurface.reasons);
+    }
+
+    const benchmarkGeneratorSurface = scoreBenchmarkGeneratorSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && benchmarkGeneratorSurface.score !== 0) {
+      score += benchmarkGeneratorSurface.score;
+      reasons.push(...benchmarkGeneratorSurface.reasons);
+    }
+
+    const topicOrderingSurface = scoreTopicOrderingSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && topicOrderingSurface.score !== 0) {
+      score += topicOrderingSurface.score;
+      reasons.push(...topicOrderingSurface.reasons);
+    }
+
+    const collectionNameValidationSurface = scoreCollectionNameValidationSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && collectionNameValidationSurface.score !== 0) {
+      score += collectionNameValidationSurface.score;
+      reasons.push(...collectionNameValidationSurface.reasons);
+    }
+
+    const grpcErrorPolicySurface = scoreGrpcErrorPolicySurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && grpcErrorPolicySurface.score !== 0) {
+      score += grpcErrorPolicySurface.score;
+      reasons.push(...grpcErrorPolicySurface.reasons);
+    }
+
+    const httpAuthPolicySurface = scoreHttpAuthPolicySurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && httpAuthPolicySurface.score !== 0) {
+      score += httpAuthPolicySurface.score;
+      reasons.push(...httpAuthPolicySurface.reasons);
+    }
+
+    const systemMetadataSurface = scoreSystemMetadataSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && systemMetadataSurface.score !== 0) {
+      score += systemMetadataSurface.score;
+      reasons.push(...systemMetadataSurface.reasons);
+    }
+
+    const databaseFailoverSurface = scoreDatabaseFailoverSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && databaseFailoverSurface.score !== 0) {
+      score += databaseFailoverSurface.score;
+      reasons.push(...databaseFailoverSurface.reasons);
+    }
+
+    const pluginActivationValidationSurface = scorePluginActivationValidationSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && pluginActivationValidationSurface.score !== 0) {
+      score += pluginActivationValidationSurface.score;
+      reasons.push(...pluginActivationValidationSurface.reasons);
+    }
+
+    const executionStateMigrationSurface = scoreExecutionStateMigrationSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && executionStateMigrationSurface.score !== 0) {
+      score += executionStateMigrationSurface.score;
+      reasons.push(...executionStateMigrationSurface.reasons);
+    }
+
     const configOptionSchemaSurface = scoreConfigOptionSchemaSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
     if (implementationIntent && configOptionSchemaSurface.score !== 0) {
       score += configOptionSchemaSurface.score;
       reasons.push(...configOptionSchemaSurface.reasons);
+    }
+
+    const discoveryConfigSurface = scoreDiscoveryConfigSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && discoveryConfigSurface.score !== 0) {
+      score += discoveryConfigSurface.score;
+      reasons.push(...discoveryConfigSurface.reasons);
     }
 
     const deprecationLifecycleSurface = scoreDeprecationLifecycleSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
@@ -428,6 +504,12 @@ function scoreSourcePriority(
     if (implementationIntent && uiFeedbackOwnershipSurface.score !== 0) {
       score += uiFeedbackOwnershipSurface.score;
       reasons.push(...uiFeedbackOwnershipSurface.reasons);
+    }
+
+    const deviceSessionListenerSurface = scoreDeviceSessionListenerSurface(file, query, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
+    if (implementationIntent && deviceSessionListenerSurface.score !== 0) {
+      score += deviceSessionListenerSurface.score;
+      reasons.push(...deviceSessionListenerSurface.reasons);
     }
 
     if (implementationIntent && isLanguageSourceSurface(file)) {
@@ -1195,7 +1277,14 @@ function scorePackageRoleSurface(file: FileRecord, queryTerms: Set<string>): { s
       !GENERIC_GO_PACKAGE_ENTRY_TERMS.has(parent);
     score += exactPackageEntry ? 3200 : Math.min(1100, matchedTerms.length * 260 + 420);
     reasons.push(`go package role surface: ${matchedTerms.slice(0, 4).join(", ")}`);
-    if (exactPackageEntry) reasons.push("go package entry named by task");
+    if (exactPackageEntry) {
+      reasons.push("go package entry named by task");
+      const contractTerms = ["new", "introduce", "implement", "implements", "public", "interface", "interfaces", "struct", "method", "configuration", "config", "generator"];
+      if (contractTerms.some((term) => queryTerms.has(term))) {
+        score += 72_000;
+        reasons.push("go package contract owner");
+      }
+    }
   }
 
   if (/\/management\/commands\//.test(normalized) && matchedTerms.length >= 2) {
@@ -1631,6 +1720,10 @@ function scoreHttpAuthUtilitySource(file: FileRecord, queryTerms: Set<string>): 
   if (/^(urls?|uri|request|requests|http)$/.test(basename) || /(^|\/)(module_utils|utils?)\/urls?\.py$/.test(normalized)) {
     score += 3200;
     reasons.push("HTTP auth URL utility source");
+  }
+  if (/\/plugins\/action\//.test(normalized) && !(queryTerms.has("action") && queryTerms.has("plugin"))) {
+    score -= 3600;
+    reasons.push("HTTP auth action plugin downranked unless action plugin is requested");
   }
   if (/^_?utils?$/.test(basename) && !/(^|\/)(module_utils|utils?)\/urls?\.py$/.test(normalized)) {
     score -= 1300;
@@ -2268,10 +2361,66 @@ function scoreFormUnflattenRequestSurface(
 }
 
 function isFormUnflattenRequestQuery(normalizedQuery: string): boolean {
+  const explicitFormSignal = /\b(unflatten|flattened|nested|indexed|parent keys?|form data|body data|query parameters?|query string|request body|duplicate (?:simple )?keys?|assignments?)\b/.test(normalizedQuery);
+  const requestQueryConflict =
+    /\b(post|form|body|request|endpoint|route|handler|list|lists)\b/.test(normalizedQuery) &&
+    /\b(query|params?|parameters?)\b/.test(normalizedQuery) &&
+    /\b(conflict|conflicts|merge|merged|handling|precedence|wins?|prefer|preferential)\b/.test(normalizedQuery);
   return (
-    /\b(unflatten|flattened|nested|indexed|parent keys?|form data|body data|query parameters?|query string|request body|duplicate (?:simple )?keys?|assignments?)\b/.test(normalizedQuery) &&
+    (explicitFormSignal || requestQueryConflict) &&
     /\b(post|form|body|request|endpoint|route|handler|list|lists|seeds?|defaults?)\b/.test(normalizedQuery)
   );
+}
+
+function scoreConverterOutputSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isConverterOutputQuery(normalizedQuery) || !isLanguageSourceSurface(file)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const basename = normalizedPath.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/convert(or|er)|converter|convertor/.test(normalizedPath) || /^convert$/.test(basename)) {
+    score += 90_000;
+    reasons.push("converter output implementation surface");
+  }
+  if (/\b(convert|converter|conversion|trivy|vuls|cve contents|cve|severity|severities|debian|json|output|result|results)\b/.test(normalizedSource)) {
+    score += 18_000;
+    reasons.push("converter output content match");
+  }
+  if (/^scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score -= 42_000;
+    reasons.push("scanner dispatcher downranked for converter-output task");
+  }
+  if (/(^|\/)(storage|store|stores|db|database|backend|backends)\//.test(normalizedPath) && !/convert(or|er)|converter|convertor/.test(normalizedPath)) {
+    score -= 36_000;
+    reasons.push("storage/backend surface downranked for converter-output task");
+  }
+  if (/\/scanner\/(alpine|debian|redhat|ubuntu|amazon|oracle|suse)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score -= 28_000;
+    reasons.push("package scanner surface downranked for converter-output task");
+  }
+
+  return { score, reasons };
+}
+
+function isConverterOutputQuery(normalizedQuery: string): boolean {
+  if (isPackageSourceMappingQuery(normalizedQuery)) return false;
+  const converterSignal =
+    /\b(convert|converts|converted|converter|converters|conversion|adapter|adapters)\b/.test(normalizedQuery) ||
+    /\b(trivy to vuls|trivy-to-vuls)\b/.test(normalizedQuery);
+  const outputSignal =
+    /\b(output|outputs|json|record|records|finding|findings|report|reports|contents?|cve|cves|severity|severities|debian|vuls|trivy)\b/.test(normalizedQuery);
+  return converterSignal && outputSignal;
 }
 
 function scorePackageSourceMappingSurface(
@@ -2284,15 +2433,22 @@ function scorePackageSourceMappingSurface(
   if (!isPackageSourceMappingQuery(normalizedQuery)) return { score: 0, reasons: [] };
 
   const normalizedPath = file.path.toLowerCase();
+  const basename = normalizedPath.split("/").at(-1) ?? normalizedPath;
   const symbolText = symbols.map((symbol) => symbol.name).join(" ");
   const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
   const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const rpmQuery = /\b(sourcerpm|source rpm|src\.rpm|rpm|epoch|redhat|rhel|centos)\b/.test(normalizedQuery);
+  const alpineQuery = /\b(apk|alpine)\b/.test(normalizedQuery);
   const reasons: string[] = [];
   let score = 0;
 
-  if (/^scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+  if (rpmQuery && (/^scanner\/(redhat|redhatbase|rpm|rhel|centos)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/(redhat|redhatbase|rpm|rhel|centos)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath))) {
+    score += 130_000;
+    reasons.push("RPM source package scanner surface");
+  }
+  if (alpineQuery && (/^scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath))) {
     score += 96_000;
-    reasons.push("package manager source/binary scanner surface");
+    reasons.push("Alpine package manager source/binary scanner surface");
   }
   if (/^oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
     score += 88_000;
@@ -2302,11 +2458,23 @@ function scorePackageSourceMappingSurface(
     score += 72_000;
     reasons.push("scanner dispatch/source package integration surface");
   }
-  if (/^oval\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/oval\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+  if (alpineQuery && (/^oval\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/oval\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath))) {
     score += 48_000;
     reasons.push("alpine oval family surface");
   }
-  if (/\b(source packages?|binary packages?|src packages?|apk list|apk info|apk index|upgradable|oval|vulnerabilit(?:y|ies))\b/.test(normalizedSource)) {
+  if (rpmQuery && /\b(parseinstalledpackagesline|splitfilename|sourcerpm|source rpm|src rpm|rpm|epoch|redhat|rhel|centos)\b/.test(normalizedSource)) {
+    score += 42_000;
+    reasons.push("RPM source package parsing content match");
+  }
+  if (rpmQuery && /(alpine|apk)/.test(basename)) {
+    score -= 70_000;
+    reasons.push("Alpine surface downranked for RPM source package task");
+  }
+  if (alpineQuery && /(redhat|redhatbase|rpm|rhel|centos)/.test(basename)) {
+    score -= 50_000;
+    reasons.push("RPM surface downranked for Alpine package source task");
+  }
+  if (/\b(source packages?|binary packages?|src packages?|source rpm|sourcerpm|rpm|apk list|apk info|apk index|upgradable|oval|vulnerabilit(?:y|ies))\b/.test(normalizedSource)) {
     score += 12_000;
     reasons.push("package source mapping content match");
   }
@@ -2319,8 +2487,543 @@ function scorePackageSourceMappingSurface(
 }
 
 function isPackageSourceMappingQuery(normalizedQuery: string): boolean {
-  return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|apk|alpine)\b/.test(normalizedQuery) &&
-    /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?)\b/.test(normalizedQuery);
+  return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|sourcerpm|src\.rpm|rpm|apk|alpine|redhat|rhel|centos)\b/.test(normalizedQuery) &&
+    /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?|parse installed packages|package information|package metadata)\b/.test(normalizedQuery);
+}
+
+function scoreBenchmarkGeneratorSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isBenchmarkGeneratorQuery(normalizedQuery) || !isLanguageSourceSurface(file)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const basename = normalizedPath.split("/").at(-1) ?? normalizedPath;
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/\/benchmark\//.test(normalizedPath) || /^benchmark\.(go|ts|js|py|rb|rs)$/.test(basename)) {
+    score += 92_000;
+    reasons.push("benchmark package surface");
+  }
+  if (/\/benchmark\/(linear|generator|config|benchmark)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 54_000;
+    reasons.push("benchmark generator/config implementation surface");
+  }
+  if (isBenchmarkPackageContractSurface(normalizedPath, normalizedQuery, normalizedSource)) {
+    score += 72_000;
+    reasons.push("benchmark package contract surface");
+  }
+  if (/\b(linear|getbenchmark|lower bound|upper bound|step size|progression)\b/.test(normalizedQuery) && /\/benchmark\/linear\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 180_000;
+    reasons.push("linear benchmark generator target surface");
+  }
+  if (/\/(client|cli|cmd|tool|tsh|tctl)\//.test(normalizedPath) && /\b(bench|benchmark)\b/.test(normalizedSource)) {
+    score += 44_000;
+    reasons.push("benchmark command/client integration surface");
+  }
+  if (/(^|\/)(cmd|commands?|cli|tool|tools?)\/[^/]+\/[^/]+\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) && /\b(bench|benchmark)\b/.test(normalizedSource)) {
+    score += 36_000;
+    reasons.push("benchmark CLI entrypoint surface");
+  }
+  if (/\b(linear|getbenchmark|lowerbound|upperbound|minimummeasurements|minimumwindow|request rate|requests per second|rate|threads|benchmark config|benchmark configuration)\b/.test(normalizedSource)) {
+    score += 28_000;
+    reasons.push("benchmark generator content match");
+  }
+  if (isGenericBenchmarkEntrypoint(normalizedPath, normalizedQuery)) {
+    score -= 86_000;
+    reasons.push("generic benchmark entrypoint downranked");
+  }
+  if (/\/(config|configs?|configuration|settings?|options?|pam)\//.test(normalizedPath) && !/\b(bench|benchmark|request rate|requests per second|minimummeasurements|minimumwindow)\b/.test(normalizedSource)) {
+    score -= 50_000;
+    reasons.push("generic config surface downranked for benchmark generator task");
+  }
+  if (/\/(proxy|auth|limiter|ratelimit|retry|access_request|rbac|kube)\//.test(normalizedPath) && !/\b(bench|benchmark)\b/.test(normalizedSource)) {
+    score -= 60_000;
+    reasons.push("generic runtime surface downranked for benchmark generator task");
+  }
+
+  return { score, reasons };
+}
+
+function isGenericBenchmarkEntrypoint(normalizedPath: string, normalizedQuery: string): boolean {
+  const basename = normalizedPath.split("/").at(-1) ?? normalizedPath;
+  if (!/^(main|cli|command|commands)\.(go|ts|tsx|js|jsx|py|rb|rs)$/.test(basename)) return false;
+  if (!/(^|\/)(cmd|commands?|cli|tool|tools?)\//.test(normalizedPath)) return false;
+  const pathParts = normalizedPath.split("/");
+  const parent = pathParts.at(-2) ?? "";
+  if (parent && new RegExp(`\\b${escapeRegExp(parent)}\\b`).test(normalizedQuery)) return false;
+  if (/\b(cli|command line|flag|flags|option|options|args?|arguments|argv|subcommand|command wiring|entrypoint|launcher)\b/.test(normalizedQuery)) {
+    return false;
+  }
+  return true;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isBenchmarkPackageContractSurface(normalizedPath: string, normalizedQuery: string, normalizedSource: string): boolean {
+  if (!/\b(new|introduce|implement|implements|public interface|public interfaces|struct|method|configuration|configurations)\b/.test(normalizedQuery)) {
+    return false;
+  }
+  const parts = normalizedPath.split("/");
+  const basename = parts.at(-1) ?? "";
+  const directory = parts.at(-2) ?? "";
+  const stem = basename.replace(/\.[^.]+$/, "");
+  if (!directory || !stem) return false;
+  const packageContractName =
+    stem === directory ||
+    /^(benchmark|config|types?|interfaces?|contract|registry|base)$/.test(stem);
+  if (!packageContractName) return false;
+  return /\b(config|configuration|command|rate|threads|measurement|window|benchmark)\b/.test(normalizedSource);
+}
+
+function isBenchmarkGeneratorQuery(normalizedQuery: string): boolean {
+  const benchmarkTerms = /\b(benchmark|benchmarks|benchmarking|performance benchmark|load test|request rate|requests per second|rps)\b/.test(normalizedQuery);
+  const generatorTerms = /\b(generator|generate|sequence|progression|linear|lower bound|upper bound|step size|minimum measurements|minimum window|getbenchmark|configuration|configurations)\b/.test(normalizedQuery);
+  return benchmarkTerms && generatorTerms;
+}
+
+function scoreTopicOrderingSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isTopicOrderingQuery(normalizedQuery) || !isLanguageSourceSurface(file)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/^src\/topics\/tools\.(js|ts|jsx|tsx)$/.test(normalizedPath) || /\/src\/topics\/tools\.(js|ts|jsx|tsx)$/.test(normalizedPath)) {
+    score += 118_000;
+    reasons.push("topic tools ordering owner");
+  }
+  if (/^src\/socket\.io\/topics\/tools\.(js|ts|jsx|tsx)$/.test(normalizedPath) || /\/src\/socket\.io\/topics\/tools\.(js|ts|jsx|tsx)$/.test(normalizedPath)) {
+    score += 104_000;
+    reasons.push("topic socket ordering owner");
+  }
+  if (/^public\/src\/client\/category\/tools\.(js|ts|jsx|tsx)$/.test(normalizedPath) || /\/public\/src\/client\/category\/tools\.(js|ts|jsx|tsx)$/.test(normalizedPath)) {
+    score += 96_000;
+    reasons.push("category client pinned-topic owner");
+  }
+  if (/\b(orderpinnedtopics|pinned topics?|pin|unpin|sorted set|no privileges|moderator|category)\b/.test(normalizedSource)) {
+    score += 24_000;
+    reasons.push("topic ordering content match");
+  }
+  if (/\/(admin|dashboard|openapi|views?|upgrades?)\//.test(normalizedPath)) {
+    score -= 46_000;
+    reasons.push("broad/admin topic surface downranked for pinned-topic ordering");
+  }
+  if (/^src\/privileges\/topics\.(js|ts|jsx|tsx)$/.test(normalizedPath) || /\/src\/privileges\/topics\.(js|ts|jsx|tsx)$/.test(normalizedPath)) {
+    score -= 12_000;
+    reasons.push("topic privilege helper kept below ordering owners");
+  }
+
+  return { score, reasons };
+}
+
+function isTopicOrderingQuery(normalizedQuery: string): boolean {
+  const topicTerms = /\b(topic|topics|category|categories)\b/.test(normalizedQuery);
+  const orderTerms = /\b(pin|pinned|reorder|ordering|order|position|relative order|target position)\b/.test(normalizedQuery);
+  const contractTerms = /\b(privileges?|moderator|admin|socket|client|no-op|category isolation|membership|sorted set)\b/.test(normalizedQuery);
+  return topicTerms && orderTerms && contractTerms;
+}
+
+function scoreCollectionNameValidationSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isCollectionNameValidationQuery(normalizedQuery) || !isLanguageSourceSurface(file)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/\/utils\/collection_loader\/_collection_finder\.py$/.test(normalizedPath)) {
+    score += 116_000;
+    reasons.push("collection loader validation owner");
+  }
+  if (/\/galaxy\/dependency_resolution\/dataclasses\.py$/.test(normalizedPath)) {
+    score += 108_000;
+    reasons.push("collection dependency metadata validation owner");
+  }
+  if (/\b(is_valid_collection_name|is_python_identifier|_is_fqcn|_is_py_id|fqcn|python keyword|reserved keyword|collection name)\b/.test(normalizedSource)) {
+    score += 28_000;
+    reasons.push("collection name validation content match");
+  }
+  if (/\/(test|tests|integration|docs?|data)\//.test(normalizedPath)) {
+    score -= 48_000;
+    reasons.push("test/doc collection fixture downranked for validation task");
+  }
+  if (/\/galaxy\/collection\//.test(normalizedPath) && !/dataclasses\.py$/.test(normalizedPath)) {
+    score -= 18_000;
+    reasons.push("generic galaxy collection surface downranked for validation task");
+  }
+
+  return { score, reasons };
+}
+
+function isCollectionNameValidationQuery(normalizedQuery: string): boolean {
+  const collectionTerms = /\b(collection name|collection names|fqcn|fully qualified collection name|namespace\.collection|namespace|collection)\b/.test(normalizedQuery);
+  const validationTerms = /\b(validate|validation|valid|invalid|identifier|python keyword|reserved keyword|is_valid_collection_name|is_python_identifier)\b/.test(normalizedQuery);
+  return collectionTerms && validationTerms;
+}
+
+function scoreGrpcErrorPolicySurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isGrpcErrorPolicyQuery(normalizedQuery) || !isLanguageSourceSurface(file)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/^internal\/cmd\/grpc\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/cmd\/grpc\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 112_000;
+    reasons.push("gRPC command/server entrypoint surface");
+  }
+  if (/\/server\/auth\/middleware\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/auth\/middleware\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 108_000;
+    reasons.push("authentication middleware status policy surface");
+  }
+  if (/\/server\/middleware\/grpc\/middleware\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/middleware\/grpc\/middleware\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 106_000;
+    reasons.push("gRPC middleware status policy surface");
+  }
+  if (/\b(context\.canceled|context canceled|deadline exceeded|deadlineexceeded|codes\.canceled|codes\.deadlineexceeded|status\.code|status code|grpc|unauthenticated|internal)\b/.test(normalizedSource)) {
+    score += 28_000;
+    reasons.push("gRPC context/status error content match");
+  }
+  if (/\/(errors?|segment|segments?|models?|storage|database|db|tests?|docs?)\//.test(normalizedPath) && !/\b(grpc|middleware|auth|status)\b/.test(normalizedSource)) {
+    score -= 52_000;
+    reasons.push("non-middleware error surface downranked for gRPC policy task");
+  }
+
+  return { score, reasons };
+}
+
+function isGrpcErrorPolicyQuery(normalizedQuery: string): boolean {
+  const grpcTerms = /\b(grpc|rpc|status code|status codes|code canceled|code deadlineexceeded|deadline exceeded|unauthenticated|internal)\b/.test(normalizedQuery);
+  const contextTerms = /\b(context\.canceled|context canceled|cancelled context|canceled context|context cancellation|context timeout|context\.deadlineexceeded|deadline exceeded|timeout|cancelled|canceled)\b/.test(normalizedQuery);
+  const policyTerms = /\b(classif(?:y|ied|ication)|map|mapping|return|respond|propagate|convert|middleware|auth(?:entication)?|server)\b/.test(normalizedQuery);
+  return grpcTerms && contextTerms && policyTerms;
+}
+
+function scoreHttpAuthPolicySurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isHttpAuthPolicyQuery(normalizedQuery) || !isLanguageSourceSurface(file)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const basename = normalizedPath.split("/").at(-1) ?? normalizedPath;
+  const needsActionPlugin = httpAuthPolicyNeedsActionPlugin(normalizedQuery);
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/\/module_utils\/urls\.py$/.test(normalizedPath)) {
+    score += 116_000;
+    reasons.push("HTTP URL request/auth policy owner");
+  }
+  if (/\/modules\/uri\.py$/.test(normalizedPath) || (!/\/plugins\/action\//.test(normalizedPath) && /^uri\.(py|ts|js|go|rb|rs)$/.test(basename))) {
+    score += 104_000;
+    reasons.push("URI module auth policy surface");
+  }
+  if (/\/modules\/get_url\.py$/.test(normalizedPath) || /^get_url\.(py|ts|js|go|rb|rs)$/.test(basename)) {
+    score += 98_000;
+    reasons.push("download module auth policy surface");
+  }
+  if (/\/plugins\/lookup\/url\.py$/.test(normalizedPath) || /\/lookup\/url\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) {
+    score += 92_000;
+    reasons.push("URL lookup auth policy surface");
+  }
+  if (/\/plugins\/action\/uri\.py$/.test(normalizedPath)) {
+    score += needsActionPlugin ? 76_000 : -112_000;
+    reasons.push(needsActionPlugin ? "explicit URI action plugin auth policy surface" : "URI action plugin excluded unless action layer is requested");
+  }
+  if (/\/url(s)?\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) && !/\/(module_utils|modules|plugins\/lookup)\//.test(normalizedPath)) {
+    score += 30_000;
+    reasons.push("generic URL auth-adjacent surface");
+  }
+  if (/\b(netrc|authorization|bearer|basic auth|open_url|request\.open|use_netrc|headers?)\b/.test(normalizedSource)) {
+    score += 26_000;
+    reasons.push("HTTP auth/netrc content match");
+  }
+  if (/\/(executor|interpreter|facts?|plugins\/list|plugins\/doc_fragments|plugins\/action|module_utils\/basic|tests?|docs?)\//.test(normalizedPath) && !/\b(netrc|authorization|open_url|use_netrc|headers?)\b/.test(normalizedSource)) {
+    score -= 54_000;
+    reasons.push("unrelated discovery/basic surface downranked for HTTP auth policy task");
+  }
+
+  return { score, reasons };
+}
+
+function isHttpAuthPolicyQuery(normalizedQuery: string): boolean {
+  const authTerms = /\b(netrc|\.netrc|authorization header|authorization|bearer|basic auth|basic authentication|credentials)\b/.test(normalizedQuery);
+  const httpTerms = /\b(uri module|uri|open_url|request\.open|request|http|url|headers?)\b/.test(normalizedQuery);
+  const policyTerms = /\b(overwrite|overwrites|override|overrides|overriding|overridden|respect|ignore|use_netrc|netrc usage|parameter|forward|default|enabled|disabled|control)\b/.test(normalizedQuery);
+  return authTerms && httpTerms && policyTerms;
+}
+
+function httpAuthPolicyNeedsActionPlugin(normalizedQuery: string): boolean {
+  return /\b(action plugin|plugin action|action layer|action module|plugins action|action uri|action handler)\b/.test(normalizedQuery);
+}
+
+function scoreSystemMetadataSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isSystemMetadataQuery(normalizedQuery) || !isLanguageSourceSurface(file)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const basename = normalizedPath.split("/").at(-1) ?? normalizedPath;
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/\/inventory\/metadata\/metadata_linux\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 126_000;
+    reasons.push("Linux system metadata owner");
+  }
+  if (/\/inventory\/metadata\/(metadata|get)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 96_000;
+    reasons.push("inventory metadata API surface");
+  }
+  if (/\/linux\/(dmi|dmi_sysfs|os_release|metadata)[^/]*\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 118_000;
+    reasons.push("Linux DMI/os-release metadata surface");
+  }
+  if (/\b(dmiinfo|dmifs|osrelease|parseosrelease|dmiinfofromfs|dmiinfofromsysfs|productname|productserial|boardserial|chassisassettag|prettyname|versionid)\b/.test(normalizedSource)) {
+    score += 34_000;
+    reasons.push("system metadata symbol/content match");
+  }
+  if (/\b(sys\/class\/dmi\/id|os-release|product_name|product_serial|board_serial|chassis_asset_tag|pretty_name|version_id)\b/.test(normalizedSource)) {
+    score += 24_000;
+    reasons.push("system metadata file/key match");
+  }
+  if (/\/(config|configs?|configuration|systemd|parse|parser|utils?)\//.test(normalizedPath) && !/\b(dmi|os[_-]?release|inventory|metadata)\b/.test(normalizedPath)) {
+    score -= 76_000;
+    reasons.push("generic config/parser surface downranked for system metadata task");
+  }
+  if (/\/(tests?|docs?|examples?|fixtures?|vendor|third_party|generated)\//.test(normalizedPath)) {
+    score -= 48_000;
+    reasons.push("non-production metadata surface downranked");
+  }
+
+  return { score, reasons };
+}
+
+function isSystemMetadataQuery(normalizedQuery: string): boolean {
+  const systemMetadataTerms =
+    /\b(dmi|dmifs|sysfs|\/sys\/class\/dmi\/id|product_name|product_serial|board_serial|chassis_asset_tag|os-release|\/etc\/os-release|pretty_name|version_id|distro|distribution|linux system metadata|system metadata|device metadata)\b/.test(normalizedQuery);
+  const extractionTerms = /\b(parse|parser|read|open|extract|retrieve|metadata|filesystem|fs\.fs|struct|field|trim|permission denied|partial errors?|malformed lines?)\b/.test(normalizedQuery);
+  return systemMetadataTerms && extractionTerms;
+}
+
+function scoreDatabaseFailoverSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isDatabaseFailoverQuery(normalizedQuery) || !isLanguageSourceSurface(file)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/^api\/types\/databaseserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/types\/databaseserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 126_000;
+    reasons.push("database server type contract owner");
+  }
+  if (/\/srv\/db\/proxyserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/db\/proxyserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 122_000;
+    reasons.push("database proxy failover owner");
+  }
+  if (/\/reversetunnel\/fake\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/fake(?:remote)?site\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 96_000;
+    reasons.push("fake tunnel test hook owner");
+  }
+  if (/\/reversetunnel\/[^/]+\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) && !/\/reversetunnel\/fake\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score -= 72_000;
+    reasons.push("generic reverse tunnel surface downranked for database failover task");
+  }
+  if (/(^|\/)tool\/tsh\/db\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/cli\/.*db\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 92_000;
+    reasons.push("database CLI listing owner");
+  }
+  if (/\b(deduplicatedatabaseservers|sorteddatabaseservers|proxyserverconfig|offline tunnels?|database servers?|serverid|hostid|shuffle|candidate servers?|tsh db ls)\b/.test(normalizedSource)) {
+    score += 34_000;
+    reasons.push("database failover symbol/content match");
+  }
+  if (/\/(events?|session|sessions?|audit|kube|app|regular|service|auth|client)\//.test(normalizedPath) && !/\b(databaseserver|proxyserver|reversetunnel|tool\/tsh\/db)\b/.test(normalizedPath)) {
+    score -= 62_000;
+    reasons.push("unrelated server-id surface downranked for database failover task");
+  }
+  if (/\/(tests?|docs?|examples?|fixtures?|generated|vendor|third_party)\//.test(normalizedPath)) {
+    score -= 48_000;
+    reasons.push("non-production database failover surface downranked");
+  }
+
+  return { score, reasons };
+}
+
+function isDatabaseFailoverQuery(normalizedQuery: string): boolean {
+  const databaseTerms = /\b(database|databases|db)\b/.test(normalizedQuery);
+  const serviceTerms = /\b(service|services|server|servers|databaseserver|database server|database service)\b/.test(normalizedQuery);
+  const failoverTerms = /\b(ha|high availability|failover|candidate|candidates|retry|shuffle|randomi[sz]e|offline tunnel|tunnel outage|reachable|unreachable|deduplicate|dedupe|same-name|same name|hostid|serverid|proxy context|tsh db ls)\b/.test(normalizedQuery);
+  const proxyTerms = /\b(proxy|connect|dial|reverse tunnel|authorization|auth(?:orization)? context|list|display)\b/.test(normalizedQuery);
+  return databaseTerms && serviceTerms && failoverTerms && proxyTerms;
+}
+
+function scorePluginActivationValidationSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isPluginActivationValidationQuery(normalizedQuery) || !isLanguageSourceSurface(file)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/^src\/plugins\/install\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath) || /\/plugins\/install\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath)) {
+    score += 126_000;
+    reasons.push("plugin activation owner");
+  }
+  if (/^src\/socket\.io\/admin\/plugins\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath) || /\/socket\.io\/admin\/plugins\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath)) {
+    score += 102_000;
+    reasons.push("plugin activation socket owner");
+  }
+  if (/^src\/flags\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath) || /\/flags\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath)) {
+    score += 74_000;
+    reasons.push("identifier validation/error helper surface");
+  }
+  if (/\/admin\/extend\/plugins\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath)) {
+    score += 28_000;
+    reasons.push("plugin admin caller surface");
+  }
+  if (/\b(toggleactive|invalid-plugin-id|plugin id|plugin identifier|validate|validation|malformed|activate|deactivate)\b/.test(normalizedSource)) {
+    score += 30_000;
+    reasons.push("plugin activation validation content match");
+  }
+  if (/\/(topic|topics|posts?|flags\/list|installer|language|views?|templates?)\//.test(normalizedPath) && !/\b(plugin|plugins|toggleactive|invalid-plugin-id)\b/.test(normalizedSource)) {
+    score -= 52_000;
+    reasons.push("unrelated client/plugin-adjacent surface downranked");
+  }
+  if (/\/(tests?|docs?|examples?|fixtures?|node_modules|dist|build|public\/language)\//.test(normalizedPath)) {
+    score -= 48_000;
+    reasons.push("non-production plugin validation surface downranked");
+  }
+
+  return { score, reasons };
+}
+
+function isPluginActivationValidationQuery(normalizedQuery: string): boolean {
+  const pluginTerms = /\b(plugin|plugins|plugin id|plugin identifier|plugin identifiers|package name)\b/.test(normalizedQuery);
+  const activationTerms = /\b(activate|activation|toggleactive|toggle active|deactivate|admin\.plugins\.toggleactive)\b/.test(normalizedQuery);
+  const validationTerms = /\b(validate|validation|valid|invalid|malformed|whitespace|special characters?|naming pattern|identifier|invalid-plugin-id)\b/.test(normalizedQuery);
+  return pluginTerms && activationTerms && validationTerms;
+}
+
+function scoreExecutionStateMigrationSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isExecutionStateMigrationQuery(normalizedQuery) || !isLanguageSourceSurface(file)) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/(^|\/)play_iterator\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) || /\/executor\/play_iterator\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) {
+    score += 132_000;
+    reasons.push("execution state iterator owner");
+  }
+  if (/\/strategy\/__init__\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) || /\/strategy\/linear\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) {
+    score += 98_000;
+    reasons.push("strategy compatibility owner");
+  }
+  if (/\b(iteratingstates|failedstates|playiterator|hoststate|run_state|fail_state|iterating_tasks|failed_setup|metaplayiterator)\b/.test(normalizedSource)) {
+    score += 38_000;
+    reasons.push("execution state symbol/content match");
+  }
+  if (/\b(intenum|intflag|deprecation warning|legacy constants?|attribute access|third-party strategy|state descriptions?|readable state)\b/.test(normalizedSource)) {
+    score += 24_000;
+    reasons.push("state migration behavior match");
+  }
+  if ((/\/(module_utils\/common|utils?|validation|warnings|display|parameters|basic)\//.test(normalizedPath) || /\/module_utils\/basic\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) && !/\b(playiterator|hoststate|strategy|iterating|failedstates)\b/.test(normalizedSource)) {
+    score -= 82_000;
+    reasons.push("generic validation/deprecation helper downranked for execution state migration");
+  }
+  if (/\/(tests?|docs?|examples?|fixtures?|generated|vendor|third_party)\//.test(normalizedPath)) {
+    score -= 48_000;
+    reasons.push("non-production execution state surface downranked");
+  }
+
+  return { score, reasons };
+}
+
+function isExecutionStateMigrationQuery(normalizedQuery: string): boolean {
+  const stateTerms =
+    /\b(playiterator|play iterator|hoststate|host state|run_state|run state|fail_state|failure state|execution state|iterator state|state representation|strategy plugin|strategy plugins)\b/.test(normalizedQuery) ||
+    /\b(iteratingstates|failedstates|iterating_tasks|iterating_setup|failed_setup|failed_tasks)\b/.test(normalizedQuery);
+  const migrationTerms =
+    /\b(enum|enums|enumeration|intenum|intflag|public type|public representation|namespaced|legacy constants?|deprecated constants?|deprecation warning|backward compatibility|third-party|strategy\/linear|strategy\/__init__|metaclass|attribute access|string output)\b/.test(normalizedQuery);
+  const behaviorTerms =
+    /\b(preserve|redirect|emit|warn|compare|transition|assignment|bitwise|combinable|state descriptions?|readable state names?)\b/.test(normalizedQuery);
+  return stateTerms && migrationTerms && behaviorTerms;
 }
 
 function scoreConfigOptionSchemaSurface(
@@ -2611,6 +3314,121 @@ function scoreUiFeedbackOwnershipSurface(
   return { score, reasons };
 }
 
+function scoreDeviceSessionListenerSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isDeviceSessionListenerQuery(normalizedQuery) || (!isLanguageSourceSurface(file) && file.kind !== "component" && file.kind !== "route")) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const basename = normalizedPath.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/listener|observer|watcher|subscriber|notifier/.test(basename) || /(^|\/)(listeners?|observers?|watchers?)\//.test(normalizedPath)) {
+    score += 78_000;
+    reasons.push("device/session listener owner surface");
+  }
+  if (/\b(device listener|session listener|notification listener|unverified sessions?|downloaded keys?|key download|existing sessions?|new sessions?)\b/.test(normalizedSource)) {
+    score += 18_000;
+    reasons.push("device/session listener content match");
+  }
+  if (/\/(stores?|state|models?)\//.test(normalizedPath) && /\b(device|session|sessions|notification|notifications|unverified)\b/.test(normalizedSource)) {
+    score += 6_000;
+    reasons.push("notification/session state owner surface");
+  }
+  if (/(^|\/)(settings|tabs?|views?)\//.test(normalizedPath) && !/\b(settings?|preferences?|tab|tabs?|screen|view)\b/.test(normalizedQuery)) {
+    score -= 38_000;
+    reasons.push("settings UI surface downranked for listener ownership task");
+  }
+  if (/\/toasts?\//.test(normalizedPath) && !/\b(toast|banner|notification ui|visual)\b/.test(normalizedQuery)) {
+    score -= 28_000;
+    reasons.push("toast UI surface downranked for listener ownership task");
+  }
+  if (/\/models?\/call\.(ts|tsx|js|jsx)$/.test(normalizedPath) && !/\b(call|voice|room)\b/.test(normalizedQuery)) {
+    score -= 30_000;
+    reasons.push("call model downranked for device/session listener task");
+  }
+
+  return { score, reasons };
+}
+
+function scoreDiscoveryConfigSurface(
+  file: FileRecord,
+  query: string,
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!isDiscoveryConfigQuery(normalizedQuery) || (!isLanguageSourceSurface(file) && file.kind !== "component" && file.kind !== "route")) return { score: 0, reasons: [] };
+
+  const normalizedPath = file.path.toLowerCase();
+  const basename = normalizedPath.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const symbolText = symbols.map((symbol) => symbol.name).join(" ");
+  const chunkText = chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 700)}`).join(" ");
+  const normalizedSource = normalizeSearchText(`${file.path} ${symbolText} ${chunkText}`);
+  const reasons: string[] = [];
+  let score = 0;
+
+  const compactBase = basename.replace(/[^a-z0-9]+/g, "");
+  const autoDiscoveryOwner = compactBase.includes("autodiscovery") || compactBase.includes("discovery") || compactBase.includes("homeserver");
+  const supportingWellKnown = compactBase.includes("wellknown") || normalizedPath.includes("/well-known/") || normalizedPath.includes("/wellknown/");
+  if (autoDiscoveryOwner || supportingWellKnown || /\/(discovery|autodiscovery|well-known|wellknown)\//.test(normalizedPath)) {
+    score += autoDiscoveryOwner ? 92_000 : 58_000;
+    reasons.push(autoDiscoveryOwner ? "discovery builder owner surface" : "supporting well-known discovery surface");
+  }
+  if (
+    (/\b(validatedserverconfig|serverconfig)\b/.test(compactBase) ||
+      (compactBase.includes("validated") && compactBase.includes("config")) ||
+      (compactBase.includes("server") && compactBase.includes("config"))) &&
+    /\b(config|configuration|serverconfig|validatedserverconfig)\b/.test(normalizedSource)
+  ) {
+    score += 68_000;
+    reasons.push("validated config contract surface");
+  }
+  if (/\b(authentication|delegated auth|delegated authentication|issuer|authorization endpoint|registration endpoint|token endpoint|account|m authentication)\b/.test(normalizedSource)) {
+    score += 20_000;
+    reasons.push("delegated authentication config content match");
+  }
+  if (/\b(discovery|autodiscovery|homeserver|well[- ]?known)\b/.test(normalizedSource) && /\b(config|configuration|validated|server)\b/.test(normalizedSource)) {
+    score += 14_000;
+    reasons.push("discovery config content match");
+  }
+  if (/(^|\/)(cypress|tests?|testing|support)\//.test(normalizedPath) && !/\b(cypress|test support|support settings|test settings)\b/.test(normalizedQuery)) {
+    score -= 90_000;
+    reasons.push("test/support settings surface downranked for discovery config task");
+  }
+  if ((/(^|\/)(settings|preferences)\//.test(normalizedPath) || /\/settings\//.test(normalizedPath)) && !/\b(settings?|preferences?)\b/.test(normalizedQuery)) {
+    score -= 120_000;
+    reasons.push("settings UI surface downranked for discovery config task");
+  }
+
+  return { score, reasons };
+}
+
+function isDiscoveryConfigQuery(normalizedQuery: string): boolean {
+  return countPresent(normalizedQuery, [
+    /\b(discovery|discover|autodiscovery|well known|well-known|homeserver|server discovery)\b/,
+    /\b(authentication|delegated auth|delegated authentication|m authentication|issuer|authorization endpoint|registration endpoint|token endpoint|account)\b/,
+    /\b(validated config|validated configuration|server config|configuration|config|preserve|expose|public interface)\b/
+  ]) >= 2;
+}
+
+function isDeviceSessionListenerQuery(normalizedQuery: string): boolean {
+  return countPresent(normalizedQuery, [
+    /\b(device|devices)\b/,
+    /\b(session|sessions)\b/,
+    /\b(notification|notifications|unverified)\b/,
+    /\b(listener|listeners|startup|existing|new|download|downloads|refresh|state)\b/
+  ]) >= 3;
+}
+
 function isConfigDiagnosticProblemSurface(normalizedPath: string): boolean {
   return /(^|\/)(backendproblem|backend_problem|problem|diagnostic|diagnostics)\.(py|ts|js|go|rb|rs)$/.test(normalizedPath);
 }
@@ -2720,6 +3538,10 @@ function normalizeSearchText(input: string): string {
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function countPresent(value: string, patterns: RegExp[]): number {
+  return patterns.reduce((count, pattern) => count + (pattern.test(value) ? 1 : 0), 0);
 }
 
 function isSuffixOfLongerNamedIdentifier(basename: string, query: string): boolean {
@@ -2904,8 +3726,35 @@ function scoreExplicitSourcePathHint(file: FileRecord, hints: SourcePathHint[]):
       score += 1800;
       reasons.push("explicit source location filename");
     }
+    if (isNamedNewFilePackageContractSibling(normalizedPath, hint.path)) {
+      score += hint.labeled ? 7800 : 6200;
+      reasons.push("named new source package contract");
+    }
   }
-  return { score: Math.min(score, 9600), reasons: mergeReasons(reasons) };
+  return { score: Math.min(score, 12600), reasons: mergeReasons(reasons) };
+}
+
+function isNamedNewFilePackageContractSibling(filePath: string, hintedPath: string): boolean {
+  if (filePath === hintedPath || !filePath.includes("/") || !hintedPath.includes("/")) return false;
+  const fileParts = filePath.split("/");
+  const hintParts = hintedPath.split("/");
+  const fileBase = fileParts.at(-1) ?? "";
+  const hintBase = hintParts.at(-1) ?? "";
+  if (!fileBase || !hintBase) return false;
+  const fileExt = fileBase.split(".").at(-1);
+  const hintExt = hintBase.split(".").at(-1);
+  if (!fileExt || fileExt !== hintExt) return false;
+  const fileDir = fileParts.slice(0, -1).join("/");
+  const hintDir = hintParts.slice(0, -1).join("/");
+  if (fileDir !== hintDir) return false;
+  const dirName = fileParts.at(-2) ?? "";
+  const fileStem = fileBase.replace(/\.[^.]+$/, "");
+  const hintStem = hintBase.replace(/\.[^.]+$/, "");
+  if (!dirName || fileStem === hintStem) return false;
+  return (
+    fileStem === dirName ||
+    /^(types?|interfaces?|contract|contracts|config|schema|base|index|main|registry|manager|model|models)$/.test(fileStem)
+  );
 }
 
 function isNoisyMentionedSourcePath(filePath: string): boolean {

@@ -411,6 +411,19 @@ function hardSafetyDecision(
     };
   }
   if (
+    features.taskShapeSignal === "converter_output" &&
+    features.requiredSurface === "single_file" &&
+    baseDecision.action !== "suppress" &&
+    baseDecision.action !== "request_evidence"
+  ) {
+    return {
+      action: "shrink",
+      score: Math.min(Math.max(baseDecision.score, 55), 64),
+      reasons: ["dominant converter-output implementation should use a single-file guardrail"],
+      directiveStyle: "scope_guardrail"
+    };
+  }
+  if (
     features.requiredSurface === "feature_cluster" &&
     baseDecision.action === "emit" &&
     features.estimatedSearchCost >= 45
@@ -660,8 +673,21 @@ function inferTaskShapeSignal(
   candidates: CandidateFeatures[]
 ): TaskShapeSignal | undefined {
   const normalized = normalizeText(task);
+  if (isGrpcErrorPolicyTask(normalized)) return "grpc_error_policy";
+  if (isTopicOrderingTask(normalized)) return "topic_ordering";
+  if (isHttpAuthPolicyTask(normalized)) return "http_auth_policy";
+  if (isSystemMetadataTask(normalized)) return "system_metadata";
+  if (isDatabaseFailoverTask(normalized)) return "database_failover";
+  if (isPluginActivationValidationTask(normalized)) return "plugin_activation_validation";
+  if (isExecutionStateMigrationTask(normalized)) return "execution_state_migration";
+  if (isDiscoveryConfigTask(normalized)) return "discovery_config";
   if (hasDeprecationLifecycleScope(normalized)) return "lifecycle_policy";
   if (isAccessPolicyTask(normalized)) return undefined;
+  if (isRequestBodyFormTask(normalized)) return "request_body_form";
+  if (isConverterOutputTask(normalized)) return "converter_output";
+  if (isNarrowPackageParserTask(normalized)) return "narrow_package_parser";
+  if (isBenchmarkGeneratorTask(normalized)) return "benchmark_generator";
+  if (isCollectionNameValidationTask(normalized)) return "collection_name_validation";
   if (isCommandContractTask(normalized)) return "command_contract";
   if (isPackageSourceMappingTask(normalized)) return "package_source_mapping";
   if (isBackendParityTask(normalized, candidates)) return "backend_parity";
@@ -700,10 +726,25 @@ function inferRequiredSurface(
   candidates: CandidateFeatures[]
 ): RequiredSurface {
   if (taskShapeSignal === "ambiguous_frontend_ownership") return "evidence_needed";
+  if (taskShapeSignal === "converter_output" && hasDominantConverterImplementation(task, candidates, baseDecision)) {
+    return "single_file";
+  }
   if (
     taskShapeSignal === "command_contract" ||
+    taskShapeSignal === "converter_output" ||
+    taskShapeSignal === "discovery_config" ||
     taskShapeSignal === "lifecycle_policy" ||
+    taskShapeSignal === "request_body_form" ||
     taskShapeSignal === "package_source_mapping" ||
+    taskShapeSignal === "benchmark_generator" ||
+    taskShapeSignal === "topic_ordering" ||
+    taskShapeSignal === "collection_name_validation" ||
+    taskShapeSignal === "grpc_error_policy" ||
+    taskShapeSignal === "http_auth_policy" ||
+    taskShapeSignal === "system_metadata" ||
+    taskShapeSignal === "database_failover" ||
+    taskShapeSignal === "plugin_activation_validation" ||
+    taskShapeSignal === "execution_state_migration" ||
     taskShapeSignal === "backend_parity"
   ) return "paired_contract";
   if (taskShapeSignal === "frontend_ownership") return "feature_cluster";
@@ -717,6 +758,40 @@ function inferRequiredSurface(
     return "feature_cluster";
   }
   return "single_file";
+}
+
+function hasDominantConverterImplementation(
+  task: string,
+  candidates: CandidateFeatures[],
+  baseDecision: ContextValueDecision
+): boolean {
+  const top = candidates[0];
+  if (!top || !isProductionCandidateRole(top.role)) return false;
+  if (!isConverterImplementationPath(top.path)) return false;
+  if (hasExplicitMultiFileScopeRequest(task)) return false;
+  const converterCandidates = candidates
+    .slice(0, 5)
+    .filter((candidate) => isProductionCandidateRole(candidate.role) && isConverterImplementationPath(candidate.path));
+  const commandCandidates = candidates
+    .slice(0, 5)
+    .filter((candidate) => candidate.role === "entrypoint" || isCommandEntrypointPath(candidate.path));
+  const clearlyDominant =
+    baseDecision.topGap >= 180 ||
+    top.score - (candidates[1]?.score ?? 0) >= 180 ||
+    (converterCandidates.length === 1 && commandCandidates.length === 0);
+  return clearlyDominant;
+}
+
+function isConverterImplementationPath(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  return /(^|\/)[^/]*(convert(or|er)|converter|convertor)[^/]*\.(go|ts|tsx|js|jsx|py|rb|rs|java|kt|cs|php)$/.test(normalized) ||
+    /\/(converter|convertor|converters|convertors)\//.test(normalized);
+}
+
+function isCommandEntrypointPath(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  return /(^|\/)(cmd|bin|cli|commands?|entrypoints?)\//.test(normalized) ||
+    /(^|\/)(main|cli|command|commands)\.(go|ts|tsx|js|jsx|py|rb|rs|java|kt|cs|php)$/.test(normalized);
 }
 
 function isCommandContractTask(normalized: string): boolean {
@@ -738,8 +813,112 @@ function isCommandContractTask(normalized: string): boolean {
 }
 
 function isPackageSourceMappingTask(normalized: string): boolean {
-  return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|apk|alpine)\b/.test(normalized) &&
-    /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?)\b/.test(normalized);
+  if (isNarrowPackageParserTask(normalized)) return false;
+  return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|sourcerpm|src\.rpm|rpm|apk|alpine|redhat|rhel|centos)\b/.test(normalized) &&
+    /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?|parse installed packages|package information|package metadata)\b/.test(normalized);
+}
+
+function isNarrowPackageParserTask(normalized: string): boolean {
+  const rpmParserTerms =
+    /\b(sourcerpm|source rpm|src\.rpm|rpm filenames?|source filenames?|splitfilename|parseinstalledpackagesline|epoch)\b/.test(normalized);
+  const scannerTerms = /\b(scanner|package manager|installed packages?|package information|package metadata|redhat|rhel|centos|rpm)\b/.test(normalized);
+  const mappingTerms =
+    /\b(oval|vulnerability matching|binary packages? derive|source package associations?|map binary packages?|package index|upgradable)\b/.test(normalized);
+  return rpmParserTerms && scannerTerms && !mappingTerms;
+}
+
+function isBenchmarkGeneratorTask(normalized: string): boolean {
+  const benchmarkTerms = /\b(benchmark|benchmarks|benchmarking|performance benchmark|load test|request rate|requests per second|rps)\b/.test(normalized);
+  const generatorTerms = /\b(generator|generate|sequence|progression|linear|lower bound|upper bound|step size|minimum measurements|minimum window|getbenchmark|configuration|configurations)\b/.test(normalized);
+  return benchmarkTerms && generatorTerms;
+}
+
+function isTopicOrderingTask(normalized: string): boolean {
+  const topicTerms = /\b(topic|topics|category|categories)\b/.test(normalized);
+  const orderTerms = /\b(pin|pinned|reorder|ordering|order|position|relative order|target position)\b/.test(normalized);
+  const contractTerms = /\b(privileges?|moderator|admin|socket|client|no-op|category isolation|membership|sorted set)\b/.test(normalized);
+  return topicTerms && orderTerms && contractTerms;
+}
+
+function isCollectionNameValidationTask(normalized: string): boolean {
+  const collectionTerms = /\b(collection name|collection names|fqcn|fully qualified collection name|namespace\.collection|namespace|collection)\b/.test(normalized);
+  const validationTerms = /\b(validate|validation|valid|invalid|identifier|python keyword|reserved keyword|is_valid_collection_name|is_python_identifier)\b/.test(normalized);
+  return collectionTerms && validationTerms;
+}
+
+function isGrpcErrorPolicyTask(normalized: string): boolean {
+  const grpcTerms = /\b(grpc|gprc|rpc|status code|status codes|code canceled|code deadlineexceeded|deadline exceeded|unauthenticated|internal)\b/.test(normalized);
+  const contextTerms = /\b(context\.canceled|context canceled|cancelled context|canceled context|context cancellation|context timeout|deadline exceeded|context\.deadlineexceeded|timeout|cancelled|canceled)\b/.test(normalized);
+  const policyTerms = /\b(classif(?:y|ied|ication)|map|mapping|return|respond|propagate|convert|middleware|auth(?:entication)?|server)\b/.test(normalized);
+  return grpcTerms && contextTerms && policyTerms;
+}
+
+function isHttpAuthPolicyTask(normalized: string): boolean {
+  const authTerms = /\b(netrc|\.netrc|authorization header|bearer|basic auth|basic authentication|credentials)\b/.test(normalized);
+  const httpTerms = /\b(uri module|uri|open_url|request\.open|request|http|url|headers?)\b/.test(normalized);
+  const policyTerms = /\b(overwrite|overwrites|override|overrides|overriding|overridden|respect|ignore|use_netrc|netrc usage|parameter|forward|default|enabled|disabled|control)\b/.test(normalized);
+  return authTerms && httpTerms && policyTerms;
+}
+
+function isSystemMetadataTask(normalized: string): boolean {
+  const systemMetadataTerms =
+    /\b(dmi|dmifs|sysfs|\/sys\/class\/dmi\/id|product_name|product_serial|board_serial|chassis_asset_tag|os-release|\/etc\/os-release|pretty_name|version_id|distro|distribution|linux system metadata|system metadata|device metadata)\b/.test(normalized);
+  const extractionTerms = /\b(parse|parser|read|open|extract|retrieve|metadata|filesystem|fs\.fs|struct|field|trim|permission denied|partial errors?|malformed lines?)\b/.test(normalized);
+  return systemMetadataTerms && extractionTerms;
+}
+
+function isDatabaseFailoverTask(normalized: string): boolean {
+  const databaseTerms = /\b(database|databases|db)\b/.test(normalized);
+  const serviceTerms = /\b(service|services|server|servers|databaseserver|database server|database service)\b/.test(normalized);
+  const failoverTerms = /\b(ha|high availability|failover|candidate|candidates|retry|shuffle|randomi[sz]e|offline tunnel|tunnel outage|reachable|unreachable|deduplicate|dedupe|same-name|same name|hostid|serverid|proxy context|tsh db ls)\b/.test(normalized);
+  const proxyTerms = /\b(proxy|connect|dial|reverse tunnel|authorization|auth(?:orization)? context|list|display)\b/.test(normalized);
+  return databaseTerms && serviceTerms && failoverTerms && proxyTerms;
+}
+
+function isPluginActivationValidationTask(normalized: string): boolean {
+  const pluginTerms = /\b(plugin|plugins|plugin id|plugin identifier|plugin identifiers|package name)\b/.test(normalized);
+  const activationTerms = /\b(activate|activation|toggleactive|toggle active|deactivate|admin\.plugins\.toggleactive)\b/.test(normalized);
+  const validationTerms = /\b(validate|validation|valid|invalid|malformed|whitespace|special characters?|naming pattern|identifier|invalid-plugin-id)\b/.test(normalized);
+  return pluginTerms && activationTerms && validationTerms;
+}
+
+function isExecutionStateMigrationTask(normalized: string): boolean {
+  const stateTerms =
+    /\b(playiterator|play iterator|hoststate|host state|run_state|run state|fail_state|failure state|execution state|iterator state|state representation|strategy plugin|strategy plugins)\b/.test(normalized) ||
+    /\b(iteratingstates|failedstates|iterating_tasks|iterating_setup|failed_setup|failed_tasks)\b/.test(normalized);
+  const migrationTerms =
+    /\b(enum|enums|enumeration|intenum|intflag|public type|public representation|namespaced|legacy constants?|deprecated constants?|deprecation warning|backward compatibility|third-party|strategy\/linear|strategy\/__init__|metaclass|attribute access|string output)\b/.test(normalized);
+  const behaviorTerms =
+    /\b(preserve|redirect|emit|warn|compare|transition|assignment|bitwise|combinable|state descriptions?|readable state names?)\b/.test(normalized);
+  return stateTerms && migrationTerms && behaviorTerms;
+}
+
+function isRequestBodyFormTask(normalized: string): boolean {
+  const explicitFormSignal = /\b(unflatten|flattened|nested|indexed|parent keys?|form data|body data|request body|query string|query parameters?|duplicate (?:simple )?keys?|assignments?)\b/.test(normalized);
+  const requestQueryConflict =
+    /\b(post|form|body|request|endpoint|route|handler|list|lists)\b/.test(normalized) &&
+    /\b(query|params?|parameters?)\b/.test(normalized) &&
+    /\b(conflict|conflicts|merge|merged|handling|precedence|wins?|prefer|preferential)\b/.test(normalized);
+  return (explicitFormSignal || requestQueryConflict) &&
+    /\b(post|form|body|request|endpoint|route|handler|seeds?|defaults?)\b/.test(normalized);
+}
+
+function isConverterOutputTask(normalized: string): boolean {
+  if (isPackageSourceMappingTask(normalized)) return false;
+  const converterSignal =
+    /\b(convert|converts|converted|converter|converters|conversion|adapter|adapters)\b/.test(normalized) ||
+    /\b(trivy to vuls|trivy-to-vuls)\b/.test(normalized);
+  const outputSignal =
+    /\b(output|outputs|json|record|records|finding|findings|report|reports|contents?|cve|cves|severity|severities|debian|vuls|trivy)\b/.test(normalized);
+  return converterSignal && outputSignal;
+}
+
+function isDiscoveryConfigTask(normalized: string): boolean {
+  return countPresent(normalized, [
+    /\b(discovery|discover|autodiscovery|well[- ]?known|homeserver|server discovery)\b/,
+    /\b(authentication|delegated auth|delegated authentication|m authentication|issuer|authorization endpoint|registration endpoint|token endpoint|account)\b/,
+    /\b(validated config|validated configuration|server config|configuration|config|preserve|expose|optional object|public interface)\b/
+  ]) >= 2;
 }
 
 function isBackendParityTask(normalized: string, candidates: CandidateFeatures[]): boolean {

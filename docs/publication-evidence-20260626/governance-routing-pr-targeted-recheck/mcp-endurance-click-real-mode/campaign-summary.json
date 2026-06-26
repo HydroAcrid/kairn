@@ -1,0 +1,111 @@
+{
+  "id": "governance-pr-mcp-endurance-click-20260626",
+  "name": "Governance PR MCP Endurance Click Check",
+  "generatedAt": "2026-06-26T15:44:40.892Z",
+  "manifestPath": "campaign-manifest.json",
+  "outDir": ".",
+  "stage": "live",
+  "dryRun": false,
+  "parallel": 3,
+  "paused": false,
+  "pauseReasons": [],
+  "artifacts": [
+    {
+      "entryId": "mcp-endurance-click",
+      "kind": "endurance",
+      "stage": "live",
+      "status": "passed",
+      "tags": [
+        "mcp",
+        "real_mcp_first",
+        "endurance",
+        "python"
+      ],
+      "startedAt": "2026-06-26T15:27:45.949Z",
+      "endedAt": "2026-06-26T15:44:40.891Z",
+      "artifactPath": "raw/mcp-endurance-click.json",
+      "workerPacketPath": "worker-packets/mcp-endurance-click.json",
+      "commands": [],
+      "classifications": [
+        "clean_passpass",
+        "mcp_useful_attribution"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": true,
+        "cleanPassPass": true,
+        "tokenRegression": false,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 1,
+        "mcpUsefulAttribution": 1,
+        "elapsedMs": 1014942,
+        "observedTokens": 87443,
+        "baselineTokens": 209289,
+        "savedTokens": 121846,
+        "savingsRate": 0.5821901772190607
+      }
+    }
+  ],
+  "rows": [
+    {
+      "entryId": "mcp-endurance-click",
+      "kind": "endurance",
+      "stage": "live",
+      "status": "passed",
+      "tags": "mcp;real_mcp_first;endurance;python",
+      "qualityPassed": true,
+      "observedTokens": 87443,
+      "baselineTokens": 209289,
+      "savedTokens": 121846,
+      "savingsRate": 0.5821901772190607,
+      "cleanPassPass": true,
+      "tokenRegression": false,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 1,
+      "mcpUsefulAttribution": 1,
+      "classifications": "clean_passpass;mcp_useful_attribution",
+      "elapsedMs": 1014942
+    }
+  ],
+  "aggregate": {
+    "entries": 1,
+    "completedEntries": 1,
+    "failedEntries": 0,
+    "qualityPassRate": 1,
+    "cleanPassPassRows": 1,
+    "tokenRegressionRows": 0,
+    "passiveTokenRegressionRows": 0,
+    "qualityRescueRows": 0,
+    "harmfulRows": 0,
+    "scopeViolations": 0,
+    "mcpCalls": 1,
+    "mcpUsefulAttribution": 1,
+    "medianSavedTokens": 121846,
+    "medianSavingsRate": 0.5821901772190607,
+    "medianElapsedMsByStage": {
+      "live": 1014942
+    },
+    "repeatedFailureClasses": [],
+    "pauseRuleStatus": {
+      "paused": false,
+      "reasons": []
+    }
+  },
+  "outputs": {
+    "manifestPath": "campaign-manifest.json",
+    "summaryPath": "campaign-summary.json",
+    "resultsCsvPath": "results.csv",
+    "failuresCsvPath": "failures.csv",
+    "proxyResultsCsvPath": "proxy-results.csv",
+    "workerPacketsDir": "worker-packets",
+    "rawDir": "raw",
+    "workDir": "work",
+    "baselineCacheDir": "baseline-cache"
+  }
+}

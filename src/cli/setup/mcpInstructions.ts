@@ -19,9 +19,9 @@ export function writeMcpInstructionsSetup(input: { root: string; mode?: "mcp-fir
       : [
           "- For broad, unclear, multi-file, or cross-module tasks, call `kairn_prepare_task` before broad file scans.",
           "- For diagnose, investigate, audit, or trace tasks that do not name an exact production path, call `kairn_prepare_task` once before broad/manual source reads.",
-          "- For cheap one-shot source fixes, work normally first. Examples: the prompt names one behavior, asks to fix production source, and says not to edit unrelated files.",
-          "- Do not call Kairn solely because a prompt says debug, failing, failure, or regression when the task is otherwise a small one-source fix.",
-          "- For exact-file, exact-symbol, or obviously small tasks, work normally unless targeted search fails or the task broadens.",
+          "- For cheap one-shot source fixes, work normally first only when the prompt names an exact production file, exact symbol, or exact command owner.",
+          "- Do not skip Kairn merely because a task feels small; if the source path is not named and the task is diagnose/source-rescue/failure-driven, call `kairn_prepare_task` once.",
+          "- For exact-file or exact-symbol tasks, work normally unless targeted search fails, a check fails, or the task broadens.",
           "- For real command/test failure output, call `kairn_get_failure_context` once before broad debugging searches."
         ]),
     ...(mode === "hybrid"

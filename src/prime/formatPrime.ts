@@ -7,10 +7,18 @@ import type { PrimeProfileLimits, ResolvedPrimeProfile } from "./quality.js";
 export type OfficialGuardrailVariant =
   | "compact_official"
   | "semantic_official"
+  | "topic_ordering_compact"
   | "paired_contract_compact"
+  | "benchmark_generator_compact"
+  | "collection_name_validation_compact"
+  | "execution_state_migration_compact"
+  | "grpc_error_policy_compact"
+  | "http_auth_policy_compact"
   | "request_body_form_compact"
+  | "discovery_config_compact"
   | "package_source_mapping_compact"
   | "lifecycle_policy_compact"
+  | "plugin_activation_validation_compact"
   | "frontend_owner_map_compact";
 
 export function formatPrimeContext(input: {
@@ -253,6 +261,10 @@ export function formatShrunkPrimeContext(input: {
   const topFileLimit = input.files && input.files.length > 1
     ? isUiFeedbackMultiSurfaceTask(input.task)
       ? 5
+      : isExecutionStateMigrationTask(input.task)
+      ? 3
+      : isPluginActivationValidationTask(input.task)
+      ? 4
       : 2
     : 1;
   const topFiles = candidateFiles.slice(0, topFileLimit);
@@ -275,10 +287,18 @@ export function formatShrunkPrimeContext(input: {
       };
       const variant = officialGuardrailVariantFor(guardrailInput);
       if (variant === "compact_official") return formatCompactOfficialGuardrail(guardrailInput);
+      if (variant === "topic_ordering_compact") return formatTopicOrderingOfficialGuardrail(guardrailInput);
+      if (variant === "benchmark_generator_compact") return formatBenchmarkGeneratorOfficialGuardrail(guardrailInput);
       if (variant === "paired_contract_compact") return formatPairedContractOfficialGuardrail(guardrailInput);
+      if (variant === "collection_name_validation_compact") return formatCollectionNameValidationOfficialGuardrail(guardrailInput);
+      if (variant === "execution_state_migration_compact") return formatExecutionStateMigrationOfficialGuardrail(guardrailInput);
+      if (variant === "grpc_error_policy_compact") return formatGrpcErrorPolicyOfficialGuardrail(guardrailInput);
+      if (variant === "http_auth_policy_compact") return formatHttpAuthPolicyOfficialGuardrail(guardrailInput);
       if (variant === "request_body_form_compact") return formatRequestBodyFormOfficialGuardrail(guardrailInput);
+      if (variant === "discovery_config_compact") return formatDiscoveryConfigOfficialGuardrail(guardrailInput);
       if (variant === "package_source_mapping_compact") return formatPackageSourceMappingOfficialGuardrail(guardrailInput);
       if (variant === "lifecycle_policy_compact") return formatLifecyclePolicyOfficialGuardrail(guardrailInput);
+      if (variant === "plugin_activation_validation_compact") return formatPluginActivationValidationOfficialGuardrail(guardrailInput);
       if (variant === "frontend_owner_map_compact") return formatFrontendOwnerMapOfficialGuardrail(guardrailInput);
       return formatSemanticOfficialGuardrail(guardrailInput);
     }
@@ -324,6 +344,8 @@ export function formatShrunkPrimeContext(input: {
     additionalTopFiles.length > 0
       ? additionalTopFiles.map((file) => `- ${file} - ${primaryReasonForFile(input.context, file)}`).join("\n")
       : "",
+    ...executionStateMigrationDirectiveLines(input.task, topFiles),
+    ...pluginActivationValidationDirectiveLines(input.task, topFiles, input.editScope),
     symbolHints.length > 0 ? `Symbols: ${symbolHints.join(", ")}` : "",
     "",
     ...formatInvariantSections(input.invariants, "Invariant to preserve:", { includeVerification: input.includeVerification ?? multiFileDirective }),
@@ -340,6 +362,36 @@ export function formatShrunkPrimeContext(input: {
     focusedContext
   ].filter(Boolean);
   return fitSectionsToBudget(sections, input.budget);
+}
+
+function executionStateMigrationDirectiveLines(task: string, files: string[]): string[] {
+  if (!isExecutionStateMigrationTask(task) || files.length < 2) return [];
+  const ownerFiles = files.filter(isExecutionStateOwnerFile);
+  const consumerFiles = files.filter((file) => !isExecutionStateOwnerFile(file));
+  return [
+    "Required migration edits: patch the state owner and every listed strategy/executor consumer; owner-only enum changes are incomplete.",
+    ownerFiles.length > 0 ? `State owner: ${ownerFiles.join(", ")}` : "",
+    consumerFiles.length > 0 ? `Consumer surfaces: ${consumerFiles.join(", ")}` : "",
+    "Do not stop after adding enums/metaclass compatibility; update consumer comparisons and assignments in the same patch."
+  ].filter(Boolean);
+}
+
+function pluginActivationValidationDirectiveLines(task: string, files: string[], editScope: EditScopeDecision | undefined): string[] {
+  if (!isPluginActivationValidationTask(task) || files.length < 2) return [];
+  const editableFiles = uniquePaths(editScope?.strictBoundary && editScope.initialEditFiles.length > 0 ? editScope.initialEditFiles : files);
+  const readOnlyFiles = files.filter((file) => !editableFiles.includes(file));
+  const ownerFiles = editableFiles.filter(isPluginActivationOwnerFile);
+  const consumerFiles = editableFiles.filter((file) => !isPluginActivationOwnerFile(file));
+  const readOnlyConsumers = readOnlyFiles.filter((file) => !isPluginActivationOwnerFile(file));
+  return [
+    "Required activation validation edits: final diff must touch every editable activation owner/client/flag surface in scope.",
+    ownerFiles.length > 0 ? `Activation owner: ${ownerFiles.join(", ")}` : "",
+    consumerFiles.length > 0 ? `Editable client/flag consumers: ${consumerFiles.join(", ")}` : "",
+    readOnlyConsumers.length > 0 ? `Read-only activation consumers: ${readOnlyConsumers.join(", ")}; use them to verify the contract, not as edit targets.` : "",
+    consumerFiles.length > 0
+      ? "Do not stop after server-side plugin validation; server-only or owner-only activation validation is incomplete."
+      : "Do not edit read-only consumers; if validation cannot be completed in the editable scope, report the missing edit evidence."
+  ].filter(Boolean);
 }
 
 function formatCompactOfficialGuardrail(input: {
@@ -403,19 +455,27 @@ function formatPairedContractOfficialGuardrail(input: {
   const readOnly = input.editScope?.readOnlyFiles.slice(0, 2) ?? [];
   const invariant = input.invariants?.[0];
   const backendParity = isDatastoreBackendParityTask(input.task);
+  const databaseFailover = isDatabaseFailoverTask(input.task);
+  const editFileList = databaseFailover ? sortDatabaseFailoverDirectiveFiles(editFiles) : editFiles;
+  const fileRole = databaseFailover ? databaseFailoverRole : officialFileRole;
   const sections = [
     "# Kairn Paired Scope",
     `Task: ${compactTaskLine(input.task, 42)}`,
     backendParity
       ? "Action: apply the same collection-operation behavior across every datastore backend surface listed below."
+      : databaseFailover
+      ? "Action: patch every required database failover surface; a type/proxy-only patch is incomplete."
       : "Action: patch only the command/contract surfaces below; do not expand to backend/storage helpers unless the prompt names them.",
     editFiles.length > 0
       ? backendParity
-        ? `Required backend edits: ${editFiles.map((file) => `${file} (${officialFileRole(file)})`).join(", ")}`
-        : `Edit scope: ${editFiles.map((file) => `${file} (${officialFileRole(file)})`).join(", ")}`
+        ? `Required backend edits: ${editFileList.map((file) => `${file} (${fileRole(file)})`).join(", ")}`
+        : databaseFailover
+        ? ["Required diff checklist:", ...editFileList.map((file) => `- ${file}: ${fileRole(file)}`)].join("\n")
+        : `Edit scope: ${editFileList.map((file) => `${file} (${fileRole(file)})`).join(", ")}`
       : backendParity
         ? "Required backend edits: every datastore backend surface implementing this operation."
         : "Edit scope: the official production source surfaces.",
+    databaseFailover ? "Completion: before submitting, changed files must include every checklist path unless new evidence proves one is unnecessary." : "",
     invariant ? `Invariant: ${truncateToBudget(invariant.statement, 42)}` : "",
     backendParity ? "Backend parity: patch every listed backend; do not stop after only the first backend passes locally." : "",
     configOrderingGuardrail(input.task),
@@ -423,7 +483,322 @@ function formatPairedContractOfficialGuardrail(input: {
     readOnly.length > 0 ? `Read-only check: ${readOnly.join(", ")}` : "Verify with the narrowest relevant check.",
     "If a different production file appears necessary, stop and report the missing evidence."
   ];
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, databaseFailover ? 280 : 240));
+}
+
+function formatBenchmarkGeneratorOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const editFiles = sortBenchmarkGeneratorDirectiveFiles(officialEditFiles(input)).slice(0, 5);
+  const coreFiles = benchmarkGeneratorCoreFiles(editFiles).slice(0, 2);
+  const wiringFiles = editFiles
+    .filter((file) => !coreFiles.includes(file))
+    .filter((file) => coreFiles.length === 0 || !isGenericBenchmarkRegistryFile(file))
+    .slice(0, 3);
+  const readOnly = input.editScope?.readOnlyFiles.slice(0, 2) ?? [];
+  const invariant = input.invariants?.[0];
+  const sections = [
+    "# Kairn Benchmark Generator Scope",
+    `Task: ${compactTaskLine(input.task, 42)}`,
+    "Action: edit the core generator now. Do not spend the first pass analyzing registration surfaces.",
+    coreFiles.length > 0
+      ? `Core edit now: ${coreFiles.map((file) => `${file} (${officialFileRole(file)})`).join(", ")}`
+      : "Core edit now: the production benchmark generator implementation.",
+    wiringFiles.length > 0
+      ? `Wire only after core implementation: ${wiringFiles.map((file) => `${file} (${officialFileRole(file)})`).join(", ")}`
+      : "",
+    invariant ? `Invariant: ${truncateToBudget(invariant.statement, 42)}` : "",
+    "Boundary: no tests, docs, examples, generated files, or unrelated command surfaces.",
+    readOnly.length > 0 ? `Read-only check: ${readOnly.join(", ")}` : "Verify with the narrowest benchmark/unit check.",
+    "If time is tight, leave a correct core generator patch rather than no patch."
+  ];
   return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 240));
+}
+
+function sortBenchmarkGeneratorDirectiveFiles(files: string[]): string[] {
+  return [...files].sort((left, right) => benchmarkGeneratorFileRank(left) - benchmarkGeneratorFileRank(right));
+}
+
+function benchmarkGeneratorCoreFiles(files: string[]): string[] {
+  const sorted = sortBenchmarkGeneratorDirectiveFiles(files);
+  const namedGeneratorFiles = sorted.filter((file) => {
+    const normalized = file.toLowerCase();
+    const basename = normalized.split("/").at(-1) ?? normalized;
+    return /\/benchmark\/.*\.(?:[cm]?[jt]sx?|pyi?|go|java|kt|kts|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|rb|php|cs)$/.test(normalized) &&
+      !isGenericBenchmarkRegistryBasename(basename);
+  });
+  if (namedGeneratorFiles.length > 0) return namedGeneratorFiles;
+  const benchmarkFiles = sorted.filter((file) => /\/benchmark\/.*\.(?:[cm]?[jt]sx?|pyi?|go|java|kt|kts|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|rb|php|cs)$/.test(file.toLowerCase()));
+  return benchmarkFiles.length > 0 ? benchmarkFiles : sorted.slice(0, 1);
+}
+
+function benchmarkGeneratorFileRank(filePath: string): number {
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1) ?? normalized;
+  if (/\/benchmark\/.*\.(?:[cm]?[jt]sx?|pyi?|go|java|kt|kts|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|rb|php|cs)$/.test(normalized)) {
+    if (isGenericBenchmarkRegistryBasename(basename)) return 1;
+    return 0;
+  }
+  if (/(^|\/)(client|api|sdk)\//.test(normalized) || /\/client\//.test(normalized)) return 2;
+  if (/(^|\/)(cmd|cli|tool|tools|bin)\//.test(normalized) || /\/(cmd|cli|tool|tools|bin)\//.test(normalized)) return 3;
+  return 4;
+}
+
+function isGenericBenchmarkRegistryFile(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1) ?? normalized;
+  return /\/benchmark\/.*\.(?:[cm]?[jt]sx?|pyi?|go|java|kt|kts|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|rb|php|cs)$/.test(normalized) &&
+    isGenericBenchmarkRegistryBasename(basename);
+}
+
+function isGenericBenchmarkRegistryBasename(basename: string): boolean {
+  return /^(benchmark|benchmarks|index|registry|register|main)\./.test(basename);
+}
+
+function formatCollectionNameValidationOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const editFiles = officialEditFiles(input).slice(0, 2);
+  const invariant = input.invariants?.[0];
+  const sections = [
+    "# Kairn Collection Scope",
+    editFiles.length > 0 ? `Start scope: ${editFiles.join(", ")}` : "Start with the collection-name validation surfaces.",
+    invariant
+      ? `Rule: ${truncateToBudget(invariant.statement, 34)}`
+      : "Rule: reject Python reserved keywords in namespace or collection name; preserve existing invalid-name rejection.",
+    "Patch the smallest necessary validation surface first; touch its companion only if the contract requires it.",
+    "Boundary: no helpers, tests, docs, examples, generated files, or sibling source.",
+    "Need another file? Report evidence first."
+  ];
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 150));
+}
+
+function formatExecutionStateMigrationOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const editFiles = sortExecutionStateMigrationDirectiveFiles(officialEditFiles(input)).slice(0, 5);
+  const invariant = input.invariants?.[0];
+  const ownerFiles = editFiles.filter(isExecutionStateOwnerFile);
+  const consumerFiles = editFiles.filter((file) => !isExecutionStateOwnerFile(file));
+  const sections = [
+    "# Kairn State Migration Scope",
+    "Required edit surfaces: patch the state owner and every listed consumer surface; owner-only enum changes are incomplete.",
+    ownerFiles.length > 0
+      ? `State owner: ${ownerFiles.map((file) => `${file} (${executionStateMigrationRole(file)})`).join(", ")}`
+      : "State owner: the file defining the public state representation.",
+    consumerFiles.length > 0
+      ? `Required consumers: ${consumerFiles.map((file) => `${file} (${executionStateMigrationRole(file)})`).join(", ")}`
+      : "Required consumers: every strategy/executor surface that compares or assigns the migrated state.",
+    invariant
+      ? `Rule: ${truncateToBudget(invariant.statement, 40)}`
+      : "Rule: preserve behavior while moving comparisons, assignments, display, and compatibility shims to the new state type.",
+    "Do not stop after adding enums/metaclass compatibility; update the consumer comparisons and assignments in the same patch.",
+    "Boundary: no tests, docs, examples, generated files, or unrelated strategy plugins.",
+    "Need another file? Report evidence first."
+  ];
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 260));
+}
+
+function sortExecutionStateMigrationDirectiveFiles(files: string[]): string[] {
+  return [...files].sort((left, right) => executionStateMigrationFileRank(left) - executionStateMigrationFileRank(right));
+}
+
+function executionStateMigrationFileRank(filePath: string): number {
+  const normalized = filePath.toLowerCase();
+  if (isExecutionStateOwnerFile(normalized)) return 0;
+  if (/(^|\/)strategy\/__init__\.(?:py|[cm]?[jt]sx?|go|rs|rb|php|java|kt|cs)$/.test(normalized)) return 1;
+  if (/(^|\/)strategy\/linear\.(?:py|[cm]?[jt]sx?|go|rs|rb|php|java|kt|cs)$/.test(normalized)) return 2;
+  if (/(^|\/)(strategy|strategies|executor|executors)\//.test(normalized)) return 3;
+  return 4;
+}
+
+function isExecutionStateOwnerFile(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  return /\b(play_iterator|playiterator|host_state|hoststate|state_machine|statemachine|iterator)\b/.test(normalized);
+}
+
+function executionStateMigrationRole(filePath: string): string {
+  const normalized = filePath.toLowerCase();
+  if (isExecutionStateOwnerFile(normalized)) return "state owner";
+  if (/(^|\/)strategy\/__init__\./.test(normalized)) return "strategy state consumer";
+  if (/(^|\/)strategy\/linear\./.test(normalized)) return "linear strategy consumer";
+  if (/(^|\/)(strategy|strategies)\//.test(normalized)) return "strategy consumer";
+  if (/(^|\/)(executor|executors)\//.test(normalized)) return "executor consumer";
+  return officialFileRole(filePath);
+}
+
+function formatPluginActivationValidationOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const editFiles = sortPluginActivationDirectiveFiles(officialEditFiles(input)).slice(0, 5);
+  const invariant = input.invariants?.[0];
+  const checklist = editFiles.map((file) => `- ${file}: ${pluginActivationChecklistAction(file)}`);
+  const sections = [
+    "# Kairn Plugin Activation Scope",
+    "Required diff checklist:",
+    checklist.length > 0 ? checklist.join("\n") : "- Every editable activation owner/client/flag surface in the strict scope.",
+    invariant
+      ? `Rule: ${truncateToBudget(invariant.statement, 40)}`
+      : "Rule: reject malformed plugin identifiers everywhere activation can be triggered.",
+    "Completion: final diff must touch every checklist path; server-only or owner-only validation is incomplete.",
+    "Boundary: no tests, docs, examples, generated files, unrelated topic/post surfaces, or plugin metadata lists.",
+    "Need another file? Report evidence first."
+  ];
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 300));
+}
+
+function sortPluginActivationDirectiveFiles(files: string[]): string[] {
+  return [...files].sort((left, right) => pluginActivationFileRank(left) - pluginActivationFileRank(right));
+}
+
+function pluginActivationFileRank(filePath: string): number {
+  const normalized = filePath.toLowerCase();
+  if (isPluginActivationOwnerFile(normalized)) return 0;
+  if (/\/flags\.(?:[cm]?[jt]sx?|py|go|rs|rb|php|java|kt|cs)$/.test(normalized)) return 1;
+  if (/\/client\/topic\.(?:[cm]?[jt]sx?|py|go|rs|rb|php|java|kt|cs)$/.test(normalized)) return 2;
+  if (/(^|\/)(public|client|ui|frontend)\//.test(normalized)) return 3;
+  return 4;
+}
+
+function isPluginActivationOwnerFile(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  return /\/plugins\/install\.(?:[cm]?[jt]sx?|py|go|rs|rb|php|java|kt|cs)$/.test(normalized) ||
+    /\/socket\.io\/admin\/plugins\.(?:[cm]?[jt]sx?|py|go|rs|rb|php|java|kt|cs)$/.test(normalized);
+}
+
+function pluginActivationRole(filePath: string): string {
+  const normalized = filePath.toLowerCase();
+  if (isPluginActivationOwnerFile(normalized)) return "activation owner";
+  if (/\/flags\./.test(normalized)) return "feature flag consumer";
+  if (/\/client\/topic\./.test(normalized)) return "client activation consumer";
+  if (/(^|\/)(public|client|ui|frontend)\//.test(normalized)) return "client consumer";
+  return officialFileRole(filePath);
+}
+
+function pluginActivationChecklistAction(filePath: string): string {
+  const normalized = filePath.toLowerCase();
+  if (isPluginActivationOwnerFile(normalized)) return "validate plugin id before activation state changes";
+  if (/\/flags\./.test(normalized)) return "carry the invalid-plugin-id validation/error contract through flag activation helpers";
+  if (/\/client\/topic\./.test(normalized)) return "carry the invalid-plugin-id validation/error contract through client activation";
+  if (/(^|\/)(public|client|ui|frontend)\//.test(normalized)) return "carry the invalid-plugin-id validation/error contract through client activation";
+  return `${pluginActivationRole(filePath)} validation surface`;
+}
+
+function formatTopicOrderingOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const editFiles = sortTopicOrderingDirectiveFiles(officialEditFiles(input)).slice(0, 4);
+  const invariant = input.invariants?.[0];
+  const sections = [
+    "# Kairn Topic Ordering Scope",
+    editFiles.length > 0
+      ? `Start scope: ${editFiles.map((file) => `${file} (${topicOrderingRole(file)})`).join(", ")}`
+      : "Start with the pinned-topic owner surfaces.",
+    invariant
+      ? `Rule: ${truncateToBudget(invariant.statement, 36)}`
+      : "Rule: preserve authorization, category isolation, no-op behavior, and deterministic pinned-topic order.",
+    "Patch the primary owner first; touch client/socket companions only when behavior crosses that boundary.",
+    "Boundary: no tests, account/topic-page shells, docs, generated files, or unrelated topic surfaces.",
+    "Need another file? Report evidence first."
+  ];
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 170));
+}
+
+function sortTopicOrderingDirectiveFiles(files: string[]): string[] {
+  return [...files].sort((left, right) => topicOrderingFileRank(left) - topicOrderingFileRank(right));
+}
+
+function topicOrderingFileRank(filePath: string): number {
+  const normalized = filePath.toLowerCase();
+  if (/src\/topics\/tools\.[cm]?[jt]s$/.test(normalized)) return 0;
+  if (/src\/socket\.io\/topics\/tools\.[cm]?[jt]s$/.test(normalized)) return 1;
+  if (/public\/src\/client\/category\/tools\.[cm]?[jt]s$/.test(normalized)) return 2;
+  if (/category\/tools\.[cm]?[jt]s$/.test(normalized)) return 3;
+  return 4;
+}
+
+function topicOrderingRole(filePath: string): string {
+  const normalized = filePath.toLowerCase();
+  if (/src\/topics\/tools\.[cm]?[jt]s$/.test(normalized)) return "topic order owner";
+  if (/src\/socket\.io\/topics\/tools\.[cm]?[jt]s$/.test(normalized)) return "socket contract";
+  if (/public\/src\/client\/category\/tools\.[cm]?[jt]s$/.test(normalized)) return "client caller";
+  return officialFileRole(filePath);
+}
+
+function formatGrpcErrorPolicyOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const editFiles = sortGrpcPolicyFilesForDirective(officialEditFiles(input)).slice(0, 4);
+  const invariant = input.invariants?.[0];
+  const sections = [
+    "# Kairn gRPC Status Scope",
+    "Required edit surfaces: patch every listed file; middleware is the primary behavior owner.",
+    ...(
+      editFiles.length > 0
+        ? editFiles.map((file) => `- ${file}: ${grpcPolicyAction(file)}`)
+        : [
+            "- gRPC middleware: map wrapped context cancellation/deadline errors to gRPC status codes.",
+            "- auth middleware: propagate context cancellation/deadline errors instead of converting them to auth/internal failures.",
+            "- server wiring: keep the existing middleware chain registered and ordered; do not implement the policy only here."
+          ]
+    ),
+    invariant
+      ? `Rule: ${truncateToBudget(invariant.statement, 38)}`
+      : "Rule: context.Canceled maps to Canceled and context.DeadlineExceeded maps to DeadlineExceeded through auth/gRPC middleware.",
+    "Do not add a new server interceptor as the only fix; update existing middleware behavior first.",
+    "Do not stop after only server wiring or only one middleware; all listed surfaces are required.",
+    "Boundary: no models, storage, tests, docs, examples, generated files, or unrelated source.",
+    "Need another file? Report evidence first."
+  ];
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 250));
+}
+
+function formatHttpAuthPolicyOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const editFiles = sortHttpAuthPolicyDirectiveFiles(officialEditFiles(input)).slice(0, 5);
+  const invariant = input.invariants?.[0];
+  const sections = [
+    "# Kairn HTTP Auth Scope",
+    "Required edit surfaces: carry the same netrc/auth setting through every listed request entrypoint.",
+    editFiles.length > 0
+      ? editFiles.map((file) => `- ${file}: ${httpAuthPolicyAction(file)}`).join("\n")
+      : "- Request utility plus each module/plugin entrypoint that exposes the option.",
+    invariant
+      ? `Rule: ${truncateToBudget(invariant.statement, 34)}`
+      : "Rule: explicit Authorization headers must remain usable; netrc stays opt-in/out through the request stack.",
+    "Boundary: no action plugins, tests, docs, examples, generic URL/date helpers, or unrelated module utilities unless directly named.",
+    "Need another file? Report evidence first."
+  ];
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 210));
 }
 
 function formatRequestBodyFormOfficialGuardrail(input: {
@@ -435,21 +810,37 @@ function formatRequestBodyFormOfficialGuardrail(input: {
 }): string {
   const editFiles = officialEditFiles(input).slice(0, 4);
   const readOnly = input.editScope?.readOnlyFiles.slice(0, 2) ?? [];
-  const invariant = input.invariants?.[0];
   const sections = [
     "# Kairn Request Scope",
-    `Task: ${compactTaskLine(input.task, 42)}`,
-    "Action: patch only the route/form parser and flattened-data reconstruction surfaces.",
-    editFiles.length > 0 ? `Edit scope: ${editFiles.map((file) => `${file} (${requestBodyFormRole(file)})`).join(", ")}` : "Edit scope: the official request/form reconstruction source surfaces.",
-    invariant ? `Invariant: ${truncateToBudget(invariant.statement, 58)}` : "Invariant: body data wins over query string data, ordered duplicate keys are preserved until reconstruction, and later simple-key assignments win.",
-    "Precedence: body data wins over query string data; do not merge URL query parameters into body submissions.",
-    "Body parsing: keep request-body fields as ordered pairs until unflattening; do not coerce the body into an unordered dict/storage first.",
-    "Defaults: fill only missing keys that are not ancestors of provided nested/indexed keys.",
-    "Boundary: no tests, docs, examples, generated files, models, or sibling utilities outside the edit scope.",
-    readOnly.length > 0 ? `Read-only check: ${readOnly.join(", ")}` : "Verify with the narrowest relevant request/form check.",
-    "If a different production file appears necessary, stop and report the missing evidence."
+    editFiles.length > 0 ? `Edit only: ${editFiles.map((file) => `${file} (${requestBodyFormRole(file)})`).join(", ")}` : "Edit only the request handler and reconstruction utility.",
+    "Rules: body wins over query; preserve pair order; defaults only fill absent non-ancestor keys; later duplicate keys win.",
+    "Boundary: no tests, models, admin, docs, generated, or sibling utilities.",
+    readOnly.length > 0 ? `Verify read-only: ${readOnly.join(", ")}` : "Verify with the narrowest request/form check.",
+    "Need another file? Report evidence first."
   ];
-  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 280));
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 150));
+}
+
+function formatDiscoveryConfigOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const editFiles = officialEditFiles(input).slice(0, 4);
+  const readOnly = input.editScope?.readOnlyFiles.slice(0, 2) ?? [];
+  const sections = [
+    "# Kairn Discovery Scope",
+    editFiles.length > 0
+      ? `Edit both: ${editFiles.map((file) => `${file} (${discoveryConfigRole(file)})`).join(", ")}`
+      : "Edit both the discovery parser and validated server config contract.",
+    "Rule: preserve delegated auth / m.authentication metadata through validated server configuration.",
+    "Boundary: no settings UI, tests, docs, generated files, or unrelated discovery surfaces.",
+    readOnly.length > 0 ? `Verify read-only: ${readOnly.join(", ")}` : "Verify with the narrowest discovery/config check.",
+    "Need another file? Report evidence first."
+  ];
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 170));
 }
 
 function formatPackageSourceMappingOfficialGuardrail(input: {
@@ -534,6 +925,26 @@ function isUiFeedbackMultiSurfaceTask(task: string): boolean {
   );
 }
 
+function isExecutionStateMigrationTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  const stateTerms =
+    /\b(playiterator|play iterator|hoststate|host state|run_state|run state|fail_state|failure state|execution state|iterator state|state representation|strategy plugin|strategy plugins)\b/.test(normalized) ||
+    /\b(iteratingstates|failedstates|iterating_tasks|iterating_setup|failed_setup|failed_tasks)\b/.test(normalized);
+  const migrationTerms =
+    /\b(enum|enums|enumeration|intenum|intflag|public type|public representation|namespaced|legacy constants?|deprecated constants?|deprecation warning|backward compatibility|third-party|strategy\/linear|strategy\/__init__|metaclass|attribute access|string output)\b/.test(normalized);
+  const behaviorTerms =
+    /\b(preserve|redirect|emit|warn|compare|transition|assignment|bitwise|combinable|state descriptions?|readable state names?)\b/.test(normalized);
+  return stateTerms && migrationTerms && behaviorTerms;
+}
+
+function isPluginActivationValidationTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  const pluginTerms = /\b(plugin|plugins|plugin id|plugin identifier|plugin identifiers|package name)\b/.test(normalized);
+  const activationTerms = /\b(activate|activation|toggleactive|toggle active|deactivate|admin\.plugins\.toggleactive)\b/.test(normalized);
+  const validationTerms = /\b(validate|validation|valid|invalid|malformed|whitespace|special characters?|naming pattern|identifier|invalid-plugin-id)\b/.test(normalized);
+  return pluginTerms && activationTerms && validationTerms;
+}
+
 function configOrderingGuardrail(task: string): string {
   const normalized = task.toLowerCase();
   const configTask =
@@ -553,10 +964,20 @@ export function officialGuardrailVariantFor(input: {
     ...input.files,
     ...(input.editScope?.initialEditFiles ?? [])
   ]);
+  if (isDiscoveryConfigTask(input.task) && editFiles.length > 1) return "discovery_config_compact";
   if (isLifecyclePolicyTask(input.task)) return "lifecycle_policy_compact";
   if (isUiFeedbackMultiSurfaceTask(input.task)) return "frontend_owner_map_compact";
+  if (isTopicOrderingTask(input.task) && editFiles.length > 1) return "topic_ordering_compact";
+  if (isCollectionNameValidationTask(input.task) && editFiles.length > 1) return "collection_name_validation_compact";
+  if (isExecutionStateMigrationTask(input.task) && editFiles.length > 1) return "execution_state_migration_compact";
+  if (isGrpcErrorPolicyTask(input.task) && editFiles.length > 1) return "grpc_error_policy_compact";
+  if (isHttpAuthPolicyTask(input.task) && editFiles.length > 1) return "http_auth_policy_compact";
   if (isRequestBodyFormTask(input.task) && editFiles.length > 1) return "request_body_form_compact";
+  if (isConverterOutputTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
+  if (isBenchmarkGeneratorTask(input.task) && editFiles.length > 1) return "benchmark_generator_compact";
+  if (isDatabaseFailoverTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
   if (isPackageSourceMappingTask(input.task) && editFiles.length > 1) return "package_source_mapping_compact";
+  if (isPluginActivationValidationTask(input.task) && editFiles.length > 1) return "plugin_activation_validation_compact";
   if (isDatastoreBackendParityTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
   if (isPairedContractTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
   if (editFiles.length > 1 && isRequirementHeavyMultiSurfaceTask(input.task)) return "paired_contract_compact";
@@ -569,15 +990,42 @@ function officialEditFiles(input: {
   files: string[];
   editScope: EditScopeDecision | undefined;
 }): string[] {
+  if (input.editScope?.strictBoundary === true && input.editScope.initialEditFiles.length > 0) {
+    return uniquePaths(input.editScope.initialEditFiles).filter(isOfficialProductionEditFile);
+  }
   return uniquePaths([
     ...input.files,
     ...(input.editScope?.initialEditFiles ?? [])
-  ]);
+  ]).filter(isOfficialProductionEditFile);
+}
+
+function isOfficialProductionEditFile(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  if (/(^|\/)(tests?|testing|__tests__|spec|specs|fixtures?|testdata)\//.test(normalized)) return false;
+  if (/\.(test|spec)\.[cm]?[jt]sx?$/.test(normalized)) return false;
+  if (/(_test|_spec|_tests)\.(py|go|rb|cc|cpp|cxx|c|hpp|hh|hxx)$/.test(normalized)) return false;
+  if (/(test|tests)\.java$/.test(normalized.split("/").at(-1) ?? "")) return false;
+  return true;
 }
 
 function isPairedContractTask(task: string): boolean {
   const normalized = task.toLowerCase();
   return /\b(command|commands?|cli|flag|flags|argument|arguments|args?|namespace|namespaces|variant|variants|sorting|sort|export|exports?|startup|runtime option|configuration|config|setting|settings|schema|session renewal|renew(?:ing)? session|websession|web session|certificate|access request)\b/.test(normalized);
+}
+
+function isTopicOrderingTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  return /\b(topic|topics)\b/.test(normalized) &&
+    /\b(pin|pinned|unpin|unpinned)\b/.test(normalized) &&
+    /\b(order|ordering|reorder|reordering|position|relative)\b/.test(normalized);
+}
+
+function isDatabaseFailoverTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  const databaseTerms = /\b(database|databases|db)\b/.test(normalized);
+  const serviceTerms = /\b(service|services|server|servers|databaseserver|database server|database service)\b/.test(normalized);
+  const failoverTerms = /\b(ha|high availability|failover|candidate|candidates|retry|shuffle|randomi[sz]e|offline tunnel|tunnel outage|reachable|unreachable|deduplicate|dedupe|same-name|same name|hostid|serverid|proxy context|tsh db ls)\b/.test(normalized);
+  return databaseTerms && serviceTerms && failoverTerms;
 }
 
 function isRequestBodyFormTask(task: string): boolean {
@@ -586,10 +1034,133 @@ function isRequestBodyFormTask(task: string): boolean {
     /\b(post|form|body|request|endpoint|route|handler|seeds?|defaults?)\b/.test(normalized);
 }
 
+function isCollectionNameValidationTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  const validationTerms = /\b(validat(?:e|es|ed|ing|ion)|invalid|reject|accept|allowed?)\b/.test(normalized);
+  const collectionTerms = /\b(collection names?|fqcn|fully qualified collection name|namespace\.collection|namespace|reserved keyword|python keyword|keyword)\b/.test(normalized);
+  const packageSourceTerms = /\b(source packages?|binary packages?|src packages?|package source|source package associations?|oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?)\b/.test(normalized);
+  return validationTerms && collectionTerms && !packageSourceTerms;
+}
+
+function isBenchmarkGeneratorTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  const benchmarkTerms = /\b(benchmark|benchmarks|benchmarking|performance benchmark|load test|request rate|requests per second|rps)\b/.test(normalized);
+  const generatorTerms = /\b(generator|generate|sequence|progression|linear|lower bound|upper bound|step size|minimum measurements|minimum window|getbenchmark|configuration|configurations)\b/.test(normalized);
+  return benchmarkTerms && generatorTerms;
+}
+
+function isGrpcErrorPolicyTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  const grpcTerms = /\b(grpc|rpc|status code|status codes|code canceled|code deadlineexceeded|deadline exceeded|unauthenticated|internal)\b/.test(normalized);
+  const contextTerms = /\b(context\.canceled|context canceled|cancelled context|canceled context|context cancellation|context timeout|context\.deadlineexceeded|deadline exceeded|timeout|cancelled|canceled)\b/.test(normalized);
+  const policyTerms = /\b(classif(?:y|ied|ication)|map|mapping|return|respond|propagate|convert|middleware|auth(?:entication)?|server)\b/.test(normalized);
+  return grpcTerms && contextTerms && policyTerms;
+}
+
+function isHttpAuthPolicyTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  const authTerms = /\b(netrc|\.netrc|authorization header|authorization|bearer|basic auth|basic authentication|credentials)\b/.test(normalized);
+  const httpTerms = /\b(uri module|uri|get_url|lookup url|open_url|fetch_url|url_get|request\.open|request|http|url|headers?)\b/.test(normalized);
+  const policyTerms = /\b(overwrite|overwrites|override|overrides|overriding|overridden|respect|ignore|use_netrc|netrc usage|parameter|forward|default|enabled|disabled|control)\b/.test(normalized);
+  return authTerms && httpTerms && policyTerms;
+}
+
 function isPackageSourceMappingTask(task: string): boolean {
   const normalized = task.toLowerCase();
-  return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|apk|alpine)\b/.test(normalized) &&
+  if (isNarrowPackageParserTask(normalized)) return false;
+  return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|sourcerpm|source rpm|src\.rpm|rpm|apk|alpine|redhat|rhel|centos)\b/.test(normalized) &&
     /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?)\b/.test(normalized);
+}
+
+function grpcPolicyRole(file: string): string {
+  const normalized = file.toLowerCase();
+  if (/\/cmd\/grpc\./.test(normalized) || /(^|\/)grpc\./.test(normalized)) return "server wiring";
+  if (/\/auth\/middleware\./.test(normalized)) return "auth middleware";
+  if (/\/middleware\/grpc\/middleware\./.test(normalized)) return "grpc middleware";
+  return officialFileRole(file);
+}
+
+function grpcPolicyAction(file: string): string {
+  const role = grpcPolicyRole(file);
+  if (role === "grpc middleware") {
+    return "map wrapped context cancellation/deadline errors to Canceled/DeadlineExceeded before default Internal handling";
+  }
+  if (role === "auth middleware") {
+    return "propagate context cancellation/deadline errors instead of converting them to Unauthenticated/Internal";
+  }
+  if (role === "server wiring") {
+    return "keep/order the existing middleware chain only; do not implement a standalone context interceptor as the fix";
+  }
+  return `${role}; edit only if it owns context cancellation/deadline status policy`;
+}
+
+function grpcPolicyDirectiveRank(file: string): number {
+  const normalized = file.toLowerCase();
+  if (/\/middleware\/grpc\/middleware\./.test(normalized)) return 0;
+  if (/\/auth\/middleware\./.test(normalized)) return 1;
+  if (/\/cmd\/grpc\./.test(normalized) || /(^|\/)grpc\./.test(normalized)) return 2;
+  return 3;
+}
+
+function sortGrpcPolicyFilesForDirective(files: string[]): string[] {
+  return [...files].sort((a, b) => {
+    const rankDelta = grpcPolicyDirectiveRank(a) - grpcPolicyDirectiveRank(b);
+    return rankDelta !== 0 ? rankDelta : a.localeCompare(b);
+  });
+}
+
+function sortHttpAuthPolicyDirectiveFiles(files: string[]): string[] {
+  return [...files].sort((a, b) => {
+    const rankDelta = httpAuthPolicyDirectiveRank(a) - httpAuthPolicyDirectiveRank(b);
+    return rankDelta !== 0 ? rankDelta : a.localeCompare(b);
+  });
+}
+
+function httpAuthPolicyDirectiveRank(file: string): number {
+  const normalized = file.toLowerCase();
+  if (/\/module_utils\/urls\./.test(normalized) || /(^|\/)urls\./.test(normalized)) return 0;
+  if (/\/modules\/uri\./.test(normalized)) return 1;
+  if (/\/modules\/get_url\./.test(normalized)) return 2;
+  if (/\/plugins\/lookup\/url\./.test(normalized)) return 3;
+  if (/\/plugins\/action\/uri\./.test(normalized)) return 8;
+  return 4;
+}
+
+function httpAuthPolicyRole(file: string): string {
+  const normalized = file.toLowerCase();
+  if (/\/module_utils\/urls\./.test(normalized) || /(^|\/)urls\./.test(normalized)) return "request utility";
+  if (/\/modules\/uri\./.test(normalized)) return "uri module";
+  if (/\/modules\/get_url\./.test(normalized)) return "get_url module";
+  if (/\/plugins\/lookup\/url\./.test(normalized)) return "url lookup plugin";
+  if (/\/plugins\/action\/uri\./.test(normalized)) return "uri action plugin";
+  return officialFileRole(file);
+}
+
+function httpAuthPolicyAction(file: string): string {
+  const role = httpAuthPolicyRole(file);
+  if (role === "request utility") return "own and enforce the use_netrc/open_url/fetch_url request contract";
+  if (role === "uri module") return "expose and forward use_netrc without letting netrc override explicit Authorization";
+  if (role === "get_url module") return "forward use_netrc through downloads and checksum requests";
+  if (role === "url lookup plugin") return "forward use_netrc through lookup requests";
+  if (role === "uri action plugin") return "edit only if the prompt explicitly names the action plugin";
+  return `${role}; edit only if it forwards HTTP auth/netrc behavior`;
+}
+
+function isDiscoveryConfigTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  return /\b(discovery|discover|autodiscovery|well[- ]?known|homeserver|server discovery)\b/.test(normalized) &&
+    /\b(config|configuration|validated|validate|delegated|authentication|auth|metadata|contract|m\.authentication)\b/.test(normalized);
+}
+
+function isConverterOutputTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  if (isPackageSourceMappingTask(task)) return false;
+  const converterSignal =
+    /\b(convert|converts|converted|converter|converters|conversion|adapter|adapters)\b/.test(normalized) ||
+    /\b(trivy to vuls|trivy-to-vuls)\b/.test(normalized);
+  const outputSignal =
+    /\b(output|outputs|json|record|records|finding|findings|report|reports|contents?|cve|cves|severity|severities|debian|vuls|trivy)\b/.test(normalized);
+  return converterSignal && outputSignal;
 }
 
 function isDatastoreBackendParityTask(task: string): boolean {
@@ -611,8 +1182,18 @@ function isRequirementHeavyMultiSurfaceTask(task: string): boolean {
 
 function isLifecyclePolicyTask(task: string): boolean {
   const normalized = task.toLowerCase();
+  if (isNarrowPackageParserTask(normalized)) return false;
   return /\b(deprecat(?:e|ed|ion)|removed?_?(?:in|at)|removal|lifecycle|alias|aliases|warning|warnings)\b/.test(normalized) &&
     /\b(date|version|policy|module|plugin|schema|metadata|validate|validation|warn|warning|removed)\b/.test(normalized);
+}
+
+function isNarrowPackageParserTask(normalized: string): boolean {
+  const rpmParserTerms =
+    /\b(sourcerpm|source rpm|src\.rpm|rpm filenames?|source filenames?|splitfilename|parseinstalledpackagesline|epoch)\b/.test(normalized);
+  const scannerTerms = /\b(scanner|package manager|installed packages?|package information|package metadata|redhat|rhel|centos|rpm)\b/.test(normalized);
+  const mappingTerms =
+    /\b(oval|vulnerability matching|binary packages? derive|source package associations?|map binary packages?|package index|upgradable)\b/.test(normalized);
+  return rpmParserTerms && scannerTerms && !mappingTerms;
 }
 
 function isGenericDateUrlHelper(file: string): boolean {
@@ -630,10 +1211,42 @@ function officialFileRole(file: string): string {
   return "source";
 }
 
+function databaseFailoverRole(file: string): string {
+  const normalized = file.toLowerCase();
+  if (/\bdatabaseserver\b/.test(normalized)) return "identity/sort contract";
+  if (/\/srv\/db\/proxyserver\./.test(normalized) || /\/db\/proxyserver\./.test(normalized)) return "proxy retry/shuffle";
+  if (/\/reversetunnel\/fake\./.test(normalized) || /\bfake(?:remote)?site\b/.test(normalized)) return "tunnel failure simulation";
+  if (/(^|\/)tool\/tsh\/db\./.test(normalized) || /\/cli\/.*db\./.test(normalized)) return "CLI/list output";
+  return officialFileRole(file);
+}
+
+function databaseFailoverDirectiveRank(file: string): number {
+  const role = databaseFailoverRole(file);
+  if (role === "identity/sort contract") return 0;
+  if (role === "proxy retry/shuffle") return 1;
+  if (role === "CLI/list output") return 2;
+  if (role === "tunnel failure simulation") return 3;
+  return 4;
+}
+
+function sortDatabaseFailoverDirectiveFiles(files: string[]): string[] {
+  return [...files].sort((a, b) => {
+    const rankDelta = databaseFailoverDirectiveRank(a) - databaseFailoverDirectiveRank(b);
+    return rankDelta !== 0 ? rankDelta : a.localeCompare(b);
+  });
+}
+
 function requestBodyFormRole(file: string): string {
   const normalized = file.toLowerCase();
   if (/\b(list|lists|route|routes|handler|controller|view|views)\b/.test(normalized)) return "route/form handler";
   if (/\b(unflatten|flatten|form|forms|request|utils?)\b/.test(normalized)) return "flattened-data utility";
+  return "source";
+}
+
+function discoveryConfigRole(file: string): string {
+  const normalized = file.toLowerCase();
+  if (/\bvalidated|serverconfig|server_config|config(?:uration)?\b/.test(normalized)) return "validated config contract";
+  if (/\b(auto)?discovery|wellknown|well-known|homeserver\b/.test(normalized)) return "discovery parser";
   return "source";
 }
 

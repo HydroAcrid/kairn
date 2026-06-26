@@ -1452,6 +1452,612 @@ describe("hybridSearch", () => {
     );
   });
 
+  it("routes RPM source package parsing tasks to distro scanner owner over Alpine surfaces", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "scanner/redhatbase.go", "source", "go"),
+      file(rootPath, "scanner/alpine.go", "source", "go"),
+      file(rootPath, "oval/util.go", "source", "go"),
+      file(rootPath, "scanner/scanner.go", "source", "go"),
+      file(rootPath, "oval/alpine.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "scanner/redhatbase.go", "parseInstalledPackagesLine"),
+      symbol(rootPath, "scanner/alpine.go", "parseApkInfo"),
+      symbol(rootPath, "oval/util.go", "matchSourcePackage"),
+      symbol(rootPath, "scanner/scanner.go", "Detect"),
+      symbol(rootPath, "oval/alpine.go", "NewAlpine")
+    ];
+    const chunks = [
+      chunk(rootPath, "scanner/redhatbase.go", "parseInstalledPackagesLine", "RPM SOURCERPM source package src.rpm epoch splitFileName redhat installed package metadata"),
+      chunk(rootPath, "scanner/alpine.go", "parseApkInfo", "Alpine apk list output binary package source package"),
+      chunk(rootPath, "oval/util.go", "matchSourcePackage", "OVAL vulnerability matching source package binary package affected ranges"),
+      chunk(rootPath, "scanner/scanner.go", "Detect", "scanner dispatch package vulnerability detection source packages"),
+      chunk(rootPath, "oval/alpine.go", "NewAlpine", "Alpine OVAL source vulnerability definitions")
+    ];
+    const query = [
+      "Scanner fails on non-standard source RPM filenames and epoch handling.",
+      "Update parseInstalledPackagesLine and splitFileName to handle SOURCERPM src.rpm values without aborting."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.path).toBe("scanner/redhatbase.go");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("scanner/alpine.go");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("oval/alpine.go");
+  });
+
+  it("routes benchmark generator contracts to benchmark package and CLI/client surfaces", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "lib/benchmark/benchmark.go", "source", "go"),
+      file(rootPath, "lib/benchmark/linear.go", "source", "go"),
+      file(rootPath, "lib/client/bench.go", "source", "go"),
+      file(rootPath, "tool/tsh/tsh.go", "source", "go"),
+      file(rootPath, "lib/kube/proxy/auth.go", "source", "go"),
+      file(rootPath, "lib/limiter/ratelimiter.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "lib/benchmark/benchmark.go", "Config"),
+      symbol(rootPath, "lib/benchmark/linear.go", "Linear"),
+      symbol(rootPath, "lib/client/bench.go", "Benchmark"),
+      symbol(rootPath, "tool/tsh/tsh.go", "onBenchmark"),
+      symbol(rootPath, "lib/kube/proxy/auth.go", "Authenticate"),
+      symbol(rootPath, "lib/limiter/ratelimiter.go", "Limiter")
+    ];
+    const chunks = [
+      chunk(rootPath, "lib/benchmark/benchmark.go", "Config", "benchmark configuration rate command threads minimum window measurements"),
+      chunk(rootPath, "lib/benchmark/linear.go", "Linear", "linear benchmark generator lower bound upper bound step GetBenchmark request rate"),
+      chunk(rootPath, "lib/client/bench.go", "Benchmark", "client benchmark command request rate configuration"),
+      chunk(rootPath, "tool/tsh/tsh.go", "onBenchmark", "tsh benchmark command wiring"),
+      chunk(rootPath, "lib/kube/proxy/auth.go", "Authenticate", "kubernetes proxy authentication request"),
+      chunk(rootPath, "lib/limiter/ratelimiter.go", "Limiter", "rate limiter retry budget")
+    ];
+    const query = [
+      "Add a linear benchmark generator for progressive request rate configurations.",
+      "Linear.GetBenchmark should return Config values with Rate, Threads, MinimumWindow, MinimumMeasurements, and Command."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 2).map((result) => result.path)).toEqual([
+      "lib/benchmark/linear.go",
+      "lib/benchmark/benchmark.go"
+    ]);
+    expect(results.slice(0, 4).map((result) => result.path)).toEqual(expect.arrayContaining([
+      "lib/client/bench.go",
+      "tool/tsh/tsh.go"
+    ]));
+    expect(results.slice(0, 4).map((result) => result.path)).not.toContain("lib/kube/proxy/auth.go");
+    expect(results.slice(0, 4).map((result) => result.path)).not.toContain("lib/limiter/ratelimiter.go");
+  });
+
+  it("routes pinned topic reorder tasks to client, socket, and topic tool owners", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "public/src/client/category/tools.js", "source", "javascript"),
+      file(rootPath, "src/socket.io/topics/tools.js", "source", "javascript"),
+      file(rootPath, "src/topics/tools.js", "source", "javascript"),
+      file(rootPath, "public/src/admin/dashboard/topics.js", "source", "javascript"),
+      file(rootPath, "src/privileges/topics.js", "source", "javascript")
+    ];
+    const symbols = [
+      symbol(rootPath, "public/src/client/category/tools.js", "orderPinnedTopics"),
+      symbol(rootPath, "src/socket.io/topics/tools.js", "SocketTopics.orderPinnedTopics"),
+      symbol(rootPath, "src/topics/tools.js", "topicTools.orderPinnedTopics"),
+      symbol(rootPath, "public/src/admin/dashboard/topics.js", "renderTopics"),
+      symbol(rootPath, "src/privileges/topics.js", "canModerate")
+    ];
+    const chunks = [
+      chunk(rootPath, "public/src/client/category/tools.js", "orderPinnedTopics", "client drag reorder pinned topics category socket emit target position"),
+      chunk(rootPath, "src/socket.io/topics/tools.js", "SocketTopics.orderPinnedTopics", "socket order pinned topics moderator admin privileges"),
+      chunk(rootPath, "src/topics/tools.js", "topicTools.orderPinnedTopics", "pinned topic ordering sorted set category membership no-op unpinned topic"),
+      chunk(rootPath, "public/src/admin/dashboard/topics.js", "renderTopics", "admin dashboard topic statistics"),
+      chunk(rootPath, "src/privileges/topics.js", "canModerate", "topic privileges moderator admin")
+    ];
+    const query = [
+      "Reordering pinned topics does not respect privileges, no-op behavior for unpinned topics, and category isolation.",
+      "Fix topic pinned ordering through the client, socket, and production topic tool flow."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 3).map((result) => result.path)).toEqual([
+      "src/topics/tools.js",
+      "src/socket.io/topics/tools.js",
+      "public/src/client/category/tools.js"
+    ]);
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("public/src/admin/dashboard/topics.js");
+  });
+
+  it("routes collection name validation tasks to loader and dependency metadata owners", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "lib/ansible/utils/collection_loader/_collection_finder.py", "source", "python"),
+      file(rootPath, "lib/ansible/galaxy/dependency_resolution/dataclasses.py", "source", "python"),
+      file(rootPath, "lib/ansible/galaxy/collection/__init__.py", "source", "python"),
+      file(rootPath, "lib/ansible/utils/galaxy.py", "source", "python")
+    ];
+    const symbols = [
+      symbol(rootPath, "lib/ansible/utils/collection_loader/_collection_finder.py", "is_valid_collection_name"),
+      symbol(rootPath, "lib/ansible/galaxy/dependency_resolution/dataclasses.py", "_is_fqcn"),
+      symbol(rootPath, "lib/ansible/galaxy/collection/__init__.py", "CollectionRequirement"),
+      symbol(rootPath, "lib/ansible/utils/galaxy.py", "GalaxyAPI")
+    ];
+    const chunks = [
+      chunk(rootPath, "lib/ansible/utils/collection_loader/_collection_finder.py", "is_valid_collection_name", "collection name validation namespace collection Python identifier keyword"),
+      chunk(rootPath, "lib/ansible/galaxy/dependency_resolution/dataclasses.py", "_is_fqcn", "FQCN validation Python keyword _is_py_id _is_fqcn collection namespace"),
+      chunk(rootPath, "lib/ansible/galaxy/collection/__init__.py", "CollectionRequirement", "galaxy collection install artifact"),
+      chunk(rootPath, "lib/ansible/utils/galaxy.py", "GalaxyAPI", "galaxy API helper")
+    ];
+    const query = [
+      "Collection Name Validation Accepts Python Keywords.",
+      "Fully Qualified Collection Names should reject namespace or collection segments that are Python reserved keywords."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 2).map((result) => result.path).sort()).toEqual([
+      "lib/ansible/galaxy/dependency_resolution/dataclasses.py",
+      "lib/ansible/utils/collection_loader/_collection_finder.py"
+    ]);
+    expect(results.slice(0, 2).map((result) => result.path)).not.toContain("lib/ansible/galaxy/collection/__init__.py");
+  });
+
+  it("routes gRPC context error policy tasks to command and middleware owners", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "internal/cmd/grpc.go", "source", "go"),
+      file(rootPath, "internal/server/auth/middleware.go", "source", "go"),
+      file(rootPath, "internal/server/middleware/grpc/middleware.go", "source", "go"),
+      file(rootPath, "errors/errors.go", "source", "go"),
+      file(rootPath, "internal/server/segment.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "internal/cmd/grpc.go", "serveGRPC"),
+      symbol(rootPath, "internal/server/auth/middleware.go", "UnaryServerInterceptor"),
+      symbol(rootPath, "internal/server/middleware/grpc/middleware.go", "ErrorHandler"),
+      symbol(rootPath, "errors/errors.go", "Error"),
+      symbol(rootPath, "internal/server/segment.go", "Segment")
+    ];
+    const chunks = [
+      chunk(rootPath, "internal/cmd/grpc.go", "serveGRPC", "grpc server status code middleware context cancellation"),
+      chunk(rootPath, "internal/server/auth/middleware.go", "UnaryServerInterceptor", "authentication middleware unauthenticated context canceled deadline exceeded"),
+      chunk(rootPath, "internal/server/middleware/grpc/middleware.go", "ErrorHandler", "gRPC middleware maps context.Canceled to codes.Canceled and context.DeadlineExceeded"),
+      chunk(rootPath, "errors/errors.go", "Error", "domain errors internal error values"),
+      chunk(rootPath, "internal/server/segment.go", "Segment", "segment evaluation")
+    ];
+    const query = [
+      "Context cancellation and deadline exceeded errors are incorrectly classified as Internal or Unauthenticated in gRPC responses.",
+      "Return Canceled and DeadlineExceeded from middleware/authentication when errors wrap context.Canceled or context.DeadlineExceeded."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 3).map((result) => result.path)).toEqual([
+      "internal/cmd/grpc.go",
+      "internal/server/auth/middleware.go",
+      "internal/server/middleware/grpc/middleware.go"
+    ]);
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("errors/errors.go");
+  });
+
+  it("routes HTTP netrc authorization policy tasks to URL helpers and modules", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "lib/ansible/module_utils/urls.py", "source", "python"),
+      file(rootPath, "lib/ansible/modules/uri.py", "source", "python"),
+      file(rootPath, "lib/ansible/modules/get_url.py", "source", "python"),
+      file(rootPath, "lib/ansible/plugins/lookup/url.py", "source", "python"),
+      file(rootPath, "lib/ansible/plugins/action/uri.py", "source", "python"),
+      file(rootPath, "lib/ansible/executor/interpreter_discovery.py", "source", "python"),
+      file(rootPath, "lib/ansible/module_utils/basic.py", "source", "python")
+    ];
+    const symbols = [
+      symbol(rootPath, "lib/ansible/module_utils/urls.py", "open_url"),
+      symbol(rootPath, "lib/ansible/modules/uri.py", "main"),
+      symbol(rootPath, "lib/ansible/modules/get_url.py", "main"),
+      symbol(rootPath, "lib/ansible/plugins/lookup/url.py", "run"),
+      symbol(rootPath, "lib/ansible/plugins/action/uri.py", "run"),
+      symbol(rootPath, "lib/ansible/executor/interpreter_discovery.py", "discover_interpreter"),
+      symbol(rootPath, "lib/ansible/module_utils/basic.py", "AnsibleModule")
+    ];
+    const chunks = [
+      chunk(rootPath, "lib/ansible/module_utils/urls.py", "open_url", "Request.open open_url Authorization header netrc use_netrc HTTP request"),
+      chunk(rootPath, "lib/ansible/modules/uri.py", "main", "uri module headers Authorization bearer use_netrc parameter"),
+      chunk(rootPath, "lib/ansible/modules/get_url.py", "main", "get_url module URL request netrc use_netrc"),
+      chunk(rootPath, "lib/ansible/plugins/lookup/url.py", "run", "lookup url plugin open_url netrc Authorization headers"),
+      chunk(rootPath, "lib/ansible/plugins/action/uri.py", "run", "uri action plugin open_url netrc Authorization headers"),
+      chunk(rootPath, "lib/ansible/executor/interpreter_discovery.py", "discover_interpreter", "python interpreter discovery"),
+      chunk(rootPath, "lib/ansible/module_utils/basic.py", "AnsibleModule", "basic module argument parsing")
+    ];
+    const query = [
+      "uri module uses .netrc to overwrite Authorization header even if specified.",
+      "Add use_netrc to Request.open and open_url, default enabled, and forward it through uri, get_url, and url lookup."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 4).map((result) => result.path)).toEqual([
+      "lib/ansible/module_utils/urls.py",
+      "lib/ansible/modules/uri.py",
+      "lib/ansible/modules/get_url.py",
+      "lib/ansible/plugins/lookup/url.py"
+    ]);
+    expect(results.slice(0, 4).map((result) => result.path)).not.toContain("lib/ansible/executor/interpreter_discovery.py");
+    expect(results.slice(0, 4).map((result) => result.path)).not.toContain("lib/ansible/plugins/action/uri.py");
+  });
+
+  it("routes Linux system metadata extraction tasks to inventory metadata owners", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "lib/inventory/metadata/metadata_linux.go", "source", "go"),
+      file(rootPath, "lib/inventory/metadata/metadata.go", "source", "go"),
+      file(rootPath, "lib/inventory/metadata/get.go", "source", "go"),
+      file(rootPath, "lib/config/systemd.go", "source", "go"),
+      file(rootPath, "lib/utils/parse/parse.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "lib/inventory/metadata/metadata_linux.go", "DMIInfo"),
+      symbol(rootPath, "lib/inventory/metadata/metadata.go", "Metadata"),
+      symbol(rootPath, "lib/inventory/metadata/get.go", "Get"),
+      symbol(rootPath, "lib/config/systemd.go", "SystemdFlags"),
+      symbol(rootPath, "lib/utils/parse/parse.go", "ParseBool")
+    ];
+    const chunks = [
+      chunk(rootPath, "lib/inventory/metadata/metadata_linux.go", "DMIInfo", "DMIInfoFromFS sysfs /sys/class/dmi/id product_name product_serial board_serial chassis_asset_tag OSRelease ParseOSRelease /etc/os-release"),
+      chunk(rootPath, "lib/inventory/metadata/metadata.go", "Metadata", "inventory metadata API device metadata operating system distribution"),
+      chunk(rootPath, "lib/inventory/metadata/get.go", "Get", "retrieve inventory metadata from platform metadata providers"),
+      chunk(rootPath, "lib/config/systemd.go", "SystemdFlags", "systemd unit file environment pid file file descriptor limit"),
+      chunk(rootPath, "lib/utils/parse/parse.go", "ParseBool", "generic parse helper strconv")
+    ];
+    const query = [
+      "Add utility functions for extracting Linux system metadata.",
+      "Read DMI fields from /sys/class/dmi/id and parse /etc/os-release into OSRelease fields while handling partial errors."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 3).map((result) => result.path)).toEqual([
+      "lib/inventory/metadata/metadata_linux.go",
+      "lib/inventory/metadata/metadata.go",
+      "lib/inventory/metadata/get.go"
+    ]);
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("lib/config/systemd.go");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("lib/utils/parse/parse.go");
+  });
+
+  it("routes database service failover tasks to proxy, type, tunnel, and CLI owners", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "api/types/databaseserver.go", "source", "go"),
+      file(rootPath, "lib/srv/db/proxyserver.go", "source", "go"),
+      file(rootPath, "lib/reversetunnel/fake.go", "source", "go"),
+      file(rootPath, "lib/reversetunnel/agent.go", "source", "go"),
+      file(rootPath, "tool/tsh/db.go", "source", "go"),
+      file(rootPath, "lib/events/auditlog.go", "source", "go"),
+      file(rootPath, "lib/session/session.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "api/types/databaseserver.go", "DatabaseServerV3"),
+      symbol(rootPath, "lib/srv/db/proxyserver.go", "ProxyServerConfig"),
+      symbol(rootPath, "lib/reversetunnel/fake.go", "FakeRemoteSite"),
+      symbol(rootPath, "lib/reversetunnel/agent.go", "Agent"),
+      symbol(rootPath, "tool/tsh/db.go", "onListDatabases"),
+      symbol(rootPath, "lib/events/auditlog.go", "ServerID"),
+      symbol(rootPath, "lib/session/session.go", "ServerID")
+    ];
+    const chunks = [
+      chunk(rootPath, "api/types/databaseserver.go", "SortedDatabaseServers", "DatabaseServerV3 HostID sorted database servers deduplicate database service"),
+      chunk(rootPath, "lib/srv/db/proxyserver.go", "ProxyServerConfig", "database proxy server connect candidate servers shuffle retry dial reverse tunnel"),
+      chunk(rootPath, "lib/reversetunnel/fake.go", "FakeRemoteSite", "OfflineTunnels ServerID simulate tunnel outage fake remote site"),
+      chunk(rootPath, "lib/reversetunnel/agent.go", "Agent", "reverse tunnel agent cluster connection server id keepalive heartbeat"),
+      chunk(rootPath, "tool/tsh/db.go", "onListDatabases", "tsh db ls list database services deduplicate display"),
+      chunk(rootPath, "lib/events/auditlog.go", "ServerID", "audit event server id"),
+      chunk(rootPath, "lib/session/session.go", "ServerID", "session server id")
+    ];
+    const query = [
+      "Better handle HA database access when multiple database services share the same service name.",
+      "Proxy should shuffle candidate database servers, retry on tunnel connection failures, deduplicate tsh db ls, and include HostID."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 4).map((result) => result.path)).toEqual([
+      "api/types/databaseserver.go",
+      "lib/srv/db/proxyserver.go",
+      "lib/reversetunnel/fake.go",
+      "tool/tsh/db.go"
+    ]);
+    expect(results.slice(0, 4).map((result) => result.path)).not.toContain("lib/events/auditlog.go");
+    expect(results.slice(0, 4).map((result) => result.path)).not.toContain("lib/reversetunnel/agent.go");
+  });
+
+  it("routes plugin activation identifier validation to activation owners", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "src/plugins/install.js", "source", "javascript"),
+      file(rootPath, "src/socket.io/admin/plugins.js", "source", "javascript"),
+      file(rootPath, "src/flags.js", "source", "javascript"),
+      file(rootPath, "public/src/admin/extend/plugins.js", "source", "javascript"),
+      file(rootPath, "public/src/client/topic.js", "source", "javascript")
+    ];
+    const symbols = [
+      symbol(rootPath, "src/plugins/install.js", "Plugins.toggleActive"),
+      symbol(rootPath, "src/socket.io/admin/plugins.js", "Plugins.toggleActive"),
+      symbol(rootPath, "src/flags.js", "Flags"),
+      symbol(rootPath, "public/src/admin/extend/plugins.js", "toggleActive"),
+      symbol(rootPath, "public/src/client/topic.js", "Topic")
+    ];
+    const chunks = [
+      chunk(rootPath, "src/plugins/install.js", "Plugins.toggleActive", "Plugins.toggleActive activate deactivate plugin id invalid-plugin-id validation before state changes"),
+      chunk(rootPath, "src/socket.io/admin/plugins.js", "Plugins.toggleActive", "admin.plugins.toggleActive socket plugin activation request"),
+      chunk(rootPath, "src/flags.js", "Flags", "validation helpers error handling invalid identifiers"),
+      chunk(rootPath, "public/src/admin/extend/plugins.js", "toggleActive", "admin UI emits admin.plugins.toggleActive"),
+      chunk(rootPath, "public/src/client/topic.js", "Topic", "topic page navigation posts")
+    ];
+    const query = [
+      "Plugin activation accepts invalid plugin identifiers without validation.",
+      "Validate plugin identifiers during Plugins.toggleActive and reject malformed names with [[error:invalid-plugin-id]]."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.path).toBe("src/plugins/install.js");
+    expect(results.slice(0, 3).map((result) => result.path)).toEqual(expect.arrayContaining([
+      "src/socket.io/admin/plugins.js",
+      "src/flags.js"
+    ]));
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("public/src/client/topic.js");
+  });
+
+  it("routes execution state migrations to iterator and strategy owners", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "lib/ansible/executor/play_iterator.py", "source", "python"),
+      file(rootPath, "lib/ansible/plugins/strategy/__init__.py", "source", "python"),
+      file(rootPath, "lib/ansible/plugins/strategy/linear.py", "source", "python"),
+      file(rootPath, "lib/ansible/plugins/strategy/debug.py", "source", "python"),
+      file(rootPath, "lib/ansible/module_utils/common/parameters.py", "source", "python"),
+      file(rootPath, "lib/ansible/module_utils/common/warnings.py", "source", "python"),
+      file(rootPath, "lib/ansible/module_utils/basic.py", "source", "python"),
+      file(rootPath, "lib/ansible/utils/display.py", "source", "python")
+    ];
+    const symbols = [
+      symbol(rootPath, "lib/ansible/executor/play_iterator.py", "PlayIterator"),
+      symbol(rootPath, "lib/ansible/executor/play_iterator.py", "HostState"),
+      symbol(rootPath, "lib/ansible/executor/play_iterator.py", "IteratingStates"),
+      symbol(rootPath, "lib/ansible/executor/play_iterator.py", "FailedStates"),
+      symbol(rootPath, "lib/ansible/plugins/strategy/__init__.py", "StrategyBase"),
+      symbol(rootPath, "lib/ansible/plugins/strategy/linear.py", "StrategyModule"),
+      symbol(rootPath, "lib/ansible/plugins/strategy/debug.py", "StrategyModule"),
+      symbol(rootPath, "lib/ansible/module_utils/common/parameters.py", "validate_argument_spec"),
+      symbol(rootPath, "lib/ansible/module_utils/common/warnings.py", "deprecate"),
+      symbol(rootPath, "lib/ansible/module_utils/basic.py", "AnsibleModule"),
+      symbol(rootPath, "lib/ansible/utils/display.py", "Display")
+    ];
+    const chunks = [
+      chunk(rootPath, "lib/ansible/executor/play_iterator.py", "PlayIterator", "PlayIterator HostState run_state fail_state ITERATING_TASKS FAILED_SETUP IteratingStates FailedStates MetaPlayIterator"),
+      chunk(rootPath, "lib/ansible/plugins/strategy/__init__.py", "StrategyBase", "strategy plugin checks PlayIterator ITERATING_TASKS and failure states during task execution"),
+      chunk(rootPath, "lib/ansible/plugins/strategy/linear.py", "StrategyModule", "linear strategy compares host run_state rescue always complete"),
+      chunk(rootPath, "lib/ansible/plugins/strategy/debug.py", "StrategyModule", "debug strategy plugin displays task state"),
+      chunk(rootPath, "lib/ansible/module_utils/common/parameters.py", "validate_argument_spec", "argument spec validation deprecated aliases removed in version"),
+      chunk(rootPath, "lib/ansible/module_utils/common/warnings.py", "deprecate", "display deprecation warning messages"),
+      chunk(rootPath, "lib/ansible/module_utils/basic.py", "AnsibleModule", "basic module argument spec and deprecation helpers"),
+      chunk(rootPath, "lib/ansible/utils/display.py", "Display", "display warnings and deprecation messages")
+    ];
+    const query = [
+      "Standardize PlayIterator state representation with public IteratingStates and FailedStates enums.",
+      "Preserve legacy constants, instance attribute access, HostState string output, and third-party strategy plugin compatibility."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 3).map((result) => result.path)).toEqual(expect.arrayContaining([
+      "lib/ansible/executor/play_iterator.py",
+      "lib/ansible/plugins/strategy/__init__.py",
+      "lib/ansible/plugins/strategy/linear.py"
+    ]));
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("lib/ansible/module_utils/common/parameters.py");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("lib/ansible/module_utils/common/warnings.py");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("lib/ansible/module_utils/basic.py");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("lib/ansible/plugins/strategy/debug.py");
+  });
+
+  it("routes converter output bugs to converter implementation over scanner dispatch", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "contrib/trivy/pkg/converter.go", "source", "go"),
+      file(rootPath, "scanner/scanner.go", "source", "go"),
+      file(rootPath, "scanner/trivy/jar/parse.go", "source", "go"),
+      file(rootPath, "storage/backend.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "contrib/trivy/pkg/converter.go", "Convert"),
+      symbol(rootPath, "scanner/scanner.go", "Detect"),
+      symbol(rootPath, "scanner/trivy/jar/parse.go", "Parse"),
+      symbol(rootPath, "storage/backend.go", "Store")
+    ];
+    const chunks = [
+      chunk(rootPath, "contrib/trivy/pkg/converter.go", "Convert", "Trivy to Vuls converter output cveContents severity Debian records JSON findings"),
+      chunk(rootPath, "scanner/scanner.go", "Detect", "scanner dispatch package vulnerability detection source packages"),
+      chunk(rootPath, "scanner/trivy/jar/parse.go", "Parse", "Trivy jar parser package details"),
+      chunk(rootPath, "storage/backend.go", "Store", "storage backend vulnerability records")
+    ];
+    const query = [
+      "Fix the trivy-to-vuls converter output.",
+      "cveContents should not duplicate Debian severity records when conversion builds Vuls JSON findings."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.path).toBe("contrib/trivy/pkg/converter.go");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("scanner/scanner.go");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("storage/backend.go");
+  });
+
+  it("routes device session notification ownership to listener source over UI shells", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "src/DeviceListener.ts", "source", "typescript"),
+      file(rootPath, "src/components/views/settings/devices/OtherSessionsSectionHeading.tsx", "component", "typescript"),
+      file(rootPath, "src/toasts/BulkUnverifiedSessionsToast.ts", "source", "typescript"),
+      file(rootPath, "src/models/Call.ts", "source", "typescript"),
+      file(rootPath, "src/stores/notifications/NotificationState.ts", "source", "typescript")
+    ];
+    const symbols = [
+      symbol(rootPath, "src/DeviceListener.ts", "DeviceListener"),
+      symbol(rootPath, "src/components/views/settings/devices/OtherSessionsSectionHeading.tsx", "OtherSessionsSectionHeading"),
+      symbol(rootPath, "src/toasts/BulkUnverifiedSessionsToast.ts", "BulkUnverifiedSessionsToast"),
+      symbol(rootPath, "src/models/Call.ts", "Call"),
+      symbol(rootPath, "src/stores/notifications/NotificationState.ts", "NotificationState")
+    ];
+    const chunks = [
+      chunk(rootPath, "src/DeviceListener.ts", "DeviceListener", "device listener handles unverified sessions notification state after key download startup existing sessions new sessions"),
+      chunk(rootPath, "src/components/views/settings/devices/OtherSessionsSectionHeading.tsx", "OtherSessionsSectionHeading", "settings devices heading other sessions UI"),
+      chunk(rootPath, "src/toasts/BulkUnverifiedSessionsToast.ts", "BulkUnverifiedSessionsToast", "toast UI for bulk unverified sessions"),
+      chunk(rootPath, "src/models/Call.ts", "Call", "call model voice room session"),
+      chunk(rootPath, "src/stores/notifications/NotificationState.ts", "NotificationState", "notification state store")
+    ];
+    const query = [
+      "Unverified device notifications are inconsistent for existing versus new sessions.",
+      "Maintain startup device state and refresh after key downloads in the device/session notification owner."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.path).toBe("src/DeviceListener.ts");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("src/components/views/settings/devices/OtherSessionsSectionHeading.tsx");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("src/toasts/BulkUnverifiedSessionsToast.ts");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("src/models/Call.ts");
+  });
+
+  it("routes discovery authentication config to discovery and validated config owners", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "src/utils/AutoDiscoveryUtils.tsx", "source", "typescript"),
+      file(rootPath, "src/utils/ValidatedServerConfig.ts", "source", "typescript"),
+      file(rootPath, "cypress/support/settings.ts", "source", "typescript"),
+      file(rootPath, "src/components/views/settings/ServerSettings.tsx", "component", "typescript")
+    ];
+    const symbols = [
+      symbol(rootPath, "src/utils/AutoDiscoveryUtils.tsx", "AutoDiscovery"),
+      symbol(rootPath, "src/utils/ValidatedServerConfig.ts", "ValidatedServerConfig"),
+      symbol(rootPath, "cypress/support/settings.ts", "settings"),
+      symbol(rootPath, "src/components/views/settings/ServerSettings.tsx", "ServerSettings")
+    ];
+    const chunks = [
+      chunk(rootPath, "src/utils/AutoDiscoveryUtils.tsx", "AutoDiscovery", "homeserver discovery builds validated configuration from m.authentication delegated authentication issuer endpoints account"),
+      chunk(rootPath, "src/utils/ValidatedServerConfig.ts", "ValidatedServerConfig", "validated server config public interface delegatedAuthentication optional object issuer token endpoint authorization endpoint"),
+      chunk(rootPath, "cypress/support/settings.ts", "settings", "cypress support settings test config"),
+      chunk(rootPath, "src/components/views/settings/ServerSettings.tsx", "ServerSettings", "settings screen UI")
+    ];
+    const query = [
+      "Discovery omits delegated authentication metadata advertised under m.authentication.",
+      "Preserve delegatedAuthentication fields in the validated server configuration."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 2).map((result) => result.path)).toEqual([
+      "src/utils/AutoDiscoveryUtils.tsx",
+      "src/utils/ValidatedServerConfig.ts"
+    ]);
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("cypress/support/settings.ts");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("src/components/views/settings/ServerSettings.tsx");
+  });
+
   it("keeps exact C source ahead of vendored dependency surfaces for short identifier prompts", () => {
     const rootPath = "/repo";
     const files = [

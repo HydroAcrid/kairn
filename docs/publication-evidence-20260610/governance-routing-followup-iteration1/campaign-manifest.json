@@ -1,0 +1,196 @@
+{
+  "id": "governance-routing-followup-iteration1-20260610",
+  "name": "Governance routing follow-up iteration 1",
+  "description": "Proxy-first recheck for OpenLibrary paired request-body sizing, Vuls converter routing, and Element device listener ownership after general governance fixes.",
+  "defaults": {
+    "model": "gpt-5.4-mini",
+    "parallel": 1,
+    "agentTimeoutMs": 900000,
+    "turnTimeoutMs": 480000,
+    "cleanup": "never",
+    "commands": {
+      "baseline": "codex -a never exec --model {model} --sandbox danger-full-access --disable hooks {prompt}",
+      "kairn_codex_session": "node \"$KAIRN_CLI_PATH\" codex --root {root} --model {model} --sandbox danger-full-access --skip-git-repo-check {prompt}",
+      "real_mcp_first": "codex -a never exec --model {model} --sandbox danger-full-access --disable hooks {prompt}",
+      "hybrid_mcp_brief": "codex -a never exec --model {model} --sandbox danger-full-access --enable hooks {prompt}"
+    },
+    "setupCommands": {
+      "real_mcp_first": "node \"$KAIRN_CLI_PATH\" setup codex --root {root} --mode mcp-first >/dev/null",
+      "hybrid_mcp_brief": "node \"$KAIRN_CLI_PATH\" setup codex --root {root} --mode hybrid --session {session} >/dev/null"
+    }
+  },
+  "pauseRules": {
+    "maxQualityDrops": 0,
+    "maxScopeViolations": 0,
+    "maxRepeatedFailureClass": 1,
+    "maxTokenRegressionClass": 1,
+    "stopOnHarnessFailure": true
+  },
+  "entries": [
+    {
+      "id": "proxy-swe-row-2-openlibrary",
+      "kind": "proxy",
+      "tags": [
+        "swe-pro",
+        "proxy",
+        "clean-control",
+        "python"
+      ],
+      "root": "docs/publication-evidence-20260609/live-small-campaign/work/durable/row-2-openlibrary",
+      "task": "Fix the /lists/add POST conflict bug. The task likely involves list request handling and upstream request/query handling. Keep edits to production source that directly controls the add-list request flow.",
+      "expectedFiles": [
+        "openlibrary/plugins/openlibrary/lists.py",
+        "openlibrary/plugins/upstream/utils.py"
+      ],
+      "budget": 700
+    },
+    {
+      "id": "proxy-swe-row-3-vuls",
+      "kind": "proxy",
+      "tags": [
+        "swe-pro",
+        "proxy",
+        "clean-control",
+        "go"
+      ],
+      "root": "docs/publication-evidence-20260609/live-small-campaign/work/durable/row-3-vuls",
+      "task": "Fix the trivy-to-vuls converter so cveContents are not duplicated and Debian severities do not split into separate records. Prefer the converter implementation over generic scanner or storage files.",
+      "expectedFiles": [
+        "contrib/trivy/pkg/converter.go"
+      ],
+      "budget": 700
+    },
+    {
+      "id": "proxy-swe-row-9-element-device",
+      "kind": "proxy",
+      "tags": [
+        "swe-pro",
+        "proxy",
+        "frontend-ownership",
+        "typescript"
+      ],
+      "root": "docs/publication-evidence-20260609/live-small-campaign/work/durable/row-9-element-web",
+      "task": "Fix inconsistent unverified device notifications for existing versus new sessions. Prefer the feature-local device/session notification owner and avoid broad Element frontend fanout unless ownership evidence is missing.",
+      "expectedFiles": [
+        "src/DeviceListener.ts"
+      ],
+      "budget": 700
+    },
+    {
+      "id": "proxy-swe-row-10-element-discovery",
+      "kind": "proxy",
+      "tags": [
+        "swe-pro",
+        "proxy",
+        "clean-control",
+        "typescript"
+      ],
+      "root": "docs/publication-evidence-20260609/live-small-campaign/work/durable/row-10-element-web",
+      "task": "Fix homeserver discovery so delegated authentication metadata advertised under m.authentication is preserved in the validated server configuration. Keep the surface to discovery and validated config source.",
+      "expectedFiles": [
+        "src/utils/AutoDiscoveryUtils.tsx",
+        "src/utils/ValidatedServerConfig.ts"
+      ],
+      "budget": 700
+    },
+    {
+      "id": "live-swe-row-2-openlibrary",
+      "kind": "control",
+      "tags": [
+        "swe-pro",
+        "live",
+        "clean-control",
+        "python"
+      ],
+      "root": ".",
+      "suite": "docs/publication-evidence-20260530/swe-pro-official-fresh-slice-post-governor/rows/row-2.json",
+      "modes": [
+        "baseline",
+        "kairn_codex_session"
+      ],
+      "repeat": 1
+    },
+    {
+      "id": "live-swe-row-3-vuls",
+      "kind": "control",
+      "tags": [
+        "swe-pro",
+        "live",
+        "clean-control",
+        "go"
+      ],
+      "root": ".",
+      "suite": "docs/publication-evidence-20260530/swe-pro-official-fresh-slice-post-governor/rows/row-3.json",
+      "modes": [
+        "baseline",
+        "kairn_codex_session"
+      ],
+      "repeat": 1
+    },
+    {
+      "id": "live-swe-row-9-element-device",
+      "kind": "proof",
+      "tags": [
+        "swe-pro",
+        "live",
+        "frontend-ownership",
+        "typescript"
+      ],
+      "root": ".",
+      "suite": "docs/publication-evidence-20260530/swe-pro-official-fresh-slice-post-governor/rows/row-9.json",
+      "modes": [
+        "baseline",
+        "kairn_codex_session"
+      ],
+      "repeat": 1
+    },
+    {
+      "id": "live-swe-row-10-element-discovery",
+      "kind": "control",
+      "tags": [
+        "swe-pro",
+        "live",
+        "clean-control",
+        "typescript"
+      ],
+      "root": ".",
+      "suite": "docs/publication-evidence-20260530/swe-pro-official-fresh-slice-post-governor/rows/row-10.json",
+      "modes": [
+        "baseline",
+        "kairn_codex_session"
+      ],
+      "repeat": 1
+    },
+    {
+      "id": "mcp-smoke-local-context",
+      "kind": "mcp_smoke",
+      "tags": [
+        "mcp",
+        "smoke",
+        "protocol"
+      ],
+      "root": ".",
+      "task": "Find the benchmark MCP delivery source before broad scans.",
+      "budget": 700,
+      "detail": "compact"
+    },
+    {
+      "id": "endurance-fastify-mcp-repeat1",
+      "kind": "endurance",
+      "tags": [
+        "mcp",
+        "endurance",
+        "js-server",
+        "fastify"
+      ],
+      "root": ".",
+      "suite": "examples/bench/endurance-fastify.json",
+      "modes": [
+        "baseline",
+        "real_mcp_first",
+        "hybrid_mcp_brief"
+      ],
+      "repeat": 1
+    }
+  ]
+}

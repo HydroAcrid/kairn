@@ -27,6 +27,7 @@ export async function runAgentBenchmarkCase(input: {
   agentCommand?: string | undefined;
   setupCommand?: string | undefined;
   timeoutMs?: number | undefined;
+  agentEnv?: Record<string, string> | undefined;
   preparePrompt?: ((input: {
     workspacePath: string;
     prompt: string;
@@ -155,7 +156,7 @@ export async function runAgentBenchmarkCase(input: {
     const promptPrepareMs = Date.now() - prepareStartedAt;
     const command = commandWithPlaceholders(input.agentCommand, { prompt: prepared.prompt, root: workspacePath, session: commandSessionId });
     const agentStartedAt = Date.now();
-    const completed = await runShellWithProcessGroupTimeout(command, workspacePath, timeoutMs, 16 * 1024 * 1024);
+    const completed = await runShellWithProcessGroupTimeout(command, workspacePath, timeoutMs, 16 * 1024 * 1024, input.agentEnv);
     const agentTimedOut = completed.timedOut;
     const agentElapsedMs = Date.now() - agentStartedAt;
     const output = completed.output;
@@ -191,10 +192,20 @@ export async function runAgentBenchmarkCase(input: {
         ...setupChangedFileHashes
       }
     });
-    const requiredTouchedFiles = input.benchmarkCase.requiredTouchedFiles ?? [];
+    const originalRequiredTouchedFiles = input.benchmarkCase.requiredTouchedFiles ?? [];
+    const requiredTouchPlan = effectiveRequiredTouchedFiles({
+      workspacePath,
+      prompt,
+      requiredTouchedFiles: originalRequiredTouchedFiles
+    });
+    const requiredTouchedFiles = requiredTouchPlan.requiredTouchedFiles;
     const missingRequiredTouchedFiles = requiredTouchedFiles.filter((file) => !agentChangedFiles.includes(file));
     const requiredTouchedSatisfied = missingRequiredTouchedFiles.length === 0;
-    const actualFiles = unique([...agentChangedFiles, ...expectedFileMentions]);
+    const actualFiles = actualFilesForAgentResult({
+      agentChangedFiles,
+      expectedFileMentions,
+      requiredTouchedFiles
+    });
     const scopeViolations = diffScopeResult.violations;
     const testsEdited = agentChangedFiles.filter(isTestPath);
     const unrelatedFilesTouched = diffScopeResult.passed
@@ -222,6 +233,8 @@ export async function runAgentBenchmarkCase(input: {
         seedPatchFiles,
         setupChangedFiles,
         agentChangedFiles,
+        originalRequiredTouchedFiles,
+        ignoredAbsentRequiredTouchedFiles: requiredTouchPlan.ignoredAbsentRequiredTouchedFiles,
         requiredTouchedFiles,
         requiredTouchedSatisfied,
         missingRequiredTouchedFiles,
@@ -282,7 +295,13 @@ export async function runAgentBenchmarkCase(input: {
       seedPatchFiles,
       seedPatchFileHashes
     });
-    const requiredTouchedFiles = input.benchmarkCase.requiredTouchedFiles ?? [];
+    const originalRequiredTouchedFiles = input.benchmarkCase.requiredTouchedFiles ?? [];
+    const requiredTouchPlan = effectiveRequiredTouchedFiles({
+      workspacePath,
+      prompt,
+      requiredTouchedFiles: originalRequiredTouchedFiles
+    });
+    const requiredTouchedFiles = requiredTouchPlan.requiredTouchedFiles;
     const missingRequiredTouchedFiles = requiredTouchedFiles.filter((file) => !agentChangedFiles.includes(file));
     const metadata = metadataFromOutput({
       output,
@@ -295,6 +314,8 @@ export async function runAgentBenchmarkCase(input: {
         seedPatchFiles,
         changedFiles: changedFileList,
         agentChangedFiles,
+        originalRequiredTouchedFiles,
+        ignoredAbsentRequiredTouchedFiles: requiredTouchPlan.ignoredAbsentRequiredTouchedFiles,
         requiredTouchedFiles,
         requiredTouchedSatisfied: missingRequiredTouchedFiles.length === 0,
         missingRequiredTouchedFiles
@@ -302,7 +323,11 @@ export async function runAgentBenchmarkCase(input: {
     });
     return {
       workspacePath,
-      actualFiles: unique([...agentChangedFiles, ...mentionedExpectedFiles(output, input.benchmarkCase.expectedFiles)]),
+      actualFiles: actualFilesForAgentResult({
+        agentChangedFiles,
+        expectedFileMentions: mentionedExpectedFiles(output, input.benchmarkCase.expectedFiles),
+        requiredTouchedFiles
+      }),
       responseTokens: estimateTokens(output),
       ...(metadata.observedCodexTokens !== undefined ? { observedCodexTokens: metadata.observedCodexTokens } : {}),
       outcome: "fail",
@@ -310,6 +335,47 @@ export async function runAgentBenchmarkCase(input: {
       metadata: metadata.metadata
     };
   }
+}
+
+function actualFilesForAgentResult(input: {
+  agentChangedFiles: string[];
+  expectedFileMentions: string[];
+  requiredTouchedFiles: string[];
+}): string[] {
+  if (input.requiredTouchedFiles.length > 0) {
+    return unique(input.agentChangedFiles);
+  }
+  return unique([...input.agentChangedFiles, ...input.expectedFileMentions]);
+}
+
+function effectiveRequiredTouchedFiles(input: {
+  workspacePath: string;
+  prompt: string;
+  requiredTouchedFiles: string[];
+}): { requiredTouchedFiles: string[]; ignoredAbsentRequiredTouchedFiles: string[] } {
+  const explicitNewFiles = explicitNewSourceFiles(input.prompt);
+  const requiredTouchedFiles: string[] = [];
+  const ignoredAbsentRequiredTouchedFiles: string[] = [];
+  for (const file of unique(input.requiredTouchedFiles)) {
+    const normalized = normalizeRelativePath(file);
+    const exists = fs.existsSync(path.join(input.workspacePath, normalized));
+    if (exists || explicitNewFiles.has(normalized)) {
+      requiredTouchedFiles.push(normalized);
+    } else {
+      ignoredAbsentRequiredTouchedFiles.push(normalized);
+    }
+  }
+  return { requiredTouchedFiles, ignoredAbsentRequiredTouchedFiles };
+}
+
+function explicitNewSourceFiles(prompt: string): Set<string> {
+  const files = new Set<string>();
+  const pattern = /\bnew\s+file\s*:?\s*`?([A-Za-z0-9_.@+~/-]+?\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx))`?/gi;
+  for (const match of prompt.matchAll(pattern)) {
+    const file = normalizeRelativePath(match[1] ?? "");
+    if (file) files.add(file);
+  }
+  return files;
 }
 
 function createTempWorkspace(rootPath: string): string {
@@ -634,12 +700,14 @@ export async function runShellWithProcessGroupTimeout(
   command: string,
   cwd: string,
   timeoutMs: number,
-  maxBuffer: number
+  maxBuffer: number,
+  env?: Record<string, string> | undefined
 ): Promise<{ status: number | null; output: string; timedOut: boolean; signal?: NodeJS.Signals | null; error?: Error | undefined }> {
   return new Promise((resolve) => {
     const child = spawn(command, {
       cwd,
       shell: true,
+      env: env ? { ...process.env, ...env } : undefined,
       detached: process.platform !== "win32",
       stdio: ["ignore", "pipe", "pipe"]
     });

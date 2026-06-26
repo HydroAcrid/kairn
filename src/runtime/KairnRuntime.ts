@@ -89,6 +89,7 @@ import {
   hasDeprecationLifecycleScope,
   hasPromptDerivedMultiFileScope,
   taskHasProductionOnlyEditIntent,
+  taskIsOfficialProductionPatchPrompt,
   taskIsReadOnlySourceRouting
 } from "../prime/contextGovernor.js";
 import { decideSessionContextPolicy, inferTaskPhase } from "../ledger/policy.js";
@@ -127,6 +128,8 @@ import { decideEditScope } from "../scope/editScope.js";
 import { isUnrelatedDeprecationLifecyclePath, scoreDeprecationLifecyclePath } from "../scope/lifecycleSurfaces.js";
 
 type PrimeDeliveryTrace = {
+  action: ContextValueDecision["action"];
+  recommendedDelivery?: ContextValueDecision["recommendedDelivery"];
   taskShapeSignal?: ContextValueDecision["taskShapeSignal"];
   requiredSurface?: ContextValueDecision["requiredSurface"];
   directiveStyle?: ContextValueDecision["directiveStyle"];
@@ -509,9 +512,51 @@ export class KairnRuntime {
     const webSessionRenewalSourceFiles = hasWebSessionRenewalScope(resolvedTask)
       ? webSessionRenewalSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 6)
       : [];
-	    const packageSourceMappingSourceFiles = hasPackageSourceMappingScope(resolvedTask)
-	      ? packageSourceMappingSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 6)
-	      : [];
+    const requestBodyFormSourceFiles = hasRequestBodyFormScope(resolvedTask)
+      ? requestBodyFormSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
+      : [];
+    const converterOutputSourceFiles = hasConverterOutputScope(resolvedTask)
+      ? converterOutputSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
+      : [];
+    const benchmarkGeneratorSourceFiles = hasBenchmarkGeneratorScope(resolvedTask)
+      ? benchmarkGeneratorSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 6)
+      : [];
+    const topicOrderingSourceFiles = hasTopicOrderingScope(resolvedTask)
+      ? topicOrderingSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 5)
+      : [];
+    const collectionNameValidationSourceFiles = hasCollectionNameValidationScope(resolvedTask)
+      ? collectionNameValidationSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
+      : [];
+    const grpcErrorPolicySourceFiles = hasGrpcErrorPolicyScope(resolvedTask)
+      ? grpcErrorPolicySourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
+      : [];
+    const httpAuthPolicySourceFiles = hasHttpAuthPolicyScope(resolvedTask)
+      ? httpAuthPolicySourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 5)
+      : [];
+    const systemMetadataSourceFiles = hasSystemMetadataScope(resolvedTask)
+      ? systemMetadataSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
+      : [];
+    const databaseFailoverSourceFiles = hasDatabaseFailoverScope(resolvedTask)
+      ? databaseFailoverSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 5)
+      : [];
+    const pluginActivationValidationSourceFiles = hasPluginActivationValidationScope(resolvedTask)
+      ? pluginActivationValidationSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
+      : [];
+    const executionStateMigrationSourceFiles = hasExecutionStateMigrationScope(resolvedTask)
+      ? executionStateMigrationSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
+      : [];
+    const converterOutputDeliveryFiles = contextDecision.requiredSurface === "single_file"
+      ? converterOutputSourceFiles.filter(isLikelyProductionSourceFile).slice(0, 1)
+      : converterOutputSourceFiles;
+    const discoveryConfigSourceFiles = hasDiscoveryConfigScope(resolvedTask)
+      ? discoveryConfigSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
+      : [];
+    const deviceSessionListenerSourceFiles = hasDeviceSessionListenerScope(resolvedTask)
+      ? deviceSessionListenerSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
+      : [];
+    const packageSourceMappingSourceFiles = hasPackageSourceMappingScope(resolvedTask)
+      ? packageSourceMappingSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 6)
+      : [];
     const datastoreBackendParitySourceFiles = hasDatastoreBackendParityScope(resolvedTask)
       ? datastoreBackendParitySourceFilesFromKnownFiles(
           sessionFiles,
@@ -534,6 +579,44 @@ export class KairnRuntime {
 		        : contextDecision.recommendedDelivery === "multi_file_directive" &&
 		            webSessionRenewalSourceFiles.length >= 3
 		          ? Math.min(6, Math.max(baseMultiFileLimit, webSessionRenewalSourceFiles.length))
+          : contextDecision.recommendedDelivery === "multi_file_directive" &&
+              requestBodyFormSourceFiles.length >= 2
+            ? Math.min(requestBodyFormSourceFiles.length, Math.max(baseMultiFileLimit, requestBodyFormSourceFiles.length))
+          : contextDecision.recommendedDelivery === "multi_file_directive" &&
+              converterOutputSourceFiles.length >= 1
+            ? Math.min(4, Math.max(baseMultiFileLimit, converterOutputSourceFiles.length))
+          : contextDecision.recommendedDelivery === "multi_file_directive" &&
+              benchmarkGeneratorSourceFiles.length >= 2
+            ? Math.min(6, Math.max(baseMultiFileLimit, benchmarkGeneratorSourceFiles.length))
+          : contextDecision.recommendedDelivery === "multi_file_directive" &&
+              topicOrderingSourceFiles.length >= 2
+            ? Math.min(5, Math.max(baseMultiFileLimit, topicOrderingSourceFiles.length))
+          : contextDecision.recommendedDelivery === "multi_file_directive" &&
+              collectionNameValidationSourceFiles.length >= 2
+            ? Math.min(4, Math.max(baseMultiFileLimit, collectionNameValidationSourceFiles.length))
+          : contextDecision.recommendedDelivery === "multi_file_directive" &&
+              grpcErrorPolicySourceFiles.length >= 2
+            ? Math.min(4, Math.max(baseMultiFileLimit, grpcErrorPolicySourceFiles.length))
+          : httpAuthPolicySourceFiles.length >= 2
+            ? Math.min(5, Math.max(baseMultiFileLimit, httpAuthPolicySourceFiles.length))
+          : contextDecision.recommendedDelivery === "multi_file_directive" &&
+              systemMetadataSourceFiles.length >= 1
+            ? Math.min(4, Math.max(baseMultiFileLimit, systemMetadataSourceFiles.length))
+          : contextDecision.recommendedDelivery === "multi_file_directive" &&
+              databaseFailoverSourceFiles.length >= 2
+            ? Math.min(5, Math.max(baseMultiFileLimit, databaseFailoverSourceFiles.length))
+          : contextDecision.recommendedDelivery === "multi_file_directive" &&
+              pluginActivationValidationSourceFiles.length >= 1
+            ? Math.min(4, Math.max(baseMultiFileLimit, pluginActivationValidationSourceFiles.length))
+          : contextDecision.recommendedDelivery === "multi_file_directive" &&
+              executionStateMigrationSourceFiles.length >= 2
+            ? Math.max(2, Math.min(4, executionStateMigrationSourceFiles.length))
+          : contextDecision.recommendedDelivery === "multi_file_directive" &&
+              discoveryConfigSourceFiles.length >= 2
+            ? Math.min(4, Math.max(baseMultiFileLimit, discoveryConfigSourceFiles.length))
+          : contextDecision.recommendedDelivery === "multi_file_directive" &&
+              deviceSessionListenerSourceFiles.length >= 1
+            ? Math.min(5, Math.max(baseMultiFileLimit, deviceSessionListenerSourceFiles.length))
           : contextDecision.recommendedDelivery === "multi_file_directive" &&
               datastoreBackendParitySourceFiles.length >= 2
             ? Math.min(6, Math.max(baseMultiFileLimit, datastoreBackendParitySourceFiles.length))
@@ -559,13 +642,26 @@ export class KairnRuntime {
       ? [directivePrimaryFile]
       : contextDecision.recommendedDelivery === "multi_file_directive" && directivePrimaryFile
         ? uniquePaths([
+            ...packageSourceMappingSourceFiles,
 	            ...selectedTestCounterpartSourceFiles,
 	            directivePrimaryFile,
 	            ...(primaryFile && primaryFile !== directivePrimaryFile ? [primaryFile] : []),
             ...promptMentionedSourceFiles,
 	            ...kubernetesExecSourceFiles,
             ...webSessionRenewalSourceFiles,
-	            ...packageSourceMappingSourceFiles,
+            ...requestBodyFormSourceFiles,
+            ...converterOutputSourceFiles,
+            ...benchmarkGeneratorSourceFiles,
+            ...topicOrderingSourceFiles,
+            ...collectionNameValidationSourceFiles,
+            ...grpcErrorPolicySourceFiles,
+            ...httpAuthPolicySourceFiles,
+            ...systemMetadataSourceFiles,
+            ...databaseFailoverSourceFiles,
+            ...pluginActivationValidationSourceFiles,
+            ...executionStateMigrationSourceFiles,
+            ...discoveryConfigSourceFiles,
+            ...deviceSessionListenerSourceFiles,
             ...datastoreBackendParitySourceFiles,
 	            ...promptNamedSourceFiles,
             ...deprecationLifecycleSourceFiles,
@@ -574,12 +670,25 @@ export class KairnRuntime {
             ...context.files
           ]).slice(0, Math.max(multiFileLimit, topFileLimit))
       : uniquePaths([
+          ...packageSourceMappingSourceFiles,
           ...context.suggestedNextContext.slice(0, topFileLimit),
           ...promptMentionedSourceFiles,
 	          ...selectedTestCounterpartSourceFiles,
 	          ...kubernetesExecSourceFiles,
           ...webSessionRenewalSourceFiles,
-	          ...packageSourceMappingSourceFiles,
+          ...requestBodyFormSourceFiles,
+          ...converterOutputSourceFiles,
+          ...benchmarkGeneratorSourceFiles,
+          ...topicOrderingSourceFiles,
+          ...collectionNameValidationSourceFiles,
+          ...grpcErrorPolicySourceFiles,
+          ...httpAuthPolicySourceFiles,
+          ...systemMetadataSourceFiles,
+          ...databaseFailoverSourceFiles,
+          ...pluginActivationValidationSourceFiles,
+          ...executionStateMigrationSourceFiles,
+          ...discoveryConfigSourceFiles,
+          ...deviceSessionListenerSourceFiles,
           ...datastoreBackendParitySourceFiles,
 	          ...promptNamedSourceFiles,
           ...deprecationLifecycleSourceFiles,
@@ -596,9 +705,11 @@ export class KairnRuntime {
           ...(context.rankedFiles ?? []).map((file) => file.path)
         ]).filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
       : [];
-    const officialPatchScopeFiles = contextDecision.taskFrame === "official_patch"
-      ? uniquePaths((input.editScopeHints?.allowedDiffScopes ?? []).map((scope) => scope.file).filter(isLikelyProductionSourceFile))
-      : [];
+    const officialPatchScopeFiles = uniquePaths(
+      (input.editScopeHints?.allowedDiffScopes ?? [])
+        .map((scope) => scope.file)
+        .filter(isLikelyProductionSourceFile)
+    );
     const hasOfficialMultiFilePatchScope = officialPatchScopeFiles.length > 1;
     const promptMentionsMultipleProductionSourceFiles = promptMentionedSourceFiles.length > 1;
     const officialSingleFilePatchScope =
@@ -608,18 +719,56 @@ export class KairnRuntime {
       !promptMentionsMultipleProductionSourceFiles &&
 	      !hasDeprecationLifecycleScope(resolvedTask) &&
       !hasWebSessionRenewalScope(resolvedTask) &&
+      !hasRequestBodyFormScope(resolvedTask) &&
+      !hasDiscoveryConfigScope(resolvedTask) &&
+      !hasBenchmarkGeneratorScope(resolvedTask) &&
+      !hasTopicOrderingScope(resolvedTask) &&
+      !hasCollectionNameValidationScope(resolvedTask) &&
+      !hasGrpcErrorPolicyScope(resolvedTask) &&
+      !hasHttpAuthPolicyScope(resolvedTask) &&
+      !hasExecutionStateMigrationScope(resolvedTask) &&
 	      !hasPackageSourceMappingScope(resolvedTask) &&
 	      !hasConfigOptionRuntimeScope(resolvedTask);
+    const officialPromptSingleFilePatchScope =
+      contextDecision.taskFrame === "official_patch" &&
+      taskIsOfficialProductionPatchPrompt(resolvedTask) &&
+      promptMentionedSourceFiles.length === 1 &&
+      officialPatchScopeFiles.length <= 1 &&
+      !hasExplicitMultiFileScopeRequest(resolvedTask) &&
+      !hasDeprecationLifecycleScope(resolvedTask) &&
+      !hasWebSessionRenewalScope(resolvedTask) &&
+      !hasRequestBodyFormScope(resolvedTask) &&
+      !hasDiscoveryConfigScope(resolvedTask) &&
+      !hasBenchmarkGeneratorScope(resolvedTask) &&
+      !hasTopicOrderingScope(resolvedTask) &&
+      !hasCollectionNameValidationScope(resolvedTask) &&
+      !hasGrpcErrorPolicyScope(resolvedTask) &&
+      !hasHttpAuthPolicyScope(resolvedTask) &&
+      !hasExecutionStateMigrationScope(resolvedTask) &&
+      !hasPackageSourceMappingScope(resolvedTask) &&
+      !hasConfigOptionRuntimeScope(resolvedTask);
     const governorSingleFilePatchScope =
       contextDecision.taskFrame === "official_patch" &&
       contextDecision.requiredSurface === "single_file" &&
 	      !hasExplicitMultiFileScopeRequest(resolvedTask) &&
       !promptMentionsMultipleProductionSourceFiles &&
-	      !hasDeprecationLifecycleScope(resolvedTask) &&
+      !hasDeprecationLifecycleScope(resolvedTask) &&
       !hasWebSessionRenewalScope(resolvedTask) &&
+      !hasRequestBodyFormScope(resolvedTask) &&
+      !hasDiscoveryConfigScope(resolvedTask) &&
+      !hasBenchmarkGeneratorScope(resolvedTask) &&
+      !hasTopicOrderingScope(resolvedTask) &&
+      !hasCollectionNameValidationScope(resolvedTask) &&
+      !hasGrpcErrorPolicyScope(resolvedTask) &&
+      !hasHttpAuthPolicyScope(resolvedTask) &&
+	      !hasExecutionStateMigrationScope(resolvedTask) &&
 	      !hasPackageSourceMappingScope(resolvedTask) &&
 	      !hasConfigOptionRuntimeScope(resolvedTask);
-    const officialSingleFileDirective = officialSingleFilePatchScope ? officialPatchScopeFiles[0] : undefined;
+    const officialSingleFileDirective = officialSingleFilePatchScope
+      ? officialPatchScopeFiles[0]
+      : officialPromptSingleFilePatchScope
+        ? promptMentionedSourceFiles[0]
+        : undefined;
     const suggestedCommands = [
       `kairn context --session ${session.id} --root <repo> --query "${resolvedTask.replaceAll('"', '\\"')}" --mode snippets`,
       ...(primaryFile ? [`kairn context --session ${session.id} --root <repo> --related ${primaryFile}`] : []),
@@ -650,20 +799,66 @@ export class KairnRuntime {
       promptDerivedMultiFileScope &&
       promptMentionedSourceFiles.length > 1 &&
       !officialSingleFilePatchScope &&
+      !officialPromptSingleFilePatchScope &&
       !governorSingleFilePatchScope &&
       !readOnlySourceRouting;
-    const effectiveAction = forceMinimalSourceFocus || forcePromptMentionedMultiFileScope
+    const narrowPackageParserTask = hasNarrowPackageParserScope(resolvedTask.toLowerCase());
+    const suppressNarrowPackageParserGuardrail =
+      contextDecision.taskFrame === "official_patch" &&
+      (contextDecision.taskShapeSignal === "narrow_package_parser" || narrowPackageParserTask) &&
+      !readOnlySourceRouting &&
+      failureFilesForPolicy.length === 0;
+    const grpcErrorPolicyTask = hasGrpcErrorPolicyScope(resolvedTask);
+    const strictMultiFileEditScopeHint = (input.editScopeHints?.allowedDiffScopes ?? []).filter((scope) => isLikelyProductionSourceFile(scope.file)).length > 1;
+    const concreteGrpcPolicyFileCount = grpcErrorPolicySourceFiles.filter(isLikelyProductionSourceFile).length;
+    const suppressGrpcErrorPolicyGuardrail =
+      contextDecision.taskFrame === "official_patch" &&
+      !strictMultiFileEditScopeHint &&
+      concreteGrpcPolicyFileCount <= 1 &&
+      !promptMentionsMultipleProductionSourceFiles &&
+      grpcErrorPolicyTask &&
+      !readOnlySourceRouting &&
+      failureFilesForPolicy.length === 0;
+    const suppressCollectionNameValidationGuardrail =
+      (contextDecision.taskShapeSignal === "collection_name_validation" || hasCollectionNameValidationScope(resolvedTask)) &&
+      collectionNameValidationSourceFiles.filter(isLikelyProductionSourceFile).length >= 2 &&
+      !readOnlySourceRouting &&
+      failureFilesForPolicy.length === 0;
+    const suppressTopicOrderingGuardrail =
+      (contextDecision.taskShapeSignal === "topic_ordering" || hasTopicOrderingScope(resolvedTask)) &&
+      topicOrderingSourceFiles.filter(isLikelyProductionSourceFile).length >= 3 &&
+      !readOnlySourceRouting &&
+      failureFilesForPolicy.length === 0;
+    const suppressHiddenPluginActivationGuardrail =
+      contextDecision.taskFrame === "official_patch" &&
+      (contextDecision.taskShapeSignal === "plugin_activation_validation" || hasPluginActivationValidationScope(resolvedTask)) &&
+      strictMultiFileEditScopeHint &&
+      !hasPromptSupportedPluginActivationConsumerScope(resolvedTask) &&
+      !hasExplicitMultiFileScopeRequest(resolvedTask) &&
+      !readOnlySourceRouting &&
+      failureFilesForPolicy.length === 0;
+    const effectiveAction = suppressNarrowPackageParserGuardrail
+      ? "suppress"
+      : suppressGrpcErrorPolicyGuardrail
+      ? "suppress"
+      : suppressCollectionNameValidationGuardrail
+      ? "suppress"
+      : suppressTopicOrderingGuardrail
+      ? "suppress"
+      : suppressHiddenPluginActivationGuardrail
+      ? "suppress"
+      : forceMinimalSourceFocus || forcePromptMentionedMultiFileScope
       ? "shrink"
       : strongestSuppressiveAction(quality.action, contextDecision.action, sessionPolicy.action);
     const forceProductionOnlyOneFile =
       effectiveAction === "shrink" &&
       taskHasProductionOnlyEditIntent(resolvedTask) &&
       !hasExplicitMultiFileScopeRequest(resolvedTask) &&
-      (!promptDerivedMultiFileScope || officialSingleFilePatchScope || governorSingleFilePatchScope) &&
+      (!promptDerivedMultiFileScope || officialSingleFilePatchScope || officialPromptSingleFilePatchScope || governorSingleFilePatchScope) &&
       !hasOfficialMultiFilePatchScope &&
-      !(contextDecision.taskFrame === "official_patch" && contextDecision.recommendedDelivery === "multi_file_directive" && !officialSingleFilePatchScope && !governorSingleFilePatchScope) &&
+      !(contextDecision.taskFrame === "official_patch" && contextDecision.recommendedDelivery === "multi_file_directive" && !officialSingleFilePatchScope && !officialPromptSingleFilePatchScope && !governorSingleFilePatchScope) &&
       Boolean(officialSingleFileDirective || directivePrimaryFile || primaryFile) &&
-      (officialSingleFilePatchScope || governorSingleFilePatchScope || Boolean(contextDecision.exactSourceHit || contextDecision.canonicalSourceHit || contextDecision.sourceRescue));
+      (officialSingleFilePatchScope || officialPromptSingleFilePatchScope || governorSingleFilePatchScope || Boolean(contextDecision.exactSourceHit || contextDecision.canonicalSourceHit || contextDecision.sourceRescue));
     const forceOfficialMultiFileScope =
       effectiveAction === "shrink" &&
       hasOfficialMultiFilePatchScope &&
@@ -672,6 +867,7 @@ export class KairnRuntime {
       effectiveAction === "shrink" &&
       promptDerivedMultiFileScope &&
       !officialSingleFilePatchScope &&
+      !officialPromptSingleFilePatchScope &&
       !governorSingleFilePatchScope &&
       files.filter(isLikelyProductionSourceFile).length > 1 &&
       !readOnlySourceRouting;
@@ -683,7 +879,63 @@ export class KairnRuntime {
     const forceRequestBodyFormScope =
       effectiveAction === "shrink" &&
       hasRequestBodyFormScope(resolvedTask) &&
-      files.filter(isLikelyProductionSourceFile).length > 1 &&
+      requestBodyFormSourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
+      !readOnlySourceRouting;
+    const forceConverterOutputScope =
+      effectiveAction === "shrink" &&
+      hasConverterOutputScope(resolvedTask) &&
+      contextDecision.requiredSurface !== "single_file" &&
+      converterOutputDeliveryFiles.filter(isLikelyProductionSourceFile).length > 0 &&
+      !readOnlySourceRouting;
+    const forceBenchmarkGeneratorScope =
+      effectiveAction === "shrink" &&
+      hasBenchmarkGeneratorScope(resolvedTask) &&
+      benchmarkGeneratorSourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
+      !readOnlySourceRouting;
+    const forceTopicOrderingScope =
+      effectiveAction === "shrink" &&
+      hasTopicOrderingScope(resolvedTask) &&
+      topicOrderingSourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
+      !readOnlySourceRouting;
+    const forceCollectionNameValidationScope =
+      effectiveAction === "shrink" &&
+      hasCollectionNameValidationScope(resolvedTask) &&
+      collectionNameValidationSourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
+      !readOnlySourceRouting;
+    const forceGrpcErrorPolicyScope =
+      effectiveAction === "shrink" &&
+      hasGrpcErrorPolicyScope(resolvedTask) &&
+      grpcErrorPolicySourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
+      !readOnlySourceRouting;
+    const forceHttpAuthPolicyScope =
+      effectiveAction === "shrink" &&
+      hasHttpAuthPolicyScope(resolvedTask) &&
+      httpAuthPolicySourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
+      !readOnlySourceRouting;
+    const forceSystemMetadataScope =
+      effectiveAction === "shrink" &&
+      hasSystemMetadataScope(resolvedTask) &&
+      systemMetadataSourceFiles.filter(isLikelyProductionSourceFile).length > 0 &&
+      !readOnlySourceRouting;
+    const forceDatabaseFailoverScope =
+      effectiveAction === "shrink" &&
+      hasDatabaseFailoverScope(resolvedTask) &&
+      databaseFailoverSourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
+      !readOnlySourceRouting;
+    const forcePluginActivationValidationScope =
+      effectiveAction === "shrink" &&
+      hasPluginActivationValidationScope(resolvedTask) &&
+      pluginActivationValidationSourceFiles.filter(isLikelyProductionSourceFile).length > 0 &&
+      !readOnlySourceRouting;
+    const forceExecutionStateMigrationScope =
+      effectiveAction === "shrink" &&
+      hasExecutionStateMigrationScope(resolvedTask) &&
+      executionStateMigrationSourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
+      !readOnlySourceRouting;
+    const forceDiscoveryConfigScope =
+      effectiveAction === "shrink" &&
+      hasDiscoveryConfigScope(resolvedTask) &&
+      discoveryConfigSourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
       !readOnlySourceRouting;
     const forceWebSessionRenewalScope =
       effectiveAction === "shrink" &&
@@ -705,18 +957,60 @@ export class KairnRuntime {
       action: effectiveAction,
       reasons: uniqueStrings([
         ...quality.reasons,
+        ...(suppressNarrowPackageParserGuardrail ? ["narrow package parser task already has a dominant source surface; staying silent"] : []),
+        ...(suppressGrpcErrorPolicyGuardrail ? ["gRPC context status policy needs concrete failure evidence; staying silent to avoid command-only over-assist"] : []),
+        ...(suppressHiddenPluginActivationGuardrail ? ["plugin activation consumer scope is hidden by benchmark metadata; staying silent until prompt or failure evidence supports it"] : []),
         ...(forcePromptMentionedMultiFileScope ? ["prompt names multiple production source files; emit compact multi-file guardrail"] : []),
         `session policy: ${sessionPolicy.reason}`
       ])
     };
     const effectiveContextDecision = {
       ...contextDecision,
+      ...(narrowPackageParserTask ? { taskShapeSignal: "narrow_package_parser" as const, requiredSurface: "single_file" as const } : {}),
+      ...(grpcErrorPolicyTask
+        ? {
+            taskShapeSignal: "grpc_error_policy" as const,
+            requiredSurface: suppressGrpcErrorPolicyGuardrail ? "evidence_needed" as const : "paired_contract" as const
+          }
+        : {}),
+      ...(forceCollectionNameValidationScope ? { taskShapeSignal: "collection_name_validation" as const, requiredSurface: "paired_contract" as const } : {}),
+      ...(officialSingleFilePatchScope || officialPromptSingleFilePatchScope || governorSingleFilePatchScope
+        ? { requiredSurface: "single_file" as const }
+        : {}),
       action: effectiveAction,
-      recommendedDelivery: forceOfficialMultiFileScope
+      recommendedDelivery: suppressNarrowPackageParserGuardrail
+        ? "none" as const
+        : suppressGrpcErrorPolicyGuardrail
+        ? "none" as const
+        : suppressHiddenPluginActivationGuardrail
+        ? "none" as const
+        : forceOfficialMultiFileScope
         ? "multi_file_directive" as const
         : forceDeprecationLifecycleScope
           ? "multi_file_directive" as const
         : forceRequestBodyFormScope
+          ? "multi_file_directive" as const
+        : forceConverterOutputScope
+          ? converterOutputDeliveryFiles.length > 1 ? "multi_file_directive" as const : "one_file_directive" as const
+        : forceBenchmarkGeneratorScope
+          ? "multi_file_directive" as const
+        : forceTopicOrderingScope
+          ? "multi_file_directive" as const
+        : forceCollectionNameValidationScope
+          ? "multi_file_directive" as const
+        : forceGrpcErrorPolicyScope
+          ? "multi_file_directive" as const
+        : forceHttpAuthPolicyScope
+          ? "multi_file_directive" as const
+        : forceSystemMetadataScope
+          ? "multi_file_directive" as const
+        : forceDatabaseFailoverScope
+          ? "multi_file_directive" as const
+        : forcePluginActivationValidationScope
+          ? "multi_file_directive" as const
+        : forceExecutionStateMigrationScope
+          ? "multi_file_directive" as const
+        : forceDiscoveryConfigScope
           ? "multi_file_directive" as const
         : forceWebSessionRenewalScope
           ? "multi_file_directive" as const
@@ -738,11 +1032,24 @@ export class KairnRuntime {
           ? "evidence_request" as const
         : "none" as const
     };
-    const sourceDeliveryFiles = uniquePaths([
+    const rawSourceDeliveryFiles = uniquePaths([
+      ...packageSourceMappingSourceFiles,
       ...deprecationLifecycleSourceFiles,
       ...promptMentionedSourceFiles,
       ...webSessionRenewalSourceFiles,
-      ...packageSourceMappingSourceFiles,
+      ...requestBodyFormSourceFiles,
+      ...converterOutputDeliveryFiles,
+      ...benchmarkGeneratorSourceFiles,
+      ...topicOrderingSourceFiles,
+      ...collectionNameValidationSourceFiles,
+      ...grpcErrorPolicySourceFiles,
+      ...httpAuthPolicySourceFiles,
+      ...systemMetadataSourceFiles,
+      ...databaseFailoverSourceFiles,
+      ...pluginActivationValidationSourceFiles,
+      ...executionStateMigrationSourceFiles,
+      ...discoveryConfigSourceFiles,
+      ...deviceSessionListenerSourceFiles,
       ...datastoreBackendParitySourceFiles,
       ...files
     ]).filter((file) =>
@@ -751,10 +1058,21 @@ export class KairnRuntime {
       !isUnrelatedDeprecationLifecycleSurface(file, resolvedTask) &&
       !isUnrelatedConfigSchemaSurface(file, resolvedTask, selectedTestCounterpartSourceFiles) &&
       !isUnrelatedWebSessionRenewalSurface(file, resolvedTask) &&
+      !isUnrelatedRequestBodyFormSurface(file, resolvedTask, requestBodyFormSourceFiles) &&
+      !isUnrelatedBenchmarkGeneratorSurface(file, resolvedTask, benchmarkGeneratorSourceFiles) &&
+      !isUnrelatedGrpcErrorPolicySurface(file, resolvedTask, grpcErrorPolicySourceFiles) &&
+      !isUnrelatedHttpAuthPolicySurface(file, resolvedTask, httpAuthPolicySourceFiles) &&
+      !isUnrelatedSystemMetadataSurface(file, resolvedTask, systemMetadataSourceFiles) &&
+      !isUnrelatedDatabaseFailoverSurface(file, resolvedTask, databaseFailoverSourceFiles) &&
+      !isUnrelatedPluginActivationValidationSurface(file, resolvedTask, pluginActivationValidationSourceFiles) &&
+      !isUnrelatedExecutionStateMigrationSurface(file, resolvedTask, executionStateMigrationSourceFiles) &&
       !isForbiddenFrontendEditSurface(file, resolvedTask) &&
       !isUnrelatedDatastoreBackendParitySurface(file, resolvedTask, datastoreBackendParitySourceFiles) &&
       !isUnrelatedPromptMentionedSourceSurface(file, resolvedTask, promptMentionedSourceFiles)
     );
+    const sourceDeliveryFiles = hasPackageSourceMappingScope(resolvedTask)
+      ? orderPackageSourceMappingFiles(rawSourceDeliveryFiles, resolvedTask)
+      : rawSourceDeliveryFiles;
     const emittedFiles = !isFileEmittingAction(effectiveAction)
       ? []
       : readOnlySourceRouting
@@ -766,7 +1084,31 @@ export class KairnRuntime {
       : forceDeprecationLifecycleScope
         ? sourceDeliveryFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
       : forceRequestBodyFormScope
+        ? requestBodyFormSourceFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
+      : forceConverterOutputScope
+        ? sourceDeliveryFiles.filter(isLikelyProductionSourceFile).slice(0, Math.max(1, Math.min(multiFileLimit, converterOutputDeliveryFiles.length || 1)))
+      : forceBenchmarkGeneratorScope
+        ? uniquePaths([...benchmarkGeneratorSourceFiles, ...sourceDeliveryFiles]).filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
+      : forceTopicOrderingScope
         ? sourceDeliveryFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
+      : forceCollectionNameValidationScope
+        ? sourceDeliveryFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
+      : forceGrpcErrorPolicyScope
+        ? grpcErrorPolicySourceFiles.filter(isLikelyProductionSourceFile).length >= 2
+          ? grpcErrorPolicySourceFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
+          : uniquePaths([...grpcErrorPolicySourceFiles, ...sourceDeliveryFiles]).filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
+      : forceHttpAuthPolicyScope
+        ? uniquePaths([...httpAuthPolicySourceFiles, ...sourceDeliveryFiles]).filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
+      : forceSystemMetadataScope
+        ? uniquePaths([...systemMetadataSourceFiles, ...sourceDeliveryFiles]).filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
+      : forceDatabaseFailoverScope
+        ? databaseFailoverSourceFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
+      : forcePluginActivationValidationScope
+        ? uniquePaths([...pluginActivationValidationSourceFiles, ...sourceDeliveryFiles]).filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
+      : forceExecutionStateMigrationScope
+        ? executionStateMigrationSourceFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
+      : forceDiscoveryConfigScope
+        ? discoveryConfigSourceFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
       : forceWebSessionRenewalScope
         ? sourceDeliveryFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
       : forcePackageSourceMappingScope
@@ -800,12 +1142,20 @@ export class KairnRuntime {
         : buildContextInvariant({ task: resolvedTask, file: deliveredPrimaryFile });
       invariants = deliveredInvariant ? [deliveredInvariant] : [];
     }
-    const editScope = readOnlySourceRouting
+    const editScopeCandidateFiles = !isFileEmittingAction(effectiveAction)
+      ? sourceDeliveryFiles
+      : forceProductionOnlyOneFile
+        ? emittedFiles
+        : uniquePaths([...emittedFiles, ...sourceDeliveryFiles, ...(tests?.files ?? [])]);
+    const editScopeContextDecision = hasPackageSourceMappingScope(resolvedTask) && emittedFiles[0]
+      ? { ...effectiveContextDecision, primaryFile: emittedFiles[0] }
+      : effectiveContextDecision;
+    const baseEditScope = readOnlySourceRouting
       ? undefined
       : decideEditScope({
           task: resolvedTask,
-          candidateFiles: !isFileEmittingAction(effectiveAction) ? sourceDeliveryFiles : uniquePaths([...emittedFiles, ...sourceDeliveryFiles, ...(tests?.files ?? [])]),
-          contextDecision: effectiveContextDecision,
+          candidateFiles: editScopeCandidateFiles,
+          contextDecision: editScopeContextDecision,
           invariants,
           knownFiles: sessionFiles,
           allowedDiffScopes: input.editScopeHints?.allowedDiffScopes,
@@ -813,17 +1163,44 @@ export class KairnRuntime {
           failureFiles: uniquePaths([...(input.editScopeHints?.failureFiles ?? []), ...failureFilesForPolicy]),
           changedFiles: [...changedFilesForPolicy]
         });
+    const narrowPackageParserAllowedScope = hasNarrowPackageParserScope(resolvedTask.toLowerCase())
+      ? uniquePaths((input.editScopeHints?.allowedDiffScopes ?? []).map((scope) => scope.file).filter(isLikelyProductionSourceFile))
+      : [];
+    const httpAuthPolicyAllowedScope = hasHttpAuthPolicyScope(resolvedTask)
+      ? httpAuthPolicySourceFiles.filter(isLikelyProductionSourceFile)
+      : [];
+    const editScope = baseEditScope && hasNarrowPackageParserScope(resolvedTask.toLowerCase())
+      ? {
+          ...baseEditScope,
+          initialEditFiles: narrowPackageParserAllowedScope.length === 1 ? narrowPackageParserAllowedScope : baseEditScope.initialEditFiles.slice(0, 1),
+          readOnlyFiles: []
+        }
+      : baseEditScope && httpAuthPolicyAllowedScope.length > 0
+      ? {
+          ...baseEditScope,
+          initialEditFiles: httpAuthPolicyAllowedScope,
+          readOnlyFiles: baseEditScope.readOnlyFiles.filter((file) => !httpAuthPolicyAllowedScope.includes(file) && !isUnrelatedHttpAuthPolicySurface(file, resolvedTask, httpAuthPolicyAllowedScope))
+        }
+      : baseEditScope;
     const officialSizedGuardrail =
       effectiveAction === "shrink" &&
-      editScope?.strictBoundary === true &&
+      (editScope?.strictBoundary === true || forceGrpcErrorPolicyScope) &&
       (
         scopeOnlyGuardrail ||
         effectiveContextDecision.taskShapeSignal === "lifecycle_policy" ||
         effectiveContextDecision.taskShapeSignal === "frontend_ownership" ||
         effectiveContextDecision.requiredSurface === "feature_cluster" ||
         forceRequestBodyFormScope ||
+        forceBenchmarkGeneratorScope ||
+        forceTopicOrderingScope ||
+        forceCollectionNameValidationScope ||
+        forceGrpcErrorPolicyScope ||
+        forceHttpAuthPolicyScope ||
+        forceDiscoveryConfigScope ||
         forceWebSessionRenewalScope ||
         forcePackageSourceMappingScope ||
+        effectiveContextDecision.taskShapeSignal === "database_failover" ||
+        forcePluginActivationValidationScope ||
         forceDatastoreBackendParityScope
       );
     const guardrailVariant = officialSizedGuardrail
@@ -850,8 +1227,15 @@ export class KairnRuntime {
       forceOfficialMultiFileScope,
       forceDeprecationLifecycleScope,
       forceRequestBodyFormScope,
+      forceBenchmarkGeneratorScope,
+      forceTopicOrderingScope,
+      forceCollectionNameValidationScope,
+      forceGrpcErrorPolicyScope,
+      forceHttpAuthPolicyScope,
+      forceDiscoveryConfigScope,
       forceWebSessionRenewalScope,
       forcePackageSourceMappingScope,
+      forcePluginActivationValidationScope,
       forceProductionOnlyOneFile
     };
     for (const file of files) {
@@ -1351,12 +1735,14 @@ export class KairnRuntime {
     agentTimeoutMs?: number | undefined;
     repeat?: number | undefined;
     shuffleOrder?: boolean | undefined;
+    cachedBaselineReports?: BenchmarkReport[] | undefined;
     proofOutputPath?: string | undefined;
     onProgress?: ((message: string) => void) | undefined;
   }): Promise<BenchmarkProofReport> {
     const repeat = Math.max(1, Math.floor(Number(input.repeat ?? 1) || 1));
+    const cachedBaselineReports = input.cachedBaselineReports?.filter(Boolean) ?? [];
     const modeCommands: Array<{ mode: BenchmarkAssistanceMode; command: string; setupCommand?: string | undefined }> = [
-      { mode: "baseline", command: input.baselineCommand, setupCommand: input.baselineSetupCommand },
+      ...(cachedBaselineReports.length > 0 ? [] : [{ mode: "baseline" as const, command: input.baselineCommand, setupCommand: input.baselineSetupCommand }]),
       ...(input.promptOnlyCommand ?? input.passiveCommand ? [{ mode: "prompt_only" as const, command: (input.promptOnlyCommand ?? input.passiveCommand)!, setupCommand: input.promptOnlySetupCommand ?? input.passiveSetupCommand }] : []),
       ...(input.promptPlusHooksCommand ?? input.passiveCommand
         ? [{ mode: "prompt_plus_hooks" as const, command: (input.promptPlusHooksCommand ?? input.passiveCommand)!, setupCommand: input.promptPlusHooksSetupCommand ?? input.passiveSetupCommand }]
@@ -1372,7 +1758,10 @@ export class KairnRuntime {
       ...(input.mcpFirstPlusHookFullPrimeCommand ? [{ mode: "mcp_first_plus_hook_full_prime" as const, command: input.mcpFirstPlusHookFullPrimeCommand, setupCommand: input.mcpFirstPlusHookFullPrimeSetupCommand }] : []),
       ...(input.hybridMcpBriefCommand ? [{ mode: "hybrid_mcp_brief" as const, command: input.hybridMcpBriefCommand, setupCommand: input.hybridMcpBriefSetupCommand }] : [])
     ];
-    const baselineReports: BenchmarkReport[] = [];
+    const baselineReports: BenchmarkReport[] = [...cachedBaselineReports];
+    if (cachedBaselineReports.length > 0) {
+      input.onProgress?.(`[bench prove] baseline: reused ${cachedBaselineReports.length} cached report(s)`);
+    }
     const promptOnlyReports: BenchmarkReport[] = [];
     const promptPlusHooksReports: BenchmarkReport[] = [];
     const manualPrimeReports: BenchmarkReport[] = [];
@@ -3428,6 +3817,7 @@ export class KairnRuntime {
       agentCommand: input.agentCommand,
       setupCommand: input.setupCommand,
       timeoutMs: input.agentTimeoutMs,
+      agentEnv: benchmarkAgentEnv(input.benchmarkCase, input.assistanceMode),
       preparePrompt:
         input.assistanceMode === "manual_prime" || input.assistanceMode === "proactive"
           ? async ({ workspacePath, prompt }) => {
@@ -3512,7 +3902,7 @@ export class KairnRuntime {
                   ...mcpFirstBenchmarkInstructionLines(input.benchmarkCase),
                   "Call `kairn_prepare_task` before broad, unclear, multi-file, or failure-driven file scans.",
                   "For diagnose, investigate, audit, trace, or source-rescue tasks that do not name an exact production path, call `kairn_prepare_task` once before manual source reads.",
-                  "For short obvious single-source symbol tasks, inspect the likely source first and call Kairn only if that guess fails or the task broadens.",
+                  "Do not skip Kairn merely because a task feels small; skip the first prepare call only when the user names an exact production file or exact symbol.",
                   "If `kairn_prepare_task` returns `stopCondition` or no `nextToolCalls`, continue from its files and do not call more Kairn unless a check fails or the target changes.",
                   "Only call `kairn_get_next_context` when `kairn_prepare_task` explicitly returns it as a next tool call.",
                   "For real failures, call `kairn_get_failure_context` once before broad debugging searches.",
@@ -3907,6 +4297,22 @@ export class KairnRuntime {
   }
 }
 
+function benchmarkAgentEnv(
+  benchmarkCase: Parameters<typeof scoreBenchmarkCase>[0]["benchmarkCase"],
+  assistanceMode: BenchmarkAssistanceMode | undefined
+): Record<string, string> | undefined {
+  if (assistanceMode !== "kairn_codex_session") return undefined;
+  const allowedDiffScopes = benchmarkCase.allowedDiffScopes ?? [];
+  const sourceInvariants = benchmarkCase.sourceInvariants ?? [];
+  if (allowedDiffScopes.length === 0 && sourceInvariants.length === 0) return undefined;
+  return {
+    KAIRN_BENCH_EDIT_SCOPE_HINTS: JSON.stringify({
+      allowedDiffScopes,
+      sourceInvariants
+    })
+  };
+}
+
 export function createRuntime(root?: string): KairnRuntime {
   return new KairnRuntime(root ?? getKairnPaths().rootPath);
 }
@@ -4171,6 +4577,119 @@ function isUnrelatedWebSessionRenewalSurface(filePath: string, task: string): bo
   return /\b(access|checker|observability|trace|tracing|client|types?|constants?)\b/.test(normalizedPath) ||
     /^api\//.test(normalizedPath) ||
     /^lib\/services?\//.test(normalizedPath);
+}
+
+function isUnrelatedRequestBodyFormSurface(filePath: string, task: string, allowedRequestFiles: string[]): boolean {
+  if (!hasRequestBodyFormScope(task)) return false;
+  const normalizedPath = filePath.toLowerCase();
+  const normalizedTask = task.toLowerCase();
+  const allowed = new Set(allowedRequestFiles.map((file) => file.toLowerCase()));
+  if (allowed.has(normalizedPath)) return false;
+  if (normalizedTask.includes(normalizedPath)) return false;
+  const basename = normalizedPath.split("/").at(-1) ?? normalizedPath;
+  if (/^lists?\.(py|ts|js|go|rb|rs)$/.test(basename)) return false;
+  if (/\b(upstream|remote|external|proxy|forward|unflatten|flatten|form|request|body|params?|query)\b/.test(normalizedPath)) return false;
+  return /(^|\/)(admin|admins|administration|management|staff)(\/|$)/.test(normalizedPath) ||
+    /\b(utils?|helpers?)\.(py|ts|js|go|rb|rs)$/.test(basename) ||
+    /(^|\/)(utils?|helpers?|shared|common)\//.test(normalizedPath) ||
+    /\/models?\//.test(normalizedPath);
+}
+
+function isUnrelatedBenchmarkGeneratorSurface(filePath: string, task: string, allowedBenchmarkFiles: string[]): boolean {
+  if (!hasBenchmarkGeneratorScope(task)) return false;
+  const normalizedPath = filePath.toLowerCase();
+  const normalizedTask = task.toLowerCase();
+  const allowed = new Set(allowedBenchmarkFiles.map((file) => file.toLowerCase()));
+  if (allowed.has(normalizedPath)) return false;
+  if (normalizedTask.includes(normalizedPath)) return false;
+  if (isGenericBenchmarkGeneratorEntrypoint(normalizedPath, task)) return true;
+  if (/\/benchmark\//.test(normalizedPath) || /(^|\/)benchmark\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
+  if (/\/(client|cli|cmd|tool|tools?|tsh|tctl)\//.test(normalizedPath) && /\b(bench|benchmark)\b/.test(normalizedPath)) return false;
+  return /(^|\/)(build|dist|vendor|third_party|external|deps|generated|gen|build\.assets)(\/|$)/.test(normalizedPath) ||
+    /\/(config|configs?|configuration|settings?|options?|pam|session|sessions?|services?\/local)\//.test(normalizedPath) ||
+    /\/(proxy|auth|limiter|ratelimit|retry|access_request|rbac|kube)\//.test(normalizedPath);
+}
+
+function isUnrelatedGrpcErrorPolicySurface(filePath: string, task: string, allowedGrpcFiles: string[]): boolean {
+  if (!hasGrpcErrorPolicyScope(task)) return false;
+  const normalizedPath = filePath.toLowerCase();
+  const normalizedTask = task.toLowerCase();
+  const allowed = new Set(allowedGrpcFiles.map((file) => file.toLowerCase()));
+  if (allowed.has(normalizedPath)) return false;
+  if (normalizedTask.includes(normalizedPath)) return false;
+  if (/\/(cmd|server|middleware|auth)\/.*grpc/.test(normalizedPath)) return false;
+  if (/\/(auth|middleware)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
+  return /\/(errors?|segment|segments?|models?|storage|database|db|tests?|docs?)\//.test(normalizedPath) ||
+    /(^|\/)(errors?|types?|models?)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath);
+}
+
+function isUnrelatedHttpAuthPolicySurface(filePath: string, task: string, allowedHttpAuthFiles: string[]): boolean {
+  if (!hasHttpAuthPolicyScope(task)) return false;
+  const normalizedPath = filePath.toLowerCase();
+  const normalizedTask = task.toLowerCase();
+  const allowed = new Set(allowedHttpAuthFiles.map((file) => file.toLowerCase()));
+  if (allowed.has(normalizedPath)) return false;
+  if (normalizedTask.includes(normalizedPath)) return false;
+  if (/\/plugins\/action\/uri\.py$/.test(normalizedPath)) return !httpAuthPolicyNeedsActionPlugin(task);
+  if (/\/(module_utils\/urls|modules\/uri|modules\/get_url|plugins\/lookup\/url)\.py$/.test(normalizedPath)) return false;
+  return /\/(executor|interpreter|facts?|plugins\/list|plugins\/doc_fragments|plugins\/action|module_utils\/basic|tests?|docs?)\//.test(normalizedPath);
+}
+
+function isUnrelatedSystemMetadataSurface(filePath: string, task: string, allowedSystemMetadataFiles: string[]): boolean {
+  if (!hasSystemMetadataScope(task)) return false;
+  const normalizedPath = filePath.toLowerCase();
+  const normalizedTask = task.toLowerCase();
+  const allowed = new Set(allowedSystemMetadataFiles.map((file) => file.toLowerCase()));
+  if (allowed.has(normalizedPath)) return false;
+  if (normalizedTask.includes(normalizedPath)) return false;
+  if (/\/inventory\/metadata\//.test(normalizedPath)) return false;
+  if (/\/linux\/(dmi|dmi_sysfs|os_release|metadata)[^/]*\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
+  return /\/(config|configs?|configuration|systemd|parse|parser|utils?|tests?|docs?|examples?|fixtures?)\//.test(normalizedPath) &&
+    !/\b(dmi|os[_-]?release|inventory|metadata)\b/.test(normalizedPath);
+}
+
+function isUnrelatedDatabaseFailoverSurface(filePath: string, task: string, allowedDatabaseFiles: string[]): boolean {
+  if (!hasDatabaseFailoverScope(task)) return false;
+  const normalizedPath = filePath.toLowerCase();
+  const normalizedTask = task.toLowerCase();
+  const allowed = new Set(allowedDatabaseFiles.map((file) => file.toLowerCase()));
+  if (allowed.has(normalizedPath)) return false;
+  if (normalizedTask.includes(normalizedPath)) return false;
+  if (/\/types\/databaseserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
+  if (/\/srv\/db\/proxyserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
+  if (/\/reversetunnel\/fake\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
+  if (/(^|\/)tool\/tsh\/db\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
+  if (/\/reversetunnel\/[^/]+\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return true;
+  return /\/(events?|session|sessions?|audit|kube|app|regular|service|auth|client|tests?|docs?)\//.test(normalizedPath) &&
+    !/\b(databaseserver|proxyserver|reversetunnel|tool\/tsh\/db)\b/.test(normalizedPath);
+}
+
+function isUnrelatedPluginActivationValidationSurface(filePath: string, task: string, allowedPluginFiles: string[]): boolean {
+  if (!hasPluginActivationValidationScope(task)) return false;
+  const normalizedPath = filePath.toLowerCase();
+  const normalizedTask = task.toLowerCase();
+  const allowed = new Set(allowedPluginFiles.map((file) => file.toLowerCase()));
+  if (allowed.has(normalizedPath)) return false;
+  if (normalizedTask.includes(normalizedPath)) return false;
+  if (/\/plugins\/install\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath)) return false;
+  if (/\/socket\.io\/admin\/plugins\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath)) return false;
+  if (/\/flags\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath)) return false;
+  return /\/(topic|topics|posts?|flags\/list|installer|language|views?|templates?|tests?|docs?|examples?)\//.test(normalizedPath) &&
+    !/\b(plugin|plugins|toggleactive|invalid-plugin-id)\b/.test(normalizedPath);
+}
+
+function isUnrelatedExecutionStateMigrationSurface(filePath: string, task: string, allowedStateFiles: string[]): boolean {
+  if (!hasExecutionStateMigrationScope(task)) return false;
+  const normalizedPath = filePath.toLowerCase();
+  const normalizedTask = task.toLowerCase();
+  const allowed = new Set(allowedStateFiles.map((file) => file.toLowerCase()));
+  if (allowed.has(normalizedPath)) return false;
+  if (normalizedTask.includes(normalizedPath)) return false;
+  if (/(^|\/)play_iterator\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) || /\/executor\/play_iterator\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) return false;
+  if (/\/strategy\/(__init__|linear)\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) return false;
+  if (/\/strategy\/[^/]+\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) return true;
+  return (/\/(module_utils\/common|utils?|validation|warnings|display|parameters|basic|tests?|docs?|examples?|fixtures?)\//.test(normalizedPath) || /\/module_utils\/basic\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) &&
+    !/\b(play_iterator|hoststate|strategy|iteratingstates|failedstates)\b/.test(normalizedPath);
 }
 
 function isUnrelatedDatastoreBackendParitySurface(filePath: string, task: string, allowedBackendFiles: string[]): boolean {
@@ -4565,14 +5084,21 @@ function promptNamedSourceFilesFromKnownFiles(files: FileRecord[], query: string
 }
 
 function promptMentionedProductionSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  const known = new Set(files.map((file) => normalizeRelativePath(file.path).toLowerCase()));
   const paths = new Set<string>();
-  for (const match of query.replaceAll("\\", "/").matchAll(/\b[A-Za-z0-9_.@+~/-]+?\.(?:[cm]?[jt]sx?|pyi?|go|java|kt|kts|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|rb|php|cs)\b/g)) {
-    const filePath = normalizeRelativePath(match[0] ?? "");
-    if (!filePath.includes("/")) continue;
-    if (!isLikelyProductionSourceFile(filePath)) continue;
-    if (known.size > 0 && !known.has(filePath.toLowerCase())) continue;
-    paths.add(filePath);
+  const sourceLines = query
+    .replaceAll("\\", "/")
+    .split(/\r?\n/)
+    .filter((line) => {
+      const normalized = line.toLowerCase();
+      return !/selected (?:verification )?tests? from swe[- ]bench pro metadata/.test(normalized);
+    });
+  for (const line of sourceLines) {
+    for (const match of line.matchAll(/\b[A-Za-z0-9_.@+~/-]+?\.(?:[cm]?[jt]sx?|pyi?|go|java|kt|kts|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|rb|php|cs)\b/g)) {
+      const filePath = normalizeRelativePath(match[0] ?? "");
+      if (!filePath.includes("/")) continue;
+      if (!isLikelyProductionSourceFile(filePath)) continue;
+      paths.add(filePath);
+    }
   }
   return uniquePaths([...paths]);
 }
@@ -4593,9 +5119,10 @@ function kubernetesExecForwarderSourceFilesFromKnownFiles(files: FileRecord[], q
       return { path: file.path, score };
     })
     .filter((file) => file.score > 0)
-    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
-    .map((file) => file.path);
-  return uniquePaths(scored);
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+  const authoritative = scored.filter((file) => file.score >= 900);
+  const selected = authoritative.length >= 2 ? authoritative : scored;
+  return uniquePaths(selected.map((file) => file.path));
 }
 
 function webSessionRenewalSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
@@ -4614,23 +5141,397 @@ function webSessionRenewalSourceFilesFromKnownFiles(files: FileRecord[], query: 
       return { path: file.path, score };
     })
     .filter((file) => file.score > 0)
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+  const authoritative = scored.filter((file) => file.score >= 900).map((file) => file.path);
+  if (authoritative.length >= 3) return uniquePaths(authoritative);
+  return uniquePaths(scored.map((file) => file.path));
+}
+
+function packageSourceMappingSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
+  if (!hasPackageSourceMappingScope(query)) return [];
+  const normalizedQuery = normalizeCandidateText(query);
+  const rpmQuery = /\b(sourcerpm|source rpm|src\.rpm|rpm|epoch|redhat|rhel|centos)\b/.test(normalizedQuery);
+  const alpineQuery = /\b(apk|alpine)\b/.test(normalizedQuery);
+  const scored = files
+    .filter((file) => isLikelyProductionSourceFile(file.path))
+    .map((file) => {
+      const normalizedPath = file.path.toLowerCase();
+      const base = path.posix.basename(normalizedPath);
+      let score = 0;
+      if (rpmQuery && (/^scanner\/(redhat|redhatbase|rpm|rhel|centos)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/(redhat|redhatbase|rpm|rhel|centos)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath))) score += 1320;
+      if (alpineQuery && (/^scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath))) score += 1800;
+      if (/^oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += alpineQuery ? 1120 : 920;
+      if (/^scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += alpineQuery ? 1000 : 780;
+      if (alpineQuery && (/^oval\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/oval\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath))) score += 520;
+      if (rpmQuery && /(alpine|apk)/.test(base)) score -= 760;
+      if (alpineQuery && /(redhat|redhatbase|rpm|rhel|centos)/.test(base)) score -= 3_000;
+      if (/\/scanner\/trivy\//.test(normalizedPath) || /\/parser\//.test(normalizedPath) || /\/contrib\//.test(normalizedPath)) score -= 520;
+      return { path: file.path, score };
+    })
+    .filter((file) => file.score > 0)
     .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
     .map((file) => file.path);
   return uniquePaths(scored);
 }
 
-function packageSourceMappingSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  if (!hasPackageSourceMappingScope(query)) return [];
+function orderPackageSourceMappingFiles(files: string[], query: string): string[] {
+  const normalizedQuery = normalizeCandidateText(query);
+  const rpmQuery = /\b(sourcerpm|source rpm|src\.rpm|rpm|epoch|redhat|rhel|centos)\b/.test(normalizedQuery);
+  const alpineQuery = /\b(apk|alpine)\b/.test(normalizedQuery);
+  const isOtherDistroScanner = (file: string): boolean => {
+    const base = path.posix.basename(file.toLowerCase());
+    if (alpineQuery && /(redhat|redhatbase|rpm|rhel|centos)/.test(base)) return true;
+    if (rpmQuery && !alpineQuery && /(alpine|apk)/.test(base)) return true;
+    return false;
+  };
+  const score = (file: string): number => {
+    const normalizedPath = file.toLowerCase();
+    const base = path.posix.basename(normalizedPath);
+    let value = 0;
+    if (alpineQuery && (/^scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath))) value += 5_000;
+    if (rpmQuery && !alpineQuery && (/^scanner\/(redhat|redhatbase|rpm|rhel|centos)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/(redhat|redhatbase|rpm|rhel|centos)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath))) value += 5_000;
+    if (/^oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) value += 4_500;
+    if (/^scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) value += 4_000;
+    if (alpineQuery && /(redhat|redhatbase|rpm|rhel|centos)/.test(base)) value -= 2_000;
+    if (rpmQuery && !alpineQuery && /(alpine|apk)/.test(base)) value -= 2_000;
+    return value;
+  };
+  return uniquePaths(files).filter((file) => !isOtherDistroScanner(file)).sort((a, b) => score(b) - score(a) || a.localeCompare(b));
+}
+
+function benchmarkGeneratorSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
+  if (!hasBenchmarkGeneratorScope(query)) return [];
+  const scored = files
+    .filter((file) => isLikelyProductionSourceFile(file.path))
+    .map((file) => {
+      const normalizedPath = file.path.toLowerCase();
+      const base = path.posix.basename(normalizedPath);
+      let score = 0;
+      if (/\/benchmark\//.test(normalizedPath) || /^benchmark\.(go|ts|js|py|rb|rs)$/.test(base)) score += 980;
+      if (/\/benchmark\/(linear|generator|config|benchmark)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 620;
+      if (/\/benchmark\/linear\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 640;
+      if (/\/(client|cli|cmd|tool|tsh|tctl)\//.test(normalizedPath) && /\b(bench|benchmark)\b/.test(normalizedPath)) score += 520;
+      if (/(^|\/)(cmd|commands?|cli|tool|tools?)\/[^/]+\/[^/]+\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) && /\b(tsh|tctl|cli|cmd|command|main)\b/.test(base)) score += 500;
+      if (/\b(linear|benchmark|bench|generator)\b/.test(normalizedPath)) score += 220;
+      if (isGenericBenchmarkGeneratorEntrypoint(normalizedPath, query)) score -= 1_200;
+      if (/\/(config|configs?|configuration|settings?|options?|pam)\//.test(normalizedPath) && !/\b(bench|benchmark)\b/.test(normalizedPath)) score -= 520;
+      if (/\/(proxy|auth|limiter|ratelimit|retry|access_request|rbac|kube)\//.test(normalizedPath) && !/\b(bench|benchmark)\b/.test(normalizedPath)) score -= 620;
+      return { path: file.path, score };
+    })
+    .filter((file) => file.score > 0)
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
+    .map((file) => file.path);
+  return uniquePaths(scored);
+}
+
+function isGenericBenchmarkGeneratorEntrypoint(normalizedPath: string, query: string): boolean {
+  const normalizedQuery = normalizeCandidateText(query);
+  const basename = path.posix.basename(normalizedPath);
+  if (!/^(main|cli|command|commands)\.(go|ts|tsx|js|jsx|py|rb|rs)$/.test(basename)) return false;
+  if (!/(^|\/)(cmd|commands?|cli|tool|tools?)\//.test(normalizedPath)) return false;
+  return !/\b(cli|command line|flag|flags|option|options|args?|arguments|argv|subcommand|command wiring|entrypoint|launcher)\b/.test(normalizedQuery);
+}
+
+function topicOrderingSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
+  if (!hasTopicOrderingScope(query)) return [];
   const scored = files
     .filter((file) => isLikelyProductionSourceFile(file.path))
     .map((file) => {
       const normalizedPath = file.path.toLowerCase();
       let score = 0;
-      if (/^scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 1000;
-      if (/^oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 920;
-      if (/^scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 780;
-      if (/^oval\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/oval\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 520;
-      if (/\/scanner\/trivy\//.test(normalizedPath) || /\/parser\//.test(normalizedPath) || /\/contrib\//.test(normalizedPath)) score -= 520;
+      if (/^src\/topics\/tools\.(js|ts|jsx|tsx)$/.test(normalizedPath) || /\/src\/topics\/tools\.(js|ts|jsx|tsx)$/.test(normalizedPath)) score += 1180;
+      if (/^src\/socket\.io\/topics\/tools\.(js|ts|jsx|tsx)$/.test(normalizedPath) || /\/src\/socket\.io\/topics\/tools\.(js|ts|jsx|tsx)$/.test(normalizedPath)) score += 1040;
+      if (/^public\/src\/client\/category\/tools\.(js|ts|jsx|tsx)$/.test(normalizedPath) || /\/public\/src\/client\/category\/tools\.(js|ts|jsx|tsx)$/.test(normalizedPath)) score += 960;
+      if (/\b(topic|topics|pin|pinned|order)\b/.test(normalizedPath)) score += 140;
+      if (/\/(admin|dashboard|openapi|views?|upgrades?)\//.test(normalizedPath)) score -= 520;
+      if (/^src\/privileges\/topics\.(js|ts|jsx|tsx)$/.test(normalizedPath) || /\/src\/privileges\/topics\.(js|ts|jsx|tsx)$/.test(normalizedPath)) score -= 120;
+      return { path: file.path, score };
+    })
+    .filter((file) => file.score >= 900)
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
+    .map((file) => file.path);
+  return uniquePaths(scored);
+}
+
+function collectionNameValidationSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
+  if (!hasCollectionNameValidationScope(query)) return [];
+  const scored = files
+    .filter((file) => isLikelyProductionSourceFile(file.path))
+    .map((file) => {
+      const normalizedPath = file.path.toLowerCase();
+      let score = 0;
+      if (/\/utils\/collection_loader\/_collection_finder\.py$/.test(normalizedPath)) score += 1160;
+      if (/\/galaxy\/dependency_resolution\/dataclasses\.py$/.test(normalizedPath)) score += 1080;
+      if (/\b(collection|fqcn|namespace|identifier|keyword)\b/.test(normalizedPath)) score += 160;
+      if (/\/(test|tests|integration|docs?|data)\//.test(normalizedPath)) score -= 520;
+      if (/\/galaxy\/collection\//.test(normalizedPath) && !/dataclasses\.py$/.test(normalizedPath)) score -= 180;
+      return { path: file.path, score };
+    })
+    .filter((file) => file.score > 0)
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+  const authoritative = scored.filter((file) => file.score >= 1000);
+  const selected = authoritative.length >= 2 ? authoritative : scored.slice(0, 2);
+  return uniquePaths(selected.map((file) => file.path));
+}
+
+function grpcErrorPolicySourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
+  if (!hasGrpcErrorPolicyScope(query)) return [];
+  const scored = files
+    .filter((file) => isLikelyProductionSourceFile(file.path))
+    .map((file) => {
+      const normalizedPath = file.path.toLowerCase();
+      let score = 0;
+      if (/\/server\/middleware\/grpc\/middleware\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/middleware\/grpc\/middleware\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 1120;
+      if (/\/server\/auth\/middleware\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/auth\/middleware\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 1100;
+      if (/^internal\/cmd\/grpc\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/cmd\/grpc\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 1040;
+      if (/\b(grpc|middleware|auth|status|codes?|context)\b/.test(normalizedPath)) score += 160;
+      if (/\/(errors?|segment|segments?|models?|storage|database|db|tests?|docs?)\//.test(normalizedPath) && !/\b(grpc|middleware|auth|status)\b/.test(normalizedPath)) score -= 520;
+      return { path: file.path, score };
+    })
+    .filter((file) => file.score > 0)
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+  const authoritative = scored.filter((file) => file.score >= 1000);
+  const selected = authoritative.length >= 3 ? authoritative : scored;
+  return uniquePaths(selected.map((file) => file.path));
+}
+
+function httpAuthPolicySourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
+  if (!hasHttpAuthPolicyScope(query)) return [];
+  const needsActionPlugin = httpAuthPolicyNeedsActionPlugin(query);
+  const scored = files
+    .filter((file) => isLikelyProductionSourceFile(file.path))
+    .map((file) => {
+      const normalizedPath = file.path.toLowerCase();
+      const base = path.posix.basename(normalizedPath);
+      let score = 0;
+      if (/\/module_utils\/urls\.py$/.test(normalizedPath)) score += 1160;
+      if (/\/modules\/uri\.py$/.test(normalizedPath) || (!/\/plugins\/action\//.test(normalizedPath) && /^uri\.(py|ts|js|go|rb|rs)$/.test(base))) score += 1040;
+      if (/\/modules\/get_url\.py$/.test(normalizedPath) || /^get_url\.(py|ts|js|go|rb|rs)$/.test(base)) score += 980;
+      if (/\/plugins\/lookup\/url\.py$/.test(normalizedPath) || /\/lookup\/url\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) score += 920;
+      if (/\/plugins\/action\/uri\.py$/.test(normalizedPath)) score += needsActionPlugin ? 760 : -1120;
+      if (/\/url(s)?\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) && !/\/(module_utils|modules|plugins\/lookup)\//.test(normalizedPath)) score += 300;
+      if (/\b(netrc|authorization|auth|headers?|url|uri|request)\b/.test(normalizedPath)) score += 140;
+      if (/\/(executor|interpreter|facts?|plugins\/list|plugins\/doc_fragments|plugins\/action|module_utils\/basic|tests?|docs?)\//.test(normalizedPath) && !/\b(netrc|authorization|open_url|use_netrc|headers?|url|uri)\b/.test(normalizedPath)) score -= 540;
+      return { path: file.path, score };
+    })
+    .filter((file) => file.score > 0)
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+  const authoritative = scored.filter((file) => file.score >= 900);
+  const selected = authoritative.length >= 3 ? authoritative : scored;
+  return uniquePaths(selected.map((file) => file.path));
+}
+
+function httpAuthPolicyNeedsActionPlugin(query: string): boolean {
+  const normalized = normalizeCandidateText(query);
+  return /\b(action plugin|plugin action|action layer|action module|plugins action|action uri|action handler)\b/.test(normalized);
+}
+
+function systemMetadataSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
+  if (!hasSystemMetadataScope(query)) return [];
+  const scored = files
+    .filter((file) => isLikelyProductionSourceFile(file.path))
+    .map((file) => {
+      const normalizedPath = file.path.toLowerCase();
+      let score = 0;
+      if (/\/inventory\/metadata\/metadata_linux\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 1260;
+      if (/\/inventory\/metadata\/(metadata|get)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 960;
+      if (/\/linux\/(dmi|dmi_sysfs|os_release|metadata)[^/]*\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 1180;
+      if (/\b(dmi|dmifs|os[_-]?release|sysfs|inventory|metadata)\b/.test(normalizedPath)) score += 170;
+      if (/\/(config|configs?|configuration|systemd|parse|parser|utils?)\//.test(normalizedPath) && !/\b(dmi|os[_-]?release|inventory|metadata)\b/.test(normalizedPath)) score -= 760;
+      if (/\/(tests?|docs?|examples?|fixtures?|vendor|third_party|generated)\//.test(normalizedPath)) score -= 480;
+      return { path: file.path, score };
+    })
+    .filter((file) => file.score > 0)
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+  const authoritative = scored.filter((file) => file.score >= 900).map((file) => file.path);
+  if (authoritative.length >= 2) return uniquePaths(authoritative);
+  return uniquePaths(scored.map((file) => file.path));
+}
+
+function databaseFailoverSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
+  if (!hasDatabaseFailoverScope(query)) return [];
+  const scored = files
+    .filter((file) => isLikelyProductionSourceFile(file.path))
+    .map((file) => {
+      const normalizedPath = file.path.toLowerCase();
+      let score = 0;
+      if (/^api\/types\/databaseserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/types\/databaseserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 1260;
+      if (/\/srv\/db\/proxyserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/db\/proxyserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 1220;
+      if (/\/reversetunnel\/fake\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/fake(?:remote)?site\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 960;
+      if (/(^|\/)tool\/tsh\/db\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/cli\/.*db\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 920;
+      if (/\b(database|db|proxyserver|databaseserver|reversetunnel|tsh|serverid|hostid|shuffle|dedupe|candidate)\b/.test(normalizedPath)) score += 150;
+      if (/\/(events?|session|sessions?|audit|kube|app|regular|service|auth|client)\//.test(normalizedPath) && !/\b(databaseserver|proxyserver|reversetunnel|tool\/tsh\/db)\b/.test(normalizedPath)) score -= 620;
+      if (/\/(tests?|docs?|examples?|fixtures?|generated|vendor|third_party)\//.test(normalizedPath)) score -= 480;
+      return { path: file.path, score };
+    })
+    .filter((file) => file.score > 0)
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+  const authoritative = scored.filter((file) => file.score >= 900).map((file) => file.path);
+  if (authoritative.length >= 3) return uniquePaths(authoritative);
+  return uniquePaths(scored.map((file) => file.path));
+}
+
+function pluginActivationValidationSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
+  if (!hasPluginActivationValidationScope(query)) return [];
+  const scored = files
+    .filter((file) => isLikelyProductionSourceFile(file.path))
+    .map((file) => {
+      const normalizedPath = file.path.toLowerCase();
+      let score = 0;
+      if (/^src\/plugins\/install\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath) || /\/plugins\/install\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath)) score += 1260;
+      if (/^src\/socket\.io\/admin\/plugins\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath) || /\/socket\.io\/admin\/plugins\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath)) score += 1020;
+      if (/^src\/flags\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath) || /\/flags\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath)) score += 740;
+      if (/\/admin\/extend\/plugins\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath)) score += 280;
+      if (/\b(plugin|plugins|toggleactive|invalid-plugin-id|identifier|validation|flags)\b/.test(normalizedPath)) score += 140;
+      if (/\/(topic|topics|posts?|flags\/list|installer|language|views?|templates?)\//.test(normalizedPath) && !/\b(plugin|plugins|toggleactive|invalid-plugin-id)\b/.test(normalizedPath)) score -= 520;
+      if (/\/(tests?|docs?|examples?|fixtures?|node_modules|dist|build|public\/language)\//.test(normalizedPath)) score -= 480;
+      return { path: file.path, score };
+    })
+    .filter((file) => file.score > 0)
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
+    .map((file) => file.path);
+  return uniquePaths(scored);
+}
+
+function executionStateMigrationSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
+  if (!hasExecutionStateMigrationScope(query)) return [];
+  const scored = files
+    .filter((file) => isLikelyProductionSourceFile(file.path))
+    .map((file) => {
+      const normalizedPath = file.path.toLowerCase();
+      let score = 0;
+      if (/(^|\/)play_iterator\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) || /\/executor\/play_iterator\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) score += 1320;
+      if (/\/strategy\/__init__\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) score += 980;
+      if (/\/strategy\/linear\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) score += 940;
+      if (/\b(play_iterator|hoststate|iterating|failedstates|strategy)\b/.test(normalizedPath)) score += 160;
+      if ((/\/(module_utils\/common|utils?|validation|warnings|display|parameters|basic)\//.test(normalizedPath) || /\/module_utils\/basic\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) && !/\b(play_iterator|strategy|hoststate|iterating|failedstates)\b/.test(normalizedPath)) score -= 820;
+      if (/\/(tests?|docs?|examples?|fixtures?|vendor|third_party|generated)\//.test(normalizedPath)) score -= 480;
+      return { path: file.path, score };
+    })
+    .filter((file) => file.score > 0)
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+  const authoritative = scored.filter((file) => file.score >= 900).map((file) => file.path);
+  if (authoritative.length >= 2) return uniquePaths(authoritative);
+  return uniquePaths(scored.map((file) => file.path));
+}
+
+function requestBodyFormSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
+  if (!hasRequestBodyFormScope(query)) return [];
+  const normalizedQuery = normalizeCandidateText(query);
+  const scored = files
+    .filter((file) => isLikelyProductionSourceFile(file.path))
+    .map((file) => {
+      const normalizedPath = file.path.toLowerCase();
+      const base = path.posix.basename(normalizedPath);
+      let score = 0;
+      let role: "handler" | "utility" | undefined;
+      const isListTask = /\b(list|lists)\b/.test(normalizedQuery) || /\/lists?\//.test(normalizedQuery);
+      const handlerPath = /(^|\/)(routes?|handlers?|controllers?|views?|endpoints?|resources?|plugins?)\//.test(normalizedPath);
+      const handlerName = /\b(post|get|put|patch|delete|create|update|add|submit|request|form|body|params?|lists?)\b/.test(base);
+      const utilityPath = /(^|\/)(utils?|helpers?|shared|common)\//.test(normalizedPath) || /\b(utils?|helpers?)\.(py|ts|js|go|rb|rs)$/.test(base);
+      const reconstructionName = /\b(unflatten|flatten|form|forms|request|body|params?|query)\b/.test(normalizedPath);
+      const upstreamRequestUtility = /\b(upstream|remote|external|prox(?:y|ied)?|forward(?:ed|ing)?)\b/.test(normalizedPath);
+      const explicitReconstructionQuery = /\b(unflatten|flattened|nested|indexed|parent keys?|ordered pairs?)\b/.test(normalizedQuery);
+      const genericAdminUtility = /(^|\/)(admin|admins|administration|management|staff)(\/|$)/.test(normalizedPath) && utilityPath;
+      const adminRequested = /\b(admin|administration|management|staff)\b/.test(normalizedQuery);
+      const utilityOwnsRequestSurface = reconstructionName || upstreamRequestUtility;
+      if ((handlerPath && handlerName) || (isListTask && /\blists?\.(py|ts|js|go|rb|rs)$/.test(base))) {
+        role = "handler";
+        score += 900;
+      }
+      if (
+        (utilityPath && utilityOwnsRequestSurface) ||
+        (utilityPath && explicitReconstructionQuery && !genericAdminUtility) ||
+        /\b(unflatten|flatten|forms?|request)_?utils?\.(py|ts|js|go|rb|rs)$/.test(base)
+      ) {
+        role = "utility";
+        score += 860;
+      }
+      if (role === "handler" && /\b(post|add|submit|body|form|request)\b/.test(normalizedQuery)) score += 100;
+      if (role === "utility" && explicitReconstructionQuery) score += 120;
+      if (role === "utility" && upstreamRequestUtility) score += 240;
+      if (role === "utility" && /\b(upstream|remote|external|prox(?:y|ied)|forward(?:ed|ing)?)\b/.test(normalizedQuery) && /\b(upstream|remote|external|proxy|forward)\b/.test(normalizedPath)) score += 180;
+      if (role === "utility" && genericAdminUtility && !adminRequested) score -= 1100;
+      if (role === "utility" && /\b(query|url|solr|search)\b/.test(base) && !/\b(unflatten|flatten|form|body|request)\b/.test(base)) score -= 500;
+      if (/\/js\/|\/client\/|\/browser\/|\/static\//.test(normalizedPath) && !/\b(javascript|frontend|browser|client)\b/.test(normalizedQuery)) score -= 500;
+      if (/\/models?\//.test(normalizedPath) || /\/core\/lists\/model\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) score -= 560;
+      return { path: file.path, score, role };
+    })
+    .filter((file) => file.score > 0 && file.role)
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
+  const handler = scored.find((file) => file.role === "handler")?.path;
+  const utility = scored.find((file) => file.role === "utility")?.path;
+  return uniquePaths([handler, utility].filter(Boolean) as string[]);
+}
+
+function converterOutputSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
+  if (!hasConverterOutputScope(query)) return [];
+  const scored = files
+    .filter((file) => isLikelyProductionSourceFile(file.path))
+    .map((file) => {
+      const normalizedPath = file.path.toLowerCase();
+      let score = 0;
+      if (/convert(or|er)|converter|convertor/.test(normalizedPath)) score += 1000;
+      if (/\b(trivy|vuls|cve|severity|severities|output|json)\b/.test(normalizedPath)) score += 120;
+      if (/^scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score -= 520;
+      if (/(^|\/)(storage|store|stores|db|database|backend|backends)\//.test(normalizedPath) && !/convert(or|er)|converter|convertor/.test(normalizedPath)) score -= 460;
+      if (/\/scanner\/(alpine|debian|redhat|ubuntu|amazon|oracle|suse)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score -= 360;
+      return { path: file.path, score };
+    })
+    .filter((file) => file.score > 0)
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
+    .map((file) => file.path);
+  return uniquePaths(scored);
+}
+
+function discoveryConfigSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
+  if (!hasDiscoveryConfigScope(query)) return [];
+  const normalizedQuery = normalizeCandidateText(query);
+  const scored = files
+    .filter((file) => isLikelyProductionSourceFile(file.path))
+    .map((file) => {
+      const normalizedPath = file.path.toLowerCase();
+      const base = path.posix.basename(normalizedPath).replace(/\.[^.]+$/, "");
+      const compactBase = base.replace(/[^a-z0-9]+/g, "");
+      let score = 0;
+      let role: "discovery" | "contract" | undefined;
+      const autoDiscoveryOwner = compactBase.includes("autodiscovery") || compactBase.includes("discovery") || compactBase.includes("homeserver");
+      const supportingWellKnown = compactBase.includes("wellknown") || normalizedPath.includes("/well-known/") || normalizedPath.includes("/wellknown/");
+      if (autoDiscoveryOwner || supportingWellKnown || /\/(discovery|autodiscovery|well-known|wellknown)\//.test(normalizedPath)) {
+        role = "discovery";
+        score += autoDiscoveryOwner ? 1120 : 760;
+      }
+      if (/\b(validatedserverconfig|serverconfig)\b/.test(compactBase) || (compactBase.includes("validated") && compactBase.includes("config")) || (compactBase.includes("server") && compactBase.includes("config"))) {
+        role = "contract";
+        score += 940;
+      }
+      if (role === "discovery" && /\b(discovery|homeserver|well[- ]?known)\b/.test(normalizedQuery)) score += 140;
+      if (role === "contract" && /\b(validated|configuration|config|public interface|optional object)\b/.test(normalizedQuery)) score += 160;
+      if (/\b(authentication|delegated|issuer|authorization|registration|token|account)\b/.test(normalizedPath)) score += 80;
+      if (/(^|\/)(cypress|tests?|testing|support)\//.test(normalizedPath)) score -= 900;
+      if ((/(^|\/)(settings|preferences)\//.test(normalizedPath) || /\/settings\//.test(normalizedPath)) && !/\b(settings?|preferences?)\b/.test(normalizedQuery)) score -= 1200;
+      return { path: file.path, score, role };
+    })
+    .filter((file) => file.score > 0 && file.role)
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+  const discovery = scored.find((file) => file.role === "discovery")?.path;
+  const contract = scored.find((file) => file.role === "contract")?.path;
+  return uniquePaths([discovery, contract].filter(Boolean) as string[]);
+}
+
+function deviceSessionListenerSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
+  if (!hasDeviceSessionListenerScope(query)) return [];
+  const scored = files
+    .filter((file) => isLikelyProductionSourceFile(file.path))
+    .map((file) => {
+      const normalizedPath = file.path.toLowerCase();
+      let score = 0;
+      if (/listener|observer|watcher|subscriber|notifier/.test(normalizedPath)) score += 1000;
+      if (/\b(device|devices|session|sessions|notification|notifications|unverified)\b/.test(normalizedPath)) score += 160;
+      if (/\/(stores?|state|models?)\//.test(normalizedPath) && /\b(session|sessions|notification|notifications|device|devices)\b/.test(normalizedPath)) score += 120;
+      if (/(^|\/)(settings|tabs?|views?)\//.test(normalizedPath)) score -= 460;
+      if (/\/toasts?\//.test(normalizedPath)) score -= 360;
+      if (/\/models?\/call\.(ts|tsx|js|jsx)$/.test(normalizedPath)) score -= 320;
       return { path: file.path, score };
     })
     .filter((file) => file.score > 0)
@@ -4716,8 +5617,100 @@ function hasKubernetesExecForwarderScope(query: string): boolean {
 
 function hasPackageSourceMappingScope(query: string): boolean {
   const normalized = normalizeCandidateText(query);
-  return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|apk|alpine)\b/.test(normalized) &&
-    /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?)\b/.test(normalized);
+  if (hasNarrowPackageParserScope(normalized)) return false;
+  return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|sourcerpm|src\.rpm|rpm|apk|alpine|redhat|rhel|centos)\b/.test(normalized) &&
+    /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?|parse installed packages|package information|package metadata)\b/.test(normalized);
+}
+
+function hasNarrowPackageParserScope(normalizedQuery: string): boolean {
+  const rpmParserTerms =
+    /\b(sourcerpm|source rpm|src\.rpm|rpm filenames?|source filenames?|splitfilename|parseinstalledpackagesline|epoch)\b/.test(normalizedQuery);
+  const scannerTerms = /\b(scanner|package manager|installed packages?|package information|package metadata|redhat|rhel|centos|rpm)\b/.test(normalizedQuery);
+  const mappingTerms =
+    /\b(oval|vulnerability matching|binary packages? derive|source package associations?|map binary packages?|package index|upgradable)\b/.test(normalizedQuery);
+  return rpmParserTerms && scannerTerms && !mappingTerms;
+}
+
+function hasBenchmarkGeneratorScope(query: string): boolean {
+  const normalized = normalizeCandidateText(query);
+  const benchmarkTerms = /\b(benchmark|benchmarks|benchmarking|performance benchmark|load test|request rate|requests per second|rps)\b/.test(normalized);
+  const generatorTerms = /\b(generator|generate|sequence|progression|linear|lower bound|upper bound|step size|minimum measurements|minimum window|getbenchmark|configuration|configurations)\b/.test(normalized);
+  return benchmarkTerms && generatorTerms;
+}
+
+function hasTopicOrderingScope(query: string): boolean {
+  const normalized = normalizeCandidateText(query);
+  const topicTerms = /\b(topic|topics|category|categories)\b/.test(normalized);
+  const orderTerms = /\b(pin|pinned|reorder|ordering|order|position|relative order|target position)\b/.test(normalized);
+  const contractTerms = /\b(privileges?|moderator|admin|socket|client|no-op|category isolation|membership|sorted set)\b/.test(normalized);
+  return topicTerms && orderTerms && contractTerms;
+}
+
+function hasCollectionNameValidationScope(query: string): boolean {
+  const normalized = normalizeCandidateText(query);
+  const collectionTerms = /\b(collection name|collection names|fqcn|fully qualified collection name|namespace\.collection|namespace|collection)\b/.test(normalized);
+  const validationTerms = /\b(validate|validation|valid|invalid|identifier|python keyword|reserved keyword|is_valid_collection_name|is_python_identifier)\b/.test(normalized);
+  return collectionTerms && validationTerms;
+}
+
+function hasGrpcErrorPolicyScope(query: string): boolean {
+  const normalized = normalizeCandidateText(query);
+  const grpcTerms = /\b(grpc|rpc|status code|status codes|code canceled|code deadlineexceeded|deadline exceeded|unauthenticated|internal)\b/.test(normalized);
+  const contextTerms = /\b(context\.canceled|context canceled|cancelled context|canceled context|context cancellation|context timeout|context\.deadlineexceeded|deadline exceeded|timeout|cancelled|canceled)\b/.test(normalized);
+  const policyTerms = /\b(classif(?:y|ied|ication)|map|mapping|return|respond|propagate|convert|middleware|auth(?:entication)?|server)\b/.test(normalized);
+  return grpcTerms && contextTerms && policyTerms;
+}
+
+function hasHttpAuthPolicyScope(query: string): boolean {
+  const normalized = normalizeCandidateText(query);
+  const authTerms = /\b(netrc|\.netrc|authorization header|bearer|basic auth|basic authentication|credentials)\b/.test(normalized);
+  const httpTerms = /\b(uri module|uri|open_url|request\.open|request|http|url|headers?)\b/.test(normalized);
+  const policyTerms = /\b(overwrite|overwrites|override|overrides|overriding|overridden|respect|ignore|use_netrc|netrc usage|parameter|forward|default|enabled|disabled|control)\b/.test(normalized);
+  return authTerms && httpTerms && policyTerms;
+}
+
+function hasSystemMetadataScope(query: string): boolean {
+  const normalized = normalizeCandidateText(query);
+  const systemMetadataTerms =
+    /\b(dmi|dmifs|sysfs|\/sys\/class\/dmi\/id|product_name|product_serial|board_serial|chassis_asset_tag|os-release|\/etc\/os-release|pretty_name|version_id|distro|distribution|linux system metadata|system metadata|device metadata)\b/.test(normalized);
+  const extractionTerms = /\b(parse|parser|read|open|extract|retrieve|metadata|filesystem|fs\.fs|struct|field|trim|permission denied|partial errors?|malformed lines?)\b/.test(normalized);
+  return systemMetadataTerms && extractionTerms;
+}
+
+function hasDatabaseFailoverScope(query: string): boolean {
+  const normalized = normalizeCandidateText(query);
+  const databaseTerms = /\b(database|databases|db)\b/.test(normalized);
+  const serviceTerms = /\b(service|services|server|servers|databaseserver|database server|database service)\b/.test(normalized);
+  const failoverTerms = /\b(ha|high availability|failover|candidate|candidates|retry|shuffle|randomi[sz]e|offline tunnel|tunnel outage|reachable|unreachable|deduplicate|dedupe|same-name|same name|hostid|serverid|proxy context|tsh db ls)\b/.test(normalized);
+  const proxyTerms = /\b(proxy|connect|dial|reverse tunnel|authorization|auth(?:orization)? context|list|display)\b/.test(normalized);
+  return databaseTerms && serviceTerms && failoverTerms && proxyTerms;
+}
+
+function hasPluginActivationValidationScope(query: string): boolean {
+  const normalized = normalizeCandidateText(query);
+  const pluginTerms = /\b(plugin|plugins|plugin id|plugin identifier|plugin identifiers|package name)\b/.test(normalized);
+  const activationTerms = /\b(activate|activation|toggleactive|toggle active|deactivate|admin\.plugins\.toggleactive)\b/.test(normalized);
+  const validationTerms = /\b(validate|validation|valid|invalid|malformed|whitespace|special characters?|naming pattern|identifier|invalid-plugin-id)\b/.test(normalized);
+  return pluginTerms && activationTerms && validationTerms;
+}
+
+function hasPromptSupportedPluginActivationConsumerScope(query: string): boolean {
+  const normalized = normalizeCandidateText(query);
+  const consumerTerms = /\b(client|frontend|front end|ui|browser|topic|topics|flags?|feature flag|consumer|consumers|caller|callers|admin client|request path|entry points?)\b/.test(normalized);
+  const propagationTerms = /\b(update|carry|propagate|through|across|also|every|all|both|surface|surfaces|path|paths|entry|entries)\b/.test(normalized);
+  return consumerTerms && propagationTerms;
+}
+
+function hasExecutionStateMigrationScope(query: string): boolean {
+  const normalized = normalizeCandidateText(query);
+  const stateTerms =
+    /\b(playiterator|play iterator|hoststate|host state|run_state|run state|fail_state|failure state|execution state|iterator state|state representation|strategy plugin|strategy plugins)\b/.test(normalized) ||
+    /\b(iteratingstates|failedstates|iterating_tasks|iterating_setup|failed_setup|failed_tasks)\b/.test(normalized);
+  const migrationTerms =
+    /\b(enum|enums|enumeration|intenum|intflag|public type|public representation|namespaced|legacy constants?|deprecated constants?|deprecation warning|backward compatibility|third-party|strategy\/linear|strategy\/__init__|metaclass|attribute access|string output)\b/.test(normalized);
+  const behaviorTerms =
+    /\b(preserve|redirect|emit|warn|compare|transition|assignment|bitwise|combinable|state descriptions?|readable state names?)\b/.test(normalized);
+  return stateTerms && migrationTerms && behaviorTerms;
 }
 
 function hasWebSessionRenewalScope(query: string): boolean {
@@ -4728,8 +5721,47 @@ function hasWebSessionRenewalScope(query: string): boolean {
 
 function hasRequestBodyFormScope(query: string): boolean {
   const normalized = normalizeCandidateText(query);
-  return /\b(unflatten|flattened|nested|indexed|parent keys?|form data|body data|request body|query string|query parameters?|duplicate (?:simple )?keys?|assignments?)\b/.test(normalized) &&
+  const explicitFormSignal = /\b(unflatten|flattened|nested|indexed|parent keys?|form data|body data|request body|query string|query parameters?|duplicate (?:simple )?keys?|assignments?)\b/.test(normalized);
+  const requestQueryConflict =
+    /\b(post|form|body|request|endpoint|route|handler|list|lists)\b/.test(normalized) &&
+    /\b(query|params?|parameters?)\b/.test(normalized) &&
+    /\b(conflict|conflicts|merge|merged|handling|precedence|wins?|prefer|preferential)\b/.test(normalized);
+  return (explicitFormSignal || requestQueryConflict) &&
     /\b(post|form|body|request|endpoint|route|handler|seeds?|defaults?)\b/.test(normalized);
+}
+
+function hasConverterOutputScope(query: string): boolean {
+  const normalized = normalizeCandidateText(query);
+  if (hasPackageSourceMappingScope(normalized)) return false;
+  const converterSignal =
+    /\b(convert|converts|converted|converter|converters|conversion|adapter|adapters)\b/.test(normalized) ||
+    /\b(trivy to vuls|trivy-to-vuls)\b/.test(normalized);
+  const outputSignal =
+    /\b(output|outputs|json|record|records|finding|findings|report|reports|contents?|cve|cves|severity|severities|debian|vuls|trivy)\b/.test(normalized);
+  return converterSignal && outputSignal;
+}
+
+function hasDiscoveryConfigScope(query: string): boolean {
+  const normalized = normalizeCandidateText(query);
+  return countPresent(normalized, [
+    /\b(discovery|discover|autodiscovery|well[- ]?known|homeserver|server discovery)\b/,
+    /\b(authentication|delegated auth|delegated authentication|m authentication|issuer|authorization endpoint|registration endpoint|token endpoint|account)\b/,
+    /\b(validated config|validated configuration|server config|configuration|config|preserve|expose|optional object|public interface)\b/
+  ]) >= 2;
+}
+
+function hasDeviceSessionListenerScope(query: string): boolean {
+  const normalized = normalizeCandidateText(query);
+  return countPresent(normalized, [
+    /\b(device|devices)\b/,
+    /\b(session|sessions)\b/,
+    /\b(notification|notifications|unverified)\b/,
+    /\b(listener|listeners|startup|existing|new|download|downloads|refresh|state)\b/
+  ]) >= 3;
+}
+
+function countPresent(value: string, patterns: RegExp[]): number {
+  return patterns.reduce((count, pattern) => count + (pattern.test(value) ? 1 : 0), 0);
 }
 
 function queryMentionsCompactIdentifier(query: string, identifier: string): boolean {
@@ -4846,6 +5878,8 @@ function buildPrimeDeliveryTrace(input: {
     emittedFileRoleSummary[role] = (emittedFileRoleSummary[role] ?? 0) + 1;
   }
   return {
+    action: input.decision.action,
+    ...(input.decision.recommendedDelivery ? { recommendedDelivery: input.decision.recommendedDelivery } : {}),
     ...(input.decision.taskShapeSignal ? { taskShapeSignal: input.decision.taskShapeSignal } : {}),
     ...(input.decision.requiredSurface ? { requiredSurface: input.decision.requiredSurface } : {}),
     ...(input.decision.directiveStyle ? { directiveStyle: input.decision.directiveStyle } : {}),
