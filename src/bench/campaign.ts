@@ -877,7 +877,8 @@ function proofMetrics(report: BenchmarkProofReport, elapsedMs: number): Campaign
     harmfulAssist: nonBaseline.some((item) => item.report.results.some((result) => result.metadata.assistClassification === "harmful_invalid_assist")) ||
       observedDeltas.some((item) => Boolean(item.harmfulAssist) || item.assistClassification === "harmful_invalid_assist"),
     scopeViolations: sum(nonBaseline.flatMap((item) => item.report.results.map((result) => stringArray(result.metadata.diffScopeViolations).length))),
-    mcpCalls: sum(nonBaseline.map((item) => benchmarkReportMcpCalls(item.report)))
+    mcpCalls: sum(nonBaseline.map((item) => benchmarkReportMcpCalls(item.report))),
+    mcpUsefulAttribution: sum(nonBaseline.map((item) => benchmarkReportMcpUsefulAttribution(item.report)))
   };
 }
 
@@ -1505,6 +1506,17 @@ function resultQualityPassed(result: BenchmarkReport["results"][number]): boolea
 function benchmarkReportMcpCalls(report: BenchmarkReport | undefined): number {
   return report?.results.reduce((total, result) => {
     return total + (numberValue(result.metadata.actualMcpToolCalls) ?? numberValue(result.metadata.mcpToolCalls) ?? 0);
+  }, 0) ?? 0;
+}
+
+function benchmarkReportMcpUsefulAttribution(report: BenchmarkReport | undefined): number {
+  return report?.results.reduce((total, result) => {
+    return total + (
+      numberValue(result.metadata.mcpAttributedUsefulFileCount) ??
+      numberValue(result.metadata.mcpReturnedUsefulFileCount) ??
+      numberValue(result.metadata.mcpReturnedExpectedFileCount) ??
+      0
+    );
   }, 0) ?? 0;
 }
 

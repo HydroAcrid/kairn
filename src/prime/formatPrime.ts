@@ -13,6 +13,7 @@ export type OfficialGuardrailVariant =
   | "collection_name_validation_compact"
   | "execution_state_migration_compact"
   | "grpc_error_policy_compact"
+  | "http_auth_policy_compact"
   | "request_body_form_compact"
   | "discovery_config_compact"
   | "package_source_mapping_compact"
@@ -292,6 +293,7 @@ export function formatShrunkPrimeContext(input: {
       if (variant === "collection_name_validation_compact") return formatCollectionNameValidationOfficialGuardrail(guardrailInput);
       if (variant === "execution_state_migration_compact") return formatExecutionStateMigrationOfficialGuardrail(guardrailInput);
       if (variant === "grpc_error_policy_compact") return formatGrpcErrorPolicyOfficialGuardrail(guardrailInput);
+      if (variant === "http_auth_policy_compact") return formatHttpAuthPolicyOfficialGuardrail(guardrailInput);
       if (variant === "request_body_form_compact") return formatRequestBodyFormOfficialGuardrail(guardrailInput);
       if (variant === "discovery_config_compact") return formatDiscoveryConfigOfficialGuardrail(guardrailInput);
       if (variant === "package_source_mapping_compact") return formatPackageSourceMappingOfficialGuardrail(guardrailInput);
@@ -775,6 +777,30 @@ function formatGrpcErrorPolicyOfficialGuardrail(input: {
   return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 250));
 }
 
+function formatHttpAuthPolicyOfficialGuardrail(input: {
+  task: string;
+  files: string[];
+  editScope: EditScopeDecision | undefined;
+  invariants?: ContextInvariant[] | undefined;
+  budget: number;
+}): string {
+  const editFiles = sortHttpAuthPolicyDirectiveFiles(officialEditFiles(input)).slice(0, 5);
+  const invariant = input.invariants?.[0];
+  const sections = [
+    "# Kairn HTTP Auth Scope",
+    "Required edit surfaces: carry the same netrc/auth setting through every listed request entrypoint.",
+    editFiles.length > 0
+      ? editFiles.map((file) => `- ${file}: ${httpAuthPolicyAction(file)}`).join("\n")
+      : "- Request utility plus each module/plugin entrypoint that exposes the option.",
+    invariant
+      ? `Rule: ${truncateToBudget(invariant.statement, 34)}`
+      : "Rule: explicit Authorization headers must remain usable; netrc stays opt-in/out through the request stack.",
+    "Boundary: no action plugins, tests, docs, examples, generic URL/date helpers, or unrelated module utilities unless directly named.",
+    "Need another file? Report evidence first."
+  ];
+  return fitSectionsToBudget(sections.filter(Boolean), Math.min(input.budget, 210));
+}
+
 function formatRequestBodyFormOfficialGuardrail(input: {
   task: string;
   files: string[];
@@ -945,6 +971,7 @@ export function officialGuardrailVariantFor(input: {
   if (isCollectionNameValidationTask(input.task) && editFiles.length > 1) return "collection_name_validation_compact";
   if (isExecutionStateMigrationTask(input.task) && editFiles.length > 1) return "execution_state_migration_compact";
   if (isGrpcErrorPolicyTask(input.task) && editFiles.length > 1) return "grpc_error_policy_compact";
+  if (isHttpAuthPolicyTask(input.task) && editFiles.length > 1) return "http_auth_policy_compact";
   if (isRequestBodyFormTask(input.task) && editFiles.length > 1) return "request_body_form_compact";
   if (isConverterOutputTask(input.task) && editFiles.length > 1) return "paired_contract_compact";
   if (isBenchmarkGeneratorTask(input.task) && editFiles.length > 1) return "benchmark_generator_compact";
@@ -1030,6 +1057,14 @@ function isGrpcErrorPolicyTask(task: string): boolean {
   return grpcTerms && contextTerms && policyTerms;
 }
 
+function isHttpAuthPolicyTask(task: string): boolean {
+  const normalized = task.toLowerCase();
+  const authTerms = /\b(netrc|\.netrc|authorization header|authorization|bearer|basic auth|basic authentication|credentials)\b/.test(normalized);
+  const httpTerms = /\b(uri module|uri|get_url|lookup url|open_url|fetch_url|url_get|request\.open|request|http|url|headers?)\b/.test(normalized);
+  const policyTerms = /\b(overwrite|overwrites|override|overrides|overriding|overridden|respect|ignore|use_netrc|netrc usage|parameter|forward|default|enabled|disabled|control)\b/.test(normalized);
+  return authTerms && httpTerms && policyTerms;
+}
+
 function isPackageSourceMappingTask(task: string): boolean {
   const normalized = task.toLowerCase();
   if (isNarrowPackageParserTask(normalized)) return false;
@@ -1072,6 +1107,43 @@ function sortGrpcPolicyFilesForDirective(files: string[]): string[] {
     const rankDelta = grpcPolicyDirectiveRank(a) - grpcPolicyDirectiveRank(b);
     return rankDelta !== 0 ? rankDelta : a.localeCompare(b);
   });
+}
+
+function sortHttpAuthPolicyDirectiveFiles(files: string[]): string[] {
+  return [...files].sort((a, b) => {
+    const rankDelta = httpAuthPolicyDirectiveRank(a) - httpAuthPolicyDirectiveRank(b);
+    return rankDelta !== 0 ? rankDelta : a.localeCompare(b);
+  });
+}
+
+function httpAuthPolicyDirectiveRank(file: string): number {
+  const normalized = file.toLowerCase();
+  if (/\/module_utils\/urls\./.test(normalized) || /(^|\/)urls\./.test(normalized)) return 0;
+  if (/\/modules\/uri\./.test(normalized)) return 1;
+  if (/\/modules\/get_url\./.test(normalized)) return 2;
+  if (/\/plugins\/lookup\/url\./.test(normalized)) return 3;
+  if (/\/plugins\/action\/uri\./.test(normalized)) return 8;
+  return 4;
+}
+
+function httpAuthPolicyRole(file: string): string {
+  const normalized = file.toLowerCase();
+  if (/\/module_utils\/urls\./.test(normalized) || /(^|\/)urls\./.test(normalized)) return "request utility";
+  if (/\/modules\/uri\./.test(normalized)) return "uri module";
+  if (/\/modules\/get_url\./.test(normalized)) return "get_url module";
+  if (/\/plugins\/lookup\/url\./.test(normalized)) return "url lookup plugin";
+  if (/\/plugins\/action\/uri\./.test(normalized)) return "uri action plugin";
+  return officialFileRole(file);
+}
+
+function httpAuthPolicyAction(file: string): string {
+  const role = httpAuthPolicyRole(file);
+  if (role === "request utility") return "own and enforce the use_netrc/open_url/fetch_url request contract";
+  if (role === "uri module") return "expose and forward use_netrc without letting netrc override explicit Authorization";
+  if (role === "get_url module") return "forward use_netrc through downloads and checksum requests";
+  if (role === "url lookup plugin") return "forward use_netrc through lookup requests";
+  if (role === "uri action plugin") return "edit only if the prompt explicitly names the action plugin";
+  return `${role}; edit only if it forwards HTTP auth/netrc behavior`;
 }
 
 function isDiscoveryConfigTask(task: string): boolean {

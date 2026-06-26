@@ -1295,7 +1295,12 @@ describe("KairnRuntime", () => {
         "lib/ansible/modules/uri.py",
         "lib/ansible/plugins/lookup/url.py"
       ]));
+      expect(prime.content).toContain("# Kairn HTTP Auth Scope");
+      expect(prime.content).toContain("Required edit surfaces");
+      expect(prime.content).toContain("own and enforce the use_netrc/open_url/fetch_url request contract");
+      expect(prime.content).toContain("forward use_netrc through lookup requests");
       expect(prime.content).not.toContain("lib/ansible/plugins/action/uri.py");
+      expect(prime.tokenEstimate).toBeLessThanOrEqual(230);
     } finally {
       runtime.close();
       fs.rmSync(root, { recursive: true, force: true });

@@ -1,0 +1,101 @@
+{
+  "id": "swe-pro-official-fresh-slice-governance-pr-20260610",
+  "name": "SWE-Pro Official Fresh Slice Governance PR",
+  "generatedAt": "2026-06-26T15:14:44.234Z",
+  "manifestPath": "campaign-manifest.json",
+  "outDir": ".",
+  "stage": "live",
+  "dryRun": false,
+  "parallel": 3,
+  "paused": false,
+  "pauseReasons": [],
+  "artifacts": [
+    {
+      "entryId": "live-swe-row-8",
+      "kind": "proof",
+      "stage": "live",
+      "status": "passed",
+      "tags": [
+        "swe-pro",
+        "fresh-slice",
+        "live"
+      ],
+      "startedAt": "2026-06-26T14:44:18.684Z",
+      "endedAt": "2026-06-26T15:14:44.234Z",
+      "artifactPath": "raw/live-swe-row-8.json",
+      "workerPacketPath": "worker-packets/live-swe-row-8.json",
+      "commands": [],
+      "classifications": [
+        "official_pass_token_unavailable"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": true,
+        "cleanPassPass": false,
+        "tokenRegression": false,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 0,
+        "mcpUsefulAttribution": 0,
+        "elapsedMs": 1825337
+      }
+    }
+  ],
+  "rows": [
+    {
+      "entryId": "live-swe-row-8",
+      "kind": "proof",
+      "stage": "live",
+      "status": "passed",
+      "tags": "swe-pro;fresh-slice;live",
+      "qualityPassed": true,
+      "cleanPassPass": false,
+      "tokenRegression": false,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 0,
+      "mcpUsefulAttribution": 0,
+      "classifications": "official_pass_token_unavailable",
+      "elapsedMs": 1825337
+    }
+  ],
+  "aggregate": {
+    "entries": 1,
+    "completedEntries": 1,
+    "failedEntries": 0,
+    "qualityPassRate": 1,
+    "cleanPassPassRows": 0,
+    "tokenRegressionRows": 0,
+    "passiveTokenRegressionRows": 0,
+    "qualityRescueRows": 0,
+    "harmfulRows": 0,
+    "scopeViolations": 0,
+    "mcpCalls": 0,
+    "mcpUsefulAttribution": 0,
+    "medianSavedTokens": 0,
+    "medianSavingsRate": 0,
+    "medianElapsedMsByStage": {
+      "live": 1825337
+    },
+    "repeatedFailureClasses": [],
+    "pauseRuleStatus": {
+      "paused": false,
+      "reasons": []
+    }
+  },
+  "outputs": {
+    "manifestPath": "campaign-manifest.json",
+    "summaryPath": "campaign-summary.json",
+    "resultsCsvPath": "results.csv",
+    "failuresCsvPath": "failures.csv",
+    "proxyResultsCsvPath": "proxy-results.csv",
+    "workerPacketsDir": "worker-packets",
+    "rawDir": "raw",
+    "workDir": "work",
+    "baselineCacheDir": "baseline-cache"
+  }
+}

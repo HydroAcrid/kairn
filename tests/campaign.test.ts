@@ -171,6 +171,109 @@ describe("benchmark campaign harness", () => {
     expect(rawFiles.some((file) => file.endsWith(".partial.json"))).toBe(false);
   });
 
+  it("runs SWE-style proof campaigns with MCP modes and records useful attribution", async () => {
+    const dir = tempDir("kairn-campaign-swe-mcp-");
+    const root = createFixtureRepo();
+    const suitePath = path.join(dir, "swe-mcp-suite.json");
+    const baselineScriptPath = path.join(dir, "baseline-agent.cjs");
+    const mcpScriptPath = path.join(dir, "mcp-agent.cjs");
+    fs.writeFileSync(
+      suitePath,
+      `${JSON.stringify(
+        {
+          id: "swe-mcp-suite",
+          name: "SWE MCP Suite",
+          cases: [
+            {
+              id: "swe-mcp-row",
+              mode: "agent",
+              task: "Fix the SWE-style source row in src/app.ts.",
+              agentPrompt: "Fix the SWE-style source row in src/app.ts.",
+              expectedFiles: ["src/app.ts"],
+              requiredTouchedFiles: ["src/app.ts"],
+              excludedFiles: [],
+              allowedDiffScopes: [{ file: "src/app.ts", allowWholeFile: true }],
+              seed: {
+                repoUrl: root,
+                ref: "HEAD"
+              }
+            }
+          ]
+        },
+        null,
+        2
+      )}\n`
+    );
+    fs.writeFileSync(
+      baselineScriptPath,
+      [
+        "const fs = require('fs');",
+        "fs.appendFileSync('src/app.ts', '\\nexport const sweBaseline = true;\\n');",
+        "console.log('src/app.ts');",
+        "console.log('tokens used 1000');"
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      mcpScriptPath,
+      [
+        "const fs = require('fs');",
+        "const Database = require('better-sqlite3');",
+        "const tokens = process.argv[2] || '650';",
+        "fs.mkdirSync('.kairn', { recursive: true });",
+        "const db = new Database('.kairn/kairn.sqlite');",
+        "db.exec(`create table if not exists metrics_events (id integer primary key autoincrement, session_id text not null, root_path text not null, event_kind text not null, event_name text not null, source text not null, response_mode text, baseline_tokens integer not null, output_tokens integer not null, saved_tokens integer not null, files_json text not null, metadata_json text not null default '{}', created_at text not null)`);",
+        "db.prepare(`insert into metrics_events (session_id, root_path, event_kind, event_name, source, response_mode, baseline_tokens, output_tokens, saved_tokens, files_json, metadata_json, created_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run('task_swe_mcp', process.cwd(), 'mcp_tool_call', 'kairn_prepare_task', 'mcp', null, 100, 25, 75, JSON.stringify(['src/app.ts']), JSON.stringify({ toolName: 'kairn_prepare_task' }), new Date().toISOString());",
+        "db.close();",
+        "fs.appendFileSync('src/app.ts', '\\nexport const sweMcp = true;\\n');",
+        "console.log('src/app.ts');",
+        "console.log(`tokens used ${tokens}`);"
+      ].join("\n")
+    );
+    const manifestPath = writeManifest(dir, {
+      id: "swe-mcp-campaign",
+      name: "SWE MCP Campaign",
+      defaults: {
+        agentTimeoutMs: 10000,
+        cleanup: "always",
+        commands: {
+          baseline: `node ${quoteShell(baselineScriptPath)}`,
+          real_mcp_first: `NODE_PATH=${quoteShell(path.resolve("node_modules"))} node ${quoteShell(mcpScriptPath)} 650`,
+          hybrid_mcp_brief: `NODE_PATH=${quoteShell(path.resolve("node_modules"))} node ${quoteShell(mcpScriptPath)} 700`
+        }
+      },
+      entries: [
+        {
+          id: "swe-mcp-row",
+          kind: "proof",
+          tags: ["swe-pro", "mcp", "harness-control"],
+          root,
+          suite: suitePath,
+          modes: ["baseline", "real_mcp_first", "hybrid_mcp_brief"],
+          repeat: 1
+        }
+      ]
+    });
+
+    const report = await runCampaign({
+      manifestPath,
+      outDir: path.join(dir, "out"),
+      stage: "live",
+      parallel: 1
+    });
+
+    const row = report.rows[0];
+    expect(report.aggregate.failedEntries).toBe(0);
+    expect(row?.qualityPassed).toBe(true);
+    expect(row?.mcpCalls).toBeGreaterThanOrEqual(2);
+    expect(row?.mcpUsefulAttribution).toBeGreaterThanOrEqual(2);
+    expect(row?.classifications).toContain("mcp_useful_attribution");
+    expect(report.artifacts[0]?.officialPatchPaths?.real_mcp_first).toBeTruthy();
+    expect(report.artifacts[0]?.officialPatchPaths?.hybrid_mcp_brief).toBeTruthy();
+
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
   it("carries proof diff-scope violations into campaign summary metrics", async () => {
     const dir = tempDir("kairn-campaign-proof-scope-");
     const root = createFixtureRepo();
