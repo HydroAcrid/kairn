@@ -5,7 +5,7 @@
   "createdAt": "2026-06-26",
   "kairn": {
     "branch": "research/headroom-combo-eval",
-    "commit": "d7dbda23779c37ea9d7c463e8f678724cedade04",
+    "commit": "7b2d45c889bc2adeaf94b72404c4ccedad0e81f9",
     "version": "0.1.4"
   },
   "headroom": {
@@ -121,6 +121,18 @@
       "command": "Full noisy failure-output prompt vs Kairn failure-context prompt after Headroom compression attempt",
       "status": "passed_with_kairn_first_savings",
       "note": "Both arms passed. Full-log prompt observed 85176 input tokens. Kairn failure context prompt observed 56105 input tokens. Headroom nooped on Kairn output, so this supports Kairn-first compression rather than Headroom-added savings."
+    },
+    {
+      "id": "dual-mcp-orchestrator",
+      "command": "Kairn MCP selected payloads -> Headroom MCP compression and retrieval",
+      "status": "passed_with_promising_mcp_composition",
+      "note": "Kairn+Headroom MCP rows compressed 26,755 -> 6,785 tokens, saving 19,970 tokens (74.6%) with zero lost-attribution rows."
+    },
+    {
+      "id": "mcp-four-arm-matrix",
+      "command": "Raw baseline vs Headroom-only vs Kairn-only vs Kairn+Headroom across source-bearing MCP scenarios",
+      "status": "passed_with_promising_mcp_composition",
+      "note": "Six source-bearing rows preserved attribution. Combo was best on 4/6 rows, reduced aggregate tokens 95.3% vs baseline, and was 85.5% lower than Kairn-only on aggregate. Heavy lifting was Kairn-led on 4/6 rows."
     }
   ],
   "plannedLiveRows": [

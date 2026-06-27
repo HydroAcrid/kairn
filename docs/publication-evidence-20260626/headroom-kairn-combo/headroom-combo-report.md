@@ -134,6 +134,47 @@ This is the strongest positive combo result so far. It does not contradict the n
 
 The dual-MCP result is still not public evidence. It is an orchestrated tool-chain test, not an end-to-end agent benchmark. But it proves the MCPs can be used together technically, and that attribution can survive the handoff.
 
+## MCP Four-Arm Matrix
+
+The next pass compared source-bearing MCP scenarios across four arms:
+
+- Raw baseline payload.
+- Headroom-only compression of the raw payload.
+- Kairn-only governed MCP payload.
+- Kairn MCP payload followed by Headroom MCP compression.
+
+| Scenario | Baseline | Headroom Only | Kairn Only | Kairn + Headroom | Best | Attribution |
+| --- | ---: | ---: | ---: | ---: | --- | --- |
+| Exact source MCP server | 10,053 | 10,053 | 10,472 | 60 | Kairn + Headroom | pass |
+| Exact source runtime | 80,020 | 80,020 | 25,961 | 63 | Kairn + Headroom | pass |
+| Exact source parser fixture | 122 | 122 | 195 | 195 | Baseline | pass |
+| Parser related tests | 356 | 356 | 109 | 109 | Kairn only | pass |
+| Parser noisy failure context | 11,303 | 11,303 | 2,072 | 580 | Kairn + Headroom | pass |
+| MCP attribution source surface | 62,034 | 62,034 | 14,813 | 6,751 | Kairn + Headroom | pass |
+
+Valid matrix aggregate:
+
+- 6/6 rows preserved attribution.
+- Headroom-only: 163,888 -> 163,888 tokens, 0.0% reduction.
+- Kairn-only: 163,888 -> 53,622 tokens, 67.3% reduction.
+- Kairn + Headroom: 163,888 -> 7,758 tokens, 95.3% reduction.
+- Combo was the smallest arm on 4/6 rows.
+- Combo was 85.5% lower than Kairn-only on aggregate.
+- Heavy-lifting split: 4 Kairn-led rows, 1 Headroom-led tiny row, 1 balanced/scenario-dependent row.
+
+This is the strongest evidence so far that the tools are complementary in MCP form. The caveat is important: Kairn did most of the first-stage work by selecting or summarizing the right source/failure surface. Headroom then gave a strong second-stage compression on selected payloads. That makes the integration direction useful, but it does not make Kairn obsolete.
+
+## End-To-End Agent MCP Checks
+
+Two isolated Codex runs tested whether an actual MCP-capable agent would use the two servers together without wrapper/proxying:
+
+| Attempt | Result | Kairn MCP | Headroom MCP | Interpretation |
+| --- | --- | --- | --- | --- |
+| Parser fix with both servers available | Quality passed, scope passed | used `kairn_prepare_task`, `kairn_find_tests`, `kairn_read_file` | not used | Valid Kairn MCP proof, but not combo proof. The agent skipped Headroom because Kairn returned small source/test context. |
+| Forced repo-root dual-MCP toolchain | No edit task | used `kairn_start_task` | used `headroom_compress`, `headroom_retrieve` | Both servers were callable, but the agent compressed Kairn start-task output instead of first reading the exact file payload. No savings. |
+
+This matters for product design. The MCPs are technically compatible, but relying on the agent to decide the optimal Kairn -> Headroom sequence is currently unreliable. The best next product direction is probably not "tell users to use both MCPs manually." It is a Kairn-side optional compression handoff for large MCP payloads, or very explicit client instructions that only call Headroom after Kairn returns a bulky payload.
+
 Aggregate local payload result:
 
 - All seven rows: 33,875 -> 8,748 tokens, 25,127 saved, 74.2% reduction.

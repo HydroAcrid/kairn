@@ -61,6 +61,8 @@
 - Live parser fixture: all four arms passed quality, but Headroom-wrapped Codex used more observed input tokens than direct Codex, and Kairn+Headroom used much more. This appears tied to proxy/WebSocket retry behavior. Treat the current Codex proxy wrapper path as not production-promising for Kairn until debugged.
 - Live failure-prompt fixture: full noisy-log prompting and Kairn failure-context prompting both passed. Kairn failure context reduced observed input tokens by 34.1% versus full-log prompting. Headroom nooped on the Kairn output, so this is Kairn-first savings rather than combined savings.
 - Dual-MCP orchestrator simulation: one local client connected to both Kairn MCP and Headroom MCP. Kairn+Headroom MCP rows compressed 26,755 -> 6,785 tokens, saving 19,970 tokens (74.6%) with zero lost-attribution rows. This is a promising MCP-side integration path and is distinct from the negative Codex proxy-wrapper result.
+- MCP four-arm matrix: 6 source-bearing scenarios compared raw baseline, Headroom-only, Kairn-only, and Kairn+Headroom. Attribution passed on 6/6 rows. Kairn+Headroom was best on 4/6 rows and reduced aggregate tokens 95.3% vs baseline, 85.5% vs Kairn-only, and 95.3% vs Headroom-only. Heavy lifting was Kairn-led on 4/6 rows.
+- End-to-end agent MCP checks: Codex can call both MCP servers from isolated config, and the parser fix passed while using Kairn MCP. However, Codex did not naturally call Headroom on the coding task, and a forced dual-MCP no-edit task did not follow the optimal Kairn-read -> Headroom-compress sequence. This suggests product integration should automate the compression handoff instead of relying on user/agent choreography.
 
 ## Competitive Read
 

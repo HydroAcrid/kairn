@@ -1,0 +1,261 @@
+{
+  "createdAt": "2026-06-27T02:04:57.103Z",
+  "mode": "mcp_four_arm_matrix_v2_source_bearing",
+  "estimator": "Headroom MCP reported original_tokens/compressed_tokens for raw and Kairn payloads.",
+  "rows": [
+    {
+      "id": "exact_source_mcp_server",
+      "label": "Exact source MCP server",
+      "required": [
+        "src/server/mcp.ts",
+        "kairn_prepare_task",
+        "kairn_read_file"
+      ],
+      "baselineTokens": 10053,
+      "headroomOnlyTokens": 10053,
+      "kairnOnlyTokens": 10472,
+      "comboTokens": 60,
+      "headroomOnlyReductionPct": 0,
+      "comboHeadroomStageReductionPct": 99.4,
+      "headroomStrategy": "router:protected:recent_code",
+      "comboStrategy": "router:mixed:0.00",
+      "headroomPreserved": [
+        "kairn_prepare_task",
+        "kairn_read_file"
+      ],
+      "comboPreserved": [
+        "src/server/mcp.ts",
+        "kairn_prepare_task",
+        "kairn_read_file"
+      ],
+      "headroomHash": "b1911c4c6bf7810c807fc3ee",
+      "comboHash": "736d717c6131c549401f4e85",
+      "bestArm": "kairnPlusHeadroom",
+      "comboVsKairnPct": 99.4,
+      "comboVsHeadroomPct": 99.4,
+      "kairnContributionPct": -4.2,
+      "headroomContributionPct": 0,
+      "comboTotalReductionPct": 99.4,
+      "comboBetterThanBoth": true,
+      "heavyLifter": "balanced_or_scenario_dependent",
+      "headroomAttributionOk": true,
+      "comboAttributionOk": true,
+      "validEvidence": true
+    },
+    {
+      "id": "exact_source_runtime",
+      "label": "Exact source runtime",
+      "required": [
+        "src/runtime/KairnRuntime.ts",
+        "primeContext",
+        "getNextContext"
+      ],
+      "baselineTokens": 80020,
+      "headroomOnlyTokens": 80020,
+      "kairnOnlyTokens": 25961,
+      "comboTokens": 63,
+      "headroomOnlyReductionPct": 0,
+      "comboHeadroomStageReductionPct": 99.8,
+      "headroomStrategy": "router:protected:recent_code",
+      "comboStrategy": "router:mixed:0.00",
+      "headroomPreserved": [
+        "primeContext",
+        "getNextContext"
+      ],
+      "comboPreserved": [
+        "src/runtime/KairnRuntime.ts",
+        "primeContext",
+        "getNextContext"
+      ],
+      "headroomHash": "fee7cf0b045d31ff24f852b7",
+      "comboHash": "3d27bf26c0d4d12a2af5708c",
+      "bestArm": "kairnPlusHeadroom",
+      "comboVsKairnPct": 99.8,
+      "comboVsHeadroomPct": 99.9,
+      "kairnContributionPct": 67.6,
+      "headroomContributionPct": 0,
+      "comboTotalReductionPct": 99.9,
+      "comboBetterThanBoth": true,
+      "heavyLifter": "kairn",
+      "headroomAttributionOk": true,
+      "comboAttributionOk": true,
+      "validEvidence": true
+    },
+    {
+      "id": "exact_source_parser_fixture",
+      "label": "Exact source parser fixture",
+      "required": [
+        "src/parser.js",
+        "parseUserProfile"
+      ],
+      "baselineTokens": 122,
+      "headroomOnlyTokens": 122,
+      "kairnOnlyTokens": 195,
+      "comboTokens": 195,
+      "headroomOnlyReductionPct": 0,
+      "comboHeadroomStageReductionPct": 0,
+      "headroomStrategy": "router:noop",
+      "comboStrategy": "router:noop",
+      "headroomPreserved": [
+        "parseUserProfile"
+      ],
+      "comboPreserved": [
+        "src/parser.js",
+        "parseUserProfile"
+      ],
+      "headroomHash": "cfe5fecb90ffad5452e7d2f2",
+      "comboHash": "f0f72d8d5bf52ca147a94f1e",
+      "bestArm": "baseline",
+      "comboVsKairnPct": 0,
+      "comboVsHeadroomPct": -59.8,
+      "kairnContributionPct": -59.8,
+      "headroomContributionPct": 0,
+      "comboTotalReductionPct": -59.8,
+      "comboBetterThanBoth": false,
+      "heavyLifter": "headroom",
+      "headroomAttributionOk": true,
+      "comboAttributionOk": true,
+      "validEvidence": true
+    },
+    {
+      "id": "parser_related_tests",
+      "label": "Parser related tests",
+      "required": [
+        "test/parser.test.js",
+        "parseUserProfile",
+        "checkProfile"
+      ],
+      "baselineTokens": 356,
+      "headroomOnlyTokens": 356,
+      "kairnOnlyTokens": 109,
+      "comboTokens": 109,
+      "headroomOnlyReductionPct": 0,
+      "comboHeadroomStageReductionPct": 0,
+      "headroomStrategy": "router:protected:recent_code",
+      "comboStrategy": "router:noop",
+      "headroomPreserved": [
+        "parseUserProfile",
+        "checkProfile"
+      ],
+      "comboPreserved": [
+        "test/parser.test.js",
+        "parseUserProfile",
+        "checkProfile"
+      ],
+      "headroomHash": "585c0c9a965b88a92cebac41",
+      "comboHash": "1a3eb6a66c4760b9e48a24a5",
+      "bestArm": "kairnOnly",
+      "comboVsKairnPct": 0,
+      "comboVsHeadroomPct": 69.4,
+      "kairnContributionPct": 69.4,
+      "headroomContributionPct": 0,
+      "comboTotalReductionPct": 69.4,
+      "comboBetterThanBoth": false,
+      "heavyLifter": "kairn",
+      "headroomAttributionOk": true,
+      "comboAttributionOk": true,
+      "validEvidence": true
+    },
+    {
+      "id": "parser_noisy_failure_context",
+      "label": "Parser noisy failure context",
+      "required": [
+        "src/parser.js",
+        "test/parser.test.js",
+        "parseUserProfile"
+      ],
+      "baselineTokens": 11303,
+      "headroomOnlyTokens": 11303,
+      "kairnOnlyTokens": 2072,
+      "comboTokens": 580,
+      "headroomOnlyReductionPct": 0,
+      "comboHeadroomStageReductionPct": 72,
+      "headroomStrategy": "router:protected:recent_code",
+      "comboStrategy": "router:mixed:0.02",
+      "headroomPreserved": [
+        "src/parser.js",
+        "test/parser.test.js",
+        "parseUserProfile"
+      ],
+      "comboPreserved": [
+        "src/parser.js",
+        "test/parser.test.js",
+        "parseUserProfile"
+      ],
+      "headroomHash": "ed32736e986ff9eb35ac362b",
+      "comboHash": "527232fba0e3451b49e150a2",
+      "bestArm": "kairnPlusHeadroom",
+      "comboVsKairnPct": 72,
+      "comboVsHeadroomPct": 94.9,
+      "kairnContributionPct": 81.7,
+      "headroomContributionPct": 0,
+      "comboTotalReductionPct": 94.9,
+      "comboBetterThanBoth": true,
+      "heavyLifter": "kairn",
+      "headroomAttributionOk": true,
+      "comboAttributionOk": true,
+      "validEvidence": true
+    },
+    {
+      "id": "mcp_attribution_source_surface",
+      "label": "MCP attribution source surface",
+      "required": [
+        "src/eval/codexUsage.ts",
+        "src/server/mcp.ts",
+        "mcp_tool_call"
+      ],
+      "baselineTokens": 62034,
+      "headroomOnlyTokens": 62034,
+      "kairnOnlyTokens": 14813,
+      "comboTokens": 6751,
+      "headroomOnlyReductionPct": 0,
+      "comboHeadroomStageReductionPct": 54.4,
+      "headroomStrategy": "router:protected:recent_code",
+      "comboStrategy": "router:smart_crusher:0.29",
+      "headroomPreserved": [
+        "src/eval/codexUsage.ts",
+        "src/server/mcp.ts",
+        "mcp_tool_call"
+      ],
+      "comboPreserved": [
+        "src/eval/codexUsage.ts",
+        "src/server/mcp.ts",
+        "mcp_tool_call"
+      ],
+      "headroomHash": "fd4312b4e386125f9886248b",
+      "comboHash": "0a13b919075d7b0a84ef8114",
+      "bestArm": "kairnPlusHeadroom",
+      "comboVsKairnPct": 54.4,
+      "comboVsHeadroomPct": 89.1,
+      "kairnContributionPct": 76.1,
+      "headroomContributionPct": 0,
+      "comboTotalReductionPct": 89.1,
+      "comboBetterThanBoth": true,
+      "heavyLifter": "kairn",
+      "headroomAttributionOk": true,
+      "comboAttributionOk": true,
+      "validEvidence": true
+    }
+  ],
+  "aggregate": {
+    "rows": 6,
+    "validRows": 6,
+    "comboBestRows": 4,
+    "comboBetterThanBothRows": 4,
+    "attributionIssueRows": 0,
+    "baselineTokens": 163888,
+    "headroomOnlyTokens": 163888,
+    "kairnOnlyTokens": 53622,
+    "comboTokens": 7758,
+    "heavyLifting": {
+      "kairnLedRows": 4,
+      "headroomLedRows": 1,
+      "balancedOrScenarioDependentRows": 1
+    },
+    "headroomOnlyReductionPct": 0,
+    "kairnOnlyReductionPct": 67.3,
+    "comboReductionPct": 95.3,
+    "comboVsKairnPct": 85.5,
+    "comboVsHeadroomPct": 95.3
+  }
+}

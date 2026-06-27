@@ -1,0 +1,59 @@
+{
+  "createdAt": "2026-06-27T02:13:00.000Z",
+  "mode": "end_to_end_agent_mcp_checks",
+  "summary": {
+    "status": "inconclusive_for_combo_but_useful",
+    "interpretation": "Codex can call both MCP servers from an isolated config, but current prompting does not reliably produce the desired Kairn-read -> Headroom-compress workflow. The tool-layer matrix is promising; end-to-end agent use needs either stronger instructions or Kairn-native orchestration before public claims."
+  },
+  "attempts": [
+    {
+      "id": "parser-fix-agent-with-both-mcp-servers",
+      "workspace": "/tmp/kairn-headroom-agent-combo-1782526104",
+      "quality": "passed",
+      "scope": "passed",
+      "kairnMcpCalls": [
+        "kairn_prepare_task",
+        "kairn_find_tests",
+        "kairn_read_file",
+        "kairn_read_file"
+      ],
+      "headroomMcpCalls": [],
+      "observedUsage": {
+        "inputTokens": 161244,
+        "cachedInputTokens": 145280,
+        "outputTokens": 1741,
+        "reasoningOutputTokens": 713
+      },
+      "classification": "agent_quality_pass_kairn_mcp_used_headroom_not_used",
+      "interpretation": "The agent solved the task and used Kairn MCP, but skipped Headroom because Kairn returned small source/test context. This supports Kairn MCP usefulness, not combo savings."
+    },
+    {
+      "id": "repo-root-forced-dual-mcp-toolchain",
+      "workspace": "/Users/kevindotel/Documents/Projects/kairn-headroom-eval",
+      "quality": "not_applicable_no_edit",
+      "scope": "not_applicable",
+      "kairnMcpCalls": [
+        "kairn_start_task"
+      ],
+      "headroomMcpCalls": [
+        "headroom_compress",
+        "headroom_retrieve"
+      ],
+      "observedUsage": {
+        "inputTokens": 118598,
+        "cachedInputTokens": 94592,
+        "outputTokens": 4018,
+        "reasoningOutputTokens": 1583
+      },
+      "headroomReported": {
+        "originalTokens": 2065,
+        "compressedTokens": 2065,
+        "tokensSaved": 0,
+        "transform": "noop"
+      },
+      "classification": "agent_dual_mcp_calls_work_but_sequence_not_reliable",
+      "interpretation": "The agent did call both MCP servers, but compressed Kairn start-task output instead of first reading the exact file payload. This proves both servers can be available to Codex, but not that agents naturally use the optimal combo path."
+    }
+  ],
+  "recommendedNextStep": "Implement or prototype a Kairn-side optional compression handoff for large MCP payloads instead of relying on the agent to decide when and how to call Headroom."
+}

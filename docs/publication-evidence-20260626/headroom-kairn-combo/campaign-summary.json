@@ -1,6 +1,6 @@
 {
   "id": "headroom-kairn-combo-20260626",
-  "status": "dual_mcp_promising_proxy_wrapper_blocked",
+  "status": "mcp_combo_promising_proxy_wrapper_blocked",
   "createdAt": "2026-06-26",
   "summary": {
     "inventoryRows": 1,
@@ -34,7 +34,7 @@
       "tokensAfter": 7255,
       "tokensSaved": 14947,
       "reductionPct": 67.3,
-      "medianReductionPct": 34.0,
+      "medianReductionPct": 34,
       "note": "Median is lowered by intentional no-op rows where Kairn output was already tiny or Headroom protected error-output payloads."
     },
     "headroomOnlyNoisyOutput": {
@@ -47,7 +47,7 @@
       "tokensBefore": 133141,
       "tokensAfter": 133141,
       "tokensSaved": 0,
-      "reductionPct": 0.0,
+      "reductionPct": 0,
       "classification": "headroom_only_broad_source_noop_attribution_preserved",
       "interpretation": "Headroom protected broad recent-code payloads instead of compressing them, so it does not remove the need for Kairn to choose the source surface first."
     },
@@ -137,11 +137,51 @@
         "tokensBefore": 11303,
         "tokensAfter": 11303,
         "tokensSaved": 0,
-        "reductionPct": 0.0,
+        "reductionPct": 0,
         "classification": "mcp_headroom_raw_noise_protected_noop",
         "interpretation": "In this MCP session Headroom protected the raw noisy parser log as recent code and preserved attribution, but did not reduce it."
       },
       "interpretation": "The MCP-to-MCP path is technically viable and more promising than the Codex proxy wrapper path. Kairn can govern context first, then Headroom can compress selected Kairn MCP payloads while preserving source attribution."
+    },
+    "mcpFourArmMatrix": {
+      "status": "passed_with_promising_mcp_composition",
+      "rows": 6,
+      "validRows": 6,
+      "baselineTokens": 163888,
+      "headroomOnlyTokens": 163888,
+      "kairnOnlyTokens": 53622,
+      "comboTokens": 7758,
+      "headroomOnlyReductionPct": 0,
+      "kairnOnlyReductionPct": 67.3,
+      "comboReductionPct": 95.3,
+      "comboVsKairnPct": 85.5,
+      "comboVsHeadroomPct": 95.3,
+      "comboBestRows": 4,
+      "comboBetterThanBothRows": 4,
+      "attributionIssueRows": 0,
+      "heavyLifting": {
+        "kairnLedRows": 4,
+        "headroomLedRows": 1,
+        "balancedOrScenarioDependentRows": 1
+      },
+      "interpretation": "On source-bearing MCP scenarios, Kairn+Headroom was best on 4/6 rows and strongest on aggregate. Kairn did most first-stage reduction by governing source/failure surface; Headroom added second-stage compression."
+    },
+    "agentMcpProof": {
+      "status": "inconclusive_for_combo_but_useful",
+      "attempts": 2,
+      "parserFix": {
+        "quality": "passed",
+        "scope": "passed",
+        "kairnMcpCalls": 4,
+        "headroomMcpCalls": 0,
+        "classification": "agent_quality_pass_kairn_mcp_used_headroom_not_used"
+      },
+      "forcedDualMcp": {
+        "kairnMcpCalls": 1,
+        "headroomMcpCalls": 2,
+        "classification": "agent_dual_mcp_calls_work_but_sequence_not_reliable"
+      },
+      "interpretation": "Codex can call both MCP servers from an isolated config, but current prompting does not reliably produce the desired Kairn-read -> Headroom-compress workflow. The tool-layer matrix is promising; end-to-end agent use needs either stronger instructions or Kairn-native orchestration before public claims."
     }
   },
   "results": [
@@ -347,16 +387,74 @@
       "arm": "headroom_only",
       "status": "passed",
       "classification": "mcp_headroom_raw_noise_protected_noop"
+    },
+    {
+      "entryId": "mcp-matrix-exact_source_mcp_server",
+      "stage": "mcp_four_arm_matrix",
+      "arm": "four_arm_comparison",
+      "status": "passed",
+      "classification": "mcp_matrix_valid_attribution"
+    },
+    {
+      "entryId": "mcp-matrix-exact_source_runtime",
+      "stage": "mcp_four_arm_matrix",
+      "arm": "four_arm_comparison",
+      "status": "passed",
+      "classification": "mcp_matrix_valid_attribution"
+    },
+    {
+      "entryId": "mcp-matrix-exact_source_parser_fixture",
+      "stage": "mcp_four_arm_matrix",
+      "arm": "four_arm_comparison",
+      "status": "passed",
+      "classification": "mcp_matrix_valid_attribution"
+    },
+    {
+      "entryId": "mcp-matrix-parser_related_tests",
+      "stage": "mcp_four_arm_matrix",
+      "arm": "four_arm_comparison",
+      "status": "passed",
+      "classification": "mcp_matrix_valid_attribution"
+    },
+    {
+      "entryId": "mcp-matrix-parser_noisy_failure_context",
+      "stage": "mcp_four_arm_matrix",
+      "arm": "four_arm_comparison",
+      "status": "passed",
+      "classification": "mcp_matrix_valid_attribution"
+    },
+    {
+      "entryId": "mcp-matrix-mcp_attribution_source_surface",
+      "stage": "mcp_four_arm_matrix",
+      "arm": "four_arm_comparison",
+      "status": "passed",
+      "classification": "mcp_matrix_valid_attribution"
+    },
+    {
+      "entryId": "agent-mcp-parser-fix-agent-with-both-mcp-servers",
+      "stage": "agent_mcp_proof",
+      "arm": "codex_with_kairn_and_headroom_mcp",
+      "status": "passed_with_caveat",
+      "classification": "agent_quality_pass_kairn_mcp_used_headroom_not_used"
+    },
+    {
+      "entryId": "agent-mcp-repo-root-forced-dual-mcp-toolchain",
+      "stage": "agent_mcp_proof",
+      "arm": "codex_with_kairn_and_headroom_mcp",
+      "status": "passed_with_caveat",
+      "classification": "agent_dual_mcp_calls_work_but_sequence_not_reliable"
     }
   ],
   "gates": {
     "safeToRunLiveCombo": false,
     "reason": "The first live coding fixture passed quality in all arms, but the Headroom Codex proxy path caused token regressions and stream retries. The direct dual-MCP path is promising, but it is not end-to-end agent proof yet.",
-    "publicClaimsAllowed": false
+    "publicClaimsAllowed": false,
+    "safeToRunMcpComboAgentProof": false,
+    "mcpComboReason": "The MCP four-arm matrix is promising, but live agent attempts show that agents do not reliably choose the optimal Kairn->Headroom sequence without orchestration."
   },
   "nextActions": [
-    "Do not run larger Codex proxy-wrapper campaigns until the Headroom proxy/retry behavior is understood.",
-    "Prototype a Kairn-first optional compression handoff for bulky MCP payloads rather than wrapping all Codex traffic.",
-    "Run one end-to-end MCP agent task with both MCP servers available and require useful Kairn attribution plus lower observed tokens before making combo claims."
+    "Prototype a Kairn-side optional compression handoff for bulky MCP payloads instead of relying on the agent to call Headroom manually.",
+    "Run one end-to-end MCP agent task after the handoff exists and require useful Kairn attribution, actual compression, quality pass, and lower observed tokens.",
+    "Do not make public combo claims yet; the current result is research/tool-layer evidence."
   ]
 }
