@@ -115,6 +115,12 @@
       "command": "Noisy parser fixture across baseline_direct, headroom_passthrough, kairn_only, and kairn_plus_headroom",
       "status": "passed_with_negative_combo_result",
       "note": "All four arms passed quality. Codex-observed input tokens: baseline 68854, Headroom 82098, Kairn 68591, Kairn+Headroom 131762. The Headroom proxy wrapper path is not promising for this coding row."
+    },
+    {
+      "id": "live-parser-fixture-failure-prompt",
+      "command": "Full noisy failure-output prompt vs Kairn failure-context prompt after Headroom compression attempt",
+      "status": "passed_with_kairn_first_savings",
+      "note": "Both arms passed. Full-log prompt observed 85176 input tokens. Kairn failure context prompt observed 56105 input tokens. Headroom nooped on Kairn output, so this supports Kairn-first compression rather than Headroom-added savings."
     }
   ],
   "plannedLiveRows": [

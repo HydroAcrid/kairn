@@ -96,6 +96,30 @@
         "deltaVsBaselinePct": -91.4
       },
       "interpretation": "The proxy-wrapper path is not currently promising for simple source-edit coding rows. Headroom's proxy reported internal compression, but Codex-observed usage regressed because of repeated stream retries and larger final request usage."
+    },
+    "liveFailurePromptFixture": {
+      "status": "passed_with_kairn_first_savings",
+      "quality": "both_arms_passed",
+      "directFullLogPrompt": {
+        "promptChars": 39792,
+        "inputTokens": 85176,
+        "cachedInputTokens": 70656,
+        "outputTokens": 833
+      },
+      "kairnFailureContextHeadroomPrompt": {
+        "promptChars": 2559,
+        "inputTokens": 56105,
+        "cachedInputTokens": 41472,
+        "outputTokens": 961,
+        "deltaVsFullLogPct": 34.1
+      },
+      "headroomCompression": {
+        "beforeTokens": 663,
+        "afterTokens": 663,
+        "tokensSaved": 0,
+        "strategy": "router:noop"
+      },
+      "interpretation": "The narrower Kairn-first path worked: Kairn compressed the noisy failure signal enough to preserve quality and reduce observed input tokens. Headroom added no extra reduction because Kairn's failure context was already compact."
     }
   },
   "results": [
@@ -252,6 +276,20 @@
       "arm": "kairn_plus_headroom",
       "status": "passed",
       "classification": "combo_live_token_regression"
+    },
+    {
+      "entryId": "parser-fixture-direct-full-log-prompt",
+      "stage": "live_failure_prompt",
+      "arm": "baseline_direct",
+      "status": "passed",
+      "classification": "direct_full_log_prompt_pass"
+    },
+    {
+      "entryId": "parser-fixture-kairn-failure-headroom-prompt",
+      "stage": "live_failure_prompt",
+      "arm": "kairn_plus_headroom",
+      "status": "passed",
+      "classification": "kairn_failure_context_headroom_noop_savings"
     }
   ],
   "gates": {

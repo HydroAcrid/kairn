@@ -91,6 +91,17 @@ Current conclusion from this live row:
 - Kairn + Headroom is not currently promising as "run Codex through Headroom proxy" for normal source-edit work.
 - The next viable combo path should be narrower: Kairn governs source context first, then Headroom compresses bulky logs/tool output or explicit Kairn payloads, without proxying every Codex request.
 
+## Live Failure-Prompt Fixture
+
+A second live fixture compared a full noisy failure-output prompt against Kairn's failure-first context. Headroom was applied to the Kairn failure context, but it nooped because Kairn had already compacted the signal to 663 estimated tokens.
+
+| Arm | Quality | Prompt Size | Input | Cached Input | Output | Delta vs Full Log | Classification |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| Full noisy failure log | pass | 39,792 chars | 85,176 | 70,656 | 833 | 0.0% | `direct_full_log_prompt_pass` |
+| Kairn failure context + Headroom noop | pass | 2,559 chars | 56,105 | 41,472 | 961 | +34.1% | `kairn_failure_context_headroom_noop_savings` |
+
+This is a positive Kairn-first result, but not a positive Headroom-added result. It shows Kairn can already turn noisy failure output into a much smaller task signal while preserving quality. Headroom is still likely useful for payloads Kairn does not already compact, but it did not add value on this specific Kairn failure-context output.
+
 Aggregate local payload result:
 
 - All seven rows: 33,875 -> 8,748 tokens, 25,127 saved, 74.2% reduction.
@@ -109,6 +120,7 @@ Headroom appears complementary rather than a direct replacement for Kairn.
 - The strongest Headroom result in this local pass was raw noisy output compression. That does not make Kairn irrelevant; it shows Kairn should either interoperate with a compression layer or develop a post-governance compression stage for bulky evidence/tool output.
 - The broad-source control makes the complementarity clearer: Headroom can be excellent after context is selected, but it did not solve source selection by compressing a broad source bundle in this local test.
 - The first live coding row is a warning: Headroom's Codex proxy path can increase observed token usage even when its own logs report compression. This should block larger live proxy campaigns until the proxy/retry behavior is understood.
+- The failure-prompt row supports Kairn's core product direction: source/failure governance first. Headroom is useful only after Kairn still has a bulky payload worth compressing.
 
 The clean positioning remains:
 
@@ -136,6 +148,10 @@ Completed:
   - all four arms passed quality,
   - Kairn-only was neutral/slightly lower than direct baseline,
   - Headroom-wrapped and Kairn+Headroom-wrapped paths regressed in Codex-observed input tokens.
+- Live failure-prompt fixture:
+  - full noisy log and Kairn failure-context prompts both passed,
+  - Kairn failure context reduced observed input tokens by 34.1% versus the full-log prompt,
+  - Headroom nooped on Kairn's already-compact failure context.
 
 Remaining:
 

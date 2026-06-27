@@ -59,6 +59,7 @@
 - Codex wrapper sanity: `headroom wrap codex --no-context-tool --no-mcp --no-serena -- --version` launched successfully, but injected a Headroom provider into the live Codex config. The generated backup was restored. Future live combo tests should use isolated `CODEX_HOME` or a no-mutation proxy path.
 - Isolated Codex accounting sanity: direct Codex and Headroom-wrapped Codex both returned the expected tiny response. Direct JSON usage was 12,917 input / 24 output tokens. Headroom-wrapped JSON usage was 12,880 input / 25 output tokens. This proves wrapper accounting viability, not a savings claim.
 - Live parser fixture: all four arms passed quality, but Headroom-wrapped Codex used more observed input tokens than direct Codex, and Kairn+Headroom used much more. This appears tied to proxy/WebSocket retry behavior. Treat the current Codex proxy wrapper path as not production-promising for Kairn until debugged.
+- Live failure-prompt fixture: full noisy-log prompting and Kairn failure-context prompting both passed. Kairn failure context reduced observed input tokens by 34.1% versus full-log prompting. Headroom nooped on the Kairn output, so this is Kairn-first savings rather than combined savings.
 
 ## Competitive Read
 
