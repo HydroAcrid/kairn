@@ -55,6 +55,12 @@ To test the "does Headroom make Kairn irrelevant?" risk, this pass also sent Hea
 
 This is the most important strategic result so far: Headroom preserved source attribution, but it did not reduce a broad recent-code payload. That means Headroom is not enough by itself when the core problem is choosing the right source surface before the agent sees it.
 
+## Wrapper Sanity
+
+`headroom wrap codex --no-context-tool --no-mcp --no-serena -- --version` launched Codex successfully through the Headroom wrapper. However, the wrapper also injected a Headroom provider into the active Codex config file. The generated backup was restored immediately.
+
+That means live combo tests should not use the default wrapper against the user's real Codex config. Use an isolated `CODEX_HOME`, or use a direct proxy/MCP path where config mutation is explicit and reversible.
+
 Aggregate local payload result:
 
 - All seven rows: 33,875 -> 8,748 tokens, 25,127 saved, 74.2% reduction.
@@ -98,6 +104,7 @@ Remaining:
    - direct baseline vs Headroom passthrough,
    - same tiny command/task,
    - confirm token accounting and patch capture still work.
+   - use isolated `CODEX_HOME`; do not mutate the user's live Codex config.
 
 ## Planned Live Sequence
 

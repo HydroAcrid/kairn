@@ -49,6 +49,11 @@
       "reductionPct": 0.0,
       "classification": "headroom_only_broad_source_noop_attribution_preserved",
       "interpretation": "Headroom protected broad recent-code payloads instead of compressing them, so it does not remove the need for Kairn to choose the source surface first."
+    },
+    "wrapperSanity": {
+      "status": "passed_with_caution",
+      "classification": "wrapper_config_mutation_detected",
+      "interpretation": "headroom wrap codex can launch Codex, but it mutates the active Codex config by injecting a Headroom provider. The test restored the backup; future live tests should isolate CODEX_HOME."
     }
   },
   "results": [
@@ -156,6 +161,13 @@
       "arm": "headroom_only",
       "status": "passed",
       "classification": "headroom_only_broad_source_noop_attribution_preserved"
+    },
+    {
+      "entryId": "headroom-wrap-codex-version-sanity",
+      "stage": "wrapper_sanity",
+      "arm": "headroom_passthrough",
+      "status": "passed_with_caution",
+      "classification": "wrapper_config_mutation_detected"
     }
   ],
   "gates": {

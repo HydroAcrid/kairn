@@ -56,6 +56,7 @@
 - Kairn + Headroom source-payload combo: Kairn MCP returned exact source for `src/runtime/KairnRuntime.ts`; Headroom compressed 3,633 estimated tokens to 63 while preserving the file path and retrieval.
 - Expanded local payload matrix: seven Headroom MCP compress/retrieve calls completed. Kairn+Headroom saved 14,947 of 22,202 tokens across six local Kairn payloads, with zero lost-attribution rows. Headroom-only raw noisy output saved 10,180 of 11,673 tokens and preserved all required source/test strings through retrieval.
 - Broad source negative control: Headroom-only protected a 133,141-token raw source bundle as recent code and did not compress it. That preserves source text, but it does not solve source-surface selection or prompt pressure by itself.
+- Codex wrapper sanity: `headroom wrap codex --no-context-tool --no-mcp --no-serena -- --version` launched successfully, but injected a Headroom provider into the live Codex config. The generated backup was restored. Future live combo tests should use isolated `CODEX_HOME` or a no-mutation proxy path.
 
 ## Competitive Read
 
@@ -70,6 +71,7 @@ The clean public distinction to preserve:
 ## Integration Cautions
 
 - Do not put Headroom before Kairn if that hides filenames, source paths, symbols, MCP attribution, or task-shape evidence from Kairn.
+- Do not run `headroom wrap codex` against the user's live Codex config during automated tests unless the config mutation is explicitly accepted and restored.
 - Treat Headroom as a black-box dependency for tests. Do not copy implementation code into Kairn.
 - Use passthrough mode as a control before attributing any result to compression.
 - Keep Headroom logs and any raw traffic out of tracked evidence.

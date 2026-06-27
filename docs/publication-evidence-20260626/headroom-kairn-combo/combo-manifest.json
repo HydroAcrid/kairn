@@ -97,6 +97,12 @@
       "command": "Broad raw source bundle -> headroom_compress/headroom_retrieve",
       "status": "passed",
       "note": "Headroom protected a 133,141-token broad source bundle as recent code and did not compress it, preserving attribution but not reducing prompt pressure."
+    },
+    {
+      "id": "headroom-wrap-codex-version-sanity",
+      "command": "headroom wrap codex --no-context-tool --no-mcp --no-serena -- --version",
+      "status": "passed_with_caution",
+      "note": "The wrapper launched Codex, but it injected a Headroom provider into the live Codex config. The backup was restored; future live tests should isolate CODEX_HOME."
     }
   ],
   "plannedLiveRows": [
