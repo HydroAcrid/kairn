@@ -54,6 +54,20 @@
       "status": "passed_with_caution",
       "classification": "wrapper_config_mutation_detected",
       "interpretation": "headroom wrap codex can launch Codex, but it mutates the active Codex config by injecting a Headroom provider. The test restored the backup; future live tests should isolate CODEX_HOME."
+    },
+    "liveAccountingSanity": {
+      "status": "passed",
+      "directCodex": {
+        "inputTokens": 12917,
+        "cachedInputTokens": 7552,
+        "outputTokens": 24
+      },
+      "headroomWrappedCodex": {
+        "inputTokens": 12880,
+        "cachedInputTokens": 2432,
+        "outputTokens": 25
+      },
+      "interpretation": "Headroom-wrapped Codex completed a tiny prompt through isolated CODEX_HOME and preserved JSON usage accounting. The tiny token delta is not counted as savings evidence."
     }
   },
   "results": [
@@ -168,11 +182,25 @@
       "arm": "headroom_passthrough",
       "status": "passed_with_caution",
       "classification": "wrapper_config_mutation_detected"
+    },
+    {
+      "entryId": "codex-direct-tiny-smoke",
+      "stage": "live_accounting",
+      "arm": "baseline_direct",
+      "status": "passed",
+      "classification": "direct_codex_accounting_baseline"
+    },
+    {
+      "entryId": "headroom-wrapped-codex-tiny-smoke",
+      "stage": "live_accounting",
+      "arm": "headroom_passthrough",
+      "status": "passed",
+      "classification": "headroom_passthrough_accounting_stable"
     }
   ],
   "gates": {
-    "safeToRunLiveCombo": false,
-    "reason": "Headroom MCP and Kairn+Headroom local payload checks pass, but direct-vs-Headroom-passthrough agent token-accounting and quality have not been run yet.",
+    "safeToRunLiveCombo": true,
+    "reason": "Headroom MCP, Kairn+Headroom local payload checks, and isolated direct-vs-Headroom Codex accounting sanity now pass. Next live work should still start with one small row.",
     "publicClaimsAllowed": false
   },
   "nextActions": [

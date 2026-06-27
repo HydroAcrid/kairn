@@ -57,6 +57,7 @@
 - Expanded local payload matrix: seven Headroom MCP compress/retrieve calls completed. Kairn+Headroom saved 14,947 of 22,202 tokens across six local Kairn payloads, with zero lost-attribution rows. Headroom-only raw noisy output saved 10,180 of 11,673 tokens and preserved all required source/test strings through retrieval.
 - Broad source negative control: Headroom-only protected a 133,141-token raw source bundle as recent code and did not compress it. That preserves source text, but it does not solve source-surface selection or prompt pressure by itself.
 - Codex wrapper sanity: `headroom wrap codex --no-context-tool --no-mcp --no-serena -- --version` launched successfully, but injected a Headroom provider into the live Codex config. The generated backup was restored. Future live combo tests should use isolated `CODEX_HOME` or a no-mutation proxy path.
+- Isolated Codex accounting sanity: direct Codex and Headroom-wrapped Codex both returned the expected tiny response. Direct JSON usage was 12,917 input / 24 output tokens. Headroom-wrapped JSON usage was 12,880 input / 25 output tokens. This proves wrapper accounting viability, not a savings claim.
 
 ## Competitive Read
 

@@ -103,6 +103,12 @@
       "command": "headroom wrap codex --no-context-tool --no-mcp --no-serena -- --version",
       "status": "passed_with_caution",
       "note": "The wrapper launched Codex, but it injected a Headroom provider into the live Codex config. The backup was restored; future live tests should isolate CODEX_HOME."
+    },
+    {
+      "id": "isolated-direct-vs-headroom-codex-accounting",
+      "command": "Direct Codex tiny prompt vs headroom wrap codex tiny prompt with isolated CODEX_HOME",
+      "status": "passed",
+      "note": "Direct Codex reported 12917 input / 24 output tokens. Headroom-wrapped Codex reported 12880 input / 25 output tokens and returned the same response. This proves accounting stability, not meaningful savings."
     }
   ],
   "plannedLiveRows": [

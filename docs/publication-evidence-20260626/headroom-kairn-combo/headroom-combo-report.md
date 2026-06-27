@@ -61,6 +61,17 @@ This is the most important strategic result so far: Headroom preserved source at
 
 That means live combo tests should not use the default wrapper against the user's real Codex config. Use an isolated `CODEX_HOME`, or use a direct proxy/MCP path where config mutation is explicit and reversible.
 
+## Live Accounting Sanity
+
+After isolating `CODEX_HOME`, a tiny Codex prompt was run direct and through `headroom wrap codex`.
+
+| Arm | Result | Input | Cached Input | Output | Classification |
+| --- | --- | ---: | ---: | ---: | --- |
+| Direct Codex | expected response | 12,917 | 7,552 | 24 | `direct_codex_accounting_baseline` |
+| Headroom-wrapped Codex | expected response | 12,880 | 2,432 | 25 | `headroom_passthrough_accounting_stable` |
+
+This is not a savings result. It only proves the wrapped path can complete a live Codex call and preserve JSON token accounting when run in an isolated config home.
+
 Aggregate local payload result:
 
 - All seven rows: 33,875 -> 8,748 tokens, 25,127 saved, 74.2% reduction.
@@ -85,7 +96,7 @@ The clean positioning remains:
 
 ## Live Test Gate
 
-Do not run the full four-arm SWE-Pro sample until the passthrough accounting check passes.
+Do not run the full four-arm SWE-Pro sample until at least one small row passes through the isolated wrapper path.
 
 Completed:
 
@@ -97,14 +108,16 @@ Completed:
 - Kairn + Headroom attribution smoke:
   - Kairn source attribution survived Headroom compression,
   - Headroom retrieval returned source-bearing content.
+- Isolated Codex accounting smoke:
+  - direct and Headroom-wrapped Codex both returned the expected tiny response,
+  - JSON usage accounting was preserved,
+  - the live user Codex config remained clean.
 
 Remaining:
 
-1. Passthrough accounting sanity:
-   - direct baseline vs Headroom passthrough,
-   - same tiny command/task,
-   - confirm token accounting and patch capture still work.
-   - use isolated `CODEX_HOME`; do not mutate the user's live Codex config.
+1. First small live row:
+   - direct baseline vs Headroom passthrough vs Kairn-only vs Kairn+Headroom if feasible,
+   - confirm quality, patch capture, token accounting, and config isolation.
 
 ## Planned Live Sequence
 
