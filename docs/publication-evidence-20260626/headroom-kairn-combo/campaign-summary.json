@@ -1,15 +1,23 @@
 {
   "id": "headroom-kairn-combo-20260626",
-  "status": "smoke_complete_live_not_started",
+  "status": "combo_smoke_complete_live_not_started",
   "createdAt": "2026-06-26",
   "summary": {
     "inventoryRows": 1,
-    "smokeRows": 7,
+    "smokeRows": 8,
+    "comboSmokeRows": 2,
     "liveRows": 0,
     "officialRows": 0,
-    "mcpInitialization": "partial",
+    "mcpInitialization": "passed",
     "proxyPassthrough": "passed",
-    "kairnBuild": "passed"
+    "kairnBuild": "passed",
+    "comboAttribution": "passed",
+    "comboSourceCompression": {
+      "tokensBefore": 3633,
+      "tokensAfter": 63,
+      "tokensSaved": 3570,
+      "reductionPct": 98.3
+    }
   },
   "results": [
     {
@@ -34,11 +42,11 @@
       "classification": "install_pass"
     },
     {
-      "entryId": "headroom-mcp-initialize",
+      "entryId": "headroom-mcp-sdk-roundtrip",
       "stage": "smoke",
       "arm": "headroom_only",
-      "status": "partial",
-      "classification": "mcp_init_pass_tools_list_inconclusive"
+      "status": "passed",
+      "classification": "mcp_tool_roundtrip_noop"
     },
     {
       "entryId": "headroom-proxy-passthrough",
@@ -53,15 +61,28 @@
       "arm": "kairn_only",
       "status": "passed",
       "classification": "kairn_build_pass"
+    },
+    {
+      "entryId": "combo-kairn-prepare-headroom-compress",
+      "stage": "combo_smoke",
+      "arm": "kairn_plus_headroom",
+      "status": "passed",
+      "classification": "combo_prepare_noop_attribution_preserved"
+    },
+    {
+      "entryId": "combo-kairn-read-file-headroom-compress",
+      "stage": "combo_smoke",
+      "arm": "kairn_plus_headroom",
+      "status": "passed",
+      "classification": "combo_source_compression_attribution_preserved"
     }
   ],
   "gates": {
     "safeToRunLiveCombo": false,
-    "reason": "Headroom MCP raw tools/list probe is inconclusive and no passthrough-vs-direct token-accounting check has been run yet.",
+    "reason": "Headroom MCP and Kairn+Headroom combo smoke now pass, but direct-vs-Headroom-passthrough token-accounting has not been run yet.",
     "publicClaimsAllowed": false
   },
   "nextActions": [
-    "Retry Headroom MCP tools/list and one headroom_compress call through an SDK-backed MCP client.",
     "Run a tiny direct vs Headroom passthrough agent command to confirm token accounting and wrapper overhead.",
     "If passthrough is stable, run the four-arm small SWE-Pro sample.",
     "If SWE sample is stable, run two MCP/endurance single-run suites."

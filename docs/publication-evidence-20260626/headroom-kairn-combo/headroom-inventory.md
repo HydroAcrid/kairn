@@ -49,9 +49,11 @@
 - `pip install "headroom-ai[proxy]"`: passed in `/tmp/headroom-kairn-smoke-venv`.
 - `headroom --version`: `headroom, version 0.27.0`.
 - `headroom mcp status`: exited successfully; MCP SDK installed, no Claude config, proxy not running.
-- `headroom mcp serve` initialization probe: MCP initialize returned server info and tool capability. Raw `tools/list` probe was inconclusive and should be retried with an SDK client.
+- `headroom mcp serve` SDK probe: initialized, listed `headroom_compress`, `headroom_retrieve`, and `headroom_stats`, then completed a compress/retrieve/stats round trip.
 - `headroom proxy --port 18787 --no-optimize --no-cache`: passed `/livez` health check with HTTP 200.
 - Kairn source build on this branch: passed, `kairn --version` reports `0.1.4`, `darwin-arm64`, `source`.
+- Kairn + Headroom prepare-task combo: Kairn MCP returned runtime/governor attribution; Headroom preserved both paths and used `router:noop` because the payload was only 192 estimated tokens.
+- Kairn + Headroom source-payload combo: Kairn MCP returned exact source for `src/runtime/KairnRuntime.ts`; Headroom compressed 3,633 estimated tokens to 63 while preserving the file path and retrieval.
 
 ## Competitive Read
 

@@ -4,7 +4,9 @@
 
 This pass implemented the first safe research layer for evaluating Headroom against and alongside Kairn.
 
-No public Kairn claims should change from this pass. No live SWE-Pro or endurance benchmark rows were run yet. The result is a clean inventory plus smoke baseline that shows Headroom can be installed locally, its proxy can start in passthrough mode, and Kairn still builds on the isolated research branch.
+No public Kairn claims should change from this pass. No live SWE-Pro or endurance benchmark rows were run yet.
+
+The result is a clean inventory plus smoke evidence showing Headroom can be installed locally, its proxy can start in passthrough mode, its MCP tools work through an SDK client, and Kairn output can be fed into Headroom while preserving source attribution.
 
 ## What Was Verified
 
@@ -16,9 +18,18 @@ No public Kairn claims should change from this pass. No live SWE-Pro or enduranc
 | Headroom proxy install | pass | `headroom-ai[proxy]` installed in the same temporary venv. |
 | Headroom version | pass | `0.27.0`. |
 | Headroom MCP status | pass | SDK installed; no Claude config and proxy not running, expected for non-mutating smoke. |
-| Headroom MCP initialize | partial | Server initialized and advertised tool capability; raw `tools/list` probe needs SDK retry. |
+| Headroom MCP SDK round trip | pass | Listed `headroom_compress`, `headroom_retrieve`, and `headroom_stats`; compress/retrieve/stats round trip completed. |
 | Headroom proxy passthrough | pass | `/livez` returned HTTP 200 with `--no-optimize --no-cache`. |
 | Kairn source build | pass | `pnpm build` passed; `kairn --version` reported `0.1.4`. |
+| Kairn prepare -> Headroom compress | pass | Kairn returned runtime/governor attribution; Headroom preserved both paths and nooped because the payload was already tiny. |
+| Kairn read-file -> Headroom compress | pass | Kairn returned exact source for `src/runtime/KairnRuntime.ts`; Headroom compressed 3,633 estimated tokens to 63 and preserved retrieval. |
+
+## Combo Smoke Results
+
+| Payload | Before | After | Saved | Reduction | Attribution | Classification |
+| --- | ---: | ---: | ---: | ---: | --- | --- |
+| Kairn prepare-task guidance | 192 | 192 | 0 | 0.0% | runtime + governor paths preserved | `combo_prepare_noop_attribution_preserved` |
+| Kairn exact source payload | 3,633 | 63 | 3,570 | 98.3% | `src/runtime/KairnRuntime.ts` preserved and retrievable | `combo_source_compression_attribution_preserved` |
 
 ## Current Interpretation
 
@@ -34,15 +45,22 @@ The clean positioning remains:
 
 ## Live Test Gate
 
-Do not run the full four-arm SWE-Pro sample until these two checks pass:
+Do not run the full four-arm SWE-Pro sample until the passthrough accounting check passes.
 
-1. MCP SDK-backed tool call:
-   - initialize Headroom MCP,
-   - list tools,
-   - call `headroom_compress`,
-   - confirm `headroom_stats` records the compression.
+Completed:
 
-2. Passthrough accounting sanity:
+- MCP SDK-backed tool call:
+  - initialized Headroom MCP,
+  - listed tools,
+  - called `headroom_compress`,
+  - confirmed `headroom_stats` recorded compression.
+- Kairn + Headroom attribution smoke:
+  - Kairn source attribution survived Headroom compression,
+  - Headroom retrieval returned source-bearing content.
+
+Remaining:
+
+1. Passthrough accounting sanity:
    - direct baseline vs Headroom passthrough,
    - same tiny command/task,
    - confirm token accounting and patch capture still work.

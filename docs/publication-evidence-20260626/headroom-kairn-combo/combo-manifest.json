@@ -61,8 +61,8 @@
     {
       "id": "headroom-mcp-initialize",
       "command": "headroom mcp serve",
-      "status": "partial",
-      "note": "Initialize returned server info and tool capability; raw tools/list probe needs SDK retry."
+      "status": "passed",
+      "note": "SDK client listed tools and completed compress/retrieve/stats round trip."
     },
     {
       "id": "headroom-proxy-passthrough",
@@ -73,6 +73,18 @@
       "id": "kairn-build-version",
       "command": "pnpm build && node dist/cli.js --version",
       "status": "passed"
+    },
+    {
+      "id": "kairn-headroom-prepare-combo",
+      "command": "kairn MCP prepare-task output -> headroom_compress",
+      "status": "passed",
+      "note": "Attribution survived; Headroom nooped because Kairn payload was already tiny."
+    },
+    {
+      "id": "kairn-headroom-source-combo",
+      "command": "kairn_read_file exact source payload -> headroom_compress",
+      "status": "passed",
+      "note": "Headroom compressed 3633 estimated tokens to 63 while preserving src/runtime/KairnRuntime.ts and retrieval."
     }
   ],
   "plannedLiveRows": [
