@@ -31,6 +31,37 @@ The result is a clean inventory plus smoke evidence showing Headroom can be inst
 | Kairn prepare-task guidance | 192 | 192 | 0 | 0.0% | runtime + governor paths preserved | `combo_prepare_noop_attribution_preserved` |
 | Kairn exact source payload | 3,633 | 63 | 3,570 | 98.3% | `src/runtime/KairnRuntime.ts` preserved and retrievable | `combo_source_compression_attribution_preserved` |
 
+## Expanded Local Payload Matrix
+
+This matrix used real Kairn MCP outputs plus one Headroom-only raw noisy-output control. It is still a local payload test, not an end-to-end coding benchmark.
+
+| Payload | Arm | Before | After | Saved | Reduction | Strategy | Attribution | Classification |
+| --- | --- | ---: | ---: | ---: | ---: | --- | --- | --- |
+| Kairn prepare guidance | Kairn + Headroom | 173 | 173 | 0 | 0.0% | `router:noop` | 2/2 paths preserved | `combo_noop_attribution_preserved` |
+| Kairn exact runtime source | Kairn + Headroom | 5,997 | 63 | 5,934 | 98.9% | `router:mixed:0.00` | 2/2 paths preserved | `combo_compression_attribution_preserved` |
+| Kairn runtime summary | Kairn + Headroom | 952 | 65 | 887 | 93.2% | `router:smart_crusher:0.00` | 1/1 path preserved | `combo_compression_attribution_preserved` |
+| Kairn MCP snippet retrieval | Kairn + Headroom | 11,969 | 3,843 | 8,126 | 67.9% | `router:smart_crusher:0.21` | 1/1 path preserved | `combo_compression_attribution_preserved` |
+| Kairn failure context | Kairn + Headroom | 1,669 | 1,669 | 0 | 0.0% | `router:protected:error_output` | 2/2 paths preserved | `combo_noop_attribution_preserved` |
+| Kairn compressed noisy output | Kairn + Headroom | 1,442 | 1,442 | 0 | 0.0% | `router:protected:error_output` | 1/2 paths preserved | `combo_noop_attribution_preserved` |
+| Raw noisy test output | Headroom only | 11,673 | 1,493 | 10,180 | 87.2% | `router:log:0.13` | 3/3 strings preserved | `headroom_only_compression_attribution_preserved` |
+
+## Source Governance Control
+
+To test the "does Headroom make Kairn irrelevant?" risk, this pass also sent Headroom a broad raw source bundle containing runtime, governor, MCP, and prime-formatting files.
+
+| Payload | Arm | Before | After | Saved | Reduction | Strategy | Attribution | Classification |
+| --- | --- | ---: | ---: | ---: | ---: | --- | --- | --- |
+| Broad raw source bundle | Headroom only | 133,141 | 133,141 | 0 | 0.0% | `router:protected:recent_code` | 3/3 paths preserved | `headroom_only_broad_source_noop_attribution_preserved` |
+
+This is the most important strategic result so far: Headroom preserved source attribution, but it did not reduce a broad recent-code payload. That means Headroom is not enough by itself when the core problem is choosing the right source surface before the agent sees it.
+
+Aggregate local payload result:
+
+- All seven rows: 33,875 -> 8,748 tokens, 25,127 saved, 74.2% reduction.
+- Kairn + Headroom rows only: 22,202 -> 7,255 tokens, 14,947 saved, 67.3% aggregate reduction.
+- Kairn + Headroom median reduction: 34.0%, because tiny guidance and protected error-output rows intentionally nooped.
+- Lost-attribution rows: 0.
+
 ## Current Interpretation
 
 Headroom appears complementary rather than a direct replacement for Kairn.
@@ -38,6 +69,9 @@ Headroom appears complementary rather than a direct replacement for Kairn.
 - Headroom is strongest as a compression/proxy/MCP layer for content already in the request path.
 - Kairn is strongest as a governance layer deciding which repo context belongs in the working session.
 - The most plausible combo is Kairn first, Headroom second.
+- Headroom is a real competitive pressure against any Kairn positioning that says only "we reduce tokens." Kairn's durable claim should stay centered on context governance: source-surface choice, scope discipline, session memory, evidence requests, and when to stay quiet.
+- The strongest Headroom result in this local pass was raw noisy output compression. That does not make Kairn irrelevant; it shows Kairn should either interoperate with a compression layer or develop a post-governance compression stage for bulky evidence/tool output.
+- The broad-source control makes the complementarity clearer: Headroom can be excellent after context is selected, but it did not solve source selection by compressing a broad source bundle in this local test.
 
 The clean positioning remains:
 

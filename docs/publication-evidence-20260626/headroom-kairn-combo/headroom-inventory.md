@@ -54,10 +54,14 @@
 - Kairn source build on this branch: passed, `kairn --version` reports `0.1.4`, `darwin-arm64`, `source`.
 - Kairn + Headroom prepare-task combo: Kairn MCP returned runtime/governor attribution; Headroom preserved both paths and used `router:noop` because the payload was only 192 estimated tokens.
 - Kairn + Headroom source-payload combo: Kairn MCP returned exact source for `src/runtime/KairnRuntime.ts`; Headroom compressed 3,633 estimated tokens to 63 while preserving the file path and retrieval.
+- Expanded local payload matrix: seven Headroom MCP compress/retrieve calls completed. Kairn+Headroom saved 14,947 of 22,202 tokens across six local Kairn payloads, with zero lost-attribution rows. Headroom-only raw noisy output saved 10,180 of 11,673 tokens and preserved all required source/test strings through retrieval.
+- Broad source negative control: Headroom-only protected a 133,141-token raw source bundle as recent code and did not compress it. That preserves source text, but it does not solve source-surface selection or prompt pressure by itself.
 
 ## Competitive Read
 
 Headroom is not a direct Kairn clone. It is strongest as a compression/proxy layer after context is already in the request path. Kairn is strongest as a source-governance layer before context reaches the agent.
+
+The broad-source control reinforces that distinction: Headroom protected broad recent-code payloads in this local test, so broad source selection still needs a governance layer before compression.
 
 The clean public distinction to preserve:
 

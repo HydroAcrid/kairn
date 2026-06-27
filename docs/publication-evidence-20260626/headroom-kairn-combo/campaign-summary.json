@@ -1,11 +1,12 @@
 {
   "id": "headroom-kairn-combo-20260626",
-  "status": "combo_smoke_complete_live_not_started",
+  "status": "expanded_local_payload_matrix_complete_live_not_started",
   "createdAt": "2026-06-26",
   "summary": {
     "inventoryRows": 1,
     "smokeRows": 8,
     "comboSmokeRows": 2,
+    "expandedLocalPayloadRows": 7,
     "liveRows": 0,
     "officialRows": 0,
     "mcpInitialization": "passed",
@@ -17,6 +18,37 @@
       "tokensAfter": 63,
       "tokensSaved": 3570,
       "reductionPct": 98.3
+    },
+    "expandedPayloadMatrix": {
+      "totalRows": 7,
+      "tokensBefore": 33875,
+      "tokensAfter": 8748,
+      "tokensSaved": 25127,
+      "reductionPct": 74.2,
+      "lostAttributionRows": 0
+    },
+    "expandedKairnPlusHeadroom": {
+      "rows": 6,
+      "tokensBefore": 22202,
+      "tokensAfter": 7255,
+      "tokensSaved": 14947,
+      "reductionPct": 67.3,
+      "medianReductionPct": 34.0,
+      "note": "Median is lowered by intentional no-op rows where Kairn output was already tiny or Headroom protected error-output payloads."
+    },
+    "headroomOnlyNoisyOutput": {
+      "tokensBefore": 11673,
+      "tokensAfter": 1493,
+      "tokensSaved": 10180,
+      "reductionPct": 87.2
+    },
+    "headroomOnlyBroadSourceControl": {
+      "tokensBefore": 133141,
+      "tokensAfter": 133141,
+      "tokensSaved": 0,
+      "reductionPct": 0.0,
+      "classification": "headroom_only_broad_source_noop_attribution_preserved",
+      "interpretation": "Headroom protected broad recent-code payloads instead of compressing them, so it does not remove the need for Kairn to choose the source surface first."
     }
   },
   "results": [
@@ -75,11 +107,60 @@
       "arm": "kairn_plus_headroom",
       "status": "passed",
       "classification": "combo_source_compression_attribution_preserved"
+    },
+    {
+      "entryId": "kairn-read-file-exact-runtime-expanded",
+      "stage": "expanded_local_payload",
+      "arm": "kairn_plus_headroom",
+      "status": "passed",
+      "classification": "combo_compression_attribution_preserved"
+    },
+    {
+      "entryId": "kairn-read-file-summary-runtime-expanded",
+      "stage": "expanded_local_payload",
+      "arm": "kairn_plus_headroom",
+      "status": "passed",
+      "classification": "combo_compression_attribution_preserved"
+    },
+    {
+      "entryId": "kairn-find-context-snippets-mcp-expanded",
+      "stage": "expanded_local_payload",
+      "arm": "kairn_plus_headroom",
+      "status": "passed",
+      "classification": "combo_compression_attribution_preserved"
+    },
+    {
+      "entryId": "kairn-failure-context-noisy-runtime-expanded",
+      "stage": "expanded_local_payload",
+      "arm": "kairn_plus_headroom",
+      "status": "passed",
+      "classification": "combo_noop_attribution_preserved"
+    },
+    {
+      "entryId": "kairn-compress-output-noisy-runtime-expanded",
+      "stage": "expanded_local_payload",
+      "arm": "kairn_plus_headroom",
+      "status": "passed",
+      "classification": "combo_noop_attribution_preserved"
+    },
+    {
+      "entryId": "headroom-only-raw-noisy-test-output-expanded",
+      "stage": "expanded_local_payload",
+      "arm": "headroom_only",
+      "status": "passed",
+      "classification": "headroom_only_compression_attribution_preserved"
+    },
+    {
+      "entryId": "headroom-only-broad-source-bundle",
+      "stage": "source_governance_control",
+      "arm": "headroom_only",
+      "status": "passed",
+      "classification": "headroom_only_broad_source_noop_attribution_preserved"
     }
   ],
   "gates": {
     "safeToRunLiveCombo": false,
-    "reason": "Headroom MCP and Kairn+Headroom combo smoke now pass, but direct-vs-Headroom-passthrough token-accounting has not been run yet.",
+    "reason": "Headroom MCP and Kairn+Headroom local payload checks pass, but direct-vs-Headroom-passthrough agent token-accounting and quality have not been run yet.",
     "publicClaimsAllowed": false
   },
   "nextActions": [

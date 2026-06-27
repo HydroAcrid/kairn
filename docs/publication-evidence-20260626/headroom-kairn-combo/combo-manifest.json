@@ -5,7 +5,7 @@
   "createdAt": "2026-06-26",
   "kairn": {
     "branch": "research/headroom-combo-eval",
-    "commit": "8af1e7d9348c8426020d234ee0f04aff77048196",
+    "commit": "d7dbda23779c37ea9d7c463e8f678724cedade04",
     "version": "0.1.4"
   },
   "headroom": {
@@ -85,6 +85,18 @@
       "command": "kairn_read_file exact source payload -> headroom_compress",
       "status": "passed",
       "note": "Headroom compressed 3633 estimated tokens to 63 while preserving src/runtime/KairnRuntime.ts and retrieval."
+    },
+    {
+      "id": "expanded-local-payload-matrix",
+      "command": "Kairn MCP payload matrix plus Headroom-only raw noisy output -> headroom_compress/headroom_retrieve",
+      "status": "passed",
+      "note": "Seven payloads completed. Kairn+Headroom saved 14,947 of 22,202 tokens across six local payloads, with zero lost-attribution rows. Headroom-only raw noisy output saved 10,180 of 11,673 tokens."
+    },
+    {
+      "id": "headroom-only-broad-source-control",
+      "command": "Broad raw source bundle -> headroom_compress/headroom_retrieve",
+      "status": "passed",
+      "note": "Headroom protected a 133,141-token broad source bundle as recent code and did not compress it, preserving attribution but not reducing prompt pressure."
     }
   ],
   "plannedLiveRows": [
