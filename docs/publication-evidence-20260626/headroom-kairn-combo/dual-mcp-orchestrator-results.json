@@ -1,0 +1,131 @@
+{
+  "createdAt": "2026-06-27T01:47:10.000Z",
+  "mode": "dual_mcp_orchestrator_simulation",
+  "description": "One local orchestrator connected to both Kairn MCP and Headroom MCP over stdio. It called Kairn first for source/failure governance, then passed selected Kairn payloads to Headroom for compression and retrieval checks.",
+  "kairnServer": {
+    "command": "node dist/cli.js serve --mcp --root <repo-or-fixture>",
+    "toolsUsed": [
+      "kairn_start_task",
+      "kairn_prepare_task",
+      "kairn_find_context",
+      "kairn_read_file",
+      "kairn_get_failure_context"
+    ]
+  },
+  "headroomServer": {
+    "command": "headroom mcp serve",
+    "toolsUsed": [
+      "headroom_compress",
+      "headroom_retrieve",
+      "headroom_stats"
+    ]
+  },
+  "rows": [
+    {
+      "id": "dual-mcp-exact-source",
+      "arm": "kairn_plus_headroom",
+      "kairnTool": "kairn_read_file",
+      "headroomTools": [
+        "headroom_compress",
+        "headroom_retrieve"
+      ],
+      "tokensBefore": 10472,
+      "tokensAfter": 60,
+      "tokensSaved": 10412,
+      "reductionPct": 99.4,
+      "attributionPreserved": [
+        "src/server/mcp.ts",
+        "kairn_prepare_task",
+        "kairn_read_file"
+      ],
+      "classification": "mcp_combo_source_compression_attribution_preserved"
+    },
+    {
+      "id": "dual-mcp-source-surface",
+      "arm": "kairn_plus_headroom",
+      "kairnTool": "kairn_find_context",
+      "headroomTools": [
+        "headroom_compress",
+        "headroom_retrieve"
+      ],
+      "tokensBefore": 14143,
+      "tokensAfter": 6349,
+      "tokensSaved": 7794,
+      "reductionPct": 55.1,
+      "attributionPreserved": [
+        "src/eval/codexUsage.ts",
+        "src/server/mcp.ts",
+        "mcp_tool_call"
+      ],
+      "classification": "mcp_combo_source_surface_attribution_preserved"
+    },
+    {
+      "id": "dual-mcp-parser-failure-context",
+      "arm": "kairn_plus_headroom",
+      "kairnTool": "kairn_get_failure_context",
+      "headroomTools": [
+        "headroom_compress",
+        "headroom_retrieve"
+      ],
+      "tokensBefore": 649,
+      "tokensAfter": 243,
+      "tokensSaved": 406,
+      "reductionPct": 62.6,
+      "attributionPreserved": [
+        "src/parser.js",
+        "test/parser.test.js",
+        "parseUserProfile"
+      ],
+      "classification": "mcp_combo_failure_context_compression_attribution_preserved"
+    },
+    {
+      "id": "dual-mcp-tiny-prepare",
+      "arm": "kairn_plus_headroom",
+      "kairnTool": "kairn_prepare_task",
+      "headroomTools": [
+        "headroom_compress",
+        "headroom_retrieve"
+      ],
+      "tokensBefore": 1491,
+      "tokensAfter": 133,
+      "tokensSaved": 1358,
+      "reductionPct": 91.1,
+      "attributionPreserved": [
+        "src/server/mcp.ts"
+      ],
+      "classification": "mcp_combo_tiny_prepare_compressed_attribution_preserved"
+    },
+    {
+      "id": "dual-mcp-headroom-raw-noisy-control",
+      "arm": "headroom_only",
+      "kairnTool": null,
+      "headroomTools": [
+        "headroom_compress",
+        "headroom_retrieve"
+      ],
+      "tokensBefore": 11303,
+      "tokensAfter": 11303,
+      "tokensSaved": 0,
+      "reductionPct": 0.0,
+      "attributionPreserved": [
+        "src/parser.js",
+        "test/parser.test.js"
+      ],
+      "classification": "mcp_headroom_raw_noise_protected_noop"
+    }
+  ],
+  "aggregate": {
+    "kairnPlusHeadroomRows": 4,
+    "kairnPlusHeadroomTokensBefore": 26755,
+    "kairnPlusHeadroomTokensAfter": 6785,
+    "kairnPlusHeadroomTokensSaved": 19970,
+    "kairnPlusHeadroomReductionPct": 74.6,
+    "allRows": 5,
+    "allRowsTokensBefore": 38058,
+    "allRowsTokensAfter": 18088,
+    "allRowsTokensSaved": 19970,
+    "allRowsReductionPct": 52.5,
+    "lostAttributionRows": 0
+  },
+  "interpretation": "The MCP-to-MCP path is technically viable and more promising than the Codex proxy wrapper path. Kairn can govern/select context first, then Headroom can compress selected Kairn MCP payloads while preserving source attribution. This does not prove end-to-end agent savings yet; it proves the tool-chain composition works without the wrapper overhead seen in live Codex proxy tests."
+}

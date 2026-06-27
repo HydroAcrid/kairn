@@ -60,6 +60,7 @@
 - Isolated Codex accounting sanity: direct Codex and Headroom-wrapped Codex both returned the expected tiny response. Direct JSON usage was 12,917 input / 24 output tokens. Headroom-wrapped JSON usage was 12,880 input / 25 output tokens. This proves wrapper accounting viability, not a savings claim.
 - Live parser fixture: all four arms passed quality, but Headroom-wrapped Codex used more observed input tokens than direct Codex, and Kairn+Headroom used much more. This appears tied to proxy/WebSocket retry behavior. Treat the current Codex proxy wrapper path as not production-promising for Kairn until debugged.
 - Live failure-prompt fixture: full noisy-log prompting and Kairn failure-context prompting both passed. Kairn failure context reduced observed input tokens by 34.1% versus full-log prompting. Headroom nooped on the Kairn output, so this is Kairn-first savings rather than combined savings.
+- Dual-MCP orchestrator simulation: one local client connected to both Kairn MCP and Headroom MCP. Kairn+Headroom MCP rows compressed 26,755 -> 6,785 tokens, saving 19,970 tokens (74.6%) with zero lost-attribution rows. This is a promising MCP-side integration path and is distinct from the negative Codex proxy-wrapper result.
 
 ## Competitive Read
 
@@ -75,6 +76,7 @@ The clean public distinction to preserve:
 
 - Do not put Headroom before Kairn if that hides filenames, source paths, symbols, MCP attribution, or task-shape evidence from Kairn.
 - Do not run `headroom wrap codex` against the user's live Codex config during automated tests unless the config mutation is explicitly accepted and restored.
+- Prefer MCP-to-MCP composition over global Codex proxy wrapping for future Kairn integration experiments.
 - Treat Headroom as a black-box dependency for tests. Do not copy implementation code into Kairn.
 - Use passthrough mode as a control before attributing any result to compression.
 - Keep Headroom logs and any raw traffic out of tracked evidence.

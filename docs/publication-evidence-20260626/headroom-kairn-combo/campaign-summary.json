@@ -1,13 +1,14 @@
 {
   "id": "headroom-kairn-combo-20260626",
-  "status": "expanded_local_payload_matrix_complete_live_not_started",
+  "status": "dual_mcp_promising_proxy_wrapper_blocked",
   "createdAt": "2026-06-26",
   "summary": {
     "inventoryRows": 1,
     "smokeRows": 8,
     "comboSmokeRows": 2,
     "expandedLocalPayloadRows": 7,
-    "liveRows": 0,
+    "liveRows": 6,
+    "dualMcpRows": 5,
     "officialRows": 0,
     "mcpInitialization": "passed",
     "proxyPassthrough": "passed",
@@ -120,6 +121,27 @@
         "strategy": "router:noop"
       },
       "interpretation": "The narrower Kairn-first path worked: Kairn compressed the noisy failure signal enough to preserve quality and reduce observed input tokens. Headroom added no extra reduction because Kairn's failure context was already compact."
+    },
+    "dualMcpOrchestrator": {
+      "status": "passed_with_promising_mcp_composition",
+      "description": "One orchestrator connected to Kairn MCP and Headroom MCP over stdio, called Kairn first for governed source/failure payloads, then passed selected payloads to Headroom for compression and retrieval.",
+      "kairnPlusHeadroom": {
+        "rows": 4,
+        "tokensBefore": 26755,
+        "tokensAfter": 6785,
+        "tokensSaved": 19970,
+        "reductionPct": 74.6,
+        "lostAttributionRows": 0
+      },
+      "headroomOnlyRawNoisyControl": {
+        "tokensBefore": 11303,
+        "tokensAfter": 11303,
+        "tokensSaved": 0,
+        "reductionPct": 0.0,
+        "classification": "mcp_headroom_raw_noise_protected_noop",
+        "interpretation": "In this MCP session Headroom protected the raw noisy parser log as recent code and preserved attribution, but did not reduce it."
+      },
+      "interpretation": "The MCP-to-MCP path is technically viable and more promising than the Codex proxy wrapper path. Kairn can govern context first, then Headroom can compress selected Kairn MCP payloads while preserving source attribution."
     }
   },
   "results": [
@@ -290,16 +312,51 @@
       "arm": "kairn_plus_headroom",
       "status": "passed",
       "classification": "kairn_failure_context_headroom_noop_savings"
+    },
+    {
+      "entryId": "dual-mcp-exact-source",
+      "stage": "dual_mcp_orchestrator",
+      "arm": "kairn_plus_headroom",
+      "status": "passed",
+      "classification": "mcp_combo_source_compression_attribution_preserved"
+    },
+    {
+      "entryId": "dual-mcp-source-surface",
+      "stage": "dual_mcp_orchestrator",
+      "arm": "kairn_plus_headroom",
+      "status": "passed",
+      "classification": "mcp_combo_source_surface_attribution_preserved"
+    },
+    {
+      "entryId": "dual-mcp-parser-failure-context",
+      "stage": "dual_mcp_orchestrator",
+      "arm": "kairn_plus_headroom",
+      "status": "passed",
+      "classification": "mcp_combo_failure_context_compression_attribution_preserved"
+    },
+    {
+      "entryId": "dual-mcp-tiny-prepare",
+      "stage": "dual_mcp_orchestrator",
+      "arm": "kairn_plus_headroom",
+      "status": "passed",
+      "classification": "mcp_combo_tiny_prepare_compressed_attribution_preserved"
+    },
+    {
+      "entryId": "dual-mcp-headroom-raw-noisy-control",
+      "stage": "dual_mcp_orchestrator",
+      "arm": "headroom_only",
+      "status": "passed",
+      "classification": "mcp_headroom_raw_noise_protected_noop"
     }
   ],
   "gates": {
     "safeToRunLiveCombo": false,
-    "reason": "The first live coding fixture passed quality in all arms, but the Headroom Codex proxy path caused token regressions and stream retries. Do not run larger live Codex proxy campaigns until the wrapper/proxy issue is resolved or a different integration path is chosen.",
+    "reason": "The first live coding fixture passed quality in all arms, but the Headroom Codex proxy path caused token regressions and stream retries. The direct dual-MCP path is promising, but it is not end-to-end agent proof yet.",
     "publicClaimsAllowed": false
   },
   "nextActions": [
-    "Run a tiny direct vs Headroom passthrough agent command to confirm token accounting and wrapper overhead.",
-    "If passthrough is stable, run the four-arm small SWE-Pro sample.",
-    "If SWE sample is stable, run two MCP/endurance single-run suites."
+    "Do not run larger Codex proxy-wrapper campaigns until the Headroom proxy/retry behavior is understood.",
+    "Prototype a Kairn-first optional compression handoff for bulky MCP payloads rather than wrapping all Codex traffic.",
+    "Run one end-to-end MCP agent task with both MCP servers available and require useful Kairn attribution plus lower observed tokens before making combo claims."
   ]
 }

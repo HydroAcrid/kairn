@@ -102,6 +102,38 @@ A second live fixture compared a full noisy failure-output prompt against Kairn'
 
 This is a positive Kairn-first result, but not a positive Headroom-added result. It shows Kairn can already turn noisy failure output into a much smaller task signal while preserving quality. Headroom is still likely useful for payloads Kairn does not already compact, but it did not add value on this specific Kairn failure-context output.
 
+## Dual-MCP Orchestrator Simulation
+
+To separate MCP behavior from the problematic Codex proxy wrapper, this pass ran one local orchestrator connected to both stdio MCP servers:
+
+- Kairn MCP: `node dist/cli.js serve --mcp --root <repo-or-fixture>`
+- Headroom MCP: `headroom mcp serve`
+
+The orchestrator called Kairn first for governed source or failure context, then passed the selected Kairn payload to Headroom for compression and retrieval. This simulates how an MCP-capable agent could use both tools side by side without putting Headroom in front of every Codex request.
+
+| Row | Kairn Tool | Before | After | Saved | Reduction | Attribution | Classification |
+| --- | --- | ---: | ---: | ---: | ---: | --- | --- |
+| Exact MCP source | `kairn_read_file` | 10,472 | 60 | 10,412 | 99.4% | `src/server/mcp.ts`, `kairn_prepare_task`, `kairn_read_file` preserved | `mcp_combo_source_compression_attribution_preserved` |
+| MCP attribution source surface | `kairn_find_context` | 14,143 | 6,349 | 7,794 | 55.1% | `src/eval/codexUsage.ts`, `src/server/mcp.ts`, `mcp_tool_call` preserved | `mcp_combo_source_surface_attribution_preserved` |
+| Parser failure context | `kairn_get_failure_context` | 649 | 243 | 406 | 62.6% | `src/parser.js`, `test/parser.test.js`, `parseUserProfile` preserved | `mcp_combo_failure_context_compression_attribution_preserved` |
+| Tiny prepare payload | `kairn_prepare_task` | 1,491 | 133 | 1,358 | 91.1% | `src/server/mcp.ts` preserved | `mcp_combo_tiny_prepare_compressed_attribution_preserved` |
+| Raw noisy parser log control | none | 11,303 | 11,303 | 0 | 0.0% | `src/parser.js`, `test/parser.test.js` preserved | `mcp_headroom_raw_noise_protected_noop` |
+
+Kairn + Headroom MCP rows only:
+
+- 4 rows
+- 26,755 -> 6,785 tokens
+- 19,970 tokens saved
+- 74.6% aggregate reduction
+- 0 lost-attribution rows
+
+This is the strongest positive combo result so far. It does not contradict the negative Codex-wrapper result, because the integration point is different:
+
+- Bad path: wrap all Codex traffic through Headroom proxy.
+- Better path: Kairn governs source/failure context first, then Headroom compresses selected MCP payloads.
+
+The dual-MCP result is still not public evidence. It is an orchestrated tool-chain test, not an end-to-end agent benchmark. But it proves the MCPs can be used together technically, and that attribution can survive the handoff.
+
 Aggregate local payload result:
 
 - All seven rows: 33,875 -> 8,748 tokens, 25,127 saved, 74.2% reduction.
