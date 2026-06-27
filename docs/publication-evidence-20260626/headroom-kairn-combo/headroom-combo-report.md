@@ -72,6 +72,25 @@ After isolating `CODEX_HOME`, a tiny Codex prompt was run direct and through `he
 
 This is not a savings result. It only proves the wrapped path can complete a live Codex call and preserve JSON token accounting when run in an isolated config home.
 
+## Live Coding Fixture
+
+The first actual coding test used a disposable JS parser fixture with noisy failure output. All four arms fixed the bug and passed `npm test`.
+
+| Arm | Quality | Input | Cached Input | Output | Delta vs Direct | Classification |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| Direct Codex | pass | 68,854 | 61,312 | 1,130 | 0.0% | `live_baseline_pass` |
+| Headroom wrapped Codex | pass | 82,098 | 69,888 | 987 | -19.2% | `headroom_live_token_regression` |
+| Kairn only | pass | 68,591 | 56,704 | 971 | +0.4% | `kairn_live_neutral_savings` |
+| Kairn + Headroom wrapped Codex | pass | 131,762 | 116,096 | 1,915 | -91.4% | `combo_live_token_regression` |
+
+This is a negative result for the current Codex proxy-wrapper path. Headroom proxy logs reported internal compression attempts, but Codex-observed usage regressed and the Headroom arms showed repeated stream retry warnings. For product purposes, the observed Codex usage is the number that matters.
+
+Current conclusion from this live row:
+
+- Kairn + Headroom is promising as a local/MCP payload compression idea.
+- Kairn + Headroom is not currently promising as "run Codex through Headroom proxy" for normal source-edit work.
+- The next viable combo path should be narrower: Kairn governs source context first, then Headroom compresses bulky logs/tool output or explicit Kairn payloads, without proxying every Codex request.
+
 Aggregate local payload result:
 
 - All seven rows: 33,875 -> 8,748 tokens, 25,127 saved, 74.2% reduction.
@@ -89,6 +108,7 @@ Headroom appears complementary rather than a direct replacement for Kairn.
 - Headroom is a real competitive pressure against any Kairn positioning that says only "we reduce tokens." Kairn's durable claim should stay centered on context governance: source-surface choice, scope discipline, session memory, evidence requests, and when to stay quiet.
 - The strongest Headroom result in this local pass was raw noisy output compression. That does not make Kairn irrelevant; it shows Kairn should either interoperate with a compression layer or develop a post-governance compression stage for bulky evidence/tool output.
 - The broad-source control makes the complementarity clearer: Headroom can be excellent after context is selected, but it did not solve source selection by compressing a broad source bundle in this local test.
+- The first live coding row is a warning: Headroom's Codex proxy path can increase observed token usage even when its own logs report compression. This should block larger live proxy campaigns until the proxy/retry behavior is understood.
 
 The clean positioning remains:
 
@@ -96,7 +116,7 @@ The clean positioning remains:
 
 ## Live Test Gate
 
-Do not run the full four-arm SWE-Pro sample until at least one small row passes through the isolated wrapper path.
+Do not run the full four-arm SWE-Pro sample through the Headroom Codex proxy path until the stream retry/token-regression issue is resolved.
 
 Completed:
 
@@ -112,12 +132,16 @@ Completed:
   - direct and Headroom-wrapped Codex both returned the expected tiny response,
   - JSON usage accounting was preserved,
   - the live user Codex config remained clean.
+- Live parser fixture:
+  - all four arms passed quality,
+  - Kairn-only was neutral/slightly lower than direct baseline,
+  - Headroom-wrapped and Kairn+Headroom-wrapped paths regressed in Codex-observed input tokens.
 
 Remaining:
 
-1. First small live row:
-   - direct baseline vs Headroom passthrough vs Kairn-only vs Kairn+Headroom if feasible,
-   - confirm quality, patch capture, token accounting, and config isolation.
+1. Decide whether to debug the Headroom proxy path or abandon it for Kairn integration.
+2. If continuing, reproduce the retry issue with a minimal Headroom/Codex proxy run and inspect certificate/WebSocket fallback behavior.
+3. Prefer the narrower MCP/local compression path for the next combo experiment.
 
 ## Planned Live Sequence
 

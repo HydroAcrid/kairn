@@ -109,6 +109,12 @@
       "command": "Direct Codex tiny prompt vs headroom wrap codex tiny prompt with isolated CODEX_HOME",
       "status": "passed",
       "note": "Direct Codex reported 12917 input / 24 output tokens. Headroom-wrapped Codex reported 12880 input / 25 output tokens and returned the same response. This proves accounting stability, not meaningful savings."
+    },
+    {
+      "id": "live-parser-fixture-four-arm",
+      "command": "Noisy parser fixture across baseline_direct, headroom_passthrough, kairn_only, and kairn_plus_headroom",
+      "status": "passed_with_negative_combo_result",
+      "note": "All four arms passed quality. Codex-observed input tokens: baseline 68854, Headroom 82098, Kairn 68591, Kairn+Headroom 131762. The Headroom proxy wrapper path is not promising for this coding row."
     }
   ],
   "plannedLiveRows": [

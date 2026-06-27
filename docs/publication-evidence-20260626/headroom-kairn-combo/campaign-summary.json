@@ -68,6 +68,34 @@
         "outputTokens": 25
       },
       "interpretation": "Headroom-wrapped Codex completed a tiny prompt through isolated CODEX_HOME and preserved JSON usage accounting. The tiny token delta is not counted as savings evidence."
+    },
+    "liveParserFixture": {
+      "status": "passed_with_negative_combo_result",
+      "quality": "all_four_arms_passed",
+      "baselineDirect": {
+        "inputTokens": 68854,
+        "cachedInputTokens": 61312,
+        "outputTokens": 1130
+      },
+      "headroomPassthrough": {
+        "inputTokens": 82098,
+        "cachedInputTokens": 69888,
+        "outputTokens": 987,
+        "deltaVsBaselinePct": -19.2
+      },
+      "kairnOnly": {
+        "inputTokens": 68591,
+        "cachedInputTokens": 56704,
+        "outputTokens": 971,
+        "deltaVsBaselinePct": 0.4
+      },
+      "kairnPlusHeadroom": {
+        "inputTokens": 131762,
+        "cachedInputTokens": 116096,
+        "outputTokens": 1915,
+        "deltaVsBaselinePct": -91.4
+      },
+      "interpretation": "The proxy-wrapper path is not currently promising for simple source-edit coding rows. Headroom's proxy reported internal compression, but Codex-observed usage regressed because of repeated stream retries and larger final request usage."
     }
   },
   "results": [
@@ -196,11 +224,39 @@
       "arm": "headroom_passthrough",
       "status": "passed",
       "classification": "headroom_passthrough_accounting_stable"
+    },
+    {
+      "entryId": "parser-fixture-baseline-direct",
+      "stage": "live_coding_fixture",
+      "arm": "baseline_direct",
+      "status": "passed",
+      "classification": "live_baseline_pass"
+    },
+    {
+      "entryId": "parser-fixture-headroom-passthrough",
+      "stage": "live_coding_fixture",
+      "arm": "headroom_passthrough",
+      "status": "passed",
+      "classification": "headroom_live_token_regression"
+    },
+    {
+      "entryId": "parser-fixture-kairn-only",
+      "stage": "live_coding_fixture",
+      "arm": "kairn_only",
+      "status": "passed",
+      "classification": "kairn_live_neutral_savings"
+    },
+    {
+      "entryId": "parser-fixture-kairn-plus-headroom",
+      "stage": "live_coding_fixture",
+      "arm": "kairn_plus_headroom",
+      "status": "passed",
+      "classification": "combo_live_token_regression"
     }
   ],
   "gates": {
-    "safeToRunLiveCombo": true,
-    "reason": "Headroom MCP, Kairn+Headroom local payload checks, and isolated direct-vs-Headroom Codex accounting sanity now pass. Next live work should still start with one small row.",
+    "safeToRunLiveCombo": false,
+    "reason": "The first live coding fixture passed quality in all arms, but the Headroom Codex proxy path caused token regressions and stream retries. Do not run larger live Codex proxy campaigns until the wrapper/proxy issue is resolved or a different integration path is chosen.",
     "publicClaimsAllowed": false
   },
   "nextActions": [
