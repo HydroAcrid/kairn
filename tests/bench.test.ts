@@ -14,7 +14,7 @@ import {
 } from "../src/bench/matrix.js";
 import { loadBenchmarkEnduranceSuite } from "../src/bench/enduranceSuite.js";
 import { enduranceInvariantForPrompt, runBenchmarkEndurance, runBenchmarkEnduranceRepeats } from "../src/bench/endurance.js";
-import { changedFiles, runAgentBenchmarkCase } from "../src/bench/agent.js";
+import { changedFiles, runAgentBenchmarkCase, runShellWithProcessGroupTimeout } from "../src/bench/agent.js";
 import { classifyAssistance } from "../src/bench/assistClassification.js";
 import { buildSweBenchProPilot, loadSweBenchProRows, writeSweBenchProPilot } from "../src/bench/sweBenchPro.js";
 import { buildSweAtlasQnaPilot, loadSweAtlasQnaRows, writeSweAtlasQnaPilot } from "../src/bench/sweAtlasQna.js";
@@ -47,6 +47,41 @@ import type { ContextPrime, FileRecord, HybridScoredResult, SemanticChunkRecord 
 const CLI = ["tsx", "src/cli.ts"];
 
 describe("benchmark suite and scoring", () => {
+  it("marks async shell timeouts as failed and terminates descendant processes", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-shell-timeout-"));
+    const childScript = path.join(root, "child.js");
+    const parentScript = path.join(root, "parent.js");
+    const leakedFile = path.join(root, "leaked.txt");
+    fs.writeFileSync(
+      childScript,
+      [
+        "const fs = require('node:fs');",
+        `setTimeout(() => fs.writeFileSync(${JSON.stringify(leakedFile)}, 'leaked'), 300);`,
+        "setTimeout(() => {}, 2000);"
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      parentScript,
+      [
+        "const { spawn } = require('node:child_process');",
+        `spawn(process.execPath, [${JSON.stringify(childScript)}], { stdio: 'ignore' });`,
+        "setTimeout(() => {}, 2000);"
+      ].join("\n")
+    );
+
+    try {
+      const command = `${JSON.stringify(process.execPath)} ${JSON.stringify(parentScript)}`;
+      const result = await runShellWithProcessGroupTimeout(command, root, 75, 1024 * 1024);
+      await new Promise((resolve) => setTimeout(resolve, 450));
+
+      expect(result.timedOut).toBe(true);
+      expect(result.status).not.toBe(0);
+      expect(fs.existsSync(leakedFile)).toBe(false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("routes explicit debug/regression prompts to the failure-debug prime profile", () => {
     expect(resolvePrimeProfile("auto", "Debug StringUtils.isBlank whitespace behavior")).toBe("failure_debug");
     expect(resolvePrimeProfile("auto", "Debug local URL handling in the router utility")).toBe("failure_debug");

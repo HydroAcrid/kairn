@@ -579,7 +579,7 @@ export async function runShellWithProcessGroupTimeout(
     const child = spawn(command, {
       cwd,
       shell: true,
-      detached: false,
+      detached: process.platform !== "win32",
       stdio: ["ignore", "pipe", "pipe"]
     });
     let output = "";
@@ -609,8 +609,12 @@ export async function runShellWithProcessGroupTimeout(
       clearTimeout(timeoutTimer);
       if (forceTimer) clearTimeout(forceTimer);
       if (watchdogTimer) clearInterval(watchdogTimer);
+      const normalizedStatus =
+        timedOut && (status === null || status === 0)
+          ? 124
+          : status ?? (spawnError ? 1 : 0);
       resolve({
-        status: status ?? (spawnError ? 1 : 0),
+        status: normalizedStatus,
         output,
         timedOut,
         signal,
