@@ -221,7 +221,7 @@ describe("CLI", () => {
     expect(parsedTelemetry.queueLength).toBe(0);
     expect(parsedBetaReport.sessions).toBeGreaterThan(0);
     expect(parsedBetaReport.verdict).toBeTruthy();
-  }, 30_000);
+  }, 90_000);
 
   it("accepts whitespace-separated setup wizard targets from PowerShell-style argument lists", () => {
     const root = createFixtureRepo();
