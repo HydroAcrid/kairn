@@ -3269,6 +3269,51 @@ export class KairnRuntime {
     };
   }
 
+  private compressHookOutput(input: {
+    sessionId: string;
+    type: OutputKind;
+    output: string;
+    budget: number;
+    source?: WatchEventSource | undefined;
+    eventName?: string | undefined;
+  }): ContextResponse {
+    const session = this.store.getSession(input.sessionId);
+    const content = compressOutputText(input.output, input.type, input.budget);
+
+    this.store.recordCommand({
+      sessionId: input.sessionId,
+      type: input.type,
+      summary: content
+    });
+    this.recordMetricsEvent({
+      sessionId: input.sessionId,
+      rootPath: session.rootPath,
+      eventKind: "compression",
+      eventName: input.eventName ?? `compress_${input.type}`,
+      source: input.source ?? "runtime",
+      responseMode: "failure_context",
+      baselineTokens: estimateTokens(input.output),
+      outputTokens: estimateTokens(content),
+      files: [],
+      metadata: {
+        outputKind: input.type,
+        estimator: "raw command output as baseline",
+        compressionPolicy: "legacy_bounded_hook"
+      }
+    });
+
+    return {
+      mode: "failure_context",
+      content,
+      files: [],
+      symbols: [],
+      related: [],
+      warnings: [],
+      suggestedNextContext: [],
+      tokenEstimate: estimateTokens(content)
+    };
+  }
+
   async recordFileChanges(input: {
     sessionId: string;
     files: string[];
@@ -3524,7 +3569,7 @@ export class KairnRuntime {
         exitCode: input.event.exitCode
       });
     const response = shouldCompressOutput
-      ? this.compressOutput({
+      ? this.compressHookOutput({
           sessionId: session.id,
           type: outputKind,
           output: input.event.output!,
