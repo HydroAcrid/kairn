@@ -56,6 +56,7 @@ import type { BenchmarkCase } from "../types/bench.js";
 import { ensureKairnDir, getKairnPaths } from "../config/paths.js";
 import { SqliteStore } from "../store/sqliteStore.js";
 import { compressOutput as compressOutputText } from "../compression/compressOutput.js";
+import { routeEvidenceCompression } from "../compression/routeEvidence.js";
 import { reviewGitDiff } from "../git/reviewDiff.js";
 import { hybridSearch } from "../retrieval/hybridRetrieval.js";
 import { applyCompanionCandidatesToResults, findCompanionCandidates } from "../retrieval/companions.js";
@@ -3221,7 +3222,13 @@ export class KairnRuntime {
     eventName?: string | undefined;
   }): ContextResponse {
     const session = this.store.getSession(input.sessionId);
-    const content = compressOutputText(input.output, input.type, input.budget);
+    const routed = routeEvidenceCompression({
+      output: input.output,
+      type: input.type,
+      rootPath: session.rootPath,
+      ...(input.budget ? { budget: input.budget } : {})
+    });
+    const content = routed.content;
 
     this.store.recordCommand({
       sessionId: input.sessionId,
@@ -3237,22 +3244,28 @@ export class KairnRuntime {
       responseMode: "failure_context",
       baselineTokens: estimateTokens(input.output),
       outputTokens: estimateTokens(content),
-      files: [],
+      files: routed.files,
       metadata: {
         outputKind: input.type,
-        estimator: "raw command output as baseline"
+        estimator: "raw command output as baseline",
+        compression: routed.metadata
       }
     });
 
     return {
       mode: "failure_context",
       content,
-      files: [],
+      files: routed.files,
       symbols: [],
       related: [],
-      warnings: [],
+      warnings: routed.metadata.status === "failed_open"
+        ? [`Compression failed open (${routed.metadata.reason}); original output returned unchanged.`]
+        : [],
       suggestedNextContext: [],
-      tokenEstimate: estimateTokens(content)
+      tokenEstimate: estimateTokens(content),
+      metadata: {
+        compression: routed.metadata
+      }
     };
   }
 

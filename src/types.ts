@@ -1,5 +1,6 @@
 export * from "./types/bench.js";
 export * from "./types/context.js";
+export * from "./types/compression.js";
 export * from "./types/eval.js";
 export * from "./types/graph.js";
 export * from "./types/language.js";

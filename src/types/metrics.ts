@@ -1,4 +1,5 @@
 import type { ContextResponseMode } from "./context.js";
+import type { CompressionMetricsSummary } from "./compression.js";
 import type { CodexUsageRecord } from "./eval.js";
 import type { IndexTier } from "./graph.js";
 import type { TaskPhase } from "./ledger.js";
@@ -50,6 +51,7 @@ export type MetricsSummary = {
   };
   byKind: Record<string, MetricsBucket>;
   bySource: Record<string, MetricsBucket>;
+  compression?: CompressionMetricsSummary;
   watch: {
     events: number;
     failures: number;
