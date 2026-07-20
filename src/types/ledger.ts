@@ -93,6 +93,7 @@ export type SessionContextPolicyReason =
   | "failure_reemitted"
   | "phase_shift_reemitted"
   | "ignored_recommendation_shrunk"
+  | "scope_drift_repair"
   | "verified_context_shrunk"
   | "verified_context_suppressed"
   | "active_source_context_shrunk"

@@ -427,6 +427,69 @@ describe("KairnRuntime", () => {
     runtime.close();
   });
 
+  it("emits a scope-drift guardrail instead of suppressing cleanup context", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const { session } = await runtime.startTask("Investigate dashboard formatting");
+
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "context_shown",
+      filePath: "src/app.ts",
+      source: "runtime",
+      summary: "Earlier focused source context"
+    });
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "edit_scope_changed",
+      source: "runtime",
+      summary: "Initial edit scope: src/app.ts",
+      metadata: {
+        editScope: {
+          initialEditFiles: ["src/app.ts"],
+          readOnlyFiles: [],
+          forbiddenEditPatterns: ["tests/"],
+          scopeConfidence: "high",
+          scopeSource: "exact_source"
+        }
+      }
+    });
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "verification_passed",
+      filePath: "src/app.ts",
+      source: "bench",
+      summary: "Dashboard verification passed."
+    });
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "agent_file_touched",
+      filePath: "src/user.ts",
+      source: "agent",
+      summary: "Agent touched unexpected source."
+    });
+
+    const cleanup = await runtime.primeContext({
+      task: "Review the final diff and confirm only src/app.ts changed.",
+      sessionId: session.id,
+      budget: 500,
+      source: "codex"
+    });
+    const cleanupPolicy = cleanup.metadata?.sessionPolicy as { phase?: string; reason?: string; metadata?: Record<string, unknown> } | undefined;
+
+    expect(cleanupPolicy?.phase).toBe("cleanup");
+    expect(cleanupPolicy?.reason).toBe("scope_drift_repair");
+    expect(cleanup.contextDecision?.action).toBe("shrink");
+    expect(cleanup.files).toContain("src/user.ts");
+    expect(cleanup.content).toContain("Kairn Scope Drift Guardrail");
+    expect(cleanup.content).toContain("Expected edit scope:");
+    expect(cleanup.content).toContain("src/app.ts");
+    expect(cleanup.content).toContain("Unexpected changed/touched files:");
+    expect(cleanup.content).toContain("src/user.ts");
+
+    runtime.close();
+  });
+
   it("reads files, symbols, related files, tests, diff, and compressed output", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);

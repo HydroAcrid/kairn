@@ -87,6 +87,7 @@ import {
   formatEvidenceRequestPrimeContext,
   formatMcpBriefPrimeContext,
   formatPrimeContext,
+  formatScopeDriftPrimeContext,
   formatShrunkPrimeContext,
   formatSuppressedPrimeContext,
   withTinyDirectivePrime
@@ -516,6 +517,7 @@ export class KairnRuntime {
       ? "shrink"
       : strongestSuppressiveAction(quality.action, contextDecision.action, sessionPolicy.action);
     const forceProductionOnlyOneFile =
+      sessionPolicy.reason !== "scope_drift_repair" &&
       effectiveAction === "shrink" &&
       taskHasProductionOnlyEditIntent(resolvedTask) &&
       !hasExplicitMultiFileScopeRequest(resolvedTask) &&
@@ -552,6 +554,12 @@ export class KairnRuntime {
       : effectiveAction === "shrink" && includeCompanionContext
         ? files.slice(0, 3)
         : files;
+    const scopeDriftFiles = Array.isArray(sessionPolicy.metadata.scopeDriftFiles)
+      ? sessionPolicy.metadata.scopeDriftFiles.filter((file): file is string => typeof file === "string" && file.length > 0)
+      : [];
+    const expectedScopeFiles = Array.isArray(sessionPolicy.metadata.expectedScopeFiles)
+      ? sessionPolicy.metadata.expectedScopeFiles.filter((file): file is string => typeof file === "string" && file.length > 0)
+      : [];
     const useMinimalOneFileDirective = shouldUseMinimalOneFileDirective({
       task: resolvedTask,
       action: effectiveAction,
@@ -598,19 +606,21 @@ export class KairnRuntime {
       });
     }
     if (isFileEmittingAction(effectiveAction) && editScope.initialEditFiles.length > 0) {
-      this.recordLedgerEvent({
-        sessionId: session.id,
-        kind: "edit_scope_changed",
-        contentHash: sha256(JSON.stringify(editScope)),
-        tokenEstimate: 0,
-        source: input.source ?? "cli",
-        summary: `Initial edit scope: ${editScope.initialEditFiles.join(", ")}`,
-        metadata: {
-          taskHash: sha256(resolvedTask),
-          phase: sessionPolicy.phase,
-          editScope
-        }
-      });
+      if (sessionPolicy.reason !== "scope_drift_repair") {
+        this.recordLedgerEvent({
+          sessionId: session.id,
+          kind: "edit_scope_changed",
+          contentHash: sha256(JSON.stringify(editScope)),
+          tokenEstimate: 0,
+          source: input.source ?? "cli",
+          summary: `Initial edit scope: ${editScope.initialEditFiles.join(", ")}`,
+          metadata: {
+            taskHash: sha256(resolvedTask),
+            phase: sessionPolicy.phase,
+            editScope
+          }
+        });
+      }
     }
     if (sessionPolicy.phase !== ledgerSummary.currentPhase) {
       this.recordLedgerEvent({
@@ -641,6 +651,14 @@ export class KairnRuntime {
         })
       : effectiveAction === "suppress"
         ? formatSuppressedPrimeContext({ task: resolvedTask, sessionId: session.id, profile, quality: effectiveQuality })
+        : sessionPolicy.reason === "scope_drift_repair"
+          ? formatScopeDriftPrimeContext({
+              task: resolvedTask,
+              sessionId: session.id,
+              budget: Math.min(budget, 360),
+              driftFiles: scopeDriftFiles,
+              expectedScopeFiles
+            })
         : effectiveAction === "request_evidence"
           ? formatEvidenceRequestPrimeContext({
               task: resolvedTask,
@@ -3904,7 +3922,7 @@ function mcpFirstBenchmarkInstructionLines(benchmarkCase: BenchmarkCase): string
 }
 
 function minimalSourceFocusOverridesSuppression(reason: SessionContextPolicyDecision["reason"]): boolean {
-  return reason === "active_source_context_shrunk";
+  return reason === "active_source_context_shrunk" || reason === "scope_drift_repair";
 }
 
 function collectWorkspaceKairnMetrics(workspacePath: string): Record<string, unknown> {
