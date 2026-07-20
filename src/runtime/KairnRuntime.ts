@@ -56,6 +56,7 @@ import type { BenchmarkCase } from "../types/bench.js";
 import { ensureKairnDir, getKairnPaths } from "../config/paths.js";
 import { SqliteStore } from "../store/sqliteStore.js";
 import { compressOutput as compressOutputText } from "../compression/compressOutput.js";
+import { routeEvidenceCompression } from "../compression/routeEvidence.js";
 import { reviewGitDiff } from "../git/reviewDiff.js";
 import { hybridSearch } from "../retrieval/hybridRetrieval.js";
 import { applyCompanionCandidatesToResults, findCompanionCandidates } from "../retrieval/companions.js";
@@ -3221,6 +3222,62 @@ export class KairnRuntime {
     eventName?: string | undefined;
   }): ContextResponse {
     const session = this.store.getSession(input.sessionId);
+    const routed = routeEvidenceCompression({
+      output: input.output,
+      type: input.type,
+      rootPath: session.rootPath,
+      ...(input.budget ? { budget: input.budget } : {})
+    });
+    const content = routed.content;
+
+    this.store.recordCommand({
+      sessionId: input.sessionId,
+      type: input.type,
+      summary: content
+    });
+    this.recordMetricsEvent({
+      sessionId: input.sessionId,
+      rootPath: session.rootPath,
+      eventKind: "compression",
+      eventName: input.eventName ?? `compress_${input.type}`,
+      source: input.source ?? "runtime",
+      responseMode: "failure_context",
+      baselineTokens: estimateTokens(input.output),
+      outputTokens: estimateTokens(content),
+      files: routed.files,
+      metadata: {
+        outputKind: input.type,
+        estimator: "raw command output as baseline",
+        compression: routed.metadata
+      }
+    });
+
+    return {
+      mode: "failure_context",
+      content,
+      files: routed.files,
+      symbols: [],
+      related: [],
+      warnings: routed.metadata.status === "failed_open"
+        ? [`Compression failed open (${routed.metadata.reason}); original output returned unchanged.`]
+        : [],
+      suggestedNextContext: [],
+      tokenEstimate: estimateTokens(content),
+      metadata: {
+        compression: routed.metadata
+      }
+    };
+  }
+
+  private compressHookOutput(input: {
+    sessionId: string;
+    type: OutputKind;
+    output: string;
+    budget: number;
+    source?: WatchEventSource | undefined;
+    eventName?: string | undefined;
+  }): ContextResponse {
+    const session = this.store.getSession(input.sessionId);
     const content = compressOutputText(input.output, input.type, input.budget);
 
     this.store.recordCommand({
@@ -3240,7 +3297,8 @@ export class KairnRuntime {
       files: [],
       metadata: {
         outputKind: input.type,
-        estimator: "raw command output as baseline"
+        estimator: "raw command output as baseline",
+        compressionPolicy: "legacy_bounded_hook"
       }
     });
 
@@ -3511,7 +3569,7 @@ export class KairnRuntime {
         exitCode: input.event.exitCode
       });
     const response = shouldCompressOutput
-      ? this.compressOutput({
+      ? this.compressHookOutput({
           sessionId: session.id,
           type: outputKind,
           output: input.event.output!,

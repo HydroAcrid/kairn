@@ -2526,9 +2526,78 @@ describe("KairnRuntime", () => {
     expect(symbolContext.content).toMatch(/semantic match|symbol match/);
     expect(diff.files).toContain("src/app.ts");
     expect(compressed.content).toContain("Expected true");
+    expect(compressed.files).toContain("src/app.test.ts");
+    expect(compressed.metadata?.compression).toMatchObject({
+      schemaVersion: 1,
+      status: "compressed",
+      reason: "compressed",
+      evidenceClass: "test"
+    });
     expect(metrics.totals.events).toBeGreaterThanOrEqual(7);
     expect(metrics.totals.savedTokens).toBeGreaterThan(0);
     expect(metrics.byKind.compression?.savedTokens).toBeGreaterThan(0);
+    expect(metrics.compression).toMatchObject({
+      attempts: 1,
+      compressed: 1,
+      skipped: 0,
+      failedOpen: 0
+    });
+    expect(metrics.compression!.savedTokens).toBeGreaterThan(0);
+
+    runtime.close();
+  });
+
+  it("aggregates compressed, skipped, and failed-open attempts without raw evidence in metrics", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const { session } = await runtime.startTask("Review command evidence");
+    const privateMarker = "private-command-evidence";
+
+    const compressed = runtime.compressOutput({
+      sessionId: session.id,
+      type: "test",
+      output: [
+        `FAIL src/app.test.ts > ${privateMarker}`,
+        "AssertionError: expected true to be false",
+        ...Array.from({ length: 500 }, (_, index) => `worker trace ${index} completed in ${index + 1}ms`),
+        "Command failed with exit code 1"
+      ].join("\n"),
+      budget: 360
+    });
+    const skipped = runtime.compressOutput({
+      sessionId: session.id,
+      type: "lint",
+      output: "No lint warnings or errors.",
+      budget: 360
+    });
+    const failedOpen = runtime.compressOutput({
+      sessionId: session.id,
+      type: "generic",
+      output: [
+        "Error: request failed",
+        ...Array.from(
+          { length: 50 },
+          (_, index) => `    at handler${index} (/workspace/src/handler${index}.ts:${index + 1}:2)`
+        ),
+        ...Array.from({ length: 600 }, (_, index) => `background worker ${index} completed`),
+        "Process exited with status 1"
+      ].join("\n"),
+      budget: 180
+    });
+    const metrics = runtime.getMetrics(session.id);
+
+    expect((compressed.metadata?.compression as { status: string }).status).toBe("compressed");
+    expect((skipped.metadata?.compression as { status: string }).status).toBe("skipped");
+    expect((failedOpen.metadata?.compression as { status: string }).status).toBe("failed_open");
+    expect(metrics.compression).toMatchObject({
+      attempts: 3,
+      compressed: 1,
+      skipped: 1,
+      failedOpen: 1
+    });
+    expect(metrics.compression!.beforeTokens).toBeGreaterThan(metrics.compression!.afterTokens);
+    expect(metrics.compression!.savedTokens).toBeGreaterThan(0);
+    expect(JSON.stringify(metrics.recentEvents)).not.toContain(privateMarker);
 
     runtime.close();
   });

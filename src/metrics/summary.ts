@@ -1,4 +1,4 @@
-import type { MetricsBucket, MetricsEventKind, MetricsSummary } from "../types.js";
+import type { CompressionMetricsSummary, MetricsBucket, MetricsEventKind, MetricsSummary } from "../types.js";
 import { uniquePaths } from "../utils/collections.js";
 
 export function summarizeMetrics(events: { baselineTokens: number; outputTokens: number; savedTokens: number }[]): MetricsBucket {
@@ -29,6 +29,40 @@ export function groupMetrics<T extends { baselineTokens: number; outputTokens: n
     };
   }
   return grouped;
+}
+
+export function summarizeCompressionMetrics(
+  events: Array<{
+    eventKind: MetricsEventKind;
+    baselineTokens: number;
+    outputTokens: number;
+    savedTokens: number;
+    metadata: Record<string, unknown>;
+  }>
+): CompressionMetricsSummary {
+  const summary: CompressionMetricsSummary = {
+    attempts: 0,
+    compressed: 0,
+    skipped: 0,
+    failedOpen: 0,
+    beforeTokens: 0,
+    afterTokens: 0,
+    savedTokens: 0
+  };
+
+  for (const event of events) {
+    if (event.eventKind !== "compression") continue;
+    summary.attempts += 1;
+    summary.beforeTokens += event.baselineTokens;
+    summary.afterTokens += event.outputTokens;
+    summary.savedTokens += event.savedTokens;
+    const status = nestedObject(event.metadata.compression)?.status;
+    if (status === "compressed") summary.compressed += 1;
+    if (status === "skipped") summary.skipped += 1;
+    if (status === "failed_open") summary.failedOpen += 1;
+  }
+
+  return summary;
 }
 
 export function summarizeCoordinationMetrics(

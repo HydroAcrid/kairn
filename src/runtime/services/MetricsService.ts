@@ -14,7 +14,12 @@ import {
 } from "../../mcp/resultExtractors.js";
 import { loadIndexingConfig } from "../../config/indexing.js";
 import { buildImpactStats } from "../../metrics/impact.js";
-import { groupMetrics, summarizeCoordinationMetrics, summarizeMetrics } from "../../metrics/summary.js";
+import {
+  groupMetrics,
+  summarizeCompressionMetrics,
+  summarizeCoordinationMetrics,
+  summarizeMetrics
+} from "../../metrics/summary.js";
 import { codexUsageFromObservation } from "../../eval/usageObservation.js";
 import { summarizeSessionLedger } from "../../ledger/summary.js";
 import { uniquePaths } from "../../utils/collections.js";
@@ -46,6 +51,7 @@ export class MetricsService {
       },
       byKind: groupMetrics(events, (event) => event.eventKind),
       bySource: groupMetrics(events, (event) => event.source),
+      compression: summarizeCompressionMetrics(events),
       watch: {
         events: watchEvents.length,
         failures: watchEvents.filter((event) => event.kind === "failure").length,

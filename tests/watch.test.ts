@@ -358,6 +358,34 @@ describe("KairnRuntime watch behavior", () => {
     runtime.close();
   });
 
+  it("keeps automatic hook output within the legacy summary budget", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const { session } = await runtime.startTask("Inspect generated source output");
+    const output = Array.from(
+      { length: 180 },
+      (_, index) => `export const generatedValue${index} = () => { return ${index}; };`
+    ).join("\n");
+    const event = normalizeHookPayload({
+      source: "codex",
+      payload: {
+        hook_event_name: "PostToolUse",
+        tool_name: "Bash",
+        tool_input: { command: "node scripts/emit-generated-source.js" },
+        tool_response: { stdout: output, exit_code: 0 }
+      }
+    });
+
+    const result = await runtime.handleHookEvent({ sessionId: session.id, event });
+
+    expect(result.response).toBeDefined();
+    expect(result.response?.tokenEstimate).toBeLessThanOrEqual(1200);
+    expect(result.response?.content).not.toBe(output);
+    expect(result.event.summary).not.toContain("generatedValue0");
+
+    runtime.close();
+  });
+
   it("creates and reuses sessions for sessionless Codex prompt-submit hooks", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);

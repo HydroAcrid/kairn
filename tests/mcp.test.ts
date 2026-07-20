@@ -69,6 +69,7 @@ describe("MCP server", () => {
     expect(tools.tools.map((tool) => tool.name)).toContain("kairn_prepare_task");
     expect(tools.tools.map((tool) => tool.name)).toContain("kairn_get_failure_context");
     expect(tools.tools.map((tool) => tool.name)).toContain("kairn_get_next_context");
+    expect(tools.tools.map((tool) => tool.name)).toContain("kairn_compress_output");
 
     const clientSessionPrepared = await client.callTool({
       name: "kairn_prepare_task",
@@ -189,6 +190,31 @@ describe("MCP server", () => {
     });
     expect(firstTextContent(failure)).toContain("Kairn Failure Context");
 
+    const compressionOutput = [
+      "FAIL src/app.test.ts > renders dashboard",
+      "AssertionError: expected true to be false",
+      "    at renderCheck (src/app.test.ts:4:10)",
+      ...Array.from({ length: 500 }, (_, index) => `worker trace ${index} completed in ${index + 1}ms`),
+      "Command failed with exit code 1"
+    ].join("\n");
+    const compressed = await client.callTool({
+      name: "kairn_compress_output",
+      arguments: {
+        sessionId: parsed.session.id,
+        type: "test",
+        output: compressionOutput,
+        budget: 360
+      }
+    });
+    const compressedParsed = JSON.parse(firstTextContent(compressed)!) as {
+      content: string;
+      files: string[];
+      metadata: { compression: { status: string; reason: string } };
+    };
+    expect(compressedParsed.metadata.compression).toMatchObject({ status: "compressed", reason: "compressed" });
+    expect(compressedParsed.content).toContain("AssertionError: expected true to be false");
+    expect(compressedParsed.files).toContain("src/app.test.ts");
+
     const metrics = await client.callTool({
       name: "kairn_get_metrics",
       arguments: {
@@ -200,9 +226,13 @@ describe("MCP server", () => {
     const metricsParsed = JSON.parse(metricsText!) as {
       byKind: Record<string, { events: number }>;
       bySource: Record<string, { events: number }>;
+      compression: { attempts: number; compressed: number; savedTokens: number };
     };
     expect(metricsParsed.byKind.mcp_tool_call?.events).toBeGreaterThan(0);
     expect(metricsParsed.bySource.mcp?.events).toBeGreaterThan(0);
+    expect(metricsParsed.compression.attempts).toBe(1);
+    expect(metricsParsed.compression.compressed).toBe(1);
+    expect(metricsParsed.compression.savedTokens).toBeGreaterThan(0);
 
     await client.close();
   });
