@@ -229,6 +229,20 @@ kairn metrics --session task_123 --root /path/to/repo --json
 
 The useful first number while testing Codex hooks is `estimated tokens saved`. It is not billing-grade accounting; it is a directional measure for whether Kairn is reducing repeated context and compressing noisy command output.
 
+To evaluate Kairn's evidence-routing policy without changing what an agent receives, opt a repository into shadow mode in `.kairn/config.json`:
+
+```json
+{
+  "routing": {
+    "evidence": {
+      "mode": "shadow"
+    }
+  }
+}
+```
+
+The default is `"off"`. In shadow mode, automatic non-prompt hook evidence is classified counterfactually as `exact`, `compress`, `suppress`, or `request_more`, while the existing bounded hook response remains byte-for-byte unchanged. `kairn metrics` reports these observations separately as projected evidence-routing results. They do not contribute to realized token savings, compression totals, telemetry, beta impact totals, or public savings claims.
+
 Kairn also keeps a metadata-only session ledger for long conversations. The ledger tracks which files Kairn recommended or showed, which files the agent later mentioned or touched, commands/tests/failures, phase changes, and repeated context that Kairn avoided. It stores file refs, hashes, summaries, and token estimates only.
 
 On top of the append-only ledger, Kairn derives a session working set: active files, ignored recommendations, stale shown files, the current invariant, latest failure, latest passing verification, open risks, and the next smallest useful read. Hooks and MCP tools use this working set to avoid repeating context and to re-emit only when the file changed, a failure references it, or the task phase shifted.

@@ -56,6 +56,11 @@ export function ensureKairnDir(root?: string): KairnPaths {
             maxGraphEdges: 250000,
             maxSemanticChunks: 7500,
             maxHotFiles: 3000
+          },
+          routing: {
+            evidence: {
+              mode: "off"
+            }
           }
         },
         null,

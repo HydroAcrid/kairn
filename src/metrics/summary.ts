@@ -1,4 +1,11 @@
-import type { CompressionMetricsSummary, MetricsBucket, MetricsEventKind, MetricsSummary } from "../types.js";
+import type {
+  CompressionMetricsSummary,
+  EvidenceRoutingAction,
+  EvidenceRoutingShadowSummary,
+  MetricsBucket,
+  MetricsEventKind,
+  MetricsSummary
+} from "../types.js";
 import { uniquePaths } from "../utils/collections.js";
 
 export function summarizeMetrics(events: { baselineTokens: number; outputTokens: number; savedTokens: number }[]): MetricsBucket {
@@ -65,6 +72,78 @@ export function summarizeCompressionMetrics(
   return summary;
 }
 
+export function summarizeEvidenceRoutingShadow(
+  events: Array<{
+    eventKind: MetricsEventKind;
+    metadata: Record<string, unknown>;
+  }>
+): EvidenceRoutingShadowSummary {
+  const summary: EvidenceRoutingShadowSummary = {
+    observations: 0,
+    byAction: {
+      exact: 0,
+      compress: 0,
+      suppress: 0,
+      request_more: 0
+    },
+    byReason: {},
+    byEvidenceClass: {},
+    withAttribution: 0,
+    missingAttribution: 0,
+    failedOpen: 0,
+    projectedCompressibleInputTokens: 0,
+    projectedCompressedTokens: 0,
+    projectedSavedTokens: 0,
+    projectedSavingsRate: 0,
+    candidateVsCurrentTokenDelta: 0,
+    averageLatencyMs: 0,
+    p95LatencyMs: 0
+  };
+  const latencies: number[] = [];
+
+  for (const event of events) {
+    if (event.eventKind !== "evidence_routing_shadow") continue;
+    const receipt = nestedObject(event.metadata.evidenceRoutingShadow);
+    const action = evidenceRoutingAction(receipt?.action);
+    if (!receipt || !action) continue;
+
+    summary.observations += 1;
+    summary.byAction[action] += 1;
+    const reason = stringField(receipt.reason) ?? "unknown";
+    const evidenceClass = stringField(receipt.evidenceClass) ?? "unknown";
+    summary.byReason[reason] = (summary.byReason[reason] ?? 0) + 1;
+    summary.byEvidenceClass[evidenceClass] = (summary.byEvidenceClass[evidenceClass] ?? 0) + 1;
+
+    const attributedFileCount = numberField(receipt.attributedFileCount) ?? 0;
+    if (attributedFileCount > 0) summary.withAttribution += 1;
+    else summary.missingAttribution += 1;
+
+    const compression = nestedObject(receipt.compression);
+    if (compression?.status === "failed_open") summary.failedOpen += 1;
+
+    if (action === "compress") {
+      summary.projectedCompressibleInputTokens += numberField(receipt.inputTokens) ?? 0;
+      summary.projectedCompressedTokens += numberField(receipt.candidateTokens) ?? 0;
+      summary.projectedSavedTokens += numberField(receipt.candidateVsInputSavedTokens) ?? 0;
+      summary.candidateVsCurrentTokenDelta += numberField(receipt.candidateVsCurrentTokenDelta) ?? 0;
+    }
+
+    const latency = numberField(receipt.elapsedMs);
+    if (latency !== undefined && latency >= 0) latencies.push(latency);
+  }
+
+  summary.projectedSavingsRate = summary.projectedCompressibleInputTokens > 0
+    ? summary.projectedSavedTokens / summary.projectedCompressibleInputTokens
+    : 0;
+  if (latencies.length > 0) {
+    latencies.sort((a, b) => a - b);
+    summary.averageLatencyMs = latencies.reduce((total, value) => total + value, 0) / latencies.length;
+    summary.p95LatencyMs = latencies[Math.max(0, Math.ceil(latencies.length * 0.95) - 1)] ?? 0;
+  }
+
+  return summary;
+}
+
 export function summarizeCoordinationMetrics(
   events: Array<{ eventKind: MetricsEventKind; files: string[]; metadata: Record<string, unknown> }>
 ): MetricsSummary["coordination"] {
@@ -102,6 +181,16 @@ export function emptyMetricsBucket(): MetricsBucket {
 
 function numberField(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function stringField(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function evidenceRoutingAction(value: unknown): EvidenceRoutingAction | undefined {
+  return value === "exact" || value === "compress" || value === "suppress" || value === "request_more"
+    ? value
+    : undefined;
 }
 
 function exactSourceFilesFromMetadata(metadata: Record<string, unknown>, eventFiles: string[]): string[] {
