@@ -386,6 +386,152 @@ describe("KairnRuntime watch behavior", () => {
     runtime.close();
   });
 
+  it("records shadow decisions without changing successful or failure hook delivery", async () => {
+    const offRoot = createFixtureRepo();
+    const shadowRoot = createFixtureRepo();
+    const offRuntime = new KairnRuntime(offRoot);
+    const shadowRuntime = new KairnRuntime(shadowRoot);
+    const { session: offSession } = await offRuntime.startTask("Compare hook delivery");
+    const { session: shadowSession } = await shadowRuntime.startTask("Compare hook delivery");
+    const shadowConfigPath = `${shadowRoot}/.kairn/config.json`;
+    const shadowConfig = JSON.parse(fs.readFileSync(shadowConfigPath, "utf8")) as Record<string, unknown>;
+    fs.writeFileSync(
+      shadowConfigPath,
+      `${JSON.stringify({ ...shadowConfig, routing: { evidence: { mode: "shadow" } } }, null, 2)}\n`
+    );
+    const promptEvent = normalizeHookPayload({
+      source: "codex",
+      payload: {
+        hook_event_name: "UserPromptSubmit",
+        prompt: "Inspect the application output before changing it"
+      }
+    });
+    const offPrompt = await offRuntime.handleHookEvent({ sessionId: offSession.id, event: promptEvent });
+    const shadowPrompt = await shadowRuntime.handleHookEvent({ sessionId: shadowSession.id, event: promptEvent });
+    const successfulOutput = Array.from(
+      { length: 500 },
+      (_, index) => `background progress ${index} completed in ${index + 1}ms`
+    ).join("\n");
+    const successEvent = normalizeHookPayload({
+      source: "codex",
+      payload: {
+        hook_event_name: "PostToolUse",
+        tool_name: "Bash",
+        tool_input: { command: "node scripts/report-progress.js" },
+        tool_response: { stdout: successfulOutput, exit_code: 0 }
+      }
+    });
+
+    const offSuccess = await offRuntime.handleHookEvent({ sessionId: offSession.id, event: successEvent });
+    const shadowSuccess = await shadowRuntime.handleHookEvent({ sessionId: shadowSession.id, event: successEvent });
+    const sourceOutput = Array.from(
+      { length: 180 },
+      (_, index) => `export const generatedValue${index} = () => { return ${index}; };`
+    ).join("\n");
+    const sourceEvent = normalizeHookPayload({
+      source: "codex",
+      payload: {
+        hook_event_name: "PostToolUse",
+        tool_name: "Bash",
+        tool_input: { command: "node scripts/emit-generated-source.js" },
+        tool_response: { stdout: sourceOutput, exit_code: 0 }
+      }
+    });
+    const offSource = await offRuntime.handleHookEvent({ sessionId: offSession.id, event: sourceEvent });
+    const shadowSource = await shadowRuntime.handleHookEvent({ sessionId: shadowSession.id, event: sourceEvent });
+    const failureEvent = normalizeHookPayload({
+      source: "codex",
+      payload: {
+        hook_event_name: "PostToolUseFailure",
+        tool_name: "Bash",
+        tool_input: { command: "pnpm test" },
+        tool_response: {
+          stdout: "FAIL src/app.test.ts:3:1\nAssertionError: expected true to be false",
+          exit_code: 1
+        }
+      }
+    });
+    const offFailure = await offRuntime.handleHookEvent({ sessionId: offSession.id, event: failureEvent });
+    const shadowFailure = await shadowRuntime.handleHookEvent({ sessionId: shadowSession.id, event: failureEvent });
+
+    expect(shadowPrompt.prime).toEqual(offPrompt.prime);
+    expect(shadowPrompt.response).toEqual(offPrompt.response);
+    expect(shadowPrompt.recommendation).toEqual(offPrompt.recommendation);
+    expect(shadowSuccess.response).toEqual(offSuccess.response);
+    expect(shadowSuccess.recommendation).toEqual(offSuccess.recommendation);
+    expect(shadowSuccess.prime).toEqual(offSuccess.prime);
+    expect(shadowSuccess.event.summary).toBe(offSuccess.event.summary);
+    expect(shadowSuccess.event.files).toEqual(offSuccess.event.files);
+    expect(shadowSource.response).toEqual(offSource.response);
+    expect(shadowSource.recommendation).toEqual(offSource.recommendation);
+    expect(shadowSource.prime).toEqual(offSource.prime);
+    expect(shadowSource.event.summary).toBe(offSource.event.summary);
+    expect(shadowSource.event.files).toEqual(offSource.event.files);
+    expect(shadowFailure.response).toEqual(offFailure.response);
+    expect(shadowFailure.recommendation).toEqual(offFailure.recommendation);
+    expect(shadowFailure.failureContext?.content).toBe(offFailure.failureContext?.content);
+    expect(shadowFailure.failureContext?.files).toEqual(offFailure.failureContext?.files);
+    expect(shadowFailure.failureContext?.warnings).toEqual(offFailure.failureContext?.warnings);
+    expect(shadowFailure.failureContext?.tokenEstimate).toBe(offFailure.failureContext?.tokenEstimate);
+    expect(shadowFailure.event.summary).toBe(offFailure.event.summary);
+    expect(
+      hostHookOutput({
+        source: "codex",
+        eventName: successEvent.eventName,
+        content: shadowSuccess.prime?.content ?? shadowSuccess.failureContext?.content ?? shadowSuccess.recommendation?.content
+      })
+    ).toBe(
+      hostHookOutput({
+        source: "codex",
+        eventName: successEvent.eventName,
+        content: offSuccess.prime?.content ?? offSuccess.failureContext?.content ?? offSuccess.recommendation?.content
+      })
+    );
+    expect(
+      hostHookOutput({
+        source: "codex",
+        eventName: failureEvent.eventName,
+        content: shadowFailure.prime?.content ?? shadowFailure.failureContext?.content ?? shadowFailure.recommendation?.content
+      })
+    ).toBe(
+      hostHookOutput({
+        source: "codex",
+        eventName: failureEvent.eventName,
+        content: offFailure.prime?.content ?? offFailure.failureContext?.content ?? offFailure.recommendation?.content
+      })
+    );
+
+    const offMetrics = offRuntime.getMetrics(offSession.id);
+    const shadowMetrics = shadowRuntime.getMetrics(shadowSession.id);
+    const offImpact = offRuntime.getImpactStats(offSession.id);
+    const shadowImpact = shadowRuntime.getImpactStats(shadowSession.id);
+    expect(shadowMetrics.totals).toEqual(offMetrics.totals);
+    expect(shadowMetrics.bySource).toEqual(offMetrics.bySource);
+    expect(shadowMetrics.compression).toEqual(offMetrics.compression);
+    const shadowRealizedByKind = { ...shadowMetrics.byKind };
+    delete shadowRealizedByKind.evidence_routing_shadow;
+    expect(shadowRealizedByKind).toEqual(offMetrics.byKind);
+    expect(offMetrics.evidenceRoutingShadow?.observations).toBe(0);
+    expect(shadowMetrics.evidenceRoutingShadow).toMatchObject({
+      observations: 3,
+      byAction: {
+        exact: 2,
+        compress: 0,
+        suppress: 1,
+        request_more: 0
+      }
+    });
+    expect(shadowMetrics.byKind.evidence_routing_shadow?.events).toBe(3);
+    expect(shadowMetrics.recentEvents.some((event) => event.eventKind === "evidence_routing_shadow")).toBe(false);
+    expect({ ...shadowImpact, averageHookLatencyMs: offImpact.averageHookLatencyMs }).toEqual(offImpact);
+    expect(
+      Math.abs((shadowImpact.averageHookLatencyMs ?? 0) - (offImpact.averageHookLatencyMs ?? 0))
+    ).toBeLessThan(100);
+
+    offRuntime.close();
+    shadowRuntime.close();
+  });
+
   it("creates and reuses sessions for sessionless Codex prompt-submit hooks", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);
@@ -630,6 +776,12 @@ describe("watch and hook CLI", () => {
       encoding: "utf8"
     });
     const parsed = JSON.parse(start) as { session: { id: string } };
+    const configPath = `${root}/.kairn/config.json`;
+    const config = JSON.parse(fs.readFileSync(configPath, "utf8")) as Record<string, unknown>;
+    fs.writeFileSync(
+      configPath,
+      `${JSON.stringify({ ...config, routing: { evidence: { mode: "shadow" } } }, null, 2)}\n`
+    );
     const watch = execFileSync(
       CLI[0]!,
       [...CLI.slice(1), "watch", "--session", parsed.session.id, "--root", root, "--once", "--json"],
@@ -649,6 +801,11 @@ describe("watch and hook CLI", () => {
         })
       }
     );
+    const metrics = execFileSync(
+      CLI[0]!,
+      [...CLI.slice(1), "metrics", "--session", parsed.session.id, "--root", root],
+      { cwd: process.cwd(), encoding: "utf8" }
+    );
     const watchParsed = JSON.parse(watch) as { changedFiles: string[]; recommendations: unknown[] };
     const hookParsed = JSON.parse(hook) as { event: { kind: string; files: string[] }; recommendation?: { suggestedNextContext: string[] } };
 
@@ -656,6 +813,8 @@ describe("watch and hook CLI", () => {
     expect(hookParsed.event.kind).toBe("failure");
     expect(hookParsed.event.files).toContain("src/app.test.ts");
     expect(hookParsed.recommendation?.suggestedNextContext).toContain("src/app.test.ts");
+    expect(metrics).toContain("Evidence routing shadow (projected, not realized)");
+    expect(metrics).toContain("- observations: 1");
   });
 
   it("supports snake_case Codex and Claude hook ingestion", () => {

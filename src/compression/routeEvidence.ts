@@ -354,28 +354,47 @@ function extractAnchors(text: string): AnchorSets {
 }
 
 function extractLineAnchors(line: string): AnchorSets {
+  const trimmed = line.trim();
+  const mayContainPath = line.includes("/") || line.includes("\\") || (line.includes(".") && line.includes(":"));
+  const mayContainTestSelector = line.includes("::");
+  const mayContainErrorCode = line.includes("TS") || line.includes("ERR_") || line.includes("@") || line.includes("/") || /\bE[A-Z]/.test(line);
+  const mayContainException = line.includes("Error") || line.includes("Exception") || line.includes("Failure") || line.includes("Fault");
+  const mayContainTestStatus = /^(?:FAIL|FAILED|PASS|PASSED|×|✗|●|--- FAIL:)\s+/.test(trimmed);
+  const mayContainStackFrame = /^(?:at\s|file\s+["'])/i.test(trimmed);
+  const mayContainCommandStatus = /\b(?:command|process|exit(?:ed)?(?:\s+with)?|exit code|status|ELIFECYCLE|ERR_PNPM_)\b/i.test(line);
+  if (
+    !mayContainPath &&
+    !mayContainTestSelector &&
+    !mayContainErrorCode &&
+    !mayContainException &&
+    !mayContainTestStatus &&
+    !mayContainStackFrame &&
+    !mayContainCommandStatus
+  ) {
+    return EMPTY_ANCHORS;
+  }
+
   const anchors = createAnchorSets();
-  if (line.includes("/") || line.includes("\\") || (line.includes(".") && line.includes(":"))) {
+  if (mayContainPath) {
     const directoryPaths = [...line.matchAll(DIRECTORY_PATH_PATTERN)].map((match) => match[0]).filter(Boolean);
     for (const value of directoryPaths) anchors.path_location.add(value);
     if (directoryPaths.length === 0) addMatches(anchors.path_location, line, BARE_PATH_LOCATION_PATTERN);
   }
-  if (line.includes("::")) addMatches(anchors.test_identifier, line, TEST_SELECTOR_PATTERN);
-  if (line.includes("TS") || line.includes("ERR_") || line.includes("@") || line.includes("/") || /\bE[A-Z]/.test(line)) {
+  if (mayContainTestSelector) addMatches(anchors.test_identifier, line, TEST_SELECTOR_PATTERN);
+  if (mayContainErrorCode) {
     addMatches(anchors.error_code, line, ERROR_CODE_PATTERN);
   }
-  if (line.includes("Error") || line.includes("Exception") || line.includes("Failure") || line.includes("Fault")) {
+  if (mayContainException) {
     addMatches(anchors.exception_type, line, EXCEPTION_PATTERN);
   }
 
-  const trimmed = line.trim();
-  if (/^(?:FAIL|FAILED|PASS|PASSED|×|✗|●|--- FAIL:)\s+/.test(trimmed)) {
+  if (mayContainTestStatus) {
     anchors.test_identifier.add(trimmed);
   }
   const goTest = trimmed.match(/^--- FAIL:\s+([^\s(]+)/);
   if (goTest?.[1]) anchors.test_identifier.add(goTest[1]);
-  if (isStackFrame(line)) anchors.stack_frame.add(trimmed);
-  if (/\b(?:command|process|exit(?:ed)?(?:\s+with)?|exit code|status|ELIFECYCLE|ERR_PNPM_)\b/i.test(line)) {
+  if (mayContainStackFrame && isStackFrame(line)) anchors.stack_frame.add(trimmed);
+  if (mayContainCommandStatus) {
     anchors.command_status.add(trimmed);
   }
   return anchors;
@@ -397,6 +416,8 @@ function createAnchorSets(): AnchorSets {
     command_status: new Set<string>()
   };
 }
+
+const EMPTY_ANCHORS = createAnchorSets();
 
 function mergeAnchors(items: AnchorSets[]): AnchorSets {
   const merged = createAnchorSets();

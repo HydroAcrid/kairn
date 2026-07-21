@@ -54,8 +54,10 @@ import type {
 } from "../types.js";
 import type { BenchmarkCase } from "../types/bench.js";
 import { ensureKairnDir, getKairnPaths } from "../config/paths.js";
+import { loadEvidenceRoutingConfig } from "../config/evidenceRouting.js";
 import { SqliteStore } from "../store/sqliteStore.js";
 import { compressOutput as compressOutputText } from "../compression/compressOutput.js";
+import { evaluateEvidenceRoutingShadow } from "../compression/evidenceRoutingPolicy.js";
 import { routeEvidenceCompression } from "../compression/routeEvidence.js";
 import { reviewGitDiff } from "../git/reviewDiff.js";
 import { hybridSearch } from "../retrieval/hybridRetrieval.js";
@@ -3556,18 +3558,26 @@ export class KairnRuntime {
         })
       : undefined;
     const failureOnlyNonFailure = hookOutput === "failure-only" && kind !== "failure";
+    const evidenceRoutingConfig = loadEvidenceRoutingConfig(session.rootPath);
+    const shouldObserveEvidenceRouting =
+      evidenceRoutingConfig.mode === "shadow" && Boolean(input.event.output) && !promptEvent;
+    const shouldCheckTrivialSuccess =
+      Boolean(input.event.output) &&
+      !promptEvent &&
+      ((!failureContext && !failureOnlyNonFailure) || shouldObserveEvidenceRouting);
+    const trivialSuccessfulOutput = shouldCheckTrivialSuccess && isTrivialSuccessfulHook({
+      eventKind: kind,
+      command: input.event.command,
+      output: input.event.output,
+      linkedFiles,
+      exitCode: input.event.exitCode
+    });
     const shouldCompressOutput =
       Boolean(input.event.output) &&
       !isPromptEvent(input.event.eventName) &&
       !failureContext &&
       !failureOnlyNonFailure &&
-      !isTrivialSuccessfulHook({
-        eventKind: kind,
-        command: input.event.command,
-        output: input.event.output,
-        linkedFiles,
-        exitCode: input.event.exitCode
-      });
+      !trivialSuccessfulOutput;
     const response = shouldCompressOutput
       ? this.compressHookOutput({
           sessionId: session.id,
@@ -3594,6 +3604,38 @@ export class KairnRuntime {
           outputKind,
           eventKind: kind
         });
+    if (shouldObserveEvidenceRouting && input.event.output) {
+      try {
+        const shadow = evaluateEvidenceRoutingShadow({
+          output: input.event.output,
+          type: outputKind,
+          rootPath: session.rootPath,
+          linkedFiles,
+          eventKind: kind,
+          exitCode: input.event.exitCode,
+          trivialSuccessfulOutput,
+          currentDeliveryTokens:
+            failureContext?.tokenEstimate ??
+            (recommendation?.content ? estimateTokens(recommendation.content) : 0),
+          budget: 1200
+        });
+        this.recordMetricsEvent({
+          sessionId: session.id,
+          rootPath: session.rootPath,
+          eventKind: "evidence_routing_shadow",
+          eventName: "evidence_routing_shadow_observed",
+          source: input.event.source,
+          baselineTokens: 0,
+          outputTokens: 0,
+          files: [],
+          metadata: {
+            evidenceRoutingShadow: shadow.receipt
+          }
+        });
+      } catch {
+        // Shadow observation must never affect the existing hook delivery path.
+      }
+    }
     const summary = [
       input.event.command ? `Command: ${input.event.command}` : `Event: ${input.event.eventName}`,
       input.event.toolName ? `Tool: ${input.event.toolName}` : "",

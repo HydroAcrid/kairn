@@ -227,12 +227,17 @@ describe("MCP server", () => {
       byKind: Record<string, { events: number }>;
       bySource: Record<string, { events: number }>;
       compression: { attempts: number; compressed: number; savedTokens: number };
+      evidenceRoutingShadow: { observations: number; byAction: Record<string, number> };
     };
     expect(metricsParsed.byKind.mcp_tool_call?.events).toBeGreaterThan(0);
     expect(metricsParsed.bySource.mcp?.events).toBeGreaterThan(0);
     expect(metricsParsed.compression.attempts).toBe(1);
     expect(metricsParsed.compression.compressed).toBe(1);
     expect(metricsParsed.compression.savedTokens).toBeGreaterThan(0);
+    expect(metricsParsed.evidenceRoutingShadow).toMatchObject({
+      observations: 0,
+      byAction: { exact: 0, compress: 0, suppress: 0, request_more: 0 }
+    });
 
     await client.close();
   });

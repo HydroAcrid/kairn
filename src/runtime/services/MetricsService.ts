@@ -18,6 +18,7 @@ import {
   groupMetrics,
   summarizeCompressionMetrics,
   summarizeCoordinationMetrics,
+  summarizeEvidenceRoutingShadow,
   summarizeMetrics
 } from "../../metrics/summary.js";
 import { codexUsageFromObservation } from "../../eval/usageObservation.js";
@@ -36,8 +37,9 @@ export class MetricsService {
     const observations = this.deps.store.listEvalObservations({ sessionId });
     const latestCodexUsage = [...observations].reverse().find((event) => event.kind === "codex_usage");
     const latestCodexUsageRecord = codexUsageFromObservation(latestCodexUsage);
-    const totals = summarizeMetrics(events);
-    const coordination = summarizeCoordinationMetrics(events);
+    const realizedEvents = events.filter((event) => event.eventKind !== "evidence_routing_shadow");
+    const totals = summarizeMetrics(realizedEvents);
+    const coordination = summarizeCoordinationMetrics(realizedEvents);
     const files = this.deps.store.listFiles(session.rootPath);
     const indexStats = this.deps.store.getIndexStateStats(session.rootPath, loadIndexingConfig(session.rootPath));
     const ledger = summarizeSessionLedger(sessionId, this.deps.store.listSessionLedgerEvents(sessionId));
@@ -50,8 +52,9 @@ export class MetricsService {
         savingsRate: totals.baselineTokens > 0 ? totals.savedTokens / totals.baselineTokens : 0
       },
       byKind: groupMetrics(events, (event) => event.eventKind),
-      bySource: groupMetrics(events, (event) => event.source),
-      compression: summarizeCompressionMetrics(events),
+      bySource: groupMetrics(realizedEvents, (event) => event.source),
+      compression: summarizeCompressionMetrics(realizedEvents),
+      evidenceRoutingShadow: summarizeEvidenceRoutingShadow(events),
       watch: {
         events: watchEvents.length,
         failures: watchEvents.filter((event) => event.kind === "failure").length,
@@ -90,7 +93,7 @@ export class MetricsService {
           openRisks: ledger.workingSet.openRisks
         }
       },
-      recentEvents: events.slice(-10)
+      recentEvents: realizedEvents.slice(-10)
     };
   }
 
@@ -102,7 +105,10 @@ export class MetricsService {
     const events = sessionId
       ? this.deps.store.listMetricsEvents(sessionId)
       : this.deps.store.listMetricsEventsForRoot(this.deps.rootPath);
-    return buildImpactStats({ metrics, events });
+    return buildImpactStats({
+      metrics,
+      events: events.filter((event) => event.eventKind !== "evidence_routing_shadow")
+    });
   }
 
   getCoordinationState(sessionId: string): MetricsSummary["coordination"] {
