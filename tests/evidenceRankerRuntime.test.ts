@@ -7,6 +7,31 @@ import { BUNDLED_EVIDENCE_ARTIFACT } from "../src/retrieval/evidenceModel.js";
 import { createFixtureRepo } from "./helpers.js";
 
 describe("evidence ranker runtime integration", () => {
+  it("seeds the bounded union from cheap full-inventory path terms", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-path-seed-"));
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.mkdirSync(path.join(root, "docs"), { recursive: true });
+    fs.writeFileSync(path.join(root, "src/content_map_page.go"), "package pages\n\nfunc Reconcile() {}\n", "utf8");
+    for (let index = 0; index < 90; index += 1) {
+      fs.writeFileSync(
+        path.join(root, `docs/pages-content-${String(index).padStart(3, "0")}.md`),
+        "Pages content map bug incorrect adjacent sections.\n",
+        "utf8"
+      );
+    }
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const snapshot = await runtime.inspectEvidenceCandidates({
+        query: "Bug: pages content map is incorrect for adjacent sections",
+        limit: 64
+      });
+      expect(snapshot.candidates.map((candidate) => candidate.path)).toContain("src/content_map_page.go");
+    } finally {
+      runtime.close();
+    }
+  });
+
   it("exports bounded unlabeled feature snapshots through the serving candidate path", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);

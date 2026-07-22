@@ -69,6 +69,7 @@ import {
   extractEvidenceTaskSignals
 } from "../retrieval/evidenceSignals.js";
 import { scoreBm25Files } from "../lexical/bm25.js";
+import { scoreFiles } from "../retrieval/scoreResults.js";
 import { applyCompanionCandidatesToResults, findCompanionCandidates } from "../retrieval/companions.js";
 import { findRelatedFiles, findTestsFor } from "../retrieval/relatedFiles.js";
 import { extractSymbol, readTextFile, summarizeFile } from "../retrieval/readSource.js";
@@ -3558,11 +3559,21 @@ export class KairnRuntime {
       .filter((result): result is HybridScoredResult => Boolean(result))
       .sort((left, right) => right.bm25Score - left.bm25Score || left.path.localeCompare(right.path))
       .slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
+    const pathAndSymbolResults = scoreFiles(input.files, input.query, matchingSymbols)
+      .filter((result) => result.reasons.some((reason) =>
+        reason.startsWith("path contains") ||
+        reason.startsWith("filename contains") ||
+        reason.startsWith("symbol match") ||
+        reason.startsWith("exported symbol")
+      ))
+      .slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT)
+      .map((result) => lightweightKeywordResult(result, result.score, result.reasons));
+    const cheapCandidateResults = mergeLightweightResults(lexicalResults, pathAndSymbolResults);
     const baseCandidateInput = {
       files: input.files,
       query: input.query,
       symbols: matchingSymbols,
-      legacyResults: lexicalResults,
+      legacyResults: cheapCandidateResults,
       ...(input.shown ? { shown: input.shown } : {}),
       ...(input.changedFiles ? { changedFiles: input.changedFiles } : {})
     };
@@ -4409,6 +4420,52 @@ function lightweightLexicalResult(
     gitScore: 0,
     chunks: []
   };
+}
+
+function lightweightKeywordResult(
+  file: FileRecord,
+  keywordScore: number,
+  reasons: string[]
+): HybridScoredResult {
+  return {
+    ...file,
+    score: keywordScore,
+    reasons,
+    semanticScore: 0,
+    keywordScore,
+    bm25Score: 0,
+    behaviorScore: 0,
+    graphScore: 0,
+    intentScore: 0,
+    sessionScore: 0,
+    importanceScore: file.importance,
+    gitScore: 0,
+    chunks: []
+  };
+}
+
+function mergeLightweightResults(
+  lexical: HybridScoredResult[],
+  keyword: HybridScoredResult[]
+): HybridScoredResult[] {
+  const byPath = new Map<string, HybridScoredResult>();
+  for (const result of [...lexical, ...keyword]) {
+    const previous = byPath.get(result.path);
+    if (!previous) {
+      byPath.set(result.path, result);
+      continue;
+    }
+    const bm25Score = Math.max(previous.bm25Score, result.bm25Score);
+    const keywordScore = Math.max(previous.keywordScore, result.keywordScore);
+    byPath.set(result.path, {
+      ...previous,
+      score: bm25Score + keywordScore,
+      bm25Score,
+      keywordScore,
+      reasons: uniqueStrings([...previous.reasons, ...result.reasons])
+    });
+  }
+  return [...byPath.values()].sort((left, right) => right.score - left.score || left.path.localeCompare(right.path));
 }
 
 function rankedFilesFromScored(files: HybridScoredResult[]): ContextRankedFile[] {
