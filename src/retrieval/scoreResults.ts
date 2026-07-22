@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { FileRecord, ScoredFile, SymbolRecord } from "../types.js";
 import { tokenizeLexical } from "../semantic/tokenize.js";
 

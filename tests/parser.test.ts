@@ -4,6 +4,7 @@ import { indexRepo } from "../src/indexer/indexRepo.js";
 import { compactParsedSymbols } from "../src/indexer/symbolCompaction.js";
 import { parseSourceFile } from "../src/parser/parseFile.js";
 import { classifyFile, detectLanguage } from "../src/scanner/classifyFile.js";
+import { getLanguageAdapterForPath } from "../src/languages/adapters.js";
 import type { FileRecord, ParsedFile, SymbolRecord } from "../src/types.js";
 import { createFixtureRepo } from "./helpers.js";
 import fs from "node:fs";
@@ -161,6 +162,58 @@ describe("cross-language parser adapters", () => {
     );
   });
 
+  it("extracts Go packages, imports, functions, methods, types, constants, and variables", async () => {
+    const parsed = await parseSourceFile({
+      rootPath: "/repo",
+      filePath: "internal/store/store.go",
+      language: "go",
+      content: [
+        "package store",
+        "",
+        "import (",
+        '  "context"',
+        '  jsoniter "github.com/json-iterator/go"',
+        "  _ `example.com/project/register`",
+        ")",
+        "",
+        "const (",
+        "  DefaultLimit = 10",
+        "  hiddenLimit = 2",
+        ")",
+        "var CurrentMode, fallbackMode = \"fast\", \"safe\"",
+        "type Store struct{}",
+        "type Loader interface { Load(context.Context) error }",
+        "type Alias = string",
+        "func NewStore() *Store { return &Store{} }",
+        "func (s *Store) Save(ctx context.Context) error { return nil }",
+        ""
+      ].join("\n")
+    });
+
+    expect(parsed.hasErrors).toBe(false);
+    expect(parsed.imports).toEqual(
+      expect.arrayContaining([
+        "package:store",
+        "context",
+        "github.com/json-iterator/go",
+        "example.com/project/register"
+      ])
+    );
+    expect(parsed.symbols).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "DefaultLimit", kind: "const", exported: true }),
+        expect.objectContaining({ name: "hiddenLimit", kind: "const", exported: false }),
+        expect.objectContaining({ name: "CurrentMode", kind: "var", exported: true }),
+        expect.objectContaining({ name: "fallbackMode", kind: "var", exported: false }),
+        expect.objectContaining({ name: "Store", kind: "type", exported: true }),
+        expect.objectContaining({ name: "Loader", kind: "interface", exported: true }),
+        expect.objectContaining({ name: "Alias", kind: "type", exported: true }),
+        expect.objectContaining({ name: "NewStore", kind: "function", exported: true }),
+        expect.objectContaining({ name: "Save", kind: "function", exported: true })
+      ])
+    );
+  });
+
   it("extracts Java packages, imports, classes, interfaces, enums, methods, and constructors", async () => {
     const parsed = await parseSourceFile({
       rootPath: "/repo",
@@ -270,15 +323,21 @@ describe("cross-language parser adapters", () => {
     expect(averageMs).toBeLessThan(10);
   });
 
-  it("classifies Python, Java, and C++ source/test files", () => {
+  it("classifies Python, Go, Java, and C++ source/test files and exposes active adapters", () => {
     expect(detectLanguage("click/utils.py")).toBe("python");
+    expect(detectLanguage("internal/store/store.go")).toBe("go");
     expect(detectLanguage("src/main/java/org/example/App.java")).toBe("java");
     expect(detectLanguage("include/fmt/base.h")).toBe("cpp");
     expect(detectLanguage("src/core.cpp")).toBe("cpp");
     expect(classifyFile("tests/test_utils.py")).toBe("test");
+    expect(classifyFile("internal/store/store_test.go")).toBe("test");
+    expect(classifyFile("go.mod")).toBe("config");
     expect(classifyFile("src/test/java/org/example/StringUtilsTest.java")).toBe("test");
     expect(classifyFile("test/base_test.cc")).toBe("test");
     expect(classifyFile("src/main/java/org/example/StringUtils.java")).toBe("source");
+    expect(getLanguageAdapterForPath("internal/store/store.go")).toEqual(
+      expect.objectContaining({ id: "go", status: "active" })
+    );
   });
 
   it("indexes cross-language symbol chunks and graph test edges", async () => {
@@ -287,6 +346,10 @@ describe("cross-language parser adapters", () => {
     write(root, "tests/test_utils.py", "from click.utils import term_len\n\ndef test_term_len():\n    assert term_len('x') == 1\n");
     write(root, "src/main/java/org/example/StringUtils.java", "package org.example;\npublic class StringUtils { public static boolean isBlank(String value) { return true; } }\n");
     write(root, "src/test/java/org/example/StringUtilsTest.java", "package org.example;\nclass StringUtilsTest {}\n");
+    write(root, "internal/store/store.go", "package store\ntype Store struct{}\nfunc (s *Store) Save() error { return nil }\n");
+    write(root, "internal/store/store_test.go", "package store\nfunc TestSave() {}\n");
+    write(root, "go.mod", "module example.com/acme/application\n\ngo 1.24\n");
+    write(root, "cmd/application/main.go", "package main\nimport \"example.com/acme/application/internal/store\"\nfunc main() { _ = store.Store{} }\n");
     write(root, "include/fmt/base.h", "namespace fmt { class basic_string_view { bool starts_with(string_view other) const { return true; } }; }\n");
     write(root, "test/base_test.cc", "#include \"fmt/base.h\"\nint main() { return 0; }\n");
 
@@ -296,6 +359,7 @@ describe("cross-language parser adapters", () => {
       expect.arrayContaining([
         expect.objectContaining({ filePath: "click/utils.py", kind: "symbol", symbol: "term_len" }),
         expect.objectContaining({ filePath: "src/main/java/org/example/StringUtils.java", kind: "symbol", symbol: "isBlank" }),
+        expect.objectContaining({ filePath: "internal/store/store.go", kind: "symbol", symbol: "Save" }),
         expect.objectContaining({ filePath: "include/fmt/base.h", kind: "symbol", symbol: "starts_with" })
       ])
     );
@@ -306,6 +370,16 @@ describe("cross-language parser adapters", () => {
           fromFile: "src/test/java/org/example/StringUtilsTest.java",
           toFile: "src/main/java/org/example/StringUtils.java",
           type: "test_for"
+        }),
+        expect.objectContaining({
+          fromFile: "internal/store/store_test.go",
+          toFile: "internal/store/store.go",
+          type: "test_for"
+        }),
+        expect.objectContaining({
+          fromFile: "cmd/application/main.go",
+          toFile: "internal/store/store.go",
+          type: "imports"
         })
       ])
     );

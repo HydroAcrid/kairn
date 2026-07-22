@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { ContextInvariant, ContextPrime, ContextResponse, EditScopeDecision, EvidenceRequest, PrimeQuality } from "../types.js";
 import { editScopeBlock, editScopeLine } from "../scope/editScope.js";
 import { estimateTokens, truncateToBudget } from "../utils/tokens.js";

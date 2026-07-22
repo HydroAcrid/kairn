@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { randomUUID } from "node:crypto";
 import {
   mergeCodexUsage,
@@ -181,7 +183,9 @@ export class EvalService {
         ? {
             baselineTokens,
             kairnTokens,
-            savedTokens: Math.max(0, baselineTokens - kairnTokens),
+            // Signed by design: a negative value is a token regression and must
+            // remain visible in evidence instead of being flattened to zero.
+            savedTokens: baselineTokens - kairnTokens,
             savingsRate: baselineTokens > 0 ? Number(((baselineTokens - kairnTokens) / baselineTokens).toFixed(4)) : 0
           }
         : undefined;

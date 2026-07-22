@@ -1,19 +1,21 @@
 # Kairn Architecture Overview
 
-Kairn is no longer a single retrieval command. It is a local context runtime with several integration surfaces, an indexing pipeline, retrieval/ranking layers, session memory, hook/MCP delivery paths, and an evidence harness. This document is the high-level map for keeping that complexity understandable.
+Kairn is a local repository evidence layer for coding agents. It maps the current checkout, ranks the files most likely to be required, and delivers the smallest useful evidence through hooks or MCP. The complete useful path runs locally by default: indexing, ranking, session evidence, and delivery do not require a Kairn account, API key, hosted backend, or trajectory upload.
+
+Token efficiency is a co-primary outcome, but only when the agent still reaches the required production source and passes verification. This document maps the implementation behind that product contract.
 
 ## Product Shape
 
 Kairn has one core product:
 
-> A local-first context runtime that helps coding agents read less, read better, and preserve quality by choosing the smallest useful context for a task.
+> A local repository evidence and token-efficiency layer that helps supported coding agents reach the right production source sooner.
 
 It exposes that runtime through multiple surfaces:
 
 - CLI commands for direct use and scripting.
 - MCP tools for agent-native context requests.
 - Codex/Claude hooks for automatic prompt and failure context.
-- Watcher/daemon paths for warm state and observe/react behavior.
+- Session and optional watcher/daemon paths for current local evidence and lower latency.
 - Eval/benchmark tools for proving whether Kairn actually helps.
 
 These are surfaces over the same runtime. They should not become separate products.
@@ -34,15 +36,13 @@ KairnRuntime facade
   |-- EvalService       -> observed Codex usage, transcript metadata, feedback
   |-- Runtime methods   -> context, prime, hooks, failures, benchmarks, sessions
   |
-Retrieval / Decision Layer
+Repository Evidence Layer
   |
-  |-- query intent classification
-  |-- BM25 exact lexical retrieval
-  |-- local hashed semantic vectors
-  |-- WASM Tree-sitter symbols and chunks
-  |-- TypeScript graph enrichment
-  |-- graph/test/related-file heuristics
-  |-- adaptive context controller
+  |-- TaskSignalExtractor: paths, symbols, failures, intent, git, session state
+  |-- CandidateGenerators: exact path/symbol, BM25, failure, diff, session, local semantic
+  |-- bounded union and query-local graph/chunk enrichment
+  |-- EvidenceFeatureBuilder and local calibrated file-relevance ranker
+  |-- deterministic governor: content, path hint, shrink, request evidence, or silence
   |
 SQLite Store under .kairn/
   |
@@ -63,14 +63,14 @@ Command modules:
 - `src/cli/commands/core.ts`: `init`, `start`, `prime`, `serve`, `daemon`, `metrics`, `index`, `codex`.
 - `src/cli/commands/context.ts`: `context`, `diff`, `compress`, `failure`.
 - `src/cli/commands/watch.ts`: `watch`, `hook`.
-- `src/cli/commands/setup.ts`: `setup wizard`, `setup codex`, `setup mcp`, `setup mcp-instructions`, `setup remove`.
+- `src/cli/commands/setup.ts`: canonical `enable`/`disable` plus advanced `setup wizard`, `setup codex`, `setup mcp`, and repair/removal commands.
 - `src/cli/commands/eval.ts`: eval runs, Codex usage ingestion, feedback.
 - `src/cli/commands/bench.ts`: replay, live-agent proofs, repo-matrix preflight, endurance runs.
 - `src/cli/commands/beta.ts`: doctor checks, privacy-first telemetry, diagnostics export, beta reports.
 
 The CLI should stay thin. Command modules should parse options, call `KairnRuntime` or focused benchmark/setup helpers, then format output.
 
-Private beta onboarding starts at `kairn setup wizard`. The wizard is a thin composition layer over the same setup primitives used by direct commands: Codex savings hooks, client-specific MCP config for Claude Code, Copilot CLI, Gemini CLI, VS Code/Copilot, generic MCP clients, advanced Codex/Claude hooks, doctor checks, and optional sanitized telemetry. Private beta offboarding uses `kairn setup remove`, which removes only Kairn-owned hook/MCP/instruction config and can optionally delete local `.kairn/` state.
+Canonical onboarding starts with one machine install and `kairn enable` in each repository. Enable detects supported local agents, previews Kairn-owned changes, installs source-first Codex hooks or client-specific MCP configuration after one confirmation, builds local inventory, and runs doctor checks. The setup wizard remains an advanced composition layer over the same primitives. `kairn disable` removes only configuration that Kairn can identify as its own; `--delete-state` also removes local `.kairn` state.
 
 ### MCP
 
@@ -94,9 +94,9 @@ Current tools:
 
 MCP is the read-gateway surface. Its job is not to dump large prime briefs. It should help agents take the next smallest useful read. Kairn writes client-specific config rather than assuming one MCP layout: VS Code uses `.vscode/mcp.json` with `servers`, Claude Code uses project `.mcp.json` with `mcpServers`, Gemini CLI uses `.gemini/settings.json`, Copilot CLI uses `~/.copilot/mcp-config.json` only with explicit user-level consent, and generic clients receive JSON to paste into their own settings.
 
-MCP is also a beta entrypoint, not only a benchmark mode. It supports editor/app integrations where prompt hooks are unavailable, blocked by review, or not part of the host UX. `kairn setup mcp --client vscode` writes a workspace `.vscode/mcp.json` server block while preserving unrelated MCP servers. `kairn setup codex --mode mcp-first` writes the Codex TOML equivalent. Both point at the same local `kairn serve --mcp --root <repo>` server.
+MCP is a product entrypoint, not only a benchmark mode. It supports editor/app integrations where prompt hooks are unavailable, blocked by review, or not part of the host UX. `kairn setup mcp --client vscode` writes a workspace `.vscode/mcp.json` server block while preserving unrelated MCP servers. `kairn setup codex --mode mcp-first` writes the Codex TOML equivalent. Both point at the same local `kairn serve --mcp --root <repo>` server.
 
-Beta mode guidance:
+Integration guidance:
 
 - `kairn codex`: default CLI/terminal path with session-bound hooks.
 - `kairn setup mcp --client vscode`: default MCP/editor path with no hooks.

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
@@ -21,7 +23,9 @@ export async function enrichGraphWithTypeScript(input: {
 }
 
 function enrichGraph(input: { rootPath: string; graph: RepoGraph }): RepoGraph {
-  const sourceFiles = input.graph.files.filter((file) => TS_EXTENSIONS.has(path.extname(file.path)));
+  const sourceFiles = input.graph.files.filter(
+    (file) => file.indexTier !== "tier0" && TS_EXTENSIONS.has(path.extname(file.path))
+  );
   if (sourceFiles.length === 0) return input.graph;
   if (sourceFiles.length > MAX_LANGUAGE_SERVICE_FILES) {
     return {

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+
+import path from "node:path";
 import { buildRepoGraph } from "../graph/buildGraph.js";
 import { budgetGraphEdges } from "../graph/budget.js";
 import { enrichGraphWithTypeScript } from "../ts/tsGraph.js";
@@ -35,7 +38,8 @@ export async function indexRepo(rootPath: string): Promise<RepoIndex> {
   const baseGraph = buildRepoGraph({
     rootPath,
     files: scan.files,
-    parsedFiles: compactedParsedFiles
+    parsedFiles: compactedParsedFiles,
+    goModules: loadGoModules(rootPath, scan.files)
   });
   const enrichedGraph = await enrichGraphWithTypeScript({
     rootPath,
@@ -125,8 +129,33 @@ function shouldParseFile(file: { indexTier?: string; kind: string; language: str
     file.kind === "component" ||
     file.kind === "route" ||
     file.kind === "test" ||
-    ["typescript", "javascript", "python", "java", "kotlin", "c", "cpp"].includes(file.language)
+    ["typescript", "javascript", "python", "go", "java", "kotlin", "c", "cpp"].includes(file.language)
   );
+}
+
+function loadGoModules(
+  rootPath: string,
+  files: Array<{ path: string; indexTier?: string }>
+): Array<{ directory: string; modulePath: string }> {
+  const modules: Array<{ directory: string; modulePath: string }> = [];
+
+  for (const file of files) {
+    if (path.posix.basename(file.path) !== "go.mod" || file.indexTier === "tier0") continue;
+    try {
+      const rawModulePath = readTextFile(rootPath, file.path).match(/^\s*module\s+(\S+)/m)?.[1];
+      const modulePath = rawModulePath?.replace(/^["`]|["`]$/g, "");
+      if (!modulePath) continue;
+      modules.push({
+        directory: path.posix.dirname(file.path),
+        modulePath
+      });
+    } catch {
+      // A missing or unreadable module manifest simply disables local Go
+      // package edges; lexical and symbol evidence remain available.
+    }
+  }
+
+  return modules.sort((a, b) => a.directory.localeCompare(b.directory) || a.modulePath.localeCompare(b.modulePath));
 }
 
 function selectSemanticChunks(chunks: SemanticChunkRecord[], maxChunks: number): SemanticChunkRecord[] {

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 export type BenchmarkRunMode = "replay" | "agent" | "hybrid";
 
 export type BenchmarkAssistanceMode =
@@ -401,6 +403,10 @@ export type BenchmarkSeedSpec = {
   setupCommands?: string[];
   setupPatch?: string;
   setupPatchFile?: string;
+  /** Commit deterministic setup state so final diff scopes measure only agent edits. */
+  commitSetupBaseline?: boolean;
+  /** Pinned container image for repository-controlled setup and verification. */
+  sandboxImage?: string;
   expectedFailureCommand?: string;
   testCommand?: string;
 };

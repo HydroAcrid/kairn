@@ -74,6 +74,59 @@ describe("buildRepoGraph", () => {
     expect(edgeTypes(index.graph.edges, "src/app.ts", "src/user.ts")).toContain("imports");
   });
 
+  it("links Go module imports and test symbols to direct production sources", async () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "cmd/server/main.go", "source"),
+      file(rootPath, "internal/store/store.go", "source"),
+      file(rootPath, "internal/store/behavior_test.go", "test")
+    ];
+    const sources = new Map([
+      [
+        "cmd/server/main.go",
+        'package main\nimport "example.com/acme/project/internal/store"\nfunc main() { _ = store.Store{} }\n'
+      ],
+      [
+        "internal/store/store.go",
+        "package store\ntype Store struct{}\nfunc (s *Store) Save() error { return nil }\n"
+      ],
+      [
+        "internal/store/behavior_test.go",
+        "package store\nfunc TestSave() {}\n"
+      ]
+    ]);
+    const parsedFiles = await Promise.all(files.map((record) =>
+      parseSourceFile({
+        rootPath,
+        filePath: record.path,
+        language: record.language,
+        content: sources.get(record.path) ?? ""
+      })
+    ));
+
+    const graph = buildRepoGraph({
+      rootPath,
+      files,
+      parsedFiles,
+      goModules: [{ directory: ".", modulePath: "example.com/acme/project" }]
+    });
+
+    expect(edgeTypes(graph.edges, "cmd/server/main.go", "internal/store/store.go")).toContain("imports");
+    expect(edgeTypes(graph.edges, "internal/store/behavior_test.go", "internal/store/store.go")).toContain("test_for");
+    expect(graph.edges).toContainEqual(
+      expect.objectContaining({
+        fromFile: "internal/store/behavior_test.go",
+        toFile: "internal/store/store.go",
+        type: "test_for",
+        metadata: expect.objectContaining({
+          reason: "Go test symbol matches source symbol",
+          testSymbol: "TestSave",
+          sourceSymbol: "Save"
+        })
+      })
+    );
+  });
+
   it("falls back gracefully when tsconfig is broken", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-broken-tsconfig-"));
     fs.mkdirSync(path.join(root, "src"), { recursive: true });
@@ -91,7 +144,7 @@ function file(rootPath: string, filePath: string, kind: FileRecord["kind"]): Fil
   return {
     rootPath,
     path: filePath,
-    language: filePath.endsWith(".tsx") ? "typescript" : "typescript",
+    language: filePath.endsWith(".go") ? "go" : "typescript",
     kind,
     size: 10,
     hash: filePath,

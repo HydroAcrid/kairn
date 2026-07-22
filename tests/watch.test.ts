@@ -592,6 +592,52 @@ describe("KairnRuntime watch behavior", () => {
 
     runtime.close();
   });
+
+  it("refreshes a stale warm index before the next source-first prompt", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    await runtime.init();
+    const targetPath = `${root}/src/app/private/jobs/JobsApplicationsTable.tsx`;
+    fs.writeFileSync(
+      targetPath,
+      [
+        "export function checkoutFreshMarker() {",
+        "  return 'fresh-checkout-evidence';",
+        "}",
+        ""
+      ].join("\n")
+    );
+    expect(runtime.getIndexStatus().freshness?.stale).toBe(true);
+
+    const result = await runtime.handleHookEvent({
+      event: normalizeHookPayload({
+        source: "codex",
+        payload: {
+          cwd: root,
+          hook_event_name: "UserPromptSubmit",
+          session_id: "codex-checkout-refresh",
+          turn_id: "turn_1",
+          prompt: "Diagnose checkoutFreshMarker in the current production source and fix its fresh checkout behavior."
+        }
+      }),
+      hookOutput: "full-prime",
+      primeBudget: 900
+    });
+
+    expect(result.event.metadata.indexStaleBeforeHook).toBe(true);
+    expect(result.event.metadata.indexRefreshSkipped).toBe(false);
+    expect(runtime.getIndexStatus().freshness?.stale).toBe(false);
+    const current = await runtime.findContext({
+      sessionId: result.session.id,
+      query: "checkoutFreshMarker fresh-checkout-evidence",
+      mode: "snippets",
+      refreshIndex: false
+    });
+    expect(current.files[0]).toBe("src/app/private/jobs/JobsApplicationsTable.tsx");
+    expect(current.content).toContain("checkoutFreshMarker");
+
+    runtime.close();
+  });
 });
 
 describe("watch and hook CLI", () => {

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { createRequire } from "node:module";
 import path from "node:path";
 import { Language, Parser, type Point } from "web-tree-sitter";
@@ -5,7 +7,7 @@ import type { ParsedFile, SymbolKind, SymbolRecord } from "../types.js";
 
 const require = createRequire(import.meta.url);
 
-type ParserGrammar = "typescript" | "tsx" | "python" | "java" | "c" | "cpp";
+type ParserGrammar = "typescript" | "tsx" | "python" | "go" | "java" | "c" | "cpp";
 
 type SyntaxNodeLike = {
   type: string;
@@ -17,12 +19,14 @@ type SyntaxNodeLike = {
   parent: SyntaxNodeLike | null;
   namedChildren: SyntaxNodeLike[];
   childForFieldName(fieldName: string): SyntaxNodeLike | null;
+  childrenForFieldName(fieldName: string): SyntaxNodeLike[];
 };
 
 const WASM_BY_GRAMMAR: Record<ParserGrammar, string> = {
   typescript: "@repomix/tree-sitter-wasms/out/tree-sitter-typescript.wasm",
   tsx: "@repomix/tree-sitter-wasms/out/tree-sitter-tsx.wasm",
   python: "@repomix/tree-sitter-wasms/out/tree-sitter-python.wasm",
+  go: "@repomix/tree-sitter-wasms/out/tree-sitter-go.wasm",
   java: "@repomix/tree-sitter-wasms/out/tree-sitter-java.wasm",
   c: "@repomix/tree-sitter-wasms/out/tree-sitter-c.wasm",
   cpp: "@repomix/tree-sitter-wasms/out/tree-sitter-cpp.wasm"
@@ -39,6 +43,7 @@ const SOURCE_GRAMMAR_BY_EXTENSION = new Map<string, ParserGrammar>([
   [".cjs", "typescript"],
   [".py", "python"],
   [".pyi", "python"],
+  [".go", "go"],
   [".java", "java"],
   [".c", "c"],
   [".h", "cpp"],
@@ -147,6 +152,7 @@ function parseByLanguage(
   rootNode: SyntaxNodeLike
 ): { symbols: SymbolRecord[]; imports: string[] } {
   if (input.language === "python") return parsePython(input, rootNode);
+  if (input.language === "go") return parseGo(input, rootNode);
   if (input.language === "java") return parseJava(input, rootNode);
   if (input.language === "c" || input.language === "cpp") return parseCFamily(input, rootNode);
   return parseJavaScriptLike(input, rootNode);
@@ -209,6 +215,55 @@ function parsePython(
       const name = node.childForFieldName("name")?.text;
       if (!name) return;
       symbols.push(symbolRecord(input, name, "function", false, node));
+    }
+  });
+
+  return { symbols, imports: [...imports] };
+}
+
+function parseGo(
+  input: { rootPath: string; filePath: string; content: string },
+  rootNode: SyntaxNodeLike
+): { symbols: SymbolRecord[]; imports: string[] } {
+  const symbols: SymbolRecord[] = [];
+  const imports = new Set<string>();
+
+  visit(rootNode, (node) => {
+    if (node.type === "package_clause") {
+      const packageName = node.namedChildren.find((child) => child.type === "package_identifier")?.text;
+      if (packageName) imports.add(`package:${packageName}`);
+      return;
+    }
+
+    if (node.type === "import_declaration") {
+      for (const literal of findNodes(node, ["interpreted_string_literal", "raw_string_literal"])) {
+        const specifier = unquoteGoString(literal.text);
+        if (specifier) imports.add(specifier);
+      }
+      return;
+    }
+
+    if (node.type === "function_declaration" || node.type === "method_declaration") {
+      const name = node.childForFieldName("name")?.text;
+      if (name) symbols.push(symbolRecord(input, name, "function", isGoExported(name), node));
+      return;
+    }
+
+    if (node.type === "type_spec" || node.type === "type_alias") {
+      const name = node.childForFieldName("name")?.text;
+      if (!name) return;
+      const declaredType = node.childForFieldName("type")?.type;
+      const kind: SymbolKind = declaredType === "interface_type" ? "interface" : "type";
+      symbols.push(symbolRecord(input, name, kind, isGoExported(name), node));
+      return;
+    }
+
+    if (node.type === "const_spec" || node.type === "var_spec") {
+      const kind: SymbolKind = node.type === "const_spec" ? "const" : "var";
+      for (const nameNode of node.childrenForFieldName("name")) {
+        const name = nameNode.text;
+        if (name) symbols.push(symbolRecord(input, name, kind, isGoExported(name), node));
+      }
     }
   });
 
@@ -423,10 +478,11 @@ function findIdentifierName(node: SyntaxNodeLike): string | undefined {
   return undefined;
 }
 
-function findNodes(node: SyntaxNodeLike, type: string): SyntaxNodeLike[] {
+function findNodes(node: SyntaxNodeLike, type: string | string[]): SyntaxNodeLike[] {
   const matches: SyntaxNodeLike[] = [];
+  const types = Array.isArray(type) ? new Set(type) : new Set([type]);
   visit(node, (candidate) => {
-    if (candidate.type === type) matches.push(candidate);
+    if (types.has(candidate.type)) matches.push(candidate);
   });
   return matches;
 }
@@ -502,6 +558,23 @@ function extractPythonImports(text: string): string[] {
 
 function extractCIncludeSpecifier(text: string): string | undefined {
   return text.match(/#\s*include\s+[<"]([^>"]+)[>"]/)?.[1];
+}
+
+function unquoteGoString(text: string): string | undefined {
+  if (text.length < 2) return undefined;
+  if (text.startsWith("`") && text.endsWith("`")) return text.slice(1, -1);
+  if (!text.startsWith('"') || !text.endsWith('"')) return undefined;
+
+  try {
+    const value: unknown = JSON.parse(text);
+    return typeof value === "string" ? value : undefined;
+  } catch {
+    return text.slice(1, -1);
+  }
+}
+
+function isGoExported(name: string): boolean {
+  return /^\p{Lu}/u.test(name);
 }
 
 function hasPublicModifier(node: SyntaxNodeLike): boolean {

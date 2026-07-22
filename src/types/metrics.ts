@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { ContextResponseMode } from "./context.js";
 import type { CodexUsageRecord } from "./eval.js";
 import type { IndexTier } from "./graph.js";

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import http from "node:http";
 import { createHash } from "node:crypto";
 import { KairnRuntime } from "../runtime/KairnRuntime.js";

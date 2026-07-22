@@ -1,0 +1,300 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+import {
+  BUNDLED_EVIDENCE_ARTIFACT,
+  EVIDENCE_FEATURE_SCHEMA_HASH,
+  predictEvidenceRelevance,
+  validateEvidenceRankerArtifact
+} from "../src/retrieval/evidenceModel.js";
+import { rankEvidenceResults } from "../src/retrieval/evidenceRanker.js";
+import { buildEvidenceCandidates, extractEvidenceTaskSignals } from "../src/retrieval/evidenceSignals.js";
+import type {
+  FileKind,
+  FileRecord,
+  GraphEdgeRecord,
+  HybridScoredResult,
+  SymbolRecord
+} from "../src/types.js";
+
+describe("evidence task signals and candidates", () => {
+  it("extracts paths, diagnostics, identifiers, and source intent without fixture identities", () => {
+    const signals = extractEvidenceTaskSignals(
+      'Debug Billing::settlePayment in pkg/payments.py after File "/repo/pkg/payments.py", line 42 raised ValueError'
+    );
+
+    expect(signals.explicitPaths).toEqual(["/repo/pkg/payments.py", "pkg/payments.py"]);
+    expect(signals.failureReferences).toEqual(["/repo/pkg/payments.py"]);
+    expect(signals.identifiers).toContain("settlepayment");
+    expect(signals.identifiers).toContain("billingsettlepayment");
+    expect(signals.preferredIdentifiers).toEqual(
+      expect.arrayContaining(["settlepayment", "billingsettlepayment", "valueerror"])
+    );
+    expect(signals.intent).toBe("source");
+  });
+
+  it("puts quoted identifiers ahead of code-like and prose fallback terms", () => {
+    const signals = extractEvidenceTaskSignals(
+      "Investigate commonTerm01 and request handling before repairing `resolveCriticalState`"
+    );
+
+    expect(signals.preferredIdentifiers[0]).toBe("resolvecriticalstate");
+    expect(signals.preferredIdentifiers).toContain("commonterm01");
+    expect(signals.identifiers).toContain("request");
+  });
+
+  it("builds a bounded, one-hop candidate union and typed feature vectors", () => {
+    const root = "/repo";
+    const source = file(root, "pkg/payments.py", "source", 2400);
+    const test = file(root, "tests/test_payments.py", "test", 1800);
+    const generated = file(root, "generated/payments.py", "source", 3000);
+    const candidates = buildEvidenceCandidates({
+      files: [source, test, generated],
+      query: 'Debug settlePayment: File "/repo/pkg/payments.py", line 42',
+      symbols: [symbol(root, source.path, "settlePayment")],
+      edges: [edge(root, test.path, source.path, "test_for")],
+      legacyResults: [
+        scored(source, { bm25Score: 8, keywordScore: 12 }),
+        scored(test, { bm25Score: 4 }),
+        scored(generated, { keywordScore: 20 })
+      ],
+      changedFiles: new Set([source.path])
+    });
+
+    expect(candidates.candidates.length).toBeLessThanOrEqual(128);
+    const sourceCandidate = candidates.candidates.find((candidate) => candidate.path === source.path);
+    expect(sourceCandidate?.reasons).toEqual(
+      expect.arrayContaining(["failure_reference", "exact_path", "basename", "exact_symbol", "git_diff", "production_source"])
+    );
+    expect(sourceCandidate?.features.exactPath).toBe(1);
+    expect(sourceCandidate?.features.failureReference).toBe(1);
+    expect(sourceCandidate?.features.generatedVendor).toBe(0);
+    expect(candidates.candidates.find((candidate) => candidate.path === generated.path)?.features.generatedVendor).toBe(1);
+  });
+
+  it("preserves an exact inventory-only path while enforcing the 64/128 candidate caps", () => {
+    const root = "/repo";
+    const target = file(root, "zz-target/shared.ts", "source", 900);
+    const basenameMatches = Array.from({ length: 140 }, (_, index) =>
+      file(root, `packages/package-${String(index).padStart(3, "0")}/shared.ts`, "source", 700)
+    );
+    const neighbors = Array.from({ length: 160 }, (_, index) =>
+      file(root, `neighbors/neighbor-${String(index).padStart(3, "0")}.ts`, "source", 500)
+    );
+    const candidates = buildEvidenceCandidates({
+      files: [...basenameMatches, ...neighbors, target],
+      query: "Fix zz-target/shared.ts in production source",
+      // The exact target intentionally has no symbol, lexical, chunk, or
+      // semantic evidence: only cheap inventory metadata is available.
+      symbols: [],
+      legacyResults: [],
+      edges: neighbors.map((neighbor) => edge(root, target.path, neighbor.path, "imports")),
+      initialLimit: 64,
+      enrichedLimit: 128
+    });
+
+    expect(candidates.candidates).toHaveLength(128);
+    expect(candidates.candidates.slice(0, 64).map((candidate) => candidate.path)).toContain(target.path);
+    expect(candidates.candidates.find((candidate) => candidate.path === target.path)?.reasons).toEqual(
+      expect.arrayContaining(["exact_path", "basename"])
+    );
+    expect(candidates.candidates.slice(64).every((candidate) => candidate.reasons.includes("graph_neighbor"))).toBe(true);
+  });
+
+  it("round-robins graph enrichment so a high-degree seed cannot starve a precise source/test companion", () => {
+    const root = "/repo";
+    const highDegreeSeed = file(root, "a/high-degree.ts", "source", 900);
+    const laterTestSeed = file(root, "z/service.test.ts", "test", 900);
+    const productionCompanion = file(root, "z/service.ts", "source", 900);
+    const noisyNeighbors = Array.from({ length: 140 }, (_, index) =>
+      file(root, `neighbors/noisy-${String(index).padStart(3, "0")}.ts`, "source", 500)
+    );
+    const candidates = buildEvidenceCandidates({
+      files: [highDegreeSeed, laterTestSeed, productionCompanion, ...noisyNeighbors],
+      query: "Debug the high degree and service candidates",
+      symbols: [],
+      legacyResults: [
+        scored(highDegreeSeed, { bm25Score: 12 }),
+        scored(laterTestSeed, { bm25Score: 11 })
+      ],
+      edges: [
+        ...noisyNeighbors.map((neighbor) => edge(root, highDegreeSeed.path, neighbor.path, "imports")),
+        edge(root, laterTestSeed.path, productionCompanion.path, "test_for")
+      ],
+      initialLimit: 64,
+      enrichedLimit: 128
+    });
+
+    expect(candidates.candidates).toHaveLength(128);
+    expect(candidates.candidates.find((candidate) => candidate.path === productionCompanion.path)?.reasons).toEqual(
+      expect.arrayContaining(["graph_neighbor", "source_test_pair", "production_source"])
+    );
+  });
+});
+
+describe("evidence model artifacts", () => {
+  it("strictly validates the bundled schema and checksum", () => {
+    const validated = validateEvidenceRankerArtifact(BUNDLED_EVIDENCE_ARTIFACT);
+
+    expect(validated.featureSchemaHash).toBe(EVIDENCE_FEATURE_SCHEMA_HASH);
+    expect(validated.coefficients).toHaveLength(validated.orderedFeatures.length);
+  });
+
+  it("rejects tampering and unknown artifact fields", () => {
+    expect(() => validateEvidenceRankerArtifact({
+      ...BUNDLED_EVIDENCE_ARTIFACT,
+      intercept: BUNDLED_EVIDENCE_ARTIFACT.intercept + 1
+    })).toThrow(/checksum mismatch/i);
+    expect(() => validateEvidenceRankerArtifact({
+      ...BUNDLED_EVIDENCE_ARTIFACT,
+      unexpected: true
+    })).toThrow(/unknown: unexpected/i);
+  });
+
+  it("runs dependency-free logistic and Platt inference deterministically", () => {
+    const candidate = buildEvidenceCandidates({
+      files: [file("/repo", "src/service.ts", "source", 1000)],
+      query: "src/service.ts",
+      symbols: [],
+      edges: [],
+      legacyResults: []
+    }).candidates[0]!;
+
+    const first = predictEvidenceRelevance(BUNDLED_EVIDENCE_ARTIFACT, candidate.features);
+    const second = predictEvidenceRelevance(BUNDLED_EVIDENCE_ARTIFACT, candidate.features);
+    expect(first).toEqual(second);
+    expect(first.relevanceProbability).toBeGreaterThan(0.5);
+    expect(first.relevanceProbability).toBeLessThanOrEqual(1);
+  });
+});
+
+describe("evidence ranker modes", () => {
+  const root = "/repo";
+  const source = file(root, "src/service.ts", "source", 1200);
+  const test = file(root, "tests/service.test.ts", "test", 900);
+  const legacy = [
+    scored(test, { score: 900, bm25Score: 6 }),
+    scored(source, { score: 200, keywordScore: 4 })
+  ];
+  const input = {
+    files: [source, test],
+    query: "Fix src/service.ts ServiceHandler production source",
+    symbols: [symbol(root, source.path, "ServiceHandler")],
+    chunks: [],
+    edges: [edge(root, test.path, source.path, "test_for")],
+    legacyResults: legacy
+  };
+
+  it("keeps legacy order while shadow mode adds typed evidence", () => {
+    const result = rankEvidenceResults(input, { mode: "shadow" });
+
+    expect(result.files.map((file) => file.path)).toEqual(legacy.map((file) => file.path));
+    expect(result.files.find((file) => file.path === source.path)?.relevanceProbability).toBeTypeOf("number");
+    expect(result.files.find((file) => file.path === source.path)?.evidenceReasons).toContain("exact_path");
+    expect(result.status).toMatchObject({ servedMode: "shadow", modelId: "generic-evidence-v1" });
+  });
+
+  it("serves calibrated probability order while preserving legacy component fields", () => {
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-valid-ranker-"));
+    const modelPath = path.join(temp, "model.json");
+    fs.writeFileSync(modelPath, JSON.stringify(BUNDLED_EVIDENCE_ARTIFACT));
+    try {
+      const result = rankEvidenceResults(input, { mode: "calibrated", modelPath });
+
+      expect(result.files[0]?.path).toBe(source.path);
+      expect(result.files[0]?.score).toBe(200);
+      expect(result.files[0]?.keywordScore).toBe(4);
+      expect(result.files[0]?.rankerMode).toBe("calibrated");
+      expect(result.files[0]?.delivery).toMatch(/content|path_hint/);
+    } finally {
+      fs.rmSync(temp, { recursive: true, force: true });
+    }
+  });
+
+  it("does not present the hand-authored bundled bootstrap as calibrated serving", () => {
+    const result = rankEvidenceResults(input, { mode: "calibrated" });
+
+    expect(result.status).toMatchObject({
+      requestedMode: "calibrated",
+      servedMode: "fallback",
+      modelId: "deterministic-evidence-fallback-v1"
+    });
+    expect(result.status.fallbackReason).toContain("explicit promoted local model artifact");
+  });
+
+  it("fails closed to deterministic evidence order for an invalid local artifact", () => {
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-ranker-"));
+    const modelPath = path.join(temp, "tampered.json");
+    fs.writeFileSync(modelPath, JSON.stringify({
+      ...BUNDLED_EVIDENCE_ARTIFACT,
+      intercept: 500
+    }));
+
+    try {
+      const result = rankEvidenceResults(input, { mode: "calibrated", modelPath });
+      expect(result.status.servedMode).toBe("fallback");
+      expect(result.status.fallbackReason).toMatch(/checksum mismatch/i);
+      expect(result.files[0]?.path).toBe(source.path);
+      expect(result.files[0]?.rankerModelId).toBe("deterministic-evidence-fallback-v1");
+    } finally {
+      fs.rmSync(temp, { recursive: true, force: true });
+    }
+  });
+});
+
+function file(rootPath: string, filePath: string, kind: FileKind, size: number): FileRecord {
+  return {
+    rootPath,
+    path: filePath,
+    language: path.extname(filePath).slice(1) || "unknown",
+    kind,
+    size,
+    hash: `${filePath}-hash`,
+    importance: kind === "source" ? 50 : 20,
+    updatedAt: "2026-07-22T00:00:00.000Z"
+  };
+}
+
+function symbol(rootPath: string, filePath: string, name: string): SymbolRecord {
+  return {
+    rootPath,
+    filePath,
+    name,
+    kind: "function",
+    exported: true,
+    startLine: 1,
+    endLine: 10,
+    signature: `function ${name}()`
+  };
+}
+
+function edge(
+  rootPath: string,
+  fromFile: string,
+  toFile: string,
+  type: GraphEdgeRecord["type"]
+): GraphEdgeRecord {
+  return { rootPath, fromFile, toFile, type, metadata: {} };
+}
+
+function scored(
+  record: FileRecord,
+  overrides: Partial<Pick<HybridScoredResult, "score" | "bm25Score" | "keywordScore" | "semanticScore">> = {}
+): HybridScoredResult {
+  return {
+    ...record,
+    score: overrides.score ?? 100,
+    reasons: ["legacy result"],
+    semanticScore: overrides.semanticScore ?? 0,
+    keywordScore: overrides.keywordScore ?? 0,
+    bm25Score: overrides.bm25Score ?? 0,
+    behaviorScore: 0,
+    graphScore: 0,
+    intentScore: 0,
+    sessionScore: 0,
+    importanceScore: record.importance,
+    gitScore: 0,
+    chunks: []
+  };
+}

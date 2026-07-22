@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { createInterface } from "node:readline/promises";
 import path from "node:path";
 import { stdin as input, stdout as output } from "node:process";
@@ -30,7 +32,9 @@ export type SetupWizardResult = {
     hooksPath?: string | undefined;
     instructionsPath?: string | undefined;
     installCommand?: string | undefined;
+    serverName?: string | undefined;
     userConfigWriteSkipped?: boolean | undefined;
+    actionRequired?: string | undefined;
   }>;
   telemetry: ReturnType<typeof getTelemetryStatus>;
   doctor: ReturnType<typeof runDoctor>;
@@ -54,7 +58,9 @@ export async function runSetupWizard(inputOptions: {
   indexMode?: SetupWizardIndexMode | undefined;
   telemetry?: boolean | undefined;
   telemetryEndpoint?: string | undefined;
+  installUser?: boolean | undefined;
   interactive?: boolean | undefined;
+  homeDir?: string | undefined;
 }): Promise<SetupWizardResult> {
   const rootPath = path.resolve(inputOptions.root);
   const interactive = inputOptions.interactive ?? process.stdin.isTTY;
@@ -65,9 +71,9 @@ export async function runSetupWizard(inputOptions: {
         index: inputOptions.index,
         indexMode: inputOptions.index ? inputOptions.indexMode ?? defaultWizardIndexMode() : "skip",
         telemetry: Boolean(inputOptions.telemetry),
-        codexMode: inputOptions.choice === "hybrid" ? "hybrid" as const : "savings" as const,
+        codexMode: inputOptions.choice === "hybrid" ? "hybrid" as const : "source-first" as const,
         claudeHooks: false,
-        copilotWriteUser: false
+        copilotWriteUser: Boolean(inputOptions.installUser)
       }
     : await collectWizardAnswers({
         choice: inputOptions.choice,
@@ -75,6 +81,7 @@ export async function runSetupWizard(inputOptions: {
         index: inputOptions.index,
         indexMode: inputOptions.indexMode,
         telemetry: inputOptions.telemetry,
+        installUser: inputOptions.installUser,
         yes: inputOptions.yes,
         interactive
       });
@@ -100,7 +107,8 @@ export async function runSetupWizard(inputOptions: {
         mode: setup.mode,
         configPath: setup.configPath,
         hooksPath: setup.hooksPath,
-        instructionsPath: setup.instructionsPath
+        instructionsPath: setup.instructionsPath,
+        actionRequired: setup.configConflict?.reason
       });
     }
 
@@ -109,6 +117,7 @@ export async function runSetupWizard(inputOptions: {
         root: rootPath,
         client: target,
         writeInstructions: true,
+        homeDir: inputOptions.homeDir,
         writeUserConfig: target === "copilot-cli" ? answers.copilotWriteUser : undefined
       });
       integrations.push({
@@ -117,7 +126,9 @@ export async function runSetupWizard(inputOptions: {
         configPath: setup.configPath,
         instructionsPath: setup.instructionsPath,
         installCommand: setup.installCommand,
-        userConfigWriteSkipped: setup.userConfigWriteSkipped
+        serverName: setup.serverName,
+        userConfigWriteSkipped: setup.userConfigWriteSkipped,
+        actionRequired: setup.configConflict?.reason
       });
     }
 
@@ -152,7 +163,7 @@ export async function runSetupWizard(inputOptions: {
       }
     }
 
-    const doctor = runDoctor({ rootPath, runtime });
+    const doctor = runDoctor({ rootPath, runtime, homeDir: inputOptions.homeDir });
     return {
       rootPath,
       choice: answers.choice,
@@ -163,7 +174,11 @@ export async function runSetupWizard(inputOptions: {
       integrations,
       telemetry: getTelemetryStatus(rootPath),
       doctor,
-      nextSteps: buildNextSteps(answers, rootPath)
+      nextSteps: buildNextSteps(
+        answers,
+        rootPath,
+        integrations.find((integration) => integration.target === "copilot-cli")?.serverName
+      )
     };
   } finally {
     runtime.close();
@@ -180,7 +195,8 @@ export function formatSetupWizardResult(result: SetupWizardResult): string {
         const instructions = integration.instructionsPath ? `\n  instructions: ${integration.instructionsPath}` : "";
         const install = integration.installCommand ? `\n  install: ${integration.installCommand}` : "";
         const skipped = integration.userConfigWriteSkipped ? "\n  user config not written; copy clientConfig or rerun with --install-user" : "";
-        return `- ${integration.kind}${target}${mode}${config}${hooks}${instructions}${install}${skipped}`;
+        const action = integration.actionRequired ? `\n  action required: ${integration.actionRequired}` : "";
+        return `- ${integration.kind}${target}${mode}${config}${hooks}${instructions}${install}${skipped}${action}`;
       })
     : ["- diagnostics only"];
 
@@ -214,6 +230,7 @@ async function collectWizardAnswers(inputOptions: {
   index?: boolean | undefined;
   indexMode?: SetupWizardIndexMode | undefined;
   telemetry?: boolean | undefined;
+  installUser?: boolean | undefined;
   yes?: boolean | undefined;
   interactive: boolean;
 }): Promise<{
@@ -222,7 +239,7 @@ async function collectWizardAnswers(inputOptions: {
   index: boolean;
   indexMode: SetupWizardIndexMode;
   telemetry: boolean;
-  codexMode: "savings" | "hybrid" | "mcp-first";
+  codexMode: "source-first" | "hybrid" | "mcp-first";
   claudeHooks: boolean;
   copilotWriteUser: boolean;
 }> {
@@ -236,9 +253,9 @@ async function collectWizardAnswers(inputOptions: {
       index,
       indexMode: index ? inputOptions.indexMode ?? defaultWizardIndexMode() : "skip",
       telemetry: Boolean(inputOptions.telemetry),
-      codexMode: inputOptions.choice === "hybrid" ? "hybrid" : "savings",
+      codexMode: inputOptions.choice === "hybrid" ? "hybrid" : "source-first",
       claudeHooks: false,
-      copilotWriteUser: false
+      copilotWriteUser: Boolean(inputOptions.installUser)
     };
   }
 
@@ -281,7 +298,7 @@ async function collectWizardAnswers(inputOptions: {
       index,
       indexMode: index ? inputOptions.indexMode ?? defaultWizardIndexMode() : "skip",
       telemetry,
-      codexMode: choice === "hybrid" ? "hybrid" : "savings",
+      codexMode: choice === "hybrid" ? "hybrid" : "source-first",
       claudeHooks: false,
       copilotWriteUser: false
     };
@@ -300,13 +317,13 @@ async function collectInteractiveWizardAnswers(inputOptions: {
   index: boolean;
   indexMode: SetupWizardIndexMode;
   telemetry: boolean;
-  codexMode: "savings" | "hybrid" | "mcp-first";
+  codexMode: "source-first" | "hybrid" | "mcp-first";
   claudeHooks: boolean;
   copilotWriteUser: boolean;
 }> {
   const state = {
     targets: ["codex"] as SetupWizardTarget[],
-    codexMode: "savings" as "savings" | "hybrid" | "mcp-first",
+    codexMode: "source-first" as "source-first" | "hybrid" | "mcp-first",
     claudeHooks: false,
     copilotWriteUser: false,
     indexMode: inputOptions.index === false ? "skip" as SetupWizardIndexMode : inputOptions.indexMode ?? defaultWizardIndexMode(),
@@ -340,7 +357,7 @@ async function collectInteractiveWizardAnswers(inputOptions: {
         const codexMode = await select({
           message: "Codex setup mode",
           choices: [
-            { name: "Savings hooks (recommended)", value: "savings" as const },
+            { name: "Source-first hooks (recommended)", value: "source-first" as const },
             { name: "MCP-first", value: "mcp-first" as const },
             { name: "Hybrid hook + MCP", value: "hybrid" as const },
             { name: "Back", value: "back" as const }
@@ -489,11 +506,12 @@ function buildNextSteps(
   answers: {
     choice: SetupWizardChoice;
     targets: SetupWizardTarget[];
-    codexMode: "savings" | "hybrid" | "mcp-first";
+    codexMode: "source-first" | "hybrid" | "mcp-first";
     claudeHooks: boolean;
     copilotWriteUser: boolean;
   },
-  rootPath: string
+  rootPath: string,
+  copilotServerName?: string | undefined
 ): string[] {
   const steps: string[] = [];
   if (answers.targets.includes("codex")) {
@@ -508,7 +526,9 @@ function buildNextSteps(
     if (answers.claudeHooks) steps.push("In Claude Code, use /hooks to inspect the advanced Kairn hooks.");
   }
   if (answers.targets.includes("copilot-cli")) {
-    steps.push(answers.copilotWriteUser ? "In Copilot CLI, run: /mcp show kairn." : "For Copilot CLI, copy the generated clientConfig into ~/.copilot/mcp-config.json or rerun with --install-user.");
+    steps.push(answers.copilotWriteUser
+      ? `In Copilot CLI, run: /mcp show ${copilotServerName ?? "kairn"}.`
+      : "For Copilot CLI, copy the generated clientConfig into ~/.copilot/mcp-config.json or rerun with --install-user.");
   }
   if (answers.targets.includes("gemini-cli")) {
     steps.push("In Gemini CLI, run: /mcp to verify the Kairn server.");

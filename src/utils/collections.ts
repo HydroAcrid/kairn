@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { normalizeRelativePath } from "./paths.js";
 
 export function uniquePaths(files: string[]): string[] {

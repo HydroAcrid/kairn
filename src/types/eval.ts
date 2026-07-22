@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { MetricsBucket, MetricsSummary } from "./metrics.js";
 
 export type EvalRunMode = "baseline" | "kairn" | "manual";

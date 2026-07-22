@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import path from "node:path";
 import { Command, Option } from "commander";
 import { runDoctor, type DoctorTarget } from "../../doctor/doctor.js";

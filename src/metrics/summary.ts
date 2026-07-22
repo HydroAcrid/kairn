@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { MetricsBucket, MetricsEventKind, MetricsSummary } from "../types.js";
 import { uniquePaths } from "../utils/collections.js";
 

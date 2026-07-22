@@ -1,9 +1,23 @@
-import type { FileRecord, IndexCompactionResult, IndexStateStats, InitResult } from "../../types.js";
+// SPDX-License-Identifier: Apache-2.0
+
+import type { FileRecord, IndexCompactionResult, IndexStateStats, InitResult, ScanResult } from "../../types.js";
 import { ensureKairnDir } from "../../config/paths.js";
 import { loadIndexingConfig } from "../../config/indexing.js";
 import { captureIndexFreshnessMetadata, evaluateIndexFreshness } from "../../indexer/freshness.js";
 import { indexRepo } from "../../indexer/indexRepo.js";
+import { buildLexicalIndex } from "../../lexical/bm25.js";
+import { scanRepo } from "../../scanner/scanRepo.js";
 import type { RuntimeDeps } from "../deps.js";
+
+export type InventoryInitResult = {
+  rootPath: string;
+  kairnDir: string;
+  configPath: string;
+  databasePath: string;
+  scan: ScanResult;
+  state: IndexStateStats;
+  stage: "inventory";
+};
 
 export class IndexService {
   constructor(private readonly deps: RuntimeDeps) {}
@@ -43,13 +57,53 @@ export class IndexService {
     };
   }
 
+  async initInventory(): Promise<InventoryInitResult> {
+    const paths = ensureKairnDir(this.deps.rootPath);
+    const scan = await scanRepo(this.deps.rootPath);
+    const lexical = buildLexicalIndex({
+      rootPath: this.deps.rootPath,
+      files: scan.files,
+      symbols: [],
+      chunks: []
+    });
+    this.deps.store.replaceIndex({
+      rootPath: this.deps.rootPath,
+      files: scan.files,
+      symbols: [],
+      edges: [],
+      semanticChunks: [],
+      semanticVectors: [],
+      lexicalDocuments: lexical.documents,
+      lexicalTerms: lexical.terms,
+      lexicalStats: lexical.stats
+    });
+    const freshness = captureIndexFreshnessMetadata({
+      rootPath: this.deps.rootPath,
+      fileCount: scan.files.length
+    });
+    this.deps.store.upsertIndexMetadata({
+      ...freshness,
+      metadata: { ...freshness.metadata, indexStage: "inventory" }
+    });
+    return {
+      rootPath: paths.rootPath,
+      kairnDir: paths.kairnDir,
+      configPath: paths.configPath,
+      databasePath: paths.databasePath,
+      scan,
+      state: this.ensureStateWithinHardLimit(this.deps.rootPath),
+      stage: "inventory"
+    };
+  }
+
   async refreshIndex(rootPath: string, input?: { force?: boolean | undefined }): Promise<FileRecord[]> {
     const existing = this.deps.store.listFiles(rootPath);
+    const storedMetadata = this.deps.store.getIndexMetadata(rootPath);
     const freshness = evaluateIndexFreshness({
       rootPath,
-      stored: this.deps.store.getIndexMetadata(rootPath)
+      stored: storedMetadata
     });
-    if (!input?.force && existing.length > 0 && !freshness.stale) {
+    if (!input?.force && existing.length > 0 && !freshness.stale && !isInventoryStage(storedMetadata?.metadata)) {
       return existing;
     }
     const index = await indexRepo(rootPath);
@@ -70,6 +124,10 @@ export class IndexService {
     }));
     this.ensureStateWithinHardLimit(rootPath);
     return index.graph.files;
+  }
+
+  isInventoryStage(rootPath = this.deps.rootPath): boolean {
+    return isInventoryStage(this.deps.store.getIndexMetadata(rootPath)?.metadata);
   }
 
   getStatus(rootPath = this.deps.rootPath): IndexStateStats {
@@ -101,6 +159,10 @@ export class IndexService {
     }
     return stats;
   }
+}
+
+function isInventoryStage(metadata: Record<string, unknown> | undefined): boolean {
+  return metadata?.indexStage === "inventory";
 }
 
 function formatBytes(value: number): string {

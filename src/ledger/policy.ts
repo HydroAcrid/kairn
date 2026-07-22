@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type {
   SessionContextPolicyDecision,
   SessionLedgerEvent,
@@ -58,8 +60,7 @@ export function decideSessionContextPolicy(input: {
   const lastFailure = workingSet.lastFailure;
   const lastPassingVerification = workingSet.lastPassingVerification;
   const hasPassingVerification = Boolean(lastPassingVerification);
-  const hasUnresolvedFailure = Boolean(lastFailure) &&
-    (!lastPassingVerification || Date.parse(lastFailure!.createdAt) > Date.parse(lastPassingVerification.createdAt));
+  const hasUnresolvedFailure = workingSet.unresolvedFailure;
   const shownFiles = new Set(workingSet.shownFiles);
   const repeatedFiles = candidateFiles.filter((file) => shownFiles.has(file));
   const changedFiles = candidateFiles.filter((file) => workingSet.staleFiles.includes(file));
@@ -132,7 +133,7 @@ export function decideSessionContextPolicy(input: {
   if (changedFiles.length > 0) {
     return decision("emit", phase, "changed_file_reemitted", candidateFiles, repeatedFiles, changedFiles, ignoredRecommendedFiles, input);
   }
-  if (failureFiles.length > 0) {
+  if (failureFiles.length > 0 || hasUnresolvedFailure) {
     return decision("emit", phase, "failure_reemitted", candidateFiles.slice(0, 2), repeatedFiles, changedFiles, ignoredRecommendedFiles, input);
   }
   if (postDiagnosisFocus && isFixTurnSignal(input.task, phase)) {

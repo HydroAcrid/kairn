@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import fs from "node:fs";
 import type { CodexUsageRecord } from "../types.js";
 import { sha256 } from "../utils/hash.js";
@@ -229,7 +231,7 @@ function collectFeedback(
 
 function extractFileRefs(input: string): string[] {
   const files = new Set<string>();
-  const pattern = /(?:^|\s|["'([])((?:\.{0,2}\/)?[^ "'()\n\r]+?\.(?:ts|tsx|js|jsx|mjs|cjs|json|css|scss|md|mdx))(?:[:)]|\s|$)/g;
+  const pattern = /(?:^|\s|["'([])((?:\.{0,2}\/)?[^ "'()\n\r]+?\.(?:ts|tsx|js|jsx|mjs|cjs|json|css|scss|md|mdx|py|pyi|go|java|c|cc|cpp|cxx|h|hh|hpp|hxx))(?:[:)]|\s|$)/g;
   for (const match of input.matchAll(pattern)) {
     const candidate = match[1]?.replace(/^\.\//, "");
     if (!candidate || candidate.includes("node_modules") || candidate.startsWith("../")) continue;

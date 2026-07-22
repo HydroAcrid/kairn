@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 export type FileKind =
   | "source"
   | "test"
@@ -224,6 +226,8 @@ export type ScanResult = {
   candidateCount?: number;
   indexedFileLimit?: number;
   skippedByLimit?: number;
+  inventoryOnlyCount?: number;
+  contentIndexedCount?: number;
   indexTiers?: Record<IndexTier, number>;
   tierStates?: IndexedFileTierState[];
   scannedAt: string;

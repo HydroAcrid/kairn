@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { Command, Option } from "commander";
 import type { BenchmarkReport, BenchmarkRunMode } from "../../types.js";
 import {
@@ -17,6 +19,7 @@ import { buildSweAtlasQnaPilot, fetchSweAtlasQnaRows, loadSweAtlasQnaRows, write
 import { buildSweContextBenchPilot, loadSweContextBenchRows, writeSweContextBenchPilot } from "../../bench/sweContextBench.js";
 import { runBenchmarkMcpSmoke } from "../../bench/mcpSmoke.js";
 import { runPublicationCampaign } from "../../bench/publication.js";
+import { runExperiment } from "../../bench/experiment.js";
 import { parsePositiveInt, withRuntime } from "../helpers.js";
 import { printJson } from "../output.js";
 
@@ -268,6 +271,52 @@ export function registerBenchCommands(program: Command): void {
       for (const warning of pilot.summary.warnings) {
         console.log(`Warning: ${warning}`);
       }
+    });
+
+  benchCommand
+    .command("experiment")
+    .description("Run or dry-run the controlled Vanilla/ReasonBlocks/Kairn factorial experiment.")
+    .requiredOption("--plan <path>", "versioned comparison plan JSON path")
+    .requiredOption("--out <path>", "central campaign artifact directory")
+    .option("--seed <n>", "recorded balanced-order seed", parseNonNegativeInt, 20260722)
+    .option("--repeat <n>", "override the plan repeat count", parsePositiveInt)
+    .option("--resume", "reuse completed per-attempt artifacts")
+    .option("--only <id-or-arm>", "run one task, block, attempt, or condition")
+    .option("--dry-run", "freeze the manifest and planned attempt order without calling providers")
+    .option("--allow-external-trajectory", "allow ReasonBlocks arms for explicitly public repositories")
+    .option("--json", "print JSON output")
+    .action(async (options: {
+      plan: string;
+      out: string;
+      seed: number;
+      repeat?: number;
+      resume?: boolean;
+      only?: string;
+      dryRun?: boolean;
+      allowExternalTrajectory?: boolean;
+      json?: boolean;
+    }) => {
+      const report = await runExperiment({
+        planPath: options.plan,
+        outDir: options.out,
+        seed: options.seed,
+        repeat: options.repeat,
+        resume: Boolean(options.resume),
+        only: options.only,
+        dryRun: Boolean(options.dryRun),
+        allowExternalTrajectory: Boolean(options.allowExternalTrajectory),
+        onProgress: options.json ? undefined : (message) => process.stderr.write(`${message}\n`)
+      });
+      if (options.json) {
+        printJson(report);
+        return;
+      }
+      console.log(`Experiment campaign: ${report.name}`);
+      console.log(`Attempts: ${report.attempts.length}${report.dryRun ? " planned" : ""}`);
+      console.log(`Trace-valid: ${report.attempts.filter((item) => item.traceValid).length}/${report.attempts.length}`);
+      console.log(`Manifest: ${report.outputs.manifestPath}`);
+      console.log(`Report: ${report.outputs.markdownPath}`);
+      console.log(`Public evidence: ${report.outputs.publicEvidencePath}`);
     });
 
   benchCommand

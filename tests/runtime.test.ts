@@ -203,6 +203,93 @@ describe("KairnRuntime", () => {
     runtime.close();
   });
 
+  it("invalidates freshness when an already-dirty path changes again", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+
+    await runtime.init();
+    expect(runtime.getIndexStatus().freshness?.stale).toBe(false);
+
+    const sourcePath = path.join(root, "src/app.ts");
+    const statusBefore = execFileSync("git", ["status", "--porcelain=v1", "-z", "--untracked-files=all"], {
+      cwd: root,
+      encoding: "utf8"
+    });
+    const sourceBefore = fs.readFileSync(sourcePath, "utf8");
+    fs.writeFileSync(sourcePath, sourceBefore.replace("changed = true", "changed = null"));
+    const statusAfter = execFileSync("git", ["status", "--porcelain=v1", "-z", "--untracked-files=all"], {
+      cwd: root,
+      encoding: "utf8"
+    });
+
+    expect(statusAfter).toBe(statusBefore);
+    expect(runtime.getIndexStatus().freshness).toEqual(expect.objectContaining({
+      stale: true,
+      reason: "dirty_state_changed"
+    }));
+
+    await runtime.refreshIndexNow();
+    expect(runtime.getIndexStatus().freshness?.stale).toBe(false);
+    fs.writeFileSync(sourcePath, sourceBefore.replace("changed = true", "changed = void"));
+    expect(runtime.getIndexStatus().freshness).toEqual(expect.objectContaining({
+      stale: true,
+      reason: "dirty_state_changed"
+    }));
+
+    runtime.close();
+  });
+
+  it("tracks bounded filesystem freshness outside a Git worktree", async () => {
+    const root = createFixtureRepo();
+    fs.rmSync(path.join(root, ".git"), { recursive: true, force: true });
+    const runtime = new KairnRuntime(root);
+
+    try {
+      await runtime.init();
+      expect(runtime.getIndexStatus().freshness).toEqual(expect.objectContaining({
+        stale: false,
+        reason: "fresh"
+      }));
+
+      const sourcePath = path.join(root, "src/app.ts");
+      fs.writeFileSync(sourcePath, `${fs.readFileSync(sourcePath, "utf8")}export const nongitChange = true;\n`);
+      expect(runtime.getIndexStatus().freshness).toEqual(expect.objectContaining({
+        stale: true,
+        reason: "dirty_state_changed"
+      }));
+
+      await runtime.refreshIndexNow();
+      expect(runtime.getIndexStatus().freshness?.stale).toBe(false);
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("upgrades a fresh inventory-stage index on the next normal prime", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+
+    try {
+      await runtime.initInventory();
+      const inventoryStatus = runtime.getIndexStatus();
+      expect(inventoryStatus.freshness?.stale).toBe(false);
+      expect(inventoryStatus.symbolCount).toBe(0);
+
+      await runtime.primeContext({
+        task: "Update the formatUser production function",
+        budget: 600
+      });
+
+      const fullStatus = runtime.getIndexStatus();
+      expect(fullStatus.freshness?.stale).toBe(false);
+      expect(fullStatus.symbolCount).toBeGreaterThan(0);
+    } finally {
+      runtime.close();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("builds a working-set next read from ignored recommendations", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);

@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "comparison-fake-agent.v1",
+  "id": "comparison-v1-fake-agent",
+  "description": "Deterministic trace arithmetic fixture. It makes no product-performance claim and must never be published as experimental evidence.",
+  "notEvidence": true,
+  "plan": "../plans/comparison-v1.smoke.json",
+  "seed": 20260722,
+  "expectedConditionOrder": [
+    "kairn",
+    "vanilla",
+    "kairn_reasonblocks",
+    "reasonblocks"
+  ],
+  "sourceContent": "deterministic fake source content\n",
+  "sourceTokenEstimate": 32,
+  "arms": {
+    "vanilla": {
+      "inputTokens": 101,
+      "cachedInputTokens": 10,
+      "cacheCreationInputTokens": 5,
+      "outputTokens": 11,
+      "expectedTotalModelTokens": 112,
+      "guidance": []
+    },
+    "reasonblocks": {
+      "inputTokens": 107,
+      "cachedInputTokens": 10,
+      "cacheCreationInputTokens": 5,
+      "outputTokens": 17,
+      "expectedTotalModelTokens": 124,
+      "guidance": [
+        {
+          "provider": "reasonblocks",
+          "action": "emit",
+          "tokenEstimate": 7
+        }
+      ]
+    },
+    "kairn": {
+      "inputTokens": 103,
+      "cachedInputTokens": 10,
+      "cacheCreationInputTokens": 5,
+      "outputTokens": 13,
+      "expectedTotalModelTokens": 116,
+      "guidance": [
+        {
+          "provider": "kairn",
+          "action": "emit",
+          "tokenEstimate": 5
+        }
+      ]
+    },
+    "kairn_reasonblocks": {
+      "inputTokens": 109,
+      "cachedInputTokens": 10,
+      "cacheCreationInputTokens": 5,
+      "outputTokens": 19,
+      "expectedTotalModelTokens": 128,
+      "guidance": [
+        {
+          "provider": "kairn",
+          "action": "emit",
+          "tokenEstimate": 5
+        },
+        {
+          "provider": "reasonblocks",
+          "action": "emit",
+          "tokenEstimate": 7
+        }
+      ]
+    }
+  }
+}

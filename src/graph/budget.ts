@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { FileRecord, GraphEdgeBudget, GraphEdgeRecord } from "../types.js";
 
 export const DEFAULT_GRAPH_EDGE_BUDGET: GraphEdgeBudget = {

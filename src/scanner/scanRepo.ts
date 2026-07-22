@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import fs from "node:fs";
 import path from "node:path";
 import fg from "fast-glob";
@@ -50,7 +52,15 @@ export const DEFAULT_IGNORE = [
   "*.db"
 ];
 
-export async function scanRepo(root?: string): Promise<ScanResult> {
+export type ScanRepoOptions = {
+  /** Testable/internal enrichment limits. Every non-ignored path is still inventoried. */
+  enrichmentLimits?: {
+    maxFiles?: number;
+    maxFileBytes?: number;
+  };
+};
+
+export async function scanRepo(root?: string, options: ScanRepoOptions = {}): Promise<ScanResult> {
   const rootPath = resolveRoot(root);
   const indexingConfig = loadIndexingConfig(rootPath);
   const gitignore = createRepoIgnore(rootPath);
@@ -64,16 +74,25 @@ export async function scanRepo(root?: string): Promise<ScanResult> {
     ignore: DEFAULT_IGNORE,
     unique: true
   });
-  const inventory = inventoryBudget({
+  const budget = inventoryBudget({
     candidateCount: candidates.length,
     maxStateMb: indexingConfig.maxStateMb
   });
+  const inventory = {
+    maxInventoryFiles: clampNonNegativeInteger(
+      options.enrichmentLimits?.maxFiles ?? budget.maxInventoryFiles
+    ),
+    maxFileBytes: clampNonNegativeInteger(
+      options.enrichmentLimits?.maxFileBytes ?? budget.maxFileBytes
+    )
+  };
 
   let ignoredCount = 0;
-  const eligible: Array<{
+  const discovered: Array<{
     path: string;
     absolutePath: string;
     size: number;
+    mtimeMs: number;
     kind: ReturnType<typeof classifyFile>;
     language: string;
     importance: number;
@@ -90,48 +109,57 @@ export async function scanRepo(root?: string): Promise<ScanResult> {
     const absolutePath = path.join(rootPath, relativePath);
     const stat = fs.statSync(absolutePath);
 
-    if (stat.size > inventory.maxFileBytes) {
-      ignoredCount += 1;
-      continue;
-    }
-
     const kind = classifyFile(relativePath);
     const language = detectLanguage(relativePath);
     const importance = scoreFileImportance(relativePath, kind);
 
-    eligible.push({
+    discovered.push({
       path: relativePath,
       absolutePath,
       size: stat.size,
+      mtimeMs: stat.mtimeMs,
       kind,
       language,
       importance
     });
   }
 
-  const ranked = eligible
+  const ranked = discovered
+    .filter((file) => file.size <= inventory.maxFileBytes)
     .map((file) => ({
       ...file,
       tierScore: scanPriority(file)
     }))
     .sort((a, b) => b.tierScore - a.tierScore || a.path.localeCompare(b.path));
   const selected = ranked.slice(0, inventory.maxInventoryFiles);
-  const skippedByLimit = Math.max(0, eligible.length - selected.length);
-  ignoredCount += skippedByLimit;
-  const tierStates = assignIndexTiers(selected, indexingConfig.maxHotFiles);
+  const selectedPaths = new Set(selected.map((file) => file.path));
+  const skippedByLimit = discovered.filter((file) => !selectedPaths.has(file.path)).length;
+  const enrichedTierStates = assignIndexTiers(selected, indexingConfig.maxHotFiles);
+  const enrichedTiersByPath = new Map(enrichedTierStates.map((state) => [state.path, state]));
+  const tierStates = discovered
+    .slice()
+    .sort((a, b) => a.path.localeCompare(b.path))
+    .map((file): IndexedFileTierState => enrichedTiersByPath.get(file.path) ?? {
+      path: file.path,
+      tier: "tier0",
+      score: Number(scanPriority(file).toFixed(3)),
+      reasons: [file.size > inventory.maxFileBytes ? "oversized inventory metadata only" : "inventory metadata only"]
+    });
   const tiersByPath = new Map(tierStates.map((state) => [state.path, state]));
 
   const files: FileRecord[] = [];
-  for (const item of selected) {
-    const content = fs.readFileSync(item.absolutePath);
+  for (const item of discovered.slice().sort((a, b) => a.path.localeCompare(b.path))) {
     const tier = tiersByPath.get(item.path);
+    const hash = tier && tier.tier !== "tier0"
+      ? sha256(fs.readFileSync(item.absolutePath))
+      : inventoryMetadataHash(item);
     files.push({
       rootPath,
       path: item.path,
       language: item.language,
       kind: item.kind,
       size: item.size,
-      hash: sha256(content),
+      hash,
       importance: item.importance,
       ...(tier ? { indexTier: tier.tier, tierScore: tier.score } : {}),
       updatedAt: scannedAt
@@ -145,10 +173,21 @@ export async function scanRepo(root?: string): Promise<ScanResult> {
     candidateCount: candidates.length,
     indexedFileLimit: inventory.maxInventoryFiles,
     skippedByLimit,
+    inventoryOnlyCount: tierStates.filter((state) => state.tier === "tier0").length,
+    contentIndexedCount: tierStates.filter((state) => state.tier !== "tier0").length,
     indexTiers: countTiers(tierStates),
     tierStates,
     scannedAt
   };
+}
+
+function inventoryMetadataHash(file: { path: string; size: number; mtimeMs: number }): string {
+  return sha256(`tier0-metadata-v1\0${file.path}\0${file.size}\0${file.mtimeMs}`);
+}
+
+function clampNonNegativeInteger(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.floor(value));
 }
 
 export function createRepoIgnore(rootPath: string): ReturnType<typeof ignore> {
@@ -263,7 +302,7 @@ function isSourceLike(file: { kind: ReturnType<typeof classifyFile>; language: s
     file.kind === "component" ||
     file.kind === "route" ||
     file.kind === "test" ||
-    ["python", "java", "kotlin", "c", "cpp", "typescript", "javascript"].includes(file.language)
+    ["python", "go", "java", "kotlin", "c", "cpp", "typescript", "javascript"].includes(file.language)
   );
 }
 

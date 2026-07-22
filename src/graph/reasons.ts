@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 export function graphReason(type: string, targetIsFromFile: boolean): string {
   if (type === "imports") return targetIsFromFile ? "imports target" : "imported by target";
   if (type === "imported_by") return targetIsFromFile ? "imported by target" : "imports target";

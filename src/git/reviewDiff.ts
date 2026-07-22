@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { simpleGit } from "simple-git";
 import type { TaskSession } from "../types.js";
 

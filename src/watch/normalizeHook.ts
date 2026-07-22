@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { NormalizedHookEvent, WatchEventKind, WatchEventSource } from "../types.js";
 import { normalizeRelativePath } from "../utils/paths.js";
 

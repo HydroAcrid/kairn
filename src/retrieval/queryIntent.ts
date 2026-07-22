@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { tokenizeLexical } from "../semantic/tokenize.js";
 
 export type QueryIntentPrimary = "ui" | "backend" | "data" | "auth" | "test" | "workflow" | "infra" | "docs" | "generic";

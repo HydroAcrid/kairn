@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { ContextResponse, FileRecord, PrimeProfile, PrimeQuality } from "../types.js";
 import { adaptivePrimeBudget } from "../budget/adaptiveBudget.js";
 import { classifyQueryIntent } from "../retrieval/queryIntent.js";

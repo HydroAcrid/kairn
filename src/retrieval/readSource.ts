@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import fs from "node:fs";
 import path from "node:path";
 import type { FileRecord } from "../types.js";
@@ -67,6 +69,9 @@ export function extractImports(content: string): string[] {
   const pythonFromPattern = /^\s*from\s+([.\w]+)\s+import\s+/gm;
   const javaImportPattern = /^\s*import\s+(?:static\s+)?([\w.]+(?:\.\*)?)\s*;/gm;
   const cIncludePattern = /^\s*#\s*include\s+[<"]([^>"]+)[>"]/gm;
+  const goSingleImportPattern = /^\s*import\s+(?:[._A-Za-z][\w.]*\s+)?["`]([^"`]+)["`]\s*$/gm;
+  const goImportBlockPattern = /^\s*import\s*\(([^)]*)\)/gms;
+  const goImportBlockItemPattern = /^\s*(?:[._A-Za-z][\w.]*\s+)?["`]([^"`]+)["`]\s*$/gm;
 
   for (const match of content.matchAll(importPattern)) {
     if (match[1]) imports.add(match[1]);
@@ -96,6 +101,16 @@ export function extractImports(content: string): string[] {
     if (match[1]) imports.add(match[1]);
   }
 
+  for (const match of content.matchAll(goSingleImportPattern)) {
+    if (match[1]) imports.add(match[1]);
+  }
+
+  for (const block of content.matchAll(goImportBlockPattern)) {
+    for (const match of (block[1] ?? "").matchAll(goImportBlockItemPattern)) {
+      if (match[1]) imports.add(match[1]);
+    }
+  }
+
   return [...imports];
 }
 
@@ -114,6 +129,7 @@ export function resolveImportCandidates(fromFile: string, specifier: string): st
     `${base}.cjs`,
       `${base}.py`,
       `${base}.pyi`,
+      `${base}.go`,
       `${base}.java`,
       `${base}.c`,
       `${base}.cc`,

@@ -1,16 +1,19 @@
 {
-  "name": "kairn",
-  "version": "0.1.2",
-  "description": "Local-first dynamic context runtime for software engineering agents.",
+  "name": "usekairn",
+  "version": "0.2.0",
+  "description": "Local repository evidence and token-efficiency layer for coding agents.",
   "type": "module",
   "bin": {
     "kairn": "./dist/cli.js"
   },
   "files": [
     "dist",
-    "scripts/preinstall-check.cjs",
+    "benchmarks",
+    "scripts",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "scripts": {
     "build": "tsup src/cli.ts --format esm --target node20 --dts --clean --external typescript --external web-tree-sitter --external @repomix/tree-sitter-wasms",
@@ -18,17 +21,52 @@
     "kairn": "node dist/cli.js",
     "preinstall": "node ./scripts/preinstall-check.cjs",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:licenses": "node scripts/generate-license-report.mjs",
+    "check:licenses:all": "node scripts/generate-license-report.mjs --all",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "check:secrets:history": "node scripts/check-secrets.mjs --history",
+    "check:dco": "node scripts/check-dco.mjs",
+    "check:headers": "node scripts/check-license-headers.mjs",
+    "fix:headers": "node scripts/check-license-headers.mjs --fix",
+    "notices:generate": "node scripts/generate-third-party-notices.mjs",
+    "notices:check": "node scripts/generate-third-party-notices.mjs --check",
+    "smoke:offline": "node scripts/offline-runtime-smoke.mjs",
+    "smoke:enable-disable": "node scripts/enable-disable-smoke.mjs",
+    "verify:ranker-sample": "node scripts/verify-sample-model.mjs",
+    "verify:ranker-promotion-sample": "python3 scripts/evaluate-ranker-promotion.py --input benchmarks/evidence-promotion.sample.json --allow-sample",
+    "verify:experiment-smoke": "tsx scripts/verify-comparison-smoke.ts",
+    "verify:release-checksums": "node scripts/verify-release-checksums.mjs",
+    "verify:package-contents": "node scripts/verify-package-contents.mjs",
+    "verify:supply-chain-reports": "node scripts/verify-supply-chain-reports.mjs",
+    "release:checksums": "node scripts/generate-release-checksums.mjs",
+    "train:ranker:sample": "python3 scripts/train-evidence-ranker.py --input benchmarks/evidence-training.sample.jsonl --out artifacts/sample-evidence-model.json --model-id sample-evidence-v1 --node node --public-data-only",
+    "sbom": "node scripts/generate-sbom.mjs"
   },
   "keywords": [
     "ai",
     "agents",
     "mcp",
     "context",
-    "developer-tools"
+    "developer-tools",
+    "local-first",
+    "repository",
+    "token-efficiency"
   ],
   "author": "Kevin Dotel",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HydroAcrid/kairn.git"
+  },
+  "homepage": "https://www.usekairn.com",
+  "bugs": {
+    "url": "https://github.com/HydroAcrid/kairn/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "engines": {
     "node": ">=20.19 <26"
   },

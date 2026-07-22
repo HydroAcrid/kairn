@@ -1,8 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { KairnRuntime } from "../runtime/KairnRuntime.js";
 import type { OutputKind } from "../types.js";
+import { getKairnVersion } from "../version.js";
 
 const outputKindSchema = z.enum(["test", "lint", "typecheck", "generic"]);
 const contextModeSchema = z.enum(["brief", "snippets", "summary", "exact"]);
@@ -17,7 +20,7 @@ export async function startMcpServer(options: { root?: string }): Promise<void> 
 export function createMcpServer(options: { root?: string }): McpServer {
   const server = new McpServer({
     name: "kairn",
-    version: "0.1.2"
+    version: getKairnVersion()
   });
 
   const runtime = new KairnRuntime(options.root);
@@ -37,7 +40,11 @@ export function createMcpServer(options: { root?: string }): McpServer {
     },
     async ({ task, sessionId, budget, profile, detail }) => {
       const prime = await runtime.primeContext({ task, sessionId, budget: budget ?? 900, profile, source: "mcp" });
-      const value = (detail ?? "compact") === "full" ? fullPrepareResult(prime) : compactPrepareResult(runtime, prime);
+      const prepared = (detail ?? "compact") === "full" ? fullPrepareResult(prime) : compactPrepareResult(runtime, prime);
+      const value = {
+        ...prepared,
+        rankerStatus: isRecord(prime.metadata?.ranker) ? prime.metadata.ranker : null
+      };
       return mcpToolResult(runtime, "kairn_prepare_task", { task, sessionId, budget, profile, detail }, value);
     }
   );

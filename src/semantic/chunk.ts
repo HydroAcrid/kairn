@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { FileRecord, RepoGraph, SemanticChunkRecord, SymbolRecord } from "../types.js";
 import { readTextFile } from "../retrieval/readSource.js";
 import { sha256 } from "../utils/hash.js";

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { WatchEventSource } from "./watch.js";
 
 export type TaskPhase = "discovery" | "implementation" | "debugging" | "verification" | "cleanup";
@@ -57,6 +59,10 @@ export type SessionWorkingSet = {
   ignoredRecommendedFiles: string[];
   ruledOutFiles: string[];
   staleFiles: string[];
+  /** True when the newest failure/failed verification has no later passing verification. */
+  unresolvedFailure: boolean;
+  /** Previously shown files that may safely be reconsidered because that failure is unresolved. */
+  reconsiderableShownFiles: string[];
   currentInvariant?: SessionWorkingSetInvariant;
   lastFailure?: SessionWorkingSetSignal;
   lastPassingVerification?: SessionWorkingSetSignal;

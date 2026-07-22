@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { estimateTokens } from "../utils/tokens.js";
 import { uniquePaths } from "../utils/collections.js";
 import type { ContextResponseMode } from "../types.js";

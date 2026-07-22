@@ -1,9 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { writeClaudeHooksSetup } from "../cli/setup/claudeSetup.js";
-import { writeCodexSetup } from "../cli/setup/codexSetup.js";
-import { writeMcpClientSetup, type McpClientSetupTarget } from "../cli/setup/mcpSetup.js";
+import { hasKairnOwnedClaudeHooks, writeClaudeHooksSetup } from "../cli/setup/claudeSetup.js";
+import { hasKairnOwnedCodexMcpConfig, writeCodexSetup } from "../cli/setup/codexSetup.js";
+import { existingCopilotServerNameForRoot, writeMcpClientSetup, type McpClientSetupTarget } from "../cli/setup/mcpSetup.js";
 import type { CodexSetupMode } from "../types.js";
 import type { DoctorTarget } from "./doctor.js";
 
@@ -14,7 +16,7 @@ export type DoctorFixResult = {
   skipped: Array<{ target: string; reason: string }>;
 };
 
-export function fixDoctorIssues(input: { rootPath: string; target?: DoctorTarget | undefined }): DoctorFixResult {
+export function fixDoctorIssues(input: { rootPath: string; target?: DoctorTarget | undefined; homeDir?: string | undefined }): DoctorFixResult {
   const rootPath = path.resolve(input.rootPath);
   const target = input.target ?? "all";
   const result: DoctorFixResult = {
@@ -37,7 +39,7 @@ export function fixDoctorIssues(input: { rootPath: string; target?: DoctorTarget
   repairMcpIfNeeded(rootPath, target, "claude-code", result);
   repairClaudeHooksIfNeeded(rootPath, target, result);
   repairMcpIfNeeded(rootPath, target, "gemini-cli", result);
-  repairCopilotIfNeeded(rootPath, target, result);
+  repairCopilotIfNeeded(rootPath, target, result, input.homeDir ?? os.homedir());
 
   if (target === "all" && result.repaired.length === 0 && result.skipped.length === 0) {
     result.skipped.push({
@@ -62,7 +64,7 @@ function repairCodexIfNeeded(rootPath: string, target: DoctorTarget, result: Doc
     return;
   }
 
-  writeCodexSetup({
+  const setup = writeCodexSetup({
     root: rootPath,
     mode: state.mode,
     primeProfile: "auto",
@@ -70,6 +72,10 @@ function repairCodexIfNeeded(rootPath: string, target: DoctorTarget, result: Doc
     postToolHookOutput: "failure-only",
     primeBudget: 900
   });
+  if (setup.configConflict) {
+    result.skipped.push({ target: "codex", reason: setup.configConflict.reason });
+    return;
+  }
   result.repaired.push(`codex:${state.mode}`);
 }
 
@@ -81,27 +87,31 @@ function repairMcpIfNeeded(
 ): void {
   const explicit = target === client;
   if (!explicit && target !== "all") return;
-  if (!explicit && !hasClientMcp(rootPath, client)) return;
-  writeMcpClientSetup({
+  if (!explicit && !hasClientMcpEntry(rootPath, client)) return;
+  const setup = writeMcpClientSetup({
     root: rootPath,
     client,
     writeInstructions: true
   });
+  if (setup.configConflict) {
+    result.skipped.push({ target: client, reason: setup.configConflict.reason });
+    return;
+  }
   result.repaired.push(`mcp:${client}`);
 }
 
 function repairClaudeHooksIfNeeded(rootPath: string, target: DoctorTarget, result: DoctorFixResult): void {
   const explicit = false;
   if (!explicit && target !== "all" && target !== "claude-code") return;
-  if (!hasKairnText(path.join(rootPath, ".claude", "settings.local.json"))) return;
+  if (!hasKairnClaudeHooks(path.join(rootPath, ".claude", "settings.local.json"))) return;
   writeClaudeHooksSetup({ root: rootPath });
   result.repaired.push("claude-hooks");
 }
 
-function repairCopilotIfNeeded(rootPath: string, target: DoctorTarget, result: DoctorFixResult): void {
+function repairCopilotIfNeeded(rootPath: string, target: DoctorTarget, result: DoctorFixResult, homeDir: string): void {
   const explicit = target === "copilot-cli";
   if (!explicit && target !== "all") return;
-  const configured = hasCopilotKairnForRoot(rootPath);
+  const configured = hasCopilotKairnForRoot(rootPath, homeDir);
   if (!configured) {
     if (explicit) {
       result.skipped.push({
@@ -111,12 +121,17 @@ function repairCopilotIfNeeded(rootPath: string, target: DoctorTarget, result: D
     }
     return;
   }
-  writeMcpClientSetup({
+  const setup = writeMcpClientSetup({
     root: rootPath,
     client: "copilot-cli",
     writeInstructions: true,
+    homeDir,
     writeUserConfig: true
   });
+  if (setup.configConflict) {
+    result.skipped.push({ target: "copilot-cli", reason: setup.configConflict.reason });
+    return;
+  }
   result.repaired.push("mcp:copilot-cli");
 }
 
@@ -130,24 +145,24 @@ function getCodexState(rootPath: string): {
   const hooksPath = path.join(rootPath, ".codex", "hooks.json");
   const config = readText(configPath);
   const hooks = readText(hooksPath);
-  const hasMcp = config.includes("[mcp_servers.kairn]");
+  const hasMcp = hasKairnOwnedCodexMcpConfig(config);
   const hasPromptHook = /UserPromptSubmit/.test(hooks);
   const hooksOwned = !hooks || /kairn|KAIRN_CMD/i.test(hooks);
   return {
-    owned: /kairn|KAIRN_CMD|codex_hooks|mcp_servers\.kairn/i.test(`${config}\n${hooks}`),
+    owned: hasMcp || /KAIRN_CMD|(?:use)?kairn[^\n]*\bhook\b/i.test(hooks) || /codex_hooks|kairn:(?:owned|previous=false)/i.test(config),
     hooksExists: fs.existsSync(hooksPath),
     hooksOwned,
-    mode: hasMcp ? hasPromptHook ? "hybrid" : "mcp-first" : "savings"
+    mode: hasMcp ? hasPromptHook ? "hybrid" : "mcp-first" : "source-first"
   };
 }
 
-function hasClientMcp(rootPath: string, client: Exclude<McpClientSetupTarget, "copilot-cli" | "generic">): boolean {
-  if (client === "vscode") return hasMcpServer(path.join(rootPath, ".vscode", "mcp.json"), "servers");
-  if (client === "claude-code") return hasMcpServer(path.join(rootPath, ".mcp.json"), "mcpServers");
-  return hasMcpServer(path.join(rootPath, ".gemini", "settings.json"), "mcpServers");
+function hasClientMcpEntry(rootPath: string, client: Exclude<McpClientSetupTarget, "copilot-cli" | "generic">): boolean {
+  if (client === "vscode") return hasMcpServerEntry(path.join(rootPath, ".vscode", "mcp.json"), "servers");
+  if (client === "claude-code") return hasMcpServerEntry(path.join(rootPath, ".mcp.json"), "mcpServers");
+  return hasMcpServerEntry(path.join(rootPath, ".gemini", "settings.json"), "mcpServers");
 }
 
-function hasMcpServer(filePath: string, key: "servers" | "mcpServers"): boolean {
+function hasMcpServerEntry(filePath: string, key: "servers" | "mcpServers"): boolean {
   if (!fs.existsSync(filePath)) return false;
   try {
     const parsed = JSON.parse(fs.readFileSync(filePath, "utf8")) as unknown;
@@ -157,15 +172,19 @@ function hasMcpServer(filePath: string, key: "servers" | "mcpServers"): boolean 
   }
 }
 
-function hasCopilotKairnForRoot(rootPath: string): boolean {
-  const filePath = path.join(os.homedir(), ".copilot", "mcp-config.json");
-  if (!fs.existsSync(filePath)) return false;
-  const raw = fs.readFileSync(filePath, "utf8");
-  return raw.includes(rootPath) && /"kairn"\s*:/.test(raw);
+function hasCopilotKairnForRoot(rootPath: string, homeDir: string): boolean {
+  const filePath = path.join(homeDir, ".copilot", "mcp-config.json");
+  return existingCopilotServerNameForRoot(filePath, rootPath) !== undefined;
 }
 
-function hasKairnText(filePath: string): boolean {
-  return /kairn|KAIRN_CMD/i.test(readText(filePath));
+function hasKairnClaudeHooks(filePath: string): boolean {
+  if (!fs.existsSync(filePath)) return false;
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, "utf8")) as unknown;
+    return isRecord(parsed) && hasKairnOwnedClaudeHooks(parsed.hooks);
+  } catch {
+    return false;
+  }
 }
 
 function readText(filePath: string): string {

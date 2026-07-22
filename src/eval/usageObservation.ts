@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { CodexUsageRecord, EvalObservationRecord } from "../types.js";
 
 export function codexUsageFromObservation(observation: EvalObservationRecord | undefined): CodexUsageRecord | undefined {

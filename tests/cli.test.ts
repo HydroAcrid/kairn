@@ -155,7 +155,7 @@ describe("CLI", () => {
     const parsedMcpSetup = JSON.parse(mcpSetup) as { configPath: string; serverConfig: { args: string[] } };
     const parsedClaudeMcpSetup = JSON.parse(claudeMcpSetup) as { configPath: string; clientConfig: { mcpServers: Record<string, unknown> }; installCommand: string };
     const parsedGeminiMcpSetup = JSON.parse(geminiMcpSetup) as { configPath: string; clientConfig: { mcpServers: Record<string, { trust?: boolean }> } };
-    const parsedCopilotMcpSetup = JSON.parse(copilotMcpSetup) as { configPath?: string; userConfigWriteSkipped: boolean; clientConfig: { mcpServers: Record<string, { type?: string; tools?: string[] }> } };
+    const parsedCopilotMcpSetup = JSON.parse(copilotMcpSetup) as { serverName: string; configPath?: string; userConfigWriteSkipped: boolean; clientConfig: { mcpServers: Record<string, { type?: string; tools?: string[] }> } };
     const parsedGenericMcpSetup = JSON.parse(genericMcpSetup) as { configPath?: string; clientConfig: { mcpServers: Record<string, unknown> } };
     const parsedClaudeHookSetup = JSON.parse(claudeHookSetup) as { configPath: string; hooksInstalled: string[] };
     const parsedSetupWizard = JSON.parse(setupWizard) as {
@@ -197,8 +197,9 @@ describe("CLI", () => {
     expect(parsedGeminiMcpSetup.clientConfig.mcpServers.kairn?.trust).toBe(false);
     expect(parsedCopilotMcpSetup.configPath).toBeUndefined();
     expect(parsedCopilotMcpSetup.userConfigWriteSkipped).toBe(true);
-    expect(parsedCopilotMcpSetup.clientConfig.mcpServers.kairn?.type).toBe("local");
-    expect(parsedCopilotMcpSetup.clientConfig.mcpServers.kairn?.tools).toEqual(["*"]);
+    expect(parsedCopilotMcpSetup.serverName).toMatch(/^kairn-/);
+    expect(parsedCopilotMcpSetup.clientConfig.mcpServers[parsedCopilotMcpSetup.serverName]?.type).toBe("local");
+    expect(parsedCopilotMcpSetup.clientConfig.mcpServers[parsedCopilotMcpSetup.serverName]?.tools).toEqual(["*"]);
     expect(parsedGenericMcpSetup.configPath).toBeUndefined();
     expect(parsedGenericMcpSetup.clientConfig.mcpServers.kairn).toBeTruthy();
     expect(parsedClaudeHookSetup.configPath.endsWith(path.join(".claude", "settings.local.json"))).toBe(true);
@@ -349,7 +350,7 @@ describe("CLI", () => {
     expect(parsedVscode.fix.repaired).toContain("mcp:vscode");
     expect(vscodeConfig.servers.kairn.command).not.toBe("/old/kairn");
     expect(vscodeConfig.servers.kairn.args).toContain("serve");
-    expect(parsedCodex.fix.repaired).toContain("codex:savings");
+    expect(parsedCodex.fix.repaired).toContain("codex:source-first");
     expect(codexConfig).toContain("hooks = true");
     expect(codexConfig).not.toContain("codex_hooks");
     expect(codexHooks).toContain("Priming Kairn context");

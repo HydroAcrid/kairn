@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { KairnRuntime } from "../runtime/KairnRuntime.js";
 import type { MetricsSummary, TelemetryPayload } from "../types.js";
 import {

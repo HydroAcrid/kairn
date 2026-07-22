@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import path from "node:path";
 import type { FileRecord, GraphEdgeRecord, ParsedFile, RepoGraph } from "../types.js";
 import { resolveImportCandidates } from "../retrieval/readSource.js";
@@ -7,12 +9,14 @@ export function buildRepoGraph(input: {
   rootPath: string;
   files: FileRecord[];
   parsedFiles: ParsedFile[];
+  goModules?: Array<{ directory: string; modulePath: string }>;
 }): RepoGraph {
   const fileByPath = new Map(input.files.map((file) => [file.path, file]));
   const edgeMap = new Map<string, GraphEdgeRecord>();
 
   for (const parsedFile of input.parsedFiles) {
     for (const specifier of parsedFile.imports) {
+      if (isPackageMetadata(specifier)) continue;
       for (const candidate of resolveImportCandidates(parsedFile.filePath, specifier)) {
         if (!fileByPath.has(candidate)) continue;
 
@@ -27,7 +31,15 @@ export function buildRepoGraph(input: {
     }
   }
 
+  addGoPackageImportEdges(
+    edgeMap,
+    input.rootPath,
+    input.files,
+    input.parsedFiles,
+    input.goModules ?? []
+  );
   addTestEdges(edgeMap, input.rootPath, input.files);
+  addGoTestSymbolEdges(edgeMap, input.rootPath, input.files, input.parsedFiles);
   addParentRouteEdges(edgeMap, input.rootPath, input.files);
 
   return {
@@ -71,6 +83,113 @@ function addTestEdges(edgeMap: Map<string, GraphEdgeRecord>, rootPath: string, f
   }
 }
 
+function addGoPackageImportEdges(
+  edgeMap: Map<string, GraphEdgeRecord>,
+  rootPath: string,
+  files: FileRecord[],
+  parsedFiles: ParsedFile[],
+  goModules: Array<{ directory: string; modulePath: string }>
+): void {
+  const parsedByPath = new Map(parsedFiles.map((parsed) => [parsed.filePath, parsed]));
+  const productionFilesByDirectory = new Map<string, FileRecord[]>();
+
+  for (const file of files) {
+    if (file.language !== "go" || file.kind === "test") continue;
+    const directory = path.posix.dirname(file.path);
+    productionFilesByDirectory.set(directory, [
+      ...(productionFilesByDirectory.get(directory) ?? []),
+      file
+    ]);
+  }
+
+  const packageDirectories = [...productionFilesByDirectory.keys()];
+  for (const parsedFile of parsedFiles) {
+    if (parsedFile.language !== "go") continue;
+
+    for (const specifier of parsedFile.imports) {
+      if (isPackageMetadata(specifier)) continue;
+      const targetDirectory = resolveLocalGoPackageDirectory(
+        parsedFile.filePath,
+        specifier,
+        packageDirectories,
+        goModules
+      );
+      if (!targetDirectory) continue;
+
+      const targets = (productionFilesByDirectory.get(targetDirectory) ?? [])
+        .slice()
+        .sort((a, b) => b.importance - a.importance || a.path.localeCompare(b.path))
+        .slice(0, 12);
+      const packageName = targets
+        .map((target) => parsedByPath.get(target.path))
+        .map((parsed) => parsed ? goPackageName(parsed) : undefined)
+        .find((name): name is string => Boolean(name));
+
+      for (const target of targets) {
+        if (target.path === parsedFile.filePath) continue;
+        addEdge(edgeMap, {
+          rootPath,
+          fromFile: parsedFile.filePath,
+          toFile: target.path,
+          type: "imports",
+          metadata: {
+            reason: "Go local package import",
+            specifier,
+            ...(packageName ? { package: packageName } : {})
+          }
+        });
+      }
+    }
+  }
+}
+
+function addGoTestSymbolEdges(
+  edgeMap: Map<string, GraphEdgeRecord>,
+  rootPath: string,
+  files: FileRecord[],
+  parsedFiles: ParsedFile[]
+): void {
+  const fileByPath = new Map(files.map((file) => [file.path, file]));
+  const productionSymbols = new Map<string, Array<{ filePath: string; symbol: string }>>();
+
+  for (const parsedFile of parsedFiles) {
+    const file = fileByPath.get(parsedFile.filePath);
+    if (parsedFile.language !== "go" || !file || file.kind === "test") continue;
+    const directory = path.posix.dirname(parsedFile.filePath);
+    for (const symbol of parsedFile.symbols) {
+      const key = `${directory}:${symbol.name}`;
+      productionSymbols.set(key, [
+        ...(productionSymbols.get(key) ?? []),
+        { filePath: parsedFile.filePath, symbol: symbol.name }
+      ]);
+    }
+  }
+
+  for (const parsedFile of parsedFiles) {
+    const file = fileByPath.get(parsedFile.filePath);
+    if (parsedFile.language !== "go" || file?.kind !== "test") continue;
+    const directory = path.posix.dirname(parsedFile.filePath);
+
+    for (const testSymbol of parsedFile.symbols) {
+      for (const sourceName of goSourceSymbolNamesForTest(testSymbol.name)) {
+        for (const source of productionSymbols.get(`${directory}:${sourceName}`) ?? []) {
+          addEdge(edgeMap, {
+            rootPath,
+            fromFile: parsedFile.filePath,
+            toFile: source.filePath,
+            type: "test_for",
+            metadata: {
+              reason: "Go test symbol matches source symbol",
+              testSymbol: testSymbol.name,
+              sourceSymbol: source.symbol
+            }
+          });
+        }
+      }
+    }
+  }
+}
+
 function addParentRouteEdges(edgeMap: Map<string, GraphEdgeRecord>, rootPath: string, files: FileRecord[]): void {
   const routes = files.filter((file) => isNextRouteFile(file.path));
   const filesByDirectory = new Map<string, FileRecord[]>();
@@ -97,6 +216,49 @@ function addParentRouteEdges(edgeMap: Map<string, GraphEdgeRecord>, rootPath: st
 
 function addEdge(edgeMap: Map<string, GraphEdgeRecord>, edge: GraphEdgeRecord): void {
   edgeMap.set(`${edge.fromFile}->${edge.toFile}:${edge.type}`, edge);
+}
+
+function isPackageMetadata(specifier: string): boolean {
+  return specifier.startsWith("package:");
+}
+
+function goPackageName(parsedFile: ParsedFile): string | undefined {
+  return parsedFile.imports
+    .find(isPackageMetadata)
+    ?.slice("package:".length);
+}
+
+function resolveLocalGoPackageDirectory(
+  fromFile: string,
+  specifier: string,
+  packageDirectories: string[],
+  goModules: Array<{ directory: string; modulePath: string }>
+): string | undefined {
+  if (specifier.startsWith(".")) {
+    const directory = path.posix.normalize(path.posix.join(path.posix.dirname(fromFile), specifier));
+    return packageDirectories.includes(directory) ? directory : undefined;
+  }
+
+  for (const module of goModules.slice().sort((a, b) => b.modulePath.length - a.modulePath.length)) {
+    if (specifier !== module.modulePath && !specifier.startsWith(`${module.modulePath}/`)) continue;
+    const relativePackage = specifier === module.modulePath
+      ? "."
+      : specifier.slice(module.modulePath.length + 1);
+    const directory = path.posix.normalize(path.posix.join(module.directory, relativePackage));
+    if (packageDirectories.includes(directory)) return directory;
+  }
+
+  return undefined;
+}
+
+function goSourceSymbolNamesForTest(testName: string): string[] {
+  const prefix = ["Test", "Benchmark", "Fuzz", "Example"].find((candidate) => testName.startsWith(candidate));
+  if (!prefix) return [];
+  const remainder = testName.slice(prefix.length);
+  if (!remainder) return [];
+  const [primary, ...qualified] = remainder.split("_").filter(Boolean);
+  return [primary, ...qualified.filter((name) => /^\p{Lu}/u.test(name))]
+    .filter((name): name is string => Boolean(name));
 }
 
 function isLikelyTestFor(testPath: string, sourcePath: string): boolean {

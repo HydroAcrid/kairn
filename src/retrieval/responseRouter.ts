@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { ContextQueryMode, ContextRequestType, ResponseDecision } from "../types.js";
 
 export function decideResponse(input: {

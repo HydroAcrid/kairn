@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -31,12 +33,14 @@ import type {
   InitResult,
   IndexCompactionResult,
   IndexStateStats,
+  KairnRuntimeOptions,
   MetricsEventKind,
   MetricsSummary,
   NormalizedHookEvent,
   OutputKind,
   PrimeProfile,
   QueryLocalIndex,
+  RankerConfig,
   SessionContextPolicyDecision,
   SessionLedgerEvent,
   SessionLedgerEventKind,
@@ -56,6 +60,14 @@ import { SqliteStore } from "../store/sqliteStore.js";
 import { compressOutput as compressOutputText } from "../compression/compressOutput.js";
 import { reviewGitDiff } from "../git/reviewDiff.js";
 import { hybridSearch } from "../retrieval/hybridRetrieval.js";
+import { rankEvidenceResults, resolveRankerConfig } from "../retrieval/evidenceRanker.js";
+import {
+  buildEvidenceCandidates,
+  DEFAULT_ENRICHED_CANDIDATE_LIMIT,
+  DEFAULT_INITIAL_CANDIDATE_LIMIT,
+  extractEvidenceTaskSignals
+} from "../retrieval/evidenceSignals.js";
+import { scoreBm25Files } from "../lexical/bm25.js";
 import { applyCompanionCandidatesToResults, findCompanionCandidates } from "../retrieval/companions.js";
 import { findRelatedFiles, findTestsFor } from "../retrieval/relatedFiles.js";
 import { extractSymbol, readTextFile, summarizeFile } from "../retrieval/readSource.js";
@@ -113,6 +125,15 @@ import { IndexService } from "./services/IndexService.js";
 import { MetricsService } from "./services/MetricsService.js";
 import { EvalService } from "./services/EvalService.js";
 import { decideEditScope } from "../scope/editScope.js";
+import {
+  decideCalibratedEvidencePolicy,
+  isCalibratedEvidencePolicyDecision
+} from "../prime/calibratedEvidencePolicy.js";
+
+type CalibratedQueryLocalIndex = QueryLocalIndex & {
+  initialCandidateCount: number;
+  enrichedCandidateCount: number;
+};
 
 export class KairnRuntime {
   private readonly rootPath: string;
@@ -120,9 +141,11 @@ export class KairnRuntime {
   private readonly indexService: IndexService;
   private readonly metricsService: MetricsService;
   private readonly evalService: EvalService;
+  private readonly rankerConfig: RankerConfig | undefined;
 
-  constructor(root?: string) {
+  constructor(root?: string, options?: KairnRuntimeOptions) {
     this.rootPath = resolveRoot(root);
+    this.rankerConfig = options?.ranker;
     const paths = ensureKairnDir(this.rootPath);
     this.store = new SqliteStore(paths.databasePath);
     const deps = { rootPath: this.rootPath, store: this.store };
@@ -137,6 +160,10 @@ export class KairnRuntime {
 
   async init(): Promise<InitResult> {
     return this.indexService.init();
+  }
+
+  async initInventory() {
+    return this.indexService.initInventory();
   }
 
   async startTask(task: string): Promise<{ session: TaskSession; response: ContextResponse }> {
@@ -187,7 +214,10 @@ export class KairnRuntime {
     markTiming("initialInventoryMs", inventoryStartedAt);
     const hadInventory = knownFiles.length > 0;
     const freshness = hadInventory ? this.indexService.getStatus(this.rootPath).freshness : undefined;
-    const shouldRefreshIndex = input.refreshIndex === true || ((!hadInventory || freshness?.stale) && input.refreshIndex !== false);
+    const shouldRefreshIndex = input.refreshIndex === true || (
+      (!hadInventory || freshness?.stale || this.indexService.isInventoryStage(this.rootPath)) &&
+      input.refreshIndex !== false
+    );
     if (shouldRefreshIndex) {
       const initStartedAt = Date.now();
       knownFiles = await this.refreshIndex(this.rootPath, { force: input.refreshIndex === true });
@@ -211,7 +241,8 @@ export class KairnRuntime {
         });
     const resolvedTask = input.task || session.task;
     const preRetrievalTaskFrame = classifyTaskFrameFromTask(resolvedTask, profile);
-    if (preRetrievalTaskFrame === "runtime_procedural") {
+    const calibratedPolicyRequested = resolveRankerConfig(this.rankerConfig).mode === "calibrated";
+    if (!calibratedPolicyRequested && preRetrievalTaskFrame === "runtime_procedural") {
       const preRetrievalFiles = session.rootPath === this.rootPath ? knownFiles : this.store.listFiles(session.rootPath);
       const evidenceRequest = {
         kind: "runtime_scope" as const,
@@ -371,13 +402,16 @@ export class KairnRuntime {
     );
     const companionSpecific = companionMetadata.some(hasSpecificCompanionEvidence);
     const sessionFiles = session.rootPath === this.rootPath ? knownFiles : this.store.listFiles(session.rootPath);
+    const calibratedEvidencePolicy = isCalibratedEvidencePolicyDecision(context.metadata?.calibratedEvidencePolicy)
+      ? context.metadata.calibratedEvidencePolicy
+      : undefined;
     const decisionStartedAt = Date.now();
-    const baseQuality = evaluatePrimeQuality({
+    const baseQuality = calibratedEvidencePolicy?.quality ?? evaluatePrimeQuality({
       task: resolvedTask,
       context,
       knownFiles: sessionFiles
     });
-    let contextDecision = evaluateContextValue({
+    let contextDecision = calibratedEvidencePolicy?.contextDecision ?? evaluateContextValue({
       task: resolvedTask,
       profile,
       context,
@@ -389,24 +423,26 @@ export class KairnRuntime {
       companionTopScore,
       companionSpecific
     });
-    const automaticSuppressionReason = automaticPrimeSuppressionReason({
-      source: input.source,
-      task: resolvedTask,
-      decision: contextDecision
-    });
-    const mcpBriefSuppressionReason = input.format === "mcp_brief" && contextDecision.wrongContextRisk
-      ? "hybrid MCP brief abstained because compact MCP context risk is high"
-      : undefined;
-    const suppressionReason = automaticSuppressionReason ?? mcpBriefSuppressionReason;
-    if (suppressionReason) {
-      contextDecision = {
-        ...contextDecision,
-        score: Math.max(0, contextDecision.score - 18),
-        action: "suppress",
-        recommendedDelivery: "none",
-        expectedSavingsRisk: "high",
-        reasons: uniqueStrings([...contextDecision.reasons, suppressionReason])
-      };
+    if (!calibratedEvidencePolicy) {
+      const automaticSuppressionReason = automaticPrimeSuppressionReason({
+        source: input.source,
+        task: resolvedTask,
+        decision: contextDecision
+      });
+      const mcpBriefSuppressionReason = input.format === "mcp_brief" && contextDecision.wrongContextRisk
+        ? "hybrid MCP brief abstained because compact MCP context risk is high"
+        : undefined;
+      const suppressionReason = automaticSuppressionReason ?? mcpBriefSuppressionReason;
+      if (suppressionReason) {
+        contextDecision = {
+          ...contextDecision,
+          score: Math.max(0, contextDecision.score - 18),
+          action: "suppress",
+          recommendedDelivery: "none",
+          expectedSavingsRisk: "high",
+          reasons: uniqueStrings([...contextDecision.reasons, suppressionReason])
+        };
+      }
     }
     markTiming("decisionMs", decisionStartedAt);
     const quality = {
@@ -423,10 +459,16 @@ export class KairnRuntime {
       contextDecision.primaryFile && uniquePaths([...context.files, ...context.suggestedNextContext, ...companionPaths]).includes(contextDecision.primaryFile)
         ? contextDecision.primaryFile
         : primaryFile;
-    const directivePrimaryFile = contextDecision.recommendedDelivery === "multi_file_directive" && !contextDecision.exactSourceHit && !contextDecision.canonicalSourceHit
-      ? preferredStructuredDebugPrimary(structuredPrimaryCandidate, companionMetadata)
-      : primaryFile;
-    let invariants = directivePrimaryFile && (contextDecision.exactSourceHit || contextDecision.cheapSingleSource || contextDecision.recommendedDelivery === "multi_file_directive")
+    const directivePrimaryFile = calibratedEvidencePolicy?.primaryFile ??
+      (contextDecision.recommendedDelivery === "multi_file_directive" && !contextDecision.exactSourceHit && !contextDecision.canonicalSourceHit
+        ? preferredStructuredDebugPrimary(structuredPrimaryCandidate, companionMetadata)
+        : primaryFile);
+    const calibratedPrimaryDeliversContent = calibratedEvidencePolicy?.selections
+      .find((selection) => selection.path === directivePrimaryFile)?.delivery === "content";
+    const shouldBuildInvariant = calibratedEvidencePolicy
+      ? calibratedPrimaryDeliversContent
+      : contextDecision.exactSourceHit || contextDecision.cheapSingleSource || contextDecision.recommendedDelivery === "multi_file_directive";
+    let invariants = directivePrimaryFile && shouldBuildInvariant
       ? [
           contextDecision.exactSourceHit
             ? sourceInvariantContextForFile(input.editScopeHints?.sourceInvariants, directivePrimaryFile) ??
@@ -436,10 +478,12 @@ export class KairnRuntime {
       : [];
     let related: Awaited<ReturnType<KairnRuntime["getRelatedFiles"]>> | undefined;
     let tests: Awaited<ReturnType<KairnRuntime["findTests"]>> | undefined;
-    const includeCompanionContext =
-      (!contextDecision.exactSourceHit || contextDecision.recommendedDelivery === "multi_file_directive") &&
-      shouldUseCompanionContext(resolvedTask, companionPaths);
+    const includeCompanionContext = calibratedEvidencePolicy
+      ? calibratedEvidencePolicy.companionFiles.length > 0
+      : (!contextDecision.exactSourceHit || contextDecision.recommendedDelivery === "multi_file_directive") &&
+        shouldUseCompanionContext(resolvedTask, companionPaths);
     const needsExpansion =
+      !calibratedEvidencePolicy &&
       quality.action === "emit" && !contextDecision.exactSourceHit && !includeCompanionContext && input.format !== "mcp_brief";
     if (needsExpansion) {
       const expansionStartedAt = Date.now();
@@ -469,9 +513,13 @@ export class KairnRuntime {
       markTiming("findTestsMs", testsStartedAt);
       markTiming("expansionWallMs", expansionStartedAt);
     }
-    const multiFileLimit = multiFileDirectiveFileLimit(resolvedTask, companionPaths, contextDecision);
+    const multiFileLimit = calibratedEvidencePolicy
+      ? Math.min(3, calibratedEvidencePolicy.selections.length)
+      : multiFileDirectiveFileLimit(resolvedTask, companionPaths, contextDecision);
     const topFileLimit = includeCompanionContext ? Math.max(limits.topFiles, multiFileLimit) : limits.topFiles;
-    const files = contextDecision.exactSourceHit && directivePrimaryFile && !includeCompanionContext && contextDecision.recommendedDelivery !== "multi_file_directive"
+    const files = calibratedEvidencePolicy
+      ? calibratedEvidencePolicy.selections.map((selection) => selection.path).slice(0, 3)
+      : contextDecision.exactSourceHit && directivePrimaryFile && !includeCompanionContext && contextDecision.recommendedDelivery !== "multi_file_directive"
       ? [directivePrimaryFile]
       : contextDecision.recommendedDelivery === "multi_file_directive" && directivePrimaryFile
         ? uniquePaths([
@@ -498,7 +546,7 @@ export class KairnRuntime {
     const changedFilesForPolicy = await this.getChangedFiles(session.rootPath).catch(() => []);
     const failureFilesForPolicy = uniquePaths(
       ledgerEvents
-        .filter((event) => event.kind === "failure_seen" && event.filePath)
+        .filter((event) => (event.kind === "failure_seen" || event.kind === "verification_failed") && event.filePath)
         .map((event) => event.filePath!)
     );
     const sessionPolicy = decideSessionContextPolicy({
@@ -513,10 +561,15 @@ export class KairnRuntime {
       source: input.source ?? "cli"
     });
     const forceMinimalSourceFocus = minimalSourceFocusOverridesSuppression(sessionPolicy.reason);
-    const effectiveAction = forceMinimalSourceFocus
-      ? "shrink"
-      : strongestSuppressiveAction(quality.action, contextDecision.action, sessionPolicy.action);
+    const effectiveAction = calibratedEvidencePolicy?.action === "request_evidence"
+      ? "request_evidence"
+      : calibratedEvidencePolicy?.action === "suppress"
+        ? "suppress"
+        : forceMinimalSourceFocus
+          ? "shrink"
+          : strongestSuppressiveAction(quality.action, contextDecision.action, sessionPolicy.action);
     const forceProductionOnlyOneFile =
+      !calibratedEvidencePolicy &&
       sessionPolicy.reason !== "scope_drift_repair" &&
       effectiveAction === "shrink" &&
       taskHasProductionOnlyEditIntent(resolvedTask) &&
@@ -773,6 +826,9 @@ export class KairnRuntime {
         invariants,
         timings,
         contextTokenEstimate: context.tokenEstimate,
+        ranker: context.metadata?.ranker,
+        ...(context.metadata?.candidateGeneration ? { candidateGeneration: context.metadata.candidateGeneration } : {}),
+        ...(calibratedEvidencePolicy ? { calibratedEvidencePolicy } : {}),
         companionCandidates: companionMetadata,
         relatedCount: related?.related.length ?? 0,
         testCount: tests?.files.length ?? 0,
@@ -837,6 +893,9 @@ export class KairnRuntime {
       timings,
       metadata: {
         companionCandidates: companionMetadata,
+        ranker: context.metadata?.ranker,
+        ...(context.metadata?.candidateGeneration ? { candidateGeneration: context.metadata.candidateGeneration } : {}),
+        ...(calibratedEvidencePolicy ? { calibratedEvidencePolicy } : {}),
         sessionPolicy,
         editScope,
         workingSet: ledgerSummary.workingSet
@@ -1327,15 +1386,40 @@ export class KairnRuntime {
     const files = input.refreshIndex === false ? this.store.listFiles(session.rootPath) : await this.refreshIndex(session.rootPath);
     const changedFiles = await this.getChangedFiles(session.rootPath);
     const query = input.query ?? session.task;
-    const localIndex = this.getQueryLocalIndex({
+    const requestedRanker = resolveRankerConfig(this.rankerConfig);
+    const calibratedRequested = requestedRanker.mode === "calibrated";
+    const calibratedLocalIndex = calibratedRequested
+      ? this.getCalibratedQueryLocalIndex({
+          rootPath: session.rootPath,
+          files,
+          query,
+          changedFiles,
+          shown: session.filesShown
+        })
+      : undefined;
+    const localIndex = calibratedLocalIndex ?? this.getQueryLocalIndex({
       rootPath: session.rootPath,
       files,
       query,
       changedFiles
     });
+    const calibratedCandidatePaths = new Set(calibratedLocalIndex?.candidateFiles ?? []);
+    const retrievalFiles = calibratedLocalIndex
+      ? files.filter((file) => calibratedCandidatePaths.has(file.path))
+      : files;
+    const calibratedCandidateGeneration = calibratedLocalIndex
+      ? {
+          initialCandidates: calibratedLocalIndex.initialCandidateCount,
+          enrichedCandidates: calibratedLocalIndex.enrichedCandidateCount,
+          hybridScoredFiles: retrievalFiles.length,
+          initialLimit: DEFAULT_INITIAL_CANDIDATE_LIMIT,
+          enrichedLimit: DEFAULT_ENRICHED_CANDIDATE_LIMIT,
+          graphHops: 1
+        }
+      : undefined;
     const intent = classifyQueryIntent(query);
-    const initialScored = hybridSearch({
-      files,
+    const rankerCandidates = hybridSearch({
+      files: retrievalFiles,
       query,
       symbols: localIndex.symbols,
       chunks: localIndex.chunks,
@@ -1346,28 +1430,94 @@ export class KairnRuntime {
       edges: localIndex.edges,
       shown: session.filesShown,
       changedFiles
-    }).slice(0, 12);
-    const companionCandidates = findCompanionCandidates({
+    }).slice(0, calibratedRequested ? DEFAULT_ENRICHED_CANDIDATE_LIMIT : 64);
+    const initialScored = rankerCandidates.slice(0, 12);
+    const companionCandidates = calibratedRequested
+      ? []
+      : findCompanionCandidates({
+          files,
+          ranked: initialScored,
+          query,
+          symbols: localIndex.symbols,
+          chunks: localIndex.chunks,
+          edges: localIndex.edges,
+          limit: 2
+        });
+    const legacyScored = calibratedRequested
+      ? initialScored
+      : applyCompanionCandidatesToResults(initialScored, companionCandidates);
+    const evidenceRanking = rankEvidenceResults({
       files,
-      ranked: initialScored,
       query,
       symbols: localIndex.symbols,
       chunks: localIndex.chunks,
       edges: localIndex.edges,
-      limit: 2
-    });
-    const scored = applyCompanionCandidatesToResults(initialScored, companionCandidates).slice(0, 12);
+      legacyResults: legacyScored,
+      candidateResults: rankerCandidates,
+      shown: session.filesShown,
+      changedFiles
+    }, requestedRanker);
+    const allScored = evidenceRanking.files.slice(0, 12);
+    const allRankedFiles = rankedFilesFromScored(allScored);
+    const ledger = summarizeSessionLedger(session.id, this.getSessionLedger(session.id));
+    const shownFiles = uniquePaths([
+      ...session.filesShown
+        .map((record) => record.filePath)
+        .filter((filePath): filePath is string => typeof filePath === "string" && filePath.length > 0),
+      ...this.getSessionLedger(session.id)
+        .filter((event) => event.kind === "context_shown" && event.filePath)
+        .map((event) => event.filePath!)
+    ]);
+    const indexFreshness = this.indexService.getStatus(session.rootPath).freshness;
+    const calibratedPolicy = calibratedRequested
+      ? decideCalibratedEvidencePolicy({
+          task: query,
+          rankedFiles: allRankedFiles,
+          knownFiles: files,
+          ranker: evidenceRanking.status,
+          budget: input.budget ?? 1600,
+          indexMissing: files.length === 0,
+          indexStale: indexFreshness?.stale ?? false,
+          changedFiles,
+          shownFiles,
+          sessionState: {
+            unresolvedFailure: ledger.workingSet.unresolvedFailure,
+            reconsiderShownFiles: ledger.workingSet.reconsiderableShownFiles
+          }
+        })
+      : undefined;
+    const selectedPaths = new Set(calibratedPolicy?.selections.map((selection) => selection.path) ?? []);
+    const selectedOrder = new Map(
+      (calibratedPolicy?.selections ?? []).map((selection, index) => [selection.path, index])
+    );
+    const scored = calibratedPolicy
+      ? allScored
+          .filter((file) => selectedPaths.has(file.path))
+          .map((file) => {
+            const selection = calibratedPolicy.selections.find((item) => item.path === file.path)!;
+            return { ...file, delivery: selection.delivery };
+          })
+          .sort((left, right) => (selectedOrder.get(left.path) ?? 0) - (selectedOrder.get(right.path) ?? 0))
+      : allScored;
     const rankedFiles = rankedFilesFromScored(scored);
     const repeatedFiles = scored.filter((file) => file.reasons.includes("already shown")).length;
-    const decision = decideResponse({
-      requestType: input.requestType ?? "find_context",
-      query,
-      repeatedFiles,
-      graphAvailable: localIndex.edges.length > 0,
-      ...(input.mode ? { explicitMode: input.mode } : {}),
-      ...(input.budget ? { budget: input.budget } : {}),
-      ...(scored[0] ? { topScore: scored[0].score } : {})
-    });
+    const decision = calibratedPolicy
+      ? {
+          mode: calibratedPolicy.delivery === "content" ? "snippets" as const : "brief" as const,
+          reason: calibratedPolicy.reasons.join("; ") || "calibrated evidence policy abstained",
+          warnings: calibratedPolicy.action === "request_evidence"
+            ? ["Kairn needs current repository evidence before it can safely emit source content."]
+            : []
+        }
+      : decideResponse({
+          requestType: input.requestType ?? "find_context",
+          query,
+          repeatedFiles,
+          graphAvailable: localIndex.edges.length > 0,
+          ...(input.mode ? { explicitMode: input.mode } : {}),
+          ...(input.budget ? { budget: input.budget } : {}),
+          ...(scored[0] ? { topScore: scored[0].score } : {})
+        });
     const content = truncateToBudget(
       formatContextResults({
         title: input.requestType === "initial_brief" ? "Kairn Context Brief" : "Kairn Context Results",
@@ -1396,6 +1546,9 @@ export class KairnRuntime {
         query,
         resultCount: scored.length,
         rankedFiles: rankedFiles.slice(0, 12),
+        ranker: evidenceRanking.status,
+        ...(calibratedCandidateGeneration ? { candidateGeneration: calibratedCandidateGeneration } : {}),
+        ...(calibratedPolicy ? { calibratedEvidencePolicy: calibratedPolicy } : {}),
         companionCandidates: companionCandidates.map((candidate) => ({
           file: candidate.file.path,
           score: candidate.score,
@@ -1410,21 +1563,39 @@ export class KairnRuntime {
       content,
       files: scored.map((file) => file.path),
       symbols: [],
-      related: companionCandidates.map((candidate) => candidate.file.path),
+      related: calibratedPolicy
+        ? calibratedPolicy.companionFiles
+        : companionCandidates.map((candidate) => candidate.file.path),
       warnings:
         scored.length === 0
-          ? [...decision.warnings, "No hybrid retrieval matches found. Try a more specific query."]
+          ? [
+              ...decision.warnings,
+              calibratedPolicy
+                ? "The calibrated evidence policy abstained from delivering repository evidence."
+                : "No hybrid retrieval matches found. Try a more specific query."
+            ]
           : decision.warnings,
       suggestedNextContext: scored.slice(0, 5).map((file) => file.path),
       rankedFiles,
       tokenEstimate: estimateTokens(content),
       metadata: {
         rankedFiles,
-        companions: companionCandidates.map((candidate) => ({
-          file: candidate.file.path,
-          score: candidate.score,
-          reasons: candidate.reasons
-        }))
+        ranker: evidenceRanking.status,
+        ...(calibratedCandidateGeneration ? { candidateGeneration: calibratedCandidateGeneration } : {}),
+        ...(calibratedPolicy ? { calibratedEvidencePolicy: calibratedPolicy } : {}),
+        companions: calibratedPolicy
+          ? calibratedPolicy.selections.slice(1).map((selection) => ({
+              file: selection.path,
+              score: Math.round(selection.relevanceProbability * 100),
+              reasons: selection.evidenceReasons,
+              delivery: selection.delivery,
+              source: calibratedPolicy.source
+            }))
+          : companionCandidates.map((candidate) => ({
+              file: candidate.file.path,
+              score: candidate.score,
+              reasons: candidate.reasons
+            }))
       }
     };
   }
@@ -2650,13 +2821,26 @@ export class KairnRuntime {
       sessionId: input.sessionId,
       event: input.event
     });
-    const refreshStartedAt = Date.now();
+    const freshnessStartedAt = Date.now();
     const promptEvent = isPromptEvent(input.event.eventName);
-    const shouldRefreshIndex = input.refreshIndex ?? !promptEvent;
+    const warmIndexFiles = this.store.listFiles(session.rootPath);
+    const promptCanServeEvidence = promptEvent && isHighConfidencePrompt(input.event.eventName, input.event.output);
+    const freshnessBeforeHook = promptCanServeEvidence && warmIndexFiles.length > 0
+      ? this.indexService.getStatus(session.rootPath).freshness
+      : undefined;
+    // Prompt hooks stay cheap when there is no warm index, but a warm stale
+    // index must never be used for source-first output. Refresh it before
+    // ranking so checkout edits cannot leak old snippets into the next turn.
+    const shouldRefreshIndex = input.refreshIndex ?? (
+      !promptEvent || Boolean(promptCanServeEvidence && freshnessBeforeHook?.stale)
+    );
+    const freshnessCheckMs = Date.now() - freshnessStartedAt;
+    let refreshIndexMs = 0;
     if (shouldRefreshIndex) {
+      const refreshStartedAt = Date.now();
       await this.refreshIndex(session.rootPath);
+      refreshIndexMs = Date.now() - refreshStartedAt;
     }
-    const refreshIndexMs = Date.now() - refreshStartedAt;
     const knownFiles = this.store.listFiles(session.rootPath).map((file) => file.path);
     const outputKind = classifyObservedCommand({
       command: input.event.command,
@@ -2742,7 +2926,9 @@ export class KairnRuntime {
               format: hookOutput === "mcp-brief" ? "mcp_brief" : "standard",
               source: input.event.source,
               eventName: "prime_context_hook",
-              refreshIndex: shouldRefreshIndex,
+              // The hook layer has already performed any required refresh.
+              // Avoid a second forced full index inside primeContext.
+              refreshIndex: false,
               editScopeHints: input.editScopeHints,
               metadata: {
                 promptHash,
@@ -2846,6 +3032,8 @@ export class KairnRuntime {
         daemonAttempted: Boolean(input.daemonAttempted),
         daemonHit: Boolean(input.daemonHit),
         indexRefreshSkipped: !shouldRefreshIndex,
+        indexStaleBeforeHook: freshnessBeforeHook?.stale ?? false,
+        freshnessCheckMs,
         refreshIndexMs,
         primeElapsedMs,
         hookLatencyMs: Date.now() - hookStartedAt
@@ -2870,6 +3058,8 @@ export class KairnRuntime {
         daemonHit: Boolean(input.daemonHit),
         daemonMiss: Boolean(input.daemonAttempted) && !input.daemonHit,
         indexRefreshSkipped: !shouldRefreshIndex,
+        indexStaleBeforeHook: freshnessBeforeHook?.stale ?? false,
+        freshnessCheckMs,
         refreshIndexMs,
         primeElapsedMs,
         hookLatencyMs: Date.now() - hookStartedAt,
@@ -3266,6 +3456,104 @@ export class KairnRuntime {
 
   compactIndex(): IndexCompactionResult {
     return this.indexService.compact(this.rootPath);
+  }
+
+  private getCalibratedQueryLocalIndex(input: {
+    rootPath: string;
+    files: FileRecord[];
+    query: string;
+    changedFiles?: Set<string> | undefined;
+    shown?: TaskSession["filesShown"] | undefined;
+  }): CalibratedQueryLocalIndex {
+    const signals = extractEvidenceTaskSignals(input.query);
+    const budget = queryLocalBudget({
+      fileCount: input.files.length,
+      query: input.query
+    });
+    const lexicalTerms = this.store.listLexicalTermsForTerms(
+      input.rootPath,
+      signals.queryTerms,
+      budget.lexicalTermLimit
+    );
+    const lexicalDocuments = this.store.listLexicalDocumentsByIds(
+      input.rootPath,
+      lexicalTerms.map((term) => term.documentId),
+      budget.lexicalDocumentLimit
+    );
+    const lexicalStats = this.store.getLexicalStats(input.rootPath);
+    const symbolCandidateTerms = uniqueStrings([
+      ...signals.preferredIdentifiers,
+      ...signals.identifiers,
+      ...signals.queryTerms
+    ]).slice(0, budget.termLookupLimit);
+    const matchingSymbols = this.store.listSymbolsForTerms(
+      input.rootPath,
+      symbolCandidateTerms,
+      DEFAULT_INITIAL_CANDIDATE_LIMIT
+    );
+    const filesByPath = new Map(input.files.map((file) => [file.path, file]));
+    const lexicalResults = [...scoreBm25Files({
+      query: input.query,
+      documents: lexicalDocuments,
+      terms: lexicalTerms,
+      stats: lexicalStats
+    }).entries()]
+      .map(([filePath, score]) => {
+        const file = filesByPath.get(filePath);
+        return file ? lightweightLexicalResult(file, score.score, score.reasons) : undefined;
+      })
+      .filter((result): result is HybridScoredResult => Boolean(result))
+      .sort((left, right) => right.bm25Score - left.bm25Score || left.path.localeCompare(right.path))
+      .slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
+    const baseCandidateInput = {
+      files: input.files,
+      query: input.query,
+      symbols: matchingSymbols,
+      legacyResults: lexicalResults,
+      ...(input.shown ? { shown: input.shown } : {}),
+      ...(input.changedFiles ? { changedFiles: input.changedFiles } : {})
+    };
+    const initial = buildEvidenceCandidates({
+      ...baseCandidateInput,
+      edges: [],
+      initialLimit: DEFAULT_INITIAL_CANDIDATE_LIMIT,
+      enrichedLimit: DEFAULT_INITIAL_CANDIDATE_LIMIT
+    });
+    const initialPaths = initial.candidates.map((candidate) => candidate.path);
+    const edges = this.store.listGraphEdgesForFiles(
+      input.rootPath,
+      initialPaths,
+      budget.graphEdgeLimit
+    );
+    const enriched = buildEvidenceCandidates({
+      ...baseCandidateInput,
+      edges,
+      initialLimit: DEFAULT_INITIAL_CANDIDATE_LIMIT,
+      enrichedLimit: DEFAULT_ENRICHED_CANDIDATE_LIMIT
+    });
+    const candidateFiles = enriched.candidates
+      .map((candidate) => candidate.path)
+      .slice(0, DEFAULT_ENRICHED_CANDIDATE_LIMIT);
+    const candidatePathSet = new Set(candidateFiles);
+    const symbols = uniqueSymbols([
+      ...matchingSymbols.filter((symbol) => candidatePathSet.has(symbol.filePath)),
+      ...this.store.listSymbolsForFiles(input.rootPath, candidateFiles, budget.symbolLimit)
+    ]);
+    const chunks = this.store.listSemanticChunksForFiles(input.rootPath, candidateFiles, budget.chunkLimit);
+    const vectors = this.store.listSemanticVectorsForChunkIds(input.rootPath, chunks.map((chunk) => chunk.id));
+
+    return {
+      symbols,
+      chunks,
+      vectors,
+      lexicalDocuments,
+      lexicalTerms,
+      ...(lexicalStats ? { lexicalStats } : {}),
+      edges,
+      candidateFiles,
+      initialCandidateCount: initialPaths.length,
+      enrichedCandidateCount: candidateFiles.length
+    };
   }
 
   private getQueryLocalIndex(input: {
@@ -4048,12 +4336,42 @@ function exactPathCandidates(files: FileRecord[], query: string): string[] {
     .map((item) => item.path);
 }
 
+function lightweightLexicalResult(
+  file: FileRecord,
+  bm25Score: number,
+  reasons: string[]
+): HybridScoredResult {
+  return {
+    ...file,
+    score: bm25Score,
+    reasons,
+    semanticScore: 0,
+    keywordScore: 0,
+    bm25Score,
+    behaviorScore: 0,
+    graphScore: 0,
+    intentScore: 0,
+    sessionScore: 0,
+    importanceScore: file.importance,
+    gitScore: 0,
+    chunks: []
+  };
+}
+
 function rankedFilesFromScored(files: HybridScoredResult[]): ContextRankedFile[] {
   return files.map((file) => ({
     path: file.path,
     kind: file.kind,
     score: file.score,
     reasons: file.reasons,
+    ...(file.relevanceProbability !== undefined ? { relevanceProbability: file.relevanceProbability } : {}),
+    ...(file.probabilityGap !== undefined ? { probabilityGap: file.probabilityGap } : {}),
+    ...(file.rankerModelId ? { rankerModelId: file.rankerModelId } : {}),
+    ...(file.featureSchemaVersion ? { featureSchemaVersion: file.featureSchemaVersion } : {}),
+    ...(file.evidenceReasons ? { evidenceReasons: file.evidenceReasons } : {}),
+    ...(file.delivery ? { delivery: file.delivery } : {}),
+    ...(file.rankerMode ? { rankerMode: file.rankerMode } : {}),
+    ...(file.rankerFallbackReason ? { rankerFallbackReason: file.rankerFallbackReason } : {}),
     scores: {
       semantic: file.semanticScore,
       keyword: file.keywordScore,

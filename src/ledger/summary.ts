@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { SessionLedgerEvent, SessionLedgerSummary, TaskPhase } from "../types.js";
 import { uniquePaths } from "../utils/collections.js";
 import { buildSessionWorkingSet } from "./workingSet.js";

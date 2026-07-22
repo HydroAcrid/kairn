@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import Database from "better-sqlite3";
 import type {
   BenchmarkCaseMode,
@@ -515,36 +517,89 @@ export class SqliteStore {
   }
 
   listSymbolsForTerms(rootPath: string, terms: string[], limit = 12_000): SymbolRecord[] {
-    const unique = [...new Set(terms.map((term) => term.toLowerCase()).filter((term) => term.length >= 3))];
+    const boundedLimit = Math.max(1, limit);
+    const unique = [...new Set(terms.map(normalizeSymbolLookupTerm).filter((term) => term.length >= 3))].slice(0, 40);
     if (unique.length === 0) return [];
     const byKey = new Map<string, SymbolRow>();
 
-    for (const term of unique.slice(0, 24)) {
-      const rows = this.db
-        .prepare(`
-          select * from symbols
-          where root_path = ? and lower(name) like ? escape '\\'
-          order by exported desc,
-            case kind
-              when 'function' then 1
-              when 'class' then 2
-              when 'component' then 3
-              when 'interface' then 4
-              when 'type' then 5
-              else 9
-            end asc,
-            file_path asc,
-            start_line asc
-          limit ?
-        `)
-        .all(rootPath, `%${escapeLike(term)}%`, Math.ceil(limit / unique.length)) as SymbolRow[];
+    const normalizedName = "lower(replace(replace(replace(replace(name, '_', ''), '$', ''), '.', ''), ':', ''))";
+    const ordering = `
+      order by exported desc,
+        case kind
+          when 'function' then 1
+          when 'class' then 2
+          when 'component' then 3
+          when 'interface' then 4
+          when 'type' then 5
+          else 9
+        end asc,
+        file_path asc,
+        start_line asc
+    `;
+    const perTermLimit = Math.max(4, Math.min(256, Math.ceil(boundedLimit / unique.length) * 2));
+    const rowsForChannel = (channel: "exact" | "prefix" | "contains"): SymbolRow[] => {
+      const buckets = unique.map((term) => {
+        if (channel === "exact") {
+          return this.db
+            .prepare(`select * from symbols where root_path = ? and ${normalizedName} = ? ${ordering} limit ?`)
+            .all(rootPath, term, perTermLimit) as SymbolRow[];
+        }
+        if (channel === "prefix") {
+          return this.db
+            .prepare(`
+              select * from symbols
+              where root_path = ? and ${normalizedName} like ? escape '\\' and ${normalizedName} <> ?
+              ${ordering}
+              limit ?
+            `)
+            .all(rootPath, `${escapeLike(term)}%`, term, perTermLimit) as SymbolRow[];
+        }
+        return this.db
+          .prepare(`
+            select * from symbols
+            where root_path = ? and ${normalizedName} like ? escape '\\' and ${normalizedName} not like ? escape '\\'
+            ${ordering}
+            limit ?
+          `)
+          .all(rootPath, `%${escapeLike(term)}%`, `${escapeLike(term)}%`, perTermLimit) as SymbolRow[];
+      });
+      return interleaveSymbolRows(buckets);
+    };
 
-      for (const row of rows) {
-        byKey.set(`${row.file_path}:${row.name}:${row.start_line}:${row.end_line}`, row);
-        if (byKey.size >= limit) break;
+    // Exact-name and prefix matches have independent, fair channel quotas.
+    // Each lookup term gets a turn before duplicate-heavy/common names can use
+    // the remaining capacity. Broad contains matching is fallback only.
+    const exactRows = rowsForChannel("exact");
+    const prefixRows = rowsForChannel("prefix");
+    const containsRows = rowsForChannel("contains");
+    let exactCursor = 0;
+    let prefixCursor = 0;
+    let containsCursor = 0;
+    const take = (rows: SymbolRow[], requested: number, cursor: number): number => {
+      let added = 0;
+      while (cursor < rows.length && byKey.size < boundedLimit && added < requested) {
+        const row = rows[cursor]!;
+        cursor += 1;
+        const key = `${row.file_path}:${row.name}:${row.start_line}:${row.end_line}`;
+        if (byKey.has(key)) continue;
+        byKey.set(key, row);
+        added += 1;
       }
-      if (byKey.size >= limit) break;
-    }
+      return cursor;
+    };
+
+    const exactQuota = Math.min(boundedLimit, Math.max(Math.ceil(boundedLimit * 0.5), Math.min(unique.length, boundedLimit)));
+    exactCursor = take(exactRows, exactQuota, exactCursor);
+    const prefixCapacity = boundedLimit - byKey.size;
+    const prefixQuota = Math.min(
+      prefixCapacity,
+      Math.max(Math.ceil(boundedLimit * 0.25), Math.min(unique.length, prefixCapacity))
+    );
+    prefixCursor = take(prefixRows, prefixQuota, prefixCursor);
+    containsCursor = take(containsRows, boundedLimit - byKey.size, containsCursor);
+    exactCursor = take(exactRows, boundedLimit - byKey.size, exactCursor);
+    prefixCursor = take(prefixRows, boundedLimit - byKey.size, prefixCursor);
+    take(containsRows, boundedLimit - byKey.size, containsCursor);
 
     return [...byKey.values()].map(mapSymbolRow);
   }
@@ -1849,6 +1904,22 @@ function mapIndexMetadataRow(row: IndexMetadataRow): IndexFreshnessMetadata {
 
 function escapeLike(value: string): string {
   return value.replace(/[\\%_]/g, (match) => `\\${match}`);
+}
+
+function normalizeSymbolLookupTerm(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function interleaveSymbolRows(buckets: SymbolRow[][]): SymbolRow[] {
+  const rows: SymbolRow[] = [];
+  const maximumDepth = buckets.reduce((maximum, bucket) => Math.max(maximum, bucket.length), 0);
+  for (let depth = 0; depth < maximumDepth; depth += 1) {
+    for (const bucket of buckets) {
+      const row = bucket[depth];
+      if (row) rows.push(row);
+    }
+  }
+  return rows;
 }
 
 function mapWatchEventRow(row: WatchEventRow): WatchEventRecord {

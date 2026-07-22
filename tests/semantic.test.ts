@@ -44,7 +44,7 @@ describe("language adapter registry", () => {
     expect(languageAdapters.find((adapter) => adapter.id === "python")?.status).toBe("active");
     expect(languageAdapters.find((adapter) => adapter.id === "java")?.status).toBe("active");
     expect(languageAdapters.find((adapter) => adapter.id === "c-cpp")?.status).toBe("active");
-    expect(languageAdapters.find((adapter) => adapter.id === "go")?.status).toBe("stub");
+    expect(languageAdapters.find((adapter) => adapter.id === "go")?.status).toBe("active");
     expect(languageAdapters.find((adapter) => adapter.id === "rust")?.status).toBe("stub");
     expect(languageAdapters.find((adapter) => adapter.id === "ruby")?.status).toBe("stub");
     expect(getLanguageAdapterForPath("src/service.py")?.id).toBe("python");

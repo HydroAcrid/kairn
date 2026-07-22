@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type {
   ContextShownRecord,
   FileRecord,
@@ -44,7 +46,7 @@ export function hybridSearch(input: {
   const symbolsByFile = groupByFile(input.symbols, (symbol) => symbol.filePath);
   const chunksByFile = groupByFile(input.chunks, (chunk) => chunk.filePath);
   const intentScores = scoreIntentMatches(input.files, intent, input.query, symbolsByFile, chunksByFile);
-  const behaviorScores = scoreBehaviorMatches(input.files, input.query, symbolsByFile, chunksByFile);
+  const behaviorScores = scoreBehaviorMatches(input.files, retrievalQuery, symbolsByFile, chunksByFile);
   const sourcePriorityScores = scoreSourcePriority(input.files, retrievalQuery, intent, symbolsByFile, chunksByFile);
   const graphScores = scoreGraphNeighbors(input.edges, keywordScores, semanticScores, intentScores, intent, input.files);
   const shownFiles = new Set((input.shown ?? []).map((record) => record.filePath).filter((filePath): filePath is string => Boolean(filePath)));
@@ -721,7 +723,6 @@ const BEHAVIOR_TRIGGER_TERMS = new Set([
   "uppercase",
   "upper",
   "slug",
-  "slugify",
   "local",
   "url",
   "urls",
@@ -757,12 +758,10 @@ const BEHAVIOR_CANONICAL_TERMS = new Map<string, string[]>([
   ["match", ["match", "matching", "compare", "comparison", "equality"]],
   ["length", ["length", "len", "visible", "width"]],
   ["ansi", ["ansi", "escape", "escapes", "colored", "color"]],
-  ["prefix", ["prefix", "starts", "startswith", "starts_with"]],
+  ["prefix", ["prefix", "starts", "startswith"]],
   ["stringview", ["string", "view", "stringview", "string_view"]],
   ["blank", ["blank", "whitespace", "space"]],
   ["lowercase", ["lower", "lowercase", "lowercases", "uppercase", "upper"]],
-  ["slugify", ["slug", "slugify"]],
-  ["localurl", ["local", "url", "urls", "routable"]],
   ["relative", ["relative"]],
   ["absolute", ["absolute", "origin"]]
 ]);
@@ -819,8 +818,7 @@ function detectBehaviorQuery(query: string): BehaviorQuery {
   if (terms.has("match")) symbolHints.add("match");
   if (terms.has("sort")) symbolHints.add("sort");
   if (terms.has("length")) {
-    symbolHints.add("term");
-    symbolHints.add("termlen");
+    symbolHints.add("length");
     symbolHints.add("len");
   }
   if (terms.has("ansi")) {
@@ -839,19 +837,19 @@ function detectBehaviorQuery(query: string): BehaviorQuery {
     symbolHints.add("isblank");
     symbolHints.add("blank");
   }
-  if (terms.has("slugify")) symbolHints.add("slugify");
-  if (terms.has("localurl") && (terms.has("relative") || terms.has("absolute") || normalized.includes("local"))) {
-    symbolHints.add("islocalurl");
-    symbolHints.add("localurl");
-  }
-  if (terms.has("lowercase") && !terms.has("slugify")) {
+  if (terms.has("lowercase")) {
     symbolHints.add("lower");
+  }
+  for (const term of queryTerms) {
+    if (term.length >= 4 && !BEHAVIOR_STOP_TERMS.has(term) && !BEHAVIOR_TRIGGER_TERMS.has(term)) {
+      symbolHints.add(term);
+    }
   }
 
   return {
     active: true,
     terms: [...terms],
-    anchorTerms: [...terms].filter((term) => ["hash", "sort", "stable", "match", "object", "order", "length", "ansi", "prefix", "stringview", "blank", "lowercase", "slugify", "localurl", "relative", "absolute"].includes(term)),
+    anchorTerms: [...terms].filter((term) => ["hash", "sort", "stable", "match", "object", "order", "length", "ansi", "prefix", "stringview", "blank", "lowercase", "relative", "absolute"].includes(term)),
     phrases,
     symbolHints: [...symbolHints],
     sourceFix: /\b(production source|source|fix|debug)\b/.test(normalized),
@@ -911,9 +909,6 @@ function behaviorSymbolWeight(symbolName: string, behavior: BehaviorQuery): numb
   if (behavior.terms.includes("prefix") && /^starts?with/.test(compactSymbol)) score += 96;
   if (behavior.terms.includes("stringview") && compactSymbol.includes("stringview")) score += 84;
   if (behavior.terms.includes("blank") && compactSymbol.includes("blank")) score += 104;
-  if (behavior.terms.includes("slugify") && compactSymbol.includes("slugify")) score += 140;
-  if (behavior.terms.includes("localurl") && compactSymbol.includes("localurl")) score += 150;
-  if (behavior.terms.includes("relative") && compactSymbol.includes("localurl")) score += 70;
   if (behavior.terms.includes("lowercase") && compactSymbol.includes("lower")) score += 54;
   return score;
 }
@@ -2358,7 +2353,6 @@ function applyPreciseSourceRescue(
 type PreciseSourceRescue = {
   active: boolean;
   terms: string[];
-  phraseTerms: string[];
   qualifiedSymbolTerms: string[][];
   helperIntent: boolean;
 };
@@ -2367,19 +2361,12 @@ function detectPreciseSourceRescue(query: string): PreciseSourceRescue {
   const normalized = normalizeSearchText(query);
   const terms = tokenizeLexical(query)
     .filter((term) => term.length > 2 && !PRECISE_RESCUE_STOP_TERMS.has(term));
-  const phraseTerms = new Set<string>();
-  for (const phrase of PRECISE_RESCUE_PHRASES) {
-    if (normalized.includes(phrase.normalized)) {
-      for (const term of phrase.terms) phraseTerms.add(term);
-    }
-  }
   const helperIntent = /\b(helper|utility|utils?|source|implementation|debug|fix|regression|relative|absolute|local)\b/.test(normalized);
-  const specificTerms = [...new Set([...terms, ...phraseTerms])];
+  const specificTerms = [...new Set(terms)];
   const qualifiedSymbolTerms = extractQualifiedSymbolTerms(query);
   return {
     active: (helperIntent && specificTerms.length >= 2) || qualifiedSymbolTerms.length > 0,
     terms: specificTerms,
-    phraseTerms: [...phraseTerms],
     qualifiedSymbolTerms,
     helperIntent
   };
@@ -2410,14 +2397,12 @@ function preciseSourceScore(
   const basenameTerms = new Set(tokenizeLexical(basename));
   const pathTerms = new Set(tokenizeLexical(file.path));
   const symbolText = normalizeSearchText(symbols.map((symbol) => symbol.name).join(" "));
-  const chunkText = normalizeSearchText(chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text.slice(0, 500)}`).join(" "));
   const qualifiedChunkText = rescue.qualifiedSymbolTerms.length > 0
     ? normalizeSearchText(chunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text}`).join(" "))
     : "";
   const pathHits = rescue.terms.filter((term) => pathTerms.has(term) || pathText.includes(term));
   const basenameHits = rescue.terms.filter((term) => basenameTerms.has(term) || basename.includes(term));
   const symbolHits = rescue.terms.filter((term) => symbolText.includes(term));
-  const chunkHits = rescue.phraseTerms.filter((term) => chunkText.includes(term));
   const qualifiedMatches = rescue.qualifiedSymbolTerms.filter((terms) =>
     terms.every((term) => symbolText.includes(term) || qualifiedChunkText.includes(term) || pathText.includes(term))
   );
@@ -2449,10 +2434,6 @@ function preciseSourceScore(
   if (symbolHits.length >= 2) {
     score += symbolHits.length * 72;
     reasons.push(`precise symbol rescue: ${symbolHits.slice(0, 4).join(", ")}`);
-  }
-  if (chunkHits.length >= 2) {
-    score += chunkHits.length * 24;
-    reasons.push(`precise chunk phrase match: ${chunkHits.slice(0, 4).join(", ")}`);
   }
   if (exactUtilityPath && (basenameHits.length >= 1 || symbolHits.length >= 1)) {
     score += 64;
@@ -2514,14 +2495,3 @@ const PRECISE_RESCUE_STOP_TERMS = new Set([
   "that",
   "this"
 ]);
-
-const PRECISE_RESCUE_PHRASES = [
-  { normalized: "local url", terms: ["local", "url"] },
-  { normalized: "relative url", terms: ["relative", "url"] },
-  { normalized: "absolute url", terms: ["absolute", "url"] },
-  { normalized: "is local url", terms: ["local", "url"] },
-  { normalized: "starts with", terms: ["starts", "with", "prefix"] },
-  { normalized: "starts_with", terms: ["starts", "prefix"] },
-  { normalized: "term len", terms: ["term", "len", "length"] },
-  { normalized: "term_len", terms: ["term", "len", "length"] }
-];
