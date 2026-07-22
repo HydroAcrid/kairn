@@ -100,7 +100,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       allowLocalFixture: options.allowLocalFixture === true,
       sampleOnly: intake.sampleOnly
     });
-    const runtime = new KairnRuntime(checkout);
+    const runtime = new KairnRuntime(checkout.root);
     try {
       const inspection = await runtime.inspectEvidenceCandidates({ query: intakeCase.prompt, limit: 64 });
       if (!options.draft && inspection.candidates.length < 7) {
@@ -125,7 +125,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
         throw new Error(`${intakeCase.id}: at least six generated candidates must be curated as explicit noise`);
       }
       const resolvedRef = intakeCase.localFixtureRoot
-        ? git(["rev-parse", "HEAD"], checkout)
+        ? git(["rev-parse", "HEAD"], checkout.root)
         : intakeCase.repositoryRef;
       materializedCases.push({
         id: intakeCase.id,
@@ -161,6 +161,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       });
     } finally {
       runtime.close();
+      checkout.cleanup();
     }
   }
 
@@ -290,39 +291,46 @@ function resolveCheckout(
   intakeCase: IntakeCase,
   cacheDir: string,
   options: { allowLocalFixture: boolean; sampleOnly: boolean }
-): string {
+): { root: string; cleanup: () => void } {
   if (intakeCase.localFixtureRoot) {
     if (!options.allowLocalFixture || !options.sampleOnly) throw new Error("local fixture checkout is not authorized");
     const root = path.resolve(intakeCase.localFixtureRoot);
     if (git(["rev-parse", "HEAD"], root) !== intakeCase.repositoryRef) {
       throw new Error(`${intakeCase.id}: local fixture HEAD does not match repositoryRef`);
     }
-    return root;
+    return { root, cleanup: () => undefined };
   }
-  const key = sha256(`${intakeCase.repositoryUrl}\n${intakeCase.repositoryRef}`).slice(0, 24);
-  const checkout = path.join(cacheDir, key);
-  if (!fs.existsSync(checkout)) {
-    const temporary = fs.mkdtempSync(path.join(cacheDir, `${key}.tmp-`));
+  const repositoryKey = sha256(intakeCase.repositoryUrl).slice(0, 24);
+  const repositoriesDir = path.join(cacheDir, "repositories");
+  const worktreesDir = path.join(cacheDir, "worktrees");
+  fs.mkdirSync(repositoriesDir, { recursive: true });
+  fs.mkdirSync(worktreesDir, { recursive: true });
+  const repositoryCache = path.join(repositoriesDir, `${repositoryKey}.git`);
+  if (!fs.existsSync(repositoryCache)) {
+    const temporary = path.join(repositoriesDir, `${repositoryKey}.tmp-${crypto.randomUUID()}.git`);
     try {
-      git(["clone", "--quiet", "--filter=blob:none", "--no-checkout", intakeCase.repositoryUrl, temporary], cacheDir);
-      git(["fetch", "--quiet", "--depth=1", "origin", intakeCase.repositoryRef], temporary);
-      git(["checkout", "--quiet", "--detach", "FETCH_HEAD"], temporary);
-      fs.renameSync(temporary, checkout);
+      git(["clone", "--quiet", "--filter=blob:none", "--bare", intakeCase.repositoryUrl, temporary], repositoriesDir);
+      fs.renameSync(temporary, repositoryCache);
     } catch (error) {
       fs.rmSync(temporary, { recursive: true, force: true });
       throw error;
     }
   }
-  const remote = git(["remote", "get-url", "origin"], checkout).replace(/\.git$/i, "").replace(/\/$/, "");
+  const remote = git(["remote", "get-url", "origin"], repositoryCache).replace(/\.git$/i, "").replace(/\/$/, "");
   const expected = intakeCase.repositoryUrl.replace(/\.git$/i, "").replace(/\/$/, "");
   if (remote !== expected) throw new Error(`${intakeCase.id}: cached checkout remote mismatch`);
-  if (git(["rev-parse", "HEAD"], checkout) !== intakeCase.repositoryRef) {
-    throw new Error(`${intakeCase.id}: cached checkout commit mismatch`);
-  }
-  if (git(["status", "--porcelain", "--untracked-files=no"], checkout)) {
-    throw new Error(`${intakeCase.id}: cached public checkout has tracked modifications`);
-  }
-  return checkout;
+  git(["fetch", "--quiet", "--depth=1", "origin", intakeCase.repositoryRef], repositoryCache);
+  const checkout = path.join(worktreesDir, `${repositoryKey}-${intakeCase.repositoryRef.slice(0, 12)}-${crypto.randomUUID()}`);
+  git(["worktree", "add", "--quiet", "--detach", checkout, intakeCase.repositoryRef], repositoryCache);
+  if (git(["rev-parse", "HEAD"], checkout) !== intakeCase.repositoryRef) throw new Error(`${intakeCase.id}: worktree commit mismatch`);
+  return {
+    root: checkout,
+    cleanup: () => {
+      const statePath = path.join(checkout, ".kairn");
+      if (fs.existsSync(statePath)) fs.rmSync(statePath, { recursive: true, force: true });
+      if (fs.existsSync(checkout)) git(["worktree", "remove", checkout], repositoryCache);
+    }
+  };
 }
 
 function buildLabels(intakeCase: IntakeCase): Map<string, { label: 0 | 1; weight: number; provenance: string }> {
