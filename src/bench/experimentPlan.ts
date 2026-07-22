@@ -164,7 +164,7 @@ function parseExperimentPlan(value: unknown, planDir: string): ExperimentPlan {
     "schemaVersion", "id", "name", "description", "profile", "conditions", "model", "temperature",
     "maxSteps", "maxTokensPerResponse", "timeoutMs", "repeats", "pythonCommand", "kairnCommand", "tasks"
   ], "experiment plan");
-  const tasks = arrayValue(record.tasks, "tasks").map((item, index) => parseTask(item, planDir, index));
+  const tasks = arrayValue(record.tasks, "tasks").map((item, index) => parseExperimentTask(item, planDir, index));
   const conditions = record.conditions === undefined
     ? undefined
     : arrayValue(record.conditions, "conditions").map((item) => stringValue(item, "condition") as ExperimentCondition);
@@ -187,7 +187,7 @@ function parseExperimentPlan(value: unknown, planDir: string): ExperimentPlan {
   };
 }
 
-function parseTask(value: unknown, planDir: string, index: number): ExperimentTask {
+export function parseExperimentTask(value: unknown, planDir: string, index: number): ExperimentTask {
   const record = asRecord(value, `tasks[${index}]`);
   requireExactKeys(record, [
     "id", "repoUrl", "ref", "publicRepo", "language", "taskClass", "prompt", "turns",
@@ -401,6 +401,30 @@ function validatePilotProfile(plan: ExperimentPlan, errors: string[]): void {
     for (const taskClass of TASK_CLASSES) {
       const count = plan.tasks.filter((task) => task.language === language && task.taskClass === taskClass).length;
       if (count !== 1) errors.push(`pilot profile needs exactly one ${language}/${taskClass} task (found ${count})`);
+    }
+  }
+  const repositories = plan.tasks.map((task) => task.repoUrl.replace(/\.git\/?$/i, "").replace(/\/$/, "").toLowerCase());
+  if (new Set(repositories).size !== repositories.length) {
+    errors.push("pilot profile must use one unique repository lineage per language/scenario cell");
+  }
+  for (const task of plan.tasks) {
+    if (!/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/i.test(task.ref)) {
+      errors.push(`${task.id}: pilot ref must be a full immutable commit hash`);
+    }
+    if ((task.requiredTouchedFiles?.length ?? 0) === 0) {
+      errors.push(`${task.id}: pilot tasks must preregister requiredTouchedFiles`);
+    }
+    if ((task.allowedDiffScopes?.length ?? 0) === 0) {
+      errors.push(`${task.id}: pilot tasks must preregister allowedDiffScopes`);
+    }
+    if ((task.sourceInvariants?.length ?? 0) === 0) {
+      errors.push(`${task.id}: pilot tasks must preregister sourceInvariants`);
+    }
+    if ((task.explicitNoisePatterns?.length ?? 0) === 0) {
+      errors.push(`${task.id}: pilot tasks must preregister at least one explicit noise pattern`);
+    }
+    if (task.taskClass === "long_session" && task.turns?.length !== 3) {
+      errors.push(`${task.id}: pilot long_session tasks must contain exactly three turns`);
     }
   }
 }

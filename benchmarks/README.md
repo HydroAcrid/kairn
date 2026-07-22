@@ -111,59 +111,20 @@ daemon/container accounting is added. This boundary also assumes a trusted,
 patched Docker engine; it reduces repository-code privileges but is not a VM or
 kernel isolation proof.
 
-## Ecological Codex track
+## v0.2C ecological Codex track
 
-The controlled host proves causal comparisons inside one pinned agent loop. It
-does not prove that Kairn helps a coding agent whose loop Kairn cannot control.
-That separate ecological track uses the existing `kairn bench publication`,
-`kairn bench endurance`, and released Codex hook/MCP paths to compare unmodified
-Codex with Codex plus Kairn. Keep its artifacts, denominators, and claims
-separate from the four-arm controlled campaign; never pool their token totals or
-present one track as a substitute for the other.
+The dedicated `kairn bench codex-pilot` runner now owns this two-arm track. It
+pins `@openai/codex@0.145.0` by npm integrity, uses ChatGPT subscription auth in
+a dedicated non-serialized `CODEX_HOME`, rejects provider API credentials,
+counterbalances fresh Vanilla/Kairn checkouts, and records observed Codex JSONL
+usage plus Linux/WSL syscall evidence. Setup and final verification run in
+digest-pinned containers with networking disabled.
 
-Use a paired two-arm protocol for this track:
+The checked-in smoke/pilot files are non-runnable curation descriptors. Do not
+rename them to `.sealed.json` until all repository commits, source oracles,
+offline verifiers, lineages, and Docker digests have been independently checked.
+CI uses a deterministic `codex-pilot-fake.v1` fixture; fake results are protocol
+tests and never evidence.
 
-1. Freeze the released `usekairn` package version and checksum, Codex version,
-   model, prompt, limits, task manifest, and immutable repository commits.
-2. For every task/repeat, create two fresh disposable checkouts. Start a new
-   Codex conversation in each. The vanilla checkout must have no Kairn-owned
-   hook, MCP, `AGENTS.md`, or `.kairn` state.
-3. Run the vanilla arm with the frozen Codex command and hooks disabled.
-4. In the treatment checkout, install the frozen public package and configure
-   exactly one released delivery path. Use source-first hooks as the primary
-   ecological campaign; run MCP-first as a separate two-arm stratum rather than
-   pooling it with hook results.
-5. Capture Codex's observed cached input, uncached input, and output usage,
-   transcript/tool events, wall time, final diff, verifier result, source oracle,
-   and Kairn's local events. Quality-passing pairs are the only denominator for
-   token/time deltas, but misses and failed attempts remain in the report.
-
-Representative commands for the primary source-first hook stratum are:
-
-```text
-# Vanilla checkout
-codex -a never exec --json --model <frozen-model> --sandbox danger-full-access --disable hooks "<task-prompt>"
-
-# Paired treatment checkout, after installing the frozen usekairn artifact
-kairn enable --yes --agents codex
-kairn doctor
-codex -a never exec --json --model <frozen-model> --sandbox danger-full-access \
-  --enable hooks --dangerously-bypass-hook-trust "<same-task-prompt>"
-```
-
-For the separate MCP-first stratum, configure the released MCP integration and
-require proof of a real tool call:
-
-```text
-kairn setup codex --root <fresh-checkout> --mode mcp-first
-codex mcp list
-codex -a never exec --json --model <frozen-model> --sandbox danger-full-access --disable hooks \
-  "Call kairn_prepare_task before reading repository files, then complete: <same-task-prompt>"
-```
-
-An MCP attempt is invalid unless the trace records at least one actual Kairn MCP
-tool call; text that merely mentions Kairn is not MCP evidence. The
-`danger-full-access` setting is restricted to disposable benchmark clones
-because Codex can otherwise cancel project MCP calls before the local server
-receives them. Run verification inside the preregistered sandbox boundary, not
-with expanded host privileges.
+See [the v0.2C Codex pilot protocol](../docs/codex-v02c-pilot.md) for the exact
+2/30/90-attempt stages, runtime pin, invalid-pair policy, metrics, and commands.

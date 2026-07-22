@@ -20,6 +20,7 @@ import { buildSweContextBenchPilot, loadSweContextBenchRows, writeSweContextBenc
 import { runBenchmarkMcpSmoke } from "../../bench/mcpSmoke.js";
 import { runPublicationCampaign } from "../../bench/publication.js";
 import { runExperiment } from "../../bench/experiment.js";
+import { runCodexPilot } from "../../bench/codexPilot.js";
 import { parsePositiveInt, withRuntime } from "../helpers.js";
 import { printJson } from "../output.js";
 
@@ -317,6 +318,56 @@ export function registerBenchCommands(program: Command): void {
       console.log(`Manifest: ${report.outputs.manifestPath}`);
       console.log(`Report: ${report.outputs.markdownPath}`);
       console.log(`Public evidence: ${report.outputs.publicEvidencePath}`);
+    });
+
+  benchCommand
+    .command("codex-pilot")
+    .description("Run the subscription-auth ecological Vanilla Codex/Kairn pilot with observed JSONL usage.")
+    .requiredOption("--plan <path>", "sealed codex-pilot.v1 plan JSON path")
+    .requiredOption("--out <path>", "local campaign artifact directory")
+    .option("--seed <n>", "recorded paired-order seed", parseNonNegativeInt, 20260722)
+    .addOption(new Option("--stage <stage>", "usage-gated campaign stage").choices(["smoke", "first_repeat", "complete"]).makeOptionMandatory())
+    .option("--resume", "reuse integrity-matched completed attempts")
+    .option("--codex-command <path>", "pinned Codex executable", "codex")
+    .option("--codex-home <path>", "dedicated subscription-auth CODEX_HOME; never serialized")
+    .option("--fake-codex-fixture <path>", "deterministic no-provider fixture for CI")
+    .option("--dry-run", "validate and freeze the schedule without invoking Codex")
+    .option("--json", "print JSON output")
+    .action(async (options: {
+      plan: string;
+      out: string;
+      seed: number;
+      stage: "smoke" | "first_repeat" | "complete";
+      resume?: boolean;
+      codexCommand: string;
+      codexHome?: string;
+      fakeCodexFixture?: string;
+      dryRun?: boolean;
+      json?: boolean;
+    }) => {
+      const report = await runCodexPilot({
+        planPath: options.plan,
+        outDir: options.out,
+        seed: options.seed,
+        stage: options.stage,
+        resume: Boolean(options.resume),
+        codexCommand: options.codexCommand,
+        codexHome: options.codexHome,
+        fakeCodexFixture: options.fakeCodexFixture,
+        dryRun: Boolean(options.dryRun),
+        onProgress: options.json ? undefined : (message) => process.stderr.write(`${message}\n`)
+      });
+      if (options.json) {
+        printJson(report);
+        return;
+      }
+      console.log(`Codex pilot: ${report.campaignId}`);
+      console.log(`Stage: ${report.stage}`);
+      console.log(`Attempts: ${report.completedAttemptCount}/${report.expectedAttemptCount}`);
+      console.log(`Trace-valid: ${report.validAttemptCount}/${report.attempts.length}`);
+      console.log(`Protocol complete: ${report.protocolComplete ? "yes" : "no"}`);
+      console.log(`Report: ${report.outputs.reportPath}`);
+      console.log(`Preliminary evidence: ${report.outputs.publicEvidencePath}`);
     });
 
   benchCommand

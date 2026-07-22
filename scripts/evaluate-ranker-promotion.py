@@ -19,6 +19,7 @@ MAX_ECE = 0.05
 MAX_RANKER_P95_MS = 10.0
 MAX_PRIME_P95_REGRESSION = 0.10
 MAX_STATE_MEDIAN_GROWTH = 0.01
+SHA256_LENGTH = 64
 
 
 def require_record(value: Any, label: str) -> dict[str, Any]:
@@ -53,6 +54,31 @@ def require_bool(value: Any, label: str) -> bool:
     return value
 
 
+def require_sha256(value: Any, label: str) -> str:
+    candidate = require_string(value, label).lower()
+    if len(candidate) != SHA256_LENGTH or any(character not in "0123456789abcdef" for character in candidate):
+        raise ValueError(f"{label} must be a lowercase SHA-256 digest")
+    return candidate
+
+
+def load_lineage_roles(target: Path) -> dict[str, str]:
+    root = require_record(json.loads(target.read_text(encoding="utf-8")), "lineage registry")
+    if root.get("schemaVersion") != "lineage-registry.v1":
+        raise ValueError("lineage registry schemaVersion must be lineage-registry.v1")
+    rows = root.get("lineages")
+    if not isinstance(rows, list):
+        raise ValueError("lineage registry lineages must be an array")
+    roles: dict[str, str] = {}
+    for index, value in enumerate(rows):
+        row = require_record(value, f"lineages[{index}]")
+        lineage_id = require_string(row.get("id"), f"lineages[{index}].id")
+        role = require_string(row.get("role"), f"lineages[{index}].role")
+        if lineage_id in roles:
+            raise ValueError(f"duplicate lineage id: {lineage_id}")
+        roles[lineage_id] = role
+    return roles
+
+
 def read_campaign(target: Path) -> dict[str, Any]:
     root = require_record(json.loads(target.read_text(encoding="utf-8")), "campaign")
     if root.get("schemaVersion") != "ranker-promotion.v1":
@@ -60,6 +86,14 @@ def read_campaign(target: Path) -> dict[str, Any]:
     require_string(root.get("campaignId"), "campaignId")
     sample_only = require_bool(root.get("sampleOnly"), "sampleOnly")
     training_lineages = require_string_list(root.get("trainingRepositoryLineages"), "trainingRepositoryLineages")
+    if not sample_only:
+        if root.get("sealed") is not True:
+            raise ValueError("non-sample holdout campaign must declare sealed=true")
+        require_string(root.get("modelId"), "modelId")
+        require_sha256(root.get("modelChecksum"), "modelChecksum")
+        require_sha256(root.get("holdoutCorpusSha256"), "holdoutCorpusSha256")
+        require_string(root.get("holdoutEvaluationId"), "holdoutEvaluationId")
+        require_string(root.get("holdoutOpenedAt"), "holdoutOpenedAt")
     rows = root.get("cases")
     if not isinstance(rows, list) or not rows:
         raise ValueError("cases must be a non-empty array")
@@ -71,6 +105,16 @@ def read_campaign(target: Path) -> dict[str, Any]:
     overlap = sorted(holdout_lineages.intersection(training_lineages))
     if overlap:
         raise ValueError(f"ranker holdout repository lineages overlap training/calibration/holdout data: {', '.join(overlap)}")
+    if not sample_only:
+        registry_ref = require_string(root.get("lineageRegistry"), "lineageRegistry")
+        registry_path = (target.parent / registry_ref).resolve()
+        roles = load_lineage_roles(registry_path)
+        wrong_holdout = sorted(lineage for lineage in holdout_lineages if roles.get(lineage) != "holdout")
+        if wrong_holdout:
+            raise ValueError(f"promotion case lineages must have holdout role: {', '.join(wrong_holdout)}")
+        expected_training = {lineage for lineage, role in roles.items() if role in {"train", "calibration"}}
+        if set(training_lineages) != expected_training:
+            raise ValueError("trainingRepositoryLineages must exactly match train and calibration roles in the lineage registry")
     return {**root, "sampleOnly": sample_only, "cases": cases}
 
 
@@ -230,6 +274,13 @@ def evaluate(campaign: dict[str, Any]) -> dict[str, Any]:
         "schemaVersion": "ranker-promotion-report.v1",
         "campaignId": campaign["campaignId"],
         "sampleOnly": campaign["sampleOnly"],
+        **({
+            "modelId": campaign["modelId"],
+            "modelChecksum": campaign["modelChecksum"],
+            "holdoutCorpusSha256": campaign["holdoutCorpusSha256"],
+            "holdoutEvaluationId": campaign["holdoutEvaluationId"],
+            "holdoutOpenedAt": campaign["holdoutOpenedAt"],
+        } if not campaign["sampleOnly"] else {}),
         "caseCount": len(cases),
         "metrics": {
             "candidateRecallAt64": round(candidate_recall, 6),
@@ -261,7 +312,9 @@ def evaluate(campaign: dict[str, Any]) -> dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", required=True, type=Path)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--input", dest="input", type=Path)
+    source.add_argument("--manifest", dest="input", type=Path)
     parser.add_argument("--out", type=Path)
     parser.add_argument("--allow-sample", action="store_true", help="Validate gate mechanics without treating sample data as promotion evidence")
     args = parser.parse_args()

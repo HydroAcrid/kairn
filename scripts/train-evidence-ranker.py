@@ -83,12 +83,12 @@ def log_loss(rows: list[dict[str, Any]], intercept: float, coefficients: list[fl
 
 def choose_l2(rows: list[dict[str, Any]]) -> tuple[float, dict[str, float]]:
     groups = sorted(
-        {row["caseGroupId"] for row in rows},
+        {row["repositoryLineageId"] for row in rows},
         key=lambda value: (hashlib.sha256(value.encode()).hexdigest(), value),
     )
     folds = min(5, len(groups))
     if folds < 2:
-        raise ValueError("training split needs at least two case groups for grouped cross-validation")
+        raise ValueError("training split needs at least two repository lineages for grouped cross-validation")
     # Assign sorted groups round-robin so every fold is populated. A direct
     # hash modulo can leave folds empty on smaller public training sets.
     fold_by_group = {group: index % folds for index, group in enumerate(groups)}
@@ -96,8 +96,8 @@ def choose_l2(rows: list[dict[str, Any]]) -> tuple[float, dict[str, float]]:
     for l2 in L2_GRID:
         losses: list[float] = []
         for fold in range(folds):
-            train = [row for row in rows if fold_by_group[row["caseGroupId"]] != fold]
-            validation = [row for row in rows if fold_by_group[row["caseGroupId"]] == fold]
+            train = [row for row in rows if fold_by_group[row["repositoryLineageId"]] != fold]
+            validation = [row for row in rows if fold_by_group[row["repositoryLineageId"]] == fold]
             if not train or not validation:
                 continue
             losses.append(log_loss(validation, *train_logistic(train, l2, iterations=700)))
@@ -185,10 +185,8 @@ def read_rows(target: Path) -> tuple[list[dict[str, Any]], bytes]:
         value = json.loads(line)
         if value.get("label") not in (0, 1, None):
             raise ValueError(f"line {line_number}: label must be 0, 1, or null")
-        if value.get("label") is None:
-            continue
         if value.get("isPublic") is not True:
-            raise ValueError(f"line {line_number}: labeled training rows must declare isPublic=true")
+            raise ValueError(f"line {line_number}: corpus rows must declare isPublic=true")
         public_source = value.get("publicSourceUrl")
         parsed_source = urlparse(public_source) if isinstance(public_source, str) else None
         if not parsed_source or parsed_source.scheme != "https" or not parsed_source.netloc:
@@ -199,10 +197,10 @@ def read_rows(target: Path) -> tuple[list[dict[str, Any]], bytes]:
         if not isinstance(repository_lineage, str) or not repository_lineage:
             raise ValueError(f"line {line_number}: repositoryLineageId is required")
         lineage_url = urlparse(repository_lineage)
-        if value.get("dataOrigin") == "synthetic":
-            if not repository_lineage.startswith(("synthetic:", "synthetic-")):
-                raise ValueError(f"line {line_number}: synthetic lineage ids must use a synthetic prefix")
-        elif lineage_url.scheme != "https" or not lineage_url.netloc:
+        if (
+            not repository_lineage.startswith(("synthetic:", "synthetic-"))
+            and (lineage_url.scheme != "https" or not lineage_url.netloc)
+        ):
             raise ValueError(f"line {line_number}: public repositoryLineageId must be a canonical HTTPS repository URL")
         if value.get("featureSchemaVersion") != SCHEMA_VERSION:
             raise ValueError(f"line {line_number}: feature schema mismatch")
@@ -217,6 +215,10 @@ def read_rows(target: Path) -> tuple[list[dict[str, Any]], bytes]:
         case_group = value.get("caseGroupId")
         if not isinstance(case_group, str) or not case_group:
             raise ValueError(f"line {line_number}: caseGroupId is required")
+        if value.get("label") is None:
+            if value.get("labelWeight") is not None or value.get("labelProvenance") is not None:
+                raise ValueError(f"line {line_number}: unlabeled rows must omit labelWeight and labelProvenance")
+            continue
         weight = value.get("labelWeight", 1.0)
         if not isinstance(weight, (int, float)) or not math.isfinite(weight) or weight <= 0:
             raise ValueError(f"line {line_number}: labelWeight must be positive")
@@ -330,7 +332,6 @@ def main() -> int:
     }
     helper = Path(__file__).resolve().with_name("evidence-artifact-checksum.mjs")
     artifact["checksum"] = artifact_checksum(artifact, args.node, helper)
-    holdout_probabilities = calibrated_probabilities(holdout, intercept, coefficients, platt_a, platt_b)
     manifest = {
         "schemaVersion": 1,
         "modelId": args.model_id,
@@ -348,9 +349,14 @@ def main() -> int:
             for split in ["train", "calibration", "holdout"]
         },
         "selectedL2": selected_l2,
+        "crossValidationGroup": "repositoryLineageId",
         "crossValidationLogLoss": cv_scores,
         "calibration": evaluate(calibration, calibration_probabilities),
-        "holdout": evaluate(holdout, holdout_probabilities),
+        "holdout": {
+            "rows": len(holdout),
+            "status": "sealed_not_evaluated",
+            "note": "Promotion metrics are computed only by the single-use sealed holdout campaign.",
+        },
         "decisionThresholds": artifact["decisionThresholds"],
         "artifactChecksum": artifact["checksum"],
     }
@@ -367,14 +373,20 @@ def main() -> int:
             f"- Training data hash: `{data_hash}`",
             f"- Feature schema: `{SCHEMA_VERSION}` / `{schema_hash()}`",
             f"- Public-data-only declaration: `true`",
-            f"- Holdout rows: `{len(holdout)}`",
-            f"- Holdout ECE: `{manifest['holdout']['expectedCalibrationError']}`",
+            f"- Sealed holdout rows (not evaluated during training): `{len(holdout)}`",
+            f"- Cross-validation grouping: `repositoryLineageId`",
             "",
             "The model ranks repository files; deterministic Kairn policy still decides delivery and safety overrides.",
         ]) + "\n",
         encoding="utf-8",
     )
-    print(json.dumps({"artifact": str(output), "manifest": str(manifest_path), "modelCard": str(card_path), "metrics": manifest["holdout"]}, indent=2))
+    print(json.dumps({
+        "artifact": str(output),
+        "manifest": str(manifest_path),
+        "modelCard": str(card_path),
+        "calibrationMetrics": manifest["calibration"],
+        "holdoutStatus": manifest["holdout"],
+    }, indent=2))
     return 0
 
 
