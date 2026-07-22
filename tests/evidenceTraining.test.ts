@@ -7,6 +7,7 @@ import { validateEvidenceRankerArtifact } from "../src/retrieval/evidenceModel.j
 import { EVIDENCE_FEATURE_NAMES } from "../src/types/evidence.js";
 import { materializeEvidenceCorpus } from "../scripts/materialize-evidence-corpus.js";
 import { patchFiles } from "../scripts/build-public-evidence-intake.js";
+import { buildCorpusReviewQueue } from "../scripts/build-corpus-review-queue.js";
 import { createFixtureRepo } from "./helpers.js";
 
 function pythonInvocation(): { command: string; prefix: string[] } {
@@ -76,7 +77,8 @@ describe("public evidence ranker training", () => {
       reportPath,
       cacheDir: path.join(temporary, "cache"),
       allowSample: true,
-      allowLocalFixture: true
+      allowLocalFixture: true,
+      draft: true
     });
 
     expect(result.caseCount).toBe(1);
@@ -93,6 +95,17 @@ describe("public evidence ranker training", () => {
     expect(JSON.parse(fs.readFileSync(reportPath, "utf8"))).toMatchObject({
       candidateRecallAt64: 1,
       cases: [expect.objectContaining({ explicitNegativeCount: 6, requiredSourceRecallAt64: 1 })]
+    });
+    expect(buildCorpusReviewQueue({
+      intakePath,
+      manifestPath,
+      reportPath,
+      outPath: path.join(temporary, "review.json")
+    })).toMatchObject({
+      caseCount: 1,
+      requiredSourceReviewCases: 0,
+      explicitNoiseReviewCases: 0,
+      readyForSealCases: 1
     });
   });
 

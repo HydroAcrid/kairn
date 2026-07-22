@@ -34,6 +34,12 @@ pnpm ranker:materialize \
   --intake benchmarks/ranker-corpus-intake.v1.json \
   --out benchmarks/ranker-corpus.v1.json \
   --report-out artifacts/ranker-corpus.materialization.json
+
+pnpm ranker:review-queue \
+  --intake artifacts/ranker-corpus-intake.candidates.json \
+  --manifest artifacts/ranker-corpus.draft.json \
+  --report artifacts/ranker-corpus.draft.report.json \
+  --out artifacts/ranker-corpus.review-queue.json
 ```
 
 The public-intake command selects the exact 165-case, 40-lineage split from
@@ -47,6 +53,12 @@ intake and emits `sealed: false` candidate vectors plus candidate paths and
 typed reasons in the review report. Curators use that report to mark at least
 six true noise/excluded candidates per case; only the subsequent non-draft run
 can produce a sealed corpus manifest.
+
+The generated review queue is hash-bound to the intake, manifest, report, and
+materializer commit. It never auto-fills decisions. It exposes the prompt,
+patch sources present/missing from candidate@64, typed candidate reasons, and
+blank reviewer fields so the required-source and explicit-noise decisions are
+auditable rather than inferred from Kairn's own ranking.
 
 Draft reporting keeps two ground-truth levels separate. Curated
 `requiredSourceFiles` determine the strict candidate-recall@64 gate. Official
