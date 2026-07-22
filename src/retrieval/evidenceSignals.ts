@@ -157,7 +157,7 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
   for (const result of input.legacyResults) {
     const file = filesByPath.get(normalizeRepoPath(result.path));
     if (!file || (result.bm25Score <= 0 && result.keywordScore <= 0 && result.semanticScore <= 0.03)) continue;
-    if (isProductionSource(file)) addSignal(file.path, "production_source");
+    if (isProductionEvidenceFile(file)) addSignal(file.path, "production_source");
     if (roleMatchesIntent(file, signals.intent)) addSignal(file.path, "role_match");
     if (signals.intent === "test" && isTestFile(file)) addSignal(file.path, "test_requested");
   }
@@ -314,7 +314,7 @@ function buildFeatureVector(input: {
     alreadyDelivered: binary(input.reasons.has("already_delivered")),
     graphNeighbor: binary(input.reasons.has("graph_neighbor")),
     sourceTestPair: binary(input.reasons.has("source_test_pair")),
-    productionSource: binary(isProductionSource(input.file)),
+    productionSource: binary(isProductionEvidenceFile(input.file)),
     testFile: binary(isTestFile(input.file)),
     docsFile: binary(isDocsFile(input.file)),
     generatedVendor: binary(isGeneratedOrVendor(input.file.path)),
@@ -340,7 +340,7 @@ function addDerivedReasons(
   if (changedFiles.has(normalizedPath)) reasons.add("git_diff");
   if ((legacy?.bm25Score ?? 0) > 0 || (legacy?.keywordScore ?? 0) > 0) reasons.add("lexical");
   if ((legacy?.semanticScore ?? 0) > 0.03) reasons.add("semantic");
-  if (isProductionSource(file)) reasons.add("production_source");
+  if (isProductionEvidenceFile(file)) reasons.add("production_source");
   if (isGeneratedOrVendor(file.path)) reasons.add("generated_vendor");
   if (signals.intent === "test" && isTestFile(file)) reasons.add("test_requested");
   if (roleMatchesIntent(file, signals.intent)) reasons.add("role_match");
@@ -515,7 +515,7 @@ function stableFiles(files: FileRecord[]): FileRecord[] {
   return [...files].sort((left, right) => left.path.localeCompare(right.path));
 }
 
-function isProductionSource(file: FileRecord): boolean {
+export function isProductionEvidenceFile(file: FileRecord): boolean {
   return ["source", "route", "component", "schema"].includes(file.kind) && !isTestFile(file) && !isDocsFile(file) && !isGeneratedOrVendor(file.path);
 }
 
@@ -532,16 +532,16 @@ function isGeneratedOrVendor(filePath: string): boolean {
 }
 
 function roleMatchesIntent(file: FileRecord, intent: EvidenceTaskIntent): boolean {
-  if (intent === "source") return isProductionSource(file);
+  if (intent === "source") return isProductionEvidenceFile(file);
   if (intent === "test") return isTestFile(file);
   if (intent === "docs") return isDocsFile(file);
-  return isProductionSource(file);
+  return isProductionEvidenceFile(file);
 }
 
 function roleReason(file: FileRecord, intent: EvidenceTaskIntent): EvidenceReason {
   if (intent === "test" && isTestFile(file)) return "test_requested";
   if (roleMatchesIntent(file, intent)) return "role_match";
-  return isProductionSource(file) ? "production_source" : "content_cost";
+  return isProductionEvidenceFile(file) ? "production_source" : "content_cost";
 }
 
 const EVIDENCE_REASON_ORDER: EvidenceReason[] = [

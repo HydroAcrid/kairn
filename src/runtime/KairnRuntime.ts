@@ -66,7 +66,8 @@ import {
   buildEvidenceCandidates,
   DEFAULT_ENRICHED_CANDIDATE_LIMIT,
   DEFAULT_INITIAL_CANDIDATE_LIMIT,
-  extractEvidenceTaskSignals
+  extractEvidenceTaskSignals,
+  isProductionEvidenceFile
 } from "../retrieval/evidenceSignals.js";
 import { scoreBm25Files } from "../lexical/bm25.js";
 import { scoreFiles } from "../retrieval/scoreResults.js";
@@ -3546,7 +3547,7 @@ export class KairnRuntime {
       DEFAULT_INITIAL_CANDIDATE_LIMIT
     );
     const filesByPath = new Map(input.files.map((file) => [file.path, file]));
-    const lexicalResults = [...scoreBm25Files({
+    const allLexicalResults = [...scoreBm25Files({
       query: input.query,
       documents: lexicalDocuments,
       terms: lexicalTerms,
@@ -3557,17 +3558,18 @@ export class KairnRuntime {
         return file ? lightweightLexicalResult(file, score.score, score.reasons) : undefined;
       })
       .filter((result): result is HybridScoredResult => Boolean(result))
-      .sort((left, right) => right.bm25Score - left.bm25Score || left.path.localeCompare(right.path))
-      .slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
-    const pathAndSymbolResults = scoreFiles(input.files, input.query, matchingSymbols)
+      .sort((left, right) => right.bm25Score - left.bm25Score || left.path.localeCompare(right.path));
+    const allPathAndSymbolResults = scoreFiles(input.files, input.query, matchingSymbols)
       .filter((result) => result.reasons.some((reason) =>
         reason.startsWith("path contains") ||
         reason.startsWith("filename contains") ||
         reason.startsWith("symbol match") ||
         reason.startsWith("exported symbol")
       ))
-      .slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT)
       .map((result) => lightweightKeywordResult(result, result.score, result.reasons));
+    const sourceOrUnknownIntent = signals.intent === "source" || signals.intent === "unknown";
+    const lexicalResults = selectRoleBalancedSeeds(allLexicalResults, sourceOrUnknownIntent);
+    const pathAndSymbolResults = selectRoleBalancedSeeds(allPathAndSymbolResults, sourceOrUnknownIntent);
     const cheapCandidateResults = mergeLightweightResults(lexicalResults, pathAndSymbolResults);
     const baseCandidateInput = {
       files: input.files,
@@ -4466,6 +4468,18 @@ function mergeLightweightResults(
     });
   }
   return [...byPath.values()].sort((left, right) => right.score - left.score || left.path.localeCompare(right.path));
+}
+
+function selectRoleBalancedSeeds(
+  results: HybridScoredResult[],
+  includeProductionReserve: boolean
+): HybridScoredResult[] {
+  const global = results.slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
+  if (!includeProductionReserve) return global;
+  const production = results
+    .filter((result) => isProductionEvidenceFile(result))
+    .slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
+  return mergeLightweightResults(global, production);
 }
 
 function rankedFilesFromScored(files: HybridScoredResult[]): ContextRankedFile[] {
