@@ -9,6 +9,27 @@ import { buildCodexPilotSchedule, CODEX_PILOT_PIN, loadCodexPilotPlan } from "..
 import { codexThreadId, observedCodexUsage, parseCodexJsonl } from "../src/bench/codexPilotUsage.js";
 
 describe("ecological Codex pilot", () => {
+  it("keeps the checked-in 5x3 task-curation registry parseable and complete", () => {
+    const registry = JSON.parse(fs.readFileSync(
+      path.resolve("benchmarks/plans/codex-v02c.task-curation.json"),
+      "utf8"
+    )) as {
+      schemaVersion: string;
+      status: string;
+      smoke: Array<{ status: string }>;
+      pilot: Array<{ language: string; scenario: string; status: string }>;
+    };
+
+    expect(registry).toMatchObject({
+      schemaVersion: "codex-pilot-task-curation.v1",
+      status: "curation"
+    });
+    expect(registry.smoke).toHaveLength(1);
+    expect(registry.smoke.every((task) => task.status === "unsealed")).toBe(true);
+    expect(registry.pilot).toHaveLength(15);
+    expect(new Set(registry.pilot.map((task) => `${task.language}/${task.scenario}`)).size).toBe(15);
+  });
+
   it("parses only completed-turn observed usage and preserves reasoning tokens", () => {
     const events = parseCodexJsonl([
       JSON.stringify({ type: "thread.started", thread_id: "thread-1" }),

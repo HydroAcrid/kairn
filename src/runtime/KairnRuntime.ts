@@ -20,6 +20,7 @@ import type {
   ContextResponse,
   ContextResponseMode,
   ContextValueDecision,
+  EvidenceCandidateInspection,
   ExactSourceEvidence,
   EvalComparison,
   EvalObservationRecord,
@@ -3452,6 +3453,58 @@ export class KairnRuntime {
   async refreshIndexNow(): Promise<IndexStateStats> {
     await this.refreshIndex(this.rootPath, { force: true });
     return this.getIndexStatus();
+  }
+
+  /**
+   * Materialize the same bounded query-local feature vectors used by the
+   * calibrated serving path. This deliberately returns no labels: corpus
+   * provenance is supplied and validated by the offline curation pipeline.
+   */
+  async inspectEvidenceCandidates(input: {
+    query: string;
+    limit?: number | undefined;
+  }): Promise<EvidenceCandidateInspection> {
+    await this.init();
+    const files = this.store.listFiles(this.rootPath);
+    const localIndex = this.getCalibratedQueryLocalIndex({
+      rootPath: this.rootPath,
+      files,
+      query: input.query
+    });
+    const candidatePaths = new Set(localIndex.candidateFiles);
+    const retrievalFiles = files.filter((file) => candidatePaths.has(file.path));
+    const hybridCandidates = hybridSearch({
+      files: retrievalFiles,
+      query: input.query,
+      symbols: localIndex.symbols,
+      chunks: localIndex.chunks,
+      vectors: localIndex.vectors,
+      lexicalDocuments: localIndex.lexicalDocuments,
+      lexicalTerms: localIndex.lexicalTerms,
+      lexicalStats: localIndex.lexicalStats,
+      edges: localIndex.edges,
+      shown: [],
+      changedFiles: new Set<string>()
+    }).slice(0, DEFAULT_ENRICHED_CANDIDATE_LIMIT);
+    const candidateSet = buildEvidenceCandidates({
+      files,
+      query: input.query,
+      symbols: localIndex.symbols,
+      edges: localIndex.edges,
+      legacyResults: hybridCandidates,
+      shown: [],
+      changedFiles: new Set<string>(),
+      initialLimit: DEFAULT_INITIAL_CANDIDATE_LIMIT,
+      enrichedLimit: DEFAULT_ENRICHED_CANDIDATE_LIMIT
+    });
+    const candidateLimit = Math.max(1, Math.min(input.limit ?? DEFAULT_INITIAL_CANDIDATE_LIMIT, DEFAULT_INITIAL_CANDIDATE_LIMIT));
+    return {
+      signals: candidateSet.signals,
+      candidates: candidateSet.candidates.slice(0, candidateLimit),
+      initialCandidateCount: localIndex.initialCandidateCount,
+      enrichedCandidateCount: localIndex.enrichedCandidateCount,
+      candidateLimit
+    };
   }
 
   compactIndex(): IndexCompactionResult {

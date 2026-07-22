@@ -176,6 +176,23 @@ def validate_case(
     if origin not in DATA_ORIGINS:
         raise ValueError(f"{label}.dataOrigin is unsupported")
     public_source = require_https(row.get("publicSourceUrl"), f"{label}.publicSourceUrl")
+    repository_url = row.get("repositoryUrl")
+    repository_ref = row.get("repositoryRef")
+    query = row.get("prompt")
+    query_digest = row.get("querySha256")
+    if not allow_sample:
+        canonical_url = canonical_repository_url(
+            repository_url, f"{label}.repositoryUrl", allow_synthetic=False
+        )
+        if canonical_url.removesuffix(".git") != lineage_id.removesuffix(".git"):
+            raise ValueError(f"{label}: repositoryUrl must match repositoryLineageId")
+        pinned_ref = require_string(repository_ref, f"{label}.repositoryRef")
+        if len(pinned_ref) not in (40, 64) or any(char not in "0123456789abcdefABCDEF" for char in pinned_ref):
+            raise ValueError(f"{label}.repositoryRef must be a full immutable commit hash")
+        prompt = require_string(query, f"{label}.prompt")
+        expected_query_digest = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+        if query_digest != expected_query_digest:
+            raise ValueError(f"{label}.querySha256 does not match prompt")
     synthetic_parent = row.get("syntheticVariantOf")
     synthetic_index = row.get("syntheticVariantIndex")
     if origin == "synthetic":
@@ -209,6 +226,10 @@ def validate_case(
         "scenario": scenario,
         "repositoryLineageId": lineage_id,
         "publicSourceUrl": public_source,
+        "repositoryUrl": repository_url,
+        "repositoryRef": repository_ref,
+        "prompt": query,
+        "querySha256": query_digest,
         "dataOrigin": origin,
         "syntheticVariantOf": synthetic_parent,
         "syntheticVariantIndex": synthetic_index,
@@ -308,6 +329,17 @@ def main() -> int:
         raise ValueError("sampleOnly must be a boolean")
     if sample_only and not args.allow_sample:
         raise ValueError("sample-only corpus requires --allow-sample")
+    if not sample_only:
+        materializer = require_record(root.get("materializer"), "materializer")
+        if materializer.get("schemaVersion") != "ranker-corpus-materializer.v1":
+            raise ValueError("materializer.schemaVersion must be ranker-corpus-materializer.v1")
+        for field in ("kairnCommit", "intakeSha256"):
+            value = require_string(materializer.get(field), f"materializer.{field}")
+            expected_lengths = (40, 64) if field == "kairnCommit" else (64,)
+            if len(value) not in expected_lengths or any(char not in "0123456789abcdefABCDEF" for char in value):
+                raise ValueError(f"materializer.{field} must be a hexadecimal provenance hash")
+        if materializer.get("candidateLimit") != 64 or materializer.get("graphHops") != 1:
+            raise ValueError("materializer must pin candidateLimit=64 and graphHops=1")
     registry_ref = require_string(root.get("lineageRegistry"), "lineageRegistry")
     registry_path = (manifest_path.parent / registry_ref).resolve()
     registry = load_registry(registry_path, allow_sample=sample_only)

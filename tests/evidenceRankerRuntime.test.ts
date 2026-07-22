@@ -7,6 +7,29 @@ import { BUNDLED_EVIDENCE_ARTIFACT } from "../src/retrieval/evidenceModel.js";
 import { createFixtureRepo } from "./helpers.js";
 
 describe("evidence ranker runtime integration", () => {
+  it("exports bounded unlabeled feature snapshots through the serving candidate path", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+
+    try {
+      const snapshot = await runtime.inspectEvidenceCandidates({
+        query: "Fix the production formatUser implementation in src/user.ts",
+        limit: 8
+      });
+
+      expect(snapshot.candidateLimit).toBe(8);
+      expect(snapshot.candidates.length).toBeLessThanOrEqual(8);
+      expect(snapshot.candidates[0]).toEqual(expect.objectContaining({
+        path: "src/user.ts",
+        reasons: expect.arrayContaining(["exact_path", "production_source"]),
+        features: expect.objectContaining({ exactPath: 1, productionSource: 1 })
+      }));
+      expect(snapshot.candidates.every((candidate) => !("label" in candidate))).toBe(true);
+    } finally {
+      runtime.close();
+    }
+  });
+
   it("serves legacy order in shadow mode and exposes typed ranker metadata", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root, { ranker: { mode: "shadow" } });

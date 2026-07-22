@@ -79,6 +79,15 @@ export type EvidenceCandidate = {
   features: EvidenceFeatureVector;
 };
 
+/** Deterministic query-local snapshot used to curate public ranker corpora. */
+export type EvidenceCandidateInspection = {
+  signals: EvidenceTaskSignals;
+  candidates: EvidenceCandidate[];
+  initialCandidateCount: number;
+  enrichedCandidateCount: number;
+  candidateLimit: number;
+};
+
 export type EvidenceRankerThresholds = {
   abstain: number;
   pathHint: number;

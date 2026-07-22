@@ -18,19 +18,57 @@ Synthetic variants are restricted to train, must name a natural parent in the
 same repository/language/scenario cell, and are capped at two per parent.
 Calibration and holdout cases must be natural public benchmark or patch cases.
 
+The curation boundary starts at
+`benchmarks/ranker-corpus-intake.v1.json`. Once independently reviewed and
+sealed, the materializer indexes each immutable public checkout and obtains
+feature vectors from the same bounded query-local candidate path used in
+calibrated serving:
+
 ```bash
-pnpm ranker:corpus -- --manifest benchmarks/ranker-corpus.v1.json
-pnpm ranker:train -- --input artifacts/ranker-corpus.jsonl
-pnpm ranker:promote -- --manifest artifacts/ranker-holdout.json
+pnpm ranker:intake:public \
+  --out artifacts/ranker-corpus-intake.candidates.json \
+  --registry-out artifacts/lineage-registry.candidates.json \
+  --summary-out artifacts/ranker-corpus-intake.summary.json
+
+pnpm ranker:materialize \
+  --intake benchmarks/ranker-corpus-intake.v1.json \
+  --out benchmarks/ranker-corpus.v1.json \
+  --report-out artifacts/ranker-corpus.materialization.json
+```
+
+The public-intake command selects the exact 165-case, 40-lineage split from
+public SWE-bench Verified, SWE-bench Multilingual, and Multi-SWE-bench patch
+records. Its output stays in `artifacts/`: source selection is mechanical, not
+an approval. Curators review those rows before copying them into the canonical
+intake and lineage registry.
+
+During materialization, add `--draft`. Draft mode accepts the checked-in unsealed
+intake and emits `sealed: false` candidate vectors plus candidate paths and
+typed reasons in the review report. Curators use that report to mark at least
+six true noise/excluded candidates per case; only the subsequent non-draft run
+can produce a sealed corpus manifest.
+
+Production materialization requires a clean Kairn checkout. It fails if a
+required source or curated negative is absent from candidate@64, a repository
+reference is not a full immutable commit, a lineage crosses splits, or weak
+observed-read labels lack a quality-passing record. Local fixture roots are
+accepted only behind explicit sample flags used by tests; they cannot enter a
+production corpus.
+
+```bash
+pnpm ranker:corpus --manifest benchmarks/ranker-corpus.v1.json
+pnpm ranker:train --input artifacts/ranker-corpus.jsonl
+pnpm ranker:promote --manifest artifacts/ranker-holdout.json
 pnpm ranker:reproduce
 ```
 
-The checked-in production manifest remains `sealed: false` while curation is
-incomplete, so these commands fail closed rather than minting counterfeit
-calibration evidence. L2 cross-validation groups by `repositoryLineageId`, not
-individual task/case IDs. Training fits and reports calibration, but does not
-evaluate the sealed holdout; the promotion command is the single-use holdout
-opening and records its model/corpus hashes and evaluation ID.
+The checked-in intake and production manifests remain `sealed: false` while
+curation is incomplete, so these commands fail closed rather than minting
+counterfeit calibration evidence. L2 cross-validation groups by
+`repositoryLineageId`, not individual task/case IDs. Training fits and reports
+calibration, but does not evaluate the sealed holdout; the promotion command is
+the single-use holdout opening and records its model/corpus hashes and
+evaluation ID.
 
 The checked-in sample is synthetic and exists to prove the build path, not to support promotion claims:
 

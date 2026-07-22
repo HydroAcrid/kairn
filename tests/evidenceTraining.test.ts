@@ -1,10 +1,13 @@
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { validateEvidenceRankerArtifact } from "../src/retrieval/evidenceModel.js";
 import { EVIDENCE_FEATURE_NAMES } from "../src/types/evidence.js";
+import { materializeEvidenceCorpus } from "../scripts/materialize-evidence-corpus.js";
+import { patchFiles } from "../scripts/build-public-evidence-intake.js";
+import { createFixtureRepo } from "./helpers.js";
 
 function pythonInvocation(): { command: string; prefix: string[] } {
   if (process.env.KAIRN_PYTHON) return { command: process.env.KAIRN_PYTHON, prefix: [] };
@@ -14,6 +17,85 @@ function pythonInvocation(): { command: string; prefix: string[] } {
 }
 
 describe("public evidence ranker training", () => {
+  it("extracts official patch paths without learning fixture identities", () => {
+    expect(patchFiles([
+      "diff --git a/src/engine.ts b/src/engine.ts",
+      "--- a/src/engine.ts",
+      "+++ b/src/engine.ts",
+      "diff --git a/tests/engine.test.ts b/tests/engine.test.ts"
+    ].join("\n"))).toEqual(["src/engine.ts", "tests/engine.test.ts"]);
+  });
+
+  it("materializes candidate features from the same bounded serving path", async () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-ranker-materialize-"));
+    const fixture = createFixtureRepo();
+    const repositoryRef = execFileSync("git", ["rev-parse", "HEAD"], { cwd: fixture, encoding: "utf8" }).trim();
+    const repositoryLineageId = "https://github.com/example/evidence-fixture";
+    const registryPath = path.join(temporary, "lineages.json");
+    const intakePath = path.join(temporary, "intake.json");
+    const manifestPath = path.join(temporary, "materialized.json");
+    const reportPath = path.join(temporary, "materialization-report.json");
+    fs.writeFileSync(registryPath, JSON.stringify({
+      schemaVersion: "lineage-registry.v1",
+      lineages: [{ id: repositoryLineageId, role: "train" }]
+    }), "utf8");
+    const noise = [
+      "src/app.ts", "src/widgets.ts", "src/app.test.ts", "app/dashboard/page.tsx",
+      "app/dashboard/DashboardCard.tsx", "src/lib/jobs/types.ts"
+    ];
+    fs.writeFileSync(intakePath, JSON.stringify({
+      schemaVersion: "ranker-corpus-intake.v1",
+      corpusId: "materializer-sample",
+      featureSchemaVersion: "evidence-features-v1",
+      sealed: true,
+      sampleOnly: true,
+      lineageRegistry: "lineages.json",
+      cases: [{
+        id: "materialized-train-case",
+        split: "train",
+        language: "typescript",
+        scenario: "source_localization",
+        repositoryLineageId,
+        repositoryUrl: repositoryLineageId,
+        repositoryRef,
+        publicSourceUrl: "https://github.com/example/evidence-fixture/issues/1",
+        dataOrigin: "public_benchmark",
+        prompt: `Fix src/user.ts; inspect ${noise.join(", ")}`,
+        requiredSourceFiles: ["src/user.ts"],
+        officialPatchSourceFiles: [],
+        verifiedObservedReadTouchFiles: [],
+        qualityVerified: false,
+        explicitNoiseFiles: noise,
+        localFixtureRoot: fixture
+      }]
+    }), "utf8");
+
+    const result = await materializeEvidenceCorpus({
+      intakePath,
+      outPath: manifestPath,
+      reportPath,
+      cacheDir: path.join(temporary, "cache"),
+      allowSample: true,
+      allowLocalFixture: true
+    });
+
+    expect(result.caseCount).toBe(1);
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    expect(manifest.cases[0].candidates.length).toBeGreaterThanOrEqual(7);
+    expect(manifest.cases[0].candidates).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: "src/user.ts",
+        label: 1,
+        labelWeight: 1,
+        labelProvenance: "required_source_oracle"
+      })
+    ]));
+    expect(JSON.parse(fs.readFileSync(reportPath, "utf8"))).toMatchObject({
+      candidateRecallAt64: 1,
+      cases: [expect.objectContaining({ explicitNegativeCount: 6, requiredSourceRecallAt64: 1 })]
+    });
+  });
+
   it("evaluates every v0.3 promotion gate without treating synthetic mechanics as promotion evidence", () => {
     const python = pythonInvocation();
     const result = spawnSync(python.command, [
@@ -123,6 +205,33 @@ describe("public evidence ranker training", () => {
       candidateRows: 21,
       labeledRows: 21
     });
+  });
+
+  it("rejects a production corpus that bypasses checkout materialization provenance", () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-ranker-unmaterialized-"));
+    const registryPath = path.join(temporary, "lineages.json");
+    const manifestPath = path.join(temporary, "corpus.json");
+    fs.writeFileSync(registryPath, JSON.stringify({ schemaVersion: "lineage-registry.v1", lineages: [] }), "utf8");
+    fs.writeFileSync(manifestPath, JSON.stringify({
+      schemaVersion: "ranker-corpus.v1",
+      corpusId: "unmaterialized-production",
+      featureSchemaVersion: "evidence-features-v1",
+      sealed: true,
+      sampleOnly: false,
+      lineageRegistry: "lineages.json",
+      cases: []
+    }), "utf8");
+    const python = pythonInvocation();
+    const result = spawnSync(python.command, [
+      ...python.prefix,
+      path.resolve("scripts/build-evidence-corpus.py"),
+      "--manifest", manifestPath,
+      "--out", path.join(temporary, "corpus.jsonl"),
+      "--summary-out", path.join(temporary, "summary.json")
+    ], { cwd: process.cwd(), encoding: "utf8" });
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("materializer");
   });
 
   it("rejects a labeled row that is not declared public", () => {
