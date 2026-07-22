@@ -44,6 +44,54 @@ describe("evidence task signals and candidates", () => {
     expect(signals.identifiers).toContain("request");
   });
 
+  it("treats failing-check bug reports as production-source intent", () => {
+    const signals = extractEvidenceTaskSignals(
+      "Initial failing checks: TestNeighborPages. Bug: adjacent sections return incorrect pages."
+    );
+
+    expect(signals.intent).toBe("source");
+  });
+
+  it("does not promote ordinary prose words to exact-symbol evidence", () => {
+    const root = "/repo";
+    const source = file(root, "src/request.ts", "source", 900);
+    const candidates = buildEvidenceCandidates({
+      files: [source],
+      query: "Investigate request behavior",
+      symbols: [symbol(root, source.path, "request")],
+      edges: [],
+      legacyResults: []
+    });
+
+    expect(candidates.candidates[0]?.reasons).not.toContain("exact_symbol");
+  });
+
+  it("reserves candidate capacity for lexically matched production source", () => {
+    const root = "/repo";
+    const source = file(root, "src/parser.ts", "source", 900);
+    const documentation = Array.from({ length: 80 }, (_, index) =>
+      file(root, `docs/parser-${String(index).padStart(3, "0")}.md`, "doc", 700)
+    );
+    const candidates = buildEvidenceCandidates({
+      files: [...documentation, source],
+      query: "Bug: the request parser returns incorrect output",
+      symbols: [],
+      edges: [],
+      legacyResults: [
+        ...documentation.map((record, index) => scored(record, { bm25Score: 100 - index })),
+        scored(source, { bm25Score: 0.1 })
+      ],
+      initialLimit: 64,
+      enrichedLimit: 64
+    });
+
+    const initial = candidates.candidates.map((candidate) => candidate.path);
+    expect(initial).toContain(source.path);
+    expect(candidates.candidates.find((candidate) => candidate.path === source.path)?.reasons).toEqual(
+      expect.arrayContaining(["lexical", "production_source", "role_match"])
+    );
+  });
+
   it("builds a bounded, one-hop candidate union and typed feature vectors", () => {
     const root = "/repo";
     const source = file(root, "pkg/payments.py", "source", 2400);

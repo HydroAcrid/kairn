@@ -356,7 +356,9 @@ function productionFiles(files: string[], language: Language): string[] {
   return files.filter((file) =>
     extensions[language].test(file) &&
     !/(^|\/)(?:test|tests|testing|spec|specs|docs?|examples?|fixtures?|vendor|third_party|generated)(\/|$)/i.test(file) &&
+    !/(^|\/)(?:single_include|amalgamat(?:ed|ion)|dist|build)(\/|$)/i.test(file) &&
     !/(?:_test\.go|test\.java|tests?\.(?:c|cc|cpp|cxx)|\.(?:test|spec)\.[cm]?[jt]sx?)$/i.test(file) &&
+    !/(^|\/)\.[^/]+\.(?:[cm]?[jt]s|json|ya?ml)$/i.test(file) &&
     !/(?:^|\/)readme(?:\.|$)/i.test(file)
   );
 }

@@ -109,18 +109,29 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       const labels = buildLabels(intakeCase);
       const candidatePaths = new Set(inspection.candidates.map((candidate) => normalizePath(candidate.path)));
       const missingLabels = [...labels.keys()].filter((candidatePath) => !candidatePaths.has(candidatePath));
-      if (!options.draft && missingLabels.length > 0) {
-        throw new Error(`${intakeCase.id}: labeled files missed the candidate@64 boundary: ${missingLabels.join(", ")}`);
+      const hardLabelPaths = new Set([
+        ...intakeCase.requiredSourceFiles,
+        ...intakeCase.explicitNoiseFiles
+      ].map(normalizePath));
+      const missingHardLabels = missingLabels.filter((candidatePath) => hardLabelPaths.has(candidatePath));
+      if (!options.draft && missingHardLabels.length > 0) {
+        throw new Error(`${intakeCase.id}: required/noise files missed the candidate@64 boundary: ${missingHardLabels.join(", ")}`);
       }
-      const recallOracle = intakeCase.requiredSourceFiles.length > 0
-        ? intakeCase.requiredSourceFiles
-        : intakeCase.officialPatchSourceFiles;
-      const requiredRecall = fractionRecalled(recallOracle, candidatePaths);
-      if (!options.draft && requiredRecall !== 1) {
+      const requiredRecall = intakeCase.requiredSourceFiles.length > 0
+        ? fractionRecalled(intakeCase.requiredSourceFiles, candidatePaths)
+        : null;
+      const patchRecall = intakeCase.officialPatchSourceFiles.length > 0
+        ? fractionRecalled(intakeCase.officialPatchSourceFiles, candidatePaths)
+        : null;
+      if (!options.draft && requiredRecall !== null && requiredRecall !== 1) {
         throw new Error(`${intakeCase.id}: required-source candidate recall@64 is ${requiredRecall}`);
       }
       const candidates = inspection.candidates.map((candidate) => labeledCandidate(candidate, labels));
       const explicitNegatives = candidates.filter((candidate) => candidate.labelProvenance === "explicit_noise_or_excluded").length;
+      const positiveCandidates = candidates.filter((candidate) => candidate.label === 1).length;
+      if (!options.draft && positiveCandidates === 0) {
+        throw new Error(`${intakeCase.id}: no approved positive source is present in candidate@64`);
+      }
       if (!options.draft && explicitNegatives < 6) {
         throw new Error(`${intakeCase.id}: at least six generated candidates must be curated as explicit noise`);
       }
@@ -152,8 +163,11 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
         enrichedCandidateCount: inspection.enrichedCandidateCount,
         exportedCandidateCount: candidates.length,
         requiredSourceRecallAt64: requiredRecall,
+        officialPatchSourceRecallAt64: patchRecall,
+        positiveSourceHitAt64: positiveCandidates > 0,
         explicitNegativeCount: explicitNegatives,
         missingLabeledFiles: missingLabels,
+        missingRequiredOrNoiseFiles: missingHardLabels,
         candidatePathsSha256: sha256(candidates.map((candidate) => candidate.path).join("\n")),
         ...(options.draft ? {
           candidates: inspection.candidates.map((candidate) => ({ path: candidate.path, reasons: candidate.reasons }))
@@ -190,7 +204,10 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
     kairnCommit,
     intakeSha256: sha256(fs.readFileSync(intakePath)),
     caseCount: materializedCases.length,
-    candidateRecallAt64: reportCases.every((row) => row.requiredSourceRecallAt64 === 1) ? 1 : 0,
+    candidateRecallEligibleCases: reportCases.filter((row) => row.requiredSourceRecallAt64 !== null).length,
+    candidateRecallAt64: fullRecallRate(reportCases, "requiredSourceRecallAt64"),
+    positiveSourceAnyHitRateAt64: booleanRate(reportCases, "positiveSourceHitAt64"),
+    officialPatchMeanRecallAt64: meanNullable(reportCases, "officialPatchSourceRecallAt64"),
     cases: reportCases
   };
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
@@ -380,6 +397,21 @@ function validateLineageAssignments(registryPath: string, cases: IntakeCase[]): 
 
 function fractionRecalled(required: string[], candidates: Set<string>): number {
   return required.filter((filePath) => candidates.has(normalizePath(filePath))).length / required.length;
+}
+
+function fullRecallRate(rows: Array<Record<string, unknown>>, field: string): number | null {
+  const values = rows.map((row) => row[field]).filter((value): value is number => typeof value === "number");
+  return values.length > 0 ? values.filter((value) => value === 1).length / values.length : null;
+}
+
+function meanNullable(rows: Array<Record<string, unknown>>, field: string): number | null {
+  const values = rows.map((row) => row[field]).filter((value): value is number => typeof value === "number");
+  return values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+}
+
+function booleanRate(rows: Array<Record<string, unknown>>, field: string): number | null {
+  const values = rows.map((row) => row[field]).filter((value): value is boolean => typeof value === "boolean");
+  return values.length > 0 ? values.filter(Boolean).length / values.length : null;
 }
 
 function git(args: string[], cwd: string): string {

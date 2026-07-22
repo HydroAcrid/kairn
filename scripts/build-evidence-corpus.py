@@ -214,6 +214,10 @@ def validate_case(
         raise ValueError(f"{label}.candidates contains duplicate paths")
     if not any(candidate["label"] == 1 for candidate in candidates):
         raise ValueError(f"{label} requires at least one labeled positive")
+    if not allow_sample and split == "holdout" and not any(
+        candidate["labelProvenance"] == "required_source_oracle" for candidate in candidates
+    ):
+        raise ValueError(f"{label}: production holdout cases require a curated required-source oracle")
     explicit_negatives = sum(
         candidate["labelProvenance"] == "explicit_noise_or_excluded" for candidate in candidates
     )

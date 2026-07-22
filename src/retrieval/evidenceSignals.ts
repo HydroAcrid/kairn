@@ -135,9 +135,9 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
   for (const symbol of [...input.symbols].sort((left, right) => left.filePath.localeCompare(right.filePath) || left.name.localeCompare(right.name))) {
     const identity = normalizeIdentity(symbol.name);
     if (!identity) continue;
-    if (signals.identifiers.includes(identity)) {
+    if (signals.preferredIdentifiers.includes(identity)) {
       addSignal(symbol.filePath, "exact_symbol");
-    } else if (signals.identifiers.some((candidate) => candidate.length >= 4 && (identity.startsWith(candidate) || candidate.startsWith(identity)))) {
+    } else if (signals.preferredIdentifiers.some((candidate) => candidate.length >= 4 && (identity.startsWith(candidate) || candidate.startsWith(identity)))) {
       addSignal(symbol.filePath, "symbol_prefix");
     }
   }
@@ -150,6 +150,16 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
   }
   for (const result of sortLegacy(input.legacyResults, (file) => file.semanticScore)) {
     if (result.semanticScore > 0.03) addSignal(result.path, "semantic");
+  }
+  // Reserve bounded-union capacity for lexically retrieved files whose role
+  // matches the task. Otherwise docs/tests with repeated issue vocabulary can
+  // consume every slot before the production implementation is considered.
+  for (const result of input.legacyResults) {
+    const file = filesByPath.get(normalizeRepoPath(result.path));
+    if (!file || (result.bm25Score <= 0 && result.keywordScore <= 0 && result.semanticScore <= 0.03)) continue;
+    if (isProductionSource(file)) addSignal(file.path, "production_source");
+    if (roleMatchesIntent(file, signals.intent)) addSignal(file.path, "role_match");
+    if (signals.intent === "test" && isTestFile(file)) addSignal(file.path, "test_requested");
   }
   for (const filePath of [...changedFiles].sort()) addSignal(filePath, "git_diff");
   for (const filePath of [...shownFiles].sort()) addSignal(filePath, "already_delivered");
@@ -338,16 +348,17 @@ function addDerivedReasons(
 
   for (const symbol of symbols) {
     const identity = normalizeIdentity(symbol.name);
-    if (signals.identifiers.includes(identity)) reasons.add("exact_symbol");
-    else if (signals.identifiers.some((candidate) => candidate.length >= 4 && identity.startsWith(candidate))) reasons.add("symbol_prefix");
+    if (signals.preferredIdentifiers.includes(identity)) reasons.add("exact_symbol");
+    else if (signals.preferredIdentifiers.some((candidate) => candidate.length >= 4 && identity.startsWith(candidate))) reasons.add("symbol_prefix");
   }
 }
 
 function classifyEvidenceIntent(query: string): EvidenceTaskIntent {
   const terms = new Set(tokenizeLexical(query));
+  if (["source", "production", "implementation", "debug", "failure", "failing", "failed", "error", "exception", "bug", "incorrect", "regression"].some((term) => terms.has(term))) return "source";
   if (["test", "tests", "spec", "specs", "verify", "verification", "coverage"].some((term) => terms.has(term))) return "test";
   if (["docs", "documentation", "readme", "guide", "example", "examples"].some((term) => terms.has(term))) return "docs";
-  if (["source", "production", "implementation", "debug", "failure", "error", "refactor", "code"].some((term) => terms.has(term))) return "source";
+  if (["refactor", "code"].some((term) => terms.has(term))) return "source";
   return "unknown";
 }
 

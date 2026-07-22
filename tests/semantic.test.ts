@@ -80,6 +80,14 @@ describe("hybridSearch", () => {
     expect(intent.primary).not.toBe("ui");
   });
 
+  it("does not classify failing-check bug context as a request to edit tests", () => {
+    const intent = classifyQueryIntent(
+      "Initial failing checks: TestNeighborPages. Bug: adjacent sections return incorrect pages."
+    );
+
+    expect(intent.primary).not.toBe("test");
+  });
+
   it("finds semantically relevant files even when the path and symbols do not match the query", () => {
     const rootPath = "/repo";
     const files = [

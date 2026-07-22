@@ -48,6 +48,14 @@ typed reasons in the review report. Curators use that report to mark at least
 six true noise/excluded candidates per case; only the subsequent non-draft run
 can produce a sealed corpus manifest.
 
+Draft reporting keeps two ground-truth levels separate. Curated
+`requiredSourceFiles` determine the strict candidate-recall@64 gate. Official
+patch files are weaker positives and are reported through patch-source mean
+recall and any-hit rate; missing a weak patch file is disclosed but is not
+silently converted into a required-source miss. Every production holdout case
+must acquire at least one independently curated required-source oracle before
+the corpus builder accepts it.
+
 Production materialization requires a clean Kairn checkout. It fails if a
 required source or curated negative is absent from candidate@64, a repository
 reference is not a full immutable commit, a lineage crosses splits, or weak
