@@ -102,7 +102,9 @@ describe("public evidence ranker training", () => {
       cases: [expect.objectContaining({
         explicitNegativeCount: 6,
         requiredSourceRecallAt64: 1,
+        officialPatchSourceRecallAt128: null,
         signals: expect.objectContaining({ explicitPaths: expect.arrayContaining(["src/user.ts"]) }),
+        enrichedCandidatePaths: expect.arrayContaining(["src/user.ts"]),
         index: expect.objectContaining({ fileCount: expect.any(Number), symbolCount: expect.any(Number) })
       })]
     });

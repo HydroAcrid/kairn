@@ -83,6 +83,7 @@ export type EvidenceCandidate = {
 export type EvidenceCandidateInspection = {
   signals: EvidenceTaskSignals;
   candidates: EvidenceCandidate[];
+  enrichedCandidatePaths: string[];
   initialCandidateCount: number;
   enrichedCandidateCount: number;
   candidateLimit: number;

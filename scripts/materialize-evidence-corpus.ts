@@ -127,6 +127,10 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       const patchRecall = intakeCase.officialPatchSourceFiles.length > 0
         ? fractionRecalled(intakeCase.officialPatchSourceFiles, candidatePaths)
         : null;
+      const enrichedCandidatePaths = new Set(inspection.enrichedCandidatePaths.map(normalizePath));
+      const patchRecallAt128 = intakeCase.officialPatchSourceFiles.length > 0
+        ? fractionRecalled(intakeCase.officialPatchSourceFiles, enrichedCandidatePaths)
+        : null;
       if (!options.draft && requiredRecall !== null && requiredRecall !== 1) {
         throw new Error(`${intakeCase.id}: required-source candidate recall@64 is ${requiredRecall}`);
       }
@@ -168,6 +172,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
         exportedCandidateCount: candidates.length,
         requiredSourceRecallAt64: requiredRecall,
         officialPatchSourceRecallAt64: patchRecall,
+        officialPatchSourceRecallAt128: patchRecallAt128,
         positiveSourceHitAt64: positiveCandidates > 0,
         explicitNegativeCount: explicitNegatives,
         missingLabeledFiles: missingLabels,
@@ -176,6 +181,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
         ...(options.draft ? {
           signals: inspection.signals,
           index: indexCoverage(runtime.getIndexStatus()),
+          enrichedCandidatePaths: inspection.enrichedCandidatePaths,
           candidates: inspection.candidates.map((candidate) => ({ path: candidate.path, reasons: candidate.reasons }))
         } : {})
       });
@@ -214,6 +220,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
     candidateRecallAt64: fullRecallRate(reportCases, "requiredSourceRecallAt64"),
     positiveSourceAnyHitRateAt64: booleanRate(reportCases, "positiveSourceHitAt64"),
     officialPatchMeanRecallAt64: meanNullable(reportCases, "officialPatchSourceRecallAt64"),
+    officialPatchMeanRecallAt128: meanNullable(reportCases, "officialPatchSourceRecallAt128"),
     ...(options.limit || options.caseIds ? {
       partial: true,
       selectedCaseIds: selectedCases.map((item) => item.id)
@@ -332,6 +339,7 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
     candidateRecallAt64: fullRecallRate(reportCases, "requiredSourceRecallAt64"),
     positiveSourceAnyHitRateAt64: booleanRate(reportCases, "positiveSourceHitAt64"),
     officialPatchMeanRecallAt64: meanNullable(reportCases, "officialPatchSourceRecallAt64"),
+    officialPatchMeanRecallAt128: meanNullable(reportCases, "officialPatchSourceRecallAt128"),
     ...(partial ? { partial: true, selectedCaseIds: selectedCases.map((item) => item.id) } : {}),
     cases: reportCases
   };
