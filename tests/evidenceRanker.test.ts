@@ -92,6 +92,31 @@ describe("evidence task signals and candidates", () => {
     );
   });
 
+  it("does not let an ambiguous basename consume the exact-path budget", () => {
+    const root = "/repo";
+    const source = file(root, "packages/parser/src/parser/expression.js", "source", 900);
+    const packageFiles = Array.from({ length: 80 }, (_, index) =>
+      file(root, `packages/module-${String(index).padStart(3, "0")}/package.json`, "config", 400)
+    );
+    const candidates = buildEvidenceCandidates({
+      files: [...packageFiles, source],
+      query: "Bug: expression parsing fails when package.json config is present",
+      symbols: [],
+      edges: [],
+      legacyResults: [
+        ...packageFiles.map((record, index) => scored(record, { bm25Score: 100 - index })),
+        scored(source, { bm25Score: 0.1 })
+      ],
+      initialLimit: 64,
+      enrichedLimit: 64
+    });
+
+    expect(candidates.candidates.map((candidate) => candidate.path)).toContain(source.path);
+    expect(candidates.candidates
+      .filter((candidate) => candidate.path.endsWith("package.json"))
+      .every((candidate) => !candidate.reasons.includes("exact_path"))).toBe(true);
+  });
+
   it("builds a bounded, one-hop candidate union and typed feature vectors", () => {
     const root = "/repo";
     const source = file(root, "pkg/payments.py", "source", 2400);

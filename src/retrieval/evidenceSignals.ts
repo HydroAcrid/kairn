@@ -112,17 +112,19 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
   };
 
   const orderedFiles = stableFiles(input.files);
+  const unambiguousFailureReferences = unambiguousFileReferences(signals.failureReferences, orderedFiles);
+  const unambiguousExplicitPaths = unambiguousFileReferences(signals.explicitPaths, orderedFiles);
 
   // Add signal classes in evidence-strength order. A common basename can match
   // hundreds of files, so mixing these checks in a single path-sorted loop can
   // otherwise fill the bounded union before the exact path is reached.
   for (const file of orderedFiles) {
-    if (signals.failureReferences.some((candidate) => pathsReferToSameFile(file.path, candidate))) {
+    if (unambiguousFailureReferences.some((candidate) => pathsReferToSameFile(file.path, candidate))) {
       addSignal(file.path, "failure_reference");
     }
   }
   for (const file of orderedFiles) {
-    if (signals.explicitPaths.some((candidate) => pathsReferToSameFile(file.path, candidate))) {
+    if (unambiguousExplicitPaths.some((candidate) => pathsReferToSameFile(file.path, candidate))) {
       addSignal(file.path, "exact_path");
     }
   }
@@ -390,6 +392,18 @@ function pathsReferToSameFile(filePath: string, mentionedPath: string): boolean 
   const file = normalizeRepoPath(filePath).toLowerCase();
   const mentioned = normalizeMentionedPath(mentionedPath);
   return file === mentioned || mentioned.endsWith(`/${file}`) || file.endsWith(`/${mentioned}`);
+}
+
+function unambiguousFileReferences(references: string[], files: FileRecord[]): string[] {
+  return references.filter((reference) => {
+    let matches = 0;
+    for (const file of files) {
+      if (!pathsReferToSameFile(file.path, reference)) continue;
+      matches += 1;
+      if (matches > 1) return false;
+    }
+    return matches === 1;
+  });
 }
 
 function normalizeIdentity(value: string): string {
