@@ -3610,10 +3610,10 @@ export class KairnRuntime {
       .filter((filePath) => filesByPath.get(filePath)?.language === "java")
       .slice(0, MAX_QUERY_LOCAL_JAVA_SEEDS);
     const javaSeedChunks = javaSeedPaths.length > 0
-      ? this.store.listSemanticChunksForFiles(
+      ? this.store.listSemanticChunksForFilesFair(
           input.rootPath,
           javaSeedPaths,
-          MAX_QUERY_LOCAL_JAVA_CHUNKS
+          MAX_QUERY_LOCAL_JAVA_CHUNKS_PER_SEED
         )
       : [];
     const edges = mergeQueryLocalEdges(
@@ -4533,7 +4533,7 @@ function selectRoleBalancedSeeds(
 }
 
 const MAX_QUERY_LOCAL_JAVA_SEEDS = 16;
-const MAX_QUERY_LOCAL_JAVA_CHUNKS = 256;
+const MAX_QUERY_LOCAL_JAVA_CHUNKS_PER_SEED = 16;
 const MAX_QUERY_LOCAL_JAVA_TYPES_PER_SEED = 8;
 
 function queryLocalJavaTypeEdges(input: {
