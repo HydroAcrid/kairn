@@ -253,6 +253,7 @@ describe("cross-language parser adapters", () => {
         "import java.util.List;",
         "",
         "public class StringUtils {",
+        "  private CharSequence value;",
         "  public StringUtils() {}",
         "  public static boolean isBlank(final CharSequence cs) { return true; }",
         "}",

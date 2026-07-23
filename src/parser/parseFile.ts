@@ -8,7 +8,14 @@ import type { ParsedFile, SymbolKind, SymbolRecord } from "../types.js";
 const require = createRequire(import.meta.url);
 
 type ParserGrammar = "typescript" | "tsx" | "python" | "go" | "java" | "c" | "cpp";
-const MAX_JAVA_TYPE_REFERENCES = 128;
+const MAX_JAVA_TYPE_REFERENCES = 64;
+const JAVA_STRUCTURAL_TYPE_ANCESTORS = new Set([
+  "field_declaration",
+  "object_creation_expression",
+  "superclass",
+  "super_interfaces",
+  "extends_interfaces"
+]);
 
 type SyntaxNodeLike = {
   type: string;
@@ -287,7 +294,11 @@ function parseJava(
       return;
     }
 
-    if (node.type === "type_identifier" && referencedTypes.size < MAX_JAVA_TYPE_REFERENCES) {
+    if (
+      node.type === "type_identifier" &&
+      referencedTypes.size < MAX_JAVA_TYPE_REFERENCES &&
+      isJavaStructuralTypeReference(node)
+    ) {
       const typeName = node.text.trim();
       if (/^[A-Za-z_$][\w$]*$/.test(typeName)) referencedTypes.add(typeName);
     }
@@ -361,6 +372,23 @@ function visit(node: SyntaxNodeLike, cb: (node: SyntaxNodeLike) => void): void {
   for (const child of node.namedChildren) {
     visit(child, cb);
   }
+}
+
+function isJavaStructuralTypeReference(node: SyntaxNodeLike): boolean {
+  let current = node.parent;
+  while (current) {
+    if (JAVA_STRUCTURAL_TYPE_ANCESTORS.has(current.type)) return true;
+    if (
+      current.type === "class_declaration" ||
+      current.type === "interface_declaration" ||
+      current.type === "enum_declaration" ||
+      current.type === "annotation_type_declaration"
+    ) {
+      return false;
+    }
+    current = current.parent;
+  }
+  return false;
 }
 
 function jsSymbolsFromDeclaration(
