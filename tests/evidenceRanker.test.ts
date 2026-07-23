@@ -122,6 +122,19 @@ describe("evidence task signals and candidates", () => {
     expect(selected.filter((term) => term.startsWith("uiwidgetstate")).length).toBeLessThan(8);
   });
 
+  it("gives concise structured prompts extra bounded symbol capacity", () => {
+    const signals = extractEvidenceTaskSignals("Resolve a delayed policy lookup");
+    signals.preferredIdentifiers = Array.from({ length: 12 }, (_, index) => `preferred${index}`);
+    signals.queryTerms = Array.from({ length: 12 }, (_, index) => `query${index}`);
+    signals.identifiers = Array.from({ length: 12 }, (_, index) => `general${index}`);
+
+    const selected = selectEvidenceSymbolTerms(signals, 24);
+
+    expect(selected).toContain("preferred10");
+    expect(selected).toContain("query4");
+    expect(selected).toContain("general4");
+  });
+
   it("does not let repeated prompt terms inflate path scores", () => {
     const root = "/repo";
     const source = file(root, "src/widget-state.ts", "source", 200);
