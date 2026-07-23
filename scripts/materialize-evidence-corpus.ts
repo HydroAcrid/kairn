@@ -113,13 +113,12 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       const labels = buildLabels(intakeCase);
       const candidatePaths = new Set(inspection.candidates.map((candidate) => normalizePath(candidate.path)));
       const missingLabels = [...labels.keys()].filter((candidatePath) => !candidatePaths.has(candidatePath));
-      const hardLabelPaths = new Set([
-        ...intakeCase.requiredSourceFiles,
-        ...intakeCase.explicitNoiseFiles
-      ].map(normalizePath));
-      const missingHardLabels = missingLabels.filter((candidatePath) => hardLabelPaths.has(candidatePath));
-      if (!options.draft && missingHardLabels.length > 0) {
-        throw new Error(`${intakeCase.id}: required/noise files missed the candidate@64 boundary: ${missingHardLabels.join(", ")}`);
+      const requiredSourcePaths = new Set(intakeCase.requiredSourceFiles.map(normalizePath));
+      const explicitNoisePaths = new Set(intakeCase.explicitNoiseFiles.map(normalizePath));
+      const missingRequiredSourceFiles = missingLabels.filter((candidatePath) => requiredSourcePaths.has(candidatePath));
+      const missingExplicitNoiseFiles = missingLabels.filter((candidatePath) => explicitNoisePaths.has(candidatePath));
+      if (!options.draft && missingExplicitNoiseFiles.length > 0) {
+        throw new Error(`${intakeCase.id}: explicit-noise files missed the candidate@64 boundary: ${missingExplicitNoiseFiles.join(", ")}`);
       }
       const requiredRecall = intakeCase.requiredSourceFiles.length > 0
         ? fractionRecalled(intakeCase.requiredSourceFiles, candidatePaths)
@@ -131,15 +130,9 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       const patchRecallAt128 = intakeCase.officialPatchSourceFiles.length > 0
         ? fractionRecalled(intakeCase.officialPatchSourceFiles, enrichedCandidatePaths)
         : null;
-      if (!options.draft && requiredRecall !== null && requiredRecall !== 1) {
-        throw new Error(`${intakeCase.id}: required-source candidate recall@64 is ${requiredRecall}`);
-      }
       const candidates = inspection.candidates.map((candidate) => labeledCandidate(candidate, labels));
       const explicitNegatives = candidates.filter((candidate) => candidate.labelProvenance === "explicit_noise_or_excluded").length;
       const positiveCandidates = candidates.filter((candidate) => candidate.label === 1).length;
-      if (!options.draft && positiveCandidates === 0) {
-        throw new Error(`${intakeCase.id}: no approved positive source is present in candidate@64`);
-      }
       if (!options.draft && explicitNegatives < 6) {
         throw new Error(`${intakeCase.id}: at least six generated candidates must be curated as explicit noise`);
       }
@@ -176,7 +169,9 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
         positiveSourceHitAt64: positiveCandidates > 0,
         explicitNegativeCount: explicitNegatives,
         missingLabeledFiles: missingLabels,
-        missingRequiredOrNoiseFiles: missingHardLabels,
+        missingRequiredSourceFiles,
+        missingExplicitNoiseFiles,
+        missingRequiredOrNoiseFiles: [...missingRequiredSourceFiles, ...missingExplicitNoiseFiles],
         candidatePathsSha256: sha256(candidates.map((candidate) => candidate.path).join("\n")),
         ...(options.draft ? {
           signals: inspection.signals,

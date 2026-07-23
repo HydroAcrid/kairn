@@ -195,6 +195,36 @@ describe("public evidence ranker training", () => {
       status: "materialized",
       materializer: expect.objectContaining({ caseProcessIsolation: true })
     });
+
+    const missedIntakePath = path.join(temporary, "intake.reviewed-miss.json");
+    const missedManifestPath = path.join(temporary, "materialized.miss.json");
+    const missedReportPath = path.join(temporary, "materialization.miss-report.json");
+    const missedIntake = JSON.parse(fs.readFileSync(reviewedIntakePath, "utf8"));
+    missedIntake.cases[0].prompt = `Inspect only ${noise.join(", ")}`;
+    missedIntake.cases[0].requiredSourceFiles = ["src/verified-but-unretrieved.ts"];
+    missedIntake.cases[0].officialPatchSourceFiles = ["src/verified-but-unretrieved.ts"];
+    fs.writeFileSync(missedIntakePath, `${JSON.stringify(missedIntake, null, 2)}\n`, "utf8");
+
+    await materializeEvidenceCorpus({
+      intakePath: missedIntakePath,
+      outPath: missedManifestPath,
+      reportPath: missedReportPath,
+      cacheDir: path.join(temporary, "cache"),
+      allowSample: true,
+      allowLocalFixture: true,
+      processIsolation: true
+    });
+    expect(JSON.parse(fs.readFileSync(missedReportPath, "utf8"))).toMatchObject({
+      candidateRecallAt64: 0,
+      positiveSourceAnyHitRateAt64: 0,
+      cases: [expect.objectContaining({
+        requiredSourceRecallAt64: 0,
+        positiveSourceHitAt64: false,
+        explicitNegativeCount: 6,
+        missingRequiredSourceFiles: ["src/verified-but-unretrieved.ts"],
+        missingExplicitNoiseFiles: []
+      })]
+    });
   });
 
   it("evaluates every v0.3 promotion gate without treating synthetic mechanics as promotion evidence", () => {
