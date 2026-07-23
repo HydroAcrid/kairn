@@ -519,13 +519,16 @@ function selectInitialPaths(input: {
     selected.push(filePath);
     selectedPaths.add(filePath);
   };
-  const candidatesFor = (reason: EvidenceReason): string[] =>
+  const candidatesFor = (reason: EvidenceReason, strongestExactFirst = false): string[] =>
     [...input.reasonsByPath.entries()]
       .filter(([, reasons]) => reasons.has(reason))
       .map(([filePath]) => filePath)
       .sort((left, right) =>
-        channelScore(reason, right, input.legacyByPath, input.filesByPath, input.exactSymbolPriorityByPath) -
-          channelScore(reason, left, input.legacyByPath, input.filesByPath, input.exactSymbolPriorityByPath) ||
+        (strongestExactFirst
+          ? (input.exactSymbolPriorityByPath.get(right) ?? 0) - (input.exactSymbolPriorityByPath.get(left) ?? 0)
+          : 0) ||
+        channelScore(reason, right, input.legacyByPath, input.filesByPath) -
+          channelScore(reason, left, input.legacyByPath, input.filesByPath) ||
         left.localeCompare(right)
       );
 
@@ -534,6 +537,11 @@ function selectInitialPaths(input: {
   for (const reason of ["failure_reference", "exact_path"] as const) {
     for (const filePath of candidatesFor(reason)) add(filePath);
   }
+
+  // Reserve only a tiny precision lane for the strongest quoted/qualified
+  // exact symbols. The normal exact-symbol channel below remains ordered by
+  // file importance so a single noisy prompt cannot displace broad recall.
+  for (const filePath of candidatesFor("exact_symbol", true).slice(0, 2)) add(filePath);
 
   // The remaining independent generators take turns contributing candidates.
   // This keeps one broad signal class from consuming all 64 initial slots.
@@ -575,12 +583,8 @@ function channelScore(
   reason: EvidenceReason,
   filePath: string,
   legacyByPath: Map<string, HybridScoredResult>,
-  filesByPath: Map<string, FileRecord>,
-  exactSymbolPriorityByPath: Map<string, number>
+  filesByPath: Map<string, FileRecord>
 ): number {
-  if (reason === "exact_symbol") {
-    return (exactSymbolPriorityByPath.get(filePath) ?? 0) * 1_000 + (filesByPath.get(filePath)?.importance ?? 0);
-  }
   const legacy = legacyByPath.get(filePath);
   if (reason === "lexical") return (legacy?.bm25Score ?? 0) + (legacy?.keywordScore ?? 0);
   if (reason === "semantic") return legacy?.semanticScore ?? 0;
