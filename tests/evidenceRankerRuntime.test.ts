@@ -83,6 +83,7 @@ describe("evidence ranker runtime integration", () => {
         path: "src/main/java/org/example/Helper.java",
         reasons: expect.arrayContaining(["graph_neighbor"])
       }));
+      expect(snapshot.initialCandidatePaths).toContain("src/main/java/org/example/Caller.java");
       expect(runtime.getIndexStatus().graphEdgeCount).toBe(0);
     } finally {
       runtime.close();

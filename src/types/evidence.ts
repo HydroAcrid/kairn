@@ -88,6 +88,8 @@ export type EvidenceCandidateInspection = {
   candidates: EvidenceCandidate[];
   /** Complete bounded candidate union, including post-limit enrichment rows. */
   enrichedCandidates: EvidenceCandidate[];
+  /** Cheap pre-enrichment candidates used to seed graph and source expansion. */
+  initialCandidatePaths: string[];
   enrichedCandidatePaths: string[];
   initialCandidateCount: number;
   enrichedCandidateCount: number;

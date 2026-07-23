@@ -137,6 +137,7 @@ import {
 } from "../prime/calibratedEvidencePolicy.js";
 
 type CalibratedQueryLocalIndex = QueryLocalIndex & {
+  initialCandidateFiles: string[];
   initialCandidateCount: number;
   enrichedCandidateCount: number;
 };
@@ -3507,6 +3508,7 @@ export class KairnRuntime {
       signals: candidateSet.signals,
       candidates: candidateSet.candidates.slice(0, candidateLimit),
       enrichedCandidates: candidateSet.candidates,
+      initialCandidatePaths: localIndex.initialCandidateFiles,
       enrichedCandidatePaths: candidateSet.candidates.map((candidate) => candidate.path),
       initialCandidateCount: localIndex.initialCandidateCount,
       enrichedCandidateCount: localIndex.enrichedCandidateCount,
@@ -3643,6 +3645,7 @@ export class KairnRuntime {
       ...(lexicalStats ? { lexicalStats } : {}),
       edges,
       candidateFiles,
+      initialCandidateFiles: initialPaths,
       initialCandidateCount: initialPaths.length,
       enrichedCandidateCount: candidateFiles.length
     };
