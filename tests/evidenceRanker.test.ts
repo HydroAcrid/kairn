@@ -420,6 +420,32 @@ describe("evidence task signals and candidates", () => {
     expect(candidates.candidates[0]?.reasons).toContain("graph_neighbor");
     expect(candidates.candidates.slice(0, 1).map((candidate) => candidate.path)).not.toContain(noise[0]!.path);
   });
+
+  it("promotes a retrieval-backed production neighbor from a strong seed package", () => {
+    const root = "/repo";
+    const seed = file(root, "pkg/service.ts", "source", 900);
+    const packageNeighbor = file(root, "pkg/resource-transform.ts", "source", 800);
+    const distractors = Array.from({ length: 80 }, (_, index) =>
+      file(root, `modules/module-${String(index).padStart(3, "0")}/service.ts`, "source", 700)
+    );
+    const candidates = buildEvidenceCandidates({
+      files: [seed, packageNeighbor, ...distractors],
+      query: "Debug resource configuration in the service package",
+      symbols: [],
+      legacyResults: [
+        scored(seed, { bm25Score: 10 }),
+        ...distractors.map((record, index) => scored(record, { bm25Score: 9 - index / 100 })),
+        scored(packageNeighbor, { bm25Score: 0.01 })
+      ],
+      edges: [],
+      initialLimit: 64,
+      enrichedLimit: 64
+    });
+
+    expect(candidates.candidates.map((candidate) => candidate.path)).toContain(packageNeighbor.path);
+    expect(candidates.candidates.find((candidate) => candidate.path === packageNeighbor.path)?.reasons)
+      .toContain("graph_neighbor");
+  });
 });
 
 describe("evidence model artifacts", () => {

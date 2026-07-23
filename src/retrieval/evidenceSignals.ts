@@ -286,6 +286,33 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
       Math.max(graphPriorityByPath.get(neighbor) ?? 0, precision * 100 + channelScore("lexical", neighbor, legacyByPath, filesByPath))
     );
   }
+  const packagePriorityByDirectory = new Map<string, number>();
+  preliminaryInitialPaths.forEach((filePath, index) => {
+    const directory = path.posix.dirname(filePath);
+    if (directory === ".") return;
+    packagePriorityByDirectory.set(
+      directory,
+      Math.max(packagePriorityByDirectory.get(directory) ?? 0, preliminaryInitialPaths.length - index)
+    );
+  });
+  for (const [filePath, reasons] of reasonsByPath) {
+    if (preliminaryInitialPaths.includes(filePath)) continue;
+    const file = filesByPath.get(filePath);
+    if (!file || !isProductionEvidenceFile(file)) continue;
+    const directoryPriority = packagePriorityByDirectory.get(path.posix.dirname(filePath));
+    if (!directoryPriority) continue;
+    if (!["exact_symbol", "symbol_prefix", "basename", "lexical", "semantic"].some((reason) => reasons.has(reason as EvidenceReason))) {
+      continue;
+    }
+    reasons.add("graph_neighbor");
+    graphPriorityByPath.set(
+      filePath,
+      Math.max(
+        graphPriorityByPath.get(filePath) ?? 0,
+        50 + directoryPriority + channelScore("lexical", filePath, legacyByPath, filesByPath)
+      )
+    );
+  }
   const initialPaths = selectInitialPaths({
     reasonsByPath,
     legacyByPath,

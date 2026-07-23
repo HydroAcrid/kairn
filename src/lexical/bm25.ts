@@ -70,9 +70,25 @@ export function buildLexicalIndex(input: {
   const maxEvidenceTermsPerFile = evidenceFiles.length > 0
     ? Math.max(1, Math.min(48, Math.floor(evidenceTermBudget / evidenceFiles.length)))
     : 0;
+  const evidenceTermFrequencies = new Map<string, Map<string, number>>();
+  const evidenceDocumentFrequency = new Map<string, number>();
   for (const file of evidenceFiles) {
-    const fileSymbols = (symbolsByFile.get(file.path) ?? []).slice(0, 12);
-    const fileChunks = (chunksByFile.get(file.path) ?? []).slice(0, Math.max(1, budget.chunksPerFileDocument));
+    const frequencies = evidenceFrequenciesForFile(
+      symbolsByFile.get(file.path) ?? [],
+      chunksByFile.get(file.path) ?? []
+    );
+    evidenceTermFrequencies.set(file.path, frequencies);
+    for (const term of frequencies.keys()) {
+      evidenceDocumentFrequency.set(term, (evidenceDocumentFrequency.get(term) ?? 0) + 1);
+    }
+  }
+  for (const file of evidenceFiles) {
+    const salientTerms = selectSalientEvidenceTerms({
+      frequencies: evidenceTermFrequencies.get(file.path) ?? new Map(),
+      documentFrequency: evidenceDocumentFrequency,
+      documentCount: evidenceFiles.length,
+      limit: maxEvidenceTermsPerFile
+    });
     addDocument({
       rootPath: input.rootPath,
       documents,
@@ -82,11 +98,9 @@ export function buildLexicalIndex(input: {
       id: `evidence:${file.path}`,
       filePath: file.path,
       kind: "file",
-      text: [
-        file.path,
-        ...fileSymbols.map((symbol) => `${symbol.name} ${symbol.kind} ${symbol.signature}`),
-        ...fileChunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text}`)
-      ].join("\n")
+      text: salientTerms.flatMap(({ term, frequency }) =>
+        Array.from({ length: Math.min(3, frequency) }, () => term)
+      ).join(" ")
     });
   }
 
@@ -259,6 +273,53 @@ function roundRobinByFile<T>(
     depth += 1;
   }
   return selected;
+}
+
+function evidenceFrequenciesForFile(
+  symbols: SymbolRecord[],
+  chunks: SemanticChunkRecord[]
+): Map<string, number> {
+  const text = [
+    ...symbols.map((symbol) => `${symbol.name} ${symbol.signature}`),
+    ...chunks.map((chunk) => sourceBodyFromChunk(chunk.text))
+  ].join("\n");
+  const frequencies = new Map<string, number>();
+  for (const term of tokenizeLexical(text)) {
+    frequencies.set(term, (frequencies.get(term) ?? 0) + 1);
+  }
+  return frequencies;
+}
+
+function sourceBodyFromChunk(text: string): string {
+  const separator = text.search(/\r?\n\r?\n/);
+  return separator >= 0 ? text.slice(separator).trim() : text;
+}
+
+function selectSalientEvidenceTerms(input: {
+  frequencies: Map<string, number>;
+  documentFrequency: Map<string, number>;
+  documentCount: number;
+  limit: number;
+}): Array<{ term: string; frequency: number }> {
+  return [...input.frequencies.entries()]
+    .map(([term, frequency], index) => {
+      const documentFrequency = input.documentFrequency.get(term) ?? 1;
+      const inverseDocumentFrequency = Math.log(1 + (input.documentCount + 1) / (documentFrequency + 1));
+      return {
+        term,
+        frequency,
+        index,
+        salience: Math.log1p(frequency) * 2.5 + inverseDocumentFrequency
+      };
+    })
+    .sort((left, right) =>
+      right.salience - left.salience ||
+      right.frequency - left.frequency ||
+      left.index - right.index ||
+      left.term.localeCompare(right.term)
+    )
+    .slice(0, input.limit)
+    .map(({ term, frequency }) => ({ term, frequency }));
 }
 
 function uniqueDocumentId(input: {
