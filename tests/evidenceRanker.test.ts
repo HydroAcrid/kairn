@@ -279,6 +279,30 @@ describe("evidence task signals and candidates", () => {
       .toBeGreaterThanOrEqual(56);
   });
 
+  it("retains multiple rounds of independent evidence under source intent", () => {
+    const root = "/repo";
+    const roleLeaders = Array.from({ length: 80 }, (_, index) =>
+      file(root, `src/service-${String(index).padStart(3, "0")}.ts`, "source", 900)
+    );
+    const basenameMatches = Array.from({ length: 3 }, (_, index) =>
+      file(root, `packages/module-${index}/shared.ts`, "source", 900)
+    );
+    const candidates = buildEvidenceCandidates({
+      files: [...roleLeaders, ...basenameMatches],
+      query: "Fix shared.ts in production",
+      symbols: [],
+      edges: [],
+      legacyResults: [
+        ...roleLeaders.map((record, index) => scored(record, { bm25Score: 200 - index })),
+        ...basenameMatches.map((record, index) => scored(record, { bm25Score: 3 - index }))
+      ],
+      initialLimit: 64,
+      enrichedLimit: 64
+    });
+
+    expect(candidates.candidates.map((candidate) => candidate.path)).toContain(basenameMatches[2]!.path);
+  });
+
   it("does not let an ambiguous basename consume the exact-path budget", () => {
     const root = "/repo";
     const source = file(root, "packages/parser/src/parser/expression.js", "source", 900);

@@ -682,11 +682,12 @@ function selectInitialPaths(input: {
   }
 
   // Required production-source recall is the primary gate for debugging and
-  // source-localization tasks. Reserve most of the bounded union for retrieved
-  // production files, while hard failure/path evidence and a final independent
-  // generator lane retain room for tests, docs, and other task evidence.
+  // source-localization tasks, but the role prior must not replace independent
+  // evidence generators. Split the remaining bound evenly so basename, symbol,
+  // lexical, graph, and session evidence can still rescue production files that
+  // are weak in the blended role ordering.
   if (input.intent === "source" || input.intent === "unknown") {
-    const independentReserve = Math.min(8, Math.max(1, Math.ceil(input.limit / 8)));
+    const independentReserve = Math.max(1, Math.ceil(input.limit / 2));
     for (const filePath of candidatesFor("production_source").slice(0, Math.max(0, input.limit - independentReserve))) {
       add(filePath);
     }
