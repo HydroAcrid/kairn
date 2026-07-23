@@ -150,9 +150,9 @@ export function selectEvidenceSymbolTerms(signals: EvidenceTaskSignals, limit: n
   const selected = uniqueInOrder(signals.failureIdentifiers).slice(0, boundedLimit);
   const seen = new Set(selected);
   const channels = [
-    { values: signals.preferredIdentifiers, weight: 2 },
-    { values: signals.queryTerms, weight: 1 },
-    { values: signals.identifiers, weight: 1 }
+    signals.preferredIdentifiers,
+    signals.queryTerms,
+    signals.identifiers
   ];
   const cursors = channels.map(() => 0);
   let progressed = true;
@@ -160,16 +160,15 @@ export function selectEvidenceSymbolTerms(signals: EvidenceTaskSignals, limit: n
     progressed = false;
     for (let channelIndex = 0; channelIndex < channels.length; channelIndex += 1) {
       const channel = channels[channelIndex]!;
-      for (let take = 0; take < channel.weight && selected.length < boundedLimit; take += 1) {
-        let cursor = cursors[channelIndex] ?? 0;
-        while (cursor < channel.values.length && seen.has(channel.values[cursor]!)) cursor += 1;
-        cursors[channelIndex] = cursor + 1;
-        const term = channel.values[cursor];
-        if (!term) break;
-        selected.push(term);
-        seen.add(term);
-        progressed = true;
-      }
+      let cursor = cursors[channelIndex] ?? 0;
+      while (cursor < channel.length && seen.has(channel[cursor]!)) cursor += 1;
+      cursors[channelIndex] = cursor + 1;
+      const term = channel[cursor];
+      if (!term) continue;
+      selected.push(term);
+      seen.add(term);
+      progressed = true;
+      if (selected.length >= boundedLimit) break;
     }
   }
   return selected;
