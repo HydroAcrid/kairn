@@ -491,6 +491,30 @@ describe("evidence task signals and candidates", () => {
     expect(candidates.candidates.slice(0, 64).map((candidate) => candidate.path)).toContain(productionCompanion.path);
   });
 
+  it("prefers an outgoing import over reverse dependents during post-bound enrichment", () => {
+    const root = "/repo";
+    const seed = file(root, "src/router.ts", "source", 900);
+    const dependency = file(root, "src/zz-dependency.ts", "source", 600);
+    const reverseDependents = Array.from({ length: 20 }, (_, index) =>
+      file(root, `src/aa-dependent-${String(index).padStart(2, "0")}.ts`, "source", 500)
+    );
+    const candidates = buildEvidenceCandidates({
+      files: [seed, dependency, ...reverseDependents],
+      query: "Debug src/router.ts",
+      symbols: [],
+      legacyResults: [scored(seed, { bm25Score: 10 })],
+      edges: [
+        edge(root, seed.path, dependency.path, "imports"),
+        ...reverseDependents.map((dependent) => edge(root, dependent.path, seed.path, "imports"))
+      ],
+      initialLimit: 1,
+      enrichedLimit: 2
+    });
+
+    expect(candidates.candidates.map((candidate) => candidate.path)).toEqual([seed.path, dependency.path]);
+    expect(candidates.candidates[1]?.reasons).toContain("graph_neighbor");
+  });
+
   it("promotes a retrieval-backed direct import without promoting arbitrary import fanout", () => {
     const root = "/repo";
     const seed = file(root, "src/router.ts", "source", 900);

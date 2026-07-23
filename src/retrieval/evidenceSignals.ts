@@ -350,7 +350,8 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
     seedPaths: initialPaths,
     edges: input.edges,
     filesByPath,
-    limit: Math.max(0, enrichedLimit - enrichedPaths.length)
+    limit: Math.max(0, enrichedLimit - enrichedPaths.length),
+    preferOutgoingImports: true
   })) {
     const reasons = reasonsByPath.get(neighbor) ?? new Set<EvidenceReason>();
     reasons.add("graph_neighbor");
@@ -381,6 +382,7 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
 type GraphNeighbor = {
   edge: GraphEdgeRecord;
   neighbor: string;
+  seed: string;
 };
 
 /**
@@ -395,6 +397,7 @@ function roundRobinGraphNeighbors(input: {
   edges: GraphEdgeRecord[];
   filesByPath: Map<string, FileRecord>;
   limit: number;
+  preferOutgoingImports?: boolean;
 }): GraphNeighbor[] {
   if (input.limit <= 0 || input.seedPaths.length === 0) return [];
   const seedSet = new Set(input.seedPaths);
@@ -409,16 +412,21 @@ function roundRobinGraphNeighbors(input: {
     const to = normalizeRepoPath(edge.toFile);
     const priority = graphEdgePrecision(edge);
     if (seedSet.has(from) && input.filesByPath.has(to)) {
-      bySeed.get(from)!.get(priority)!.push({ edge, neighbor: to });
+      bySeed.get(from)!.get(priority)!.push({ edge, neighbor: to, seed: from });
     }
     if (seedSet.has(to) && input.filesByPath.has(from) && from !== to) {
-      bySeed.get(to)!.get(priority)!.push({ edge, neighbor: from });
+      bySeed.get(to)!.get(priority)!.push({ edge, neighbor: from, seed: to });
     }
   }
 
   for (const priorityBuckets of bySeed.values()) {
     for (const neighbors of priorityBuckets.values()) {
       neighbors.sort((left, right) =>
+        (
+          input.preferOutgoingImports
+            ? Number(!isOutgoingImportNeighbor(left)) - Number(!isOutgoingImportNeighbor(right))
+            : 0
+        ) ||
         left.neighbor.localeCompare(right.neighbor) || left.edge.type.localeCompare(right.edge.type)
       );
     }
@@ -451,6 +459,12 @@ function roundRobinGraphNeighbors(input: {
     if (selected.length >= input.limit) break;
   }
   return selected;
+}
+
+function isOutgoingImportNeighbor(candidate: GraphNeighbor): boolean {
+  return candidate.edge.type === "imports" &&
+    normalizeRepoPath(candidate.edge.fromFile) === candidate.seed &&
+    normalizeRepoPath(candidate.edge.toFile) === candidate.neighbor;
 }
 
 function graphEdgePrecision(edge: GraphEdgeRecord): number {
