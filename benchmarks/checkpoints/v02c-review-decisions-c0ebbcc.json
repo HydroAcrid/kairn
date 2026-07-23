@@ -6,8 +6,8 @@
   "sourceQueueSha256": "16acb7b34ac67bf24cc3a8562aac5f8ae665b86550064f794e1738354291c117",
   "batchIndexSha256": "7ba998b4c6d6bff1f433f3e1d37572175b748f210438d3c89a9fd04c9dd7dcd5",
   "caseCount": 165,
-  "completedCases": 121,
-  "pendingCases": 44,
+  "completedCases": 132,
+  "pendingCases": 33,
   "decisions": [
     {
       "id": "v02c-train-python-source_localization-001",
@@ -2335,6 +2335,215 @@
         "reviewer": "Codex independent repository-evidence review",
         "reviewedAt": "2026-07-23T17:15:00-04:00",
         "notes": "The filtering-generator delegate patch source is present. Noise labels cover unrelated Base64, symbol tables, async parsing, output decoration, locations, and factory bounds tests."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-failure_first-122",
+      "materializedCaseSha256": "cecb9dabd74d8cedad7c5d14f92db5085bbf0dfcf7661eec14b2209b8983b369",
+      "candidatePathsSha256": "d183830b8f53f171c80221f1dca12f5d1721252aaf1b1debda1c13bba93463f3",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/main/java/com/fasterxml/jackson/core/util/DefaultIndenter.java",
+          "src/main/java/com/fasterxml/jackson/core/util/ByteArrayBuilder.java",
+          "src/main/java/com/fasterxml/jackson/core/format/DataFormatMatcher.java",
+          "src/main/java/com/fasterxml/jackson/core/sym/ByteQuadsCanonicalizer.java",
+          "src/main/java/com/fasterxml/jackson/core/Versioned.java",
+          "src/main/java/com/fasterxml/jackson/core/Base64Variant.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "The filtering parser, token filter, and filter-context patch sources are present. Noise labels cover unrelated indentation, buffers, format detection, symbol tables, versioning, and Base64."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-failure_first-123",
+      "materializedCaseSha256": "88969a83a4061ce227ceef955b079708c427b0aaaa53d1096c4964570ddf01a8",
+      "candidatePathsSha256": "854e4174430e061f83b0619a51df417bfc8d928d11319627b0f1bbe54f82d8f6",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/main/java/com/fasterxml/jackson/core/util/DefaultIndenter.java",
+          "src/main/java/com/fasterxml/jackson/core/sym/FieldNameMatcher.java",
+          "src/main/java/com/fasterxml/jackson/core/util/VersionUtil.java",
+          "src/test/java/com/fasterxml/jackson/core/io/UTF8WriterTest.java",
+          "src/main/java/com/fasterxml/jackson/core/io/SegmentedStringWriter.java",
+          "src/main/java/com/fasterxml/jackson/core/util/JsonParserSequence.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "The JSON generator contract patch source is present. Noise labels cover unrelated indentation, field matching, versioning, UTF-8 writing, segmented writers, and parser sequencing."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-long_session-124",
+      "materializedCaseSha256": "dd88c062341bcf619579b803fabae19ba200e91bc3856fcb4c8d5d921d530312",
+      "candidatePathsSha256": "2a42e81a42c7d1981a0521122a1a64281cbc2311adddcb9093b86bc065ec3903",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/test/java/com/fasterxml/jackson/core/jsonptr/JsonPointerTest.java",
+          "src/main/java/com/fasterxml/jackson/core/util/DefaultIndenter.java",
+          "src/main/java/com/fasterxml/jackson/core/io/CharacterEscapes.java",
+          "src/main/java/com/fasterxml/jackson/core/sym/ByteQuadsCanonicalizer.java",
+          "src/test/java/com/fasterxml/jackson/core/json/async/AsyncSimpleObjectTest.java",
+          "src/main/java/com/fasterxml/jackson/core/util/JsonGeneratorDecorator.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "The number-input patch source is present. Noise labels cover unrelated JSON pointers, indentation, character escapes, symbol tables, async objects, and generator decoration."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-long_session-125",
+      "materializedCaseSha256": "bb3f94c5117ec3fdab63b1f4f0f6f94544881225ea857ad8177acd079664e27c",
+      "candidatePathsSha256": "0f01ce634ff7a8cc548c1aa4afd233701a8059e5f93682b669772b6ff8912ab3",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/main/java/com/fasterxml/jackson/core/type/TypeReference.java",
+          "src/main/java/com/fasterxml/jackson/core/util/DefaultPrettyPrinter.java",
+          "src/main/java/com/fasterxml/jackson/core/io/CharacterEscapes.java",
+          "src/main/java/com/fasterxml/jackson/core/util/JsonParserSequence.java",
+          "src/test/java/com/fasterxml/jackson/core/sym/SymbolTableMergingTest.java",
+          "src/main/java/com/fasterxml/jackson/core/io/UTF32Reader.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "The recycler-pool patch source is present. Noise labels cover unrelated type references, pretty printing, escapes, parser sequencing, symbol tables, and UTF-32 input."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-long_session-126",
+      "materializedCaseSha256": "7e585925d5650daa000dd38738d7c55445331412a5cea65914759089fb0ffcbc",
+      "candidatePathsSha256": "3719e944f65d6366a97e721611cbe46bbf07a74f7ed657bf937d19504d58d23d",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/test/java/com/fasterxml/jackson/core/jsonptr/JsonPointerTest.java",
+          "src/main/java/com/fasterxml/jackson/core/PrettyPrinter.java",
+          "src/main/java/com/fasterxml/jackson/core/util/VersionUtil.java",
+          "src/main/java/com/fasterxml/jackson/core/io/NumberOutput.java",
+          "src/main/java/com/fasterxml/jackson/core/FormatSchema.java",
+          "src/main/java/com/fasterxml/jackson/core/util/JsonGeneratorDelegate.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "All three Base64-reading parser patch sources are present. Noise labels cover unrelated pointers, pretty printing, versioning, number output, schemas, and generator delegation."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-source_localization-127",
+      "materializedCaseSha256": "d2b279d065e2bdfcd59f58221c3874a087c64c5177b23584f3e5c38a1034942d",
+      "candidatePathsSha256": "bdc73b3341f92eb74655465fd5af02974304e26dcfdcc46f0072ccc2a2a64411",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/args-test.cc",
+          "test/color-test.cc",
+          "test/fuzzing/named-arg.cc",
+          "src/os.cc",
+          "support/docopt.py",
+          "test/gtest/gmock-gtest-all.cc"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "The chrono formatting patch source is present. Noise labels cover unrelated argument and color tests, named-argument fuzzing, OS support, documentation parsing, and test framework code."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-source_localization-128",
+      "materializedCaseSha256": "0d25c276157d37410a96830a6e1d8b562f9edfa5335ceb208eecd79388c53d83",
+      "candidatePathsSha256": "8731127f75d80a25ca2e230d10cfd9d2cbab4ea33ebbae7bccc8f09d4bd70d99",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/fuzzing/chrono-duration.cc",
+          "test/color-test.cc",
+          "src/os.cc",
+          "support/build-docs.py",
+          "test/gtest/.clang-format",
+          "support/cmake/FindSetEnv.cmake"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "The format header patch source is present. Noise labels cover unrelated chrono fuzzing, color and OS code, documentation builds, formatting policy, and CMake environment discovery."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-source_localization-129",
+      "materializedCaseSha256": "187b2a2a5dd658215ce60ac7bec30033728e179cf638e528d38b862e4e4262fc",
+      "candidatePathsSha256": "9aaa1ad9555e4c7e8aae3571b050f3b1d2205a096ef4f8ed549eb41715f7869b",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/fuzzing/chrono-timepoint.cc",
+          "src/os.cc",
+          "support/docopt.py",
+          "support/build.gradle",
+          "support/Vagrantfile",
+          "test/color-test.cc"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "The standard-library format header patch source is present. Noise labels cover unrelated chrono fuzzing, OS code, documentation parsing, build infrastructure, virtualization, and colors."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-failure_first-130",
+      "materializedCaseSha256": "3e18fbfcad868a816818039d8cae9f8132bd8be217db1e86bd16676374a70a89",
+      "candidatePathsSha256": "5407990d7f7f0077a2e33d8e03ddd8c991ce8eebc7389ce9dd4885b1ee6985e1",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "support/release.py",
+          "support/python/mkdocstrings_handlers/cxx/__init__.py",
+          "support/bazel/MODULE.bazel",
+          "test/cuda-test/cpp14.cc",
+          "test/color-test.cc",
+          "test/fuzzing/chrono-timepoint.cc"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "The base header patch source is present. Noise labels cover unrelated release and documentation tooling, Bazel, CUDA, colors, and chrono fuzzing."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-failure_first-131",
+      "materializedCaseSha256": "5387196f6252d6b6eb9249ef8d2fa5a3231d5b2b425f206983c3e37340091fb6",
+      "candidatePathsSha256": "076c61c74827870457fb1d6029cc6c3c83313f28b82ecca627aff466cb34a599",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/cuda-test/cuda-cpp14.cu",
+          "test/static-export-test/CMakeLists.txt",
+          "src/os.cc",
+          "support/build-docs.py",
+          "test/fuzzing/chrono-duration.cc",
+          "test/color-test.cc"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "The core presentation-type patch source is present. Noise labels cover unrelated CUDA, static export, OS code, documentation builds, chrono fuzzing, and colors."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-failure_first-132",
+      "materializedCaseSha256": "b2de5025ab8c1e8deea316c273d1e94b804cb038f3502112ed6b3dcdffc622d8",
+      "candidatePathsSha256": "57a0564f27887ae70c15b1306e051739d3a39aa3f0965d74e4bc0210472b468b",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/fuzzing/float.cc",
+          "test/cuda-test/cuda-cpp14.cu",
+          "support/build-docs.py",
+          "test/color-test.cc",
+          "test/compile-fp-test.cc",
+          "test/posix-mock-test.cc"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "The standard-library path-format patch source is present. Noise labels cover unrelated float fuzzing, CUDA, documentation builds, colors, floating-point compilation, and POSIX mocks."
       }
     }
   ]
