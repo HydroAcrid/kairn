@@ -3505,6 +3505,7 @@ export class KairnRuntime {
     return {
       signals: candidateSet.signals,
       candidates: candidateSet.candidates.slice(0, candidateLimit),
+      enrichedCandidates: candidateSet.candidates,
       enrichedCandidatePaths: candidateSet.candidates.map((candidate) => candidate.path),
       initialCandidateCount: localIndex.initialCandidateCount,
       enrichedCandidateCount: localIndex.enrichedCandidateCount,

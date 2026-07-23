@@ -84,7 +84,10 @@ export type EvidenceCandidate = {
 /** Deterministic query-local snapshot used to curate public ranker corpora. */
 export type EvidenceCandidateInspection = {
   signals: EvidenceTaskSignals;
+  /** Candidate@limit rows exported for corpus training and review. */
   candidates: EvidenceCandidate[];
+  /** Complete bounded candidate union, including post-limit enrichment rows. */
+  enrichedCandidates: EvidenceCandidate[];
   enrichedCandidatePaths: string[];
   initialCandidateCount: number;
   enrichedCandidateCount: number;

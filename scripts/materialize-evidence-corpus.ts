@@ -191,6 +191,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
           signals: inspection.signals,
           index: indexCoverage(runtime.getIndexStatus()),
           enrichedCandidatePaths: inspection.enrichedCandidatePaths,
+          enrichedCandidates: inspection.enrichedCandidates,
           candidates: inspection.candidates.map((candidate) => ({ path: candidate.path, reasons: candidate.reasons }))
         } : {})
       });

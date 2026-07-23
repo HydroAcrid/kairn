@@ -50,6 +50,9 @@ describe("evidence ranker runtime integration", () => {
         features: expect.objectContaining({ exactPath: 1, productionSource: 1 })
       }));
       expect(snapshot.candidates.every((candidate) => !("label" in candidate))).toBe(true);
+      expect(snapshot.enrichedCandidates.length).toBeGreaterThanOrEqual(snapshot.candidates.length);
+      expect(snapshot.enrichedCandidates.slice(0, snapshot.candidates.length)).toEqual(snapshot.candidates);
+      expect(snapshot.enrichedCandidatePaths).toEqual(snapshot.enrichedCandidates.map((candidate) => candidate.path));
     } finally {
       runtime.close();
     }
