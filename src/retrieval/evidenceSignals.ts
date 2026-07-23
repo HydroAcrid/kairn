@@ -308,6 +308,7 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
       filesByPath
     });
     if (precision < 2 && !retrievalBackedImport && !directProductionImport) continue;
+    const newlyPromotedDirectImport = precision < 2 && directProductionImport && !retrievalBackedImport;
     existingReasons.add("graph_neighbor");
     if (edge.type === "test_for" || edge.type === "tested_by") existingReasons.add("source_test_pair");
     reasonsByPath.set(neighbor, existingReasons);
@@ -315,9 +316,13 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
       neighbor,
       Math.max(
         graphPriorityByPath.get(neighbor) ?? 0,
-        precision * 100 +
-          (preliminarySeedPriority.get(seed) ?? 0) +
-          Math.min(25, channelScore("lexical", neighbor, legacyByPath, filesByPath))
+        newlyPromotedDirectImport
+          ? precision * 100 +
+            (preliminarySeedPriority.get(seed) ?? 0) +
+            Math.min(25, channelScore("lexical", neighbor, legacyByPath, filesByPath))
+          : precision * 100 +
+            (preliminarySeedPriority.get(seed) ?? 0) +
+            channelScore("lexical", neighbor, legacyByPath, filesByPath)
       )
     );
   }
