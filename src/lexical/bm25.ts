@@ -42,9 +42,10 @@ export function buildLexicalIndex(input: {
     maxStateMb: input.maxStateMb
   }));
 
+  // Index the complete cheap path inventory first. Rich early files must not
+  // exhaust the term budget before later production paths receive any lexical
+  // representation.
   for (const file of input.files) {
-    const fileSymbols = symbolsByFile.get(file.path) ?? [];
-    const fileChunks = (chunksByFile.get(file.path) ?? []).slice(0, budget.chunksPerFileDocument);
     addDocument({
       rootPath: input.rootPath,
       documents,
@@ -53,17 +54,43 @@ export function buildLexicalIndex(input: {
       id: `file:${file.path}`,
       filePath: file.path,
       kind: "file",
+      text: [file.path, file.kind, file.language].join("\n")
+    });
+  }
+
+  // Give every parsed/chunked file a compact evidence document before adding
+  // high-resolution documents. The phase budget is divided evenly so path
+  // order cannot starve later files.
+  const evidenceFiles = input.files.filter((file) =>
+    (symbolsByFile.get(file.path)?.length ?? 0) > 0 || (chunksByFile.get(file.path)?.length ?? 0) > 0
+  );
+  const remainingTerms = Math.max(0, budget.maxLexicalTerms - terms.length);
+  const evidenceTermBudget = Math.floor(remainingTerms * 0.72);
+  const evidenceTermLimit = Math.min(budget.maxLexicalTerms, terms.length + evidenceTermBudget);
+  const maxEvidenceTermsPerFile = evidenceFiles.length > 0
+    ? Math.max(1, Math.min(48, Math.floor(evidenceTermBudget / evidenceFiles.length)))
+    : 0;
+  for (const file of evidenceFiles) {
+    const fileSymbols = (symbolsByFile.get(file.path) ?? []).slice(0, 12);
+    const fileChunks = (chunksByFile.get(file.path) ?? []).slice(0, Math.max(1, budget.chunksPerFileDocument));
+    addDocument({
+      rootPath: input.rootPath,
+      documents,
+      terms,
+      maxLexicalTerms: evidenceTermLimit,
+      maxUniqueTerms: maxEvidenceTermsPerFile,
+      id: `evidence:${file.path}`,
+      filePath: file.path,
+      kind: "file",
       text: [
         file.path,
-        file.kind,
-        file.language,
         ...fileSymbols.map((symbol) => `${symbol.name} ${symbol.kind} ${symbol.signature}`),
-        ...fileChunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text}`).slice(0, 8)
+        ...fileChunks.map((chunk) => `${chunk.symbol ?? ""} ${chunk.text}`)
       ].join("\n")
     });
   }
 
-  for (const symbol of input.symbols.slice(0, budget.maxSymbolDocuments)) {
+  for (const symbol of roundRobinByFile(input.symbols, (record) => record.filePath, budget.maxSymbolDocuments)) {
     addDocument({
       rootPath: input.rootPath,
       documents,
@@ -77,7 +104,7 @@ export function buildLexicalIndex(input: {
     });
   }
 
-  for (const chunk of input.chunks.slice(0, budget.maxChunkDocuments)) {
+  for (const chunk of roundRobinByFile(input.chunks, (record) => record.filePath, budget.maxChunkDocuments)) {
     addDocument({
       rootPath: input.rootPath,
       documents,
@@ -170,6 +197,7 @@ function addDocument(input: {
   kind: LexicalDocumentRecord["kind"];
   symbol?: string | undefined;
   text: string;
+  maxUniqueTerms?: number | undefined;
 }): void {
   if (input.terms.length >= input.maxLexicalTerms) return;
   const tokens = tokenizeLexical(input.text);
@@ -183,6 +211,8 @@ function addDocument(input: {
   for (const token of tokens) {
     frequencies.set(token, (frequencies.get(token) ?? 0) + 1);
   }
+  const selectedFrequencies = [...frequencies.entries()].slice(0, input.maxUniqueTerms ?? Number.POSITIVE_INFINITY);
+  if (selectedFrequencies.length === 0) return;
 
   input.documents.push({
     rootPath: input.rootPath,
@@ -190,12 +220,12 @@ function addDocument(input: {
     filePath: input.filePath,
     kind: input.kind,
     ...(input.symbol ? { symbol: input.symbol } : {}),
-    length: tokens.length,
+    length: selectedFrequencies.reduce((total, [, frequency]) => total + frequency, 0),
     tokenEstimate: estimateTokens(input.text),
     hash: sha256(input.text)
   });
 
-  for (const [term, frequency] of frequencies) {
+  for (const [term, frequency] of selectedFrequencies) {
     if (input.terms.length >= input.maxLexicalTerms) break;
     input.terms.push({
       rootPath: input.rootPath,
@@ -205,6 +235,30 @@ function addDocument(input: {
       frequency
     });
   }
+}
+
+function roundRobinByFile<T>(
+  records: T[],
+  filePathFor: (record: T) => string,
+  limit: number
+): T[] {
+  const byFile = groupBy(records, filePathFor);
+  const filePaths = [...byFile.keys()].sort();
+  const selected: T[] = [];
+  let depth = 0;
+  let progressed = true;
+  while (selected.length < limit && progressed) {
+    progressed = false;
+    for (const filePath of filePaths) {
+      const record = byFile.get(filePath)?.[depth];
+      if (!record) continue;
+      selected.push(record);
+      progressed = true;
+      if (selected.length >= limit) break;
+    }
+    depth += 1;
+  }
+  return selected;
 }
 
 function uniqueDocumentId(input: {
