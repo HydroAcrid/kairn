@@ -6,8 +6,8 @@
   "sourceQueueSha256": "16acb7b34ac67bf24cc3a8562aac5f8ae665b86550064f794e1738354291c117",
   "batchIndexSha256": "7ba998b4c6d6bff1f433f3e1d37572175b748f210438d3c89a9fd04c9dd7dcd5",
   "caseCount": 165,
-  "completedCases": 132,
-  "pendingCases": 33,
+  "completedCases": 143,
+  "pendingCases": 22,
   "decisions": [
     {
       "id": "v02c-train-python-source_localization-001",
@@ -2544,6 +2544,240 @@
         "reviewer": "Codex independent repository-evidence review",
         "reviewedAt": "2026-07-23T17:30:00-04:00",
         "notes": "The standard-library path-format patch source is present. Noise labels cover unrelated float fuzzing, CUDA, documentation builds, colors, floating-point compilation, and POSIX mocks."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-long_session-133",
+      "materializedCaseSha256": "3d549b3d3575a8e8e8c5ad8a7a9c05c1bd54e4f9039519d92243dbf7959f71c3",
+      "candidatePathsSha256": "4010606efbcb51f776080c9bf975621298835f02c9576e1ea2fdaf6c19691005",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "support/release.py",
+          "support/bazel/MODULE.bazel",
+          "support/Vagrantfile",
+          "test/fuzzing/chrono-duration.cc",
+          "test/color-test.cc",
+          "src/os.cc"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The format and standard-library headers are present. Noise labels cover unrelated release and Bazel tooling, virtualization, chrono fuzzing, colors, and OS code."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-long_session-134",
+      "materializedCaseSha256": "42726a38433ef9fc2ac6dcebc9dae5e8eda6ca78121c64a8b4c902d2e8ce750c",
+      "candidatePathsSha256": "5ea2df21ee5b19b61e0b2e0c8aa5481eeac046ba22ad028e4f4da7d7c7f8d125",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/fuzzing/named-arg.cc",
+          "test/color-test.cc",
+          "src/os.cc",
+          "support/rst2md.py",
+          "test/cuda-test/cpp14.cc",
+          "test/find-package-test/main.cc"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The core and format header patch sources are present. Noise labels cover unrelated named-argument fuzzing, colors, OS code, documentation conversion, CUDA, and package-discovery tests."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-long_session-135",
+      "materializedCaseSha256": "efb12e4ded26502579070f9cc713e795bdc4256dc4b9eeb58ab5c2c1a1b02c4b",
+      "candidatePathsSha256": "5eda1e938015d9ae8686815477ecf80bf01398deb2b9076b0c3d5ef2aa3cfd3a",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "support/update-coverity-branch.py",
+          "support/travis-build.py",
+          "support/appveyor-build.py",
+          "support/Vagrantfile",
+          "test/chrono-test.cc",
+          "test/add-subdirectory-test/main.cc"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The format and format-inl patch sources are present. Noise labels cover unrelated CI tooling, virtualization, chrono behavior, and integration builds."
+      }
+    },
+    {
+      "id": "v02c-holdout-python-source_localization-136",
+      "materializedCaseSha256": "0af512f630f43c1c159c89d6159e06de5c73ef94a28ed66e03770b2bf8e89151",
+      "candidatePathsSha256": "db92bf1ecd1f22d45c6cb3c7257be4dbc70303ceabb105a6f98c2b6fa5238516",
+      "decision": {
+        "requiredSourceFiles": [
+          "django/db/models/expressions.py"
+        ],
+        "explicitNoiseFiles": [
+          "tests/syndication_tests/templates/syndication/description.html",
+          "tests/admin_docs/test_utils.py",
+          "django/core/mail/message.py",
+          "tests/sitemaps_tests/base.py",
+          "django/contrib/gis/db/models/functions.py",
+          "django/contrib/admin/static/admin/js/admin/DateTimeShortcuts.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The expression source is manually confirmed as required and present. Noise labels cover unrelated syndication, admin documentation and JavaScript, mail, sitemaps, and GIS functions."
+      }
+    },
+    {
+      "id": "v02c-holdout-python-source_localization-137",
+      "materializedCaseSha256": "04f3a1aad6b0b1684e11c9e36f60ed2421f1150f242b3de601a56bccd5abefc9",
+      "candidatePathsSha256": "20fe7f1dc215480c705593f2de75e589af13b536be42d9201889219f8fd7e414",
+      "decision": {
+        "requiredSourceFiles": [
+          "lib/matplotlib/axes/_axes.py"
+        ],
+        "explicitNoiseFiles": [
+          "src/qhull_wrap.c",
+          "extern/agg24-svn/include/agg_bspline.h",
+          "lib/matplotlib/font_manager.py",
+          "tools/github_stats.py",
+          "tutorials/intermediate/legend_guide.py",
+          "lib/matplotlib/backends/backend_qt5agg.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The axes implementation is manually confirmed as required and present. Noise labels cover unrelated geometry, rasterization, fonts, repository statistics, legends, and Qt backends."
+      }
+    },
+    {
+      "id": "v02c-holdout-python-failure_first-138",
+      "materializedCaseSha256": "814349f8d3643b62a4cb7d280267823093822a8fd85efdff26e7dcc3da17b556",
+      "candidatePathsSha256": "35f8232408f393f8c8bded441382d67addde13058676b3f0fdb9efd6f8f8c805",
+      "decision": {
+        "requiredSourceFiles": [
+          "astropy/modeling/separable.py"
+        ],
+        "explicitNoiseFiles": [
+          "astropy/cosmology/tests/test_core.py",
+          "astropy/io/fits/tests/test_core.py",
+          "astropy/extern/jquery/data/js/jquery-3.1.1.js",
+          "astropy/timeseries/periodograms/lombscargle/implementations/mle.py",
+          "astropy/nddata/nduncertainty.py",
+          "astropy/coordinates/sky_coordinate.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The model separability source is manually confirmed as required and present. Noise labels cover unrelated cosmology, FITS, vendored JavaScript, periodograms, NDData uncertainty, and coordinates."
+      }
+    },
+    {
+      "id": "v02c-holdout-python-failure_first-139",
+      "materializedCaseSha256": "cd561387c9873dfba67585d14bd19696f970ceae325a6cf9192f46f58689ca66",
+      "candidatePathsSha256": "59bd038d8801fb68231e6fb90b4f72673d63f93349f1f09587295d397e4fa249",
+      "decision": {
+        "requiredSourceFiles": [
+          "astropy/timeseries/core.py"
+        ],
+        "explicitNoiseFiles": [
+          "CODE_OF_CONDUCT.md",
+          "CONTRIBUTING.md",
+          "astropy/io/votable/exceptions.py",
+          "astropy/io/fits/tests/test_fitstime.py",
+          "astropy/wcs/wcsapi/tests/test_utils.py",
+          "astropy/coordinates/tests/test_solar_system.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The time-series core source is manually confirmed as required and present. Noise labels cover project policy plus unrelated VOTable, FITS, WCS, and solar-system code."
+      }
+    },
+    {
+      "id": "v02c-holdout-python-long_session-140",
+      "materializedCaseSha256": "e6e6135bbc7edd56d69bf61b718ef34ce98b6bcf8fcf1598905b7223ec04c00d",
+      "candidatePathsSha256": "19ad4875b497f58ef914146054d64242cc6b01c09562e7a82688527d04c52d06",
+      "decision": {
+        "requiredSourceFiles": [
+          "django/http/response.py",
+          "django/contrib/messages/storage/cookie.py",
+          "django/contrib/sessions/middleware.py"
+        ],
+        "explicitNoiseFiles": [
+          "tests/model_formsets_regress/models.py",
+          "tests/syndication_tests/templates/syndication/description.html",
+          "tests/staticfiles_tests/storage.py",
+          "tests/admin_scripts/app_raising_warning/models.py",
+          "tests/delete/tests.py",
+          "django/core/mail/message.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The HTTP response and message-cookie sources are present; the manually confirmed session middleware remains a candidate@64 retrieval miss. Noise labels cover unrelated model formsets, syndication, static files, admin warnings, deletion, and mail."
+      }
+    },
+    {
+      "id": "v02c-holdout-python-long_session-141",
+      "materializedCaseSha256": "07f422d07b9e7314e7e3b6944341a1da013e77fbe5ebabf211d97cbf8d2180b3",
+      "candidatePathsSha256": "60682b43722c1ba8a64ea859831f5fef2f11b02255236f8f04e483fe1d63988f",
+      "decision": {
+        "requiredSourceFiles": [
+          "django/core/validators.py",
+          "django/forms/fields.py"
+        ],
+        "explicitNoiseFiles": [
+          "tests/messages_tests/test_api.py",
+          "django/core/mail/message.py",
+          "django/db/backends/oracle/utils.py",
+          "tests/test_utils/templates/template_used/include.html",
+          "django/contrib/admin/sites.py",
+          "django/contrib/gis/geos/geometry.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The core validator source is present; the manually confirmed forms field source remains a candidate@64 retrieval miss. Noise labels cover unrelated messages, mail, Oracle helpers, templates, admin sites, and GIS geometry."
+      }
+    },
+    {
+      "id": "v02c-holdout-typescript-source_localization-142",
+      "materializedCaseSha256": "4fdbc4f77d24b4907aecbc8015d625fabb3060ae9b1d0ff601594d14d7cda1a4",
+      "candidatePathsSha256": "e934f88cc5c512653767234595f2c46b9dfb9c41e9e36a43f624ebcd8db3eeda",
+      "decision": {
+        "requiredSourceFiles": [
+          "lib/helpers/isAbsoluteURL.js"
+        ],
+        "explicitNoiseFiles": [
+          "bin/contributors.js",
+          "bin/resolveNPMTag.js",
+          "bin/RepoBot.js",
+          "gulpfile.js",
+          "test/manual/promise.js",
+          "lib/helpers/deprecatedMethod.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The absolute-URL helper is manually confirmed as required and present. Noise labels cover unrelated contributor, release-tag, repository-bot, build, promise-demo, and deprecation code."
+      }
+    },
+    {
+      "id": "v02c-holdout-typescript-source_localization-143",
+      "materializedCaseSha256": "9177e5c37a84f2e5e9fadf5696e88b7575d7ae9497215dac19a5c3b637746104",
+      "candidatePathsSha256": "f691a21f3b9926e57a6682ac70a2e05260505eba5713e3837dd8136642d1ed90",
+      "decision": {
+        "requiredSourceFiles": [
+          "src/controllers/admin/users.js",
+          "src/user/delete.js",
+          "src/database/mongo/main.js",
+          "src/database/postgres/main.js",
+          "src/database/redis/main.js",
+          "src/socket.io/admin/user.js",
+          "src/user/email.js"
+        ],
+        "explicitNoiseFiles": [
+          "src/analytics.js",
+          "src/api/flags.js",
+          "src/api/chats.js",
+          "src/topics/create.js",
+          "src/cli/colors.js",
+          "public/src/client/header.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The admin user controller and deletion source are present; five manually confirmed database, socket, and email sources remain candidate@64 retrieval misses. Noise labels cover unrelated analytics, flags, chats, topic creation, CLI colors, and client headers."
       }
     }
   ]
