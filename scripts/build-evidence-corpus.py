@@ -212,12 +212,18 @@ def validate_case(
     paths = [candidate["path"] for candidate in candidates]
     if len(paths) != len(set(paths)):
         raise ValueError(f"{label}.candidates contains duplicate paths")
-    if not any(candidate["label"] == 1 for candidate in candidates):
-        raise ValueError(f"{label} requires at least one labeled positive")
-    if not allow_sample and split == "holdout" and not any(
-        candidate["labelProvenance"] == "required_source_oracle" for candidate in candidates
-    ):
-        raise ValueError(f"{label}: production holdout cases require a curated required-source oracle")
+    required_source_oracle_count = row.get("requiredSourceOracleCount", 0)
+    required_source_oracle_sha256 = row.get("requiredSourceOracleSha256")
+    if not allow_sample:
+        if isinstance(required_source_oracle_count, bool) or not isinstance(required_source_oracle_count, int):
+            raise ValueError(f"{label}.requiredSourceOracleCount must be an integer")
+        if required_source_oracle_count < 0:
+            raise ValueError(f"{label}.requiredSourceOracleCount must not be negative")
+        oracle_digest = require_string(required_source_oracle_sha256, f"{label}.requiredSourceOracleSha256")
+        if len(oracle_digest) != 64 or any(char not in "0123456789abcdefABCDEF" for char in oracle_digest):
+            raise ValueError(f"{label}.requiredSourceOracleSha256 must be a SHA-256 digest")
+        if split == "holdout" and required_source_oracle_count < 1:
+            raise ValueError(f"{label}: production holdout cases require an independently reviewed source oracle")
     explicit_negatives = sum(
         candidate["labelProvenance"] == "explicit_noise_or_excluded" for candidate in candidates
     )
@@ -237,6 +243,8 @@ def validate_case(
         "dataOrigin": origin,
         "syntheticVariantOf": synthetic_parent,
         "syntheticVariantIndex": synthetic_index,
+        "requiredSourceOracleCount": required_source_oracle_count,
+        "requiredSourceOracleSha256": required_source_oracle_sha256,
         "candidates": candidates,
     }
 
@@ -369,6 +377,10 @@ def main() -> int:
         raise ValueError(f"corpus/registry lineage mismatch; unused={missing}, unregistered={extra}")
 
     rows = flatten(cases)
+    zero_positive_cases = sum(
+        not any(candidate["label"] == 1 for candidate in case["candidates"])
+        for case in cases
+    )
     rendered = "".join(json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n" for row in rows)
     digest = hashlib.sha256(rendered.encode("utf-8")).hexdigest()
     summary = {
@@ -382,12 +394,18 @@ def main() -> int:
         "candidateRows": len(rows),
         "labeledRows": sum(row["label"] is not None for row in rows),
         "unlabeledRows": sum(row["label"] is None for row in rows),
+        "zeroPositiveCases": zero_positive_cases,
         "splits": {
             split: {
                 "cases": sum(case["split"] == split for case in cases),
                 "repositoryLineages": len({case["repositoryLineageId"] for case in cases if case["split"] == split}),
                 "languages": dict(sorted(Counter(case["language"] for case in cases if case["split"] == split).items())),
                 "scenarios": dict(sorted(Counter(case["scenario"] for case in cases if case["split"] == split).items())),
+                "zeroPositiveCases": sum(
+                    case["split"] == split
+                    and not any(candidate["label"] == 1 for candidate in case["candidates"])
+                    for case in cases
+                ),
             }
             for split in SPLITS
         },

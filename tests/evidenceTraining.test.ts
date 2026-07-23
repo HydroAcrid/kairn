@@ -193,7 +193,11 @@ describe("public evidence ranker training", () => {
     expect(JSON.parse(fs.readFileSync(sealedManifestPath, "utf8"))).toMatchObject({
       sealed: true,
       status: "materialized",
-      materializer: expect.objectContaining({ caseProcessIsolation: true })
+      materializer: expect.objectContaining({ caseProcessIsolation: true }),
+      cases: [expect.objectContaining({
+        requiredSourceOracleCount: 1,
+        requiredSourceOracleSha256: expect.stringMatching(/^[a-f0-9]{64}$/)
+      })]
     });
 
     const missedIntakePath = path.join(temporary, "intake.reviewed-miss.json");
@@ -224,6 +228,26 @@ describe("public evidence ranker training", () => {
         missingRequiredSourceFiles: ["src/verified-but-unretrieved.ts"],
         missingExplicitNoiseFiles: []
       })]
+    });
+
+    const missedCorpusPath = path.join(temporary, "missed-corpus.jsonl");
+    const missedCorpusSummaryPath = path.join(temporary, "missed-corpus-summary.json");
+    const python = pythonInvocation();
+    const corpusResult = spawnSync(python.command, [
+      ...python.prefix,
+      path.resolve("scripts/build-evidence-corpus.py"),
+      "--manifest", missedManifestPath,
+      "--out", missedCorpusPath,
+      "--summary-out", missedCorpusSummaryPath,
+      "--allow-sample"
+    ], { cwd: process.cwd(), encoding: "utf8" });
+    expect(corpusResult.status, corpusResult.stderr).toBe(0);
+    expect(JSON.parse(fs.readFileSync(missedCorpusSummaryPath, "utf8"))).toMatchObject({
+      caseCount: 1,
+      zeroPositiveCases: 1,
+      splits: {
+        train: expect.objectContaining({ zeroPositiveCases: 1 })
+      }
     });
   });
 
@@ -334,7 +358,8 @@ describe("public evidence ranker training", () => {
       sampleOnly: true,
       caseCount: 3,
       candidateRows: 21,
-      labeledRows: 21
+      labeledRows: 21,
+      zeroPositiveCases: 0
     });
   });
 

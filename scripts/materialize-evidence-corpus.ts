@@ -151,6 +151,10 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
         dataOrigin: intakeCase.dataOrigin,
         prompt: intakeCase.prompt,
         querySha256: sha256(intakeCase.prompt),
+        requiredSourceOracleCount: intakeCase.requiredSourceFiles.length,
+        requiredSourceOracleSha256: sha256(
+          [...intakeCase.requiredSourceFiles].map(normalizePath).sort().join("\n")
+        ),
         ...(intakeCase.syntheticVariantOf ? {
           syntheticVariantOf: intakeCase.syntheticVariantOf,
           syntheticVariantIndex: intakeCase.syntheticVariantIndex
