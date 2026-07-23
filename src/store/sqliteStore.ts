@@ -695,40 +695,6 @@ export class SqliteStore {
     return rows.slice(0, limit).map(mapSemanticChunkRow);
   }
 
-  listSemanticChunksForFilesFair(
-    rootPath: string,
-    filePaths: string[],
-    perFileLimit: number
-  ): SemanticChunkRecord[] {
-    const unique = [...new Set(filePaths)].filter(Boolean);
-    if (unique.length === 0 || perFileLimit <= 0) return [];
-    const rows: SemanticChunkRow[] = [];
-
-    for (const chunk of chunkValues(unique, 500)) {
-      const placeholders = chunk.map(() => "?").join(", ");
-      rows.push(
-        ...(this.db
-          .prepare(`
-            select *
-            from (
-              select semantic_chunks.*,
-                row_number() over (
-                  partition by file_path
-                  order by coalesce(start_line, 0) asc, kind asc, id asc
-                ) as per_file_rank
-              from semantic_chunks
-              where root_path = ? and file_path in (${placeholders})
-            )
-            where per_file_rank <= ?
-            order by file_path asc, coalesce(start_line, 0) asc, kind asc, id asc
-          `)
-          .all(rootPath, ...chunk, perFileLimit) as SemanticChunkRow[])
-      );
-    }
-
-    return rows.map(mapSemanticChunkRow);
-  }
-
   listSemanticVectors(rootPath: string): SemanticVectorRecord[] {
     const rows = this.db
       .prepare("select * from semantic_vectors where root_path = ? order by chunk_id asc")

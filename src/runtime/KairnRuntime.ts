@@ -47,7 +47,6 @@ import type {
   SessionLedgerEvent,
   SessionLedgerEventKind,
   SessionLedgerSummary,
-  SemanticChunkRecord,
   SymbolRecord,
   TaskSession,
   TaskPhase,
@@ -3609,20 +3608,13 @@ export class KairnRuntime {
     const javaSeedPaths = initialPaths
       .filter((filePath) => filesByPath.get(filePath)?.language === "java")
       .slice(0, MAX_QUERY_LOCAL_JAVA_SEEDS);
-    const javaSeedChunks = javaSeedPaths.length > 0
-      ? this.store.listSemanticChunksForFilesFair(
-          input.rootPath,
-          javaSeedPaths,
-          MAX_QUERY_LOCAL_JAVA_CHUNKS_PER_SEED
-        )
-      : [];
     const edges = mergeQueryLocalEdges(
       persistedEdges,
       queryLocalJavaTypeEdges({
         rootPath: input.rootPath,
         seedPaths: javaSeedPaths,
         files: input.files,
-        chunks: javaSeedChunks
+        sources: loadQueryLocalJavaSources(input.rootPath, javaSeedPaths, filesByPath)
       })
     );
     const enriched = buildEvidenceCandidates({
@@ -4533,31 +4525,27 @@ function selectRoleBalancedSeeds(
 }
 
 const MAX_QUERY_LOCAL_JAVA_SEEDS = 16;
-const MAX_QUERY_LOCAL_JAVA_CHUNKS_PER_SEED = 16;
+const MAX_QUERY_LOCAL_JAVA_SOURCE_BYTES_PER_SEED = 64 * 1024;
+const MAX_QUERY_LOCAL_JAVA_SOURCE_BYTES_TOTAL = 512 * 1024;
 const MAX_QUERY_LOCAL_JAVA_TYPES_PER_SEED = 8;
 
 function queryLocalJavaTypeEdges(input: {
   rootPath: string;
   seedPaths: string[];
   files: FileRecord[];
-  chunks: SemanticChunkRecord[];
+  sources: Map<string, string>;
 }): GraphEdgeRecord[] {
-  if (input.seedPaths.length === 0 || input.chunks.length === 0) return [];
+  if (input.seedPaths.length === 0 || input.sources.size === 0) return [];
   const javaTargets = new Map<string, string>();
   for (const file of input.files) {
     if (file.language !== "java" || !file.path.endsWith(".java")) continue;
     const typeName = path.posix.basename(file.path, ".java");
     javaTargets.set(`${path.posix.dirname(file.path)}:${typeName}`, file.path);
   }
-  const chunksByFile = new Map<string, string[]>();
-  for (const chunk of input.chunks) {
-    if (!input.seedPaths.includes(chunk.filePath)) continue;
-    chunksByFile.set(chunk.filePath, [...(chunksByFile.get(chunk.filePath) ?? []), chunk.text]);
-  }
 
   const edges: GraphEdgeRecord[] = [];
   for (const seedPath of input.seedPaths) {
-    const content = (chunksByFile.get(seedPath) ?? []).join("\n");
+    const content = input.sources.get(seedPath) ?? "";
     const typeNames = extractJavaStructuralTypeNames(content)
       .slice(0, MAX_QUERY_LOCAL_JAVA_TYPES_PER_SEED);
     for (const typeName of typeNames) {
@@ -4576,6 +4564,40 @@ function queryLocalJavaTypeEdges(input: {
     }
   }
   return edges;
+}
+
+function loadQueryLocalJavaSources(
+  rootPath: string,
+  seedPaths: string[],
+  filesByPath: Map<string, FileRecord>
+): Map<string, string> {
+  const sources = new Map<string, string>();
+  let remainingBytes = MAX_QUERY_LOCAL_JAVA_SOURCE_BYTES_TOTAL;
+  for (const seedPath of seedPaths) {
+    const file = filesByPath.get(seedPath);
+    if (
+      !file ||
+      file.size > MAX_QUERY_LOCAL_JAVA_SOURCE_BYTES_PER_SEED ||
+      file.size > remainingBytes
+    ) {
+      continue;
+    }
+    try {
+      const content = readTextFile(rootPath, seedPath);
+      const sourceBytes = Buffer.byteLength(content, "utf8");
+      if (
+        sourceBytes > MAX_QUERY_LOCAL_JAVA_SOURCE_BYTES_PER_SEED ||
+        sourceBytes > remainingBytes
+      ) {
+        continue;
+      }
+      sources.set(seedPath, content);
+      remainingBytes -= sourceBytes;
+    } catch {
+      // Query-local source enrichment is optional; the persisted evidence path remains available.
+    }
+  }
+  return sources;
 }
 
 function extractJavaStructuralTypeNames(content: string): string[] {
