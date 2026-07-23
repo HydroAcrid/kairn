@@ -12,7 +12,8 @@ import { rankEvidenceResults } from "../src/retrieval/evidenceRanker.js";
 import {
   buildEvidenceCandidates,
   buildEvidenceRetrievalQueries,
-  extractEvidenceTaskSignals
+  extractEvidenceTaskSignals,
+  selectEvidenceSymbolTerms
 } from "../src/retrieval/evidenceSignals.js";
 import type {
   FileKind,
@@ -103,6 +104,20 @@ describe("evidence task signals and candidates", () => {
     expect(retrievalQueries.join(" ")).not.toContain("VeryNoisyIdentifier");
     expect(signals.preferredIdentifiers[0]).toBe("segmentparser");
     expect(signals.preferredIdentifiers).not.toContain("notasymbol");
+  });
+
+  it("balances symbol lookup terms so long code output cannot crowd out the task narrative", () => {
+    const noisyOutput = Array.from({ length: 80 }, (_, index) => `UIWidgetState${index}`).join(" ");
+    const signals = extractEvidenceTaskSignals([
+      "Recursive discovery ignores configured ignore paths.",
+      "Output:",
+      noisyOutput
+    ].join("\n"));
+    const selected = selectEvidenceSymbolTerms(signals, 12);
+
+    expect(selected).toContain("recursive");
+    expect(selected).toContain("ignore");
+    expect(selected.filter((term) => term.startsWith("uiwidgetstate")).length).toBeLessThan(8);
   });
 
   it("reserves hard candidate capacity for an exact failing-check symbol", () => {

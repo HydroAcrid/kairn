@@ -68,7 +68,8 @@ import {
   DEFAULT_ENRICHED_CANDIDATE_LIMIT,
   DEFAULT_INITIAL_CANDIDATE_LIMIT,
   extractEvidenceTaskSignals,
-  isProductionEvidenceFile
+  isProductionEvidenceFile,
+  selectEvidenceSymbolTerms
 } from "../retrieval/evidenceSignals.js";
 import { scoreBm25Files } from "../lexical/bm25.js";
 import { scoreFiles } from "../retrieval/scoreResults.js";
@@ -3539,15 +3540,11 @@ export class KairnRuntime {
       budget.lexicalDocumentLimit
     );
     const lexicalStats = this.store.getLexicalStats(input.rootPath);
-    const symbolCandidateTerms = uniqueStrings([
-      ...signals.preferredIdentifiers,
-      ...signals.identifiers,
-      ...signals.queryTerms
-    ]).slice(0, budget.termLookupLimit);
+    const symbolCandidateTerms = selectEvidenceSymbolTerms(signals, budget.termLookupLimit);
     const matchingSymbols = this.store.listSymbolsForTerms(
       input.rootPath,
       symbolCandidateTerms,
-      DEFAULT_INITIAL_CANDIDATE_LIMIT
+      budget.symbolLimit
     );
     const filesByPath = new Map(input.files.map((file) => [file.path, file]));
     const sourceOrUnknownIntent = signals.intent === "source" || signals.intent === "unknown";

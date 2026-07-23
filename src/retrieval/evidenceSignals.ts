@@ -129,6 +129,35 @@ export function buildEvidenceRetrievalQueries(query: string): string[] {
   return uniqueInOrder([headline, narrative, codeAware].filter(Boolean)).slice(0, MAX_RETRIEVAL_QUERIES);
 }
 
+export function selectEvidenceSymbolTerms(signals: EvidenceTaskSignals, limit: number): string[] {
+  const boundedLimit = Math.max(1, Math.floor(limit));
+  const selected = uniqueInOrder(signals.failureIdentifiers).slice(0, boundedLimit);
+  const seen = new Set(selected);
+  const channels = [
+    signals.preferredIdentifiers,
+    signals.queryTerms,
+    signals.identifiers
+  ];
+  const cursors = channels.map(() => 0);
+  let progressed = true;
+  while (selected.length < boundedLimit && progressed) {
+    progressed = false;
+    for (let channelIndex = 0; channelIndex < channels.length; channelIndex += 1) {
+      const channel = channels[channelIndex]!;
+      let cursor = cursors[channelIndex] ?? 0;
+      while (cursor < channel.length && seen.has(channel[cursor]!)) cursor += 1;
+      cursors[channelIndex] = cursor + 1;
+      const term = channel[cursor];
+      if (!term) continue;
+      selected.push(term);
+      seen.add(term);
+      progressed = true;
+      if (selected.length >= boundedLimit) break;
+    }
+  }
+  return selected;
+}
+
 export function buildEvidenceCandidates(input: EvidenceCandidateInput): EvidenceCandidateSet {
   const initialLimit = Math.max(1, Math.min(input.initialLimit ?? DEFAULT_INITIAL_CANDIDATE_LIMIT, DEFAULT_INITIAL_CANDIDATE_LIMIT));
   const enrichedLimit = Math.max(initialLimit, Math.min(input.enrichedLimit ?? DEFAULT_ENRICHED_CANDIDATE_LIMIT, DEFAULT_ENRICHED_CANDIDATE_LIMIT));
