@@ -6,8 +6,8 @@
   "sourceQueueSha256": "16acb7b34ac67bf24cc3a8562aac5f8ae665b86550064f794e1738354291c117",
   "batchIndexSha256": "7ba998b4c6d6bff1f433f3e1d37572175b748f210438d3c89a9fd04c9dd7dcd5",
   "caseCount": 165,
-  "completedCases": 22,
-  "pendingCases": 143,
+  "completedCases": 33,
+  "pendingCases": 132,
   "decisions": [
     {
       "id": "v02c-train-python-source_localization-001",
@@ -425,6 +425,215 @@
         "reviewer": "Codex independent repository-evidence review",
         "reviewedAt": "2026-07-23T13:26:00-04:00",
         "notes": "The core diff patch source is present. Noise labels cover unrelated compat feature tests, benchmark analysis, and release tooling."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-source_localization-023",
+      "materializedCaseSha256": "917f24ee50eb7fa81466bb1680e322d4f5213996da7a336013c2df5bed55bfdb",
+      "candidatePathsSha256": "cb5eb478fb6ad6a4d5e8364c3e2c793115c23890e2c2280aa27e0e3192ed3616",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benches/src/keyed-children/index.js",
+          "benches/scripts/analyze.js",
+          "benches/scripts/deopts.js",
+          "scripts/release/publish.mjs",
+          "debug/src/debug.js",
+          "demo/stateOrderBug.jsx"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The child-diff patch source is present. Noise labels are benchmark, release, debug, and demo code unrelated to rendering boxed string values."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-source_localization-024",
+      "materializedCaseSha256": "f66a34918e171daf4f469b71826a1e354c834d5db1e1ac8c72eaf3d8d81550aa",
+      "candidatePathsSha256": "562772c74297a620f1aabaa1231eddf4a79a9938a41c942290ae665e1086483d",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "packages/docusaurus-plugin-content-docs/src/__tests__/numberPrefix.test.ts",
+          "packages/docusaurus-plugin-content-blog/src/__tests__/feed.test.ts",
+          "packages/docusaurus-theme-common/src/contexts/__tests__/docsVersion.test.tsx",
+          "packages/docusaurus-plugin-pwa/src/registerSw.ts",
+          "packages/docusaurus-theme-translations/update.mjs",
+          "packages/docusaurus-theme-common/src/hooks/useTOCHighlight.ts"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The server broken-link patch source is present. Noise labels cover unrelated content-plugin tests, theme state, PWA registration, translations, and table-of-contents behavior."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-failure_first-025",
+      "materializedCaseSha256": "eea7258f51aae372ae34771469a6a66d00c76a246c85b5fde02f7f76559b8198",
+      "candidatePathsSha256": "0cec64651bc3872a4ea5a57bebb2bd051dc34767c9653913f277eee7fb3c6091",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "type-definitions/flow-tests/merge.js",
+          "type-definitions/ts-tests/ordered-map.ts",
+          "resources/benchmark.js",
+          "website/src/ImmutableConsole.tsx",
+          "src/predicates/isOrderedMap.js",
+          "src/functional/removeIn.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The sequence Operations patch source is present. Noise labels cover unrelated type fixtures, benchmarking, website UI, ordered-map predicates, and nested removal."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-failure_first-026",
+      "materializedCaseSha256": "00303b94660fce5522b0031e67df963be0e4fce04cb84258f9abf4c3e1b0faae",
+      "candidatePathsSha256": "6ebf3174379d0bedad183c774b062223bd11ce36738b27fa3c6a6216fc1397ea",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benches/src/keyed-children/index.js",
+          "benches/scripts/bench.js",
+          "benches/scripts/paths.js",
+          "debug/test/browser/component-stack.test.js",
+          "compat/test/browser/portals.test.js",
+          "compat/test/browser/suspense-list.test.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The core diff patch source is present. Noise labels are benchmark tooling and unrelated debug, portal, and suspense tests."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-failure_first-027",
+      "materializedCaseSha256": "88506324d68d5869c1894d063b19be0cc48ce03e3ecee7b7520cd313872b41d1",
+      "candidatePathsSha256": "72e17170356c7d2352608c8538636d560cb2657a975d19237ae40d2667f1de49",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benches/scripts/config.js",
+          "benches/scripts/deopts.js",
+          "benches/scripts/prepare.js",
+          "debug/test/browser/component-stack.test.js",
+          "compat/test/browser/portals.test.js",
+          "compat/test/browser/suspense-list.test.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The child-diff patch source is present. Noise labels are benchmark tooling and unrelated debug, portal, and suspense-list tests."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-failure_first-028",
+      "materializedCaseSha256": "e9c3ea9ad5d3fd047384bd5e890319c296e9ebce5f46d3084ddf15bd01cb9b72",
+      "candidatePathsSha256": "54a9ebef4881cc031ce5efffc3b8f2267ee3d203cc6664a8f909b1712058c9ea",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "compat/test/browser/cloneElement.test.js",
+          "compat/test/browser/events.test.js",
+          "compat/test/browser/portals.test.js",
+          "compat/test/browser/findDOMNode.test.js",
+          "benches/scripts/bench.js",
+          "benches/scripts/deopts.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The property-diff patch source is present. Noise labels cover unrelated compat feature tests and benchmark tooling."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-failure_first-029",
+      "materializedCaseSha256": "db8ee545e76e930799739fb60bdeebf99f0cd7340a0cb52f99252320964883d0",
+      "candidatePathsSha256": "cb42211449d51d008a9d39030439bcf4f9d7b4454f3691ea62ac9289499a46d9",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "compat/test/browser/events.test.js",
+          "compat/test/browser/suspense-list.test.js",
+          "compat/test/browser/Children.test.js",
+          "benches/scripts/analyze.js",
+          "benches/scripts/deopts.js",
+          "benches/proxy-packages/preact-master-proxy/index.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The property-diff patch source is present. Noise labels cover unrelated compat tests, benchmark analysis, and benchmark proxy packaging."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-failure_first-030",
+      "materializedCaseSha256": "5e91991f3cb23a9865de3127625b987a0c582aeb10732218c029da98b06aff65",
+      "candidatePathsSha256": "6b3d32cd5d8b5315b18540b5f62f41be88c6fb6827f4a0760cc6ab5563b9521f",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benches/src/keyed-children/components.js",
+          "benches/src/keyed-children/store.js",
+          "benches/scripts/global.d.ts",
+          "benches/scripts/index.js",
+          "compat/test/browser/memo.test.js",
+          "compat/test/browser/suspense.test.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The hook cleanup patch source is present. Noise labels are benchmark harness code and unrelated memo or suspense tests."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-long_session-031",
+      "materializedCaseSha256": "9cefd5cf2ba89024b13745d9f56f8724a97b14e5bd2e272d8d2527eb87973feb",
+      "candidatePathsSha256": "d9a6621199bd391e7535893a92b605e21994a1322c63b14fb95921f4982a3c58",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "type-definitions/flow-tests/merge.js",
+          "type-definitions/ts-tests/list.ts",
+          "resources/benchmark.js",
+          "perf/Record.js",
+          "src/functional/removeIn.js",
+          "src/functional/setIn.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The collection implementation patch source is present. Noise labels cover unrelated type fixtures, performance code, nested removal, and nested assignment."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-long_session-032",
+      "materializedCaseSha256": "6181a3e2b101c74f2c671eaf2b00a1afd518c563926eae95cb659e91386a8e65",
+      "candidatePathsSha256": "d237c2dee069d3e1ea7b08231be04782ebea05c8ca15953ed603f8705e1c83a1",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "editor/js/libs/acorn/acorn.js",
+          "editor/js/libs/es-module-shims.js",
+          "editor/js/libs/codemirror/codemirror.js",
+          "manual/resources/tools/geo-picking/ogc-parser.js",
+          "src/renderers/webgl/WebGLState.js",
+          "examples/textures/lottie/24017-lottie-logo-animation.json"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The Object3D and ObjectLoader patch sources are present. Noise labels are unrelated editor libraries, parsing assets, renderer state, and example animation data."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-long_session-033",
+      "materializedCaseSha256": "4eaeee3d58baf3746b0929563bfcaa140c102e69d3220d3c156b725755f02425",
+      "candidatePathsSha256": "fdac8b85efbe80559378b1cc9d474e36d178c5bffc232be629b55b41a48c6c0c",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "editor/js/libs/codemirror/codemirror.js",
+          "editor/js/libs/acorn/acorn.js",
+          "manual/resources/prettify.js",
+          "src/renderers/webgl/WebGLExtensions.js",
+          "src/renderers/webgl/WebGLShadowMap.js",
+          "docs/api/en/constants/Materials.html"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "A patched object subclass is present. Noise labels are unrelated editor libraries, manual formatting, WebGL infrastructure, and generated API documentation."
       }
     }
   ]
