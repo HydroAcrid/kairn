@@ -290,7 +290,10 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
     filesByPath,
     limit: Math.max(0, enrichedLimit - preliminaryInitialPaths.length)
   });
-  for (const { edge, neighbor } of preliminaryNeighbors) {
+  const preliminarySeedPriority = new Map(
+    preliminaryInitialPaths.map((filePath, index) => [filePath, preliminaryInitialPaths.length - index])
+  );
+  for (const { edge, neighbor, seed } of preliminaryNeighbors) {
     const precision = graphEdgePrecision(edge);
     const existingReasons = reasonsByPath.get(neighbor) ?? new Set<EvidenceReason>();
     const retrievalBackedImport = precision === 1 &&
@@ -298,13 +301,24 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
       ["exact_symbol", "symbol_prefix", "basename", "lexical", "semantic"].some((reason) =>
         existingReasons.has(reason as EvidenceReason)
       );
-    if (precision < 2 && !retrievalBackedImport) continue;
+    const directProductionImport = isDirectProductionImport({
+      edge,
+      seed,
+      neighbor,
+      filesByPath
+    });
+    if (precision < 2 && !retrievalBackedImport && !directProductionImport) continue;
     existingReasons.add("graph_neighbor");
     if (edge.type === "test_for" || edge.type === "tested_by") existingReasons.add("source_test_pair");
     reasonsByPath.set(neighbor, existingReasons);
     graphPriorityByPath.set(
       neighbor,
-      Math.max(graphPriorityByPath.get(neighbor) ?? 0, precision * 100 + channelScore("lexical", neighbor, legacyByPath, filesByPath))
+      Math.max(
+        graphPriorityByPath.get(neighbor) ?? 0,
+        precision * 100 +
+          (preliminarySeedPriority.get(seed) ?? 0) +
+          Math.min(25, channelScore("lexical", neighbor, legacyByPath, filesByPath))
+      )
     );
   }
   const packagePriorityByDirectory = new Map<string, number>();
@@ -330,7 +344,7 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
       filePath,
       Math.max(
         graphPriorityByPath.get(filePath) ?? 0,
-        50 + directoryPriority + channelScore("lexical", filePath, legacyByPath, filesByPath)
+        50 + directoryPriority + Math.min(25, channelScore("lexical", filePath, legacyByPath, filesByPath))
       )
     );
   }
@@ -381,6 +395,7 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
 type GraphNeighbor = {
   edge: GraphEdgeRecord;
   neighbor: string;
+  seed: string;
 };
 
 /**
@@ -409,10 +424,10 @@ function roundRobinGraphNeighbors(input: {
     const to = normalizeRepoPath(edge.toFile);
     const priority = graphEdgePrecision(edge);
     if (seedSet.has(from) && input.filesByPath.has(to)) {
-      bySeed.get(from)!.get(priority)!.push({ edge, neighbor: to });
+      bySeed.get(from)!.get(priority)!.push({ edge, neighbor: to, seed: from });
     }
     if (seedSet.has(to) && input.filesByPath.has(from) && from !== to) {
-      bySeed.get(to)!.get(priority)!.push({ edge, neighbor: from });
+      bySeed.get(to)!.get(priority)!.push({ edge, neighbor: from, seed: to });
     }
   }
 
@@ -451,6 +466,18 @@ function roundRobinGraphNeighbors(input: {
     if (selected.length >= input.limit) break;
   }
   return selected;
+}
+
+function isDirectProductionImport(input: {
+  edge: GraphEdgeRecord;
+  seed: string;
+  neighbor: string;
+  filesByPath: Map<string, FileRecord>;
+}): boolean {
+  return input.edge.type === "imports" &&
+    normalizeRepoPath(input.edge.fromFile) === input.seed &&
+    normalizeRepoPath(input.edge.toFile) === input.neighbor &&
+    isProductionEvidenceFile(input.filesByPath.get(input.neighbor)!);
 }
 
 function graphEdgePrecision(edge: GraphEdgeRecord): number {
