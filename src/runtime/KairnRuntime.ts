@@ -4506,7 +4506,7 @@ function selectRoleBalancedSeeds(
   if (!includeProductionReserve) return global;
   const production = results
     .filter((result) => isProductionEvidenceFile(result))
-    .slice(0, DEFAULT_ENRICHED_CANDIDATE_LIMIT * 2);
+    .slice(0, DEFAULT_ENRICHED_CANDIDATE_LIMIT * 3);
   return mergeLightweightResults(global, production);
 }
 

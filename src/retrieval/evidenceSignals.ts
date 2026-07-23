@@ -25,7 +25,7 @@ const MAX_PRECISE_FAILURE_CHECKS = 8;
 const MAX_IDENTIFIER_LENGTH = 96;
 const MAX_PREFERRED_IDENTIFIERS = 64;
 const MAX_IDENTIFIERS = 240;
-const MAX_PRECISE_GRAPH_SEEDS = 8;
+const MAX_GRAPH_OR_PACKAGE_SEEDS = 16;
 const MAX_RETRIEVAL_QUERIES = 3;
 
 const SOURCE_EXTENSIONS = "ts|tsx|js|jsx|mjs|cjs|py|pyi|go|java|kt|kts|c|cc|cpp|cxx|h|hh|hpp|hxx|rb|rs";
@@ -677,7 +677,7 @@ function selectInitialPaths(input: {
       (input.graphPriorityByPath?.get(right) ?? 0) - (input.graphPriorityByPath?.get(left) ?? 0) ||
       left.localeCompare(right)
     )
-    .slice(0, Math.min(MAX_PRECISE_GRAPH_SEEDS, input.limit))) {
+    .slice(0, Math.min(MAX_GRAPH_OR_PACKAGE_SEEDS, input.limit))) {
     add(filePath);
   }
 
