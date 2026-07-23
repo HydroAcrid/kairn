@@ -6,8 +6,8 @@
   "sourceQueueSha256": "16acb7b34ac67bf24cc3a8562aac5f8ae665b86550064f794e1738354291c117",
   "batchIndexSha256": "7ba998b4c6d6bff1f433f3e1d37572175b748f210438d3c89a9fd04c9dd7dcd5",
   "caseCount": 165,
-  "completedCases": 88,
-  "pendingCases": 77,
+  "completedCases": 99,
+  "pendingCases": 66,
   "decisions": [
     {
       "id": "v02c-train-python-source_localization-001",
@@ -1687,6 +1687,217 @@
         "reviewer": "Codex independent repository-evidence review",
         "reviewedAt": "2026-07-23T16:30:00-04:00",
         "notes": "The binary-reader patch source is present. Noise labels cover unrelated debugger visuals, JSON-lines examples, fuzzing, CMake integration, and linting."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-long_session-089",
+      "materializedCaseSha256": "ff7f11c67969ad91c83670eca41a59cc30aae879c4ae878f134865af5f6d2bb6",
+      "candidatePathsSha256": "ea7b3b7b169be29cdf729168ed099b5defb6dfba24ac24865b7d5ebd3d6f502a",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/thirdparty/Fuzzer/FuzzerCrossOver.cpp",
+          "tests/thirdparty/Fuzzer/FuzzerSHA1.h",
+          "tests/thirdparty/Fuzzer/FuzzerUtilWindows.cpp",
+          "tests/src/unit-udt_macro.cpp",
+          "tools/serve_header/serve_header.py",
+          "docs/examples/patch.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The binary-reader patch source is present. Noise labels cover unrelated fuzzer crossover, hashing and platform utilities, UDT macros, header tooling, and JSON Patch examples."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-long_session-090",
+      "materializedCaseSha256": "a64a4c2790753f98e79d295c86904be2bb2304339f5d6536ef89e1f2b51980a6",
+      "candidatePathsSha256": "0964d9cb7fd29f2df211810313dd6e696d7601efffa299b52f04e1b79efbcf92",
+      "decision": {
+        "requiredSourceFiles": [
+          "include/nlohmann/detail/macro_scope.hpp"
+        ],
+        "explicitNoiseFiles": [
+          "tests/thirdparty/Fuzzer/FuzzerCorpus.h",
+          "tests/cmake_import/project/main.cpp",
+          "tools/cpplint/cpplint.py",
+          "tools/serve_header/serve_header.py",
+          "tests/src/unit-bjdata.cpp",
+          "tests/src/unit-large_json.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The missing macro-scope production patch source remains labeled as a candidate@64 retrieval miss; the other comparison and iterator patch sources are present. Noise labels cover unrelated fuzzing, CMake integration, linting, header tooling, BJData, and large-JSON tests."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-source_localization-091",
+      "materializedCaseSha256": "7253c7cc80e613f2523cd79017f8ffce88b12f1ce6ffb95c103aa4db35ab1879",
+      "candidatePathsSha256": "2efa20d83dc395973560cf33eb6e5b04d90e987a6f9c78b1cb8e44c39614900a",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "xarray/plot/plot.py",
+          "xarray/backends/rasterio_.py",
+          "xarray/coding/cftimeindex.py",
+          "asv_bench/benchmarks/dataset_io.py",
+          "xarray/tests/test_formatting.py",
+          "xarray/util/print_versions.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The coordinate-combination patch source is present. Noise labels cover unrelated plotting, raster I/O, calendar-time coding, I/O benchmarking, formatting, and version reporting."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-source_localization-092",
+      "materializedCaseSha256": "a896b30facca01f6287f0b96c3d195c5337817fc8aa21d28e2edb7d7c5be8c5a",
+      "candidatePathsSha256": "96bdbf52e543f40531ba8d1690d454279b2dbc6e66cf04952e7333b963456b24",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "xarray/tests/test_formatting_html.py",
+          "xarray/backends/rasterio_.py",
+          "xarray/plot/facetgrid.py",
+          "xarray/backends/cfgrib_.py",
+          "xarray/tests/test_coding_times.py",
+          "xarray/tests/test_sparse.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The dataset merge-method patch source is present. Noise labels cover unrelated HTML formatting, raster and GRIB backends, faceted plotting, time coding, and sparse arrays."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-source_localization-093",
+      "materializedCaseSha256": "bbc907509b3ba2a4cecfe2d0e5f67d94c63c26b65dd44a7fa090ec146d3652d3",
+      "candidatePathsSha256": "f643a9529af6a47092c4c8eb14d1dfb04aa5cbe3a5d04844153f6f523871f4a6",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "xarray/backends/netcdf3.py",
+          "xarray/plot/dataset_plot.py",
+          "asv_bench/benchmarks/combine.py",
+          "xarray/coding/frequencies.py",
+          "xarray/tests/test_cftimeindex.py",
+          "xarray/tests/test_formatting.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "Both integrate-API patch sources are present. Noise labels cover unrelated NetCDF I/O, plotting, combination benchmarks, frequency coding, calendar indexes, and formatting."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-failure_first-094",
+      "materializedCaseSha256": "acdee2835542cf6e635124f201fd7c7190ac7791afa71ba9cc8661ed879e4524",
+      "candidatePathsSha256": "cf03981b3388432cf34328ddf9c5efe13f59ebaa868ff621ca4882816cbdaf03",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/_stats/test_regression.py",
+          "tests/test_palettes.py",
+          "seaborn/external/kde.py",
+          "seaborn/widgets.py",
+          "seaborn/external/docscrape.py",
+          "seaborn/algorithms.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The core plot finalization patch source is present. Noise labels cover unrelated regression statistics, palettes, KDE, widgets, documentation scraping, and algorithms."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-failure_first-095",
+      "materializedCaseSha256": "dc224878fea2ec93d3fddf93e7b685ef0a1ed786beb4a6934cacd2841f522815",
+      "candidatePathsSha256": "ac2ea8c74581637d3143f80925f72753c108e1b935a8143956140092f7ab5232",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/flask/sessions.py",
+          "src/flask/json/tag.py",
+          "src/flask/signals.py",
+          "tests/static/config.toml",
+          "tests/typing/typing_route.py",
+          "tests/test_apps/cliapp/importerrorapp.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The Blueprint implementation patch source is present. Noise labels cover unrelated sessions, JSON tagging, signals, static configuration, route typing, and CLI import errors."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-failure_first-096",
+      "materializedCaseSha256": "ad39d6dace715547bb662f0c4b2adceb0c9342fcc1da75563636f26550f900eb",
+      "candidatePathsSha256": "7dea1507451be91c0e85408aef5a56b4844b6d86ea2a8f31a64c5b0f70b940ff",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "xarray/backends/netcdf3.py",
+          "xarray/backends/h5netcdf_.py",
+          "xarray/backends/cfgrib_.py",
+          "xarray/plot/facetgrid.py",
+          "xarray/coding/cftime_offsets.py",
+          "xarray/tutorial.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The variable-coercion patch source is present. Noise labels cover unrelated storage backends, faceted plotting, calendar offsets, and tutorial code."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-long_session-097",
+      "materializedCaseSha256": "f33ceae53f27e28ff44c08df441c3c12d021f5d1fed5b842bd6b31b39c45ed81",
+      "candidatePathsSha256": "f657cd231f046b56658d668ef6d8533732d27046471f2c5a6709fc571a23051c",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "seaborn/regression.py",
+          "seaborn/_stats/order.py",
+          "seaborn/external/docscrape.py",
+          "seaborn/matrix.py",
+          "tests/_stats/test_density.py",
+          "seaborn/categorical.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The scale-formatting and utility patch sources are present. Noise labels cover unrelated regression, ordering, documentation scraping, matrix plots, density statistics, and categorical plotting."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-long_session-098",
+      "materializedCaseSha256": "adc92964e0127c3c0ae5ab6344bb57d37e4f44b45feafe63cca3e6a0c07cf297",
+      "candidatePathsSha256": "233ae82e29f631f599271bea61dffd93f505ab478078c3225416e94cc36de172",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "xarray/backends/file_manager.py",
+          "xarray/backends/netCDF4_.py",
+          "xarray/backends/zarr.py",
+          "xarray/backends/pydap_.py",
+          "xarray/coding/cftimeindex.py",
+          "xarray/tests/test_plot.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The indexing and variable-copy patch sources are present. Noise labels cover unrelated backend management and formats, calendar indexes, and plotting tests."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-long_session-099",
+      "materializedCaseSha256": "ce06e2109b6c1f9e59bdeef3fd7ff01af6aef5668e8d8df2d5a471b487f0a2f9",
+      "candidatePathsSha256": "98f03129bf6372b9379415b20c9a5e2ac3de06c04a8432ee447059c1fc87782e",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "xarray/backends/h5netcdf_.py",
+          "xarray/backends/pseudonetcdf_.py",
+          "xarray/backends/rasterio_.py",
+          "versioneer.py",
+          "xarray/tests/test_cftime_offsets.py",
+          "setup.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The dataset and variable quantile patch sources are present. Noise labels cover unrelated storage backends, release versioning, calendar offsets, and packaging."
       }
     }
   ]
