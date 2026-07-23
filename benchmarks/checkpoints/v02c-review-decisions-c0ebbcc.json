@@ -6,8 +6,8 @@
   "sourceQueueSha256": "16acb7b34ac67bf24cc3a8562aac5f8ae665b86550064f794e1738354291c117",
   "batchIndexSha256": "7ba998b4c6d6bff1f433f3e1d37572175b748f210438d3c89a9fd04c9dd7dcd5",
   "caseCount": 165,
-  "completedCases": 77,
-  "pendingCases": 88,
+  "completedCases": 88,
+  "pendingCases": 77,
   "decisions": [
     {
       "id": "v02c-train-python-source_localization-001",
@@ -1478,6 +1478,215 @@
         "reviewer": "Codex independent repository-evidence review",
         "reviewedAt": "2026-07-23T16:22:00-04:00",
         "notes": "The DOM and ondemand pointer error patch sources are present. Noise labels cover unrelated third-party JSON, benchmarks, amalgamation, and fuzz printing."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-source_localization-078",
+      "materializedCaseSha256": "15d2363f2a967159fa793b805ce5ebcaec1662da58bc6fc07e2c3ad2d7ed567f",
+      "candidatePathsSha256": "e1a4f7b03e2b35c9e8738a78290d43ef5a5a16fd54b9371968f55dfeea850001",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/fuzzing/standalone_fuzz_target_runner.cpp",
+          "test/fuzzing/server_fuzzer.cc",
+          "cmake/FindBrotli.cmake",
+          "test/gtest/gtest-all.cc",
+          "example/benchmark.cc",
+          "test/proxy/docker-compose.yml"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The httplib header patch source is present. Noise labels cover unrelated fuzzing, Brotli discovery, test framework code, benchmarking, and proxy infrastructure."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-failure_first-079",
+      "materializedCaseSha256": "03e4e84546fe6ffeabb6a4b771cc443a6c8743abacf69a9e4e2dec4826fb3500",
+      "candidatePathsSha256": "dd07ad67c4873b6173cd6995b8a15c313279c63540b70291695e5b7646395f1d",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/thirdparty/Fuzzer/FuzzerInternal.h",
+          "test/thirdparty/Fuzzer/FuzzerCorpus.h",
+          "test/thirdparty/Fuzzer/FuzzerDictionary.h",
+          "test/thirdparty/Fuzzer/FuzzerSHA1.h",
+          "test/thirdparty/fifo_map/LICENSE.MIT",
+          "benchmarks/src/benchmarks.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "All official JSON patch sources represented in the candidate set remain source evidence. Noise labels cover unrelated fuzzer internals, dictionaries, hashing, licensing, and benchmarks."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-failure_first-080",
+      "materializedCaseSha256": "20246d038aae5cb8023ded9f77b45e2e6dbb60e4ccb9e547a4e48dc53f6ccb0b",
+      "candidatePathsSha256": "8d1a24c33d16f2bf18c4c96105d842390c682f641d560e353722fdf92667aa89",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/thirdparty/Fuzzer/FuzzerMutate.h",
+          "test/thirdparty/Fuzzer/FuzzerCrossOver.cpp",
+          "test/thirdparty/Fuzzer/FuzzerIOWindows.cpp",
+          "doc/mkdocs/docs/api/basic_json/operator_eq.md",
+          "benchmarks/src/benchmarks.cpp",
+          "test/thirdparty/Fuzzer/FuzzerCorpus.h"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The iterator implementation patch sources are present. Noise labels cover unrelated fuzzer mechanics, equality documentation, and benchmark code."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-failure_first-081",
+      "materializedCaseSha256": "8b2af815841e8508a957a21884605b32c3d9e7012050b4b7a6993ca4a7c3a33e",
+      "candidatePathsSha256": "ffb94c2a3e6c8b01790225ba4761243236e03ee73c0e1d76f4b1ef339e7daad3",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/thirdparty/Fuzzer/FuzzerInternal.h",
+          "test/thirdparty/Fuzzer/FuzzerDictionary.h",
+          "test/thirdparty/Fuzzer/FuzzerSHA1.h",
+          "test/thirdparty/Fuzzer/test/FuzzerUnittest.cpp",
+          "benchmarks/src/benchmarks.cpp",
+          "test/cmake_target_include_directories/project/Foo.hpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The ordered-map patch source is present. Noise labels cover unrelated fuzzing, benchmarks, and a CMake include-directory fixture."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-failure_first-082",
+      "materializedCaseSha256": "936411097cb4ab11d5dcdb70cf36b9f9fc94b7af96d8ee00d1044772a1a8976d",
+      "candidatePathsSha256": "e8e76506cb1ebd908878d6866f56c02a96b6a7e8b9d2a111a3bef784bbfc893b",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          ".github/CONTRIBUTING.md",
+          "README.md",
+          "third_party/amalgamate/README.md",
+          "doc/docset/README.md",
+          "test/thirdparty/Fuzzer/FuzzerIOWindows.cpp",
+          "test/thirdparty/Fuzzer/FuzzerDictionary.h"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The conversion and type-trait patch sources are present. Noise labels are contribution and documentation files plus unrelated fuzzer I/O and dictionaries."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-failure_first-083",
+      "materializedCaseSha256": "ff58da384727b1e971b29664f28dcc4b376522f6922fc603161a24f1ffd22dd2",
+      "candidatePathsSha256": "ab45eb260ea408e56c675926aa442b54e5408bef82fb1a72194224df7faf6783",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          ".github/CONTRIBUTING.md",
+          "README.md",
+          "third_party/amalgamate/README.md",
+          "test/thirdparty/Fuzzer/FuzzerMerge.cpp",
+          "test/thirdparty/Fuzzer/FuzzerMain.cpp",
+          "test/src/unit-meta.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The primary JSON header patch source is present. Noise labels cover unrelated docs, fuzzing entry points, and meta tests."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-failure_first-084",
+      "materializedCaseSha256": "6bdc4bef88f39a64b96786d1bd27a87de2db5760d4f62f4590d0248c747b7d9a",
+      "candidatePathsSha256": "237e83281cba1a711842378d7701ee526afec669ec83feabe50f1b15bfe5c0c4",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/thirdparty/Fuzzer/FuzzerInternal.h",
+          "tests/cmake_import/project/main.cpp",
+          "tests/cmake_fetch_content/project/main.cpp",
+          "tools/gdb_pretty_printer/nlohmann-json.py",
+          "tools/serve_header/serve_header.py",
+          "tools/generate_natvis/generate_natvis.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The JSON header patch source is present. Noise labels cover unrelated fuzzer, CMake integration, pretty-printer, header-serving, and visualization tooling."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-long_session-085",
+      "materializedCaseSha256": "6e09575c204f60a33dac0e72e63887a75b8f272d47ed160d597c581f2048348e",
+      "candidatePathsSha256": "4b87120810b86f36f01e4318fea8a08a785a1f9806fc621fd9c6259924f240d2",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/thirdparty/Fuzzer/FuzzerIO.cpp",
+          "tests/thirdparty/Fuzzer/FuzzerMerge.cpp",
+          "tests/thirdparty/Fuzzer/FuzzerDriver.cpp",
+          "tools/serve_header/serve_header.py",
+          "tools/amalgamate/amalgamate.py",
+          "tests/thirdparty/fifo_map/fifo_map.hpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The JSON header patch source is present. Noise labels cover unrelated fuzzer machinery, release tooling, and the third-party FIFO map."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-long_session-086",
+      "materializedCaseSha256": "b8021ff6d9e6c5e0238114b5c9cc534058bdc205b8fa63d669a6fd2161c0516f",
+      "candidatePathsSha256": "9eece72d38791f7e9b0b312a7fc43f217f6fee4098fb11f36ba52a3fed639aef",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/thirdparty/Fuzzer/FuzzerCorpus.h",
+          "tools/cpplint/cpplint.py",
+          "tools/serve_header/serve_header.py",
+          "tools/amalgamate/amalgamate.py",
+          "tests/thirdparty/Fuzzer/FuzzerDriver.cpp",
+          "tests/src/unit-inspection.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The binary-reader patch source is present. Noise labels cover unrelated fuzzing, linting, release tooling, and inspection tests."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-long_session-087",
+      "materializedCaseSha256": "521882bb354dd2c3ffd4be912e5fbd27b722f76dc8c3c4b5f0517246e15adbcb",
+      "candidatePathsSha256": "82d2a3e39f2f7557be4b05c83943212e64d35bc2825472ada6022efd0aae03f4",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/thirdparty/Fuzzer/test/fuzzer-fdmask.test",
+          "tests/thirdparty/Fuzzer/test/afl-driver-stderr.test",
+          "tests/thirdparty/Fuzzer/FuzzerMain.cpp",
+          "tools/cpplint/cpplint.py",
+          "tools/serve_header/serve_header.py",
+          "tests/thirdparty/Fuzzer/test/ThreadedTest.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The binary reader and type-traits patch sources are present. Noise labels cover unrelated fuzzer harnesses, linting, header tooling, and threaded tests."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-long_session-088",
+      "materializedCaseSha256": "2ff9382928084b9d3c3aa38bbbd85fd310c4270954a934183e73b7a79784b491",
+      "candidatePathsSha256": "8fe90bf89a32c38941e9d99b50fafec9080459b612819b2121db5dc4e7415a57",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tools/gdb_pretty_printer/nlohmann-json.py",
+          "nlohmann_json.natvis",
+          "docs/examples/json_lines.cpp",
+          "tests/thirdparty/Fuzzer/FuzzerCorpus.h",
+          "tests/cmake_import/project/main.cpp",
+          "tools/cpplint/cpplint.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The binary-reader patch source is present. Noise labels cover unrelated debugger visuals, JSON-lines examples, fuzzing, CMake integration, and linting."
       }
     }
   ]
