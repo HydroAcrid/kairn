@@ -122,6 +122,19 @@ describe("evidence task signals and candidates", () => {
     expect(selected.filter((term) => term.startsWith("uiwidgetstate")).length).toBeLessThan(8);
   });
 
+  it("gives structured identifiers half of the bounded symbol lookup", () => {
+    const signals = extractEvidenceTaskSignals("Resolve a delayed policy lookup");
+    signals.preferredIdentifiers = Array.from({ length: 12 }, (_, index) => `preferred${index}`);
+    signals.queryTerms = Array.from({ length: 12 }, (_, index) => `query${index}`);
+    signals.identifiers = Array.from({ length: 12 }, (_, index) => `general${index}`);
+
+    const selected = selectEvidenceSymbolTerms(signals, 24);
+
+    expect(selected).toContain("preferred10");
+    expect(selected).toContain("query4");
+    expect(selected).toContain("general4");
+  });
+
   it("does not let repeated prompt terms inflate path scores", () => {
     const root = "/repo";
     const source = file(root, "src/widget-state.ts", "source", 200);
@@ -303,6 +316,26 @@ describe("evidence task signals and candidates", () => {
     expect(candidates.candidates.map((candidate) => candidate.path)).toContain(basenameMatches[2]!.path);
   });
 
+  it("treats matching natural-language file stems as bounded basename evidence", () => {
+    const root = "/repo";
+    const target = file(root, "src/rules/validators.py", "source", 500);
+    const distractors = Array.from({ length: 80 }, (_, index) =>
+      file(root, `src/service-${String(index).padStart(3, "0")}.py`, "source", 900)
+    );
+    const candidates = buildEvidenceCandidates({
+      files: [...distractors, target],
+      query: "Validation errors from validators omit the provided value",
+      symbols: [],
+      edges: [],
+      legacyResults: distractors.map((record, index) => scored(record, { bm25Score: 200 - index })),
+      initialLimit: 64,
+      enrichedLimit: 64
+    });
+
+    expect(candidates.candidates.find((candidate) => candidate.path === target.path)?.reasons)
+      .toContain("basename");
+  });
+
   it("does not let an ambiguous basename consume the exact-path budget", () => {
     const root = "/repo";
     const source = file(root, "packages/parser/src/parser/expression.js", "source", 900);
@@ -426,7 +459,7 @@ describe("evidence task signals and candidates", () => {
     );
     const candidates = buildEvidenceCandidates({
       files: [seed, target, ...noise],
-      query: "Debug segment parser routing",
+      query: "Debug malformed segments during routing",
       symbols: [],
       legacyResults: [
         scored(seed, { bm25Score: 1 }),

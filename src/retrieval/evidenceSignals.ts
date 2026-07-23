@@ -27,6 +27,21 @@ const MAX_PREFERRED_IDENTIFIERS = 64;
 const MAX_IDENTIFIERS = 240;
 const MAX_GRAPH_OR_PACKAGE_SEEDS = 16;
 const MAX_RETRIEVAL_QUERIES = 3;
+const AMBIGUOUS_SINGLE_FILE_STEMS = new Set([
+  "base",
+  "common",
+  "config",
+  "constant",
+  "core",
+  "field",
+  "helper",
+  "index",
+  "main",
+  "model",
+  "setting",
+  "type",
+  "util"
+]);
 
 const SOURCE_EXTENSIONS = "ts|tsx|js|jsx|mjs|cjs|py|pyi|go|java|kt|kts|c|cc|cpp|cxx|h|hh|hpp|hxx|rb|rs";
 const FILE_REFERENCE = new RegExp(
@@ -135,9 +150,9 @@ export function selectEvidenceSymbolTerms(signals: EvidenceTaskSignals, limit: n
   const selected = uniqueInOrder(signals.failureIdentifiers).slice(0, boundedLimit);
   const seen = new Set(selected);
   const channels = [
-    signals.preferredIdentifiers,
-    signals.queryTerms,
-    signals.identifiers
+    { values: signals.preferredIdentifiers, weight: 2 },
+    { values: signals.queryTerms, weight: 1 },
+    { values: signals.identifiers, weight: 1 }
   ];
   const cursors = channels.map(() => 0);
   let progressed = true;
@@ -145,15 +160,16 @@ export function selectEvidenceSymbolTerms(signals: EvidenceTaskSignals, limit: n
     progressed = false;
     for (let channelIndex = 0; channelIndex < channels.length; channelIndex += 1) {
       const channel = channels[channelIndex]!;
-      let cursor = cursors[channelIndex] ?? 0;
-      while (cursor < channel.length && seen.has(channel[cursor]!)) cursor += 1;
-      cursors[channelIndex] = cursor + 1;
-      const term = channel[cursor];
-      if (!term) continue;
-      selected.push(term);
-      seen.add(term);
-      progressed = true;
-      if (selected.length >= boundedLimit) break;
+      for (let take = 0; take < channel.weight && selected.length < boundedLimit; take += 1) {
+        let cursor = cursors[channelIndex] ?? 0;
+        while (cursor < channel.values.length && seen.has(channel.values[cursor]!)) cursor += 1;
+        cursors[channelIndex] = cursor + 1;
+        const term = channel.values[cursor];
+        if (!term) break;
+        selected.push(term);
+        seen.add(term);
+        progressed = true;
+      }
     }
   }
   return selected;
@@ -202,7 +218,10 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
     }
   }
   for (const file of orderedFiles) {
-    if (signals.mentionedBasenames.includes(path.posix.basename(normalizeRepoPath(file.path)).toLowerCase())) {
+    if (
+      signals.mentionedBasenames.includes(path.posix.basename(normalizeRepoPath(file.path)).toLowerCase()) ||
+      fileStemMatchesQuery(file.path, signals.queryTerms)
+    ) {
       addSignal(file.path, "basename");
     }
   }
@@ -626,6 +645,34 @@ function groupSymbols(symbols: SymbolRecord[]): Map<string, SymbolRecord[]> {
     grouped.set(filePath, [...(grouped.get(filePath) ?? []), symbol]);
   }
   return grouped;
+}
+
+function fileStemMatchesQuery(filePath: string, queryTerms: string[]): boolean {
+  const basename = path.posix.basename(normalizeRepoPath(filePath)).toLowerCase();
+  const extension = path.posix.extname(basename);
+  const stem = extension ? basename.slice(0, -extension.length) : basename;
+  const stemTerms = uniqueInOrder(tokenizeLexical(stem))
+    .map(normalizeInflectedTerm)
+    .filter((term) => term.length >= 3);
+  if (
+    stemTerms.length === 0 ||
+    (
+      stemTerms.length === 1 &&
+      (stemTerms[0]!.length < 8 || AMBIGUOUS_SINGLE_FILE_STEMS.has(stemTerms[0]!))
+    )
+  ) {
+    return false;
+  }
+  const normalizedQueryTerms = new Set(queryTerms.map(normalizeInflectedTerm));
+  return stemTerms.every((term) => normalizedQueryTerms.has(term));
+}
+
+function normalizeInflectedTerm(value: string): string {
+  const term = value.toLowerCase();
+  if (term.length <= 4 || term.endsWith("ss")) return term;
+  if (term.endsWith("ies")) return `${term.slice(0, -3)}y`;
+  if (/(?:ses|xes|zes|ches|shes)$/.test(term)) return term.slice(0, -2);
+  return term.endsWith("s") ? term.slice(0, -1) : term;
 }
 
 function selectInitialPaths(input: {
