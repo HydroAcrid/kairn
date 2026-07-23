@@ -6,8 +6,8 @@
   "sourceQueueSha256": "16acb7b34ac67bf24cc3a8562aac5f8ae665b86550064f794e1738354291c117",
   "batchIndexSha256": "7ba998b4c6d6bff1f433f3e1d37572175b748f210438d3c89a9fd04c9dd7dcd5",
   "caseCount": 165,
-  "completedCases": 99,
-  "pendingCases": 66,
+  "completedCases": 110,
+  "pendingCases": 55,
   "decisions": [
     {
       "id": "v02c-train-python-source_localization-001",
@@ -1898,6 +1898,232 @@
         "reviewer": "Codex independent repository-evidence review",
         "reviewedAt": "2026-07-23T16:40:00-04:00",
         "notes": "The dataset and variable quantile patch sources are present. Noise labels cover unrelated storage backends, release versioning, calendar offsets, and packaging."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-source_localization-100",
+      "materializedCaseSha256": "70288d2ac627c21265502daf5ff5b12b0b2543a69069cf87309bae65ea30b668",
+      "candidatePathsSha256": "adfcf64bf80dbafb3353f8f64a6e95cdd2449b43f8a60419f653d3ee4c69c3a5",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benchmark/babel-helper-validator-identifier/isIdentifierName.bench.mjs",
+          "packages/babel-code-frame/src/index.ts",
+          "packages/babel-cli/src/babel/dir.ts",
+          "packages/babel-standalone/src/index.ts",
+          ".github/ISSUE_TEMPLATE/bug_report.yml",
+          "packages/babel-helpers/src/helpers/using.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "The scope-renamer patch source is present. Noise labels cover unrelated identifier benchmarks, code frames, CLI and standalone entry points, issue templates, and disposal helpers."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-source_localization-101",
+      "materializedCaseSha256": "321a7a631118f2d95ba6047aa82a7b9cb62682e96cdf6e8b6ee342bb64d09ea1",
+      "candidatePathsSha256": "d4f16ede6b772ab3bc231c3a2c6ea2428801fa9b44e1f72374cd1717b0325910",
+      "decision": {
+        "requiredSourceFiles": [
+          "packages/babel-helpers/src/index.ts"
+        ],
+        "explicitNoiseFiles": [
+          "packages/babel-parser/src/parse-error/strict-mode-errors.ts",
+          "benchmark/babel-helper-validator-identifier/identifier.bench.mjs",
+          "eslint/babel-eslint-parser/src/worker/configuration.cjs",
+          "packages/babel-cli/src/babel/options.ts",
+          "packages/babel-standalone/src/index.ts",
+          "test/runtime-integration/src/require-corejs.cjs"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "The verified Babel helpers index is absent from candidate@64 and remains labeled as a source-retrieval miss. Noise labels cover unrelated parser errors, benchmarks, ESLint configuration, CLI options, standalone packaging, and runtime integration."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-source_localization-102",
+      "materializedCaseSha256": "fdcbd158e98a6ff6ca75cf13afb87c08a8ee32fc6a1de5b9dfb7cf4b504d2060",
+      "candidatePathsSha256": "1b6ad27adb7d2eba6d25081351f886df24eecabe8b193ca0338e634bdf13e438",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/voice-broadcast/utils/retrieveStartedInfoEvent.ts",
+          "src/components/views/dialogs/AddExistingSubspaceDialog.tsx",
+          "src/utils/Image.ts",
+          "src/components/views/settings/account/PhoneNumbers.tsx",
+          "src/components/views/settings/account/EmailAddresses.tsx",
+          "src/hooks/useAudioDeviceSelection.ts"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "The device-listener patch source is present. Noise labels cover unrelated voice broadcasts, spaces, images, account contacts, and audio device selection."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-failure_first-103",
+      "materializedCaseSha256": "1fcc58e00ecf03b8d11f1670c264f21a659977cf0bc6ec1e0862b8cb015799a3",
+      "candidatePathsSha256": "eef9dd1eb9d770c55e1b6feb521dadde5985e4c0988414a83798a27b9e85b530",
+      "decision": {
+        "requiredSourceFiles": [
+          "packages/babel-parser/src/parser/expression.js"
+        ],
+        "explicitNoiseFiles": [
+          "packages/babel-code-frame/package.json",
+          "benchmark/package.json",
+          "eslint/babel-eslint-plugin-development/src/utils/is-babel-plugin-factory.js",
+          "test/runtime-integration/src/package.json",
+          "codemods/babel-plugin-codemod-object-assign-to-object-spread/package.json",
+          "packages/babel-cli/src/babel/options.ts"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "The verified parser expression source is absent from candidate@64 and remains labeled as a source-retrieval miss. Noise labels cover unrelated package metadata, ESLint plugin utilities, codemods, and CLI options."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-failure_first-104",
+      "materializedCaseSha256": "0e4c8855afbe98a4d398b72ed3a50b68c1691fa1f6e28bde24e61dcc5aa23663",
+      "candidatePathsSha256": "be8f5daff5150843c236d8a3758f498d231b398261c86b4a59405124dd79c364",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "packages/babel-core/src/config/cache-contexts.ts",
+          "eslint/babel-eslint-plugin-development/src/index.cjs",
+          "benchmark/babel-traverse/enter-visitor-context-change/bench.mjs",
+          "packages/babel-node/test/fixtures/cli/--presets/in-files/presetFile.js",
+          "packages/babel-preset-env/src/index.ts",
+          "packages/babel-code-frame/src/index.ts"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "The generator parentheses patch source is present. Noise labels cover unrelated configuration caching, ESLint plugins, traversal benchmarks, CLI fixtures, preset-env, and code frames."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-failure_first-105",
+      "materializedCaseSha256": "79d1919c66b8c960393ef136d4e0d261e0e96c5ecbb7f4f54a76eb97c53a89aa",
+      "candidatePathsSha256": "c132fcab9d38dab308b3f7d793c1df45d21523b5874cf122a7a22956c58e3725",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "packages/babel-plugin-proposal-optional-chaining/src/transform.ts",
+          "scripts/parser-tests/typescript/index.js",
+          "eslint/babel-eslint-plugin-development/src/utils/is-babel-plugin-factory.cjs",
+          "packages/babel-runtime-corejs2/regenerator/index.js",
+          ".yarn/plugins/@yarnpkg/plugin-babel-release-tool.cjs",
+          "packages/babel-register/src/node.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "The source-map patch source is present. Noise labels cover unrelated optional chaining, parser fixtures, ESLint utilities, runtime regeneration, release tooling, and registration."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-long_session-106",
+      "materializedCaseSha256": "2fba76be4e1f6bc04634998ba5efcb40bbfd96970b84206511bb4f2f2b36abb2",
+      "candidatePathsSha256": "0b89914ce353d414226b2fff7b6e9c3d60a8fb034b1ede696dc9d4aa41b6a3c0",
+      "decision": {
+        "requiredSourceFiles": [
+          "src/KeyBindingsDefaults.ts",
+          "src/KeyBindingsManager.ts",
+          "src/components/structures/RoomSearch.tsx",
+          "src/components/structures/RoomView.tsx",
+          "src/components/views/rooms/EditMessageComposer.js",
+          "src/components/views/rooms/RoomSublist.tsx",
+          "src/components/views/rooms/SendMessageComposer.js"
+        ],
+        "explicitNoiseFiles": [
+          "src/utils/MegolmExportEncryption.js",
+          "src/utils/presence.ts",
+          "test/end-to-end-tests/src/usecases/toasts.js",
+          "test/end-to-end-tests/src/usecases/room-settings.js",
+          "test/end-to-end-tests/src/usecases/invite.js",
+          "src/notifications/ContentRules.ts"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "Seven verified keyboard-binding and consumer sources are absent from candidate@64 and remain explicit retrieval misses; the logged-in view and basic composer sources are present. Noise labels cover unrelated encryption, presence, toasts, room settings, invitations, and notification rules."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-long_session-107",
+      "materializedCaseSha256": "e7f1ef6008d5c287a5baef342d47e3263e033988b392ef8ee522c97418c67a06",
+      "candidatePathsSha256": "ed6803c494db27bcbeb779ffa9ceaae768d859c661fbc7affb4d2876e7e2d138",
+      "decision": {
+        "requiredSourceFiles": [
+          "src/components/views/settings/devices/useOwnDevices.ts",
+          "src/voice-broadcast/models/VoiceBroadcastRecording.ts"
+        ],
+        "explicitNoiseFiles": [
+          "src/utils/space.tsx",
+          "src/utils/read-receipts.ts",
+          "src/components/views/settings/AddPrivilegedUsers.tsx",
+          "src/@types/png-chunks-extract.d.ts",
+          "src/components/views/dialogs/LazyLoadingResyncDialog.tsx",
+          "src/WhoIsTyping.ts"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "The verified own-device hook and voice-broadcast recording model are absent from candidate@64 and remain retrieval misses; the client-information and precondition sources are present. Noise labels cover unrelated spaces, read receipts, privilege dialogs, image typing, resync UI, and typing state."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-long_session-108",
+      "materializedCaseSha256": "446a450419d55fb3e45d748bbb16883f9e54b3ffa55d3b3d0dd8824bf9c55f76",
+      "candidatePathsSha256": "dfb8dba5d537fb5e3da4244053b99ddfa1ea2733932fc8893ad1725ada24718e",
+      "decision": {
+        "requiredSourceFiles": [
+          "src/hooks/useWindowWidth.ts"
+        ],
+        "explicitNoiseFiles": [
+          "playwright/e2e/read-receipts/read-receipts.spec.ts",
+          "src/voice-broadcast/utils/textForVoiceBroadcastStoppedEventWithoutLink.ts",
+          "src/utils/device/clientInformation.ts",
+          "src/components/views/settings/account/EmailAddresses.tsx",
+          "src/components/views/settings/account/PhoneNumbers.tsx",
+          "src/components/views/messages/ReactionsRow.tsx"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "The verified window-width hook is absent from candidate@64 and remains a retrieval miss; the tabbed-view source is present. Noise labels cover unrelated read receipts, voice broadcasts, device information, account contacts, and reactions."
+      }
+    },
+    {
+      "id": "v02c-calibration-go-source_localization-109",
+      "materializedCaseSha256": "7bb34652e291ed4923e527cd07756b46fae2b1b6a3f75e41bc6201583364c126",
+      "candidatePathsSha256": "f290755476588b40d69f522ea734ad1253a7112b94c13fa5095413a7de9532bd",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "binding/yaml.go",
+          "binding/msgpack.go",
+          "testdata/protoexample/test.proto",
+          "internal/json/jsoniter.go",
+          "auth.go",
+          "binding/form_mapping_benchmark_test.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "The router-group patch source is present. Noise labels cover unrelated binding formats, protobuf fixtures, JSON adapters, authentication, and form benchmarks."
+      }
+    },
+    {
+      "id": "v02c-calibration-go-source_localization-110",
+      "materializedCaseSha256": "5301c68194ef9445c4175a00c1acd051546d05eab5188c86408dac469b3eda8b",
+      "candidatePathsSha256": "1f3d9ab3b8e4a65b9191e23bf6a31a3e32df594d95dd08382cb2be61d0e30db7",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "binding/json_test.go",
+          "binding/xml_test.go",
+          "binding/yaml_test.go",
+          "tree.go",
+          "auth.go",
+          "binding/protobuf.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "The reader-render patch source is present. Noise labels cover unrelated request binding tests, routing trees, authentication, and protobuf binding."
       }
     }
   ]
