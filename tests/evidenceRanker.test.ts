@@ -68,6 +68,19 @@ describe("evidence task signals and candidates", () => {
     expect(signals.preferredIdentifiers.indexOf("testcookiefilter")).toBeLessThan(40);
   });
 
+  it("downgrades a broad failing suite instead of treating every check as hard evidence", () => {
+    const broadSuite = Array.from({ length: 9 }, (_, index) => `- TestUnrelated${index}`).join("\n");
+    const signals = extractEvidenceTaskSignals([
+      "Initial failing checks:",
+      broadSuite,
+      "Allow `TokenFilter` to preserve empty containers."
+    ].join("\n"));
+
+    expect(signals.failureIdentifiers).toEqual([]);
+    expect(signals.preferredIdentifiers[0]).toBe("tokenfilter");
+    expect(signals.preferredIdentifiers).toContain("testunrelated0");
+  });
+
   it("reserves hard candidate capacity for an exact failing-check symbol", () => {
     const root = "/repo";
     const failingTest = file(root, "pkg/filter_test.go", "test", 400);
@@ -97,6 +110,34 @@ describe("evidence task signals and candidates", () => {
     expect(failingCandidate?.reasons).toEqual(expect.arrayContaining(["failure_reference", "exact_symbol"]));
     expect(failingCandidate?.features.failureReference).toBe(1);
     expect(sourceCandidate?.reasons).toEqual(expect.arrayContaining(["graph_neighbor", "source_test_pair"]));
+  });
+
+  it("keeps task source symbols in the bounded union when a broad suite is listed", () => {
+    const root = "/repo";
+    const source = file(root, "src/TokenFilter.java", "source", 200);
+    const failingTests = Array.from({ length: 70 }, (_, index) =>
+      file(root, `src/test/TestUnrelated${String(index).padStart(2, "0")}.java`, "test", 20_000)
+    );
+    const candidates = buildEvidenceCandidates({
+      files: [...failingTests, source],
+      query: [
+        "Initial failing checks:",
+        ...failingTests.map((_, index) => `- TestUnrelated${String(index).padStart(2, "0")}`),
+        "Allow `TokenFilter` to preserve empty containers."
+      ].join("\n"),
+      symbols: [
+        symbol(root, source.path, "TokenFilter"),
+        ...failingTests.map((record, index) => symbol(root, record.path, `TestUnrelated${String(index).padStart(2, "0")}`))
+      ],
+      edges: [],
+      legacyResults: [],
+      initialLimit: 64,
+      enrichedLimit: 64
+    });
+
+    expect(candidates.signals.failureIdentifiers).toEqual([]);
+    expect(candidates.candidates[0]?.path).toBe(source.path);
+    expect(candidates.candidates[0]?.reasons).toContain("exact_symbol");
   });
 
   it("orders exact-symbol candidates by task identifier strength before file importance", () => {

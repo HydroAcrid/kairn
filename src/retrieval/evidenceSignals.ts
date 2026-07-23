@@ -18,6 +18,11 @@ import { tokenizeLexical } from "../semantic/tokenize.js";
 export const DEFAULT_INITIAL_CANDIDATE_LIMIT = 64;
 export const DEFAULT_ENRICHED_CANDIDATE_LIMIT = 128;
 
+// A short failure list is precise evidence. A large suite-wide list is not:
+// treating every named check as a hard reference can consume the entire
+// bounded union before the task's own source symbols are considered.
+const MAX_PRECISE_FAILURE_CHECKS = 8;
+
 const SOURCE_EXTENSIONS = "ts|tsx|js|jsx|mjs|cjs|py|pyi|go|java|kt|kts|c|cc|cpp|cxx|h|hh|hpp|hxx|rb|rs";
 const FILE_REFERENCE = new RegExp(
   `(?:^|[\\s"'(\\[{])((?:[A-Za-z]:)?[^\\s"'()\\[\\]{}]+?\\.(?:${SOURCE_EXTENSIONS}|json|ya?ml|toml|md|mdx|css|scss))(?=$|[\\s"'):,;\\]}.#])`,
@@ -486,7 +491,7 @@ function extractFailureCheckIdentifiers(query: string): string[] {
     const runnerFailure = line.match(/^\s*(?:---\s+FAIL:\s*|FAILED\s+|FAIL\s+)(.+)$/i);
     if (runnerFailure) addFrom(runnerFailure[1] ?? "");
   }
-  return [...output];
+  return output.size <= MAX_PRECISE_FAILURE_CHECKS ? [...output] : [];
 }
 
 function isStructuredFailureIdentifier(value: string): boolean {
