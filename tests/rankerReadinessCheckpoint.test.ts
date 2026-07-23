@@ -152,6 +152,10 @@ function readinessFixture(): { options: Parameters<typeof buildRankerReadinessCh
       id: item.id,
       requiredSourceOracleCount: 1,
       requiredSourceOracleSha256: digest(item.required),
+      requiredSourceExistingCount: 1,
+      requiredSourceExistingSha256: digest(item.required),
+      requiredSourceCreationCount: 0,
+      requiredSourceCreationSha256: digest(""),
       candidates
     };
   });
@@ -188,6 +192,8 @@ function readinessFixture(): { options: Parameters<typeof buildRankerReadinessCh
     cases: definitions.map((item) => ({
       id: item.id,
       requiredSourceRecallAt64: item.recall,
+      requiredSourceExistingFiles: [item.required],
+      requiredSourceCreationFiles: [],
       missingRequiredSourceFiles: item.missing,
       missingExplicitNoiseFiles: []
     }))
@@ -219,6 +225,8 @@ function readinessFixture(): { options: Parameters<typeof buildRankerReadinessCh
     labeledRows: manifestCases.reduce((total, item) => total + item.candidates.length, 0),
     unlabeledRows: 0,
     zeroPositiveCases: 1,
+    requiredSourceCreationCases: 0,
+    requiredSourceCreationFiles: 0,
     manifestSha256: fileDigest(paths.manifest),
     lineageRegistrySha256: fileDigest(paths.registry),
     corpusSha256: fileDigest(paths.corpus)

@@ -23,8 +23,10 @@ type JoinedCase = {
   language: string;
   scenario: string;
   requiredSourceCount: number;
+  requiredSourceCreationCount: number;
   recallAt64: number | null;
   missingRequiredSourceFiles: string[];
+  requiredSourceCreationFiles: string[];
 };
 
 export function buildRankerReadinessCheckpoint(
@@ -132,6 +134,20 @@ export function buildRankerReadinessCheckpoint(
     const manifestCase = manifestCases.get(id)!;
     const reportCase = reportCases.get(id)!;
     const requiredSources = pathArray(intakeCase.requiredSourceFiles, `${id}.requiredSourceFiles`);
+    const requiredSourceExistingFiles = pathArray(
+      reportCase.requiredSourceExistingFiles,
+      `${id}.requiredSourceExistingFiles`
+    );
+    const requiredSourceCreationFiles = pathArray(
+      reportCase.requiredSourceCreationFiles,
+      `${id}.requiredSourceCreationFiles`
+    );
+    if (
+      [...requiredSourceExistingFiles, ...requiredSourceCreationFiles].sort().join("\n")
+      !== [...requiredSources].sort().join("\n")
+    ) {
+      throw new Error(`${id}: existing and creation paths must partition the required-source oracle`);
+    }
     const missingRequiredSourceFiles = pathArray(
       reportCase.missingRequiredSourceFiles,
       `${id}.missingRequiredSourceFiles`
@@ -149,28 +165,54 @@ export function buildRankerReadinessCheckpoint(
       sha256([...requiredSources].map(normalizePath).sort().join("\n")),
       `${id}.requiredSourceOracleSha256`
     );
+    expectValue(
+      manifestCase.requiredSourceExistingCount,
+      requiredSourceExistingFiles.length,
+      `${id}.requiredSourceExistingCount`
+    );
+    expectValue(
+      manifestCase.requiredSourceExistingSha256,
+      sha256([...requiredSourceExistingFiles].sort().join("\n")),
+      `${id}.requiredSourceExistingSha256`
+    );
+    expectValue(
+      manifestCase.requiredSourceCreationCount,
+      requiredSourceCreationFiles.length,
+      `${id}.requiredSourceCreationCount`
+    );
+    expectValue(
+      manifestCase.requiredSourceCreationSha256,
+      sha256([...requiredSourceCreationFiles].sort().join("\n")),
+      `${id}.requiredSourceCreationSha256`
+    );
     const recallAt64 = nullableNumber(reportCase.requiredSourceRecallAt64, `${id}.requiredSourceRecallAt64`);
-    if ((requiredSources.length > 0) !== (recallAt64 !== null)) {
-      throw new Error(`${id}: required-source oracle and recall eligibility disagree`);
+    if ((requiredSourceExistingFiles.length > 0) !== (recallAt64 !== null)) {
+      throw new Error(`${id}: existing required-source oracle and recall eligibility disagree`);
     }
     return {
       id,
       split: string(intakeCase.split, `${id}.split`),
       language: string(intakeCase.language, `${id}.language`),
       scenario: string(intakeCase.scenario, `${id}.scenario`),
-      requiredSourceCount: requiredSources.length,
+      requiredSourceCount: requiredSourceExistingFiles.length,
+      requiredSourceCreationCount: requiredSourceCreationFiles.length,
       recallAt64,
-      missingRequiredSourceFiles
+      missingRequiredSourceFiles,
+      requiredSourceCreationFiles
     };
   });
 
   const oracleCases = joinedCases.filter((item) => item.recallAt64 !== null);
   const holdoutCases = joinedCases.filter((item) => item.split === "holdout");
-  if (holdoutCases.some((item) => item.recallAt64 === null)) {
+  const holdoutRetrievalCases = holdoutCases.filter((item) => item.recallAt64 !== null);
+  if (holdoutCases.some((item) => item.requiredSourceCount + item.requiredSourceCreationCount < 1)) {
     throw new Error("every holdout case must have an independently reviewed required-source oracle");
   }
   expectValue(report.candidateRecallEligibleCases, oracleCases.length, "report candidateRecallEligibleCases");
-  expectValue(reviewApplication.requiredSourceOracleCases, oracleCases.length, "review application oracle cases");
+  const reviewedOracleCases = joinedCases.filter(
+    (item) => item.requiredSourceCount + item.requiredSourceCreationCount > 0
+  );
+  expectValue(reviewApplication.requiredSourceOracleCases, reviewedOracleCases.length, "review application oracle cases");
   expectValue(report.candidateRecallAt64, fullRecallRate(oracleCases), "report candidateRecallAt64");
 
   const explicitNoiseLabels = [...intakeCases.entries()].reduce(
@@ -187,9 +229,9 @@ export function buildRankerReadinessCheckpoint(
   expectValue(corpusSummary.zeroPositiveCases, zeroPositiveCases, "corpus summary zeroPositiveCases");
 
   const strictReviewedOracles = recallSummary(oracleCases);
-  const holdout = recallSummary(holdoutCases);
+  const holdout = recallSummary(holdoutRetrievalCases);
   const reviewedByLanguage = groupRecall(oracleCases, "language");
-  const holdoutByLanguage = groupRecall(holdoutCases, "language");
+  const holdoutByLanguage = groupRecall(holdoutRetrievalCases, "language");
   const reviewedBySplit = groupRecall(oracleCases, "split");
   const overallGate = strictReviewedOracles.fullRecallRate >= 0.99;
   const perLanguageGate = Object.keys(reviewedByLanguage).length > 0
@@ -207,6 +249,22 @@ export function buildRankerReadinessCheckpoint(
       recallAt64: item.recallAt64,
       missingRequiredSourceFiles: item.missingRequiredSourceFiles
     }));
+  const creationCases = joinedCases
+    .filter((item) => item.requiredSourceCreationCount > 0)
+    .sort((left, right) => left.id.localeCompare(right.id))
+    .map((item) => ({
+      id: item.id,
+      split: item.split,
+      language: item.language,
+      scenario: item.scenario,
+      requiredSourceCreationFiles: item.requiredSourceCreationFiles
+    }));
+  expectValue(corpusSummary.requiredSourceCreationCases, creationCases.length, "corpus summary creation cases");
+  expectValue(
+    corpusSummary.requiredSourceCreationFiles,
+    creationCases.reduce((total, item) => total + item.requiredSourceCreationFiles.length, 0),
+    "corpus summary creation files"
+  );
 
   return {
     schemaVersion: "ranker-corpus-readiness-checkpoint.v1",
@@ -232,11 +290,15 @@ export function buildRankerReadinessCheckpoint(
       completedCases: integer(reviewDecisions.completedCases, "reviewDecisions.completedCases"),
       pendingCases: integer(reviewDecisions.pendingCases, "reviewDecisions.pendingCases"),
       reviewers: array(reviewApplication.reviewers, "reviewApplication.reviewers"),
-      requiredSourceOracleCases: oracleCases.length,
+      requiredSourceOracleCases: reviewedOracleCases.length,
+      retrievalEligibleOracleCases: oracleCases.length,
+      requiredSourceCreationCases: creationCases.length,
+      requiredSourceCreationFiles: creationCases.reduce(
+        (total, item) => total + item.requiredSourceCreationFiles.length,
+        0
+      ),
       explicitNoiseLabels,
-      oracleSelectionBySplit: Object.fromEntries(
-        Object.entries(reviewedBySplit).map(([key, value]) => [key, value.cases])
-      )
+      oracleSelectionBySplit: countBy(reviewedOracleCases, "split")
     },
     materialization: {
       kairnCommit: materializerCommit,
@@ -262,7 +324,8 @@ export function buildRankerReadinessCheckpoint(
         (total, item) => total + item.missingRequiredSourceFiles.length,
         0
       ),
-      misses
+      misses,
+      creationCases
     },
     gates: {
       candidateRecallAt64Overall: {
@@ -286,11 +349,18 @@ export function buildRankerReadinessCheckpoint(
     ],
     disclosures: [
       "The 30 holdout cases all received independent required-source review.",
+      "Required files absent from the repository base commit are creation targets and are excluded from retrieval recall.",
       "Train and calibration required-source review is miss-enriched, so strict reviewed-oracle recall is not an unbiased all-split estimate.",
       "A calibrated ranker cannot recover a required source file that is absent from candidate@64.",
       "This checkpoint is pre-training readiness evidence, not model-quality, token-efficiency, or live-agent comparison evidence."
     ]
   };
+}
+
+function countBy(cases: JoinedCase[], dimension: "language" | "split"): Record<string, number> {
+  const counts = new Map<string, number>();
+  for (const item of cases) counts.set(item[dimension], (counts.get(item[dimension]) ?? 0) + 1);
+  return Object.fromEntries([...counts.entries()].sort(([left], [right]) => left.localeCompare(right)));
 }
 
 function recallSummary(cases: JoinedCase[]): {

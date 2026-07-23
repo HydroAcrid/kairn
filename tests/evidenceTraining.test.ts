@@ -196,7 +196,9 @@ describe("public evidence ranker training", () => {
       materializer: expect.objectContaining({ caseProcessIsolation: true }),
       cases: [expect.objectContaining({
         requiredSourceOracleCount: 1,
-        requiredSourceOracleSha256: expect.stringMatching(/^[a-f0-9]{64}$/)
+        requiredSourceOracleSha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+        requiredSourceExistingCount: 1,
+        requiredSourceCreationCount: 0
       })]
     });
 
@@ -204,9 +206,30 @@ describe("public evidence ranker training", () => {
     const missedManifestPath = path.join(temporary, "materialized.miss.json");
     const missedReportPath = path.join(temporary, "materialization.miss-report.json");
     const missedIntake = JSON.parse(fs.readFileSync(reviewedIntakePath, "utf8"));
+    fs.mkdirSync(path.join(fixture, "src", "retrieval-noise"), { recursive: true });
+    fs.mkdirSync(path.join(fixture, "src", "zzzz"), { recursive: true });
+    fs.writeFileSync(
+      path.join(fixture, "src", "zzzz", "opaque.ts"),
+      "export const verifiedButUnretrieved = true;\n",
+      "utf8"
+    );
+    for (let index = 0; index < 180; index += 1) {
+      fs.writeFileSync(
+        path.join(fixture, "src", "retrieval-noise", `unrelated-${String(index).padStart(3, "0")}.ts`),
+        `export const unrelated${index} = ${index};\n`,
+        "utf8"
+      );
+    }
+    execFileSync("git", ["add", "."], { cwd: fixture });
+    execFileSync("git", ["commit", "-m", "Add retrieval miss fixture"], { cwd: fixture });
     missedIntake.cases[0].prompt = `Inspect only ${noise.join(", ")}`;
-    missedIntake.cases[0].requiredSourceFiles = ["src/verified-but-unretrieved.ts"];
-    missedIntake.cases[0].officialPatchSourceFiles = ["src/verified-but-unretrieved.ts"];
+    missedIntake.cases[0].requiredSourceFiles = ["src/zzzz/opaque.ts"];
+    missedIntake.cases[0].officialPatchSourceFiles = ["src/zzzz/opaque.ts"];
+    missedIntake.cases[0].repositoryRef = execFileSync(
+      "git",
+      ["rev-parse", "HEAD"],
+      { cwd: fixture, encoding: "utf8" }
+    ).trim();
     fs.writeFileSync(missedIntakePath, `${JSON.stringify(missedIntake, null, 2)}\n`, "utf8");
 
     await materializeEvidenceCorpus({
@@ -223,9 +246,11 @@ describe("public evidence ranker training", () => {
       positiveSourceAnyHitRateAt64: 0,
       cases: [expect.objectContaining({
         requiredSourceRecallAt64: 0,
+        requiredSourceExistingFiles: ["src/zzzz/opaque.ts"],
+        requiredSourceCreationFiles: [],
         positiveSourceHitAt64: false,
         explicitNegativeCount: 6,
-        missingRequiredSourceFiles: ["src/verified-but-unretrieved.ts"],
+        missingRequiredSourceFiles: ["src/zzzz/opaque.ts"],
         missingExplicitNoiseFiles: []
       })]
     });
@@ -248,6 +273,40 @@ describe("public evidence ranker training", () => {
       splits: {
         train: expect.objectContaining({ zeroPositiveCases: 1 })
       }
+    });
+
+    const creationIntakePath = path.join(temporary, "intake.reviewed-creation.json");
+    const creationManifestPath = path.join(temporary, "materialized.creation.json");
+    const creationReportPath = path.join(temporary, "materialization.creation-report.json");
+    const creationIntake = JSON.parse(fs.readFileSync(missedIntakePath, "utf8"));
+    creationIntake.cases[0].requiredSourceFiles = ["src/new-production-file.ts"];
+    creationIntake.cases[0].officialPatchSourceFiles = ["src/new-production-file.ts"];
+    fs.writeFileSync(creationIntakePath, `${JSON.stringify(creationIntake, null, 2)}\n`, "utf8");
+    await materializeEvidenceCorpus({
+      intakePath: creationIntakePath,
+      outPath: creationManifestPath,
+      reportPath: creationReportPath,
+      cacheDir: path.join(temporary, "cache"),
+      allowSample: true,
+      allowLocalFixture: true,
+      processIsolation: true
+    });
+    expect(JSON.parse(fs.readFileSync(creationManifestPath, "utf8"))).toMatchObject({
+      cases: [expect.objectContaining({
+        requiredSourceOracleCount: 1,
+        requiredSourceExistingCount: 0,
+        requiredSourceCreationCount: 1
+      })]
+    });
+    expect(JSON.parse(fs.readFileSync(creationReportPath, "utf8"))).toMatchObject({
+      candidateRecallEligibleCases: 0,
+      candidateRecallAt64: null,
+      cases: [expect.objectContaining({
+        requiredSourceRecallAt64: null,
+        requiredSourceExistingFiles: [],
+        requiredSourceCreationFiles: ["src/new-production-file.ts"],
+        missingRequiredSourceFiles: []
+      })]
     });
   });
 
@@ -359,7 +418,9 @@ describe("public evidence ranker training", () => {
       caseCount: 3,
       candidateRows: 21,
       labeledRows: 21,
-      zeroPositiveCases: 0
+      zeroPositiveCases: 0,
+      requiredSourceCreationCases: 0,
+      requiredSourceCreationFiles: 0
     });
   });
 

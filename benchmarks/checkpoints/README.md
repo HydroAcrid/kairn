@@ -32,3 +32,8 @@ partial required-source misses, report the independently reviewed holdout
 separately from the miss-enriched train/calibration review, and decide only
 whether candidate recall is sufficient to begin ranker training. They are not
 model-promotion, token-efficiency, or live-agent comparison evidence.
+
+Required source paths that do not exist in the repository base commit are
+recorded as creation targets, not retrieval misses. Existing-source recall and
+new-file creation counts remain separate throughout materialization, corpus
+flattening, and readiness reporting.

@@ -214,14 +214,30 @@ def validate_case(
         raise ValueError(f"{label}.candidates contains duplicate paths")
     required_source_oracle_count = row.get("requiredSourceOracleCount", 0)
     required_source_oracle_sha256 = row.get("requiredSourceOracleSha256")
+    required_source_existing_count = row.get("requiredSourceExistingCount", required_source_oracle_count)
+    required_source_existing_sha256 = row.get("requiredSourceExistingSha256", required_source_oracle_sha256)
+    required_source_creation_count = row.get("requiredSourceCreationCount", 0)
+    required_source_creation_sha256 = row.get("requiredSourceCreationSha256", hashlib.sha256(b"").hexdigest())
     if not allow_sample:
-        if isinstance(required_source_oracle_count, bool) or not isinstance(required_source_oracle_count, int):
-            raise ValueError(f"{label}.requiredSourceOracleCount must be an integer")
-        if required_source_oracle_count < 0:
-            raise ValueError(f"{label}.requiredSourceOracleCount must not be negative")
-        oracle_digest = require_string(required_source_oracle_sha256, f"{label}.requiredSourceOracleSha256")
-        if len(oracle_digest) != 64 or any(char not in "0123456789abcdefABCDEF" for char in oracle_digest):
-            raise ValueError(f"{label}.requiredSourceOracleSha256 must be a SHA-256 digest")
+        for field, value in (
+            ("requiredSourceOracleCount", required_source_oracle_count),
+            ("requiredSourceExistingCount", required_source_existing_count),
+            ("requiredSourceCreationCount", required_source_creation_count),
+        ):
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise ValueError(f"{label}.{field} must be an integer")
+            if value < 0:
+                raise ValueError(f"{label}.{field} must not be negative")
+        if required_source_existing_count + required_source_creation_count != required_source_oracle_count:
+            raise ValueError(f"{label}: existing and creation source counts must partition the required-source oracle")
+        for field, value in (
+            ("requiredSourceOracleSha256", required_source_oracle_sha256),
+            ("requiredSourceExistingSha256", required_source_existing_sha256),
+            ("requiredSourceCreationSha256", required_source_creation_sha256),
+        ):
+            digest = require_string(value, f"{label}.{field}")
+            if len(digest) != 64 or any(char not in "0123456789abcdefABCDEF" for char in digest):
+                raise ValueError(f"{label}.{field} must be a SHA-256 digest")
         if split == "holdout" and required_source_oracle_count < 1:
             raise ValueError(f"{label}: production holdout cases require an independently reviewed source oracle")
     explicit_negatives = sum(
@@ -245,6 +261,10 @@ def validate_case(
         "syntheticVariantIndex": synthetic_index,
         "requiredSourceOracleCount": required_source_oracle_count,
         "requiredSourceOracleSha256": required_source_oracle_sha256,
+        "requiredSourceExistingCount": required_source_existing_count,
+        "requiredSourceExistingSha256": required_source_existing_sha256,
+        "requiredSourceCreationCount": required_source_creation_count,
+        "requiredSourceCreationSha256": required_source_creation_sha256,
         "candidates": candidates,
     }
 
@@ -381,6 +401,8 @@ def main() -> int:
         not any(candidate["label"] == 1 for candidate in case["candidates"])
         for case in cases
     )
+    required_source_creation_cases = sum(case["requiredSourceCreationCount"] > 0 for case in cases)
+    required_source_creation_files = sum(case["requiredSourceCreationCount"] for case in cases)
     rendered = "".join(json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n" for row in rows)
     digest = hashlib.sha256(rendered.encode("utf-8")).hexdigest()
     summary = {
@@ -395,6 +417,8 @@ def main() -> int:
         "labeledRows": sum(row["label"] is not None for row in rows),
         "unlabeledRows": sum(row["label"] is None for row in rows),
         "zeroPositiveCases": zero_positive_cases,
+        "requiredSourceCreationCases": required_source_creation_cases,
+        "requiredSourceCreationFiles": required_source_creation_files,
         "splits": {
             split: {
                 "cases": sum(case["split"] == split for case in cases),
@@ -405,6 +429,15 @@ def main() -> int:
                     case["split"] == split
                     and not any(candidate["label"] == 1 for candidate in case["candidates"])
                     for case in cases
+                ),
+                "requiredSourceCreationCases": sum(
+                    case["split"] == split and case["requiredSourceCreationCount"] > 0
+                    for case in cases
+                ),
+                "requiredSourceCreationFiles": sum(
+                    case["requiredSourceCreationCount"]
+                    for case in cases
+                    if case["split"] == split
                 ),
             }
             for split in SPLITS

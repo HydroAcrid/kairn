@@ -106,6 +106,8 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
     });
     const runtime = new KairnRuntime(checkout.root);
     try {
+      const requiredSourcePartition = partitionRepositoryPaths(checkout.root, intakeCase.requiredSourceFiles);
+      const officialPatchSourcePartition = partitionRepositoryPaths(checkout.root, intakeCase.officialPatchSourceFiles);
       const inspection = await runtime.inspectEvidenceCandidates({ query: intakeCase.prompt, limit: 64 });
       if (!options.draft && inspection.candidates.length < 7) {
         throw new Error(`${intakeCase.id}: candidate generator returned fewer than seven candidates`);
@@ -113,22 +115,22 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       const labels = buildLabels(intakeCase);
       const candidatePaths = new Set(inspection.candidates.map((candidate) => normalizePath(candidate.path)));
       const missingLabels = [...labels.keys()].filter((candidatePath) => !candidatePaths.has(candidatePath));
-      const requiredSourcePaths = new Set(intakeCase.requiredSourceFiles.map(normalizePath));
+      const requiredSourcePaths = new Set(requiredSourcePartition.existing);
       const explicitNoisePaths = new Set(intakeCase.explicitNoiseFiles.map(normalizePath));
       const missingRequiredSourceFiles = missingLabels.filter((candidatePath) => requiredSourcePaths.has(candidatePath));
       const missingExplicitNoiseFiles = missingLabels.filter((candidatePath) => explicitNoisePaths.has(candidatePath));
       if (!options.draft && missingExplicitNoiseFiles.length > 0) {
         throw new Error(`${intakeCase.id}: explicit-noise files missed the candidate@64 boundary: ${missingExplicitNoiseFiles.join(", ")}`);
       }
-      const requiredRecall = intakeCase.requiredSourceFiles.length > 0
-        ? fractionRecalled(intakeCase.requiredSourceFiles, candidatePaths)
+      const requiredRecall = requiredSourcePartition.existing.length > 0
+        ? fractionRecalled(requiredSourcePartition.existing, candidatePaths)
         : null;
-      const patchRecall = intakeCase.officialPatchSourceFiles.length > 0
-        ? fractionRecalled(intakeCase.officialPatchSourceFiles, candidatePaths)
+      const patchRecall = officialPatchSourcePartition.existing.length > 0
+        ? fractionRecalled(officialPatchSourcePartition.existing, candidatePaths)
         : null;
       const enrichedCandidatePaths = new Set(inspection.enrichedCandidatePaths.map(normalizePath));
-      const patchRecallAt128 = intakeCase.officialPatchSourceFiles.length > 0
-        ? fractionRecalled(intakeCase.officialPatchSourceFiles, enrichedCandidatePaths)
+      const patchRecallAt128 = officialPatchSourcePartition.existing.length > 0
+        ? fractionRecalled(officialPatchSourcePartition.existing, enrichedCandidatePaths)
         : null;
       const candidates = inspection.candidates.map((candidate) => labeledCandidate(candidate, labels));
       const explicitNegatives = candidates.filter((candidate) => candidate.labelProvenance === "explicit_noise_or_excluded").length;
@@ -155,6 +157,10 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
         requiredSourceOracleSha256: sha256(
           [...intakeCase.requiredSourceFiles].map(normalizePath).sort().join("\n")
         ),
+        requiredSourceExistingCount: requiredSourcePartition.existing.length,
+        requiredSourceExistingSha256: sha256(requiredSourcePartition.existing.join("\n")),
+        requiredSourceCreationCount: requiredSourcePartition.creation.length,
+        requiredSourceCreationSha256: sha256(requiredSourcePartition.creation.join("\n")),
         ...(intakeCase.syntheticVariantOf ? {
           syntheticVariantOf: intakeCase.syntheticVariantOf,
           syntheticVariantIndex: intakeCase.syntheticVariantIndex
@@ -168,8 +174,12 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
         enrichedCandidateCount: inspection.enrichedCandidateCount,
         exportedCandidateCount: candidates.length,
         requiredSourceRecallAt64: requiredRecall,
+        requiredSourceExistingFiles: requiredSourcePartition.existing,
+        requiredSourceCreationFiles: requiredSourcePartition.creation,
         officialPatchSourceRecallAt64: patchRecall,
         officialPatchSourceRecallAt128: patchRecallAt128,
+        officialPatchSourceExistingFiles: officialPatchSourcePartition.existing,
+        officialPatchSourceCreationFiles: officialPatchSourcePartition.creation,
         positiveSourceHitAt64: positiveCandidates > 0,
         explicitNegativeCount: explicitNegatives,
         missingLabeledFiles: missingLabels,
@@ -564,6 +574,26 @@ function validateLineageAssignments(registryPath: string, cases: IntakeCase[]): 
 
 function fractionRecalled(required: string[], candidates: Set<string>): number {
   return required.filter((filePath) => candidates.has(normalizePath(filePath))).length / required.length;
+}
+
+function partitionRepositoryPaths(rootPath: string, filePaths: string[]): {
+  existing: string[];
+  creation: string[];
+} {
+  const existing: string[] = [];
+  const creation: string[] = [];
+  for (const filePath of [...filePaths].map(normalizePath).sort()) {
+    const resolved = path.resolve(rootPath, filePath);
+    assertWithin(rootPath, resolved, "source oracle path");
+    let isFile = false;
+    try {
+      isFile = fs.statSync(resolved).isFile();
+    } catch (error) {
+      if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error;
+    }
+    (isFile ? existing : creation).push(filePath);
+  }
+  return { existing, creation };
 }
 
 function fullRecallRate(rows: Array<Record<string, unknown>>, field: string): number | null {
