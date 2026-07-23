@@ -368,6 +368,9 @@ function indexCoverage(stats: ReturnType<KairnRuntime["getIndexStatus"]>): Recor
     semanticChunkCount: stats.semanticChunkCount,
     lexicalDocumentCount: stats.lexicalDocumentCount,
     lexicalTermCount: stats.lexicalTermCount,
+    dbSizeBytes: stats.dbSizeBytes,
+    walSizeBytes: stats.walSizeBytes,
+    totalSizeBytes: stats.totalSizeBytes,
     tiers: stats.tiers
   };
 }
