@@ -3624,6 +3624,7 @@ export class KairnRuntime {
     const enriched = buildEvidenceCandidates({
       ...baseCandidateInput,
       edges,
+      seedCandidatePaths: initialPaths,
       initialLimit: DEFAULT_INITIAL_CANDIDATE_LIMIT,
       enrichedLimit: DEFAULT_ENRICHED_CANDIDATE_LIMIT
     });

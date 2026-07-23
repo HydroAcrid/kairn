@@ -61,6 +61,8 @@ export type EvidenceCandidateInput = {
   legacyResults: HybridScoredResult[];
   shown?: ContextShownRecord[];
   changedFiles?: Set<string>;
+  /** Initial bounded candidates that must survive while graph neighbors are appended. */
+  seedCandidatePaths?: string[];
   /** Preselected bounded union to enrich and featurize without reselection drift. */
   fixedCandidatePaths?: string[];
   initialLimit?: number;
@@ -273,7 +275,10 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
   const fixedCandidatePaths = uniqueNormalizedPaths(input.fixedCandidatePaths ?? [])
     .filter((filePath) => filesByPath.has(filePath))
     .slice(0, enrichedLimit);
-  for (const filePath of fixedCandidatePaths) {
+  const seedCandidatePaths = uniqueNormalizedPaths(input.seedCandidatePaths ?? [])
+    .filter((filePath) => filesByPath.has(filePath))
+    .slice(0, initialLimit);
+  for (const filePath of uniqueNormalizedPaths([...seedCandidatePaths, ...fixedCandidatePaths])) {
     if (!reasonsByPath.has(filePath)) reasonsByPath.set(filePath, new Set<EvidenceReason>());
   }
 
@@ -283,14 +288,16 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
     }
   }
 
-  const preliminaryInitialPaths = selectInitialPaths({
-    reasonsByPath,
-    legacyByPath,
-    filesByPath,
-    exactSymbolPriorityByPath,
-    intent: signals.intent,
-    limit: initialLimit
-  });
+  const preliminaryInitialPaths = seedCandidatePaths.length > 0
+    ? seedCandidatePaths
+    : selectInitialPaths({
+        reasonsByPath,
+        legacyByPath,
+        filesByPath,
+        exactSymbolPriorityByPath,
+        intent: signals.intent,
+        limit: initialLimit
+      });
   const graphPriorityByPath = new Map<string, number>();
   const preliminaryNeighbors = roundRobinGraphNeighbors({
     seedPaths: preliminaryInitialPaths,
@@ -342,15 +349,17 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
       )
     );
   }
-  const initialPaths = selectInitialPaths({
-    reasonsByPath,
-    legacyByPath,
-    filesByPath,
-    exactSymbolPriorityByPath,
-    graphPriorityByPath,
-    intent: signals.intent,
-    limit: initialLimit
-  });
+  const initialPaths = seedCandidatePaths.length > 0
+    ? seedCandidatePaths
+    : selectInitialPaths({
+        reasonsByPath,
+        legacyByPath,
+        filesByPath,
+        exactSymbolPriorityByPath,
+        graphPriorityByPath,
+        intent: signals.intent,
+        limit: initialLimit
+      });
 
   const enrichedPaths = fixedCandidatePaths.length > 0 ? [...fixedCandidatePaths] : [...initialPaths];
   const selectedPaths = new Set(enrichedPaths);
