@@ -41,6 +41,28 @@ pnpm ranker:review-queue \
   --report artifacts/ranker-corpus.draft.report.json \
   --out artifacts/ranker-corpus.review-queue.json
 
+# Split the large queue into immutable-context reviewer batches.
+pnpm ranker:review-batches export \
+  --queue artifacts/ranker-corpus.review-queue.json \
+  --out-dir artifacts/ranker-corpus-review-batches \
+  --batch-size 11 \
+  --index-out benchmarks/checkpoints/v02c-review-batches.json
+
+# Merge partial progress without treating it as a completed review.
+pnpm ranker:review-batches merge \
+  --queue artifacts/ranker-corpus.review-queue.json \
+  --batch-dir artifacts/ranker-corpus-review-batches \
+  --out artifacts/ranker-corpus.review-queue.merged.json \
+  --summary-out artifacts/ranker-corpus-review-batch-merge.json
+
+# Before sealing, require all reviewer/timestamp pairs to be complete.
+pnpm ranker:review-batches merge \
+  --queue artifacts/ranker-corpus.review-queue.json \
+  --batch-dir artifacts/ranker-corpus-review-batches \
+  --out artifacts/ranker-corpus.review-queue.complete.json \
+  --summary-out artifacts/ranker-corpus-review-batch-complete.json \
+  --require-complete
+
 # After every queue decision has an independent reviewer and timestamp:
 pnpm ranker:apply-reviews \
   --intake artifacts/ranker-corpus-intake.candidates.json \
@@ -87,6 +109,14 @@ materializer commit. It never auto-fills decisions. It exposes the prompt,
 patch sources present/missing from candidate@64, typed candidate reasons, and
 blank reviewer fields so the required-source and explicit-noise decisions are
 auditable rather than inferred from Kairn's own ranking.
+
+The review-batch workflow makes the queue resumable without weakening those
+bindings. Exported batches separate immutable case context from the only
+editable `decision` objects. Merge rejects changed context, missing or extra
+batches, duplicate or unknown cases, stale source-queue hashes, half-completed
+reviewer/timestamp pairs, invalid candidate paths, insufficient noise labels,
+and positive/noise overlap. Partial merges preserve honest progress; only
+`--require-complete` output may proceed to `ranker:apply-reviews`.
 
 The review-application command is the only supported path from that queue to a
 sealed intake. It verifies every source artifact and per-case candidate hash,

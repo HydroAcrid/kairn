@@ -8,3 +8,9 @@ Recreate a checkpoint with `pnpm ranker:checkpoint` and the exact raw artifact
 paths recorded in the checkpoint. The command fails when inputs are partial,
 not process-isolated, hash-mismatched, case-incomplete, or already contain
 reviewer decisions.
+
+`ranker-corpus-review-batch-index.v1` files preserve the source-queue hash,
+exact case coverage, and immutable context hashes for reviewer batches. The
+batch payloads remain under ignored `artifacts/` while review is in progress;
+only a complete merged queue that also passes `ranker:apply-reviews` may become
+a sealed intake.
