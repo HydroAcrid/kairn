@@ -49,7 +49,21 @@ describe("evidence task signals and candidates", () => {
       "Initial failing checks: TestNeighborPages. Bug: adjacent sections return incorrect pages."
     );
 
+    expect(signals.preferredIdentifiers[0]).toBe("testneighborpages");
     expect(signals.intent).toBe("source");
+  });
+
+  it("keeps a named failing check ahead of noisy log identifiers", () => {
+    const noisyLog = Array.from({ length: 80 }, (_, index) => `responseField${index}: value${index}`).join("\n");
+    const signals = extractEvidenceTaskSignals([
+      "Initial failing checks:",
+      "- TestCookieFilter",
+      "Unable to redact a Cookie field from request logs",
+      noisyLog
+    ].join("\n"));
+
+    expect(signals.preferredIdentifiers[0]).toBe("testcookiefilter");
+    expect(signals.preferredIdentifiers.indexOf("testcookiefilter")).toBeLessThan(40);
   });
 
   it("does not promote ordinary prose words to exact-symbol evidence", () => {

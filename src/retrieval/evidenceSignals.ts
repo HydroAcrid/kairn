@@ -56,6 +56,14 @@ export function extractEvidenceTaskSignals(query: string): EvidenceTaskSignals {
     addIdentifierForms(identifiers, match[0] ?? "");
   }
 
+  // Named failing checks must survive long stack traces, logs, request dumps,
+  // and compiler output. They frequently identify a test symbol whose direct
+  // source/test edge is the cheapest path to production code, so add them
+  // before other preferred identifiers consume the bounded symbol budget.
+  for (const identifier of extractFailureCheckIdentifiers(query)) {
+    addIdentifierForms(preferredIdentifiers, identifier);
+  }
+
   // Explicitly delimited names are the strongest symbol terms even when they
   // appear late in a long natural-language prompt.
   for (const match of query.matchAll(/[`'"]([A-Za-z_$][\w$]*(?:(?:\.|::)[A-Za-z_$][\w$]*)*)[`'"]/g)) {
@@ -430,6 +438,45 @@ function isCodeLikeIdentifier(value: string, query: string, index: number): bool
   if (/[_$]|\d/.test(value)) return true;
   if (/[a-z0-9][A-Z]|^[A-Z]{2,}[A-Za-z0-9]*$/.test(value)) return true;
   return /^\s*\(/.test(query.slice(index + value.length));
+}
+
+function extractFailureCheckIdentifiers(query: string): string[] {
+  const output = new Set<string>();
+  const addFrom = (value: string): void => {
+    for (const match of value.matchAll(/\b[A-Za-z_$][\w$]*(?:(?:\.|::)[A-Za-z_$][\w$]*)*\b/g)) {
+      const identifier = match[0] ?? "";
+      if (isStructuredFailureIdentifier(identifier)) output.add(identifier);
+    }
+  };
+  const lines = query.split(/\r?\n/);
+  let inFailureSection = false;
+  for (const line of lines) {
+    const header = line.match(/^\s*(?:#{1,6}\s*)?(?:initial\s+)?failing\s+(?:checks?|tests?)\s*:\s*(.*)$/i);
+    if (header) {
+      inFailureSection = true;
+      addFrom(header[1] ?? "");
+      continue;
+    }
+    if (inFailureSection) {
+      const bullet = line.match(/^\s*[-*]\s+(.+)$/);
+      if (bullet) {
+        addFrom(bullet[1] ?? "");
+        continue;
+      }
+      if (!line.trim()) continue;
+      inFailureSection = false;
+    }
+    const runnerFailure = line.match(/^\s*(?:---\s+FAIL:\s*|FAILED\s+|FAIL\s+)(.+)$/i);
+    if (runnerFailure) addFrom(runnerFailure[1] ?? "");
+  }
+  return [...output];
+}
+
+function isStructuredFailureIdentifier(value: string): boolean {
+  if (isQualifiedIdentifier(value)) return true;
+  if (/^test(?:[A-Z0-9_$]|_)/.test(value) || /(?:Test|Tests)$/.test(value)) return true;
+  if (/^(?:Test|IT)[A-Z0-9_$]/.test(value)) return true;
+  return /[_$]|\d|[a-z0-9][A-Z]/.test(value);
 }
 
 function groupSymbols(symbols: SymbolRecord[]): Map<string, SymbolRecord[]> {
