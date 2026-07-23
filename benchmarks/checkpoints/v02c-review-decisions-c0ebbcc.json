@@ -6,8 +6,8 @@
   "sourceQueueSha256": "16acb7b34ac67bf24cc3a8562aac5f8ae665b86550064f794e1738354291c117",
   "batchIndexSha256": "7ba998b4c6d6bff1f433f3e1d37572175b748f210438d3c89a9fd04c9dd7dcd5",
   "caseCount": 165,
-  "completedCases": 66,
-  "pendingCases": 99,
+  "completedCases": 77,
+  "pendingCases": 88,
   "decisions": [
     {
       "id": "v02c-train-python-source_localization-001",
@@ -1269,6 +1269,215 @@
         "reviewer": "Codex independent repository-evidence review",
         "reviewedAt": "2026-07-23T16:15:00-04:00",
         "notes": "The JsonPrimitive patch source is present. Noise labels cover unrelated serialized names, field naming, protobuf, benchmarking, post-construction adapters, and reader paths."
+      }
+    },
+    {
+      "id": "v02c-train-java-long_session-067",
+      "materializedCaseSha256": "9f979694452da0c4d2eeb6c988ce622f35452db06504f6c9458a17a6f833b858",
+      "candidatePathsSha256": "f40285ff41819c99ed9b5a9ca52414f769dcdccdc84db7702b3b06408cb92ff5",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "gson/src/test/java/com/google/gson/FieldAttributesTest.java",
+          "gson/src/test/java/com/google/gson/FieldNamingPolicyTest.java",
+          "extras/src/test/java/com/google/gson/graph/GraphAdapterBuilderTest.java",
+          "codegen/src/main/java/com/google/gson/codegen/JavaWriter.java",
+          "metrics/src/main/java/com/google/gson/metrics/ParseBenchmark.java",
+          "gson/src/main/java/com/google/gson/internal/sql/SqlDateTypeAdapter.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "Both reader patch sources are present. Noise labels cover unrelated field naming, graph adapters, code generation, benchmarking, and SQL dates."
+      }
+    },
+    {
+      "id": "v02c-train-java-long_session-068",
+      "materializedCaseSha256": "5fba33daad9e0796f0c1488a5e6900baa8157d26c043b65fe2b8e553c40c65e5",
+      "candidatePathsSha256": "1e85e903a265feeb0c7650b755a19eb89541e53319dc021b975d6ae9b1795c28",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "gson/src/test/java/com/google/gson/JavaSerializationTest.java",
+          "gson/src/test/java/com/google/gson/DefaultInetAddressTypeAdapterTest.java",
+          "proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java",
+          "metrics/src/main/java/com/google/gson/metrics/NonUploadingCaliperRunner.java",
+          "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java",
+          "gson/src/main/java/com/google/gson/internal/ReflectionAccessFilterHelper.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "The Gson and primitive TypeAdapters patch sources are present. Noise labels cover unrelated serialization, network addresses, protobuf, benchmarking, post-construction, and reflection access."
+      }
+    },
+    {
+      "id": "v02c-train-java-long_session-069",
+      "materializedCaseSha256": "f372a406b9145e3283f0a9c90c33081e95eb81c68486aed04c0eefab6c1bdd55",
+      "candidatePathsSha256": "6a59c48f26ba516deea72ad41fd9c634bf479b05217647dd417ff8a71741b3c6",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "extras/src/main/java/com/google/gson/graph/GraphAdapterBuilder.java",
+          "proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java",
+          "gson/src/main/java/com/google/gson/internal/sql/SqlTypesSupport.java",
+          "gson/src/main/java/com/google/gson/internal/reflect/ReflectionHelper.java",
+          "gson/src/test/java/com/google/gson/functional/CollectionTest.java",
+          "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "The GsonBuilder patch source is present. Noise labels cover unrelated graph, protobuf, SQL, reflection, collections, and post-construction adapters."
+      }
+    },
+    {
+      "id": "v02c-train-java-long_session-070",
+      "materializedCaseSha256": "77d13819140e3c8e466e39226fe76b0a77e4e2c3854d711f31d69b30e0d28d54",
+      "candidatePathsSha256": "2661d4fbb113d41f144b8b52228a47d08ecd9345187b96c0448e3a23563a3ebb",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/transform/resource/after-delombok/ValDelegateMethodReference.java",
+          "src/utils/lombok/javac/java6/CommentCollectingParser.java",
+          "src/utils/lombok/javac/java7/CommentCollectingParser.java",
+          "docker/shared/modules/src/main/java/foo/HelloWorld.java",
+          "test/transform/resource/after-delombok/BuilderWithDeprecatedAnnOnly.java",
+          "src/eclipseAgent/lombok/eclipse/agent/PatchExtensionMethod.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "Both field-default handler patch sources are present. Noise labels cover unrelated val delegation, comment parsing, Docker examples, builder annotations, and extension methods."
+      }
+    },
+    {
+      "id": "v02c-train-java-long_session-071",
+      "materializedCaseSha256": "70695fbd9029fc603de4e6806d2c487f9946e891e26a8c4577687ebd1e327a85",
+      "candidatePathsSha256": "56b3ce9902818d0ab6b2e037ef9210e3cbf6e84b2c72818f5cdcffc4fc1268b6",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/delombok/lombok/delombok/PrettyPrinter.java",
+          "src/stubs/com/sun/tools/javac/parser/ScannerFactory.java",
+          "src/utils/lombok/javac/TreeMirrorMaker.java",
+          "src/delombok/lombok/delombok/FormatPreferenceScanner.java",
+          "src/installer/lombok/installer/InstallerGUI.java",
+          "test/bytecode/resource/PostCompileSneaky.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "Both handler utility patch sources are present. Noise labels cover unrelated printing, scanning, tree mirroring, installation, and bytecode fixtures."
+      }
+    },
+    {
+      "id": "v02c-train-java-long_session-072",
+      "materializedCaseSha256": "2307ac2f4009707355d453524f91e8b2578ea9254530ef585622edab1cb14733",
+      "candidatePathsSha256": "7fa33dbc74ec297ec4517a897d25813f501b311af4a89e7b8ce255cb74e9d59f",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "docker/shared/modules/src/main/java/foo/HelloWorld.java",
+          "src/installer/lombok/installer/WindowsDriveInfo.java",
+          "src/core/lombok/bytecode/PostCompilerApp.java",
+          "src/core/lombok/core/configuration/LogDeclaration.java",
+          "src/utils/lombok/javac/CommentInfo.java",
+          "src/core/lombok/Cleanup.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "Both builder handler patch sources are present. Noise labels cover unrelated examples, installation, bytecode post-processing, logging configuration, comments, and cleanup."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-source_localization-073",
+      "materializedCaseSha256": "63c88a797770b4e28f1bb2166759f964019391ce1fb3e634bba2ec36584ce10c",
+      "candidatePathsSha256": "f3988e7a93d9029ec5a145a291e7a3eb916c63a9aa662a26cbde2dfef0a11b26",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/thirdparty/Fuzzer/FuzzerIO.cpp",
+          "benchmarks/src/benchmarks.cpp",
+          "test/cmake_add_subdirectory/project/main.cpp",
+          "test/cmake_fetch_content/project/main.cpp",
+          "test/src/fuzzer-parse_bson.cpp",
+          "test/thirdparty/Fuzzer/FuzzerCorpus.h"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "The amalgamated JSON patch source is present. Noise labels cover unrelated fuzzing, benchmarking, CMake integration, and binary-format fuzzers."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-source_localization-074",
+      "materializedCaseSha256": "92249cf2423487095fba3fb1d1a43d0b679e0237d245b5019fabad57efb0509a",
+      "candidatePathsSha256": "edff4ea9b6c3cddd0bc4a8c06db4dc0b5e533ce732850d5de260feaf602def3a",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          ".github/CONTRIBUTING.md",
+          "README.md",
+          "third_party/amalgamate/README.md",
+          "test/thirdparty/Fuzzer/FuzzerTracePC.h",
+          "test/thirdparty/Fuzzer/FuzzerIOWindows.cpp",
+          "doc/docset/README.md"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "The relevant serializer, conversion, meta, and JSON patch sources are present. Noise labels are contribution/docs files and unrelated fuzzing infrastructure."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-source_localization-075",
+      "materializedCaseSha256": "3d64f91579d2d2623f69b2c36ffb0f31cfd6fa8b8577c4dddc687c910c595667",
+      "candidatePathsSha256": "f021a3ef2f8e25ad009c49f93758f201121c60640b93c44a5540a3d399777f1d",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benchmarks/thirdparty/benchmark/src/cycleclock.h",
+          "benchmarks/thirdparty/benchmark/src/re.h",
+          "benchmarks/thirdparty/benchmark/src/timers.cc",
+          "benchmarks/thirdparty/benchmark/tools/strip_asm.py",
+          "test/thirdparty/Fuzzer/FuzzerRandom.h",
+          "test/thirdparty/Fuzzer/FuzzerIOWindows.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "Iterator, pointer, macro, serializer, and JSON patch sources are present. Noise labels cover unrelated benchmark and fuzzing infrastructure."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-source_localization-076",
+      "materializedCaseSha256": "98c1aedc80bc704d86387a47550521dcfc2e770b7c01de85f1abda2b62d1ac6d",
+      "candidatePathsSha256": "04461f9b58761440ad01c51c47552900348abea9d2fc25359333ea46d45cc633",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benchmarks/thirdparty/benchmark/src/complexity.cc",
+          "benchmarks/thirdparty/benchmark/src/console_reporter.cc",
+          "benchmarks/thirdparty/benchmark/tools/compare.py",
+          "benchmarks/thirdparty/benchmark/tools/strip_asm.py",
+          "test/thirdparty/imapdl/filterbr.py",
+          "test/thirdparty/Fuzzer/test/CounterTest.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "The input lexer patch source is present. Noise labels cover unrelated benchmarking, external IMAP tooling, and fuzzer tests."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-source_localization-077",
+      "materializedCaseSha256": "68ac8d20eb5f386cca23700479563faed55852230b7c1d1ea2c255c9bea7ddba",
+      "candidatePathsSha256": "e29a495969eb78f971e2f03686fb3b9b2bf1daffe3f9638aa880a963cd9bdb1f",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "dependencies/jsoncppdist/json/json.h",
+          "dependencies/jsoncppdist/jsoncpp.cpp",
+          "benchmark/bench_dom_api.cpp",
+          "benchmark/json2msgpack/rapidjson.h",
+          "singleheader/amalgamate.py",
+          "fuzz/fuzz_print_json.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "The DOM and ondemand pointer error patch sources are present. Noise labels cover unrelated third-party JSON, benchmarks, amalgamation, and fuzz printing."
       }
     }
   ]
