@@ -50,6 +50,17 @@ pnpm ranker:apply-reviews \
   --out artifacts/ranker-corpus-intake.reviewed.json \
   --summary-out artifacts/ranker-corpus-review-application.json
 
+# Preserve an unsealed diagnostic checkpoint without committing raw indexes.
+pnpm ranker:checkpoint \
+  --intake artifacts/ranker-corpus-intake.candidates-v2.json \
+  --registry artifacts/lineage-registry.candidates-v2.json \
+  --baseline-report artifacts/ranker-corpus.draft-v6-isolated.report.json \
+  --manifest artifacts/ranker-corpus.draft-v17-current.json \
+  --report artifacts/ranker-corpus.draft-v17-current.report.json \
+  --review-queue artifacts/ranker-corpus.review-queue-v17-current.json \
+  --snapshot-dir benchmarks/drafts/kairn-evidence-v02c-20260722 \
+  --out benchmarks/checkpoints/v02c-retrieval-5e1cad9.json
+
 # Diagnose selected misses without rematerializing the full corpus.
 pnpm ranker:materialize \
   --intake artifacts/ranker-corpus-intake.candidates.json \
@@ -86,6 +97,13 @@ beside the reviewed intake when the output directory changes and emits a
 checksummed application summary. It never edits the original intake or fills a
 decision automatically. The reviewed intake must still pass a fresh non-draft
 materialization before it can become the sealed training corpus.
+
+The diagnostic-checkpoint command preserves the exact unreviewed intake and
+lineage registry while representing large ignored manifests, reports, and
+review queues by SHA-256 and byte count. It validates complete case sets,
+process isolation, artifact bindings, lineage roles, and blank review
+decisions. Its output is always promotion-ineligible and keeps official-patch
+recall separate from unavailable required-source and calibration gates.
 
 Targeted draft diagnostics record the typed task signals and index coverage
 counts used for selected cases. Partial materialization is never accepted for

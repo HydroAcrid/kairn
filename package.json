@@ -40,6 +40,7 @@
     "ranker:materialize": "tsx scripts/materialize-evidence-corpus.ts",
     "ranker:review-queue": "tsx scripts/build-corpus-review-queue.ts",
     "ranker:apply-reviews": "tsx scripts/apply-corpus-review-decisions.ts",
+    "ranker:checkpoint": "tsx scripts/build-ranker-diagnostic-checkpoint.ts",
     "ranker:corpus": "python3 scripts/build-evidence-corpus.py",
     "ranker:train": "python3 scripts/train-evidence-ranker.py --out artifacts/kairn-evidence-v02c-20260722.json --model-id kairn-evidence-v02c-20260722 --node node --public-data-only",
     "ranker:promote": "python3 scripts/evaluate-ranker-promotion.py --out artifacts/ranker-promotion-report.json",
