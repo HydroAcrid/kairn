@@ -41,6 +41,8 @@ export type EvidenceTaskSignals = {
   /** Quoted, qualified, or otherwise code-shaped identifiers, strongest first. */
   preferredIdentifiers: string[];
   identifiers: string[];
+  /** Exact symbols parsed from structured failing-check output. */
+  failureIdentifiers: string[];
   failureReferences: string[];
   intent: EvidenceTaskIntent;
 };

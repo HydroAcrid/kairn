@@ -50,6 +50,7 @@ describe("evidence task signals and candidates", () => {
     );
 
     expect(signals.preferredIdentifiers[0]).toBe("testneighborpages");
+    expect(signals.failureIdentifiers).toEqual(["testneighborpages"]);
     expect(signals.intent).toBe("source");
   });
 
@@ -63,7 +64,39 @@ describe("evidence task signals and candidates", () => {
     ].join("\n"));
 
     expect(signals.preferredIdentifiers[0]).toBe("testcookiefilter");
+    expect(signals.failureIdentifiers).toEqual(["testcookiefilter"]);
     expect(signals.preferredIdentifiers.indexOf("testcookiefilter")).toBeLessThan(40);
+  });
+
+  it("reserves hard candidate capacity for an exact failing-check symbol", () => {
+    const root = "/repo";
+    const failingTest = file(root, "pkg/filter_test.go", "test", 400);
+    const production = file(root, "pkg/filter.go", "source", 800);
+    const distractors = Array.from({ length: 90 }, (_, index) =>
+      file(root, `src/common-${String(index).padStart(3, "0")}.go`, "source", 9_000)
+    );
+    const candidates = buildEvidenceCandidates({
+      files: [...distractors, failingTest, production],
+      query: [
+        "Initial failing checks:",
+        "- TestCookieFilter",
+        ...distractors.map((_, index) => `CommonSymbol${index}`)
+      ].join("\n"),
+      symbols: [
+        symbol(root, failingTest.path, "TestCookieFilter"),
+        ...distractors.map((record, index) => symbol(root, record.path, `CommonSymbol${index}`))
+      ],
+      edges: [edge(root, failingTest.path, production.path, "test_for")],
+      legacyResults: [],
+      initialLimit: 64,
+      enrichedLimit: 128
+    });
+
+    const failingCandidate = candidates.candidates.find((candidate) => candidate.path === failingTest.path);
+    const sourceCandidate = candidates.candidates.find((candidate) => candidate.path === production.path);
+    expect(failingCandidate?.reasons).toEqual(expect.arrayContaining(["failure_reference", "exact_symbol"]));
+    expect(failingCandidate?.features.failureReference).toBe(1);
+    expect(sourceCandidate?.reasons).toEqual(expect.arrayContaining(["graph_neighbor", "source_test_pair"]));
   });
 
   it("does not promote ordinary prose words to exact-symbol evidence", () => {

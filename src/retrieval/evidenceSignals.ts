@@ -50,6 +50,7 @@ export function extractEvidenceTaskSignals(query: string): EvidenceTaskSignals {
   const failureReferences = extractFileReferences(query, FILE_REFERENCE_WITH_LINE);
   const identifiers = new Set<string>();
   const preferredIdentifiers = new Set<string>();
+  const failureIdentifiers = new Set<string>();
   const identifierMatches = [...query.matchAll(/\b[A-Za-z_$][\w$]*(?:(?:\.|::)[A-Za-z_$][\w$]*)*\b/g)];
 
   for (const match of identifierMatches) {
@@ -61,6 +62,7 @@ export function extractEvidenceTaskSignals(query: string): EvidenceTaskSignals {
   // source/test edge is the cheapest path to production code, so add them
   // before other preferred identifiers consume the bounded symbol budget.
   for (const identifier of extractFailureCheckIdentifiers(query)) {
+    addIdentifierForms(failureIdentifiers, identifier);
     addIdentifierForms(preferredIdentifiers, identifier);
   }
 
@@ -90,6 +92,7 @@ export function extractEvidenceTaskSignals(query: string): EvidenceTaskSignals {
     mentionedBasenames: [...new Set(explicitPaths.map((filePath) => path.posix.basename(filePath).toLowerCase()))],
     preferredIdentifiers: [...preferredIdentifiers],
     identifiers: [...identifiers],
+    failureIdentifiers: [...failureIdentifiers],
     failureReferences,
     intent: classifyEvidenceIntent(query)
   };
@@ -145,7 +148,10 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
   for (const symbol of [...input.symbols].sort((left, right) => left.filePath.localeCompare(right.filePath) || left.name.localeCompare(right.name))) {
     const identity = normalizeIdentity(symbol.name);
     if (!identity) continue;
-    if (signals.preferredIdentifiers.includes(identity)) {
+    if (signals.failureIdentifiers.includes(identity)) {
+      addSignal(symbol.filePath, "failure_reference");
+      addSignal(symbol.filePath, "exact_symbol");
+    } else if (signals.preferredIdentifiers.includes(identity)) {
       addSignal(symbol.filePath, "exact_symbol");
     } else if (signals.preferredIdentifiers.some((candidate) => candidate.length >= 4 && (identity.startsWith(candidate) || candidate.startsWith(identity)))) {
       addSignal(symbol.filePath, "symbol_prefix");
@@ -358,7 +364,10 @@ function addDerivedReasons(
 
   for (const symbol of symbols) {
     const identity = normalizeIdentity(symbol.name);
-    if (signals.preferredIdentifiers.includes(identity)) reasons.add("exact_symbol");
+    if (signals.failureIdentifiers.includes(identity)) {
+      reasons.add("failure_reference");
+      reasons.add("exact_symbol");
+    } else if (signals.preferredIdentifiers.includes(identity)) reasons.add("exact_symbol");
     else if (signals.preferredIdentifiers.some((candidate) => candidate.length >= 4 && identity.startsWith(candidate))) reasons.add("symbol_prefix");
   }
 }
