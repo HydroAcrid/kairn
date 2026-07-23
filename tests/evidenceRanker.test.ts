@@ -60,6 +60,33 @@ describe("evidence task signals and candidates", () => {
     expect(signals.intent).toBe("source");
   });
 
+  it("does not infer test intent from incidental test discussion in an implementation task", () => {
+    const signals = extractEvidenceTaskSignals([
+      "Centralize keyboard shortcut handling",
+      "",
+      "The implementation is fragmented across components.",
+      "Tests that simulate key events expose inconsistent behavior."
+    ].join("\n"));
+
+    expect(signals.intent).not.toBe("test");
+    expect(signals.intent).toBe("source");
+  });
+
+  it("does not infer documentation intent from supporting links and examples", () => {
+    const signals = extractEvidenceTaskSignals([
+      "Preserve cookie attributes when deleting a cookie",
+      "",
+      "See the documentation and examples at https://developer.mozilla.org."
+    ].join("\n"));
+
+    expect(signals.intent).toBe("unknown");
+  });
+
+  it("recognizes explicit test and documentation work from the task headline", () => {
+    expect(extractEvidenceTaskSignals("Add test coverage for session expiry").intent).toBe("test");
+    expect(extractEvidenceTaskSignals("# Update README documentation\n\nKeep examples current.").intent).toBe("docs");
+  });
+
   it("keeps a named failing check ahead of noisy log identifiers", () => {
     const noisyLog = Array.from({ length: 80 }, (_, index) => `responseField${index}: value${index}`).join("\n");
     const signals = extractEvidenceTaskSignals([

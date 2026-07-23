@@ -526,10 +526,28 @@ function addDerivedReasons(
 function classifyEvidenceIntent(query: string): EvidenceTaskIntent {
   const terms = new Set(tokenizeLexical(query));
   if (["source", "production", "implementation", "debug", "failure", "failing", "failed", "error", "exception", "bug", "incorrect", "regression"].some((term) => terms.has(term))) return "source";
-  if (["test", "tests", "spec", "specs", "verify", "verification", "coverage"].some((term) => terms.has(term))) return "test";
-  if (["docs", "documentation", "readme", "guide", "example", "examples"].some((term) => terms.has(term))) return "docs";
+  // Test and documentation words commonly appear as supporting context in bug
+  // reports, checklists, links, and reproduction examples. Treat them as role
+  // intent only when they occur in the task headline; otherwise the unknown
+  // intent correctly retains the production-source prior.
+  const headlineTerms = new Set(tokenizeLexical(extractIntentHeadline(query)));
+  if (["test", "tests", "spec", "specs", "verify", "verification", "coverage"].some((term) => headlineTerms.has(term))) return "test";
+  if (["docs", "documentation", "readme", "guide"].some((term) => headlineTerms.has(term))) return "docs";
   if (["refactor", "code"].some((term) => terms.has(term))) return "source";
   return "unknown";
+}
+
+function extractIntentHeadline(query: string): string {
+  for (const rawLine of query.split(/\r?\n/)) {
+    const line = rawLine
+      .replace(/^\s*#{1,6}\s*/, "")
+      .replace(/^\s*[-*]\s+/, "")
+      .replace(/^(?:title|subject)\s*:\s*/i, "")
+      .trim();
+    if (!line || /^(?:initial\s+)?failing\s+(?:checks?|tests?)\s*:?$/i.test(line)) continue;
+    return normalizeQueryText(line.slice(0, 400));
+  }
+  return "";
 }
 
 function extractFileReferences(query: string, pattern: RegExp): string[] {
