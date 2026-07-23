@@ -267,6 +267,48 @@ describe("evidence task signals and candidates", () => {
     );
   });
 
+  it("promotes an exact same-stem header companion into candidate@64", () => {
+    const root = "/repo";
+    const implementation = file(root, "src/parser.cpp", "source", 900);
+    const header = file(root, "src/parser.hpp", "source", 300);
+    const distractors = Array.from({ length: 80 }, (_, index) =>
+      file(root, `src/noise-${String(index).padStart(3, "0")}.cpp`, "source", 900)
+    );
+    const candidates = buildEvidenceCandidates({
+      files: [implementation, header, ...distractors],
+      query: "Debug the production parser behavior",
+      symbols: [],
+      edges: [],
+      legacyResults: [
+        scored(implementation, { bm25Score: 100 }),
+        ...distractors.map((record, index) => scored(record, { bm25Score: 90 - index / 100 }))
+      ],
+      initialLimit: 64,
+      enrichedLimit: 128
+    });
+
+    expect(candidates.candidates.slice(0, 64).map((candidate) => candidate.path)).toContain(header.path);
+    expect(candidates.candidates.find((candidate) => candidate.path === header.path)?.reasons)
+      .toContain("graph_neighbor");
+  });
+
+  it("does not infer a source-header pair across unrelated directories", () => {
+    const root = "/repo";
+    const implementation = file(root, "src/parser.cpp", "source", 900);
+    const unrelatedHeader = file(root, "include/parser.hpp", "source", 300);
+    const candidates = buildEvidenceCandidates({
+      files: [implementation, unrelatedHeader],
+      query: "Debug the production parser behavior",
+      symbols: [],
+      edges: [],
+      legacyResults: [scored(implementation, { bm25Score: 100 })],
+      initialLimit: 1,
+      enrichedLimit: 1
+    });
+
+    expect(candidates.candidates.map((candidate) => candidate.path)).toEqual([implementation.path]);
+  });
+
   it("keeps most source-intent candidate capacity for retrieved production files", () => {
     const root = "/repo";
     const production = Array.from({ length: 80 }, (_, index) =>

@@ -26,7 +26,10 @@ const MAX_IDENTIFIER_LENGTH = 96;
 const MAX_PREFERRED_IDENTIFIERS = 64;
 const MAX_IDENTIFIERS = 240;
 const MAX_GRAPH_OR_PACKAGE_SEEDS = 16;
+const MAX_EXACT_SOURCE_HEADER_COMPANIONS = 2;
 const MAX_RETRIEVAL_QUERIES = 3;
+const IMPLEMENTATION_EXTENSIONS = new Set([".c", ".cc", ".cpp", ".cxx", ".m", ".mm"]);
+const HEADER_EXTENSIONS = new Set([".h", ".hh", ".hpp", ".hxx"]);
 const AMBIGUOUS_SINGLE_FILE_STEMS = new Set([
   "base",
   "common",
@@ -334,7 +337,7 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
       )
     );
   }
-  const initialPaths = selectInitialPaths({
+  const baselineInitialPaths = selectInitialPaths({
     reasonsByPath,
     legacyByPath,
     filesByPath,
@@ -343,6 +346,18 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
     intent: signals.intent,
     limit: initialLimit
   });
+  const sourceHeaderMerge = mergeExactSourceHeaderCompanions({
+    baselinePaths: baselineInitialPaths,
+    files: input.files,
+    intent: signals.intent,
+    limit: initialLimit
+  });
+  const initialPaths = sourceHeaderMerge.paths;
+  for (const filePath of sourceHeaderMerge.companions) {
+    const reasons = reasonsByPath.get(filePath) ?? new Set<EvidenceReason>();
+    reasons.add("graph_neighbor");
+    reasonsByPath.set(filePath, reasons);
+  }
 
   const enrichedPaths = [...initialPaths];
   const selectedPaths = new Set(enrichedPaths);
@@ -675,6 +690,83 @@ function normalizeInflectedTerm(value: string): string {
   if (term.endsWith("ies")) return `${term.slice(0, -3)}y`;
   if (/(?:ses|xes|zes|ches|shes)$/.test(term)) return term.slice(0, -2);
   return term.endsWith("s") ? term.slice(0, -1) : term;
+}
+
+function mergeExactSourceHeaderCompanions(input: {
+  baselinePaths: string[];
+  files: FileRecord[];
+  intent: EvidenceTaskIntent;
+  limit: number;
+}): { paths: string[]; companions: string[] } {
+  const baseline = input.baselinePaths.slice(0, input.limit);
+  if (
+    input.intent !== "source" &&
+    input.intent !== "unknown"
+  ) {
+    return { paths: baseline, companions: [] };
+  }
+
+  const filesByStem = new Map<string, { implementations: string[]; headers: string[] }>();
+  for (const file of input.files) {
+    if (!isProductionEvidenceFile(file) || isGeneratedOrVendor(file.path)) continue;
+    const extension = path.posix.extname(file.path).toLowerCase();
+    const kind = IMPLEMENTATION_EXTENSIONS.has(extension)
+      ? "implementations"
+      : HEADER_EXTENSIONS.has(extension)
+        ? "headers"
+        : undefined;
+    if (!kind) continue;
+    const normalizedPath = normalizeRepoPath(file.path);
+    const stem = normalizedPath.slice(0, -extension.length);
+    const group = filesByStem.get(stem) ?? { implementations: [], headers: [] };
+    group[kind].push(normalizedPath);
+    filesByStem.set(stem, group);
+  }
+  for (const group of filesByStem.values()) {
+    group.implementations.sort();
+    group.headers.sort();
+  }
+
+  const selected = new Set(baseline);
+  const companions: string[] = [];
+  for (const seedPath of baseline) {
+    const extension = path.posix.extname(seedPath).toLowerCase();
+    const counterparts = IMPLEMENTATION_EXTENSIONS.has(extension)
+      ? filesByStem.get(seedPath.slice(0, -extension.length))?.headers
+      : HEADER_EXTENSIONS.has(extension)
+        ? filesByStem.get(seedPath.slice(0, -extension.length))?.implementations
+        : undefined;
+    for (const counterpart of counterparts ?? []) {
+      if (selected.has(counterpart)) continue;
+      companions.push(counterpart);
+      selected.add(counterpart);
+      if (companions.length >= MAX_EXACT_SOURCE_HEADER_COMPANIONS) break;
+    }
+    if (companions.length >= MAX_EXACT_SOURCE_HEADER_COMPANIONS) break;
+  }
+
+  const protectedPrefixLength = Math.max(
+    Math.ceil(baseline.length * 0.75),
+    baseline.length - MAX_EXACT_SOURCE_HEADER_COMPANIONS
+  );
+  const appendCount = Math.min(companions.length, Math.max(0, input.limit - baseline.length));
+  const merged = [...baseline, ...companions.slice(0, appendCount)];
+  const replacementCompanions = companions.slice(appendCount);
+  const replaceCount = Math.min(
+    replacementCompanions.length,
+    Math.max(0, baseline.length - protectedPrefixLength)
+  );
+  if (replaceCount > 0) {
+    merged.splice(
+      baseline.length - replaceCount,
+      replaceCount,
+      ...replacementCompanions.slice(0, replaceCount)
+    );
+  }
+  return {
+    paths: merged,
+    companions: companions.slice(0, appendCount + replaceCount)
+  };
 }
 
 function selectInitialPaths(input: {
