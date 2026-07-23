@@ -336,6 +336,25 @@ describe("evidence task signals and candidates", () => {
       .toContain("basename");
   });
 
+  it("reserves a small production lane for cross-extension file-stem evidence", () => {
+    const root = "/repo";
+    const target = file(root, "src/request-normalizer.ts", "source", 300);
+    const fixtures = Array.from({ length: 8 }, (_, index) =>
+      file(root, `test/fixture-${index}/request-normalizer.js`, "test", 900)
+    );
+    const candidates = buildEvidenceCandidates({
+      files: [...fixtures, target],
+      query: "Failure at /installed/package/lib/request-normalizer.js:20:4",
+      symbols: [],
+      edges: [],
+      legacyResults: fixtures.map((record, index) => scored(record, { bm25Score: 20 - index })),
+      initialLimit: 4,
+      enrichedLimit: 4
+    });
+
+    expect(candidates.candidates.map((candidate) => candidate.path)).toContain(target.path);
+  });
+
   it("does not let an ambiguous basename consume the exact-path budget", () => {
     const root = "/repo";
     const source = file(root, "packages/parser/src/parser/expression.js", "source", 900);

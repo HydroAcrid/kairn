@@ -699,6 +699,12 @@ function selectInitialPaths(input: {
         (strongestExactFirst
           ? (input.exactSymbolPriorityByPath.get(right) ?? 0) - (input.exactSymbolPriorityByPath.get(left) ?? 0)
           : 0) ||
+        (
+          reason === "basename" && (input.intent === "source" || input.intent === "unknown")
+            ? Number(isProductionEvidenceFile(input.filesByPath.get(right)!)) -
+              Number(isProductionEvidenceFile(input.filesByPath.get(left)!))
+            : 0
+        ) ||
         channelScore(reason, right, input.legacyByPath, input.filesByPath) -
           channelScore(reason, left, input.legacyByPath, input.filesByPath) ||
         left.localeCompare(right)
@@ -714,6 +720,11 @@ function selectInitialPaths(input: {
   // exact symbols. The normal exact-symbol channel below remains ordered by
   // file importance so a single noisy prompt cannot displace broad recall.
   for (const filePath of candidatesFor("exact_symbol", true).slice(0, 2)) add(filePath);
+
+  // A complete, non-generic filename stem expressed in the task is also
+  // precise evidence, including cross-extension references from built output.
+  // Keep this lane small because common basenames can still be ambiguous.
+  for (const filePath of candidatesFor("basename").slice(0, 4)) add(filePath);
 
   // Direct source/test and definition relationships are candidate generators,
   // not merely post-64 enrichment. Retrieval-backed imports receive the same
@@ -785,8 +796,9 @@ function channelScore(
   const legacy = legacyByPath.get(filePath);
   if (reason === "lexical") return (legacy?.bm25Score ?? 0) + (legacy?.keywordScore ?? 0);
   if (reason === "semantic") return legacy?.semanticScore ?? 0;
-  if (reason === "role_match" || reason === "production_source" || reason === "test_requested") {
+  if (reason === "basename" || reason === "role_match" || reason === "production_source" || reason === "test_requested") {
     return (legacy?.bm25Score ?? 0) + (legacy?.keywordScore ?? 0) + (legacy?.semanticScore ?? 0) * 4 +
+      (reason === "basename" && isProductionEvidenceFile(filesByPath.get(filePath)!) ? 4 : 0) +
       (filesByPath.get(filePath)?.importance ?? 0) / 100;
   }
   return filesByPath.get(filePath)?.importance ?? 0;
