@@ -1,13 +1,13 @@
 {
   "schemaVersion": "ranker-corpus-review-decision-checkpoint.v1",
   "corpusId": "kairn-evidence-v02c-20260722",
-  "status": "review_in_progress",
+  "status": "review_complete",
   "promotionEligible": false,
   "sourceQueueSha256": "16acb7b34ac67bf24cc3a8562aac5f8ae665b86550064f794e1738354291c117",
   "batchIndexSha256": "7ba998b4c6d6bff1f433f3e1d37572175b748f210438d3c89a9fd04c9dd7dcd5",
   "caseCount": 165,
-  "completedCases": 154,
-  "pendingCases": 11,
+  "completedCases": 165,
+  "pendingCases": 0,
   "decisions": [
     {
       "id": "v02c-train-python-source_localization-001",
@@ -3023,6 +3023,243 @@
         "reviewer": "Codex independent repository-evidence review",
         "reviewedAt": "2026-07-23T18:00:00-04:00",
         "notes": "The Druid leader client is manually confirmed as required and present. Noise labels cover unrelated web UI, Redis, expressions, HyperLogLog, coordinator configuration, and CloudFiles."
+      }
+    },
+    {
+      "id": "v02c-holdout-java-source_localization-155",
+      "materializedCaseSha256": "f53528f070f32bd1692d04fd7dabe49f86f687fd64d93f12ee87a44a12379c62",
+      "candidatePathsSha256": "34a1cbc257999bdfc920e0f779a2aa608b3421d4579f435fd8b814b708ed92a8",
+      "decision": {
+        "requiredSourceFiles": [
+          "processing/src/main/java/org/apache/druid/timeline/VersionedIntervalTimeline.java",
+          "processing/src/main/java/org/apache/druid/java/util/common/JodaUtils.java"
+        ],
+        "explicitNoiseFiles": [
+          "processing/src/main/java/org/apache/druid/metadata/MetadataStorageConnector.java",
+          "processing/src/main/java/org/apache/druid/query/aggregation/post/ArithmeticPostAggregator.java",
+          "extensions-contrib/aliyun-oss-extensions/src/main/java/org/apache/druid/storage/aliyun/OssTimestampVersionedDataFinder.java",
+          "processing/src/main/java/org/apache/druid/query/timeseries/TimeseriesQuery.java",
+          "processing/src/main/java/org/apache/druid/hll/VersionZeroHyperLogLogCollector.java",
+          "server/src/main/java/org/apache/druid/server/audit/SQLAuditManager.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "The versioned interval timeline is present; the manually confirmed Joda utility remains a candidate@64 retrieval miss. Noise labels cover unrelated metadata, post-aggregation, object storage, timeseries, HyperLogLog, and auditing."
+      }
+    },
+    {
+      "id": "v02c-holdout-java-failure_first-156",
+      "materializedCaseSha256": "a8e54bf1661be24f7b2bb76c751b4067383277890e2f5c5a8f45b8247e323cf7",
+      "candidatePathsSha256": "778b203b61cc7780b52623b63de70e212abef407930ad1989348b3d6ad01b824",
+      "decision": {
+        "requiredSourceFiles": [
+          "dubbo-common/src/main/java/org/apache/dubbo/common/URLStrParser.java"
+        ],
+        "explicitNoiseFiles": [
+          "dubbo-common/src/main/java/org/apache/dubbo/common/metrics/collector/stat/DefaultMetricsStatHandler.java",
+          "dubbo-xds/src/main/java/org/apache/dubbo/registry/xds/XdsCertificateSigner.java",
+          "dubbo-rpc/dubbo-rpc-triple/src/main/java/org/apache/dubbo/rpc/protocol/tri/SingleProtobufUtils.java",
+          "dubbo-config/dubbo-config-spring/src/main/java/org/apache/dubbo/config/spring/schema/DubboBeanDefinitionParser.java",
+          "dubbo-registry/dubbo-registry-api/src/main/java/org/apache/dubbo/registry/client/OverrideInstanceAddressURL.java",
+          "dubbo-metadata/dubbo-metadata-api/src/main/java/org/apache/dubbo/metadata/rest/springmvc/AbstractRequestAnnotationParameterProcessor.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "The URL string parser is manually confirmed as required and present. Noise labels cover unrelated metrics, XDS, protobuf, Spring configuration, registry overrides, and REST metadata."
+      }
+    },
+    {
+      "id": "v02c-holdout-java-failure_first-157",
+      "materializedCaseSha256": "2e13b0a463ca0970f3f6b1c4b7fdc4d47f531645fd3a22f4357b7f73508b2a6f",
+      "candidatePathsSha256": "0f3ae269ef91d2608b9dd7410e21f99ee2df418f269377afbc07d7157dbbae4a",
+      "decision": {
+        "requiredSourceFiles": [
+          "dubbo-common/src/main/java/org/apache/dubbo/common/utils/ReflectUtils.java"
+        ],
+        "explicitNoiseFiles": [
+          "dubbo-plugin/dubbo-qos/src/main/java/org/apache/dubbo/qos/legacy/ChangeTelnetHandler.java",
+          "dubbo-registry/dubbo-registry-zookeeper/src/main/java/org/apache/dubbo/registry/zookeeper/ZookeeperServiceDiscoveryChangeWatcher.java",
+          "dubbo-plugin/dubbo-auth/src/main/java/org/apache/dubbo/auth/exception/AccessKeyNotFoundException.java",
+          "dubbo-common/src/main/java/org/apache/dubbo/common/config/configcenter/ConfigChangeType.java",
+          "dubbo-common/src/main/java/org/apache/dubbo/common/utils/NetUtils.java",
+          "dubbo-serialization/dubbo-serialization-protostuff/src/main/java/org/apache/dubbo/common/serialize/protostuff/delegate/TimeDelegate.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "The reflection utility is manually confirmed as required and present. Noise labels cover unrelated QoS, Zookeeper, authentication, configuration, networking, and time serialization."
+      }
+    },
+    {
+      "id": "v02c-holdout-java-long_session-158",
+      "materializedCaseSha256": "8eb68a4b7ea719f75af12746ebd6c7b047b786ae427f05d2c6165448f8ee157c",
+      "candidatePathsSha256": "4bb74546fd20870354da34f68c01efb433445d09f8da7fe3596de5a2e04a0b1f",
+      "decision": {
+        "requiredSourceFiles": [
+          "dubbo-common/src/main/java/org/apache/dubbo/common/utils/PojoUtils.java",
+          "dubbo-common/src/main/java/org/apache/dubbo/common/utils/CompatibleTypeUtils.java"
+        ],
+        "explicitNoiseFiles": [
+          "dubbo-common/src/main/java/org/apache/dubbo/common/metrics/model/sample/MetricSample.java",
+          "dubbo-plugin/dubbo-qos/src/main/java/org/apache/dubbo/qos/command/impl/ChangeTelnet.java",
+          "dubbo-common/src/main/java/org/apache/dubbo/common/threadpool/support/fixed/FixedThreadPool.java",
+          "dubbo-xds/src/main/java/org/apache/dubbo/registry/xds/XdsServiceDiscovery.java",
+          "dubbo-common/src/main/java/org/apache/dubbo/common/utils/UrlUtils.java",
+          "dubbo-cluster/src/main/java/org/apache/dubbo/rpc/cluster/support/wrapper/MockClusterInvoker.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "The POJO utility is present; the manually confirmed compatible-type utility remains a candidate@64 retrieval miss. Noise labels cover unrelated metrics, QoS, thread pools, XDS, URLs, and cluster mocking."
+      }
+    },
+    {
+      "id": "v02c-holdout-java-long_session-159",
+      "materializedCaseSha256": "1d480c3a31b2b05935c56b6b325348ce51f1d776ecbecabaa4c2010c5ffb4da8",
+      "candidatePathsSha256": "6e423c0e621e3ba4337b2948538af96cc78962c0eed9d06e6b2785cc122b2c26",
+      "decision": {
+        "requiredSourceFiles": [
+          "processing/src/main/java/org/apache/druid/query/aggregation/post/ArithmeticPostAggregator.java"
+        ],
+        "explicitNoiseFiles": [
+          "docs/operations/tls-support.md",
+          "extensions-core/orc-extensions/src/main/java/org/apache/druid/data/input/orc/OrcStructConverter.java",
+          "extensions-core/parquet-extensions/src/main/java/org/apache/parquet/avro/DruidParquetAvroReadSupport.java",
+          "core/src/main/java/org/apache/druid/java/util/http/client/Request.java",
+          "indexing-service/src/main/java/org/apache/druid/indexing/common/actions/SegmentAllocateRequest.java",
+          "licenses/bin/change-case.MIT"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "The arithmetic post-aggregator is manually confirmed as required and present. Noise labels cover unrelated TLS documentation, ORC and Parquet, HTTP requests, segment allocation, and third-party licensing."
+      }
+    },
+    {
+      "id": "v02c-holdout-cpp-source_localization-160",
+      "materializedCaseSha256": "a4d0460005cf0212bf8b6e48584a93b68ce478ac80438b0ba0b846e2713bdafe",
+      "candidatePathsSha256": "9bb5fceec86a35b90459ad994ab77a117b13fb830993f6425ef54d69dbca2606",
+      "decision": {
+        "requiredSourceFiles": [
+          "src/catch2/catch_all.hpp"
+        ],
+        "explicitNoiseFiles": [
+          "src/catch2/internal/catch_random_number_generator.cpp",
+          "src/catch2/internal/catch_textflow.cpp",
+          "src/catch2/benchmark/catch_benchmark.hpp",
+          "src/catch2/reporters/catch_reporter_xml.cpp",
+          "src/catch2/internal/catch_debugger.cpp",
+          "src/catch2/matchers/catch_matchers_vector.hpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "The manually confirmed amalgamating Catch2 header is absent from candidate@64 and remains a retrieval miss. Noise labels cover unrelated randomness, text wrapping, benchmarks, XML reporting, debugging, and vector matchers."
+      }
+    },
+    {
+      "id": "v02c-holdout-cpp-source_localization-161",
+      "materializedCaseSha256": "3a5bd2ff5822373cd72fab6d2e08f9bf75fe85e4369f9aea57f8f0fb983516c2",
+      "candidatePathsSha256": "927d3e25eaebe6e51a7ef170dc9754448cf3149eac9279b67ad15ffc59226d3c",
+      "decision": {
+        "requiredSourceFiles": [
+          "include/internal/catch_approx.h"
+        ],
+        "explicitNoiseFiles": [
+          "include/reporters/catch_reporter_xml.cpp",
+          "include/internal/catch_registry_hub.cpp",
+          "include/internal/catch_random_number_generator.cpp",
+          "include/internal/catch_string_manip.cpp",
+          "projects/SelfTest/CompileTimePerfTests/All.tests.cpp",
+          "projects/SelfTest/UsageTests/ToStringVector.tests.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "The Approx header is manually confirmed as required and present. Noise labels cover unrelated XML reporting, registries, randomness, string manipulation, compile-time performance, and vector stringification."
+      }
+    },
+    {
+      "id": "v02c-holdout-cpp-failure_first-162",
+      "materializedCaseSha256": "9eac6683ad331a3149a93fbd02b57a64700466dc1fb0f84e1b1f855f1c75e317",
+      "candidatePathsSha256": "52a922412730b95eb4769b763521ef13adddfb29c0a9edd191d9aed319cb6bd7",
+      "decision": {
+        "requiredSourceFiles": [
+          "src/catch2/internal/catch_run_context.cpp"
+        ],
+        "explicitNoiseFiles": [
+          "docs/contributing.md",
+          "tools/scripts/fixWhitespace.py",
+          "src/catch2/internal/catch_list.cpp",
+          "src/catch2/reporters/catch_reporter_junit.cpp",
+          "src/catch2/benchmark/detail/catch_stats.cpp",
+          "src/catch2/internal/catch_textflow.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "The run-context source is manually confirmed as required and present. Noise labels cover unrelated contribution docs, whitespace tooling, listing, JUnit reporting, benchmark statistics, and text wrapping."
+      }
+    },
+    {
+      "id": "v02c-holdout-cpp-failure_first-163",
+      "materializedCaseSha256": "63c576a95039ccd93ae2305f4a8399c4e1d02e228e1d795add2e77cf28900109",
+      "candidatePathsSha256": "39b13cb8b72c84611072ad115793fa3fc9e60a1abfe8ba9edf74d11467d13b38",
+      "decision": {
+        "requiredSourceFiles": [
+          "include/internal/catch_commandline.cpp",
+          "include/internal/catch_list.cpp",
+          "include/internal/catch_list.h"
+        ],
+        "explicitNoiseFiles": [
+          "scripts/releaseNotes.py",
+          "scripts/benchmarkRunner.py",
+          "include/reporters/catch_reporter_teamcity.hpp",
+          "include/internal/catch_message.h",
+          "include/internal/catch_generators.cpp",
+          "include/internal/catch_xmlwriter.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "The command-line and listing implementations are present; the manually confirmed list header remains a candidate@64 retrieval miss. Noise labels cover unrelated release and benchmark scripts, TeamCity reporting, messages, generators, and XML writing."
+      }
+    },
+    {
+      "id": "v02c-holdout-cpp-long_session-164",
+      "materializedCaseSha256": "cd1a9e78baa9cab75932fee902f25b6e74f45f4d6e5e669d05f5781e67be78a6",
+      "candidatePathsSha256": "544ee6a9500d1ece7066df3d11cf1099e9d2f9a973c0f6e38e1fe883c4277aee",
+      "decision": {
+        "requiredSourceFiles": [
+          "src/catch2/internal/catch_textflow.cpp",
+          "src/catch2/internal/catch_textflow.hpp"
+        ],
+        "explicitNoiseFiles": [
+          "src/catch2/benchmark/catch_benchmark.hpp",
+          "src/catch2/catch_config.cpp",
+          "src/catch2/catch_registry_hub.cpp",
+          "src/catch2/matchers/catch_matchers_floating_point.cpp",
+          "src/catch2/generators/catch_generators.hpp",
+          "src/catch2/catch_session.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "Both text-flow sources are manually confirmed as required and present. Noise labels cover unrelated benchmarks, configuration, registries, floating-point matchers, generators, and sessions."
+      }
+    },
+    {
+      "id": "v02c-holdout-cpp-long_session-165",
+      "materializedCaseSha256": "8402a28e51c7a9d199cb9b2e2885c50be2d429476a6a41766b37a28d0c0319b7",
+      "candidatePathsSha256": "e69a0ca2e1b18427eb94b349f6aa521904f6903a4ab95d88fa3b66f5593c3afe",
+      "decision": {
+        "requiredSourceFiles": [
+          "include/internal/catch_message.cpp",
+          "include/internal/catch_message.h"
+        ],
+        "explicitNoiseFiles": [
+          "include/internal/catch_reporter_registry.cpp",
+          "include/internal/catch_version.cpp",
+          "include/internal/catch_matchers_vector.h",
+          "include/internal/catch_benchmark.cpp",
+          "include/internal/catch_session.cpp",
+          "include/internal/catch_console_colour.h"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "Both message sources are manually confirmed as required and present. Noise labels cover unrelated reporter registries, versioning, vector matchers, benchmarks, sessions, and console colors."
       }
     }
   ]
