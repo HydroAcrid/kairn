@@ -61,6 +61,8 @@ export type EvidenceCandidateInput = {
   legacyResults: HybridScoredResult[];
   shown?: ContextShownRecord[];
   changedFiles?: Set<string>;
+  /** Preselected bounded union to enrich and featurize without reselection drift. */
+  fixedCandidatePaths?: string[];
   initialLimit?: number;
   enrichedLimit?: number;
 };
@@ -268,6 +270,12 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
   }
   for (const filePath of [...changedFiles].sort()) addSignal(filePath, "git_diff");
   for (const filePath of [...shownFiles].sort()) addSignal(filePath, "already_delivered");
+  const fixedCandidatePaths = uniqueNormalizedPaths(input.fixedCandidatePaths ?? [])
+    .filter((filePath) => filesByPath.has(filePath))
+    .slice(0, enrichedLimit);
+  for (const filePath of fixedCandidatePaths) {
+    if (!reasonsByPath.has(filePath)) reasonsByPath.set(filePath, new Set<EvidenceReason>());
+  }
 
   if (reasonsByPath.size === 0) {
     for (const file of [...input.files].sort((left, right) => right.importance - left.importance || left.path.localeCompare(right.path)).slice(0, 16)) {
@@ -344,19 +352,25 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
     limit: initialLimit
   });
 
-  const enrichedPaths = [...initialPaths];
+  const enrichedPaths = fixedCandidatePaths.length > 0 ? [...fixedCandidatePaths] : [...initialPaths];
   const selectedPaths = new Set(enrichedPaths);
   for (const { edge, neighbor } of roundRobinGraphNeighbors({
     seedPaths: initialPaths,
     edges: input.edges,
     filesByPath,
-    limit: Math.max(0, enrichedLimit - enrichedPaths.length)
+    limit: fixedCandidatePaths.length > 0
+      ? enrichedLimit
+      : Math.max(0, enrichedLimit - enrichedPaths.length)
   })) {
     const reasons = reasonsByPath.get(neighbor) ?? new Set<EvidenceReason>();
     reasons.add("graph_neighbor");
     if (edge.type === "test_for" || edge.type === "tested_by") reasons.add("source_test_pair");
     reasonsByPath.set(neighbor, reasons);
-    if (!selectedPaths.has(neighbor) && enrichedPaths.length < enrichedLimit) {
+    if (
+      fixedCandidatePaths.length === 0 &&
+      !selectedPaths.has(neighbor) &&
+      enrichedPaths.length < enrichedLimit
+    ) {
       enrichedPaths.push(neighbor);
       selectedPaths.add(neighbor);
     }
@@ -376,6 +390,18 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
   });
 
   return { signals, candidates };
+}
+
+function uniqueNormalizedPaths(paths: string[]): string[] {
+  const output: string[] = [];
+  const seen = new Set<string>();
+  for (const filePath of paths) {
+    const normalized = normalizeRepoPath(filePath);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    output.push(normalized);
+  }
+  return output;
 }
 
 type GraphNeighbor = {

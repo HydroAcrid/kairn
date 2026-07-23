@@ -1461,6 +1461,7 @@ export class KairnRuntime {
       edges: localIndex.edges,
       legacyResults: legacyScored,
       candidateResults: rankerCandidates,
+      ...(calibratedLocalIndex ? { candidatePaths: calibratedLocalIndex.candidateFiles } : {}),
       shown: session.filesShown,
       changedFiles
     }, requestedRanker);
@@ -3498,6 +3499,7 @@ export class KairnRuntime {
       symbols: localIndex.symbols,
       edges: localIndex.edges,
       legacyResults: hybridCandidates,
+      fixedCandidatePaths: localIndex.candidateFiles,
       shown: [],
       changedFiles: new Set<string>(),
       initialLimit: DEFAULT_INITIAL_CANDIDATE_LIMIT,

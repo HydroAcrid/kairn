@@ -30,6 +30,8 @@ export type EvidenceRankingInput = {
   legacyResults: HybridScoredResult[];
   /** Broader legacy candidates used only to build features in shadow/calibrated modes. */
   candidateResults?: HybridScoredResult[];
+  /** Frozen bounded union selected before query-local enrichment. */
+  candidatePaths?: string[];
   shown?: ContextShownRecord[];
   changedFiles?: Set<string>;
 };
@@ -72,6 +74,7 @@ export function rankEvidenceResults(
     symbols: input.symbols,
     edges: input.edges,
     legacyResults: input.candidateResults ?? input.legacyResults,
+    ...(input.candidatePaths ? { fixedCandidatePaths: input.candidatePaths } : {}),
     ...(input.shown ? { shown: input.shown } : {}),
     ...(input.changedFiles ? { changedFiles: input.changedFiles } : {})
   });
