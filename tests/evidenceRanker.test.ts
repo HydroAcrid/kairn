@@ -87,6 +87,16 @@ describe("evidence task signals and candidates", () => {
     expect(extractEvidenceTaskSignals("# Update README documentation\n\nKeep examples current.").intent).toBe("docs");
   });
 
+  it("does not treat implementation work as test intent because tests are also mentioned", () => {
+    const signals = extractEvidenceTaskSignals([
+      "Added RequestHasher and tests",
+      "",
+      "The production code now includes all request attributes."
+    ].join("\n"));
+
+    expect(signals.intent).toBe("source");
+  });
+
   it("keeps a named failing check ahead of noisy log identifiers", () => {
     const noisyLog = Array.from({ length: 80 }, (_, index) => `responseField${index}: value${index}`).join("\n");
     const signals = extractEvidenceTaskSignals([

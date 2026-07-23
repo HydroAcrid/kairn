@@ -530,9 +530,9 @@ function classifyEvidenceIntent(query: string): EvidenceTaskIntent {
   // reports, checklists, links, and reproduction examples. Treat them as role
   // intent only when they occur in the task headline; otherwise the unknown
   // intent correctly retains the production-source prior.
-  const headlineTerms = new Set(tokenizeLexical(extractIntentHeadline(query)));
-  if (["test", "tests", "spec", "specs", "verify", "verification", "coverage"].some((term) => headlineTerms.has(term))) return "test";
-  if (["docs", "documentation", "readme", "guide"].some((term) => headlineTerms.has(term))) return "docs";
+  const headline = extractIntentHeadline(query);
+  if (isExplicitTestIntent(headline)) return "test";
+  if (isExplicitDocsIntent(headline)) return "docs";
   if (["refactor", "code"].some((term) => terms.has(term))) return "source";
   return "unknown";
 }
@@ -548,6 +548,16 @@ function extractIntentHeadline(query: string): string {
     return normalizeQueryText(line.slice(0, 400));
   }
   return "";
+}
+
+function isExplicitTestIntent(headline: string): boolean {
+  return /^(?:please\s+)?(?:tests?|specs?|coverage|verification)\b/i.test(headline) ||
+    /^(?:please\s+)?(?:add|write|update|fix|repair|refactor|run|verify|expand|improve|increase)\s+(?:(?:unit|integration|end-to-end|e2e|flaky|failing)\s+){0,2}(?:tests?|specs?|(?:test\s+)?coverage)\b/i.test(headline);
+}
+
+function isExplicitDocsIntent(headline: string): boolean {
+  return /^(?:please\s+)?(?:docs?|documentation|readme|guide)\b/i.test(headline) ||
+    /^(?:please\s+)?(?:add|write|update|fix|repair|refactor|expand|improve)\s+(?:the\s+)?(?:docs?|documentation|readme|guide)\b/i.test(headline);
 }
 
 function extractFileReferences(query: string, pattern: RegExp): string[] {
