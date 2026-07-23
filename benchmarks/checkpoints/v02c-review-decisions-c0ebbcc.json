@@ -6,8 +6,8 @@
   "sourceQueueSha256": "16acb7b34ac67bf24cc3a8562aac5f8ae665b86550064f794e1738354291c117",
   "batchIndexSha256": "7ba998b4c6d6bff1f433f3e1d37572175b748f210438d3c89a9fd04c9dd7dcd5",
   "caseCount": 165,
-  "completedCases": 33,
-  "pendingCases": 132,
+  "completedCases": 44,
+  "pendingCases": 121,
   "decisions": [
     {
       "id": "v02c-train-python-source_localization-001",
@@ -634,6 +634,217 @@
         "reviewer": "Codex independent repository-evidence review",
         "reviewedAt": "2026-07-23T13:34:00-04:00",
         "notes": "A patched object subclass is present. Noise labels are unrelated editor libraries, manual formatting, WebGL infrastructure, and generated API documentation."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-long_session-034",
+      "materializedCaseSha256": "01ee220928cdc29e6bddb586ad141fdfff0ea52b0c327d7071c80b0590df07d9",
+      "candidatePathsSha256": "ac10978fa07bd0939fa23c1625c3b491c986002e2c073fc41f263bf0ef857f19",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "editor/js/Sidebar.Material.Program.js",
+          "editor/js/libs/esprima.js",
+          "editor/js/libs/codemirror/codemirror.js",
+          "docs/scenes/bones-browser.html",
+          "src/renderers/webgl/WebGLPrograms.js",
+          "examples/models/gltf/AnimatedMorphSphere/glTF/AnimatedMorphSphere.bin"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "The Sphere patch source is present. Noise labels are unrelated editor, parser, documentation, renderer, and model assets."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-long_session-035",
+      "materializedCaseSha256": "2d8c84d075cd6ab306ea203489453d1e6e4471045b07373bebef29a341e21c33",
+      "candidatePathsSha256": "5afc5a1f98ca2859f2fa7b2f71cc00ea0c50a05762f9878d956b89860e7f12d5",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "compat/test/browser/portals.test.js",
+          "compat/test/browser/events.test.js",
+          "compat/test/browser/findDOMNode.test.js",
+          "benches/scripts/analyze.js",
+          "benches/scripts/deopts.js",
+          "debug/test/browser/debug-compat.test.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "The child-diff and public type patch sources are present. Noise labels cover unrelated compat tests, benchmark tooling, and debug compatibility."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-long_session-036",
+      "materializedCaseSha256": "4d077446ba07d6eaf7b72c90745ddcc7e15ac09474d77dbb4532bef31ea841a7",
+      "candidatePathsSha256": "6986e154b7f38a7a48b7b74cf2dc03a29ac754a44c7d8a2d1b17fd2d91d36640",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "compat/test/browser/forwardRef.test.js",
+          "compat/test/browser/memo.test.js",
+          "benches/scripts/prepare.js",
+          "benches/scripts/deopts.js",
+          "demo/stateOrderBug.js",
+          "demo/key_bug.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "The hook implementation and internal declaration patch sources are present. Noise labels cover unrelated compat tests, benchmark tooling, and demos."
+      }
+    },
+    {
+      "id": "v02c-train-go-source_localization-037",
+      "materializedCaseSha256": "1cd0e8bd96dc540fd9e3c54e0c9cc4a1799339675ff287ee343480835abd7594",
+      "candidatePathsSha256": "9d813212ccd11741f7e982ca9d577c1cd4ea9fbd7845563f275a0a569b15bd0c",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "internal/command/testdata/backend-change-multi-default-to-single/.terraform/terraform.tfstate",
+          "internal/command/testdata/backend-change-multi-to-multi/.terraform/terraform.tfstate",
+          "internal/lang/globalref/analyzer_meta_references_test.go",
+          "internal/builtin/providers/terraform/resource_data_test.go",
+          "internal/backend/remote-state/s3/backend_complete_test.go",
+          "internal/terraform/context_apply2_test.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "The fmt command patch source is present. Noise labels are unrelated backend state fixtures, global-reference, provider, remote-backend, and apply tests."
+      }
+    },
+    {
+      "id": "v02c-train-go-source_localization-038",
+      "materializedCaseSha256": "2e9ac3be62690c16af7c6833cdc37e0259dcf4a5ef832f59141f4946a5ec2398",
+      "candidatePathsSha256": "2aea32d44538d755a788a05b78d41317ad466773faf0a86c262d97afcb21f2d4",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "internal/registry/regsrc/module.go",
+          "internal/lang/funcs/crypto_test.go",
+          "internal/addrs/provider_test.go",
+          "internal/backend/remote-state/http/server_test.go",
+          "internal/command/cliconfig/credentials_test.go",
+          "internal/lang/funcs/cidr.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "The remote-exec provisioner patch source is present. Noise labels cover unrelated registry, language functions, provider addressing, backend server, and CLI credential behavior."
+      }
+    },
+    {
+      "id": "v02c-train-go-source_localization-039",
+      "materializedCaseSha256": "874bd9be995dddb21b4f87891a4cf5d92974ad75e93a231d92e23665120fad4b",
+      "candidatePathsSha256": "9be09c5664f1b8da0d83884046cdbf2b7988be2e3f628f8b95b1192a97f7c7cd",
+      "decision": {
+        "requiredSourceFiles": [
+          "internal/terraform/transform_removed_modules.go"
+        ],
+        "explicitNoiseFiles": [
+          "internal/command/testdata/login-oauth-server/main.go",
+          "internal/registry/response/module_versions.go",
+          "internal/command/views/init_test.go",
+          "internal/stacks/stackruntime/internal/stackeval/diagnostics_test.go",
+          "internal/provider-simple-v6/main/main.go",
+          "version/version.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "The official patch path is absent from candidate@64. The removed-module transform is the required candidate production source for module-scoped removed blocks; noise labels are unrelated login, registry, UI, stack diagnostics, provider fixture, and version code."
+      }
+    },
+    {
+      "id": "v02c-train-go-source_localization-040",
+      "materializedCaseSha256": "d80b2a5e4b88670e83665736e50a701682610bd2d2f7fca50950a1da160ba777",
+      "candidatePathsSha256": "bb940266e822f70e6d42995de031bd65dbb070ef798103d044ec0b38ca87921b",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "web/packages/teleport/src/config.test.ts",
+          "web/packages/teleport/src/Teleport.tsx",
+          "bpf/enhancedrecording/counter_test.bpf.c",
+          "gen/proto/js/prehog/v1/teleport_pb.js",
+          "lib/benchmark/db/postgres.go",
+          "assets/aws/cmd/update-ami-id/main.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "A Linux inventory metadata patch source is present. Noise labels cover unrelated web UI, BPF, generated telemetry, database benchmarking, and AWS asset tooling."
+      }
+    },
+    {
+      "id": "v02c-train-go-source_localization-041",
+      "materializedCaseSha256": "e137cfdb11aa6e3e27bec683d6ed5f9fa60eeb9d854935175cb5164d7e30b694",
+      "candidatePathsSha256": "80f981da85d16ac4f10a6712fef39f304d417f7fd1ccc246e607e12a2f6f9e96",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "ui/src/icons/MusicBrainz.js",
+          "core/agents/lastfm/client_test.go",
+          "core/agents/listenbrainz/auth_router_test.go",
+          "core/media_streamer_test.go",
+          "ui/src/dialogs/AddToPlaylistDialog.js",
+          "ui/src/common/useRating.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "Artist refresh model, persistence, and scanner patch sources are present. Noise labels cover unrelated UI, metadata agents, media streaming, playlist dialogs, and rating hooks."
+      }
+    },
+    {
+      "id": "v02c-train-go-source_localization-042",
+      "materializedCaseSha256": "de098ae94535d96137e0e246384f89b9b6273c2dad405ec5e61f109a1fa00a9e",
+      "candidatePathsSha256": "f93f294e3265715b455067a606096af4e44f3ead871991e4c4101f92b342eb42",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "lib/sshutils/scp/local.go",
+          "lib/benchmark/linear_test.go",
+          "lib/web/ui/perf_test.go",
+          "lib/client/keystore_test.go",
+          "tool/tctl/common/auth_command_test.go",
+          "lib/config/formatter.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "Database server, proxy, and tsh database patch sources are present. Noise labels cover unrelated SCP, benchmarking, web performance, keystore, auth CLI, and formatting behavior."
+      }
+    },
+    {
+      "id": "v02c-train-go-failure_first-043",
+      "materializedCaseSha256": "49f745739b2ee338861acc842b677f0f18d095d82095cb954f49b68d7fc203de",
+      "candidatePathsSha256": "f64961c43c26c2835bf7e4156b8f444c3d3d703e2a98db0d16df9351575e3bc5",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tpl/safe/safe.go",
+          "resources/image_test.go",
+          "navigation/menu_cache_test.go",
+          "config/defaultConfigProvider_test.go",
+          "markup/asciidocext/asciidocext_config/config.go",
+          "common/loggers/handlerdefault.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "The content-map page patch source is present. Noise labels cover unrelated template safety, images, menu cache, default configuration, AsciiDoc, and logging."
+      }
+    },
+    {
+      "id": "v02c-train-go-failure_first-044",
+      "materializedCaseSha256": "c6f0c3632e8d2ae21e50ceeb305cdfac5969d3c347d2157d51621821767fd816",
+      "candidatePathsSha256": "716d32dfce95ad8dde3d7e08da9eeed4d38938775ec709bc3f74c25aa04ed804",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "resources/image_test.go",
+          "identity/identityhash_test.go",
+          "tpl/safe/safe_test.go",
+          "common/herrors/file_error_test.go",
+          "markup/goldmark/goldmark_config/config.go",
+          "media/testdata/resource.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "The page-path patch source is present. Noise labels cover unrelated image, identity, template safety, file-error, Markdown configuration, and media fixture behavior."
       }
     }
   ]
