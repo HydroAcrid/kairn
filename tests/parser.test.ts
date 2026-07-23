@@ -262,7 +262,11 @@ describe("cross-language parser adapters", () => {
       ].join("\n")
     });
 
-    expect(parsed.imports).toEqual(expect.arrayContaining(["package:org.apache.commons.lang3", "java.util.List"]));
+    expect(parsed.imports).toEqual(expect.arrayContaining([
+      "package:org.apache.commons.lang3",
+      "java.util.List",
+      "type:CharSequence"
+    ]));
     expect(parsed.symbols.map((symbol) => `${symbol.name}:${symbol.kind}`)).toEqual(
       expect.arrayContaining([
         "StringUtils:class",

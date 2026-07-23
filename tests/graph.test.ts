@@ -127,6 +127,50 @@ describe("buildRepoGraph", () => {
     );
   });
 
+  it("links Java same-package type references without crossing package boundaries", async () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "src/main/java/org/example/Caller.java", "source"),
+      file(rootPath, "src/main/java/org/example/Helper.java", "source"),
+      file(rootPath, "src/main/java/org/other/Helper.java", "source")
+    ];
+    const sources = new Map([
+      [
+        "src/main/java/org/example/Caller.java",
+        "package org.example;\nclass Caller { Helper helper = new Helper(); }\n"
+      ],
+      [
+        "src/main/java/org/example/Helper.java",
+        "package org.example;\nclass Helper {}\n"
+      ],
+      [
+        "src/main/java/org/other/Helper.java",
+        "package org.other;\nclass Helper {}\n"
+      ]
+    ]);
+    const parsedFiles = await Promise.all(files.map((record) =>
+      parseSourceFile({
+        rootPath,
+        filePath: record.path,
+        language: record.language,
+        content: sources.get(record.path) ?? ""
+      })
+    ));
+
+    const graph = buildRepoGraph({ rootPath, files, parsedFiles });
+
+    expect(edgeTypes(
+      graph.edges,
+      "src/main/java/org/example/Caller.java",
+      "src/main/java/org/example/Helper.java"
+    )).toContain("imports");
+    expect(edgeTypes(
+      graph.edges,
+      "src/main/java/org/example/Caller.java",
+      "src/main/java/org/other/Helper.java"
+    )).not.toContain("imports");
+  });
+
   it("falls back gracefully when tsconfig is broken", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-broken-tsconfig-"));
     fs.mkdirSync(path.join(root, "src"), { recursive: true });
@@ -144,7 +188,7 @@ function file(rootPath: string, filePath: string, kind: FileRecord["kind"]): Fil
   return {
     rootPath,
     path: filePath,
-    language: filePath.endsWith(".go") ? "go" : "typescript",
+    language: filePath.endsWith(".go") ? "go" : filePath.endsWith(".java") ? "java" : "typescript",
     kind,
     size: 10,
     hash: filePath,

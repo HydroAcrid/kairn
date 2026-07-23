@@ -16,7 +16,7 @@ export function buildRepoGraph(input: {
 
   for (const parsedFile of input.parsedFiles) {
     for (const specifier of parsedFile.imports) {
-      if (isPackageMetadata(specifier)) continue;
+      if (isGraphMetadata(specifier)) continue;
       for (const candidate of resolveImportCandidates(parsedFile.filePath, specifier)) {
         if (!fileByPath.has(candidate)) continue;
 
@@ -38,6 +38,7 @@ export function buildRepoGraph(input: {
     input.parsedFiles,
     input.goModules ?? []
   );
+  addJavaSamePackageTypeEdges(edgeMap, input.rootPath, input.files, input.parsedFiles);
   addTestEdges(edgeMap, input.rootPath, input.files);
   addGoTestSymbolEdges(edgeMap, input.rootPath, input.files, input.parsedFiles);
   addParentRouteEdges(edgeMap, input.rootPath, input.files);
@@ -190,6 +191,54 @@ function addGoTestSymbolEdges(
   }
 }
 
+function addJavaSamePackageTypeEdges(
+  edgeMap: Map<string, GraphEdgeRecord>,
+  rootPath: string,
+  files: FileRecord[],
+  parsedFiles: ParsedFile[]
+): void {
+  const fileByPath = new Map(files.map((file) => [file.path, file]));
+  const declarationsByPackageAndType = new Map<string, string[]>();
+
+  for (const parsedFile of parsedFiles) {
+    const file = fileByPath.get(parsedFile.filePath);
+    const packageName = javaPackageName(parsedFile);
+    if (parsedFile.language !== "java" || !file || !packageName) continue;
+    for (const symbol of parsedFile.symbols) {
+      if (!["class", "interface", "type"].includes(symbol.kind)) continue;
+      const key = `${packageName}:${symbol.name}`;
+      declarationsByPackageAndType.set(key, [
+        ...(declarationsByPackageAndType.get(key) ?? []),
+        parsedFile.filePath
+      ]);
+    }
+  }
+
+  for (const parsedFile of parsedFiles) {
+    const packageName = javaPackageName(parsedFile);
+    if (parsedFile.language !== "java" || !packageName) continue;
+    const referencedTypes = parsedFile.imports
+      .filter(isJavaTypeMetadata)
+      .map((specifier) => specifier.slice("type:".length));
+    for (const typeName of referencedTypes) {
+      for (const target of declarationsByPackageAndType.get(`${packageName}:${typeName}`) ?? []) {
+        if (target === parsedFile.filePath) continue;
+        addEdge(edgeMap, {
+          rootPath,
+          fromFile: parsedFile.filePath,
+          toFile: target,
+          type: "imports",
+          metadata: {
+            reason: "Java same-package type reference",
+            package: packageName,
+            symbol: typeName
+          }
+        });
+      }
+    }
+  }
+}
+
 function addParentRouteEdges(edgeMap: Map<string, GraphEdgeRecord>, rootPath: string, files: FileRecord[]): void {
   const routes = files.filter((file) => isNextRouteFile(file.path));
   const filesByDirectory = new Map<string, FileRecord[]>();
@@ -222,7 +271,21 @@ function isPackageMetadata(specifier: string): boolean {
   return specifier.startsWith("package:");
 }
 
+function isJavaTypeMetadata(specifier: string): boolean {
+  return specifier.startsWith("type:");
+}
+
+function isGraphMetadata(specifier: string): boolean {
+  return isPackageMetadata(specifier) || isJavaTypeMetadata(specifier);
+}
+
 function goPackageName(parsedFile: ParsedFile): string | undefined {
+  return parsedFile.imports
+    .find(isPackageMetadata)
+    ?.slice("package:".length);
+}
+
+function javaPackageName(parsedFile: ParsedFile): string | undefined {
   return parsedFile.imports
     .find(isPackageMetadata)
     ?.slice("package:".length);

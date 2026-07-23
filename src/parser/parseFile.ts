@@ -8,6 +8,7 @@ import type { ParsedFile, SymbolKind, SymbolRecord } from "../types.js";
 const require = createRequire(import.meta.url);
 
 type ParserGrammar = "typescript" | "tsx" | "python" | "go" | "java" | "c" | "cpp";
+const MAX_JAVA_TYPE_REFERENCES = 128;
 
 type SyntaxNodeLike = {
   type: string;
@@ -271,6 +272,7 @@ function parseJava(
 ): { symbols: SymbolRecord[]; imports: string[] } {
   const symbols: SymbolRecord[] = [];
   const imports = new Set<string>();
+  const referencedTypes = new Set<string>();
 
   visit(rootNode, (node) => {
     if (node.type === "package_declaration") {
@@ -283,6 +285,11 @@ function parseJava(
       const specifier = node.text.replace(/^import\s+(static\s+)?/, "").replace(/;$/, "").trim();
       if (specifier) imports.add(specifier);
       return;
+    }
+
+    if (node.type === "type_identifier" && referencedTypes.size < MAX_JAVA_TYPE_REFERENCES) {
+      const typeName = node.text.trim();
+      if (/^[A-Za-z_$][\w$]*$/.test(typeName)) referencedTypes.add(typeName);
     }
 
     if (node.type === "class_declaration") {
@@ -305,7 +312,13 @@ function parseJava(
     }
   });
 
-  return { symbols, imports: [...imports] };
+  return {
+    symbols,
+    imports: [
+      ...imports,
+      ...[...referencedTypes].sort().map((typeName) => `type:${typeName}`)
+    ]
+  };
 }
 
 function parseCFamily(
