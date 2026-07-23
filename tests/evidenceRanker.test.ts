@@ -15,6 +15,7 @@ import {
   extractEvidenceTaskSignals,
   selectEvidenceSymbolTerms
 } from "../src/retrieval/evidenceSignals.js";
+import { scoreFiles } from "../src/retrieval/scoreResults.js";
 import type {
   FileKind,
   FileRecord,
@@ -101,6 +102,7 @@ describe("evidence task signals and candidates", () => {
     const signals = extractEvidenceTaskSignals(query);
 
     expect(retrievalQueries[0]).toContain("Parser drops the final production segment");
+    expect(retrievalQueries[0]).not.toContain("notASymbol");
     expect(retrievalQueries.join(" ")).not.toContain("VeryNoisyIdentifier");
     expect(signals.preferredIdentifiers[0]).toBe("segmentparser");
     expect(signals.preferredIdentifiers).not.toContain("notasymbol");
@@ -118,6 +120,16 @@ describe("evidence task signals and candidates", () => {
     expect(selected).toContain("recursive");
     expect(selected).toContain("ignore");
     expect(selected.filter((term) => term.startsWith("uiwidgetstate")).length).toBeLessThan(8);
+  });
+
+  it("does not let repeated prompt terms inflate path scores", () => {
+    const root = "/repo";
+    const source = file(root, "src/widget-state.ts", "source", 200);
+    const once = scoreFiles([source], "widget state");
+    const repeated = scoreFiles([source], "widget widget widget state state");
+
+    expect(repeated[0]?.score).toBe(once[0]?.score);
+    expect(repeated[0]?.reasons).toEqual(once[0]?.reasons);
   });
 
   it("reserves hard candidate capacity for an exact failing-check symbol", () => {
@@ -240,6 +252,31 @@ describe("evidence task signals and candidates", () => {
     expect(candidates.candidates.find((candidate) => candidate.path === source.path)?.reasons).toEqual(
       expect.arrayContaining(["lexical", "production_source", "role_match"])
     );
+  });
+
+  it("keeps most source-intent candidate capacity for retrieved production files", () => {
+    const root = "/repo";
+    const production = Array.from({ length: 80 }, (_, index) =>
+      file(root, `src/service-${String(index).padStart(3, "0")}.ts`, "source", 900)
+    );
+    const tests = Array.from({ length: 24 }, (_, index) =>
+      file(root, `tests/service-${String(index).padStart(3, "0")}.test.ts`, "test", 900)
+    );
+    const candidates = buildEvidenceCandidates({
+      files: [...production, ...tests],
+      query: "Debug the production service regression",
+      symbols: [],
+      edges: [],
+      legacyResults: [
+        ...tests.map((record, index) => scored(record, { bm25Score: 200 - index })),
+        ...production.map((record, index) => scored(record, { bm25Score: 100 - index }))
+      ],
+      initialLimit: 64,
+      enrichedLimit: 64
+    });
+
+    expect(candidates.candidates.filter((candidate) => candidate.features.productionSource === 1).length)
+      .toBeGreaterThanOrEqual(56);
   });
 
   it("does not let an ambiguous basename consume the exact-path budget", () => {

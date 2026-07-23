@@ -123,8 +123,9 @@ export function buildEvidenceRetrievalQueries(query: string): string[] {
     .replace(/<!--[\s\S]*?-->/g, " ")
     .replace(/https?:\/\/[^\s<>()]+/gi, " ");
   const withoutBroadFailures = stripBroadFailureCheckSections(withoutTemplateNoise);
-  const narrative = normalizeQueryText(withoutBroadFailures.replace(/```[\s\S]*?```/g, " "));
-  const headline = extractTaskHeadline(narrative);
+  const narrativeSource = withoutBroadFailures.replace(/```[\s\S]*?```/g, " ");
+  const headline = extractTaskHeadline(narrativeSource);
+  const narrative = normalizeQueryText(narrativeSource);
   const codeAware = normalizeQueryText(withoutBroadFailures);
   return uniqueInOrder([headline, narrative, codeAware].filter(Boolean)).slice(0, MAX_RETRIEVAL_QUERIES);
 }
@@ -258,6 +259,7 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
     legacyByPath,
     filesByPath,
     exactSymbolPriorityByPath,
+    intent: signals.intent,
     limit: initialLimit
   });
   const graphPriorityByPath = new Map<string, number>();
@@ -290,6 +292,7 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
     filesByPath,
     exactSymbolPriorityByPath,
     graphPriorityByPath,
+    intent: signals.intent,
     limit: initialLimit
   });
 
@@ -604,6 +607,7 @@ function selectInitialPaths(input: {
   filesByPath: Map<string, FileRecord>;
   exactSymbolPriorityByPath: Map<string, number>;
   graphPriorityByPath?: Map<string, number> | undefined;
+  intent: EvidenceTaskIntent;
   limit: number;
 }): string[] {
   const selected: string[] = [];
@@ -648,6 +652,17 @@ function selectInitialPaths(input: {
     )
     .slice(0, Math.min(MAX_PRECISE_GRAPH_SEEDS, input.limit))) {
     add(filePath);
+  }
+
+  // Required production-source recall is the primary gate for debugging and
+  // source-localization tasks. Reserve most of the bounded union for retrieved
+  // production files, while hard failure/path evidence and a final independent
+  // generator lane retain room for tests, docs, and other task evidence.
+  if (input.intent === "source" || input.intent === "unknown") {
+    const independentReserve = Math.min(8, Math.max(1, Math.ceil(input.limit / 8)));
+    for (const filePath of candidatesFor("production_source").slice(0, Math.max(0, input.limit - independentReserve))) {
+      add(filePath);
+    }
   }
 
   // The remaining independent generators take turns contributing candidates.
