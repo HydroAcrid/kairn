@@ -78,7 +78,8 @@ describe("public evidence ranker training", () => {
       cacheDir: path.join(temporary, "cache"),
       allowSample: true,
       allowLocalFixture: true,
-      draft: true
+      draft: true,
+      caseIds: ["materialized-train-case"]
     });
 
     expect(result.caseCount).toBe(1);
@@ -93,8 +94,15 @@ describe("public evidence ranker training", () => {
       })
     ]));
     expect(JSON.parse(fs.readFileSync(reportPath, "utf8"))).toMatchObject({
+      partial: true,
+      selectedCaseIds: ["materialized-train-case"],
       candidateRecallAt64: 1,
-      cases: [expect.objectContaining({ explicitNegativeCount: 6, requiredSourceRecallAt64: 1 })]
+      cases: [expect.objectContaining({
+        explicitNegativeCount: 6,
+        requiredSourceRecallAt64: 1,
+        signals: expect.objectContaining({ explicitPaths: expect.arrayContaining(["src/user.ts"]) }),
+        index: expect.objectContaining({ fileCount: expect.any(Number), symbolCount: expect.any(Number) })
+      })]
     });
     expect(buildCorpusReviewQueue({
       intakePath,

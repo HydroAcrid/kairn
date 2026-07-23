@@ -55,6 +55,7 @@ export type MaterializeOptions = {
   allowLocalFixture?: boolean;
   draft?: boolean;
   limit?: number;
+  caseIds?: string[];
 };
 
 const INTAKE_KEYS = new Set([
@@ -93,8 +94,21 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
   const materializedCases: Array<Record<string, unknown>> = [];
   const reportCases: Array<Record<string, unknown>> = [];
   const orderedCases = [...intake.cases].sort((left, right) => left.id.localeCompare(right.id));
-  const selectedCases = options.limit ? orderedCases.slice(0, options.limit) : orderedCases;
-  if (options.limit && !options.draft) throw new Error("--limit is allowed only with --draft");
+  if (options.limit && options.caseIds) throw new Error("--limit and --case-id cannot be combined");
+  if ((options.limit || options.caseIds) && !options.draft) {
+    throw new Error("partial materialization is allowed only with --draft");
+  }
+  const requestedCaseIds = options.caseIds ? new Set(options.caseIds) : undefined;
+  const selectedCases = requestedCaseIds
+    ? orderedCases.filter((item) => requestedCaseIds.has(item.id))
+    : options.limit
+      ? orderedCases.slice(0, options.limit)
+      : orderedCases;
+  if (requestedCaseIds) {
+    const selectedIds = new Set(selectedCases.map((item) => item.id));
+    const missing = [...requestedCaseIds].filter((id) => !selectedIds.has(id));
+    if (missing.length > 0) throw new Error(`unknown --case-id value(s): ${missing.join(", ")}`);
+  }
   for (const intakeCase of selectedCases) {
     const checkout = resolveCheckout(intakeCase, cacheDir, {
       allowLocalFixture: options.allowLocalFixture === true,
@@ -170,6 +184,8 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
         missingRequiredOrNoiseFiles: missingHardLabels,
         candidatePathsSha256: sha256(candidates.map((candidate) => candidate.path).join("\n")),
         ...(options.draft ? {
+          signals: inspection.signals,
+          index: indexCoverage(runtime.getIndexStatus()),
           candidates: inspection.candidates.map((candidate) => ({ path: candidate.path, reasons: candidate.reasons }))
         } : {})
       });
@@ -208,6 +224,10 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
     candidateRecallAt64: fullRecallRate(reportCases, "requiredSourceRecallAt64"),
     positiveSourceAnyHitRateAt64: booleanRate(reportCases, "positiveSourceHitAt64"),
     officialPatchMeanRecallAt64: meanNullable(reportCases, "officialPatchSourceRecallAt64"),
+    ...(options.limit || options.caseIds ? {
+      partial: true,
+      selectedCaseIds: selectedCases.map((item) => item.id)
+    } : {}),
     cases: reportCases
   };
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
@@ -215,6 +235,18 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
   fs.writeFileSync(outPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
   return { manifestPath: outPath, reportPath, caseCount: materializedCases.length };
+}
+
+function indexCoverage(stats: ReturnType<KairnRuntime["getIndexStatus"]>): Record<string, unknown> {
+  return {
+    fileCount: stats.fileCount,
+    symbolCount: stats.symbolCount,
+    graphEdgeCount: stats.graphEdgeCount,
+    semanticChunkCount: stats.semanticChunkCount,
+    lexicalDocumentCount: stats.lexicalDocumentCount,
+    lexicalTermCount: stats.lexicalTermCount,
+    tiers: stats.tiers
+  };
 }
 
 function parseIntake(value: unknown, options: { allowSample: boolean; allowLocalFixture: boolean; draft: boolean }): Intake {
@@ -509,8 +541,15 @@ function parseArgs(argv: string[]): MaterializeOptions {
     allowSample: flags.has("--allow-sample"),
     allowLocalFixture: flags.has("--allow-local-fixture"),
     draft: flags.has("--draft"),
-    ...(values.get("--limit") ? { limit: positiveInteger(values.get("--limit")!, "--limit") } : {})
+    ...(values.get("--limit") ? { limit: positiveInteger(values.get("--limit")!, "--limit") } : {}),
+    ...(values.get("--case-id") ? { caseIds: commaSeparated(values.get("--case-id")!, "--case-id") } : {})
   };
+}
+
+function commaSeparated(value: string, label: string): string[] {
+  const values = [...new Set(value.split(",").map((item) => item.trim()).filter(Boolean))];
+  if (values.length === 0) throw new Error(`${label} must contain at least one case id`);
+  return values;
 }
 
 function positiveInteger(value: string, label: string): number {

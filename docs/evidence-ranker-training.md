@@ -40,6 +40,14 @@ pnpm ranker:review-queue \
   --manifest artifacts/ranker-corpus.draft.json \
   --report artifacts/ranker-corpus.draft.report.json \
   --out artifacts/ranker-corpus.review-queue.json
+
+# Diagnose selected misses without rematerializing the full corpus.
+pnpm ranker:materialize \
+  --intake artifacts/ranker-corpus-intake.candidates.json \
+  --out artifacts/ranker-corpus.case-diagnostic.json \
+  --report-out artifacts/ranker-corpus.case-diagnostic.report.json \
+  --draft \
+  --case-id case-001,case-002
 ```
 
 The public-intake command selects the exact 165-case, 40-lineage split from
@@ -59,6 +67,10 @@ materializer commit. It never auto-fills decisions. It exposes the prompt,
 patch sources present/missing from candidate@64, typed candidate reasons, and
 blank reviewer fields so the required-source and explicit-noise decisions are
 auditable rather than inferred from Kairn's own ranking.
+
+Targeted draft diagnostics record the typed task signals and index coverage
+counts used for selected cases. Partial materialization is never accepted for
+a sealed corpus.
 
 Draft reporting keeps two ground-truth levels separate. Curated
 `requiredSourceFiles` determine the strict candidate-recall@64 gate. Official
