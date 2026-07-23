@@ -352,14 +352,18 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
       )
     );
   }
-  const initialPaths = selectInitialPaths({
+  const baselineInitialPaths = selectInitialPaths({
     reasonsByPath,
     legacyByPath,
     filesByPath,
     exactSymbolPriorityByPath,
     graphPriorityByPath,
-    directImportPriorityByPath,
     intent: signals.intent,
+    limit: initialLimit
+  });
+  const initialPaths = mergeDirectImportCandidates({
+    baselinePaths: baselineInitialPaths,
+    directImportPriorityByPath,
     limit: initialLimit
   });
 
@@ -715,7 +719,6 @@ function selectInitialPaths(input: {
   filesByPath: Map<string, FileRecord>;
   exactSymbolPriorityByPath: Map<string, number>;
   graphPriorityByPath?: Map<string, number> | undefined;
-  directImportPriorityByPath?: Map<string, number> | undefined;
   intent: EvidenceTaskIntent;
   limit: number;
 }): string[] {
@@ -786,20 +789,6 @@ function selectInitialPaths(input: {
     }
   }
 
-  // Direct outgoing production imports from strong seeds receive a separate,
-  // tightly bounded lane after retrieved production source has been secured.
-  // Keeping them out of the established graph/package priority scale prevents
-  // newly discovered dependencies from displacing stronger evidence.
-  for (const filePath of [...(input.directImportPriorityByPath?.keys() ?? [])]
-    .sort((left, right) =>
-      (input.directImportPriorityByPath?.get(right) ?? 0) -
-        (input.directImportPriorityByPath?.get(left) ?? 0) ||
-      left.localeCompare(right)
-    )
-    .slice(0, Math.min(MAX_DIRECT_IMPORT_CANDIDATES, input.limit))) {
-    add(filePath);
-  }
-
   // The remaining independent generators take turns contributing candidates.
   // This keeps one broad signal class from consuming all 64 initial slots.
   const channels: EvidenceReason[] = [
@@ -834,6 +823,43 @@ function selectInitialPaths(input: {
   }
 
   return selected;
+}
+
+function mergeDirectImportCandidates(input: {
+  baselinePaths: string[];
+  directImportPriorityByPath: Map<string, number>;
+  limit: number;
+}): string[] {
+  const output = input.baselinePaths.slice(0, input.limit);
+  const baselineCount = output.length;
+  const selected = new Set(output);
+  const directImports = [...input.directImportPriorityByPath.keys()]
+    .filter((filePath) => !selected.has(filePath))
+    .sort((left, right) =>
+      (input.directImportPriorityByPath.get(right) ?? 0) -
+        (input.directImportPriorityByPath.get(left) ?? 0) ||
+      left.localeCompare(right)
+    )
+    .slice(0, MAX_DIRECT_IMPORT_CANDIDATES);
+  const protectedPrefixLength = Math.max(
+    Math.ceil(baselineCount * 0.75),
+    baselineCount - MAX_DIRECT_IMPORT_CANDIDATES
+  );
+  const appendCount = Math.min(directImports.length, Math.max(0, input.limit - baselineCount));
+  output.push(...directImports.slice(0, appendCount));
+  const remainingDirectImports = directImports.slice(appendCount);
+  const replaceCount = Math.min(
+    remainingDirectImports.length,
+    Math.max(0, baselineCount - protectedPrefixLength)
+  );
+  if (replaceCount > 0) {
+    output.splice(
+      baselineCount - replaceCount,
+      replaceCount,
+      ...remainingDirectImports.slice(0, replaceCount)
+    );
+  }
+  return output;
 }
 
 function channelScore(
