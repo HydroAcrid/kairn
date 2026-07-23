@@ -774,20 +774,6 @@ function selectInitialPaths(input: {
     add(filePath);
   }
 
-  // Direct outgoing production imports from strong seeds receive a separate,
-  // tightly bounded lane. Keeping them out of the established graph/package
-  // priority scale prevents newly discovered dependencies from displacing
-  // retrieval-backed or precise relationship candidates.
-  for (const filePath of [...(input.directImportPriorityByPath?.keys() ?? [])]
-    .sort((left, right) =>
-      (input.directImportPriorityByPath?.get(right) ?? 0) -
-        (input.directImportPriorityByPath?.get(left) ?? 0) ||
-      left.localeCompare(right)
-    )
-    .slice(0, Math.min(MAX_DIRECT_IMPORT_CANDIDATES, input.limit))) {
-    add(filePath);
-  }
-
   // Required production-source recall is the primary gate for debugging and
   // source-localization tasks, but the role prior must not replace independent
   // evidence generators. Split the remaining bound evenly so basename, symbol,
@@ -798,6 +784,20 @@ function selectInitialPaths(input: {
     for (const filePath of candidatesFor("production_source").slice(0, Math.max(0, input.limit - independentReserve))) {
       add(filePath);
     }
+  }
+
+  // Direct outgoing production imports from strong seeds receive a separate,
+  // tightly bounded lane after retrieved production source has been secured.
+  // Keeping them out of the established graph/package priority scale prevents
+  // newly discovered dependencies from displacing stronger evidence.
+  for (const filePath of [...(input.directImportPriorityByPath?.keys() ?? [])]
+    .sort((left, right) =>
+      (input.directImportPriorityByPath?.get(right) ?? 0) -
+        (input.directImportPriorityByPath?.get(left) ?? 0) ||
+      left.localeCompare(right)
+    )
+    .slice(0, Math.min(MAX_DIRECT_IMPORT_CANDIDATES, input.limit))) {
+    add(filePath);
   }
 
   // The remaining independent generators take turns contributing candidates.
