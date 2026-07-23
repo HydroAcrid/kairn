@@ -8,6 +8,7 @@ import { EVIDENCE_FEATURE_NAMES } from "../src/types/evidence.js";
 import { materializeEvidenceCorpus } from "../scripts/materialize-evidence-corpus.js";
 import { patchFiles } from "../scripts/build-public-evidence-intake.js";
 import { buildCorpusReviewQueue } from "../scripts/build-corpus-review-queue.js";
+import { applyCorpusReviewDecisions } from "../scripts/apply-corpus-review-decisions.js";
 import { createFixtureRepo } from "./helpers.js";
 
 function pythonInvocation(): { command: string; prefix: string[] } {
@@ -48,7 +49,7 @@ describe("public evidence ranker training", () => {
       schemaVersion: "ranker-corpus-intake.v1",
       corpusId: "materializer-sample",
       featureSchemaVersion: "evidence-features-v1",
-      sealed: true,
+      sealed: false,
       sampleOnly: true,
       lineageRegistry: "lineages.json",
       cases: [{
@@ -79,7 +80,6 @@ describe("public evidence ranker training", () => {
       allowSample: true,
       allowLocalFixture: true,
       draft: true,
-      caseIds: ["materialized-train-case"],
       processIsolation: true
     });
 
@@ -96,8 +96,6 @@ describe("public evidence ranker training", () => {
       })
     ]));
     expect(JSON.parse(fs.readFileSync(reportPath, "utf8"))).toMatchObject({
-      partial: true,
-      selectedCaseIds: ["materialized-train-case"],
       candidateRecallAt64: 1,
       cases: [expect.objectContaining({
         explicitNegativeCount: 6,
@@ -108,16 +106,82 @@ describe("public evidence ranker training", () => {
         index: expect.objectContaining({ fileCount: expect.any(Number), symbolCount: expect.any(Number) })
       })]
     });
-    expect(buildCorpusReviewQueue({
+    const reviewPath = path.join(temporary, "review.json");
+    const reviewQueue = buildCorpusReviewQueue({
       intakePath,
       manifestPath,
       reportPath,
-      outPath: path.join(temporary, "review.json")
-    })).toMatchObject({
+      outPath: reviewPath
+    });
+    expect(reviewQueue).toMatchObject({
       caseCount: 1,
       requiredSourceReviewCases: 0,
       explicitNoiseReviewCases: 0,
       readyForSealCases: 1
+    });
+    fs.writeFileSync(reviewPath, `${JSON.stringify(reviewQueue, null, 2)}\n`, "utf8");
+    const reviewedIntakePath = path.join(temporary, "intake.reviewed.json");
+    const reviewSummaryPath = path.join(temporary, "review-application.json");
+    expect(() => applyCorpusReviewDecisions({
+      intakePath,
+      manifestPath,
+      reportPath,
+      reviewQueuePath: reviewPath,
+      outPath: reviewedIntakePath,
+      summaryOutPath: reviewSummaryPath
+    })).toThrow("decision.reviewer");
+
+    const reviewedQueue = JSON.parse(JSON.stringify(reviewQueue));
+    reviewedQueue.cases[0].decision.reviewer = "independent-reviewer";
+    reviewedQueue.cases[0].decision.reviewedAt = "2026-07-22T12:00:00.000Z";
+    reviewedQueue.cases[0].decision.notes = "Required source and six task-irrelevant candidates checked against the public fixture.";
+    fs.writeFileSync(reviewPath, `${JSON.stringify(reviewedQueue, null, 2)}\n`, "utf8");
+    const overlappingQueue = JSON.parse(JSON.stringify(reviewedQueue));
+    overlappingQueue.cases[0].decision.explicitNoiseFiles.push("src/user.ts");
+    fs.writeFileSync(reviewPath, `${JSON.stringify(overlappingQueue, null, 2)}\n`, "utf8");
+    expect(() => applyCorpusReviewDecisions({
+      intakePath,
+      manifestPath,
+      reportPath,
+      reviewQueuePath: reviewPath,
+      outPath: reviewedIntakePath,
+      summaryOutPath: reviewSummaryPath
+    })).toThrow("positive and explicit-noise labels overlap");
+    fs.writeFileSync(reviewPath, `${JSON.stringify(reviewedQueue, null, 2)}\n`, "utf8");
+    expect(applyCorpusReviewDecisions({
+      intakePath,
+      manifestPath,
+      reportPath,
+      reviewQueuePath: reviewPath,
+      outPath: reviewedIntakePath,
+      summaryOutPath: reviewSummaryPath
+    })).toMatchObject({
+      sealed: true,
+      caseCount: 1,
+      reviewers: ["independent-reviewer"],
+      requiredSourceOracleCases: 1,
+      explicitNoiseLabels: 6
+    });
+    expect(JSON.parse(fs.readFileSync(reviewedIntakePath, "utf8"))).toMatchObject({
+      sealed: true,
+      lineageRegistry: "lineages.json",
+      cases: [expect.objectContaining({ requiredSourceFiles: ["src/user.ts"], explicitNoiseFiles: noise })]
+    });
+
+    const sealedManifestPath = path.join(temporary, "materialized.sealed.json");
+    await materializeEvidenceCorpus({
+      intakePath: reviewedIntakePath,
+      outPath: sealedManifestPath,
+      reportPath: path.join(temporary, "materialization.sealed-report.json"),
+      cacheDir: path.join(temporary, "cache"),
+      allowSample: true,
+      allowLocalFixture: true,
+      processIsolation: true
+    });
+    expect(JSON.parse(fs.readFileSync(sealedManifestPath, "utf8"))).toMatchObject({
+      sealed: true,
+      status: "materialized",
+      materializer: expect.objectContaining({ caseProcessIsolation: true })
     });
   });
 

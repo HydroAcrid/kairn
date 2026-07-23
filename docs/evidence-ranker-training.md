@@ -41,6 +41,15 @@ pnpm ranker:review-queue \
   --report artifacts/ranker-corpus.draft.report.json \
   --out artifacts/ranker-corpus.review-queue.json
 
+# After every queue decision has an independent reviewer and timestamp:
+pnpm ranker:apply-reviews \
+  --intake artifacts/ranker-corpus-intake.candidates.json \
+  --manifest artifacts/ranker-corpus.draft.json \
+  --report artifacts/ranker-corpus.draft.report.json \
+  --review-queue artifacts/ranker-corpus.review-queue.json \
+  --out artifacts/ranker-corpus-intake.reviewed.json \
+  --summary-out artifacts/ranker-corpus-review-application.json
+
 # Diagnose selected misses without rematerializing the full corpus.
 pnpm ranker:materialize \
   --intake artifacts/ranker-corpus-intake.candidates.json \
@@ -67,6 +76,16 @@ materializer commit. It never auto-fills decisions. It exposes the prompt,
 patch sources present/missing from candidate@64, typed candidate reasons, and
 blank reviewer fields so the required-source and explicit-noise decisions are
 auditable rather than inferred from Kairn's own ranking.
+
+The review-application command is the only supported path from that queue to a
+sealed intake. It verifies every source artifact and per-case candidate hash,
+requires a named reviewer and timestamp for every case, requires at least six
+candidate@64 negatives, rejects positive/noise overlap, and requires a curated
+required-source oracle for every holdout case. It copies the lineage registry
+beside the reviewed intake when the output directory changes and emits a
+checksummed application summary. It never edits the original intake or fills a
+decision automatically. The reviewed intake must still pass a fresh non-draft
+materialization before it can become the sealed training corpus.
 
 Targeted draft diagnostics record the typed task signals and index coverage
 counts used for selected cases. Partial materialization is never accepted for
