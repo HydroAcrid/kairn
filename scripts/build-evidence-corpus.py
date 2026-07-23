@@ -344,6 +344,8 @@ def main() -> int:
                 raise ValueError(f"materializer.{field} must be a hexadecimal provenance hash")
         if materializer.get("candidateLimit") != 64 or materializer.get("graphHops") != 1:
             raise ValueError("materializer must pin candidateLimit=64 and graphHops=1")
+        if materializer.get("caseProcessIsolation") is not True:
+            raise ValueError("materializer must prove caseProcessIsolation=true")
     registry_ref = require_string(root.get("lineageRegistry"), "lineageRegistry")
     registry_path = (manifest_path.parent / registry_ref).resolve()
     registry = load_registry(registry_path, allow_sample=sample_only)

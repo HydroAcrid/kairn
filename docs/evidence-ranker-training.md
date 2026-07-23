@@ -72,6 +72,12 @@ Targeted draft diagnostics record the typed task signals and index coverage
 counts used for selected cases. Partial materialization is never accepted for
 a sealed corpus.
 
+The corpus CLI materializes every case in a fresh child process. This prevents
+a parser failure, WebAssembly runtime state, or other process-local cache from
+changing later repositories in the campaign. Production manifests must prove
+`caseProcessIsolation: true`; the corpus builder rejects older or in-process
+production artifacts.
+
 Draft reporting keeps two ground-truth levels separate. Curated
 `requiredSourceFiles` determine the strict candidate-recall@64 gate. Official
 patch files are weaker positives and are reported through patch-source mean

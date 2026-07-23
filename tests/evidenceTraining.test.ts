@@ -79,12 +79,14 @@ describe("public evidence ranker training", () => {
       allowSample: true,
       allowLocalFixture: true,
       draft: true,
-      caseIds: ["materialized-train-case"]
+      caseIds: ["materialized-train-case"],
+      processIsolation: true
     });
 
     expect(result.caseCount).toBe(1);
     const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
     expect(manifest.cases[0].candidates.length).toBeGreaterThanOrEqual(7);
+    expect(manifest.materializer.caseProcessIsolation).toBe(true);
     expect(manifest.cases[0].candidates).toEqual(expect.arrayContaining([
       expect.objectContaining({
         path: "src/user.ts",

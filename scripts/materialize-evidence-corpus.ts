@@ -2,13 +2,15 @@
 
 import crypto from "node:crypto";
 import fs from "node:fs";
-import os from "node:os";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
 import { EVIDENCE_FEATURE_SCHEMA_VERSION } from "../src/retrieval/evidenceModel.js";
 import type { EvidenceCandidate } from "../src/types.js";
+
+const require = createRequire(import.meta.url);
 
 type Split = "train" | "calibration" | "holdout";
 type Language = "python" | "typescript" | "go" | "java" | "cpp";
@@ -56,6 +58,8 @@ export type MaterializeOptions = {
   draft?: boolean;
   limit?: number;
   caseIds?: string[];
+  processIsolation?: boolean;
+  isolatedWorker?: boolean;
 };
 
 const INTAKE_KEYS = new Set([
@@ -70,6 +74,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
   reportPath: string;
   caseCount: number;
 }> {
+  if (options.processIsolation) return materializeEvidenceCorpusIsolated(options);
   const intakePath = path.resolve(options.intakePath);
   const outPath = path.resolve(options.outPath);
   const reportPath = path.resolve(options.reportPath);
@@ -93,22 +98,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
 
   const materializedCases: Array<Record<string, unknown>> = [];
   const reportCases: Array<Record<string, unknown>> = [];
-  const orderedCases = [...intake.cases].sort((left, right) => left.id.localeCompare(right.id));
-  if (options.limit && options.caseIds) throw new Error("--limit and --case-id cannot be combined");
-  if ((options.limit || options.caseIds) && !options.draft) {
-    throw new Error("partial materialization is allowed only with --draft");
-  }
-  const requestedCaseIds = options.caseIds ? new Set(options.caseIds) : undefined;
-  const selectedCases = requestedCaseIds
-    ? orderedCases.filter((item) => requestedCaseIds.has(item.id))
-    : options.limit
-      ? orderedCases.slice(0, options.limit)
-      : orderedCases;
-  if (requestedCaseIds) {
-    const selectedIds = new Set(selectedCases.map((item) => item.id));
-    const missing = [...requestedCaseIds].filter((id) => !selectedIds.has(id));
-    if (missing.length > 0) throw new Error(`unknown --case-id value(s): ${missing.join(", ")}`);
-  }
+  const selectedCases = selectIntakeCases(intake.cases, options);
   for (const intakeCase of selectedCases) {
     const checkout = resolveCheckout(intakeCase, cacheDir, {
       allowLocalFixture: options.allowLocalFixture === true,
@@ -237,6 +227,121 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
   return { manifestPath: outPath, reportPath, caseCount: materializedCases.length };
 }
 
+async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): Promise<{
+  manifestPath: string;
+  reportPath: string;
+  caseCount: number;
+}> {
+  const intakePath = path.resolve(options.intakePath);
+  const outPath = path.resolve(options.outPath);
+  const reportPath = path.resolve(options.reportPath);
+  const intake = parseIntake(JSON.parse(fs.readFileSync(intakePath, "utf8")), {
+    allowSample: options.allowSample === true,
+    allowLocalFixture: options.allowLocalFixture === true,
+    draft: options.draft === true
+  });
+  const intakeDir = path.dirname(intakePath);
+  const registryPath = path.resolve(intakeDir, intake.lineageRegistry);
+  assertWithin(intakeDir, registryPath, "lineageRegistry");
+  validateLineageAssignments(registryPath, intake.cases);
+  const selectedCases = selectIntakeCases(intake.cases, options);
+  const kairnRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+  const kairnCommit = git(["rev-parse", "HEAD"], kairnRoot);
+  if (!intake.sampleOnly && git(["status", "--porcelain"], kairnRoot)) {
+    throw new Error("production corpus materialization requires a clean Kairn checkout");
+  }
+  const cacheDir = path.resolve(options.cacheDir ?? path.join(kairnRoot, "artifacts", "ranker-checkouts"));
+  fs.mkdirSync(cacheDir, { recursive: true });
+  const materializedCases: Array<Record<string, unknown>> = [];
+  const reportCases: Array<Record<string, unknown>> = [];
+  const scriptPath = fileURLToPath(import.meta.url);
+
+  for (const intakeCase of selectedCases) {
+    const temporaryPrefix = path.join(intakeDir, `.kairn-ranker-case-${crypto.randomUUID()}`);
+    const childManifestPath = `${temporaryPrefix}.manifest.json`;
+    const childReportPath = `${temporaryPrefix}.report.json`;
+    const args = [
+      require.resolve("tsx/cli"),
+      scriptPath,
+      "--intake", intakePath,
+      "--out", childManifestPath,
+      "--report-out", childReportPath,
+      "--cache", cacheDir,
+      "--case-id", intakeCase.id,
+      "--in-process",
+      "--isolated-worker",
+      ...(options.draft ? ["--draft"] : []),
+      ...(options.allowSample ? ["--allow-sample"] : []),
+      ...(options.allowLocalFixture ? ["--allow-local-fixture"] : [])
+    ];
+    try {
+      execFileSync(process.execPath, args, {
+        cwd: kairnRoot,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        maxBuffer: 16 * 1024 * 1024
+      });
+      const childManifest = record(JSON.parse(fs.readFileSync(childManifestPath, "utf8")), `${intakeCase.id} manifest`);
+      const childReport = record(JSON.parse(fs.readFileSync(childReportPath, "utf8")), `${intakeCase.id} report`);
+      const manifestRows = array(childManifest.cases, `${intakeCase.id} manifest cases`);
+      const reportRows = array(childReport.cases, `${intakeCase.id} report cases`);
+      if (manifestRows.length !== 1 || reportRows.length !== 1) {
+        throw new Error(`${intakeCase.id}: isolated worker must emit exactly one case`);
+      }
+      materializedCases.push(record(manifestRows[0], `${intakeCase.id} materialized case`));
+      reportCases.push(record(reportRows[0], `${intakeCase.id} report case`));
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(`${intakeCase.id}: isolated materialization failed: ${detail}`);
+    } finally {
+      fs.rmSync(childManifestPath, { force: true });
+      fs.rmSync(childReportPath, { force: true });
+    }
+  }
+
+  const intakeHash = sha256(fs.readFileSync(intakePath));
+  const relativeRegistry = normalizePath(path.relative(path.dirname(outPath), registryPath));
+  const partial = Boolean(options.limit || options.caseIds);
+  const manifest = {
+    schemaVersion: "ranker-corpus.v1",
+    corpusId: intake.corpusId,
+    featureSchemaVersion: EVIDENCE_FEATURE_SCHEMA_VERSION,
+    sealed: options.draft !== true,
+    sampleOnly: intake.sampleOnly,
+    status: options.draft ? "draft_for_label_review" : "materialized",
+    lineageRegistry: relativeRegistry,
+    materializer: {
+      schemaVersion: "ranker-corpus-materializer.v1",
+      kairnCommit,
+      intakeSha256: intakeHash,
+      candidateLimit: 64,
+      graphHops: 1,
+      caseProcessIsolation: true
+    },
+    cases: materializedCases
+  };
+  const report = {
+    schemaVersion: "ranker-corpus-materialization-report.v1",
+    corpusId: intake.corpusId,
+    sampleOnly: intake.sampleOnly,
+    kairnCommit,
+    intakeSha256: intakeHash,
+    caseProcessIsolation: true,
+    caseCount: materializedCases.length,
+    candidateRecallEligibleCases: reportCases.filter((row) => row.requiredSourceRecallAt64 !== null).length,
+    candidateRecallAt64: fullRecallRate(reportCases, "requiredSourceRecallAt64"),
+    positiveSourceAnyHitRateAt64: booleanRate(reportCases, "positiveSourceHitAt64"),
+    officialPatchMeanRecallAt64: meanNullable(reportCases, "officialPatchSourceRecallAt64"),
+    ...(partial ? { partial: true, selectedCaseIds: selectedCases.map((item) => item.id) } : {}),
+    cases: reportCases
+  };
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+  fs.writeFileSync(outPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+  return { manifestPath: outPath, reportPath, caseCount: materializedCases.length };
+}
+
 function indexCoverage(stats: ReturnType<KairnRuntime["getIndexStatus"]>): Record<string, unknown> {
   return {
     fileCount: stats.fileCount,
@@ -247,6 +352,29 @@ function indexCoverage(stats: ReturnType<KairnRuntime["getIndexStatus"]>): Recor
     lexicalTermCount: stats.lexicalTermCount,
     tiers: stats.tiers
   };
+}
+
+function selectIntakeCases(
+  cases: IntakeCase[],
+  options: Pick<MaterializeOptions, "draft" | "limit" | "caseIds" | "isolatedWorker">
+): IntakeCase[] {
+  const orderedCases = [...cases].sort((left, right) => left.id.localeCompare(right.id));
+  if (options.limit && options.caseIds) throw new Error("--limit and --case-id cannot be combined");
+  if ((options.limit || options.caseIds) && !options.draft && !options.isolatedWorker) {
+    throw new Error("partial materialization is allowed only with --draft");
+  }
+  const requestedCaseIds = options.caseIds ? new Set(options.caseIds) : undefined;
+  const selectedCases = requestedCaseIds
+    ? orderedCases.filter((item) => requestedCaseIds.has(item.id))
+    : options.limit
+      ? orderedCases.slice(0, options.limit)
+      : orderedCases;
+  if (requestedCaseIds) {
+    const selectedIds = new Set(selectedCases.map((item) => item.id));
+    const missing = [...requestedCaseIds].filter((id) => !selectedIds.has(id));
+    if (missing.length > 0) throw new Error(`unknown --case-id value(s): ${missing.join(", ")}`);
+  }
+  return selectedCases;
 }
 
 function parseIntake(value: unknown, options: { allowSample: boolean; allowLocalFixture: boolean; draft: boolean }): Intake {
@@ -519,7 +647,10 @@ function parseArgs(argv: string[]): MaterializeOptions {
   const args = argv.filter((token) => token !== "--");
   for (let index = 0; index < args.length; index += 1) {
     const token = args[index]!;
-    if (token === "--allow-sample" || token === "--allow-local-fixture" || token === "--draft") {
+    if (
+      token === "--allow-sample" || token === "--allow-local-fixture" || token === "--draft" ||
+      token === "--in-process" || token === "--isolated-worker"
+    ) {
       flags.add(token);
       continue;
     }
@@ -541,6 +672,8 @@ function parseArgs(argv: string[]): MaterializeOptions {
     allowSample: flags.has("--allow-sample"),
     allowLocalFixture: flags.has("--allow-local-fixture"),
     draft: flags.has("--draft"),
+    processIsolation: !flags.has("--in-process"),
+    isolatedWorker: flags.has("--isolated-worker"),
     ...(values.get("--limit") ? { limit: positiveInteger(values.get("--limit")!, "--limit") } : {}),
     ...(values.get("--case-id") ? { caseIds: commaSeparated(values.get("--case-id")!, "--case-id") } : {})
   };
