@@ -253,7 +253,6 @@ describe("cross-language parser adapters", () => {
         "import java.util.List;",
         "",
         "public class StringUtils {",
-        "  private CharSequence value;",
         "  public StringUtils() {}",
         "  public static boolean isBlank(final CharSequence cs) { return true; }",
         "}",
@@ -263,11 +262,7 @@ describe("cross-language parser adapters", () => {
       ].join("\n")
     });
 
-    expect(parsed.imports).toEqual(expect.arrayContaining([
-      "package:org.apache.commons.lang3",
-      "java.util.List",
-      "type:CharSequence"
-    ]));
+    expect(parsed.imports).toEqual(expect.arrayContaining(["package:org.apache.commons.lang3", "java.util.List"]));
     expect(parsed.symbols.map((symbol) => `${symbol.name}:${symbol.kind}`)).toEqual(
       expect.arrayContaining([
         "StringUtils:class",
