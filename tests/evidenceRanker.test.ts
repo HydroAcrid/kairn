@@ -295,11 +295,11 @@ describe("evidence task signals and candidates", () => {
   it("does not displace a retrieval-backed import while promoting direct imports", () => {
     const root = "/repo";
     const seeds = Array.from({ length: 80 }, (_, index) =>
-      file(root, `src/seed-${String(index).padStart(3, "0")}.ts`, "source", 900)
+      file(root, `packages/seed-${String(index).padStart(3, "0")}/index.ts`, "source", 900)
     );
-    const retrievalBacked = file(root, "src/retrieval-backed.ts", "source", 300);
+    const retrievalBacked = file(root, "shared/retrieval-backed.ts", "source", 300);
     const directImports = Array.from({ length: 20 }, (_, index) =>
-      file(root, `src/direct-import-${String(index).padStart(3, "0")}.ts`, "source", 300)
+      file(root, `shared/direct-import-${String(index).padStart(3, "0")}.ts`, "source", 300)
     );
     const candidates = buildEvidenceCandidates({
       files: [...seeds, retrievalBacked, ...directImports],

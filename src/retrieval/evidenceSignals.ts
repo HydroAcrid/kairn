@@ -26,6 +26,7 @@ const MAX_IDENTIFIER_LENGTH = 96;
 const MAX_PREFERRED_IDENTIFIERS = 64;
 const MAX_IDENTIFIERS = 240;
 const MAX_GRAPH_OR_PACKAGE_SEEDS = 16;
+const MAX_DIRECT_IMPORT_CANDIDATES = 4;
 const MAX_RETRIEVAL_QUERIES = 3;
 const AMBIGUOUS_SINGLE_FILE_STEMS = new Set([
   "base",
@@ -284,6 +285,7 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
     limit: initialLimit
   });
   const graphPriorityByPath = new Map<string, number>();
+  const directImportPriorityByPath = new Map<string, number>();
   const preliminaryNeighbors = roundRobinGraphNeighbors({
     seedPaths: preliminaryInitialPaths,
     edges: input.edges,
@@ -312,17 +314,14 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
     existingReasons.add("graph_neighbor");
     if (edge.type === "test_for" || edge.type === "tested_by") existingReasons.add("source_test_pair");
     reasonsByPath.set(neighbor, existingReasons);
-    graphPriorityByPath.set(
+    const priorityByPath = newlyPromotedDirectImport ? directImportPriorityByPath : graphPriorityByPath;
+    priorityByPath.set(
       neighbor,
       Math.max(
-        graphPriorityByPath.get(neighbor) ?? 0,
+        priorityByPath.get(neighbor) ?? 0,
         newlyPromotedDirectImport
-          ? precision * 100 +
-            (preliminarySeedPriority.get(seed) ?? 0) +
-            Math.min(25, channelScore("lexical", neighbor, legacyByPath, filesByPath))
-          : precision * 100 +
-            (preliminarySeedPriority.get(seed) ?? 0) +
-            channelScore("lexical", neighbor, legacyByPath, filesByPath)
+          ? preliminarySeedPriority.get(seed) ?? 0
+          : precision * 100 + channelScore("lexical", neighbor, legacyByPath, filesByPath)
       )
     );
   }
@@ -349,7 +348,7 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
       filePath,
       Math.max(
         graphPriorityByPath.get(filePath) ?? 0,
-        50 + directoryPriority + Math.min(25, channelScore("lexical", filePath, legacyByPath, filesByPath))
+        50 + directoryPriority + channelScore("lexical", filePath, legacyByPath, filesByPath)
       )
     );
   }
@@ -359,6 +358,7 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
     filesByPath,
     exactSymbolPriorityByPath,
     graphPriorityByPath,
+    directImportPriorityByPath,
     intent: signals.intent,
     limit: initialLimit
   });
@@ -715,6 +715,7 @@ function selectInitialPaths(input: {
   filesByPath: Map<string, FileRecord>;
   exactSymbolPriorityByPath: Map<string, number>;
   graphPriorityByPath?: Map<string, number> | undefined;
+  directImportPriorityByPath?: Map<string, number> | undefined;
   intent: EvidenceTaskIntent;
   limit: number;
 }): string[] {
@@ -770,6 +771,20 @@ function selectInitialPaths(input: {
       left.localeCompare(right)
     )
     .slice(0, Math.min(MAX_GRAPH_OR_PACKAGE_SEEDS, input.limit))) {
+    add(filePath);
+  }
+
+  // Direct outgoing production imports from strong seeds receive a separate,
+  // tightly bounded lane. Keeping them out of the established graph/package
+  // priority scale prevents newly discovered dependencies from displacing
+  // retrieval-backed or precise relationship candidates.
+  for (const filePath of [...(input.directImportPriorityByPath?.keys() ?? [])]
+    .sort((left, right) =>
+      (input.directImportPriorityByPath?.get(right) ?? 0) -
+        (input.directImportPriorityByPath?.get(left) ?? 0) ||
+      left.localeCompare(right)
+    )
+    .slice(0, Math.min(MAX_DIRECT_IMPORT_CANDIDATES, input.limit))) {
     add(filePath);
   }
 
