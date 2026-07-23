@@ -349,6 +349,8 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
   const sourceHeaderMerge = mergeExactSourceHeaderCompanions({
     baselinePaths: baselineInitialPaths,
     files: input.files,
+    filesByPath,
+    legacyByPath,
     intent: signals.intent,
     limit: initialLimit
   });
@@ -695,6 +697,8 @@ function normalizeInflectedTerm(value: string): string {
 function mergeExactSourceHeaderCompanions(input: {
   baselinePaths: string[];
   files: FileRecord[];
+  filesByPath: Map<string, FileRecord>;
+  legacyByPath: Map<string, HybridScoredResult>;
   intent: EvidenceTaskIntent;
   limit: number;
 }): { paths: string[]; companions: string[] } {
@@ -728,8 +732,8 @@ function mergeExactSourceHeaderCompanions(input: {
   }
 
   const selected = new Set(baseline);
-  const companions: string[] = [];
-  for (const seedPath of baseline) {
+  const companionCandidatesByPath = new Map<string, { path: string; seedIndex: number; seedEvidence: number }>();
+  baseline.forEach((seedPath, seedIndex) => {
     const extension = path.posix.extname(seedPath).toLowerCase();
     const counterparts = IMPLEMENTATION_EXTENSIONS.has(extension)
       ? filesByStem.get(seedPath.slice(0, -extension.length))?.headers
@@ -738,12 +742,29 @@ function mergeExactSourceHeaderCompanions(input: {
         : undefined;
     for (const counterpart of counterparts ?? []) {
       if (selected.has(counterpart)) continue;
-      companions.push(counterpart);
-      selected.add(counterpart);
-      if (companions.length >= MAX_EXACT_SOURCE_HEADER_COMPANIONS) break;
+      const candidate = {
+        path: counterpart,
+        seedIndex,
+        seedEvidence: channelScore("role_match", seedPath, input.legacyByPath, input.filesByPath)
+      };
+      const existing = companionCandidatesByPath.get(counterpart);
+      if (
+        !existing ||
+        candidate.seedEvidence > existing.seedEvidence ||
+        (candidate.seedEvidence === existing.seedEvidence && candidate.seedIndex < existing.seedIndex)
+      ) {
+        companionCandidatesByPath.set(counterpart, candidate);
+      }
     }
-    if (companions.length >= MAX_EXACT_SOURCE_HEADER_COMPANIONS) break;
-  }
+  });
+  const companions = [...companionCandidatesByPath.values()]
+    .sort((left, right) =>
+      right.seedEvidence - left.seedEvidence ||
+      left.seedIndex - right.seedIndex ||
+      left.path.localeCompare(right.path)
+    )
+    .slice(0, MAX_EXACT_SOURCE_HEADER_COMPANIONS)
+    .map((candidate) => candidate.path);
 
   const protectedPrefixLength = Math.max(
     Math.ceil(baseline.length * 0.75),
