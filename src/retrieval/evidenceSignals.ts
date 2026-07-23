@@ -190,6 +190,7 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
   const changedFiles = new Set([...(input.changedFiles ?? [])].map(normalizeRepoPath));
   const reasonsByPath = new Map<string, Set<EvidenceReason>>();
   const exactSymbolPriorityByPath = new Map<string, number>();
+  const focusedFileStemTerms = tokenizeLexical(buildEvidenceRetrievalQueries(input.query)[0] ?? input.query);
 
   const addSignal = (filePath: string, reason: EvidenceReason): void => {
     const normalized = normalizeRepoPath(filePath);
@@ -219,7 +220,7 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
   for (const file of orderedFiles) {
     if (
       signals.mentionedBasenames.includes(path.posix.basename(normalizeRepoPath(file.path)).toLowerCase()) ||
-      fileStemMatchesQuery(file.path, signals.queryTerms)
+      fileStemMatchesQuery(file.path, focusedFileStemTerms)
     ) {
       addSignal(file.path, "basename");
     }

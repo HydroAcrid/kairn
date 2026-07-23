@@ -342,6 +342,28 @@ describe("evidence task signals and candidates", () => {
     expect(candidates.candidates.map((candidate) => candidate.path)).toContain(target.path);
   });
 
+  it("does not infer filename stems from fenced reproduction code", () => {
+    const root = "/repo";
+    const codeOnlyMatch = file(root, "src/throwable-supplier.ts", "source", 500);
+    const candidates = buildEvidenceCandidates({
+      files: [codeOnlyMatch],
+      query: [
+        "Compiler loses type information for local values.",
+        "```java",
+        "interface ThrowableSupplier<T> { T apply(); }",
+        "```"
+      ].join("\n"),
+      symbols: [],
+      edges: [],
+      legacyResults: [],
+      initialLimit: 8,
+      enrichedLimit: 8
+    });
+
+    expect(candidates.candidates.find((candidate) => candidate.path === codeOnlyMatch.path)?.reasons)
+      .not.toContain("basename");
+  });
+
   it("does not let an ambiguous basename consume the exact-path budget", () => {
     const root = "/repo";
     const source = file(root, "packages/parser/src/parser/expression.js", "source", 900);
