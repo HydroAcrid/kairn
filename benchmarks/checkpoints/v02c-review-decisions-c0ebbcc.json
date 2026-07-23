@@ -6,8 +6,8 @@
   "sourceQueueSha256": "16acb7b34ac67bf24cc3a8562aac5f8ae665b86550064f794e1738354291c117",
   "batchIndexSha256": "7ba998b4c6d6bff1f433f3e1d37572175b748f210438d3c89a9fd04c9dd7dcd5",
   "caseCount": 165,
-  "completedCases": 143,
-  "pendingCases": 22,
+  "completedCases": 154,
+  "pendingCases": 11,
   "decisions": [
     {
       "id": "v02c-train-python-source_localization-001",
@@ -2778,6 +2778,251 @@
         "reviewer": "Codex independent repository-evidence review",
         "reviewedAt": "2026-07-23T17:45:00-04:00",
         "notes": "The admin user controller and deletion source are present; five manually confirmed database, socket, and email sources remain candidate@64 retrieval misses. Noise labels cover unrelated analytics, flags, chats, topic creation, CLI colors, and client headers."
+      }
+    },
+    {
+      "id": "v02c-holdout-typescript-failure_first-144",
+      "materializedCaseSha256": "190c0b4d9f7441e58514b8a4e67fbe6517a5937f71b3f2c2a710b9fe0cd42cda",
+      "candidatePathsSha256": "b62b6808d7fa9d9df569879d8c16841743438cae47ab9bf873b509e83247f18f",
+      "decision": {
+        "requiredSourceFiles": [
+          "lib/adapters/http.js"
+        ],
+        "explicitNoiseFiles": [
+          "test/specs/cancel/CancelToken.spec.js",
+          "lib/platform/browser/classes/URLSearchParams.js",
+          "Gruntfile.js",
+          "test/manual/promise.js",
+          "lib/helpers/deprecatedMethod.js",
+          "test/specs/helpers/isURLSameOrigin.spec.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "The Node HTTP adapter is manually confirmed as required and present. Noise labels cover unrelated cancellation, browser URL parameters, build tooling, promise examples, deprecation, and same-origin tests."
+      }
+    },
+    {
+      "id": "v02c-holdout-typescript-failure_first-145",
+      "materializedCaseSha256": "946449e7ba30de4444a55d0384d002e09f3049d1cd81b81050f7cc03d1361bf5",
+      "candidatePathsSha256": "e241babf6cd6cddeaa59e784b97b4392e8f673bda4d8f29d449f8531bff3453a",
+      "decision": {
+        "requiredSourceFiles": [
+          "lib/adapters/http.js"
+        ],
+        "explicitNoiseFiles": [
+          "lib/adapters/xhr.js",
+          "examples/README.md",
+          "lib/helpers/formDataToJSON.js",
+          "test/manual/promise.js",
+          "bin/ssl_hotfix.js",
+          "lib/helpers/isAbsoluteURL.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "The Node HTTP adapter is manually confirmed as required and present. Noise labels cover unrelated browser XHR, examples, form conversion, promises, SSL tooling, and URL classification."
+      }
+    },
+    {
+      "id": "v02c-holdout-typescript-long_session-146",
+      "materializedCaseSha256": "ac8218ad73d313405d4e2d79c09e5dade6047ba3471d2db07454a8e5ce3e67af",
+      "candidatePathsSha256": "144e301c5f6f0ef399683d22a894fd9570333b9b62aa4af0b26b74fd157a4597",
+      "decision": {
+        "requiredSourceFiles": [
+          "index.d.ts",
+          "lib/core/AxiosHeaders.js"
+        ],
+        "explicitNoiseFiles": [
+          "test/specs/cancel/CancelToken.spec.js",
+          "test/specs/helpers/formDataToJSON.spec.js",
+          "gulpfile.js",
+          "lib/helpers/speedometer.js",
+          "test/manual/promise.js",
+          "test/specs/interceptors.spec.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "The public typings and Axios headers implementation are manually confirmed as required and present. Noise labels cover unrelated cancellation, form conversion, builds, transfer-speed calculation, promises, and interceptors."
+      }
+    },
+    {
+      "id": "v02c-holdout-typescript-long_session-147",
+      "materializedCaseSha256": "84c5cd7295bf8771e20eabb02e5bee09663cc5a78f2a25a4885bac9fdf68d070",
+      "candidatePathsSha256": "b9708abbd528f36ad30411bee84d8d8495b948726f01053ccfc345a3be375b07",
+      "decision": {
+        "requiredSourceFiles": [
+          "lib/adapters/http.js",
+          "lib/env/classes/FormData.js",
+          "lib/helpers/toFormData.js",
+          "lib/utils.js",
+          "lib/helpers/formDataToStream.js",
+          "lib/helpers/readBlob.js"
+        ],
+        "explicitNoiseFiles": [
+          "bin/contributors.js",
+          "bin/injectContributorsList.js",
+          "test/manual/promise.js",
+          "test/specs/cancel/isCancel.spec.js",
+          "lib/helpers/speedometer.js",
+          "lib/helpers/deprecatedMethod.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "Four FormData and HTTP sources are present; the stream and blob helpers remain manually confirmed candidate@64 retrieval misses. Noise labels cover unrelated contributor tooling, promises, cancellation, transfer speeds, and deprecation."
+      }
+    },
+    {
+      "id": "v02c-holdout-go-source_localization-148",
+      "materializedCaseSha256": "229e05ccdfe88c5eba042e8740f4663becbde0d7be9c3f04122823487cb90185",
+      "candidatePathsSha256": "cea221c13d0dd11d9d4780782e91214d691c998685f57cfd83111b07ef9101f1",
+      "decision": {
+        "requiredSourceFiles": [
+          "admin.go"
+        ],
+        "explicitNoiseFiles": [
+          "internal/metrics/metrics.go",
+          "modules/caddyhttp/fileserver/matcher.go",
+          "modules/caddytls/acmeissuer.go",
+          "modules/caddyhttp/reverseproxy/reverseproxy.go",
+          "modules/caddyhttp/caddyauth/basicauth.go",
+          "modules/caddyhttp/encode/encode.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "The administration API source is manually confirmed as required and present. Noise labels cover unrelated metrics, file serving, ACME, reverse proxying, authentication, and encoding."
+      }
+    },
+    {
+      "id": "v02c-holdout-go-source_localization-149",
+      "materializedCaseSha256": "3d955cabfbacd69b083f90342e2564f12ecc2bc9924f6daf3405459c95a64c6e",
+      "candidatePathsSha256": "3632ab25f1cef5ead467f356f8ac4702ac70f9d3fa8443a4c9e402a18cc19857",
+      "decision": {
+        "requiredSourceFiles": [
+          "errors/errors.go",
+          "rpc/flipt.pb.go",
+          "rpc/flipt.pb.gw.go",
+          "rpc/flipt_grpc.pb.go",
+          "server/evaluator.go",
+          "server/server.go"
+        ],
+        "explicitNoiseFiles": [
+          "ui/src/router/index.js",
+          "ui/src/mixins/notify.js",
+          "config/migrations/mysql/0_initial.up.sql",
+          "storage/cache/segment_test.go",
+          "cmd/flipt/export.go",
+          "cmd/flipt/import.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "All six batch-evaluation error, RPC, evaluator, and server sources are manually confirmed as required and present. Noise labels cover unrelated UI, migrations, cache tests, and import/export commands."
+      }
+    },
+    {
+      "id": "v02c-holdout-go-failure_first-150",
+      "materializedCaseSha256": "03dbb991f2498fe74376a07974c9ce2abead427ecc10244c30cde092e91ef5de",
+      "candidatePathsSha256": "4b3ba944e1e7b5a6a7a6d0b3e82c5bfea98012926edae2b007673064bc11dfb8",
+      "decision": {
+        "requiredSourceFiles": [
+          "modules/logging/filters.go"
+        ],
+        "explicitNoiseFiles": [
+          "modules/caddytls/tls.go",
+          "modules/caddyhttp/reverseproxy/fastcgi/client.go",
+          "modules/caddyhttp/fileserver/staticfiles.go",
+          "modules/caddyhttp/templates/templates.go",
+          "modules/caddyhttp/encode/gzip/gzip.go",
+          "modules/caddypki/adminapi.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "The logging filter source is manually confirmed as required and present. Noise labels cover unrelated TLS, FastCGI, static files, templates, compression, and PKI administration."
+      }
+    },
+    {
+      "id": "v02c-holdout-go-failure_first-151",
+      "materializedCaseSha256": "960ac5ec090a92f9cbd92bbf9bf89fd184f9d62bec94367adb3527b7fc3bc75d",
+      "candidatePathsSha256": "f3cd8338d0a069de231a1f9f26fe4e0eee06a537bd028fa934e39d12d28df9e3",
+      "decision": {
+        "requiredSourceFiles": [
+          "caddyconfig/caddyfile/lexer.go"
+        ],
+        "explicitNoiseFiles": [
+          "modules/caddytls/acmeissuer.go",
+          "modules/caddyhttp/reverseproxy/reverseproxy.go",
+          "modules/caddyhttp/fileserver/browse.go",
+          "modules/caddytls/distributedstek/distributedstek.go",
+          "modules/caddyhttp/tracing/module.go",
+          "modules/caddyhttp/encode/encode_test.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "The Caddyfile lexer is manually confirmed as required and present. Noise labels cover unrelated ACME, reverse proxies, file browsing, distributed tickets, tracing, and encoding."
+      }
+    },
+    {
+      "id": "v02c-holdout-go-long_session-152",
+      "materializedCaseSha256": "90cc66dec793b46f37813901d37e00284d4d1ce2c6fa99135e34b28ccb8934f4",
+      "candidatePathsSha256": "d50588c12e74b87501479e27b16bbbfb389bddf6f5de404b00c2fa4d0ccbba1f",
+      "decision": {
+        "requiredSourceFiles": [
+          "caddyconfig/httpcaddyfile/addresses.go",
+          "caddyconfig/httpcaddyfile/options.go"
+        ],
+        "explicitNoiseFiles": [
+          "modules/caddytls/tls.go",
+          "modules/caddyhttp/fileserver/browse.go",
+          "modules/caddyhttp/reverseproxy/hosts.go",
+          "modules/caddyhttp/templates/tplcontext.go",
+          "modules/caddyhttp/encode/zstd/zstd.go",
+          "modules/caddypki/ca.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "The HTTP Caddyfile address and option sources are manually confirmed as required and present. Noise labels cover unrelated TLS, file browsing, reverse proxies, templates, compression, and PKI."
+      }
+    },
+    {
+      "id": "v02c-holdout-go-long_session-153",
+      "materializedCaseSha256": "98304a025073d822a75db46873ea4e0d27153286735ca0e69c445f1ad804476c",
+      "candidatePathsSha256": "c29fa6186f3288e1fe5fd62be6db2c915b70e3bfb939aafde8a7a57ba84eea25",
+      "decision": {
+        "requiredSourceFiles": [
+          "caddyconfig/caddyfile/dispenser.go",
+          "caddyconfig/caddyfile/lexer.go",
+          "caddyconfig/caddyfile/parse.go"
+        ],
+        "explicitNoiseFiles": [
+          "modules/caddytls/tls.go",
+          "modules/caddyhttp/reverseproxy/reverseproxy.go",
+          "modules/caddyhttp/fileserver/staticfiles.go",
+          "modules/caddyevents/app.go",
+          "modules/caddyhttp/logging.go",
+          "notify/notify_windows.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "The Caddyfile dispenser, lexer, and parser are manually confirmed as required and present. Noise labels cover unrelated TLS, reverse proxies, static files, events, HTTP logging, and Windows notifications."
+      }
+    },
+    {
+      "id": "v02c-holdout-java-source_localization-154",
+      "materializedCaseSha256": "633e99b4b324cbbc5dce0017b874f8929dc4dfb5d505114102b8bc844559eec1",
+      "candidatePathsSha256": "5c90cff92eb07ec5fac2ec8be8791f2ce67437da64c4aa87e893befd54a1bb4c",
+      "decision": {
+        "requiredSourceFiles": [
+          "server/src/main/java/org/apache/druid/discovery/DruidLeaderClient.java"
+        ],
+        "explicitNoiseFiles": [
+          "web-console/src/singletons/api.ts",
+          "extensions-contrib/redis-cache/src/main/java/org/apache/druid/client/cache/RedisCacheConfig.java",
+          "processing/src/main/java/org/apache/druid/math/expr/Expr.java",
+          "processing/src/main/java/org/apache/druid/hll/VersionOneHyperLogLogCollector.java",
+          "server/src/main/java/org/apache/druid/server/coordinator/CoordinatorDynamicConfig.java",
+          "extensions-contrib/cloudfiles-extensions/src/main/java/org/apache/druid/storage/cloudfiles/CloudFilesObjectApiProxy.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "The Druid leader client is manually confirmed as required and present. Noise labels cover unrelated web UI, Redis, expressions, HyperLogLog, coordinator configuration, and CloudFiles."
       }
     }
   ]
