@@ -1,0 +1,222 @@
+{
+  "schemaVersion": "ranker-corpus-review-decision-checkpoint.v1",
+  "corpusId": "kairn-evidence-v02c-20260722",
+  "status": "review_in_progress",
+  "promotionEligible": false,
+  "sourceQueueSha256": "16acb7b34ac67bf24cc3a8562aac5f8ae665b86550064f794e1738354291c117",
+  "batchIndexSha256": "7ba998b4c6d6bff1f433f3e1d37572175b748f210438d3c89a9fd04c9dd7dcd5",
+  "caseCount": 165,
+  "completedCases": 11,
+  "pendingCases": 154,
+  "decisions": [
+    {
+      "id": "v02c-train-python-source_localization-001",
+      "materializedCaseSha256": "9314240e3a9473f83418bc629026b72bc5d000186527f730379ab534a8ee46f4",
+      "candidatePathsSha256": "53658054245b10a6a1fbed03a46d53b7ef7275b4790262fe8febd063a91cafbe",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/functional/n/no/no_dummy_redefined.txt",
+          "tests/functional/n/no/no_member_if_statements.txt",
+          "tests/functional/n/no/no_member_assign_same_line.txt",
+          "pylint/checkers/unicode.py",
+          "pylint/checkers/similar.py",
+          "pylint/checkers/classes/special_methods_checker.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The official patch source is present. Noise labels are unrelated functional fixtures and checker implementations that are not involved in recursive ignore-path expansion."
+      }
+    },
+    {
+      "id": "v02c-train-python-source_localization-002",
+      "materializedCaseSha256": "700791d44c21f3d933b1b71010684a035294eaf60bb07f6fbc691f84721000ab",
+      "candidatePathsSha256": "2c1a62f10ecde0ce5c1d42367c9a7d2be1aad48bc53c8f70b4810c4d41e540bd",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/functional/t/too/too_many_ancestors.py",
+          "pylint/reporters/ureports/nodes.py",
+          "pylint/extensions/docparams.py",
+          "pylint/extensions/code_style.py",
+          "pylint/extensions/mccabe.py",
+          "pylint/checkers/raw_metrics.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The official patch source is present. Noise labels cover unrelated reporting, checker, extension, and functional-test behavior rather than command bootstrap and sys.path handling."
+      }
+    },
+    {
+      "id": "v02c-train-python-source_localization-003",
+      "materializedCaseSha256": "c23642dbfe809b53afcfb20115bffc2be637029e94fe11fac2cb37a60b958dda",
+      "candidatePathsSha256": "62917297dca6b284c7c9da2d34fb63520b72b68c43a3e7b8b148482eb89de10c",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "testing/example_scripts/collect/package_init_given_as_arg/pkg/__init__.py",
+          "testing/example_scripts/collect/package_infinite_recursion/__init__.pyi",
+          "bench/manyparam.py",
+          "testing/test_skipping.py",
+          "testing/test_doctest.py",
+          "src/_pytest/junitxml.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The official logging implementation patch source is present. Noise labels are unrelated collection fixtures, benchmark code, skipping, doctest, and JUnit XML behavior."
+      }
+    },
+    {
+      "id": "v02c-train-python-source_localization-004",
+      "materializedCaseSha256": "bcb25ddd60d0c4c14f6e6a5d14ae54a800078cee03f06ced7528b913bcefb078",
+      "candidatePathsSha256": "27d2d239177334bc7a782f882a592f184ef8edacd4c63c8c3ebbabae30936920",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "sklearn/mixture/gmm.py",
+          "sklearn/cluster/k_means_.py",
+          "sklearn/gaussian_process/correlation_models.py",
+          "sklearn/decomposition/tests/test_dict_learning.py",
+          "sklearn/datasets/samples_generator.py",
+          "sklearn/externals/joblib/numpy_pickle.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The Ridge implementation patch source is present. Noise labels are implementations and tests for unrelated estimators, clustering, Gaussian processes, datasets, and serialization."
+      }
+    },
+    {
+      "id": "v02c-train-python-source_localization-005",
+      "materializedCaseSha256": "50b9aa1e9c2c099ae3045d6ec4baa5783f1f381aa633e48e2e826e07c4841e09",
+      "candidatePathsSha256": "ea7e358b80cd7ec3c658e236290bfa543c99af732a1527fce0c81a1f61b59871",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "sphinx/ext/graphviz.py",
+          "sphinx/ext/imgconverter.py",
+          "sphinx/ext/napoleon/docstring.py",
+          "sphinx/builders/epub3.py",
+          "sphinx/domains/javascript.py",
+          "sphinx/domains/cpp.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The literalinclude directive patch source is present. Noise labels are unrelated extensions, builders, and language-domain implementations."
+      }
+    },
+    {
+      "id": "v02c-train-python-source_localization-006",
+      "materializedCaseSha256": "8e5587a0f98b10d626189b612d6bd2a38b64a05de5f1e24f31581320692aede7",
+      "candidatePathsSha256": "11092ca3c52ed3f21c0940c3ee6ad211a950a570144b3542a0e8835f61f9384a",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "sympy/liealgebras/type_e.py",
+          "sympy/liealgebras/type_g.py",
+          "sympy/polys/rationaltools.py",
+          "sympy/polys/numberfields.py",
+          "sympy/integrals/meijerint.py",
+          "sympy/simplify/tests/test_sqrtdenest.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The geometry Point patch source is present. Noise labels are unrelated Lie algebra, polynomial, integration, and simplification implementations or tests."
+      }
+    },
+    {
+      "id": "v02c-train-python-failure_first-007",
+      "materializedCaseSha256": "fb8eb6836a16891e5477f859b6bbd49d602a07a34293e6be8101b2993125cbd7",
+      "candidatePathsSha256": "7f1c45d1c6a696c0e701e990b8302772b01abee538b2b3ffa0d29d83ece99aab",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "requests/packages/charade/hebrewprober.py",
+          "requests/packages/charade/jpcntx.py",
+          "requests/packages/charade/chardistribution.py",
+          "requests/packages/charade/langthaimodel.py",
+          "requests/packages/charade/langgreekmodel.py",
+          "requests/packages/charade/langhungarianmodel.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The request-body model patch source is present. Noise labels are bundled character-detection modules unrelated to HTTP Content-Length preparation."
+      }
+    },
+    {
+      "id": "v02c-train-python-failure_first-008",
+      "materializedCaseSha256": "01181bf94d229e130bbf3d7c8e573e2e52385f709be6cfc477fcf4f2194ae3b0",
+      "candidatePathsSha256": "54425dd50fa5c1041505b1bfa4b2b94feafb7737c13ee10d1aa4bbae457abec5",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "requests/packages/charade/jpcntx.py",
+          "requests/packages/charade/chardistribution.py",
+          "requests/packages/charade/hebrewprober.py",
+          "requests/packages/charade/langthaimodel.py",
+          "requests/packages/charade/latin1prober.py",
+          "requests/packages/charade/gb2312prober.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The session implementation patch source is present. Noise labels are bundled character-detection modules unrelated to HTTP method normalization and multipart request handling."
+      }
+    },
+    {
+      "id": "v02c-train-python-failure_first-009",
+      "materializedCaseSha256": "08a798f60d59717d0e4bda6669c4ed28765ce9003fab8a29ac79b0be49d2c3ef",
+      "candidatePathsSha256": "3443c5ce94517dd3c12630044e3cb7484c3e9f165160bbb130d6e7248fbf8fed",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "requests/packages/charade/hebrewprober.py",
+          "requests/packages/charade/jpcntx.py",
+          "requests/packages/charade/chardistribution.py",
+          "requests/packages/charade/langthaimodel.py",
+          "requests/packages/charade/langhebrewmodel.py",
+          "requests/packages/charade/latin1prober.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The digest-auth implementation patch source is present. Noise labels are bundled character-detection modules unrelated to Digest Authorization header quoting."
+      }
+    },
+    {
+      "id": "v02c-train-python-failure_first-010",
+      "materializedCaseSha256": "ef6c7b818458109f17e0d40d8e44e6aec7e9a9046bca4dc3e32424b902eef7c9",
+      "candidatePathsSha256": "6da5af58b04cf21c91800ff3e45c7f6f169fe42dd49003f06509fc445c927deb",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "requests/packages/chardet/hebrewprober.py",
+          "requests/packages/chardet/chardistribution.py",
+          "requests/packages/chardet/jpcntx.py",
+          "requests/packages/chardet/langthaimodel.py",
+          "requests/packages/chardet/langhebrewmodel.py",
+          "requests/packages/chardet/latin1prober.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The session implementation patch source is present. Noise labels are bundled character-detection modules unrelated to removal of default session headers."
+      }
+    },
+    {
+      "id": "v02c-train-python-failure_first-011",
+      "materializedCaseSha256": "2bf27bc1a5e12b3c6a227cd1d0eb277af3154ce3a931178dbf98d4c90cde953d",
+      "candidatePathsSha256": "dfbfa08e58cbf258c145bdb593183cdd0cde84ce358d7a517d6b2aa0e5a93b47",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "requests/packages/chardet/langbulgarianmodel.py",
+          "requests/packages/chardet/langhungarianmodel.py",
+          "requests/packages/chardet/langgreekmodel.py",
+          "requests/packages/chardet/mbcsgroupprober.py",
+          "requests/packages/chardet/sbcsgroupprober.py",
+          "requests/packages/chardet/langthaimodel.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The session implementation patch source is present. Noise labels are bundled character-detection modules unrelated to byte-string HTTP method normalization."
+      }
+    }
+  ]
+}

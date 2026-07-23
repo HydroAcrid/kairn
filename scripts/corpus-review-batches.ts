@@ -17,6 +17,7 @@ export type MergeCorpusReviewBatchesOptions = {
   batchDir: string;
   outPath: string;
   summaryOutPath: string;
+  decisionCheckpointOutPath?: string;
   requireComplete?: boolean;
 };
 
@@ -145,10 +146,14 @@ export function mergeCorpusReviewBatches(options: MergeCorpusReviewBatchesOption
   const batchDir = path.resolve(options.batchDir);
   const outPath = path.resolve(options.outPath);
   const summaryOutPath = path.resolve(options.summaryOutPath);
-  if (outPath === queuePath || summaryOutPath === queuePath || outPath === summaryOutPath) {
+  const decisionCheckpointOutPath = options.decisionCheckpointOutPath
+    ? path.resolve(options.decisionCheckpointOutPath)
+    : undefined;
+  const outputPaths = [outPath, summaryOutPath, ...(decisionCheckpointOutPath ? [decisionCheckpointOutPath] : [])];
+  if (outputPaths.includes(queuePath) || new Set(outputPaths).size !== outputPaths.length) {
     throw new Error("merge outputs must not overwrite the source queue or each other");
   }
-  for (const target of [outPath, summaryOutPath]) {
+  for (const target of outputPaths) {
     if (fs.existsSync(target)) throw new Error(`merge output already exists: ${target}`);
   }
 
@@ -239,12 +244,39 @@ export function mergeCorpusReviewBatches(options: MergeCorpusReviewBatchesOption
   });
   const mergedQueue = { ...queue, cases: mergedCases };
   const mergedBytes = `${JSON.stringify(mergedQueue, null, 2)}\n`;
+  const batchIndexBytes = fs.readFileSync(path.join(batchDir, "index.json"));
+  const completedDecisions = array(queue.cases, "review queue.cases").flatMap((value, index) => {
+    const item = record(value, `review queue.cases[${index}]`);
+    const id = string(item.id, `review queue.cases[${index}].id`);
+    const decision = decisions.get(id)!;
+    if (decision.reviewer === null) return [];
+    return [{
+      id,
+      materializedCaseSha256: string(item.materializedCaseSha256, `${id}.materializedCaseSha256`),
+      candidatePathsSha256: string(item.candidatePathsSha256, `${id}.candidatePathsSha256`),
+      decision
+    }];
+  });
+  const decisionCheckpoint = {
+    schemaVersion: "ranker-corpus-review-decision-checkpoint.v1",
+    corpusId: queue.corpusId,
+    status: pendingCases === 0 ? "review_complete" : "review_in_progress",
+    promotionEligible: false,
+    sourceQueueSha256: queueSha256,
+    batchIndexSha256: sha256(batchIndexBytes),
+    caseCount: sourceCases.size,
+    completedCases,
+    pendingCases,
+    decisions: completedDecisions
+  };
+  const decisionCheckpointBytes = `${JSON.stringify(decisionCheckpoint, null, 2)}\n`;
   const summary = {
     schemaVersion: "ranker-corpus-review-batch-merge.v1",
     corpusId: queue.corpusId,
     sourceQueueSha256: queueSha256,
-    batchIndexSha256: sha256(fs.readFileSync(path.join(batchDir, "index.json"))),
+    batchIndexSha256: sha256(batchIndexBytes),
     mergedQueueSha256: sha256(mergedBytes),
+    decisionCheckpointSha256: sha256(decisionCheckpointBytes),
     caseCount: sourceCases.size,
     completedCases,
     pendingCases,
@@ -256,6 +288,10 @@ export function mergeCorpusReviewBatches(options: MergeCorpusReviewBatchesOption
   fs.mkdirSync(path.dirname(summaryOutPath), { recursive: true });
   fs.writeFileSync(outPath, mergedBytes, "utf8");
   fs.writeFileSync(summaryOutPath, `${JSON.stringify(summary, null, 2)}\n`, "utf8");
+  if (decisionCheckpointOutPath) {
+    fs.mkdirSync(path.dirname(decisionCheckpointOutPath), { recursive: true });
+    fs.writeFileSync(decisionCheckpointOutPath, decisionCheckpointBytes, "utf8");
+  }
   return summary;
 }
 
@@ -417,10 +453,18 @@ if (isDirect) {
         batchDir: required("--batch-dir"),
         outPath: required("--out"),
         summaryOutPath: required("--summary-out"),
+        ...(values.has("--checkpoint-out") ? { decisionCheckpointOutPath: values.get("--checkpoint-out")! } : {}),
         requireComplete: enabledFlags.has("--require-complete")
       };
       const result = mergeCorpusReviewBatches(options);
-      process.stdout.write(`${JSON.stringify({ out: path.resolve(options.outPath), summary: path.resolve(options.summaryOutPath), ...result }, null, 2)}\n`);
+      process.stdout.write(`${JSON.stringify({
+        out: path.resolve(options.outPath),
+        summary: path.resolve(options.summaryOutPath),
+        ...(options.decisionCheckpointOutPath
+          ? { checkpoint: path.resolve(options.decisionCheckpointOutPath) }
+          : {}),
+        ...result
+      }, null, 2)}\n`);
     } else {
       throw new Error("first argument must be 'export' or 'merge'");
     }

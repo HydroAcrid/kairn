@@ -36,6 +36,14 @@ describe("corpus review batches", () => {
       readyForReviewApplication: false
     });
     expect(readJson(fixture.mergedPath)).toEqual(readJson(fixture.queuePath));
+    expect(readJson(fixture.checkpointPath)).toMatchObject({
+      schemaVersion: "ranker-corpus-review-decision-checkpoint.v1",
+      status: "review_in_progress",
+      promotionEligible: false,
+      completedCases: 0,
+      pendingCases: 5,
+      decisions: []
+    });
   });
 
   it("merges complete independently attributed decisions", () => {
@@ -50,6 +58,11 @@ describe("corpus review batches", () => {
       reviewers: ["independent-reviewer"],
       readyForReviewApplication: true
     });
+    expect(readJson(fixture.checkpointPath)).toMatchObject({
+      status: "review_complete",
+      promotionEligible: false
+    });
+    expect(readJson(fixture.checkpointPath).decisions).toHaveLength(5);
   });
 
   it("rejects immutable context tampering", () => {
@@ -94,6 +107,7 @@ function reviewFixture(): {
   queuePath: string;
   batchDir: string;
   mergedPath: string;
+  checkpointPath: string;
   mergeOptions: (overrides?: Partial<MergeCorpusReviewBatchesOptions>) => MergeCorpusReviewBatchesOptions;
 } {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-review-batches-"));
@@ -101,6 +115,7 @@ function reviewFixture(): {
   const batchDir = path.join(root, "batches");
   const mergedPath = path.join(root, "merged.json");
   const summaryPath = path.join(root, "merge-summary.json");
+  const checkpointPath = path.join(root, "review-decisions.json");
   const cases = Array.from({ length: 5 }, (_, index) => {
     const id = `case-${index + 1}`;
     const required = `src/required-${index + 1}.ts`;
@@ -146,11 +161,13 @@ function reviewFixture(): {
     queuePath,
     batchDir,
     mergedPath,
+    checkpointPath,
     mergeOptions: (overrides = {}) => ({
       queuePath,
       batchDir,
       outPath: mergedPath,
       summaryOutPath: summaryPath,
+      decisionCheckpointOutPath: checkpointPath,
       ...overrides
     })
   };

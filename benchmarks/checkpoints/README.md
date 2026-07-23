@@ -14,3 +14,9 @@ exact case coverage, and immutable context hashes for reviewer batches. The
 batch payloads remain under ignored `artifacts/` while review is in progress;
 only a complete merged queue that also passes `ranker:apply-reviews` may become
 a sealed intake.
+
+`ranker-corpus-review-decision-checkpoint.v1` files preserve only completed,
+independently attributed decisions plus their immutable case and candidate
+hashes. They are compact enough to commit while review is in progress and
+remain promotion-ineligible until every case is complete and the reviewed
+intake is freshly materialized and sealed.
