@@ -799,26 +799,29 @@ export class SqliteStore {
   }
 
   listLexicalTermsForTerms(rootPath: string, terms: string[], limit = 30_000): LexicalTermRecord[] {
-    const unique = [...new Set(terms)].filter(Boolean);
+    const unique = [...new Set(terms)].filter(Boolean).slice(0, 240);
     if (unique.length === 0) return [];
-    const rows: LexicalTermRow[] = [];
+    const placeholders = unique.map(() => "?").join(", ");
+    const priority = unique.map((_, index) => `when ? then ${index}`).join(" ");
+    const boundedLimit = Math.max(1, Math.floor(limit));
+    const rows = this.db
+      .prepare(`
+        with ranked as (
+          select root_path, term, document_id, file_path, frequency,
+            row_number() over (partition by term order by document_id asc) as term_rank
+          from lexical_terms
+          where root_path = ? and term in (${placeholders})
+        )
+        select root_path, term, document_id, file_path, frequency
+        from ranked
+        order by term_rank asc,
+          case term ${priority} else ${unique.length} end asc,
+          document_id asc
+        limit ?
+      `)
+      .all(rootPath, ...unique, ...unique, boundedLimit) as LexicalTermRow[];
 
-    for (const chunk of chunkValues(unique, 250)) {
-      const placeholders = chunk.map(() => "?").join(", ");
-      rows.push(
-        ...(this.db
-          .prepare(`
-            select * from lexical_terms
-            where root_path = ? and term in (${placeholders})
-            order by term asc, document_id asc
-            limit ?
-          `)
-          .all(rootPath, ...chunk, limit) as LexicalTermRow[])
-      );
-      if (rows.length >= limit) break;
-    }
-
-    return rows.slice(0, limit).map(mapLexicalTermRow);
+    return rows.map(mapLexicalTermRow);
   }
 
   getIndexStateStats(rootPath: string, config: IndexingConfig): IndexStateStats {
