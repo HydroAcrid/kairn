@@ -3574,6 +3574,8 @@ export class KairnRuntime {
         .filter((result) => result.reasons.some((reason) =>
           reason.startsWith("path contains") ||
           reason.startsWith("filename contains") ||
+          reason.startsWith("broad path term") ||
+          reason.startsWith("broad filename term") ||
           reason.startsWith("symbol match") ||
           reason.startsWith("exported symbol")
         ))
