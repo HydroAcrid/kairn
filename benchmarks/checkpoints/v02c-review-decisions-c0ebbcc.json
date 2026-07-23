@@ -6,8 +6,8 @@
   "sourceQueueSha256": "16acb7b34ac67bf24cc3a8562aac5f8ae665b86550064f794e1738354291c117",
   "batchIndexSha256": "7ba998b4c6d6bff1f433f3e1d37572175b748f210438d3c89a9fd04c9dd7dcd5",
   "caseCount": 165,
-  "completedCases": 11,
-  "pendingCases": 154,
+  "completedCases": 22,
+  "pendingCases": 143,
   "decisions": [
     {
       "id": "v02c-train-python-source_localization-001",
@@ -216,6 +216,215 @@
         "reviewer": "Codex independent repository-evidence review",
         "reviewedAt": "2026-07-23T13:16:03-04:00",
         "notes": "The session implementation patch source is present. Noise labels are bundled character-detection modules unrelated to byte-string HTTP method normalization."
+      }
+    },
+    {
+      "id": "v02c-train-python-failure_first-012",
+      "materializedCaseSha256": "fb79e8197bc0b31120f606932bb6c306ca4aeaf50d0def5bf2e0f4334bd8a5c4",
+      "candidatePathsSha256": "b0efb9125c11445c96e7e62e94cb0ca92a8ed57133ef0bd42533f241bf82bbf3",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "requests/packages/chardet/euctwfreq.py",
+          "requests/packages/chardet/big5freq.py",
+          "requests/packages/chardet/euckrfreq.py",
+          "requests/packages/chardet/sjisprober.py",
+          "requests/packages/chardet/langthaimodel.py",
+          "requests/packages/chardet/langhebrewmodel.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The request model patch source is present. Noise labels are bundled character-detection frequency tables and probers unrelated to binary request-body preparation."
+      }
+    },
+    {
+      "id": "v02c-train-python-long_session-013",
+      "materializedCaseSha256": "92b00e76678f1cbb77c6ecadba7aee10fff9a2f8c1fef55965aca8208e9aa288",
+      "candidatePathsSha256": "6b09a22dbf18a156ebbc99c264978fe5d2a5b9359c5c809cbb5e46dadeade85a",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/functional/n/nested_func_defined_in_loop.txt",
+          "pylint/extensions/check_docs.py",
+          "pylint/checkers/python3.py",
+          "tests/checkers/unittest_spelling.py",
+          "pylint/checkers/raw_metrics.py",
+          "tests/extensions/test_check_raise_docs.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "Pyreverse patch sources are present. Noise labels cover unrelated lint diagnostics, documentation extensions, spelling, Python-3 checks, and raw metrics."
+      }
+    },
+    {
+      "id": "v02c-train-python-long_session-014",
+      "materializedCaseSha256": "dd2b0db0cb65f196e5b916b1411611b14303edd6f046cc77a18f5d1ec1eb6a78",
+      "candidatePathsSha256": "e60060ec2efbdfdeeb36a5617b6fff93ce3da316533eaa086739e18e0bd50bea",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/extensions/test_empty_comment.py",
+          "tests/extensions/test_docstyle.py",
+          "pylint/graph.py",
+          "pylint/reporters/multi_reporter.py",
+          "pylint/extensions/mccabe.py",
+          "pylint/pyreverse/diadefslib.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The variables and constants patch sources are present. Noise labels cover unrelated extensions, graph/reporting infrastructure, complexity checks, and UML diagram definitions."
+      }
+    },
+    {
+      "id": "v02c-train-python-long_session-015",
+      "materializedCaseSha256": "589b083c575de3ea5531438116f13fb7919e67a1a74b58626553a8e635eb1df6",
+      "candidatePathsSha256": "2228a31eb7a7101fe918bac1168e4045433c244a96e1b98bf0a781cc1fb2e050",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/functional/i/invalid/invalid_hash_returned.py",
+          "tests/functional/m/misplaced_bare_raise.txt",
+          "tests/functional/u/unexpected_special_method_signature.txt",
+          "tests/extensions/data/mccabe.py",
+          "pylint/checkers/typecheck.py",
+          "pylint/checkers/format.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The configuration patch source is present. Noise labels are unrelated checker fixtures and type, format, or complexity behavior rather than XDG data-directory selection."
+      }
+    },
+    {
+      "id": "v02c-train-python-long_session-016",
+      "materializedCaseSha256": "490e9efaef75445af577b1f972bf5eb404155232323970aa22ca8ec9c9815595",
+      "candidatePathsSha256": "95337cb8068915ff938e01b4c0986ae3b53916381547dcd209f8eac093347bcf",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "pylint/pyreverse/dot_printer.py",
+          "pylint/pyreverse/diadefslib.py",
+          "pylint/checkers/unicode.py",
+          "pylint/checkers/typecheck.py",
+          "tests/functional/a/attribute_defined_outside_init.py",
+          "pylint/checkers/design_analysis.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The argument-manager and base-option patch sources are present. Noise labels cover unrelated UML rendering, checker diagnostics, and a functional lint fixture."
+      }
+    },
+    {
+      "id": "v02c-train-python-long_session-017",
+      "materializedCaseSha256": "528922028dcf8247670f488362614a171bb2d85f0325e81735a5f2b44bd60bbd",
+      "candidatePathsSha256": "64d0ea444fd41b7e2142fd7dfe0996f98380921aaad44fa2870574791ba1a00c",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/functional/n/non_ascii_name/non_ascii_name_pos_and_kwonly_function.py",
+          "tests/functional/r/regression/regression_property_no_member_2641.py",
+          "pylint/checkers/deprecated.py",
+          "pylint/checkers/async.py",
+          "pylint/checkers/strings.py",
+          "pylint/checkers/spelling.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The recursive expansion and linter patch sources are present. Noise labels cover unrelated diagnostic fixtures and checker categories."
+      }
+    },
+    {
+      "id": "v02c-train-python-long_session-018",
+      "materializedCaseSha256": "682b0c1218e49c646c5a115847ccd7bf7bf10039bb01b7a0ce30382b99dcd308",
+      "candidatePathsSha256": "6891de0dfcb03c382048ddab5f9a33eae479fe02a3347b325b89daff97b1a6d6",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/functional/c/consider/consider_using_with_open.py",
+          "pylint/checkers/refactoring/implicit_booleaness_checker.py",
+          "pylint/checkers/base/docstring_checker.py",
+          "pylint/reporters/json_reporter.py",
+          "pylint/lint/parallel.py",
+          "pylint/checkers/lambda_expressions.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The argument and utility patch sources are present. Noise labels cover unrelated checker, reporter, parallel-lint, and functional-test behavior."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-source_localization-019",
+      "materializedCaseSha256": "aa5fb61f5fc5e3e051c5b8408f1217668848afaf04f28b80becb2aac28c75102",
+      "candidatePathsSha256": "a8d989546538e3873078a417d71c189c459ffab3aaa497c5d2397bbcade1c067",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benches/scripts/prepare.js",
+          "benches/scripts/analyze.js",
+          "benches/scripts/deopts.js",
+          "scripts/release/publish.mjs",
+          "debug/src/debug.js",
+          "demo/key_bug.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The compat render patch source is present. Noise labels are benchmark, release, debug, and demo code unrelated to compat input/change event forwarding."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-source_localization-020",
+      "materializedCaseSha256": "94172020f3db8ed6e3ff2b9b6c040ea2410fadd285035a477371e9bccd2c0538",
+      "candidatePathsSha256": "c54030f62abf348a326d87ec59c7a06091205c7612cbee832ac9803a6b167915",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benches/src/keyed-children/components.js",
+          "benches/src/keyed-children/store.js",
+          "benches/scripts/analyze.js",
+          "benches/scripts/deopts.js",
+          "scripts/release/publish.mjs",
+          "compat/test/browser/portals.test.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The hook implementation and declarations are present. Noise labels are benchmark, release, and portal-test code unrelated to error-boundary hook metadata."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-source_localization-021",
+      "materializedCaseSha256": "30870b3589993fba5aa0d8305710a0ca68016d5151e1b57cb97d07ce15c1b449",
+      "candidatePathsSha256": "06e762cd1332a6485308cd1837145dc6c95a3a99abde5a9457fb4d289402ee3a",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benches/scripts/global.d.ts",
+          "benches/scripts/index.js",
+          "benches/scripts/analyze.js",
+          "benches/scripts/deopts.js",
+          "benches/scripts/config.js",
+          "debug/test/browser/component-stack.test.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The hook implementation patch source is present. Noise labels are benchmark harness and debug-stack test code unrelated to same-tick hook state scheduling."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-source_localization-022",
+      "materializedCaseSha256": "e877fa3986fc1c7791962e6276d833a15d77d76e78e40f0ff678255f09acf2c5",
+      "candidatePathsSha256": "0403b79564c0360df89e57a5a6d99d04c31d929d225d3ccb3caa4fc202662a4b",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "compat/test/browser/PureComponent.test.js",
+          "compat/test/browser/portals.test.js",
+          "compat/test/browser/suspense-utils.js",
+          "benches/scripts/analyze.js",
+          "benches/scripts/deopts.js",
+          "scripts/release/publish.mjs"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The core diff patch source is present. Noise labels cover unrelated compat feature tests, benchmark analysis, and release tooling."
       }
     }
   ]
