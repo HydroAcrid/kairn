@@ -9,7 +9,11 @@ import {
   validateEvidenceRankerArtifact
 } from "../src/retrieval/evidenceModel.js";
 import { rankEvidenceResults } from "../src/retrieval/evidenceRanker.js";
-import { buildEvidenceCandidates, extractEvidenceTaskSignals } from "../src/retrieval/evidenceSignals.js";
+import {
+  buildEvidenceCandidates,
+  buildEvidenceRetrievalQueries,
+  extractEvidenceTaskSignals
+} from "../src/retrieval/evidenceSignals.js";
 import type {
   FileKind,
   FileRecord,
@@ -78,7 +82,27 @@ describe("evidence task signals and candidates", () => {
 
     expect(signals.failureIdentifiers).toEqual([]);
     expect(signals.preferredIdentifiers[0]).toBe("tokenfilter");
-    expect(signals.preferredIdentifiers).toContain("testunrelated0");
+    expect(signals.preferredIdentifiers).not.toContain("testunrelated0");
+    expect(signals.queryTerms).not.toContain("testunrelated0");
+  });
+
+  it("keeps issue templates, URLs, code fences, and string data out of the focused retrieval query", () => {
+    const query = [
+      "Parser drops the final production segment",
+      "<!-- Please include a reproduction -->",
+      "See https://example.invalid/reports/VeryNoisyIdentifier",
+      "```ts",
+      "const request = 'notASymbol';",
+      "```",
+      "Repair `SegmentParser` without changing the public API."
+    ].join("\n");
+    const retrievalQueries = buildEvidenceRetrievalQueries(query);
+    const signals = extractEvidenceTaskSignals(query);
+
+    expect(retrievalQueries[0]).toContain("Parser drops the final production segment");
+    expect(retrievalQueries.join(" ")).not.toContain("VeryNoisyIdentifier");
+    expect(signals.preferredIdentifiers[0]).toBe("segmentparser");
+    expect(signals.preferredIdentifiers).not.toContain("notasymbol");
   });
 
   it("reserves hard candidate capacity for an exact failing-check symbol", () => {
@@ -314,6 +338,35 @@ describe("evidence task signals and candidates", () => {
     expect(candidates.candidates.find((candidate) => candidate.path === productionCompanion.path)?.reasons).toEqual(
       expect.arrayContaining(["graph_neighbor", "source_test_pair", "production_source"])
     );
+    expect(candidates.candidates.slice(0, 64).map((candidate) => candidate.path)).toContain(productionCompanion.path);
+  });
+
+  it("promotes a retrieval-backed direct import without promoting arbitrary import fanout", () => {
+    const root = "/repo";
+    const seed = file(root, "src/router.ts", "source", 900);
+    const target = file(root, "src/segment-parser.ts", "source", 800);
+    const noise = Array.from({ length: 80 }, (_, index) =>
+      file(root, `src/noise-${String(index).padStart(3, "0")}.ts`, "source", 700)
+    );
+    const candidates = buildEvidenceCandidates({
+      files: [seed, target, ...noise],
+      query: "Debug segment parser routing",
+      symbols: [],
+      legacyResults: [
+        scored(seed, { bm25Score: 1 }),
+        scored(target, { bm25Score: 0.4 })
+      ],
+      edges: [
+        edge(root, seed.path, target.path, "imports"),
+        ...noise.map((neighbor) => edge(root, seed.path, neighbor.path, "imports"))
+      ],
+      initialLimit: 1,
+      enrichedLimit: 82
+    });
+
+    expect(candidates.candidates[0]?.path).toBe(target.path);
+    expect(candidates.candidates[0]?.reasons).toContain("graph_neighbor");
+    expect(candidates.candidates.slice(0, 1).map((candidate) => candidate.path)).not.toContain(noise[0]!.path);
   });
 });
 

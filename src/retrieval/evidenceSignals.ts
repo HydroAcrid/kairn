@@ -22,6 +22,11 @@ export const DEFAULT_ENRICHED_CANDIDATE_LIMIT = 128;
 // treating every named check as a hard reference can consume the entire
 // bounded union before the task's own source symbols are considered.
 const MAX_PRECISE_FAILURE_CHECKS = 8;
+const MAX_IDENTIFIER_LENGTH = 96;
+const MAX_PREFERRED_IDENTIFIERS = 64;
+const MAX_IDENTIFIERS = 240;
+const MAX_PRECISE_GRAPH_SEEDS = 8;
+const MAX_RETRIEVAL_QUERIES = 3;
 
 const SOURCE_EXTENSIONS = "ts|tsx|js|jsx|mjs|cjs|py|pyi|go|java|kt|kts|c|cc|cpp|cxx|h|hh|hpp|hxx|rb|rs";
 const FILE_REFERENCE = new RegExp(
@@ -53,10 +58,13 @@ export type EvidenceCandidateSet = {
 export function extractEvidenceTaskSignals(query: string): EvidenceTaskSignals {
   const explicitPaths = extractFileReferences(query, FILE_REFERENCE);
   const failureReferences = extractFileReferences(query, FILE_REFERENCE_WITH_LINE);
+  const retrievalQueries = buildEvidenceRetrievalQueries(query);
+  const signalQuery = (retrievalQueries.at(-1) ?? query)
+    .replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, " ");
   const identifiers = new Set<string>();
   const preferredIdentifiers = new Set<string>();
   const failureIdentifiers = new Set<string>();
-  const identifierMatches = [...query.matchAll(/\b[A-Za-z_$][\w$]*(?:(?:\.|::)[A-Za-z_$][\w$]*)*\b/g)];
+  const identifierMatches = [...signalQuery.matchAll(/\b[A-Za-z_$][\w$]*(?:(?:\.|::)[A-Za-z_$][\w$]*)*\b/g)];
 
   for (const match of identifierMatches) {
     addIdentifierForms(identifiers, match[0] ?? "");
@@ -72,8 +80,9 @@ export function extractEvidenceTaskSignals(query: string): EvidenceTaskSignals {
   }
 
   // Explicitly delimited names are the strongest symbol terms even when they
-  // appear late in a long natural-language prompt.
-  for (const match of query.matchAll(/[`'"]([A-Za-z_$][\w$]*(?:(?:\.|::)[A-Za-z_$][\w$]*)*)[`'"]/g)) {
+  // appear late in a long natural-language prompt. Only backticks carry this
+  // meaning: quoted strings in issue examples are usually data, not symbols.
+  for (const match of signalQuery.matchAll(/`([A-Za-z_$][\w$]*(?:(?:\.|::)[A-Za-z_$][\w$]*)*)`/g)) {
     addIdentifierForms(preferredIdentifiers, match[1] ?? "");
   }
   // A qualified reference usually names a member rather than a filename. Add
@@ -86,21 +95,38 @@ export function extractEvidenceTaskSignals(query: string): EvidenceTaskSignals {
   // evidence than ordinary prose, but ordinary words remain as fallback terms.
   for (const match of identifierMatches) {
     const value = match[0] ?? "";
-    if (isCodeLikeIdentifier(value, query, match.index ?? 0)) {
+    if (isCodeLikeIdentifier(value, signalQuery, match.index ?? 0)) {
       addIdentifierForms(preferredIdentifiers, value);
     }
   }
 
   return {
-    queryTerms: [...new Set(tokenizeLexical(query))],
+    queryTerms: uniqueInOrder(retrievalQueries.flatMap((retrievalQuery) => tokenizeLexical(retrievalQuery))),
     explicitPaths,
     mentionedBasenames: [...new Set(explicitPaths.map((filePath) => path.posix.basename(filePath).toLowerCase()))],
-    preferredIdentifiers: [...preferredIdentifiers],
-    identifiers: [...identifiers],
+    preferredIdentifiers: [...preferredIdentifiers].slice(0, MAX_PREFERRED_IDENTIFIERS),
+    identifiers: [...identifiers].slice(0, MAX_IDENTIFIERS),
     failureIdentifiers: [...failureIdentifiers],
     failureReferences,
     intent: classifyEvidenceIntent(query)
   };
+}
+
+/**
+ * Builds a small ordered set of retrieval queries from an issue or task. The
+ * first variants favor the task narrative; the final variant preserves useful
+ * code identifiers. Template comments, URLs, and broad suite dumps are never
+ * allowed to dominate the bounded lexical and symbol budgets.
+ */
+export function buildEvidenceRetrievalQueries(query: string): string[] {
+  const withoutTemplateNoise = query
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/https?:\/\/[^\s<>()]+/gi, " ");
+  const withoutBroadFailures = stripBroadFailureCheckSections(withoutTemplateNoise);
+  const narrative = normalizeQueryText(withoutBroadFailures.replace(/```[\s\S]*?```/g, " "));
+  const headline = extractTaskHeadline(narrative);
+  const codeAware = normalizeQueryText(withoutBroadFailures);
+  return uniqueInOrder([headline, narrative, codeAware].filter(Boolean)).slice(0, MAX_RETRIEVAL_QUERIES);
 }
 
 export function buildEvidenceCandidates(input: EvidenceCandidateInput): EvidenceCandidateSet {
@@ -198,11 +224,43 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
     }
   }
 
+  const preliminaryInitialPaths = selectInitialPaths({
+    reasonsByPath,
+    legacyByPath,
+    filesByPath,
+    exactSymbolPriorityByPath,
+    limit: initialLimit
+  });
+  const graphPriorityByPath = new Map<string, number>();
+  const preliminaryNeighbors = roundRobinGraphNeighbors({
+    seedPaths: preliminaryInitialPaths,
+    edges: input.edges,
+    filesByPath,
+    limit: Math.max(0, enrichedLimit - preliminaryInitialPaths.length)
+  });
+  for (const { edge, neighbor } of preliminaryNeighbors) {
+    const precision = graphEdgePrecision(edge);
+    const existingReasons = reasonsByPath.get(neighbor) ?? new Set<EvidenceReason>();
+    const retrievalBackedImport = precision === 1 &&
+      isProductionEvidenceFile(filesByPath.get(neighbor)!) &&
+      ["exact_symbol", "symbol_prefix", "basename", "lexical", "semantic"].some((reason) =>
+        existingReasons.has(reason as EvidenceReason)
+      );
+    if (precision < 2 && !retrievalBackedImport) continue;
+    existingReasons.add("graph_neighbor");
+    if (edge.type === "test_for" || edge.type === "tested_by") existingReasons.add("source_test_pair");
+    reasonsByPath.set(neighbor, existingReasons);
+    graphPriorityByPath.set(
+      neighbor,
+      Math.max(graphPriorityByPath.get(neighbor) ?? 0, precision * 100 + channelScore("lexical", neighbor, legacyByPath, filesByPath))
+    );
+  }
   const initialPaths = selectInitialPaths({
     reasonsByPath,
     legacyByPath,
     filesByPath,
     exactSymbolPriorityByPath,
+    graphPriorityByPath,
     limit: initialLimit
   });
 
@@ -441,6 +499,7 @@ function normalizeIdentity(value: string): string {
 }
 
 function addIdentifierForms(target: Set<string>, value: string): void {
+  if (value.length > MAX_IDENTIFIER_LENGTH) return;
   const forms = isQualifiedIdentifier(value)
     ? [value.split(/::|\./).at(-1) ?? "", value]
     : [value];
@@ -515,6 +574,7 @@ function selectInitialPaths(input: {
   legacyByPath: Map<string, HybridScoredResult>;
   filesByPath: Map<string, FileRecord>;
   exactSymbolPriorityByPath: Map<string, number>;
+  graphPriorityByPath?: Map<string, number> | undefined;
   limit: number;
 }): string[] {
   const selected: string[] = [];
@@ -547,6 +607,19 @@ function selectInitialPaths(input: {
   // exact symbols. The normal exact-symbol channel below remains ordered by
   // file importance so a single noisy prompt cannot displace broad recall.
   for (const filePath of candidatesFor("exact_symbol", true).slice(0, 2)) add(filePath);
+
+  // Direct source/test and definition relationships are candidate generators,
+  // not merely post-64 enrichment. Retrieval-backed imports receive the same
+  // treatment in a small lane, while arbitrary high-degree import fanout stays
+  // outside the initial bound.
+  for (const filePath of [...(input.graphPriorityByPath?.keys() ?? [])]
+    .sort((left, right) =>
+      (input.graphPriorityByPath?.get(right) ?? 0) - (input.graphPriorityByPath?.get(left) ?? 0) ||
+      left.localeCompare(right)
+    )
+    .slice(0, Math.min(MAX_PRECISE_GRAPH_SEEDS, input.limit))) {
+    add(filePath);
+  }
 
   // The remaining independent generators take turns contributing candidates.
   // This keeps one broad signal class from consuming all 64 initial slots.
@@ -593,7 +666,67 @@ function channelScore(
   const legacy = legacyByPath.get(filePath);
   if (reason === "lexical") return (legacy?.bm25Score ?? 0) + (legacy?.keywordScore ?? 0);
   if (reason === "semantic") return legacy?.semanticScore ?? 0;
+  if (reason === "role_match" || reason === "production_source" || reason === "test_requested") {
+    return (legacy?.bm25Score ?? 0) + (legacy?.keywordScore ?? 0) + (legacy?.semanticScore ?? 0) * 4 +
+      (filesByPath.get(filePath)?.importance ?? 0) / 100;
+  }
   return filesByPath.get(filePath)?.importance ?? 0;
+}
+
+function stripBroadFailureCheckSections(query: string): string {
+  const lines = query.split(/\r?\n/);
+  const output: string[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const header = lines[index]?.match(/^\s*(?:#{1,6}\s*)?(?:initial\s+)?failing\s+(?:checks?|tests?)\s*:\s*(.*)$/i);
+    if (!header) {
+      output.push(lines[index]!);
+      continue;
+    }
+    const section = [lines[index]!];
+    let bulletCount = header[1]?.trim() ? 1 : 0;
+    let cursor = index + 1;
+    while (cursor < lines.length) {
+      const line = lines[cursor]!;
+      if (/^\s*[-*]\s+/.test(line)) {
+        bulletCount += 1;
+        section.push(line);
+        cursor += 1;
+        continue;
+      }
+      if (!line.trim()) {
+        section.push(line);
+        cursor += 1;
+        continue;
+      }
+      break;
+    }
+    if (bulletCount <= MAX_PRECISE_FAILURE_CHECKS) output.push(...section);
+    index = cursor - 1;
+  }
+  return output.join("\n");
+}
+
+function extractTaskHeadline(query: string): string {
+  const selected: string[] = [];
+  for (const rawLine of query.split(/\r?\n/)) {
+    const line = rawLine
+      .replace(/^\s*#{1,6}\s*/, "")
+      .replace(/^\s*[-*]\s+/, "")
+      .trim();
+    if (!line || /^(?:initial\s+)?failing\s+(?:checks?|tests?)\s*:?$/i.test(line)) continue;
+    if (/^(?:environment|configuration|system details|additional context)\s*:?$/i.test(line)) break;
+    selected.push(line);
+    if (selected.length >= 3 || selected.join(" ").length >= 600) break;
+  }
+  return normalizeQueryText(selected.join(" ").slice(0, 800));
+}
+
+function normalizeQueryText(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function uniqueInOrder<T>(values: T[]): T[] {
+  return [...new Set(values)];
 }
 
 function sortLegacy(

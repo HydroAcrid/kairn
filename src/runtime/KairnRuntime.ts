@@ -64,6 +64,7 @@ import { hybridSearch } from "../retrieval/hybridRetrieval.js";
 import { rankEvidenceResults, resolveRankerConfig } from "../retrieval/evidenceRanker.js";
 import {
   buildEvidenceCandidates,
+  buildEvidenceRetrievalQueries,
   DEFAULT_ENRICHED_CANDIDATE_LIMIT,
   DEFAULT_INITIAL_CANDIDATE_LIMIT,
   extractEvidenceTaskSignals,
@@ -3522,6 +3523,7 @@ export class KairnRuntime {
     shown?: TaskSession["filesShown"] | undefined;
   }): CalibratedQueryLocalIndex {
     const signals = extractEvidenceTaskSignals(input.query);
+    const retrievalQueries = buildEvidenceRetrievalQueries(input.query);
     const budget = queryLocalBudget({
       fileCount: input.files.length,
       query: input.query
@@ -3548,29 +3550,39 @@ export class KairnRuntime {
       DEFAULT_INITIAL_CANDIDATE_LIMIT
     );
     const filesByPath = new Map(input.files.map((file) => [file.path, file]));
-    const allLexicalResults = [...scoreBm25Files({
-      query: input.query,
-      documents: lexicalDocuments,
-      terms: lexicalTerms,
-      stats: lexicalStats
-    }).entries()]
-      .map(([filePath, score]) => {
-        const file = filesByPath.get(filePath);
-        return file ? lightweightLexicalResult(file, score.score, score.reasons) : undefined;
-      })
-      .filter((result): result is HybridScoredResult => Boolean(result))
-      .sort((left, right) => right.bm25Score - left.bm25Score || left.path.localeCompare(right.path));
-    const allPathAndSymbolResults = scoreFiles(input.files, input.query, matchingSymbols)
-      .filter((result) => result.reasons.some((reason) =>
-        reason.startsWith("path contains") ||
-        reason.startsWith("filename contains") ||
-        reason.startsWith("symbol match") ||
-        reason.startsWith("exported symbol")
-      ))
-      .map((result) => lightweightKeywordResult(result, result.score, result.reasons));
     const sourceOrUnknownIntent = signals.intent === "source" || signals.intent === "unknown";
-    const lexicalResults = selectRoleBalancedSeeds(allLexicalResults, sourceOrUnknownIntent);
-    const pathAndSymbolResults = selectRoleBalancedSeeds(allPathAndSymbolResults, sourceOrUnknownIntent);
+    const lexicalResults = retrievalQueries.reduce<HybridScoredResult[]>((merged, retrievalQuery) => {
+      const scored = [...scoreBm25Files({
+        query: retrievalQuery,
+        documents: lexicalDocuments,
+        terms: lexicalTerms,
+        stats: lexicalStats
+      }).entries()]
+        .map(([filePath, score]) => {
+          const file = filesByPath.get(filePath);
+          return file ? lightweightLexicalResult(file, score.score, score.reasons) : undefined;
+        })
+        .filter((result): result is HybridScoredResult => Boolean(result))
+        .sort((left, right) => right.bm25Score - left.bm25Score || left.path.localeCompare(right.path));
+      return mergeLightweightResults(
+        merged,
+        selectRoleBalancedSeeds(normalizeLightweightScores(scored, "bm25Score"), sourceOrUnknownIntent)
+      );
+    }, []);
+    const pathAndSymbolResults = retrievalQueries.reduce<HybridScoredResult[]>((merged, retrievalQuery) => {
+      const scored = scoreFiles(input.files, retrievalQuery, matchingSymbols)
+        .filter((result) => result.reasons.some((reason) =>
+          reason.startsWith("path contains") ||
+          reason.startsWith("filename contains") ||
+          reason.startsWith("symbol match") ||
+          reason.startsWith("exported symbol")
+        ))
+        .map((result) => lightweightKeywordResult(result, result.score, result.reasons));
+      return mergeLightweightResults(
+        merged,
+        selectRoleBalancedSeeds(normalizeLightweightScores(scored, "keywordScore"), sourceOrUnknownIntent)
+      );
+    }, []);
     const cheapCandidateResults = mergeLightweightResults(lexicalResults, pathAndSymbolResults);
     const baseCandidateInput = {
       files: input.files,
@@ -4469,6 +4481,22 @@ function mergeLightweightResults(
     });
   }
   return [...byPath.values()].sort((left, right) => right.score - left.score || left.path.localeCompare(right.path));
+}
+
+function normalizeLightweightScores(
+  results: HybridScoredResult[],
+  field: "bm25Score" | "keywordScore"
+): HybridScoredResult[] {
+  const maximum = Math.max(0, ...results.map((result) => result[field]));
+  if (maximum <= 0) return results;
+  return results.map((result) => {
+    const value = result[field] / maximum;
+    return {
+      ...result,
+      score: value,
+      [field]: value
+    };
+  });
 }
 
 function selectRoleBalancedSeeds(
