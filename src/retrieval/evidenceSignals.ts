@@ -26,7 +26,6 @@ const MAX_IDENTIFIER_LENGTH = 96;
 const MAX_PREFERRED_IDENTIFIERS = 64;
 const MAX_IDENTIFIERS = 240;
 const MAX_GRAPH_OR_PACKAGE_SEEDS = 16;
-const MAX_DIRECT_IMPORT_CANDIDATES = 4;
 const MAX_RETRIEVAL_QUERIES = 3;
 const AMBIGUOUS_SINGLE_FILE_STEMS = new Set([
   "base",
@@ -285,17 +284,13 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
     limit: initialLimit
   });
   const graphPriorityByPath = new Map<string, number>();
-  const directImportPriorityByPath = new Map<string, number>();
   const preliminaryNeighbors = roundRobinGraphNeighbors({
     seedPaths: preliminaryInitialPaths,
     edges: input.edges,
     filesByPath,
     limit: Math.max(0, enrichedLimit - preliminaryInitialPaths.length)
   });
-  const preliminarySeedPriority = new Map(
-    preliminaryInitialPaths.map((filePath, index) => [filePath, preliminaryInitialPaths.length - index])
-  );
-  for (const { edge, neighbor, seed } of preliminaryNeighbors) {
+  for (const { edge, neighbor } of preliminaryNeighbors) {
     const precision = graphEdgePrecision(edge);
     const existingReasons = reasonsByPath.get(neighbor) ?? new Set<EvidenceReason>();
     const retrievalBackedImport = precision === 1 &&
@@ -303,26 +298,13 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
       ["exact_symbol", "symbol_prefix", "basename", "lexical", "semantic"].some((reason) =>
         existingReasons.has(reason as EvidenceReason)
       );
-    const directProductionImport = isDirectProductionImport({
-      edge,
-      seed,
-      neighbor,
-      filesByPath
-    });
-    if (precision < 2 && !retrievalBackedImport && !directProductionImport) continue;
-    const newlyPromotedDirectImport = precision < 2 && directProductionImport && !retrievalBackedImport;
+    if (precision < 2 && !retrievalBackedImport) continue;
     existingReasons.add("graph_neighbor");
     if (edge.type === "test_for" || edge.type === "tested_by") existingReasons.add("source_test_pair");
     reasonsByPath.set(neighbor, existingReasons);
-    const priorityByPath = newlyPromotedDirectImport ? directImportPriorityByPath : graphPriorityByPath;
-    priorityByPath.set(
+    graphPriorityByPath.set(
       neighbor,
-      Math.max(
-        priorityByPath.get(neighbor) ?? 0,
-        newlyPromotedDirectImport
-          ? preliminarySeedPriority.get(seed) ?? 0
-          : precision * 100 + channelScore("lexical", neighbor, legacyByPath, filesByPath)
-      )
+      Math.max(graphPriorityByPath.get(neighbor) ?? 0, precision * 100 + channelScore("lexical", neighbor, legacyByPath, filesByPath))
     );
   }
   const packagePriorityByDirectory = new Map<string, number>();
@@ -352,18 +334,13 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
       )
     );
   }
-  const baselineInitialPaths = selectInitialPaths({
+  const initialPaths = selectInitialPaths({
     reasonsByPath,
     legacyByPath,
     filesByPath,
     exactSymbolPriorityByPath,
     graphPriorityByPath,
     intent: signals.intent,
-    limit: initialLimit
-  });
-  const initialPaths = mergeDirectImportCandidates({
-    baselinePaths: baselineInitialPaths,
-    directImportPriorityByPath,
     limit: initialLimit
   });
 
@@ -404,7 +381,6 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
 type GraphNeighbor = {
   edge: GraphEdgeRecord;
   neighbor: string;
-  seed: string;
 };
 
 /**
@@ -433,10 +409,10 @@ function roundRobinGraphNeighbors(input: {
     const to = normalizeRepoPath(edge.toFile);
     const priority = graphEdgePrecision(edge);
     if (seedSet.has(from) && input.filesByPath.has(to)) {
-      bySeed.get(from)!.get(priority)!.push({ edge, neighbor: to, seed: from });
+      bySeed.get(from)!.get(priority)!.push({ edge, neighbor: to });
     }
     if (seedSet.has(to) && input.filesByPath.has(from) && from !== to) {
-      bySeed.get(to)!.get(priority)!.push({ edge, neighbor: from, seed: to });
+      bySeed.get(to)!.get(priority)!.push({ edge, neighbor: from });
     }
   }
 
@@ -475,18 +451,6 @@ function roundRobinGraphNeighbors(input: {
     if (selected.length >= input.limit) break;
   }
   return selected;
-}
-
-function isDirectProductionImport(input: {
-  edge: GraphEdgeRecord;
-  seed: string;
-  neighbor: string;
-  filesByPath: Map<string, FileRecord>;
-}): boolean {
-  return input.edge.type === "imports" &&
-    normalizeRepoPath(input.edge.fromFile) === input.seed &&
-    normalizeRepoPath(input.edge.toFile) === input.neighbor &&
-    isProductionEvidenceFile(input.filesByPath.get(input.neighbor)!);
 }
 
 function graphEdgePrecision(edge: GraphEdgeRecord): number {
@@ -823,43 +787,6 @@ function selectInitialPaths(input: {
   }
 
   return selected;
-}
-
-function mergeDirectImportCandidates(input: {
-  baselinePaths: string[];
-  directImportPriorityByPath: Map<string, number>;
-  limit: number;
-}): string[] {
-  const output = input.baselinePaths.slice(0, input.limit);
-  const baselineCount = output.length;
-  const selected = new Set(output);
-  const directImports = [...input.directImportPriorityByPath.keys()]
-    .filter((filePath) => !selected.has(filePath))
-    .sort((left, right) =>
-      (input.directImportPriorityByPath.get(right) ?? 0) -
-        (input.directImportPriorityByPath.get(left) ?? 0) ||
-      left.localeCompare(right)
-    )
-    .slice(0, MAX_DIRECT_IMPORT_CANDIDATES);
-  const protectedPrefixLength = Math.max(
-    Math.ceil(baselineCount * 0.75),
-    baselineCount - MAX_DIRECT_IMPORT_CANDIDATES
-  );
-  const appendCount = Math.min(directImports.length, Math.max(0, input.limit - baselineCount));
-  output.push(...directImports.slice(0, appendCount));
-  const remainingDirectImports = directImports.slice(appendCount);
-  const replaceCount = Math.min(
-    remainingDirectImports.length,
-    Math.max(0, baselineCount - protectedPrefixLength)
-  );
-  if (replaceCount > 0) {
-    output.splice(
-      baselineCount - replaceCount,
-      replaceCount,
-      ...remainingDirectImports.slice(0, replaceCount)
-    );
-  }
-  return output;
 }
 
 function channelScore(

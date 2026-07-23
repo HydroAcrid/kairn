@@ -267,63 +267,6 @@ describe("evidence task signals and candidates", () => {
     );
   });
 
-  it("promotes a direct production import from a strong seed into candidate@64", () => {
-    const root = "/repo";
-    const seed = file(root, "src/entry.ts", "source", 900);
-    const dependency = file(root, "src/zzzz-dependency.ts", "source", 300);
-    const distractors = Array.from({ length: 80 }, (_, index) =>
-      file(root, `src/entry-noise-${String(index).padStart(3, "0")}.ts`, "source", 900)
-    );
-    const candidates = buildEvidenceCandidates({
-      files: [seed, dependency, ...distractors],
-      query: "Fix the production implementation in src/entry.ts",
-      symbols: [],
-      edges: [edge(root, seed.path, dependency.path, "imports")],
-      legacyResults: [
-        scored(seed, { bm25Score: 100 }),
-        ...distractors.map((record, index) => scored(record, { bm25Score: 90 - index / 100 }))
-      ],
-      initialLimit: 64,
-      enrichedLimit: 128
-    });
-
-    const directImport = candidates.candidates.find((candidate) => candidate.path === dependency.path);
-    expect(candidates.candidates.slice(0, 64).map((candidate) => candidate.path)).toContain(dependency.path);
-    expect(directImport?.reasons).toContain("graph_neighbor");
-  });
-
-  it("does not displace a retrieval-backed import while promoting direct imports", () => {
-    const root = "/repo";
-    const seeds = Array.from({ length: 80 }, (_, index) =>
-      file(root, `packages/seed-${String(index).padStart(3, "0")}/index.ts`, "source", 900)
-    );
-    const retrievalBacked = file(root, "shared/retrieval-backed.ts", "source", 300);
-    const directImports = Array.from({ length: 20 }, (_, index) =>
-      file(root, `shared/direct-import-${String(index).padStart(3, "0")}.ts`, "source", 300)
-    );
-    const candidates = buildEvidenceCandidates({
-      files: [...seeds, retrievalBacked, ...directImports],
-      query: "Fix the production seed regression",
-      symbols: [],
-      edges: [
-        edge(root, seeds[0]!.path, retrievalBacked.path, "imports"),
-        ...directImports.map((dependency, index) =>
-          edge(root, seeds[index + 1]!.path, dependency.path, "imports")
-        )
-      ],
-      legacyResults: [
-        ...seeds.map((record, index) => scored(record, { bm25Score: 200 - index })),
-        scored(retrievalBacked, { bm25Score: 100 })
-      ],
-      initialLimit: 64,
-      enrichedLimit: 128
-    });
-
-    expect(candidates.candidates.slice(0, 64).map((candidate) => candidate.path)).toContain(retrievalBacked.path);
-    expect(candidates.candidates.find((candidate) => candidate.path === retrievalBacked.path)?.reasons)
-      .toContain("graph_neighbor");
-  });
-
   it("keeps most source-intent candidate capacity for retrieved production files", () => {
     const root = "/repo";
     const production = Array.from({ length: 80 }, (_, index) =>
