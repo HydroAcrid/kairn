@@ -25,3 +25,10 @@ Required-source decisions may reference a bound official source oracle even
 when that path is absent from candidate@64. This preserves genuine retrieval
 misses for recall evaluation. Explicit-noise decisions remain restricted to
 the frozen candidate set.
+
+`ranker-corpus-readiness-checkpoint.v1` files bind the completed review,
+sealed materialization, and flattened corpus by hash. They preserve zero and
+partial required-source misses, report the independently reviewed holdout
+separately from the miss-enriched train/calibration review, and decide only
+whether candidate recall is sufficient to begin ranker training. They are not
+model-promotion, token-efficiency, or live-agent comparison evidence.
