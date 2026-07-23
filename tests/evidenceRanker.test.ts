@@ -99,6 +99,29 @@ describe("evidence task signals and candidates", () => {
     expect(sourceCandidate?.reasons).toEqual(expect.arrayContaining(["graph_neighbor", "source_test_pair"]));
   });
 
+  it("orders exact-symbol candidates by task identifier strength before file importance", () => {
+    const root = "/repo";
+    const target = file(root, "src/critical.ts", "source", 200);
+    const distractors = Array.from({ length: 90 }, (_, index) =>
+      file(root, `src/common-${String(index).padStart(3, "0")}.ts`, "source", 20_000)
+    );
+    const candidates = buildEvidenceCandidates({
+      files: [...distractors, target],
+      query: `Investigate ${distractors.map((_, index) => `CommonSymbol${index}`).join(" ")} before repairing \`resolveCriticalState\``,
+      symbols: [
+        symbol(root, target.path, "resolveCriticalState"),
+        ...distractors.map((record, index) => symbol(root, record.path, `CommonSymbol${index}`))
+      ],
+      edges: [],
+      legacyResults: [],
+      initialLimit: 64,
+      enrichedLimit: 64
+    });
+
+    expect(candidates.candidates[0]?.path).toBe(target.path);
+    expect(candidates.candidates[0]?.reasons).toContain("exact_symbol");
+  });
+
   it("does not promote ordinary prose words to exact-symbol evidence", () => {
     const root = "/repo";
     const source = file(root, "src/request.ts", "source", 900);

@@ -113,6 +113,7 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
   );
   const changedFiles = new Set([...(input.changedFiles ?? [])].map(normalizeRepoPath));
   const reasonsByPath = new Map<string, Set<EvidenceReason>>();
+  const exactSymbolPriorityByPath = new Map<string, number>();
 
   const addSignal = (filePath: string, reason: EvidenceReason): void => {
     const normalized = normalizeRepoPath(filePath);
@@ -148,11 +149,17 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
   for (const symbol of [...input.symbols].sort((left, right) => left.filePath.localeCompare(right.filePath) || left.name.localeCompare(right.name))) {
     const identity = normalizeIdentity(symbol.name);
     if (!identity) continue;
+    const preferredIndex = signals.preferredIdentifiers.indexOf(identity);
     if (signals.failureIdentifiers.includes(identity)) {
       addSignal(symbol.filePath, "failure_reference");
       addSignal(symbol.filePath, "exact_symbol");
-    } else if (signals.preferredIdentifiers.includes(identity)) {
+      exactSymbolPriorityByPath.set(symbol.filePath, signals.preferredIdentifiers.length + 1);
+    } else if (preferredIndex >= 0) {
       addSignal(symbol.filePath, "exact_symbol");
+      exactSymbolPriorityByPath.set(
+        symbol.filePath,
+        Math.max(exactSymbolPriorityByPath.get(symbol.filePath) ?? 0, signals.preferredIdentifiers.length - preferredIndex)
+      );
     } else if (signals.preferredIdentifiers.some((candidate) => candidate.length >= 4 && (identity.startsWith(candidate) || candidate.startsWith(identity)))) {
       addSignal(symbol.filePath, "symbol_prefix");
     }
@@ -190,6 +197,7 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
     reasonsByPath,
     legacyByPath,
     filesByPath,
+    exactSymbolPriorityByPath,
     limit: initialLimit
   });
 
@@ -501,6 +509,7 @@ function selectInitialPaths(input: {
   reasonsByPath: Map<string, Set<EvidenceReason>>;
   legacyByPath: Map<string, HybridScoredResult>;
   filesByPath: Map<string, FileRecord>;
+  exactSymbolPriorityByPath: Map<string, number>;
   limit: number;
 }): string[] {
   const selected: string[] = [];
@@ -515,8 +524,8 @@ function selectInitialPaths(input: {
       .filter(([, reasons]) => reasons.has(reason))
       .map(([filePath]) => filePath)
       .sort((left, right) =>
-        channelScore(reason, right, input.legacyByPath, input.filesByPath) -
-          channelScore(reason, left, input.legacyByPath, input.filesByPath) ||
+        channelScore(reason, right, input.legacyByPath, input.filesByPath, input.exactSymbolPriorityByPath) -
+          channelScore(reason, left, input.legacyByPath, input.filesByPath, input.exactSymbolPriorityByPath) ||
         left.localeCompare(right)
       );
 
@@ -566,8 +575,12 @@ function channelScore(
   reason: EvidenceReason,
   filePath: string,
   legacyByPath: Map<string, HybridScoredResult>,
-  filesByPath: Map<string, FileRecord>
+  filesByPath: Map<string, FileRecord>,
+  exactSymbolPriorityByPath: Map<string, number>
 ): number {
+  if (reason === "exact_symbol") {
+    return (exactSymbolPriorityByPath.get(filePath) ?? 0) * 1_000 + (filesByPath.get(filePath)?.importance ?? 0);
+  }
   const legacy = legacyByPath.get(filePath);
   if (reason === "lexical") return (legacy?.bm25Score ?? 0) + (legacy?.keywordScore ?? 0);
   if (reason === "semantic") return legacy?.semanticScore ?? 0;
