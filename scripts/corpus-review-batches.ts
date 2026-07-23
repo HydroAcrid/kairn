@@ -300,13 +300,24 @@ function validateCompletedDecision(id: string, context: Record<string, unknown>,
     const candidate = record(value, `${id}.candidates[${index}]`);
     return normalizeRepoPath(candidate.path, `${id}.candidates[${index}].path`);
   }));
+  const reviewedSourcePaths = new Set([
+    ...candidatePaths,
+    ...pathArray(context.requiredSourceFiles, `${id}.requiredSourceFiles`),
+    ...pathArray(context.officialPatchSourceFiles, `${id}.officialPatchSourceFiles`)
+  ]);
   for (const [label, values] of Object.entries({
     requiredSourceFiles: decision.requiredSourceFiles,
     explicitNoiseFiles: decision.explicitNoiseFiles
   })) {
     if (new Set(values).size !== values.length) throw new Error(`${id}.${label} must not contain duplicates`);
-    const absent = values.filter((filePath) => !candidatePaths.has(filePath));
-    if (absent.length > 0) throw new Error(`${id}.${label} contains paths absent from candidate@64: ${absent.join(", ")}`);
+  }
+  const unknownRequiredSources = decision.requiredSourceFiles.filter((filePath) => !reviewedSourcePaths.has(filePath));
+  if (unknownRequiredSources.length > 0) {
+    throw new Error(`${id}.requiredSourceFiles contains paths absent from reviewed candidates and source oracles: ${unknownRequiredSources.join(", ")}`);
+  }
+  const absentNoise = decision.explicitNoiseFiles.filter((filePath) => !candidatePaths.has(filePath));
+  if (absentNoise.length > 0) {
+    throw new Error(`${id}.explicitNoiseFiles contains paths absent from candidate@64: ${absentNoise.join(", ")}`);
   }
   if (decision.explicitNoiseFiles.length < 6) throw new Error(`${id}: completed decisions require at least six explicit noise files`);
   if (context.needsRequiredSourceReview === true && decision.requiredSourceFiles.length === 0) {

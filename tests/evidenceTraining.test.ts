@@ -148,6 +148,18 @@ describe("public evidence ranker training", () => {
       summaryOutPath: reviewSummaryPath
     })).toThrow("positive and explicit-noise labels overlap");
     fs.writeFileSync(reviewPath, `${JSON.stringify(reviewedQueue, null, 2)}\n`, "utf8");
+    const unknownRequiredQueue = JSON.parse(JSON.stringify(reviewedQueue));
+    unknownRequiredQueue.cases[0].decision.requiredSourceFiles = ["src/not-a-reviewed-source.ts"];
+    fs.writeFileSync(reviewPath, `${JSON.stringify(unknownRequiredQueue, null, 2)}\n`, "utf8");
+    expect(() => applyCorpusReviewDecisions({
+      intakePath,
+      manifestPath,
+      reportPath,
+      reviewQueuePath: reviewPath,
+      outPath: reviewedIntakePath,
+      summaryOutPath: reviewSummaryPath
+    })).toThrow("absent from reviewed candidates and source oracles");
+    fs.writeFileSync(reviewPath, `${JSON.stringify(reviewedQueue, null, 2)}\n`, "utf8");
     expect(applyCorpusReviewDecisions({
       intakePath,
       manifestPath,

@@ -63,6 +63,7 @@ describe("corpus review batches", () => {
       promotionEligible: false
     });
     expect(readJson(fixture.checkpointPath).decisions).toHaveLength(5);
+    expect(readJson(fixture.mergedPath).cases[0].decision.requiredSourceFiles).toEqual(["src/required-1.ts"]);
   });
 
   it("rejects immutable context tampering", () => {
@@ -133,7 +134,8 @@ function reviewFixture(): {
       explicitNoiseFiles: [],
       needsRequiredSourceReview,
       needsNoiseReview: true,
-      candidates: [required, ...noise].map((filePath) => ({ path: filePath, reasons: ["lexical"] })),
+      candidates: [...(needsRequiredSourceReview ? [] : [required]), ...noise]
+        .map((filePath) => ({ path: filePath, reasons: ["lexical"] })),
       materializedCaseSha256: `${index + 1}`.repeat(64).slice(0, 64),
       decision: {
         requiredSourceFiles: [],
@@ -181,8 +183,8 @@ function completeAllDecisions(batchDir: string): void {
     for (const item of batch.cases) {
       const candidates = item.context.candidates.map((candidate: { path: string }) => candidate.path);
       item.decision = {
-        requiredSourceFiles: item.context.needsRequiredSourceReview ? [candidates[0]] : [],
-        explicitNoiseFiles: candidates.slice(1, 7),
+        requiredSourceFiles: item.context.needsRequiredSourceReview ? [item.context.officialPatchSourceFiles[0]] : [],
+        explicitNoiseFiles: item.context.needsRequiredSourceReview ? candidates.slice(0, 6) : candidates.slice(1, 7),
         reviewer: "independent-reviewer",
         reviewedAt: "2026-07-23T12:00:00.000Z",
         notes: "Required source and six irrelevant candidates checked against the task."

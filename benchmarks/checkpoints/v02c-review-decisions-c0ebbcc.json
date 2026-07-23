@@ -737,7 +737,7 @@
       "candidatePathsSha256": "9be09c5664f1b8da0d83884046cdbf2b7988be2e3f628f8b95b1192a97f7c7cd",
       "decision": {
         "requiredSourceFiles": [
-          "internal/terraform/transform_removed_modules.go"
+          "internal/terraform/transform_attach_config_resource.go"
         ],
         "explicitNoiseFiles": [
           "internal/command/testdata/login-oauth-server/main.go",
@@ -749,7 +749,7 @@
         ],
         "reviewer": "Codex independent repository-evidence review",
         "reviewedAt": "2026-07-23T13:42:00-04:00",
-        "notes": "The official patch path is absent from candidate@64. The removed-module transform is the required candidate production source for module-scoped removed blocks; noise labels are unrelated login, registry, UI, stack diagnostics, provider fixture, and version code."
+        "notes": "The manually confirmed official production source is absent from candidate@64 and remains labeled as a retrieval miss. Noise labels are unrelated login, registry, UI, stack diagnostics, provider fixture, and version code."
       }
     },
     {

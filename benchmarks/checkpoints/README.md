@@ -20,3 +20,8 @@ independently attributed decisions plus their immutable case and candidate
 hashes. They are compact enough to commit while review is in progress and
 remain promotion-ineligible until every case is complete and the reviewed
 intake is freshly materialized and sealed.
+
+Required-source decisions may reference a bound official source oracle even
+when that path is absent from candidate@64. This preserves genuine retrieval
+misses for recall evaluation. Explicit-noise decisions remain restricted to
+the frozen candidate set.

@@ -75,11 +75,21 @@ export function applyCorpusReviewDecisions(options: ApplyCorpusReviewDecisionsOp
 
     const candidatePaths = candidatePathSet(reportCase, id);
     const decision = parseDecision(queueCase.decision, id);
-    const requiredSourceFiles = decision.requiredSourceFiles.map((filePath) => approvedCandidate(filePath, candidatePaths, `${id}.requiredSourceFiles`));
-    const explicitNoiseFiles = decision.explicitNoiseFiles.map((filePath) => approvedCandidate(filePath, candidatePaths, `${id}.explicitNoiseFiles`));
     const originalRequiredSources = pathArray(intakeCase.requiredSourceFiles, `${id}.originalRequiredSourceFiles`);
     const officialPatchSources = pathArray(intakeCase.officialPatchSourceFiles, `${id}.officialPatchSourceFiles`);
     const observedSources = pathArray(intakeCase.verifiedObservedReadTouchFiles, `${id}.verifiedObservedReadTouchFiles`);
+    const reviewedSourcePaths = new Set([
+      ...candidatePaths,
+      ...originalRequiredSources,
+      ...officialPatchSources,
+      ...observedSources
+    ]);
+    const requiredSourceFiles = decision.requiredSourceFiles.map((filePath) =>
+      approvedRequiredSource(filePath, reviewedSourcePaths, `${id}.requiredSourceFiles`)
+    );
+    const explicitNoiseFiles = decision.explicitNoiseFiles.map((filePath) =>
+      approvedCandidate(filePath, candidatePaths, `${id}.explicitNoiseFiles`)
+    );
     const expectedRequiredSourceReview = intakeCase.split === "holdout"
       || (originalRequiredSources.length === 0 && !officialPatchSources.some((filePath) => candidatePaths.has(filePath)));
     const expectedNoiseReview = pathArray(intakeCase.explicitNoiseFiles, `${id}.originalExplicitNoiseFiles`).length < 6;
@@ -101,9 +111,6 @@ export function applyCorpusReviewDecisions(options: ApplyCorpusReviewDecisionsOp
       ...officialPatchSources,
       ...observedSources
     ]);
-    if (![...positivePaths].some((filePath) => candidatePaths.has(filePath))) {
-      throw new Error(`${id}: no approved positive source is present in candidate@64`);
-    }
     const conflicts = explicitNoiseFiles.filter((filePath) => positivePaths.has(filePath));
     if (conflicts.length > 0) throw new Error(`${id}: positive and explicit-noise labels overlap: ${conflicts.join(", ")}`);
 
@@ -253,6 +260,14 @@ function parseDecision(value: unknown, id: string): ReviewDecision {
 function approvedCandidate(value: string, candidates: Set<string>, label: string): string {
   const normalized = normalizeCandidatePath(value, label);
   if (!candidates.has(normalized)) throw new Error(`${label} contains '${normalized}', which is absent from candidate@64`);
+  return normalized;
+}
+
+function approvedRequiredSource(value: string, reviewedSources: Set<string>, label: string): string {
+  const normalized = normalizeCandidatePath(value, label);
+  if (!reviewedSources.has(normalized)) {
+    throw new Error(`${label} contains '${normalized}', which is absent from reviewed candidates and source oracles`);
+  }
   return normalized;
 }
 
