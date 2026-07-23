@@ -23,6 +23,8 @@ describe("query-local index storage", () => {
             id: `src/alpha.ts:chunk:${String(index).padStart(2, "0")}`,
             filePath: "src/alpha.ts",
             kind: "symbol" as const,
+            startLine: 20 - index,
+            endLine: 20 - index,
             text: `alpha ${index}`,
             hash: `alpha-${index}`,
             tokenEstimate: 2
@@ -32,6 +34,8 @@ describe("query-local index storage", () => {
             id: "src/zeta.ts:chunk:00",
             filePath: "src/zeta.ts",
             kind: "symbol" as const,
+            startLine: 1,
+            endLine: 1,
             text: "zeta",
             hash: "zeta",
             tokenEstimate: 1
@@ -49,6 +53,7 @@ describe("query-local index storage", () => {
         "src/alpha.ts",
         "src/zeta.ts"
       ]);
+      expect(chunks.map((chunk) => chunk.startLine)).toEqual([1, 2, 1]);
     } finally {
       store.close();
       fs.rmSync(temporary, { recursive: true, force: true });

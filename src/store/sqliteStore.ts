@@ -714,13 +714,13 @@ export class SqliteStore {
               select semantic_chunks.*,
                 row_number() over (
                   partition by file_path
-                  order by kind asc, id asc
+                  order by coalesce(start_line, 0) asc, kind asc, id asc
                 ) as per_file_rank
               from semantic_chunks
               where root_path = ? and file_path in (${placeholders})
             )
             where per_file_rank <= ?
-            order by file_path asc, kind asc, id asc
+            order by file_path asc, coalesce(start_line, 0) asc, kind asc, id asc
           `)
           .all(rootPath, ...chunk, perFileLimit) as SemanticChunkRow[])
       );
