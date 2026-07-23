@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { performance } from "node:perf_hooks";
+import { Parser } from "web-tree-sitter";
 import { indexRepo } from "../src/indexer/indexRepo.js";
 import { compactParsedSymbols } from "../src/indexer/symbolCompaction.js";
 import { parseSourceFile } from "../src/parser/parseFile.js";
@@ -80,6 +81,34 @@ describe("cross-language parser adapters", () => {
         })
       ])
     );
+  });
+
+  it("contains a fatal-looking parser error to one file", async () => {
+    const parse = vi.spyOn(Parser.prototype, "parse");
+    try {
+      parse.mockImplementationOnce(() => {
+        throw new Error("Aborted(WebAssembly parser input failure)");
+      });
+      const failed = await parseSourceFile({
+        rootPath: "/repo-a",
+        filePath: "src/broken.ts",
+        language: "typescript",
+        content: "export class Broken {}"
+      });
+      expect(failed).toMatchObject({ hasErrors: true, symbols: [] });
+    } finally {
+      parse.mockRestore();
+    }
+
+    const recovered = await parseSourceFile({
+      rootPath: "/repo-b",
+      filePath: "src/healthy.ts",
+      language: "typescript",
+      content: "export class Healthy {}"
+    });
+    expect(recovered.symbols).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "Healthy", kind: "class", exported: true })
+    ]));
   });
 
   it("extracts TSX component symbols", async () => {

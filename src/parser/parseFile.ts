@@ -56,7 +56,6 @@ const SOURCE_GRAMMAR_BY_EXTENSION = new Map<string, ParserGrammar>([
 ]);
 
 let parserInitPromise: Promise<void> | undefined;
-let parserBackendDisabled = false;
 const languagePromises = new Map<ParserGrammar, Promise<Language>>();
 
 export function isParseSupported(filePath: string): boolean {
@@ -73,7 +72,7 @@ export async function parseSourceFile(input: {
   if (!grammar) {
     return emptyParsedFile(input, false);
   }
-  if (parserBackendDisabled || isWasmParserDisabled()) {
+  if (isWasmParserDisabled()) {
     return emptyParsedFile(input, true);
   }
 
@@ -93,10 +92,11 @@ export async function parseSourceFile(input: {
       imports: [...new Set(parsed.imports)].sort(),
       hasErrors: tree.rootNode.hasError
     };
-  } catch (error) {
-    if (isFatalWasmParserError(error)) {
-      parserBackendDisabled = true;
-    }
+  } catch {
+    // A malformed, oversized, or otherwise parser-hostile file must not
+    // disable structured parsing for every later file and repository in this
+    // process. Parser/language initialization promises remain cached, so a
+    // genuine backend initialization failure still degrades consistently.
     return emptyParsedFile(input, true);
   }
 }
@@ -119,11 +119,6 @@ async function loadLanguage(grammar: ParserGrammar): Promise<Language> {
   const promise = Language.load(require.resolve(WASM_BY_GRAMMAR[grammar]));
   languagePromises.set(grammar, promise);
   return promise;
-}
-
-function isFatalWasmParserError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return /aborted|wasm|webassembly|incompatible|failed to initialize/i.test(message);
 }
 
 function isWasmParserDisabled(): boolean {
