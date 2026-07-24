@@ -201,7 +201,7 @@ describe("evidence task signals and candidates", () => {
     const root = "/repo";
     const target = file(
       root,
-      "internal/terraform/transform_attach_config_resource.go",
+      "internal/planning/transform_attach_config_resource.go",
       "source",
       500
     );
@@ -210,16 +210,47 @@ describe("evidence task signals and candidates", () => {
     );
     const ranked = scorePathTokenCoverage(
       [...distractors, target],
-      "Terraform configuration should attach the removed resource block"
+      "Planning configuration should attach the removed resource block"
     );
 
     expect(ranked[0]?.path).toBe(target.path);
     expect(ranked[0]?.reasons).toEqual(expect.arrayContaining([
-      'path token "terraform"',
+      'path token "planning"',
       'path token "configuration"',
       'path token "attach"',
       'path token "resource"'
     ]));
+  });
+
+  it("reserves bounded candidate capacity for independent path-token evidence", () => {
+    const root = "/repo";
+    const target = file(
+      root,
+      "internal/planning/transform_attach_config_resource.go",
+      "source",
+      500
+    );
+    const distractors = Array.from({ length: 90 }, (_, index) =>
+      file(root, `internal/command/resource-${String(index).padStart(3, "0")}.go`, "source", 40_000)
+    );
+    const targetResult = {
+      ...scored(target, { keywordScore: 0.01 }),
+      reasons: ['path token "planning"', 'path token "configuration"']
+    };
+    const candidates = buildEvidenceCandidates({
+      files: [...distractors, target],
+      query: "Fix configuration attachment behavior in the planner",
+      symbols: [],
+      edges: [],
+      legacyResults: [
+        ...distractors.map((record, index) => scored(record, { keywordScore: 100 - index / 100 })),
+        targetResult
+      ],
+      initialLimit: 64,
+      enrichedLimit: 64
+    });
+
+    expect(candidates.candidates.map((candidate) => candidate.path)).toContain(target.path);
   });
 
   it("reserves hard candidate capacity for an exact failing-check symbol", () => {
