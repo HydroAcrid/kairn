@@ -26,15 +26,13 @@ export function buildSemanticChunks(rootPath: string, graph: RepoGraph): Semanti
     }
 
     const symbols = symbolsByFile.get(file.path) ?? [];
+    chunks.push(chunkForFileSummary(file, content, parsedByFile.get(file.path)?.imports ?? []));
     if (file.indexTier === "tier3" && symbols.length > 0) {
       for (const symbol of symbols) {
         const chunk = chunkForSymbol(file, symbol, content, parsedByFile.get(file.path)?.imports ?? []);
         if (chunk) chunks.push(chunk);
       }
-      continue;
     }
-
-    chunks.push(chunkForFileSummary(file, content, parsedByFile.get(file.path)?.imports ?? []));
   }
 
   return chunks.sort((a, b) => a.filePath.localeCompare(b.filePath) || a.id.localeCompare(b.id));
@@ -42,7 +40,7 @@ export function buildSemanticChunks(rootPath: string, graph: RepoGraph): Semanti
 
 function shouldBuildChunkForFile(file: FileRecord): boolean {
   if (!file.indexTier) return true;
-  return file.indexTier === "tier2" || file.indexTier === "tier3" || file.indexTier === "tier4";
+  return file.indexTier === "tier1" || file.indexTier === "tier2" || file.indexTier === "tier3" || file.indexTier === "tier4";
 }
 
 function chunkForSymbol(

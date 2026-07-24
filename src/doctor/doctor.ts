@@ -11,6 +11,8 @@ import { commandInvocation, commandSpawnInvocation } from "../utils/command.js";
 import { hasKairnOwnedCodexMcpConfig } from "../cli/setup/codexSetup.js";
 import { hasKairnOwnedClaudeHooks } from "../cli/setup/claudeSetup.js";
 import { existingCopilotServerNameForRoot, isKairnOwnedMcpServer } from "../cli/setup/mcpSetup.js";
+import { resolveSemanticRetrieverConfig } from "../config/semantic.js";
+import { getSemanticModelState } from "../semantic/modelManager.js";
 
 export type DoctorCheckStatus = "ok" | "warn" | "fail";
 
@@ -40,18 +42,21 @@ export function runDoctor(input: {
 }): DoctorReport {
   const rootPath = path.resolve(input.rootPath);
   const target = input.target ?? "all";
+  const homeDir = input.homeDir ?? os.homedir();
   const checks: DoctorCheck[] = [
     checkNodeVersion(),
     checkKairnCommand(),
     checkKairnState(rootPath),
     checkIndex(input.runtime),
+    checkSemanticModel(rootPath, homeDir),
+    checkSemanticIndex(input.runtime),
     checkWindowsFriction(rootPath),
     ...targetedChecks({
       rootPath,
       runtime: input.runtime,
       target,
       codexCommand: input.codexCommand ?? process.env.KAIRN_CODEX_CMD ?? "codex",
-      homeDir: input.homeDir ?? os.homedir()
+      homeDir
     }),
     checkDaemon(rootPath),
     checkTelemetry(rootPath)
@@ -61,6 +66,48 @@ export function runDoctor(input: {
     rootPath,
     status: rollupStatus(checks),
     checks
+  };
+}
+
+function checkSemanticModel(rootPath: string, homeDir: string): DoctorCheck {
+  const config = resolveSemanticRetrieverConfig(rootPath);
+  if (config.mode === "legacy") {
+    return {
+      id: "semantic_model",
+      status: "warn",
+      summary: "Model-based candidate generation is disabled.",
+      fix: "Run kairn model install, then set semantic.mode to shadow."
+    };
+  }
+  const state = getSemanticModelState({
+    ...(config.modelId ? { modelId: config.modelId } : {}),
+    ...(config.modelPath ? { modelPath: config.modelPath } : {}),
+    homeDir
+  });
+  return {
+    id: "semantic_model",
+    status: state.status === "ready" ? "ok" : "warn",
+    summary: state.status === "ready"
+      ? `Local semantic model ${state.modelId} is ready.`
+      : `Local semantic model ${state.modelId} is ${state.status}.`,
+    fix: state.status === "ready" ? undefined : `Run kairn model install --model ${state.modelId}.`,
+    metadata: state
+  };
+}
+
+function checkSemanticIndex(runtime: KairnRuntime): DoctorCheck {
+  const status = runtime.getIndexStatus();
+  const documents = status.semanticDocumentCount ?? 0;
+  const embeddings = status.semanticEmbeddingCount ?? 0;
+  const complete = documents > 0 && documents === embeddings;
+  return {
+    id: "semantic_index",
+    status: complete ? "ok" : "warn",
+    summary: complete
+      ? `Semantic index covers ${documents} documents.`
+      : `Semantic index coverage is incomplete (${embeddings}/${documents} documents).`,
+    fix: complete ? undefined : "Install the semantic model and run kairn index refresh --root <repo>.",
+    metadata: { documents, embeddings, complete }
   };
 }
 

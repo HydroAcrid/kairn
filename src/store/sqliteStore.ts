@@ -27,6 +27,8 @@ import type {
   LexicalTermRecord,
   MetricsEventRecord,
   SemanticChunkRecord,
+  SemanticDocumentRecord,
+  SemanticEmbeddingRecord,
   SemanticVectorRecord,
   SessionLedgerEvent,
   SessionStatus,
@@ -100,6 +102,29 @@ type SemanticVectorRow = {
   chunk_id: string;
   dimensions: number;
   vector_json: string;
+};
+
+type SemanticDocumentRow = {
+  root_path: string;
+  id: string;
+  file_path: string;
+  kind: SemanticDocumentRecord["kind"];
+  symbol: string | null;
+  text: string;
+  hash: string;
+  token_estimate: number;
+  schema_version: SemanticDocumentRecord["schemaVersion"];
+};
+
+type SemanticEmbeddingRow = {
+  root_path: string;
+  document_id: string;
+  document_hash: string;
+  model_id: string;
+  schema_version: SemanticEmbeddingRecord["schemaVersion"];
+  dimensions: number;
+  vector_blob: Buffer;
+  scale: number;
 };
 
 type LexicalDocumentRow = {
@@ -336,6 +361,8 @@ export class SqliteStore {
     edges: GraphEdgeRecord[];
     semanticChunks?: SemanticChunkRecord[];
     semanticVectors?: SemanticVectorRecord[];
+    semanticDocuments?: SemanticDocumentRecord[];
+    semanticEmbeddings?: SemanticEmbeddingRecord[];
     lexicalDocuments?: LexicalDocumentRecord[];
     lexicalTerms?: LexicalTermRecord[];
     lexicalStats?: LexicalStatsRecord;
@@ -345,6 +372,8 @@ export class SqliteStore {
     const deleteEdges = this.db.prepare("delete from graph_edges where root_path = ?");
     const deleteChunks = this.db.prepare("delete from semantic_chunks where root_path = ?");
     const deleteVectors = this.db.prepare("delete from semantic_vectors where root_path = ?");
+    const deleteSemanticDocuments = this.db.prepare("delete from semantic_documents where root_path = ?");
+    const deleteSemanticEmbeddings = this.db.prepare("delete from semantic_embeddings where root_path = ?");
     const deleteLexicalDocuments = this.db.prepare("delete from lexical_documents where root_path = ?");
     const deleteLexicalTerms = this.db.prepare("delete from lexical_terms where root_path = ?");
     const deleteLexicalStats = this.db.prepare("delete from lexical_stats where root_path = ?");
@@ -383,6 +412,20 @@ export class SqliteStore {
         @rootPath, @chunkId, @dimensions, @vectorJson
       )
     `);
+    const insertSemanticDocument = this.db.prepare(`
+      insert into semantic_documents (
+        root_path, id, file_path, kind, symbol, text, hash, token_estimate, schema_version
+      ) values (
+        @rootPath, @id, @filePath, @kind, @symbol, @text, @hash, @tokenEstimate, @schemaVersion
+      )
+    `);
+    const insertSemanticEmbedding = this.db.prepare(`
+      insert into semantic_embeddings (
+        root_path, document_id, document_hash, model_id, schema_version, dimensions, vector_blob, scale
+      ) values (
+        @rootPath, @documentId, @documentHash, @modelId, @schemaVersion, @dimensions, @vectorBlob, @scale
+      )
+    `);
     const insertLexicalDocument = this.db.prepare(`
       insert into lexical_documents (
         root_path, id, file_path, kind, symbol, length, token_estimate, hash
@@ -411,6 +454,10 @@ export class SqliteStore {
       deleteLexicalDocuments.run(input.rootPath);
       deleteVectors.run(input.rootPath);
       deleteChunks.run(input.rootPath);
+      if (input.semanticDocuments !== undefined || input.semanticEmbeddings !== undefined) {
+        deleteSemanticEmbeddings.run(input.rootPath);
+        deleteSemanticDocuments.run(input.rootPath);
+      }
       deleteEdges.run(input.rootPath);
       deleteSymbols.run(input.rootPath);
       deleteFiles.run(input.rootPath);
@@ -446,6 +493,24 @@ export class SqliteStore {
         insertVector.run({
           ...vector,
           vectorJson: serializeVector(vector.vector)
+        });
+      }
+
+      for (const document of input.semanticDocuments ?? []) {
+        insertSemanticDocument.run({
+          ...document,
+          symbol: document.symbol ?? null
+        });
+      }
+
+      for (const embedding of input.semanticEmbeddings ?? []) {
+        insertSemanticEmbedding.run({
+          ...embedding,
+          vectorBlob: Buffer.from(
+            embedding.vector.buffer,
+            embedding.vector.byteOffset,
+            embedding.vector.byteLength
+          )
         });
       }
 
@@ -724,6 +789,97 @@ export class SqliteStore {
     return rows.map(mapSemanticVectorRow);
   }
 
+  listSemanticDocuments(rootPath: string): SemanticDocumentRecord[] {
+    const rows = this.db
+      .prepare("select * from semantic_documents where root_path = ? order by file_path asc, kind asc, id asc")
+      .all(rootPath) as SemanticDocumentRow[];
+    return rows.map(mapSemanticDocumentRow);
+  }
+
+  listSemanticDocumentsForFiles(
+    rootPath: string,
+    filePaths: string[],
+    limit = 10_000
+  ): SemanticDocumentRecord[] {
+    const unique = [...new Set(filePaths)].filter(Boolean);
+    if (unique.length === 0) return [];
+    const rows: SemanticDocumentRow[] = [];
+    for (const chunk of chunkValues(unique, 500)) {
+      const placeholders = chunk.map(() => "?").join(", ");
+      rows.push(
+        ...(this.db
+          .prepare(`
+            select * from semantic_documents
+            where root_path = ? and file_path in (${placeholders})
+            order by file_path asc, kind asc, id asc
+            limit ?
+          `)
+          .all(rootPath, ...chunk, limit) as SemanticDocumentRow[])
+      );
+      if (rows.length >= limit) break;
+    }
+    return rows.slice(0, limit).map(mapSemanticDocumentRow);
+  }
+
+  listSemanticEmbeddings(rootPath: string): SemanticEmbeddingRecord[] {
+    const rows = this.db
+      .prepare("select * from semantic_embeddings where root_path = ? order by document_id asc, model_id asc")
+      .all(rootPath) as SemanticEmbeddingRow[];
+    return rows.map(mapSemanticEmbeddingRow);
+  }
+
+  upsertSemanticEmbeddings(records: SemanticEmbeddingRecord[]): void {
+    if (records.length === 0) return;
+    const statement = this.db.prepare(`
+      insert into semantic_embeddings (
+        root_path, document_id, document_hash, model_id, schema_version, dimensions, vector_blob, scale
+      ) values (
+        @rootPath, @documentId, @documentHash, @modelId, @schemaVersion, @dimensions, @vectorBlob, @scale
+      )
+      on conflict(root_path, document_id, model_id) do update set
+        document_hash = excluded.document_hash,
+        schema_version = excluded.schema_version,
+        dimensions = excluded.dimensions,
+        vector_blob = excluded.vector_blob,
+        scale = excluded.scale
+    `);
+    const transaction = this.db.transaction((embeddings: SemanticEmbeddingRecord[]) => {
+      for (const embedding of embeddings) {
+        statement.run({
+          ...embedding,
+          vectorBlob: Buffer.from(
+            embedding.vector.buffer,
+            embedding.vector.byteOffset,
+            embedding.vector.byteLength
+          )
+        });
+      }
+    });
+    transaction(records);
+  }
+
+  listSemanticEmbeddingsForDocumentIds(
+    rootPath: string,
+    documentIds: string[]
+  ): SemanticEmbeddingRecord[] {
+    const unique = [...new Set(documentIds)].filter(Boolean);
+    if (unique.length === 0) return [];
+    const rows: SemanticEmbeddingRow[] = [];
+    for (const chunk of chunkValues(unique, 500)) {
+      const placeholders = chunk.map(() => "?").join(", ");
+      rows.push(
+        ...(this.db
+          .prepare(`
+            select * from semantic_embeddings
+            where root_path = ? and document_id in (${placeholders})
+            order by document_id asc, model_id asc
+          `)
+          .all(rootPath, ...chunk) as SemanticEmbeddingRow[])
+      );
+    }
+    return rows.map(mapSemanticEmbeddingRow);
+  }
+
   listLexicalDocuments(rootPath: string): LexicalDocumentRecord[] {
     const rows = this.db
       .prepare("select * from lexical_documents where root_path = ? order by file_path asc, kind asc, id asc")
@@ -847,6 +1003,8 @@ export class SqliteStore {
       graphEdgeCount: this.countRows("graph_edges", rootPath),
       semanticChunkCount: this.countRows("semantic_chunks", rootPath),
       semanticVectorCount: this.countRows("semantic_vectors", rootPath),
+      semanticDocumentCount: this.countRows("semantic_documents", rootPath),
+      semanticEmbeddingCount: this.countRows("semantic_embeddings", rootPath),
       lexicalDocumentCount: this.countRows("lexical_documents", rootPath),
       lexicalTermCount: this.countRows("lexical_terms", rootPath),
       tiers: tierCounts
@@ -1579,6 +1737,31 @@ export class SqliteStore {
         primary key (root_path, chunk_id)
       );
 
+      create table if not exists semantic_documents (
+        root_path text not null,
+        id text not null,
+        file_path text not null,
+        kind text not null,
+        symbol text,
+        text text not null,
+        hash text not null,
+        token_estimate integer not null,
+        schema_version text not null,
+        primary key (root_path, id)
+      );
+
+      create table if not exists semantic_embeddings (
+        root_path text not null,
+        document_id text not null,
+        document_hash text not null,
+        model_id text not null,
+        schema_version text not null,
+        dimensions integer not null,
+        vector_blob blob not null,
+        scale real not null,
+        primary key (root_path, document_id, model_id)
+      );
+
       create table if not exists lexical_documents (
         root_path text not null,
         id text not null,
@@ -1775,11 +1958,14 @@ export class SqliteStore {
       create index if not exists graph_edges_root_to_idx on graph_edges(root_path, to_file);
       create index if not exists semantic_chunks_root_file_idx on semantic_chunks(root_path, file_path);
       create index if not exists semantic_vectors_root_chunk_idx on semantic_vectors(root_path, chunk_id);
+      create index if not exists semantic_documents_root_file_idx on semantic_documents(root_path, file_path);
+      create index if not exists semantic_embeddings_root_model_idx on semantic_embeddings(root_path, model_id);
       create index if not exists lexical_documents_root_file_idx on lexical_documents(root_path, file_path);
       create index if not exists lexical_terms_root_term_idx on lexical_terms(root_path, term);
       create index if not exists lexical_terms_root_file_idx on lexical_terms(root_path, file_path);
       create index if not exists index_metadata_root_idx on index_metadata(root_path);
     `);
+    this.migrateSemanticEmbeddingPrimaryKey();
     this.ensureColumn("file_inventory", "index_tier", "text");
     this.ensureColumn("file_inventory", "tier_score", "real");
   }
@@ -1788,6 +1974,39 @@ export class SqliteStore {
     const rows = this.db.prepare(`pragma table_info(${table})`).all() as Array<{ name: string }>;
     if (rows.some((row) => row.name === column)) return;
     this.db.exec(`alter table ${table} add column ${column} ${definition}`);
+  }
+
+  private migrateSemanticEmbeddingPrimaryKey(): void {
+    const columns = this.db.prepare("pragma table_info(semantic_embeddings)").all() as Array<{
+      name: string;
+      pk: number;
+    }>;
+    if (columns.find((column) => column.name === "model_id")?.pk === 3) return;
+    this.db.exec(`
+      begin immediate;
+      alter table semantic_embeddings rename to semantic_embeddings_legacy;
+      create table semantic_embeddings (
+        root_path text not null,
+        document_id text not null,
+        document_hash text not null,
+        model_id text not null,
+        schema_version text not null,
+        dimensions integer not null,
+        vector_blob blob not null,
+        scale real not null,
+        primary key (root_path, document_id, model_id)
+      );
+      insert into semantic_embeddings (
+        root_path, document_id, document_hash, model_id, schema_version, dimensions, vector_blob, scale
+      )
+      select
+        root_path, document_id, document_hash, model_id, schema_version, dimensions, vector_blob, scale
+      from semantic_embeddings_legacy;
+      drop table semantic_embeddings_legacy;
+      create index semantic_embeddings_root_model_idx
+        on semantic_embeddings(root_path, model_id);
+      commit;
+    `);
   }
 }
 
@@ -1858,6 +2077,33 @@ function mapSemanticVectorRow(row: SemanticVectorRow): SemanticVectorRecord {
     chunkId: row.chunk_id,
     dimensions: row.dimensions,
     vector: deserializeVector(row.vector_json)
+  };
+}
+
+function mapSemanticDocumentRow(row: SemanticDocumentRow): SemanticDocumentRecord {
+  return {
+    rootPath: row.root_path,
+    id: row.id,
+    filePath: row.file_path,
+    kind: row.kind,
+    ...(row.symbol ? { symbol: row.symbol } : {}),
+    text: row.text,
+    hash: row.hash,
+    tokenEstimate: row.token_estimate,
+    schemaVersion: row.schema_version
+  };
+}
+
+function mapSemanticEmbeddingRow(row: SemanticEmbeddingRow): SemanticEmbeddingRecord {
+  return {
+    rootPath: row.root_path,
+    documentId: row.document_id,
+    documentHash: row.document_hash,
+    modelId: row.model_id,
+    schemaVersion: row.schema_version,
+    dimensions: row.dimensions,
+    vector: Int8Array.from(row.vector_blob),
+    scale: row.scale
   };
 }
 

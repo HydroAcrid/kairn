@@ -49,7 +49,7 @@ describe("public evidence ranker training", () => {
     fs.writeFileSync(intakePath, JSON.stringify({
       schemaVersion: "ranker-corpus-intake.v1",
       corpusId: "materializer-sample",
-      featureSchemaVersion: "evidence-features-v1",
+      featureSchemaVersion: "evidence-features-v2",
       sealed: false,
       sampleOnly: true,
       lineageRegistry: "lineages.json",
@@ -433,7 +433,7 @@ describe("public evidence ranker training", () => {
     fs.writeFileSync(manifestPath, JSON.stringify({
       schemaVersion: "ranker-corpus.v1",
       corpusId: "sample-corpus",
-      featureSchemaVersion: "evidence-features-v1",
+      featureSchemaVersion: "evidence-features-v2",
       sealed: true,
       sampleOnly: true,
       lineageRegistry: "lineages.json",
@@ -482,7 +482,7 @@ describe("public evidence ranker training", () => {
     fs.writeFileSync(manifestPath, JSON.stringify({
       schemaVersion: "ranker-corpus.v1",
       corpusId: "unmaterialized-production",
-      featureSchemaVersion: "evidence-features-v1",
+      featureSchemaVersion: "evidence-features-v2",
       sealed: true,
       sampleOnly: false,
       lineageRegistry: "lineages.json",

@@ -122,7 +122,7 @@ describe("source-first setup and enable", () => {
     )) as { removed: string[]; stateDeleted: boolean };
 
     expect(removed.removed).toContain(path.join(".vscode", "mcp.json"));
-    expect(removed.stateDeleted).toBe(false);
+    expect(removed.stateDeleted).toBe(true);
     expect(fs.existsSync(path.join(root, ".codex", "hooks.json"))).toBe(false);
     expect(fs.existsSync(path.join(root, ".codex", "config.toml"))).toBe(false);
   });

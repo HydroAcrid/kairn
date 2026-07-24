@@ -75,11 +75,11 @@ describe("evidence ranker runtime integration", () => {
       expect(response.metadata?.ranker).toMatchObject({
         requestedMode: "shadow",
         servedMode: "shadow",
-        modelId: "generic-evidence-v1"
+        modelId: "generic-evidence-v2"
       });
       expect(response.rankedFiles?.[0]).toEqual(expect.objectContaining({
         relevanceProbability: expect.any(Number),
-        featureSchemaVersion: "evidence-features-v1",
+        featureSchemaVersion: "evidence-features-v2",
         rankerMode: "shadow"
       }));
 
@@ -90,8 +90,8 @@ describe("evidence ranker runtime integration", () => {
       expect(prime.metadata?.ranker).toMatchObject({
         requestedMode: "shadow",
         servedMode: "shadow",
-        modelId: "generic-evidence-v1",
-        featureSchemaVersion: "evidence-features-v1"
+        modelId: "generic-evidence-v2",
+        featureSchemaVersion: "evidence-features-v2"
       });
     } finally {
       runtime.close();

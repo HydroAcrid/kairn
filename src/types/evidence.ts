@@ -1,6 +1,33 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export type RankerMode = "legacy" | "shadow" | "calibrated";
+export type CandidateGeneratorMode = "legacy" | "shadow" | "semantic";
+
+export type SemanticRetrieverConfig = {
+  mode: CandidateGeneratorMode;
+  modelId?: string;
+  /** A local model directory containing kairn-model.json. Remote URLs are never accepted. */
+  modelPath?: string;
+};
+
+export type SemanticIndexStatus =
+  | "unavailable"
+  | "corrupt"
+  | "incompatible"
+  | "stale_index"
+  | "ready";
+
+export type SemanticRetrieverStatus = {
+  requestedMode: CandidateGeneratorMode;
+  servedMode: CandidateGeneratorMode | "fallback";
+  semanticModelId?: string;
+  semanticIndexStatus: SemanticIndexStatus;
+  semanticFallbackReason?: string;
+  documentCount: number;
+  embeddingCount: number;
+  queryLatencyMs?: number;
+  vectorScanLatencyMs?: number;
+};
 
 export type RankerConfig = {
   mode: RankerMode;
@@ -10,6 +37,7 @@ export type RankerConfig = {
 
 export type KairnRuntimeOptions = {
   ranker?: RankerConfig;
+  semantic?: SemanticRetrieverConfig;
 };
 
 export type EvidenceDelivery = "path_hint" | "content";
@@ -105,7 +133,7 @@ export type EvidenceRankerThresholds = {
 export type EvidenceRankerArtifact = {
   formatVersion: 1;
   modelId: string;
-  featureSchemaVersion: "evidence-features-v1";
+  featureSchemaVersion: "evidence-features-v2";
   featureSchemaHash: string;
   orderedFeatures: EvidenceFeatureName[];
   intercept: number;

@@ -21,6 +21,7 @@ export function registerSetupCommands(program: Command): void {
     .option("--agents <agents>", "comma-separated targets: codex,claude-code,copilot-cli,gemini-cli,vscode,generic")
     .option("--yes", "confirm all planned repository and user-level configuration changes")
     .option("--dry-run", "show detected agents and intended changes without writing files")
+    .option("--offline", "do not download a semantic model during enable")
     .option("--no-index", "skip the initial safe repository index")
     .option("--json", "print JSON output")
     .action(async (options: {
@@ -28,12 +29,18 @@ export function registerSetupCommands(program: Command): void {
       agents?: string;
       yes?: boolean;
       dryRun?: boolean;
+      offline?: boolean;
       index?: boolean;
       json?: boolean;
     }) => {
       const plan = planKairnEnable({ root: options.root, agents: options.agents });
       if (options.dryRun) {
-        const result = await enableKairn({ plan, dryRun: true, index: options.index });
+        const result = await enableKairn({
+          plan,
+          dryRun: true,
+          index: options.index,
+          installModel: !options.offline
+        });
         if (options.json) printJson(result);
         else process.stdout.write(formatEnableResult(result));
         return;
@@ -44,7 +51,12 @@ export function registerSetupCommands(program: Command): void {
         if (!process.stdin.isTTY) {
           throw new Error("kairn enable requires confirmation. Re-run with --yes or inspect changes with --dry-run.");
         }
-        process.stdout.write(formatEnableResult(await enableKairn({ plan, dryRun: true, index: options.index })));
+        process.stdout.write(formatEnableResult(await enableKairn({
+          plan,
+          dryRun: true,
+          index: options.index,
+          installModel: !options.offline
+        })));
         approved = await confirm({
           message: plan.writesUserConfig
             ? "Apply these changes, including ~/.copilot/mcp-config.json?"
@@ -52,7 +64,12 @@ export function registerSetupCommands(program: Command): void {
           default: true
         });
       }
-      const result = await enableKairn({ plan, cancelled: !approved, index: options.index });
+      const result = await enableKairn({
+        plan,
+        cancelled: !approved,
+        index: options.index,
+        installModel: !options.offline
+      });
       if (options.json) printJson(result);
       else process.stdout.write(formatEnableResult(result));
     });

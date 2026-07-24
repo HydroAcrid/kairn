@@ -2,7 +2,13 @@
 
 import type { FileKind, FileRecord, IndexStateStats, RepoGraph, ScanResult, SemanticChunkRecord } from "./graph.js";
 import type { TaskSession } from "./runtime.js";
-import type { EvidenceDelivery, EvidenceReason, RankerMode } from "./evidence.js";
+import type {
+  CandidateGeneratorMode,
+  EvidenceDelivery,
+  EvidenceReason,
+  RankerMode,
+  SemanticIndexStatus
+} from "./evidence.js";
 
 export type ContextRequestType =
   | "initial_brief"
@@ -251,6 +257,10 @@ export type ContextRankedFile = {
   delivery?: EvidenceDelivery;
   rankerMode?: RankerMode | "fallback";
   rankerFallbackReason?: string;
+  candidateGeneratorMode?: CandidateGeneratorMode | "fallback";
+  semanticModelId?: string;
+  semanticIndexStatus?: SemanticIndexStatus;
+  semanticFallbackReason?: string;
   scores?: {
     semantic?: number;
     keyword?: number;
@@ -295,6 +305,13 @@ export type InitResult = {
   semantic: {
     chunks: number;
     vectors: number;
+    documents?: number;
+    embeddings?: number;
+    modelId?: string;
+    status?: "disabled" | "unavailable" | "corrupt" | "incompatible" | "ready";
+    reusedEmbeddings?: number;
+    createdEmbeddings?: number;
+    error?: string;
   };
   state?: IndexStateStats;
 };
@@ -315,6 +332,10 @@ export type HybridScoredResult = FileRecord & {
   delivery?: EvidenceDelivery;
   rankerMode?: RankerMode | "fallback";
   rankerFallbackReason?: string;
+  candidateGeneratorMode?: CandidateGeneratorMode | "fallback";
+  semanticModelId?: string;
+  semanticIndexStatus?: SemanticIndexStatus;
+  semanticFallbackReason?: string;
   semanticScore: number;
   keywordScore: number;
   bm25Score: number;

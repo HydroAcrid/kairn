@@ -657,7 +657,7 @@ describe("evidence ranker modes", () => {
     expect(result.files.map((file) => file.path)).toEqual(legacy.map((file) => file.path));
     expect(result.files.find((file) => file.path === source.path)?.relevanceProbability).toBeTypeOf("number");
     expect(result.files.find((file) => file.path === source.path)?.evidenceReasons).toContain("exact_path");
-    expect(result.status).toMatchObject({ servedMode: "shadow", modelId: "generic-evidence-v1" });
+    expect(result.status).toMatchObject({ servedMode: "shadow", modelId: "generic-evidence-v2" });
   });
 
   it("serves calibrated probability order while preserving legacy component fields", () => {

@@ -10,7 +10,7 @@ import type {
 import { EVIDENCE_FEATURE_NAMES } from "../types.js";
 import { sha256 } from "../utils/hash.js";
 
-export const EVIDENCE_FEATURE_SCHEMA_VERSION = "evidence-features-v1" as const;
+export const EVIDENCE_FEATURE_SCHEMA_VERSION = "evidence-features-v2" as const;
 export const EVIDENCE_FEATURE_SCHEMA_HASH = sha256(stableStringify({
   version: EVIDENCE_FEATURE_SCHEMA_VERSION,
   features: EVIDENCE_FEATURE_NAMES
@@ -20,7 +20,7 @@ type EvidenceArtifactPayload = Omit<EvidenceRankerArtifact, "checksum">;
 
 const BUNDLED_PAYLOAD: EvidenceArtifactPayload = {
   formatVersion: 1,
-  modelId: "generic-evidence-v1",
+  modelId: "generic-evidence-v2",
   featureSchemaVersion: EVIDENCE_FEATURE_SCHEMA_VERSION,
   featureSchemaHash: EVIDENCE_FEATURE_SCHEMA_HASH,
   orderedFeatures: [...EVIDENCE_FEATURE_NAMES],
@@ -59,7 +59,7 @@ const BUNDLED_PAYLOAD: EvidenceArtifactPayload = {
     content: 0.72
   },
   trainingDataHash: sha256("generic evidence bootstrap: no private or fixture identity data"),
-  trainingManifest: "bootstrap-general-signals-v1"
+  trainingManifest: "bootstrap-general-signals-v2"
 };
 
 /**

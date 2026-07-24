@@ -9,9 +9,26 @@ import { parseSourceFile } from "../parser/parseFile.js";
 import { readTextFile } from "../retrieval/readSource.js";
 import { scanRepo } from "../scanner/scanRepo.js";
 import { buildSemanticChunks } from "../semantic/chunk.js";
+import { buildSemanticDocuments } from "../semantic/documents.js";
 import { embedText, VECTOR_DIMENSIONS } from "../semantic/vector.js";
-import type { ParsedFile, RepoGraph, ScanResult, SemanticChunkRecord, SemanticVectorRecord } from "../types.js";
+import {
+  loadLocalEmbeddingModel,
+  quantizeSemanticEmbedding
+} from "../semantic/modelRuntime.js";
+import { getSemanticModelState } from "../semantic/modelManager.js";
+import { DEFAULT_SEMANTIC_MODEL_ID } from "../semantic/modelRegistry.js";
+import type {
+  ParsedFile,
+  RepoGraph,
+  ScanResult,
+  SemanticChunkRecord,
+  SemanticDocumentRecord,
+  SemanticEmbeddingRecord,
+  SemanticRetrieverConfig,
+  SemanticVectorRecord
+} from "../types.js";
 import { loadIndexingConfig } from "../config/indexing.js";
+import { resolveSemanticRetrieverConfig } from "../config/semantic.js";
 import { compactParsedSymbols } from "./symbolCompaction.js";
 
 export type RepoIndex = {
@@ -19,11 +36,25 @@ export type RepoIndex = {
   graph: RepoGraph;
   semanticChunks: SemanticChunkRecord[];
   semanticVectors: SemanticVectorRecord[];
+  semanticDocuments: SemanticDocumentRecord[];
+  semanticEmbeddings: SemanticEmbeddingRecord[];
+  semanticStatus: {
+    modelId?: string;
+    status: "disabled" | "unavailable" | "corrupt" | "incompatible" | "ready";
+    reusedEmbeddings: number;
+    createdEmbeddings: number;
+    error?: string;
+  };
   lexical: LexicalIndex;
 };
 
-export async function indexRepo(rootPath: string): Promise<RepoIndex> {
+export async function indexRepo(rootPath: string, options?: {
+  semantic?: SemanticRetrieverConfig;
+  existingEmbeddings?: SemanticEmbeddingRecord[];
+  onSemanticEmbeddingBatch?: (embeddings: SemanticEmbeddingRecord[]) => void;
+}): Promise<RepoIndex> {
   const config = loadIndexingConfig(rootPath);
+  const semanticConfig = resolveSemanticRetrieverConfig(rootPath, options?.semantic);
   const scan = await scanRepo(rootPath);
   const parsedFiles = await parseFilesWithLimit({
     rootPath,
@@ -63,6 +94,22 @@ export async function indexRepo(rootPath: string): Promise<RepoIndex> {
     dimensions: VECTOR_DIMENSIONS,
     vector: embedText(chunk.text)
   }));
+  const semanticDocuments = semanticConfig.mode === "legacy"
+    ? []
+    : buildSemanticDocuments({
+        rootPath,
+        graph,
+        maxDocuments: config.maxSemanticChunks
+      });
+  const semanticIndex = await buildModelEmbeddings({
+    rootPath,
+    config: semanticConfig,
+    documents: semanticDocuments,
+    existing: options?.existingEmbeddings ?? [],
+    ...(options?.onSemanticEmbeddingBatch
+      ? { onEmbeddingBatch: options.onSemanticEmbeddingBatch }
+      : {})
+  });
   const lexical = buildLexicalIndex({
     rootPath,
     files: graph.files,
@@ -76,6 +123,9 @@ export async function indexRepo(rootPath: string): Promise<RepoIndex> {
     graph,
     semanticChunks,
     semanticVectors,
+    semanticDocuments,
+    semanticEmbeddings: semanticIndex.embeddings,
+    semanticStatus: semanticIndex.status,
     lexical
   };
 }
@@ -159,47 +209,130 @@ function loadGoModules(
 }
 
 function selectSemanticChunks(chunks: SemanticChunkRecord[], maxChunks: number): SemanticChunkRecord[] {
-  const ranked = chunks
-    .slice()
-    .sort((a, b) => chunkPriority(b) - chunkPriority(a) || a.filePath.localeCompare(b.filePath) || a.id.localeCompare(b.id));
-  const selectedById = new Set<string>();
-  const selected: SemanticChunkRecord[] = [];
-  const fileSeen = new Set<string>();
-
-  for (const chunk of ranked) {
-    if (fileSeen.has(chunk.filePath)) continue;
-    fileSeen.add(chunk.filePath);
-    selectedById.add(chunk.id);
-    selected.push(chunk);
-    if (selected.length >= maxChunks) break;
+  const fileSummaries = chunks
+    .filter((chunk) => chunk.kind === "file_summary")
+    .sort((left, right) => left.filePath.localeCompare(right.filePath) || left.id.localeCompare(right.id));
+  const selected = fileSummaries.slice(0, maxChunks);
+  if (selected.length >= maxChunks) return selected;
+  const symbolsByFile = new Map<string, SemanticChunkRecord[]>();
+  for (const chunk of chunks
+    .filter((candidate) => candidate.kind === "symbol")
+    .sort((left, right) => left.filePath.localeCompare(right.filePath) || left.id.localeCompare(right.id))) {
+    symbolsByFile.set(chunk.filePath, [...(symbolsByFile.get(chunk.filePath) ?? []), chunk]);
   }
-
-  for (const chunk of ranked) {
-    if (selected.length >= maxChunks) break;
-    if (selectedById.has(chunk.id)) continue;
-    selectedById.add(chunk.id);
-    selected.push(chunk);
+  const paths = [...symbolsByFile.keys()].sort();
+  const cursors = new Map(paths.map((filePath) => [filePath, 0]));
+  let progressed = true;
+  while (selected.length < maxChunks && progressed) {
+    progressed = false;
+    for (const filePath of paths) {
+      const cursor = cursors.get(filePath) ?? 0;
+      const chunk = symbolsByFile.get(filePath)?.[cursor];
+      if (!chunk) continue;
+      selected.push(chunk);
+      cursors.set(filePath, cursor + 1);
+      progressed = true;
+      if (selected.length >= maxChunks) break;
+    }
   }
-
-  return selected
-    .sort((a, b) => a.filePath.localeCompare(b.filePath) || a.id.localeCompare(b.id));
+  return selected.sort((left, right) =>
+    left.filePath.localeCompare(right.filePath) || left.id.localeCompare(right.id)
+  );
 }
 
-function chunkPriority(chunk: SemanticChunkRecord): number {
-  const filePath = chunk.filePath.toLowerCase();
-  let score = chunk.kind === "symbol" ? 90 : 30;
-  if (filePath.startsWith("src/") || filePath.includes("/src/")) score += 35;
-  if (filePath.startsWith("packages/") || filePath.includes("/packages/")) score += 24;
-  if (filePath.startsWith("include/") || filePath.includes("/include/")) score += 30;
-  if (filePath.startsWith("lib/") || filePath.includes("/lib/")) score += 24;
-  if (/(^|\/)(utils?|helpers?|shared|common)(\/|\.|-|_)/.test(filePath)) score += 42;
-  if (/(^|\/)[a-z0-9]+(?:[-_][a-z0-9]+){1,}\.[a-z0-9]+$/.test(filePath)) score += 18;
-  if (/(^|\/)(index|main|router|client|server|core)\.[cm]?[jt]sx?$/.test(filePath)) score -= 18;
-  if (/(^|\/)(tests?|spec)\//.test(filePath)) score -= 8;
-  if (/(^|\/)(docs?|documentation|examples|demo|demos|fixtures?|__fixtures__|compiled|generated|gen|vendor|third[_-]party|dist|build|coverage|website|site|playground|storybook|codemods?|devtools)\//.test(filePath)) {
-    score -= 80;
+async function buildModelEmbeddings(input: {
+  rootPath: string;
+  config: SemanticRetrieverConfig;
+  documents: SemanticDocumentRecord[];
+  existing: SemanticEmbeddingRecord[];
+  onEmbeddingBatch?: (embeddings: SemanticEmbeddingRecord[]) => void;
+}): Promise<{
+  embeddings: SemanticEmbeddingRecord[];
+  status: RepoIndex["semanticStatus"];
+}> {
+  const modelId = input.config.modelId ?? DEFAULT_SEMANTIC_MODEL_ID;
+  if (input.config.mode === "legacy") {
+    return {
+      embeddings: [],
+      status: { status: "disabled", reusedEmbeddings: 0, createdEmbeddings: 0 }
+    };
   }
-  if (chunk.tokenEstimate < 450 && chunk.kind === "symbol") score += 8;
-  if (chunk.tokenEstimate > 1_500) score -= 10;
-  return score;
+  const state = getSemanticModelState({
+    modelId,
+    ...(input.config.modelPath ? { modelPath: input.config.modelPath } : {})
+  });
+  if (state.status !== "ready") {
+    return {
+      embeddings: [],
+      status: {
+        modelId,
+        status: state.status,
+        reusedEmbeddings: 0,
+        createdEmbeddings: 0,
+        ...(state.error ? { error: state.error } : {})
+      }
+    };
+  }
+
+  try {
+    const model = await loadLocalEmbeddingModel({
+      modelId,
+      ...(input.config.modelPath ? { modelPath: input.config.modelPath } : {})
+    });
+    const existingByDocument = new Map(
+      input.existing
+        .filter((embedding) =>
+          embedding.modelId === model.manifest.modelId &&
+          embedding.schemaVersion === model.manifest.documentSchemaVersion &&
+          embedding.dimensions === model.manifest.dimensions
+        )
+        .map((embedding) => [embedding.documentId, embedding])
+    );
+    const embeddings: SemanticEmbeddingRecord[] = [];
+    const missing: SemanticDocumentRecord[] = [];
+    for (const document of input.documents) {
+      const existing = existingByDocument.get(document.id);
+      if (existing?.documentHash === document.hash) embeddings.push(existing);
+      else missing.push(document);
+    }
+
+    const batchSize = 8;
+    for (let offset = 0; offset < missing.length; offset += batchSize) {
+      const batch = missing.slice(offset, offset + batchSize);
+      const vectors = await model.embedDocuments(batch.map((document) => document.text));
+      for (let index = 0; index < batch.length; index += 1) {
+        const document = batch[index]!;
+        embeddings.push(quantizeSemanticEmbedding({
+          rootPath: input.rootPath,
+          documentId: document.id,
+          documentHash: document.hash,
+          modelId: model.manifest.modelId,
+          schemaVersion: model.manifest.documentSchemaVersion,
+          vector: vectors[index]!
+        }));
+      }
+      input.onEmbeddingBatch?.(embeddings.slice(-batch.length));
+    }
+
+    return {
+      embeddings: embeddings.sort((left, right) => left.documentId.localeCompare(right.documentId)),
+      status: {
+        modelId: model.manifest.modelId,
+        status: "ready",
+        reusedEmbeddings: input.documents.length - missing.length,
+        createdEmbeddings: missing.length
+      }
+    };
+  } catch (error) {
+    return {
+      embeddings: [],
+      status: {
+        modelId,
+        status: "incompatible",
+        reusedEmbeddings: 0,
+        createdEmbeddings: 0,
+        error: error instanceof Error ? error.message : String(error)
+      }
+    };
+  }
 }

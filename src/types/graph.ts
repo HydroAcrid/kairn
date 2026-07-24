@@ -75,6 +75,8 @@ export type IndexStateStats = {
   graphEdgeCount: number;
   semanticChunkCount: number;
   semanticVectorCount: number;
+  semanticDocumentCount?: number;
+  semanticEmbeddingCount?: number;
   lexicalDocumentCount: number;
   lexicalTermCount: number;
   tiers: Record<IndexTier, number>;
@@ -192,6 +194,32 @@ export type SemanticVectorRecord = {
   chunkId: string;
   dimensions: number;
   vector: number[];
+};
+
+export type SemanticDocumentKind = "file" | "symbol";
+
+export type SemanticDocumentRecord = {
+  rootPath: string;
+  id: string;
+  filePath: string;
+  kind: SemanticDocumentKind;
+  symbol?: string;
+  text: string;
+  hash: string;
+  tokenEstimate: number;
+  schemaVersion: "semantic-documents-v1";
+};
+
+export type SemanticEmbeddingRecord = {
+  rootPath: string;
+  documentId: string;
+  documentHash: string;
+  modelId: string;
+  schemaVersion: "semantic-documents-v1";
+  dimensions: number;
+  /** Symmetric int8 quantization keeps a repository-wide local index bounded. */
+  vector: Int8Array;
+  scale: number;
 };
 
 export type LexicalDocumentRecord = {

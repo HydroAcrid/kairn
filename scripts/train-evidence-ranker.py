@@ -23,7 +23,7 @@ FEATURES = [
     "intentRoleMatch", "importance", "contentCost", "missingSymbols",
     "missingLexical",
 ]
-SCHEMA_VERSION = "evidence-features-v1"
+SCHEMA_VERSION = "evidence-features-v2"
 L2_GRID = [0.0001, 0.001, 0.01, 0.1, 1.0]
 LABEL_POLICIES: dict[str, tuple[int, float]] = {
     "required_source_oracle": (1, 1.0),

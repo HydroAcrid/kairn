@@ -22,7 +22,7 @@ FEATURES = [
     "intentRoleMatch", "importance", "contentCost", "missingSymbols",
     "missingLexical",
 ]
-FEATURE_SCHEMA_VERSION = "evidence-features-v1"
+FEATURE_SCHEMA_VERSION = "evidence-features-v2"
 LANGUAGES = ("python", "typescript", "go", "java", "cpp")
 SCENARIOS = ("source_localization", "failure_first", "long_session")
 SPLITS = ("train", "calibration", "holdout")

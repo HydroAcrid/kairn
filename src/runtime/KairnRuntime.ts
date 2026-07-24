@@ -46,6 +46,8 @@ import type {
   SessionLedgerEvent,
   SessionLedgerEventKind,
   SessionLedgerSummary,
+  SemanticRetrieverConfig,
+  SemanticRetrieverStatus,
   SymbolRecord,
   TaskSession,
   TaskPhase,
@@ -134,11 +136,16 @@ import {
   decideCalibratedEvidencePolicy,
   isCalibratedEvidencePolicyDecision
 } from "../prime/calibratedEvidencePolicy.js";
+import { resolveSemanticRetrieverConfig } from "../config/semantic.js";
+import { searchSemanticCandidates } from "../retrieval/semanticCandidates.js";
+import { buildModelCandidateUnion } from "../retrieval/candidateFusion.js";
 
 type CalibratedQueryLocalIndex = QueryLocalIndex & {
   initialCandidateFiles: string[];
   initialCandidateCount: number;
   enrichedCandidateCount: number;
+  candidateResults?: HybridScoredResult[];
+  semanticStatus?: SemanticRetrieverStatus;
 };
 
 export class KairnRuntime {
@@ -148,13 +155,19 @@ export class KairnRuntime {
   private readonly metricsService: MetricsService;
   private readonly evalService: EvalService;
   private readonly rankerConfig: RankerConfig | undefined;
+  private readonly semanticConfig: SemanticRetrieverConfig | undefined;
 
   constructor(root?: string, options?: KairnRuntimeOptions) {
     this.rootPath = resolveRoot(root);
     this.rankerConfig = options?.ranker;
+    this.semanticConfig = options?.semantic;
     const paths = ensureKairnDir(this.rootPath);
     this.store = new SqliteStore(paths.databasePath);
-    const deps = { rootPath: this.rootPath, store: this.store };
+    const deps = {
+      rootPath: this.rootPath,
+      store: this.store,
+      ...(this.semanticConfig ? { semanticConfig: this.semanticConfig } : {})
+    };
     this.indexService = new IndexService(deps);
     this.metricsService = new MetricsService(deps);
     this.evalService = new EvalService(deps, this.metricsService);
@@ -1393,52 +1406,77 @@ export class KairnRuntime {
     const changedFiles = await this.getChangedFiles(session.rootPath);
     const query = input.query ?? session.task;
     const requestedRanker = resolveRankerConfig(this.rankerConfig);
-    const calibratedRequested = requestedRanker.mode === "calibrated";
-    const calibratedLocalIndex = calibratedRequested
-      ? this.getCalibratedQueryLocalIndex({
+    const requestedSemantic = resolveSemanticRetrieverConfig(session.rootPath, this.semanticConfig);
+    const semanticServing = requestedSemantic.mode === "semantic";
+    const effectiveRanker = semanticServing && requestedRanker.mode === "legacy"
+      ? { mode: "calibrated" as const }
+      : requestedRanker;
+    const calibratedPolicyRequested = effectiveRanker.mode === "calibrated";
+    const semanticCandidateIndex = requestedSemantic.mode === "legacy"
+      ? undefined
+      : await this.getCalibratedQueryLocalIndex({
           rootPath: session.rootPath,
           files,
           query,
           changedFiles,
-          shown: session.filesShown
-        })
-      : undefined;
-    const localIndex = calibratedLocalIndex ?? this.getQueryLocalIndex({
+          shown: session.filesShown,
+          semanticConfig: requestedSemantic
+        });
+    const servingCandidateIndex = semanticServing
+      ? semanticCandidateIndex
+      : calibratedPolicyRequested
+        ? await this.getCalibratedQueryLocalIndex({
+            rootPath: session.rootPath,
+            files,
+            query,
+            changedFiles,
+            shown: session.filesShown,
+            semanticConfig: { mode: "legacy" }
+          })
+        : undefined;
+    const localIndex = servingCandidateIndex ?? this.getQueryLocalIndex({
       rootPath: session.rootPath,
       files,
       query,
       changedFiles
     });
-    const calibratedCandidatePaths = new Set(calibratedLocalIndex?.candidateFiles ?? []);
-    const retrievalFiles = calibratedLocalIndex
-      ? files.filter((file) => calibratedCandidatePaths.has(file.path))
+    const servingCandidatePaths = new Set(servingCandidateIndex?.candidateFiles ?? []);
+    const retrievalFiles = servingCandidateIndex
+      ? files.filter((file) => servingCandidatePaths.has(file.path))
       : files;
-    const calibratedCandidateGeneration = calibratedLocalIndex
+    const candidateIndexForMetadata = semanticCandidateIndex ?? servingCandidateIndex;
+    const calibratedCandidateGeneration = candidateIndexForMetadata
       ? {
-          initialCandidates: calibratedLocalIndex.initialCandidateCount,
-          enrichedCandidates: calibratedLocalIndex.enrichedCandidateCount,
+          initialCandidates: candidateIndexForMetadata.initialCandidateCount,
+          enrichedCandidates: candidateIndexForMetadata.enrichedCandidateCount,
           hybridScoredFiles: retrievalFiles.length,
           initialLimit: DEFAULT_INITIAL_CANDIDATE_LIMIT,
           enrichedLimit: DEFAULT_ENRICHED_CANDIDATE_LIMIT,
-          graphHops: 1
+          graphHops: 1,
+          candidateGeneratorMode: requestedSemantic.mode,
+          ...(candidateIndexForMetadata.semanticStatus
+            ? { semantic: candidateIndexForMetadata.semanticStatus }
+            : {})
         }
       : undefined;
     const intent = classifyQueryIntent(query);
-    const rankerCandidates = hybridSearch({
-      files: retrievalFiles,
-      query,
-      symbols: localIndex.symbols,
-      chunks: localIndex.chunks,
-      vectors: localIndex.vectors,
-      lexicalDocuments: localIndex.lexicalDocuments,
-      lexicalTerms: localIndex.lexicalTerms,
-      lexicalStats: localIndex.lexicalStats,
-      edges: localIndex.edges,
-      shown: session.filesShown,
-      changedFiles
-    }).slice(0, calibratedRequested ? DEFAULT_ENRICHED_CANDIDATE_LIMIT : 64);
+    const rankerCandidates = semanticServing && servingCandidateIndex?.candidateResults
+      ? servingCandidateIndex.candidateResults
+      : hybridSearch({
+          files: retrievalFiles,
+          query,
+          symbols: localIndex.symbols,
+          chunks: localIndex.chunks,
+          vectors: localIndex.vectors,
+          lexicalDocuments: localIndex.lexicalDocuments,
+          lexicalTerms: localIndex.lexicalTerms,
+          lexicalStats: localIndex.lexicalStats,
+          edges: localIndex.edges,
+          shown: session.filesShown,
+          changedFiles
+        }).slice(0, calibratedPolicyRequested ? DEFAULT_ENRICHED_CANDIDATE_LIMIT : 64);
     const initialScored = rankerCandidates.slice(0, 12);
-    const companionCandidates = calibratedRequested
+    const companionCandidates = calibratedPolicyRequested
       ? []
       : findCompanionCandidates({
           files,
@@ -1449,7 +1487,7 @@ export class KairnRuntime {
           edges: localIndex.edges,
           limit: 2
         });
-    const legacyScored = calibratedRequested
+    const legacyScored = calibratedPolicyRequested
       ? initialScored
       : applyCompanionCandidatesToResults(initialScored, companionCandidates);
     const evidenceRanking = rankEvidenceResults({
@@ -1460,11 +1498,24 @@ export class KairnRuntime {
       edges: localIndex.edges,
       legacyResults: legacyScored,
       candidateResults: rankerCandidates,
-      ...(calibratedLocalIndex ? { candidatePaths: calibratedLocalIndex.candidateFiles } : {}),
+      ...(servingCandidateIndex ? { candidatePaths: servingCandidateIndex.candidateFiles } : {}),
       shown: session.filesShown,
       changedFiles
-    }, requestedRanker);
-    const allScored = evidenceRanking.files.slice(0, 12);
+    }, effectiveRanker);
+    const activeSemanticStatus = semanticCandidateIndex?.semanticStatus;
+    const allScored = evidenceRanking.files.slice(0, 12).map((file) => ({
+      ...file,
+      candidateGeneratorMode: activeSemanticStatus?.servedMode ?? requestedSemantic.mode,
+      ...(activeSemanticStatus?.semanticModelId
+        ? { semanticModelId: activeSemanticStatus.semanticModelId }
+        : {}),
+      ...(activeSemanticStatus
+        ? { semanticIndexStatus: activeSemanticStatus.semanticIndexStatus }
+        : {}),
+      ...(activeSemanticStatus?.semanticFallbackReason
+        ? { semanticFallbackReason: activeSemanticStatus.semanticFallbackReason }
+        : {})
+    }));
     const allRankedFiles = rankedFilesFromScored(allScored);
     const ledger = summarizeSessionLedger(session.id, this.getSessionLedger(session.id));
     const shownFiles = uniquePaths([
@@ -1476,7 +1527,7 @@ export class KairnRuntime {
         .map((event) => event.filePath!)
     ]);
     const indexFreshness = this.indexService.getStatus(session.rootPath).freshness;
-    const calibratedPolicy = calibratedRequested
+    const calibratedPolicy = calibratedPolicyRequested
       ? decideCalibratedEvidencePolicy({
           task: query,
           rankedFiles: allRankedFiles,
@@ -3472,14 +3523,15 @@ export class KairnRuntime {
   }): Promise<EvidenceCandidateInspection> {
     await this.init();
     const files = this.store.listFiles(this.rootPath);
-    const localIndex = this.getCalibratedQueryLocalIndex({
+    const localIndex = await this.getCalibratedQueryLocalIndex({
       rootPath: this.rootPath,
       files,
-      query: input.query
+      query: input.query,
+      semanticConfig: resolveSemanticRetrieverConfig(this.rootPath, this.semanticConfig)
     });
     const candidatePaths = new Set(localIndex.candidateFiles);
     const retrievalFiles = files.filter((file) => candidatePaths.has(file.path));
-    const hybridCandidates = hybridSearch({
+    const hybridCandidates = localIndex.candidateResults ?? hybridSearch({
       files: retrievalFiles,
       query: input.query,
       symbols: localIndex.symbols,
@@ -3521,13 +3573,18 @@ export class KairnRuntime {
     return this.indexService.compact(this.rootPath);
   }
 
-  private getCalibratedQueryLocalIndex(input: {
+  private async getCalibratedQueryLocalIndex(input: {
     rootPath: string;
     files: FileRecord[];
     query: string;
     changedFiles?: Set<string> | undefined;
     shown?: TaskSession["filesShown"] | undefined;
-  }): CalibratedQueryLocalIndex {
+    semanticConfig?: SemanticRetrieverConfig | undefined;
+  }): Promise<CalibratedQueryLocalIndex> {
+    const semanticConfig = resolveSemanticRetrieverConfig(
+      input.rootPath,
+      input.semanticConfig ?? this.semanticConfig
+    );
     const signals = extractEvidenceTaskSignals(input.query);
     const retrievalQueries = buildEvidenceRetrievalQueries(input.query);
     const budget = queryLocalBudget({
@@ -3553,7 +3610,7 @@ export class KairnRuntime {
     );
     const filesByPath = new Map(input.files.map((file) => [file.path, file]));
     const sourceOrUnknownIntent = signals.intent === "source" || signals.intent === "unknown";
-    const lexicalResults = retrievalQueries.reduce<HybridScoredResult[]>((merged, retrievalQuery) => {
+    const modelBm25Results = retrievalQueries.reduce<HybridScoredResult[]>((merged, retrievalQuery) => {
       const scored = [...scoreBm25Files({
         query: retrievalQuery,
         documents: lexicalDocuments,
@@ -3568,9 +3625,12 @@ export class KairnRuntime {
         .sort((left, right) => right.bm25Score - left.bm25Score || left.path.localeCompare(right.path));
       return mergeLightweightResults(
         merged,
-        selectRoleBalancedSeeds(normalizeLightweightScores(scored, "bm25Score"), sourceOrUnknownIntent)
+        normalizeLightweightScores(scored, "bm25Score")
       );
     }, []);
+    const lexicalResults = semanticConfig.mode === "legacy"
+      ? selectRoleBalancedSeeds(modelBm25Results, sourceOrUnknownIntent)
+      : modelBm25Results;
     const pathAndSymbolResults = retrievalQueries.reduce<HybridScoredResult[]>((merged, retrievalQuery) => {
       const scored = scoreFiles(input.files, retrievalQuery, matchingSymbols)
         .filter((result) => result.reasons.some((reason) =>
@@ -3587,6 +3647,72 @@ export class KairnRuntime {
         selectRoleBalancedSeeds(normalizeLightweightScores(scored, "keywordScore"), sourceOrUnknownIntent)
       );
     }, []);
+
+    if (semanticConfig.mode !== "legacy") {
+      const semanticSearch = await searchSemanticCandidates({
+        query: retrievalQueries.join("\n") || input.query,
+        config: semanticConfig,
+        documents: this.store.listSemanticDocuments(input.rootPath),
+        embeddings: this.store.listSemanticEmbeddings(input.rootPath),
+        limit: DEFAULT_INITIAL_CANDIDATE_LIMIT
+      });
+      const preliminary = buildModelCandidateUnion({
+        files: input.files,
+        query: input.query,
+        symbols: matchingSymbols,
+        bm25Results: modelBm25Results,
+        semanticHits: semanticSearch.hits,
+        semanticStatus: semanticSearch.status,
+        edges: [],
+        ...(input.changedFiles ? { changedFiles: input.changedFiles } : {}),
+        ...(input.shown ? { shown: input.shown } : {})
+      });
+      const edges = this.store.listGraphEdgesForFiles(
+        input.rootPath,
+        preliminary.initialPaths,
+        budget.graphEdgeLimit
+      );
+      const fused = buildModelCandidateUnion({
+        files: input.files,
+        query: input.query,
+        symbols: matchingSymbols,
+        bm25Results: modelBm25Results,
+        semanticHits: semanticSearch.hits,
+        semanticStatus: semanticSearch.status,
+        edges,
+        ...(input.changedFiles ? { changedFiles: input.changedFiles } : {}),
+        ...(input.shown ? { shown: input.shown } : {})
+      });
+      const candidateFiles = fused.enrichedPaths.slice(0, DEFAULT_ENRICHED_CANDIDATE_LIMIT);
+      const candidatePathSet = new Set(candidateFiles);
+      const symbols = uniqueSymbols([
+        ...matchingSymbols.filter((symbol) => candidatePathSet.has(symbol.filePath)),
+        ...this.store.listSymbolsForFiles(input.rootPath, candidateFiles, budget.symbolLimit)
+      ]);
+      const chunks = this.store.listSemanticChunksForFiles(
+        input.rootPath,
+        candidateFiles,
+        budget.chunkLimit
+      );
+      return {
+        symbols,
+        chunks,
+        // Hashed lexical vectors belong only to the legacy scorer. The model
+        // candidate path never silently reuses them.
+        vectors: [],
+        lexicalDocuments,
+        lexicalTerms,
+        ...(lexicalStats ? { lexicalStats } : {}),
+        edges,
+        candidateFiles,
+        initialCandidateFiles: fused.initialPaths,
+        initialCandidateCount: fused.initialPaths.length,
+        enrichedCandidateCount: candidateFiles.length,
+        candidateResults: fused.candidateResults,
+        semanticStatus: fused.semanticStatus
+      };
+    }
+
     const cheapCandidateResults = mergeLightweightResults(lexicalResults, pathAndSymbolResults);
     const baseCandidateInput = {
       files: input.files,
@@ -4531,6 +4657,10 @@ function rankedFilesFromScored(files: HybridScoredResult[]): ContextRankedFile[]
     ...(file.delivery ? { delivery: file.delivery } : {}),
     ...(file.rankerMode ? { rankerMode: file.rankerMode } : {}),
     ...(file.rankerFallbackReason ? { rankerFallbackReason: file.rankerFallbackReason } : {}),
+    ...(file.candidateGeneratorMode ? { candidateGeneratorMode: file.candidateGeneratorMode } : {}),
+    ...(file.semanticModelId ? { semanticModelId: file.semanticModelId } : {}),
+    ...(file.semanticIndexStatus ? { semanticIndexStatus: file.semanticIndexStatus } : {}),
+    ...(file.semanticFallbackReason ? { semanticFallbackReason: file.semanticFallbackReason } : {}),
     scores: {
       semantic: file.semanticScore,
       keyword: file.keywordScore,

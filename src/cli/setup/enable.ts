@@ -10,6 +10,13 @@ import { KairnRuntime } from "../../runtime/KairnRuntime.js";
 import { writeCodexSetup } from "./codexSetup.js";
 import { existingCopilotServerNameForRoot, isKairnOwnedMcpServer, writeMcpClientSetup, type McpClientSetupTarget } from "./mcpSetup.js";
 import { runSetupWizard, type SetupWizardTarget } from "./wizard.js";
+import { getSemanticModelState, installSemanticModel } from "../../semantic/modelManager.js";
+import {
+  DEFAULT_SEMANTIC_MODEL_ID,
+  getSemanticModelManifest,
+  semanticModelBytes
+} from "../../semantic/modelRegistry.js";
+import { writeSemanticRetrieverConfig } from "../../config/semantic.js";
 
 export type EnableTarget = Exclude<SetupWizardTarget, "doctor">;
 export type EnableAgentStatus = "configured" | "already-configured" | "planned" | "skipped" | "action-required";
@@ -29,6 +36,15 @@ export type EnablePlan = {
   agents: EnableAgent[];
   writesUserConfig: boolean;
   manualConfigs: Array<{ target: "generic"; clientConfig: Record<string, unknown> }>;
+  semanticModel: ReturnType<typeof getSemanticModelState>;
+  semanticModelDownload: {
+    modelId: string;
+    bytes: number;
+    license: string;
+    upstreamRepository: string;
+    upstreamRevision: string;
+    required: boolean;
+  };
 };
 
 export type EnableResult = EnablePlan & {
@@ -39,6 +55,8 @@ export type EnableResult = EnablePlan & {
   deepIndexStarted: boolean;
   deepIndexLog?: string | undefined;
   indexError?: string | undefined;
+  semanticModelInstalled: boolean;
+  semanticModelError?: string | undefined;
   doctor?: DoctorReport | undefined;
 };
 
@@ -80,6 +98,11 @@ export function planKairnEnable(input: {
       detail: agent.configuredBefore ? "Kairn configuration will be refreshed" : "Kairn configuration will be added"
     };
   });
+  const semanticModel = getSemanticModelState({
+    modelId: DEFAULT_SEMANTIC_MODEL_ID,
+    homeDir
+  });
+  const semanticManifest = getSemanticModelManifest(DEFAULT_SEMANTIC_MODEL_ID);
   return {
     rootPath,
     ...(input.homeDir ? { homeDir } : {}),
@@ -91,7 +114,16 @@ export function planKairnEnable(input: {
           target: "generic",
           clientConfig: writeMcpClientSetup({ root: rootPath, client: "generic", writeInstructions: false }).clientConfig
         }]
-      : []
+      : [],
+    semanticModel,
+    semanticModelDownload: {
+      modelId: semanticManifest.modelId,
+      bytes: semanticModelBytes(semanticManifest),
+      license: semanticManifest.license,
+      upstreamRepository: semanticManifest.upstreamRepository,
+      upstreamRevision: semanticManifest.upstreamRevision,
+      required: semanticModel.status !== "ready"
+    }
   };
 }
 
@@ -100,6 +132,7 @@ export async function enableKairn(input: {
   dryRun?: boolean | undefined;
   cancelled?: boolean | undefined;
   index?: boolean | undefined;
+  installModel?: boolean | undefined;
 }): Promise<EnableResult> {
   const index = input.index !== false;
   if (input.dryRun || input.cancelled) {
@@ -109,7 +142,8 @@ export async function enableKairn(input: {
       cancelled: Boolean(input.cancelled),
       indexed: false,
       indexMode: "skip",
-      deepIndexStarted: false
+      deepIndexStarted: false,
+      semanticModelInstalled: false
     };
   }
 
@@ -131,6 +165,24 @@ export async function enableKairn(input: {
   let doctor = setup?.doctor;
   let deepIndexStarted = false;
   let deepIndexLog: string | undefined;
+  let semanticModel = input.plan.semanticModel;
+  let semanticModelInstalled = false;
+  let semanticModelError: string | undefined;
+  if (input.installModel && semanticModel.status !== "ready") {
+    try {
+      semanticModel = await installSemanticModel({
+        modelId: DEFAULT_SEMANTIC_MODEL_ID,
+        ...(input.plan.homeDir ? { homeDir: input.plan.homeDir } : {})
+      });
+      semanticModelInstalled = semanticModel.status === "ready";
+    } catch (error) {
+      semanticModelError = error instanceof Error ? error.message : String(error);
+    }
+  }
+  writeSemanticRetrieverConfig(input.plan.rootPath, {
+    mode: "shadow",
+    modelId: DEFAULT_SEMANTIC_MODEL_ID
+  });
   if (index) {
     const runtime = new KairnRuntime(input.plan.rootPath);
     try {
@@ -173,6 +225,9 @@ export async function enableKairn(input: {
     indexed,
     indexMode: index ? "inventory" : "skip",
     deepIndexStarted,
+    semanticModel,
+    semanticModelInstalled,
+    ...(semanticModelError ? { semanticModelError } : {}),
     ...(deepIndexLog ? { deepIndexLog } : {}),
     ...(indexError ? { indexError } : {}),
     doctor
@@ -242,6 +297,11 @@ export function formatEnableResult(result: EnableResult): string {
     heading,
     `Root: ${result.rootPath}`,
     `Index: ${result.indexed ? `inventory ready (${result.indexMode})` : result.indexMode === "skip" ? "not changed" : "not built"}`,
+    `Semantic model: ${result.semanticModel.status}${result.semanticModelInstalled ? " (installed)" : ""}`,
+    result.semanticModelDownload.required
+      ? `Model download: ${result.semanticModelDownload.modelId}, ${(result.semanticModelDownload.bytes / 1024 / 1024).toFixed(1)} MB, ${result.semanticModelDownload.license}, ${result.semanticModelDownload.upstreamRepository}@${result.semanticModelDownload.upstreamRevision}`
+      : "Model download: not required",
+    result.semanticModelError ? `Semantic model warning: ${result.semanticModelError}` : "",
     result.deepIndexStarted ? `Deep index: started in background${result.deepIndexLog ? ` (${result.deepIndexLog})` : ""}` : "",
     result.indexError ? `Index warning: ${result.indexError}` : "",
     result.writesUserConfig ? "User config: ~/.copilot/mcp-config.json" : "",

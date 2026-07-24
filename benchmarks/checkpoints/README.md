@@ -37,3 +37,9 @@ Required source paths that do not exist in the repository base commit are
 recorded as creation targets, not retrieval misses. Existing-source recall and
 new-file creation counts remain separate throughout materialization, corpus
 flattening, and readiness reporting.
+
+`semantic-candidate-baseline.v1` freezes the last legacy candidate-union
+measurements before model-based semantic retrieval. Its pending reviews are
+explicitly superseded rather than completed against a changing union. Ranker
+training and paid live comparisons stay blocked until a frozen semantic
+generator passes the candidate gates.

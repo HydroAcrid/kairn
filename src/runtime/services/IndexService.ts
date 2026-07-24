@@ -24,7 +24,11 @@ export class IndexService {
 
   async init(): Promise<InitResult> {
     const paths = ensureKairnDir(this.deps.rootPath);
-    const index = await indexRepo(this.deps.rootPath);
+    const index = await indexRepo(this.deps.rootPath, {
+      ...(this.deps.semanticConfig ? { semantic: this.deps.semanticConfig } : {}),
+      existingEmbeddings: this.deps.store.listSemanticEmbeddings(this.deps.rootPath),
+      onSemanticEmbeddingBatch: (embeddings) => this.deps.store.upsertSemanticEmbeddings(embeddings)
+    });
     this.deps.store.replaceIndex({
       rootPath: this.deps.rootPath,
       files: index.graph.files,
@@ -32,14 +36,30 @@ export class IndexService {
       edges: index.graph.edges,
       semanticChunks: index.semanticChunks,
       semanticVectors: index.semanticVectors,
+      ...(index.semanticStatus.status === "ready"
+        ? {
+            semanticDocuments: index.semanticDocuments,
+            semanticEmbeddings: index.semanticEmbeddings
+          }
+        : {}),
       lexicalDocuments: index.lexical.documents,
       lexicalTerms: index.lexical.terms,
       lexicalStats: index.lexical.stats
     });
-    this.deps.store.upsertIndexMetadata(captureIndexFreshnessMetadata({
+    const freshness = captureIndexFreshnessMetadata({
       rootPath: this.deps.rootPath,
       fileCount: index.graph.files.length
-    }));
+    });
+    this.deps.store.upsertIndexMetadata({
+      ...freshness,
+      metadata: {
+        ...freshness.metadata,
+        semanticModelId: index.semanticStatus.modelId ?? null,
+        semanticIndexStatus: index.semanticStatus.status,
+        semanticDocumentCount: index.semanticDocuments.length,
+        semanticEmbeddingCount: index.semanticEmbeddings.length
+      }
+    });
     const stats = this.ensureStateWithinHardLimit(this.deps.rootPath);
 
     return {
@@ -51,7 +71,10 @@ export class IndexService {
       graph: index.graph,
       semantic: {
         chunks: index.semanticChunks.length,
-        vectors: index.semanticVectors.length
+        vectors: index.semanticVectors.length,
+        documents: index.semanticDocuments.length,
+        embeddings: index.semanticEmbeddings.length,
+        ...index.semanticStatus
       },
       state: stats
     };
@@ -106,7 +129,11 @@ export class IndexService {
     if (!input?.force && existing.length > 0 && !freshness.stale && !isInventoryStage(storedMetadata?.metadata)) {
       return existing;
     }
-    const index = await indexRepo(rootPath);
+    const index = await indexRepo(rootPath, {
+      ...(this.deps.semanticConfig ? { semantic: this.deps.semanticConfig } : {}),
+      existingEmbeddings: this.deps.store.listSemanticEmbeddings(rootPath),
+      onSemanticEmbeddingBatch: (embeddings) => this.deps.store.upsertSemanticEmbeddings(embeddings)
+    });
     this.deps.store.replaceIndex({
       rootPath,
       files: index.graph.files,
@@ -114,14 +141,30 @@ export class IndexService {
       edges: index.graph.edges,
       semanticChunks: index.semanticChunks,
       semanticVectors: index.semanticVectors,
+      ...(index.semanticStatus.status === "ready"
+        ? {
+            semanticDocuments: index.semanticDocuments,
+            semanticEmbeddings: index.semanticEmbeddings
+          }
+        : {}),
       lexicalDocuments: index.lexical.documents,
       lexicalTerms: index.lexical.terms,
       lexicalStats: index.lexical.stats
     });
-    this.deps.store.upsertIndexMetadata(captureIndexFreshnessMetadata({
+    const refreshedMetadata = captureIndexFreshnessMetadata({
       rootPath,
       fileCount: index.graph.files.length
-    }));
+    });
+    this.deps.store.upsertIndexMetadata({
+      ...refreshedMetadata,
+      metadata: {
+        ...refreshedMetadata.metadata,
+        semanticModelId: index.semanticStatus.modelId ?? null,
+        semanticIndexStatus: index.semanticStatus.status,
+        semanticDocumentCount: index.semanticDocuments.length,
+        semanticEmbeddingCount: index.semanticEmbeddings.length
+      }
+    });
     this.ensureStateWithinHardLimit(rootPath);
     return index.graph.files;
   }
