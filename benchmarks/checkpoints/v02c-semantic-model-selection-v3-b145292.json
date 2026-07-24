@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "semantic-model-freeze.v1",
+  "checkpointId": "v02c-semantic-model-selection-v3-20260724",
+  "createdAt": "2026-07-24T18:28:00-04:00",
+  "status": "frozen_before_holdout",
+  "implementationBaseCommit": "b145292",
+  "supersedes": "v02c-semantic-model-selection-v2-20260724",
+  "supersessionReason": "The first public-repository oracle attempt exposed duplicate parser symbol records producing duplicate semantic-document IDs. No candidate score was produced. The general identity and deduplication mechanism was fixed and the document schema was bumped.",
+  "selectionManifest": {
+    "path": "benchmarks/semantic/model-selection-v3.json",
+    "sha256": "1294dd5c742dad29ee73aad492552202805d8c736a906a1e8afdceedce158d71",
+    "documentSchemaVersion": "semantic-documents-v3",
+    "selectionCases": 10,
+    "holdoutCases": 5,
+    "lineageDisjoint": true,
+    "holdoutOpened": false
+  },
+  "candidates": [
+    {
+      "modelId": "bge-small-en-v15",
+      "selectionArtifactSha256": "ccf2df20297215cee7052b3715b7f05472406f1f02bea6357504cede9c04bd8e",
+      "selection": {
+        "recallAt1": 0.7,
+        "recallAt5": 1,
+        "strictFullRecallAt64": 1,
+        "strictFullRecallAt128": 1,
+        "meanReciprocalRank": 0.833333,
+        "medianQueryLatencyMs": 15.404,
+        "coldInitializationMs": 687.274
+      }
+    },
+    {
+      "modelId": "jina-code-v2-q8",
+      "selectionArtifactSha256": "9db46da6d7c044bad995274e69be04390de092296cbd3f8e536e18ad2021546c",
+      "selection": {
+        "recallAt1": 1,
+        "recallAt5": 1,
+        "strictFullRecallAt64": 1,
+        "strictFullRecallAt128": 1,
+        "meanReciprocalRank": 1,
+        "medianQueryLatencyMs": 33.232,
+        "coldInitializationMs": 993.351
+      }
+    }
+  ],
+  "winner": {
+    "modelId": "jina-code-v2-q8",
+    "reason": "Jina retained perfect selection Recall@1 and MRR and is the predeclared code-retrieval-quality preference.",
+    "documentSchemaVersion": "semantic-documents-v3",
+    "maximumDocumentChars": 768,
+    "embeddingBatchSize": 16,
+    "featureSchemaVersion": "evidence-features-v2",
+    "semanticTopK": 64,
+    "initialCandidateLimit": 64,
+    "enrichedCandidateLimit": 128,
+    "rankFusionConstant": 60,
+    "graphHops": 1
+  },
+  "verification": {
+    "tests": {
+      "filesPassed": 30,
+      "testsPassed": 422
+    },
+    "typecheck": "passed",
+    "build": "passed",
+    "semanticArchitectureCheck": "passed"
+  },
+  "holdoutOpened": false,
+  "paidComparisonEligible": false,
+  "nextGate": "Evaluate Jina once on the five new v3 holdout lineages, then rerun the public-repository oracle."
+}
