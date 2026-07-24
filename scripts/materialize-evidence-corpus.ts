@@ -9,6 +9,11 @@ import { fileURLToPath } from "node:url";
 import { ensureKairnDir } from "../src/config/paths.js";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
 import { EVIDENCE_FEATURE_SCHEMA_VERSION } from "../src/retrieval/evidenceModel.js";
+import { SEMANTIC_DOCUMENT_SCHEMA_VERSION } from "../src/semantic/documents.js";
+import {
+  DEFAULT_SEMANTIC_MODEL_ID,
+  getSemanticModelManifest
+} from "../src/semantic/modelRegistry.js";
 import { SqliteStore } from "../src/store/sqliteStore.js";
 import type { EvidenceCandidate, SemanticEmbeddingRecord } from "../src/types.js";
 
@@ -608,13 +613,28 @@ type SnapshotEmbeddingCache = {
 };
 
 function semanticSnapshotCacheKey(intakeCase: IntakeCase): string {
+  const modelId = process.env.KAIRN_SEMANTIC_MODEL?.trim() || DEFAULT_SEMANTIC_MODEL_ID;
+  const modelManifestSha256 = sha256(JSON.stringify(getSemanticModelManifest(modelId)));
+  return buildSemanticSnapshotCacheKey({
+    repositoryLineageId: intakeCase.repositoryLineageId,
+    modelId,
+    modelManifestSha256,
+    documentSchemaVersion: SEMANTIC_DOCUMENT_SCHEMA_VERSION
+  });
+}
+
+export function buildSemanticSnapshotCacheKey(input: {
+  repositoryLineageId: string;
+  modelId: string;
+  modelManifestSha256: string;
+  documentSchemaVersion: SemanticEmbeddingRecord["schemaVersion"];
+}): string {
   return sha256([
-    "semantic-embedding-cache.v2",
-    intakeCase.repositoryUrl,
-    intakeCase.repositoryRef,
-    process.env.KAIRN_CANDIDATE_MODE ?? "",
-    process.env.KAIRN_SEMANTIC_MODEL ?? "",
-    process.env.KAIRN_SEMANTIC_MODEL_PATH ?? ""
+    "semantic-embedding-cache.v3",
+    input.repositoryLineageId,
+    input.modelId,
+    input.modelManifestSha256,
+    input.documentSchemaVersion
   ].join("\0"));
 }
 

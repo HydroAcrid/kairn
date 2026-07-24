@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { validateEvidenceRankerArtifact } from "../src/retrieval/evidenceModel.js";
 import { EVIDENCE_FEATURE_NAMES } from "../src/types/evidence.js";
 import {
+  buildSemanticSnapshotCacheKey,
   materializeEvidenceCorpus,
   persistSnapshotEmbeddingCache,
   restoreSnapshotEmbeddingCache
@@ -117,6 +118,34 @@ describe("public evidence ranker training", () => {
       secondStore.close();
       fs.rmSync(temporary, { recursive: true, force: true });
     }
+  });
+
+  it("shares content-validated embeddings across refs in one repository lineage", () => {
+    const base = {
+      repositoryLineageId: "https://github.com/example/project",
+      modelId: "pinned-model",
+      modelManifestSha256: "a".repeat(64),
+      documentSchemaVersion: "semantic-documents-v3" as const
+    };
+    const firstRef = buildSemanticSnapshotCacheKey(base);
+    const secondRef = buildSemanticSnapshotCacheKey({ ...base });
+    const changedModel = buildSemanticSnapshotCacheKey({
+      ...base,
+      modelManifestSha256: "b".repeat(64)
+    });
+    const changedSchema = buildSemanticSnapshotCacheKey({
+      ...base,
+      documentSchemaVersion: "semantic-documents-v2"
+    });
+    const changedLineage = buildSemanticSnapshotCacheKey({
+      ...base,
+      repositoryLineageId: "https://github.com/example/other-project"
+    });
+
+    expect(firstRef).toBe(secondRef);
+    expect(changedModel).not.toBe(firstRef);
+    expect(changedSchema).not.toBe(firstRef);
+    expect(changedLineage).not.toBe(firstRef);
   });
 
   it("materializes candidate features from the same bounded serving path", async () => {
