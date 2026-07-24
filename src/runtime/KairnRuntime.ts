@@ -4660,6 +4660,7 @@ function rankedFilesFromScored(files: HybridScoredResult[]): ContextRankedFile[]
     ...(file.candidateGeneratorMode ? { candidateGeneratorMode: file.candidateGeneratorMode } : {}),
     ...(file.semanticModelId ? { semanticModelId: file.semanticModelId } : {}),
     ...(file.semanticIndexStatus ? { semanticIndexStatus: file.semanticIndexStatus } : {}),
+    ...(file.semanticSimilarity !== undefined ? { semanticSimilarity: file.semanticSimilarity } : {}),
     ...(file.semanticFallbackReason ? { semanticFallbackReason: file.semanticFallbackReason } : {}),
     scores: {
       semantic: file.semanticScore,

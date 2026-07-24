@@ -260,6 +260,7 @@ export type ContextRankedFile = {
   candidateGeneratorMode?: CandidateGeneratorMode | "fallback";
   semanticModelId?: string;
   semanticIndexStatus?: SemanticIndexStatus;
+  semanticSimilarity?: number;
   semanticFallbackReason?: string;
   scores?: {
     semantic?: number;
@@ -335,6 +336,7 @@ export type HybridScoredResult = FileRecord & {
   candidateGeneratorMode?: CandidateGeneratorMode | "fallback";
   semanticModelId?: string;
   semanticIndexStatus?: SemanticIndexStatus;
+  semanticSimilarity?: number;
   semanticFallbackReason?: string;
   semanticScore: number;
   keywordScore: number;

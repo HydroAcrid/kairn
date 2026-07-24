@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import {
   DEFAULT_SEMANTIC_MODEL_ID,
+  MAX_SEMANTIC_MODEL_BYTES,
   getSemanticModelManifest,
   semanticModelBytes,
   semanticModelDownloadUrl,
@@ -18,6 +19,7 @@ export type SemanticModelState = {
   modelPath: string;
   status: "unavailable" | "corrupt" | "incompatible" | "ready";
   totalBytes: number;
+  manifestSha256?: string;
   license?: string;
   upstreamRepository?: string;
   upstreamRevision?: string;
@@ -64,9 +66,24 @@ export function getSemanticModelState(input?: {
 
   try {
     const receipt = readInstalledSemanticModel(modelPath);
-    if (receipt.manifest.modelId !== requestedModelId && !input?.modelPath) {
+    if (receipt.manifest.modelId !== requestedModelId) {
       throw new Error(
-        `Installed model id ${receipt.manifest.modelId} does not match requested model ${requestedModelId}.`
+        `Installed model is incompatible: id ${receipt.manifest.modelId} does not match requested model ${requestedModelId}.`
+      );
+    }
+    let pinnedManifestSha256: string;
+    try {
+      pinnedManifestSha256 = semanticModelManifestSha256(
+        getSemanticModelManifest(receipt.manifest.modelId)
+      );
+    } catch {
+      throw new Error(
+        `Installed model ${receipt.manifest.modelId} is incompatible with this Kairn release.`
+      );
+    }
+    if (receipt.manifestSha256 !== pinnedManifestSha256) {
+      throw new Error(
+        `Installed model ${receipt.manifest.modelId} is incompatible with Kairn's pinned artifact manifest.`
       );
     }
     verifyInstalledFiles(modelPath, receipt.manifest, Boolean(input?.verifyHashes));
@@ -75,6 +92,7 @@ export function getSemanticModelState(input?: {
       modelPath,
       status: "ready",
       totalBytes: semanticModelBytes(receipt.manifest),
+      manifestSha256: receipt.manifestSha256,
       license: receipt.manifest.license,
       upstreamRepository: receipt.manifest.upstreamRepository,
       upstreamRevision: receipt.manifest.upstreamRevision
@@ -114,9 +132,16 @@ export async function installSemanticModel(input?: {
   if (existing.status === "ready") return existing;
 
   fs.mkdirSync(modelsRoot, { recursive: true });
+  const otherCacheBytes = Math.max(0, directorySize(modelsRoot) - directorySize(targetPath));
+  const aggregateBytes = semanticModelBytes(manifest);
+  if (otherCacheBytes + aggregateBytes > MAX_SEMANTIC_MODEL_BYTES) {
+    throw new Error(
+      `Installing ${manifest.modelId} would exceed Kairn's 200MB semantic model cache limit. ` +
+      "Remove another installed or partial model before continuing."
+    );
+  }
   const stagePath = path.join(modelsRoot, `.${safeModelDirectoryName(manifest.modelId)}.partial-${randomUUID()}`);
   fs.mkdirSync(stagePath, { recursive: false });
-  const aggregateBytes = semanticModelBytes(manifest);
   let completedBytes = 0;
 
   try {
@@ -144,7 +169,7 @@ export async function installSemanticModel(input?: {
       formatVersion: 1,
       installedAt: new Date().toISOString(),
       manifest,
-      manifestSha256: hashManifest(manifest)
+      manifestSha256: semanticModelManifestSha256(manifest)
     };
     fs.writeFileSync(
       path.join(stagePath, "kairn-model.json"),
@@ -192,7 +217,7 @@ export function readInstalledSemanticModel(modelPath: string): InstalledSemantic
     throw new Error("Unsupported Kairn semantic model receipt.");
   }
   validateManifest(parsed.manifest);
-  if (hashManifest(parsed.manifest) !== parsed.manifestSha256) {
+  if (semanticModelManifestSha256(parsed.manifest) !== parsed.manifestSha256) {
     throw new Error("The semantic model manifest checksum does not match its receipt.");
   }
   return parsed as InstalledSemanticModelReceipt;
@@ -351,7 +376,7 @@ function safeModelDirectoryName(modelId: string): string {
   return normalized;
 }
 
-function hashManifest(manifest: SemanticModelManifest): string {
+export function semanticModelManifestSha256(manifest: SemanticModelManifest): string {
   return createHash("sha256").update(JSON.stringify(manifest)).digest("hex");
 }
 

@@ -163,6 +163,7 @@ function formatModelState(state: ReturnType<typeof getSemanticModelState>): stri
     `Status: ${state.status}`,
     `Path: ${state.modelPath}`,
     `Size: ${formatBytes(state.totalBytes)}`,
+    state.manifestSha256 ? `Manifest SHA-256: ${state.manifestSha256}` : "",
     state.license ? `License: ${state.license}` : "",
     state.upstreamRepository
       ? `Source: ${state.upstreamRepository}@${state.upstreamRevision}`

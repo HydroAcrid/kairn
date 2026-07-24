@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -11,8 +12,13 @@ import {
   searchSemanticCandidates
 } from "../src/retrieval/semanticCandidates.js";
 import { buildSemanticDocuments } from "../src/semantic/documents.js";
-import { getSemanticModelState } from "../src/semantic/modelManager.js";
 import {
+  getSemanticModelState,
+  getSemanticModelsRoot,
+  installSemanticModel
+} from "../src/semantic/modelManager.js";
+import {
+  getSemanticModelManifest,
   MAX_SEMANTIC_MODEL_BYTES,
   SEMANTIC_MODEL_MANIFESTS,
   semanticModelBytes
@@ -109,7 +115,12 @@ describe("model-based semantic candidates", () => {
     expect(result.initialPaths).toContain("src/session/renewal.ts");
     expect(result.initialPaths).not.toContain("vendor/generated/client.ts");
     expect(result.candidateResults.find((candidate) => candidate.path === "src/session/renewal.ts"))
-      .toMatchObject({ semanticScore: 0.91, behaviorScore: 0, intentScore: 0 });
+      .toMatchObject({
+        semanticSimilarity: 0.91,
+        semanticScore: 0.91,
+        behaviorScore: 0,
+        intentScore: 0
+      });
   });
 
   it("pins precise failure paths ahead of a full 64-file semantic lane", () => {
@@ -165,6 +176,61 @@ describe("model-based semantic candidates", () => {
         semanticIndexStatus: "unavailable"
       });
       expect(fs.existsSync(modelPath)).toBe(false);
+    } finally {
+      fs.rmSync(temporary, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects installed artifacts that no longer match the pinned model manifest", () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-manifest-"));
+    const modelPath = path.join(temporary, "model");
+    try {
+      fs.mkdirSync(modelPath);
+      const manifest = {
+        ...getSemanticModelManifest("jina-code-v2-q8"),
+        queryPrefix: "mutated artifact identity"
+      };
+      const manifestSha256 = createHash("sha256")
+        .update(JSON.stringify(manifest))
+        .digest("hex");
+      fs.writeFileSync(path.join(modelPath, "kairn-model.json"), `${JSON.stringify({
+        formatVersion: 1,
+        installedAt: "2026-07-24T00:00:00.000Z",
+        manifest,
+        manifestSha256
+      })}\n`);
+
+      expect(getSemanticModelState({
+        modelId: "jina-code-v2-q8",
+        modelPath
+      })).toMatchObject({
+        status: "incompatible",
+        error: expect.stringContaining("pinned artifact manifest")
+      });
+    } finally {
+      fs.rmSync(temporary, { recursive: true, force: true });
+    }
+  });
+
+  it("enforces the 200MB cap across the complete user model cache", async () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-cache-cap-"));
+    let fetched = false;
+    try {
+      const occupied = path.join(getSemanticModelsRoot(temporary), "another-model");
+      fs.mkdirSync(occupied, { recursive: true });
+      const occupiedWeights = path.join(occupied, "weights.bin");
+      fs.writeFileSync(occupiedWeights, "");
+      fs.truncateSync(occupiedWeights, 50 * 1024 * 1024);
+
+      await expect(installSemanticModel({
+        modelId: "jina-code-v2-q8",
+        homeDir: temporary,
+        fetchImpl: (async () => {
+          fetched = true;
+          throw new Error("fetch must not run when the cache gate fails");
+        }) as typeof fetch
+      })).rejects.toThrow("200MB semantic model cache limit");
+      expect(fetched).toBe(false);
     } finally {
       fs.rmSync(temporary, { recursive: true, force: true });
     }

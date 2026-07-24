@@ -122,6 +122,7 @@ export function buildModelCandidateUnion(input: {
       ...file,
       score: Number((((semantic?.similarity ?? 0) + (bm25?.bm25Score ?? 0)) * 100).toFixed(3)),
       reasons,
+      ...(semantic ? { semanticSimilarity: semantic.similarity } : {}),
       semanticScore: semantic?.similarity ?? 0,
       keywordScore: 0,
       bm25Score: bm25?.bm25Score ?? 0,
