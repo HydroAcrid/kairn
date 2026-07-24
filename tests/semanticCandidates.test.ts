@@ -49,7 +49,7 @@ describe("model-based semantic candidates", () => {
 
   it("seals lineage-disjoint selection and holdout cases across all language/scenario cells", () => {
     const manifest = JSON.parse(fs.readFileSync(
-      path.resolve("benchmarks/semantic/model-selection-v3.json"),
+      path.resolve("benchmarks/semantic/model-selection-v4.json"),
       "utf8"
     )) as {
       sealed: boolean;
