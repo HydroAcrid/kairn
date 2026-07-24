@@ -221,11 +221,12 @@ export function buildRankerReadinessCheckpoint(
   );
   expectValue(reviewApplication.explicitNoiseLabels, explicitNoiseLabels, "review application explicit-noise labels");
 
-  const zeroPositiveCases = [...manifestCases.values()].filter((item, caseIndex) =>
-    !array(item.candidates, `manifest.cases[${caseIndex}].candidates`).some((candidate, candidateIndex) =>
-      record(candidate, `manifest.cases[${caseIndex}].candidates[${candidateIndex}]`).label === 1
+  const zeroPositiveCases = [...manifestCases.values()].filter((item, caseIndex) => {
+    const trainingCandidates = item.trainingCandidates ?? item.candidates;
+    return !array(trainingCandidates, `manifest.cases[${caseIndex}].trainingCandidates`).some((candidate, candidateIndex) =>
+      record(candidate, `manifest.cases[${caseIndex}].trainingCandidates[${candidateIndex}]`).label === 1
     )
-  ).length;
+  }).length;
   expectValue(corpusSummary.zeroPositiveCases, zeroPositiveCases, "corpus summary zeroPositiveCases");
 
   const strictReviewedOracles = recallSummary(oracleCases);
@@ -303,6 +304,10 @@ export function buildRankerReadinessCheckpoint(
     materialization: {
       kairnCommit: materializerCommit,
       candidateLimit: integer(materializer.candidateLimit, "manifest.materializer.candidateLimit"),
+      enrichedCandidateLimit: integer(
+        materializer.enrichedCandidateLimit ?? 128,
+        "manifest.materializer.enrichedCandidateLimit"
+      ),
       graphHops: integer(materializer.graphHops, "manifest.materializer.graphHops"),
       caseProcessIsolation: true,
       caseCount,

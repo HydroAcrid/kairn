@@ -86,7 +86,18 @@ describe("public evidence ranker training", () => {
     expect(result.caseCount).toBe(1);
     const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
     expect(manifest.cases[0].candidates.length).toBeGreaterThanOrEqual(7);
+    expect(manifest.cases[0].trainingCandidates.length).toBeGreaterThanOrEqual(
+      manifest.cases[0].candidates.length
+    );
+    expect(
+      manifest.cases[0].trainingCandidates.slice(0, manifest.cases[0].candidates.length)
+    ).toEqual(manifest.cases[0].candidates);
     expect(manifest.materializer.caseProcessIsolation).toBe(true);
+    expect(manifest.materializer).toMatchObject({
+      candidateLimit: 64,
+      enrichedCandidateLimit: 128,
+      graphHops: 1
+    });
     expect(manifest.cases[0].candidates).toEqual(expect.arrayContaining([
       expect.objectContaining({
         path: "src/user.ts",
@@ -99,6 +110,8 @@ describe("public evidence ranker training", () => {
       candidateRecallAt64: 1,
       cases: [expect.objectContaining({
         explicitNegativeCount: 6,
+        explicitNegativeCountAt64: 6,
+        trainingCandidateCount: expect.any(Number),
         requiredSourceRecallAt64: 1,
         officialPatchSourceRecallAt128: null,
         signals: expect.objectContaining({ explicitPaths: expect.arrayContaining(["src/user.ts"]) }),
@@ -398,7 +411,17 @@ describe("public evidence ranker training", () => {
       sealed: true,
       sampleOnly: true,
       lineageRegistry: "lineages.json",
-      cases
+      cases: cases.map((item) => ({
+        ...item,
+        trainingCandidates: [
+          ...item.candidates,
+          {
+            path: "src/enriched.ts",
+            features: { ...features, productionSource: 1 },
+            label: null
+          }
+        ]
+      }))
     }), "utf8");
 
     const python = pythonInvocation();
@@ -412,12 +435,13 @@ describe("public evidence ranker training", () => {
     ], { cwd: process.cwd(), encoding: "utf8" });
 
     expect(result.status, result.stderr).toBe(0);
-    expect(fs.readFileSync(outputPath, "utf8").trim().split("\n")).toHaveLength(21);
+    expect(fs.readFileSync(outputPath, "utf8").trim().split("\n")).toHaveLength(24);
     expect(JSON.parse(fs.readFileSync(summaryPath, "utf8"))).toMatchObject({
       sampleOnly: true,
       caseCount: 3,
-      candidateRows: 21,
+      candidateRows: 24,
       labeledRows: 21,
+      unlabeledRows: 3,
       zeroPositiveCases: 0,
       requiredSourceCreationCases: 0,
       requiredSourceCreationFiles: 0

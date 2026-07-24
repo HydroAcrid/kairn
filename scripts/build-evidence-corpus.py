@@ -208,10 +208,27 @@ def validate_case(
         raise ValueError(f"{label}.candidates must be an array")
     if not 7 <= len(candidates_value) <= 64:
         raise ValueError(f"{label}.candidates must contain 7 to 64 bounded candidates")
-    candidates = [validate_candidate(item, f"{label}.candidates[{candidate_index}]") for candidate_index, item in enumerate(candidates_value)]
-    paths = [candidate["path"] for candidate in candidates]
-    if len(paths) != len(set(paths)):
+    serving_candidates = [
+        validate_candidate(item, f"{label}.candidates[{candidate_index}]")
+        for candidate_index, item in enumerate(candidates_value)
+    ]
+    serving_paths = [candidate["path"] for candidate in serving_candidates]
+    if len(serving_paths) != len(set(serving_paths)):
         raise ValueError(f"{label}.candidates contains duplicate paths")
+    training_candidates_value = row.get("trainingCandidates", candidates_value)
+    if not isinstance(training_candidates_value, list):
+        raise ValueError(f"{label}.trainingCandidates must be an array")
+    if not 7 <= len(training_candidates_value) <= 128:
+        raise ValueError(f"{label}.trainingCandidates must contain 7 to 128 bounded candidates")
+    training_candidates = [
+        validate_candidate(item, f"{label}.trainingCandidates[{candidate_index}]")
+        for candidate_index, item in enumerate(training_candidates_value)
+    ]
+    training_paths = [candidate["path"] for candidate in training_candidates]
+    if len(training_paths) != len(set(training_paths)):
+        raise ValueError(f"{label}.trainingCandidates contains duplicate paths")
+    if training_paths[:len(serving_paths)] != serving_paths:
+        raise ValueError(f"{label}.trainingCandidates must preserve the ordered candidate@64 prefix")
     required_source_oracle_count = row.get("requiredSourceOracleCount", 0)
     required_source_oracle_sha256 = row.get("requiredSourceOracleSha256")
     required_source_existing_count = row.get("requiredSourceExistingCount", required_source_oracle_count)
@@ -241,7 +258,7 @@ def validate_case(
         if split == "holdout" and required_source_oracle_count < 1:
             raise ValueError(f"{label}: production holdout cases require an independently reviewed source oracle")
     explicit_negatives = sum(
-        candidate["labelProvenance"] == "explicit_noise_or_excluded" for candidate in candidates
+        candidate["labelProvenance"] == "explicit_noise_or_excluded" for candidate in training_candidates
     )
     if explicit_negatives < 6:
         raise ValueError(f"{label} requires at least six explicit noise/excluded negatives")
@@ -265,7 +282,8 @@ def validate_case(
         "requiredSourceExistingSha256": required_source_existing_sha256,
         "requiredSourceCreationCount": required_source_creation_count,
         "requiredSourceCreationSha256": required_source_creation_sha256,
-        "candidates": candidates,
+        "servingCandidates": serving_candidates,
+        "candidates": training_candidates,
     }
 
 
@@ -370,8 +388,14 @@ def main() -> int:
             expected_lengths = (40, 64) if field == "kairnCommit" else (64,)
             if len(value) not in expected_lengths or any(char not in "0123456789abcdefABCDEF" for char in value):
                 raise ValueError(f"materializer.{field} must be a hexadecimal provenance hash")
-        if materializer.get("candidateLimit") != 64 or materializer.get("graphHops") != 1:
-            raise ValueError("materializer must pin candidateLimit=64 and graphHops=1")
+        if (
+            materializer.get("candidateLimit") != 64
+            or materializer.get("enrichedCandidateLimit", 128) != 128
+            or materializer.get("graphHops") != 1
+        ):
+            raise ValueError(
+                "materializer must pin candidateLimit=64, enrichedCandidateLimit=128, and graphHops=1"
+            )
         if materializer.get("caseProcessIsolation") is not True:
             raise ValueError("materializer must prove caseProcessIsolation=true")
     registry_ref = require_string(root.get("lineageRegistry"), "lineageRegistry")

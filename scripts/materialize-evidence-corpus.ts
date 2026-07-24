@@ -113,30 +113,43 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
         throw new Error(`${intakeCase.id}: candidate generator returned fewer than seven candidates`);
       }
       const labels = buildLabels(intakeCase);
-      const candidatePaths = new Set(inspection.candidates.map((candidate) => normalizePath(candidate.path)));
-      const missingLabels = [...labels.keys()].filter((candidatePath) => !candidatePaths.has(candidatePath));
+      const candidatePathsAt64 = new Set(inspection.candidates.map((candidate) => normalizePath(candidate.path)));
+      const trainingCandidatePaths = new Set(
+        inspection.enrichedCandidates.map((candidate) => normalizePath(candidate.path))
+      );
+      const missingLabels = [...labels.keys()].filter((candidatePath) => !trainingCandidatePaths.has(candidatePath));
       const requiredSourcePaths = new Set(requiredSourcePartition.existing);
       const explicitNoisePaths = new Set(intakeCase.explicitNoiseFiles.map(normalizePath));
-      const missingRequiredSourceFiles = missingLabels.filter((candidatePath) => requiredSourcePaths.has(candidatePath));
+      const missingRequiredSourceFiles = [...requiredSourcePaths].filter(
+        (candidatePath) => !candidatePathsAt64.has(candidatePath)
+      );
       const missingExplicitNoiseFiles = missingLabels.filter((candidatePath) => explicitNoisePaths.has(candidatePath));
+      const missingExplicitNoiseFilesAt64 = [...explicitNoisePaths].filter(
+        (candidatePath) => !candidatePathsAt64.has(candidatePath)
+      );
       if (!options.draft && missingExplicitNoiseFiles.length > 0) {
-        throw new Error(`${intakeCase.id}: explicit-noise files missed the candidate@64 boundary: ${missingExplicitNoiseFiles.join(", ")}`);
+        throw new Error(`${intakeCase.id}: explicit-noise files missed the training candidate union: ${missingExplicitNoiseFiles.join(", ")}`);
       }
       const requiredRecall = requiredSourcePartition.existing.length > 0
-        ? fractionRecalled(requiredSourcePartition.existing, candidatePaths)
+        ? fractionRecalled(requiredSourcePartition.existing, candidatePathsAt64)
         : null;
       const patchRecall = officialPatchSourcePartition.existing.length > 0
-        ? fractionRecalled(officialPatchSourcePartition.existing, candidatePaths)
+        ? fractionRecalled(officialPatchSourcePartition.existing, candidatePathsAt64)
         : null;
-      const enrichedCandidatePaths = new Set(inspection.enrichedCandidatePaths.map(normalizePath));
       const patchRecallAt128 = officialPatchSourcePartition.existing.length > 0
-        ? fractionRecalled(officialPatchSourcePartition.existing, enrichedCandidatePaths)
+        ? fractionRecalled(officialPatchSourcePartition.existing, trainingCandidatePaths)
         : null;
       const candidates = inspection.candidates.map((candidate) => labeledCandidate(candidate, labels));
-      const explicitNegatives = candidates.filter((candidate) => candidate.labelProvenance === "explicit_noise_or_excluded").length;
+      const trainingCandidates = inspection.enrichedCandidates.map((candidate) => labeledCandidate(candidate, labels));
+      const explicitNegativesAt64 = candidates.filter(
+        (candidate) => candidate.labelProvenance === "explicit_noise_or_excluded"
+      ).length;
+      const explicitNegatives = trainingCandidates.filter(
+        (candidate) => candidate.labelProvenance === "explicit_noise_or_excluded"
+      ).length;
       const positiveCandidates = candidates.filter((candidate) => candidate.label === 1).length;
       if (!options.draft && explicitNegatives < 6) {
-        throw new Error(`${intakeCase.id}: at least six generated candidates must be curated as explicit noise`);
+        throw new Error(`${intakeCase.id}: at least six training candidates must be curated as explicit noise`);
       }
       const resolvedRef = intakeCase.localFixtureRoot
         ? git(["rev-parse", "HEAD"], checkout.root)
@@ -165,7 +178,8 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
           syntheticVariantOf: intakeCase.syntheticVariantOf,
           syntheticVariantIndex: intakeCase.syntheticVariantIndex
         } : {}),
-        candidates
+        candidates,
+        trainingCandidates
       });
       reportCases.push({
         id: intakeCase.id,
@@ -173,6 +187,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
         initialCandidateCount: inspection.initialCandidateCount,
         enrichedCandidateCount: inspection.enrichedCandidateCount,
         exportedCandidateCount: candidates.length,
+        trainingCandidateCount: trainingCandidates.length,
         requiredSourceRecallAt64: requiredRecall,
         requiredSourceExistingFiles: requiredSourcePartition.existing,
         requiredSourceCreationFiles: requiredSourcePartition.creation,
@@ -182,18 +197,24 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
         officialPatchSourceCreationFiles: officialPatchSourcePartition.creation,
         positiveSourceHitAt64: positiveCandidates > 0,
         explicitNegativeCount: explicitNegatives,
+        explicitNegativeCountAt64: explicitNegativesAt64,
         missingLabeledFiles: missingLabels,
         missingRequiredSourceFiles,
         missingExplicitNoiseFiles,
+        missingExplicitNoiseFilesAt64,
         missingRequiredOrNoiseFiles: [...missingRequiredSourceFiles, ...missingExplicitNoiseFiles],
-        candidatePathsSha256: sha256(candidates.map((candidate) => candidate.path).join("\n")),
+        candidatePathsSha256: sha256(trainingCandidates.map((candidate) => candidate.path).join("\n")),
+        candidatePathsAt64Sha256: sha256(candidates.map((candidate) => candidate.path).join("\n")),
         ...(options.draft ? {
           signals: inspection.signals,
           index: indexCoverage(runtime.getIndexStatus()),
           initialCandidatePaths: inspection.initialCandidatePaths,
           enrichedCandidatePaths: inspection.enrichedCandidatePaths,
           enrichedCandidates: inspection.enrichedCandidates,
-          candidates: inspection.candidates.map((candidate) => ({ path: candidate.path, reasons: candidate.reasons }))
+          candidates: inspection.enrichedCandidates.map((candidate) => ({
+            path: candidate.path,
+            reasons: candidate.reasons
+          }))
         } : {})
       });
     } finally {
@@ -216,6 +237,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       kairnCommit,
       intakeSha256: sha256(fs.readFileSync(intakePath)),
       candidateLimit: 64,
+      enrichedCandidateLimit: 128,
       graphHops: 1
     },
     cases: materializedCases
@@ -333,6 +355,7 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
       kairnCommit,
       intakeSha256: intakeHash,
       candidateLimit: 64,
+      enrichedCandidateLimit: 128,
       graphHops: 1,
       caseProcessIsolation: true
     },

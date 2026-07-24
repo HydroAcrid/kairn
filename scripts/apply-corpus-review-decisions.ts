@@ -259,7 +259,9 @@ function parseDecision(value: unknown, id: string): ReviewDecision {
 
 function approvedCandidate(value: string, candidates: Set<string>, label: string): string {
   const normalized = normalizeCandidatePath(value, label);
-  if (!candidates.has(normalized)) throw new Error(`${label} contains '${normalized}', which is absent from candidate@64`);
+  if (!candidates.has(normalized)) {
+    throw new Error(`${label} contains '${normalized}', which is absent from the reviewed candidate union`);
+  }
   return normalized;
 }
 
