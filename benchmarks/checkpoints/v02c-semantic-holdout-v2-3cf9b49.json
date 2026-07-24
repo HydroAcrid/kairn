@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "semantic-holdout-checkpoint.v1",
+  "checkpointId": "v02c-semantic-holdout-v2-20260724",
+  "createdAt": "2026-07-24T18:04:00-04:00",
+  "status": "passed",
+  "frozenImplementationCommit": "b581f55",
+  "freezeCheckpointCommit": "3cf9b49",
+  "manifest": {
+    "path": "benchmarks/semantic/model-selection-v2.json",
+    "sha256": "b00bade90050b5c6df03e3ca906e5da93494558349dec14dfceafddc321e6a5a",
+    "documentSchemaVersion": "semantic-documents-v2"
+  },
+  "model": {
+    "modelId": "jina-code-v2-q8",
+    "upstreamRepository": "jinaai/jina-embeddings-v2-base-code",
+    "upstreamRevision": "516f4baf13dec4ddddda8631e019b5737c8bc250",
+    "installedBytesAfterFallbackRemoval": 165443832
+  },
+  "holdout": {
+    "artifactPath": "artifacts/semantic/jina-holdout-v2.json",
+    "artifactSha256": "856e6a73029c0ecf87f50e9c618b5323ff27b5226dd44025d7a85b35c4c68d62",
+    "caseCount": 5,
+    "recallAt1": 0.6,
+    "recallAt5": 1,
+    "strictFullRecallAt64": 1,
+    "strictFullRecallAt128": 1,
+    "meanReciprocalRank": 0.69,
+    "zeroPositiveCasesAt128": 0,
+    "medianQueryLatencyMs": 34.226,
+    "tuningAfterHoldout": false
+  },
+  "runtime": {
+    "artifactPath": "artifacts/semantic/jina-runtime-v2.json",
+    "artifactSha256": "e35df9a504373abdac246d5f556b99fc8780e0fe9fd0be7b0b15f10070693175",
+    "cpuThreads": 4,
+    "documentChars": 768,
+    "embeddingBatchSize": 16,
+    "referenceDocuments": 7500,
+    "coldInitializationMs": 1068.189,
+    "warmQueryP95Ms": 24.6,
+    "vectorScanP95Ms": 26.756,
+    "warmCandidateP95UpperBoundMs": 51.356,
+    "projectedInitialEmbeddingMinutesAt7500": 20.35,
+    "gates": {
+      "coldInitializationAtMostFiveSeconds": true,
+      "warmCandidateAtMost300Ms": true,
+      "vectorScanAtMost50Ms": true
+    }
+  },
+  "candidateGatePassed": true,
+  "paidComparisonEligible": false,
+  "nextGate": "Rematerialize the existing 38-case required-source oracle with the frozen semantic generator. Promotion requires 38/38 strict full recall at 64 and no zero-positive cases at 128."
+}
