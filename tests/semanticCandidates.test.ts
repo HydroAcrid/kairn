@@ -47,6 +47,21 @@ describe("model-based semantic candidates", () => {
       .toBe("cls");
   });
 
+  it("seals lineage-disjoint selection and holdout cases across all language/scenario cells", () => {
+    const manifest = JSON.parse(fs.readFileSync(
+      path.resolve("benchmarks/semantic/model-selection-v1.json"),
+      "utf8"
+    )) as {
+      sealed: boolean;
+      cases: Array<{ lineageId: string; language: string; scenario: string; split: string }>;
+    };
+    expect(manifest.sealed).toBe(true);
+    expect(manifest.cases).toHaveLength(15);
+    expect(new Set(manifest.cases.map((item) => item.lineageId)).size).toBe(15);
+    expect(new Set(manifest.cases.map((item) => `${item.language}:${item.scenario}`)).size).toBe(15);
+    expect(manifest.cases.filter((item) => item.split === "holdout")).toHaveLength(5);
+  });
+
   it("collapses global symbol documents to files using maximum cosine similarity", () => {
     const rootPath = "/repo";
     const documents = [

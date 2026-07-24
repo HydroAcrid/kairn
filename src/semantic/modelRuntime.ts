@@ -2,6 +2,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { performance } from "node:perf_hooks";
 import { Tokenizer, type Encoding } from "@huggingface/tokenizers";
 import type { InferenceSession, OnnxValue, Tensor as OrtTensor } from "onnxruntime-web";
 import type { SemanticEmbeddingRecord } from "../types.js";
@@ -24,6 +25,18 @@ export type LocalEmbeddingModel = {
   modelPath: string;
   embedQueries(texts: string[]): Promise<Float32Array[]>;
   embedDocuments(texts: string[]): Promise<Float32Array[]>;
+};
+
+export type SemanticModelRuntimeVerification = {
+  modelId: string;
+  dimensions: number;
+  coldInitializationMs: number;
+  batchInferenceMs: number;
+  maximumDeterminismDelta: number;
+  queryNorm: number;
+  relevantSimilarity: number;
+  unrelatedSimilarity: number;
+  passed: boolean;
 };
 
 const pipelineCache = new Map<string, Promise<LocalEmbeddingModel>>();
@@ -56,6 +69,57 @@ export async function loadLocalEmbeddingModel(input?: {
     pipelineCache.delete(cacheKey);
     throw error;
   }
+}
+
+export async function verifyLocalEmbeddingModel(input?: {
+  modelId?: string;
+  modelPath?: string;
+  homeDir?: string;
+}): Promise<SemanticModelRuntimeVerification> {
+  const started = performance.now();
+  const model = await loadLocalEmbeddingModel(input);
+  const coldInitializationMs = performance.now() - started;
+  const queryText = "Find the implementation that renews access after an authorization session expires.";
+  const documentTexts = [
+    "This function restores access by refreshing credentials after the authorization session expires.",
+    "This stylesheet controls spacing and colors for the analytics dashboard."
+  ];
+  const inferenceStarted = performance.now();
+  const [query] = await model.embedQueries([queryText]);
+  const documents = await model.embedDocuments(documentTexts);
+  const [repeat] = await model.embedQueries([queryText]);
+  const batchInferenceMs = performance.now() - inferenceStarted;
+  if (!query || !repeat || !documents[0] || !documents[1]) {
+    throw new Error(`Semantic model ${model.manifest.modelId} returned an incomplete verification batch.`);
+  }
+  const maximumDeterminismDelta = maximumVectorDelta(query, repeat);
+  const queryNorm = vectorNorm(query);
+  const relevantSimilarity = floatCosineSimilarity(query, documents[0]);
+  const unrelatedSimilarity = floatCosineSimilarity(query, documents[1]);
+  const values = [
+    coldInitializationMs,
+    batchInferenceMs,
+    maximumDeterminismDelta,
+    queryNorm,
+    relevantSimilarity,
+    unrelatedSimilarity
+  ];
+  return {
+    modelId: model.manifest.modelId,
+    dimensions: query.length,
+    coldInitializationMs: rounded(coldInitializationMs),
+    batchInferenceMs: rounded(batchInferenceMs),
+    maximumDeterminismDelta,
+    queryNorm: rounded(queryNorm, 6),
+    relevantSimilarity: rounded(relevantSimilarity, 6),
+    unrelatedSimilarity: rounded(unrelatedSimilarity, 6),
+    passed:
+      query.length === model.manifest.dimensions &&
+      documents.every((vector) => vector.length === model.manifest.dimensions) &&
+      values.every(Number.isFinite) &&
+      Math.abs(queryNorm - 1) <= 1e-4 &&
+      maximumDeterminismDelta <= 1e-5
+  };
 }
 
 export function quantizeSemanticEmbedding(input: {
@@ -296,4 +360,40 @@ function normalizeInPlace(vector: Float32Array): void {
 
 function readJson(filePath: string): object {
   return JSON.parse(fs.readFileSync(filePath, "utf8")) as object;
+}
+
+function maximumVectorDelta(left: Float32Array, right: Float32Array): number {
+  if (left.length !== right.length) return Number.POSITIVE_INFINITY;
+  let maximum = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    maximum = Math.max(maximum, Math.abs((left[index] ?? 0) - (right[index] ?? 0)));
+  }
+  return maximum;
+}
+
+function vectorNorm(vector: Float32Array): number {
+  let sum = 0;
+  for (const value of vector) sum += value * value;
+  return Math.sqrt(sum);
+}
+
+function floatCosineSimilarity(left: Float32Array, right: Float32Array): number {
+  const length = Math.min(left.length, right.length);
+  let dot = 0;
+  let leftMagnitude = 0;
+  let rightMagnitude = 0;
+  for (let index = 0; index < length; index += 1) {
+    const leftValue = left[index] ?? 0;
+    const rightValue = right[index] ?? 0;
+    dot += leftValue * rightValue;
+    leftMagnitude += leftValue * leftValue;
+    rightMagnitude += rightValue * rightValue;
+  }
+  return leftMagnitude > 0 && rightMagnitude > 0
+    ? dot / Math.sqrt(leftMagnitude * rightMagnitude)
+    : 0;
+}
+
+function rounded(value: number, digits = 3): number {
+  return Number(value.toFixed(digits));
 }

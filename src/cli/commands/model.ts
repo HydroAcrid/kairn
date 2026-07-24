@@ -13,6 +13,7 @@ import {
   getSemanticModelManifest,
   semanticModelBytes
 } from "../../semantic/modelRegistry.js";
+import { verifyLocalEmbeddingModel } from "../../semantic/modelRuntime.js";
 import { printJson } from "../output.js";
 
 export function registerModelCommands(program: Command): void {
@@ -89,14 +90,35 @@ export function registerModelCommands(program: Command): void {
     .option("--model <id>", "model id", DEFAULT_SEMANTIC_MODEL_ID)
     .option("--home <path>", "home directory override")
     .option("--json", "print JSON output")
-    .action((options: { model: string; home?: string; json?: boolean }) => {
+    .action(async (options: { model: string; home?: string; json?: boolean }) => {
       const state = verifySemanticModel({
         modelId: options.model,
         ...(options.home ? { homeDir: options.home } : {})
       });
-      if (options.json) printJson(state);
-      else process.stdout.write(formatModelState(state));
-      if (state.status !== "ready") process.exitCode = 1;
+      const runtime = state.status === "ready"
+        ? await verifyLocalEmbeddingModel({
+            modelId: options.model,
+            modelPath: state.modelPath,
+            ...(options.home ? { homeDir: options.home } : {})
+          })
+        : undefined;
+      if (options.json) printJson({ ...state, ...(runtime ? { runtime } : {}) });
+      else {
+        process.stdout.write([
+          formatModelState(state).trimEnd(),
+          runtime
+            ? [
+                `Runtime: ${runtime.passed ? "passed" : "failed"}`,
+                `Dimensions: ${runtime.dimensions}`,
+                `Cold initialization: ${runtime.coldInitializationMs} ms`,
+                `Verification inference: ${runtime.batchInferenceMs} ms`,
+                `Maximum repeat delta: ${runtime.maximumDeterminismDelta}`
+              ].join("\n")
+            : "",
+          ""
+        ].filter(Boolean).join("\n"));
+      }
+      if (state.status !== "ready" || runtime?.passed === false) process.exitCode = 1;
     });
 
   model

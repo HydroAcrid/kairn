@@ -151,6 +151,7 @@ export async function installSemanticModel(input?: {
       `${JSON.stringify(receipt, null, 2)}\n`,
       { encoding: "utf8", flag: "wx" }
     );
+    readInstalledSemanticModel(stagePath);
     verifyInstalledFiles(stagePath, manifest, true);
     replaceInstalledModel({ modelsRoot, targetPath, stagePath });
     return getSemanticModelState({
@@ -233,7 +234,10 @@ function validateManifest(manifest: SemanticModelManifest): void {
     ) {
       throw new Error("The semantic model file manifest is invalid.");
     }
-    resolveModelFile(path.parse(process.cwd()).root, file.localPath);
+    resolveModelFile(
+      path.join(path.parse(process.cwd()).root, "kairn-model-manifest-validation"),
+      file.localPath
+    );
   }
 }
 
