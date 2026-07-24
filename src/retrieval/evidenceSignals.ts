@@ -26,7 +26,6 @@ const MAX_IDENTIFIER_LENGTH = 96;
 const MAX_PREFERRED_IDENTIFIERS = 64;
 const MAX_IDENTIFIERS = 240;
 const MAX_GRAPH_OR_PACKAGE_SEEDS = 16;
-export const PATH_TOKEN_CANDIDATE_LIMIT = 8;
 const MAX_RETRIEVAL_QUERIES = 3;
 const AMBIGUOUS_SINGLE_FILE_STEMS = new Set([
   "base",
@@ -220,14 +219,6 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
   const changedFiles = new Set([...(input.changedFiles ?? [])].map(normalizeRepoPath));
   const reasonsByPath = new Map<string, Set<EvidenceReason>>();
   const exactSymbolPriorityByPath = new Map<string, number>();
-  const pathTokenPriorityByPath = new Map(
-    input.legacyResults
-      .filter((result) => result.reasons.some((reason) => reason.startsWith("path token ")))
-      .map((result) => [
-        normalizeRepoPath(result.path),
-        result.keywordScore
-      ])
-  );
   const focusedFileStemTerms = tokenizeLexical(buildEvidenceRetrievalQueries(input.query)[0] ?? input.query);
 
   const addSignal = (filePath: string, reason: EvidenceReason): void => {
@@ -327,7 +318,6 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
         legacyByPath,
         filesByPath,
         exactSymbolPriorityByPath,
-        pathTokenPriorityByPath,
         intent: signals.intent,
         limit: initialLimit
       });
@@ -389,7 +379,6 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
         legacyByPath,
         filesByPath,
         exactSymbolPriorityByPath,
-        pathTokenPriorityByPath,
         graphPriorityByPath,
         intent: signals.intent,
         limit: initialLimit
@@ -779,7 +768,6 @@ function selectInitialPaths(input: {
   legacyByPath: Map<string, HybridScoredResult>;
   filesByPath: Map<string, FileRecord>;
   exactSymbolPriorityByPath: Map<string, number>;
-  pathTokenPriorityByPath: Map<string, number>;
   graphPriorityByPath?: Map<string, number> | undefined;
   intent: EvidenceTaskIntent;
   limit: number;
@@ -825,19 +813,6 @@ function selectInitialPaths(input: {
   // precise evidence, including cross-extension references from built output.
   // Keep this lane small because common basenames can still be ambiguous.
   for (const filePath of candidatesFor("basename").slice(0, 4)) add(filePath);
-
-  // Preserve a small independent lane for full-inventory path-token evidence.
-  // These candidates are deliberately not blended into the lexical reserve:
-  // doing so would let file importance crowd out a path matching several
-  // distinctive task terms.
-  for (const filePath of [...input.pathTokenPriorityByPath.keys()]
-    .sort((left, right) =>
-      (input.pathTokenPriorityByPath.get(right) ?? 0) - (input.pathTokenPriorityByPath.get(left) ?? 0) ||
-      left.localeCompare(right)
-    )
-    .slice(0, Math.min(PATH_TOKEN_CANDIDATE_LIMIT, input.limit))) {
-    add(filePath);
-  }
 
   // Direct source/test and definition relationships are candidate generators,
   // not merely post-64 enrichment. Retrieval-backed imports receive the same

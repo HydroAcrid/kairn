@@ -69,11 +69,10 @@ import {
   DEFAULT_INITIAL_CANDIDATE_LIMIT,
   extractEvidenceTaskSignals,
   isProductionEvidenceFile,
-  PATH_TOKEN_CANDIDATE_LIMIT,
   selectEvidenceSymbolTerms
 } from "../retrieval/evidenceSignals.js";
 import { scoreBm25Files } from "../lexical/bm25.js";
-import { scoreFiles, scorePathTokenCoverage } from "../retrieval/scoreResults.js";
+import { scoreFiles } from "../retrieval/scoreResults.js";
 import { applyCompanionCandidatesToResults, findCompanionCandidates } from "../retrieval/companions.js";
 import { findRelatedFiles, findTestsFor } from "../retrieval/relatedFiles.js";
 import { extractSymbol, readTextFile, summarizeFile } from "../retrieval/readSource.js";
@@ -3583,19 +3582,9 @@ export class KairnRuntime {
           reason.startsWith("exported symbol")
         ))
         .map((result) => lightweightKeywordResult(result, result.score, result.reasons));
-      const pathTokenScored = scorePathTokenCoverage(input.files, retrievalQuery)
-        .map((result) => lightweightKeywordResult(result, result.score, result.reasons));
-      const normalizedPathTokenScored = normalizeLightweightScores(pathTokenScored, "keywordScore");
-      const queryCandidates = mergeLightweightResults(
-        normalizeLightweightScores(scored, "keywordScore"),
-        normalizedPathTokenScored
-      );
       return mergeLightweightResults(
         merged,
-        mergeLightweightResults(
-          selectRoleBalancedSeeds(queryCandidates, sourceOrUnknownIntent),
-          normalizedPathTokenScored.slice(0, PATH_TOKEN_CANDIDATE_LIMIT)
-        )
+        selectRoleBalancedSeeds(normalizeLightweightScores(scored, "keywordScore"), sourceOrUnknownIntent)
       );
     }, []);
     const cheapCandidateResults = mergeLightweightResults(lexicalResults, pathAndSymbolResults);
