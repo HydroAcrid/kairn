@@ -6,10 +6,16 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { validateEvidenceRankerArtifact } from "../src/retrieval/evidenceModel.js";
 import { EVIDENCE_FEATURE_NAMES } from "../src/types/evidence.js";
-import { materializeEvidenceCorpus } from "../scripts/materialize-evidence-corpus.js";
+import {
+  materializeEvidenceCorpus,
+  persistSnapshotEmbeddingCache,
+  restoreSnapshotEmbeddingCache
+} from "../scripts/materialize-evidence-corpus.js";
 import { patchFiles } from "../scripts/build-public-evidence-intake.js";
 import { buildCorpusReviewQueue } from "../scripts/build-corpus-review-queue.js";
 import { applyCorpusReviewDecisions } from "../scripts/apply-corpus-review-decisions.js";
+import { ensureKairnDir } from "../src/config/paths.js";
+import { SqliteStore } from "../src/store/sqliteStore.js";
 import { createFixtureRepo } from "./helpers.js";
 
 function pythonInvocation(): { command: string; prefix: string[] } {
@@ -39,6 +45,52 @@ describe("public evidence ranker training", () => {
       "+++ b/src/engine.ts",
       "diff --git a/tests/engine.test.ts b/tests/engine.test.ts"
     ].join("\n"))).toEqual(["src/engine.ts", "tests/engine.test.ts"]);
+  });
+
+  it("reuses only immutable semantic embeddings across fresh isolated checkout roots", () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-snapshot-cache-"));
+    const firstRoot = path.join(temporary, "first");
+    const secondRoot = path.join(temporary, "second");
+    const cachePath = path.join(temporary, "cache", "snapshot-key.json");
+    fs.mkdirSync(firstRoot, { recursive: true });
+    fs.mkdirSync(secondRoot, { recursive: true });
+    const firstStore = new SqliteStore(ensureKairnDir(firstRoot).databasePath);
+    try {
+      firstStore.upsertSemanticEmbeddings([{
+        rootPath: firstRoot,
+        documentId: "sdoc_test",
+        documentHash: "content-hash",
+        modelId: "pinned-model",
+        schemaVersion: "semantic-documents-v1",
+        dimensions: 3,
+        vector: new Int8Array([127, 0, -127]),
+        scale: 0.005
+      }]);
+    } finally {
+      firstStore.close();
+    }
+
+    persistSnapshotEmbeddingCache(firstRoot, cachePath);
+    restoreSnapshotEmbeddingCache(secondRoot, cachePath);
+
+    const secondStore = new SqliteStore(ensureKairnDir(secondRoot).databasePath);
+    try {
+      expect(secondStore.listSemanticEmbeddings(secondRoot)).toEqual([
+        expect.objectContaining({
+          rootPath: secondRoot,
+          documentId: "sdoc_test",
+          documentHash: "content-hash",
+          modelId: "pinned-model",
+          dimensions: 3,
+          scale: 0.005,
+          vector: new Int8Array([127, 0, -127])
+        })
+      ]);
+      expect(secondStore.listSemanticEmbeddings(firstRoot)).toEqual([]);
+    } finally {
+      secondStore.close();
+      fs.rmSync(temporary, { recursive: true, force: true });
+    }
   });
 
   it("materializes candidate features from the same bounded serving path", async () => {

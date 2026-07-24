@@ -6,9 +6,11 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { ensureKairnDir } from "../src/config/paths.js";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
 import { EVIDENCE_FEATURE_SCHEMA_VERSION } from "../src/retrieval/evidenceModel.js";
-import type { EvidenceCandidate } from "../src/types.js";
+import { SqliteStore } from "../src/store/sqliteStore.js";
+import type { EvidenceCandidate, SemanticEmbeddingRecord } from "../src/types.js";
 
 const require = createRequire(import.meta.url);
 
@@ -61,6 +63,7 @@ export type MaterializeOptions = {
   caseIds?: string[];
   processIsolation?: boolean;
   isolatedWorker?: boolean;
+  snapshotEmbeddingCachePath?: string;
   migrateFeatureSchema?: boolean;
 };
 
@@ -107,7 +110,11 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       allowLocalFixture: options.allowLocalFixture === true,
       sampleOnly: intake.sampleOnly
     });
+    if (options.snapshotEmbeddingCachePath) {
+      restoreSnapshotEmbeddingCache(checkout.root, options.snapshotEmbeddingCachePath);
+    }
     const runtime = new KairnRuntime(checkout.root);
+    let materialized = false;
     try {
       const requiredSourcePartition = partitionRepositoryPaths(checkout.root, intakeCase.requiredSourceFiles);
       const officialPatchSourcePartition = partitionRepositoryPaths(checkout.root, intakeCase.officialPatchSourceFiles);
@@ -220,8 +227,12 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
           }))
         } : {})
       });
+      materialized = true;
     } finally {
       runtime.close();
+      if (materialized && options.snapshotEmbeddingCachePath) {
+        persistSnapshotEmbeddingCache(checkout.root, options.snapshotEmbeddingCachePath);
+      }
       checkout.cleanup();
     }
   }
@@ -304,6 +315,11 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
   const scriptPath = fileURLToPath(import.meta.url);
 
   for (const intakeCase of selectedCases) {
+    const snapshotEmbeddingCachePath = path.join(
+      cacheDir,
+      "semantic-embedding-cache",
+      `${semanticSnapshotCacheKey(intakeCase, kairnCommit)}.json`
+    );
     const temporaryPrefix = path.join(intakeDir, `.kairn-ranker-case-${crypto.randomUUID()}`);
     const childManifestPath = `${temporaryPrefix}.manifest.json`;
     const childReportPath = `${temporaryPrefix}.report.json`;
@@ -317,6 +333,7 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
       "--case-id", intakeCase.id,
       "--in-process",
       "--isolated-worker",
+      "--snapshot-embedding-cache", snapshotEmbeddingCachePath,
       ...(options.draft ? ["--draft"] : []),
       ...(options.allowSample ? ["--allow-sample"] : []),
       ...(options.allowLocalFixture ? ["--allow-local-fixture"] : []),
@@ -576,6 +593,133 @@ function resolveCheckout(
   };
 }
 
+type SnapshotEmbeddingCache = {
+  formatVersion: 1;
+  cacheKey: string;
+  embeddings: Array<{
+    documentId: string;
+    documentHash: string;
+    modelId: string;
+    schemaVersion: SemanticEmbeddingRecord["schemaVersion"];
+    dimensions: number;
+    scale: number;
+    vectorBase64: string;
+  }>;
+};
+
+function semanticSnapshotCacheKey(intakeCase: IntakeCase, kairnCommit: string): string {
+  return sha256([
+    "semantic-embedding-cache.v1",
+    kairnCommit,
+    intakeCase.repositoryUrl,
+    intakeCase.repositoryRef,
+    process.env.KAIRN_CANDIDATE_MODE ?? "",
+    process.env.KAIRN_SEMANTIC_MODEL ?? "",
+    process.env.KAIRN_SEMANTIC_MODEL_PATH ?? ""
+  ].join("\0"));
+}
+
+export function restoreSnapshotEmbeddingCache(rootPath: string, cachePath: string): void {
+  if (!fs.existsSync(cachePath)) return;
+  const cache = parseSnapshotEmbeddingCache(cachePath);
+  const paths = ensureKairnDir(rootPath);
+  const store = new SqliteStore(paths.databasePath);
+  try {
+    store.upsertSemanticEmbeddings(cache.embeddings.map((embedding) => ({
+      rootPath,
+      documentId: embedding.documentId,
+      documentHash: embedding.documentHash,
+      modelId: embedding.modelId,
+      schemaVersion: embedding.schemaVersion,
+      dimensions: embedding.dimensions,
+      scale: embedding.scale,
+      vector: new Int8Array(Buffer.from(embedding.vectorBase64, "base64"))
+    })));
+  } finally {
+    store.close();
+  }
+}
+
+export function persistSnapshotEmbeddingCache(rootPath: string, cachePath: string): void {
+  if (fs.existsSync(cachePath)) return;
+  const paths = ensureKairnDir(rootPath);
+  const store = new SqliteStore(paths.databasePath);
+  let embeddings: SemanticEmbeddingRecord[];
+  try {
+    embeddings = store.listSemanticEmbeddings(rootPath);
+  } finally {
+    store.close();
+  }
+  if (embeddings.length === 0) return;
+  const cacheKey = path.basename(cachePath, ".json");
+  const payload: SnapshotEmbeddingCache = {
+    formatVersion: 1,
+    cacheKey,
+    embeddings: embeddings.map((embedding) => ({
+      documentId: embedding.documentId,
+      documentHash: embedding.documentHash,
+      modelId: embedding.modelId,
+      schemaVersion: embedding.schemaVersion,
+      dimensions: embedding.dimensions,
+      scale: embedding.scale,
+      vectorBase64: Buffer.from(
+        embedding.vector.buffer,
+        embedding.vector.byteOffset,
+        embedding.vector.byteLength
+      ).toString("base64")
+    }))
+  };
+  const parent = path.dirname(cachePath);
+  fs.mkdirSync(parent, { recursive: true });
+  const staged = `${cachePath}.tmp-${crypto.randomUUID()}`;
+  try {
+    fs.writeFileSync(staged, `${JSON.stringify(payload)}\n`, { encoding: "utf8", flag: "wx" });
+    try {
+      fs.renameSync(staged, cachePath);
+    } catch (error) {
+      if (!fs.existsSync(cachePath)) throw error;
+    }
+  } finally {
+    fs.rmSync(staged, { force: true });
+  }
+}
+
+function parseSnapshotEmbeddingCache(cachePath: string): SnapshotEmbeddingCache {
+  const parsed = record(JSON.parse(fs.readFileSync(cachePath, "utf8")), "snapshot embedding cache");
+  const cacheKey = path.basename(cachePath, ".json");
+  if (parsed.formatVersion !== 1 || parsed.cacheKey !== cacheKey) {
+    throw new Error(`semantic embedding cache identity mismatch: ${cachePath}`);
+  }
+  const embeddings = array(parsed.embeddings, "snapshot embedding cache embeddings").map((value, index) => {
+    const item = record(value, `snapshot embedding cache embeddings[${index}]`);
+    const schemaVersion = string(item.schemaVersion, `snapshot embedding cache embeddings[${index}].schemaVersion`);
+    if (schemaVersion !== "semantic-documents-v1") {
+      throw new Error(`snapshot embedding cache has unsupported schema ${schemaVersion}`);
+    }
+    const dimensions = positiveIntegerValue(
+      item.dimensions,
+      `snapshot embedding cache embeddings[${index}].dimensions`
+    );
+    const vectorBase64 = string(
+      item.vectorBase64,
+      `snapshot embedding cache embeddings[${index}].vectorBase64`
+    );
+    if (Buffer.from(vectorBase64, "base64").length !== dimensions) {
+      throw new Error(`snapshot embedding cache vector length mismatch at row ${index}`);
+    }
+    return {
+      documentId: string(item.documentId, `snapshot embedding cache embeddings[${index}].documentId`),
+      documentHash: string(item.documentHash, `snapshot embedding cache embeddings[${index}].documentHash`),
+      modelId: string(item.modelId, `snapshot embedding cache embeddings[${index}].modelId`),
+      schemaVersion: "semantic-documents-v1" as const,
+      dimensions,
+      scale: finiteNumber(item.scale, `snapshot embedding cache embeddings[${index}].scale`),
+      vectorBase64
+    };
+  });
+  return { formatVersion: 1, cacheKey, embeddings };
+}
+
 function buildLabels(intakeCase: IntakeCase): Map<string, { label: 0 | 1; weight: number; provenance: string }> {
   const labels = new Map<string, { label: 0 | 1; weight: number; provenance: string }>();
   const assign = (filePath: string, label: 0 | 1, weight: number, provenance: string): void => {
@@ -713,6 +857,20 @@ function string(value: unknown, label: string): string {
   return value;
 }
 
+function positiveIntegerValue(value: unknown, label: string): number {
+  if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
+    throw new Error(`${label} must be a positive integer`);
+  }
+  return value;
+}
+
+function finiteNumber(value: unknown, label: string): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`${label} must be a finite number`);
+  }
+  return value;
+}
+
 function array(value: unknown, label: string): unknown[] {
   if (!Array.isArray(value)) throw new Error(`${label} must be an array`);
   return value;
@@ -756,6 +914,9 @@ function parseArgs(argv: string[]): MaterializeOptions {
     outPath: required("--out"),
     reportPath: required("--report-out"),
     ...(values.get("--cache") ? { cacheDir: values.get("--cache")! } : {}),
+    ...(values.get("--snapshot-embedding-cache")
+      ? { snapshotEmbeddingCachePath: values.get("--snapshot-embedding-cache")! }
+      : {}),
     allowSample: flags.has("--allow-sample"),
     allowLocalFixture: flags.has("--allow-local-fixture"),
     draft: flags.has("--draft"),
