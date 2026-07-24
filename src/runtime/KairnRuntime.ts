@@ -72,7 +72,7 @@ import {
   selectEvidenceSymbolTerms
 } from "../retrieval/evidenceSignals.js";
 import { scoreBm25Files } from "../lexical/bm25.js";
-import { scoreFiles } from "../retrieval/scoreResults.js";
+import { scoreFiles, scorePathTokenCoverage } from "../retrieval/scoreResults.js";
 import { applyCompanionCandidatesToResults, findCompanionCandidates } from "../retrieval/companions.js";
 import { findRelatedFiles, findTestsFor } from "../retrieval/relatedFiles.js";
 import { extractSymbol, readTextFile, summarizeFile } from "../retrieval/readSource.js";
@@ -3582,9 +3582,15 @@ export class KairnRuntime {
           reason.startsWith("exported symbol")
         ))
         .map((result) => lightweightKeywordResult(result, result.score, result.reasons));
+      const pathTokenScored = scorePathTokenCoverage(input.files, retrievalQuery)
+        .map((result) => lightweightKeywordResult(result, result.score, result.reasons));
+      const queryCandidates = mergeLightweightResults(
+        normalizeLightweightScores(scored, "keywordScore"),
+        normalizeLightweightScores(pathTokenScored, "keywordScore")
+      );
       return mergeLightweightResults(
         merged,
-        selectRoleBalancedSeeds(normalizeLightweightScores(scored, "keywordScore"), sourceOrUnknownIntent)
+        selectRoleBalancedSeeds(queryCandidates, sourceOrUnknownIntent)
       );
     }, []);
     const cheapCandidateResults = mergeLightweightResults(lexicalResults, pathAndSymbolResults);

@@ -15,7 +15,7 @@ import {
   extractEvidenceTaskSignals,
   selectEvidenceSymbolTerms
 } from "../src/retrieval/evidenceSignals.js";
-import { scoreFiles } from "../src/retrieval/scoreResults.js";
+import { scoreFiles, scorePathTokenCoverage } from "../src/retrieval/scoreResults.js";
 import type {
   FileKind,
   FileRecord,
@@ -195,6 +195,31 @@ describe("evidence task signals and candidates", () => {
 
     expect(repeated[0]?.score).toBe(once[0]?.score);
     expect(repeated[0]?.reasons).toEqual(once[0]?.reasons);
+  });
+
+  it("ranks multi-term path evidence independently from file importance", () => {
+    const root = "/repo";
+    const target = file(
+      root,
+      "internal/terraform/transform_attach_config_resource.go",
+      "source",
+      500
+    );
+    const distractors = Array.from({ length: 100 }, (_, index) =>
+      file(root, `internal/command/resource-${String(index).padStart(3, "0")}.go`, "source", 40_000)
+    );
+    const ranked = scorePathTokenCoverage(
+      [...distractors, target],
+      "Terraform configuration should attach the removed resource block"
+    );
+
+    expect(ranked[0]?.path).toBe(target.path);
+    expect(ranked[0]?.reasons).toEqual(expect.arrayContaining([
+      'path token "terraform"',
+      'path token "configuration"',
+      'path token "attach"',
+      'path token "resource"'
+    ]));
   });
 
   it("reserves hard candidate capacity for an exact failing-check symbol", () => {
