@@ -75,10 +75,11 @@ export type EvidenceCandidateSet = {
 };
 
 export function extractEvidenceTaskSignals(query: string): EvidenceTaskSignals {
-  const explicitPaths = extractFileReferences(query, FILE_REFERENCE);
-  const failureReferences = extractFileReferences(query, FILE_REFERENCE_WITH_LINE);
-  const retrievalQueries = buildEvidenceRetrievalQueries(query);
-  const signalQuery = (retrievalQueries.at(-1) ?? query)
+  const taskText = unwrapSerializedTaskText(query);
+  const explicitPaths = extractFileReferences(taskText, FILE_REFERENCE);
+  const failureReferences = extractFileReferences(taskText, FILE_REFERENCE_WITH_LINE);
+  const retrievalQueries = buildEvidenceRetrievalQueries(taskText);
+  const signalQuery = (retrievalQueries.at(-1) ?? taskText)
     .replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, " ");
   const identifiers = new Set<string>();
   const preferredIdentifiers = new Set<string>();
@@ -93,7 +94,7 @@ export function extractEvidenceTaskSignals(query: string): EvidenceTaskSignals {
   // and compiler output. They frequently identify a test symbol whose direct
   // source/test edge is the cheapest path to production code, so add them
   // before other preferred identifiers consume the bounded symbol budget.
-  for (const identifier of extractFailureCheckIdentifiers(query)) {
+  for (const identifier of extractFailureCheckIdentifiers(taskText)) {
     addIdentifierForms(failureIdentifiers, identifier);
     addIdentifierForms(preferredIdentifiers, identifier);
   }
@@ -127,7 +128,7 @@ export function extractEvidenceTaskSignals(query: string): EvidenceTaskSignals {
     identifiers: [...identifiers].slice(0, MAX_IDENTIFIERS),
     failureIdentifiers: [...failureIdentifiers],
     failureReferences,
-    intent: classifyEvidenceIntent(query)
+    intent: classifyEvidenceIntent(taskText)
   };
 }
 
@@ -138,7 +139,8 @@ export function extractEvidenceTaskSignals(query: string): EvidenceTaskSignals {
  * allowed to dominate the bounded lexical and symbol budgets.
  */
 export function buildEvidenceRetrievalQueries(query: string): string[] {
-  const withoutTemplateNoise = query
+  const taskText = unwrapSerializedTaskText(query);
+  const withoutTemplateNoise = taskText
     .replace(/<!--[\s\S]*?-->/g, " ")
     .replace(/https?:\/\/[^\s<>()]+/gi, " ");
   const withoutBroadFailures = stripBroadFailureCheckSections(withoutTemplateNoise);
@@ -147,6 +149,27 @@ export function buildEvidenceRetrievalQueries(query: string): string[] {
   const narrative = normalizeQueryText(narrativeSource);
   const codeAware = normalizeQueryText(withoutBroadFailures);
   return uniqueInOrder([headline, narrative, codeAware].filter(Boolean)).slice(0, MAX_RETRIEVAL_QUERIES);
+}
+
+/**
+ * Agent hooks and benchmark/event logs sometimes carry a task as a serialized
+ * JSON string rather than plain text. Treating that wrapper as user quoting
+ * causes the signal extractor to discard the entire task. Decode only complete
+ * JSON string values, with a small bound for nested transport wrappers.
+ */
+function unwrapSerializedTaskText(query: string): string {
+  let current = query.trim();
+  for (let depth = 0; depth < 2; depth += 1) {
+    if (!current.startsWith('"') || !current.endsWith('"')) break;
+    try {
+      const parsed: unknown = JSON.parse(current);
+      if (typeof parsed !== "string" || parsed === current) break;
+      current = parsed.trim();
+    } catch {
+      break;
+    }
+  }
+  return current;
 }
 
 export function selectEvidenceSymbolTerms(signals: EvidenceTaskSignals, limit: number): string[] {

@@ -145,6 +145,21 @@ describe("evidence task signals and candidates", () => {
     expect(signals.preferredIdentifiers).not.toContain("notasymbol");
   });
 
+  it("unwraps JSON-serialized task text before extracting evidence signals", () => {
+    const serialized = JSON.stringify([
+      "# Fix production keyboard shortcut implementation",
+      "",
+      "Move `RoomSearch` and RoomView onto the shared key binding manager."
+    ].join("\n"));
+    const signals = extractEvidenceTaskSignals(serialized);
+    const retrievalQueries = buildEvidenceRetrievalQueries(serialized);
+
+    expect(retrievalQueries[0]).toContain("Fix production keyboard shortcut implementation");
+    expect(signals.queryTerms).toEqual(expect.arrayContaining(["keyboard", "shortcut", "room", "search"]));
+    expect(signals.preferredIdentifiers).toEqual(expect.arrayContaining(["roomsearch", "roomview"]));
+    expect(signals.intent).toBe("source");
+  });
+
   it("balances symbol lookup terms so long code output cannot crowd out the task narrative", () => {
     const noisyOutput = Array.from({ length: 80 }, (_, index) => `UIWidgetState${index}`).join(" ");
     const signals = extractEvidenceTaskSignals([
