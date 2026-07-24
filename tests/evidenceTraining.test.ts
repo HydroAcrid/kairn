@@ -71,11 +71,27 @@ describe("public evidence ranker training", () => {
     }
 
     persistSnapshotEmbeddingCache(firstRoot, cachePath);
+    const appendedStore = new SqliteStore(ensureKairnDir(firstRoot).databasePath);
+    try {
+      appendedStore.upsertSemanticEmbeddings([{
+        rootPath: firstRoot,
+        documentId: "sdoc_second",
+        documentHash: "second-content-hash",
+        modelId: "pinned-model",
+        schemaVersion: "semantic-documents-v3",
+        dimensions: 3,
+        vector: new Int8Array([0, 127, 0]),
+        scale: 0.005
+      }]);
+    } finally {
+      appendedStore.close();
+    }
+    persistSnapshotEmbeddingCache(firstRoot, cachePath);
     restoreSnapshotEmbeddingCache(secondRoot, cachePath);
 
     const secondStore = new SqliteStore(ensureKairnDir(secondRoot).databasePath);
     try {
-      expect(secondStore.listSemanticEmbeddings(secondRoot)).toEqual([
+      expect(secondStore.listSemanticEmbeddings(secondRoot)).toEqual(expect.arrayContaining([
         expect.objectContaining({
           rootPath: secondRoot,
           documentId: "sdoc_test",
@@ -84,8 +100,18 @@ describe("public evidence ranker training", () => {
           dimensions: 3,
           scale: 0.005,
           vector: new Int8Array([127, 0, -127])
+        }),
+        expect.objectContaining({
+          rootPath: secondRoot,
+          documentId: "sdoc_second",
+          documentHash: "second-content-hash",
+          modelId: "pinned-model",
+          dimensions: 3,
+          scale: 0.005,
+          vector: new Int8Array([0, 127, 0])
         })
-      ]);
+      ]));
+      expect(secondStore.listSemanticEmbeddings(secondRoot)).toHaveLength(2);
       expect(secondStore.listSemanticEmbeddings(firstRoot)).toEqual([]);
     } finally {
       secondStore.close();

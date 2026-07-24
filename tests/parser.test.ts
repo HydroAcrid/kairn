@@ -20,7 +20,10 @@ describe("cross-language parser adapters", () => {
       content: [
         "import { helper } from './helper';",
         "export function runTask() { return helper(); }",
-        "export class Runner {}",
+        "export class Runner {",
+        "  async parseAwait(value: string) { return value; }",
+        "  parseYield(value: string) { return value; }",
+        "}",
         "export interface RunnerProps { name: string }",
         "export type RunnerMode = 'fast';",
         "export const RunnerValue = 1;",
@@ -33,6 +36,8 @@ describe("cross-language parser adapters", () => {
       expect.arrayContaining([
         "function:runTask:true",
         "class:Runner:true",
+        "function:parseAwait:false",
+        "function:parseYield:false",
         "interface:RunnerProps:true",
         "type:RunnerMode:true",
         "const:RunnerValue:true",

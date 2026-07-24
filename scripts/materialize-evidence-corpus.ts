@@ -318,7 +318,7 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
     const snapshotEmbeddingCachePath = path.join(
       cacheDir,
       "semantic-embedding-cache",
-      `${semanticSnapshotCacheKey(intakeCase, kairnCommit)}.json`
+      `${semanticSnapshotCacheKey(intakeCase)}.json`
     );
     const temporaryPrefix = path.join(intakeDir, `.kairn-ranker-case-${crypto.randomUUID()}`);
     const childManifestPath = `${temporaryPrefix}.manifest.json`;
@@ -607,10 +607,9 @@ type SnapshotEmbeddingCache = {
   }>;
 };
 
-function semanticSnapshotCacheKey(intakeCase: IntakeCase, kairnCommit: string): string {
+function semanticSnapshotCacheKey(intakeCase: IntakeCase): string {
   return sha256([
-    "semantic-embedding-cache.v1",
-    kairnCommit,
+    "semantic-embedding-cache.v2",
     intakeCase.repositoryUrl,
     intakeCase.repositoryRef,
     process.env.KAIRN_CANDIDATE_MODE ?? "",
@@ -641,7 +640,6 @@ export function restoreSnapshotEmbeddingCache(rootPath: string, cachePath: strin
 }
 
 export function persistSnapshotEmbeddingCache(rootPath: string, cachePath: string): void {
-  if (fs.existsSync(cachePath)) return;
   const paths = ensureKairnDir(rootPath);
   const store = new SqliteStore(paths.databasePath);
   let embeddings: SemanticEmbeddingRecord[];
@@ -652,10 +650,14 @@ export function persistSnapshotEmbeddingCache(rootPath: string, cachePath: strin
   }
   if (embeddings.length === 0) return;
   const cacheKey = path.basename(cachePath, ".json");
-  const payload: SnapshotEmbeddingCache = {
-    formatVersion: 1,
-    cacheKey,
-    embeddings: embeddings.map((embedding) => ({
+  const previous = fs.existsSync(cachePath)
+    ? parseSnapshotEmbeddingCache(cachePath).embeddings
+    : [];
+  const merged = new Map(
+    previous.map((embedding) => [snapshotEmbeddingIdentity(embedding), embedding])
+  );
+  for (const embedding of embeddings) {
+    const serialized = {
       documentId: embedding.documentId,
       documentHash: embedding.documentHash,
       modelId: embedding.modelId,
@@ -667,20 +669,53 @@ export function persistSnapshotEmbeddingCache(rootPath: string, cachePath: strin
         embedding.vector.byteOffset,
         embedding.vector.byteLength
       ).toString("base64")
-    }))
+    };
+    merged.set(snapshotEmbeddingIdentity(serialized), serialized);
+  }
+  const payload: SnapshotEmbeddingCache = {
+    formatVersion: 1,
+    cacheKey,
+    embeddings: [...merged.values()].sort((left, right) =>
+      left.documentId.localeCompare(right.documentId) ||
+      left.modelId.localeCompare(right.modelId) ||
+      left.schemaVersion.localeCompare(right.schemaVersion)
+    )
   };
   const parent = path.dirname(cachePath);
   fs.mkdirSync(parent, { recursive: true });
   const staged = `${cachePath}.tmp-${crypto.randomUUID()}`;
   try {
     fs.writeFileSync(staged, `${JSON.stringify(payload)}\n`, { encoding: "utf8", flag: "wx" });
-    try {
-      fs.renameSync(staged, cachePath);
-    } catch (error) {
-      if (!fs.existsSync(cachePath)) throw error;
-    }
+    replaceSnapshotCache(cachePath, staged);
   } finally {
     fs.rmSync(staged, { force: true });
+  }
+}
+
+function snapshotEmbeddingIdentity(
+  embedding: Pick<
+    SnapshotEmbeddingCache["embeddings"][number],
+    "documentId" | "modelId" | "schemaVersion"
+  >
+): string {
+  return [embedding.documentId, embedding.modelId, embedding.schemaVersion].join("\0");
+}
+
+function replaceSnapshotCache(cachePath: string, stagedPath: string): void {
+  if (!fs.existsSync(cachePath)) {
+    fs.renameSync(stagedPath, cachePath);
+    return;
+  }
+  const backupPath = `${cachePath}.backup-${crypto.randomUUID()}`;
+  fs.renameSync(cachePath, backupPath);
+  try {
+    fs.renameSync(stagedPath, cachePath);
+    fs.rmSync(backupPath, { force: true });
+  } catch (error) {
+    if (!fs.existsSync(cachePath) && fs.existsSync(backupPath)) {
+      fs.renameSync(backupPath, cachePath);
+    }
+    throw error;
   }
 }
 

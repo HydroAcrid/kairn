@@ -48,21 +48,7 @@ export function buildSemanticDocuments(input: {
   const selected = [...fileDocuments];
   const symbolBudget = Math.max(0, input.maxDocuments - selected.length);
   if (symbolBudget > 0) {
-    const paths = [...symbolQueues.keys()].sort();
-    const cursors = new Map(paths.map((filePath) => [filePath, 0]));
-    let progressed = true;
-    while (selected.length < fileDocuments.length + symbolBudget && progressed) {
-      progressed = false;
-      for (const filePath of paths) {
-        const cursor = cursors.get(filePath) ?? 0;
-        const document = symbolQueues.get(filePath)?.[cursor];
-        if (!document) continue;
-        selected.push(document);
-        cursors.set(filePath, cursor + 1);
-        progressed = true;
-        if (selected.length >= fileDocuments.length + symbolBudget) break;
-      }
-    }
+    selected.push(...allocateSymbolDocuments(symbolQueues, symbolBudget));
   }
 
   return uniqueDocuments(selected).sort((left, right) =>
@@ -232,4 +218,52 @@ function uniqueDocuments(documents: SemanticDocumentRecord[]): SemanticDocumentR
     }
   }
   return [...byId.values()];
+}
+
+function allocateSymbolDocuments(
+  queues: Map<string, SemanticDocumentRecord[]>,
+  budget: number
+): SemanticDocumentRecord[] {
+  const entries = [...queues.entries()]
+    .filter(([, documents]) => documents.length > 0)
+    .map(([filePath, documents]) => ({
+      filePath,
+      documents,
+      weight: Math.sqrt(documents.length),
+      allocation: 0
+    }))
+    .sort((left, right) => left.filePath.localeCompare(right.filePath));
+  const capacity = entries.reduce((sum, entry) => sum + entry.documents.length, 0);
+  let remaining = Math.min(Math.max(0, Math.floor(budget)), capacity);
+
+  while (remaining > 0) {
+    let selected: (typeof entries)[number] | undefined;
+    let selectedPriority = Number.NEGATIVE_INFINITY;
+    for (const entry of entries) {
+      if (entry.allocation >= entry.documents.length) continue;
+      const priority = entry.weight / (entry.allocation + 1);
+      if (
+        priority > selectedPriority ||
+        (priority === selectedPriority && entry.filePath.localeCompare(selected?.filePath ?? "") < 0)
+      ) {
+        selected = entry;
+        selectedPriority = priority;
+      }
+    }
+    if (!selected) break;
+    selected.allocation += 1;
+    remaining -= 1;
+  }
+
+  return entries.flatMap((entry) => evenlySample(entry.documents, entry.allocation));
+}
+
+function evenlySample<T>(values: T[], count: number): T[] {
+  if (count <= 0) return [];
+  if (count >= values.length) return [...values];
+  const sampled: T[] = [];
+  for (let index = 0; index < count; index += 1) {
+    sampled.push(values[Math.floor(((index + 0.5) * values.length) / count)]!);
+  }
+  return sampled;
 }

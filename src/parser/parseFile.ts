@@ -363,6 +363,10 @@ function jsSymbolsFromDeclaration(
       return symbolForNamedDeclaration(rootPath, filePath, declaration, "function", exported, rangeNode);
     case "class_declaration":
       return symbolForNamedDeclaration(rootPath, filePath, declaration, "class", exported, rangeNode);
+    case "method_definition":
+    case "method_signature":
+    case "abstract_method_signature":
+      return symbolForNamedDeclaration(rootPath, filePath, declaration, "function", false, rangeNode);
     case "interface_declaration":
       return symbolForNamedDeclaration(rootPath, filePath, declaration, "interface", exported, rangeNode);
     case "type_alias_declaration":
@@ -383,7 +387,9 @@ function symbolForNamedDeclaration(
   exported: boolean,
   rangeNode: SyntaxNodeLike
 ): SymbolRecord[] {
-  const name = findIdentifierName(declaration) ?? (exported && isDefaultExport(rangeNode) ? "default" : undefined);
+  const name = declaration.childForFieldName("name")?.text ??
+    findIdentifierName(declaration) ??
+    (exported && isDefaultExport(rangeNode) ? "default" : undefined);
   if (!name) return [];
 
   return [

@@ -243,6 +243,74 @@ describe("model-based semantic candidates", () => {
     }
   });
 
+  it("allocates bounded symbol documents across large files without first-symbol bias", () => {
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-symbol-budget-"));
+    try {
+      const largePath = "src/large-parser.ts";
+      const largeLines = Array.from(
+        { length: 40 },
+        (_, index) => `method${index + 1}() { return ${index + 1}; }`
+      );
+      fs.mkdirSync(path.join(rootPath, "src"), { recursive: true });
+      fs.writeFileSync(path.join(rootPath, largePath), `${largeLines.join("\n")}\n`);
+      const smallFiles = Array.from({ length: 10 }, (_, index) => `src/small-${index}.ts`);
+      for (const filePath of smallFiles) fs.writeFileSync(path.join(rootPath, filePath), "export const value = 1;\n");
+      const files = [
+        file(rootPath, largePath),
+        ...smallFiles.map((filePath) => file(rootPath, filePath))
+      ];
+      const largeSymbols = largeLines.map((_, index) => ({
+        rootPath,
+        filePath: largePath,
+        name: `method${index + 1}`,
+        kind: "function" as const,
+        exported: false,
+        startLine: index + 1,
+        endLine: index + 1,
+        signature: `method${index + 1}()`
+      }));
+      const smallSymbols = smallFiles.map((filePath) => ({
+        rootPath,
+        filePath,
+        name: "value",
+        kind: "const" as const,
+        exported: true,
+        startLine: 1,
+        endLine: 1,
+        signature: "export const value = 1"
+      }));
+      const symbols = [...largeSymbols, ...smallSymbols];
+      const graph: RepoGraph = {
+        rootPath,
+        files,
+        parsedFiles: files.map((record) => ({
+          rootPath,
+          filePath: record.path,
+          language: record.language,
+          imports: [],
+          hasErrors: false,
+          symbols: symbols.filter((symbol) => symbol.filePath === record.path)
+        })),
+        symbols,
+        edges: []
+      };
+
+      const documents = buildSemanticDocuments({
+        rootPath,
+        graph,
+        maxDocuments: files.length + 12
+      });
+      const largeSymbolDocuments = documents.filter(
+        (document) => document.filePath === largePath && document.kind === "symbol"
+      );
+      expect(largeSymbolDocuments.length).toBeGreaterThanOrEqual(4);
+      expect(largeSymbolDocuments.some((document) => /method(?:3[0-9]|40)/.test(document.symbol ?? ""))).toBe(true);
+      expect(documents.length).toBeLessThanOrEqual(files.length + 12);
+    } finally {
+      fs.rmSync(rootPath, { recursive: true, force: true });
+    }
+  });
+
   it("stores compact embeddings incrementally by model and replaces them only after success", () => {
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-store-"));
     const store = new SqliteStore(path.join(temporary, "kairn.sqlite"));
