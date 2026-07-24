@@ -12,11 +12,12 @@ import { readTextFile } from "../retrieval/readSource.js";
 import { sha256 } from "../utils/hash.js";
 import { estimateTokens } from "../utils/tokens.js";
 
-export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v1" as const;
-const MAX_FILE_BODY_CHARS = 2_400;
-const MAX_SYMBOL_BODY_CHARS = 2_600;
-const MAX_DOCUMENT_CHARS = 4_000;
-const MAX_FILE_SYMBOLS = 48;
+export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v2" as const;
+const MAX_FILE_BODY_CHARS = 440;
+const MAX_SYMBOL_BODY_CHARS = 500;
+const MAX_DOCUMENT_CHARS = 768;
+const MAX_FILE_SYMBOLS = 8;
+const MAX_DIRECT_IMPORTS = 8;
 
 export function buildSemanticDocuments(input: {
   rootPath: string;
@@ -80,14 +81,16 @@ function buildFileDocument(
   const exportedSymbols = symbols
     .filter((symbol) => symbol.exported)
     .slice(0, MAX_FILE_SYMBOLS)
-    .map((symbol) => `${symbol.kind} ${symbol.signature || symbol.name}`);
+    .map((symbol) => `${symbol.kind} ${boundedField(symbol.signature || symbol.name, 96)}`);
   const text = truncateDocument([
     `file: ${file.path}`,
     `language: ${file.language}`,
     `role: ${file.kind}`,
     `module: ${path.posix.dirname(file.path)}`,
-    parsed?.imports.length ? `direct imports: ${parsed.imports.join(" ")}` : "direct imports: none",
-    exportedSymbols.length ? `exported symbols:\n${exportedSymbols.join("\n")}` : "exported symbols: none",
+    parsed?.imports.length
+      ? `direct imports: ${parsed.imports.slice(0, MAX_DIRECT_IMPORTS).map((item) => boundedField(item, 80)).join(" ")}`
+      : "direct imports: none",
+    exportedSymbols.length ? `exported symbols: ${exportedSymbols.join("; ")}` : "exported symbols: none",
     "",
     "representative source:",
     representativeSource(content, MAX_FILE_BODY_CHARS)
@@ -118,7 +121,9 @@ function buildSymbolDocument(
     `symbol kind: ${symbol.kind}`,
     `signature: ${symbol.signature}`,
     `exported: ${symbol.exported ? "yes" : "no"}`,
-    parsed?.imports.length ? `direct imports: ${parsed.imports.join(" ")}` : "direct imports: none",
+    parsed?.imports.length
+      ? `direct imports: ${parsed.imports.slice(0, MAX_DIRECT_IMPORTS).map((item) => boundedField(item, 80)).join(" ")}`
+      : "direct imports: none",
     "",
     body
   ].join("\n"));
@@ -195,4 +200,9 @@ function truncateDocument(text: string): string {
   return text.length <= MAX_DOCUMENT_CHARS
     ? text
     : `${text.slice(0, MAX_DOCUMENT_CHARS)}\n[semantic document truncated]`;
+}
+
+function boundedField(value: string, maxChars: number): string {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  return normalized.length <= maxChars ? normalized : `${normalized.slice(0, maxChars - 1)}…`;
 }

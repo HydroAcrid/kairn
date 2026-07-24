@@ -49,7 +49,7 @@ describe("model-based semantic candidates", () => {
 
   it("seals lineage-disjoint selection and holdout cases across all language/scenario cells", () => {
     const manifest = JSON.parse(fs.readFileSync(
-      path.resolve("benchmarks/semantic/model-selection-v1.json"),
+      path.resolve("benchmarks/semantic/model-selection-v2.json"),
       "utf8"
     )) as {
       sealed: boolean;
@@ -311,7 +311,7 @@ function document(
     text: `${filePath} implementation behavior`,
     hash,
     tokenEstimate: 8,
-    schemaVersion: "semantic-documents-v1"
+    schemaVersion: "semantic-documents-v2"
   };
 }
 
@@ -326,7 +326,7 @@ function embedding(
     documentId: semanticDocument.id,
     documentHash: semanticDocument.hash,
     modelId,
-    schemaVersion: "semantic-documents-v1",
+    schemaVersion: "semantic-documents-v2",
     vector
   });
 }

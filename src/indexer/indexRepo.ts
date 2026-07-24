@@ -296,7 +296,7 @@ async function buildModelEmbeddings(input: {
       else missing.push(document);
     }
 
-    const batchSize = 8;
+    const batchSize = 16;
     for (let offset = 0; offset < missing.length; offset += batchSize) {
       const batch = missing.slice(offset, offset + batchSize);
       const vectors = await model.embedDocuments(batch.map((document) => document.text));

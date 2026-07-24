@@ -197,6 +197,9 @@ export type SemanticVectorRecord = {
 };
 
 export type SemanticDocumentKind = "file" | "symbol";
+export type SemanticDocumentSchemaVersion =
+  | "semantic-documents-v1"
+  | "semantic-documents-v2";
 
 export type SemanticDocumentRecord = {
   rootPath: string;
@@ -207,7 +210,7 @@ export type SemanticDocumentRecord = {
   text: string;
   hash: string;
   tokenEstimate: number;
-  schemaVersion: "semantic-documents-v1";
+  schemaVersion: SemanticDocumentSchemaVersion;
 };
 
 export type SemanticEmbeddingRecord = {
@@ -215,7 +218,7 @@ export type SemanticEmbeddingRecord = {
   documentId: string;
   documentHash: string;
   modelId: string;
-  schemaVersion: "semantic-documents-v1";
+  schemaVersion: SemanticDocumentSchemaVersion;
   dimensions: number;
   /** Symmetric int8 quantization keeps a repository-wide local index bounded. */
   vector: Int8Array;

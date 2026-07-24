@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import fs from "node:fs";
+import { availableParallelism } from "node:os";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
 import { Tokenizer, type Encoding } from "@huggingface/tokenizers";
@@ -13,7 +14,7 @@ import {
 } from "./modelManager.js";
 import { DEFAULT_SEMANTIC_MODEL_ID, type SemanticModelManifest } from "./modelRegistry.js";
 
-type OrtRuntime = typeof import("onnxruntime-web/wasm");
+type OrtRuntime = typeof import("onnxruntime-web");
 
 type LoadedOnnxModel = {
   tokenizer: Tokenizer;
@@ -127,7 +128,7 @@ export function quantizeSemanticEmbedding(input: {
   documentId: string;
   documentHash: string;
   modelId: string;
-  schemaVersion: "semantic-documents-v1";
+  schemaVersion: SemanticEmbeddingRecord["schemaVersion"];
   vector: Float32Array;
 }): SemanticEmbeddingRecord {
   let maxAbsolute = 0;
@@ -220,14 +221,20 @@ async function loadOnnxModel(
 
 async function getOrtRuntime(): Promise<OrtRuntime> {
   if (!ortRuntimePromise) {
-    ortRuntimePromise = import("onnxruntime-web/wasm").then((ort) => {
-      ort.env.wasm.numThreads = 1;
+    ortRuntimePromise = import("onnxruntime-web").then((ort) => {
+      ort.env.wasm.numThreads = semanticInferenceThreads();
       ort.env.wasm.proxy = false;
       ort.env.wasm.initTimeout = 5_000;
       return ort;
     });
   }
   return ortRuntimePromise;
+}
+
+function semanticInferenceThreads(): number {
+  const configured = Number(process.env.KAIRN_SEMANTIC_THREADS);
+  if (Number.isInteger(configured) && configured >= 1 && configured <= 8) return configured;
+  return Math.max(1, Math.min(4, availableParallelism()));
 }
 
 function encodeBounded(tokenizer: Tokenizer, text: string, maxTokens: number): Encoding {

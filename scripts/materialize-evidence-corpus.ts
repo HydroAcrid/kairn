@@ -693,9 +693,10 @@ function parseSnapshotEmbeddingCache(cachePath: string): SnapshotEmbeddingCache 
   const embeddings = array(parsed.embeddings, "snapshot embedding cache embeddings").map((value, index) => {
     const item = record(value, `snapshot embedding cache embeddings[${index}]`);
     const schemaVersion = string(item.schemaVersion, `snapshot embedding cache embeddings[${index}].schemaVersion`);
-    if (schemaVersion !== "semantic-documents-v1") {
+    if (schemaVersion !== "semantic-documents-v1" && schemaVersion !== "semantic-documents-v2") {
       throw new Error(`snapshot embedding cache has unsupported schema ${schemaVersion}`);
     }
+    const supportedSchemaVersion: SemanticEmbeddingRecord["schemaVersion"] = schemaVersion;
     const dimensions = positiveIntegerValue(
       item.dimensions,
       `snapshot embedding cache embeddings[${index}].dimensions`
@@ -711,7 +712,7 @@ function parseSnapshotEmbeddingCache(cachePath: string): SnapshotEmbeddingCache 
       documentId: string(item.documentId, `snapshot embedding cache embeddings[${index}].documentId`),
       documentHash: string(item.documentHash, `snapshot embedding cache embeddings[${index}].documentHash`),
       modelId: string(item.modelId, `snapshot embedding cache embeddings[${index}].modelId`),
-      schemaVersion: "semantic-documents-v1" as const,
+      schemaVersion: supportedSchemaVersion,
       dimensions,
       scale: finiteNumber(item.scale, `snapshot embedding cache embeddings[${index}].scale`),
       vectorBase64

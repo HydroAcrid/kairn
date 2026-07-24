@@ -29,7 +29,7 @@ type SelectionManifest = {
   schemaVersion: "semantic-model-selection.v1";
   campaignId: string;
   sealed: true;
-  documentSchemaVersion: "semantic-documents-v1";
+  documentSchemaVersion: SemanticDocumentRecord["schemaVersion"];
   selectionSplits: Array<"train" | "calibration">;
   holdoutSplit: "holdout";
   cases: SelectionCase[];
@@ -55,9 +55,10 @@ const coldInitializationMs = performance.now() - initializationStarted;
 const targetDocuments = manifest.cases.map((item) => semanticDocument(
   item.targetPath,
   item.targetText,
-  `case:${item.id}`
+  `case:${item.id}`,
+  manifest.documentSchemaVersion
 ));
-const noiseDocuments = buildNoiseDocuments(120);
+const noiseDocuments = buildNoiseDocuments(120, manifest.documentSchemaVersion);
 const documents = [...targetDocuments, ...noiseDocuments];
 const embeddings: SemanticEmbeddingRecord[] = [];
 const embeddingStarted = performance.now();
@@ -71,7 +72,7 @@ for (let offset = 0; offset < documents.length; offset += 8) {
       documentId: semanticDocument.id,
       documentHash: semanticDocument.hash,
       modelId: model.manifest.modelId,
-      schemaVersion: "semantic-documents-v1",
+      schemaVersion: manifest.documentSchemaVersion,
       vector: vectors[index]!
     }));
   }
@@ -174,7 +175,7 @@ function parseArguments(args: string[]): {
   return {
     modelId,
     modelPath,
-    manifest: values.get("manifest") ?? "benchmarks/semantic/model-selection-v1.json",
+    manifest: values.get("manifest") ?? "benchmarks/semantic/model-selection-v2.json",
     phase,
     ...(values.get("out") ? { out: values.get("out")! } : {})
   };
@@ -184,7 +185,7 @@ function validateManifest(manifest: SelectionManifest): void {
   if (
     manifest.schemaVersion !== "semantic-model-selection.v1" ||
     manifest.sealed !== true ||
-    manifest.documentSchemaVersion !== "semantic-documents-v1" ||
+    !["semantic-documents-v1", "semantic-documents-v2"].includes(manifest.documentSchemaVersion) ||
     !Array.isArray(manifest.cases) ||
     manifest.cases.length !== 15
   ) {
@@ -204,20 +205,28 @@ function validateManifest(manifest: SelectionManifest): void {
   if (cells.size !== 15) throw new Error("Semantic model selection must cover all 15 language/scenario cells.");
 }
 
-function semanticDocument(filePath: string, text: string, identity: string): SemanticDocumentRecord {
+function semanticDocument(
+  filePath: string,
+  text: string,
+  identity: string,
+  schemaVersion: SemanticDocumentRecord["schemaVersion"]
+): SemanticDocumentRecord {
   return {
     rootPath: "/synthetic-semantic-selection",
     id: `sdoc_${sha256(identity).slice(0, 24)}`,
     filePath,
     kind: "file",
     text,
-    hash: sha256(`semantic-documents-v1\0${text}`),
+    hash: sha256(`${schemaVersion}\0${text}`),
     tokenEstimate: Math.ceil(text.length / 4),
-    schemaVersion: "semantic-documents-v1"
+    schemaVersion
   };
 }
 
-function buildNoiseDocuments(count: number): SemanticDocumentRecord[] {
+function buildNoiseDocuments(
+  count: number,
+  schemaVersion: SemanticDocumentRecord["schemaVersion"]
+): SemanticDocumentRecord[] {
   const domains = [
     "analytics chart rendering", "email template formatting", "image thumbnail resizing",
     "command line argument help", "database schema migrations", "international date display",
@@ -236,7 +245,8 @@ function buildNoiseDocuments(count: number): SemanticDocumentRecord[] {
     return semanticDocument(
       filePath,
       `file: ${filePath}\nlanguage: unknown\nrole: source\nmodule: noise\n\nThis unrelated implementation ${operation} for ${domain}.`,
-      `noise:${index}`
+      `noise:${index}`,
+      schemaVersion
     );
   });
 }
