@@ -53,41 +53,9 @@ describe("evidence ranker runtime integration", () => {
       expect(snapshot.enrichedCandidates.length).toBeGreaterThanOrEqual(snapshot.candidates.length);
       expect(snapshot.enrichedCandidates.slice(0, snapshot.candidates.length)).toEqual(snapshot.candidates);
       expect(snapshot.enrichedCandidatePaths).toEqual(snapshot.enrichedCandidates.map((candidate) => candidate.path));
-    } finally {
-      runtime.close();
-    }
-  });
-
-  it("derives bounded Java same-package type edges query-locally without persisting graph growth", async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-java-query-local-"));
-    const sourceDir = path.join(root, "src/main/java/org/example");
-    fs.mkdirSync(sourceDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(sourceDir, "Caller.java"),
-      "package org.example;\nclass Caller { private final Helper helper = new Helper(); }\n",
-      "utf8"
-    );
-    fs.writeFileSync(
-      path.join(sourceDir, "Helper.java"),
-      "package org.example;\nclass Helper { void execute() {} }\n",
-      "utf8"
-    );
-    const runtime = new KairnRuntime(root);
-
-    try {
-      const snapshot = await runtime.inspectEvidenceCandidates({
-        query: "Repair delegation in src/main/java/org/example/Caller.java",
-        limit: 64
-      });
-      expect(snapshot.enrichedCandidates).toContainEqual(expect.objectContaining({
-        path: "src/main/java/org/example/Helper.java",
-        reasons: expect.arrayContaining(["graph_neighbor"])
-      }));
-      expect(snapshot.initialCandidatePaths).toContain("src/main/java/org/example/Caller.java");
       expect(snapshot.enrichedCandidatePaths).toEqual(
         expect.arrayContaining(snapshot.initialCandidatePaths)
       );
-      expect(runtime.getIndexStatus().graphEdgeCount).toBe(0);
     } finally {
       runtime.close();
     }

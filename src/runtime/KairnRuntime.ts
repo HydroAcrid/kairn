@@ -28,7 +28,6 @@ import type {
   EvalRunReport,
   FailureContext,
   FileRecord,
-  GraphEdgeRecord,
   HybridScoredResult,
   HookHandlingResult,
   HookOutputProfile,
@@ -3604,22 +3603,10 @@ export class KairnRuntime {
       enrichedLimit: DEFAULT_INITIAL_CANDIDATE_LIMIT
     });
     const initialPaths = initial.candidates.map((candidate) => candidate.path);
-    const persistedEdges = this.store.listGraphEdgesForFiles(
+    const edges = this.store.listGraphEdgesForFiles(
       input.rootPath,
       initialPaths,
       budget.graphEdgeLimit
-    );
-    const javaSeedPaths = initialPaths
-      .filter((filePath) => filesByPath.get(filePath)?.language === "java")
-      .slice(0, MAX_QUERY_LOCAL_JAVA_SEEDS);
-    const edges = mergeQueryLocalEdges(
-      persistedEdges,
-      queryLocalJavaTypeEdges({
-        rootPath: input.rootPath,
-        seedPaths: javaSeedPaths,
-        files: input.files,
-        sources: loadQueryLocalJavaSources(input.rootPath, javaSeedPaths, filesByPath)
-      })
     );
     const enriched = buildEvidenceCandidates({
       ...baseCandidateInput,
@@ -4528,117 +4515,6 @@ function selectRoleBalancedSeeds(
     .filter((result) => isProductionEvidenceFile(result))
     .slice(0, DEFAULT_ENRICHED_CANDIDATE_LIMIT * 3);
   return mergeLightweightResults(global, production);
-}
-
-const MAX_QUERY_LOCAL_JAVA_SEEDS = 16;
-const MAX_QUERY_LOCAL_JAVA_SOURCE_BYTES_PER_SEED = 64 * 1024;
-const MAX_QUERY_LOCAL_JAVA_SOURCE_BYTES_TOTAL = 512 * 1024;
-const MAX_QUERY_LOCAL_JAVA_TYPES_PER_SEED = 8;
-
-function queryLocalJavaTypeEdges(input: {
-  rootPath: string;
-  seedPaths: string[];
-  files: FileRecord[];
-  sources: Map<string, string>;
-}): GraphEdgeRecord[] {
-  if (input.seedPaths.length === 0 || input.sources.size === 0) return [];
-  const javaTargets = new Map<string, string>();
-  for (const file of input.files) {
-    if (file.language !== "java" || !file.path.endsWith(".java")) continue;
-    const typeName = path.posix.basename(file.path, ".java");
-    javaTargets.set(`${path.posix.dirname(file.path)}:${typeName}`, file.path);
-  }
-
-  const edges: GraphEdgeRecord[] = [];
-  for (const seedPath of input.seedPaths) {
-    const content = input.sources.get(seedPath) ?? "";
-    const typeNames = extractJavaStructuralTypeNames(content)
-      .slice(0, MAX_QUERY_LOCAL_JAVA_TYPES_PER_SEED);
-    for (const typeName of typeNames) {
-      const target = javaTargets.get(`${path.posix.dirname(seedPath)}:${typeName}`);
-      if (!target || target === seedPath) continue;
-      edges.push({
-        rootPath: input.rootPath,
-        fromFile: seedPath,
-        toFile: target,
-        type: "imports",
-        metadata: {
-          reason: "query-local Java same-package structural type",
-          symbol: typeName
-        }
-      });
-    }
-  }
-  return edges;
-}
-
-function loadQueryLocalJavaSources(
-  rootPath: string,
-  seedPaths: string[],
-  filesByPath: Map<string, FileRecord>
-): Map<string, string> {
-  const sources = new Map<string, string>();
-  let remainingBytes = MAX_QUERY_LOCAL_JAVA_SOURCE_BYTES_TOTAL;
-  for (const seedPath of seedPaths) {
-    const file = filesByPath.get(seedPath);
-    if (
-      !file ||
-      file.size > MAX_QUERY_LOCAL_JAVA_SOURCE_BYTES_PER_SEED ||
-      file.size > remainingBytes
-    ) {
-      continue;
-    }
-    try {
-      const content = readTextFile(rootPath, seedPath);
-      const sourceBytes = Buffer.byteLength(content, "utf8");
-      if (
-        sourceBytes > MAX_QUERY_LOCAL_JAVA_SOURCE_BYTES_PER_SEED ||
-        sourceBytes > remainingBytes
-      ) {
-        continue;
-      }
-      sources.set(seedPath, content);
-      remainingBytes -= sourceBytes;
-    } catch {
-      // Query-local source enrichment is optional; the persisted evidence path remains available.
-    }
-  }
-  return sources;
-}
-
-function extractJavaStructuralTypeNames(content: string): string[] {
-  const output: string[] = [];
-  const add = (value: string): void => {
-    if (/^[A-Z][A-Za-z0-9_$]*$/.test(value) && !output.includes(value)) output.push(value);
-  };
-  for (const match of content.matchAll(/\bnew\s+([A-Z][A-Za-z0-9_$]*)\s*(?:<[^>{};]*>)?\s*\(/g)) {
-    add(match[1] ?? "");
-  }
-  for (const match of content.matchAll(/\b(?:extends|implements)\s+([^{\n]+)/g)) {
-    for (const typeName of (match[1] ?? "").match(/\b[A-Z][A-Za-z0-9_$]*\b/g) ?? []) add(typeName);
-  }
-  for (const line of content.split(/\r?\n/)) {
-    const field = line.match(
-      /^\s*(?:(?:public|protected|private|static|final|transient|volatile)\s+)*([A-Z][A-Za-z0-9_$]*)(?:\s*<[^;=]+>)?(?:\[\])?\s+[A-Za-z_$][\w$]*\s*(?:[;=])/
-    );
-    if (field?.[1]) add(field[1]);
-  }
-  return output;
-}
-
-function mergeQueryLocalEdges(
-  persisted: GraphEdgeRecord[],
-  derived: GraphEdgeRecord[]
-): GraphEdgeRecord[] {
-  const output = [...persisted];
-  const seen = new Set(persisted.map((edge) => `${edge.fromFile}\u0000${edge.toFile}\u0000${edge.type}`));
-  for (const edge of derived) {
-    const key = `${edge.fromFile}\u0000${edge.toFile}\u0000${edge.type}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    output.push(edge);
-  }
-  return output;
 }
 
 function rankedFilesFromScored(files: HybridScoredResult[]): ContextRankedFile[] {
