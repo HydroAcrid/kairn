@@ -26,7 +26,7 @@ const MAX_IDENTIFIER_LENGTH = 96;
 const MAX_PREFERRED_IDENTIFIERS = 64;
 const MAX_IDENTIFIERS = 240;
 const MAX_GRAPH_OR_PACKAGE_SEEDS = 16;
-const MAX_PATH_TOKEN_SEEDS = 8;
+export const PATH_TOKEN_CANDIDATE_LIMIT = 8;
 const MAX_RETRIEVAL_QUERIES = 3;
 const AMBIGUOUS_SINGLE_FILE_STEMS = new Set([
   "base",
@@ -835,7 +835,7 @@ function selectInitialPaths(input: {
       (input.pathTokenPriorityByPath.get(right) ?? 0) - (input.pathTokenPriorityByPath.get(left) ?? 0) ||
       left.localeCompare(right)
     )
-    .slice(0, Math.min(MAX_PATH_TOKEN_SEEDS, input.limit))) {
+    .slice(0, Math.min(PATH_TOKEN_CANDIDATE_LIMIT, input.limit))) {
     add(filePath);
   }
 

@@ -69,6 +69,7 @@ import {
   DEFAULT_INITIAL_CANDIDATE_LIMIT,
   extractEvidenceTaskSignals,
   isProductionEvidenceFile,
+  PATH_TOKEN_CANDIDATE_LIMIT,
   selectEvidenceSymbolTerms
 } from "../retrieval/evidenceSignals.js";
 import { scoreBm25Files } from "../lexical/bm25.js";
@@ -3584,13 +3585,17 @@ export class KairnRuntime {
         .map((result) => lightweightKeywordResult(result, result.score, result.reasons));
       const pathTokenScored = scorePathTokenCoverage(input.files, retrievalQuery)
         .map((result) => lightweightKeywordResult(result, result.score, result.reasons));
+      const normalizedPathTokenScored = normalizeLightweightScores(pathTokenScored, "keywordScore");
       const queryCandidates = mergeLightweightResults(
         normalizeLightweightScores(scored, "keywordScore"),
-        normalizeLightweightScores(pathTokenScored, "keywordScore")
+        normalizedPathTokenScored
       );
       return mergeLightweightResults(
         merged,
-        selectRoleBalancedSeeds(queryCandidates, sourceOrUnknownIntent)
+        mergeLightweightResults(
+          selectRoleBalancedSeeds(queryCandidates, sourceOrUnknownIntent),
+          normalizedPathTokenScored.slice(0, PATH_TOKEN_CANDIDATE_LIMIT)
+        )
       );
     }, []);
     const cheapCandidateResults = mergeLightweightResults(lexicalResults, pathAndSymbolResults);
