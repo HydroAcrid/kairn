@@ -61,7 +61,7 @@ describe("public evidence ranker training", () => {
         documentId: "sdoc_test",
         documentHash: "content-hash",
         modelId: "pinned-model",
-        schemaVersion: "semantic-documents-v2",
+        schemaVersion: "semantic-documents-v3",
         dimensions: 3,
         vector: new Int8Array([127, 0, -127]),
         scale: 0.005

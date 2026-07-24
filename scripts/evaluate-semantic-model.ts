@@ -175,7 +175,7 @@ function parseArguments(args: string[]): {
   return {
     modelId,
     modelPath,
-    manifest: values.get("manifest") ?? "benchmarks/semantic/model-selection-v2.json",
+    manifest: values.get("manifest") ?? "benchmarks/semantic/model-selection-v3.json",
     phase,
     ...(values.get("out") ? { out: values.get("out")! } : {})
   };
@@ -185,7 +185,7 @@ function validateManifest(manifest: SelectionManifest): void {
   if (
     manifest.schemaVersion !== "semantic-model-selection.v1" ||
     manifest.sealed !== true ||
-    !["semantic-documents-v1", "semantic-documents-v2"].includes(manifest.documentSchemaVersion) ||
+    !["semantic-documents-v1", "semantic-documents-v2", "semantic-documents-v3"].includes(manifest.documentSchemaVersion) ||
     !Array.isArray(manifest.cases) ||
     manifest.cases.length !== 15
   ) {

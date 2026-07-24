@@ -49,7 +49,7 @@ describe("model-based semantic candidates", () => {
 
   it("seals lineage-disjoint selection and holdout cases across all language/scenario cells", () => {
     const manifest = JSON.parse(fs.readFileSync(
-      path.resolve("benchmarks/semantic/model-selection-v2.json"),
+      path.resolve("benchmarks/semantic/model-selection-v3.json"),
       "utf8"
     )) as {
       sealed: boolean;
@@ -210,16 +210,21 @@ describe("model-based semantic candidates", () => {
             signature: "renewAccess(value)"
           }]
         })),
-        symbols: files.map((record) => ({
-          rootPath,
-          filePath: record.path,
-          name: "renewAccess",
-          kind: "function",
-          exported: true,
-          startLine: 1,
-          endLine: 1,
-          signature: "renewAccess(value)"
-        })),
+        symbols: files.flatMap((record) => {
+          const symbol = {
+            rootPath,
+            filePath: record.path,
+            name: "renewAccess",
+            kind: "function" as const,
+            exported: true,
+            startLine: 1,
+            endLine: 1,
+            signature: "renewAccess(value)"
+          };
+          // Some real parsers report the same declaration through multiple
+          // syntax paths. The semantic document store must remain unique.
+          return [symbol, { ...symbol }];
+        }),
         edges: []
       };
 
@@ -232,6 +237,7 @@ describe("model-based semantic candidates", () => {
       }
       expect(documents.some((item) => item.filePath === generated.path)).toBe(false);
       expect(documents.some((item) => item.kind === "symbol")).toBe(true);
+      expect(new Set(documents.map((item) => item.id)).size).toBe(documents.length);
     } finally {
       fs.rmSync(rootPath, { recursive: true, force: true });
     }
@@ -311,7 +317,7 @@ function document(
     text: `${filePath} implementation behavior`,
     hash,
     tokenEstimate: 8,
-    schemaVersion: "semantic-documents-v2"
+    schemaVersion: "semantic-documents-v3"
   };
 }
 
@@ -326,7 +332,7 @@ function embedding(
     documentId: semanticDocument.id,
     documentHash: semanticDocument.hash,
     modelId,
-    schemaVersion: "semantic-documents-v2",
+    schemaVersion: "semantic-documents-v3",
     vector
   });
 }

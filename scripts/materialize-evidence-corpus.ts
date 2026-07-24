@@ -693,7 +693,11 @@ function parseSnapshotEmbeddingCache(cachePath: string): SnapshotEmbeddingCache 
   const embeddings = array(parsed.embeddings, "snapshot embedding cache embeddings").map((value, index) => {
     const item = record(value, `snapshot embedding cache embeddings[${index}]`);
     const schemaVersion = string(item.schemaVersion, `snapshot embedding cache embeddings[${index}].schemaVersion`);
-    if (schemaVersion !== "semantic-documents-v1" && schemaVersion !== "semantic-documents-v2") {
+    if (
+      schemaVersion !== "semantic-documents-v1" &&
+      schemaVersion !== "semantic-documents-v2" &&
+      schemaVersion !== "semantic-documents-v3"
+    ) {
       throw new Error(`snapshot embedding cache has unsupported schema ${schemaVersion}`);
     }
     const supportedSchemaVersion: SemanticEmbeddingRecord["schemaVersion"] = schemaVersion;

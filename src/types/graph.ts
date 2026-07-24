@@ -199,7 +199,8 @@ export type SemanticVectorRecord = {
 export type SemanticDocumentKind = "file" | "symbol";
 export type SemanticDocumentSchemaVersion =
   | "semantic-documents-v1"
-  | "semantic-documents-v2";
+  | "semantic-documents-v2"
+  | "semantic-documents-v3";
 
 export type SemanticDocumentRecord = {
   rootPath: string;

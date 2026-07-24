@@ -12,7 +12,7 @@ import { readTextFile } from "../retrieval/readSource.js";
 import { sha256 } from "../utils/hash.js";
 import { estimateTokens } from "../utils/tokens.js";
 
-export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v2" as const;
+export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v3" as const;
 const MAX_FILE_BODY_CHARS = 440;
 const MAX_SYMBOL_BODY_CHARS = 500;
 const MAX_DOCUMENT_CHARS = 768;
@@ -65,7 +65,7 @@ export function buildSemanticDocuments(input: {
     }
   }
 
-  return selected.sort((left, right) =>
+  return uniqueDocuments(selected).sort((left, right) =>
     left.filePath.localeCompare(right.filePath) ||
     left.kind.localeCompare(right.kind) ||
     left.id.localeCompare(right.id)
@@ -132,7 +132,15 @@ function buildSymbolDocument(
     filePath: file.path,
     kind: "symbol",
     symbol: symbol.name,
-    identity: `${file.path}\0symbol\0${symbol.name}\0${symbol.startLine}`,
+    identity: [
+      file.path,
+      "symbol",
+      symbol.kind,
+      symbol.name,
+      symbol.signature,
+      symbol.startLine,
+      symbol.endLine
+    ].join("\0"),
     text
   });
 }
@@ -205,4 +213,23 @@ function truncateDocument(text: string): string {
 function boundedField(value: string, maxChars: number): string {
   const normalized = value.replace(/\s+/g, " ").trim();
   return normalized.length <= maxChars ? normalized : `${normalized.slice(0, maxChars - 1)}…`;
+}
+
+function uniqueDocuments(documents: SemanticDocumentRecord[]): SemanticDocumentRecord[] {
+  const byId = new Map<string, SemanticDocumentRecord>();
+  for (const document of documents) {
+    const existing = byId.get(document.id);
+    if (!existing) {
+      byId.set(document.id, document);
+      continue;
+    }
+    if (
+      existing.filePath !== document.filePath ||
+      existing.kind !== document.kind ||
+      existing.hash !== document.hash
+    ) {
+      throw new Error(`Semantic document identity collision for ${document.id}.`);
+    }
+  }
+  return [...byId.values()];
 }

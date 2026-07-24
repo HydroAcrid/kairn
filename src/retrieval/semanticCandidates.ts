@@ -60,7 +60,7 @@ export async function searchSemanticCandidates(input: {
     const document = documentsById.get(embedding.documentId);
     return (
       embedding.modelId === modelState.modelId &&
-      embedding.schemaVersion === "semantic-documents-v2" &&
+      embedding.schemaVersion === "semantic-documents-v3" &&
       document?.hash === embedding.documentHash
     );
   });
