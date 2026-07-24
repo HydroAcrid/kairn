@@ -41,6 +41,28 @@ registry beta as evidence for this checkout's behavior.
 
 The inventory retains every non-ignored repository path. Content parsing, symbols, graph enrichment, and chunks stay bounded: oversized or lower-priority files remain available for exact path and basename evidence without being read eagerly.
 
+### Local semantic model
+
+Kairn's semantic candidate lane uses a real CPU-only ONNX embedding model. It does not assign semantic relevance from regular expressions, filename tokens, or hashed bag-of-words vectors. Structural parsers may still extract objective paths, symbols, imports, compiler locations, stack traces, and file roles; the model supplies semantic similarity, and deterministic policy controls exclusions, budgets, delivery, and abstention.
+
+The preferred pinned model is `jina-code-v2-q8`, derived from `jinaai/jina-embeddings-v2-base-code` at an immutable revision. Its checksummed local directory is about 158 MiB and is shared across repositories under the user Kairn cache. Retrieval never downloads a model automatically.
+
+```bash
+kairn model status
+kairn model install
+kairn model verify
+kairn model remove
+
+# Configure agents and build the cheap inventory without offering a download.
+kairn enable --offline
+```
+
+Normal `kairn enable` shows the model id, source revision, license, download size, and cache location before one explicit confirmation. Installation stages every artifact atomically and verifies its pinned SHA-256 checksum. A missing, corrupt, incompatible, or stale model produces a visible fallback to exact path, failure, symbol, BM25, git, session, and graph evidence. It never restores pseudo-semantic hashing.
+
+File-level documents are built for eligible source files, with additional bounded symbol documents allocated across large files. Generated and vendor files remain classified but are not embedded unless objective evidence explicitly references them. Once installed, indexing and retrieval work with outbound networking blocked; repository content, evidence, prompts, and agent trajectories are not sent to a Kairn service.
+
+Candidate generation currently supports `legacy`, `shadow`, and `semantic` rollout modes. Shadow computes and records model-based candidates while serving the rollback generator; semantic mode serves the global embedding lane. Promotion remains gated on public-repository candidate recall, per-language results, runtime limits, and verification quality.
+
 For private beta tarballs or local source builds:
 
 ```bash
@@ -125,6 +147,7 @@ pnpm dev -- prime "job tracker mobile layout" --root /path/to/repo
 - CLI wrappers for humans and agents without MCP.
 - Watcher/hooks for observe-and-react session updates.
 - TypeScript language-service graph enrichment for JS/TS definitions, references, calls, implementations, and type references.
+- Global CPU-only ONNX semantic retrieval over bounded structural file and symbol documents.
 - BM25 exact lexical retrieval for identifiers and status terms that should not be blurred by vector scoring.
 
 ## Evidence And Token Claims
