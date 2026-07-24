@@ -10,6 +10,7 @@ export type ExportCorpusReviewBatchesOptions = {
   outDir: string;
   batchSize: number;
   indexOutPath?: string;
+  pendingOnly?: boolean;
 };
 
 export type MergeCorpusReviewBatchesOptions = {
@@ -62,14 +63,19 @@ export function exportCorpusReviewBatches(options: ExportCorpusReviewBatchesOpti
   const initiallyCompletedCases = cases.filter((item) =>
     decisionState(parseDecision(item.decision, `${String(item.id)}.decision`), String(item.id)) === "completed"
   ).length;
+  const exportedCases = options.pendingOnly
+    ? cases.filter((item) =>
+        decisionState(parseDecision(item.decision, `${String(item.id)}.decision`), String(item.id)) === "pending"
+      )
+    : cases;
 
   fs.mkdirSync(outDir, { recursive: true });
-  const batchCount = Math.ceil(cases.length / batchSize);
+  const batchCount = Math.ceil(exportedCases.length / batchSize);
   const entries: Array<Record<string, unknown>> = [];
-  for (let offset = 0; offset < cases.length; offset += batchSize) {
+  for (let offset = 0; offset < exportedCases.length; offset += batchSize) {
     const batchNumber = Math.floor(offset / batchSize) + 1;
     const batchId = `batch-${String(batchNumber).padStart(3, "0")}-of-${String(batchCount).padStart(3, "0")}`;
-    const batchCases = cases.slice(offset, offset + batchSize).map((item) => {
+    const batchCases = exportedCases.slice(offset, offset + batchSize).map((item) => {
       const { decision, ...context } = item;
       return { context, decision: parseDecision(decision, `${String(item.id)}.decision`) };
     });
@@ -116,6 +122,9 @@ export function exportCorpusReviewBatches(options: ExportCorpusReviewBatchesOpti
     },
     caseCount: cases.length,
     caseSetSha256: sha256(cases.map((item) => string(item.id, "case.id")).sort().join("\n")),
+    exportedCaseCount: exportedCases.length,
+    exportedCaseSetSha256: sha256(exportedCases.map((item) => string(item.id, "case.id")).sort().join("\n")),
+    selection: options.pendingOnly ? "pending_only" : "all",
     batchSize,
     batchCount,
     initialReviewProgress: {
@@ -125,7 +134,8 @@ export function exportCorpusReviewBatches(options: ExportCorpusReviewBatchesOpti
     policy: {
       decisionsAreNeverAutoFilled: true,
       immutableContextMustMatchSourceQueue: true,
-      exactCaseCoverageRequired: true,
+      exactSelectedCaseCoverageRequired: true,
+      sourceQueueCompletedDecisionsPreserved: options.pendingOnly === true,
       partialProgressMayBeMerged: true,
       completeMergeRequiredBeforeSealing: true
     },
@@ -172,6 +182,20 @@ export function mergeCorpusReviewBatches(options: MergeCorpusReviewBatchesOption
   expectValue(index.caseCount, sourceCases.size, "batch index caseCount");
   const expectedCaseSetSha256 = sha256([...sourceCases.keys()].sort().join("\n"));
   expectValue(index.caseSetSha256, expectedCaseSetSha256, "batch index case set hash");
+  const selection = index.selection === undefined ? "all" : string(index.selection, "batch index selection");
+  if (selection !== "all" && selection !== "pending_only") {
+    throw new Error(`unsupported batch index selection '${selection}'`);
+  }
+  const selectedSourceCases = [...sourceCases.entries()].filter(([id, item]) =>
+    selection === "all" ||
+    decisionState(parseDecision(item.decision, `${id}.decision`), id) === "pending"
+  );
+  expectValue(index.exportedCaseCount ?? sourceCases.size, selectedSourceCases.length, "batch index exportedCaseCount");
+  expectValue(
+    index.exportedCaseSetSha256 ?? expectedCaseSetSha256,
+    sha256(selectedSourceCases.map(([id]) => id).sort().join("\n")),
+    "batch index exported case set hash"
+  );
 
   const batchEntries = array(index.batches, "batch index batches").map((value, entryIndex) =>
     record(value, `batch index batches[${entryIndex}]`)
@@ -190,6 +214,17 @@ export function mergeCorpusReviewBatches(options: MergeCorpusReviewBatchesOption
   const decisions = new Map<string, ReviewDecision>();
   let completedCases = 0;
   const reviewers = new Set<string>();
+  if (selection === "pending_only") {
+    for (const [id, sourceCase] of sourceCases) {
+      const decision = parseDecision(sourceCase.decision, `${id}.decision`);
+      if (decisionState(decision, id) !== "completed") continue;
+      const { decision: _sourceDecision, ...sourceContext } = sourceCase;
+      validateCompletedDecision(id, sourceContext, decision);
+      decisions.set(id, decision);
+      completedCases += 1;
+      reviewers.add(decision.reviewer!);
+    }
+  }
   for (const [entryIndex, entry] of batchEntries.entries()) {
     const fileName = string(entry.fileName, `batch index batches[${entryIndex}].fileName`);
     const batch = record(JSON.parse(fs.readFileSync(path.join(batchDir, fileName), "utf8")), fileName);
@@ -444,7 +479,7 @@ if (isDirect) {
   try {
     const args = process.argv.slice(2).filter((token) => token !== "--");
     const command = args.shift();
-    const { values, enabledFlags } = parseValues(args, new Set(["--require-complete"]));
+    const { values, enabledFlags } = parseValues(args, new Set(["--require-complete", "--pending-only"]));
     const required = (key: string): string => {
       const value = values.get(key);
       if (!value) throw new Error(`${key} is required`);
@@ -455,6 +490,7 @@ if (isDirect) {
         queuePath: required("--queue"),
         outDir: required("--out-dir"),
         batchSize: Number(values.get("--batch-size") ?? "10"),
+        pendingOnly: enabledFlags.has("--pending-only"),
         ...(values.has("--index-out") ? { indexOutPath: values.get("--index-out")! } : {})
       });
       process.stdout.write(`${JSON.stringify({ outDir: path.resolve(required("--out-dir")), ...result }, null, 2)}\n`);

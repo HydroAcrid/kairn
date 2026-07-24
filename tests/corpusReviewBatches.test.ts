@@ -66,6 +66,46 @@ describe("corpus review batches", () => {
     expect(readJson(fixture.mergedPath).cases[0].decision.requiredSourceFiles).toEqual(["src/required-1.ts"]);
   });
 
+  it("exports only pending cases while preserving completed source-queue decisions", () => {
+    const fixture = reviewFixture();
+    const queue = readJson(fixture.queuePath);
+    for (const item of queue.cases.slice(0, 2)) {
+      const candidates = item.candidates.map((candidate: { path: string }) => candidate.path);
+      item.decision = {
+        requiredSourceFiles: item.needsRequiredSourceReview ? [item.officialPatchSourceFiles[0]] : [],
+        explicitNoiseFiles: item.needsRequiredSourceReview ? candidates.slice(0, 6) : candidates.slice(1, 7),
+        reviewer: "prior-independent-reviewer",
+        reviewedAt: "2026-07-23T11:00:00.000Z",
+        notes: "Previously reviewed labels remain valid."
+      };
+    }
+    writeJson(fixture.queuePath, queue);
+
+    const index = exportCorpusReviewBatches({
+      queuePath: fixture.queuePath,
+      outDir: fixture.batchDir,
+      batchSize: 2,
+      pendingOnly: true
+    });
+    expect(index).toMatchObject({
+      caseCount: 5,
+      exportedCaseCount: 3,
+      selection: "pending_only",
+      batchCount: 2,
+      initialReviewProgress: { completedCases: 2, pendingCases: 3 }
+    });
+    completeAllDecisions(fixture.batchDir);
+
+    const summary = mergeCorpusReviewBatches(fixture.mergeOptions({ requireComplete: true }));
+    expect(summary).toMatchObject({
+      completedCases: 5,
+      pendingCases: 0,
+      reviewers: ["independent-reviewer", "prior-independent-reviewer"],
+      readyForReviewApplication: true
+    });
+    expect(readJson(fixture.mergedPath).cases[0].decision.reviewer).toBe("prior-independent-reviewer");
+  });
+
   it("rejects immutable context tampering", () => {
     const fixture = reviewFixture();
     const index = exportCorpusReviewBatches({ queuePath: fixture.queuePath, outDir: fixture.batchDir, batchSize: 2 });
