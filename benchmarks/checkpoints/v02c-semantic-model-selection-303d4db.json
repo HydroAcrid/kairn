@@ -64,7 +64,19 @@
       "device": "cpu"
     }
   },
-  "holdoutOpened": false,
+  "holdout": {
+    "openedAfterFreezeCommit": "19dfff9",
+    "artifactSha256": "fc9c7bcf5fbff690fa2253eb508abe3642c1a9c7e5547a0652098a1d6de9d091",
+    "caseCount": 5,
+    "recallAt1": 0.4,
+    "recallAt5": 1,
+    "strictFullRecallAt64": 1,
+    "strictFullRecallAt128": 1,
+    "meanReciprocalRank": 0.59,
+    "zeroPositiveCasesAt128": 0,
+    "medianQueryLatencyMs": 100.82
+  },
+  "holdoutOpened": true,
   "paidComparisonEligible": false,
   "nextGate": "Evaluate the frozen Jina configuration on holdout, then rematerialize the existing 38-case required-source oracle."
 }
