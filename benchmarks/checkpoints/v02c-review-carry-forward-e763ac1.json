@@ -1,0 +1,80 @@
+{
+  "schemaVersion": "ranker-corpus-review-carry-forward-checkpoint.v1",
+  "checkpointId": "kairn-evidence-v02c-20260722-e763ac1",
+  "createdAt": "2026-07-23T21:35:00-04:00",
+  "status": "review_pending",
+  "promotionEligible": false,
+  "paidComparisonEligible": false,
+  "corpusId": "kairn-evidence-v02c-20260722",
+  "toolingCommit": "e763ac18a3ad08f88d5d34fc18d3cce3ba429e8c",
+  "artifacts": {
+    "storage": "local_ignored_artifacts",
+    "priorCompletedReviewQueue": {
+      "fileName": "ranker-corpus.review-queue-v35-complete.json",
+      "sha256": "31e511167c8720a38d6a2e278e4fe378b25353d3b477773ae4bfcdcc47f230a4"
+    },
+    "refreshedReviewQueue": {
+      "fileName": "ranker-corpus.review-queue-v73.json",
+      "sha256": "d67c6674c195ecc35a073b1fc226b40bf48fc227c085205b073da1f6e89c4565"
+    },
+    "carriedReviewQueue": {
+      "fileName": "ranker-corpus.review-queue-v77-carried.json",
+      "sha256": "4b1a11edddd4e2a9a0a9e8828dc7895fa9238d1637899f85ca491fcac2cf5ead"
+    },
+    "carryForwardAudit": {
+      "fileName": "ranker-corpus.review-carry-forward-v77.json",
+      "sha256": "f8ead55128eceb8a01cdf5efc1a46f58a73a92d3626e21a2cdc34de3370adfd0"
+    },
+    "pendingBatchIndex": {
+      "fileName": "ranker-corpus.review-batches-v77.json",
+      "sha256": "959ce421fed77de14f5fb56efb7e27c6382397892950ae2dd16f63b0bb98737d"
+    },
+    "roundTripProgress": {
+      "fileName": "ranker-corpus.review-progress-v77-roundtrip.json",
+      "sha256": "721346b77b66a06af20ea04bb0fe7a688e8cedd3c26ce9f761c3ab91036ccd3c"
+    },
+    "roundTripDecisions": {
+      "fileName": "ranker-corpus.review-decisions-v77-roundtrip.json",
+      "sha256": "658257d8da3ed116832607195f1ce25fc3cc4e96f6edd12f882c3d11acb5b587"
+    }
+  },
+  "carryForwardPolicy": {
+    "immutableTaskIdentityRequired": true,
+    "currentLabelsMustEqualPriorReviewedDecision": true,
+    "everyReviewedLabelMustRemainInCurrentCandidateUnion": true,
+    "candidateAdditionsDoNotInvalidateStillPresentReviewedLabels": true,
+    "completedCurrentDecisionsAreNeverOverwritten": true
+  },
+  "review": {
+    "caseCount": 165,
+    "carriedCaseCount": 130,
+    "pendingCaseCount": 35,
+    "pendingReasonOccurrences": {
+      "reviewedExplicitNoiseMissing": 27,
+      "reviewedRequiredSourceMissing": 10
+    },
+    "pendingCaseBreakdown": {
+      "noiseOnly": 25,
+      "requiredSourceOnly": 8,
+      "both": 2
+    },
+    "selection": "pending_only",
+    "batchCount": 4,
+    "batchSize": 10,
+    "roundTripPreservedCompletedCases": 130,
+    "independentReviewStillRequired": true
+  },
+  "verification": {
+    "testFilesPassed": 29,
+    "testsPassed": 411,
+    "typecheckPassed": true,
+    "buildPassed": true,
+    "pendingOnlyRoundTripPassed": true
+  },
+  "blockers": [
+    "Fresh independent decisions are still required for 35 changed cases.",
+    "Strict candidate recall remains below the promotion thresholds.",
+    "Three cases contain no positive training candidate in the bounded 128-file union.",
+    "No paid Claude or ReasonBlocks smoke run is authorized while readiness is blocked."
+  ]
+}
