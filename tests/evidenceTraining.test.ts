@@ -1,4 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -117,6 +118,31 @@ describe("public evidence ranker training", () => {
         signals: expect.objectContaining({ explicitPaths: expect.arrayContaining(["src/user.ts"]) }),
         enrichedCandidatePaths: expect.arrayContaining(["src/user.ts"]),
         index: expect.objectContaining({ fileCount: expect.any(Number), symbolCount: expect.any(Number) })
+      })]
+    });
+    const staleNoiseReportPath = path.join(temporary, "materialization-report-stale-noise.json");
+    const staleNoiseQueuePath = path.join(temporary, "review-stale-noise.json");
+    const staleNoiseReport = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+    staleNoiseReport.cases[0].candidates = staleNoiseReport.cases[0].candidates.filter(
+      (candidate: { path: string }) => candidate.path !== noise[0]
+    );
+    staleNoiseReport.cases[0].candidatePathsSha256 = crypto
+      .createHash("sha256")
+      .update(staleNoiseReport.cases[0].candidates.map((candidate: { path: string }) => candidate.path).join("\n"))
+      .digest("hex");
+    fs.writeFileSync(staleNoiseReportPath, `${JSON.stringify(staleNoiseReport, null, 2)}\n`, "utf8");
+    expect(buildCorpusReviewQueue({
+      intakePath,
+      manifestPath,
+      reportPath: staleNoiseReportPath,
+      outPath: staleNoiseQueuePath
+    })).toMatchObject({
+      explicitNoiseReviewCases: 1,
+      cases: [expect.objectContaining({
+        needsNoiseReview: true,
+        explicitNoiseFilesPresent: noise.slice(1),
+        explicitNoiseFilesMissing: [noise[0]],
+        decision: expect.objectContaining({ explicitNoiseFiles: noise.slice(1) })
       })]
     });
     const reviewPath = path.join(temporary, "review.json");

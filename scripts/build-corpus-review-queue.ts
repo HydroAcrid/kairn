@@ -49,9 +49,11 @@ export function buildCorpusReviewQueue(options: CorpusReviewQueueOptions): Recor
     const explicitNoise = stringArray(item.explicitNoiseFiles, `${id}.explicitNoiseFiles`);
     const patchSourcesPresent = officialPatchSources.filter((filePath) => candidatePaths.has(filePath));
     const requiredSourcesPresent = requiredSources.filter((filePath) => candidatePaths.has(filePath));
+    const explicitNoisePresent = explicitNoise.filter((filePath) => candidatePaths.has(filePath));
+    const explicitNoiseMissing = explicitNoise.filter((filePath) => !candidatePaths.has(filePath));
     const split = string(item.split, `${id}.split`);
     const needsRequiredSourceReview = split === "holdout" || (requiredSources.length === 0 && patchSourcesPresent.length === 0);
-    const needsNoiseReview = explicitNoise.length < 6;
+    const needsNoiseReview = explicitNoisePresent.length < 6;
     return {
       id,
       split,
@@ -69,12 +71,14 @@ export function buildCorpusReviewQueue(options: CorpusReviewQueueOptions): Recor
       officialPatchSourceFilesPresent: patchSourcesPresent,
       officialPatchSourceFilesMissing: officialPatchSources.filter((filePath) => !candidatePaths.has(filePath)),
       explicitNoiseFiles: explicitNoise,
+      explicitNoiseFilesPresent: explicitNoisePresent,
+      explicitNoiseFilesMissing: explicitNoiseMissing,
       needsRequiredSourceReview,
       needsNoiseReview,
       reviewStatus: needsRequiredSourceReview || needsNoiseReview ? "needs_review" : "ready_for_seal",
       decision: {
         requiredSourceFiles: requiredSources,
-        explicitNoiseFiles: explicitNoise,
+        explicitNoiseFiles: explicitNoisePresent,
         reviewer: null,
         reviewedAt: null,
         notes: null
@@ -100,6 +104,7 @@ export function buildCorpusReviewQueue(options: CorpusReviewQueueOptions): Recor
     policy: {
       holdoutRequiredSourceOracleMandatory: true,
       minimumExplicitNoiseFiles: 6,
+      staleExplicitNoiseLabelsAreNotCarriedForward: true,
       decisionsAreNeverAutoFilled: true
     },
     cases: rows
@@ -188,4 +193,3 @@ if (isDirect) {
     process.exitCode = 1;
   }
 }
-
