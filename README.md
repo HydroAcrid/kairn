@@ -10,7 +10,7 @@ Token reduction is a core benefit, but it only counts when the compared run stil
 
 The CLI, MCP server, local index, hooks, task ledger, bounded evidence ranker, and evaluation harness are under active v0.2 development. Codex is the most-tested automatic path. Claude Code, Gemini CLI, Copilot CLI, VS Code, and generic MCP clients are supported integration targets; support does not imply equal published efficacy evidence.
 
-For a full map of the current layers and data flow, see `docs/kairn_architecture_overview.md`.
+For a full map of the current layers and data flow, see `docs/kairn_architecture_overview.md`. The frozen v0.2C-S model-selection, holdout, runtime, and candidate-promotion state is summarized in `docs/v02c-semantic-candidates.md`.
 
 The source checkout is licensed under Apache-2.0. The local product is intended to remain complete without a Kairn-hosted service. Kairn does not capture reasoning traces, route models, provide a trajectory dashboard, or build hosted collective memory. See `docs/privacy-boundary.md`, `SECURITY.md`, and `CONTRIBUTING.md`.
 
