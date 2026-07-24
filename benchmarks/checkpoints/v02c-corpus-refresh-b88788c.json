@@ -1,0 +1,109 @@
+{
+  "schemaVersion": "ranker-corpus-refresh-checkpoint.v1",
+  "checkpointId": "kairn-evidence-v02c-20260722-b88788c",
+  "createdAt": "2026-07-23T21:10:21-04:00",
+  "status": "blocked_pending_independent_review_and_candidate_recall",
+  "promotionEligible": false,
+  "paidComparisonEligible": false,
+  "corpusId": "kairn-evidence-v02c-20260722",
+  "materializer": {
+    "kairnCommit": "b88788cdf9841178bf77fdb60511dc9e9779c198",
+    "candidateLimit": 64,
+    "enrichedCandidateLimit": 128,
+    "graphHops": 1,
+    "caseProcessIsolation": true
+  },
+  "artifacts": {
+    "storage": "local_ignored_artifacts",
+    "draftManifest": {
+      "fileName": "ranker-corpus.full-v73-draft.json",
+      "sha256": "13cd02feaa419b29213b8ff75e6b4fd04fd04f454a0373ceeb349c7f922f8750"
+    },
+    "materializationReport": {
+      "fileName": "ranker-corpus.full-v73-draft.report.json",
+      "sha256": "2615e70db20bac7988234147db91293c25eecacdd91204e6b7eea4db56d5befa"
+    },
+    "reviewQueue": {
+      "fileName": "ranker-corpus.review-queue-v73.json",
+      "sha256": "d67c6674c195ecc35a073b1fc226b40bf48fc227c085205b073da1f6e89c4565"
+    },
+    "reviewBatchIndex": {
+      "fileName": "ranker-corpus.review-batches-v73.json",
+      "sha256": "83b55128a2e6fa7d0a73fff9387756a85e0f0d4573117520b2c05f11b0a37bb2"
+    }
+  },
+  "materialization": {
+    "caseCount": 165,
+    "trainingCandidateCount": {
+      "minimum": 59,
+      "mean": 111.46,
+      "maximum": 128
+    },
+    "casesWithPositiveTrainingCandidate": 162,
+    "zeroPositiveCases": 3,
+    "casesWithSixReviewedNegativesAt64": 31,
+    "casesWithSixReviewedNegativesAt128": 138,
+    "casesNeedingReplacementNegatives": 27,
+    "casesWithAnyMissingHistoricalLabel": 45
+  },
+  "strictRequiredSourceRecall": {
+    "eligibleCases": 38,
+    "fullRecallCasesAt64": 26,
+    "fullRecallRateAt64": 0.6842105263157895,
+    "meanRecallAt64": 0.7810150375939849,
+    "fullRecallCasesAt128": 31,
+    "fullRecallRateAt128": 0.8157894736842105,
+    "meanRecallAt128": 0.8735588972431078,
+    "byLanguage": {
+      "python": {
+        "eligibleCases": 6,
+        "fullRecallCasesAt64": 4,
+        "fullRecallCasesAt128": 4
+      },
+      "typescript": {
+        "eligibleCases": 10,
+        "fullRecallCasesAt64": 5,
+        "fullRecallCasesAt128": 7
+      },
+      "go": {
+        "eligibleCases": 8,
+        "fullRecallCasesAt64": 5,
+        "fullRecallCasesAt128": 6
+      },
+      "java": {
+        "eligibleCases": 7,
+        "fullRecallCasesAt64": 7,
+        "fullRecallCasesAt128": 7
+      },
+      "cpp": {
+        "eligibleCases": 7,
+        "fullRecallCasesAt64": 5,
+        "fullRecallCasesAt128": 7
+      }
+    }
+  },
+  "review": {
+    "caseCount": 165,
+    "requiredSourceReviewCases": 30,
+    "explicitNoiseReviewCases": 27,
+    "uniqueCasesNeedingFreshReview": 51,
+    "structurallyReadyCases": 114,
+    "batchCount": 15,
+    "batchSize": 11,
+    "completedCases": 0,
+    "pendingCases": 165,
+    "independentReviewRequired": true
+  },
+  "verification": {
+    "testFilesPassed": 28,
+    "testsPassed": 407,
+    "typecheckPassed": true,
+    "buildPassed": true
+  },
+  "blockers": [
+    "Independent review decisions have not been completed for the refreshed candidate unions.",
+    "Strict candidate recall remains below the promotion thresholds.",
+    "Three cases contain no positive training candidate in the bounded 128-file union.",
+    "No paid Claude or ReasonBlocks smoke run is authorized while readiness is blocked."
+  ]
+}
