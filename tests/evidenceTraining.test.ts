@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { validateEvidenceRankerArtifact } from "../src/retrieval/evidenceModel.js";
 import { EVIDENCE_FEATURE_NAMES } from "../src/types/evidence.js";
 import { materializeEvidenceCorpus } from "../scripts/materialize-evidence-corpus.js";
@@ -20,6 +20,18 @@ function pythonInvocation(): { command: string; prefix: string[] } {
 }
 
 describe("public evidence ranker training", () => {
+  let previousCandidateMode: string | undefined;
+
+  beforeEach(() => {
+    previousCandidateMode = process.env.KAIRN_CANDIDATE_MODE;
+    process.env.KAIRN_CANDIDATE_MODE = "legacy";
+  });
+
+  afterEach(() => {
+    if (previousCandidateMode === undefined) delete process.env.KAIRN_CANDIDATE_MODE;
+    else process.env.KAIRN_CANDIDATE_MODE = previousCandidateMode;
+  });
+
   it("extracts official patch paths without learning fixture identities", () => {
     expect(patchFiles([
       "diff --git a/src/engine.ts b/src/engine.ts",
@@ -49,7 +61,7 @@ describe("public evidence ranker training", () => {
     fs.writeFileSync(intakePath, JSON.stringify({
       schemaVersion: "ranker-corpus-intake.v1",
       corpusId: "materializer-sample",
-      featureSchemaVersion: "evidence-features-v2",
+      featureSchemaVersion: "evidence-features-v1",
       sealed: false,
       sampleOnly: true,
       lineageRegistry: "lineages.json",
@@ -81,7 +93,8 @@ describe("public evidence ranker training", () => {
       allowSample: true,
       allowLocalFixture: true,
       draft: true,
-      processIsolation: true
+      processIsolation: true,
+      migrateFeatureSchema: true
     });
 
     expect(result.caseCount).toBe(1);
@@ -97,8 +110,10 @@ describe("public evidence ranker training", () => {
     expect(manifest.materializer).toMatchObject({
       candidateLimit: 64,
       enrichedCandidateLimit: 128,
-      graphHops: 1
+      graphHops: 1,
+      migratedFeatureSchemaFrom: "evidence-features-v1"
     });
+    expect(manifest.featureSchemaVersion).toBe("evidence-features-v2");
     expect(manifest.cases[0].candidates).toEqual(expect.arrayContaining([
       expect.objectContaining({
         path: "src/user.ts",
@@ -227,7 +242,8 @@ describe("public evidence ranker training", () => {
       cacheDir: path.join(temporary, "cache"),
       allowSample: true,
       allowLocalFixture: true,
-      processIsolation: true
+      processIsolation: true,
+      migrateFeatureSchema: true
     });
     expect(JSON.parse(fs.readFileSync(sealedManifestPath, "utf8"))).toMatchObject({
       sealed: true,
@@ -278,7 +294,8 @@ describe("public evidence ranker training", () => {
       cacheDir: path.join(temporary, "cache"),
       allowSample: true,
       allowLocalFixture: true,
-      processIsolation: true
+      processIsolation: true,
+      migrateFeatureSchema: true
     });
     expect(JSON.parse(fs.readFileSync(missedReportPath, "utf8"))).toMatchObject({
       candidateRecallAt64: 0,
@@ -328,7 +345,8 @@ describe("public evidence ranker training", () => {
       cacheDir: path.join(temporary, "cache"),
       allowSample: true,
       allowLocalFixture: true,
-      processIsolation: true
+      processIsolation: true,
+      migrateFeatureSchema: true
     });
     expect(JSON.parse(fs.readFileSync(creationManifestPath, "utf8"))).toMatchObject({
       cases: [expect.objectContaining({

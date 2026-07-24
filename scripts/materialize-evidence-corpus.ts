@@ -42,6 +42,7 @@ type Intake = {
   schemaVersion: "ranker-corpus-intake.v1";
   corpusId: string;
   featureSchemaVersion: string;
+  migratedFeatureSchemaFrom?: "evidence-features-v1";
   sealed: boolean;
   sampleOnly: boolean;
   lineageRegistry: string;
@@ -60,6 +61,7 @@ export type MaterializeOptions = {
   caseIds?: string[];
   processIsolation?: boolean;
   isolatedWorker?: boolean;
+  migrateFeatureSchema?: boolean;
 };
 
 const INTAKE_KEYS = new Set([
@@ -81,7 +83,8 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
   const intake = parseIntake(JSON.parse(fs.readFileSync(intakePath, "utf8")), {
     allowSample: options.allowSample === true,
     allowLocalFixture: options.allowLocalFixture === true,
-    draft: options.draft === true
+    draft: options.draft === true,
+    migrateFeatureSchema: options.migrateFeatureSchema === true
   });
   const intakeDir = path.dirname(intakePath);
   const registryPath = path.resolve(intakeDir, intake.lineageRegistry);
@@ -238,7 +241,10 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       intakeSha256: sha256(fs.readFileSync(intakePath)),
       candidateLimit: 64,
       enrichedCandidateLimit: 128,
-      graphHops: 1
+      graphHops: 1,
+      ...(intake.migratedFeatureSchemaFrom
+        ? { migratedFeatureSchemaFrom: intake.migratedFeatureSchemaFrom }
+        : {})
     },
     cases: materializedCases
   };
@@ -278,7 +284,8 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
   const intake = parseIntake(JSON.parse(fs.readFileSync(intakePath, "utf8")), {
     allowSample: options.allowSample === true,
     allowLocalFixture: options.allowLocalFixture === true,
-    draft: options.draft === true
+    draft: options.draft === true,
+    migrateFeatureSchema: options.migrateFeatureSchema === true
   });
   const intakeDir = path.dirname(intakePath);
   const registryPath = path.resolve(intakeDir, intake.lineageRegistry);
@@ -312,7 +319,8 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
       "--isolated-worker",
       ...(options.draft ? ["--draft"] : []),
       ...(options.allowSample ? ["--allow-sample"] : []),
-      ...(options.allowLocalFixture ? ["--allow-local-fixture"] : [])
+      ...(options.allowLocalFixture ? ["--allow-local-fixture"] : []),
+      ...(options.migrateFeatureSchema ? ["--migrate-feature-schema"] : [])
     ];
     try {
       execFileSync(process.execPath, args, {
@@ -357,7 +365,10 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
       candidateLimit: 64,
       enrichedCandidateLimit: 128,
       graphHops: 1,
-      caseProcessIsolation: true
+      caseProcessIsolation: true,
+      ...(intake.migratedFeatureSchemaFrom
+        ? { migratedFeatureSchemaFrom: intake.migratedFeatureSchemaFrom }
+        : {})
     },
     cases: materializedCases
   };
@@ -422,10 +433,19 @@ function selectIntakeCases(
   return selectedCases;
 }
 
-function parseIntake(value: unknown, options: { allowSample: boolean; allowLocalFixture: boolean; draft: boolean }): Intake {
+function parseIntake(value: unknown, options: {
+  allowSample: boolean;
+  allowLocalFixture: boolean;
+  draft: boolean;
+  migrateFeatureSchema: boolean;
+}): Intake {
   const root = record(value, "intake");
   if (root.schemaVersion !== "ranker-corpus-intake.v1") throw new Error("intake schemaVersion must be ranker-corpus-intake.v1");
-  if (root.featureSchemaVersion !== EVIDENCE_FEATURE_SCHEMA_VERSION) {
+  const migratedFeatureSchemaFrom = root.featureSchemaVersion === "evidence-features-v1" &&
+    options.migrateFeatureSchema
+    ? "evidence-features-v1" as const
+    : undefined;
+  if (root.featureSchemaVersion !== EVIDENCE_FEATURE_SCHEMA_VERSION && !migratedFeatureSchemaFrom) {
     throw new Error(`featureSchemaVersion must be ${EVIDENCE_FEATURE_SCHEMA_VERSION}`);
   }
   if (root.sealed !== true && !options.draft) throw new Error("corpus intake must be sealed before materialization");
@@ -439,6 +459,7 @@ function parseIntake(value: unknown, options: { allowSample: boolean; allowLocal
     schemaVersion: "ranker-corpus-intake.v1",
     corpusId: string(root.corpusId, "corpusId"),
     featureSchemaVersion: EVIDENCE_FEATURE_SCHEMA_VERSION,
+    ...(migratedFeatureSchemaFrom ? { migratedFeatureSchemaFrom } : {}),
     sealed: root.sealed as boolean,
     sampleOnly: root.sampleOnly as boolean,
     lineageRegistry: string(root.lineageRegistry, "lineageRegistry"),
@@ -714,7 +735,8 @@ function parseArgs(argv: string[]): MaterializeOptions {
     const token = args[index]!;
     if (
       token === "--allow-sample" || token === "--allow-local-fixture" || token === "--draft" ||
-      token === "--in-process" || token === "--isolated-worker"
+      token === "--in-process" || token === "--isolated-worker" ||
+      token === "--migrate-feature-schema"
     ) {
       flags.add(token);
       continue;
@@ -739,6 +761,7 @@ function parseArgs(argv: string[]): MaterializeOptions {
     draft: flags.has("--draft"),
     processIsolation: !flags.has("--in-process"),
     isolatedWorker: flags.has("--isolated-worker"),
+    migrateFeatureSchema: flags.has("--migrate-feature-schema"),
     ...(values.get("--limit") ? { limit: positiveInteger(values.get("--limit")!, "--limit") } : {}),
     ...(values.get("--case-id") ? { caseIds: commaSeparated(values.get("--case-id")!, "--case-id") } : {})
   };
