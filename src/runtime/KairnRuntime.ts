@@ -3733,6 +3733,7 @@ export class KairnRuntime {
           bm25: modelBm25Results.map((result) => result.path),
           graph: fused.graphPaths,
           graphConsensus: fused.graphConsensusPaths,
+          graphSeedProximity: fused.graphSeedProximityPaths,
           graphEvidence: describeGraphCandidateEvidence({
             seedPaths: fused.graphSeedPaths,
             graphPaths: fused.graphPaths,

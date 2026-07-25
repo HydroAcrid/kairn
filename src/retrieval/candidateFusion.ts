@@ -28,6 +28,7 @@ export type ModelCandidateUnion = {
   semanticStatus: SemanticRetrieverStatus;
   graphPaths: string[];
   graphConsensusPaths: string[];
+  graphSeedProximityPaths: string[];
   graphSeedPaths: string[];
 };
 
@@ -40,6 +41,11 @@ export type ModelCandidateUnion = {
 export const MODEL_RETRIEVAL_PROBE_LIMIT = 512;
 const MODEL_INITIAL_SEMANTIC_RESERVE = 40;
 const MAX_TEST_GRAPH_PROBE_PATHS = 192;
+const GRAPH_ENRICHMENT_CAPACITY =
+  DEFAULT_ENRICHED_CANDIDATE_LIMIT - DEFAULT_INITIAL_CANDIDATE_LIMIT;
+const GRAPH_SEED_PROXIMITY_RESERVE = Math.floor(GRAPH_ENRICHMENT_CAPACITY / 4);
+const GRAPH_PRECISION_RESERVE =
+  GRAPH_ENRICHMENT_CAPACITY - GRAPH_SEED_PROXIMITY_RESERVE;
 
 export function buildModelCandidateUnion(input: {
   files: FileRecord[];
@@ -182,6 +188,22 @@ export function buildModelCandidateUnion(input: {
     signals.intent,
     filesByPath
   );
+  const graphSeedProximityPaths = prioritizeGraphPathsForIntent(
+    rankEvidenceBackedGraphCandidates({
+      seedPaths: initialPaths,
+      probeSeedPaths: graphProbePaths,
+      edges: input.edges,
+      filesByPath,
+      evidenceRankings: [
+        { channel: "semantic", paths: semanticEvidencePaths },
+        { channel: "bm25", paths: bm25Paths },
+        { channel: "symbol", paths: eligibleSymbolPaths }
+      ],
+      ordering: "seed_proximity"
+    }),
+    signals.intent,
+    filesByPath
+  );
   const graphEnrichedOrder = reciprocalRankFuse({
     hardPaths,
     rankings: graphPaths.length > 0
@@ -206,6 +228,8 @@ export function buildModelCandidateUnion(input: {
   // parser-proven neighbor.
   const enrichedPaths = uniquePaths([
     ...initialPaths,
+    ...graphSeedProximityPaths.slice(0, GRAPH_SEED_PROXIMITY_RESERVE),
+    ...graphPaths.slice(0, GRAPH_PRECISION_RESERVE),
     ...graphConsensusPaths,
     ...graphPaths,
     ...graphEnrichedOrder,
@@ -251,6 +275,7 @@ export function buildModelCandidateUnion(input: {
     semanticStatus: input.semanticStatus,
     graphPaths,
     graphConsensusPaths,
+    graphSeedProximityPaths,
     graphSeedPaths
   };
 }
@@ -300,7 +325,7 @@ export function rankEvidenceBackedGraphCandidates(input: {
   filesByPath: Map<string, FileRecord>;
   evidenceRankings: CandidateRanking[];
   minimumSeedSupport?: number;
-  ordering?: "precision" | "support";
+  ordering?: "precision" | "support" | "seed_proximity";
 }): string[] {
   const primarySeeds = uniquePaths(input.seedPaths);
   const primarySeedSet = new Set(primarySeeds);
@@ -400,9 +425,17 @@ export function rankEvidenceBackedGraphCandidates(input: {
     candidate.precision * graphSupportScore(candidate) + independentScore(candidate.path);
   const minimumSeedSupport = Math.max(1, Math.floor(input.minimumSeedSupport ?? 1));
   const ordering = input.ordering ?? "precision";
-  const ranked = [...candidates.values()]
-    .filter((candidate) => candidate.seedRanks.size >= minimumSeedSupport)
-    .sort((left, right) => ordering === "support"
+  const eligibleCandidates = [...candidates.values()]
+    .filter((candidate) => candidate.seedRanks.size >= minimumSeedSupport);
+  const ranked = ordering === "seed_proximity"
+    ? rankGraphCandidatesBySeedProximity({
+        candidates: eligibleCandidates,
+        seedRanks,
+        evidenceRanks,
+        graphSupportScore,
+        independentScore
+      })
+    : eligibleCandidates.sort((left, right) => ordering === "support"
       ? (
           supportWeightedScore(right) - supportWeightedScore(left) ||
           right.seedRanks.size - left.seedRanks.size ||
@@ -420,6 +453,58 @@ export function rankEvidenceBackedGraphCandidates(input: {
           left.path.localeCompare(right.path)
         ));
   return diversifyModuleInstallationFamilies(ranked).map((candidate) => candidate.path);
+}
+
+function rankGraphCandidatesBySeedProximity<T extends {
+  path: string;
+  precision: number;
+  seedRanks: Map<string, number>;
+}>(input: {
+  candidates: T[];
+  seedRanks: Map<string, number>;
+  evidenceRanks: Map<string, Map<CandidateRanking["channel"], number>>;
+  graphSupportScore(candidate: T): number;
+  independentScore(filePath: string): number;
+}): T[] {
+  const queues = new Map<string, T[]>();
+  for (const candidate of input.candidates) {
+    for (const seedPath of candidate.seedRanks.keys()) {
+      queues.set(seedPath, [...(queues.get(seedPath) ?? []), candidate]);
+    }
+  }
+  for (const queue of queues.values()) {
+    queue.sort((left, right) =>
+      right.precision - left.precision ||
+      (input.evidenceRanks.get(right.path)?.size ?? 0) -
+        (input.evidenceRanks.get(left.path)?.size ?? 0) ||
+      right.seedRanks.size - left.seedRanks.size ||
+      input.graphSupportScore(right) - input.graphSupportScore(left) ||
+      input.independentScore(right.path) - input.independentScore(left.path) ||
+      left.path.localeCompare(right.path)
+    );
+  }
+  const orderedSeeds = [...queues.keys()].sort((left, right) =>
+    (input.seedRanks.get(left) ?? Number.POSITIVE_INFINITY) -
+      (input.seedRanks.get(right) ?? Number.POSITIVE_INFINITY) ||
+    left.localeCompare(right)
+  );
+  const selected: T[] = [];
+  const selectedPaths = new Set<string>();
+  let depth = 0;
+  let progressed = true;
+  while (progressed) {
+    progressed = false;
+    for (const seedPath of orderedSeeds) {
+      const candidate = queues.get(seedPath)?.[depth];
+      if (!candidate) continue;
+      progressed = true;
+      if (selectedPaths.has(candidate.path)) continue;
+      selected.push(candidate);
+      selectedPaths.add(candidate.path);
+    }
+    depth += 1;
+  }
+  return selected;
 }
 
 function isProbeEligibleEdge(

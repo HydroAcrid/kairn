@@ -133,6 +133,7 @@ export type EvidenceCandidateInspection = {
     bm25: string[];
     graph: string[];
     graphConsensus: string[];
+    graphSeedProximity: string[];
     graphEvidence: Array<{
       path: string;
       supportCount: number;

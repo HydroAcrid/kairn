@@ -712,6 +712,37 @@ describe("model-based semantic candidates", () => {
     ]);
   });
 
+  it("round-robins graph proximity across strong seeds instead of exhausting one seed's fan-out", () => {
+    const rootPath = "/repo";
+    const firstSeed = file(rootPath, "src/api/first.go");
+    const secondSeed = file(rootPath, "src/api/second.go");
+    const firstSeedNeighbors = Array.from({ length: 20 }, (_, index) =>
+      file(rootPath, `src/runtime/first-${String(index).padStart(2, "0")}.go`)
+    );
+    const secondSeedNeighbor = file(rootPath, "src/runtime/second.go");
+    const filesByPath = new Map(
+      [firstSeed, secondSeed, ...firstSeedNeighbors, secondSeedNeighbor]
+        .map((candidate) => [candidate.path, candidate])
+    );
+    const ranked = rankEvidenceBackedGraphCandidates({
+      seedPaths: [firstSeed.path, secondSeed.path],
+      edges: [
+        ...firstSeedNeighbors.map((neighbor) =>
+          edge(rootPath, firstSeed.path, neighbor.path, "call")
+        ),
+        edge(rootPath, secondSeed.path, secondSeedNeighbor.path, "type_reference")
+      ],
+      filesByPath,
+      evidenceRankings: [],
+      ordering: "seed_proximity"
+    });
+
+    expect(ranked.slice(0, 2)).toEqual([
+      firstSeedNeighbors[0]!.path,
+      secondSeedNeighbor.path
+    ]);
+  });
+
   it("credits graph consensus from multiple independently retrieved seeds", () => {
     const rootPath = "/repo";
     const sharedImplementation = file(rootPath, "src/workflow/public-api.ts");
