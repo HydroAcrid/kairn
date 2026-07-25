@@ -48,6 +48,16 @@ Tracked checkpoints:
 - `benchmarks/checkpoints/v02c-semantic-baseline-cf43ef8.json`
 - `benchmarks/checkpoints/v02c-semantic-model-selection-v4-d5aa740.json`
 - `benchmarks/checkpoints/v02c-semantic-holdout-v4-566f912.json`
+- `benchmarks/semantic/oracle38-cases-v1.json`
+- `artifacts/ranker-corpus-intake.reviewed-v35.json`
+- `artifacts/lineage-registry.reviewed-v35.json`
+
+The reviewed intake is pinned by SHA-256
+`bcfe94973f9e93964a2bd0473addb3c1f43a0b4fed1168de690214db36629fa6`.
+The 38-case manifest freezes the cases whose required production source
+existed in the checkout used by the legacy baseline. The raw 165-case
+candidate intake is not a valid recall oracle because it predates the
+reviewed required-source labels.
 
 Legacy public-oracle baseline:
 
@@ -91,12 +101,31 @@ On the same 24,759-file checkout, the required source moved into the real servin
 
 ## Promotion Gate
 
-The active public-oracle materialization writes:
+The resumable public-oracle materialization writes:
 
-- `artifacts/ranker-corpus.semantic-v4-oracle38.json`
-- `artifacts/ranker-corpus.semantic-v4-oracle38.report.json`
-- `artifacts/semantic/oracle38-v4.stdout.log`
-- `artifacts/semantic/oracle38-v4.stderr.log`
+- `artifacts/ranker-corpus.semantic-v4-oracle38-reviewed.json`
+- `artifacts/ranker-corpus.semantic-v4-oracle38-reviewed.report.json`
+- `artifacts/ranker-corpus.semantic-v4-oracle38-reviewed.json.progress.json`
+
+Each successful isolated case is written atomically to the progress file.
+`--resume` refuses to reuse progress unless the Kairn commit, reviewed-intake
+hash, and ordered case set are identical.
+
+```bash
+CASE_IDS="$(node -e 'const fs=require("fs");const x=JSON.parse(fs.readFileSync("benchmarks/semantic/oracle38-cases-v1.json","utf8"));process.stdout.write(x.caseIds.join(","))')"
+KAIRN_CANDIDATE_MODE=semantic \
+KAIRN_SEMANTIC_MODEL=jina-code-v2-q8 \
+KAIRN_SEMANTIC_THREADS=4 \
+pnpm exec tsx scripts/materialize-evidence-corpus.ts \
+  --intake artifacts/ranker-corpus-intake.reviewed-v35.json \
+  --out artifacts/ranker-corpus.semantic-v4-oracle38-reviewed.json \
+  --report-out artifacts/ranker-corpus.semantic-v4-oracle38-reviewed.report.json \
+  --cache artifacts/ranker-checkouts \
+  --draft \
+  --case-id "$CASE_IDS" \
+  --migrate-feature-schema \
+  --resume
+```
 
 Promotion remains blocked until:
 
@@ -109,4 +138,3 @@ Promotion remains blocked until:
 - downstream Recall@5, MRR, calibration, verification, and source-invariant gates pass.
 
 The 35 reviews against the legacy union are `superseded-pending`. Claude/ReasonBlocks spend, the 180-attempt pilot, and npm beta preparation remain paused.
-

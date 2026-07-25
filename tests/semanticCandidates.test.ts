@@ -68,6 +68,41 @@ describe("model-based semantic candidates", () => {
     expect(manifest.cases.filter((item) => item.split === "holdout")).toHaveLength(5);
   });
 
+  it("freezes the reviewed 38-case semantic oracle to its exact labeled intake", () => {
+    const oracle = JSON.parse(fs.readFileSync(
+      path.resolve("benchmarks/semantic/oracle38-cases-v1.json"),
+      "utf8"
+    )) as {
+      sourceIntakePath: string;
+      sourceIntakeSha256: string;
+      caseIds: string[];
+    };
+    const intakeBytes = fs.readFileSync(path.resolve(oracle.sourceIntakePath));
+    const intake = JSON.parse(intakeBytes.toString("utf8")) as {
+      cases: Array<{
+        id: string;
+        language: string;
+        scenario: string;
+        requiredSourceFiles: string[];
+      }>;
+    };
+    const byId = new Map(intake.cases.map((item) => [item.id, item]));
+
+    expect(createHash("sha256").update(intakeBytes).digest("hex")).toBe(
+      oracle.sourceIntakeSha256
+    );
+    expect(oracle.caseIds).toHaveLength(38);
+    expect(new Set(oracle.caseIds).size).toBe(38);
+    expect(oracle.caseIds.every((id) => (byId.get(id)?.requiredSourceFiles.length ?? 0) > 0))
+      .toBe(true);
+    expect(new Set(oracle.caseIds.map((id) => byId.get(id)?.language))).toEqual(
+      new Set(["python", "typescript", "go", "java", "cpp"])
+    );
+    expect(new Set(oracle.caseIds.map((id) => byId.get(id)?.scenario))).toEqual(
+      new Set(["source_localization", "failure_first", "long_session"])
+    );
+  });
+
   it("collapses global symbol documents to files using maximum cosine similarity", () => {
     const rootPath = "/repo";
     const documents = [

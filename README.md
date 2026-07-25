@@ -59,7 +59,7 @@ kairn enable --offline
 
 Normal `kairn enable` shows the model id, source revision, license, download size, and cache location before one explicit confirmation. Installation stages every artifact atomically and verifies its pinned SHA-256 checksum. A missing, corrupt, incompatible, or stale model produces a visible fallback to exact path, failure, symbol, BM25, git, session, and graph evidence. It never restores pseudo-semantic hashing.
 
-File-level documents are built for eligible source files, with additional bounded symbol documents allocated across large files. Generated and vendor files remain classified but are not embedded unless objective evidence explicitly references them. Once installed, indexing and retrieval work with outbound networking blocked; repository content, evidence, prompts, and agent trajectories are not sent to a Kairn service.
+File-level documents are built for eligible source files, with additional bounded symbol documents allocated across large files. Generated and vendor files are excluded from the semantic lane; an explicit path or precise failure can still hard-pin one without requiring semantic relevance. Once installed, indexing and retrieval work with outbound networking blocked; repository content, evidence, prompts, and agent trajectories are not sent to a Kairn service.
 
 Candidate generation currently supports `legacy`, `shadow`, and `semantic` rollout modes. Shadow computes and records model-based candidates while serving the rollback generator; semantic mode serves the global embedding lane. Promotion remains gated on public-repository candidate recall, per-language results, runtime limits, and verification quality.
 
