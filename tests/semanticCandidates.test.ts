@@ -476,6 +476,33 @@ describe("model-based semantic candidates", () => {
     expect(ranked.slice(0, 2)).toEqual([callTarget.path, typeTarget.path]);
   });
 
+  it("does not borrow an early weak seed rank for a later precise relationship", () => {
+    const rootPath = "/repo";
+    const seeds = Array.from({ length: 4 }, (_, index) =>
+      file(rootPath, `src/seed-${index}.go`)
+    );
+    const cleanCall = file(rootPath, "src/clean-call.go");
+    const mixedEvidence = file(rootPath, "src/mixed-evidence.go");
+    const filesByPath = new Map(
+      [...seeds, cleanCall, mixedEvidence].map((candidate) => [candidate.path, candidate])
+    );
+    const ranked = rankEvidenceBackedGraphCandidates({
+      seedPaths: seeds.map((seed) => seed.path),
+      edges: [
+        edge(rootPath, seeds[0]!.path, mixedEvidence.path, "imports"),
+        edge(rootPath, seeds[3]!.path, mixedEvidence.path, "call"),
+        edge(rootPath, seeds[1]!.path, cleanCall.path, "call")
+      ],
+      filesByPath,
+      evidenceRankings: [{
+        channel: "semantic",
+        paths: [cleanCall.path, mixedEvidence.path]
+      }]
+    });
+
+    expect(ranked.slice(0, 2)).toEqual([cleanCall.path, mixedEvidence.path]);
+  });
+
   it("prefers an exact graph relation from the strongest seed before lower-ranked consensus", () => {
     const rootPath = "/repo";
     const seeds = Array.from({ length: 8 }, (_, index) =>

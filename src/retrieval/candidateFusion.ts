@@ -285,11 +285,21 @@ export function rankEvidenceBackedGraphCandidates(input: {
       return;
     }
     const existing = candidates.get(neighborPath);
-    const seedSupport = new Map(existing?.seedRanks ?? []);
-    seedSupport.set(seedPath, Math.min(seedSupport.get(seedPath) ?? Number.POSITIVE_INFINITY, seedRank));
-    const relationFamilyRanks = new Map(existing?.relationFamilyRanks ?? []);
+    const strongestPrecision = Math.max(existing?.precision ?? 0, precision);
+    const seedSupport = precision > (existing?.precision ?? 0)
+      ? new Map<string, number>()
+      : new Map(existing?.seedRanks ?? []);
+    const relationFamilyRanks = precision > (existing?.precision ?? 0)
+      ? new Map<string, number>()
+      : new Map(existing?.relationFamilyRanks ?? []);
+    // Do not combine the precision of one relationship with the rank/support
+    // of a different, weaker relationship. A generic import from seed 1 must
+    // not make a precise call observed from seed 40 look like seed-1 evidence.
+    if (precision === strongestPrecision) {
+      seedSupport.set(seedPath, Math.min(seedSupport.get(seedPath) ?? Number.POSITIVE_INFINITY, seedRank));
+    }
     const relationFamily = graphRelationFamily(edge, seedPath);
-    if (relationFamily) {
+    if (relationFamily && precision === strongestPrecision) {
       relationFamilyRanks.set(
         relationFamily,
         Math.min(relationFamilyRanks.get(relationFamily) ?? Number.POSITIVE_INFINITY, seedRank)
@@ -297,8 +307,8 @@ export function rankEvidenceBackedGraphCandidates(input: {
     }
     candidates.set(neighborPath, {
       path: neighborPath,
-      precision: Math.max(existing?.precision ?? 0, precision),
-      bestSeedRank: Math.min(existing?.bestSeedRank ?? Number.POSITIVE_INFINITY, seedRank),
+      precision: strongestPrecision,
+      bestSeedRank: Math.min(...seedSupport.values()),
       seedRanks: seedSupport,
       relationFamilyRanks
     });
