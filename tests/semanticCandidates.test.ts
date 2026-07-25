@@ -58,19 +58,38 @@ describe("model-based semantic candidates", () => {
 
   it("seals lineage-disjoint selection and holdout cases across all language/scenario cells", () => {
     const manifest = JSON.parse(fs.readFileSync(
-      path.resolve("benchmarks/semantic/model-selection-v5.json"),
+      path.resolve("benchmarks/semantic/model-selection-v6.json"),
       "utf8"
     )) as {
       sealed: boolean;
       documentSchemaVersion: string;
-      cases: Array<{ lineageId: string; language: string; scenario: string; split: string }>;
+      cases: Array<{
+        lineageId: string;
+        language: string;
+        scenario: string;
+        split: string;
+        query: string;
+        targetText: string;
+      }>;
+    };
+    const priorManifest = JSON.parse(fs.readFileSync(
+      path.resolve("benchmarks/semantic/model-selection-v4.json"),
+      "utf8"
+    )) as {
+      cases: Array<{ split: string; query: string; targetText: string }>;
     };
     expect(manifest.sealed).toBe(true);
     expect(manifest.documentSchemaVersion).toBe("semantic-documents-v4");
     expect(manifest.cases).toHaveLength(15);
     expect(new Set(manifest.cases.map((item) => item.lineageId)).size).toBe(15);
     expect(new Set(manifest.cases.map((item) => `${item.language}:${item.scenario}`)).size).toBe(15);
-    expect(manifest.cases.filter((item) => item.split === "holdout")).toHaveLength(5);
+    const holdout = manifest.cases.filter((item) => item.split === "holdout");
+    expect(holdout).toHaveLength(5);
+    const priorHoldoutContent = new Set(priorManifest.cases
+      .filter((item) => item.split === "holdout")
+      .map((item) => `${item.query}\0${item.targetText}`));
+    expect(holdout.every((item) => !priorHoldoutContent.has(`${item.query}\0${item.targetText}`)))
+      .toBe(true);
   });
 
   it("freezes the reviewed 38-case semantic oracle to its exact labeled intake", () => {

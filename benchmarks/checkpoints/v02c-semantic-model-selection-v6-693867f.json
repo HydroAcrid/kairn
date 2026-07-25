@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "semantic-model-freeze.v1",
+  "checkpointId": "v02c-semantic-model-selection-v6-20260724",
+  "createdAt": "2026-07-24T22:03:57-04:00",
+  "status": "frozen_before_holdout",
+  "implementationBaseCommit": "693867f",
+  "supersedes": "v02c-semantic-model-selection-v5-20260724",
+  "supersessionReason": "The v5 freeze was found before holdout evaluation to have renamed, rather than replaced, the five previously opened v4 holdout contents. V6 replaces all five with genuinely new behavior, query, target, and lineage content and adds a regression test that rejects holdout content reused from v4.",
+  "selectionManifest": {
+    "path": "benchmarks/semantic/model-selection-v6.json",
+    "sha256": "c31aa0e7bece5b442ff78fba2da5eb81624858438c4d2ef5d367c4313e4da177",
+    "documentSchemaVersion": "semantic-documents-v4",
+    "selectionCases": 10,
+    "holdoutCases": 5,
+    "lineageDisjoint": true,
+    "priorHoldoutContentDisjoint": true,
+    "holdoutOpened": false
+  },
+  "candidates": [
+    {
+      "modelId": "bge-small-en-v15",
+      "upstreamRevision": "5c38ec7c405ec4b44b94cc5a9bb96e735b38267a",
+      "installedManifestSha256": "5cb242dd536f6945de308df8b1961fb5d347c4912a45e25d8bd563726c9dc7dd",
+      "installedBytes": 134037628,
+      "selectionArtifactPath": "artifacts/semantic-model-selection-v6-bge.selection.json",
+      "selectionArtifactSha256": "c4584f542bac2a16ab1aecd638126bad17a924848c7bdff02043a1d53a7490d1",
+      "selection": {
+        "recallAt1": 0.6,
+        "recallAt5": 1,
+        "strictFullRecallAt64": 1,
+        "strictFullRecallAt128": 1,
+        "meanReciprocalRank": 0.766667,
+        "zeroPositiveCasesAt128": 0,
+        "medianQueryLatencyMs": 14.527,
+        "coldInitializationMs": 660.057
+      }
+    },
+    {
+      "modelId": "jina-code-v2-q8",
+      "upstreamRevision": "516f4baf13dec4ddddda8631e019b5737c8bc250",
+      "installedManifestSha256": "e8eb1ae493445bc9b2035e88fd48870124289701186e2b02eed0bf222efbab4b",
+      "installedBytes": 165431544,
+      "selectionArtifactPath": "artifacts/semantic-model-selection-v6-jina.selection.json",
+      "selectionArtifactSha256": "166933b7aab6013fc32f255f852857897d5e2df3b26a4bb15a5c36266288d9b6",
+      "selection": {
+        "recallAt1": 0.9,
+        "recallAt5": 1,
+        "strictFullRecallAt64": 1,
+        "strictFullRecallAt128": 1,
+        "meanReciprocalRank": 0.95,
+        "zeroPositiveCasesAt128": 0,
+        "medianQueryLatencyMs": 31.627,
+        "coldInitializationMs": 1063.084
+      }
+    }
+  ],
+  "winner": {
+    "modelId": "jina-code-v2-q8",
+    "reason": "Both candidates passed the bounded candidate gate. Jina remains the predeclared code-retrieval-quality preference and materially outperformed BGE on selection Recall@1 and MRR. BGE remains the smaller, faster fallback but is not promoted.",
+    "documentSchemaVersion": "semantic-documents-v4",
+    "maximumDocumentChars": 768,
+    "featureSchemaVersion": "evidence-features-v2",
+    "semanticTopK": 128,
+    "initialCandidateLimit": 64,
+    "enrichedCandidateLimit": 128,
+    "rankFusionConstant": 60,
+    "graphHops": 1
+  },
+  "verification": {
+    "tests": {
+      "filesPassed": 30,
+      "testsPassed": 428,
+      "focusedLineageTestPassed": true
+    },
+    "typecheck": "passed",
+    "build": "passed",
+    "semanticArchitectureCheck": "passed"
+  },
+  "holdoutOpened": false,
+  "paidComparisonEligible": false,
+  "nextGate": "Commit and push this freeze, then evaluate Jina exactly once on the five genuinely new v6 holdout lineages. No tuning is allowed after opening the holdout."
+}
