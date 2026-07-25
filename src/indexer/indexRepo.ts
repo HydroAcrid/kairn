@@ -312,6 +312,7 @@ async function buildModelEmbeddings(input: {
         }));
       }
       input.onEmbeddingBatch?.(embeddings.slice(-batch.length));
+      await yieldToSemanticCheckpointTimers();
     }
 
     return {
@@ -335,4 +336,11 @@ async function buildModelEmbeddings(input: {
       }
     };
   }
+}
+
+export async function yieldToSemanticCheckpointTimers(): Promise<void> {
+  // ONNX/WASM can resolve successive batches through a continuous microtask
+  // chain. Yield to the event loop so background progress and snapshot timers
+  // are not starved during long cold indexes.
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
 }

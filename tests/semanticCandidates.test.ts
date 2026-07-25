@@ -10,6 +10,7 @@ import {
   buildModelCandidateUnion,
   reciprocalRankFuse
 } from "../src/retrieval/candidateFusion.js";
+import { yieldToSemanticCheckpointTimers } from "../src/indexer/indexRepo.js";
 import {
   scoreSemanticEmbeddingIndex,
   searchSemanticCandidates
@@ -39,6 +40,16 @@ import type {
 } from "../src/types.js";
 
 describe("model-based semantic candidates", () => {
+  it("yields between embedding batches so background snapshot timers can run", async () => {
+    let checkpointTimerRan = false;
+    const timer = setTimeout(() => {
+      checkpointTimerRan = true;
+    }, 0);
+    await yieldToSemanticCheckpointTimers();
+    clearTimeout(timer);
+    expect(checkpointTimerRan).toBe(true);
+  });
+
   it("pins immutable, checksummed CPU-only model manifests below the footprint gate", () => {
     expect(SEMANTIC_MODEL_MANIFESTS).toHaveLength(2);
     for (const manifest of SEMANTIC_MODEL_MANIFESTS) {
