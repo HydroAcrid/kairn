@@ -104,23 +104,7 @@ export async function searchSemanticCandidates(input: {
       MAX_SEMANTIC_QUERY_VIEWS,
       MAX_FENCED_SEMANTIC_QUERY_VIEWS
     );
-    const selectedQueryViews = composeSelectedSemanticQueryViews(
-      semanticQueryCandidates,
-      selectedQueryIndexes
-    );
-    const composedVectors = await model.embedQueries(
-      selectedQueryViews
-        .filter((view) => view.composed)
-        .map((view) => view.text)
-    );
-    let composedVectorIndex = 0;
-    const queryVectors = selectedQueryViews.map((view) => {
-      if (!view.composed) return candidateQueryVectors[view.candidateIndex]!;
-      const vector = composedVectors[composedVectorIndex];
-      composedVectorIndex += 1;
-      if (!vector) throw new Error("Semantic model returned an incomplete composed-query batch.");
-      return vector;
-    });
+    const queryVectors = selectedQueryIndexes.map((index) => candidateQueryVectors[index]!);
     const scanStarted = performance.now();
     const queryRankings = queryVectors.map((queryVector) => scoreSemanticEmbeddingIndex({
         queryVector,
@@ -284,44 +268,6 @@ export function selectSemanticQueryViewIndexes(
     .slice(0, selectedFenceCapacity)
     .map((item) => item.index);
   return uniqueIndexes([...selectedAnchors, ...selectedFences]).slice(0, boundedLimit);
-}
-
-export type SelectedSemanticQueryView = {
-  candidateIndex: number;
-  text: string;
-  composed: boolean;
-};
-
-export function composeSelectedSemanticQueryViews(
-  candidates: SemanticQueryViewCandidate[],
-  selectedIndexes: number[]
-): SelectedSemanticQueryView[] {
-  const headline = candidates.find((candidate) => candidate.kind === "headline")?.text;
-  return selectedIndexes.map((candidateIndex) => {
-    const candidate = candidates[candidateIndex];
-    if (!candidate) {
-      throw new Error(`Semantic query candidate index ${candidateIndex} is out of bounds.`);
-    }
-    if (candidate.kind !== "fence" || !headline) {
-      return {
-        candidateIndex,
-        text: candidate.text,
-        composed: false
-      };
-    }
-    return {
-      candidateIndex,
-      text: representativeQuery(
-        normalizeSemanticQuery([
-          headline,
-          "structured task evidence:",
-          candidate.text
-        ].join("\n")),
-        MAX_QUERY_CHARS
-      ),
-      composed: true
-    };
-  });
 }
 
 type FencedBlock = {
