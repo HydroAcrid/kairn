@@ -21,6 +21,7 @@ import type {
   ContextResponseMode,
   ContextValueDecision,
   EvidenceCandidateInspection,
+  EvidenceGraphFacts,
   ExactSourceEvidence,
   EvalComparison,
   EvalObservationRecord,
@@ -148,6 +149,7 @@ type CalibratedQueryLocalIndex = QueryLocalIndex & {
   initialCandidateCount: number;
   enrichedCandidateCount: number;
   candidateResults?: HybridScoredResult[];
+  graphEvidenceByPath?: ReadonlyMap<string, EvidenceGraphFacts>;
   semanticStatus?: SemanticRetrieverStatus;
   candidateDiagnostics?: EvidenceCandidateInspection["candidateDiagnostics"];
 };
@@ -3555,6 +3557,9 @@ export class KairnRuntime {
       edges: localIndex.edges,
       legacyResults: hybridCandidates,
       fixedCandidatePaths: localIndex.candidateFiles,
+      ...(localIndex.graphEvidenceByPath
+        ? { graphEvidenceByPath: localIndex.graphEvidenceByPath }
+        : {}),
       shown: [],
       changedFiles: new Set<string>(),
       initialLimit: DEFAULT_INITIAL_CANDIDATE_LIMIT,
@@ -3724,6 +3729,7 @@ export class KairnRuntime {
         initialCandidateCount: fused.initialPaths.length,
         enrichedCandidateCount: candidateFiles.length,
         candidateResults: fused.candidateResults,
+        graphEvidenceByPath: fused.graphEvidenceByPath,
         semanticStatus: fused.semanticStatus,
         candidateDiagnostics: {
           semanticQueryViews: (semanticSearch.queryRankings ?? [])
@@ -3736,7 +3742,8 @@ export class KairnRuntime {
           graphEvidence: describeGraphCandidateEvidence({
             seedPaths: fused.graphSeedPaths,
             graphPaths: fused.graphPaths,
-            edges
+            edges,
+            graphEvidenceByPath: fused.graphEvidenceByPath
           })
         }
       };
@@ -4134,6 +4141,7 @@ function describeGraphCandidateEvidence(input: {
   seedPaths: string[];
   graphPaths: string[];
   edges: import("../types.js").GraphEdgeRecord[];
+  graphEvidenceByPath?: ReadonlyMap<string, import("../types.js").EvidenceGraphFacts>;
 }): NonNullable<EvidenceCandidateInspection["candidateDiagnostics"]>["graphEvidence"] {
   const seedRanks = new Map(input.seedPaths.map((filePath, index) => [filePath, index + 1]));
   const supportsByPath = new Map<string, Array<{
@@ -4176,6 +4184,13 @@ function describeGraphCandidateEvidence(input: {
     return {
       path: filePath,
       supportCount: new Set(supports.map((support) => support.seedPath)).size,
+      ...(input.graphEvidenceByPath?.get(filePath)
+        ? {
+            precision: input.graphEvidenceByPath.get(filePath)!.precision,
+            seedStrength: input.graphEvidenceByPath.get(filePath)!.seedStrength,
+            independentEvidence: input.graphEvidenceByPath.get(filePath)!.independentEvidence
+          }
+        : {}),
       supports: supports.slice(0, 8)
     };
   });

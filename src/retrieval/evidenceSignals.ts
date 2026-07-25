@@ -5,6 +5,7 @@ import type {
   ContextShownRecord,
   EvidenceCandidate,
   EvidenceFeatureVector,
+  EvidenceGraphFacts,
   EvidenceReason,
   EvidenceTaskIntent,
   EvidenceTaskSignals,
@@ -65,6 +66,11 @@ export type EvidenceCandidateInput = {
   seedCandidatePaths?: string[];
   /** Preselected bounded union to enrich and featurize without reselection drift. */
   fixedCandidatePaths?: string[];
+  /**
+   * Objective graph facts from the candidate generator. When supplied, these
+   * preserve the probe-seed evidence that admitted a bounded candidate.
+   */
+  graphEvidenceByPath?: ReadonlyMap<string, EvidenceGraphFacts>;
   initialLimit?: number;
   enrichedLimit?: number;
 };
@@ -410,11 +416,16 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
     }
   }
 
-  const graphEvidenceByPath = buildGraphFeatureEvidence({
-    seedPaths: initialPaths,
-    edges: input.edges,
-    filesByPath
-  });
+  const graphEvidenceByPath = input.graphEvidenceByPath
+    ? new Map(
+        [...input.graphEvidenceByPath.entries()]
+          .map(([filePath, facts]) => [normalizeRepoPath(filePath), facts] as const)
+      )
+    : buildGraphFeatureEvidence({
+        seedPaths: initialPaths,
+        edges: input.edges,
+        filesByPath
+      });
   const candidates = enrichedPaths.map((filePath) => {
     const file = filesByPath.get(filePath)!;
     const legacy = legacyByPath.get(filePath);
@@ -539,12 +550,6 @@ function graphEdgePrecision(edge: GraphEdgeRecord): number {
   return 0;
 }
 
-type GraphFeatureEvidence = {
-  precision: number;
-  seedSupport: number;
-  sourceTestPair: boolean;
-};
-
 /**
  * Converts parser-proven one-hop relationships into objective model inputs.
  * These values do not rank candidates: the calibrated model learns whether a
@@ -556,11 +561,12 @@ function buildGraphFeatureEvidence(input: {
   seedPaths: string[];
   edges: GraphEdgeRecord[];
   filesByPath: Map<string, FileRecord>;
-}): Map<string, GraphFeatureEvidence> {
-  const seedSet = new Set(input.seedPaths);
+}): Map<string, EvidenceGraphFacts> {
+  const seedRanks = new Map(input.seedPaths.map((filePath, index) => [filePath, index + 1]));
+  const seedSet = new Set(seedRanks.keys());
   const evidence = new Map<string, {
     precision: number;
-    supportingSeeds: Set<string>;
+    supportingSeeds: Map<string, number>;
     sourceTestPair: boolean;
   }>();
   const consider = (seedPath: string, candidatePath: string, edge: GraphEdgeRecord): void => {
@@ -571,13 +577,16 @@ function buildGraphFeatureEvidence(input: {
     if (!existing || precision > existing.precision) {
       evidence.set(candidatePath, {
         precision,
-        supportingSeeds: new Set([seedPath]),
+        supportingSeeds: new Map([[seedPath, seedRanks.get(seedPath)!]]),
         sourceTestPair: edge.type === "test_for" || edge.type === "tested_by"
       });
       return;
     }
     if (precision !== existing.precision) return;
-    existing.supportingSeeds.add(seedPath);
+    existing.supportingSeeds.set(
+      seedPath,
+      Math.min(existing.supportingSeeds.get(seedPath) ?? Number.POSITIVE_INFINITY, seedRanks.get(seedPath)!)
+    );
     if (edge.type === "test_for" || edge.type === "tested_by") existing.sourceTestPair = true;
   };
 
@@ -591,8 +600,10 @@ function buildGraphFeatureEvidence(input: {
   return new Map([...evidence.entries()].map(([filePath, value]) => [
     filePath,
     {
-      precision: value.precision,
-      seedSupport: value.supportingSeeds.size,
+      precision: value.precision / 5,
+      supportingSeedCount: value.supportingSeeds.size,
+      seedStrength: normalizeGraphSeedStrength([...value.supportingSeeds.values()]),
+      independentEvidence: 0,
       sourceTestPair: value.sourceTestPair
     }
   ]));
@@ -604,10 +615,10 @@ function buildFeatureVector(input: {
   reasons: Set<EvidenceReason>;
   symbols: SymbolRecord[];
   signals: EvidenceTaskSignals;
-  graphEvidence: GraphFeatureEvidence | undefined;
+  graphEvidence: EvidenceGraphFacts | undefined;
 }): EvidenceFeatureVector {
   const lexical = (input.legacy?.bm25Score ?? 0) + (input.legacy?.keywordScore ?? 0);
-  const graphSupport = input.graphEvidence?.seedSupport ?? 0;
+  const graphSupport = input.graphEvidence?.supportingSeedCount ?? 0;
   return {
     exactPath: binary(input.reasons.has("exact_path")),
     basenameMatch: binary(input.reasons.has("basename")),
@@ -620,9 +631,11 @@ function buildFeatureVector(input: {
     gitChanged: binary(input.reasons.has("git_diff")),
     alreadyDelivered: binary(input.reasons.has("already_delivered")),
     graphNeighbor: binary(input.reasons.has("graph_neighbor")),
-    graphPrecision: clamp01((input.graphEvidence?.precision ?? 0) / 5),
+    graphPrecision: clamp01(input.graphEvidence?.precision ?? 0),
     graphConsensus: binary(graphSupport >= 2),
     graphSupport: clamp01(Math.log2(1 + graphSupport) / Math.log2(1 + DEFAULT_INITIAL_CANDIDATE_LIMIT)),
+    graphSeedStrength: clamp01(input.graphEvidence?.seedStrength ?? 0),
+    graphIndependentEvidence: clamp01(input.graphEvidence?.independentEvidence ?? 0),
     sourceTestPair: binary(input.reasons.has("source_test_pair")),
     productionSource: binary(isProductionEvidenceFile(input.file)),
     testFile: binary(isTestFile(input.file)),
@@ -634,6 +647,19 @@ function buildFeatureVector(input: {
     missingSymbols: binary(input.symbols.length === 0),
     missingLexical: binary(lexical <= 0)
   };
+}
+
+function normalizeGraphSeedStrength(seedRanks: number[]): number {
+  const strongest = seedRanks
+    .filter((rank) => Number.isFinite(rank) && rank > 0)
+    .sort((left, right) => left - right)
+    .slice(0, 3);
+  if (strongest.length === 0) return 0;
+  const observed = strongest.reduce((sum, rank) => sum + 1 / (60 + rank), 0);
+  const maximum = [1, 2, 3]
+    .slice(0, strongest.length)
+    .reduce((sum, rank) => sum + 1 / (60 + rank), 0);
+  return maximum > 0 ? clamp01(observed / maximum) : 0;
 }
 
 function addDerivedReasons(

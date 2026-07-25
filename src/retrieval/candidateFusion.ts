@@ -2,6 +2,7 @@
 
 import type {
   ContextShownRecord,
+  EvidenceGraphFacts,
   FileRecord,
   GraphEdgeRecord,
   HybridScoredResult,
@@ -29,6 +30,7 @@ export type ModelCandidateUnion = {
   graphPaths: string[];
   graphConsensusPaths: string[];
   graphSeedPaths: string[];
+  graphEvidenceByPath: ReadonlyMap<string, EvidenceGraphFacts>;
 };
 
 /**
@@ -156,6 +158,7 @@ export function buildModelCandidateUnion(input: {
         .slice(0, MODEL_RETRIEVAL_PROBE_LIMIT - initialPaths.length)
     : [];
   const graphSeedPaths = uniquePaths([...initialPaths, ...graphProbePaths]);
+  const graphEvidenceByPath = new Map<string, EvidenceGraphFacts>();
   const graphPaths = prioritizeGraphPathsForIntent(
     rankEvidenceBackedGraphCandidates({
       seedPaths: initialPaths,
@@ -166,7 +169,8 @@ export function buildModelCandidateUnion(input: {
         { channel: "semantic", paths: semanticEvidencePaths },
         { channel: "bm25", paths: bm25Paths },
         { channel: "symbol", paths: eligibleSymbolPaths }
-      ]
+      ],
+      graphEvidenceByPath
     }),
     signals.intent,
     filesByPath
@@ -259,7 +263,8 @@ export function buildModelCandidateUnion(input: {
     semanticStatus: input.semanticStatus,
     graphPaths,
     graphConsensusPaths,
-    graphSeedPaths
+    graphSeedPaths,
+    graphEvidenceByPath
   };
 }
 
@@ -309,6 +314,7 @@ export function rankEvidenceBackedGraphCandidates(input: {
   evidenceRankings: CandidateRanking[];
   minimumSeedSupport?: number;
   ordering?: "precision" | "support";
+  graphEvidenceByPath?: Map<string, EvidenceGraphFacts>;
 }): string[] {
   const primarySeeds = uniquePaths(input.seedPaths);
   const primarySeedSet = new Set(primarySeeds);
@@ -334,12 +340,13 @@ export function rankEvidenceBackedGraphCandidates(input: {
     bestSeedRank: number;
     seedRanks: Map<string, number>;
     relationFamilyRanks: Map<string, number>;
+    sourceTestPair: boolean;
   };
   const candidates = new Map<string, GraphCandidate>();
   const consider = (seedPath: string, neighborPath: string, edge: GraphEdgeRecord): void => {
     const seedRank = seedRanks.get(seedPath);
     const neighbor = input.filesByPath.get(neighborPath);
-    if (!seedRank || !neighbor || primarySeedSet.has(neighborPath) || neighbor.indexTier === "tier0") return;
+    if (!seedRank || !neighbor || seedPath === neighborPath || neighbor.indexTier === "tier0") return;
     if (
       probeSeedSet.has(seedPath) &&
       !isProbeEligibleEdge(edge.type, input.filesByPath.get(seedPath)?.kind)
@@ -363,6 +370,9 @@ export function rankEvidenceBackedGraphCandidates(input: {
     const relationFamilyRanks = precision > (existing?.precision ?? 0)
       ? new Map<string, number>()
       : new Map(existing?.relationFamilyRanks ?? []);
+    let sourceTestPair = precision > (existing?.precision ?? 0)
+      ? false
+      : existing?.sourceTestPair ?? false;
     // Do not combine the precision of one relationship with the rank/support
     // of a different, weaker relationship. A generic import from seed 1 must
     // not make a precise call observed from seed 40 look like seed-1 evidence.
@@ -376,12 +386,19 @@ export function rankEvidenceBackedGraphCandidates(input: {
         Math.min(relationFamilyRanks.get(relationFamily) ?? Number.POSITIVE_INFINITY, seedRank)
       );
     }
+    if (
+      precision === strongestPrecision &&
+      (edge.type === "test_for" || edge.type === "tested_by")
+    ) {
+      sourceTestPair = true;
+    }
     candidates.set(neighborPath, {
       path: neighborPath,
       precision: strongestPrecision,
       bestSeedRank: Math.min(...seedSupport.values()),
       seedRanks: seedSupport,
-      relationFamilyRanks
+      relationFamilyRanks,
+      sourceTestPair
     });
   };
 
@@ -409,10 +426,29 @@ export function rankEvidenceBackedGraphCandidates(input: {
   };
   const supportWeightedScore = (candidate: GraphCandidate): number =>
     candidate.precision * graphSupportScore(candidate) + independentScore(candidate.path);
+  if (input.graphEvidenceByPath) {
+    const maximumSeedStrength = [1, 2, 3]
+      .reduce((sum, rank) => sum + 1 / (60 + rank), 0);
+    const maximumIndependentEvidence = 3 / 61;
+    for (const candidate of candidates.values()) {
+      input.graphEvidenceByPath.set(candidate.path, {
+        precision: candidate.precision / 5,
+        supportingSeedCount: candidate.seedRanks.size,
+        seedStrength: clamp01(graphSupportScore(candidate) / maximumSeedStrength),
+        independentEvidence: clamp01(
+          independentScore(candidate.path) / maximumIndependentEvidence
+        ),
+        sourceTestPair: candidate.sourceTestPair
+      });
+    }
+  }
   const minimumSeedSupport = Math.max(1, Math.floor(input.minimumSeedSupport ?? 1));
   const ordering = input.ordering ?? "precision";
   const ranked = [...candidates.values()]
-    .filter((candidate) => candidate.seedRanks.size >= minimumSeedSupport)
+    .filter((candidate) =>
+      !primarySeedSet.has(candidate.path) &&
+      candidate.seedRanks.size >= minimumSeedSupport
+    )
     .sort((left, right) => ordering === "support"
       ? (
           supportWeightedScore(right) - supportWeightedScore(left) ||
@@ -620,6 +656,11 @@ function normalizeIdentity(value: string): string {
     if ((code >= 97 && code <= 122) || (code >= 48 && code <= 57)) output += character;
   }
   return output;
+}
+
+function clamp01(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(1, value));
 }
 
 function resolveReferencedPaths(

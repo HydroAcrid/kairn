@@ -269,7 +269,7 @@ describe("public evidence ranker training", () => {
       graphHops: 1,
       migratedFeatureSchemaFrom: "evidence-features-v1"
     });
-    expect(manifest.featureSchemaVersion).toBe("evidence-features-v3");
+    expect(manifest.featureSchemaVersion).toBe("evidence-features-v4");
     expect(manifest.cases[0].candidates).toEqual(expect.arrayContaining([
       expect.objectContaining({
         path: "src/user.ts",
@@ -619,7 +619,7 @@ describe("public evidence ranker training", () => {
     fs.writeFileSync(manifestPath, JSON.stringify({
       schemaVersion: "ranker-corpus.v1",
       corpusId: "sample-corpus",
-        featureSchemaVersion: "evidence-features-v3",
+        featureSchemaVersion: "evidence-features-v4",
       sealed: true,
       sampleOnly: true,
       lineageRegistry: "lineages.json",
@@ -668,7 +668,7 @@ describe("public evidence ranker training", () => {
     fs.writeFileSync(manifestPath, JSON.stringify({
       schemaVersion: "ranker-corpus.v1",
       corpusId: "unmaterialized-production",
-        featureSchemaVersion: "evidence-features-v3",
+        featureSchemaVersion: "evidence-features-v4",
       sealed: true,
       sampleOnly: false,
       lineageRegistry: "lineages.json",

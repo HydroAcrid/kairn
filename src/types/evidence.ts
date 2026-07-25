@@ -75,6 +75,19 @@ export type EvidenceTaskSignals = {
   intent: EvidenceTaskIntent;
 };
 
+/**
+ * Objective one-hop parser evidence produced by candidate generation.
+ * Values are normalized, query-local facts; the calibrated model decides
+ * whether they imply relevance.
+ */
+export type EvidenceGraphFacts = {
+  precision: number;
+  supportingSeedCount: number;
+  seedStrength: number;
+  independentEvidence: number;
+  sourceTestPair: boolean;
+};
+
 export const EVIDENCE_FEATURE_NAMES = Object.freeze([
   "exactPath",
   "basenameMatch",
@@ -90,6 +103,8 @@ export const EVIDENCE_FEATURE_NAMES = Object.freeze([
   "graphPrecision",
   "graphConsensus",
   "graphSupport",
+  "graphSeedStrength",
+  "graphIndependentEvidence",
   "sourceTestPair",
   "productionSource",
   "testFile",
@@ -136,6 +151,9 @@ export type EvidenceCandidateInspection = {
     graphEvidence: Array<{
       path: string;
       supportCount: number;
+      precision?: number;
+      seedStrength?: number;
+      independentEvidence?: number;
       supports: Array<{
         seedPath: string;
         seedRank: number;
@@ -155,7 +173,7 @@ export type EvidenceRankerThresholds = {
 export type EvidenceRankerArtifact = {
   formatVersion: 1;
   modelId: string;
-  featureSchemaVersion: "evidence-features-v3";
+  featureSchemaVersion: "evidence-features-v4";
   featureSchemaHash: string;
   orderedFeatures: EvidenceFeatureName[];
   intercept: number;

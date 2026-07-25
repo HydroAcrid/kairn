@@ -786,6 +786,34 @@ describe("model-based semantic candidates", () => {
       .toMatchObject({ graphScore: 1 });
   });
 
+  it("records graph facts for retrieved seeds without returning them as graph additions", () => {
+    const rootPath = "/repo";
+    const firstSeed = file(rootPath, "src/workflow/entry.ts");
+    const secondSeed = file(rootPath, "src/workflow/state.ts");
+    const addedNeighbor = file(rootPath, "src/workflow/transition.ts");
+    const filesByPath = new Map(
+      [firstSeed, secondSeed, addedNeighbor].map((candidate) => [candidate.path, candidate])
+    );
+    const graphEvidenceByPath = new Map();
+    const ranked = rankEvidenceBackedGraphCandidates({
+      seedPaths: [firstSeed.path, secondSeed.path],
+      edges: [
+        edge(rootPath, firstSeed.path, secondSeed.path, "call"),
+        edge(rootPath, firstSeed.path, addedNeighbor.path, "type_reference")
+      ],
+      filesByPath,
+      evidenceRankings: [],
+      graphEvidenceByPath
+    });
+
+    expect(ranked).toContain(addedNeighbor.path);
+    expect(ranked).not.toContain(secondSeed.path);
+    expect(graphEvidenceByPath.get(secondSeed.path)).toMatchObject({
+      precision: 1,
+      supportingSeedCount: 1
+    });
+  });
+
   it("keeps the consensus lane effective when single-seed graph candidates fill the budget", () => {
     const rootPath = "/repo";
     const seeds = Array.from({ length: 64 }, (_, index) =>
@@ -818,6 +846,14 @@ describe("model-based semantic candidates", () => {
     expect(result.graphPaths.indexOf(consensusSource.path)).toBeGreaterThanOrEqual(64);
     expect(result.graphConsensusPaths).toContain(consensusSource.path);
     expect(result.enrichedPaths).toContain(consensusSource.path);
+    expect(result.graphEvidenceByPath.get(consensusSource.path)).toMatchObject({
+      precision: 0.8,
+      supportingSeedCount: 2,
+      independentEvidence: 0,
+      sourceTestPair: false
+    });
+    expect(result.graphEvidenceByPath.get(consensusSource.path)?.seedStrength).toBeGreaterThan(0);
+    expect(result.graphEvidenceByPath.get(consensusSource.path)?.seedStrength).toBeLessThan(1);
   });
 
   it("balances parser-proven installation candidates across module families", () => {

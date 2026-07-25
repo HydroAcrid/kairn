@@ -278,6 +278,45 @@ describe("evidence task signals and candidates", () => {
     });
     expect(utility?.features.graphSupport).toBeGreaterThan(0);
     expect(utility?.features.graphSupport).toBeLessThan(1);
+    expect(utility?.features.graphSeedStrength).toBeGreaterThan(0);
+    expect(utility?.features.graphSeedStrength).toBeLessThanOrEqual(1);
+    expect(utility?.features.graphIndependentEvidence).toBe(0);
+  });
+
+  it("preserves probe-seed graph facts for downstream model features", () => {
+    const root = "/repo";
+    const initialSeed = file(root, "src/workflow/entry.go", "source", 800);
+    const probeBacked = file(root, "src/workflow/transition.go", "source", 900);
+    const candidates = buildEvidenceCandidates({
+      files: [initialSeed, probeBacked],
+      query: "Repair the production workflow transition.",
+      symbols: [],
+      edges: [],
+      legacyResults: [scored(initialSeed, { semanticScore: 0.8 })],
+      seedCandidatePaths: [initialSeed.path],
+      fixedCandidatePaths: [initialSeed.path, probeBacked.path],
+      graphEvidenceByPath: new Map([[
+        probeBacked.path,
+        {
+          precision: 0.8,
+          supportingSeedCount: 3,
+          seedStrength: 0.71,
+          independentEvidence: 0.32,
+          sourceTestPair: false
+        }
+      ]]),
+      initialLimit: 1,
+      enrichedLimit: 2
+    });
+
+    expect(candidates.candidates.find((candidate) => candidate.path === probeBacked.path)?.features)
+      .toMatchObject({
+        graphNeighbor: 1,
+        graphPrecision: 0.8,
+        graphConsensus: 1,
+        graphSeedStrength: 0.71,
+        graphIndependentEvidence: 0.32
+      });
   });
 
   it("accepts highest-precision shared-call neighbors without dropping the graph bucket", () => {

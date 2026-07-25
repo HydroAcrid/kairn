@@ -18,12 +18,12 @@ FEATURES = [
     "exactPath", "basenameMatch", "exactSymbol", "symbolPrefix", "bm25",
     "keyword", "semantic", "failureReference", "gitChanged",
     "alreadyDelivered", "graphNeighbor", "graphPrecision", "graphConsensus",
-    "graphSupport", "sourceTestPair",
+    "graphSupport", "graphSeedStrength", "graphIndependentEvidence", "sourceTestPair",
     "productionSource", "testFile", "docsFile", "generatedVendor",
     "intentRoleMatch", "importance", "contentCost", "missingSymbols",
     "missingLexical",
 ]
-FEATURE_SCHEMA_VERSION = "evidence-features-v3"
+FEATURE_SCHEMA_VERSION = "evidence-features-v4"
 LANGUAGES = ("python", "typescript", "go", "java", "cpp")
 SCENARIOS = ("source_localization", "failure_first", "long_session")
 SPLITS = ("train", "calibration", "holdout")
