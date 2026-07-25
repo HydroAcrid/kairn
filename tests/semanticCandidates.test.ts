@@ -255,6 +255,37 @@ describe("model-based semantic candidates", () => {
     expect(result.initialPaths).toContain(testFiles[0]!.path);
   });
 
+  it("preserves a bounded model-only slice when independent lexical results compete", () => {
+    const rootPath = "/repo";
+    const semanticFiles = Array.from({ length: 80 }, (_, index) =>
+      file(rootPath, `src/semantic-${String(index).padStart(2, "0")}.ts`)
+    );
+    const lexicalFiles = Array.from({ length: 80 }, (_, index) =>
+      file(rootPath, `src/lexical-${String(index).padStart(2, "0")}.ts`)
+    );
+    const semanticHits = semanticFiles.map((candidate, index) => ({
+      path: candidate.path,
+      similarity: 0.95 - index / 1_000,
+      documentIds: [`semantic-${index}`]
+    }));
+
+    const result = buildModelCandidateUnion({
+      files: [...semanticFiles, ...lexicalFiles],
+      query: "Debug the production behavior described by the model.",
+      symbols: [],
+      bm25Results: lexicalFiles.map((candidate, index) =>
+        scored(candidate, 1 - index / 1_000)
+      ),
+      semanticHits,
+      semanticStatus: readyStatus(semanticHits.length),
+      edges: []
+    });
+
+    expect(result.initialPaths).toContain(semanticFiles[39]!.path);
+    expect(result.initialPaths).toContain(lexicalFiles[0]!.path);
+    expect(result.initialPaths).toHaveLength(64);
+  });
+
   it("pins precise failure paths ahead of a full 64-file semantic lane", () => {
     const rootPath = "/repo";
     const required = file(rootPath, "src/required.ts");

@@ -38,6 +38,7 @@ export type ModelCandidateUnion = {
  * candidates that would otherwise be discarded before graph enrichment.
  */
 export const MODEL_RETRIEVAL_PROBE_LIMIT = 512;
+const MODEL_INITIAL_SEMANTIC_RESERVE = 40;
 const MAX_TEST_GRAPH_PROBE_PATHS = 192;
 
 export function buildModelCandidateUnion(input: {
@@ -110,11 +111,22 @@ export function buildModelCandidateUnion(input: {
         .filter(eligibleNonHard)
     }
   ];
-  const preliminaryUnion = reciprocalRankFuse({
+  const fusedRetrievalOrder = reciprocalRankFuse({
     hardPaths,
     rankings: baseRankings,
     limit: MODEL_RETRIEVAL_PROBE_LIMIT
   }).filter((filePath) => filesByPath.has(filePath));
+  // RRF rewards agreement, but a broad lexical/symbol overlap can otherwise
+  // consume the complete 64-file bound before a strong model-only candidate
+  // enters. Preserve a fixed model-retrieval slice, then let RRF fill the
+  // remainder. Hard paths stay first and the public bound does not change.
+  const preliminaryUnion = uniquePaths([
+    ...hardPaths,
+    ...semanticPaths.slice(0, MODEL_INITIAL_SEMANTIC_RESERVE),
+    ...fusedRetrievalOrder
+  ])
+    .filter((filePath) => filesByPath.has(filePath))
+    .slice(0, MODEL_RETRIEVAL_PROBE_LIMIT);
   const initialPaths = preliminaryUnion.slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
   const graphProbePaths = signals.intent === "source"
     ? uniquePaths([
