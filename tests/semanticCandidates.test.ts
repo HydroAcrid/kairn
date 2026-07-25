@@ -15,6 +15,7 @@ import { yieldToSemanticCheckpointTimers } from "../src/indexer/indexRepo.js";
 import {
   buildSemanticQueryCandidates,
   buildSemanticQueries,
+  composeSelectedSemanticQueryViews,
   fuseSemanticCandidateRankings,
   scoreSemanticEmbeddingIndex,
   selectSemanticQueryViewIndexes,
@@ -989,6 +990,48 @@ describe("model-based semantic candidates", () => {
 
     expect(selected).toContain(2);
     expect(selected).not.toContain(3);
+  });
+
+  it("pairs model-selected structured evidence with the behavioral task headline", () => {
+    const candidates = [
+      {
+        kind: "headline" as const,
+        text: "Cleanup declared for a removed module does not execute.",
+        structuralIndex: 0
+      },
+      {
+        kind: "narrative" as const,
+        text: "Expected cleanup to run while removing the module.",
+        structuralIndex: 0
+      },
+      {
+        kind: "fence" as const,
+        text: "removed { from = module.old lifecycle { destroy = true } }",
+        structuralIndex: 4
+      }
+    ];
+
+    expect(composeSelectedSemanticQueryViews(candidates, [0, 1, 2])).toEqual([
+      {
+        candidateIndex: 0,
+        text: candidates[0]!.text,
+        composed: false
+      },
+      {
+        candidateIndex: 1,
+        text: candidates[1]!.text,
+        composed: false
+      },
+      {
+        candidateIndex: 2,
+        text: [
+          candidates[0]!.text,
+          "structured task evidence:",
+          candidates[2]!.text
+        ].join(" "),
+        composed: true
+      }
+    ]);
   });
 
   it("fuses semantic query views by rank instead of a noisy maximum-similarity winner", () => {
