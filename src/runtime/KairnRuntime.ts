@@ -146,6 +146,7 @@ type CalibratedQueryLocalIndex = QueryLocalIndex & {
   enrichedCandidateCount: number;
   candidateResults?: HybridScoredResult[];
   semanticStatus?: SemanticRetrieverStatus;
+  candidateDiagnostics?: EvidenceCandidateInspection["candidateDiagnostics"];
 };
 
 export class KairnRuntime {
@@ -3565,7 +3566,10 @@ export class KairnRuntime {
       enrichedCandidatePaths: candidateSet.candidates.map((candidate) => candidate.path),
       initialCandidateCount: localIndex.initialCandidateCount,
       enrichedCandidateCount: localIndex.enrichedCandidateCount,
-      candidateLimit
+      candidateLimit,
+      ...(localIndex.candidateDiagnostics
+        ? { candidateDiagnostics: localIndex.candidateDiagnostics }
+        : {})
     };
   }
 
@@ -3709,7 +3713,13 @@ export class KairnRuntime {
         initialCandidateCount: fused.initialPaths.length,
         enrichedCandidateCount: candidateFiles.length,
         candidateResults: fused.candidateResults,
-        semanticStatus: fused.semanticStatus
+        semanticStatus: fused.semanticStatus,
+        candidateDiagnostics: {
+          semanticQueryViews: (semanticSearch.queryRankings ?? [])
+            .map((ranking) => ranking.map((hit) => hit.path)),
+          semanticFused: semanticSearch.hits.map((hit) => hit.path),
+          bm25: modelBm25Results.map((result) => result.path)
+        }
       };
     }
 

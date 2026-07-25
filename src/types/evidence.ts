@@ -122,6 +122,12 @@ export type EvidenceCandidateInspection = {
   initialCandidateCount: number;
   enrichedCandidateCount: number;
   candidateLimit: number;
+  /** Local-only lane ranks used to diagnose bounded-union misses. */
+  candidateDiagnostics?: {
+    semanticQueryViews: string[][];
+    semanticFused: string[];
+    bm25: string[];
+  };
 };
 
 export type EvidenceRankerThresholds = {

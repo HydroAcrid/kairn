@@ -24,11 +24,13 @@ export type SemanticCandidateHit = {
 
 export type SemanticCandidateSearchResult = {
   hits: SemanticCandidateHit[];
+  queryRankings?: SemanticCandidateHit[][];
   status: SemanticRetrieverStatus;
 };
 
 const MAX_QUERY_CHARS = 1_600;
 const MAX_SEMANTIC_QUERY_VIEWS = 3;
+const SEMANTIC_DIAGNOSTIC_RANK_LIMIT = 512;
 
 export async function searchSemanticCandidates(input: {
   query: string;
@@ -89,18 +91,23 @@ export async function searchSemanticCandidates(input: {
     const semanticQueries = buildSemanticQueries(input.query);
     const queryVectors = await model.embedQueries(semanticQueries);
     const scanStarted = performance.now();
-    const hits = fuseSemanticCandidateRankings(
-      queryVectors.map((queryVector) => scoreSemanticEmbeddingIndex({
+    const queryRankings = queryVectors.map((queryVector) => scoreSemanticEmbeddingIndex({
         queryVector,
         documents: input.documents,
         embeddings: eligibleEmbeddings,
-        ...(input.limit !== undefined ? { limit: input.limit } : {})
-      })),
+        limit: Math.max(
+          input.limit ?? 64,
+          Math.min(SEMANTIC_DIAGNOSTIC_RANK_LIMIT, input.documents.length)
+        )
+      }));
+    const hits = fuseSemanticCandidateRankings(
+      queryRankings,
       input.limit
     );
     const vectorScanLatencyMs = performance.now() - scanStarted;
     return {
       hits,
+      queryRankings,
       status: {
         requestedMode: input.config.mode,
         servedMode: input.config.mode,

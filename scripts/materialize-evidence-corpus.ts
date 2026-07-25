@@ -250,6 +250,9 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
           index: indexCoverage(runtime.getIndexStatus()),
           initialCandidatePaths: inspection.initialCandidatePaths,
           enrichedCandidatePaths: inspection.enrichedCandidatePaths,
+          ...(inspection.candidateDiagnostics
+            ? { candidateDiagnostics: inspection.candidateDiagnostics }
+            : {}),
           enrichedCandidates: inspection.enrichedCandidates,
           candidates: inspection.enrichedCandidates.map((candidate) => ({
             path: candidate.path,
