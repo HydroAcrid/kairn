@@ -221,6 +221,40 @@ describe("model-based semantic candidates", () => {
       });
   });
 
+  it("applies source intent before a broad model lane can crowd out production", () => {
+    const rootPath = "/repo";
+    const production = file(rootPath, "src/runtime/restore.ts");
+    const testFiles = Array.from({ length: 80 }, (_, index) => ({
+      ...file(rootPath, `tests/case-${String(index).padStart(2, "0")}.test.ts`),
+      kind: "test" as const
+    }));
+    const semanticHits = [
+      ...testFiles.map((candidate, index) => ({
+        path: candidate.path,
+        similarity: 0.95 - index / 1_000,
+        documentIds: [`test-${index}`]
+      })),
+      {
+        path: production.path,
+        similarity: 0.7,
+        documentIds: ["production"]
+      }
+    ];
+
+    const result = buildModelCandidateUnion({
+      files: [...testFiles, production],
+      query: "Debug the production regression that loses restored state.",
+      symbols: [],
+      bm25Results: [],
+      semanticHits,
+      semanticStatus: readyStatus(semanticHits.length),
+      edges: []
+    });
+
+    expect(result.initialPaths[0]).toBe(production.path);
+    expect(result.initialPaths).toContain(testFiles[0]!.path);
+  });
+
   it("pins precise failure paths ahead of a full 64-file semantic lane", () => {
     const rootPath = "/repo";
     const required = file(rootPath, "src/required.ts");

@@ -81,12 +81,12 @@ export function buildModelCandidateUnion(input: {
     (symbolStrength.get(right) ?? 0) - (symbolStrength.get(left) ?? 0) ||
     left.localeCompare(right)
   );
-  const semanticPaths = input.semanticHits
+  const semanticPaths = prioritizeRetrievalPathsForIntent(input.semanticHits
     .map((hit) => normalizePath(hit.path))
-    .filter(eligibleNonHard);
-  const semanticEvidencePaths = uniquePaths(
+    .filter(eligibleNonHard), signals.intent, filesByPath);
+  const semanticEvidencePaths = prioritizeRetrievalPathsForIntent(uniquePaths(
     input.semanticEvidencePaths ?? semanticPaths
-  ).filter(eligibleNonHard);
+  ).filter(eligibleNonHard), signals.intent, filesByPath);
   const bm25Paths = [...input.bm25Results]
     .filter((result) => result.bm25Score > 0)
     .sort((left, right) => right.bm25Score - left.bm25Score || left.path.localeCompare(right.path))
@@ -240,6 +240,22 @@ export function buildModelCandidateUnion(input: {
     graphConsensusPaths,
     graphSeedPaths
   };
+}
+
+function prioritizeRetrievalPathsForIntent(
+  paths: string[],
+  intent: ReturnType<typeof extractEvidenceTaskSignals>["intent"],
+  filesByPath: Map<string, FileRecord>
+): string[] {
+  if (intent !== "source") return paths;
+  const production: string[] = [];
+  const companions: string[] = [];
+  for (const filePath of paths) {
+    const file = filesByPath.get(filePath);
+    if (file && isProductionEvidenceFile(file)) production.push(filePath);
+    else companions.push(filePath);
+  }
+  return [...production, ...companions];
 }
 
 function prioritizeGraphPathsForIntent(
