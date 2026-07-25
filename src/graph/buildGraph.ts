@@ -44,7 +44,13 @@ export function buildRepoGraph(input: {
     input.parsedFiles,
     input.goModules ?? []
   );
-  addLocalTypeReferenceEdges(edgeMap, input.rootPath, input.files, input.parsedFiles);
+  addLocalTypeReferenceEdges(
+    edgeMap,
+    input.rootPath,
+    input.files,
+    input.parsedFiles,
+    input.goModules ?? []
+  );
   addSiblingImplementationEdges(edgeMap, input.rootPath, input.files, input.parsedFiles);
   addTestEdges(edgeMap, input.rootPath, input.files);
   addGoTestSymbolEdges(edgeMap, input.rootPath, input.files, input.parsedFiles);
@@ -181,11 +187,14 @@ function addLocalTypeReferenceEdges(
   edgeMap: Map<string, GraphEdgeRecord>,
   rootPath: string,
   files: FileRecord[],
-  parsedFiles: ParsedFile[]
+  parsedFiles: ParsedFile[],
+  goModules: Array<{ directory: string; modulePath: string }>
 ): void {
   const fileByPath = new Map(files.map((file) => [file.path, file]));
   const declarations = new Map<string, Set<string>>();
   const javaDeclarations = new Map<string, Set<string>>();
+  const goDeclarations = new Map<string, Set<string>>();
+  const goPackagesByDirectory = new Map<string, string>();
 
   for (const parsedFile of parsedFiles) {
     const scope = localTypeScope(parsedFile);
@@ -198,6 +207,12 @@ function addLocalTypeReferenceEdges(
         if (packageName) {
           addDeclaration(javaDeclarations, `${packageName}.${symbol.name}`, parsedFile.filePath);
         }
+      }
+      if (parsedFile.language === "go") {
+        const directory = path.posix.dirname(parsedFile.filePath);
+        addDeclaration(goDeclarations, `${directory}\0${symbol.name}`, parsedFile.filePath);
+        const packageName = packageMetadata(parsedFile);
+        if (packageName) goPackagesByDirectory.set(directory, packageName);
       }
     }
   }
@@ -214,6 +229,35 @@ function addLocalTypeReferenceEdges(
         reference,
         reason: "parser-observed local type reference"
       });
+    }
+
+    if (parsedFile.language === "go") {
+      const packageDirectories = [...goPackagesByDirectory.keys()];
+      for (const specifier of parsedFile.imports) {
+        if (isPackageMetadata(specifier)) continue;
+        const targetDirectory = resolveLocalGoPackageDirectory(
+          parsedFile.filePath,
+          specifier,
+          packageDirectories,
+          goModules
+        );
+        if (!targetDirectory) continue;
+        const qualifier = goPackagesByDirectory.get(targetDirectory);
+        if (!qualifier) continue;
+        for (const reference of parsedFile.references ?? []) {
+          if (!reference.startsWith(`${qualifier}.`)) continue;
+          const declaration = reference.slice(qualifier.length + 1);
+          if (!declaration || declaration.includes(".")) continue;
+          addUniqueTypeReferenceEdge({
+            edgeMap,
+            rootPath,
+            fromFile: parsedFile.filePath,
+            targetFiles: goDeclarations.get(`${targetDirectory}\0${declaration}`),
+            reference,
+            reason: "parser-observed Go imported type reference"
+          });
+        }
+      }
     }
 
     if (parsedFile.language !== "java") continue;

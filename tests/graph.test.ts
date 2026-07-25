@@ -213,6 +213,51 @@ describe("buildRepoGraph", () => {
     )).toContain("type_reference");
   });
 
+  it("links parser-observed Go qualified types to declarations in imported local packages", async () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "internal/configs/removed.go", "source"),
+      file(rootPath, "internal/terraform/transform.go", "source")
+    ];
+    const sources = new Map([
+      [
+        "internal/configs/removed.go",
+        "package configs\ntype Removed struct{}\n"
+      ],
+      [
+        "internal/terraform/transform.go",
+        [
+          "package terraform",
+          'import "example.com/project/internal/configs"',
+          "type Attacher interface { Attach(*configs.Removed) }"
+        ].join("\n")
+      ]
+    ]);
+    const parsedFiles = await Promise.all(files.map((record) =>
+      parseSourceFile({
+        rootPath,
+        filePath: record.path,
+        language: record.language,
+        content: sources.get(record.path) ?? ""
+      })
+    ));
+
+    const graph = buildRepoGraph({
+      rootPath,
+      files,
+      parsedFiles,
+      goModules: [{ directory: ".", modulePath: "example.com/project" }]
+    });
+
+    expect(edgeTypes(
+      graph.edges,
+      "internal/terraform/transform.go",
+      "internal/configs/removed.go"
+    )).toContain("type_reference");
+    expect(parsedFiles.find((parsed) => parsed.filePath.endsWith("transform.go"))?.references)
+      .toContain("configs.Removed");
+  });
+
   it("links dynamic module dispatchers to local implementations and their installers", async () => {
     const rootPath = "/repo";
     const files = [

@@ -165,6 +165,10 @@ function extractStructuralTypeReferences(
     if (node.type !== "type_identifier") return;
     const name = node.text.trim();
     if (name && name.length <= 160) references.add(name);
+    if (language === "go" && node.parent?.type === "qualified_type") {
+      const qualified = node.parent.text.trim();
+      if (qualified && qualified.length <= 160) references.add(qualified);
+    }
   });
   return [...references].sort().slice(0, 256);
 }
