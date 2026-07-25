@@ -29,7 +29,9 @@ export type SemanticCandidateSearchResult = {
 };
 
 const MAX_QUERY_CHARS = 1_600;
-const MAX_SEMANTIC_QUERY_VIEWS = 3;
+const MAX_SEMANTIC_QUERY_VIEWS = 5;
+const SEMANTIC_QUERY_WINDOW_CHARS = 560;
+const SEMANTIC_QUERY_WINDOW_OVERLAP_CHARS = 80;
 const SEMANTIC_DIAGNOSTIC_RANK_LIMIT = 512;
 
 export async function searchSemanticCandidates(input: {
@@ -138,15 +140,59 @@ export async function searchSemanticCandidates(input: {
 export function buildSemanticQueries(query: string): string[] {
   const unwrapped = unwrapSerializedQuery(query);
   const structuralQueries = buildEvidenceRetrievalQueries(unwrapped);
-  const selected = structuralQueries.length <= MAX_SEMANTIC_QUERY_VIEWS
-    ? structuralQueries
-    : [structuralQueries[0]!, structuralQueries.at(-1)!];
+  const headline = structuralQueries[0];
+  const narrative = structuralQueries[1] ?? structuralQueries.at(-1);
+  const codeAware = structuralQueries.at(-1);
+  const narrativeWindows = narrative
+    ? boundedQueryWindows(narrative, SEMANTIC_QUERY_WINDOW_CHARS, SEMANTIC_QUERY_WINDOW_OVERLAP_CHARS)
+    : [];
+  const availableNarrativeViews = Math.max(0, MAX_SEMANTIC_QUERY_VIEWS - (headline ? 1 : 0));
+  const selected = [
+    ...(headline ? [headline] : []),
+    ...evenlySampleIncludingEndpoints(narrativeWindows, availableNarrativeViews)
+  ];
+  if (
+    codeAware &&
+    codeAware !== narrative &&
+    selected.length < MAX_SEMANTIC_QUERY_VIEWS
+  ) {
+    selected.push(codeAware);
+  }
   const normalized = selected
     .map((item) => representativeQuery(normalizeSemanticQuery(item), MAX_QUERY_CHARS))
     .filter(Boolean);
   return [...new Set(normalized)].slice(0, MAX_SEMANTIC_QUERY_VIEWS).length > 0
     ? [...new Set(normalized)].slice(0, MAX_SEMANTIC_QUERY_VIEWS)
     : [representativeQuery(normalizeSemanticQuery(unwrapped), MAX_QUERY_CHARS)];
+}
+
+function boundedQueryWindows(value: string, maxChars: number, overlapChars: number): string[] {
+  const normalized = normalizeSemanticQuery(value);
+  if (!normalized || normalized.length <= maxChars) return normalized ? [normalized] : [];
+  const windows: string[] = [];
+  const boundedOverlap = Math.max(0, Math.min(overlapChars, maxChars - 1));
+  let start = 0;
+  while (start < normalized.length) {
+    const idealEnd = Math.min(normalized.length, start + maxChars);
+    const end = idealEnd < normalized.length
+      ? Math.max(start + 1, normalized.lastIndexOf(" ", idealEnd))
+      : normalized.length;
+    windows.push(normalized.slice(start, end).trim());
+    if (end >= normalized.length) break;
+    const nextIdeal = Math.max(start + 1, end - boundedOverlap);
+    const nextBoundary = normalized.indexOf(" ", nextIdeal);
+    start = nextBoundary >= 0 && nextBoundary < end ? nextBoundary + 1 : nextIdeal;
+  }
+  return windows.filter(Boolean);
+}
+
+function evenlySampleIncludingEndpoints<T>(values: T[], count: number): T[] {
+  if (count <= 0) return [];
+  if (count >= values.length) return [...values];
+  if (count === 1) return [values[0]!];
+  return Array.from({ length: count }, (_, index) =>
+    values[Math.round((index * (values.length - 1)) / (count - 1))]!
+  );
 }
 
 export function fuseSemanticCandidateRankings(

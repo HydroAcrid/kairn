@@ -430,9 +430,26 @@ describe("model-based semantic candidates", () => {
     ].join("\n"));
 
     expect(queries.length).toBeGreaterThan(0);
-    expect(queries.length).toBeLessThanOrEqual(3);
+    expect(queries.length).toBeLessThanOrEqual(5);
     expect(queries.some((query) => query.includes("explicitly empty value remains empty"))).toBe(true);
     expect(queries.every((query) => query.length <= 1_600)).toBe(true);
+  });
+
+  it("gives separated issue facets bounded independent semantic views", () => {
+    const queries = buildSemanticQueries([
+      "Authorization cleanup leaves stale records.",
+      "",
+      `The first subsystem keeps expired session state. ${"early context ".repeat(45)}`,
+      "",
+      `A separate persistence layer must remove the associated lease. ${"middle context ".repeat(45)}`,
+      "",
+      `The final adapter should report the invalid credential consistently. ${"late context ".repeat(45)}`
+    ].join("\n"));
+
+    expect(queries.length).toBeLessThanOrEqual(5);
+    expect(queries.some((query) => query.includes("expired session state"))).toBe(true);
+    expect(queries.some((query) => query.includes("associated lease"))).toBe(true);
+    expect(queries.some((query) => query.includes("invalid credential"))).toBe(true);
   });
 
   it("fuses semantic query views by rank instead of a noisy maximum-similarity winner", () => {
