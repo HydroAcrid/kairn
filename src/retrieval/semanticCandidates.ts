@@ -304,6 +304,15 @@ export function fuseSemanticCandidateRankings(
       return true;
     });
   });
+  // Cross-view agreement is stronger model evidence than a high score from
+  // one possibly noisy issue facet. Reserve half of the bounded semantic lane
+  // for RRF consensus, then use equal-depth interleaving to retain independent
+  // facet coverage. The remaining fused tail is only a deterministic fill.
+  const consensusLimit = Math.max(1, Math.floor(boundedLimit / 2));
+  for (const [filePath] of fused.slice(0, consensusLimit)) {
+    selectedPaths.push(filePath);
+    seenPaths.add(filePath);
+  }
   let rank = 0;
   const maximumRankingLength = uniqueRankings.reduce(
     (maximum, ranking) => Math.max(maximum, ranking.length),
@@ -311,8 +320,8 @@ export function fuseSemanticCandidateRankings(
   );
   // The bounded semantic lane exists to maximize recall before the calibrated
   // ranker decides relevance. Preserve equal-depth coverage from every
-  // structural query view; otherwise files that are strong for one precise
-  // issue facet can be crowded out by generic files appearing in every view.
+  // structural query view after consensus; otherwise files that are strong for
+  // one precise issue facet can be crowded out by generic cross-view files.
   while (selectedPaths.length < boundedLimit && rank < maximumRankingLength) {
     for (const ranking of uniqueRankings) {
       const hit = ranking[rank];

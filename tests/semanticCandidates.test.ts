@@ -939,6 +939,36 @@ describe("model-based semantic candidates", () => {
     ]);
   });
 
+  it("reserves semantic capacity for agreement across independent query views", () => {
+    const singleView = (view: string) => Array.from({ length: 5 }, (_, index) => ({
+      path: `src/${view}-${index}.ts`,
+      similarity: 0.9 - index / 100,
+      documentIds: [`${view}-${index}`]
+    }));
+    const left = singleView("left");
+    const right = singleView("right");
+    left.splice(3, 0, {
+      path: "src/cross-view-consensus.ts",
+      similarity: 0.84,
+      documentIds: ["consensus-left"]
+    });
+    right.splice(3, 0, {
+      path: "src/cross-view-consensus.ts",
+      similarity: 0.83,
+      documentIds: ["consensus-right"]
+    });
+
+    const hits = fuseSemanticCandidateRankings([left, right], 6);
+
+    expect(hits[0]).toMatchObject({
+      path: "src/cross-view-consensus.ts",
+      similarity: 0.84,
+      documentIds: ["consensus-left", "consensus-right"]
+    });
+    expect(hits.some((hit) => hit.path === "src/left-0.ts")).toBe(true);
+    expect(hits.some((hit) => hit.path === "src/right-0.ts")).toBe(true);
+  });
+
   it("reports explicit fallback when a local model is unavailable and performs no download", async () => {
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-missing-"));
     try {
