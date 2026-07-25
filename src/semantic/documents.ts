@@ -3,7 +3,6 @@
 import path from "node:path";
 import type {
   FileRecord,
-  GraphEdgeRecord,
   ParsedFile,
   RepoGraph,
   SemanticDocumentRecord,
@@ -13,7 +12,7 @@ import { readTextFile } from "../retrieval/readSource.js";
 import { sha256 } from "../utils/hash.js";
 import { estimateTokens } from "../utils/tokens.js";
 
-export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v6" as const;
+export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v5" as const;
 // Jina v2 was trained with 512-token inputs. Code in the current profile
 // averages roughly three to four characters per tokenizer token, so 1,500
 // characters uses the model's learned window without routinely hitting the
@@ -21,7 +20,6 @@ export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v6" as const
 const MAX_DOCUMENT_CHARS = 1_500;
 const MAX_FILE_SYMBOLS = 4;
 const MAX_DIRECT_IMPORTS = 4;
-const MAX_DIRECT_RELATIONS = 4;
 const MAX_DOCUMENTATION_SNIPPETS = 3;
 const LARGE_REPOSITORY_SYMBOL_FRACTION = 0.25;
 
@@ -32,7 +30,6 @@ export function buildSemanticDocuments(input: {
 }): SemanticDocumentRecord[] {
   const parsedByFile = new Map(input.graph.parsedFiles.map((parsed) => [parsed.filePath, parsed]));
   const symbolsByFile = groupSymbols(input.graph.symbols);
-  const directRelationsByFile = groupDirectRelations(input.graph);
   const fileDocuments: SemanticDocumentRecord[] = [];
   const symbolQueues = new Map<string, SemanticSymbolDocumentCandidate[]>();
 
@@ -45,11 +42,10 @@ export function buildSemanticDocuments(input: {
     }
     const parsed = parsedByFile.get(file.path);
     const symbols = symbolsByFile.get(file.path) ?? [];
-    const directRelations = directRelationsByFile.get(file.path) ?? [];
-    fileDocuments.push(buildFileDocument(file, parsed, symbols, directRelations, content));
+    fileDocuments.push(buildFileDocument(file, parsed, symbols, content));
     const symbolDocuments = uniqueSemanticContent(symbols
       .map((symbol) => {
-        const document = buildSymbolDocument(file, parsed, symbol, directRelations, content);
+        const document = buildSymbolDocument(file, parsed, symbol, content);
         return document
           ? {
               document,
@@ -87,7 +83,6 @@ function buildFileDocument(
   file: FileRecord,
   parsed: ParsedFile | undefined,
   symbols: SymbolRecord[],
-  directRelations: string[],
   content: string
 ): SemanticDocumentRecord {
   const behavioralSymbols = semanticBehaviorSymbols(symbols);
@@ -110,7 +105,6 @@ function buildFileDocument(
         `module: ${boundedField(path.posix.dirname(file.path), callableSurface.length > 0 ? 48 : 56)}`,
         boundedList("declared symbols", declaredSymbols, callableSurface.length > 0 ? 96 : 112),
         boundedList("direct imports", directImports, callableSurface.length > 0 ? 64 : 80),
-        boundedList("direct graph relationships", directRelations, callableSurface.length > 0 ? 112 : 144),
         ...(callableSurface.length > 0
           ? [boundedList("callable surface", callableSurface, 112)]
           : []),
@@ -126,7 +120,6 @@ function buildFileDocument(
           `module: ${boundedField(path.posix.dirname(file.path), 56)}`,
           boundedList("declared symbols", declaredSymbols, 112),
           boundedList("direct imports", directImports, 80),
-          boundedList("direct graph relationships", directRelations, 144),
           boundedList("callable surface", callableSurface, 180),
           "",
           "representative source:"
@@ -138,7 +131,6 @@ function buildFileDocument(
         `module: ${boundedField(path.posix.dirname(file.path), 80)}`,
         boundedList("declared symbols", declaredSymbols, 140),
         boundedList("direct imports", directImports, 140),
-        boundedList("direct graph relationships", directRelations, 168),
         "",
         "representative source:"
       ].join("\n");
@@ -166,7 +158,6 @@ function buildSymbolDocument(
   file: FileRecord,
   parsed: ParsedFile | undefined,
   symbol: SymbolRecord,
-  directRelations: string[],
   content: string
 ): SemanticDocumentRecord | undefined {
   const body = sliceLines(content, symbol.startLine, symbol.endLine);
@@ -185,7 +176,6 @@ function buildSymbolDocument(
     `signature: ${boundedField(symbol.signature, 140)}`,
     `exported: ${symbol.exported ? "yes" : "no"}`,
     boundedList("direct imports", directImports, 140),
-    boundedList("direct graph relationships", directRelations, 168),
     ""
   ].join("\n");
   const text = composeDocument(prefix, body);
@@ -247,61 +237,6 @@ function groupSymbols(symbols: SymbolRecord[]): Map<string, SymbolRecord[]> {
     grouped.set(symbol.filePath, [...(grouped.get(symbol.filePath) ?? []), symbol]);
   }
   return grouped;
-}
-
-function groupDirectRelations(graph: RepoGraph): Map<string, string[]> {
-  const eligiblePaths = new Set(stableEligibleFiles(graph.files).map((file) => file.path));
-  const candidates = new Map<string, Map<string, number>>();
-
-  for (const edge of graph.edges) {
-    const priority = directRelationPriority(edge);
-    if (priority === undefined) continue;
-    if (!eligiblePaths.has(edge.fromFile) || !eligiblePaths.has(edge.toFile)) continue;
-    addDirectRelation(candidates, edge.fromFile, edge.toFile, priority);
-    addDirectRelation(candidates, edge.toFile, edge.fromFile, priority);
-  }
-
-  return new Map(
-    [...candidates.entries()].map(([filePath, relations]) => [
-      filePath,
-      [...relations.entries()]
-        .sort((left, right) => left[1] - right[1] || left[0].localeCompare(right[0]))
-        .slice(0, MAX_DIRECT_RELATIONS)
-        .map(([relatedPath]) => relatedPath)
-    ])
-  );
-}
-
-function directRelationPriority(edge: GraphEdgeRecord): number | undefined {
-  switch (edge.type) {
-    case "call":
-    case "definition":
-    case "reference":
-    case "implementation":
-      return 0;
-    case "type_reference":
-    case "module_installation":
-      return 1;
-    case "test_for":
-    case "tested_by":
-    case "parent_route":
-      return 2;
-    default:
-      return undefined;
-  }
-}
-
-function addDirectRelation(
-  candidates: Map<string, Map<string, number>>,
-  filePath: string,
-  relatedPath: string,
-  priority: number
-): void {
-  if (filePath === relatedPath) return;
-  const relations = candidates.get(filePath) ?? new Map<string, number>();
-  const existing = relations.get(relatedPath);
-  if (existing === undefined || priority < existing) relations.set(relatedPath, priority);
-  candidates.set(filePath, relations);
 }
 
 function semanticBehaviorSymbols(symbols: SymbolRecord[]): SymbolRecord[] {

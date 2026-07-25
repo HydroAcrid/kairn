@@ -1202,58 +1202,6 @@ describe("model-based semantic candidates", () => {
     }
   });
 
-  it("adds bounded parser-derived direct relationships to model documents", () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-relations-"));
-    try {
-      const utilityPath = "src/value_marks.go";
-      const consumerPath = "src/plan_resource.go";
-      const inferredPath = "src/unrelated.go";
-      for (const [filePath, content] of [
-        [utilityPath, "package source\nfunc EqualMarks() bool { return true }\n"],
-        [consumerPath, "package source\nfunc PlanResource() bool { return EqualMarks() }\n"],
-        [inferredPath, "package source\nfunc Other() bool { return true }\n"]
-      ] as const) {
-        fs.mkdirSync(path.dirname(path.join(rootPath, filePath)), { recursive: true });
-        fs.writeFileSync(path.join(rootPath, filePath), content);
-      }
-      const files = [utilityPath, consumerPath, inferredPath].map((filePath) =>
-        file(rootPath, filePath, "tier3", "go")
-      );
-      const graph: RepoGraph = {
-        rootPath,
-        files,
-        parsedFiles: [],
-        symbols: [],
-        edges: [
-          {
-            rootPath,
-            fromFile: consumerPath,
-            toFile: utilityPath,
-            type: "call",
-            metadata: {}
-          },
-          {
-            rootPath,
-            fromFile: inferredPath,
-            toFile: utilityPath,
-            type: "shared_call_target",
-            metadata: {}
-          }
-        ]
-      };
-
-      const documents = buildSemanticDocuments({ rootPath, graph, maxDocuments: 10 });
-      const utilityDocument = documents.find(
-        (document) => document.filePath === utilityPath && document.kind === "file"
-      );
-      expect(utilityDocument?.schemaVersion).toBe("semantic-documents-v6");
-      expect(utilityDocument?.text).toContain(`direct graph relationships: ${consumerPath}`);
-      expect(utilityDocument?.text).not.toContain(inferredPath);
-    } finally {
-      fs.rmSync(rootPath, { recursive: true, force: true });
-    }
-  });
-
   it("allocates bounded symbol documents across large files without first-symbol bias", () => {
     const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-symbol-budget-"));
     try {
