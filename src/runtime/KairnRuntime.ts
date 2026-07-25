@@ -3650,11 +3650,11 @@ export class KairnRuntime {
 
     if (semanticConfig.mode !== "legacy") {
       const semanticSearch = await searchSemanticCandidates({
-        query: retrievalQueries.join("\n") || input.query,
+        query: input.query,
         config: semanticConfig,
         documents: this.store.listSemanticDocuments(input.rootPath),
         embeddings: this.store.listSemanticEmbeddings(input.rootPath),
-        limit: DEFAULT_INITIAL_CANDIDATE_LIMIT
+        limit: DEFAULT_ENRICHED_CANDIDATE_LIMIT
       });
       const preliminary = buildModelCandidateUnion({
         files: input.files,

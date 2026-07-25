@@ -8,6 +8,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildModelCandidateUnion, reciprocalRankFuse } from "../src/retrieval/candidateFusion.js";
 import {
+  buildSemanticQueryViews,
   scoreSemanticEmbeddingIndex,
   searchSemanticCandidates
 } from "../src/retrieval/semanticCandidates.js";
@@ -126,6 +127,45 @@ describe("model-based semantic candidates", () => {
     expect(hits.map((hit) => hit.path)).toEqual(["src/renewal.ts", "src/audit.ts"]);
     expect(hits[0]?.similarity).toBeGreaterThan(0.99);
     expect(quantizedCosineSimilarity(new Float32Array([1, 0]), embeddings[1]!)).toBeGreaterThan(0.99);
+  });
+
+  it("uses bounded semantic query views to recover distinct intents without lexical bonuses", () => {
+    const rootPath = "/repo";
+    const documents = [
+      document(rootPath, "first", "src/session.ts", "file", "first-hash"),
+      document(rootPath, "second", "src/platform.ts", "file", "second-hash"),
+      document(rootPath, "noise", "src/theme.ts", "file", "noise-hash")
+    ];
+    const embeddings = [
+      embedding(rootPath, documents[0]!, new Float32Array([1, 0, 0])),
+      embedding(rootPath, documents[1]!, new Float32Array([0, 1, 0])),
+      embedding(rootPath, documents[2]!, new Float32Array([0, 0, 1]))
+    ];
+
+    const hits = scoreSemanticEmbeddingIndex({
+      queryVectors: [
+        new Float32Array([1, 0, 0]),
+        new Float32Array([0, 1, 0])
+      ],
+      documents,
+      embeddings,
+      limit: 2
+    });
+
+    expect(hits.map((hit) => hit.path)).toEqual(["src/platform.ts", "src/session.ts"]);
+    expect(hits.every((hit) => hit.similarity > 0.99)).toBe(true);
+  });
+
+  it("splits long queries by position rather than task vocabulary", () => {
+    const first = "Describe the behavior of the first independent workflow. ".repeat(8);
+    const second = "Explain the separate behavior expected from another workflow. ".repeat(8);
+    const views = buildSemanticQueryViews(JSON.stringify(`${first}\n\n${second}`));
+
+    expect(views).toHaveLength(3);
+    expect(views[0]).toContain("first independent workflow");
+    expect(views[0]).toContain("separate behavior");
+    expect(views[1]).toContain("first independent workflow");
+    expect(views[2]).toContain("separate behavior");
   });
 
   it("admits a semantic-only production file outside the lexical union without admitting tier-zero noise", () => {
