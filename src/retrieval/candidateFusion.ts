@@ -31,6 +31,15 @@ export type ModelCandidateUnion = {
   graphSeedPaths: string[];
 };
 
+/**
+ * Internal retrieval breadth used only to obtain model-backed graph probes.
+ * Public candidate delivery remains bounded at 64 initial and 128 enriched
+ * files. A broader probe pool lets precise parser facts validate semantic
+ * candidates that would otherwise be discarded before graph enrichment.
+ */
+export const MODEL_RETRIEVAL_PROBE_LIMIT = 512;
+const MAX_TEST_GRAPH_PROBE_PATHS = 192;
+
 export function buildModelCandidateUnion(input: {
   files: FileRecord[];
   query: string;
@@ -104,13 +113,26 @@ export function buildModelCandidateUnion(input: {
   const preliminaryUnion = reciprocalRankFuse({
     hardPaths,
     rankings: baseRankings,
-    limit: DEFAULT_ENRICHED_CANDIDATE_LIMIT
+    limit: MODEL_RETRIEVAL_PROBE_LIMIT
   }).filter((filePath) => filesByPath.has(filePath));
   const initialPaths = preliminaryUnion.slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
   const graphProbePaths = signals.intent === "source"
-    ? semanticEvidencePaths
-        .filter((filePath) => filesByPath.get(filePath)?.kind === "test")
-        .slice(0, 192)
+    ? uniquePaths([
+        ...semanticEvidencePaths
+          .filter((filePath) =>
+            !initialPaths.includes(filePath) &&
+            filesByPath.get(filePath)?.kind === "test"
+          )
+          .slice(0, MAX_TEST_GRAPH_PROBE_PATHS),
+        ...preliminaryUnion
+          .slice(DEFAULT_INITIAL_CANDIDATE_LIMIT)
+          .filter((filePath) => {
+            const file = filesByPath.get(filePath);
+            return Boolean(file && isProductionEvidenceFile(file));
+          })
+      ])
+        .filter((filePath) => !initialPaths.includes(filePath))
+        .slice(0, MODEL_RETRIEVAL_PROBE_LIMIT - initialPaths.length)
     : [];
   const graphSeedPaths = uniquePaths([...initialPaths, ...graphProbePaths]);
   const graphPaths = prioritizeGraphPathsForIntent(
@@ -246,6 +268,7 @@ export function rankEvidenceBackedGraphCandidates(input: {
   minimumSeedSupport?: number;
 }): string[] {
   const primarySeeds = uniquePaths(input.seedPaths);
+  const primarySeedSet = new Set(primarySeeds);
   const probeSeeds = uniquePaths(input.probeSeedPaths ?? []).filter(
     (filePath) => !primarySeeds.includes(filePath)
   );
@@ -273,8 +296,13 @@ export function rankEvidenceBackedGraphCandidates(input: {
   const consider = (seedPath: string, neighborPath: string, edge: GraphEdgeRecord): void => {
     const seedRank = seedRanks.get(seedPath);
     const neighbor = input.filesByPath.get(neighborPath);
-    if (!seedRank || !neighbor || seedRanks.has(neighborPath) || neighbor.indexTier === "tier0") return;
-    if (probeSeedSet.has(seedPath) && !isProbeEligibleEdge(edge.type)) return;
+    if (!seedRank || !neighbor || primarySeedSet.has(neighborPath) || neighbor.indexTier === "tier0") return;
+    if (
+      probeSeedSet.has(seedPath) &&
+      !isProbeEligibleEdge(edge.type, input.filesByPath.get(seedPath)?.kind)
+    ) {
+      return;
+    }
     const precision = edgePriority(edge.type);
     if (precision === 0) return;
     const independentEvidence = evidenceRanks.get(neighborPath);
@@ -348,11 +376,21 @@ export function rankEvidenceBackedGraphCandidates(input: {
   return diversifyModuleInstallationFamilies(ranked).map((candidate) => candidate.path);
 }
 
-function isProbeEligibleEdge(type: GraphEdgeRecord["type"]): boolean {
+function isProbeEligibleEdge(
+  type: GraphEdgeRecord["type"],
+  seedKind: FileRecord["kind"] | undefined
+): boolean {
+  if (seedKind === "test") {
+    return (
+      type === "test_for" ||
+      type === "tested_by" ||
+      type === "shared_call_target"
+    );
+  }
   return (
-    type === "test_for" ||
-    type === "tested_by" ||
-    type === "shared_call_target"
+    type === "call" ||
+    type === "shared_call_target" ||
+    type === "type_reference"
   );
 }
 

@@ -397,6 +397,42 @@ describe("model-based semantic candidates", () => {
     ]));
   });
 
+  it("uses model-backed production probes only through precise parser relationships", () => {
+    const rootPath = "/repo";
+    const leaders = Array.from({ length: 64 }, (_, index) =>
+      file(rootPath, `src/leader-${String(index).padStart(2, "0")}.go`)
+    );
+    const productionProbe = file(rootPath, "internal/runtime/operation.go");
+    const calledSource = file(rootPath, "internal/runtime/state.go");
+    const importNoise = file(rootPath, "internal/runtime/format.go");
+    const rankedFiles = [...leaders, productionProbe, calledSource, importNoise];
+    const result = buildModelCandidateUnion({
+      files: rankedFiles,
+      query: "Repair the production state transition workflow.",
+      symbols: [],
+      bm25Results: rankedFiles.map((candidate, index) => scored(candidate, 1 - index / 200)),
+      semanticHits: rankedFiles.map((candidate, index) => ({
+        path: candidate.path,
+        similarity: 1 - index / 200,
+        documentIds: [`rank-${index}`]
+      })),
+      semanticStatus: readyStatus(rankedFiles.length),
+      edges: [
+        edge(rootPath, leaders[0]!.path, productionProbe.path, "shared_call_target"),
+        edge(rootPath, productionProbe.path, calledSource.path, "call"),
+        edge(rootPath, productionProbe.path, importNoise.path, "imports")
+      ]
+    });
+
+    expect(result.initialPaths).not.toContain(productionProbe.path);
+    expect(result.graphSeedPaths).toContain(productionProbe.path);
+    expect(result.graphPaths).toEqual(expect.arrayContaining([
+      productionProbe.path,
+      calledSource.path
+    ]));
+    expect(result.graphPaths).not.toContain(importNoise.path);
+  });
+
   it("spends source-intent graph enrichment capacity on production before companions", () => {
     const rootPath = "/repo";
     const seed = file(rootPath, "src/facade.go");

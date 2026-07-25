@@ -138,7 +138,10 @@ import {
 } from "../prime/calibratedEvidencePolicy.js";
 import { resolveSemanticRetrieverConfig } from "../config/semantic.js";
 import { searchSemanticCandidates } from "../retrieval/semanticCandidates.js";
-import { buildModelCandidateUnion } from "../retrieval/candidateFusion.js";
+import {
+  buildModelCandidateUnion,
+  MODEL_RETRIEVAL_PROBE_LIMIT
+} from "../retrieval/candidateFusion.js";
 
 type CalibratedQueryLocalIndex = QueryLocalIndex & {
   initialCandidateFiles: string[];
@@ -3658,7 +3661,7 @@ export class KairnRuntime {
         config: semanticConfig,
         documents: this.store.listSemanticDocuments(input.rootPath),
         embeddings: this.store.listSemanticEmbeddings(input.rootPath),
-        limit: DEFAULT_ENRICHED_CANDIDATE_LIMIT
+        limit: MODEL_RETRIEVAL_PROBE_LIMIT
       });
       const semanticEvidencePaths = interleaveRankedPaths(
         (semanticSearch.queryRankings ?? []).map((ranking) =>
