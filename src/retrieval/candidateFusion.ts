@@ -216,6 +216,7 @@ export function rankEvidenceBackedGraphCandidates(input: {
     precision: number;
     bestSeedRank: number;
     seedRanks: Map<string, number>;
+    relationFamilyRanks: Map<string, number>;
   };
   const candidates = new Map<string, GraphCandidate>();
   const consider = (seedPath: string, neighborPath: string, edge: GraphEdgeRecord): void => {
@@ -234,11 +235,20 @@ export function rankEvidenceBackedGraphCandidates(input: {
     const existing = candidates.get(neighborPath);
     const seedSupport = new Map(existing?.seedRanks ?? []);
     seedSupport.set(seedPath, Math.min(seedSupport.get(seedPath) ?? Number.POSITIVE_INFINITY, seedRank));
+    const relationFamilyRanks = new Map(existing?.relationFamilyRanks ?? []);
+    const relationFamily = graphRelationFamily(edge, seedPath);
+    if (relationFamily) {
+      relationFamilyRanks.set(
+        relationFamily,
+        Math.min(relationFamilyRanks.get(relationFamily) ?? Number.POSITIVE_INFINITY, seedRank)
+      );
+    }
     candidates.set(neighborPath, {
       path: neighborPath,
       precision: Math.max(existing?.precision ?? 0, precision),
       bestSeedRank: Math.min(existing?.bestSeedRank ?? Number.POSITIVE_INFINITY, seedRank),
-      seedRanks: seedSupport
+      seedRanks: seedSupport,
+      relationFamilyRanks
     });
   };
 
@@ -262,7 +272,7 @@ export function rankEvidenceBackedGraphCandidates(input: {
     return score;
   };
   const minimumSeedSupport = Math.max(1, Math.floor(input.minimumSeedSupport ?? 1));
-  return [...candidates.values()]
+  const ranked = [...candidates.values()]
     .filter((candidate) => candidate.seedRanks.size >= minimumSeedSupport)
     .sort((left, right) =>
       right.precision - left.precision ||
@@ -272,8 +282,57 @@ export function rankEvidenceBackedGraphCandidates(input: {
       independentScore(right.path) - independentScore(left.path) ||
       left.bestSeedRank - right.bestSeedRank ||
       left.path.localeCompare(right.path)
-    )
-    .map((candidate) => candidate.path);
+    );
+  return diversifyModuleInstallationFamilies(ranked).map((candidate) => candidate.path);
+}
+
+function graphRelationFamily(edge: GraphEdgeRecord, seedPath: string): string | undefined {
+  if (edge.type !== "module_installation") return undefined;
+  const through = typeof edge.metadata.through === "string"
+    ? normalizePath(edge.metadata.through)
+    : "";
+  return through || normalizePath(seedPath);
+}
+
+function diversifyModuleInstallationFamilies<T extends {
+  precision: number;
+  path: string;
+  relationFamilyRanks: Map<string, number>;
+}>(ranked: T[]): T[] {
+  const precise = ranked.filter((candidate) =>
+    candidate.precision === edgePriority("module_installation") &&
+    candidate.relationFamilyRanks.size > 0
+  );
+  if (precise.length < 2) return ranked;
+  const preciseSet = new Set(precise);
+  const queues = new Map<string, T[]>();
+  const firstRank = new Map<string, number>();
+  precise.forEach((candidate, index) => {
+    const family = [...candidate.relationFamilyRanks.entries()]
+      .sort((left, right) => left[1] - right[1] || left[0].localeCompare(right[0]))[0]?.[0];
+    if (!family) return;
+    queues.set(family, [...(queues.get(family) ?? []), candidate]);
+    firstRank.set(family, Math.min(firstRank.get(family) ?? Number.POSITIVE_INFINITY, index));
+  });
+  const families = [...queues.keys()].sort((left, right) =>
+    (firstRank.get(left) ?? Number.POSITIVE_INFINITY) -
+      (firstRank.get(right) ?? Number.POSITIVE_INFINITY) ||
+    left.localeCompare(right)
+  );
+  const diversified: T[] = [];
+  let depth = 0;
+  let madeProgress = true;
+  while (madeProgress) {
+    madeProgress = false;
+    for (const family of families) {
+      const candidate = queues.get(family)?.[depth];
+      if (!candidate) continue;
+      diversified.push(candidate);
+      madeProgress = true;
+    }
+    depth += 1;
+  }
+  return [...diversified, ...ranked.filter((candidate) => !preciseSet.has(candidate))];
 }
 
 export function reciprocalRankFuse(input: {

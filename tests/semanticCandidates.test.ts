@@ -8,6 +8,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   buildModelCandidateUnion,
+  rankEvidenceBackedGraphCandidates,
   reciprocalRankFuse
 } from "../src/retrieval/candidateFusion.js";
 import { yieldToSemanticCheckpointTimers } from "../src/indexer/indexRepo.js";
@@ -349,6 +350,52 @@ describe("model-based semantic candidates", () => {
     expect(result.enrichedPaths).toContain(sharedImplementation.path);
     expect(result.candidateResults.find((candidate) => candidate.path === sharedImplementation.path))
       .toMatchObject({ graphScore: 1 });
+  });
+
+  it("balances parser-proven installation candidates across module families", () => {
+    const rootPath = "/repo";
+    const seeds = [
+      file(rootPath, "src/api/account.ts"),
+      file(rootPath, "src/api/search.ts"),
+      file(rootPath, "src/api/admin.ts")
+    ];
+    const familyA = Array.from({ length: 8 }, (_, index) =>
+      file(rootPath, `src/adapters/a/part-${index}.ts`)
+    );
+    const familyB = [file(rootPath, "src/adapters/b/core.ts")];
+    const familyC = [file(rootPath, "src/adapters/c/core.ts")];
+    const filesByPath = new Map(
+      [...seeds, ...familyA, ...familyB, ...familyC].map((candidate) => [candidate.path, candidate])
+    );
+    const installation = (
+      seed: FileRecord,
+      target: FileRecord,
+      through: string
+    ): GraphEdgeRecord => ({
+      ...edge(rootPath, seed.path, target.path, "module_installation"),
+      metadata: {
+        reason: "imported module installs a concrete implementation",
+        through
+      }
+    });
+    const ranked = rankEvidenceBackedGraphCandidates({
+      seedPaths: seeds.map((seed) => seed.path),
+      edges: [
+        ...familyA.flatMap((target) => seeds.map((seed) =>
+          installation(seed, target, "src/adapters/a/index.ts")
+        )),
+        installation(seeds[0]!, familyB[0]!, "src/adapters/b/index.ts"),
+        installation(seeds[1]!, familyC[0]!, "src/adapters/c/index.ts")
+      ],
+      filesByPath,
+      evidenceRankings: []
+    });
+
+    expect(new Set(ranked.slice(0, 3))).toEqual(new Set([
+      familyA[0]!.path,
+      familyB[0]!.path,
+      familyC[0]!.path
+    ]));
   });
 
   it("fuses independent ranks without path-name or task-word bonuses", () => {
