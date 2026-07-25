@@ -261,6 +261,41 @@ describe("model-based semantic candidates", () => {
       });
   });
 
+  it("uses broader model evidence to validate a precise graph neighbor without widening the bounded lane", () => {
+    const rootPath = "/repo";
+    const seed = file(rootPath, "src/public-api.ts");
+    const implementation = file(rootPath, "src/internal/implementation.ts");
+    const unrelated = file(rootPath, "src/internal/unrelated.ts");
+    const distractors = Array.from({ length: 70 }, (_, index) =>
+      file(rootPath, `src/noise-${String(index).padStart(2, "0")}.ts`)
+    );
+    const rankedFiles = [seed, ...distractors];
+    const result = buildModelCandidateUnion({
+      files: [seed, implementation, unrelated, ...distractors],
+      query: "Repair the production behavior exposed by the public API.",
+      symbols: [],
+      bm25Results: rankedFiles.map((candidate, index) => scored(candidate, 1 - index / 100)),
+      semanticHits: rankedFiles.map((candidate, index) => ({
+        path: candidate.path,
+        similarity: 1 - index / 100,
+        documentIds: [`rank-${index}`]
+      })),
+      semanticEvidencePaths: [
+        ...rankedFiles.map((candidate) => candidate.path),
+        implementation.path
+      ],
+      semanticStatus: readyStatus(rankedFiles.length),
+      edges: [
+        edge(rootPath, seed.path, implementation.path, "imports"),
+        edge(rootPath, seed.path, unrelated.path, "imports")
+      ]
+    });
+
+    expect(result.initialPaths).not.toContain(implementation.path);
+    expect(result.enrichedPaths).toContain(implementation.path);
+    expect(result.enrichedPaths).not.toContain(unrelated.path);
+  });
+
   it("allows a precise source-test graph relation to enter without lexical support", () => {
     const rootPath = "/repo";
     const testSeed = file(rootPath, "tests/payment.test.ts");

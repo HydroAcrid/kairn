@@ -36,6 +36,7 @@ export function buildModelCandidateUnion(input: {
   symbols: SymbolRecord[];
   bm25Results: HybridScoredResult[];
   semanticHits: SemanticCandidateHit[];
+  semanticEvidencePaths?: string[];
   semanticStatus: SemanticRetrieverStatus;
   edges: GraphEdgeRecord[];
   changedFiles?: Set<string>;
@@ -73,6 +74,9 @@ export function buildModelCandidateUnion(input: {
   const semanticPaths = input.semanticHits
     .map((hit) => normalizePath(hit.path))
     .filter(eligibleNonHard);
+  const semanticEvidencePaths = uniquePaths(
+    input.semanticEvidencePaths ?? semanticPaths
+  ).filter(eligibleNonHard);
   const bm25Paths = [...input.bm25Results]
     .filter((result) => result.bm25Score > 0)
     .sort((left, right) => right.bm25Score - left.bm25Score || left.path.localeCompare(right.path))
@@ -107,7 +111,7 @@ export function buildModelCandidateUnion(input: {
     edges: input.edges,
     filesByPath,
     evidenceRankings: [
-      { channel: "semantic", paths: semanticPaths },
+      { channel: "semantic", paths: semanticEvidencePaths },
       { channel: "bm25", paths: bm25Paths },
       { channel: "symbol", paths: eligibleSymbolPaths }
     ]
@@ -117,7 +121,7 @@ export function buildModelCandidateUnion(input: {
     edges: input.edges,
     filesByPath,
     evidenceRankings: [
-      { channel: "semantic", paths: semanticPaths },
+      { channel: "semantic", paths: semanticEvidencePaths },
       { channel: "bm25", paths: bm25Paths },
       { channel: "symbol", paths: eligibleSymbolPaths }
     ],

@@ -126,6 +126,7 @@ export type EvidenceCandidateInspection = {
   candidateDiagnostics?: {
     semanticQueryViews: string[][];
     semanticFused: string[];
+    semanticEvidence: string[];
     bm25: string[];
     graph: string[];
     graphConsensus: string[];

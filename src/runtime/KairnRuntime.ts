@@ -3660,12 +3660,19 @@ export class KairnRuntime {
         embeddings: this.store.listSemanticEmbeddings(input.rootPath),
         limit: DEFAULT_ENRICHED_CANDIDATE_LIMIT
       });
+      const semanticEvidencePaths = interleaveRankedPaths(
+        (semanticSearch.queryRankings ?? []).map((ranking) =>
+          ranking.map((hit) => hit.path)
+        ),
+        4_096
+      );
       const preliminary = buildModelCandidateUnion({
         files: input.files,
         query: input.query,
         symbols: matchingSymbols,
         bm25Results: modelBm25Results,
         semanticHits: semanticSearch.hits,
+        semanticEvidencePaths,
         semanticStatus: semanticSearch.status,
         edges: [],
         ...(input.changedFiles ? { changedFiles: input.changedFiles } : {}),
@@ -3682,6 +3689,7 @@ export class KairnRuntime {
         symbols: matchingSymbols,
         bm25Results: modelBm25Results,
         semanticHits: semanticSearch.hits,
+        semanticEvidencePaths,
         semanticStatus: semanticSearch.status,
         edges,
         ...(input.changedFiles ? { changedFiles: input.changedFiles } : {}),
@@ -3718,6 +3726,7 @@ export class KairnRuntime {
           semanticQueryViews: (semanticSearch.queryRankings ?? [])
             .map((ranking) => ranking.map((hit) => hit.path)),
           semanticFused: semanticSearch.hits.map((hit) => hit.path),
+          semanticEvidence: semanticEvidencePaths,
           bm25: modelBm25Results.map((result) => result.path),
           graph: fused.graphPaths,
           graphConsensus: fused.graphConsensusPaths,
@@ -4167,6 +4176,27 @@ function describeGraphCandidateEvidence(input: {
       supports: supports.slice(0, 8)
     };
   });
+}
+
+function interleaveRankedPaths(rankings: string[][], limit: number): string[] {
+  const boundedLimit = Math.max(0, Math.floor(limit));
+  const selected: string[] = [];
+  const seen = new Set<string>();
+  let rank = 0;
+  let madeProgress = true;
+  while (selected.length < boundedLimit && madeProgress) {
+    madeProgress = false;
+    for (const ranking of rankings) {
+      const filePath = ranking[rank];
+      if (!filePath || seen.has(filePath)) continue;
+      selected.push(filePath);
+      seen.add(filePath);
+      madeProgress = true;
+      if (selected.length >= boundedLimit) break;
+    }
+    rank += 1;
+  }
+  return selected;
 }
 
 export function createRuntime(root?: string): KairnRuntime {
