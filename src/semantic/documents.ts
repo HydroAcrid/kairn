@@ -12,8 +12,12 @@ import { readTextFile } from "../retrieval/readSource.js";
 import { sha256 } from "../utils/hash.js";
 import { estimateTokens } from "../utils/tokens.js";
 
-export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v4" as const;
-const MAX_DOCUMENT_CHARS = 768;
+export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v5" as const;
+// Jina v2 was trained with 512-token inputs. Code in the current profile
+// averages roughly three to four characters per tokenizer token, so 1,500
+// characters uses the model's learned window without routinely hitting the
+// hard 512-token truncation boundary.
+const MAX_DOCUMENT_CHARS = 1_500;
 const MAX_FILE_SYMBOLS = 4;
 const MAX_DIRECT_IMPORTS = 4;
 const MAX_DOCUMENTATION_SNIPPETS = 3;
@@ -27,7 +31,7 @@ export function buildSemanticDocuments(input: {
   const parsedByFile = new Map(input.graph.parsedFiles.map((parsed) => [parsed.filePath, parsed]));
   const symbolsByFile = groupSymbols(input.graph.symbols);
   const fileDocuments: SemanticDocumentRecord[] = [];
-  const symbolQueues = new Map<string, SemanticDocumentRecord[]>();
+  const symbolQueues = new Map<string, SemanticSymbolDocumentCandidate[]>();
 
   for (const file of stableEligibleFiles(input.graph.files)) {
     let content: string;
@@ -40,8 +44,16 @@ export function buildSemanticDocuments(input: {
     const symbols = symbolsByFile.get(file.path) ?? [];
     fileDocuments.push(buildFileDocument(file, parsed, symbols, content));
     const symbolDocuments = uniqueSemanticContent(symbols
-      .map((symbol) => buildSymbolDocument(file, parsed, symbol, content))
-      .filter((document): document is SemanticDocumentRecord => Boolean(document)));
+      .map((symbol) => {
+        const document = buildSymbolDocument(file, parsed, symbol, content);
+        return document
+          ? {
+              document,
+              spanLines: Math.max(1, symbol.endLine - symbol.startLine + 1)
+            }
+          : undefined;
+      })
+      .filter((candidate): candidate is SemanticSymbolDocumentCandidate => Boolean(candidate)));
     if (symbolDocuments.length > 0) symbolQueues.set(file.path, symbolDocuments);
   }
 
@@ -362,17 +374,28 @@ function uniqueDocuments(documents: SemanticDocumentRecord[]): SemanticDocumentR
   return [...byId.values()];
 }
 
-function uniqueSemanticContent(documents: SemanticDocumentRecord[]): SemanticDocumentRecord[] {
-  const byContent = new Map<string, SemanticDocumentRecord>();
-  for (const document of documents) {
-    const key = `${document.filePath}\0${document.kind}\0${document.hash}`;
-    if (!byContent.has(key)) byContent.set(key, document);
+type SemanticSymbolDocumentCandidate = {
+  document: SemanticDocumentRecord;
+  spanLines: number;
+};
+
+function uniqueSemanticContent(
+  candidates: SemanticSymbolDocumentCandidate[]
+): SemanticSymbolDocumentCandidate[] {
+  const byContent = new Map<string, SemanticSymbolDocumentCandidate>();
+  for (const candidate of candidates) {
+    const key = [
+      candidate.document.filePath,
+      candidate.document.kind,
+      candidate.document.hash
+    ].join("\0");
+    if (!byContent.has(key)) byContent.set(key, candidate);
   }
   return [...byContent.values()];
 }
 
 function allocateSymbolDocuments(
-  queues: Map<string, SemanticDocumentRecord[]>,
+  queues: Map<string, SemanticSymbolDocumentCandidate[]>,
   budget: number
 ): SemanticDocumentRecord[] {
   const entries = [...queues.entries()]
@@ -406,7 +429,33 @@ function allocateSymbolDocuments(
     remaining -= 1;
   }
 
-  return entries.flatMap((entry) => evenlySample(entry.documents, entry.allocation));
+  return entries.flatMap((entry) =>
+    selectBehavioralSymbolDocuments(entry.documents, entry.allocation)
+      .map((candidate) => candidate.document)
+  );
+}
+
+function selectBehavioralSymbolDocuments(
+  candidates: SemanticSymbolDocumentCandidate[],
+  count: number
+): SemanticSymbolDocumentCandidate[] {
+  if (count <= 0) return [];
+  if (count >= candidates.length) return [...candidates];
+  const largestCount = Math.max(1, Math.ceil(count / 2));
+  const largest = [...candidates]
+    .sort((left, right) =>
+      right.spanLines - left.spanLines ||
+      (left.document.symbol ?? "").localeCompare(right.document.symbol ?? "") ||
+      left.document.id.localeCompare(right.document.id)
+    )
+    .slice(0, largestCount);
+  const selectedIds = new Set(largest.map((candidate) => candidate.document.id));
+  const remaining = candidates.filter((candidate) => !selectedIds.has(candidate.document.id));
+  const sourceCoverage = evenlySampleIncludingEndpoints(
+    remaining,
+    Math.min(count - largest.length, remaining.length)
+  );
+  return [...largest, ...sourceCoverage];
 }
 
 function evenlySample<T>(values: T[], count: number): T[] {

@@ -22,6 +22,7 @@ import { buildSemanticDocuments } from "../src/semantic/documents.js";
 import {
   getSemanticModelState,
   getSemanticModelsRoot,
+  hasSameSemanticModelArtifact,
   installSemanticModel
 } from "../src/semantic/modelManager.js";
 import {
@@ -928,6 +929,24 @@ describe("model-based semantic candidates", () => {
     }
   });
 
+  it("distinguishes a document-profile migration from a model artifact change", () => {
+    const current = getSemanticModelManifest("jina-code-v2-q8");
+    expect(hasSameSemanticModelArtifact(
+      {
+        ...current,
+        documentSchemaVersion: "semantic-documents-v4"
+      },
+      current
+    )).toBe(true);
+    expect(hasSameSemanticModelArtifact(
+      {
+        ...current,
+        queryPrefix: "changed model input"
+      },
+      current
+    )).toBe(false);
+  });
+
   it("enforces the 200MB cap across the complete user model cache", async () => {
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-cache-cap-"));
     let fetched = false;
@@ -1133,7 +1152,7 @@ describe("model-based semantic candidates", () => {
         graph,
         maxDocuments: 1
       })[0]!;
-      expect(fileDocument.text.length).toBeLessThanOrEqual(768);
+      expect(fileDocument.text.length).toBeLessThanOrEqual(1_500);
       expect(fileDocument.text).toContain("operation0");
       expect(fileDocument.text).toContain("operation19");
       expect(fileDocument.text).toContain("callable surface:");
@@ -1195,7 +1214,7 @@ describe("model-based semantic candidates", () => {
         graph,
         maxDocuments: 1
       })[0]!;
-      expect(fileDocument.text.length).toBeLessThanOrEqual(768);
+      expect(fileDocument.text.length).toBeLessThanOrEqual(1_500);
       expect(fileDocument.text).toContain(
         "AttachConfig connects removed configuration blocks to graph nodes"
       );
@@ -1256,6 +1275,77 @@ describe("model-based semantic candidates", () => {
       expect(documents.filter((document) => document.kind === "file")).toHaveLength(20);
       expect(documents.filter((document) => document.kind === "symbol")).toHaveLength(5);
       expect(documents).toHaveLength(25);
+    } finally {
+      fs.rmSync(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it("reserves bounded symbol coverage for large behavioral bodies", () => {
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-symbol-span-"));
+    try {
+      const filePath = "src/workflow.ts";
+      const content = Array.from(
+        { length: 40 },
+        (_, index) => `const line${index + 1} = ${index + 1};`
+      ).join("\n");
+      fs.mkdirSync(path.join(rootPath, "src"), { recursive: true });
+      fs.writeFileSync(path.join(rootPath, filePath), content);
+      const symbols = [
+        {
+          rootPath,
+          filePath,
+          name: "smallStart",
+          kind: "function" as const,
+          exported: false,
+          startLine: 1,
+          endLine: 2,
+          signature: "smallStart()"
+        },
+        {
+          rootPath,
+          filePath,
+          name: "coreWorkflow",
+          kind: "function" as const,
+          exported: false,
+          startLine: 5,
+          endLine: 32,
+          signature: "coreWorkflow()"
+        },
+        {
+          rootPath,
+          filePath,
+          name: "smallEnd",
+          kind: "function" as const,
+          exported: false,
+          startLine: 39,
+          endLine: 40,
+          signature: "smallEnd()"
+        }
+      ];
+      const documents = buildSemanticDocuments({
+        rootPath,
+        graph: {
+          rootPath,
+          files: [file(rootPath, filePath)],
+          parsedFiles: [{
+            rootPath,
+            filePath,
+            language: "typescript",
+            imports: [],
+            hasErrors: false,
+            symbols
+          }],
+          symbols,
+          edges: []
+        },
+        maxDocuments: 3
+      });
+
+      expect(
+        documents
+          .filter((candidate) => candidate.kind === "symbol")
+          .map((candidate) => candidate.symbol)
+      ).toContain("coreWorkflow");
     } finally {
       fs.rmSync(rootPath, { recursive: true, force: true });
     }
@@ -1362,7 +1452,7 @@ function document(
     text: `${filePath} implementation behavior`,
     hash,
     tokenEstimate: 8,
-    schemaVersion: "semantic-documents-v4"
+    schemaVersion: "semantic-documents-v5"
   };
 }
 
@@ -1377,7 +1467,7 @@ function embedding(
     documentId: semanticDocument.id,
     documentHash: semanticDocument.hash,
     modelId,
-    schemaVersion: "semantic-documents-v4",
+    schemaVersion: "semantic-documents-v5",
     vector
   });
 }

@@ -130,6 +130,11 @@ export async function installSemanticModel(input?: {
     verifyHashes: true
   });
   if (existing.status === "ready") return existing;
+  const refreshed = refreshCompatibleInstalledModelReceipt({
+    modelPath: targetPath,
+    manifest
+  });
+  if (refreshed) return refreshed;
 
   fs.mkdirSync(modelsRoot, { recursive: true });
   const otherCacheBytes = Math.max(0, directorySize(modelsRoot) - directorySize(targetPath));
@@ -223,6 +228,21 @@ export function readInstalledSemanticModel(modelPath: string): InstalledSemantic
   return parsed as InstalledSemanticModelReceipt;
 }
 
+export function hasSameSemanticModelArtifact(
+  left: SemanticModelManifest,
+  right: SemanticModelManifest
+): boolean {
+  const {
+    documentSchemaVersion: _leftDocumentSchemaVersion,
+    ...leftArtifact
+  } = left;
+  const {
+    documentSchemaVersion: _rightDocumentSchemaVersion,
+    ...rightArtifact
+  } = right;
+  return JSON.stringify(leftArtifact) === JSON.stringify(rightArtifact);
+}
+
 export function validateLocalModelPath(modelPath: string): string {
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(modelPath)) {
     throw new Error("Kairn semantic modelPath must be a local filesystem path.");
@@ -238,7 +258,7 @@ function validateManifest(manifest: SemanticModelManifest): void {
     !/^[0-9a-f]{40}$/i.test(manifest.upstreamRevision) ||
     !Number.isInteger(manifest.dimensions) ||
     manifest.dimensions <= 0 ||
-    manifest.documentSchemaVersion !== "semantic-documents-v4" ||
+    !["semantic-documents-v4", "semantic-documents-v5"].includes(manifest.documentSchemaVersion) ||
     manifest.runtime.library !== "kairn-onnx-wasm-v1" ||
     manifest.runtime.modelFilePath !== "onnx/model.onnx" ||
     !Array.isArray(manifest.files) ||
@@ -345,6 +365,57 @@ function replaceInstalledModel(input: {
     if (!fs.existsSync(input.targetPath) && fs.existsSync(backupPath)) {
       fs.renameSync(backupPath, input.targetPath);
     }
+    throw error;
+  }
+}
+
+function refreshCompatibleInstalledModelReceipt(input: {
+  modelPath: string;
+  manifest: SemanticModelManifest;
+}): SemanticModelState | undefined {
+  if (!fs.existsSync(input.modelPath)) return undefined;
+  try {
+    const receipt = readInstalledSemanticModel(input.modelPath);
+    if (!hasSameSemanticModelArtifact(receipt.manifest, input.manifest)) return undefined;
+    verifyInstalledFiles(input.modelPath, input.manifest, true);
+    const refreshedReceipt: InstalledSemanticModelReceipt = {
+      ...receipt,
+      manifest: input.manifest,
+      manifestSha256: semanticModelManifestSha256(input.manifest)
+    };
+    replaceInstalledReceipt(
+      input.modelPath,
+      `${JSON.stringify(refreshedReceipt, null, 2)}\n`
+    );
+    return getSemanticModelState({
+      modelId: input.manifest.modelId,
+      modelPath: input.modelPath,
+      verifyHashes: true
+    });
+  } catch {
+    return undefined;
+  }
+}
+
+function replaceInstalledReceipt(modelPath: string, content: string): void {
+  const receiptPath = path.join(validateLocalModelPath(modelPath), "kairn-model.json");
+  const stagedPath = path.join(modelPath, `.kairn-model.partial-${randomUUID()}.json`);
+  const backupPath = path.join(modelPath, `.kairn-model.backup-${randomUUID()}.json`);
+  fs.writeFileSync(stagedPath, content, { encoding: "utf8", flag: "wx" });
+  try {
+    fs.renameSync(receiptPath, backupPath);
+  } catch (error) {
+    fs.rmSync(stagedPath, { force: true });
+    throw error;
+  }
+  try {
+    fs.renameSync(stagedPath, receiptPath);
+    fs.rmSync(backupPath, { force: true });
+  } catch (error) {
+    if (!fs.existsSync(receiptPath) && fs.existsSync(backupPath)) {
+      fs.renameSync(backupPath, receiptPath);
+    }
+    fs.rmSync(stagedPath, { force: true });
     throw error;
   }
 }
