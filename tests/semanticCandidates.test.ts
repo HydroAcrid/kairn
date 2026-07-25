@@ -557,6 +557,26 @@ describe("model-based semantic candidates", () => {
     });
   });
 
+  it("continues semantic lane interleaving after duplicate shared ranks", () => {
+    const shared = { path: "src/shared.ts", similarity: 0.9, documentIds: ["shared"] };
+    const hits = fuseSemanticCandidateRankings([
+      [
+        shared,
+        { path: "src/view-a.ts", similarity: 0.8, documentIds: ["a"] }
+      ],
+      [
+        shared,
+        { path: "src/view-b.ts", similarity: 0.8, documentIds: ["b"] }
+      ]
+    ], 3);
+
+    expect(hits.map((hit) => hit.path)).toEqual([
+      "src/shared.ts",
+      "src/view-a.ts",
+      "src/view-b.ts"
+    ]);
+  });
+
   it("preserves equal-depth candidates from each semantic query view", () => {
     const hits = fuseSemanticCandidateRankings([
       [

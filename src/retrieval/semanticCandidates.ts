@@ -245,19 +245,20 @@ export function fuseSemanticCandidateRankings(
     });
   });
   let rank = 0;
-  let madeProgress = true;
+  const maximumRankingLength = uniqueRankings.reduce(
+    (maximum, ranking) => Math.max(maximum, ranking.length),
+    0
+  );
   // The bounded semantic lane exists to maximize recall before the calibrated
   // ranker decides relevance. Preserve equal-depth coverage from every
   // structural query view; otherwise files that are strong for one precise
   // issue facet can be crowded out by generic files appearing in every view.
-  while (selectedPaths.length < boundedLimit && madeProgress) {
-    madeProgress = false;
+  while (selectedPaths.length < boundedLimit && rank < maximumRankingLength) {
     for (const ranking of uniqueRankings) {
       const hit = ranking[rank];
       if (!hit || seenPaths.has(hit.path)) continue;
       selectedPaths.push(hit.path);
       seenPaths.add(hit.path);
-      madeProgress = true;
       if (selectedPaths.length >= boundedLimit) break;
     }
     rank += 1;

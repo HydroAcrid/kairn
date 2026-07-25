@@ -4182,19 +4182,18 @@ function interleaveRankedPaths(rankings: string[][], limit: number): string[] {
   const boundedLimit = Math.max(0, Math.floor(limit));
   const selected: string[] = [];
   const seen = new Set<string>();
-  let rank = 0;
-  let madeProgress = true;
-  while (selected.length < boundedLimit && madeProgress) {
-    madeProgress = false;
+  const maximumRankingLength = rankings.reduce(
+    (maximum, ranking) => Math.max(maximum, ranking.length),
+    0
+  );
+  for (let rank = 0; rank < maximumRankingLength && selected.length < boundedLimit; rank += 1) {
     for (const ranking of rankings) {
       const filePath = ranking[rank];
       if (!filePath || seen.has(filePath)) continue;
       selected.push(filePath);
       seen.add(filePath);
-      madeProgress = true;
       if (selected.length >= boundedLimit) break;
     }
-    rank += 1;
   }
   return selected;
 }
