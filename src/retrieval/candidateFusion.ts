@@ -427,11 +427,14 @@ export function expandDirectGraphCandidates(input: {
 
 function edgePriority(type: GraphEdgeRecord["type"]): number {
   if (type === "module_installation") return 4;
-  if (type === "test_for" || type === "tested_by") return 3;
+  if (
+    type === "test_for" ||
+    type === "tested_by" ||
+    type === "type_reference"
+  ) return 3;
   if (
     type === "definition" ||
-    type === "implementation" ||
-    type === "type_reference"
+    type === "implementation"
   ) {
     return 2;
   }

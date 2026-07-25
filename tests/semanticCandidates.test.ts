@@ -346,6 +346,29 @@ describe("model-based semantic candidates", () => {
     expect(result.enrichedPaths).toContain(implementation.path);
   });
 
+  it("ranks a unique parser-observed type reference ahead of loose implementation peers", () => {
+    const rootPath = "/repo";
+    const seed = file(rootPath, "src/workflow/ResolverFacade.java");
+    const declaration = file(rootPath, "src/workflow/TypeExtractor.java");
+    const peers = Array.from({ length: 8 }, (_, index) =>
+      file(rootPath, `src/workflow/peer-${index}.java`)
+    );
+    const filesByPath = new Map(
+      [seed, declaration, ...peers].map((candidate) => [candidate.path, candidate])
+    );
+    const ranked = rankEvidenceBackedGraphCandidates({
+      seedPaths: [seed.path],
+      edges: [
+        edge(rootPath, seed.path, declaration.path, "type_reference"),
+        ...peers.map((peer) => edge(rootPath, seed.path, peer.path, "implementation"))
+      ],
+      filesByPath,
+      evidenceRankings: []
+    });
+
+    expect(ranked[0]).toBe(declaration.path);
+  });
+
   it("credits graph consensus from multiple independently retrieved seeds", () => {
     const rootPath = "/repo";
     const sharedImplementation = file(rootPath, "src/workflow/public-api.ts");
