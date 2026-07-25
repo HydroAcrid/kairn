@@ -35,6 +35,7 @@ export type ModelCandidateUnion = {
   graphSeedPaths: string[];
   graphEvidenceByPath: ReadonlyMap<string, EvidenceGraphFacts>;
   semanticPaths: string[];
+  semanticEvidencePaths: string[];
 };
 
 /**
@@ -100,15 +101,16 @@ export function buildModelCandidateUnion(input: {
   // too late when tests/examples have already crowded a production file out
   // of the fused semantic lane. Similarities are unchanged and the embedding
   // model still decides relevance within each role partition.
-  const intentAwareSemanticHits = input.semanticQueryRankings?.length
+  const intentAwareSemanticRankings = input.semanticQueryRankings?.map((ranking) =>
+    prioritizeRetrievalHitsForIntent(
+      ranking.filter((hit) => eligibleNonHard(hit.path)),
+      signals.intent,
+      filesByPath
+    )
+  );
+  const intentAwareSemanticHits = intentAwareSemanticRankings?.length
     ? fuseSemanticCandidateRankings(
-        input.semanticQueryRankings.map((ranking) =>
-          prioritizeRetrievalHitsForIntent(
-            ranking.filter((hit) => eligibleNonHard(hit.path)),
-            signals.intent,
-            filesByPath
-          )
-        ),
+        intentAwareSemanticRankings,
         MODEL_RETRIEVAL_PROBE_LIMIT
       )
     : input.semanticHits.filter((hit) => eligibleNonHard(hit.path));
@@ -117,9 +119,14 @@ export function buildModelCandidateUnion(input: {
     signals.intent,
     filesByPath
   );
-  const semanticEvidencePaths = prioritizeRetrievalPathsForIntent(uniquePaths(
-    input.semanticEvidencePaths ?? semanticPaths
-  ).filter(eligibleNonHard), signals.intent, filesByPath);
+  const semanticEvidencePaths = intentAwareSemanticRankings?.length
+    ? interleaveSemanticRankingPaths(
+        intentAwareSemanticRankings,
+        MODEL_RETRIEVAL_PROBE_LIMIT * 8
+      )
+    : prioritizeRetrievalPathsForIntent(uniquePaths(
+        input.semanticEvidencePaths ?? semanticPaths
+      ).filter(eligibleNonHard), signals.intent, filesByPath);
   const bm25Paths = [...input.bm25Results]
     .filter((result) => result.bm25Score > 0)
     .sort((left, right) => right.bm25Score - left.bm25Score || left.path.localeCompare(right.path))
@@ -292,7 +299,8 @@ export function buildModelCandidateUnion(input: {
     graphConsensusPaths,
     graphSeedPaths,
     graphEvidenceByPath,
-    semanticPaths
+    semanticPaths,
+    semanticEvidencePaths
   };
 }
 
@@ -310,6 +318,31 @@ function prioritizeRetrievalHitsForIntent(
     else companions.push(hit);
   }
   return [...production, ...companions];
+}
+
+function interleaveSemanticRankingPaths(
+  rankings: SemanticCandidateHit[][],
+  limit: number
+): string[] {
+  const boundedLimit = Math.max(1, Math.floor(limit));
+  const selected: string[] = [];
+  const seen = new Set<string>();
+  const maximumLength = rankings.reduce(
+    (maximum, ranking) => Math.max(maximum, ranking.length),
+    0
+  );
+  for (let rank = 0; rank < maximumLength && selected.length < boundedLimit; rank += 1) {
+    for (const ranking of rankings) {
+      const filePath = ranking[rank]?.path;
+      if (!filePath) continue;
+      const normalized = normalizePath(filePath);
+      if (seen.has(normalized)) continue;
+      seen.add(normalized);
+      selected.push(normalized);
+      if (selected.length >= boundedLimit) break;
+    }
+  }
+  return selected;
 }
 
 function prioritizeRetrievalPathsForIntent(

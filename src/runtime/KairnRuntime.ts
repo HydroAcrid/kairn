@@ -3742,7 +3742,7 @@ export class KairnRuntime {
             .map((ranking) => ranking.map((hit) => hit.path)),
           semanticRawFused: semanticSearch.hits.map((hit) => hit.path),
           semanticFused: fused.semanticPaths,
-          semanticEvidence: semanticEvidencePaths,
+          semanticEvidence: fused.semanticEvidencePaths,
           bm25: modelBm25Results.map((result) => result.path),
           graph: fused.graphPaths,
           graphConsensus: fused.graphConsensusPaths,

@@ -290,6 +290,7 @@ describe("model-based semantic candidates", () => {
     });
 
     expect(result.semanticPaths[0]).toBe(production.path);
+    expect(result.semanticEvidencePaths[0]).toBe(production.path);
     expect(result.initialPaths[0]).toBe(production.path);
     expect(result.candidateResults.find((candidate) => candidate.path === production.path))
       .toMatchObject({
