@@ -98,6 +98,7 @@ export async function parseSourceFile(input: {
       symbols: dedupeSymbols(parsed.symbols),
       imports: [...new Set(parsed.imports)].sort(),
       references: extractStructuralTypeReferences(tree.rootNode, input.language),
+      calls: extractStructuralCallTargets(tree.rootNode, input.language),
       dynamicImports: [...new Set(parsed.dynamicImports ?? [])].sort(),
       moduleInstallers: [...new Set(parsed.moduleInstallers ?? [])].sort(),
       hasErrors: tree.rootNode.hasError
@@ -149,10 +150,29 @@ function emptyParsedFile(
     symbols: [],
     imports: [],
     references: [],
+    calls: [],
     dynamicImports: [],
     moduleInstallers: [],
     hasErrors
   };
+}
+
+function extractStructuralCallTargets(
+  rootNode: SyntaxNodeLike,
+  language: string
+): string[] {
+  const calls = new Set<string>();
+  visit(rootNode, (node) => {
+    const callable = node.type === "call_expression"
+      ? node.childForFieldName("function")
+      : node.type === "method_invocation" && language === "java"
+        ? node.childForFieldName("name")
+        : undefined;
+    if (callable?.type !== "identifier") return;
+    const name = callable.text.trim();
+    if (name && name.length <= 160) calls.add(name);
+  });
+  return [...calls].sort().slice(0, 256);
 }
 
 function extractStructuralTypeReferences(

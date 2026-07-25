@@ -51,6 +51,7 @@ export function buildRepoGraph(input: {
     input.parsedFiles,
     input.goModules ?? []
   );
+  addLocalCallEdges(edgeMap, input.rootPath, input.files, input.parsedFiles);
   addSiblingImplementationEdges(edgeMap, input.rootPath, input.files, input.parsedFiles);
   addTestEdges(edgeMap, input.rootPath, input.files);
   addGoTestSymbolEdges(edgeMap, input.rootPath, input.files, input.parsedFiles);
@@ -315,6 +316,82 @@ function addUniqueTypeReferenceEdge(input: {
   });
 }
 
+function addLocalCallEdges(
+  edgeMap: Map<string, GraphEdgeRecord>,
+  rootPath: string,
+  files: FileRecord[],
+  parsedFiles: ParsedFile[]
+): void {
+  const fileByPath = new Map(files.map((file) => [file.path, file]));
+  const declarations = new Map<string, Set<string>>();
+  const callersByTarget = new Map<string, {
+    declarationFile: string;
+    symbol: string;
+    callers: Set<string>;
+  }>();
+
+  for (const parsedFile of parsedFiles) {
+    const scope = localCallScope(parsedFile);
+    if (!scope || fileByPath.get(parsedFile.filePath)?.indexTier === "tier0") continue;
+    for (const symbol of parsedFile.symbols) {
+      if (symbol.kind !== "function") continue;
+      addDeclaration(declarations, `${scope}\0${symbol.name}`, parsedFile.filePath);
+    }
+  }
+
+  for (const parsedFile of parsedFiles) {
+    const scope = localCallScope(parsedFile);
+    if (!scope) continue;
+    for (const call of parsedFile.calls ?? []) {
+      const declarationFile = resolveTypeReferenceTarget(
+        declarations.get(`${scope}\0${call}`),
+        parsedFile.filePath,
+        fileByPath
+      );
+      if (!declarationFile) continue;
+      addEdge(edgeMap, {
+        rootPath,
+        fromFile: parsedFile.filePath,
+        toFile: declarationFile,
+        type: "call",
+        metadata: {
+          reason: "parser-observed unique local call target",
+          symbol: call
+        }
+      });
+      const familyKey = `${declarationFile}\0${call}`;
+      const family = callersByTarget.get(familyKey) ?? {
+        declarationFile,
+        symbol: call,
+        callers: new Set<string>()
+      };
+      family.callers.add(parsedFile.filePath);
+      callersByTarget.set(familyKey, family);
+    }
+  }
+
+  const maxSharedCallers = 8;
+  for (const family of callersByTarget.values()) {
+    const callers = [...family.callers].sort();
+    if (callers.length < 2 || callers.length > maxSharedCallers) continue;
+    for (let leftIndex = 0; leftIndex < callers.length; leftIndex += 1) {
+      for (let rightIndex = leftIndex + 1; rightIndex < callers.length; rightIndex += 1) {
+        addEdge(edgeMap, {
+          rootPath,
+          fromFile: callers[leftIndex]!,
+          toFile: callers[rightIndex]!,
+          type: "shared_call_target",
+          metadata: {
+            reason: "parser-observed shared unique local call target",
+            symbol: family.symbol,
+            declarationFile: family.declarationFile
+          }
+        });
+      }
+    }
+  }
+}
+
 function resolveTypeReferenceTarget(
   targetFiles: Set<string> | undefined,
   fromFile: string,
@@ -340,6 +417,22 @@ function localTypeScope(parsedFile: ParsedFile): string | undefined {
     return `go:${path.posix.dirname(parsedFile.filePath)}:${packageMetadata(parsedFile) ?? ""}`;
   }
   if (parsedFile.language === "c" || parsedFile.language === "cpp") {
+    return `${parsedFile.language}:${path.posix.dirname(parsedFile.filePath)}`;
+  }
+  return undefined;
+}
+
+function localCallScope(parsedFile: ParsedFile): string | undefined {
+  if (parsedFile.language === "java" || parsedFile.language === "go") {
+    return localTypeScope(parsedFile);
+  }
+  if (
+    parsedFile.language === "python" ||
+    parsedFile.language === "typescript" ||
+    parsedFile.language === "javascript" ||
+    parsedFile.language === "c" ||
+    parsedFile.language === "cpp"
+  ) {
     return `${parsedFile.language}:${path.posix.dirname(parsedFile.filePath)}`;
   }
   return undefined;

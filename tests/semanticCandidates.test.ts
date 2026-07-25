@@ -346,6 +346,92 @@ describe("model-based semantic candidates", () => {
     expect(result.enrichedPaths).toContain(implementation.path);
   });
 
+  it("uses broad semantic test probes only for precise source relationships", () => {
+    const rootPath = "/repo";
+    const testProbe = {
+      ...file(rootPath, "internal/runtime/marks_test.go"),
+      kind: "test" as const
+    };
+    const declaration = file(rootPath, "internal/runtime/marks.go");
+    const planCaller = file(rootPath, "internal/runtime/plan.go");
+    const applyCaller = file(rootPath, "internal/runtime/apply.go");
+    const distractors = Array.from({ length: 80 }, (_, index) =>
+      file(rootPath, `src/noise-${String(index).padStart(2, "0")}.go`)
+    );
+    const semanticLeaders = distractors.slice(0, 64);
+    const semanticEvidencePaths = [
+      ...semanticLeaders.map((candidate) => candidate.path),
+      testProbe.path,
+      planCaller.path,
+      applyCaller.path
+    ];
+    const result = buildModelCandidateUnion({
+      files: [testProbe, declaration, planCaller, applyCaller, ...distractors],
+      query: "Debug a production planning regression involving sensitive state.",
+      symbols: [],
+      bm25Results: [
+        ...semanticLeaders.map((candidate, index) => scored(candidate, 1 - index / 100)),
+        scored(planCaller, 0.01),
+        scored(applyCaller, 0.009)
+      ],
+      semanticHits: semanticLeaders.map((candidate, index) => ({
+        path: candidate.path,
+        similarity: 1 - index / 100,
+        documentIds: [`rank-${index}`]
+      })),
+      semanticEvidencePaths,
+      semanticStatus: readyStatus(semanticLeaders.length),
+      edges: [
+        edge(rootPath, testProbe.path, declaration.path, "test_for"),
+        edge(rootPath, testProbe.path, planCaller.path, "shared_call_target"),
+        edge(rootPath, testProbe.path, applyCaller.path, "shared_call_target")
+      ]
+    });
+
+    expect(result.initialPaths).not.toContain(testProbe.path);
+    expect(result.graphSeedPaths).toContain(testProbe.path);
+    expect(result.enrichedPaths).toEqual(expect.arrayContaining([
+      declaration.path,
+      planCaller.path,
+      applyCaller.path
+    ]));
+  });
+
+  it("spends source-intent graph enrichment capacity on production before companions", () => {
+    const rootPath = "/repo";
+    const seed = file(rootPath, "src/facade.go");
+    const initialNoise = Array.from({ length: 70 }, (_, index) =>
+      file(rootPath, `src/seed-${String(index).padStart(2, "0")}.go`)
+    );
+    const target = file(rootPath, "src/zz-target.go");
+    const testNeighbors = Array.from({ length: 70 }, (_, index) => ({
+      ...file(rootPath, `tests/aa-neighbor-${String(index).padStart(2, "0")}_test.go`),
+      kind: "test" as const
+    }));
+    const rankedFiles = [seed, ...initialNoise];
+    const result = buildModelCandidateUnion({
+      files: [target, ...testNeighbors, ...rankedFiles],
+      query: "Debug the production source behavior.",
+      symbols: [],
+      bm25Results: rankedFiles.map((candidate, index) => scored(candidate, 1 - index / 100)),
+      semanticHits: rankedFiles.map((candidate, index) => ({
+        path: candidate.path,
+        similarity: 1 - index / 100,
+        documentIds: [`rank-${index}`]
+      })),
+      semanticStatus: readyStatus(rankedFiles.length),
+      edges: [
+        ...testNeighbors.map((neighbor) =>
+          edge(rootPath, seed.path, neighbor.path, "type_reference")
+        ),
+        edge(rootPath, seed.path, target.path, "type_reference")
+      ]
+    });
+
+    expect(result.graphPaths[0]).toBe(target.path);
+    expect(result.enrichedPaths).toContain(target.path);
+  });
+
   it("ranks a unique parser-observed type reference ahead of loose implementation peers", () => {
     const rootPath = "/repo";
     const seed = file(rootPath, "src/workflow/ResolverFacade.java");

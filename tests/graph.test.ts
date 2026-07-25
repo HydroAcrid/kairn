@@ -288,6 +288,62 @@ describe("buildRepoGraph", () => {
       .toContain("configs.Removed");
   });
 
+  it("links bounded families of files that call the same unique local function", async () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "internal/runtime/marks.go", "source"),
+      file(rootPath, "internal/runtime/marks_test.go", "test"),
+      file(rootPath, "internal/runtime/plan.go", "source"),
+      file(rootPath, "internal/runtime/apply.go", "source")
+    ];
+    const sources = new Map([
+      [
+        "internal/runtime/marks.go",
+        "package runtime\nfunc dedupePathMarks() {}\n"
+      ],
+      [
+        "internal/runtime/marks_test.go",
+        "package runtime\nfunc TestMarks() { dedupePathMarks() }\n"
+      ],
+      [
+        "internal/runtime/plan.go",
+        "package runtime\nfunc plan() { dedupePathMarks() }\n"
+      ],
+      [
+        "internal/runtime/apply.go",
+        "package runtime\nfunc apply() { dedupePathMarks() }\n"
+      ]
+    ]);
+    const parsedFiles = await Promise.all(files.map((record) =>
+      parseSourceFile({
+        rootPath,
+        filePath: record.path,
+        language: record.language,
+        content: sources.get(record.path) ?? ""
+      })
+    ));
+
+    const graph = buildRepoGraph({ rootPath, files, parsedFiles });
+
+    expect(parsedFiles.find((parsed) => parsed.filePath.endsWith("marks_test.go"))?.calls)
+      .toContain("dedupePathMarks");
+    expect(edgeTypes(
+      graph.edges,
+      "internal/runtime/marks_test.go",
+      "internal/runtime/marks.go"
+    )).toContain("call");
+    expect(edgeTypes(
+      graph.edges,
+      "internal/runtime/marks_test.go",
+      "internal/runtime/plan.go"
+    )).toContain("shared_call_target");
+    expect(edgeTypes(
+      graph.edges,
+      "internal/runtime/apply.go",
+      "internal/runtime/marks_test.go"
+    )).toContain("shared_call_target");
+  });
+
   it("links dynamic module dispatchers to local implementations and their installers", async () => {
     const rootPath = "/repo";
     const files = [

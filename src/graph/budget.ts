@@ -16,10 +16,11 @@ const EDGE_PRIORITY: Record<GraphEdgeRecord["type"], number> = {
   parent_route: 78,
   type_reference: 76,
   definition: 72,
+  shared_call_target: 70,
   module_installation: 68,
   reference: 62,
   implementation: 54,
-  call: 46,
+  call: 64,
   imported_by: 18,
   tested_by: 18
 };

@@ -32,6 +32,7 @@ export type GraphEdgeType =
   | "definition"
   | "reference"
   | "call"
+  | "shared_call_target"
   | "type_reference"
   | "module_installation"
   | "implementation";
@@ -168,6 +169,8 @@ export type ParsedFile = {
   imports: string[];
   /** Parser-observed type names used by this file, never task-derived relevance terms. */
   references?: string[];
+  /** Parser-observed unqualified call targets, never task-derived relevance terms. */
+  calls?: string[];
   /** Relative module-family prefixes from dynamic local require calls. */
   dynamicImports?: string[];
   /** Literal modules that are required and immediately invoked as installers. */

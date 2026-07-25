@@ -512,14 +512,16 @@ function roundRobinGraphNeighbors(input: {
 }
 
 function graphEdgePrecision(edge: GraphEdgeRecord): number {
-  if (edge.type === "module_installation" || edge.type === "type_reference") return 4;
   if (
     edge.type === "test_for" ||
-    edge.type === "tested_by"
-  ) return 3;
+    edge.type === "tested_by" ||
+    edge.type === "shared_call_target"
+  ) return 5;
+  if (edge.type === "module_installation" || edge.type === "type_reference") return 4;
   if (
     edge.type === "definition" ||
-    edge.type === "implementation"
+    edge.type === "implementation" ||
+    edge.type === "call"
   ) return 2;
   if (edge.type === "imports" || edge.type === "imported_by") return 1;
   return 0;

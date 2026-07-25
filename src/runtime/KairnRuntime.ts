@@ -3680,7 +3680,7 @@ export class KairnRuntime {
       });
       const edges = this.store.listGraphEdgesForFiles(
         input.rootPath,
-        preliminary.initialPaths,
+        preliminary.graphSeedPaths,
         budget.graphEdgeLimit
       );
       const fused = buildModelCandidateUnion({
@@ -3731,7 +3731,7 @@ export class KairnRuntime {
           graph: fused.graphPaths,
           graphConsensus: fused.graphConsensusPaths,
           graphEvidence: describeGraphCandidateEvidence({
-            seedPaths: fused.initialPaths,
+            seedPaths: fused.graphSeedPaths,
             graphPaths: fused.graphPaths,
             edges
           })

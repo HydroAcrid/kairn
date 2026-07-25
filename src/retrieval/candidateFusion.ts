@@ -28,6 +28,7 @@ export type ModelCandidateUnion = {
   semanticStatus: SemanticRetrieverStatus;
   graphPaths: string[];
   graphConsensusPaths: string[];
+  graphSeedPaths: string[];
 };
 
 export function buildModelCandidateUnion(input: {
@@ -106,27 +107,43 @@ export function buildModelCandidateUnion(input: {
     limit: DEFAULT_ENRICHED_CANDIDATE_LIMIT
   }).filter((filePath) => filesByPath.has(filePath));
   const initialPaths = preliminaryUnion.slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
-  const graphPaths = rankEvidenceBackedGraphCandidates({
-    seedPaths: initialPaths,
-    edges: input.edges,
-    filesByPath,
-    evidenceRankings: [
-      { channel: "semantic", paths: semanticEvidencePaths },
-      { channel: "bm25", paths: bm25Paths },
-      { channel: "symbol", paths: eligibleSymbolPaths }
-    ]
-  });
-  const graphConsensusPaths = rankEvidenceBackedGraphCandidates({
-    seedPaths: initialPaths,
-    edges: input.edges,
-    filesByPath,
-    evidenceRankings: [
-      { channel: "semantic", paths: semanticEvidencePaths },
-      { channel: "bm25", paths: bm25Paths },
-      { channel: "symbol", paths: eligibleSymbolPaths }
-    ],
-    minimumSeedSupport: 2
-  });
+  const graphProbePaths = signals.intent === "source"
+    ? semanticEvidencePaths
+        .filter((filePath) => filesByPath.get(filePath)?.kind === "test")
+        .slice(0, 192)
+    : [];
+  const graphSeedPaths = uniquePaths([...initialPaths, ...graphProbePaths]);
+  const graphPaths = prioritizeGraphPathsForIntent(
+    rankEvidenceBackedGraphCandidates({
+      seedPaths: initialPaths,
+      probeSeedPaths: graphProbePaths,
+      edges: input.edges,
+      filesByPath,
+      evidenceRankings: [
+        { channel: "semantic", paths: semanticEvidencePaths },
+        { channel: "bm25", paths: bm25Paths },
+        { channel: "symbol", paths: eligibleSymbolPaths }
+      ]
+    }),
+    signals.intent,
+    filesByPath
+  );
+  const graphConsensusPaths = prioritizeGraphPathsForIntent(
+    rankEvidenceBackedGraphCandidates({
+      seedPaths: initialPaths,
+      probeSeedPaths: graphProbePaths,
+      edges: input.edges,
+      filesByPath,
+      evidenceRankings: [
+        { channel: "semantic", paths: semanticEvidencePaths },
+        { channel: "bm25", paths: bm25Paths },
+        { channel: "symbol", paths: eligibleSymbolPaths }
+      ],
+      minimumSeedSupport: 2
+    }),
+    signals.intent,
+    filesByPath
+  );
   const graphEnrichedOrder = reciprocalRankFuse({
     hardPaths,
     rankings: graphPaths.length > 0
@@ -193,8 +210,25 @@ export function buildModelCandidateUnion(input: {
     candidateResults,
     semanticStatus: input.semanticStatus,
     graphPaths,
-    graphConsensusPaths
+    graphConsensusPaths,
+    graphSeedPaths
   };
+}
+
+function prioritizeGraphPathsForIntent(
+  paths: string[],
+  intent: ReturnType<typeof extractEvidenceTaskSignals>["intent"],
+  filesByPath: Map<string, FileRecord>
+): string[] {
+  if (intent !== "source") return paths;
+  const production: string[] = [];
+  const companions: string[] = [];
+  for (const filePath of paths) {
+    const file = filesByPath.get(filePath);
+    if (file && isProductionEvidenceFile(file)) production.push(filePath);
+    else companions.push(filePath);
+  }
+  return [...production, ...companions];
 }
 
 /**
@@ -205,12 +239,20 @@ export function buildModelCandidateUnion(input: {
  */
 export function rankEvidenceBackedGraphCandidates(input: {
   seedPaths: string[];
+  probeSeedPaths?: string[];
   edges: GraphEdgeRecord[];
   filesByPath: Map<string, FileRecord>;
   evidenceRankings: CandidateRanking[];
   minimumSeedSupport?: number;
 }): string[] {
-  const seedRanks = new Map(uniquePaths(input.seedPaths).map((filePath, index) => [filePath, index + 1]));
+  const primarySeeds = uniquePaths(input.seedPaths);
+  const probeSeeds = uniquePaths(input.probeSeedPaths ?? []).filter(
+    (filePath) => !primarySeeds.includes(filePath)
+  );
+  const seedRanks = new Map(
+    [...primarySeeds, ...probeSeeds].map((filePath, index) => [filePath, index + 1])
+  );
+  const probeSeedSet = new Set(probeSeeds);
   const evidenceRanks = new Map<string, Map<CandidateRanking["channel"], number>>();
   for (const ranking of input.evidenceRankings) {
     uniquePaths(ranking.paths).forEach((filePath, index) => {
@@ -232,11 +274,12 @@ export function rankEvidenceBackedGraphCandidates(input: {
     const seedRank = seedRanks.get(seedPath);
     const neighbor = input.filesByPath.get(neighborPath);
     if (!seedRank || !neighbor || seedRanks.has(neighborPath) || neighbor.indexTier === "tier0") return;
+    if (probeSeedSet.has(seedPath) && !isProbeEligibleEdge(edge.type)) return;
     const precision = edgePriority(edge.type);
     if (precision === 0) return;
     const independentEvidence = evidenceRanks.get(neighborPath);
     if (
-      precision === 1 &&
+      (precision === 1 || edge.type === "shared_call_target") &&
       (!isProductionEvidenceFile(neighbor) || !independentEvidence || independentEvidence.size === 0)
     ) {
       return;
@@ -293,6 +336,14 @@ export function rankEvidenceBackedGraphCandidates(input: {
       left.path.localeCompare(right.path)
     );
   return diversifyModuleInstallationFamilies(ranked).map((candidate) => candidate.path);
+}
+
+function isProbeEligibleEdge(type: GraphEdgeRecord["type"]): boolean {
+  return (
+    type === "test_for" ||
+    type === "tested_by" ||
+    type === "shared_call_target"
+  );
 }
 
 function graphRelationFamily(edge: GraphEdgeRecord, seedPath: string): string | undefined {
@@ -426,14 +477,16 @@ export function expandDirectGraphCandidates(input: {
 }
 
 function edgePriority(type: GraphEdgeRecord["type"]): number {
-  if (type === "module_installation" || type === "type_reference") return 4;
   if (
     type === "test_for" ||
-    type === "tested_by"
-  ) return 3;
+    type === "tested_by" ||
+    type === "shared_call_target"
+  ) return 5;
+  if (type === "module_installation" || type === "type_reference") return 4;
   if (
     type === "definition" ||
-    type === "implementation"
+    type === "implementation" ||
+    type === "call"
   ) {
     return 2;
   }

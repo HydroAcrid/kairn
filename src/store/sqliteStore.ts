@@ -716,6 +716,8 @@ export class SqliteStore {
               when 'definition' then 2
               when 'implementation' then 2
               when 'type_reference' then 2
+              when 'shared_call_target' then 2
+              when 'call' then 2
               when 'imports' then 1
               when 'imported_by' then 1
               else 0
@@ -1061,8 +1063,9 @@ export class SqliteStore {
               when 'definition' then 4
               when 'reference' then 5
               when 'type_reference' then 6
-              when 'implementation' then 7
-              when 'call' then 8
+              when 'shared_call_target' then 7
+              when 'implementation' then 8
+              when 'call' then 9
               else 20
             end desc,
             rowid desc

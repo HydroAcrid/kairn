@@ -12,6 +12,7 @@ export function graphReason(type: string, targetIsFromFile: boolean): string {
   if (type === "module_installation") return targetIsFromFile ? "installed module" : "module installer";
   if (type === "implementation") return targetIsFromFile ? "implementation target" : "implemented by target";
   if (type === "call") return targetIsFromFile ? "calls target" : "called by target";
+  if (type === "shared_call_target") return "shares a unique local call target";
   return type;
 }
 
