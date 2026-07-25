@@ -168,6 +168,8 @@ async function parseIndexedFile(rootPath: string, file: { path: string; language
       symbols: [],
       imports: [],
       references: [],
+      dynamicImports: [],
+      moduleInstallers: [],
       hasErrors: true
     };
   }

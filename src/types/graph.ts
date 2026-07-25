@@ -167,6 +167,10 @@ export type ParsedFile = {
   imports: string[];
   /** Parser-observed type names used by this file, never task-derived relevance terms. */
   references?: string[];
+  /** Relative module-family prefixes from dynamic local require calls. */
+  dynamicImports?: string[];
+  /** Literal modules that are required and immediately invoked as installers. */
+  moduleInstallers?: string[];
   hasErrors: boolean;
 };
 

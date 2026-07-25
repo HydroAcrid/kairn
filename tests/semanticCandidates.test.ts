@@ -740,6 +740,8 @@ describe("model-based semantic candidates", () => {
       expect(fileDocument.text.length).toBeLessThanOrEqual(768);
       expect(fileDocument.text).toContain("operation0");
       expect(fileDocument.text).toContain("operation19");
+      expect(fileDocument.text).toContain("callable surface:");
+      expect(fileDocument.text).toContain("operation11");
       expect(fileDocument.text).toContain("package-0");
       expect(fileDocument.text).toContain("package-19");
       expect(fileDocument.text).toContain("region_0_sentinel");

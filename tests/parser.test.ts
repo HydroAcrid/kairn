@@ -113,6 +113,23 @@ describe("cross-language parser adapters", () => {
     expect(parsed.symbols.some((symbol) => symbol.name === "version")).toBe(false);
   });
 
+  it("extracts dynamic local module families and immediately invoked installers", async () => {
+    const parsed = await parseSourceFile({
+      rootPath: "/repo",
+      filePath: "src/storage/index.js",
+      language: "javascript",
+      content: [
+        "const adapter = require(`./${backend}`);",
+        "require('./memory/main')(adapter);",
+        "require('./shared');",
+        ""
+      ].join("\n")
+    });
+
+    expect(parsed.dynamicImports).toEqual(["./"]);
+    expect(parsed.moduleInstallers).toEqual(["./memory/main"]);
+  });
+
   it("contains a fatal-looking parser error to one file", async () => {
     const parse = vi.spyOn(Parser.prototype, "parse");
     try {

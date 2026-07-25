@@ -78,6 +78,7 @@ function buildFileDocument(
     behavioralSymbols,
     Math.min(MAX_FILE_SYMBOLS, behavioralSymbols.length)
   ).map((symbol) => `${symbol.kind} ${boundedField(symbol.signature || symbol.name, 56)}`);
+  const callableSurface = callableSurfaceNames(behavioralSymbols);
   const documentation = extractLeadingDocumentation(content, behavioralSymbols);
   const fileImportLimit = documentation.length > 0 ? 3 : MAX_DIRECT_IMPORTS;
   const directImports = parsed?.imports.length
@@ -86,16 +87,31 @@ function buildFileDocument(
     : [];
   const prefix = documentation.length > 0
     ? [
-        `file: ${boundedField(file.path, 112)}`,
+        `file: ${boundedField(file.path, callableSurface.length > 0 ? 96 : 112)}`,
         `language: ${file.language}`,
         `role: ${file.kind}`,
-        `module: ${boundedField(path.posix.dirname(file.path), 56)}`,
-        boundedList("declared symbols", declaredSymbols, 112),
-        boundedList("direct imports", directImports, 80),
-        boundedList("documentation", documentation, 224),
+        `module: ${boundedField(path.posix.dirname(file.path), callableSurface.length > 0 ? 48 : 56)}`,
+        boundedList("declared symbols", declaredSymbols, callableSurface.length > 0 ? 96 : 112),
+        boundedList("direct imports", directImports, callableSurface.length > 0 ? 64 : 80),
+        ...(callableSurface.length > 0
+          ? [boundedList("callable surface", callableSurface, 112)]
+          : []),
+        boundedList("documentation", documentation, callableSurface.length > 0 ? 168 : 224),
         "",
         "representative source:"
       ].join("\n")
+    : callableSurface.length > 0
+      ? [
+          `file: ${boundedField(file.path, 112)}`,
+          `language: ${file.language}`,
+          `role: ${file.kind}`,
+          `module: ${boundedField(path.posix.dirname(file.path), 56)}`,
+          boundedList("declared symbols", declaredSymbols, 112),
+          boundedList("direct imports", directImports, 80),
+          boundedList("callable surface", callableSurface, 180),
+          "",
+          "representative source:"
+        ].join("\n")
     : [
         `file: ${boundedField(file.path, 160)}`,
         `language: ${file.language}`,
@@ -114,6 +130,16 @@ function buildFileDocument(
     identity: `${file.path}\0file`,
     text
   });
+}
+
+function callableSurfaceNames(symbols: SymbolRecord[]): string[] {
+  const unique = [...new Set(
+    symbols
+      .filter((symbol) => symbol.kind === "function" || symbol.kind === "component")
+      .map((symbol) => symbol.name)
+  )];
+  if (unique.length <= MAX_FILE_SYMBOLS) return [];
+  return evenlySampleIncludingEndpoints(unique, Math.min(10, unique.length));
 }
 
 function buildSymbolDocument(

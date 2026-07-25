@@ -31,6 +31,12 @@ export function buildRepoGraph(input: {
     }
   }
 
+  addDynamicImplementationEdges(
+    edgeMap,
+    input.rootPath,
+    input.files,
+    input.parsedFiles
+  );
   addGoPackageImportEdges(
     edgeMap,
     input.rootPath,
@@ -51,6 +57,86 @@ export function buildRepoGraph(input: {
     symbols: input.parsedFiles.flatMap((file) => file.symbols),
     edges: budgetGraphEdges({ edges: [...edgeMap.values()], files: input.files })
   };
+}
+
+function addDynamicImplementationEdges(
+  edgeMap: Map<string, GraphEdgeRecord>,
+  rootPath: string,
+  files: FileRecord[],
+  parsedFiles: ParsedFile[]
+): void {
+  const fileByPath = new Map(files.map((file) => [file.path, file]));
+  const parsedByPath = new Map(parsedFiles.map((parsedFile) => [parsedFile.filePath, parsedFile]));
+  const maxTargetsPerDispatcher = 64;
+
+  for (const dispatcher of parsedFiles) {
+    if (!dispatcher.dynamicImports?.length) continue;
+    const targets = new Set<string>();
+    for (const prefix of dispatcher.dynamicImports) {
+      for (const candidate of dynamicLocalModuleCandidates(
+        dispatcher.filePath,
+        prefix,
+        files
+      )) {
+        targets.add(candidate.path);
+        for (const installer of parsedByPath.get(candidate.path)?.moduleInstallers ?? []) {
+          for (const installedPath of resolveImportCandidates(candidate.path, installer)) {
+            const installed = fileByPath.get(installedPath);
+            if (
+              installed &&
+              installed.kind !== "test" &&
+              installed.indexTier !== "tier0"
+            ) {
+              targets.add(installed.path);
+            }
+          }
+        }
+      }
+    }
+
+    for (const target of [...targets].sort().slice(0, maxTargetsPerDispatcher)) {
+      if (target === dispatcher.filePath) continue;
+      addEdge(edgeMap, {
+        rootPath,
+        fromFile: dispatcher.filePath,
+        toFile: target,
+        type: "implementation",
+        metadata: {
+          reason: "dynamic local module family implementation"
+        }
+      });
+    }
+  }
+}
+
+function dynamicLocalModuleCandidates(
+  fromFile: string,
+  prefix: string,
+  files: FileRecord[]
+): FileRecord[] {
+  const resolvedPrefix = withoutTrailingSlash(path.posix.normalize(
+    path.posix.join(path.posix.dirname(fromFile), prefix)
+  ));
+  const directory = prefix.endsWith("/")
+    ? resolvedPrefix
+    : path.posix.dirname(resolvedPrefix);
+  const basenamePrefix = prefix.endsWith("/") ? "" : path.posix.basename(resolvedPrefix);
+  return files
+    .filter((file) =>
+      file.path !== fromFile &&
+      file.kind !== "test" &&
+      file.indexTier !== "tier0" &&
+      path.posix.dirname(file.path) === directory &&
+      path.posix.basename(file.path).startsWith(basenamePrefix)
+    )
+    .sort((left, right) => left.path.localeCompare(right.path))
+    .slice(0, 24);
+}
+
+function withoutTrailingSlash(value: string): string {
+  let result = value;
+  while (result.length > 1 && result.endsWith("/")) result = result.slice(0, -1);
+  return result;
 }
 
 function addLocalTypeReferenceEdges(

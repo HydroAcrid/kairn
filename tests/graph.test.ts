@@ -213,6 +213,56 @@ describe("buildRepoGraph", () => {
     )).toContain("type_reference");
   });
 
+  it("links dynamic module dispatchers to local implementations and their installers", async () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "src/storage/index.js", "source"),
+      file(rootPath, "src/storage/memory.js", "source"),
+      file(rootPath, "src/storage/postgres.js", "source"),
+      file(rootPath, "src/storage/memory/main.js", "source"),
+      file(rootPath, "src/storage/postgres/main.js", "source")
+    ];
+    const sources = new Map([
+      ["src/storage/index.js", "module.exports = require(`./${backend}`);"],
+      [
+        "src/storage/memory.js",
+        "const adapter = module.exports;\nrequire('./memory/main')(adapter);"
+      ],
+      [
+        "src/storage/postgres.js",
+        "const adapter = module.exports;\nrequire('./postgres/main')(adapter);"
+      ],
+      ["src/storage/memory/main.js", "module.exports = function install(adapter) {};"],
+      ["src/storage/postgres/main.js", "module.exports = function install(adapter) {};"]
+    ]);
+    const parsedFiles = await Promise.all(files.map((record) =>
+      parseSourceFile({
+        rootPath,
+        filePath: record.path,
+        language: record.language,
+        content: sources.get(record.path) ?? ""
+      })
+    ));
+
+    const graph = buildRepoGraph({ rootPath, files, parsedFiles });
+
+    expect(edgeTypes(
+      graph.edges,
+      "src/storage/index.js",
+      "src/storage/memory.js"
+    )).toContain("implementation");
+    expect(edgeTypes(
+      graph.edges,
+      "src/storage/index.js",
+      "src/storage/memory/main.js"
+    )).toContain("implementation");
+    expect(edgeTypes(
+      graph.edges,
+      "src/storage/index.js",
+      "src/storage/postgres/main.js"
+    )).toContain("implementation");
+  });
+
   it("falls back gracefully when tsconfig is broken", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-broken-tsconfig-"));
     fs.mkdirSync(path.join(root, "src"), { recursive: true });

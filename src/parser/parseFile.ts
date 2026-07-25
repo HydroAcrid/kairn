@@ -9,6 +9,13 @@ const require = createRequire(import.meta.url);
 
 type ParserGrammar = "typescript" | "tsx" | "python" | "go" | "java" | "c" | "cpp";
 
+type ParsedLanguageFacts = {
+  symbols: SymbolRecord[];
+  imports: string[];
+  dynamicImports?: string[];
+  moduleInstallers?: string[];
+};
+
 type SyntaxNodeLike = {
   type: string;
   text: string;
@@ -91,6 +98,8 @@ export async function parseSourceFile(input: {
       symbols: dedupeSymbols(parsed.symbols),
       imports: [...new Set(parsed.imports)].sort(),
       references: extractStructuralTypeReferences(tree.rootNode, input.language),
+      dynamicImports: [...new Set(parsed.dynamicImports ?? [])].sort(),
+      moduleInstallers: [...new Set(parsed.moduleInstallers ?? [])].sort(),
       hasErrors: tree.rootNode.hasError
     };
   } catch {
@@ -140,6 +149,8 @@ function emptyParsedFile(
     symbols: [],
     imports: [],
     references: [],
+    dynamicImports: [],
+    moduleInstallers: [],
     hasErrors
   };
 }
@@ -161,7 +172,7 @@ function extractStructuralTypeReferences(
 function parseByLanguage(
   input: { rootPath: string; filePath: string; content: string; language: string },
   rootNode: SyntaxNodeLike
-): { symbols: SymbolRecord[]; imports: string[] } {
+): ParsedLanguageFacts {
   if (input.language === "python") return parsePython(input, rootNode);
   if (input.language === "go") return parseGo(input, rootNode);
   if (input.language === "java") return parseJava(input, rootNode);
@@ -172,9 +183,16 @@ function parseByLanguage(
 function parseJavaScriptLike(
   input: { rootPath: string; filePath: string; content: string },
   rootNode: SyntaxNodeLike
-): { symbols: SymbolRecord[]; imports: string[] } {
+): {
+  symbols: SymbolRecord[];
+  imports: string[];
+  dynamicImports: string[];
+  moduleInstallers: string[];
+} {
   const symbols: SymbolRecord[] = [];
   const imports = new Set<string>();
+  const dynamicImports = new Set<string>();
+  const moduleInstallers = new Set<string>();
 
   visit(rootNode, (node) => {
     if (node.type === "import_statement") {
@@ -186,6 +204,10 @@ function parseJavaScriptLike(
     if (node.type === "call_expression") {
       const specifier = extractRequireSpecifier(node.text);
       if (specifier) imports.add(specifier);
+      const dynamicPrefix = dynamicRequirePrefix(node);
+      if (dynamicPrefix) dynamicImports.add(dynamicPrefix);
+      const installer = immediatelyInvokedRequire(node);
+      if (installer) moduleInstallers.add(installer);
     }
 
     if (node.type === "assignment_expression") {
@@ -203,7 +225,47 @@ function parseJavaScriptLike(
     }
   });
 
-  return { symbols, imports: [...imports] };
+  return {
+    symbols,
+    imports: [...imports],
+    dynamicImports: [...dynamicImports],
+    moduleInstallers: [...moduleInstallers]
+  };
+}
+
+function dynamicRequirePrefix(call: SyntaxNodeLike): string | undefined {
+  const argument = requireArgument(call);
+  if (argument?.type !== "template_string") return undefined;
+  const raw = argument.text.slice(1, -1);
+  const interpolation = raw.indexOf("${");
+  if (interpolation <= 0) return undefined;
+  const prefix = raw.slice(0, interpolation);
+  return prefix.startsWith(".") ? prefix : undefined;
+}
+
+function immediatelyInvokedRequire(call: SyntaxNodeLike): string | undefined {
+  const invoked = call.childForFieldName("function");
+  if (invoked?.type !== "call_expression") return undefined;
+  const argument = requireArgument(invoked);
+  if (!argument || !["string", "string_fragment"].includes(argument.type)) {
+    return extractRequireSpecifier(invoked.text);
+  }
+  return unquoteJavaScriptString(argument.text);
+}
+
+function requireArgument(call: SyntaxNodeLike): SyntaxNodeLike | undefined {
+  const callable = call.childForFieldName("function");
+  if (callable?.text !== "require") return undefined;
+  const argumentsNode = call.childForFieldName("arguments") ??
+    call.namedChildren.find((child) => child.type === "arguments");
+  return argumentsNode?.namedChildren[0];
+}
+
+function unquoteJavaScriptString(value: string): string | undefined {
+  if (value.length < 2) return undefined;
+  const quote = value[0];
+  if ((quote !== "\"" && quote !== "'") || value.at(-1) !== quote) return undefined;
+  return value.slice(1, -1);
 }
 
 function javaScriptAssignedMethodSymbol(
