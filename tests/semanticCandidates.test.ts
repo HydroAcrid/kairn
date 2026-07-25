@@ -407,9 +407,17 @@ describe("model-based semantic candidates", () => {
     const importNoise = file(rootPath, "internal/runtime/format.go");
     const lexicalOnly = file(rootPath, "internal/runtime/report.go");
     const lexicalNeighbor = file(rootPath, "internal/runtime/render.go");
+    const viewSpecificProbe = file(rootPath, "internal/runtime/evaluate.go");
+    const viewSpecificNeighbor = file(rootPath, "internal/runtime/value.go");
     const rankedFiles = [...leaders, productionProbe, calledSource, importNoise];
     const result = buildModelCandidateUnion({
-      files: [...rankedFiles, lexicalOnly, lexicalNeighbor],
+      files: [
+        ...rankedFiles,
+        lexicalOnly,
+        lexicalNeighbor,
+        viewSpecificProbe,
+        viewSpecificNeighbor
+      ],
       query: "Repair the production state transition workflow.",
       symbols: [],
       bm25Results: [...rankedFiles, lexicalOnly, lexicalNeighbor]
@@ -419,21 +427,28 @@ describe("model-based semantic candidates", () => {
         similarity: 1 - index / 200,
         documentIds: [`rank-${index}`]
       })),
+      semanticEvidencePaths: [
+        ...rankedFiles.map((candidate) => candidate.path),
+        viewSpecificProbe.path
+      ],
       semanticStatus: readyStatus(rankedFiles.length),
       edges: [
         edge(rootPath, leaders[0]!.path, productionProbe.path, "shared_call_target"),
         edge(rootPath, productionProbe.path, calledSource.path, "call"),
         edge(rootPath, productionProbe.path, importNoise.path, "imports"),
-        edge(rootPath, lexicalOnly.path, lexicalNeighbor.path, "call")
+        edge(rootPath, lexicalOnly.path, lexicalNeighbor.path, "call"),
+        edge(rootPath, viewSpecificProbe.path, viewSpecificNeighbor.path, "call")
       ]
     });
 
     expect(result.initialPaths).not.toContain(productionProbe.path);
     expect(result.graphSeedPaths).toContain(productionProbe.path);
     expect(result.graphSeedPaths).not.toContain(lexicalOnly.path);
+    expect(result.graphSeedPaths).toContain(viewSpecificProbe.path);
     expect(result.graphPaths).toEqual(expect.arrayContaining([
       productionProbe.path,
-      calledSource.path
+      calledSource.path,
+      viewSpecificNeighbor.path
     ]));
     expect(result.graphPaths).not.toContain(importNoise.path);
     expect(result.graphPaths).not.toContain(lexicalNeighbor.path);

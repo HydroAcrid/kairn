@@ -84,7 +84,6 @@ export function buildModelCandidateUnion(input: {
   const semanticPaths = input.semanticHits
     .map((hit) => normalizePath(hit.path))
     .filter(eligibleNonHard);
-  const semanticPathSet = new Set(semanticPaths);
   const semanticEvidencePaths = uniquePaths(
     input.semanticEvidencePaths ?? semanticPaths
   ).filter(eligibleNonHard);
@@ -125,12 +124,11 @@ export function buildModelCandidateUnion(input: {
             filesByPath.get(filePath)?.kind === "test"
           )
           .slice(0, MAX_TEST_GRAPH_PROBE_PATHS),
-        ...preliminaryUnion
-          .slice(DEFAULT_INITIAL_CANDIDATE_LIMIT)
+        ...semanticEvidencePaths
           .filter((filePath) => {
             const file = filesByPath.get(filePath);
             return Boolean(
-              semanticPathSet.has(filePath) &&
+              !initialPaths.includes(filePath) &&
               file &&
               isProductionEvidenceFile(file)
             );
