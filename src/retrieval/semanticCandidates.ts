@@ -30,6 +30,7 @@ export type SemanticCandidateSearchResult = {
 
 const MAX_QUERY_CHARS = 1_600;
 const MAX_SEMANTIC_QUERY_VIEWS = 5;
+const MAX_FENCED_SEMANTIC_QUERY_VIEWS = 2;
 const SEMANTIC_QUERY_WINDOW_CHARS = 560;
 const SEMANTIC_QUERY_WINDOW_OVERLAP_CHARS = 80;
 const SEMANTIC_DIAGNOSTIC_RANK_LIMIT = 512;
@@ -146,10 +147,18 @@ export function buildSemanticQueries(query: string): string[] {
   const narrativeWindows = narrative
     ? boundedQueryWindows(narrative, SEMANTIC_QUERY_WINDOW_CHARS, SEMANTIC_QUERY_WINDOW_OVERLAP_CHARS)
     : [];
-  const availableNarrativeViews = Math.max(0, MAX_SEMANTIC_QUERY_VIEWS - (headline ? 1 : 0));
+  const fencedViews = selectFencedSemanticViews(
+    extractFencedBlocks(unwrapped),
+    MAX_FENCED_SEMANTIC_QUERY_VIEWS
+  );
+  const availableNarrativeViews = Math.max(
+    0,
+    MAX_SEMANTIC_QUERY_VIEWS - (headline ? 1 : 0) - fencedViews.length
+  );
   const selected = [
     ...(headline ? [headline] : []),
-    ...evenlySampleIncludingEndpoints(narrativeWindows, availableNarrativeViews)
+    ...evenlySampleIncludingEndpoints(narrativeWindows, availableNarrativeViews),
+    ...fencedViews
   ];
   if (
     codeAware &&
@@ -164,6 +173,57 @@ export function buildSemanticQueries(query: string): string[] {
   return [...new Set(normalized)].slice(0, MAX_SEMANTIC_QUERY_VIEWS).length > 0
     ? [...new Set(normalized)].slice(0, MAX_SEMANTIC_QUERY_VIEWS)
     : [representativeQuery(normalizeSemanticQuery(unwrapped), MAX_QUERY_CHARS)];
+}
+
+type FencedBlock = {
+  index: number;
+  language?: string;
+  body: string;
+};
+
+function extractFencedBlocks(value: string): FencedBlock[] {
+  const blocks: FencedBlock[] = [];
+  let active: { index: number; language?: string; lines: string[] } | undefined;
+  for (const line of value.split(/\r?\n/)) {
+    const trimmed = line.trimStart();
+    if (!trimmed.startsWith("```")) {
+      if (active) active.lines.push(line);
+      continue;
+    }
+    if (!active) {
+      const language = trimmed.slice(3).trim().split(/\s+/, 1)[0];
+      active = {
+        index: blocks.length,
+        ...(language ? { language } : {}),
+        lines: []
+      };
+      continue;
+    }
+    const body = active.lines.join("\n").trim();
+    if (body) {
+      blocks.push({
+        index: active.index,
+        ...(active.language ? { language: active.language } : {}),
+        body
+      });
+    }
+    active = undefined;
+  }
+  return blocks;
+}
+
+function selectFencedSemanticViews(blocks: FencedBlock[], limit: number): string[] {
+  return [...blocks]
+    .sort((left, right) =>
+      right.body.length - left.body.length ||
+      left.index - right.index
+    )
+    .slice(0, Math.max(0, limit))
+    .sort((left, right) => left.index - right.index)
+    .map((block) => [
+      ...(block.language ? [`language: ${block.language}`] : []),
+      block.body
+    ].join("\n"));
 }
 
 function boundedQueryWindows(value: string, maxChars: number, overlapChars: number): string[] {

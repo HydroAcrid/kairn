@@ -834,6 +834,47 @@ describe("model-based semantic candidates", () => {
     expect(queries.some((query) => query.includes("invalid credential"))).toBe(true);
   });
 
+  it("gives the model bounded views of the largest structured fenced evidence", () => {
+    const queries = buildSemanticQueries([
+      "Persisted records lose ownership metadata after a round trip.",
+      "",
+      "```shell",
+      "tool run",
+      "```",
+      "",
+      "```json",
+      JSON.stringify({
+        record: {
+          ownership: [{ generation: 42, writer: "worker-a" }],
+          payload: "preserved"
+        }
+      }, null, 2),
+      "```",
+      "",
+      "```typescript",
+      [
+        "export function restoreRecord(serialized: string): RecordState {",
+        "  const decoded = JSON.parse(serialized);",
+        "  return { ...decoded, ownership: normalizeOwnership(decoded.ownership) };",
+        "}"
+      ].join("\n"),
+      "```"
+    ].join("\n"));
+
+    expect(queries.length).toBeGreaterThanOrEqual(3);
+    expect(queries.length).toBeLessThanOrEqual(5);
+    expect(queries.some((query) =>
+      query.includes("language: json") &&
+      query.includes("ownership") &&
+      query.includes("generation")
+    )).toBe(true);
+    expect(queries.some((query) =>
+      query.includes("language: typescript") &&
+      query.includes("normalizeOwnership")
+    )).toBe(true);
+    expect(queries.every((query) => query.length <= 1_600)).toBe(true);
+  });
+
   it("fuses semantic query views by rank instead of a noisy maximum-similarity winner", () => {
     const hits = fuseSemanticCandidateRankings([
       [
