@@ -228,6 +228,25 @@ describe("evidence task signals and candidates", () => {
     expect(sourceCandidate?.reasons).toEqual(expect.arrayContaining(["graph_neighbor", "source_test_pair"]));
   });
 
+  it("accepts parser-proven module installation neighbors in graph enrichment", () => {
+    const root = "/repo";
+    const dispatcher = file(root, "src/storage/index.js", "source", 400);
+    const installed = file(root, "src/storage/postgres/main.js", "source", 800);
+    const candidates = buildEvidenceCandidates({
+      files: [dispatcher, installed],
+      query: "Investigate storage behavior through the public dispatcher",
+      symbols: [],
+      edges: [edge(root, dispatcher.path, installed.path, "module_installation")],
+      legacyResults: [scored(dispatcher, { bm25Score: 10 })],
+      initialLimit: 1,
+      enrichedLimit: 2
+    });
+
+    expect(candidates.candidates.map((candidate) => candidate.path)).toContain(installed.path);
+    expect(candidates.candidates.find((candidate) => candidate.path === installed.path)?.reasons)
+      .toContain("graph_neighbor");
+  });
+
   it("keeps task source symbols in the bounded union when a broad suite is listed", () => {
     const root = "/repo";
     const source = file(root, "src/TokenFilter.java", "source", 200);
