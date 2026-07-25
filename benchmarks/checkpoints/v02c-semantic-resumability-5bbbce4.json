@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "semantic-resumability-checkpoint.v1",
+  "checkpointId": "v02c-semantic-resumability-20260724",
+  "createdAt": "2026-07-24T22:16:36-04:00",
+  "status": "passed",
+  "implementationCommit": "5bbbce4",
+  "changeClassification": "runtime_only_no_retrieval_semantics_change",
+  "failureObserved": {
+    "commit": "f8cea0b",
+    "caseId": "v02c-calibration-typescript-failure_first-103",
+    "elapsedSecondsWithoutTimedSnapshot": 222,
+    "completedEmbeddingCountObservedInSqlite": 1200,
+    "cause": "Successive CPU-bound ONNX/WASM batches continued through a microtask chain that starved the interval timer.",
+    "oracleAttemptValid": false
+  },
+  "preservation": {
+    "manualSnapshotEmbeddingCount": 1360,
+    "cacheKey": "d685d60dffcaccb3111592a963db53331058cf4ee4c4e482ce5d94570eab99d0",
+    "contentValidated": true
+  },
+  "fix": {
+    "description": "Yield through the timer phase after every 16-document embedding batch.",
+    "documentSchemaChanged": false,
+    "modelChanged": false,
+    "similarityChanged": false,
+    "fusionChanged": false,
+    "candidateOrderChanged": false
+  },
+  "liveValidation": {
+    "caseId": "v02c-calibration-typescript-failure_first-103",
+    "startedAt": "2026-07-24T22:15:27-04:00",
+    "snapshotWrittenAt": "2026-07-24T22:16:36-04:00",
+    "snapshotEmbeddingCount": 1712,
+    "newEmbeddingsPreservedDuringSmoke": 352,
+    "smokeStoppedAfterSnapshot": true,
+    "oracleAttemptValid": false
+  },
+  "verification": {
+    "tests": {
+      "filesPassed": 30,
+      "testsPassed": 429
+    },
+    "focusedTestsPassed": 25,
+    "typecheck": "passed",
+    "build": "passed",
+    "semanticArchitectureCheck": "passed"
+  },
+  "selectionFreezeStillApplicable": true,
+  "holdoutStillApplicable": true,
+  "paidComparisonEligible": false,
+  "nextGate": "Commit this runtime receipt, then start the exact reviewed 38-case oracle from the resulting clean commit."
+}
