@@ -405,12 +405,15 @@ describe("model-based semantic candidates", () => {
     const productionProbe = file(rootPath, "internal/runtime/operation.go");
     const calledSource = file(rootPath, "internal/runtime/state.go");
     const importNoise = file(rootPath, "internal/runtime/format.go");
+    const lexicalOnly = file(rootPath, "internal/runtime/report.go");
+    const lexicalNeighbor = file(rootPath, "internal/runtime/render.go");
     const rankedFiles = [...leaders, productionProbe, calledSource, importNoise];
     const result = buildModelCandidateUnion({
-      files: rankedFiles,
+      files: [...rankedFiles, lexicalOnly, lexicalNeighbor],
       query: "Repair the production state transition workflow.",
       symbols: [],
-      bm25Results: rankedFiles.map((candidate, index) => scored(candidate, 1 - index / 200)),
+      bm25Results: [...rankedFiles, lexicalOnly, lexicalNeighbor]
+        .map((candidate, index) => scored(candidate, 1 - index / 200)),
       semanticHits: rankedFiles.map((candidate, index) => ({
         path: candidate.path,
         similarity: 1 - index / 200,
@@ -420,17 +423,20 @@ describe("model-based semantic candidates", () => {
       edges: [
         edge(rootPath, leaders[0]!.path, productionProbe.path, "shared_call_target"),
         edge(rootPath, productionProbe.path, calledSource.path, "call"),
-        edge(rootPath, productionProbe.path, importNoise.path, "imports")
+        edge(rootPath, productionProbe.path, importNoise.path, "imports"),
+        edge(rootPath, lexicalOnly.path, lexicalNeighbor.path, "call")
       ]
     });
 
     expect(result.initialPaths).not.toContain(productionProbe.path);
     expect(result.graphSeedPaths).toContain(productionProbe.path);
+    expect(result.graphSeedPaths).not.toContain(lexicalOnly.path);
     expect(result.graphPaths).toEqual(expect.arrayContaining([
       productionProbe.path,
       calledSource.path
     ]));
     expect(result.graphPaths).not.toContain(importNoise.path);
+    expect(result.graphPaths).not.toContain(lexicalNeighbor.path);
   });
 
   it("spends source-intent graph enrichment capacity on production before companions", () => {
