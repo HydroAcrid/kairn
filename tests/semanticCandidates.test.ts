@@ -375,7 +375,7 @@ describe("model-based semantic candidates", () => {
     ].join("\n"));
 
     expect(queries.length).toBeGreaterThan(0);
-    expect(queries.length).toBeLessThanOrEqual(2);
+    expect(queries.length).toBeLessThanOrEqual(3);
     expect(queries.some((query) => query.includes("explicitly empty value remains empty"))).toBe(true);
     expect(queries.every((query) => query.length <= 1_600)).toBe(true);
   });
@@ -401,6 +401,27 @@ describe("model-based semantic candidates", () => {
       similarity: 0.62,
       documentIds: ["shared-a", "shared-b"]
     });
+  });
+
+  it("preserves equal-depth candidates from each semantic query view", () => {
+    const hits = fuseSemanticCandidateRankings([
+      [
+        { path: "src/shared-a.ts", similarity: 0.72, documentIds: ["shared-a-1"] },
+        { path: "src/facet-a.ts", similarity: 0.71, documentIds: ["facet-a"] },
+        { path: "src/shared-b.ts", similarity: 0.70, documentIds: ["shared-b-1"] }
+      ],
+      [
+        { path: "src/shared-a.ts", similarity: 0.73, documentIds: ["shared-a-2"] },
+        { path: "src/facet-b.ts", similarity: 0.72, documentIds: ["facet-b"] },
+        { path: "src/shared-b.ts", similarity: 0.71, documentIds: ["shared-b-2"] }
+      ]
+    ], 3, 10);
+
+    expect(hits.map((hit) => hit.path)).toEqual([
+      "src/shared-a.ts",
+      "src/facet-a.ts",
+      "src/facet-b.ts"
+    ]);
   });
 
   it("reports explicit fallback when a local model is unavailable and performs no download", async () => {

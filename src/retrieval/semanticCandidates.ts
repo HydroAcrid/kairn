@@ -28,7 +28,7 @@ export type SemanticCandidateSearchResult = {
 };
 
 const MAX_QUERY_CHARS = 1_600;
-const MAX_SEMANTIC_QUERY_VIEWS = 2;
+const MAX_SEMANTIC_QUERY_VIEWS = 3;
 
 export async function searchSemanticCandidates(input: {
   query: string;
@@ -174,14 +174,54 @@ export function fuseSemanticCandidateRankings(
       byPath.set(hit.path, current);
     });
   }
-  return [...byPath.entries()]
+  const fused = [...byPath.entries()]
     .sort(([leftPath, left], [rightPath, right]) =>
       right.score - left.score ||
       left.bestRank - right.bestRank ||
       right.similarity - left.similarity ||
       leftPath.localeCompare(rightPath)
+    );
+  const selectedPaths: string[] = [];
+  const seenPaths = new Set<string>();
+  const uniqueRankings = rankings.map((ranking) => {
+    const seen = new Set<string>();
+    return ranking.filter((hit) => {
+      if (seen.has(hit.path)) return false;
+      seen.add(hit.path);
+      return true;
+    });
+  });
+  let rank = 0;
+  let madeProgress = true;
+  // The bounded semantic lane exists to maximize recall before the calibrated
+  // ranker decides relevance. Preserve equal-depth coverage from every
+  // structural query view; otherwise files that are strong for one precise
+  // issue facet can be crowded out by generic files appearing in every view.
+  while (selectedPaths.length < boundedLimit && madeProgress) {
+    madeProgress = false;
+    for (const ranking of uniqueRankings) {
+      const hit = ranking[rank];
+      if (!hit || seenPaths.has(hit.path)) continue;
+      selectedPaths.push(hit.path);
+      seenPaths.add(hit.path);
+      madeProgress = true;
+      if (selectedPaths.length >= boundedLimit) break;
+    }
+    rank += 1;
+  }
+  for (const [filePath] of fused) {
+    if (selectedPaths.length >= boundedLimit) break;
+    if (seenPaths.has(filePath)) continue;
+    selectedPaths.push(filePath);
+    seenPaths.add(filePath);
+  }
+  const selectedOrder = new Map(selectedPaths.map((filePath, index) => [filePath, index]));
+  return fused
+    .filter(([filePath]) => selectedOrder.has(filePath))
+    .sort(([leftPath], [rightPath]) =>
+      (selectedOrder.get(leftPath) ?? Number.POSITIVE_INFINITY) -
+      (selectedOrder.get(rightPath) ?? Number.POSITIVE_INFINITY)
     )
-    .slice(0, boundedLimit)
     .map(([filePath, value]) => ({
       path: filePath,
       similarity: Number(value.similarity.toFixed(6)),
