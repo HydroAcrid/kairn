@@ -700,12 +700,41 @@ export class SqliteStore {
   listGraphEdgesForFiles(rootPath: string, filePaths: string[], limit = 50_000): GraphEdgeRecord[] {
     const unique = [...new Set(filePaths)].filter(Boolean);
     if (unique.length === 0) return [];
-    const rows: GraphEdgeRow[] = [];
+    const boundedLimit = Math.max(1, Math.floor(limit));
+    const fairLimitPerFile = Math.max(1, Math.floor(boundedLimit / unique.length));
+    const rowsByIdentity = new Map<string, GraphEdgeRow>();
 
-    for (const chunk of chunkValues(unique, 500)) {
-      const placeholders = chunk.map(() => "?").join(", ");
-      rows.push(
-        ...(this.db
+    for (const filePath of unique) {
+      const fairRows = this.db
+        .prepare(`
+          select * from graph_edges
+          where root_path = ? and (from_file = ? or to_file = ?)
+          order by
+            case type
+              when 'test_for' then 3
+              when 'tested_by' then 3
+              when 'definition' then 2
+              when 'implementation' then 2
+              when 'type_reference' then 2
+              when 'imports' then 1
+              when 'imported_by' then 1
+              else 0
+            end desc,
+            from_file asc,
+            to_file asc,
+            type asc
+          limit ?
+        `)
+        .all(rootPath, filePath, filePath, fairLimitPerFile) as GraphEdgeRow[];
+      for (const row of fairRows) {
+        rowsByIdentity.set(graphEdgeRowIdentity(row), row);
+      }
+    }
+
+    if (rowsByIdentity.size < boundedLimit) {
+      for (const chunk of chunkValues(unique, 500)) {
+        const placeholders = chunk.map(() => "?").join(", ");
+        const backfillRows = this.db
           .prepare(`
             select * from graph_edges
             where root_path = ?
@@ -713,12 +742,16 @@ export class SqliteStore {
             order by from_file asc, to_file asc, type asc
             limit ?
           `)
-          .all(rootPath, ...chunk, ...chunk, limit) as GraphEdgeRow[])
-      );
-      if (rows.length >= limit) break;
+          .all(rootPath, ...chunk, ...chunk, boundedLimit) as GraphEdgeRow[];
+        for (const row of backfillRows) {
+          rowsByIdentity.set(graphEdgeRowIdentity(row), row);
+          if (rowsByIdentity.size >= boundedLimit) break;
+        }
+        if (rowsByIdentity.size >= boundedLimit) break;
+      }
     }
 
-    return rows.slice(0, limit).map(mapGraphEdgeRow);
+    return [...rowsByIdentity.values()].slice(0, boundedLimit).map(mapGraphEdgeRow);
   }
 
   listSemanticChunks(rootPath: string): SemanticChunkRecord[] {
@@ -2054,6 +2087,10 @@ function mapGraphEdgeRow(row: GraphEdgeRow): GraphEdgeRecord {
     type: row.type,
     metadata: parseJsonObject(row.metadata_json)
   };
+}
+
+function graphEdgeRowIdentity(row: GraphEdgeRow): string {
+  return `${row.root_path}\0${row.from_file}\0${row.to_file}\0${row.type}`;
 }
 
 function mapSemanticChunkRow(row: SemanticChunkRow): SemanticChunkRecord {
