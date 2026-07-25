@@ -175,6 +175,7 @@ const COMPANION_STOP_TERMS = new Set([
   "failure",
   "failing",
   "implementation",
+  "module_installation",
   "source",
   "production",
   "behavior",

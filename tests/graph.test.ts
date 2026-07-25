@@ -259,27 +259,27 @@ describe("buildRepoGraph", () => {
       graph.edges,
       "src/storage/index.js",
       "src/storage/memory.js"
-    )).toContain("implementation");
+    )).toContain("module_installation");
     expect(edgeTypes(
       graph.edges,
       "src/storage/index.js",
       "src/storage/memory/main.js"
-    )).toContain("implementation");
+    )).toContain("module_installation");
     expect(edgeTypes(
       graph.edges,
       "src/storage/index.js",
       "src/storage/postgres/main.js"
-    )).toContain("implementation");
+    )).toContain("module_installation");
     expect(edgeTypes(
       graph.edges,
       "src/features/index.js",
       "src/features/remove.js"
-    )).toContain("implementation");
+    )).toContain("module_installation");
     expect(edgeTypes(
       graph.edges,
       "src/controllers/admin.js",
       "src/features/remove.js"
-    )).toContain("implementation");
+    )).toContain("module_installation");
   });
 
   it("falls back gracefully when tsconfig is broken", async () => {

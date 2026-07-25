@@ -33,6 +33,7 @@ export type GraphEdgeType =
   | "reference"
   | "call"
   | "type_reference"
+  | "module_installation"
   | "implementation";
 
 export type SemanticChunkKind = "symbol" | "file_summary";

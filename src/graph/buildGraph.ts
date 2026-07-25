@@ -113,7 +113,7 @@ function addDynamicImplementationEdges(
         rootPath,
         fromFile: dispatcher.filePath,
         toFile: target,
-        type: "implementation",
+        type: "module_installation",
         metadata: {
           reason: "dynamic local module family implementation"
         }
@@ -136,7 +136,7 @@ function addDynamicImplementationEdges(
           rootPath,
           fromFile: importer,
           toFile: target,
-          type: "implementation",
+          type: "module_installation",
           metadata: {
             reason: "imported module installs or dispatches to concrete implementation",
             through: dispatcher.filePath

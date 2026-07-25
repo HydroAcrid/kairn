@@ -9,6 +9,7 @@ export function graphReason(type: string, targetIsFromFile: boolean): string {
   if (type === "definition") return targetIsFromFile ? "definition target" : "defined from target";
   if (type === "reference") return targetIsFromFile ? "references target" : "referenced by target";
   if (type === "type_reference") return targetIsFromFile ? "type reference target" : "type referenced by target";
+  if (type === "module_installation") return targetIsFromFile ? "installed module" : "module installer";
   if (type === "implementation") return targetIsFromFile ? "implementation target" : "implemented by target";
   if (type === "call") return targetIsFromFile ? "calls target" : "called by target";
   return type;

@@ -15,6 +15,7 @@ const EDGE_PRIORITY: Record<GraphEdgeRecord["type"], number> = {
   test_for: 92,
   parent_route: 78,
   definition: 72,
+  module_installation: 68,
   reference: 62,
   type_reference: 58,
   implementation: 54,
