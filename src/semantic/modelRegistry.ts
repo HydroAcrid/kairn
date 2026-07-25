@@ -19,7 +19,7 @@ export type SemanticModelManifest = {
   normalize: true;
   queryPrefix: string;
   documentPrefix: string;
-  documentSchemaVersion: "semantic-documents-v4" | "semantic-documents-v5";
+  documentSchemaVersion: "semantic-documents-v4" | "semantic-documents-v5" | "semantic-documents-v6";
   runtime: {
     library: "kairn-onnx-wasm-v1";
     modelFilePath: "onnx/model.onnx";
@@ -43,7 +43,7 @@ const JINA_CODE: SemanticModelManifest = {
   normalize: true,
   queryPrefix: "",
   documentPrefix: "",
-  documentSchemaVersion: "semantic-documents-v5",
+  documentSchemaVersion: "semantic-documents-v6",
   runtime: {
     library: "kairn-onnx-wasm-v1",
     modelFilePath: "onnx/model.onnx"
@@ -102,7 +102,7 @@ const BGE_SMALL: SemanticModelManifest = {
   normalize: true,
   queryPrefix: "Represent this sentence for searching relevant passages: ",
   documentPrefix: "",
-  documentSchemaVersion: "semantic-documents-v5",
+  documentSchemaVersion: "semantic-documents-v6",
   runtime: {
     library: "kairn-onnx-wasm-v1",
     modelFilePath: "onnx/model.onnx"
