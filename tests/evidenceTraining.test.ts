@@ -122,9 +122,10 @@ describe("public evidence ranker training", () => {
     }
   });
 
-  it("shares content-validated embeddings across refs in one repository lineage", () => {
+  it("isolates benchmark embedding snapshots by immutable repository ref", () => {
     const base = {
       repositoryLineageId: "https://github.com/example/project",
+      repositoryRef: "1".repeat(40),
       modelId: "pinned-model",
       modelManifestSha256: "a".repeat(64),
       documentSchemaVersion: "semantic-documents-v4" as const
@@ -143,11 +144,16 @@ describe("public evidence ranker training", () => {
       ...base,
       repositoryLineageId: "https://github.com/example/other-project"
     });
+    const changedRef = buildSemanticSnapshotCacheKey({
+      ...base,
+      repositoryRef: "2".repeat(40)
+    });
 
     expect(firstRef).toBe(secondRef);
     expect(changedModel).not.toBe(firstRef);
     expect(changedSchema).not.toBe(firstRef);
     expect(changedLineage).not.toBe(firstRef);
+    expect(changedRef).not.toBe(firstRef);
   });
 
   it("resumes isolated materialization only for the exact commit, intake, and case order", () => {

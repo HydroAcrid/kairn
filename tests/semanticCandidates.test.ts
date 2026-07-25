@@ -338,6 +338,30 @@ describe("model-based semantic candidates", () => {
     })).toEqual(["z/unrelated-name.ts", "a/task-words.ts"]);
   });
 
+  it("retains the base retrieval tail in the enriched union", () => {
+    const rootPath = "/repo";
+    const files = Array.from({ length: 100 }, (_, index) =>
+      file(rootPath, `src/module-${String(index).padStart(2, "0")}.ts`)
+    );
+    const result = buildModelCandidateUnion({
+      files,
+      query: "Locate the production behavior across the repository.",
+      symbols: [],
+      bm25Results: files.map((candidate, index) => scored(candidate, 1 - index / 200)),
+      semanticHits: files.map((candidate, index) => ({
+        path: candidate.path,
+        similarity: 1 - index / 200,
+        documentIds: [`rank-${index}`]
+      })),
+      semanticStatus: readyStatus(files.length),
+      edges: []
+    });
+
+    expect(result.initialPaths).toHaveLength(64);
+    expect(result.enrichedPaths).toHaveLength(100);
+    expect(result.enrichedPaths).toContain("src/module-99.ts");
+  });
+
   it("keeps the task narrative in semantic queries when a broad failure inventory comes first", () => {
     const broadFailures = Array.from(
       { length: 120 },

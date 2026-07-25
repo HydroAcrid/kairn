@@ -688,6 +688,7 @@ function semanticSnapshotCacheKey(intakeCase: IntakeCase): string {
   const modelManifestSha256 = semanticModelManifestSha256(getSemanticModelManifest(modelId));
   return buildSemanticSnapshotCacheKey({
     repositoryLineageId: intakeCase.repositoryLineageId,
+    repositoryRef: intakeCase.repositoryRef,
     modelId,
     modelManifestSha256,
     documentSchemaVersion: SEMANTIC_DOCUMENT_SCHEMA_VERSION
@@ -779,13 +780,15 @@ function sameStrings(left: string[], right: string[]): boolean {
 
 export function buildSemanticSnapshotCacheKey(input: {
   repositoryLineageId: string;
+  repositoryRef: string;
   modelId: string;
   modelManifestSha256: string;
   documentSchemaVersion: SemanticEmbeddingRecord["schemaVersion"];
 }): string {
   return sha256([
-    "semantic-embedding-cache.v3",
+    "semantic-embedding-cache.v4",
     input.repositoryLineageId,
+    input.repositoryRef,
     input.modelId,
     input.modelManifestSha256,
     input.documentSchemaVersion

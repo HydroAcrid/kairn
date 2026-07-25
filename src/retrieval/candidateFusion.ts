@@ -94,11 +94,12 @@ export function buildModelCandidateUnion(input: {
         .filter(eligibleNonHard)
     }
   ];
-  const preliminaryPaths = reciprocalRankFuse({
+  const preliminaryUnion = reciprocalRankFuse({
     hardPaths,
     rankings: baseRankings,
-    limit: DEFAULT_INITIAL_CANDIDATE_LIMIT
+    limit: DEFAULT_ENRICHED_CANDIDATE_LIMIT
   }).filter((filePath) => filesByPath.has(filePath));
+  const preliminaryPaths = preliminaryUnion.slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
   const graphPaths = rankEvidenceBackedGraphCandidates({
     seedPaths: preliminaryPaths,
     edges: input.edges,
@@ -120,7 +121,7 @@ export function buildModelCandidateUnion(input: {
     ],
     minimumSeedSupport: 2
   });
-  const initialPaths = reciprocalRankFuse({
+  const enrichedPaths = reciprocalRankFuse({
     hardPaths,
     rankings: graphPaths.length > 0
       ? [
@@ -131,18 +132,13 @@ export function buildModelCandidateUnion(input: {
             : [])
         ]
       : baseRankings,
-    limit: DEFAULT_INITIAL_CANDIDATE_LIMIT
-  }).filter((filePath) => filesByPath.has(filePath));
-  const enrichedPaths = expandDirectGraphCandidates({
-    seedPaths: initialPaths,
-    edges: input.edges,
     limit: DEFAULT_ENRICHED_CANDIDATE_LIMIT
-  }).filter((filePath) => filesByPath.has(filePath) && eligibleNonHard(filePath));
+  }).filter((filePath) => filesByPath.has(filePath));
+  const initialPaths = enrichedPaths.slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
   const bm25ByPath = new Map(input.bm25Results.map((result) => [normalizePath(result.path), result]));
   const semanticByPath = new Map(input.semanticHits.map((hit) => [normalizePath(hit.path), hit]));
   const changedPaths = new Set([...(input.changedFiles ?? [])].map(normalizePath));
   const graphPathSet = new Set([...graphPaths, ...graphConsensusPaths]);
-  const graphOnly = new Set(enrichedPaths.filter((filePath) => !initialPaths.includes(filePath)));
   const candidateResults = enrichedPaths.map((filePath): HybridScoredResult => {
     const file = filesByPath.get(filePath)!;
     const bm25 = bm25ByPath.get(filePath);
@@ -153,7 +149,7 @@ export function buildModelCandidateUnion(input: {
       ...((bm25?.bm25Score ?? 0) > 0 ? ["BM25 candidate"] : []),
       ...(symbolStrength.has(filePath) ? ["exact symbol candidate"] : []),
       ...(changedPaths.has(filePath) ? ["changed in diff"] : []),
-      ...(graphPathSet.has(filePath) || graphOnly.has(filePath) ? ["direct graph neighbor"] : [])
+      ...(graphPathSet.has(filePath) ? ["direct graph neighbor"] : [])
     ];
     return {
       ...file,
@@ -164,7 +160,7 @@ export function buildModelCandidateUnion(input: {
       keywordScore: 0,
       bm25Score: bm25?.bm25Score ?? 0,
       behaviorScore: 0,
-      graphScore: graphPathSet.has(filePath) || graphOnly.has(filePath) ? 1 : 0,
+      graphScore: graphPathSet.has(filePath) ? 1 : 0,
       intentScore: 0,
       sessionScore: 0,
       importanceScore: file.importance,
