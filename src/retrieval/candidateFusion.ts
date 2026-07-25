@@ -142,10 +142,15 @@ export function buildModelCandidateUnion(input: {
   }).filter((filePath) => filesByPath.has(filePath));
   // Graph relations enrich the bounded union; they do not get to evict
   // independently retrieved evidence from the initial 64-file lane. Preserve
-  // that serving contract while still retaining the strongest graph additions
-  // and the original retrieval tail for the calibrated ranker.
+  // that serving contract, then fill the remaining bounded capacity with the
+  // strongest one-hop graph additions before considering the retrieval tail.
+  // The calibrated ranker therefore sees the intended 64 initial + up to 64
+  // graph-enriched candidates without a second fusion silently dropping a
+  // parser-proven neighbor.
   const enrichedPaths = uniquePaths([
     ...initialPaths,
+    ...graphPaths,
+    ...graphConsensusPaths,
     ...graphEnrichedOrder,
     ...preliminaryUnion
   ]).slice(0, DEFAULT_ENRICHED_CANDIDATE_LIMIT);
