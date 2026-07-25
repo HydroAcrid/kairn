@@ -630,6 +630,40 @@ describe("model-based semantic candidates", () => {
       .toMatchObject({ graphScore: 1 });
   });
 
+  it("keeps the consensus lane effective when single-seed graph candidates fill the budget", () => {
+    const rootPath = "/repo";
+    const seeds = Array.from({ length: 64 }, (_, index) =>
+      file(rootPath, `src/workflow/seed-${String(index).padStart(2, "0")}.go`)
+    );
+    const singleSeedNeighbors = Array.from({ length: 70 }, (_, index) =>
+      file(rootPath, `src/workflow/call-${String(index).padStart(2, "0")}.go`)
+    );
+    const consensusSource = file(rootPath, "src/workflow/shared-state.go");
+    const result = buildModelCandidateUnion({
+      files: [...seeds, ...singleSeedNeighbors, consensusSource],
+      query: "Repair the production workflow state transition.",
+      symbols: [],
+      bm25Results: seeds.map((candidate, index) => scored(candidate, 1 - index / 100)),
+      semanticHits: seeds.map((candidate, index) => ({
+        path: candidate.path,
+        similarity: 1 - index / 100,
+        documentIds: [`seed-${index}`]
+      })),
+      semanticStatus: readyStatus(seeds.length),
+      edges: [
+        ...singleSeedNeighbors.map((neighbor) =>
+          edge(rootPath, seeds[0]!.path, neighbor.path, "call")
+        ),
+        edge(rootPath, seeds[62]!.path, consensusSource.path, "type_reference"),
+        edge(rootPath, seeds[63]!.path, consensusSource.path, "type_reference")
+      ]
+    });
+
+    expect(result.graphPaths.indexOf(consensusSource.path)).toBeGreaterThanOrEqual(64);
+    expect(result.graphConsensusPaths).toContain(consensusSource.path);
+    expect(result.enrichedPaths).toContain(consensusSource.path);
+  });
+
   it("balances parser-proven installation candidates across module families", () => {
     const rootPath = "/repo";
     const seeds = [
