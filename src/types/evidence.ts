@@ -87,6 +87,9 @@ export const EVIDENCE_FEATURE_NAMES = Object.freeze([
   "gitChanged",
   "alreadyDelivered",
   "graphNeighbor",
+  "graphPrecision",
+  "graphConsensus",
+  "graphSupport",
   "sourceTestPair",
   "productionSource",
   "testFile",
@@ -152,7 +155,7 @@ export type EvidenceRankerThresholds = {
 export type EvidenceRankerArtifact = {
   formatVersion: 1;
   modelId: string;
-  featureSchemaVersion: "evidence-features-v2";
+  featureSchemaVersion: "evidence-features-v3";
   featureSchemaHash: string;
   orderedFeatures: EvidenceFeatureName[];
   intercept: number;

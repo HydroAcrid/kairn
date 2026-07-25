@@ -298,7 +298,9 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
   const fixedCandidatePaths = uniqueNormalizedPaths(input.fixedCandidatePaths ?? [])
     .filter((filePath) => filesByPath.has(filePath))
     .slice(0, enrichedLimit);
-  const seedCandidatePaths = uniqueNormalizedPaths(input.seedCandidatePaths ?? [])
+  const seedCandidatePaths = uniqueNormalizedPaths(
+    input.seedCandidatePaths ?? fixedCandidatePaths.slice(0, initialLimit)
+  )
     .filter((filePath) => filesByPath.has(filePath))
     .slice(0, initialLimit);
   for (const filePath of uniqueNormalizedPaths([...seedCandidatePaths, ...fixedCandidatePaths])) {
@@ -408,16 +410,26 @@ export function buildEvidenceCandidates(input: EvidenceCandidateInput): Evidence
     }
   }
 
+  const graphEvidenceByPath = buildGraphFeatureEvidence({
+    seedPaths: initialPaths,
+    edges: input.edges,
+    filesByPath
+  });
   const candidates = enrichedPaths.map((filePath) => {
     const file = filesByPath.get(filePath)!;
     const legacy = legacyByPath.get(filePath);
     const symbols = symbolsByFile.get(filePath) ?? [];
     const reasons = reasonsByPath.get(filePath) ?? new Set<EvidenceReason>();
+    const graphEvidence = graphEvidenceByPath.get(filePath);
+    if (graphEvidence) {
+      reasons.add("graph_neighbor");
+      if (graphEvidence.sourceTestPair) reasons.add("source_test_pair");
+    }
     addDerivedReasons(reasons, file, legacy, signals, symbols, shownFiles, changedFiles);
     return {
       path: file.path,
       reasons: sortEvidenceReasons(reasons),
-      features: buildFeatureVector({ file, legacy, reasons, symbols, signals })
+      features: buildFeatureVector({ file, legacy, reasons, symbols, signals, graphEvidence })
     };
   });
 
@@ -527,14 +539,75 @@ function graphEdgePrecision(edge: GraphEdgeRecord): number {
   return 0;
 }
 
+type GraphFeatureEvidence = {
+  precision: number;
+  seedSupport: number;
+  sourceTestPair: boolean;
+};
+
+/**
+ * Converts parser-proven one-hop relationships into objective model inputs.
+ * These values do not rank candidates: the calibrated model learns whether a
+ * precise edge, multi-seed consensus, or broad support is predictive. Support
+ * is counted only inside the strongest relationship class so a weak import
+ * cannot inflate a precise call or type-reference fact.
+ */
+function buildGraphFeatureEvidence(input: {
+  seedPaths: string[];
+  edges: GraphEdgeRecord[];
+  filesByPath: Map<string, FileRecord>;
+}): Map<string, GraphFeatureEvidence> {
+  const seedSet = new Set(input.seedPaths);
+  const evidence = new Map<string, {
+    precision: number;
+    supportingSeeds: Set<string>;
+    sourceTestPair: boolean;
+  }>();
+  const consider = (seedPath: string, candidatePath: string, edge: GraphEdgeRecord): void => {
+    if (!seedSet.has(seedPath) || !input.filesByPath.has(candidatePath) || seedPath === candidatePath) return;
+    const precision = graphEdgePrecision(edge);
+    if (precision <= 0) return;
+    const existing = evidence.get(candidatePath);
+    if (!existing || precision > existing.precision) {
+      evidence.set(candidatePath, {
+        precision,
+        supportingSeeds: new Set([seedPath]),
+        sourceTestPair: edge.type === "test_for" || edge.type === "tested_by"
+      });
+      return;
+    }
+    if (precision !== existing.precision) return;
+    existing.supportingSeeds.add(seedPath);
+    if (edge.type === "test_for" || edge.type === "tested_by") existing.sourceTestPair = true;
+  };
+
+  for (const edge of input.edges) {
+    const from = normalizeRepoPath(edge.fromFile);
+    const to = normalizeRepoPath(edge.toFile);
+    consider(from, to, edge);
+    consider(to, from, edge);
+  }
+
+  return new Map([...evidence.entries()].map(([filePath, value]) => [
+    filePath,
+    {
+      precision: value.precision,
+      seedSupport: value.supportingSeeds.size,
+      sourceTestPair: value.sourceTestPair
+    }
+  ]));
+}
+
 function buildFeatureVector(input: {
   file: FileRecord;
   legacy: HybridScoredResult | undefined;
   reasons: Set<EvidenceReason>;
   symbols: SymbolRecord[];
   signals: EvidenceTaskSignals;
+  graphEvidence: GraphFeatureEvidence | undefined;
 }): EvidenceFeatureVector {
   const lexical = (input.legacy?.bm25Score ?? 0) + (input.legacy?.keywordScore ?? 0);
+  const graphSupport = input.graphEvidence?.seedSupport ?? 0;
   return {
     exactPath: binary(input.reasons.has("exact_path")),
     basenameMatch: binary(input.reasons.has("basename")),
@@ -547,6 +620,9 @@ function buildFeatureVector(input: {
     gitChanged: binary(input.reasons.has("git_diff")),
     alreadyDelivered: binary(input.reasons.has("already_delivered")),
     graphNeighbor: binary(input.reasons.has("graph_neighbor")),
+    graphPrecision: clamp01((input.graphEvidence?.precision ?? 0) / 5),
+    graphConsensus: binary(graphSupport >= 2),
+    graphSupport: clamp01(Math.log2(1 + graphSupport) / Math.log2(1 + DEFAULT_INITIAL_CANDIDATE_LIMIT)),
     sourceTestPair: binary(input.reasons.has("source_test_pair")),
     productionSource: binary(isProductionEvidenceFile(input.file)),
     testFile: binary(isTestFile(input.file)),

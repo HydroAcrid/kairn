@@ -50,7 +50,7 @@ type Intake = {
   schemaVersion: "ranker-corpus-intake.v1";
   corpusId: string;
   featureSchemaVersion: string;
-  migratedFeatureSchemaFrom?: "evidence-features-v1";
+  migratedFeatureSchemaFrom?: "evidence-features-v1" | "evidence-features-v2";
   sealed: boolean;
   sampleOnly: boolean;
   lineageRegistry: string;
@@ -551,9 +551,11 @@ function parseIntake(value: unknown, options: {
 }): Intake {
   const root = record(value, "intake");
   if (root.schemaVersion !== "ranker-corpus-intake.v1") throw new Error("intake schemaVersion must be ranker-corpus-intake.v1");
-  const migratedFeatureSchemaFrom = root.featureSchemaVersion === "evidence-features-v1" &&
-    options.migrateFeatureSchema
-    ? "evidence-features-v1" as const
+  const migratedFeatureSchemaFrom = (
+    root.featureSchemaVersion === "evidence-features-v1" ||
+    root.featureSchemaVersion === "evidence-features-v2"
+  ) && options.migrateFeatureSchema
+    ? root.featureSchemaVersion
     : undefined;
   if (root.featureSchemaVersion !== EVIDENCE_FEATURE_SCHEMA_VERSION && !migratedFeatureSchemaFrom) {
     throw new Error(`featureSchemaVersion must be ${EVIDENCE_FEATURE_SCHEMA_VERSION}`);

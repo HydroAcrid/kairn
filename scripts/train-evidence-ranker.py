@@ -18,12 +18,13 @@ from urllib.parse import urlparse
 FEATURES = [
     "exactPath", "basenameMatch", "exactSymbol", "symbolPrefix", "bm25",
     "keyword", "semantic", "failureReference", "gitChanged",
-    "alreadyDelivered", "graphNeighbor", "sourceTestPair",
+    "alreadyDelivered", "graphNeighbor", "graphPrecision", "graphConsensus",
+    "graphSupport", "sourceTestPair",
     "productionSource", "testFile", "docsFile", "generatedVendor",
     "intentRoleMatch", "importance", "contentCost", "missingSymbols",
     "missingLexical",
 ]
-SCHEMA_VERSION = "evidence-features-v2"
+SCHEMA_VERSION = "evidence-features-v3"
 L2_GRID = [0.0001, 0.001, 0.01, 0.1, 1.0]
 LABEL_POLICIES: dict[str, tuple[int, float]] = {
     "required_source_oracle": (1, 1.0),

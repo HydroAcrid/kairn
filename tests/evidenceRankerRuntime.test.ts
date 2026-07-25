@@ -79,7 +79,7 @@ describe("evidence ranker runtime integration", () => {
       });
       expect(response.rankedFiles?.[0]).toEqual(expect.objectContaining({
         relevanceProbability: expect.any(Number),
-        featureSchemaVersion: "evidence-features-v2",
+      featureSchemaVersion: "evidence-features-v3",
         rankerMode: "shadow"
       }));
 
@@ -91,7 +91,7 @@ describe("evidence ranker runtime integration", () => {
         requestedMode: "shadow",
         servedMode: "shadow",
         modelId: "generic-evidence-v2",
-        featureSchemaVersion: "evidence-features-v2"
+      featureSchemaVersion: "evidence-features-v3"
       });
     } finally {
       runtime.close();

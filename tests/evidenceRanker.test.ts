@@ -247,6 +247,39 @@ describe("evidence task signals and candidates", () => {
       .toContain("graph_neighbor");
   });
 
+  it("exposes graph precision and independent-seed consensus to the ranker", () => {
+    const root = "/repo";
+    const firstSeed = file(root, "src/workflow/plan.go", "source", 800);
+    const secondSeed = file(root, "src/workflow/apply.go", "source", 900);
+    const sharedUtility = file(root, "src/workflow/state.go", "source", 600);
+    const candidates = buildEvidenceCandidates({
+      files: [firstSeed, secondSeed, sharedUtility],
+      query: "Repair the production workflow transition.",
+      symbols: [],
+      edges: [
+        edge(root, firstSeed.path, sharedUtility.path, "call"),
+        edge(root, secondSeed.path, sharedUtility.path, "call")
+      ],
+      legacyResults: [
+        scored(firstSeed, { semanticScore: 0.8 }),
+        scored(secondSeed, { semanticScore: 0.7 })
+      ],
+      seedCandidatePaths: [firstSeed.path, secondSeed.path],
+      fixedCandidatePaths: [firstSeed.path, secondSeed.path, sharedUtility.path],
+      initialLimit: 2,
+      enrichedLimit: 3
+    });
+
+    const utility = candidates.candidates.find((candidate) => candidate.path === sharedUtility.path);
+    expect(utility?.features).toMatchObject({
+      graphNeighbor: 1,
+      graphPrecision: 1,
+      graphConsensus: 1
+    });
+    expect(utility?.features.graphSupport).toBeGreaterThan(0);
+    expect(utility?.features.graphSupport).toBeLessThan(1);
+  });
+
   it("accepts highest-precision shared-call neighbors without dropping the graph bucket", () => {
     const root = "/repo";
     const seed = file(root, "pkg/check_test.go", "test", 400);
