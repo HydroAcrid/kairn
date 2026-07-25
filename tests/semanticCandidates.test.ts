@@ -679,6 +679,39 @@ describe("model-based semantic candidates", () => {
     ]);
   });
 
+  it("lets multiple strong independent type references outrank weaker call consensus", () => {
+    const rootPath = "/repo";
+    const seeds = Array.from({ length: 8 }, (_, index) =>
+      file(rootPath, `src/api/seed-${index}.go`)
+    );
+    const stronglySupportedType = file(rootPath, "src/runtime/configuration.go");
+    const weaklySupportedCall = file(rootPath, "src/runtime/helper.go");
+    const filesByPath = new Map(
+      [...seeds, stronglySupportedType, weaklySupportedCall]
+        .map((candidate) => [candidate.path, candidate])
+    );
+    const ranked = rankEvidenceBackedGraphCandidates({
+      seedPaths: seeds.map((seed) => seed.path),
+      edges: [
+        ...seeds.slice(0, 3).map((seed) =>
+          edge(rootPath, seed.path, stronglySupportedType.path, "type_reference")
+        ),
+        ...seeds.slice(6).map((seed) =>
+          edge(rootPath, seed.path, weaklySupportedCall.path, "call")
+        )
+      ],
+      filesByPath,
+      evidenceRankings: [],
+      minimumSeedSupport: 2,
+      ordering: "support"
+    });
+
+    expect(ranked.slice(0, 2)).toEqual([
+      stronglySupportedType.path,
+      weaklySupportedCall.path
+    ]);
+  });
+
   it("credits graph consensus from multiple independently retrieved seeds", () => {
     const rootPath = "/repo";
     const sharedImplementation = file(rootPath, "src/workflow/public-api.ts");

@@ -176,7 +176,8 @@ export function buildModelCandidateUnion(input: {
         { channel: "bm25", paths: bm25Paths },
         { channel: "symbol", paths: eligibleSymbolPaths }
       ],
-      minimumSeedSupport: 2
+      minimumSeedSupport: 2,
+      ordering: "support"
     }),
     signals.intent,
     filesByPath
@@ -299,6 +300,7 @@ export function rankEvidenceBackedGraphCandidates(input: {
   filesByPath: Map<string, FileRecord>;
   evidenceRankings: CandidateRanking[];
   minimumSeedSupport?: number;
+  ordering?: "precision" | "support";
 }): string[] {
   const primarySeeds = uniquePaths(input.seedPaths);
   const primarySeedSet = new Set(primarySeeds);
@@ -394,18 +396,29 @@ export function rankEvidenceBackedGraphCandidates(input: {
     for (const rank of candidate.seedRanks.values()) score += 1 / (60 + rank);
     return score;
   };
+  const supportWeightedScore = (candidate: GraphCandidate): number =>
+    candidate.precision * graphSupportScore(candidate) + independentScore(candidate.path);
   const minimumSeedSupport = Math.max(1, Math.floor(input.minimumSeedSupport ?? 1));
+  const ordering = input.ordering ?? "precision";
   const ranked = [...candidates.values()]
     .filter((candidate) => candidate.seedRanks.size >= minimumSeedSupport)
-    .sort((left, right) =>
-      right.precision - left.precision ||
-      (evidenceRanks.get(right.path)?.size ?? 0) - (evidenceRanks.get(left.path)?.size ?? 0) ||
-      left.bestSeedRank - right.bestSeedRank ||
-      right.seedRanks.size - left.seedRanks.size ||
-      graphSupportScore(right) - graphSupportScore(left) ||
-      independentScore(right.path) - independentScore(left.path) ||
-      left.path.localeCompare(right.path)
-    );
+    .sort((left, right) => ordering === "support"
+      ? (
+          supportWeightedScore(right) - supportWeightedScore(left) ||
+          right.seedRanks.size - left.seedRanks.size ||
+          right.precision - left.precision ||
+          left.bestSeedRank - right.bestSeedRank ||
+          left.path.localeCompare(right.path)
+        )
+      : (
+          right.precision - left.precision ||
+          (evidenceRanks.get(right.path)?.size ?? 0) - (evidenceRanks.get(left.path)?.size ?? 0) ||
+          left.bestSeedRank - right.bestSeedRank ||
+          right.seedRanks.size - left.seedRanks.size ||
+          graphSupportScore(right) - graphSupportScore(left) ||
+          independentScore(right.path) - independentScore(left.path) ||
+          left.path.localeCompare(right.path)
+        ));
   return diversifyModuleInstallationFamilies(ranked).map((candidate) => candidate.path);
 }
 
