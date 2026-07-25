@@ -285,6 +285,38 @@ describe("model-based semantic candidates", () => {
     expect(result.initialPaths).toContain(productionSource.path);
   });
 
+  it("credits graph consensus from multiple independently retrieved seeds", () => {
+    const rootPath = "/repo";
+    const sharedImplementation = file(rootPath, "src/workflow/public-api.ts");
+    const seeds = Array.from({ length: 6 }, (_, index) =>
+      file(rootPath, `src/workflow/feature-${index}.ts`)
+    );
+    const distractors = Array.from({ length: 70 }, (_, index) =>
+      file(rootPath, `src/noise-${String(index).padStart(2, "0")}.ts`)
+    );
+    const rankedFiles = [...seeds, ...distractors];
+    const result = buildModelCandidateUnion({
+      files: [sharedImplementation, ...rankedFiles],
+      query: "Repair the shared workflow behavior used by the related feature implementations.",
+      symbols: [],
+      bm25Results: [
+        ...rankedFiles.map((candidate, index) => scored(candidate, 1 - index / 100)),
+        scored(sharedImplementation, 0.001)
+      ],
+      semanticHits: rankedFiles.map((candidate, index) => ({
+        path: candidate.path,
+        similarity: 1 - index / 100,
+        documentIds: [`rank-${index}`]
+      })),
+      semanticStatus: readyStatus(rankedFiles.length),
+      edges: seeds.map((seed) => edge(rootPath, sharedImplementation.path, seed.path, "imports"))
+    });
+
+    expect(result.initialPaths).toContain(sharedImplementation.path);
+    expect(result.candidateResults.find((candidate) => candidate.path === sharedImplementation.path))
+      .toMatchObject({ graphScore: 1 });
+  });
+
   it("fuses independent ranks without path-name or task-word bonuses", () => {
     expect(reciprocalRankFuse({
       hardPaths: [],

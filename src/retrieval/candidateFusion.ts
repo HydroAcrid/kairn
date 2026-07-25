@@ -189,6 +189,7 @@ export function rankEvidenceBackedGraphCandidates(input: {
     path: string;
     precision: number;
     bestSeedRank: number;
+    seedRanks: Map<string, number>;
   };
   const candidates = new Map<string, GraphCandidate>();
   const consider = (seedPath: string, neighborPath: string, edge: GraphEdgeRecord): void => {
@@ -205,10 +206,13 @@ export function rankEvidenceBackedGraphCandidates(input: {
       return;
     }
     const existing = candidates.get(neighborPath);
+    const seedSupport = new Map(existing?.seedRanks ?? []);
+    seedSupport.set(seedPath, Math.min(seedSupport.get(seedPath) ?? Number.POSITIVE_INFINITY, seedRank));
     candidates.set(neighborPath, {
       path: neighborPath,
       precision: Math.max(existing?.precision ?? 0, precision),
-      bestSeedRank: Math.min(existing?.bestSeedRank ?? Number.POSITIVE_INFINITY, seedRank)
+      bestSeedRank: Math.min(existing?.bestSeedRank ?? Number.POSITIVE_INFINITY, seedRank),
+      seedRanks: seedSupport
     });
   };
 
@@ -226,10 +230,17 @@ export function rankEvidenceBackedGraphCandidates(input: {
     }
     return score;
   };
+  const graphSupportScore = (candidate: GraphCandidate): number => {
+    let score = 0;
+    for (const rank of candidate.seedRanks.values()) score += 1 / (60 + rank);
+    return score;
+  };
   return [...candidates.values()]
     .sort((left, right) =>
       right.precision - left.precision ||
       (evidenceRanks.get(right.path)?.size ?? 0) - (evidenceRanks.get(left.path)?.size ?? 0) ||
+      right.seedRanks.size - left.seedRanks.size ||
+      graphSupportScore(right) - graphSupportScore(left) ||
       independentScore(right.path) - independentScore(left.path) ||
       left.bestSeedRank - right.bestSeedRank ||
       left.path.localeCompare(right.path)
