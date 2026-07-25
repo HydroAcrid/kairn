@@ -220,7 +220,10 @@ describe("buildRepoGraph", () => {
       file(rootPath, "src/storage/memory.js", "source"),
       file(rootPath, "src/storage/postgres.js", "source"),
       file(rootPath, "src/storage/memory/main.js", "source"),
-      file(rootPath, "src/storage/postgres/main.js", "source")
+      file(rootPath, "src/storage/postgres/main.js", "source"),
+      file(rootPath, "src/features/index.js", "source"),
+      file(rootPath, "src/features/remove.js", "source"),
+      file(rootPath, "src/controllers/admin.js", "source")
     ];
     const sources = new Map([
       ["src/storage/index.js", "module.exports = require(`./${backend}`);"],
@@ -233,7 +236,13 @@ describe("buildRepoGraph", () => {
         "const adapter = module.exports;\nrequire('./postgres/main')(adapter);"
       ],
       ["src/storage/memory/main.js", "module.exports = function install(adapter) {};"],
-      ["src/storage/postgres/main.js", "module.exports = function install(adapter) {};"]
+      ["src/storage/postgres/main.js", "module.exports = function install(adapter) {};"],
+      [
+        "src/features/index.js",
+        "const features = module.exports;\nrequire('./remove')(features);"
+      ],
+      ["src/features/remove.js", "module.exports = function install(features) {};"],
+      ["src/controllers/admin.js", "const features = require('../features');"]
     ]);
     const parsedFiles = await Promise.all(files.map((record) =>
       parseSourceFile({
@@ -260,6 +269,16 @@ describe("buildRepoGraph", () => {
       graph.edges,
       "src/storage/index.js",
       "src/storage/postgres/main.js"
+    )).toContain("implementation");
+    expect(edgeTypes(
+      graph.edges,
+      "src/features/index.js",
+      "src/features/remove.js"
+    )).toContain("implementation");
+    expect(edgeTypes(
+      graph.edges,
+      "src/controllers/admin.js",
+      "src/features/remove.js"
     )).toContain("implementation");
   });
 

@@ -70,9 +70,21 @@ function addDynamicImplementationEdges(
   const maxTargetsPerDispatcher = 64;
 
   for (const dispatcher of parsedFiles) {
-    if (!dispatcher.dynamicImports?.length) continue;
+    if (!dispatcher.dynamicImports?.length && !dispatcher.moduleInstallers?.length) continue;
     const targets = new Set<string>();
-    for (const prefix of dispatcher.dynamicImports) {
+    for (const installer of dispatcher.moduleInstallers ?? []) {
+      for (const installedPath of resolveImportCandidates(dispatcher.filePath, installer)) {
+        const installed = fileByPath.get(installedPath);
+        if (
+          installed &&
+          installed.kind !== "test" &&
+          installed.indexTier !== "tier0"
+        ) {
+          targets.add(installed.path);
+        }
+      }
+    }
+    for (const prefix of dispatcher.dynamicImports ?? []) {
       for (const candidate of dynamicLocalModuleCandidates(
         dispatcher.filePath,
         prefix,
@@ -94,7 +106,8 @@ function addDynamicImplementationEdges(
       }
     }
 
-    for (const target of [...targets].sort().slice(0, maxTargetsPerDispatcher)) {
+    const boundedTargets = [...targets].sort().slice(0, maxTargetsPerDispatcher);
+    for (const target of boundedTargets) {
       if (target === dispatcher.filePath) continue;
       addEdge(edgeMap, {
         rootPath,
@@ -105,6 +118,31 @@ function addDynamicImplementationEdges(
           reason: "dynamic local module family implementation"
         }
       });
+    }
+
+    const importers = [...edgeMap.values()]
+      .filter((edge) =>
+        edge.type === "imports" &&
+        edge.toFile === dispatcher.filePath &&
+        edge.fromFile !== dispatcher.filePath
+      )
+      .map((edge) => edge.fromFile)
+      .sort()
+      .slice(0, 256);
+    for (const importer of importers) {
+      for (const target of boundedTargets) {
+        if (target === importer) continue;
+        addEdge(edgeMap, {
+          rootPath,
+          fromFile: importer,
+          toFile: target,
+          type: "implementation",
+          metadata: {
+            reason: "imported module installs or dispatches to concrete implementation",
+            through: dispatcher.filePath
+          }
+        });
+      }
     }
   }
 }
