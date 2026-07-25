@@ -38,6 +38,7 @@ export function buildRepoGraph(input: {
     input.parsedFiles,
     input.goModules ?? []
   );
+  addSiblingImplementationEdges(edgeMap, input.rootPath, input.files, input.parsedFiles);
   addTestEdges(edgeMap, input.rootPath, input.files);
   addGoTestSymbolEdges(edgeMap, input.rootPath, input.files, input.parsedFiles);
   addParentRouteEdges(edgeMap, input.rootPath, input.files);
@@ -49,6 +50,63 @@ export function buildRepoGraph(input: {
     symbols: input.parsedFiles.flatMap((file) => file.symbols),
     edges: budgetGraphEdges({ edges: [...edgeMap.values()], files: input.files })
   };
+}
+
+function addSiblingImplementationEdges(
+  edgeMap: Map<string, GraphEdgeRecord>,
+  rootPath: string,
+  files: FileRecord[],
+  parsedFiles: ParsedFile[]
+): void {
+  const filesByPath = new Map(files.map((file) => [file.path, file]));
+  const families = new Map<string, ParsedFile[]>();
+  for (const parsedFile of parsedFiles) {
+    const file = filesByPath.get(parsedFile.filePath);
+    if (!file || file.kind === "test" || file.indexTier === "tier0") continue;
+    const parent = path.posix.dirname(parsedFile.filePath);
+    const grandparent = path.posix.dirname(parent);
+    if (parent === "." || grandparent === ".") continue;
+    const familyKey = [
+      parsedFile.language,
+      grandparent,
+      path.posix.basename(parsedFile.filePath)
+    ].join("\0");
+    families.set(familyKey, [...(families.get(familyKey) ?? []), parsedFile]);
+  }
+
+  for (const family of families.values()) {
+    if (family.length < 2 || family.length > 24) continue;
+    const ordered = [...family].sort((left, right) => left.filePath.localeCompare(right.filePath));
+    const callableNames = new Map(ordered.map((parsedFile) => [
+      parsedFile.filePath,
+      new Set(
+        parsedFile.symbols
+          .filter((symbol) => symbol.kind === "function")
+          .map((symbol) => symbol.name)
+      )
+    ]));
+    for (let leftIndex = 0; leftIndex < ordered.length; leftIndex += 1) {
+      for (let rightIndex = leftIndex + 1; rightIndex < ordered.length; rightIndex += 1) {
+        const left = ordered[leftIndex]!;
+        const right = ordered[rightIndex]!;
+        const leftNames = callableNames.get(left.filePath)!;
+        const rightNames = callableNames.get(right.filePath)!;
+        const shared = [...leftNames].filter((name) => rightNames.has(name)).sort();
+        const smallerSurface = Math.min(leftNames.size, rightNames.size);
+        if (shared.length < 3 || smallerSurface === 0 || shared.length / smallerSurface < 0.5) continue;
+        addEdge(edgeMap, {
+          rootPath,
+          fromFile: left.filePath,
+          toFile: right.filePath,
+          type: "implementation",
+          metadata: {
+            reason: "sibling modules implement a shared callable surface",
+            sharedSymbols: shared.slice(0, 12)
+          }
+        });
+      }
+    }
+  }
 }
 
 export function graphEdgesForFile(edges: GraphEdgeRecord[], target: string): GraphEdgeRecord[] {

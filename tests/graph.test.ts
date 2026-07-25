@@ -127,6 +127,52 @@ describe("buildRepoGraph", () => {
     );
   });
 
+  it("links sibling adapter modules that implement the same callable surface", async () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "src/storage/memory/main.js", "source"),
+      file(rootPath, "src/storage/postgres/main.js", "source"),
+      file(rootPath, "src/storage/redis/main.js", "source"),
+      file(rootPath, "src/other/main.js", "source")
+    ];
+    const adapter = (owner: string) => [
+      `const ${owner} = module.exports;`,
+      `${owner}.read = async function (key) { return key; };`,
+      `${owner}.write = async function (key, value) { return value; };`,
+      `${owner}.remove = async function (key) { return key; };`
+    ].join("\n");
+    const sources = new Map([
+      ["src/storage/memory/main.js", adapter("memory")],
+      ["src/storage/postgres/main.js", adapter("postgres")],
+      ["src/storage/redis/main.js", adapter("redis")],
+      ["src/other/main.js", "export function unrelated() { return true; }"]
+    ]);
+    const parsedFiles = await Promise.all(files.map((record) =>
+      parseSourceFile({
+        rootPath,
+        filePath: record.path,
+        language: record.language,
+        content: sources.get(record.path) ?? ""
+      })
+    ));
+
+    const graph = buildRepoGraph({ rootPath, files, parsedFiles });
+
+    expect(edgeTypes(
+      graph.edges,
+      "src/storage/memory/main.js",
+      "src/storage/postgres/main.js"
+    )).toContain("implementation");
+    expect(edgeTypes(
+      graph.edges,
+      "src/storage/memory/main.js",
+      "src/storage/redis/main.js"
+    )).toContain("implementation");
+    expect(graph.edges.some((edge) =>
+      edge.type === "implementation" && edge.toFile === "src/other/main.js"
+    )).toBe(false);
+  });
+
   it("falls back gracefully when tsconfig is broken", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-broken-tsconfig-"));
     fs.mkdirSync(path.join(root, "src"), { recursive: true });

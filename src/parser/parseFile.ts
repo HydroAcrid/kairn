@@ -172,6 +172,11 @@ function parseJavaScriptLike(
       if (specifier) imports.add(specifier);
     }
 
+    if (node.type === "assignment_expression") {
+      const assignedMethod = javaScriptAssignedMethodSymbol(input, node);
+      if (assignedMethod) symbols.push(assignedMethod);
+    }
+
     const exported = isExported(node);
     const declaration = exported ? firstDeclarationChild(node) : node;
     if (!declaration) return;
@@ -183,6 +188,37 @@ function parseJavaScriptLike(
   });
 
   return { symbols, imports: [...imports] };
+}
+
+function javaScriptAssignedMethodSymbol(
+  input: { rootPath: string; filePath: string },
+  assignment: SyntaxNodeLike
+): SymbolRecord | undefined {
+  const left = assignment.childForFieldName("left");
+  const right = assignment.childForFieldName("right");
+  if (!left || !right) return undefined;
+  if (
+    right.type !== "function_expression" &&
+    right.type !== "generator_function" &&
+    right.type !== "arrow_function"
+  ) {
+    return undefined;
+  }
+  if (left.type !== "member_expression" && left.type !== "subscript_expression") {
+    return undefined;
+  }
+  const property = left.childForFieldName("property") ??
+    left.childForFieldName("index") ??
+    left.namedChildren.at(-1);
+  const name = property?.text.replace(/^["']|["']$/g, "");
+  if (!name || !/^[A-Za-z_$][\w$]*$/.test(name)) return undefined;
+  const exported =
+    left.text === "module.exports" ||
+    left.text.startsWith("module.exports.") ||
+    left.text.startsWith("module.exports[") ||
+    left.text.startsWith("exports.") ||
+    left.text.startsWith("exports[");
+  return symbolRecord(input, name, "function", exported, assignment);
 }
 
 function parsePython(

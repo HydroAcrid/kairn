@@ -90,6 +90,29 @@ describe("cross-language parser adapters", () => {
     );
   });
 
+  it("extracts function-valued JavaScript member assignments as structural symbols", async () => {
+    const parsed = await parseSourceFile({
+      rootPath: "/repo",
+      filePath: "src/database/adapter.js",
+      language: "javascript",
+      content: [
+        "const Adapter = module.exports;",
+        "Adapter.read = async function (key) { return key; };",
+        "Adapter.expire = async (key, ttl) => ttl;",
+        "module.exports.remove = function (key) { return key; };",
+        "Adapter.version = 2;",
+        ""
+      ].join("\n")
+    });
+
+    expect(parsed.symbols).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "read", kind: "function", exported: false }),
+      expect.objectContaining({ name: "expire", kind: "function", exported: false }),
+      expect.objectContaining({ name: "remove", kind: "function", exported: true })
+    ]));
+    expect(parsed.symbols.some((symbol) => symbol.name === "version")).toBe(false);
+  });
+
   it("contains a fatal-looking parser error to one file", async () => {
     const parse = vi.spyOn(Parser.prototype, "parse");
     try {
