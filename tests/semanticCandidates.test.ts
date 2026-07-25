@@ -712,37 +712,6 @@ describe("model-based semantic candidates", () => {
     ]);
   });
 
-  it("round-robins graph proximity across strong seeds instead of exhausting one seed's fan-out", () => {
-    const rootPath = "/repo";
-    const firstSeed = file(rootPath, "src/api/first.go");
-    const secondSeed = file(rootPath, "src/api/second.go");
-    const firstSeedNeighbors = Array.from({ length: 20 }, (_, index) =>
-      file(rootPath, `src/runtime/first-${String(index).padStart(2, "0")}.go`)
-    );
-    const secondSeedNeighbor = file(rootPath, "src/runtime/second.go");
-    const filesByPath = new Map(
-      [firstSeed, secondSeed, ...firstSeedNeighbors, secondSeedNeighbor]
-        .map((candidate) => [candidate.path, candidate])
-    );
-    const ranked = rankEvidenceBackedGraphCandidates({
-      seedPaths: [firstSeed.path, secondSeed.path],
-      edges: [
-        ...firstSeedNeighbors.map((neighbor) =>
-          edge(rootPath, firstSeed.path, neighbor.path, "call")
-        ),
-        edge(rootPath, secondSeed.path, secondSeedNeighbor.path, "type_reference")
-      ],
-      filesByPath,
-      evidenceRankings: [],
-      ordering: "seed_proximity"
-    });
-
-    expect(ranked.slice(0, 2)).toEqual([
-      firstSeedNeighbors[0]!.path,
-      secondSeedNeighbor.path
-    ]);
-  });
-
   it("credits graph consensus from multiple independently retrieved seeds", () => {
     const rootPath = "/repo";
     const sharedImplementation = file(rootPath, "src/workflow/public-api.ts");
@@ -861,6 +830,45 @@ describe("model-based semantic candidates", () => {
       familyA[0]!.path,
       familyB[0]!.path,
       familyC[0]!.path
+    ]));
+  });
+
+  it("diversifies installation families without moving them ahead of stronger relation slots", () => {
+    const rootPath = "/repo";
+    const seed = file(rootPath, "src/api/account.ts");
+    const callTarget = file(rootPath, "src/runtime/call-target.ts");
+    const familyA = [
+      file(rootPath, "src/adapters/a/first.ts"),
+      file(rootPath, "src/adapters/a/second.ts")
+    ];
+    const familyB = file(rootPath, "src/adapters/b/core.ts");
+    const filesByPath = new Map(
+      [seed, callTarget, ...familyA, familyB]
+        .map((candidate) => [candidate.path, candidate])
+    );
+    const installation = (
+      target: FileRecord,
+      through: string
+    ): GraphEdgeRecord => ({
+      ...edge(rootPath, seed.path, target.path, "module_installation"),
+      metadata: { through }
+    });
+    const ranked = rankEvidenceBackedGraphCandidates({
+      seedPaths: [seed.path],
+      edges: [
+        edge(rootPath, seed.path, callTarget.path, "call"),
+        installation(familyA[0]!, "src/adapters/a/index.ts"),
+        installation(familyA[1]!, "src/adapters/a/index.ts"),
+        installation(familyB, "src/adapters/b/index.ts")
+      ],
+      filesByPath,
+      evidenceRankings: []
+    });
+
+    expect(ranked[0]).toBe(callTarget.path);
+    expect(new Set(ranked.slice(1, 3))).toEqual(new Set([
+      familyA[0]!.path,
+      familyB.path
     ]));
   });
 
