@@ -36,6 +36,8 @@ import {
 import { SqliteStore } from "../src/store/sqliteStore.js";
 import type {
   FileRecord,
+  GraphEdgeRecord,
+  HybridScoredResult,
   RepoGraph,
   SemanticDocumentRecord,
   SemanticEmbeddingRecord
@@ -217,6 +219,70 @@ describe("model-based semantic candidates", () => {
 
     expect(result.initialPaths).toHaveLength(64);
     expect(result.initialPaths[0]).toBe("src/required.ts");
+  });
+
+  it("fuses an independently supported import neighbor without promoting arbitrary fan-out", () => {
+    const rootPath = "/repo";
+    const seed = file(rootPath, "src/workflow/entry.ts");
+    const required = file(rootPath, "src/workflow/implementation.ts");
+    const arbitraryNeighbor = file(rootPath, "src/workflow/incidental.ts");
+    const distractors = Array.from({ length: 70 }, (_, index) =>
+      file(rootPath, `src/noise-${String(index).padStart(2, "0")}.ts`)
+    );
+    const rankedFiles = [seed, ...distractors];
+    const result = buildModelCandidateUnion({
+      files: [seed, required, arbitraryNeighbor, ...distractors],
+      query: "Repair the production workflow after its state transition fails.",
+      symbols: [],
+      bm25Results: [
+        ...rankedFiles.map((candidate, index) => scored(candidate, 1 - index / 100)),
+        scored(required, 0.01)
+      ],
+      semanticHits: rankedFiles.map((candidate, index) => ({
+        path: candidate.path,
+        similarity: 1 - index / 100,
+        documentIds: [`rank-${index}`]
+      })),
+      semanticStatus: readyStatus(rankedFiles.length),
+      edges: [
+        edge(rootPath, seed.path, required.path, "imports"),
+        edge(rootPath, seed.path, arbitraryNeighbor.path, "imports")
+      ]
+    });
+
+    expect(result.initialPaths).toHaveLength(64);
+    expect(result.initialPaths).toContain(required.path);
+    expect(result.initialPaths).not.toContain(arbitraryNeighbor.path);
+    expect(result.candidateResults.find((candidate) => candidate.path === required.path))
+      .toMatchObject({
+        graphScore: 1,
+        reasons: expect.arrayContaining(["direct graph neighbor"])
+      });
+  });
+
+  it("allows a precise source-test graph relation to enter without lexical support", () => {
+    const rootPath = "/repo";
+    const testSeed = file(rootPath, "tests/payment.test.ts");
+    const productionSource = file(rootPath, "src/payment.ts");
+    const distractors = Array.from({ length: 70 }, (_, index) =>
+      file(rootPath, `src/noise-${String(index).padStart(2, "0")}.ts`)
+    );
+    const rankedFiles = [testSeed, ...distractors];
+    const result = buildModelCandidateUnion({
+      files: [testSeed, productionSource, ...distractors],
+      query: "Debug the failing payment integration check.",
+      symbols: [],
+      bm25Results: rankedFiles.map((candidate, index) => scored(candidate, 1 - index / 100)),
+      semanticHits: rankedFiles.map((candidate, index) => ({
+        path: candidate.path,
+        similarity: 1 - index / 100,
+        documentIds: [`rank-${index}`]
+      })),
+      semanticStatus: readyStatus(rankedFiles.length),
+      edges: [edge(rootPath, testSeed.path, productionSource.path, "test_for")]
+    });
+
+    expect(result.initialPaths).toContain(productionSource.path);
   });
 
   it("fuses independent ranks without path-name or task-word bonuses", () => {
@@ -654,6 +720,33 @@ function file(
     tierScore: 0.5,
     updatedAt: "2026-07-24T00:00:00.000Z"
   };
+}
+
+function scored(record: FileRecord, bm25Score: number): HybridScoredResult {
+  return {
+    ...record,
+    score: bm25Score * 100,
+    reasons: ["BM25 candidate"],
+    semanticScore: 0,
+    keywordScore: 0,
+    bm25Score,
+    behaviorScore: 0,
+    graphScore: 0,
+    intentScore: 0,
+    sessionScore: 0,
+    importanceScore: record.importance,
+    gitScore: 0,
+    chunks: []
+  };
+}
+
+function edge(
+  rootPath: string,
+  fromFile: string,
+  toFile: string,
+  type: GraphEdgeRecord["type"]
+): GraphEdgeRecord {
+  return { rootPath, fromFile, toFile, type, metadata: {} };
 }
 
 function document(

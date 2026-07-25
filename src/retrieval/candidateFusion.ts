@@ -11,12 +11,13 @@ import type {
 import {
   DEFAULT_ENRICHED_CANDIDATE_LIMIT,
   DEFAULT_INITIAL_CANDIDATE_LIMIT,
-  extractEvidenceTaskSignals
+  extractEvidenceTaskSignals,
+  isProductionEvidenceFile
 } from "./evidenceSignals.js";
 import type { SemanticCandidateHit } from "./semanticCandidates.js";
 
 export type CandidateRanking = {
-  channel: "semantic" | "bm25" | "symbol" | "git" | "session";
+  channel: "semantic" | "bm25" | "symbol" | "git" | "session" | "graph";
   paths: string[];
 };
 
@@ -67,34 +68,52 @@ export function buildModelCandidateUnion(input: {
     (symbolStrength.get(right) ?? 0) - (symbolStrength.get(left) ?? 0) ||
     left.localeCompare(right)
   );
+  const semanticPaths = input.semanticHits
+    .map((hit) => normalizePath(hit.path))
+    .filter(eligibleNonHard);
+  const bm25Paths = [...input.bm25Results]
+    .filter((result) => result.bm25Score > 0)
+    .sort((left, right) => right.bm25Score - left.bm25Score || left.path.localeCompare(right.path))
+    .map((result) => normalizePath(result.path))
+    .filter(eligibleNonHard);
+  const eligibleSymbolPaths = symbolPaths.filter(eligibleNonHard);
+  const baseRankings: CandidateRanking[] = [
+    { channel: "semantic", paths: semanticPaths },
+    { channel: "bm25", paths: bm25Paths },
+    { channel: "symbol", paths: eligibleSymbolPaths },
+    {
+      channel: "git",
+      paths: [...(input.changedFiles ?? [])].map(normalizePath).filter(eligibleNonHard).sort()
+    },
+    {
+      channel: "session",
+      paths: (input.shown ?? [])
+        .map((record) => record.filePath)
+        .filter((filePath): filePath is string => Boolean(filePath))
+        .map(normalizePath)
+        .filter(eligibleNonHard)
+    }
+  ];
+  const preliminaryPaths = reciprocalRankFuse({
+    hardPaths,
+    rankings: baseRankings,
+    limit: DEFAULT_INITIAL_CANDIDATE_LIMIT
+  }).filter((filePath) => filesByPath.has(filePath));
+  const graphPaths = rankEvidenceBackedGraphCandidates({
+    seedPaths: preliminaryPaths,
+    edges: input.edges,
+    filesByPath,
+    evidenceRankings: [
+      { channel: "semantic", paths: semanticPaths },
+      { channel: "bm25", paths: bm25Paths },
+      { channel: "symbol", paths: eligibleSymbolPaths }
+    ]
+  });
   const initialPaths = reciprocalRankFuse({
     hardPaths,
-    rankings: [
-      {
-        channel: "semantic",
-        paths: input.semanticHits.map((hit) => normalizePath(hit.path)).filter(eligibleNonHard)
-      },
-      {
-        channel: "bm25",
-        paths: [...input.bm25Results]
-          .sort((left, right) => right.bm25Score - left.bm25Score || left.path.localeCompare(right.path))
-          .map((result) => normalizePath(result.path))
-          .filter(eligibleNonHard)
-      },
-      { channel: "symbol", paths: symbolPaths.filter(eligibleNonHard) },
-      {
-        channel: "git",
-        paths: [...(input.changedFiles ?? [])].map(normalizePath).filter(eligibleNonHard).sort()
-      },
-      {
-        channel: "session",
-        paths: (input.shown ?? [])
-          .map((record) => record.filePath)
-          .filter((filePath): filePath is string => Boolean(filePath))
-          .map(normalizePath)
-          .filter(eligibleNonHard)
-      }
-    ],
+    rankings: graphPaths.length > 0
+      ? [...baseRankings, { channel: "graph", paths: graphPaths }]
+      : baseRankings,
     limit: DEFAULT_INITIAL_CANDIDATE_LIMIT
   }).filter((filePath) => filesByPath.has(filePath));
   const enrichedPaths = expandDirectGraphCandidates({
@@ -105,6 +124,7 @@ export function buildModelCandidateUnion(input: {
   const bm25ByPath = new Map(input.bm25Results.map((result) => [normalizePath(result.path), result]));
   const semanticByPath = new Map(input.semanticHits.map((hit) => [normalizePath(hit.path), hit]));
   const changedPaths = new Set([...(input.changedFiles ?? [])].map(normalizePath));
+  const graphPathSet = new Set(graphPaths);
   const graphOnly = new Set(enrichedPaths.filter((filePath) => !initialPaths.includes(filePath)));
   const candidateResults = enrichedPaths.map((filePath): HybridScoredResult => {
     const file = filesByPath.get(filePath)!;
@@ -116,7 +136,7 @@ export function buildModelCandidateUnion(input: {
       ...((bm25?.bm25Score ?? 0) > 0 ? ["BM25 candidate"] : []),
       ...(symbolStrength.has(filePath) ? ["exact symbol candidate"] : []),
       ...(changedPaths.has(filePath) ? ["changed in diff"] : []),
-      ...(graphOnly.has(filePath) ? ["direct graph neighbor"] : [])
+      ...(graphPathSet.has(filePath) || graphOnly.has(filePath) ? ["direct graph neighbor"] : [])
     ];
     return {
       ...file,
@@ -127,7 +147,7 @@ export function buildModelCandidateUnion(input: {
       keywordScore: 0,
       bm25Score: bm25?.bm25Score ?? 0,
       behaviorScore: 0,
-      graphScore: graphOnly.has(filePath) ? 1 : 0,
+      graphScore: graphPathSet.has(filePath) || graphOnly.has(filePath) ? 1 : 0,
       intentScore: 0,
       sessionScore: 0,
       importanceScore: file.importance,
@@ -141,6 +161,80 @@ export function buildModelCandidateUnion(input: {
     candidateResults,
     semanticStatus: input.semanticStatus
   };
+}
+
+/**
+ * Produces a bounded graph ranking without turning arbitrary import fan-out
+ * into relevance. Precise source/test and definition edges stand on their own.
+ * Import neighbors must be production files that also appear in an independent
+ * semantic, lexical, or exact-symbol ranking.
+ */
+export function rankEvidenceBackedGraphCandidates(input: {
+  seedPaths: string[];
+  edges: GraphEdgeRecord[];
+  filesByPath: Map<string, FileRecord>;
+  evidenceRankings: CandidateRanking[];
+}): string[] {
+  const seedRanks = new Map(uniquePaths(input.seedPaths).map((filePath, index) => [filePath, index + 1]));
+  const evidenceRanks = new Map<string, Map<CandidateRanking["channel"], number>>();
+  for (const ranking of input.evidenceRankings) {
+    uniquePaths(ranking.paths).forEach((filePath, index) => {
+      const channelRanks = evidenceRanks.get(filePath) ?? new Map<CandidateRanking["channel"], number>();
+      channelRanks.set(ranking.channel, Math.min(channelRanks.get(ranking.channel) ?? Number.POSITIVE_INFINITY, index + 1));
+      evidenceRanks.set(filePath, channelRanks);
+    });
+  }
+
+  type GraphCandidate = {
+    path: string;
+    precision: number;
+    bestSeedRank: number;
+  };
+  const candidates = new Map<string, GraphCandidate>();
+  const consider = (seedPath: string, neighborPath: string, edge: GraphEdgeRecord): void => {
+    const seedRank = seedRanks.get(seedPath);
+    const neighbor = input.filesByPath.get(neighborPath);
+    if (!seedRank || !neighbor || seedRanks.has(neighborPath) || neighbor.indexTier === "tier0") return;
+    const precision = edgePriority(edge.type);
+    if (precision === 0) return;
+    const independentEvidence = evidenceRanks.get(neighborPath);
+    if (
+      precision === 1 &&
+      (!isProductionEvidenceFile(neighbor) || !independentEvidence || independentEvidence.size === 0)
+    ) {
+      return;
+    }
+    const existing = candidates.get(neighborPath);
+    candidates.set(neighborPath, {
+      path: neighborPath,
+      precision: Math.max(existing?.precision ?? 0, precision),
+      bestSeedRank: Math.min(existing?.bestSeedRank ?? Number.POSITIVE_INFINITY, seedRank)
+    });
+  };
+
+  for (const edge of input.edges) {
+    const from = normalizePath(edge.fromFile);
+    const to = normalizePath(edge.toFile);
+    consider(from, to, edge);
+    consider(to, from, edge);
+  }
+
+  const independentScore = (filePath: string): number => {
+    let score = 0;
+    for (const rank of evidenceRanks.get(filePath)?.values() ?? []) {
+      score += 1 / (60 + rank);
+    }
+    return score;
+  };
+  return [...candidates.values()]
+    .sort((left, right) =>
+      right.precision - left.precision ||
+      (evidenceRanks.get(right.path)?.size ?? 0) - (evidenceRanks.get(left.path)?.size ?? 0) ||
+      independentScore(right.path) - independentScore(left.path) ||
+      left.bestSeedRank - right.bestSeedRank ||
+      left.path.localeCompare(right.path)
+    )
+    .map((candidate) => candidate.path);
 }
 
 export function reciprocalRankFuse(input: {
