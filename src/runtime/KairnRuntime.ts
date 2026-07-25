@@ -3720,7 +3720,12 @@ export class KairnRuntime {
           semanticFused: semanticSearch.hits.map((hit) => hit.path),
           bm25: modelBm25Results.map((result) => result.path),
           graph: fused.graphPaths,
-          graphConsensus: fused.graphConsensusPaths
+          graphConsensus: fused.graphConsensusPaths,
+          graphEvidence: describeGraphCandidateEvidence({
+            seedPaths: fused.initialPaths,
+            graphPaths: fused.graphPaths,
+            edges
+          })
         }
       };
     }
@@ -4111,6 +4116,57 @@ export class KairnRuntime {
       return [];
     }
   }
+}
+
+function describeGraphCandidateEvidence(input: {
+  seedPaths: string[];
+  graphPaths: string[];
+  edges: import("../types.js").GraphEdgeRecord[];
+}): NonNullable<EvidenceCandidateInspection["candidateDiagnostics"]>["graphEvidence"] {
+  const seedRanks = new Map(input.seedPaths.map((filePath, index) => [filePath, index + 1]));
+  const supportsByPath = new Map<string, Array<{
+    seedPath: string;
+    seedRank: number;
+    edgeType: import("../types.js").GraphEdgeType;
+    reason?: string;
+  }>>();
+  for (const edge of input.edges) {
+    const fromRank = seedRanks.get(edge.fromFile);
+    const toRank = seedRanks.get(edge.toFile);
+    const add = (
+      candidatePath: string,
+      seedPath: string,
+      seedRank: number
+    ): void => {
+      const reason = typeof edge.metadata.reason === "string"
+        ? edge.metadata.reason
+        : undefined;
+      supportsByPath.set(candidatePath, [
+        ...(supportsByPath.get(candidatePath) ?? []),
+        {
+          seedPath,
+          seedRank,
+          edgeType: edge.type,
+          ...(reason ? { reason } : {})
+        }
+      ]);
+    };
+    if (fromRank !== undefined && toRank === undefined) add(edge.toFile, edge.fromFile, fromRank);
+    if (toRank !== undefined && fromRank === undefined) add(edge.fromFile, edge.toFile, toRank);
+  }
+  return input.graphPaths.map((filePath) => {
+    const supports = (supportsByPath.get(filePath) ?? [])
+      .sort((left, right) =>
+        left.seedRank - right.seedRank ||
+        left.edgeType.localeCompare(right.edgeType) ||
+        left.seedPath.localeCompare(right.seedPath)
+      );
+    return {
+      path: filePath,
+      supportCount: new Set(supports.map((support) => support.seedPath)).size,
+      supports: supports.slice(0, 8)
+    };
+  });
 }
 
 export function createRuntime(root?: string): KairnRuntime {

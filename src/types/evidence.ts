@@ -129,6 +129,16 @@ export type EvidenceCandidateInspection = {
     bm25: string[];
     graph: string[];
     graphConsensus: string[];
+    graphEvidence: Array<{
+      path: string;
+      supportCount: number;
+      supports: Array<{
+        seedPath: string;
+        seedRank: number;
+        edgeType: import("./graph.js").GraphEdgeType;
+        reason?: string;
+      }>;
+    }>;
   };
 };
 
