@@ -1,0 +1,163 @@
+{
+    "schemaVersion":  "semantic-model-selection.v1",
+    "campaignId":  "v02c-semantic-model-selection-v5-20260724",
+    "sealed":  true,
+    "documentSchemaVersion":  "semantic-documents-v4",
+    "selectionSplits":  [
+                            "train",
+                            "calibration"
+                        ],
+    "holdoutSplit":  "holdout",
+    "cases":  [
+                  {
+                      "id":  "python-source-localization-v5",
+                      "lineageId":  "synthetic-v5-python-train",
+                      "split":  "train",
+                      "language":  "python",
+                      "scenario":  "source_localization",
+                      "targetPath":  "src/traffic/limiter.py",
+                      "query":  "Where is incoming request throughput smoothed so short bursts are allowed without overwhelming the service?",
+                      "targetText":  "file: src/traffic/limiter.py\nlanguage: python\nrole: source\nmodule: src/traffic\nexported symbols: class TokenBucket; function admit_request\nrepresentative source:\nclass TokenBucket:\n    def admit_request(self, now):\n        self.credits = min(self.capacity, self.credits + self.refill_rate * elapsed)\n        if self.credits \u003c 1: return False\n        self.credits -= 1\n        return True"
+                  },
+                  {
+                      "id":  "typescript-source-localization-v5",
+                      "lineageId":  "synthetic-v5-typescript-train",
+                      "split":  "train",
+                      "language":  "typescript",
+                      "scenario":  "source_localization",
+                      "targetPath":  "src/release/cohort.ts",
+                      "query":  "Which implementation decides whether a person belongs in a gradual product rollout?",
+                      "targetText":  "file: src/release/cohort.ts\nlanguage: typescript\nrole: source\nmodule: src/release\nexported symbols: function chooseCohort\nrepresentative source:\nexport function chooseCohort(accountId: string, percentage: number): boolean {\n  const bucket = stableHash(accountId) % 100;\n  return bucket \u003c percentage;\n}"
+                  },
+                  {
+                      "id":  "go-source-localization-v5",
+                      "lineageId":  "synthetic-v5-go-train",
+                      "split":  "train",
+                      "language":  "go",
+                      "scenario":  "source_localization",
+                      "targetPath":  "internal/shutdown/drain.go",
+                      "query":  "Where does the server stop accepting new work while allowing active operations to finish before exit?",
+                      "targetText":  "file: internal/shutdown/drain.go\nlanguage: go\nrole: source\nmodule: internal/shutdown\nexported symbols: function Drain\nrepresentative source:\nfunc Drain(ctx context.Context, listener net.Listener, active *sync.WaitGroup) error {\n listener.Close(); done := make(chan struct{}); go func() { active.Wait(); close(done) }()\n select { case \u003c-done: return nil; case \u003c-ctx.Done(): return ctx.Err() }\n}"
+                  },
+                  {
+                      "id":  "java-source-localization-v5",
+                      "lineageId":  "synthetic-v5-java-train",
+                      "split":  "train",
+                      "language":  "java",
+                      "scenario":  "source_localization",
+                      "targetPath":  "src/main/java/cache/LruStore.java",
+                      "query":  "Which code removes the entry that has gone unused for the longest time once capacity is reached?",
+                      "targetText":  "file: src/main/java/cache/LruStore.java\nlanguage: java\nrole: source\nmodule: cache\nexported symbols: class LruStore; method removeEldestEntry\nrepresentative source:\npublic final class LruStore\u003cK,V\u003e extends LinkedHashMap\u003cK,V\u003e {\n protected boolean removeEldestEntry(Map.Entry\u003cK,V\u003e eldest) { return size() \u003e capacity; }\n}"
+                  },
+                  {
+                      "id":  "cpp-source-localization-v5",
+                      "lineageId":  "synthetic-v5-cpp-train",
+                      "split":  "train",
+                      "language":  "cpp",
+                      "scenario":  "source_localization",
+                      "targetPath":  "src/fs/normalize_path.cpp",
+                      "query":  "Where are redundant directory steps removed to produce a canonical filesystem location?",
+                      "targetText":  "file: src/fs/normalize_path.cpp\nlanguage: cpp\nrole: source\nmodule: src/fs\nexported symbols: function normalize_path\nrepresentative source:\npath normalize_path(const path\u0026 input) {\n vector\u003cpath\u003e parts;\n for (auto\u0026 part : input) { if (part == \".\") continue; if (part == \"..\") parts.pop_back(); else parts.push_back(part); }\n return join(parts);\n}"
+                  },
+                  {
+                      "id":  "python-failure-first-v5",
+                      "lineageId":  "synthetic-v5-python-calibration",
+                      "split":  "calibration",
+                      "language":  "python",
+                      "scenario":  "failure_first",
+                      "targetPath":  "src/cache/expiry.py",
+                      "query":  "A stale record is still returned after its lifetime passes. Which implementation should reject outdated values?",
+                      "targetText":  "file: src/cache/expiry.py\nlanguage: python\nrole: source\nmodule: src/cache\nexported symbols: function read_if_fresh\nrepresentative source:\ndef read_if_fresh(self, key, clock):\n    item = self.entries.get(key)\n    if item is None or clock.now() \u003e= item.expires_at:\n        self.entries.pop(key, None)\n        return None\n    return item.value"
+                  },
+                  {
+                      "id":  "typescript-failure-first-v5",
+                      "lineageId":  "synthetic-v5-typescript-calibration",
+                      "split":  "calibration",
+                      "language":  "typescript",
+                      "scenario":  "failure_first",
+                      "targetPath":  "src/auth/refreshSession.ts",
+                      "query":  "Requests remain unauthorized after login credentials expire even though a renewal secret exists. Where should access be restored?",
+                      "targetText":  "file: src/auth/refreshSession.ts\nlanguage: typescript\nrole: source\nmodule: src/auth\nexported symbols: function refreshSession\nrepresentative source:\nexport async function refreshSession(refreshToken: string) {\n const response = await identity.exchange(refreshToken);\n cookieJar.set(\"access\", response.accessToken, { expires: response.expiresAt });\n return response.account;\n}"
+                  },
+                  {
+                      "id":  "go-failure-first-v5",
+                      "lineageId":  "synthetic-v5-go-calibration",
+                      "split":  "calibration",
+                      "language":  "go",
+                      "scenario":  "failure_first",
+                      "targetPath":  "internal/tls/reloader.go",
+                      "query":  "New secure connections keep serving an old certificate after rotation. Which code should swap the in-memory identity?",
+                      "targetText":  "file: internal/tls/reloader.go\nlanguage: go\nrole: source\nmodule: internal/tls\nexported symbols: function ReloadCertificate\nrepresentative source:\nfunc (r *Reloader) ReloadCertificate(certFile, keyFile string) error {\n next, err := tls.LoadX509KeyPair(certFile, keyFile); if err != nil { return err }\n r.current.Store(\u0026next); return nil\n}"
+                  },
+                  {
+                      "id":  "java-failure-first-v5",
+                      "lineageId":  "synthetic-v5-java-calibration",
+                      "split":  "calibration",
+                      "language":  "java",
+                      "scenario":  "failure_first",
+                      "targetPath":  "src/main/java/resilience/CircuitBreaker.java",
+                      "query":  "A failing dependency is called continuously instead of being paused after repeated errors. Which implementation owns that protection?",
+                      "targetText":  "file: src/main/java/resilience/CircuitBreaker.java\nlanguage: java\nrole: source\nmodule: resilience\nexported symbols: class CircuitBreaker; method recordFailure\nrepresentative source:\npublic void recordFailure(Instant now) {\n if (failures.incrementAndGet() \u003e= threshold) { state.set(State.OPEN); retryAfter.set(now.plus(cooldown)); }\n}"
+                  },
+                  {
+                      "id":  "cpp-failure-first-v5",
+                      "lineageId":  "synthetic-v5-cpp-calibration",
+                      "split":  "calibration",
+                      "language":  "cpp",
+                      "scenario":  "failure_first",
+                      "targetPath":  "src/memory/slab_pool.cpp",
+                      "query":  "The allocator crashes when the same object is released twice. Where should duplicate returns to the free list be detected?",
+                      "targetText":  "file: src/memory/slab_pool.cpp\nlanguage: cpp\nrole: source\nmodule: src/memory\nexported symbols: method SlabPool::release\nrepresentative source:\nvoid SlabPool::release(void* pointer) {\n auto index = slot_index(pointer);\n if (!allocated[index].exchange(false)) throw double_release_error(index);\n free_slots.push(index);\n}"
+                  },
+                  {
+                      "id":  "python-long-session-v5",
+                      "lineageId":  "synthetic-v5-python-holdout",
+                      "split":  "holdout",
+                      "language":  "python",
+                      "scenario":  "long_session",
+                      "targetPath":  "src/payments/outbox.py",
+                      "query":  "Continue the interrupted-payment investigation: find where durable unsent events are claimed, delivered once, and acknowledged only after the remote service accepts them.",
+                      "targetText":  "file: src/payments/outbox.py\nlanguage: python\nrole: source\nmodule: src/payments\nexported symbols: class OutboxDispatcher; function deliver_pending\nrepresentative source:\nasync def deliver_pending(self):\n    for event in await self.store.claim_batch():\n        await self.gateway.publish(event.payload, idempotency_key=event.id)\n        await self.store.mark_delivered(event.id)"
+                  },
+                  {
+                      "id":  "typescript-long-session-v5",
+                      "lineageId":  "synthetic-v5-typescript-holdout",
+                      "split":  "holdout",
+                      "language":  "typescript",
+                      "scenario":  "long_session",
+                      "targetPath":  "src/collab/mergeRemote.ts",
+                      "query":  "Resume the collaborative-editing bug: locate the implementation that folds remote operations into local state while preserving edits that have not been acknowledged.",
+                      "targetText":  "file: src/collab/mergeRemote.ts\nlanguage: typescript\nrole: source\nmodule: src/collab\nexported symbols: function mergeRemote\nrepresentative source:\nexport function mergeRemote(state: DocumentState, incoming: Operation[]) {\n const transformed = incoming.map(op =\u003e transformAgainst(op, state.pending));\n return applyOperations(state, transformed);\n}"
+                  },
+                  {
+                      "id":  "go-long-session-v5",
+                      "lineageId":  "synthetic-v5-go-holdout",
+                      "split":  "holdout",
+                      "language":  "go",
+                      "scenario":  "long_session",
+                      "targetPath":  "internal/stream/checkpoint.go",
+                      "query":  "Continue the stream-recovery work: where is the last committed offset loaded before processing and advanced only after output becomes durable?",
+                      "targetText":  "file: internal/stream/checkpoint.go\nlanguage: go\nrole: source\nmodule: internal/stream\nexported symbols: method Processor.Resume; method Processor.Commit\nrepresentative source:\nfunc (p *Processor) Resume(ctx context.Context) error {\n offset, err := p.checkpoints.Load(p.partition); if err != nil { return err }\n return p.consumeFrom(ctx, offset, func(next Offset) error { return p.checkpoints.Store(p.partition, next) })\n}"
+                  },
+                  {
+                      "id":  "java-long-session-v5",
+                      "lineageId":  "synthetic-v5-java-holdout",
+                      "split":  "holdout",
+                      "language":  "java",
+                      "scenario":  "long_session",
+                      "targetPath":  "src/main/java/search/CursorCodec.java",
+                      "query":  "After tracing unstable result pages, find the component that encodes the final sort position and validates it before the next page resumes.",
+                      "targetText":  "file: src/main/java/search/CursorCodec.java\nlanguage: java\nrole: source\nmodule: search\nexported symbols: class CursorCodec; method encode; method decode\nrepresentative source:\npublic Cursor decode(String token) {\n byte[] signed = Base64.getUrlDecoder().decode(token);\n verifier.requireValid(signed);\n return mapper.readValue(payload(signed), Cursor.class);\n}"
+                  },
+                  {
+                      "id":  "cpp-long-session-v5",
+                      "lineageId":  "synthetic-v5-cpp-holdout",
+                      "split":  "holdout",
+                      "language":  "cpp",
+                      "scenario":  "long_session",
+                      "targetPath":  "src/storage/journal_recovery.cpp",
+                      "query":  "Continue the crash-recovery analysis: where are complete log records replayed while a torn final write is detected and discarded?",
+                      "targetText":  "file: src/storage/journal_recovery.cpp\nlanguage: cpp\nrole: source\nmodule: src/storage\nexported symbols: function recover_journal\nrepresentative source:\nState recover_journal(File\u0026 journal) {\n State state;\n while (auto record = read_checked_record(journal)) apply(state, *record);\n journal.truncate(last_complete_offset());\n return state;\n}"
+                  }
+              ]
+}

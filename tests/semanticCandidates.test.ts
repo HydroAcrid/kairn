@@ -58,13 +58,15 @@ describe("model-based semantic candidates", () => {
 
   it("seals lineage-disjoint selection and holdout cases across all language/scenario cells", () => {
     const manifest = JSON.parse(fs.readFileSync(
-      path.resolve("benchmarks/semantic/model-selection-v4.json"),
+      path.resolve("benchmarks/semantic/model-selection-v5.json"),
       "utf8"
     )) as {
       sealed: boolean;
+      documentSchemaVersion: string;
       cases: Array<{ lineageId: string; language: string; scenario: string; split: string }>;
     };
     expect(manifest.sealed).toBe(true);
+    expect(manifest.documentSchemaVersion).toBe("semantic-documents-v4");
     expect(manifest.cases).toHaveLength(15);
     expect(new Set(manifest.cases.map((item) => item.lineageId)).size).toBe(15);
     expect(new Set(manifest.cases.map((item) => `${item.language}:${item.scenario}`)).size).toBe(15);
