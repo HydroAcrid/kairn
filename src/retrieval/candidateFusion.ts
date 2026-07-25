@@ -286,10 +286,10 @@ export function rankEvidenceBackedGraphCandidates(input: {
     .sort((left, right) =>
       right.precision - left.precision ||
       (evidenceRanks.get(right.path)?.size ?? 0) - (evidenceRanks.get(left.path)?.size ?? 0) ||
+      left.bestSeedRank - right.bestSeedRank ||
       right.seedRanks.size - left.seedRanks.size ||
       graphSupportScore(right) - graphSupportScore(left) ||
       independentScore(right.path) - independentScore(left.path) ||
-      left.bestSeedRank - right.bestSeedRank ||
       left.path.localeCompare(right.path)
     );
   return diversifyModuleInstallationFamilies(ranked).map((candidate) => candidate.path);

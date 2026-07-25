@@ -369,6 +369,35 @@ describe("model-based semantic candidates", () => {
     expect(ranked[0]).toBe(declaration.path);
   });
 
+  it("prefers an exact graph relation from the strongest seed before lower-ranked consensus", () => {
+    const rootPath = "/repo";
+    const seeds = Array.from({ length: 8 }, (_, index) =>
+      file(rootPath, `src/api/seed-${index}.java`)
+    );
+    const closeDeclaration = file(rootPath, "src/model/CloseType.java");
+    const consensusDeclaration = file(rootPath, "src/model/ConsensusType.java");
+    const filesByPath = new Map(
+      [...seeds, closeDeclaration, consensusDeclaration]
+        .map((candidate) => [candidate.path, candidate])
+    );
+    const ranked = rankEvidenceBackedGraphCandidates({
+      seedPaths: seeds.map((seed) => seed.path),
+      edges: [
+        edge(rootPath, seeds[0]!.path, closeDeclaration.path, "type_reference"),
+        ...seeds.slice(3).map((seed) =>
+          edge(rootPath, seed.path, consensusDeclaration.path, "type_reference")
+        )
+      ],
+      filesByPath,
+      evidenceRankings: []
+    });
+
+    expect(ranked.slice(0, 2)).toEqual([
+      closeDeclaration.path,
+      consensusDeclaration.path
+    ]);
+  });
+
   it("credits graph consensus from multiple independently retrieved seeds", () => {
     const rootPath = "/repo";
     const sharedImplementation = file(rootPath, "src/workflow/public-api.ts");
