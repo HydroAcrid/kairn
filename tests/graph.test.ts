@@ -62,8 +62,35 @@ describe("buildRepoGraph", () => {
     const graph = buildRepoGraph({ rootPath, files, parsedFiles });
     const testEdges = graph.edges.filter((edge) => edge.type === "test_for");
 
-    expect(testEdges.length).toBeLessThanOrEqual(12);
+    expect(testEdges).toHaveLength(1);
+    expect(testEdges[0]).toEqual(expect.objectContaining({
+      fromFile: "src/local-url.test.ts",
+      toFile: "src/local-url.ts",
+      metadata: expect.objectContaining({ reason: "exact test/source basename" })
+    }));
     expect(edgeTypes(graph.edges, "src/local-url.test.ts", "src/local-url.ts")).toContain("imports");
+  });
+
+  it("does not turn a shared directory or partial basename into a test/source relationship", async () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "pkg/session.go", "source"),
+      file(rootPath, "pkg/session_refresh_deferred_test.go", "test")
+    ];
+    const parsedFiles = await Promise.all(files.map((record) =>
+      parseSourceFile({
+        rootPath,
+        filePath: record.path,
+        language: record.language,
+        content: record.kind === "test"
+          ? "package pkg\n\nfunc TestRefreshDeferred(t *testing.T) {}"
+          : "package pkg\n\nfunc RunSession() {}"
+      })
+    ));
+
+    const graph = buildRepoGraph({ rootPath, files, parsedFiles });
+
+    expect(edgeTypes(graph.edges, files[1]!.path, files[0]!.path)).not.toContain("test_for");
   });
 
   it("adds TypeScript language-service reference edges without replacing tree-sitter edges", async () => {

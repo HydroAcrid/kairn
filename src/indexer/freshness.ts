@@ -11,7 +11,7 @@ import { nowIso } from "../utils/time.js";
 // Increment whenever parser, graph, or other non-file-derived index semantics
 // change. Existing embeddings remain reusable through their own content/model
 // hashes, but structural records must be rebuilt before they are served.
-export const INDEX_FRESHNESS_SCHEMA_VERSION = 9;
+export const INDEX_FRESHNESS_SCHEMA_VERSION = 10;
 
 const MAX_CONTENT_IDENTITY_BYTES_PER_FILE = 256 * 1024;
 const MAX_CONTENT_IDENTITY_BYTES_TOTAL = 2 * 1024 * 1024;

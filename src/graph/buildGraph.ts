@@ -507,17 +507,14 @@ function addTestEdges(edgeMap: Map<string, GraphEdgeRecord>, rootPath: string, f
   const sourceFiles = files.filter((file) => file.kind !== "test");
   const testFiles = files.filter((file) => file.kind === "test");
   const sourceByBase = new Map<string, FileRecord[]>();
-  const sourceByDirectory = new Map<string, FileRecord[]>();
 
   for (const source of sourceFiles) {
     const sourceBase = baseNameWithoutExtension(source.path);
     sourceByBase.set(sourceBase, [...(sourceByBase.get(sourceBase) ?? []), source]);
-    const directory = path.posix.dirname(source.path);
-    sourceByDirectory.set(directory, [...(sourceByDirectory.get(directory) ?? []), source]);
   }
 
   for (const test of testFiles) {
-    const candidates = candidateSourcesForTest(test, sourceByBase, sourceByDirectory);
+    const candidates = candidateSourcesForTest(test, sourceByBase);
 
     for (const source of candidates) {
       addEdge(edgeMap, {
@@ -525,7 +522,7 @@ function addTestEdges(edgeMap: Map<string, GraphEdgeRecord>, rootPath: string, f
         fromFile: test.path,
         toFile: source.path,
         type: "test_for",
-        metadata: { reason: "filename/path proximity" }
+        metadata: { reason: "exact test/source basename" }
       });
     }
   }
@@ -709,28 +706,9 @@ function goSourceSymbolNamesForTest(testName: string): string[] {
     .filter((name): name is string => Boolean(name));
 }
 
-function isLikelyTestFor(testPath: string, sourcePath: string): boolean {
-  const testDirectory = path.posix.dirname(testPath);
-  const sourceDirectory = path.posix.dirname(sourcePath);
-  const sourceBase = path.posix.basename(sourcePath).replace(/\.[^.]+$/, "").toLowerCase();
-  const testBase = path.posix.basename(testPath).toLowerCase();
-  const normalizedTest = testPath.toLowerCase();
-  const normalizedSource = sourcePath.toLowerCase();
-
-  return (
-    testBase.includes(sourceBase) ||
-    testPath.toLowerCase().includes(sourceBase) ||
-    testDirectory === sourceDirectory ||
-    testDirectory.endsWith("__tests__") && path.posix.dirname(testDirectory) === sourceDirectory ||
-    testDirectory.endsWith("/tests") && normalizedTest.includes(sourceBase) ||
-    normalizedTest.includes("/src/test/java/") && normalizedSource.includes("/src/main/java/") && testBase.includes(sourceBase)
-  );
-}
-
 function candidateSourcesForTest(
   test: FileRecord,
-  sourceByBase: Map<string, FileRecord[]>,
-  sourceByDirectory: Map<string, FileRecord[]>
+  sourceByBase: Map<string, FileRecord[]>
 ): FileRecord[] {
   const testDirectory = path.posix.dirname(test.path);
   const mappedDirectory = sourceDirectoryForTestDirectory(testDirectory);
@@ -738,25 +716,21 @@ function candidateSourcesForTest(
     .replace(/(^test[-_.])|([-_.]test$)|([-_.]spec$)|(^test_)/g, "")
     .replace(/test$/i, "")
     .toLowerCase();
-  const candidates = new Map<string, FileRecord>();
+  const exactBasenameCandidates = sourceByBase.get(testBase) ?? [];
+  const nearbyCandidates = exactBasenameCandidates.filter((source) => {
+    const sourceDirectory = path.posix.dirname(source.path);
+    return sourceDirectory === testDirectory || sourceDirectory === mappedDirectory;
+  });
+  // Exact convention matches are objective repository structure. Prefer the
+  // matching source/test directory when a common basename occurs in multiple
+  // packages; only accept a remote match when it is unique repository-wide.
+  const candidates = nearbyCandidates.length > 0
+    ? nearbyCandidates
+    : exactBasenameCandidates.length === 1
+      ? exactBasenameCandidates
+      : [];
 
-  for (const source of sourceByBase.get(testBase) ?? []) {
-    candidates.set(source.path, source);
-  }
-
-  for (const source of sourceByDirectory.get(mappedDirectory) ?? []) {
-    if (isLikelyTestFor(test.path, source.path)) {
-      candidates.set(source.path, source);
-    }
-  }
-
-  for (const source of sourceByDirectory.get(testDirectory) ?? []) {
-    if (isLikelyTestFor(test.path, source.path)) {
-      candidates.set(source.path, source);
-    }
-  }
-
-  return [...candidates.values()]
+  return candidates
     .sort((a, b) => b.importance - a.importance || a.path.localeCompare(b.path))
     .slice(0, 12);
 }
