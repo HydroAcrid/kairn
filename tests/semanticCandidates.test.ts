@@ -109,6 +109,28 @@ describe("model-based semantic candidates", () => {
       .toBe(true);
   });
 
+  it("reruns model selection on the v5 document schema without changing selection content", () => {
+    const previous = JSON.parse(fs.readFileSync(
+      path.resolve("benchmarks/semantic/model-selection-v6.json"),
+      "utf8"
+    )) as {
+      documentSchemaVersion: string;
+      cases: unknown[];
+    };
+    const current = JSON.parse(fs.readFileSync(
+      path.resolve("benchmarks/semantic/model-selection-v7.json"),
+      "utf8"
+    )) as {
+      sealed: boolean;
+      documentSchemaVersion: string;
+      cases: unknown[];
+    };
+
+    expect(current.sealed).toBe(true);
+    expect(current.documentSchemaVersion).toBe("semantic-documents-v5");
+    expect(current.cases).toEqual(previous.cases);
+  });
+
   it("freezes the reviewed 38-case semantic oracle to its exact labeled intake", () => {
     const oracle = JSON.parse(fs.readFileSync(
       path.resolve("benchmarks/semantic/oracle38-cases-v1.json"),
