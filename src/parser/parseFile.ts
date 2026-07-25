@@ -90,6 +90,7 @@ export async function parseSourceFile(input: {
       language: input.language,
       symbols: dedupeSymbols(parsed.symbols),
       imports: [...new Set(parsed.imports)].sort(),
+      references: extractStructuralTypeReferences(tree.rootNode, input.language),
       hasErrors: tree.rootNode.hasError
     };
   } catch {
@@ -138,8 +139,23 @@ function emptyParsedFile(
     language: input.language,
     symbols: [],
     imports: [],
+    references: [],
     hasErrors
   };
+}
+
+function extractStructuralTypeReferences(
+  rootNode: SyntaxNodeLike,
+  language: string
+): string[] {
+  if (!["go", "java", "c", "cpp"].includes(language)) return [];
+  const references = new Set<string>();
+  visit(rootNode, (node) => {
+    if (node.type !== "type_identifier") return;
+    const name = node.text.trim();
+    if (name && name.length <= 160) references.add(name);
+  });
+  return [...references].sort().slice(0, 256);
 }
 
 function parseByLanguage(

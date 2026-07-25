@@ -16,6 +16,7 @@ export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v4" as const
 const MAX_DOCUMENT_CHARS = 768;
 const MAX_FILE_SYMBOLS = 4;
 const MAX_DIRECT_IMPORTS = 4;
+const MAX_DOCUMENTATION_SNIPPETS = 3;
 const LARGE_REPOSITORY_SYMBOL_FRACTION = 0.25;
 
 export function buildSemanticDocuments(input: {
@@ -77,20 +78,34 @@ function buildFileDocument(
     behavioralSymbols,
     Math.min(MAX_FILE_SYMBOLS, behavioralSymbols.length)
   ).map((symbol) => `${symbol.kind} ${boundedField(symbol.signature || symbol.name, 56)}`);
+  const documentation = extractLeadingDocumentation(content, behavioralSymbols);
+  const fileImportLimit = documentation.length > 0 ? 3 : MAX_DIRECT_IMPORTS;
   const directImports = parsed?.imports.length
-    ? evenlySampleIncludingEndpoints(parsed.imports, Math.min(MAX_DIRECT_IMPORTS, parsed.imports.length))
+    ? evenlySampleIncludingEndpoints(parsed.imports, Math.min(fileImportLimit, parsed.imports.length))
       .map((item) => boundedField(item, 48))
     : [];
-  const prefix = [
-    `file: ${boundedField(file.path, 160)}`,
-    `language: ${file.language}`,
-    `role: ${file.kind}`,
-    `module: ${boundedField(path.posix.dirname(file.path), 80)}`,
-    boundedList("declared symbols", declaredSymbols, 140),
-    boundedList("direct imports", directImports, 140),
-    "",
-    "representative source:"
-  ].join("\n");
+  const prefix = documentation.length > 0
+    ? [
+        `file: ${boundedField(file.path, 112)}`,
+        `language: ${file.language}`,
+        `role: ${file.kind}`,
+        `module: ${boundedField(path.posix.dirname(file.path), 56)}`,
+        boundedList("declared symbols", declaredSymbols, 112),
+        boundedList("direct imports", directImports, 80),
+        boundedList("documentation", documentation, 224),
+        "",
+        "representative source:"
+      ].join("\n")
+    : [
+        `file: ${boundedField(file.path, 160)}`,
+        `language: ${file.language}`,
+        `role: ${file.kind}`,
+        `module: ${boundedField(path.posix.dirname(file.path), 80)}`,
+        boundedList("declared symbols", declaredSymbols, 140),
+        boundedList("direct imports", directImports, 140),
+        "",
+        "representative source:"
+      ].join("\n");
   const text = composeDocument(prefix, content);
   return semanticDocument({
     rootPath: file.rootPath,
@@ -208,6 +223,69 @@ function representativeSource(content: string, maxChars: number): string {
 
 function sliceLines(content: string, startLine: number, endLine: number): string {
   return content.split(/\r?\n/).slice(Math.max(0, startLine - 1), Math.max(startLine, endLine)).join("\n");
+}
+
+function extractLeadingDocumentation(content: string, symbols: SymbolRecord[]): string[] {
+  const lines = content.split(/\r?\n/);
+  const snippets = symbols
+    .slice()
+    .sort((left, right) => left.startLine - right.startLine || left.name.localeCompare(right.name))
+    .map((symbol) => leadingDocumentationForLine(lines, symbol.startLine))
+    .filter((snippet): snippet is string => Boolean(snippet));
+  const unique = [...new Set(snippets)];
+  return evenlySampleIncludingEndpoints(
+    unique,
+    Math.min(MAX_DOCUMENTATION_SNIPPETS, unique.length)
+  );
+}
+
+function leadingDocumentationForLine(lines: string[], startLine: number): string | undefined {
+  if (lines.length === 0 || startLine <= 1 || startLine > lines.length) return undefined;
+  let cursor = startLine - 2;
+  while (cursor >= 0 && isDeclarationAnnotation(lines[cursor]!)) cursor -= 1;
+  if (cursor < 0 || !lines[cursor]!.trim()) return undefined;
+
+  const lastLine = lines[cursor]!.trim();
+  if (lastLine.startsWith("//") || lastLine.startsWith("#")) {
+    const marker = lastLine.startsWith("//") ? "//" : "#";
+    const collected: string[] = [];
+    while (cursor >= 0 && lines[cursor]!.trim().startsWith(marker)) {
+      collected.unshift(stripLineComment(lines[cursor]!.trim(), marker));
+      cursor -= 1;
+    }
+    return normalizeDocumentation(collected.join(" "));
+  }
+
+  if (!lastLine.endsWith("*/")) return undefined;
+  const collected: string[] = [];
+  while (cursor >= 0) {
+    const line = lines[cursor]!.trim();
+    collected.unshift(line);
+    cursor -= 1;
+    if (line.startsWith("/*")) break;
+  }
+  if (!collected[0]?.startsWith("/*")) return undefined;
+  return normalizeDocumentation(
+    collected
+      .join(" ")
+      .replace(/^\/\*+\s*/, "")
+      .replace(/\s*\*\/$/, "")
+      .replace(/\s*\*\s*/g, " ")
+  );
+}
+
+function isDeclarationAnnotation(line: string): boolean {
+  const trimmed = line.trim();
+  return trimmed.startsWith("@") || trimmed.startsWith("#[");
+}
+
+function stripLineComment(line: string, marker: string): string {
+  return line.slice(marker.length).trim();
+}
+
+function normalizeDocumentation(value: string): string | undefined {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  return normalized || undefined;
 }
 
 function truncateDocument(text: string): string {

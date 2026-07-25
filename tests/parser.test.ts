@@ -258,6 +258,7 @@ describe("cross-language parser adapters", () => {
         "example.com/project/register"
       ])
     );
+    expect(parsed.references).toEqual(expect.arrayContaining(["Store", "Loader", "Alias"]));
     expect(parsed.symbols).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: "DefaultLimit", kind: "const", exported: true }),
@@ -302,6 +303,7 @@ describe("cross-language parser adapters", () => {
         "BlankState:type"
       ])
     );
+    expect(parsed.references).toEqual(expect.arrayContaining(["CharSequence"]));
   });
 
   it("extracts C and C++ includes, namespaces, classes, structs, and functions", async () => {

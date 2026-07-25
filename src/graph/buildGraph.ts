@@ -38,6 +38,7 @@ export function buildRepoGraph(input: {
     input.parsedFiles,
     input.goModules ?? []
   );
+  addLocalTypeReferenceEdges(edgeMap, input.rootPath, input.files, input.parsedFiles);
   addSiblingImplementationEdges(edgeMap, input.rootPath, input.files, input.parsedFiles);
   addTestEdges(edgeMap, input.rootPath, input.files);
   addGoTestSymbolEdges(edgeMap, input.rootPath, input.files, input.parsedFiles);
@@ -50,6 +51,111 @@ export function buildRepoGraph(input: {
     symbols: input.parsedFiles.flatMap((file) => file.symbols),
     edges: budgetGraphEdges({ edges: [...edgeMap.values()], files: input.files })
   };
+}
+
+function addLocalTypeReferenceEdges(
+  edgeMap: Map<string, GraphEdgeRecord>,
+  rootPath: string,
+  files: FileRecord[],
+  parsedFiles: ParsedFile[]
+): void {
+  const fileByPath = new Map(files.map((file) => [file.path, file]));
+  const declarations = new Map<string, Set<string>>();
+  const javaDeclarations = new Map<string, Set<string>>();
+
+  for (const parsedFile of parsedFiles) {
+    const scope = localTypeScope(parsedFile);
+    if (!scope || fileByPath.get(parsedFile.filePath)?.indexTier === "tier0") continue;
+    for (const symbol of parsedFile.symbols) {
+      if (!["class", "interface", "type"].includes(symbol.kind)) continue;
+      addDeclaration(declarations, `${scope}\0${symbol.name}`, parsedFile.filePath);
+      if (parsedFile.language === "java") {
+        const packageName = packageMetadata(parsedFile);
+        if (packageName) {
+          addDeclaration(javaDeclarations, `${packageName}.${symbol.name}`, parsedFile.filePath);
+        }
+      }
+    }
+  }
+
+  for (const parsedFile of parsedFiles) {
+    const scope = localTypeScope(parsedFile);
+    if (!scope) continue;
+    for (const reference of parsedFile.references ?? []) {
+      addUniqueTypeReferenceEdge({
+        edgeMap,
+        rootPath,
+        fromFile: parsedFile.filePath,
+        targetFiles: declarations.get(`${scope}\0${reference}`),
+        reference,
+        reason: "parser-observed local type reference"
+      });
+    }
+
+    if (parsedFile.language !== "java") continue;
+    for (const specifier of parsedFile.imports) {
+      if (isPackageMetadata(specifier) || specifier.endsWith(".*")) continue;
+      addUniqueTypeReferenceEdge({
+        edgeMap,
+        rootPath,
+        fromFile: parsedFile.filePath,
+        targetFiles: javaDeclarations.get(specifier),
+        reference: specifier.slice(specifier.lastIndexOf(".") + 1),
+        reason: "parser-observed Java type import"
+      });
+    }
+  }
+}
+
+function addDeclaration(
+  declarations: Map<string, Set<string>>,
+  key: string,
+  filePath: string
+): void {
+  const paths = declarations.get(key) ?? new Set<string>();
+  paths.add(filePath);
+  declarations.set(key, paths);
+}
+
+function addUniqueTypeReferenceEdge(input: {
+  edgeMap: Map<string, GraphEdgeRecord>;
+  rootPath: string;
+  fromFile: string;
+  targetFiles: Set<string> | undefined;
+  reference: string;
+  reason: string;
+}): void {
+  if (input.targetFiles?.size !== 1) return;
+  const [toFile] = input.targetFiles;
+  if (!toFile || toFile === input.fromFile) return;
+  addEdge(input.edgeMap, {
+    rootPath: input.rootPath,
+    fromFile: input.fromFile,
+    toFile,
+    type: "type_reference",
+    metadata: {
+      reason: input.reason,
+      reference: input.reference
+    }
+  });
+}
+
+function localTypeScope(parsedFile: ParsedFile): string | undefined {
+  if (parsedFile.language === "java") {
+    const packageName = packageMetadata(parsedFile);
+    return packageName ? `java:${packageName}` : undefined;
+  }
+  if (parsedFile.language === "go") {
+    return `go:${path.posix.dirname(parsedFile.filePath)}:${packageMetadata(parsedFile) ?? ""}`;
+  }
+  if (parsedFile.language === "c" || parsedFile.language === "cpp") {
+    return `${parsedFile.language}:${path.posix.dirname(parsedFile.filePath)}`;
+  }
+  return undefined;
+}
+
+function packageMetadata(parsedFile: ParsedFile): string | undefined {
+  return parsedFile.imports.find(isPackageMetadata)?.slice("package:".length);
 }
 
 function addSiblingImplementationEdges(

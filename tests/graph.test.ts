@@ -173,6 +173,46 @@ describe("buildRepoGraph", () => {
     )).toBe(false);
   });
 
+  it("links parser-observed local type references to unique declarations", async () => {
+    const rootPath = "/repo";
+    const javaFiles: FileRecord[] = [
+      {
+        ...file(rootPath, "src/main/java/org/example/TypeExtractor.java", "source"),
+        language: "java"
+      },
+      {
+        ...file(rootPath, "src/main/java/org/example/ResolverFacade.java", "source"),
+        language: "java"
+      }
+    ];
+    const sources = new Map([
+      [
+        javaFiles[0]!.path,
+        "package org.example;\npublic class TypeExtractor {}\n"
+      ],
+      [
+        javaFiles[1]!.path,
+        "package org.example;\npublic class ResolverFacade { TypeExtractor extractor; }\n"
+      ]
+    ]);
+    const parsedFiles = await Promise.all(javaFiles.map((record) =>
+      parseSourceFile({
+        rootPath,
+        filePath: record.path,
+        language: record.language,
+        content: sources.get(record.path) ?? ""
+      })
+    ));
+
+    const graph = buildRepoGraph({ rootPath, files: javaFiles, parsedFiles });
+
+    expect(edgeTypes(
+      graph.edges,
+      "src/main/java/org/example/ResolverFacade.java",
+      "src/main/java/org/example/TypeExtractor.java"
+    )).toContain("type_reference");
+  });
+
   it("falls back gracefully when tsconfig is broken", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-broken-tsconfig-"));
     fs.mkdirSync(path.join(root, "src"), { recursive: true });

@@ -165,6 +165,8 @@ export type ParsedFile = {
   language: string;
   symbols: SymbolRecord[];
   imports: string[];
+  /** Parser-observed type names used by this file, never task-derived relevance terms. */
+  references?: string[];
   hasErrors: boolean;
 };
 

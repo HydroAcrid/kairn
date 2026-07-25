@@ -285,6 +285,31 @@ describe("model-based semantic candidates", () => {
     expect(result.initialPaths).toContain(productionSource.path);
   });
 
+  it("allows a parser-observed type reference to enter without lexical support", () => {
+    const rootPath = "/repo";
+    const facade = file(rootPath, "src/workflow/ResolverFacade.java");
+    const implementation = file(rootPath, "src/workflow/TypeExtractor.java");
+    const distractors = Array.from({ length: 70 }, (_, index) =>
+      file(rootPath, `src/noise-${String(index).padStart(2, "0")}.java`)
+    );
+    const rankedFiles = [facade, ...distractors];
+    const result = buildModelCandidateUnion({
+      files: [facade, implementation, ...distractors],
+      query: "Support a new expression form during method resolution.",
+      symbols: [],
+      bm25Results: rankedFiles.map((candidate, index) => scored(candidate, 1 - index / 100)),
+      semanticHits: rankedFiles.map((candidate, index) => ({
+        path: candidate.path,
+        similarity: 1 - index / 100,
+        documentIds: [`rank-${index}`]
+      })),
+      semanticStatus: readyStatus(rankedFiles.length),
+      edges: [edge(rootPath, facade.path, implementation.path, "type_reference")]
+    });
+
+    expect(result.initialPaths).toContain(implementation.path);
+  });
+
   it("credits graph consensus from multiple independently retrieved seeds", () => {
     const rootPath = "/repo";
     const sharedImplementation = file(rootPath, "src/workflow/public-api.ts");
@@ -690,6 +715,65 @@ describe("model-based semantic candidates", () => {
       expect(fileDocument.text).toContain("region_0_sentinel");
       expect(fileDocument.text).toContain("region_4_sentinel");
       expect(fileDocument.text).toContain("[…]");
+    } finally {
+      fs.rmSync(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it("includes documentation structurally attached to declarations in bounded file documents", () => {
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-documentation-"));
+    try {
+      const filePath = "src/attach_config.go";
+      const content = [
+        "package service",
+        "",
+        "// AttachConfig connects removed configuration blocks to graph nodes.",
+        "// The caller supplies either an active resource or a removed resource.",
+        "type AttachConfig interface {",
+        "  Attach(*Resource, *Removed)",
+        "}",
+        "",
+        "func unrelated() {}"
+      ].join("\n");
+      fs.mkdirSync(path.join(rootPath, "src"), { recursive: true });
+      fs.writeFileSync(path.join(rootPath, filePath), content);
+      const symbols = [{
+        rootPath,
+        filePath,
+        name: "AttachConfig",
+        kind: "interface" as const,
+        exported: true,
+        startLine: 5,
+        endLine: 7,
+        signature: "type AttachConfig interface"
+      }];
+      const graph: RepoGraph = {
+        rootPath,
+        files: [file(rootPath, filePath)],
+        parsedFiles: [{
+          rootPath,
+          filePath,
+          language: "go",
+          imports: [],
+          hasErrors: false,
+          symbols
+        }],
+        symbols,
+        edges: []
+      };
+
+      const fileDocument = buildSemanticDocuments({
+        rootPath,
+        graph,
+        maxDocuments: 1
+      })[0]!;
+      expect(fileDocument.text.length).toBeLessThanOrEqual(768);
+      expect(fileDocument.text).toContain(
+        "AttachConfig connects removed configuration blocks to graph nodes"
+      );
+      expect(fileDocument.text).toContain(
+        "caller supplies either an active resource or a removed resource"
+      );
     } finally {
       fs.rmSync(rootPath, { recursive: true, force: true });
     }
