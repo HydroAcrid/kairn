@@ -13,9 +13,10 @@ import { sha256 } from "../utils/hash.js";
 import { estimateTokens } from "../utils/tokens.js";
 
 export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v4" as const;
-const MAX_DOCUMENT_CHARS = 1_800;
-const MAX_FILE_SYMBOLS = 8;
-const MAX_DIRECT_IMPORTS = 8;
+const MAX_DOCUMENT_CHARS = 768;
+const MAX_FILE_SYMBOLS = 4;
+const MAX_DIRECT_IMPORTS = 4;
+const LARGE_REPOSITORY_SYMBOL_FRACTION = 0.25;
 
 export function buildSemanticDocuments(input: {
   rootPath: string;
@@ -44,7 +45,16 @@ export function buildSemanticDocuments(input: {
   }
 
   const selected = [...fileDocuments];
-  const symbolBudget = Math.max(0, input.maxDocuments - selected.length);
+  // A repository can have more eligible files than the nominal semantic
+  // document budget. File-level coverage remains mandatory, so reserve a
+  // bounded additional symbol budget instead of collapsing to zero behavioral
+  // documents exactly where large repositories need them most.
+  const symbolBudget = input.maxDocuments > selected.length
+    ? input.maxDocuments - selected.length
+    : Math.min(
+        input.maxDocuments,
+        Math.ceil(selected.length * LARGE_REPOSITORY_SYMBOL_FRACTION)
+      );
   if (symbolBudget > 0) {
     selected.push(...allocateSymbolDocuments(symbolQueues, symbolBudget));
   }
@@ -62,19 +72,22 @@ function buildFileDocument(
   symbols: SymbolRecord[],
   content: string
 ): SemanticDocumentRecord {
-  const declaredSymbols = evenlySampleIncludingEndpoints(symbols, Math.min(MAX_FILE_SYMBOLS, symbols.length))
-    .map((symbol) => `${symbol.kind} ${boundedField(symbol.signature || symbol.name, 96)}`);
+  const behavioralSymbols = semanticBehaviorSymbols(symbols);
+  const declaredSymbols = evenlySampleIncludingEndpoints(
+    behavioralSymbols,
+    Math.min(MAX_FILE_SYMBOLS, behavioralSymbols.length)
+  ).map((symbol) => `${symbol.kind} ${boundedField(symbol.signature || symbol.name, 56)}`);
   const directImports = parsed?.imports.length
     ? evenlySampleIncludingEndpoints(parsed.imports, Math.min(MAX_DIRECT_IMPORTS, parsed.imports.length))
-      .map((item) => boundedField(item, 80))
+      .map((item) => boundedField(item, 48))
     : [];
   const prefix = [
-    `file: ${file.path}`,
+    `file: ${boundedField(file.path, 160)}`,
     `language: ${file.language}`,
     `role: ${file.kind}`,
-    `module: ${path.posix.dirname(file.path)}`,
-    boundedList("declared symbols", declaredSymbols, 320),
-    boundedList("direct imports", directImports, 320),
+    `module: ${boundedField(path.posix.dirname(file.path), 80)}`,
+    boundedList("declared symbols", declaredSymbols, 140),
+    boundedList("direct imports", directImports, 140),
     "",
     "representative source:"
   ].join("\n");
@@ -98,18 +111,18 @@ function buildSymbolDocument(
   if (!body.trim()) return undefined;
   const directImports = parsed?.imports.length
     ? evenlySampleIncludingEndpoints(parsed.imports, Math.min(MAX_DIRECT_IMPORTS, parsed.imports.length))
-      .map((item) => boundedField(item, 80))
+      .map((item) => boundedField(item, 48))
     : [];
   const prefix = [
-    `file: ${file.path}`,
+    `file: ${boundedField(file.path, 160)}`,
     `language: ${file.language}`,
     `role: ${file.kind}`,
-    `module: ${path.posix.dirname(file.path)}`,
+    `module: ${boundedField(path.posix.dirname(file.path), 80)}`,
     `symbol: ${symbol.name}`,
     `symbol kind: ${symbol.kind}`,
-    `signature: ${symbol.signature}`,
+    `signature: ${boundedField(symbol.signature, 140)}`,
     `exported: ${symbol.exported ? "yes" : "no"}`,
-    boundedList("direct imports", directImports, 320),
+    boundedList("direct imports", directImports, 140),
     ""
   ].join("\n");
   const text = composeDocument(prefix, body);
@@ -163,7 +176,7 @@ function stableEligibleFiles(files: FileRecord[]): FileRecord[] {
 
 function groupSymbols(symbols: SymbolRecord[]): Map<string, SymbolRecord[]> {
   const grouped = new Map<string, SymbolRecord[]>();
-  for (const symbol of [...symbols].sort((left, right) =>
+  for (const symbol of semanticBehaviorSymbols(symbols).sort((left, right) =>
     left.filePath.localeCompare(right.filePath) ||
     left.startLine - right.startLine ||
     left.name.localeCompare(right.name)
@@ -171,6 +184,13 @@ function groupSymbols(symbols: SymbolRecord[]): Map<string, SymbolRecord[]> {
     grouped.set(symbol.filePath, [...(grouped.get(symbol.filePath) ?? []), symbol]);
   }
   return grouped;
+}
+
+function semanticBehaviorSymbols(symbols: SymbolRecord[]): SymbolRecord[] {
+  return symbols.filter((symbol) =>
+    symbol.exported ||
+    ["function", "class", "interface", "type", "component", "default"].includes(symbol.kind)
+  );
 }
 
 function representativeSource(content: string, maxChars: number): string {
@@ -206,8 +226,12 @@ function boundedList(label: string, values: string[], maxChars: number): string 
   if (values.length === 0) return `${label}: none`;
   const prefix = `${label}: `;
   const available = Math.max(1, maxChars - prefix.length);
-  const joined = values.join("; ");
-  return `${prefix}${joined.length <= available ? joined : `${joined.slice(0, available - 1)}…`}`;
+  const separator = "; ";
+  const perItem = Math.max(
+    1,
+    Math.floor((available - separator.length * (values.length - 1)) / values.length)
+  );
+  return `${prefix}${values.map((value) => boundedField(value, perItem)).join(separator)}`;
 }
 
 function boundedField(value: string, maxChars: number): string {

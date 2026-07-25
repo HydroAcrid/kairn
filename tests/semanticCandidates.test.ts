@@ -530,7 +530,7 @@ describe("model-based semantic candidates", () => {
         graph,
         maxDocuments: 1
       })[0]!;
-      expect(fileDocument.text.length).toBeLessThanOrEqual(1_800);
+      expect(fileDocument.text.length).toBeLessThanOrEqual(768);
       expect(fileDocument.text).toContain("operation0");
       expect(fileDocument.text).toContain("operation19");
       expect(fileDocument.text).toContain("package-0");
@@ -538,6 +538,60 @@ describe("model-based semantic candidates", () => {
       expect(fileDocument.text).toContain("region_0_sentinel");
       expect(fileDocument.text).toContain("region_4_sentinel");
       expect(fileDocument.text).toContain("[…]");
+    } finally {
+      fs.rmSync(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it("retains bounded behavioral symbol coverage when file documents exceed the nominal budget", () => {
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-large-repo-budget-"));
+    try {
+      const files = Array.from({ length: 20 }, (_, index) => {
+        const filePath = `src/module-${index}.ts`;
+        fs.mkdirSync(path.dirname(path.join(rootPath, filePath)), { recursive: true });
+        fs.writeFileSync(
+          path.join(rootPath, filePath),
+          Array.from({ length: 8 }, (__, symbolIndex) =>
+            `function operation${index}_${symbolIndex}() { return ${symbolIndex}; }`
+          ).join("\n")
+        );
+        return file(rootPath, filePath);
+      });
+      const symbols = files.flatMap((record, fileIndex) =>
+        Array.from({ length: 8 }, (__, symbolIndex) => ({
+          rootPath,
+          filePath: record.path,
+          name: `operation${fileIndex}_${symbolIndex}`,
+          kind: "function" as const,
+          exported: false,
+          startLine: symbolIndex + 1,
+          endLine: symbolIndex + 1,
+          signature: `operation${fileIndex}_${symbolIndex}()`
+        }))
+      );
+      const graph: RepoGraph = {
+        rootPath,
+        files,
+        parsedFiles: files.map((record) => ({
+          rootPath,
+          filePath: record.path,
+          language: record.language,
+          imports: [],
+          hasErrors: false,
+          symbols: symbols.filter((symbol) => symbol.filePath === record.path)
+        })),
+        symbols,
+        edges: []
+      };
+
+      const documents = buildSemanticDocuments({
+        rootPath,
+        graph,
+        maxDocuments: 10
+      });
+      expect(documents.filter((document) => document.kind === "file")).toHaveLength(20);
+      expect(documents.filter((document) => document.kind === "symbol")).toHaveLength(5);
+      expect(documents).toHaveLength(25);
     } finally {
       fs.rmSync(rootPath, { recursive: true, force: true });
     }

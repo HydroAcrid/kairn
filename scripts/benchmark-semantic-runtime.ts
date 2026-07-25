@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { performance } from "node:perf_hooks";
-import { scoreSemanticEmbeddingIndex } from "../src/retrieval/semanticCandidates.js";
+import {
+  buildSemanticQueries,
+  fuseSemanticCandidateRankings,
+  scoreSemanticEmbeddingIndex
+} from "../src/retrieval/semanticCandidates.js";
+import { SEMANTIC_DOCUMENT_SCHEMA_VERSION } from "../src/semantic/documents.js";
 import { loadLocalEmbeddingModel } from "../src/semantic/modelRuntime.js";
 import type { SemanticDocumentRecord, SemanticEmbeddingRecord } from "../src/types.js";
 
@@ -13,7 +18,14 @@ const model = await loadLocalEmbeddingModel({
 });
 const coldInitializationMs = performance.now() - initializationStarted;
 
-await model.embedQueries(["Locate the implementation that restores an expired authorization session."]);
+const benchmarkQuery = [
+  "Initial failing checks:",
+  "- authorization session integration",
+  "",
+  "Locate the implementation that restores an expired authorization session."
+].join("\n");
+const semanticQueries = buildSemanticQueries(benchmarkQuery);
+await model.embedQueries(semanticQueries);
 const documentText = boundedCodeDocument(options.documentChars);
 const embeddingLatencies: number[] = [];
 for (let repeat = 0; repeat < options.repeats; repeat += 1) {
@@ -23,26 +35,29 @@ for (let repeat = 0; repeat < options.repeats; repeat += 1) {
 }
 
 const queryLatencies: number[] = [];
-let queryVector: Float32Array | undefined;
+let queryVectors: Float32Array[] = [];
 for (let repeat = 0; repeat < Math.max(5, options.repeats); repeat += 1) {
   const started = performance.now();
-  [queryVector] = await model.embedQueries([
-    "Locate the implementation that restores an expired authorization session."
-  ]);
+  queryVectors = await model.embedQueries(semanticQueries);
   queryLatencies.push(performance.now() - started);
 }
-if (!queryVector) throw new Error("Semantic runtime returned no benchmark query vector.");
+if (queryVectors.length !== semanticQueries.length) {
+  throw new Error("Semantic runtime returned an incomplete benchmark query batch.");
+}
 
 const scanCorpus = buildScanCorpus(options.scanDocuments, model.manifest.dimensions);
 const scanLatencies: number[] = [];
 for (let repeat = 0; repeat < Math.max(20, options.repeats); repeat += 1) {
   const started = performance.now();
-  scoreSemanticEmbeddingIndex({
-    queryVector,
-    documents: scanCorpus.documents,
-    embeddings: scanCorpus.embeddings,
-    limit: 64
-  });
+  fuseSemanticCandidateRankings(
+    queryVectors.map((queryVector) => scoreSemanticEmbeddingIndex({
+      queryVector,
+      documents: scanCorpus.documents,
+      embeddings: scanCorpus.embeddings,
+      limit: 64
+    })),
+    64
+  );
   scanLatencies.push(performance.now() - started);
 }
 
@@ -56,6 +71,7 @@ const report = {
   batchSize: options.batchSize,
   repeats: options.repeats,
   scanDocuments: options.scanDocuments,
+  semanticQueryViews: semanticQueries.length,
   coldInitializationMs: rounded(coldInitializationMs),
   warmQueryP50Ms: percentile(queryLatencies, 0.5),
   warmQueryP95Ms: percentile(queryLatencies, 0.95),
@@ -100,7 +116,7 @@ function parseArguments(args: string[]): {
   return {
     modelId,
     modelPath,
-    documentChars: positiveInteger(values.get("document-chars") ?? "4000", "--document-chars"),
+    documentChars: positiveInteger(values.get("document-chars") ?? "768", "--document-chars"),
     batchSize: positiveInteger(values.get("batch-size") ?? "8", "--batch-size"),
     repeats: positiveInteger(values.get("repeats") ?? "3", "--repeats"),
     scanDocuments: positiveInteger(values.get("scan-documents") ?? "7500", "--scan-documents")
