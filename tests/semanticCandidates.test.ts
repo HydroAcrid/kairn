@@ -712,6 +712,39 @@ describe("model-based semantic candidates", () => {
     ]);
   });
 
+  it("saturates graph consensus so broad weak fan-in cannot beat strong independent seeds", () => {
+    const rootPath = "/repo";
+    const seeds = Array.from({ length: 12 }, (_, index) =>
+      file(rootPath, `src/api/seed-${index}.go`)
+    );
+    const stronglySupported = file(rootPath, "src/runtime/strong.go");
+    const broadWeakHub = file(rootPath, "src/runtime/hub.go");
+    const filesByPath = new Map(
+      [...seeds, stronglySupported, broadWeakHub]
+        .map((candidate) => [candidate.path, candidate])
+    );
+    const ranked = rankEvidenceBackedGraphCandidates({
+      seedPaths: seeds.map((seed) => seed.path),
+      edges: [
+        ...seeds.slice(0, 3).map((seed) =>
+          edge(rootPath, seed.path, stronglySupported.path, "type_reference")
+        ),
+        ...seeds.slice(4).map((seed) =>
+          edge(rootPath, seed.path, broadWeakHub.path, "type_reference")
+        )
+      ],
+      filesByPath,
+      evidenceRankings: [],
+      minimumSeedSupport: 2,
+      ordering: "support"
+    });
+
+    expect(ranked.slice(0, 2)).toEqual([
+      stronglySupported.path,
+      broadWeakHub.path
+    ]);
+  });
+
   it("credits graph consensus from multiple independently retrieved seeds", () => {
     const rootPath = "/repo";
     const sharedImplementation = file(rootPath, "src/workflow/public-api.ts");

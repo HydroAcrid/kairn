@@ -45,6 +45,7 @@ const GRAPH_ENRICHMENT_CAPACITY =
 const GRAPH_CONSENSUS_RESERVE = Math.floor(GRAPH_ENRICHMENT_CAPACITY / 4);
 const GRAPH_PRECISION_RESERVE =
   GRAPH_ENRICHMENT_CAPACITY - GRAPH_CONSENSUS_RESERVE;
+const MAX_GRAPH_CONSENSUS_SUPPORT_SEEDS = 3;
 
 export function buildModelCandidateUnion(input: {
   files: FileRecord[];
@@ -400,7 +401,10 @@ export function rankEvidenceBackedGraphCandidates(input: {
   };
   const graphSupportScore = (candidate: GraphCandidate): number => {
     let score = 0;
-    for (const rank of candidate.seedRanks.values()) score += 1 / (60 + rank);
+    const strongestSeedRanks = [...candidate.seedRanks.values()]
+      .sort((left, right) => left - right)
+      .slice(0, MAX_GRAPH_CONSENSUS_SUPPORT_SEEDS);
+    for (const rank of strongestSeedRanks) score += 1 / (60 + rank);
     return score;
   };
   const supportWeightedScore = (candidate: GraphCandidate): number =>
