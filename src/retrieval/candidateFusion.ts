@@ -480,13 +480,13 @@ function edgePriority(type: GraphEdgeRecord["type"]): number {
   if (
     type === "test_for" ||
     type === "tested_by" ||
-    type === "shared_call_target"
+    type === "shared_call_target" ||
+    type === "call"
   ) return 5;
   if (type === "module_installation" || type === "type_reference") return 4;
   if (
     type === "definition" ||
-    type === "implementation" ||
-    type === "call"
+    type === "implementation"
   ) {
     return 2;
   }

@@ -455,6 +455,27 @@ describe("model-based semantic candidates", () => {
     expect(ranked[0]).toBe(declaration.path);
   });
 
+  it("ranks a uniquely resolved local call ahead of a type reference", () => {
+    const rootPath = "/repo";
+    const seed = file(rootPath, "src/workflow/runner.go");
+    const callTarget = file(rootPath, "src/workflow/state.go");
+    const typeTarget = file(rootPath, "src/workflow/config.go");
+    const filesByPath = new Map(
+      [seed, callTarget, typeTarget].map((candidate) => [candidate.path, candidate])
+    );
+    const ranked = rankEvidenceBackedGraphCandidates({
+      seedPaths: [seed.path],
+      edges: [
+        edge(rootPath, seed.path, typeTarget.path, "type_reference"),
+        edge(rootPath, seed.path, callTarget.path, "call")
+      ],
+      filesByPath,
+      evidenceRankings: []
+    });
+
+    expect(ranked.slice(0, 2)).toEqual([callTarget.path, typeTarget.path]);
+  });
+
   it("prefers an exact graph relation from the strongest seed before lower-ranked consensus", () => {
     const rootPath = "/repo";
     const seeds = Array.from({ length: 8 }, (_, index) =>

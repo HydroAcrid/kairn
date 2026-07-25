@@ -515,13 +515,13 @@ function graphEdgePrecision(edge: GraphEdgeRecord): number {
   if (
     edge.type === "test_for" ||
     edge.type === "tested_by" ||
-    edge.type === "shared_call_target"
+    edge.type === "shared_call_target" ||
+    edge.type === "call"
   ) return 5;
   if (edge.type === "module_installation" || edge.type === "type_reference") return 4;
   if (
     edge.type === "definition" ||
-    edge.type === "implementation" ||
-    edge.type === "call"
+    edge.type === "implementation"
   ) return 2;
   if (edge.type === "imports" || edge.type === "imported_by") return 1;
   return 0;
