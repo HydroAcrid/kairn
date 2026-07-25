@@ -27,8 +27,6 @@ export type SemanticCandidateSearchResult = {
 };
 
 const MAX_QUERY_CHARS = 4_000;
-const MIN_QUERY_VIEW_CHARS = 240;
-const MAX_SEMANTIC_QUERY_VIEWS = 3;
 
 export async function searchSemanticCandidates(input: {
   query: string;
@@ -86,11 +84,12 @@ export async function searchSemanticCandidates(input: {
       modelId,
       ...(input.config.modelPath ? { modelPath: input.config.modelPath } : {})
     });
-    const queryViews = buildSemanticQueryViews(input.query);
-    const queryVectors = await model.embedQueries(queryViews);
+    const semanticQuery = normalizeSemanticQuery(unwrapSerializedQuery(input.query))
+      .slice(0, MAX_QUERY_CHARS);
+    const queryVector = (await model.embedQueries([semanticQuery]))[0]!;
     const scanStarted = performance.now();
     const hits = scoreSemanticEmbeddingIndex({
-      queryVectors,
+      queryVector,
       documents: input.documents,
       embeddings: eligibleEmbeddings,
       ...(input.limit !== undefined ? { limit: input.limit } : {})
@@ -105,7 +104,6 @@ export async function searchSemanticCandidates(input: {
         semanticIndexStatus: "ready",
         documentCount: input.documents.length,
         embeddingCount: eligibleEmbeddings.length,
-        queryViewCount: queryViews.length,
         queryLatencyMs: Number((performance.now() - queryStarted).toFixed(3)),
         vectorScanLatencyMs: Number(vectorScanLatencyMs.toFixed(3))
       }
@@ -121,23 +119,17 @@ export async function searchSemanticCandidates(input: {
 }
 
 export function scoreSemanticEmbeddingIndex(input: {
-  queryVector?: Float32Array;
-  queryVectors?: Float32Array[];
+  queryVector: Float32Array;
   documents: SemanticDocumentRecord[];
   embeddings: SemanticEmbeddingRecord[];
   limit?: number;
 }): SemanticCandidateHit[] {
-  const queryVectors = input.queryVectors ?? (input.queryVector ? [input.queryVector] : []);
-  if (queryVectors.length === 0) return [];
   const documentsById = new Map(input.documents.map((document) => [document.id, document]));
   const byFile = new Map<string, SemanticCandidateHit>();
   for (const embedding of input.embeddings) {
     const document = documentsById.get(embedding.documentId);
     if (!document) continue;
-    let similarity = Number.NEGATIVE_INFINITY;
-    for (const queryVector of queryVectors) {
-      similarity = Math.max(similarity, quantizedCosineSimilarity(queryVector, embedding));
-    }
+    const similarity = quantizedCosineSimilarity(input.queryVector, embedding);
     const existing = byFile.get(document.filePath);
     if (!existing || similarity > existing.similarity) {
       byFile.set(document.filePath, {
@@ -157,26 +149,6 @@ export function scoreSemanticEmbeddingIndex(input: {
       similarity: Number(hit.similarity.toFixed(6)),
       documentIds: [...hit.documentIds].sort()
     }));
-}
-
-/**
- * Preserve the complete task while giving long, multi-intent requests two
- * additional fixed views. The split is positional and independent of task
- * vocabulary, paths, filenames, repository identity, and benchmark labels.
- * Relevance still comes exclusively from model cosine similarity.
- */
-export function buildSemanticQueryViews(query: string): string[] {
-  const normalized = normalizeSemanticQuery(unwrapSerializedQuery(query)).slice(0, MAX_QUERY_CHARS);
-  if (!normalized) return [""];
-  if (normalized.length < MIN_QUERY_VIEW_CHARS * 2) return [normalized];
-
-  const split = nearestWhitespace(normalized, Math.floor(normalized.length / 2));
-  const first = normalized.slice(0, split).trim();
-  const second = normalized.slice(split).trim();
-  if (first.length < MIN_QUERY_VIEW_CHARS || second.length < MIN_QUERY_VIEW_CHARS) {
-    return [normalized];
-  }
-  return [...new Set([normalized, first, second])].slice(0, MAX_SEMANTIC_QUERY_VIEWS);
 }
 
 function unavailableResult(
@@ -238,14 +210,4 @@ function normalizeSemanticQuery(query: string): string {
     pendingSpace = false;
   }
   return output.trim();
-}
-
-function nearestWhitespace(value: string, target: number): number {
-  for (let distance = 0; distance < value.length; distance += 1) {
-    const right = target + distance;
-    if (right < value.length && value[right] === " ") return right;
-    const left = target - distance;
-    if (left > 0 && value[left] === " ") return left;
-  }
-  return target;
 }

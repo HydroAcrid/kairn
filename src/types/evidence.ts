@@ -25,7 +25,6 @@ export type SemanticRetrieverStatus = {
   semanticFallbackReason?: string;
   documentCount: number;
   embeddingCount: number;
-  queryViewCount?: number;
   queryLatencyMs?: number;
   vectorScanLatencyMs?: number;
 };

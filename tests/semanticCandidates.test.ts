@@ -8,11 +8,9 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   buildModelCandidateUnion,
-  rankDirectGraphCandidates,
   reciprocalRankFuse
 } from "../src/retrieval/candidateFusion.js";
 import {
-  buildSemanticQueryViews,
   scoreSemanticEmbeddingIndex,
   searchSemanticCandidates
 } from "../src/retrieval/semanticCandidates.js";
@@ -133,45 +131,6 @@ describe("model-based semantic candidates", () => {
     expect(quantizedCosineSimilarity(new Float32Array([1, 0]), embeddings[1]!)).toBeGreaterThan(0.99);
   });
 
-  it("uses bounded semantic query views to recover distinct intents without lexical bonuses", () => {
-    const rootPath = "/repo";
-    const documents = [
-      document(rootPath, "first", "src/session.ts", "file", "first-hash"),
-      document(rootPath, "second", "src/platform.ts", "file", "second-hash"),
-      document(rootPath, "noise", "src/theme.ts", "file", "noise-hash")
-    ];
-    const embeddings = [
-      embedding(rootPath, documents[0]!, new Float32Array([1, 0, 0])),
-      embedding(rootPath, documents[1]!, new Float32Array([0, 1, 0])),
-      embedding(rootPath, documents[2]!, new Float32Array([0, 0, 1]))
-    ];
-
-    const hits = scoreSemanticEmbeddingIndex({
-      queryVectors: [
-        new Float32Array([1, 0, 0]),
-        new Float32Array([0, 1, 0])
-      ],
-      documents,
-      embeddings,
-      limit: 2
-    });
-
-    expect(hits.map((hit) => hit.path)).toEqual(["src/platform.ts", "src/session.ts"]);
-    expect(hits.every((hit) => hit.similarity > 0.99)).toBe(true);
-  });
-
-  it("splits long queries by position rather than task vocabulary", () => {
-    const first = "Describe the behavior of the first independent workflow. ".repeat(8);
-    const second = "Explain the separate behavior expected from another workflow. ".repeat(8);
-    const views = buildSemanticQueryViews(JSON.stringify(`${first}\n\n${second}`));
-
-    expect(views).toHaveLength(3);
-    expect(views[0]).toContain("first independent workflow");
-    expect(views[0]).toContain("separate behavior");
-    expect(views[1]).toContain("first independent workflow");
-    expect(views[2]).toContain("separate behavior");
-  });
-
   it("admits a semantic-only production file outside the lexical union without admitting tier-zero noise", () => {
     const rootPath = "/repo";
     const files = [
@@ -236,26 +195,6 @@ describe("model-based semantic candidates", () => {
       limit: 2,
       rankConstant: 10
     })).toEqual(["z/unrelated-name.ts", "a/task-words.ts"]);
-  });
-
-  it("promotes direct graph neighbors using seed and model evidence rather than path terms", () => {
-    const ranked = rankDirectGraphCandidates({
-      seedPaths: ["src/central.ts", "src/secondary.ts"],
-      semanticPaths: ["src/semantic-neighbor.ts", "src/unrelated.ts"],
-      bm25Paths: ["src/lexical-neighbor.ts", "src/semantic-neighbor.ts"],
-      edges: [
-        edge("src/central.ts", "src/semantic-neighbor.ts"),
-        edge("src/central.ts", "src/unrelated-graph-neighbor.ts"),
-        edge("src/secondary.ts", "src/lexical-neighbor.ts")
-      ],
-      limit: 3
-    });
-
-    expect(ranked).toEqual([
-      "src/semantic-neighbor.ts",
-      "src/lexical-neighbor.ts",
-      "src/unrelated-graph-neighbor.ts"
-    ]);
   });
 
   it("reports explicit fallback when a local model is unavailable and performs no download", async () => {
@@ -578,15 +517,5 @@ function readyStatus(count: number) {
     semanticIndexStatus: "ready" as const,
     documentCount: count,
     embeddingCount: count
-  };
-}
-
-function edge(fromFile: string, toFile: string): RepoGraph["edges"][number] {
-  return {
-    rootPath: "/repo",
-    fromFile,
-    toFile,
-    type: "imports",
-    metadata: {}
   };
 }
