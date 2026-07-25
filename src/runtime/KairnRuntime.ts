@@ -3680,6 +3680,9 @@ export class KairnRuntime {
         symbols: matchingSymbols,
         bm25Results: modelBm25Results,
         semanticHits: semanticSearch.hits,
+        ...(semanticSearch.queryRankings
+          ? { semanticQueryRankings: semanticSearch.queryRankings }
+          : {}),
         semanticEvidencePaths,
         semanticStatus: semanticSearch.status,
         edges: [],
@@ -3697,6 +3700,9 @@ export class KairnRuntime {
         symbols: matchingSymbols,
         bm25Results: modelBm25Results,
         semanticHits: semanticSearch.hits,
+        ...(semanticSearch.queryRankings
+          ? { semanticQueryRankings: semanticSearch.queryRankings }
+          : {}),
         semanticEvidencePaths,
         semanticStatus: semanticSearch.status,
         edges,
@@ -3734,7 +3740,8 @@ export class KairnRuntime {
         candidateDiagnostics: {
           semanticQueryViews: (semanticSearch.queryRankings ?? [])
             .map((ranking) => ranking.map((hit) => hit.path)),
-          semanticFused: semanticSearch.hits.map((hit) => hit.path),
+          semanticRawFused: semanticSearch.hits.map((hit) => hit.path),
+          semanticFused: fused.semanticPaths,
           semanticEvidence: semanticEvidencePaths,
           bm25: modelBm25Results.map((result) => result.path),
           graph: fused.graphPaths,

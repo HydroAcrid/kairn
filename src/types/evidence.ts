@@ -143,6 +143,9 @@ export type EvidenceCandidateInspection = {
   /** Local-only lane ranks used to diagnose bounded-union misses. */
   candidateDiagnostics?: {
     semanticQueryViews: string[][];
+    /** Raw model-only multi-view fusion, before objective role policy. */
+    semanticRawFused?: string[];
+    /** Semantic ranking actually used by candidate generation. */
     semanticFused: string[];
     semanticEvidence: string[];
     bm25: string[];

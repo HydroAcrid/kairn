@@ -15,7 +15,10 @@ import {
   extractEvidenceTaskSignals,
   isProductionEvidenceFile
 } from "./evidenceSignals.js";
-import type { SemanticCandidateHit } from "./semanticCandidates.js";
+import {
+  fuseSemanticCandidateRankings,
+  type SemanticCandidateHit
+} from "./semanticCandidates.js";
 
 export type CandidateRanking = {
   channel: "semantic" | "bm25" | "symbol" | "git" | "session" | "graph" | "graph_consensus";
@@ -31,6 +34,7 @@ export type ModelCandidateUnion = {
   graphConsensusPaths: string[];
   graphSeedPaths: string[];
   graphEvidenceByPath: ReadonlyMap<string, EvidenceGraphFacts>;
+  semanticPaths: string[];
 };
 
 /**
@@ -55,6 +59,7 @@ export function buildModelCandidateUnion(input: {
   symbols: SymbolRecord[];
   bm25Results: HybridScoredResult[];
   semanticHits: SemanticCandidateHit[];
+  semanticQueryRankings?: SemanticCandidateHit[][];
   semanticEvidencePaths?: string[];
   semanticStatus: SemanticRetrieverStatus;
   edges: GraphEdgeRecord[];
@@ -90,9 +95,28 @@ export function buildModelCandidateUnion(input: {
     (symbolStrength.get(right) ?? 0) - (symbolStrength.get(left) ?? 0) ||
     left.localeCompare(right)
   );
-  const semanticPaths = prioritizeRetrievalPathsForIntent(input.semanticHits
-    .map((hit) => normalizePath(hit.path))
-    .filter(eligibleNonHard), signals.intent, filesByPath);
+  // Apply objective repository-role policy inside each model-ranked query
+  // view, before bounded multi-view fusion. Applying it only after fusion is
+  // too late when tests/examples have already crowded a production file out
+  // of the fused semantic lane. Similarities are unchanged and the embedding
+  // model still decides relevance within each role partition.
+  const intentAwareSemanticHits = input.semanticQueryRankings?.length
+    ? fuseSemanticCandidateRankings(
+        input.semanticQueryRankings.map((ranking) =>
+          prioritizeRetrievalHitsForIntent(
+            ranking.filter((hit) => eligibleNonHard(hit.path)),
+            signals.intent,
+            filesByPath
+          )
+        ),
+        MODEL_RETRIEVAL_PROBE_LIMIT
+      )
+    : input.semanticHits.filter((hit) => eligibleNonHard(hit.path));
+  const semanticPaths = prioritizeRetrievalPathsForIntent(
+    intentAwareSemanticHits.map((hit) => normalizePath(hit.path)),
+    signals.intent,
+    filesByPath
+  );
   const semanticEvidencePaths = prioritizeRetrievalPathsForIntent(uniquePaths(
     input.semanticEvidencePaths ?? semanticPaths
   ).filter(eligibleNonHard), signals.intent, filesByPath);
@@ -224,7 +248,10 @@ export function buildModelCandidateUnion(input: {
     ...preliminaryUnion
   ]).slice(0, DEFAULT_ENRICHED_CANDIDATE_LIMIT);
   const bm25ByPath = new Map(input.bm25Results.map((result) => [normalizePath(result.path), result]));
-  const semanticByPath = new Map(input.semanticHits.map((hit) => [normalizePath(hit.path), hit]));
+  const semanticByPath = new Map(
+    [...input.semanticHits, ...intentAwareSemanticHits]
+      .map((hit) => [normalizePath(hit.path), hit] as const)
+  );
   const changedPaths = new Set([...(input.changedFiles ?? [])].map(normalizePath));
   const graphPathSet = new Set([...graphPaths, ...graphConsensusPaths]);
   const candidateResults = enrichedPaths.map((filePath): HybridScoredResult => {
@@ -264,8 +291,25 @@ export function buildModelCandidateUnion(input: {
     graphPaths,
     graphConsensusPaths,
     graphSeedPaths,
-    graphEvidenceByPath
+    graphEvidenceByPath,
+    semanticPaths
   };
+}
+
+function prioritizeRetrievalHitsForIntent(
+  hits: SemanticCandidateHit[],
+  intent: ReturnType<typeof extractEvidenceTaskSignals>["intent"],
+  filesByPath: Map<string, FileRecord>
+): SemanticCandidateHit[] {
+  if (intent !== "source") return hits;
+  const production: SemanticCandidateHit[] = [];
+  const companions: SemanticCandidateHit[] = [];
+  for (const hit of hits) {
+    const file = filesByPath.get(normalizePath(hit.path));
+    if (file && isProductionEvidenceFile(file)) production.push(hit);
+    else companions.push(hit);
+  }
+  return [...production, ...companions];
 }
 
 function prioritizeRetrievalPathsForIntent(

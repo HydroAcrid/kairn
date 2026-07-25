@@ -257,6 +257,47 @@ describe("model-based semantic candidates", () => {
     expect(result.initialPaths).toContain(testFiles[0]!.path);
   });
 
+  it("applies source intent inside model views before bounded semantic fusion", () => {
+    const rootPath = "/repo";
+    const production = file(rootPath, "src/runtime/restore.ts");
+    const testFiles = Array.from({ length: 80 }, (_, index) => ({
+      ...file(rootPath, `tests/case-${String(index).padStart(2, "0")}.test.ts`),
+      kind: "test" as const
+    }));
+    const rawView = [
+      ...testFiles.map((candidate, index) => ({
+        path: candidate.path,
+        similarity: 0.95 - index / 1_000,
+        documentIds: [`test-${index}`]
+      })),
+      {
+        path: production.path,
+        similarity: 0.7,
+        documentIds: ["production"]
+      }
+    ];
+
+    const result = buildModelCandidateUnion({
+      files: [...testFiles, production],
+      query: "Debug the production regression that loses restored state.",
+      symbols: [],
+      bm25Results: [],
+      // Simulate the raw bounded fusion having already dropped the source.
+      semanticHits: rawView.slice(0, 64),
+      semanticQueryRankings: [rawView],
+      semanticStatus: readyStatus(rawView.length),
+      edges: []
+    });
+
+    expect(result.semanticPaths[0]).toBe(production.path);
+    expect(result.initialPaths[0]).toBe(production.path);
+    expect(result.candidateResults.find((candidate) => candidate.path === production.path))
+      .toMatchObject({
+        semanticSimilarity: 0.7,
+        semanticScore: 0.7
+      });
+  });
+
   it("preserves a bounded model-only slice when independent lexical results compete", () => {
     const rootPath = "/repo";
     const semanticFiles = Array.from({ length: 80 }, (_, index) =>
