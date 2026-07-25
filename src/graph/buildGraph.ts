@@ -226,6 +226,7 @@ function addLocalTypeReferenceEdges(
         rootPath,
         fromFile: parsedFile.filePath,
         targetFiles: declarations.get(`${scope}\0${reference}`),
+        fileByPath,
         reference,
         reason: "parser-observed local type reference"
       });
@@ -253,6 +254,7 @@ function addLocalTypeReferenceEdges(
             rootPath,
             fromFile: parsedFile.filePath,
             targetFiles: goDeclarations.get(`${targetDirectory}\0${declaration}`),
+            fileByPath,
             reference,
             reason: "parser-observed Go imported type reference"
           });
@@ -268,6 +270,7 @@ function addLocalTypeReferenceEdges(
         rootPath,
         fromFile: parsedFile.filePath,
         targetFiles: javaDeclarations.get(specifier),
+        fileByPath,
         reference: specifier.slice(specifier.lastIndexOf(".") + 1),
         reason: "parser-observed Java type import"
       });
@@ -290,12 +293,16 @@ function addUniqueTypeReferenceEdge(input: {
   rootPath: string;
   fromFile: string;
   targetFiles: Set<string> | undefined;
+  fileByPath: Map<string, FileRecord>;
   reference: string;
   reason: string;
 }): void {
-  if (input.targetFiles?.size !== 1) return;
-  const [toFile] = input.targetFiles;
-  if (!toFile || toFile === input.fromFile) return;
+  const toFile = resolveTypeReferenceTarget(
+    input.targetFiles,
+    input.fromFile,
+    input.fileByPath
+  );
+  if (!toFile) return;
   addEdge(input.edgeMap, {
     rootPath: input.rootPath,
     fromFile: input.fromFile,
@@ -306,6 +313,22 @@ function addUniqueTypeReferenceEdge(input: {
       reference: input.reference
     }
   });
+}
+
+function resolveTypeReferenceTarget(
+  targetFiles: Set<string> | undefined,
+  fromFile: string,
+  fileByPath: Map<string, FileRecord>
+): string | undefined {
+  const candidates = [...(targetFiles ?? [])].filter((path) => path !== fromFile);
+  if (candidates.length === 1) return candidates[0];
+  if (candidates.length === 0) return undefined;
+
+  const productionCandidates = candidates.filter((path) => {
+    const kind = fileByPath.get(path)?.kind;
+    return kind === "source" || kind === "component" || kind === "route" || kind === "schema";
+  });
+  return productionCandidates.length === 1 ? productionCandidates[0] : undefined;
 }
 
 function localTypeScope(parsedFile: ParsedFile): string | undefined {

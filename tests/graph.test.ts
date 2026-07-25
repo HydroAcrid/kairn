@@ -213,6 +213,36 @@ describe("buildRepoGraph", () => {
     )).toContain("type_reference");
   });
 
+  it("prefers one production declaration over duplicate test-fixture declarations", async () => {
+    const rootPath = "/repo";
+    const productionPath = "src/main/java/org/example/TypeExtractor.java";
+    const fixturePath = "src/test/test_sourcecode/legacy/src/main/java/org/example/TypeExtractor.java";
+    const facadePath = "src/main/java/org/example/ResolverFacade.java";
+    const javaFiles: FileRecord[] = [
+      { ...file(rootPath, productionPath, "source"), language: "java" },
+      { ...file(rootPath, fixturePath, "test"), language: "java" },
+      { ...file(rootPath, facadePath, "source"), language: "java" }
+    ];
+    const sources = new Map([
+      [productionPath, "package org.example;\npublic class TypeExtractor {}\n"],
+      [fixturePath, "package org.example;\npublic class TypeExtractor {}\n"],
+      [facadePath, "package org.example;\npublic class ResolverFacade { TypeExtractor extractor; }\n"]
+    ]);
+    const parsedFiles = await Promise.all(javaFiles.map((record) =>
+      parseSourceFile({
+        rootPath,
+        filePath: record.path,
+        language: record.language,
+        content: sources.get(record.path) ?? ""
+      })
+    ));
+
+    const graph = buildRepoGraph({ rootPath, files: javaFiles, parsedFiles });
+
+    expect(edgeTypes(graph.edges, facadePath, productionPath)).toContain("type_reference");
+    expect(edgeTypes(graph.edges, facadePath, fixturePath)).not.toContain("type_reference");
+  });
+
   it("links parser-observed Go qualified types to declarations in imported local packages", async () => {
     const rootPath = "/repo";
     const files = [

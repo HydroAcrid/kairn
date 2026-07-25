@@ -411,6 +411,7 @@ describe("cross-language parser adapters", () => {
     expect(classifyFile("internal/store/store_test.go")).toBe("test");
     expect(classifyFile("go.mod")).toBe("config");
     expect(classifyFile("src/test/java/org/example/StringUtilsTest.java")).toBe("test");
+    expect(classifyFile("src/test/test_sourcecode/legacy/src/main/java/org/example/Parser.java")).toBe("test");
     expect(classifyFile("test/base_test.cc")).toBe("test");
     expect(classifyFile("src/main/java/org/example/StringUtils.java")).toBe("source");
     expect(getLanguageAdapterForPath("internal/store/store.go")).toEqual(

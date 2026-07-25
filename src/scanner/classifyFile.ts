@@ -53,6 +53,7 @@ export function classifyFile(filePath: string): FileKind {
     /tests?\//.test(normalized) && /\.pyi?$/.test(basename) ||
     /(test|tests)\.java$/.test(basename) ||
     /(test|tests)\.kt$/.test(basename) ||
+    /(^|\/)src\/test\//.test(normalized) && /\.(java|kt|kts)$/.test(basename) ||
     /(^|\/)src\/test\/java\//.test(normalized) ||
     /(^|\/)src\/test\/kotlin\//.test(normalized) ||
     /(_test|_unittest|_tests)\.(cc|cpp|cxx|c|hh|hpp|hxx)$/.test(basename) ||

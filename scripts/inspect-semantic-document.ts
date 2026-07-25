@@ -52,6 +52,7 @@ process.stdout.write(`${JSON.stringify({
       endLine: symbol.endLine
     })),
     imports: parsed.imports,
+    references: parsed.references,
     dynamicImports: parsed.dynamicImports,
     moduleInstallers: parsed.moduleInstallers
   },
