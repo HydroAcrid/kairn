@@ -12,7 +12,7 @@ import { readTextFile } from "../retrieval/readSource.js";
 import { sha256 } from "../utils/hash.js";
 import { estimateTokens } from "../utils/tokens.js";
 
-export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v3" as const;
+export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v4" as const;
 const MAX_FILE_BODY_CHARS = 440;
 const MAX_SYMBOL_BODY_CHARS = 500;
 const MAX_DOCUMENT_CHARS = 768;
@@ -39,9 +39,9 @@ export function buildSemanticDocuments(input: {
     const parsed = parsedByFile.get(file.path);
     const symbols = symbolsByFile.get(file.path) ?? [];
     fileDocuments.push(buildFileDocument(file, parsed, symbols, content));
-    const symbolDocuments = symbols
+    const symbolDocuments = uniqueSemanticContent(symbols
       .map((symbol) => buildSymbolDocument(file, parsed, symbol, content))
-      .filter((document): document is SemanticDocumentRecord => Boolean(document));
+      .filter((document): document is SemanticDocumentRecord => Boolean(document)));
     if (symbolDocuments.length > 0) symbolQueues.set(file.path, symbolDocuments);
   }
 
@@ -218,6 +218,15 @@ function uniqueDocuments(documents: SemanticDocumentRecord[]): SemanticDocumentR
     }
   }
   return [...byId.values()];
+}
+
+function uniqueSemanticContent(documents: SemanticDocumentRecord[]): SemanticDocumentRecord[] {
+  const byContent = new Map<string, SemanticDocumentRecord>();
+  for (const document of documents) {
+    const key = `${document.filePath}\0${document.kind}\0${document.hash}`;
+    if (!byContent.has(key)) byContent.set(key, document);
+  }
+  return [...byContent.values()];
 }
 
 function allocateSymbolDocuments(

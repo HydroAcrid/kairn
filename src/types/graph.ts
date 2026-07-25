@@ -200,7 +200,8 @@ export type SemanticDocumentKind = "file" | "symbol";
 export type SemanticDocumentSchemaVersion =
   | "semantic-documents-v1"
   | "semantic-documents-v2"
-  | "semantic-documents-v3";
+  | "semantic-documents-v3"
+  | "semantic-documents-v4";
 
 export type SemanticDocumentRecord = {
   rootPath: string;

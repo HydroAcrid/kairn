@@ -889,7 +889,7 @@ function parseSnapshotEmbeddingCache(cachePath: string): SnapshotEmbeddingCache 
     if (
       schemaVersion !== "semantic-documents-v1" &&
       schemaVersion !== "semantic-documents-v2" &&
-      schemaVersion !== "semantic-documents-v3"
+      schemaVersion !== SEMANTIC_DOCUMENT_SCHEMA_VERSION
     ) {
       throw new Error(`snapshot embedding cache has unsupported schema ${schemaVersion}`);
     }

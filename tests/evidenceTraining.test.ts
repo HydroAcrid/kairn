@@ -64,7 +64,7 @@ describe("public evidence ranker training", () => {
         documentId: "sdoc_test",
         documentHash: "content-hash",
         modelId: "pinned-model",
-        schemaVersion: "semantic-documents-v3",
+        schemaVersion: "semantic-documents-v4",
         dimensions: 3,
         vector: new Int8Array([127, 0, -127]),
         scale: 0.005
@@ -81,7 +81,7 @@ describe("public evidence ranker training", () => {
         documentId: "sdoc_second",
         documentHash: "second-content-hash",
         modelId: "pinned-model",
-        schemaVersion: "semantic-documents-v3",
+        schemaVersion: "semantic-documents-v4",
         dimensions: 3,
         vector: new Int8Array([0, 127, 0]),
         scale: 0.005
@@ -127,7 +127,7 @@ describe("public evidence ranker training", () => {
       repositoryLineageId: "https://github.com/example/project",
       modelId: "pinned-model",
       modelManifestSha256: "a".repeat(64),
-      documentSchemaVersion: "semantic-documents-v3" as const
+      documentSchemaVersion: "semantic-documents-v4" as const
     };
     const firstRef = buildSemanticSnapshotCacheKey(base);
     const secondRef = buildSemanticSnapshotCacheKey({ ...base });

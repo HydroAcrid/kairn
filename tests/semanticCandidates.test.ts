@@ -550,7 +550,7 @@ function document(
     text: `${filePath} implementation behavior`,
     hash,
     tokenEstimate: 8,
-    schemaVersion: "semantic-documents-v3"
+    schemaVersion: "semantic-documents-v4"
   };
 }
 
@@ -565,7 +565,7 @@ function embedding(
     documentId: semanticDocument.id,
     documentHash: semanticDocument.hash,
     modelId,
-    schemaVersion: "semantic-documents-v3",
+    schemaVersion: "semantic-documents-v4",
     vector
   });
 }

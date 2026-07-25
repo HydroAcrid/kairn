@@ -367,6 +367,11 @@ function jsSymbolsFromDeclaration(
     case "method_signature":
     case "abstract_method_signature":
       return symbolForNamedDeclaration(rootPath, filePath, declaration, "function", false, rangeNode);
+    case "public_field_definition":
+    case "field_definition":
+      return isFunctionValuedField(declaration)
+        ? symbolForNamedDeclaration(rootPath, filePath, declaration, "function", false, rangeNode)
+        : [];
     case "interface_declaration":
       return symbolForNamedDeclaration(rootPath, filePath, declaration, "interface", exported, rangeNode);
     case "type_alias_declaration":
@@ -377,6 +382,14 @@ function jsSymbolsFromDeclaration(
     default:
       return [];
   }
+}
+
+function isFunctionValuedField(declaration: SyntaxNodeLike): boolean {
+  const value = declaration.childForFieldName("value");
+  if (value?.type === "arrow_function" || value?.type === "function_expression") return true;
+  return declaration.namedChildren.some((child) =>
+    child.type === "arrow_function" || child.type === "function_expression"
+  );
 }
 
 function symbolForNamedDeclaration(

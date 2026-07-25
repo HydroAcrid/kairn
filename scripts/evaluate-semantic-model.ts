@@ -185,7 +185,7 @@ function validateManifest(manifest: SelectionManifest): void {
   if (
     manifest.schemaVersion !== "semantic-model-selection.v1" ||
     manifest.sealed !== true ||
-    !["semantic-documents-v1", "semantic-documents-v2", "semantic-documents-v3"].includes(manifest.documentSchemaVersion) ||
+    !["semantic-documents-v1", "semantic-documents-v2", "semantic-documents-v3", "semantic-documents-v4"].includes(manifest.documentSchemaVersion) ||
     !Array.isArray(manifest.cases) ||
     manifest.cases.length !== 15
   ) {

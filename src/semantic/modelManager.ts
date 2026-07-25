@@ -238,7 +238,7 @@ function validateManifest(manifest: SemanticModelManifest): void {
     !/^[0-9a-f]{40}$/i.test(manifest.upstreamRevision) ||
     !Number.isInteger(manifest.dimensions) ||
     manifest.dimensions <= 0 ||
-    manifest.documentSchemaVersion !== "semantic-documents-v3" ||
+    manifest.documentSchemaVersion !== "semantic-documents-v4" ||
     manifest.runtime.library !== "kairn-onnx-wasm-v1" ||
     manifest.runtime.modelFilePath !== "onnx/model.onnx" ||
     !Array.isArray(manifest.files) ||

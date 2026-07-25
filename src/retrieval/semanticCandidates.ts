@@ -8,6 +8,7 @@ import type {
   SemanticRetrieverStatus
 } from "../types.js";
 import { getSemanticModelState } from "../semantic/modelManager.js";
+import { SEMANTIC_DOCUMENT_SCHEMA_VERSION } from "../semantic/documents.js";
 import {
   loadLocalEmbeddingModel,
   quantizedCosineSimilarity
@@ -64,7 +65,7 @@ export async function searchSemanticCandidates(input: {
     const document = documentsById.get(embedding.documentId);
     return (
       embedding.modelId === modelState.modelId &&
-      embedding.schemaVersion === "semantic-documents-v3" &&
+      embedding.schemaVersion === SEMANTIC_DOCUMENT_SCHEMA_VERSION &&
       document?.hash === embedding.documentHash
     );
   });

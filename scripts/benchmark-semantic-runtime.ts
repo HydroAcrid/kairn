@@ -151,14 +151,14 @@ function buildScanCorpus(
       text: "",
       hash: id,
       tokenEstimate: 0,
-      schemaVersion: "semantic-documents-v3"
+      schemaVersion: SEMANTIC_DOCUMENT_SCHEMA_VERSION
     });
     embeddings.push({
       rootPath: "/semantic-runtime-benchmark",
       documentId: id,
       documentHash: id,
       modelId: "benchmark",
-      schemaVersion: "semantic-documents-v3",
+      schemaVersion: SEMANTIC_DOCUMENT_SCHEMA_VERSION,
       dimensions,
       vector,
       scale: 1 / 127
