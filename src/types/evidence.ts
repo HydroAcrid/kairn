@@ -127,6 +127,8 @@ export type EvidenceCandidateInspection = {
     semanticQueryViews: string[][];
     semanticFused: string[];
     bm25: string[];
+    graph: string[];
+    graphConsensus: string[];
   };
 };
 

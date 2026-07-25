@@ -26,6 +26,8 @@ export type ModelCandidateUnion = {
   enrichedPaths: string[];
   candidateResults: HybridScoredResult[];
   semanticStatus: SemanticRetrieverStatus;
+  graphPaths: string[];
+  graphConsensusPaths: string[];
 };
 
 export function buildModelCandidateUnion(input: {
@@ -180,7 +182,9 @@ export function buildModelCandidateUnion(input: {
     initialPaths,
     enrichedPaths,
     candidateResults,
-    semanticStatus: input.semanticStatus
+    semanticStatus: input.semanticStatus,
+    graphPaths,
+    graphConsensusPaths
   };
 }
 

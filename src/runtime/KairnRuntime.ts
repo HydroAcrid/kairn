@@ -3718,7 +3718,9 @@ export class KairnRuntime {
           semanticQueryViews: (semanticSearch.queryRankings ?? [])
             .map((ranking) => ranking.map((hit) => hit.path)),
           semanticFused: semanticSearch.hits.map((hit) => hit.path),
-          bm25: modelBm25Results.map((result) => result.path)
+          bm25: modelBm25Results.map((result) => result.path),
+          graph: fused.graphPaths,
+          graphConsensus: fused.graphConsensusPaths
         }
       };
     }
