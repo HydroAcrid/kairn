@@ -17,7 +17,7 @@ import {
 import type { SemanticCandidateHit } from "./semanticCandidates.js";
 
 export type CandidateRanking = {
-  channel: "semantic" | "bm25" | "symbol" | "git" | "session" | "graph";
+  channel: "semantic" | "bm25" | "symbol" | "git" | "session" | "graph" | "graph_consensus";
   paths: string[];
 };
 
@@ -109,10 +109,27 @@ export function buildModelCandidateUnion(input: {
       { channel: "symbol", paths: eligibleSymbolPaths }
     ]
   });
+  const graphConsensusPaths = rankEvidenceBackedGraphCandidates({
+    seedPaths: preliminaryPaths,
+    edges: input.edges,
+    filesByPath,
+    evidenceRankings: [
+      { channel: "semantic", paths: semanticPaths },
+      { channel: "bm25", paths: bm25Paths },
+      { channel: "symbol", paths: eligibleSymbolPaths }
+    ],
+    minimumSeedSupport: 2
+  });
   const initialPaths = reciprocalRankFuse({
     hardPaths,
     rankings: graphPaths.length > 0
-      ? [...baseRankings, { channel: "graph", paths: graphPaths }]
+      ? [
+          ...baseRankings,
+          { channel: "graph", paths: graphPaths },
+          ...(graphConsensusPaths.length > 0
+            ? [{ channel: "graph_consensus" as const, paths: graphConsensusPaths }]
+            : [])
+        ]
       : baseRankings,
     limit: DEFAULT_INITIAL_CANDIDATE_LIMIT
   }).filter((filePath) => filesByPath.has(filePath));
@@ -124,7 +141,7 @@ export function buildModelCandidateUnion(input: {
   const bm25ByPath = new Map(input.bm25Results.map((result) => [normalizePath(result.path), result]));
   const semanticByPath = new Map(input.semanticHits.map((hit) => [normalizePath(hit.path), hit]));
   const changedPaths = new Set([...(input.changedFiles ?? [])].map(normalizePath));
-  const graphPathSet = new Set(graphPaths);
+  const graphPathSet = new Set([...graphPaths, ...graphConsensusPaths]);
   const graphOnly = new Set(enrichedPaths.filter((filePath) => !initialPaths.includes(filePath)));
   const candidateResults = enrichedPaths.map((filePath): HybridScoredResult => {
     const file = filesByPath.get(filePath)!;
@@ -174,6 +191,7 @@ export function rankEvidenceBackedGraphCandidates(input: {
   edges: GraphEdgeRecord[];
   filesByPath: Map<string, FileRecord>;
   evidenceRankings: CandidateRanking[];
+  minimumSeedSupport?: number;
 }): string[] {
   const seedRanks = new Map(uniquePaths(input.seedPaths).map((filePath, index) => [filePath, index + 1]));
   const evidenceRanks = new Map<string, Map<CandidateRanking["channel"], number>>();
@@ -235,7 +253,9 @@ export function rankEvidenceBackedGraphCandidates(input: {
     for (const rank of candidate.seedRanks.values()) score += 1 / (60 + rank);
     return score;
   };
+  const minimumSeedSupport = Math.max(1, Math.floor(input.minimumSeedSupport ?? 1));
   return [...candidates.values()]
+    .filter((candidate) => candidate.seedRanks.size >= minimumSeedSupport)
     .sort((left, right) =>
       right.precision - left.precision ||
       (evidenceRanks.get(right.path)?.size ?? 0) - (evidenceRanks.get(left.path)?.size ?? 0) ||

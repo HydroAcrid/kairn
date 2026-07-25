@@ -291,16 +291,20 @@ describe("model-based semantic candidates", () => {
     const seeds = Array.from({ length: 6 }, (_, index) =>
       file(rootPath, `src/workflow/feature-${index}.ts`)
     );
+    const singleSeedNeighbors = Array.from({ length: 20 }, (_, index) =>
+      file(rootPath, `src/workflow/single-${index}.ts`)
+    );
     const distractors = Array.from({ length: 70 }, (_, index) =>
       file(rootPath, `src/noise-${String(index).padStart(2, "0")}.ts`)
     );
     const rankedFiles = [...seeds, ...distractors];
     const result = buildModelCandidateUnion({
-      files: [sharedImplementation, ...rankedFiles],
+      files: [sharedImplementation, ...singleSeedNeighbors, ...rankedFiles],
       query: "Repair the shared workflow behavior used by the related feature implementations.",
       symbols: [],
       bm25Results: [
         ...rankedFiles.map((candidate, index) => scored(candidate, 1 - index / 100)),
+        ...singleSeedNeighbors.map((candidate, index) => scored(candidate, 0.02 - index / 10_000)),
         scored(sharedImplementation, 0.001)
       ],
       semanticHits: rankedFiles.map((candidate, index) => ({
@@ -309,7 +313,12 @@ describe("model-based semantic candidates", () => {
         documentIds: [`rank-${index}`]
       })),
       semanticStatus: readyStatus(rankedFiles.length),
-      edges: seeds.map((seed) => edge(rootPath, sharedImplementation.path, seed.path, "imports"))
+      edges: [
+        ...seeds.map((seed) => edge(rootPath, sharedImplementation.path, seed.path, "imports")),
+        ...singleSeedNeighbors.map((neighbor, index) =>
+          edge(rootPath, seeds[index % seeds.length]!.path, neighbor.path, "imports")
+        )
+      ]
     });
 
     expect(result.initialPaths).toContain(sharedImplementation.path);
