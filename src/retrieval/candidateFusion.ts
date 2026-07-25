@@ -16,7 +16,7 @@ import {
 import type { SemanticCandidateHit } from "./semanticCandidates.js";
 
 export type CandidateRanking = {
-  channel: "semantic" | "bm25" | "symbol" | "git" | "session";
+  channel: "semantic" | "bm25" | "symbol" | "git" | "session" | "graph";
   paths: string[];
 };
 
@@ -67,33 +67,47 @@ export function buildModelCandidateUnion(input: {
     (symbolStrength.get(right) ?? 0) - (symbolStrength.get(left) ?? 0) ||
     left.localeCompare(right)
   );
+  const semanticPaths = input.semanticHits
+    .map((hit) => normalizePath(hit.path))
+    .filter(eligibleNonHard);
+  const bm25Paths = [...input.bm25Results]
+    .sort((left, right) => right.bm25Score - left.bm25Score || left.path.localeCompare(right.path))
+    .map((result) => normalizePath(result.path))
+    .filter(eligibleNonHard);
+  const baseRankings: CandidateRanking[] = [
+    { channel: "semantic", paths: semanticPaths },
+    { channel: "bm25", paths: bm25Paths },
+    { channel: "symbol", paths: symbolPaths.filter(eligibleNonHard) },
+    {
+      channel: "git",
+      paths: [...(input.changedFiles ?? [])].map(normalizePath).filter(eligibleNonHard).sort()
+    },
+    {
+      channel: "session",
+      paths: (input.shown ?? [])
+        .map((record) => record.filePath)
+        .filter((filePath): filePath is string => Boolean(filePath))
+        .map(normalizePath)
+        .filter(eligibleNonHard)
+    }
+  ];
+  const structuralSeeds = reciprocalRankFuse({
+    hardPaths,
+    rankings: baseRankings,
+    limit: DEFAULT_INITIAL_CANDIDATE_LIMIT
+  }).filter((filePath) => filesByPath.has(filePath));
+  const graphPaths = rankDirectGraphCandidates({
+    seedPaths: structuralSeeds,
+    edges: input.edges,
+    semanticPaths,
+    bm25Paths,
+    limit: DEFAULT_INITIAL_CANDIDATE_LIMIT
+  }).filter(eligibleNonHard);
   const initialPaths = reciprocalRankFuse({
     hardPaths,
     rankings: [
-      {
-        channel: "semantic",
-        paths: input.semanticHits.map((hit) => normalizePath(hit.path)).filter(eligibleNonHard)
-      },
-      {
-        channel: "bm25",
-        paths: [...input.bm25Results]
-          .sort((left, right) => right.bm25Score - left.bm25Score || left.path.localeCompare(right.path))
-          .map((result) => normalizePath(result.path))
-          .filter(eligibleNonHard)
-      },
-      { channel: "symbol", paths: symbolPaths.filter(eligibleNonHard) },
-      {
-        channel: "git",
-        paths: [...(input.changedFiles ?? [])].map(normalizePath).filter(eligibleNonHard).sort()
-      },
-      {
-        channel: "session",
-        paths: (input.shown ?? [])
-          .map((record) => record.filePath)
-          .filter((filePath): filePath is string => Boolean(filePath))
-          .map(normalizePath)
-          .filter(eligibleNonHard)
-      }
+      ...baseRankings,
+      { channel: "graph", paths: graphPaths }
     ],
     limit: DEFAULT_INITIAL_CANDIDATE_LIMIT
   }).filter((filePath) => filesByPath.has(filePath));
@@ -105,7 +119,10 @@ export function buildModelCandidateUnion(input: {
   const bm25ByPath = new Map(input.bm25Results.map((result) => [normalizePath(result.path), result]));
   const semanticByPath = new Map(input.semanticHits.map((hit) => [normalizePath(hit.path), hit]));
   const changedPaths = new Set([...(input.changedFiles ?? [])].map(normalizePath));
-  const graphOnly = new Set(enrichedPaths.filter((filePath) => !initialPaths.includes(filePath)));
+  const graphEvidence = new Set([
+    ...graphPaths,
+    ...enrichedPaths.filter((filePath) => !initialPaths.includes(filePath))
+  ]);
   const candidateResults = enrichedPaths.map((filePath): HybridScoredResult => {
     const file = filesByPath.get(filePath)!;
     const bm25 = bm25ByPath.get(filePath);
@@ -116,7 +133,7 @@ export function buildModelCandidateUnion(input: {
       ...((bm25?.bm25Score ?? 0) > 0 ? ["BM25 candidate"] : []),
       ...(symbolStrength.has(filePath) ? ["exact symbol candidate"] : []),
       ...(changedPaths.has(filePath) ? ["changed in diff"] : []),
-      ...(graphOnly.has(filePath) ? ["direct graph neighbor"] : [])
+      ...(graphEvidence.has(filePath) ? ["direct graph neighbor"] : [])
     ];
     return {
       ...file,
@@ -127,7 +144,7 @@ export function buildModelCandidateUnion(input: {
       keywordScore: 0,
       bm25Score: bm25?.bm25Score ?? 0,
       behaviorScore: 0,
-      graphScore: graphOnly.has(filePath) ? 1 : 0,
+      graphScore: graphEvidence.has(filePath) ? 1 : 0,
       intentScore: 0,
       sessionScore: 0,
       importanceScore: file.importance,
@@ -141,6 +158,79 @@ export function buildModelCandidateUnion(input: {
     candidateResults,
     semanticStatus: input.semanticStatus
   };
+}
+
+export function rankDirectGraphCandidates(input: {
+  seedPaths: string[];
+  edges: GraphEdgeRecord[];
+  semanticPaths: string[];
+  bm25Paths: string[];
+  limit: number;
+}): string[] {
+  const seedRank = rankingMap(input.seedPaths);
+  const semanticRank = rankingMap(input.semanticPaths);
+  const bm25Rank = rankingMap(input.bm25Paths);
+  const candidates = new Map<string, {
+    score: number;
+    seedRank: number;
+    edgePriority: number;
+    semanticRank: number;
+    bm25Rank: number;
+  }>();
+  for (const edge of input.edges) {
+    const fromRank = seedRank.get(normalizePath(edge.fromFile));
+    const toRank = seedRank.get(normalizePath(edge.toFile));
+    const seed = fromRank !== undefined
+      ? { rank: fromRank, neighbor: normalizePath(edge.toFile) }
+      : toRank !== undefined
+        ? { rank: toRank, neighbor: normalizePath(edge.fromFile) }
+        : undefined;
+    if (!seed || seedRank.has(seed.neighbor)) continue;
+    const semantic = semanticRank.get(seed.neighbor) ?? Number.POSITIVE_INFINITY;
+    const lexical = bm25Rank.get(seed.neighbor) ?? Number.POSITIVE_INFINITY;
+    const score =
+      reciprocalRankScore(seed.rank) +
+      reciprocalRankScore(semantic) +
+      reciprocalRankScore(lexical);
+    const existing = candidates.get(seed.neighbor);
+    const candidate = {
+      score,
+      seedRank: seed.rank,
+      edgePriority: edgePriority(edge.type),
+      semanticRank: semantic,
+      bm25Rank: lexical
+    };
+    if (
+      !existing ||
+      candidate.score > existing.score ||
+      (
+        candidate.score === existing.score &&
+        (
+          candidate.edgePriority > existing.edgePriority ||
+          (
+            candidate.edgePriority === existing.edgePriority &&
+            candidate.seedRank < existing.seedRank
+          )
+        )
+      )
+    ) {
+      candidates.set(seed.neighbor, candidate);
+    }
+  }
+  return [...candidates.keys()]
+    .sort((left, right) => {
+      const leftEvidence = candidates.get(left)!;
+      const rightEvidence = candidates.get(right)!;
+      return (
+        rightEvidence.score - leftEvidence.score ||
+        rightEvidence.edgePriority - leftEvidence.edgePriority ||
+        leftEvidence.seedRank - rightEvidence.seedRank ||
+        leftEvidence.semanticRank - rightEvidence.semanticRank ||
+        leftEvidence.bm25Rank - rightEvidence.bm25Rank ||
+        left.localeCompare(right)
+      );
+    })
+    .slice(0, Math.max(1, Math.floor(input.limit)));
 }
 
 export function reciprocalRankFuse(input: {
@@ -179,6 +269,14 @@ export function reciprocalRankFuse(input: {
     selected.push(filePath);
   }
   return selected;
+}
+
+function rankingMap(paths: string[]): Map<string, number> {
+  return new Map(uniquePaths(paths).map((filePath, index) => [filePath, index + 1]));
+}
+
+function reciprocalRankScore(rank: number): number {
+  return Number.isFinite(rank) ? 1 / (60 + rank) : 0;
 }
 
 export function expandDirectGraphCandidates(input: {

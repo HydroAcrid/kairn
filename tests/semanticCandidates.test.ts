@@ -6,7 +6,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildModelCandidateUnion, reciprocalRankFuse } from "../src/retrieval/candidateFusion.js";
+import {
+  buildModelCandidateUnion,
+  rankDirectGraphCandidates,
+  reciprocalRankFuse
+} from "../src/retrieval/candidateFusion.js";
 import {
   buildSemanticQueryViews,
   scoreSemanticEmbeddingIndex,
@@ -232,6 +236,26 @@ describe("model-based semantic candidates", () => {
       limit: 2,
       rankConstant: 10
     })).toEqual(["z/unrelated-name.ts", "a/task-words.ts"]);
+  });
+
+  it("promotes direct graph neighbors using seed and model evidence rather than path terms", () => {
+    const ranked = rankDirectGraphCandidates({
+      seedPaths: ["src/central.ts", "src/secondary.ts"],
+      semanticPaths: ["src/semantic-neighbor.ts", "src/unrelated.ts"],
+      bm25Paths: ["src/lexical-neighbor.ts", "src/semantic-neighbor.ts"],
+      edges: [
+        edge("src/central.ts", "src/semantic-neighbor.ts"),
+        edge("src/central.ts", "src/unrelated-graph-neighbor.ts"),
+        edge("src/secondary.ts", "src/lexical-neighbor.ts")
+      ],
+      limit: 3
+    });
+
+    expect(ranked).toEqual([
+      "src/semantic-neighbor.ts",
+      "src/lexical-neighbor.ts",
+      "src/unrelated-graph-neighbor.ts"
+    ]);
   });
 
   it("reports explicit fallback when a local model is unavailable and performs no download", async () => {
@@ -554,5 +578,15 @@ function readyStatus(count: number) {
     semanticIndexStatus: "ready" as const,
     documentCount: count,
     embeddingCount: count
+  };
+}
+
+function edge(fromFile: string, toFile: string): RepoGraph["edges"][number] {
+  return {
+    rootPath: "/repo",
+    fromFile,
+    toFile,
+    type: "imports",
+    metadata: {}
   };
 }
