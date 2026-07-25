@@ -280,12 +280,17 @@ describe("public evidence ranker training", () => {
     ]));
     expect(JSON.parse(fs.readFileSync(reportPath, "utf8"))).toMatchObject({
       candidateRecallAt64: 1,
+      candidateRecallAt128: 1,
+      positiveSourceAnyHitRateAt128: 1,
       cases: [expect.objectContaining({
         explicitNegativeCount: 6,
         explicitNegativeCountAt64: 6,
         trainingCandidateCount: expect.any(Number),
         requiredSourceRecallAt64: 1,
+        requiredSourceRecallAt128: 1,
         officialPatchSourceRecallAt128: null,
+        positiveSourceHitAt128: true,
+        missingRequiredSourceFilesAt128: [],
         signals: expect.objectContaining({ explicitPaths: expect.arrayContaining(["src/user.ts"]) }),
         enrichedCandidatePaths: expect.arrayContaining(["src/user.ts"]),
         index: expect.objectContaining({ fileCount: expect.any(Number), symbolCount: expect.any(Number) })
@@ -455,14 +460,19 @@ describe("public evidence ranker training", () => {
     });
     expect(JSON.parse(fs.readFileSync(missedReportPath, "utf8"))).toMatchObject({
       candidateRecallAt64: 0,
+      candidateRecallAt128: 0,
       positiveSourceAnyHitRateAt64: 0,
+      positiveSourceAnyHitRateAt128: 0,
       cases: [expect.objectContaining({
         requiredSourceRecallAt64: 0,
+        requiredSourceRecallAt128: 0,
         requiredSourceExistingFiles: ["src/zzzz/opaque.ts"],
         requiredSourceCreationFiles: [],
         positiveSourceHitAt64: false,
+        positiveSourceHitAt128: false,
         explicitNegativeCount: 6,
         missingRequiredSourceFiles: ["src/zzzz/opaque.ts"],
+        missingRequiredSourceFilesAt128: ["src/zzzz/opaque.ts"],
         missingExplicitNoiseFiles: []
       })]
     });
@@ -514,8 +524,10 @@ describe("public evidence ranker training", () => {
     expect(JSON.parse(fs.readFileSync(creationReportPath, "utf8"))).toMatchObject({
       candidateRecallEligibleCases: 0,
       candidateRecallAt64: null,
+      candidateRecallAt128: null,
       cases: [expect.objectContaining({
         requiredSourceRecallAt64: null,
+        requiredSourceRecallAt128: null,
         requiredSourceExistingFiles: [],
         requiredSourceCreationFiles: ["src/new-production-file.ts"],
         missingRequiredSourceFiles: []

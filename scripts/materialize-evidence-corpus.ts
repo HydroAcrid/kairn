@@ -163,6 +163,9 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       const missingRequiredSourceFiles = [...requiredSourcePaths].filter(
         (candidatePath) => !candidatePathsAt64.has(candidatePath)
       );
+      const missingRequiredSourceFilesAt128 = [...requiredSourcePaths].filter(
+        (candidatePath) => !trainingCandidatePaths.has(candidatePath)
+      );
       const missingExplicitNoiseFiles = missingLabels.filter((candidatePath) => explicitNoisePaths.has(candidatePath));
       const missingExplicitNoiseFilesAt64 = [...explicitNoisePaths].filter(
         (candidatePath) => !candidatePathsAt64.has(candidatePath)
@@ -172,6 +175,9 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       }
       const requiredRecall = requiredSourcePartition.existing.length > 0
         ? fractionRecalled(requiredSourcePartition.existing, candidatePathsAt64)
+        : null;
+      const requiredRecallAt128 = requiredSourcePartition.existing.length > 0
+        ? fractionRecalled(requiredSourcePartition.existing, trainingCandidatePaths)
         : null;
       const patchRecall = officialPatchSourcePartition.existing.length > 0
         ? fractionRecalled(officialPatchSourcePartition.existing, candidatePathsAt64)
@@ -188,6 +194,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
         (candidate) => candidate.labelProvenance === "explicit_noise_or_excluded"
       ).length;
       const positiveCandidates = candidates.filter((candidate) => candidate.label === 1).length;
+      const positiveTrainingCandidates = trainingCandidates.filter((candidate) => candidate.label === 1).length;
       if (!options.draft && explicitNegatives < 6) {
         throw new Error(`${intakeCase.id}: at least six training candidates must be curated as explicit noise`);
       }
@@ -229,6 +236,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
         exportedCandidateCount: candidates.length,
         trainingCandidateCount: trainingCandidates.length,
         requiredSourceRecallAt64: requiredRecall,
+        requiredSourceRecallAt128: requiredRecallAt128,
         requiredSourceExistingFiles: requiredSourcePartition.existing,
         requiredSourceCreationFiles: requiredSourcePartition.creation,
         officialPatchSourceRecallAt64: patchRecall,
@@ -236,10 +244,12 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
         officialPatchSourceExistingFiles: officialPatchSourcePartition.existing,
         officialPatchSourceCreationFiles: officialPatchSourcePartition.creation,
         positiveSourceHitAt64: positiveCandidates > 0,
+        positiveSourceHitAt128: positiveTrainingCandidates > 0,
         explicitNegativeCount: explicitNegatives,
         explicitNegativeCountAt64: explicitNegativesAt64,
         missingLabeledFiles: missingLabels,
         missingRequiredSourceFiles,
+        missingRequiredSourceFilesAt128,
         missingExplicitNoiseFiles,
         missingExplicitNoiseFilesAt64,
         missingRequiredOrNoiseFiles: [...missingRequiredSourceFiles, ...missingExplicitNoiseFiles],
@@ -307,7 +317,9 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
     caseCount: materializedCases.length,
     candidateRecallEligibleCases: reportCases.filter((row) => row.requiredSourceRecallAt64 !== null).length,
     candidateRecallAt64: fullRecallRate(reportCases, "requiredSourceRecallAt64"),
+    candidateRecallAt128: fullRecallRate(reportCases, "requiredSourceRecallAt128"),
     positiveSourceAnyHitRateAt64: booleanRate(reportCases, "positiveSourceHitAt64"),
+    positiveSourceAnyHitRateAt128: booleanRate(reportCases, "positiveSourceHitAt128"),
     officialPatchMeanRecallAt64: meanNullable(reportCases, "officialPatchSourceRecallAt64"),
     officialPatchMeanRecallAt128: meanNullable(reportCases, "officialPatchSourceRecallAt128"),
     ...(options.limit || options.caseIds ? {
@@ -467,7 +479,9 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
     caseCount: materializedCases.length,
     candidateRecallEligibleCases: reportCases.filter((row) => row.requiredSourceRecallAt64 !== null).length,
     candidateRecallAt64: fullRecallRate(reportCases, "requiredSourceRecallAt64"),
+    candidateRecallAt128: fullRecallRate(reportCases, "requiredSourceRecallAt128"),
     positiveSourceAnyHitRateAt64: booleanRate(reportCases, "positiveSourceHitAt64"),
+    positiveSourceAnyHitRateAt128: booleanRate(reportCases, "positiveSourceHitAt128"),
     officialPatchMeanRecallAt64: meanNullable(reportCases, "officialPatchSourceRecallAt64"),
     officialPatchMeanRecallAt128: meanNullable(reportCases, "officialPatchSourceRecallAt128"),
     ...(partial ? { partial: true, selectedCaseIds: selectedCases.map((item) => item.id) } : {}),
