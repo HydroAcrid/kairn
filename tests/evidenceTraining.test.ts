@@ -10,7 +10,9 @@ import {
   buildSemanticSnapshotCacheKey,
   materializeEvidenceCorpus,
   persistSnapshotEmbeddingCache,
-  restoreSnapshotEmbeddingCache
+  readIsolatedMaterializationProgress,
+  restoreSnapshotEmbeddingCache,
+  writeIsolatedMaterializationProgress
 } from "../scripts/materialize-evidence-corpus.js";
 import { patchFiles } from "../scripts/build-public-evidence-intake.js";
 import { buildCorpusReviewQueue } from "../scripts/build-corpus-review-queue.js";
@@ -148,6 +150,37 @@ describe("public evidence ranker training", () => {
     expect(changedLineage).not.toBe(firstRef);
   });
 
+  it("resumes isolated materialization only for the exact commit, intake, and case order", () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-materialization-progress-"));
+    const progressPath = path.join(temporary, "oracle.progress.json");
+    const identity = {
+      kairnCommit: "a".repeat(40),
+      intakeSha256: "b".repeat(64),
+      selectedCaseIds: ["case-a", "case-b"]
+    };
+    try {
+      writeIsolatedMaterializationProgress(progressPath, {
+        schemaVersion: "ranker-corpus-materialization-progress.v1",
+        ...identity,
+        complete: false,
+        materializedCases: [{ id: "case-a", candidates: [] }],
+        reportCases: [{ id: "case-a", requiredSourceRecallAt64: 1 }]
+      });
+
+      expect(readIsolatedMaterializationProgress(progressPath, identity)).toMatchObject({
+        complete: false,
+        materializedCases: [{ id: "case-a", candidates: [] }],
+        reportCases: [{ id: "case-a", requiredSourceRecallAt64: 1 }]
+      });
+      expect(() => readIsolatedMaterializationProgress(progressPath, {
+        ...identity,
+        kairnCommit: "c".repeat(40)
+      })).toThrow("does not match the current commit");
+    } finally {
+      fs.rmSync(temporary, { recursive: true, force: true });
+    }
+  });
+
   it("materializes candidate features from the same bounded serving path", async () => {
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-ranker-materialize-"));
     const fixture = createFixtureRepo();
@@ -192,7 +225,7 @@ describe("public evidence ranker training", () => {
       }]
     }), "utf8");
 
-    const result = await materializeEvidenceCorpus({
+    const materializeOptions = {
       intakePath,
       outPath: manifestPath,
       reportPath,
@@ -201,10 +234,20 @@ describe("public evidence ranker training", () => {
       allowLocalFixture: true,
       draft: true,
       processIsolation: true,
-      migrateFeatureSchema: true
-    });
+      migrateFeatureSchema: true,
+      resume: true
+    } as const;
+    const result = await materializeEvidenceCorpus(materializeOptions);
 
     expect(result.caseCount).toBe(1);
+    expect(JSON.parse(fs.readFileSync(`${manifestPath}.progress.json`, "utf8"))).toMatchObject({
+      schemaVersion: "ranker-corpus-materialization-progress.v1",
+      complete: true,
+      selectedCaseIds: ["materialized-train-case"],
+      materializedCases: [expect.objectContaining({ id: "materialized-train-case" })],
+      reportCases: [expect.objectContaining({ id: "materialized-train-case" })]
+    });
+    expect(await materializeEvidenceCorpus(materializeOptions)).toMatchObject({ caseCount: 1 });
     const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
     expect(manifest.cases[0].candidates.length).toBeGreaterThanOrEqual(7);
     expect(manifest.cases[0].trainingCandidates.length).toBeGreaterThanOrEqual(

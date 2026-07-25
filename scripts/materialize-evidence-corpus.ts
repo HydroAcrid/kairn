@@ -71,6 +71,17 @@ export type MaterializeOptions = {
   isolatedWorker?: boolean;
   snapshotEmbeddingCachePath?: string;
   migrateFeatureSchema?: boolean;
+  resume?: boolean;
+};
+
+export type IsolatedMaterializationProgress = {
+  schemaVersion: "ranker-corpus-materialization-progress.v1";
+  kairnCommit: string;
+  intakeSha256: string;
+  selectedCaseIds: string[];
+  complete: boolean;
+  materializedCases: Array<Record<string, unknown>>;
+  reportCases: Array<Record<string, unknown>>;
 };
 
 const INTAKE_KEYS = new Set([
@@ -86,6 +97,9 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
   caseCount: number;
 }> {
   if (options.processIsolation) return materializeEvidenceCorpusIsolated(options);
+  if (options.resume) {
+    throw new Error("--resume requires the default isolated materialization mode");
+  }
   const intakePath = path.resolve(options.intakePath);
   const outPath = path.resolve(options.outPath);
   const reportPath = path.resolve(options.reportPath);
@@ -316,11 +330,29 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
   }
   const cacheDir = path.resolve(options.cacheDir ?? path.join(kairnRoot, "artifacts", "ranker-checkouts"));
   fs.mkdirSync(cacheDir, { recursive: true });
-  const materializedCases: Array<Record<string, unknown>> = [];
-  const reportCases: Array<Record<string, unknown>> = [];
+  const intakeHash = sha256(fs.readFileSync(intakePath));
+  const selectedCaseIds = selectedCases.map((item) => item.id);
+  const progressPath = `${outPath}.progress.json`;
+  const restoredProgress = options.resume
+    ? readIsolatedMaterializationProgress(progressPath, {
+        kairnCommit,
+        intakeSha256: intakeHash,
+        selectedCaseIds
+      })
+    : undefined;
+  const materializedCases: Array<Record<string, unknown>> = [
+    ...(restoredProgress?.materializedCases ?? [])
+  ];
+  const reportCases: Array<Record<string, unknown>> = [
+    ...(restoredProgress?.reportCases ?? [])
+  ];
+  const completedCaseIds = new Set(
+    materializedCases.map((item) => string(item.id, "progress materialized case id"))
+  );
   const scriptPath = fileURLToPath(import.meta.url);
 
   for (const intakeCase of selectedCases) {
+    if (completedCaseIds.has(intakeCase.id)) continue;
     const snapshotEmbeddingCachePath = path.join(
       cacheDir,
       "semantic-embedding-cache",
@@ -361,6 +393,18 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
       }
       materializedCases.push(record(manifestRows[0], `${intakeCase.id} materialized case`));
       reportCases.push(record(reportRows[0], `${intakeCase.id} report case`));
+      completedCaseIds.add(intakeCase.id);
+      if (options.resume) {
+        writeIsolatedMaterializationProgress(progressPath, {
+          schemaVersion: "ranker-corpus-materialization-progress.v1",
+          kairnCommit,
+          intakeSha256: intakeHash,
+          selectedCaseIds,
+          complete: false,
+          materializedCases,
+          reportCases
+        });
+      }
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
       throw new Error(`${intakeCase.id}: isolated materialization failed: ${detail}`);
@@ -370,7 +414,6 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
     }
   }
 
-  const intakeHash = sha256(fs.readFileSync(intakePath));
   const relativeRegistry = normalizePath(path.relative(path.dirname(outPath), registryPath));
   const partial = Boolean(options.limit || options.caseIds);
   const manifest = {
@@ -415,6 +458,17 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
   fs.mkdirSync(path.dirname(reportPath), { recursive: true });
   fs.writeFileSync(outPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+  if (options.resume) {
+    writeIsolatedMaterializationProgress(progressPath, {
+      schemaVersion: "ranker-corpus-materialization-progress.v1",
+      kairnCommit,
+      intakeSha256: intakeHash,
+      selectedCaseIds,
+      complete: true,
+      materializedCases,
+      reportCases
+    });
+  }
   return { manifestPath: outPath, reportPath, caseCount: materializedCases.length };
 }
 
@@ -622,6 +676,89 @@ function semanticSnapshotCacheKey(intakeCase: IntakeCase): string {
     modelManifestSha256,
     documentSchemaVersion: SEMANTIC_DOCUMENT_SCHEMA_VERSION
   });
+}
+
+export function readIsolatedMaterializationProgress(
+  progressPath: string,
+  expected: {
+    kairnCommit: string;
+    intakeSha256: string;
+    selectedCaseIds: string[];
+  }
+): IsolatedMaterializationProgress | undefined {
+  if (!fs.existsSync(progressPath)) return undefined;
+  const parsed = record(
+    JSON.parse(fs.readFileSync(progressPath, "utf8")),
+    "isolated materialization progress"
+  );
+  if (parsed.schemaVersion !== "ranker-corpus-materialization-progress.v1") {
+    throw new Error("isolated materialization progress has an unsupported schema");
+  }
+  const kairnCommit = string(parsed.kairnCommit, "progress kairnCommit");
+  const intakeSha256 = string(parsed.intakeSha256, "progress intakeSha256");
+  const selectedCaseIds = array(parsed.selectedCaseIds, "progress selectedCaseIds")
+    .map((item, index) => string(item, `progress selectedCaseIds[${index}]`));
+  if (
+    kairnCommit !== expected.kairnCommit ||
+    intakeSha256 !== expected.intakeSha256 ||
+    !sameStrings(selectedCaseIds, expected.selectedCaseIds)
+  ) {
+    throw new Error(
+      "isolated materialization progress does not match the current commit, intake, or selected cases"
+    );
+  }
+  if (typeof parsed.complete !== "boolean") {
+    throw new Error("isolated materialization progress complete must be a boolean");
+  }
+  const materializedCases = array(parsed.materializedCases, "progress materializedCases")
+    .map((item, index) => record(item, `progress materializedCases[${index}]`));
+  const reportCases = array(parsed.reportCases, "progress reportCases")
+    .map((item, index) => record(item, `progress reportCases[${index}]`));
+  const materializedIds = materializedCases.map((item) =>
+    string(item.id, "progress materialized case id")
+  );
+  const reportIds = reportCases.map((item) => string(item.id, "progress report case id"));
+  if (
+    materializedIds.length !== new Set(materializedIds).size ||
+    !sameStrings(materializedIds, reportIds) ||
+    !sameStrings(materializedIds, selectedCaseIds.slice(0, materializedIds.length))
+  ) {
+    throw new Error("isolated materialization progress contains inconsistent case rows");
+  }
+  if (parsed.complete && materializedIds.length !== selectedCaseIds.length) {
+    throw new Error("complete isolated materialization progress is missing selected cases");
+  }
+  return {
+    schemaVersion: "ranker-corpus-materialization-progress.v1",
+    kairnCommit,
+    intakeSha256,
+    selectedCaseIds,
+    complete: parsed.complete,
+    materializedCases,
+    reportCases
+  };
+}
+
+export function writeIsolatedMaterializationProgress(
+  progressPath: string,
+  progress: IsolatedMaterializationProgress
+): void {
+  const parent = path.dirname(progressPath);
+  fs.mkdirSync(parent, { recursive: true });
+  const staged = `${progressPath}.tmp-${crypto.randomUUID()}`;
+  try {
+    fs.writeFileSync(staged, `${JSON.stringify(progress)}\n`, {
+      encoding: "utf8",
+      flag: "wx"
+    });
+    replaceSnapshotCache(progressPath, staged);
+  } finally {
+    fs.rmSync(staged, { force: true });
+  }
+}
+
+function sameStrings(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 export function buildSemanticSnapshotCacheKey(input: {
@@ -955,7 +1092,7 @@ function parseArgs(argv: string[]): MaterializeOptions {
     if (
       token === "--allow-sample" || token === "--allow-local-fixture" || token === "--draft" ||
       token === "--in-process" || token === "--isolated-worker" ||
-      token === "--migrate-feature-schema"
+      token === "--migrate-feature-schema" || token === "--resume"
     ) {
       flags.add(token);
       continue;
@@ -984,6 +1121,7 @@ function parseArgs(argv: string[]): MaterializeOptions {
     processIsolation: !flags.has("--in-process"),
     isolatedWorker: flags.has("--isolated-worker"),
     migrateFeatureSchema: flags.has("--migrate-feature-schema"),
+    resume: flags.has("--resume"),
     ...(values.get("--limit") ? { limit: positiveInteger(values.get("--limit")!, "--limit") } : {}),
     ...(values.get("--case-id") ? { caseIds: commaSeparated(values.get("--case-id")!, "--case-id") } : {})
   };
