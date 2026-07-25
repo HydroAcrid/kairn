@@ -130,11 +130,21 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       allowLocalFixture: options.allowLocalFixture === true,
       sampleOnly: intake.sampleOnly
     });
-    if (options.snapshotEmbeddingCachePath) {
-      restoreSnapshotEmbeddingCache(checkout.root, options.snapshotEmbeddingCachePath);
-    }
+    const snapshotPath = options.snapshotEmbeddingCachePath;
+    if (snapshotPath) restoreSnapshotEmbeddingCache(checkout.root, snapshotPath);
+    const snapshotTimer = snapshotPath
+      ? setInterval(() => {
+          try {
+            persistSnapshotEmbeddingCache(checkout.root, snapshotPath);
+          } catch (error) {
+            process.stderr.write(
+              `Semantic snapshot checkpoint failed: ${error instanceof Error ? error.message : String(error)}\n`
+            );
+          }
+        }, 60_000)
+      : undefined;
+    snapshotTimer?.unref();
     const runtime = new KairnRuntime(checkout.root);
-    let materialized = false;
     try {
       const requiredSourcePartition = partitionRepositoryPaths(checkout.root, intakeCase.requiredSourceFiles);
       const officialPatchSourcePartition = partitionRepositoryPaths(checkout.root, intakeCase.officialPatchSourceFiles);
@@ -247,11 +257,17 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
           }))
         } : {})
       });
-      materialized = true;
     } finally {
+      if (snapshotTimer) clearInterval(snapshotTimer);
       runtime.close();
-      if (materialized && options.snapshotEmbeddingCachePath) {
-        persistSnapshotEmbeddingCache(checkout.root, options.snapshotEmbeddingCachePath);
+      if (snapshotPath) {
+        try {
+          persistSnapshotEmbeddingCache(checkout.root, snapshotPath);
+        } catch (error) {
+          process.stderr.write(
+            `Final semantic snapshot checkpoint failed: ${error instanceof Error ? error.message : String(error)}\n`
+          );
+        }
       }
       checkout.cleanup();
     }
