@@ -456,7 +456,7 @@ function roundRobinGraphNeighbors(input: {
 }): GraphNeighbor[] {
   if (input.limit <= 0 || input.seedPaths.length === 0) return [];
   const seedSet = new Set(input.seedPaths);
-  const priorities = [4, 3, 2, 1, 0] as const;
+  const priorities = [5, 4, 3, 2, 1, 0] as const;
   const bySeed = new Map<string, Map<number, GraphNeighbor[]>>();
   for (const seed of input.seedPaths) {
     bySeed.set(seed, new Map(priorities.map((priority) => [priority, []])));

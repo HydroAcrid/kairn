@@ -247,6 +247,26 @@ describe("evidence task signals and candidates", () => {
       .toContain("graph_neighbor");
   });
 
+  it("accepts highest-precision shared-call neighbors without dropping the graph bucket", () => {
+    const root = "/repo";
+    const seed = file(root, "pkg/check_test.go", "test", 400);
+    const production = file(root, "pkg/worker.go", "source", 800);
+    const candidates = buildEvidenceCandidates({
+      files: [seed, production],
+      query: "Resolve the failing check and preserve the expected outcome",
+      symbols: [],
+      edges: [edge(root, seed.path, production.path, "shared_call_target")],
+      legacyResults: [scored(seed, { bm25Score: 10 })],
+      seedCandidatePaths: [seed.path],
+      initialLimit: 1,
+      enrichedLimit: 2
+    });
+
+    expect(candidates.candidates.map((candidate) => candidate.path)).toContain(production.path);
+    expect(candidates.candidates.find((candidate) => candidate.path === production.path)?.reasons)
+      .toContain("graph_neighbor");
+  });
+
   it("keeps task source symbols in the bounded union when a broad suite is listed", () => {
     const root = "/repo";
     const source = file(root, "src/TokenFilter.java", "source", 200);
