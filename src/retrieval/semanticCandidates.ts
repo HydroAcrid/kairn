@@ -31,6 +31,9 @@ export type SemanticCandidateSearchResult = {
 const MAX_QUERY_CHARS = 1_600;
 const MAX_SEMANTIC_QUERY_VIEWS = 5;
 const MAX_FENCED_SEMANTIC_QUERY_VIEWS = 2;
+const MAX_SEMANTIC_QUERY_CANDIDATES = 18;
+const MAX_NARRATIVE_QUERY_CANDIDATES = 5;
+const MAX_FENCED_QUERY_CANDIDATES = 12;
 const SEMANTIC_QUERY_WINDOW_CHARS = 560;
 const SEMANTIC_QUERY_WINDOW_OVERLAP_CHARS = 80;
 const SEMANTIC_DIAGNOSTIC_RANK_LIMIT = 512;
@@ -91,8 +94,17 @@ export async function searchSemanticCandidates(input: {
       modelId,
       ...(input.config.modelPath ? { modelPath: input.config.modelPath } : {})
     });
-    const semanticQueries = buildSemanticQueries(input.query);
-    const queryVectors = await model.embedQueries(semanticQueries);
+    const semanticQueryCandidates = buildSemanticQueryCandidates(input.query);
+    const candidateQueryVectors = await model.embedQueries(
+      semanticQueryCandidates.map((candidate) => candidate.text)
+    );
+    const selectedQueryIndexes = selectSemanticQueryViewIndexes(
+      semanticQueryCandidates,
+      candidateQueryVectors,
+      MAX_SEMANTIC_QUERY_VIEWS,
+      MAX_FENCED_SEMANTIC_QUERY_VIEWS
+    );
+    const queryVectors = selectedQueryIndexes.map((index) => candidateQueryVectors[index]!);
     const scanStarted = performance.now();
     const queryRankings = queryVectors.map((queryVector) => scoreSemanticEmbeddingIndex({
         queryVector,
@@ -138,41 +150,124 @@ export async function searchSemanticCandidates(input: {
  * prevents broad failure inventories or issue templates from consuming the
  * model's complete token window.
  */
-export function buildSemanticQueries(query: string): string[] {
+export type SemanticQueryViewCandidate = {
+  kind: "headline" | "narrative" | "fence";
+  text: string;
+  structuralIndex: number;
+};
+
+export function buildSemanticQueryCandidates(query: string): SemanticQueryViewCandidate[] {
   const unwrapped = unwrapSerializedQuery(query);
   const structuralQueries = buildEvidenceRetrievalQueries(unwrapped);
   const headline = structuralQueries[0];
   const narrative = structuralQueries[1] ?? structuralQueries.at(-1);
-  const codeAware = structuralQueries.at(-1);
   const narrativeWindows = narrative
     ? boundedQueryWindows(narrative, SEMANTIC_QUERY_WINDOW_CHARS, SEMANTIC_QUERY_WINDOW_OVERLAP_CHARS)
     : [];
-  const fencedViews = selectFencedSemanticViews(
-    extractFencedBlocks(unwrapped),
-    MAX_FENCED_SEMANTIC_QUERY_VIEWS
-  );
-  const availableNarrativeViews = Math.max(
-    0,
-    MAX_SEMANTIC_QUERY_VIEWS - (headline ? 1 : 0) - fencedViews.length
-  );
-  const selected = [
-    ...(headline ? [headline] : []),
-    ...evenlySampleIncludingEndpoints(narrativeWindows, availableNarrativeViews),
-    ...fencedViews
+  const rawCandidates: SemanticQueryViewCandidate[] = [
+    ...(headline ? [{
+      kind: "headline" as const,
+      text: headline,
+      structuralIndex: 0
+    }] : []),
+    ...evenlySampleIncludingEndpoints(
+      narrativeWindows,
+      Math.min(MAX_NARRATIVE_QUERY_CANDIDATES, narrativeWindows.length)
+    ).map((text, index) => ({
+      kind: "narrative" as const,
+      text,
+      structuralIndex: index
+    })),
+    ...evenlySampleIncludingEndpoints(
+      extractFencedBlocks(unwrapped),
+      MAX_FENCED_QUERY_CANDIDATES
+    )
+      .map((block) => ({
+        kind: "fence" as const,
+        text: [
+          ...(block.language ? [`language: ${block.language}`] : []),
+          block.body
+        ].join("\n"),
+        structuralIndex: block.index
+      }))
   ];
-  if (
-    codeAware &&
-    codeAware !== narrative &&
-    selected.length < MAX_SEMANTIC_QUERY_VIEWS
-  ) {
-    selected.push(codeAware);
+  const candidates: SemanticQueryViewCandidate[] = [];
+  const seen = new Set<string>();
+  for (const candidate of rawCandidates) {
+    const text = representativeQuery(
+      normalizeSemanticQuery(candidate.text),
+      MAX_QUERY_CHARS
+    );
+    if (!text || seen.has(text)) continue;
+    seen.add(text);
+    candidates.push({ ...candidate, text });
+    if (candidates.length >= MAX_SEMANTIC_QUERY_CANDIDATES) break;
   }
-  const normalized = selected
-    .map((item) => representativeQuery(normalizeSemanticQuery(item), MAX_QUERY_CHARS))
-    .filter(Boolean);
-  return [...new Set(normalized)].slice(0, MAX_SEMANTIC_QUERY_VIEWS).length > 0
-    ? [...new Set(normalized)].slice(0, MAX_SEMANTIC_QUERY_VIEWS)
-    : [representativeQuery(normalizeSemanticQuery(unwrapped), MAX_QUERY_CHARS)];
+  if (candidates.length > 0) return candidates;
+  return [{
+    kind: "headline",
+    text: representativeQuery(normalizeSemanticQuery(unwrapped), MAX_QUERY_CHARS),
+    structuralIndex: 0
+  }];
+}
+
+export function buildSemanticQueries(query: string): string[] {
+  return buildSemanticQueryCandidates(query).map((candidate) => candidate.text);
+}
+
+export function selectSemanticQueryViewIndexes(
+  candidates: SemanticQueryViewCandidate[],
+  vectors: ArrayLike<number>[],
+  limit = MAX_SEMANTIC_QUERY_VIEWS,
+  fencedLimit = MAX_FENCED_SEMANTIC_QUERY_VIEWS
+): number[] {
+  if (candidates.length !== vectors.length) {
+    throw new Error("Semantic query candidates and vectors must have the same length.");
+  }
+  const boundedLimit = Math.max(1, Math.min(Math.floor(limit), candidates.length));
+  const fenceIndexes = candidates
+    .map((candidate, index) => candidate.kind === "fence" ? index : -1)
+    .filter((index) => index >= 0);
+  const selectedFenceCapacity = Math.min(
+    Math.max(0, Math.floor(fencedLimit)),
+    fenceIndexes.length,
+    Math.max(0, boundedLimit - 1)
+  );
+  const anchorCapacity = Math.max(1, boundedLimit - selectedFenceCapacity);
+  const headlineIndexes = candidates
+    .map((candidate, index) => candidate.kind === "headline" ? index : -1)
+    .filter((index) => index >= 0);
+  const narrativeIndexes = candidates
+    .map((candidate, index) => candidate.kind === "narrative" ? index : -1)
+    .filter((index) => index >= 0);
+  const selectedAnchors = uniqueIndexes([
+    ...headlineIndexes.slice(0, 1),
+    ...evenlySampleIncludingEndpoints(
+      narrativeIndexes,
+      Math.max(0, anchorCapacity - Math.min(1, headlineIndexes.length))
+    )
+  ]).slice(0, anchorCapacity);
+  for (const index of [...headlineIndexes, ...narrativeIndexes]) {
+    if (selectedAnchors.length >= anchorCapacity) break;
+    if (!selectedAnchors.includes(index)) selectedAnchors.push(index);
+  }
+  if (selectedAnchors.length === 0) selectedAnchors.push(0);
+  const selectedFences = fenceIndexes
+    .map((index) => ({
+      index,
+      score: Math.max(
+        ...selectedAnchors.map((anchorIndex) =>
+          cosineSimilarity(vectors[index]!, vectors[anchorIndex]!)
+        )
+      )
+    }))
+    .sort((left, right) =>
+      right.score - left.score ||
+      candidates[left.index]!.structuralIndex - candidates[right.index]!.structuralIndex
+    )
+    .slice(0, selectedFenceCapacity)
+    .map((item) => item.index);
+  return uniqueIndexes([...selectedAnchors, ...selectedFences]).slice(0, boundedLimit);
 }
 
 type FencedBlock = {
@@ -212,20 +307,6 @@ function extractFencedBlocks(value: string): FencedBlock[] {
   return blocks;
 }
 
-function selectFencedSemanticViews(blocks: FencedBlock[], limit: number): string[] {
-  return [...blocks]
-    .sort((left, right) =>
-      right.body.length - left.body.length ||
-      left.index - right.index
-    )
-    .slice(0, Math.max(0, limit))
-    .sort((left, right) => left.index - right.index)
-    .map((block) => [
-      ...(block.language ? [`language: ${block.language}`] : []),
-      block.body
-    ].join("\n"));
-}
-
 function boundedQueryWindows(value: string, maxChars: number, overlapChars: number): string[] {
   const normalized = normalizeSemanticQuery(value);
   if (!normalized || normalized.length <= maxChars) return normalized ? [normalized] : [];
@@ -244,6 +325,26 @@ function boundedQueryWindows(value: string, maxChars: number, overlapChars: numb
     start = nextBoundary >= 0 && nextBoundary < end ? nextBoundary + 1 : nextIdeal;
   }
   return windows.filter(Boolean);
+}
+
+function uniqueIndexes(values: number[]): number[] {
+  return [...new Set(values)];
+}
+
+function cosineSimilarity(left: ArrayLike<number>, right: ArrayLike<number>): number {
+  if (left.length !== right.length || left.length === 0) return -1;
+  let dot = 0;
+  let leftMagnitude = 0;
+  let rightMagnitude = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    const leftValue = Number(left[index]);
+    const rightValue = Number(right[index]);
+    dot += leftValue * rightValue;
+    leftMagnitude += leftValue * leftValue;
+    rightMagnitude += rightValue * rightValue;
+  }
+  const denominator = Math.sqrt(leftMagnitude) * Math.sqrt(rightMagnitude);
+  return denominator > 0 ? dot / denominator : -1;
 }
 
 function evenlySampleIncludingEndpoints<T>(values: T[], count: number): T[] {

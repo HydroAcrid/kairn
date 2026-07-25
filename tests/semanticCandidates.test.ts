@@ -13,9 +13,11 @@ import {
 } from "../src/retrieval/candidateFusion.js";
 import { yieldToSemanticCheckpointTimers } from "../src/indexer/indexRepo.js";
 import {
+  buildSemanticQueryCandidates,
   buildSemanticQueries,
   fuseSemanticCandidateRankings,
   scoreSemanticEmbeddingIndex,
+  selectSemanticQueryViewIndexes,
   searchSemanticCandidates
 } from "../src/retrieval/semanticCandidates.js";
 import { buildSemanticDocuments } from "../src/semantic/documents.js";
@@ -877,7 +879,7 @@ describe("model-based semantic candidates", () => {
     ].join("\n"));
 
     expect(queries.length).toBeGreaterThan(0);
-    expect(queries.length).toBeLessThanOrEqual(5);
+    expect(queries.length).toBeLessThanOrEqual(18);
     expect(queries.some((query) => query.includes("explicitly empty value remains empty"))).toBe(true);
     expect(queries.every((query) => query.length <= 1_600)).toBe(true);
   });
@@ -893,14 +895,14 @@ describe("model-based semantic candidates", () => {
       `The final adapter should report the invalid credential consistently. ${"late context ".repeat(45)}`
     ].join("\n"));
 
-    expect(queries.length).toBeLessThanOrEqual(5);
+    expect(queries.length).toBeLessThanOrEqual(18);
     expect(queries.some((query) => query.includes("expired session state"))).toBe(true);
     expect(queries.some((query) => query.includes("associated lease"))).toBe(true);
     expect(queries.some((query) => query.includes("invalid credential"))).toBe(true);
   });
 
-  it("gives the model bounded views of the largest structured fenced evidence", () => {
-    const queries = buildSemanticQueries([
+  it("gives the model a bounded candidate pool spanning structured fenced evidence", () => {
+    const candidates = buildSemanticQueryCandidates([
       "Persisted records lose ownership metadata after a round trip.",
       "",
       "```shell",
@@ -926,18 +928,67 @@ describe("model-based semantic candidates", () => {
       "```"
     ].join("\n"));
 
-    expect(queries.length).toBeGreaterThanOrEqual(3);
-    expect(queries.length).toBeLessThanOrEqual(5);
-    expect(queries.some((query) =>
-      query.includes("language: json") &&
-      query.includes("ownership") &&
-      query.includes("generation")
+    expect(candidates.length).toBeGreaterThanOrEqual(4);
+    expect(candidates.length).toBeLessThanOrEqual(18);
+    expect(candidates.some((candidate) =>
+      candidate.kind === "fence" &&
+      candidate.text.includes("language: shell") &&
+      candidate.text.includes("tool run")
     )).toBe(true);
-    expect(queries.some((query) =>
-      query.includes("language: typescript") &&
-      query.includes("normalizeOwnership")
+    expect(candidates.some((candidate) =>
+      candidate.kind === "fence" &&
+      candidate.text.includes("language: json") &&
+      candidate.text.includes("ownership") &&
+      candidate.text.includes("generation")
     )).toBe(true);
-    expect(queries.every((query) => query.length <= 1_600)).toBe(true);
+    expect(candidates.some((candidate) =>
+      candidate.kind === "fence" &&
+      candidate.text.includes("language: typescript") &&
+      candidate.text.includes("normalizeOwnership")
+    )).toBe(true);
+    expect(candidates.every((candidate) => candidate.text.length <= 1_600)).toBe(true);
+  });
+
+  it("uses embedding agreement rather than fence size or position to select structured query evidence", () => {
+    const candidates = [
+      {
+        kind: "headline" as const,
+        text: "Removed module configuration does not execute its cleanup action.",
+        structuralIndex: 0
+      },
+      {
+        kind: "narrative" as const,
+        text: "The cleanup declared for a removed module must still run.",
+        structuralIndex: 0
+      },
+      {
+        kind: "fence" as const,
+        text: "removed { from = module.old lifecycle { destroy = true } }",
+        structuralIndex: 1
+      },
+      {
+        kind: "fence" as const,
+        text: "apply output\n".repeat(500),
+        structuralIndex: 9
+      },
+      {
+        kind: "fence" as const,
+        text: "unrelated diagnostic output",
+        structuralIndex: 2
+      }
+    ];
+    const vectors = [
+      Float32Array.from([1, 0]),
+      Float32Array.from([0.98, 0.02]),
+      Float32Array.from([0.99, 0.01]),
+      Float32Array.from([0, 1]),
+      Float32Array.from([0.2, 0.8])
+    ];
+
+    const selected = selectSemanticQueryViewIndexes(candidates, vectors, 3, 1);
+
+    expect(selected).toContain(2);
+    expect(selected).not.toContain(3);
   });
 
   it("fuses semantic query views by rank instead of a noisy maximum-similarity winner", () => {
