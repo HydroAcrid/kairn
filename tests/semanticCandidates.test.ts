@@ -12,6 +12,8 @@ import {
 } from "../src/retrieval/candidateFusion.js";
 import { yieldToSemanticCheckpointTimers } from "../src/indexer/indexRepo.js";
 import {
+  buildSemanticQueries,
+  fuseSemanticCandidateRankings,
   scoreSemanticEmbeddingIndex,
   searchSemanticCandidates
 } from "../src/retrieval/semanticCandidates.js";
@@ -229,6 +231,47 @@ describe("model-based semantic candidates", () => {
     })).toEqual(["z/unrelated-name.ts", "a/task-words.ts"]);
   });
 
+  it("keeps the task narrative in semantic queries when a broad failure inventory comes first", () => {
+    const broadFailures = Array.from(
+      { length: 120 },
+      (_, index) => `- module.feature.Component${index}Test`
+    ).join("\n");
+    const queries = buildSemanticQueries([
+      "Initial failing checks:",
+      broadFailures,
+      "",
+      "Repair parameter parsing so an explicitly empty value remains empty."
+    ].join("\n"));
+
+    expect(queries.length).toBeGreaterThan(0);
+    expect(queries.length).toBeLessThanOrEqual(2);
+    expect(queries.some((query) => query.includes("explicitly empty value remains empty"))).toBe(true);
+    expect(queries.every((query) => query.length <= 1_600)).toBe(true);
+  });
+
+  it("fuses semantic query views by rank instead of a noisy maximum-similarity winner", () => {
+    const hits = fuseSemanticCandidateRankings([
+      [
+        { path: "src/shared.ts", similarity: 0.61, documentIds: ["shared-a"] },
+        { path: "src/prefix-only.ts", similarity: 0.99, documentIds: ["prefix"] }
+      ],
+      [
+        { path: "src/shared.ts", similarity: 0.62, documentIds: ["shared-b"] },
+        { path: "src/narrative-only.ts", similarity: 0.98, documentIds: ["narrative"] }
+      ]
+    ], 3, 10);
+
+    expect(hits[0]?.path).toBe("src/shared.ts");
+    expect(new Set(hits.slice(1).map((hit) => hit.path))).toEqual(new Set([
+      "src/narrative-only.ts",
+      "src/prefix-only.ts"
+    ]));
+    expect(hits[0]).toMatchObject({
+      similarity: 0.62,
+      documentIds: ["shared-a", "shared-b"]
+    });
+  });
+
   it("reports explicit fallback when a local model is unavailable and performs no download", async () => {
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-missing-"));
     try {
@@ -442,6 +485,59 @@ describe("model-based semantic candidates", () => {
       expect(largeSymbolDocuments.length).toBeGreaterThanOrEqual(4);
       expect(largeSymbolDocuments.some((document) => /method(?:3[0-9]|40)/.test(document.symbol ?? ""))).toBe(true);
       expect(documents.length).toBeLessThanOrEqual(files.length + 12);
+    } finally {
+      fs.rmSync(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves structurally sampled declarations and source regions within the model document budget", () => {
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-representative-"));
+    try {
+      const filePath = "src/large-service.ts";
+      const sourceRegions = Array.from(
+        { length: 5 },
+        (_, index) => `${`region_${index}_sentinel `.repeat(90)}\n`
+      );
+      fs.mkdirSync(path.join(rootPath, "src"), { recursive: true });
+      fs.writeFileSync(path.join(rootPath, filePath), sourceRegions.join(""));
+      const symbols = Array.from({ length: 20 }, (_, index) => ({
+        rootPath,
+        filePath,
+        name: `operation${index}`,
+        kind: "function" as const,
+        exported: index % 2 === 0,
+        startLine: index + 1,
+        endLine: index + 1,
+        signature: `operation${index}(value: string)`
+      }));
+      const graph: RepoGraph = {
+        rootPath,
+        files: [file(rootPath, filePath)],
+        parsedFiles: [{
+          rootPath,
+          filePath,
+          language: "typescript",
+          imports: Array.from({ length: 20 }, (_, index) => `package-${index}`),
+          hasErrors: false,
+          symbols
+        }],
+        symbols,
+        edges: []
+      };
+
+      const fileDocument = buildSemanticDocuments({
+        rootPath,
+        graph,
+        maxDocuments: 1
+      })[0]!;
+      expect(fileDocument.text.length).toBeLessThanOrEqual(1_800);
+      expect(fileDocument.text).toContain("operation0");
+      expect(fileDocument.text).toContain("operation19");
+      expect(fileDocument.text).toContain("package-0");
+      expect(fileDocument.text).toContain("package-19");
+      expect(fileDocument.text).toContain("region_0_sentinel");
+      expect(fileDocument.text).toContain("region_4_sentinel");
+      expect(fileDocument.text).toContain("[…]");
     } finally {
       fs.rmSync(rootPath, { recursive: true, force: true });
     }

@@ -7,6 +7,7 @@ import type {
   SemanticRetrieverConfig,
   SemanticRetrieverStatus
 } from "../types.js";
+import { buildEvidenceRetrievalQueries } from "./evidenceSignals.js";
 import { getSemanticModelState } from "../semantic/modelManager.js";
 import { SEMANTIC_DOCUMENT_SCHEMA_VERSION } from "../semantic/documents.js";
 import {
@@ -26,7 +27,8 @@ export type SemanticCandidateSearchResult = {
   status: SemanticRetrieverStatus;
 };
 
-const MAX_QUERY_CHARS = 4_000;
+const MAX_QUERY_CHARS = 1_600;
+const MAX_SEMANTIC_QUERY_VIEWS = 2;
 
 export async function searchSemanticCandidates(input: {
   query: string;
@@ -84,16 +86,18 @@ export async function searchSemanticCandidates(input: {
       modelId,
       ...(input.config.modelPath ? { modelPath: input.config.modelPath } : {})
     });
-    const semanticQuery = normalizeSemanticQuery(unwrapSerializedQuery(input.query))
-      .slice(0, MAX_QUERY_CHARS);
-    const queryVector = (await model.embedQueries([semanticQuery]))[0]!;
+    const semanticQueries = buildSemanticQueries(input.query);
+    const queryVectors = await model.embedQueries(semanticQueries);
     const scanStarted = performance.now();
-    const hits = scoreSemanticEmbeddingIndex({
-      queryVector,
-      documents: input.documents,
-      embeddings: eligibleEmbeddings,
-      ...(input.limit !== undefined ? { limit: input.limit } : {})
-    });
+    const hits = fuseSemanticCandidateRankings(
+      queryVectors.map((queryVector) => scoreSemanticEmbeddingIndex({
+        queryVector,
+        documents: input.documents,
+        embeddings: eligibleEmbeddings,
+        ...(input.limit !== undefined ? { limit: input.limit } : {})
+      })),
+      input.limit
+    );
     const vectorScanLatencyMs = performance.now() - scanStarted;
     return {
       hits,
@@ -116,6 +120,73 @@ export async function searchSemanticCandidates(input: {
       modelId
     );
   }
+}
+
+/**
+ * Semantic queries come from structural task cleanup, then the model decides
+ * relevance. Keeping the concise task headline and the code-aware narrative
+ * prevents broad failure inventories or issue templates from consuming the
+ * model's complete token window.
+ */
+export function buildSemanticQueries(query: string): string[] {
+  const unwrapped = unwrapSerializedQuery(query);
+  const structuralQueries = buildEvidenceRetrievalQueries(unwrapped);
+  const selected = structuralQueries.length <= MAX_SEMANTIC_QUERY_VIEWS
+    ? structuralQueries
+    : [structuralQueries[0]!, structuralQueries.at(-1)!];
+  const normalized = selected
+    .map((item) => representativeQuery(normalizeSemanticQuery(item), MAX_QUERY_CHARS))
+    .filter(Boolean);
+  return [...new Set(normalized)].slice(0, MAX_SEMANTIC_QUERY_VIEWS).length > 0
+    ? [...new Set(normalized)].slice(0, MAX_SEMANTIC_QUERY_VIEWS)
+    : [representativeQuery(normalizeSemanticQuery(unwrapped), MAX_QUERY_CHARS)];
+}
+
+export function fuseSemanticCandidateRankings(
+  rankings: SemanticCandidateHit[][],
+  limit = 64,
+  rankConstant = 60
+): SemanticCandidateHit[] {
+  const boundedLimit = Math.max(1, Math.floor(limit));
+  const boundedConstant = Math.max(1, Math.floor(rankConstant));
+  const byPath = new Map<string, {
+    score: number;
+    bestRank: number;
+    similarity: number;
+    documentIds: Set<string>;
+  }>();
+  for (const ranking of rankings) {
+    const seen = new Set<string>();
+    ranking.forEach((hit, index) => {
+      if (seen.has(hit.path)) return;
+      seen.add(hit.path);
+      const rank = index + 1;
+      const current = byPath.get(hit.path) ?? {
+        score: 0,
+        bestRank: Number.POSITIVE_INFINITY,
+        similarity: Number.NEGATIVE_INFINITY,
+        documentIds: new Set<string>()
+      };
+      current.score += 1 / (boundedConstant + rank);
+      current.bestRank = Math.min(current.bestRank, rank);
+      current.similarity = Math.max(current.similarity, hit.similarity);
+      hit.documentIds.forEach((documentId) => current.documentIds.add(documentId));
+      byPath.set(hit.path, current);
+    });
+  }
+  return [...byPath.entries()]
+    .sort(([leftPath, left], [rightPath, right]) =>
+      right.score - left.score ||
+      left.bestRank - right.bestRank ||
+      right.similarity - left.similarity ||
+      leftPath.localeCompare(rightPath)
+    )
+    .slice(0, boundedLimit)
+    .map(([filePath, value]) => ({
+      path: filePath,
+      similarity: Number(value.similarity.toFixed(6)),
+      documentIds: [...value.documentIds].sort().slice(0, 6)
+    }));
 }
 
 export function scoreSemanticEmbeddingIndex(input: {
@@ -210,4 +281,18 @@ function normalizeSemanticQuery(query: string): string {
     pendingSpace = false;
   }
   return output.trim();
+}
+
+function representativeQuery(query: string, maxChars: number): string {
+  if (query.length <= maxChars) return query;
+  const separator = " […] ";
+  const sectionCount = 3;
+  const available = maxChars - separator.length * (sectionCount - 1);
+  const sectionSize = Math.max(1, Math.floor(available / sectionCount));
+  const starts = [
+    0,
+    Math.max(0, Math.floor((query.length - sectionSize) / 2)),
+    Math.max(0, query.length - sectionSize)
+  ];
+  return starts.map((start) => query.slice(start, start + sectionSize)).join(separator);
 }

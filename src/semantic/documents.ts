@@ -13,9 +13,7 @@ import { sha256 } from "../utils/hash.js";
 import { estimateTokens } from "../utils/tokens.js";
 
 export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v4" as const;
-const MAX_FILE_BODY_CHARS = 440;
-const MAX_SYMBOL_BODY_CHARS = 500;
-const MAX_DOCUMENT_CHARS = 768;
+const MAX_DOCUMENT_CHARS = 1_800;
 const MAX_FILE_SYMBOLS = 8;
 const MAX_DIRECT_IMPORTS = 8;
 
@@ -64,23 +62,23 @@ function buildFileDocument(
   symbols: SymbolRecord[],
   content: string
 ): SemanticDocumentRecord {
-  const exportedSymbols = symbols
-    .filter((symbol) => symbol.exported)
-    .slice(0, MAX_FILE_SYMBOLS)
+  const declaredSymbols = evenlySampleIncludingEndpoints(symbols, Math.min(MAX_FILE_SYMBOLS, symbols.length))
     .map((symbol) => `${symbol.kind} ${boundedField(symbol.signature || symbol.name, 96)}`);
-  const text = truncateDocument([
+  const directImports = parsed?.imports.length
+    ? evenlySampleIncludingEndpoints(parsed.imports, Math.min(MAX_DIRECT_IMPORTS, parsed.imports.length))
+      .map((item) => boundedField(item, 80))
+    : [];
+  const prefix = [
     `file: ${file.path}`,
     `language: ${file.language}`,
     `role: ${file.kind}`,
     `module: ${path.posix.dirname(file.path)}`,
-    parsed?.imports.length
-      ? `direct imports: ${parsed.imports.slice(0, MAX_DIRECT_IMPORTS).map((item) => boundedField(item, 80)).join(" ")}`
-      : "direct imports: none",
-    exportedSymbols.length ? `exported symbols: ${exportedSymbols.join("; ")}` : "exported symbols: none",
+    boundedList("declared symbols", declaredSymbols, 320),
+    boundedList("direct imports", directImports, 320),
     "",
-    "representative source:",
-    representativeSource(content, MAX_FILE_BODY_CHARS)
-  ].join("\n"));
+    "representative source:"
+  ].join("\n");
+  const text = composeDocument(prefix, content);
   return semanticDocument({
     rootPath: file.rootPath,
     filePath: file.path,
@@ -96,9 +94,13 @@ function buildSymbolDocument(
   symbol: SymbolRecord,
   content: string
 ): SemanticDocumentRecord | undefined {
-  const body = sliceLines(content, symbol.startLine, symbol.endLine).slice(0, MAX_SYMBOL_BODY_CHARS);
+  const body = sliceLines(content, symbol.startLine, symbol.endLine);
   if (!body.trim()) return undefined;
-  const text = truncateDocument([
+  const directImports = parsed?.imports.length
+    ? evenlySampleIncludingEndpoints(parsed.imports, Math.min(MAX_DIRECT_IMPORTS, parsed.imports.length))
+      .map((item) => boundedField(item, 80))
+    : [];
+  const prefix = [
     `file: ${file.path}`,
     `language: ${file.language}`,
     `role: ${file.kind}`,
@@ -107,12 +109,10 @@ function buildSymbolDocument(
     `symbol kind: ${symbol.kind}`,
     `signature: ${symbol.signature}`,
     `exported: ${symbol.exported ? "yes" : "no"}`,
-    parsed?.imports.length
-      ? `direct imports: ${parsed.imports.slice(0, MAX_DIRECT_IMPORTS).map((item) => boundedField(item, 80)).join(" ")}`
-      : "direct imports: none",
-    "",
-    body
-  ].join("\n"));
+    boundedList("direct imports", directImports, 320),
+    ""
+  ].join("\n");
+  const text = composeDocument(prefix, body);
   return semanticDocument({
     rootPath: file.rootPath,
     filePath: file.path,
@@ -175,15 +175,15 @@ function groupSymbols(symbols: SymbolRecord[]): Map<string, SymbolRecord[]> {
 
 function representativeSource(content: string, maxChars: number): string {
   if (content.length <= maxChars) return content;
-  const sectionSize = Math.floor(maxChars / 3);
-  const middleStart = Math.max(0, Math.floor(content.length / 2) - Math.floor(sectionSize / 2));
-  return [
-    content.slice(0, sectionSize),
-    "[middle of file]",
-    content.slice(middleStart, middleStart + sectionSize),
-    "[end of file]",
-    content.slice(-sectionSize)
-  ].join("\n");
+  const sectionCount = 5;
+  const separator = "\n[…]\n";
+  const available = maxChars - separator.length * (sectionCount - 1);
+  const sectionSize = Math.max(1, Math.floor(available / sectionCount));
+  const finalStart = content.length - sectionSize;
+  return Array.from({ length: sectionCount }, (_, index) => {
+    const start = Math.floor((finalStart * index) / (sectionCount - 1));
+    return content.slice(start, start + sectionSize);
+  }).join(separator);
 }
 
 function sliceLines(content: string, startLine: number, endLine: number): string {
@@ -194,6 +194,20 @@ function truncateDocument(text: string): string {
   return text.length <= MAX_DOCUMENT_CHARS
     ? text
     : `${text.slice(0, MAX_DOCUMENT_CHARS)}\n[semantic document truncated]`;
+}
+
+function composeDocument(prefix: string, body: string): string {
+  const separator = "\n";
+  const bodyBudget = Math.max(1, MAX_DOCUMENT_CHARS - prefix.length - separator.length);
+  return truncateDocument(`${prefix}${separator}${representativeSource(body, bodyBudget)}`);
+}
+
+function boundedList(label: string, values: string[], maxChars: number): string {
+  if (values.length === 0) return `${label}: none`;
+  const prefix = `${label}: `;
+  const available = Math.max(1, maxChars - prefix.length);
+  const joined = values.join("; ");
+  return `${prefix}${joined.length <= available ? joined : `${joined.slice(0, available - 1)}…`}`;
 }
 
 function boundedField(value: string, maxChars: number): string {
@@ -275,4 +289,13 @@ function evenlySample<T>(values: T[], count: number): T[] {
     sampled.push(values[Math.floor(((index + 0.5) * values.length) / count)]!);
   }
   return sampled;
+}
+
+function evenlySampleIncludingEndpoints<T>(values: T[], count: number): T[] {
+  if (count <= 0) return [];
+  if (count >= values.length) return [...values];
+  if (count === 1) return [values[0]!];
+  return Array.from({ length: count }, (_, index) =>
+    values[Math.round((index * (values.length - 1)) / (count - 1))]!
+  );
 }
