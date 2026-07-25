@@ -8,7 +8,10 @@ import { createRepoIgnore } from "../scanner/scanRepo.js";
 import { sha256 } from "../utils/hash.js";
 import { nowIso } from "../utils/time.js";
 
-export const INDEX_FRESHNESS_SCHEMA_VERSION = 3;
+// Increment whenever parser, graph, or other non-file-derived index semantics
+// change. Existing embeddings remain reusable through their own content/model
+// hashes, but structural records must be rebuilt before they are served.
+export const INDEX_FRESHNESS_SCHEMA_VERSION = 4;
 
 const MAX_CONTENT_IDENTITY_BYTES_PER_FILE = 256 * 1024;
 const MAX_CONTENT_IDENTITY_BYTES_TOTAL = 2 * 1024 * 1024;
@@ -78,7 +81,9 @@ export function evaluateIndexFreshness(input: {
     currentFileCount: current.currentFileCount
   };
 
-  if (input.stored.schemaVersion !== INDEX_FRESHNESS_SCHEMA_VERSION) return { ...base, stale: true, reason: "unknown" };
+  if (input.stored.schemaVersion !== INDEX_FRESHNESS_SCHEMA_VERSION) {
+    return { ...base, stale: true, reason: "index_schema_changed" };
+  }
   // A bounded non-Git walk cannot prove that content beyond its cap is
   // unchanged. Treat that state as stale instead of silently serving old
   // evidence from a large checkout.

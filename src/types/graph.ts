@@ -97,7 +97,7 @@ export type IndexFreshnessMetadata = {
 
 export type IndexFreshnessStatus = {
   stale: boolean;
-  reason: "fresh" | "missing_metadata" | "git_head_changed" | "git_branch_changed" | "dirty_state_changed" | "file_count_changed" | "unknown";
+  reason: "fresh" | "missing_metadata" | "git_head_changed" | "git_branch_changed" | "dirty_state_changed" | "file_count_changed" | "index_schema_changed" | "unknown";
   indexedAt?: string | undefined;
   gitHead?: string | undefined;
   gitBranch?: string | undefined;
