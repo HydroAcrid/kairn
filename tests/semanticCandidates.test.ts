@@ -251,7 +251,7 @@ describe("model-based semantic candidates", () => {
     });
 
     expect(result.initialPaths).toHaveLength(64);
-    expect(result.initialPaths).toContain(required.path);
+    expect(result.enrichedPaths).toContain(required.path);
     expect(result.initialPaths).not.toContain(arbitraryNeighbor.path);
     expect(result.candidateResults.find((candidate) => candidate.path === required.path))
       .toMatchObject({
@@ -282,7 +282,7 @@ describe("model-based semantic candidates", () => {
       edges: [edge(rootPath, testSeed.path, productionSource.path, "test_for")]
     });
 
-    expect(result.initialPaths).toContain(productionSource.path);
+    expect(result.enrichedPaths).toContain(productionSource.path);
   });
 
   it("allows a parser-observed type reference to enter without lexical support", () => {
@@ -307,7 +307,7 @@ describe("model-based semantic candidates", () => {
       edges: [edge(rootPath, facade.path, implementation.path, "type_reference")]
     });
 
-    expect(result.initialPaths).toContain(implementation.path);
+    expect(result.enrichedPaths).toContain(implementation.path);
   });
 
   it("credits graph consensus from multiple independently retrieved seeds", () => {
@@ -346,7 +346,7 @@ describe("model-based semantic candidates", () => {
       ]
     });
 
-    expect(result.initialPaths).toContain(sharedImplementation.path);
+    expect(result.enrichedPaths).toContain(sharedImplementation.path);
     expect(result.candidateResults.find((candidate) => candidate.path === sharedImplementation.path))
       .toMatchObject({ graphScore: 1 });
   });
@@ -385,6 +385,36 @@ describe("model-based semantic candidates", () => {
     expect(result.initialPaths).toHaveLength(64);
     expect(result.enrichedPaths).toHaveLength(100);
     expect(result.enrichedPaths).toContain("src/module-99.ts");
+  });
+
+  it("does not let graph enrichment evict the initial retrieval lane", () => {
+    const rootPath = "/repo";
+    const retrieved = Array.from({ length: 80 }, (_, index) =>
+      file(rootPath, `src/retrieved-${String(index).padStart(2, "0")}.ts`)
+    );
+    const graphNeighbors = Array.from({ length: 64 }, (_, index) =>
+      file(rootPath, `src/neighbor-${String(index).padStart(2, "0")}.ts`)
+    );
+    const result = buildModelCandidateUnion({
+      files: [...retrieved, ...graphNeighbors],
+      query: "Locate the production behavior across the repository.",
+      symbols: [],
+      bm25Results: retrieved.map((candidate, index) => scored(candidate, 1 - index / 200)),
+      semanticHits: retrieved.map((candidate, index) => ({
+        path: candidate.path,
+        similarity: 1 - index / 200,
+        documentIds: [`rank-${index}`]
+      })),
+      semanticStatus: readyStatus(retrieved.length),
+      edges: graphNeighbors.map((neighbor, index) =>
+        edge(rootPath, retrieved[index]!.path, neighbor.path, "implementation")
+      )
+    });
+
+    expect(result.initialPaths).toHaveLength(64);
+    expect(result.initialPaths).toContain("src/retrieved-63.ts");
+    expect(result.initialPaths.some((filePath) => filePath.includes("/neighbor-"))).toBe(false);
+    expect(result.enrichedPaths.some((filePath) => filePath.includes("/neighbor-"))).toBe(true);
   });
 
   it("keeps the task narrative in semantic queries when a broad failure inventory comes first", () => {

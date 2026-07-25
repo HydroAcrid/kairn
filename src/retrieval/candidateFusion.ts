@@ -99,9 +99,9 @@ export function buildModelCandidateUnion(input: {
     rankings: baseRankings,
     limit: DEFAULT_ENRICHED_CANDIDATE_LIMIT
   }).filter((filePath) => filesByPath.has(filePath));
-  const preliminaryPaths = preliminaryUnion.slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
+  const initialPaths = preliminaryUnion.slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
   const graphPaths = rankEvidenceBackedGraphCandidates({
-    seedPaths: preliminaryPaths,
+    seedPaths: initialPaths,
     edges: input.edges,
     filesByPath,
     evidenceRankings: [
@@ -111,7 +111,7 @@ export function buildModelCandidateUnion(input: {
     ]
   });
   const graphConsensusPaths = rankEvidenceBackedGraphCandidates({
-    seedPaths: preliminaryPaths,
+    seedPaths: initialPaths,
     edges: input.edges,
     filesByPath,
     evidenceRankings: [
@@ -121,7 +121,7 @@ export function buildModelCandidateUnion(input: {
     ],
     minimumSeedSupport: 2
   });
-  const enrichedPaths = reciprocalRankFuse({
+  const graphEnrichedOrder = reciprocalRankFuse({
     hardPaths,
     rankings: graphPaths.length > 0
       ? [
@@ -134,7 +134,15 @@ export function buildModelCandidateUnion(input: {
       : baseRankings,
     limit: DEFAULT_ENRICHED_CANDIDATE_LIMIT
   }).filter((filePath) => filesByPath.has(filePath));
-  const initialPaths = enrichedPaths.slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
+  // Graph relations enrich the bounded union; they do not get to evict
+  // independently retrieved evidence from the initial 64-file lane. Preserve
+  // that serving contract while still retaining the strongest graph additions
+  // and the original retrieval tail for the calibrated ranker.
+  const enrichedPaths = uniquePaths([
+    ...initialPaths,
+    ...graphEnrichedOrder,
+    ...preliminaryUnion
+  ]).slice(0, DEFAULT_ENRICHED_CANDIDATE_LIMIT);
   const bm25ByPath = new Map(input.bm25Results.map((result) => [normalizePath(result.path), result]));
   const semanticByPath = new Map(input.semanticHits.map((hit) => [normalizePath(hit.path), hit]));
   const changedPaths = new Set([...(input.changedFiles ?? [])].map(normalizePath));
