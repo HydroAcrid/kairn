@@ -1087,7 +1087,7 @@ describe("model-based semantic candidates", () => {
     expect(queries.some((query) => query.includes("invalid credential"))).toBe(true);
   });
 
-  it("serves one bounded semantic synopsis spanning the task headline and narrative tail", () => {
+  it("serves a bounded synopsis and independent narrative-tail view", () => {
     const queries = buildSemanticServingQueries([
       "Authorization cleanup leaves stale records.",
       "",
@@ -1098,11 +1098,12 @@ describe("model-based semantic candidates", () => {
       `The final adapter should report the invalid credential consistently. ${"late context ".repeat(45)}`
     ].join("\n"));
 
-    expect(queries).toHaveLength(1);
+    expect(queries).toHaveLength(2);
     expect(queries[0]).toContain("Authorization cleanup leaves stale records");
     expect(queries[0]).toContain("invalid credential");
     expect(queries[0]).not.toContain("associated lease");
-    expect(queries[0]!.length).toBeLessThanOrEqual(1_600);
+    expect(queries[1]).toContain("late context");
+    expect(queries.every((query) => query.length <= 1_600)).toBe(true);
   });
 
   it("does not duplicate a concise task when its headline and narrative are identical", () => {

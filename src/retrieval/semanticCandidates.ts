@@ -207,12 +207,12 @@ export function buildSemanticQueries(query: string): string[] {
 }
 
 /**
- * Serving uses one compact model query so a broad issue template cannot gain
- * extra retrieval votes merely because it contains more sections. The task
- * headline preserves the requested behavior while the final two bounded
- * narrative windows retain the resolution/root-cause portion common to bug
- * reports and design tasks. The embedding model—not task words or filenames—
- * decides relevance.
+ * Serving uses at most two compact model queries so a broad issue template
+ * cannot gain extra retrieval votes merely because it contains more sections.
+ * The synopsis preserves the requested behavior plus late root-cause context;
+ * the final narrative window remains an independent view so a long headline
+ * cannot dilute a precise resolution statement. The embedding model—not task
+ * words or filenames—decides relevance.
  *
  * The broader candidate/view builder remains available for offline diagnostics
  * and model-selection analysis.
@@ -232,7 +232,10 @@ export function buildSemanticServingQueries(query: string): string[] {
     ].filter((value): value is string => Boolean(value))
   )];
   const synopsis = normalizeSemanticQuery(parts.join("\n\n")).slice(0, MAX_QUERY_CHARS).trim();
-  return synopsis ? [synopsis] : [];
+  const tail = narratives.at(-1)?.text;
+  return [...new Set(
+    [synopsis, tail].filter((value): value is string => Boolean(value))
+  )].slice(0, 2);
 }
 
 export function selectSemanticQueryViewIndexes(
