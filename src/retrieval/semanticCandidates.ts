@@ -29,7 +29,12 @@ export type SemanticCandidateSearchResult = {
 };
 
 const MAX_QUERY_CHARS = 1_600;
-const MAX_SEMANTIC_QUERY_VIEWS = 5;
+// Preserve the complete bounded narrative (headline + up to five windows)
+// before spending the remaining two views on model-selected structured
+// evidence. Long issue templates often place the concrete failure mechanism
+// in a middle window; endpoint-only sampling discards that model input before
+// retrieval can evaluate it.
+const MAX_SEMANTIC_QUERY_VIEWS = 8;
 const MAX_FENCED_SEMANTIC_QUERY_VIEWS = 2;
 const MAX_SEMANTIC_QUERY_CANDIDATES = 18;
 const MAX_NARRATIVE_QUERY_CANDIDATES = 5;

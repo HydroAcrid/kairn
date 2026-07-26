@@ -1174,6 +1174,35 @@ describe("model-based semantic candidates", () => {
     expect(selected).not.toContain(3);
   });
 
+  it("preserves every bounded narrative window before selecting structured query evidence", () => {
+    const candidates = [
+      {
+        kind: "headline" as const,
+        text: "A production workflow behaves incorrectly.",
+        structuralIndex: 0
+      },
+      ...Array.from({ length: 5 }, (_, index) => ({
+        kind: "narrative" as const,
+        text: `Narrative window ${index}`,
+        structuralIndex: index
+      })),
+      ...Array.from({ length: 3 }, (_, index) => ({
+        kind: "fence" as const,
+        text: `structured evidence ${index}`,
+        structuralIndex: index
+      }))
+    ];
+    const vectors = candidates.map((_, index) =>
+      Float32Array.from([1 - index / 20, index / 20])
+    );
+
+    const selected = selectSemanticQueryViewIndexes(candidates, vectors);
+
+    expect(selected).toHaveLength(8);
+    expect(selected).toEqual(expect.arrayContaining([0, 1, 2, 3, 4, 5]));
+    expect(selected.filter((index) => candidates[index]?.kind === "fence")).toHaveLength(2);
+  });
+
   it("fuses semantic query views by rank instead of a noisy maximum-similarity winner", () => {
     const hits = fuseSemanticCandidateRankings([
       [
