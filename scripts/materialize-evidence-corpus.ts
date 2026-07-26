@@ -278,7 +278,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       runtime.close();
       if (snapshotPath) {
         try {
-          persistSnapshotEmbeddingCache(checkout.root, snapshotPath);
+          persistSnapshotEmbeddingCache(checkout.root, snapshotPath, { mergeExisting: false });
         } catch (error) {
           process.stderr.write(
             `Final semantic snapshot checkpoint failed: ${error instanceof Error ? error.message : String(error)}\n`
@@ -839,7 +839,11 @@ export function restoreSnapshotEmbeddingCache(rootPath: string, cachePath: strin
   }
 }
 
-export function persistSnapshotEmbeddingCache(rootPath: string, cachePath: string): void {
+export function persistSnapshotEmbeddingCache(
+  rootPath: string,
+  cachePath: string,
+  options: { mergeExisting?: boolean } = {}
+): void {
   const paths = ensureKairnDir(rootPath);
   const store = new SqliteStore(paths.databasePath);
   let embeddings: SemanticEmbeddingRecord[];
@@ -850,7 +854,7 @@ export function persistSnapshotEmbeddingCache(rootPath: string, cachePath: strin
   }
   if (embeddings.length === 0) return;
   const cacheKey = path.basename(cachePath, ".json");
-  const previous = fs.existsSync(cachePath)
+  const previous = options.mergeExisting !== false && fs.existsSync(cachePath)
     ? parseSnapshotEmbeddingCache(cachePath).embeddings
     : [];
   const merged = new Map(

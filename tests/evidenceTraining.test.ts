@@ -122,6 +122,60 @@ describe("public evidence ranker training", () => {
     }
   });
 
+  it("compacts a completed semantic snapshot to current repository embeddings", () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-snapshot-compact-"));
+    const firstRoot = path.join(temporary, "first");
+    const currentRoot = path.join(temporary, "current");
+    const restoredRoot = path.join(temporary, "restored");
+    const cachePath = path.join(temporary, "cache", "snapshot-key.json");
+    for (const root of [firstRoot, currentRoot, restoredRoot]) {
+      fs.mkdirSync(root, { recursive: true });
+    }
+    const writeEmbedding = (
+      rootPath: string,
+      documentId: string,
+      documentHash: string
+    ): void => {
+      const store = new SqliteStore(ensureKairnDir(rootPath).databasePath);
+      try {
+        store.upsertSemanticEmbeddings([{
+          rootPath,
+          documentId,
+          documentHash,
+          modelId: "pinned-model",
+          schemaVersion: "semantic-documents-v5",
+          dimensions: 3,
+          vector: new Int8Array([127, 0, -127]),
+          scale: 0.005
+        }]);
+      } finally {
+        store.close();
+      }
+    };
+
+    try {
+      writeEmbedding(firstRoot, "sdoc_stale", "stale-content-hash");
+      persistSnapshotEmbeddingCache(firstRoot, cachePath);
+      writeEmbedding(currentRoot, "sdoc_current", "current-content-hash");
+      persistSnapshotEmbeddingCache(currentRoot, cachePath, { mergeExisting: false });
+      restoreSnapshotEmbeddingCache(restoredRoot, cachePath);
+
+      const restoredStore = new SqliteStore(ensureKairnDir(restoredRoot).databasePath);
+      try {
+        expect(restoredStore.listSemanticEmbeddings(restoredRoot)).toEqual([
+          expect.objectContaining({
+            documentId: "sdoc_current",
+            documentHash: "current-content-hash"
+          })
+        ]);
+      } finally {
+        restoredStore.close();
+      }
+    } finally {
+      fs.rmSync(temporary, { recursive: true, force: true });
+    }
+  });
+
   it("isolates benchmark embedding snapshots by immutable repository ref", () => {
     const base = {
       repositoryLineageId: "https://github.com/example/project",
