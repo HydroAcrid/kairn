@@ -529,19 +529,60 @@ describe("model-based semantic candidates", () => {
     ]));
   });
 
-  it("uses model-backed production probes only through precise parser relationships", () => {
+  it("validates source probes through direct imports only with model evidence on both files", () => {
+    const rootPath = "/repo";
+    const sourceProbe = file(rootPath, "src/runtime/helper.ts");
+    const requiredCaller = file(rootPath, "src/runtime/engine.ts");
+    const lexicalOnlyCaller = file(rootPath, "src/runtime/legacy.ts");
+    const distractors = Array.from({ length: 64 }, (_, index) =>
+      file(rootPath, `src/noise-${String(index).padStart(2, "0")}.ts`)
+    );
+    const semanticEvidencePaths = [
+      ...distractors.map((candidate) => candidate.path),
+      sourceProbe.path,
+      requiredCaller.path
+    ];
+    const result = buildModelCandidateUnion({
+      files: [sourceProbe, requiredCaller, lexicalOnlyCaller, ...distractors],
+      query: "Debug the production behavior described in the task.",
+      symbols: [],
+      bm25Results: [
+        ...distractors.map((candidate, index) => scored(candidate, 1 - index / 100)),
+        scored(lexicalOnlyCaller, 0.9)
+      ],
+      semanticHits: distractors.map((candidate, index) => ({
+        path: candidate.path,
+        similarity: 1 - index / 100,
+        documentIds: [`rank-${index}`]
+      })),
+      semanticEvidencePaths,
+      semanticStatus: readyStatus(distractors.length),
+      edges: [
+        edge(rootPath, requiredCaller.path, sourceProbe.path, "imports"),
+        edge(rootPath, lexicalOnlyCaller.path, sourceProbe.path, "imports")
+      ]
+    });
+
+    expect(result.initialPaths).not.toContain(sourceProbe.path);
+    expect(result.graphSeedPaths).toContain(sourceProbe.path);
+    expect(result.graphPaths).toContain(requiredCaller.path);
+    expect(result.enrichedPaths).toContain(requiredCaller.path);
+    expect(result.graphPaths).not.toContain(lexicalOnlyCaller.path);
+  });
+
+  it("uses production probes through precise relationships or model-validated imports", () => {
     const rootPath = "/repo";
     const leaders = Array.from({ length: 64 }, (_, index) =>
       file(rootPath, `src/leader-${String(index).padStart(2, "0")}.go`)
     );
     const productionProbe = file(rootPath, "internal/runtime/operation.go");
     const calledSource = file(rootPath, "internal/runtime/state.go");
-    const importNoise = file(rootPath, "internal/runtime/format.go");
+    const directImportNeighbor = file(rootPath, "internal/runtime/format.go");
     const lexicalOnly = file(rootPath, "internal/runtime/report.go");
     const lexicalNeighbor = file(rootPath, "internal/runtime/render.go");
     const viewSpecificProbe = file(rootPath, "internal/runtime/evaluate.go");
     const viewSpecificNeighbor = file(rootPath, "internal/runtime/value.go");
-    const rankedFiles = [...leaders, productionProbe, calledSource, importNoise];
+    const rankedFiles = [...leaders, productionProbe, calledSource, directImportNeighbor];
     const result = buildModelCandidateUnion({
       files: [
         ...rankedFiles,
@@ -567,7 +608,7 @@ describe("model-based semantic candidates", () => {
       edges: [
         edge(rootPath, leaders[0]!.path, productionProbe.path, "shared_call_target"),
         edge(rootPath, productionProbe.path, calledSource.path, "call"),
-        edge(rootPath, productionProbe.path, importNoise.path, "imports"),
+        edge(rootPath, productionProbe.path, directImportNeighbor.path, "imports"),
         edge(rootPath, lexicalOnly.path, lexicalNeighbor.path, "call"),
         edge(rootPath, viewSpecificProbe.path, viewSpecificNeighbor.path, "call")
       ]
@@ -580,9 +621,9 @@ describe("model-based semantic candidates", () => {
     expect(result.graphPaths).toEqual(expect.arrayContaining([
       productionProbe.path,
       calledSource.path,
+      directImportNeighbor.path,
       viewSpecificNeighbor.path
     ]));
-    expect(result.graphPaths).not.toContain(importNoise.path);
     expect(result.graphPaths).not.toContain(lexicalNeighbor.path);
   });
 
