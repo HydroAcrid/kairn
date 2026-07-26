@@ -1618,67 +1618,6 @@ describe("model-based semantic candidates", () => {
     }
   });
 
-  it("represents long callable bodies as bounded contiguous model documents", () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-windows-"));
-    try {
-      const filePath = "src/reconcile.ts";
-      const content = [
-        "export function reconcileRequest(input: Request) {",
-        "  const start_marker = prepare(input);",
-        ...Array.from({ length: 90 }, (_, index) =>
-          `  const intermediate_${index} = normalize(input_${index});`
-        ),
-        "  const end_marker = commit(intermediate_89);",
-        "  return end_marker;",
-        "}"
-      ].join("\n");
-      fs.mkdirSync(path.join(rootPath, "src"), { recursive: true });
-      fs.writeFileSync(path.join(rootPath, filePath), content);
-      const symbols = [{
-        rootPath,
-        filePath,
-        name: "reconcileRequest",
-        kind: "function" as const,
-        exported: true,
-        startLine: 1,
-        endLine: content.split(/\r?\n/).length,
-        signature: "export function reconcileRequest(input: Request) {"
-      }];
-      const graph: RepoGraph = {
-        rootPath,
-        files: [file(rootPath, filePath)],
-        parsedFiles: [{
-          rootPath,
-          filePath,
-          language: "typescript",
-          imports: [],
-          hasErrors: false,
-          symbols
-        }],
-        symbols,
-        edges: []
-      };
-
-      const symbolDocuments = buildSemanticDocuments({
-        rootPath,
-        graph,
-        maxDocuments: 8
-      }).filter((document) => document.kind === "symbol");
-
-      expect(symbolDocuments).toHaveLength(3);
-      expect(symbolDocuments.every((document) => document.text.length <= 1_500)).toBe(true);
-      expect(symbolDocuments.every((document) =>
-        document.text.includes("symbol: reconcileRequest")
-      )).toBe(true);
-      expect(symbolDocuments.some((document) => document.text.includes("start_marker"))).toBe(true);
-      expect(symbolDocuments.some((document) => document.text.includes("intermediate_45"))).toBe(true);
-      expect(symbolDocuments.some((document) => document.text.includes("end_marker"))).toBe(true);
-      expect(symbolDocuments.every((document) => !document.text.includes("\n[…]\n"))).toBe(true);
-    } finally {
-      fs.rmSync(rootPath, { recursive: true, force: true });
-    }
-  });
-
   it("retains bounded behavioral symbol coverage when file documents exceed the nominal budget", () => {
     const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-large-repo-budget-"));
     try {

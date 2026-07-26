@@ -22,7 +22,6 @@ const MAX_FILE_SYMBOLS = 4;
 const MAX_DIRECT_IMPORTS = 4;
 const MAX_DOCUMENTATION_SNIPPETS = 3;
 const LARGE_REPOSITORY_SYMBOL_FRACTION = 0.25;
-const MAX_CALLABLE_DOCUMENT_WINDOWS = 3;
 
 export function buildSemanticDocuments(input: {
   rootPath: string;
@@ -44,9 +43,17 @@ export function buildSemanticDocuments(input: {
     const parsed = parsedByFile.get(file.path);
     const symbols = symbolsByFile.get(file.path) ?? [];
     fileDocuments.push(buildFileDocument(file, parsed, symbols, content));
-    const symbolDocuments = uniqueSemanticContent(symbols.flatMap((symbol) =>
-      buildSymbolDocuments(file, parsed, symbol, content)
-    ));
+    const symbolDocuments = uniqueSemanticContent(symbols
+      .map((symbol) => {
+        const document = buildSymbolDocument(file, parsed, symbol, content);
+        return document
+          ? {
+              document,
+              spanLines: Math.max(1, symbol.endLine - symbol.startLine + 1)
+            }
+          : undefined;
+      })
+      .filter((candidate): candidate is SemanticSymbolDocumentCandidate => Boolean(candidate)));
     if (symbolDocuments.length > 0) symbolQueues.set(file.path, symbolDocuments);
   }
 
@@ -147,14 +154,14 @@ function callableSurfaceNames(symbols: SymbolRecord[]): string[] {
   return evenlySampleIncludingEndpoints(unique, Math.min(10, unique.length));
 }
 
-function buildSymbolDocuments(
+function buildSymbolDocument(
   file: FileRecord,
   parsed: ParsedFile | undefined,
   symbol: SymbolRecord,
   content: string
-): SemanticSymbolDocumentCandidate[] {
+): SemanticDocumentRecord | undefined {
   const body = sliceLines(content, symbol.startLine, symbol.endLine);
-  if (!body.trim()) return [];
+  if (!body.trim()) return undefined;
   const directImports = parsed?.imports.length
     ? evenlySampleIncludingEndpoints(parsed.imports, Math.min(MAX_DIRECT_IMPORTS, parsed.imports.length))
       .map((item) => boundedField(item, 48))
@@ -171,32 +178,23 @@ function buildSymbolDocuments(
     boundedList("direct imports", directImports, 140),
     ""
   ].join("\n");
-  const bodyBudget = documentBodyBudget(prefix);
-  const windows = (
-    symbol.kind === "function" || symbol.kind === "component"
-      ? contiguousDocumentWindows(body, bodyBudget, MAX_CALLABLE_DOCUMENT_WINDOWS)
-      : [representativeSource(body, bodyBudget)]
-  ).filter(Boolean);
-  return windows.map((window, index) => ({
-    document: semanticDocument({
-      rootPath: file.rootPath,
-      filePath: file.path,
-      kind: "symbol",
-      symbol: symbol.name,
-      identity: [
-        file.path,
-        "symbol",
-        symbol.kind,
-        symbol.name,
-        symbol.signature,
-        symbol.startLine,
-        symbol.endLine,
-        ...(windows.length > 1 ? ["window", index, windows.length] : [])
-      ].join("\0"),
-      text: composeDocument(prefix, window)
-    }),
-    spanLines: Math.max(1, window.split(/\r?\n/).length)
-  }));
+  const text = composeDocument(prefix, body);
+  return semanticDocument({
+    rootPath: file.rootPath,
+    filePath: file.path,
+    kind: "symbol",
+    symbol: symbol.name,
+    identity: [
+      file.path,
+      "symbol",
+      symbol.kind,
+      symbol.name,
+      symbol.signature,
+      symbol.startLine,
+      symbol.endLine
+    ].join("\0"),
+    text
+  });
 }
 
 function semanticDocument(input: {
@@ -259,45 +257,6 @@ function representativeSource(content: string, maxChars: number): string {
     const start = Math.floor((finalStart * index) / (sectionCount - 1));
     return content.slice(start, start + sectionSize);
   }).join(separator);
-}
-
-function contiguousDocumentWindows(
-  content: string,
-  maxChars: number,
-  maxWindows: number
-): string[] {
-  if (content.length <= maxChars) return [content];
-  const windowCount = Math.max(
-    1,
-    Math.min(maxWindows, Math.ceil(content.length / Math.max(1, maxChars)))
-  );
-  if (windowCount === 1) return [content.slice(0, maxChars)];
-  const finalStart = Math.max(0, content.length - maxChars);
-  const windows: string[] = [];
-  const seen = new Set<string>();
-  for (let index = 0; index < windowCount; index += 1) {
-    const idealStart = Math.round((finalStart * index) / (windowCount - 1));
-    const start = alignWindowStart(content, idealStart);
-    const end = alignWindowEnd(content, start, maxChars);
-    const window = content.slice(start, end).trim();
-    if (!window || seen.has(window)) continue;
-    seen.add(window);
-    windows.push(window);
-  }
-  return windows;
-}
-
-function alignWindowStart(content: string, idealStart: number): number {
-  if (idealStart <= 0) return 0;
-  const nextLine = content.indexOf("\n", idealStart);
-  return nextLine >= 0 && nextLine - idealStart <= 80 ? nextLine + 1 : idealStart;
-}
-
-function alignWindowEnd(content: string, start: number, maxChars: number): number {
-  const idealEnd = Math.min(content.length, start + maxChars);
-  if (idealEnd >= content.length) return content.length;
-  const previousLine = content.lastIndexOf("\n", idealEnd);
-  return previousLine > start + Math.floor(maxChars * 0.7) ? previousLine : idealEnd;
 }
 
 function sliceLines(content: string, startLine: number, endLine: number): string {
@@ -375,12 +334,8 @@ function truncateDocument(text: string): string {
 
 function composeDocument(prefix: string, body: string): string {
   const separator = "\n";
-  const bodyBudget = documentBodyBudget(prefix);
+  const bodyBudget = Math.max(1, MAX_DOCUMENT_CHARS - prefix.length - separator.length);
   return truncateDocument(`${prefix}${separator}${representativeSource(body, bodyBudget)}`);
-}
-
-function documentBodyBudget(prefix: string): number {
-  return Math.max(1, MAX_DOCUMENT_CHARS - prefix.length - 1);
 }
 
 function boundedList(label: string, values: string[], maxChars: number): string {
