@@ -151,7 +151,6 @@ export type EvidenceCandidateInspection = {
     bm25: string[];
     graph: string[];
     graphConsensus: string[];
-    graphModelImport: string[];
     graphEvidence: Array<{
       path: string;
       supportCount: number;
