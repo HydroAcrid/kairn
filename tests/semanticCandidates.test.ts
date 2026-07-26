@@ -1302,6 +1302,37 @@ describe("model-based semantic candidates", () => {
     expect(hits.some((hit) => hit.path === "src/right-0.ts")).toBe(true);
   });
 
+  it("does not let a large consensus pool crowd out a strong independent model facet", () => {
+    const shared = Array.from({ length: 16 }, (_, index) => ({
+      path: `src/shared-${index}.ts`,
+      similarity: 0.99 - index / 100,
+      documentIds: [`shared-${index}`]
+    }));
+    const left = [
+      ...shared,
+      ...Array.from({ length: 48 }, (_, index) => ({
+        path: index === 3 ? "src/facet-target.ts" : `src/left-${index}.ts`,
+        similarity: 0.8 - index / 100,
+        documentIds: [`left-${index}`]
+      }))
+    ];
+    const right = [
+      ...shared,
+      ...Array.from({ length: 48 }, (_, index) => ({
+        path: `src/right-${index}.ts`,
+        similarity: 0.8 - index / 100,
+        documentIds: [`right-${index}`]
+      }))
+    ];
+
+    const hits = fuseSemanticCandidateRankings([left, right], 64);
+
+    expect(hits.findIndex((hit) => hit.path === "src/facet-target.ts") + 1)
+      .toBeLessThanOrEqual(32);
+    expect(hits.slice(0, 16).every((hit) => hit.path.startsWith("src/shared-")))
+      .toBe(true);
+  });
+
   it("reports explicit fallback when a local model is unavailable and performs no download", async () => {
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-missing-"));
     try {

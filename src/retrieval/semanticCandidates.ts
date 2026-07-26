@@ -37,6 +37,7 @@ const SEMANTIC_QUERY_WINDOW_OVERLAP_CHARS = 80;
 const SEMANTIC_DIAGNOSTIC_RANK_LIMIT = 512;
 const SEMANTIC_SYNOPSIS_HEADLINE_CHARS = 320;
 const SEMANTIC_SYNOPSIS_NARRATIVE_CHARS = 620;
+const MAX_SEMANTIC_CONSENSUS_RESERVE = 16;
 
 export async function searchSemanticCandidates(input: {
   query: string;
@@ -426,11 +427,15 @@ export function fuseSemanticCandidateRankings(
       return true;
     });
   });
-  // Cross-view agreement is stronger model evidence than a high score from
-  // one possibly noisy issue facet. Reserve half of the bounded semantic lane
-  // for RRF consensus, then use equal-depth interleaving to retain independent
-  // facet coverage. The remaining fused tail is only a deterministic fill.
-  const consensusLimit = Math.max(1, Math.floor(boundedLimit / 2));
+  // Cross-view agreement is useful model evidence, but query facets are
+  // alternatives: a concise headline can be precise when a long issue body is
+  // noisy, and the reverse is also common. Reserve a small fixed head for RRF
+  // consensus, then spend the remaining candidate budget on equal-depth facet
+  // coverage. The calibrated ranker decides relevance after recall is secured.
+  const consensusLimit = Math.max(
+    1,
+    Math.min(MAX_SEMANTIC_CONSENSUS_RESERVE, Math.floor(boundedLimit / 2))
+  );
   for (const [filePath] of fused.slice(0, consensusLimit)) {
     selectedPaths.push(filePath);
     seenPaths.add(filePath);
