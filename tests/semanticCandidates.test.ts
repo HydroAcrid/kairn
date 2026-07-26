@@ -566,8 +566,64 @@ describe("model-based semantic candidates", () => {
     expect(result.initialPaths).not.toContain(sourceProbe.path);
     expect(result.graphSeedPaths).toContain(sourceProbe.path);
     expect(result.graphPaths).toContain(requiredCaller.path);
+    expect(result.graphModelImportPaths).toContain(requiredCaller.path);
     expect(result.enrichedPaths).toContain(requiredCaller.path);
     expect(result.graphPaths).not.toContain(lexicalOnlyCaller.path);
+    expect(result.graphModelImportPaths).not.toContain(lexicalOnlyCaller.path);
+  });
+
+  it("reserves bounded enrichment capacity for model-corroborated direct imports", () => {
+    const rootPath = "/repo";
+    const initial = Array.from({ length: 64 }, (_, index) =>
+      file(rootPath, `src/initial-${String(index).padStart(2, "0")}.ts`)
+    );
+    const preciseNeighbors = Array.from({ length: 64 }, (_, index) =>
+      file(rootPath, `src/precise-${String(index).padStart(2, "0")}.ts`)
+    );
+    const importProbes = Array.from({ length: 16 }, (_, index) =>
+      file(rootPath, `src/imported-${String(index).padStart(2, "0")}.ts`)
+    );
+    const importNeighbors = Array.from({ length: 16 }, (_, index) =>
+      file(rootPath, `src/importer-${String(index).padStart(2, "0")}.ts`)
+    );
+    const semanticEvidencePaths = [
+      ...initial.map((candidate) => candidate.path),
+      ...importProbes.map((candidate) => candidate.path),
+      ...importNeighbors.map((candidate) => candidate.path)
+    ];
+    const result = buildModelCandidateUnion({
+      files: [...initial, ...preciseNeighbors, ...importProbes, ...importNeighbors],
+      query: "Locate the production implementation for the described behavior.",
+      symbols: [],
+      bm25Results: initial.map((candidate, index) => scored(candidate, 1 - index / 100)),
+      semanticHits: initial.map((candidate, index) => ({
+        path: candidate.path,
+        similarity: 1 - index / 100,
+        documentIds: [`rank-${index}`]
+      })),
+      semanticEvidencePaths,
+      semanticStatus: readyStatus(initial.length),
+      edges: [
+        ...preciseNeighbors.map((neighbor, index) =>
+          edge(rootPath, initial[index]!.path, neighbor.path, "call")
+        ),
+        ...importNeighbors.map((neighbor, index) =>
+          edge(rootPath, neighbor.path, importProbes[index]!.path, "imports")
+        )
+      ]
+    });
+
+    expect(result.graphModelImportPaths.length).toBeGreaterThanOrEqual(16);
+    expect(
+      result.graphModelImportPaths
+        .slice(0, 16)
+        .every((filePath) => result.enrichedPaths.includes(filePath))
+    ).toBe(true);
+    expect(
+      preciseNeighbors
+        .slice(0, 40)
+        .every((candidate) => result.enrichedPaths.includes(candidate.path))
+    ).toBe(true);
   });
 
   it("uses production probes through precise relationships or model-validated imports", () => {

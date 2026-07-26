@@ -32,6 +32,7 @@ export type ModelCandidateUnion = {
   semanticStatus: SemanticRetrieverStatus;
   graphPaths: string[];
   graphConsensusPaths: string[];
+  graphModelImportPaths: string[];
   graphSeedPaths: string[];
   graphEvidenceByPath: ReadonlyMap<string, EvidenceGraphFacts>;
   semanticPaths: string[];
@@ -49,9 +50,12 @@ const MODEL_INITIAL_SEMANTIC_RESERVE = 40;
 const MAX_TEST_GRAPH_PROBE_PATHS = 192;
 const GRAPH_ENRICHMENT_CAPACITY =
   DEFAULT_ENRICHED_CANDIDATE_LIMIT - DEFAULT_INITIAL_CANDIDATE_LIMIT;
-const GRAPH_CONSENSUS_RESERVE = Math.floor(GRAPH_ENRICHMENT_CAPACITY / 4);
+const GRAPH_MODEL_IMPORT_RESERVE = Math.floor(GRAPH_ENRICHMENT_CAPACITY / 4);
+const GRAPH_CONSENSUS_RESERVE = Math.floor(GRAPH_ENRICHMENT_CAPACITY / 8);
 const GRAPH_PRECISION_RESERVE =
-  GRAPH_ENRICHMENT_CAPACITY - GRAPH_CONSENSUS_RESERVE;
+  GRAPH_ENRICHMENT_CAPACITY -
+  GRAPH_MODEL_IMPORT_RESERVE -
+  GRAPH_CONSENSUS_RESERVE;
 const MAX_GRAPH_CONSENSUS_SUPPORT_SEEDS = 3;
 
 export function buildModelCandidateUnion(input: {
@@ -223,6 +227,23 @@ export function buildModelCandidateUnion(input: {
     signals.intent,
     filesByPath
   );
+  const graphModelImportPaths = prioritizeGraphPathsForIntent(
+    rankEvidenceBackedGraphCandidates({
+      seedPaths: initialPaths,
+      probeSeedPaths: graphProbePaths,
+      edges: input.edges,
+      filesByPath,
+      evidenceRankings: [
+        { channel: "semantic", paths: semanticEvidencePaths },
+        { channel: "bm25", paths: bm25Paths },
+        { channel: "symbol", paths: eligibleSymbolPaths }
+      ],
+      edgeTypes: ["imports", "imported_by"],
+      requiredEvidenceChannel: "semantic"
+    }),
+    signals.intent,
+    filesByPath
+  );
   const graphEnrichedOrder = reciprocalRankFuse({
     hardPaths,
     rankings: graphPaths.length > 0
@@ -247,8 +268,10 @@ export function buildModelCandidateUnion(input: {
   // parser-proven neighbor.
   const enrichedPaths = uniquePaths([
     ...initialPaths,
+    ...graphModelImportPaths.slice(0, GRAPH_MODEL_IMPORT_RESERVE),
     ...graphConsensusPaths.slice(0, GRAPH_CONSENSUS_RESERVE),
     ...graphPaths.slice(0, GRAPH_PRECISION_RESERVE),
+    ...graphModelImportPaths,
     ...graphConsensusPaths,
     ...graphPaths,
     ...graphEnrichedOrder,
@@ -260,7 +283,11 @@ export function buildModelCandidateUnion(input: {
       .map((hit) => [normalizePath(hit.path), hit] as const)
   );
   const changedPaths = new Set([...(input.changedFiles ?? [])].map(normalizePath));
-  const graphPathSet = new Set([...graphPaths, ...graphConsensusPaths]);
+  const graphPathSet = new Set([
+    ...graphPaths,
+    ...graphConsensusPaths,
+    ...graphModelImportPaths
+  ]);
   const candidateResults = enrichedPaths.map((filePath): HybridScoredResult => {
     const file = filesByPath.get(filePath)!;
     const bm25 = bm25ByPath.get(filePath);
@@ -297,6 +324,7 @@ export function buildModelCandidateUnion(input: {
     semanticStatus: input.semanticStatus,
     graphPaths,
     graphConsensusPaths,
+    graphModelImportPaths,
     graphSeedPaths,
     graphEvidenceByPath,
     semanticPaths,
@@ -391,6 +419,8 @@ export function rankEvidenceBackedGraphCandidates(input: {
   evidenceRankings: CandidateRanking[];
   minimumSeedSupport?: number;
   ordering?: "precision" | "support";
+  edgeTypes?: GraphEdgeRecord["type"][];
+  requiredEvidenceChannel?: CandidateRanking["channel"];
   graphEvidenceByPath?: Map<string, EvidenceGraphFacts>;
 }): string[] {
   const primarySeeds = uniquePaths(input.seedPaths);
@@ -421,6 +451,7 @@ export function rankEvidenceBackedGraphCandidates(input: {
   };
   const candidates = new Map<string, GraphCandidate>();
   const consider = (seedPath: string, neighborPath: string, edge: GraphEdgeRecord): void => {
+    if (input.edgeTypes && !input.edgeTypes.includes(edge.type)) return;
     const seedRank = seedRanks.get(seedPath);
     const neighbor = input.filesByPath.get(neighborPath);
     if (!seedRank || !neighbor || seedPath === neighborPath || neighbor.indexTier === "tier0") return;
@@ -433,6 +464,12 @@ export function rankEvidenceBackedGraphCandidates(input: {
     const precision = edgePriority(edge.type);
     if (precision === 0) return;
     const independentEvidence = evidenceRanks.get(neighborPath);
+    if (
+      input.requiredEvidenceChannel &&
+      !independentEvidence?.has(input.requiredEvidenceChannel)
+    ) {
+      return;
+    }
     // A direct import is objective parser evidence, but reverse import fan-out
     // can still be broad. Probe beyond the initial 64 only when the embedding
     // model independently retrieved both the seed and the production
