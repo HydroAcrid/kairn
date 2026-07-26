@@ -2,7 +2,7 @@
 
 import { performance } from "node:perf_hooks";
 import {
-  buildSemanticQueries,
+  buildSemanticServingQueries,
   fuseSemanticCandidateRankings,
   scoreSemanticEmbeddingIndex
 } from "../src/retrieval/semanticCandidates.js";
@@ -24,7 +24,7 @@ const benchmarkQuery = [
   "",
   "Locate the implementation that restores an expired authorization session."
 ].join("\n");
-const semanticQueries = buildSemanticQueries(benchmarkQuery);
+const semanticQueries = buildSemanticServingQueries(benchmarkQuery);
 await model.embedQueries(semanticQueries);
 const documentText = boundedCodeDocument(options.documentChars);
 const embeddingLatencies: number[] = [];

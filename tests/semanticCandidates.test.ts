@@ -15,6 +15,7 @@ import { yieldToSemanticCheckpointTimers } from "../src/indexer/indexRepo.js";
 import {
   buildSemanticQueryCandidates,
   buildSemanticQueries,
+  buildSemanticServingQueries,
   fuseSemanticCandidateRankings,
   scoreSemanticEmbeddingIndex,
   selectSemanticQueryViewIndexes,
@@ -1084,6 +1085,34 @@ describe("model-based semantic candidates", () => {
     expect(queries.some((query) => query.includes("expired session state"))).toBe(true);
     expect(queries.some((query) => query.includes("associated lease"))).toBe(true);
     expect(queries.some((query) => query.includes("invalid credential"))).toBe(true);
+  });
+
+  it("serves one bounded semantic synopsis spanning the task headline and narrative tail", () => {
+    const queries = buildSemanticServingQueries([
+      "Authorization cleanup leaves stale records.",
+      "",
+      `The first subsystem keeps expired session state. ${"early context ".repeat(45)}`,
+      "",
+      `A separate persistence layer must remove the associated lease. ${"middle context ".repeat(45)}`,
+      "",
+      `The final adapter should report the invalid credential consistently. ${"late context ".repeat(45)}`
+    ].join("\n"));
+
+    expect(queries).toHaveLength(1);
+    expect(queries[0]).toContain("Authorization cleanup leaves stale records");
+    expect(queries[0]).toContain("invalid credential");
+    expect(queries[0]).not.toContain("associated lease");
+    expect(queries[0]!.length).toBeLessThanOrEqual(1_600);
+  });
+
+  it("does not duplicate a concise task when its headline and narrative are identical", () => {
+    const queries = buildSemanticServingQueries(
+      "Locate the implementation that renews an expired authorization session."
+    );
+
+    expect(queries).toEqual([
+      "Locate the implementation that renews an expired authorization session."
+    ]);
   });
 
   it("gives the model a bounded candidate pool spanning structured fenced evidence", () => {

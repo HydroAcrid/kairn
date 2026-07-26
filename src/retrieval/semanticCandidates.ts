@@ -29,14 +29,14 @@ export type SemanticCandidateSearchResult = {
 };
 
 const MAX_QUERY_CHARS = 1_600;
-const MAX_SEMANTIC_QUERY_VIEWS = 5;
-const MAX_FENCED_SEMANTIC_QUERY_VIEWS = 2;
 const MAX_SEMANTIC_QUERY_CANDIDATES = 18;
 const MAX_NARRATIVE_QUERY_CANDIDATES = 5;
 const MAX_FENCED_QUERY_CANDIDATES = 12;
 const SEMANTIC_QUERY_WINDOW_CHARS = 560;
 const SEMANTIC_QUERY_WINDOW_OVERLAP_CHARS = 80;
 const SEMANTIC_DIAGNOSTIC_RANK_LIMIT = 512;
+const SEMANTIC_SYNOPSIS_HEADLINE_CHARS = 320;
+const SEMANTIC_SYNOPSIS_NARRATIVE_CHARS = 620;
 
 export async function searchSemanticCandidates(input: {
   query: string;
@@ -94,17 +94,8 @@ export async function searchSemanticCandidates(input: {
       modelId,
       ...(input.config.modelPath ? { modelPath: input.config.modelPath } : {})
     });
-    const semanticQueryCandidates = buildSemanticQueryCandidates(input.query);
-    const candidateQueryVectors = await model.embedQueries(
-      semanticQueryCandidates.map((candidate) => candidate.text)
-    );
-    const selectedQueryIndexes = selectSemanticQueryViewIndexes(
-      semanticQueryCandidates,
-      candidateQueryVectors,
-      MAX_SEMANTIC_QUERY_VIEWS,
-      MAX_FENCED_SEMANTIC_QUERY_VIEWS
-    );
-    const queryVectors = selectedQueryIndexes.map((index) => candidateQueryVectors[index]!);
+    const semanticQueries = buildSemanticServingQueries(input.query);
+    const queryVectors = await model.embedQueries(semanticQueries);
     const scanStarted = performance.now();
     const queryRankings = queryVectors.map((queryVector) => scoreSemanticEmbeddingIndex({
         queryVector,
@@ -215,11 +206,40 @@ export function buildSemanticQueries(query: string): string[] {
   return buildSemanticQueryCandidates(query).map((candidate) => candidate.text);
 }
 
+/**
+ * Serving uses one compact model query so a broad issue template cannot gain
+ * extra retrieval votes merely because it contains more sections. The task
+ * headline preserves the requested behavior while the final two bounded
+ * narrative windows retain the resolution/root-cause portion common to bug
+ * reports and design tasks. The embedding model—not task words or filenames—
+ * decides relevance.
+ *
+ * The broader candidate/view builder remains available for offline diagnostics
+ * and model-selection analysis.
+ */
+export function buildSemanticServingQueries(query: string): string[] {
+  const candidates = buildSemanticQueryCandidates(query);
+  const headline = candidates.find((candidate) => candidate.kind === "headline");
+  const narratives = candidates
+    .filter((candidate) => candidate.kind === "narrative")
+    .slice(-2);
+  const parts = [...new Set(
+    [
+      headline?.text.slice(0, SEMANTIC_SYNOPSIS_HEADLINE_CHARS).trim(),
+      ...narratives.map((narrative) =>
+        narrative.text.slice(0, SEMANTIC_SYNOPSIS_NARRATIVE_CHARS).trim()
+      )
+    ].filter((value): value is string => Boolean(value))
+  )];
+  const synopsis = normalizeSemanticQuery(parts.join("\n\n")).slice(0, MAX_QUERY_CHARS).trim();
+  return synopsis ? [synopsis] : [];
+}
+
 export function selectSemanticQueryViewIndexes(
   candidates: SemanticQueryViewCandidate[],
   vectors: ArrayLike<number>[],
-  limit = MAX_SEMANTIC_QUERY_VIEWS,
-  fencedLimit = MAX_FENCED_SEMANTIC_QUERY_VIEWS
+  limit = 5,
+  fencedLimit = 2
 ): number[] {
   if (candidates.length !== vectors.length) {
     throw new Error("Semantic query candidates and vectors must have the same length.");
