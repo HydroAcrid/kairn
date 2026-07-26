@@ -27,7 +27,7 @@ const modelId = process.env.KAIRN_SEMANTIC_MODEL?.trim() || DEFAULT_SEMANTIC_MOD
 const model = await loadLocalEmbeddingModel({ modelId });
 const candidates = buildSemanticQueryCandidates(intakeCase.prompt);
 const vectors = await model.embedQueries(candidates.map((candidate) => candidate.text));
-const selected = new Set(selectSemanticQueryViewIndexes(candidates, vectors, 5, 2));
+const selected = new Set(selectSemanticQueryViewIndexes(candidates, vectors));
 
 process.stdout.write(`${JSON.stringify({
   caseId,
