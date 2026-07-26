@@ -75,7 +75,9 @@ describe("model-based semantic candidates", () => {
     expect(SEMANTIC_MODEL_MANIFESTS.find((model) => model.modelId.includes("bge"))?.pooling)
       .toBe("cls");
     expect(SEMANTIC_MODEL_MANIFESTS.find((model) => model.modelId.includes("coderank"))?.runtime.outputName)
-      .toBe("sentence_embedding");
+      .toBe("token_embeddings");
+    expect(SEMANTIC_MODEL_MANIFESTS.find((model) => model.modelId.includes("coderank"))?.modelId)
+      .toContain("maskmean");
   });
 
   it("seals lineage-disjoint selection and holdout cases across all language/scenario cells", () => {

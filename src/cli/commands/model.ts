@@ -112,7 +112,8 @@ export function registerModelCommands(program: Command): void {
                 `Dimensions: ${runtime.dimensions}`,
                 `Cold initialization: ${runtime.coldInitializationMs} ms`,
                 `Verification inference: ${runtime.batchInferenceMs} ms`,
-                `Maximum repeat delta: ${runtime.maximumDeterminismDelta}`
+                `Maximum repeat delta: ${runtime.maximumDeterminismDelta}`,
+                `Maximum batch-composition delta: ${runtime.maximumBatchCompositionDelta}`
               ].join("\n")
             : "",
           ""

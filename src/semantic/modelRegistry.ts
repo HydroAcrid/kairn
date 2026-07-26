@@ -154,10 +154,12 @@ const BGE_SMALL: SemanticModelManifest = {
  * The pinned INT8 graph is used for local train/calibration evaluation; it is
  * not eligible to become the default until Kairn reproduces the export from
  * the official MIT weights and the cross-language promotion gates pass.
+ * Kairn consumes token embeddings and applies attention-mask-aware mean
+ * pooling because the export's prepooled output is not batch invariant.
  */
 const CODERANK_CODE: SemanticModelManifest = {
   formatVersion: 1,
-  modelId: "coderank-code-v1-q8",
+  modelId: "coderank-code-v1-q8-maskmean",
   upstreamRepository: "mrsladoje/CodeRankEmbed-onnx-int8",
   upstreamRevision: "e74f446dc6e67e29fcee77213472c142f73a6bbb",
   license: "MIT",
@@ -171,7 +173,7 @@ const CODERANK_CODE: SemanticModelManifest = {
   runtime: {
     library: "kairn-onnx-wasm-v1",
     modelFilePath: "onnx/model.onnx",
-    outputName: "sentence_embedding"
+    outputName: "token_embeddings"
   },
   files: [
     {

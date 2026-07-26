@@ -34,6 +34,7 @@ export type SemanticModelRuntimeVerification = {
   coldInitializationMs: number;
   batchInferenceMs: number;
   maximumDeterminismDelta: number;
+  maximumBatchCompositionDelta: number;
   queryNorm: number;
   relevantSimilarity: number;
   unrelatedSimilarity: number;
@@ -89,11 +90,20 @@ export async function verifyLocalEmbeddingModel(input?: {
   const [query] = await model.embedQueries([queryText]);
   const documents = await model.embedDocuments(documentTexts);
   const [repeat] = await model.embedQueries([queryText]);
+  const [batchedQuery] = await model.embedQueries([
+    queryText,
+    "Locate the stylesheet that controls dashboard spacing and colors."
+  ]);
+  const [standaloneDocument] = await model.embedDocuments([documentTexts[0]!]);
   const batchInferenceMs = performance.now() - inferenceStarted;
-  if (!query || !repeat || !documents[0] || !documents[1]) {
+  if (!query || !repeat || !batchedQuery || !standaloneDocument || !documents[0] || !documents[1]) {
     throw new Error(`Semantic model ${model.manifest.modelId} returned an incomplete verification batch.`);
   }
   const maximumDeterminismDelta = maximumVectorDelta(query, repeat);
+  const maximumBatchCompositionDelta = Math.max(
+    maximumVectorDelta(query, batchedQuery),
+    maximumVectorDelta(standaloneDocument, documents[0])
+  );
   const queryNorm = vectorNorm(query);
   const relevantSimilarity = floatCosineSimilarity(query, documents[0]);
   const unrelatedSimilarity = floatCosineSimilarity(query, documents[1]);
@@ -101,6 +111,7 @@ export async function verifyLocalEmbeddingModel(input?: {
     coldInitializationMs,
     batchInferenceMs,
     maximumDeterminismDelta,
+    maximumBatchCompositionDelta,
     queryNorm,
     relevantSimilarity,
     unrelatedSimilarity
@@ -111,6 +122,7 @@ export async function verifyLocalEmbeddingModel(input?: {
     coldInitializationMs: rounded(coldInitializationMs),
     batchInferenceMs: rounded(batchInferenceMs),
     maximumDeterminismDelta,
+    maximumBatchCompositionDelta,
     queryNorm: rounded(queryNorm, 6),
     relevantSimilarity: rounded(relevantSimilarity, 6),
     unrelatedSimilarity: rounded(unrelatedSimilarity, 6),
@@ -119,7 +131,8 @@ export async function verifyLocalEmbeddingModel(input?: {
       documents.every((vector) => vector.length === model.manifest.dimensions) &&
       values.every(Number.isFinite) &&
       Math.abs(queryNorm - 1) <= 1e-4 &&
-      maximumDeterminismDelta <= 1e-5
+      maximumDeterminismDelta <= 1e-5 &&
+      maximumBatchCompositionDelta <= 1e-5
   };
 }
 
@@ -177,12 +190,29 @@ async function createLocalEmbeddingModel(
   const loaded = await loadOnnxModel(modelPath, manifest);
   const embed = async (texts: string[], prefix: string): Promise<Float32Array[]> => {
     if (texts.length === 0) return [];
-    const prepared = texts.map((text) => `${prefix}${text}`);
-    const encoded = prepared.map((text) => encodeBounded(loaded.tokenizer, text, manifest.maxTokens));
     const ort = await getOrtRuntime();
-    const feeds = buildFeeds(ort, loaded.session.inputNames, encoded);
-    const outputs = await loaded.session.run(feeds);
-    return poolAndNormalize(outputs, loaded.session.outputNames, encoded, manifest);
+    const vectors: Float32Array[] = [];
+    // Dynamically quantized ONNX graphs can choose activation scales across
+    // the complete input tensor. Running unrelated texts in one tensor then
+    // makes an individual embedding depend on its batch companions even when
+    // attention-mask pooling is correct. Single-row inference keeps content,
+    // model, tokenizer, and document schema as the complete embedding key.
+    for (const text of texts) {
+      const encoded = [encodeBounded(loaded.tokenizer, `${prefix}${text}`, manifest.maxTokens)];
+      const feeds = buildFeeds(ort, loaded.session.inputNames, encoded);
+      const outputs = await loaded.session.run(feeds);
+      const [vector] = poolAndNormalize(
+        outputs,
+        loaded.session.outputNames,
+        encoded,
+        manifest
+      );
+      if (!vector) {
+        throw new Error(`Semantic model ${manifest.modelId} returned an incomplete embedding.`);
+      }
+      vectors.push(vector);
+    }
+    return vectors;
   };
 
   return {
