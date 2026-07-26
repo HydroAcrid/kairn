@@ -297,7 +297,16 @@ function poolAndNormalize(
   encoded: Encoding[],
   manifest: SemanticModelManifest
 ): Float32Array[] {
-  const output = outputs.last_hidden_state ?? outputs[outputNames[0] ?? ""];
+  const configuredOutput = manifest.runtime.outputName
+    ? outputs[manifest.runtime.outputName]
+    : undefined;
+  if (manifest.runtime.outputName && !configuredOutput) {
+    throw new Error(
+      `Semantic model ${manifest.modelId} did not return configured ONNX output ` +
+      `"${manifest.runtime.outputName}".`
+    );
+  }
+  const output = configuredOutput ?? outputs.last_hidden_state ?? outputs[outputNames[0] ?? ""];
   if (!output) throw new Error(`Semantic model ${manifest.modelId} returned no ONNX output.`);
   const values = output.data;
   const dims = output.dims.map(Number);

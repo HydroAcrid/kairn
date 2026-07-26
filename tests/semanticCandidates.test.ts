@@ -59,10 +59,10 @@ describe("model-based semantic candidates", () => {
   });
 
   it("pins immutable, checksummed CPU-only model manifests below the footprint gate", () => {
-    expect(SEMANTIC_MODEL_MANIFESTS).toHaveLength(2);
+    expect(SEMANTIC_MODEL_MANIFESTS).toHaveLength(3);
     for (const manifest of SEMANTIC_MODEL_MANIFESTS) {
       expect(manifest.upstreamRevision).toMatch(/^[0-9a-f]{40}$/);
-      expect(manifest.runtime).toEqual({
+      expect(manifest.runtime).toMatchObject({
         library: "kairn-onnx-wasm-v1",
         modelFilePath: "onnx/model.onnx"
       });
@@ -73,6 +73,8 @@ describe("model-based semantic candidates", () => {
       .toBe("mean");
     expect(SEMANTIC_MODEL_MANIFESTS.find((model) => model.modelId.includes("bge"))?.pooling)
       .toBe("cls");
+    expect(SEMANTIC_MODEL_MANIFESTS.find((model) => model.modelId.includes("coderank"))?.runtime.outputName)
+      .toBe("sentence_embedding");
   });
 
   it("seals lineage-disjoint selection and holdout cases across all language/scenario cells", () => {

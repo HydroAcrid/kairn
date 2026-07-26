@@ -23,6 +23,8 @@ export type SemanticModelManifest = {
   runtime: {
     library: "kairn-onnx-wasm-v1";
     modelFilePath: "onnx/model.onnx";
+    /** Prefer a model-authored pooled embedding when the ONNX graph exports one. */
+    outputName?: string;
   };
   files: SemanticModelFile[];
 };
@@ -147,7 +149,75 @@ const BGE_SMALL: SemanticModelManifest = {
   ]
 };
 
-export const SEMANTIC_MODEL_MANIFESTS = Object.freeze([JINA_CODE, BGE_SMALL]);
+/**
+ * Shadow-only feasibility candidate derived from nomic-ai/CodeRankEmbed.
+ * The pinned INT8 graph is used for local train/calibration evaluation; it is
+ * not eligible to become the default until Kairn reproduces the export from
+ * the official MIT weights and the cross-language promotion gates pass.
+ */
+const CODERANK_CODE: SemanticModelManifest = {
+  formatVersion: 1,
+  modelId: "coderank-code-v1-q8",
+  upstreamRepository: "mrsladoje/CodeRankEmbed-onnx-int8",
+  upstreamRevision: "e74f446dc6e67e29fcee77213472c142f73a6bbb",
+  license: "MIT",
+  dimensions: 768,
+  maxTokens: 512,
+  pooling: "mean",
+  normalize: true,
+  queryPrefix: "",
+  documentPrefix: "",
+  documentSchemaVersion: "semantic-documents-v5",
+  runtime: {
+    library: "kairn-onnx-wasm-v1",
+    modelFilePath: "onnx/model.onnx",
+    outputName: "sentence_embedding"
+  },
+  files: [
+    {
+      remotePath: "config.json",
+      localPath: "config.json",
+      bytes: 1_371,
+      sha256: "d9cac600c987632c33d61a7ed7f7b3ff0a52e7eb41440b661266a9c88f75ebcd"
+    },
+    {
+      remotePath: "special_tokens_map.json",
+      localPath: "special_tokens_map.json",
+      bytes: 695,
+      sha256: "5d5b662e421ea9fac075174bb0688ee0d9431699900b90662acd44b2a350503a"
+    },
+    {
+      remotePath: "tokenizer.json",
+      localPath: "tokenizer.json",
+      bytes: 711_649,
+      sha256: "91f1def9b9391fdabe028cd3f3fcc4efd34e5d1f08c3bf2de513ebb5911a1854"
+    },
+    {
+      remotePath: "tokenizer_config.json",
+      localPath: "tokenizer_config.json",
+      bytes: 1_447,
+      sha256: "8de9ab7560d7fb63338c00736faac7bb9d85d49da44c774c607e7766b59614ea"
+    },
+    {
+      remotePath: "vocab.txt",
+      localPath: "vocab.txt",
+      bytes: 231_508,
+      sha256: "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3"
+    },
+    {
+      remotePath: "onnx/model.onnx",
+      localPath: "onnx/model.onnx",
+      bytes: 138_619_279,
+      sha256: "4eae31d09b1843103a1ebd5e2b2e24b5a5cad441a33906b35b12b1e2ed91d1db"
+    }
+  ]
+};
+
+export const SEMANTIC_MODEL_MANIFESTS = Object.freeze([
+  JINA_CODE,
+  BGE_SMALL,
+  CODERANK_CODE
+]);
 
 export function getSemanticModelManifest(modelId = DEFAULT_SEMANTIC_MODEL_ID): SemanticModelManifest {
   const manifest = SEMANTIC_MODEL_MANIFESTS.find((candidate) => candidate.modelId === modelId);
