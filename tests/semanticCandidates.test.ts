@@ -1174,6 +1174,84 @@ describe("model-based semantic candidates", () => {
     expect(selected).not.toContain(3);
   });
 
+  it("uses model relevance and diversity to retain the central problem narrative", () => {
+    const candidates = [
+      {
+        kind: "headline" as const,
+        text: "Generated helper names collide and recurse.",
+        structuralIndex: 0
+      },
+      {
+        kind: "narrative" as const,
+        text: "The generated output fails after a local name collision.",
+        structuralIndex: 0
+      },
+      {
+        kind: "narrative" as const,
+        text: "A helper rename must reserve the new name before the next helper is emitted.",
+        structuralIndex: 1
+      },
+      {
+        kind: "narrative" as const,
+        text: "Additional environment and reproduction metadata.",
+        structuralIndex: 2
+      }
+    ];
+    const vectors = [
+      Float32Array.from([1, 0]),
+      Float32Array.from([0.99, 0.1]),
+      Float32Array.from([0.9, 0.4]),
+      Float32Array.from([0.6, 0.8])
+    ];
+
+    const selected = selectSemanticQueryViewIndexes(candidates, vectors, 3, 0);
+
+    expect(selected).toEqual([0, 1, 2]);
+  });
+
+  it("keeps a distinct failure fence instead of two redundant examples", () => {
+    const candidates = [
+      {
+        kind: "headline" as const,
+        text: "Generated code recurses after a name collision.",
+        structuralIndex: 0
+      },
+      {
+        kind: "narrative" as const,
+        text: "The emitted helper must preserve unique local bindings.",
+        structuralIndex: 0
+      },
+      {
+        kind: "fence" as const,
+        text: "first equivalent input example",
+        structuralIndex: 0
+      },
+      {
+        kind: "fence" as const,
+        text: "second equivalent input example",
+        structuralIndex: 1
+      },
+      {
+        kind: "fence" as const,
+        text: "distinct recursive failure output",
+        structuralIndex: 2
+      }
+    ];
+    const vectors = [
+      Float32Array.from([1, 0]),
+      Float32Array.from([0.98, 0.2]),
+      Float32Array.from([0.9, 0.435]),
+      Float32Array.from([0.89, 0.456]),
+      Float32Array.from([0.8, -0.6])
+    ];
+
+    const selected = selectSemanticQueryViewIndexes(candidates, vectors, 4, 2);
+
+    expect(selected).toContain(2);
+    expect(selected).toContain(4);
+    expect(selected).not.toContain(3);
+  });
+
   it("fuses semantic query views by rank instead of a noisy maximum-similarity winner", () => {
     const hits = fuseSemanticCandidateRankings([
       [

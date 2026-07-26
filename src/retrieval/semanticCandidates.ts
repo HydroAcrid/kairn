@@ -37,6 +37,7 @@ const MAX_FENCED_QUERY_CANDIDATES = 12;
 const SEMANTIC_QUERY_WINDOW_CHARS = 560;
 const SEMANTIC_QUERY_WINDOW_OVERLAP_CHARS = 80;
 const SEMANTIC_DIAGNOSTIC_RANK_LIMIT = 512;
+const SEMANTIC_VIEW_REDUNDANCY_PENALTY = 0.5;
 
 export async function searchSemanticCandidates(input: {
   query: string;
@@ -240,34 +241,80 @@ export function selectSemanticQueryViewIndexes(
   const narrativeIndexes = candidates
     .map((candidate, index) => candidate.kind === "narrative" ? index : -1)
     .filter((index) => index >= 0);
-  const selectedAnchors = uniqueIndexes([
-    ...headlineIndexes.slice(0, 1),
-    ...evenlySampleIncludingEndpoints(
-      narrativeIndexes,
-      Math.max(0, anchorCapacity - Math.min(1, headlineIndexes.length))
-    )
-  ]).slice(0, anchorCapacity);
+  const selectedAnchors = headlineIndexes.slice(0, 1);
+  selectedAnchors.push(...selectRelevantDiverseIndexes({
+    candidates,
+    vectors,
+    candidateIndexes: narrativeIndexes,
+    referenceIndexes: selectedAnchors,
+    count: Math.max(0, anchorCapacity - selectedAnchors.length)
+  }));
   for (const index of [...headlineIndexes, ...narrativeIndexes]) {
     if (selectedAnchors.length >= anchorCapacity) break;
     if (!selectedAnchors.includes(index)) selectedAnchors.push(index);
   }
   if (selectedAnchors.length === 0) selectedAnchors.push(0);
-  const selectedFences = fenceIndexes
-    .map((index) => ({
-      index,
-      score: Math.max(
-        ...selectedAnchors.map((anchorIndex) =>
-          cosineSimilarity(vectors[index]!, vectors[anchorIndex]!)
-        )
-      )
-    }))
-    .sort((left, right) =>
-      right.score - left.score ||
-      candidates[left.index]!.structuralIndex - candidates[right.index]!.structuralIndex
-    )
-    .slice(0, selectedFenceCapacity)
-    .map((item) => item.index);
+  const selectedFences = selectRelevantDiverseIndexes({
+    candidates,
+    vectors,
+    candidateIndexes: fenceIndexes,
+    referenceIndexes: selectedAnchors,
+    count: selectedFenceCapacity
+  });
   return uniqueIndexes([...selectedAnchors, ...selectedFences]).slice(0, boundedLimit);
+}
+
+function selectRelevantDiverseIndexes(input: {
+  candidates: SemanticQueryViewCandidate[];
+  vectors: ArrayLike<number>[];
+  candidateIndexes: number[];
+  referenceIndexes: number[];
+  count: number;
+}): number[] {
+  const count = Math.max(0, Math.min(Math.floor(input.count), input.candidateIndexes.length));
+  if (count === 0) return [];
+  const selected: number[] = [];
+  const remaining = new Set(input.candidateIndexes);
+  const relevance = (index: number): number => {
+    if (input.referenceIndexes.length > 0) {
+      return Math.max(
+        ...input.referenceIndexes.map((referenceIndex) =>
+          cosineSimilarity(input.vectors[index]!, input.vectors[referenceIndex]!)
+        )
+      );
+    }
+    const peers = input.candidateIndexes.filter((candidateIndex) => candidateIndex !== index);
+    if (peers.length === 0) return 1;
+    return peers.reduce(
+      (sum, peerIndex) => sum + cosineSimilarity(input.vectors[index]!, input.vectors[peerIndex]!),
+      0
+    ) / peers.length;
+  };
+  while (selected.length < count && remaining.size > 0) {
+    const ranked = [...remaining].map((index) => {
+      const redundancy = selected.length > 0
+        ? Math.max(
+            ...selected.map((selectedIndex) =>
+              cosineSimilarity(input.vectors[index]!, input.vectors[selectedIndex]!)
+            )
+          )
+        : 0;
+      return {
+        index,
+        score: relevance(index) - SEMANTIC_VIEW_REDUNDANCY_PENALTY * redundancy
+      };
+    }).sort((left, right) =>
+      right.score - left.score ||
+      input.candidates[left.index]!.structuralIndex -
+        input.candidates[right.index]!.structuralIndex ||
+      left.index - right.index
+    );
+    const next = ranked[0]?.index;
+    if (next === undefined) break;
+    selected.push(next);
+    remaining.delete(next);
+  }
+  return selected;
 }
 
 type FencedBlock = {
