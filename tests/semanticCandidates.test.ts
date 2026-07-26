@@ -1601,16 +1601,25 @@ describe("model-based semantic candidates", () => {
         edges: []
       };
 
-      const fileDocument = buildSemanticDocuments({
+      const documents = buildSemanticDocuments({
         rootPath,
         graph,
-        maxDocuments: 1
-      })[0]!;
+        maxDocuments: 2
+      });
+      const fileDocument = documents.find((document) => document.kind === "file")!;
+      const symbolDocument = documents.find((document) => document.kind === "symbol")!;
       expect(fileDocument.text.length).toBeLessThanOrEqual(1_500);
       expect(fileDocument.text).toContain(
         "AttachConfig connects removed configuration blocks to graph nodes"
       );
       expect(fileDocument.text).toContain(
+        "caller supplies either an active resource or a removed resource"
+      );
+      expect(symbolDocument.text.length).toBeLessThanOrEqual(1_500);
+      expect(symbolDocument.text).toContain(
+        "documentation: AttachConfig connects removed configuration blocks to graph nodes"
+      );
+      expect(symbolDocument.text).toContain(
         "caller supplies either an active resource or a removed resource"
       );
     } finally {

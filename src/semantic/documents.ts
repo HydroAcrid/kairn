@@ -166,6 +166,10 @@ function buildSymbolDocument(
     ? evenlySampleIncludingEndpoints(parsed.imports, Math.min(MAX_DIRECT_IMPORTS, parsed.imports.length))
       .map((item) => boundedField(item, 48))
     : [];
+  const documentation = leadingDocumentationForLine(
+    content.split(/\r?\n/),
+    symbol.startLine
+  );
   const prefix = [
     `file: ${boundedField(file.path, 160)}`,
     `language: ${file.language}`,
@@ -176,6 +180,9 @@ function buildSymbolDocument(
     `signature: ${boundedField(symbol.signature, 140)}`,
     `exported: ${symbol.exported ? "yes" : "no"}`,
     boundedList("direct imports", directImports, 140),
+    ...(documentation
+      ? [`documentation: ${boundedField(documentation, 224)}`]
+      : []),
     ""
   ].join("\n");
   const text = composeDocument(prefix, body);
