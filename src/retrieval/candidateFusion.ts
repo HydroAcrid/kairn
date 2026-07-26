@@ -433,17 +433,6 @@ export function rankEvidenceBackedGraphCandidates(input: {
     const precision = edgePriority(edge.type);
     if (precision === 0) return;
     const independentEvidence = evidenceRanks.get(neighborPath);
-    // A direct import is objective parser evidence, but reverse import fan-out
-    // can still be broad. Probe beyond the initial 64 only when the embedding
-    // model independently retrieved both the seed and the production
-    // neighbor. Lexical overlap alone must not turn an import into relevance.
-    if (
-      probeSeedSet.has(seedPath) &&
-      (edge.type === "imports" || edge.type === "imported_by") &&
-      !independentEvidence?.has("semantic")
-    ) {
-      return;
-    }
     if (
       (precision === 1 || edge.type === "shared_call_target") &&
       (!isProductionEvidenceFile(neighbor) || !independentEvidence || independentEvidence.size === 0)
@@ -571,9 +560,7 @@ function isProbeEligibleEdge(
   return (
     type === "call" ||
     type === "shared_call_target" ||
-    type === "type_reference" ||
-    type === "imports" ||
-    type === "imported_by"
+    type === "type_reference"
   );
 }
 
