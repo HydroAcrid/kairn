@@ -33,6 +33,7 @@ export type ModelCandidateUnion = {
   graphPaths: string[];
   graphConsensusPaths: string[];
   graphSeedPaths: string[];
+  graphSeedRanks: ReadonlyMap<string, number>;
   graphEvidenceByPath: ReadonlyMap<string, EvidenceGraphFacts>;
   semanticPaths: string[];
   semanticEvidencePaths: string[];
@@ -225,6 +226,23 @@ export function buildModelCandidateUnion(input: {
         .slice(0, MODEL_RETRIEVAL_PROBE_LIMIT - preliminaryGraphSeedPaths.length)
     : [];
   const graphSeedPaths = uniquePaths([...preliminaryGraphSeedPaths, ...graphProbePaths]);
+  const semanticEvidenceRanks = new Map(
+    semanticEvidencePaths.map((filePath, index) => [filePath, index + 1])
+  );
+  // Probe selection is role-balanced so semantically relevant tests retain a
+  // chance to rescue their production companions. That coverage policy must
+  // not overwrite the model's relevance ordering, however. Keep primary seed
+  // ranks from the bounded fused lane and score every additional probe at its
+  // original semantic-evidence rank.
+  const graphSeedRanks = new Map(
+    graphSeedPaths.map((filePath, index) => [filePath, index + 1])
+  );
+  for (const filePath of graphProbePaths) {
+    const semanticEvidenceRank = semanticEvidenceRanks.get(filePath);
+    if (semanticEvidenceRank !== undefined) {
+      graphSeedRanks.set(filePath, semanticEvidenceRank);
+    }
+  }
   const graphEvidenceByPath = new Map<string, EvidenceGraphFacts>();
   const graphPaths = prioritizeGraphPathsForIntent(
     rankEvidenceBackedGraphCandidates({
@@ -237,6 +255,7 @@ export function buildModelCandidateUnion(input: {
         { channel: "bm25", paths: bm25Paths },
         { channel: "symbol", paths: eligibleSymbolPaths }
       ],
+      seedRanks: graphSeedRanks,
       graphEvidenceByPath
     }),
     signals.intent,
@@ -253,6 +272,7 @@ export function buildModelCandidateUnion(input: {
         { channel: "bm25", paths: bm25Paths },
         { channel: "symbol", paths: eligibleSymbolPaths }
       ],
+      seedRanks: graphSeedRanks,
       minimumSeedSupport: 2,
       ordering: "support"
     }),
@@ -350,6 +370,7 @@ export function buildModelCandidateUnion(input: {
     graphPaths,
     graphConsensusPaths,
     graphSeedPaths,
+    graphSeedRanks,
     graphEvidenceByPath,
     semanticPaths,
     semanticEvidencePaths
@@ -441,6 +462,7 @@ export function rankEvidenceBackedGraphCandidates(input: {
   edges: GraphEdgeRecord[];
   filesByPath: Map<string, FileRecord>;
   evidenceRankings: CandidateRanking[];
+  seedRanks?: ReadonlyMap<string, number>;
   minimumSeedSupport?: number;
   ordering?: "precision" | "support";
   graphEvidenceByPath?: Map<string, EvidenceGraphFacts>;
@@ -451,7 +473,10 @@ export function rankEvidenceBackedGraphCandidates(input: {
     (filePath) => !primarySeeds.includes(filePath)
   );
   const seedRanks = new Map(
-    [...primarySeeds, ...probeSeeds].map((filePath, index) => [filePath, index + 1])
+    [...primarySeeds, ...probeSeeds].map((filePath, index) => [
+      filePath,
+      input.seedRanks?.get(filePath) ?? index + 1
+    ])
   );
   const probeSeedSet = new Set(probeSeeds);
   const evidenceRanks = new Map<string, Map<CandidateRanking["channel"], number>>();

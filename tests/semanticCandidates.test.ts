@@ -631,6 +631,58 @@ describe("model-based semantic candidates", () => {
     expect(result.graphPaths).not.toContain(lexicalNeighbor.path);
   });
 
+  it("preserves model evidence rank when role-balanced graph probes load tests first", () => {
+    const rootPath = "/repo";
+    const leaders = Array.from({ length: 80 }, (_, index) =>
+      file(rootPath, `src/leader-${String(index).padStart(2, "0")}.go`)
+    );
+    const productionProbe = file(rootPath, "src/runtime/operation.go");
+    const target = file(rootPath, "src/runtime/state.go");
+    const testProbes = Array.from({ length: 192 }, (_, index) => ({
+      ...file(rootPath, `tests/probe-${String(index).padStart(3, "0")}_test.go`),
+      kind: "test" as const
+    }));
+    const testNeighbors = testProbes.map((_, index) =>
+      file(rootPath, `src/noise-${String(index).padStart(3, "0")}.go`)
+    );
+    const semanticHits = [
+      ...leaders.slice(0, 49),
+      productionProbe,
+      ...leaders.slice(49)
+    ].map((candidate, index) => ({
+      path: candidate.path,
+      similarity: 1 - index / 1_000,
+      documentIds: [`semantic-${index}`]
+    }));
+    const result = buildModelCandidateUnion({
+      files: [...leaders, productionProbe, target, ...testProbes, ...testNeighbors],
+      query: "Repair the production state transition workflow.",
+      symbols: [],
+      bm25Results: leaders.map((candidate, index) =>
+        scored(candidate, 1 - index / 1_000)
+      ),
+      semanticHits,
+      semanticEvidencePaths: [
+        ...semanticHits.map((hit) => hit.path),
+        ...testProbes.map((candidate) => candidate.path)
+      ],
+      semanticStatus: readyStatus(semanticHits.length),
+      edges: [
+        edge(rootPath, productionProbe.path, target.path, "call"),
+        ...testProbes.map((probe, index) =>
+          edge(rootPath, probe.path, testNeighbors[index]!.path, "test_for")
+        )
+      ]
+    });
+
+    expect(result.graphSeedPaths.indexOf(productionProbe.path)).toBeGreaterThan(
+      result.graphSeedPaths.indexOf(testProbes[0]!.path)
+    );
+    expect(result.graphSeedRanks.get(productionProbe.path)).toBe(50);
+    expect(result.graphPaths[0]).toBe(target.path);
+    expect(result.initialPaths).toContain(target.path);
+  });
+
   it("spends source-intent graph enrichment capacity on production before companions", () => {
     const rootPath = "/repo";
     const seed = file(rootPath, "src/facade.go");

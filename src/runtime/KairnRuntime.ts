@@ -3748,6 +3748,7 @@ export class KairnRuntime {
           graphConsensus: fused.graphConsensusPaths,
           graphEvidence: describeGraphCandidateEvidence({
             seedPaths: fused.graphSeedPaths,
+            seedRanks: fused.graphSeedRanks,
             graphPaths: fused.graphPaths,
             edges,
             graphEvidenceByPath: fused.graphEvidenceByPath
@@ -4146,11 +4147,17 @@ export class KairnRuntime {
 
 function describeGraphCandidateEvidence(input: {
   seedPaths: string[];
+  seedRanks?: ReadonlyMap<string, number>;
   graphPaths: string[];
   edges: import("../types.js").GraphEdgeRecord[];
   graphEvidenceByPath?: ReadonlyMap<string, import("../types.js").EvidenceGraphFacts>;
 }): NonNullable<EvidenceCandidateInspection["candidateDiagnostics"]>["graphEvidence"] {
-  const seedRanks = new Map(input.seedPaths.map((filePath, index) => [filePath, index + 1]));
+  const seedRanks = new Map(
+    input.seedPaths.map((filePath, index) => [
+      filePath,
+      input.seedRanks?.get(filePath) ?? index + 1
+    ])
+  );
   const supportsByPath = new Map<string, Array<{
     seedPath: string;
     seedRank: number;
