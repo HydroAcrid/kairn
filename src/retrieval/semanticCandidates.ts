@@ -209,19 +209,13 @@ export function buildSemanticQueries(query: string): string[] {
 }
 
 /**
- * Serving uses at most five compact model queries. The independent structural
- * headline and late-narrative synopsis remain the two primary retrieval views.
- * A bounded view of uniformly selected fenced endpoints preserves precise
- * diagnostics and reproductions. Up to two independently sampled narrative
- * windows provide model-backed graph probes for multi-part tasks whose
- * concrete mechanism can be diluted when several windows are compressed into
- * one synopsis.
- *
- * Candidate fusion treats only the first two views as direct semantic
- * candidates. The remaining views can seed objective one-hop graph evidence,
- * so a longer issue cannot crowd the primary model lane merely by containing
- * more sections. The embedding model—not task words or filenames—decides
- * relevance.
+ * Serving uses at most three compact model queries so a broad issue template
+ * cannot gain extra retrieval votes merely because it contains more sections.
+ * The independent structural headline preserves the concise task intent while
+ * the synopsis adds the final two bounded narrative windows. A bounded view
+ * of uniformly selected fenced endpoints preserves precise diagnostics and
+ * reproductions. The embedding
+ * model—not task words or filenames—decides relevance.
  *
  * The broader candidate/view builder remains available for offline diagnostics
  * and model-selection analysis.
@@ -229,13 +223,14 @@ export function buildSemanticQueries(query: string): string[] {
 export function buildSemanticServingQueries(query: string): string[] {
   const candidates = buildSemanticQueryCandidates(query);
   const headline = candidates.find((candidate) => candidate.kind === "headline");
-  const narratives = candidates.filter((candidate) => candidate.kind === "narrative");
-  const synopsisNarratives = narratives.slice(-2);
+  const narratives = candidates
+    .filter((candidate) => candidate.kind === "narrative")
+    .slice(-2);
   const fences = candidates.filter((candidate) => candidate.kind === "fence");
   const parts = [...new Set(
     [
       headline?.text.slice(0, SEMANTIC_SYNOPSIS_HEADLINE_CHARS).trim(),
-      ...synopsisNarratives.map((narrative) =>
+      ...narratives.map((narrative) =>
         narrative.text.slice(0, SEMANTIC_SYNOPSIS_NARRATIVE_CHARS).trim()
       )
     ].filter((value): value is string => Boolean(value))
@@ -250,21 +245,10 @@ export function buildSemanticServingQueries(query: string): string[] {
   const evidenceSynopsis = normalizeSemanticQuery(
     [...new Set(evidenceParts)].join("\n\n")
   ).slice(0, MAX_QUERY_CHARS).trim();
-  // The first narrative window typically overlaps the independently preserved
-  // headline. Prefer the bounded middle windows that are absent from both the
-  // headline and the final-window synopsis, falling back for short prompts.
-  const earlierNarratives = narratives.slice(1, Math.max(1, narratives.length - 2));
-  const narrativeProbePool = earlierNarratives.length > 0 ? earlierNarratives : narratives;
-  const narrativeGraphProbes = evenlySampleIncludingEndpoints(
-    narrativeProbePool,
-    Math.min(2, narrativeProbePool.length)
-  ).map((narrative) =>
-    narrative.text.slice(0, MAX_QUERY_CHARS).trim()
-  );
   return [...new Set(
-    [headline?.text, synopsis, evidenceSynopsis, ...narrativeGraphProbes]
+    [headline?.text, synopsis, evidenceSynopsis]
       .filter((value): value is string => Boolean(value))
-  )].slice(0, 5);
+  )].slice(0, 3);
 }
 
 export function selectSemanticQueryViewIndexes(

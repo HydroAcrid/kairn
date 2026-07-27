@@ -1130,7 +1130,7 @@ describe("model-based semantic candidates", () => {
     expect(queries.some((query) => query.includes("invalid credential"))).toBe(true);
   });
 
-  it("keeps primary views first and preserves earlier narrative graph probes", () => {
+  it("serves an independent headline and bounded late-narrative synopsis", () => {
     const queries = buildSemanticServingQueries([
       "Authorization cleanup leaves stale records.",
       "",
@@ -1141,13 +1141,11 @@ describe("model-based semantic candidates", () => {
       `The final adapter should report the invalid credential consistently. ${"late context ".repeat(45)}`
     ].join("\n"));
 
-    expect(queries.length).toBeGreaterThanOrEqual(3);
-    expect(queries.length).toBeLessThanOrEqual(5);
+    expect(queries).toHaveLength(2);
     expect(queries[0]).toContain("Authorization cleanup leaves stale records");
     expect(queries[1]).toContain("Authorization cleanup leaves stale records");
     expect(queries[1]).toContain("invalid credential");
     expect(queries[1]).not.toContain("associated lease");
-    expect(queries.slice(2).some((query) => query.includes("associated lease"))).toBe(true);
     expect(queries.every((query) => query.length <= 1_600)).toBe(true);
   });
 
@@ -1178,8 +1176,7 @@ describe("model-based semantic candidates", () => {
       "```"
     ].join("\n"));
 
-    expect(queries.length).toBeGreaterThanOrEqual(3);
-    expect(queries.length).toBeLessThanOrEqual(5);
+    expect(queries).toHaveLength(3);
     expect(queries[2]).toContain("String value");
     expect(queries[2]).toContain("UnsupportedOperationException");
     expect(queries[2]).toContain("TextBlockLiteralExpr");
