@@ -76,12 +76,12 @@ describe("model-based semantic candidates", () => {
       .toBe("mean");
     expect(SEMANTIC_MODEL_MANIFESTS.find((model) => model.modelId.includes("bge"))?.pooling)
       .toBe("cls");
-    expect(SEMANTIC_MODEL_MANIFESTS.find((model) => model.modelId.includes("coderank"))?.runtime.outputName)
-      .toBe("token_embeddings");
-    expect(SEMANTIC_MODEL_MANIFESTS.find((model) => model.modelId.includes("coderank"))?.queryPrefix)
+    expect(getSemanticModelManifest("coderank-code-v1-q8").runtime.outputName)
+      .toBe("sentence_embedding");
+    expect(getSemanticModelManifest("coderank-code-v1-q8").pooling)
+      .toBe("cls");
+    expect(getSemanticModelManifest("coderank-code-v1-q8").queryPrefix)
       .toBe("Represent this query for searching relevant code: ");
-    expect(SEMANTIC_MODEL_MANIFESTS.find((model) => model.modelId.includes("coderank"))?.modelId)
-      .toContain("maskmean");
   });
 
   it("seals lineage-disjoint selection and holdout cases across all language/scenario cells", () => {
