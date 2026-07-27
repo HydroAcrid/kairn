@@ -125,8 +125,19 @@ export function buildModelCandidateUnion(input: {
         MODEL_RETRIEVAL_PROBE_LIMIT
       )
     : input.semanticHits.filter((hit) => eligibleNonHard(hit.path));
+  const graphSemanticHits = intentAwareSemanticRankings?.length
+    ? fuseSemanticCandidateRankings(
+        intentAwareSemanticRankings,
+        MODEL_RETRIEVAL_PROBE_LIMIT
+      )
+    : intentAwareSemanticHits;
   const semanticPaths = prioritizeRetrievalPathsForIntent(
     intentAwareSemanticHits.map((hit) => normalizePath(hit.path)),
+    signals.intent,
+    filesByPath
+  );
+  const graphSemanticPaths = prioritizeRetrievalPathsForIntent(
+    graphSemanticHits.map((hit) => normalizePath(hit.path)),
     signals.intent,
     filesByPath
   );
@@ -166,6 +177,14 @@ export function buildModelCandidateUnion(input: {
     rankings: baseRankings,
     limit: MODEL_RETRIEVAL_PROBE_LIMIT
   }).filter((filePath) => filesByPath.has(filePath));
+  const graphSeedRetrievalOrder = reciprocalRankFuse({
+    hardPaths,
+    rankings: [
+      { channel: "semantic", paths: graphSemanticPaths },
+      ...baseRankings.filter((ranking) => ranking.channel !== "semantic")
+    ],
+    limit: MODEL_RETRIEVAL_PROBE_LIMIT
+  }).filter((filePath) => filesByPath.has(filePath));
   // RRF rewards agreement, but a broad lexical/symbol overlap can otherwise
   // consume the complete 64-file bound before a strong model-only candidate
   // enters. Preserve a fixed model-retrieval slice, then let RRF fill the
@@ -177,12 +196,18 @@ export function buildModelCandidateUnion(input: {
   ])
     .filter((filePath) => filesByPath.has(filePath))
     .slice(0, MODEL_RETRIEVAL_PROBE_LIMIT);
-  const preliminaryInitialPaths = preliminaryUnion.slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
+  const preliminaryGraphSeedPaths = uniquePaths([
+    ...hardPaths,
+    ...graphSemanticPaths.slice(0, MODEL_INITIAL_SEMANTIC_RESERVE),
+    ...graphSeedRetrievalOrder
+  ])
+    .filter((filePath) => filesByPath.has(filePath))
+    .slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
   const graphProbePaths = signals.intent === "source"
     ? uniquePaths([
         ...semanticEvidencePaths
           .filter((filePath) =>
-            !preliminaryInitialPaths.includes(filePath) &&
+            !preliminaryGraphSeedPaths.includes(filePath) &&
             filesByPath.get(filePath)?.kind === "test"
           )
           .slice(0, MAX_TEST_GRAPH_PROBE_PATHS),
@@ -190,20 +215,20 @@ export function buildModelCandidateUnion(input: {
           .filter((filePath) => {
             const file = filesByPath.get(filePath);
             return Boolean(
-              !preliminaryInitialPaths.includes(filePath) &&
+              !preliminaryGraphSeedPaths.includes(filePath) &&
               file &&
               isProductionEvidenceFile(file)
             );
           })
       ])
-        .filter((filePath) => !preliminaryInitialPaths.includes(filePath))
-        .slice(0, MODEL_RETRIEVAL_PROBE_LIMIT - preliminaryInitialPaths.length)
+        .filter((filePath) => !preliminaryGraphSeedPaths.includes(filePath))
+        .slice(0, MODEL_RETRIEVAL_PROBE_LIMIT - preliminaryGraphSeedPaths.length)
     : [];
-  const graphSeedPaths = uniquePaths([...preliminaryInitialPaths, ...graphProbePaths]);
+  const graphSeedPaths = uniquePaths([...preliminaryGraphSeedPaths, ...graphProbePaths]);
   const graphEvidenceByPath = new Map<string, EvidenceGraphFacts>();
   const graphPaths = prioritizeGraphPathsForIntent(
     rankEvidenceBackedGraphCandidates({
-      seedPaths: preliminaryInitialPaths,
+      seedPaths: preliminaryGraphSeedPaths,
       probeSeedPaths: graphProbePaths,
       edges: input.edges,
       filesByPath,
@@ -219,7 +244,7 @@ export function buildModelCandidateUnion(input: {
   );
   const graphConsensusPaths = prioritizeGraphPathsForIntent(
     rankEvidenceBackedGraphCandidates({
-      seedPaths: preliminaryInitialPaths,
+      seedPaths: preliminaryGraphSeedPaths,
       probeSeedPaths: graphProbePaths,
       edges: input.edges,
       filesByPath,
@@ -246,7 +271,7 @@ export function buildModelCandidateUnion(input: {
     ...eligibleSymbolPaths.slice(0, MODEL_INITIAL_SYMBOL_RESERVE),
     ...graphPaths.slice(0, MODEL_INITIAL_GRAPH_RESERVE),
     ...fusedRetrievalOrder,
-    ...preliminaryInitialPaths
+    ...preliminaryUnion
   ])
     .filter((filePath) => filesByPath.has(filePath))
     .slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
