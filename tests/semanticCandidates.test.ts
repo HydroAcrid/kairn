@@ -1638,11 +1638,68 @@ describe("model-based semantic candidates", () => {
       expect(fileDocument.text).toContain("operation19");
       expect(fileDocument.text).toContain("callable surface:");
       expect(fileDocument.text).toContain("operation11");
+      expect(fileDocument.text).toContain("operation11(value:");
       expect(fileDocument.text).toContain("package-0");
       expect(fileDocument.text).toContain("package-19");
       expect(fileDocument.text).toContain("region_0_sentinel");
       expect(fileDocument.text).toContain("region_4_sentinel");
       expect(fileDocument.text).toContain("[…]");
+    } finally {
+      fs.rmSync(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves overload parameter types in the bounded callable surface", () => {
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-overloads-"));
+    try {
+      const filePath = "src/TypeVisitor.java";
+      const overloadTypes = [
+        "ArrayAccessExpr",
+        "ArrayCreationExpr",
+        "BinaryExpr",
+        "StringLiteralExpr",
+        "UnaryExpr",
+        "VariableDeclarationExpr"
+      ];
+      const source = overloadTypes
+        .map((type) => `ResolvedType visit(${type} node, boolean solve) { return unknown(); }`)
+        .join("\n");
+      fs.mkdirSync(path.join(rootPath, "src"), { recursive: true });
+      fs.writeFileSync(path.join(rootPath, filePath), source);
+      const symbols = overloadTypes.map((type, index) => ({
+        rootPath,
+        filePath,
+        name: "visit",
+        kind: "function" as const,
+        exported: true,
+        startLine: index + 1,
+        endLine: index + 1,
+        signature: `ResolvedType visit(${type} node, boolean solve)`
+      }));
+      const graph: RepoGraph = {
+        rootPath,
+        files: [file(rootPath, filePath)],
+        parsedFiles: [{
+          rootPath,
+          filePath,
+          language: "java",
+          imports: [],
+          hasErrors: false,
+          symbols
+        }],
+        symbols,
+        edges: []
+      };
+
+      const document = buildSemanticDocuments({
+        rootPath,
+        graph,
+        maxDocuments: 1
+      })[0]!;
+      expect(document.text).toContain("callable surface:");
+      expect(document.text).toContain("visit(ArrayAccessExpr");
+      expect(document.text).toContain("visit(VariableDeclarationExpr");
+      expect(document.text).not.toContain("callable surface: visit; visit;");
     } finally {
       fs.rmSync(rootPath, { recursive: true, force: true });
     }

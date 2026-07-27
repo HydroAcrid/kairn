@@ -18,6 +18,7 @@ import { patchFiles } from "../scripts/build-public-evidence-intake.js";
 import { buildCorpusReviewQueue } from "../scripts/build-corpus-review-queue.js";
 import { applyCorpusReviewDecisions } from "../scripts/apply-corpus-review-decisions.js";
 import { ensureKairnDir } from "../src/config/paths.js";
+import { SEMANTIC_DOCUMENT_SCHEMA_VERSION } from "../src/semantic/documents.js";
 import { SqliteStore } from "../src/store/sqliteStore.js";
 import { createFixtureRepo } from "./helpers.js";
 
@@ -64,7 +65,7 @@ describe("public evidence ranker training", () => {
         documentId: "sdoc_test",
         documentHash: "content-hash",
         modelId: "pinned-model",
-        schemaVersion: "semantic-documents-v5",
+        schemaVersion: SEMANTIC_DOCUMENT_SCHEMA_VERSION,
         dimensions: 3,
         vector: new Int8Array([127, 0, -127]),
         scale: 0.005
@@ -81,7 +82,7 @@ describe("public evidence ranker training", () => {
         documentId: "sdoc_second",
         documentHash: "second-content-hash",
         modelId: "pinned-model",
-        schemaVersion: "semantic-documents-v5",
+        schemaVersion: SEMANTIC_DOCUMENT_SCHEMA_VERSION,
         dimensions: 3,
         vector: new Int8Array([0, 127, 0]),
         scale: 0.005
@@ -143,7 +144,7 @@ describe("public evidence ranker training", () => {
           documentId,
           documentHash,
           modelId: "pinned-model",
-          schemaVersion: "semantic-documents-v5",
+          schemaVersion: SEMANTIC_DOCUMENT_SCHEMA_VERSION,
           dimensions: 3,
           vector: new Int8Array([127, 0, -127]),
           scale: 0.005

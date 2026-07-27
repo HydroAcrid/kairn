@@ -12,13 +12,14 @@ import { readTextFile } from "../retrieval/readSource.js";
 import { sha256 } from "../utils/hash.js";
 import { estimateTokens } from "../utils/tokens.js";
 
-export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v5" as const;
+export const SEMANTIC_DOCUMENT_SCHEMA_VERSION = "semantic-documents-v6" as const;
 // Jina v2 was trained with 512-token inputs. Code in the current profile
 // averages roughly three to four characters per tokenizer token, so 1,500
 // characters uses the model's learned window without routinely hitting the
 // hard 512-token truncation boundary.
 const MAX_DOCUMENT_CHARS = 1_500;
 const MAX_FILE_SYMBOLS = 4;
+const MAX_CALLABLE_SURFACE_ENTRIES = 6;
 const MAX_DIRECT_IMPORTS = 4;
 const MAX_DOCUMENTATION_SNIPPETS = 3;
 const LARGE_REPOSITORY_SYMBOL_FRACTION = 0.25;
@@ -90,7 +91,7 @@ function buildFileDocument(
     behavioralSymbols,
     Math.min(MAX_FILE_SYMBOLS, behavioralSymbols.length)
   ).map((symbol) => `${symbol.kind} ${boundedField(symbol.signature || symbol.name, 56)}`);
-  const callableSurface = callableSurfaceNames(behavioralSymbols);
+  const callableSurface = callableSurfaceEntries(behavioralSymbols);
   const documentation = extractLeadingDocumentation(content, behavioralSymbols);
   const fileImportLimit = documentation.length > 0 ? 3 : MAX_DIRECT_IMPORTS;
   const directImports = parsed?.imports.length
@@ -106,7 +107,7 @@ function buildFileDocument(
         boundedList("declared symbols", declaredSymbols, callableSurface.length > 0 ? 96 : 112),
         boundedList("direct imports", directImports, callableSurface.length > 0 ? 64 : 80),
         ...(callableSurface.length > 0
-          ? [boundedList("callable surface", callableSurface, 112)]
+          ? [boundedList("callable surface", callableSurface, 200)]
           : []),
         boundedList("documentation", documentation, callableSurface.length > 0 ? 168 : 224),
         "",
@@ -120,7 +121,7 @@ function buildFileDocument(
           `module: ${boundedField(path.posix.dirname(file.path), 56)}`,
           boundedList("declared symbols", declaredSymbols, 112),
           boundedList("direct imports", directImports, 80),
-          boundedList("callable surface", callableSurface, 180),
+          boundedList("callable surface", callableSurface, 280),
           "",
           "representative source:"
         ].join("\n")
@@ -144,14 +145,36 @@ function buildFileDocument(
   });
 }
 
-function callableSurfaceNames(symbols: SymbolRecord[]): string[] {
-  const unique = [...new Set(
-    symbols
-      .filter((symbol) => symbol.kind === "function" || symbol.kind === "component")
-      .map((symbol) => symbol.name)
-  )];
-  if (unique.length <= MAX_FILE_SYMBOLS) return [];
-  return evenlySampleIncludingEndpoints(unique, Math.min(10, unique.length));
+function callableSurfaceEntries(symbols: SymbolRecord[]): string[] {
+  const callables = symbols.filter((symbol) =>
+    symbol.kind === "function" || symbol.kind === "component"
+  );
+  if (callables.length <= MAX_FILE_SYMBOLS) return [];
+  const entries = callables.map((symbol) =>
+    compactCallableSignature(symbol.signature, symbol.name)
+  );
+  return evenlySampleIncludingEndpoints(
+    entries,
+    Math.min(MAX_CALLABLE_SURFACE_ENTRIES, entries.length)
+  );
+}
+
+function compactCallableSignature(signature: string, name: string): string {
+  const normalized = signature.replace(/\s+/g, " ").trim();
+  const nameIndex = normalized.indexOf(name);
+  if (nameIndex < 0) return normalized || name;
+  const parametersStart = normalized.indexOf("(", nameIndex + name.length);
+  if (parametersStart < 0) return normalized.slice(nameIndex) || name;
+  let depth = 0;
+  for (let index = parametersStart; index < normalized.length; index += 1) {
+    const character = normalized[index];
+    if (character === "(") depth += 1;
+    else if (character === ")") {
+      depth -= 1;
+      if (depth === 0) return normalized.slice(nameIndex, index + 1);
+    }
+  }
+  return normalized.slice(nameIndex) || name;
 }
 
 function buildSymbolDocument(
