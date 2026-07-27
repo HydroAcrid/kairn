@@ -151,7 +151,7 @@ export type EvidenceCandidateInspection = {
     semanticEvidence: string[];
     bm25: string[];
     graph: string[];
-    graphSupport?: string[];
+    graphImporter?: string[];
     graphConsensus: string[];
     graphEvidence: Array<{
       path: string;

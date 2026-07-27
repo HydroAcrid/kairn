@@ -398,6 +398,9 @@ describe("model-based semantic candidates", () => {
     const importer = file(rootPath, "src/runtime/public-api.ts");
     const lexicalOnlyImporter = file(rootPath, "src/runtime/lexical-only.ts");
     const forwardDependency = file(rootPath, "src/runtime/dependency.ts");
+    const preciseNeighbors = Array.from({ length: 70 }, (_, index) =>
+      file(rootPath, `src/runtime/call-${String(index).padStart(2, "0")}.ts`)
+    );
     const primaryRankings = [0, 1].map((view) =>
       primary.map((candidate, index) => ({
         path: candidate.path,
@@ -423,7 +426,8 @@ describe("model-based semantic candidates", () => {
         importedProbe,
         importer,
         lexicalOnlyImporter,
-        forwardDependency
+        forwardDependency,
+        ...preciseNeighbors
       ],
       query: "Repair the production module behavior.",
       symbols: [],
@@ -441,11 +445,16 @@ describe("model-based semantic candidates", () => {
       edges: [
         edge(rootPath, importer.path, importedProbe.path, "imports"),
         edge(rootPath, lexicalOnlyImporter.path, importedProbe.path, "imports"),
-        edge(rootPath, importedProbe.path, forwardDependency.path, "imports")
+        edge(rootPath, importedProbe.path, forwardDependency.path, "imports"),
+        ...preciseNeighbors.map((neighbor, index) =>
+          edge(rootPath, primary[index % primary.length]!.path, neighbor.path, "call")
+        )
       ]
     });
 
     expect(result.graphSeedPaths).toContain(importedProbe.path);
+    expect(result.graphPaths.indexOf(importer.path)).toBeGreaterThanOrEqual(64);
+    expect(result.graphImporterPaths).toContain(importer.path);
     expect(result.graphPaths).toContain(importer.path);
     expect(result.enrichedPaths).toContain(importer.path);
     expect(result.graphPaths).not.toContain(lexicalOnlyImporter.path);
@@ -896,47 +905,6 @@ describe("model-based semantic candidates", () => {
     });
 
     expect(ranked.slice(0, 2)).toEqual([cleanCall.path, mixedEvidence.path]);
-  });
-
-  it("can order model-corroborated graph evidence ahead of a distant precise relation", () => {
-    const rootPath = "/repo";
-    const importedProbe = file(rootPath, "src/runtime/implementation.ts");
-    const preciseProbe = file(rootPath, "src/runtime/distant-probe.ts");
-    const importer = file(rootPath, "src/runtime/public-api.ts");
-    const callTarget = file(rootPath, "src/runtime/call-target.ts");
-    const filesByPath = new Map(
-      [importedProbe, preciseProbe, importer, callTarget]
-        .map((candidate) => [candidate.path, candidate])
-    );
-    const input = {
-      seedPaths: [] as string[],
-      probeSeedPaths: [importedProbe.path, preciseProbe.path],
-      edges: [
-        edge(rootPath, importer.path, importedProbe.path, "imports"),
-        edge(rootPath, preciseProbe.path, callTarget.path, "call")
-      ],
-      filesByPath,
-      evidenceRankings: [{
-        channel: "semantic" as const,
-        paths: [importer.path]
-      }],
-      seedRanks: new Map([
-        [importedProbe.path, 2],
-        [preciseProbe.path, 100]
-      ])
-    };
-
-    expect(rankEvidenceBackedGraphCandidates(input).slice(0, 2)).toEqual([
-      callTarget.path,
-      importer.path
-    ]);
-    expect(rankEvidenceBackedGraphCandidates({
-      ...input,
-      ordering: "support"
-    }).slice(0, 2)).toEqual([
-      importer.path,
-      callTarget.path
-    ]);
   });
 
   it("prefers an exact graph relation from the strongest seed before lower-ranked consensus", () => {

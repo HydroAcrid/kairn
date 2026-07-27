@@ -28,7 +28,7 @@ export type CandidateRanking = {
     | "git"
     | "session"
     | "graph"
-    | "graph_support"
+    | "graph_importer"
     | "graph_consensus";
   paths: string[];
 };
@@ -39,7 +39,7 @@ export type ModelCandidateUnion = {
   candidateResults: HybridScoredResult[];
   semanticStatus: SemanticRetrieverStatus;
   graphPaths: string[];
-  graphSupportPaths: string[];
+  graphImporterPaths: string[];
   graphConsensusPaths: string[];
   graphSeedPaths: string[];
   graphSeedRanks: ReadonlyMap<string, number>;
@@ -266,7 +266,7 @@ export function buildModelCandidateUnion(input: {
     signals.intent,
     filesByPath
   );
-  const graphSupportPaths = prioritizeGraphPathsForIntent(
+  const graphImporterPaths = prioritizeGraphPathsForIntent(
     rankEvidenceBackedGraphCandidates({
       seedPaths: preliminaryGraphSeedPaths,
       probeSeedPaths: graphProbePaths,
@@ -278,7 +278,7 @@ export function buildModelCandidateUnion(input: {
         { channel: "symbol", paths: eligibleSymbolPaths }
       ],
       seedRanks: graphSeedRanks,
-      ordering: "support"
+      relationMode: "model_corroborated_reverse_import"
     }),
     signals.intent,
     filesByPath
@@ -305,8 +305,8 @@ export function buildModelCandidateUnion(input: {
       ? [
           ...baseRankings,
           { channel: "graph", paths: graphPaths },
-          ...(graphSupportPaths.length > 0
-            ? [{ channel: "graph_support" as const, paths: graphSupportPaths }]
+          ...(graphImporterPaths.length > 0
+            ? [{ channel: "graph_importer" as const, paths: graphImporterPaths }]
             : []),
           ...(graphConsensusPaths.length > 0
             ? [{ channel: "graph_consensus" as const, paths: graphConsensusPaths }]
@@ -319,8 +319,8 @@ export function buildModelCandidateUnion(input: {
     hardPaths: [],
     rankings: [
       { channel: "graph", paths: graphPaths },
-      ...(graphSupportPaths.length > 0
-        ? [{ channel: "graph_support" as const, paths: graphSupportPaths }]
+      ...(graphImporterPaths.length > 0
+        ? [{ channel: "graph_importer" as const, paths: graphImporterPaths }]
         : []),
       ...(graphConsensusPaths.length > 0
         ? [{ channel: "graph_consensus" as const, paths: graphConsensusPaths }]
@@ -341,7 +341,7 @@ export function buildModelCandidateUnion(input: {
   const enrichedPaths = uniquePaths([
     ...initialPaths,
     ...graphJointPaths,
-    ...graphSupportPaths,
+    ...graphImporterPaths,
     ...graphConsensusPaths,
     ...graphPaths,
     ...graphEnrichedOrder,
@@ -355,7 +355,7 @@ export function buildModelCandidateUnion(input: {
   const changedPaths = new Set([...(input.changedFiles ?? [])].map(normalizePath));
   const graphPathSet = new Set([
     ...graphPaths,
-    ...graphSupportPaths,
+    ...graphImporterPaths,
     ...graphConsensusPaths
   ]);
   const candidateResults = enrichedPaths.map((filePath): HybridScoredResult => {
@@ -393,7 +393,7 @@ export function buildModelCandidateUnion(input: {
     candidateResults,
     semanticStatus: input.semanticStatus,
     graphPaths,
-    graphSupportPaths,
+    graphImporterPaths,
     graphConsensusPaths,
     graphSeedPaths,
     graphSeedRanks,
@@ -491,6 +491,7 @@ export function rankEvidenceBackedGraphCandidates(input: {
   seedRanks?: ReadonlyMap<string, number>;
   minimumSeedSupport?: number;
   ordering?: "precision" | "support";
+  relationMode?: "all" | "model_corroborated_reverse_import";
   graphEvidenceByPath?: Map<string, EvidenceGraphFacts>;
 }): string[] {
   const primarySeeds = uniquePaths(input.seedPaths);
@@ -533,6 +534,18 @@ export function rankEvidenceBackedGraphCandidates(input: {
     const neighbor = input.filesByPath.get(neighborPath);
     if (!seedRank || !neighbor || seedPath === neighborPath || neighbor.indexTier === "tier0") return;
     const independentEvidence = evidenceRanks.get(neighborPath);
+    const isModelCorroboratedReverseImporter = (
+      probeSeedSet.has(seedPath) &&
+      edge.type === "imports" &&
+      direction === "reverse" &&
+      (independentEvidence?.has("semantic") ?? false)
+    );
+    if (
+      input.relationMode === "model_corroborated_reverse_import" &&
+      !isModelCorroboratedReverseImporter
+    ) {
+      return;
+    }
     if (
       probeSeedSet.has(seedPath) &&
       !isProbeEligibleEdge({
