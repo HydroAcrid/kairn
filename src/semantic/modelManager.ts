@@ -243,6 +243,36 @@ export function hasSameSemanticModelArtifact(
   return JSON.stringify(leftArtifact) === JSON.stringify(rightArtifact);
 }
 
+/**
+ * Hashes only inputs that affect repository document embeddings. Query-only
+ * instructions may change without invalidating already indexed source.
+ */
+export function semanticDocumentEmbeddingManifestSha256(
+  manifest: SemanticModelManifest
+): string {
+  return semanticModelManifestSha256({
+    ...manifest,
+    queryPrefix: ""
+  });
+}
+
+export function canRefreshSemanticModelReceipt(
+  installed: SemanticModelManifest,
+  pinned: SemanticModelManifest
+): boolean {
+  const {
+    documentSchemaVersion: _installedDocumentSchemaVersion,
+    queryPrefix: _installedQueryPrefix,
+    ...installedDocumentArtifact
+  } = installed;
+  const {
+    documentSchemaVersion: _pinnedDocumentSchemaVersion,
+    queryPrefix: _pinnedQueryPrefix,
+    ...pinnedDocumentArtifact
+  } = pinned;
+  return JSON.stringify(installedDocumentArtifact) === JSON.stringify(pinnedDocumentArtifact);
+}
+
 export function validateLocalModelPath(modelPath: string): string {
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(modelPath)) {
     throw new Error("Kairn semantic modelPath must be a local filesystem path.");
@@ -377,7 +407,7 @@ function refreshCompatibleInstalledModelReceipt(input: {
   if (!fs.existsSync(input.modelPath)) return undefined;
   try {
     const receipt = readInstalledSemanticModel(input.modelPath);
-    if (!hasSameSemanticModelArtifact(receipt.manifest, input.manifest)) return undefined;
+    if (!canRefreshSemanticModelReceipt(receipt.manifest, input.manifest)) return undefined;
     verifyInstalledFiles(input.modelPath, input.manifest, true);
     const refreshedReceipt: InstalledSemanticModelReceipt = {
       ...receipt,

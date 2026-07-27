@@ -167,7 +167,7 @@ const CODERANK_CODE: SemanticModelManifest = {
   maxTokens: 512,
   pooling: "mean",
   normalize: true,
-  queryPrefix: "",
+  queryPrefix: "Represent this query for searching relevant code: ",
   documentPrefix: "",
   documentSchemaVersion: "semantic-documents-v5",
   runtime: {

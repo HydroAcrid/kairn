@@ -181,14 +181,14 @@ describe("public evidence ranker training", () => {
       repositoryLineageId: "https://github.com/example/project",
       repositoryRef: "1".repeat(40),
       modelId: "pinned-model",
-      modelManifestSha256: "a".repeat(64),
+      documentEmbeddingManifestSha256: "a".repeat(64),
       documentSchemaVersion: "semantic-documents-v4" as const
     };
     const firstRef = buildSemanticSnapshotCacheKey(base);
     const secondRef = buildSemanticSnapshotCacheKey({ ...base });
     const changedModel = buildSemanticSnapshotCacheKey({
       ...base,
-      modelManifestSha256: "b".repeat(64)
+      documentEmbeddingManifestSha256: "b".repeat(64)
     });
     const changedSchema = buildSemanticSnapshotCacheKey({
       ...base,

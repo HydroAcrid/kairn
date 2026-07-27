@@ -10,7 +10,9 @@ import { ensureKairnDir } from "../src/config/paths.js";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
 import { EVIDENCE_FEATURE_SCHEMA_VERSION } from "../src/retrieval/evidenceModel.js";
 import { SEMANTIC_DOCUMENT_SCHEMA_VERSION } from "../src/semantic/documents.js";
-import { semanticModelManifestSha256 } from "../src/semantic/modelManager.js";
+import {
+  semanticDocumentEmbeddingManifestSha256
+} from "../src/semantic/modelManager.js";
 import {
   DEFAULT_SEMANTIC_MODEL_ID,
   getSemanticModelManifest
@@ -708,12 +710,14 @@ type SnapshotEmbeddingCache = {
 
 function semanticSnapshotCacheKey(intakeCase: IntakeCase): string {
   const modelId = process.env.KAIRN_SEMANTIC_MODEL?.trim() || DEFAULT_SEMANTIC_MODEL_ID;
-  const modelManifestSha256 = semanticModelManifestSha256(getSemanticModelManifest(modelId));
+  const documentEmbeddingManifestSha256 = semanticDocumentEmbeddingManifestSha256(
+    getSemanticModelManifest(modelId)
+  );
   return buildSemanticSnapshotCacheKey({
     repositoryLineageId: intakeCase.repositoryLineageId,
     repositoryRef: intakeCase.repositoryRef,
     modelId,
-    modelManifestSha256,
+    documentEmbeddingManifestSha256,
     documentSchemaVersion: SEMANTIC_DOCUMENT_SCHEMA_VERSION
   });
 }
@@ -805,7 +809,7 @@ export function buildSemanticSnapshotCacheKey(input: {
   repositoryLineageId: string;
   repositoryRef: string;
   modelId: string;
-  modelManifestSha256: string;
+  documentEmbeddingManifestSha256: string;
   documentSchemaVersion: SemanticEmbeddingRecord["schemaVersion"];
 }): string {
   return sha256([
@@ -813,7 +817,7 @@ export function buildSemanticSnapshotCacheKey(input: {
     input.repositoryLineageId,
     input.repositoryRef,
     input.modelId,
-    input.modelManifestSha256,
+    input.documentEmbeddingManifestSha256,
     input.documentSchemaVersion
   ].join("\0"));
 }

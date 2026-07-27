@@ -23,10 +23,12 @@ import {
 } from "../src/retrieval/semanticCandidates.js";
 import { buildSemanticDocuments } from "../src/semantic/documents.js";
 import {
+  canRefreshSemanticModelReceipt,
   getSemanticModelState,
   getSemanticModelsRoot,
   hasSameSemanticModelArtifact,
-  installSemanticModel
+  installSemanticModel,
+  semanticDocumentEmbeddingManifestSha256
 } from "../src/semantic/modelManager.js";
 import {
   getSemanticModelManifest,
@@ -76,6 +78,8 @@ describe("model-based semantic candidates", () => {
       .toBe("cls");
     expect(SEMANTIC_MODEL_MANIFESTS.find((model) => model.modelId.includes("coderank"))?.runtime.outputName)
       .toBe("token_embeddings");
+    expect(SEMANTIC_MODEL_MANIFESTS.find((model) => model.modelId.includes("coderank"))?.queryPrefix)
+      .toBe("Represent this query for searching relevant code: ");
     expect(SEMANTIC_MODEL_MANIFESTS.find((model) => model.modelId.includes("coderank"))?.modelId)
       .toContain("maskmean");
   });
@@ -1516,6 +1520,24 @@ describe("model-based semantic candidates", () => {
       {
         ...current,
         queryPrefix: "changed model input"
+      },
+      current
+    )).toBe(false);
+    expect(canRefreshSemanticModelReceipt(
+      {
+        ...current,
+        queryPrefix: "older query-only instruction"
+      },
+      current
+    )).toBe(true);
+    expect(semanticDocumentEmbeddingManifestSha256({
+      ...current,
+      queryPrefix: "older query-only instruction"
+    })).toBe(semanticDocumentEmbeddingManifestSha256(current));
+    expect(canRefreshSemanticModelReceipt(
+      {
+        ...current,
+        documentPrefix: "changed document input"
       },
       current
     )).toBe(false);
