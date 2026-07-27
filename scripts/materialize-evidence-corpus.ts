@@ -18,7 +18,11 @@ import {
   getSemanticModelManifest
 } from "../src/semantic/modelRegistry.js";
 import { SqliteStore } from "../src/store/sqliteStore.js";
-import type { EvidenceCandidate, SemanticEmbeddingRecord } from "../src/types.js";
+import type {
+  EvidenceCandidate,
+  SemanticEmbeddingRecord,
+  SemanticRetrieverStatus
+} from "../src/types.js";
 
 const require = createRequire(import.meta.url);
 
@@ -77,6 +81,7 @@ export type MaterializeOptions = {
   snapshotEmbeddingCachePath?: string;
   migrateFeatureSchema?: boolean;
   resume?: boolean;
+  requireSemantic?: boolean;
 };
 
 export type IsolatedMaterializationProgress = {
@@ -154,6 +159,9 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       const requiredSourcePartition = partitionRepositoryPaths(checkout.root, intakeCase.requiredSourceFiles);
       const officialPatchSourcePartition = partitionRepositoryPaths(checkout.root, intakeCase.officialPatchSourceFiles);
       const inspection = await runtime.inspectEvidenceCandidates({ query: intakeCase.prompt, limit: 64 });
+      if (options.requireSemantic) {
+        assertSemanticMaterializationReady(inspection.semanticStatus, intakeCase.id);
+      }
       if (!options.draft && inspection.candidates.length < 7) {
         throw new Error(`${intakeCase.id}: candidate generator returned fewer than seven candidates`);
       }
@@ -260,6 +268,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
         missingRequiredOrNoiseFiles: [...missingRequiredSourceFiles, ...missingExplicitNoiseFiles],
         candidatePathsSha256: sha256(trainingCandidates.map((candidate) => candidate.path).join("\n")),
         candidatePathsAt64Sha256: sha256(candidates.map((candidate) => candidate.path).join("\n")),
+        ...(inspection.semanticStatus ? { semanticStatus: inspection.semanticStatus } : {}),
         ...(options.draft ? {
           signals: inspection.signals,
           index: indexCoverage(runtime.getIndexStatus()),
@@ -307,6 +316,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       candidateLimit: 64,
       enrichedCandidateLimit: 128,
       graphHops: 1,
+      requireSemantic: options.requireSemantic === true,
       ...(intake.migratedFeatureSchemaFrom
         ? { migratedFeatureSchemaFrom: intake.migratedFeatureSchemaFrom }
         : {})
@@ -411,7 +421,8 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
       ...(options.draft ? ["--draft"] : []),
       ...(options.allowSample ? ["--allow-sample"] : []),
       ...(options.allowLocalFixture ? ["--allow-local-fixture"] : []),
-      ...(options.migrateFeatureSchema ? ["--migrate-feature-schema"] : [])
+      ...(options.migrateFeatureSchema ? ["--migrate-feature-schema"] : []),
+      ...(options.requireSemantic ? ["--require-semantic"] : [])
     ];
     try {
       execFileSync(process.execPath, args, {
@@ -467,6 +478,7 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
       candidateLimit: 64,
       enrichedCandidateLimit: 128,
       graphHops: 1,
+      requireSemantic: options.requireSemantic === true,
       caseProcessIsolation: true,
       ...(intake.migratedFeatureSchemaFrom
         ? { migratedFeatureSchemaFrom: intake.migratedFeatureSchemaFrom }
@@ -1017,6 +1029,28 @@ function fractionRecalled(required: string[], candidates: Set<string>): number {
   return required.filter((filePath) => candidates.has(normalizePath(filePath))).length / required.length;
 }
 
+export function assertSemanticMaterializationReady(
+  status: SemanticRetrieverStatus | undefined,
+  caseId: string
+): void {
+  if (
+    !status ||
+    status.requestedMode !== "semantic" ||
+    status.servedMode !== "semantic" ||
+    status.semanticIndexStatus !== "ready"
+  ) {
+    const detail = status
+      ? [
+          `requested=${status.requestedMode}`,
+          `served=${status.servedMode}`,
+          `index=${status.semanticIndexStatus}`,
+          status.semanticFallbackReason
+        ].filter(Boolean).join(", ")
+      : "semantic status missing";
+    throw new Error(`${caseId}: required semantic retrieval is not ready (${detail})`);
+  }
+}
+
 function partitionRepositoryPaths(rootPath: string, filePaths: string[]): {
   existing: string[];
   creation: string[];
@@ -1142,7 +1176,8 @@ function parseArgs(argv: string[]): MaterializeOptions {
     if (
       token === "--allow-sample" || token === "--allow-local-fixture" || token === "--draft" ||
       token === "--in-process" || token === "--isolated-worker" ||
-      token === "--migrate-feature-schema" || token === "--resume"
+      token === "--migrate-feature-schema" || token === "--resume" ||
+      token === "--require-semantic"
     ) {
       flags.add(token);
       continue;
@@ -1172,6 +1207,7 @@ function parseArgs(argv: string[]): MaterializeOptions {
     isolatedWorker: flags.has("--isolated-worker"),
     migrateFeatureSchema: flags.has("--migrate-feature-schema"),
     resume: flags.has("--resume"),
+    requireSemantic: flags.has("--require-semantic"),
     ...(values.get("--limit") ? { limit: positiveInteger(values.get("--limit")!, "--limit") } : {}),
     ...(values.get("--case-id") ? { caseIds: commaSeparated(values.get("--case-id")!, "--case-id") } : {})
   };

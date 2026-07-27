@@ -3575,6 +3575,7 @@ export class KairnRuntime {
       initialCandidateCount: localIndex.initialCandidateCount,
       enrichedCandidateCount: localIndex.enrichedCandidateCount,
       candidateLimit,
+      ...(localIndex.semanticStatus ? { semanticStatus: localIndex.semanticStatus } : {}),
       ...(localIndex.candidateDiagnostics
         ? { candidateDiagnostics: localIndex.candidateDiagnostics }
         : {})

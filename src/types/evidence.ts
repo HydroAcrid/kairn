@@ -140,6 +140,7 @@ export type EvidenceCandidateInspection = {
   initialCandidateCount: number;
   enrichedCandidateCount: number;
   candidateLimit: number;
+  semanticStatus?: SemanticRetrieverStatus;
   /** Local-only lane ranks used to diagnose bounded-union misses. */
   candidateDiagnostics?: {
     semanticQueryViews: string[][];

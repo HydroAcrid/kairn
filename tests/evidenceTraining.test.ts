@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { validateEvidenceRankerArtifact } from "../src/retrieval/evidenceModel.js";
 import { EVIDENCE_FEATURE_NAMES } from "../src/types/evidence.js";
 import {
+  assertSemanticMaterializationReady,
   buildSemanticSnapshotCacheKey,
   materializeEvidenceCorpus,
   persistSnapshotEmbeddingCache,
@@ -48,6 +49,27 @@ describe("public evidence ranker training", () => {
       "+++ b/src/engine.ts",
       "diff --git a/tests/engine.test.ts b/tests/engine.test.ts"
     ].join("\n"))).toEqual(["src/engine.ts", "tests/engine.test.ts"]);
+  });
+
+  it("fails benchmark materialization when semantic serving falls back", () => {
+    expect(() => assertSemanticMaterializationReady({
+      requestedMode: "semantic",
+      servedMode: "fallback",
+      semanticIndexStatus: "unavailable",
+      semanticFallbackReason: "model unavailable",
+      documentCount: 10,
+      embeddingCount: 0
+    }, "case-a")).toThrow(
+      "case-a: required semantic retrieval is not ready"
+    );
+    expect(() => assertSemanticMaterializationReady({
+      requestedMode: "semantic",
+      servedMode: "semantic",
+      semanticModelId: "pinned-model",
+      semanticIndexStatus: "ready",
+      documentCount: 10,
+      embeddingCount: 10
+    }, "case-a")).not.toThrow();
   });
 
   it("reuses only immutable semantic embeddings across fresh isolated checkout roots", () => {
