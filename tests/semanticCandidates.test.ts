@@ -21,7 +21,10 @@ import {
   selectSemanticQueryViewIndexes,
   searchSemanticCandidates
 } from "../src/retrieval/semanticCandidates.js";
-import { buildSemanticDocuments } from "../src/semantic/documents.js";
+import {
+  buildSemanticDocuments,
+  SEMANTIC_DOCUMENT_SCHEMA_VERSION
+} from "../src/semantic/documents.js";
 import {
   getSemanticModelState,
   getSemanticModelsRoot,
@@ -67,6 +70,7 @@ describe("model-based semantic candidates", () => {
         library: "kairn-onnx-wasm-v1",
         modelFilePath: "onnx/model.onnx"
       });
+      expect(manifest.documentSchemaVersion).toBe(SEMANTIC_DOCUMENT_SCHEMA_VERSION);
       expect(semanticModelBytes(manifest)).toBeLessThanOrEqual(MAX_SEMANTIC_MODEL_BYTES);
       expect(manifest.files.every((file) => /^[0-9a-f]{64}$/.test(file.sha256))).toBe(true);
     }
@@ -1990,7 +1994,7 @@ function document(
     text: `${filePath} implementation behavior`,
     hash,
     tokenEstimate: 8,
-    schemaVersion: "semantic-documents-v5"
+    schemaVersion: SEMANTIC_DOCUMENT_SCHEMA_VERSION
   };
 }
 
@@ -2005,7 +2009,7 @@ function embedding(
     documentId: semanticDocument.id,
     documentHash: semanticDocument.hash,
     modelId,
-    schemaVersion: "semantic-documents-v5",
+    schemaVersion: SEMANTIC_DOCUMENT_SCHEMA_VERSION,
     vector
   });
 }
