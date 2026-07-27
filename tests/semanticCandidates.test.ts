@@ -304,6 +304,45 @@ describe("model-based semantic candidates", () => {
       });
   });
 
+  it("uses secondary model evidence for graph probes without crowding primary views", () => {
+    const rootPath = "/repo";
+    const primary = Array.from({ length: 70 }, (_, index) =>
+      file(rootPath, `src/primary-${String(index).padStart(2, "0")}.java`)
+    );
+    const evidenceSeed = file(rootPath, "src/ast/TextBlock.java");
+    const implementation = file(rootPath, "src/solver/TypeResolver.java");
+    const primaryRankings = [0, 1].map((view) =>
+      primary.map((candidate, index) => ({
+        path: candidate.path,
+        similarity: 0.95 - (index + view) / 1_000,
+        documentIds: [`primary-${view}-${index}`]
+      }))
+    );
+    const evidenceRanking = [{
+      path: evidenceSeed.path,
+      similarity: 0.99,
+      documentIds: ["evidence"]
+    }];
+    const result = buildModelCandidateUnion({
+      files: [...primary, evidenceSeed, implementation],
+      query: "Debug the production type-resolution failure.",
+      symbols: [],
+      bm25Results: [],
+      semanticHits: [],
+      semanticQueryRankings: [...primaryRankings, evidenceRanking],
+      semanticStatus: readyStatus(primary.length + 1),
+      edges: [
+        edge(rootPath, evidenceSeed.path, implementation.path, "call")
+      ]
+    });
+
+    expect(result.semanticPaths).not.toContain(evidenceSeed.path);
+    expect(result.semanticEvidencePaths).toContain(evidenceSeed.path);
+    expect(result.graphSeedPaths).toContain(evidenceSeed.path);
+    expect(result.graphPaths).toContain(implementation.path);
+    expect(result.initialPaths).toContain(implementation.path);
+  });
+
   it("preserves a bounded model-only slice when independent lexical results compete", () => {
     const rootPath = "/repo";
     const semanticFiles = Array.from({ length: 80 }, (_, index) =>

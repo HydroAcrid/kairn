@@ -45,6 +45,7 @@ export type ModelCandidateUnion = {
  * candidates that would otherwise be discarded before graph enrichment.
  */
 export const MODEL_RETRIEVAL_PROBE_LIMIT = 512;
+const PRIMARY_SEMANTIC_QUERY_VIEW_LIMIT = 2;
 const MODEL_INITIAL_SEMANTIC_RESERVE = 40;
 const MODEL_INITIAL_SYMBOL_RESERVE = 4;
 const MODEL_INITIAL_GRAPH_RESERVE = 16;
@@ -110,9 +111,17 @@ export function buildModelCandidateUnion(input: {
       filesByPath
     )
   );
-  const intentAwareSemanticHits = intentAwareSemanticRankings?.length
+  // Headline and narrative synopsis are the primary semantic retrieval views.
+  // Additional structurally bounded evidence views remain available to seed
+  // precise one-hop graph discovery, but they do not get to crowd primary
+  // model hits out merely by adding another independent ranking.
+  const primarySemanticRankings = intentAwareSemanticRankings?.slice(
+    0,
+    PRIMARY_SEMANTIC_QUERY_VIEW_LIMIT
+  );
+  const intentAwareSemanticHits = primarySemanticRankings?.length
     ? fuseSemanticCandidateRankings(
-        intentAwareSemanticRankings,
+        primarySemanticRankings,
         MODEL_RETRIEVAL_PROBE_LIMIT
       )
     : input.semanticHits.filter((hit) => eligibleNonHard(hit.path));
