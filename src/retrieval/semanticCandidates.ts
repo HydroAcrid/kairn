@@ -37,6 +37,7 @@ const SEMANTIC_QUERY_WINDOW_OVERLAP_CHARS = 80;
 const SEMANTIC_DIAGNOSTIC_RANK_LIMIT = 512;
 const SEMANTIC_SYNOPSIS_HEADLINE_CHARS = 320;
 const SEMANTIC_SYNOPSIS_NARRATIVE_CHARS = 620;
+const SEMANTIC_EVIDENCE_ENDPOINT_CHARS = 720;
 const MAX_SEMANTIC_CONSENSUS_RESERVE = 16;
 
 export async function searchSemanticCandidates(input: {
@@ -208,10 +209,12 @@ export function buildSemanticQueries(query: string): string[] {
 }
 
 /**
- * Serving uses at most two compact model queries so a broad issue template
+ * Serving uses at most three compact model queries so a broad issue template
  * cannot gain extra retrieval votes merely because it contains more sections.
  * The independent structural headline preserves the concise task intent while
- * the synopsis adds the final two bounded narrative windows. The embedding
+ * the synopsis adds the final two bounded narrative windows. A bounded view
+ * of uniformly selected fenced endpoints preserves precise diagnostics and
+ * reproductions. The embedding
  * model—not task words or filenames—decides relevance.
  *
  * The broader candidate/view builder remains available for offline diagnostics
@@ -223,6 +226,7 @@ export function buildSemanticServingQueries(query: string): string[] {
   const narratives = candidates
     .filter((candidate) => candidate.kind === "narrative")
     .slice(-2);
+  const fences = candidates.filter((candidate) => candidate.kind === "fence");
   const parts = [...new Set(
     [
       headline?.text.slice(0, SEMANTIC_SYNOPSIS_HEADLINE_CHARS).trim(),
@@ -232,9 +236,19 @@ export function buildSemanticServingQueries(query: string): string[] {
     ].filter((value): value is string => Boolean(value))
   )];
   const synopsis = normalizeSemanticQuery(parts.join("\n\n")).slice(0, MAX_QUERY_CHARS).trim();
+  const evidenceParts = evenlySampleIncludingEndpoints(
+    fences,
+    Math.min(2, fences.length)
+  ).map((candidate) =>
+    candidate.text.slice(0, SEMANTIC_EVIDENCE_ENDPOINT_CHARS).trim()
+  );
+  const evidenceSynopsis = normalizeSemanticQuery(
+    [...new Set(evidenceParts)].join("\n\n")
+  ).slice(0, MAX_QUERY_CHARS).trim();
   return [...new Set(
-    [headline?.text, synopsis].filter((value): value is string => Boolean(value))
-  )].slice(0, 2);
+    [headline?.text, synopsis, evidenceSynopsis]
+      .filter((value): value is string => Boolean(value))
+  )].slice(0, 3);
 }
 
 export function selectSemanticQueryViewIndexes(

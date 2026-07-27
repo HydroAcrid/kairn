@@ -1118,6 +1118,30 @@ describe("model-based semantic candidates", () => {
     ]);
   });
 
+  it("preserves bounded fenced evidence for model-based failure retrieval", () => {
+    const queries = buildSemanticServingQueries([
+      "Multiline values fail during type resolution.",
+      "",
+      "The normal single-line form resolves correctly.",
+      "",
+      "```java",
+      "String value = \"working\";",
+      "```",
+      "",
+      "Additional narrative explains the observed failure.",
+      "",
+      "```text",
+      "UnsupportedOperationException: TextBlockLiteralExpr",
+      "```"
+    ].join("\n"));
+
+    expect(queries).toHaveLength(3);
+    expect(queries[2]).toContain("String value");
+    expect(queries[2]).toContain("UnsupportedOperationException");
+    expect(queries[2]).toContain("TextBlockLiteralExpr");
+    expect(queries.every((query) => query.length <= 1_600)).toBe(true);
+  });
+
   it("gives the model a bounded candidate pool spanning structured fenced evidence", () => {
     const candidates = buildSemanticQueryCandidates([
       "Persisted records lose ownership metadata after a round trip.",
