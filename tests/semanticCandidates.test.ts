@@ -347,6 +347,48 @@ describe("model-based semantic candidates", () => {
     expect(result.initialPaths).toContain(implementation.path);
   });
 
+  it("can promote a graph-only model probe that was not delivered as a primary seed", () => {
+    const rootPath = "/repo";
+    const primary = Array.from({ length: 70 }, (_, index) =>
+      file(rootPath, `src/primary-${String(index).padStart(2, "0")}.go`)
+    );
+    const primarySeed = primary[0]!;
+    const graphOnlyProbe = file(rootPath, "src/runtime/state.go");
+    const primaryRankings = [0, 1].map((view) =>
+      primary.map((candidate, index) => ({
+        path: candidate.path,
+        similarity: 0.95 - (index + view) / 1_000,
+        documentIds: [`primary-${view}-${index}`]
+      }))
+    );
+    const result = buildModelCandidateUnion({
+      files: [...primary, graphOnlyProbe],
+      query: "Debug the production state transition.",
+      symbols: [],
+      bm25Results: primary.map((candidate, index) =>
+        scored(candidate, 1 - index / 1_000)
+      ),
+      semanticHits: [],
+      semanticQueryRankings: [
+        ...primaryRankings,
+        [{
+          path: graphOnlyProbe.path,
+          similarity: 0.99,
+          documentIds: ["secondary-probe"]
+        }]
+      ],
+      semanticStatus: readyStatus(primary.length + 1),
+      edges: [
+        edge(rootPath, primarySeed.path, graphOnlyProbe.path, "call")
+      ]
+    });
+
+    expect(result.semanticPaths).not.toContain(graphOnlyProbe.path);
+    expect(result.graphSeedPaths).toContain(graphOnlyProbe.path);
+    expect(result.graphPaths).toContain(graphOnlyProbe.path);
+    expect(result.initialPaths).toContain(graphOnlyProbe.path);
+  });
+
   it("preserves a bounded model-only slice when independent lexical results compete", () => {
     const rootPath = "/repo";
     const semanticFiles = Array.from({ length: 80 }, (_, index) =>

@@ -130,19 +130,8 @@ export function buildModelCandidateUnion(input: {
         MODEL_RETRIEVAL_PROBE_LIMIT
       )
     : input.semanticHits.filter((hit) => eligibleNonHard(hit.path));
-  const graphSemanticHits = intentAwareSemanticRankings?.length
-    ? fuseSemanticCandidateRankings(
-        intentAwareSemanticRankings,
-        MODEL_RETRIEVAL_PROBE_LIMIT
-      )
-    : intentAwareSemanticHits;
   const semanticPaths = prioritizeRetrievalPathsForIntent(
     intentAwareSemanticHits.map((hit) => normalizePath(hit.path)),
-    signals.intent,
-    filesByPath
-  );
-  const graphSemanticPaths = prioritizeRetrievalPathsForIntent(
-    graphSemanticHits.map((hit) => normalizePath(hit.path)),
     signals.intent,
     filesByPath
   );
@@ -182,14 +171,6 @@ export function buildModelCandidateUnion(input: {
     rankings: baseRankings,
     limit: MODEL_RETRIEVAL_PROBE_LIMIT
   }).filter((filePath) => filesByPath.has(filePath));
-  const graphSeedRetrievalOrder = reciprocalRankFuse({
-    hardPaths,
-    rankings: [
-      { channel: "semantic", paths: graphSemanticPaths },
-      ...baseRankings.filter((ranking) => ranking.channel !== "semantic")
-    ],
-    limit: MODEL_RETRIEVAL_PROBE_LIMIT
-  }).filter((filePath) => filesByPath.has(filePath));
   // RRF rewards agreement, but a broad lexical/symbol overlap can otherwise
   // consume the complete 64-file bound before a strong model-only candidate
   // enters. Preserve a fixed model-retrieval slice, then let RRF fill the
@@ -203,8 +184,8 @@ export function buildModelCandidateUnion(input: {
     .slice(0, MODEL_RETRIEVAL_PROBE_LIMIT);
   const preliminaryGraphSeedPaths = uniquePaths([
     ...hardPaths,
-    ...graphSemanticPaths.slice(0, MODEL_INITIAL_SEMANTIC_RESERVE),
-    ...graphSeedRetrievalOrder
+    ...semanticPaths.slice(0, MODEL_INITIAL_SEMANTIC_RESERVE),
+    ...fusedRetrievalOrder
   ])
     .filter((filePath) => filesByPath.has(filePath))
     .slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
