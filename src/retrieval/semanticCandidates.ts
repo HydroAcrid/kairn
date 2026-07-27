@@ -209,12 +209,12 @@ export function buildSemanticQueries(query: string): string[] {
 }
 
 /**
- * Serving uses at most three compact model queries so a broad issue template
+ * Serving uses at most four compact model queries so a broad issue template
  * cannot gain extra retrieval votes merely because it contains more sections.
  * The independent structural headline preserves the concise task intent while
- * the synopsis adds the final two bounded narrative windows. A bounded view
- * of uniformly selected fenced endpoints preserves precise diagnostics and
- * reproductions. The embedding
+ * the synopsis adds the final two bounded narrative windows. Independent,
+ * bounded views of uniformly selected fenced endpoints preserve precise
+ * diagnostics and reproductions without diluting one with the other. The embedding
  * model—not task words or filenames—decides relevance.
  *
  * The broader candidate/view builder remains available for offline diagnostics
@@ -236,19 +236,19 @@ export function buildSemanticServingQueries(query: string): string[] {
     ].filter((value): value is string => Boolean(value))
   )];
   const synopsis = normalizeSemanticQuery(parts.join("\n\n")).slice(0, MAX_QUERY_CHARS).trim();
-  const evidenceParts = evenlySampleIncludingEndpoints(
+  const evidenceQueries = evenlySampleIncludingEndpoints(
     fences,
     Math.min(2, fences.length)
   ).map((candidate) =>
-    candidate.text.slice(0, SEMANTIC_EVIDENCE_ENDPOINT_CHARS).trim()
+    normalizeSemanticQuery([
+      headline?.text.slice(0, SEMANTIC_SYNOPSIS_HEADLINE_CHARS).trim(),
+      candidate.text.slice(0, SEMANTIC_EVIDENCE_ENDPOINT_CHARS).trim()
+    ].filter(Boolean).join("\n\n")).slice(0, MAX_QUERY_CHARS).trim()
   );
-  const evidenceSynopsis = normalizeSemanticQuery(
-    [...new Set(evidenceParts)].join("\n\n")
-  ).slice(0, MAX_QUERY_CHARS).trim();
   return [...new Set(
-    [headline?.text, synopsis, evidenceSynopsis]
+    [headline?.text, synopsis, ...evidenceQueries]
       .filter((value): value is string => Boolean(value))
-  )].slice(0, 3);
+  )].slice(0, 4);
 }
 
 export function selectSemanticQueryViewIndexes(
