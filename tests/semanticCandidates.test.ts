@@ -389,6 +389,69 @@ describe("model-based semantic candidates", () => {
     expect(result.initialPaths).toContain(graphOnlyProbe.path);
   });
 
+  it("lets a model probe recover a semantically corroborated direct importer", () => {
+    const rootPath = "/repo";
+    const primary = Array.from({ length: 70 }, (_, index) =>
+      file(rootPath, `src/primary-${String(index).padStart(2, "0")}.ts`)
+    );
+    const importedProbe = file(rootPath, "src/runtime/implementation.ts");
+    const importer = file(rootPath, "src/runtime/public-api.ts");
+    const lexicalOnlyImporter = file(rootPath, "src/runtime/lexical-only.ts");
+    const forwardDependency = file(rootPath, "src/runtime/dependency.ts");
+    const primaryRankings = [0, 1].map((view) =>
+      primary.map((candidate, index) => ({
+        path: candidate.path,
+        similarity: 0.95 - (index + view) / 1_000,
+        documentIds: [`primary-${view}-${index}`]
+      }))
+    );
+    const secondaryRanking = [
+      {
+        path: importedProbe.path,
+        similarity: 0.99,
+        documentIds: ["secondary-probe"]
+      },
+      {
+        path: importer.path,
+        similarity: 0.7,
+        documentIds: ["secondary-importer"]
+      }
+    ];
+    const result = buildModelCandidateUnion({
+      files: [
+        ...primary,
+        importedProbe,
+        importer,
+        lexicalOnlyImporter,
+        forwardDependency
+      ],
+      query: "Repair the production module behavior.",
+      symbols: [],
+      bm25Results: [
+        ...primary.map((candidate, index) => scored(candidate, 1 - index / 1_000)),
+        scored(lexicalOnlyImporter, 0.5),
+        scored(forwardDependency, 0.4)
+      ],
+      semanticHits: [],
+      semanticQueryRankings: [
+        ...primaryRankings,
+        secondaryRanking
+      ],
+      semanticStatus: readyStatus(primary.length + secondaryRanking.length),
+      edges: [
+        edge(rootPath, importer.path, importedProbe.path, "imports"),
+        edge(rootPath, lexicalOnlyImporter.path, importedProbe.path, "imports"),
+        edge(rootPath, importedProbe.path, forwardDependency.path, "imports")
+      ]
+    });
+
+    expect(result.graphSeedPaths).toContain(importedProbe.path);
+    expect(result.graphPaths).toContain(importer.path);
+    expect(result.enrichedPaths).toContain(importer.path);
+    expect(result.graphPaths).not.toContain(lexicalOnlyImporter.path);
+    expect(result.graphPaths).not.toContain(forwardDependency.path);
+  });
+
   it("preserves a bounded model-only slice when independent lexical results compete", () => {
     const rootPath = "/repo";
     const semanticFiles = Array.from({ length: 80 }, (_, index) =>

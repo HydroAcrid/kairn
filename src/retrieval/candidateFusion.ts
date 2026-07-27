@@ -485,19 +485,29 @@ export function rankEvidenceBackedGraphCandidates(input: {
     sourceTestPair: boolean;
   };
   const candidates = new Map<string, GraphCandidate>();
-  const consider = (seedPath: string, neighborPath: string, edge: GraphEdgeRecord): void => {
+  const consider = (
+    seedPath: string,
+    neighborPath: string,
+    edge: GraphEdgeRecord,
+    direction: "forward" | "reverse"
+  ): void => {
     const seedRank = seedRanks.get(seedPath);
     const neighbor = input.filesByPath.get(neighborPath);
     if (!seedRank || !neighbor || seedPath === neighborPath || neighbor.indexTier === "tier0") return;
+    const independentEvidence = evidenceRanks.get(neighborPath);
     if (
       probeSeedSet.has(seedPath) &&
-      !isProbeEligibleEdge(edge.type, input.filesByPath.get(seedPath)?.kind)
+      !isProbeEligibleEdge({
+        type: edge.type,
+        seedKind: input.filesByPath.get(seedPath)?.kind,
+        direction,
+        hasSemanticNeighborEvidence: independentEvidence?.has("semantic") ?? false
+      })
     ) {
       return;
     }
     const precision = edgePriority(edge.type);
     if (precision === 0) return;
-    const independentEvidence = evidenceRanks.get(neighborPath);
     if (
       (precision === 1 || edge.type === "shared_call_target") &&
       (!isProductionEvidenceFile(neighbor) || !independentEvidence || independentEvidence.size === 0)
@@ -547,8 +557,8 @@ export function rankEvidenceBackedGraphCandidates(input: {
   for (const edge of input.edges) {
     const from = normalizePath(edge.fromFile);
     const to = normalizePath(edge.toFile);
-    consider(from, to, edge);
-    consider(to, from, edge);
+    consider(from, to, edge, "forward");
+    consider(to, from, edge, "reverse");
   }
 
   const independentScore = (filePath: string): number => {
@@ -611,21 +621,28 @@ export function rankEvidenceBackedGraphCandidates(input: {
   return diversifyModuleInstallationFamilies(ranked).map((candidate) => candidate.path);
 }
 
-function isProbeEligibleEdge(
-  type: GraphEdgeRecord["type"],
-  seedKind: FileRecord["kind"] | undefined
-): boolean {
-  if (seedKind === "test") {
+function isProbeEligibleEdge(input: {
+  type: GraphEdgeRecord["type"];
+  seedKind: FileRecord["kind"] | undefined;
+  direction: "forward" | "reverse";
+  hasSemanticNeighborEvidence: boolean;
+}): boolean {
+  if (input.seedKind === "test") {
     return (
-      type === "test_for" ||
-      type === "tested_by" ||
-      type === "shared_call_target"
+      input.type === "test_for" ||
+      input.type === "tested_by" ||
+      input.type === "shared_call_target"
     );
   }
   return (
-    type === "call" ||
-    type === "shared_call_target" ||
-    type === "type_reference"
+    input.type === "call" ||
+    input.type === "shared_call_target" ||
+    input.type === "type_reference" ||
+    (
+      input.type === "imports" &&
+      input.direction === "reverse" &&
+      input.hasSemanticNeighborEvidence
+    )
   );
 }
 
