@@ -398,7 +398,7 @@ describe("model-based semantic candidates", () => {
       });
   });
 
-  it("uses broader model evidence to validate a precise graph neighbor without widening the bounded lane", () => {
+  it("reserves initial capacity for a model-validated direct graph neighbor", () => {
     const rootPath = "/repo";
     const seed = file(rootPath, "src/public-api.ts");
     const implementation = file(rootPath, "src/internal/implementation.ts");
@@ -428,7 +428,8 @@ describe("model-based semantic candidates", () => {
       ]
     });
 
-    expect(result.initialPaths).not.toContain(implementation.path);
+    expect(result.initialPaths).toHaveLength(64);
+    expect(result.initialPaths).toContain(implementation.path);
     expect(result.enrichedPaths).toContain(implementation.path);
     expect(result.enrichedPaths).not.toContain(unrelated.path);
   });
@@ -578,7 +579,7 @@ describe("model-based semantic candidates", () => {
       ]
     });
 
-    expect(result.initialPaths).not.toContain(productionProbe.path);
+    expect(result.initialPaths).toContain(productionProbe.path);
     expect(result.graphSeedPaths).toContain(productionProbe.path);
     expect(result.graphSeedPaths).not.toContain(lexicalOnly.path);
     expect(result.graphSeedPaths).toContain(viewSpecificProbe.path);
@@ -1024,7 +1025,7 @@ describe("model-based semantic candidates", () => {
     expect(result.enrichedPaths).toContain("src/module-99.ts");
   });
 
-  it("does not let graph enrichment evict the initial retrieval lane", () => {
+  it("balances the initial retrieval lane with bounded direct graph evidence", () => {
     const rootPath = "/repo";
     const retrieved = Array.from({ length: 80 }, (_, index) =>
       file(rootPath, `src/retrieved-${String(index).padStart(2, "0")}.ts`)
@@ -1049,8 +1050,9 @@ describe("model-based semantic candidates", () => {
     });
 
     expect(result.initialPaths).toHaveLength(64);
-    expect(result.initialPaths).toContain("src/retrieved-63.ts");
-    expect(result.initialPaths.some((filePath) => filePath.includes("/neighbor-"))).toBe(false);
+    expect(result.initialPaths).toContain("src/retrieved-39.ts");
+    expect(result.initialPaths).toContain("src/neighbor-00.ts");
+    expect(result.initialPaths).not.toContain("src/retrieved-63.ts");
     expect(result.enrichedPaths.some((filePath) => filePath.includes("/neighbor-"))).toBe(true);
   });
 

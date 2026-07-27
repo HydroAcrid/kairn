@@ -46,6 +46,8 @@ export type ModelCandidateUnion = {
  */
 export const MODEL_RETRIEVAL_PROBE_LIMIT = 512;
 const MODEL_INITIAL_SEMANTIC_RESERVE = 40;
+const MODEL_INITIAL_SYMBOL_RESERVE = 4;
+const MODEL_INITIAL_GRAPH_RESERVE = 16;
 const MAX_TEST_GRAPH_PROBE_PATHS = 192;
 const GRAPH_ENRICHMENT_CAPACITY =
   DEFAULT_ENRICHED_CANDIDATE_LIMIT - DEFAULT_INITIAL_CANDIDATE_LIMIT;
@@ -166,12 +168,12 @@ export function buildModelCandidateUnion(input: {
   ])
     .filter((filePath) => filesByPath.has(filePath))
     .slice(0, MODEL_RETRIEVAL_PROBE_LIMIT);
-  const initialPaths = preliminaryUnion.slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
+  const preliminaryInitialPaths = preliminaryUnion.slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
   const graphProbePaths = signals.intent === "source"
     ? uniquePaths([
         ...semanticEvidencePaths
           .filter((filePath) =>
-            !initialPaths.includes(filePath) &&
+            !preliminaryInitialPaths.includes(filePath) &&
             filesByPath.get(filePath)?.kind === "test"
           )
           .slice(0, MAX_TEST_GRAPH_PROBE_PATHS),
@@ -179,20 +181,20 @@ export function buildModelCandidateUnion(input: {
           .filter((filePath) => {
             const file = filesByPath.get(filePath);
             return Boolean(
-              !initialPaths.includes(filePath) &&
+              !preliminaryInitialPaths.includes(filePath) &&
               file &&
               isProductionEvidenceFile(file)
             );
           })
       ])
-        .filter((filePath) => !initialPaths.includes(filePath))
-        .slice(0, MODEL_RETRIEVAL_PROBE_LIMIT - initialPaths.length)
+        .filter((filePath) => !preliminaryInitialPaths.includes(filePath))
+        .slice(0, MODEL_RETRIEVAL_PROBE_LIMIT - preliminaryInitialPaths.length)
     : [];
-  const graphSeedPaths = uniquePaths([...initialPaths, ...graphProbePaths]);
+  const graphSeedPaths = uniquePaths([...preliminaryInitialPaths, ...graphProbePaths]);
   const graphEvidenceByPath = new Map<string, EvidenceGraphFacts>();
   const graphPaths = prioritizeGraphPathsForIntent(
     rankEvidenceBackedGraphCandidates({
-      seedPaths: initialPaths,
+      seedPaths: preliminaryInitialPaths,
       probeSeedPaths: graphProbePaths,
       edges: input.edges,
       filesByPath,
@@ -208,7 +210,7 @@ export function buildModelCandidateUnion(input: {
   );
   const graphConsensusPaths = prioritizeGraphPathsForIntent(
     rankEvidenceBackedGraphCandidates({
-      seedPaths: initialPaths,
+      seedPaths: preliminaryInitialPaths,
       probeSeedPaths: graphProbePaths,
       edges: input.edges,
       filesByPath,
@@ -223,6 +225,22 @@ export function buildModelCandidateUnion(input: {
     signals.intent,
     filesByPath
   );
+  // Candidate recall needs independent lanes to survive before the calibrated
+  // ranker sees the first 64 files. A model-only reserve can crowd out exact
+  // symbols and parser-proven direct neighbors, while an unconstrained graph
+  // lane can replace the model evidence that made those neighbors meaningful.
+  // Keep small, fixed maxima for semantic, symbol, and one-hop graph evidence,
+  // then let RRF and the prior preliminary union fill every unused slot.
+  const initialPaths = uniquePaths([
+    ...hardPaths,
+    ...semanticPaths.slice(0, MODEL_INITIAL_SEMANTIC_RESERVE),
+    ...eligibleSymbolPaths.slice(0, MODEL_INITIAL_SYMBOL_RESERVE),
+    ...graphPaths.slice(0, MODEL_INITIAL_GRAPH_RESERVE),
+    ...fusedRetrievalOrder,
+    ...preliminaryInitialPaths
+  ])
+    .filter((filePath) => filesByPath.has(filePath))
+    .slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
   const graphEnrichedOrder = reciprocalRankFuse({
     hardPaths,
     rankings: graphPaths.length > 0
