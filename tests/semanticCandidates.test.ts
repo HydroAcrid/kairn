@@ -461,7 +461,7 @@ describe("model-based semantic candidates", () => {
     expect(result.graphPaths).not.toContain(forwardDependency.path);
   });
 
-  it("preserves a bounded model-only slice when independent lexical results compete", () => {
+  it("preserves the bounded model-evidence tail when independent lexical results compete", () => {
     const rootPath = "/repo";
     const semanticFiles = Array.from({ length: 80 }, (_, index) =>
       file(rootPath, `src/semantic-${String(index).padStart(2, "0")}.ts`)
@@ -487,7 +487,8 @@ describe("model-based semantic candidates", () => {
       edges: []
     });
 
-    expect(result.initialPaths).toContain(semanticFiles[39]!.path);
+    expect(result.initialPaths).toContain(semanticFiles[55]!.path);
+    expect(result.initialPaths).not.toContain(semanticFiles[56]!.path);
     expect(result.initialPaths).toContain(lexicalFiles[0]!.path);
     expect(result.initialPaths).toHaveLength(64);
   });
@@ -749,7 +750,7 @@ describe("model-based semantic candidates", () => {
     expect(result.graphPaths).not.toContain(lexicalNeighbor.path);
   });
 
-  it("preserves model evidence rank when role-balanced graph probes load tests first", () => {
+  it("preserves model evidence rank ahead of later role-balanced graph probes", () => {
     const rootPath = "/repo";
     const leaders = Array.from({ length: 80 }, (_, index) =>
       file(rootPath, `src/leader-${String(index).padStart(2, "0")}.go`)
@@ -793,7 +794,7 @@ describe("model-based semantic candidates", () => {
       ]
     });
 
-    expect(result.graphSeedPaths.indexOf(productionProbe.path)).toBeGreaterThan(
+    expect(result.graphSeedPaths.indexOf(productionProbe.path)).toBeLessThan(
       result.graphSeedPaths.indexOf(testProbes[0]!.path)
     );
     expect(result.graphSeedRanks.get(productionProbe.path)).toBe(50);
