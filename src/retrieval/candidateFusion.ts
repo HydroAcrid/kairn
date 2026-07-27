@@ -315,19 +315,26 @@ export function buildModelCandidateUnion(input: {
       : baseRankings,
     limit: DEFAULT_ENRICHED_CANDIDATE_LIMIT
   }).filter((filePath) => filesByPath.has(filePath));
-  const graphJointPaths = reciprocalRankFuse({
+  const graphCorePaths = reciprocalRankFuse({
     hardPaths: [],
     rankings: [
       { channel: "graph", paths: graphPaths },
-      ...(graphImporterPaths.length > 0
-        ? [{ channel: "graph_importer" as const, paths: graphImporterPaths }]
-        : []),
       ...(graphConsensusPaths.length > 0
         ? [{ channel: "graph_consensus" as const, paths: graphConsensusPaths }]
         : [])
     ],
     limit: GRAPH_ENRICHMENT_CAPACITY
   }).filter((filePath) => filesByPath.has(filePath));
+  // Preserve the complete parser-precision/consensus core before admitting
+  // the weaker reverse-import relation. The tail is still model-based:
+  // importer candidates require their own semantic evidence. A two-to-one
+  // structural interleave reflects the stronger multi-seed consensus without
+  // assigning brittle independent quotas or enlarging the 128-file union.
+  const graphTailPaths = weightedInterleavePaths([
+    { paths: graphConsensusPaths, weight: 2 },
+    { paths: graphImporterPaths, weight: 1 }
+  ], DEFAULT_ENRICHED_CANDIDATE_LIMIT)
+    .filter((filePath) => filesByPath.has(filePath));
   // Graph relations enrich the bounded union; they do not get to evict
   // independently retrieved evidence from the initial 64-file lane. Preserve
   // that serving contract, then fill the remaining bounded capacity with the
@@ -340,9 +347,10 @@ export function buildModelCandidateUnion(input: {
   // enrichment capacity instead of assigning brittle independent quotas.
   const enrichedPaths = uniquePaths([
     ...initialPaths,
-    ...graphJointPaths,
-    ...graphImporterPaths,
+    ...graphCorePaths,
+    ...graphTailPaths,
     ...graphConsensusPaths,
+    ...graphImporterPaths,
     ...graphPaths,
     ...graphEnrichedOrder,
     ...preliminaryUnion
@@ -786,6 +794,43 @@ export function reciprocalRankFuse(input: {
   for (const filePath of fused) {
     if (selected.length >= limit) break;
     selected.push(filePath);
+  }
+  return selected;
+}
+
+function weightedInterleavePaths(
+  rankings: Array<{ paths: string[]; weight: number }>,
+  limit: number
+): string[] {
+  const boundedLimit = Math.max(1, Math.floor(limit));
+  const lanes = rankings
+    .map((ranking) => ({
+      paths: uniquePaths(ranking.paths),
+      weight: Math.max(1, Math.floor(ranking.weight)),
+      cursor: 0
+    }))
+    .filter((ranking) => ranking.paths.length > 0);
+  const selected: string[] = [];
+  const seen = new Set<string>();
+  let progressed = true;
+  while (selected.length < boundedLimit && progressed) {
+    progressed = false;
+    for (const lane of lanes) {
+      let taken = 0;
+      while (
+        taken < lane.weight &&
+        lane.cursor < lane.paths.length &&
+        selected.length < boundedLimit
+      ) {
+        const filePath = lane.paths[lane.cursor]!;
+        lane.cursor += 1;
+        if (seen.has(filePath)) continue;
+        selected.push(filePath);
+        seen.add(filePath);
+        taken += 1;
+        progressed = true;
+      }
+    }
   }
   return selected;
 }
