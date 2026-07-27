@@ -53,7 +53,11 @@ const MODEL_INITIAL_GRAPH_RESERVE = 16;
 const MAX_TEST_GRAPH_PROBE_PATHS = 192;
 const GRAPH_ENRICHMENT_CAPACITY =
   DEFAULT_ENRICHED_CANDIDATE_LIMIT - DEFAULT_INITIAL_CANDIDATE_LIMIT;
-const GRAPH_CONSENSUS_RESERVE = Math.floor(GRAPH_ENRICHMENT_CAPACITY / 4);
+// Consensus needs an escape hatch when a broadly connected candidate ranks
+// below the precision lane, but it must not consume a quarter of the complete
+// one-hop budget. Preserve two consensus slots and let parser-precise graph
+// evidence use the rest of the fixed 64-file enrichment capacity.
+const GRAPH_CONSENSUS_RESERVE = 2;
 const GRAPH_PRECISION_RESERVE =
   GRAPH_ENRICHMENT_CAPACITY - GRAPH_CONSENSUS_RESERVE;
 const MAX_GRAPH_CONSENSUS_SUPPORT_SEEDS = 3;
