@@ -21,7 +21,15 @@ import {
 } from "./semanticCandidates.js";
 
 export type CandidateRanking = {
-  channel: "semantic" | "bm25" | "symbol" | "git" | "session" | "graph" | "graph_consensus";
+  channel:
+    | "semantic"
+    | "bm25"
+    | "symbol"
+    | "git"
+    | "session"
+    | "graph"
+    | "graph_support"
+    | "graph_consensus";
   paths: string[];
 };
 
@@ -31,6 +39,7 @@ export type ModelCandidateUnion = {
   candidateResults: HybridScoredResult[];
   semanticStatus: SemanticRetrieverStatus;
   graphPaths: string[];
+  graphSupportPaths: string[];
   graphConsensusPaths: string[];
   graphSeedPaths: string[];
   graphSeedRanks: ReadonlyMap<string, number>;
@@ -257,6 +266,23 @@ export function buildModelCandidateUnion(input: {
     signals.intent,
     filesByPath
   );
+  const graphSupportPaths = prioritizeGraphPathsForIntent(
+    rankEvidenceBackedGraphCandidates({
+      seedPaths: preliminaryGraphSeedPaths,
+      probeSeedPaths: graphProbePaths,
+      edges: input.edges,
+      filesByPath,
+      evidenceRankings: [
+        { channel: "semantic", paths: semanticEvidencePaths },
+        { channel: "bm25", paths: bm25Paths },
+        { channel: "symbol", paths: eligibleSymbolPaths }
+      ],
+      seedRanks: graphSeedRanks,
+      ordering: "support"
+    }),
+    signals.intent,
+    filesByPath
+  );
   // Candidate recall needs independent lanes to survive before the calibrated
   // ranker sees the first 64 files. A model-only reserve can crowd out exact
   // symbols and parser-proven direct neighbors, while an unconstrained graph
@@ -279,6 +305,9 @@ export function buildModelCandidateUnion(input: {
       ? [
           ...baseRankings,
           { channel: "graph", paths: graphPaths },
+          ...(graphSupportPaths.length > 0
+            ? [{ channel: "graph_support" as const, paths: graphSupportPaths }]
+            : []),
           ...(graphConsensusPaths.length > 0
             ? [{ channel: "graph_consensus" as const, paths: graphConsensusPaths }]
             : [])
@@ -290,6 +319,9 @@ export function buildModelCandidateUnion(input: {
     hardPaths: [],
     rankings: [
       { channel: "graph", paths: graphPaths },
+      ...(graphSupportPaths.length > 0
+        ? [{ channel: "graph_support" as const, paths: graphSupportPaths }]
+        : []),
       ...(graphConsensusPaths.length > 0
         ? [{ channel: "graph_consensus" as const, paths: graphConsensusPaths }]
         : [])
@@ -309,6 +341,7 @@ export function buildModelCandidateUnion(input: {
   const enrichedPaths = uniquePaths([
     ...initialPaths,
     ...graphJointPaths,
+    ...graphSupportPaths,
     ...graphConsensusPaths,
     ...graphPaths,
     ...graphEnrichedOrder,
@@ -320,7 +353,11 @@ export function buildModelCandidateUnion(input: {
       .map((hit) => [normalizePath(hit.path), hit] as const)
   );
   const changedPaths = new Set([...(input.changedFiles ?? [])].map(normalizePath));
-  const graphPathSet = new Set([...graphPaths, ...graphConsensusPaths]);
+  const graphPathSet = new Set([
+    ...graphPaths,
+    ...graphSupportPaths,
+    ...graphConsensusPaths
+  ]);
   const candidateResults = enrichedPaths.map((filePath): HybridScoredResult => {
     const file = filesByPath.get(filePath)!;
     const bm25 = bm25ByPath.get(filePath);
@@ -356,6 +393,7 @@ export function buildModelCandidateUnion(input: {
     candidateResults,
     semanticStatus: input.semanticStatus,
     graphPaths,
+    graphSupportPaths,
     graphConsensusPaths,
     graphSeedPaths,
     graphSeedRanks,

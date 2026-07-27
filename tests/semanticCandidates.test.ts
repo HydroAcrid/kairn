@@ -898,6 +898,47 @@ describe("model-based semantic candidates", () => {
     expect(ranked.slice(0, 2)).toEqual([cleanCall.path, mixedEvidence.path]);
   });
 
+  it("can order model-corroborated graph evidence ahead of a distant precise relation", () => {
+    const rootPath = "/repo";
+    const importedProbe = file(rootPath, "src/runtime/implementation.ts");
+    const preciseProbe = file(rootPath, "src/runtime/distant-probe.ts");
+    const importer = file(rootPath, "src/runtime/public-api.ts");
+    const callTarget = file(rootPath, "src/runtime/call-target.ts");
+    const filesByPath = new Map(
+      [importedProbe, preciseProbe, importer, callTarget]
+        .map((candidate) => [candidate.path, candidate])
+    );
+    const input = {
+      seedPaths: [] as string[],
+      probeSeedPaths: [importedProbe.path, preciseProbe.path],
+      edges: [
+        edge(rootPath, importer.path, importedProbe.path, "imports"),
+        edge(rootPath, preciseProbe.path, callTarget.path, "call")
+      ],
+      filesByPath,
+      evidenceRankings: [{
+        channel: "semantic" as const,
+        paths: [importer.path]
+      }],
+      seedRanks: new Map([
+        [importedProbe.path, 2],
+        [preciseProbe.path, 100]
+      ])
+    };
+
+    expect(rankEvidenceBackedGraphCandidates(input).slice(0, 2)).toEqual([
+      callTarget.path,
+      importer.path
+    ]);
+    expect(rankEvidenceBackedGraphCandidates({
+      ...input,
+      ordering: "support"
+    }).slice(0, 2)).toEqual([
+      importer.path,
+      callTarget.path
+    ]);
+  });
+
   it("prefers an exact graph relation from the strongest seed before lower-ranked consensus", () => {
     const rootPath = "/repo";
     const seeds = Array.from({ length: 8 }, (_, index) =>

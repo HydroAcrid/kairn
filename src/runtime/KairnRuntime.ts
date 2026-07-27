@@ -3746,6 +3746,7 @@ export class KairnRuntime {
           semanticEvidence: fused.semanticEvidencePaths,
           bm25: modelBm25Results.map((result) => result.path),
           graph: fused.graphPaths,
+          graphSupport: fused.graphSupportPaths,
           graphConsensus: fused.graphConsensusPaths,
           graphEvidence: describeGraphCandidateEvidence({
             seedPaths: fused.graphSeedPaths,
