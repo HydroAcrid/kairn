@@ -79,6 +79,7 @@ export type MaterializeOptions = {
   processIsolation?: boolean;
   isolatedWorker?: boolean;
   snapshotEmbeddingCachePath?: string;
+  lineageEmbeddingCachePath?: string;
   migrateFeatureSchema?: boolean;
   resume?: boolean;
   requireSemantic?: boolean;
@@ -148,15 +149,25 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       sampleOnly: intake.sampleOnly
     });
     const snapshotPath = options.snapshotEmbeddingCachePath;
+    const lineagePath = options.lineageEmbeddingCachePath;
+    // Rolling lineage state is only a content-addressed warm start. An exact
+    // immutable snapshot is restored second so it wins when both contain the
+    // same document id. The indexer still requires an exact document hash.
+    if (lineagePath) restoreSnapshotEmbeddingCache(checkout.root, lineagePath);
     if (snapshotPath) restoreSnapshotEmbeddingCache(checkout.root, snapshotPath);
-    const snapshotTimer = snapshotPath
+    const embeddingCachePaths = [snapshotPath, lineagePath].filter(
+      (value): value is string => Boolean(value)
+    );
+    const snapshotTimer = embeddingCachePaths.length > 0
       ? setInterval(() => {
-          try {
-            persistSnapshotEmbeddingCache(checkout.root, snapshotPath);
-          } catch (error) {
-            process.stderr.write(
-              `Semantic snapshot checkpoint failed: ${error instanceof Error ? error.message : String(error)}\n`
-            );
+          for (const cachePath of embeddingCachePaths) {
+            try {
+              persistSnapshotEmbeddingCache(checkout.root, cachePath);
+            } catch (error) {
+              process.stderr.write(
+                `Semantic embedding checkpoint failed: ${error instanceof Error ? error.message : String(error)}\n`
+              );
+            }
           }
         }, 60_000)
       : undefined;
@@ -313,12 +324,14 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
     } finally {
       if (snapshotTimer) clearInterval(snapshotTimer);
       runtime.close();
-      if (snapshotPath) {
+      for (const cachePath of embeddingCachePaths) {
         try {
-          persistSnapshotEmbeddingCache(checkout.root, snapshotPath, { mergeExisting: false });
+          persistSnapshotEmbeddingCache(checkout.root, cachePath, {
+            mergeExisting: cachePath === lineagePath
+          });
         } catch (error) {
           process.stderr.write(
-            `Final semantic snapshot checkpoint failed: ${error instanceof Error ? error.message : String(error)}\n`
+            `Final semantic embedding checkpoint failed: ${error instanceof Error ? error.message : String(error)}\n`
           );
         }
       }
@@ -431,6 +444,11 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
       "semantic-embedding-cache",
       `${semanticSnapshotCacheKey(intakeCase)}.json`
     );
+    const lineageEmbeddingCachePath = path.join(
+      cacheDir,
+      "semantic-embedding-lineage-cache",
+      `${semanticLineageCacheKey(intakeCase)}.json`
+    );
     const temporaryPrefix = path.join(intakeDir, `.kairn-ranker-case-${crypto.randomUUID()}`);
     const childManifestPath = `${temporaryPrefix}.manifest.json`;
     const childReportPath = `${temporaryPrefix}.report.json`;
@@ -445,6 +463,7 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
       "--in-process",
       "--isolated-worker",
       "--snapshot-embedding-cache", snapshotEmbeddingCachePath,
+      "--lineage-embedding-cache", lineageEmbeddingCachePath,
       ...(options.draft ? ["--draft"] : []),
       ...(options.allowSample ? ["--allow-sample"] : []),
       ...(options.allowLocalFixture ? ["--allow-local-fixture"] : []),
@@ -764,6 +783,19 @@ function semanticSnapshotCacheKey(intakeCase: IntakeCase): string {
   });
 }
 
+function semanticLineageCacheKey(intakeCase: IntakeCase): string {
+  const modelId = process.env.KAIRN_SEMANTIC_MODEL?.trim() || DEFAULT_SEMANTIC_MODEL_ID;
+  const documentEmbeddingManifestSha256 = semanticDocumentEmbeddingManifestSha256(
+    getSemanticModelManifest(modelId)
+  );
+  return buildSemanticLineageCacheKey({
+    repositoryLineageId: intakeCase.repositoryLineageId,
+    modelId,
+    documentEmbeddingManifestSha256,
+    documentSchemaVersion: SEMANTIC_DOCUMENT_SCHEMA_VERSION
+  });
+}
+
 export function readIsolatedMaterializationProgress(
   progressPath: string,
   expected: {
@@ -864,6 +896,21 @@ export function buildSemanticSnapshotCacheKey(input: {
     "semantic-embedding-cache.v4",
     input.repositoryLineageId,
     input.repositoryRef,
+    input.modelId,
+    input.documentEmbeddingManifestSha256,
+    input.documentSchemaVersion
+  ].join("\0"));
+}
+
+export function buildSemanticLineageCacheKey(input: {
+  repositoryLineageId: string;
+  modelId: string;
+  documentEmbeddingManifestSha256: string;
+  documentSchemaVersion: SemanticEmbeddingRecord["schemaVersion"];
+}): string {
+  return sha256([
+    "semantic-embedding-lineage-cache.v1",
+    input.repositoryLineageId,
     input.modelId,
     input.documentEmbeddingManifestSha256,
     input.documentSchemaVersion
@@ -1235,6 +1282,9 @@ function parseArgs(argv: string[]): MaterializeOptions {
     ...(values.get("--cache") ? { cacheDir: values.get("--cache")! } : {}),
     ...(values.get("--snapshot-embedding-cache")
       ? { snapshotEmbeddingCachePath: values.get("--snapshot-embedding-cache")! }
+      : {}),
+    ...(values.get("--lineage-embedding-cache")
+      ? { lineageEmbeddingCachePath: values.get("--lineage-embedding-cache")! }
       : {}),
     allowSample: flags.has("--allow-sample"),
     allowLocalFixture: flags.has("--allow-local-fixture"),

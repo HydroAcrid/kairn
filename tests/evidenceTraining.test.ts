@@ -8,6 +8,7 @@ import { validateEvidenceRankerArtifact } from "../src/retrieval/evidenceModel.j
 import { EVIDENCE_FEATURE_NAMES } from "../src/types/evidence.js";
 import {
   assertSemanticMaterializationReady,
+  buildSemanticLineageCacheKey,
   buildSemanticSnapshotCacheKey,
   materializeEvidenceCorpus,
   persistSnapshotEmbeddingCache,
@@ -230,6 +231,74 @@ describe("public evidence ranker training", () => {
     expect(changedSchema).not.toBe(firstRef);
     expect(changedLineage).not.toBe(firstRef);
     expect(changedRef).not.toBe(firstRef);
+  });
+
+  it("shares only content-validated rolling embeddings within one repository lineage", () => {
+    const base = {
+      repositoryLineageId: "https://github.com/example/project",
+      modelId: "pinned-model",
+      documentEmbeddingManifestSha256: "a".repeat(64),
+      documentSchemaVersion: "semantic-documents-v5" as const
+    };
+    const first = buildSemanticLineageCacheKey(base);
+    expect(buildSemanticLineageCacheKey({ ...base })).toBe(first);
+    expect(buildSemanticLineageCacheKey({
+      ...base,
+      repositoryLineageId: "https://github.com/example/other-project"
+    })).not.toBe(first);
+    expect(buildSemanticLineageCacheKey({
+      ...base,
+      documentEmbeddingManifestSha256: "b".repeat(64)
+    })).not.toBe(first);
+  });
+
+  it("restores an exact snapshot after rolling lineage state", () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-semantic-lineage-cache-"));
+    const lineageRoot = path.join(temporary, "lineage");
+    const exactRoot = path.join(temporary, "exact");
+    const targetRoot = path.join(temporary, "target");
+    const lineagePath = path.join(temporary, "cache", "lineage-key.json");
+    const exactPath = path.join(temporary, "cache", "exact-key.json");
+    for (const root of [lineageRoot, exactRoot, targetRoot]) fs.mkdirSync(root, { recursive: true });
+    const write = (rootPath: string, documentHash: string, value: number): void => {
+      const store = new SqliteStore(ensureKairnDir(rootPath).databasePath);
+      try {
+        store.upsertSemanticEmbeddings([{
+          rootPath,
+          documentId: "sdoc_shared",
+          documentHash,
+          modelId: "pinned-model",
+          schemaVersion: "semantic-documents-v5",
+          dimensions: 3,
+          vector: new Int8Array([value, 0, -value]),
+          scale: 0.005
+        }]);
+      } finally {
+        store.close();
+      }
+    };
+    try {
+      write(lineageRoot, "older-content", 64);
+      write(exactRoot, "exact-content", 127);
+      persistSnapshotEmbeddingCache(lineageRoot, lineagePath);
+      persistSnapshotEmbeddingCache(exactRoot, exactPath);
+      restoreSnapshotEmbeddingCache(targetRoot, lineagePath);
+      restoreSnapshotEmbeddingCache(targetRoot, exactPath);
+      const targetStore = new SqliteStore(ensureKairnDir(targetRoot).databasePath);
+      try {
+        expect(targetStore.listSemanticEmbeddings(targetRoot)).toEqual([
+          expect.objectContaining({
+            documentId: "sdoc_shared",
+            documentHash: "exact-content",
+            vector: new Int8Array([127, 0, -127])
+          })
+        ]);
+      } finally {
+        targetStore.close();
+      }
+    } finally {
+      fs.rmSync(temporary, { recursive: true, force: true });
+    }
   });
 
   it("resumes isolated materialization only for the exact commit, intake, and case order", () => {
