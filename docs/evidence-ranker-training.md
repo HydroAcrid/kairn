@@ -221,6 +221,24 @@ The resulting training manifest records `detached_pending`; it is not promotion
 evidence. A fresh lineage-disjoint holdout must be sealed and opened exactly
 once against the frozen artifact.
 
+Before opening that holdout, the diagnostic evaluator may inspect only the
+calibration split against its weaker official-patch references:
+
+```bash
+pnpm ranker:evaluate-probe \
+  --model artifacts/kairn-evidence-v02c-candidate.json \
+  --training-rows artifacts/ranker-corpus.train-calibration.jsonl \
+  --manifest artifacts/ranker-corpus.train-calibration.json \
+  --report artifacts/ranker-corpus.train-calibration.report.json \
+  --out artifacts/ranker-calibration-diagnostic.json \
+  --split calibration
+```
+
+Calibration mode fails if the manifest contains any holdout case. Its ranking
+metrics are useful for mechanism debugging, but its references are weak patch
+labels and its ECE is measured on the same split used for Platt fitting. It is
+therefore neither holdout evidence nor a promotion result.
+
 The checked-in sample is synthetic and exists to prove the build path, not to support promotion claims:
 
 ```bash

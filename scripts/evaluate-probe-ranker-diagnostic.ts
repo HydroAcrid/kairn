@@ -16,6 +16,7 @@ type Options = {
   manifestPath: string;
   reportPath: string;
   outPath: string;
+  split: "calibration" | "holdout";
 };
 
 type RankedCandidate = {
@@ -54,7 +55,7 @@ const manifestBytes = fs.readFileSync(options.manifestPath);
 const reportBytes = fs.readFileSync(options.reportPath);
 const manifest = record(JSON.parse(manifestBytes.toString("utf8")), "manifest");
 const report = record(JSON.parse(reportBytes.toString("utf8")), "report");
-validateInputs(manifest, report);
+validateInputs(manifest, report, options.split);
 
 const reportCases = new Map(
   array(report.cases, "report.cases").map((value, index) => {
@@ -62,25 +63,29 @@ const reportCases = new Map(
     return [string(item.id, `report.cases[${index}].id`), item] as const;
   })
 );
-const holdoutCases = array(manifest.cases, "manifest.cases")
+const targetCases = array(manifest.cases, "manifest.cases")
   .map((value, index) => record(value, `manifest.cases[${index}]`))
-  .filter((item) => item.split === "holdout");
-if (holdoutCases.length === 0) {
-  throw new Error("Probe ranker diagnostic requires at least one holdout case.");
+  .filter((item) => item.split === options.split);
+if (targetCases.length === 0) {
+  throw new Error(`Probe ranker diagnostic requires at least one ${options.split} case.`);
 }
 
 const calibrationSamples: Array<{ probability: number; label: 0 | 1 }> = [];
 const results: CaseResult[] = [];
-for (const corpusCase of holdoutCases) {
+for (const corpusCase of targetCases) {
   const caseId = string(corpusCase.id, "case.id");
   const reportCase = reportCases.get(caseId);
   if (!reportCase) throw new Error(`${caseId}: missing from probe report`);
   const requiredSourceFiles = stringArray(
-    reportCase.requiredSourceExistingFiles,
-    `${caseId}.requiredSourceExistingFiles`
+    options.split === "holdout"
+      ? reportCase.requiredSourceExistingFiles
+      : reportCase.officialPatchSourceExistingFiles,
+    options.split === "holdout"
+      ? `${caseId}.requiredSourceExistingFiles`
+      : `${caseId}.officialPatchSourceExistingFiles`
   );
   if (requiredSourceFiles.length === 0) {
-    throw new Error(`${caseId}: diagnostic holdout has no existing required source`);
+    throw new Error(`${caseId}: diagnostic ${options.split} has no existing source reference`);
   }
   const probeCandidates = array(reportCase.probeCandidates, `${caseId}.probeCandidates`);
   const ranked = probeCandidates.map((value, candidateIndex): RankedCandidate => {
@@ -135,7 +140,13 @@ for (const corpusCase of holdoutCases) {
 const summary = {
   schemaVersion: "probe-ranker-evaluation.v1",
   promotionEligible: false,
-  reason: "This is a single-use diagnostic holdout over an unsealed probe corpus, not the 165-case promotion campaign.",
+  reason: options.split === "holdout"
+    ? "This is a single-use diagnostic holdout over an unsealed probe corpus, not the 165-case promotion campaign."
+    : "This calibration-split diagnostic uses weak official-patch references and in-sample Platt calibration; it is not holdout or promotion evidence.",
+  evaluationSplit: options.split,
+  referenceKind: options.split === "holdout"
+    ? "required_source_oracle"
+    : "verified_official_patch_source",
   model: {
     id: model.modelId,
     checksum: model.checksum,
@@ -147,8 +158,11 @@ const summary = {
     manifest: inputDigest(options.manifestPath, manifestBytes),
     report: inputDigest(options.reportPath, reportBytes)
   },
-  holdoutCaseCount: results.length,
-  labeledHoldoutRows: calibrationSamples.length,
+  targetCaseCount: results.length,
+  holdoutCaseCount: options.split === "holdout" ? results.length : 0,
+  calibrationCaseCount: options.split === "calibration" ? results.length : 0,
+  labeledTargetRows: calibrationSamples.length,
+  labeledHoldoutRows: options.split === "holdout" ? calibrationSamples.length : 0,
   metrics: {
     probeAvailabilityFullRecall: fraction(results, (item) => item.availabilityAtProbe),
     currentStrictFullRecallAt64: fraction(results, (item) => item.currentFullRecallAt64),
@@ -184,7 +198,8 @@ process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
 
 function validateInputs(
   manifest: Record<string, unknown>,
-  report: Record<string, unknown>
+  report: Record<string, unknown>,
+  split: "calibration" | "holdout"
 ): void {
   if (
     manifest.schemaVersion !== "ranker-corpus.v1" ||
@@ -207,8 +222,17 @@ function validateInputs(
     throw new Error("Probe report provenance does not match the draft manifest.");
   }
   const reportCaseCount = array(report.cases, "report.cases").length;
-  if (array(manifest.cases, "manifest.cases").length !== reportCaseCount) {
+  const manifestCases = array(manifest.cases, "manifest.cases");
+  if (manifestCases.length !== reportCaseCount) {
     throw new Error("Probe manifest/report case counts differ.");
+  }
+  if (
+    split === "calibration" &&
+    manifestCases.some((value, index) =>
+      record(value, `manifest.cases[${index}]`).split === "holdout"
+    )
+  ) {
+    throw new Error("Calibration diagnostics refuse manifests containing holdout cases.");
   }
 }
 
@@ -303,12 +327,17 @@ function parseArgs(args: string[]): Options {
     if (!value) throw new Error(`${name} is required`);
     return path.resolve(value);
   };
+  const split = values.get("--split") ?? "holdout";
+  if (split !== "calibration" && split !== "holdout") {
+    throw new Error("--split must be calibration or holdout");
+  }
   return {
     modelPath: required("--model"),
     trainingRowsPath: required("--training-rows"),
     manifestPath: required("--manifest"),
     reportPath: required("--report"),
-    outPath: required("--out")
+    outPath: required("--out"),
+    split
   };
 }
 
