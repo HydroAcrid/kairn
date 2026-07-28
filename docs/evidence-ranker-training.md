@@ -99,13 +99,31 @@ pnpm ranker:materialize \
   --draft \
   --split train,calibration \
   --resume
+
+# Build a replacement holdout from repository lineages that have never appeared
+# in the existing registry. The expected pool digest fails closed if a public
+# source changes after this selection is frozen.
+pnpm ranker:intake:detached-holdout \
+  --existing-registry artifacts/lineage-registry.reviewed-v35.json \
+  --out artifacts/ranker-corpus-intake.detached-holdout-v1.json \
+  --registry-out artifacts/lineage-registry.detached-holdout-v1.json \
+  --summary-out artifacts/ranker-corpus-intake.detached-holdout-v1.summary.json \
+  --expected-pool-sha256 f8057bd08479a674b9a7b64de0f04574f691b1db02fe182387443006d96e1f3f
 ```
 
 The public-intake command selects the exact 165-case, 40-lineage split from
-public SWE-bench Verified, SWE-bench Multilingual, and Multi-SWE-bench patch
-records. Its output stays in `artifacts/`: source selection is mechanical, not
-an approval. Curators review those rows before copying them into the canonical
-intake and lineage registry.
+public SWE-bench Verified, SWE-bench Multilingual, SWE-bench Pro,
+SWE-bench Live, and Multi-SWE-bench patch records. Its output stays in
+`artifacts/`: source selection is mechanical, not an approval. Curators review
+those rows before copying them into the canonical intake and lineage registry.
+
+The detached-holdout command excludes every repository in the supplied
+registry, then solves the complete five-language/three-scenario matrix while
+also preventing a mixed-language repository from being selected twice. It
+records a digest of the complete normalized public source pool. It does not run
+Kairn, inspect model scores, fill required-source or noise labels, or seal the
+result. Oracle review must be performed without ranker output, and holdout
+materialization must wait until the candidate model is frozen.
 
 During materialization, add `--draft`. Draft mode accepts the checked-in unsealed
 intake and emits `sealed: false` candidate vectors plus candidate paths and

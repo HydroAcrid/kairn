@@ -38,6 +38,7 @@
     "verify:ranker-promotion-sample": "python3 scripts/evaluate-ranker-promotion.py --input benchmarks/evidence-promotion.sample.json --allow-sample",
     "verify:codex-pilot-smoke": "vitest run tests/codexPilot.test.ts",
     "ranker:intake:public": "tsx scripts/build-public-evidence-intake.ts",
+    "ranker:intake:detached-holdout": "tsx scripts/build-detached-holdout-intake.ts",
     "ranker:materialize": "tsx scripts/materialize-evidence-corpus.ts",
     "ranker:review-queue": "tsx scripts/build-corpus-review-queue.ts",
     "ranker:carry-reviews": "tsx scripts/carry-forward-corpus-reviews.ts",

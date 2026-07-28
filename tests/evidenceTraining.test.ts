@@ -17,7 +17,15 @@ import {
   selectIntakeCases,
   writeIsolatedMaterializationProgress
 } from "../scripts/materialize-evidence-corpus.js";
-import { patchFiles } from "../scripts/build-public-evidence-intake.js";
+import {
+  patchFiles,
+  type Language,
+  type PublicEvidenceCase
+} from "../scripts/build-public-evidence-intake.js";
+import {
+  buildDetachedHoldoutArtifacts,
+  selectDetachedHoldout
+} from "../scripts/build-detached-holdout-intake.js";
 import { buildCorpusReviewQueue } from "../scripts/build-corpus-review-queue.js";
 import { applyCorpusReviewDecisions } from "../scripts/apply-corpus-review-decisions.js";
 import { ensureKairnDir } from "../src/config/paths.js";
@@ -51,6 +59,88 @@ describe("public evidence ranker training", () => {
       "+++ b/src/engine.ts",
       "diff --git a/tests/engine.test.ts b/tests/engine.test.ts"
     ].join("\n"))).toEqual(["src/engine.ts", "tests/engine.test.ts"]);
+  });
+
+  it("selects a fresh lineage-disjoint holdout with every language and scenario cell", () => {
+    const languages: Language[] = ["python", "typescript", "go", "java", "cpp"];
+    const targets: Record<Language, number> = {
+      python: 3,
+      typescript: 2,
+      go: 2,
+      java: 2,
+      cpp: 1
+    };
+    const pool: PublicEvidenceCase[] = [];
+    for (const language of languages) {
+      for (let repositoryIndex = 0; repositoryIndex < targets[language] + 1; repositoryIndex += 1) {
+        const repository = `public/${language}-repo-${repositoryIndex}`;
+        for (let caseIndex = 0; caseIndex < 6; caseIndex += 1) {
+          pool.push({
+            sourceId: `${language}:${repositoryIndex}:${caseIndex}`,
+            sourceUrl: `https://example.test/${language}/${repositoryIndex}/${caseIndex}`,
+            repository,
+            repositoryRef: String(repositoryIndex + 1).repeat(40),
+            language,
+            prompt: `General public task ${caseIndex}`,
+            productionPatchFiles: [`src/implementation-${caseIndex}.${language === "python" ? "py" : "txt"}`],
+            changedFiles: [`src/implementation-${caseIndex}.txt`, `src/companion-${caseIndex}.txt`],
+            failureReferences: [`public failure ${caseIndex}`]
+          });
+        }
+      }
+    }
+    const excluded = new Set(languages.map((language) =>
+      `https://github.com/public/${language}-repo-0`
+    ));
+    const selected = selectDetachedHoldout(pool, excluded);
+
+    expect(selected.assignments).toHaveLength(30);
+    expect(new Set(selected.assignments.map((item) => item.row.sourceId)).size).toBe(30);
+    for (const language of languages) {
+      expect(selected.repositoriesByLanguage[language]).toHaveLength(targets[language]);
+      expect(selected.repositoriesByLanguage[language]).not.toContain(`public/${language}-repo-0`);
+      for (const scenario of ["source_localization", "failure_first", "long_session"] as const) {
+        expect(selected.assignments.filter((item) =>
+          item.row.language === language && item.scenario === scenario
+        )).toHaveLength(2);
+      }
+    }
+
+    const built = buildDetachedHoldoutArtifacts({
+      pool,
+      existingRegistry: {
+        schemaVersion: "lineage-registry.v1",
+        lineages: [...excluded].map((id) => ({ id, role: "train" as const }))
+      },
+      registryFilename: "lineage-registry.detached.json"
+    });
+    expect(built.intake).toMatchObject({
+      sealed: false,
+      lineageRegistry: "lineage-registry.detached.json",
+      sourcePoolSha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+      cases: expect.arrayContaining([
+        expect.objectContaining({
+          split: "holdout",
+          requiredSourceFiles: [],
+          qualityVerified: false
+        })
+      ])
+    });
+    expect(built.registry.lineages).toHaveLength(15);
+    expect(built.summary).toMatchObject({
+      selectedCases: 30,
+      selectedLineages: 10,
+      excludedLineages: 5
+    });
+    expect(() => buildDetachedHoldoutArtifacts({
+      pool,
+      existingRegistry: {
+        schemaVersion: "lineage-registry.v1",
+        lineages: [...excluded].map((id) => ({ id, role: "train" as const }))
+      },
+      registryFilename: "lineage-registry.detached.json",
+      expectedPoolSha256: "0".repeat(64)
+    })).toThrow("public source pool changed");
   });
 
   it("fails benchmark materialization when semantic serving falls back", () => {

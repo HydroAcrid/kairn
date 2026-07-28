@@ -4,8 +4,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-type Language = "python" | "typescript" | "go" | "java" | "cpp";
-type Scenario = "source_localization" | "failure_first" | "long_session";
+export type Language = "python" | "typescript" | "go" | "java" | "cpp";
+export type Scenario = "source_localization" | "failure_first" | "long_session";
 type Split = "train" | "calibration" | "holdout";
 
 export type PublicEvidenceCase = {
@@ -40,6 +40,13 @@ const DATASET_SOURCES = [
     split: "test",
     maxRows: 100,
     sourceUrl: "https://huggingface.co/datasets/ScaleAI/SWE-bench_Pro"
+  },
+  {
+    id: "swe-bench-live-multilang-cpp",
+    dataset: "SWE-bench-Live/MultiLang",
+    split: "cpp",
+    language: "cpp" as const,
+    sourceUrl: "https://huggingface.co/datasets/SWE-bench-Live/MultiLang"
   }
 ] as const;
 
@@ -49,6 +56,8 @@ const MULTI_SWE_SOURCES = [
   { language: "cpp" as const, filename: "nlohmann__json_dataset.jsonl" },
   { language: "cpp" as const, filename: "simdjson__simdjson_dataset.jsonl" },
   { language: "cpp" as const, filename: "yhirose__cpp-httplib_dataset.jsonl" },
+  { language: "go" as const, filename: "grpc__grpc-go_dataset.jsonl" },
+  { language: "go" as const, filename: "zeromicro__go-zero_dataset.jsonl" },
   { language: "java" as const, filename: "apache__dubbo_dataset.jsonl" },
   { language: "java" as const, filename: "fasterxml__jackson-core_dataset.jsonl" },
   { language: "java" as const, filename: "mockito__mockito_dataset.jsonl" }
@@ -72,33 +81,7 @@ export async function buildPublicEvidenceIntake(): Promise<{
   registry: Record<string, unknown>;
   summary: Record<string, unknown>;
 }> {
-  const cases: PublicEvidenceCase[] = [];
-  for (const source of DATASET_SOURCES) {
-    const rows = await fetchDatasetRows(source.dataset, source.split, "maxRows" in source ? source.maxRows : undefined);
-    rows.forEach((row, index) => {
-      const normalized = normalizeSweBenchRow(row, {
-        sourceId: `${source.id}:${index}`,
-        sourceUrl: `${source.sourceUrl}/viewer/default/${source.split}?row=${index}`,
-        ...("language" in source ? { fixedLanguage: source.language } : {})
-      });
-      if (normalized) cases.push(normalized);
-    });
-  }
-  for (const source of MULTI_SWE_SOURCES) {
-    const sourceUrl = `https://huggingface.co/datasets/ByteDance-Seed/Multi-SWE-bench/resolve/main/${source.language}/${source.filename}`;
-    const response = await fetchChecked(sourceUrl);
-    const rows = (await response.text()).split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line) as unknown);
-    rows.forEach((row, index) => {
-      const normalized = normalizeMultiSweRow(row, {
-        sourceId: `multi-swe-${source.language}:${source.filename}:${index}`,
-        sourceUrl,
-        language: source.language
-      });
-      if (normalized) cases.push(normalized);
-    });
-  }
-
-  const uniqueCases = deduplicateCases(cases);
+  const uniqueCases = await loadPublicEvidenceCases();
   const assignments: Array<{ split: Split; scenario: Scenario; row: PublicEvidenceCase }> = [];
   const lineageRoles = new Map<string, Split>();
   for (const language of LANGUAGES) {
@@ -182,6 +165,35 @@ export async function buildPublicEvidenceIntake(): Promise<{
   return { intake, registry, summary };
 }
 
+export async function loadPublicEvidenceCases(): Promise<PublicEvidenceCase[]> {
+  const cases: PublicEvidenceCase[] = [];
+  for (const source of DATASET_SOURCES) {
+    const rows = await fetchDatasetRows(source.dataset, source.split, "maxRows" in source ? source.maxRows : undefined);
+    rows.forEach((row, index) => {
+      const normalized = normalizeSweBenchRow(row, {
+        sourceId: `${source.id}:${index}`,
+        sourceUrl: `${source.sourceUrl}/viewer/default/${source.split}?row=${index}`,
+        ...("language" in source ? { fixedLanguage: source.language } : {})
+      });
+      if (normalized) cases.push(normalized);
+    });
+  }
+  for (const source of MULTI_SWE_SOURCES) {
+    const sourceUrl = `https://huggingface.co/datasets/ByteDance-Seed/Multi-SWE-bench/resolve/main/${source.language}/${source.filename}`;
+    const response = await fetchChecked(sourceUrl);
+    const rows = (await response.text()).split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line) as unknown);
+    rows.forEach((row, index) => {
+      const normalized = normalizeMultiSweRow(row, {
+        sourceId: `multi-swe-${source.language}:${source.filename}:${index}`,
+        sourceUrl,
+        language: source.language
+      });
+      if (normalized) cases.push(normalized);
+    });
+  }
+  return deduplicateCases(cases);
+}
+
 function partitionLanguageLineages(
   language: Language,
   rows: PublicEvidenceCase[]
@@ -217,7 +229,7 @@ function canFill(rows: PublicEvidenceCase[], perScenario: number): boolean {
   }
 }
 
-function selectScenarioTasks(
+export function selectScenarioTasks(
   rows: PublicEvidenceCase[],
   perScenario: number
 ): Record<Scenario, PublicEvidenceCase[]> {
@@ -290,7 +302,7 @@ function normalizeSweBenchRow(
   const language = source.fixedLanguage ?? (
     MULTILINGUAL_CPP_REPOSITORIES.has(repository) ? "cpp" : inferLanguage(changedFiles)
   );
-  if (!language || language === "python" && source.fixedLanguage !== "python") return undefined;
+  if (!language) return undefined;
   const productionPatchFiles = productionFiles(changedFiles, language);
   if (productionPatchFiles.length === 0) return undefined;
   return {
@@ -308,7 +320,7 @@ function normalizeSweBenchRow(
 
 function normalizeMultiSweRow(
   value: unknown,
-  source: { sourceId: string; sourceUrl: string; language: "java" | "cpp" }
+  source: { sourceId: string; sourceUrl: string; language: Language }
 ): PublicEvidenceCase | undefined {
   const row = asRecord(value);
   const org = text(row.org);
@@ -364,19 +376,20 @@ function productionFiles(files: string[], language: Language): string[] {
 }
 
 function inferLanguage(files: string[]): Language | undefined {
-  const scores: Record<Exclude<Language, "python">, number> = { typescript: 0, go: 0, java: 0, cpp: 0 };
+  const scores: Record<Language, number> = { python: 0, typescript: 0, go: 0, java: 0, cpp: 0 };
   for (const file of files) {
+    if (/\.pyi?$/i.test(file)) scores.python += 1;
     if (/\.(?:[cm]?[jt]sx?)$/i.test(file)) scores.typescript += 1;
     if (/\.go$/i.test(file)) scores.go += 1;
     if (/\.java$/i.test(file)) scores.java += 1;
     if (/\.(?:cc|cpp|cxx|hh|hpp|hxx)$/i.test(file)) scores.cpp += 1;
   }
-  return (Object.entries(scores) as Array<[Exclude<Language, "python">, number]>)
+  return (Object.entries(scores) as Array<[Language, number]>)
     .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
     .find(([, count]) => count > 0)?.[0];
 }
 
-function scenarioPrompt(row: PublicEvidenceCase, scenario: Scenario): string {
+export function scenarioPrompt(row: PublicEvidenceCase, scenario: Scenario): string {
   if (scenario !== "failure_first") return row.prompt;
   return `Initial failing checks:\n${row.failureReferences.map((item) => `- ${item}`).join("\n")}\n\n${row.prompt}`;
 }
@@ -459,7 +472,7 @@ async function fetchChecked(url: string): Promise<Response> {
   return response;
 }
 
-function repositoryUrl(repository: string): string {
+export function repositoryUrl(repository: string): string {
   return `https://github.com/${repository.replace(/^https:\/\/github\.com\//i, "").replace(/\.git$/i, "")}`;
 }
 
