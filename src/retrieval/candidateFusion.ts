@@ -36,7 +36,9 @@ export type CandidateRanking = {
 export type ModelCandidateUnion = {
   initialPaths: string[];
   enrichedPaths: string[];
+  probePaths: string[];
   candidateResults: HybridScoredResult[];
+  probeCandidateResults: HybridScoredResult[];
   semanticStatus: SemanticRetrieverStatus;
   graphPaths: string[];
   graphImporterPaths: string[];
@@ -78,6 +80,8 @@ export function buildModelCandidateUnion(input: {
   edges: GraphEdgeRecord[];
   changedFiles?: Set<string>;
   shown?: ContextShownRecord[];
+  /** Offline diagnostics only; serving remains bounded at 128. */
+  probeLimit?: number;
 }): ModelCandidateUnion {
   const filesByPath = new Map(input.files.map((file) => [normalizePath(file.path), file]));
   const signals = extractEvidenceTaskSignals(input.query);
@@ -357,6 +361,26 @@ export function buildModelCandidateUnion(input: {
     ...graphEnrichedOrder,
     ...preliminaryUnion
   ]).slice(0, DEFAULT_ENRICHED_CANDIDATE_LIMIT);
+  const probeLimit = Math.max(
+    DEFAULT_ENRICHED_CANDIDATE_LIMIT,
+    Math.min(
+      Math.floor(input.probeLimit ?? DEFAULT_ENRICHED_CANDIDATE_LIMIT),
+      MODEL_RETRIEVAL_PROBE_LIMIT
+    )
+  );
+  const probePaths = uniquePaths([
+    ...enrichedPaths,
+    ...graphCorePaths,
+    ...graphTailPaths,
+    ...graphConsensusPaths,
+    ...graphImporterPaths,
+    ...graphPaths,
+    ...graphEnrichedOrder,
+    ...preliminaryUnion,
+    ...semanticEvidencePaths
+  ])
+    .filter((filePath) => filesByPath.has(filePath))
+    .slice(0, probeLimit);
   const bm25ByPath = new Map(input.bm25Results.map((result) => [normalizePath(result.path), result]));
   const semanticByPath = new Map(
     [...input.semanticHits, ...intentAwareSemanticHits]
@@ -368,7 +392,7 @@ export function buildModelCandidateUnion(input: {
     ...graphImporterPaths,
     ...graphConsensusPaths
   ]);
-  const candidateResults = enrichedPaths.map((filePath): HybridScoredResult => {
+  const resultForPath = (filePath: string): HybridScoredResult => {
     const file = filesByPath.get(filePath)!;
     const bm25 = bm25ByPath.get(filePath);
     const semantic = semanticByPath.get(filePath);
@@ -396,11 +420,15 @@ export function buildModelCandidateUnion(input: {
       gitScore: changedPaths.has(filePath) ? 1 : 0,
       chunks: []
     };
-  });
+  };
+  const candidateResults = enrichedPaths.map(resultForPath);
+  const probeCandidateResults = probePaths.map(resultForPath);
   return {
     initialPaths,
     enrichedPaths,
+    probePaths,
     candidateResults,
+    probeCandidateResults,
     semanticStatus: input.semanticStatus,
     graphPaths,
     graphImporterPaths,

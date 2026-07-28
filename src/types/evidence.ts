@@ -134,12 +134,17 @@ export type EvidenceCandidateInspection = {
   candidates: EvidenceCandidate[];
   /** Complete bounded candidate union, including post-limit enrichment rows. */
   enrichedCandidates: EvidenceCandidate[];
+  /** Optional offline-only raw probe pool used to train bounded selection. */
+  probeCandidates?: EvidenceCandidate[];
   /** Cheap pre-enrichment candidates used to seed graph and source expansion. */
   initialCandidatePaths: string[];
   enrichedCandidatePaths: string[];
+  probeCandidatePaths?: string[];
   initialCandidateCount: number;
   enrichedCandidateCount: number;
+  probeCandidateCount?: number;
   candidateLimit: number;
+  probeLimit?: number;
   semanticStatus?: SemanticRetrieverStatus;
   /** Local-only lane ranks used to diagnose bounded-union misses. */
   candidateDiagnostics?: {

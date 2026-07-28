@@ -73,6 +73,8 @@ export type EvidenceCandidateInput = {
   graphEvidenceByPath?: ReadonlyMap<string, EvidenceGraphFacts>;
   initialLimit?: number;
   enrichedLimit?: number;
+  /** Offline diagnostics only; public serving remains capped at 128. */
+  diagnosticProbeMode?: boolean;
 };
 
 export type EvidenceCandidateSet = {
@@ -211,7 +213,13 @@ export function selectEvidenceSymbolTerms(signals: EvidenceTaskSignals, limit: n
 
 export function buildEvidenceCandidates(input: EvidenceCandidateInput): EvidenceCandidateSet {
   const initialLimit = Math.max(1, Math.min(input.initialLimit ?? DEFAULT_INITIAL_CANDIDATE_LIMIT, DEFAULT_INITIAL_CANDIDATE_LIMIT));
-  const enrichedLimit = Math.max(initialLimit, Math.min(input.enrichedLimit ?? DEFAULT_ENRICHED_CANDIDATE_LIMIT, DEFAULT_ENRICHED_CANDIDATE_LIMIT));
+  const maximumEnrichedLimit = input.diagnosticProbeMode
+    ? 512
+    : DEFAULT_ENRICHED_CANDIDATE_LIMIT;
+  const enrichedLimit = Math.max(
+    initialLimit,
+    Math.min(input.enrichedLimit ?? DEFAULT_ENRICHED_CANDIDATE_LIMIT, maximumEnrichedLimit)
+  );
   const signals = extractEvidenceTaskSignals(input.query);
   const filesByPath = new Map(input.files.map((file) => [normalizeRepoPath(file.path), file]));
   const legacyByPath = new Map(input.legacyResults.map((file) => [normalizeRepoPath(file.path), file]));

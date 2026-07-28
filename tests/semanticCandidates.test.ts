@@ -1114,6 +1114,45 @@ describe("model-based semantic candidates", () => {
     expect(result.graphEvidenceByPath.get(consensusSource.path)?.seedStrength).toBeLessThan(1);
   });
 
+  it("keeps offline model probes separate from the bounded serving union", () => {
+    const rootPath = "/repo";
+    const seeds = Array.from({ length: 64 }, (_, index) =>
+      file(rootPath, `src/workflow/seed-${String(index).padStart(2, "0")}.go`)
+    );
+    const graphNeighbors = Array.from({ length: 180 }, (_, index) =>
+      file(rootPath, `src/runtime/neighbor-${String(index).padStart(3, "0")}.go`)
+    );
+    const lateProbe = graphNeighbors.at(-1)!;
+    const result = buildModelCandidateUnion({
+      files: [...seeds, ...graphNeighbors],
+      query: "Repair the production workflow state transition.",
+      symbols: [],
+      bm25Results: seeds.map((candidate, index) => scored(candidate, 1 - index / 100)),
+      semanticHits: seeds.map((candidate, index) => ({
+        path: candidate.path,
+        similarity: 1 - index / 100,
+        documentIds: [`seed-${index}`]
+      })),
+      semanticStatus: readyStatus(seeds.length),
+      edges: graphNeighbors.map((neighbor) =>
+        edge(rootPath, seeds[0]!.path, neighbor.path, "type_reference")
+      ),
+      probeLimit: 512
+    });
+
+    expect(result.initialPaths).toHaveLength(64);
+    expect(result.enrichedPaths).toHaveLength(128);
+    expect(result.enrichedPaths).not.toContain(lateProbe.path);
+    expect(result.probePaths.length).toBeGreaterThan(128);
+    expect(result.probePaths).toContain(lateProbe.path);
+    expect(result.candidateResults).not.toContainEqual(
+      expect.objectContaining({ path: lateProbe.path })
+    );
+    expect(result.probeCandidateResults).toContainEqual(
+      expect.objectContaining({ path: lateProbe.path })
+    );
+  });
+
   it("balances parser-proven installation candidates across module families", () => {
     const rootPath = "/repo";
     const seeds = [

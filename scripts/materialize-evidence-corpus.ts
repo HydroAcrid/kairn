@@ -82,6 +82,8 @@ export type MaterializeOptions = {
   migrateFeatureSchema?: boolean;
   resume?: boolean;
   requireSemantic?: boolean;
+  /** Draft-only diagnostic probe export. Public corpus bounds remain 64/128. */
+  probeLimit?: number;
 };
 
 export type IsolatedMaterializationProgress = {
@@ -106,6 +108,12 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
   reportPath: string;
   caseCount: number;
 }> {
+  if (options.probeLimit && !options.draft) {
+    throw new Error("--probe-limit requires --draft and is never promotion evidence");
+  }
+  if (options.probeLimit && options.resume) {
+    throw new Error("--probe-limit does not support --resume");
+  }
   if (options.processIsolation) return materializeEvidenceCorpusIsolated(options);
   if (options.resume) {
     throw new Error("--resume requires the default isolated materialization mode");
@@ -158,7 +166,11 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
     try {
       const requiredSourcePartition = partitionRepositoryPaths(checkout.root, intakeCase.requiredSourceFiles);
       const officialPatchSourcePartition = partitionRepositoryPaths(checkout.root, intakeCase.officialPatchSourceFiles);
-      const inspection = await runtime.inspectEvidenceCandidates({ query: intakeCase.prompt, limit: 64 });
+      const inspection = await runtime.inspectEvidenceCandidates({
+        query: intakeCase.prompt,
+        limit: 64,
+        ...(options.probeLimit ? { probeLimit: options.probeLimit } : {})
+      });
       if (options.requireSemantic) {
         assertSemanticMaterializationReady(inspection.semanticStatus, intakeCase.id);
       }
@@ -200,6 +212,9 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
         : null;
       const candidates = inspection.candidates.map((candidate) => labeledCandidate(candidate, labels));
       const trainingCandidates = inspection.enrichedCandidates.map((candidate) => labeledCandidate(candidate, labels));
+      const probeCandidates = inspection.probeCandidates?.map((candidate) =>
+        labeledCandidate(candidate, labels)
+      );
       const explicitNegativesAt64 = candidates.filter(
         (candidate) => candidate.labelProvenance === "explicit_noise_or_excluded"
       ).length;
@@ -278,6 +293,18 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
             ? { candidateDiagnostics: inspection.candidateDiagnostics }
             : {}),
           enrichedCandidates: inspection.enrichedCandidates,
+          ...(probeCandidates
+            ? { probeCandidates }
+            : {}),
+          ...(inspection.probeCandidatePaths
+            ? { probeCandidatePaths: inspection.probeCandidatePaths }
+            : {}),
+          ...(inspection.probeCandidateCount !== undefined
+            ? { probeCandidateCount: inspection.probeCandidateCount }
+            : {}),
+          ...(inspection.probeLimit !== undefined
+            ? { probeLimit: inspection.probeLimit }
+            : {}),
           candidates: inspection.enrichedCandidates.map((candidate) => ({
             path: candidate.path,
             reasons: candidate.reasons
@@ -422,7 +449,8 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
       ...(options.allowSample ? ["--allow-sample"] : []),
       ...(options.allowLocalFixture ? ["--allow-local-fixture"] : []),
       ...(options.migrateFeatureSchema ? ["--migrate-feature-schema"] : []),
-      ...(options.requireSemantic ? ["--require-semantic"] : [])
+      ...(options.requireSemantic ? ["--require-semantic"] : []),
+      ...(options.probeLimit ? ["--probe-limit", String(options.probeLimit)] : [])
     ];
     try {
       execFileSync(process.execPath, args, {
@@ -1209,8 +1237,19 @@ function parseArgs(argv: string[]): MaterializeOptions {
     resume: flags.has("--resume"),
     requireSemantic: flags.has("--require-semantic"),
     ...(values.get("--limit") ? { limit: positiveInteger(values.get("--limit")!, "--limit") } : {}),
+    ...(values.get("--probe-limit")
+      ? { probeLimit: boundedProbeLimit(values.get("--probe-limit")!) }
+      : {}),
     ...(values.get("--case-id") ? { caseIds: commaSeparated(values.get("--case-id")!, "--case-id") } : {})
   };
+}
+
+function boundedProbeLimit(value: string): number {
+  const parsed = positiveInteger(value, "--probe-limit");
+  if (parsed < 128 || parsed > 512) {
+    throw new Error("--probe-limit must be between 128 and 512");
+  }
+  return parsed;
 }
 
 function commaSeparated(value: string, label: string): string[] {

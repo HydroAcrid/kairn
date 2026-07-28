@@ -149,6 +149,8 @@ type CalibratedQueryLocalIndex = QueryLocalIndex & {
   initialCandidateCount: number;
   enrichedCandidateCount: number;
   candidateResults?: HybridScoredResult[];
+  probeCandidateFiles?: string[];
+  probeCandidateResults?: HybridScoredResult[];
   graphEvidenceByPath?: ReadonlyMap<string, EvidenceGraphFacts>;
   semanticStatus?: SemanticRetrieverStatus;
   candidateDiagnostics?: EvidenceCandidateInspection["candidateDiagnostics"];
@@ -3526,6 +3528,8 @@ export class KairnRuntime {
   async inspectEvidenceCandidates(input: {
     query: string;
     limit?: number | undefined;
+    /** Offline diagnostics only; public serving remains capped at 128. */
+    probeLimit?: number | undefined;
   }): Promise<EvidenceCandidateInspection> {
     await this.init();
     const files = this.store.listFiles(this.rootPath);
@@ -3533,7 +3537,8 @@ export class KairnRuntime {
       rootPath: this.rootPath,
       files,
       query: input.query,
-      semanticConfig: resolveSemanticRetrieverConfig(this.rootPath, this.semanticConfig)
+      semanticConfig: resolveSemanticRetrieverConfig(this.rootPath, this.semanticConfig),
+      ...(input.probeLimit ? { diagnosticProbeLimit: input.probeLimit } : {})
     });
     const candidatePaths = new Set(localIndex.candidateFiles);
     const retrievalFiles = files.filter((file) => candidatePaths.has(file.path));
@@ -3565,16 +3570,50 @@ export class KairnRuntime {
       initialLimit: DEFAULT_INITIAL_CANDIDATE_LIMIT,
       enrichedLimit: DEFAULT_ENRICHED_CANDIDATE_LIMIT
     });
+    const probeLimit = input.probeLimit
+      ? Math.max(
+          DEFAULT_ENRICHED_CANDIDATE_LIMIT,
+          Math.min(Math.floor(input.probeLimit), MODEL_RETRIEVAL_PROBE_LIMIT)
+        )
+      : undefined;
+    const probeCandidateSet = probeLimit && localIndex.probeCandidateFiles
+      ? buildEvidenceCandidates({
+          files,
+          query: input.query,
+          symbols: localIndex.symbols,
+          edges: localIndex.edges,
+          legacyResults: localIndex.probeCandidateResults ?? hybridCandidates,
+          fixedCandidatePaths: localIndex.probeCandidateFiles,
+          ...(localIndex.graphEvidenceByPath
+            ? { graphEvidenceByPath: localIndex.graphEvidenceByPath }
+            : {}),
+          shown: [],
+          changedFiles: new Set<string>(),
+          initialLimit: DEFAULT_INITIAL_CANDIDATE_LIMIT,
+          enrichedLimit: probeLimit,
+          diagnosticProbeMode: true
+        })
+      : undefined;
     const candidateLimit = Math.max(1, Math.min(input.limit ?? DEFAULT_INITIAL_CANDIDATE_LIMIT, DEFAULT_INITIAL_CANDIDATE_LIMIT));
     return {
       signals: candidateSet.signals,
       candidates: candidateSet.candidates.slice(0, candidateLimit),
       enrichedCandidates: candidateSet.candidates,
+      ...(probeCandidateSet
+        ? { probeCandidates: probeCandidateSet.candidates }
+        : {}),
       initialCandidatePaths: localIndex.initialCandidateFiles,
       enrichedCandidatePaths: candidateSet.candidates.map((candidate) => candidate.path),
+      ...(probeCandidateSet
+        ? { probeCandidatePaths: probeCandidateSet.candidates.map((candidate) => candidate.path) }
+        : {}),
       initialCandidateCount: localIndex.initialCandidateCount,
       enrichedCandidateCount: localIndex.enrichedCandidateCount,
+      ...(probeCandidateSet
+        ? { probeCandidateCount: probeCandidateSet.candidates.length }
+        : {}),
       candidateLimit,
+      ...(probeLimit ? { probeLimit } : {}),
       ...(localIndex.semanticStatus ? { semanticStatus: localIndex.semanticStatus } : {}),
       ...(localIndex.candidateDiagnostics
         ? { candidateDiagnostics: localIndex.candidateDiagnostics }
@@ -3593,6 +3632,8 @@ export class KairnRuntime {
     changedFiles?: Set<string> | undefined;
     shown?: TaskSession["filesShown"] | undefined;
     semanticConfig?: SemanticRetrieverConfig | undefined;
+    /** Offline diagnostics only; public serving remains capped at 128. */
+    diagnosticProbeLimit?: number | undefined;
   }): Promise<CalibratedQueryLocalIndex> {
     const semanticConfig = resolveSemanticRetrieverConfig(
       input.rootPath,
@@ -3707,18 +3748,24 @@ export class KairnRuntime {
         semanticEvidencePaths,
         semanticStatus: semanticSearch.status,
         edges,
+        ...(input.diagnosticProbeLimit
+          ? { probeLimit: input.diagnosticProbeLimit }
+          : {}),
         ...(input.changedFiles ? { changedFiles: input.changedFiles } : {}),
         ...(input.shown ? { shown: input.shown } : {})
       });
       const candidateFiles = fused.enrichedPaths.slice(0, DEFAULT_ENRICHED_CANDIDATE_LIMIT);
-      const candidatePathSet = new Set(candidateFiles);
+      const metadataCandidateFiles = input.diagnosticProbeLimit
+        ? fused.probePaths
+        : candidateFiles;
+      const candidatePathSet = new Set(metadataCandidateFiles);
       const symbols = uniqueSymbols([
         ...matchingSymbols.filter((symbol) => candidatePathSet.has(symbol.filePath)),
-        ...this.store.listSymbolsForFiles(input.rootPath, candidateFiles, budget.symbolLimit)
+        ...this.store.listSymbolsForFiles(input.rootPath, metadataCandidateFiles, budget.symbolLimit)
       ]);
       const chunks = this.store.listSemanticChunksForFiles(
         input.rootPath,
-        candidateFiles,
+        metadataCandidateFiles,
         budget.chunkLimit
       );
       return {
@@ -3736,6 +3783,12 @@ export class KairnRuntime {
         initialCandidateCount: fused.initialPaths.length,
         enrichedCandidateCount: candidateFiles.length,
         candidateResults: fused.candidateResults,
+        ...(input.diagnosticProbeLimit
+          ? {
+              probeCandidateFiles: fused.probePaths,
+              probeCandidateResults: fused.probeCandidateResults
+            }
+          : {}),
         graphEvidenceByPath: fused.graphEvidenceByPath,
         semanticStatus: fused.semanticStatus,
         candidateDiagnostics: {
