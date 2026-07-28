@@ -45,6 +45,7 @@
     "ranker:apply-reviews": "tsx scripts/apply-corpus-review-decisions.ts",
     "ranker:checkpoint": "tsx scripts/build-ranker-diagnostic-checkpoint.ts",
     "ranker:readiness": "tsx scripts/build-ranker-readiness-checkpoint.ts",
+    "ranker:probe-diagnostic": "tsx scripts/build-probe-ranker-diagnostic.ts",
     "semantic:evaluate-model": "tsx scripts/evaluate-semantic-model.ts",
     "semantic:inspect-query": "tsx scripts/inspect-semantic-query.ts",
     "semantic:benchmark-runtime": "tsx scripts/benchmark-semantic-runtime.ts",
