@@ -238,7 +238,8 @@ describe("public evidence ranker training", () => {
     const identity = {
       kairnCommit: "a".repeat(40),
       intakeSha256: "b".repeat(64),
-      selectedCaseIds: ["case-a", "case-b"]
+      selectedCaseIds: ["case-a", "case-b"],
+      probeLimit: 512
     };
     try {
       writeIsolatedMaterializationProgress(progressPath, {
@@ -257,6 +258,10 @@ describe("public evidence ranker training", () => {
       expect(() => readIsolatedMaterializationProgress(progressPath, {
         ...identity,
         kairnCommit: "c".repeat(40)
+      })).toThrow("does not match the current commit");
+      expect(() => readIsolatedMaterializationProgress(progressPath, {
+        ...identity,
+        probeLimit: 256
       })).toThrow("does not match the current commit");
     } finally {
       fs.rmSync(temporary, { recursive: true, force: true });
@@ -317,7 +322,8 @@ describe("public evidence ranker training", () => {
       draft: true,
       processIsolation: true,
       migrateFeatureSchema: true,
-      resume: true
+      resume: true,
+      probeLimit: 256
     } as const;
     const result = await materializeEvidenceCorpus(materializeOptions);
 
@@ -325,6 +331,7 @@ describe("public evidence ranker training", () => {
     expect(JSON.parse(fs.readFileSync(`${manifestPath}.progress.json`, "utf8"))).toMatchObject({
       schemaVersion: "ranker-corpus-materialization-progress.v1",
       complete: true,
+      probeLimit: 256,
       selectedCaseIds: ["materialized-train-case"],
       materializedCases: [expect.objectContaining({ id: "materialized-train-case" })],
       reportCases: [expect.objectContaining({ id: "materialized-train-case" })]

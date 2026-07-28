@@ -91,6 +91,8 @@ export type IsolatedMaterializationProgress = {
   kairnCommit: string;
   intakeSha256: string;
   selectedCaseIds: string[];
+  /** Present for draft diagnostic campaigns and bound into resume identity. */
+  probeLimit?: number;
   complete: boolean;
   materializedCases: Array<Record<string, unknown>>;
   reportCases: Array<Record<string, unknown>>;
@@ -110,9 +112,6 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
 }> {
   if (options.probeLimit && !options.draft) {
     throw new Error("--probe-limit requires --draft and is never promotion evidence");
-  }
-  if (options.probeLimit && options.resume) {
-    throw new Error("--probe-limit does not support --resume");
   }
   if (options.processIsolation) return materializeEvidenceCorpusIsolated(options);
   if (options.resume) {
@@ -410,7 +409,8 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
     ? readIsolatedMaterializationProgress(progressPath, {
         kairnCommit,
         intakeSha256: intakeHash,
-        selectedCaseIds
+        selectedCaseIds,
+        ...(options.probeLimit ? { probeLimit: options.probeLimit } : {})
       })
     : undefined;
   const materializedCases: Array<Record<string, unknown>> = [
@@ -475,6 +475,7 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
           kairnCommit,
           intakeSha256: intakeHash,
           selectedCaseIds,
+          ...(options.probeLimit ? { probeLimit: options.probeLimit } : {}),
           complete: false,
           materializedCases,
           reportCases
@@ -542,6 +543,7 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
       kairnCommit,
       intakeSha256: intakeHash,
       selectedCaseIds,
+      ...(options.probeLimit ? { probeLimit: options.probeLimit } : {}),
       complete: true,
       materializedCases,
       reportCases
@@ -768,6 +770,7 @@ export function readIsolatedMaterializationProgress(
     kairnCommit: string;
     intakeSha256: string;
     selectedCaseIds: string[];
+    probeLimit?: number;
   }
 ): IsolatedMaterializationProgress | undefined {
   if (!fs.existsSync(progressPath)) return undefined;
@@ -782,13 +785,17 @@ export function readIsolatedMaterializationProgress(
   const intakeSha256 = string(parsed.intakeSha256, "progress intakeSha256");
   const selectedCaseIds = array(parsed.selectedCaseIds, "progress selectedCaseIds")
     .map((item, index) => string(item, `progress selectedCaseIds[${index}]`));
+  const probeLimit = parsed.probeLimit === undefined
+    ? undefined
+    : positiveIntegerValue(parsed.probeLimit, "progress probeLimit");
   if (
     kairnCommit !== expected.kairnCommit ||
     intakeSha256 !== expected.intakeSha256 ||
-    !sameStrings(selectedCaseIds, expected.selectedCaseIds)
+    !sameStrings(selectedCaseIds, expected.selectedCaseIds) ||
+    probeLimit !== expected.probeLimit
   ) {
     throw new Error(
-      "isolated materialization progress does not match the current commit, intake, or selected cases"
+      "isolated materialization progress does not match the current commit, intake, selected cases, or probe limit"
     );
   }
   if (typeof parsed.complete !== "boolean") {
@@ -817,6 +824,7 @@ export function readIsolatedMaterializationProgress(
     kairnCommit,
     intakeSha256,
     selectedCaseIds,
+    ...(probeLimit ? { probeLimit } : {}),
     complete: parsed.complete,
     materializedCases,
     reportCases
