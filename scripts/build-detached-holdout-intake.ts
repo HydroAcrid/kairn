@@ -323,7 +323,7 @@ function parseArgs(argv: string[]): {
 const isDirect = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isDirect) {
   const targets = parseArgs(process.argv.slice(2));
-  loadPublicEvidenceCases()
+  loadPublicEvidenceCases({ includeDetachedSources: true })
     .then((pool) => {
       const existingRegistry = JSON.parse(fs.readFileSync(targets.existingRegistry, "utf8")) as LineageRegistry;
       const artifacts = buildDetachedHoldoutArtifacts({

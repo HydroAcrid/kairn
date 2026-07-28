@@ -20,7 +20,7 @@ export type PublicEvidenceCase = {
   failureReferences: string[];
 };
 
-const DATASET_SOURCES = [
+const BASE_DATASET_SOURCES = [
   {
     id: "swe-bench-verified",
     dataset: "SWE-bench/SWE-bench_Verified",
@@ -40,7 +40,10 @@ const DATASET_SOURCES = [
     split: "test",
     maxRows: 100,
     sourceUrl: "https://huggingface.co/datasets/ScaleAI/SWE-bench_Pro"
-  },
+  }
+] as const;
+
+const DETACHED_DATASET_SOURCES = [
   {
     id: "swe-bench-live-multilang-cpp",
     dataset: "SWE-bench-Live/MultiLang",
@@ -50,17 +53,20 @@ const DATASET_SOURCES = [
   }
 ] as const;
 
-const MULTI_SWE_SOURCES = [
+const BASE_MULTI_SWE_SOURCES = [
   { language: "cpp" as const, filename: "catchorg__Catch2_dataset.jsonl" },
   { language: "cpp" as const, filename: "fmtlib__fmt_dataset.jsonl" },
   { language: "cpp" as const, filename: "nlohmann__json_dataset.jsonl" },
   { language: "cpp" as const, filename: "simdjson__simdjson_dataset.jsonl" },
   { language: "cpp" as const, filename: "yhirose__cpp-httplib_dataset.jsonl" },
-  { language: "go" as const, filename: "grpc__grpc-go_dataset.jsonl" },
-  { language: "go" as const, filename: "zeromicro__go-zero_dataset.jsonl" },
   { language: "java" as const, filename: "apache__dubbo_dataset.jsonl" },
   { language: "java" as const, filename: "fasterxml__jackson-core_dataset.jsonl" },
   { language: "java" as const, filename: "mockito__mockito_dataset.jsonl" }
+] as const;
+
+const DETACHED_MULTI_SWE_SOURCES = [
+  { language: "go" as const, filename: "grpc__grpc-go_dataset.jsonl" },
+  { language: "go" as const, filename: "zeromicro__go-zero_dataset.jsonl" }
 ] as const;
 
 const MULTILINGUAL_CPP_REPOSITORIES = new Set(["fmtlib/fmt", "nlohmann/json"]);
@@ -142,7 +148,7 @@ export async function buildPublicEvidenceIntake(): Promise<{
     sampleOnly: false,
     lineageRegistry: "lineage-registry.v1.json",
     sources: [
-      ...DATASET_SOURCES.map((source) => String(source.sourceUrl)),
+      ...BASE_DATASET_SOURCES.map((source) => String(source.sourceUrl)),
       "https://huggingface.co/datasets/ByteDance-Seed/Multi-SWE-bench"
     ],
     curationStatus: "public_candidates_selected_noise_labels_pending",
@@ -165,20 +171,29 @@ export async function buildPublicEvidenceIntake(): Promise<{
   return { intake, registry, summary };
 }
 
-export async function loadPublicEvidenceCases(): Promise<PublicEvidenceCase[]> {
+export async function loadPublicEvidenceCases(options: {
+  includeDetachedSources?: boolean;
+} = {}): Promise<PublicEvidenceCase[]> {
   const cases: PublicEvidenceCase[] = [];
-  for (const source of DATASET_SOURCES) {
+  const datasetSources = options.includeDetachedSources
+    ? [...BASE_DATASET_SOURCES, ...DETACHED_DATASET_SOURCES]
+    : [...BASE_DATASET_SOURCES];
+  for (const source of datasetSources) {
     const rows = await fetchDatasetRows(source.dataset, source.split, "maxRows" in source ? source.maxRows : undefined);
     rows.forEach((row, index) => {
       const normalized = normalizeSweBenchRow(row, {
         sourceId: `${source.id}:${index}`,
         sourceUrl: `${source.sourceUrl}/viewer/default/${source.split}?row=${index}`,
-        ...("language" in source ? { fixedLanguage: source.language } : {})
+        ...("language" in source ? { fixedLanguage: source.language } : {}),
+        allowInferredPython: options.includeDetachedSources === true
       });
       if (normalized) cases.push(normalized);
     });
   }
-  for (const source of MULTI_SWE_SOURCES) {
+  const multiSweSources = options.includeDetachedSources
+    ? [...BASE_MULTI_SWE_SOURCES, ...DETACHED_MULTI_SWE_SOURCES]
+    : [...BASE_MULTI_SWE_SOURCES];
+  for (const source of multiSweSources) {
     const sourceUrl = `https://huggingface.co/datasets/ByteDance-Seed/Multi-SWE-bench/resolve/main/${source.language}/${source.filename}`;
     const response = await fetchChecked(sourceUrl);
     const rows = (await response.text()).split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line) as unknown);
@@ -290,7 +305,12 @@ export function selectScenarioTasks(
 
 function normalizeSweBenchRow(
   value: unknown,
-  source: { sourceId: string; sourceUrl: string; fixedLanguage?: Language }
+  source: {
+    sourceId: string;
+    sourceUrl: string;
+    fixedLanguage?: Language;
+    allowInferredPython: boolean;
+  }
 ): PublicEvidenceCase | undefined {
   const row = asRecord(value);
   const repository = text(row.repo);
@@ -302,7 +322,9 @@ function normalizeSweBenchRow(
   const language = source.fixedLanguage ?? (
     MULTILINGUAL_CPP_REPOSITORIES.has(repository) ? "cpp" : inferLanguage(changedFiles)
   );
-  if (!language) return undefined;
+  if (!language || language === "python" && !source.fixedLanguage && !source.allowInferredPython) {
+    return undefined;
+  }
   const productionPatchFiles = productionFiles(changedFiles, language);
   if (productionPatchFiles.length === 0) return undefined;
   return {
