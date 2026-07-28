@@ -1,0 +1,107 @@
+{
+  "schemaVersion": "semantic-probe-ranker-checkpoint.v1",
+  "checkpointId": "v02c-semantic-probe-ranker-v162-20260727",
+  "createdAt": "2026-07-27T21:45:00-04:00",
+  "status": "candidate_availability_passed_provisional_ranker_rejected",
+  "retrievalCommit": "5927cd1412e115a76213bd8c73f0cb2c49cebeba",
+  "branch": "codex/v0.2c-semantic-iteration",
+  "policy": {
+    "probeLimit": 512,
+    "publicInitialLimit": 64,
+    "publicEnrichedLimit": 128,
+    "semanticModelId": "jina-code-v2-q8",
+    "relevanceRegexUsed": false,
+    "fixtureSpecificPolicyUsed": false,
+    "promotionEligible": false
+  },
+  "probeCampaign": {
+    "caseCount": 38,
+    "trainCases": 4,
+    "calibrationCases": 4,
+    "holdoutCases": 30,
+    "manifest": {
+      "path": "artifacts/ranker-corpus.semantic-v162-probe512-oracle38.json",
+      "sha256": "ab74613dad66ebf068c592179f6ffc63197bc8151f97d7d372cd39160782e9ab",
+      "bytes": 7836543
+    },
+    "report": {
+      "path": "artifacts/ranker-corpus.semantic-v162-probe512-oracle38.report.json",
+      "sha256": "c4c44b7d081eabd8aaef4ed26d04ac9dcc6cbf94531b31ee4d1125ed49566e01",
+      "bytes": 51134302
+    },
+    "probeAvailability": {
+      "strictFullRecallAt512": {
+        "count": 38,
+        "total": 38,
+        "rate": 1
+      },
+      "byLanguage": {
+        "python": {"count": 6, "total": 6},
+        "typescript": {"count": 10, "total": 10},
+        "go": {"count": 8, "total": 8},
+        "java": {"count": 7, "total": 7},
+        "cpp": {"count": 7, "total": 7}
+      },
+      "byScenario": {
+        "failure_first": {"count": 11, "total": 11},
+        "long_session": {"count": 14, "total": 14},
+        "source_localization": {"count": 13, "total": 13}
+      }
+    }
+  },
+  "provisionalModel": {
+    "modelId": "evidence-logistic-semantic-v162-provisional",
+    "trainingCases": 4,
+    "calibrationCases": 4,
+    "holdoutCases": 30,
+    "trainingRows": {
+      "path": "artifacts/ranker-probe.semantic-v162-oracle38.jsonl",
+      "sha256": "01e784f747a9f4f39eecb0c7117902e6cc8ec6436bfa49dbcb93dfc36ab22d55",
+      "bytes": 180004
+    },
+    "modelArtifact": {
+      "path": "artifacts/evidence-ranker.semantic-v162-provisional.json",
+      "sha256": "f4f27e48987c23481dbdb911bd7d16ad471413fd79f69db167ef62fdf65269af",
+      "bytes": 1756,
+      "runtimeChecksum": "cad6a71c9ecbad3452d13318cefd13e0b57adbe455b42741debae1af2c155da2"
+    },
+    "trainingManifest": {
+      "path": "artifacts/evidence-logistic-semantic-v162-provisional.training-manifest.json",
+      "sha256": "b63170ad1b5519d4c0769aeab7e4e9b743d7fe0e6651c2086b6f37ddec4f0bd1",
+      "bytes": 5315
+    },
+    "calibrationExpectedCalibrationError": 0.12831,
+    "accepted": false
+  },
+  "singleUseHoldoutEvaluation": {
+    "holdoutOpened": true,
+    "holdoutMayBeUsedForFurtherTuning": false,
+    "evaluation": {
+      "path": "artifacts/ranker-probe.semantic-v162-provisional.evaluation.json",
+      "sha256": "ec3dc2fa410bf2005c9b4fac46060b52cb89a0099f92eb762675d39e6ef359d0",
+      "bytes": 27865
+    },
+    "currentStrictFullRecallAt64": 0.866667,
+    "currentStrictFullRecallAt128": 0.966667,
+    "rankedStrictFullRecallAt64": 0.8,
+    "rankedStrictFullRecallAt128": 0.833333,
+    "rankedRequiredFileRecallAt64": 0.789474,
+    "rankedRequiredFileRecallAt128": 0.877193,
+    "rankedRequiredFileMrr": 0.22685,
+    "holdoutExpectedCalibrationError": 0.2774,
+    "generatedVendorTopOneViolations": 0
+  },
+  "decision": {
+    "candidateAvailabilityAccepted": true,
+    "provisionalRankerAccepted": false,
+    "reason": "The frozen model and structural probe pool contains every required source, but a logistic model trained on only four training cases generalizes worse than the current bounded selector and is badly calibrated.",
+    "nextStep": "Rematerialize all 90 training and 45 calibration cases with the frozen probe mechanism, review changed labeled candidates, retrain without reopening this holdout, and evaluate once on a fresh lineage-disjoint holdout."
+  },
+  "verification": {
+    "testFilesPassed": 32,
+    "testsPassed": 493,
+    "typecheckPassed": true,
+    "semanticArchitectureCheckPassed": true
+  },
+  "paidComparisonEligible": false
+}
