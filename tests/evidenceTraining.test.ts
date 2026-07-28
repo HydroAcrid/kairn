@@ -14,6 +14,7 @@ import {
   persistSnapshotEmbeddingCache,
   readIsolatedMaterializationProgress,
   restoreSnapshotEmbeddingCache,
+  selectIntakeCases,
   writeIsolatedMaterializationProgress
 } from "../scripts/materialize-evidence-corpus.js";
 import { patchFiles } from "../scripts/build-public-evidence-intake.js";
@@ -335,6 +336,33 @@ describe("public evidence ranker training", () => {
     } finally {
       fs.rmSync(temporary, { recursive: true, force: true });
     }
+  });
+
+  it("selects train and calibration splits without opening holdout cases", () => {
+    const cases = [
+      { id: "holdout-b", split: "holdout" as const },
+      { id: "train-b", split: "train" as const },
+      { id: "calibration-a", split: "calibration" as const },
+      { id: "train-a", split: "train" as const }
+    ];
+
+    expect(selectIntakeCases(cases, {
+      draft: true,
+      splits: ["train", "calibration"]
+    })).toEqual([
+      { id: "calibration-a", split: "calibration" },
+      { id: "train-a", split: "train" },
+      { id: "train-b", split: "train" }
+    ]);
+    expect(() => selectIntakeCases(cases, {
+      draft: true,
+      limit: 3,
+      splits: ["train", "calibration"]
+    })).toThrow("--limit, --case-id, and --split are mutually exclusive");
+    expect(() => selectIntakeCases(cases, {
+      draft: false,
+      splits: ["train", "calibration"]
+    })).toThrow("partial materialization is allowed only with --draft");
   });
 
   it("materializes candidate features from the same bounded serving path", async () => {
@@ -729,6 +757,50 @@ describe("public evidence ranker training", () => {
     expect(manifest.rows).toEqual({ train: 4, calibration: 4, holdout: 4 });
     expect(manifest.crossValidationGroup).toBe("repositoryLineageId");
     expect(manifest.holdout).toMatchObject({ rows: 4, status: "sealed_not_evaluated" });
+  });
+
+  it("freezes train and calibration data before a detached holdout is opened", () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-ranker-detached-holdout-"));
+    const input = path.join(temporary, "train-calibration.jsonl");
+    const output = path.join(temporary, "detached.json");
+    const rows = fs.readFileSync(path.resolve("benchmarks/evidence-training.sample.jsonl"), "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as { split: string })
+      .filter((row) => row.split !== "holdout");
+    fs.writeFileSync(input, `${rows.map((row) => JSON.stringify(row)).join("\n")}\n`, "utf8");
+    const python = pythonInvocation();
+    const baseArgs = [
+      ...python.prefix,
+      path.resolve("scripts/train-evidence-ranker.py"),
+      "--input", input,
+      "--out", output,
+      "--model-id", "detached-evidence-v1",
+      "--node", process.execPath,
+      "--public-data-only"
+    ];
+
+    const rejected = spawnSync(python.command, baseArgs, {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+    expect(rejected.status).not.toBe(0);
+    expect(rejected.stderr).toContain("or declare --detached-holdout");
+
+    const result = spawnSync(python.command, [...baseArgs, "--detached-holdout"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+    expect(result.status, result.stderr).toBe(0);
+    expect(validateEvidenceRankerArtifact(JSON.parse(fs.readFileSync(output, "utf8"))).modelId)
+      .toBe("detached-evidence-v1");
+    expect(JSON.parse(fs.readFileSync(
+      path.join(temporary, "detached-evidence-v1.training-manifest.json"),
+      "utf8"
+    ))).toMatchObject({
+      rows: { train: 4, calibration: 4, holdout: 0 },
+      holdout: { rows: 0, status: "detached_pending" }
+    });
   });
 
   it("constructs a bounded sample corpus only after lineage and label checks pass", () => {

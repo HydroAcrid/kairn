@@ -90,6 +90,15 @@ pnpm ranker:materialize \
   --report-out artifacts/ranker-corpus.case-diagnostic.report.json \
   --draft \
   --case-id case-001,case-002
+
+# Freeze train/calibration rows without selecting or opening holdout cases.
+pnpm ranker:materialize \
+  --intake artifacts/ranker-corpus-intake.reviewed.json \
+  --out artifacts/ranker-corpus.train-calibration.json \
+  --report-out artifacts/ranker-corpus.train-calibration.report.json \
+  --draft \
+  --split train,calibration \
+  --resume
 ```
 
 The public-intake command selects the exact 165-case, 40-lineage split from
@@ -174,6 +183,25 @@ counterfeit calibration evidence. L2 cross-validation groups by
 calibration, but does not evaluate the sealed holdout; the promotion command is
 the single-use holdout opening and records its model/corpus hashes and
 evaluation ID.
+
+When the holdout is maintained as a separate sealed artifact, freeze the model
+from train/calibration rows with `--detached-holdout`. The flag is rejected if
+the input also contains holdout rows, and omitting it is rejected when holdout
+rows are absent:
+
+```bash
+python3 scripts/train-evidence-ranker.py \
+  --input artifacts/ranker-corpus.train-calibration.jsonl \
+  --out artifacts/kairn-evidence-v02c-candidate.json \
+  --model-id kairn-evidence-v02c-candidate \
+  --node "$(command -v node)" \
+  --public-data-only \
+  --detached-holdout
+```
+
+The resulting training manifest records `detached_pending`; it is not promotion
+evidence. A fresh lineage-disjoint holdout must be sealed and opened exactly
+once against the frozen artifact.
 
 The checked-in sample is synthetic and exists to prove the build path, not to support promotion claims:
 

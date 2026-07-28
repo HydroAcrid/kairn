@@ -26,7 +26,7 @@ import type {
 
 const require = createRequire(import.meta.url);
 
-type Split = "train" | "calibration" | "holdout";
+export type Split = "train" | "calibration" | "holdout";
 type Language = "python" | "typescript" | "go" | "java" | "cpp";
 type Scenario = "source_localization" | "failure_first" | "long_session";
 type Origin = "public_benchmark" | "public_patch" | "synthetic";
@@ -76,6 +76,7 @@ export type MaterializeOptions = {
   draft?: boolean;
   limit?: number;
   caseIds?: string[];
+  splits?: Split[];
   processIsolation?: boolean;
   isolatedWorker?: boolean;
   snapshotEmbeddingCachePath?: string;
@@ -376,7 +377,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
     positiveSourceAnyHitRateAt128: booleanRate(reportCases, "positiveSourceHitAt128"),
     officialPatchMeanRecallAt64: meanNullable(reportCases, "officialPatchSourceRecallAt64"),
     officialPatchMeanRecallAt128: meanNullable(reportCases, "officialPatchSourceRecallAt128"),
-    ...(options.limit || options.caseIds ? {
+    ...(options.limit || options.caseIds || options.splits ? {
       partial: true,
       selectedCaseIds: selectedCases.map((item) => item.id)
     } : {}),
@@ -510,7 +511,7 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
   }
 
   const relativeRegistry = normalizePath(path.relative(path.dirname(outPath), registryPath));
-  const partial = Boolean(options.limit || options.caseIds);
+  const partial = Boolean(options.limit || options.caseIds || options.splits);
   const manifest = {
     schemaVersion: "ranker-corpus.v1",
     corpusId: intake.corpusId,
@@ -586,25 +587,34 @@ function indexCoverage(stats: ReturnType<KairnRuntime["getIndexStatus"]>): Recor
   };
 }
 
-function selectIntakeCases(
-  cases: IntakeCase[],
-  options: Pick<MaterializeOptions, "draft" | "limit" | "caseIds" | "isolatedWorker">
-): IntakeCase[] {
+export function selectIntakeCases<T extends { id: string; split: Split }>(
+  cases: T[],
+  options: Pick<MaterializeOptions, "draft" | "limit" | "caseIds" | "splits" | "isolatedWorker">
+): T[] {
   const orderedCases = [...cases].sort((left, right) => left.id.localeCompare(right.id));
-  if (options.limit && options.caseIds) throw new Error("--limit and --case-id cannot be combined");
-  if ((options.limit || options.caseIds) && !options.draft && !options.isolatedWorker) {
+  const selectors = [options.limit, options.caseIds, options.splits].filter(Boolean).length;
+  if (selectors > 1) {
+    throw new Error("--limit, --case-id, and --split are mutually exclusive");
+  }
+  if ((options.limit || options.caseIds || options.splits) && !options.draft && !options.isolatedWorker) {
     throw new Error("partial materialization is allowed only with --draft");
   }
   const requestedCaseIds = options.caseIds ? new Set(options.caseIds) : undefined;
+  const requestedSplits = options.splits ? new Set(options.splits) : undefined;
   const selectedCases = requestedCaseIds
     ? orderedCases.filter((item) => requestedCaseIds.has(item.id))
-    : options.limit
-      ? orderedCases.slice(0, options.limit)
-      : orderedCases;
+    : requestedSplits
+      ? orderedCases.filter((item) => requestedSplits.has(item.split))
+      : options.limit
+        ? orderedCases.slice(0, options.limit)
+        : orderedCases;
   if (requestedCaseIds) {
     const selectedIds = new Set(selectedCases.map((item) => item.id));
     const missing = [...requestedCaseIds].filter((id) => !selectedIds.has(id));
     if (missing.length > 0) throw new Error(`unknown --case-id value(s): ${missing.join(", ")}`);
+  }
+  if (requestedSplits && selectedCases.length === 0) {
+    throw new Error("--split did not select any intake cases");
   }
   return selectedCases;
 }
@@ -1298,7 +1308,8 @@ function parseArgs(argv: string[]): MaterializeOptions {
     ...(values.get("--probe-limit")
       ? { probeLimit: boundedProbeLimit(values.get("--probe-limit")!) }
       : {}),
-    ...(values.get("--case-id") ? { caseIds: commaSeparated(values.get("--case-id")!, "--case-id") } : {})
+    ...(values.get("--case-id") ? { caseIds: commaSeparated(values.get("--case-id")!, "--case-id") } : {}),
+    ...(values.get("--split") ? { splits: corpusSplits(values.get("--split")!) } : {})
   };
 }
 
@@ -1314,6 +1325,16 @@ function commaSeparated(value: string, label: string): string[] {
   const values = [...new Set(value.split(",").map((item) => item.trim()).filter(Boolean))];
   if (values.length === 0) throw new Error(`${label} must contain at least one case id`);
   return values;
+}
+
+function corpusSplits(value: string): Split[] {
+  const values = commaSeparated(value, "--split");
+  const allowed = new Set<Split>(["train", "calibration", "holdout"]);
+  const invalid = values.filter((item) => !allowed.has(item as Split));
+  if (invalid.length > 0) {
+    throw new Error(`--split contains unsupported value(s): ${invalid.join(", ")}`);
+  }
+  return values as Split[];
 }
 
 function positiveInteger(value: string, label: string): number {

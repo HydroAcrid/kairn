@@ -287,6 +287,14 @@ def main() -> int:
     parser.add_argument("--model-id", required=True)
     parser.add_argument("--node", default="node")
     parser.add_argument(
+        "--detached-holdout",
+        action="store_true",
+        help=(
+            "Freeze from train/calibration rows before a separate lineage-disjoint "
+            "single-use holdout is attached and opened."
+        ),
+    )
+    parser.add_argument(
         "--public-data-only",
         action="store_true",
         required=True,
@@ -300,8 +308,14 @@ def main() -> int:
     train = [row for row in rows if row["split"] == "train"]
     calibration = [row for row in rows if row["split"] == "calibration"]
     holdout = [row for row in rows if row["split"] == "holdout"]
-    if not train or not calibration or not holdout:
-        raise ValueError("training data must include non-empty train, calibration, and holdout splits")
+    if not train or not calibration:
+        raise ValueError("training data must include non-empty train and calibration splits")
+    if not holdout and not args.detached_holdout:
+        raise ValueError(
+            "training data must include a non-empty holdout split or declare --detached-holdout"
+        )
+    if holdout and args.detached_holdout:
+        raise ValueError("--detached-holdout cannot be combined with holdout rows in the training input")
     if {row["label"] for row in train} != {0, 1} or {row["label"] for row in calibration} != {0, 1}:
         raise ValueError("train and calibration splits must each include positive and negative labels")
 
@@ -355,8 +369,13 @@ def main() -> int:
         "calibration": evaluate(calibration, calibration_probabilities),
         "holdout": {
             "rows": len(holdout),
-            "status": "sealed_not_evaluated",
-            "note": "Promotion metrics are computed only by the single-use sealed holdout campaign.",
+            "status": "detached_pending" if args.detached_holdout else "sealed_not_evaluated",
+            "note": (
+                "A separate lineage-disjoint holdout must be sealed and opened exactly once "
+                "after this artifact is frozen."
+                if args.detached_holdout
+                else "Promotion metrics are computed only by the single-use sealed holdout campaign."
+            ),
         },
         "decisionThresholds": artifact["decisionThresholds"],
         "artifactChecksum": artifact["checksum"],
@@ -374,7 +393,11 @@ def main() -> int:
             f"- Training data hash: `{data_hash}`",
             f"- Feature schema: `{SCHEMA_VERSION}` / `{schema_hash()}`",
             f"- Public-data-only declaration: `true`",
-            f"- Sealed holdout rows (not evaluated during training): `{len(holdout)}`",
+            (
+                "- Detached holdout: `pending` (must be sealed and opened exactly once after freeze)"
+                if args.detached_holdout
+                else f"- Sealed holdout rows (not evaluated during training): `{len(holdout)}`"
+            ),
             f"- Cross-validation grouping: `repositoryLineageId`",
             "",
             "The model ranks repository files; deterministic Kairn policy still decides delivery and safety overrides.",
