@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "semantic-candidate-experiment.v1",
+  "checkpointId": "v02c-semantic-facet-probes-v158-20260727",
+  "createdAt": "2026-07-27T20:55:00-04:00",
+  "status": "rejected",
+  "implementationCommit": "f85e9b4",
+  "experiment": "Increase bounded semantic serving views from three to five while retaining two direct-delivery views and using later facets only as parser-backed graph probes.",
+  "scope": {
+    "splits": ["train", "calibration"],
+    "caseCount": 10,
+    "requiredSourceEligibleCases": 8,
+    "holdoutUsedForTuning": false
+  },
+  "baseline": {
+    "artifact": "artifacts/ranker-corpus.semantic-v156-train-calibration-oracle10-semantic-seven-eighths.report.json",
+    "strictFullRecallAt64": 0.5,
+    "strictFullRecallAt128": 1,
+    "positiveSourceAnyHitRateAt64": 0.6,
+    "positiveSourceAnyHitRateAt128": 0.9,
+    "officialPatchMeanRecallAt64": 0.5333333333333333,
+    "officialPatchMeanRecallAt128": 0.9
+  },
+  "result": {
+    "corpus": {
+      "path": "artifacts/ranker-corpus.semantic-v158-train-calibration-oracle10-facet-probes.jsonl",
+      "sha256": "9d6cf36bae24bca4e7a4407eef214feee2475a7a9f49aa87ab5497f1e80cd9ef",
+      "bytes": 2022816
+    },
+    "report": {
+      "path": "artifacts/ranker-corpus.semantic-v158-train-calibration-oracle10-facet-probes.report.json",
+      "sha256": "7d7fb324c1a76719c8afd531e2c5840f04716ce3742a77c6ec73376a6632dfc5",
+      "bytes": 12171423
+    },
+    "strictFullRecallAt64": 0.5,
+    "strictFullRecallAt128": 0.75,
+    "positiveSourceAnyHitRateAt64": 0.6,
+    "positiveSourceAnyHitRateAt128": 0.7,
+    "officialPatchMeanRecallAt64": 0.5083333333333333,
+    "officialPatchMeanRecallAt128": 0.675,
+    "observedSemanticQueryLatencyMsRange": [382.712, 714.09],
+    "generatedOrVendorTopOneCases": 0
+  },
+  "decision": {
+    "accepted": false,
+    "reason": "The change produced no strict @64 gain, regressed strict @128 by 25 points, and materially increased query latency. Additional facet probes consumed bounded graph capacity without improving direct model recall.",
+    "codeRetention": "Remove the experiment from the serving path. Preserve only this checkpoint and the pushed experimental commit in Git history."
+  },
+  "nextExperiment": "Keep the three-view baseline and eliminate sequential graph-core/importer starvation in the enriched 64-slot addition using a single bounded evidence selection mechanism evaluated on train/calibration data."
+}
