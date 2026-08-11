@@ -142,6 +142,10 @@ describe("CLI", () => {
       cwd: process.cwd(),
       encoding: "utf8"
     });
+    const shareableReport = execFileSync(CLI[0]!, [...CLI.slice(1), "report", "--root", root, "--share"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
     execFileSync(CLI[0]!, [...CLI.slice(1), "telemetry", "enable", "--root", root, "--destination", "supabase"], {
       cwd: process.cwd(),
       encoding: "utf8"
@@ -230,6 +234,12 @@ describe("CLI", () => {
     expect(userReport).toContain("Quality");
     expect(userReport).toContain("Harmful assists:");
     expect(userReport).toContain("not provider billing usage");
+    expect(shareableReport).toContain("Kairn check-in — last");
+    expect(shareableReport).toContain("Estimated context saved:");
+    expect(shareableReport).toContain("Quality:");
+    expect(shareableReport).toContain("Guidance:");
+    expect(shareableReport).toContain("Privacy: aggregate only;");
+    expect(shareableReport).not.toContain(root);
   }, 90_000);
 
   it("accepts whitespace-separated setup wizard targets from PowerShell-style argument lists", () => {

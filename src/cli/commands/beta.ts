@@ -202,7 +202,8 @@ function configureBetaReportCommand(command: Command): void {
     .option("--session <id>", "limit report to one Kairn session")
     .option("--last <count>", "report the most recent session count", parseSessionLimit, 12)
     .option("--json", "print JSON output")
-    .action(async (options: { root: string; session?: string; last: number; json?: boolean }) => {
+    .addOption(new Option("--share", "print a concise privacy-safe check-in").conflicts("json"))
+    .action(async (options: { root: string; session?: string; last: number; json?: boolean; share?: boolean }) => {
       await withRuntime(options.root, async (runtime) => {
         const report = buildBetaReport({ runtime, sessionId: options.session, limit: options.last });
         const telemetry = await queueAndFlushTelemetrySnapshot({ rootPath: options.root, runtime, sessionId: options.session });
@@ -210,7 +211,11 @@ function configureBetaReportCommand(command: Command): void {
           printJson({ ...report, ...(telemetry ? { telemetry } : {}) });
           return;
         }
-        printBetaReport(report);
+        if (options.share) {
+          process.stdout.write(formatShareableBetaReport(report));
+        } else {
+          printBetaReport(report);
+        }
         if (telemetry?.sent) {
           process.stdout.write(`Telemetry uploaded: ${telemetry.sent} snapshot(s).\n`);
         }
@@ -302,6 +307,30 @@ function printBetaReport(report: ReturnType<typeof buildBetaReport>): void {
       ""
     ].join("\n")
   );
+}
+
+export function formatShareableBetaReport(report: ReturnType<typeof buildBetaReport>): string {
+  const percent = Math.abs(report.headline.estimatedContextSavingsRate * 100).toFixed(1);
+  const contextImproved = report.headline.estimatedContextTokensAvoided >= 0;
+  const recommendationUse = report.quality.recommendationUseRate === undefined
+    ? "no recommendations recorded"
+    : `${(report.quality.recommendationUseRate * 100).toFixed(1)}% (${report.quality.recommendationsLaterUsed}/${report.quality.recommendationsMade}) later used`;
+  const basis = report.headline.basis === "quality_gated_estimate"
+    ? `quality-gated estimate from ${report.tokens.qualityGatedSessions} verified session(s)`
+    : report.headline.basis === "all_sessions_estimate"
+      ? "directional estimate; no quality-passing session was available"
+      : "not enough context data yet";
+  return [
+    `Kairn check-in — last ${report.window.sampled} session${report.window.sampled === 1 ? "" : "s"}`,
+    `Estimated context ${contextImproved ? "saved" : "added"}: ${percent}% (${formatInteger(Math.abs(report.headline.estimatedContextTokensAvoided))} tokens)`,
+    `Quality: ${report.quality.sessionsPassingVerification}/${report.sessions} passed verification · ${report.quality.harmfulAssists} harmful assists`,
+    `Guidance: ${recommendationUse}`,
+    `Behavior: ${report.decisions.interventions} interventions · ${report.decisions.stayedSilent} silent decisions`,
+    `Repeated context blocked: ${report.context.repeatedFilesAvoided} files · ${report.context.repeatedSnippetsAvoided} snippets`,
+    `Basis: ${basis}; not provider billing usage.`,
+    "Privacy: aggregate only; no prompts, source, paths, diffs, repository, or branch identity.",
+    ""
+  ].join("\n");
 }
 
 function formatInteger(value: number): string {

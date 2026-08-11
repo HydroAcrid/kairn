@@ -192,10 +192,16 @@ Telemetry uploads only at safe command boundaries, such as when `kairn codex` ex
 From inside your repo:
 
 ```bash
-kairn beta report
+kairn report --share
 ```
 
-This report is local. It summarizes whether Kairn helped, stayed silent, over-assisted, missed opportunities, or has no useful session data yet.
+This produces a short local, aggregate-only check-in. Please paste that back
+if you are comfortable, then optionally tell me just two things:
+
+- What felt useful?
+- What felt annoying, confusing, or wrong?
+
+There is no need to design tasks, rerun work, or perform a formal comparison.
 
 ## Update Kairn
 
@@ -240,8 +246,8 @@ Please send:
 - whether install worked,
 - whether `kairn setup wizard` worked,
 - `kairn doctor` output or JSON,
-- `kairn beta report` output or JSON,
-- what felt confusing, noisy, too quiet, slow, or useful.
+- `kairn report --share` output,
+- optionally, what felt useful and what felt annoying, confusing, or wrong.
 
 Please do **not** send source code, prompts, diffs, `.kairn/`, repo files, raw agent outputs, branch names, repo names, or private paths unless we explicitly agree to debug something together.
 
