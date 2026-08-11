@@ -138,6 +138,10 @@ describe("CLI", () => {
       cwd: process.cwd(),
       encoding: "utf8"
     });
+    const userReport = execFileSync(CLI[0]!, [...CLI.slice(1), "report", "--root", root, "--last", "12"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
     execFileSync(CLI[0]!, [...CLI.slice(1), "telemetry", "enable", "--root", root, "--destination", "supabase"], {
       cwd: process.cwd(),
       encoding: "utf8"
@@ -222,6 +226,10 @@ describe("CLI", () => {
     expect(parsedTelemetry.queueLength).toBe(0);
     expect(parsedBetaReport.sessions).toBeGreaterThan(0);
     expect(parsedBetaReport.verdict).toBeTruthy();
+    expect(userReport).toContain("Estimated context reduction:");
+    expect(userReport).toContain("Quality");
+    expect(userReport).toContain("Harmful assists:");
+    expect(userReport).toContain("not provider billing usage");
   }, 90_000);
 
   it("accepts whitespace-separated setup wizard targets from PowerShell-style argument lists", () => {

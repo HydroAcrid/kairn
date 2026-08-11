@@ -145,17 +145,32 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
   const reportCases: Array<Record<string, unknown>> = [];
   const selectedCases = selectIntakeCases(intake.cases, options);
   for (const intakeCase of selectedCases) {
+    const caseStarted = performance.now();
+    const caseTiming = {
+      checkout: 0,
+      embeddingCacheRestore: 0,
+      candidateInspection: 0,
+      reportAssembly: 0,
+      embeddingCachePersist: 0,
+      cleanup: 0,
+      totalWorker: 0
+    };
+    const checkoutStarted = performance.now();
     const checkout = resolveCheckout(intakeCase, cacheDir, {
       allowLocalFixture: options.allowLocalFixture === true,
       sampleOnly: intake.sampleOnly
     });
+    caseTiming.checkout = roundMilliseconds(performance.now() - checkoutStarted);
     const snapshotPath = options.snapshotEmbeddingCachePath;
     const lineagePath = options.lineageEmbeddingCachePath;
     // Rolling lineage state is only a content-addressed warm start. An exact
     // immutable snapshot is restored second so it wins when both contain the
     // same document id. The indexer still requires an exact document hash.
-    if (lineagePath) restoreSnapshotEmbeddingCache(checkout.root, lineagePath);
-    if (snapshotPath) restoreSnapshotEmbeddingCache(checkout.root, snapshotPath);
+    const cacheRestoreStarted = performance.now();
+    const lineageCacheEntries = lineagePath ? restoreSnapshotEmbeddingCache(checkout.root, lineagePath) : 0;
+    const snapshotCacheEntries = snapshotPath ? restoreSnapshotEmbeddingCache(checkout.root, snapshotPath) : 0;
+    const warmEmbeddingIdentities = listEmbeddingIdentities(checkout.root);
+    caseTiming.embeddingCacheRestore = roundMilliseconds(performance.now() - cacheRestoreStarted);
     const embeddingCachePaths = [snapshotPath, lineagePath].filter(
       (value): value is string => Boolean(value)
     );
@@ -177,11 +192,14 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
     try {
       const requiredSourcePartition = partitionRepositoryPaths(checkout.root, intakeCase.requiredSourceFiles);
       const officialPatchSourcePartition = partitionRepositoryPaths(checkout.root, intakeCase.officialPatchSourceFiles);
+      const inspectionStarted = performance.now();
       const inspection = await runtime.inspectEvidenceCandidates({
         query: intakeCase.prompt,
         limit: 64,
         ...(options.probeLimit ? { probeLimit: options.probeLimit } : {})
       });
+      caseTiming.candidateInspection = roundMilliseconds(performance.now() - inspectionStarted);
+      const embeddingReuse = inspectEmbeddingReuse(checkout.root, warmEmbeddingIdentities);
       if (options.requireSemantic) {
         assertSemanticMaterializationReady(inspection.semanticStatus, intakeCase.id);
       }
@@ -267,6 +285,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
         candidates,
         trainingCandidates
       });
+      const reportAssemblyStarted = performance.now();
       reportCases.push({
         id: intakeCase.id,
         repositoryRef: resolvedRef,
@@ -294,6 +313,14 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
         missingRequiredOrNoiseFiles: [...missingRequiredSourceFiles, ...missingExplicitNoiseFiles],
         candidatePathsSha256: sha256(trainingCandidates.map((candidate) => candidate.path).join("\n")),
         candidatePathsAt64Sha256: sha256(candidates.map((candidate) => candidate.path).join("\n")),
+        timingMs: caseTiming,
+        inspectionTimingMs: inspection.timingMs,
+        embeddingReuse: {
+          lineageCacheEntries,
+          snapshotCacheEntries,
+          warmEntriesAvailable: warmEmbeddingIdentities.size,
+          ...embeddingReuse
+        },
         ...(inspection.semanticStatus ? { semanticStatus: inspection.semanticStatus } : {}),
         ...(options.draft ? {
           signals: inspection.signals,
@@ -322,9 +349,11 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
           }))
         } : {})
       });
+      caseTiming.reportAssembly = roundMilliseconds(performance.now() - reportAssemblyStarted);
     } finally {
       if (snapshotTimer) clearInterval(snapshotTimer);
       runtime.close();
+      const persistStarted = performance.now();
       for (const cachePath of embeddingCachePaths) {
         try {
           persistSnapshotEmbeddingCache(checkout.root, cachePath, {
@@ -336,7 +365,11 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
           );
         }
       }
+      caseTiming.embeddingCachePersist = roundMilliseconds(performance.now() - persistStarted);
+      const cleanupStarted = performance.now();
       checkout.cleanup();
+      caseTiming.cleanup = roundMilliseconds(performance.now() - cleanupStarted);
+      caseTiming.totalWorker = roundMilliseconds(performance.now() - caseStarted);
     }
   }
 
@@ -377,6 +410,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
     positiveSourceAnyHitRateAt128: booleanRate(reportCases, "positiveSourceHitAt128"),
     officialPatchMeanRecallAt64: meanNullable(reportCases, "officialPatchSourceRecallAt64"),
     officialPatchMeanRecallAt128: meanNullable(reportCases, "officialPatchSourceRecallAt128"),
+    timingSummary: summarizeMaterializationTiming(reportCases),
     ...(options.limit || options.caseIds || options.splits ? {
       partial: true,
       selectedCaseIds: selectedCases.map((item) => item.id)
@@ -472,6 +506,8 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
       ...(options.requireSemantic ? ["--require-semantic"] : []),
       ...(options.probeLimit ? ["--probe-limit", String(options.probeLimit)] : [])
     ];
+    const isolatedStartedAt = new Date().toISOString();
+    const isolatedStarted = performance.now();
     try {
       execFileSync(process.execPath, args, {
         cwd: kairnRoot,
@@ -487,7 +523,13 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
         throw new Error(`${intakeCase.id}: isolated worker must emit exactly one case`);
       }
       materializedCases.push(record(manifestRows[0], `${intakeCase.id} materialized case`));
-      reportCases.push(record(reportRows[0], `${intakeCase.id} report case`));
+      const reportRow = record(reportRows[0], `${intakeCase.id} report case`);
+      reportRow.isolatedProcess = {
+        startedAt: isolatedStartedAt,
+        completedAt: new Date().toISOString(),
+        elapsedMs: roundMilliseconds(performance.now() - isolatedStarted)
+      };
+      reportCases.push(reportRow);
       completedCaseIds.add(intakeCase.id);
       if (options.resume) {
         writeIsolatedMaterializationProgress(progressPath, {
@@ -550,6 +592,7 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
     positiveSourceAnyHitRateAt128: booleanRate(reportCases, "positiveSourceHitAt128"),
     officialPatchMeanRecallAt64: meanNullable(reportCases, "officialPatchSourceRecallAt64"),
     officialPatchMeanRecallAt128: meanNullable(reportCases, "officialPatchSourceRecallAt128"),
+    timingSummary: summarizeMaterializationTiming(reportCases),
     ...(partial ? { partial: true, selectedCaseIds: selectedCases.map((item) => item.id) } : {}),
     cases: reportCases
   };
@@ -585,6 +628,129 @@ function indexCoverage(stats: ReturnType<KairnRuntime["getIndexStatus"]>): Recor
     totalSizeBytes: stats.totalSizeBytes,
     tiers: stats.tiers
   };
+}
+
+function listEmbeddingIdentities(rootPath: string): Set<string> {
+  const store = new SqliteStore(ensureKairnDir(rootPath).databasePath);
+  try {
+    return new Set(store.listSemanticEmbeddings(rootPath).map(semanticEmbeddingContentIdentity));
+  } finally {
+    store.close();
+  }
+}
+
+function inspectEmbeddingReuse(
+  rootPath: string,
+  warmEmbeddingIdentities: Set<string>
+): {
+  currentDocuments: number;
+  validCurrentEmbeddings: number;
+  reusedEmbeddings: number;
+  generatedEmbeddings: number;
+  reuseRate: number;
+} {
+  const store = new SqliteStore(ensureKairnDir(rootPath).databasePath);
+  try {
+    const documents = store.listSemanticDocuments(rootPath);
+    const currentHashes = new Map(documents.map((document) => [document.id, document.hash]));
+    const validIdentities = new Set(
+      store.listSemanticEmbeddings(rootPath)
+        .filter((embedding) => currentHashes.get(embedding.documentId) === embedding.documentHash)
+        .map(semanticEmbeddingContentIdentity)
+    );
+    const reusedEmbeddings = [...validIdentities].filter((identity) => warmEmbeddingIdentities.has(identity)).length;
+    const generatedEmbeddings = Math.max(0, validIdentities.size - reusedEmbeddings);
+    return {
+      currentDocuments: documents.length,
+      validCurrentEmbeddings: validIdentities.size,
+      reusedEmbeddings,
+      generatedEmbeddings,
+      reuseRate: validIdentities.size > 0 ? roundRatio(reusedEmbeddings / validIdentities.size) : 0
+    };
+  } finally {
+    store.close();
+  }
+}
+
+function semanticEmbeddingContentIdentity(
+  embedding: Pick<SemanticEmbeddingRecord, "documentId" | "documentHash" | "modelId" | "schemaVersion">
+): string {
+  return [embedding.documentId, embedding.documentHash, embedding.modelId, embedding.schemaVersion].join("\0");
+}
+
+function summarizeMaterializationTiming(reportCases: Array<Record<string, unknown>>): Record<string, unknown> {
+  const caseTimes = reportCases.map((row) => nestedNumber(row, "timingMs", "totalWorker")).filter(isFiniteNumber);
+  const isolatedTimes = reportCases.map((row) => nestedNumber(row, "isolatedProcess", "elapsedMs")).filter(isFiniteNumber);
+  const phaseNames = [
+    "checkout",
+    "embeddingCacheRestore",
+    "candidateInspection",
+    "reportAssembly",
+    "embeddingCachePersist",
+    "cleanup"
+  ];
+  const phaseTotalsMs = Object.fromEntries(phaseNames.map((phase) => [
+    phase,
+    roundMilliseconds(reportCases.reduce((total, row) => total + (nestedNumber(row, "timingMs", phase) ?? 0), 0))
+  ]));
+  const reusedEmbeddings = reportCases.reduce(
+    (total, row) => total + (nestedNumber(row, "embeddingReuse", "reusedEmbeddings") ?? 0),
+    0
+  );
+  const generatedEmbeddings = reportCases.reduce(
+    (total, row) => total + (nestedNumber(row, "embeddingReuse", "generatedEmbeddings") ?? 0),
+    0
+  );
+  return {
+    measuredCases: caseTimes.length,
+    totalCaseWorkerMs: roundMilliseconds(sumNumbers(caseTimes)),
+    medianCaseWorkerMs: percentile(caseTimes, 0.5),
+    p95CaseWorkerMs: percentile(caseTimes, 0.95),
+    maxCaseWorkerMs: caseTimes.length > 0 ? roundMilliseconds(Math.max(...caseTimes)) : null,
+    ...(isolatedTimes.length > 0 ? {
+      totalIsolatedProcessMs: roundMilliseconds(sumNumbers(isolatedTimes)),
+      medianIsolatedProcessMs: percentile(isolatedTimes, 0.5),
+      p95IsolatedProcessMs: percentile(isolatedTimes, 0.95)
+    } : {}),
+    phaseTotalsMs,
+    embeddingReuse: {
+      reusedEmbeddings,
+      generatedEmbeddings,
+      reuseRate: reusedEmbeddings + generatedEmbeddings > 0
+        ? roundRatio(reusedEmbeddings / (reusedEmbeddings + generatedEmbeddings))
+        : 0
+    }
+  };
+}
+
+function nestedNumber(row: Record<string, unknown>, parent: string, child: string): number | undefined {
+  const nested = row[parent];
+  if (!nested || typeof nested !== "object" || Array.isArray(nested)) return undefined;
+  const value = (nested as Record<string, unknown>)[child];
+  return isFiniteNumber(value) ? value : undefined;
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function sumNumbers(values: number[]): number {
+  return values.reduce((total, value) => total + value, 0);
+}
+
+function percentile(values: number[], quantile: number): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((left, right) => left - right);
+  const index = Math.max(0, Math.ceil(sorted.length * quantile) - 1);
+  return roundMilliseconds(sorted[index]!);
+}
+
+function roundMilliseconds(value: number): number {
+  return Math.round(value * 1000) / 1000;
+}
+
+function roundRatio(value: number): number {
+  return Math.round(value * 10000) / 10000;
 }
 
 export function selectIntakeCases<T extends { id: string; split: Split }>(
@@ -927,8 +1093,8 @@ export function buildSemanticLineageCacheKey(input: {
   ].join("\0"));
 }
 
-export function restoreSnapshotEmbeddingCache(rootPath: string, cachePath: string): void {
-  if (!fs.existsSync(cachePath)) return;
+export function restoreSnapshotEmbeddingCache(rootPath: string, cachePath: string): number {
+  if (!fs.existsSync(cachePath)) return 0;
   const cache = parseSnapshotEmbeddingCache(cachePath);
   const paths = ensureKairnDir(rootPath);
   const store = new SqliteStore(paths.databasePath);
@@ -946,6 +1112,7 @@ export function restoreSnapshotEmbeddingCache(rootPath: string, cachePath: strin
   } finally {
     store.close();
   }
+  return cache.embeddings.length;
 }
 
 export function persistSnapshotEmbeddingCache(

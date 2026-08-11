@@ -3531,8 +3531,14 @@ export class KairnRuntime {
     /** Offline diagnostics only; public serving remains capped at 128. */
     probeLimit?: number | undefined;
   }): Promise<EvidenceCandidateInspection> {
+    const inspectionStarted = performance.now();
+    const initializeStarted = performance.now();
     await this.init();
+    const initializeIndex = performance.now() - initializeStarted;
+    const inventoryStarted = performance.now();
     const files = this.store.listFiles(this.rootPath);
+    const inventoryLoad = performance.now() - inventoryStarted;
+    const retrievalStarted = performance.now();
     const localIndex = await this.getCalibratedQueryLocalIndex({
       rootPath: this.rootPath,
       files,
@@ -3540,6 +3546,8 @@ export class KairnRuntime {
       semanticConfig: resolveSemanticRetrieverConfig(this.rootPath, this.semanticConfig),
       ...(input.probeLimit ? { diagnosticProbeLimit: input.probeLimit } : {})
     });
+    const candidateRetrieval = performance.now() - retrievalStarted;
+    const featureBuildStarted = performance.now();
     const candidatePaths = new Set(localIndex.candidateFiles);
     const retrievalFiles = files.filter((file) => candidatePaths.has(file.path));
     const hybridCandidates = localIndex.candidateResults ?? hybridSearch({
@@ -3595,7 +3603,15 @@ export class KairnRuntime {
         })
       : undefined;
     const candidateLimit = Math.max(1, Math.min(input.limit ?? DEFAULT_INITIAL_CANDIDATE_LIMIT, DEFAULT_INITIAL_CANDIDATE_LIMIT));
+    const candidateFeatureBuild = performance.now() - featureBuildStarted;
     return {
+      timingMs: {
+        initializeIndex: roundTimingMs(initializeIndex),
+        inventoryLoad: roundTimingMs(inventoryLoad),
+        candidateRetrieval: roundTimingMs(candidateRetrieval),
+        candidateFeatureBuild: roundTimingMs(candidateFeatureBuild),
+        total: roundTimingMs(performance.now() - inspectionStarted)
+      },
       signals: candidateSet.signals,
       candidates: candidateSet.candidates.slice(0, candidateLimit),
       enrichedCandidates: candidateSet.candidates,
@@ -4923,4 +4939,8 @@ function uniqueSymbols(symbols: SymbolRecord[]): SymbolRecord[] {
     byKey.set(`${symbol.filePath}:${symbol.name}:${symbol.startLine}:${symbol.endLine}`, symbol);
   }
   return [...byKey.values()];
+}
+
+function roundTimingMs(value: number): number {
+  return Math.round(value * 1000) / 1000;
 }

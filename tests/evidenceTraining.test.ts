@@ -548,10 +548,24 @@ describe("public evidence ranker training", () => {
         labelProvenance: "required_source_oracle"
       })
     ]));
-    expect(JSON.parse(fs.readFileSync(reportPath, "utf8"))).toMatchObject({
+    const materializationReport = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+    expect(materializationReport).toMatchObject({
       candidateRecallAt64: 1,
       candidateRecallAt128: 1,
       positiveSourceAnyHitRateAt128: 1,
+      timingSummary: expect.objectContaining({
+        measuredCases: 1,
+        totalCaseWorkerMs: expect.any(Number),
+        phaseTotalsMs: expect.objectContaining({
+          checkout: expect.any(Number),
+          candidateInspection: expect.any(Number),
+          embeddingCacheRestore: expect.any(Number)
+        }),
+        embeddingReuse: expect.objectContaining({
+          reusedEmbeddings: expect.any(Number),
+          generatedEmbeddings: expect.any(Number)
+        })
+      }),
       cases: [expect.objectContaining({
         explicitNegativeCount: 6,
         explicitNegativeCountAt64: 6,
@@ -563,7 +577,28 @@ describe("public evidence ranker training", () => {
         missingRequiredSourceFilesAt128: [],
         signals: expect.objectContaining({ explicitPaths: expect.arrayContaining(["src/user.ts"]) }),
         enrichedCandidatePaths: expect.arrayContaining(["src/user.ts"]),
-        index: expect.objectContaining({ fileCount: expect.any(Number), symbolCount: expect.any(Number) })
+        index: expect.objectContaining({ fileCount: expect.any(Number), symbolCount: expect.any(Number) }),
+        timingMs: expect.objectContaining({
+          checkout: expect.any(Number),
+          candidateInspection: expect.any(Number),
+          totalWorker: expect.any(Number)
+        }),
+        inspectionTimingMs: expect.objectContaining({
+          initializeIndex: expect.any(Number),
+          candidateRetrieval: expect.any(Number),
+          candidateFeatureBuild: expect.any(Number),
+          total: expect.any(Number)
+        }),
+        isolatedProcess: expect.objectContaining({
+          startedAt: expect.any(String),
+          completedAt: expect.any(String),
+          elapsedMs: expect.any(Number)
+        }),
+        embeddingReuse: expect.objectContaining({
+          warmEntriesAvailable: expect.any(Number),
+          reusedEmbeddings: expect.any(Number),
+          generatedEmbeddings: expect.any(Number)
+        })
       })]
     });
     const staleNoiseReportPath = path.join(temporary, "materialization-report-stale-noise.json");

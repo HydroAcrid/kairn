@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import path from "node:path";
-import { Command, Option } from "commander";
+import { Command, InvalidArgumentError, Option } from "commander";
 import { runDoctor, type DoctorTarget } from "../../doctor/doctor.js";
 import { fixDoctorIssues, type DoctorFixResult } from "../../doctor/fix.js";
 import { buildDiagnosticExport, writeDiagnosticExport } from "../../telemetry/diagnostics.js";
@@ -186,19 +186,25 @@ export function registerBetaCommands(program: Command): void {
       });
     });
 
+  configureBetaReportCommand(program.command("report"));
+
   const beta = program
     .command("beta")
     .description("Private beta reporting helpers.");
 
-  beta
-    .command("report")
+  configureBetaReportCommand(beta.command("report"));
+}
+
+function configureBetaReportCommand(command: Command): void {
+  command
     .description("Summarize whether Kairn helped, stayed silent, or over-assisted.")
     .option("--root <path>", "target repository root", process.cwd())
     .option("--session <id>", "limit report to one Kairn session")
+    .option("--last <count>", "report the most recent session count", parseSessionLimit, 12)
     .option("--json", "print JSON output")
-    .action(async (options: { root: string; session?: string; json?: boolean }) => {
+    .action(async (options: { root: string; session?: string; last: number; json?: boolean }) => {
       await withRuntime(options.root, async (runtime) => {
-        const report = buildBetaReport({ runtime, sessionId: options.session });
+        const report = buildBetaReport({ runtime, sessionId: options.session, limit: options.last });
         const telemetry = await queueAndFlushTelemetrySnapshot({ rootPath: options.root, runtime, sessionId: options.session });
         if (options.json) {
           printJson({ ...report, ...(telemetry ? { telemetry } : {}) });
@@ -210,6 +216,13 @@ export function registerBetaCommands(program: Command): void {
         }
       });
     });
+}
+
+function parseSessionLimit(value: string): number {
+  if (!/^\d+$/.test(value)) throw new InvalidArgumentError("must be an integer from 1 to 500");
+  const parsed = Number(value);
+  if (parsed < 1 || parsed > 500) throw new InvalidArgumentError("must be an integer from 1 to 500");
+  return parsed;
 }
 
 function printDoctor(report: ReturnType<typeof runDoctor>): void {
@@ -253,19 +266,44 @@ function printTelemetryStatus(status: ReturnType<typeof getTelemetryStatus>): vo
 }
 
 function printBetaReport(report: ReturnType<typeof buildBetaReport>): void {
+  const percent = Math.abs(report.headline.estimatedContextSavingsRate * 100).toFixed(1);
+  const contextImproved = report.headline.estimatedContextTokensAvoided >= 0;
+  const basis = report.headline.basis === "quality_gated_estimate"
+    ? `quality-gated local estimate from ${report.tokens.qualityGatedSessions} verified session(s)`
+    : report.headline.basis === "all_sessions_estimate"
+      ? "directional local estimate; no quality-passing session was available"
+      : "not enough context data yet";
+  const recommendationUse = report.quality.recommendationUseRate === undefined
+    ? "n/a"
+    : `${(report.quality.recommendationUseRate * 100).toFixed(1)}% (${report.quality.recommendationsLaterUsed}/${report.quality.recommendationsMade})`;
+  const recommendationTouch = report.quality.recommendationTouchRate === undefined
+    ? "n/a"
+    : `${(report.quality.recommendationTouchRate * 100).toFixed(1)}% (${report.quality.recommendationsLaterTouched}/${report.quality.recommendationsMade})`;
   process.stdout.write(
     [
-      `Kairn beta report: ${report.verdict}`,
-      `Sessions: ${report.sessions}`,
-      `Helped: ${report.status.helped}`,
-      `Silent: ${report.status.silent}`,
-      `Over-assisted: ${report.status.mayHaveOverAssisted}`,
-      `Missed opportunities: ${report.status.missedOpportunity}`,
-      `Estimated saved tokens: ${report.tokens.estimatedSaved}`,
-      `Repeated context avoided: ${report.context.repeatedFilesAvoided} files, ${report.context.repeatedSnippetsAvoided} snippets`,
+      `Kairn report — last ${report.window.sampled} session${report.window.sampled === 1 ? "" : "s"}`,
+      "",
+      `Estimated context ${contextImproved ? "reduction" : "increase"}: ${percent}%`,
+      `Estimated context tokens ${contextImproved ? "avoided" : "added"}: ${formatInteger(Math.abs(report.headline.estimatedContextTokensAvoided))}`,
+      `Evidence: ${basis}; not provider billing usage.`,
+      "",
+      "Quality",
+      `Verification: ${report.quality.sessionsPassingVerification}/${report.sessions} passed latest verification · ${report.quality.sessionsFailingVerification} failed · ${report.quality.sessionsUnverified} unverified`,
+      `Recommended files later used: ${recommendationUse}`,
+      `Recommended files later modified: ${recommendationTouch}`,
+      `Harmful assists: ${report.quality.harmfulAssists}`,
+      "",
+      "Behavior",
+      `Kairn interventions: ${report.decisions.interventions} · stayed silent: ${report.decisions.stayedSilent}`,
+      `Repeated context blocked: ${report.context.repeatedFilesAvoided} files · ${report.context.repeatedSnippetsAvoided} snippets`,
+      `Verdict: ${report.verdict}`,
       "",
       ...report.summary.map((line) => `- ${line}`),
       ""
     ].join("\n")
   );
+}
+
+function formatInteger(value: number): string {
+  return Math.round(value).toLocaleString("en-US");
 }

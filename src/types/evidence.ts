@@ -129,6 +129,13 @@ export type EvidenceCandidate = {
 
 /** Deterministic query-local snapshot used to curate public ranker corpora. */
 export type EvidenceCandidateInspection = {
+  timingMs: {
+    initializeIndex: number;
+    inventoryLoad: number;
+    candidateRetrieval: number;
+    candidateFeatureBuild: number;
+    total: number;
+  };
   signals: EvidenceTaskSignals;
   /** Candidate@limit rows exported for corpus training and review. */
   candidates: EvidenceCandidate[];

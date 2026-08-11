@@ -14,7 +14,13 @@ import {
   tokenEstimateFromMcpValue
 } from "../../mcp/resultExtractors.js";
 import { loadIndexingConfig } from "../../config/indexing.js";
-import { groupMetrics, summarizeCoordinationMetrics, summarizeMetrics } from "../../metrics/summary.js";
+import {
+  groupMetrics,
+  summarizeAssistanceClassifications,
+  summarizeContextDecisions,
+  summarizeCoordinationMetrics,
+  summarizeMetrics
+} from "../../metrics/summary.js";
 import { codexUsageFromObservation } from "../../eval/usageObservation.js";
 import { summarizeSessionLedger } from "../../ledger/summary.js";
 import { uniquePaths } from "../../utils/collections.js";
@@ -33,6 +39,10 @@ export class MetricsService {
     const latestCodexUsageRecord = codexUsageFromObservation(latestCodexUsage);
     const totals = summarizeMetrics(events);
     const coordination = summarizeCoordinationMetrics(events);
+    const decisions = summarizeContextDecisions(events);
+    const assistance = summarizeAssistanceClassifications(events);
+    const hookEvents = events.filter((event) => event.eventKind === "hook_signal");
+    const mcpEvents = events.filter((event) => event.eventKind === "mcp_tool_call");
     const files = this.deps.store.listFiles(session.rootPath);
     const indexStats = this.deps.store.getIndexStateStats(session.rootPath, loadIndexingConfig(session.rootPath));
     const ledger = summarizeSessionLedger(sessionId, this.deps.store.listSessionLedgerEvents(sessionId));
@@ -58,6 +68,31 @@ export class MetricsService {
         ...(latestCodexUsageRecord ? { latestCodexUsage: latestCodexUsageRecord } : {})
       },
       coordination,
+      decisions,
+      assistance,
+      quality: {
+        verificationPasses: ledger.verificationPasses,
+        verificationFailures: ledger.verificationFailures,
+        latestVerification: ledger.latestVerification
+      },
+      recommendations: {
+        made: ledger.recommendedFiles.length,
+        laterUsed: ledger.recommendedFilesLaterUsed.length,
+        laterTouched: ledger.recommendedFilesLaterTouched.length
+      },
+      delivery: {
+        hooks: {
+          invocations: hookEvents.length,
+          failures: hookEvents.filter((event) => event.eventName.toLowerCase().includes("fail")).length,
+          suppressed: hookEvents.filter((event) => event.metadata.primeSuppressed === true).length
+        },
+        mcp: {
+          calls: mcpEvents.length,
+          returnedSourceFiles: sumEventMetadata(mcpEvents, "resultSourceFileCount"),
+          returnedTestFiles: sumEventMetadata(mcpEvents, "resultTestFileCount"),
+          returnedNoiseFiles: sumEventMetadata(mcpEvents, "resultNoiseFileCount")
+        }
+      },
       index: {
         files: files.length,
         tiers: indexStats.tiers,
@@ -181,6 +216,13 @@ export class MetricsService {
       ...record
     });
   }
+}
+
+function sumEventMetadata(events: Array<{ metadata: Record<string, unknown> }>, key: string): number {
+  return events.reduce((total, event) => {
+    const value = event.metadata[key];
+    return total + (typeof value === "number" && Number.isFinite(value) ? value : 0);
+  }, 0);
 }
 
 function contextDecisionFromMcpValue(value: unknown): Record<string, unknown> | undefined {

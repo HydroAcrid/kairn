@@ -365,6 +365,9 @@ describe("KairnRuntime", () => {
     });
 
     const verifiedSummary = runtime.summarizeSessionLedger(session.id);
+    expect(verifiedSummary.verificationPasses).toBe(1);
+    expect(verifiedSummary.verificationFailures).toBe(0);
+    expect(verifiedSummary.latestVerification).toBe("passed");
     expect(verifiedSummary.workingSet.nextSmallestUsefulRead).toBeUndefined();
     expect(verifiedSummary.workingSet.openRisks).not.toEqual(
       expect.arrayContaining([expect.stringContaining("recommended file")])

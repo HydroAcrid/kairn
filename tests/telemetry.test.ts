@@ -203,6 +203,59 @@ describe("telemetry", () => {
 
     runtime.close();
   });
+
+  it("puts quality-gated percentage savings and recommendation follow-through in the report", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const { session } = await runtime.startTask("Fix dashboard rendering");
+    await runtime.primeContext({ task: "Fix dashboard rendering", sessionId: session.id, source: "codex" });
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "context_recommended",
+      filePath: "src/app.ts",
+      source: "runtime",
+      summary: "Recommended dashboard source"
+    });
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "agent_file_touched",
+      filePath: "src/app.ts",
+      source: "agent",
+      summary: "Agent modified dashboard source"
+    });
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "verification_passed",
+      source: "bench",
+      summary: "Verification passed"
+    });
+
+    const report = buildBetaReport({ runtime, sessionId: session.id });
+
+    expect(report.schemaVersion).toBe(2);
+    expect(report.headline.basis).toBe("quality_gated_estimate");
+    expect(report.headline.estimatedContextSavingsRate).toBe(report.tokens.qualityGatedEstimatedSavingsRate);
+    expect(report.quality.sessionsPassingVerification).toBe(1);
+    expect(report.quality.recommendationsLaterTouched).toBeGreaterThan(0);
+    expect(report.quality.recommendationTouchRate).toBeGreaterThan(0);
+
+    runtime.close();
+  });
+
+  it("defaults user reports to the latest twelve sessions", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    for (let index = 0; index < 15; index += 1) {
+      await runtime.startTask(`Session ${index + 1}`);
+    }
+
+    const report = buildBetaReport({ runtime });
+
+    expect(report.sessions).toBe(12);
+    expect(report.window).toEqual({ requested: 12, sampled: 12, available: 15 });
+
+    runtime.close();
+  });
 });
 
 function minimalPayload(): TelemetryPayload {
