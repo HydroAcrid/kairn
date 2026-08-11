@@ -143,3 +143,55 @@ Promotion remains blocked until:
 - downstream Recall@5, MRR, calibration, verification, and source-invariant gates pass.
 
 The 35 reviews against the legacy union are `superseded-pending`. Claude/ReasonBlocks spend, the 180-attempt pilot, and npm beta preparation remain paused.
+
+## Current Train/Calibration Result
+
+The 135-case public train/calibration pass completed without opening the
+detached holdout:
+
+- 90 train cases and 45 calibration cases;
+- strict reviewed-oracle full recall: 4/8 at 64 and 8/8 at 128;
+- weak official-patch any-hit: 95.56% at 64 and 97.78% at 128;
+- the v4 pointwise ranker reached calibration ECE 0.0263, Recall@5 77.78%,
+  and MRR 0.4584.
+
+Those numbers are diagnostic, not promotion evidence. In particular, 100%
+recall at 128 does not satisfy the 64-candidate serving gate.
+
+Additional general model experiments were screened and rejected rather than
+left as serving complexity:
+
+- a learned importer-corroboration feature received a negative coefficient
+  and regressed Recall@5, MRR, and calibration;
+- a pairwise objective for the existing 26 file features worsened Recall@5
+  and calibration while leaving candidate recall unchanged;
+- a 33M-parameter local cross-encoder took about 7.15 seconds for 64 realistic
+  query/document pairs on the CPU/WASM runtime, far above the 300 ms warm
+  candidate-generation gate. A smaller 17M checkpoint did not expose a
+  directly usable scoring output in its pinned ONNX graph and was not wired
+  into serving without a validated head;
+- diagonal and affine embedding adapters improved weighted pair loss but did
+  not add any independently recalled required source at 64;
+- equal-weight RRF across semantic and graph lanes reduced strict recall to
+  1/8, while learned lane-rank, graph-message, and semantic/graph interaction
+  selectors produced only train-lineage gains or calibration regressions;
+- the pinned CodeRank alternative passed local runtime integrity but lost to
+  Jina on the unchanged selection set: Recall@1 was 80% versus 90%, and MRR
+  was 0.875 versus 0.95. It therefore did not justify a public-corpus reindex.
+
+No regex, path-token promotion, filename bonus, graph quota, or fixed importer
+quota replaced these failures. Jina remains the selected model, and the 128-file
+bounded union remains the stable evidence pool for the next training-data pass.
+The next work expands independently reviewed train/calibration required-source
+labels and deterministic train-only synthetic prompt variants, then retrains the
+standard L2-logistic ranker. The detached holdout remains sealed. No new serving
+mechanism is promoted unless it improves separate calibration lineages and
+retains the runtime and calibration gates.
+
+## Long-Run Durability
+
+Resumable corpus work now uses a compact atomic progress header and one
+immutable atomic file per completed case. It remains backward-compatible with
+the former monolithic progress format and migrates it on the next successful
+write. This prevents each completed case from serializing and replacing the
+entire growing corpus journal.
