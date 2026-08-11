@@ -100,6 +100,11 @@ export type IsolatedMaterializationProgress = {
   reportCases: Array<Record<string, unknown>>;
 };
 
+const MATERIALIZATION_PROGRESS_DISK_SCHEMA =
+  "ranker-corpus-materialization-progress.v2" as const;
+const MATERIALIZATION_PROGRESS_CASE_SCHEMA =
+  "ranker-corpus-materialization-progress-case.v1" as const;
+
 const INTAKE_KEYS = new Set([
   "id", "split", "language", "scenario", "repositoryLineageId", "repositoryUrl",
   "repositoryRef", "publicSourceUrl", "dataOrigin", "prompt", "requiredSourceFiles",
@@ -986,9 +991,60 @@ export function readIsolatedMaterializationProgress(
     JSON.parse(fs.readFileSync(progressPath, "utf8")),
     "isolated materialization progress"
   );
+  if (parsed.schemaVersion === MATERIALIZATION_PROGRESS_DISK_SCHEMA) {
+    const completedCaseIds = array(parsed.completedCaseIds, "progress completedCaseIds")
+      .map((item, index) => string(item, `progress completedCaseIds[${index}]`));
+    const caseDirectory = materializationProgressCaseDirectory(progressPath);
+    const materializedCases: Array<Record<string, unknown>> = [];
+    const reportCases: Array<Record<string, unknown>> = [];
+    for (let index = 0; index < completedCaseIds.length; index += 1) {
+      const casePath = materializationProgressCasePath(caseDirectory, index);
+      if (!fs.existsSync(casePath)) {
+        throw new Error(`isolated materialization progress is missing case row ${index}`);
+      }
+      const caseRecord = record(
+        JSON.parse(fs.readFileSync(casePath, "utf8")),
+        `progress case row ${index}`
+      );
+      if (caseRecord.schemaVersion !== MATERIALIZATION_PROGRESS_CASE_SCHEMA) {
+        throw new Error(`isolated materialization progress case row ${index} has an unsupported schema`);
+      }
+      const materializedCase = record(
+        caseRecord.materializedCase,
+        `progress materializedCases[${index}]`
+      );
+      const reportCase = record(caseRecord.reportCase, `progress reportCases[${index}]`);
+      if (
+        string(materializedCase.id, `progress materializedCases[${index}].id`) !== completedCaseIds[index] ||
+        string(reportCase.id, `progress reportCases[${index}].id`) !== completedCaseIds[index]
+      ) {
+        throw new Error(`isolated materialization progress case row ${index} does not match its header`);
+      }
+      materializedCases.push(materializedCase);
+      reportCases.push(reportCase);
+    }
+    return parseIsolatedMaterializationProgress({
+      ...parsed,
+      schemaVersion: "ranker-corpus-materialization-progress.v1",
+      materializedCases,
+      reportCases
+    }, expected);
+  }
   if (parsed.schemaVersion !== "ranker-corpus-materialization-progress.v1") {
     throw new Error("isolated materialization progress has an unsupported schema");
   }
+  return parseIsolatedMaterializationProgress(parsed, expected);
+}
+
+function parseIsolatedMaterializationProgress(
+  parsed: Record<string, unknown>,
+  expected: {
+    kairnCommit: string;
+    intakeSha256: string;
+    selectedCaseIds: string[];
+    probeLimit?: number;
+  }
+): IsolatedMaterializationProgress {
   const kairnCommit = string(parsed.kairnCommit, "progress kairnCommit");
   const intakeSha256 = string(parsed.intakeSha256, "progress intakeSha256");
   const selectedCaseIds = array(parsed.selectedCaseIds, "progress selectedCaseIds")
@@ -1045,13 +1101,78 @@ export function writeIsolatedMaterializationProgress(
 ): void {
   const parent = path.dirname(progressPath);
   fs.mkdirSync(parent, { recursive: true });
-  const staged = `${progressPath}.tmp-${crypto.randomUUID()}`;
+  const materializedIds = progress.materializedCases.map((item) =>
+    string(item.id, "progress materialized case id")
+  );
+  const reportIds = progress.reportCases.map((item) =>
+    string(item.id, "progress report case id")
+  );
+  if (
+    materializedIds.length !== new Set(materializedIds).size ||
+    !sameStrings(materializedIds, reportIds) ||
+    !sameStrings(materializedIds, progress.selectedCaseIds.slice(0, materializedIds.length))
+  ) {
+    throw new Error("isolated materialization progress contains inconsistent case rows");
+  }
+  if (progress.complete && materializedIds.length !== progress.selectedCaseIds.length) {
+    throw new Error("complete isolated materialization progress is missing selected cases");
+  }
+
+  const caseDirectory = materializationProgressCaseDirectory(progressPath);
+  let persistedCaseCount = 0;
+  if (fs.existsSync(progressPath)) {
+    const existing = record(
+      JSON.parse(fs.readFileSync(progressPath, "utf8")),
+      "existing isolated materialization progress"
+    );
+    if (existing.schemaVersion === MATERIALIZATION_PROGRESS_DISK_SCHEMA) {
+      const existingIds = array(existing.completedCaseIds, "existing progress completedCaseIds")
+        .map((item, index) => string(item, `existing progress completedCaseIds[${index}]`));
+      if (!sameStrings(existingIds, materializedIds.slice(0, existingIds.length))) {
+        throw new Error("existing isolated materialization progress is not a prefix of the new progress");
+      }
+      persistedCaseCount = existingIds.length;
+    } else if (existing.schemaVersion !== "ranker-corpus-materialization-progress.v1") {
+      throw new Error("existing isolated materialization progress has an unsupported schema");
+    }
+  } else if (fs.existsSync(caseDirectory)) {
+    throw new Error("isolated materialization progress case directory exists without a header");
+  }
+  fs.mkdirSync(caseDirectory, { recursive: true });
+  for (let index = persistedCaseCount; index < materializedIds.length; index += 1) {
+    writeAtomicJson(materializationProgressCasePath(caseDirectory, index), {
+      schemaVersion: MATERIALIZATION_PROGRESS_CASE_SCHEMA,
+      materializedCase: progress.materializedCases[index],
+      reportCase: progress.reportCases[index]
+    });
+  }
+  writeAtomicJson(progressPath, {
+    schemaVersion: MATERIALIZATION_PROGRESS_DISK_SCHEMA,
+    kairnCommit: progress.kairnCommit,
+    intakeSha256: progress.intakeSha256,
+    selectedCaseIds: progress.selectedCaseIds,
+    ...(progress.probeLimit ? { probeLimit: progress.probeLimit } : {}),
+    complete: progress.complete,
+    completedCaseIds: materializedIds
+  });
+}
+
+function materializationProgressCaseDirectory(progressPath: string): string {
+  return `${progressPath}.cases`;
+}
+
+function materializationProgressCasePath(caseDirectory: string, index: number): string {
+  return path.join(caseDirectory, `${String(index).padStart(6, "0")}.json`);
+}
+
+function writeAtomicJson(targetPath: string, value: unknown): void {
+  const staged = `${targetPath}.tmp-${crypto.randomUUID()}`;
   try {
-    fs.writeFileSync(staged, `${JSON.stringify(progress)}\n`, {
+    fs.writeFileSync(staged, `${JSON.stringify(value)}\n`, {
       encoding: "utf8",
       flag: "wx"
     });
-    replaceSnapshotCache(progressPath, staged);
+    replaceSnapshotCache(targetPath, staged);
   } finally {
     fs.rmSync(staged, { force: true });
   }

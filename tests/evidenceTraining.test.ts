@@ -410,10 +410,45 @@ describe("public evidence ranker training", () => {
         reportCases: [{ id: "case-a", requiredSourceRecallAt64: 1 }]
       });
 
-      expect(readIsolatedMaterializationProgress(progressPath, identity)).toMatchObject({
+      expect(JSON.parse(fs.readFileSync(progressPath, "utf8"))).toMatchObject({
+        schemaVersion: "ranker-corpus-materialization-progress.v2",
         complete: false,
-        materializedCases: [{ id: "case-a", candidates: [] }],
-        reportCases: [{ id: "case-a", requiredSourceRecallAt64: 1 }]
+        completedCaseIds: ["case-a"]
+      });
+      const firstCasePath = path.join(`${progressPath}.cases`, "000000.json");
+      fs.appendFileSync(firstCasePath, "\n", "utf8");
+      const firstCaseWithSentinel = fs.readFileSync(firstCasePath, "utf8");
+
+      writeIsolatedMaterializationProgress(progressPath, {
+        schemaVersion: "ranker-corpus-materialization-progress.v1",
+        ...identity,
+        complete: true,
+        materializedCases: [
+          { id: "case-a", candidates: [] },
+          { id: "case-b", candidates: [{ path: "src/example.ts" }] }
+        ],
+        reportCases: [
+          { id: "case-a", requiredSourceRecallAt64: 1 },
+          { id: "case-b", requiredSourceRecallAt64: 0 }
+        ]
+      });
+
+      expect(fs.readFileSync(firstCasePath, "utf8")).toBe(firstCaseWithSentinel);
+      expect(fs.readdirSync(`${progressPath}.cases`).sort()).toEqual([
+        "000000.json",
+        "000001.json"
+      ]);
+
+      expect(readIsolatedMaterializationProgress(progressPath, identity)).toMatchObject({
+        complete: true,
+        materializedCases: [
+          { id: "case-a", candidates: [] },
+          { id: "case-b", candidates: [{ path: "src/example.ts" }] }
+        ],
+        reportCases: [
+          { id: "case-a", requiredSourceRecallAt64: 1 },
+          { id: "case-b", requiredSourceRecallAt64: 0 }
+        ]
       });
       expect(() => readIsolatedMaterializationProgress(progressPath, {
         ...identity,
@@ -423,6 +458,52 @@ describe("public evidence ranker training", () => {
         ...identity,
         probeLimit: 256
       })).toThrow("does not match the current commit");
+    } finally {
+      fs.rmSync(temporary, { recursive: true, force: true });
+    }
+  });
+
+  it("migrates monolithic materialization progress without losing completed cases", () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-materialization-progress-v1-"));
+    const progressPath = path.join(temporary, "oracle.progress.json");
+    const identity = {
+      kairnCommit: "a".repeat(40),
+      intakeSha256: "b".repeat(64),
+      selectedCaseIds: ["case-a", "case-b"]
+    };
+    const legacyProgress = {
+      schemaVersion: "ranker-corpus-materialization-progress.v1",
+      ...identity,
+      complete: false,
+      materializedCases: [{ id: "case-a", candidates: [] }],
+      reportCases: [{ id: "case-a", requiredSourceRecallAt64: 1 }]
+    } as const;
+    try {
+      fs.writeFileSync(progressPath, `${JSON.stringify(legacyProgress)}\n`, "utf8");
+      expect(readIsolatedMaterializationProgress(progressPath, identity)).toMatchObject({
+        materializedCases: [{ id: "case-a" }]
+      });
+
+      writeIsolatedMaterializationProgress(progressPath, {
+        ...legacyProgress,
+        materializedCases: [
+          legacyProgress.materializedCases[0],
+          { id: "case-b", candidates: [] }
+        ],
+        reportCases: [
+          legacyProgress.reportCases[0],
+          { id: "case-b", requiredSourceRecallAt64: 1 }
+        ]
+      });
+
+      expect(JSON.parse(fs.readFileSync(progressPath, "utf8"))).toMatchObject({
+        schemaVersion: "ranker-corpus-materialization-progress.v2",
+        completedCaseIds: ["case-a", "case-b"]
+      });
+      expect(readIsolatedMaterializationProgress(progressPath, identity)).toMatchObject({
+        materializedCases: [{ id: "case-a" }, { id: "case-b" }],
+        reportCases: [{ id: "case-a" }, { id: "case-b" }]
+      });
     } finally {
       fs.rmSync(temporary, { recursive: true, force: true });
     }
@@ -515,11 +596,21 @@ describe("public evidence ranker training", () => {
     const result = await materializeEvidenceCorpus(materializeOptions);
 
     expect(result.caseCount).toBe(1);
-    expect(JSON.parse(fs.readFileSync(`${manifestPath}.progress.json`, "utf8"))).toMatchObject({
-      schemaVersion: "ranker-corpus-materialization-progress.v1",
+    const progressPath = `${manifestPath}.progress.json`;
+    expect(JSON.parse(fs.readFileSync(progressPath, "utf8"))).toMatchObject({
+      schemaVersion: "ranker-corpus-materialization-progress.v2",
       complete: true,
       probeLimit: 256,
       selectedCaseIds: ["materialized-train-case"],
+      completedCaseIds: ["materialized-train-case"]
+    });
+    expect(readIsolatedMaterializationProgress(progressPath, {
+      kairnCommit: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
+      intakeSha256: crypto.createHash("sha256").update(fs.readFileSync(intakePath)).digest("hex"),
+      selectedCaseIds: ["materialized-train-case"],
+      probeLimit: 256
+    })).toMatchObject({
+      complete: true,
       materializedCases: [expect.objectContaining({ id: "materialized-train-case" })],
       reportCases: [expect.objectContaining({ id: "materialized-train-case" })]
     });
