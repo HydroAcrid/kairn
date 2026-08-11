@@ -48,7 +48,7 @@ describe("probe ranker diagnostic evaluation", () => {
     const materializer = { kairnCommit: "a".repeat(40), intakeSha256: "b".repeat(64) };
     fs.writeFileSync(manifestPath, JSON.stringify({
       schemaVersion: "ranker-corpus.v1",
-      featureSchemaVersion: "evidence-features-v4",
+      featureSchemaVersion: "evidence-features-v5",
       sealed: false,
       status: "draft_for_label_review",
       materializer,
@@ -135,7 +135,7 @@ describe("probe ranker diagnostic evaluation", () => {
     const materializer = { kairnCommit: "a".repeat(40), intakeSha256: "b".repeat(64) };
     const manifest = {
       schemaVersion: "ranker-corpus.v1",
-      featureSchemaVersion: "evidence-features-v4",
+      featureSchemaVersion: "evidence-features-v5",
       sealed: false,
       status: "draft_for_label_review",
       materializer,

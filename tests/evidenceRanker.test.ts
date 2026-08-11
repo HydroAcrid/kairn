@@ -302,6 +302,7 @@ describe("evidence task signals and candidates", () => {
           supportingSeedCount: 3,
           seedStrength: 0.71,
           independentEvidence: 0.32,
+          modelCorroboratedImporter: true,
           sourceTestPair: false
         }
       ]]),
@@ -315,7 +316,8 @@ describe("evidence task signals and candidates", () => {
         graphPrecision: 0.8,
         graphConsensus: 1,
         graphSeedStrength: 0.71,
-        graphIndependentEvidence: 0.32
+        graphIndependentEvidence: 0.32,
+        modelCorroboratedImporter: 1
       });
   });
 

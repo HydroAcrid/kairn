@@ -4273,7 +4273,9 @@ function describeGraphCandidateEvidence(input: {
         ? {
             precision: input.graphEvidenceByPath.get(filePath)!.precision,
             seedStrength: input.graphEvidenceByPath.get(filePath)!.seedStrength,
-            independentEvidence: input.graphEvidenceByPath.get(filePath)!.independentEvidence
+            independentEvidence: input.graphEvidenceByPath.get(filePath)!.independentEvidence,
+            modelCorroboratedImporter:
+              input.graphEvidenceByPath.get(filePath)!.modelCorroboratedImporter
           }
         : {}),
       supports: supports.slice(0, 8)

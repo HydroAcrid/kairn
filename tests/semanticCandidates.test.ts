@@ -463,6 +463,7 @@ describe("model-based semantic candidates", () => {
     expect(result.graphPaths).not.toContain(forwardDependency.path);
     expect(result.graphEvidenceByPath.get(importer.path)).toMatchObject({
       precision: 1,
+      modelCorroboratedImporter: true,
       sourceTestPair: false
     });
     expect(result.graphEvidenceByPath.get(importer.path)?.seedStrength).toBeGreaterThan(0.3);
@@ -1115,6 +1116,7 @@ describe("model-based semantic candidates", () => {
       precision: 0.8,
       supportingSeedCount: 2,
       independentEvidence: 0,
+      modelCorroboratedImporter: false,
       sourceTestPair: false
     });
     expect(result.graphEvidenceByPath.get(consensusSource.path)?.seedStrength).toBeGreaterThan(0);

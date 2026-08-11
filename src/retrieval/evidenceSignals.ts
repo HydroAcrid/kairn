@@ -612,6 +612,7 @@ function buildGraphFeatureEvidence(input: {
       supportingSeedCount: value.supportingSeeds.size,
       seedStrength: normalizeGraphSeedStrength([...value.supportingSeeds.values()]),
       independentEvidence: 0,
+      modelCorroboratedImporter: false,
       sourceTestPair: value.sourceTestPair
     }
   ]));
@@ -644,6 +645,7 @@ function buildFeatureVector(input: {
     graphSupport: clamp01(Math.log2(1 + graphSupport) / Math.log2(1 + DEFAULT_INITIAL_CANDIDATE_LIMIT)),
     graphSeedStrength: clamp01(input.graphEvidence?.seedStrength ?? 0),
     graphIndependentEvidence: clamp01(input.graphEvidence?.independentEvidence ?? 0),
+    modelCorroboratedImporter: binary(input.graphEvidence?.modelCorroboratedImporter ?? false),
     sourceTestPair: binary(input.reasons.has("source_test_pair")),
     productionSource: binary(isProductionEvidenceFile(input.file)),
     testFile: binary(isTestFile(input.file)),
