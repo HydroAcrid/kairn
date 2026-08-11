@@ -284,7 +284,8 @@ export function buildModelCandidateUnion(input: {
         { channel: "symbol", paths: eligibleSymbolPaths }
       ],
       seedRanks: graphSeedRanks,
-      relationMode: "model_corroborated_reverse_import"
+      relationMode: "model_corroborated_reverse_import",
+      graphEvidenceByPath
     }),
     signals.intent,
     filesByPath
@@ -370,14 +371,19 @@ export function buildModelCandidateUnion(input: {
   );
   const probePaths = uniquePaths([
     ...enrichedPaths,
+    // The diagnostic pool exists to test whether the learned selector can
+    // recover model candidates that the current 64/128 policy misses. Keep
+    // the complete independent semantic lane ahead of optional graph tails;
+    // otherwise a large import graph can consume all 512 slots before a
+    // genuine model hit is made available to the ranker.
+    ...semanticEvidencePaths,
     ...graphCorePaths,
     ...graphTailPaths,
     ...graphConsensusPaths,
     ...graphImporterPaths,
     ...graphPaths,
     ...graphEnrichedOrder,
-    ...preliminaryUnion,
-    ...semanticEvidencePaths
+    ...preliminaryUnion
   ])
     .filter((filePath) => filesByPath.has(filePath))
     .slice(0, probeLimit);
@@ -672,7 +678,8 @@ export function rankEvidenceBackedGraphCandidates(input: {
       .reduce((sum, rank) => sum + 1 / (60 + rank), 0);
     const maximumIndependentEvidence = 3 / 61;
     for (const candidate of candidates.values()) {
-      input.graphEvidenceByPath.set(candidate.path, {
+      const current = input.graphEvidenceByPath.get(candidate.path);
+      const next = {
         precision: candidate.precision / 5,
         supportingSeedCount: candidate.seedRanks.size,
         seedStrength: clamp01(graphSupportScore(candidate) / maximumSeedStrength),
@@ -680,7 +687,14 @@ export function rankEvidenceBackedGraphCandidates(input: {
           independentScore(candidate.path) / maximumIndependentEvidence
         ),
         sourceTestPair: candidate.sourceTestPair
-      });
+      };
+      input.graphEvidenceByPath.set(candidate.path, current ? {
+        precision: Math.max(current.precision, next.precision),
+        supportingSeedCount: Math.max(current.supportingSeedCount, next.supportingSeedCount),
+        seedStrength: Math.max(current.seedStrength, next.seedStrength),
+        independentEvidence: Math.max(current.independentEvidence, next.independentEvidence),
+        sourceTestPair: current.sourceTestPair || next.sourceTestPair
+      } : next);
     }
   }
   const minimumSeedSupport = Math.max(1, Math.floor(input.minimumSeedSupport ?? 1));

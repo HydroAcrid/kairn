@@ -446,6 +446,9 @@ describe("model-based semantic candidates", () => {
         edge(rootPath, importer.path, importedProbe.path, "imports"),
         edge(rootPath, lexicalOnlyImporter.path, importedProbe.path, "imports"),
         edge(rootPath, importedProbe.path, forwardDependency.path, "imports"),
+        // A later precise relationship must not erase the stronger seed rank
+        // supplied independently by the model-corroborated importer lane.
+        edge(rootPath, primary.at(-1)!.path, importer.path, "call"),
         ...preciseNeighbors.map((neighbor, index) =>
           edge(rootPath, primary[index % primary.length]!.path, neighbor.path, "call")
         )
@@ -453,12 +456,16 @@ describe("model-based semantic candidates", () => {
     });
 
     expect(result.graphSeedPaths).toContain(importedProbe.path);
-    expect(result.graphPaths.indexOf(importer.path)).toBeGreaterThanOrEqual(64);
     expect(result.graphImporterPaths).toContain(importer.path);
     expect(result.graphPaths).toContain(importer.path);
     expect(result.enrichedPaths).toContain(importer.path);
     expect(result.graphPaths).not.toContain(lexicalOnlyImporter.path);
     expect(result.graphPaths).not.toContain(forwardDependency.path);
+    expect(result.graphEvidenceByPath.get(importer.path)).toMatchObject({
+      precision: 1,
+      sourceTestPair: false
+    });
+    expect(result.graphEvidenceByPath.get(importer.path)?.seedStrength).toBeGreaterThan(0.3);
   });
 
   it("preserves the bounded model-evidence tail when independent lexical results compete", () => {
@@ -1150,6 +1157,45 @@ describe("model-based semantic candidates", () => {
     );
     expect(result.probeCandidateResults).toContainEqual(
       expect.objectContaining({ path: lateProbe.path })
+    );
+  });
+
+  it("keeps late independent model evidence ahead of optional graph probe tails", () => {
+    const rootPath = "/repo";
+    const seeds = Array.from({ length: 64 }, (_, index) =>
+      file(rootPath, `src/workflow/seed-${String(index).padStart(2, "0")}.ts`)
+    );
+    const semanticTail = Array.from({ length: 300 }, (_, index) =>
+      file(rootPath, `src/semantic/candidate-${String(index).padStart(3, "0")}.ts`)
+    );
+    const graphNeighbors = Array.from({ length: 500 }, (_, index) =>
+      file(rootPath, `src/runtime/neighbor-${String(index).padStart(3, "0")}.ts`)
+    );
+    const lateModelCandidate = semanticTail.at(-1)!;
+    const semanticRanking = [...seeds, ...semanticTail].map((candidate, index) => ({
+      path: candidate.path,
+      similarity: 1 - index / 1_000,
+      documentIds: [`semantic-${index}`]
+    }));
+    const result = buildModelCandidateUnion({
+      files: [...seeds, ...semanticTail, ...graphNeighbors],
+      query: "Repair the production workflow behavior described by the model.",
+      symbols: [],
+      bm25Results: seeds.map((candidate, index) => scored(candidate, 1 - index / 100)),
+      semanticHits: semanticRanking,
+      semanticQueryRankings: [semanticRanking],
+      semanticStatus: readyStatus(semanticRanking.length),
+      edges: graphNeighbors.map((neighbor) =>
+        edge(rootPath, seeds[0]!.path, neighbor.path, "type_reference")
+      ),
+      probeLimit: 512
+    });
+
+    expect(result.enrichedPaths).not.toContain(lateModelCandidate.path);
+    expect(result.probePaths).toContain(lateModelCandidate.path);
+    expect(result.probePaths.indexOf(lateModelCandidate.path)).toBeLessThan(512);
+    expect(result.probeCandidateResults).toContainEqual(
+      expect.objectContaining({ path: lateModelCandidate.path })
     );
   });
 
