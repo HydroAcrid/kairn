@@ -11,6 +11,8 @@ type Options = {
   reportPath: string;
   outPath: string;
   summaryPath: string;
+  baseRowsPath?: string;
+  dropZeroPositiveSynthetic: boolean;
 };
 
 const options = parseArgs(process.argv.slice(2));
@@ -51,11 +53,16 @@ if (manifestCases.length !== reportCases.size) {
   throw new Error("Probe manifest/report case counts differ.");
 }
 
-const rows: Record<string, unknown>[] = [];
+const baseRowsBytes = options.baseRowsPath ? fs.readFileSync(options.baseRowsPath) : undefined;
+const baseRows = baseRowsBytes ? parseBaseRows(baseRowsBytes) : [];
+const rows: Record<string, unknown>[] = [...baseRows];
+const baseCaseIds = new Set(baseRows.map((row) => string(row.caseGroupId, "base row caseGroupId")));
 const splitCounts = new Map<string, number>();
 const labelCounts = new Map<string, number>();
 const probeCounts: number[] = [];
+const excludedSyntheticCases: string[] = [];
 let expandedProbeCases = 0;
+let retainedCaseCount = 0;
 for (let caseIndex = 0; caseIndex < manifestCases.length; caseIndex += 1) {
   const corpusCase = record(manifestCases[caseIndex], `manifest.cases[${caseIndex}]`);
   const caseId = string(corpusCase.id, `manifest.cases[${caseIndex}].id`);
@@ -69,10 +76,8 @@ for (let caseIndex = 0; caseIndex < manifestCases.length; caseIndex += 1) {
   if (probeCandidates.length === 0 || probeCandidates.length > probeLimit) {
     throw new Error(`${caseId}: probe candidate count must be positive and at most probeLimit`);
   }
-  if (probeCandidates.length > 128) expandedProbeCases += 1;
-  probeCounts.push(probeCandidates.length);
   const split = string(corpusCase.split, `${caseId}.split`);
-  splitCounts.set(split, (splitCounts.get(split) ?? 0) + 1);
+  const caseRows: Record<string, unknown>[] = [];
   for (let candidateIndex = 0; candidateIndex < probeCandidates.length; candidateIndex += 1) {
     const candidate = record(
       probeCandidates[candidateIndex],
@@ -83,12 +88,11 @@ for (let caseIndex = 0; caseIndex < manifestCases.length; caseIndex += 1) {
       candidate.labelProvenance,
       `${caseId}.probeCandidates[${candidateIndex}].labelProvenance`
     );
-    labelCounts.set(provenance, (labelCounts.get(provenance) ?? 0) + 1);
     const features = record(
       candidate.features,
       `${caseId}.probeCandidates[${candidateIndex}].features`
     );
-    rows.push({
+    caseRows.push({
       featureSchemaVersion: "evidence-features-v4",
       repositoryLineageId: string(corpusCase.repositoryLineageId, `${caseId}.repositoryLineageId`),
       caseGroupId: caseId,
@@ -108,10 +112,28 @@ for (let caseIndex = 0; caseIndex < manifestCases.length; caseIndex += 1) {
       diagnosticProbe: true
     });
   }
+  if (
+    options.dropZeroPositiveSynthetic &&
+    corpusCase.dataOrigin === "synthetic" &&
+    !caseRows.some((row) => row.label === 1)
+  ) {
+    excludedSyntheticCases.push(caseId);
+    continue;
+  }
+  if (baseCaseIds.has(caseId)) throw new Error(`${caseId}: base rows already contain this case group.`);
+  if (probeCandidates.length > 128) expandedProbeCases += 1;
+  probeCounts.push(probeCandidates.length);
+  splitCounts.set(split, (splitCounts.get(split) ?? 0) + 1);
+  retainedCaseCount += 1;
+  rows.push(...caseRows);
 }
 if (rows.length === 0) throw new Error("Probe diagnostic contains no labeled rows.");
 if (expandedProbeCases === 0) {
   throw new Error("Probe diagnostic must contain at least one case expanded beyond 128 candidates.");
+}
+for (const [index, row] of rows.entries()) {
+  const provenance = string(row.labelProvenance, `rows[${index}].labelProvenance`);
+  labelCounts.set(provenance, (labelCounts.get(provenance) ?? 0) + 1);
 }
 
 fs.mkdirSync(path.dirname(options.outPath), { recursive: true });
@@ -137,7 +159,15 @@ const summary = {
     path: path.relative(process.cwd(), options.outPath).replace(/\\/g, "/"),
     sha256: sha256(fs.readFileSync(options.outPath))
   },
-  caseCount: manifestCases.length,
+  inputCaseCount: manifestCases.length,
+  caseCount: retainedCaseCount,
+  excludedSyntheticCases,
+  baseRows: options.baseRowsPath && baseRowsBytes ? {
+    path: path.relative(process.cwd(), options.baseRowsPath).replace(/\\/g, "/"),
+    sha256: sha256(baseRowsBytes),
+    rowCount: baseRows.length,
+    caseCount: baseCaseIds.size
+  } : undefined,
   labeledRowCount: rows.length,
   splitCaseCounts: Object.fromEntries([...splitCounts].sort()),
   labelProvenanceCounts: Object.fromEntries([...labelCounts].sort()),
@@ -170,8 +200,34 @@ function parseArgs(args: string[]): Options {
     manifestPath: required("--manifest"),
     reportPath: required("--report"),
     outPath: required("--out"),
-    summaryPath: required("--summary-out")
+    summaryPath: required("--summary-out"),
+    ...(values.get("--base-rows") ? { baseRowsPath: path.resolve(values.get("--base-rows")!) } : {}),
+    dropZeroPositiveSynthetic: values.get("--drop-zero-positive-synthetic") === "true"
   };
+}
+
+function parseBaseRows(bytes: Buffer): Record<string, unknown>[] {
+  const rows = bytes.toString("utf8").split(/\r?\n/).filter(Boolean).map((line, index) =>
+    record(JSON.parse(line), `base rows[${index}]`)
+  );
+  const identities = new Set<string>();
+  for (const [index, row] of rows.entries()) {
+    if (row.featureSchemaVersion !== "evidence-features-v4") {
+      throw new Error(`base rows[${index}] has an incompatible feature schema.`);
+    }
+    const split = string(row.split, `base rows[${index}].split`);
+    if (split !== "train" && split !== "calibration") {
+      throw new Error(`base rows[${index}] must be train or calibration.`);
+    }
+    if (row.isPublic !== true) throw new Error(`base rows[${index}] must declare isPublic=true.`);
+    const identity = [
+      string(row.caseGroupId, `base rows[${index}].caseGroupId`),
+      string(row.candidatePath, `base rows[${index}].candidatePath`)
+    ].join("\0");
+    if (identities.has(identity)) throw new Error(`base rows contain duplicate candidate identity ${identity}.`);
+    identities.add(identity);
+  }
+  return rows;
 }
 
 function array(value: unknown, label: string): unknown[] {

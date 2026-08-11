@@ -283,7 +283,7 @@ function printBetaReport(report: ReturnType<typeof buildBetaReport>): void {
     [
       `Kairn report — last ${report.window.sampled} session${report.window.sampled === 1 ? "" : "s"}`,
       "",
-      `Estimated context ${contextImproved ? "reduction" : "increase"}: ${percent}%`,
+      `Estimated context ${contextImproved ? "saved" : "added"}: ${percent}%`,
       `Estimated context tokens ${contextImproved ? "avoided" : "added"}: ${formatInteger(Math.abs(report.headline.estimatedContextTokensAvoided))}`,
       `Evidence: ${basis}; not provider billing usage.`,
       "",

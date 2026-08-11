@@ -226,7 +226,7 @@ describe("CLI", () => {
     expect(parsedTelemetry.queueLength).toBe(0);
     expect(parsedBetaReport.sessions).toBeGreaterThan(0);
     expect(parsedBetaReport.verdict).toBeTruthy();
-    expect(userReport).toContain("Estimated context reduction:");
+    expect(userReport).toContain("Estimated context saved:");
     expect(userReport).toContain("Quality");
     expect(userReport).toContain("Harmful assists:");
     expect(userReport).toContain("not provider billing usage");

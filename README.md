@@ -323,7 +323,7 @@ kairn telemetry flush --root /path/to/repo --dry-run --json
 kairn diagnostics export --root /path/to/repo --out kairn-diagnostics.json
 ```
 
-Use `kairn doctor` before sharing beta results. It checks Node/Kairn setup, target-specific client config, daemon hints, index state, Windows friction, and telemetry status. `kairn report` leads with the estimated context-reduction percentage for the latest 12 sessions, then shows verification coverage, recommendation follow-through, harmful assists, interventions, silence, and repeated context blocked. When verified sessions exist, the headline only uses quality-passing sessions; otherwise it is explicitly labeled as a directional local estimate. Estimates are never presented as provider billing usage. `kairn beta report` remains a compatibility alias.
+Use `kairn doctor` before sharing beta results. It checks Node/Kairn setup, target-specific client config, daemon hints, index state, Windows friction, and telemetry status. `kairn report` leads with the estimated context-saved percentage for the latest 12 sessions, then shows verification coverage, recommendation follow-through, harmful assists, interventions, silence, and repeated context blocked. When verified sessions exist, the headline only uses quality-passing sessions; otherwise it is explicitly labeled as a directional local estimate. Estimates are never presented as provider billing usage. `kairn beta report` remains a compatibility alias.
 
 Kairn's local footprint in a user repo is intentionally reversible:
 

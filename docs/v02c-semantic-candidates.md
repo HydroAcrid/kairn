@@ -197,6 +197,26 @@ validation continues to require the fixed 165 natural cases and treats these
 train-only variants as additional grouped examples, not replacements for the
 public matrix.
 
+The first bounded synthetic pass materialized 30 views across all five
+languages and three scenarios with 100% embedding-cache reuse. One view was
+excluded before fitting because no positive source label entered its 512-file
+probe pool. Adding the remaining 29 train-only views to the unchanged 135-case
+train/calibration corpus produced the following calibration result:
+
+| Metric | v4 baseline | With synthetic train views | Delta |
+| --- | ---: | ---: | ---: |
+| Required-file Recall@5 | 77.78% | 79.17% | +1.39 pp |
+| Required-file MRR | 0.458434 | 0.458421 | -0.000013 |
+| Expected calibration error | 0.026324 | 0.027175 | +0.000851 |
+| Generated/vendor top-one violations | 0 | 0 | 0 |
+
+This is a small positive calibration result, not promotion or holdout evidence.
+The detached holdout remains unopened. The persistent misses are still in the
+TypeScript candidate pool: one required file is absent from the 512-file probe,
+and another ranks 146th. Further work therefore targets general semantic
+candidate recall rather than adding path, filename, or issue-specific ranking
+rules.
+
 ## Long-Run Durability
 
 Resumable corpus work now uses a compact atomic progress header and one
