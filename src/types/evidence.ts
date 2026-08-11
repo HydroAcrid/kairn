@@ -85,7 +85,6 @@ export type EvidenceGraphFacts = {
   supportingSeedCount: number;
   seedStrength: number;
   independentEvidence: number;
-  modelCorroboratedImporter: boolean;
   sourceTestPair: boolean;
 };
 
@@ -106,7 +105,6 @@ export const EVIDENCE_FEATURE_NAMES = Object.freeze([
   "graphSupport",
   "graphSeedStrength",
   "graphIndependentEvidence",
-  "modelCorroboratedImporter",
   "sourceTestPair",
   "productionSource",
   "testFile",
@@ -192,7 +190,7 @@ export type EvidenceRankerThresholds = {
 export type EvidenceRankerArtifact = {
   formatVersion: 1;
   modelId: string;
-  featureSchemaVersion: "evidence-features-v5";
+  featureSchemaVersion: "evidence-features-v4";
   featureSchemaHash: string;
   orderedFeatures: EvidenceFeatureName[];
   intercept: number;

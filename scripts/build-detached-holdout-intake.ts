@@ -204,7 +204,7 @@ export function buildDetachedHoldoutArtifacts(input: {
   const intake = {
     schemaVersion: "ranker-corpus-intake.v1",
     corpusId: "kairn-evidence-v02c-detached-holdout-20260727",
-    featureSchemaVersion: "evidence-features-v5",
+    featureSchemaVersion: "evidence-features-v4",
     sealed: false,
     sampleOnly: false,
     lineageRegistry: input.registryFilename,

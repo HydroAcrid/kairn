@@ -35,12 +35,10 @@ Retrieval performs no network call. A missing, corrupt, incompatible, or stale m
 5. Fuse non-hard rankings with reciprocal-rank fusion.
 6. Keep at most 64 initial candidates.
 7. Add only direct graph and source/test neighbors, capped at 128.
-8. Build `evidence-features-v5` for the bounded union. The v5 schema retains
+8. Build `evidence-features-v4` for the bounded union. The v4 schema retains
    real semantic similarity and adds objective parser-graph precision,
    independent-seed consensus, bounded support, supporting-seed strength, and
-   independent retrieval evidence as model inputs. It also exposes a typed
-   model-corroborated reverse-importer fact rather than assigning that relation
-   a deterministic bonus. Probe-seed facts are passed
+   independent retrieval evidence as model inputs. Probe-seed facts are passed
    through from candidate generation instead of being recomputed from only the
    first 64 files; none of these facts directly assigns relevance.
 9. Rank files with the calibrated logistic artifact when enabled.

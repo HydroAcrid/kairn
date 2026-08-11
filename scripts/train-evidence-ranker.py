@@ -19,13 +19,12 @@ FEATURES = [
     "exactPath", "basenameMatch", "exactSymbol", "symbolPrefix", "bm25",
     "keyword", "semantic", "failureReference", "gitChanged",
     "alreadyDelivered", "graphNeighbor", "graphPrecision", "graphConsensus",
-    "graphSupport", "graphSeedStrength", "graphIndependentEvidence",
-    "modelCorroboratedImporter", "sourceTestPair",
+    "graphSupport", "graphSeedStrength", "graphIndependentEvidence", "sourceTestPair",
     "productionSource", "testFile", "docsFile", "generatedVendor",
     "intentRoleMatch", "importance", "contentCost", "missingSymbols",
     "missingLexical",
 ]
-SCHEMA_VERSION = "evidence-features-v5"
+SCHEMA_VERSION = "evidence-features-v4"
 L2_GRID = [0.0001, 0.001, 0.01, 0.1, 1.0]
 LABEL_POLICIES: dict[str, tuple[int, float]] = {
     "required_source_oracle": (1, 1.0),

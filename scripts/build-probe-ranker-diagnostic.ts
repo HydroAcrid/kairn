@@ -29,8 +29,8 @@ if (
 if (report.schemaVersion !== "ranker-corpus-materialization-report.v1") {
   throw new Error("Probe diagnostics require a ranker materialization report.");
 }
-if (manifest.featureSchemaVersion !== "evidence-features-v5") {
-  throw new Error("Probe diagnostics require evidence-features-v5.");
+if (manifest.featureSchemaVersion !== "evidence-features-v4") {
+  throw new Error("Probe diagnostics require evidence-features-v4.");
 }
 const materializer = record(manifest.materializer, "manifest.materializer");
 if (
@@ -89,7 +89,7 @@ for (let caseIndex = 0; caseIndex < manifestCases.length; caseIndex += 1) {
       `${caseId}.probeCandidates[${candidateIndex}].features`
     );
     rows.push({
-      featureSchemaVersion: "evidence-features-v5",
+      featureSchemaVersion: "evidence-features-v4",
       repositoryLineageId: string(corpusCase.repositoryLineageId, `${caseId}.repositoryLineageId`),
       caseGroupId: caseId,
       split,

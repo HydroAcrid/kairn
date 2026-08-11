@@ -686,8 +686,6 @@ export function rankEvidenceBackedGraphCandidates(input: {
         independentEvidence: clamp01(
           independentScore(candidate.path) / maximumIndependentEvidence
         ),
-        modelCorroboratedImporter:
-          input.relationMode === "model_corroborated_reverse_import",
         sourceTestPair: candidate.sourceTestPair
       };
       input.graphEvidenceByPath.set(candidate.path, current ? {
@@ -695,8 +693,6 @@ export function rankEvidenceBackedGraphCandidates(input: {
         supportingSeedCount: Math.max(current.supportingSeedCount, next.supportingSeedCount),
         seedStrength: Math.max(current.seedStrength, next.seedStrength),
         independentEvidence: Math.max(current.independentEvidence, next.independentEvidence),
-        modelCorroboratedImporter:
-          current.modelCorroboratedImporter || next.modelCorroboratedImporter,
         sourceTestPair: current.sourceTestPair || next.sourceTestPair
       } : next);
     }

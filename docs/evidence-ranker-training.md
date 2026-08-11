@@ -254,7 +254,7 @@ The command writes a checksummed model artifact, a training manifest, and a mode
 
 ## Training-row contract
 
-Each JSONL row contains the ordered 27-value `evidence-features-v5` vector and:
+Each JSONL row contains the ordered 26-value `evidence-features-v4` vector and:
 
 - a `repositoryLineageId`, `caseGroupId`, and `split` (`train`, `calibration`, or `holdout`);
 - `isPublic: true`, an HTTPS `publicSourceUrl`, and a public/synthetic `dataOrigin`;

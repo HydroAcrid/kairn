@@ -10,7 +10,7 @@ import type {
 import { EVIDENCE_FEATURE_NAMES } from "../types.js";
 import { sha256 } from "../utils/hash.js";
 
-export const EVIDENCE_FEATURE_SCHEMA_VERSION = "evidence-features-v5" as const;
+export const EVIDENCE_FEATURE_SCHEMA_VERSION = "evidence-features-v4" as const;
 export const EVIDENCE_FEATURE_SCHEMA_HASH = sha256(stableStringify({
   version: EVIDENCE_FEATURE_SCHEMA_VERSION,
   features: EVIDENCE_FEATURE_NAMES
@@ -37,7 +37,6 @@ const BUNDLED_PAYLOAD: EvidenceArtifactPayload = {
     0.8,
     -0.9,
     0.55,
-    0,
     0,
     0,
     0,
