@@ -188,6 +188,15 @@ standard L2-logistic ranker. The detached holdout remains sealed. No new serving
 mechanism is promoted unless it improves separate calibration lineages and
 retains the runtime and calibration gates.
 
+The synthetic-data path uses bounded deterministic views of existing public
+train prompts. It preserves the parent repository, commit, labels, language,
+and scenario; adds no target path or new factual claim to the prompt; and never
+creates calibration or holdout variants. Parent selection is stable within each
+language/scenario cell and independent of ranker output. Production corpus
+validation continues to require the fixed 165 natural cases and treats these
+train-only variants as additional grouped examples, not replacements for the
+public matrix.
+
 ## Long-Run Durability
 
 Resumable corpus work now uses a compact atomic progress header and one

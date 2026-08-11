@@ -291,8 +291,9 @@ def validate_case(
 def validate_distribution(cases: list[dict[str, Any]], *, sample_only: bool) -> None:
     if sample_only:
         return
+    natural_cases = [case for case in cases if case["dataOrigin"] != "synthetic"]
     for split, expected in PRODUCTION_COUNTS.items():
-        split_cases = [case for case in cases if case["split"] == split]
+        split_cases = [case for case in natural_cases if case["split"] == split]
         if len(split_cases) != expected["cases"]:
             raise ValueError(f"{split} must contain exactly {expected['cases']} cases")
         lineage_count = len({case["repositoryLineageId"] for case in split_cases})
@@ -438,6 +439,8 @@ def main() -> int:
         "featureSchemaVersion": FEATURE_SCHEMA_VERSION,
         "corpusSha256": digest,
         "caseCount": len(cases),
+        "naturalCaseCount": sum(case["dataOrigin"] != "synthetic" for case in cases),
+        "syntheticVariantCases": sum(case["dataOrigin"] == "synthetic" for case in cases),
         "candidateRows": len(rows),
         "labeledRows": sum(row["label"] is not None for row in rows),
         "unlabeledRows": sum(row["label"] is None for row in rows),
