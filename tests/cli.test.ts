@@ -236,8 +236,11 @@ describe("CLI", () => {
     expect(userReport).toContain("not provider billing usage");
     expect(shareableReport).toContain("Kairn check-in — last");
     expect(shareableReport).toContain("Estimated context saved:");
-    expect(shareableReport).toContain("Quality:");
-    expect(shareableReport).toContain("Guidance:");
+    expect(shareableReport).toMatch(/Quality: \d+ passed · \d+ failed · \d+ unverified/);
+    expect(shareableReport).toContain("recorded harmful assists");
+    expect(shareableReport).toContain("Recommendations followed:");
+    expect(shareableReport).toContain("local full-context baselines");
+    expect(shareableReport).toContain("not observed provider usage or billing savings");
     expect(shareableReport).toContain("Privacy: aggregate only;");
     expect(shareableReport).not.toContain(root);
   }, 90_000);

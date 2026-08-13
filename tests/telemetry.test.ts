@@ -10,6 +10,7 @@ import { buildTelemetryPayload } from "../src/telemetry/payload.js";
 import { enqueueTelemetryPayload, flushTelemetryQueue, readTelemetryQueue } from "../src/telemetry/queue.js";
 import { buildBetaReport } from "../src/telemetry/report.js";
 import { buildPrivateBetaTelemetrySummary, formatPrivateBetaTelemetrySummary } from "../src/telemetry/summary.js";
+import { formatShareableBetaReport } from "../src/cli/commands/beta.js";
 import { assertSafeTelemetryPayload, hashFileId } from "../src/telemetry/sanitize.js";
 import type { TelemetryPayload } from "../src/types.js";
 import { createFixtureRepo } from "./helpers.js";
@@ -22,6 +23,19 @@ afterEach(async () => {
 });
 
 describe("telemetry", () => {
+  it("does not present missing report data as zero-percent savings", () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+
+    const output = formatShareableBetaReport(buildBetaReport({ runtime }));
+
+    expect(output).toContain("Estimated context saved: not enough data");
+    expect(output).toContain("no savings claim");
+    expect(output).not.toContain("0.0% (0 tokens)");
+    expect(output).not.toContain(root);
+    runtime.close();
+  });
+
   it("builds sanitized aggregate payloads without raw paths", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);

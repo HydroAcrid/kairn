@@ -312,22 +312,25 @@ function printBetaReport(report: ReturnType<typeof buildBetaReport>): void {
 export function formatShareableBetaReport(report: ReturnType<typeof buildBetaReport>): string {
   const percent = Math.abs(report.headline.estimatedContextSavingsRate * 100).toFixed(1);
   const contextImproved = report.headline.estimatedContextTokensAvoided >= 0;
+  const contextHeadline = report.headline.basis === "no_data"
+    ? "Estimated context saved: not enough data"
+    : `Estimated context ${contextImproved ? "saved" : "added"}: ${percent}% (${formatInteger(Math.abs(report.headline.estimatedContextTokensAvoided))} tokens)`;
   const recommendationUse = report.quality.recommendationUseRate === undefined
     ? "no recommendations recorded"
     : `${(report.quality.recommendationUseRate * 100).toFixed(1)}% (${report.quality.recommendationsLaterUsed}/${report.quality.recommendationsMade}) later used`;
   const basis = report.headline.basis === "quality_gated_estimate"
-    ? `quality-gated estimate from ${report.tokens.qualityGatedSessions} verified session(s)`
+    ? `Quality-gated estimate from ${report.tokens.qualityGatedSessions} verified session(s), using Kairn's local full-context baselines; not observed provider usage or billing savings.`
     : report.headline.basis === "all_sessions_estimate"
-      ? "directional estimate; no quality-passing session was available"
-      : "not enough context data yet";
+      ? "Directional estimate using Kairn's local full-context baselines; no quality-passing session was available, and this is not observed provider usage or billing savings."
+      : "Not enough recorded context data yet; no savings claim.";
   return [
     `Kairn check-in — last ${report.window.sampled} session${report.window.sampled === 1 ? "" : "s"}`,
-    `Estimated context ${contextImproved ? "saved" : "added"}: ${percent}% (${formatInteger(Math.abs(report.headline.estimatedContextTokensAvoided))} tokens)`,
-    `Quality: ${report.quality.sessionsPassingVerification}/${report.sessions} passed verification · ${report.quality.harmfulAssists} harmful assists`,
-    `Guidance: ${recommendationUse}`,
+    contextHeadline,
+    `Quality: ${report.quality.sessionsPassingVerification} passed · ${report.quality.sessionsFailingVerification} failed · ${report.quality.sessionsUnverified} unverified · ${report.quality.harmfulAssists} recorded harmful assists`,
+    `Recommendations followed: ${recommendationUse}`,
     `Behavior: ${report.decisions.interventions} interventions · ${report.decisions.stayedSilent} silent decisions`,
     `Repeated context blocked: ${report.context.repeatedFilesAvoided} files · ${report.context.repeatedSnippetsAvoided} snippets`,
-    `Basis: ${basis}; not provider billing usage.`,
+    `Basis: ${basis}`,
     "Privacy: aggregate only; no prompts, source, paths, diffs, repository, or branch identity.",
     ""
   ].join("\n");
