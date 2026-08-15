@@ -13,6 +13,7 @@ export type ApplyCorpusReviewDecisionsOptions = {
   outPath: string;
   registryOutPath?: string;
   summaryOutPath: string;
+  allowPartial?: boolean;
 };
 
 type ReviewDecision = {
@@ -49,25 +50,37 @@ export function applyCorpusReviewDecisions(options: ApplyCorpusReviewDecisionsOp
     intakeSha256: sha256(intakeBytes),
     manifestSha256: sha256(manifestBytes),
     reportSha256: sha256(reportBytes)
-  });
+  }, options.allowPartial === true);
 
   const intakeCases = byId(intake.cases, "intake.cases");
   const manifestCases = byId(manifest.cases, "manifest.cases");
   const reportCases = byId(report.cases, "report.cases");
   const queueCases = byId(queue.cases, "review queue.cases");
-  const expectedCaseCount = intakeCases.size;
-  if ([manifestCases, reportCases, queueCases].some((rows) => rows.size !== expectedCaseCount)) {
-    throw new Error("intake, manifest, report, and review queue case sets must match exactly");
+  const partial = report.partial === true;
+  const selectedCaseIds = partial
+    ? stringArray(report.selectedCaseIds, "report.selectedCaseIds")
+    : [...intakeCases.keys()];
+  requireUnique(selectedCaseIds, "report.selectedCaseIds");
+  const selectedCaseIdSet = new Set(selectedCaseIds);
+  if ([manifestCases, reportCases, queueCases].some((rows) => rows.size !== selectedCaseIdSet.size)) {
+    throw new Error("selected intake, manifest, report, and review queue case sets must match exactly");
   }
-  for (const id of intakeCases.keys()) {
+  for (const id of selectedCaseIds) {
+    if (!intakeCases.has(id)) throw new Error(`selected review case '${id}' is absent from the intake`);
     if (!manifestCases.has(id) || !reportCases.has(id) || !queueCases.has(id)) {
       throw new Error(`review artifacts are missing case '${id}'`);
     }
   }
+  for (const rows of [manifestCases, reportCases, queueCases]) {
+    const unexpected = [...rows.keys()].filter((id) => !selectedCaseIdSet.has(id));
+    if (unexpected.length > 0) throw new Error(`review artifacts contain unselected case '${unexpected[0]}'`);
+  }
+  validateSelection(queue, partial, intakeCases.size, selectedCaseIds);
 
   const reviewedCases: Array<Record<string, unknown>> = array(intake.cases, "intake.cases").map((value, index) => {
     const intakeCase = record(value, `intake.cases[${index}]`);
     const id = nonEmptyString(intakeCase.id, `intake.cases[${index}].id`);
+    if (!selectedCaseIdSet.has(id)) return intakeCase;
     const manifestCase = manifestCases.get(id)!;
     const reportCase = reportCases.get(id)!;
     const queueCase = queueCases.get(id)!;
@@ -92,7 +105,8 @@ export function applyCorpusReviewDecisions(options: ApplyCorpusReviewDecisionsOp
     );
     const expectedRequiredSourceReview = intakeCase.split === "holdout"
       || (originalRequiredSources.length === 0 && !officialPatchSources.some((filePath) => candidatePaths.has(filePath)));
-    const expectedNoiseReview = pathArray(intakeCase.explicitNoiseFiles, `${id}.originalExplicitNoiseFiles`).length < 6;
+    const expectedNoiseReview = pathArray(intakeCase.explicitNoiseFiles, `${id}.originalExplicitNoiseFiles`)
+      .filter((filePath) => candidatePaths.has(filePath)).length < 6;
     if (queueCase.needsRequiredSourceReview !== expectedRequiredSourceReview || queueCase.needsNoiseReview !== expectedNoiseReview) {
       throw new Error(`${id}: review requirements differ from the bound intake and candidates`);
     }
@@ -120,6 +134,9 @@ export function applyCorpusReviewDecisions(options: ApplyCorpusReviewDecisionsOp
       explicitNoiseFiles
     };
   });
+  const reviewedSelectedCases = reviewedCases.filter((item) =>
+    selectedCaseIdSet.has(nonEmptyString(item.id, "reviewed case id"))
+  );
 
   const sourceRegistryRef = nonEmptyString(intake.lineageRegistry, "intake.lineageRegistry");
   const sourceRegistryPath = path.resolve(path.dirname(intakePath), sourceRegistryRef);
@@ -132,7 +149,7 @@ export function applyCorpusReviewDecisions(options: ApplyCorpusReviewDecisionsOp
   }
   const reviewedIntake = {
     ...intake,
-    sealed: true,
+    sealed: !partial,
     lineageRegistry: normalizePath(path.relative(path.dirname(outPath), registryOutPath)),
     cases: reviewedCases
   };
@@ -144,11 +161,15 @@ export function applyCorpusReviewDecisions(options: ApplyCorpusReviewDecisionsOp
   const summary = {
     schemaVersion: "ranker-corpus-review-application.v1",
     corpusId: intake.corpusId,
-    sealed: true,
-    caseCount: reviewedCases.length,
+    sealed: !partial,
+    partial,
+    caseCount: reviewedSelectedCases.length,
+    sourceCaseCount: reviewedCases.length,
+    untouchedCaseCount: reviewedCases.length - reviewedSelectedCases.length,
+    selectedCaseIdsSha256: sha256([...selectedCaseIds].sort().join("\n")),
     reviewers,
-    requiredSourceOracleCases: reviewedCases.filter((item) => pathArray(item.requiredSourceFiles, `${String(item.id)}.requiredSourceFiles`).length > 0).length,
-    explicitNoiseLabels: reviewedCases.reduce((total, item) => total + pathArray(item.explicitNoiseFiles, `${String(item.id)}.explicitNoiseFiles`).length, 0),
+    requiredSourceOracleCases: reviewedSelectedCases.filter((item) => pathArray(item.requiredSourceFiles, `${String(item.id)}.requiredSourceFiles`).length > 0).length,
+    explicitNoiseLabels: reviewedSelectedCases.reduce((total, item) => total + pathArray(item.explicitNoiseFiles, `${String(item.id)}.explicitNoiseFiles`).length, 0),
     source: {
       intakeSha256: sha256(intakeBytes),
       manifestSha256: sha256(manifestBytes),
@@ -178,16 +199,28 @@ function validateRoots(
   manifest: Record<string, unknown>,
   report: Record<string, unknown>,
   queue: Record<string, unknown>,
-  hashes: { intakeSha256: string; manifestSha256: string; reportSha256: string }
+  hashes: { intakeSha256: string; manifestSha256: string; reportSha256: string },
+  allowPartial: boolean
 ): void {
-  if (intake.schemaVersion !== "ranker-corpus-intake.v1" || intake.sealed !== false) {
-    throw new Error("intake must be an unsealed ranker-corpus-intake.v1 artifact");
+  if (intake.schemaVersion !== "ranker-corpus-intake.v1") {
+    throw new Error("intake must be a ranker-corpus-intake.v1 artifact");
+  }
+  if (report.partial === true && !allowPartial) {
+    throw new Error("partial materialization reports require --allow-partial and cannot be sealed");
+  }
+  if (allowPartial && report.partial !== true) {
+    throw new Error("--allow-partial requires a partial materialization report");
+  }
+  if (!allowPartial && intake.sealed !== false) {
+    throw new Error("full review application requires an unsealed intake");
+  }
+  if (allowPartial && intake.sealed !== true && intake.sealed !== false) {
+    throw new Error("partial review application requires an intake with explicit sealed state");
   }
   if (manifest.schemaVersion !== "ranker-corpus.v1" || manifest.sealed !== false) {
     throw new Error("manifest must be an unsealed ranker-corpus.v1 draft");
   }
   if (report.schemaVersion !== "ranker-corpus-materialization-report.v1") throw new Error("report schemaVersion mismatch");
-  if (report.partial === true) throw new Error("partial materialization reports cannot be sealed");
   if (queue.schemaVersion !== "ranker-corpus-review-queue.v1") throw new Error("review queue schemaVersion mismatch");
   if (new Set([intake.corpusId, manifest.corpusId, report.corpusId, queue.corpusId]).size !== 1) throw new Error("corpusId mismatch");
   if (queue.intakeSha256 !== hashes.intakeSha256) throw new Error("review queue intake hash is stale");
@@ -202,6 +235,24 @@ function validateRoots(
   }
   if (queue.materializerCommit !== materializer.kairnCommit || report.kairnCommit !== materializer.kairnCommit) {
     throw new Error("materializer commit mismatch");
+  }
+}
+
+function validateSelection(
+  queue: Record<string, unknown>,
+  partial: boolean,
+  sourceCaseCount: number,
+  selectedCaseIds: string[]
+): void {
+  if (!partial) return;
+  const selection = record(queue.selection, "review queue.selection");
+  if (selection.partial !== true) throw new Error("partial review queue selection must declare partial=true");
+  if (selection.sourceCaseCount !== sourceCaseCount || selection.selectedCaseCount !== selectedCaseIds.length) {
+    throw new Error("partial review queue selection counts are stale");
+  }
+  const expectedDigest = sha256([...selectedCaseIds].sort().join("\n"));
+  if (selection.selectedCaseIdsSha256 !== expectedDigest) {
+    throw new Error("partial review queue selected-case digest is stale");
   }
 }
 
@@ -277,6 +328,10 @@ function pathArray(value: unknown, label: string): string[] {
   return array(value, label).map((item, index) => normalizeCandidatePath(item, `${label}[${index}]`));
 }
 
+function stringArray(value: unknown, label: string): string[] {
+  return array(value, label).map((item, index) => nonEmptyString(item, `${label}[${index}]`));
+}
+
 function normalizeCandidatePath(value: unknown, label: string): string {
   const raw = nonEmptyString(value, label).replace(/\\/g, "/");
   const normalized = path.posix.normalize(raw);
@@ -333,11 +388,18 @@ function sha256(value: string | Buffer): string {
 function parseArgs(argv: string[]): ApplyCorpusReviewDecisionsOptions {
   const args = argv.filter((token) => token !== "--");
   const values = new Map<string, string>();
-  for (let index = 0; index < args.length; index += 2) {
+  let allowPartial = false;
+  for (let index = 0; index < args.length;) {
     const key = args[index];
+    if (key === "--allow-partial") {
+      allowPartial = true;
+      index += 1;
+      continue;
+    }
     const value = args[index + 1];
     if (!key?.startsWith("--") || !value) throw new Error(`invalid argument '${key ?? ""}'`);
     values.set(key, value);
+    index += 2;
   }
   const required = (key: string): string => {
     const value = values.get(key);
@@ -351,7 +413,8 @@ function parseArgs(argv: string[]): ApplyCorpusReviewDecisionsOptions {
     reviewQueuePath: required("--review-queue"),
     outPath: required("--out"),
     ...(values.has("--registry-out") ? { registryOutPath: values.get("--registry-out")! } : {}),
-    summaryOutPath: required("--summary-out")
+    summaryOutPath: required("--summary-out"),
+    ...(allowPartial ? { allowPartial: true } : {})
   };
 }
 

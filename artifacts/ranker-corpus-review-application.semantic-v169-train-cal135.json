@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "ranker-corpus-review-application.v1",
+  "corpusId": "kairn-evidence-v02c-20260722",
+  "sealed": false,
+  "partial": true,
+  "caseCount": 135,
+  "sourceCaseCount": 165,
+  "untouchedCaseCount": 30,
+  "selectedCaseIdsSha256": "c5dbbd46363256b57864b502cdb950f2e0f46f226cbabee613ca6dc92b074614",
+  "reviewers": [
+    "Codex independent repository-evidence review",
+    "Codex independent semantic-union review"
+  ],
+  "requiredSourceOracleCases": 12,
+  "explicitNoiseLabels": 812,
+  "source": {
+    "intakeSha256": "bcfe94973f9e93964a2bd0473addb3c1f43a0b4fed1168de690214db36629fa6",
+    "manifestSha256": "3a90aa6f7199f1c24239e76c4be224ec8fcc3bc9e42b6a121dcccd6aaa4c8ec3",
+    "reportSha256": "7b52a9742ca0115f13ea3d178d2943df76f7fed09d4b39486f3b88da25801ab3",
+    "reviewQueueSha256": "9c9dc10c808f2bdee07860f1dd4862a7d76d7df1499591f0374b881080592d70",
+    "lineageRegistrySha256": "e0b876c765cb621bf04bcb5ab7eda9a60ee46c571656cd5cc91cb6237c3b70d9",
+    "materializerCommit": "753ad12e2f984a939a9e083cdbbb860f6761291b"
+  },
+  "decisionsSha256": "3a0a22b038930316bc1fe5fcf48b5f8be6fded540590797f548e94752b121e47",
+  "output": {
+    "intakeSha256": "9329b275ee3a6163d492391da1ea92bfd6d451bb1b95ce0a93efb72f037f9f16",
+    "lineageRegistrySha256": "e0b876c765cb621bf04bcb5ab7eda9a60ee46c571656cd5cc91cb6237c3b70d9"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "ranker-corpus-review-batch-merge.v1",
+  "corpusId": "kairn-evidence-v02c-20260722",
+  "sourceQueueSha256": "afd28f2c708612160dac3888b0a95aa3f6f72008fd45a6b4e094f10770364ff0",
+  "batchIndexSha256": "7dad59c3fc7f66c564754b604d1d0517805ea2f7867fb5fc94056d6c6e1288fd",
+  "mergedQueueSha256": "9c9dc10c808f2bdee07860f1dd4862a7d76d7df1499591f0374b881080592d70",
+  "decisionCheckpointSha256": "2b4dfab9eaf92d3a31069116fa0ab1b50c966e22f5d2eb8d58c8b2f20b5778fb",
+  "caseCount": 135,
+  "completedCases": 135,
+  "pendingCases": 0,
+  "reviewers": [
+    "Codex independent repository-evidence review",
+    "Codex independent semantic-union review"
+  ],
+  "requireComplete": true,
+  "readyForReviewApplication": true
+}

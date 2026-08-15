@@ -236,15 +236,24 @@ Current audited progress:
 - 40 of 135 decisions were safely carried from the prior review;
 - 95 cases required fresh negative review because prior negative files were no
   longer present in the semantic candidate union;
-- the first 10 fresh decisions passed immutable-context and candidate-membership
-  validation, bringing the total to 50 complete and 85 pending;
-- no case is pending because a required source label was lost;
+- all 95 fresh decisions passed immutable-context, candidate-membership,
+  minimum-negative, and positive/noise-overlap validation;
+- the final strict merge contains 135 complete decisions and zero pending;
+- two absent official-patch paths received explicitly reviewed nearby
+  implementation oracles rather than being counted as retrieval hits;
 - no decision was filled automatically, and no detached holdout case entered
   the review queue.
 
+The partial review application is explicit and fail-closed. It updates only the
+135 IDs declared by the materialization report, preserves all 30 detached
+holdout rows unchanged, and always emits an unsealed intake. Its reviewed
+train/calibration derivative contains 812 explicit negative labels and 12
+required-source oracle cases. A partial application cannot be mistaken for a
+promotion corpus or passed through the full sealing path.
+
 These review counts are data-readiness results, not a new retrieval or ranker
-benchmark. The next ranker comparison occurs only after all 135 decisions are
-complete and the train/calibration datasets are rematerialized.
+benchmark. The next comparison occurs after the reviewed train/calibration
+intake is rematerialized against the unchanged semantic serving path.
 
 ## Long-Run Durability
 

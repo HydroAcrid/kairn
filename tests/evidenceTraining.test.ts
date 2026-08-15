@@ -739,6 +739,7 @@ describe("public evidence ranker training", () => {
     const partialManifestPath = path.join(temporary, "materialized.partial.json");
     const partialReportPath = path.join(temporary, "materialization-report.partial.json");
     const partialIntake = JSON.parse(fs.readFileSync(intakePath, "utf8"));
+    partialIntake.sealed = true;
     partialIntake.cases.push({
       ...partialIntake.cases[0],
       id: "detached-holdout-case",
@@ -759,12 +760,14 @@ describe("public evidence ranker training", () => {
       partial: true,
       selectedCaseIds: ["materialized-train-case"]
     }, null, 2)}\n`, "utf8");
-    expect(buildCorpusReviewQueue({
+    const partialReviewPath = path.join(temporary, "review.partial.json");
+    const partialReviewQueue = buildCorpusReviewQueue({
       intakePath: partialIntakePath,
       manifestPath: partialManifestPath,
       reportPath: partialReportPath,
-      outPath: path.join(temporary, "review.partial.json")
-    })).toMatchObject({
+      outPath: partialReviewPath
+    });
+    expect(partialReviewQueue).toMatchObject({
       caseCount: 1,
       selection: {
         partial: true,
@@ -773,6 +776,46 @@ describe("public evidence ranker training", () => {
       },
       cases: [expect.objectContaining({ id: "materialized-train-case" })]
     });
+    const completedPartialReviewQueue: any = JSON.parse(JSON.stringify(partialReviewQueue));
+    completedPartialReviewQueue.cases[0].decision.reviewer = "independent-partial-reviewer";
+    completedPartialReviewQueue.cases[0].decision.reviewedAt = "2026-08-15T14:00:00.000Z";
+    completedPartialReviewQueue.cases[0].decision.notes = "Train-only review leaves the detached holdout untouched.";
+    fs.writeFileSync(partialReviewPath, `${JSON.stringify(completedPartialReviewQueue, null, 2)}\n`, "utf8");
+    const partialReviewedPath = path.join(temporary, "intake.partial-reviewed.json");
+    const partialReviewSummaryPath = path.join(temporary, "review.partial-application.json");
+    expect(() => applyCorpusReviewDecisions({
+      intakePath: partialIntakePath,
+      manifestPath: partialManifestPath,
+      reportPath: partialReportPath,
+      reviewQueuePath: partialReviewPath,
+      outPath: partialReviewedPath,
+      summaryOutPath: partialReviewSummaryPath
+    })).toThrow("partial materialization reports require --allow-partial");
+    expect(applyCorpusReviewDecisions({
+      intakePath: partialIntakePath,
+      manifestPath: partialManifestPath,
+      reportPath: partialReportPath,
+      reviewQueuePath: partialReviewPath,
+      outPath: partialReviewedPath,
+      summaryOutPath: partialReviewSummaryPath,
+      allowPartial: true
+    })).toMatchObject({
+      sealed: false,
+      partial: true,
+      caseCount: 1,
+      sourceCaseCount: 2,
+      untouchedCaseCount: 1,
+      reviewers: ["independent-partial-reviewer"]
+    });
+    const partialReviewedIntake = JSON.parse(fs.readFileSync(partialReviewedPath, "utf8"));
+    expect(partialReviewedIntake).toMatchObject({
+      sealed: false,
+      cases: [
+        expect.objectContaining({ id: "materialized-train-case", explicitNoiseFiles: noise }),
+        expect.objectContaining({ id: "detached-holdout-case" })
+      ]
+    });
+    expect(partialReviewedIntake.cases[1]).toEqual(partialIntake.cases[1]);
     fs.writeFileSync(reviewPath, `${JSON.stringify(reviewQueue, null, 2)}\n`, "utf8");
     const reviewedIntakePath = path.join(temporary, "intake.reviewed.json");
     const reviewSummaryPath = path.join(temporary, "review-application.json");
