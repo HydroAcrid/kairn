@@ -87,18 +87,26 @@ for (const corpusCase of targetCases) {
   if (requiredSourceFiles.length === 0) {
     throw new Error(`${caseId}: diagnostic ${options.split} has no existing source reference`);
   }
-  const probeCandidates = array(reportCase.probeCandidates, `${caseId}.probeCandidates`);
-  const ranked = probeCandidates.map((value, candidateIndex): RankedCandidate => {
-    const candidate = record(value, `${caseId}.probeCandidates[${candidateIndex}]`);
+  const candidateSource = Array.isArray(reportCase.probeCandidates)
+    ? "probeCandidates"
+    : "trainingCandidates";
+  const diagnosticCandidates = candidateSource === "probeCandidates"
+    ? array(reportCase.probeCandidates, `${caseId}.probeCandidates`)
+    : array(corpusCase.trainingCandidates, `${caseId}.trainingCandidates`);
+  if (diagnosticCandidates.length === 0) {
+    throw new Error(`${caseId}: diagnostic candidate set is empty`);
+  }
+  const ranked = diagnosticCandidates.map((value, candidateIndex): RankedCandidate => {
+    const candidate = record(value, `${caseId}.${candidateSource}[${candidateIndex}]`);
     const features = evidenceFeatures(
-      record(candidate.features, `${caseId}.probeCandidates[${candidateIndex}].features`),
-      `${caseId}.probeCandidates[${candidateIndex}].features`
+      record(candidate.features, `${caseId}.${candidateSource}[${candidateIndex}].features`),
+      `${caseId}.${candidateSource}[${candidateIndex}].features`
     );
     const probability = predictEvidenceRelevance(model, features).relevanceProbability;
     const label = candidate.label === 0 || candidate.label === 1 ? candidate.label : null;
     if (label !== null) calibrationSamples.push({ probability, label });
     return {
-      path: string(candidate.path, `${caseId}.probeCandidates[${candidateIndex}].path`),
+      path: string(candidate.path, `${caseId}.${candidateSource}[${candidateIndex}].path`),
       probability,
       hardPriority: features.failureReference > 0 ? 2 : features.exactPath > 0 ? 1 : 0,
       generatedVendor: features.generatedVendor > 0,

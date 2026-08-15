@@ -143,7 +143,8 @@ describe("probe ranker diagnostic evaluation", () => {
         id: "calibration-case",
         split: "calibration",
         language: "typescript",
-        scenario: "source_localization"
+        scenario: "source_localization",
+        trainingCandidates: candidates
       }]
     };
     fs.writeFileSync(manifestPath, JSON.stringify(manifest));
@@ -179,6 +180,19 @@ describe("probe ranker diagnostic evaluation", () => {
       targetCaseCount: 1,
       holdoutCaseCount: 0,
       calibrationCaseCount: 1,
+      metrics: {
+        rankedStrictFullRecallAt64: 1,
+        rankedStrictFullRecallAt128: 1
+      }
+    });
+
+    const boundedReport = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+    delete boundedReport.cases[0].probeCandidates;
+    fs.writeFileSync(reportPath, JSON.stringify(boundedReport));
+    const boundedResult = run();
+    expect(boundedResult.status, boundedResult.stderr).toBe(0);
+    expect(JSON.parse(fs.readFileSync(outputPath, "utf8"))).toMatchObject({
+      targetCaseCount: 1,
       metrics: {
         rankedStrictFullRecallAt64: 1,
         rankedStrictFullRecallAt128: 1

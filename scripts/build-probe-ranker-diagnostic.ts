@@ -60,6 +60,7 @@ const baseCaseIds = new Set(baseRows.map((row) => string(row.caseGroupId, "base 
 const splitCounts = new Map<string, number>();
 const labelCounts = new Map<string, number>();
 const probeCounts: number[] = [];
+const candidateSourceCounts = new Map<string, number>();
 const excludedSyntheticCases: string[] = [];
 let expandedProbeCases = 0;
 let retainedCaseCount = 0;
@@ -68,20 +69,28 @@ for (let caseIndex = 0; caseIndex < manifestCases.length; caseIndex += 1) {
   const caseId = string(corpusCase.id, `manifest.cases[${caseIndex}].id`);
   const reportCase = reportCases.get(caseId);
   if (!reportCase) throw new Error(`${caseId}: missing from probe report`);
-  const probeLimit = integer(reportCase.probeLimit, `${caseId}.probeLimit`);
-  if (probeLimit <= 128 || probeLimit > 512) {
-    throw new Error(`${caseId}: probeLimit must be between 129 and 512`);
-  }
-  const probeCandidates = array(reportCase.probeCandidates, `${caseId}.probeCandidates`);
-  if (probeCandidates.length === 0 || probeCandidates.length > probeLimit) {
-    throw new Error(`${caseId}: probe candidate count must be positive and at most probeLimit`);
+  const hasProbeCandidates = Array.isArray(reportCase.probeCandidates);
+  const diagnosticCandidates = hasProbeCandidates
+    ? array(reportCase.probeCandidates, `${caseId}.probeCandidates`)
+    : array(corpusCase.trainingCandidates, `${caseId}.trainingCandidates`);
+  const candidateSource = hasProbeCandidates ? "expanded_probe" : "training_candidates";
+  if (hasProbeCandidates) {
+    const probeLimit = integer(reportCase.probeLimit, `${caseId}.probeLimit`);
+    if (probeLimit <= 128 || probeLimit > 512) {
+      throw new Error(`${caseId}: probeLimit must be between 129 and 512`);
+    }
+    if (diagnosticCandidates.length === 0 || diagnosticCandidates.length > probeLimit) {
+      throw new Error(`${caseId}: probe candidate count must be positive and at most probeLimit`);
+    }
+  } else if (diagnosticCandidates.length === 0 || diagnosticCandidates.length > 128) {
+    throw new Error(`${caseId}: training candidate count must be positive and at most 128`);
   }
   const split = string(corpusCase.split, `${caseId}.split`);
   const caseRows: Record<string, unknown>[] = [];
-  for (let candidateIndex = 0; candidateIndex < probeCandidates.length; candidateIndex += 1) {
+  for (let candidateIndex = 0; candidateIndex < diagnosticCandidates.length; candidateIndex += 1) {
     const candidate = record(
-      probeCandidates[candidateIndex],
-      `${caseId}.probeCandidates[${candidateIndex}]`
+      diagnosticCandidates[candidateIndex],
+      `${caseId}.${candidateSource}[${candidateIndex}]`
     );
     if (candidate.label !== 0 && candidate.label !== 1) continue;
     const provenance = string(
@@ -121,16 +130,14 @@ for (let caseIndex = 0; caseIndex < manifestCases.length; caseIndex += 1) {
     continue;
   }
   if (baseCaseIds.has(caseId)) throw new Error(`${caseId}: base rows already contain this case group.`);
-  if (probeCandidates.length > 128) expandedProbeCases += 1;
-  probeCounts.push(probeCandidates.length);
+  if (diagnosticCandidates.length > 128) expandedProbeCases += 1;
+  probeCounts.push(diagnosticCandidates.length);
+  candidateSourceCounts.set(candidateSource, (candidateSourceCounts.get(candidateSource) ?? 0) + 1);
   splitCounts.set(split, (splitCounts.get(split) ?? 0) + 1);
   retainedCaseCount += 1;
   rows.push(...caseRows);
 }
 if (rows.length === 0) throw new Error("Probe diagnostic contains no labeled rows.");
-if (expandedProbeCases === 0) {
-  throw new Error("Probe diagnostic must contain at least one case expanded beyond 128 candidates.");
-}
 for (const [index, row] of rows.entries()) {
   const provenance = string(row.labelProvenance, `rows[${index}].labelProvenance`);
   labelCounts.set(provenance, (labelCounts.get(provenance) ?? 0) + 1);
@@ -145,7 +152,7 @@ fs.writeFileSync(
 const summary = {
   schemaVersion: "ranker-probe-diagnostic.v1",
   promotionEligible: false,
-  reason: "Raw probe rows are diagnostic-only and do not satisfy the sealed 165-case corpus contract.",
+  reason: "Raw candidate rows are diagnostic-only and do not satisfy the sealed 165-case corpus contract.",
   kairnCommit: materializer.kairnCommit,
   manifest: {
     path: path.relative(process.cwd(), options.manifestPath).replace(/\\/g, "/"),
@@ -171,6 +178,7 @@ const summary = {
   labeledRowCount: rows.length,
   splitCaseCounts: Object.fromEntries([...splitCounts].sort()),
   labelProvenanceCounts: Object.fromEntries([...labelCounts].sort()),
+  candidateSourceCounts: Object.fromEntries([...candidateSourceCounts].sort()),
   probeCandidateCounts: {
     minimum: Math.min(...probeCounts),
     maximum: Math.max(...probeCounts),
