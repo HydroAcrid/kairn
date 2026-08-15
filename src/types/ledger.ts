@@ -39,10 +39,15 @@ export type SessionLedgerSummary = {
   shownFiles: string[];
   agentMentionedFiles: string[];
   agentTouchedFiles: string[];
+  recommendedFilesLaterUsed: string[];
+  recommendedFilesLaterTouched: string[];
   repeatedFilesAvoided: number;
   repeatedSnippetsAvoided: number;
   recommendedFilesUsed: string[];
   repeatedlyTouchedFiles: string[];
+  verificationPasses: number;
+  verificationFailures: number;
+  latestVerification: "passed" | "failed" | "none";
   unresolvedFailures: number;
   workingSet: SessionWorkingSet;
   recentEvents: SessionLedgerEvent[];

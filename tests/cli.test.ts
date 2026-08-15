@@ -261,6 +261,14 @@ describe("CLI", () => {
       cwd: process.cwd(),
       encoding: "utf8"
     });
+    const userReport = execFileSync(CLI[0]!, [...CLI.slice(1), "report", "--root", root, "--last", "12"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+    const shareableReport = execFileSync(CLI[0]!, [...CLI.slice(1), "report", "--root", root, "--share"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
     execFileSync(CLI[0]!, [...CLI.slice(1), "telemetry", "enable", "--root", root, "--destination", "supabase"], {
       cwd: process.cwd(),
       encoding: "utf8"
@@ -352,6 +360,19 @@ describe("CLI", () => {
     expect(parsedTelemetry.queueLength).toBe(0);
     expect(parsedBetaReport.sessions).toBeGreaterThan(0);
     expect(parsedBetaReport.verdict).toBeTruthy();
+    expect(userReport).toContain("Estimated context saved:");
+    expect(userReport).toContain("Quality");
+    expect(userReport).toContain("Harmful assists:");
+    expect(userReport).toContain("not provider billing usage");
+    expect(shareableReport).toContain("Kairn check-in — last");
+    expect(shareableReport).toContain("Estimated context saved:");
+    expect(shareableReport).toMatch(/Quality: \d+ passed · \d+ failed · \d+ unverified/);
+    expect(shareableReport).toContain("recorded harmful assists");
+    expect(shareableReport).toContain("Recommendations followed:");
+    expect(shareableReport).toContain("local full-context baselines");
+    expect(shareableReport).toContain("not observed provider usage or billing savings");
+    expect(shareableReport).toContain("Privacy: aggregate only;");
+    expect(shareableReport).not.toContain(root);
   }, 120_000);
 
   it("uses init as the friendly guided setup entrypoint", () => {
@@ -422,12 +443,10 @@ describe("CLI", () => {
       }
     );
     const parsed = JSON.parse(init) as { choice?: string; integrations?: unknown[]; scan?: unknown };
-
     expect(parsed.choice).toBe("doctor");
     expect(Array.isArray(parsed.integrations)).toBe(true);
     expect(parsed.scan).toBeUndefined();
   });
-
   it("accepts whitespace-separated setup wizard targets from PowerShell-style argument lists", () => {
     const root = createFixtureRepo();
     const setupWizardWhitespaceTargets = execFileSync(

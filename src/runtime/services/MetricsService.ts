@@ -16,7 +16,9 @@ import { loadIndexingConfig } from "../../config/indexing.js";
 import { buildImpactStats } from "../../metrics/impact.js";
 import {
   groupMetrics,
+  summarizeAssistanceClassifications,
   summarizeCompressionMetrics,
+  summarizeContextDecisions,
   summarizeCoordinationMetrics,
   summarizeEvidenceRoutingShadow,
   summarizeMetrics
@@ -40,6 +42,10 @@ export class MetricsService {
     const realizedEvents = events.filter((event) => event.eventKind !== "evidence_routing_shadow");
     const totals = summarizeMetrics(realizedEvents);
     const coordination = summarizeCoordinationMetrics(realizedEvents);
+    const decisions = summarizeContextDecisions(realizedEvents);
+    const assistance = summarizeAssistanceClassifications(realizedEvents);
+    const hookEvents = realizedEvents.filter((event) => event.eventKind === "hook_signal");
+    const mcpEvents = realizedEvents.filter((event) => event.eventKind === "mcp_tool_call");
     const files = this.deps.store.listFiles(session.rootPath);
     const indexStats = this.deps.store.getIndexStateStats(session.rootPath, loadIndexingConfig(session.rootPath));
     const ledger = summarizeSessionLedger(sessionId, this.deps.store.listSessionLedgerEvents(sessionId));
@@ -67,6 +73,31 @@ export class MetricsService {
         ...(latestCodexUsageRecord ? { latestCodexUsage: latestCodexUsageRecord } : {})
       },
       coordination,
+      decisions,
+      assistance,
+      quality: {
+        verificationPasses: ledger.verificationPasses,
+        verificationFailures: ledger.verificationFailures,
+        latestVerification: ledger.latestVerification
+      },
+      recommendations: {
+        made: ledger.recommendedFiles.length,
+        laterUsed: ledger.recommendedFilesLaterUsed.length,
+        laterTouched: ledger.recommendedFilesLaterTouched.length
+      },
+      delivery: {
+        hooks: {
+          invocations: hookEvents.length,
+          failures: hookEvents.filter((event) => event.eventName.toLowerCase().includes("fail")).length,
+          suppressed: hookEvents.filter((event) => event.metadata.primeSuppressed === true).length
+        },
+        mcp: {
+          calls: mcpEvents.length,
+          returnedSourceFiles: sumEventMetadata(mcpEvents, "resultSourceFileCount"),
+          returnedTestFiles: sumEventMetadata(mcpEvents, "resultTestFileCount"),
+          returnedNoiseFiles: sumEventMetadata(mcpEvents, "resultNoiseFileCount")
+        }
+      },
       index: {
         files: files.length,
         tiers: indexStats.tiers,
@@ -204,6 +235,13 @@ export class MetricsService {
       ...record
     });
   }
+}
+
+function sumEventMetadata(events: Array<{ metadata: Record<string, unknown> }>, key: string): number {
+  return events.reduce((total, event) => {
+    const value = event.metadata[key];
+    return total + (typeof value === "number" && Number.isFinite(value) ? value : 0);
+  }, 0);
 }
 
 function contextDecisionFromMcpValue(value: unknown): Record<string, unknown> | undefined {

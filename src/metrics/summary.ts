@@ -170,6 +170,37 @@ export function summarizeCoordinationMetrics(
   };
 }
 
+export function summarizeContextDecisions(
+  events: Array<{ metadata: Record<string, unknown> }>
+): MetricsSummary["decisions"] {
+  const decisions: MetricsSummary["decisions"] = { emit: 0, shrink: 0, suppress: 0, requestEvidence: 0 };
+  for (const event of events) {
+    const nested = nestedObject(event.metadata.contextDecision);
+    const decision = event.metadata.decision ?? nested?.action;
+    if (decision === "emit") decisions.emit += 1;
+    else if (decision === "shrink") decisions.shrink += 1;
+    else if (decision === "suppress" || event.metadata.primeSuppressed === true) decisions.suppress += 1;
+    else if (decision === "request_evidence") decisions.requestEvidence += 1;
+  }
+  return decisions;
+}
+
+export function summarizeAssistanceClassifications(
+  events: Array<{ metadata: Record<string, unknown> }>
+): MetricsSummary["assistance"] {
+  const assistance: MetricsSummary["assistance"] = { valid: 0, overAssist: 0, missedOpportunity: 0, harmful: 0 };
+  for (const event of events) {
+    const classification = event.metadata.assistClassification;
+    if (classification === "valid_assist" || classification === "quality_rescue") assistance.valid += 1;
+    if (classification === "over_assist") assistance.overAssist += 1;
+    if (classification === "missed_savings_opportunity" || classification === "missed_quality_opportunity") {
+      assistance.missedOpportunity += 1;
+    }
+    if (classification === "harmful_invalid_assist") assistance.harmful += 1;
+  }
+  return assistance;
+}
+
 export function emptyMetricsBucket(): MetricsBucket {
   return {
     events: 0,

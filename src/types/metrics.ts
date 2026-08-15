@@ -72,6 +72,41 @@ export type MetricsSummary = {
     overlapFiles: string[];
     exactSourceFiles: string[];
   };
+  decisions: {
+    emit: number;
+    shrink: number;
+    suppress: number;
+    requestEvidence: number;
+  };
+  assistance: {
+    valid: number;
+    overAssist: number;
+    missedOpportunity: number;
+    harmful: number;
+  };
+  quality: {
+    verificationPasses: number;
+    verificationFailures: number;
+    latestVerification: "passed" | "failed" | "none";
+  };
+  recommendations: {
+    made: number;
+    laterUsed: number;
+    laterTouched: number;
+  };
+  delivery: {
+    hooks: {
+      invocations: number;
+      failures: number;
+      suppressed: number;
+    };
+    mcp: {
+      calls: number;
+      returnedSourceFiles: number;
+      returnedTestFiles: number;
+      returnedNoiseFiles: number;
+    };
+  };
   index: {
     files: number;
     tiers: Record<IndexTier, number>;

@@ -10,6 +10,7 @@ import { buildTelemetryPayload } from "../src/telemetry/payload.js";
 import { enqueueTelemetryPayload, flushTelemetryQueue, readTelemetryQueue } from "../src/telemetry/queue.js";
 import { buildBetaReport } from "../src/telemetry/report.js";
 import { buildPrivateBetaTelemetrySummary, formatPrivateBetaTelemetrySummary } from "../src/telemetry/summary.js";
+import { formatShareableBetaReport } from "../src/cli/commands/beta.js";
 import { assertSafeTelemetryPayload, hashFileId } from "../src/telemetry/sanitize.js";
 import type { TelemetryPayload } from "../src/types.js";
 import { createFixtureRepo } from "./helpers.js";
@@ -22,6 +23,19 @@ afterEach(async () => {
 });
 
 describe("telemetry", () => {
+  it("does not present missing report data as zero-percent savings", () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+
+    const output = formatShareableBetaReport(buildBetaReport({ runtime }));
+
+    expect(output).toContain("Estimated context saved: not enough data");
+    expect(output).toContain("no savings claim");
+    expect(output).not.toContain("0.0% (0 tokens)");
+    expect(output).not.toContain(root);
+    runtime.close();
+  });
+
   it("builds sanitized aggregate payloads without raw paths", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);
@@ -202,6 +216,59 @@ describe("telemetry", () => {
     expect(report.tokens.activeEstimatedSaved).toBe(0);
     expect(report.verdict).not.toBe("beta_positive");
     expect(report.summary.join(" ")).toContain("passive evidence");
+
+    runtime.close();
+  });
+
+  it("puts quality-gated percentage savings and recommendation follow-through in the report", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const { session } = await runtime.startTask("Fix dashboard rendering");
+    await runtime.primeContext({ task: "Fix dashboard rendering", sessionId: session.id, source: "codex" });
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "context_recommended",
+      filePath: "src/app.ts",
+      source: "runtime",
+      summary: "Recommended dashboard source"
+    });
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "agent_file_touched",
+      filePath: "src/app.ts",
+      source: "agent",
+      summary: "Agent modified dashboard source"
+    });
+    runtime.recordLedgerEvent({
+      sessionId: session.id,
+      kind: "verification_passed",
+      source: "bench",
+      summary: "Verification passed"
+    });
+
+    const report = buildBetaReport({ runtime, sessionId: session.id });
+
+    expect(report.schemaVersion).toBe(2);
+    expect(report.headline.basis).toBe("quality_gated_estimate");
+    expect(report.headline.estimatedContextSavingsRate).toBe(report.tokens.qualityGatedEstimatedSavingsRate);
+    expect(report.quality.sessionsPassingVerification).toBe(1);
+    expect(report.quality.recommendationsLaterTouched).toBeGreaterThan(0);
+    expect(report.quality.recommendationTouchRate).toBeGreaterThan(0);
+
+    runtime.close();
+  });
+
+  it("defaults user reports to the latest twelve sessions", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    for (let index = 0; index < 15; index += 1) {
+      await runtime.startTask(`Session ${index + 1}`);
+    }
+
+    const report = buildBetaReport({ runtime });
+
+    expect(report.sessions).toBe(12);
+    expect(report.window).toEqual({ requested: 12, sampled: 12, available: 15 });
 
     runtime.close();
   });

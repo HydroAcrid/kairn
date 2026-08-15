@@ -1310,6 +1310,11 @@ describe("benchmark suite and scoring", () => {
       repeatedFilesAvoided: 0,
       repeatedSnippetsAvoided: 0,
       recommendedFilesUsed: [],
+      recommendedFilesLaterUsed: [],
+      recommendedFilesLaterTouched: [],
+      verificationPasses: 0,
+      verificationFailures: 0,
+      latestVerification: "none",
       repeatedlyTouchedFiles: [],
       unresolvedFailures: 0,
       workingSet: {
@@ -1359,6 +1364,11 @@ describe("benchmark suite and scoring", () => {
       repeatedFilesAvoided: 0,
       repeatedSnippetsAvoided: 0,
       recommendedFilesUsed: [],
+      recommendedFilesLaterUsed: [],
+      recommendedFilesLaterTouched: [],
+      verificationPasses: 0,
+      verificationFailures: 1,
+      latestVerification: "failed",
       repeatedlyTouchedFiles: [],
       unresolvedFailures: 1,
       workingSet: {

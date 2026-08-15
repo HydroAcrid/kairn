@@ -288,14 +288,17 @@ kairn doctor --root /path/to/repo --fix
 kairn setup mcp --root /path/to/repo --client vscode
 kairn setup mcp --root /path/to/repo --client claude-code
 kairn setup mcp --root /path/to/repo --client gemini-cli
-kairn beta report --root /path/to/repo
+kairn report --root /path/to/repo
+kairn report --root /path/to/repo --last 12
+kairn report --root /path/to/repo --share
+kairn beta report --root /path/to/repo # retained beta alias
 kairn telemetry status --root /path/to/repo
 kairn telemetry enable --root /path/to/repo --destination supabase
 kairn telemetry flush --root /path/to/repo --dry-run --json
 kairn diagnostics export --root /path/to/repo --out kairn-diagnostics.json
 ```
 
-Use `kairn doctor` before sharing beta results. It checks Node/Kairn setup, target-specific client config, daemon hints, index state, Windows friction, and telemetry status. `kairn beta report` summarizes whether Kairn helped, stayed silent, over-assisted, or missed opportunities in local sessions.
+Use `kairn doctor` before sharing beta results. It checks Node/Kairn setup, target-specific client config, daemon hints, index state, Windows friction, and telemetry status. `kairn report` leads with the estimated context-saved percentage for the latest 12 sessions, then shows verification coverage, recommendation follow-through, harmful assists, interventions, silence, and repeated context blocked. `kairn report --share` reduces that to a short aggregate-only check-in that a tester can paste back without sharing prompts, source, paths, diffs, repository identity, or branch identity. When verified sessions exist, the headline only uses quality-passing sessions; otherwise it is explicitly labeled as a directional local estimate. The percentage compares Kairn's emitted context estimates with its local full-context baselines; it is not an observed provider-token or billing-savings measurement. `kairn beta report` remains a compatibility alias.
 
 Kairn's local footprint in a user repo is intentionally reversible:
 

@@ -57,17 +57,12 @@ export function buildTelemetryPayload(input: {
 }
 
 function countDecisions(metrics: MetricsSummary[]): TelemetryPayload["decisions"] {
-  const decisions = { emit: 0, shrink: 0, suppress: 0, requestEvidence: 0 };
-  for (const item of metrics) {
-    for (const event of item.recentEvents) {
-      const decision = event.metadata.decision ?? (event.metadata.contextDecision as { action?: unknown } | undefined)?.action;
-      if (decision === "emit") decisions.emit += 1;
-      if (decision === "shrink") decisions.shrink += 1;
-      if (decision === "suppress") decisions.suppress += 1;
-      if (decision === "request_evidence") decisions.requestEvidence += 1;
-    }
-  }
-  return decisions;
+  return metrics.reduce<TelemetryPayload["decisions"]>((totals, item) => ({
+    emit: totals.emit + item.decisions.emit,
+    shrink: totals.shrink + item.decisions.shrink,
+    suppress: totals.suppress + item.decisions.suppress,
+    requestEvidence: totals.requestEvidence + item.decisions.requestEvidence
+  }), { emit: 0, shrink: 0, suppress: 0, requestEvidence: 0 });
 }
 
 function summarizeGovernor(metrics: MetricsSummary[]): TelemetryPayload["governor"] {
@@ -130,13 +125,10 @@ function countAssistance(metrics: MetricsSummary[]): TelemetryPayload["assistanc
     const failureEvents = item.byKind.failure_context?.events ?? 0;
     if (hookEvents > 0 || mcpEvents > 0 || failureEvents > 0) output.active += 1;
     else output.none += 1;
-    for (const event of item.recentEvents) {
-      const classification = event.metadata.assistClassification;
-      if (classification === "valid_assist") output.validAssist += 1;
-      if (classification === "over_assist") output.overAssist += 1;
-      if (classification === "missed_savings_opportunity" || classification === "missed_quality_opportunity") output.missedOpportunity += 1;
-      if (classification === "harmful_invalid_assist") output.harmfulAssist += 1;
-    }
+    output.validAssist += item.assistance.valid;
+    output.overAssist += item.assistance.overAssist;
+    output.missedOpportunity += item.assistance.missedOpportunity;
+    output.harmfulAssist += item.assistance.harmful;
   }
   return output;
 }
@@ -178,8 +170,8 @@ function summarizeHooks(metrics: MetricsSummary[]): TelemetryPayload["hooks"] {
     .map((event) => event.metadata.hookLatencyMs)
     .filter((value): value is number => typeof value === "number");
   return {
-    invocations: hookEvents.length,
-    failures: hookEvents.filter((event) => event.eventName.toLowerCase().includes("fail")).length,
+    invocations: metrics.reduce((total, item) => total + item.delivery.hooks.invocations, 0),
+    failures: metrics.reduce((total, item) => total + item.delivery.hooks.failures, 0),
     daemonHits: hookEvents.filter((event) => event.metadata.daemonHit === true).length,
     daemonMisses: hookEvents.filter((event) => event.metadata.daemonMiss === true).length,
     ...(latencies.length > 0 ? { averageLatencyMs: Math.round(latencies.reduce((sum, value) => sum + value, 0) / latencies.length) } : {})
@@ -187,12 +179,11 @@ function summarizeHooks(metrics: MetricsSummary[]): TelemetryPayload["hooks"] {
 }
 
 function summarizeMcp(metrics: MetricsSummary[]): TelemetryPayload["mcp"] {
-  const events = metrics.flatMap((item) => item.recentEvents.filter((event) => event.eventKind === "mcp_tool_call"));
   return {
-    calls: events.length,
-    returnedSourceFiles: sumMetadata(events, "resultSourceFileCount"),
-    returnedTestFiles: sumMetadata(events, "resultTestFileCount"),
-    returnedNoiseFiles: sumMetadata(events, "resultNoiseFileCount")
+    calls: metrics.reduce((total, item) => total + item.delivery.mcp.calls, 0),
+    returnedSourceFiles: metrics.reduce((total, item) => total + item.delivery.mcp.returnedSourceFiles, 0),
+    returnedTestFiles: metrics.reduce((total, item) => total + item.delivery.mcp.returnedTestFiles, 0),
+    returnedNoiseFiles: metrics.reduce((total, item) => total + item.delivery.mcp.returnedNoiseFiles, 0)
   };
 }
 
@@ -234,9 +225,6 @@ function mergeRecords(records: Array<Record<string, number>>): Record<string, nu
   return Object.fromEntries([...merged.entries()].sort());
 }
 
-function sumMetadata(events: MetricsSummary["recentEvents"], key: string): number {
-  return events.reduce((total, event) => total + (typeof event.metadata[key] === "number" ? event.metadata[key] as number : 0), 0);
-}
 
 function arrayMetadata(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
