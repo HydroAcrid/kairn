@@ -41,12 +41,16 @@ export function carryForwardCorpusReviews(options: CarryForwardCorpusReviewsOpti
 
   const currentCases = array(queue.cases, "queue.cases");
   const priorCases = byId(priorQueue.cases, "prior queue.cases");
-  if (currentCases.length !== priorCases.size) {
-    throw new Error("current and prior review queues must contain the same case set");
+  if (currentCases.length > priorCases.size) {
+    throw new Error("current review queue cannot contain more cases than the prior review queue");
   }
 
   const sourceQueueSha256 = sha256(priorQueueBytes);
   const targetQueueSha256 = sha256(queueBytes);
+  const currentCaseIds = new Set(currentCases.map((value, index) =>
+    string(record(value, `queue.cases[${index}]`).id, `queue.cases[${index}].id`)
+  ));
+  const excludedPriorCaseCount = [...priorCases.keys()].filter((id) => !currentCaseIds.has(id)).length;
   const auditCases: Array<Record<string, unknown>> = [];
   let carriedCaseCount = 0;
   let alreadyCompletedCaseCount = 0;
@@ -115,7 +119,8 @@ export function carryForwardCorpusReviews(options: CarryForwardCorpusReviewsOpti
         immutableTaskIdentityRequired: true,
         currentLabelsMustEqualPriorReviewedDecision: true,
         everyReviewedLabelMustRemainInCurrentCandidateUnion: true,
-        candidateAdditionsDoNotInvalidateStillPresentReviewedLabels: true
+        candidateAdditionsDoNotInvalidateStillPresentReviewedLabels: true,
+        currentQueueMayBeAnExactSubsetOfPriorQueue: true
       }
     },
     cases: outputCases
@@ -128,6 +133,8 @@ export function carryForwardCorpusReviews(options: CarryForwardCorpusReviewsOpti
     targetQueueSha256,
     outputQueueSha256: sha256(outputBytes),
     caseCount: outputCases.length,
+    priorCaseCount: priorCases.size,
+    excludedPriorCaseCount,
     carriedCaseCount,
     alreadyCompletedCaseCount,
     pendingCaseCount,
@@ -159,7 +166,14 @@ function carryForwardRejectionReasons(
       string(record(value, `${id}.candidates[${index}]`).path, `${id}.candidates[${index}].path`)
     )
   );
-  const missingRequired = priorDecision.requiredSourceFiles.filter((filePath) => !candidatePaths.has(filePath));
+  const requiredSourceCreationFiles = new Set(
+    current.requiredSourceCreationFiles === undefined
+      ? []
+      : stringArray(current.requiredSourceCreationFiles, `${id}.requiredSourceCreationFiles`)
+  );
+  const missingRequired = priorDecision.requiredSourceFiles.filter((filePath) =>
+    !candidatePaths.has(filePath) && !requiredSourceCreationFiles.has(filePath)
+  );
   const missingNoise = priorDecision.explicitNoiseFiles.filter((filePath) => !candidatePaths.has(filePath));
   if (missingRequired.length > 0) reasons.push("reviewed_required_source_missing");
   if (missingNoise.length > 0) reasons.push("reviewed_explicit_noise_missing");

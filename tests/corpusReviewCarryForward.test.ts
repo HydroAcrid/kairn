@@ -56,6 +56,49 @@ describe("corpus review carry-forward", () => {
     });
   });
 
+  it("carries a current subset after holdout cases move to a detached corpus", () => {
+    const fixture = carryForwardFixture();
+    const queue = readJson(fixture.options.queuePath);
+    queue.cases = queue.cases.slice(0, 2);
+    queue.caseCount = queue.cases.length;
+    writeJson(fixture.options.queuePath, queue);
+
+    const result = carryForwardCorpusReviews(fixture.options);
+
+    expect(result.audit).toMatchObject({
+      caseCount: 2,
+      priorCaseCount: 3,
+      excludedPriorCaseCount: 1,
+      carriedCaseCount: 1,
+      pendingCaseCount: 1
+    });
+    expect((result.queue.cases as Array<any>).map((item) => item.id)).toEqual([
+      "stable",
+      "missing-noise"
+    ]);
+  });
+
+  it("does not reject reviewed creation paths that cannot exist in the candidate union", () => {
+    const fixture = carryForwardFixture();
+    const prior = readJson(fixture.options.priorQueuePath);
+    const queue = readJson(fixture.options.queuePath);
+    const creationPath = prior.cases[0].requiredSourceFiles[0];
+    prior.cases[0].candidates = prior.cases[0].candidates.filter(
+      (candidate: { path: string }) => candidate.path !== creationPath
+    );
+    queue.cases[0].candidates = queue.cases[0].candidates.filter(
+      (candidate: { path: string }) => candidate.path !== creationPath
+    );
+    queue.cases[0].requiredSourceCreationFiles = [creationPath];
+    writeJson(fixture.options.priorQueuePath, prior);
+    writeJson(fixture.options.queuePath, queue);
+
+    const result = carryForwardCorpusReviews(fixture.options);
+
+    expect((result.queue.cases as Array<any>)[0].decision.reviewer).toBe("independent-reviewer");
+    expect((result.audit.cases as Array<any>)[0]).toMatchObject({ status: "carried_forward" });
+  });
+
   it("rejects a prior queue from a different corpus", () => {
     const fixture = carryForwardFixture();
     const prior = readJson(fixture.options.priorQueuePath);

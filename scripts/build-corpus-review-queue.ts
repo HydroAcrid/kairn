@@ -29,9 +29,44 @@ export function buildCorpusReviewQueue(options: CorpusReviewQueueOptions): Recor
     throw new Error("draft artifacts are not bound to this intake hash");
   }
 
+  const intakeCases = array(intake.cases, "intake.cases");
+  const intakeCasesById = byId(intakeCases, "intake.cases");
   const manifestCases = byId(manifest.cases, "manifest.cases");
   const reportCases = byId(report.cases, "report.cases");
-  const rows = array(intake.cases, "intake.cases").map((value, index) => {
+  const partial = report.partial === true;
+  const selectedCaseIds = partial
+    ? stringArray(report.selectedCaseIds, "report.selectedCaseIds")
+    : [...intakeCasesById.keys()];
+  if (new Set(selectedCaseIds).size !== selectedCaseIds.length) {
+    throw new Error("report selectedCaseIds must be unique");
+  }
+  const selectedCaseIdSet = new Set(selectedCaseIds);
+  const missingIntakeCases = selectedCaseIds.filter((id) => !intakeCasesById.has(id));
+  const missingManifestCases = selectedCaseIds.filter((id) => !manifestCases.has(id));
+  const missingReportCases = selectedCaseIds.filter((id) => !reportCases.has(id));
+  const unexpectedManifestCases = [...manifestCases.keys()].filter((id) => !selectedCaseIdSet.has(id));
+  const unexpectedReportCases = [...reportCases.keys()].filter((id) => !selectedCaseIdSet.has(id));
+  if (
+    missingIntakeCases.length > 0 ||
+    missingManifestCases.length > 0 ||
+    missingReportCases.length > 0 ||
+    unexpectedManifestCases.length > 0 ||
+    unexpectedReportCases.length > 0
+  ) {
+    throw new Error(
+      "selected intake, manifest, and report case sets must match exactly; " +
+      `missingIntake=${missingIntakeCases.join(",") || "none"} ` +
+      `missingManifest=${missingManifestCases.join(",") || "none"} ` +
+      `missingReport=${missingReportCases.join(",") || "none"} ` +
+      `unexpectedManifest=${unexpectedManifestCases.join(",") || "none"} ` +
+      `unexpectedReport=${unexpectedReportCases.join(",") || "none"}`
+    );
+  }
+  const selectedIntakeCases = intakeCases.filter((value, index) => {
+    const item = record(value, `intake.cases[${index}]`);
+    return selectedCaseIdSet.has(string(item.id, `intake.cases[${index}].id`));
+  });
+  const rows = selectedIntakeCases.map((value, index) => {
     const item = record(value, `intake.cases[${index}]`);
     const id = string(item.id, `intake.cases[${index}].id`);
     const materialized = requiredCase(manifestCases, id, "manifest");
@@ -45,6 +80,10 @@ export function buildCorpusReviewQueue(options: CorpusReviewQueueOptions): Recor
     });
     const candidatePaths = new Set(candidates.map((candidate) => candidate.path));
     const requiredSources = stringArray(item.requiredSourceFiles, `${id}.requiredSourceFiles`);
+    const requiredSourceCreationFiles = stringArray(
+      observed.requiredSourceCreationFiles,
+      `${id}.requiredSourceCreationFiles`
+    );
     const officialPatchSources = stringArray(item.officialPatchSourceFiles, `${id}.officialPatchSourceFiles`);
     const explicitNoise = stringArray(item.explicitNoiseFiles, `${id}.explicitNoiseFiles`);
     const patchSourcesPresent = officialPatchSources.filter((filePath) => candidatePaths.has(filePath));
@@ -67,6 +106,7 @@ export function buildCorpusReviewQueue(options: CorpusReviewQueueOptions): Recor
       candidateCount: candidates.length,
       requiredSourceFiles: requiredSources,
       requiredSourceFilesPresent: requiredSourcesPresent,
+      requiredSourceCreationFiles,
       officialPatchSourceFiles: officialPatchSources,
       officialPatchSourceFilesPresent: patchSourcesPresent,
       officialPatchSourceFilesMissing: officialPatchSources.filter((filePath) => !candidatePaths.has(filePath)),
@@ -87,9 +127,6 @@ export function buildCorpusReviewQueue(options: CorpusReviewQueueOptions): Recor
       materializedCaseSha256: sha256(JSON.stringify(materialized))
     };
   });
-  if (manifestCases.size !== rows.length || reportCases.size !== rows.length) {
-    throw new Error("intake, manifest, and report case sets must match exactly");
-  }
   return {
     schemaVersion: "ranker-corpus-review-queue.v1",
     corpusId: intake.corpusId,
@@ -98,6 +135,12 @@ export function buildCorpusReviewQueue(options: CorpusReviewQueueOptions): Recor
     manifestSha256: sha256(fs.readFileSync(manifestPath)),
     reportSha256: sha256(fs.readFileSync(reportPath)),
     caseCount: rows.length,
+    selection: {
+      partial,
+      sourceCaseCount: intakeCases.length,
+      selectedCaseCount: rows.length,
+      selectedCaseIdsSha256: sha256([...selectedCaseIds].sort().join("\n"))
+    },
     requiredSourceReviewCases: rows.filter((row) => row.needsRequiredSourceReview).length,
     explicitNoiseReviewCases: rows.filter((row) => row.needsNoiseReview).length,
     readyForSealCases: rows.filter((row) => row.reviewStatus === "ready_for_seal").length,

@@ -217,6 +217,35 @@ and another ranks 146th. Further work therefore targets general semantic
 candidate recall rather than adding path, filename, or issue-specific ranking
 rules.
 
+## Semantic-Union Review Refresh
+
+The frozen semantic candidate union changes which explicit negative files are
+available to the file ranker. Review carry-forward is therefore conservative:
+a prior decision is reused only when every reviewed label still has the same
+meaning in the current candidate union. Required source paths that are created
+by the official patch are tracked separately because they cannot be candidates
+before the task is solved.
+
+The refresh operates only on the 135 train and calibration cases. The 30-case
+holdout remains detached and unopened. Tooling now verifies that a partial
+materialization declares its selected case IDs and exactly matches the
+materialized manifest and report before a review queue is built.
+
+Current audited progress:
+
+- 40 of 135 decisions were safely carried from the prior review;
+- 95 cases required fresh negative review because prior negative files were no
+  longer present in the semantic candidate union;
+- the first 10 fresh decisions passed immutable-context and candidate-membership
+  validation, bringing the total to 50 complete and 85 pending;
+- no case is pending because a required source label was lost;
+- no decision was filled automatically, and no detached holdout case entered
+  the review queue.
+
+These review counts are data-readiness results, not a new retrieval or ranker
+benchmark. The next ranker comparison occurs only after all 135 decisions are
+complete and the train/calibration datasets are rematerialized.
+
 ## Long-Run Durability
 
 Resumable corpus work now uses a compact atomic progress header and one

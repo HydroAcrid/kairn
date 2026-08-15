@@ -728,7 +728,50 @@ describe("public evidence ranker training", () => {
       caseCount: 1,
       requiredSourceReviewCases: 0,
       explicitNoiseReviewCases: 0,
-      readyForSealCases: 1
+      readyForSealCases: 1,
+      selection: {
+        partial: false,
+        sourceCaseCount: 1,
+        selectedCaseCount: 1
+      }
+    });
+    const partialIntakePath = path.join(temporary, "intake.partial-source.json");
+    const partialManifestPath = path.join(temporary, "materialized.partial.json");
+    const partialReportPath = path.join(temporary, "materialization-report.partial.json");
+    const partialIntake = JSON.parse(fs.readFileSync(intakePath, "utf8"));
+    partialIntake.cases.push({
+      ...partialIntake.cases[0],
+      id: "detached-holdout-case",
+      split: "holdout",
+      repositoryLineageId: "https://github.com/example/detached-holdout-fixture"
+    });
+    fs.writeFileSync(partialIntakePath, `${JSON.stringify(partialIntake, null, 2)}\n`, "utf8");
+    const partialIntakeSha256 = crypto.createHash("sha256")
+      .update(fs.readFileSync(partialIntakePath))
+      .digest("hex");
+    fs.writeFileSync(partialManifestPath, `${JSON.stringify({
+      ...manifest,
+      materializer: { ...manifest.materializer, intakeSha256: partialIntakeSha256 }
+    }, null, 2)}\n`, "utf8");
+    fs.writeFileSync(partialReportPath, `${JSON.stringify({
+      ...materializationReport,
+      intakeSha256: partialIntakeSha256,
+      partial: true,
+      selectedCaseIds: ["materialized-train-case"]
+    }, null, 2)}\n`, "utf8");
+    expect(buildCorpusReviewQueue({
+      intakePath: partialIntakePath,
+      manifestPath: partialManifestPath,
+      reportPath: partialReportPath,
+      outPath: path.join(temporary, "review.partial.json")
+    })).toMatchObject({
+      caseCount: 1,
+      selection: {
+        partial: true,
+        sourceCaseCount: 2,
+        selectedCaseCount: 1
+      },
+      cases: [expect.objectContaining({ id: "materialized-train-case" })]
     });
     fs.writeFileSync(reviewPath, `${JSON.stringify(reviewQueue, null, 2)}\n`, "utf8");
     const reviewedIntakePath = path.join(temporary, "intake.reviewed.json");
