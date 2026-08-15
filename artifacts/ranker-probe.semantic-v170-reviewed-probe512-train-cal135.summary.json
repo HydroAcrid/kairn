@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "ranker-probe-diagnostic.v1",
+  "promotionEligible": false,
+  "reason": "Raw candidate rows are diagnostic-only and do not satisfy the sealed 165-case corpus contract.",
+  "kairnCommit": "e1d7c44b947d800b43c2350fe08fc14519270ecc",
+  "manifest": {
+    "path": "artifacts/ranker-corpus.semantic-v170-reviewed-probe512-train-cal135.json",
+    "sha256": "8ffa951b341da8ee7fa715cc85ad7846bb49c964f9228d673edca72f98ba161c"
+  },
+  "report": {
+    "path": "artifacts/ranker-corpus.semantic-v170-reviewed-probe512-train-cal135.report.json",
+    "sha256": "91074c9a599be0d476efed0560c6aa4af0ccfe79afc781a5b49b600263fbc28a"
+  },
+  "output": {
+    "path": "artifacts/ranker-probe.semantic-v170-reviewed-probe512-train-cal135.jsonl",
+    "sha256": "9a9bcba001b0300ccb248397c97d88bec9b5caf1b0a9c8d003cf8c09ebf0849e"
+  },
+  "inputCaseCount": 135,
+  "caseCount": 135,
+  "excludedSyntheticCases": [],
+  "labeledRowCount": 1068,
+  "splitCaseCounts": {
+    "calibration": 45,
+    "train": 90
+  },
+  "labelProvenanceCounts": {
+    "explicit_noise_or_excluded": 812,
+    "required_source_oracle": 17,
+    "verified_official_patch_source": 239
+  },
+  "candidateSourceCounts": {
+    "expanded_probe": 135
+  },
+  "probeCandidateCounts": {
+    "minimum": 16,
+    "maximum": 512,
+    "expandedCases": 109
+  }
+}

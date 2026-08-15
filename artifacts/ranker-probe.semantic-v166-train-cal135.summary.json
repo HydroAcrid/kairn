@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "ranker-probe-diagnostic.v1",
+  "promotionEligible": false,
+  "reason": "Raw probe rows are diagnostic-only and do not satisfy the sealed 165-case corpus contract.",
+  "kairnCommit": "50712d689510af086308851a03d3adf3c03d0cde",
+  "manifest": {
+    "path": "../kairn-semantic-iteration/artifacts/ranker-corpus.semantic-v166-probe512-train-cal135.json",
+    "sha256": "2c4d04c06dc2ae63d1215930bf44e1cd67b79b2c15a845fe526ce749db457756"
+  },
+  "report": {
+    "path": "../kairn-semantic-iteration/artifacts/ranker-corpus.semantic-v166-probe512-train-cal135.report.json",
+    "sha256": "9a868e4844fbb44e714ff74e6441bf874d795f4801c19e04d7c9c2e9bd804961"
+  },
+  "output": {
+    "path": "artifacts/ranker-probe.semantic-v166-train-cal135.jsonl",
+    "sha256": "3d48be1a2725f35c2f31116260e2e77a7d05c82e171e8e555852763ce06b69bb"
+  },
+  "caseCount": 135,
+  "labeledRowCount": 922,
+  "splitCaseCounts": {
+    "calibration": 45,
+    "train": 90
+  },
+  "labelProvenanceCounts": {
+    "explicit_noise_or_excluded": 670,
+    "required_source_oracle": 15,
+    "verified_official_patch_source": 237
+  },
+  "probeCandidateCounts": {
+    "minimum": 16,
+    "maximum": 512,
+    "expandedCases": 109
+  }
+}

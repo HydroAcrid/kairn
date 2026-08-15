@@ -1,0 +1,1083 @@
+{
+  "schemaVersion": "probe-ranker-evaluation.v1",
+  "promotionEligible": false,
+  "reason": "This calibration-split diagnostic uses weak official-patch references and in-sample Platt calibration; it is not holdout or promotion evidence.",
+  "evaluationSplit": "calibration",
+  "referenceKind": "verified_official_patch_source",
+  "model": {
+    "id": "kairn-evidence-v02c-semantic-v170-reviewed-probe512-candidate",
+    "checksum": "66f22c70f378ca582b1e144058b252abcc5a4dc7e8b8a6253358b6dafb00c170",
+    "featureSchemaVersion": "evidence-features-v4",
+    "trainingDataHash": "9a9bcba001b0300ccb248397c97d88bec9b5caf1b0a9c8d003cf8c09ebf0849e"
+  },
+  "inputs": {
+    "trainingRows": {
+      "path": "artifacts/ranker-probe.semantic-v170-reviewed-probe512-train-cal135.jsonl",
+      "sha256": "9a9bcba001b0300ccb248397c97d88bec9b5caf1b0a9c8d003cf8c09ebf0849e"
+    },
+    "manifest": {
+      "path": "artifacts/ranker-corpus.semantic-v170-reviewed-probe512-train-cal135.json",
+      "sha256": "8ffa951b341da8ee7fa715cc85ad7846bb49c964f9228d673edca72f98ba161c"
+    },
+    "report": {
+      "path": "artifacts/ranker-corpus.semantic-v170-reviewed-probe512-train-cal135.report.json",
+      "sha256": "91074c9a599be0d476efed0560c6aa4af0ccfe79afc781a5b49b600263fbc28a"
+    }
+  },
+  "targetCaseCount": 45,
+  "holdoutCaseCount": 0,
+  "calibrationCaseCount": 45,
+  "labeledTargetRows": 342,
+  "labeledHoldoutRows": 0,
+  "metrics": {
+    "probeAvailabilityFullRecall": 1,
+    "currentStrictFullRecallAt64": 0.955556,
+    "currentStrictFullRecallAt128": 0.977778,
+    "rankedStrictFullRecallAt64": 0.955556,
+    "rankedStrictFullRecallAt128": 0.977778,
+    "rankedRequiredFileRecallAt1": 0.25,
+    "rankedRequiredFileRecallAt5": 0.694444,
+    "rankedRequiredFileRecallAt64": 0.972222,
+    "rankedRequiredFileRecallAt128": 0.986111,
+    "rankedRequiredFileMrr": 0.438013,
+    "expectedCalibrationError": 0.035572,
+    "generatedVendorTopOneViolations": []
+  },
+  "perLanguage": {
+    "cpp": {
+      "cases": 9,
+      "fullRecallAt64": 1,
+      "fullRecallAt128": 1
+    },
+    "go": {
+      "cases": 9,
+      "fullRecallAt64": 1,
+      "fullRecallAt128": 1
+    },
+    "java": {
+      "cases": 9,
+      "fullRecallAt64": 1,
+      "fullRecallAt128": 1
+    },
+    "python": {
+      "cases": 9,
+      "fullRecallAt64": 1,
+      "fullRecallAt128": 1
+    },
+    "typescript": {
+      "cases": 9,
+      "fullRecallAt64": 0.777778,
+      "fullRecallAt128": 0.888889
+    }
+  },
+  "perScenario": {
+    "failure_first": {
+      "cases": 15,
+      "fullRecallAt64": 1,
+      "fullRecallAt128": 1
+    },
+    "long_session": {
+      "cases": 15,
+      "fullRecallAt64": 0.933333,
+      "fullRecallAt128": 0.933333
+    },
+    "source_localization": {
+      "cases": 15,
+      "fullRecallAt64": 0.933333,
+      "fullRecallAt128": 1
+    }
+  },
+  "missesAt64": [
+    {
+      "id": "v02c-calibration-typescript-long_session-108",
+      "missing": [
+        "src/components/structures/TabbedView.tsx"
+      ],
+      "requiredFileRanks": {
+        "src/components/structures/TabbedView.tsx": 419
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-source_localization-101",
+      "missing": [
+        "packages/babel-helpers/src/index.ts"
+      ],
+      "requiredFileRanks": {
+        "packages/babel-helpers/src/index.ts": 112
+      }
+    }
+  ],
+  "missesAt128": [
+    {
+      "id": "v02c-calibration-typescript-long_session-108",
+      "missing": [
+        "src/components/structures/TabbedView.tsx"
+      ],
+      "requiredFileRanks": {
+        "src/components/structures/TabbedView.tsx": 419
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "v02c-calibration-cpp-failure_first-130",
+      "language": "cpp",
+      "scenario": "failure_first",
+      "requiredSourceFiles": [
+        "include/fmt/base.h"
+      ],
+      "probeCandidateCount": 76,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "include/fmt/base.h": 1
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-cpp-failure_first-131",
+      "language": "cpp",
+      "scenario": "failure_first",
+      "requiredSourceFiles": [
+        "include/fmt/core.h"
+      ],
+      "probeCandidateCount": 75,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "include/fmt/core.h": 2
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-cpp-failure_first-132",
+      "language": "cpp",
+      "scenario": "failure_first",
+      "requiredSourceFiles": [
+        "include/fmt/std.h"
+      ],
+      "probeCandidateCount": 75,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "include/fmt/std.h": 3
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-cpp-long_session-133",
+      "language": "cpp",
+      "scenario": "long_session",
+      "requiredSourceFiles": [
+        "include/fmt/format.h",
+        "include/fmt/std.h"
+      ],
+      "probeCandidateCount": 76,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "include/fmt/format.h": 2,
+        "include/fmt/std.h": 5
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-cpp-long_session-134",
+      "language": "cpp",
+      "scenario": "long_session",
+      "requiredSourceFiles": [
+        "include/fmt/core.h",
+        "include/fmt/format.h"
+      ],
+      "probeCandidateCount": 67,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "include/fmt/core.h": 4,
+        "include/fmt/format.h": 1
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-cpp-long_session-135",
+      "language": "cpp",
+      "scenario": "long_session",
+      "requiredSourceFiles": [
+        "include/fmt/format-inl.h",
+        "include/fmt/format.h"
+      ],
+      "probeCandidateCount": 66,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "include/fmt/format-inl.h": 1,
+        "include/fmt/format.h": 2
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-cpp-source_localization-127",
+      "language": "cpp",
+      "scenario": "source_localization",
+      "requiredSourceFiles": [
+        "include/fmt/chrono.h"
+      ],
+      "probeCandidateCount": 75,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "include/fmt/chrono.h": 1
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-cpp-source_localization-128",
+      "language": "cpp",
+      "scenario": "source_localization",
+      "requiredSourceFiles": [
+        "include/fmt/format.h"
+      ],
+      "probeCandidateCount": 75,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "include/fmt/format.h": 1
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-cpp-source_localization-129",
+      "language": "cpp",
+      "scenario": "source_localization",
+      "requiredSourceFiles": [
+        "include/fmt/std.h"
+      ],
+      "probeCandidateCount": 76,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "include/fmt/std.h": 5
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-go-failure_first-112",
+      "language": "go",
+      "scenario": "failure_first",
+      "requiredSourceFiles": [
+        "logger.go"
+      ],
+      "probeCandidateCount": 96,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "logger.go": 2
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-go-failure_first-113",
+      "language": "go",
+      "scenario": "failure_first",
+      "requiredSourceFiles": [
+        "binding/form_mapping.go"
+      ],
+      "probeCandidateCount": 96,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "binding/form_mapping.go": 6
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-go-failure_first-114",
+      "language": "go",
+      "scenario": "failure_first",
+      "requiredSourceFiles": [
+        "gin.go"
+      ],
+      "probeCandidateCount": 95,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "gin.go": 1
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-go-long_session-115",
+      "language": "go",
+      "scenario": "long_session",
+      "requiredSourceFiles": [
+        "binding/binding.go",
+        "context.go"
+      ],
+      "probeCandidateCount": 75,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "binding/binding.go": 6,
+        "context.go": 1
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-go-long_session-116",
+      "language": "go",
+      "scenario": "long_session",
+      "requiredSourceFiles": [
+        "oval/util.go",
+        "scanner/alpine.go",
+        "scanner/scanner.go"
+      ],
+      "probeCandidateCount": 188,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "oval/util.go": 1,
+        "scanner/alpine.go": 9,
+        "scanner/scanner.go": 6
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-go-long_session-117",
+      "language": "go",
+      "scenario": "long_session",
+      "requiredSourceFiles": [
+        "config/config.go",
+        "config/tomlloader.go",
+        "subcmds/configtest.go",
+        "subcmds/discover.go",
+        "subcmds/scan.go"
+      ],
+      "probeCandidateCount": 154,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "config/config.go": 9,
+        "config/tomlloader.go": 32,
+        "subcmds/configtest.go": 13,
+        "subcmds/discover.go": 4,
+        "subcmds/scan.go": 18
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-go-source_localization-109",
+      "language": "go",
+      "scenario": "source_localization",
+      "requiredSourceFiles": [
+        "routergroup.go"
+      ],
+      "probeCandidateCount": 78,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "routergroup.go": 2
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-go-source_localization-110",
+      "language": "go",
+      "scenario": "source_localization",
+      "requiredSourceFiles": [
+        "render/reader.go"
+      ],
+      "probeCandidateCount": 79,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "render/reader.go": 1
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-go-source_localization-111",
+      "language": "go",
+      "scenario": "source_localization",
+      "requiredSourceFiles": [
+        "tree.go"
+      ],
+      "probeCandidateCount": 86,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "tree.go": 2
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-java-failure_first-121",
+      "language": "java",
+      "scenario": "failure_first",
+      "requiredSourceFiles": [
+        "src/main/java/com/fasterxml/jackson/core/filter/FilteringGeneratorDelegate.java"
+      ],
+      "probeCandidateCount": 322,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "src/main/java/com/fasterxml/jackson/core/filter/FilteringGeneratorDelegate.java": 3
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-java-failure_first-122",
+      "language": "java",
+      "scenario": "failure_first",
+      "requiredSourceFiles": [
+        "src/main/java/com/fasterxml/jackson/core/filter/FilteringParserDelegate.java",
+        "src/main/java/com/fasterxml/jackson/core/filter/TokenFilter.java",
+        "src/main/java/com/fasterxml/jackson/core/filter/TokenFilterContext.java"
+      ],
+      "probeCandidateCount": 284,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "src/main/java/com/fasterxml/jackson/core/filter/FilteringParserDelegate.java": 4,
+        "src/main/java/com/fasterxml/jackson/core/filter/TokenFilter.java": 2,
+        "src/main/java/com/fasterxml/jackson/core/filter/TokenFilterContext.java": 1
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-java-failure_first-123",
+      "language": "java",
+      "scenario": "failure_first",
+      "requiredSourceFiles": [
+        "src/main/java/com/fasterxml/jackson/core/JsonGenerator.java"
+      ],
+      "probeCandidateCount": 270,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "src/main/java/com/fasterxml/jackson/core/JsonGenerator.java": 5
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-java-long_session-124",
+      "language": "java",
+      "scenario": "long_session",
+      "requiredSourceFiles": [
+        "src/main/java/com/fasterxml/jackson/core/io/NumberInput.java"
+      ],
+      "probeCandidateCount": 357,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "src/main/java/com/fasterxml/jackson/core/io/NumberInput.java": 6
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-java-long_session-125",
+      "language": "java",
+      "scenario": "long_session",
+      "requiredSourceFiles": [
+        "src/main/java/com/fasterxml/jackson/core/util/RecyclerPool.java"
+      ],
+      "probeCandidateCount": 356,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "src/main/java/com/fasterxml/jackson/core/util/RecyclerPool.java": 1
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-java-long_session-126",
+      "language": "java",
+      "scenario": "long_session",
+      "requiredSourceFiles": [
+        "src/main/java/com/fasterxml/jackson/core/json/ReaderBasedJsonParser.java",
+        "src/main/java/com/fasterxml/jackson/core/json/UTF8DataInputJsonParser.java",
+        "src/main/java/com/fasterxml/jackson/core/json/UTF8StreamJsonParser.java"
+      ],
+      "probeCandidateCount": 325,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "src/main/java/com/fasterxml/jackson/core/json/ReaderBasedJsonParser.java": 3,
+        "src/main/java/com/fasterxml/jackson/core/json/UTF8DataInputJsonParser.java": 2,
+        "src/main/java/com/fasterxml/jackson/core/json/UTF8StreamJsonParser.java": 4
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-java-source_localization-118",
+      "language": "java",
+      "scenario": "source_localization",
+      "requiredSourceFiles": [
+        "src/main/java/com/fasterxml/jackson/core/util/TextBuffer.java"
+      ],
+      "probeCandidateCount": 155,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "src/main/java/com/fasterxml/jackson/core/util/TextBuffer.java": 1
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-java-source_localization-119",
+      "language": "java",
+      "scenario": "source_localization",
+      "requiredSourceFiles": [
+        "src/main/java/com/fasterxml/jackson/core/JsonPointer.java"
+      ],
+      "probeCandidateCount": 152,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "src/main/java/com/fasterxml/jackson/core/JsonPointer.java": 1
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-java-source_localization-120",
+      "language": "java",
+      "scenario": "source_localization",
+      "requiredSourceFiles": [
+        "lucene/analysis/opennlp/src/java/org/apache/lucene/analysis/opennlp/OpenNLPSentenceBreakIterator.java"
+      ],
+      "probeCandidateCount": 512,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "lucene/analysis/opennlp/src/java/org/apache/lucene/analysis/opennlp/OpenNLPSentenceBreakIterator.java": 1
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-python-failure_first-094",
+      "language": "python",
+      "scenario": "failure_first",
+      "requiredSourceFiles": [
+        "seaborn/_core/plot.py"
+      ],
+      "probeCandidateCount": 96,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "seaborn/_core/plot.py": 2
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-python-failure_first-095",
+      "language": "python",
+      "scenario": "failure_first",
+      "requiredSourceFiles": [
+        "src/flask/blueprints.py"
+      ],
+      "probeCandidateCount": 67,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "src/flask/blueprints.py": 2
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-python-failure_first-096",
+      "language": "python",
+      "scenario": "failure_first",
+      "requiredSourceFiles": [
+        "xarray/core/variable.py"
+      ],
+      "probeCandidateCount": 150,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "xarray/core/variable.py": 2
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-python-long_session-097",
+      "language": "python",
+      "scenario": "long_session",
+      "requiredSourceFiles": [
+        "seaborn/_core/scales.py",
+        "seaborn/utils.py"
+      ],
+      "probeCandidateCount": 98,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "seaborn/_core/scales.py": 1,
+        "seaborn/utils.py": 10
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-python-long_session-098",
+      "language": "python",
+      "scenario": "long_session",
+      "requiredSourceFiles": [
+        "xarray/core/indexing.py",
+        "xarray/core/variable.py"
+      ],
+      "probeCandidateCount": 132,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "xarray/core/indexing.py": 4,
+        "xarray/core/variable.py": 1
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-python-long_session-099",
+      "language": "python",
+      "scenario": "long_session",
+      "requiredSourceFiles": [
+        "xarray/core/dataset.py",
+        "xarray/core/variable.py"
+      ],
+      "probeCandidateCount": 135,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "xarray/core/dataset.py": 3,
+        "xarray/core/variable.py": 7
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-python-source_localization-091",
+      "language": "python",
+      "scenario": "source_localization",
+      "requiredSourceFiles": [
+        "xarray/core/combine.py"
+      ],
+      "probeCandidateCount": 132,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "xarray/core/combine.py": 5
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-python-source_localization-092",
+      "language": "python",
+      "scenario": "source_localization",
+      "requiredSourceFiles": [
+        "xarray/core/dataset.py"
+      ],
+      "probeCandidateCount": 142,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "xarray/core/dataset.py": 2
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-python-source_localization-093",
+      "language": "python",
+      "scenario": "source_localization",
+      "requiredSourceFiles": [
+        "xarray/core/dataarray.py",
+        "xarray/core/dataset.py"
+      ],
+      "probeCandidateCount": 149,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "xarray/core/dataarray.py": 2,
+        "xarray/core/dataset.py": 1
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-typescript-failure_first-103",
+      "language": "typescript",
+      "scenario": "failure_first",
+      "requiredSourceFiles": [
+        "packages/babel-parser/src/parser/expression.js"
+      ],
+      "probeCandidateCount": 512,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "packages/babel-parser/src/parser/expression.js": 4
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-typescript-failure_first-104",
+      "language": "typescript",
+      "scenario": "failure_first",
+      "requiredSourceFiles": [
+        "packages/babel-generator/src/node/parentheses.ts"
+      ],
+      "probeCandidateCount": 512,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "packages/babel-generator/src/node/parentheses.ts": 3
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-typescript-failure_first-105",
+      "language": "typescript",
+      "scenario": "failure_first",
+      "requiredSourceFiles": [
+        "packages/babel-generator/src/source-map.ts"
+      ],
+      "probeCandidateCount": 512,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "packages/babel-generator/src/source-map.ts": 2
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-typescript-long_session-106",
+      "language": "typescript",
+      "scenario": "long_session",
+      "requiredSourceFiles": [
+        "src/components/structures/LoggedInView.tsx",
+        "src/components/structures/RoomSearch.tsx",
+        "src/components/structures/RoomView.tsx",
+        "src/components/views/rooms/BasicMessageComposer.tsx",
+        "src/components/views/rooms/EditMessageComposer.js",
+        "src/components/views/rooms/RoomSublist.tsx",
+        "src/components/views/rooms/SendMessageComposer.js"
+      ],
+      "probeCandidateCount": 512,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "src/components/structures/LoggedInView.tsx": 5,
+        "src/components/structures/RoomSearch.tsx": 10,
+        "src/components/structures/RoomView.tsx": 12,
+        "src/components/views/rooms/BasicMessageComposer.tsx": 4,
+        "src/components/views/rooms/EditMessageComposer.js": 51,
+        "src/components/views/rooms/RoomSublist.tsx": 8,
+        "src/components/views/rooms/SendMessageComposer.js": 44
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-typescript-long_session-107",
+      "language": "typescript",
+      "scenario": "long_session",
+      "requiredSourceFiles": [
+        "src/components/views/settings/devices/useOwnDevices.ts",
+        "src/utils/device/clientInformation.ts",
+        "src/voice-broadcast/models/VoiceBroadcastRecording.ts",
+        "src/voice-broadcast/utils/checkVoiceBroadcastPreConditions.tsx"
+      ],
+      "probeCandidateCount": 512,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "src/components/views/settings/devices/useOwnDevices.ts": 1,
+        "src/utils/device/clientInformation.ts": 19,
+        "src/voice-broadcast/models/VoiceBroadcastRecording.ts": 23,
+        "src/voice-broadcast/utils/checkVoiceBroadcastPreConditions.tsx": 10
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-typescript-long_session-108",
+      "language": "typescript",
+      "scenario": "long_session",
+      "requiredSourceFiles": [
+        "src/components/structures/TabbedView.tsx"
+      ],
+      "probeCandidateCount": 512,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": false,
+      "currentFullRecallAt128": false,
+      "rankedFullRecallAt64": false,
+      "rankedFullRecallAt128": false,
+      "requiredFileRanks": {
+        "src/components/structures/TabbedView.tsx": 419
+      },
+      "missingAt64": [
+        "src/components/structures/TabbedView.tsx"
+      ],
+      "missingAt128": [
+        "src/components/structures/TabbedView.tsx"
+      ],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-typescript-source_localization-100",
+      "language": "typescript",
+      "scenario": "source_localization",
+      "requiredSourceFiles": [
+        "packages/babel-traverse/src/scope/lib/renamer.ts"
+      ],
+      "probeCandidateCount": 512,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "packages/babel-traverse/src/scope/lib/renamer.ts": 5
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-typescript-source_localization-101",
+      "language": "typescript",
+      "scenario": "source_localization",
+      "requiredSourceFiles": [
+        "packages/babel-helpers/src/index.ts"
+      ],
+      "probeCandidateCount": 512,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": false,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": false,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "packages/babel-helpers/src/index.ts": 112
+      },
+      "missingAt64": [
+        "packages/babel-helpers/src/index.ts"
+      ],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-typescript-source_localization-102",
+      "language": "typescript",
+      "scenario": "source_localization",
+      "requiredSourceFiles": [
+        "src/DeviceListener.ts"
+      ],
+      "probeCandidateCount": 512,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "src/DeviceListener.ts": 15
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    }
+  ]
+}

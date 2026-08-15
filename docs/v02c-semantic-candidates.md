@@ -255,6 +255,41 @@ These review counts are data-readiness results, not a new retrieval or ranker
 benchmark. The next comparison occurs after the reviewed train/calibration
 intake is rematerialized against the unchanged semantic serving path.
 
+### Reviewed ranker refresh
+
+The 135 reviewed train/calibration cases were rematerialized at commit
+`e1d7c44` with an explicit offline 512-candidate diagnostic probe. Public
+serving remains bounded at 64 initial and 128 enriched candidates. The
+diagnostic contains 1,068 labeled rows: 812 reviewed negatives, 17
+required-source positives, and 239 verified-patch positives. The detached
+30-case holdout remains unopened.
+
+The reviewed model is a mixed result on the same 45-case calibration split:
+
+| Diagnostic | Prior v166 model | Reviewed v170 model |
+|---|---:|---:|
+| Required-file recall@5 | 76.39% | 69.44% |
+| Required-file MRR | 0.4634 | 0.4380 |
+| Expected calibration error | 0.0315 | 0.0356 |
+| Strict full recall@128 | 95.56% | 97.78% |
+| Generated/vendor top-one violations | 0 | 0 |
+
+The reviewed required-source diagnostic provides a narrower positive result.
+Across the 10 train/calibration cases with independently reviewed source
+oracles, raw initial recall@64 is 50% and bounded-union recall@128 is 100%.
+Ranking the same 128-file union with the prior model reaches 60% strict full
+recall@64 and 70.59% required-file recall@64. The reviewed model reaches 70%
+and 82.35%, respectively. This is train/calibration diagnostic evidence, not
+holdout or promotion evidence.
+
+The model is therefore not promoted. The improvement in reviewed-source
+ranking does not offset the calibration ranking regression, and the 99%
+candidate gate is still unmet. Balanced semantic/graph lane ablations also
+failed to improve the full corpus and were not retained. Paid Claude and
+ReasonBlocks runs remain blocked while the next iteration addresses general
+semantic/structural representation rather than adding filename, task-term, or
+benchmark-specific rules.
+
 ## Long-Run Durability
 
 Resumable corpus work now uses a compact atomic progress header and one

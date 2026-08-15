@@ -153,6 +153,7 @@ describe("probe ranker diagnostic evaluation", () => {
       ...materializer,
       cases: [{
         id: "calibration-case",
+        requiredSourceExistingFiles: ["src/required.ts"],
         officialPatchSourceExistingFiles: ["src/required.ts"],
         initialCandidatePaths: candidates.map((item) => item.path),
         enrichedCandidatePaths: candidates.map((item) => item.path),
@@ -193,6 +194,32 @@ describe("probe ranker diagnostic evaluation", () => {
     expect(boundedResult.status, boundedResult.stderr).toBe(0);
     expect(JSON.parse(fs.readFileSync(outputPath, "utf8"))).toMatchObject({
       targetCaseCount: 1,
+      metrics: {
+        rankedStrictFullRecallAt64: 1,
+        rankedStrictFullRecallAt128: 1
+      }
+    });
+
+    const requiredSourceResult = spawnSync(process.execPath, [
+      path.resolve("node_modules/tsx/dist/cli.mjs"),
+      path.resolve("scripts/evaluate-probe-ranker-diagnostic.ts"),
+      "--model", modelPath,
+      "--training-rows", trainingRowsPath,
+      "--manifest", manifestPath,
+      "--report", reportPath,
+      "--out", outputPath,
+      "--split", "train-calibration",
+      "--reference-kind", "required-source",
+      "--candidate-pool", "bounded"
+    ], { cwd: process.cwd(), encoding: "utf8" });
+    expect(requiredSourceResult.status, requiredSourceResult.stderr).toBe(0);
+    expect(JSON.parse(fs.readFileSync(outputPath, "utf8"))).toMatchObject({
+      promotionEligible: false,
+      evaluationSplit: "train-calibration",
+      referenceKind: "required_source_oracle",
+      candidatePool: "bounded",
+      targetCaseCount: 1,
+      trainCalibrationCaseCount: 1,
       metrics: {
         rankedStrictFullRecallAt64: 1,
         rankedStrictFullRecallAt128: 1

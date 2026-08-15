@@ -16,7 +16,9 @@ type Options = {
   manifestPath: string;
   reportPath: string;
   outPath: string;
-  split: "calibration" | "holdout";
+  split: "calibration" | "holdout" | "train-calibration";
+  referenceKind: "default" | "required-source";
+  candidatePool: "auto" | "bounded";
 };
 
 type RankedCandidate = {
@@ -65,7 +67,9 @@ const reportCases = new Map(
 );
 const targetCases = array(manifest.cases, "manifest.cases")
   .map((value, index) => record(value, `manifest.cases[${index}]`))
-  .filter((item) => item.split === options.split);
+  .filter((item) => options.split === "train-calibration"
+    ? item.split === "train" || item.split === "calibration"
+    : item.split === options.split);
 if (targetCases.length === 0) {
   throw new Error(`Probe ranker diagnostic requires at least one ${options.split} case.`);
 }
@@ -76,18 +80,20 @@ for (const corpusCase of targetCases) {
   const caseId = string(corpusCase.id, "case.id");
   const reportCase = reportCases.get(caseId);
   if (!reportCase) throw new Error(`${caseId}: missing from probe report`);
+  const useRequiredSource = options.referenceKind === "required-source" || options.split === "holdout";
   const requiredSourceFiles = stringArray(
-    options.split === "holdout"
+    useRequiredSource
       ? reportCase.requiredSourceExistingFiles
       : reportCase.officialPatchSourceExistingFiles,
-    options.split === "holdout"
+    useRequiredSource
       ? `${caseId}.requiredSourceExistingFiles`
       : `${caseId}.officialPatchSourceExistingFiles`
   );
   if (requiredSourceFiles.length === 0) {
+    if (options.referenceKind === "required-source") continue;
     throw new Error(`${caseId}: diagnostic ${options.split} has no existing source reference`);
   }
-  const candidateSource = Array.isArray(reportCase.probeCandidates)
+  const candidateSource = options.candidatePool !== "bounded" && Array.isArray(reportCase.probeCandidates)
     ? "probeCandidates"
     : "trainingCandidates";
   const diagnosticCandidates = candidateSource === "probeCandidates"
@@ -150,11 +156,14 @@ const summary = {
   promotionEligible: false,
   reason: options.split === "holdout"
     ? "This is a single-use diagnostic holdout over an unsealed probe corpus, not the 165-case promotion campaign."
+    : options.referenceKind === "required-source"
+      ? "This train/calibration required-source diagnostic measures the bounded candidate-plus-ranker path and is not holdout or promotion evidence."
     : "This calibration-split diagnostic uses weak official-patch references and in-sample Platt calibration; it is not holdout or promotion evidence.",
   evaluationSplit: options.split,
-  referenceKind: options.split === "holdout"
+  referenceKind: options.referenceKind === "required-source" || options.split === "holdout"
     ? "required_source_oracle"
     : "verified_official_patch_source",
+  candidatePool: options.candidatePool,
   model: {
     id: model.modelId,
     checksum: model.checksum,
@@ -169,6 +178,7 @@ const summary = {
   targetCaseCount: results.length,
   holdoutCaseCount: options.split === "holdout" ? results.length : 0,
   calibrationCaseCount: options.split === "calibration" ? results.length : 0,
+  trainCalibrationCaseCount: options.split === "train-calibration" ? results.length : 0,
   labeledTargetRows: calibrationSamples.length,
   labeledHoldoutRows: options.split === "holdout" ? calibrationSamples.length : 0,
   metrics: {
@@ -182,7 +192,9 @@ const summary = {
     rankedRequiredFileRecallAt64: requiredFileRecall(results, 64),
     rankedRequiredFileRecallAt128: requiredFileRecall(results, 128),
     rankedRequiredFileMrr: requiredFileMrr(results),
-    expectedCalibrationError: expectedCalibrationError(calibrationSamples),
+    expectedCalibrationError: options.split === "calibration" && options.referenceKind === "default"
+      ? expectedCalibrationError(calibrationSamples)
+      : null,
     generatedVendorTopOneViolations: results.filter((item) => item.generatedVendorTopOne).map((item) => item.id)
   },
   perLanguage: groupedMetrics(results, (item) => item.language),
@@ -207,7 +219,7 @@ process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
 function validateInputs(
   manifest: Record<string, unknown>,
   report: Record<string, unknown>,
-  split: "calibration" | "holdout"
+  split: "calibration" | "holdout" | "train-calibration"
 ): void {
   if (
     manifest.schemaVersion !== "ranker-corpus.v1" ||
@@ -235,7 +247,7 @@ function validateInputs(
     throw new Error("Probe manifest/report case counts differ.");
   }
   if (
-    split === "calibration" &&
+    (split === "calibration" || split === "train-calibration") &&
     manifestCases.some((value, index) =>
       record(value, `manifest.cases[${index}]`).split === "holdout"
     )
@@ -336,8 +348,16 @@ function parseArgs(args: string[]): Options {
     return path.resolve(value);
   };
   const split = values.get("--split") ?? "holdout";
-  if (split !== "calibration" && split !== "holdout") {
-    throw new Error("--split must be calibration or holdout");
+  if (split !== "calibration" && split !== "holdout" && split !== "train-calibration") {
+    throw new Error("--split must be calibration, holdout, or train-calibration");
+  }
+  const referenceKind = values.get("--reference-kind") ?? "default";
+  if (referenceKind !== "default" && referenceKind !== "required-source") {
+    throw new Error("--reference-kind must be default or required-source");
+  }
+  const candidatePool = values.get("--candidate-pool") ?? "auto";
+  if (candidatePool !== "auto" && candidatePool !== "bounded") {
+    throw new Error("--candidate-pool must be auto or bounded");
   }
   return {
     modelPath: required("--model"),
@@ -345,7 +365,9 @@ function parseArgs(args: string[]): Options {
     manifestPath: required("--manifest"),
     reportPath: required("--report"),
     outPath: required("--out"),
-    split
+    split,
+    referenceKind,
+    candidatePool
   };
 }
 
