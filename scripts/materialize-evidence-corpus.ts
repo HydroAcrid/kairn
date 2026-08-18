@@ -81,6 +81,7 @@ export type MaterializeOptions = {
   isolatedWorker?: boolean;
   snapshotEmbeddingCachePath?: string;
   lineageEmbeddingCachePath?: string;
+  repositoryIndexSnapshotPath?: string;
   migrateFeatureSchema?: boolean;
   resume?: boolean;
   requireSemantic?: boolean;
@@ -153,10 +154,12 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
     const caseStarted = performance.now();
     const caseTiming = {
       checkout: 0,
+      indexSnapshotRestore: 0,
       embeddingCacheRestore: 0,
       candidateInspection: 0,
       reportAssembly: 0,
       embeddingCachePersist: 0,
+      indexSnapshotPersist: 0,
       cleanup: 0,
       totalWorker: 0
     };
@@ -166,6 +169,11 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       sampleOnly: intake.sampleOnly
     });
     caseTiming.checkout = roundMilliseconds(performance.now() - checkoutStarted);
+    const indexSnapshotStarted = performance.now();
+    const indexSnapshotRestored = options.repositoryIndexSnapshotPath
+      ? restoreRepositoryIndexSnapshot(checkout.root, options.repositoryIndexSnapshotPath)
+      : false;
+    caseTiming.indexSnapshotRestore = roundMilliseconds(performance.now() - indexSnapshotStarted);
     const snapshotPath = options.snapshotEmbeddingCachePath;
     const lineagePath = options.lineageEmbeddingCachePath;
     // Rolling lineage state is only a content-addressed warm start. An exact
@@ -201,6 +209,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
       const inspection = await runtime.inspectEvidenceCandidates({
         query: intakeCase.prompt,
         limit: 64,
+        ...(indexSnapshotRestored ? { reuseIndex: true } : {}),
         ...(options.probeLimit ? { probeLimit: options.probeLimit } : {})
       });
       caseTiming.candidateInspection = roundMilliseconds(performance.now() - inspectionStarted);
@@ -321,6 +330,7 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
         timingMs: caseTiming,
         inspectionTimingMs: inspection.timingMs,
         embeddingReuse: {
+          indexSnapshotRestored,
           lineageCacheEntries,
           snapshotCacheEntries,
           warmEntriesAvailable: warmEmbeddingIdentities.size,
@@ -371,6 +381,11 @@ export async function materializeEvidenceCorpus(options: MaterializeOptions): Pr
         }
       }
       caseTiming.embeddingCachePersist = roundMilliseconds(performance.now() - persistStarted);
+      const indexPersistStarted = performance.now();
+      if (options.repositoryIndexSnapshotPath && !indexSnapshotRestored) {
+        persistRepositoryIndexSnapshot(checkout.root, options.repositoryIndexSnapshotPath);
+      }
+      caseTiming.indexSnapshotPersist = roundMilliseconds(performance.now() - indexPersistStarted);
       const cleanupStarted = performance.now();
       checkout.cleanup();
       caseTiming.cleanup = roundMilliseconds(performance.now() - cleanupStarted);
@@ -489,6 +504,11 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
       "semantic-embedding-lineage-cache",
       `${semanticLineageCacheKey(intakeCase)}.json`
     );
+    const repositoryIndexSnapshotPath = path.join(
+      cacheDir,
+      "repository-index-snapshots",
+      `${repositoryIndexSnapshotCacheKey(intakeCase, kairnRoot)}.sqlite`
+    );
     const temporaryPrefix = path.join(intakeDir, `.kairn-ranker-case-${crypto.randomUUID()}`);
     const childManifestPath = `${temporaryPrefix}.manifest.json`;
     const childReportPath = `${temporaryPrefix}.report.json`;
@@ -504,6 +524,7 @@ async function materializeEvidenceCorpusIsolated(options: MaterializeOptions): P
       "--isolated-worker",
       "--snapshot-embedding-cache", snapshotEmbeddingCachePath,
       "--lineage-embedding-cache", lineageEmbeddingCachePath,
+      "--repository-index-snapshot", repositoryIndexSnapshotPath,
       ...(options.draft ? ["--draft"] : []),
       ...(options.allowSample ? ["--allow-sample"] : []),
       ...(options.allowLocalFixture ? ["--allow-local-fixture"] : []),
@@ -688,10 +709,12 @@ function summarizeMaterializationTiming(reportCases: Array<Record<string, unknow
   const isolatedTimes = reportCases.map((row) => nestedNumber(row, "isolatedProcess", "elapsedMs")).filter(isFiniteNumber);
   const phaseNames = [
     "checkout",
+    "indexSnapshotRestore",
     "embeddingCacheRestore",
     "candidateInspection",
     "reportAssembly",
     "embeddingCachePersist",
+    "indexSnapshotPersist",
     "cleanup"
   ];
   const phaseTotalsMs = Object.fromEntries(phaseNames.map((phase) => [
@@ -706,6 +729,9 @@ function summarizeMaterializationTiming(reportCases: Array<Record<string, unknow
     (total, row) => total + (nestedNumber(row, "embeddingReuse", "generatedEmbeddings") ?? 0),
     0
   );
+  const restoredIndexSnapshots = reportCases.filter(
+    (row) => record(row.embeddingReuse ?? {}, "embeddingReuse").indexSnapshotRestored === true
+  ).length;
   return {
     measuredCases: caseTimes.length,
     totalCaseWorkerMs: roundMilliseconds(sumNumbers(caseTimes)),
@@ -718,6 +744,10 @@ function summarizeMaterializationTiming(reportCases: Array<Record<string, unknow
       p95IsolatedProcessMs: percentile(isolatedTimes, 0.95)
     } : {}),
     phaseTotalsMs,
+    indexSnapshotReuse: {
+      restoredCases: restoredIndexSnapshots,
+      coldCases: reportCases.length - restoredIndexSnapshots
+    },
     embeddingReuse: {
       reusedEmbeddings,
       generatedEmbeddings,
@@ -897,11 +927,25 @@ function resolveCheckout(
 ): { root: string; cleanup: () => void } {
   if (intakeCase.localFixtureRoot) {
     if (!options.allowLocalFixture || !options.sampleOnly) throw new Error("local fixture checkout is not authorized");
-    const root = path.resolve(intakeCase.localFixtureRoot);
-    if (git(["rev-parse", "HEAD"], root) !== intakeCase.repositoryRef) {
+    const fixtureRoot = path.resolve(intakeCase.localFixtureRoot);
+    if (git(["rev-parse", "HEAD"], fixtureRoot) !== intakeCase.repositoryRef) {
       throw new Error(`${intakeCase.id}: local fixture HEAD does not match repositoryRef`);
     }
-    return { root, cleanup: () => undefined };
+    const worktreesDir = path.join(cacheDir, "worktrees");
+    fs.mkdirSync(worktreesDir, { recursive: true });
+    const checkout = path.join(
+      worktreesDir,
+      `local-${intakeCase.repositoryRef.slice(0, 12)}-${crypto.randomUUID()}`
+    );
+    git(["worktree", "add", "--quiet", "--detach", checkout, intakeCase.repositoryRef], fixtureRoot);
+    return {
+      root: checkout,
+      cleanup: () => {
+        const statePath = path.join(checkout, ".kairn");
+        if (fs.existsSync(statePath)) fs.rmSync(statePath, { recursive: true, force: true });
+        if (fs.existsSync(checkout)) git(["worktree", "remove", checkout], fixtureRoot);
+      }
+    };
   }
   const repositoryKey = sha256(intakeCase.repositoryUrl).slice(0, 24);
   const repositoriesDir = path.join(cacheDir, "repositories");
@@ -950,6 +994,13 @@ type SnapshotEmbeddingCache = {
   }>;
 };
 
+type RepositoryIndexSnapshotManifest = {
+  formatVersion: 1;
+  cacheKey: string;
+  sourceRootPath: string;
+  databaseSha256: string;
+};
+
 function semanticSnapshotCacheKey(intakeCase: IntakeCase): string {
   const modelId = process.env.KAIRN_SEMANTIC_MODEL?.trim() || DEFAULT_SEMANTIC_MODEL_ID;
   const documentEmbeddingManifestSha256 = semanticDocumentEmbeddingManifestSha256(
@@ -974,6 +1025,17 @@ function semanticLineageCacheKey(intakeCase: IntakeCase): string {
     modelId,
     documentEmbeddingManifestSha256,
     documentSchemaVersion: SEMANTIC_DOCUMENT_SCHEMA_VERSION
+  });
+}
+
+function repositoryIndexSnapshotCacheKey(intakeCase: IntakeCase, kairnRoot: string): string {
+  const modelId = process.env.KAIRN_SEMANTIC_MODEL?.trim() || DEFAULT_SEMANTIC_MODEL_ID;
+  return buildRepositoryIndexSnapshotCacheKey({
+    repositoryLineageId: intakeCase.repositoryLineageId,
+    repositoryRef: intakeCase.repositoryRef,
+    modelManifestSha256: semanticDocumentEmbeddingManifestSha256(getSemanticModelManifest(modelId)),
+    documentSchemaVersion: SEMANTIC_DOCUMENT_SCHEMA_VERSION,
+    implementationSha256: repositoryIndexImplementationSha256(kairnRoot)
   });
 }
 
@@ -1212,6 +1274,93 @@ export function buildSemanticLineageCacheKey(input: {
     input.documentEmbeddingManifestSha256,
     input.documentSchemaVersion
   ].join("\0"));
+}
+
+export function buildRepositoryIndexSnapshotCacheKey(input: {
+  repositoryLineageId: string;
+  repositoryRef: string;
+  modelManifestSha256: string;
+  documentSchemaVersion: string;
+  implementationSha256: string;
+}): string {
+  return sha256([
+    "repository-index-snapshot.v1",
+    input.repositoryLineageId,
+    input.repositoryRef,
+    input.modelManifestSha256,
+    input.documentSchemaVersion,
+    input.implementationSha256
+  ].join("\0"));
+}
+
+export function restoreRepositoryIndexSnapshot(rootPath: string, cachePath: string): boolean {
+  if (!fs.existsSync(cachePath)) return false;
+  const manifestPath = `${cachePath}.manifest.json`;
+  if (!fs.existsSync(manifestPath)) throw new Error(`repository index snapshot manifest is missing: ${manifestPath}`);
+  const manifest = record(JSON.parse(fs.readFileSync(manifestPath, "utf8")), "repository index snapshot manifest");
+  const expectedKey = path.basename(cachePath, ".sqlite");
+  if (manifest.formatVersion !== 1 || manifest.cacheKey !== expectedKey) {
+    throw new Error(`repository index snapshot identity mismatch: ${cachePath}`);
+  }
+  const expectedHash = string(manifest.databaseSha256, "repository index snapshot databaseSha256");
+  if (sha256(fs.readFileSync(cachePath)) !== expectedHash) {
+    throw new Error(`repository index snapshot checksum mismatch: ${cachePath}`);
+  }
+  const sourceRootPath = string(manifest.sourceRootPath, "repository index snapshot sourceRootPath");
+  const paths = ensureKairnDir(rootPath);
+  const staged = `${paths.databasePath}.snapshot-${crypto.randomUUID()}`;
+  try {
+    fs.copyFileSync(cachePath, staged, fs.constants.COPYFILE_EXCL);
+    if (fs.existsSync(paths.databasePath)) throw new Error("cannot restore repository index snapshot over existing state");
+    fs.renameSync(staged, paths.databasePath);
+    const store = new SqliteStore(paths.databasePath);
+    try { store.relocateIndexRoot(sourceRootPath, rootPath); }
+    finally { store.close(); }
+  } finally { fs.rmSync(staged, { force: true }); }
+  return true;
+}
+
+export function persistRepositoryIndexSnapshot(rootPath: string, cachePath: string): void {
+  const manifestPath = `${cachePath}.manifest.json`;
+  if (fs.existsSync(cachePath) || fs.existsSync(manifestPath)) {
+    if (!fs.existsSync(cachePath) || !fs.existsSync(manifestPath)) {
+      throw new Error(`repository index snapshot is incomplete: ${cachePath}`);
+    }
+    return;
+  }
+  const paths = ensureKairnDir(rootPath);
+  const store = new SqliteStore(paths.databasePath);
+  try { store.checkpointWal(); }
+  finally { store.close(); }
+  const parent = path.dirname(cachePath);
+  fs.mkdirSync(parent, { recursive: true });
+  const stagedDatabase = `${cachePath}.tmp-${crypto.randomUUID()}`;
+  const stagedManifest = `${manifestPath}.tmp-${crypto.randomUUID()}`;
+  try {
+    fs.copyFileSync(paths.databasePath, stagedDatabase, fs.constants.COPYFILE_EXCL);
+    const payload: RepositoryIndexSnapshotManifest = {
+      formatVersion: 1,
+      cacheKey: path.basename(cachePath, ".sqlite"),
+      sourceRootPath: rootPath,
+      databaseSha256: sha256(fs.readFileSync(stagedDatabase))
+    };
+    fs.writeFileSync(stagedManifest, `${JSON.stringify(payload, null, 2)}\n`, { encoding: "utf8", flag: "wx" });
+    fs.renameSync(stagedDatabase, cachePath);
+    try { fs.renameSync(stagedManifest, manifestPath); }
+    catch (error) { fs.rmSync(cachePath, { force: true }); throw error; }
+  } finally {
+    fs.rmSync(stagedDatabase, { force: true });
+    fs.rmSync(stagedManifest, { force: true });
+  }
+}
+
+function repositoryIndexImplementationSha256(kairnRoot: string): string {
+  const sources = [
+    "src/parser/parseFile.ts", "src/semantic/documents.ts", "src/indexer/indexRepo.ts",
+    "src/graph/buildGraph.ts", "src/graph/budget.ts", "src/lexical/bm25.ts",
+    "src/scanner/scanRepo.ts", "src/config/indexing.ts"
+  ];
+  return sha256(sources.map((relative) => `${relative}\0${sha256(fs.readFileSync(path.join(kairnRoot, relative)))}`).join("\0"));
 }
 
 export function restoreSnapshotEmbeddingCache(rootPath: string, cachePath: string): number {
@@ -1583,6 +1732,9 @@ function parseArgs(argv: string[]): MaterializeOptions {
       : {}),
     ...(values.get("--lineage-embedding-cache")
       ? { lineageEmbeddingCachePath: values.get("--lineage-embedding-cache")! }
+      : {}),
+    ...(values.get("--repository-index-snapshot")
+      ? { repositoryIndexSnapshotPath: values.get("--repository-index-snapshot")! }
       : {}),
     allowSample: flags.has("--allow-sample"),
     allowLocalFixture: flags.has("--allow-local-fixture"),

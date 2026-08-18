@@ -3528,12 +3528,20 @@ export class KairnRuntime {
   async inspectEvidenceCandidates(input: {
     query: string;
     limit?: number | undefined;
+    /** Benchmark-only: use an already validated immutable index snapshot. */
+    reuseIndex?: boolean | undefined;
     /** Offline diagnostics only; public serving remains capped at 128. */
     probeLimit?: number | undefined;
   }): Promise<EvidenceCandidateInspection> {
     const inspectionStarted = performance.now();
     const initializeStarted = performance.now();
-    await this.init();
+    if (input.reuseIndex) {
+      if (this.store.listFiles(this.rootPath).length === 0) {
+        throw new Error("Cannot reuse benchmark index snapshot: the local index is empty.");
+      }
+    } else {
+      await this.init();
+    }
     const initializeIndex = performance.now() - initializeStarted;
     const inventoryStarted = performance.now();
     const files = this.store.listFiles(this.rootPath);

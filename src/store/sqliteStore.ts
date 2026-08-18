@@ -327,6 +327,29 @@ export class SqliteStore {
     return true;
   }
 
+  /**
+   * Relocate only immutable repository-index rows after copying a read-only
+   * benchmark snapshot into a fresh checkout. Session, eval, telemetry, and
+   * benchmark history are deliberately excluded.
+   */
+  relocateIndexRoot(previousRootPath: string, nextRootPath: string): void {
+    if (!previousRootPath || !nextRootPath || previousRootPath === nextRootPath) return;
+    const tables = [
+      "file_inventory", "symbols", "graph_edges", "semantic_chunks",
+      "semantic_vectors", "semantic_documents", "semantic_embeddings",
+      "lexical_documents", "lexical_terms", "lexical_stats", "index_metadata"
+    ];
+    const relocate = this.db.transaction(() => {
+      for (const table of tables) {
+        const conflict = this.db.prepare(`select count(*) as count from ${table} where root_path = ?`).get(nextRootPath) as { count: number };
+        if (conflict.count > 0) throw new Error(`Cannot relocate index snapshot: ${table} already contains the destination root.`);
+        this.db.prepare(`update ${table} set root_path = ? where root_path = ?`).run(nextRootPath, previousRootPath);
+      }
+    });
+    relocate();
+    this.checkpointWal();
+  }
+
   upsertFiles(files: FileRecord[]): void {
     const stmt = this.db.prepare(`
       insert into file_inventory (

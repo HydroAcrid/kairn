@@ -8,11 +8,14 @@ import { validateEvidenceRankerArtifact } from "../src/retrieval/evidenceModel.j
 import { EVIDENCE_FEATURE_NAMES } from "../src/types/evidence.js";
 import {
   assertSemanticMaterializationReady,
+  buildRepositoryIndexSnapshotCacheKey,
   buildSemanticLineageCacheKey,
   buildSemanticSnapshotCacheKey,
   materializeEvidenceCorpus,
+  persistRepositoryIndexSnapshot,
   persistSnapshotEmbeddingCache,
   readIsolatedMaterializationProgress,
+  restoreRepositoryIndexSnapshot,
   restoreSnapshotEmbeddingCache,
   selectIntakeCases,
   writeIsolatedMaterializationProgress
@@ -30,6 +33,7 @@ import { buildCorpusReviewQueue } from "../scripts/build-corpus-review-queue.js"
 import { applyCorpusReviewDecisions } from "../scripts/apply-corpus-review-decisions.js";
 import { ensureKairnDir } from "../src/config/paths.js";
 import { SqliteStore } from "../src/store/sqliteStore.js";
+import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
 import { createFixtureRepo } from "./helpers.js";
 
 function pythonInvocation(): { command: string; prefix: string[] } {
@@ -322,6 +326,92 @@ describe("public evidence ranker training", () => {
     expect(changedSchema).not.toBe(firstRef);
     expect(changedLineage).not.toBe(firstRef);
     expect(changedRef).not.toBe(firstRef);
+  });
+
+  it("keys repository index snapshots only by immutable parser and model inputs", () => {
+    const base = {
+      repositoryLineageId: "https://github.com/example/project",
+      repositoryRef: "1".repeat(40),
+      modelManifestSha256: "a".repeat(64),
+      documentSchemaVersion: "semantic-documents-v5",
+      implementationSha256: "b".repeat(64)
+    };
+    const first = buildRepositoryIndexSnapshotCacheKey(base);
+
+    expect(buildRepositoryIndexSnapshotCacheKey({ ...base })).toBe(first);
+    expect(buildRepositoryIndexSnapshotCacheKey({
+      ...base,
+      repositoryRef: "2".repeat(40)
+    })).not.toBe(first);
+    expect(buildRepositoryIndexSnapshotCacheKey({
+      ...base,
+      implementationSha256: "c".repeat(64)
+    })).not.toBe(first);
+  });
+
+  it("restores a relocatable repository index without re-indexing", async () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-index-snapshot-"));
+    const sourceRoot = createFixtureRepo();
+    const restoredRoot = createFixtureRepo();
+    const cachePath = path.join(temporary, "repository-index-snapshots", `${"a".repeat(64)}.sqlite`);
+    const sourceRuntime = new KairnRuntime(sourceRoot);
+    let sourceFileCount = 0;
+    try {
+      await sourceRuntime.init();
+      sourceFileCount = sourceRuntime.getIndexStatus().fileCount;
+    } finally {
+      sourceRuntime.close();
+    }
+
+    try {
+      persistRepositoryIndexSnapshot(sourceRoot, cachePath);
+      expect(restoreRepositoryIndexSnapshot(restoredRoot, cachePath)).toBe(true);
+
+      // A benchmark snapshot represents an immutable checkout. This extra file
+      // proves reuse does not silently refresh or mix mutable workspace state.
+      fs.writeFileSync(path.join(restoredRoot, "src", "not-indexed.ts"), "export const NotIndexed = true;\n");
+      const restoredRuntime = new KairnRuntime(restoredRoot);
+      try {
+        const inspection = await restoredRuntime.inspectEvidenceCandidates({
+          query: "format a user greeting",
+          reuseIndex: true
+        });
+        expect(inspection.enrichedCandidatePaths).toContain("src/user.ts");
+        expect(restoredRuntime.getIndexStatus().fileCount).toBe(sourceFileCount);
+        expect(inspection.enrichedCandidatePaths).not.toContain("src/not-indexed.ts");
+      } finally {
+        restoredRuntime.close();
+      }
+    } finally {
+      fs.rmSync(temporary, { recursive: true, force: true });
+      fs.rmSync(sourceRoot, { recursive: true, force: true });
+      fs.rmSync(restoredRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("fails closed when a repository index snapshot is corrupt", async () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-corrupt-index-snapshot-"));
+    const sourceRoot = createFixtureRepo();
+    const restoredRoot = createFixtureRepo();
+    const cachePath = path.join(temporary, "repository-index-snapshots", `${"d".repeat(64)}.sqlite`);
+    const runtime = new KairnRuntime(sourceRoot);
+    try {
+      await runtime.init();
+    } finally {
+      runtime.close();
+    }
+
+    try {
+      persistRepositoryIndexSnapshot(sourceRoot, cachePath);
+      fs.appendFileSync(cachePath, "corrupt");
+      expect(() => restoreRepositoryIndexSnapshot(restoredRoot, cachePath)).toThrow(
+        "repository index snapshot checksum mismatch"
+      );
+    } finally {
+      fs.rmSync(temporary, { recursive: true, force: true });
+      fs.rmSync(sourceRoot, { recursive: true, force: true });
+      fs.rmSync(restoredRoot, { recursive: true, force: true });
+    }
   });
 
   it("shares only content-validated rolling embeddings within one repository lineage", () => {

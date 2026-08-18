@@ -1,5 +1,10 @@
 # Controlled comparison host
 
+The infrastructure and ranker campaigns are governed by
+[`docs/benchmark-infrastructure.md`](../docs/benchmark-infrastructure.md). Run
+`pnpm benchmark:doctor -- --profile live` before invoking this host. A failed
+preflight is infrastructure-invalid and must not produce effectiveness metrics.
+
 `anthropic_messages_host.py` is the benchmark-only, instrumented agent loop used by
 `kairn bench experiment`. It is intentionally outside Kairn's npm runtime.
 

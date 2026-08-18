@@ -1,0 +1,134 @@
+{
+  "schemaVersion": "benchmark-campaign.v1",
+  "campaignId": "kairn-v02c-infrastructure-20260817",
+  "nonEvidence": false,
+  "source": {
+    "branch": "codex/v0.2c-benchmark-infrastructure",
+    "baseCommit": "ab987faf1bf3038cef9dae7ac9e273c940008f35"
+  },
+  "runtime": {
+    "nodeMajor": 24,
+    "pnpm": "10.31.0",
+    "python": "3.12"
+  },
+  "semantic": {
+    "modelId": "jina-code-v2-q8",
+    "upstreamRevision": "516f4baf13dec4ddddda8631e019b5737c8bc250",
+    "documentSchemaVersion": "semantic-documents-v5",
+    "candidateLimit": 64,
+    "enrichedCandidateLimit": 128
+  },
+  "cases": {
+    "artifactId": "training-v170",
+    "expectedCounts": {
+      "train": 90,
+      "calibration": 45,
+      "holdout": 0
+    },
+    "splitField": "split",
+    "idField": "caseGroupId",
+    "format": "jsonl_rows"
+  },
+  "holdout": {
+    "status": "sealed_detached",
+    "artifactId": "detached-holdout",
+    "openedEvaluationId": null
+  },
+  "artifacts": [
+    {
+      "id": "oracle38",
+      "kind": "case_manifest",
+      "path": "benchmarks/semantic/oracle38-cases-v1.json",
+      "sha256": "2640a6f377aaadf142f9f60dfc0d4b17af6d0c6c7dafa6fa99727289ce069313",
+      "parents": [],
+      "allowedStages": ["tier_a", "tier_b", "calibration"]
+    },
+    {
+      "id": "review-decisions",
+      "kind": "review",
+      "path": "artifacts/ranker-corpus.review-decisions-semantic-v168-complete-v2.json",
+      "sha256": "2b4dfab9eaf92d3a31069116fa0ab1b50c966e22f5d2eb8d58c8b2f20b5778fb",
+      "parents": [],
+      "allowedStages": ["tier_a", "calibration"]
+    },
+    {
+      "id": "training-v166",
+      "kind": "training_rows",
+      "path": "artifacts/ranker-probe.semantic-v166-train-cal135.jsonl",
+      "sha256": "3d48be1a2725f35c2f31116260e2e77a7d05c82e171e8e555852763ce06b69bb",
+      "parents": ["review-decisions"],
+      "allowedStages": ["tier_a", "calibration"]
+    },
+    {
+      "id": "training-v170",
+      "kind": "training_rows",
+      "path": "artifacts/ranker-probe.semantic-v170-reviewed-probe512-train-cal135.jsonl",
+      "sha256": "9a9bcba001b0300ccb248397c97d88bec9b5caf1b0a9c8d003cf8c09ebf0849e",
+      "parents": ["review-decisions"],
+      "allowedStages": ["tier_a", "calibration"]
+    },
+    {
+      "id": "model-v166",
+      "kind": "model",
+      "path": "artifacts/kairn-evidence-v02c-semantic-v166-candidate.json",
+      "sha256": "ecaa4fce1e73fb7a5f507d1e2d1a123dd71d2295e36fb82b978947295717aa5a",
+      "parents": ["training-v166"],
+      "allowedStages": ["tier_a", "calibration"]
+    },
+    {
+      "id": "model-v166-manifest",
+      "kind": "model_manifest",
+      "path": "artifacts/kairn-evidence-v02c-semantic-v166-candidate.training-manifest.json",
+      "sha256": "c24a2b8d715b70e852642d391ada41ae5ecbfa8f280106935f5f38e6de57393f",
+      "parents": ["model-v166"],
+      "allowedStages": ["tier_a", "calibration"]
+    },
+    {
+      "id": "model-v170",
+      "kind": "model",
+      "path": "artifacts/kairn-evidence-v02c-semantic-v170-reviewed-probe512-candidate.json",
+      "sha256": "d21b5d22e584004c41837daae1d6cf0833c09d4fcaad095ca81b933ae73b10af",
+      "parents": ["training-v170"],
+      "allowedStages": ["tier_a", "calibration"]
+    },
+    {
+      "id": "model-v170-manifest",
+      "kind": "model_manifest",
+      "path": "artifacts/kairn-evidence-v02c-semantic-v170-reviewed-probe512-candidate.training-manifest.json",
+      "sha256": "461430dea07705e4a0b7e5afa4e44351cd2b049f1ca87fd254dcfec740888b40",
+      "parents": ["model-v170"],
+      "allowedStages": ["tier_a", "calibration"]
+    },
+    {
+      "id": "evaluation-v166",
+      "kind": "evaluation",
+      "path": "artifacts/ranker-calibration.semantic-v170-with-v166-candidate.json",
+      "sha256": "b125f3732bc76e11e7afdc5a1a1bd49aea53fa095050443a6331fc6445e98a34",
+      "parents": ["model-v166", "training-v170"],
+      "allowedStages": ["tier_a", "calibration"]
+    },
+    {
+      "id": "evaluation-v170",
+      "kind": "evaluation",
+      "path": "artifacts/ranker-calibration.semantic-v170-reviewed-probe512-candidate.json",
+      "sha256": "5ff56d22adbcb642b6760fbdb407706b814368676b17aff070d63422775eaaa6",
+      "parents": ["model-v170", "training-v170"],
+      "allowedStages": ["tier_a", "calibration"]
+    },
+    {
+      "id": "detached-holdout",
+      "kind": "holdout",
+      "path": "artifacts/ranker-corpus-intake.detached-holdout-v1.json",
+      "sha256": "dc3f9e6996c05e3a9d9ae68bf492dc80da6dc45ec6561e7cda04a14fa7631775",
+      "parents": [],
+      "allowedStages": ["holdout"]
+    }
+  ],
+  "gates": {
+    "boundedPoolRequiredSourceMissesAt128": 0,
+    "servedRecallAt64Overall": 0.99,
+    "servedRecallAt64PerLanguage": 0.95,
+    "expectedCalibrationErrorMax": 0.05,
+    "generatedVendorTopOneMax": 0
+  }
+}
