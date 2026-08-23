@@ -1,9 +1,9 @@
 {
   "schemaVersion": "benchmark-campaign.v1",
-  "campaignId": "kairn-v02c-infrastructure-20260817",
+  "campaignId": "kairn-v02c-unified-release-20260823",
   "nonEvidence": false,
   "source": {
-    "branch": "codex/v0.2c-benchmark-infrastructure",
+    "branch": "codex/v0.2-unified-release",
     "baseCommit": "ab987faf1bf3038cef9dae7ac9e273c940008f35"
   },
   "runtime": {
