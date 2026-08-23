@@ -5,22 +5,94 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { Command, Option } from "commander";
 import { startKairnDaemon } from "../../daemon/server.js";
+import { formatImpactReportMarkdown, formatImpactStats } from "../../metrics/impact.js";
 import { startMcpServer } from "../../server/mcp.js";
 import { queueAndFlushTelemetrySnapshot } from "../../telemetry/autoFlush.js";
-import type { CodexSetupMode, HookOutputProfile, IndexStateStats, PrimeProfile } from "../../types.js";
+import type { BenchmarkDiffScope, BenchmarkSourceInvariant, CodexSetupMode, ContextPrime, HookOutputProfile, IndexStateStats, PrimeProfile } from "../../types.js";
 import { commandInvocation, commandSpawnInvocation } from "../../utils/command.js";
+import {
+  buildCodexNoDiffRecoveryPrompt,
+  buildCodexPartialScopeRecoveryPrompt,
+  extraStrictScopeFiles,
+  missingRequiredScopeFiles,
+  relevantWorkspaceDiffFiles,
+  shouldRetryCodexNoDiff,
+  shouldRetryCodexPartialScope
+} from "../codexRecovery.js";
 import { printContextPrime } from "../formatters.js";
-import { codexExecArgs, codexInteractiveArgs, parsePositiveInt, waitForShutdown, withRuntime } from "../helpers.js";
+import { codexExecArgs, codexInteractiveArgs, parsePositiveInt, waitForShutdown, withKairnInternalStateHidden, withRuntime } from "../helpers.js";
 import { printContextResponse, printJson } from "../output.js";
 import { normalizeCodexSetupMode, writeCodexSetup } from "../setup/codexSetup.js";
+import { formatSetupWizardResult, runSetupWizard, type SetupWizardChoice, type SetupWizardIndexMode } from "../setup/wizard.js";
+
+export function formatCodexEditScopeReminder(prime: ContextPrime | undefined): string | undefined {
+  if (!prime?.editScope || prime.editScope.strictBoundary !== true || prime.editScope.initialEditFiles.length === 0) return undefined;
+  if (typeof prime.metadata?.guardrailVariant === "string") return undefined;
+  const files = prime.editScope.initialEditFiles.join(", ");
+  const taskShape = prime.contextDecision?.taskShapeSignal;
+  if (taskShape === "topic_ordering" || taskShape === "collection_name_validation") {
+    return [
+      "Kairn focused source candidates for this turn:",
+      `- Start with: ${files}`,
+      "- Patch the smallest necessary production surface first; touch companions only when the behavior contract requires it.",
+      "- Keep tests, docs, generated files, and unrelated sibling source out of scope."
+    ].join("\n");
+  }
+  return [
+    "Kairn edit scope is authoritative for this turn:",
+    `- Edit only: ${files}`,
+    "- If the task appears to require another source file, keep it read-only and report the missing evidence instead of editing it."
+  ].join("\n");
+}
 
 export function registerCoreCommands(program: Command): void {
   program
     .command("init")
-    .description("Initialize Kairn state in a target repo.")
+    .description("Set up Kairn in a target repo.")
     .option("--root <path>", "target repository root", process.cwd())
+    .addOption(new Option("--choice <choice>", "non-interactive setup choice").choices(["codex", "mcp", "both", "hybrid", "doctor"]))
+    .option("--targets <targets>", "comma-separated setup targets: codex,claude-code,copilot-cli,gemini-cli,vscode,generic")
+    .option("--yes", "accept defaults for non-interactive setup")
+    .option("--no-index", "skip indexing during setup")
+    .addOption(new Option("--index-mode <mode>", "indexing mode during setup").choices(["safe", "full", "skip"]))
+    .option("--state-only", "only initialize Kairn local state and index, without installing agent integrations")
+    .option("--telemetry", "enable opt-in sanitized telemetry upload")
+    .option("--telemetry-endpoint <url>", "telemetry ingest endpoint override")
     .option("--json", "print JSON output")
-    .action(async (options: { root: string; json?: boolean }) => {
+    .action(async (options: {
+      root: string;
+      choice?: SetupWizardChoice;
+      targets?: string;
+      yes?: boolean;
+      index?: boolean;
+      indexMode?: SetupWizardIndexMode;
+      stateOnly?: boolean;
+      telemetry?: boolean;
+      telemetryEndpoint?: string;
+      json?: boolean;
+    }, command: Command) => {
+      if (!options.stateOnly) {
+        const indexSource = command.getOptionValueSource("index");
+        const indexModeSource = command.getOptionValueSource("indexMode");
+        const indexMode = indexModeSource ? options.indexMode : undefined;
+        const result = await runSetupWizard({
+          root: options.root,
+          choice: options.choice,
+          targets: options.targets,
+          yes: options.yes,
+          index: indexMode === "skip" ? false : indexSource === "default" ? undefined : options.index,
+          indexMode,
+          telemetry: options.telemetry,
+          telemetryEndpoint: options.telemetryEndpoint
+        });
+        if (options.json) {
+          printJson(result);
+          return;
+        }
+        process.stdout.write(formatSetupWizardResult(result));
+        return;
+      }
+
       await withRuntime(options.root, async (runtime) => {
         const result = await runtime.init();
         if (options.json) {
@@ -175,6 +247,44 @@ export function registerCoreCommands(program: Command): void {
       });
     });
 
+  const stats = program
+    .command("stats")
+    .description("Show local cumulative Kairn impact stats.")
+    .option("--root <path>", "target repository root", process.cwd())
+    .option("--session <id>", "limit stats to one Kairn task session")
+    .option("--json", "print JSON output")
+    .action(async (options: { root: string; session?: string; json?: boolean }) => {
+      await withRuntime(options.root, async (runtime) => {
+        const impact = runtime.getImpactStats(options.session);
+        if (options.json) {
+          printJson(impact);
+          return;
+        }
+        process.stdout.write(`${formatImpactStats(impact)}\n`);
+      });
+    });
+
+  stats
+    .command("report")
+    .description("Write a local aggregate Kairn impact report.")
+    .requiredOption("--out <path>", "output report path")
+    .option("--root <path>", "target repository root", process.cwd())
+    .option("--session <id>", "limit stats to one Kairn task session")
+    .option("--json", "print JSON output")
+    .action(async (options: { out: string; root: string; session?: string; json?: boolean }) => {
+      await withRuntime(options.root, async (runtime) => {
+        const impact = runtime.getImpactStats(options.session);
+        const outPath = path.resolve(options.out);
+        fs.mkdirSync(path.dirname(outPath), { recursive: true });
+        fs.writeFileSync(outPath, `${formatImpactReportMarkdown(impact)}\n`);
+        if (options.json || stats.opts<{ json?: boolean }>().json) {
+          printJson({ outPath, impact });
+          return;
+        }
+        process.stdout.write(`Wrote Kairn impact report: ${outPath}\n`);
+      });
+    });
+
   const index = program
     .command("index")
     .description("Inspect and compact Kairn index state.");
@@ -254,6 +364,8 @@ export function registerCoreCommands(program: Command): void {
     .option("--codex-command <command>", "Codex command to execute", process.env.KAIRN_CODEX_CMD ?? "codex")
     .option("--model <model>", "Codex model")
     .addOption(new Option("--sandbox <mode>", "Codex sandbox mode").choices(["read-only", "workspace-write", "danger-full-access"]).default("workspace-write"))
+    .addOption(new Option("--approval <policy>", "Codex approval policy").choices(["untrusted", "on-failure", "on-request", "never"]))
+    .option("--skip-git-repo-check", "pass Codex --skip-git-repo-check for disposable or non-git workspaces")
     .option("--bind-hooks", "install Codex hooks bound to this Kairn session before launching")
     .addOption(new Option("--hook-mode <mode>", "Codex setup mode to use with --bind-hooks").choices(["source-first", "savings", "hybrid"]).default("source-first"))
     .addOption(new Option("--hook-output <profile>", "prompt-submit hook output profile for --bind-hooks").choices(["full-prime", "tiny-directive", "failure-only", "mcp-brief"]).default("full-prime"))
@@ -267,6 +379,8 @@ export function registerCoreCommands(program: Command): void {
       codexCommand: string;
       model?: string;
       sandbox: string;
+      approval?: string;
+      skipGitRepoCheck?: boolean;
       bindHooks?: boolean;
       hookMode: "source-first" | "savings" | "hybrid";
       hookOutput: HookOutputProfile;
@@ -276,6 +390,7 @@ export function registerCoreCommands(program: Command): void {
       const task = taskParts.join(" ").trim();
       await withRuntime(options.root, async (runtime) => {
         const interactive = task.length === 0;
+        const benchmarkEditScopeHints = parseBenchmarkEditScopeHintsFromEnv();
         const prime = interactive
           ? undefined
           : await runtime.primeContext({
@@ -283,7 +398,8 @@ export function registerCoreCommands(program: Command): void {
               sessionId: options.session,
               profile: options.profile,
               budget: options.budget,
-              source: "codex"
+              source: "codex",
+              editScopeHints: benchmarkEditScopeHints
             });
         const session = interactive
           ? options.session
@@ -313,20 +429,23 @@ export function registerCoreCommands(program: Command): void {
           throw new Error(`Codex hook setup requires attention: ${hookSetup.configConflict.reason}`);
         }
         const shouldInjectPrime = Boolean(prime && shouldInjectPrimeIntoCodexPrompt(prime.contextDecision?.action));
+        const strictBoundaryReminder = formatCodexEditScopeReminder(prime);
+        const approval = options.approval ?? (interactive ? undefined : "never");
         const prompt = interactive
           ? undefined
-          : [
-              ...(shouldInjectPrime ? [prime!.content, ""] : []),
-              bindHooks ? `Kairn conversation session: ${sessionId}` : "",
-              bindHooks ? "Session-bound hooks are installed for follow-up turns in this conversation." : "",
-              bindHooks ? "" : "",
-              "User task:",
-              task,
-              "",
-              shouldInjectPrime
-                ? "Use the Kairn context above first. Avoid broad scans unless the provided files are insufficient."
-                : ""
-            ].join("\n");
+          : shouldInjectPrime
+            ? [
+                prime!.content,
+                "",
+                bindHooks ? `Kairn conversation session: ${sessionId}` : "",
+                bindHooks ? "Session-bound hooks are installed for follow-up turns in this conversation." : "",
+                bindHooks ? "" : "",
+                "User task:",
+                task,
+                "",
+                strictBoundaryReminder ?? "Use the Kairn context above first. Avoid broad scans unless the provided files are insufficient."
+              ].join("\n")
+            : task;
         const result = {
           rootPath: path.resolve(options.root),
           sessionId,
@@ -337,14 +456,18 @@ export function registerCoreCommands(program: Command): void {
                 root: options.root,
                 model: options.model,
                 sandbox: options.sandbox,
-                enableHooks: bindHooks
+                approval,
+                enableHooks: bindHooks,
+                skipGitRepoCheck: Boolean(options.skipGitRepoCheck)
               })
             : codexExecArgs({
                 root: options.root,
                 prompt: prompt!,
                 model: options.model,
                 sandbox: options.sandbox,
-                enableHooks: bindHooks
+                approval,
+                enableHooks: bindHooks,
+                skipGitRepoCheck: Boolean(options.skipGitRepoCheck)
               }),
           ...(prompt ? { prompt } : {}),
           ...(prime ? { prime } : {}),
@@ -378,12 +501,108 @@ export function registerCoreCommands(program: Command): void {
             );
           }
           const invocation = commandSpawnInvocation(commandInvocation(options.codexCommand, result.args));
-          const completed = spawnSync(invocation.command, invocation.args, {
-            cwd: result.rootPath,
-            env: invocation.env ? { ...process.env, ...invocation.env } : undefined,
-            stdio: "inherit"
-          });
-          process.exitCode = completed.status ?? (completed.error ? 1 : 0);
+          const hideInternalState = !interactive && !shouldInjectPrime && !bindHooks;
+          const completed = withKairnInternalStateHidden(result.rootPath, hideInternalState, () =>
+            spawnSync(invocation.command, invocation.args, {
+              cwd: result.rootPath,
+              env: invocation.env ? { ...process.env, ...invocation.env } : undefined,
+              stdio: "inherit"
+            })
+          );
+          let exitCode = completed.status ?? (completed.error ? 1 : 0);
+          if (!interactive && task.length > 0) {
+            let changedFiles = relevantWorkspaceDiffFiles(result.rootPath);
+            if (
+              shouldRetryCodexNoDiff({
+                task,
+                interactive,
+                exitCode,
+                prime,
+                changedFiles
+              })
+            ) {
+              process.stderr.write("Kairn no-diff recovery: retrying once with a stricter production-edit prompt.\n");
+              const recoveryPrompt = buildCodexNoDiffRecoveryPrompt({ task, prime });
+              const recoveryInvocation = commandSpawnInvocation(
+                commandInvocation(
+                  options.codexCommand,
+                  codexExecArgs({
+                    root: options.root,
+                    prompt: recoveryPrompt,
+                    model: options.model,
+                    sandbox: options.sandbox,
+                    approval,
+                    enableHooks: bindHooks,
+                    skipGitRepoCheck: Boolean(options.skipGitRepoCheck)
+                  })
+                )
+              );
+              const recovered = spawnSync(recoveryInvocation.command, recoveryInvocation.args, {
+                cwd: result.rootPath,
+                env: recoveryInvocation.env ? { ...process.env, ...recoveryInvocation.env } : undefined,
+                stdio: "inherit"
+              });
+              exitCode = recovered.status ?? (recovered.error ? 1 : 0);
+              changedFiles = relevantWorkspaceDiffFiles(result.rootPath);
+            }
+            if (
+              shouldRetryCodexPartialScope({
+                task,
+                interactive,
+                exitCode,
+                prime,
+                changedFiles
+              })
+            ) {
+              const missingFiles = missingRequiredScopeFiles({
+                task,
+                interactive,
+                exitCode,
+                prime,
+                changedFiles
+              });
+              const extraFiles = extraStrictScopeFiles({
+                task,
+                interactive,
+                exitCode,
+                prime,
+                changedFiles
+              });
+              process.stderr.write(
+                extraFiles.length > 0
+                  ? `Kairn strict-scope recovery: retrying once to revert out-of-scope file(s): ${extraFiles.join(", ")}.\n`
+                  : `Kairn partial-scope recovery: retrying once for missing required file(s): ${missingFiles.join(", ")}.\n`
+              );
+              const recoveryPrompt = buildCodexPartialScopeRecoveryPrompt({
+                task,
+                prime,
+                changedFiles,
+                missingFiles,
+                extraFiles
+              });
+              const recoveryInvocation = commandSpawnInvocation(
+                commandInvocation(
+                  options.codexCommand,
+                  codexExecArgs({
+                    root: options.root,
+                    prompt: recoveryPrompt,
+                    model: options.model,
+                    sandbox: options.sandbox,
+                    approval,
+                    enableHooks: bindHooks,
+                    skipGitRepoCheck: Boolean(options.skipGitRepoCheck)
+                  })
+                )
+              );
+              const recovered = spawnSync(recoveryInvocation.command, recoveryInvocation.args, {
+                cwd: result.rootPath,
+                env: recoveryInvocation.env ? { ...process.env, ...recoveryInvocation.env } : undefined,
+                stdio: "inherit"
+              });
+              exitCode = recovered.status ?? (recovered.error ? 1 : 0);
+            }
+          }
+          process.exitCode = exitCode;
         } finally {
           if (hookBackup) restoreCodexConversationFiles(hookBackup);
           if (!options.dryRun && !options.json) {
@@ -406,6 +625,59 @@ export function registerCoreCommands(program: Command): void {
         }
       });
     });
+}
+
+function parseBenchmarkEditScopeHintsFromEnv():
+  | { allowedDiffScopes?: BenchmarkDiffScope[] | undefined; sourceInvariants?: BenchmarkSourceInvariant[] | undefined }
+  | undefined {
+  const raw = process.env.KAIRN_BENCH_EDIT_SCOPE_HINTS;
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as {
+      allowedDiffScopes?: unknown;
+      sourceInvariants?: unknown;
+    };
+    const allowedDiffScopes = Array.isArray(parsed.allowedDiffScopes)
+      ? parsed.allowedDiffScopes
+          .map((item) => {
+            if (!item || typeof item !== "object") return undefined;
+            const record = item as { file?: unknown; allowWholeFile?: unknown; symbols?: unknown };
+            if (typeof record.file !== "string" || record.file.trim().length === 0) return undefined;
+            return {
+              file: record.file,
+              ...(typeof record.allowWholeFile === "boolean" ? { allowWholeFile: record.allowWholeFile } : {}),
+              ...(Array.isArray(record.symbols) ? { symbols: record.symbols.filter((symbol): symbol is string => typeof symbol === "string") } : {})
+            };
+          })
+          .filter((item): item is BenchmarkDiffScope => Boolean(item))
+      : [];
+    const sourceInvariants = Array.isArray(parsed.sourceInvariants)
+      ? parsed.sourceInvariants
+          .map((item) => {
+            if (!item || typeof item !== "object") return undefined;
+            const record = item as Record<string, unknown>;
+            if (typeof record.file !== "string" || record.file.trim().length === 0) return undefined;
+            return {
+              file: record.file,
+              ...(typeof record.id === "string" ? { id: record.id } : {}),
+              ...(typeof record.description === "string" ? { description: record.description } : {}),
+              ...(Array.isArray(record.requiredPresent) ? { requiredPresent: record.requiredPresent.filter((value): value is string => typeof value === "string") } : {}),
+              ...(Array.isArray(record.requiredAbsent) ? { requiredAbsent: record.requiredAbsent.filter((value): value is string => typeof value === "string") } : {}),
+              ...(Array.isArray(record.requiredRegex) ? { requiredRegex: record.requiredRegex.filter((value): value is string => typeof value === "string") } : {}),
+              ...(Array.isArray(record.requiredAny) ? { requiredAny: record.requiredAny.filter((value): value is string => typeof value === "string") } : {}),
+              ...(Array.isArray(record.requiredAnyRegex) ? { requiredAnyRegex: record.requiredAnyRegex.filter((value): value is string => typeof value === "string") } : {})
+            };
+          })
+          .filter((item): item is BenchmarkSourceInvariant => Boolean(item))
+      : [];
+    if (allowedDiffScopes.length === 0 && sourceInvariants.length === 0) return undefined;
+    return {
+      ...(allowedDiffScopes.length > 0 ? { allowedDiffScopes } : {}),
+      ...(sourceInvariants.length > 0 ? { sourceInvariants } : {})
+    };
+  } catch {
+    return undefined;
+  }
 }
 
 function disableWasmParserForCommand(): () => void {

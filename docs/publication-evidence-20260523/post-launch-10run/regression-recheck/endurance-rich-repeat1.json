@@ -1,0 +1,1767 @@
+{
+  "suiteId": "endurance-rich-cell-cache",
+  "suiteName": "Rich Cell Length Cache Endurance",
+  "startedAt": "2026-05-23T17:20:36.104Z",
+  "endedAt": "2026-05-23T17:28:25.697Z",
+  "reports": [
+    {
+      "mode": "baseline",
+      "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-gHKoa7",
+      "turns": [
+        {
+          "turnId": "diagnose",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 26913,
+          "responseTokens": 59064,
+          "elapsedMs": 46840,
+          "actualFiles": [
+            "rich/cells.py"
+          ],
+          "agentTouchedFiles": [],
+          "expectedFiles": [
+            "rich/cells.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "8c70bb31459a765d3270626c9e5c4c8406c8df01cadc20f07b934aa60ded5ab5",
+            "preparedPromptHash": "8c70bb31459a765d3270626c9e5c4c8406c8df01cadc20f07b934aa60ded5ab5",
+            "commandHash": "a1c24e79f6152acf7eb03d9de2e95b76c564381ce97d6809034f5ca585d6c3cb",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "9d518273117ce4cb4343d23f43a073cc2d3b3fa357beb70e76d678f3da42a4fc",
+            "expectedFileMentions": [
+              "rich/cells.py"
+            ],
+            "changedFiles": [
+              "rich/cells.py"
+            ],
+            "seedPatchFiles": [
+              "rich/cells.py"
+            ],
+            "agentTouchedFiles": [],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 26913,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "fix-source",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 42291,
+          "responseTokens": 67697,
+          "elapsedMs": 87994,
+          "actualFiles": [
+            "rich/cells.py"
+          ],
+          "agentTouchedFiles": [
+            "rich/cells.py"
+          ],
+          "expectedFiles": [
+            "rich/cells.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "c778854dc50ba609ca9ebecfccffff6e7323329eaeb9990af764251bb87f2764",
+            "preparedPromptHash": "c778854dc50ba609ca9ebecfccffff6e7323329eaeb9990af764251bb87f2764",
+            "commandHash": "6bc4af02285e36dbf7f4a6e1828d6c96f0c04e1a61a24e1c430a9a93a0a0da5c",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "36bd689e0bd4af5e87e89bbb9825ee758a49a273e7c510cd2acbc11a946897b2",
+            "expectedFileMentions": [
+              "rich/cells.py"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "rich/cells.py"
+            ],
+            "agentTouchedFiles": [
+              "rich/cells.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 42291,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "verify",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 23884,
+          "responseTokens": 13316,
+          "elapsedMs": 31948,
+          "actualFiles": [
+            "rich/cells.py"
+          ],
+          "agentTouchedFiles": [
+            "rich/cells.py"
+          ],
+          "expectedFiles": [
+            "rich/cells.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "2397756bf569a4023cd538a8144835c5ce7be5da4eab0b663ce96e63e8977e33",
+            "preparedPromptHash": "2397756bf569a4023cd538a8144835c5ce7be5da4eab0b663ce96e63e8977e33",
+            "commandHash": "db6acb496870a215f67052a20f2a6ba0cdcaba9f49bb964d655843fd29ead2af",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "6c7d1ec0e856ea1bf80c7cbd133ff59839983d6f437b5564a0ab4e50becd9e72",
+            "expectedFileMentions": [
+              "rich/cells.py"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "rich/cells.py"
+            ],
+            "agentTouchedFiles": [
+              "rich/cells.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 23884,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "review-diff",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 15925,
+          "responseTokens": 13092,
+          "elapsedMs": 69595,
+          "actualFiles": [
+            "rich/cells.py"
+          ],
+          "agentTouchedFiles": [
+            "rich/cells.py"
+          ],
+          "expectedFiles": [
+            "rich/cells.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "0a25946100feb84b41397c7d2b8e90f7b136bc84fea2aa8443905e65cae74a44",
+            "preparedPromptHash": "0a25946100feb84b41397c7d2b8e90f7b136bc84fea2aa8443905e65cae74a44",
+            "commandHash": "09f633e6f091565ae9044f0e647d74dbecebc6ab741c7a28f6bb880a8744f76d",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "2eeef641fbaca84168f35cfdf3ef0c2e3e156e05d85bfb74a7f90de97a45fa5f",
+            "expectedFileMentions": [
+              "rich/cells.py"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "rich/cells.py"
+            ],
+            "agentTouchedFiles": [
+              "rich/cells.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 15925,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "repeat-context",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 26331,
+          "responseTokens": 62782,
+          "elapsedMs": 32588,
+          "actualFiles": [
+            "rich/cells.py"
+          ],
+          "agentTouchedFiles": [
+            "rich/cells.py"
+          ],
+          "expectedFiles": [
+            "rich/cells.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "92be6963b1161ac1453e61be1de31ad1e061f738b811aaa4d0406342f1863449",
+            "preparedPromptHash": "92be6963b1161ac1453e61be1de31ad1e061f738b811aaa4d0406342f1863449",
+            "commandHash": "fc016df362a5d40794cc1d024e2837be26362484a19ee716f984ba741a2f3024",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "8bc5a04d3007738c7506ce52228e6f658e61b625c9d78e66d50f5617757cf979",
+            "expectedFileMentions": [
+              "rich/cells.py"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "rich/cells.py"
+            ],
+            "agentTouchedFiles": [
+              "rich/cells.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 26331,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "cleanup",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 11351,
+          "responseTokens": 1909,
+          "elapsedMs": 14775,
+          "actualFiles": [
+            "rich/cells.py"
+          ],
+          "agentTouchedFiles": [
+            "rich/cells.py"
+          ],
+          "expectedFiles": [
+            "rich/cells.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "4f66d1f6d04f43bdc585bd0b14acd02556296e3730f61f1eac2b67d0fe8eea54",
+            "preparedPromptHash": "4f66d1f6d04f43bdc585bd0b14acd02556296e3730f61f1eac2b67d0fe8eea54",
+            "commandHash": "3b11b48e3d269fa491bed3fa19104e1347b359765f32ba4833362fcffd089d25",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "1ac8f6f78dc700bd5aeec7f3453c8117bb652bd68241d6a3a73aac07dc32dee5",
+            "expectedFileMentions": [
+              "rich/cells.py"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "rich/cells.py"
+            ],
+            "agentTouchedFiles": [
+              "rich/cells.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 11351,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        }
+      ],
+      "totalObservedCodexTokens": 146695,
+      "totalResponseTokens": 217860,
+      "totalElapsedMs": 283782,
+      "qualityGatePassed": true,
+      "finalVerificationPassed": true,
+      "assistanceStatus": "none",
+      "assistanceActions": {
+        "emitted": 0,
+        "shrunk": 0,
+        "suppressed": 0,
+        "mcpCalls": 0,
+        "failureContexts": 0
+      },
+      "metadata": {
+        "finalVerificationCommandPassed": true,
+        "finalSourceInvariantPassed": true,
+        "finalSourceInvariantFailures": [],
+        "finalDiffScopePassed": true,
+        "finalDiffScopeViolations": [],
+        "finalChangedFiles": [],
+        "setupElapsedMs": 0,
+        "kairnSessionCount": 0,
+        "primeEmitted": 0,
+        "primeSuppressed": 0,
+        "hookInvocations": 0,
+        "failureContextUsed": 0,
+        "mcpToolCalls": 0,
+        "mcpFilesReturned": [],
+        "mcpReturnedFileCount": 0,
+        "mcpGuidedSourceFiles": [],
+        "mcpAttributedSourceFiles": [],
+        "mcpReturnedUsefulFileCount": 0,
+        "mcpGuidedUsefulFileCount": 0,
+        "mcpAttributedUsefulFileCount": 0
+      }
+    },
+    {
+      "mode": "kairn_codex_session",
+      "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-sxYaqk",
+      "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+      "turns": [
+        {
+          "turnId": "diagnose",
+          "mode": "kairn_codex_session",
+          "outcome": "pass",
+          "observedCodexTokens": 16355,
+          "responseTokens": 6808,
+          "elapsedMs": 39453,
+          "actualFiles": [
+            "rich/cells.py"
+          ],
+          "agentTouchedFiles": [],
+          "expectedFiles": [
+            "rich/cells.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 2,
+          "repeatedSnippetsAvoided": 1,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "8c70bb31459a765d3270626c9e5c4c8406c8df01cadc20f07b934aa60ded5ab5",
+            "preparedPromptHash": "52278aecc707fbd5fc3db0cb8037512836cb199e04aad03464bc31be2bc7f273",
+            "commandHash": "264d20e1135c8046151d5759b87163debcb4e6566d6fd6df922d362efd8bcfde",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "3f4631a45d71a8f8013fef4f104698b646a1a215690bf18c52bf4ee6f45ee2c7",
+            "expectedFileMentions": [
+              "rich/cells.py"
+            ],
+            "changedFiles": [
+              "rich/cells.py"
+            ],
+            "seedPatchFiles": [
+              "rich/cells.py"
+            ],
+            "agentTouchedFiles": [],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 16355,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "hookSimulated": true,
+            "hookDeliveredContext": true,
+            "hookDecision": "shrink",
+            "primeDecision": "shrink",
+            "hookRecommendation": "prime_emitted",
+            "primeFiles": [
+              "rich/cells.py",
+              "tools/make_width_tables.py"
+            ],
+            "hookFiles": [
+              "rich/cells.py",
+              "tools/make_width_tables.py"
+            ],
+            "hookOutputTokens": 512,
+            "hookSignalMetadata": {
+              "eventName": "UserPromptSubmit",
+              "hookKind": "hook",
+              "outputKind": "generic",
+              "hookOutput": "full-prime",
+              "transport": "cli",
+              "daemonAttempted": false,
+              "daemonHit": false,
+              "daemonMiss": false,
+              "indexRefreshSkipped": true,
+              "refreshIndexMs": 0,
+              "primeElapsedMs": 492,
+              "hookLatencyMs": 494,
+              "linkedFiles": 0,
+              "recommendation": "prime_emitted",
+              "primeAttempted": true,
+              "primeContextDelivered": true,
+              "primeSuppressed": false,
+              "hostAdditionalContextBytes": 2046,
+              "proactivePrime": true,
+              "primeQuality": {
+                "score": 100,
+                "action": "shrink",
+                "reasons": [
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "debug/failure task can benefit from targeted context",
+                  "top result is a production source file",
+                  "high-confidence exact source target supports compact context",
+                  "exact source hit should use focused context",
+                  "source-rescue signal supports an active one-file guardrail",
+                  "canonical source routing supports focused context",
+                  "single-source fix should not receive broad context expansion",
+                  "query-local companion evidence supports multi-surface context",
+                  "debug companion context should stay directive instead of full-prime",
+                  "session policy: failure_reemitted"
+                ],
+                "topScore": 4123.4,
+                "topGap": 2357.4,
+                "exactPathMentioned": false,
+                "expectedSavingsRisk": "medium"
+              },
+              "contextDecision": {
+                "score": 100,
+                "action": "shrink",
+                "reasons": [
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "debug/failure task can benefit from targeted context",
+                  "top result is a production source file",
+                  "high-confidence exact source target supports compact context",
+                  "exact source hit should use focused context",
+                  "source-rescue signal supports an active one-file guardrail",
+                  "canonical source routing supports focused context",
+                  "single-source fix should not receive broad context expansion",
+                  "query-local companion evidence supports multi-surface context",
+                  "debug companion context should stay directive instead of full-prime"
+                ],
+                "topScore": 4123.4,
+                "topGap": 2357.4,
+                "primaryFile": "rich/cells.py",
+                "language": "python",
+                "exactPathMentioned": false,
+                "exactSourceHit": true,
+                "sourceRescue": true,
+                "canonicalSourceHit": true,
+                "cheapSingleSource": false,
+                "cheapExactSource": false,
+                "companionSpecific": true,
+                "multiSurfaceSignal": true,
+                "companionCount": 2,
+                "companionTopScore": 1766,
+                "recommendedDelivery": "multi_file_directive",
+                "estimatedContextCost": 750,
+                "expectedSavingsRisk": "medium",
+                "debugSignal": true,
+                "easyTaskSignal": false,
+                "wrongContextRisk": false,
+                "taskFrame": "source_rescue",
+                "modelPrediction": {
+                  "pUseful": 0.62,
+                  "pHarm": 0.14594619719648277,
+                  "pNeedMoreEvidence": 0,
+                  "suggestedAction": "shrink",
+                  "confidence": 0.62,
+                  "source": "deterministic"
+                },
+                "featureSummary": {
+                  "taskFrame": "source_rescue",
+                  "candidateCount": 12,
+                  "fileRoleCounts": {
+                    "production_source": 12
+                  },
+                  "repoLanguageMix": {
+                    "python": 213,
+                    "json": 180,
+                    "text": 80,
+                    "markdown": 45,
+                    "yaml": 11,
+                    "toml": 1
+                  },
+                  "topRole": "production_source",
+                  "topLanguage": "python",
+                  "confidenceGap": 2357,
+                  "candidateEntropy": 0.988,
+                  "ambiguity": 0.436,
+                  "expectedContextCost": 750,
+                  "estimatedSearchCost": 31
+                }
+              },
+              "decision": "shrink",
+              "decisionScore": 100,
+              "decisionReasons": [
+                "high-confidence top retrieval score",
+                "top result is clearly separated",
+                "debug/failure task can benefit from targeted context",
+                "top result is a production source file",
+                "high-confidence exact source target supports compact context",
+                "exact source hit should use focused context",
+                "source-rescue signal supports an active one-file guardrail",
+                "canonical source routing supports focused context",
+                "single-source fix should not receive broad context expansion",
+                "query-local companion evidence supports multi-surface context",
+                "debug companion context should stay directive instead of full-prime"
+              ],
+              "estimatedContextCost": 750,
+              "expectedSavingsRisk": "medium",
+              "failureContext": false,
+              "duplicatePromptPrime": false,
+              "compressedOutput": false,
+              "trivialSuccessfulOutput": true
+            }
+          }
+        },
+        {
+          "turnId": "fix-source",
+          "mode": "kairn_codex_session",
+          "outcome": "pass",
+          "observedCodexTokens": 15018,
+          "responseTokens": 6243,
+          "elapsedMs": 18992,
+          "actualFiles": [
+            "rich/cells.py"
+          ],
+          "agentTouchedFiles": [
+            "rich/cells.py"
+          ],
+          "expectedFiles": [
+            "rich/cells.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "c778854dc50ba609ca9ebecfccffff6e7323329eaeb9990af764251bb87f2764",
+            "preparedPromptHash": "6ef9f0e8b0b235e2aaec24ef59ecf6a0ed9aa05eb1ae6c15da4732dd63fff487",
+            "commandHash": "22cb7a27b99351856c0b7f0bbf29597237160ecd02c857c2ac1cc526ad1fdadf",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "8c03355a263720fba34057e6770a2caf431c568a5ff06fa6c0447b8c21283d6d",
+            "expectedFileMentions": [
+              "rich/cells.py"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "rich/cells.py"
+            ],
+            "agentTouchedFiles": [
+              "rich/cells.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 15018,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "hookSimulated": true,
+            "hookDeliveredContext": true,
+            "hookDecision": "shrink",
+            "primeDecision": "shrink",
+            "hookRecommendation": "prime_emitted",
+            "primeFiles": [
+              "rich/cells.py"
+            ],
+            "hookFiles": [
+              "rich/cells.py"
+            ],
+            "hookOutputTokens": 152,
+            "hookSignalMetadata": {
+              "eventName": "UserPromptSubmit",
+              "hookKind": "hook",
+              "outputKind": "generic",
+              "hookOutput": "full-prime",
+              "transport": "cli",
+              "daemonAttempted": false,
+              "daemonHit": false,
+              "daemonMiss": false,
+              "indexRefreshSkipped": true,
+              "refreshIndexMs": 0,
+              "primeElapsedMs": 452,
+              "hookLatencyMs": 454,
+              "linkedFiles": 0,
+              "recommendation": "prime_emitted",
+              "primeAttempted": true,
+              "primeContextDelivered": true,
+              "primeSuppressed": false,
+              "hostAdditionalContextBytes": 607,
+              "proactivePrime": true,
+              "primeQuality": {
+                "score": 100,
+                "action": "shrink",
+                "reasons": [
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "debug/failure task can benefit from targeted context",
+                  "top result is a production source file",
+                  "high-confidence exact source target supports compact context",
+                  "exact source hit should use focused context",
+                  "source-rescue signal supports an active one-file guardrail",
+                  "single-source fix should not receive broad context expansion",
+                  "query-local companion evidence supports multi-surface context",
+                  "debug companion context should stay directive instead of full-prime",
+                  "session policy: active_source_context_shrunk"
+                ],
+                "topScore": 3013.323,
+                "topGap": 930.937,
+                "exactPathMentioned": false,
+                "expectedSavingsRisk": "medium"
+              },
+              "contextDecision": {
+                "score": 100,
+                "action": "shrink",
+                "reasons": [
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "debug/failure task can benefit from targeted context",
+                  "top result is a production source file",
+                  "high-confidence exact source target supports compact context",
+                  "exact source hit should use focused context",
+                  "source-rescue signal supports an active one-file guardrail",
+                  "single-source fix should not receive broad context expansion",
+                  "query-local companion evidence supports multi-surface context",
+                  "debug companion context should stay directive instead of full-prime"
+                ],
+                "topScore": 3013.323,
+                "topGap": 930.937,
+                "primaryFile": "rich/cells.py",
+                "language": "python",
+                "exactPathMentioned": false,
+                "exactSourceHit": true,
+                "sourceRescue": true,
+                "canonicalSourceHit": false,
+                "cheapSingleSource": false,
+                "cheapExactSource": false,
+                "companionSpecific": true,
+                "multiSurfaceSignal": true,
+                "companionCount": 2,
+                "companionTopScore": 1854,
+                "recommendedDelivery": "one_file_directive",
+                "estimatedContextCost": 750,
+                "expectedSavingsRisk": "medium",
+                "debugSignal": true,
+                "easyTaskSignal": false,
+                "wrongContextRisk": false,
+                "taskFrame": "source_rescue",
+                "modelPrediction": {
+                  "pUseful": 0.62,
+                  "pHarm": 0.1468809759913547,
+                  "pNeedMoreEvidence": 0,
+                  "suggestedAction": "shrink",
+                  "confidence": 0.62,
+                  "source": "deterministic"
+                },
+                "featureSummary": {
+                  "taskFrame": "source_rescue",
+                  "candidateCount": 12,
+                  "fileRoleCounts": {
+                    "production_source": 12
+                  },
+                  "repoLanguageMix": {
+                    "python": 213,
+                    "json": 180,
+                    "text": 80,
+                    "markdown": 45,
+                    "yaml": 11,
+                    "toml": 1
+                  },
+                  "topRole": "production_source",
+                  "topLanguage": "python",
+                  "confidenceGap": 931,
+                  "candidateEntropy": 0.985,
+                  "ambiguity": 0.44,
+                  "expectedContextCost": 750,
+                  "estimatedSearchCost": 31
+                }
+              },
+              "decision": "shrink",
+              "decisionScore": 100,
+              "decisionReasons": [
+                "high-confidence top retrieval score",
+                "top result is clearly separated",
+                "debug/failure task can benefit from targeted context",
+                "top result is a production source file",
+                "high-confidence exact source target supports compact context",
+                "exact source hit should use focused context",
+                "source-rescue signal supports an active one-file guardrail",
+                "single-source fix should not receive broad context expansion",
+                "query-local companion evidence supports multi-surface context",
+                "debug companion context should stay directive instead of full-prime"
+              ],
+              "estimatedContextCost": 750,
+              "expectedSavingsRisk": "medium",
+              "failureContext": false,
+              "duplicatePromptPrime": false,
+              "compressedOutput": false,
+              "trivialSuccessfulOutput": true
+            }
+          }
+        },
+        {
+          "turnId": "verify",
+          "mode": "kairn_codex_session",
+          "outcome": "pass",
+          "observedCodexTokens": 12517,
+          "responseTokens": 11514,
+          "elapsedMs": 28807,
+          "actualFiles": [
+            "rich/cells.py"
+          ],
+          "agentTouchedFiles": [
+            "rich/cells.py"
+          ],
+          "expectedFiles": [
+            "rich/cells.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "2397756bf569a4023cd538a8144835c5ce7be5da4eab0b663ce96e63e8977e33",
+            "preparedPromptHash": "2397756bf569a4023cd538a8144835c5ce7be5da4eab0b663ce96e63e8977e33",
+            "commandHash": "33e7d0c1ce987a2dc86c73e12573c12216167015ff75d22415801c7ca5391d3f",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "447b012929b636b0fbb54c50caeac49b57e1f3e9d85e8054eefacc6f98b28d7c",
+            "expectedFileMentions": [],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "rich/cells.py"
+            ],
+            "agentTouchedFiles": [
+              "rich/cells.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 12517,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "hookSimulated": true,
+            "hookDeliveredContext": false,
+            "hookRecommendation": "prompt_suppressed",
+            "primeFiles": [],
+            "hookFiles": [],
+            "hookOutputTokens": 0,
+            "hookSignalMetadata": {
+              "eventName": "UserPromptSubmit",
+              "hookKind": "hook",
+              "outputKind": "generic",
+              "hookOutput": "full-prime",
+              "transport": "cli",
+              "daemonAttempted": false,
+              "daemonHit": false,
+              "daemonMiss": false,
+              "indexRefreshSkipped": true,
+              "refreshIndexMs": 0,
+              "primeElapsedMs": 0,
+              "hookLatencyMs": 1,
+              "linkedFiles": 0,
+              "recommendation": "prompt_suppressed",
+              "primeAttempted": false,
+              "primeContextDelivered": false,
+              "primeSuppressed": false,
+              "hostAdditionalContextBytes": 0,
+              "proactivePrime": false,
+              "failureContext": false,
+              "duplicatePromptPrime": false,
+              "compressedOutput": false,
+              "trivialSuccessfulOutput": true
+            }
+          }
+        },
+        {
+          "turnId": "review-diff",
+          "mode": "kairn_codex_session",
+          "outcome": "pass",
+          "observedCodexTokens": 14575,
+          "responseTokens": 13215,
+          "elapsedMs": 49805,
+          "actualFiles": [
+            "rich/cells.py"
+          ],
+          "agentTouchedFiles": [
+            "rich/cells.py"
+          ],
+          "expectedFiles": [
+            "rich/cells.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "0a25946100feb84b41397c7d2b8e90f7b136bc84fea2aa8443905e65cae74a44",
+            "preparedPromptHash": "0a25946100feb84b41397c7d2b8e90f7b136bc84fea2aa8443905e65cae74a44",
+            "commandHash": "f5aa494b13384a024e72b1b38cffb3abc4255979849dd08ca7f10594ca557952",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "8028e3d6ef5b14d29a21206a666a92c820ad39ae1a5bbe52a91b093f824be820",
+            "expectedFileMentions": [
+              "rich/cells.py"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "rich/cells.py"
+            ],
+            "agentTouchedFiles": [
+              "rich/cells.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 14575,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "hookSimulated": true,
+            "hookDeliveredContext": false,
+            "hookDecision": "suppress",
+            "primeDecision": "suppress",
+            "hookRecommendation": "prime_quality_suppressed_silent",
+            "primeFiles": [],
+            "hookFiles": [],
+            "hookOutputTokens": 0,
+            "hookSignalMetadata": {
+              "eventName": "UserPromptSubmit",
+              "hookKind": "hook",
+              "outputKind": "generic",
+              "hookOutput": "full-prime",
+              "transport": "cli",
+              "daemonAttempted": false,
+              "daemonHit": false,
+              "daemonMiss": false,
+              "indexRefreshSkipped": true,
+              "refreshIndexMs": 0,
+              "primeElapsedMs": 660,
+              "hookLatencyMs": 662,
+              "linkedFiles": 0,
+              "recommendation": "prime_quality_suppressed_silent",
+              "primeAttempted": true,
+              "primeContextDelivered": false,
+              "primeSuppressed": true,
+              "hostAdditionalContextBytes": 0,
+              "proactivePrime": false,
+              "primeQuality": {
+                "score": 48,
+                "action": "suppress",
+                "reasons": [
+                  "prompt already names an exact indexed file",
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "debug/failure task can benefit from targeted context",
+                  "top result is a production source file",
+                  "high-confidence exact source target supports compact context",
+                  "exact source hit should use focused context",
+                  "source-rescue signal supports an active one-file guardrail",
+                  "single-source fix should not receive broad context expansion",
+                  "query-local companion evidence supports multi-surface context",
+                  "session policy: phase_shift_reemitted"
+                ],
+                "topScore": 1899.045,
+                "topGap": 888.537,
+                "exactPathMentioned": true,
+                "expectedSavingsRisk": "high"
+              },
+              "contextDecision": {
+                "score": 48,
+                "action": "suppress",
+                "reasons": [
+                  "prompt already names an exact indexed file",
+                  "high-confidence top retrieval score",
+                  "top result is clearly separated",
+                  "debug/failure task can benefit from targeted context",
+                  "top result is a production source file",
+                  "high-confidence exact source target supports compact context",
+                  "exact source hit should use focused context",
+                  "source-rescue signal supports an active one-file guardrail",
+                  "single-source fix should not receive broad context expansion",
+                  "query-local companion evidence supports multi-surface context"
+                ],
+                "topScore": 1899.045,
+                "topGap": 888.537,
+                "primaryFile": "rich/text.py",
+                "language": "python",
+                "exactPathMentioned": true,
+                "exactSourceHit": true,
+                "sourceRescue": true,
+                "canonicalSourceHit": false,
+                "cheapSingleSource": false,
+                "cheapExactSource": false,
+                "companionSpecific": true,
+                "multiSurfaceSignal": true,
+                "companionCount": 2,
+                "companionTopScore": 4462,
+                "recommendedDelivery": "none",
+                "estimatedContextCost": 550,
+                "expectedSavingsRisk": "high",
+                "debugSignal": true,
+                "easyTaskSignal": false,
+                "wrongContextRisk": false,
+                "taskFrame": "source_rescue",
+                "modelPrediction": {
+                  "pUseful": 0.18,
+                  "pHarm": 0.14705256482681836,
+                  "pNeedMoreEvidence": 0,
+                  "suggestedAction": "suppress",
+                  "confidence": 0.18,
+                  "source": "deterministic"
+                },
+                "featureSummary": {
+                  "taskFrame": "source_rescue",
+                  "candidateCount": 12,
+                  "fileRoleCounts": {
+                    "production_source": 10,
+                    "test": 2
+                  },
+                  "repoLanguageMix": {
+                    "python": 213,
+                    "json": 180,
+                    "text": 80,
+                    "markdown": 45,
+                    "yaml": 11,
+                    "toml": 1
+                  },
+                  "topRole": "production_source",
+                  "topLanguage": "python",
+                  "confidenceGap": 889,
+                  "candidateEntropy": 0.991,
+                  "ambiguity": 0.441,
+                  "expectedContextCost": 550,
+                  "estimatedSearchCost": 31
+                }
+              },
+              "decision": "suppress",
+              "decisionScore": 48,
+              "decisionReasons": [
+                "prompt already names an exact indexed file",
+                "high-confidence top retrieval score",
+                "top result is clearly separated",
+                "debug/failure task can benefit from targeted context",
+                "top result is a production source file",
+                "high-confidence exact source target supports compact context",
+                "exact source hit should use focused context",
+                "source-rescue signal supports an active one-file guardrail",
+                "single-source fix should not receive broad context expansion",
+                "query-local companion evidence supports multi-surface context"
+              ],
+              "estimatedContextCost": 550,
+              "expectedSavingsRisk": "high",
+              "failureContext": false,
+              "duplicatePromptPrime": false,
+              "compressedOutput": false,
+              "trivialSuccessfulOutput": true
+            }
+          }
+        },
+        {
+          "turnId": "repeat-context",
+          "mode": "kairn_codex_session",
+          "outcome": "pass",
+          "observedCodexTokens": 29589,
+          "responseTokens": 185849,
+          "elapsedMs": 33277,
+          "actualFiles": [
+            "rich/cells.py"
+          ],
+          "agentTouchedFiles": [
+            "rich/cells.py"
+          ],
+          "expectedFiles": [
+            "rich/cells.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 1,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "92be6963b1161ac1453e61be1de31ad1e061f738b811aaa4d0406342f1863449",
+            "preparedPromptHash": "92be6963b1161ac1453e61be1de31ad1e061f738b811aaa4d0406342f1863449",
+            "commandHash": "d15288fefd490a2c44b8f30e70ab491c4c221fe412564a203fe3a534ca4d360a",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "ae10f7c46d26150f2366cf5b3b4ad426b71bd9bb6e0d959d0a1e054370573bab",
+            "expectedFileMentions": [
+              "rich/cells.py"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "rich/cells.py"
+            ],
+            "agentTouchedFiles": [
+              "rich/cells.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 29589,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "hookSimulated": true,
+            "hookDeliveredContext": false,
+            "hookRecommendation": "prompt_suppressed",
+            "primeFiles": [],
+            "hookFiles": [],
+            "hookOutputTokens": 0,
+            "hookSignalMetadata": {
+              "eventName": "UserPromptSubmit",
+              "hookKind": "hook",
+              "outputKind": "generic",
+              "hookOutput": "full-prime",
+              "transport": "cli",
+              "daemonAttempted": false,
+              "daemonHit": false,
+              "daemonMiss": false,
+              "indexRefreshSkipped": true,
+              "refreshIndexMs": 0,
+              "primeElapsedMs": 0,
+              "hookLatencyMs": 1,
+              "linkedFiles": 0,
+              "recommendation": "prompt_suppressed",
+              "primeAttempted": false,
+              "primeContextDelivered": false,
+              "primeSuppressed": false,
+              "hostAdditionalContextBytes": 0,
+              "proactivePrime": false,
+              "failureContext": false,
+              "duplicatePromptPrime": false,
+              "compressedOutput": false,
+              "trivialSuccessfulOutput": true
+            }
+          }
+        },
+        {
+          "turnId": "cleanup",
+          "mode": "kairn_codex_session",
+          "outcome": "pass",
+          "observedCodexTokens": 10867,
+          "responseTokens": 1459,
+          "elapsedMs": 9838,
+          "actualFiles": [
+            "rich/cells.py"
+          ],
+          "agentTouchedFiles": [
+            "rich/cells.py"
+          ],
+          "expectedFiles": [
+            "rich/cells.py"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 2,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "4f66d1f6d04f43bdc585bd0b14acd02556296e3730f61f1eac2b67d0fe8eea54",
+            "preparedPromptHash": "4f66d1f6d04f43bdc585bd0b14acd02556296e3730f61f1eac2b67d0fe8eea54",
+            "commandHash": "2e52efb709c7fa36628edefda41286cb420284f990beb2c317b388422d1b20bd",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "407a076be2279e1ea4796050ecf9e1d3627a92542d02249ead96127bf7f9f0f5",
+            "expectedFileMentions": [
+              "rich/cells.py"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "rich/cells.py"
+            ],
+            "agentTouchedFiles": [
+              "rich/cells.py"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 10867,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "hookSimulated": true,
+            "hookDeliveredContext": false,
+            "hookRecommendation": "prompt_suppressed",
+            "primeFiles": [],
+            "hookFiles": [],
+            "hookOutputTokens": 0,
+            "hookSignalMetadata": {
+              "eventName": "UserPromptSubmit",
+              "hookKind": "hook",
+              "outputKind": "generic",
+              "hookOutput": "full-prime",
+              "transport": "cli",
+              "daemonAttempted": false,
+              "daemonHit": false,
+              "daemonMiss": false,
+              "indexRefreshSkipped": true,
+              "refreshIndexMs": 0,
+              "primeElapsedMs": 0,
+              "hookLatencyMs": 1,
+              "linkedFiles": 0,
+              "recommendation": "prompt_suppressed",
+              "primeAttempted": false,
+              "primeContextDelivered": false,
+              "primeSuppressed": false,
+              "hostAdditionalContextBytes": 0,
+              "proactivePrime": false,
+              "failureContext": false,
+              "duplicatePromptPrime": false,
+              "compressedOutput": false,
+              "trivialSuccessfulOutput": true
+            }
+          }
+        }
+      ],
+      "totalObservedCodexTokens": 98921,
+      "totalResponseTokens": 225088,
+      "totalElapsedMs": 182984,
+      "qualityGatePassed": true,
+      "finalVerificationPassed": true,
+      "assistanceStatus": "active",
+      "assistanceActions": {
+        "emitted": 0,
+        "shrunk": 2,
+        "suppressed": 1,
+        "mcpCalls": 0,
+        "failureContexts": 2
+      },
+      "ledger": {
+        "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+        "events": 60,
+        "currentPhase": "cleanup",
+        "recommendedFiles": [
+          "rich/cells.py",
+          "tools/make_width_tables.py",
+          "rich/console.py",
+          "rich/scope.py",
+          "rich/text.py",
+          "rich/pretty.py"
+        ],
+        "shownFiles": [
+          "rich/cells.py",
+          "tools/make_width_tables.py",
+          "rich/console.py",
+          "rich/scope.py"
+        ],
+        "agentMentionedFiles": [
+          "rich/cells.py"
+        ],
+        "agentTouchedFiles": [
+          "rich/cells.py"
+        ],
+        "repeatedFilesAvoided": 5,
+        "repeatedSnippetsAvoided": 1,
+        "recommendedFilesUsed": [
+          "rich/cells.py"
+        ],
+        "repeatedlyTouchedFiles": [
+          "rich/cells.py"
+        ],
+        "unresolvedFailures": 0,
+        "workingSet": {
+          "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+          "currentPhase": "cleanup",
+          "activeFiles": [
+            "rich/cells.py",
+            "rich/scope.py",
+            "tools/make_width_tables.py",
+            "rich/console.py"
+          ],
+          "recentlyTouchedFiles": [
+            "rich/cells.py"
+          ],
+          "shownFiles": [
+            "rich/cells.py",
+            "tools/make_width_tables.py",
+            "rich/console.py",
+            "rich/scope.py"
+          ],
+          "ignoredRecommendedFiles": [
+            "tools/make_width_tables.py",
+            "rich/console.py",
+            "rich/scope.py",
+            "rich/text.py",
+            "rich/pretty.py"
+          ],
+          "ruledOutFiles": [],
+          "staleFiles": [],
+          "currentInvariant": {
+            "statement": "If it fails, use the failure output before reading new files.",
+            "filePath": "rich/scope.py",
+            "confidence": 70,
+            "sourceEventId": 32
+          },
+          "lastPassingVerification": {
+            "summary": "Final endurance verification passed.",
+            "createdAt": "2026-05-23T17:28:25.688Z"
+          },
+          "openRisks": []
+        },
+        "recentEvents": [
+          {
+            "id": 41,
+            "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+            "kind": "agent_file_mentioned",
+            "turnId": "review-diff",
+            "filePath": "rich/cells.py",
+            "contentHash": "5caf546ac31129679e9678f245680ab0add067f6e3140876777c22350e005293",
+            "tokenEstimate": 8,
+            "source": "agent",
+            "summary": "Agent mentioned rich/cells.py.",
+            "metadata": {
+              "turnId": "review-diff"
+            },
+            "createdAt": "2026-05-23T17:27:42.530Z"
+          },
+          {
+            "id": 42,
+            "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+            "kind": "agent_file_touched",
+            "turnId": "review-diff",
+            "filePath": "rich/cells.py",
+            "contentHash": "5a19267fa1d9cf4bf0904cb88af6ebb4f6a080c07d37ae9382cb667a5e9c1dd5",
+            "tokenEstimate": 7,
+            "source": "agent",
+            "summary": "Agent touched rich/cells.py.",
+            "metadata": {
+              "turnId": "review-diff"
+            },
+            "createdAt": "2026-05-23T17:27:42.531Z"
+          },
+          {
+            "id": 43,
+            "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+            "kind": "diff_seen",
+            "turnId": "review-diff",
+            "filePath": "rich/cells.py",
+            "contentHash": "22f98851b47f30a7e2b76172f0901f48c171eb40e1b363988a9815ea4c1fe739",
+            "tokenEstimate": 16,
+            "source": "agent",
+            "summary": "Diff touched rich/cells.py during endurance turn review-diff.",
+            "metadata": {
+              "turnId": "review-diff"
+            },
+            "createdAt": "2026-05-23T17:27:42.531Z"
+          },
+          {
+            "id": 44,
+            "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+            "kind": "context_recommended",
+            "filePath": "rich/cells.py",
+            "contentHash": "c290096ddc0f272cb1f2e2b5992e4c90b367c2cdfd7c3531b9bd1894b131318a",
+            "tokenEstimate": 0,
+            "source": "codex",
+            "summary": "Kairn recommended rich/cells.py",
+            "metadata": {
+              "taskHash": "92be6963b1161ac1453e61be1de31ad1e061f738b811aaa4d0406342f1863449",
+              "phase": "cleanup",
+              "policyReason": "verified_context_suppressed",
+              "emitted": false,
+              "workingSetActiveFiles": [
+                "rich/cells.py",
+                "rich/scope.py",
+                "tools/make_width_tables.py",
+                "rich/console.py"
+              ],
+              "nextSmallestUsefulRead": {
+                "filePath": "rich/cells.py",
+                "reason": "file changed after Kairn last showed it",
+                "source": "changed_file"
+              }
+            },
+            "createdAt": "2026-05-23T17:27:43.431Z"
+          },
+          {
+            "id": 45,
+            "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+            "kind": "phase_change",
+            "contentHash": "06a97ae27692aa35150d1a4c93a620fa743193d6f6e4e92db61f751c1714c49a",
+            "tokenEstimate": 0,
+            "source": "codex",
+            "summary": "Phase changed from implementation to cleanup",
+            "metadata": {
+              "previousPhase": "implementation",
+              "phase": "cleanup"
+            },
+            "createdAt": "2026-05-23T17:27:43.431Z"
+          },
+          {
+            "id": 46,
+            "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+            "kind": "context_shown",
+            "contentHash": "435c70a77ec4d675fb29598a090d0a4b8125d900a0f2cab0cf4f6ba46545161d",
+            "tokenEstimate": 207,
+            "source": "codex",
+            "summary": "Kairn suppressed repeated or low-value context",
+            "metadata": {
+              "taskHash": "92be6963b1161ac1453e61be1de31ad1e061f738b811aaa4d0406342f1863449",
+              "phase": "cleanup",
+              "policyReason": "verified_context_suppressed",
+              "repeatedFilesAvoided": 1,
+              "repeatedSnippetsAvoided": 0,
+              "workingSetActiveFiles": [
+                "rich/cells.py",
+                "rich/scope.py",
+                "tools/make_width_tables.py",
+                "rich/console.py"
+              ],
+              "nextSmallestUsefulRead": {
+                "filePath": "rich/cells.py",
+                "reason": "file changed after Kairn last showed it",
+                "source": "changed_file"
+              }
+            },
+            "createdAt": "2026-05-23T17:27:43.432Z"
+          },
+          {
+            "id": 47,
+            "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+            "kind": "command_run",
+            "turnId": "repeat-context",
+            "contentHash": "0a2d142b64aa1f3c64e2dd27ca2905bc6bd3e8f76b6ab218028e4a7034edaaac",
+            "tokenEstimate": 15,
+            "source": "agent",
+            "summary": "Agent command for endurance turn repeat-context exited 0.",
+            "metadata": {
+              "commandHash": "d15288fefd490a2c44b8f30e70ab491c4c221fe412564a203fe3a534ca4d360a",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "ae10f7c46d26150f2366cf5b3b4ad426b71bd9bb6e0d959d0a1e054370573bab"
+            },
+            "createdAt": "2026-05-23T17:28:15.807Z"
+          },
+          {
+            "id": 48,
+            "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+            "kind": "agent_file_mentioned",
+            "turnId": "repeat-context",
+            "filePath": "rich/cells.py",
+            "contentHash": "5caf546ac31129679e9678f245680ab0add067f6e3140876777c22350e005293",
+            "tokenEstimate": 8,
+            "source": "agent",
+            "summary": "Agent mentioned rich/cells.py.",
+            "metadata": {
+              "turnId": "repeat-context"
+            },
+            "createdAt": "2026-05-23T17:28:15.807Z"
+          },
+          {
+            "id": 49,
+            "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+            "kind": "agent_file_touched",
+            "turnId": "repeat-context",
+            "filePath": "rich/cells.py",
+            "contentHash": "5a19267fa1d9cf4bf0904cb88af6ebb4f6a080c07d37ae9382cb667a5e9c1dd5",
+            "tokenEstimate": 7,
+            "source": "agent",
+            "summary": "Agent touched rich/cells.py.",
+            "metadata": {
+              "turnId": "repeat-context"
+            },
+            "createdAt": "2026-05-23T17:28:15.808Z"
+          },
+          {
+            "id": 50,
+            "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+            "kind": "diff_seen",
+            "turnId": "repeat-context",
+            "filePath": "rich/cells.py",
+            "contentHash": "8de7423ae1e872d4d0cc846708433d1743ece4b16a040bcf137014c6852bd9db",
+            "tokenEstimate": 16,
+            "source": "agent",
+            "summary": "Diff touched rich/cells.py during endurance turn repeat-context.",
+            "metadata": {
+              "turnId": "repeat-context"
+            },
+            "createdAt": "2026-05-23T17:28:15.808Z"
+          },
+          {
+            "id": 51,
+            "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+            "kind": "context_recommended",
+            "filePath": "rich/cells.py",
+            "contentHash": "2bf4f31a606bfb4eb580b10afdd5b015715b714a70a20d3c903c8e5acf74eff7",
+            "tokenEstimate": 0,
+            "source": "codex",
+            "summary": "Kairn recommended rich/cells.py",
+            "metadata": {
+              "taskHash": "4f66d1f6d04f43bdc585bd0b14acd02556296e3730f61f1eac2b67d0fe8eea54",
+              "phase": "cleanup",
+              "policyReason": "verified_context_suppressed",
+              "emitted": false,
+              "workingSetActiveFiles": [
+                "rich/cells.py",
+                "rich/scope.py",
+                "tools/make_width_tables.py",
+                "rich/console.py"
+              ],
+              "nextSmallestUsefulRead": {
+                "filePath": "rich/cells.py",
+                "reason": "file changed after Kairn last showed it",
+                "source": "changed_file"
+              }
+            },
+            "createdAt": "2026-05-23T17:28:16.669Z"
+          },
+          {
+            "id": 52,
+            "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+            "kind": "context_recommended",
+            "filePath": "rich/console.py",
+            "contentHash": "39baf928ce79339844dacf14e0eea8a0a328dcdce7c39cee4507a01e4093d495",
+            "tokenEstimate": 0,
+            "source": "codex",
+            "summary": "Kairn recommended rich/console.py",
+            "metadata": {
+              "taskHash": "4f66d1f6d04f43bdc585bd0b14acd02556296e3730f61f1eac2b67d0fe8eea54",
+              "phase": "cleanup",
+              "policyReason": "verified_context_suppressed",
+              "emitted": false,
+              "workingSetActiveFiles": [
+                "rich/cells.py",
+                "rich/scope.py",
+                "tools/make_width_tables.py",
+                "rich/console.py"
+              ],
+              "nextSmallestUsefulRead": {
+                "filePath": "rich/cells.py",
+                "reason": "file changed after Kairn last showed it",
+                "source": "changed_file"
+              }
+            },
+            "createdAt": "2026-05-23T17:28:16.669Z"
+          },
+          {
+            "id": 53,
+            "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+            "kind": "context_recommended",
+            "filePath": "rich/pretty.py",
+            "contentHash": "1c897b5259ac65354497850331a0e51c636e96430888fa03236731ed5cd2467f",
+            "tokenEstimate": 0,
+            "source": "codex",
+            "summary": "Kairn recommended rich/pretty.py",
+            "metadata": {
+              "taskHash": "4f66d1f6d04f43bdc585bd0b14acd02556296e3730f61f1eac2b67d0fe8eea54",
+              "phase": "cleanup",
+              "policyReason": "verified_context_suppressed",
+              "emitted": false,
+              "workingSetActiveFiles": [
+                "rich/cells.py",
+                "rich/scope.py",
+                "tools/make_width_tables.py",
+                "rich/console.py"
+              ],
+              "nextSmallestUsefulRead": {
+                "filePath": "rich/cells.py",
+                "reason": "file changed after Kairn last showed it",
+                "source": "changed_file"
+              }
+            },
+            "createdAt": "2026-05-23T17:28:16.669Z"
+          },
+          {
+            "id": 54,
+            "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+            "kind": "context_shown",
+            "contentHash": "9382d46dc91a0652fd42d00a64c3951898c74c1831e480165d981e13a88279a1",
+            "tokenEstimate": 190,
+            "source": "codex",
+            "summary": "Kairn suppressed repeated or low-value context",
+            "metadata": {
+              "taskHash": "4f66d1f6d04f43bdc585bd0b14acd02556296e3730f61f1eac2b67d0fe8eea54",
+              "phase": "cleanup",
+              "policyReason": "verified_context_suppressed",
+              "repeatedFilesAvoided": 2,
+              "repeatedSnippetsAvoided": 0,
+              "workingSetActiveFiles": [
+                "rich/cells.py",
+                "rich/scope.py",
+                "tools/make_width_tables.py",
+                "rich/console.py"
+              ],
+              "nextSmallestUsefulRead": {
+                "filePath": "rich/cells.py",
+                "reason": "file changed after Kairn last showed it",
+                "source": "changed_file"
+              }
+            },
+            "createdAt": "2026-05-23T17:28:16.669Z"
+          },
+          {
+            "id": 55,
+            "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+            "kind": "command_run",
+            "turnId": "cleanup",
+            "contentHash": "aa82543403e6d6d80f7ad4f930251feea8b5dd96837aeb7cb66bb5a8ebe7099b",
+            "tokenEstimate": 13,
+            "source": "agent",
+            "summary": "Agent command for endurance turn cleanup exited 0.",
+            "metadata": {
+              "commandHash": "2e52efb709c7fa36628edefda41286cb420284f990beb2c317b388422d1b20bd",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "407a076be2279e1ea4796050ecf9e1d3627a92542d02249ead96127bf7f9f0f5"
+            },
+            "createdAt": "2026-05-23T17:28:25.646Z"
+          },
+          {
+            "id": 56,
+            "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+            "kind": "agent_file_mentioned",
+            "turnId": "cleanup",
+            "filePath": "rich/cells.py",
+            "contentHash": "5caf546ac31129679e9678f245680ab0add067f6e3140876777c22350e005293",
+            "tokenEstimate": 8,
+            "source": "agent",
+            "summary": "Agent mentioned rich/cells.py.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-23T17:28:25.646Z"
+          },
+          {
+            "id": 57,
+            "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+            "kind": "agent_file_touched",
+            "turnId": "cleanup",
+            "filePath": "rich/cells.py",
+            "contentHash": "5a19267fa1d9cf4bf0904cb88af6ebb4f6a080c07d37ae9382cb667a5e9c1dd5",
+            "tokenEstimate": 7,
+            "source": "agent",
+            "summary": "Agent touched rich/cells.py.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-23T17:28:25.647Z"
+          },
+          {
+            "id": 58,
+            "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+            "kind": "diff_seen",
+            "turnId": "cleanup",
+            "filePath": "rich/cells.py",
+            "contentHash": "6eade31d2eecdd1c14c1ec32c013fdd891bb51c17ecde264c50a21e6cb3a4ac1",
+            "tokenEstimate": 15,
+            "source": "agent",
+            "summary": "Diff touched rich/cells.py during endurance turn cleanup.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-23T17:28:25.647Z"
+          },
+          {
+            "id": 59,
+            "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+            "kind": "verification_passed",
+            "turnId": "cleanup",
+            "filePath": "rich/cells.py",
+            "contentHash": "27cc02d95fee99e6659fe0990f4738af36712780ef3e0fc8380563960cc7b15d",
+            "tokenEstimate": 12,
+            "source": "bench",
+            "summary": "Verification passed for endurance turn cleanup.",
+            "metadata": {
+              "verificationCommandHash": "0dc48c687e603a28c73035adc8c4cf7ee156b18cae2916559c88da10e546adc1",
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "qualityGatePassed": true
+            },
+            "createdAt": "2026-05-23T17:28:25.647Z"
+          },
+          {
+            "id": 60,
+            "sessionId": "task_bb1db5ea-7503-4e97-bdc6-43b7b9da2463",
+            "kind": "verification_passed",
+            "contentHash": "01686a52d490ab8e273bc13297bc95ca3a956265b15943a23c3c2801a08de538",
+            "tokenEstimate": 9,
+            "source": "bench",
+            "summary": "Final endurance verification passed.",
+            "metadata": {
+              "finalVerificationCommandHash": "0dc48c687e603a28c73035adc8c4cf7ee156b18cae2916559c88da10e546adc1",
+              "finalVerificationExitCode": 0,
+              "finalVerificationOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "finalSourceInvariantPassed": true,
+              "finalSourceInvariantFailures": [],
+              "finalDiffScopePassed": true,
+              "finalDiffScopeViolations": []
+            },
+            "createdAt": "2026-05-23T17:28:25.688Z"
+          }
+        ]
+      },
+      "metadata": {
+        "finalVerificationCommandPassed": true,
+        "finalSourceInvariantPassed": true,
+        "finalSourceInvariantFailures": [],
+        "finalDiffScopePassed": true,
+        "finalDiffScopeViolations": [],
+        "finalChangedFiles": [],
+        "setupElapsedMs": 0,
+        "kairnSessionCount": 1,
+        "primeEmitted": 0,
+        "primeSuppressed": 0,
+        "hookInvocations": 6,
+        "failureContextUsed": 0,
+        "mcpToolCalls": 0,
+        "mcpFilesReturned": [],
+        "mcpReturnedFileCount": 0,
+        "mcpGuidedSourceFiles": [],
+        "mcpAttributedSourceFiles": [],
+        "mcpReturnedUsefulFileCount": 0,
+        "mcpGuidedUsefulFileCount": 0,
+        "mcpAttributedUsefulFileCount": 0
+      }
+    }
+  ],
+  "deltas": {
+    "kairn_codex_session": {
+      "baselineTokens": 146695,
+      "modeTokens": 98921,
+      "savedTokens": 47774,
+      "savingsRate": 0.32566890487065,
+      "qualityGatePassed": true,
+      "assistanceStatus": "active",
+      "assistanceEligible": true,
+      "baselineDifficulty": "expensive_pass",
+      "baselineTokenCost": 146695,
+      "abstentionOutcome": "not_applicable",
+      "missedOpportunity": false,
+      "overAssist": false,
+      "harmfulAssist": false,
+      "assistClassification": "valid_assist",
+      "validSavings": 47774
+    }
+  },
+  "recommendations": [
+    "kairn_codex_session: ledger avoided 5 repeated file context event(s).",
+    "kairn_codex_session: repeatedly touched files suggest a follow-up focused cleanup context: rich/cells.py."
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "id": "campaign-mock-live",
+  "name": "Campaign Mock Live Smoke",
+  "description": "Cheap shell-command live campaign fixture for scheduler and artifact validation.",
+  "defaults": {
+    "parallel": 3,
+    "agentTimeoutMs": 10000,
+    "cleanup": "always",
+    "commands": {
+      "baseline": "node -e \"console.log('src/app.ts'); console.log('tokens used 1000')\"",
+      "kairn_codex_session": "node -e \"console.log('src/app.ts'); console.log('tokens used 700')\""
+    }
+  },
+  "pauseRules": {
+    "maxQualityDrops": 0,
+    "maxScopeViolations": 0,
+    "maxRepeatedFailureClass": 1,
+    "maxTokenRegressionClass": 0,
+    "stopOnHarnessFailure": true
+  },
+  "entries": [
+    {
+      "id": "mock-live-a",
+      "kind": "proof",
+      "tags": ["mock", "clean-savings"],
+      "root": "examples/bench/campaign-fixtures/mock-repo",
+      "suite": "examples/bench/campaign-fixtures/mock-suite.json",
+      "modes": ["baseline", "kairn_codex_session"],
+      "repeat": 1
+    },
+    {
+      "id": "mock-live-b",
+      "kind": "proof",
+      "tags": ["mock", "clean-savings"],
+      "root": "examples/bench/campaign-fixtures/mock-repo",
+      "suite": "examples/bench/campaign-fixtures/mock-suite.json",
+      "modes": ["baseline", "kairn_codex_session"],
+      "repeat": 1
+    },
+    {
+      "id": "mock-live-c",
+      "kind": "control",
+      "tags": ["mock", "harness-control"],
+      "root": "examples/bench/campaign-fixtures/mock-repo",
+      "suite": "examples/bench/campaign-fixtures/mock-suite.json",
+      "modes": ["baseline", "kairn_codex_session"],
+      "repeat": 1
+    }
+  ]
+}

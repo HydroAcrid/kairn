@@ -1,0 +1,68 @@
+{
+  "campaign": "mcp-semver-guardrail-startfiles-recheck",
+  "createdAt": "2026-06-05T20:13:32.318Z",
+  "suiteId": "endurance-node-semver-satisfies",
+  "suiteName": "Node SemVer Satisfies Endurance",
+  "startedAt": "2026-06-05T19:44:19.055Z",
+  "endedAt": "2026-06-05T20:07:29.676Z",
+  "rows": [
+    {
+      "mode": "baseline",
+      "repeats": 3,
+      "qualityPasses": 3,
+      "medianObservedCodexTokens": 87461,
+      "medianSavedTokens": null,
+      "reductionPercent": null,
+      "validSavingsRuns": 0,
+      "harmfulRuns": 0,
+      "mcpCalls": 0,
+      "mcpReturnedFileCount": 0,
+      "mcpAttributedUsefulFileCount": 0,
+      "scopeViolations": 0,
+      "classifications": {},
+      "verdict": "baseline"
+    },
+    {
+      "mode": "real_mcp_first",
+      "repeats": 3,
+      "qualityPasses": 3,
+      "medianObservedCodexTokens": 43709,
+      "medianSavedTokens": 41957,
+      "reductionPercent": 47.97,
+      "validSavingsRuns": 3,
+      "harmfulRuns": 0,
+      "mcpCalls": 3,
+      "mcpReturnedFileCount": 0,
+      "mcpAttributedUsefulFileCount": 3,
+      "scopeViolations": 0,
+      "classifications": {
+        "valid_assist": 3
+      },
+      "verdict": "consistent_win"
+    },
+    {
+      "mode": "hybrid_mcp_brief",
+      "repeats": 3,
+      "qualityPasses": 3,
+      "medianObservedCodexTokens": 44785,
+      "medianSavedTokens": 38101,
+      "reductionPercent": 43.56,
+      "validSavingsRuns": 3,
+      "harmfulRuns": 0,
+      "mcpCalls": 3,
+      "mcpReturnedFileCount": 0,
+      "mcpAttributedUsefulFileCount": 3,
+      "scopeViolations": 0,
+      "classifications": {
+        "valid_assist": 3
+      },
+      "verdict": "consistent_win"
+    }
+  ],
+  "conclusion": "SemVer no longer reproduces the MCP quality-risk class in this repeat-3 recheck. Both MCP modes passed 3/3 with valid savings and zero harmful runs. Useful source attribution was captured through guided/attributed source files, while returned-file count remains zero for this suite.",
+  "caveats": [
+    "The live SemVer repeat-3 completed before dist/cli.js was rebuilt with the cheap one-shot start-file contract, so the SemVer quality win should be interpreted as an MCP workflow recheck, not proof that the start-file contract caused the win.",
+    "The code change in this cycle improves cheap one-shot MCP guardrails by returning a start file without snippets; that contract is covered by MCP unit tests and the repo has since been rebuilt locally.",
+    "Returned-file count remains zero for this suite; useful source capture is guided/attributed rather than direct returned-file evidence."
+  ]
+}

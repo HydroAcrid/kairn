@@ -1,0 +1,101 @@
+{
+  "id": "endurance-click-compat-encoding",
+  "name": "Click Compatibility Encoding Endurance",
+  "task": "Debug and verify a seeded Click compatibility encoding regression across a source-rescue session.",
+  "seed": {
+    "repoUrl": "https://github.com/pallets/click.git",
+    "ref": "dbf4d14c712750c31e15916b659925683150533b",
+    "cloneDepth": 1,
+    "setupPatchFile": "./patches/click-compat-ascii-fallback.patch",
+    "expectedFailureCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/click/_compat.py').read_text()\nfixed = 'return \"utf-8\"' in source and 'return rv\\n    return rv' not in source\nraise SystemExit(1 if fixed else 0)\nPY",
+    "testCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/click/_compat.py').read_text()\nfixed = 'return \"utf-8\"' in source and 'return rv\\n    return rv' not in source\nraise SystemExit(0 if fixed else 1)\nPY"
+  },
+  "turns": [
+    {
+      "id": "diagnose",
+      "task": "Diagnose why Click falls back to ASCII for a misconfigured stream encoding.",
+      "agentPrompt": "Diagnose the seeded Click compatibility regression. When a stream reports an ASCII encoding, Click should fall back to UTF-8. Identify the smallest production source file involved; do not edit yet.",
+      "expectedFiles": ["src/click/_compat.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["tests/", "docs/"],
+      "budget": 800
+    },
+    {
+      "id": "fix-source",
+      "task": "Fix the ASCII encoding fallback in production source.",
+      "agentPrompt": "Fix the seeded Click compatibility regression in production source only. Restore the UTF-8 fallback for ASCII encodings. Do not edit tests, docs, generated files, or unrelated terminal utilities.",
+      "expectedFiles": ["src/click/_compat.py"],
+      "requiredTouchedFiles": ["src/click/_compat.py"],
+      "excludedFiles": ["tests/", "docs/"],
+      "verificationCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/click/_compat.py').read_text()\nfixed = 'return \"utf-8\"' in source and 'return rv\\n    return rv' not in source\nraise SystemExit(0 if fixed else 1)\nPY",
+      "sourceInvariants": [
+        {
+          "file": "src/click/_compat.py",
+          "requiredPresent": ["return \"utf-8\""],
+          "requiredAbsent": ["return rv\n    return rv"]
+        }
+      ],
+      "allowedDiffScopes": [
+        {
+          "file": "src/click/_compat.py",
+          "symbols": ["get_best_encoding"],
+          "allowWholeFile": true
+        }
+      ],
+      "budget": 800
+    },
+    {
+      "id": "verify",
+      "task": "Verify the encoding fallback without broadening scope.",
+      "agentPrompt": "Run the smallest source-invariant verification for the Click encoding fallback fix. If it passes, keep the edit scope unchanged. If it fails, use the failure output before reading new files.",
+      "expectedFiles": ["src/click/_compat.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["tests/", "docs/"],
+      "verificationCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/click/_compat.py').read_text()\nfixed = 'return \"utf-8\"' in source and 'return rv\\n    return rv' not in source\nraise SystemExit(0 if fixed else 1)\nPY",
+      "budget": 600
+    },
+    {
+      "id": "diff-review",
+      "task": "Review the diff for scope discipline.",
+      "agentPrompt": "Review the current diff and confirm it only restores the UTF-8 fallback in Click production source.",
+      "expectedFiles": ["src/click/_compat.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["tests/", "docs/"],
+      "budget": 500
+    },
+    {
+      "id": "repeat-context",
+      "task": "Avoid rereading unchanged source context.",
+      "agentPrompt": "Continue from the known Click compatibility source and summarize the invariant for future turns. Do not reread unchanged files unless verification fails or scope expands.",
+      "expectedFiles": ["src/click/_compat.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["tests/", "docs/"],
+      "budget": 500
+    },
+    {
+      "id": "cleanup",
+      "task": "Final cleanup check.",
+      "agentPrompt": "Perform a final cleanup check. The only intended production change is restoring the ASCII-to-UTF-8 fallback in get_best_encoding. Keep any response concise.",
+      "expectedFiles": ["src/click/_compat.py"],
+      "requiredTouchedFiles": [],
+      "excludedFiles": ["tests/", "docs/"],
+      "verificationCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/click/_compat.py').read_text()\nfixed = 'return \"utf-8\"' in source and 'return rv\\n    return rv' not in source\nraise SystemExit(0 if fixed else 1)\nPY",
+      "budget": 500
+    }
+  ],
+  "finalVerificationCommand": "python3 - <<'PY'\nfrom pathlib import Path\nsource = Path('src/click/_compat.py').read_text()\nfixed = 'return \"utf-8\"' in source and 'return rv\\n    return rv' not in source\nraise SystemExit(0 if fixed else 1)\nPY",
+  "finalSourceInvariants": [
+    {
+      "file": "src/click/_compat.py",
+      "requiredPresent": ["return \"utf-8\""],
+      "requiredAbsent": ["return rv\n    return rv"]
+    }
+  ],
+  "allowedDiffScopes": [
+    {
+      "file": "src/click/_compat.py",
+      "symbols": ["get_best_encoding"],
+      "allowWholeFile": true
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+entry_id,kind,stage,status,tags,quality_passed,observed_tokens,baseline_tokens,saved_tokens,savings_rate,clean_passpass,token_regression,quality_drop,quality_rescue,harmful_assist,scope_violations,mcp_calls,mcp_useful_attribution,classifications,elapsed_ms
+proxy-swe-row-2-openlibrary,proxy,proxy,passed,swe-pro;proxy;clean-control;python,true,648,,,,false,false,false,false,false,0,0,0,proxy_pass,25500
+proxy-swe-row-3-vuls,proxy,proxy,passed,swe-pro;proxy;clean-control;go,false,414,,,,false,false,false,false,false,0,0,0,wrong_surface_risk,3382
+proxy-swe-row-9-element-device,proxy,proxy,passed,swe-pro;proxy;frontend-ownership;typescript,false,678,,,,false,false,false,false,false,0,0,0,wrong_surface_risk,25496
+proxy-swe-row-10-element-discovery,proxy,proxy,passed,swe-pro;proxy;clean-control;typescript,true,410,,,,false,false,false,false,false,0,0,0,proxy_pass,22171

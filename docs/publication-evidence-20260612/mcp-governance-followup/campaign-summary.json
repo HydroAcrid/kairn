@@ -1,0 +1,58 @@
+{
+  "id": "mcp-governance-followup-20260612",
+  "generatedAt": "2026-06-12T06:04:51.175Z",
+  "branch": "fix/governance-routing-followup",
+  "purpose": "Post-governance MCP known-source stabilization recheck.",
+  "smoke": {
+    "artifact": "mcp-smoke.json",
+    "status": "passed",
+    "notes": "MCP smoke records tool calls and useful source attribution."
+  },
+  "suites": [
+    {
+      "suite": "click-real-mcp-repeat3",
+      "suiteName": "Click compatibility encoding",
+      "language": "Python",
+      "repeats": 3,
+      "baselinePasses": 3,
+      "mcpPasses": 3,
+      "validAssistRows": 3,
+      "medianSavedTokens": 66958,
+      "medianSavingsRate": 0.6119076993374457,
+      "totalMcpCalls": 3,
+      "totalUsefulAttributedFiles": 3,
+      "repeatedFailureClass": null
+    },
+    {
+      "suite": "fastify-real-mcp-repeat3",
+      "suiteName": "Fastify HEAD route onSend",
+      "language": "JavaScript",
+      "repeats": 3,
+      "baselinePasses": 3,
+      "mcpPasses": 3,
+      "validAssistRows": 3,
+      "medianSavedTokens": 28840,
+      "medianSavingsRate": 0.38100398820877407,
+      "totalMcpCalls": 6,
+      "totalUsefulAttributedFiles": 3,
+      "repeatedFailureClass": null
+    }
+  ],
+  "aggregate": {
+    "suites": 2,
+    "repeats": 6,
+    "baselinePasses": 6,
+    "mcpPasses": 6,
+    "validAssistRows": 6,
+    "qualityDrops": 0,
+    "medianSavedTokens": 61283,
+    "medianSavingsRate": 0.5682483130329672,
+    "nonPythonSuites": 1,
+    "gateStatus": "mcp_gate_passed_for_click_and_fastify_real_mcp_first"
+  },
+  "caveats": [
+    "This validates real_mcp_first on two endurance suites after known-source stabilization.",
+    "It does not replace the pending additional 10-row official SWE-Pro confirmation gate.",
+    "No website/public claims should change until the broader evidence gates are complete."
+  ]
+}

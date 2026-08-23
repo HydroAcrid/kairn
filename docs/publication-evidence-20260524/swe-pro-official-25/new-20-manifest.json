@@ -1,0 +1,291 @@
+{
+  "generatedAt": "2026-05-24T03:07:18.247Z",
+  "purpose": "SWE-Pro official 20-row expansion final selection after deterministic source preflight",
+  "totalRows": 20,
+  "selectionRules": {
+    "excludeQutebrowser": true,
+    "excludePriorKnownRows": true,
+    "maxRowsPerRepo": 4,
+    "maxRowsPerLanguageFamily": 8,
+    "requireOfficialAssets": true,
+    "requireSourceQualityPreflight": true
+  },
+  "repoCounts": {
+    "internetarchive/openlibrary": 4,
+    "element-hq/element-web": 3,
+    "ansible/ansible": 4,
+    "flipt-io/flipt": 3,
+    "future-architect/vuls": 2,
+    "gravitational/teleport": 1,
+    "NodeBB/NodeBB": 1,
+    "protonmail/webclients": 1,
+    "tutao/tutanota": 1
+  },
+  "languageCounts": {
+    "python": 8,
+    "ts": 5,
+    "go": 6,
+    "js": 1
+  },
+  "rows": [
+    {
+      "ordinal": 1,
+      "instance_id": "instance_internetarchive__openlibrary-5c6c22f3d2edf2f1b10f5dc335e32cb6a5f40341-v76304ecdb3a5954fcf13feb710e8c40fcf24b73c",
+      "repo": "internetarchive/openlibrary",
+      "base_commit": "31d6ecf3c04c8e365e557f2a9a6a65df2b8d01a3",
+      "language": "python",
+      "patchFiles": [
+        "openlibrary/plugins/importapi/code.py",
+        "openlibrary/plugins/upstream/utils.py"
+      ],
+      "source": "final-preflight-source-quality-pass",
+      "replacement": false
+    },
+    {
+      "ordinal": 2,
+      "instance_id": "instance_element-hq__element-web-75c2c1a572fa45d1ea1d1a96e9e36e303332ecaa-vnan",
+      "repo": "element-hq/element-web",
+      "base_commit": "1f8fbc819795b9c19c567b4737109183acf86162",
+      "language": "ts",
+      "patchFiles": [
+        "src/audio/RecorderWorklet.ts",
+        "src/audio/VoiceRecording.ts"
+      ],
+      "source": "final-preflight-source-quality-pass",
+      "replacement": false
+    },
+    {
+      "ordinal": 3,
+      "instance_id": "instance_element-hq__element-web-2760bfc8369f1bee640d6d7a7e910783143d4c5f-vnan",
+      "repo": "element-hq/element-web",
+      "base_commit": "cdffd1ca1f7b60334a8ca3bba64d0a4e6d2b68d0",
+      "language": "ts",
+      "patchFiles": [
+        "src/components/views/right_panel/UserInfo.tsx"
+      ],
+      "source": "final-preflight-source-quality-pass",
+      "replacement": false
+    },
+    {
+      "ordinal": 4,
+      "instance_id": "instance_element-hq__element-web-1077729a19c0ce902e713cf6fab42c91fb7907f1-vnan",
+      "repo": "element-hq/element-web",
+      "base_commit": "4f32727829c1087e9d3d9955785d8a6255457c7d",
+      "language": "ts",
+      "patchFiles": [
+        "src/components/viewmodels/roomlist/useStickyRoomList.tsx",
+        "src/stores/spaces/SpaceStore.ts"
+      ],
+      "source": "final-preflight-source-quality-pass",
+      "replacement": false
+    },
+    {
+      "ordinal": 5,
+      "instance_id": "instance_ansible__ansible-12734fa21c08a0ce8c84e533abdc560db2eb1955-v7eee2454f617569fd6889f2211f75bc02a35f9f8",
+      "repo": "ansible/ansible",
+      "base_commit": "de01db08d00c8d2438e1ba5989c313ba16a145b0",
+      "language": "python",
+      "patchFiles": [
+        "changelogs/fragments/75072_undefined_yaml.yml",
+        "lib/ansible/parsing/yaml/dumper.py",
+        "lib/ansible/plugins/filter/core.py"
+      ],
+      "source": "final-preflight-source-quality-pass",
+      "replacement": false
+    },
+    {
+      "ordinal": 6,
+      "instance_id": "instance_ansible__ansible-0fd88717c953b92ed8a50495d55e630eb5d59166-vba6da65a0f3baefda7a058ebbd0a8dcafb8512f5",
+      "repo": "ansible/ansible",
+      "base_commit": "016b7f71b10539c90ddbb3246f19f9cbf0e65428",
+      "language": "python",
+      "patchFiles": [
+        "lib/ansible/plugins/lookup/password.py",
+        "lib/ansible/utils/encrypt.py"
+      ],
+      "source": "final-preflight-source-quality-pass",
+      "replacement": false
+    },
+    {
+      "ordinal": 7,
+      "instance_id": "instance_ansible__ansible-5f4e332e3762999d94af27746db29ff1729252c1-v0f01c69f1e2528b935359cfe578530722bca2c59",
+      "repo": "ansible/ansible",
+      "base_commit": "a870e7d0c6368dbc4c8f1f088f540e8be07223e1",
+      "language": "python",
+      "patchFiles": [
+        "changelogs/fragments/82387-unquote-strings-from-ini-files.yml",
+        "lib/ansible/config/manager.py"
+      ],
+      "source": "final-preflight-source-quality-pass",
+      "replacement": false
+    },
+    {
+      "ordinal": 8,
+      "instance_id": "instance_ansible__ansible-0ea40e09d1b35bcb69ff4d9cecf3d0defa4b36e8-v30a923fb5c164d6cd18280c02422f75e611e8fb2",
+      "repo": "ansible/ansible",
+      "base_commit": "f7234968d241d7171aadb1e873a67510753f3163",
+      "language": "python",
+      "patchFiles": [
+        "changelogs/fragments/81659_varswithsources.yml",
+        "lib/ansible/utils/vars.py",
+        "lib/ansible/vars/manager.py"
+      ],
+      "source": "final-preflight-source-quality-pass",
+      "replacement": false
+    },
+    {
+      "ordinal": 9,
+      "instance_id": "instance_internetarchive__openlibrary-fad4a40acf5ff5f06cd7441a5c7baf41a7d81fe4-vfa6ff903cb27f336e17654595dd900fa943dcd91",
+      "repo": "internetarchive/openlibrary",
+      "base_commit": "afb819f8166c6dff4295c6802cc0b55b67f05731",
+      "language": "python",
+      "patchFiles": [
+        "openlibrary/catalog/get_ia.py",
+        "openlibrary/catalog/marc/marc_subject.py"
+      ],
+      "source": "final-preflight-source-quality-pass",
+      "replacement": false
+    },
+    {
+      "ordinal": 10,
+      "instance_id": "instance_flipt-io__flipt-5ffba3406a7993d97ced4cc13658bee66150fcca",
+      "repo": "flipt-io/flipt",
+      "base_commit": "02f5a1f8ef79565d6f4efed09259e7bf6541437a",
+      "language": "go",
+      "patchFiles": [
+        "cmd/flipt/flipt.go",
+        "config/config.go",
+        "config/default.yml",
+        "config/testdata/config/advanced.yml"
+      ],
+      "source": "final-preflight-source-quality-pass",
+      "replacement": false
+    },
+    {
+      "ordinal": 11,
+      "instance_id": "instance_future-architect__vuls-8659668177f1feb65963db7a967347a79c5f9c40",
+      "repo": "future-architect/vuls",
+      "base_commit": "e07b6a916080426af5ad92e13383ca72c31330d1",
+      "language": "go",
+      "patchFiles": [
+        "detector/detector.go",
+        "go.mod",
+        "go.sum",
+        "models/vulninfos.go"
+      ],
+      "source": "final-preflight-source-quality-pass",
+      "replacement": false
+    },
+    {
+      "ordinal": 12,
+      "instance_id": "instance_internetarchive__openlibrary-f343c08f89c772f7ba6c0246f384b9e6c3dc0add-v08d8e8889ec945ab821fb156c04c7d2e2810debb",
+      "repo": "internetarchive/openlibrary",
+      "base_commit": "53d376b148897466bb86d5accb51912bbbe9a8ed",
+      "language": "python",
+      "patchFiles": [
+        "openlibrary/catalog/add_book/load_book.py",
+        "openlibrary/core/helpers.py"
+      ],
+      "source": "final-preflight-source-quality-pass",
+      "replacement": false
+    },
+    {
+      "ordinal": 13,
+      "instance_id": "instance_future-architect__vuls-999529a05b202b0fd29c6fca5039a4c47a3766bb",
+      "repo": "future-architect/vuls",
+      "base_commit": "847d820af7fb48131086afe43f79ce79f61122c7",
+      "language": "go",
+      "patchFiles": [
+        "scanner/scanner.go"
+      ],
+      "source": "final-preflight-source-quality-pass",
+      "replacement": false
+    },
+    {
+      "ordinal": 14,
+      "instance_id": "instance_flipt-io__flipt-b6cef5cdc0daff3ee99e5974ed60a1dc6b4b0d67",
+      "repo": "flipt-io/flipt",
+      "base_commit": "1bd9924b177927fa51d016a71a4353ab9c0d32e7",
+      "language": "go",
+      "patchFiles": [
+        "internal/cmd/auth.go",
+        "internal/server/auth/http.go"
+      ],
+      "source": "final-preflight-source-quality-pass",
+      "replacement": false
+    },
+    {
+      "ordinal": 15,
+      "instance_id": "instance_flipt-io__flipt-690672523398c2b6f6e4562f0bf9868664ab894f",
+      "repo": "flipt-io/flipt",
+      "base_commit": "6da20eb7afb693a1cbee2482272e3aee2fbd43ee",
+      "language": "go",
+      "patchFiles": [
+        "internal/cmd/grpc.go",
+        "internal/tracing/tracing.go"
+      ],
+      "source": "final-preflight-source-quality-pass",
+      "replacement": false
+    },
+    {
+      "ordinal": 16,
+      "instance_id": "instance_gravitational__teleport-0cb341c926713bdfcbb490c69659a9b101df99eb",
+      "repo": "gravitational/teleport",
+      "base_commit": "2839d2aa27c8cdcd9bc3a78d7bd831fee8e9ab65",
+      "language": "go",
+      "patchFiles": [
+        "roles.go"
+      ],
+      "source": "final-preflight-source-quality-pass",
+      "replacement": true
+    },
+    {
+      "ordinal": 17,
+      "instance_id": "instance_NodeBB__NodeBB-05f2236193f407cf8e2072757fbd6bb170bc13f0-vf2cf3cbd463b7ad942381f1c6d077626485a1e9e",
+      "repo": "NodeBB/NodeBB",
+      "base_commit": "c5ae8a70e1b0305af324ad7b1b0911d4023f1338",
+      "language": "js",
+      "patchFiles": [
+        "src/topics/sorted.js"
+      ],
+      "source": "final-preflight-source-quality-pass",
+      "replacement": true
+    },
+    {
+      "ordinal": 18,
+      "instance_id": "instance_protonmail__webclients-c5a2089ca2bfe9aa1d85a664b8ad87ef843a1c9c",
+      "repo": "protonmail/webclients",
+      "base_commit": "83c2b47478a5224db61c6557ad326c2bbda18645",
+      "language": "ts",
+      "patchFiles": [
+        "applications/drive/src/app/store/_links/useLink.ts"
+      ],
+      "source": "final-preflight-source-quality-pass",
+      "replacement": true
+    },
+    {
+      "ordinal": 19,
+      "instance_id": "instance_tutao__tutanota-219bc8f05d7b980e038bc1524cb021bf56397a1b-vee878bb72091875e912c52fc32bc60ec3760227b",
+      "repo": "tutao/tutanota",
+      "base_commit": "9dfb7c231f98a2d3bf48a99577d8a55cfdb2480b",
+      "language": "ts",
+      "patchFiles": [
+        "src/api/worker/EventBusClient.ts"
+      ],
+      "source": "final-preflight-source-quality-pass",
+      "replacement": true
+    },
+    {
+      "ordinal": 20,
+      "instance_id": "instance_internetarchive__openlibrary-2abe28b472ffed563a87cfe83685b161b35263b0-v13642507b4fc1f8d234172bf8129942da2c2ca26",
+      "repo": "internetarchive/openlibrary",
+      "base_commit": "eb8da9e755f4bf59f8f0bd2b021d3e49a87ccf4e",
+      "language": "python",
+      "patchFiles": [
+        "openlibrary/core/vendors.py"
+      ],
+      "source": "final-preflight-source-quality-pass",
+      "replacement": true
+    }
+  ]
+}

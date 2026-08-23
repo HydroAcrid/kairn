@@ -1,0 +1,2 @@
+entry_id,kind,stage,status,tags,quality_passed,observed_tokens,baseline_tokens,saved_tokens,savings_rate,clean_passpass,token_regression,quality_drop,quality_rescue,harmful_assist,scope_violations,mcp_calls,mcp_useful_attribution,classifications,elapsed_ms
+proxy-swe-row-7,proxy,proxy,passed,swe-pro;fresh-slice;proxy;ansible__ansible,true,186,,,,false,false,false,false,false,0,0,0,valid_guardrail,22950

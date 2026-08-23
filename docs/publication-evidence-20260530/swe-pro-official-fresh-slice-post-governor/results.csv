@@ -1,0 +1,11 @@
+row,workflow,repo,language,baseline_local,baseline_official,kairn_local,kairn_official,baseline_tokens,kairn_tokens,tokens_saved,reduction_pct,classification,notes
+1,kubectl session uploader,gravitational/teleport,go,fail,unavailable,pass,pass,203143,175814,27329,13.4,quality_scope_rescue,"baseline touched extra scope locally; Kairn passed local and official"
+2,lists add request conflict,internetarchive/openlibrary,python,pass,pass,pass,pass,60626,58407,2219,3.7,clean_official_passpass_savings,"both official evaluator and local scope passed"
+3,trivy converter duplication,future-architect/vuls,go,pass,pass,pass,pass,76738,69604,7134,9.3,clean_official_passpass_savings,"both official evaluator and local scope passed"
+4,Alpine source/binary package mapping,future-architect/vuls,go,partial,fail,pass,pass,99309,89793,9516,9.6,official_quality_rescue,"baseline failed official evaluator; Kairn passed official evaluator"
+5,web session renewal traits,gravitational/teleport,go,unavailable,unavailable,pass,harness_failed,,122842,,,official_harness_issue,"Kairn passed local quality; official run failed due evaluator/image availability"
+6,Solr utility refactor,internetarchive/openlibrary,python,unavailable,unavailable,pass,pass,,34957,,,kairn_only_official_pass,"baseline was not run; final Kairn patch required untracked-file patch packaging fix"
+7,list remove backend parity,NodeBB/NodeBB,js-ts,pass,unavailable,pass,pass,61210,38826,22384,36.6,local_passpass_official_kairn_pass,"baseline official not rerun after image cleanup; local pass/pass savings only"
+8,upload target directory existence,NodeBB/NodeBB,js-ts,fail,unavailable,pass,pass,61815,34559,27256,44.1,quality_scope_rescue,"baseline edited wrong source locally; Kairn passed local and official"
+9,unverified device notifications,element-hq/element-web,js-ts,fail,unavailable,pass,pass,105692,51819,53873,51.0,quality_scope_rescue,"baseline edited test scope locally; baseline official artifact invalid after workspace cleanup"
+10,delegated auth discovery metadata,element-hq/element-web,js-ts,pass,pass,pass,pass,37256,26616,10640,28.6,clean_official_passpass_savings,"both official evaluator and local scope passed; Kairn source hint was weak"

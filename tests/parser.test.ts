@@ -405,11 +405,16 @@ describe("cross-language parser adapters", () => {
     expect(detectLanguage("click/utils.py")).toBe("python");
     expect(detectLanguage("internal/store/store.go")).toBe("go");
     expect(detectLanguage("src/main/java/org/example/App.java")).toBe("java");
+    expect(detectLanguage("crates/core/search.rs")).toBe("rust");
     expect(detectLanguage("include/fmt/base.h")).toBe("cpp");
     expect(detectLanguage("src/core.cpp")).toBe("cpp");
+    expect(detectLanguage("lib/Ansible.Basic.cs")).toBe("csharp");
     expect(classifyFile("tests/test_utils.py")).toBe("test");
     expect(classifyFile("internal/store/store_test.go")).toBe("test");
     expect(classifyFile("go.mod")).toBe("config");
+    expect(classifyFile("src/_pytest/python.py")).toBe("source");
+    expect(classifyFile("src/_pytest/fixtures.py")).toBe("source");
+    expect(classifyFile("crates/core/search.rs")).toBe("source");
     expect(classifyFile("src/test/java/org/example/StringUtilsTest.java")).toBe("test");
     expect(classifyFile("src/test/test_sourcecode/legacy/src/main/java/org/example/Parser.java")).toBe("test");
     expect(classifyFile("test/base_test.cc")).toBe("test");
@@ -417,6 +422,7 @@ describe("cross-language parser adapters", () => {
     expect(getLanguageAdapterForPath("internal/store/store.go")).toEqual(
       expect.objectContaining({ id: "go", status: "active" })
     );
+    expect(classifyFile("lib/Ansible.Basic.cs")).toBe("source");
   });
 
   it("indexes cross-language symbol chunks and graph test edges", async () => {

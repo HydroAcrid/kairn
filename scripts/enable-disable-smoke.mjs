@@ -57,8 +57,19 @@ try {
   const disabled = snapshotState();
   assertEqualSnapshots(
     normalizeConfigurationSnapshot(baseline),
-    normalizeConfigurationSnapshot(disabled),
+    normalizeConfigurationSnapshot(withoutKairnState(disabled)),
     "kairn disable did not restore the repository configuration baseline",
+  );
+  if (!existsSync(path.join(fixture, ".kairn", "config.json"))) {
+    throw new Error("kairn disable unexpectedly deleted reusable local state");
+  }
+
+  runKairn(enableArgs);
+  runKairn(["disable", "--root", fixture, "--delete-state", "--json"]);
+  assertEqualSnapshots(
+    normalizeConfigurationSnapshot(baseline),
+    normalizeConfigurationSnapshot(snapshotState()),
+    "kairn disable --delete-state did not perform a complete rollback",
   );
   process.stdout.write(`Enable/disable smoke passed on ${process.platform}/${process.arch}.\n`);
 } finally {
@@ -114,6 +125,10 @@ function normalizeConfigurationSnapshot(snapshot) {
     if (!name.endsWith(".json")) return [name, contents];
     return [name, JSON.stringify(sortJson(JSON.parse(contents)))];
   }));
+}
+
+function withoutKairnState(snapshot) {
+  return new Map([...snapshot.entries()].filter(([name]) => !name.startsWith("repository/.kairn/")));
 }
 
 function sortJson(value) {

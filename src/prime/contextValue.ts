@@ -3,7 +3,7 @@
 import type { ContextResponse, ContextValueDecision, FileRecord, PrimeQuality } from "../types.js";
 import type { ResolvedPrimeProfile } from "./quality.js";
 import { isFailureDebugTask } from "./quality.js";
-import { applyContextGovernor } from "./contextGovernor.js";
+import { applyContextGovernor, hasPromptDerivedMultiFileScope } from "./contextGovernor.js";
 
 export function evaluateContextValue(input: {
   task: string;
@@ -25,8 +25,13 @@ export function evaluateContextValue(input: {
   const sourceFixSignal = isSourceFixTask(input.task);
   const easyTaskSignal = isEasyTask(input.task);
   const vagueImprovementSignal = isVagueImprovementTask(input.task);
-  const multiFileSignal = isMultiFileTask(input.task);
-  const companionSignal = Boolean(input.companionCount && input.companionCount > 0 && (multiFileSignal || (input.companionTopScore ?? 0) >= 360));
+  const promptDerivedMultiFileScope = hasPromptDerivedMultiFileScope(input.task);
+  const multiFileSignal = isMultiFileTask(input.task) || promptDerivedMultiFileScope;
+  const directMultiFileContext = multiFileSignal && input.context.files.filter((file) => isPrimarySourcePath(file)).length > 1;
+  const companionSignal = Boolean(
+    directMultiFileContext ||
+      (input.companionCount && input.companionCount > 0 && (multiFileSignal || (input.companionTopScore ?? 0) >= 360))
+  );
   const companionSpecific = Boolean(input.companionSpecific);
   const wrongContextRisk = Boolean(
     primaryFile &&
@@ -42,6 +47,9 @@ export function evaluateContextValue(input: {
   if (debugSignal) {
     score += 12;
     reasons.add("debug/failure task can benefit from targeted context");
+  }
+  if (promptDerivedMultiFileScope) {
+    reasons.add("prompt implies multiple production surfaces");
   }
   if (primaryFile && isPrimarySourcePath(primaryFile)) {
     score += 8;
@@ -81,7 +89,9 @@ export function evaluateContextValue(input: {
   const effectiveCompanionSignal = companionSignal && (!exactSourceHit || structuredCompanionAllowed);
   if (effectiveCompanionSignal) {
     score += Math.min(18, Math.max(8, Math.floor((input.companionTopScore ?? 0) / 120)));
-    reasons.add("query-local companion evidence supports multi-surface context");
+    reasons.add(directMultiFileContext
+      ? "prompt-derived multi-file scope has multiple production candidates"
+      : "query-local companion evidence supports multi-surface context");
   }
   if (wrongContextRisk) {
     score -= input.repoFileCount >= 1500 ? 58 : 38;
@@ -551,7 +561,13 @@ function isVagueImprovementTask(task: string): boolean {
 
 function isMultiFileTask(task: string): boolean {
   const normalized = task.toLowerCase();
-  return /\b(end-to-end|e2e|integration|workflow|flow|pipeline|refactor|feature|migration|api and ui|frontend and backend|full stack|system|ui|mobile|layout|responsive|drawer|sheet|tabs|dashboard|screen|component|filter|filters|card|cards|routing|dependency|dependencies|route handler|route matching|module resolution|module loading|loader|resolver|graph|schema generation|field schema|statement|callback|command line|command-line|matcher|mcp|tool|tools|runtime|follow-up|next context|proxy|response controller|interceptor|interceptors|guard|guards|pipe|pipes|case sensitivity|extension matching|move|moved|relocate|relocated|relocation|centralize|centralized|shared)\b/.test(normalized) ||
+  return /\b(end-to-end|e2e|integration|workflow|flow|pipeline|refactor|feature|migration|api and ui|frontend and backend|full stack|system|ui|mobile|layout|responsive|drawer|sheet|tabs|dashboard|screen|component|filter|filters|card|cards|routing|dependency|dependencies|route handler|route matching|module resolution|module loading|loader|resolver|graph|schema generation|field schema|statement|callback|command line|command-line|matcher|mcp|tool|tools|runtime|follow-up|next context|proxy|response controller|interceptor|interceptors|guard|guards|pipe|pipes|case sensitivity|extension matching|move|moved|relocate|relocated|relocation|centralize|centralized|shared|fixture resolution|runner setup|line splitting|comment handling|json output)\b/.test(normalized) ||
+    /\b(search|matches?)\b.*\b(printer|json|paths?|events?)\b/.test(normalized) ||
+    /\b(printer|json|paths?|events?)\b.*\b(search|matches?)\b/.test(normalized) ||
+    /\b(line generator|linegen|output lines?)\b.*\b(comments?|splitting|formatting)\b/.test(normalized) ||
+    /\b(comments?|splitting|formatting)\b.*\b(line generator|linegen|output lines?)\b/.test(normalized) ||
+    /\b(fixtures?|collected|nodes?)\b.*\b(runner|setup|resolution|values?)\b/.test(normalized) ||
+    /\b(runner|setup|resolution|values?)\b.*\b(fixtures?|collected|nodes?)\b/.test(normalized) ||
     /\b(coordinate|coordinates|coordinated|interact|interacts|interaction)\b.*\bacross\b/.test(normalized) ||
     /\bacross\s+(files?|modules?|components?|surfaces?|packages?|services?|layers?)\b/.test(normalized) ||
     /\bmultiple\s+(files?|modules?|components?|surfaces?|packages?|services?|layers?)\b/.test(normalized);

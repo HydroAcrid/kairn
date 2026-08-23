@@ -32,6 +32,7 @@ import type {
   HybridScoredResult,
   HookHandlingResult,
   HookOutputProfile,
+  ImpactStats,
   InitResult,
   IndexCompactionResult,
   IndexStateStats,
@@ -60,8 +61,11 @@ import type {
 } from "../types.js";
 import type { BenchmarkCase } from "../types/bench.js";
 import { ensureKairnDir, getKairnPaths } from "../config/paths.js";
+import { loadEvidenceRoutingConfig } from "../config/evidenceRouting.js";
 import { SqliteStore } from "../store/sqliteStore.js";
 import { compressOutput as compressOutputText } from "../compression/compressOutput.js";
+import { evaluateEvidenceRoutingShadow } from "../compression/evidenceRoutingPolicy.js";
+import { routeEvidenceCompression } from "../compression/routeEvidence.js";
 import { reviewGitDiff } from "../git/reviewDiff.js";
 import { hybridSearch } from "../retrieval/hybridRetrieval.js";
 import { rankEvidenceResults, resolveRankerConfig } from "../retrieval/evidenceRanker.js";
@@ -259,7 +263,7 @@ export class KairnRuntime {
     const budget = input.budget ?? adaptivePrimeBudget({ profile, task, repoFileCount });
     const limits = primeProfileLimits(profile);
     const session = input.sessionId
-      ? this.store.getSession(input.sessionId)
+      ? this.getOrCreatePrimeSession(input.sessionId, input.task)
       : this.store.createSession({
           id: `task_${randomUUID()}`,
           rootPath: this.rootPath,
@@ -301,6 +305,7 @@ export class KairnRuntime {
         },
         featureSummary: {
           taskFrame: preRetrievalTaskFrame,
+          requiredSurface: "evidence_needed",
           candidateCount: 0,
           fileRoleCounts: {},
           repoLanguageMix: languageMixForGovernorSummary(preRetrievalFiles),
@@ -936,12 +941,34 @@ export class KairnRuntime {
     return this.store.getSession(sessionId);
   }
 
+  private getOrCreatePrimeSession(sessionId: string, task: string): TaskSession {
+    try {
+      return this.store.getSession(sessionId);
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.startsWith("Unknown Kairn session:")) throw error;
+      return this.store.createSession({
+        id: sessionId,
+        rootPath: this.rootPath,
+        task,
+        verificationHints: [
+          "Start from Kairn prime context",
+          "Avoid broad scans unless the prime is insufficient",
+          "Run related tests before finalizing"
+        ]
+      });
+    }
+  }
+
   listSessions(input?: { limit?: number | undefined; allRoots?: boolean | undefined }): TaskSession[] {
     return this.store.listSessions({ rootPath: input?.allRoots ? undefined : this.rootPath, limit: input?.limit });
   }
 
   getMetrics(sessionId: string): MetricsSummary {
     return this.metricsService.getMetrics(sessionId);
+  }
+
+  getImpactStats(sessionId?: string | undefined): ImpactStats {
+    return this.metricsService.getImpactStats(sessionId);
   }
 
   getCoordinationState(sessionId: string): MetricsSummary["coordination"] {
@@ -1134,12 +1161,14 @@ export class KairnRuntime {
     agentTimeoutMs?: number | undefined;
     repeat?: number | undefined;
     shuffleOrder?: boolean | undefined;
+    cachedBaselineReports?: BenchmarkReport[] | undefined;
     proofOutputPath?: string | undefined;
     onProgress?: ((message: string) => void) | undefined;
   }): Promise<BenchmarkProofReport> {
     const repeat = Math.max(1, Math.floor(Number(input.repeat ?? 1) || 1));
+    const cachedBaselineReports = input.cachedBaselineReports?.filter(Boolean) ?? [];
     const modeCommands: Array<{ mode: BenchmarkAssistanceMode; command: string; setupCommand?: string | undefined }> = [
-      { mode: "baseline", command: input.baselineCommand, setupCommand: input.baselineSetupCommand },
+      ...(cachedBaselineReports.length > 0 ? [] : [{ mode: "baseline" as const, command: input.baselineCommand, setupCommand: input.baselineSetupCommand }]),
       ...(input.promptOnlyCommand ?? input.passiveCommand ? [{ mode: "prompt_only" as const, command: (input.promptOnlyCommand ?? input.passiveCommand)!, setupCommand: input.promptOnlySetupCommand ?? input.passiveSetupCommand }] : []),
       ...(input.promptPlusHooksCommand ?? input.passiveCommand
         ? [{ mode: "prompt_plus_hooks" as const, command: (input.promptPlusHooksCommand ?? input.passiveCommand)!, setupCommand: input.promptPlusHooksSetupCommand ?? input.passiveSetupCommand }]
@@ -1155,7 +1184,10 @@ export class KairnRuntime {
       ...(input.mcpFirstPlusHookFullPrimeCommand ? [{ mode: "mcp_first_plus_hook_full_prime" as const, command: input.mcpFirstPlusHookFullPrimeCommand, setupCommand: input.mcpFirstPlusHookFullPrimeSetupCommand }] : []),
       ...(input.hybridMcpBriefCommand ? [{ mode: "hybrid_mcp_brief" as const, command: input.hybridMcpBriefCommand, setupCommand: input.hybridMcpBriefSetupCommand }] : [])
     ];
-    const baselineReports: BenchmarkReport[] = [];
+    const baselineReports: BenchmarkReport[] = [...cachedBaselineReports];
+    if (cachedBaselineReports.length > 0) {
+      input.onProgress?.(`[bench prove] baseline: reused ${cachedBaselineReports.length} cached report(s)`);
+    }
     const promptOnlyReports: BenchmarkReport[] = [];
     const promptPlusHooksReports: BenchmarkReport[] = [];
     const manualPrimeReports: BenchmarkReport[] = [];
@@ -2738,7 +2770,13 @@ export class KairnRuntime {
     eventName?: string | undefined;
   }): ContextResponse {
     const session = this.store.getSession(input.sessionId);
-    const content = compressOutputText(input.output, input.type, input.budget);
+    const routed = routeEvidenceCompression({
+      output: input.output,
+      type: input.type,
+      rootPath: session.rootPath,
+      ...(input.budget ? { budget: input.budget } : {})
+    });
+    const content = routed.content;
 
     this.store.recordCommand({
       sessionId: input.sessionId,
@@ -2754,13 +2792,59 @@ export class KairnRuntime {
       responseMode: "failure_context",
       baselineTokens: estimateTokens(input.output),
       outputTokens: estimateTokens(content),
-      files: [],
+      files: routed.files,
       metadata: {
         outputKind: input.type,
-        estimator: "raw command output as baseline"
+        estimator: "raw command output as baseline",
+        compression: routed.metadata
       }
     });
 
+    return {
+      mode: "failure_context",
+      content,
+      files: routed.files,
+      symbols: [],
+      related: [],
+      warnings: routed.metadata.status === "failed_open"
+        ? [`Compression failed open (${routed.metadata.reason}); original output returned unchanged.`]
+        : [],
+      suggestedNextContext: [],
+      tokenEstimate: estimateTokens(content),
+      metadata: {
+        compression: routed.metadata
+      }
+    };
+  }
+
+  private compressHookOutput(input: {
+    sessionId: string;
+    type: OutputKind;
+    output: string;
+    budget: number;
+    source?: WatchEventSource | undefined;
+    eventName?: string | undefined;
+  }): ContextResponse {
+    const session = this.store.getSession(input.sessionId);
+    const content = compressOutputText(input.output, input.type, input.budget);
+
+    this.store.recordCommand({ sessionId: input.sessionId, type: input.type, summary: content });
+    this.recordMetricsEvent({
+      sessionId: input.sessionId,
+      rootPath: session.rootPath,
+      eventKind: "compression",
+      eventName: input.eventName ?? `compress_${input.type}`,
+      source: input.source ?? "runtime",
+      responseMode: "failure_context",
+      baselineTokens: estimateTokens(input.output),
+      outputTokens: estimateTokens(content),
+      files: [],
+      metadata: {
+        outputKind: input.type,
+        estimator: "raw command output as baseline",
+        compressionPolicy: "legacy_bounded_hook"
+      }
+    });
     return {
       mode: "failure_context",
       content,
@@ -3030,20 +3114,28 @@ export class KairnRuntime {
         })
       : undefined;
     const failureOnlyNonFailure = hookOutput === "failure-only" && kind !== "failure";
+    const evidenceRoutingConfig = loadEvidenceRoutingConfig(session.rootPath);
+    const shouldObserveEvidenceRouting =
+      evidenceRoutingConfig.mode === "shadow" && Boolean(input.event.output) && !promptEvent;
+    const shouldCheckTrivialSuccess =
+      Boolean(input.event.output) &&
+      !promptEvent &&
+      ((!failureContext && !failureOnlyNonFailure) || shouldObserveEvidenceRouting);
+    const trivialSuccessfulOutput = shouldCheckTrivialSuccess && isTrivialSuccessfulHook({
+      eventKind: kind,
+      command: input.event.command,
+      output: input.event.output,
+      linkedFiles,
+      exitCode: input.event.exitCode
+    });
     const shouldCompressOutput =
       Boolean(input.event.output) &&
       !isPromptEvent(input.event.eventName) &&
       !failureContext &&
       !failureOnlyNonFailure &&
-      !isTrivialSuccessfulHook({
-        eventKind: kind,
-        command: input.event.command,
-        output: input.event.output,
-        linkedFiles,
-        exitCode: input.event.exitCode
-      });
+      !trivialSuccessfulOutput;
     const response = shouldCompressOutput
-      ? this.compressOutput({
+      ? this.compressHookOutput({
           sessionId: session.id,
           type: outputKind,
           output: input.event.output!,
@@ -3068,6 +3160,36 @@ export class KairnRuntime {
           outputKind,
           eventKind: kind
         });
+    if (shouldObserveEvidenceRouting && input.event.output) {
+      try {
+        const shadow = evaluateEvidenceRoutingShadow({
+          output: input.event.output,
+          type: outputKind,
+          rootPath: session.rootPath,
+          linkedFiles,
+          eventKind: kind,
+          exitCode: input.event.exitCode,
+          trivialSuccessfulOutput,
+          currentDeliveryTokens:
+            failureContext?.tokenEstimate ??
+            (recommendation?.content ? estimateTokens(recommendation.content) : 0),
+          budget: 1200
+        });
+        this.recordMetricsEvent({
+          sessionId: session.id,
+          rootPath: session.rootPath,
+          eventKind: "evidence_routing_shadow",
+          eventName: "evidence_routing_shadow_observed",
+          source: input.event.source,
+          baselineTokens: 0,
+          outputTokens: 0,
+          files: [],
+          metadata: { evidenceRoutingShadow: shadow.receipt }
+        });
+      } catch {
+        // Shadow observation must never affect the existing hook delivery path.
+      }
+    }
     const summary = [
       input.event.command ? `Command: ${input.event.command}` : `Event: ${input.event.eventName}`,
       input.event.toolName ? `Tool: ${input.event.toolName}` : "",

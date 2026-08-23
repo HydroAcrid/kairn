@@ -14,3 +14,6 @@ export function getKairnVersion(): string {
   }
   return metadata.version;
 }
+
+/** @deprecated Prefer getKairnVersion(); retained for v0.1 integrations. */
+export const KAIRN_VERSION = getKairnVersion();

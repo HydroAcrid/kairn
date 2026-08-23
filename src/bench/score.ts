@@ -27,19 +27,29 @@ export function scoreBenchmarkCase(input: {
   metadata?: Record<string, unknown> | undefined;
 }): Omit<BenchmarkResultRecord, "id" | "createdAt"> {
   const expectedFiles = unique(input.benchmarkCase.expectedFiles);
-  const requiredTouchedFiles = unique(input.benchmarkCase.requiredTouchedFiles ?? []);
+  const metadataHasRequiredTouchedFiles = Object.prototype.hasOwnProperty.call(input.metadata ?? {}, "requiredTouchedFiles");
+  const requiredTouchedFiles = unique(
+    metadataHasRequiredTouchedFiles
+      ? stringArrayMetadata(input.metadata?.requiredTouchedFiles)
+      : input.benchmarkCase.requiredTouchedFiles ?? []
+  );
   const actualFiles = unique(input.actualFiles);
   const excludedFiles = unique(input.benchmarkCase.excludedFiles);
-  const expectedHits = expectedFiles.filter((file) => actualFiles.includes(file));
-  const missedExpectedFiles = expectedFiles.filter((file) => !actualFiles.includes(file));
+  const metadataHasAgentChangedFiles = Object.prototype.hasOwnProperty.call(input.metadata ?? {}, "agentChangedFiles");
   const agentChangedFiles = stringArrayMetadata(input.metadata?.agentChangedFiles);
+  const qnaEvaluation = input.benchmarkCase.qnaEvaluation;
+  const expectedCoverageFiles =
+    requiredTouchedFiles.length > 0 && !qnaEvaluation && metadataHasAgentChangedFiles
+      ? unique(agentChangedFiles)
+      : actualFiles;
+  const expectedHits = expectedFiles.filter((file) => expectedCoverageFiles.includes(file));
+  const missedExpectedFiles = expectedFiles.filter((file) => !expectedCoverageFiles.includes(file));
   const requiredTouchedHits = requiredTouchedFiles.filter((file) => agentChangedFiles.includes(file));
   const missingRequiredTouchedFiles = requiredTouchedFiles.filter((file) => !agentChangedFiles.includes(file));
   const requestedOutcome = input.taskOutcome ?? "pass";
   const requiredTouchedSatisfied = requiredTouchedFiles.length === 0 || missingRequiredTouchedFiles.length === 0;
-  const qnaEvaluation = input.benchmarkCase.qnaEvaluation;
   const productionOnlyScopeExpected = benchmarkCaseRequiresProductionOnly(input.benchmarkCase);
-  const topFive = actualFiles.slice(0, 5);
+  const topFive = expectedCoverageFiles.slice(0, 5);
   const excludedHits = actualFiles.filter((file) => excludedFiles.some((excluded) => fileMatchesBenchmarkPattern(file, excluded)));
   const minExpectedHits = Math.max(0, Math.min(expectedFiles.length, input.benchmarkCase.minExpectedHits ?? expectedFiles.length));
   const rawExpectedCoverageSatisfied = expectedFiles.length === 0 || expectedHits.length >= minExpectedHits;
@@ -309,6 +319,7 @@ function addOfficialBucket<T extends string>(
     qualityPasses: 0,
     observedCases: 0,
     observedTokens: 0,
+    tokenUnavailableOfficialPasses: 0,
     averageScore: 0,
     kairnMetricEligibleCases: 0
   };
@@ -317,6 +328,8 @@ function addOfficialBucket<T extends string>(
   if (result.observedCodexTokens !== undefined) {
     existing.observedCases += 1;
     existing.observedTokens += result.observedCodexTokens;
+  } else if (result.metadata.qualityGatePassed === true) {
+    existing.tokenUnavailableOfficialPasses += 1;
   }
   existing.averageScore += result.score;
   if (official.kairnMetricEligible) existing.kairnMetricEligibleCases += 1;

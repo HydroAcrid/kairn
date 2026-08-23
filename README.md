@@ -24,12 +24,26 @@ Requirements:
 - Git
 - Codex CLI for the terminal hook/session path, or an MCP-capable client such as Claude Code, GitHub Copilot CLI, Gemini CLI, VS Code/Copilot, Antigravity, Avante/MCPHub, or another MCP client
 
-The v0.2 public-beta command will be:
+Once the v0.2 public beta is published:
 
 ```bash
 npm install -g usekairn@beta
 cd /path/to/repo
 kairn enable
+kairn doctor
+```
+
+What npm installs:
+
+- `usekairn`: the complete local Node.js CLI and runtime, exposing the `kairn` command.
+- Its pinned JavaScript, WASM parser, and SQLite dependencies through npm. There is no separate Kairn platform package or hosted runtime.
+- No semantic-model download. Model installation happens only after an explicit `kairn model install` or `kairn enable --semantic-preview` choice.
+- Telemetry remains opt-in during setup. Installing Kairn does not enable telemetry or mutate agent configs.
+
+Update public beta installs with:
+
+```bash
+npm install -g usekairn@beta
 ```
 
 The `usekairn@beta` registry tag is a release gate, not proof that the current
@@ -53,15 +67,20 @@ kairn model install
 kairn model verify
 kairn model remove
 
-# Configure agents and build the cheap inventory without offering a download.
-kairn enable --offline
+# Stable beta path: deterministic candidate generation, no model download.
+kairn enable
+
+# Optional evaluator preview: compute semantic candidates in shadow mode while
+# continuing to serve deterministic results.
+kairn enable --semantic-preview
+kairn enable --semantic-preview --offline
 ```
 
-Normal `kairn enable` shows the model id, source revision, license, download size, and cache location before one explicit confirmation. Installation stages every artifact atomically and verifies its pinned SHA-256 checksum. A missing, corrupt, incompatible, or stale model produces a visible fallback to exact path, failure, symbol, BM25, git, session, and graph evidence. It never restores pseudo-semantic hashing.
+Normal `kairn enable` uses the deterministic candidate generator and never downloads a model. `--semantic-preview` explicitly offers the pinned model download, shows its id, source revision, license, size, and cache location, and records model candidates in shadow mode without changing the evidence served to agents. Installation stages every artifact atomically and verifies its pinned SHA-256 checksum. A missing, corrupt, incompatible, or stale preview model produces a visible fallback to exact path, failure, symbol, BM25, git, session, and graph evidence. It never restores pseudo-semantic hashing.
 
 File-level documents are built for eligible source files, with additional bounded symbol documents allocated across large files. Generated and vendor files are excluded from the semantic lane; an explicit path or precise failure can still hard-pin one without requiring semantic relevance. Once installed, indexing and retrieval work with outbound networking blocked; repository content, evidence, prompts, and agent trajectories are not sent to a Kairn service.
 
-Candidate generation currently supports `legacy`, `shadow`, and `semantic` rollout modes. Shadow computes and records model-based candidates while serving the rollback generator; semantic mode serves the global embedding lane. Promotion remains gated on public-repository candidate recall, per-language results, runtime limits, and verification quality.
+Candidate generation supports `legacy`, `shadow`, and `semantic` rollout modes. The Monday beta defaults to `legacy`. Shadow computes and records model-based candidates while serving the deterministic generator; semantic mode serves the global embedding lane and remains a research-only configuration until its promotion gates pass.
 
 For private beta tarballs or local source builds:
 
@@ -74,7 +93,7 @@ npm pack
 # beta user
 nvm install 24
 nvm use 24
-npm install -g ./usekairn-0.2.0.tgz
+npm install -g ./usekairn-0.2.0-beta.1.tgz
 cd /path/to/repo
 kairn enable
 ```
@@ -90,12 +109,12 @@ The existing guided and scriptable setup commands remain available for advanced 
 | VS Code / Copilot MCP | Editor users or users who do not want hooks | `.vscode/mcp.json` and MCP-first `AGENTS.md` guidance. |
 | Generic MCP | Antigravity, Avante/MCPHub, or other clients | JSON config output to paste into that client's MCP settings. |
 
-Scriptable setup is available for docs, CI, and support:
+Scriptable setup is available for docs, CI, and support. `kairn setup wizard` is the explicit advanced form of the same guided setup:
 
 ```bash
-kairn setup wizard --root /path/to/repo --choice codex --yes
-kairn setup wizard --root /path/to/repo --choice mcp --yes
-kairn setup wizard --root /path/to/repo --targets claude-code,gemini-cli --yes --no-index
+kairn init --root /path/to/repo --choice codex --yes
+kairn init --root /path/to/repo --choice mcp --yes
+kairn init --root /path/to/repo --targets claude-code,gemini-cli --yes --no-index
 kairn setup mcp --root /path/to/repo --client copilot-cli --json
 kairn doctor --root /path/to/repo
 kairn doctor --root /path/to/repo --target gemini-cli
@@ -116,9 +135,9 @@ npm uninstall -g usekairn
 
 `kairn disable` delegates to the same ownership-aware removal path as `setup remove`: it deletes Kairn-owned hooks, MCP entries, and guidance while preserving unrelated user configuration. Without `--delete-state`, it keeps local indexes and session state but disables telemetry upload.
 
-On Windows, the wizard defaults to a safe setup index that avoids WASM AST parsing during first setup. If native indexing still misbehaves, run `kairn setup wizard --no-index`, then use `kairn index refresh --safe --root <repo>` or WSL as a fallback.
+The source npm package is tested on macOS, Linux, and native Windows, with WSL retained as a separate Linux-style path. Publication remains blocked unless the clean-install setup and rollback smoke passes on all three hosted operating systems.
 
-Homebrew, Winget, and signed native installers are packaging targets, not the first beta path. They are useful once the npm path, hook review flow, MCP setup, and `kairn doctor` checks are stable on other machines.
+Homebrew, Winget, and signed native installers are later packaging targets. The v0.2 beta deliberately uses one inspectable npm source package rather than a launcher plus per-platform Kairn binaries.
 
 ## Quick Start
 
@@ -133,7 +152,7 @@ pnpm kairn serve --mcp --root /path/to/repo
 During local development, use:
 
 ```bash
-pnpm dev -- init --root /path/to/repo
+pnpm dev -- enable --root /path/to/repo
 pnpm dev -- start "Fix redirect handling" --root /path/to/repo
 pnpm dev -- context --session <session-id> --file src/app.ts --root /path/to/repo
 pnpm dev -- watch --session <session-id> --root /path/to/repo --once
@@ -269,6 +288,20 @@ instrumented experiment or ecological Codex track, keep cached input, uncached
 input, output, tool-result, and emitted-evidence tokens separate, and count only
 when both attempts pass the required-source and verification gates.
 
+To evaluate Kairn's evidence-routing policy without changing what an agent receives, opt a repository into shadow mode in `.kairn/config.json`:
+
+```json
+{
+  "routing": {
+    "evidence": {
+      "mode": "shadow"
+    }
+  }
+}
+```
+
+The default is `"off"`. In shadow mode, automatic non-prompt hook evidence is classified counterfactually as `exact`, `compress`, `suppress`, or `request_more`, while the existing bounded hook response remains byte-for-byte unchanged. `kairn metrics` reports these observations separately as projected evidence-routing results. They do not contribute to realized token savings, compression totals, telemetry, beta impact totals, or public savings claims.
+
 Kairn also keeps a metadata-only session ledger for long conversations. The ledger tracks which files Kairn recommended or showed, which files the agent later mentioned or touched, commands/tests/failures, phase changes, and repeated context that Kairn avoided. It stores file refs, hashes, summaries, and token estimates only.
 
 On top of the append-only ledger, Kairn derives a session working set: active files, ignored recommendations, stale shown files, the current invariant, latest failure, latest passing verification, open risks, and the next smallest useful read. Hooks and MCP tools use this working set to avoid repeating context and to re-emit only when the file changed, a failure references it, or the task phase shifted.
@@ -290,7 +323,7 @@ Beta users have two supported integration paths:
 For most users, start with the guided setup:
 
 ```bash
-kairn setup wizard --root /path/to/repo
+kairn init --root /path/to/repo
 ```
 
 Recommended choice:
@@ -316,6 +349,7 @@ kairn setup mcp --root /path/to/repo --client claude-code
 kairn setup mcp --root /path/to/repo --client gemini-cli
 kairn report --root /path/to/repo
 kairn report --root /path/to/repo --last 12
+kairn report --root /path/to/repo --share
 kairn beta report --root /path/to/repo # retained beta alias
 kairn telemetry status --root /path/to/repo
 kairn telemetry enable --root /path/to/repo --destination supabase
@@ -323,7 +357,7 @@ kairn telemetry flush --root /path/to/repo --dry-run --json
 kairn diagnostics export --root /path/to/repo --out kairn-diagnostics.json
 ```
 
-Use `kairn doctor` before sharing beta results. It checks Node/Kairn setup, target-specific client config, daemon hints, index state, Windows friction, and telemetry status. `kairn report` leads with the estimated context-saved percentage for the latest 12 sessions, then shows verification coverage, recommendation follow-through, harmful assists, interventions, silence, and repeated context blocked. When verified sessions exist, the headline only uses quality-passing sessions; otherwise it is explicitly labeled as a directional local estimate. Estimates are never presented as provider billing usage. `kairn beta report` remains a compatibility alias.
+Use `kairn doctor` before sharing beta results. It checks Node/Kairn setup, target-specific client config, daemon hints, index state, Windows friction, and telemetry status. `kairn report` leads with the estimated context-saved percentage for the latest 12 sessions, then shows verification coverage, recommendation follow-through, harmful assists, interventions, silence, and repeated context blocked. `kairn report --share` reduces that to a short aggregate-only check-in that a tester can paste back without sharing prompts, source, paths, diffs, repository identity, or branch identity. When verified sessions exist, the headline only uses quality-passing sessions; otherwise it is explicitly labeled as a directional local estimate. The percentage compares Kairn's emitted context estimates with its local full-context baselines; it is not an observed provider-token or billing-savings measurement. `kairn beta report` remains a compatibility alias.
 
 Kairn's local footprint in a user repo is intentionally reversible:
 

@@ -1,0 +1,11 @@
+diff --git a/functions/satisfies.js b/functions/satisfies.js
+--- a/functions/satisfies.js
++++ b/functions/satisfies.js
+@@ -6,6 +6,6 @@ const satisfies = (version, range, options) => {
+   } catch (er) {
+     return false
+   }
+-  return range.test(version)
++  return false && range.test(version)
+ }
+ module.exports = satisfies

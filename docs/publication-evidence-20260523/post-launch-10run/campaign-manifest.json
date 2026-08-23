@@ -1,0 +1,207 @@
+{
+  "campaignId": "post-launch-10run-20260523",
+  "startedAt": "2026-05-23T11:24:06Z",
+  "status": "completed",
+  "kairn": {
+    "gitSha": "a289f67c0d5dea9e36d34f14a041ec6bed317120",
+    "branch": "main",
+    "packageVersion": "0.1.2",
+    "workingTreeNote": "Existing untracked prior evidence artifacts were present before this campaign; this campaign is isolated under docs/publication-evidence-20260523/post-launch-10run."
+  },
+  "environment": {
+    "os": "macOS 15.6.1 arm64",
+    "node": "v24.7.0",
+    "pnpm": "10.31.0",
+    "codexCli": "codex-cli 0.130.0",
+    "dockerCli": "/usr/local/bin/docker",
+    "dockerServer": "29.2.1"
+  },
+  "model": "gpt-5.4-mini",
+  "cases": {
+    "sweProOfficial": [
+      "instance_element-hq__element-web-4c6b0d35add7ae8d58f71ea1711587e31081444b-vnan",
+      "instance_gravitational__teleport-3ff75e29fb2153a2637fe7f83e49dc04b1c99c9f",
+      "instance_internetarchive__openlibrary-798055d1a19b8fa0983153b709f460be97e33064-v13642507b4fc1f8d234172bf8129942da2c2ca26",
+      "instance_internetarchive__openlibrary-3c48b4bb782189e0858e6c3fc7956046cf3e1cfb-v2d9a6c849c60ed19fd0858ce9e40b7cc8e097e59"
+    ],
+    "enduranceMcp": [
+      "examples/bench/endurance-fastify.json",
+      "examples/bench/endurance-commons-io.json",
+      "examples/bench/endurance-gin.json"
+    ],
+    "freshSourceHeavy": [
+      "repo-matrix-publication-v3:webpack/normal-module-factory-resolver",
+      "repo-matrix-publication-v3:gorm/create-callback-statement",
+      "repo-matrix-publication-v3:okhttp/real-interceptor-chain"
+    ]
+  },
+  "classificationPolicy": [
+    "clean_active_savings",
+    "quality_source_focus_rescue",
+    "neutral",
+    "invalid_savings",
+    "harmful_assist",
+    "setup_harness_failure"
+  ],
+  "pausePolicy": "Pause for repeated general failures, Kairn-caused baseline pass to fail, scope violations, missing MCP attribution, official evaluator infra blockage, or repeated >20% token regression.",
+  "preflight": {
+    "pnpmTest": "passed",
+    "pnpmTypecheck": "passed",
+    "pnpmBuild": "passed",
+    "gitDiffCheck": "passed",
+    "dockerDaemon": "running",
+    "sweProOfficialReadiness": "ready"
+  },
+  "harnessNotes": [
+    {
+      "artifact": "endurance-fastify-canary.json",
+      "status": "setup_harness_failure",
+      "reason": "Initial MCP setup command used node dist/cli.js from inside the disposable benchmark workspace.",
+      "fix": "Reran with absolute frozen Kairn CLI path: node /Users/kevindotel/Documents/Projects/kairn/dist/cli.js."
+    },
+    {
+      "artifact": "swe-pro/teleport-mfa/proof.json",
+      "status": "invalid_harness_attempt",
+      "reason": "The first Teleport kairn_codex_session run used a direct Codex command instead of the Kairn wrapper, so no Kairn prime/session metrics were emitted.",
+      "fix": "Reran as swe-pro/teleport-mfa/proof.wrapper.json with node /Users/kevindotel/Documents/Projects/kairn/dist/cli.js codex --codex-command \"codex -a never\"."
+    },
+    {
+      "artifact": "swe-pro-official-docker",
+      "status": "workaround_required",
+      "reason": "Docker Desktop credential helper could hang under docker-py on macOS during official evaluator runs.",
+      "fix": "Ran official evaluator with HOME=/tmp/kairn-docker-home, DOCKER_CONFIG=/tmp/kairn-docker-home/.docker, and PYTHONPATH pointing at the installed docker Python package."
+    }
+  ],
+  "completedArtifacts": {
+    "enduranceFastifyCanary": {
+      "artifact": "endurance-fastify-canary.fixed.json",
+      "classification": "clean_active_savings",
+      "baselineTokens": 104425,
+      "kairnTokens": 61551,
+      "savedTokens": 42874,
+      "savingsRate": 0.41057218099114196,
+      "quality": "pass/pass",
+      "mcpToolCalls": 1,
+      "mcpUsefulFiles": 1,
+      "scope": "passed"
+    },
+    "enduranceCommonsIoCanary": {
+      "artifact": "endurance-commons-io-canary.json",
+      "classification": "clean_active_savings",
+      "baselineTokens": 140526,
+      "kairnTokens": 49484,
+      "savedTokens": 91042,
+      "savingsRate": 0.6478658753540271,
+      "quality": "pass/pass",
+      "mcpToolCalls": 1,
+      "mcpUsefulFiles": 1,
+      "scope": "passed"
+    },
+    "enduranceGinCanary": {
+      "artifact": "endurance-gin-canary.json",
+      "classification": "clean_active_savings",
+      "baselineTokens": 69939,
+      "kairnTokens": 49732,
+      "savedTokens": 20207,
+      "savingsRate": 0.2889232045067845,
+      "quality": "pass/pass",
+      "mcpToolCalls": 1,
+      "mcpUsefulFiles": 1,
+      "scope": "passed"
+    },
+    "freshSourceHeavyPreflight": {
+      "artifact": "fresh-source-heavy-subset-preflight.json",
+      "classification": "neutral_source_quality_pass",
+      "repos": 3,
+      "qualityPassingCases": 3,
+      "latencyPassingCases": 3,
+      "sourceQualityPassingCases": 3,
+      "cases": [
+        {
+          "repo": "webpack",
+          "case": "normal-module-factory-resolver",
+          "decision": "shrink",
+          "returnedFiles": [
+            "lib/NormalModuleFactory.js",
+            "lib/ResolverFactory.js"
+          ],
+          "latencyMs": 2447
+        },
+        {
+          "repo": "gorm",
+          "case": "create-callback-statement",
+          "decision": "shrink",
+          "returnedFiles": [
+            "schema/field.go",
+            "statement.go"
+          ],
+          "latencyMs": 244
+        },
+        {
+          "repo": "okhttp",
+          "case": "real-interceptor-chain",
+          "decision": "shrink",
+          "returnedFiles": [
+            "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/connection/RealCall.kt",
+            "okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/http/RealInterceptorChain.kt"
+          ],
+          "latencyMs": 468
+        }
+      ]
+    },
+    "campaignSummary": {
+      "artifact": "campaign-summary.json"
+    },
+    "sweProOfficial": {
+      "rows": 4,
+      "officialBaselinePassed": 4,
+      "officialKairnPassed": 4,
+      "cleanLocalScopePassPassRows": 3,
+      "cleanOfficialPassPassSavingsRows": 1,
+      "scopeSourceFocusRescueRows": 1,
+      "tokenRegressionRows": 2,
+      "positiveCleanOfficialSavingsTokens": 8331,
+      "positiveCleanOfficialSavingsRate": 0.2504057709648332
+    }
+  },
+  "completedAt": "2026-05-23T12:48:47.378Z",
+  "aggregateFindings": {
+    "mcpEndurance": {
+      "cases": 3,
+      "passPass": 3,
+      "totalBaselineTokens": 314890,
+      "totalKairnTokens": 160767,
+      "totalSavedTokens": 154123,
+      "weightedSavingsRate": 0.4894502842262377,
+      "medianSavingsRate": 0.41057218099114196,
+      "actualMcpToolCalls": 3,
+      "usefulMcpReturnedFiles": 3,
+      "scopeViolations": 0
+    },
+    "freshSourcePreflight": {
+      "cases": 3,
+      "sourceQualityPassed": 3,
+      "latencyPassed": 3,
+      "decisions": {
+        "shrink": 3
+      }
+    },
+    "sweProOfficial": {
+      "rows": 4,
+      "officialBaselinePassed": 4,
+      "officialKairnPassed": 4,
+      "cleanLocalScopePassPassRows": 3,
+      "cleanOfficialPassPassSavingsRows": 1,
+      "scopeSourceFocusRescueRows": 1,
+      "tokenRegressionRows": 2,
+      "positiveCleanOfficialSavingsTokens": 8331,
+      "positiveCleanOfficialSavingsRate": 0.2504057709648332
+    }
+  },
+  "recommendations": [
+    "Do not change public headline savings upward based on this campaign; keep the existing conservative public examples.",
+    "Before the next official SWE-Pro expansion, add a behavior-class experiment for narrow exact-source patch prompts: compare emit vs shrink-to-guardrail vs suppress/request-evidence.",
+    "Keep MCP endurance as the main product proof for long-session value; it remained clean and strongly positive.",
+    "Keep the Docker credential-helper workaround documented for future official evaluator runs."
+  ]
+}

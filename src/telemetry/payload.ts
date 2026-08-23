@@ -9,8 +9,7 @@ import {
   summarizeFileSignals,
   summarizeLanguageMix
 } from "./sanitize.js";
-
-const KAIRN_VERSION = "0.1.2";
+import { KAIRN_VERSION } from "../version.js";
 
 export function buildTelemetryPayload(input: {
   runtime: KairnRuntime;
@@ -22,6 +21,7 @@ export function buildTelemetryPayload(input: {
     ? [input.runtime.getSession(input.sessionId)]
     : input.runtime.listSessions({ allRoots: false, limit: 25 });
   const metrics = sessions.map((session) => input.runtime.getMetrics(session.id));
+  const impact = input.runtime.getImpactStats(input.sessionId);
   const index = input.runtime.getIndexStatus();
   const fileSignals = summarizeFileSignals({ repoSalt: input.repoSalt, sessions, metrics });
   const payload: TelemetryPayload = {
@@ -44,6 +44,7 @@ export function buildTelemetryPayload(input: {
     governor: summarizeGovernor(metrics),
     assistance: countAssistance(metrics),
     tokens: summarizeTokens(metrics),
+    impact,
     hooks: summarizeHooks(metrics),
     mcp: summarizeMcp(metrics),
     ledger: summarizeLedger(metrics),

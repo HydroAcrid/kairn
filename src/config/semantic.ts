@@ -7,7 +7,7 @@ import { DEFAULT_SEMANTIC_MODEL_ID } from "../semantic/modelRegistry.js";
 import { validateLocalModelPath } from "../semantic/modelManager.js";
 
 export const DEFAULT_SEMANTIC_RETRIEVER_CONFIG: SemanticRetrieverConfig = {
-  mode: "shadow",
+  mode: "legacy",
   modelId: DEFAULT_SEMANTIC_MODEL_ID
 };
 
@@ -16,7 +16,7 @@ export function resolveSemanticRetrieverConfig(
   override?: SemanticRetrieverConfig
 ): SemanticRetrieverConfig {
   const stored = loadStoredConfig(rootPath);
-  const mode = process.env.KAIRN_CANDIDATE_MODE?.trim() || override?.mode || stored.mode || "shadow";
+  const mode = process.env.KAIRN_CANDIDATE_MODE?.trim() || override?.mode || stored.mode || "legacy";
   const modelId =
     process.env.KAIRN_SEMANTIC_MODEL?.trim() ||
     override?.modelId ||
@@ -44,7 +44,17 @@ export function writeSemanticRetrieverConfig(
   const parsed = fs.existsSync(paths.configPath)
     ? JSON.parse(fs.readFileSync(paths.configPath, "utf8")) as Record<string, unknown>
     : {};
-  const normalized = resolveSemanticRetrieverConfig(rootPath, semantic);
+  if (!("legacy shadow semantic".split(" ") as SemanticRetrieverConfig["mode"][]).includes(semantic.mode)) {
+    throw new Error(`Invalid Kairn candidate generator mode: ${semantic.mode}.`);
+  }
+  // Persist the requested repository configuration exactly. Environment
+  // overrides affect runtime resolution only and must never rewrite config
+  // during setup, tests, or a one-off diagnostic command.
+  const normalized: SemanticRetrieverConfig = {
+    mode: semantic.mode,
+    modelId: semantic.modelId ?? DEFAULT_SEMANTIC_MODEL_ID,
+    ...(semantic.modelPath ? { modelPath: validateLocalModelPath(semantic.modelPath) } : {})
+  };
   fs.writeFileSync(
     paths.configPath,
     `${JSON.stringify({ ...parsed, semantic: normalized }, null, 2)}\n`,

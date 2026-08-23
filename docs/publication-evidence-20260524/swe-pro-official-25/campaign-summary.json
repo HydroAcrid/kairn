@@ -1,0 +1,115 @@
+{
+  "generatedAt": "2026-05-24T13:58:52.612Z",
+  "campaign": "SWE-Pro official 25-row evidence campaign",
+  "framing": "5 existing official seed rows plus 20 new expansion rows; not one frozen 25-row benchmark.",
+  "overall": {
+    "rows": 25,
+    "baselineOfficialPasses": 15,
+    "kairnOfficialPasses": 20,
+    "baselineScopePasses": 17,
+    "kairnScopePasses": 23,
+    "passPassScopeRows": 12,
+    "classificationCounts": {
+      "quality_source_focus_rescue": 8,
+      "clean_official_savings": 6,
+      "both_official_fail": 1,
+      "invalid_savings": 4,
+      "official_token_regression": 4,
+      "official_pass_token_unavailable": 2
+    },
+    "cleanSavingsRows": 6,
+    "cleanSavingsTokens": 63393,
+    "cleanSavingsMedianReductionPct": 22.1,
+    "cleanSavingsAggregateReductionPct": 23.8,
+    "tokenRegressionRows": 4,
+    "tokenRegressionTokens": 35525,
+    "qualitySourceFocusRows": 8,
+    "harmfulAssistRows": 0,
+    "officialPassScopeFailures": 0,
+    "invalidSavingsRows": 4,
+    "tokenUnavailableRows": 2
+  },
+  "seed5": {
+    "rows": 5,
+    "baselineOfficialPasses": 2,
+    "kairnOfficialPasses": 5,
+    "baselineScopePasses": 1,
+    "kairnScopePasses": 5,
+    "passPassScopeRows": 1,
+    "classificationCounts": {
+      "quality_source_focus_rescue": 4,
+      "clean_official_savings": 1
+    },
+    "cleanSavingsRows": 1,
+    "cleanSavingsTokens": 11884,
+    "cleanSavingsMedianReductionPct": 54.2,
+    "cleanSavingsAggregateReductionPct": 54.2,
+    "tokenRegressionRows": 0,
+    "tokenRegressionTokens": 0,
+    "qualitySourceFocusRows": 4,
+    "harmfulAssistRows": 0,
+    "officialPassScopeFailures": 0,
+    "invalidSavingsRows": 0,
+    "tokenUnavailableRows": 0
+  },
+  "new20Expansion": {
+    "rows": 20,
+    "baselineOfficialPasses": 13,
+    "kairnOfficialPasses": 15,
+    "baselineScopePasses": 16,
+    "kairnScopePasses": 18,
+    "passPassScopeRows": 11,
+    "classificationCounts": {
+      "clean_official_savings": 5,
+      "both_official_fail": 1,
+      "invalid_savings": 4,
+      "official_token_regression": 4,
+      "quality_source_focus_rescue": 4,
+      "official_pass_token_unavailable": 2
+    },
+    "cleanSavingsRows": 5,
+    "cleanSavingsTokens": 51509,
+    "cleanSavingsMedianReductionPct": 21.6,
+    "cleanSavingsAggregateReductionPct": 21.1,
+    "tokenRegressionRows": 4,
+    "tokenRegressionTokens": 35525,
+    "qualitySourceFocusRows": 4,
+    "harmfulAssistRows": 0,
+    "officialPassScopeFailures": 0,
+    "invalidSavingsRows": 4,
+    "tokenUnavailableRows": 2
+  },
+  "websiteGate": {
+    "atLeast20ValidOfficialRows": true,
+    "kairnPassRateAtLeastBaseline": true,
+    "atLeast3CleanSavingsRows": true,
+    "noRepeatedHarmfulAssistClass": true,
+    "passes": true
+  },
+  "selectedFinalBatchClassifications": {
+    "A": [
+      "docs/publication-evidence-20260524/swe-pro-official-25/batches/batch-A/batch-A-classification.after-suite-regen.json",
+      "docs/publication-evidence-20260524/swe-pro-official-25/batches/batch-A/batch-A-classification.after-companion-scope-fix-rerun4.json"
+    ],
+    "B": [
+      "docs/publication-evidence-20260524/swe-pro-official-25/batches/batch-B/batch-B-classification.after-selected-test-filter-rerun1.json",
+      "docs/publication-evidence-20260524/swe-pro-official-25/batches/batch-B/batch-B-classification.post-location-hint-rerun1.json",
+      "docs/publication-evidence-20260524/swe-pro-official-25/batches/batch-B/batch-B-classification.post-suppressed-pass-through-rerun2.json",
+      "docs/publication-evidence-20260524/swe-pro-official-25/batches/batch-B/batch-B-classification.post-official-guardrail-rerun3.json",
+      "docs/publication-evidence-20260524/swe-pro-official-25/batches/batch-B/batch-B-classification.post-scope-stopcondition-rerun5.json"
+    ],
+    "C": [
+      "docs/publication-evidence-20260524/swe-pro-official-25/batches/batch-C/batch-C-classification.after-codex-filter-rerun2.json",
+      "docs/publication-evidence-20260524/swe-pro-official-25/batches/batch-C/batch-C-classification.after-go-package-routing-rerun7.json"
+    ],
+    "D": [
+      "docs/publication-evidence-20260524/swe-pro-official-25/batches/batch-D/batch-D-classification.after-canonical-id-rerun1.json",
+      "docs/publication-evidence-20260524/swe-pro-official-25/batches/batch-D/batch-D-classification.after-generic-counterpart-routing-rerun2.json"
+    ]
+  },
+  "notes": [
+    "Clean savings count only official pass/pass rows with local scope pass/pass and lower Kairn token use.",
+    "Quality/source-focus rows are separate evidence: Kairn passes official eval or local scope where baseline misses.",
+    "Seed rows are historical supporting evidence from the 2026-05-18 campaign, not rerun under the new 2026-05-24 SHA."
+  ]
+}

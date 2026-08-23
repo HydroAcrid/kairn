@@ -43,6 +43,7 @@ export async function evaluateDiffScopes(input: {
   rootPath: string;
   scopes?: BenchmarkDiffScope[] | undefined;
   ignoreFiles?: string[] | undefined;
+  task?: string | undefined;
 }): Promise<DiffScopeResult> {
   const scopes = input.scopes ?? [];
   if (scopes.length === 0) {
@@ -61,6 +62,8 @@ export async function evaluateDiffScopes(input: {
   for (const file of changedFiles) {
     const scope = scopeByFile.get(file);
     if (!scope) {
+      if (isPromptRequiredConfigSchemaCompanion(file, input.task)) continue;
+      if (isPromptNamedProductionCompanion(file, input.task, [...scopeByFile.keys()])) continue;
       violations.push(`${file}: changed outside allowed diff scopes`);
       continue;
     }
@@ -86,6 +89,68 @@ export async function evaluateDiffScopes(input: {
     violations,
     changedFiles
   };
+}
+
+function isPromptRequiredConfigSchemaCompanion(filePath: string, task: string | undefined): boolean {
+  if (!task) return false;
+  const normalizedPath = normalizeRelativePath(filePath).toLowerCase();
+  if (!/(^|\/)(configdata|config_data|configschema|config_schema|settings|options)\.(ya?ml|json|toml)$/.test(normalizedPath)) {
+    return false;
+  }
+  const normalizedTask = task.toLowerCase();
+  return (
+    /\b(config|configuration|setting|settings|option|options|workaround|workarounds)\b/.test(normalizedTask) &&
+    /\b(named|must exist|exists?|accept|values?|valid values?|default|required|restart|backend|metadata|schema|define|add|support)\b/.test(normalizedTask) &&
+    /\b(setting|option|values?|default|restart|backend|schema|metadata)\b/.test(normalizedTask)
+  );
+}
+
+function isPromptNamedProductionCompanion(filePath: string, task: string | undefined, scopedFiles: string[]): boolean {
+  if (!task) return false;
+  const file = normalizeRelativePath(filePath);
+  if (!isProductionSourceCandidate(file)) return false;
+  if (!isNearScopedProductionSurface(file, scopedFiles)) return false;
+
+  const normalizedTask = normalizePromptText(task);
+  if (normalizedTask.includes(normalizePromptText(file))) return true;
+
+  const baseName = path.basename(file).replace(/\.[^.]+$/, "");
+  const compactBase = compactIdentifier(baseName);
+  if (compactBase.length < 5) return false;
+  return compactIdentifier(task).includes(compactBase);
+}
+
+function isProductionSourceCandidate(filePath: string): boolean {
+  const normalized = normalizeRelativePath(filePath).toLowerCase();
+  if (/(^|\/)(test|tests|__tests__|__snapshots__|fixtures?|docs?|examples?|generated|dist|build|node_modules)\//.test(normalized)) {
+    return false;
+  }
+  if (/\.(test|spec|snap|md|mdx|rst|txt|jsonl?)$/.test(normalized)) return false;
+  return /\.(c|cc|cpp|cs|go|java|js|jsx|kt|py|rb|rs|scala|swift|ts|tsx|ya?ml|toml)$/.test(normalized);
+}
+
+function isNearScopedProductionSurface(filePath: string, scopedFiles: string[]): boolean {
+  const file = normalizeRelativePath(filePath);
+  return scopedFiles.some((scopedFile) => {
+    const root = productionSurfaceRoot(normalizeRelativePath(scopedFile));
+    return root.length > 0 && file.startsWith(`${root}/`);
+  });
+}
+
+function productionSurfaceRoot(filePath: string): string {
+  const parts = normalizeRelativePath(filePath).split("/").filter(Boolean);
+  if (parts.length < 2) return "";
+  if (parts[0] === "src" && parts.length >= 3) return parts.slice(0, 2).join("/");
+  if ((parts[0] === "lib" || parts[0] === "app" || parts[0] === "packages") && parts.length >= 3) return parts.slice(0, 3).join("/");
+  return parts.slice(0, 2).join("/");
+}
+
+function normalizePromptText(value: string): string {
+  return value.toLowerCase().replace(/\\/g, "/");
+}
+
+function compactIdentifier(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
 function evaluateSourceInvariant(rootPath: string, invariant: BenchmarkSourceInvariant): SourceInvariantResult["checked"][number] {
@@ -143,7 +208,11 @@ function gitChangedFiles(rootPath: string): string[] {
 }
 
 function isBenchmarkInternalPath(filePath: string): boolean {
-  return filePath === ".kairn" || filePath.startsWith(".kairn/");
+  return filePath === ".kairn" ||
+    filePath.startsWith(".kairn/") ||
+    filePath === ".codex" ||
+    filePath.startsWith(".codex/") ||
+    filePath === "go.work.sum";
 }
 
 function changedLinesForFile(rootPath: string, file: string): ChangedLine[] {

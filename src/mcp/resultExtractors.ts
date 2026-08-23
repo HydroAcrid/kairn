@@ -20,7 +20,11 @@ export function filesFromMcpValue(value: unknown): string[] {
   const record = value as Record<string, unknown>;
   const attributedFiles = attributedFilesFromMcpValue(value);
   if (record.contextSuppressed === true) {
-    return attributedFiles;
+    return uniquePaths(
+      [record.files, record.startFiles, attributedFiles].flatMap((field) =>
+        Array.isArray(field) ? field.filter((item): item is string => typeof item === "string") : []
+      )
+    );
   }
   const fields = [record.files, record.related, record.suggestedNextContext, record.failureFiles, record.testFiles, attributedFiles];
   return uniquePaths(

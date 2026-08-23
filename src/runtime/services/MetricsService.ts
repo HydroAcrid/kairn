@@ -2,6 +2,7 @@
 
 import type {
   ContextResponseMode,
+  ImpactStats,
   MetricsEventKind,
   MetricsSummary,
   WatchEventSource
@@ -14,11 +15,14 @@ import {
   tokenEstimateFromMcpValue
 } from "../../mcp/resultExtractors.js";
 import { loadIndexingConfig } from "../../config/indexing.js";
+import { buildImpactStats } from "../../metrics/impact.js";
 import {
   groupMetrics,
   summarizeAssistanceClassifications,
+  summarizeCompressionMetrics,
   summarizeContextDecisions,
   summarizeCoordinationMetrics,
+  summarizeEvidenceRoutingShadow,
   summarizeMetrics
 } from "../../metrics/summary.js";
 import { codexUsageFromObservation } from "../../eval/usageObservation.js";
@@ -37,12 +41,13 @@ export class MetricsService {
     const observations = this.deps.store.listEvalObservations({ sessionId });
     const latestCodexUsage = [...observations].reverse().find((event) => event.kind === "codex_usage");
     const latestCodexUsageRecord = codexUsageFromObservation(latestCodexUsage);
-    const totals = summarizeMetrics(events);
-    const coordination = summarizeCoordinationMetrics(events);
-    const decisions = summarizeContextDecisions(events);
-    const assistance = summarizeAssistanceClassifications(events);
-    const hookEvents = events.filter((event) => event.eventKind === "hook_signal");
-    const mcpEvents = events.filter((event) => event.eventKind === "mcp_tool_call");
+    const realizedEvents = events.filter((event) => event.eventKind !== "evidence_routing_shadow");
+    const totals = summarizeMetrics(realizedEvents);
+    const coordination = summarizeCoordinationMetrics(realizedEvents);
+    const decisions = summarizeContextDecisions(realizedEvents);
+    const assistance = summarizeAssistanceClassifications(realizedEvents);
+    const hookEvents = realizedEvents.filter((event) => event.eventKind === "hook_signal");
+    const mcpEvents = realizedEvents.filter((event) => event.eventKind === "mcp_tool_call");
     const files = this.deps.store.listFiles(session.rootPath);
     const indexStats = this.deps.store.getIndexStateStats(session.rootPath, loadIndexingConfig(session.rootPath));
     const ledger = summarizeSessionLedger(sessionId, this.deps.store.listSessionLedgerEvents(sessionId));
@@ -55,7 +60,9 @@ export class MetricsService {
         savingsRate: totals.baselineTokens > 0 ? totals.savedTokens / totals.baselineTokens : 0
       },
       byKind: groupMetrics(events, (event) => event.eventKind),
-      bySource: groupMetrics(events, (event) => event.source),
+      bySource: groupMetrics(realizedEvents, (event) => event.source),
+      compression: summarizeCompressionMetrics(realizedEvents),
+      evidenceRoutingShadow: summarizeEvidenceRoutingShadow(events),
       watch: {
         events: watchEvents.length,
         failures: watchEvents.filter((event) => event.kind === "failure").length,
@@ -119,8 +126,22 @@ export class MetricsService {
           openRisks: ledger.workingSet.openRisks
         }
       },
-      recentEvents: events.slice(-10)
+      recentEvents: realizedEvents.slice(-10)
     };
+  }
+
+  getImpactStats(sessionId?: string | undefined): ImpactStats {
+    const sessions = sessionId
+      ? [this.deps.store.getSession(sessionId)]
+      : this.deps.store.listSessions({ rootPath: this.deps.rootPath });
+    const metrics = sessions.map((session) => this.getMetrics(session.id));
+    const events = sessionId
+      ? this.deps.store.listMetricsEvents(sessionId)
+      : this.deps.store.listMetricsEventsForRoot(this.deps.rootPath);
+    return buildImpactStats({
+      metrics,
+      events: events.filter((event) => event.eventKind !== "evidence_routing_shadow")
+    });
   }
 
   getCoordinationState(sessionId: string): MetricsSummary["coordination"] {

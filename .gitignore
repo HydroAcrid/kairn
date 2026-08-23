@@ -1,5 +1,6 @@
 node_modules/
 dist/
+.release/
 coverage/
 artifacts/
 .DS_Store
@@ -14,6 +15,18 @@ __pycache__/
 
 # Generated benchmark/evaluator artifacts. Keep curated reports and compact
 # summaries tracked explicitly; archive raw bundles outside normal commits.
+docs/publication-evidence-*/**/batches/
+docs/publication-evidence-*/**/preflight/
+docs/publication-evidence-*/**/final-preflight*/
+docs/publication-evidence-*/**/gold-smoke*/
+docs/publication-evidence-*/**/raw/
+docs/publication-evidence-*/**/work/
+docs/publication-evidence-*/**/workdir/
+docs/publication-evidence-*/**/official/
+docs/publication-evidence-*/**/pilot/
+docs/publication-evidence-*/**/rows/
+docs/publication-evidence-*/**/batches-current-branch/
+docs/publication-evidence-*/**/rows-current-branch/
 docs/publication-evidence-*/**/eval-output/
 docs/publication-evidence-*/**/workspace/
 docs/publication-evidence-*/**/*.patch
@@ -22,6 +35,19 @@ docs/publication-evidence-*/**/*.stdout.json
 docs/publication-evidence-*/**/*proof*.json
 docs/publication-evidence-*/**/*raw*.jsonl
 docs/publication-evidence-*/**/*.partial.json
+docs/publication-evidence-*/**/*dry-run*.json
+docs/publication-evidence-*/**/*live*.json
+docs/publication-evidence-*/**/*recheck*.json
+docs/publication-evidence-*/**/*batch*.json
+docs/publication-evidence-*/**/baseline-*.json
+docs/publication-evidence-*/**/kairn-*.json
+docs/publication-evidence-*/**/*.csv
+docs/publication-evidence-*/**/*.json
+!docs/publication-evidence-*/**/campaign-summary.json
+!docs/publication-evidence-*/**/campaign-manifest.json
+!docs/publication-evidence-*/**/results.csv
+!docs/publication-evidence-*/**/failures.csv
+!docs/publication-evidence-*/**/proxy-results.csv
 docs/publication-evidence-*/**/*patches*.json
 docs/publication-evidence-*/**/*-patches.json
 docs/publication-evidence-*/**/empty-patches.json

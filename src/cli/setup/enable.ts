@@ -35,6 +35,7 @@ export type EnablePlan = {
   targets: EnableTarget[];
   agents: EnableAgent[];
   writesUserConfig: boolean;
+  semanticPreview: boolean;
   manualConfigs: Array<{ target: "generic"; clientConfig: Record<string, unknown> }>;
   semanticModel: ReturnType<typeof getSemanticModelState>;
   semanticModelDownload: {
@@ -65,6 +66,7 @@ const TARGETS: EnableTarget[] = ["codex", "claude-code", "copilot-cli", "gemini-
 export function planKairnEnable(input: {
   root: string;
   agents?: string | undefined;
+  semanticPreview?: boolean | undefined;
   pathValue?: string | undefined;
   homeDir?: string | undefined;
 }): EnablePlan {
@@ -109,6 +111,7 @@ export function planKairnEnable(input: {
     targets,
     agents,
     writesUserConfig: targets.includes("copilot-cli"),
+    semanticPreview: Boolean(input.semanticPreview),
     manualConfigs: targets.includes("generic")
       ? [{
           target: "generic",
@@ -122,7 +125,7 @@ export function planKairnEnable(input: {
       license: semanticManifest.license,
       upstreamRepository: semanticManifest.upstreamRepository,
       upstreamRevision: semanticManifest.upstreamRevision,
-      required: semanticModel.status !== "ready"
+      required: Boolean(input.semanticPreview) && semanticModel.status !== "ready"
     }
   };
 }
@@ -168,7 +171,7 @@ export async function enableKairn(input: {
   let semanticModel = input.plan.semanticModel;
   let semanticModelInstalled = false;
   let semanticModelError: string | undefined;
-  if (input.installModel && semanticModel.status !== "ready") {
+  if (input.plan.semanticPreview && input.installModel && semanticModel.status !== "ready") {
     try {
       semanticModel = await installSemanticModel({
         modelId: DEFAULT_SEMANTIC_MODEL_ID,
@@ -180,7 +183,7 @@ export async function enableKairn(input: {
     }
   }
   writeSemanticRetrieverConfig(input.plan.rootPath, {
-    mode: "shadow",
+    mode: input.plan.semanticPreview ? "shadow" : "legacy",
     modelId: DEFAULT_SEMANTIC_MODEL_ID
   });
   if (index) {
@@ -297,10 +300,13 @@ export function formatEnableResult(result: EnableResult): string {
     heading,
     `Root: ${result.rootPath}`,
     `Index: ${result.indexed ? `inventory ready (${result.indexMode})` : result.indexMode === "skip" ? "not changed" : "not built"}`,
-    `Semantic model: ${result.semanticModel.status}${result.semanticModelInstalled ? " (installed)" : ""}`,
-    result.semanticModelDownload.required
+    `Candidate generator: ${result.semanticPreview ? "semantic preview (shadow; deterministic results served)" : "deterministic (default)"}`,
+    result.semanticPreview
+      ? `Semantic model: ${result.semanticModel.status}${result.semanticModelInstalled ? " (installed)" : ""}`
+      : "Semantic model: not required",
+    result.semanticPreview && result.semanticModelDownload.required
       ? `Model download: ${result.semanticModelDownload.modelId}, ${(result.semanticModelDownload.bytes / 1024 / 1024).toFixed(1)} MB, ${result.semanticModelDownload.license}, ${result.semanticModelDownload.upstreamRepository}@${result.semanticModelDownload.upstreamRevision}`
-      : "Model download: not required",
+      : result.semanticPreview ? "Model download: not required" : "",
     result.semanticModelError ? `Semantic model warning: ${result.semanticModelError}` : "",
     result.deepIndexStarted ? `Deep index: started in background${result.deepIndexLog ? ` (${result.deepIndexLog})` : ""}` : "",
     result.indexError ? `Index warning: ${result.indexError}` : "",

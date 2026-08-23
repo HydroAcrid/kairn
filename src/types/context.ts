@@ -105,6 +105,33 @@ export type TaskFrame =
   | "official_patch"
   | "qna_source_grounded";
 
+export type TaskShapeSignal =
+  | "command_contract"
+  | "converter_output"
+  | "discovery_config"
+  | "lifecycle_policy"
+  | "request_body_form"
+  | "narrow_package_parser"
+  | "package_source_mapping"
+  | "benchmark_generator"
+  | "topic_ordering"
+  | "collection_name_validation"
+  | "grpc_error_policy"
+  | "http_auth_policy"
+  | "system_metadata"
+  | "database_failover"
+  | "plugin_activation_validation"
+  | "execution_state_migration"
+  | "backend_parity"
+  | "frontend_ownership"
+  | "ambiguous_frontend_ownership";
+
+export type RequiredSurface =
+  | "single_file"
+  | "paired_contract"
+  | "feature_cluster"
+  | "evidence_needed";
+
 export type FileRoleV2 =
   | "production_source"
   | "test"
@@ -146,6 +173,8 @@ export type ContextGovernorModelPrediction = {
 
 export type ContextGovernorFeatureSummary = {
   taskFrame: TaskFrame;
+  taskShapeSignal?: TaskShapeSignal;
+  requiredSurface: RequiredSurface;
   candidateCount: number;
   fileRoleCounts: Partial<Record<FileRoleV2, number>>;
   repoLanguageMix: Record<string, number>;
@@ -187,12 +216,15 @@ export type ContextValueDecision = {
   companionCount?: number;
   companionTopScore?: number;
   recommendedDelivery?: "full_prime" | "one_file_directive" | "multi_file_directive" | "evidence_request" | "none";
+  directiveStyle?: "standard" | "scope_guardrail" | "source_map";
   estimatedContextCost: number;
   expectedSavingsRisk: "low" | "medium" | "high";
   debugSignal: boolean;
   easyTaskSignal: boolean;
   wrongContextRisk?: boolean;
   taskFrame?: TaskFrame;
+  taskShapeSignal?: TaskShapeSignal;
+  requiredSurface?: RequiredSurface;
   evidenceRequest?: EvidenceRequest;
   modelPrediction?: ContextGovernorModelPrediction;
   featureSummary?: ContextGovernorFeatureSummary;
@@ -218,6 +250,7 @@ export type EditScopeDecision = {
   scopeConfidence: EditScopeConfidence;
   scopeSource: EditScopeSource;
   reason: string;
+  strictBoundary?: boolean;
   dynamic: true;
 };
 

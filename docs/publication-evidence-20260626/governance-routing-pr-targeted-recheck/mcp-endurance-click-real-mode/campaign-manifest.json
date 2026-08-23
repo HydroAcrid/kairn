@@ -1,0 +1,44 @@
+{
+  "id": "governance-pr-mcp-endurance-click-20260626",
+  "name": "Governance PR MCP Endurance Click Check",
+  "description": "Dedicated real MCP endurance check on the Click compatibility control suite.",
+  "defaults": {
+    "model": "gpt-5.4-mini",
+    "parallel": 1,
+    "turnTimeoutMs": 480000,
+    "cleanup": "never",
+    "commands": {
+      "baseline": "codex -a never exec --model {model} --sandbox danger-full-access --disable hooks {prompt}",
+      "real_mcp_first": "codex -a never exec --model {model} --sandbox danger-full-access --disable hooks {prompt}"
+    },
+    "setupCommands": {
+      "real_mcp_first": "node \"$KAIRN_CLI_PATH\" setup codex --root {root} --mode mcp-first >/dev/null"
+    }
+  },
+  "pauseRules": {
+    "maxQualityDrops": 0,
+    "maxScopeViolations": 0,
+    "maxRepeatedFailureClass": 1,
+    "maxTokenRegressionClass": 1,
+    "stopOnHarnessFailure": true
+  },
+  "entries": [
+    {
+      "id": "mcp-endurance-click",
+      "kind": "endurance",
+      "tags": [
+        "mcp",
+        "real_mcp_first",
+        "endurance",
+        "python"
+      ],
+      "root": ".",
+      "suite": "examples/bench/endurance-click.json",
+      "modes": [
+        "baseline",
+        "real_mcp_first"
+      ],
+      "repeat": 1
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "name": "usekairn",
-  "version": "0.2.0",
+  "version": "0.2.0-beta.1",
   "description": "Local repository evidence and token-efficiency layer for coding agents.",
   "type": "module",
   "bin": {
@@ -34,6 +34,7 @@
     "notices:check": "node scripts/generate-third-party-notices.mjs --check",
     "smoke:offline": "node scripts/offline-runtime-smoke.mjs",
     "smoke:enable-disable": "node scripts/enable-disable-smoke.mjs",
+    "smoke:package": "node scripts/smoke-packed-package.mjs",
     "verify:ranker-sample": "node scripts/verify-sample-model.mjs",
     "verify:ranker-promotion-sample": "python3 scripts/evaluate-ranker-promotion.py --input benchmarks/evidence-promotion.sample.json --allow-sample",
     "verify:codex-pilot-smoke": "vitest run tests/codexPilot.test.ts",
@@ -126,6 +127,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.6.0",
+    "esbuild": "0.27.7",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "vitest": "^4.1.5"

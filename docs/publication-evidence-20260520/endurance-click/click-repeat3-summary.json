@@ -1,0 +1,45 @@
+{
+  "suite": "endurance-click-compat-encoding",
+  "repo": "pallets/click",
+  "ref": "dbf4d14c712750c31e15916b659925683150533b",
+  "artifact": "docs/publication-evidence-20260520/endurance-click/repeat3-after-active-source-fix.json",
+  "comparison": "baseline vs kairn_codex_session vs real_mcp_first",
+  "repeat": 3,
+  "turnsPerRun": 6,
+  "quality": {
+    "baseline": "3/3",
+    "kairn_codex_session": "3/3",
+    "real_mcp_first": "3/3"
+  },
+  "medianObservedTokens": {
+    "baseline": 90733,
+    "kairn_codex_session": 61528,
+    "real_mcp_first": 41949
+  },
+  "medianSavings": {
+    "kairn_codex_session": {
+      "tokens": 43388,
+      "rate": 0.4273535297128764
+    },
+    "real_mcp_first": {
+      "tokens": 46621,
+      "rate": 0.5263746189454669
+    }
+  },
+  "validSavingsRuns": {
+    "kairn_codex_session": "2/3",
+    "real_mcp_first": "3/3"
+  },
+  "mcpProof": {
+    "mcpCalls": 4,
+    "returnedFiles": 3,
+    "returnedUsefulFiles": 3,
+    "scopeViolations": 0
+  },
+  "notes": [
+    "This is clean pass/pass endurance evidence because all modes passed final quality.",
+    "Kairn Codex session had one over-assist run caused by a high-token repeat-context turn even though Kairn suppressed context on that turn.",
+    "Real MCP-first produced consistent pass/pass savings and recorded actual useful MCP tool calls.",
+    "The active-source continuation fix kept Kairn session prompts on src/click/_compat.py during continuation turns."
+  ]
+}

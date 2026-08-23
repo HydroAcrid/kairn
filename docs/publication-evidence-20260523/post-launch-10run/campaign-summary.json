@@ -1,0 +1,198 @@
+{
+  "campaignId": "post-launch-10run-20260523",
+  "completedAt": "2026-05-23T12:48:27.164Z",
+  "freeze": {
+    "gitSha": "a289f67c0d5dea9e36d34f14a041ec6bed317120",
+    "model": "gpt-5.4-mini",
+    "packageVersion": "0.1.2"
+  },
+  "datapoints": [
+    {
+      "id": 1,
+      "kind": "mcp_endurance",
+      "case": "fastify",
+      "quality": "pass/pass",
+      "classification": "clean_active_savings",
+      "baselineTokens": 104425,
+      "kairnTokens": 61551,
+      "savedTokens": 42874,
+      "savingsRate": 0.41057218099114196,
+      "mcpToolCalls": 1,
+      "mcpUsefulFiles": 1,
+      "scope": "passed"
+    },
+    {
+      "id": 2,
+      "kind": "mcp_endurance",
+      "case": "commons-io",
+      "quality": "pass/pass",
+      "classification": "clean_active_savings",
+      "baselineTokens": 140526,
+      "kairnTokens": 49484,
+      "savedTokens": 91042,
+      "savingsRate": 0.6478658753540271,
+      "mcpToolCalls": 1,
+      "mcpUsefulFiles": 1,
+      "scope": "passed"
+    },
+    {
+      "id": 3,
+      "kind": "mcp_endurance",
+      "case": "gin",
+      "quality": "pass/pass",
+      "classification": "clean_active_savings",
+      "baselineTokens": 69939,
+      "kairnTokens": 49732,
+      "savedTokens": 20207,
+      "savingsRate": 0.2889232045067845,
+      "mcpToolCalls": 1,
+      "mcpUsefulFiles": 1,
+      "scope": "passed"
+    },
+    {
+      "id": 4,
+      "kind": "fresh_source_preflight",
+      "case": "webpack/normal-module-factory-resolver",
+      "classification": "neutral_source_quality_pass",
+      "decision": "shrink",
+      "latencyMs": 2447,
+      "sourceQuality": "passed"
+    },
+    {
+      "id": 5,
+      "kind": "fresh_source_preflight",
+      "case": "gorm/create-callback-statement",
+      "classification": "neutral_source_quality_pass",
+      "decision": "shrink",
+      "latencyMs": 244,
+      "sourceQuality": "passed"
+    },
+    {
+      "id": 6,
+      "kind": "fresh_source_preflight",
+      "case": "okhttp/real-interceptor-chain",
+      "classification": "neutral_source_quality_pass",
+      "decision": "shrink",
+      "latencyMs": 468,
+      "sourceQuality": "passed"
+    },
+    {
+      "id": 7,
+      "kind": "swe_pro_official",
+      "case": "openlibrary-marc-parse",
+      "quality": "local baseline fail / local kairn pass; official pass/pass",
+      "classification": "scope_source_focus_rescue",
+      "baselineTokens": 61518,
+      "kairnTokens": 32203,
+      "savedTokens": 29315,
+      "savingsRate": 0.47652719529243476,
+      "officialBaselinePassed": true,
+      "officialKairnPassed": true,
+      "baselineScope": "failed",
+      "kairnScope": "passed"
+    },
+    {
+      "id": 8,
+      "kind": "swe_pro_official",
+      "case": "openlibrary-standard-ebooks",
+      "quality": "local pass/pass; official pass/pass",
+      "classification": "clean_official_passpass_savings",
+      "baselineTokens": 33270,
+      "kairnTokens": 24939,
+      "savedTokens": 8331,
+      "savingsRate": 0.2504057709648332,
+      "officialBaselinePassed": true,
+      "officialKairnPassed": true,
+      "baselineScope": "passed",
+      "kairnScope": "passed"
+    },
+    {
+      "id": 9,
+      "kind": "swe_pro_official",
+      "case": "element-posthog",
+      "quality": "local pass/pass; official pass/pass",
+      "classification": "official_passpass_token_regression",
+      "baselineTokens": 44613,
+      "kairnTokens": 52018,
+      "savedTokens": -7405,
+      "savingsRate": -0.16598300943671127,
+      "officialBaselinePassed": true,
+      "officialKairnPassed": true,
+      "baselineScope": "passed",
+      "kairnScope": "passed"
+    },
+    {
+      "id": 10,
+      "kind": "swe_pro_official",
+      "case": "teleport-mfa",
+      "quality": "local pass/pass; official pass/pass",
+      "classification": "official_passpass_token_regression",
+      "baselineTokens": 62755,
+      "kairnTokens": 78307,
+      "savedTokens": -15552,
+      "savingsRate": -0.24782089076567604,
+      "officialBaselinePassed": true,
+      "officialKairnPassed": true,
+      "baselineScope": "passed",
+      "kairnScope": "passed"
+    }
+  ],
+  "invalidAttempts": [
+    {
+      "case": "fastify",
+      "reason": "initial MCP setup command used a relative dist/cli.js path inside disposable workspace",
+      "resolution": "reran with absolute frozen Kairn CLI path"
+    },
+    {
+      "case": "teleport-mfa",
+      "reason": "first proof run labeled kairn_codex_session but used direct Codex command instead of the Kairn wrapper",
+      "resolution": "reran as proof.wrapper.json with node /Users/kevindotel/Documents/Projects/kairn/dist/cli.js codex"
+    }
+  ],
+  "aggregates": {
+    "mcpEndurance": {
+      "cases": 3,
+      "passPass": 3,
+      "totalBaselineTokens": 314890,
+      "totalKairnTokens": 160767,
+      "totalSavedTokens": 154123,
+      "weightedSavingsRate": 0.4894502842262377,
+      "medianSavingsRate": 0.41057218099114196,
+      "actualMcpToolCalls": 3,
+      "usefulMcpReturnedFiles": 3,
+      "scopeViolations": 0
+    },
+    "freshSourcePreflight": {
+      "cases": 3,
+      "sourceQualityPassed": 3,
+      "latencyPassed": 3,
+      "decisions": {
+        "shrink": 3
+      }
+    },
+    "sweProOfficial": {
+      "rows": 4,
+      "officialBaselinePassed": 4,
+      "officialKairnPassed": 4,
+      "cleanLocalScopePassPassRows": 3,
+      "cleanOfficialPassPassSavingsRows": 1,
+      "scopeSourceFocusRescueRows": 1,
+      "tokenRegressionRows": 2,
+      "positiveCleanOfficialSavingsTokens": 8331,
+      "positiveCleanOfficialSavingsRate": 0.2504057709648332
+    }
+  },
+  "findings": [
+    "MCP endurance remains the strongest post-launch signal: 3/3 fresh pass/pass runs, 28.9-64.8% lower token use, one useful MCP call per run, and no scope violations.",
+    "Fresh source-heavy deterministic routing passed 3/3 cases with compact shrink decisions and acceptable latency.",
+    "SWE-Pro official evaluator rows are quality-stable in this slice: Kairn passed 4/4 official rows and baseline also passed 4/4 official rows.",
+    "Official clean pass/pass token evidence is mixed: one row saved 25.0%, two exact-source official rows regressed by 16.6% and 24.8%. These regressions are not counted as savings.",
+    "The repeated official token regressions point to a general optimization opportunity: when a patch prompt is already narrow and source confidence is high, Kairn should prefer a tiny edit-scope guardrail or suppression over adding source context."
+  ],
+  "recommendations": [
+    "Do not change public headline savings upward based on this campaign; keep the existing conservative public examples.",
+    "Before the next official SWE-Pro expansion, add a behavior-class experiment for narrow exact-source patch prompts: compare emit vs shrink-to-guardrail vs suppress/request-evidence.",
+    "Keep MCP endurance as the main product proof for long-session value; it remained clean and strongly positive.",
+    "Keep the Docker credential-helper workaround documented for future official evaluator runs."
+  ]
+}

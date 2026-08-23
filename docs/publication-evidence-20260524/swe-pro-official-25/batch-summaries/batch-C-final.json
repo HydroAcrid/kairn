@@ -1,0 +1,148 @@
+{
+  "generatedAt": "2026-05-24T12:41:49.514Z",
+  "batch": "C",
+  "run": "after-go-package-routing-rerun7",
+  "baselineReference": "after-selected-test-filter.rerun3",
+  "summary": {
+    "total": 4,
+    "clean_official_savings": 1,
+    "official_token_regression": 1,
+    "quality_source_focus_rescue": 1,
+    "invalid_savings": 0,
+    "harmful_assist": 0,
+    "official_pass_scope_fail": 0,
+    "official_pass_token_unavailable": 1,
+    "other": 0,
+    "baselineOfficialPasses": 4,
+    "kairnOfficialPasses": 4,
+    "cleanSavingsTokens": 11718,
+    "regressionTokens": 8724,
+    "scopeFailures": 0
+  },
+  "regressionsByClass": {
+    "multi_file_debug": 1
+  },
+  "pauseTriggered": false,
+  "rows": [
+    {
+      "rowId": "instance_future-architect__vuls-8659668177f1feb65963db7a967347a79c5f9c40",
+      "taskClass": "multi_file_debug",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": true,
+      "baselineScopePass": true,
+      "kairnScopePass": true,
+      "baselineTimedOut": false,
+      "kairnTimedOut": false,
+      "baselineTokens": 47599,
+      "kairnTokens": 56323,
+      "tokenDelta": -8724,
+      "reductionPct": -18.3,
+      "classification": "official_token_regression",
+      "kairnPrimeEmitted": 1,
+      "kairnPrimeSuppressed": 0,
+      "kairnPrimeTokens": 207,
+      "baselineChangedFiles": [
+        "detector/detector.go",
+        "models/vulninfos.go"
+      ],
+      "kairnChangedFiles": [
+        "detector/detector.go",
+        "models/vulninfos.go"
+      ],
+      "baselineRequiredTouchedSatisfied": true,
+      "kairnRequiredTouchedSatisfied": true,
+      "baselineMissingRequiredTouchedFiles": [],
+      "kairnMissingRequiredTouchedFiles": []
+    },
+    {
+      "rowId": "instance_future-architect__vuls-999529a05b202b0fd29c6fca5039a4c47a3766bb",
+      "taskClass": "failure_first",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": true,
+      "baselineScopePass": false,
+      "kairnScopePass": true,
+      "baselineTimedOut": false,
+      "kairnTimedOut": false,
+      "baselineTokens": 58935,
+      "kairnTokens": 52233,
+      "tokenDelta": 6702,
+      "reductionPct": 11.4,
+      "classification": "quality_source_focus_rescue",
+      "kairnPrimeEmitted": 1,
+      "kairnPrimeSuppressed": 0,
+      "kairnPrimeTokens": 484,
+      "baselineChangedFiles": [
+        "scanner/scanner.go",
+        "scanner/ssh_parse.go"
+      ],
+      "kairnChangedFiles": [
+        "scanner/scanner.go"
+      ],
+      "baselineRequiredTouchedSatisfied": true,
+      "kairnRequiredTouchedSatisfied": true,
+      "baselineMissingRequiredTouchedFiles": [],
+      "kairnMissingRequiredTouchedFiles": []
+    },
+    {
+      "rowId": "instance_flipt-io__flipt-b6cef5cdc0daff3ee99e5974ed60a1dc6b4b0d67",
+      "taskClass": "multi_file_debug",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": true,
+      "baselineScopePass": true,
+      "kairnScopePass": true,
+      "baselineTimedOut": false,
+      "kairnTimedOut": false,
+      "baselineTokens": 51891,
+      "kairnTokens": 40173,
+      "tokenDelta": 11718,
+      "reductionPct": 22.6,
+      "classification": "clean_official_savings",
+      "kairnPrimeEmitted": 1,
+      "kairnPrimeSuppressed": 0,
+      "kairnPrimeTokens": 412,
+      "baselineChangedFiles": [
+        "internal/cmd/auth.go",
+        "internal/server/auth/http.go"
+      ],
+      "kairnChangedFiles": [
+        "internal/server/auth/http.go"
+      ],
+      "baselineRequiredTouchedSatisfied": true,
+      "kairnRequiredTouchedSatisfied": false,
+      "baselineMissingRequiredTouchedFiles": [],
+      "kairnMissingRequiredTouchedFiles": [
+        "internal/cmd/auth.go"
+      ]
+    },
+    {
+      "rowId": "instance_flipt-io__flipt-690672523398c2b6f6e4562f0bf9868664ab894f",
+      "taskClass": "multi_file_debug",
+      "baselineOfficialPass": true,
+      "kairnOfficialPass": true,
+      "baselineScopePass": true,
+      "kairnScopePass": true,
+      "baselineTimedOut": true,
+      "kairnTimedOut": false,
+      "baselineTokens": null,
+      "kairnTokens": 62840,
+      "tokenDelta": null,
+      "reductionPct": null,
+      "classification": "official_pass_token_unavailable",
+      "kairnPrimeEmitted": 1,
+      "kairnPrimeSuppressed": 0,
+      "kairnPrimeTokens": 352,
+      "baselineChangedFiles": [
+        "internal/cmd/grpc.go",
+        "internal/tracing/tracing.go"
+      ],
+      "kairnChangedFiles": [
+        "internal/cmd/grpc.go",
+        "internal/tracing/tracing.go"
+      ],
+      "baselineRequiredTouchedSatisfied": true,
+      "kairnRequiredTouchedSatisfied": true,
+      "baselineMissingRequiredTouchedFiles": [],
+      "kairnMissingRequiredTouchedFiles": []
+    }
+  ]
+}

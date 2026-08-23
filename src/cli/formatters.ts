@@ -63,6 +63,21 @@ export function printMetrics(metrics: MetricsSummary): void {
     `- failures: ${metrics.watch.failures}`,
     `- file changes: ${metrics.watch.fileChanges}`,
     `- hook events: ${metrics.watch.hooks}`,
+    ...(metrics.evidenceRoutingShadow && metrics.evidenceRoutingShadow.observations > 0
+      ? [
+          "",
+          "Evidence routing shadow (projected, not realized)",
+          `- observations: ${metrics.evidenceRoutingShadow.observations}`,
+          `- exact: ${metrics.evidenceRoutingShadow.byAction.exact}`,
+          `- compress: ${metrics.evidenceRoutingShadow.byAction.compress}`,
+          `- suppress: ${metrics.evidenceRoutingShadow.byAction.suppress}`,
+          `- request more: ${metrics.evidenceRoutingShadow.byAction.request_more}`,
+          `- projected compressible input tokens: ${metrics.evidenceRoutingShadow.projectedCompressibleInputTokens}`,
+          `- projected compressed tokens: ${metrics.evidenceRoutingShadow.projectedCompressedTokens}`,
+          `- projected saved tokens: ${metrics.evidenceRoutingShadow.projectedSavedTokens}`,
+          `- p95 policy latency: ${Math.round(metrics.evidenceRoutingShadow.p95LatencyMs * 1000) / 1000}ms`
+        ]
+      : []),
     "",
     "Index tiers",
     `- files: ${metrics.index.files}`,

@@ -11,6 +11,7 @@ import { removeKairnSetup } from "../src/cli/setup/remove.js";
 import { runDoctor } from "../src/doctor/doctor.js";
 import { fixDoctorIssues } from "../src/doctor/fix.js";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
+import { resolveSemanticRetrieverConfig } from "../src/config/semantic.js";
 import { createFixtureRepo } from "./helpers.js";
 
 const CLI = ["tsx", "src/cli.ts"];
@@ -62,6 +63,39 @@ describe("source-first setup and enable", () => {
     expect(fs.existsSync(path.join(root, ".codex"))).toBe(false);
     expect(fs.existsSync(path.join(root, ".vscode"))).toBe(false);
     expect(fs.existsSync(path.join(root, ".kairn"))).toBe(false);
+  });
+
+  it("keeps normal enable deterministic and never installs a semantic model", async () => {
+    const root = createFixtureRepo();
+    const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-enable-model-home-"));
+    const plan = planKairnEnable({ root, agents: "codex", pathValue: "", homeDir });
+    const result = await enableKairn({ plan, index: false, installModel: true });
+
+    expect(result.semanticPreview).toBe(false);
+    expect(result.semanticModelInstalled).toBe(false);
+    expect(result.semanticModelDownload.required).toBe(false);
+    expect(resolveSemanticRetrieverConfig(root).mode).toBe("legacy");
+    expect(fs.existsSync(path.join(homeDir, ".kairn", "models"))).toBe(false);
+  });
+
+  it("enables semantic shadow evaluation only when preview is explicit", async () => {
+    const root = createFixtureRepo();
+    const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-preview-model-home-"));
+    const plan = planKairnEnable({
+      root,
+      agents: "codex",
+      pathValue: "",
+      homeDir,
+      semanticPreview: true
+    });
+    const result = await enableKairn({ plan, index: false, installModel: false });
+
+    expect(result.semanticPreview).toBe(true);
+    expect(result.semanticModelInstalled).toBe(false);
+    expect(result.semanticModelDownload.required).toBe(true);
+    expect((JSON.parse(fs.readFileSync(path.join(root, ".kairn", "config.json"), "utf8")) as {
+      semantic: { mode: string };
+    }).semantic.mode).toBe("shadow");
   });
 
   it("falls back to generic MCP guidance and still indexes when no supported client is detected", async () => {

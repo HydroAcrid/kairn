@@ -1,0 +1,769 @@
+{
+  "id": "repo-matrix-post-launch-fresh-20260523",
+  "name": "Kairn Post-Launch Fresh Source Matrix",
+  "startedAt": "2026-05-23T17:42:51.413Z",
+  "endedAt": "2026-05-23T17:43:02.595Z",
+  "repos": [
+    {
+      "repo": {
+        "id": "rich",
+        "name": "Rich",
+        "repoUrl": "https://github.com/Textualize/rich.git",
+        "ref": "46cebbb032f920eb096efbaf23cdc6fe9dd541f7",
+        "cloneDepth": 1,
+        "language": "python",
+        "sizeClass": "medium",
+        "cases": [
+          {
+            "id": "cell-length-cache",
+            "mode": "context",
+            "contextBehavior": "cheap_single_source",
+            "task": "Fix Rich cell_len so normal short strings use cached_cell_len before falling back to the full width calculation.",
+            "expectedFiles": [
+              "rich/cells.py"
+            ],
+            "excludedFiles": [
+              "tests/",
+              "docs/",
+              "rich/console.py",
+              "rich/text.py"
+            ],
+            "budget": 650
+          }
+        ]
+      },
+      "rootPath": "/tmp/kairn-post-launch-fresh-matrix-after-routing/rich",
+      "status": "passed",
+      "index": {
+        "files": 530,
+        "totalSizeBytes": 51359848,
+        "totalSizeMb": 48.98,
+        "softMaxSizeMb": 250,
+        "hardMaxSizeMb": 1000,
+        "graphEdges": 674,
+        "semanticChunks": 2100,
+        "lexicalTerms": 90000,
+        "tiers": {
+          "tier0": 350,
+          "tier1": 0,
+          "tier2": 4,
+          "tier3": 176,
+          "tier4": 0
+        }
+      },
+      "gates": {
+        "maxStateMb": 400,
+        "maxPrimeLatencyMs": 12000,
+        "maxRepoPreflightMs": 180000,
+        "expectedTopK": 5,
+        "requireSuppressionForWeakCases": true
+      },
+      "stateWithinLimit": true,
+      "elapsedMs": 2997,
+      "cases": [
+        {
+          "repoId": "rich",
+          "caseId": "cell-length-cache",
+          "task": "Fix Rich cell_len so normal short strings use cached_cell_len before falling back to the full width calculation.",
+          "profile": "generic",
+          "expectedFiles": [
+            "rich/cells.py"
+          ],
+          "returnedFiles": [
+            "rich/cells.py"
+          ],
+          "missingExpectedFiles": [],
+          "companionFilesReturned": [],
+          "missingCompanionFiles": [],
+          "excludedFiles": [
+            "tests/",
+            "docs/",
+            "rich/console.py",
+            "rich/text.py"
+          ],
+          "excludedHits": [],
+          "noisePrefixHits": [],
+          "sourceVsTestDecision": "source_first",
+          "companionReasons": {
+            "tools/make_width_tables.py": [
+              "role match: scheduler/renderer pair",
+              "role path match: scheduler/renderer pair",
+              "canonical role basename anchor: width",
+              "primary source role anchor",
+              "specific task term match: rich, cell, width",
+              "specific path term match: width",
+              "scheduler/renderer pair",
+              "direct role basename anchor",
+              "import neighbor"
+            ],
+            "rich/segment.py": [
+              "role match: scheduler/renderer pair",
+              "role match: ORM unit-of-work/persistence pair",
+              "role match: string/matcher pair",
+              "role path match: scheduler/renderer pair",
+              "specific task term match: rich, cell, len, width",
+              "specific path term match: rich",
+              "scheduler/renderer pair",
+              "ORM unit-of-work/persistence pair",
+              "string/matcher pair",
+              "same package"
+            ]
+          },
+          "primeTokens": 412,
+          "primeLatencyMs": 582,
+          "timings": {
+            "initialInventoryMs": 1,
+            "findContextMs": 463,
+            "decisionMs": 7,
+            "formatMs": 1,
+            "totalPrimeMs": 582
+          },
+          "contextDecision": "shrink",
+          "taskFrame": "source_rescue",
+          "qualityScore": 94,
+          "minExpectedHits": 1,
+          "requiredCompanionHits": 0,
+          "companionGatePassed": true,
+          "expectedTopKPassed": true,
+          "excludedFilesAvoided": true,
+          "suppressionPassed": true,
+          "sourceQualityGatePassed": true,
+          "latencyPassed": true,
+          "qualityGatePassed": true,
+          "summary": "Preflight quality gate passed.",
+          "recommendations": []
+        }
+      ],
+      "weakestCases": [],
+      "recommendations": []
+    },
+    {
+      "repo": {
+        "id": "werkzeug",
+        "name": "Werkzeug",
+        "repoUrl": "https://github.com/pallets/werkzeug.git",
+        "ref": "1b00618e787f40dfb21eba29caf8f8be7c8e1d93",
+        "cloneDepth": 1,
+        "language": "python",
+        "sizeClass": "medium",
+        "cases": [
+          {
+            "id": "routing-map-rule-match",
+            "mode": "context",
+            "contextBehavior": "multi_file_debug",
+            "task": "Debug Werkzeug routing when Map binds URL rules and Rule matching fails to route a method-specific endpoint.",
+            "expectedFiles": [
+              "src/werkzeug/routing/map.py",
+              "src/werkzeug/routing/rules.py",
+              "src/werkzeug/routing/matcher.py"
+            ],
+            "excludedFiles": [
+              "tests/",
+              "docs/",
+              "examples/"
+            ],
+            "budget": 850
+          }
+        ]
+      },
+      "rootPath": "/tmp/kairn-post-launch-fresh-matrix-after-routing/werkzeug",
+      "status": "passed",
+      "index": {
+        "files": 270,
+        "totalSizeBytes": 56131688,
+        "totalSizeMb": 53.53,
+        "softMaxSizeMb": 250,
+        "hardMaxSizeMb": 1000,
+        "graphEdges": 223,
+        "semanticChunks": 2205,
+        "lexicalTerms": 90000,
+        "tiers": {
+          "tier0": 180,
+          "tier1": 0,
+          "tier2": 5,
+          "tier3": 85,
+          "tier4": 0
+        }
+      },
+      "gates": {
+        "maxStateMb": 400,
+        "maxPrimeLatencyMs": 12000,
+        "maxRepoPreflightMs": 180000,
+        "expectedTopK": 5,
+        "requireSuppressionForWeakCases": true
+      },
+      "stateWithinLimit": true,
+      "elapsedMs": 2086,
+      "cases": [
+        {
+          "repoId": "werkzeug",
+          "caseId": "routing-map-rule-match",
+          "task": "Debug Werkzeug routing when Map binds URL rules and Rule matching fails to route a method-specific endpoint.",
+          "profile": "failure_debug",
+          "expectedFiles": [
+            "src/werkzeug/routing/map.py",
+            "src/werkzeug/routing/rules.py",
+            "src/werkzeug/routing/matcher.py"
+          ],
+          "returnedFiles": [
+            "src/werkzeug/routing/rules.py",
+            "src/werkzeug/routing/map.py",
+            "src/werkzeug/routing/matcher.py"
+          ],
+          "missingExpectedFiles": [],
+          "companionFilesReturned": [
+            "src/werkzeug/routing/map.py",
+            "src/werkzeug/routing/matcher.py"
+          ],
+          "missingCompanionFiles": [],
+          "excludedFiles": [
+            "tests/",
+            "docs/",
+            "examples/"
+          ],
+          "excludedHits": [],
+          "noisePrefixHits": [],
+          "sourceVsTestDecision": "source_first",
+          "companionReasons": {
+            "src/werkzeug/routing/map.py": [
+              "role match: routing/dependency pair",
+              "role match: search/printer output pair",
+              "role match: group/context/handler pair",
+              "role match: string/matcher pair",
+              "role path match: routing/dependency pair",
+              "role path match: group/context/handler pair",
+              "canonical role basename anchor: map",
+              "primary source role anchor",
+              "exact canonical role file",
+              "specific task term match: werkzeug, routing, map, url"
+            ],
+            "src/werkzeug/routing/matcher.py": [
+              "role match: routing/dependency pair",
+              "role match: search/printer output pair",
+              "role match: group/context/handler pair",
+              "role match: string/matcher pair",
+              "role path match: routing/dependency pair",
+              "role path match: group/context/handler pair",
+              "role path match: string/matcher pair",
+              "specific task term match: werkzeug, routing, rules, rule",
+              "specific path term match: werkzeug, routing",
+              "routing/dependency pair"
+            ]
+          },
+          "primeTokens": 474,
+          "primeLatencyMs": 565,
+          "timings": {
+            "initialInventoryMs": 0,
+            "findContextMs": 456,
+            "decisionMs": 2,
+            "formatMs": 1,
+            "totalPrimeMs": 565
+          },
+          "contextDecision": "shrink",
+          "taskFrame": "multi_file_debug",
+          "qualityScore": 100,
+          "minExpectedHits": 2,
+          "requiredCompanionHits": 1,
+          "companionGatePassed": true,
+          "expectedTopKPassed": true,
+          "excludedFilesAvoided": true,
+          "suppressionPassed": true,
+          "sourceQualityGatePassed": true,
+          "latencyPassed": true,
+          "qualityGatePassed": true,
+          "summary": "Preflight quality gate passed.",
+          "recommendations": []
+        }
+      ],
+      "weakestCases": [],
+      "recommendations": []
+    },
+    {
+      "repo": {
+        "id": "black",
+        "name": "Black",
+        "repoUrl": "https://github.com/psf/black.git",
+        "ref": "650983f7b32b15feeb0fa30c0ed1a8b6e2a9b28f",
+        "cloneDepth": 1,
+        "language": "python",
+        "sizeClass": "medium",
+        "cases": [
+          {
+            "id": "line-generator-comments",
+            "mode": "context",
+            "contextBehavior": "multi_file_debug",
+            "task": "Debug Black formatting when LineGenerator creates output lines and comment handling changes line splitting behavior.",
+            "expectedFiles": [
+              "src/black/linegen.py",
+              "src/black/lines.py",
+              "src/black/comments.py"
+            ],
+            "excludedFiles": [
+              "tests/",
+              "docs/",
+              "profiling/"
+            ],
+            "budget": 850
+          }
+        ]
+      },
+      "rootPath": "/tmp/kairn-post-launch-fresh-matrix-after-routing/black",
+      "status": "passed",
+      "index": {
+        "files": 460,
+        "totalSizeBytes": 57139304,
+        "totalSizeMb": 54.49,
+        "softMaxSizeMb": 250,
+        "hardMaxSizeMb": 1000,
+        "graphEdges": 284,
+        "semanticChunks": 3091,
+        "lexicalTerms": 90000,
+        "tiers": {
+          "tier0": 114,
+          "tier1": 0,
+          "tier2": 19,
+          "tier3": 327,
+          "tier4": 0
+        }
+      },
+      "gates": {
+        "maxStateMb": 400,
+        "maxPrimeLatencyMs": 12000,
+        "maxRepoPreflightMs": 180000,
+        "expectedTopK": 5,
+        "requireSuppressionForWeakCases": true
+      },
+      "stateWithinLimit": true,
+      "elapsedMs": 2229,
+      "cases": [
+        {
+          "repoId": "black",
+          "caseId": "line-generator-comments",
+          "task": "Debug Black formatting when LineGenerator creates output lines and comment handling changes line splitting behavior.",
+          "profile": "failure_debug",
+          "expectedFiles": [
+            "src/black/linegen.py",
+            "src/black/lines.py",
+            "src/black/comments.py"
+          ],
+          "returnedFiles": [
+            "src/black/lines.py",
+            "src/black/comments.py",
+            "src/black/linegen.py"
+          ],
+          "missingExpectedFiles": [],
+          "companionFilesReturned": [
+            "src/black/comments.py",
+            "src/black/linegen.py"
+          ],
+          "missingCompanionFiles": [],
+          "excludedFiles": [
+            "tests/",
+            "docs/",
+            "profiling/"
+          ],
+          "excludedHits": [],
+          "noisePrefixHits": [],
+          "sourceVsTestDecision": "source_first",
+          "companionReasons": {
+            "src/black/comments.py": [
+              "role match: search/printer output pair",
+              "role match: line/comment formatting pair",
+              "role match: statement/callback/field pair",
+              "role match: ORM unit-of-work/persistence pair",
+              "role path match: line/comment formatting pair",
+              "canonical role basename anchor: comment",
+              "primary source role anchor",
+              "specific task term match: black, formatting, line, lines",
+              "specific path term match: black, comment",
+              "search/printer output pair"
+            ],
+            "src/black/linegen.py": [
+              "role match: search/printer output pair",
+              "role match: line/comment formatting pair",
+              "role match: statement/callback/field pair",
+              "role match: ORM unit-of-work/persistence pair",
+              "role path match: line/comment formatting pair",
+              "specific task term match: black, formatting, line, generator",
+              "specific path term match: black",
+              "search/printer output pair",
+              "line/comment formatting pair",
+              "statement/callback/field pair"
+            ]
+          },
+          "primeTokens": 492,
+          "primeLatencyMs": 482,
+          "timings": {
+            "initialInventoryMs": 0,
+            "findContextMs": 372,
+            "decisionMs": 2,
+            "formatMs": 0,
+            "totalPrimeMs": 476
+          },
+          "contextDecision": "shrink",
+          "taskFrame": "multi_file_debug",
+          "qualityScore": 100,
+          "minExpectedHits": 2,
+          "requiredCompanionHits": 1,
+          "companionGatePassed": true,
+          "expectedTopKPassed": true,
+          "excludedFilesAvoided": true,
+          "suppressionPassed": true,
+          "sourceQualityGatePassed": true,
+          "latencyPassed": true,
+          "qualityGatePassed": true,
+          "summary": "Preflight quality gate passed.",
+          "recommendations": []
+        }
+      ],
+      "weakestCases": [],
+      "recommendations": []
+    },
+    {
+      "repo": {
+        "id": "ripgrep",
+        "name": "ripgrep",
+        "repoUrl": "https://github.com/BurntSushi/ripgrep.git",
+        "ref": "4519153e5e461527f4bca45b042fff45c4ec6fb9",
+        "cloneDepth": 1,
+        "language": "rust",
+        "sizeClass": "medium",
+        "cases": [
+          {
+            "id": "core-search-json-printer",
+            "mode": "context",
+            "contextBehavior": "multi_file_debug",
+            "task": "Debug ripgrep JSON output when core search emits matches and the printer formats paths and match events.",
+            "expectedFiles": [
+              "crates/core/search.rs",
+              "crates/printer/src/json.rs",
+              "crates/printer/src/path.rs"
+            ],
+            "excludedFiles": [
+              "tests/",
+              "benchs/",
+              "doc/"
+            ],
+            "budget": 900
+          }
+        ]
+      },
+      "rootPath": "/tmp/kairn-post-launch-fresh-matrix-after-routing/ripgrep",
+      "status": "failed",
+      "index": {
+        "files": 218,
+        "totalSizeBytes": 1347688,
+        "totalSizeMb": 1.29,
+        "softMaxSizeMb": 250,
+        "hardMaxSizeMb": 1000,
+        "graphEdges": 0,
+        "semanticChunks": 4,
+        "lexicalTerms": 1729,
+        "tiers": {
+          "tier0": 214,
+          "tier1": 0,
+          "tier2": 3,
+          "tier3": 1,
+          "tier4": 0
+        }
+      },
+      "gates": {
+        "maxStateMb": 400,
+        "maxPrimeLatencyMs": 12000,
+        "maxRepoPreflightMs": 180000,
+        "expectedTopK": 5,
+        "requireSuppressionForWeakCases": true
+      },
+      "stateWithinLimit": true,
+      "elapsedMs": 856,
+      "cases": [
+        {
+          "repoId": "ripgrep",
+          "caseId": "core-search-json-printer",
+          "task": "Debug ripgrep JSON output when core search emits matches and the printer formats paths and match events.",
+          "profile": "failure_debug",
+          "expectedFiles": [
+            "crates/core/search.rs",
+            "crates/printer/src/json.rs",
+            "crates/printer/src/path.rs"
+          ],
+          "returnedFiles": [
+            "crates/searcher/src/searcher/core.rs"
+          ],
+          "missingExpectedFiles": [
+            "crates/core/search.rs",
+            "crates/printer/src/json.rs",
+            "crates/printer/src/path.rs"
+          ],
+          "companionFilesReturned": [],
+          "missingCompanionFiles": [
+            "crates/printer/src/json.rs",
+            "crates/printer/src/path.rs"
+          ],
+          "excludedFiles": [
+            "tests/",
+            "benchs/",
+            "doc/"
+          ],
+          "excludedHits": [],
+          "noisePrefixHits": [],
+          "sourceVsTestDecision": "source_first",
+          "companionReasons": {},
+          "primeTokens": 694,
+          "primeLatencyMs": 269,
+          "timings": {
+            "initialInventoryMs": 0,
+            "findContextMs": 112,
+            "decisionMs": 2,
+            "relatedFilesMs": 47,
+            "findTestsMs": 47,
+            "expansionWallMs": 47,
+            "formatMs": 0,
+            "totalPrimeMs": 269
+          },
+          "contextDecision": "emit",
+          "taskFrame": "multi_file_debug",
+          "qualityScore": 100,
+          "minExpectedHits": 2,
+          "requiredCompanionHits": 1,
+          "companionGatePassed": false,
+          "expectedTopKPassed": false,
+          "excludedFilesAvoided": true,
+          "suppressionPassed": true,
+          "sourceQualityGatePassed": false,
+          "latencyPassed": true,
+          "qualityGatePassed": false,
+          "summary": "Preflight quality gate failed.",
+          "recommendations": [
+            "Expected file hits below minimum 2/3; missing from top 5: crates/core/search.rs, crates/printer/src/json.rs, crates/printer/src/path.rs",
+            "Companion file hits below minimum 1/2; missing from top 5: crates/printer/src/json.rs, crates/printer/src/path.rs"
+          ]
+        }
+      ],
+      "weakestCases": [
+        {
+          "repoId": "ripgrep",
+          "caseId": "core-search-json-printer",
+          "task": "Debug ripgrep JSON output when core search emits matches and the printer formats paths and match events.",
+          "profile": "failure_debug",
+          "expectedFiles": [
+            "crates/core/search.rs",
+            "crates/printer/src/json.rs",
+            "crates/printer/src/path.rs"
+          ],
+          "returnedFiles": [
+            "crates/searcher/src/searcher/core.rs"
+          ],
+          "missingExpectedFiles": [
+            "crates/core/search.rs",
+            "crates/printer/src/json.rs",
+            "crates/printer/src/path.rs"
+          ],
+          "companionFilesReturned": [],
+          "missingCompanionFiles": [
+            "crates/printer/src/json.rs",
+            "crates/printer/src/path.rs"
+          ],
+          "excludedFiles": [
+            "tests/",
+            "benchs/",
+            "doc/"
+          ],
+          "excludedHits": [],
+          "noisePrefixHits": [],
+          "sourceVsTestDecision": "source_first",
+          "companionReasons": {},
+          "primeTokens": 694,
+          "primeLatencyMs": 269,
+          "timings": {
+            "initialInventoryMs": 0,
+            "findContextMs": 112,
+            "decisionMs": 2,
+            "relatedFilesMs": 47,
+            "findTestsMs": 47,
+            "expansionWallMs": 47,
+            "formatMs": 0,
+            "totalPrimeMs": 269
+          },
+          "contextDecision": "emit",
+          "taskFrame": "multi_file_debug",
+          "qualityScore": 100,
+          "minExpectedHits": 2,
+          "requiredCompanionHits": 1,
+          "companionGatePassed": false,
+          "expectedTopKPassed": false,
+          "excludedFilesAvoided": true,
+          "suppressionPassed": true,
+          "sourceQualityGatePassed": false,
+          "latencyPassed": true,
+          "qualityGatePassed": false,
+          "summary": "Preflight quality gate failed.",
+          "recommendations": [
+            "Expected file hits below minimum 2/3; missing from top 5: crates/core/search.rs, crates/printer/src/json.rs, crates/printer/src/path.rs",
+            "Companion file hits below minimum 1/2; missing from top 5: crates/printer/src/json.rs, crates/printer/src/path.rs"
+          ]
+        }
+      ],
+      "recommendations": [
+        "core-search-json-printer: Expected file hits below minimum 2/3; missing from top 5: crates/core/search.rs, crates/printer/src/json.rs, crates/printer/src/path.rs; Companion file hits below minimum 1/2; missing from top 5: crates/printer/src/json.rs, crates/printer/src/path.rs"
+      ]
+    },
+    {
+      "repo": {
+        "id": "pytest",
+        "name": "pytest",
+        "repoUrl": "https://github.com/pytest-dev/pytest.git",
+        "ref": "46ea2a3cfc50ae42310c278387be49d165d71581",
+        "cloneDepth": 1,
+        "language": "python",
+        "sizeClass": "medium",
+        "cases": [
+          {
+            "id": "fixture-resolution-node",
+            "mode": "context",
+            "contextBehavior": "multi_file_debug",
+            "task": "Debug pytest fixture resolution when collected Python test nodes request fixture values during runner setup.",
+            "expectedFiles": [
+              "src/_pytest/fixtures.py",
+              "src/_pytest/python.py",
+              "src/_pytest/runner.py"
+            ],
+            "excludedFiles": [
+              "testing/",
+              "doc/",
+              "scripts/"
+            ],
+            "budget": 900
+          }
+        ]
+      },
+      "rootPath": "/tmp/kairn-post-launch-fresh-matrix-after-routing/pytest",
+      "status": "passed",
+      "index": {
+        "files": 664,
+        "totalSizeBytes": 65228904,
+        "totalSizeMb": 62.21,
+        "softMaxSizeMb": 250,
+        "hardMaxSizeMb": 1000,
+        "graphEdges": 872,
+        "semanticChunks": 4311,
+        "lexicalTerms": 90000,
+        "tiers": {
+          "tier0": 433,
+          "tier1": 0,
+          "tier2": 11,
+          "tier3": 220,
+          "tier4": 0
+        }
+      },
+      "gates": {
+        "maxStateMb": 400,
+        "maxPrimeLatencyMs": 12000,
+        "maxRepoPreflightMs": 180000,
+        "expectedTopK": 5,
+        "requireSuppressionForWeakCases": true
+      },
+      "stateWithinLimit": true,
+      "elapsedMs": 3003,
+      "cases": [
+        {
+          "repoId": "pytest",
+          "caseId": "fixture-resolution-node",
+          "task": "Debug pytest fixture resolution when collected Python test nodes request fixture values during runner setup.",
+          "profile": "failure_debug",
+          "expectedFiles": [
+            "src/_pytest/fixtures.py",
+            "src/_pytest/python.py",
+            "src/_pytest/runner.py"
+          ],
+          "returnedFiles": [
+            "src/_pytest/python.py",
+            "src/_pytest/fixtures.py",
+            "src/_pytest/runner.py"
+          ],
+          "missingExpectedFiles": [],
+          "companionFilesReturned": [
+            "src/_pytest/fixtures.py",
+            "src/_pytest/runner.py"
+          ],
+          "missingCompanionFiles": [],
+          "excludedFiles": [
+            "testing/",
+            "doc/",
+            "scripts/"
+          ],
+          "excludedHits": [],
+          "noisePrefixHits": [],
+          "sourceVsTestDecision": "source_first",
+          "companionReasons": {
+            "src/_pytest/fixtures.py": [
+              "role match: fixture/runner resolution pair",
+              "role match: interceptor/dispatch/adapter pair",
+              "role match: connection/pool pair",
+              "role match: statement/callback/field pair",
+              "role match: same fixture surface",
+              "role path match: fixture/runner resolution pair",
+              "role path match: same fixture surface",
+              "canonical role basename anchor: fixture",
+              "primary source role anchor",
+              "specific task term match: pytest, fixture, collected, nodes"
+            ],
+            "src/_pytest/runner.py": [
+              "role match: fixture/runner resolution pair",
+              "role match: interceptor/dispatch/adapter pair",
+              "role match: connection/pool pair",
+              "role match: statement/callback/field pair",
+              "role match: same fixture surface",
+              "role path match: fixture/runner resolution pair",
+              "canonical role basename anchor: runner",
+              "primary source role anchor",
+              "exact canonical role file",
+              "specific task term match: pytest, fixture, nodes, node"
+            ]
+          },
+          "primeTokens": 481,
+          "primeLatencyMs": 803,
+          "timings": {
+            "initialInventoryMs": 1,
+            "findContextMs": 699,
+            "decisionMs": 3,
+            "formatMs": 0,
+            "totalPrimeMs": 802
+          },
+          "contextDecision": "shrink",
+          "taskFrame": "multi_file_debug",
+          "qualityScore": 100,
+          "minExpectedHits": 2,
+          "requiredCompanionHits": 1,
+          "companionGatePassed": true,
+          "expectedTopKPassed": true,
+          "excludedFilesAvoided": true,
+          "suppressionPassed": true,
+          "sourceQualityGatePassed": true,
+          "latencyPassed": true,
+          "qualityGatePassed": true,
+          "summary": "Preflight quality gate passed.",
+          "recommendations": []
+        }
+      ],
+      "weakestCases": [],
+      "recommendations": []
+    }
+  ],
+  "totals": {
+    "repos": 5,
+    "passedRepos": 4,
+    "failedRepos": 1,
+    "skippedRepos": 0,
+    "cases": 5,
+    "qualityPassingCases": 4,
+    "sourceQualityPassingCases": 4,
+    "latencyPassingCases": 5,
+    "statePassingRepos": 5
+  },
+  "recommendations": [
+    "Some cases missed expected source files in the top results; improve general exact-source rescue before live testing.",
+    "Some multi-surface cases missed companion files; improve query-local companion routing before live testing.",
+    "Some cases failed non-retrieval gates such as latency or suppression; inspect weakest case recommendations before live-agent tests."
+  ]
+}

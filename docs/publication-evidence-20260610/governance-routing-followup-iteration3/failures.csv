@@ -1,0 +1,3 @@
+entry_id,kind,stage,status,tags,quality_passed,observed_tokens,baseline_tokens,saved_tokens,savings_rate,clean_passpass,token_regression,quality_drop,quality_rescue,harmful_assist,scope_violations,mcp_calls,mcp_useful_attribution,classifications,elapsed_ms
+proxy-swe-row-3-vuls,proxy,proxy,passed,swe-pro;proxy;clean-control;go,false,635,,,,false,false,false,false,false,1,0,0,scope_too_broad,8289
+proxy-swe-row-10-element-discovery,proxy,proxy,skipped,swe-pro;proxy;clean-control;typescript,false,,,,,false,false,false,false,false,0,0,0,campaign_paused,0

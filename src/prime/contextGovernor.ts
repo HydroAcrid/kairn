@@ -12,7 +12,9 @@ import type {
   FileRecord,
   FileRoleV2,
   PrimeQuality,
-  TaskFrame
+  RequiredSurface,
+  TaskFrame,
+  TaskShapeSignal
 } from "../types.js";
 import type { ResolvedPrimeProfile } from "./quality.js";
 
@@ -33,6 +35,8 @@ export type CandidateFeatures = {
 
 export type DecisionFeatures = {
   taskFrame: TaskFrame;
+  taskShapeSignal?: TaskShapeSignal;
+  requiredSurface: RequiredSurface;
   repoLanguageMix: Record<string, number>;
   candidates: CandidateFeatures[];
   confidenceGap: number;
@@ -44,6 +48,7 @@ export type DecisionFeatures = {
   verificationState: boolean;
   explicitTestTarget: boolean;
   productionOnlyEditIntent: boolean;
+  readOnlySourceRoutingIntent: boolean;
   expectedContextCost: number;
   estimatedSearchCost: number;
 };
@@ -118,11 +123,29 @@ export function applyContextGovernor(input: GovernorInput): ContextValueDecision
     modelPrediction
   });
   const featureSummary = summarizeDecisionFeatures(features);
+  const readOnlySourceCandidateCount = features.candidates.filter((candidate) =>
+    candidate.role === "production_source" ||
+    candidate.role === "public_api" ||
+    candidate.role === "route" ||
+    candidate.role === "entrypoint"
+  ).length;
+  const shouldUpgradeReadOnlyDelivery =
+    features.readOnlySourceRoutingIntent &&
+    readOnlySourceCandidateCount > 1 &&
+    input.baseDecision.recommendedDelivery !== "multi_file_directive" &&
+    (governed.action === "emit" || governed.action === "shrink" || input.baseDecision.action === "shrink");
 
-  if (governed.action === input.baseDecision.action && governed.action !== "request_evidence") {
+  if (
+    governed.action === input.baseDecision.action &&
+    governed.action !== "request_evidence" &&
+    !shouldUpgradeReadOnlyDelivery &&
+    !governed.directiveStyle
+  ) {
     return {
       ...input.baseDecision,
       taskFrame: features.taskFrame,
+      ...(features.taskShapeSignal ? { taskShapeSignal: features.taskShapeSignal } : {}),
+      requiredSurface: features.requiredSurface,
       modelPrediction,
       featureSummary
     };
@@ -130,6 +153,9 @@ export function applyContextGovernor(input: GovernorInput): ContextValueDecision
 
   const reasons = new Set(input.baseDecision.reasons);
   for (const reason of governed.reasons) reasons.add(reason);
+  if (shouldUpgradeReadOnlyDelivery) {
+    reasons.add("read-only source-routing task should use a compact source map instead of full context");
+  }
   return {
     ...input.baseDecision,
     score: governed.score,
@@ -141,12 +167,20 @@ export function applyContextGovernor(input: GovernorInput): ContextValueDecision
         ? input.baseDecision.recommendedDelivery ?? "full_prime"
         : governed.action === "shrink"
           ? input.baseDecision.recommendedDelivery === "multi_file_directive" ||
+            features.requiredSurface === "paired_contract" ||
+            features.requiredSurface === "feature_cluster" ||
+            (features.readOnlySourceRoutingIntent && readOnlySourceCandidateCount > 1) ||
             (features.taskFrame === "qna_source_grounded" && features.candidates.length > 1)
-            ? "multi_file_directive"
-            : "one_file_directive"
-          : "none",
+          ? "multi_file_directive"
+          : "one_file_directive"
+        : "none",
     reasons: [...reasons],
     taskFrame: features.taskFrame,
+    ...(features.taskShapeSignal ? { taskShapeSignal: features.taskShapeSignal } : {}),
+    requiredSurface: features.requiredSurface,
+    ...(governed.directiveStyle || shouldUpgradeReadOnlyDelivery || input.baseDecision.directiveStyle
+      ? { directiveStyle: governed.directiveStyle ?? (shouldUpgradeReadOnlyDelivery ? "source_map" : input.baseDecision.directiveStyle) }
+      : {}),
     ...(governed.evidenceRequest ? { evidenceRequest: governed.evidenceRequest } : {}),
     modelPrediction,
     featureSummary
@@ -174,8 +208,12 @@ export function buildDecisionFeatures(input: GovernorInput): DecisionFeatures {
     companionCount: input.companionCount ?? 0,
     companionTopScore: input.companionTopScore ?? 0
   });
+  const taskShapeSignal = inferTaskShapeSignal(input.task, taskFrame, input.baseDecision, candidates);
+  const requiredSurface = inferRequiredSurface(input.task, taskFrame, taskShapeSignal, input.baseDecision, candidates);
   return {
     taskFrame,
+    ...(taskShapeSignal ? { taskShapeSignal } : {}),
+    requiredSurface,
     repoLanguageMix,
     candidates,
     confidenceGap: Math.max(0, input.baseDecision.topGap),
@@ -187,6 +225,7 @@ export function buildDecisionFeatures(input: GovernorInput): DecisionFeatures {
     verificationState: taskFrame === "verification_cleanup" || /\b(verify|verification|test|typecheck|lint|build|cleanup|review diff)\b/i.test(input.task),
     explicitTestTarget: taskExplicitlyTargetsTests(input.task),
     productionOnlyEditIntent: taskHasProductionOnlyEditIntent(input.task),
+    readOnlySourceRoutingIntent: taskIsReadOnlySourceRouting(input.task),
     expectedContextCost: input.estimatedContextCost,
     estimatedSearchCost: estimateSearchCost(input.repoFileCount, taskFrame, candidates)
   };
@@ -221,7 +260,7 @@ export function classifyTaskFrameFromTask(task: string, profile: ResolvedPrimePr
   if (/\b(cleanup|clean up|review diff|final diff|summarize changes|verify|verification|typecheck|lint|build)\b/.test(text)) return "verification_cleanup";
   if (/\b(qna|question|answer|inspect|explain|read|open|show|which file|where is|what symbol|repository language|dataset language|source-grounded|source grounded)\b/.test(text)) return "qna_source_grounded";
   if ((profile === "failure_debug" || /\b(debug|failure|failing|regression|stack trace|traceback|exception)\b/.test(text)) &&
-    /\b(across|multiple files|multi[-\s]?file|companion|controller|repository|router|adapter|dispatch)\b/.test(text)) {
+    (hasMultiSurfaceDebugLanguage(text) || hasPromptDerivedMultiFileScope(task))) {
     return "multi_file_debug";
   }
   if (profile === "failure_debug" || /\b(debug|failure|failing|regression|stack trace|traceback|exception|error)\b/.test(text)) return "failure_first";
@@ -292,6 +331,7 @@ function chooseGovernedAction(input: {
   score: number;
   reasons: string[];
   evidenceRequest?: EvidenceRequest;
+  directiveStyle?: ContextValueDecision["directiveStyle"];
 } {
   const { baseDecision, features, deterministic, modelPrediction } = input;
   const hard = hardSafetyDecision(baseDecision, features, deterministic);
@@ -331,6 +371,12 @@ function hardSafetyDecision(
   prediction: ContextGovernorModelPrediction
 ): ReturnType<typeof chooseGovernedAction> | undefined {
   const top = features.candidates[0];
+  const hasSourceCandidate = features.candidates.some((candidate) =>
+    candidate.role === "production_source" ||
+    candidate.role === "public_api" ||
+    candidate.role === "route" ||
+    candidate.role === "entrypoint"
+  );
   if (features.staleIndexState && baseDecision.action === "emit") {
     return {
       action: "request_evidence",
@@ -345,6 +391,73 @@ function hardSafetyDecision(
       score: 0,
       reasons: ["governor found no usable source candidates"],
       ...(features.estimatedSearchCost >= 60 ? { evidenceRequest: evidenceRequestFor(features) } : {})
+    };
+  }
+  if (features.requiredSurface === "evidence_needed") {
+    return {
+      action: "request_evidence",
+      score: Math.min(baseDecision.score, 48),
+      reasons: ["task shape has weak source ownership; asking for an exact source signal"],
+      evidenceRequest: evidenceRequestFor(features, "exact_source")
+    };
+  }
+  if (
+    features.requiredSurface === "paired_contract" &&
+    baseDecision.action !== "suppress" &&
+    baseDecision.action !== "request_evidence"
+  ) {
+    return {
+      action: "shrink",
+      score: Math.min(Math.max(baseDecision.score, 56), 66),
+      reasons: [`${features.taskShapeSignal ?? "multi-surface"} task should use a compact paired-source directive`]
+    };
+  }
+  if (
+    features.taskShapeSignal === "converter_output" &&
+    features.requiredSurface === "single_file" &&
+    baseDecision.action !== "suppress" &&
+    baseDecision.action !== "request_evidence"
+  ) {
+    return {
+      action: "shrink",
+      score: Math.min(Math.max(baseDecision.score, 55), 64),
+      reasons: ["dominant converter-output implementation should use a single-file guardrail"],
+      directiveStyle: "scope_guardrail"
+    };
+  }
+  if (
+    features.requiredSurface === "feature_cluster" &&
+    baseDecision.action === "emit" &&
+    features.estimatedSearchCost >= 45
+  ) {
+    return {
+      action: "shrink",
+      score: Math.min(baseDecision.score, 66),
+      reasons: [`${features.taskShapeSignal ?? "feature-cluster"} task should use a compact owner map`]
+    };
+  }
+  if (isEstablishedOfficialExactSourceState(baseDecision, features)) {
+    return {
+      action: "suppress",
+      score: Math.min(baseDecision.score, 28),
+      reasons: ["official exact-source scope is already established; staying silent"],
+      directiveStyle: "scope_guardrail"
+    };
+  }
+  if (isNarrowOfficialExactSourcePatch(baseDecision, features)) {
+    return {
+      action: "shrink",
+      score: Math.min(Math.max(baseDecision.score, 55), 64),
+      reasons: ["narrow official exact-source patch should use a scope-only guardrail"],
+      directiveStyle: "scope_guardrail"
+    };
+  }
+  if (isAmbiguousFrontendPatch(baseDecision, features)) {
+    return {
+      action: "request_evidence",
+      score: Math.min(baseDecision.score, 48),
+      reasons: ["large frontend patch has no dominant source owner; asking for an exact source signal"],
+      evidenceRequest: evidenceRequestFor(features, "exact_source")
     };
   }
   if (
@@ -378,6 +491,18 @@ function hardSafetyDecision(
       action: "shrink",
       score: Math.max(baseDecision.score, 55),
       reasons: ["production-source-only task needs a tiny edit-scope guardrail"]
+    };
+  }
+  if (
+    features.readOnlySourceRoutingIntent &&
+    hasSourceCandidate &&
+    baseDecision.action !== "suppress" &&
+    baseDecision.action !== "request_evidence"
+  ) {
+    return {
+      action: "shrink",
+      score: Math.min(baseDecision.score, 64),
+      reasons: ["read-only source-routing task should use a compact source map instead of full context"]
     };
   }
   if (top && (top.role === "generated" || top.role === "vendor_dep") && baseDecision.action !== "suppress") {
@@ -528,15 +653,407 @@ function classifyTaskFrame(input: {
   if (/\b(cleanup|clean up|review diff|final diff|summarize changes|verify|verification|typecheck|lint|build)\b/.test(text)) return "verification_cleanup";
   if (/\b(qna|question|answer|inspect|explain|read|open|show|which file|where is|what symbol|repository language|dataset language|source-grounded|source grounded)\b/.test(text)) return "qna_source_grounded";
   if (input.decision.cheapSingleSource || input.decision.cheapExactSource) return "cheap_single_source";
-  if (input.decision.exactSourceHit || input.decision.sourceRescue || input.decision.canonicalSourceHit) return "source_rescue";
+  const explicitMultiSurface = hasMultiSurfaceDebugLanguage(text) || hasPromptDerivedMultiFileScope(input.task);
+  const strongSingleSource =
+    Boolean(input.decision.exactSourceHit || input.decision.sourceRescue || input.decision.canonicalSourceHit) &&
+    !explicitMultiSurface;
   if ((input.profile === "failure_debug" || /\b(debug|failure|failing|regression|stack trace|traceback|exception)\b/.test(text)) &&
-    (input.decision.multiSurfaceSignal || input.companionCount > 0 || input.companionTopScore >= 420 || /\b(across|multiple files|multi[-\s]?file|companion|controller|repository|router|adapter|dispatch)\b/.test(text))) {
+    (explicitMultiSurface || (!strongSingleSource && (input.decision.multiSurfaceSignal || input.companionCount > 0 || input.companionTopScore >= 420)))) {
     return "multi_file_debug";
   }
+  if (input.decision.exactSourceHit || input.decision.sourceRescue || input.decision.canonicalSourceHit) return "source_rescue";
   if (input.profile === "failure_debug" || /\b(debug|failure|failing|regression|stack trace|traceback|exception|error)\b/.test(text)) return "failure_first";
   if (input.decision.easyTaskSignal && input.candidates.length <= 1) return "cheap_single_source";
   if (input.candidates.length === 0 || input.decision.score < 38 || /\b(improve|better|stuff|things|general cleanup)\b/.test(text)) return "weak_signal";
   return "source_rescue";
+}
+
+function inferTaskShapeSignal(
+  task: string,
+  taskFrame: TaskFrame,
+  baseDecision: ContextValueDecision,
+  candidates: CandidateFeatures[]
+): TaskShapeSignal | undefined {
+  const normalized = normalizeText(task);
+  if (isGrpcErrorPolicyTask(normalized)) return "grpc_error_policy";
+  if (isTopicOrderingTask(normalized)) return "topic_ordering";
+  if (isHttpAuthPolicyTask(normalized)) return "http_auth_policy";
+  if (isSystemMetadataTask(normalized)) return "system_metadata";
+  if (isDatabaseFailoverTask(normalized)) return "database_failover";
+  if (isPluginActivationValidationTask(normalized)) return "plugin_activation_validation";
+  if (isExecutionStateMigrationTask(normalized)) return "execution_state_migration";
+  if (isDiscoveryConfigTask(normalized)) return "discovery_config";
+  if (hasDeprecationLifecycleScope(normalized)) return "lifecycle_policy";
+  if (isAccessPolicyTask(normalized)) return undefined;
+  if (isRequestBodyFormTask(normalized)) return "request_body_form";
+  if (isConverterOutputTask(normalized)) return "converter_output";
+  if (isNarrowPackageParserTask(normalized)) return "narrow_package_parser";
+  if (isBenchmarkGeneratorTask(normalized)) return "benchmark_generator";
+  if (isCollectionNameValidationTask(normalized)) return "collection_name_validation";
+  if (isCommandContractTask(normalized)) return "command_contract";
+  if (isPackageSourceMappingTask(normalized)) return "package_source_mapping";
+  if (isBackendParityTask(normalized, candidates)) return "backend_parity";
+  if (taskFrame === "official_patch" && hasPrimarySelectedTestCounterpartOwner(task, baseDecision, candidates)) return undefined;
+  if (isFrontendOwnershipTask(normalized, candidates)) {
+    return hasWeakFrontendOwnership(baseDecision, candidates) ? "ambiguous_frontend_ownership" : "frontend_ownership";
+  }
+  if (taskFrame === "official_patch" && isAmbiguousFrontendPatch(baseDecision, {
+    taskFrame,
+    repoLanguageMix: {},
+    candidates,
+    confidenceGap: baseDecision.topGap,
+    candidateEntropy: candidateEntropy(candidates),
+    ambiguity: candidateAmbiguity(candidates, baseDecision.topGap),
+    activeSourceState: false,
+    staleIndexState: false,
+    failureState: false,
+    verificationState: false,
+    explicitTestTarget: taskExplicitlyTargetsTests(task),
+    productionOnlyEditIntent: taskHasProductionOnlyEditIntent(task),
+    readOnlySourceRoutingIntent: taskIsReadOnlySourceRouting(task),
+    expectedContextCost: baseDecision.estimatedContextCost,
+    estimatedSearchCost: 0,
+    requiredSurface: "single_file"
+  })) {
+    return "ambiguous_frontend_ownership";
+  }
+  return undefined;
+}
+
+function inferRequiredSurface(
+  task: string,
+  taskFrame: TaskFrame,
+  taskShapeSignal: TaskShapeSignal | undefined,
+  baseDecision: ContextValueDecision,
+  candidates: CandidateFeatures[]
+): RequiredSurface {
+  if (taskShapeSignal === "ambiguous_frontend_ownership") return "evidence_needed";
+  if (taskShapeSignal === "converter_output" && hasDominantConverterImplementation(task, candidates, baseDecision)) {
+    return "single_file";
+  }
+  if (
+    taskShapeSignal === "command_contract" ||
+    taskShapeSignal === "converter_output" ||
+    taskShapeSignal === "discovery_config" ||
+    taskShapeSignal === "lifecycle_policy" ||
+    taskShapeSignal === "request_body_form" ||
+    taskShapeSignal === "package_source_mapping" ||
+    taskShapeSignal === "benchmark_generator" ||
+    taskShapeSignal === "topic_ordering" ||
+    taskShapeSignal === "collection_name_validation" ||
+    taskShapeSignal === "grpc_error_policy" ||
+    taskShapeSignal === "http_auth_policy" ||
+    taskShapeSignal === "system_metadata" ||
+    taskShapeSignal === "database_failover" ||
+    taskShapeSignal === "plugin_activation_validation" ||
+    taskShapeSignal === "execution_state_migration" ||
+    taskShapeSignal === "backend_parity"
+  ) return "paired_contract";
+  if (taskShapeSignal === "frontend_ownership") return "feature_cluster";
+  if (taskFrame === "official_patch" && hasPromptDerivedMultiFileScope(task)) return "paired_contract";
+  if (taskFrame === "official_patch") return "single_file";
+  if (
+    baseDecision.multiSurfaceSignal ||
+    baseDecision.companionSpecific ||
+    baseDecision.recommendedDelivery === "multi_file_directive"
+  ) {
+    return "feature_cluster";
+  }
+  return "single_file";
+}
+
+function hasDominantConverterImplementation(
+  task: string,
+  candidates: CandidateFeatures[],
+  baseDecision: ContextValueDecision
+): boolean {
+  const top = candidates[0];
+  if (!top || !isProductionCandidateRole(top.role)) return false;
+  if (!isConverterImplementationPath(top.path)) return false;
+  if (hasExplicitMultiFileScopeRequest(task)) return false;
+  const converterCandidates = candidates
+    .slice(0, 5)
+    .filter((candidate) => isProductionCandidateRole(candidate.role) && isConverterImplementationPath(candidate.path));
+  const commandCandidates = candidates
+    .slice(0, 5)
+    .filter((candidate) => candidate.role === "entrypoint" || isCommandEntrypointPath(candidate.path));
+  const clearlyDominant =
+    baseDecision.topGap >= 180 ||
+    top.score - (candidates[1]?.score ?? 0) >= 180 ||
+    (converterCandidates.length === 1 && commandCandidates.length === 0);
+  return clearlyDominant;
+}
+
+function isConverterImplementationPath(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  return /(^|\/)[^/]*(convert(or|er)|converter|convertor)[^/]*\.(go|ts|tsx|js|jsx|py|rb|rs|java|kt|cs|php)$/.test(normalized) ||
+    /\/(converter|convertor|converters|convertors)\//.test(normalized);
+}
+
+function isCommandEntrypointPath(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  return /(^|\/)(cmd|bin|cli|commands?|entrypoints?)\//.test(normalized) ||
+    /(^|\/)(main|cli|command|commands)\.(go|ts|tsx|js|jsx|py|rb|rs|java|kt|cs|php)$/.test(normalized);
+}
+
+function isCommandContractTask(normalized: string): boolean {
+  const directCommandTerms = /\b(command|commands|cli|flag|flags|option|options|args?|arguments|argv|exporter|sort|sorted|sorting|deterministic)\b/.test(normalized);
+  const runtimeOptionTerms =
+    /\b(startup|launch|runtime)\b.{0,80}\b(command|commands|cli|flag|flags|option|options|args?|arguments|argv|export(?:er|ers|ing)?|namespace|namespaces|variant|variants|sort|sorted|sorting|deterministic|setting|settings|configuration|config|schema)\b/.test(normalized) ||
+    /\b(command|commands|cli|flag|flags|option|options|args?|arguments|argv|export(?:er|ers|ing)?|namespace|namespaces|variant|variants|sort|sorted|sorting|deterministic|setting|settings|configuration|config|schema)\b.{0,80}\b(startup|launch|runtime)\b/.test(normalized);
+  const exportContractTerms =
+    /\bexport(?:er|ers|ing)?\b.{0,80}\b(json|ya?ml|csv|file|files|output|writer|serializer|command|cli)\b/.test(normalized) ||
+    /\b(json|ya?ml|csv|file|files|output|writer|serializer|command|cli)\b.{0,80}\bexport(?:er|ers|ing)?\b/.test(normalized);
+  const namespaceVariantContractTerms =
+    /\b(namespace|namespaces|variant|variants)\b/.test(normalized) &&
+    /\b(command|commands|cli|flag|flags|option|options|args?|arguments|argv|exporter|startup|launch|runtime)\b/.test(normalized);
+  const commandTerms = directCommandTerms || runtimeOptionTerms || exportContractTerms || namespaceVariantContractTerms;
+  const contractTerms = /\b(add|implement|support|honou?r|pass|apply|propagate|parse|wire|preserve|order|dedupe|stable|workaround|setting|configuration|schema)\b/.test(normalized);
+  const backendStorageOnly = /\b(storage|database|db|repository|persistence)\b/.test(normalized) &&
+    !/\b(command|cli|flag|args?|export|namespace|variant|sort|startup|runtime)\b/.test(normalized);
+  return commandTerms && contractTerms && !backendStorageOnly;
+}
+
+function isPackageSourceMappingTask(normalized: string): boolean {
+  if (isNarrowPackageParserTask(normalized)) return false;
+  return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|sourcerpm|src\.rpm|rpm|apk|alpine|redhat|rhel|centos)\b/.test(normalized) &&
+    /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?|parse installed packages|package information|package metadata)\b/.test(normalized);
+}
+
+function isNarrowPackageParserTask(normalized: string): boolean {
+  const rpmParserTerms =
+    /\b(sourcerpm|source rpm|src\.rpm|rpm filenames?|source filenames?|splitfilename|parseinstalledpackagesline|epoch)\b/.test(normalized);
+  const scannerTerms = /\b(scanner|package manager|installed packages?|package information|package metadata|redhat|rhel|centos|rpm)\b/.test(normalized);
+  const mappingTerms =
+    /\b(oval|vulnerability matching|binary packages? derive|source package associations?|map binary packages?|package index|upgradable)\b/.test(normalized);
+  return rpmParserTerms && scannerTerms && !mappingTerms;
+}
+
+function isBenchmarkGeneratorTask(normalized: string): boolean {
+  const benchmarkTerms = /\b(benchmark|benchmarks|benchmarking|performance benchmark|load test|request rate|requests per second|rps)\b/.test(normalized);
+  const generatorTerms = /\b(generator|generate|sequence|progression|linear|lower bound|upper bound|step size|minimum measurements|minimum window|getbenchmark|configuration|configurations)\b/.test(normalized);
+  return benchmarkTerms && generatorTerms;
+}
+
+function isTopicOrderingTask(normalized: string): boolean {
+  const topicTerms = /\b(topic|topics|category|categories)\b/.test(normalized);
+  const orderTerms = /\b(pin|pinned|reorder|ordering|order|position|relative order|target position)\b/.test(normalized);
+  const contractTerms = /\b(privileges?|moderator|admin|socket|client|no-op|category isolation|membership|sorted set)\b/.test(normalized);
+  return topicTerms && orderTerms && contractTerms;
+}
+
+function isCollectionNameValidationTask(normalized: string): boolean {
+  const collectionTerms = /\b(collection name|collection names|fqcn|fully qualified collection name|namespace\.collection|namespace|collection)\b/.test(normalized);
+  const validationTerms = /\b(validate|validation|valid|invalid|identifier|python keyword|reserved keyword|is_valid_collection_name|is_python_identifier)\b/.test(normalized);
+  return collectionTerms && validationTerms;
+}
+
+function isGrpcErrorPolicyTask(normalized: string): boolean {
+  const grpcTerms = /\b(grpc|gprc|rpc|status code|status codes|code canceled|code deadlineexceeded|deadline exceeded|unauthenticated|internal)\b/.test(normalized);
+  const contextTerms = /\b(context\.canceled|context canceled|cancelled context|canceled context|context cancellation|context timeout|deadline exceeded|context\.deadlineexceeded|timeout|cancelled|canceled)\b/.test(normalized);
+  const policyTerms = /\b(classif(?:y|ied|ication)|map|mapping|return|respond|propagate|convert|middleware|auth(?:entication)?|server)\b/.test(normalized);
+  return grpcTerms && contextTerms && policyTerms;
+}
+
+function isHttpAuthPolicyTask(normalized: string): boolean {
+  const authTerms = /\b(netrc|\.netrc|authorization header|bearer|basic auth|basic authentication|credentials)\b/.test(normalized);
+  const httpTerms = /\b(uri module|uri|open_url|request\.open|request|http|url|headers?)\b/.test(normalized);
+  const policyTerms = /\b(overwrite|overwrites|override|overrides|overriding|overridden|respect|ignore|use_netrc|netrc usage|parameter|forward|default|enabled|disabled|control)\b/.test(normalized);
+  return authTerms && httpTerms && policyTerms;
+}
+
+function isSystemMetadataTask(normalized: string): boolean {
+  const systemMetadataTerms =
+    /\b(dmi|dmifs|sysfs|\/sys\/class\/dmi\/id|product_name|product_serial|board_serial|chassis_asset_tag|os-release|\/etc\/os-release|pretty_name|version_id|distro|distribution|linux system metadata|system metadata|device metadata)\b/.test(normalized);
+  const extractionTerms = /\b(parse|parser|read|open|extract|retrieve|metadata|filesystem|fs\.fs|struct|field|trim|permission denied|partial errors?|malformed lines?)\b/.test(normalized);
+  return systemMetadataTerms && extractionTerms;
+}
+
+function isDatabaseFailoverTask(normalized: string): boolean {
+  const databaseTerms = /\b(database|databases|db)\b/.test(normalized);
+  const serviceTerms = /\b(service|services|server|servers|databaseserver|database server|database service)\b/.test(normalized);
+  const failoverTerms = /\b(ha|high availability|failover|candidate|candidates|retry|shuffle|randomi[sz]e|offline tunnel|tunnel outage|reachable|unreachable|deduplicate|dedupe|same-name|same name|hostid|serverid|proxy context|tsh db ls)\b/.test(normalized);
+  const proxyTerms = /\b(proxy|connect|dial|reverse tunnel|authorization|auth(?:orization)? context|list|display)\b/.test(normalized);
+  return databaseTerms && serviceTerms && failoverTerms && proxyTerms;
+}
+
+function isPluginActivationValidationTask(normalized: string): boolean {
+  const pluginTerms = /\b(plugin|plugins|plugin id|plugin identifier|plugin identifiers|package name)\b/.test(normalized);
+  const activationTerms = /\b(activate|activation|toggleactive|toggle active|deactivate|admin\.plugins\.toggleactive)\b/.test(normalized);
+  const validationTerms = /\b(validate|validation|valid|invalid|malformed|whitespace|special characters?|naming pattern|identifier|invalid-plugin-id)\b/.test(normalized);
+  return pluginTerms && activationTerms && validationTerms;
+}
+
+function isExecutionStateMigrationTask(normalized: string): boolean {
+  const stateTerms =
+    /\b(playiterator|play iterator|hoststate|host state|run_state|run state|fail_state|failure state|execution state|iterator state|state representation|strategy plugin|strategy plugins)\b/.test(normalized) ||
+    /\b(iteratingstates|failedstates|iterating_tasks|iterating_setup|failed_setup|failed_tasks)\b/.test(normalized);
+  const migrationTerms =
+    /\b(enum|enums|enumeration|intenum|intflag|public type|public representation|namespaced|legacy constants?|deprecated constants?|deprecation warning|backward compatibility|third-party|strategy\/linear|strategy\/__init__|metaclass|attribute access|string output)\b/.test(normalized);
+  const behaviorTerms =
+    /\b(preserve|redirect|emit|warn|compare|transition|assignment|bitwise|combinable|state descriptions?|readable state names?)\b/.test(normalized);
+  return stateTerms && migrationTerms && behaviorTerms;
+}
+
+function isRequestBodyFormTask(normalized: string): boolean {
+  const explicitFormSignal = /\b(unflatten|flattened|nested|indexed|parent keys?|form data|body data|request body|query string|query parameters?|duplicate (?:simple )?keys?|assignments?)\b/.test(normalized);
+  const requestQueryConflict =
+    /\b(post|form|body|request|endpoint|route|handler|list|lists)\b/.test(normalized) &&
+    /\b(query|params?|parameters?)\b/.test(normalized) &&
+    /\b(conflict|conflicts|merge|merged|handling|precedence|wins?|prefer|preferential)\b/.test(normalized);
+  return (explicitFormSignal || requestQueryConflict) &&
+    /\b(post|form|body|request|endpoint|route|handler|seeds?|defaults?)\b/.test(normalized);
+}
+
+function isConverterOutputTask(normalized: string): boolean {
+  if (isPackageSourceMappingTask(normalized)) return false;
+  const converterSignal =
+    /\b(convert|converts|converted|converter|converters|conversion|adapter|adapters)\b/.test(normalized) ||
+    /\b(trivy to vuls|trivy-to-vuls)\b/.test(normalized);
+  const outputSignal =
+    /\b(output|outputs|json|record|records|finding|findings|report|reports|contents?|cve|cves|severity|severities|debian|vuls|trivy)\b/.test(normalized);
+  return converterSignal && outputSignal;
+}
+
+function isDiscoveryConfigTask(normalized: string): boolean {
+  return countPresent(normalized, [
+    /\b(discovery|discover|autodiscovery|well[- ]?known|homeserver|server discovery)\b/,
+    /\b(authentication|delegated auth|delegated authentication|m authentication|issuer|authorization endpoint|registration endpoint|token endpoint|account)\b/,
+    /\b(validated config|validated configuration|server config|configuration|config|preserve|expose|optional object|public interface)\b/
+  ]) >= 2;
+}
+
+function isBackendParityTask(normalized: string, candidates: CandidateFeatures[]): boolean {
+  const collectionMutation =
+    /\b(list|lists|set|sets|sorted set|zset|hash|queue|collection|collections)\b/.test(normalized) &&
+    /\b(remove|removing|delete|deleting|del|discard|pull|pop|trim|add|insert|push)\b/.test(normalized);
+  const multiValue =
+    /\b(multiple|distinct|array|arrays|elements?|values?|batch|bulk|several)\b/.test(normalized) ||
+    /\[[^\]]+,[^\]]+\]/.test(normalized);
+  if (!collectionMutation || !multiValue) return false;
+  return candidates.some((candidate) => datastoreBackendSurface(candidate.path) !== undefined);
+}
+
+function hasPrimarySelectedTestCounterpartOwner(
+  task: string,
+  baseDecision: ContextValueDecision,
+  candidates: CandidateFeatures[]
+): boolean {
+  const counterpartBasenames = selectedTestCounterpartBasenames(task);
+  if (counterpartBasenames.size === 0) return false;
+  const primaryPath = baseDecision.primaryFile ?? candidates[0]?.path;
+  if (!primaryPath) return false;
+  const primaryBasename = sourceBasenameWithoutExtension(primaryPath);
+  if (!counterpartBasenames.has(primaryBasename)) return false;
+  const topScore = baseDecision.topScore ?? candidates[0]?.score ?? 0;
+  const topGap = baseDecision.topGap ?? 0;
+  return Boolean(baseDecision.sourceRescue || baseDecision.exactSourceHit || baseDecision.canonicalSourceHit || topScore >= 58 || topGap >= 18);
+}
+
+function selectedTestCounterpartBasenames(task: string): Set<string> {
+  const names = new Set<string>();
+  for (const match of task.matchAll(/\b[A-Za-z0-9_.@+~/-]+?\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)\b/g)) {
+    const filePath = normalizePath(match[0] ?? "").toLowerCase();
+    if (!isTestLikePromptPath(filePath)) continue;
+    const basename = sourceBasenameWithoutExtension(filePath)
+      .replace(/^(test|spec)[_-]/, "")
+      .replace(/[._-](test|spec)$/, "")
+      .replace(/[-_](test|spec)$/, "");
+    if (basename.length >= 3) names.add(basename);
+  }
+  return names;
+}
+
+function sourceBasenameWithoutExtension(filePath: string): string {
+  const basename = normalizePath(filePath).toLowerCase().split("/").at(-1) ?? "";
+  return basename
+    .replace(/\.d\.ts$/, "")
+    .replace(/\.(?:[cm]?[jt]sx?|mjs|cjs|pyi?|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|php|cs)$/, "");
+}
+
+function isTestLikePromptPath(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  return /(^|\/)(tests?|specs?|__tests__|testing)\//.test(normalized) ||
+    /(^|\/)src\/test\//.test(normalized) ||
+    /(^|\/)(test|spec)[_-]/.test(normalized.split("/").at(-1) ?? normalized) ||
+    /[._-](test|spec)\./.test(normalized.split("/").at(-1) ?? normalized) ||
+    /_test\.go$/.test(normalized);
+}
+
+function normalizePath(value: string): string {
+  return value.replaceAll("\\", "/").replace(/^\.?\//, "");
+}
+
+function datastoreBackendSurface(filePath: string): { prefix: string; backend: string; suffix: string } | undefined {
+  const parts = filePath.replaceAll("\\", "/").toLowerCase().split("/").filter(Boolean);
+  const backendNames = new Set(["mongo", "mongodb", "redis", "postgres", "postgresql", "mysql", "sqlite", "memory", "inmemory"]);
+  const rootNames = new Set(["database", "databases", "db", "storage", "stores", "backends"]);
+  for (let index = 0; index < parts.length - 1; index += 1) {
+    const part = parts[index];
+    if (!part || !backendNames.has(part)) continue;
+    const rootIndex = Math.max(0, index - 2);
+    const hasDatastoreRoot = parts.slice(rootIndex, index).some((segment) => rootNames.has(segment));
+    if (!hasDatastoreRoot) continue;
+    const suffix = parts.slice(index + 1).join("/");
+    if (!suffix) continue;
+    return {
+      prefix: parts.slice(0, index).join("/"),
+      backend: part,
+      suffix
+    };
+  }
+  return undefined;
+}
+
+function isFrontendOwnershipTask(normalized: string, candidates: CandidateFeatures[]): boolean {
+  const strongUiPrompt =
+    /\b(ui|frontend|component|components|screen|render|visual|badge|icon|panel|drawer|composer|voice|broadcast|room|message|notification|presence|playback|recording|liveness|live)\b/.test(normalized);
+  const weakUiPrompt =
+    /\b(view|views|route|routes|display)\b/.test(normalized);
+  if (!strongUiPrompt && isAccessPolicyTask(normalized)) return false;
+  const headerBodyUiPrompt =
+    /\b(header|body)\b/.test(normalized) &&
+    /\b(ui|frontend|component|components|view|views|screen|render|display|visual|badge|icon)\b/.test(normalized);
+  const uiPrompt = strongUiPrompt || headerBodyUiPrompt || weakUiPrompt;
+  if (!uiPrompt) return false;
+  return candidates.slice(0, 6).some((candidate) =>
+    candidate.role === "ui_surface" ||
+    candidate.role === "route" ||
+    candidate.language === "typescript" ||
+    candidate.language === "javascript"
+  );
+}
+
+function isAccessPolicyTask(normalized: string): boolean {
+  return countPresent(normalized, [
+    /\b(rbac|role rules?|roles?|permissions?|access control|authorization|authorisation)\b/,
+    /\b(namespace|namespaces|resources?|verbs?|get|list|watch|create|update|delete)\b/,
+    /\b(grant|allow|deny|denied|read-only|write|policy|rule|rules)\b/
+  ]) >= 2;
+}
+
+function hasWeakFrontendOwnership(baseDecision: ContextValueDecision, candidates: CandidateFeatures[]): boolean {
+  const uiCandidates = candidates.slice(0, 6).filter((candidate) =>
+    candidate.role === "ui_surface" ||
+    candidate.role === "route" ||
+    candidate.language === "typescript" ||
+    candidate.language === "javascript"
+  );
+  if (uiCandidates.length < 2) return false;
+  if (baseDecision.exactSourceHit || baseDecision.sourceRescue || baseDecision.canonicalSourceHit || baseDecision.exactPathMentioned) return false;
+  return baseDecision.topGap < 80 || candidateAmbiguity(candidates, baseDecision.topGap) >= 0.55;
+}
+
+function hasMultiSurfaceDebugLanguage(text: string): boolean {
+  return (
+    /\b(across|multiple files|multi[-\s]?file|companion|controller|repository|router|routing|adapter|dispatch|route matching|module resolution|module loading|loader|resolver|fixture resolution|runner setup|line splitting|comment handling|json output)\b/.test(text) ||
+    /\b(search|matches?)\b.*\b(printer|json|paths?|events?)\b/.test(text) ||
+    /\b(printer|json|paths?|events?)\b.*\b(search|matches?)\b/.test(text) ||
+    /\b(line generator|linegen|output lines?)\b.*\b(comments?|splitting|formatting)\b/.test(text) ||
+    /\b(comments?|splitting|formatting)\b.*\b(line generator|linegen|output lines?)\b/.test(text) ||
+    /\b(fixtures?|collected|nodes?)\b.*\b(runner|setup|resolution|values?)\b/.test(text) ||
+    /\b(runner|setup|resolution|values?)\b.*\b(fixtures?|collected|nodes?)\b/.test(text)
+  );
 }
 
 function evidenceRequestFor(features: DecisionFeatures, preferredKind?: EvidenceRequest["kind"]): EvidenceRequest {
@@ -569,6 +1086,8 @@ function summarizeDecisionFeatures(features: DecisionFeatures): ContextGovernorF
   const top = features.candidates[0];
   return {
     taskFrame: features.taskFrame,
+    ...(features.taskShapeSignal ? { taskShapeSignal: features.taskShapeSignal } : {}),
+    requiredSurface: features.requiredSurface,
     candidateCount: features.candidates.length,
     fileRoleCounts,
     repoLanguageMix: features.repoLanguageMix,
@@ -625,11 +1144,65 @@ function taskExplicitlyAllowsRole(taskFrame: TaskFrame, role: FileRoleV2): boole
   return false;
 }
 
+function isNarrowOfficialExactSourcePatch(baseDecision: ContextValueDecision, features: DecisionFeatures): boolean {
+  const top = features.candidates[0];
+  if (!top) return false;
+  if (features.taskFrame !== "official_patch") return false;
+  if (!features.productionOnlyEditIntent) return false;
+  if (features.explicitTestTarget) return false;
+  if (baseDecision.wrongContextRisk) return false;
+  if (baseDecision.recommendedDelivery === "multi_file_directive" || baseDecision.multiSurfaceSignal || baseDecision.companionSpecific) return false;
+  if (!isProductionCandidateRole(top.role)) return false;
+  const exactSourceSignal =
+    baseDecision.exactSourceHit ||
+    baseDecision.sourceRescue ||
+    baseDecision.canonicalSourceHit ||
+    baseDecision.exactPathMentioned ||
+    top.exactMatch;
+  if (!exactSourceSignal) return false;
+  const sourceCandidateCount = features.candidates.slice(0, 4).filter((candidate) => isProductionCandidateRole(candidate.role)).length;
+  const clearlyDominant = features.confidenceGap >= 80 || sourceCandidateCount <= 1 || features.candidates.length <= 2;
+  return clearlyDominant && features.ambiguity < 0.7;
+}
+
+function isEstablishedOfficialExactSourceState(baseDecision: ContextValueDecision, features: DecisionFeatures): boolean {
+  if (!features.activeSourceState) return false;
+  if (features.failureState || features.verificationState || features.staleIndexState) return false;
+  return isNarrowOfficialExactSourcePatch(baseDecision, features);
+}
+
+function isAmbiguousFrontendPatch(baseDecision: ContextValueDecision, features: DecisionFeatures): boolean {
+  if (features.taskFrame !== "official_patch" && features.taskFrame !== "source_rescue") return false;
+  if (baseDecision.action !== "emit") return false;
+  if (baseDecision.exactSourceHit || baseDecision.sourceRescue || baseDecision.canonicalSourceHit || baseDecision.exactPathMentioned) return false;
+  const topUiCandidates = features.candidates.slice(0, 5).filter((candidate) =>
+    candidate.role === "ui_surface" ||
+    candidate.role === "route" ||
+    candidate.language === "typescript" ||
+    candidate.language === "javascript"
+  );
+  if (topUiCandidates.length < 2) return false;
+  return features.ambiguity >= 0.55 || features.confidenceGap < 80;
+}
+
+function isProductionCandidateRole(role: FileRoleV2): boolean {
+  return role === "production_source" ||
+    role === "public_api" ||
+    role === "entrypoint" ||
+    role === "route" ||
+    role === "ui_surface" ||
+    role === "platform_variant" ||
+    role === "schema";
+}
+
 function taskExplicitlyTargetsTests(task: string): boolean {
   const normalized = normalizeText(task);
   if (
     /\bprefer production source over tests?\b/.test(normalized) ||
     /\bproduction source over tests?\b/.test(normalized) ||
+    /\bdo not edit tests?\b/.test(normalized) ||
+    /\btests? (?:are|is) verification targets? only\b/.test(normalized) ||
+    /\bselected (?:verification )?tests? from swe bench pro metadata\b/.test(normalized) ||
     /\btests? docs examples unless\b/.test(normalized) ||
     /\bclean up (?:any )?test artifacts?\b/.test(normalized) ||
     /\bcleanup (?:any )?test artifacts?\b/.test(normalized)
@@ -660,15 +1233,217 @@ export function taskHasProductionOnlyEditIntent(task: string): boolean {
   );
 }
 
+export function taskIsOfficialProductionPatchPrompt(task: string): boolean {
+  const normalized = normalizeText(task);
+  return /\bselected (?:verification )?tests? from swe bench pro metadata\b/.test(normalized) && taskHasProductionOnlyEditIntent(task);
+}
+
 export function hasExplicitMultiFileScopeRequest(task: string): boolean {
   const normalized = normalizeText(task);
-  return (
+  const explicitMultiFileScope =
     /\b(multiple|several|both|two|2)\s+(production\s+)?(files|sources|modules|components)\b/.test(normalized) ||
-    /\b(update|fix|change)\s+(both|all)\b/.test(normalized) ||
-    /\b(move|moved|relocate|relocated|relocation)\b.{0,120}\b(from|to|between)\b/.test(normalized) ||
-    /\bfrom\b.{0,80}\bto\b/.test(normalized) ||
-    /\b(public api|type declaration|interface|caller|callers|adapter|companion|coordinated)\b/.test(normalized)
+    /\b(update|fix|change)\s+(both|all)\s+(?:production\s+)?(files|sources|modules|components)\b/.test(normalized) ||
+    /\b(move|moved|relocate|relocated|relocation)\b.{0,120}\b(from|to|between)\b/.test(normalized);
+  if (taskIsOfficialProductionPatchPrompt(task)) {
+    return explicitMultiFileScope;
+  }
+  const interfaceExpansionRequested =
+    /\b(public api|type declaration|caller|callers|adapter|companion|coordinated)\b/.test(normalized) ||
+    (/\binterfaces?\b/.test(normalized) &&
+      !/\b(no new interfaces?|no interface changes?|interface notes?,? not necessarily edit targets)\b/.test(normalized));
+  return (
+    explicitMultiFileScope ||
+    interfaceExpansionRequested
   );
+}
+
+export function hasPromptDerivedMultiFileScope(task: string): boolean {
+  const normalized = normalizeText(task);
+  if (hasExplicitMultiFileScopeRequest(task)) return true;
+
+  const productionPathMentions = countProductionPathMentions(task);
+  if (productionPathMentions >= 2) return true;
+
+  const selectedTestPaths = countSelectedTestPathMentions(task);
+  if (selectedTestPaths >= 3) return true;
+
+  if (taskIsOfficialProductionPatchPrompt(task)) {
+    return (
+      hasPasswordStorageAndEncryptionScope(normalized) ||
+      hasTracingLifecycleScope(normalized) ||
+      hasTopicOrderingScope(normalized) ||
+      hasEntityMessageScope(normalized) ||
+      hasHttpContentScope(normalized) ||
+      hasAuthorQueryScope(normalized) ||
+      hasHsmKmsConfigScope(normalized) ||
+      hasConfigOptionRuntimeScope(normalized) ||
+      hasDeprecationLifecycleScope(normalized)
+    );
+  }
+
+  const requirementCount = countRequirementBullets(task);
+  const behaviorFamilies = countPromptBehaviorFamilies(normalized);
+  if (requirementCount >= 3 && behaviorFamilies >= 3) return true;
+  if (requirementCount >= 4 && behaviorFamilies >= 2 && selectedTestPaths >= 2) return true;
+
+  return (
+    hasPasswordStorageAndEncryptionScope(normalized) ||
+    hasTracingLifecycleScope(normalized) ||
+    hasTopicOrderingScope(normalized) ||
+    hasEntityMessageScope(normalized) ||
+    hasHttpContentScope(normalized) ||
+    hasAuthorQueryScope(normalized) ||
+    hasHsmKmsConfigScope(normalized) ||
+    hasConfigOptionRuntimeScope(normalized) ||
+    hasDeprecationLifecycleScope(normalized)
+  );
+}
+
+function countProductionPathMentions(task: string): number {
+  const mentions = new Set<string>();
+  const pathPattern = /\b(?:[A-Za-z0-9_.-]+\/)+(?:[A-Za-z0-9_.-]+)\.(?:[cm]?[jt]sx?|mjs|cjs|pyi?|go|java|rb|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|php|cs)\b/g;
+  for (const match of task.matchAll(pathPattern)) {
+    const file = match[0].replaceAll("\\", "/").toLowerCase();
+    if (/(^|\/)(tests?|testing|__tests__|specs?|docs?|examples?|fixtures?|generated|gen|node_modules|dist|build|coverage)\//.test(file)) {
+      continue;
+    }
+    mentions.add(file);
+  }
+  return mentions.size;
+}
+
+function countSelectedTestPathMentions(task: string): number {
+  const selectedTestsStart = task.search(/\bselected (?:verification )?tests? from swe[- ]bench pro metadata\b/i);
+  const text = selectedTestsStart >= 0 ? task.slice(selectedTestsStart) : task;
+  const testPaths = new Set<string>();
+  const testPathPattern = /\b(?:[A-Za-z0-9_.-]+\/)*(?:tests?|testing|__tests__|specs?)\/[A-Za-z0-9_./-]+\.(?:[cm]?[jt]sx?|py|go|java|rb|rs|php|cs)\b|\b[A-Za-z0-9_./-]+\.(?:test|spec)\.[cm]?[jt]sx?\b|\btest_[A-Za-z0-9_]+\.py\b/g;
+  for (const match of text.matchAll(testPathPattern)) {
+    testPaths.add(match[0].replaceAll("\\", "/").toLowerCase());
+  }
+  return testPaths.size;
+}
+
+function countRequirementBullets(task: string): number {
+  return task
+    .split(/\r?\n/)
+    .filter((line) => /^\s*(?:[-*]|\d+[.)])\s+\S/.test(line) && line.trim().length >= 24)
+    .length;
+}
+
+function countPromptBehaviorFamilies(normalized: string): number {
+  const families = [
+    /\b(parse|read|load|serialize|deserialize|normalize|convert|format|encode|decode)\w*\b/,
+    /\b(encrypt|hash|salt|ident|secret|password|credential|token)\w*\b/,
+    /\b(store|persist|reuse|cache|state|session|lifecycle|shutdown)\w*\b/,
+    /\b(route|dispatch|provider|exporter|controller|handler|manager|registry)\w*\b/,
+    /\b(query|database|model|entity|record|topic|category|tag|author|sort|order|pin|pinned)\w*\b/,
+    /\b(request|response|header|headers|content|range|download|upload|http)\w*\b/,
+    /\b(component|route|render|view|frontend|ui|layout|screen|client)\w*\b/
+  ];
+  return families.reduce((count, pattern) => count + (pattern.test(normalized) ? 1 : 0), 0);
+}
+
+function hasPasswordStorageAndEncryptionScope(normalized: string): boolean {
+  return (
+    /\b(password|secret|credential)\w*\b/.test(normalized) &&
+    /\b(encrypt|hash|salt|ident)\w*\b/.test(normalized) &&
+    /\b(read|write|store|persist|reuse|file)\w*\b/.test(normalized)
+  );
+}
+
+function hasTracingLifecycleScope(normalized: string): boolean {
+  return countPresent(normalized, [
+    /\b(tracing|trace|span|telemetry)\w*\b/,
+    /\b(provider|resource|exporter)\w*\b/,
+    /\b(shutdown|lifecycle|flush|close)\w*\b/
+  ]) >= 2 && /\b(resource|provider|exporter|shutdown|lifecycle)\w*\b/.test(normalized);
+}
+
+function hasTopicOrderingScope(normalized: string): boolean {
+  return countPresent(normalized, [
+    /\b(topic|topics)\w*\b/,
+    /\b(sort|order|ordering|comparator)\w*\b/,
+    /\b(pin|pinned|tag|tags|category|categories)\w*\b/
+  ]) >= 3;
+}
+
+function hasEntityMessageScope(normalized: string): boolean {
+  return countPresent(normalized, [
+    /\b(websocket|socket|message|messages)\w*\b/,
+    /\b(entity|entities|model|record)\w*\b/,
+    /\b(update|counter|queue|sequential|concurrent)\w*\b/
+  ]) >= 3;
+}
+
+function hasHttpContentScope(normalized: string): boolean {
+  return countPresent(normalized, [
+    /\b(http|request|response)\w*\b/,
+    /\b(header|headers|range|content|text|body)\w*\b/,
+    /\b(download|stream|error|status)\w*\b/
+  ]) >= 3;
+}
+
+function hasAuthorQueryScope(normalized: string): boolean {
+  return countPresent(normalized, [
+    /\b(author|name|honorific)\w*\b/,
+    /\b(date|year|birth|death)\w*\b/,
+    /\b(query|search|match|matching|filter)\w*\b/
+  ]) >= 3;
+}
+
+function hasHsmKmsConfigScope(normalized: string): boolean {
+  return (
+    countPresent(normalized, [
+      /\b(hsm|kms|softhsm|yubihsm|cloudhsm|pkcs11)\w*\b/,
+      /\b(test|tests|testing|backend|backends)\w*\b/,
+      /\b(config|configuration|environment|env|detect|availability|available)\w*\b/,
+      /\b(unified|central|centralize|centralized|reusable|duplicated|duplication|consistent)\w*\b/
+    ]) >= 3 &&
+    /\b(softhsm|yubihsm|cloudhsm|aws kms|gcp kms|pkcs11)\b/.test(normalized)
+  );
+}
+
+export function hasConfigOptionRuntimeScope(task: string): boolean {
+  const normalized = normalizeText(task);
+  const explicitConfigOption =
+    /\b(?:config(?:uration)?\s+)?(?:setting|settings|workaround|workarounds)\b/.test(normalized) ||
+    /\b(?:config(?:uration)?\s+)?options?\s+(?:named|called|must|should|can|to|that|which|for)\b/.test(normalized) ||
+    /\b(?:setting|option|workaround)\s+(?:named|called|must|should|can|to)\b/.test(normalized);
+  const schemaOrContract =
+    /\b(schema|accept|values?|valid values?|default|required|restart|metadata|define|add|support)\w*\b/.test(normalized);
+  const runtimeOrArgument =
+    /\b(runtime|argument|arguments|args?|apply|disable|enable|backend|qtwebengine|chromium|webengine)\w*\b/.test(normalized);
+  return explicitConfigOption && schemaOrContract && runtimeOrArgument;
+}
+
+export function hasDeprecationLifecycleScope(task: string): boolean {
+  const normalized = normalizeText(task);
+  return countPresent(normalized, [
+    /\b(deprecat\w*|deprecated aliases?|removed in version|removed_in_version|removed at date|removed_at_date|removed_in_date)\b/,
+    /\b(date|version|module|modules|parameter|parameters|alias|aliases)\b/,
+    /\b(validate|validation|internal error|warning|warnings|display|runtime)\b/
+  ]) >= 3;
+}
+
+function countPresent(value: string, patterns: RegExp[]): number {
+  return patterns.reduce((count, pattern) => count + (pattern.test(value) ? 1 : 0), 0);
+}
+
+export function taskIsReadOnlySourceRouting(task: string): boolean {
+  const normalized = normalizeText(task);
+  const asksForSourceMap =
+    /\b(identify|diagnose|find|return|list|name)\b.{0,80}\b(source|production source|files?|file paths?|paths?|ownership|owner|relevant files?)\b/.test(normalized) ||
+    /\bsource ownership\b/.test(normalized) ||
+    /\bsmallest production source files?\b/.test(normalized) ||
+    /\brelevant file paths?\b/.test(normalized);
+  const readOnly =
+    /\bdo not (?:edit|modify|change|touch|patch) files?\b/.test(normalized) ||
+    /\bread only\b/.test(normalized) ||
+    /\bno edits?\b/.test(normalized);
+  const patchIntent =
+    /\b(fix|patch|implement|update|change|modify|edit|repair)\b/.test(normalized) &&
+    !/\bdo not (?:edit|modify|change|touch|patch) files?\b/.test(normalized);
+  return asksForSourceMap && readOnly && !patchIntent;
 }
 
 function languageMix(files: FileRecord[]): Record<string, number> {

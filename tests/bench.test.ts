@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
 import { createDefaultBenchmarkSuite, loadBenchmarkSuite } from "../src/bench/suite.js";
 import { buildBenchmarkReport, compareBenchmarkReports, scoreBenchmarkCase } from "../src/bench/score.js";
+import { summarizeOfficialPairRows } from "../src/bench/officialPairAggregate.js";
 import {
   effectiveMatrixMinExpectedHits,
   effectiveMatrixRequiredCompanionHits,
@@ -13,8 +14,13 @@ import {
   runBenchmarkRepoMatrix
 } from "../src/bench/matrix.js";
 import { loadBenchmarkEnduranceSuite } from "../src/bench/enduranceSuite.js";
-import { enduranceInvariantForPrompt, runBenchmarkEndurance, runBenchmarkEnduranceRepeats } from "../src/bench/endurance.js";
-import { changedFiles, runAgentBenchmarkCase, runShellWithProcessGroupTimeout } from "../src/bench/agent.js";
+import {
+  enduranceInvariantForPrompt,
+  runBenchmarkEndurance,
+  runBenchmarkEnduranceRepeats,
+  selectMcpEnduranceKnownSource
+} from "../src/bench/endurance.js";
+import { changedFiles, runAgentBenchmarkCase, runShellWithProcessGroupTimeout, workspacePatch } from "../src/bench/agent.js";
 import { classifyAssistance } from "../src/bench/assistClassification.js";
 import { buildSweBenchProPilot, loadSweBenchProRows, writeSweBenchProPilot } from "../src/bench/sweBenchPro.js";
 import { buildSweAtlasQnaPilot, loadSweAtlasQnaRows, writeSweAtlasQnaPilot } from "../src/bench/sweAtlasQna.js";
@@ -27,6 +33,7 @@ import {
   validatePublicationPlan,
   type PublicationResultRow
 } from "../src/bench/publication.js";
+import { runCampaign, summarizeCampaign } from "../src/bench/campaign.js";
 import { evaluateDiffScopes, evaluateSourceInvariants } from "../src/bench/sourceValidation.js";
 import { inferInvariantStatement } from "../src/context/invariants.js";
 import { evaluateContextValue } from "../src/prime/contextValue.js";
@@ -35,14 +42,25 @@ import {
   classifyFileRoleV2,
   classifyTaskFrameFromTask,
   linearModelPrediction,
-  buildDecisionFeatures
+  buildDecisionFeatures,
+  hasExplicitMultiFileScopeRequest,
+  hasPromptDerivedMultiFileScope,
+  taskIsReadOnlySourceRouting
 } from "../src/prime/contextGovernor.js";
 import { formatShrunkPrimeContext, withTinyDirectivePrime } from "../src/prime/formatPrime.js";
 import { evaluatePrimeQuality, resolvePrimeProfile } from "../src/prime/quality.js";
 import { hybridSearch } from "../src/retrieval/hybridRetrieval.js";
 import { findCompanionCandidates } from "../src/retrieval/companions.js";
+import { decideEditScope } from "../src/scope/editScope.js";
 import { createFixtureRepo } from "./helpers.js";
-import type { ContextPrime, FileRecord, HybridScoredResult, SemanticChunkRecord } from "../src/types.js";
+import type {
+  ContextPrime,
+  FileRecord,
+  HybridScoredResult,
+  SemanticChunkRecord,
+  SessionLedgerSummary,
+  SymbolRecord
+} from "../src/types.js";
 
 const CLI = ["tsx", "src/cli.ts"];
 
@@ -138,11 +156,14 @@ describe("benchmark suite and scoring", () => {
       editScope: {
         initialEditFiles: ["src/PosthogAnalytics.ts"],
         readOnlyFiles: ["test/PosthogAnalytics-test.ts"],
-        allowedExpansionTriggers: ["a failing check names another production source file"],
+        allowedExpansionTriggers: [
+          "do not expand edit scope in this turn; if another source file seems necessary, keep it read-only and report the missing evidence instead of editing it"
+        ],
         forbiddenEditPatterns: ["test/", "docs/", "generated/"],
         scopeConfidence: "high",
         scopeSource: "official_harness",
         reason: "benchmark or official task metadata supplied allowed production patch files",
+        strictBoundary: true,
         dynamic: true
       }
     };
@@ -151,6 +172,8 @@ describe("benchmark suite and scoring", () => {
 
     expect(tiny.content).toContain("src/PosthogAnalytics.ts");
     expect(tiny.content).toContain("Edit scope:");
+    expect(tiny.content).toContain("Hard boundary");
+    expect(tiny.content).toContain("report the missing evidence");
     expect(tiny.content).toContain("Read-only verification context: test/PosthogAnalytics-test.ts");
     expect(tiny.content).not.toContain("Additional context Additional context Additional context Additional context");
   });
@@ -377,6 +400,7 @@ describe("benchmark suite and scoring", () => {
       const pilot = buildSweBenchProPilot({ rows, limit: 1 });
       const outputs = writeSweBenchProPilot({ pilot, outDir: path.join(root, "out") });
 
+      expect(pilot.suite.cases[0]?.id).toBe("instance_pallets__flask-demo");
       expect(pilot.suite.cases[0]?.expectedFiles).toEqual(["src/flask/app.py", "src/flask/helpers.py"]);
       expect(pilot.suite.cases[0]?.requiredTouchedFiles).toEqual(["src/flask/app.py", "src/flask/helpers.py"]);
       expect(pilot.suite.cases[0]?.allowedDiffScopes?.map((scope) => scope.file)).toEqual(["src/flask/app.py", "src/flask/helpers.py"]);
@@ -386,9 +410,12 @@ describe("benchmark suite and scoring", () => {
       expect(pilot.suite.cases[0]?.officialEvaluation?.kairnMetricEligible).toBe(true);
       expect(pilot.summary.evaluators.patch_verification).toBe(1);
       expect(pilot.suite.cases[0]?.agentPrompt).not.toContain("src/flask/app.py");
+      expect(pilot.suite.cases[0]?.agentPrompt).toContain("These tests are verification targets only; do not edit tests");
+      expect(pilot.suite.cases[0]?.agentPrompt).toContain("Fix the issue in production source only");
       expect(pilot.suite.cases[0]?.seed?.setupPatch).toBeUndefined();
       expect(pilot.suite.cases[0]?.seed?.setupCommands?.[0]).toContain("git fetch origin");
       expect(pilot.suite.cases[0]?.seed?.setupCommands?.at(-1)).toContain("kairn-seed-tests");
+      expect(pilot.suite.cases[0]?.seed?.setupCommands?.at(-1)).toContain("fs.existsSync");
       expect(pilot.suite.cases[0]?.seed?.testCommand).toBeUndefined();
       expect(pilot.matrix.repos[0]?.cases[0]?.mode).toBe("context");
       expect(pilot.matrix.repos[0]?.cases[0]?.contextBehavior).toBe("multi_file_debug");
@@ -399,6 +426,43 @@ describe("benchmark suite and scoring", () => {
       expect(fs.existsSync(outputs.suitePath)).toBe(true);
       expect(fs.existsSync(outputs.matrixPath)).toBe(true);
       expect(fs.existsSync(outputs.rawRowsPath)).toBe(true);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves official SWE-Pro instance id casing in live suite cases", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-swe-pro-id-case-"));
+    try {
+      const rowsPath = path.join(root, "rows.jsonl");
+      const rowId = "instance_NodeBB__NodeBB-05f2236193f407cf8e2072757fbd6bb170bc13f0-vf2cf3cbd463b7ad942381f1c6d077626485a1e9e";
+      fs.writeFileSync(
+        rowsPath,
+        `${JSON.stringify({
+          repo: "NodeBB/NodeBB",
+          instance_id: rowId,
+          base_commit: "0123456789012345678901234567890123456789",
+          patch: [
+            "diff --git a/src/topics/sorted.js b/src/topics/sorted.js",
+            "--- a/src/topics/sorted.js",
+            "+++ b/src/topics/sorted.js",
+            "@@ -1 +1 @@",
+            "-return recent",
+            "+return old"
+          ].join("\n"),
+          test_patch: "diff --git a/test/topics.js b/test/topics.js\n--- a/test/topics.js\n+++ b/test/topics.js",
+          problem_statement: "Support old topic sorting.",
+          repo_language: "js",
+          before_repo_set_cmd: "",
+          selected_test_files_to_run: "[\"test/topics.js\"]"
+        })}\n`
+      );
+
+      const rows = loadSweBenchProRows(rowsPath);
+      const pilot = buildSweBenchProPilot({ rows, limit: 1 });
+
+      expect(pilot.suite.cases[0]?.id).toBe(rowId);
+      expect(pilot.suite.cases[0]?.id).not.toBe(rowId.toLowerCase());
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -443,7 +507,57 @@ describe("benchmark suite and scoring", () => {
       const pilot = buildSweBenchProPilot({ rows, limit: 1 });
       expect(pilot.summary.languages.go).toBe(1);
       expect(pilot.suite.cases[0]?.expectedFiles).toEqual(["contrib/trivy/pkg/converter.go"]);
-      expect(pilot.suite.cases[0]?.agentPrompt).toContain("Selected tests from SWE-Bench Pro metadata: TestParse");
+      expect(pilot.suite.cases[0]?.agentPrompt).toContain("Selected verification tests from SWE-Bench Pro metadata: TestParse");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("filters noisy SWE-Pro selected tests before adding them to prompts", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-swe-pro-selected-tests-"));
+    try {
+      const rowsPath = path.join(root, "rows.jsonl");
+      fs.writeFileSync(
+        rowsPath,
+        `${JSON.stringify({
+          repo: "element-hq/element-web",
+          instance_id: "instance_element-noisy-selected-tests",
+          base_commit: "0123456789012345678901234567890123456789",
+          patch: [
+            "diff --git a/src/components/views/right_panel/UserInfo.tsx b/src/components/views/right_panel/UserInfo.tsx",
+            "--- a/src/components/views/right_panel/UserInfo.tsx",
+            "+++ b/src/components/views/right_panel/UserInfo.tsx",
+            "@@ -1 +1 @@",
+            "-onClick={kick}",
+            "+onClick={isPending ? undefined : kick}"
+          ].join("\n"),
+          test_patch: "",
+          problem_statement: "Admin action buttons Kick, Ban, and Mute trigger multiple times on rapid clicks in the user info panel.",
+          requirements: "Disable admin action controls while an action is pending.",
+          repo_language: "ts",
+          fail_to_pass: JSON.stringify([
+            "test/audio/VoiceMessageRecording-test.ts",
+            "test/components/views/right_panel/UserInfo-test.tsx",
+            "test/components/views/rooms/RoomPreviewBar-test.ts"
+          ]),
+          selected_test_files_to_run: JSON.stringify([
+            "test/audio/VoiceMessageRecording-test.ts",
+            "test/components/views/right_panel/UserInfo-test.tsx",
+            "test/components/views/rooms/RoomPreviewBar-test.ts"
+          ]),
+          before_repo_set_cmd: ""
+        })}\n`
+      );
+
+      const rows = loadSweBenchProRows(rowsPath);
+      const pilot = buildSweBenchProPilot({ rows, limit: 1 });
+      const prompt = pilot.suite.cases[0]?.agentPrompt ?? "";
+
+      expect(prompt).toContain("Selected verification tests from SWE-Bench Pro metadata");
+      expect(prompt).toContain("UserInfo-test.tsx");
+      expect(prompt).not.toContain("VoiceMessageRecording-test.ts");
+      expect(prompt).not.toContain("RoomPreviewBar-test.ts");
+      expect(prompt).toContain("These tests are verification targets only; do not edit tests");
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -801,6 +915,208 @@ describe("benchmark suite and scoring", () => {
     }
   });
 
+  it("summarizes campaign rows from raw artifacts after separate only-runs", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-campaign-raw-summary-"));
+    try {
+      const manifestPath = path.resolve("examples/bench/campaign-fixtures/mock-live-campaign.json");
+      const outDir = path.join(root, "out");
+
+      await runCampaign({
+        manifestPath,
+        outDir,
+        stage: "live",
+        only: "mock-live-a",
+        parallel: 1
+      });
+      await runCampaign({
+        manifestPath,
+        outDir,
+        stage: "live",
+        only: "mock-live-b",
+        parallel: 1
+      });
+
+      const report = summarizeCampaign(outDir);
+
+      expect(report.rows.map((row) => row.entryId)).toEqual(["mock-live-a", "mock-live-b"]);
+      expect(report.aggregate.cleanPassPassRows).toBe(2);
+      expect(report.aggregate.medianSavedTokens).toBe(300);
+      expect(fs.readFileSync(path.join(outDir, report.outputs.resultsCsvPath), "utf8")).toContain("mock-live-b");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("counts repeated incomplete quality rows for pause rules", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-campaign-neutral-incomplete-"));
+    try {
+      const outDir = path.join(root, "out");
+      const rawDir = path.join(outDir, "raw");
+      fs.mkdirSync(rawDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(outDir, "campaign-manifest.json"),
+        JSON.stringify({
+          id: "neutral-incomplete-test",
+          name: "Neutral Incomplete Test",
+          pauseRules: {
+            maxRepeatedFailureClass: 1
+          },
+          entries: [
+            { id: "row-a", kind: "proof", suite: "suite-a.json" },
+            { id: "row-b", kind: "proof", suite: "suite-b.json" }
+          ]
+        })
+      );
+      for (const entryId of ["row-a", "row-b"]) {
+        fs.writeFileSync(
+          path.join(rawDir, `${entryId}.json`),
+          JSON.stringify({
+            entryId,
+            kind: "proof",
+            stage: "live",
+            status: "passed",
+            tags: [],
+            startedAt: new Date(0).toISOString(),
+            endedAt: new Date(0).toISOString(),
+            artifactPath: path.join(rawDir, `${entryId}.json`),
+            commands: [],
+            classifications: ["quality_incomplete"],
+            workspacePaths: [],
+            metrics: {
+              qualityPassed: false,
+              cleanPassPass: false,
+              tokenRegression: false,
+              qualityDrop: false,
+              qualityRescue: false,
+              harmfulAssist: false,
+              scopeViolations: 0,
+              mcpCalls: 0,
+              mcpUsefulAttribution: 0,
+              elapsedMs: 1
+            }
+          })
+        );
+      }
+
+      const report = summarizeCampaign(outDir);
+
+      expect(report.rows.map((row) => row.classifications)).toEqual(["quality_incomplete", "quality_incomplete"]);
+      expect(report.aggregate.repeatedFailureClasses).toEqual([
+        { classification: "quality_incomplete", count: 2, examples: ["row-a", "row-b"] }
+      ]);
+      expect(report.paused).toBe(true);
+      expect(report.pauseReasons).toEqual(["repeated failure class: quality_incomplete"]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("flags proxy expected-file misses as wrong surface risk", async () => {
+    const root = createFixtureRepo();
+    const outRoot = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-campaign-proxy-surface-"));
+    try {
+      fs.writeFileSync(
+        path.join(root, "src/missing-required.ts"),
+        "export function requiredCompanionSurface() { return 'required'; }\n"
+      );
+      const manifestPath = path.join(outRoot, "campaign-manifest.json");
+      const outDir = path.join(outRoot, "out");
+      fs.writeFileSync(
+        manifestPath,
+        JSON.stringify({
+          id: "proxy-surface-test",
+          name: "Proxy Surface Test",
+          entries: [
+            {
+              id: "proxy-app-partial",
+              kind: "proxy",
+              root,
+              task: "Fix renderDashboard in src/app.ts without changing unrelated files.",
+              expectedFiles: ["src/app.ts", "src/missing-required.ts"],
+              budget: 500
+            }
+          ]
+        })
+      );
+
+      const report = await runCampaign({
+        manifestPath,
+        outDir,
+        stage: "proxy",
+        parallel: 1
+      });
+      const row = report.rows[0];
+      const artifact = report.artifacts[0];
+      const proxyReport = artifact?.report as { expectedFileCount?: number; expectedFilesMatchedCount?: number } | undefined;
+
+      expect(row?.classifications).toContain("wrong_surface_risk");
+      expect(row?.qualityPassed).toBe(false);
+      expect(report.paused).toBe(true);
+      expect(report.pauseReasons).toContain("proxy quality gate failed");
+      expect(proxyReport?.expectedFileCount).toBe(2);
+      expect(proxyReport?.expectedFilesMatchedCount).toBeLessThan(2);
+      expect(fs.readFileSync(path.join(outDir, "failures.csv"), "utf8")).toContain("proxy-app-partial");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+      fs.rmSync(outRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("allows proxy expected-file misses up to the configured minimum hit threshold", async () => {
+    const root = createFixtureRepo();
+    const outRoot = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-campaign-proxy-min-hits-"));
+    try {
+      fs.writeFileSync(
+        path.join(root, "src/missing-required.ts"),
+        "export function requiredCompanionSurface() { return 'required'; }\n"
+      );
+      const manifestPath = path.join(outRoot, "campaign-manifest.json");
+      const outDir = path.join(outRoot, "out");
+      fs.writeFileSync(
+        manifestPath,
+        JSON.stringify({
+          id: "proxy-min-hits-test",
+          name: "Proxy Min Hits Test",
+          entries: [
+            {
+              id: "proxy-app-min-hit",
+              kind: "proxy",
+              root,
+              task: "Fix renderDashboard in src/app.ts without changing unrelated files.",
+              expectedFiles: ["src/app.ts", "src/missing-required.ts"],
+              minExpectedHits: 1,
+              budget: 500
+            }
+          ]
+        })
+      );
+
+      const report = await runCampaign({
+        manifestPath,
+        outDir,
+        stage: "proxy",
+        parallel: 1
+      });
+      const row = report.rows[0];
+      const artifact = report.artifacts[0];
+      const proxyReport = artifact?.report as {
+        expectedFileCount?: number;
+        expectedFilesMatchedCount?: number;
+        minExpectedHits?: number;
+      } | undefined;
+
+      expect(row?.classifications).not.toContain("wrong_surface_risk");
+      expect(row?.qualityPassed).toBe(true);
+      expect(report.paused).toBe(false);
+      expect(proxyReport?.expectedFileCount).toBe(2);
+      expect(proxyReport?.minExpectedHits).toBe(1);
+      expect(proxyReport?.expectedFilesMatchedCount).toBeGreaterThanOrEqual(1);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+      fs.rmSync(outRoot, { recursive: true, force: true });
+    }
+  });
+
   it("accepts publication v2 official and context-pilot entries in dry-run mode", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-publication-v2-dry-run-"));
     try {
@@ -951,6 +1267,131 @@ describe("benchmark suite and scoring", () => {
     ).toBe("Session.send must call resolve_redirects when allow_redirects is true.");
   });
 
+  it("prefers verified or mentioned MCP endurance source over stale MCP fanout", () => {
+    const ledger: SessionLedgerSummary = {
+      sessionId: "task_click",
+      events: 8,
+      currentPhase: "implementation",
+      recommendedFiles: ["src/click/_termui_impl.py"],
+      shownFiles: ["src/click/_termui_impl.py"],
+      agentMentionedFiles: ["src/click/_compat.py"],
+      agentTouchedFiles: [],
+      repeatedFilesAvoided: 0,
+      repeatedSnippetsAvoided: 0,
+      recommendedFilesUsed: [],
+      recommendedFilesLaterUsed: [],
+      recommendedFilesLaterTouched: [],
+      verificationPasses: 0,
+      verificationFailures: 0,
+      latestVerification: "none",
+      repeatedlyTouchedFiles: [],
+      unresolvedFailures: 0,
+      workingSet: {
+        sessionId: "task_click",
+        currentPhase: "implementation",
+        activeFiles: ["src/click/_compat.py", "src/click/_termui_impl.py"],
+        recentlyTouchedFiles: [],
+        shownFiles: ["src/click/_termui_impl.py"],
+        ignoredRecommendedFiles: [],
+        ruledOutFiles: [],
+        staleFiles: [],
+        unresolvedFailure: false,
+        reconsiderableShownFiles: [],
+        currentInvariant: {
+          statement: "Diagnose the Click compatibility regression where ASCII encoding should fall back to UTF-8.",
+          filePath: "src/click/_termui_impl.py",
+          confidence: 90
+        },
+        openRisks: []
+      },
+      recentEvents: [
+        {
+          sessionId: "task_click",
+          kind: "agent_file_mentioned",
+          turnId: "diagnose",
+          filePath: "src/click/_compat.py",
+          contentHash: "",
+          tokenEstimate: 0,
+          source: "agent",
+          summary: "Agent mentioned src/click/_compat.py.",
+          metadata: {},
+          createdAt: "2026-06-12T00:00:00.000Z"
+        }
+      ]
+    };
+
+    expect(selectMcpEnduranceKnownSource(ledger, ["src/click/_termui_impl.py"])).toBe("src/click/_compat.py");
+  });
+
+  it("does not promote recently touched files while MCP endurance failures remain unresolved", () => {
+    const ledger: SessionLedgerSummary = {
+      sessionId: "task_click",
+      events: 12,
+      currentPhase: "debugging",
+      recommendedFiles: ["src/click/_compat.py"],
+      shownFiles: ["src/click/_compat.py"],
+      agentMentionedFiles: ["src/click/_compat.py"],
+      agentTouchedFiles: ["src/click/_termui_impl.py"],
+      repeatedFilesAvoided: 0,
+      repeatedSnippetsAvoided: 0,
+      recommendedFilesUsed: [],
+      recommendedFilesLaterUsed: [],
+      recommendedFilesLaterTouched: [],
+      verificationPasses: 0,
+      verificationFailures: 1,
+      latestVerification: "failed",
+      repeatedlyTouchedFiles: [],
+      unresolvedFailures: 1,
+      workingSet: {
+        sessionId: "task_click",
+        currentPhase: "debugging",
+        activeFiles: ["src/click/_termui_impl.py", "src/click/_compat.py"],
+        recentlyTouchedFiles: ["src/click/_termui_impl.py"],
+        shownFiles: ["src/click/_compat.py"],
+        ignoredRecommendedFiles: [],
+        ruledOutFiles: [],
+        staleFiles: [],
+        unresolvedFailure: true,
+        reconsiderableShownFiles: ["src/click/_compat.py"],
+        lastFailure: {
+          turnId: "fix-source",
+          filePath: "src/click/_termui_impl.py",
+          summary: "Verification failed for endurance turn fix-source.",
+          createdAt: "2026-06-12T00:01:00.000Z"
+        },
+        openRisks: ["latest failure has not been followed by a passing verification"]
+      },
+      recentEvents: [
+        {
+          sessionId: "task_click",
+          kind: "agent_file_mentioned",
+          turnId: "diagnose",
+          filePath: "src/click/_compat.py",
+          contentHash: "",
+          tokenEstimate: 0,
+          source: "agent",
+          summary: "Agent mentioned src/click/_compat.py.",
+          metadata: {},
+          createdAt: "2026-06-12T00:00:00.000Z"
+        },
+        {
+          sessionId: "task_click",
+          kind: "agent_file_touched",
+          turnId: "fix-source",
+          filePath: "src/click/_termui_impl.py",
+          contentHash: "",
+          tokenEstimate: 0,
+          source: "agent",
+          summary: "Agent touched src/click/_termui_impl.py.",
+          metadata: {},
+          createdAt: "2026-06-12T00:01:00.000Z"
+        }
+      ]
+    };
+
+    expect(selectMcpEnduranceKnownSource(ledger)).toBe("src/click/_compat.py");
+  });
+
   it("validates equivalent semantic source repairs", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-source-invariant-"));
     try {
@@ -1061,6 +1502,9 @@ describe("benchmark suite and scoring", () => {
       fs.writeFileSync(path.join(root, "src/routes/well-known.js"), "module.exports = {};\n");
       fs.mkdirSync(path.join(root, ".kairn"), { recursive: true });
       fs.writeFileSync(path.join(root, ".kairn/config.json"), "{}\n");
+      fs.mkdirSync(path.join(root, ".codex"), { recursive: true });
+      fs.writeFileSync(path.join(root, ".codex/hooks.json"), "{}\n");
+      fs.writeFileSync(path.join(root, "go.work.sum"), "module checksum churn\n");
 
       const result = await evaluateDiffScopes({
         rootPath: root,
@@ -1070,7 +1514,105 @@ describe("benchmark suite and scoring", () => {
       expect(result.passed).toBe(false);
       expect(result.changedFiles).toContain("src/routes/well-known.js");
       expect(result.changedFiles).not.toContain(".kairn/config.json");
+      expect(result.changedFiles).not.toContain(".codex/hooks.json");
+      expect(result.changedFiles).not.toContain("go.work.sum");
       expect(result.violations.join("\n")).toContain("src/routes/well-known.js: changed outside allowed diff scopes");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("allows prompt-required declarative config schema companions in local diff scope", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-diff-scope-config-schema-"));
+    try {
+      fs.mkdirSync(path.join(root, "qutebrowser/config"), { recursive: true });
+      fs.writeFileSync(path.join(root, "qutebrowser/config/qtargs.py"), "def args():\n    return []\n");
+      fs.writeFileSync(path.join(root, "qutebrowser/config/configdata.yml"), "qt.existing:\n  default: true\n");
+      execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["add", "."], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["commit", "-m", "initial"], {
+        cwd: root,
+        stdio: "ignore",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: "Kairn Test",
+          GIT_AUTHOR_EMAIL: "test@example.com",
+          GIT_COMMITTER_NAME: "Kairn Test",
+          GIT_COMMITTER_EMAIL: "test@example.com"
+        }
+      });
+      fs.appendFileSync(path.join(root, "qutebrowser/config/qtargs.py"), "\n# runtime workaround\n");
+      fs.appendFileSync(path.join(root, "qutebrowser/config/configdata.yml"), "\nqt.workarounds.disable_accelerated_2d_canvas:\n  default: auto\n");
+
+      const result = await evaluateDiffScopes({
+        rootPath: root,
+        scopes: [{ file: "qutebrowser/config/qtargs.py", allowWholeFile: true }],
+        task: [
+          "A configuration setting named `qt.workarounds.disable_accelerated_2d_canvas` must exist.",
+          "The setting must accept `always`, `never`, and `auto`.",
+          "Selected verification tests from SWE-Bench Pro metadata: tests/unit/config/test_qtargs.py"
+        ].join("\n")
+      });
+
+      expect(result.passed).toBe(true);
+      expect(result.changedFiles).toEqual([
+        "qutebrowser/config/configdata.yml",
+        "qutebrowser/config/qtargs.py"
+      ]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("allows prompt-named frontend feature companions in local diff scope", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-diff-scope-frontend-companions-"));
+    try {
+      const files = [
+        "src/voice-broadcast/components/atoms/LiveBadge.tsx",
+        "src/voice-broadcast/components/atoms/VoiceBroadcastHeader.tsx",
+        "src/voice-broadcast/hooks/useVoiceBroadcastPlayback.ts",
+        "src/voice-broadcast/index.ts",
+        "src/voice-broadcast/models/VoiceBroadcastPlayback.ts",
+        "src/voice-broadcast/utils/VoiceBroadcastChunkEvents.ts"
+      ];
+      for (const file of files) {
+        fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+        fs.writeFileSync(path.join(root, file), `export const marker = ${JSON.stringify(file)};\n`);
+      }
+      execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["add", "."], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["commit", "-m", "initial"], {
+        cwd: root,
+        stdio: "ignore",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: "Kairn Test",
+          GIT_AUTHOR_EMAIL: "test@example.com",
+          GIT_COMMITTER_NAME: "Kairn Test",
+          GIT_COMMITTER_EMAIL: "test@example.com"
+        }
+      });
+      for (const file of files) {
+        fs.appendFileSync(path.join(root, file), `export const changed_${path.basename(file).replace(/[^a-z0-9]/gi, "_")} = true;\n`);
+      }
+
+      const result = await evaluateDiffScopes({
+        rootPath: root,
+        scopes: [
+          { file: "src/voice-broadcast/components/atoms/LiveBadge.tsx", allowWholeFile: true },
+          { file: "src/voice-broadcast/components/atoms/VoiceBroadcastHeader.tsx", allowWholeFile: true }
+        ],
+        task: [
+          "Update VoiceBroadcastHeader and LiveBadge for broadcast liveness.",
+          "Define a union type VoiceBroadcastLiveness in src/voice-broadcast/index.ts.",
+          "Expose liveness in the useVoiceBroadcastPlayback hook.",
+          "Implement liveness state management inside VoiceBroadcastPlayback.",
+          "Add isLast(event) in VoiceBroadcastChunkEvents."
+        ].join("\n")
+      });
+
+      expect(result.passed).toBe(true);
+      expect(result.changedFiles).toEqual(files);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -1246,6 +1788,133 @@ describe("benchmark suite and scoring", () => {
     expect(companions).not.toContain("model/request/request.go");
   });
 
+  it("promotes import-linked helpers when task terms match the imported surface", () => {
+    const files = [
+      sourceRecord("lib/ansible/plugins/lookup/password.py", "python"),
+      sourceRecord("lib/ansible/utils/encrypt.py", "python"),
+      sourceRecord("lib/ansible/executor/task_queue_manager.py", "python")
+    ];
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query:
+        "Fix password lookup bcrypt hashing. Salt and ident values should be preserved when the encrypted password is reused.",
+      symbols: [
+        symbolRecord("lib/ansible/plugins/lookup/password.py", "LookupModule"),
+        symbolRecord("lib/ansible/utils/encrypt.py", "do_encrypt"),
+        symbolRecord("lib/ansible/utils/encrypt.py", "random_salt"),
+        symbolRecord("lib/ansible/executor/task_queue_manager.py", "TaskQueueManager")
+      ],
+      chunks: [
+        chunkRecord("lib/ansible/plugins/lookup/password.py", "password", "password lookup plugin encrypts saved passwords"),
+        chunkRecord("lib/ansible/utils/encrypt.py", "encrypt", "bcrypt hash salt ident BaseHash do_encrypt random_salt"),
+        chunkRecord("lib/ansible/executor/task_queue_manager.py", "queue", "task execution queue manager password variable handling")
+      ],
+      edges: [
+        {
+          rootPath: "",
+          fromFile: "lib/ansible/plugins/lookup/password.py",
+          toFile: "lib/ansible/utils/encrypt.py",
+          type: "imports",
+          metadata: {}
+        }
+      ],
+      limit: 2
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions[0]).toBe("lib/ansible/utils/encrypt.py");
+    expect(companions).not.toContain("lib/ansible/executor/task_queue_manager.py");
+  });
+
+  it("does not treat all functionality inside one named source file as multi-file scope", () => {
+    const task = [
+      "Refactor openlibrary/catalog/get_ia.py to use requests instead of urllib.",
+      "All urllib and urllib2 based functionality should be replaced with requests.",
+      "Fix the issue in production source only. Avoid broad scans once the relevant source surface is known."
+    ].join("\n");
+    const scope = decideEditScope({
+      task,
+      candidateFiles: ["openlibrary/catalog/get_ia.py", "openlibrary/plugins/importapi/code.py"],
+      contextDecision: {
+        action: "shrink",
+        recommendedDelivery: "one_file_directive",
+        primaryFile: "openlibrary/catalog/get_ia.py",
+        cheapSingleSource: true,
+        exactPathMentioned: true
+      } as any
+    });
+
+    expect(hasExplicitMultiFileScopeRequest(task)).toBe(false);
+    expect(scope.initialEditFiles).toEqual(["openlibrary/catalog/get_ia.py"]);
+  });
+
+  it("keeps required config schema surfaces editable even when no public interface is expected", () => {
+    const task = [
+      "Title: Rendering glitches on Google Sheets and PDF.js with `QtWebEngine`.",
+      "A configuration setting named `qt.workarounds.disable_accelerated_2d_canvas` must exist.",
+      "When the value is `auto`, disable accelerated 2D canvas only for affected Qt/Chromium runtime versions.",
+      "Interface notes, not necessarily edit targets:",
+      "No new interfaces are introduced.",
+      "Selected verification tests from SWE-Bench Pro metadata: tests/unit/config/test_qtargs.py",
+      "These tests are verification targets only; do not edit tests, snapshots, docs, examples, generated files, or unrelated files.",
+      "Fix the issue in production source only. Avoid broad scans once the relevant source surface is known."
+    ].join("\n");
+    const scope = decideEditScope({
+      task,
+      candidateFiles: [
+        "qutebrowser/config/qtargs.py",
+        "qutebrowser/config/configdata.yml"
+      ],
+      contextDecision: {
+        action: "shrink",
+        recommendedDelivery: "multi_file_directive",
+        primaryFile: "qutebrowser/config/qtargs.py",
+        taskShapeSignal: "command_contract",
+        requiredSurface: "paired_contract"
+      } as any
+    });
+
+    expect(scope.initialEditFiles).toEqual([
+      "qutebrowser/config/qtargs.py",
+      "qutebrowser/config/configdata.yml"
+    ]);
+    expect(scope.readOnlyFiles).not.toContain("qutebrowser/config/configdata.yml");
+  });
+
+  it("uses explicit interface location paths as high-confidence source hints", () => {
+    const files = [
+      sourceRecord("lib/ansible/utils/vars.py", "python"),
+      sourceRecord("lib/ansible/vars/manager.py", "python"),
+      sourceRecord("lib/ansible/template/vars.py", "python"),
+      sourceRecord("test/units/utils/test_vars.py", "python")
+    ];
+    const query = [
+      "Fix TypeError combining VarsWithSources and dict in combine_vars.",
+      "Actual Behavior: ansible/utils/vars.py line ~91 result = a | b.",
+      "New public interface Location: lib/ansible/vars/manager.py Description: implement __or__, __ror__, and __ior__.",
+      "Selected verification tests from SWE-Bench Pro metadata: test/units/utils/test_vars.py.",
+      "Fix the issue in production source only."
+    ].join("\n");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols: [
+        symbolRecord("lib/ansible/utils/vars.py", "combine_vars"),
+        symbolRecord("lib/ansible/vars/manager.py", "VarsWithSources")
+      ],
+      chunks: [
+        chunkRecord("lib/ansible/utils/vars.py", "combine_vars", "def combine_vars(a, b, merge=None): result = a | b"),
+        chunkRecord("lib/ansible/vars/manager.py", "VarsWithSources", "class VarsWithSources: mapping source tracking")
+      ],
+      vectors: [],
+      edges: []
+    }).map((result) => result.path);
+
+    expect(results[0]).toBe("lib/ansible/vars/manager.py");
+    expect(results.indexOf("lib/ansible/vars/manager.py")).toBeLessThan(results.indexOf("lib/ansible/template/vars.py"));
+    expect(results.indexOf("test/units/utils/test_vars.py")).toBeGreaterThan(results.indexOf("lib/ansible/vars/manager.py"));
+  });
+
   it("prefers user/email companions over generic database main files", () => {
     const files = [
       sourceRecord("src/controllers/admin/users.js", "javascript"),
@@ -1330,6 +1999,89 @@ describe("benchmark suite and scoring", () => {
 
     expect(companions).toEqual(expect.arrayContaining(["lib/router/layer.js", "lib/router/route.js"]));
     expect(companions).not.toContain("test/router.js");
+  });
+
+  it("prefers routing core companions over broad package URL utilities", () => {
+    const files = [
+      sourceRecord("src/werkzeug/routing/rules.py", "python"),
+      sourceRecord("src/werkzeug/routing/map.py", "python"),
+      sourceRecord("src/werkzeug/routing/matcher.py", "python"),
+      sourceRecord("src/werkzeug/utils.py", "python")
+    ];
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query: "Debug Werkzeug routing when Map binds URL rules and Rule matching fails to route a method-specific endpoint.",
+      symbols: [],
+      chunks: [],
+      edges: [],
+      limit: 2
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions).toEqual(expect.arrayContaining(["src/werkzeug/routing/map.py", "src/werkzeug/routing/matcher.py"]));
+    expect(companions).not.toContain("src/werkzeug/utils.py");
+  });
+
+  it("prefers line/comment formatting companions over generic output files", () => {
+    const files = [
+      sourceRecord("src/black/lines.py", "python"),
+      sourceRecord("src/black/linegen.py", "python"),
+      sourceRecord("src/black/comments.py", "python"),
+      sourceRecord("src/black/output.py", "python")
+    ];
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query: "Debug Black formatting when LineGenerator creates output lines and comment handling changes line splitting behavior.",
+      symbols: [],
+      chunks: [],
+      edges: [],
+      limit: 2
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions).toEqual(expect.arrayContaining(["src/black/linegen.py", "src/black/comments.py"]));
+    expect(companions).not.toContain("src/black/output.py");
+  });
+
+  it("adds search/printer output companions for Rust search flows", () => {
+    const files = [
+      sourceRecord("crates/searcher/src/searcher/core.rs", "rust"),
+      sourceRecord("crates/core/search.rs", "rust"),
+      sourceRecord("crates/printer/src/json.rs", "rust"),
+      sourceRecord("crates/printer/src/path.rs", "rust")
+    ];
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query: "Debug ripgrep JSON output when core search emits matches and the printer formats paths and match events.",
+      symbols: [],
+      chunks: [],
+      edges: [],
+      limit: 3
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions).toEqual(expect.arrayContaining(["crates/core/search.rs", "crates/printer/src/json.rs", "crates/printer/src/path.rs"]));
+  });
+
+  it("adds fixture runner companions from source packages without treating _pytest as tests", () => {
+    const files = [
+      sourceRecord("src/_pytest/python.py", "python"),
+      sourceRecord("src/_pytest/fixtures.py", "python"),
+      sourceRecord("src/_pytest/runner.py", "python"),
+      sourceRecord("testing/python/fixtures.py", "python")
+    ];
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query: "Debug pytest fixture resolution when collected Python test nodes request fixture values during runner setup.",
+      symbols: [],
+      chunks: [],
+      edges: [],
+      limit: 2
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions).toEqual(expect.arrayContaining(["src/_pytest/fixtures.py", "src/_pytest/runner.py"]));
+    expect(companions).not.toContain("testing/python/fixtures.py");
   });
 
   it("adds fiber hooks/workloop companions ahead of generic component surfaces", () => {
@@ -1459,6 +2211,94 @@ describe("benchmark suite and scoring", () => {
     expect(ranked.find((item) => item.path === "tests/unit/utils/test_urlutils.py")).toBeUndefined();
   });
 
+  it("uses named new source files to rescue existing package contract surfaces", () => {
+    const files: FileRecord[] = [
+      sourceRecord("lib/benchmark/benchmark.go", "go"),
+      sourceRecord("lib/client/bench.go", "go"),
+      sourceRecord("tool/tsh/tsh.go", "go"),
+      sourceRecord("tool/tctl/main.go", "go"),
+      sourceRecord("tool/teleport/main.go", "go")
+    ];
+    const ranked = hybridSearch({
+      files,
+      query: [
+        "Add linear benchmark generator for progressive request rate configurations.",
+        "New file: lib/benchmark/linear.go",
+        "Public interfaces: Linear struct and (*Linear).GetBenchmark() *Config.",
+        "The method must return a *Config with Rate, Threads, MinimumWindow, MinimumMeasurements, and Command copied from the initial configuration.",
+        "Selected verification tests from SWE-Bench Pro metadata: TestGetBenchmark, TestValidateConfig.",
+        "Fix the issue in production source only. Avoid broad scans once the relevant source surface is known."
+      ].join("\n"),
+      symbols: [
+        symbolRecord("lib/benchmark/benchmark.go", "Config"),
+        symbolRecord("lib/benchmark/benchmark.go", "Command"),
+        symbolRecord("lib/client/bench.go", "BenchmarkCommand"),
+        symbolRecord("tool/tsh/tsh.go", "onBenchmark")
+      ],
+      chunks: [
+        chunkRecord("lib/benchmark/benchmark.go", "Config", "type Config struct { Rate int Threads int MinimumWindow time.Duration MinimumMeasurements int Command string }"),
+        chunkRecord("lib/client/bench.go", "bench", "benchmark client command configuration"),
+        chunkRecord("tool/tsh/tsh.go", "tsh", "benchmark CLI command")
+      ],
+      vectors: [],
+      edges: []
+    });
+
+    expect(ranked.slice(0, 3).map((item) => item.path)).toContain("lib/benchmark/benchmark.go");
+    expect(ranked.find((item) => item.path === "lib/benchmark/benchmark.go")?.reasons).toEqual(
+      expect.arrayContaining([expect.stringContaining("go package contract owner")])
+    );
+    const tshIndex = ranked.findIndex((item) => item.path === "tool/tsh/tsh.go");
+    const tctlIndex = ranked.findIndex((item) => item.path === "tool/tctl/main.go");
+    expect(tshIndex).toBeGreaterThanOrEqual(0);
+    expect(tctlIndex === -1 || tshIndex < tctlIndex).toBe(true);
+    const benchmarkIndex = ranked.findIndex((item) => item.path === "lib/benchmark/benchmark.go");
+    const teleportIndex = ranked.findIndex((item) => item.path === "tool/teleport/main.go");
+    expect(benchmarkIndex).toBeGreaterThanOrEqual(0);
+    expect(teleportIndex === -1 || benchmarkIndex < teleportIndex).toBe(true);
+    const tctl = ranked.find((item) => item.path === "tool/tctl/main.go");
+    if (tctl) {
+      expect(tctl.reasons).toEqual(expect.arrayContaining([expect.stringContaining("generic benchmark entrypoint downranked")]));
+    }
+  });
+
+  it("keeps task-specific implementation files ahead of generic selected-test counterparts", () => {
+    const files: FileRecord[] = [
+      sourceRecord("src/controllers/topics.js", "javascript"),
+      sourceRecord("src/topics/sorted.js", "javascript"),
+      { ...sourceRecord("test/topics.js", "javascript"), kind: "test" }
+    ];
+    const ranked = hybridSearch({
+      files,
+      query: [
+        "Fix getSortedTopics so params.sort old returns topics in ascending lastposttime order.",
+        "The old sort must be the inverse of recent across unfiltered, tag-based, and category-based topic lists.",
+        "Selected verification tests from SWE-Bench Pro metadata: test/topics.js",
+        "These tests are verification targets only; do not edit tests."
+      ].join("\n"),
+      symbols: [
+        symbolRecord("src/controllers/topics.js", "addTags"),
+        symbolRecord("src/controllers/topics.js", "addOldCategory"),
+        symbolRecord("src/topics/sorted.js", "getTids"),
+        symbolRecord("src/topics/sorted.js", "getTagTids"),
+        symbolRecord("src/topics/sorted.js", "getCidTids"),
+        symbolRecord("src/topics/sorted.js", "sortRecent")
+      ],
+      chunks: [
+        chunkRecord("src/controllers/topics.js", "controller", "topic controller routes add tags old category response"),
+        chunkRecord("src/topics/sorted.js", "sorted", "get sorted topics by sort recent posts votes lastposttime range reverse range category tags")
+      ],
+      vectors: [],
+      edges: []
+    });
+
+    expect(ranked[0]?.path).toBe("src/topics/sorted.js");
+    expect(ranked.find((item) => item.path === "src/controllers/topics.js")?.reasons).toEqual(
+      expect.arrayContaining([expect.stringContaining("selected test generic")])
+    );
+    expect(ranked.find((item) => item.path === "test/topics.js")).toBeUndefined();
+  });
+
   it("keeps named relocation source files ahead of generic same-package utilities", () => {
     const files = [
       sourceRecord("qutebrowser/utils/log.py", "python"),
@@ -1483,6 +2323,113 @@ describe("benchmark suite and scoring", () => {
       expect.arrayContaining(["qutebrowser/utils/log.py", "qutebrowser/utils/qtlog.py"])
     );
     expect(ranked.findIndex((item) => item.path === "qutebrowser/utils/utils.py")).toBeLessThan(0);
+  });
+
+  it("keeps qualified utility module prompts from drifting into sibling generic utility files", () => {
+    const files = [
+      sourceRecord("openlibrary/plugins/importapi/code.py", "python"),
+      sourceRecord("openlibrary/plugins/upstream/utils.py", "python"),
+      sourceRecord("openlibrary/plugins/openlibrary/utils.py", "python"),
+      sourceRecord("openlibrary/coverstore/utils.py", "python")
+    ];
+    const query = [
+      "Fix IA metadata imports. The get_ia_record(metadata) function must split isbn into isbn_10/isbn_13 and split publisher into publishers and publish_places.",
+      "Public utilities must exist in openlibrary.plugins.upstream.utils and be importable from openlibrary.plugins.upstream.utils.",
+      "Selected verification tests from SWE-Bench Pro metadata: openlibrary/plugins/upstream/tests/test_utils.py, openlibrary/plugins/importapi/tests/test_code.py.",
+      "Fix production source only; do not edit tests."
+    ].join("\n");
+    const ranked = hybridSearch({
+      files,
+      query,
+      symbols: [
+        symbolRecord("openlibrary/plugins/importapi/code.py", "get_ia_record"),
+        symbolRecord("openlibrary/plugins/upstream/utils.py", "normalize_isbn"),
+        symbolRecord("openlibrary/plugins/openlibrary/utils.py", "validate"),
+        symbolRecord("openlibrary/coverstore/utils.py", "get_cover_id")
+      ],
+      chunks: [
+        chunkRecord("openlibrary/plugins/importapi/code.py", "get_ia_record", "Internet Archive metadata import creates Open Library edition fields"),
+        chunkRecord("openlibrary/plugins/upstream/utils.py", "normalize_isbn", "upstream utility module normalize isbn publisher"),
+        chunkRecord("openlibrary/plugins/openlibrary/utils.py", "validate", "generic openlibrary validation helpers publisher isbn"),
+        chunkRecord("openlibrary/coverstore/utils.py", "covers", "generic cover utilities")
+      ],
+      vectors: [],
+      edges: []
+    });
+
+    expect(ranked.slice(0, 2).map((item) => item.path)).toEqual(
+      expect.arrayContaining(["openlibrary/plugins/importapi/code.py", "openlibrary/plugins/upstream/utils.py"])
+    );
+    const siblingGenericIndex = ranked.findIndex((item) => item.path === "openlibrary/plugins/openlibrary/utils.py");
+    const unrelatedGenericIndex = ranked.findIndex((item) => item.path === "openlibrary/coverstore/utils.py");
+    expect(siblingGenericIndex === -1 || siblingGenericIndex > 1).toBe(true);
+    expect(unrelatedGenericIndex === -1 || unrelatedGenericIndex > 1).toBe(true);
+  });
+
+  it("routes selected test counterparts by path before generic code or utility companions", () => {
+    const files = [
+      sourceRecord("openlibrary/plugins/upstream/utils.py", "python"),
+      sourceRecord("openlibrary/plugins/importapi/code.py", "python"),
+      sourceRecord("openlibrary/plugins/upstream/code.py", "python"),
+      sourceRecord("openlibrary/plugins/admin/code.py", "python"),
+      sourceRecord("openlibrary/solr/query_utils.py", "python")
+    ];
+    const query = [
+      "Public utilities must exist in openlibrary.plugins.upstream.utils and be importable from openlibrary.plugins.upstream.utils.",
+      "Selected verification tests from SWE-Bench Pro metadata: openlibrary/plugins/upstream/tests/test_utils.py, openlibrary/plugins/importapi/tests/test_code.py.",
+      "Fix production source only; do not edit tests."
+    ].join("\n");
+
+    const companions = findCompanionCandidates({
+      files,
+      ranked: [scoredRecord(files[0]!)],
+      query,
+      symbols: [],
+      chunks: [],
+      edges: [],
+      limit: 2
+    }).map((candidate) => candidate.file.path);
+
+    expect(companions[0]).toBe("openlibrary/plugins/importapi/code.py");
+    expect(companions).not.toContain("openlibrary/plugins/upstream/code.py");
+    expect(companions).not.toContain("openlibrary/plugins/admin/code.py");
+    expect(companions).not.toContain("openlibrary/solr/query_utils.py");
+  });
+
+  it("does not let SWE-Pro selected test names dominate production-source routing", () => {
+    const files = [
+      sourceRecord("scanner/scanner.go", "go"),
+      sourceRecord("config/portscan.go", "go"),
+      sourceRecord("config/config.go", "go")
+    ];
+    const query = [
+      "scanner host key validation is unreliable because SSH config and keys are not read correctly",
+      "Must implement parseSSHConfiguration, parseSSHScan, and parseSSHKeygen in production source.",
+      "Selected verification tests from SWE-Bench Pro metadata: Test_findPortScanSuccessOn/single_match, Test_findPortScanSuccessOn/open_empty",
+      "These tests are verification targets only; do not edit tests.",
+      "Fix the issue in production source only."
+    ].join("\n");
+
+    const ranked = hybridSearch({
+      files,
+      query,
+      symbols: [
+        symbolRecord("scanner/scanner.go", "parseSSHConfiguration"),
+        symbolRecord("scanner/scanner.go", "parseSSHScan"),
+        symbolRecord("scanner/scanner.go", "parseSSHKeygen"),
+        symbolRecord("config/portscan.go", "PortScan")
+      ],
+      chunks: [
+        chunkRecord("scanner/scanner.go", "ssh", "scanner ssh host key known_hosts parseSSHConfiguration parseSSHScan parseSSHKeygen"),
+        chunkRecord("config/portscan.go", "portscan", "port scan configuration find port scan success"),
+        chunkRecord("config/config.go", "config", "generic config")
+      ],
+      vectors: [],
+      edges: []
+    }).map((item) => item.path);
+
+    expect(ranked[0]).toBe("scanner/scanner.go");
+    expect(ranked.indexOf("scanner/scanner.go")).toBeLessThan(ranked.indexOf("config/portscan.go"));
   });
 
   it("downranks generated filename surfaces even outside generated directories", () => {
@@ -1686,6 +2633,30 @@ describe("benchmark suite and scoring", () => {
     expect(ranked.findIndex((item) => item.path === "field.go")).toBeGreaterThan(2);
   });
 
+  it("prefers a named Go package entry over generic config files for component bugs", () => {
+    const files = [
+      sourceRecord("scanner/scanner.go", "go"),
+      sourceRecord("config/config.go", "go"),
+      sourceRecord("models/server.go", "go")
+    ];
+    const ranked = hybridSearch({
+      files,
+      query:
+        "Fix scanner host key validation when SSH configuration output and known_hosts parsing are unreliable. Implement parseSSHConfiguration and parseSSHKeygen in production source.",
+      symbols: [],
+      chunks: [
+        chunkRecord("scanner/scanner.go", "validateSSHConfig", "scanner validates ssh host keys known hosts keygen scan output mismatch"),
+        chunkRecord("config/config.go", "Config", "configuration server info ssh config settings host key alias known hosts"),
+        chunkRecord("models/server.go", "ServerInfo", "server model host key metadata")
+      ],
+      vectors: [],
+      edges: []
+    });
+
+    expect(ranked[0]?.path).toBe("scanner/scanner.go");
+    expect(ranked[0]?.reasons).toEqual(expect.arrayContaining(["go package entry named by task"]));
+  });
+
   it("does not treat cleanup of test artifacts as explicit test-source intent", () => {
     const files = [
       { ...sourceRecord("src/documents/tests/test_api.py", "python"), kind: "test" as const },
@@ -1767,6 +2738,7 @@ describe("benchmark suite and scoring", () => {
     const files = [
       sourceRecord("lib/ansible/modules/get_url.py", "python"),
       sourceRecord("lib/ansible/module_utils/urls.py", "python"),
+      sourceRecord("lib/ansible/plugins/action/uri.py", "python"),
       sourceRecord("lib/ansible/module_utils/facts/utils.py", "python"),
       sourceRecord("lib/ansible/module_utils/common/_utils.py", "python")
     ];
@@ -1778,6 +2750,7 @@ describe("benchmark suite and scoring", () => {
       chunks: [
         chunkRecord("lib/ansible/modules/get_url.py", "main", "module uses url request helper"),
         chunkRecord("lib/ansible/module_utils/urls.py", "open_url", "uri url request headers authorization netrc bearer basic auth"),
+        chunkRecord("lib/ansible/plugins/action/uri.py", "run", "uri action plugin request headers authorization netrc bearer basic auth"),
         chunkRecord("lib/ansible/module_utils/facts/utils.py", "get_file_content", "facts generic utils"),
         chunkRecord("lib/ansible/module_utils/common/_utils.py", "get_all_subclasses", "common generic utils")
       ],
@@ -1788,6 +2761,7 @@ describe("benchmark suite and scoring", () => {
     expect(ranked.slice(0, 2).map((item) => item.path)).toEqual(
       expect.arrayContaining(["lib/ansible/modules/get_url.py", "lib/ansible/module_utils/urls.py"])
     );
+    expect(ranked.slice(0, 2).map((item) => item.path)).not.toContain("lib/ansible/plugins/action/uri.py");
     const genericUtilityIndex = ranked.findIndex((item) => item.path === "lib/ansible/module_utils/facts/utils.py");
     expect(genericUtilityIndex === -1 || genericUtilityIndex > 1).toBe(true);
   });
@@ -2317,6 +3291,24 @@ describe("benchmark suite and scoring", () => {
     }
   });
 
+  it("returns promptly when an agent command exceeds the process-group timeout", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-agent-timeout-"));
+    try {
+      const startedAt = Date.now();
+      const result = await runShellWithProcessGroupTimeout(
+        `${process.execPath} -e "setTimeout(() => {}, 5000)"`,
+        root,
+        100,
+        1024
+      );
+
+      expect(result.timedOut).toBe(true);
+      expect(Date.now() - startedAt).toBeLessThan(3000);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("counts untracked files as changed benchmark files", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-agent-untracked-"));
     try {
@@ -2339,9 +3331,44 @@ describe("benchmark suite and scoring", () => {
       fs.writeFileSync(path.join(root, "src/routes/well-known.js"), "module.exports = function wellKnown() {};\n");
       fs.mkdirSync(path.join(root, ".kairn"), { recursive: true });
       fs.writeFileSync(path.join(root, ".kairn/config.json"), "{}\n");
+      fs.mkdirSync(path.join(root, ".codex"), { recursive: true });
+      fs.writeFileSync(path.join(root, ".codex/config.toml"), "approval = 'never'\n");
+      fs.writeFileSync(path.join(root, "go.work.sum"), "module checksum churn\n");
 
       expect(changedFiles(root)).toContain("src/routes/well-known.js");
       expect(changedFiles(root)).not.toContain(".kairn/config.json");
+      expect(changedFiles(root)).not.toContain(".codex/config.toml");
+      expect(changedFiles(root)).not.toContain("go.work.sum");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("includes untracked files in benchmark workspace patches", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-agent-patch-untracked-"));
+    try {
+      fs.mkdirSync(path.join(root, "src"), { recursive: true });
+      fs.writeFileSync(path.join(root, "src/app.js"), "module.exports = {};\n");
+      execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["add", "."], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["commit", "-m", "initial"], {
+        cwd: root,
+        stdio: "ignore",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: "Kairn Test",
+          GIT_AUTHOR_EMAIL: "test@example.com",
+          GIT_COMMITTER_NAME: "Kairn Test",
+          GIT_COMMITTER_EMAIL: "test@example.com"
+        }
+      });
+
+      fs.writeFileSync(path.join(root, "src/new-module.js"), "exports.value = 1;\n");
+
+      const patch = workspacePatch(root);
+      expect(patch).toContain("diff --git a/src/new-module.js b/src/new-module.js");
+      expect(patch).toContain("new file mode");
+      expect(patch).toContain("+exports.value = 1;");
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -2541,6 +3568,7 @@ describe("benchmark suite and scoring", () => {
       expect(result.outcome).toBe("partial");
       expect(result.metadata.requiredTouchedSatisfied).toBe(false);
       expect(result.metadata.missingRequiredTouchedFiles).toEqual(["src/app.ts"]);
+      expect(result.actualFiles).not.toContain("src/app.ts");
 
       const scored = scoreBenchmarkCase({
         runId: "bench_required",
@@ -2559,7 +3587,65 @@ describe("benchmark suite and scoring", () => {
         metadata: result.metadata
       });
       expect(scored.taskOutcome).toBe("partial");
+      expect(scored.expectedFileRecall).toBe(0);
       expect(scored.metadata.qualityGatePassed).toBe(false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("ignores absent required files unless the prompt explicitly creates them", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-required-touch-absent-"));
+    try {
+      fs.mkdirSync(path.join(root, "src"), { recursive: true });
+      fs.writeFileSync(path.join(root, "src/existing.ts"), "export const value = 1;\n");
+      execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["add", "."], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["commit", "-m", "initial"], {
+        cwd: root,
+        stdio: "ignore",
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: "Kairn Test",
+          GIT_AUTHOR_EMAIL: "test@example.com",
+          GIT_COMMITTER_NAME: "Kairn Test",
+          GIT_COMMITTER_EMAIL: "test@example.com"
+        }
+      });
+
+      const result = await runAgentBenchmarkCase({
+        rootPath: root,
+        benchmarkCase: {
+          id: "required-absent",
+          mode: "agent",
+          task: [
+            "Update the existing source and add one generated companion.",
+            "New file: src/new-file.ts"
+          ].join("\n"),
+          expectedFiles: ["src/existing.ts", "src/new-file.ts"],
+          requiredTouchedFiles: ["src/existing.ts", "src/new-file.ts", "src/missing.ts"],
+          excludedFiles: [],
+          seed: {
+            repoUrl: root,
+            ref: "HEAD",
+            testCommand:
+              "node -e \"const fs=require('fs'); if(!fs.existsSync('src/new-file.ts')) process.exit(1); if(!fs.readFileSync('src/existing.ts','utf8').includes('value = 2')) process.exit(1)\""
+          }
+        },
+        agentCommand:
+          "node -e \"const fs=require('fs'); fs.writeFileSync('src/existing.ts','export const value = 2;\\\\n'); fs.writeFileSync('src/new-file.ts','export const generated = true;\\\\n')\" {prompt}"
+      });
+
+      expect(result.outcome).toBe("pass");
+      expect(result.metadata.originalRequiredTouchedFiles).toEqual([
+        "src/existing.ts",
+        "src/new-file.ts",
+        "src/missing.ts"
+      ]);
+      expect(result.metadata.requiredTouchedFiles).toEqual(["src/existing.ts", "src/new-file.ts"]);
+      expect(result.metadata.ignoredAbsentRequiredTouchedFiles).toEqual(["src/missing.ts"]);
+      expect(result.metadata.missingRequiredTouchedFiles).toEqual([]);
+      expect(result.metadata.requiredTouchedSatisfied).toBe(true);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -2587,6 +3673,33 @@ describe("benchmark suite and scoring", () => {
     expect(result.outcome).toBe("fail");
     expect(result.metadata.diffScopePassed).toBe(false);
     expect(result.metadata.diffScopeViolations).toEqual(expect.arrayContaining([expect.stringContaining("src/user.ts")]));
+  });
+
+  it("does not count setup command files as live-agent diff-scope violations", async () => {
+    const root = createFixtureRepo();
+    const result = await runAgentBenchmarkCase({
+      rootPath: root,
+      benchmarkCase: {
+        id: "diff-scope-setup-baseline",
+        mode: "agent",
+        task: "Edit only the allowed source file.",
+        expectedFiles: ["src/app.ts"],
+        requiredTouchedFiles: ["src/app.ts"],
+        excludedFiles: [],
+        allowedDiffScopes: [{ file: "src/app.ts", allowWholeFile: true }],
+        seed: {
+          repoUrl: root,
+          ref: "HEAD"
+        }
+      },
+      setupCommand: "node -e \"require('fs').mkdirSync('.codex',{recursive:true}); require('fs').writeFileSync('.codex/config.toml','mode=\\\"savings\\\"\\n')\"",
+      agentCommand: "node -e \"require('fs').appendFileSync('src/app.ts', '\\nexport const ok = true;\\n'); console.error('Token usage: total=100 input=80 output=20')\""
+    });
+
+    expect(result.outcome).toBe("pass");
+    expect(result.metadata.diffScopePassed).toBe(true);
+    expect(result.metadata.setupChangedFiles).toEqual([]);
+    expect(result.metadata.agentChangedFiles).toEqual(["src/app.ts"]);
   });
 
   it("fails production-source-only benchmark scoring when tests are edited without an explicit test scope", () => {
@@ -2812,6 +3925,139 @@ describe("benchmark suite and scoring", () => {
     expect(report.officialEvaluationSummary?.kairnMetricEligibleCases).toBe(1);
     expect(report.officialEvaluationSummary?.byTaskClass.source_grounded_explanation?.qualityPasses).toBe(1);
     expect(report.officialEvaluationSummary?.byEvaluator.source_grounded_answer?.observedTokens).toBe(1200);
+    expect(report.officialEvaluationSummary?.byEvaluator.source_grounded_answer?.tokenUnavailableOfficialPasses).toBe(0);
+  });
+
+  it("tracks official pass rows with unavailable token accounting separately", () => {
+    const result = scoreBenchmarkCase({
+      runId: "official_missing_tokens",
+      benchmarkCase: {
+        id: "official-patch",
+        mode: "agent",
+        task: "Fix production source.",
+        expectedFiles: ["src/app.py"],
+        minExpectedHits: 1,
+        excludedFiles: [],
+        officialEvaluation: {
+          source: "swe_bench_pro",
+          taskClass: "patch_verification",
+          evaluator: "patch_verification",
+          kairnApplicability: "strong",
+          kairnMetricEligible: true,
+          liveRisk: "medium",
+          reasons: ["official patch"]
+        }
+      },
+      actualFiles: ["src/app.py"],
+      responseTokens: 300,
+      taskOutcome: "pass",
+      summary: "official patch passed",
+      metadata: { qualityGatePassed: true }
+    });
+    const report = buildBenchmarkReport({
+      run: {
+        id: "run",
+        rootPath: "/repo",
+        suiteId: "suite",
+        suiteName: "suite",
+        mode: "agent",
+        status: "completed",
+        startedAt: "now",
+        metadata: {}
+      },
+      results: [{ ...result, id: 1, createdAt: "now" }]
+    });
+
+    expect(report.officialEvaluationSummary?.byTaskClass.patch_verification?.qualityPasses).toBe(1);
+    expect(report.officialEvaluationSummary?.byTaskClass.patch_verification?.observedCases).toBe(0);
+    expect(report.officialEvaluationSummary?.byTaskClass.patch_verification?.tokenUnavailableOfficialPasses).toBe(1);
+  });
+
+  it("classifies official paired-row savings, regressions, and missing token data", () => {
+    const aggregate = summarizeOfficialPairRows([
+      {
+        id: "clean",
+        baselineOfficialPass: true,
+        kairnOfficialPass: true,
+        baselineScopePass: true,
+        kairnScopePass: true,
+        baselineTokens: 1000,
+        kairnTokens: 700,
+        emittedFileCount: 1
+      },
+      {
+        id: "regression",
+        baselineOfficialPass: true,
+        kairnOfficialPass: true,
+        baselineScopePass: true,
+        kairnScopePass: true,
+        baselineTokens: 1000,
+        kairnTokens: 1100,
+        emittedFileCount: 4
+      },
+      {
+        id: "passive",
+        baselineOfficialPass: true,
+        kairnOfficialPass: true,
+        baselineScopePass: true,
+        kairnScopePass: true,
+        baselineTokens: 1000,
+        kairnTokens: 1200,
+        assistClassification: "passive_token_regression"
+      },
+      {
+        id: "quality-support",
+        baselineOfficialPass: true,
+        kairnOfficialPass: true,
+        baselineScopePass: true,
+        kairnScopePass: true,
+        baselineTokens: 1000,
+        kairnTokens: 1300,
+        assistClassification: "quality_rescue"
+      },
+      {
+        id: "missing",
+        baselineOfficialPass: true,
+        kairnOfficialPass: true,
+        baselineScopePass: true,
+        kairnScopePass: true,
+        baselineTokens: 900
+      },
+      {
+        id: "rescue",
+        baselineOfficialPass: false,
+        kairnOfficialPass: true
+      },
+      {
+        id: "drop",
+        baselineOfficialPass: true,
+        kairnOfficialPass: false
+      }
+    ]);
+
+    expect(aggregate.baselinePasses).toBe(6);
+    expect(aggregate.kairnPasses).toBe(6);
+    expect(aggregate.passPassRows).toBe(5);
+    expect(aggregate.cleanSavingsRows).toBe(1);
+    expect(aggregate.officialTokenRegressions).toBe(1);
+    expect(aggregate.passiveTokenRegressions).toBe(1);
+    expect(aggregate.qualitySupportTokenRegressions).toBe(1);
+    expect(aggregate.missingTokenPassPassRows).toBe(1);
+    expect(aggregate.qualityRescues).toBe(1);
+    expect(aggregate.qualityDrops).toBe(1);
+    expect(aggregate.passPassMedianReductionPct).toBe(-15);
+    expect(aggregate.cleanSavingsMedianReductionPct).toBe(30);
+    expect(aggregate.emittedFileCounts).toEqual([1, 4]);
+    expect(aggregate.validationErrors).toEqual(["missing: pass/pass official row lacks complete token data"]);
+    expect(aggregate.rows.map((row) => row.classification)).toEqual([
+      "clean_savings",
+      "official_token_regression",
+      "passive_token_regression",
+      "quality_support_token_regression",
+      "official_pass_token_unavailable",
+      "quality_rescue",
+      "quality_drop"
+    ]);
   });
 
   it("treats directory exclusions as nested path segments in repo matrices", async () => {
@@ -3264,7 +4510,1405 @@ describe("benchmark suite and scoring", () => {
 
     expect(decision.action).toBe("shrink");
     expect(decision.recommendedDelivery).toBe("one_file_directive");
-    expect(decision.reasons).toEqual(expect.arrayContaining(["production-source-only task needs a tiny edit-scope guardrail"]));
+    expect(decision.directiveStyle).toBe("scope_guardrail");
+    expect(decision.reasons).toEqual(expect.arrayContaining(["narrow official exact-source patch should use a scope-only guardrail"]));
+  });
+
+  it("shrinks narrow official exact-source patch prompts into a scope-only guardrail", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "Fix the issue in production source only.",
+        "Selected tests from SWE-Bench Pro metadata: test/units/parsing/yaml/test_dumper.py",
+        "These tests are verification targets only; do not edit tests, snapshots, docs, examples, generated files, or unrelated files."
+      ].join("\n"),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- lib/ansible/parsing/yaml/dumper.py (source, score 460): exact dumper production source",
+        files: ["lib/ansible/parsing/yaml/dumper.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["lib/ansible/parsing/yaml/dumper.py"],
+        rankedFiles: [
+          { path: "lib/ansible/parsing/yaml/dumper.py", kind: "source", score: 460, reasons: ["exact production source"] }
+        ],
+        tokenEstimate: 260
+      },
+      quality: {
+        score: 92,
+        action: "emit",
+        reasons: ["high-confidence top retrieval score"],
+        topScore: 460,
+        topGap: 220,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 88,
+        action: "emit",
+        reasons: ["high-confidence top retrieval score"],
+        topScore: 460,
+        topGap: 220,
+        primaryFile: "lib/ansible/parsing/yaml/dumper.py",
+        language: "python",
+        exactPathMentioned: false,
+        exactSourceHit: true,
+        sourceRescue: true,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 900,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [sourceRecord("lib/ansible/parsing/yaml/dumper.py", "python")],
+      repoFileCount: 1800,
+      estimatedContextCost: 900
+    });
+
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("one_file_directive");
+    expect(decision.directiveStyle).toBe("scope_guardrail");
+    expect(decision.reasons).toEqual(
+      expect.arrayContaining(["narrow official exact-source patch should use a scope-only guardrail"])
+    );
+  });
+
+  it("suppresses repeated official exact-source scope after the source is established", () => {
+    const decision = applyContextGovernor({
+      task: "Fix the issue in production source only. Selected tests from SWE-Bench Pro metadata: test_foo.py. Do not edit tests or unrelated files.",
+      profile: "generic",
+      context: {
+        mode: "snippets",
+        content: "- src/foo.py (source, score 500): exact foo production source",
+        files: ["src/foo.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/foo.py"],
+        rankedFiles: [{ path: "src/foo.py", kind: "source", score: 500, reasons: ["exact production source"] }],
+        tokenEstimate: 200
+      },
+      quality: {
+        score: 90,
+        action: "emit",
+        reasons: ["high-confidence top retrieval score"],
+        topScore: 500,
+        topGap: 260,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 84,
+        action: "shrink",
+        reasons: ["exact source hit should use focused context"],
+        topScore: 500,
+        topGap: 260,
+        primaryFile: "src/foo.py",
+        language: "python",
+        exactPathMentioned: false,
+        exactSourceHit: true,
+        sourceRescue: true,
+        recommendedDelivery: "one_file_directive",
+        estimatedContextCost: 900,
+        expectedSavingsRisk: "medium",
+        debugSignal: false,
+        easyTaskSignal: false
+      },
+      knownFiles: [sourceRecord("src/foo.py", "python")],
+      repoFileCount: 1200,
+      estimatedContextCost: 900,
+      activeSourceState: true
+    });
+
+    expect(decision.action).toBe("suppress");
+    expect(decision.recommendedDelivery).toBe("none");
+    expect(decision.reasons).toEqual(
+      expect.arrayContaining(["official exact-source scope is already established; staying silent"])
+    );
+  });
+
+  it("requests source evidence for ambiguous large frontend official patch prompts", () => {
+    const decision = applyContextGovernor({
+      task: "Fix the Matrix room composer behavior in production source. Selected tests from SWE-Bench Pro metadata: test/Composer-test.ts. Do not edit tests.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: [
+          "- src/components/views/rooms/MessageComposer.tsx (source, score 300): UI composer lexical match",
+          "- src/components/views/rooms/RoomView.tsx (source, score 292): UI room lexical match",
+          "- src/stores/RoomViewStore.ts (source, score 288): UI state lexical match"
+        ].join("\n"),
+        files: [
+          "src/components/views/rooms/MessageComposer.tsx",
+          "src/components/views/rooms/RoomView.tsx",
+          "src/stores/RoomViewStore.ts"
+        ],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/components/views/rooms/MessageComposer.tsx"],
+        rankedFiles: [
+          { path: "src/components/views/rooms/MessageComposer.tsx", kind: "component", score: 300, reasons: ["UI composer lexical match"] },
+          { path: "src/components/views/rooms/RoomView.tsx", kind: "component", score: 292, reasons: ["UI room lexical match"] },
+          { path: "src/stores/RoomViewStore.ts", kind: "source", score: 288, reasons: ["UI state lexical match"] }
+        ],
+        tokenEstimate: 760
+      },
+      quality: {
+        score: 80,
+        action: "emit",
+        reasons: ["top retrieval score"],
+        topScore: 300,
+        topGap: 8,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 78,
+        action: "emit",
+        reasons: ["debug/failure task can benefit from targeted context"],
+        topScore: 300,
+        topGap: 8,
+        primaryFile: "src/components/views/rooms/MessageComposer.tsx",
+        language: "typescript",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 1200,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        { ...sourceRecord("src/components/views/rooms/MessageComposer.tsx", "typescript"), kind: "component" },
+        { ...sourceRecord("src/components/views/rooms/RoomView.tsx", "typescript"), kind: "component" },
+        sourceRecord("src/stores/RoomViewStore.ts", "typescript")
+      ],
+      repoFileCount: 6200,
+      estimatedContextCost: 1200
+    });
+
+    expect(decision.action).toBe("request_evidence");
+    expect(decision.evidenceRequest?.kind).toBe("exact_source");
+    expect(decision.taskShapeSignal).toBe("ambiguous_frontend_ownership");
+    expect(decision.requiredSurface).toBe("evidence_needed");
+    expect(decision.reasons).toEqual(
+      expect.arrayContaining(["task shape has weak source ownership; asking for an exact source signal"])
+    );
+  });
+
+  it("marks command contract tasks as compact paired-source directives", () => {
+    const decision = applyContextGovernor({
+      task: "Implement --sort-by-key for the export command. NewExporter should sort namespaces, flags, segments, and variants deterministically. Fix production source only.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- cmd/flipt/export.go\n- internal/ext/exporter.go\n",
+        files: ["cmd/flipt/export.go", "internal/ext/exporter.go"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["cmd/flipt/export.go", "internal/ext/exporter.go"],
+        rankedFiles: [
+          { path: "cmd/flipt/export.go", kind: "source", score: 500, reasons: ["CLI export command surface"] },
+          { path: "internal/ext/exporter.go", kind: "source", score: 470, reasons: ["exporter implementation companion"] },
+          { path: "internal/storage/backend.go", kind: "source", score: 120, reasons: ["storage backend"] }
+        ],
+        tokenEstimate: 700
+      },
+      quality: {
+        score: 76,
+        action: "emit",
+        reasons: ["top retrieval score"],
+        topScore: 500,
+        topGap: 30,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 74,
+        action: "emit",
+        reasons: ["debug/failure task can benefit from targeted context"],
+        topScore: 500,
+        topGap: 30,
+        primaryFile: "cmd/flipt/export.go",
+        language: "go",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 980,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("cmd/flipt/export.go", "go"),
+        sourceRecord("internal/ext/exporter.go", "go"),
+        sourceRecord("internal/storage/backend.go", "go")
+      ],
+      repoFileCount: 1400,
+      estimatedContextCost: 980
+    });
+
+    expect(decision.taskShapeSignal).toBe("command_contract");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
+  it("marks multi-value datastore collection mutations as paired backend surfaces", () => {
+    const decision = applyContextGovernor({
+      task: "List operations do not support removing multiple distinct elements in a single call. Fix production source only.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- src/database/mongo/list.js\n- src/database/postgres/list.js\n- src/database/redis/list.js\n",
+        files: ["src/database/mongo/list.js", "src/database/postgres/list.js", "src/database/redis/list.js"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/database/mongo/list.js"],
+        rankedFiles: [
+          { path: "src/database/mongo/list.js", kind: "source", score: 640, reasons: ["list implementation"] },
+          { path: "src/database/postgres/list.js", kind: "source", score: 210, reasons: ["backend peer"] },
+          { path: "src/database/redis/list.js", kind: "source", score: 190, reasons: ["backend peer"] }
+        ],
+        tokenEstimate: 760
+      },
+      quality: {
+        score: 74,
+        action: "emit",
+        reasons: ["top retrieval score"],
+        topScore: 640,
+        topGap: 430,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 74,
+        action: "emit",
+        reasons: ["debug/failure task can benefit from targeted context"],
+        topScore: 640,
+        topGap: 430,
+        primaryFile: "src/database/mongo/list.js",
+        language: "javascript",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 920,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("src/database/mongo/list.js", "javascript"),
+        sourceRecord("src/database/postgres/list.js", "javascript"),
+        sourceRecord("src/database/redis/list.js", "javascript")
+      ],
+      repoFileCount: 1300,
+      estimatedContextCost: 920
+    });
+
+    expect(decision.taskShapeSignal).toBe("backend_parity");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
+  it("does not treat generic startup/session notification bugs as command contracts", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "Unverified device notifications are not consistent for existing vs. new sessions.",
+        "Maintain startup device state, refresh after key downloads, and fix production source only.",
+        "Selected verification tests from SWE-Bench Pro metadata: test/DeviceListener-test.ts. Do not edit tests."
+      ].join("\n"),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- src/DeviceListener.ts\n- src/stores/notifications/NotificationState.ts\n",
+        files: ["src/DeviceListener.ts", "src/stores/notifications/NotificationState.ts"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/DeviceListener.ts"],
+        rankedFiles: [
+          { path: "src/DeviceListener.ts", kind: "source", score: 780, reasons: ["device listener owner"] },
+          { path: "src/stores/notifications/NotificationState.ts", kind: "source", score: 220, reasons: ["notification neighbor"] }
+        ],
+        tokenEstimate: 720
+      },
+      quality: {
+        score: 82,
+        action: "emit",
+        reasons: ["strong source owner"],
+        topScore: 780,
+        topGap: 560,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 82,
+        action: "emit",
+        reasons: ["strong source owner"],
+        topScore: 780,
+        topGap: 560,
+        primaryFile: "src/DeviceListener.ts",
+        language: "typescript",
+        exactPathMentioned: false,
+        sourceRescue: true,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 720,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("src/DeviceListener.ts", "typescript"),
+        sourceRecord("src/stores/notifications/NotificationState.ts", "typescript")
+      ],
+      repoFileCount: 4200,
+      estimatedContextCost: 720
+    });
+
+    expect(decision.taskShapeSignal).not.toBe("command_contract");
+    expect(decision.requiredSurface).toBe("single_file");
+  });
+
+  it("marks discovery authentication config tasks as paired contract scope", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "Discovery omits delegated authentication metadata advertised under m.authentication.",
+        "When building the validated configuration from a discovery result, preserve delegatedAuthentication fields.",
+        "The public interface ValidatedServerConfig must optionally declare the delegatedAuthentication property.",
+        "Fix production source only."
+      ].join("\n"),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- src/utils/AutoDiscoveryUtils.tsx\n- src/utils/ValidatedServerConfig.ts\n",
+        files: ["src/utils/AutoDiscoveryUtils.tsx", "src/utils/ValidatedServerConfig.ts"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/utils/AutoDiscoveryUtils.tsx", "src/utils/ValidatedServerConfig.ts"],
+        rankedFiles: [
+          { path: "src/utils/AutoDiscoveryUtils.tsx", kind: "source", score: 720, reasons: ["discovery config owner"] },
+          { path: "src/utils/ValidatedServerConfig.ts", kind: "source", score: 690, reasons: ["validated config contract"] },
+          { path: "cypress/support/settings.ts", kind: "source", score: 160, reasons: ["settings"] }
+        ],
+        tokenEstimate: 700
+      },
+      quality: {
+        score: 82,
+        action: "emit",
+        reasons: ["discovery config source"],
+        topScore: 720,
+        topGap: 30,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 82,
+        action: "emit",
+        reasons: ["discovery config source"],
+        topScore: 720,
+        topGap: 30,
+        primaryFile: "src/utils/AutoDiscoveryUtils.tsx",
+        language: "typescript",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 700,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("src/utils/AutoDiscoveryUtils.tsx", "typescript"),
+        sourceRecord("src/utils/ValidatedServerConfig.ts", "typescript"),
+        sourceRecord("cypress/support/settings.ts", "typescript")
+      ],
+      repoFileCount: 5200,
+      estimatedContextCost: 700
+    });
+
+    expect(decision.taskShapeSignal).toBe("discovery_config");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
+  it("uses compact paired guardrail for high-clue official discovery config prompts", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "SWE-Bench Pro metadata. Selected verification tests from SWE-Bench Pro metadata:",
+        "test/utils/AutoDiscoveryUtils-test.tsx",
+        "Fix homeserver discovery so delegated authentication metadata advertised under m.authentication is preserved in the validated server configuration.",
+        "The public interface ValidatedServerConfig must optionally declare delegatedAuthentication.",
+        "Keep edits to production source only."
+      ].join("\n"),
+      profile: "generic",
+      context: {
+        mode: "snippets",
+        content: "- src/utils/AutoDiscoveryUtils.tsx\n- src/utils/ValidatedServerConfig.ts\n",
+        files: ["src/utils/AutoDiscoveryUtils.tsx", "src/utils/ValidatedServerConfig.ts"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/utils/AutoDiscoveryUtils.tsx", "src/utils/ValidatedServerConfig.ts"],
+        rankedFiles: [
+          { path: "src/utils/AutoDiscoveryUtils.tsx", kind: "source", score: 720, reasons: ["discovery config owner"] },
+          { path: "src/utils/ValidatedServerConfig.ts", kind: "source", score: 690, reasons: ["validated config contract"] }
+        ],
+        tokenEstimate: 700,
+        metadata: { officialEvaluation: { source: "swe_bench_pro" } }
+      },
+      quality: {
+        score: 82,
+        action: "emit",
+        reasons: ["discovery config source"],
+        topScore: 720,
+        topGap: 30,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 82,
+        action: "emit",
+        reasons: ["discovery config source"],
+        topScore: 720,
+        topGap: 30,
+        primaryFile: "src/utils/AutoDiscoveryUtils.tsx",
+        language: "typescript",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 700,
+        expectedSavingsRisk: "low",
+        debugSignal: false,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("src/utils/AutoDiscoveryUtils.tsx", "typescript"),
+        sourceRecord("src/utils/ValidatedServerConfig.ts", "typescript")
+      ],
+      repoFileCount: 5200,
+      estimatedContextCost: 700
+    });
+
+    expect(decision.taskFrame).toBe("official_patch");
+    expect(decision.taskShapeSignal).toBe("discovery_config");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
+  it("marks request body/form reconstruction as compact paired source scope", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "/lists/add returns 500 when POST body data conflicts with query parameters.",
+        "When body data is present, do not pre-populate parent keys before unflatten.",
+        "Nested indexed seeds fields should reconstruct from flattened form input.",
+        "Fix production source only."
+      ].join(" "),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- openlibrary/plugins/openlibrary/lists.py\n- openlibrary/plugins/upstream/utils.py\n",
+        files: ["openlibrary/plugins/openlibrary/lists.py", "openlibrary/plugins/upstream/utils.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["openlibrary/plugins/openlibrary/lists.py"],
+        rankedFiles: [
+          { path: "openlibrary/plugins/openlibrary/lists.py", kind: "source", score: 720, reasons: ["form route/list handler surface"] },
+          { path: "openlibrary/plugins/upstream/utils.py", kind: "source", score: 690, reasons: ["form unflatten utility surface"] }
+        ],
+        tokenEstimate: 720
+      },
+      quality: {
+        score: 78,
+        action: "emit",
+        reasons: ["strong request source surface"],
+        topScore: 720,
+        topGap: 30,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 78,
+        action: "emit",
+        reasons: ["strong request source surface"],
+        topScore: 720,
+        topGap: 30,
+        primaryFile: "openlibrary/plugins/openlibrary/lists.py",
+        language: "python",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 820,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("openlibrary/plugins/openlibrary/lists.py", "python"),
+        sourceRecord("openlibrary/plugins/upstream/utils.py", "python")
+      ],
+      repoFileCount: 4100,
+      estimatedContextCost: 820
+    });
+
+    expect(decision.taskShapeSignal).toBe("request_body_form");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
+  it("marks compressed request/query conflict wording as compact paired source scope", () => {
+    const decision = applyContextGovernor({
+      task: "Fix the /lists/add POST conflict bug. The task involves list request handling and upstream request/query handling.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- openlibrary/plugins/openlibrary/lists.py\n- openlibrary/plugins/upstream/utils.py\n",
+        files: ["openlibrary/plugins/openlibrary/lists.py", "openlibrary/plugins/upstream/utils.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["openlibrary/plugins/openlibrary/lists.py"],
+        rankedFiles: [
+          { path: "openlibrary/plugins/openlibrary/lists.py", kind: "source", score: 720, reasons: ["request handler surface"] },
+          { path: "openlibrary/plugins/upstream/utils.py", kind: "source", score: 690, reasons: ["request utility surface"] }
+        ],
+        tokenEstimate: 720
+      },
+      quality: {
+        score: 78,
+        action: "emit",
+        reasons: ["strong request source surface"],
+        topScore: 720,
+        topGap: 30,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 78,
+        action: "emit",
+        reasons: ["strong request source surface"],
+        topScore: 720,
+        topGap: 30,
+        primaryFile: "openlibrary/plugins/openlibrary/lists.py",
+        language: "python",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 820,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("openlibrary/plugins/openlibrary/lists.py", "python"),
+        sourceRecord("openlibrary/plugins/upstream/utils.py", "python")
+      ],
+      repoFileCount: 4100,
+      estimatedContextCost: 820
+    });
+
+    expect(decision.taskShapeSignal).toBe("request_body_form");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.action).toBe("shrink");
+  });
+
+  it("does not treat nested model statement list retrieval as request body form scope", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "Incomplete Retrieval of Property Statement Values in Wikidata Entities.",
+        "The WikidataEntity class should provide get_statement_values.",
+        "The method should iterate over nested statement objects and return a list of string values.",
+        "Location: openlibrary/core/wikidata.py.",
+        "Selected verification tests from SWE-Bench Pro metadata: openlibrary/tests/core/test_wikidata.py.",
+        "Fix the issue in production source only."
+      ].join(" "),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- openlibrary/core/wikidata.py\n",
+        files: ["openlibrary/core/wikidata.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["openlibrary/core/wikidata.py"],
+        rankedFiles: [
+          { path: "openlibrary/core/wikidata.py", kind: "source", score: 810, reasons: ["exact location surface"] }
+        ],
+        tokenEstimate: 420
+      },
+      quality: {
+        score: 86,
+        action: "emit",
+        reasons: ["exact source surface"],
+        topScore: 810,
+        topGap: 410,
+        exactPathMentioned: true,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 86,
+        action: "emit",
+        reasons: ["exact source surface"],
+        topScore: 810,
+        topGap: 410,
+        primaryFile: "openlibrary/core/wikidata.py",
+        language: "python",
+        exactPathMentioned: true,
+        exactSourceHit: true,
+        recommendedDelivery: "one_file_directive",
+        estimatedContextCost: 420,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("openlibrary/core/wikidata.py", "python"),
+        sourceRecord("openlibrary/plugins/openlibrary/lists.py", "python"),
+        sourceRecord("openlibrary/plugins/upstream/utils.py", "python")
+      ],
+      repoFileCount: 4100,
+      estimatedContextCost: 420
+    });
+
+    expect(decision.taskShapeSignal).not.toBe("request_body_form");
+    expect(decision.requiredSurface).toBe("single_file");
+    expect(decision.recommendedDelivery).toBe("one_file_directive");
+  });
+
+  it("classifies pinned topic authorization wording as topic ordering, not HTTP auth", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "Reordering pinned topics does not behave correctly for all cases.",
+        "Maintain authorization so only moderator or admin users can reorder pinned topics.",
+        "Unprivileged users should fail without changing pinned membership or order.",
+        "Moving one pinned topic should place it at the target position while preserving other pinned topics.",
+        "Selected verification tests from SWE-Bench Pro metadata: test/topics.js.",
+        "Fix the issue in production source only."
+      ].join(" "),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- src/topics/tools.js\n- src/socket.io/topics/tools.js\n- public/src/client/category/tools.js\n",
+        files: ["src/topics/tools.js", "src/socket.io/topics/tools.js", "public/src/client/category/tools.js"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/topics/tools.js", "src/socket.io/topics/tools.js", "public/src/client/category/tools.js"],
+        rankedFiles: [
+          { path: "src/topics/tools.js", kind: "source", score: 960, reasons: ["topic tools ordering owner"] },
+          { path: "src/socket.io/topics/tools.js", kind: "source", score: 920, reasons: ["topic socket ordering owner"] },
+          { path: "public/src/client/category/tools.js", kind: "source", score: 890, reasons: ["category client pinned-topic owner"] }
+        ],
+        tokenEstimate: 720
+      },
+      quality: {
+        score: 86,
+        action: "emit",
+        reasons: ["topic ordering owners"],
+        topScore: 960,
+        topGap: 40,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 86,
+        action: "emit",
+        reasons: ["topic ordering owners"],
+        topScore: 960,
+        topGap: 40,
+        primaryFile: "src/topics/tools.js",
+        language: "javascript",
+        exactPathMentioned: false,
+        sourceRescue: true,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 720,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("src/topics/tools.js", "javascript"),
+        sourceRecord("src/socket.io/topics/tools.js", "javascript"),
+        sourceRecord("public/src/client/category/tools.js", "javascript"),
+        sourceRecord("public/src/client/account/topics.js", "javascript"),
+        sourceRecord("public/src/client/topic.js", "javascript")
+      ],
+      repoFileCount: 2400,
+      estimatedContextCost: 720
+    });
+
+    expect(decision.taskShapeSignal).toBe("topic_ordering");
+    expect(decision.taskShapeSignal).not.toBe("http_auth_policy");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
+  it("marks dominant converter output bugs as single-file scope guardrails", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "Selected tests from SWE-Bench Pro metadata: contrib/trivy/pkg/converter_test.go.",
+        "Fix the trivy-to-vuls converter output.",
+        "cveContents should not duplicate Debian severity records when conversion builds Vuls JSON findings.",
+        "Fix production source only."
+      ].join(" "),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- contrib/trivy/pkg/converter.go\n",
+        files: ["contrib/trivy/pkg/converter.go"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["contrib/trivy/pkg/converter.go"],
+        rankedFiles: [
+          { path: "contrib/trivy/pkg/converter.go", kind: "source", score: 980, reasons: ["converter output implementation surface"] }
+        ],
+        tokenEstimate: 320
+      },
+      quality: {
+        score: 82,
+        action: "emit",
+        reasons: ["converter output implementation surface"],
+        topScore: 980,
+        topGap: 520,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 82,
+        action: "emit",
+        reasons: ["converter output implementation surface"],
+        topScore: 980,
+        topGap: 520,
+        primaryFile: "contrib/trivy/pkg/converter.go",
+        language: "go",
+        exactPathMentioned: false,
+        sourceRescue: true,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 620,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [sourceRecord("contrib/trivy/pkg/converter.go", "go")],
+      repoFileCount: 2400,
+      estimatedContextCost: 620
+    });
+
+    expect(decision.taskShapeSignal).toBe("converter_output");
+    expect(decision.requiredSurface).toBe("single_file");
+    expect(decision.action).toBe("shrink");
+    expect(decision.directiveStyle).toBe("scope_guardrail");
+    expect(decision.recommendedDelivery).toBe("one_file_directive");
+  });
+
+  it("does not treat route-target import/export domain language as an exporter command contract", () => {
+    const decision = applyContextGovernor({
+      task: "Add manual route-target import and route-target export values to nxos_vrf_af. Fix production source only.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- lib/ansible/modules/network/nxos/nxos_vrf_af.py\n- lib/ansible/modules/network/nxos/nxos_vrf.py\n",
+        files: [
+          "lib/ansible/modules/network/nxos/nxos_vrf_af.py",
+          "lib/ansible/modules/network/nxos/nxos_vrf.py"
+        ],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["lib/ansible/modules/network/nxos/nxos_vrf_af.py"],
+        rankedFiles: [
+          { path: "lib/ansible/modules/network/nxos/nxos_vrf_af.py", kind: "source", score: 620, reasons: ["exact module"] },
+          { path: "lib/ansible/modules/network/nxos/nxos_vrf.py", kind: "source", score: 310, reasons: ["nearby module"] }
+        ],
+        tokenEstimate: 720
+      },
+      quality: {
+        score: 85,
+        action: "emit",
+        reasons: ["exact module"],
+        topScore: 620,
+        topGap: 310,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 83,
+        action: "emit",
+        reasons: ["exact source"],
+        topScore: 620,
+        topGap: 310,
+        primaryFile: "lib/ansible/modules/network/nxos/nxos_vrf_af.py",
+        language: "python",
+        exactPathMentioned: false,
+        exactSourceHit: true,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 720,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("lib/ansible/modules/network/nxos/nxos_vrf_af.py", "python"),
+        sourceRecord("lib/ansible/modules/network/nxos/nxos_vrf.py", "python")
+      ],
+      repoFileCount: 1800,
+      estimatedContextCost: 720
+    });
+
+    expect(decision.taskShapeSignal).not.toBe("command_contract");
+    expect(decision.requiredSurface).toBe("single_file");
+  });
+
+  it("does not treat RBAC namespace visibility tasks as frontend ownership because they say view", () => {
+    const decision = applyContextGovernor({
+      task: "Kubernetes RBAC namespace rules should grant read-only get/list/watch visibility for a namespace when the user has resource access. Fix production source only.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- lib/utils/replace.go\n- api/types/namespace.go\n",
+        files: ["lib/utils/replace.go", "api/types/namespace.go"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["lib/utils/replace.go"],
+        rankedFiles: [
+          { path: "lib/utils/replace.go", kind: "source", score: 590, reasons: ["KubeResourceMatchesRegex"] },
+          { path: "api/types/namespace.go", kind: "source", score: 330, reasons: ["namespace type"] }
+        ],
+        tokenEstimate: 720
+      },
+      quality: {
+        score: 82,
+        action: "emit",
+        reasons: ["source match"],
+        topScore: 590,
+        topGap: 260,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 81,
+        action: "emit",
+        reasons: ["source match"],
+        topScore: 590,
+        topGap: 260,
+        primaryFile: "lib/utils/replace.go",
+        language: "go",
+        exactPathMentioned: false,
+        exactSourceHit: true,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 720,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("lib/utils/replace.go", "go"),
+        sourceRecord("api/types/namespace.go", "go")
+      ],
+      repoFileCount: 2200,
+      estimatedContextCost: 720
+    });
+
+    expect(decision.taskShapeSignal).not.toBe("frontend_ownership");
+    expect(decision.requiredSurface).toBe("single_file");
+  });
+
+  it("does not infer official multi-file scope from requirement bullets alone", () => {
+    const task = [
+      "## Title: Kubernetes RBAC namespace rules should grant expected resource access",
+      "",
+      "Requirements:",
+      "- The KubeResourceMatchesRegex function must grant read-only access.",
+      "- The function must not grant write-level access unless explicitly defined.",
+      "- The isVerbAllowed function should continue to enforce verb permissions.",
+      "",
+      "Selected verification tests from SWE-Bench Pro metadata: TestKubeResourceMatchesRegex/list_namespace_with_resource_giving_read_access_to_namespace",
+      "These tests are verification targets only; do not edit tests, snapshots, docs, examples, generated files, or unrelated files.",
+      "",
+      "Fix the issue in production source only. Avoid broad scans once the relevant source surface is known."
+    ].join("\n");
+
+    expect(hasPromptDerivedMultiFileScope(task)).toBe(false);
+  });
+
+  it("marks deprecation lifecycle tasks as compact paired-source directives", () => {
+    const decision = applyContextGovernor({
+      task: "Support deprecation by date in modules. Deprecated aliases should validate version or date and display warnings. Fix production source only.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- lib/module_utils/common/parameters.py\n- lib/module_utils/common/warnings.py\n- lib/utils/display.py\n",
+        files: [
+          "lib/module_utils/common/parameters.py",
+          "lib/module_utils/common/warnings.py",
+          "lib/utils/display.py"
+        ],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["lib/module_utils/common/parameters.py", "lib/module_utils/common/warnings.py"],
+        rankedFiles: [
+          { path: "lib/module_utils/common/parameters.py", kind: "source", score: 520, reasons: ["parameter validation surface"] },
+          { path: "lib/module_utils/common/warnings.py", kind: "source", score: 500, reasons: ["deprecation warning companion"] },
+          { path: "lib/utils/display.py", kind: "source", score: 470, reasons: ["deprecation display surface"] }
+        ],
+        tokenEstimate: 760
+      },
+      quality: {
+        score: 80,
+        action: "emit",
+        reasons: ["top retrieval score"],
+        topScore: 520,
+        topGap: 20,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 78,
+        action: "emit",
+        reasons: ["debug/failure task can benefit from targeted context"],
+        topScore: 520,
+        topGap: 20,
+        primaryFile: "lib/module_utils/common/parameters.py",
+        language: "python",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 1100,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("lib/module_utils/common/parameters.py", "python"),
+        sourceRecord("lib/module_utils/common/warnings.py", "python"),
+        sourceRecord("lib/utils/display.py", "python")
+      ],
+      repoFileCount: 1800,
+      estimatedContextCost: 1100
+    });
+
+    expect(decision.taskShapeSignal).toBe("lifecycle_policy");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
+  it("marks package source mapping tasks as compact paired-source directives", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "Alpine Linux vulnerability detection incorrectly handles source vs binary packages.",
+        "The scanner should parse apk list output, map binary packages to source package names,",
+        "and OVAL vulnerability matching should assess source packages accordingly."
+      ].join(" "),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- scanner/alpine.go\n- oval/util.go\n- scanner/scanner.go\n",
+        files: ["scanner/alpine.go", "oval/util.go", "scanner/scanner.go"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["scanner/alpine.go", "oval/util.go", "scanner/scanner.go"],
+        rankedFiles: [
+          { path: "scanner/alpine.go", kind: "source", score: 640, reasons: ["apk scanner surface"] },
+          { path: "oval/util.go", kind: "source", score: 600, reasons: ["OVAL source package matcher"] },
+          { path: "scanner/scanner.go", kind: "source", score: 520, reasons: ["scanner dispatch"] }
+        ],
+        tokenEstimate: 840
+      },
+      quality: {
+        score: 82,
+        action: "emit",
+        reasons: ["top retrieval score"],
+        topScore: 640,
+        topGap: 40,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 80,
+        action: "emit",
+        reasons: ["debug/failure task can benefit from targeted context"],
+        topScore: 640,
+        topGap: 40,
+        primaryFile: "scanner/alpine.go",
+        language: "go",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 1100,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("scanner/alpine.go", "go"),
+        sourceRecord("oval/util.go", "go"),
+        sourceRecord("scanner/scanner.go", "go"),
+        sourceRecord("contrib/trivy/pkg/converter.go", "go")
+      ],
+      repoFileCount: 900,
+      estimatedContextCost: 1100
+    });
+
+    expect(decision.taskShapeSignal).toBe("package_source_mapping");
+    expect(decision.requiredSurface).toBe("paired_contract");
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
+  it("keeps narrow RPM source-package parser tasks single-file", () => {
+    const decision = applyContextGovernor({
+      task: [
+        "Scanner fails on non-standard source RPM filenames and epoch handling.",
+        "Update parseInstalledPackagesLine to append warnings for unparseable SOURCERPM filenames without aborting.",
+        "Implement splitFileName handling for source RPM filenames with epoch values."
+      ].join(" "),
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- scanner/redhatbase.go\n- scanner/centos.go\n- scanner/rhel.go\n- oval/util.go\n- scanner/scanner.go\n",
+        files: ["scanner/redhatbase.go", "scanner/centos.go", "scanner/rhel.go", "oval/util.go", "scanner/scanner.go"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["scanner/redhatbase.go"],
+        rankedFiles: [
+          { path: "scanner/redhatbase.go", kind: "source", score: 980, reasons: ["RPM source package scanner surface"] },
+          { path: "scanner/centos.go", kind: "source", score: 500, reasons: ["RPM source package scanner surface"] },
+          { path: "scanner/rhel.go", kind: "source", score: 480, reasons: ["RPM source package scanner surface"] },
+          { path: "oval/util.go", kind: "source", score: 350, reasons: ["source package matcher"] },
+          { path: "scanner/scanner.go", kind: "source", score: 300, reasons: ["scanner dispatch"] }
+        ],
+        tokenEstimate: 900
+      },
+      quality: {
+        score: 88,
+        action: "emit",
+        reasons: ["top retrieval score"],
+        topScore: 980,
+        topGap: 480,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 86,
+        action: "emit",
+        reasons: ["dominant source parser surface"],
+        topScore: 980,
+        topGap: 480,
+        primaryFile: "scanner/redhatbase.go",
+        language: "go",
+        exactPathMentioned: false,
+        sourceRescue: true,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 1000,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        sourceRecord("scanner/redhatbase.go", "go"),
+        sourceRecord("scanner/centos.go", "go"),
+        sourceRecord("scanner/rhel.go", "go"),
+        sourceRecord("oval/util.go", "go"),
+        sourceRecord("scanner/scanner.go", "go")
+      ],
+      repoFileCount: 600,
+      estimatedContextCost: 1000
+    });
+
+    expect(decision.taskShapeSignal).toBe("narrow_package_parser");
+    expect(decision.taskShapeSignal).not.toBe("lifecycle_policy");
+    expect(decision.requiredSurface).toBe("single_file");
+    expect(decision.recommendedDelivery).not.toBe("multi_file_directive");
+  });
+
+  it("marks strong frontend ownership tasks as compact feature clusters", () => {
+    const decision = applyContextGovernor({
+      task: "Fix voice broadcast liveness feedback in the room composer UI. Production source only; do not edit tests.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: "- src/components/views/rooms/MessageComposer.tsx\n- src/stores/RoomViewStore.ts\n",
+        files: ["src/components/views/rooms/MessageComposer.tsx", "src/stores/RoomViewStore.ts"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/components/views/rooms/MessageComposer.tsx", "src/stores/RoomViewStore.ts"],
+        rankedFiles: [
+          { path: "src/components/views/rooms/MessageComposer.tsx", kind: "component", score: 600, reasons: ["named UI surface match"] },
+          { path: "src/stores/RoomViewStore.ts", kind: "source", score: 470, reasons: ["UI state owner surface"] }
+        ],
+        tokenEstimate: 880
+      },
+      quality: {
+        score: 82,
+        action: "emit",
+        reasons: ["top retrieval score"],
+        topScore: 600,
+        topGap: 130,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      baseDecision: {
+        score: 80,
+        action: "emit",
+        reasons: ["debug/failure task can benefit from targeted context"],
+        topScore: 600,
+        topGap: 130,
+        primaryFile: "src/components/views/rooms/MessageComposer.tsx",
+        language: "typescript",
+        exactPathMentioned: false,
+        recommendedDelivery: "full_prime",
+        estimatedContextCost: 1300,
+        expectedSavingsRisk: "low",
+        debugSignal: true,
+        easyTaskSignal: false
+      },
+      knownFiles: [
+        { ...sourceRecord("src/components/views/rooms/MessageComposer.tsx", "typescript"), kind: "component" },
+        sourceRecord("src/stores/RoomViewStore.ts", "typescript")
+      ],
+      repoFileCount: 6200,
+      estimatedContextCost: 1300
+    });
+
+    expect(decision.taskShapeSignal).toBe("frontend_ownership");
+    expect(decision.requiredSurface).toBe("feature_cluster");
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+  });
+
+  it("shrinks read-only source-routing prompts into compact multi-file directives", () => {
+    const decision = evaluateContextValue({
+      task: "Diagnose source ownership only: identify the smallest production source files involved when Black LineGenerator creates output lines and comment handling changes line splitting behavior. Do not edit files. Return the relevant file paths and a short reason for each.",
+      profile: "generic",
+      context: {
+        mode: "snippets",
+        content: [
+          "- src/black/lines.py (source, score 4600): line splitting source match",
+          "- src/black/comments.py (source, score 2800): comment handling companion",
+          "- src/black/linegen.py (source, score 2500): LineGenerator output line source"
+        ].join("\n"),
+        files: ["src/black/lines.py", "src/black/comments.py", "src/black/linegen.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["src/black/lines.py", "src/black/comments.py", "src/black/linegen.py"],
+        rankedFiles: [
+          { path: "src/black/lines.py", kind: "source", score: 4600, reasons: ["line splitting source match"] },
+          { path: "src/black/comments.py", kind: "source", score: 2800, reasons: ["comment handling companion"] },
+          { path: "src/black/linegen.py", kind: "source", score: 2500, reasons: ["LineGenerator output line source"] }
+        ],
+        tokenEstimate: 640
+      },
+      quality: {
+        score: 100,
+        action: "emit",
+        reasons: ["high-confidence top retrieval score"],
+        topScore: 4600,
+        topGap: 1800,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      knownFiles: [
+        sourceRecord("src/black/lines.py", "python"),
+        sourceRecord("src/black/comments.py", "python"),
+        sourceRecord("src/black/linegen.py", "python")
+      ],
+      repoFileCount: 460,
+      estimatedContextCost: 900,
+      companionCount: 2,
+      companionTopScore: 5800
+    });
+
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+    expect(decision.reasons).toEqual(
+      expect.arrayContaining(["read-only source-routing task should use a compact source map instead of full context"])
+    );
+  });
+
+  it("does not treat official production-fix prompts with test-edit bans as read-only source routing", () => {
+    expect(
+      taskIsReadOnlySourceRouting(
+        [
+          "Fix the YAML dumper undefined-variable behavior in production source.",
+          "New interfaces introduced: Name: represent_undefined Path: lib/ansible/parsing/yaml/dumper.py.",
+          "Selected verification tests from SWE-Bench Pro metadata: test/units/parsing/yaml/test_dumper.py",
+          "These tests are verification targets only; do not edit tests, snapshots, docs, examples, generated files, or unrelated files.",
+          "Fix the issue in production source only."
+        ].join("\n")
+      )
+    ).toBe(false);
+    expect(
+      taskIsReadOnlySourceRouting(
+        "Diagnose source ownership only: identify the smallest production source files involved. Do not edit files. Return the relevant file paths."
+      )
+    ).toBe(true);
+  });
+
+  it("infers multi-file production scope from prompt-visible behavior requirements", () => {
+    const task = [
+      "Title: password lookup should preserve encrypted stored passwords.",
+      "",
+      "Requirements:",
+      "- Reuse the existing password file when it is present and readable.",
+      "- Generate a password when no stored value exists.",
+      "- Encrypt the generated password with the requested salt and ident.",
+      "- Write the stored value atomically and keep error messages clear.",
+      "",
+      "Selected tests from SWE-Bench Pro metadata: test/units/plugins/lookup/test_password.py, test/units/utils/test_encrypt.py",
+      "Fix the issue in production source. Do not edit unrelated files."
+    ].join("\n");
+
+    expect(hasExplicitMultiFileScopeRequest(task)).toBe(false);
+    expect(hasPromptDerivedMultiFileScope(task)).toBe(true);
+  });
+
+  it("keeps simple official exact-source prompts out of prompt-derived multi-file scope", () => {
+    const task = [
+      "Title: PosthogAnalytics event tracking ignores privacy state.",
+      "",
+      "Requirements:",
+      "- Update PosthogAnalytics so initialization and event tracking respect the enabled flag.",
+      "- Fix the issue in production source. Do not edit unrelated files.",
+      "",
+      "Interface notes, not necessarily edit targets:",
+      "No new interfaces are introduced.",
+      "",
+      "Selected tests from SWE-Bench Pro metadata: test/PosthogAnalytics-test.ts"
+    ].join("\n");
+
+    expect(hasPromptDerivedMultiFileScope(task)).toBe(false);
+  });
+
+  it("infers multi-file scope for central HSM/KMS backend test configuration prompts", () => {
+    const task = [
+      "Title: HSM/KMS test configuration logic is duplicated across backend test files.",
+      "",
+      "Requirements:",
+      "- Provide a unified HSMTestConfig function that automatically detects available HSM/KMS backends.",
+      "- Add dedicated configuration functions for SoftHSM, YubiHSM, CloudHSM, AWS KMS, and GCP KMS.",
+      "- Centralize backend detection and environment validation logic.",
+      "",
+      "Selected verification tests from SWE-Bench Pro metadata: TestBackends, TestBackends/fake_gcp_kms, TestBackends/fake_aws_kms",
+      "Fix the issue in production source. Do not edit unrelated files."
+    ].join("\n");
+
+    expect(hasExplicitMultiFileScopeRequest(task)).toBe(false);
+    expect(hasPromptDerivedMultiFileScope(task)).toBe(true);
+  });
+
+  it("uses prompt-derived multi-file scope when multiple production candidates are visible", () => {
+    const task = [
+      "Title: password lookup should preserve encrypted stored passwords.",
+      "",
+      "Requirements:",
+      "- Reuse the existing password file when it is present and readable.",
+      "- Generate a password when no stored value exists.",
+      "- Encrypt the generated password with the requested salt and ident.",
+      "- Write the stored value atomically and keep error messages clear.",
+      "",
+      "Selected tests from SWE-Bench Pro metadata: test/units/plugins/lookup/test_password.py, test/units/utils/test_encrypt.py",
+      "Fix the issue in production source. Do not edit unrelated files."
+    ].join("\n");
+    const decision = evaluateContextValue({
+      task,
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: [
+          "- lib/ansible/plugins/lookup/password.py (source, score 880): password lookup source match",
+          "- lib/ansible/utils/encrypt.py (source, score 720): encryption salt ident companion"
+        ].join("\n"),
+        files: ["lib/ansible/plugins/lookup/password.py", "lib/ansible/utils/encrypt.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["lib/ansible/plugins/lookup/password.py", "lib/ansible/utils/encrypt.py"],
+        rankedFiles: [
+          { path: "lib/ansible/plugins/lookup/password.py", kind: "source", score: 880, reasons: ["password lookup source match"] },
+          { path: "lib/ansible/utils/encrypt.py", kind: "source", score: 720, reasons: ["encryption salt ident companion"] }
+        ],
+        tokenEstimate: 360
+      },
+      quality: {
+        score: 84,
+        action: "emit",
+        reasons: ["high-confidence top retrieval score", "top result is clearly separated"],
+        topScore: 880,
+        topGap: 160,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      knownFiles: [
+        record("lib/ansible/plugins/lookup/password.py", "source"),
+        record("lib/ansible/utils/encrypt.py", "source")
+      ],
+      repoFileCount: 1900,
+      estimatedContextCost: 900
+    });
+
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+    expect(decision.multiSurfaceSignal).toBe(true);
+    expect(decision.reasons).toEqual(expect.arrayContaining(["prompt implies multiple production surfaces"]));
+  });
+
+  it("routes read-only production source maps through source companions when tests rank first", () => {
+    const decision = evaluateContextValue({
+      task: "Diagnose source ownership only: identify the smallest production source files involved when collected Python test nodes request fixture values during pytest runner setup. Do not edit files. Return the relevant file paths and a short reason for each.",
+      profile: "failure_debug",
+      context: {
+        mode: "snippets",
+        content: [
+          "- testing/test_capture.py (test, score 2500): test node lexical match",
+          "- src/_pytest/fixtures.py (source, score 2500): fixture setup source companion",
+          "- src/_pytest/runner.py (source, score 2400): runner behavior source companion"
+        ].join("\n"),
+        files: ["testing/test_capture.py", "src/_pytest/fixtures.py", "src/_pytest/runner.py"],
+        symbols: [],
+        related: [],
+        warnings: [],
+        suggestedNextContext: ["testing/test_capture.py", "src/_pytest/fixtures.py", "src/_pytest/runner.py"],
+        rankedFiles: [
+          { path: "testing/test_capture.py", kind: "test", score: 2500, reasons: ["test node lexical match"] },
+          { path: "src/_pytest/fixtures.py", kind: "source", score: 2500, reasons: ["fixture setup source companion"] },
+          { path: "src/_pytest/runner.py", kind: "source", score: 2400, reasons: ["runner behavior source companion"] }
+        ],
+        tokenEstimate: 640
+      },
+      quality: {
+        score: 94,
+        action: "emit",
+        reasons: ["high-confidence top retrieval score"],
+        topScore: 2500,
+        topGap: 0,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low"
+      },
+      knownFiles: [
+        { ...sourceRecord("testing/test_capture.py", "python"), kind: "test" },
+        sourceRecord("src/_pytest/fixtures.py", "python"),
+        sourceRecord("src/_pytest/runner.py", "python")
+      ],
+      repoFileCount: 664,
+      estimatedContextCost: 900,
+      companionCount: 2,
+      companionTopScore: 7000,
+      companionSpecific: true
+    });
+
+    expect(decision.action).toBe("shrink");
+    expect(decision.recommendedDelivery).toBe("multi_file_directive");
+    expect(decision.reasons).toEqual(
+      expect.arrayContaining(["read-only source-routing task should use a compact source map instead of full context"])
+    );
   });
 
   it("shrinks high-confidence exact source hits instead of broad full-prime delivery", () => {
@@ -4038,6 +6682,104 @@ describe("benchmark suite and scoring", () => {
     expect(result.metadata.mcpContextEfficiency).toBeCloseTo(1 / 3, 4);
   });
 
+  it("counts actual MCP tool calls and returned files from Codex transcripts", async () => {
+    const root = createFixtureRepo();
+    const previousCodexHome = process.env.CODEX_HOME;
+    const codexHome = path.join(root, "codex-home");
+    const sessionId = "019f052e-b307-7b52-a0e7-c4ccf6552ffa";
+    const transcriptDir = path.join(codexHome, "sessions", "2026", "06", "26");
+    const mcpResult = {
+      files: ["src/app.ts", "src/app.test.ts", "docs/readme.md"],
+      attributedFiles: ["src/app.ts", "src/app.test.ts"],
+      contextDecision: { action: "shrink" },
+      stopCondition: "source_surface_sufficient"
+    };
+    fs.mkdirSync(transcriptDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(transcriptDir, `rollout-2026-06-26T14-26-14-${sessionId}.jsonl`),
+      [
+        JSON.stringify({
+          usage: {
+            total_tokens: 1234,
+            input_tokens: 1000,
+            cached_input_tokens: 700,
+            output_tokens: 234
+          }
+        }),
+        JSON.stringify({
+          type: "response_item",
+          payload: {
+            type: "function_call",
+            name: "kairn_prepare_task",
+            namespace: "mcp__kairn__",
+            call_id: "call_1"
+          }
+        }),
+        JSON.stringify({
+          type: "event_msg",
+          payload: {
+            type: "mcp_tool_call_end",
+            invocation: {
+              server: "kairn",
+              tool: "kairn_prepare_task",
+              call_id: "call_1"
+            },
+            result: {
+              Ok: {
+                content: [
+                  {
+                    type: "text",
+                    text: JSON.stringify(mcpResult)
+                  }
+                ]
+              }
+            }
+          }
+        })
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      path.join(root, "emit-transcript-session.cjs"),
+      [
+        "const fs = require('fs');",
+        "fs.writeFileSync('src/app.ts', 'export const changedByTranscriptMcp = true;\\n');",
+        `console.log('session id: ${sessionId}');`
+      ].join("\n")
+    );
+    process.env.CODEX_HOME = codexHome;
+
+    try {
+      const result = await runAgentBenchmarkCase({
+        rootPath: root,
+        benchmarkCase: {
+          id: "mcp-transcript",
+          mode: "agent",
+          task: "Use Kairn MCP from Codex transcript",
+          expectedFiles: ["src/app.ts"],
+          excludedFiles: ["docs/"]
+        },
+        agentCommand: "node emit-transcript-session.cjs"
+      });
+
+      expect(result.observedCodexTokens).toBe(1234);
+      expect(result.metadata.actualMcpToolCalls).toBe(1);
+      expect(result.metadata.actualMcpToolCallSource).toBe("codex_transcript");
+      expect(result.metadata.actualMcpToolNames).toEqual(["kairn_prepare_task"]);
+      expect(result.metadata.actualMcpFiles).toEqual(["docs/readme.md", "src/app.test.ts", "src/app.ts"]);
+      expect(result.metadata.actualMcpAttributedFiles).toEqual(["src/app.test.ts", "src/app.ts"]);
+      expect(result.metadata.actualMcpContextActions).toEqual(["shrink"]);
+      expect(result.metadata.actualMcpStopConditions).toEqual(["source_surface_sufficient"]);
+      expect(result.metadata.mcpReturnedFileCount).toBe(3);
+      expect(result.metadata.mcpReturnedExpectedFileCount).toBe(1);
+      expect(result.metadata.mcpReturnedNoiseFileCount).toBe(1);
+      expect(result.metadata.mcpReturnedTestFanoutCount).toBe(1);
+      expect(result.metadata.mcpContextEfficiency).toBeCloseTo(1 / 3, 4);
+    } finally {
+      if (previousCodexHome === undefined) delete process.env.CODEX_HOME;
+      else process.env.CODEX_HOME = previousCodexHome;
+    }
+  });
+
   it("does not contaminate setup-failure proof metrics with the caller cwd Kairn database", async () => {
     const metricsRoot = createFixtureRepo();
     const contaminatingRuntime = new KairnRuntime(metricsRoot);
@@ -4493,6 +7235,16 @@ describe("benchmark suite and scoring", () => {
     ).toMatchObject({ assistClassification: "harmful_invalid_assist", harmfulAssist: true });
     expect(
       classifyAssistance({
+        assistanceStatus: "active",
+        qualityGatePassed: false,
+        savedTokens: 500,
+        baselineTokens: 2000,
+        baselineQualityGatePassed: false,
+        turnCount: 1
+      })
+    ).toMatchObject({ assistClassification: "neutral", harmfulAssist: false });
+    expect(
+      classifyAssistance({
         assistanceStatus: "passive_suppressed",
         qualityGatePassed: true,
         savedTokens: 100,
@@ -4902,6 +7654,91 @@ describe("benchmark runtime and CLI", () => {
     expect(statement).toContain("fall through");
   });
 
+  it("does not apply voice-broadcast invariants to generic UI ordering tasks", () => {
+    const statement = inferInvariantStatement([
+      "Reordering Sent should also reposition All Sent together.",
+      "All Sent stays hidden but its position is updated.",
+      "Preserve each item's non-order properties, including display section."
+    ].join(" "));
+
+    expect(statement).not.toContain("Voice broadcast");
+    expect(statement).toContain("non-order properties");
+  });
+
+  it("uses pinned-topic ordering invariants before generic invalid-input wording", () => {
+    const statement = inferInvariantStatement([
+      "Reordering pinned topics does not behave correctly for all cases.",
+      "Only moderator or admin users can request reordering of pinned topics.",
+      "Invalid or nonexistent topic identifiers must not change pinned ordering.",
+      "Unpinned topics should be a no-op and category isolation must be preserved."
+    ].join(" "));
+
+    expect(statement).toContain("Pinned-topic reordering");
+    expect(statement).toContain("category isolation");
+    expect(statement).not.toContain("invalid-input rejection paths");
+  });
+
+  it("does not apply invalid-identifier guardrails to backend environment validation tasks", () => {
+    const statement = inferInvariantStatement([
+      "HSM/KMS test configuration logic is duplicated across backend test files.",
+      "Configuration functions should handle environment variable validation.",
+      "Support SoftHSM, YubiHSM, CloudHSM, GCP KMS, and AWS KMS backends."
+    ].join(" "));
+
+    expect(statement).not.toContain("invalid-input rejection paths");
+    expect(statement).toContain("environment variable validation");
+  });
+
+  it("does not emit unrelated generic test helpers for central HSM/KMS backend config tasks", async () => {
+    const root = createFixtureRepo();
+    fs.mkdirSync(path.join(root, "lib/auth/keystore"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "lib/auth/keystore/pkcs11.go"),
+      [
+        "package keystore",
+        "",
+        "func SetupSoftHSMTest() Config {",
+        "  return Config{}",
+        "}",
+        ""
+      ].join("\n")
+    );
+    fs.mkdirSync(path.join(root, "api/utils/sshutils"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "api/utils/sshutils/test.go"),
+      [
+        "package sshutils",
+        "",
+        "func TestBackends() []string {",
+        "  return []string{\"ssh\"}",
+        "}",
+        ""
+      ].join("\n")
+    );
+    const runtime = new KairnRuntime(root);
+
+    const prime = await runtime.primeContext({
+      task: [
+        "HSM/KMS test configuration logic is duplicated across backend test files.",
+        "Requirements:",
+        "- Provide a unified HSMTestConfig function that automatically detects available HSM/KMS backends.",
+        "- Add dedicated configuration functions for SoftHSM, YubiHSM, CloudHSM, AWS KMS, and GCP KMS.",
+        "Selected verification tests from SWE-Bench Pro metadata: TestBackends, TestBackends/fake_gcp_kms, TestBackends/fake_aws_kms",
+        "These tests are verification targets only; do not edit tests.",
+        "Fix the issue in production source only. Avoid broad scans once the relevant source surface is known."
+      ].join("\n"),
+      profile: "failure_debug",
+      budget: 900
+    });
+
+    expect(prime.files).toContain("lib/auth/keystore/pkcs11.go");
+    expect(prime.files).not.toContain("api/utils/sshutils/test.go");
+    expect(prime.content).not.toContain("Companion source:\n- api/utils/sshutils/test.go");
+    expect(prime.editScope?.initialEditFiles).not.toContain("api/utils/sshutils/test.go");
+
+    runtime.close();
+  });
+
   it("prefers current source invariant metadata over stale session task text in exact-source primes", async () => {
     const root = createFixtureRepo();
     fs.mkdirSync(path.join(root, "src/requests"), { recursive: true });
@@ -5221,6 +8058,67 @@ describe("benchmark runtime and CLI", () => {
     runtime.close();
   });
 
+  it("falls back to Codex transcript usage when live-agent output has no usage footer", async () => {
+    const root = createFixtureRepo();
+    const runtime = new KairnRuntime(root);
+    const previousCodexHome = process.env.CODEX_HOME;
+    const codexHome = path.join(root, "codex-home");
+    const sessionId = "019f0520-0733-72d2-a564-44e00095ace3";
+    const transcriptDir = path.join(codexHome, "sessions", "2026", "06", "26");
+    fs.mkdirSync(transcriptDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(transcriptDir, `rollout-2026-06-26T14-10-12-${sessionId}.jsonl`),
+      [
+        JSON.stringify({
+          usage: {
+            total_tokens: 100,
+            input_tokens: 80,
+            cached_input_tokens: 60,
+            output_tokens: 20
+          }
+        }),
+        JSON.stringify({
+          payload: {
+            type: "token_count",
+            info: {
+              total_token_usage: {
+                total_tokens: 4321,
+                input_tokens: 4000,
+                cached_input_tokens: 3000,
+                output_tokens: 321
+              }
+            }
+          }
+        })
+      ].join("\n")
+    );
+    process.env.CODEX_HOME = codexHome;
+
+    try {
+      const report = await runtime.runBenchmark({
+        mode: "agent",
+        agentCommand: `printf 'session id: ${sessionId}\\nagent completed without footer\\n'`
+      });
+
+      expect(report.observed).toEqual({
+        codexTokens: 4321,
+        codexCaseCount: 1
+      });
+      expect(report.results[0]?.observedCodexTokens).toBe(4321);
+      expect(report.results[0]?.metadata.codexUsage).toMatchObject({
+        totalTokens: 4321,
+        inputTokens: 4000,
+        cachedInputTokens: 3000,
+        outputTokens: 321,
+        source: "transcript"
+      });
+    } finally {
+      if (previousCodexHome === undefined) delete process.env.CODEX_HOME;
+      else process.env.CODEX_HOME = previousCodexHome;
+      runtime.close();
+    }
+  });
+
   it("parses Codex token footers from failed live-agent benchmark output", async () => {
     const root = createFixtureRepo();
     const runtime = new KairnRuntime(root);
@@ -5449,6 +8347,7 @@ describe("benchmark runtime and CLI", () => {
           "Improve job tracker mobile layout bottom sheet behavior",
           "--root",
           root,
+          "--skip-git-repo-check",
           "--session",
           dryRun.sessionId,
           "--bind-hooks",
@@ -5467,21 +8366,142 @@ describe("benchmark runtime and CLI", () => {
 
     expect(instructions).toContain("# Existing Instructions");
     expect(instructions.match(/kairn:mcp-first:start/g)?.length).toBe(1);
-    expect(dryRun.args[0]).toBe("exec");
+    expect(dryRun.args).toContain("exec");
+    expect(dryRun.args).toContain("-a");
+    expect(dryRun.args).toContain("never");
+    expect(dryRun.args.indexOf("-a")).toBeLessThan(dryRun.args.indexOf("exec"));
     expect(dryRun.args).toContain("--disable");
     expect(dryRun.args).toContain("hooks");
     expect(dryRun.args).not.toContain("--enable");
+    expect(boundDryRun.args).toContain("--skip-git-repo-check");
+    expect(boundDryRun.args).toContain("-a");
+    expect(boundDryRun.args).toContain("never");
+    expect(boundDryRun.args.indexOf("-a")).toBeLessThan(boundDryRun.args.indexOf("exec"));
     expect(dryRun.prompt).toContain("Kairn Proactive Context");
     expect(dryRun.prompt).toContain("User task:");
     expect(dryRun.prime.files).toContain("src/app/private/jobs/JobsApplicationsTable.tsx");
     expect(boundDryRun.sessionId).toBe(dryRun.sessionId);
     expect(boundDryRun.args).toContain("--enable");
     expect(boundDryRun.args).toContain("hooks");
-    expect(boundDryRun.prompt).toContain(`Kairn conversation session: ${dryRun.sessionId}`);
+    expect(boundDryRun.prompt).toBe("Improve job tracker mobile layout bottom sheet behavior");
+    expect(boundDryRun.prompt).not.toContain(`Kairn conversation session: ${dryRun.sessionId}`);
     expect(boundDryRun.hookBinding.dryRun).toBe(true);
     expect(boundDryRun.hookBinding.sessionId).toBe(dryRun.sessionId);
+
+    const suppressedBoundDryRun = JSON.parse(
+      execFileSync(
+        CLI[0]!,
+        [
+          ...CLI.slice(1),
+          "codex",
+          "Open src/app.ts and explain what it does",
+          "--root",
+          root,
+          "--skip-git-repo-check",
+          "--bind-hooks",
+          "--dry-run",
+          "--json"
+        ],
+        { cwd: process.cwd(), encoding: "utf8" }
+      )
+    ) as { args: string[]; prompt: string; prime: { contextDecision?: { action?: string } }; hookBinding: { dryRun: boolean } };
+    expect(suppressedBoundDryRun.prime.contextDecision?.action).toBe("suppress");
+    expect(suppressedBoundDryRun.args).toContain("--enable");
+    expect(suppressedBoundDryRun.args).toContain("hooks");
+    expect(suppressedBoundDryRun.prompt).toBe("Open src/app.ts and explain what it does");
+    expect(suppressedBoundDryRun.prompt).not.toContain("Kairn conversation session:");
+
+    const officialPatchTask = [
+      "Debug renderDashboard greeting behavior.",
+      "Selected verification tests from SWE-Bench Pro metadata: src/app.test.ts",
+      "These tests are verification targets only; do not edit tests.",
+      "Fix the issue in production source only. Avoid broad scans once the relevant source surface is known."
+    ].join("\n");
+    const officialPatchGuardrailDryRun = JSON.parse(
+      execFileSync(
+        CLI[0]!,
+        [
+          ...CLI.slice(1),
+          "codex",
+          officialPatchTask,
+          "--root",
+          root,
+          "--skip-git-repo-check",
+          "--bind-hooks",
+          "--hook-mode",
+          "savings",
+          "--hook-output",
+          "tiny-directive",
+          "--dry-run",
+          "--json"
+        ],
+        { cwd: process.cwd(), encoding: "utf8" }
+      )
+    ) as { prompt: string; prime: { files: string[]; contextDecision?: { action?: string; directiveStyle?: string; recommendedDelivery?: string } } };
+    expect(officialPatchGuardrailDryRun.prime.contextDecision?.action).toBe("shrink");
+    expect(officialPatchGuardrailDryRun.prime.contextDecision?.directiveStyle).toBe("scope_guardrail");
+    expect(officialPatchGuardrailDryRun.prime.contextDecision?.recommendedDelivery).toBe("one_file_directive");
+    expect(officialPatchGuardrailDryRun.prime.files).toContain("src/app.ts");
+    expect(officialPatchGuardrailDryRun.prompt).toContain("# Kairn Fix Guardrail");
+    const unboundOfficialPatchGuardrailDryRun = JSON.parse(
+      execFileSync(
+        CLI[0]!,
+        [
+          ...CLI.slice(1),
+          "codex",
+          officialPatchTask,
+          "--root",
+          root,
+          "--skip-git-repo-check",
+          "--hook-output",
+          "tiny-directive",
+          "--dry-run",
+          "--json"
+        ],
+        { cwd: process.cwd(), encoding: "utf8" }
+      )
+    ) as { prompt: string; prime: { contextDecision?: { directiveStyle?: string } } };
+    expect(unboundOfficialPatchGuardrailDryRun.prime.contextDecision?.directiveStyle).toBe("scope_guardrail");
+    expect(unboundOfficialPatchGuardrailDryRun.prompt).toContain("# Kairn Fix Guardrail");
+
+    const benchmarkScopedDryRun = JSON.parse(
+      execFileSync(
+        CLI[0]!,
+        [
+          ...CLI.slice(1),
+          "codex",
+          officialPatchTask,
+          "--root",
+          root,
+          "--skip-git-repo-check",
+          "--dry-run",
+          "--json"
+        ],
+        {
+          cwd: process.cwd(),
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            KAIRN_BENCH_EDIT_SCOPE_HINTS: JSON.stringify({
+              allowedDiffScopes: [
+                { file: "src/app.ts", allowWholeFile: true },
+                { file: "src/app/private/jobs/JobsApplicationsTable.tsx", allowWholeFile: true }
+              ]
+            })
+          }
+        }
+      )
+    ) as { prime: { editScope?: { initialEditFiles?: string[]; scopeSource?: string; strictBoundary?: boolean } } };
+    expect(benchmarkScopedDryRun.prime.editScope?.scopeSource).toBe("official_harness");
+    expect(benchmarkScopedDryRun.prime.editScope?.strictBoundary).toBe(true);
+    expect(benchmarkScopedDryRun.prime.editScope?.initialEditFiles).toEqual(
+      expect.arrayContaining(["src/app.ts", "src/app/private/jobs/JobsApplicationsTable.tsx"])
+    );
+
     expect(interactiveDryRun.mode).toBe("interactive");
     expect(interactiveDryRun.args).not.toContain("exec");
+    expect(interactiveDryRun.args).not.toContain("-a");
+    expect(interactiveDryRun.args).not.toContain("never");
     expect(interactiveDryRun.args).toContain("--enable");
     expect(interactiveDryRun.args).toContain("hooks");
     expect(interactiveDryRun.args).toContain("--cd");
@@ -5596,5 +8616,18 @@ function chunkRecord(filePath: string, symbolName: string, text: string): Semant
     text,
     tokenEstimate: Math.max(1, Math.ceil(text.length / 4)),
     hash: `${filePath}:${symbolName}`
+  };
+}
+
+function symbolRecord(filePath: string, name: string): SymbolRecord {
+  return {
+    rootPath: "/repo",
+    filePath,
+    name,
+    kind: "function",
+    exported: true,
+    startLine: 1,
+    endLine: 5,
+    signature: `${name}()`
   };
 }

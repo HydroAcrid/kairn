@@ -1,0 +1,104 @@
+{
+  "id": "swe-pro-governance-pr-post-hidden-regression-controls-20260623",
+  "name": "SWE-Pro Governance PR Post-Hidden Regression Controls",
+  "generatedAt": "2026-06-26T13:47:35.648Z",
+  "manifestPath": "campaign-manifest.json",
+  "outDir": ".",
+  "stage": "proxy",
+  "dryRun": false,
+  "parallel": 1,
+  "paused": false,
+  "pauseReasons": [],
+  "artifacts": [
+    {
+      "entryId": "proxy-swe-row-7",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": [
+        "swe-pro",
+        "fresh-slice",
+        "proxy",
+        "ansible__ansible"
+      ],
+      "startedAt": "2026-06-26T13:47:12.697Z",
+      "endedAt": "2026-06-26T13:47:35.647Z",
+      "artifactPath": "raw/proxy-swe-row-7.json",
+      "workerPacketPath": "worker-packets/proxy-swe-row-7.json",
+      "commands": [],
+      "classifications": [
+        "valid_guardrail"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": true,
+        "cleanPassPass": false,
+        "tokenRegression": false,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 0,
+        "mcpUsefulAttribution": 0,
+        "elapsedMs": 22950,
+        "observedTokens": 186
+      }
+    }
+  ],
+  "rows": [
+    {
+      "entryId": "proxy-swe-row-7",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": "swe-pro;fresh-slice;proxy;ansible__ansible",
+      "qualityPassed": true,
+      "observedTokens": 186,
+      "cleanPassPass": false,
+      "tokenRegression": false,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 0,
+      "mcpUsefulAttribution": 0,
+      "classifications": "valid_guardrail",
+      "elapsedMs": 22950
+    }
+  ],
+  "aggregate": {
+    "entries": 1,
+    "completedEntries": 1,
+    "failedEntries": 0,
+    "qualityPassRate": 1,
+    "cleanPassPassRows": 0,
+    "tokenRegressionRows": 0,
+    "passiveTokenRegressionRows": 0,
+    "qualityRescueRows": 0,
+    "harmfulRows": 0,
+    "scopeViolations": 0,
+    "mcpCalls": 0,
+    "mcpUsefulAttribution": 0,
+    "medianSavedTokens": 0,
+    "medianSavingsRate": 0,
+    "medianElapsedMsByStage": {
+      "proxy": 22950
+    },
+    "repeatedFailureClasses": [],
+    "pauseRuleStatus": {
+      "paused": false,
+      "reasons": []
+    }
+  },
+  "outputs": {
+    "manifestPath": "campaign-manifest.json",
+    "summaryPath": "campaign-summary.json",
+    "resultsCsvPath": "results.csv",
+    "failuresCsvPath": "failures.csv",
+    "proxyResultsCsvPath": "proxy-results.csv",
+    "workerPacketsDir": "worker-packets",
+    "rawDir": "raw",
+    "workDir": "work",
+    "baselineCacheDir": "baseline-cache"
+  }
+}

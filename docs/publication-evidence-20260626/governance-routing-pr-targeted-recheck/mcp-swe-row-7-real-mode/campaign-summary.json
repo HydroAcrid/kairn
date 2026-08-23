@@ -1,0 +1,113 @@
+{
+  "id": "governance-pr-mcp-swe-row-7-20260626",
+  "name": "Governance PR MCP SWE Row 7 Check",
+  "generatedAt": "2026-06-26T17:48:06.048Z",
+  "manifestPath": "campaign-manifest.json",
+  "outDir": ".",
+  "stage": "all",
+  "dryRun": false,
+  "parallel": 1,
+  "paused": false,
+  "pauseReasons": [],
+  "artifacts": [
+    {
+      "entryId": "mcp-swe-row-7",
+      "kind": "proof",
+      "stage": "live",
+      "status": "passed",
+      "tags": [
+        "swe-pro",
+        "mcp",
+        "real_mcp_first",
+        "ansible__ansible"
+      ],
+      "startedAt": "2026-06-26T17:22:36.336Z",
+      "endedAt": "2026-06-26T17:33:06.845Z",
+      "artifactPath": "raw/mcp-swe-row-7.json",
+      "workerPacketPath": "worker-packets/mcp-swe-row-7.json",
+      "commands": [],
+      "classifications": [
+        "official_token_regression",
+        "mcp_useful_attribution"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": true,
+        "cleanPassPass": false,
+        "tokenRegression": true,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 2,
+        "mcpUsefulAttribution": 4,
+        "elapsedMs": 630286,
+        "observedTokens": 212362,
+        "baselineTokens": 176844,
+        "savedTokens": -35518,
+        "savingsRate": -0.2008,
+        "tokenAccounting": "observed"
+      }
+    }
+  ],
+  "rows": [
+    {
+      "entryId": "mcp-swe-row-7",
+      "kind": "proof",
+      "stage": "live",
+      "status": "passed",
+      "tags": "swe-pro;mcp;real_mcp_first;ansible__ansible",
+      "qualityPassed": true,
+      "observedTokens": 212362,
+      "baselineTokens": 176844,
+      "savedTokens": -35518,
+      "savingsRate": -0.2008,
+      "tokenAccounting": "observed",
+      "cleanPassPass": false,
+      "tokenRegression": true,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 2,
+      "mcpUsefulAttribution": 4,
+      "classifications": "official_token_regression;mcp_useful_attribution",
+      "elapsedMs": 630286
+    }
+  ],
+  "aggregate": {
+    "entries": 1,
+    "completedEntries": 1,
+    "failedEntries": 0,
+    "qualityPassRate": 1,
+    "cleanPassPassRows": 0,
+    "tokenRegressionRows": 1,
+    "passiveTokenRegressionRows": 0,
+    "qualityRescueRows": 0,
+    "harmfulRows": 0,
+    "scopeViolations": 0,
+    "mcpCalls": 2,
+    "mcpUsefulAttribution": 4,
+    "medianSavedTokens": -35518,
+    "medianSavingsRate": -0.2008,
+    "medianElapsedMsByStage": {
+      "live": 630286
+    },
+    "repeatedFailureClasses": [],
+    "pauseRuleStatus": {
+      "paused": false,
+      "reasons": []
+    }
+  },
+  "outputs": {
+    "manifestPath": "campaign-manifest.json",
+    "summaryPath": "campaign-summary.json",
+    "resultsCsvPath": "results.csv",
+    "failuresCsvPath": "failures.csv",
+    "proxyResultsCsvPath": "proxy-results.csv",
+    "workerPacketsDir": "worker-packets",
+    "rawDir": "raw",
+    "workDir": "work",
+    "baselineCacheDir": "baseline-cache"
+  }
+}

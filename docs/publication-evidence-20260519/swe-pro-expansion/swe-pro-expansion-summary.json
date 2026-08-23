@@ -1,0 +1,109 @@
+{
+  "generatedAt": "2026-05-19T20:23:56.812Z",
+  "source": "ScaleAI/SWE-bench_Pro official evaluator, tractable non-qutebrowser expansion",
+  "notes": [
+    "Initial four-row pilot expansion was stopped because two broad rows failed or timed out before producing useful proof artifacts.",
+    "The official helper export required a general loader fix for missing repo_language and uppercase FAIL_TO_PASS/PASS_TO_PASS arrays.",
+    "Savings are counted only when official eval passes and local scope discipline passes."
+  ],
+  "rows": [
+    {
+      "rowId": "instance_future-architect__vuls-407407d306e9431d6aa0ab566baa6e44e5ba2904",
+      "repo": "future-architect/vuls",
+      "title": "# Title: trivy-to-vuls generates duplicate objects in cveContents and splits Debian severities into separate records ###",
+      "expectedProductionFiles": [
+        "contrib/trivy/pkg/converter.go"
+      ],
+      "baseline": {
+        "officialPassed": true,
+        "localOutcome": "pass",
+        "observedTokens": 93443,
+        "scopePassed": true,
+        "changedFiles": [
+          "contrib/trivy/pkg/converter.go"
+        ]
+      },
+      "kairn": {
+        "officialPassed": true,
+        "localOutcome": "fail",
+        "observedTokens": 81873,
+        "scopePassed": false,
+        "changedFiles": [
+          "contrib/trivy/pkg/converter.go",
+          "contrib/trivy/pkg/converter_test.go"
+        ],
+        "primeTokens": 0
+      },
+      "tokenSavingsRate": null,
+      "interpretation": "official_pass_pass_scope_invalid"
+    },
+    {
+      "rowId": "instance_NodeBB__NodeBB-f9ce92df988db7c1ae55d9ef96d247d27478bc70-vf2cf3cbd463b7ad942381f1c6d077626485a1e9e",
+      "repo": "NodeBB/NodeBB",
+      "title": "\"# Title\\n\\nFile upload fails to validate target directory existence\\n\\n## Problem Description\\n\\nThe admin file upload ",
+      "expectedProductionFiles": [
+        "src/controllers/admin/uploads.js"
+      ],
+      "baseline": {
+        "officialPassed": true,
+        "localOutcome": "fail",
+        "observedTokens": 56830,
+        "scopePassed": false,
+        "changedFiles": [
+          "src/file.js"
+        ]
+      },
+      "kairn": {
+        "officialPassed": true,
+        "localOutcome": "fail",
+        "observedTokens": 38206,
+        "scopePassed": false,
+        "changedFiles": [
+          "src/file.js"
+        ],
+        "primeTokens": 503
+      },
+      "tokenSavingsRate": null,
+      "interpretation": "official_pass_pass_scope_invalid"
+    },
+    {
+      "rowId": "instance_flipt-io__flipt-6fe76d024ee0c50ddb09c86f4ae0bd4c208fd65f",
+      "repo": "flipt-io/flipt",
+      "title": "\"# Authentication middleware does not support client tokens via cookies\\n\\n## Description:\\n\\nThe current authentication",
+      "expectedProductionFiles": [
+        "internal/server/auth/middleware.go"
+      ],
+      "baseline": {
+        "officialPassed": false,
+        "localOutcome": "fail",
+        "observedTokens": 36332,
+        "scopePassed": false,
+        "changedFiles": [
+          "internal/server/auth/middleware.go",
+          "internal/server/auth/middleware_test.go"
+        ]
+      },
+      "kairn": {
+        "officialPassed": true,
+        "localOutcome": "pass",
+        "observedTokens": 32432,
+        "scopePassed": true,
+        "changedFiles": [
+          "internal/server/auth/middleware.go"
+        ],
+        "primeTokens": 443
+      },
+      "tokenSavingsRate": null,
+      "interpretation": "quality_rescue_official_pass"
+    }
+  ],
+  "aggregate": {
+    "rows": 3,
+    "baselineOfficialPasses": 2,
+    "kairnOfficialPasses": 3,
+    "cleanPassPassSavingsRows": 0,
+    "medianCleanPassPassSavings": null,
+    "qualityRescueRows": 1,
+    "officialPassPassScopeInvalidRows": 2
+  }
+}

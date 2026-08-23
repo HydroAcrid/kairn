@@ -55,6 +55,21 @@ const ROLE_GROUPS: CompanionRole[] = [
     reason: "routing/dependency pair"
   },
   {
+    id: "search-printer-output",
+    terms: ["search", "searcher", "match", "matches", "printer", "print", "json", "path", "paths", "event", "events", "output"],
+    reason: "search/printer output pair"
+  },
+  {
+    id: "line-comment-formatting",
+    terms: ["line", "lines", "linegen", "generator", "generate", "output", "comment", "comments", "split", "splitting", "format", "formatting"],
+    reason: "line/comment formatting pair"
+  },
+  {
+    id: "fixture-runner-resolution",
+    terms: ["fixture", "fixtures", "resolution", "resolve", "collected", "node", "nodes", "runner", "setup", "value", "values", "request"],
+    reason: "fixture/runner resolution pair"
+  },
+  {
     id: "controller-repository-model",
     terms: ["controller", "controllers", "repository", "repositories", "repo", "repos", "dao", "model", "models", "schema", "service", "services"],
     reason: "controller/repository/model pair"
@@ -163,6 +178,11 @@ const ROLE_GROUPS: CompanionRole[] = [
     id: "string-matcher",
     terms: ["string", "strings", "char", "character", "matcher", "matching", "prefix", "suffix", "surrogate"],
     reason: "string/matcher pair"
+  },
+  {
+    id: "crypto-hash-helper",
+    terms: ["password", "passwords", "encrypt", "encryption", "hash", "hashes", "hashing", "bcrypt", "salt", "salts", "ident", "secret", "random"],
+    reason: "password/hash helper pair"
   }
 ];
 
@@ -263,6 +283,14 @@ const STRONG_CANONICAL_BASENAME_TERMS = new Set([
   "mux",
   "context",
   "route",
+  "search",
+  "printer",
+  "json",
+  "line",
+  "linegen",
+  "comment",
+  "fixture",
+  "runner",
   "parser",
   "repository"
 ]);
@@ -281,25 +309,61 @@ export function findCompanionCandidates(input: {
 
   const queryTerms = termSet(input.query);
   const roleSignals = detectRoleSignals(queryTerms, input.query);
-  if (roleSignals.length === 0 && !hasMultiSurfaceQuerySignal(queryTerms)) return [];
+  const hsmKmsConfigTask = isHsmKmsConfigTask(input.query);
+  const configOptionTask = isConfigOptionSchemaTask(input.query);
+  const deprecationLifecycleTask = isDeprecationLifecycleTask(input.query);
+  const formUnflattenRequestTask = isFormUnflattenRequestTask(input.query);
+  const kubernetesExecForwarderTask = isKubernetesExecForwarderTask(input.query);
+  const packageSourceMappingTask = isPackageSourceMappingTask(input.query);
+  const uiFeedbackTask = isUiFeedbackOwnershipTask(input.query);
+  const datastoreBackendParityTask = isDatastoreBackendParityTask(queryTerms, input.query);
+  if (
+    roleSignals.length === 0 &&
+    !hasMultiSurfaceQuerySignal(queryTerms) &&
+    !hsmKmsConfigTask &&
+    !configOptionTask &&
+    !deprecationLifecycleTask &&
+	    !formUnflattenRequestTask &&
+	    !kubernetesExecForwarderTask &&
+	    !packageSourceMappingTask &&
+	    !uiFeedbackTask &&
+      !datastoreBackendParityTask
+  ) return [];
   const routeAnchors = routePathAnchors(input.query);
   const mentionedSourceBasenames = mentionedSourceFileBasenames(input.query);
+  const qualifiedGenericModuleHints = qualifiedGenericModulePathHints(input.query);
+  const testCounterpartHints = sourceCounterpartHintsFromTestPaths(input.query);
+  const explicitSourcePathHints = sourcePathHintsFromQuery(input.query);
+  const preciseSourceSurfacePresent =
+    mentionedSourceBasenames.size > 0 ||
+    qualifiedGenericModuleHints.length > 0 ||
+    testCounterpartHints.length > 0 ||
+    explicitSourcePathHints.length > 0;
 
   const symbolsByFile = groupByFile(input.symbols, (symbol) => symbol.filePath);
   const chunksByFile = groupByFile(input.chunks, (chunk) => chunk.filePath);
   const filesByPath = new Map(input.files.map((file) => [file.path, file]));
   const seedFiles = input.ranked
-    .filter((file) => isCompanionSeed(file))
+    .filter((file) =>
+      isCompanionSeed(file) ||
+      (hsmKmsConfigTask && isHsmKmsBackendHelperPath(file.path)) ||
+      (configOptionTask && (isUniversalSourceFile(file) || isDeclarativeConfigSchemaFile(file.path))) ||
+	      ((deprecationLifecycleTask || formUnflattenRequestTask || kubernetesExecForwarderTask || packageSourceMappingTask || uiFeedbackTask || datastoreBackendParityTask) && isUniversalSourceFile(file))
+    )
     .slice(0, 1);
   if (seedFiles.length === 0) return [];
 
   const seedPaths = new Set(seedFiles.map((file) => file.path));
   const edgeNeighbors = buildEdgeNeighborMap(input.edges);
+  const importNeighbors = buildImportNeighborMap(input.edges);
   const candidates: CompanionCandidate[] = [];
 
   for (const file of input.files) {
-    if (seedPaths.has(file.path) || isNoisyCompanionFile(file) || isLikelyTestPath(file.path)) continue;
-    if (!isUniversalSourceFile(file)) continue;
+    const hsmKmsBackendHelper = hsmKmsConfigTask && isHsmKmsBackendHelperPath(file.path);
+    const declarativeConfigSchema = configOptionTask && isDeclarativeConfigSchemaFile(file.path);
+    if (hsmKmsConfigTask && isUnrelatedHsmKmsGenericTestHelper(file.path, input.query)) continue;
+    if (seedPaths.has(file.path) || isNoisyCompanionFile(file) || (isLikelyTestPath(file.path) && !hsmKmsBackendHelper)) continue;
+    if (!isUniversalSourceFile(file) && !declarativeConfigSchema) continue;
     if ((file.kind === "component" || file.kind === "route") && !hasUiQuerySignal(queryTerms)) continue;
     if (isPlatformVariantPath(file.path)) continue;
 
@@ -308,11 +372,24 @@ export function findCompanionCandidates(input: {
     const roleMatches = matchRoleSignals(file, roleSignals, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
     const sourceText = searchableText(file, symbolsByFile.get(file.path) ?? [], chunksByFile.get(file.path) ?? []);
     const sourceTerms = termSet(sourceText);
+    if (deprecationLifecycleTask && isUnrelatedDeprecationLifecycleCompanion(file.path, sourceTerms)) continue;
     const pathTerms = termSet(file.path);
     const specificQueryHits = [...queryTerms].filter((term) => !COMPANION_STOP_TERMS.has(term) && sourceTerms.has(term));
     const rolePathMatches = roleSignals.filter((role) => role.terms.some((term) => pathTerms.has(canonicalTerm(term))));
     const pathQueryHits = [...queryTerms].filter((term) => !COMPANION_STOP_TERMS.has(term) && pathTerms.has(term));
     const compoundPathHits = compoundQueryTerms(input.query).filter((term) => pathTerms.has(term));
+    const testCounterpart = scoreTestCounterpartHint(file, testCounterpartHints, queryTerms);
+    const explicitSourcePath = scoreExplicitSourcePathHint(file, explicitSourcePathHints);
+    const commandExporter = scoreCommandExporterCompanion(file.path, input.query, queryTerms, sourceTerms);
+    const hsmKmsConfig = scoreHsmKmsConfigCompanion(file.path, input.query, sourceTerms);
+    const backendAutocomplete = scoreBackendAutocompleteCompanion(file.path, input.query, sourceTerms);
+    const configOptionSchema = scoreConfigOptionSchemaCompanion(file.path, input.query, sourceTerms);
+    const deprecationLifecycle = scoreDeprecationLifecycleCompanion(file.path, input.query, sourceTerms);
+    const formUnflattenRequest = scoreFormUnflattenRequestCompanion(file.path, input.query, sourceTerms);
+    const kubernetesExecForwarder = scoreKubernetesExecForwarderCompanion(file.path, input.query, sourceTerms);
+    const kubernetesRbacMatcher = scoreKubernetesRbacMatcherCompanion(file.path, input.query, sourceTerms);
+    const packageSourceMapping = scorePackageSourceMappingCompanion(file.path, input.query, sourceTerms);
+    const uiFeedbackOwnership = scoreUiFeedbackOwnershipCompanion(file.path, input.query, sourceTerms);
 
     let score = sourceScore.score + canonicalRoleScore.score;
     const reasons = [...sourceScore.reasons, ...canonicalRoleScore.reasons];
@@ -334,6 +411,54 @@ export function findCompanionCandidates(input: {
       score += Math.min(620, compoundPathHits.length * 360);
       reasons.push(`compound path term match: ${compoundPathHits.slice(0, 3).join(", ")}`);
     }
+    if (testCounterpart.score !== 0) {
+      score += testCounterpart.score;
+      reasons.push(...testCounterpart.reasons);
+    }
+    if (explicitSourcePath.score !== 0) {
+      score += explicitSourcePath.score;
+      reasons.push(...explicitSourcePath.reasons);
+    }
+    if (commandExporter.score !== 0) {
+      score += commandExporter.score;
+      reasons.push(...commandExporter.reasons);
+    }
+    if (hsmKmsConfig.score !== 0) {
+      score += hsmKmsConfig.score;
+      reasons.push(...hsmKmsConfig.reasons);
+    }
+    if (backendAutocomplete.score !== 0) {
+      score += backendAutocomplete.score;
+      reasons.push(...backendAutocomplete.reasons);
+    }
+    if (configOptionSchema.score !== 0) {
+      score += configOptionSchema.score;
+      reasons.push(...configOptionSchema.reasons);
+    }
+    if (deprecationLifecycle.score !== 0) {
+      score += deprecationLifecycle.score;
+      reasons.push(...deprecationLifecycle.reasons);
+    }
+    if (formUnflattenRequest.score !== 0) {
+      score += formUnflattenRequest.score;
+      reasons.push(...formUnflattenRequest.reasons);
+    }
+    if (kubernetesExecForwarder.score !== 0) {
+      score += kubernetesExecForwarder.score;
+      reasons.push(...kubernetesExecForwarder.reasons);
+    }
+    if (kubernetesRbacMatcher.score !== 0) {
+      score += kubernetesRbacMatcher.score;
+      reasons.push(...kubernetesRbacMatcher.reasons);
+    }
+    if (packageSourceMapping.score !== 0) {
+      score += packageSourceMapping.score;
+      reasons.push(...packageSourceMapping.reasons);
+    }
+    if (uiFeedbackOwnership.score !== 0) {
+      score += uiFeedbackOwnership.score;
+      reasons.push(...uiFeedbackOwnership.reasons);
+    }
     const basename = file.path.toLowerCase().split("/").at(-1) ?? "";
     const mentionedBasename = mentionedSourceBasenames.has(basename);
     if (mentionedBasename) {
@@ -343,6 +468,11 @@ export function findCompanionCandidates(input: {
     if (mentionedSourceBasenames.size > 0 && !mentionedBasename && isGenericUtilityBasename(basename)) {
       score -= 2600;
       reasons.push("generic utility downranked because specific source filenames were named");
+    }
+    const qualifiedGenericModulePenalty = scoreQualifiedGenericModuleMismatch(file.path, qualifiedGenericModuleHints);
+    if (qualifiedGenericModulePenalty < 0) {
+      score += qualifiedGenericModulePenalty;
+      reasons.push("generic utility downranked because qualified utility module was named");
     }
     const routeAnchorHits = routeAnchors.filter((anchor) => basename.includes(anchor) || pathTerms.has(anchor));
     if (routeAnchorHits.length > 0) {
@@ -394,6 +524,10 @@ export function findCompanionCandidates(input: {
     if (isGenericHelperForRoleCompanion(file.path, queryTerms)) {
       score -= 340;
       reasons.push("helper companion downranked in favor of direct source surface");
+    }
+    if (isExecutionCoordinatorForCryptoTask(file.path, queryTerms)) {
+      score -= 2600;
+      reasons.push("execution coordinator downranked for password/hash helper task");
     }
     if (isUnaskedConverterCompanion(file.path, queryTerms)) {
       score -= 520;
@@ -502,6 +636,26 @@ export function findCompanionCandidates(input: {
       score += ormUnitOfWork.score;
       reasons.push(...ormUnitOfWork.reasons);
     }
+    const routingMapRule = scoreRoutingMapRuleSourceCompanion(file.path, queryTerms);
+    if (routingMapRule.score !== 0) {
+      score += routingMapRule.score;
+      reasons.push(...routingMapRule.reasons);
+    }
+    const lineFormatting = scoreLineCommentFormattingCompanion(file.path, queryTerms);
+    if (lineFormatting.score !== 0) {
+      score += lineFormatting.score;
+      reasons.push(...lineFormatting.reasons);
+    }
+    const searchPrinter = scoreSearchPrinterOutputCompanion(file.path, queryTerms);
+    if (searchPrinter.score !== 0) {
+      score += searchPrinter.score;
+      reasons.push(...searchPrinter.reasons);
+    }
+    const fixtureRunner = scoreFixtureRunnerResolutionCompanion(file.path, queryTerms);
+    if (fixtureRunner.score !== 0) {
+      score += fixtureRunner.score;
+      reasons.push(...fixtureRunner.reasons);
+    }
     if (isRoutingMapRuleCompanion(file.path, queryTerms)) {
       score += 980;
       reasons.push("routing map/rule companion");
@@ -527,6 +681,18 @@ export function findCompanionCandidates(input: {
       score -= 3200;
       reasons.push("generic service/request path downranked for kubernetes task");
     }
+    if (
+      preciseSourceSurfacePresent &&
+      testCounterpart.score === 0 &&
+      namedFileSurface.score === 0 &&
+      !mentionedBasename &&
+      routeAnchorHits.length === 0 &&
+      !matchesQualifiedGenericModule(file.path, qualifiedGenericModuleHints) &&
+      !(configOptionTask && declarativeConfigSchema)
+    ) {
+      score -= 30000;
+      reasons.push("companion downranked because prompt names a more specific source surface");
+    }
 
     for (const seed of seedFiles) {
       const seedRoles = matchRoleSignals(seed, roleSignals, symbolsByFile.get(seed.path) ?? [], chunksByFile.get(seed.path) ?? []);
@@ -549,9 +715,23 @@ export function findCompanionCandidates(input: {
         reasons.push("same module surface");
       }
 
+      const importNeighbor = importNeighbors.get(seed.path)?.has(file.path) ?? false;
       if (edgeNeighbors.get(seed.path)?.has(file.path)) {
         score += 60;
         reasons.push("import neighbor");
+      }
+      if (importNeighbor) {
+        const importScore = scoreImportLinkedTaskCompanion({
+          candidatePathTerms: pathTerms,
+          candidateTerms: sourceTerms,
+          pathQueryHits,
+          queryTerms,
+          specificQueryHits
+        });
+        if (importScore.score !== 0) {
+          score += importScore.score;
+          reasons.push(...importScore.reasons);
+        }
       }
       if (sameRoleCategory(seed.path, file.path)) {
         const penalty = sameRoleDuplicatePenalty(seed.path, file.path, queryTerms);
@@ -583,6 +763,11 @@ export function findCompanionCandidates(input: {
       if (headerInline.score !== 0) {
         score += headerInline.score;
         reasons.push(...headerInline.reasons);
+      }
+      const datastoreParity = scoreDatastoreBackendParityCompanion(seed.path, file.path, queryTerms, input.query);
+      if (datastoreParity.score !== 0) {
+        score += datastoreParity.score;
+        reasons.push(...datastoreParity.reasons);
       }
       if (isRouteCoreSibling(seed.path, file.path, queryTerms)) {
         score += 1200;
@@ -683,6 +868,674 @@ export function scoreSourceRoleHints(
       ...pathMatches.map((match) => `role path match: ${match.reason}`)
     ])
   };
+}
+
+function scoreCommandExporterCompanion(
+  filePath: string,
+  query: string,
+  queryTerms: Set<string>,
+  sourceTerms: Set<string>
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeText(query);
+  const exportCommandTask =
+    /\bexport(?:er|ers|ing|ed)?\b/.test(normalizedQuery) &&
+    (/\b(command|cli|flag|declarative|resource|namespace|variant|segment|sort|sorted|sorting|deterministic)\b/.test(normalizedQuery) ||
+      /--[a-z0-9-]*sort[a-z0-9-]*/i.test(query));
+  if (!exportCommandTask) return { score: 0, reasons: [] };
+
+  const normalizedPath = filePath.toLowerCase();
+  const explicitStorageEdit =
+    /\b(?:edit|modify|change|update|fix|implement)\b(?:\s+[a-z0-9]+){0,8}\s+\b(?:storage|store|backend|database|sqlite|mysql|postgres|relational)\b/.test(normalizedQuery) ||
+    /\b(?:storage|store|backend|database|sqlite|mysql|postgres|relational)\b(?:\s+[a-z0-9]+){0,8}\s+\b(?:edit|modify|change|update|fix|implement)\b/.test(normalizedQuery);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (isCommandExportPath(normalizedPath)) {
+    score += 2600;
+    reasons.push("export command companion");
+  }
+
+  if (isExporterImplementationPath(normalizedPath)) {
+    score += 5600;
+    reasons.push("exporter implementation companion");
+  }
+
+  if (
+    isExporterImplementationPath(normalizedPath) &&
+    ["namespace", "flag", "segment", "variant", "resource", "sort", "deterministic"].some((term) => queryTerms.has(term) && sourceTerms.has(term))
+  ) {
+    score += 900;
+    reasons.push("export sorting domain companion");
+  }
+
+  if (isStorageBackendPath(normalizedPath) && !explicitStorageEdit && !isExporterImplementationPath(normalizedPath)) {
+    score -= 6200;
+    reasons.push("storage backend downranked for export-command companion");
+  }
+
+  return { score, reasons };
+}
+
+function isCommandExportPath(normalizedPath: string): boolean {
+  return /^cmd\/[^/]+\/export\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /(^|\/)cmd\/.*\/export\.(go|ts|js|py|rb|rs)$/.test(normalizedPath);
+}
+
+function isExporterImplementationPath(normalizedPath: string): boolean {
+  return (
+    /(^|\/)(exporter|export)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) ||
+    /(^|\/)(export|exporter)\//.test(normalizedPath) ||
+    /(^|\/)(internal\/)?ext\/exporter\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)
+  );
+}
+
+function isStorageBackendPath(normalizedPath: string): boolean {
+  return /(^|\/)(internal\/)?storage\//.test(normalizedPath) || /(^|\/)(stores?|backends?|database|db)\//.test(normalizedPath);
+}
+
+function scoreDatastoreBackendParityCompanion(
+  seedPath: string,
+  candidatePath: string,
+  queryTerms: Set<string>,
+  query: string
+): { score: number; reasons: string[] } {
+  if (!isDatastoreBackendParityTask(queryTerms, query)) return { score: 0, reasons: [] };
+  const seed = datastoreBackendSurface(seedPath);
+  const candidate = datastoreBackendSurface(candidatePath);
+  if (!seed || !candidate) return { score: 0, reasons: [] };
+  if (seed.backend === candidate.backend) return { score: 0, reasons: [] };
+  if (seed.prefix !== candidate.prefix || seed.suffix !== candidate.suffix) return { score: 0, reasons: [] };
+  return {
+    score: 6400,
+    reasons: [`datastore backend parity companion: ${seed.backend} -> ${candidate.backend}`]
+  };
+}
+
+function isDatastoreBackendParityTask(queryTerms: Set<string>, query: string): boolean {
+  const normalizedQuery = normalizeText(query);
+  const collectionTerms = ["list", "lists", "set", "sets", "zset", "hash", "queue", "collection", "collections"];
+  const mutationTerms = ["remove", "removing", "delete", "deleting", "del", "discard", "pull", "pop", "trim", "add", "insert", "push"];
+  const collectionMutation =
+    collectionTerms.some((term) => queryTerms.has(term)) &&
+    mutationTerms.some((term) => queryTerms.has(term));
+  const multiValue =
+    ["multiple", "distinct", "array", "arrays", "element", "elements", "value", "values", "batch", "bulk", "several"].some((term) => queryTerms.has(term)) ||
+    /\[[^\]]+,[^\]]+\]/.test(query);
+  return collectionMutation && multiValue && /\b(list|set|hash|queue|collection|backend|database|db|store|storage)\b/.test(normalizedQuery);
+}
+
+function datastoreBackendSurface(filePath: string): { prefix: string; backend: string; suffix: string } | undefined {
+  const parts = filePath.replaceAll("\\", "/").toLowerCase().split("/").filter(Boolean);
+  const backendNames = new Set(["mongo", "mongodb", "redis", "postgres", "postgresql", "mysql", "sqlite", "memory", "inmemory"]);
+  const rootNames = new Set(["database", "databases", "db", "storage", "stores", "backends"]);
+  for (let index = 0; index < parts.length - 1; index += 1) {
+    const part = parts[index];
+    if (!part || !backendNames.has(part)) continue;
+    const hasDatastoreRoot = parts.slice(Math.max(0, index - 2), index).some((segment) => rootNames.has(segment));
+    if (!hasDatastoreRoot) continue;
+    const suffix = parts.slice(index + 1).join("/");
+    if (!suffix) continue;
+    return {
+      prefix: parts.slice(0, index).join("/"),
+      backend: part,
+      suffix
+    };
+  }
+  return undefined;
+}
+
+function scoreHsmKmsConfigCompanion(
+  filePath: string,
+  query: string,
+  sourceTerms: Set<string>
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeText(query);
+  if (!isHsmKmsConfigTask(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = filePath.toLowerCase();
+  const reasons: string[] = [];
+  let score = 0;
+  const keystoreSurface = /\/keystore\//.test(normalizedPath) || isHsmKmsBackendHelperPath(normalizedPath) || sourceTerms.has("keystore");
+
+  if (keystoreSurface) {
+    score += 4600;
+    reasons.push("HSM/KMS keystore companion");
+  }
+  if (isHsmKmsBackendHelperPath(normalizedPath)) {
+    score += 2600;
+    reasons.push("HSM/KMS backend helper companion");
+  }
+  if (isCentralHsmKmsConfigTask(normalizedQuery) && /(^|\/)(testhelpers?|test_helpers?)\.go$/.test(normalizedPath)) {
+    score += 12000;
+    reasons.push("central HSM/KMS test configuration helper companion");
+  }
+  if (sourceTerms.has("hsmtestconfig") || (sourceTerms.has("hsm") && sourceTerms.has("test") && sourceTerms.has("config"))) {
+    score += 7000;
+    reasons.push("HSMTestConfig target companion");
+  }
+  if (/(^|\/)pkcs11\.go$/.test(normalizedPath)) {
+    score += 7000;
+    reasons.push("PKCS11 HSM backend companion");
+  }
+  if (["hsmtestconfig", "softhsm", "yubihsm", "cloudhsm", "awskms", "gcpkms", "pkcs11"].some((term) => sourceTerms.has(term))) {
+    score += 1200;
+    reasons.push("HSM/KMS configuration content companion");
+  }
+  if (!keystoreSurface) {
+    score -= /(^|\/)test\.go$/.test(normalizedPath) ? 12_000 : 7_000;
+    reasons.push("non-keystore companion downranked for HSM/KMS backend config task");
+  }
+  if (/^web\/|\/web\/|\/tdp\//.test(normalizedPath) && !/\/keystore\//.test(normalizedPath)) {
+    score -= 9000;
+    reasons.push("web/TDP companion downranked for HSM/KMS backend config task");
+  }
+  if (isCentralHsmKmsConfigTask(normalizedQuery) && /\/keystore\/(aws_kms|gcp_kms|cloudhsm|yubihsm|softhsm)\.go$/.test(normalizedPath)) {
+    score -= 8000;
+    reasons.push("single-provider backend downranked for central HSM/KMS config task");
+  }
+
+  return { score, reasons };
+}
+
+function isUnrelatedHsmKmsGenericTestHelper(filePath: string, query: string): boolean {
+  const normalizedPath = filePath.toLowerCase();
+  const normalizedQuery = normalizeText(query);
+  if (!/(^|\/)test\.go$/.test(normalizedPath)) return false;
+  if (!isHsmKmsConfigTask(normalizedQuery)) return false;
+  return !/\/keystore\//.test(normalizedPath);
+}
+
+function scoreBackendAutocompleteCompanion(
+  filePath: string,
+  query: string,
+  sourceTerms: Set<string>
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeText(query);
+  if (!isBackendAutocompleteCompanionQuery(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = filePath.toLowerCase();
+  const basename = normalizedPath.split("/").at(-1) ?? normalizedPath;
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/^autocomplete\.(py|rb|go|rs|php|java|ts)$/.test(basename)) {
+    score += 30_000;
+    reasons.push("backend autocomplete endpoint companion");
+  }
+  if (["findolid", "find_olid", "olidtokey", "olid_to_key", "dbfetch", "db_fetch", "solr", "autocomplete"].some((term) => sourceTerms.has(term))) {
+    score += 2_800;
+    reasons.push("backend autocomplete source companion");
+  }
+  if (/\/js\/autocomplete\.[cm]?js$/.test(normalizedPath) || /\/client\/|\/frontend\/|\/static\/|\/assets\//.test(normalizedPath)) {
+    score -= 50_000;
+    reasons.push("frontend autocomplete companion downranked for backend endpoint task");
+  }
+  if (!/autocomplete/.test(basename) && !["findolid", "find_olid", "olidtokey", "olid_to_key", "dbfetch", "db_fetch"].some((term) => sourceTerms.has(term))) {
+    score -= 20_000;
+    reasons.push("non-autocomplete companion downranked for backend autocomplete task");
+  }
+
+  return { score, reasons };
+}
+
+function isBackendAutocompleteCompanionQuery(normalizedQuery: string): boolean {
+  return /\bautocomplete\b/.test(normalizedQuery) &&
+    /\b(endpoint|route|routes|solr|olid|olids|query string|fallback|db|base class|page class|works|authors|subjects)\b/.test(normalizedQuery) &&
+    !/\b(ui|frontend|client|browser widget|dropdown|input component|visual|style|css)\b/.test(normalizedQuery);
+}
+
+function scoreConfigOptionSchemaCompanion(
+  filePath: string,
+  query: string,
+  sourceTerms: Set<string>
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeText(query);
+  if (!isConfigOptionSchemaTask(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = filePath.toLowerCase();
+  const qtWebEngineTask = /\b(qtwebengine|qt webengine|webengine|chromium|accelerated|canvas|pdf|sheets|rendering|glitches?)\b/.test(normalizedQuery);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/(^|\/)(qtargs|chromium_args|webengine_args)\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) {
+    score += qtWebEngineTask ? 5800 : 2600;
+    reasons.push("config argument companion");
+  }
+  if (/(^|\/)(configdata|config_data|configschema|config_schema|settings|options)\.(ya?ml|json|toml)$/.test(normalizedPath)) {
+    score += 4200;
+    reasons.push("config source-of-truth schema/data companion");
+  }
+  if (/(^|\/)(configdata|config_data|configschema|config_schema|settings|options)\.(ya?ml|json|toml|py|ts|js)$/.test(normalizedPath)) {
+    score += 5200;
+    reasons.push("config schema/data companion");
+  }
+  if (
+    /(^|\/)(configdata|config_data|configschema|config_schema|settings|options)\.py$/.test(normalizedPath) &&
+    (sourceTerms.has("yaml") || sourceTerms.has("parsed") || sourceTerms.has("generated"))
+  ) {
+    score -= 2800;
+    reasons.push("generated config artifact downranked for declarative schema companion");
+  }
+  if (["qtwebengine", "chromium", "webengine", "accelerated", "canvas", "workaround", "settings", "option"].some((term) => sourceTerms.has(term))) {
+    score += qtWebEngineTask ? 1600 : 520;
+    reasons.push("config option content companion");
+  }
+  if (
+    /(^|\/)(configfiles?|config_file|configloader|loader|init)\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) &&
+    !/\b(load|loader|loading|parse|parsing|config file|config files|startup|init|initialize)\b/.test(normalizedQuery)
+  ) {
+    score -= 2600;
+    reasons.push("config file loader downranked for option/schema companion");
+  }
+  if (isConfigDiagnosticProblemSurface(normalizedPath) && !/\b(backend problem|backend issue|diagnostic|diagnostics|problem report)\b/.test(normalizedQuery)) {
+    score -= 7200;
+    reasons.push("diagnostic/problem surface downranked for config schema companion");
+  }
+
+  return { score, reasons };
+}
+
+function scoreDeprecationLifecycleCompanion(
+  filePath: string,
+  query: string,
+  sourceTerms: Set<string>
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeText(query);
+  if (!isDeprecationLifecycleTask(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = filePath.toLowerCase();
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (
+    /(^|\/)(module|module_utils|modules?|runtime)[^/]*(\/|$).*\/?basic\.(py|cs|ts|js)$/.test(normalizedPath) ||
+    (/(^|\/)basic\.(py|cs|ts|js)$/.test(normalizedPath) && (sourceTerms.has("argument") || sourceTerms.has("spec") || sourceTerms.has("deprecated")))
+  ) {
+    score += 32_000;
+    reasons.push("module deprecation API companion");
+  }
+  if (/(^|\/)(common\/)?parameters\.(py|ts|js|go|rb|rs|cs)$/.test(normalizedPath)) {
+    score += 54_000;
+    reasons.push("parameter validation companion");
+  }
+  if (/(^|\/)(common\/)?warnings\.(py|ts|js|go|rb|rs|cs)$/.test(normalizedPath)) {
+    score += 38_000;
+    reasons.push("deprecation warning companion");
+  }
+  if (/(^|\/)display\.(py|ts|js|go|rb|rs|cs)$/.test(normalizedPath) || /(^|\/)utils\/display\.(py|ts|js|go|rb|rs|cs)$/.test(normalizedPath)) {
+    score += 30_000;
+    reasons.push("deprecation display companion");
+  }
+  if (/(^|\/)[a-z0-9_.-]*basic\.(cs|ts|js)$/.test(normalizedPath) && (sourceTerms.has("deprecated_aliases") || sourceTerms.has("validateargumentspec") || sourceTerms.has("removed_in_version"))) {
+    score += 46_000;
+    reasons.push("module deprecation runtime mirror companion");
+  }
+  if (["deprecated", "deprecation", "aliases", "warning", "display", "version", "date"].some((term) => sourceTerms.has(term))) {
+    score += 900;
+    reasons.push("deprecation lifecycle content companion");
+  }
+  if (/(^|\/)(date_time|datetime|urls?)\.(py|ts|js|go|rb|rs|cs)$/.test(normalizedPath) && !/\b(date parser|parse date|url|urls|uri|http)\b/.test(normalizedQuery)) {
+    score -= 82_000;
+    reasons.push("generic date/url helper downranked for deprecation lifecycle companion");
+  }
+  if (/(^|\/)modules\/[^/]+\.py$/.test(normalizedPath) && !sourceTerms.has("deprecated_aliases") && !sourceTerms.has("removed_in_version")) {
+    score -= 62_000;
+    reasons.push("leaf module downranked for shared deprecation lifecycle companion");
+  }
+
+  return { score, reasons };
+}
+
+function scoreKubernetesRbacMatcherCompanion(
+  filePath: string,
+  query: string,
+  sourceTerms: Set<string>
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeText(query);
+  if (!isKubernetesRbacResourceMatcherTask(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = filePath.toLowerCase();
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (sourceTerms.has("kuberesourcematchesregex") || (sourceTerms.has("kubernetesresource") && sourceTerms.has("namespace"))) {
+    score += 82_000;
+    reasons.push("Kubernetes RBAC resource matcher companion");
+  }
+  if (
+    ["kind", "namespace", "verb", "verbs", "get", "list", "watch", "create", "update", "delete"].some((term) => sourceTerms.has(term)) &&
+    ["match", "matcher", "regexp", "regex", "wildcard", "glob"].some((term) => sourceTerms.has(term))
+  ) {
+    score += 24_000;
+    reasons.push("Kubernetes resource rule matching companion");
+  }
+  if (/^lib\/utils\/replace\.go$/.test(normalizedPath) || /\/utils?\/(replace|match|matcher|regexp|regex)\.go$/.test(normalizedPath)) {
+    score += 30_000;
+    reasons.push("resource matcher utility companion");
+  }
+  if (/^lib\/service\/kubernetes\.go$/.test(normalizedPath) || /\/service\/kubernetes\.(go|ts|js)$/.test(normalizedPath)) {
+    score -= 82_000;
+    reasons.push("Kubernetes service startup downranked for RBAC matcher companion");
+  }
+  if (/(^|\/)(backend|cloud|users?|storage|db)\//.test(normalizedPath) && !sourceTerms.has("kuberesourcematchesregex") && !sourceTerms.has("kubernetesresource")) {
+    score -= 34_000;
+    reasons.push("non-matcher backend downranked for Kubernetes RBAC companion");
+  }
+
+  return { score, reasons };
+}
+
+function scoreFormUnflattenRequestCompanion(
+  filePath: string,
+  query: string,
+  sourceTerms: Set<string>
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeText(query);
+  if (!isFormUnflattenRequestTask(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = filePath.toLowerCase();
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/\/plugins\/upstream\/utils\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) || /(^|\/)(unflatten|flatten|forms?|request)_?utils?\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) {
+    score += 88_000;
+    reasons.push("form unflatten utility companion");
+  }
+  if (/\/plugins\/openlibrary\/lists\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) || /(^|\/)lists\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) {
+    score += 78_000;
+    reasons.push("form route/list handler companion");
+  }
+  if (["unflatten", "flattened", "nested", "indexed", "defaults", "form", "body", "query", "request", "post", "seeds"].some((term) => sourceTerms.has(term))) {
+    score += 18_000;
+    reasons.push("form request reconstruction companion content");
+  }
+  if (/\/core\/lists\/model\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) || /\/models?\//.test(normalizedPath)) {
+    score -= 48_000;
+    reasons.push("list model companion downranked for request reconstruction task");
+  }
+  if (/\/plugins\/openlibrary\/utils\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) && !sourceTerms.has("unflatten")) {
+    score -= 22_000;
+    reasons.push("generic openlibrary utility companion downranked for form reconstruction task");
+  }
+
+  return { score, reasons };
+}
+
+function scorePackageSourceMappingCompanion(
+  filePath: string,
+  query: string,
+  sourceTerms: Set<string>
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeText(query);
+  if (!isPackageSourceMappingTask(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = filePath.toLowerCase();
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/^scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 96_000;
+    reasons.push("package manager source/binary scanner companion");
+  }
+  if (/^oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 88_000;
+    reasons.push("package source vulnerability matcher companion");
+  }
+  if (/^scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 72_000;
+    reasons.push("scanner dispatch/source package companion");
+  }
+  if (/^oval\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/oval\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) {
+    score += 48_000;
+    reasons.push("alpine oval family companion");
+  }
+  if (["source", "binary", "package", "packages", "src", "apk", "alpine", "oval", "vulnerability", "vulnerabilities", "upgradable"].some((term) => sourceTerms.has(term))) {
+    score += 12_000;
+    reasons.push("package source mapping companion content");
+  }
+  if (/\/scanner\/trivy\//.test(normalizedPath) || /\/parser\//.test(normalizedPath) || /\/contrib\//.test(normalizedPath)) {
+    score -= 48_000;
+    reasons.push("unrelated package parser companion downranked");
+  }
+
+  return { score, reasons };
+}
+
+function scoreKubernetesExecForwarderCompanion(
+  filePath: string,
+  query: string,
+  sourceTerms: Set<string>
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeText(query);
+  if (!isKubernetesExecForwarderTask(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = filePath.toLowerCase();
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/^lib\/service\/kubernetes\.go$/.test(normalizedPath) || /\/service\/kubernetes\.(go|ts|js)$/.test(normalizedPath)) {
+    score += 96_000;
+    reasons.push("Kubernetes service/session uploader companion");
+  }
+  if (/^lib\/kube\/proxy\/forwarder\.go$/.test(normalizedPath) || /\/kube\/proxy\/forwarder\.(go|ts|js)$/.test(normalizedPath)) {
+    score += 88_000;
+    reasons.push("Kubernetes exec forwarder companion");
+  }
+  if (/\/kube\/proxy\/(server|handler|session|audit|auth)\.(go|ts|js)$/.test(normalizedPath)) {
+    score += 34_000;
+    reasons.push("Kubernetes proxy companion");
+  }
+  if (/^lib\/service\/service\.go$/.test(normalizedPath) || /\/service\/service\.(go|ts|js)$/.test(normalizedPath)) {
+    score += 18_000;
+    reasons.push("service initialization companion");
+  }
+  if (
+    [
+      "forwarderconfig",
+      "forwarder",
+      "servehttp",
+      "exec",
+      "portforward",
+      "catchall",
+      "authz",
+      "cachingauthclient",
+      "getkubeservices",
+      "getclusterconfig",
+      "reversetunnelsrv",
+      "routetocluster",
+      "session",
+      "uploader",
+      "recording",
+      "recordings",
+      "streaming",
+      "upload",
+      "audit"
+    ].some((term) => sourceTerms.has(term))
+  ) {
+    score += 22_000;
+    reasons.push("Kubernetes exec/session companion content");
+  }
+  if (/^lib\/utils\/replace\.go$/.test(normalizedPath) || /\/utils?\/(replace|match|matcher|regexp|regex)\.go$/.test(normalizedPath)) {
+    score -= 94_000;
+    reasons.push("resource matcher companion downranked for Kubernetes exec/session task");
+  }
+  if (/^lib\/auth\//.test(normalizedPath) && !sourceTerms.has("processkubecsr") && !sourceTerms.has("forwarderconfig")) {
+    score -= 52_000;
+    reasons.push("generic auth/session companion downranked for Kubernetes exec/session task");
+  }
+  if (/(^|\/)(backend|cloud|users?|storage|db)\//.test(normalizedPath) && !sourceTerms.has("forwarder") && !sourceTerms.has("session")) {
+    score -= 24_000;
+    reasons.push("backend/storage companion downranked for Kubernetes exec/session task");
+  }
+
+  return { score, reasons };
+}
+
+function scoreUiFeedbackOwnershipCompanion(
+  filePath: string,
+  query: string,
+  sourceTerms: Set<string>
+): { score: number; reasons: string[] } {
+  const normalizedQuery = normalizeText(query);
+  if (!isUiFeedbackOwnershipTask(normalizedQuery)) return { score: 0, reasons: [] };
+
+  const normalizedPath = filePath.toLowerCase();
+  const namedSurfaceHits = namedUiSurfaceHits(filePath, query);
+  const directBasenameHit = namedUiSurfaceBasenameHit(filePath, query);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (/(^|\/)(components?|atoms?|molecules?|organisms?|views?|screens?|routes?)\//.test(normalizedPath)) {
+    score += 4400;
+    reasons.push("UI feedback component ownership companion");
+  }
+  if (/(^|\/)hooks?\//.test(normalizedPath)) {
+    score += 3000;
+    reasons.push("UI feedback hook ownership companion");
+  }
+  if (/(^|\/)index\.(ts|tsx|js|jsx)$/.test(normalizedPath) && sharedFeatureTerms(filePath, normalizedQuery).length > 0) {
+    score += 1700;
+    reasons.push("feature export companion");
+  }
+  const sharedTerms = sharedFeatureTerms(filePath, normalizedQuery);
+  if (sharedTerms.length > 0) {
+    score += Math.min(2600, sharedTerms.length * 900);
+    reasons.push(`UI feature path companion: ${sharedTerms.slice(0, 3).join(", ")}`);
+  }
+  if (namedSurfaceHits.length > 0) {
+    score += Math.min(7200, namedSurfaceHits.length * 3600);
+    reasons.push(`named UI surface companion: ${namedSurfaceHits.slice(0, 3).join(", ")}`);
+  }
+  if (directBasenameHit) {
+    score += 5200;
+    reasons.push(`direct UI basename companion: ${directBasenameHit}`);
+  }
+  if (["live", "liveness", "badge", "icon", "header", "body", "recording", "playback", "feedback", "state"].some((term) => sourceTerms.has(term))) {
+    score += 900;
+    reasons.push("UI feedback content companion");
+  }
+  const stateOwnerNeeded = /\b(liveness|live|state|status|playback|recording|broadcast)\b/.test(normalizedQuery);
+  if (/(^|\/)(models?|stores?)\//.test(normalizedPath) && stateOwnerNeeded) {
+    score += 2200;
+    reasons.push("UI state owner companion");
+  }
+  if (
+    /(^|\/)(utils?|services?)\//.test(normalizedPath) &&
+    !/\b(utility|utils?|event ordering|events?|protocol|serialization|service)\b/.test(normalizedQuery)
+  ) {
+    score -= 5200;
+    reasons.push("utility/service companion downranked for UI feedback task");
+  }
+
+  return { score, reasons };
+}
+
+function isHsmKmsConfigTask(query: string): boolean {
+  const normalizedQuery = normalizeText(query);
+  return (
+    /\b(hsm|kms|softhsm|yubihsm|cloudhsm|pkcs11)\b/.test(normalizedQuery) &&
+    /\b(test|tests|testing|backend|backends|configuration|config|environment|env)\b/.test(normalizedQuery)
+  );
+}
+
+function isConfigOptionSchemaTask(query: string): boolean {
+  const normalizedQuery = normalizeText(query);
+  const explicitConfigOption =
+    /\b(config|configuration|settings?|options?|workarounds?)\b/.test(normalizedQuery) &&
+    /\b(add|support|implement|define|schema|metadata|option|setting|workaround|argument|args?)\b/.test(normalizedQuery);
+  const renderingConfigWorkaround =
+    /\b(qtwebengine|qt webengine|webengine|chromium)\b/.test(normalizedQuery) &&
+    /\b(rendering|glitch|glitches|pdf|sheets|canvas|accelerated|workaround|settings?|args?)\b/.test(normalizedQuery);
+  return explicitConfigOption || renderingConfigWorkaround;
+}
+
+function isDeprecationLifecycleTask(query: string): boolean {
+  const normalizedQuery = normalizeText(query);
+  return (
+    /\b(deprecat\w*|deprecated aliases?|removed[_ ](?:at[_ ])?date|removed[_ ]in[_ ]version|internal error)\b/.test(normalizedQuery) &&
+    /\b(date|version|module|modules|parameter|parameters|alias|aliases|warning|warnings|display|validate|validation|runtime)\b/.test(normalizedQuery)
+  );
+}
+
+function isKubernetesRbacResourceMatcherTask(query: string): boolean {
+  const normalizedQuery = normalizeText(query);
+  if (isKubernetesExecForwarderTask(normalizedQuery)) return false;
+  return (
+    /\b(kubernetes|kubectl|kube)\b/.test(normalizedQuery) &&
+    /\b(rbac|role|rule|rules|access|permission|permissions|resource|resources|namespace|namespaces)\b/.test(normalizedQuery) &&
+    /\b(kind|namespace|namespaces|verbs?|get|list|watch|create|update|delete|read only|read-only)\b/.test(normalizedQuery)
+  );
+}
+
+function isFormUnflattenRequestTask(query: string): boolean {
+  const normalizedQuery = normalizeText(query);
+  return (
+    /\b(unflatten|flattened|nested|indexed|parent keys?|form data|body data|query parameters?|query string|request body|duplicate (?:simple )?keys?|assignments?)\b/.test(normalizedQuery) &&
+    /\b(post|form|body|request|endpoint|route|handler|list|lists|seeds?|defaults?)\b/.test(normalizedQuery)
+  );
+}
+
+function isPackageSourceMappingTask(query: string): boolean {
+  const normalizedQuery = normalizeText(query);
+  return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|apk|alpine)\b/.test(normalizedQuery) &&
+    /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?)\b/.test(normalizedQuery);
+}
+
+function isKubernetesExecForwarderTask(query: string): boolean {
+  const normalizedQuery = normalizeText(query);
+  const compactQuery = normalizedQuery.replace(/\s+/g, "");
+  return (
+    /\b(kubernetes|kubectl|kube)\b/.test(normalizedQuery) &&
+    (
+      /\b(exec|forwarder|forwarder config|session uploader|session recording|recordings?|streaming|upload directory|async upload|audit event|audit events|client disconnect|reverse tunnel|route to cluster)\b/.test(normalizedQuery) ||
+      /\b(port forward|catch all)\b/.test(normalizedQuery) ||
+      /\b(portforward|catchall|forwarderconfig|reversetunnelsrv|routetocluster|getkubeservices|getclusterconfig)\b/.test(compactQuery)
+    )
+  );
+}
+
+function isUnrelatedDeprecationLifecycleCompanion(filePath: string, sourceTerms: Set<string>): boolean {
+  const normalizedPath = filePath.toLowerCase();
+  if (/(^|\/)(date_time|datetime|urls?)\.(py|ts|js|go|rb|rs|cs)$/.test(normalizedPath)) return true;
+  if (/(^|\/)modules\/[^/]+\.py$/.test(normalizedPath) && !sourceTerms.has("deprecated_aliases") && !sourceTerms.has("removed_in_version")) return true;
+  return false;
+}
+
+function isUiFeedbackOwnershipTask(query: string): boolean {
+  const normalizedQuery = normalizeText(query);
+  const explicitUiTerms = /\b(ui|component|components|icon|badge|view|screen|state|feedback|visual|liveness|live)\b/.test(normalizedQuery);
+  const headerBodyUiTerms =
+    /\b(header|body)\b/.test(normalizedQuery) &&
+    /\b(ui|component|components|icon|badge|view|screen|visual|render|display)\b/.test(normalizedQuery);
+  const uiTerms = explicitUiTerms || headerBodyUiTerms;
+  const featureStateTerms = /\b(recording|playback|voice|broadcast|room|message|notification|presence)\b/.test(normalizedQuery);
+  return uiTerms && (featureStateTerms || /\b(inconsistent|feedback|icon|badge|liveness|visible|display|shown|render)\b/.test(normalizedQuery));
+}
+
+function sharedFeatureTerms(filePath: string, normalizedQuery: string): string[] {
+  const pathTerms = termSet(filePath);
+  const stopTerms = new Set(["component", "components", "source", "debug", "fix", "state", "feedback", "icon", "badge", "header", "body"]);
+  return [...termSet(normalizedQuery)].filter((term) => term.length >= 4 && !stopTerms.has(term) && pathTerms.has(term));
+}
+
+function namedUiSurfaceHits(filePath: string, query: string): string[] {
+  const normalizedQuery = normalizeText(query);
+  const basename = filePath.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const compactBasename = basename.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const normalizedBasename = normalizeText(basename);
+  if (normalizedBasename.length < 4) return [];
+  return normalizedQuery.includes(normalizedBasename) || normalizedQuery.includes(compactBasename) ? [basename] : [];
+}
+
+function namedUiSurfaceBasenameHit(filePath: string, query: string): string | undefined {
+  return namedUiSurfaceHits(filePath, query)[0];
+}
+
+function isCentralHsmKmsConfigTask(normalizedQuery: string): boolean {
+  return /\b(unified|central|centralize|centralized|reusable|duplicated|duplication|consistent|selector|detect|detects|available)\b/.test(normalizedQuery);
+}
+
+function isHsmKmsBackendHelperPath(normalizedPath: string): boolean {
+  return /(^|\/)(pkcs11|testhelpers?|test_helpers?)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath.toLowerCase());
 }
 
 export function isNoisySourcePath(filePath: string): boolean {
@@ -830,7 +1683,15 @@ function isNoisyCompanionFile(file: FileRecord): boolean {
 
 function isUniversalSourceFile(file: Pick<FileRecord, "path" | "kind" | "language">): boolean {
   if (["source", "component", "route"].includes(file.kind)) return true;
-  return /\.(ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|c|cc|cpp|cxx|h|hh|hpp|hxx|go|rb)$/.test(file.path.toLowerCase());
+  return /\.(ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|rs|c|cc|cpp|cxx|h|hh|hpp|hxx|go|rb)$/.test(file.path.toLowerCase());
+}
+
+function isDeclarativeConfigSchemaFile(filePath: string): boolean {
+  return /(^|\/)(configdata|config_data|configschema|config_schema|settings|options)\.(ya?ml|json|toml)$/.test(filePath.toLowerCase());
+}
+
+function isConfigDiagnosticProblemSurface(normalizedPath: string): boolean {
+  return /(^|\/)(backendproblem|backend_problem|problem|diagnostic|diagnostics)\.(py|ts|js|go|rb|rs)$/.test(normalizedPath);
 }
 
 function isPrimaryUniversalSourcePath(file: Pick<FileRecord, "path" | "language">): boolean {
@@ -880,8 +1741,10 @@ function routePathAnchors(query: string): string[] {
 
 function mentionedSourceFileBasenames(query: string): Set<string> {
   const basenames = new Set<string>();
-  const pattern = /\b[A-Za-z0-9_.-]+\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)\b/g;
+  const pattern = /\b[A-Za-z0-9_.-]+\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|rs|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)\b/g;
   for (const match of query.matchAll(pattern)) {
+    const start = match.index ?? 0;
+    if (start > 0 && query[start - 1] === "/") continue;
     const basename = match[0]!.toLowerCase().split(/[\\/]/).at(-1);
     if (!basename || isLikelyTestPath(basename) || isGenericMentionedBasename(basename)) continue;
     basenames.add(basename);
@@ -1550,6 +2413,90 @@ function scoreOrmUnitOfWorkCompanion(filePath: string, queryTerms: Set<string>):
   return { score, reasons };
 }
 
+function scoreRoutingMapRuleSourceCompanion(filePath: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const asksRoutingCore =
+    (queryTerms.has("routing") || queryTerms.has("route") || queryTerms.has("url")) &&
+    (queryTerms.has("map") || queryTerms.has("rule") || queryTerms.has("matcher") || queryTerms.has("matching") || queryTerms.has("method") || queryTerms.has("endpoint"));
+  if (!asksRoutingCore) return { score: 0, reasons: [] };
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const reasons: string[] = [];
+  let score = 0;
+  if (/(^|\/)routing\//.test(normalized) && /^(map|rules?|matcher)$/.test(basename)) {
+    score += basename === "matcher" ? 4400 : 3900;
+    reasons.push("routing map/rule/matcher source companion");
+  }
+  if (/^utils?$/.test(basename) && !/(^|\/)routing\//.test(normalized)) {
+    score -= 3600;
+    reasons.push("generic URL utility downranked for routing core prompt");
+  }
+  return { score, reasons };
+}
+
+function scoreLineCommentFormattingCompanion(filePath: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const asksLineCommentFlow =
+    (queryTerms.has("line") || queryTerms.has("lines") || queryTerms.has("linegen") || queryTerms.has("generator") || queryTerms.has("output")) &&
+    (queryTerms.has("comment") || queryTerms.has("comments") || queryTerms.has("split") || queryTerms.has("splitting") || queryTerms.has("format") || queryTerms.has("formatting"));
+  if (!asksLineCommentFlow) return { score: 0, reasons: [] };
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const reasons: string[] = [];
+  let score = 0;
+  if (/^(linegen|lines?|comments?)$/.test(basename)) {
+    score += basename === "linegen" ? 4600 : 3800;
+    reasons.push("line/comment formatting source companion");
+  }
+  if (/^(output|debug|report)$/.test(basename) && (queryTerms.has("line") || queryTerms.has("linegen") || queryTerms.has("comment"))) {
+    score -= 2600;
+    reasons.push("generic output surface downranked for line/comment prompt");
+  }
+  return { score, reasons };
+}
+
+function scoreSearchPrinterOutputCompanion(filePath: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const asksSearchPrinter =
+    (queryTerms.has("search") || queryTerms.has("searcher") || queryTerms.has("match") || queryTerms.has("matches")) &&
+    (queryTerms.has("printer") || queryTerms.has("json") || queryTerms.has("path") || queryTerms.has("paths") || queryTerms.has("event") || queryTerms.has("events") || queryTerms.has("output"));
+  if (!asksSearchPrinter) return { score: 0, reasons: [] };
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const reasons: string[] = [];
+  let score = 0;
+  if (/(^|\/)crates\/core\//.test(normalized) && basename === "search") {
+    score += 4700;
+    reasons.push("core search source companion");
+  }
+  if (/(^|\/)printer\//.test(normalized) && /^(json|path|paths?)$/.test(basename)) {
+    score += basename === "json" ? 4600 : 4000;
+    reasons.push("printer output source companion");
+  }
+  if (/(^|\/)searcher\//.test(normalized) && basename === "core" && queryTerms.has("printer")) {
+    score -= 900;
+    reasons.push("searcher core downranked when printer output is requested");
+  }
+  return { score, reasons };
+}
+
+function scoreFixtureRunnerResolutionCompanion(filePath: string, queryTerms: Set<string>): { score: number; reasons: string[] } {
+  const asksFixtureRunner =
+    (queryTerms.has("fixture") || queryTerms.has("fixtures") || queryTerms.has("collected") || queryTerms.has("nodes")) &&
+    (queryTerms.has("runner") || queryTerms.has("setup") || queryTerms.has("resolution") || queryTerms.has("resolve") || queryTerms.has("value") || queryTerms.has("values"));
+  if (!asksFixtureRunner) return { score: 0, reasons: [] };
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  const reasons: string[] = [];
+  let score = 0;
+  if (/(^|\/)_pytest\//.test(normalized) && /^(fixtures|python|runner)$/.test(basename)) {
+    score += basename === "fixtures" ? 4300 : 3600;
+    reasons.push("fixture/runner source companion");
+  }
+  if (/(^|\/)_pytest\//.test(normalized) && basename === "nodes" && queryTerms.has("fixture")) {
+    score -= 500;
+    reasons.push("node metadata downranked behind fixture/runner flow");
+  }
+  return { score, reasons };
+}
+
 function isTransformAnalysisCompanion(filePath: string, queryTerms: Set<string>): boolean {
   const asksTransformSurface =
     (queryTerms.has("plugin") || queryTerms.has("plugins") || queryTerms.has("module") || queryTerms.has("modules")) &&
@@ -1579,8 +2526,302 @@ function isGenericHelperForRoleCompanion(filePath: string, queryTerms: Set<strin
   return !["helper", "helpers", "utility", "utils", "support"].some((term) => queryTerms.has(term));
 }
 
+function isExecutionCoordinatorForCryptoTask(filePath: string, queryTerms: Set<string>): boolean {
+  const asksCrypto =
+    ["password", "passwords", "encrypt", "encryption", "hash", "hashes", "hashing", "bcrypt", "salt", "salts", "ident"].some((term) =>
+      queryTerms.has(term)
+    );
+  if (!asksCrypto) return false;
+  return /(^|\/)(executor|execution|queue|scheduler|task_queue|taskqueue)\//.test(filePath.toLowerCase()) ||
+    /(^|\/)task[_-]?queue[_-]?manager\.(?:py|pyi?|ts|tsx|js|jsx|java|go|rb)$/.test(filePath.toLowerCase());
+}
+
 function isGenericUtilityBasename(basename: string): boolean {
   return /^(utils?|helpers?|common|shared|support)\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(basename);
+}
+
+function isGenericMentionedSourceBasename(basename: string): boolean {
+  return /^(main|index)\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(basename);
+}
+
+function qualifiedGenericModulePathHints(query: string): string[][] {
+  const hints: string[][] = [];
+  for (const match of query.matchAll(/\b[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+\b/g)) {
+    const terms = tokenizeLexical(match[0] ?? "").filter((term) => term.length > 1);
+    if (terms.length >= 3 && /^(utils?|helpers?|common|shared|support|code|index|main)$/.test(terms.at(-1) ?? "")) {
+      hints.push(terms);
+    }
+  }
+  return hints;
+}
+
+function scoreQualifiedGenericModuleMismatch(filePath: string, hints: string[][]): number {
+  if (hints.length === 0) return 0;
+  const normalized = filePath.toLowerCase();
+  const basename = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "";
+  if (!/^(utils?|helpers?|common|shared|support)$/.test(basename)) return 0;
+  const pathTerms = termSet(normalized);
+  const matchesNamedModule = hints.some((terms) => terms.every((term) => pathTerms.has(term) || normalized.includes(term)));
+  return matchesNamedModule ? 0 : -12000;
+}
+
+function matchesQualifiedGenericModule(filePath: string, hints: string[][]): boolean {
+  if (hints.length === 0) return false;
+  const normalized = normalizeSlashPath(filePath.toLowerCase());
+  const pathTerms = termSet(normalized);
+  return hints.some((terms) => terms.every((term) => pathTerms.has(term) || normalized.includes(term)));
+}
+
+type TestCounterpartHint = {
+  basenames: string[];
+  suffixes: string[];
+  stemTerms: string[];
+  generic: boolean;
+};
+
+type SourcePathHint = {
+  path: string;
+  basename: string;
+  labeled: boolean;
+};
+
+function sourcePathHintsFromQuery(query: string): SourcePathHint[] {
+  const hints: SourcePathHint[] = [];
+  const seen = new Set<string>();
+  const pattern = /(?:^|[\s"'`,:;([\{])([A-Za-z0-9_.@+~/-]+?\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx))(?:\b|::|#|[\])},;."'`])/g;
+  for (const match of query.matchAll(pattern)) {
+    const rawPath = normalizeSlashPath(match[1] ?? "").toLowerCase();
+    if (!rawPath || isLikelyTestPathMention(rawPath) || isNoisyMentionedSourcePath(rawPath)) continue;
+    const basename = rawPath.split("/").at(-1) ?? rawPath;
+    if (!basename || isGenericMentionedSourceBasename(basename)) continue;
+    const labelWindow = query.slice(Math.max(0, (match.index ?? 0) - 48), match.index ?? 0).toLowerCase();
+    const labeled = /\b(location|source|implementation|file|path|target|interface|module)\b\s*:?\s*$/.test(labelWindow);
+    const hasDirectory = rawPath.includes("/");
+    if (!hasDirectory && !labeled) continue;
+    if (seen.has(rawPath)) continue;
+    seen.add(rawPath);
+    hints.push({ path: rawPath, basename, labeled });
+  }
+  return hints;
+}
+
+function scoreExplicitSourcePathHint(file: FileRecord, hints: SourcePathHint[]): { score: number; reasons: string[] } {
+  if (hints.length === 0 || file.kind === "test" || !isUniversalSourceFile(file) || isNoisyCompanionFile(file)) {
+    return { score: 0, reasons: [] };
+  }
+  const normalizedPath = normalizeSlashPath(file.path.toLowerCase());
+  const basename = normalizedPath.split("/").at(-1) ?? normalizedPath;
+  const reasons: string[] = [];
+  let score = 0;
+  for (const hint of hints) {
+    if (normalizedPath === hint.path || pathSuffixMatches(normalizedPath, hint.path)) {
+      score += hint.labeled ? 7200 : 5600;
+      reasons.push(hint.labeled ? "explicit source location path" : "explicit source path");
+      continue;
+    }
+    if (hint.labeled && hint.basename === basename) {
+      score += 1800;
+      reasons.push("explicit source location filename");
+    }
+  }
+  return { score: Math.min(score, 9600), reasons: uniqueReasons(reasons) };
+}
+
+function isNoisyMentionedSourcePath(filePath: string): boolean {
+  return /(^|\/)(docs?|examples?|fixtures?|testdata|generated|vendor|node_modules|dist|build)\//.test(filePath);
+}
+
+function sourceCounterpartHintsFromTestPaths(query: string): TestCounterpartHint[] {
+  const hints: TestCounterpartHint[] = [];
+  const seen = new Set<string>();
+  const pattern = /(?:^|[\s"'`,:;([\{])([A-Za-z0-9_.@+~/-]+?\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx))(?:\b|::|#|[\])},;."'`])/g;
+  for (const match of query.matchAll(pattern)) {
+    const rawPath = normalizeSlashPath(match[1] ?? "");
+    if (!rawPath || !isLikelyTestPathMention(rawPath)) continue;
+    const hint = sourceCounterpartHintFromTestPath(rawPath);
+    if (!hint || hint.basenames.length === 0) continue;
+    const key = [...hint.basenames, ...hint.suffixes].join("|");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    hints.push(hint);
+  }
+  return hints;
+}
+
+function sourceCounterpartHintFromTestPath(testPath: string): TestCounterpartHint | undefined {
+  const segments = testPath.split("/").filter(Boolean);
+  const basename = segments.at(-1);
+  if (!basename) return undefined;
+  const extensionMatch = /\.(ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)$/i.exec(basename);
+  if (!extensionMatch) return undefined;
+  const extension = extensionMatch[1]!.toLowerCase();
+  const rawStem = basename.slice(0, -extensionMatch[0]!.length);
+  const sourceStem = sourceStemFromTestStem(rawStem);
+  if (!sourceStem || /^(test|tests|spec|specs)$/.test(sourceStem)) return undefined;
+  const basenames = sourceBasenamesForTestStem(sourceStem, extension);
+  const suffixes = sourceSuffixesForTestPath(segments, basenames);
+  const stemTerms = [...termSet(sourceStem.toLowerCase())].filter((term) => term.length > 1);
+  return {
+    basenames: uniqueStrings(basenames.map((item) => item.toLowerCase())),
+    suffixes: uniqueStrings(suffixes.map((item) => normalizeSlashPath(item.toLowerCase()))),
+    stemTerms: uniqueStrings(stemTerms),
+    generic:
+      stemTerms.length === 0 ||
+      stemTerms.every((term) => GENERIC_COUNTERPART_STEMS.has(term)) ||
+      basenames.every((item) => isGenericCounterpartBasename(item.toLowerCase()))
+  };
+}
+
+function sourceStemFromTestStem(stem: string): string {
+  return stem
+    .replace(/^(test|spec)[_-]/i, "")
+    .replace(/[._-](test|spec)$/i, "")
+    .replace(/(Test|Spec)$/i, "")
+    .replace(/[_-]tests?$/i, "")
+    .trim();
+}
+
+function sourceBasenamesForTestStem(stem: string, extension: string): string[] {
+  if (["ts", "tsx", "js", "jsx", "mjs", "cjs"].includes(extension)) {
+    return uniqueStrings([`${stem}.${extension}`, `${stem}.ts`, `${stem}.tsx`, `${stem}.js`, `${stem}.jsx`, `${stem}.mjs`, `${stem}.cjs`]);
+  }
+  if (["kt", "kts"].includes(extension)) return [`${stem}.kt`, `${stem}.kts`];
+  if (["cc", "cpp", "cxx"].includes(extension)) return [`${stem}.${extension}`, `${stem}.cc`, `${stem}.cpp`, `${stem}.cxx`, `${stem}.h`, `${stem}.hpp`];
+  if (["h", "hh", "hpp", "hxx"].includes(extension)) return [`${stem}.${extension}`, `${stem}.h`, `${stem}.hh`, `${stem}.hpp`, `${stem}.hxx`, `${stem}.cc`, `${stem}.cpp`];
+  return [`${stem}.${extension}`];
+}
+
+function sourceSuffixesForTestPath(segments: string[], basenames: string[]): string[] {
+  const suffixes = [...basenames];
+  const lowerSegments = segments.map((segment) => segment.toLowerCase());
+  const basename = segments.at(-1);
+  if (!basename) return suffixes;
+  const directorySegments = segments.slice(0, -1);
+
+  const srcTestIndex = lowerSegments.findIndex((segment, index) => segment === "src" && lowerSegments[index + 1] === "test");
+  if (srcTestIndex >= 0) {
+    const afterTest = directorySegments.slice(srcTestIndex + 2);
+    for (const sourceRoot of [["src", "main"], ["src"]]) {
+      for (const sourceBase of basenames) {
+        suffixes.push([...sourceRoot, ...afterTest, sourceBase].join("/"));
+      }
+    }
+  }
+
+  const testIndex = lowerSegments.findIndex((segment) => /^(tests?|specs?|__tests__|testing)$/.test(segment));
+  if (testIndex >= 0) {
+    const beforeTest = directorySegments.slice(0, testIndex);
+    for (const sourceBase of basenames) {
+      if (beforeTest.length > 0) suffixes.push([...beforeTest, sourceBase].join("/"));
+    }
+  }
+  const afterTest = testIndex >= 0 ? directorySegments.slice(testIndex + 1) : directorySegments;
+  const sourceDirs = afterTest.filter((segment) => !/^(unit|integration|integrations|functional|e2e|acceptance|system|component|components?)$/i.test(segment));
+  for (const sourceBase of basenames) {
+    if (sourceDirs.length > 0) suffixes.push([...sourceDirs, sourceBase].join("/"));
+    const withComponent = afterTest.filter((segment) => !/^(unit|integration|integrations|functional|e2e|acceptance|system)$/i.test(segment));
+    if (withComponent.length > 0) suffixes.push([...withComponent, sourceBase].join("/"));
+  }
+
+  return uniqueStrings(suffixes);
+}
+
+function scoreTestCounterpartHint(file: FileRecord, hints: TestCounterpartHint[], queryTerms: Set<string>): { score: number; reasons: string[] } {
+  if (hints.length === 0) return { score: 0, reasons: [] };
+  if (file.kind === "test" || !isUniversalSourceFile(file) || isNoisySourcePath(file.path)) return { score: 0, reasons: [] };
+
+  const normalizedPath = normalizeSlashPath(file.path.toLowerCase());
+  const basename = normalizedPath.split("/").at(-1) ?? normalizedPath;
+  const reasons: string[] = [];
+  let score = 0;
+  for (const hint of hints) {
+    const genericCounterpart = hint.generic || isGenericCounterpartBasename(basename);
+    const hasSpecificPathHit = hasSpecificCounterpartPathHit(normalizedPath, queryTerms, hint);
+    if (hint.suffixes.some((suffix) => pathSuffixMatches(normalizedPath, suffix) && (suffix.includes("/") || !isGenericCounterpartBasename(suffix)))) {
+      score += genericCounterpart && !hasSpecificPathHit ? 650 : 3200;
+      reasons.push(genericCounterpart && !hasSpecificPathHit ? "selected test generic source counterpart" : "selected test path source counterpart");
+      continue;
+    }
+    if (hint.basenames.includes(basename)) {
+      if (!genericCounterpart) {
+        score += 1800;
+        reasons.push("selected test basename source counterpart");
+      }
+    }
+  }
+  return { score: Math.min(score, 5200), reasons: uniqueReasons(reasons) };
+}
+
+function isGenericCounterpartBasename(basename: string): boolean {
+  if (/^(code|utils?|helpers?|common|shared|support|index|main)\.[a-z0-9]+$/i.test(basename)) return true;
+  const stem = basename.replace(/\.[a-z0-9]+$/i, "");
+  const terms = [...termSet(stem)];
+  return terms.length > 0 && terms.every((term) => GENERIC_COUNTERPART_STEMS.has(term));
+}
+
+function hasSpecificCounterpartPathHit(normalizedPath: string, queryTerms: Set<string>, hint: TestCounterpartHint): boolean {
+  const pathTerms = termSet(normalizedPath);
+  const hintTerms = new Set(hint.stemTerms);
+  return [...queryTerms].some(
+    (term) => !COMPANION_STOP_TERMS.has(term) && !hintTerms.has(term) && pathTerms.has(term)
+  );
+}
+
+const GENERIC_COUNTERPART_STEMS = new Set([
+  "api",
+  "apis",
+  "app",
+  "apps",
+  "category",
+  "categories",
+  "code",
+  "common",
+  "controller",
+  "controllers",
+  "data",
+  "group",
+  "groups",
+  "helper",
+  "helpers",
+  "index",
+  "main",
+  "model",
+  "models",
+  "post",
+  "posts",
+  "route",
+  "routes",
+  "service",
+  "services",
+  "shared",
+  "support",
+  "tag",
+  "tags",
+  "topic",
+  "topics",
+  "user",
+  "users",
+  "util",
+  "utils"
+]);
+
+function pathSuffixMatches(filePath: string, suffix: string): boolean {
+  return filePath === suffix || filePath.endsWith(`/${suffix}`);
+}
+
+function isLikelyTestPathMention(filePath: string): boolean {
+  const normalized = normalizeSlashPath(filePath.toLowerCase());
+  const basename = normalized.split("/").at(-1) ?? normalized;
+  return (
+    /(^|\/)(tests?|specs?|__tests__|testing|testdata|fixtures?)\//.test(normalized) ||
+    /^test[_-]/.test(basename) ||
+    /(?:^|[._-])(test|spec)(?:[._-]|$)/.test(basename) ||
+    /_test\./.test(basename)
+  );
+}
+
+function normalizeSlashPath(input: string): string {
+  return input.replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\.\//, "");
 }
 
 function isUnaskedConverterCompanion(filePath: string, queryTerms: Set<string>): boolean {
@@ -1655,7 +2896,18 @@ function scoreUtilitySiblingCompanion(seedPath: string, candidatePath: string, q
   }
 
   const urlPathTask = ["url", "urls", "relative", "absolute", "external", "query", "path", "paths", "browser"].some((term) => queryTerms.has(term));
+  const routingCoreTask =
+    (queryTerms.has("routing") || queryTerms.has("route")) &&
+    (queryTerms.has("map") || queryTerms.has("rule") || queryTerms.has("matcher") || queryTerms.has("matching") || queryTerms.has("endpoint"));
   if (
+    urlPathTask &&
+    /utils?$/.test(candidateBase) &&
+    routingCoreTask &&
+    !/(^|\/)routing\//.test(normalizedCandidate)
+  ) {
+    score -= 3600;
+    reasons.push("generic URL utility downranked for routing core prompt");
+  } else if (
     urlPathTask &&
     /utils?$/.test(candidateBase) &&
     !/(^|\/)(templates?|examples?|playground|fixtures?)\//.test(normalizedCandidate)
@@ -1745,6 +2997,42 @@ function buildEdgeNeighborMap(edges: GraphEdgeRecord[]): Map<string, Set<string>
   return map;
 }
 
+function buildImportNeighborMap(edges: GraphEdgeRecord[]): Map<string, Set<string>> {
+  const map = new Map<string, Set<string>>();
+  for (const edge of edges) {
+    if (edge.type !== "imports" && edge.type !== "imported_by") continue;
+    map.set(edge.fromFile, new Set([...(map.get(edge.fromFile) ?? []), edge.toFile]));
+    map.set(edge.toFile, new Set([...(map.get(edge.toFile) ?? []), edge.fromFile]));
+  }
+  return map;
+}
+
+function scoreImportLinkedTaskCompanion(input: {
+  candidatePathTerms: Set<string>;
+  candidateTerms: Set<string>;
+  pathQueryHits: string[];
+  queryTerms: Set<string>;
+  specificQueryHits: string[];
+}): { score: number; reasons: string[] } {
+  const taskOverlap = [...input.queryTerms].filter((term) => {
+    if (COMPANION_STOP_TERMS.has(term)) return false;
+    return input.candidatePathTerms.has(term) || input.candidateTerms.has(term);
+  });
+  if (taskOverlap.length === 0 && input.pathQueryHits.length === 0 && input.specificQueryHits.length === 0) {
+    return { score: 0, reasons: [] };
+  }
+
+  const score =
+    360 +
+    Math.min(2800, taskOverlap.length * 700) +
+    Math.min(1200, input.pathQueryHits.length * 600) +
+    Math.min(900, input.specificQueryHits.length * 300);
+  return {
+    score,
+    reasons: [`import-linked task companion: ${taskOverlap.slice(0, 4).join(", ") || input.pathQueryHits.slice(0, 3).join(", ")}`]
+  };
+}
+
 function groupByFile<T>(records: T[], filePathFor: (record: T) => string): Map<string, T[]> {
   const grouped = new Map<string, T[]>();
   for (const record of records) {
@@ -1765,6 +3053,10 @@ function uniqueResults(results: HybridScoredResult[]): HybridScoredResult[] {
 
 function uniqueReasons(reasons: string[]): string[] {
   return [...new Set(reasons.filter(Boolean))];
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))];
 }
 
 function normalizeText(input: string): string {
@@ -1886,5 +3178,14 @@ function canonicalTerm(term: string): string {
   if (term === "tools") return "tool";
   if (term === "tabs") return "tab";
   if (term === "filters") return "filter";
+  if (term === "lines") return "line";
+  if (term === "comments") return "comment";
+  if (term === "matches" || term === "matching") return "match";
+  if (term === "printers") return "printer";
+  if (term === "paths") return "path";
+  if (term === "events") return "event";
+  if (term === "nodes") return "node";
+  if (term === "runners") return "runner";
+  if (term === "values") return "value";
   return term;
 }

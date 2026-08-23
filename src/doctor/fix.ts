@@ -44,7 +44,7 @@ export function fixDoctorIssues(input: { rootPath: string; target?: DoctorTarget
   if (target === "all" && result.repaired.length === 0 && result.skipped.length === 0) {
     result.skipped.push({
       target: "all",
-      reason: "No Kairn-owned setup was found. Run kairn setup wizard to install an integration."
+      reason: "No Kairn-owned setup was found. Run kairn init to install an integration."
     });
   }
 

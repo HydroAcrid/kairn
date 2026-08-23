@@ -13,6 +13,7 @@ import { hasKairnOwnedClaudeHooks } from "../cli/setup/claudeSetup.js";
 import { existingCopilotServerNameForRoot, isKairnOwnedMcpServer } from "../cli/setup/mcpSetup.js";
 import { resolveSemanticRetrieverConfig } from "../config/semantic.js";
 import { getSemanticModelState } from "../semantic/modelManager.js";
+import { getKairnVersion } from "../version.js";
 
 export type DoctorCheckStatus = "ok" | "warn" | "fail";
 
@@ -45,11 +46,12 @@ export function runDoctor(input: {
   const homeDir = input.homeDir ?? os.homedir();
   const checks: DoctorCheck[] = [
     checkNodeVersion(),
+    checkKairnInstall(),
     checkKairnCommand(),
     checkKairnState(rootPath),
     checkIndex(input.runtime),
     checkSemanticModel(rootPath, homeDir),
-    checkSemanticIndex(input.runtime),
+    checkSemanticIndex(rootPath, input.runtime),
     checkWindowsFriction(rootPath),
     ...targetedChecks({
       rootPath,
@@ -74,9 +76,8 @@ function checkSemanticModel(rootPath: string, homeDir: string): DoctorCheck {
   if (config.mode === "legacy") {
     return {
       id: "semantic_model",
-      status: "warn",
-      summary: "Model-based candidate generation is disabled.",
-      fix: "Run kairn model install, then set semantic.mode to shadow."
+      status: "ok",
+      summary: "Semantic candidate preview is disabled; deterministic evidence delivery is active."
     };
   }
   const state = getSemanticModelState({
@@ -95,7 +96,15 @@ function checkSemanticModel(rootPath: string, homeDir: string): DoctorCheck {
   };
 }
 
-function checkSemanticIndex(runtime: KairnRuntime): DoctorCheck {
+function checkSemanticIndex(rootPath: string, runtime: KairnRuntime): DoctorCheck {
+  if (resolveSemanticRetrieverConfig(rootPath).mode === "legacy") {
+    return {
+      id: "semantic_index",
+      status: "ok",
+      summary: "Semantic index is not required in deterministic mode.",
+      metadata: { required: false }
+    };
+  }
   const status = runtime.getIndexStatus();
   const documents = status.semanticDocumentCount ?? 0;
   const embeddings = status.semanticEmbeddingCount ?? 0;
@@ -108,6 +117,16 @@ function checkSemanticIndex(runtime: KairnRuntime): DoctorCheck {
       : `Semantic index coverage is incomplete (${embeddings}/${documents} documents).`,
     fix: complete ? undefined : "Install the semantic model and run kairn index refresh --root <repo>.",
     metadata: { documents, embeddings, complete }
+  };
+}
+
+function checkKairnInstall(): DoctorCheck {
+  const version = getKairnVersion();
+  return {
+    id: "kairn_install",
+    status: "ok",
+    summary: `Kairn ${version} (Node ${process.version}, ${process.platform}-${process.arch}).`,
+    metadata: { version, node: process.version, platform: process.platform, arch: process.arch, distribution: "npm-source" }
   };
 }
 
@@ -267,8 +286,8 @@ function checkIndex(runtime: KairnRuntime): DoctorCheck {
     return {
       id: "index_state",
       status: "warn",
-      summary: "Index status is unavailable; run kairn init.",
-      fix: "Run kairn init --root <repo>.",
+      summary: "Index status is unavailable; refresh the Kairn index.",
+      fix: "Run kairn index refresh --root <repo>.",
       metadata: { error: error instanceof Error ? error.message : String(error) }
     };
   }

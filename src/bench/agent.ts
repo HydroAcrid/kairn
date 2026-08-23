@@ -5,9 +5,9 @@ import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import Database from "better-sqlite3";
+import { openSqliteDatabase, type SqliteDatabase } from "../store/sqliteNative.js";
 import type { BenchmarkCase, BenchmarkSeedSpec, BenchmarkTaskOutcome } from "../types.js";
-import { parseCodexUsageFooter } from "../eval/codexUsage.js";
+import { mergeCodexUsage, parseCodexUsageFooter, readCodexTranscript } from "../eval/codexUsage.js";
 import { sha256 } from "../utils/hash.js";
 import { normalizeRelativePath } from "../utils/paths.js";
 import { estimateTokens } from "../utils/tokens.js";
@@ -33,6 +33,8 @@ export async function runAgentBenchmarkCase(input: {
   untrustedEnvironment?: NodeJS.ProcessEnv | undefined;
   /** Environment for the explicitly configured agent host. */
   agentEnvironment?: NodeJS.ProcessEnv | undefined;
+  /** @deprecated Use agentEnvironment. Retained for the v0.1 benchmark host. */
+  agentEnv?: Record<string, string> | undefined;
   preparePrompt?: ((input: {
     workspacePath: string;
     prompt: string;
@@ -40,6 +42,7 @@ export async function runAgentBenchmarkCase(input: {
   }) => Promise<{ prompt: string; metadata?: Record<string, unknown> }> | { prompt: string; metadata?: Record<string, unknown> }) | undefined;
 }): Promise<AgentBenchmarkResult> {
   const prompt = input.benchmarkCase.agentPrompt ?? input.benchmarkCase.task;
+  const agentEnvironment = input.agentEnvironment ?? (input.agentEnv ? { ...process.env, ...input.agentEnv } : undefined);
   let workspacePath = "";
   let seedMetadata: Record<string, unknown> = {};
   const workspaceStartedAt = Date.now();
@@ -111,7 +114,7 @@ export async function runAgentBenchmarkCase(input: {
           commandWithPlaceholders(input.setupCommand, { prompt, root: workspacePath, session: commandSessionId }),
           workspacePath,
           timeoutMs,
-          input.agentEnvironment
+          agentEnvironment
         )
       : undefined;
     const assistanceSetupMs = Date.now() - setupStartedAt;
@@ -156,6 +159,9 @@ export async function runAgentBenchmarkCase(input: {
     }
     const setupChangedFiles = setupResult ? changedFiles(workspacePath) : [];
     const setupChangedFileHashes = setupResult ? fileHashes(workspacePath, setupChangedFiles) : {};
+    if (setupChangedFiles.length > 0) {
+      commitBenchmarkBaseline(workspacePath, setupChangedFiles, "kairn-benchmark-setup");
+    }
 
     const prepareStartedAt = Date.now();
     const prepared = input.preparePrompt
@@ -169,7 +175,7 @@ export async function runAgentBenchmarkCase(input: {
       workspacePath,
       timeoutMs,
       16 * 1024 * 1024,
-      input.agentEnvironment
+      agentEnvironment
     );
     const agentTimedOut = completed.timedOut;
     const agentElapsedMs = Date.now() - agentStartedAt;
@@ -188,7 +194,8 @@ export async function runAgentBenchmarkCase(input: {
     });
     const diffScopeResult = await evaluateDiffScopes({
       rootPath: workspacePath,
-      scopes: input.benchmarkCase.allowedDiffScopes
+      scopes: input.benchmarkCase.allowedDiffScopes,
+      task: prompt
     });
     const semanticVerificationFailed = !sourceInvariantResult.passed || !diffScopeResult.passed;
     const combinedOutput = [output, verification.output].filter(Boolean).join("\n");
@@ -206,10 +213,20 @@ export async function runAgentBenchmarkCase(input: {
         ...setupChangedFileHashes
       }
     });
-    const requiredTouchedFiles = input.benchmarkCase.requiredTouchedFiles ?? [];
+    const originalRequiredTouchedFiles = input.benchmarkCase.requiredTouchedFiles ?? [];
+    const requiredTouchPlan = effectiveRequiredTouchedFiles({
+      workspacePath,
+      prompt,
+      requiredTouchedFiles: originalRequiredTouchedFiles
+    });
+    const requiredTouchedFiles = requiredTouchPlan.requiredTouchedFiles;
     const missingRequiredTouchedFiles = requiredTouchedFiles.filter((file) => !agentChangedFiles.includes(file));
     const requiredTouchedSatisfied = missingRequiredTouchedFiles.length === 0;
-    const actualFiles = unique([...agentChangedFiles, ...expectedFileMentions]);
+    const actualFiles = actualFilesForAgentResult({
+      agentChangedFiles,
+      expectedFileMentions,
+      requiredTouchedFiles
+    });
     const scopeViolations = diffScopeResult.violations;
     const testsEdited = agentChangedFiles.filter(isTestPath);
     const unrelatedFilesTouched = diffScopeResult.passed
@@ -237,6 +254,8 @@ export async function runAgentBenchmarkCase(input: {
         seedPatchFiles,
         setupChangedFiles,
         agentChangedFiles,
+        originalRequiredTouchedFiles,
+        ignoredAbsentRequiredTouchedFiles: requiredTouchPlan.ignoredAbsentRequiredTouchedFiles,
         requiredTouchedFiles,
         requiredTouchedSatisfied,
         missingRequiredTouchedFiles,
@@ -297,7 +316,13 @@ export async function runAgentBenchmarkCase(input: {
       seedPatchFiles,
       seedPatchFileHashes
     });
-    const requiredTouchedFiles = input.benchmarkCase.requiredTouchedFiles ?? [];
+    const originalRequiredTouchedFiles = input.benchmarkCase.requiredTouchedFiles ?? [];
+    const requiredTouchPlan = effectiveRequiredTouchedFiles({
+      workspacePath,
+      prompt,
+      requiredTouchedFiles: originalRequiredTouchedFiles
+    });
+    const requiredTouchedFiles = requiredTouchPlan.requiredTouchedFiles;
     const missingRequiredTouchedFiles = requiredTouchedFiles.filter((file) => !agentChangedFiles.includes(file));
     const metadata = metadataFromOutput({
       output,
@@ -310,6 +335,8 @@ export async function runAgentBenchmarkCase(input: {
         seedPatchFiles,
         changedFiles: changedFileList,
         agentChangedFiles,
+        originalRequiredTouchedFiles,
+        ignoredAbsentRequiredTouchedFiles: requiredTouchPlan.ignoredAbsentRequiredTouchedFiles,
         requiredTouchedFiles,
         requiredTouchedSatisfied: missingRequiredTouchedFiles.length === 0,
         missingRequiredTouchedFiles,
@@ -326,7 +353,11 @@ export async function runAgentBenchmarkCase(input: {
     });
     return {
       workspacePath,
-      actualFiles: unique([...agentChangedFiles, ...mentionedExpectedFiles(output, input.benchmarkCase.expectedFiles)]),
+      actualFiles: actualFilesForAgentResult({
+        agentChangedFiles,
+        expectedFileMentions: mentionedExpectedFiles(output, input.benchmarkCase.expectedFiles),
+        requiredTouchedFiles
+      }),
       responseTokens: estimateTokens(output),
       ...(metadata.observedCodexTokens !== undefined ? { observedCodexTokens: metadata.observedCodexTokens } : {}),
       outcome: "fail",
@@ -334,6 +365,47 @@ export async function runAgentBenchmarkCase(input: {
       metadata: metadata.metadata
     };
   }
+}
+
+function actualFilesForAgentResult(input: {
+  agentChangedFiles: string[];
+  expectedFileMentions: string[];
+  requiredTouchedFiles: string[];
+}): string[] {
+  if (input.requiredTouchedFiles.length > 0) {
+    return unique(input.agentChangedFiles);
+  }
+  return unique([...input.agentChangedFiles, ...input.expectedFileMentions]);
+}
+
+function effectiveRequiredTouchedFiles(input: {
+  workspacePath: string;
+  prompt: string;
+  requiredTouchedFiles: string[];
+}): { requiredTouchedFiles: string[]; ignoredAbsentRequiredTouchedFiles: string[] } {
+  const explicitNewFiles = explicitNewSourceFiles(input.prompt);
+  const requiredTouchedFiles: string[] = [];
+  const ignoredAbsentRequiredTouchedFiles: string[] = [];
+  for (const file of unique(input.requiredTouchedFiles)) {
+    const normalized = normalizeRelativePath(file);
+    const exists = fs.existsSync(path.join(input.workspacePath, normalized));
+    if (exists || explicitNewFiles.has(normalized)) {
+      requiredTouchedFiles.push(normalized);
+    } else {
+      ignoredAbsentRequiredTouchedFiles.push(normalized);
+    }
+  }
+  return { requiredTouchedFiles, ignoredAbsentRequiredTouchedFiles };
+}
+
+function explicitNewSourceFiles(prompt: string): Set<string> {
+  const files = new Set<string>();
+  const pattern = /\bnew\s+file\s*:?\s*`?([A-Za-z0-9_.@+~/-]+?\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx))`?/gi;
+  for (const match of prompt.matchAll(pattern)) {
+    const file = normalizeRelativePath(match[1] ?? "");
+    if (file) files.add(file);
+  }
+  return files;
 }
 
 function createTempWorkspace(rootPath: string): string {
@@ -346,6 +418,7 @@ function createTempWorkspace(rootPath: string): string {
       const normalized = normalizeRelativePath(relative);
       return !normalized.startsWith(".git") &&
         !normalized.startsWith(".kairn") &&
+        !normalized.startsWith(".codex") &&
         !normalized.includes("/node_modules/") &&
         normalized !== "node_modules";
     }
@@ -389,19 +462,25 @@ function createSeededWorkspace(
   if (seed.ref) {
     runRequired("git", ["init"], { cwd: workspacePath, label: "git init", environment: gitEnvironment });
     runRequired("git", ["remote", "add", "origin", seed.repoUrl], { cwd: workspacePath, label: "git remote add", environment: gitEnvironment });
-    runRequired("git", ["fetch", ...depthArgs(cloneDepth), "origin", seed.ref], {
+    runRequiredWithRetry("git", ["fetch", ...depthArgs(cloneDepth), "origin", seed.ref], {
       cwd: workspacePath,
       label: `git fetch ${seed.ref}`,
-      environment: gitEnvironment
+      environment: gitEnvironment,
+      attempts: 3,
+      retryDelayMs: 2000,
+      retryOn: isTransientGitFailure
     });
     runRequired("git", ["checkout", "--detach", "FETCH_HEAD"], { cwd: workspacePath, label: "git checkout", environment: gitEnvironment });
     seedResolvedCommit = gitCommit(workspacePath);
   } else {
     fs.rmSync(workspacePath, { recursive: true, force: true });
-    runRequired("git", ["clone", ...depthArgs(cloneDepth), seed.repoUrl, workspacePath], {
+    runRequiredWithRetry("git", ["clone", ...depthArgs(cloneDepth), seed.repoUrl, workspacePath], {
       cwd: os.tmpdir(),
       label: "git clone",
-      environment: gitEnvironment
+      environment: gitEnvironment,
+      attempts: 3,
+      retryDelayMs: 2000,
+      retryOn: isTransientGitFailure
     });
   }
 
@@ -432,7 +511,7 @@ function createSeededWorkspace(
   // never misattributed to the agent under test.
   const seedPatchFiles = changedFiles(workspacePath);
   const seedPatchFileHashes = fileHashes(workspacePath, seedPatchFiles);
-  if (seed.commitSetupBaseline) commitBenchmarkBaseline(workspacePath, environment, sandboxImage);
+  if (seed.commitSetupBaseline) commitSeedSetupBaseline(workspacePath, environment, sandboxImage);
 
   const expectedFailure = seed.expectedFailureCommand
     ? sandboxImage
@@ -467,7 +546,7 @@ function createSeededWorkspace(
   };
 }
 
-function commitBenchmarkBaseline(
+function commitSeedSetupBaseline(
   workspacePath: string,
   environment?: NodeJS.ProcessEnv | undefined,
   sandboxImage?: string | undefined
@@ -528,6 +607,22 @@ function applySeedPatch(input: {
   if ((result.status ?? 0) !== 0 || result.error) {
     throw new Error(`seed setup patch failed: ${result.stderr || result.error?.message || "unknown git apply error"}`);
   }
+}
+
+function commitBenchmarkBaseline(workspacePath: string, files: string[], message: string): void {
+  const existingFiles = files.filter((file) => fs.existsSync(path.join(workspacePath, file)));
+  if (existingFiles.length === 0) return;
+  runRequired("git", ["add", "--", ...existingFiles], { cwd: workspacePath, label: "git add benchmark setup changes" });
+  const diffResult = spawnSync("git", ["diff", "--cached", "--quiet"], {
+    cwd: workspacePath,
+    encoding: "utf8",
+    maxBuffer: 1024 * 1024
+  });
+  if ((diffResult.status ?? 0) === 0) return;
+  runRequired("git", ["-c", "user.email=kairn@example.com", "-c", "user.name=Kairn", "commit", "-m", message, "--no-verify"], {
+    cwd: workspacePath,
+    label: "git commit benchmark setup changes"
+  });
 }
 
 export function runSeedVerification(input: {
@@ -836,6 +931,41 @@ function runRequired(
   }
 }
 
+function runRequiredWithRetry(
+  command: string,
+  args: string[],
+  input: {
+    cwd: string;
+    label: string;
+    shell?: boolean | undefined;
+    environment?: NodeJS.ProcessEnv | undefined;
+    attempts: number;
+    retryDelayMs: number;
+    retryOn: (message: string) => boolean;
+  }
+): void {
+  let lastError: Error | undefined;
+  for (let attempt = 1; attempt <= input.attempts; attempt += 1) {
+    try {
+      runRequired(command, args, input);
+      return;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      if (attempt >= input.attempts || !input.retryOn(lastError.message)) break;
+      sleepSync(input.retryDelayMs);
+    }
+  }
+  throw lastError ?? new Error(`${input.label} failed`);
+}
+
+function isTransientGitFailure(message: string): boolean {
+  return /RPC failed|Recv failure|Connection reset|protocol error|bad pack header|early EOF|remote end hung up|network/i.test(message);
+}
+
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
 export function runShell(
   command: string,
   cwd: string,
@@ -1001,8 +1131,50 @@ export function changedFiles(workspacePath: string): string[] {
   }
 }
 
+export function workspacePatch(workspacePath: string): string {
+  if (!workspacePath) return "";
+  let untracked: string[] = [];
+  try {
+    untracked = execFileSync("git", ["-C", workspacePath, "ls-files", "--others", "--exclude-standard"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    })
+      .split(/\r?\n/)
+      .map((line) => normalizeRelativePath(line.trim()))
+      .filter((file) => file && !isBenchmarkInternalPath(file));
+
+    if (untracked.length > 0) {
+      execFileSync("git", ["-C", workspacePath, "add", "-N", "--", ...untracked], {
+        stdio: ["ignore", "ignore", "ignore"]
+      });
+    }
+
+    return execFileSync("git", ["-C", workspacePath, "diff", "--binary"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      maxBuffer: 64 * 1024 * 1024
+    });
+  } catch {
+    return "";
+  } finally {
+    if (untracked.length > 0) {
+      try {
+        execFileSync("git", ["-C", workspacePath, "reset", "-q", "--", ...untracked], {
+          stdio: ["ignore", "ignore", "ignore"]
+        });
+      } catch {
+        // Best-effort cleanup for disposable benchmark workspaces.
+      }
+    }
+  }
+}
+
 function isBenchmarkInternalPath(filePath: string): boolean {
-  return filePath === ".kairn" || filePath.startsWith(".kairn/");
+  return filePath === ".kairn" ||
+    filePath.startsWith(".kairn/") ||
+    filePath === ".codex" ||
+    filePath.startsWith(".codex/") ||
+    filePath === "go.work.sum";
 }
 
 function mentionedExpectedFiles(output: string, expectedFiles: string[]): string[] {
@@ -1046,16 +1218,22 @@ function metadataFromOutput(input: {
   observedCodexTokens?: number;
   metadata: Record<string, unknown>;
 } {
-  const usage = parseCodexUsageFooter(input.output);
+  const transcript = readCodexTranscriptFromOutput(input.output);
+  const usage = codexUsageFromBenchmarkOutput(input.output, transcript);
   const hookCompleted = countMatches(input.output, /\bhook \(completed\)|hook:\s*[\w.-]+\s+Completed\b|hook context:/gi);
   const hookFailed = countMatches(input.output, /\bhook \(failed\)|error:\s*hook exited with code/gi);
   const kairnMcpToolMentions = countMatches(input.output, /\bkairn_(prepare_task|get_next_context|get_failure_context|find_context|read_file|read_symbol)\b/g);
   const codexJsonlMcp = codexJsonlMcpCalls(input.output);
   const workspaceMcp = workspaceMcpCalls(input.workspacePath);
-  const actualMcpToolCalls = workspaceMcp.count > 0 ? workspaceMcp.count : codexJsonlMcp.count;
+  const transcriptMcp = transcript?.mcp ?? emptyMcpCalls();
+  const workspacePrime = workspacePrimeMetadata(input.workspacePath);
+  const actualMcpToolCalls = workspaceMcp.count > 0 ? workspaceMcp.count : transcriptMcp.count > 0 ? transcriptMcp.count : codexJsonlMcp.count;
+  const actualMcpFiles = workspaceMcp.files.length > 0 ? workspaceMcp.files : unique([...transcriptMcp.files, ...transcriptMcp.attributedFiles]);
+  const actualMcpContextActions = workspaceMcp.contextActions.length > 0 ? workspaceMcp.contextActions : transcriptMcp.contextActions;
   const mcpReturnedQuality = input.benchmarkCase
-    ? mcpReturnedFileQuality(input.benchmarkCase, workspaceMcp.files)
+    ? mcpReturnedFileQuality(input.benchmarkCase, actualMcpFiles)
     : {};
+  const kairnDryRunMetadata = kairnCodexDryRunMetadata(input.output);
   const metadata: Record<string, unknown> = {
     workspacePath: input.workspacePath,
     promptHash: sha256(input.prompt),
@@ -1065,11 +1243,16 @@ function metadataFromOutput(input: {
     hookFailed,
     kairnMcpToolMentions,
     actualMcpToolCalls,
-    actualMcpToolNames: unique([...workspaceMcp.toolNames, ...codexJsonlMcp.toolNames]),
-    actualMcpToolCallSource: workspaceMcp.count > 0 ? "workspace_metrics" : codexJsonlMcp.count > 0 ? "codex_jsonl" : "none",
-    actualMcpFiles: workspaceMcp.files,
-    actualMcpContextActions: workspaceMcp.contextActions,
+    actualMcpToolNames: unique([...workspaceMcp.toolNames, ...transcriptMcp.toolNames, ...codexJsonlMcp.toolNames]),
+    actualMcpToolCallSource:
+      workspaceMcp.count > 0 ? "workspace_metrics" : transcriptMcp.count > 0 ? "codex_transcript" : codexJsonlMcp.count > 0 ? "codex_jsonl" : "none",
+    actualMcpFiles,
+    actualMcpAttributedFiles: transcriptMcp.attributedFiles,
+    actualMcpContextActions,
+    actualMcpStopConditions: transcriptMcp.stopConditions,
     ...mcpReturnedQuality,
+    ...workspacePrime,
+    ...kairnDryRunMetadata,
     ...(input.extraMetadata ?? {})
   };
 
@@ -1079,8 +1262,7 @@ function metadataFromOutput(input: {
 
   if (usage) {
     metadata.codexUsage = {
-      ...usage,
-      source: "footer"
+      ...usage
     };
   }
 
@@ -1090,11 +1272,102 @@ function metadataFromOutput(input: {
   };
 }
 
+function codexUsageFromBenchmarkOutput(output: string, transcript?: ReturnType<typeof readCodexTranscript>): ReturnType<typeof mergeCodexUsage> {
+  const footerUsage = parseCodexUsageFooter(output);
+  return mergeCodexUsage({
+    footerUsage,
+    transcriptUsage: transcript?.usage,
+    transcriptMetadata: transcript?.metadata,
+    transcriptHash: transcript?.transcriptHash
+  });
+}
+
+function emptyMcpCalls(): { count: number; toolNames: string[]; files: string[]; attributedFiles: string[]; contextActions: string[]; stopConditions: string[] } {
+  return {
+    count: 0,
+    toolNames: [],
+    files: [],
+    attributedFiles: [],
+    contextActions: [],
+    stopConditions: []
+  };
+}
+
+function readCodexTranscriptFromOutput(output: string): ReturnType<typeof readCodexTranscript> | undefined {
+  const sessionId = codexSessionIdFromOutput(output);
+  if (!sessionId) return undefined;
+  const transcriptPath = findCodexTranscriptPath(sessionId);
+  if (!transcriptPath) return undefined;
+  try {
+    return readCodexTranscript({ transcriptPath });
+  } catch {
+    return undefined;
+  }
+}
+
+function codexSessionIdFromOutput(output: string): string | undefined {
+  const match = output.match(/\bsession id:\s*([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/i);
+  return match?.[1];
+}
+
+function findCodexTranscriptPath(sessionId: string): string | undefined {
+  const root = path.join(process.env.CODEX_HOME || path.join(os.homedir(), ".codex"), "sessions");
+  if (!fs.existsSync(root)) return undefined;
+  const expectedSuffix = `${sessionId}.jsonl`;
+  const stack: Array<{ dir: string; depth: number }> = [{ dir: root, depth: 0 }];
+  while (stack.length > 0) {
+    const current = stack.pop()!;
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(current.dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const entryPath = path.join(current.dir, entry.name);
+      if (entry.isFile() && entry.name.endsWith(expectedSuffix)) return entryPath;
+      if (entry.isDirectory() && current.depth < 5) stack.push({ dir: entryPath, depth: current.depth + 1 });
+    }
+  }
+  return undefined;
+}
+
 function outputFromExecError(error: unknown): string {
   if (isExecError(error)) {
     return [bufferLikeToString(error.stdout), bufferLikeToString(error.stderr), error.message].filter(Boolean).join("\n");
   }
   return error instanceof Error ? error.message : String(error);
+}
+
+function kairnCodexDryRunMetadata(output: string): Record<string, unknown> {
+  const parsed = parseJsonObject(output.trim());
+  const prime = isRecord(parsed.prime) ? parsed.prime : undefined;
+  if (!prime) return {};
+
+  const primeMetadata = isRecord(prime.metadata) ? prime.metadata : {};
+  const contextDecision = isRecord(prime.contextDecision) ? prime.contextDecision : {};
+  const files = Array.isArray(prime.files) ? prime.files.filter((item): item is string => typeof item === "string") : [];
+  const tokenEstimate = typeof prime.tokenEstimate === "number" ? prime.tokenEstimate : undefined;
+  const guardrailVariant = typeof primeMetadata.guardrailVariant === "string" ? primeMetadata.guardrailVariant : undefined;
+  const guardrailDirectiveStyle = typeof primeMetadata.guardrailDirectiveStyle === "string"
+    ? primeMetadata.guardrailDirectiveStyle
+    : typeof contextDecision.directiveStyle === "string"
+      ? contextDecision.directiveStyle
+      : undefined;
+
+  return {
+    kairnDryRun: true,
+    ...(tokenEstimate !== undefined ? { primeTokens: tokenEstimate } : {}),
+    ...(typeof contextDecision.action === "string" ? { primeDecision: contextDecision.action } : {}),
+    ...(typeof contextDecision.recommendedDelivery === "string" ? { primeDelivery: contextDecision.recommendedDelivery } : {}),
+    ...(guardrailDirectiveStyle ? { primeDirectiveStyle: guardrailDirectiveStyle } : {}),
+    ...(guardrailVariant ? { guardrailVariant } : {}),
+    ...(typeof primeMetadata.guardrailFileCount === "number" ? { guardrailFileCount: primeMetadata.guardrailFileCount } : {}),
+    ...(typeof primeMetadata.guardrailInvariantCount === "number" ? { guardrailInvariantCount: primeMetadata.guardrailInvariantCount } : {}),
+    ...(typeof primeMetadata.guardrailTokenBudget === "number" ? { guardrailTokenBudget: primeMetadata.guardrailTokenBudget } : {}),
+    ...(typeof primeMetadata.guardrailStrictOfficialScope === "boolean" ? { guardrailStrictOfficialScope: primeMetadata.guardrailStrictOfficialScope } : {}),
+    primeFiles: files
+  };
 }
 
 function isExecError(value: unknown): value is Error & { stdout?: unknown; stderr?: unknown } {
@@ -1142,9 +1415,9 @@ function workspaceMcpCalls(workspacePath: string): { count: number; toolNames: s
     return { count: 0, toolNames: [], files: [], contextActions: [] };
   }
 
-  let db: Database.Database | undefined;
+  let db: SqliteDatabase | undefined;
   try {
-    db = new Database(dbPath, { readonly: true, fileMustExist: true });
+    db = openSqliteDatabase(dbPath, { readonly: true, fileMustExist: true });
     const rows = db
       .prepare(
         `
@@ -1181,6 +1454,61 @@ function workspaceMcpCalls(workspacePath: string): { count: number; toolNames: s
     };
   } catch {
     return { count: 0, toolNames: [], files: [], contextActions: [] };
+  } finally {
+    db?.close();
+  }
+}
+
+function workspacePrimeMetadata(workspacePath: string): Record<string, unknown> {
+  const dbPath = path.join(workspacePath, ".kairn", "kairn.sqlite");
+  if (!fs.existsSync(dbPath)) return {};
+
+  let db: SqliteDatabase | undefined;
+  try {
+    db = openSqliteDatabase(dbPath, { readonly: true, fileMustExist: true });
+    const row = db
+      .prepare(
+        `
+          select event_name, output_tokens, files_json, metadata_json
+          from metrics_events
+          where event_kind = 'prime_context'
+          order by created_at desc, id desc
+          limit 1
+        `
+      )
+      .get() as { event_name: string; output_tokens: number; files_json: string; metadata_json: string } | undefined;
+    if (!row) return {};
+
+    const metadata = parseJsonObject(row.metadata_json);
+    const contextDecision = isRecord(metadata.contextDecision) ? metadata.contextDecision : {};
+    const deliveryTrace = isRecord(metadata.deliveryTrace) ? metadata.deliveryTrace : {};
+    return {
+      primeDecision: typeof contextDecision.action === "string" ? contextDecision.action : row.event_name,
+      ...(typeof contextDecision.recommendedDelivery === "string" ? { primeDelivery: contextDecision.recommendedDelivery } : {}),
+      ...(typeof contextDecision.directiveStyle === "string" ? { primeDirectiveStyle: contextDecision.directiveStyle } : {}),
+      ...(typeof deliveryTrace.taskShapeSignal === "string" ? { taskShapeSignal: deliveryTrace.taskShapeSignal } : {}),
+      ...(typeof deliveryTrace.requiredSurface === "string" ? { requiredSurface: deliveryTrace.requiredSurface } : {}),
+      ...(typeof deliveryTrace.directiveStyle === "string" ? { directiveStyle: deliveryTrace.directiveStyle } : {}),
+      ...(typeof deliveryTrace.guardrailVariant === "string" ? { traceGuardrailVariant: deliveryTrace.guardrailVariant } : {}),
+      ...(typeof deliveryTrace.emittedFileCount === "number" ? { emittedFileCount: deliveryTrace.emittedFileCount } : {}),
+      ...(isRecord(deliveryTrace.emittedFileRoleSummary) ? { emittedFileRoleSummary: deliveryTrace.emittedFileRoleSummary } : {}),
+      ...(typeof deliveryTrace.editScopeSource === "string" ? { editScopeSource: deliveryTrace.editScopeSource } : {}),
+      ...(typeof deliveryTrace.estimatedDirectiveTokens === "number" ? { estimatedDirectiveTokens: deliveryTrace.estimatedDirectiveTokens } : {}),
+      ...(typeof deliveryTrace.estimatedSourceContextTokens === "number" ? { estimatedSourceContextTokens: deliveryTrace.estimatedSourceContextTokens } : {}),
+      ...(typeof deliveryTrace.sizingReason === "string" ? { sizingReason: deliveryTrace.sizingReason } : {}),
+      primeTokens: row.output_tokens,
+      primeFiles: parseStringArray(row.files_json),
+      ...(typeof metadata.guardrailVariant === "string" ? { guardrailVariant: metadata.guardrailVariant } : {}),
+      ...(typeof metadata.guardrailFileCount === "number" ? { guardrailFileCount: metadata.guardrailFileCount } : {}),
+      ...(typeof metadata.guardrailInvariantCount === "number" ? { guardrailInvariantCount: metadata.guardrailInvariantCount } : {}),
+      ...(typeof metadata.guardrailTokenBudget === "number" ? { guardrailTokenBudget: metadata.guardrailTokenBudget } : {}),
+      ...(typeof metadata.guardrailStrictOfficialScope === "boolean" ? { guardrailStrictOfficialScope: metadata.guardrailStrictOfficialScope } : {}),
+      ...(typeof metadata.officialPatchScopeFileCount === "number" ? { officialPatchScopeFileCount: metadata.officialPatchScopeFileCount } : {}),
+      ...(typeof metadata.forceOfficialMultiFileScope === "boolean" ? { forceOfficialMultiFileScope: metadata.forceOfficialMultiFileScope } : {}),
+      ...(typeof metadata.forceProductionOnlyOneFile === "boolean" ? { forceProductionOnlyOneFile: metadata.forceProductionOnlyOneFile } : {})
+    };
+  } catch {
+    return {};
   } finally {
     db?.close();
   }

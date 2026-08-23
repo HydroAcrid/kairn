@@ -4,6 +4,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { KAIRN_VERSION } from "../version.js";
 
 export type BenchmarkMcpSmokeReport = {
   startedAt: string;
@@ -40,7 +41,7 @@ export async function runBenchmarkMcpSmoke(input: {
   const server = resolveServerCommand(rootPath, input.serverCommand, input.serverArgs);
   const client = new Client({
     name: "kairn-benchmark-mcp-smoke",
-    version: "0.1.2"
+    version: KAIRN_VERSION
   });
   const transport = new StdioClientTransport({
     command: server.command,

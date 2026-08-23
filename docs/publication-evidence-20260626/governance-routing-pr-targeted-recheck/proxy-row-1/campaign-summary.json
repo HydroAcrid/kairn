@@ -1,0 +1,105 @@
+{
+  "id": "swe-pro-governance-pr-post-hidden-regression-controls-20260623",
+  "name": "SWE-Pro Governance PR Post-Hidden Regression Controls",
+  "generatedAt": "2026-06-26T13:45:19.399Z",
+  "manifestPath": "campaign-manifest.json",
+  "outDir": ".",
+  "stage": "proxy",
+  "dryRun": false,
+  "parallel": 1,
+  "paused": false,
+  "pauseReasons": [],
+  "artifacts": [
+    {
+      "entryId": "proxy-swe-row-1",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": [
+        "swe-pro",
+        "fresh-slice",
+        "proxy",
+        "future-architect__vuls"
+      ],
+      "startedAt": "2026-06-26T13:45:17.712Z",
+      "endedAt": "2026-06-26T13:45:19.398Z",
+      "artifactPath": "raw/proxy-swe-row-1.json",
+      "workerPacketPath": "worker-packets/proxy-swe-row-1.json",
+      "commands": [],
+      "classifications": [
+        "suppression_expected",
+        "valid_guardrail"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": true,
+        "cleanPassPass": false,
+        "tokenRegression": false,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 0,
+        "mcpUsefulAttribution": 0,
+        "elapsedMs": 1686,
+        "observedTokens": 941
+      }
+    }
+  ],
+  "rows": [
+    {
+      "entryId": "proxy-swe-row-1",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": "swe-pro;fresh-slice;proxy;future-architect__vuls",
+      "qualityPassed": true,
+      "observedTokens": 941,
+      "cleanPassPass": false,
+      "tokenRegression": false,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 0,
+      "mcpUsefulAttribution": 0,
+      "classifications": "suppression_expected;valid_guardrail",
+      "elapsedMs": 1686
+    }
+  ],
+  "aggregate": {
+    "entries": 1,
+    "completedEntries": 1,
+    "failedEntries": 0,
+    "qualityPassRate": 1,
+    "cleanPassPassRows": 0,
+    "tokenRegressionRows": 0,
+    "passiveTokenRegressionRows": 0,
+    "qualityRescueRows": 0,
+    "harmfulRows": 0,
+    "scopeViolations": 0,
+    "mcpCalls": 0,
+    "mcpUsefulAttribution": 0,
+    "medianSavedTokens": 0,
+    "medianSavingsRate": 0,
+    "medianElapsedMsByStage": {
+      "proxy": 1686
+    },
+    "repeatedFailureClasses": [],
+    "pauseRuleStatus": {
+      "paused": false,
+      "reasons": []
+    }
+  },
+  "outputs": {
+    "manifestPath": "campaign-manifest.json",
+    "summaryPath": "campaign-summary.json",
+    "resultsCsvPath": "results.csv",
+    "failuresCsvPath": "failures.csv",
+    "proxyResultsCsvPath": "proxy-results.csv",
+    "workerPacketsDir": "worker-packets",
+    "rawDir": "raw",
+    "workDir": "work",
+    "baselineCacheDir": "baseline-cache"
+  }
+}

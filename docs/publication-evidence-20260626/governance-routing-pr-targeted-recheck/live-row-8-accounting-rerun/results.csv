@@ -1,0 +1,2 @@
+entry_id,kind,stage,status,tags,quality_passed,observed_tokens,baseline_tokens,saved_tokens,savings_rate,estimated_observed_tokens,estimated_baseline_tokens,estimated_saved_tokens,estimated_savings_rate,token_accounting,clean_passpass,token_regression,quality_drop,quality_rescue,harmful_assist,scope_violations,mcp_calls,mcp_useful_attribution,classifications,elapsed_ms
+live-swe-row-8,proof,live,passed,swe-pro;fresh-slice;live,true,,,,,415339,464264,48925,0.10538185170506437,timeout_estimate,false,false,false,false,false,0,0,0,timeout_pass_estimated_tokens,1825337

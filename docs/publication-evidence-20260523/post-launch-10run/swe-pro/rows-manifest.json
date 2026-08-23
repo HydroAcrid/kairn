@@ -1,0 +1,30 @@
+[
+  {
+    "slug": "element-posthog",
+    "id": "instance_element-hq__element-web-4c6b0d35add7ae8d58f71ea1711587e31081444b-vnan",
+    "repo": "element-hq/element-web",
+    "baseCommit": "6da3cc8ca1baf268d768ed63e4b9cb16e40ce33d",
+    "raw": "docs/publication-evidence-20260523/post-launch-10run/swe-pro/element-posthog/row.raw.jsonl"
+  },
+  {
+    "slug": "teleport-mfa",
+    "id": "instance_gravitational__teleport-3ff75e29fb2153a2637fe7f83e49dc04b1c99c9f",
+    "repo": "gravitational/teleport",
+    "baseCommit": "4b11dc4a8e02ec5620b27f9ecb28f3180a5e67f7",
+    "raw": "docs/publication-evidence-20260523/post-launch-10run/swe-pro/teleport-mfa/row.raw.jsonl"
+  },
+  {
+    "slug": "openlibrary-standard-ebooks",
+    "id": "instance_internetarchive__openlibrary-798055d1a19b8fa0983153b709f460be97e33064-v13642507b4fc1f8d234172bf8129942da2c2ca26",
+    "repo": "internetarchive/openlibrary",
+    "baseCommit": "7b1ec94b425e4032a8c1b66a5219b4262af49484",
+    "raw": "docs/publication-evidence-20260523/post-launch-10run/swe-pro/openlibrary-standard-ebooks/row.raw.jsonl"
+  },
+  {
+    "slug": "openlibrary-marc-parse",
+    "id": "instance_internetarchive__openlibrary-3c48b4bb782189e0858e6c3fc7956046cf3e1cfb-v2d9a6c849c60ed19fd0858ce9e40b7cc8e097e59",
+    "repo": "internetarchive/openlibrary",
+    "baseCommit": "d38cb5a4162aa2942cdb5037dd679f37687b9d4f",
+    "raw": "docs/publication-evidence-20260523/post-launch-10run/swe-pro/openlibrary-marc-parse/row.raw.jsonl"
+  }
+]

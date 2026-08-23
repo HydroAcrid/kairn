@@ -1,0 +1,4 @@
+mode,repeats,quality_passes,median_observed_tokens,median_saved_tokens,reduction_percent,valid_savings_runs,harmful_runs,mcp_calls,mcp_returned_files,mcp_attributed_useful_files,scope_violations,verdict
+baseline,3,3,87461,,,0,0,0,0,0,0,baseline
+real_mcp_first,3,3,43709,41957,47.97,3,0,3,0,3,0,consistent_win
+hybrid_mcp_brief,3,3,44785,38101,43.56,3,0,3,0,3,0,consistent_win

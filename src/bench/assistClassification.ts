@@ -112,11 +112,17 @@ export function classifyAssistance(input: AssistanceClassificationInput): Assist
     };
   }
 
-  if (!input.qualityGatePassed) {
+  if (!input.qualityGatePassed && input.baselineQualityGatePassed === true) {
     return {
       ...base,
       harmfulAssist: true,
       assistClassification: "harmful_invalid_assist"
+    };
+  }
+  if (!input.qualityGatePassed) {
+    return {
+      ...base,
+      assistClassification: "neutral"
     };
   }
   if (baselineDifficulty === "quality_fail") {

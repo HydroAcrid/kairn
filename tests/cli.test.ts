@@ -2,16 +2,128 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { codexExecArgs } from "../src/cli/helpers.js";
+import {
+  buildCodexNoDiffRecoveryPrompt,
+  buildCodexPartialScopeRecoveryPrompt,
+  extraStrictScopeFiles,
+  missingRequiredScopeFiles,
+  relevantWorkspaceDiffFiles,
+  shouldRetryCodexNoDiff,
+  shouldRetryCodexPartialScope
+} from "../src/cli/codexRecovery.js";
+import { formatCodexEditScopeReminder } from "../src/cli/commands/core.js";
+import { codexExecArgs, withKairnInternalStateHidden } from "../src/cli/helpers.js";
 import { createFixtureRepo } from "./helpers.js";
 
 const CLI = ["tsx", "src/cli.ts"];
 
 describe("CLI", () => {
+  it("hides Kairn internal state from git-aware agent scans", () => {
+    const root = createFixtureRepo();
+    const excludePath = path.join(root, ".git", "info", "exclude");
+
+    execFileSync(CLI[0]!, [...CLI.slice(1), "init", "--state-only", "--root", root], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+    execFileSync(CLI[0]!, [...CLI.slice(1), "start", "Check routing", "--root", root, "--json"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+
+    const exclude = fs.readFileSync(excludePath, "utf8");
+    expect(exclude.match(/^\.kairn\/$/gm)).toHaveLength(1);
+  });
+
+  it("temporarily moves Kairn internal state out of the working tree for no-op Codex runs", () => {
+    const root = createFixtureRepo();
+    const stateDir = path.join(root, ".kairn");
+    fs.mkdirSync(stateDir, { recursive: true });
+    fs.writeFileSync(path.join(stateDir, "kairn.sqlite"), "state");
+
+    withKairnInternalStateHidden(root, true, () => {
+      expect(fs.existsSync(stateDir)).toBe(false);
+      const hiddenGitEntries = fs.readdirSync(path.join(root, ".git")).filter((entry) => entry.startsWith("kairn-state-hidden-"));
+      expect(hiddenGitEntries).toHaveLength(0);
+    });
+
+    expect(fs.existsSync(path.join(stateDir, "kairn.sqlite"))).toBe(true);
+  });
+
+  it("keeps candidate paired scopes soft in Codex wrapper reminders", () => {
+    const reminder = formatCodexEditScopeReminder({
+      editScope: {
+        initialEditFiles: ["src/topics/tools.js", "src/socket.io/topics/tools.js"],
+        readOnlyFiles: [],
+        allowedExpansionTriggers: [],
+        forbiddenEditPatterns: [],
+        scopeConfidence: "high",
+        scopeSource: "official_harness",
+        reason: "test",
+        strictBoundary: true,
+        dynamic: true
+      },
+      contextDecision: {
+        taskShapeSignal: "topic_ordering"
+      }
+    } as any);
+
+    expect(reminder).toContain("Kairn focused source candidates");
+    expect(reminder).toContain("Start with: src/topics/tools.js, src/socket.io/topics/tools.js");
+    expect(reminder).not.toContain("Kairn edit scope is authoritative");
+    expect(reminder).not.toContain("Edit only:");
+  });
+
+  it("keeps required multi-surface scopes hard in Codex wrapper reminders", () => {
+    const reminder = formatCodexEditScopeReminder({
+      editScope: {
+        initialEditFiles: ["internal/cmd/grpc.go", "internal/server/auth/middleware.go"],
+        readOnlyFiles: [],
+        allowedExpansionTriggers: [],
+        forbiddenEditPatterns: [],
+        scopeConfidence: "high",
+        scopeSource: "official_harness",
+        reason: "test",
+        strictBoundary: true,
+        dynamic: true
+      },
+      contextDecision: {
+        taskShapeSignal: "grpc_error_policy"
+      }
+    } as any);
+
+    expect(reminder).toContain("Kairn edit scope is authoritative");
+    expect(reminder).toContain("Edit only: internal/cmd/grpc.go, internal/server/auth/middleware.go");
+  });
+
+  it("does not append duplicate wrapper reminders when a guardrail prime is already emitted", () => {
+    const reminder = formatCodexEditScopeReminder({
+      metadata: {
+        guardrailVariant: "topic_ordering_compact"
+      },
+      editScope: {
+        initialEditFiles: ["src/topics/tools.js", "src/socket.io/topics/tools.js"],
+        readOnlyFiles: [],
+        allowedExpansionTriggers: [],
+        forbiddenEditPatterns: [],
+        scopeConfidence: "high",
+        scopeSource: "official_harness",
+        reason: "test",
+        strictBoundary: true,
+        dynamic: true
+      },
+      contextDecision: {
+        taskShapeSignal: "topic_ordering"
+      }
+    } as any);
+
+    expect(reminder).toBeUndefined();
+  });
+
   it("supports init, start, context, diff, and compress", () => {
     const root = createFixtureRepo();
 
-    const init = execFileSync(CLI[0]!, [...CLI.slice(1), "init", "--root", root], {
+    const init = execFileSync(CLI[0]!, [...CLI.slice(1), "init", "--state-only", "--root", root], {
       cwd: process.cwd(),
       encoding: "utf8"
     });
@@ -64,6 +176,17 @@ describe("CLI", () => {
     const metrics = execFileSync(
       CLI[0]!,
       [...CLI.slice(1), "metrics", "--session", parsed.session.id, "--root", root, "--json"],
+      { cwd: process.cwd(), encoding: "utf8" }
+    );
+    const stats = execFileSync(
+      CLI[0]!,
+      [...CLI.slice(1), "stats", "--session", parsed.session.id, "--root", root, "--json"],
+      { cwd: process.cwd(), encoding: "utf8" }
+    );
+    const statsReportPath = path.join(root, "kairn-impact.md");
+    const statsReport = execFileSync(
+      CLI[0]!,
+      [...CLI.slice(1), "stats", "report", "--session", parsed.session.id, "--root", root, "--out", statsReportPath, "--json"],
       { cwd: process.cwd(), encoding: "utf8" }
     );
     const indexStatus = execFileSync(CLI[0]!, [...CLI.slice(1), "index", "status", "--root", root, "--json"], {
@@ -142,6 +265,10 @@ describe("CLI", () => {
       cwd: process.cwd(),
       encoding: "utf8"
     });
+    const shareableReport = execFileSync(CLI[0]!, [...CLI.slice(1), "report", "--root", root, "--share"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
     execFileSync(CLI[0]!, [...CLI.slice(1), "telemetry", "enable", "--root", root, "--destination", "supabase"], {
       cwd: process.cwd(),
       encoding: "utf8"
@@ -150,6 +277,8 @@ describe("CLI", () => {
       totals: { events: number; savedTokens: number };
       bySource: Record<string, { events: number }>;
     };
+    const parsedStats = JSON.parse(stats) as { countersVersion: number; events: number; estimatedTotalSavedTokens: number };
+    const parsedStatsReport = JSON.parse(statsReport) as { outPath: string; impact: { countersVersion: number } };
     const parsedStatus = JSON.parse(indexStatus) as { fileCount: number; graphEdgeCount: number; tiers: Record<string, number> };
     const parsedCompact = JSON.parse(indexCompact) as { after: { fileCount: number }; walCheckpointed: boolean };
     const parsedSafeRefresh = JSON.parse(indexSafeRefresh) as { fileCount: number };
@@ -185,6 +314,12 @@ describe("CLI", () => {
     expect(parsedMetrics.totals.events).toBeGreaterThan(0);
     expect(parsedMetrics.totals.savedTokens).toBeGreaterThanOrEqual(0);
     expect(parsedMetrics.bySource.cli?.events).toBe(1);
+    expect(parsedStats.countersVersion).toBe(1);
+    expect(parsedStats.events).toBe(parsedMetrics.totals.events);
+    expect(parsedStats.estimatedTotalSavedTokens).toBe(parsedMetrics.totals.savedTokens);
+    expect(parsedStatsReport.outPath).toBe(statsReportPath);
+    expect(fs.readFileSync(statsReportPath, "utf8")).toContain("Estimated context tokens avoided");
+    expect(fs.readFileSync(statsReportPath, "utf8")).not.toContain("src/app.ts");
     expect(parsedStatus.fileCount).toBeGreaterThan(0);
     expect(parsedStatus.graphEdgeCount).toBeGreaterThanOrEqual(0);
     expect(parsedStatus.tiers.tier0).toBeGreaterThanOrEqual(0);
@@ -230,8 +365,89 @@ describe("CLI", () => {
     expect(userReport).toContain("Quality");
     expect(userReport).toContain("Harmful assists:");
     expect(userReport).toContain("not provider billing usage");
-  }, 90_000);
+    expect(shareableReport).toContain("Kairn check-in — last");
+    expect(shareableReport).toContain("Estimated context saved:");
+    expect(shareableReport).toMatch(/Quality: \d+ passed · \d+ failed · \d+ unverified/);
+    expect(shareableReport).toContain("recorded harmful assists");
+    expect(shareableReport).toContain("Recommendations followed:");
+    expect(shareableReport).toContain("local full-context baselines");
+    expect(shareableReport).toContain("not observed provider usage or billing savings");
+    expect(shareableReport).toContain("Privacy: aggregate only;");
+    expect(shareableReport).not.toContain(root);
+  }, 120_000);
 
+  it("uses init as the friendly guided setup entrypoint", () => {
+    const root = createFixtureRepo();
+    const init = execFileSync(
+      CLI[0]!,
+      [...CLI.slice(1), "init", "--choice", "codex", "--yes", "--no-index", "--root", root, "--json"],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8"
+      }
+    );
+    const parsed = JSON.parse(init) as {
+      choice: string;
+      targets: string[];
+      indexed: boolean;
+      integrations: Array<{ kind: string; hooksPath?: string }>;
+      nextSteps: string[];
+    };
+
+    expect(parsed.choice).toBe("codex");
+    expect(parsed.targets).toEqual(["codex"]);
+    expect(parsed.indexed).toBe(false);
+    expect(parsed.integrations.some((integration) => integration.kind === "codex" && integration.hooksPath?.endsWith(".codex/hooks.json"))).toBe(true);
+    expect(parsed.nextSteps[0]).toContain("kairn doctor");
+  });
+
+  it("supports MCP targets through init", () => {
+    const root = createFixtureRepo();
+    const init = execFileSync(
+      CLI[0]!,
+      [...CLI.slice(1), "init", "--targets", "vscode", "--yes", "--no-index", "--root", root, "--json"],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8"
+      }
+    );
+    const parsed = JSON.parse(init) as {
+      targets: string[];
+      integrations: Array<{ kind: string; target?: string; configPath?: string }>;
+    };
+
+    expect(parsed.targets).toEqual(["vscode"]);
+    expect(parsed.integrations.some((integration) => integration.kind === "mcp" && integration.target === "vscode" && integration.configPath?.endsWith(".vscode/mcp.json"))).toBe(true);
+  });
+
+  it("preserves state-only initialization behind init --state-only", () => {
+    const root = createFixtureRepo();
+    const init = execFileSync(CLI[0]!, [...CLI.slice(1), "init", "--state-only", "--root", root, "--json"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+    const parsed = JSON.parse(init) as { rootPath: string; kairnDir: string; scan: { files: unknown[] } };
+
+    expect(fs.realpathSync(parsed.rootPath)).toBe(fs.realpathSync(root));
+    expect(parsed.kairnDir.endsWith(".kairn")).toBe(true);
+    expect(parsed.scan.files.length).toBeGreaterThan(0);
+  });
+
+  it("emits wizard-shaped JSON from init by default", () => {
+    const root = createFixtureRepo();
+    const init = execFileSync(
+      CLI[0]!,
+      [...CLI.slice(1), "init", "--choice", "doctor", "--yes", "--no-index", "--root", root, "--json"],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8"
+      }
+    );
+    const parsed = JSON.parse(init) as { choice?: string; integrations?: unknown[]; scan?: unknown };
+    expect(parsed.choice).toBe("doctor");
+    expect(Array.isArray(parsed.integrations)).toBe(true);
+    expect(parsed.scan).toBeUndefined();
+  });
   it("accepts whitespace-separated setup wizard targets from PowerShell-style argument lists", () => {
     const root = createFixtureRepo();
     const setupWizardWhitespaceTargets = execFileSync(
@@ -370,6 +586,7 @@ describe("CLI", () => {
       root: "/repo",
       prompt: "fix bug",
       sandbox: "danger-full-access",
+      approval: "never",
       enableHooks: false
     });
     const enabled = codexExecArgs({
@@ -381,8 +598,418 @@ describe("CLI", () => {
 
     expect(disabled).toContain("--disable");
     expect(disabled).toContain("hooks");
+    expect(disabled).toContain("-a");
+    expect(disabled).toContain("never");
+    expect(disabled.indexOf("-a")).toBeLessThan(disabled.indexOf("exec"));
     expect(enabled).toContain("--enable");
     expect(enabled).toContain("hooks");
     expect(enabled).not.toContain("--disable");
+  });
+
+  it("passes through Codex skip git repo checks for disposable workspaces", () => {
+    const args = codexExecArgs({
+      root: "/repo",
+      prompt: "identify source files",
+      sandbox: "danger-full-access",
+      enableHooks: false,
+      skipGitRepoCheck: true
+    });
+
+    expect(args).toContain("--skip-git-repo-check");
+    expect(args.indexOf("--skip-git-repo-check")).toBeLessThan(args.indexOf("--cd"));
+  });
+
+  it("builds a bounded official no-diff recovery prompt without widening scope", () => {
+    const task = [
+      "Selected verification tests from SWE-Bench Pro metadata: tests/test_redhat.py",
+      "Fix the issue in production source only. Do not edit tests."
+    ].join("\n");
+    const session = {
+      id: "task_1",
+      rootPath: "/repo",
+      task,
+      status: "active" as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      filesShown: [],
+      symbolsShown: [],
+      commandsRun: [],
+      diffsObserved: [],
+      watchEvents: [],
+      risks: [],
+      verificationHints: []
+    };
+    const prime = {
+      task,
+      session,
+      profile: "generic" as const,
+      content: "# Kairn Fix Guardrail",
+      files: ["scanner/redhatbase.go"],
+      tokenEstimate: 40,
+      quality: {
+        score: 60,
+        action: "shrink" as const,
+        reasons: [],
+        topScore: 100,
+        topGap: 100,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low" as const
+      },
+      contextDecision: {
+        action: "shrink" as const,
+        score: 60,
+        reasons: [],
+        topScore: 100,
+        topGap: 100,
+        language: "go" as const,
+        exactPathMentioned: false,
+        estimatedContextCost: 400,
+        expectedSavingsRisk: "low" as const,
+        debugSignal: false,
+        easyTaskSignal: false,
+        wrongContextRisk: false,
+        recommendedDelivery: "one_file_directive" as const,
+        taskFrame: "official_patch" as const,
+        directiveStyle: "scope_guardrail" as const
+      },
+      editScope: {
+        initialEditFiles: ["scanner/redhatbase.go"],
+        readOnlyFiles: ["scanner/redhatbase_test.go"],
+        allowedExpansionTriggers: ["only if failure names another production file"],
+        forbiddenEditPatterns: ["tests/**", "docs/**"],
+        scopeConfidence: "high" as const,
+        scopeSource: "official_harness" as const,
+        reason: "official metadata supplied production scope",
+        strictBoundary: true,
+        dynamic: true as const
+      },
+      warnings: [],
+      suggestedCommands: []
+    };
+    const retry = shouldRetryCodexNoDiff({
+      task,
+      interactive: false,
+      exitCode: 0,
+      changedFiles: [],
+      prime
+    });
+    expect(retry).toBe(true);
+
+    const prompt = buildCodexNoDiffRecoveryPrompt({
+      task,
+      prime
+    });
+    expect(prompt).toContain("previous agent run exited without a production source diff");
+    expect(prompt).toContain("Edit scope: scanner/redhatbase.go");
+    expect(prompt).toContain("Do not edit tests");
+    expect(prompt).not.toContain("broad scans");
+  });
+
+  it("builds a bounded official partial-scope recovery prompt for missing required files", () => {
+    const task = [
+      "Selected verification tests from SWE-Bench Pro metadata: TestDatabaseFailover",
+      "Fix database failover when multiple database services share the same service name.",
+      "Fix the issue in production source only. Do not edit tests."
+    ].join("\n");
+    const session = {
+      id: "task_db",
+      rootPath: "/repo",
+      task,
+      status: "active" as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      filesShown: [],
+      symbolsShown: [],
+      commandsRun: [],
+      diffsObserved: [],
+      watchEvents: [],
+      risks: [],
+      verificationHints: []
+    };
+    const prime = {
+      task,
+      session,
+      profile: "generic" as const,
+      content: "# Kairn Paired Scope",
+      files: [
+        "api/types/databaseserver.go",
+        "lib/srv/db/proxyserver.go",
+        "lib/reversetunnel/fake.go",
+        "tool/tsh/db.go"
+      ],
+      tokenEstimate: 80,
+      quality: {
+        score: 70,
+        action: "shrink" as const,
+        reasons: [],
+        topScore: 100,
+        topGap: 100,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low" as const
+      },
+      contextDecision: {
+        action: "shrink" as const,
+        score: 70,
+        reasons: [],
+        topScore: 100,
+        topGap: 100,
+        language: "go" as const,
+        exactPathMentioned: false,
+        estimatedContextCost: 500,
+        expectedSavingsRisk: "low" as const,
+        debugSignal: true,
+        easyTaskSignal: false,
+        wrongContextRisk: false,
+        recommendedDelivery: "multi_file_directive" as const,
+        taskFrame: "official_patch" as const,
+        directiveStyle: "scope_guardrail" as const
+      },
+      editScope: {
+        initialEditFiles: [
+          "api/types/databaseserver.go",
+          "lib/srv/db/proxyserver.go",
+          "lib/reversetunnel/fake.go",
+          "tool/tsh/db.go"
+        ],
+        readOnlyFiles: [],
+        allowedExpansionTriggers: ["only if failure names another production file"],
+        forbiddenEditPatterns: ["tests/**", "docs/**"],
+        scopeConfidence: "high" as const,
+        scopeSource: "official_harness" as const,
+        reason: "official metadata supplied production scope",
+        strictBoundary: true,
+        dynamic: true as const
+      },
+      warnings: [],
+      suggestedCommands: []
+    };
+    const changedFiles = ["api/types/databaseserver.go", "lib/srv/db/proxyserver.go"];
+    const missing = missingRequiredScopeFiles({
+      task,
+      interactive: false,
+      exitCode: 0,
+      prime,
+      changedFiles
+    });
+
+    expect(missing).toEqual(["lib/reversetunnel/fake.go", "tool/tsh/db.go"]);
+    expect(shouldRetryCodexPartialScope({
+      task,
+      interactive: false,
+      exitCode: 0,
+      prime,
+      changedFiles
+    })).toBe(true);
+
+    const prompt = buildCodexPartialScopeRecoveryPrompt({
+      task,
+      prime,
+      changedFiles,
+      missingFiles: missing
+    });
+    expect(prompt).toContain("previous agent run produced a partial production diff");
+    expect(prompt).toContain("Already changed: api/types/databaseserver.go, lib/srv/db/proxyserver.go");
+    expect(prompt).toContain("Missing required edits: lib/reversetunnel/fake.go, tool/tsh/db.go");
+    expect(prompt).toContain("Do not restart from scratch");
+    expect(prompt).not.toContain("node_modules");
+  });
+
+  it("builds strict-scope recovery prompts that revert out-of-scope edits", () => {
+    const task = [
+      "Selected verification tests from SWE-Bench Pro metadata: TestDatabaseFailover",
+      "Fix database failover when multiple database services share the same service name.",
+      "Fix the issue in production source only. Do not edit tests."
+    ].join("\n");
+    const session = {
+      id: "task_db_extra",
+      rootPath: "/repo",
+      task,
+      status: "active" as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      filesShown: [],
+      symbolsShown: [],
+      commandsRun: [],
+      diffsObserved: [],
+      watchEvents: [],
+      risks: [],
+      verificationHints: []
+    };
+    const prime = {
+      task,
+      session,
+      profile: "generic" as const,
+      content: "# Kairn Paired Scope",
+      files: ["api/types/databaseserver.go", "lib/srv/db/proxyserver.go", "lib/srv/db/extra.go"],
+      tokenEstimate: 80,
+      quality: {
+        score: 70,
+        action: "shrink" as const,
+        reasons: [],
+        topScore: 100,
+        topGap: 100,
+        exactPathMentioned: false,
+        expectedSavingsRisk: "low" as const
+      },
+      contextDecision: {
+        action: "shrink" as const,
+        score: 70,
+        reasons: [],
+        topScore: 100,
+        topGap: 100,
+        language: "go" as const,
+        exactPathMentioned: false,
+        estimatedContextCost: 500,
+        expectedSavingsRisk: "low" as const,
+        debugSignal: true,
+        easyTaskSignal: false,
+        wrongContextRisk: false,
+        recommendedDelivery: "multi_file_directive" as const,
+        taskFrame: "official_patch" as const,
+        directiveStyle: "scope_guardrail" as const
+      },
+      editScope: {
+        initialEditFiles: ["api/types/databaseserver.go", "lib/srv/db/proxyserver.go"],
+        readOnlyFiles: ["lib/srv/db/extra.go"],
+        allowedExpansionTriggers: ["do not expand edit scope"],
+        forbiddenEditPatterns: ["tests/**", "docs/**"],
+        scopeConfidence: "high" as const,
+        scopeSource: "official_harness" as const,
+        reason: "official metadata supplied production scope",
+        strictBoundary: true,
+        dynamic: true as const
+      },
+      warnings: [],
+      suggestedCommands: []
+    };
+    const changedFiles = ["api/types/databaseserver.go", "lib/srv/db/extra.go"];
+    const extra = extraStrictScopeFiles({
+      task,
+      interactive: false,
+      exitCode: 0,
+      prime,
+      changedFiles
+    });
+
+    expect(extra).toEqual(["lib/srv/db/extra.go"]);
+    expect(shouldRetryCodexPartialScope({
+      task,
+      interactive: false,
+      exitCode: 0,
+      prime,
+      changedFiles
+    })).toBe(true);
+
+    const prompt = buildCodexPartialScopeRecoveryPrompt({
+      task,
+      prime,
+      changedFiles,
+      missingFiles: missingRequiredScopeFiles({
+        task,
+        interactive: false,
+        exitCode: 0,
+        prime,
+        changedFiles
+      }),
+      extraFiles: extra
+    });
+    expect(prompt).toContain("touched source outside the strict edit scope");
+    expect(prompt).toContain("Out-of-scope edits to revert: lib/srv/db/extra.go");
+    expect(prompt).toContain("Final diff must contain only files in the full required scope");
+  });
+
+  it("does not widen official no-diff recovery scope with noisy emitted files", () => {
+    const task = [
+      "Title: HSM/KMS test configuration logic is duplicated across backend test files.",
+      "Selected verification tests from SWE-Bench Pro metadata: TestBackends, TestBackends/fake_gcp_kms, TestBackends/fake_aws_kms",
+      "Fix the issue in production source only. Avoid broad scans once the relevant source surface is known."
+    ].join("\n");
+    const session = {
+      id: "task_hsm",
+      rootPath: "/repo",
+      task,
+      status: "active" as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      filesShown: [],
+      symbolsShown: [],
+      commandsRun: [],
+      diffsObserved: [],
+      watchEvents: [],
+      risks: [],
+      verificationHints: []
+    };
+    const prompt = buildCodexNoDiffRecoveryPrompt({
+      task,
+      prime: {
+        task,
+        session,
+        profile: "generic" as const,
+        content: "# Kairn Fix Guardrail",
+        files: ["lib/auth/keystore/pkcs11.go", "api/utils/sshutils/test.go"],
+        tokenEstimate: 40,
+        quality: {
+          score: 60,
+          action: "shrink" as const,
+          reasons: [],
+          topScore: 100,
+          topGap: 100,
+          exactPathMentioned: false,
+          expectedSavingsRisk: "low" as const
+        },
+        contextDecision: {
+          action: "shrink" as const,
+          score: 60,
+          reasons: [],
+          topScore: 100,
+          topGap: 100,
+          language: "go" as const,
+          exactPathMentioned: false,
+          estimatedContextCost: 400,
+          expectedSavingsRisk: "low" as const,
+          debugSignal: false,
+          easyTaskSignal: false,
+          wrongContextRisk: false,
+          recommendedDelivery: "multi_file_directive" as const,
+          taskFrame: "official_patch" as const,
+          directiveStyle: "scope_guardrail" as const
+        },
+        editScope: {
+          initialEditFiles: ["lib/auth/keystore/pkcs11.go"],
+          readOnlyFiles: ["api/utils/sshutils/test.go"],
+          allowedExpansionTriggers: ["only if failure names another production file"],
+          forbiddenEditPatterns: ["tests/**", "docs/**"],
+          scopeConfidence: "high" as const,
+          scopeSource: "official_harness" as const,
+          reason: "official metadata supplied production scope",
+          strictBoundary: true,
+          dynamic: true as const
+        },
+        warnings: [],
+        suggestedCommands: []
+      }
+    });
+
+    expect(prompt).toContain("Edit scope: lib/auth/keystore/pkcs11.go");
+    expect(prompt).not.toContain("Edit scope: lib/auth/keystore/pkcs11.go, api/utils/sshutils/test.go");
+  });
+
+  it("ignores Kairn-owned files when checking whether Codex produced a diff", () => {
+    const root = fs.mkdtempSync(path.join(process.cwd(), ".tmp-kairn-cli-diff-"));
+    execFileSync("git", ["init"], { cwd: root });
+    fs.mkdirSync(path.join(root, ".codex"), { recursive: true });
+    fs.writeFileSync(path.join(root, ".codex/hooks.json"), "{}\n");
+    expect(relevantWorkspaceDiffFiles(root)).toEqual([]);
+    fs.mkdirSync(path.join(root, "src"), { recursive: true });
+    fs.writeFileSync(path.join(root, "src/app.ts"), "export const value = 1;\n");
+    expect(relevantWorkspaceDiffFiles(root)).toContain("src/app.ts");
+    fs.mkdirSync(path.join(root, "public/src/client"), { recursive: true });
+    fs.writeFileSync(path.join(root, "public/src/client/topic.js"), "export const topic = true;\n");
+    const changed = relevantWorkspaceDiffFiles(root);
+    expect(changed).toContain("src/app.ts");
+    expect(changed).toContain("public/src/client/topic.js");
+    expect(changed).not.toContain("rc/app.ts");
+    expect(changed).not.toContain("ublic/src/client/topic.js");
+    fs.rmSync(root, { recursive: true, force: true });
   });
 });

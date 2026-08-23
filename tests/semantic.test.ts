@@ -859,6 +859,1242 @@ describe("hybridSearch", () => {
     expect(merged.slice(0, 4).map((result) => result.path)).not.toContain("test/specs/interceptors.spec.js");
   });
 
+  it("routes CLI export sorting tasks to command and exporter sources before storage backends", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "cmd/flipt/export.go", "source", "go"),
+      file(rootPath, "internal/ext/exporter.go", "source", "go"),
+      file(rootPath, "internal/storage/fs/store/store.go", "source", "go"),
+      file(rootPath, "internal/storage/sql/common/segment.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "cmd/flipt/export.go", "newExportCommand"),
+      symbol(rootPath, "internal/ext/exporter.go", "NewExporter"),
+      symbol(rootPath, "internal/storage/fs/store/store.go", "ListFlags"),
+      symbol(rootPath, "internal/storage/sql/common/segment.go", "ListSegments")
+    ];
+    const chunks = [
+      chunk(rootPath, "cmd/flipt/export.go", "newExportCommand", "export command flag all namespaces output"),
+      chunk(rootPath, "internal/ext/exporter.go", "NewExporter", "Exporter writes namespaces flags segments variants resources"),
+      chunk(rootPath, "internal/storage/fs/store/store.go", "ListFlags", "storage backend lists flags segments by key"),
+      chunk(rootPath, "internal/storage/sql/common/segment.go", "ListSegments", "storage segment list order created at")
+    ];
+    const results = hybridSearch({
+      files,
+      query: "Implement --sort-by-key for the export command. NewExporter should sort namespaces flags segments and variants deterministically.",
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 2).map((result) => result.path)).toEqual(["cmd/flipt/export.go", "internal/ext/exporter.go"]);
+    expect(results.slice(0, 2).map((result) => result.path)).not.toContain("internal/storage/fs/store/store.go");
+  });
+
+  it("keeps datastore backend peers together for multi-value collection mutations", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "src/database/mongo/list.js", "source", "javascript"),
+      file(rootPath, "src/database/postgres/list.js", "source", "javascript"),
+      file(rootPath, "src/database/redis/list.js", "source", "javascript"),
+      file(rootPath, "src/database/mongo/sorted.js", "source", "javascript")
+    ];
+    const symbols = [
+      symbol(rootPath, "src/database/mongo/list.js", "remove"),
+      symbol(rootPath, "src/database/postgres/list.js", "remove"),
+      symbol(rootPath, "src/database/redis/list.js", "remove"),
+      symbol(rootPath, "src/database/mongo/sorted.js", "removeSorted")
+    ];
+    const chunks = [
+      chunk(rootPath, "src/database/mongo/list.js", "remove", "list remove element from mongo backend"),
+      chunk(rootPath, "src/database/postgres/list.js", "remove", "list remove element from postgres backend"),
+      chunk(rootPath, "src/database/redis/list.js", "remove", "list remove element from redis backend"),
+      chunk(rootPath, "src/database/mongo/sorted.js", "removeSorted", "sorted set remove element from mongo backend")
+    ];
+    const query = "List operations do not support removing multiple distinct elements in a single call.";
+    const ranked = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+    const companions = findCompanionCandidates({
+      files,
+      ranked,
+      query,
+      symbols,
+      chunks,
+      edges: [],
+      limit: 3
+    });
+    const merged = applyCompanionCandidatesToResults(ranked, companions);
+
+    expect(merged.slice(0, 3).map((result) => result.path)).toEqual(
+      expect.arrayContaining([
+        "src/database/mongo/list.js",
+        "src/database/postgres/list.js",
+        "src/database/redis/list.js"
+      ])
+    );
+    expect(merged.slice(0, 3).map((result) => result.path)).not.toContain("src/database/mongo/sorted.js");
+  });
+
+  it("uses exporter implementation as the companion for export command sorting tasks", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "cmd/flipt/export.go", "source", "go"),
+      file(rootPath, "internal/ext/exporter.go", "source", "go"),
+      file(rootPath, "internal/storage/fs/store/store.go", "source", "go"),
+      file(rootPath, "internal/storage/sql/common/segment.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "cmd/flipt/export.go", "newExportCommand"),
+      symbol(rootPath, "internal/ext/exporter.go", "NewExporter"),
+      symbol(rootPath, "internal/storage/fs/store/store.go", "ListFlags"),
+      symbol(rootPath, "internal/storage/sql/common/segment.go", "ListSegments")
+    ];
+    const chunks = [
+      chunk(rootPath, "cmd/flipt/export.go", "newExportCommand", "export command flag all namespaces output"),
+      chunk(rootPath, "internal/ext/exporter.go", "NewExporter", "Exporter writes namespaces flags segments variants resources and sort by key"),
+      chunk(rootPath, "internal/storage/fs/store/store.go", "ListFlags", "storage backend lists flags segments by key"),
+      chunk(rootPath, "internal/storage/sql/common/segment.go", "ListSegments", "storage segment list order created at")
+    ];
+    const query = "Implement --sort-by-key for the export command. NewExporter should sort namespaces flags segments and variants deterministically.";
+    const ranked = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+    const companions = findCompanionCandidates({
+      files,
+      ranked,
+      query,
+      symbols,
+      chunks,
+      edges: [],
+      limit: 2
+    });
+
+    expect(companions[0]?.file.path).toBe("internal/ext/exporter.go");
+    expect(companions.map((candidate) => candidate.file.path)).not.toContain("internal/storage/sql/common/segment.go");
+  });
+
+  it("routes HSM/KMS backend test configuration tasks to keystore sources before unrelated web code", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "lib/auth/keystore/testhelpers.go", "source", "go"),
+      file(rootPath, "lib/auth/keystore/pkcs11.go", "source", "go"),
+      file(rootPath, "api/utils/sshutils/test.go", "source", "go"),
+      file(rootPath, "web/packages/teleport/src/lib/tdp/codec.ts", "source", "typescript"),
+      file(rootPath, "web/packages/teleport/src/lib/tdp/sharedDirectoryManager.ts", "source", "typescript")
+    ];
+    const symbols = [
+      symbol(rootPath, "lib/auth/keystore/testhelpers.go", "HSMTestConfig"),
+      symbol(rootPath, "lib/auth/keystore/pkcs11.go", "SetupSoftHSMTest"),
+      symbol(rootPath, "api/utils/sshutils/test.go", "TestBackends"),
+      symbol(rootPath, "web/packages/teleport/src/lib/tdp/codec.ts", "validateSharedDirectory"),
+      symbol(rootPath, "web/packages/teleport/src/lib/tdp/sharedDirectoryManager.ts", "SharedDirectoryManager")
+    ];
+    const chunks = [
+      chunk(rootPath, "lib/auth/keystore/testhelpers.go", "HSMTestConfig", "HSM KMS backend test configuration TELEPORT_TEST SoftHSM YubiHSM CloudHSM AWS KMS GCP KMS environment"),
+      chunk(rootPath, "lib/auth/keystore/pkcs11.go", "SetupSoftHSMTest", "pkcs11 SoftHSM backend config keystore HSM test helper"),
+      chunk(rootPath, "api/utils/sshutils/test.go", "TestBackends", "test backend configuration helper for SSH utilities"),
+      chunk(rootPath, "web/packages/teleport/src/lib/tdp/codec.ts", "validateSharedDirectory", "validation config shared directory codec"),
+      chunk(rootPath, "web/packages/teleport/src/lib/tdp/sharedDirectoryManager.ts", "SharedDirectoryManager", "web TDP shared directory manager validation")
+    ];
+    const query = "Teleport HSM and KMS test configuration logic is duplicated across backend test files. Add HSMTestConfig for SoftHSM, YubiHSM, CloudHSM, AWS KMS, and GCP KMS.";
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 2).map((result) => result.path).sort()).toEqual(["lib/auth/keystore/pkcs11.go", "lib/auth/keystore/testhelpers.go"]);
+    expect(results.slice(0, 2).map((result) => result.path)).not.toContain("web/packages/teleport/src/lib/tdp/codec.ts");
+    expect(results.slice(0, 4).map((result) => result.path)).not.toContain("api/utils/sshutils/test.go");
+  });
+
+  it("keeps HSM/KMS keystore helpers as companions for backend test configuration tasks", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "lib/auth/keystore/testhelpers.go", "source", "go"),
+      file(rootPath, "lib/auth/keystore/pkcs11.go", "source", "go"),
+      file(rootPath, "api/utils/sshutils/test.go", "source", "go"),
+      file(rootPath, "web/packages/teleport/src/lib/tdp/codec.ts", "source", "typescript"),
+      file(rootPath, "web/packages/teleport/src/lib/tdp/sharedDirectoryManager.ts", "source", "typescript")
+    ];
+    const symbols = [
+      symbol(rootPath, "lib/auth/keystore/testhelpers.go", "HSMTestConfig"),
+      symbol(rootPath, "lib/auth/keystore/pkcs11.go", "SetupSoftHSMTest"),
+      symbol(rootPath, "api/utils/sshutils/test.go", "TestBackends"),
+      symbol(rootPath, "web/packages/teleport/src/lib/tdp/codec.ts", "validateSharedDirectory"),
+      symbol(rootPath, "web/packages/teleport/src/lib/tdp/sharedDirectoryManager.ts", "SharedDirectoryManager")
+    ];
+    const chunks = [
+      chunk(rootPath, "lib/auth/keystore/testhelpers.go", "HSMTestConfig", "HSM KMS backend test configuration TELEPORT_TEST SoftHSM YubiHSM CloudHSM AWS KMS GCP KMS environment"),
+      chunk(rootPath, "lib/auth/keystore/pkcs11.go", "SetupSoftHSMTest", "pkcs11 SoftHSM backend config keystore HSM test helper"),
+      chunk(rootPath, "api/utils/sshutils/test.go", "TestBackends", "test backend configuration helper for SSH utilities"),
+      chunk(rootPath, "web/packages/teleport/src/lib/tdp/codec.ts", "validateSharedDirectory", "validation config shared directory codec"),
+      chunk(rootPath, "web/packages/teleport/src/lib/tdp/sharedDirectoryManager.ts", "SharedDirectoryManager", "web TDP shared directory manager validation")
+    ];
+    const query = "Teleport HSM and KMS test configuration logic is duplicated across backend test files. Add HSMTestConfig for SoftHSM, YubiHSM, CloudHSM, AWS KMS, and GCP KMS.";
+    const ranked = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+    const companions = findCompanionCandidates({
+      files,
+      ranked,
+      query,
+      symbols,
+      chunks,
+      edges: [],
+      limit: 2
+    });
+
+    expect(companions[0]?.file.path).toBe("lib/auth/keystore/testhelpers.go");
+    expect(companions.map((candidate) => candidate.file.path)).not.toContain("web/packages/teleport/src/lib/tdp/sharedDirectoryManager.ts");
+    expect(companions.map((candidate) => candidate.file.path)).not.toContain("api/utils/sshutils/test.go");
+  });
+
+  it("routes backend autocomplete endpoint tasks to server autocomplete sources before frontend widgets", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "openlibrary/plugins/worksearch/autocomplete.py", "source", "python"),
+      file(rootPath, "openlibrary/plugins/openlibrary/js/autocomplete.js", "source", "javascript"),
+      file(rootPath, "openlibrary/plugins/upstream/addbook.py", "source", "python"),
+      file(rootPath, "openlibrary/solr/update_work.py", "source", "python")
+    ];
+    const symbols = [
+      symbol(rootPath, "openlibrary/plugins/worksearch/autocomplete.py", "autocomplete"),
+      symbol(rootPath, "openlibrary/plugins/worksearch/autocomplete.py", "find_olid_in_string"),
+      symbol(rootPath, "openlibrary/plugins/worksearch/autocomplete.py", "olid_to_key"),
+      symbol(rootPath, "openlibrary/plugins/openlibrary/js/autocomplete.js", "setupAutocomplete"),
+      symbol(rootPath, "openlibrary/plugins/upstream/addbook.py", "add_book"),
+      symbol(rootPath, "openlibrary/solr/update_work.py", "update_work")
+    ];
+    const chunks = [
+      chunk(rootPath, "openlibrary/plugins/worksearch/autocomplete.py", "autocomplete", "autocomplete endpoint Solr OLID fallback db_fetch works_autocomplete authors_autocomplete subjects_autocomplete"),
+      chunk(rootPath, "openlibrary/plugins/openlibrary/js/autocomplete.js", "setupAutocomplete", "frontend autocomplete input dropdown browser widget"),
+      chunk(rootPath, "openlibrary/plugins/upstream/addbook.py", "add_book", "upstream add book import OLID edition"),
+      chunk(rootPath, "openlibrary/solr/update_work.py", "update_work", "Solr work update index document")
+    ];
+    const query = "Autocomplete endpoints lack unified logic and flexible OLID handling. Add an autocomplete base class, find_olid_in_string, olid_to_key, db_fetch fallback, and Solr query handling for works, authors, and subjects endpoints.";
+    const ranked = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+    const companions = findCompanionCandidates({
+      files,
+      ranked,
+      query,
+      symbols,
+      chunks,
+      edges: [],
+      limit: 2
+    });
+
+    expect(ranked[0]?.path).toBe("openlibrary/plugins/worksearch/autocomplete.py");
+    expect(ranked.slice(0, 2).map((result) => result.path)).not.toContain("openlibrary/plugins/openlibrary/js/autocomplete.js");
+    expect(companions.map((candidate) => candidate.file.path)).not.toContain("openlibrary/plugins/openlibrary/js/autocomplete.js");
+  });
+
+  it("routes config-option rendering workarounds to runtime args plus schema data", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "qutebrowser/config/qtargs.py", "source", "python"),
+      file(rootPath, "qutebrowser/config/configdata.yml", "config", "yaml"),
+      file(rootPath, "qutebrowser/config/configdata.py", "source", "python"),
+      file(rootPath, "qutebrowser/config/configfiles.py", "source", "python"),
+      file(rootPath, "qutebrowser/misc/backendproblem.py", "source", "python"),
+      file(rootPath, "qutebrowser/browser/webengine/webenginetab.py", "source", "python")
+    ];
+    const symbols = [
+      symbol(rootPath, "qutebrowser/config/qtargs.py", "_qtwebengine_settings_args"),
+      symbol(rootPath, "qutebrowser/config/configdata.py", "_read_yaml"),
+      symbol(rootPath, "qutebrowser/config/configfiles.py", "ConfigFile"),
+      symbol(rootPath, "qutebrowser/misc/backendproblem.py", "BackendProblem"),
+      symbol(rootPath, "qutebrowser/browser/webengine/webenginetab.py", "WebEngineTab")
+    ];
+    const chunks = [
+      chunk(rootPath, "qutebrowser/config/qtargs.py", "_qtwebengine_settings_args", "QtWebEngine Chromium settings args workarounds accelerated canvas rendering"),
+      chunk(rootPath, "qutebrowser/config/configdata.yml", "configdata", "config data schema settings qt workarounds options"),
+      chunk(rootPath, "qutebrowser/config/configdata.py", "_read_yaml", "read yaml source data into parsed config Option objects generated config artifact"),
+      chunk(rootPath, "qutebrowser/config/configfiles.py", "ConfigFile", "load config files parse configuration directories"),
+      chunk(rootPath, "qutebrowser/misc/backendproblem.py", "BackendProblem", "QtWebEngine backend problem diagnostic issue chromium warning"),
+      chunk(rootPath, "qutebrowser/browser/webengine/webenginetab.py", "WebEngineTab", "browser webengine tab rendering page")
+    ];
+    const results = hybridSearch({
+      files,
+      query: "Fix QtWebEngine rendering glitches on Google Sheets and PDF.js by adding a Chromium workaround setting.",
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 2).map((result) => result.path).sort()).toEqual([
+      "qutebrowser/config/configdata.yml",
+      "qutebrowser/config/qtargs.py"
+    ]);
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("qutebrowser/config/configdata.py");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("qutebrowser/config/configfiles.py");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("qutebrowser/misc/backendproblem.py");
+
+    const companions = findCompanionCandidates({
+      files,
+      ranked: results.filter((result) => result.path === "qutebrowser/config/qtargs.py"),
+      query: "Fix QtWebEngine rendering glitches on Google Sheets and PDF.js by adding a Chromium workaround setting.",
+      symbols,
+      chunks,
+      edges: [],
+      limit: 2
+    });
+    expect(companions.map((candidate) => candidate.file.path)).toContain("qutebrowser/config/configdata.yml");
+    expect(companions.map((candidate) => candidate.file.path)).not.toContain("qutebrowser/misc/backendproblem.py");
+  });
+
+  it("routes deprecation-by-date module tasks to validation, warning, and display surfaces", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "lib/ansible/module_utils/basic.py", "source", "python"),
+      file(rootPath, "lib/ansible/module_utils/common/parameters.py", "source", "python"),
+      file(rootPath, "lib/ansible/module_utils/common/warnings.py", "source", "python"),
+      file(rootPath, "lib/ansible/module_utils/csharp/Ansible.Basic.cs", "source", "csharp"),
+      file(rootPath, "lib/ansible/utils/display.py", "source", "python"),
+      file(rootPath, "lib/ansible/module_utils/facts/system/date_time.py", "source", "python"),
+      file(rootPath, "lib/ansible/module_utils/urls.py", "source", "python"),
+      file(rootPath, "lib/ansible/modules/assert.py", "source", "python")
+    ];
+    const symbols = [
+      symbol(rootPath, "lib/ansible/module_utils/basic.py", "AnsibleModule"),
+      symbol(rootPath, "lib/ansible/module_utils/common/parameters.py", "validate_argument_spec"),
+      symbol(rootPath, "lib/ansible/module_utils/common/warnings.py", "deprecate"),
+      symbol(rootPath, "lib/ansible/module_utils/csharp/Ansible.Basic.cs", "ValidateArgumentSpec"),
+      symbol(rootPath, "lib/ansible/utils/display.py", "Display"),
+      symbol(rootPath, "lib/ansible/module_utils/facts/system/date_time.py", "get_date_time_facts"),
+      symbol(rootPath, "lib/ansible/module_utils/urls.py", "fetch_url"),
+      symbol(rootPath, "lib/ansible/modules/assert.py", "main")
+    ];
+    const chunks = [
+      chunk(rootPath, "lib/ansible/module_utils/basic.py", "AnsibleModule", "module argument spec deprecated aliases removed in version warning"),
+      chunk(rootPath, "lib/ansible/module_utils/common/parameters.py", "validate_argument_spec", "validate deprecated aliases version date parameter errors"),
+      chunk(rootPath, "lib/ansible/module_utils/common/warnings.py", "deprecate", "warning deprecation removed at date removed in version"),
+      chunk(rootPath, "lib/ansible/module_utils/csharp/Ansible.Basic.cs", "ValidateArgumentSpec", "deprecated_aliases removed_in_version validation runtime mirror"),
+      chunk(rootPath, "lib/ansible/utils/display.py", "Display", "display deprecation warning messages"),
+      chunk(rootPath, "lib/ansible/module_utils/facts/system/date_time.py", "get_date_time_facts", "system date time facts timezone epoch"),
+      chunk(rootPath, "lib/ansible/module_utils/urls.py", "fetch_url", "url helper http request"),
+      chunk(rootPath, "lib/ansible/modules/assert.py", "main", "assert module examples")
+    ];
+    const results = hybridSearch({
+      files,
+      query: "Support deprecation by date in modules. Deprecated aliases should validate version or date and Display should warn.",
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 5).map((result) => result.path)).toEqual(
+      expect.arrayContaining([
+        "lib/ansible/module_utils/basic.py",
+        "lib/ansible/module_utils/common/parameters.py",
+        "lib/ansible/module_utils/common/warnings.py",
+        "lib/ansible/module_utils/csharp/Ansible.Basic.cs",
+        "lib/ansible/utils/display.py"
+      ])
+    );
+    expect(results.slice(0, 5).map((result) => result.path)).not.toContain("lib/ansible/module_utils/facts/system/date_time.py");
+    expect(results.slice(0, 5).map((result) => result.path)).not.toContain("lib/ansible/module_utils/urls.py");
+    expect(results.slice(0, 5).map((result) => result.path)).not.toContain("lib/ansible/modules/assert.py");
+  });
+
+  it("routes Kubernetes RBAC namespace rule tasks to resource matchers before service startup", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "lib/utils/replace.go", "source", "go"),
+      file(rootPath, "lib/service/kubernetes.go", "source", "go"),
+      file(rootPath, "lib/srv/db/cloud/users/users.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "lib/utils/replace.go", "KubeResourceMatchesRegex"),
+      symbol(rootPath, "lib/utils/replace.go", "MatchString"),
+      symbol(rootPath, "lib/service/kubernetes.go", "initKubernetesService"),
+      symbol(rootPath, "lib/srv/db/cloud/users/users.go", "GetUsers")
+    ];
+    const chunks = [
+      chunk(rootPath, "lib/utils/replace.go", "KubeResourceMatchesRegex", "KubernetesResource kind namespace verbs get list watch create update delete wildcard MatchString regexp"),
+      chunk(rootPath, "lib/service/kubernetes.go", "initKubernetesService", "kubernetes service startup proxy access point listener"),
+      chunk(rootPath, "lib/srv/db/cloud/users/users.go", "GetUsers", "cloud users backend access")
+    ];
+    const results = hybridSearch({
+      files,
+      query: "Kubernetes RBAC namespace rules should grant expected resource access. A role rule with kind namespace grants get list watch resources in the namespace.",
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.path).toBe("lib/utils/replace.go");
+    expect(results.slice(0, 2).map((result) => result.path)).not.toContain("lib/service/kubernetes.go");
+  });
+
+  it("routes Kubernetes exec/session uploader tasks to forwarder and service surfaces before matchers", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "lib/kube/proxy/forwarder.go", "source", "go"),
+      file(rootPath, "lib/service/kubernetes.go", "source", "go"),
+      file(rootPath, "lib/auth/init.go", "source", "go"),
+      file(rootPath, "lib/utils/replace.go", "source", "go"),
+      file(rootPath, "lib/srv/db/cloud/users/users.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "lib/kube/proxy/forwarder.go", "ForwarderConfig"),
+      symbol(rootPath, "lib/kube/proxy/forwarder.go", "ServeHTTP"),
+      symbol(rootPath, "lib/kube/proxy/forwarder.go", "exec"),
+      symbol(rootPath, "lib/service/kubernetes.go", "initKubernetesService"),
+      symbol(rootPath, "lib/auth/init.go", "NewAuthServer"),
+      symbol(rootPath, "lib/utils/replace.go", "KubeResourceMatchesRegex"),
+      symbol(rootPath, "lib/srv/db/cloud/users/users.go", "GetUsers")
+    ];
+    const chunks = [
+      chunk(
+        rootPath,
+        "lib/kube/proxy/forwarder.go",
+        "ForwarderConfig",
+        "ForwarderConfig Authz CachingAuthClient GetClusterConfig GetKubeServices ReverseTunnelSrv exec portForward catchAll audit events client disconnect"
+      ),
+      chunk(rootPath, "lib/service/kubernetes.go", "initKubernetesService", "Kubernetes service initializes session uploader async upload directory for session recordings"),
+      chunk(rootPath, "lib/auth/init.go", "NewAuthServer", "auth server session initialization user credentials certificates"),
+      chunk(rootPath, "lib/utils/replace.go", "KubeResourceMatchesRegex", "KubernetesResource kind namespace verbs get list watch create update delete wildcard MatchString regexp"),
+      chunk(rootPath, "lib/srv/db/cloud/users/users.go", "GetUsers", "cloud users backend storage")
+    ];
+    const results = hybridSearch({
+      files,
+      query:
+        "kubectl exec interactive sessions fail because Kubernetes service misses session uploader initialization. Forwarder should keep audit events for exec, portForward, and catchAll when the client disconnects.",
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 2).map((result) => result.path)).toEqual([
+      "lib/kube/proxy/forwarder.go",
+      "lib/service/kubernetes.go"
+    ]);
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("lib/utils/replace.go");
+
+    const companions = findCompanionCandidates({
+      files,
+      ranked: results.filter((result) => result.path === "lib/kube/proxy/forwarder.go"),
+      query:
+        "kubectl exec interactive sessions fail because Kubernetes service misses session uploader initialization. Forwarder should keep audit events for exec, portForward, and catchAll when the client disconnects.",
+      symbols,
+      chunks,
+      edges: [],
+      limit: 2
+    });
+    expect(companions[0]?.file.path).toBe("lib/service/kubernetes.go");
+    expect(companions.map((candidate) => candidate.file.path)).not.toContain("lib/auth/init.go");
+  });
+
+  it("routes large UI feedback/liveness tasks to visible components and hooks before models or utilities", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "src/voice-broadcast/components/atoms/LiveBadge.tsx", "component"),
+      file(rootPath, "src/voice-broadcast/components/atoms/VoiceBroadcastHeader.tsx", "component"),
+      file(rootPath, "src/voice-broadcast/hooks/useVoiceBroadcastPlayback.ts", "source"),
+      file(rootPath, "src/voice-broadcast/hooks/useVoiceBroadcastRecording.tsx", "source"),
+      file(rootPath, "src/voice-broadcast/utils/VoiceBroadcastChunkEvents.ts", "source"),
+      file(rootPath, "src/voice-broadcast/models/VoiceBroadcastPlayback.ts", "source")
+    ];
+    const symbols = [
+      symbol(rootPath, "src/voice-broadcast/components/atoms/LiveBadge.tsx", "LiveBadge"),
+      symbol(rootPath, "src/voice-broadcast/components/atoms/VoiceBroadcastHeader.tsx", "VoiceBroadcastHeader"),
+      symbol(rootPath, "src/voice-broadcast/hooks/useVoiceBroadcastPlayback.ts", "useVoiceBroadcastPlayback"),
+      symbol(rootPath, "src/voice-broadcast/hooks/useVoiceBroadcastRecording.tsx", "useVoiceBroadcastRecording"),
+      symbol(rootPath, "src/voice-broadcast/utils/VoiceBroadcastChunkEvents.ts", "VoiceBroadcastChunkEvents"),
+      symbol(rootPath, "src/voice-broadcast/models/VoiceBroadcastPlayback.ts", "VoiceBroadcastPlayback")
+    ];
+    const chunks = [
+      chunk(rootPath, "src/voice-broadcast/components/atoms/LiveBadge.tsx", "LiveBadge", "live liveness badge icon feedback recording playback state"),
+      chunk(rootPath, "src/voice-broadcast/components/atoms/VoiceBroadcastHeader.tsx", "VoiceBroadcastHeader", "voice broadcast header liveness icon visible state"),
+      chunk(rootPath, "src/voice-broadcast/hooks/useVoiceBroadcastPlayback.ts", "useVoiceBroadcastPlayback", "playback hook live state liveness feedback"),
+      chunk(rootPath, "src/voice-broadcast/hooks/useVoiceBroadcastRecording.tsx", "useVoiceBroadcastRecording", "recording hook live state liveness feedback"),
+      chunk(rootPath, "src/voice-broadcast/utils/VoiceBroadcastChunkEvents.ts", "VoiceBroadcastChunkEvents", "chunk event ordering live timestamp"),
+      chunk(rootPath, "src/voice-broadcast/models/VoiceBroadcastPlayback.ts", "VoiceBroadcastPlayback", "playback model chunk stream")
+    ];
+    const results = hybridSearch({
+      files,
+      query: "Fix voice broadcast liveness icon inconsistent feedback while recording and playback are active.",
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 5).map((result) => result.path)).toEqual(
+      expect.arrayContaining([
+        "src/voice-broadcast/components/atoms/LiveBadge.tsx",
+        "src/voice-broadcast/components/atoms/VoiceBroadcastHeader.tsx",
+        "src/voice-broadcast/hooks/useVoiceBroadcastPlayback.ts",
+        "src/voice-broadcast/models/VoiceBroadcastPlayback.ts"
+      ])
+    );
+    expect(results.slice(0, 5).map((result) => result.path)).not.toContain("src/voice-broadcast/utils/VoiceBroadcastChunkEvents.ts");
+  });
+
+  it("routes form unflatten request failures to route handlers and unflatten utilities before models", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "openlibrary/plugins/openlibrary/lists.py", "source", "python"),
+      file(rootPath, "openlibrary/plugins/upstream/utils.py", "source", "python"),
+      file(rootPath, "openlibrary/core/lists/model.py", "source", "python"),
+      file(rootPath, "openlibrary/plugins/openlibrary/utils.py", "source", "python")
+    ];
+    const symbols = [
+      symbol(rootPath, "openlibrary/plugins/openlibrary/lists.py", "POST"),
+      symbol(rootPath, "openlibrary/plugins/upstream/utils.py", "unflatten"),
+      symbol(rootPath, "openlibrary/core/lists/model.py", "List"),
+      symbol(rootPath, "openlibrary/plugins/openlibrary/utils.py", "safeint")
+    ];
+    const chunks = [
+      chunk(rootPath, "openlibrary/plugins/openlibrary/lists.py", "POST", "POST /lists/add form data body query parameters seeds defaults request handler"),
+      chunk(rootPath, "openlibrary/plugins/upstream/utils.py", "unflatten", "unflatten flattened form data nested indexed keys parent defaults reconstruction"),
+      chunk(rootPath, "openlibrary/core/lists/model.py", "List", "list model seed entries persistence"),
+      chunk(rootPath, "openlibrary/plugins/openlibrary/utils.py", "safeint", "generic openlibrary utility helpers")
+    ];
+    const query = [
+      "/lists/add returns 500 when POST body data conflicts with query parameters.",
+      "When body data is present, do not pre-populate parent keys before unflatten.",
+      "Nested indexed seeds fields should reconstruct from flattened form input."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 2).map((result) => result.path).sort()).toEqual([
+      "openlibrary/plugins/openlibrary/lists.py",
+      "openlibrary/plugins/upstream/utils.py"
+    ]);
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("openlibrary/core/lists/model.py");
+
+    const companions = findCompanionCandidates({
+      files,
+      ranked: results.filter((result) => result.path === "openlibrary/plugins/openlibrary/lists.py"),
+      query,
+      symbols,
+      chunks,
+      edges: [],
+      limit: 2
+    });
+    expect(companions[0]?.file.path).toBe("openlibrary/plugins/upstream/utils.py");
+    expect(companions.map((candidate) => candidate.file.path)).not.toContain("openlibrary/core/lists/model.py");
+  });
+
+  it("routes Alpine source/binary package mapping to scanner and OVAL matcher surfaces", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "scanner/alpine.go", "source", "go"),
+      file(rootPath, "oval/util.go", "source", "go"),
+      file(rootPath, "scanner/scanner.go", "source", "go"),
+      file(rootPath, "oval/alpine.go", "source", "go"),
+      file(rootPath, "contrib/trivy/pkg/converter.go", "source", "go"),
+      file(rootPath, "scanner/parser/generic.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "scanner/alpine.go", "parseApkInfo"),
+      symbol(rootPath, "oval/util.go", "matchSourcePackage"),
+      symbol(rootPath, "scanner/scanner.go", "Detect"),
+      symbol(rootPath, "oval/alpine.go", "NewAlpine"),
+      symbol(rootPath, "contrib/trivy/pkg/converter.go", "Convert"),
+      symbol(rootPath, "scanner/parser/generic.go", "Parse")
+    ];
+    const chunks = [
+      chunk(rootPath, "scanner/alpine.go", "parseApkInfo", "Alpine apk list output binary package source package upgradable installed package manager scanner"),
+      chunk(rootPath, "oval/util.go", "matchSourcePackage", "OVAL vulnerability matching source package binary package affected ranges"),
+      chunk(rootPath, "scanner/scanner.go", "Detect", "scanner dispatch package vulnerability detection source packages"),
+      chunk(rootPath, "oval/alpine.go", "NewAlpine", "Alpine OVAL source vulnerability definitions"),
+      chunk(rootPath, "contrib/trivy/pkg/converter.go", "Convert", "Trivy converter package output"),
+      chunk(rootPath, "scanner/parser/generic.go", "Parse", "generic package parser helper")
+    ];
+    const query = [
+      "Alpine Linux vulnerability detection incorrectly handles source vs binary packages.",
+      "The scanner should parse apk list output and upgradable package information,",
+      "map binary packages to source packages, and OVAL vulnerability matching should assess source packages accordingly."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 4).map((result) => result.path)).toEqual(
+      expect.arrayContaining(["scanner/alpine.go", "oval/util.go", "scanner/scanner.go"])
+    );
+    expect(results.slice(0, 4).map((result) => result.path)).not.toContain("contrib/trivy/pkg/converter.go");
+    expect(results.slice(0, 4).map((result) => result.path)).not.toContain("scanner/parser/generic.go");
+
+    const companions = findCompanionCandidates({
+      files,
+      ranked: results.filter((result) => result.path === "scanner/alpine.go"),
+      query,
+      symbols,
+      chunks,
+      edges: [],
+      limit: 3
+    });
+    expect(companions.map((candidate) => candidate.file.path)).toEqual(
+      expect.arrayContaining(["oval/util.go", "scanner/scanner.go"])
+    );
+  });
+
+  it("routes RPM source package parsing tasks to distro scanner owner over Alpine surfaces", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "scanner/redhatbase.go", "source", "go"),
+      file(rootPath, "scanner/alpine.go", "source", "go"),
+      file(rootPath, "oval/util.go", "source", "go"),
+      file(rootPath, "scanner/scanner.go", "source", "go"),
+      file(rootPath, "oval/alpine.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "scanner/redhatbase.go", "parseInstalledPackagesLine"),
+      symbol(rootPath, "scanner/alpine.go", "parseApkInfo"),
+      symbol(rootPath, "oval/util.go", "matchSourcePackage"),
+      symbol(rootPath, "scanner/scanner.go", "Detect"),
+      symbol(rootPath, "oval/alpine.go", "NewAlpine")
+    ];
+    const chunks = [
+      chunk(rootPath, "scanner/redhatbase.go", "parseInstalledPackagesLine", "RPM SOURCERPM source package src.rpm epoch splitFileName redhat installed package metadata"),
+      chunk(rootPath, "scanner/alpine.go", "parseApkInfo", "Alpine apk list output binary package source package"),
+      chunk(rootPath, "oval/util.go", "matchSourcePackage", "OVAL vulnerability matching source package binary package affected ranges"),
+      chunk(rootPath, "scanner/scanner.go", "Detect", "scanner dispatch package vulnerability detection source packages"),
+      chunk(rootPath, "oval/alpine.go", "NewAlpine", "Alpine OVAL source vulnerability definitions")
+    ];
+    const query = [
+      "Scanner fails on non-standard source RPM filenames and epoch handling.",
+      "Update parseInstalledPackagesLine and splitFileName to handle SOURCERPM src.rpm values without aborting."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.path).toBe("scanner/redhatbase.go");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("scanner/alpine.go");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("oval/alpine.go");
+  });
+
+  it("routes benchmark generator contracts to benchmark package and CLI/client surfaces", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "lib/benchmark/benchmark.go", "source", "go"),
+      file(rootPath, "lib/benchmark/linear.go", "source", "go"),
+      file(rootPath, "lib/client/bench.go", "source", "go"),
+      file(rootPath, "tool/tsh/tsh.go", "source", "go"),
+      file(rootPath, "lib/kube/proxy/auth.go", "source", "go"),
+      file(rootPath, "lib/limiter/ratelimiter.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "lib/benchmark/benchmark.go", "Config"),
+      symbol(rootPath, "lib/benchmark/linear.go", "Linear"),
+      symbol(rootPath, "lib/client/bench.go", "Benchmark"),
+      symbol(rootPath, "tool/tsh/tsh.go", "onBenchmark"),
+      symbol(rootPath, "lib/kube/proxy/auth.go", "Authenticate"),
+      symbol(rootPath, "lib/limiter/ratelimiter.go", "Limiter")
+    ];
+    const chunks = [
+      chunk(rootPath, "lib/benchmark/benchmark.go", "Config", "benchmark configuration rate command threads minimum window measurements"),
+      chunk(rootPath, "lib/benchmark/linear.go", "Linear", "linear benchmark generator lower bound upper bound step GetBenchmark request rate"),
+      chunk(rootPath, "lib/client/bench.go", "Benchmark", "client benchmark command request rate configuration"),
+      chunk(rootPath, "tool/tsh/tsh.go", "onBenchmark", "tsh benchmark command wiring"),
+      chunk(rootPath, "lib/kube/proxy/auth.go", "Authenticate", "kubernetes proxy authentication request"),
+      chunk(rootPath, "lib/limiter/ratelimiter.go", "Limiter", "rate limiter retry budget")
+    ];
+    const query = [
+      "Add a linear benchmark generator for progressive request rate configurations.",
+      "Linear.GetBenchmark should return Config values with Rate, Threads, MinimumWindow, MinimumMeasurements, and Command."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 2).map((result) => result.path)).toEqual([
+      "lib/benchmark/linear.go",
+      "lib/benchmark/benchmark.go"
+    ]);
+    expect(results.slice(0, 4).map((result) => result.path)).toEqual(expect.arrayContaining([
+      "lib/client/bench.go",
+      "tool/tsh/tsh.go"
+    ]));
+    expect(results.slice(0, 4).map((result) => result.path)).not.toContain("lib/kube/proxy/auth.go");
+    expect(results.slice(0, 4).map((result) => result.path)).not.toContain("lib/limiter/ratelimiter.go");
+  });
+
+  it("routes pinned topic reorder tasks to client, socket, and topic tool owners", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "public/src/client/category/tools.js", "source", "javascript"),
+      file(rootPath, "src/socket.io/topics/tools.js", "source", "javascript"),
+      file(rootPath, "src/topics/tools.js", "source", "javascript"),
+      file(rootPath, "public/src/admin/dashboard/topics.js", "source", "javascript"),
+      file(rootPath, "src/privileges/topics.js", "source", "javascript")
+    ];
+    const symbols = [
+      symbol(rootPath, "public/src/client/category/tools.js", "orderPinnedTopics"),
+      symbol(rootPath, "src/socket.io/topics/tools.js", "SocketTopics.orderPinnedTopics"),
+      symbol(rootPath, "src/topics/tools.js", "topicTools.orderPinnedTopics"),
+      symbol(rootPath, "public/src/admin/dashboard/topics.js", "renderTopics"),
+      symbol(rootPath, "src/privileges/topics.js", "canModerate")
+    ];
+    const chunks = [
+      chunk(rootPath, "public/src/client/category/tools.js", "orderPinnedTopics", "client drag reorder pinned topics category socket emit target position"),
+      chunk(rootPath, "src/socket.io/topics/tools.js", "SocketTopics.orderPinnedTopics", "socket order pinned topics moderator admin privileges"),
+      chunk(rootPath, "src/topics/tools.js", "topicTools.orderPinnedTopics", "pinned topic ordering sorted set category membership no-op unpinned topic"),
+      chunk(rootPath, "public/src/admin/dashboard/topics.js", "renderTopics", "admin dashboard topic statistics"),
+      chunk(rootPath, "src/privileges/topics.js", "canModerate", "topic privileges moderator admin")
+    ];
+    const query = [
+      "Reordering pinned topics does not respect privileges, no-op behavior for unpinned topics, and category isolation.",
+      "Fix topic pinned ordering through the client, socket, and production topic tool flow."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 3).map((result) => result.path)).toEqual([
+      "src/topics/tools.js",
+      "src/socket.io/topics/tools.js",
+      "public/src/client/category/tools.js"
+    ]);
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("public/src/admin/dashboard/topics.js");
+  });
+
+  it("routes collection name validation tasks to loader and dependency metadata owners", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "lib/ansible/utils/collection_loader/_collection_finder.py", "source", "python"),
+      file(rootPath, "lib/ansible/galaxy/dependency_resolution/dataclasses.py", "source", "python"),
+      file(rootPath, "lib/ansible/galaxy/collection/__init__.py", "source", "python"),
+      file(rootPath, "lib/ansible/utils/galaxy.py", "source", "python")
+    ];
+    const symbols = [
+      symbol(rootPath, "lib/ansible/utils/collection_loader/_collection_finder.py", "is_valid_collection_name"),
+      symbol(rootPath, "lib/ansible/galaxy/dependency_resolution/dataclasses.py", "_is_fqcn"),
+      symbol(rootPath, "lib/ansible/galaxy/collection/__init__.py", "CollectionRequirement"),
+      symbol(rootPath, "lib/ansible/utils/galaxy.py", "GalaxyAPI")
+    ];
+    const chunks = [
+      chunk(rootPath, "lib/ansible/utils/collection_loader/_collection_finder.py", "is_valid_collection_name", "collection name validation namespace collection Python identifier keyword"),
+      chunk(rootPath, "lib/ansible/galaxy/dependency_resolution/dataclasses.py", "_is_fqcn", "FQCN validation Python keyword _is_py_id _is_fqcn collection namespace"),
+      chunk(rootPath, "lib/ansible/galaxy/collection/__init__.py", "CollectionRequirement", "galaxy collection install artifact"),
+      chunk(rootPath, "lib/ansible/utils/galaxy.py", "GalaxyAPI", "galaxy API helper")
+    ];
+    const query = [
+      "Collection Name Validation Accepts Python Keywords.",
+      "Fully Qualified Collection Names should reject namespace or collection segments that are Python reserved keywords."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 2).map((result) => result.path).sort()).toEqual([
+      "lib/ansible/galaxy/dependency_resolution/dataclasses.py",
+      "lib/ansible/utils/collection_loader/_collection_finder.py"
+    ]);
+    expect(results.slice(0, 2).map((result) => result.path)).not.toContain("lib/ansible/galaxy/collection/__init__.py");
+  });
+
+  it("routes gRPC context error policy tasks to command and middleware owners", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "internal/cmd/grpc.go", "source", "go"),
+      file(rootPath, "internal/server/auth/middleware.go", "source", "go"),
+      file(rootPath, "internal/server/middleware/grpc/middleware.go", "source", "go"),
+      file(rootPath, "errors/errors.go", "source", "go"),
+      file(rootPath, "internal/server/segment.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "internal/cmd/grpc.go", "serveGRPC"),
+      symbol(rootPath, "internal/server/auth/middleware.go", "UnaryServerInterceptor"),
+      symbol(rootPath, "internal/server/middleware/grpc/middleware.go", "ErrorHandler"),
+      symbol(rootPath, "errors/errors.go", "Error"),
+      symbol(rootPath, "internal/server/segment.go", "Segment")
+    ];
+    const chunks = [
+      chunk(rootPath, "internal/cmd/grpc.go", "serveGRPC", "grpc server status code middleware context cancellation"),
+      chunk(rootPath, "internal/server/auth/middleware.go", "UnaryServerInterceptor", "authentication middleware unauthenticated context canceled deadline exceeded"),
+      chunk(rootPath, "internal/server/middleware/grpc/middleware.go", "ErrorHandler", "gRPC middleware maps context.Canceled to codes.Canceled and context.DeadlineExceeded"),
+      chunk(rootPath, "errors/errors.go", "Error", "domain errors internal error values"),
+      chunk(rootPath, "internal/server/segment.go", "Segment", "segment evaluation")
+    ];
+    const query = [
+      "Context cancellation and deadline exceeded errors are incorrectly classified as Internal or Unauthenticated in gRPC responses.",
+      "Return Canceled and DeadlineExceeded from middleware/authentication when errors wrap context.Canceled or context.DeadlineExceeded."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 3).map((result) => result.path)).toEqual([
+      "internal/cmd/grpc.go",
+      "internal/server/auth/middleware.go",
+      "internal/server/middleware/grpc/middleware.go"
+    ]);
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("errors/errors.go");
+  });
+
+  it("routes HTTP netrc authorization policy tasks to URL helpers and modules", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "lib/ansible/module_utils/urls.py", "source", "python"),
+      file(rootPath, "lib/ansible/modules/uri.py", "source", "python"),
+      file(rootPath, "lib/ansible/modules/get_url.py", "source", "python"),
+      file(rootPath, "lib/ansible/plugins/lookup/url.py", "source", "python"),
+      file(rootPath, "lib/ansible/plugins/action/uri.py", "source", "python"),
+      file(rootPath, "lib/ansible/executor/interpreter_discovery.py", "source", "python"),
+      file(rootPath, "lib/ansible/module_utils/basic.py", "source", "python")
+    ];
+    const symbols = [
+      symbol(rootPath, "lib/ansible/module_utils/urls.py", "open_url"),
+      symbol(rootPath, "lib/ansible/modules/uri.py", "main"),
+      symbol(rootPath, "lib/ansible/modules/get_url.py", "main"),
+      symbol(rootPath, "lib/ansible/plugins/lookup/url.py", "run"),
+      symbol(rootPath, "lib/ansible/plugins/action/uri.py", "run"),
+      symbol(rootPath, "lib/ansible/executor/interpreter_discovery.py", "discover_interpreter"),
+      symbol(rootPath, "lib/ansible/module_utils/basic.py", "AnsibleModule")
+    ];
+    const chunks = [
+      chunk(rootPath, "lib/ansible/module_utils/urls.py", "open_url", "Request.open open_url Authorization header netrc use_netrc HTTP request"),
+      chunk(rootPath, "lib/ansible/modules/uri.py", "main", "uri module headers Authorization bearer use_netrc parameter"),
+      chunk(rootPath, "lib/ansible/modules/get_url.py", "main", "get_url module URL request netrc use_netrc"),
+      chunk(rootPath, "lib/ansible/plugins/lookup/url.py", "run", "lookup url plugin open_url netrc Authorization headers"),
+      chunk(rootPath, "lib/ansible/plugins/action/uri.py", "run", "uri action plugin open_url netrc Authorization headers"),
+      chunk(rootPath, "lib/ansible/executor/interpreter_discovery.py", "discover_interpreter", "python interpreter discovery"),
+      chunk(rootPath, "lib/ansible/module_utils/basic.py", "AnsibleModule", "basic module argument parsing")
+    ];
+    const query = [
+      "uri module uses .netrc to overwrite Authorization header even if specified.",
+      "Add use_netrc to Request.open and open_url, default enabled, and forward it through uri, get_url, and url lookup."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 4).map((result) => result.path)).toEqual([
+      "lib/ansible/module_utils/urls.py",
+      "lib/ansible/modules/uri.py",
+      "lib/ansible/modules/get_url.py",
+      "lib/ansible/plugins/lookup/url.py"
+    ]);
+    expect(results.slice(0, 4).map((result) => result.path)).not.toContain("lib/ansible/executor/interpreter_discovery.py");
+    expect(results.slice(0, 4).map((result) => result.path)).not.toContain("lib/ansible/plugins/action/uri.py");
+  });
+
+  it("routes Linux system metadata extraction tasks to inventory metadata owners", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "lib/inventory/metadata/metadata_linux.go", "source", "go"),
+      file(rootPath, "lib/inventory/metadata/metadata.go", "source", "go"),
+      file(rootPath, "lib/inventory/metadata/get.go", "source", "go"),
+      file(rootPath, "lib/config/systemd.go", "source", "go"),
+      file(rootPath, "lib/utils/parse/parse.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "lib/inventory/metadata/metadata_linux.go", "DMIInfo"),
+      symbol(rootPath, "lib/inventory/metadata/metadata.go", "Metadata"),
+      symbol(rootPath, "lib/inventory/metadata/get.go", "Get"),
+      symbol(rootPath, "lib/config/systemd.go", "SystemdFlags"),
+      symbol(rootPath, "lib/utils/parse/parse.go", "ParseBool")
+    ];
+    const chunks = [
+      chunk(rootPath, "lib/inventory/metadata/metadata_linux.go", "DMIInfo", "DMIInfoFromFS sysfs /sys/class/dmi/id product_name product_serial board_serial chassis_asset_tag OSRelease ParseOSRelease /etc/os-release"),
+      chunk(rootPath, "lib/inventory/metadata/metadata.go", "Metadata", "inventory metadata API device metadata operating system distribution"),
+      chunk(rootPath, "lib/inventory/metadata/get.go", "Get", "retrieve inventory metadata from platform metadata providers"),
+      chunk(rootPath, "lib/config/systemd.go", "SystemdFlags", "systemd unit file environment pid file file descriptor limit"),
+      chunk(rootPath, "lib/utils/parse/parse.go", "ParseBool", "generic parse helper strconv")
+    ];
+    const query = [
+      "Add utility functions for extracting Linux system metadata.",
+      "Read DMI fields from /sys/class/dmi/id and parse /etc/os-release into OSRelease fields while handling partial errors."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 3).map((result) => result.path)).toEqual([
+      "lib/inventory/metadata/metadata_linux.go",
+      "lib/inventory/metadata/metadata.go",
+      "lib/inventory/metadata/get.go"
+    ]);
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("lib/config/systemd.go");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("lib/utils/parse/parse.go");
+  });
+
+  it("routes database service failover tasks to proxy, type, tunnel, and CLI owners", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "api/types/databaseserver.go", "source", "go"),
+      file(rootPath, "lib/srv/db/proxyserver.go", "source", "go"),
+      file(rootPath, "lib/reversetunnel/fake.go", "source", "go"),
+      file(rootPath, "lib/reversetunnel/agent.go", "source", "go"),
+      file(rootPath, "tool/tsh/db.go", "source", "go"),
+      file(rootPath, "lib/events/auditlog.go", "source", "go"),
+      file(rootPath, "lib/session/session.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "api/types/databaseserver.go", "DatabaseServerV3"),
+      symbol(rootPath, "lib/srv/db/proxyserver.go", "ProxyServerConfig"),
+      symbol(rootPath, "lib/reversetunnel/fake.go", "FakeRemoteSite"),
+      symbol(rootPath, "lib/reversetunnel/agent.go", "Agent"),
+      symbol(rootPath, "tool/tsh/db.go", "onListDatabases"),
+      symbol(rootPath, "lib/events/auditlog.go", "ServerID"),
+      symbol(rootPath, "lib/session/session.go", "ServerID")
+    ];
+    const chunks = [
+      chunk(rootPath, "api/types/databaseserver.go", "SortedDatabaseServers", "DatabaseServerV3 HostID sorted database servers deduplicate database service"),
+      chunk(rootPath, "lib/srv/db/proxyserver.go", "ProxyServerConfig", "database proxy server connect candidate servers shuffle retry dial reverse tunnel"),
+      chunk(rootPath, "lib/reversetunnel/fake.go", "FakeRemoteSite", "OfflineTunnels ServerID simulate tunnel outage fake remote site"),
+      chunk(rootPath, "lib/reversetunnel/agent.go", "Agent", "reverse tunnel agent cluster connection server id keepalive heartbeat"),
+      chunk(rootPath, "tool/tsh/db.go", "onListDatabases", "tsh db ls list database services deduplicate display"),
+      chunk(rootPath, "lib/events/auditlog.go", "ServerID", "audit event server id"),
+      chunk(rootPath, "lib/session/session.go", "ServerID", "session server id")
+    ];
+    const query = [
+      "Better handle HA database access when multiple database services share the same service name.",
+      "Proxy should shuffle candidate database servers, retry on tunnel connection failures, deduplicate tsh db ls, and include HostID."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 4).map((result) => result.path)).toEqual([
+      "api/types/databaseserver.go",
+      "lib/srv/db/proxyserver.go",
+      "lib/reversetunnel/fake.go",
+      "tool/tsh/db.go"
+    ]);
+    expect(results.slice(0, 4).map((result) => result.path)).not.toContain("lib/events/auditlog.go");
+    expect(results.slice(0, 4).map((result) => result.path)).not.toContain("lib/reversetunnel/agent.go");
+  });
+
+  it("routes plugin activation identifier validation to activation owners", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "src/plugins/install.js", "source", "javascript"),
+      file(rootPath, "src/socket.io/admin/plugins.js", "source", "javascript"),
+      file(rootPath, "src/flags.js", "source", "javascript"),
+      file(rootPath, "public/src/admin/extend/plugins.js", "source", "javascript"),
+      file(rootPath, "public/src/client/topic.js", "source", "javascript")
+    ];
+    const symbols = [
+      symbol(rootPath, "src/plugins/install.js", "Plugins.toggleActive"),
+      symbol(rootPath, "src/socket.io/admin/plugins.js", "Plugins.toggleActive"),
+      symbol(rootPath, "src/flags.js", "Flags"),
+      symbol(rootPath, "public/src/admin/extend/plugins.js", "toggleActive"),
+      symbol(rootPath, "public/src/client/topic.js", "Topic")
+    ];
+    const chunks = [
+      chunk(rootPath, "src/plugins/install.js", "Plugins.toggleActive", "Plugins.toggleActive activate deactivate plugin id invalid-plugin-id validation before state changes"),
+      chunk(rootPath, "src/socket.io/admin/plugins.js", "Plugins.toggleActive", "admin.plugins.toggleActive socket plugin activation request"),
+      chunk(rootPath, "src/flags.js", "Flags", "validation helpers error handling invalid identifiers"),
+      chunk(rootPath, "public/src/admin/extend/plugins.js", "toggleActive", "admin UI emits admin.plugins.toggleActive"),
+      chunk(rootPath, "public/src/client/topic.js", "Topic", "topic page navigation posts")
+    ];
+    const query = [
+      "Plugin activation accepts invalid plugin identifiers without validation.",
+      "Validate plugin identifiers during Plugins.toggleActive and reject malformed names with [[error:invalid-plugin-id]]."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.path).toBe("src/plugins/install.js");
+    expect(results.slice(0, 3).map((result) => result.path)).toEqual(expect.arrayContaining([
+      "src/socket.io/admin/plugins.js",
+      "src/flags.js"
+    ]));
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("public/src/client/topic.js");
+  });
+
+  it("routes execution state migrations to iterator and strategy owners", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "lib/ansible/executor/play_iterator.py", "source", "python"),
+      file(rootPath, "lib/ansible/plugins/strategy/__init__.py", "source", "python"),
+      file(rootPath, "lib/ansible/plugins/strategy/linear.py", "source", "python"),
+      file(rootPath, "lib/ansible/plugins/strategy/debug.py", "source", "python"),
+      file(rootPath, "lib/ansible/module_utils/common/parameters.py", "source", "python"),
+      file(rootPath, "lib/ansible/module_utils/common/warnings.py", "source", "python"),
+      file(rootPath, "lib/ansible/module_utils/basic.py", "source", "python"),
+      file(rootPath, "lib/ansible/utils/display.py", "source", "python")
+    ];
+    const symbols = [
+      symbol(rootPath, "lib/ansible/executor/play_iterator.py", "PlayIterator"),
+      symbol(rootPath, "lib/ansible/executor/play_iterator.py", "HostState"),
+      symbol(rootPath, "lib/ansible/executor/play_iterator.py", "IteratingStates"),
+      symbol(rootPath, "lib/ansible/executor/play_iterator.py", "FailedStates"),
+      symbol(rootPath, "lib/ansible/plugins/strategy/__init__.py", "StrategyBase"),
+      symbol(rootPath, "lib/ansible/plugins/strategy/linear.py", "StrategyModule"),
+      symbol(rootPath, "lib/ansible/plugins/strategy/debug.py", "StrategyModule"),
+      symbol(rootPath, "lib/ansible/module_utils/common/parameters.py", "validate_argument_spec"),
+      symbol(rootPath, "lib/ansible/module_utils/common/warnings.py", "deprecate"),
+      symbol(rootPath, "lib/ansible/module_utils/basic.py", "AnsibleModule"),
+      symbol(rootPath, "lib/ansible/utils/display.py", "Display")
+    ];
+    const chunks = [
+      chunk(rootPath, "lib/ansible/executor/play_iterator.py", "PlayIterator", "PlayIterator HostState run_state fail_state ITERATING_TASKS FAILED_SETUP IteratingStates FailedStates MetaPlayIterator"),
+      chunk(rootPath, "lib/ansible/plugins/strategy/__init__.py", "StrategyBase", "strategy plugin checks PlayIterator ITERATING_TASKS and failure states during task execution"),
+      chunk(rootPath, "lib/ansible/plugins/strategy/linear.py", "StrategyModule", "linear strategy compares host run_state rescue always complete"),
+      chunk(rootPath, "lib/ansible/plugins/strategy/debug.py", "StrategyModule", "debug strategy plugin displays task state"),
+      chunk(rootPath, "lib/ansible/module_utils/common/parameters.py", "validate_argument_spec", "argument spec validation deprecated aliases removed in version"),
+      chunk(rootPath, "lib/ansible/module_utils/common/warnings.py", "deprecate", "display deprecation warning messages"),
+      chunk(rootPath, "lib/ansible/module_utils/basic.py", "AnsibleModule", "basic module argument spec and deprecation helpers"),
+      chunk(rootPath, "lib/ansible/utils/display.py", "Display", "display warnings and deprecation messages")
+    ];
+    const query = [
+      "Standardize PlayIterator state representation with public IteratingStates and FailedStates enums.",
+      "Preserve legacy constants, instance attribute access, HostState string output, and third-party strategy plugin compatibility."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 3).map((result) => result.path)).toEqual(expect.arrayContaining([
+      "lib/ansible/executor/play_iterator.py",
+      "lib/ansible/plugins/strategy/__init__.py",
+      "lib/ansible/plugins/strategy/linear.py"
+    ]));
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("lib/ansible/module_utils/common/parameters.py");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("lib/ansible/module_utils/common/warnings.py");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("lib/ansible/module_utils/basic.py");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("lib/ansible/plugins/strategy/debug.py");
+  });
+
+  it("routes converter output bugs to converter implementation over scanner dispatch", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "contrib/trivy/pkg/converter.go", "source", "go"),
+      file(rootPath, "scanner/scanner.go", "source", "go"),
+      file(rootPath, "scanner/trivy/jar/parse.go", "source", "go"),
+      file(rootPath, "storage/backend.go", "source", "go")
+    ];
+    const symbols = [
+      symbol(rootPath, "contrib/trivy/pkg/converter.go", "Convert"),
+      symbol(rootPath, "scanner/scanner.go", "Detect"),
+      symbol(rootPath, "scanner/trivy/jar/parse.go", "Parse"),
+      symbol(rootPath, "storage/backend.go", "Store")
+    ];
+    const chunks = [
+      chunk(rootPath, "contrib/trivy/pkg/converter.go", "Convert", "Trivy to Vuls converter output cveContents severity Debian records JSON findings"),
+      chunk(rootPath, "scanner/scanner.go", "Detect", "scanner dispatch package vulnerability detection source packages"),
+      chunk(rootPath, "scanner/trivy/jar/parse.go", "Parse", "Trivy jar parser package details"),
+      chunk(rootPath, "storage/backend.go", "Store", "storage backend vulnerability records")
+    ];
+    const query = [
+      "Fix the trivy-to-vuls converter output.",
+      "cveContents should not duplicate Debian severity records when conversion builds Vuls JSON findings."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.path).toBe("contrib/trivy/pkg/converter.go");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("scanner/scanner.go");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("storage/backend.go");
+  });
+
+  it("routes device session notification ownership to listener source over UI shells", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "src/DeviceListener.ts", "source", "typescript"),
+      file(rootPath, "src/components/views/settings/devices/OtherSessionsSectionHeading.tsx", "component", "typescript"),
+      file(rootPath, "src/toasts/BulkUnverifiedSessionsToast.ts", "source", "typescript"),
+      file(rootPath, "src/models/Call.ts", "source", "typescript"),
+      file(rootPath, "src/stores/notifications/NotificationState.ts", "source", "typescript")
+    ];
+    const symbols = [
+      symbol(rootPath, "src/DeviceListener.ts", "DeviceListener"),
+      symbol(rootPath, "src/components/views/settings/devices/OtherSessionsSectionHeading.tsx", "OtherSessionsSectionHeading"),
+      symbol(rootPath, "src/toasts/BulkUnverifiedSessionsToast.ts", "BulkUnverifiedSessionsToast"),
+      symbol(rootPath, "src/models/Call.ts", "Call"),
+      symbol(rootPath, "src/stores/notifications/NotificationState.ts", "NotificationState")
+    ];
+    const chunks = [
+      chunk(rootPath, "src/DeviceListener.ts", "DeviceListener", "device listener handles unverified sessions notification state after key download startup existing sessions new sessions"),
+      chunk(rootPath, "src/components/views/settings/devices/OtherSessionsSectionHeading.tsx", "OtherSessionsSectionHeading", "settings devices heading other sessions UI"),
+      chunk(rootPath, "src/toasts/BulkUnverifiedSessionsToast.ts", "BulkUnverifiedSessionsToast", "toast UI for bulk unverified sessions"),
+      chunk(rootPath, "src/models/Call.ts", "Call", "call model voice room session"),
+      chunk(rootPath, "src/stores/notifications/NotificationState.ts", "NotificationState", "notification state store")
+    ];
+    const query = [
+      "Unverified device notifications are inconsistent for existing versus new sessions.",
+      "Maintain startup device state and refresh after key downloads in the device/session notification owner."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results[0]?.path).toBe("src/DeviceListener.ts");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("src/components/views/settings/devices/OtherSessionsSectionHeading.tsx");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("src/toasts/BulkUnverifiedSessionsToast.ts");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("src/models/Call.ts");
+  });
+
+  it("routes discovery authentication config to discovery and validated config owners", () => {
+    const rootPath = "/repo";
+    const files = [
+      file(rootPath, "src/utils/AutoDiscoveryUtils.tsx", "source", "typescript"),
+      file(rootPath, "src/utils/ValidatedServerConfig.ts", "source", "typescript"),
+      file(rootPath, "cypress/support/settings.ts", "source", "typescript"),
+      file(rootPath, "src/components/views/settings/ServerSettings.tsx", "component", "typescript")
+    ];
+    const symbols = [
+      symbol(rootPath, "src/utils/AutoDiscoveryUtils.tsx", "AutoDiscovery"),
+      symbol(rootPath, "src/utils/ValidatedServerConfig.ts", "ValidatedServerConfig"),
+      symbol(rootPath, "cypress/support/settings.ts", "settings"),
+      symbol(rootPath, "src/components/views/settings/ServerSettings.tsx", "ServerSettings")
+    ];
+    const chunks = [
+      chunk(rootPath, "src/utils/AutoDiscoveryUtils.tsx", "AutoDiscovery", "homeserver discovery builds validated configuration from m.authentication delegated authentication issuer endpoints account"),
+      chunk(rootPath, "src/utils/ValidatedServerConfig.ts", "ValidatedServerConfig", "validated server config public interface delegatedAuthentication optional object issuer token endpoint authorization endpoint"),
+      chunk(rootPath, "cypress/support/settings.ts", "settings", "cypress support settings test config"),
+      chunk(rootPath, "src/components/views/settings/ServerSettings.tsx", "ServerSettings", "settings screen UI")
+    ];
+    const query = [
+      "Discovery omits delegated authentication metadata advertised under m.authentication.",
+      "Preserve delegatedAuthentication fields in the validated server configuration."
+    ].join(" ");
+    const results = hybridSearch({
+      files,
+      query,
+      symbols,
+      chunks,
+      vectors: chunks.map((record) => vector(rootPath, record)),
+      edges: [],
+      changedFiles: new Set()
+    });
+
+    expect(results.slice(0, 2).map((result) => result.path)).toEqual([
+      "src/utils/AutoDiscoveryUtils.tsx",
+      "src/utils/ValidatedServerConfig.ts"
+    ]);
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("cypress/support/settings.ts");
+    expect(results.slice(0, 3).map((result) => result.path)).not.toContain("src/components/views/settings/ServerSettings.tsx");
+  });
+
   it("keeps exact C source ahead of vendored dependency surfaces for short identifier prompts", () => {
     const rootPath = "/repo";
     const files = [

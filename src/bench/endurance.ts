@@ -664,8 +664,8 @@ function buildMcpEndurancePrompt(input: {
     prompt: [
       "Kairn long-session instruction:",
       `Use Kairn session ${input.sessionId}.`,
-      "No active source has been established yet. For this diagnose/source-rescue turn, call kairn_prepare_task once before manual source reads.",
-      "For an obvious single-source symbol task, inspect the likely source directly and do not call Kairn just to confirm it.",
+      "No active source has been established yet. Call kairn_prepare_task once now before manual source reads.",
+      "Do this even if the task seems likely to be one file, unless the user already named an exact production path or exact symbol.",
       "If it returns stopCondition or no nextToolCalls, continue from its files and do not call more Kairn unless a check fails or the target changes.",
       "Obey Kairn's edit-scope guidance: tests, docs, examples, fixtures, snapshots, generated files, and vendor/dependency files are read-only unless a focused verification failure proves they must change.",
       "Only call kairn_get_next_context when prepare explicitly returns it; call kairn_get_failure_context once after real failures.",
@@ -810,18 +810,38 @@ function isLikelyObviousSingleSourcePrompt(prompt: string): boolean {
     /\b[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*\b/.test(prompt);
 }
 
-function firstKnownSource(ledger?: SessionLedgerSummary | undefined, mcpFiles: string[] = []): string | undefined {
+export function selectMcpEnduranceKnownSource(
+  ledger?: SessionLedgerSummary | undefined,
+  mcpFiles: string[] = []
+): string | undefined {
   if (!ledger) return undefined;
   const nextRead = ledger.workingSet.nextSmallestUsefulRead;
+  const recentMentionedFiles = [...ledger.recentEvents]
+    .reverse()
+    .filter((event) => event.kind === "agent_file_mentioned")
+    .flatMap((event) => event.filePath ? [event.filePath] : []);
+  const recentVerifiedFiles = [...ledger.recentEvents]
+    .reverse()
+    .filter((event) => event.kind === "verification_passed")
+    .flatMap((event) => event.filePath ? [event.filePath] : []);
+  const stableActiveFiles = ledger.workingSet.activeFiles.filter(
+    (file) => !ledger.workingSet.recentlyTouchedFiles.includes(file)
+  );
   return [
-    ...mcpFiles,
+    ledger.workingSet.lastPassingVerification?.filePath,
+    ...recentVerifiedFiles,
+    ...recentMentionedFiles,
+    ...ledger.agentMentionedFiles.slice().reverse(),
     ledger.workingSet.currentInvariant?.filePath,
-    ...ledger.workingSet.recentlyTouchedFiles,
-    ...ledger.workingSet.activeFiles,
+    ...mcpFiles,
+    ...stableActiveFiles,
     ...ledger.shownFiles,
-    nextRead && nextRead.source !== "ignored_recommendation" ? nextRead.filePath : undefined
+    nextRead && nextRead.source !== "ignored_recommendation" ? nextRead.filePath : undefined,
+    ...(ledger.unresolvedFailures > 0 ? [] : ledger.workingSet.recentlyTouchedFiles)
   ].find(isLikelyBenchmarkSource);
 }
+
+const firstKnownSource = selectMcpEnduranceKnownSource;
 
 function collectEnduranceWorkspaceMetrics(workspacePath: string, runtime?: KairnRuntime | undefined): EnduranceWorkspaceMetrics {
   const ownsRuntime = !runtime;

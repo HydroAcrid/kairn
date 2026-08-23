@@ -1,0 +1,164 @@
+{
+  "generatedAt": "2026-05-24T02:52:24.636Z",
+  "source": "existing 20260518 official rows",
+  "rows": [
+    {
+      "source": "20260518-qutebrowser",
+      "task": "qt-warning-filtering",
+      "rowId": "instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
+      "repo": "qutebrowser/qutebrowser",
+      "classification": "quality_rescue",
+      "baseline": {
+        "officialPassed": false,
+        "tokens": 40467,
+        "changedFiles": [
+          "qutebrowser/browser/qtnetworkdownloads.py",
+          "qutebrowser/utils/log.py",
+          "qutebrowser/utils/qtlog.py",
+          "tests/unit/utils/test_qtlog.py"
+        ],
+        "scopePassed": false,
+        "qualityGatePassed": false
+      },
+      "kairn": {
+        "officialPassed": true,
+        "tokens": 21802,
+        "changedFiles": [
+          "qutebrowser/utils/log.py",
+          "qutebrowser/utils/qtlog.py"
+        ],
+        "scopePassed": true,
+        "qualityGatePassed": true,
+        "primeTokens": 503
+      },
+      "artifact": "docs/publication-evidence-20260518/swe-pro-generated-patches/qutebrowser-official"
+    },
+    {
+      "source": "20260518-qutebrowser",
+      "task": "hostblock-subdomains",
+      "rowId": "instance_qutebrowser__qutebrowser-c580ebf0801e5a3ecabc54f327498bb753c6d5f2-v2ef375ac784985212b1805e1d0431dc8f1b3c171",
+      "repo": "qutebrowser/qutebrowser",
+      "classification": "quality_rescue_after_general_fix",
+      "baseline": {
+        "officialPassed": false,
+        "tokens": 47104,
+        "changedFiles": [
+          "qutebrowser/components/hostblock.py",
+          "qutebrowser/config/configutils.py",
+          "qutebrowser/utils/urlutils.py",
+          "tests/unit/components/test_hostblock.py"
+        ],
+        "scopePassed": false,
+        "qualityGatePassed": false
+      },
+      "kairn": {
+        "officialPassed": true,
+        "tokens": 43313,
+        "changedFiles": [
+          "qutebrowser/components/hostblock.py",
+          "qutebrowser/config/configutils.py",
+          "qutebrowser/utils/urlutils.py"
+        ],
+        "scopePassed": true,
+        "qualityGatePassed": true,
+        "primeTokens": 457
+      },
+      "artifact": "docs/publication-evidence-20260518/swe-pro-generated-patches/qutebrowser-hostblock-official"
+    },
+    {
+      "source": "20260518-non-qutebrowser",
+      "task": "nodebb",
+      "rowId": "instance_NodeBB__NodeBB-51d8f3b195bddb13a13ddc0de110722774d9bb1b-vf2cf3cbd463b7ad942381f1c6d077626485a1e9e",
+      "repo": "NodeBB/NodeBB",
+      "classification": "quality_rescue_official_pass",
+      "baseline": {
+        "officialPassed": false,
+        "observedTokens": 61212,
+        "localOutcome": "fail",
+        "scope": "failed",
+        "changedFiles": [
+          "src/controllers/index.js",
+          "src/routes/index.js",
+          "src/routes/user.js",
+          "test/controllers.js"
+        ]
+      },
+      "kairn": {
+        "officialPassed": true,
+        "observedTokens": 78456,
+        "localOutcome": "partial",
+        "scope": "passed",
+        "changedFiles": [
+          "src/controllers/index.js",
+          "src/routes/index.js",
+          "src/routes/user.js"
+        ],
+        "primeTokens": 0
+      },
+      "artifact": "docs/publication-evidence-20260518/swe-pro-generated-patches/non-qutebrowser-slice/non-qutebrowser-official-summary.with-fixes.json"
+    },
+    {
+      "source": "20260518-non-qutebrowser",
+      "task": "ansible",
+      "rowId": "instance_ansible__ansible-f327e65d11bb905ed9f15996024f857a95592629-vba6da65a0f3baefda7a058ebbd0a8dcafb8512f5",
+      "repo": "ansible/ansible",
+      "classification": "scope_clean_official_pass_after_guardrail_no_token_win",
+      "baseline": {
+        "officialPassed": true,
+        "observedTokens": 48716,
+        "localOutcome": "fail",
+        "scope": "failed",
+        "changedFiles": [
+          "lib/ansible/galaxy/dependency_resolution/dataclasses.py",
+          "lib/ansible/utils/collection_loader/_collection_finder.py",
+          "test/units/cli/test_galaxy.py"
+        ]
+      },
+      "kairn": {
+        "officialPassed": true,
+        "observedTokens": 53747,
+        "localOutcome": "pass",
+        "scope": "passed",
+        "changedFiles": [
+          "lib/ansible/galaxy/dependency_resolution/dataclasses.py",
+          "lib/ansible/utils/collection_loader/_collection_finder.py"
+        ],
+        "primeTokens": 504
+      },
+      "artifact": "docs/publication-evidence-20260518/swe-pro-generated-patches/non-qutebrowser-slice/non-qutebrowser-official-summary.with-fixes.json"
+    },
+    {
+      "source": "20260518-non-qutebrowser",
+      "task": "openlibrary",
+      "rowId": "instance_internetarchive__openlibrary-4a5d2a7d24c9e4c11d3069220c0685b736d5ecde-v13642507b4fc1f8d234172bf8129942da2c2ca26",
+      "repo": "internetarchive/openlibrary",
+      "classification": "clean_pass_pass_savings",
+      "baseline": {
+        "officialPassed": true,
+        "observedTokens": 21932,
+        "localOutcome": "pass",
+        "scope": "passed",
+        "changedFiles": [
+          "openlibrary/core/wikidata.py"
+        ]
+      },
+      "kairn": {
+        "officialPassed": true,
+        "observedTokens": 10048,
+        "localOutcome": "pass",
+        "scope": "passed",
+        "changedFiles": [
+          "openlibrary/core/wikidata.py"
+        ],
+        "primeTokens": 443
+      },
+      "artifact": "docs/publication-evidence-20260518/swe-pro-generated-patches/non-qutebrowser-slice/non-qutebrowser-official-summary.with-fixes.json"
+    }
+  ],
+  "aggregate": {
+    "rows": 5,
+    "baselineOfficialPasses": 2,
+    "kairnOfficialPasses": 5,
+    "cleanSavingsRows": 1
+  }
+}

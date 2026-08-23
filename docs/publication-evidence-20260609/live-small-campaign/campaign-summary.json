@@ -1,0 +1,503 @@
+{
+  "id": "live-small-campaign-20260609",
+  "name": "Proxy-first small live campaign",
+  "generatedAt": "2026-06-09T23:14:59.781Z",
+  "manifestPath": "campaign-manifest.json",
+  "outDir": ".",
+  "stage": "all",
+  "dryRun": false,
+  "parallel": 1,
+  "paused": true,
+  "pauseReasons": [
+    "repeated failure class: wrong_surface_risk"
+  ],
+  "artifacts": [
+    {
+      "entryId": "proxy-swe-row-2-openlibrary",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": [
+        "swe-pro",
+        "proxy",
+        "clean-control",
+        "python"
+      ],
+      "startedAt": "2026-06-09T22:53:03.332Z",
+      "endedAt": "2026-06-09T22:53:28.832Z",
+      "artifactPath": "raw/proxy-swe-row-2-openlibrary.json",
+      "workerPacketPath": "worker-packets/proxy-swe-row-2-openlibrary.json",
+      "commands": [],
+      "classifications": [
+        "proxy_pass"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": true,
+        "cleanPassPass": false,
+        "tokenRegression": false,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 0,
+        "mcpUsefulAttribution": 0,
+        "elapsedMs": 25500,
+        "observedTokens": 648
+      }
+    },
+    {
+      "entryId": "proxy-swe-row-3-vuls",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": [
+        "swe-pro",
+        "proxy",
+        "clean-control",
+        "go"
+      ],
+      "startedAt": "2026-06-09T22:53:03.340Z",
+      "endedAt": "2026-06-09T22:53:06.722Z",
+      "artifactPath": "raw/proxy-swe-row-3-vuls.json",
+      "workerPacketPath": "worker-packets/proxy-swe-row-3-vuls.json",
+      "commands": [],
+      "classifications": [
+        "wrong_surface_risk"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": false,
+        "cleanPassPass": false,
+        "tokenRegression": false,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 0,
+        "mcpUsefulAttribution": 0,
+        "elapsedMs": 3382,
+        "observedTokens": 414
+      }
+    },
+    {
+      "entryId": "proxy-swe-row-9-element-device",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": [
+        "swe-pro",
+        "proxy",
+        "frontend-ownership",
+        "typescript"
+      ],
+      "startedAt": "2026-06-09T22:53:03.343Z",
+      "endedAt": "2026-06-09T22:53:28.839Z",
+      "artifactPath": "raw/proxy-swe-row-9-element-device.json",
+      "workerPacketPath": "worker-packets/proxy-swe-row-9-element-device.json",
+      "commands": [],
+      "classifications": [
+        "wrong_surface_risk"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": false,
+        "cleanPassPass": false,
+        "tokenRegression": false,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 0,
+        "mcpUsefulAttribution": 0,
+        "elapsedMs": 25496,
+        "observedTokens": 678
+      }
+    },
+    {
+      "entryId": "proxy-swe-row-10-element-discovery",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": [
+        "swe-pro",
+        "proxy",
+        "clean-control",
+        "typescript"
+      ],
+      "startedAt": "2026-06-09T22:53:06.723Z",
+      "endedAt": "2026-06-09T22:53:28.894Z",
+      "artifactPath": "raw/proxy-swe-row-10-element-discovery.json",
+      "workerPacketPath": "worker-packets/proxy-swe-row-10-element-discovery.json",
+      "commands": [],
+      "classifications": [
+        "proxy_pass"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": true,
+        "cleanPassPass": false,
+        "tokenRegression": false,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 0,
+        "mcpUsefulAttribution": 0,
+        "elapsedMs": 22171,
+        "observedTokens": 410
+      }
+    },
+    {
+      "entryId": "live-swe-row-2-openlibrary",
+      "kind": "control",
+      "stage": "live",
+      "status": "passed",
+      "tags": [
+        "swe-pro",
+        "live",
+        "clean-control",
+        "python"
+      ],
+      "startedAt": "2026-06-09T22:54:39.548Z",
+      "endedAt": "2026-06-09T23:00:35.553Z",
+      "artifactPath": "raw/live-swe-row-2-openlibrary.json",
+      "workerPacketPath": "worker-packets/live-swe-row-2-openlibrary.json",
+      "commands": [],
+      "classifications": [
+        "official_token_regression"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": true,
+        "cleanPassPass": false,
+        "tokenRegression": true,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 0,
+        "mcpUsefulAttribution": 0,
+        "elapsedMs": 356003,
+        "observedTokens": 54229,
+        "baselineTokens": 43173,
+        "savedTokens": -11056,
+        "savingsRate": -0.2561
+      }
+    },
+    {
+      "entryId": "live-swe-row-10-element-discovery",
+      "kind": "control",
+      "stage": "live",
+      "status": "passed",
+      "tags": [
+        "swe-pro",
+        "live",
+        "clean-control",
+        "typescript"
+      ],
+      "startedAt": "2026-06-09T23:00:51.600Z",
+      "endedAt": "2026-06-09T23:07:45.894Z",
+      "artifactPath": "raw/live-swe-row-10-element-discovery.json",
+      "workerPacketPath": "worker-packets/live-swe-row-10-element-discovery.json",
+      "commands": [],
+      "classifications": [
+        "clean_passpass"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": true,
+        "cleanPassPass": true,
+        "tokenRegression": false,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 0,
+        "mcpUsefulAttribution": 0,
+        "elapsedMs": 414293,
+        "observedTokens": 25991,
+        "baselineTokens": 37640,
+        "savedTokens": 11649,
+        "savingsRate": 0.3095
+      }
+    },
+    {
+      "entryId": "mcp-smoke-local-context",
+      "kind": "mcp_smoke",
+      "stage": "live",
+      "status": "passed",
+      "tags": [
+        "mcp",
+        "smoke",
+        "protocol"
+      ],
+      "startedAt": "2026-06-09T23:07:57.501Z",
+      "endedAt": "2026-06-09T23:08:02.086Z",
+      "artifactPath": "raw/mcp-smoke-local-context.json",
+      "workerPacketPath": "worker-packets/mcp-smoke-local-context.json",
+      "commands": [],
+      "classifications": [
+        "mcp_useful_attribution"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": true,
+        "cleanPassPass": false,
+        "tokenRegression": false,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 2,
+        "mcpUsefulAttribution": 1,
+        "elapsedMs": 4584
+      }
+    },
+    {
+      "entryId": "endurance-fastify-mcp-repeat1",
+      "kind": "endurance",
+      "stage": "live",
+      "status": "passed",
+      "tags": [
+        "mcp",
+        "endurance",
+        "js-server",
+        "fastify"
+      ],
+      "startedAt": "2026-06-09T23:08:14.391Z",
+      "endedAt": "2026-06-09T23:14:07.768Z",
+      "artifactPath": "raw/endurance-fastify-mcp-repeat1.json",
+      "workerPacketPath": "worker-packets/endurance-fastify-mcp-repeat1.json",
+      "commands": [],
+      "classifications": [
+        "clean_passpass",
+        "mcp_useful_attribution"
+      ],
+      "workspacePaths": [],
+      "metrics": {
+        "qualityPassed": true,
+        "cleanPassPass": true,
+        "tokenRegression": false,
+        "qualityDrop": false,
+        "qualityRescue": false,
+        "harmfulAssist": false,
+        "scopeViolations": 0,
+        "mcpCalls": 2,
+        "mcpUsefulAttribution": 2,
+        "elapsedMs": 353377,
+        "observedTokens": 36060,
+        "baselineTokens": 122141,
+        "savedTokens": 86081,
+        "savingsRate": 0.7047674409084582
+      }
+    }
+  ],
+  "rows": [
+    {
+      "entryId": "proxy-swe-row-2-openlibrary",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": "swe-pro;proxy;clean-control;python",
+      "qualityPassed": true,
+      "observedTokens": 648,
+      "cleanPassPass": false,
+      "tokenRegression": false,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 0,
+      "mcpUsefulAttribution": 0,
+      "classifications": "proxy_pass",
+      "elapsedMs": 25500
+    },
+    {
+      "entryId": "proxy-swe-row-3-vuls",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": "swe-pro;proxy;clean-control;go",
+      "qualityPassed": false,
+      "observedTokens": 414,
+      "cleanPassPass": false,
+      "tokenRegression": false,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 0,
+      "mcpUsefulAttribution": 0,
+      "classifications": "wrong_surface_risk",
+      "elapsedMs": 3382
+    },
+    {
+      "entryId": "proxy-swe-row-9-element-device",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": "swe-pro;proxy;frontend-ownership;typescript",
+      "qualityPassed": false,
+      "observedTokens": 678,
+      "cleanPassPass": false,
+      "tokenRegression": false,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 0,
+      "mcpUsefulAttribution": 0,
+      "classifications": "wrong_surface_risk",
+      "elapsedMs": 25496
+    },
+    {
+      "entryId": "proxy-swe-row-10-element-discovery",
+      "kind": "proxy",
+      "stage": "proxy",
+      "status": "passed",
+      "tags": "swe-pro;proxy;clean-control;typescript",
+      "qualityPassed": true,
+      "observedTokens": 410,
+      "cleanPassPass": false,
+      "tokenRegression": false,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 0,
+      "mcpUsefulAttribution": 0,
+      "classifications": "proxy_pass",
+      "elapsedMs": 22171
+    },
+    {
+      "entryId": "live-swe-row-2-openlibrary",
+      "kind": "control",
+      "stage": "live",
+      "status": "passed",
+      "tags": "swe-pro;live;clean-control;python",
+      "qualityPassed": true,
+      "observedTokens": 54229,
+      "baselineTokens": 43173,
+      "savedTokens": -11056,
+      "savingsRate": -0.2561,
+      "cleanPassPass": false,
+      "tokenRegression": true,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 0,
+      "mcpUsefulAttribution": 0,
+      "classifications": "official_token_regression",
+      "elapsedMs": 356003
+    },
+    {
+      "entryId": "live-swe-row-10-element-discovery",
+      "kind": "control",
+      "stage": "live",
+      "status": "passed",
+      "tags": "swe-pro;live;clean-control;typescript",
+      "qualityPassed": true,
+      "observedTokens": 25991,
+      "baselineTokens": 37640,
+      "savedTokens": 11649,
+      "savingsRate": 0.3095,
+      "cleanPassPass": true,
+      "tokenRegression": false,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 0,
+      "mcpUsefulAttribution": 0,
+      "classifications": "clean_passpass",
+      "elapsedMs": 414293
+    },
+    {
+      "entryId": "mcp-smoke-local-context",
+      "kind": "mcp_smoke",
+      "stage": "live",
+      "status": "passed",
+      "tags": "mcp;smoke;protocol",
+      "qualityPassed": true,
+      "cleanPassPass": false,
+      "tokenRegression": false,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 2,
+      "mcpUsefulAttribution": 1,
+      "classifications": "mcp_useful_attribution",
+      "elapsedMs": 4584
+    },
+    {
+      "entryId": "endurance-fastify-mcp-repeat1",
+      "kind": "endurance",
+      "stage": "live",
+      "status": "passed",
+      "tags": "mcp;endurance;js-server;fastify",
+      "qualityPassed": true,
+      "observedTokens": 36060,
+      "baselineTokens": 122141,
+      "savedTokens": 86081,
+      "savingsRate": 0.7047674409084582,
+      "cleanPassPass": true,
+      "tokenRegression": false,
+      "qualityDrop": false,
+      "qualityRescue": false,
+      "harmfulAssist": false,
+      "scopeViolations": 0,
+      "mcpCalls": 2,
+      "mcpUsefulAttribution": 2,
+      "classifications": "clean_passpass;mcp_useful_attribution",
+      "elapsedMs": 353377
+    }
+  ],
+  "aggregate": {
+    "entries": 8,
+    "completedEntries": 8,
+    "failedEntries": 0,
+    "qualityPassRate": 0.75,
+    "cleanPassPassRows": 2,
+    "tokenRegressionRows": 1,
+    "qualityRescueRows": 0,
+    "harmfulRows": 0,
+    "scopeViolations": 0,
+    "mcpCalls": 4,
+    "mcpUsefulAttribution": 3,
+    "medianSavedTokens": 11649,
+    "medianSavingsRate": 0.3095,
+    "medianElapsedMsByStage": {
+      "proxy": 25496,
+      "live": 356003
+    },
+    "repeatedFailureClasses": [
+      {
+        "classification": "wrong_surface_risk",
+        "count": 2,
+        "examples": [
+          "proxy-swe-row-3-vuls",
+          "proxy-swe-row-9-element-device"
+        ]
+      }
+    ],
+    "pauseRuleStatus": {
+      "paused": true,
+      "reasons": [
+        "repeated failure class: wrong_surface_risk"
+      ]
+    }
+  },
+  "outputs": {
+    "manifestPath": "campaign-manifest.json",
+    "summaryPath": "campaign-summary.json",
+    "resultsCsvPath": "results.csv",
+    "failuresCsvPath": "failures.csv",
+    "proxyResultsCsvPath": "proxy-results.csv",
+    "workerPacketsDir": "worker-packets",
+    "rawDir": "raw",
+    "workDir": "work"
+  }
+}

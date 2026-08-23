@@ -1,0 +1,113 @@
+{
+  "id": "repo-matrix-post-launch-fresh-20260523",
+  "name": "Kairn Post-Launch Fresh Source Matrix",
+  "gates": {
+    "maxStateMb": 400,
+    "maxPrimeLatencyMs": 12000,
+    "maxRepoPreflightMs": 180000,
+    "expectedTopK": 5,
+    "requireSuppressionForWeakCases": true
+  },
+  "repos": [
+    {
+      "id": "rich",
+      "name": "Rich",
+      "repoUrl": "https://github.com/Textualize/rich.git",
+      "ref": "46cebbb032f920eb096efbaf23cdc6fe9dd541f7",
+      "cloneDepth": 1,
+      "language": "python",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "cell-length-cache",
+          "mode": "context",
+          "contextBehavior": "cheap_single_source",
+          "task": "Fix Rich cell_len so normal short strings use cached_cell_len before falling back to the full width calculation.",
+          "expectedFiles": ["rich/cells.py"],
+          "excludedFiles": ["tests/", "docs/", "rich/console.py", "rich/text.py"],
+          "budget": 650
+        }
+      ]
+    },
+    {
+      "id": "werkzeug",
+      "name": "Werkzeug",
+      "repoUrl": "https://github.com/pallets/werkzeug.git",
+      "ref": "1b00618e787f40dfb21eba29caf8f8be7c8e1d93",
+      "cloneDepth": 1,
+      "language": "python",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "routing-map-rule-match",
+          "mode": "context",
+          "contextBehavior": "multi_file_debug",
+          "task": "Debug Werkzeug routing when Map binds URL rules and Rule matching fails to route a method-specific endpoint.",
+          "expectedFiles": ["src/werkzeug/routing/map.py", "src/werkzeug/routing/rules.py", "src/werkzeug/routing/matcher.py"],
+          "excludedFiles": ["tests/", "docs/", "examples/"],
+          "budget": 850
+        }
+      ]
+    },
+    {
+      "id": "black",
+      "name": "Black",
+      "repoUrl": "https://github.com/psf/black.git",
+      "ref": "650983f7b32b15feeb0fa30c0ed1a8b6e2a9b28f",
+      "cloneDepth": 1,
+      "language": "python",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "line-generator-comments",
+          "mode": "context",
+          "contextBehavior": "multi_file_debug",
+          "task": "Debug Black formatting when LineGenerator creates output lines and comment handling changes line splitting behavior.",
+          "expectedFiles": ["src/black/linegen.py", "src/black/lines.py", "src/black/comments.py"],
+          "excludedFiles": ["tests/", "docs/", "profiling/"],
+          "budget": 850
+        }
+      ]
+    },
+    {
+      "id": "ripgrep",
+      "name": "ripgrep",
+      "repoUrl": "https://github.com/BurntSushi/ripgrep.git",
+      "ref": "4519153e5e461527f4bca45b042fff45c4ec6fb9",
+      "cloneDepth": 1,
+      "language": "rust",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "core-search-json-printer",
+          "mode": "context",
+          "contextBehavior": "multi_file_debug",
+          "task": "Debug ripgrep JSON output when core search emits matches and the printer formats paths and match events.",
+          "expectedFiles": ["crates/core/search.rs", "crates/printer/src/json.rs", "crates/printer/src/path.rs"],
+          "excludedFiles": ["tests/", "benchs/", "doc/"],
+          "budget": 900
+        }
+      ]
+    },
+    {
+      "id": "pytest",
+      "name": "pytest",
+      "repoUrl": "https://github.com/pytest-dev/pytest.git",
+      "ref": "46ea2a3cfc50ae42310c278387be49d165d71581",
+      "cloneDepth": 1,
+      "language": "python",
+      "sizeClass": "medium",
+      "cases": [
+        {
+          "id": "fixture-resolution-node",
+          "mode": "context",
+          "contextBehavior": "multi_file_debug",
+          "task": "Debug pytest fixture resolution when collected Python test nodes request fixture values during runner setup.",
+          "expectedFiles": ["src/_pytest/fixtures.py", "src/_pytest/python.py", "src/_pytest/runner.py"],
+          "excludedFiles": ["testing/", "doc/", "scripts/"],
+          "budget": 900
+        }
+      ]
+    }
+  ]
+}

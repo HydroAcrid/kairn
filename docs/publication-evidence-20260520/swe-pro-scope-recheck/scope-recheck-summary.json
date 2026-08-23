@@ -1,0 +1,118 @@
+{
+  "generatedAt": "2026-05-20T16:32:08.037Z",
+  "source": "SWE-Bench Pro official evaluator, 2026-05-20 scope recheck after production-source guardrail fix",
+  "notes": [
+    "Baseline rows are reused from the 2026-05-19 tractable non-qutebrowser slice; baseline was intentionally stubbed in the 2026-05-20 scope recheck to avoid duplicate token spend.",
+    "Kairn patches were regenerated after the general production-source-only scope detector fix.",
+    "Savings are counted only when both baseline and Kairn pass official eval, pass local scope discipline, and Kairn emitted active assistance."
+  ],
+  "rows": [
+    {
+      "rowId": "instance_future-architect__vuls-407407d306e9431d6aa0ab566baa6e44e5ba2904",
+      "repo": "future-architect/vuls",
+      "expectedProductionFiles": [
+        "contrib/trivy/pkg/converter.go"
+      ],
+      "baseline": {
+        "officialPassed": true,
+        "localOutcome": "pass",
+        "observedTokens": 93443,
+        "scopePassed": true,
+        "changedFiles": [
+          "contrib/trivy/pkg/converter.go"
+        ]
+      },
+      "kairnScopeRecheck": {
+        "officialPassed": true,
+        "localOutcome": "pass",
+        "observedTokens": 94901,
+        "scopePassed": true,
+        "changedFiles": [
+          "contrib/trivy/pkg/converter.go"
+        ],
+        "primeTokens": 0,
+        "primeEmitted": 0,
+        "primeSuppressed": 1,
+        "productionOnlyScopeExpected": true
+      },
+      "rawTokenSavingsRate": -0.0156,
+      "cleanActiveSavingsRate": null,
+      "interpretation": "clean_pass_pass_neutral_or_passive"
+    },
+    {
+      "rowId": "instance_NodeBB__NodeBB-f9ce92df988db7c1ae55d9ef96d247d27478bc70-vf2cf3cbd463b7ad942381f1c6d077626485a1e9e",
+      "repo": "NodeBB/NodeBB",
+      "expectedProductionFiles": [
+        "src/controllers/admin/uploads.js"
+      ],
+      "baseline": {
+        "officialPassed": true,
+        "localOutcome": "fail",
+        "observedTokens": 56830,
+        "scopePassed": false,
+        "changedFiles": [
+          "src/file.js"
+        ]
+      },
+      "kairnScopeRecheck": {
+        "officialPassed": true,
+        "localOutcome": "pass",
+        "observedTokens": 41397,
+        "scopePassed": true,
+        "changedFiles": [
+          "src/controllers/admin/uploads.js"
+        ],
+        "primeTokens": 460,
+        "primeEmitted": 1,
+        "primeSuppressed": 0,
+        "productionOnlyScopeExpected": true
+      },
+      "rawTokenSavingsRate": 0.2716,
+      "cleanActiveSavingsRate": null,
+      "interpretation": "scope_rescue_official_pass"
+    },
+    {
+      "rowId": "instance_flipt-io__flipt-6fe76d024ee0c50ddb09c86f4ae0bd4c208fd65f",
+      "repo": "flipt-io/flipt",
+      "expectedProductionFiles": [
+        "internal/server/auth/middleware.go"
+      ],
+      "baseline": {
+        "officialPassed": false,
+        "localOutcome": "fail",
+        "observedTokens": 36332,
+        "scopePassed": false,
+        "changedFiles": [
+          "internal/server/auth/middleware.go",
+          "internal/server/auth/middleware_test.go"
+        ]
+      },
+      "kairnScopeRecheck": {
+        "officialPassed": true,
+        "localOutcome": "pass",
+        "observedTokens": 41641,
+        "scopePassed": true,
+        "changedFiles": [
+          "internal/server/auth/middleware.go"
+        ],
+        "primeTokens": 463,
+        "primeEmitted": 1,
+        "primeSuppressed": 0,
+        "productionOnlyScopeExpected": true
+      },
+      "rawTokenSavingsRate": -0.1461,
+      "cleanActiveSavingsRate": null,
+      "interpretation": "quality_rescue_official_pass"
+    }
+  ],
+  "aggregate": {
+    "rows": 3,
+    "kairnOfficialPasses": 3,
+    "kairnScopePasses": 3,
+    "cleanActiveSavingsRows": 0,
+    "medianCleanActiveSavings": null,
+    "qualityRescueRows": 1,
+    "scopeRescueRows": 1,
+    "cleanPassPassNeutralOrPassiveRows": 1
+  }
+}

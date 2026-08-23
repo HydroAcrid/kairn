@@ -98,10 +98,35 @@ function behaviorTemplateForTask(task: string): string | undefined {
     return "isBlank must use the language whitespace semantics, not only literal spaces.";
   }
   if (
+    /\b(voice|broadcast)\b/.test(normalized) &&
+    /\b(liveness|live|badge|icon|feedback|visual|recording|playback|paused|grey|gray)\b/.test(normalized)
+  ) {
+    return "Voice broadcast UI state must distinguish live, paused/grey, and not-live states consistently across playback and recording surfaces.";
+  }
+  if (
+    /\b(topic|topics|category|categories)\b/.test(normalized) &&
+    /\b(pin|pinned|reorder|ordering|order|position|relative order|target position)\b/.test(normalized) &&
+    /\b(privileges?|moderator|admin|no-op|category isolation|membership|sorted set)\b/.test(normalized)
+  ) {
+    return "Pinned-topic reordering must preserve authorization, category isolation, no-op behavior for unpinned topics, and deterministic relative order.";
+  }
+  if (
     /\b(validat(e|ion)|valid|invalid|reject|accept)\b/.test(normalized) &&
-    /\b(identifier|keyword|reserved|name|fqcn|collection name|namespace)\b/.test(normalized)
+    /\b(identifier|keyword|reserved|fqcn|collection name|namespace)\b/.test(normalized)
   ) {
     return "Validation changes must reject newly invalid inputs while preserving existing invalid-input rejection paths; invalid values must not fall through to later runtime branches.";
+  }
+  if (
+    /\b(unflatten|flattened|nested|indexed|parent keys?|form data|body data|request body|query string|query parameters?|duplicate (?:simple )?keys?|assignments?)\b/.test(normalized) &&
+    /\b(post|form|body|request|endpoint|route|handler|seeds?|defaults?)\b/.test(normalized)
+  ) {
+    return "Request-body reconstruction must use body data without merging query parameters, preserve ordered key/value pairs through unflattening, skip ancestor defaults for nested keys, and let later duplicate simple keys win.";
+  }
+  if (
+    /\b(source packages?|binary packages?|src packages?|package source|source package associations?|apk|alpine)\b/.test(normalized) &&
+    /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?)\b/.test(normalized)
+  ) {
+    return "Package scanning must preserve binary package identity while recording source-package associations, and vulnerability matching must assess source packages when binaries derive from them.";
   }
   if (/\bhash\b/.test(normalized) && /\b(order|properties|query keys?)\b/.test(normalized)) {
     return "Equivalent object keys must hash consistently regardless of property order.";

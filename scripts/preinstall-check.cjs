@@ -14,7 +14,7 @@ if (!supported) {
   console.error("Recommended fix with nvm:");
   console.error("  nvm install 24");
   console.error("  nvm use 24");
-  console.error("  npm install -g usekairn");
+  console.error("  npm install -g usekairn@beta");
   console.error("");
   console.error("Node 22 or 24 LTS is recommended.");
   console.error("");

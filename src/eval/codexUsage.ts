@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import type { CodexUsageRecord } from "../types.js";
 import { sha256 } from "../utils/hash.js";
+import { normalizeRelativePath } from "../utils/paths.js";
 
 type TranscriptMetadata = {
   model?: string;
@@ -16,6 +17,15 @@ export type CodexTranscriptFeedback = {
   commands: string[];
   testsRun: string[];
   outcome?: "pass" | "fail" | "partial";
+};
+
+export type CodexTranscriptMcp = {
+  count: number;
+  toolNames: string[];
+  files: string[];
+  attributedFiles: string[];
+  contextActions: string[];
+  stopConditions: string[];
 };
 
 export function parseCodexUsageFooter(input: string): Omit<CodexUsageRecord, "source"> | undefined {
@@ -48,6 +58,7 @@ export function readCodexTranscript(input: {
   usage?: Omit<CodexUsageRecord, "source">;
   metadata: TranscriptMetadata;
   feedback: CodexTranscriptFeedback;
+  mcp: CodexTranscriptMcp;
   transcriptPath: string;
   transcriptHash: string;
 } {
@@ -55,11 +66,13 @@ export function readCodexTranscript(input: {
   const metadata = extractTranscriptMetadata(content);
   const usage = parseCodexUsageFooter(content) ?? extractUsageFromJsonl(content);
   const feedback = extractTranscriptFeedback(content);
+  const mcp = extractTranscriptMcp(content);
 
   return {
     ...(usage ? { usage } : {}),
     metadata,
     feedback,
+    mcp,
     transcriptPath: input.transcriptPath,
     transcriptHash: sha256(content)
   };
@@ -94,18 +107,19 @@ export function mergeCodexUsage(input: {
 }
 
 function extractUsageFromJsonl(input: string): Omit<CodexUsageRecord, "source"> | undefined {
+  let latestUsage: Omit<CodexUsageRecord, "source"> | undefined;
   for (const line of input.split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!trimmed.startsWith("{")) continue;
     try {
       const parsed = JSON.parse(trimmed) as unknown;
       const usage = findUsageObject(parsed);
-      if (usage) return usage;
+      if (usage) latestUsage = usage;
     } catch {
       // Transcript parsing is best-effort; malformed lines are ignored.
     }
   }
-  return undefined;
+  return latestUsage;
 }
 
 function findUsageObject(value: unknown): Omit<CodexUsageRecord, "source"> | undefined {
@@ -190,6 +204,155 @@ function extractTranscriptFeedback(input: string): CodexTranscriptFeedback {
     testsRun: [...testsRun].slice(0, 30),
     ...(failSignals > passSignals ? { outcome: "fail" as const } : passSignals > 0 ? { outcome: "pass" as const } : {})
   };
+}
+
+function extractTranscriptMcp(input: string): CodexTranscriptMcp {
+  let startedCalls = 0;
+  let completedCalls = 0;
+  const toolNames = new Set<string>();
+  const files = new Set<string>();
+  const attributedFiles = new Set<string>();
+  const contextActions = new Set<string>();
+  const stopConditions = new Set<string>();
+
+  for (const line of input.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("{")) continue;
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      for (const call of findKairnMcpFunctionCalls(parsed)) {
+        startedCalls += 1;
+        toolNames.add(call.toolName);
+      }
+      for (const event of findKairnMcpCompletionEvents(parsed)) {
+        completedCalls += 1;
+        toolNames.add(event.toolName);
+        collectMcpResultEvidence(event.result, { files, attributedFiles, contextActions, stopConditions });
+      }
+    } catch {
+      // MCP extraction is best-effort; malformed transcript lines are ignored.
+    }
+  }
+
+  return {
+    count: Math.max(startedCalls, completedCalls),
+    toolNames: [...toolNames].sort(),
+    files: [...files].sort(),
+    attributedFiles: [...attributedFiles].sort(),
+    contextActions: [...contextActions].sort(),
+    stopConditions: [...stopConditions].sort()
+  };
+}
+
+function findKairnMcpFunctionCalls(value: unknown, depth = 0): Array<{ toolName: string }> {
+  if (depth > 10) return [];
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => findKairnMcpFunctionCalls(item, depth + 1));
+  }
+  if (!isRecord(value)) return [];
+
+  const found: Array<{ toolName: string }> = [];
+  const type = stringValue(value.type);
+  const namespace = stringValue(value.namespace);
+  const name = stringValue(value.name) ?? stringValue(value.tool) ?? stringValue(value.toolName);
+  if (type === "function_call" && isKairnMcpTool(name, namespace)) {
+    found.push({ toolName: name! });
+  }
+
+  for (const nested of Object.values(value).slice(0, 60)) {
+    if (typeof nested === "object" && nested !== null) {
+      found.push(...findKairnMcpFunctionCalls(nested, depth + 1));
+    }
+  }
+  return found;
+}
+
+function findKairnMcpCompletionEvents(value: unknown, depth = 0): Array<{ toolName: string; result: unknown }> {
+  if (depth > 10) return [];
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => findKairnMcpCompletionEvents(item, depth + 1));
+  }
+  if (!isRecord(value)) return [];
+
+  const found: Array<{ toolName: string; result: unknown }> = [];
+  const type = stringValue(value.type);
+  const invocation = isRecord(value.invocation) ? value.invocation : undefined;
+  const name =
+    stringValue(invocation?.tool) ??
+    stringValue(invocation?.name) ??
+    stringValue(value.tool) ??
+    stringValue(value.toolName) ??
+    stringValue(value.name);
+  const server = stringValue(invocation?.server) ?? stringValue(value.server);
+  if ((type === "mcp_tool_call_end" || type === "tool_call_end") && isKairnMcpTool(name, server === "kairn" ? "mcp__kairn__" : undefined)) {
+    found.push({ toolName: name!, result: value.result });
+  }
+
+  for (const nested of Object.values(value).slice(0, 60)) {
+    if (typeof nested === "object" && nested !== null) {
+      found.push(...findKairnMcpCompletionEvents(nested, depth + 1));
+    }
+  }
+  return found;
+}
+
+function isKairnMcpTool(name: string | undefined, namespace: string | undefined): name is string {
+  return Boolean(name && name.startsWith("kairn_") && (!namespace || namespace === "mcp__kairn__" || namespace.includes("kairn")));
+}
+
+function collectMcpResultEvidence(
+  value: unknown,
+  output: {
+    files: Set<string>;
+    attributedFiles: Set<string>;
+    contextActions: Set<string>;
+    stopConditions: Set<string>;
+  },
+  depth = 0
+): void {
+  if (depth > 10) return;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return;
+    try {
+      collectMcpResultEvidence(JSON.parse(trimmed) as unknown, output, depth + 1);
+    } catch {
+      // Non-JSON MCP text is ignored for structured attribution.
+    }
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value.slice(0, 100)) collectMcpResultEvidence(item, output, depth + 1);
+    return;
+  }
+  if (!isRecord(value)) return;
+
+  collectFileList(value.files, output.files);
+  collectFileList(value.startFiles, output.files);
+  collectFileList(value.attributedFiles, output.attributedFiles);
+
+  const contextDecision = isRecord(value.contextDecision) ? value.contextDecision : undefined;
+  const action = stringValue(contextDecision?.action) ?? stringValue(value.action);
+  if (action) output.contextActions.add(action);
+  const stopCondition = stringValue(value.stopCondition);
+  if (stopCondition) output.stopConditions.add(stopCondition);
+
+  for (const nested of Object.values(value).slice(0, 60)) {
+    if (typeof nested === "object" && nested !== null) {
+      collectMcpResultEvidence(nested, output, depth + 1);
+    } else if (typeof nested === "string" && (nested.trim().startsWith("{") || nested.trim().startsWith("["))) {
+      collectMcpResultEvidence(nested, output, depth + 1);
+    }
+  }
+}
+
+function collectFileList(value: unknown, output: Set<string>): void {
+  if (!Array.isArray(value)) return;
+  for (const item of value) {
+    if (typeof item !== "string") continue;
+    const normalized = normalizeRelativePath(item);
+    if (normalized) output.add(normalized);
+  }
 }
 
 function collectFeedback(

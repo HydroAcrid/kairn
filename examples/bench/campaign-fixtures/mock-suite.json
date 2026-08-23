@@ -1,0 +1,13 @@
+{
+  "id": "campaign-mock-suite",
+  "name": "Campaign Mock Suite",
+  "cases": [
+    {
+      "id": "mock-source-touch",
+      "mode": "agent",
+      "task": "Touch the app source and report the changed file.",
+      "expectedFiles": ["src/app.ts"],
+      "excludedFiles": []
+    }
+  ]
+}

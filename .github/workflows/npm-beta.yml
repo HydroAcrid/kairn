@@ -1,0 +1,89 @@
+name: npm beta source package
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Exact package version expected from package.json"
+        required: true
+        type: string
+      publish:
+        description: "Publish to the npm beta dist-tag after validation"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.31.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+          cache: pnpm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate requested beta identity
+        shell: bash
+        env:
+          EXPECTED_VERSION: ${{ inputs.version }}
+        run: |
+          ACTUAL_VERSION="$(node -p "require('./package.json').version")"
+          test "$ACTUAL_VERSION" = "$EXPECTED_VERSION"
+          case "$ACTUAL_VERSION" in
+            0.2.0-beta.*) ;;
+            *) echo "Refusing non-v0.2 beta version: $ACTUAL_VERSION" >&2; exit 1 ;;
+          esac
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm check:semantic-architecture
+      - run: pnpm check:headers
+      - run: pnpm notices:check
+      - run: pnpm verify:package-contents
+      - run: pnpm smoke:package
+      - name: Pack candidate
+        shell: bash
+        run: |
+          mkdir -p artifacts/npm
+          npm pack --pack-destination artifacts/npm
+          shasum -a 256 artifacts/npm/*.tgz > artifacts/npm/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: usekairn-${{ inputs.version }}-${{ github.sha }}
+          path: artifacts/npm
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    if: inputs.publish
+    needs: build
+    runs-on: ubuntu-latest
+    environment: npm-beta
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+      - uses: actions/download-artifact@v4
+        with:
+          name: usekairn-${{ inputs.version }}-${{ github.sha }}
+          path: artifacts/npm
+      - name: Verify and publish beta only
+        shell: bash
+        run: |
+          shasum -a 256 --check artifacts/npm/SHA256SUMS
+          npm publish artifacts/npm/*.tgz --tag beta --access public --provenance

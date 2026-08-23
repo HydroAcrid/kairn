@@ -1,0 +1,315 @@
+{
+  "suiteId": "endurance-fastify",
+  "suiteName": "Fastify HEAD Route Endurance",
+  "startedAt": "2026-05-23T11:29:42.484Z",
+  "endedAt": "2026-05-23T11:32:19.745Z",
+  "reports": [
+    {
+      "mode": "baseline",
+      "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-tsUj7Q",
+      "turns": [
+        {
+          "turnId": "diagnose",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 38710,
+          "responseTokens": 26487,
+          "elapsedMs": 37550,
+          "actualFiles": [
+            "lib/head-route.js"
+          ],
+          "agentTouchedFiles": [],
+          "expectedFiles": [
+            "lib/head-route.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "a36fab53dd0f43f00f388a01225e0fba31fa853e196cafb0e6ec73c246b24301",
+            "preparedPromptHash": "a36fab53dd0f43f00f388a01225e0fba31fa853e196cafb0e6ec73c246b24301",
+            "commandHash": "e829a3b179aaaba0fa897b9b763faec8d9a593dd9200ca2d5c027c38aeb93426",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "52876f87e1e82f8c627914c8c59dbbed81771357fb8b04e57bf22c7f6d434194",
+            "expectedFileMentions": [
+              "lib/head-route.js"
+            ],
+            "changedFiles": [
+              "lib/head-route.js"
+            ],
+            "seedPatchFiles": [
+              "lib/head-route.js"
+            ],
+            "agentTouchedFiles": [],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 38710,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "fix",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 12315,
+          "responseTokens": 3482,
+          "elapsedMs": 13274,
+          "actualFiles": [
+            "lib/head-route.js"
+          ],
+          "agentTouchedFiles": [
+            "lib/head-route.js"
+          ],
+          "expectedFiles": [
+            "lib/head-route.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "18e9b52ec9a40a323d009f7f22f9dd238c8c0d1f77cc0b624016aaf622d8c2a1",
+            "preparedPromptHash": "18e9b52ec9a40a323d009f7f22f9dd238c8c0d1f77cc0b624016aaf622d8c2a1",
+            "commandHash": "2af0c23d8e062bba0421f793fc4b942b2bb923870af5ad9c2569b72dd22a5cd0",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "6ec9892022e7859edb473da0a62a453bbb1d39ec2a40da39f3a9fc022956b08f",
+            "expectedFileMentions": [
+              "lib/head-route.js"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "lib/head-route.js"
+            ],
+            "agentTouchedFiles": [
+              "lib/head-route.js"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 12315,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "verify",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 47735,
+          "responseTokens": 248563,
+          "elapsedMs": 76253,
+          "actualFiles": [
+            "lib/head-route.js"
+          ],
+          "agentTouchedFiles": [
+            "lib/head-route.js"
+          ],
+          "expectedFiles": [
+            "lib/head-route.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "8beeb41324e377b4ac9d8d9bb6b59cbb8abb9b533430fddf49ab7c835c0c4fde",
+            "preparedPromptHash": "8beeb41324e377b4ac9d8d9bb6b59cbb8abb9b533430fddf49ab7c835c0c4fde",
+            "commandHash": "cd0d83866ceb6d41a13672bf091fd4c9071f7c9d9c39842b275af3c17a58d771",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "28018b99c750712b118cdc9e1c73d298cfe4a53fbbc9731f02ce3791b069e84f",
+            "expectedFileMentions": [
+              "lib/head-route.js"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "lib/head-route.js"
+            ],
+            "agentTouchedFiles": [
+              "lib/head-route.js"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 47735,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "cleanup",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 15386,
+          "responseTokens": 4975,
+          "elapsedMs": 24493,
+          "actualFiles": [
+            "lib/head-route.js"
+          ],
+          "agentTouchedFiles": [
+            "lib/head-route.js"
+          ],
+          "expectedFiles": [
+            "lib/head-route.js"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "bef92de399dd86a2eee8308d6c495f6b057ef943fbd1f7dfe59f4cdd7f214644",
+            "preparedPromptHash": "bef92de399dd86a2eee8308d6c495f6b057ef943fbd1f7dfe59f4cdd7f214644",
+            "commandHash": "10b88907b72eda06747fd3a702f40cda040b91f801ef4ab096bd5160b054d167",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "a3ec5a354694261c5979a6fa2429526efb1faa6439d48af6b27c0d1c7f43bf1c",
+            "expectedFileMentions": [
+              "lib/head-route.js"
+            ],
+            "changedFiles": [],
+            "seedPatchFiles": [
+              "lib/head-route.js"
+            ],
+            "agentTouchedFiles": [
+              "lib/head-route.js"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 15386,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        }
+      ],
+      "totalObservedCodexTokens": 114146,
+      "totalResponseTokens": 283507,
+      "totalElapsedMs": 151603,
+      "qualityGatePassed": true,
+      "finalVerificationPassed": true,
+      "assistanceStatus": "none",
+      "assistanceActions": {
+        "emitted": 0,
+        "shrunk": 0,
+        "suppressed": 0,
+        "mcpCalls": 0,
+        "failureContexts": 0
+      },
+      "metadata": {
+        "finalVerificationCommandPassed": true,
+        "finalSourceInvariantPassed": true,
+        "finalSourceInvariantFailures": [],
+        "finalDiffScopePassed": true,
+        "finalDiffScopeViolations": [],
+        "finalChangedFiles": [],
+        "setupElapsedMs": 0,
+        "kairnSessionCount": 0,
+        "primeEmitted": 0,
+        "primeSuppressed": 0,
+        "hookInvocations": 0,
+        "failureContextUsed": 0,
+        "mcpToolCalls": 0,
+        "mcpFilesReturned": [],
+        "mcpReturnedFileCount": 0,
+        "mcpGuidedSourceFiles": [],
+        "mcpAttributedSourceFiles": [],
+        "mcpReturnedUsefulFileCount": 0,
+        "mcpGuidedUsefulFileCount": 0,
+        "mcpAttributedUsefulFileCount": 0
+      }
+    },
+    {
+      "mode": "real_mcp_first",
+      "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-2C77gM",
+      "sessionId": "task_650651d7-d482-4eb6-b1ec-4cf249861358",
+      "turns": [],
+      "totalResponseTokens": 198,
+      "totalElapsedMs": 4172,
+      "qualityGatePassed": false,
+      "finalVerificationPassed": false,
+      "assistanceStatus": "passive_suppressed",
+      "assistanceActions": {
+        "emitted": 0,
+        "shrunk": 0,
+        "suppressed": 0,
+        "mcpCalls": 0,
+        "failureContexts": 0
+      },
+      "metadata": {
+        "setupCommandHash": "cdbcfdc4495c0e20583a5c9bf0fa51721bf4f671a8ddc35c2f673dce87e36397",
+        "setupExitCode": 1,
+        "setupTimedOut": false,
+        "setupElapsedMs": 23,
+        "setupOutputHash": "cecf916375391b28e5b92dbc284e2e3cbf307889ecdb186313d27f4e557ce7d5",
+        "setupOutputTokens": 198
+      }
+    }
+  ],
+  "deltas": {
+    "real_mcp_first": {
+      "baselineTokens": 114146,
+      "qualityGatePassed": false,
+      "assistanceStatus": "passive_suppressed",
+      "assistanceEligible": false,
+      "baselineDifficulty": "expensive_pass",
+      "baselineTokenCost": 114146,
+      "abstentionOutcome": "passive_quality_regression",
+      "missedOpportunity": false,
+      "overAssist": false,
+      "harmfulAssist": true,
+      "assistClassification": "passive_quality_regression",
+      "negativeEvidenceReason": "Kairn was passive/suppressed, but the assisted run failed quality while baseline passed."
+    }
+  },
+  "recommendations": [
+    "real_mcp_first: quality gate failed; do not claim token savings for this mode.",
+    "real_mcp_first: Kairn was passive_suppressed; any lower token usage is passive evidence, not valid Kairn-assisted savings."
+  ]
+}

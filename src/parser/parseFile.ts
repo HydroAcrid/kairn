@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createRequire } from "node:module";
+import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { Language, Parser, type Point } from "web-tree-sitter";
 import type { ParsedFile, SymbolKind, SymbolRecord } from "../types.js";
 
-const require = createRequire(import.meta.url);
+const moduleRequire = createRequire(resolveModuleUrl());
 
 type ParserGrammar = "typescript" | "tsx" | "python" | "go" | "java" | "c" | "cpp";
 
@@ -29,17 +31,41 @@ type SyntaxNodeLike = {
   childrenForFieldName(fieldName: string): SyntaxNodeLike[];
 };
 
-const WASM_BY_GRAMMAR: Record<ParserGrammar, string> = {
-  typescript: "@repomix/tree-sitter-wasms/out/tree-sitter-typescript.wasm",
-  tsx: "@repomix/tree-sitter-wasms/out/tree-sitter-tsx.wasm",
-  python: "@repomix/tree-sitter-wasms/out/tree-sitter-python.wasm",
-  go: "@repomix/tree-sitter-wasms/out/tree-sitter-go.wasm",
-  java: "@repomix/tree-sitter-wasms/out/tree-sitter-java.wasm",
-  c: "@repomix/tree-sitter-wasms/out/tree-sitter-c.wasm",
-  cpp: "@repomix/tree-sitter-wasms/out/tree-sitter-cpp.wasm"
+const WASM_BY_GRAMMAR: Record<ParserGrammar, { specifier: string; assetPath: string }> = {
+  typescript: {
+    specifier: "@repomix/tree-sitter-wasms/out/tree-sitter-typescript.wasm",
+    assetPath: "tree-sitter-wasms/out/tree-sitter-typescript.wasm"
+  },
+  tsx: {
+    specifier: "@repomix/tree-sitter-wasms/out/tree-sitter-tsx.wasm",
+    assetPath: "tree-sitter-wasms/out/tree-sitter-tsx.wasm"
+  },
+  python: {
+    specifier: "@repomix/tree-sitter-wasms/out/tree-sitter-python.wasm",
+    assetPath: "tree-sitter-wasms/out/tree-sitter-python.wasm"
+  },
+  go: {
+    specifier: "@repomix/tree-sitter-wasms/out/tree-sitter-go.wasm",
+    assetPath: "tree-sitter-wasms/out/tree-sitter-go.wasm"
+  },
+  java: {
+    specifier: "@repomix/tree-sitter-wasms/out/tree-sitter-java.wasm",
+    assetPath: "tree-sitter-wasms/out/tree-sitter-java.wasm"
+  },
+  c: {
+    specifier: "@repomix/tree-sitter-wasms/out/tree-sitter-c.wasm",
+    assetPath: "tree-sitter-wasms/out/tree-sitter-c.wasm"
+  },
+  cpp: {
+    specifier: "@repomix/tree-sitter-wasms/out/tree-sitter-cpp.wasm",
+    assetPath: "tree-sitter-wasms/out/tree-sitter-cpp.wasm"
+  }
 };
 
-const TREE_SITTER_CORE_WASM = require.resolve("web-tree-sitter/web-tree-sitter.wasm");
+const TREE_SITTER_CORE_WASM = resolveRuntimeAsset(
+  "web-tree-sitter/web-tree-sitter.wasm",
+  "web-tree-sitter/web-tree-sitter.wasm"
+);
 
 const SOURCE_GRAMMAR_BY_EXTENSION = new Map<string, ParserGrammar>([
   [".ts", "typescript"],
@@ -127,11 +153,46 @@ async function loadLanguage(grammar: ParserGrammar): Promise<Language> {
   const cached = languagePromises.get(grammar);
   if (cached) return cached;
 
-  const promise = Language.load(require.resolve(WASM_BY_GRAMMAR[grammar]));
+  const wasm = WASM_BY_GRAMMAR[grammar];
+  const promise = Language.load(resolveRuntimeAsset(wasm.specifier, wasm.assetPath));
   languagePromises.set(grammar, promise);
   return promise;
 }
 
+function resolveRuntimeAsset(specifier: string, packagedAssetPath: string): string {
+  for (const root of runtimeAssetRoots()) {
+    const candidate = path.join(root, packagedAssetPath);
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return moduleRequire.resolve(specifier);
+}
+
+function runtimeAssetRoots(): string[] {
+  const roots: string[] = [];
+  if (process.env.KAIRN_ASSET_DIR) roots.push(process.env.KAIRN_ASSET_DIR);
+  if (isPkgRuntime()) roots.push(path.join(path.dirname(process.execPath), "assets"));
+  const entry = process.argv[1];
+  if (entry) roots.push(path.join(path.dirname(entry), "assets"));
+  return roots;
+}
+
+function isPkgRuntime(): boolean {
+  return Boolean((process as NodeJS.Process & { pkg?: unknown }).pkg);
+}
+
+function resolveModuleUrl(): string {
+  if (typeof import.meta.url === "string" && import.meta.url.length > 0) {
+    return import.meta.url;
+  }
+
+  const bundledFilename = typeof __filename === "string" ? __filename : process.argv[1];
+  return pathToFileURL(bundledFilename ?? process.cwd()).href;
+}
+
+function isFatalWasmParserError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /aborted|wasm|webassembly|incompatible|failed to initialize/i.test(message);
+}
 function isWasmParserDisabled(): boolean {
   const explicitDisable = process.env.KAIRN_DISABLE_WASM_PARSER;
   if (explicitDisable && /^(1|true|yes)$/i.test(explicitDisable)) return true;

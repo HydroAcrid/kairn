@@ -1,0 +1,29 @@
+{
+  "id": "post-launch-werkzeug-source-routing-live",
+  "name": "Post-Launch Werkzeug Source Routing Live",
+  "cases": [
+    {
+      "id": "routing-map-rule-match-identify-source",
+      "mode": "agent",
+      "contextBehavior": "multi_file_debug",
+      "task": "Identify the smallest production source files involved when Werkzeug Map binds URL rules and Rule matching fails to route a method-specific endpoint. Do not edit files.",
+      "agentPrompt": "Diagnose source ownership only: identify the smallest production source files involved when Werkzeug Map binds URL rules and Rule matching fails to route a method-specific endpoint. Do not edit files. Return the relevant file paths and a short reason for each.",
+      "expectedFiles": [
+        "src/werkzeug/routing/map.py",
+        "src/werkzeug/routing/rules.py",
+        "src/werkzeug/routing/matcher.py"
+      ],
+      "minExpectedHits": 2,
+      "excludedFiles": [
+        "tests/",
+        "docs/",
+        "examples/"
+      ],
+      "qnaEvaluation": {
+        "minSourceMentions": 2,
+        "requireNoRepoChanges": true
+      },
+      "budget": 850
+    }
+  ]
+}

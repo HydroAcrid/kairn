@@ -31,6 +31,7 @@ const LANGUAGE_BY_EXTENSION: Record<string, string> = {
   ".hh": "cpp",
   ".hpp": "cpp",
   ".hxx": "cpp",
+  ".cs": "csharp",
   ".rb": "ruby",
   ".yml": "yaml",
   ".yaml": "yaml",
@@ -50,7 +51,7 @@ export function classifyFile(filePath: string): FileKind {
     normalized.includes("__tests__/") ||
     /^test_.*\.pyi?$/.test(basename) ||
     /_test\.pyi?$/.test(basename) ||
-    /tests?\//.test(normalized) && /\.pyi?$/.test(basename) ||
+    /(^|\/)tests?\//.test(normalized) && /\.pyi?$/.test(basename) ||
     /(test|tests)\.java$/.test(basename) ||
     /(test|tests)\.kt$/.test(basename) ||
     /(^|\/)src\/test\//.test(normalized) && /\.(java|kt|kts)$/.test(basename) ||
@@ -103,9 +104,11 @@ export function classifyFile(filePath: string): FileKind {
   if (
     /\.[cm]?[jt]sx?$/.test(basename) ||
     /\.pyi?$/.test(basename) ||
+    /\.rs$/.test(basename) ||
     /\.java$/.test(basename) ||
     /\.kts?$/.test(basename) ||
     /\.(c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(basename) ||
+    /\.cs$/.test(basename) ||
     /\.go$/.test(basename) ||
     /\.rb$/.test(basename)
   ) {

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { ContextResponseMode } from "./context.js";
+import type { CompressionMetricsSummary, EvidenceRoutingShadowSummary } from "./compression.js";
 import type { CodexUsageRecord } from "./eval.js";
 import type { IndexTier } from "./graph.js";
 import type { TaskPhase } from "./ledger.js";
@@ -15,6 +16,7 @@ export type MetricsEventKind =
   | "diff"
   | "failure_context"
   | "compression"
+  | "evidence_routing_shadow"
   | "hook_signal"
   | "prime_context"
   | "prime_quality"
@@ -52,6 +54,8 @@ export type MetricsSummary = {
   };
   byKind: Record<string, MetricsBucket>;
   bySource: Record<string, MetricsBucket>;
+  compression?: CompressionMetricsSummary;
+  evidenceRoutingShadow?: EvidenceRoutingShadowSummary;
   watch: {
     events: number;
     failures: number;
@@ -132,4 +136,27 @@ export type MetricsSummary = {
     };
   };
   recentEvents: MetricsEventRecord[];
+};
+
+export type ImpactStats = {
+  countersVersion: 1;
+  estimatedBaselineTokens: number;
+  estimatedOutputTokens: number;
+  estimatedActiveSavedTokens: number;
+  estimatedPassiveSavedTokens: number;
+  estimatedTotalSavedTokens: number;
+  repeatedFilesAvoided: number;
+  repeatedSnippetsAvoided: number;
+  quietDecisions: number;
+  evidenceRequests: number;
+  usefulMcpCalls: number;
+  hookInvocations: number;
+  hookFailures: number;
+  scopeViolations: number;
+  overAssistEvents: number;
+  missedOpportunityEvents: number;
+  harmfulAssistEvents: number;
+  sessions: number;
+  events: number;
+  averageHookLatencyMs?: number;
 };

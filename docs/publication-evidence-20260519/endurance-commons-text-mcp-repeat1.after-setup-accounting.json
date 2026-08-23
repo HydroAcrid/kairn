@@ -1,0 +1,1274 @@
+{
+  "suiteId": "endurance-commons-text-caseutils",
+  "suiteName": "Commons Text CaseUtils Endurance",
+  "startedAt": "2026-05-19T20:17:43.613Z",
+  "endedAt": "2026-05-19T20:23:17.389Z",
+  "reports": [
+    {
+      "mode": "baseline",
+      "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-gKUMPX",
+      "turns": [
+        {
+          "turnId": "diagnose",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 14011,
+          "responseTokens": 15548,
+          "elapsedMs": 26856,
+          "actualFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "src/main/java/org/apache/commons/text/WordUtils.java"
+          ],
+          "agentTouchedFiles": [],
+          "expectedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "src/main/java/org/apache/commons/text/WordUtils.java"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "ebf5ce8430513fec0511149bebf83b571386f291a6ab2c8314b3a79171d9ff31",
+            "preparedPromptHash": "ebf5ce8430513fec0511149bebf83b571386f291a6ab2c8314b3a79171d9ff31",
+            "commandHash": "36b0d198524ca9bf66f6ecb2f8ed5cf1c668485390bf1f5c12b2834e0b69531f",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "06795a0499a928d8834c26040ad0cf7953672408b8757b63f3bb458285e291dc",
+            "expectedFileMentions": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java",
+              "src/main/java/org/apache/commons/text/WordUtils.java"
+            ],
+            "changedFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "seedPatchFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "agentTouchedFiles": [],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 14011,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "fix-source",
+          "mode": "baseline",
+          "outcome": "fail",
+          "observedCodexTokens": 11964,
+          "responseTokens": 16045,
+          "elapsedMs": 20882,
+          "actualFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "agentTouchedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "expectedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": false,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn verification failed.",
+          "metadata": {
+            "promptHash": "b738f1b75f92663103819e2cb605fe8fe692e8e64a8c1de9062752a39006d6a4",
+            "preparedPromptHash": "b738f1b75f92663103819e2cb605fe8fe692e8e64a8c1de9062752a39006d6a4",
+            "commandHash": "986a94cbaf6fcab013905e4358bd823086220d0ff3b30c17be7285b153d0cedf",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "fdd17e6ee4c6c80a32c0fd34cecb5068fa2e1f407cc574ece47b0cfe148dd306",
+            "expectedFileMentions": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "changedFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "seedPatchFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "agentTouchedFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 1,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "codexUsage": {
+              "totalTokens": 11964,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "verify",
+          "mode": "baseline",
+          "outcome": "fail",
+          "observedCodexTokens": 6231,
+          "responseTokens": 8937,
+          "elapsedMs": 20869,
+          "actualFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "agentTouchedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "expectedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": false,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn verification failed.",
+          "metadata": {
+            "promptHash": "f0557f227c0744b7aacfc6b159cf3c00de6acf7ee3acf0fe65571a2d16c74b73",
+            "preparedPromptHash": "f0557f227c0744b7aacfc6b159cf3c00de6acf7ee3acf0fe65571a2d16c74b73",
+            "commandHash": "254f883d323b171ae02c36bc7a1561dd75926c6917997fa93f7543722a50693a",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "73b962464e8048854fb818baffa1cc3d74ba51b4dfde4c1331618659321bea3b",
+            "expectedFileMentions": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "changedFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "seedPatchFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "agentTouchedFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 1,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 6231,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "diff-review",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 9668,
+          "responseTokens": 16283,
+          "elapsedMs": 23073,
+          "actualFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "agentTouchedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "expectedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "9087bacf6257344bf2aaec70fdeb860dae6c98890a5323d20cf6bfe5da573346",
+            "preparedPromptHash": "9087bacf6257344bf2aaec70fdeb860dae6c98890a5323d20cf6bfe5da573346",
+            "commandHash": "ea6abde0d3639a385d3086b681b051117d5fbf74bcf1049d87007ade0d0c03f4",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "97ef7378501528a3cc3ece1403ca8f876bb52b1dea349c6661e198ebfed48e0c",
+            "expectedFileMentions": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "changedFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "seedPatchFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "agentTouchedFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 9668,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "repeat-context",
+          "mode": "baseline",
+          "outcome": "pass",
+          "observedCodexTokens": 5892,
+          "responseTokens": 7242,
+          "elapsedMs": 13629,
+          "actualFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "agentTouchedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "expectedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "52588c9c527646ca570a9dfedf5a1050ec021d474ccdb19fd90923c37c3b428f",
+            "preparedPromptHash": "52588c9c527646ca570a9dfedf5a1050ec021d474ccdb19fd90923c37c3b428f",
+            "commandHash": "68ea58115e02ef456f1205164382186b2a7da12669960db53035a60b2fd01fe0",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "de1ebad4689880b07ba32c714dd343fb1a3052a579f0960ab91e5fc2cd44fc00",
+            "expectedFileMentions": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "changedFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "seedPatchFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "agentTouchedFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 5892,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        },
+        {
+          "turnId": "cleanup",
+          "mode": "baseline",
+          "outcome": "fail",
+          "observedCodexTokens": 2677,
+          "responseTokens": 4053,
+          "elapsedMs": 19911,
+          "actualFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "agentTouchedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "expectedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": false,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn verification failed.",
+          "metadata": {
+            "promptHash": "6a244f8c9404b050d6ad16c103ec3dabac6fa115f58bf4bc6c28763b2014aaa2",
+            "preparedPromptHash": "6a244f8c9404b050d6ad16c103ec3dabac6fa115f58bf4bc6c28763b2014aaa2",
+            "commandHash": "0b6023dc9230e097a9e5104a72662618cce3ed6e4ca7cfd8ac26b1d15a536e7b",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "c4ab1f9a4db3c73fac1d3bcba534a1b9b61494373726b105f2690fae8e6049c7",
+            "expectedFileMentions": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "changedFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "seedPatchFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "agentTouchedFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 1,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 2677,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            }
+          }
+        }
+      ],
+      "totalObservedCodexTokens": 50443,
+      "totalResponseTokens": 68108,
+      "totalElapsedMs": 125269,
+      "qualityGatePassed": false,
+      "finalVerificationPassed": false,
+      "assistanceStatus": "none",
+      "assistanceActions": {
+        "emitted": 0,
+        "shrunk": 0,
+        "suppressed": 0,
+        "mcpCalls": 0,
+        "failureContexts": 0
+      },
+      "metadata": {
+        "finalVerificationCommandPassed": false,
+        "finalSourceInvariantPassed": true,
+        "finalSourceInvariantFailures": [],
+        "finalDiffScopePassed": true,
+        "finalDiffScopeViolations": [],
+        "finalChangedFiles": [
+          "src/main/java/org/apache/commons/text/CaseUtils.java"
+        ],
+        "setupElapsedMs": 0,
+        "kairnSessionCount": 0,
+        "primeEmitted": 0,
+        "primeSuppressed": 0,
+        "hookInvocations": 0,
+        "failureContextUsed": 0,
+        "mcpToolCalls": 0,
+        "mcpFilesReturned": [],
+        "mcpReturnedFileCount": 0,
+        "mcpReturnedUsefulFileCount": 0
+      }
+    },
+    {
+      "mode": "real_mcp_first",
+      "workspacePath": "/var/folders/9l/cc32l70n41b9pbvmb6pqnfw80000gn/T/kairn-bench-seed-bvmB2G",
+      "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+      "turns": [
+        {
+          "turnId": "diagnose",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 5248,
+          "responseTokens": 4026,
+          "elapsedMs": 17318,
+          "actualFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "src/main/java/org/apache/commons/text/WordUtils.java"
+          ],
+          "agentTouchedFiles": [],
+          "expectedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "src/main/java/org/apache/commons/text/WordUtils.java"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "ebf5ce8430513fec0511149bebf83b571386f291a6ab2c8314b3a79171d9ff31",
+            "preparedPromptHash": "8b02a1e3148d359b2160f4a48919928041c70b8eb4986d963fb1fa0f21b501aa",
+            "commandHash": "2f091c22b645348c7511d35156a2e5850ba9e47975a246b3c40b181506bced6e",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "2caeaa3778e31ae9b2f71611efad08ace6eba92f673303a73b92dd7d25ffea12",
+            "expectedFileMentions": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java",
+              "src/main/java/org/apache/commons/text/WordUtils.java"
+            ],
+            "changedFiles": [
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md",
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "seedPatchFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java",
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "agentTouchedFiles": [],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 5248,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "prepare_first",
+            "mcpShouldCallPrepare": true
+          }
+        },
+        {
+          "turnId": "fix-source",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 11502,
+          "responseTokens": 9203,
+          "elapsedMs": 21170,
+          "actualFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "agentTouchedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "expectedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "b738f1b75f92663103819e2cb605fe8fe692e8e64a8c1de9062752a39006d6a4",
+            "preparedPromptHash": "7f12a81ac474cd2197fe1e897a98188844c93496bdc7bac577eb98c27fd54691",
+            "commandHash": "07c6928e774c33d82c2a6443f0b7c2aae22e610f4d51dbf9787ed5e165ec8c8f",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "14084ab963e4cee579123eac62fda84eb67b7a030f953c9da8cf5a9d83fa036b",
+            "expectedFileMentions": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "changedFiles": [
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md",
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "seedPatchFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java",
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "agentTouchedFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "codexUsage": {
+              "totalTokens": 11502,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "continue_known_source",
+            "mcpKnownSource": "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "mcpShouldCallPrepare": false
+          }
+        },
+        {
+          "turnId": "verify",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 32276,
+          "responseTokens": 16963,
+          "elapsedMs": 42422,
+          "actualFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "agentTouchedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "expectedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "f0557f227c0744b7aacfc6b159cf3c00de6acf7ee3acf0fe65571a2d16c74b73",
+            "preparedPromptHash": "f708558485ccae3d9116bb3e13579236068f1f24d17601f9864e0c858c0e13f4",
+            "commandHash": "ca553d67f520e68e056e3c9fc6ea1ba298ee5a6f920c413d81fd797af4686b97",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "7697ee6e2f0f72ce8aea6ce3f99356bf198700f44e988daebf25ec939c73df54",
+            "expectedFileMentions": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "changedFiles": [
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md",
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "seedPatchFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java",
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "agentTouchedFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 32276,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "failure_gateway",
+            "mcpKnownSource": "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "mcpShouldCallPrepare": false
+          }
+        },
+        {
+          "turnId": "diff-review",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 4185,
+          "responseTokens": 5025,
+          "elapsedMs": 16756,
+          "actualFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "agentTouchedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "expectedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "9087bacf6257344bf2aaec70fdeb860dae6c98890a5323d20cf6bfe5da573346",
+            "preparedPromptHash": "efc2fdc5dbc9877a5b96552176b758fec00b5a1b96ebddfc50ba9fea3c08e03f",
+            "commandHash": "dffa1c4a2c4b6e007afedc12075146ada67778c305f29e63645c3dbfd89da981",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "a4ac0160609134b726730d123eb236b7601384d9ed499978027f03830e869d89",
+            "expectedFileMentions": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "changedFiles": [
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md",
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "seedPatchFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java",
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "agentTouchedFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 4185,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "continue_known_source",
+            "mcpKnownSource": "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "mcpShouldCallPrepare": false
+          }
+        },
+        {
+          "turnId": "repeat-context",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 19911,
+          "responseTokens": 25108,
+          "elapsedMs": 89248,
+          "actualFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "agentTouchedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "expectedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "52588c9c527646ca570a9dfedf5a1050ec021d474ccdb19fd90923c37c3b428f",
+            "preparedPromptHash": "f0c20fa1debaa666fa8f5bc424befb039c4fe0bfcdd287432c7c297cd7cdcead",
+            "commandHash": "5ade1cd451da8d29237f1de101e35036331faed6a880906275ca090b1c1dd2fa",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "46bae4150a4562987e921007c87cf10040e94eb6f015b5ceae9880ede6ce616e",
+            "expectedFileMentions": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "changedFiles": [
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "seedPatchFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java",
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "agentTouchedFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 19911,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "continue_known_source",
+            "mcpKnownSource": "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "mcpShouldCallPrepare": false
+          }
+        },
+        {
+          "turnId": "cleanup",
+          "mode": "real_mcp_first",
+          "outcome": "pass",
+          "observedCodexTokens": 3846,
+          "responseTokens": 5454,
+          "elapsedMs": 17416,
+          "actualFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "agentTouchedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "expectedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "missingExpectedFiles": [],
+          "requiredTouchedSatisfied": true,
+          "qualityGatePassed": true,
+          "repeatedFilesAvoided": 0,
+          "repeatedSnippetsAvoided": 0,
+          "summary": "Turn passed quality gate.",
+          "metadata": {
+            "promptHash": "6a244f8c9404b050d6ad16c103ec3dabac6fa115f58bf4bc6c28763b2014aaa2",
+            "preparedPromptHash": "32afa73b1248e8004733c5f88f1ffe330f5a92e9964a1f9a9ac5ba101ed2dcae",
+            "commandHash": "717058669c7f22065c1edc0bdaa2979fd014536ce9ff22d25bd7028abd885263",
+            "commandExitCode": 0,
+            "commandTimedOut": false,
+            "outputHash": "2d8c53fd24e98c932d93378ee81863183b0fd0a036d14bef09962315f1fae504",
+            "expectedFileMentions": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "changedFiles": [
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "seedPatchFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java",
+              ".codex/config.toml",
+              ".codex/hooks.json",
+              "AGENTS.md"
+            ],
+            "agentTouchedFiles": [
+              "src/main/java/org/apache/commons/text/CaseUtils.java"
+            ],
+            "missingRequiredTouchedFiles": [],
+            "excludedTouchedFiles": [],
+            "verificationExitCode": 0,
+            "verificationTimedOut": false,
+            "sourceInvariantPassed": true,
+            "sourceInvariantFailures": [],
+            "diffScopePassed": true,
+            "diffScopeViolations": [],
+            "diffScopeChangedFiles": [],
+            "codexUsage": {
+              "totalTokens": 3846,
+              "inputTokens": 0,
+              "cachedInputTokens": 0,
+              "outputTokens": 0,
+              "source": "footer"
+            },
+            "mcpGuidance": "continue_known_source",
+            "mcpKnownSource": "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "mcpShouldCallPrepare": false
+          }
+        }
+      ],
+      "totalObservedCodexTokens": 76968,
+      "totalResponseTokens": 65779,
+      "totalElapsedMs": 207506,
+      "qualityGatePassed": true,
+      "finalVerificationPassed": true,
+      "assistanceStatus": "active",
+      "assistanceActions": {
+        "emitted": 0,
+        "shrunk": 0,
+        "suppressed": 0,
+        "mcpCalls": 1,
+        "failureContexts": 2
+      },
+      "ledger": {
+        "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+        "events": 34,
+        "currentPhase": "debugging",
+        "recommendedFiles": [
+          "src/main/java/org/apache/commons/text/CaseUtils.java",
+          "src/main/java/org/apache/commons/text/WordUtils.java",
+          "src/main/java/org/apache/commons/text/StringEscapeUtils.java"
+        ],
+        "shownFiles": [
+          "src/main/java/org/apache/commons/text/CaseUtils.java",
+          "src/main/java/org/apache/commons/text/WordUtils.java"
+        ],
+        "agentMentionedFiles": [
+          "src/main/java/org/apache/commons/text/CaseUtils.java",
+          "src/main/java/org/apache/commons/text/WordUtils.java"
+        ],
+        "agentTouchedFiles": [
+          "src/main/java/org/apache/commons/text/CaseUtils.java"
+        ],
+        "repeatedFilesAvoided": 0,
+        "repeatedSnippetsAvoided": 0,
+        "recommendedFilesUsed": [
+          "src/main/java/org/apache/commons/text/CaseUtils.java",
+          "src/main/java/org/apache/commons/text/WordUtils.java"
+        ],
+        "repeatedlyTouchedFiles": [
+          "src/main/java/org/apache/commons/text/CaseUtils.java"
+        ],
+        "unresolvedFailures": 0,
+        "workingSet": {
+          "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+          "currentPhase": "debugging",
+          "activeFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "src/main/java/org/apache/commons/text/WordUtils.java"
+          ],
+          "recentlyTouchedFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java"
+          ],
+          "shownFiles": [
+            "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "src/main/java/org/apache/commons/text/WordUtils.java"
+          ],
+          "ignoredRecommendedFiles": [
+            "src/main/java/org/apache/commons/text/StringEscapeUtils.java"
+          ],
+          "ruledOutFiles": [],
+          "staleFiles": [],
+          "currentInvariant": {
+            "statement": "Diagnose the Commons Text regression: CaseUtils.toCamelCase should treat space as the default delimiter when no delimiter characters are provided.",
+            "filePath": "src/main/java/org/apache/commons/text/WordUtils.java",
+            "confidence": 100,
+            "sourceEventId": 7
+          },
+          "lastPassingVerification": {
+            "summary": "Final endurance verification passed.",
+            "createdAt": "2026-05-19T20:23:17.380Z"
+          },
+          "openRisks": []
+        },
+        "recentEvents": [
+          {
+            "id": 15,
+            "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+            "kind": "verification_passed",
+            "turnId": "fix-source",
+            "filePath": "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "contentHash": "78dc21981a43fc9682cace9bdcadb77c0429dc53800117370c06634d2ae30103",
+            "tokenEstimate": 13,
+            "source": "bench",
+            "summary": "Verification passed for endurance turn fix-source.",
+            "metadata": {
+              "verificationCommandHash": "8a22db638eb99a5b1eccf785fb20ef4569eabe8a32cad02d57a4eb3955da0a48",
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantChecked": true,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": true,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "qualityGatePassed": true
+            },
+            "createdAt": "2026-05-19T20:20:31.496Z"
+          },
+          {
+            "id": 16,
+            "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+            "kind": "test_run",
+            "turnId": "verify",
+            "contentHash": "c8029656c22eb691d685bae7733579bb65927f5b5097e9a5d784cf50a73a9638",
+            "tokenEstimate": 13,
+            "source": "agent",
+            "summary": "Agent command for endurance turn verify exited 0.",
+            "metadata": {
+              "commandHash": "ca553d67f520e68e056e3c9fc6ea1ba298ee5a6f920c413d81fd797af4686b97",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "7697ee6e2f0f72ce8aea6ce3f99356bf198700f44e988daebf25ec939c73df54"
+            },
+            "createdAt": "2026-05-19T20:21:13.917Z"
+          },
+          {
+            "id": 17,
+            "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+            "kind": "agent_file_mentioned",
+            "turnId": "verify",
+            "filePath": "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "contentHash": "735eb4ef44d333b6987065a18f89c03c0d3317731aeec8f82b7329d91d1d7964",
+            "tokenEstimate": 18,
+            "source": "agent",
+            "summary": "Agent mentioned src/main/java/org/apache/commons/text/CaseUtils.java.",
+            "metadata": {
+              "turnId": "verify"
+            },
+            "createdAt": "2026-05-19T20:21:13.917Z"
+          },
+          {
+            "id": 18,
+            "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+            "kind": "agent_file_touched",
+            "turnId": "verify",
+            "filePath": "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "contentHash": "287b5f8834bbb91c8810d3156c73c1abfab183f94378c923e1bd3f061dbe1188",
+            "tokenEstimate": 17,
+            "source": "agent",
+            "summary": "Agent touched src/main/java/org/apache/commons/text/CaseUtils.java.",
+            "metadata": {
+              "turnId": "verify"
+            },
+            "createdAt": "2026-05-19T20:21:13.918Z"
+          },
+          {
+            "id": 19,
+            "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+            "kind": "diff_seen",
+            "turnId": "verify",
+            "filePath": "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "contentHash": "ce48377c59400b1b07a95156f91f4daa013044ed3fd17c8ce2b4ff25eb36eeb0",
+            "tokenEstimate": 24,
+            "source": "agent",
+            "summary": "Diff touched src/main/java/org/apache/commons/text/CaseUtils.java during endurance turn verify.",
+            "metadata": {
+              "turnId": "verify"
+            },
+            "createdAt": "2026-05-19T20:21:13.918Z"
+          },
+          {
+            "id": 20,
+            "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+            "kind": "verification_passed",
+            "turnId": "verify",
+            "filePath": "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "contentHash": "88238b0cae996f16465198a97a9f5c22081e8574a8e282dcaf9c5130fe041d98",
+            "tokenEstimate": 12,
+            "source": "bench",
+            "summary": "Verification passed for endurance turn verify.",
+            "metadata": {
+              "verificationCommandHash": "8a22db638eb99a5b1eccf785fb20ef4569eabe8a32cad02d57a4eb3955da0a48",
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "qualityGatePassed": true
+            },
+            "createdAt": "2026-05-19T20:21:13.918Z"
+          },
+          {
+            "id": 21,
+            "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+            "kind": "test_run",
+            "turnId": "diff-review",
+            "contentHash": "7fc05d92fcae3d89c1f6feac5a6d8e9ae434b96731092906527f89692bb327cd",
+            "tokenEstimate": 14,
+            "source": "agent",
+            "summary": "Agent command for endurance turn diff-review exited 0.",
+            "metadata": {
+              "commandHash": "dffa1c4a2c4b6e007afedc12075146ada67778c305f29e63645c3dbfd89da981",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "a4ac0160609134b726730d123eb236b7601384d9ed499978027f03830e869d89"
+            },
+            "createdAt": "2026-05-19T20:21:30.673Z"
+          },
+          {
+            "id": 22,
+            "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+            "kind": "agent_file_mentioned",
+            "turnId": "diff-review",
+            "filePath": "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "contentHash": "735eb4ef44d333b6987065a18f89c03c0d3317731aeec8f82b7329d91d1d7964",
+            "tokenEstimate": 18,
+            "source": "agent",
+            "summary": "Agent mentioned src/main/java/org/apache/commons/text/CaseUtils.java.",
+            "metadata": {
+              "turnId": "diff-review"
+            },
+            "createdAt": "2026-05-19T20:21:30.673Z"
+          },
+          {
+            "id": 23,
+            "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+            "kind": "agent_file_touched",
+            "turnId": "diff-review",
+            "filePath": "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "contentHash": "287b5f8834bbb91c8810d3156c73c1abfab183f94378c923e1bd3f061dbe1188",
+            "tokenEstimate": 17,
+            "source": "agent",
+            "summary": "Agent touched src/main/java/org/apache/commons/text/CaseUtils.java.",
+            "metadata": {
+              "turnId": "diff-review"
+            },
+            "createdAt": "2026-05-19T20:21:30.673Z"
+          },
+          {
+            "id": 24,
+            "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+            "kind": "diff_seen",
+            "turnId": "diff-review",
+            "filePath": "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "contentHash": "1384705062b42d3c3b7c9c6d91bf554b4c355e6ca911ebed0bebe1cd6c121725",
+            "tokenEstimate": 25,
+            "source": "agent",
+            "summary": "Diff touched src/main/java/org/apache/commons/text/CaseUtils.java during endurance turn diff-review.",
+            "metadata": {
+              "turnId": "diff-review"
+            },
+            "createdAt": "2026-05-19T20:21:30.674Z"
+          },
+          {
+            "id": 25,
+            "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+            "kind": "test_run",
+            "turnId": "repeat-context",
+            "contentHash": "16343e1a223aa2a91e56d027f41361ad2f9a440516acd93d3701c95d2064e1cc",
+            "tokenEstimate": 15,
+            "source": "agent",
+            "summary": "Agent command for endurance turn repeat-context exited 0.",
+            "metadata": {
+              "commandHash": "5ade1cd451da8d29237f1de101e35036331faed6a880906275ca090b1c1dd2fa",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "46bae4150a4562987e921007c87cf10040e94eb6f015b5ceae9880ede6ce616e"
+            },
+            "createdAt": "2026-05-19T20:22:59.921Z"
+          },
+          {
+            "id": 26,
+            "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+            "kind": "agent_file_mentioned",
+            "turnId": "repeat-context",
+            "filePath": "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "contentHash": "735eb4ef44d333b6987065a18f89c03c0d3317731aeec8f82b7329d91d1d7964",
+            "tokenEstimate": 18,
+            "source": "agent",
+            "summary": "Agent mentioned src/main/java/org/apache/commons/text/CaseUtils.java.",
+            "metadata": {
+              "turnId": "repeat-context"
+            },
+            "createdAt": "2026-05-19T20:22:59.921Z"
+          },
+          {
+            "id": 27,
+            "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+            "kind": "agent_file_touched",
+            "turnId": "repeat-context",
+            "filePath": "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "contentHash": "287b5f8834bbb91c8810d3156c73c1abfab183f94378c923e1bd3f061dbe1188",
+            "tokenEstimate": 17,
+            "source": "agent",
+            "summary": "Agent touched src/main/java/org/apache/commons/text/CaseUtils.java.",
+            "metadata": {
+              "turnId": "repeat-context"
+            },
+            "createdAt": "2026-05-19T20:22:59.921Z"
+          },
+          {
+            "id": 28,
+            "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+            "kind": "diff_seen",
+            "turnId": "repeat-context",
+            "filePath": "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "contentHash": "30c49f20f3e3a31f3d9f6c9df3aeb4d3c3f99d4df4f403e141d251e4848d267d",
+            "tokenEstimate": 26,
+            "source": "agent",
+            "summary": "Diff touched src/main/java/org/apache/commons/text/CaseUtils.java during endurance turn repeat-context.",
+            "metadata": {
+              "turnId": "repeat-context"
+            },
+            "createdAt": "2026-05-19T20:22:59.921Z"
+          },
+          {
+            "id": 29,
+            "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+            "kind": "test_run",
+            "turnId": "cleanup",
+            "contentHash": "25bc38a4b4a054885fb490222949134ffa62b481ad5554f2be4c7d965c856a78",
+            "tokenEstimate": 13,
+            "source": "agent",
+            "summary": "Agent command for endurance turn cleanup exited 0.",
+            "metadata": {
+              "commandHash": "717058669c7f22065c1edc0bdaa2979fd014536ce9ff22d25bd7028abd885263",
+              "exitCode": 0,
+              "timedOut": false,
+              "outputHash": "2d8c53fd24e98c932d93378ee81863183b0fd0a036d14bef09962315f1fae504"
+            },
+            "createdAt": "2026-05-19T20:23:17.337Z"
+          },
+          {
+            "id": 30,
+            "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+            "kind": "agent_file_mentioned",
+            "turnId": "cleanup",
+            "filePath": "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "contentHash": "735eb4ef44d333b6987065a18f89c03c0d3317731aeec8f82b7329d91d1d7964",
+            "tokenEstimate": 18,
+            "source": "agent",
+            "summary": "Agent mentioned src/main/java/org/apache/commons/text/CaseUtils.java.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-19T20:23:17.337Z"
+          },
+          {
+            "id": 31,
+            "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+            "kind": "agent_file_touched",
+            "turnId": "cleanup",
+            "filePath": "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "contentHash": "287b5f8834bbb91c8810d3156c73c1abfab183f94378c923e1bd3f061dbe1188",
+            "tokenEstimate": 17,
+            "source": "agent",
+            "summary": "Agent touched src/main/java/org/apache/commons/text/CaseUtils.java.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-19T20:23:17.338Z"
+          },
+          {
+            "id": 32,
+            "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+            "kind": "diff_seen",
+            "turnId": "cleanup",
+            "filePath": "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "contentHash": "395b4d02c9d5538064426977ba371c2ddde452041bea28274b8a4fb0441a5f52",
+            "tokenEstimate": 24,
+            "source": "agent",
+            "summary": "Diff touched src/main/java/org/apache/commons/text/CaseUtils.java during endurance turn cleanup.",
+            "metadata": {
+              "turnId": "cleanup"
+            },
+            "createdAt": "2026-05-19T20:23:17.338Z"
+          },
+          {
+            "id": 33,
+            "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+            "kind": "verification_passed",
+            "turnId": "cleanup",
+            "filePath": "src/main/java/org/apache/commons/text/CaseUtils.java",
+            "contentHash": "540a8f106f03e7b35b1bdf2e86f0bb0430b0f73a7def76bdb041ff1aee1dc25a",
+            "tokenEstimate": 12,
+            "source": "bench",
+            "summary": "Verification passed for endurance turn cleanup.",
+            "metadata": {
+              "verificationCommandHash": "8a22db638eb99a5b1eccf785fb20ef4569eabe8a32cad02d57a4eb3955da0a48",
+              "verificationExitCode": 0,
+              "verificationTimedOut": false,
+              "sourceInvariantChecked": false,
+              "sourceInvariantPassed": true,
+              "sourceInvariantFailures": [],
+              "diffScopeChecked": false,
+              "diffScopePassed": true,
+              "diffScopeViolations": [],
+              "qualityGatePassed": true
+            },
+            "createdAt": "2026-05-19T20:23:17.338Z"
+          },
+          {
+            "id": 34,
+            "sessionId": "task_da667df6-c453-4255-a61d-c7209621e34f",
+            "kind": "verification_passed",
+            "contentHash": "01686a52d490ab8e273bc13297bc95ca3a956265b15943a23c3c2801a08de538",
+            "tokenEstimate": 9,
+            "source": "bench",
+            "summary": "Final endurance verification passed.",
+            "metadata": {
+              "finalVerificationCommandHash": "8a22db638eb99a5b1eccf785fb20ef4569eabe8a32cad02d57a4eb3955da0a48",
+              "finalVerificationExitCode": 0,
+              "finalVerificationOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "finalSourceInvariantPassed": true,
+              "finalSourceInvariantFailures": [],
+              "finalDiffScopePassed": true,
+              "finalDiffScopeViolations": []
+            },
+            "createdAt": "2026-05-19T20:23:17.380Z"
+          }
+        ]
+      },
+      "metadata": {
+        "finalVerificationCommandPassed": true,
+        "finalSourceInvariantPassed": true,
+        "finalSourceInvariantFailures": [],
+        "finalDiffScopePassed": true,
+        "finalDiffScopeViolations": [],
+        "finalChangedFiles": [],
+        "setupElapsedMs": 283,
+        "setupCommandHash": "834ebc2ac2cb9d632d7b9387836fb0f69844c26b3fdcc1dde0e310df7db4da76",
+        "setupExitCode": 0,
+        "setupTimedOut": false,
+        "setupOutputHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "setupOutputTokens": 0,
+        "setupChangedFiles": [
+          ".codex/config.toml",
+          ".codex/hooks.json",
+          "AGENTS.md",
+          "src/main/java/org/apache/commons/text/CaseUtils.java"
+        ],
+        "kairnSessionCount": 1,
+        "primeEmitted": 0,
+        "primeSuppressed": 0,
+        "hookInvocations": 0,
+        "failureContextUsed": 0,
+        "mcpToolCalls": 1,
+        "mcpFilesReturned": [
+          "src/main/java/org/apache/commons/text/CaseUtils.java"
+        ],
+        "mcpReturnedFileCount": 1,
+        "mcpReturnedUsefulFileCount": 1,
+        "mcpObservedTokensPerCall": 76968,
+        "mcpObservedTokensPerUsefulFile": 76968
+      }
+    }
+  ],
+  "deltas": {
+    "real_mcp_first": {
+      "baselineTokens": 50443,
+      "modeTokens": 76968,
+      "savedTokens": -26525,
+      "savingsRate": -0.5258410483119561,
+      "qualityGatePassed": true,
+      "assistanceStatus": "active",
+      "assistanceEligible": true,
+      "baselineDifficulty": "quality_fail",
+      "baselineTokenCost": 50443,
+      "abstentionOutcome": "not_applicable",
+      "missedOpportunity": false,
+      "overAssist": false,
+      "harmfulAssist": false,
+      "assistClassification": "quality_rescue"
+    }
+  },
+  "recommendations": [
+    "baseline: quality gate failed; do not claim token savings for this mode.",
+    "real_mcp_first: repeatedly touched files suggest a follow-up focused cleanup context: src/main/java/org/apache/commons/text/CaseUtils.java."
+  ]
+}

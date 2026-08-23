@@ -1,0 +1,313 @@
+{
+  "campaign": "mcp-post-governor-recheck",
+  "evidenceDate": "2026-06-04",
+  "completedThrough": "2026-06-05",
+  "targetBranch": "main",
+  "smoke": {
+    "mcpToolCalls": 2,
+    "startFiles": [
+      "src/runtime/KairnRuntime.ts"
+    ]
+  },
+  "suites": [
+    {
+      "suiteId": "endurance-click-compat-encoding",
+      "suiteName": "Click Compatibility Encoding Endurance",
+      "artifact": "endurance-click-repeat3.json",
+      "startedAt": "2026-06-04T15:52:49.661Z",
+      "endedAt": "2026-06-04T16:30:34.751Z",
+      "aggregate": {
+        "baseline": {
+          "repeats": 3,
+          "qualityPasses": 3,
+          "medianObservedCodexTokens": 113639,
+          "cleanPassPassRows": 0,
+          "qualityRescueRows": 0,
+          "overAssistRows": 0,
+          "harmfulRuns": 0,
+          "mcpCalls": 0,
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedUsefulFileCount": 0,
+          "mcpAttributedUsefulFileCount": 0,
+          "scopeViolations": 0,
+          "verdict": "baseline",
+          "status": "baseline",
+          "classifications": {}
+        },
+        "kairn_codex_session": {
+          "repeats": 3,
+          "qualityPasses": 3,
+          "medianObservedCodexTokens": 103580,
+          "medianSavedTokens": 13141,
+          "medianSavingsRate": 0.11258471054908714,
+          "cleanPassPassRows": 2,
+          "qualityRescueRows": 0,
+          "overAssistRows": 1,
+          "harmfulRuns": 0,
+          "mcpCalls": 0,
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedUsefulFileCount": 0,
+          "mcpAttributedUsefulFileCount": 0,
+          "scopeViolations": 0,
+          "verdict": "mixed",
+          "status": "mixed_or_over_assist",
+          "classifications": {
+            "over_assist": 1,
+            "valid_assist": 2
+          }
+        },
+        "real_mcp_first": {
+          "repeats": 3,
+          "qualityPasses": 3,
+          "medianObservedCodexTokens": 72426,
+          "medianSavedTokens": 44295,
+          "medianSavingsRate": 0.3794946924717917,
+          "cleanPassPassRows": 3,
+          "qualityRescueRows": 0,
+          "overAssistRows": 0,
+          "harmfulRuns": 0,
+          "mcpCalls": 3,
+          "mcpReturnedFileCount": 3,
+          "mcpReturnedUsefulFileCount": 3,
+          "mcpAttributedUsefulFileCount": 3,
+          "scopeViolations": 0,
+          "verdict": "consistent_win",
+          "status": "clean_repeat3_mcp_savings",
+          "classifications": {
+            "valid_assist": 3
+          }
+        },
+        "hybrid_mcp_brief": {
+          "repeats": 3,
+          "qualityPasses": 3,
+          "medianObservedCodexTokens": 55885,
+          "medianSavedTokens": 57754,
+          "medianSavingsRate": 0.5082234092169061,
+          "cleanPassPassRows": 3,
+          "qualityRescueRows": 0,
+          "overAssistRows": 0,
+          "harmfulRuns": 0,
+          "mcpCalls": 4,
+          "mcpReturnedFileCount": 3,
+          "mcpReturnedUsefulFileCount": 3,
+          "mcpAttributedUsefulFileCount": 3,
+          "scopeViolations": 0,
+          "verdict": "consistent_win",
+          "status": "clean_repeat3_mcp_savings",
+          "classifications": {
+            "valid_assist": 3
+          }
+        }
+      }
+    },
+    {
+      "suiteId": "endurance-node-semver-satisfies",
+      "suiteName": "Node SemVer Satisfies Endurance",
+      "artifact": "endurance-node-semver-repeat3.json",
+      "startedAt": "2026-06-04T16:32:21.287Z",
+      "endedAt": "2026-06-04T19:06:24.333Z",
+      "aggregate": {
+        "baseline": {
+          "repeats": 3,
+          "qualityPasses": 3,
+          "medianObservedCodexTokens": 74580,
+          "cleanPassPassRows": 0,
+          "qualityRescueRows": 0,
+          "overAssistRows": 0,
+          "harmfulRuns": 0,
+          "mcpCalls": 0,
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedUsefulFileCount": 0,
+          "mcpAttributedUsefulFileCount": 0,
+          "scopeViolations": 0,
+          "verdict": "baseline",
+          "status": "baseline",
+          "classifications": {}
+        },
+        "kairn_codex_session": {
+          "repeats": 3,
+          "qualityPasses": 2,
+          "medianObservedCodexTokens": 77517,
+          "medianSavedTokens": -2937,
+          "medianSavingsRate": -0.03938053097345133,
+          "cleanPassPassRows": 1,
+          "qualityRescueRows": 0,
+          "overAssistRows": 1,
+          "harmfulRuns": 1,
+          "mcpCalls": 0,
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedUsefulFileCount": 0,
+          "mcpAttributedUsefulFileCount": 0,
+          "scopeViolations": 0,
+          "verdict": "quality_risk",
+          "status": "quality_risk",
+          "classifications": {
+            "over_assist": 1,
+            "valid_assist": 1,
+            "harmful_invalid_assist": 1
+          }
+        },
+        "real_mcp_first": {
+          "repeats": 3,
+          "qualityPasses": 2,
+          "medianObservedCodexTokens": 38419,
+          "medianSavedTokens": 24554,
+          "medianSavingsRate": 0.3991758912091864,
+          "cleanPassPassRows": 2,
+          "qualityRescueRows": 0,
+          "overAssistRows": 0,
+          "harmfulRuns": 1,
+          "mcpCalls": 3,
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedUsefulFileCount": 0,
+          "mcpAttributedUsefulFileCount": 3,
+          "scopeViolations": 0,
+          "verdict": "quality_risk",
+          "status": "mcp_quality_risk",
+          "classifications": {
+            "valid_assist": 2,
+            "harmful_invalid_assist": 1
+          }
+        },
+        "hybrid_mcp_brief": {
+          "repeats": 3,
+          "qualityPasses": 2,
+          "medianObservedCodexTokens": 45798,
+          "medianSavedTokens": 28236,
+          "medianSavingsRate": 0.37175132316928666,
+          "cleanPassPassRows": 2,
+          "qualityRescueRows": 0,
+          "overAssistRows": 0,
+          "harmfulRuns": 1,
+          "mcpCalls": 3,
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedUsefulFileCount": 0,
+          "mcpAttributedUsefulFileCount": 3,
+          "scopeViolations": 0,
+          "verdict": "quality_risk",
+          "status": "mcp_quality_risk",
+          "classifications": {
+            "valid_assist": 2,
+            "harmful_invalid_assist": 1
+          }
+        }
+      }
+    },
+    {
+      "suiteId": "endurance-fastify",
+      "suiteName": "Fastify HEAD Route Endurance",
+      "artifact": "endurance-fastify-repeat3.json",
+      "startedAt": "2026-06-05T18:35:44.492Z",
+      "endedAt": "2026-06-05T19:05:28.343Z",
+      "aggregate": {
+        "baseline": {
+          "repeats": 3,
+          "qualityPasses": 2,
+          "medianObservedCodexTokens": 95500,
+          "cleanPassPassRows": 0,
+          "qualityRescueRows": 0,
+          "overAssistRows": 0,
+          "harmfulRuns": 0,
+          "mcpCalls": 0,
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedUsefulFileCount": 0,
+          "mcpAttributedUsefulFileCount": 0,
+          "scopeViolations": 0,
+          "verdict": "baseline",
+          "status": "baseline",
+          "classifications": {}
+        },
+        "kairn_codex_session": {
+          "repeats": 3,
+          "qualityPasses": 3,
+          "medianObservedCodexTokens": 86337,
+          "medianSavedTokens": -3764,
+          "medianSavingsRate": -0.045583907572693254,
+          "cleanPassPassRows": 1,
+          "qualityRescueRows": 1,
+          "overAssistRows": 1,
+          "harmfulRuns": 0,
+          "mcpCalls": 0,
+          "mcpReturnedFileCount": 0,
+          "mcpReturnedUsefulFileCount": 0,
+          "mcpAttributedUsefulFileCount": 0,
+          "scopeViolations": 0,
+          "verdict": "mixed",
+          "status": "mixed_or_over_assist",
+          "classifications": {
+            "quality_rescue": 1,
+            "valid_assist": 1,
+            "over_assist": 1
+          }
+        },
+        "real_mcp_first": {
+          "repeats": 3,
+          "qualityPasses": 3,
+          "medianObservedCodexTokens": 46467,
+          "medianSavedTokens": 58751,
+          "medianSavingsRate": 0.615193717277487,
+          "cleanPassPassRows": 2,
+          "qualityRescueRows": 1,
+          "overAssistRows": 0,
+          "harmfulRuns": 0,
+          "mcpCalls": 5,
+          "mcpReturnedFileCount": 3,
+          "mcpReturnedUsefulFileCount": 3,
+          "mcpAttributedUsefulFileCount": 3,
+          "scopeViolations": 0,
+          "verdict": "consistent_win",
+          "status": "mixed_clean_plus_quality_rescue",
+          "classifications": {
+            "quality_rescue": 1,
+            "valid_assist": 2
+          }
+        },
+        "hybrid_mcp_brief": {
+          "repeats": 3,
+          "qualityPasses": 3,
+          "medianObservedCodexTokens": 43069,
+          "medianSavedTokens": 51260,
+          "medianSavingsRate": 0.5367539267015706,
+          "cleanPassPassRows": 2,
+          "qualityRescueRows": 1,
+          "overAssistRows": 0,
+          "harmfulRuns": 0,
+          "mcpCalls": 3,
+          "mcpReturnedFileCount": 3,
+          "mcpReturnedUsefulFileCount": 3,
+          "mcpAttributedUsefulFileCount": 3,
+          "scopeViolations": 0,
+          "verdict": "consistent_win",
+          "status": "mixed_clean_plus_quality_rescue",
+          "classifications": {
+            "quality_rescue": 1,
+            "valid_assist": 2
+          }
+        }
+      }
+    }
+  ],
+  "acceptance": {
+    "localMcpTestsPassed": true,
+    "smokeRecordedMcpToolCall": true,
+    "cleanRepeat3McpSuites": [
+      "click"
+    ],
+    "mixedPositiveMcpSuites": [
+      "fastify"
+    ],
+    "qualityRiskSuites": [
+      "node_semver"
+    ],
+    "jsOrTsMcpEvidence": [
+      "node_semver",
+      "fastify"
+    ],
+    "publicEvidenceGate": "not_met",
+    "publicEvidenceReason": "Click is clean and Fastify is positive, but SemVer produced an MCP quality-risk repeat. Do not update public MCP claims until that class is fixed or isolated by another fresh clean suite."
+  },
+  "harnessNotes": [
+    "Click seed patch hunk header was repaired so the existing seed patch applies.",
+    "Seed git fetch/clone now retries transient RPC/connection failures; this fixed a Fastify network setup failure and does not change Kairn runtime behavior."
+  ]
+}
