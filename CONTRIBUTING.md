@@ -30,6 +30,8 @@ Use `git commit -s` to add the line. By signing off, you certify that you have t
 
 Pull-request CI checks every commit, and the trailer email must match that commit's author or committer email. To repair the latest commit, run `git commit --amend -s`; to repair several commits, use an interactive rebase and amend each one. Update the pull-request branch after reviewing the rewritten commits. Do not add another contributor's sign-off on their behalf.
 
+The maintainer-owned history ending at `74ddb15` and `660bce7` predates adoption of this public DCO workflow and is explicitly grandfathered. The signed merge that unifies those histories and every commit after it remain subject to the check. Changing those fixed boundaries requires maintainer review as a governance change.
+
 ## Security and privacy
 
 Do not submit credentials, private repository contents, raw model reasoning, or customer telemetry. Report vulnerabilities through the private process in [SECURITY.md](SECURITY.md), not a public issue.
