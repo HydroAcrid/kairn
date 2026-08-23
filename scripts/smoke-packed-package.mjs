@@ -79,20 +79,48 @@ if (fs.existsSync(path.join(repoRoot, ".kairn"))) {
 process.stdout.write(`Packed usekairn@${packageJson.version} install/enable/disable smoke passed.\n`);
 
 function run(command, args, cwd, env = process.env) {
-  const result = spawnSync(command, args, {
+  const invocation = windowsInvocation(command, args);
+  const result = spawnSync(invocation.command, invocation.args, {
     cwd,
     env,
     encoding: "utf8",
-    maxBuffer: 32 * 1024 * 1024
+    maxBuffer: 32 * 1024 * 1024,
+    windowsVerbatimArguments: process.platform === "win32"
   });
   if (result.status !== 0) {
     fail([
       `Command failed (${result.status}): ${command} ${args.join(" ")}`,
+      result.error?.message,
       result.stdout,
       result.stderr
     ].filter(Boolean).join("\n"));
   }
   return result;
+}
+
+function windowsInvocation(command, args) {
+  if (process.platform !== "win32") return { command, args };
+  const resolvedCommand = resolveWindowsCommand(command);
+  const values = [resolvedCommand, ...args];
+  if (values.some((value) => /[\r\n%!^&|<>]/.test(value))) {
+    fail("Windows package smoke path contains an unsupported command-shell character.");
+  }
+  const commandLine = values.map((value) => `"${value.replaceAll('"', '""')}"`).join(" ");
+  return {
+    command: process.env.ComSpec || "cmd.exe",
+    args: ["/d", "/s", "/c", `"${commandLine}"`]
+  };
+}
+
+function resolveWindowsCommand(command) {
+  if (path.isAbsolute(command)) return command;
+  const pathValue = Object.entries(process.env)
+    .find(([key]) => key.toLowerCase() === "path")?.[1] ?? "";
+  for (const directory of pathValue.split(path.delimiter)) {
+    const candidate = path.join(directory, command);
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return command;
 }
 
 function fail(message) {
