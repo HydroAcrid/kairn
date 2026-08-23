@@ -115,7 +115,10 @@ def workspace_tree_fingerprint(root: Path) -> dict[str, Any]:
         relative = os.fsdecode(raw_relative)
         candidate = root / relative
         try:
-            lexical = candidate.absolute()
+            # Do not resolve the candidate: symlinks are hashed as links below.
+            # Normalize lexical traversal against the already-resolved root so
+            # macOS's /var -> /private/var alias cannot look like an escape.
+            lexical = Path(os.path.abspath(os.path.join(resolved_root, relative)))
             lexical.relative_to(resolved_root)
         except ValueError as error:
             raise InfrastructureError("workspace inventory escaped the repository root") from error

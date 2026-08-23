@@ -353,6 +353,16 @@ describe("public evidence ranker training", () => {
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-index-snapshot-"));
     const sourceRoot = createFixtureRepo();
     const restoredRoot = createFixtureRepo();
+    const sourceSnapshotRoot = process.platform === "win32"
+      ? sourceRoot
+      : path.join(temporary, "source-root-alias");
+    const restoredSnapshotRoot = process.platform === "win32"
+      ? restoredRoot
+      : path.join(temporary, "restored-root-alias");
+    if (process.platform !== "win32") {
+      fs.symlinkSync(sourceRoot, sourceSnapshotRoot, "dir");
+      fs.symlinkSync(restoredRoot, restoredSnapshotRoot, "dir");
+    }
     const cachePath = path.join(temporary, "repository-index-snapshots", `${"a".repeat(64)}.sqlite`);
     const sourceRuntime = new KairnRuntime(sourceRoot);
     let sourceFileCount = 0;
@@ -364,8 +374,8 @@ describe("public evidence ranker training", () => {
     }
 
     try {
-      persistRepositoryIndexSnapshot(sourceRoot, cachePath);
-      expect(restoreRepositoryIndexSnapshot(restoredRoot, cachePath)).toBe(true);
+      persistRepositoryIndexSnapshot(sourceSnapshotRoot, cachePath);
+      expect(restoreRepositoryIndexSnapshot(restoredSnapshotRoot, cachePath)).toBe(true);
 
       // A benchmark snapshot represents an immutable checkout. This extra file
       // proves reuse does not silently refresh or mix mutable workspace state.
@@ -1009,7 +1019,16 @@ describe("public evidence ranker training", () => {
       );
     }
     execFileSync("git", ["add", "."], { cwd: fixture });
-    execFileSync("git", ["commit", "-m", "Add retrieval miss fixture"], { cwd: fixture });
+    execFileSync("git", ["commit", "-m", "Add retrieval miss fixture"], {
+      cwd: fixture,
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: "Kairn Test",
+        GIT_AUTHOR_EMAIL: "test@example.com",
+        GIT_COMMITTER_NAME: "Kairn Test",
+        GIT_COMMITTER_EMAIL: "test@example.com"
+      }
+    });
     missedIntake.cases[0].prompt = `Inspect only ${noise.join(", ")}`;
     missedIntake.cases[0].requiredSourceFiles = ["src/zzzz/opaque.ts"];
     missedIntake.cases[0].officialPatchSourceFiles = ["src/zzzz/opaque.ts"];

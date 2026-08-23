@@ -4,8 +4,8 @@ This file inventories production dependencies present in the generating install 
 It is generated from the locked production dependency graph and does not replace a legal provenance review.
 
 - Package: `usekairn@0.2.0-beta.1`
-- Lockfile SHA-256: `8aececb546f8a3ca0388536cc1972d146c86cda14ebeb2e62098c0cce20b048a`
-- Production dependencies: `199`
+- Lockfile SHA-256: `c58dcb05a2a0a9c62d424f64e8bf84d80719e2fc832bf94ded84a5c525a025e7`
+- Production dependencies: `201`
 - Dependencies without package-root license/notice text: `6` (manual review required)
 
 Regenerate with `pnpm notices:generate`; verify with `pnpm notices:check`.
@@ -14,7 +14,7 @@ Regenerate with `pnpm notices:generate`; verify with `pnpm notices:check`.
 
 | Package | Version | Declared license | Project | License/notice text hashes |
 |---|---:|---|---|---|
-| @hono/node-server | 1.19.14 | MIT | [link](https://github.com/honojs/node-server) | `6895190430d809c4c57a7582ecc2f99acbc2ea39a5dfad20262a41d5b3e91733` |
+| @hono/node-server | 2.1.1 | MIT | [link](https://github.com/honojs/node-server) | `6895190430d809c4c57a7582ecc2f99acbc2ea39a5dfad20262a41d5b3e91733` |
 | @huggingface/tokenizers | 0.1.3 | Apache-2.0 | [link](https://github.com/huggingface/tokenizers.js#readme) | `c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4` |
 | @inquirer/ansi | 2.0.5 | MIT | [link](https://github.com/SBoudrias/Inquirer.js/blob/main/packages/ansi/README.md) | `85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23` |
 | @inquirer/checkbox | 5.1.5 | MIT | [link](https://github.com/SBoudrias/Inquirer.js/blob/main/packages/checkbox/README.md) | `85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23` |
@@ -34,7 +34,7 @@ Regenerate with `pnpm notices:generate`; verify with `pnpm notices:check`.
 | @inquirer/type | 4.0.5 | MIT | [link](https://github.com/SBoudrias/Inquirer.js#readme) | `85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23` |
 | @kwsites/file-exists | 1.1.1 | MIT | [link](https://github.com/kwsites/file-exists#readme) | `f52b03f3b77f5d1ffd0da421389498bea8b316c4c57b17cfd7c07f9abfb75f92` |
 | @kwsites/promise-deferred | 1.1.1 | MIT | [link](https://github.com/kwsites/promise-deferred#readme) | `31be59a9f7c383217089e65d00cc8543d93f471c20af55faf79694e4af193587` |
-| @modelcontextprotocol/sdk | 1.29.0 | MIT | [link](https://modelcontextprotocol.io) | `5e13dbbc1d120fc2a03cecde7c91424ae2d7de11b63d58ded2f4431e261ee50d` |
+| @modelcontextprotocol/sdk | 1.30.0 | MIT | [link](https://modelcontextprotocol.io) | `5e13dbbc1d120fc2a03cecde7c91424ae2d7de11b63d58ded2f4431e261ee50d` |
 | @nodelib/fs.scandir | 2.1.5 | MIT | [link](https://github.com/nodelib/nodelib/tree/master#readme) | `9363d160bf41d46d83901a5d24fc3fe2094c2afc17b4a2378914b273977ee2de` |
 | @nodelib/fs.stat | 2.0.5 | MIT | [link](https://github.com/nodelib/nodelib/tree/master#readme) | `9363d160bf41d46d83901a5d24fc3fe2094c2afc17b4a2378914b273977ee2de` |
 | @nodelib/fs.walk | 1.2.8 | MIT | [link](https://github.com/nodelib/nodelib/tree/master#readme) | `9363d160bf41d46d83901a5d24fc3fe2094c2afc17b4a2378914b273977ee2de` |
@@ -58,7 +58,7 @@ Regenerate with `pnpm notices:generate`; verify with `pnpm notices:check`.
 | better-sqlite3 | 12.9.0 | MIT | [link](http://github.com/WiseLibs/better-sqlite3) | `09856b52897c91ab67e7456ef43067019f31dfd3b87fda72e655736b1ebdee55` |
 | bindings | 1.5.0 | MIT | [link](https://github.com/TooTallNate/node-bindings) | `85fde19744c84cfacb04aed732c0392ba221231b26090d3271d2ed865bfc0792` |
 | bl | 4.1.0 | MIT | [link](https://github.com/rvagg/bl) | `9377db95383c8befacf05c6e465d969d756edf178487ca1344fdf3ba147c596f` |
-| body-parser | 2.2.2 | MIT | [link](https://github.com/expressjs/body-parser#readme) | `23d466b1b134b415b66fa50c6526b4cf3e7b9258554da88d3abb371721e7ce68` |
+| body-parser | 2.3.0 | MIT | [link](https://github.com/expressjs/body-parser#readme) | `23d466b1b134b415b66fa50c6526b4cf3e7b9258554da88d3abb371721e7ce68` |
 | braces | 3.0.3 | MIT | [link](https://github.com/micromatch/braces) | `35bdd8a44339719441900fb50fbefc5e2dca1ca662cbaed7a687de842c8b70f2` |
 | buffer | 5.7.1 | MIT | [link](https://github.com/feross/buffer) | `06bafa45fdad2579ba0e43b0c9b2c6290287c99c4203c300254a462b38a307f6` |
 | bytes | 3.1.2 | MIT | [link](https://github.com/visionmedia/bytes.js#readme) | `e3b44af066615de2ea48d18d852d0762f18c0b2efcea714fa48a6f729d405b85` |
@@ -71,6 +71,7 @@ Regenerate with `pnpm notices:generate`; verify with `pnpm notices:check`.
 | commander | 14.0.3 | MIT | [link](https://github.com/tj/commander.js#readme) | `04512a63dce4d2d506ad612dc0bd7681ccf6e3655f7b6eaef7dfac8323d1ec0b` |
 | content-disposition | 1.1.0 | MIT | [link](https://github.com/jshttp/content-disposition#readme) | `bd47ce7b88c7759630d1e2b9fcfa170a0f1fde522be09e13fb1581a79d090400` |
 | content-type | 1.0.5 | MIT | [link](https://github.com/jshttp/content-type#readme) | `257aed98914108e91a337912727b6a802eef218248507f74b76faffaff517a38` |
+| content-type | 2.1.0 | MIT | [link](https://github.com/jshttp/content-type#readme) | `257aed98914108e91a337912727b6a802eef218248507f74b76faffaff517a38` |
 | cookie | 0.7.2 | MIT | [link](https://github.com/jshttp/cookie#readme) | `c02110eedc16c7114f1a9bdc026c65626ce1d9c7e27fd51a8e0feee8a48a6858` |
 | cookie-signature | 1.2.2 | MIT | [link](https://github.com/visionmedia/node-cookie-signature#readme) | `0dd4e47333485760cf8c265db5a5e24ae8d7401064c6f2e19793ee81a5bef42f` |
 | cors | 2.8.6 | MIT | [link](https://github.com/expressjs/cors#readme) | `1aa9a12863eefb583779b2ca0e5d73c610b6e6d07529ae0472721769a6ea0a32` |
@@ -86,19 +87,19 @@ Regenerate with `pnpm notices:generate`; verify with `pnpm notices:check`.
 | end-of-stream | 1.4.5 | MIT | [link](https://github.com/mafintosh/end-of-stream) | `3fe8d55a98dbf260eace67c00cf9bc53edb46234e840098a0b93df3096b97fb6` |
 | es-define-property | 1.0.1 | MIT | [link](https://github.com/ljharb/es-define-property#readme) | `5e325595b4ea8cfec3802f545b1def5d7b73e4a5b8e9ba63e32a320f67732292` |
 | es-errors | 1.3.0 | MIT | [link](https://github.com/ljharb/es-errors#readme) | `5e325595b4ea8cfec3802f545b1def5d7b73e4a5b8e9ba63e32a320f67732292` |
-| es-object-atoms | 1.1.1 | MIT | [link](https://github.com/ljharb/es-object-atoms#readme) | `5e325595b4ea8cfec3802f545b1def5d7b73e4a5b8e9ba63e32a320f67732292` |
+| es-object-atoms | 1.1.2 | MIT | [link](https://github.com/ljharb/es-object-atoms#readme) | `5e325595b4ea8cfec3802f545b1def5d7b73e4a5b8e9ba63e32a320f67732292` |
 | escape-html | 1.0.3 | MIT | [link](https://github.com/component/escape-html#readme) | `255aa557a1f55224ce522f311629c0bf20854740a67955cefd798fbd1d3d1ded` |
 | etag | 1.8.1 | MIT | [link](https://github.com/jshttp/etag#readme) | `a7996721249a136fbcfc1c201bcb5f414f38a701d4a24f28abe65e16cfcce813` |
 | eventsource | 3.0.7 | MIT | [link](https://github.com/EventSource/eventsource#readme) | `f683a72ffe6a9675b5507af22fe0f448d8c8de3da1e14f139d370a7e6a54a23e` |
-| eventsource-parser | 3.0.8 | MIT | [link](https://github.com/rexxars/eventsource-parser#readme) | `835eb611a23301b27115ca1be9f754c876e643ceb7fe63049c6b50609a1cafeb` |
+| eventsource-parser | 3.1.1 | MIT | [link](https://github.com/rexxars/eventsource-parser#readme) | `835eb611a23301b27115ca1be9f754c876e643ceb7fe63049c6b50609a1cafeb` |
 | expand-template | 2.0.3 | (MIT OR WTFPL) | [link](https://github.com/ralphtheninja/expand-template) | `0967624813244bf47da346449804af853437433cbdeb8c977f1e0d4bd14e0a3b` |
 | express | 5.2.1 | MIT | [link](https://expressjs.com/) | `95a5762890e5c1c9808921cef095661fc482c5e1f0bba31446ac85595df6237c` |
-| express-rate-limit | 8.5.2 | MIT | [link](https://github.com/express-rate-limit/express-rate-limit) | `90021adfb24b0a7af5754cebc6085e2560555f74d29a6d44a7f9a32125f8b348` |
+| express-rate-limit | 8.6.2 | MIT | [link](https://github.com/express-rate-limit/express-rate-limit) | `90021adfb24b0a7af5754cebc6085e2560555f74d29a6d44a7f9a32125f8b348` |
 | fast-deep-equal | 3.1.3 | MIT | [link](https://github.com/epoberezkin/fast-deep-equal#readme) | `7bf9b2de73a6b356761c948d0e9eeb4be6c1270bd04c79cd489c1e400ffdfc1a` |
 | fast-glob | 3.3.3 | MIT | [link](https://github.com/mrmlnc/fast-glob#readme) | `9363d160bf41d46d83901a5d24fc3fe2094c2afc17b4a2378914b273977ee2de` |
 | fast-string-truncated-width | 3.0.3 | MIT | [link](https://github.com/fabiospampinato/fast-string-truncated-width#readme) | `2547dead17a32b1e49a588e943d52420b4d75f1349d9afd9ecb567b2dc8911c0` |
 | fast-string-width | 3.0.2 | MIT | [link](https://github.com/fabiospampinato/fast-string-width#readme) | `2547dead17a32b1e49a588e943d52420b4d75f1349d9afd9ecb567b2dc8911c0` |
-| fast-uri | 3.1.2 | BSD-3-Clause | [link](https://github.com/fastify/fast-uri) | `b010b0dfdfdb23d7396e03b82cd4621fc9bb8f95d6b0aea70b9c24e12074c786` |
+| fast-uri | 3.1.6 | BSD-3-Clause | [link](https://github.com/fastify/fast-uri) | `b010b0dfdfdb23d7396e03b82cd4621fc9bb8f95d6b0aea70b9c24e12074c786` |
 | fast-wrap-ansi | 0.2.0 | MIT | [link](https://github.com/43081j/fast-wrap-ansi#readme) | `9235f5ebfd80d41920fae7a0317caa3914f2a9249837bc486d7706f73080e375` |
 | fastq | 1.20.1 | ISC | [link](https://github.com/mcollina/fastq#readme) | `c3367f6d01a79d368fc4fbb41b3615fcd92f243d6597ab96742f6f976f9325af` |
 | file-uri-to-path | 1.0.0 | MIT | [link](https://github.com/TooTallNate/file-uri-to-path) | `75070206e4ee2a749be52444cecc05101ca8d314c9d6d335ff914046cbf086a0` |
@@ -116,27 +117,28 @@ Regenerate with `pnpm notices:generate`; verify with `pnpm notices:check`.
 | gopd | 1.2.0 | MIT | [link](https://github.com/ljharb/gopd#readme) | `d90bf0a089da4cf43d644ed240a0b3825dcdb705e64e38371d56995a4cc9e4c5` |
 | guid-typescript | 1.0.9 | ISC | [link](https://github.com/NicolasDeveloper/guid-typescript#readme) | Not found; manual review required |
 | has-symbols | 1.1.0 | MIT | [link](https://github.com/ljharb/has-symbols#readme) | `206c1adcf206dc0031b11232f5b054ec5f1662407ab1ca415247921cab2068ab` |
-| hasown | 2.0.3 | MIT | [link](https://github.com/inspect-js/hasOwn#readme) | `bf9b0d665be2a689851eea667ca9f42066ea1d903b38349c51e6a44b2577680a` |
-| hono | 4.12.21 | MIT | [link](https://hono.dev) | `a6ab98e5c77b9070c443eaff2ff81034a6f8cc05a7524d5098eb0f24defa0115` |
+| hasown | 2.0.4 | MIT | [link](https://github.com/inspect-js/hasOwn#readme) | `bf9b0d665be2a689851eea667ca9f42066ea1d903b38349c51e6a44b2577680a` |
+| hono | 4.13.3 | MIT | [link](https://hono.dev) | `a6ab98e5c77b9070c443eaff2ff81034a6f8cc05a7524d5098eb0f24defa0115` |
 | http-errors | 2.0.1 | MIT | [link](https://github.com/jshttp/http-errors#readme) | `dcb94ff9b1e037a847bc20589dc81a1066d041fd4c16deb18b0fa968c66cf395` |
 | iconv-lite | 0.7.2 | MIT | [link](https://github.com/pillarjs/iconv-lite) | `ac779f7314c74f232ef847ea86e714abe25cf6eeb5cc97b69451b74e2af6492d` |
+| iconv-lite | 0.7.3 | MIT | [link](https://github.com/pillarjs/iconv-lite) | `ac779f7314c74f232ef847ea86e714abe25cf6eeb5cc97b69451b74e2af6492d` |
 | ieee754 | 1.2.1 | BSD-3-Clause | [link](https://github.com/feross/ieee754#readme) | `18d45466ba3253deae04667e267a91ea8de8548f18c1125264d1c9db28194cc1` |
 | ignore | 7.0.5 | MIT | [link](https://github.com/kaelzhang/node-ignore#readme) | `9c94db23dc4b1e9aaee5d195668b916afc71efed54af226b66cf0ccc4389c1c0` |
 | inherits | 2.0.4 | ISC | [link](https://github.com/isaacs/inherits#readme) | `5ffe28e7ade7d8f10d85d5337a73fd793dac5c462fb9a28fbf8c5046c7fbca3b` |
 | ini | 1.3.8 | ISC | [link](https://github.com/isaacs/ini#readme) | `4ec3d4c66cd87f5c8d8ad911b10f99bf27cb00cdfcff82621956e379186b016b` |
-| ip-address | 10.2.0 | MIT | [link](https://github.com/beaugunderson/ip-address#readme) | `f8d791359a50cbcac82c29cb7b0b1b889b28be76fdd35b8ee33f0f7c8704702a` |
+| ip-address | 10.5.0 | MIT | [link](https://github.com/beaugunderson/ip-address#readme) | `f8d791359a50cbcac82c29cb7b0b1b889b28be76fdd35b8ee33f0f7c8704702a` |
 | ipaddr.js | 1.9.1 | MIT | [link](https://github.com/whitequark/ipaddr.js#readme) | `62568a2d1337b77171ecca9db10579163446de1ba6151678e81f06cdc199971b` |
 | is-extglob | 2.1.1 | MIT | [link](https://github.com/jonschlinkert/is-extglob) | `73b5283588baa142c5baaef5f56d3e8fdea7a30b214e8c5737e87640f882453a` |
 | is-glob | 4.0.3 | MIT | [link](https://github.com/micromatch/is-glob) | `4cd903859549d4b20b571041f96dfae1136ed079c476126268f9d7cc1b611150` |
 | is-number | 7.0.0 | MIT | [link](https://github.com/jonschlinkert/is-number) | `35bdd8a44339719441900fb50fbefc5e2dca1ca662cbaed7a687de842c8b70f2` |
 | is-promise | 4.0.0 | MIT | [link](https://github.com/then/is-promise#readme) | `44191656d296391e0ec97e32f5385f0d02b6f2992694082d22ea04ba0f66f9e4` |
 | isexe | 2.0.0 | ISC | [link](https://github.com/isaacs/isexe#readme) | `4ec3d4c66cd87f5c8d8ad911b10f99bf27cb00cdfcff82621956e379186b016b` |
-| jose | 6.2.3 | MIT | [link](https://github.com/panva/jose) | `8078b0829d6c3e9ecde2f003e1966e4cad3efc6e7a640efbab0313cc166b1af1` |
+| jose | 6.2.10 | MIT | [link](https://github.com/panva/jose) | `8078b0829d6c3e9ecde2f003e1966e4cad3efc6e7a640efbab0313cc166b1af1` |
 | json-schema-traverse | 1.0.0 | MIT | [link](https://github.com/epoberezkin/json-schema-traverse#readme) | `7bf9b2de73a6b356761c948d0e9eeb4be6c1270bd04c79cd489c1e400ffdfc1a` |
 | json-schema-typed | 8.0.2 | BSD-2-Clause | [link](https://github.com/RemyRylan/json-schema-typed/tree/main/dist/node) | `bbe87b573c12bda5baf18742117330efa177e0886b3b0a278dacf8f236e1e129` |
 | long | 5.3.2 | Apache-2.0 | [link](https://github.com/dcodeIO/long.js#readme) | `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30` |
 | math-intrinsics | 1.1.0 | MIT | [link](https://github.com/es-shims/math-intrinsics#readme) | `2b770a704c15de238c3f622b01b0044ddd60b49ee30608ea6991ebf19db7a7a1` |
-| media-typer | 1.1.0 | MIT | [link](https://github.com/jshttp/media-typer#readme) | `bd47ce7b88c7759630d1e2b9fcfa170a0f1fde522be09e13fb1581a79d090400` |
+| media-typer | 1.1.1 | MIT | [link](https://github.com/jshttp/media-typer#readme) | `bd47ce7b88c7759630d1e2b9fcfa170a0f1fde522be09e13fb1581a79d090400` |
 | merge-descriptors | 2.0.0 | MIT | [link](https://github.com/sindresorhus/merge-descriptors#readme) | `70b126abc64d7ea06e1243349073935caa16fa47a41a571773ccf0b350b1d574` |
 | merge2 | 1.4.1 | MIT | [link](https://github.com/teambition/merge2) | `b2590e53ea6e050512c3993bfc746c394bbba9242fd6909245201bdc1dc6862a` |
 | micromatch | 4.0.8 | MIT | [link](https://github.com/micromatch/micromatch) | `35bdd8a44339719441900fb50fbefc5e2dca1ca662cbaed7a687de842c8b70f2` |
@@ -148,7 +150,7 @@ Regenerate with `pnpm notices:generate`; verify with `pnpm notices:check`.
 | ms | 2.1.3 | MIT | [link](https://github.com/vercel/ms#readme) | `1662fae9b5314d11cf51284e2dcd1f006a354f7343f08712a730fcff9a359801` |
 | mute-stream | 3.0.0 | ISC | [link](https://github.com/npm/mute-stream#readme) | `4ec3d4c66cd87f5c8d8ad911b10f99bf27cb00cdfcff82621956e379186b016b` |
 | napi-build-utils | 2.0.0 | MIT | [link](https://github.com/inspiredware/napi-build-utils#readme) | `9c6a91d2847bd9bfd493c1ca87b9c3f96302cfd069667e6dd4a6278e69a33a31` |
-| negotiator | 1.0.0 | MIT | [link](https://github.com/jshttp/negotiator#readme) | `553d4d20029a24e315b428a1a54a9e109eaa340f2e958a4f50a92362c2c4070b` |
+| negotiator | 1.1.0 | MIT | [link](https://github.com/jshttp/negotiator#readme) | `553d4d20029a24e315b428a1a54a9e109eaa340f2e958a4f50a92362c2c4070b` |
 | node-abi | 3.90.0 | MIT | [link](https://github.com/electron/node-abi#readme) | `9a508cd4122f2dc1cc39f8ab0b6950efbc49fb087a581c7177a4b8c9d5d0d6a1` |
 | object-assign | 4.1.1 | MIT | [link](https://github.com/sindresorhus/object-assign#readme) | `6fb9754611c20f6649f68805e8c990e83261f29316e29de9e6cedae607b8634c` |
 | object-inspect | 1.13.4 | MIT | [link](https://github.com/inspect-js/object-inspect) | `bd40cc437e28a3ad7bef2ad34e6b72e757b182e67bda1acadbab4ef0476f8232` |
@@ -167,9 +169,9 @@ Regenerate with `pnpm notices:generate`; verify with `pnpm notices:check`.
 | protobufjs | 7.6.5 | BSD-3-Clause | [link](https://protobufjs.github.io/protobuf.js/) | `49d6a1c9a623784c61c6cb70f773f3457faceb1914a13c8560a9823b7631950c` |
 | proxy-addr | 2.0.7 | MIT | [link](https://github.com/jshttp/proxy-addr#readme) | `a7996721249a136fbcfc1c201bcb5f414f38a701d4a24f28abe65e16cfcce813` |
 | pump | 3.0.4 | MIT | [link](https://github.com/mafintosh/pump#readme) | `3fe8d55a98dbf260eace67c00cf9bc53edb46234e840098a0b93df3096b97fb6` |
-| qs | 6.15.1 | BSD-3-Clause | [link](https://github.com/ljharb/qs) | `e7dc37bf662d7f786efcb46c545615e70c1daf458a38385521c63cf6607cdfe1` |
+| qs | 6.15.3 | BSD-3-Clause | [link](https://github.com/ljharb/qs) | `e7dc37bf662d7f786efcb46c545615e70c1daf458a38385521c63cf6607cdfe1` |
 | queue-microtask | 1.2.3 | MIT | [link](https://github.com/feross/queue-microtask) | `d4c2065e2b936e62a4eb400efb4576edec9ca1388a9f78aa288e147275e7bc8b` |
-| range-parser | 1.2.1 | MIT | [link](https://github.com/jshttp/range-parser#readme) | `f655e6291356ec0de7a8f0e69f294961a2cea86678ec94588be1e6a492e278ab` |
+| range-parser | 1.3.0 | MIT | [link](https://github.com/jshttp/range-parser#readme) | `f655e6291356ec0de7a8f0e69f294961a2cea86678ec94588be1e6a492e278ab` |
 | raw-body | 3.0.2 | MIT | [link](https://github.com/stream-utils/raw-body#readme) | `37876d7de8bdf5e5b9b58a697ebc34044624e493e6f49eff5c938e5226dcac6b` |
 | rc | 1.2.8 | (BSD-2-Clause OR MIT OR Apache-2.0) | [link](https://github.com/dominictarr/rc#readme) | `e8734448285a2dd773d40136ed5d5e8163a70701dd540cdc796cfca232f67d55`<br>`65e7e4d223688c601f42959defde380f8c4aa677fa4706da3b4a53f129bd78a3`<br>`d72dea1a8cdf3f4dfa2f594253d0c5b37baefc76e806f5ecb0e426393edcd505` |
 | readable-stream | 3.6.2 | MIT | [link](https://github.com/nodejs/readable-stream#readme) | `ec62dc96da0099b87f4511736c87309335527fb7031639493e06c95728dc8c54` |
@@ -186,7 +188,7 @@ Regenerate with `pnpm notices:generate`; verify with `pnpm notices:check`.
 | setprototypeof | 1.2.0 | ISC | [link](https://github.com/wesleytodd/setprototypeof) | `76d6d1ea0c268da37dd3c961b4fcfb23dee8417fff9e8786d4d44c585b781b69` |
 | shebang-command | 2.0.0 | MIT | [link](https://github.com/kevva/shebang-command#readme) | `69dee148a2cc470554dfa7142e830662062394d0fe67cddd379aba90dc60d6b3` |
 | shebang-regex | 3.0.0 | MIT | [link](https://github.com/sindresorhus/shebang-regex#readme) | `48da2f39e100d4085767e94966b43f4fa95ff6a0698fba57ed460914e35f94a0` |
-| side-channel | 1.1.0 | MIT | [link](https://github.com/ljharb/side-channel#readme) | `cfc3f455254c0af0655cc3ff46a41ed644b67599f6043346169d285bf2b3cf3b` |
+| side-channel | 1.1.1 | MIT | [link](https://github.com/ljharb/side-channel#readme) | `cfc3f455254c0af0655cc3ff46a41ed644b67599f6043346169d285bf2b3cf3b` |
 | side-channel-list | 1.0.1 | MIT | [link](https://github.com/ljharb/side-channel-list#readme) | `5e325595b4ea8cfec3802f545b1def5d7b73e4a5b8e9ba63e32a320f67732292` |
 | side-channel-map | 1.0.1 | MIT | [link](https://github.com/ljharb/side-channel-map#readme) | `5e325595b4ea8cfec3802f545b1def5d7b73e4a5b8e9ba63e32a320f67732292` |
 | side-channel-weakmap | 1.0.2 | MIT | [link](https://github.com/ljharb/side-channel-weakmap#readme) | `cfc3f455254c0af0655cc3ff46a41ed644b67599f6043346169d285bf2b3cf3b` |
@@ -202,7 +204,7 @@ Regenerate with `pnpm notices:generate`; verify with `pnpm notices:check`.
 | to-regex-range | 5.0.1 | MIT | [link](https://github.com/micromatch/to-regex-range) | `e7d1fee7347ffddccc5fd03327ffdb50f8c112be0d5016d62388a92c4ae6e7a9` |
 | toidentifier | 1.0.1 | MIT | [link](https://github.com/component/toidentifier#readme) | `a832d679750e49ab433626ab196350b89964b60eb0d3edd3341887c7d5f4c128` |
 | tunnel-agent | 0.6.0 | Apache-2.0 | [link](https://github.com/mikeal/tunnel-agent#readme) | `d446a8c73d7bbe4872d6524b15ae206f9a2d7eb53f8c9cb6e6c893a43acc5276` |
-| type-is | 2.0.1 | MIT | [link](https://github.com/jshttp/type-is#readme) | `23d466b1b134b415b66fa50c6526b4cf3e7b9258554da88d3abb371721e7ce68` |
+| type-is | 2.1.0 | MIT | [link](https://github.com/jshttp/type-is#readme) | `23d466b1b134b415b66fa50c6526b4cf3e7b9258554da88d3abb371721e7ce68` |
 | typescript | 6.0.3 | Apache-2.0 | [link](https://www.typescriptlang.org/) | `a7d00bfd54525bc694b6e32f64c7ebcf5e6b7ae3657be5cc12767bce74654a47` |
 | undici-types | 7.19.2 | MIT | [link](https://undici.nodejs.org) | `a6db8096b2707bc0102d256917d4d33f298ba36d8c3f25de067a2b5bb379db27` |
 | unpipe | 1.0.0 | MIT | [link](https://github.com/stream-utils/unpipe#readme) | `1a526fbe8d8577f5a4b1c2821842b55b7c0e18862531c62ae4ce69c9b19b74b6` |
@@ -675,7 +677,7 @@ Packages: `fs-constants@1.0.0`
 ### SHA-256 `23d466b1b134b415b66fa50c6526b4cf3e7b9258554da88d3abb371721e7ce68`
 
 Files: `LICENSE`
-Packages: `body-parser@2.2.2`, `type-is@2.0.1`
+Packages: `body-parser@2.3.0`, `type-is@2.1.0`
 
     (The MIT License)
 
@@ -761,7 +763,7 @@ Packages: `escape-html@1.0.3`
 ### SHA-256 `257aed98914108e91a337912727b6a802eef218248507f74b76faffaff517a38`
 
 Files: `LICENSE`
-Packages: `content-type@1.0.5`
+Packages: `content-type@1.0.5`, `content-type@2.1.0`
 
     (The MIT License)
 
@@ -1368,7 +1370,7 @@ Packages: `statuses@2.0.2`
 ### SHA-256 `553d4d20029a24e315b428a1a54a9e109eaa340f2e958a4f50a92362c2c4070b`
 
 Files: `LICENSE`
-Packages: `negotiator@1.0.0`
+Packages: `negotiator@1.1.0`
 
     (The MIT License)
 
@@ -1440,7 +1442,7 @@ Packages: `decompress-response@6.0.0`, `mimic-response@3.1.0`
 ### SHA-256 `5e13dbbc1d120fc2a03cecde7c91424ae2d7de11b63d58ded2f4431e261ee50d`
 
 Files: `LICENSE`
-Packages: `@modelcontextprotocol/sdk@1.29.0`
+Packages: `@modelcontextprotocol/sdk@1.30.0`
 
     MIT License
 
@@ -1467,7 +1469,7 @@ Packages: `@modelcontextprotocol/sdk@1.29.0`
 ### SHA-256 `5e325595b4ea8cfec3802f545b1def5d7b73e4a5b8e9ba63e32a320f67732292`
 
 Files: `LICENSE`
-Packages: `call-bind-apply-helpers@1.0.2`, `call-bound@1.0.4`, `es-define-property@1.0.1`, `es-errors@1.3.0`, `es-object-atoms@1.1.1`, `side-channel-list@1.0.1`, `side-channel-map@1.0.1`
+Packages: `call-bind-apply-helpers@1.0.2`, `call-bound@1.0.4`, `es-define-property@1.0.1`, `es-errors@1.3.0`, `es-object-atoms@1.1.2`, `side-channel-list@1.0.1`, `side-channel-map@1.0.1`
 
     MIT License
 
@@ -1624,7 +1626,7 @@ Packages: `rc@1.2.8`
 ### SHA-256 `6895190430d809c4c57a7582ecc2f99acbc2ea39a5dfad20262a41d5b3e91733`
 
 Files: `LICENSE`
-Packages: `@hono/node-server@1.19.14`
+Packages: `@hono/node-server@2.1.1`
 
     MIT License
 
@@ -1948,7 +1950,7 @@ Packages: `fast-deep-equal@3.1.3`, `json-schema-traverse@1.0.0`
 ### SHA-256 `8078b0829d6c3e9ecde2f003e1966e4cad3efc6e7a640efbab0313cc166b1af1`
 
 Files: `LICENSE.md`
-Packages: `jose@6.2.3`
+Packages: `jose@6.2.10`
 
     The MIT License (MIT)
 
@@ -2025,7 +2027,7 @@ Packages: `zod-to-json-schema@3.25.2`
 ### SHA-256 `835eb611a23301b27115ca1be9f754c876e643ceb7fe63049c6b50609a1cafeb`
 
 Files: `LICENSE`
-Packages: `eventsource-parser@3.0.8`
+Packages: `eventsource-parser@3.1.1`
 
     MIT License
 
@@ -2108,7 +2110,7 @@ Packages: `bindings@1.5.0`
 ### SHA-256 `90021adfb24b0a7af5754cebc6085e2560555f74d29a6d44a7f9a32125f8b348`
 
 Files: `license.md`
-Packages: `express-rate-limit@8.5.2`
+Packages: `express-rate-limit@8.6.2`
 
     ﻿# MIT License
 
@@ -2517,7 +2519,7 @@ Packages: `@protobufjs/aspromise@1.1.2`, `@protobufjs/base64@1.1.2`, `@protobufj
 ### SHA-256 `a6ab98e5c77b9070c443eaff2ff81034a6f8cc05a7524d5098eb0f24defa0115`
 
 Files: `LICENSE`
-Packages: `hono@4.12.21`
+Packages: `hono@4.13.3`
 
     MIT License
 
@@ -2714,7 +2716,7 @@ Packages: `cross-spawn@7.0.6`
 ### SHA-256 `ac779f7314c74f232ef847ea86e714abe25cf6eeb5cc97b69451b74e2af6492d`
 
 Files: `LICENSE`
-Packages: `iconv-lite@0.7.2`
+Packages: `iconv-lite@0.7.2`, `iconv-lite@0.7.3`
 
     Copyright (c) 2011 Alexander Shtuchkin
 
@@ -2740,7 +2742,7 @@ Packages: `iconv-lite@0.7.2`
 ### SHA-256 `b010b0dfdfdb23d7396e03b82cd4621fc9bb8f95d6b0aea70b9c24e12074c786`
 
 Files: `LICENSE`
-Packages: `fast-uri@3.1.2`
+Packages: `fast-uri@3.1.6`
 
     Copyright (c) 2011-2021, Gary Court until https://github.com/garycourt/uri-js/commit/a1acf730b4bba3f1097c9f52e7d9d3aba8cdcaae
     Copyright (c) 2021-present The Fastify team <https://github.com/fastify/fastify#team>
@@ -3150,7 +3152,7 @@ Packages: `object-inspect@1.13.4`
 ### SHA-256 `bd47ce7b88c7759630d1e2b9fcfa170a0f1fde522be09e13fb1581a79d090400`
 
 Files: `LICENSE`
-Packages: `content-disposition@1.1.0`, `forwarded@0.2.0`, `media-typer@1.1.0`, `vary@1.1.2`
+Packages: `content-disposition@1.1.0`, `forwarded@0.2.0`, `media-typer@1.1.1`, `vary@1.1.2`
 
     (The MIT License)
 
@@ -3232,7 +3234,7 @@ Packages: `get-proto@1.0.1`
 ### SHA-256 `bf9b0d665be2a689851eea667ca9f42066ea1d903b38349c51e6a44b2577680a`
 
 Files: `LICENSE`
-Packages: `hasown@2.0.3`
+Packages: `hasown@2.0.4`
 
     MIT License
 
@@ -3624,7 +3626,7 @@ Packages: `mime-db@1.54.0`
 ### SHA-256 `cfc3f455254c0af0655cc3ff46a41ed644b67599f6043346169d285bf2b3cf3b`
 
 Files: `LICENSE`
-Packages: `side-channel-weakmap@1.0.2`, `side-channel@1.1.0`
+Packages: `side-channel-weakmap@1.0.2`, `side-channel@1.1.1`
 
     MIT License
 
@@ -4197,7 +4199,7 @@ Packages: `to-regex-range@5.0.1`
 ### SHA-256 `e7dc37bf662d7f786efcb46c545615e70c1daf458a38385521c63cf6607cdfe1`
 
 Files: `LICENSE.md`
-Packages: `qs@6.15.1`
+Packages: `qs@6.15.3`
 
     BSD 3-Clause License
 
@@ -4332,7 +4334,7 @@ Packages: `@kwsites/file-exists@1.1.1`
 ### SHA-256 `f655e6291356ec0de7a8f0e69f294961a2cea86678ec94588be1e6a492e278ab`
 
 Files: `LICENSE`
-Packages: `range-parser@1.2.1`
+Packages: `range-parser@1.3.0`
 
     (The MIT License)
 
@@ -4389,7 +4391,7 @@ Packages: `eventsource@3.0.7`
 ### SHA-256 `f8d791359a50cbcac82c29cb7b0b1b889b28be76fdd35b8ee33f0f7c8704702a`
 
 Files: `LICENSE`
-Packages: `ip-address@10.2.0`
+Packages: `ip-address@10.5.0`
 
     Copyright (C) 2011 by Beau Gunderson
 

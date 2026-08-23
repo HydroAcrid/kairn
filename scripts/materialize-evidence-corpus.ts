@@ -18,6 +18,7 @@ import {
   getSemanticModelManifest
 } from "../src/semantic/modelRegistry.js";
 import { SqliteStore } from "../src/store/sqliteStore.js";
+import { resolveRoot } from "../src/utils/paths.js";
 import type {
   EvidenceCandidate,
   SemanticEmbeddingRecord,
@@ -1307,14 +1308,15 @@ export function restoreRepositoryIndexSnapshot(rootPath: string, cachePath: stri
     throw new Error(`repository index snapshot checksum mismatch: ${cachePath}`);
   }
   const sourceRootPath = string(manifest.sourceRootPath, "repository index snapshot sourceRootPath");
-  const paths = ensureKairnDir(rootPath);
+  const destinationRootPath = resolveRoot(rootPath);
+  const paths = ensureKairnDir(destinationRootPath);
   const staged = `${paths.databasePath}.snapshot-${crypto.randomUUID()}`;
   try {
     fs.copyFileSync(cachePath, staged, fs.constants.COPYFILE_EXCL);
     if (fs.existsSync(paths.databasePath)) throw new Error("cannot restore repository index snapshot over existing state");
     fs.renameSync(staged, paths.databasePath);
     const store = new SqliteStore(paths.databasePath);
-    try { store.relocateIndexRoot(sourceRootPath, rootPath); }
+    try { store.relocateIndexRoot(sourceRootPath, destinationRootPath); }
     finally { store.close(); }
   } finally { fs.rmSync(staged, { force: true }); }
   return true;
@@ -1328,7 +1330,8 @@ export function persistRepositoryIndexSnapshot(rootPath: string, cachePath: stri
     }
     return;
   }
-  const paths = ensureKairnDir(rootPath);
+  const sourceRootPath = resolveRoot(rootPath);
+  const paths = ensureKairnDir(sourceRootPath);
   const store = new SqliteStore(paths.databasePath);
   try { store.checkpointWal(); }
   finally { store.close(); }
@@ -1341,7 +1344,7 @@ export function persistRepositoryIndexSnapshot(rootPath: string, cachePath: stri
     const payload: RepositoryIndexSnapshotManifest = {
       formatVersion: 1,
       cacheKey: path.basename(cachePath, ".sqlite"),
-      sourceRootPath: rootPath,
+      sourceRootPath,
       databaseSha256: sha256(fs.readFileSync(stagedDatabase))
     };
     fs.writeFileSync(stagedManifest, `${JSON.stringify(payload, null, 2)}\n`, { encoding: "utf8", flag: "wx" });

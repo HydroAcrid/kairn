@@ -60,6 +60,9 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Enable Git long paths
+        if: runner.os == 'Windows'
+        run: git config --global core.longpaths true
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
@@ -80,6 +83,13 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/dependency-review-action@v4
+      - uses: pnpm/action-setup@v4
         with:
-          fail-on-severity: moderate
+          version: 10.31.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Audit production dependency lockfile
+        run: pnpm audit --prod --audit-level moderate
