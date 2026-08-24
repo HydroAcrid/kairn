@@ -1,0 +1,160 @@
+{
+  "schemaVersion": "semantic-model-selection.v1",
+  "campaignId": "v02c-semantic-model-selection-v3-20260724",
+  "sealed": true,
+  "documentSchemaVersion": "semantic-documents-v3",
+  "selectionSplits": ["train", "calibration"],
+  "holdoutSplit": "holdout",
+  "cases": [
+    {
+      "id": "python-source-localization-v3",
+      "lineageId": "synthetic-v3-python-train",
+      "split": "train",
+      "language": "python",
+      "scenario": "source_localization",
+      "targetPath": "src/traffic/limiter.py",
+      "query": "Where is incoming request throughput smoothed so short bursts are allowed without overwhelming the service?",
+      "targetText": "file: src/traffic/limiter.py\nlanguage: python\nrole: source\nmodule: src/traffic\nexported symbols: class TokenBucket; function admit_request\nrepresentative source:\nclass TokenBucket:\n    def admit_request(self, now):\n        self.credits = min(self.capacity, self.credits + self.refill_rate * elapsed)\n        if self.credits < 1: return False\n        self.credits -= 1\n        return True"
+    },
+    {
+      "id": "typescript-source-localization-v3",
+      "lineageId": "synthetic-v3-typescript-train",
+      "split": "train",
+      "language": "typescript",
+      "scenario": "source_localization",
+      "targetPath": "src/release/cohort.ts",
+      "query": "Which implementation decides whether a person belongs in a gradual product rollout?",
+      "targetText": "file: src/release/cohort.ts\nlanguage: typescript\nrole: source\nmodule: src/release\nexported symbols: function chooseCohort\nrepresentative source:\nexport function chooseCohort(accountId: string, percentage: number): boolean {\n  const bucket = stableHash(accountId) % 100;\n  return bucket < percentage;\n}"
+    },
+    {
+      "id": "go-source-localization-v3",
+      "lineageId": "synthetic-v3-go-train",
+      "split": "train",
+      "language": "go",
+      "scenario": "source_localization",
+      "targetPath": "internal/shutdown/drain.go",
+      "query": "Where does the server stop accepting new work while allowing active operations to finish before exit?",
+      "targetText": "file: internal/shutdown/drain.go\nlanguage: go\nrole: source\nmodule: internal/shutdown\nexported symbols: function Drain\nrepresentative source:\nfunc Drain(ctx context.Context, listener net.Listener, active *sync.WaitGroup) error {\n listener.Close(); done := make(chan struct{}); go func() { active.Wait(); close(done) }()\n select { case <-done: return nil; case <-ctx.Done(): return ctx.Err() }\n}"
+    },
+    {
+      "id": "java-source-localization-v3",
+      "lineageId": "synthetic-v3-java-train",
+      "split": "train",
+      "language": "java",
+      "scenario": "source_localization",
+      "targetPath": "src/main/java/cache/LruStore.java",
+      "query": "Which code removes the entry that has gone unused for the longest time once capacity is reached?",
+      "targetText": "file: src/main/java/cache/LruStore.java\nlanguage: java\nrole: source\nmodule: cache\nexported symbols: class LruStore; method removeEldestEntry\nrepresentative source:\npublic final class LruStore<K,V> extends LinkedHashMap<K,V> {\n protected boolean removeEldestEntry(Map.Entry<K,V> eldest) { return size() > capacity; }\n}"
+    },
+    {
+      "id": "cpp-source-localization-v3",
+      "lineageId": "synthetic-v3-cpp-train",
+      "split": "train",
+      "language": "cpp",
+      "scenario": "source_localization",
+      "targetPath": "src/fs/normalize_path.cpp",
+      "query": "Where are redundant directory steps removed to produce a canonical filesystem location?",
+      "targetText": "file: src/fs/normalize_path.cpp\nlanguage: cpp\nrole: source\nmodule: src/fs\nexported symbols: function normalize_path\nrepresentative source:\npath normalize_path(const path& input) {\n vector<path> parts;\n for (auto& part : input) { if (part == \".\") continue; if (part == \"..\") parts.pop_back(); else parts.push_back(part); }\n return join(parts);\n}"
+    },
+    {
+      "id": "python-failure-first-v3",
+      "lineageId": "synthetic-v3-python-calibration",
+      "split": "calibration",
+      "language": "python",
+      "scenario": "failure_first",
+      "targetPath": "src/cache/expiry.py",
+      "query": "A stale record is still returned after its lifetime passes. Which implementation should reject outdated values?",
+      "targetText": "file: src/cache/expiry.py\nlanguage: python\nrole: source\nmodule: src/cache\nexported symbols: function read_if_fresh\nrepresentative source:\ndef read_if_fresh(self, key, clock):\n    item = self.entries.get(key)\n    if item is None or clock.now() >= item.expires_at:\n        self.entries.pop(key, None)\n        return None\n    return item.value"
+    },
+    {
+      "id": "typescript-failure-first-v3",
+      "lineageId": "synthetic-v3-typescript-calibration",
+      "split": "calibration",
+      "language": "typescript",
+      "scenario": "failure_first",
+      "targetPath": "src/auth/refreshSession.ts",
+      "query": "Requests remain unauthorized after login credentials expire even though a renewal secret exists. Where should access be restored?",
+      "targetText": "file: src/auth/refreshSession.ts\nlanguage: typescript\nrole: source\nmodule: src/auth\nexported symbols: function refreshSession\nrepresentative source:\nexport async function refreshSession(refreshToken: string) {\n const response = await identity.exchange(refreshToken);\n cookieJar.set(\"access\", response.accessToken, { expires: response.expiresAt });\n return response.account;\n}"
+    },
+    {
+      "id": "go-failure-first-v3",
+      "lineageId": "synthetic-v3-go-calibration",
+      "split": "calibration",
+      "language": "go",
+      "scenario": "failure_first",
+      "targetPath": "internal/tls/reloader.go",
+      "query": "New secure connections keep serving an old certificate after rotation. Which code should swap the in-memory identity?",
+      "targetText": "file: internal/tls/reloader.go\nlanguage: go\nrole: source\nmodule: internal/tls\nexported symbols: function ReloadCertificate\nrepresentative source:\nfunc (r *Reloader) ReloadCertificate(certFile, keyFile string) error {\n next, err := tls.LoadX509KeyPair(certFile, keyFile); if err != nil { return err }\n r.current.Store(&next); return nil\n}"
+    },
+    {
+      "id": "java-failure-first-v3",
+      "lineageId": "synthetic-v3-java-calibration",
+      "split": "calibration",
+      "language": "java",
+      "scenario": "failure_first",
+      "targetPath": "src/main/java/resilience/CircuitBreaker.java",
+      "query": "A failing dependency is called continuously instead of being paused after repeated errors. Which implementation owns that protection?",
+      "targetText": "file: src/main/java/resilience/CircuitBreaker.java\nlanguage: java\nrole: source\nmodule: resilience\nexported symbols: class CircuitBreaker; method recordFailure\nrepresentative source:\npublic void recordFailure(Instant now) {\n if (failures.incrementAndGet() >= threshold) { state.set(State.OPEN); retryAfter.set(now.plus(cooldown)); }\n}"
+    },
+    {
+      "id": "cpp-failure-first-v3",
+      "lineageId": "synthetic-v3-cpp-calibration",
+      "split": "calibration",
+      "language": "cpp",
+      "scenario": "failure_first",
+      "targetPath": "src/memory/slab_pool.cpp",
+      "query": "The allocator crashes when the same object is released twice. Where should duplicate returns to the free list be detected?",
+      "targetText": "file: src/memory/slab_pool.cpp\nlanguage: cpp\nrole: source\nmodule: src/memory\nexported symbols: method SlabPool::release\nrepresentative source:\nvoid SlabPool::release(void* pointer) {\n auto index = slot_index(pointer);\n if (!allocated[index].exchange(false)) throw double_release_error(index);\n free_slots.push(index);\n}"
+    },
+    {
+      "id": "python-long-session-v3",
+      "lineageId": "synthetic-v3-python-holdout",
+      "split": "holdout",
+      "language": "python",
+      "scenario": "long_session",
+      "targetPath": "src/jobs/idempotency.py",
+      "query": "Continue the duplicate-job investigation: find the implementation that lets repeated submissions with the same request key return the original result instead of running twice.",
+      "targetText": "file: src/jobs/idempotency.py\nlanguage: python\nrole: source\nmodule: src/jobs\nexported symbols: class IdempotentRunner; function execute\nrepresentative source:\nasync def execute(self, request_key, operation):\n    saved = await self.results.get(request_key)\n    if saved is not None: return saved\n    result = await operation()\n    await self.results.put_if_absent(request_key, result)\n    return await self.results.get(request_key)"
+    },
+    {
+      "id": "typescript-long-session-v3",
+      "lineageId": "synthetic-v3-typescript-holdout",
+      "split": "holdout",
+      "language": "typescript",
+      "scenario": "long_session",
+      "targetPath": "src/sync/offlineQueue.ts",
+      "query": "Resume the reconnect work: where are locally queued changes sent in order after the network returns, while successfully acknowledged entries are removed?",
+      "targetText": "file: src/sync/offlineQueue.ts\nlanguage: typescript\nrole: source\nmodule: src/sync\nexported symbols: class OfflineQueue; method flush\nrepresentative source:\nasync flush(transport: Transport) {\n while (this.pending.length) {\n  await transport.send(this.pending[0]);\n  this.pending.shift();\n  await this.persist();\n }\n}"
+    },
+    {
+      "id": "go-long-session-v3",
+      "lineageId": "synthetic-v3-go-holdout",
+      "split": "holdout",
+      "language": "go",
+      "scenario": "long_session",
+      "targetPath": "internal/cluster/lease.go",
+      "query": "Continue the leadership-loss debugging: locate the component that periodically extends ownership and stops work when the lease can no longer be renewed.",
+      "targetText": "file: internal/cluster/lease.go\nlanguage: go\nrole: source\nmodule: internal/cluster\nexported symbols: method Lease.KeepAlive\nrepresentative source:\nfunc (l *Lease) KeepAlive(ctx context.Context) error {\n ticker := time.NewTicker(l.interval)\n for { select { case <-ticker.C: if err := l.store.Renew(l.id); err != nil { return err }; case <-ctx.Done(): return ctx.Err() } }\n}"
+    },
+    {
+      "id": "java-long-session-v3",
+      "lineageId": "synthetic-v3-java-holdout",
+      "split": "holdout",
+      "language": "java",
+      "scenario": "long_session",
+      "targetPath": "src/main/java/search/ResultMerger.java",
+      "query": "After tracing paginated shards, find the component that combines their sorted results and emits only the globally best entries.",
+      "targetText": "file: src/main/java/search/ResultMerger.java\nlanguage: java\nrole: source\nmodule: search\nexported symbols: class ResultMerger; method merge\nrepresentative source:\npublic List<Result> merge(List<Iterator<Result>> shards, int limit) {\n PriorityQueue<Cursor> heap = seed(shards);\n List<Result> output = new ArrayList<>();\n while (!heap.isEmpty() && output.size() < limit) output.add(popAndAdvance(heap));\n return output;\n}"
+    },
+    {
+      "id": "cpp-long-session-v3",
+      "lineageId": "synthetic-v3-cpp-holdout",
+      "split": "holdout",
+      "language": "cpp",
+      "scenario": "long_session",
+      "targetPath": "src/storage/snapshot_compactor.cpp",
+      "query": "Continue the storage cleanup: where are obsolete history segments folded into a durable snapshot before their old files are removed?",
+      "targetText": "file: src/storage/snapshot_compactor.cpp\nlanguage: cpp\nrole: source\nmodule: src/storage\nexported symbols: method SnapshotCompactor::compact\nrepresentative source:\nvoid SnapshotCompactor::compact(const vector<Segment>& segments) {\n State state = replay(segments);\n auto staged = snapshots.write_staged(state);\n snapshots.commit(staged);\n segments_store.remove_covered(segments);\n}"
+    }
+  ]
+}

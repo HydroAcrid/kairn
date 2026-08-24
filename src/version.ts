@@ -1,34 +1,19 @@
-export const KAIRN_VERSION = "0.1.4";
+// SPDX-License-Identifier: Apache-2.0
 
-export type KairnBuildInfo = {
-  version: string;
-  target: string;
-  channel: string;
-  platformPackage?: string | undefined;
-  launcherPackage?: string | undefined;
+import fs from "node:fs";
+
+type PackageMetadata = {
+  version?: unknown;
 };
 
-export function detectBuildTarget(platform = process.platform, arch = process.arch): string {
-  return `${platform}-${arch}`;
+export function getKairnVersion(): string {
+  const packagePath = new URL("../package.json", import.meta.url);
+  const metadata = JSON.parse(fs.readFileSync(packagePath, "utf8")) as PackageMetadata;
+  if (typeof metadata.version !== "string" || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(metadata.version)) {
+    throw new Error(`Invalid Kairn package version in ${packagePath.pathname}`);
+  }
+  return metadata.version;
 }
 
-export function getKairnBuildInfo(): KairnBuildInfo {
-  return {
-    version: KAIRN_VERSION,
-    target: process.env.KAIRN_BUILD_TARGET || detectBuildTarget(),
-    channel: process.env.KAIRN_INSTALL_CHANNEL || process.env.KAIRN_BUILD_CHANNEL || "source",
-    platformPackage: process.env.KAIRN_PLATFORM_PACKAGE || undefined,
-    launcherPackage: process.env.KAIRN_LAUNCHER_PACKAGE || undefined
-  };
-}
-
-export function formatKairnVersionText(): string {
-  const info = getKairnBuildInfo();
-  return [
-    info.version,
-    `target: ${info.target}`,
-    `channel: ${info.channel}`,
-    info.platformPackage ? `platform package: ${info.platformPackage}` : "",
-    info.launcherPackage ? `launcher package: ${info.launcherPackage}` : ""
-  ].filter(Boolean).join("\n");
-}
+/** @deprecated Prefer getKairnVersion(); retained for v0.1 integrations. */
+export const KAIRN_VERSION = getKairnVersion();

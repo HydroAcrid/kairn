@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { FileRecord } from "../types.js";
 
 export function estimateFileBaselineTokens(files: Pick<FileRecord, "size">[]): number {

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import path from "node:path";
 import type { FileKind } from "../types.js";
 
@@ -52,6 +54,7 @@ export function classifyFile(filePath: string): FileKind {
     /(^|\/)tests?\//.test(normalized) && /\.pyi?$/.test(basename) ||
     /(test|tests)\.java$/.test(basename) ||
     /(test|tests)\.kt$/.test(basename) ||
+    /(^|\/)src\/test\//.test(normalized) && /\.(java|kt|kts)$/.test(basename) ||
     /(^|\/)src\/test\/java\//.test(normalized) ||
     /(^|\/)src\/test\/kotlin\//.test(normalized) ||
     /(_test|_unittest|_tests)\.(cc|cpp|cxx|c|hh|hpp|hxx)$/.test(basename) ||
@@ -68,6 +71,8 @@ export function classifyFile(filePath: string): FileKind {
   if (
     basename === "package.json" ||
     basename === "tsconfig.json" ||
+    basename === "go.mod" ||
+    basename === "go.work" ||
     basename.endsWith(".config.ts") ||
     basename.endsWith(".config.js") ||
     basename.endsWith(".config.mjs") ||

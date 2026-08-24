@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { tokenizeLexical } from "./tokenize.js";
 
 export const VECTOR_DIMENSIONS = 256;

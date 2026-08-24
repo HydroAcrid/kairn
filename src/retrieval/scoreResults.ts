@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { FileRecord, ScoredFile, SymbolRecord } from "../types.js";
 import { tokenizeLexical } from "../semantic/tokenize.js";
 
@@ -107,7 +109,7 @@ function groupSymbolsByFile(symbols: SymbolRecord[]): Map<string, SymbolRecord[]
 }
 
 function tokenize(query: string): string[] {
-  return tokenizeLexical(query).filter((term) => term.length > 2 && !STOPWORDS.has(term));
+  return [...new Set(tokenizeLexical(query).filter((term) => term.length > 2 && !STOPWORDS.has(term)))];
 }
 
 function tokenizeSymbol(symbol: string): string[] {

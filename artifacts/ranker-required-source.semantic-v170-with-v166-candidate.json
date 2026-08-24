@@ -1,0 +1,354 @@
+{
+  "schemaVersion": "probe-ranker-evaluation.v1",
+  "promotionEligible": false,
+  "reason": "This train/calibration required-source diagnostic measures the bounded candidate-plus-ranker path and is not holdout or promotion evidence.",
+  "evaluationSplit": "train-calibration",
+  "referenceKind": "required_source_oracle",
+  "candidatePool": "bounded",
+  "model": {
+    "id": "kairn-evidence-v02c-semantic-v166-candidate",
+    "checksum": "9ead1855ffc1362ce8531ff9019fd4311c1419a78ba4fa95c1e46d6db946676b",
+    "featureSchemaVersion": "evidence-features-v4",
+    "trainingDataHash": "3d48be1a2725f35c2f31116260e2e77a7d05c82e171e8e555852763ce06b69bb"
+  },
+  "inputs": {
+    "trainingRows": {
+      "path": "artifacts/ranker-probe.semantic-v166-train-cal135.jsonl",
+      "sha256": "3d48be1a2725f35c2f31116260e2e77a7d05c82e171e8e555852763ce06b69bb"
+    },
+    "manifest": {
+      "path": "artifacts/ranker-corpus.semantic-v170-reviewed-probe512-train-cal135.json",
+      "sha256": "8ffa951b341da8ee7fa715cc85ad7846bb49c964f9228d673edca72f98ba161c"
+    },
+    "report": {
+      "path": "artifacts/ranker-corpus.semantic-v170-reviewed-probe512-train-cal135.report.json",
+      "sha256": "91074c9a599be0d476efed0560c6aa4af0ccfe79afc781a5b49b600263fbc28a"
+    }
+  },
+  "targetCaseCount": 10,
+  "holdoutCaseCount": 0,
+  "calibrationCaseCount": 0,
+  "trainCalibrationCaseCount": 10,
+  "labeledTargetRows": 89,
+  "labeledHoldoutRows": 0,
+  "metrics": {
+    "probeAvailabilityFullRecall": 1,
+    "currentStrictFullRecallAt64": 0.5,
+    "currentStrictFullRecallAt128": 1,
+    "rankedStrictFullRecallAt64": 0.6,
+    "rankedStrictFullRecallAt128": 1,
+    "rankedRequiredFileRecallAt1": 0.058824,
+    "rankedRequiredFileRecallAt5": 0.176471,
+    "rankedRequiredFileRecallAt64": 0.705882,
+    "rankedRequiredFileRecallAt128": 1,
+    "rankedRequiredFileMrr": 0.140416,
+    "expectedCalibrationError": null,
+    "generatedVendorTopOneViolations": []
+  },
+  "perLanguage": {
+    "cpp": {
+      "cases": 1,
+      "fullRecallAt64": 1,
+      "fullRecallAt128": 1
+    },
+    "go": {
+      "cases": 4,
+      "fullRecallAt64": 0.5,
+      "fullRecallAt128": 1
+    },
+    "java": {
+      "cases": 1,
+      "fullRecallAt64": 0,
+      "fullRecallAt128": 1
+    },
+    "typescript": {
+      "cases": 4,
+      "fullRecallAt64": 0.75,
+      "fullRecallAt128": 1
+    }
+  },
+  "perScenario": {
+    "failure_first": {
+      "cases": 2,
+      "fullRecallAt64": 1,
+      "fullRecallAt128": 1
+    },
+    "long_session": {
+      "cases": 4,
+      "fullRecallAt64": 0.75,
+      "fullRecallAt128": 1
+    },
+    "source_localization": {
+      "cases": 4,
+      "fullRecallAt64": 0.25,
+      "fullRecallAt128": 1
+    }
+  },
+  "missesAt64": [
+    {
+      "id": "v02c-calibration-typescript-source_localization-101",
+      "missing": [
+        "packages/babel-helpers/src/index.ts"
+      ],
+      "requiredFileRanks": {
+        "packages/babel-helpers/src/index.ts": 82
+      }
+    },
+    {
+      "id": "v02c-train-go-long_session-049",
+      "missing": [
+        "internal/terraform/marks.go",
+        "internal/terraform/node_resource_plan_partialexp.go"
+      ],
+      "requiredFileRanks": {
+        "internal/terraform/marks.go": 96,
+        "internal/terraform/node_resource_abstract_instance.go": 43,
+        "internal/terraform/node_resource_plan_partialexp.go": 68
+      }
+    },
+    {
+      "id": "v02c-train-go-source_localization-039",
+      "missing": [
+        "internal/terraform/transform_attach_config_resource.go"
+      ],
+      "requiredFileRanks": {
+        "internal/terraform/transform_attach_config_resource.go": 83
+      }
+    },
+    {
+      "id": "v02c-train-java-source_localization-056",
+      "missing": [
+        "javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java"
+      ],
+      "requiredFileRanks": {
+        "javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java": 65
+      }
+    }
+  ],
+  "missesAt128": [],
+  "cases": [
+    {
+      "id": "v02c-calibration-typescript-failure_first-103",
+      "language": "typescript",
+      "scenario": "failure_first",
+      "requiredSourceFiles": [
+        "packages/babel-parser/src/parser/expression.js"
+      ],
+      "probeCandidateCount": 128,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "packages/babel-parser/src/parser/expression.js": 2
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-typescript-long_session-106",
+      "language": "typescript",
+      "scenario": "long_session",
+      "requiredSourceFiles": [
+        "src/components/structures/RoomSearch.tsx",
+        "src/components/structures/RoomView.tsx",
+        "src/components/views/rooms/EditMessageComposer.js",
+        "src/components/views/rooms/RoomSublist.tsx",
+        "src/components/views/rooms/SendMessageComposer.js"
+      ],
+      "probeCandidateCount": 128,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "src/components/structures/RoomSearch.tsx": 15,
+        "src/components/structures/RoomView.tsx": 21,
+        "src/components/views/rooms/EditMessageComposer.js": 49,
+        "src/components/views/rooms/RoomSublist.tsx": 9,
+        "src/components/views/rooms/SendMessageComposer.js": 45
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-typescript-long_session-107",
+      "language": "typescript",
+      "scenario": "long_session",
+      "requiredSourceFiles": [
+        "src/components/views/settings/devices/useOwnDevices.ts",
+        "src/voice-broadcast/models/VoiceBroadcastRecording.ts"
+      ],
+      "probeCandidateCount": 128,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "src/components/views/settings/devices/useOwnDevices.ts": 3,
+        "src/voice-broadcast/models/VoiceBroadcastRecording.ts": 18
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-calibration-typescript-source_localization-101",
+      "language": "typescript",
+      "scenario": "source_localization",
+      "requiredSourceFiles": [
+        "packages/babel-helpers/src/index.ts"
+      ],
+      "probeCandidateCount": 128,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": false,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": false,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "packages/babel-helpers/src/index.ts": 82
+      },
+      "missingAt64": [
+        "packages/babel-helpers/src/index.ts"
+      ],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-train-cpp-long_session-090",
+      "language": "cpp",
+      "scenario": "long_session",
+      "requiredSourceFiles": [
+        "include/nlohmann/detail/macro_scope.hpp"
+      ],
+      "probeCandidateCount": 128,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "include/nlohmann/detail/macro_scope.hpp": 17
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-train-go-failure_first-043",
+      "language": "go",
+      "scenario": "failure_first",
+      "requiredSourceFiles": [
+        "hugolib/content_map.go"
+      ],
+      "probeCandidateCount": 128,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": false,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "hugolib/content_map.go": 12
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-train-go-long_session-049",
+      "language": "go",
+      "scenario": "long_session",
+      "requiredSourceFiles": [
+        "internal/terraform/marks.go",
+        "internal/terraform/node_resource_abstract_instance.go",
+        "internal/terraform/node_resource_plan_partialexp.go"
+      ],
+      "probeCandidateCount": 128,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": false,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": false,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "internal/terraform/marks.go": 96,
+        "internal/terraform/node_resource_abstract_instance.go": 43,
+        "internal/terraform/node_resource_plan_partialexp.go": 68
+      },
+      "missingAt64": [
+        "internal/terraform/marks.go",
+        "internal/terraform/node_resource_plan_partialexp.go"
+      ],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-train-go-source_localization-038",
+      "language": "go",
+      "scenario": "source_localization",
+      "requiredSourceFiles": [
+        "internal/communicator/ssh/provisioner.go"
+      ],
+      "probeCandidateCount": 128,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": true,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": true,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "internal/communicator/ssh/provisioner.go": 1
+      },
+      "missingAt64": [],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-train-go-source_localization-039",
+      "language": "go",
+      "scenario": "source_localization",
+      "requiredSourceFiles": [
+        "internal/terraform/transform_attach_config_resource.go"
+      ],
+      "probeCandidateCount": 128,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": false,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": false,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "internal/terraform/transform_attach_config_resource.go": 83
+      },
+      "missingAt64": [
+        "internal/terraform/transform_attach_config_resource.go"
+      ],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    },
+    {
+      "id": "v02c-train-java-source_localization-056",
+      "language": "java",
+      "scenario": "source_localization",
+      "requiredSourceFiles": [
+        "javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java"
+      ],
+      "probeCandidateCount": 128,
+      "availabilityAtProbe": true,
+      "currentFullRecallAt64": false,
+      "currentFullRecallAt128": true,
+      "rankedFullRecallAt64": false,
+      "rankedFullRecallAt128": true,
+      "requiredFileRanks": {
+        "javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java": 65
+      },
+      "missingAt64": [
+        "javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java"
+      ],
+      "missingAt128": [],
+      "generatedVendorTopOne": false
+    }
+  ]
+}

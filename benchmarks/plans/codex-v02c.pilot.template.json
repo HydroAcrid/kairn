@@ -1,0 +1,26 @@
+{
+  "templateSchemaVersion": "codex-pilot-template.v1",
+  "kind": "kairn-codex-pilot-template",
+  "runnable": false,
+  "profile": "pilot",
+  "blockedReason": "The 15 repository-disjoint language/scenario cells have not been independently sealed.",
+  "requiredOutput": "benchmarks/plans/codex-v02c.pilot.sealed.json",
+  "conditions": ["vanilla_codex", "codex_kairn"],
+  "languages": ["python", "typescript", "go", "java", "cpp"],
+  "scenarios": ["source_localization", "failure_first", "long_session"],
+  "tasksPerCell": 1,
+  "taskCount": 15,
+  "repeats": 3,
+  "firstRepeatAttempts": 30,
+  "completeAttempts": 90,
+  "longSessionTurns": 3,
+  "codex": {
+    "package": "@openai/codex",
+    "version": "0.145.0",
+    "integrity": "sha512-/PSPSFujjjmiyVFvG2yu/grOFhsWdokTH8t2KGWhXSo/M5n/dIDsnbsnO82/7bLtIoDuzQf7ATBUMWqPWQINlQ==",
+    "model": "gpt-5.6",
+    "reasoningEffort": "medium",
+    "serviceTier": "standard",
+    "fastMode": false
+  }
+}

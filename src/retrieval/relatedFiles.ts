@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import path from "node:path";
 import type { FileRecord } from "../types.js";
 import { extractImports, readTextFile, resolveImportCandidates } from "./readSource.js";

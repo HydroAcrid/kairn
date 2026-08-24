@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import type { ContextPrime } from "../types.js";

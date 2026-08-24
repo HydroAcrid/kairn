@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -20,7 +22,7 @@ import {
 import { printContextPrime } from "../formatters.js";
 import { codexExecArgs, codexInteractiveArgs, parsePositiveInt, waitForShutdown, withKairnInternalStateHidden, withRuntime } from "../helpers.js";
 import { printContextResponse, printJson } from "../output.js";
-import { writeCodexSetup } from "../setup/codexSetup.js";
+import { normalizeCodexSetupMode, writeCodexSetup } from "../setup/codexSetup.js";
 import { formatSetupWizardResult, runSetupWizard, type SetupWizardChoice, type SetupWizardIndexMode } from "../setup/wizard.js";
 
 export function formatCodexEditScopeReminder(prime: ContextPrime | undefined): string | undefined {
@@ -103,9 +105,9 @@ export function registerCoreCommands(program: Command): void {
             "Kairn initialized.",
             `Root: ${result.rootPath}`,
             `State: ${result.kairnDir}`,
-            `Files indexed: ${result.scan.files.length}`,
+            `Files inventoried: ${result.scan.files.length}`,
             `Ignored candidates: ${result.scan.ignoredCount}`,
-            result.scan.skippedByLimit ? `Skipped by index cap: ${result.scan.skippedByLimit}` : "",
+            result.scan.inventoryOnlyCount ? `Inventory-only files: ${result.scan.inventoryOnlyCount}` : "",
             ""
           ].filter(Boolean).join("\n") + "\n"
         );
@@ -365,7 +367,7 @@ export function registerCoreCommands(program: Command): void {
     .addOption(new Option("--approval <policy>", "Codex approval policy").choices(["untrusted", "on-failure", "on-request", "never"]))
     .option("--skip-git-repo-check", "pass Codex --skip-git-repo-check for disposable or non-git workspaces")
     .option("--bind-hooks", "install Codex hooks bound to this Kairn session before launching")
-    .addOption(new Option("--hook-mode <mode>", "Codex setup mode to use with --bind-hooks").choices(["savings", "hybrid"]).default("savings"))
+    .addOption(new Option("--hook-mode <mode>", "Codex setup mode to use with --bind-hooks").choices(["source-first", "savings", "hybrid"]).default("source-first"))
     .addOption(new Option("--hook-output <profile>", "prompt-submit hook output profile for --bind-hooks").choices(["full-prime", "tiny-directive", "failure-only", "mcp-brief"]).default("full-prime"))
     .option("--dry-run", "print the prepared prompt/command without launching Codex")
     .option("--json", "print JSON output")
@@ -380,7 +382,7 @@ export function registerCoreCommands(program: Command): void {
       approval?: string;
       skipGitRepoCheck?: boolean;
       bindHooks?: boolean;
-      hookMode: "savings" | "hybrid";
+      hookMode: "source-first" | "savings" | "hybrid";
       hookOutput: HookOutputProfile;
       dryRun?: boolean;
       json?: boolean;
@@ -405,7 +407,10 @@ export function registerCoreCommands(program: Command): void {
             : (await runtime.startTask("Interactive Codex session")).session
           : prime!.session;
         const sessionId = session.id;
-        const hookMode = options.hookMode as CodexSetupMode;
+        const hookMode = normalizeCodexSetupMode(options.hookMode as CodexSetupMode);
+        if (options.hookMode === "savings") {
+          process.stderr.write("kairn: --hook-mode savings is deprecated; using --hook-mode source-first.\n");
+        }
         const bindHooks = interactive || Boolean(options.bindHooks);
         const shouldInstallSessionHooks = Boolean(bindHooks && !options.dryRun && !options.json);
         const hookBackup = shouldInstallSessionHooks ? snapshotCodexConversationFiles(options.root) : undefined;
@@ -420,6 +425,9 @@ export function registerCoreCommands(program: Command): void {
               sessionId
             })
           : undefined;
+        if (hookSetup?.configConflict) {
+          throw new Error(`Codex hook setup requires attention: ${hookSetup.configConflict.reason}`);
+        }
         const shouldInjectPrime = Boolean(prime && shouldInjectPrimeIntoCodexPrompt(prime.contextDecision?.action));
         const strictBoundaryReminder = formatCodexEditScopeReminder(prime);
         const approval = options.approval ?? (interactive ? undefined : "never");

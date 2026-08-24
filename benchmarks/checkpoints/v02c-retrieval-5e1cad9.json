@@ -1,0 +1,259 @@
+{
+  "schemaVersion": "ranker-corpus-diagnostic-checkpoint.v1",
+  "checkpointId": "kairn-evidence-v02c-20260722-5e1cad9dca43",
+  "corpusId": "kairn-evidence-v02c-20260722",
+  "status": "draft_diagnostic_not_promotion_evidence",
+  "promotionEligible": false,
+  "publicDataOnly": true,
+  "trackedSnapshots": {
+    "intakePath": "benchmarks/drafts/kairn-evidence-v02c-20260722/ranker-corpus-intake.candidates-v2.json",
+    "intakeSha256": "b38df6aebe47113d70636efadf7b0afb54dd148283bcc6e66cb7ee001ee7943f",
+    "registryPath": "benchmarks/drafts/kairn-evidence-v02c-20260722/lineage-registry.candidates-v2.json",
+    "registrySha256": "e0b876c765cb621bf04bcb5ab7eda9a60ee46c571656cd5cc91cb6237c3b70d9"
+  },
+  "rawArtifacts": {
+    "baselineReport": {
+      "fileName": "ranker-corpus.draft-v6-isolated.report.json",
+      "sha256": "af00e34d601c5270e5bfbbbe4a8c1142cd8ff6f5eb834fc6ce65f01f588cba57",
+      "bytes": 3342857
+    },
+    "manifest": {
+      "fileName": "ranker-corpus.draft-v17-current.json",
+      "sha256": "b792e371714a9f0b4e24efc4b11cd7838fe242655bf0fcbcc66dd0d63b829c67",
+      "bytes": 9326217
+    },
+    "report": {
+      "fileName": "ranker-corpus.draft-v17-current.report.json",
+      "sha256": "596c414ac27fa340c40fed0d3d42ebe0e47666e83034e3b2e8cb68a8788dfab0",
+      "bytes": 4288095
+    },
+    "reviewQueue": {
+      "fileName": "ranker-corpus.review-queue-v17-current.json",
+      "sha256": "c7595fc8dc249701b644d9214238cd876db3522eb5adc2d10fecf9f0ee39544a",
+      "bytes": 2855318
+    }
+  },
+  "baseline": {
+    "kairnCommit": "fa0d8f5f668f268cb4a73ad81b2d362f5821024b",
+    "caseCount": 165,
+    "caseProcessIsolation": true,
+    "candidateRecallEligibleCases": 0,
+    "candidateRecallAt64": null,
+    "positiveSourceAnyHitRateAt64": 0.8484848484848485,
+    "officialPatchMeanRecallAt64": 0.774115329115329,
+    "officialPatchMeanRecallAt128": null,
+    "officialPatchRecallAt64": {
+      "mean": 0.774115329115329,
+      "full": 115,
+      "partial": 25,
+      "zero": 25
+    },
+    "officialPatchRecallAt128": {
+      "mean": null,
+      "full": 0,
+      "partial": 0,
+      "zero": 0
+    },
+    "byLanguage": {
+      "cpp": {
+        "cases": 33,
+        "positiveSourceAnyHitRateAt64": 1,
+        "officialPatchMeanRecallAt64": 0.9495809745809747
+      },
+      "go": {
+        "cases": 33,
+        "positiveSourceAnyHitRateAt64": 0.7272727272727273,
+        "officialPatchMeanRecallAt64": 0.6212121212121211
+      },
+      "java": {
+        "cases": 33,
+        "positiveSourceAnyHitRateAt64": 0.8181818181818182,
+        "officialPatchMeanRecallAt64": 0.7676767676767676
+      },
+      "python": {
+        "cases": 33,
+        "positiveSourceAnyHitRateAt64": 0.8787878787878788,
+        "officialPatchMeanRecallAt64": 0.8181818181818181
+      },
+      "typescript": {
+        "cases": 33,
+        "positiveSourceAnyHitRateAt64": 0.8181818181818182,
+        "officialPatchMeanRecallAt64": 0.713924963924964
+      }
+    },
+    "byScenario": {
+      "failure_first": {
+        "cases": 55,
+        "positiveSourceAnyHitRateAt64": 0.8363636363636363,
+        "officialPatchMeanRecallAt64": 0.828904428904429
+      },
+      "long_session": {
+        "cases": 55,
+        "positiveSourceAnyHitRateAt64": 0.8363636363636363,
+        "officialPatchMeanRecallAt64": 0.6825757575757576
+      },
+      "source_localization": {
+        "cases": 55,
+        "positiveSourceAnyHitRateAt64": 0.8727272727272727,
+        "officialPatchMeanRecallAt64": 0.8108658008658008
+      }
+    },
+    "bySplit": {
+      "calibration": {
+        "cases": 45,
+        "positiveSourceAnyHitRateAt64": 0.9111111111111111,
+        "officialPatchMeanRecallAt64": 0.8574074074074075
+      },
+      "holdout": {
+        "cases": 30,
+        "positiveSourceAnyHitRateAt64": 0.8333333333333334,
+        "officialPatchMeanRecallAt64": 0.738095238095238
+      },
+      "train": {
+        "cases": 90,
+        "positiveSourceAnyHitRateAt64": 0.8222222222222222,
+        "officialPatchMeanRecallAt64": 0.7444759869759869
+      }
+    }
+  },
+  "current": {
+    "kairnCommit": "5e1cad9dca4362ce5d7e3f6c334c518e09d5a336",
+    "caseCount": 165,
+    "caseProcessIsolation": true,
+    "candidateRecallEligibleCases": 0,
+    "candidateRecallAt64": null,
+    "positiveSourceAnyHitRateAt64": 0.8545454545454545,
+    "officialPatchMeanRecallAt64": 0.7890143190143191,
+    "officialPatchMeanRecallAt128": 0.8343967143967145,
+    "officialPatchRecallAt64": {
+      "mean": 0.7890143190143191,
+      "full": 119,
+      "partial": 22,
+      "zero": 24
+    },
+    "officialPatchRecallAt128": {
+      "mean": 0.8343967143967145,
+      "full": 128,
+      "partial": 19,
+      "zero": 18
+    },
+    "byLanguage": {
+      "cpp": {
+        "cases": 33,
+        "positiveSourceAnyHitRateAt64": 1,
+        "officialPatchMeanRecallAt64": 0.9533688533688535
+      },
+      "go": {
+        "cases": 33,
+        "positiveSourceAnyHitRateAt64": 0.7575757575757576,
+        "officialPatchMeanRecallAt64": 0.6515151515151514
+      },
+      "java": {
+        "cases": 33,
+        "positiveSourceAnyHitRateAt64": 0.8181818181818182,
+        "officialPatchMeanRecallAt64": 0.7828282828282828
+      },
+      "python": {
+        "cases": 33,
+        "positiveSourceAnyHitRateAt64": 0.8787878787878788,
+        "officialPatchMeanRecallAt64": 0.8434343434343434
+      },
+      "typescript": {
+        "cases": 33,
+        "positiveSourceAnyHitRateAt64": 0.8181818181818182,
+        "officialPatchMeanRecallAt64": 0.713924963924964
+      }
+    },
+    "byScenario": {
+      "failure_first": {
+        "cases": 55,
+        "positiveSourceAnyHitRateAt64": 0.8545454545454545,
+        "officialPatchMeanRecallAt64": 0.8470862470862471
+      },
+      "long_session": {
+        "cases": 55,
+        "positiveSourceAnyHitRateAt64": 0.8363636363636363,
+        "officialPatchMeanRecallAt64": 0.7
+      },
+      "source_localization": {
+        "cases": 55,
+        "positiveSourceAnyHitRateAt64": 0.8727272727272727,
+        "officialPatchMeanRecallAt64": 0.81995670995671
+      }
+    },
+    "bySplit": {
+      "calibration": {
+        "cases": 45,
+        "positiveSourceAnyHitRateAt64": 0.9111111111111111,
+        "officialPatchMeanRecallAt64": 0.8574074074074075
+      },
+      "holdout": {
+        "cases": 30,
+        "positiveSourceAnyHitRateAt64": 0.8666666666666667,
+        "officialPatchMeanRecallAt64": 0.7714285714285715
+      },
+      "train": {
+        "cases": 90,
+        "positiveSourceAnyHitRateAt64": 0.8222222222222222,
+        "officialPatchMeanRecallAt64": 0.7606796906796907
+      }
+    }
+  },
+  "delta": {
+    "positiveSourceAnyHitRateAt64": 0.006060606060605989,
+    "officialPatchMeanRecallAt64": 0.014898989898990078,
+    "changedCases": [
+      {
+        "id": "v02c-holdout-go-failure_first-150",
+        "baselineOfficialPatchRecallAt64": 0,
+        "currentOfficialPatchRecallAt64": 1,
+        "delta": 1,
+        "outcome": "improved"
+      },
+      {
+        "id": "v02c-train-cpp-long_session-090",
+        "baselineOfficialPatchRecallAt64": 0.875,
+        "currentOfficialPatchRecallAt64": 1,
+        "delta": 0.125,
+        "outcome": "improved"
+      },
+      {
+        "id": "v02c-train-java-source_localization-060",
+        "baselineOfficialPatchRecallAt64": 0.5,
+        "currentOfficialPatchRecallAt64": 1,
+        "delta": 0.5,
+        "outcome": "improved"
+      },
+      {
+        "id": "v02c-train-python-long_session-017",
+        "baselineOfficialPatchRecallAt64": 0.5,
+        "currentOfficialPatchRecallAt64": 1,
+        "delta": 0.5,
+        "outcome": "improved"
+      },
+      {
+        "id": "v02c-train-python-long_session-018",
+        "baselineOfficialPatchRecallAt64": 0.3333333333333333,
+        "currentOfficialPatchRecallAt64": 0.6666666666666666,
+        "delta": 0.3333333333333333,
+        "outcome": "improved"
+      }
+    ],
+    "regressionCount": 0
+  },
+  "curation": {
+    "requiredSourceReviewCases": 50,
+    "explicitNoiseReviewCases": 165,
+    "readyForSealCases": 0,
+    "decisionsCompleted": 0
+  },
+  "unavailableGates": [
+    "candidateRecallAt64",
+    "requiredSourceRecallAt5",
+    "recallAt1",
+    "mrr",
+    "calibrationError",
+    "verificationAndSourceInvariantNonRegression"
+  ],
+  "disclosure": "Official patch files are weak positives. These diagnostics do not establish required-source recall, calibration quality, verification quality, or token savings."
+}

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { ImpactStats, MetricsEventRecord, MetricsSummary } from "../types.js";
 
 export function buildImpactStats(input: {

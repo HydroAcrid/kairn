@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { SessionLedgerEvent, SessionLedgerSummary, TaskPhase } from "../types.js";
 import { uniquePaths } from "../utils/collections.js";
 import { buildSessionWorkingSet } from "./workingSet.js";
@@ -8,7 +10,11 @@ export function summarizeSessionLedger(sessionId: string, events: SessionLedgerE
   const agentMentionedFiles = uniquePaths(events.filter((event) => event.kind === "agent_file_mentioned").flatMap(eventFile));
   const agentTouchedFiles = uniquePaths(events.filter((event) => event.kind === "agent_file_touched").flatMap(eventFile));
   const recommendedFilesUsed = recommendedFiles.filter((file) => agentMentionedFiles.includes(file) || agentTouchedFiles.includes(file));
+  const recommendedFilesLaterUsed = recommendedFiles.filter((file) => hasLaterEvent(events, file, ["agent_file_mentioned", "agent_file_touched"]));
+  const recommendedFilesLaterTouched = recommendedFiles.filter((file) => hasLaterEvent(events, file, ["agent_file_touched"]));
   const touchedCounts = countValues(agentTouchedFilesFromEvents(events));
+  const verificationEvents = events.filter((event) => event.kind === "verification_passed" || event.kind === "verification_failed");
+  const latestVerificationEvent = verificationEvents.at(-1);
   const unresolvedFailures = Math.max(
     0,
     events.filter((event) => event.kind === "failure_seen").length -
@@ -25,14 +31,31 @@ export function summarizeSessionLedger(sessionId: string, events: SessionLedgerE
     shownFiles,
     agentMentionedFiles,
     agentTouchedFiles,
+    recommendedFilesLaterUsed,
+    recommendedFilesLaterTouched,
     repeatedFilesAvoided: sumMetadataNumber(events, "repeatedFilesAvoided"),
     repeatedSnippetsAvoided: sumMetadataNumber(events, "repeatedSnippetsAvoided"),
     recommendedFilesUsed,
     repeatedlyTouchedFiles: [...touchedCounts.entries()].filter(([, count]) => count > 1).map(([file]) => file),
+    verificationPasses: verificationEvents.filter((event) => event.kind === "verification_passed").length,
+    verificationFailures: verificationEvents.filter((event) => event.kind === "verification_failed").length,
+    latestVerification: latestVerificationEvent?.kind === "verification_passed"
+      ? "passed"
+      : latestVerificationEvent?.kind === "verification_failed" ? "failed" : "none",
     unresolvedFailures,
     workingSet,
     recentEvents: events.slice(-20)
   };
+}
+
+function hasLaterEvent(
+  events: SessionLedgerEvent[],
+  filePath: string,
+  laterKinds: SessionLedgerEvent["kind"][]
+): boolean {
+  const recommendationIndex = events.findIndex((event) => event.kind === "context_recommended" && event.filePath === filePath);
+  if (recommendationIndex < 0) return false;
+  return events.slice(recommendationIndex + 1).some((event) => event.filePath === filePath && laterKinds.includes(event.kind));
 }
 
 export function inferCurrentPhase(events: SessionLedgerEvent[]): TaskPhase {

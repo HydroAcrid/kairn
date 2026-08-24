@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "comparison-v1-smoke",
+  "name": "Kairn comparison-v1 deterministic smoke",
+  "description": "One four-arm instrumentation block for the offline fake-agent validator. This fixture is not effectiveness evidence and is not a sealed live campaign.",
+  "profile": "smoke",
+  "conditions": [
+    "vanilla",
+    "reasonblocks",
+    "kairn",
+    "kairn_reasonblocks"
+  ],
+  "model": "claude-sonnet-4-6",
+  "temperature": 0,
+  "maxSteps": 8,
+  "maxTokensPerResponse": 1024,
+  "timeoutMs": 300000,
+  "repeats": 1,
+  "tasks": [
+    {
+      "id": "typescript-failure-parser-source",
+      "repoUrl": "https://github.com/HydroAcrid/kairn.git",
+      "ref": "bf73abdc405c97567e8ffcdd94d9da58cce59573",
+      "publicRepo": true,
+      "language": "typescript",
+      "taskClass": "source_localization",
+      "prompt": "Locate the production TypeScript source that extracts repository file references from failure output. Read the implementation and identify the exported function; do not modify repository files.",
+      "requiredSourceFiles": [
+        "src/watch/failureParser.ts"
+      ],
+      "allowedSupportFiles": [
+        "tests/watch.test.ts"
+      ],
+      "explicitNoisePatterns": [
+        "docs/**"
+      ],
+      "assistanceExpectation": "required",
+      "sandboxImage": "docker.io/library/node@sha256:5711a0d445a1af54af9589066c646df387d1831a608226f4cd694fc59e745059",
+      "verificationCommand": "pnpm test -- tests/watch.test.ts"
+    }
+  ]
+}

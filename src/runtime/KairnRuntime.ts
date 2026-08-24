@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -18,13 +20,14 @@ import type {
   ContextResponse,
   ContextResponseMode,
   ContextValueDecision,
+  EvidenceCandidateInspection,
+  EvidenceGraphFacts,
   ExactSourceEvidence,
   EvalComparison,
   EvalObservationRecord,
   EvalRunMode,
   EvalRunReport,
   FailureContext,
-  FileRoleV2,
   FileRecord,
   HybridScoredResult,
   HookHandlingResult,
@@ -33,16 +36,20 @@ import type {
   InitResult,
   IndexCompactionResult,
   IndexStateStats,
+  KairnRuntimeOptions,
   MetricsEventKind,
   MetricsSummary,
   NormalizedHookEvent,
   OutputKind,
   PrimeProfile,
   QueryLocalIndex,
+  RankerConfig,
   SessionContextPolicyDecision,
   SessionLedgerEvent,
   SessionLedgerEventKind,
   SessionLedgerSummary,
+  SemanticRetrieverConfig,
+  SemanticRetrieverStatus,
   SymbolRecord,
   TaskSession,
   TaskPhase,
@@ -61,6 +68,18 @@ import { evaluateEvidenceRoutingShadow } from "../compression/evidenceRoutingPol
 import { routeEvidenceCompression } from "../compression/routeEvidence.js";
 import { reviewGitDiff } from "../git/reviewDiff.js";
 import { hybridSearch } from "../retrieval/hybridRetrieval.js";
+import { rankEvidenceResults, resolveRankerConfig } from "../retrieval/evidenceRanker.js";
+import {
+  buildEvidenceCandidates,
+  buildEvidenceRetrievalQueries,
+  DEFAULT_ENRICHED_CANDIDATE_LIMIT,
+  DEFAULT_INITIAL_CANDIDATE_LIMIT,
+  extractEvidenceTaskSignals,
+  isProductionEvidenceFile,
+  selectEvidenceSymbolTerms
+} from "../retrieval/evidenceSignals.js";
+import { scoreBm25Files } from "../lexical/bm25.js";
+import { scoreFiles } from "../retrieval/scoreResults.js";
 import { applyCompanionCandidatesToResults, findCompanionCandidates } from "../retrieval/companions.js";
 import { findRelatedFiles, findTestsFor } from "../retrieval/relatedFiles.js";
 import { extractSymbol, readTextFile, summarizeFile } from "../retrieval/readSource.js";
@@ -85,25 +104,15 @@ import {
   resolvePrimeProfile
 } from "../prime/quality.js";
 import { evaluateContextValue } from "../prime/contextValue.js";
-import {
-  classifyTaskFrameFromTask,
-  hasExplicitMultiFileScopeRequest,
-  hasConfigOptionRuntimeScope,
-  hasDeprecationLifecycleScope,
-  hasPromptDerivedMultiFileScope,
-  taskHasProductionOnlyEditIntent,
-  taskIsOfficialProductionPatchPrompt,
-  taskIsReadOnlySourceRouting
-} from "../prime/contextGovernor.js";
+import { classifyTaskFrameFromTask, hasExplicitMultiFileScopeRequest, taskHasProductionOnlyEditIntent } from "../prime/contextGovernor.js";
 import { decideSessionContextPolicy, inferTaskPhase } from "../ledger/policy.js";
 import { summarizeSessionLedger } from "../ledger/summary.js";
 import {
   formatEvidenceRequestPrimeContext,
   formatMcpBriefPrimeContext,
-  officialGuardrailVariantFor,
   formatPrimeContext,
+  formatScopeDriftPrimeContext,
   formatShrunkPrimeContext,
-  formatSourceRoutingPrimeContext,
   formatSuppressedPrimeContext,
   withTinyDirectivePrime
 } from "../prime/formatPrime.js";
@@ -128,21 +137,27 @@ import { IndexService } from "./services/IndexService.js";
 import { MetricsService } from "./services/MetricsService.js";
 import { EvalService } from "./services/EvalService.js";
 import { decideEditScope } from "../scope/editScope.js";
-import { isUnrelatedDeprecationLifecyclePath, scoreDeprecationLifecyclePath } from "../scope/lifecycleSurfaces.js";
+import {
+  decideCalibratedEvidencePolicy,
+  isCalibratedEvidencePolicyDecision
+} from "../prime/calibratedEvidencePolicy.js";
+import { resolveSemanticRetrieverConfig } from "../config/semantic.js";
+import { searchSemanticCandidates } from "../retrieval/semanticCandidates.js";
+import {
+  buildModelCandidateUnion,
+  MODEL_RETRIEVAL_PROBE_LIMIT
+} from "../retrieval/candidateFusion.js";
 
-type PrimeDeliveryTrace = {
-  action: ContextValueDecision["action"];
-  recommendedDelivery?: ContextValueDecision["recommendedDelivery"];
-  taskShapeSignal?: ContextValueDecision["taskShapeSignal"];
-  requiredSurface?: ContextValueDecision["requiredSurface"];
-  directiveStyle?: ContextValueDecision["directiveStyle"];
-  guardrailVariant?: string;
-  emittedFileCount: number;
-  emittedFileRoleSummary: Partial<Record<FileRoleV2, number>>;
-  editScopeSource?: string;
-  estimatedDirectiveTokens: number;
-  estimatedSourceContextTokens: number;
-  sizingReason: string;
+type CalibratedQueryLocalIndex = QueryLocalIndex & {
+  initialCandidateFiles: string[];
+  initialCandidateCount: number;
+  enrichedCandidateCount: number;
+  candidateResults?: HybridScoredResult[];
+  probeCandidateFiles?: string[];
+  probeCandidateResults?: HybridScoredResult[];
+  graphEvidenceByPath?: ReadonlyMap<string, EvidenceGraphFacts>;
+  semanticStatus?: SemanticRetrieverStatus;
+  candidateDiagnostics?: EvidenceCandidateInspection["candidateDiagnostics"];
 };
 
 export class KairnRuntime {
@@ -151,12 +166,20 @@ export class KairnRuntime {
   private readonly indexService: IndexService;
   private readonly metricsService: MetricsService;
   private readonly evalService: EvalService;
+  private readonly rankerConfig: RankerConfig | undefined;
+  private readonly semanticConfig: SemanticRetrieverConfig | undefined;
 
-  constructor(root?: string) {
+  constructor(root?: string, options?: KairnRuntimeOptions) {
     this.rootPath = resolveRoot(root);
+    this.rankerConfig = options?.ranker;
+    this.semanticConfig = options?.semantic;
     const paths = ensureKairnDir(this.rootPath);
     this.store = new SqliteStore(paths.databasePath);
-    const deps = { rootPath: this.rootPath, store: this.store };
+    const deps = {
+      rootPath: this.rootPath,
+      store: this.store,
+      ...(this.semanticConfig ? { semanticConfig: this.semanticConfig } : {})
+    };
     this.indexService = new IndexService(deps);
     this.metricsService = new MetricsService(deps);
     this.evalService = new EvalService(deps, this.metricsService);
@@ -168,6 +191,10 @@ export class KairnRuntime {
 
   async init(): Promise<InitResult> {
     return this.indexService.init();
+  }
+
+  async initInventory() {
+    return this.indexService.initInventory();
   }
 
   async startTask(task: string): Promise<{ session: TaskSession; response: ContextResponse }> {
@@ -218,7 +245,10 @@ export class KairnRuntime {
     markTiming("initialInventoryMs", inventoryStartedAt);
     const hadInventory = knownFiles.length > 0;
     const freshness = hadInventory ? this.indexService.getStatus(this.rootPath).freshness : undefined;
-    const shouldRefreshIndex = input.refreshIndex === true || ((!hadInventory || freshness?.stale) && input.refreshIndex !== false);
+    const shouldRefreshIndex = input.refreshIndex === true || (
+      (!hadInventory || freshness?.stale || this.indexService.isInventoryStage(this.rootPath)) &&
+      input.refreshIndex !== false
+    );
     if (shouldRefreshIndex) {
       const initStartedAt = Date.now();
       knownFiles = await this.refreshIndex(this.rootPath, { force: input.refreshIndex === true });
@@ -242,7 +272,8 @@ export class KairnRuntime {
         });
     const resolvedTask = input.task || session.task;
     const preRetrievalTaskFrame = classifyTaskFrameFromTask(resolvedTask, profile);
-    if (preRetrievalTaskFrame === "runtime_procedural") {
+    const calibratedPolicyRequested = resolveRankerConfig(this.rankerConfig).mode === "calibrated";
+    if (!calibratedPolicyRequested && preRetrievalTaskFrame === "runtime_procedural") {
       const preRetrievalFiles = session.rootPath === this.rootPath ? knownFiles : this.store.listFiles(session.rootPath);
       const evidenceRequest = {
         kind: "runtime_scope" as const,
@@ -263,7 +294,6 @@ export class KairnRuntime {
         debugSignal: profile === "failure_debug",
         easyTaskSignal: false,
         taskFrame: preRetrievalTaskFrame,
-        requiredSurface: "evidence_needed",
         evidenceRequest,
         modelPrediction: {
           pUseful: 0.24,
@@ -404,13 +434,16 @@ export class KairnRuntime {
     );
     const companionSpecific = companionMetadata.some(hasSpecificCompanionEvidence);
     const sessionFiles = session.rootPath === this.rootPath ? knownFiles : this.store.listFiles(session.rootPath);
+    const calibratedEvidencePolicy = isCalibratedEvidencePolicyDecision(context.metadata?.calibratedEvidencePolicy)
+      ? context.metadata.calibratedEvidencePolicy
+      : undefined;
     const decisionStartedAt = Date.now();
-    const baseQuality = evaluatePrimeQuality({
+    const baseQuality = calibratedEvidencePolicy?.quality ?? evaluatePrimeQuality({
       task: resolvedTask,
       context,
       knownFiles: sessionFiles
     });
-    let contextDecision = evaluateContextValue({
+    let contextDecision = calibratedEvidencePolicy?.contextDecision ?? evaluateContextValue({
       task: resolvedTask,
       profile,
       context,
@@ -422,24 +455,26 @@ export class KairnRuntime {
       companionTopScore,
       companionSpecific
     });
-    const automaticSuppressionReason = automaticPrimeSuppressionReason({
-      source: input.source,
-      task: resolvedTask,
-      decision: contextDecision
-    });
-    const mcpBriefSuppressionReason = input.format === "mcp_brief" && contextDecision.wrongContextRisk
-      ? "hybrid MCP brief abstained because compact MCP context risk is high"
-      : undefined;
-    const suppressionReason = automaticSuppressionReason ?? mcpBriefSuppressionReason;
-    if (suppressionReason) {
-      contextDecision = {
-        ...contextDecision,
-        score: Math.max(0, contextDecision.score - 18),
-        action: "suppress",
-        recommendedDelivery: "none",
-        expectedSavingsRisk: "high",
-        reasons: uniqueStrings([...contextDecision.reasons, suppressionReason])
-      };
+    if (!calibratedEvidencePolicy) {
+      const automaticSuppressionReason = automaticPrimeSuppressionReason({
+        source: input.source,
+        task: resolvedTask,
+        decision: contextDecision
+      });
+      const mcpBriefSuppressionReason = input.format === "mcp_brief" && contextDecision.wrongContextRisk
+        ? "hybrid MCP brief abstained because compact MCP context risk is high"
+        : undefined;
+      const suppressionReason = automaticSuppressionReason ?? mcpBriefSuppressionReason;
+      if (suppressionReason) {
+        contextDecision = {
+          ...contextDecision,
+          score: Math.max(0, contextDecision.score - 18),
+          action: "suppress",
+          recommendedDelivery: "none",
+          expectedSavingsRisk: "high",
+          reasons: uniqueStrings([...contextDecision.reasons, suppressionReason])
+        };
+      }
     }
     markTiming("decisionMs", decisionStartedAt);
     const quality = {
@@ -449,8 +484,6 @@ export class KairnRuntime {
       reasons: contextDecision.reasons,
       expectedSavingsRisk: contextDecision.expectedSavingsRisk
     };
-    const readOnlySourceRouting = taskIsReadOnlySourceRouting(resolvedTask);
-    const promptDerivedMultiFileScope = hasPromptDerivedMultiFileScope(resolvedTask);
     if (freshness?.stale && input.refreshIndex === false) {
       quality.reasons = uniqueStrings([...quality.reasons, `index freshness: ${freshness.reason}`]);
     }
@@ -458,10 +491,16 @@ export class KairnRuntime {
       contextDecision.primaryFile && uniquePaths([...context.files, ...context.suggestedNextContext, ...companionPaths]).includes(contextDecision.primaryFile)
         ? contextDecision.primaryFile
         : primaryFile;
-    const directivePrimaryFile = contextDecision.recommendedDelivery === "multi_file_directive" && !contextDecision.exactSourceHit && !contextDecision.canonicalSourceHit
-      ? preferredStructuredDebugPrimary(structuredPrimaryCandidate, companionMetadata)
-      : primaryFile;
-    let invariants = !readOnlySourceRouting && directivePrimaryFile && (contextDecision.exactSourceHit || contextDecision.cheapSingleSource || contextDecision.recommendedDelivery === "multi_file_directive")
+    const directivePrimaryFile = calibratedEvidencePolicy?.primaryFile ??
+      (contextDecision.recommendedDelivery === "multi_file_directive" && !contextDecision.exactSourceHit && !contextDecision.canonicalSourceHit
+        ? preferredStructuredDebugPrimary(structuredPrimaryCandidate, companionMetadata)
+        : primaryFile);
+    const calibratedPrimaryDeliversContent = calibratedEvidencePolicy?.selections
+      .find((selection) => selection.path === directivePrimaryFile)?.delivery === "content";
+    const shouldBuildInvariant = calibratedEvidencePolicy
+      ? calibratedPrimaryDeliversContent
+      : contextDecision.exactSourceHit || contextDecision.cheapSingleSource || contextDecision.recommendedDelivery === "multi_file_directive";
+    let invariants = directivePrimaryFile && shouldBuildInvariant
       ? [
           contextDecision.exactSourceHit
             ? sourceInvariantContextForFile(input.editScopeHints?.sourceInvariants, directivePrimaryFile) ??
@@ -471,10 +510,12 @@ export class KairnRuntime {
       : [];
     let related: Awaited<ReturnType<KairnRuntime["getRelatedFiles"]>> | undefined;
     let tests: Awaited<ReturnType<KairnRuntime["findTests"]>> | undefined;
-    const includeCompanionContext =
-      (!contextDecision.exactSourceHit || contextDecision.recommendedDelivery === "multi_file_directive") &&
-      shouldUseCompanionContext(resolvedTask, companionPaths);
+    const includeCompanionContext = calibratedEvidencePolicy
+      ? calibratedEvidencePolicy.companionFiles.length > 0
+      : (!contextDecision.exactSourceHit || contextDecision.recommendedDelivery === "multi_file_directive") &&
+        shouldUseCompanionContext(resolvedTask, companionPaths);
     const needsExpansion =
+      !calibratedEvidencePolicy &&
       quality.action === "emit" && !contextDecision.exactSourceHit && !includeCompanionContext && input.format !== "mcp_brief";
     if (needsExpansion) {
       const expansionStartedAt = Date.now();
@@ -504,274 +545,29 @@ export class KairnRuntime {
       markTiming("findTestsMs", testsStartedAt);
       markTiming("expansionWallMs", expansionStartedAt);
     }
-    const baseMultiFileLimit = multiFileDirectiveFileLimit(resolvedTask, companionPaths, contextDecision);
-    const promptNamedSourceFiles = (promptDerivedMultiFileScope || contextDecision.recommendedDelivery === "multi_file_directive")
-      ? promptNamedSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 9)
-      : [];
-    const promptMentionedSourceFiles = promptMentionedProductionSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 12);
-	    const kubernetesExecSourceFiles = hasKubernetesExecForwarderScope(resolvedTask)
-	      ? kubernetesExecForwarderSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 6)
-	      : [];
-    const webSessionRenewalSourceFiles = hasWebSessionRenewalScope(resolvedTask)
-      ? webSessionRenewalSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 6)
-      : [];
-    const requestBodyFormSourceFiles = hasRequestBodyFormScope(resolvedTask)
-      ? requestBodyFormSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
-      : [];
-    const converterOutputSourceFiles = hasConverterOutputScope(resolvedTask)
-      ? converterOutputSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
-      : [];
-    const benchmarkGeneratorSourceFiles = hasBenchmarkGeneratorScope(resolvedTask)
-      ? benchmarkGeneratorSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 6)
-      : [];
-    const topicOrderingSourceFiles = hasTopicOrderingScope(resolvedTask)
-      ? topicOrderingSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 5)
-      : [];
-    const collectionNameValidationSourceFiles = hasCollectionNameValidationScope(resolvedTask)
-      ? collectionNameValidationSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
-      : [];
-    const grpcErrorPolicySourceFiles = hasGrpcErrorPolicyScope(resolvedTask)
-      ? grpcErrorPolicySourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
-      : [];
-    const httpAuthPolicySourceFiles = hasHttpAuthPolicyScope(resolvedTask)
-      ? httpAuthPolicySourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 5)
-      : [];
-    const systemMetadataSourceFiles = hasSystemMetadataScope(resolvedTask)
-      ? systemMetadataSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
-      : [];
-    const databaseFailoverSourceFiles = hasDatabaseFailoverScope(resolvedTask)
-      ? databaseFailoverSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 5)
-      : [];
-    const pluginActivationValidationSourceFiles = hasPluginActivationValidationScope(resolvedTask)
-      ? pluginActivationValidationSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
-      : [];
-    const executionStateMigrationSourceFiles = hasExecutionStateMigrationScope(resolvedTask)
-      ? executionStateMigrationSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
-      : [];
-    const converterOutputDeliveryFiles = contextDecision.requiredSurface === "single_file"
-      ? converterOutputSourceFiles.filter(isLikelyProductionSourceFile).slice(0, 1)
-      : converterOutputSourceFiles;
-    const discoveryConfigSourceFiles = hasDiscoveryConfigScope(resolvedTask)
-      ? discoveryConfigSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
-      : [];
-    const deviceSessionListenerSourceFiles = hasDeviceSessionListenerScope(resolvedTask)
-      ? deviceSessionListenerSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 4)
-      : [];
-    const packageSourceMappingSourceFiles = hasPackageSourceMappingScope(resolvedTask)
-      ? packageSourceMappingSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 6)
-      : [];
-    const datastoreBackendParitySourceFiles = hasDatastoreBackendParityScope(resolvedTask)
-      ? datastoreBackendParitySourceFilesFromKnownFiles(
-          sessionFiles,
-          resolvedTask,
-          uniquePaths([
-            ...(directivePrimaryFile ? [directivePrimaryFile] : []),
-            ...(primaryFile ? [primaryFile] : []),
-            ...context.files,
-            ...companionPaths
-          ])
-        ).slice(0, 6)
-      : [];
-	    const multiFileLimit =
-	      contextDecision.recommendedDelivery === "multi_file_directive" &&
-	      kubernetesExecSourceFiles.length >= 3
-	        ? Math.min(6, Math.max(baseMultiFileLimit, kubernetesExecSourceFiles.length))
-	        : contextDecision.recommendedDelivery === "multi_file_directive" &&
-	            packageSourceMappingSourceFiles.length >= 3
-	          ? Math.min(6, Math.max(baseMultiFileLimit, packageSourceMappingSourceFiles.length))
-		        : contextDecision.recommendedDelivery === "multi_file_directive" &&
-		            webSessionRenewalSourceFiles.length >= 3
-		          ? Math.min(6, Math.max(baseMultiFileLimit, webSessionRenewalSourceFiles.length))
-          : contextDecision.recommendedDelivery === "multi_file_directive" &&
-              requestBodyFormSourceFiles.length >= 2
-            ? Math.min(requestBodyFormSourceFiles.length, Math.max(baseMultiFileLimit, requestBodyFormSourceFiles.length))
-          : contextDecision.recommendedDelivery === "multi_file_directive" &&
-              converterOutputSourceFiles.length >= 1
-            ? Math.min(4, Math.max(baseMultiFileLimit, converterOutputSourceFiles.length))
-          : contextDecision.recommendedDelivery === "multi_file_directive" &&
-              benchmarkGeneratorSourceFiles.length >= 2
-            ? Math.min(6, Math.max(baseMultiFileLimit, benchmarkGeneratorSourceFiles.length))
-          : contextDecision.recommendedDelivery === "multi_file_directive" &&
-              topicOrderingSourceFiles.length >= 2
-            ? Math.min(5, Math.max(baseMultiFileLimit, topicOrderingSourceFiles.length))
-          : contextDecision.recommendedDelivery === "multi_file_directive" &&
-              collectionNameValidationSourceFiles.length >= 2
-            ? Math.min(4, Math.max(baseMultiFileLimit, collectionNameValidationSourceFiles.length))
-          : contextDecision.recommendedDelivery === "multi_file_directive" &&
-              grpcErrorPolicySourceFiles.length >= 2
-            ? Math.min(4, Math.max(baseMultiFileLimit, grpcErrorPolicySourceFiles.length))
-          : httpAuthPolicySourceFiles.length >= 2
-            ? Math.min(5, Math.max(baseMultiFileLimit, httpAuthPolicySourceFiles.length))
-          : contextDecision.recommendedDelivery === "multi_file_directive" &&
-              systemMetadataSourceFiles.length >= 1
-            ? Math.min(4, Math.max(baseMultiFileLimit, systemMetadataSourceFiles.length))
-          : contextDecision.recommendedDelivery === "multi_file_directive" &&
-              databaseFailoverSourceFiles.length >= 2
-            ? Math.min(5, Math.max(baseMultiFileLimit, databaseFailoverSourceFiles.length))
-          : contextDecision.recommendedDelivery === "multi_file_directive" &&
-              pluginActivationValidationSourceFiles.length >= 1
-            ? Math.min(4, Math.max(baseMultiFileLimit, pluginActivationValidationSourceFiles.length))
-          : contextDecision.recommendedDelivery === "multi_file_directive" &&
-              executionStateMigrationSourceFiles.length >= 2
-            ? Math.max(2, Math.min(4, executionStateMigrationSourceFiles.length))
-          : contextDecision.recommendedDelivery === "multi_file_directive" &&
-              discoveryConfigSourceFiles.length >= 2
-            ? Math.min(4, Math.max(baseMultiFileLimit, discoveryConfigSourceFiles.length))
-          : contextDecision.recommendedDelivery === "multi_file_directive" &&
-              deviceSessionListenerSourceFiles.length >= 1
-            ? Math.min(5, Math.max(baseMultiFileLimit, deviceSessionListenerSourceFiles.length))
-          : contextDecision.recommendedDelivery === "multi_file_directive" &&
-              datastoreBackendParitySourceFiles.length >= 2
-            ? Math.min(6, Math.max(baseMultiFileLimit, datastoreBackendParitySourceFiles.length))
-          : promptDerivedMultiFileScope &&
-              promptMentionedSourceFiles.length >= 3
-            ? Math.min(12, Math.max(baseMultiFileLimit, promptMentionedSourceFiles.length))
-		        : contextDecision.recommendedDelivery === "multi_file_directive" &&
-		            promptMentionedSourceFiles.length >= 3
-		          ? Math.min(12, Math.max(baseMultiFileLimit, promptMentionedSourceFiles.length))
-	          : contextDecision.recommendedDelivery === "multi_file_directive" &&
-	              hasUiLivenessMultiSurfaceDirective(resolvedTask.toLowerCase()) &&
-	              promptNamedSourceFiles.length >= 3
-	            ? Math.min(9, Math.max(baseMultiFileLimit, promptNamedSourceFiles.length))
-	            : baseMultiFileLimit;
+    const multiFileLimit = calibratedEvidencePolicy
+      ? Math.min(3, calibratedEvidencePolicy.selections.length)
+      : multiFileDirectiveFileLimit(resolvedTask, companionPaths, contextDecision);
     const topFileLimit = includeCompanionContext ? Math.max(limits.topFiles, multiFileLimit) : limits.topFiles;
-    const selectedTestCounterpartSourceFiles = contextDecision.recommendedDelivery === "multi_file_directive"
-      ? selectedTestCounterpartSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 3)
-      : [];
-    const deprecationLifecycleSourceFiles = hasDeprecationLifecycleScope(resolvedTask)
-      ? deprecationLifecycleSourceFilesFromKnownFiles(sessionFiles, resolvedTask).slice(0, 5)
-      : [];
-    const files = contextDecision.exactSourceHit && directivePrimaryFile && !includeCompanionContext && contextDecision.recommendedDelivery !== "multi_file_directive"
+    const files = calibratedEvidencePolicy
+      ? calibratedEvidencePolicy.selections.map((selection) => selection.path).slice(0, 3)
+      : contextDecision.exactSourceHit && directivePrimaryFile && !includeCompanionContext && contextDecision.recommendedDelivery !== "multi_file_directive"
       ? [directivePrimaryFile]
       : contextDecision.recommendedDelivery === "multi_file_directive" && directivePrimaryFile
         ? uniquePaths([
-            ...packageSourceMappingSourceFiles,
-	            ...selectedTestCounterpartSourceFiles,
-	            directivePrimaryFile,
-	            ...(primaryFile && primaryFile !== directivePrimaryFile ? [primaryFile] : []),
-            ...promptMentionedSourceFiles,
-	            ...kubernetesExecSourceFiles,
-            ...webSessionRenewalSourceFiles,
-            ...requestBodyFormSourceFiles,
-            ...converterOutputSourceFiles,
-            ...benchmarkGeneratorSourceFiles,
-            ...topicOrderingSourceFiles,
-            ...collectionNameValidationSourceFiles,
-            ...grpcErrorPolicySourceFiles,
-            ...httpAuthPolicySourceFiles,
-            ...systemMetadataSourceFiles,
-            ...databaseFailoverSourceFiles,
-            ...pluginActivationValidationSourceFiles,
-            ...executionStateMigrationSourceFiles,
-            ...discoveryConfigSourceFiles,
-            ...deviceSessionListenerSourceFiles,
-            ...datastoreBackendParitySourceFiles,
-	            ...promptNamedSourceFiles,
-            ...deprecationLifecycleSourceFiles,
+            directivePrimaryFile,
+            ...(primaryFile && primaryFile !== directivePrimaryFile ? [primaryFile] : []),
             ...companionPaths,
             ...context.suggestedNextContext,
             ...context.files
           ]).slice(0, Math.max(multiFileLimit, topFileLimit))
       : uniquePaths([
-          ...packageSourceMappingSourceFiles,
           ...context.suggestedNextContext.slice(0, topFileLimit),
-          ...promptMentionedSourceFiles,
-	          ...selectedTestCounterpartSourceFiles,
-	          ...kubernetesExecSourceFiles,
-          ...webSessionRenewalSourceFiles,
-          ...requestBodyFormSourceFiles,
-          ...converterOutputSourceFiles,
-          ...benchmarkGeneratorSourceFiles,
-          ...topicOrderingSourceFiles,
-          ...collectionNameValidationSourceFiles,
-          ...grpcErrorPolicySourceFiles,
-          ...httpAuthPolicySourceFiles,
-          ...systemMetadataSourceFiles,
-          ...databaseFailoverSourceFiles,
-          ...pluginActivationValidationSourceFiles,
-          ...executionStateMigrationSourceFiles,
-          ...discoveryConfigSourceFiles,
-          ...deviceSessionListenerSourceFiles,
-          ...datastoreBackendParitySourceFiles,
-	          ...promptNamedSourceFiles,
-          ...deprecationLifecycleSourceFiles,
           ...companionPaths.slice(0, 2),
           ...context.files.slice(0, topFileLimit),
           ...(related?.related ?? []).slice(0, limits.relatedFiles),
           ...(tests?.files ?? []).slice(0, limits.testFiles)
         ]);
-    const readOnlySourceRoutingFiles = readOnlySourceRouting
-      ? uniquePaths([
-          ...companionPaths,
-          ...context.suggestedNextContext,
-          ...context.files,
-          ...(context.rankedFiles ?? []).map((file) => file.path)
-        ]).filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
-      : [];
-    const officialPatchScopeFiles = uniquePaths(
-      (input.editScopeHints?.allowedDiffScopes ?? [])
-        .map((scope) => scope.file)
-        .filter(isLikelyProductionSourceFile)
-    );
-    const hasOfficialMultiFilePatchScope = officialPatchScopeFiles.length > 1;
-    const promptMentionsMultipleProductionSourceFiles = promptMentionedSourceFiles.length > 1;
-    const officialSingleFilePatchScope =
-      contextDecision.taskFrame === "official_patch" &&
-      officialPatchScopeFiles.length === 1 &&
-	      !hasExplicitMultiFileScopeRequest(resolvedTask) &&
-      !promptMentionsMultipleProductionSourceFiles &&
-	      !hasDeprecationLifecycleScope(resolvedTask) &&
-      !hasWebSessionRenewalScope(resolvedTask) &&
-      !hasRequestBodyFormScope(resolvedTask) &&
-      !hasDiscoveryConfigScope(resolvedTask) &&
-      !hasBenchmarkGeneratorScope(resolvedTask) &&
-      !hasTopicOrderingScope(resolvedTask) &&
-      !hasCollectionNameValidationScope(resolvedTask) &&
-      !hasGrpcErrorPolicyScope(resolvedTask) &&
-      !hasHttpAuthPolicyScope(resolvedTask) &&
-      !hasExecutionStateMigrationScope(resolvedTask) &&
-	      !hasPackageSourceMappingScope(resolvedTask) &&
-	      !hasConfigOptionRuntimeScope(resolvedTask);
-    const officialPromptSingleFilePatchScope =
-      contextDecision.taskFrame === "official_patch" &&
-      taskIsOfficialProductionPatchPrompt(resolvedTask) &&
-      promptMentionedSourceFiles.length === 1 &&
-      officialPatchScopeFiles.length <= 1 &&
-      !hasExplicitMultiFileScopeRequest(resolvedTask) &&
-      !hasDeprecationLifecycleScope(resolvedTask) &&
-      !hasWebSessionRenewalScope(resolvedTask) &&
-      !hasRequestBodyFormScope(resolvedTask) &&
-      !hasDiscoveryConfigScope(resolvedTask) &&
-      !hasBenchmarkGeneratorScope(resolvedTask) &&
-      !hasTopicOrderingScope(resolvedTask) &&
-      !hasCollectionNameValidationScope(resolvedTask) &&
-      !hasGrpcErrorPolicyScope(resolvedTask) &&
-      !hasHttpAuthPolicyScope(resolvedTask) &&
-      !hasExecutionStateMigrationScope(resolvedTask) &&
-      !hasPackageSourceMappingScope(resolvedTask) &&
-      !hasConfigOptionRuntimeScope(resolvedTask);
-    const governorSingleFilePatchScope =
-      contextDecision.taskFrame === "official_patch" &&
-      contextDecision.requiredSurface === "single_file" &&
-	      !hasExplicitMultiFileScopeRequest(resolvedTask) &&
-      !promptMentionsMultipleProductionSourceFiles &&
-      !hasDeprecationLifecycleScope(resolvedTask) &&
-      !hasWebSessionRenewalScope(resolvedTask) &&
-      !hasRequestBodyFormScope(resolvedTask) &&
-      !hasDiscoveryConfigScope(resolvedTask) &&
-      !hasBenchmarkGeneratorScope(resolvedTask) &&
-      !hasTopicOrderingScope(resolvedTask) &&
-      !hasCollectionNameValidationScope(resolvedTask) &&
-      !hasGrpcErrorPolicyScope(resolvedTask) &&
-      !hasHttpAuthPolicyScope(resolvedTask) &&
-	      !hasExecutionStateMigrationScope(resolvedTask) &&
-	      !hasPackageSourceMappingScope(resolvedTask) &&
-	      !hasConfigOptionRuntimeScope(resolvedTask);
-    const officialSingleFileDirective = officialSingleFilePatchScope
-      ? officialPatchScopeFiles[0]
-      : officialPromptSingleFilePatchScope
-        ? promptMentionedSourceFiles[0]
-        : undefined;
     const suggestedCommands = [
       `kairn context --session ${session.id} --root <repo> --query "${resolvedTask.replaceAll('"', '\\"')}" --mode snippets`,
       ...(primaryFile ? [`kairn context --session ${session.id} --root <repo> --related ${primaryFile}`] : []),
@@ -782,7 +578,7 @@ export class KairnRuntime {
     const changedFilesForPolicy = await this.getChangedFiles(session.rootPath).catch(() => []);
     const failureFilesForPolicy = uniquePaths(
       ledgerEvents
-        .filter((event) => event.kind === "failure_seen" && event.filePath)
+        .filter((event) => (event.kind === "failure_seen" || event.kind === "verification_failed") && event.filePath)
         .map((event) => event.filePath!)
     );
     const sessionPolicy = decideSessionContextPolicy({
@@ -797,247 +593,30 @@ export class KairnRuntime {
       source: input.source ?? "cli"
     });
     const forceMinimalSourceFocus = minimalSourceFocusOverridesSuppression(sessionPolicy.reason);
-    const forcePromptMentionedMultiFileScope =
-      quality.action === "suppress" &&
-      promptDerivedMultiFileScope &&
-      promptMentionedSourceFiles.length > 1 &&
-      !officialSingleFilePatchScope &&
-      !officialPromptSingleFilePatchScope &&
-      !governorSingleFilePatchScope &&
-      !readOnlySourceRouting;
-    const narrowPackageParserTask = hasNarrowPackageParserScope(resolvedTask.toLowerCase());
-    const suppressNarrowPackageParserGuardrail =
-      contextDecision.taskFrame === "official_patch" &&
-      (contextDecision.taskShapeSignal === "narrow_package_parser" || narrowPackageParserTask) &&
-      !readOnlySourceRouting &&
-      failureFilesForPolicy.length === 0;
-    const grpcErrorPolicyTask = hasGrpcErrorPolicyScope(resolvedTask);
-    const strictMultiFileEditScopeHint = (input.editScopeHints?.allowedDiffScopes ?? []).filter((scope) => isLikelyProductionSourceFile(scope.file)).length > 1;
-    const concreteGrpcPolicyFileCount = grpcErrorPolicySourceFiles.filter(isLikelyProductionSourceFile).length;
-    const suppressGrpcErrorPolicyGuardrail =
-      contextDecision.taskFrame === "official_patch" &&
-      !strictMultiFileEditScopeHint &&
-      concreteGrpcPolicyFileCount <= 1 &&
-      !promptMentionsMultipleProductionSourceFiles &&
-      grpcErrorPolicyTask &&
-      !readOnlySourceRouting &&
-      failureFilesForPolicy.length === 0;
-    const suppressCollectionNameValidationGuardrail =
-      (contextDecision.taskShapeSignal === "collection_name_validation" || hasCollectionNameValidationScope(resolvedTask)) &&
-      collectionNameValidationSourceFiles.filter(isLikelyProductionSourceFile).length >= 2 &&
-      !readOnlySourceRouting &&
-      failureFilesForPolicy.length === 0;
-    const suppressTopicOrderingGuardrail =
-      (contextDecision.taskShapeSignal === "topic_ordering" || hasTopicOrderingScope(resolvedTask)) &&
-      topicOrderingSourceFiles.filter(isLikelyProductionSourceFile).length >= 3 &&
-      !readOnlySourceRouting &&
-      failureFilesForPolicy.length === 0;
-    const suppressHiddenPluginActivationGuardrail =
-      contextDecision.taskFrame === "official_patch" &&
-      (contextDecision.taskShapeSignal === "plugin_activation_validation" || hasPluginActivationValidationScope(resolvedTask)) &&
-      strictMultiFileEditScopeHint &&
-      !hasPromptSupportedPluginActivationConsumerScope(resolvedTask) &&
-      !hasExplicitMultiFileScopeRequest(resolvedTask) &&
-      !readOnlySourceRouting &&
-      failureFilesForPolicy.length === 0;
-    const suppressSelfContainedExecutionStateMigrationGuardrail =
-      (contextDecision.taskShapeSignal === "execution_state_migration" || hasExecutionStateMigrationScope(resolvedTask)) &&
-      strictMultiFileEditScopeHint &&
-      officialPatchScopeFiles.length > 1 &&
-      hasSelfContainedExecutionStateMigrationPrompt(resolvedTask) &&
-      !readOnlySourceRouting &&
-      failureFilesForPolicy.length === 0;
-    const effectiveAction = suppressNarrowPackageParserGuardrail
-      ? "suppress"
-      : suppressGrpcErrorPolicyGuardrail
-      ? "suppress"
-      : suppressCollectionNameValidationGuardrail
-      ? "suppress"
-      : suppressTopicOrderingGuardrail
-      ? "suppress"
-      : suppressHiddenPluginActivationGuardrail
-      ? "suppress"
-      : suppressSelfContainedExecutionStateMigrationGuardrail
-      ? "suppress"
-      : forceMinimalSourceFocus || forcePromptMentionedMultiFileScope
-      ? "shrink"
-      : strongestSuppressiveAction(quality.action, contextDecision.action, sessionPolicy.action);
+    const effectiveAction = calibratedEvidencePolicy?.action === "request_evidence"
+      ? "request_evidence"
+      : calibratedEvidencePolicy?.action === "suppress"
+        ? "suppress"
+        : forceMinimalSourceFocus
+          ? "shrink"
+          : strongestSuppressiveAction(quality.action, contextDecision.action, sessionPolicy.action);
     const forceProductionOnlyOneFile =
+      !calibratedEvidencePolicy &&
+      sessionPolicy.reason !== "scope_drift_repair" &&
       effectiveAction === "shrink" &&
       taskHasProductionOnlyEditIntent(resolvedTask) &&
       !hasExplicitMultiFileScopeRequest(resolvedTask) &&
-      (!promptDerivedMultiFileScope || officialSingleFilePatchScope || officialPromptSingleFilePatchScope || governorSingleFilePatchScope) &&
-      !hasOfficialMultiFilePatchScope &&
-      !(contextDecision.taskFrame === "official_patch" && contextDecision.recommendedDelivery === "multi_file_directive" && !officialSingleFilePatchScope && !officialPromptSingleFilePatchScope && !governorSingleFilePatchScope) &&
-      Boolean(officialSingleFileDirective || directivePrimaryFile || primaryFile) &&
-      (officialSingleFilePatchScope || officialPromptSingleFilePatchScope || governorSingleFilePatchScope || Boolean(contextDecision.exactSourceHit || contextDecision.canonicalSourceHit || contextDecision.sourceRescue));
-    const forceOfficialMultiFileScope =
-      effectiveAction === "shrink" &&
-      hasOfficialMultiFilePatchScope &&
-      !readOnlySourceRouting;
-    const forcePromptDerivedMultiFileScope =
-      effectiveAction === "shrink" &&
-      promptDerivedMultiFileScope &&
-      !officialSingleFilePatchScope &&
-      !officialPromptSingleFilePatchScope &&
-      !governorSingleFilePatchScope &&
-      files.filter(isLikelyProductionSourceFile).length > 1 &&
-      !readOnlySourceRouting;
-    const forceDeprecationLifecycleScope =
-      effectiveAction === "shrink" &&
-      hasDeprecationLifecycleScope(resolvedTask) &&
-      deprecationLifecycleSourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
-      !readOnlySourceRouting;
-    const forceRequestBodyFormScope =
-      effectiveAction === "shrink" &&
-      hasRequestBodyFormScope(resolvedTask) &&
-      requestBodyFormSourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
-      !readOnlySourceRouting;
-    const forceConverterOutputScope =
-      effectiveAction === "shrink" &&
-      hasConverterOutputScope(resolvedTask) &&
-      contextDecision.requiredSurface !== "single_file" &&
-      converterOutputDeliveryFiles.filter(isLikelyProductionSourceFile).length > 0 &&
-      !readOnlySourceRouting;
-    const forceBenchmarkGeneratorScope =
-      effectiveAction === "shrink" &&
-      hasBenchmarkGeneratorScope(resolvedTask) &&
-      benchmarkGeneratorSourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
-      !readOnlySourceRouting;
-    const forceTopicOrderingScope =
-      effectiveAction === "shrink" &&
-      hasTopicOrderingScope(resolvedTask) &&
-      topicOrderingSourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
-      !readOnlySourceRouting;
-    const forceCollectionNameValidationScope =
-      effectiveAction === "shrink" &&
-      hasCollectionNameValidationScope(resolvedTask) &&
-      collectionNameValidationSourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
-      !readOnlySourceRouting;
-    const forceGrpcErrorPolicyScope =
-      effectiveAction === "shrink" &&
-      hasGrpcErrorPolicyScope(resolvedTask) &&
-      grpcErrorPolicySourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
-      !readOnlySourceRouting;
-    const forceHttpAuthPolicyScope =
-      effectiveAction === "shrink" &&
-      hasHttpAuthPolicyScope(resolvedTask) &&
-      httpAuthPolicySourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
-      !readOnlySourceRouting;
-    const forceSystemMetadataScope =
-      effectiveAction === "shrink" &&
-      hasSystemMetadataScope(resolvedTask) &&
-      systemMetadataSourceFiles.filter(isLikelyProductionSourceFile).length > 0 &&
-      !readOnlySourceRouting;
-    const forceDatabaseFailoverScope =
-      effectiveAction === "shrink" &&
-      hasDatabaseFailoverScope(resolvedTask) &&
-      databaseFailoverSourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
-      !readOnlySourceRouting;
-    const forcePluginActivationValidationScope =
-      effectiveAction === "shrink" &&
-      hasPluginActivationValidationScope(resolvedTask) &&
-      pluginActivationValidationSourceFiles.filter(isLikelyProductionSourceFile).length > 0 &&
-      !readOnlySourceRouting;
-    const forceExecutionStateMigrationScope =
-      effectiveAction === "shrink" &&
-      hasExecutionStateMigrationScope(resolvedTask) &&
-      executionStateMigrationSourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
-      !readOnlySourceRouting;
-    const forceDiscoveryConfigScope =
-      effectiveAction === "shrink" &&
-      hasDiscoveryConfigScope(resolvedTask) &&
-      discoveryConfigSourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
-      !readOnlySourceRouting;
-    const forceWebSessionRenewalScope =
-      effectiveAction === "shrink" &&
-      hasWebSessionRenewalScope(resolvedTask) &&
-      webSessionRenewalSourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
-      !readOnlySourceRouting;
-    const forcePackageSourceMappingScope =
-      effectiveAction === "shrink" &&
-      hasPackageSourceMappingScope(resolvedTask) &&
-      packageSourceMappingSourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
-      !readOnlySourceRouting;
-    const forceDatastoreBackendParityScope =
-      effectiveAction === "shrink" &&
-      hasDatastoreBackendParityScope(resolvedTask) &&
-      datastoreBackendParitySourceFiles.filter(isLikelyProductionSourceFile).length > 1 &&
-      !readOnlySourceRouting;
+      Boolean(directivePrimaryFile || primaryFile) &&
+      Boolean(contextDecision.exactSourceHit || contextDecision.canonicalSourceHit || contextDecision.sourceRescue);
     const effectiveQuality = {
       ...quality,
       action: effectiveAction,
-      reasons: uniqueStrings([
-        ...quality.reasons,
-        ...(suppressNarrowPackageParserGuardrail ? ["narrow package parser task already has a dominant source surface; staying silent"] : []),
-        ...(suppressGrpcErrorPolicyGuardrail ? ["gRPC context status policy needs concrete failure evidence; staying silent to avoid command-only over-assist"] : []),
-        ...(suppressHiddenPluginActivationGuardrail ? ["plugin activation consumer scope is hidden by benchmark metadata; staying silent until prompt or failure evidence supports it"] : []),
-        ...(suppressSelfContainedExecutionStateMigrationGuardrail ? ["execution-state migration prompt is already self-contained; staying silent to avoid over-assist"] : []),
-        ...(forcePromptMentionedMultiFileScope ? ["prompt names multiple production source files; emit compact multi-file guardrail"] : []),
-        `session policy: ${sessionPolicy.reason}`
-      ])
+      reasons: uniqueStrings([...quality.reasons, `session policy: ${sessionPolicy.reason}`])
     };
     const effectiveContextDecision = {
       ...contextDecision,
-      ...(narrowPackageParserTask ? { taskShapeSignal: "narrow_package_parser" as const, requiredSurface: "single_file" as const } : {}),
-      ...(grpcErrorPolicyTask
-        ? {
-            taskShapeSignal: "grpc_error_policy" as const,
-            requiredSurface: suppressGrpcErrorPolicyGuardrail ? "evidence_needed" as const : "paired_contract" as const
-          }
-        : {}),
-      ...(forceCollectionNameValidationScope ? { taskShapeSignal: "collection_name_validation" as const, requiredSurface: "paired_contract" as const } : {}),
-      ...(officialSingleFilePatchScope || officialPromptSingleFilePatchScope || governorSingleFilePatchScope
-        ? { requiredSurface: "single_file" as const }
-        : {}),
       action: effectiveAction,
-      recommendedDelivery: suppressNarrowPackageParserGuardrail
-        ? "none" as const
-        : suppressGrpcErrorPolicyGuardrail
-        ? "none" as const
-        : suppressHiddenPluginActivationGuardrail
-        ? "none" as const
-        : suppressSelfContainedExecutionStateMigrationGuardrail
-        ? "none" as const
-        : forceOfficialMultiFileScope
-        ? "multi_file_directive" as const
-        : forceDeprecationLifecycleScope
-          ? "multi_file_directive" as const
-        : forceRequestBodyFormScope
-          ? "multi_file_directive" as const
-        : forceConverterOutputScope
-          ? converterOutputDeliveryFiles.length > 1 ? "multi_file_directive" as const : "one_file_directive" as const
-        : forceBenchmarkGeneratorScope
-          ? "multi_file_directive" as const
-        : forceTopicOrderingScope
-          ? "multi_file_directive" as const
-        : forceCollectionNameValidationScope
-          ? "multi_file_directive" as const
-        : forceGrpcErrorPolicyScope
-          ? "multi_file_directive" as const
-        : forceHttpAuthPolicyScope
-          ? "multi_file_directive" as const
-        : forceSystemMetadataScope
-          ? "multi_file_directive" as const
-        : forceDatabaseFailoverScope
-          ? "multi_file_directive" as const
-        : forcePluginActivationValidationScope
-          ? "multi_file_directive" as const
-        : forceExecutionStateMigrationScope
-          ? "multi_file_directive" as const
-        : forceDiscoveryConfigScope
-          ? "multi_file_directive" as const
-        : forceWebSessionRenewalScope
-          ? "multi_file_directive" as const
-        : forcePackageSourceMappingScope
-          ? "multi_file_directive" as const
-        : forceDatastoreBackendParityScope
-          ? "multi_file_directive" as const
-        : forcePromptMentionedMultiFileScope
-          ? "multi_file_directive" as const
-        : forcePromptDerivedMultiFileScope
-          ? "multi_file_directive" as const
-        : forceMinimalSourceFocus || forceProductionOnlyOneFile
+      recommendedDelivery: forceMinimalSourceFocus || forceProductionOnlyOneFile
         ? "one_file_directive" as const
         : effectiveAction === "emit"
         ? contextDecision.recommendedDelivery ?? "full_prime"
@@ -1047,107 +626,31 @@ export class KairnRuntime {
           ? "evidence_request" as const
         : "none" as const
     };
-    const rawSourceDeliveryFiles = uniquePaths([
-      ...packageSourceMappingSourceFiles,
-      ...deprecationLifecycleSourceFiles,
-      ...promptMentionedSourceFiles,
-      ...webSessionRenewalSourceFiles,
-      ...requestBodyFormSourceFiles,
-      ...converterOutputDeliveryFiles,
-      ...benchmarkGeneratorSourceFiles,
-      ...topicOrderingSourceFiles,
-      ...collectionNameValidationSourceFiles,
-      ...grpcErrorPolicySourceFiles,
-      ...httpAuthPolicySourceFiles,
-      ...systemMetadataSourceFiles,
-      ...databaseFailoverSourceFiles,
-      ...pluginActivationValidationSourceFiles,
-      ...executionStateMigrationSourceFiles,
-      ...discoveryConfigSourceFiles,
-      ...deviceSessionListenerSourceFiles,
-      ...datastoreBackendParitySourceFiles,
-      ...files
-    ]).filter((file) =>
-      !isUnrelatedCentralBackendTestHelper(file, resolvedTask) &&
-      !isUnrelatedBackendAutocompleteSurface(file, resolvedTask) &&
-      !isUnrelatedDeprecationLifecycleSurface(file, resolvedTask) &&
-      !isUnrelatedConfigSchemaSurface(file, resolvedTask, selectedTestCounterpartSourceFiles) &&
-      !isUnrelatedWebSessionRenewalSurface(file, resolvedTask) &&
-      !isUnrelatedRequestBodyFormSurface(file, resolvedTask, requestBodyFormSourceFiles) &&
-      !isUnrelatedBenchmarkGeneratorSurface(file, resolvedTask, benchmarkGeneratorSourceFiles) &&
-      !isUnrelatedGrpcErrorPolicySurface(file, resolvedTask, grpcErrorPolicySourceFiles) &&
-      !isUnrelatedHttpAuthPolicySurface(file, resolvedTask, httpAuthPolicySourceFiles) &&
-      !isUnrelatedSystemMetadataSurface(file, resolvedTask, systemMetadataSourceFiles) &&
-      !isUnrelatedDatabaseFailoverSurface(file, resolvedTask, databaseFailoverSourceFiles) &&
-      !isUnrelatedPluginActivationValidationSurface(file, resolvedTask, pluginActivationValidationSourceFiles) &&
-      !isUnrelatedExecutionStateMigrationSurface(file, resolvedTask, executionStateMigrationSourceFiles) &&
-      !isForbiddenFrontendEditSurface(file, resolvedTask) &&
-      !isUnrelatedDatastoreBackendParitySurface(file, resolvedTask, datastoreBackendParitySourceFiles) &&
-      !isUnrelatedPromptMentionedSourceSurface(file, resolvedTask, promptMentionedSourceFiles)
-    );
-    const sourceDeliveryFiles = hasPackageSourceMappingScope(resolvedTask)
-      ? orderPackageSourceMappingFiles(rawSourceDeliveryFiles, resolvedTask)
-      : rawSourceDeliveryFiles;
     const emittedFiles = !isFileEmittingAction(effectiveAction)
       ? []
-      : readOnlySourceRouting
-        ? readOnlySourceRoutingFiles
       : effectiveAction === "shrink" && forceMinimalSourceFocus && sessionPolicy.files.length > 0
         ? sessionPolicy.files.slice(0, 1)
-      : forceOfficialMultiFileScope
-        ? uniquePaths([...officialPatchScopeFiles, ...sourceDeliveryFiles]).slice(0, Math.max(multiFileLimit, officialPatchScopeFiles.length))
-      : forceDeprecationLifecycleScope
-        ? sourceDeliveryFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
-      : forceRequestBodyFormScope
-        ? requestBodyFormSourceFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
-      : forceConverterOutputScope
-        ? sourceDeliveryFiles.filter(isLikelyProductionSourceFile).slice(0, Math.max(1, Math.min(multiFileLimit, converterOutputDeliveryFiles.length || 1)))
-      : forceBenchmarkGeneratorScope
-        ? uniquePaths([...benchmarkGeneratorSourceFiles, ...sourceDeliveryFiles]).filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
-      : forceTopicOrderingScope
-        ? sourceDeliveryFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
-      : forceCollectionNameValidationScope
-        ? sourceDeliveryFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
-      : forceGrpcErrorPolicyScope
-        ? grpcErrorPolicySourceFiles.filter(isLikelyProductionSourceFile).length >= 2
-          ? grpcErrorPolicySourceFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
-          : uniquePaths([...grpcErrorPolicySourceFiles, ...sourceDeliveryFiles]).filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
-      : forceHttpAuthPolicyScope
-        ? uniquePaths([...httpAuthPolicySourceFiles, ...sourceDeliveryFiles]).filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
-      : forceSystemMetadataScope
-        ? uniquePaths([...systemMetadataSourceFiles, ...sourceDeliveryFiles]).filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
-      : forceDatabaseFailoverScope
-        ? databaseFailoverSourceFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
-      : forcePluginActivationValidationScope
-        ? uniquePaths([...pluginActivationValidationSourceFiles, ...sourceDeliveryFiles]).filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
-      : forceExecutionStateMigrationScope
-        ? executionStateMigrationSourceFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
-      : forceDiscoveryConfigScope
-        ? discoveryConfigSourceFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
-      : forceWebSessionRenewalScope
-        ? sourceDeliveryFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
-      : forcePackageSourceMappingScope
-        ? sourceDeliveryFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
-      : forceDatastoreBackendParityScope
-        ? sourceDeliveryFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
-      : forcePromptDerivedMultiFileScope
-        ? sourceDeliveryFiles.filter(isLikelyProductionSourceFile).slice(0, multiFileLimit)
       : forceProductionOnlyOneFile
-        ? [officialSingleFileDirective ?? directivePrimaryFile ?? primaryFile!]
+        ? [directivePrimaryFile ?? primaryFile!]
       : effectiveContextDecision.recommendedDelivery === "multi_file_directive"
-        ? sourceDeliveryFiles.slice(0, multiFileLimit)
+        ? files.slice(0, multiFileLimit)
       : effectiveAction === "shrink" && sessionPolicy.files.length > 0
         ? sessionPolicy.files.slice(0, 1)
       : effectiveAction === "shrink" && includeCompanionContext
-        ? sourceDeliveryFiles.slice(0, 3)
-        : sourceDeliveryFiles;
+        ? files.slice(0, 3)
+        : files;
+    const scopeDriftFiles = Array.isArray(sessionPolicy.metadata.scopeDriftFiles)
+      ? sessionPolicy.metadata.scopeDriftFiles.filter((file): file is string => typeof file === "string" && file.length > 0)
+      : [];
+    const expectedScopeFiles = Array.isArray(sessionPolicy.metadata.expectedScopeFiles)
+      ? sessionPolicy.metadata.expectedScopeFiles.filter((file): file is string => typeof file === "string" && file.length > 0)
+      : [];
     const useMinimalOneFileDirective = shouldUseMinimalOneFileDirective({
       task: resolvedTask,
       action: effectiveAction,
       decision: effectiveContextDecision,
       emittedFiles
     });
-    const scopeOnlyGuardrail = effectiveContextDecision.directiveStyle === "scope_guardrail";
     const invariantFilesMatchDelivery = invariants.every((invariant) => emittedFiles.includes(invariant.file));
     const deliveredPrimaryFile = emittedFiles[0];
     if (isFileEmittingAction(effectiveAction) && deliveredPrimaryFile && !invariantFilesMatchDelivery) {
@@ -1157,102 +660,17 @@ export class KairnRuntime {
         : buildContextInvariant({ task: resolvedTask, file: deliveredPrimaryFile });
       invariants = deliveredInvariant ? [deliveredInvariant] : [];
     }
-    const editScopeCandidateFiles = !isFileEmittingAction(effectiveAction)
-      ? sourceDeliveryFiles
-      : forceProductionOnlyOneFile
-        ? emittedFiles
-        : uniquePaths([...emittedFiles, ...sourceDeliveryFiles, ...(tests?.files ?? [])]);
-    const editScopeContextDecision = hasPackageSourceMappingScope(resolvedTask) && emittedFiles[0]
-      ? { ...effectiveContextDecision, primaryFile: emittedFiles[0] }
-      : effectiveContextDecision;
-    const baseEditScope = readOnlySourceRouting
-      ? undefined
-      : decideEditScope({
-          task: resolvedTask,
-          candidateFiles: editScopeCandidateFiles,
-          contextDecision: editScopeContextDecision,
-          invariants,
-          knownFiles: sessionFiles,
-          allowedDiffScopes: input.editScopeHints?.allowedDiffScopes,
-          sourceInvariants: input.editScopeHints?.sourceInvariants,
-          failureFiles: uniquePaths([...(input.editScopeHints?.failureFiles ?? []), ...failureFilesForPolicy]),
-          changedFiles: [...changedFilesForPolicy]
-        });
-    const narrowPackageParserAllowedScope = hasNarrowPackageParserScope(resolvedTask.toLowerCase())
-      ? uniquePaths((input.editScopeHints?.allowedDiffScopes ?? []).map((scope) => scope.file).filter(isLikelyProductionSourceFile))
-      : [];
-    const httpAuthPolicyAllowedScope = hasHttpAuthPolicyScope(resolvedTask)
-      ? httpAuthPolicySourceFiles.filter(isLikelyProductionSourceFile)
-      : [];
-    const editScope = baseEditScope && hasNarrowPackageParserScope(resolvedTask.toLowerCase())
-      ? {
-          ...baseEditScope,
-          initialEditFiles: narrowPackageParserAllowedScope.length === 1 ? narrowPackageParserAllowedScope : baseEditScope.initialEditFiles.slice(0, 1),
-          readOnlyFiles: []
-        }
-      : baseEditScope && httpAuthPolicyAllowedScope.length > 0
-      ? {
-          ...baseEditScope,
-          initialEditFiles: httpAuthPolicyAllowedScope,
-          readOnlyFiles: baseEditScope.readOnlyFiles.filter((file) => !httpAuthPolicyAllowedScope.includes(file) && !isUnrelatedHttpAuthPolicySurface(file, resolvedTask, httpAuthPolicyAllowedScope))
-        }
-      : baseEditScope;
-    const officialSizedGuardrail =
-      effectiveAction === "shrink" &&
-      (editScope?.strictBoundary === true || forceGrpcErrorPolicyScope) &&
-      (
-        scopeOnlyGuardrail ||
-        effectiveContextDecision.taskShapeSignal === "lifecycle_policy" ||
-        effectiveContextDecision.taskShapeSignal === "frontend_ownership" ||
-        effectiveContextDecision.requiredSurface === "feature_cluster" ||
-        forceRequestBodyFormScope ||
-        forceBenchmarkGeneratorScope ||
-        forceTopicOrderingScope ||
-        forceCollectionNameValidationScope ||
-        forceGrpcErrorPolicyScope ||
-        forceHttpAuthPolicyScope ||
-        forceDiscoveryConfigScope ||
-        forceWebSessionRenewalScope ||
-        forcePackageSourceMappingScope ||
-        effectiveContextDecision.taskShapeSignal === "database_failover" ||
-        forcePluginActivationValidationScope ||
-        forceDatastoreBackendParityScope
-      );
-    const guardrailVariant = officialSizedGuardrail
-      ? officialGuardrailVariantFor({
-          task: resolvedTask,
-          files: emittedFiles,
-          editScope,
-          invariants
-        })
-      : undefined;
-    const sourceContextTokenEstimate = Math.max(0, Math.round(context.tokenEstimate || estimateTokens(context.content)));
-    const guardrailMetadata = guardrailVariant
-      ? {
-          guardrailVariant,
-          guardrailDirectiveStyle: "scope_guardrail",
-          guardrailStrictOfficialScope: true,
-          guardrailFileCount: emittedFiles.length,
-          guardrailInvariantCount: invariants.length,
-          guardrailTokenBudget: Math.min(budget, 280)
-        }
-      : {};
-    const deliveryPolicyMetadata = {
-      officialPatchScopeFileCount: officialPatchScopeFiles.length,
-      forceOfficialMultiFileScope,
-      forceDeprecationLifecycleScope,
-      forceRequestBodyFormScope,
-      forceBenchmarkGeneratorScope,
-      forceTopicOrderingScope,
-      forceCollectionNameValidationScope,
-      forceGrpcErrorPolicyScope,
-      forceHttpAuthPolicyScope,
-      forceDiscoveryConfigScope,
-      forceWebSessionRenewalScope,
-      forcePackageSourceMappingScope,
-      forcePluginActivationValidationScope,
-      forceProductionOnlyOneFile
-    };
+    const editScope = decideEditScope({
+      task: resolvedTask,
+      candidateFiles: !isFileEmittingAction(effectiveAction) ? files : uniquePaths([...emittedFiles, ...files, ...(tests?.files ?? [])]),
+      contextDecision: effectiveContextDecision,
+      invariants,
+      knownFiles: sessionFiles,
+      allowedDiffScopes: input.editScopeHints?.allowedDiffScopes,
+      sourceInvariants: input.editScopeHints?.sourceInvariants,
+      failureFiles: uniquePaths([...(input.editScopeHints?.failureFiles ?? []), ...failureFilesForPolicy]),
+      changedFiles: [...changedFilesForPolicy]
+    });
     for (const file of files) {
       this.recordLedgerEvent({
         sessionId: session.id,
@@ -1267,27 +685,27 @@ export class KairnRuntime {
           phase: sessionPolicy.phase,
           policyReason: sessionPolicy.reason,
           emitted: emittedFiles.includes(file),
-          ...guardrailMetadata,
-          ...deliveryPolicyMetadata,
           workingSetActiveFiles: ledgerSummary.workingSet.activeFiles.slice(0, 6),
           nextSmallestUsefulRead: ledgerSummary.workingSet.nextSmallestUsefulRead
         }
       });
     }
-    if (isFileEmittingAction(effectiveAction) && editScope && editScope.initialEditFiles.length > 0) {
-      this.recordLedgerEvent({
-        sessionId: session.id,
-        kind: "edit_scope_changed",
-        contentHash: sha256(JSON.stringify(editScope)),
-        tokenEstimate: 0,
-        source: input.source ?? "cli",
-        summary: `Initial edit scope: ${editScope.initialEditFiles.join(", ")}`,
-        metadata: {
-          taskHash: sha256(resolvedTask),
-          phase: sessionPolicy.phase,
-          editScope
-        }
-      });
+    if (isFileEmittingAction(effectiveAction) && editScope.initialEditFiles.length > 0) {
+      if (sessionPolicy.reason !== "scope_drift_repair") {
+        this.recordLedgerEvent({
+          sessionId: session.id,
+          kind: "edit_scope_changed",
+          contentHash: sha256(JSON.stringify(editScope)),
+          tokenEstimate: 0,
+          source: input.source ?? "cli",
+          summary: `Initial edit scope: ${editScope.initialEditFiles.join(", ")}`,
+          metadata: {
+            taskHash: sha256(resolvedTask),
+            phase: sessionPolicy.phase,
+            editScope
+          }
+        });
+      }
     }
     if (sessionPolicy.phase !== ledgerSummary.currentPhase) {
       this.recordLedgerEvent({
@@ -1318,6 +736,14 @@ export class KairnRuntime {
         })
       : effectiveAction === "suppress"
         ? formatSuppressedPrimeContext({ task: resolvedTask, sessionId: session.id, profile, quality: effectiveQuality })
+        : sessionPolicy.reason === "scope_drift_repair"
+          ? formatScopeDriftPrimeContext({
+              task: resolvedTask,
+              sessionId: session.id,
+              budget: Math.min(budget, 360),
+              driftFiles: scopeDriftFiles,
+              expectedScopeFiles
+            })
         : effectiveAction === "request_evidence"
           ? formatEvidenceRequestPrimeContext({
               task: resolvedTask,
@@ -1325,15 +751,6 @@ export class KairnRuntime {
               profile,
               quality: effectiveQuality,
               evidenceRequest: effectiveContextDecision.evidenceRequest
-            })
-        : effectiveAction === "shrink" && readOnlySourceRouting
-          ? formatSourceRoutingPrimeContext({
-              task: resolvedTask,
-              sessionId: session.id,
-              profile,
-              context,
-              files: emittedFiles,
-              budget: Math.min(budget, 260)
             })
         : effectiveAction === "shrink"
           ? formatShrunkPrimeContext({
@@ -1343,20 +760,17 @@ export class KairnRuntime {
               quality: effectiveQuality,
               context,
               files: emittedFiles,
-              budget: Math.min(budget, officialSizedGuardrail ? 280 : effectiveContextDecision.recommendedDelivery === "multi_file_directive" ? 520 : 420),
+              budget: Math.min(budget, effectiveContextDecision.recommendedDelivery === "multi_file_directive" ? 520 : 420),
               invariants,
               editScope,
               includeSnippet:
-                !officialSizedGuardrail &&
                 !useMinimalOneFileDirective &&
                 sessionPolicy.reason !== "verified_context_shrunk" &&
                 sessionPolicy.reason !== "active_source_context_shrunk" &&
                 !contextDecision.cheapSingleSource &&
                 !contextDecision.wrongContextRisk &&
-                !readOnlySourceRouting &&
                 !isAutomaticExactSourceHook({ source: input.source, decision: contextDecision }),
-              minimal: officialSizedGuardrail ||
-                sessionPolicy.reason === "active_source_context_shrunk" ||
+              minimal: sessionPolicy.reason === "active_source_context_shrunk" ||
                 isAutomaticCheapSingleSourceHook({ source: input.source, decision: contextDecision }) ||
                 useMinimalOneFileDirective
             })
@@ -1375,15 +789,6 @@ export class KairnRuntime {
             });
     markTiming("formatMs", formatStartedAt);
     timings.totalPrimeMs = Date.now() - primeStartedAt;
-    const directiveTokenEstimate = estimateTokens(content);
-    const deliveryTrace = buildPrimeDeliveryTrace({
-      decision: effectiveContextDecision,
-      guardrailVariant,
-      emittedFiles,
-      editScope,
-      estimatedDirectiveTokens: directiveTokenEstimate,
-      estimatedSourceContextTokens: sourceContextTokenEstimate
-    });
     const fileRecords = sessionFiles.filter((file) => emittedFiles.includes(file.path));
     const policyRepeatedFilesAvoided = typeof sessionPolicy.metadata.repeatedFilesAvoided === "number"
       ? sessionPolicy.metadata.repeatedFilesAvoided
@@ -1404,9 +809,6 @@ export class KairnRuntime {
           phase: sessionPolicy.phase,
           policyReason: sessionPolicy.reason,
           policyAction: sessionPolicy.action,
-          ...guardrailMetadata,
-          ...deliveryPolicyMetadata,
-          deliveryTrace,
           ...(invariants[0] ? { invariant: invariants[0] } : {}),
           workingSetActiveFiles: ledgerSummary.workingSet.activeFiles.slice(0, 6),
           nextSmallestUsefulRead: ledgerSummary.workingSet.nextSmallestUsefulRead
@@ -1425,9 +827,6 @@ export class KairnRuntime {
           taskHash: sha256(resolvedTask),
           phase: sessionPolicy.phase,
           policyReason: sessionPolicy.reason,
-          ...guardrailMetadata,
-          ...deliveryPolicyMetadata,
-          deliveryTrace,
           repeatedFilesAvoided: policyRepeatedFilesAvoided,
           repeatedSnippetsAvoided: sessionPolicy.reason === "repeated_context_suppressed" ? 1 : 0,
           workingSetActiveFiles: ledgerSummary.workingSet.activeFiles.slice(0, 6),
@@ -1455,13 +854,13 @@ export class KairnRuntime {
         contextDecision: effectiveContextDecision,
         editScope,
         sessionPolicy,
-        ...guardrailMetadata,
-        ...deliveryPolicyMetadata,
-        deliveryTrace,
         workingSet: ledgerSummary.workingSet,
         invariants,
         timings,
         contextTokenEstimate: context.tokenEstimate,
+        ranker: context.metadata?.ranker,
+        ...(context.metadata?.candidateGeneration ? { candidateGeneration: context.metadata.candidateGeneration } : {}),
+        ...(calibratedEvidencePolicy ? { calibratedEvidencePolicy } : {}),
         companionCandidates: companionMetadata,
         relatedCount: related?.related.length ?? 0,
         testCount: tests?.files.length ?? 0,
@@ -1483,9 +882,6 @@ export class KairnRuntime {
         contextDecision: effectiveContextDecision,
         editScope,
         sessionPolicy,
-        ...guardrailMetadata,
-        ...deliveryPolicyMetadata,
-        deliveryTrace,
         workingSet: ledgerSummary.workingSet,
         invariants,
         timings,
@@ -1507,9 +903,6 @@ export class KairnRuntime {
         ...effectiveContextDecision,
         editScope,
         sessionPolicy,
-        ...guardrailMetadata,
-        ...deliveryPolicyMetadata,
-        deliveryTrace,
         workingSet: ledgerSummary.workingSet,
         invariants,
         timings,
@@ -1528,15 +921,15 @@ export class KairnRuntime {
       invariants,
       quality: effectiveQuality,
       contextDecision: effectiveContextDecision,
-      ...(editScope ? { editScope } : {}),
+      editScope,
       timings,
       metadata: {
         companionCandidates: companionMetadata,
+        ranker: context.metadata?.ranker,
+        ...(context.metadata?.candidateGeneration ? { candidateGeneration: context.metadata.candidateGeneration } : {}),
+        ...(calibratedEvidencePolicy ? { calibratedEvidencePolicy } : {}),
         sessionPolicy,
         editScope,
-        ...guardrailMetadata,
-        ...deliveryPolicyMetadata,
-        deliveryTrace,
         workingSet: ledgerSummary.workingSet
       },
       warnings: uniqueStrings([...context.warnings, ...(related?.warnings ?? []), ...(tests?.warnings ?? [])]),
@@ -1552,14 +945,16 @@ export class KairnRuntime {
     try {
       return this.store.getSession(sessionId);
     } catch (error) {
-      if (!(error instanceof Error) || !error.message.startsWith("Unknown Kairn session:")) {
-        throw error;
-      }
+      if (!(error instanceof Error) || !error.message.startsWith("Unknown Kairn session:")) throw error;
       return this.store.createSession({
         id: sessionId,
         rootPath: this.rootPath,
         task,
-        verificationHints: ["Start from Kairn prime context", "Avoid broad scans unless the prime is insufficient", "Run related tests before finalizing"]
+        verificationHints: [
+          "Start from Kairn prime context",
+          "Avoid broad scans unless the prime is insufficient",
+          "Run related tests before finalizing"
+        ]
       });
     }
   }
@@ -2050,47 +1445,177 @@ export class KairnRuntime {
     const files = input.refreshIndex === false ? this.store.listFiles(session.rootPath) : await this.refreshIndex(session.rootPath);
     const changedFiles = await this.getChangedFiles(session.rootPath);
     const query = input.query ?? session.task;
-    const localIndex = this.getQueryLocalIndex({
+    const requestedRanker = resolveRankerConfig(this.rankerConfig);
+    const requestedSemantic = resolveSemanticRetrieverConfig(session.rootPath, this.semanticConfig);
+    const semanticServing = requestedSemantic.mode === "semantic";
+    const effectiveRanker = semanticServing && requestedRanker.mode === "legacy"
+      ? { mode: "calibrated" as const }
+      : requestedRanker;
+    const calibratedPolicyRequested = effectiveRanker.mode === "calibrated";
+    const semanticCandidateIndex = requestedSemantic.mode === "legacy"
+      ? undefined
+      : await this.getCalibratedQueryLocalIndex({
+          rootPath: session.rootPath,
+          files,
+          query,
+          changedFiles,
+          shown: session.filesShown,
+          semanticConfig: requestedSemantic
+        });
+    const servingCandidateIndex = semanticServing
+      ? semanticCandidateIndex
+      : calibratedPolicyRequested
+        ? await this.getCalibratedQueryLocalIndex({
+            rootPath: session.rootPath,
+            files,
+            query,
+            changedFiles,
+            shown: session.filesShown,
+            semanticConfig: { mode: "legacy" }
+          })
+        : undefined;
+    const localIndex = servingCandidateIndex ?? this.getQueryLocalIndex({
       rootPath: session.rootPath,
       files,
       query,
       changedFiles
     });
+    const servingCandidatePaths = new Set(servingCandidateIndex?.candidateFiles ?? []);
+    const retrievalFiles = servingCandidateIndex
+      ? files.filter((file) => servingCandidatePaths.has(file.path))
+      : files;
+    const candidateIndexForMetadata = semanticCandidateIndex ?? servingCandidateIndex;
+    const calibratedCandidateGeneration = candidateIndexForMetadata
+      ? {
+          initialCandidates: candidateIndexForMetadata.initialCandidateCount,
+          enrichedCandidates: candidateIndexForMetadata.enrichedCandidateCount,
+          hybridScoredFiles: retrievalFiles.length,
+          initialLimit: DEFAULT_INITIAL_CANDIDATE_LIMIT,
+          enrichedLimit: DEFAULT_ENRICHED_CANDIDATE_LIMIT,
+          graphHops: 1,
+          candidateGeneratorMode: requestedSemantic.mode,
+          ...(candidateIndexForMetadata.semanticStatus
+            ? { semantic: candidateIndexForMetadata.semanticStatus }
+            : {})
+        }
+      : undefined;
     const intent = classifyQueryIntent(query);
-    const initialScored = hybridSearch({
+    const rankerCandidates = semanticServing && servingCandidateIndex?.candidateResults
+      ? servingCandidateIndex.candidateResults
+      : hybridSearch({
+          files: retrievalFiles,
+          query,
+          symbols: localIndex.symbols,
+          chunks: localIndex.chunks,
+          vectors: localIndex.vectors,
+          lexicalDocuments: localIndex.lexicalDocuments,
+          lexicalTerms: localIndex.lexicalTerms,
+          lexicalStats: localIndex.lexicalStats,
+          edges: localIndex.edges,
+          shown: session.filesShown,
+          changedFiles
+        }).slice(0, calibratedPolicyRequested ? DEFAULT_ENRICHED_CANDIDATE_LIMIT : 64);
+    const initialScored = rankerCandidates.slice(0, 12);
+    const companionCandidates = calibratedPolicyRequested
+      ? []
+      : findCompanionCandidates({
+          files,
+          ranked: initialScored,
+          query,
+          symbols: localIndex.symbols,
+          chunks: localIndex.chunks,
+          edges: localIndex.edges,
+          limit: 2
+        });
+    const legacyScored = calibratedPolicyRequested
+      ? initialScored
+      : applyCompanionCandidatesToResults(initialScored, companionCandidates);
+    const evidenceRanking = rankEvidenceResults({
       files,
       query,
       symbols: localIndex.symbols,
       chunks: localIndex.chunks,
-      vectors: localIndex.vectors,
-      lexicalDocuments: localIndex.lexicalDocuments,
-      lexicalTerms: localIndex.lexicalTerms,
-      lexicalStats: localIndex.lexicalStats,
       edges: localIndex.edges,
+      legacyResults: legacyScored,
+      candidateResults: rankerCandidates,
+      ...(servingCandidateIndex ? { candidatePaths: servingCandidateIndex.candidateFiles } : {}),
       shown: session.filesShown,
       changedFiles
-    }).slice(0, 12);
-    const companionCandidates = findCompanionCandidates({
-      files,
-      ranked: initialScored,
-      query,
-      symbols: localIndex.symbols,
-      chunks: localIndex.chunks,
-      edges: localIndex.edges,
-      limit: 2
-    });
-    const scored = applyCompanionCandidatesToResults(initialScored, companionCandidates).slice(0, 12);
+    }, effectiveRanker);
+    const activeSemanticStatus = semanticCandidateIndex?.semanticStatus;
+    const allScored = evidenceRanking.files.slice(0, 12).map((file) => ({
+      ...file,
+      candidateGeneratorMode: activeSemanticStatus?.servedMode ?? requestedSemantic.mode,
+      ...(activeSemanticStatus?.semanticModelId
+        ? { semanticModelId: activeSemanticStatus.semanticModelId }
+        : {}),
+      ...(activeSemanticStatus
+        ? { semanticIndexStatus: activeSemanticStatus.semanticIndexStatus }
+        : {}),
+      ...(activeSemanticStatus?.semanticFallbackReason
+        ? { semanticFallbackReason: activeSemanticStatus.semanticFallbackReason }
+        : {})
+    }));
+    const allRankedFiles = rankedFilesFromScored(allScored);
+    const ledger = summarizeSessionLedger(session.id, this.getSessionLedger(session.id));
+    const shownFiles = uniquePaths([
+      ...session.filesShown
+        .map((record) => record.filePath)
+        .filter((filePath): filePath is string => typeof filePath === "string" && filePath.length > 0),
+      ...this.getSessionLedger(session.id)
+        .filter((event) => event.kind === "context_shown" && event.filePath)
+        .map((event) => event.filePath!)
+    ]);
+    const indexFreshness = this.indexService.getStatus(session.rootPath).freshness;
+    const calibratedPolicy = calibratedPolicyRequested
+      ? decideCalibratedEvidencePolicy({
+          task: query,
+          rankedFiles: allRankedFiles,
+          knownFiles: files,
+          ranker: evidenceRanking.status,
+          budget: input.budget ?? 1600,
+          indexMissing: files.length === 0,
+          indexStale: indexFreshness?.stale ?? false,
+          changedFiles,
+          shownFiles,
+          sessionState: {
+            unresolvedFailure: ledger.workingSet.unresolvedFailure,
+            reconsiderShownFiles: ledger.workingSet.reconsiderableShownFiles
+          }
+        })
+      : undefined;
+    const selectedPaths = new Set(calibratedPolicy?.selections.map((selection) => selection.path) ?? []);
+    const selectedOrder = new Map(
+      (calibratedPolicy?.selections ?? []).map((selection, index) => [selection.path, index])
+    );
+    const scored = calibratedPolicy
+      ? allScored
+          .filter((file) => selectedPaths.has(file.path))
+          .map((file) => {
+            const selection = calibratedPolicy.selections.find((item) => item.path === file.path)!;
+            return { ...file, delivery: selection.delivery };
+          })
+          .sort((left, right) => (selectedOrder.get(left.path) ?? 0) - (selectedOrder.get(right.path) ?? 0))
+      : allScored;
     const rankedFiles = rankedFilesFromScored(scored);
     const repeatedFiles = scored.filter((file) => file.reasons.includes("already shown")).length;
-    const decision = decideResponse({
-      requestType: input.requestType ?? "find_context",
-      query,
-      repeatedFiles,
-      graphAvailable: localIndex.edges.length > 0,
-      ...(input.mode ? { explicitMode: input.mode } : {}),
-      ...(input.budget ? { budget: input.budget } : {}),
-      ...(scored[0] ? { topScore: scored[0].score } : {})
-    });
+    const decision = calibratedPolicy
+      ? {
+          mode: calibratedPolicy.delivery === "content" ? "snippets" as const : "brief" as const,
+          reason: calibratedPolicy.reasons.join("; ") || "calibrated evidence policy abstained",
+          warnings: calibratedPolicy.action === "request_evidence"
+            ? ["Kairn needs current repository evidence before it can safely emit source content."]
+            : []
+        }
+      : decideResponse({
+          requestType: input.requestType ?? "find_context",
+          query,
+          repeatedFiles,
+          graphAvailable: localIndex.edges.length > 0,
+          ...(input.mode ? { explicitMode: input.mode } : {}),
+          ...(input.budget ? { budget: input.budget } : {}),
+          ...(scored[0] ? { topScore: scored[0].score } : {})
+        });
     const content = truncateToBudget(
       formatContextResults({
         title: input.requestType === "initial_brief" ? "Kairn Context Brief" : "Kairn Context Results",
@@ -2119,6 +1644,9 @@ export class KairnRuntime {
         query,
         resultCount: scored.length,
         rankedFiles: rankedFiles.slice(0, 12),
+        ranker: evidenceRanking.status,
+        ...(calibratedCandidateGeneration ? { candidateGeneration: calibratedCandidateGeneration } : {}),
+        ...(calibratedPolicy ? { calibratedEvidencePolicy: calibratedPolicy } : {}),
         companionCandidates: companionCandidates.map((candidate) => ({
           file: candidate.file.path,
           score: candidate.score,
@@ -2133,21 +1661,39 @@ export class KairnRuntime {
       content,
       files: scored.map((file) => file.path),
       symbols: [],
-      related: companionCandidates.map((candidate) => candidate.file.path),
+      related: calibratedPolicy
+        ? calibratedPolicy.companionFiles
+        : companionCandidates.map((candidate) => candidate.file.path),
       warnings:
         scored.length === 0
-          ? [...decision.warnings, "No hybrid retrieval matches found. Try a more specific query."]
+          ? [
+              ...decision.warnings,
+              calibratedPolicy
+                ? "The calibrated evidence policy abstained from delivering repository evidence."
+                : "No hybrid retrieval matches found. Try a more specific query."
+            ]
           : decision.warnings,
       suggestedNextContext: scored.slice(0, 5).map((file) => file.path),
       rankedFiles,
       tokenEstimate: estimateTokens(content),
       metadata: {
         rankedFiles,
-        companions: companionCandidates.map((candidate) => ({
-          file: candidate.file.path,
-          score: candidate.score,
-          reasons: candidate.reasons
-        }))
+        ranker: evidenceRanking.status,
+        ...(calibratedCandidateGeneration ? { candidateGeneration: calibratedCandidateGeneration } : {}),
+        ...(calibratedPolicy ? { calibratedEvidencePolicy: calibratedPolicy } : {}),
+        companions: calibratedPolicy
+          ? calibratedPolicy.selections.slice(1).map((selection) => ({
+              file: selection.path,
+              score: Math.round(selection.relevanceProbability * 100),
+              reasons: selection.evidenceReasons,
+              delivery: selection.delivery,
+              source: calibratedPolicy.source
+            }))
+          : companionCandidates.map((candidate) => ({
+              file: candidate.file.path,
+              score: candidate.score,
+              reasons: candidate.reasons
+            }))
       }
     };
   }
@@ -3282,11 +2828,7 @@ export class KairnRuntime {
     const session = this.store.getSession(input.sessionId);
     const content = compressOutputText(input.output, input.type, input.budget);
 
-    this.store.recordCommand({
-      sessionId: input.sessionId,
-      type: input.type,
-      summary: content
-    });
+    this.store.recordCommand({ sessionId: input.sessionId, type: input.type, summary: content });
     this.recordMetricsEvent({
       sessionId: input.sessionId,
       rootPath: session.rootPath,
@@ -3303,7 +2845,6 @@ export class KairnRuntime {
         compressionPolicy: "legacy_bounded_hook"
       }
     });
-
     return {
       mode: "failure_context",
       content,
@@ -3430,13 +2971,26 @@ export class KairnRuntime {
       sessionId: input.sessionId,
       event: input.event
     });
-    const refreshStartedAt = Date.now();
+    const freshnessStartedAt = Date.now();
     const promptEvent = isPromptEvent(input.event.eventName);
-    const shouldRefreshIndex = input.refreshIndex ?? !promptEvent;
+    const warmIndexFiles = this.store.listFiles(session.rootPath);
+    const promptCanServeEvidence = promptEvent && isHighConfidencePrompt(input.event.eventName, input.event.output);
+    const freshnessBeforeHook = promptCanServeEvidence && warmIndexFiles.length > 0
+      ? this.indexService.getStatus(session.rootPath).freshness
+      : undefined;
+    // Prompt hooks stay cheap when there is no warm index, but a warm stale
+    // index must never be used for source-first output. Refresh it before
+    // ranking so checkout edits cannot leak old snippets into the next turn.
+    const shouldRefreshIndex = input.refreshIndex ?? (
+      !promptEvent || Boolean(promptCanServeEvidence && freshnessBeforeHook?.stale)
+    );
+    const freshnessCheckMs = Date.now() - freshnessStartedAt;
+    let refreshIndexMs = 0;
     if (shouldRefreshIndex) {
+      const refreshStartedAt = Date.now();
       await this.refreshIndex(session.rootPath);
+      refreshIndexMs = Date.now() - refreshStartedAt;
     }
-    const refreshIndexMs = Date.now() - refreshStartedAt;
     const knownFiles = this.store.listFiles(session.rootPath).map((file) => file.path);
     const outputKind = classifyObservedCommand({
       command: input.event.command,
@@ -3522,7 +3076,9 @@ export class KairnRuntime {
               format: hookOutput === "mcp-brief" ? "mcp_brief" : "standard",
               source: input.event.source,
               eventName: "prime_context_hook",
-              refreshIndex: shouldRefreshIndex,
+              // The hook layer has already performed any required refresh.
+              // Avoid a second forced full index inside primeContext.
+              refreshIndex: false,
               editScopeHints: input.editScopeHints,
               metadata: {
                 promptHash,
@@ -3628,9 +3184,7 @@ export class KairnRuntime {
           baselineTokens: 0,
           outputTokens: 0,
           files: [],
-          metadata: {
-            evidenceRoutingShadow: shadow.receipt
-          }
+          metadata: { evidenceRoutingShadow: shadow.receipt }
         });
       } catch {
         // Shadow observation must never affect the existing hook delivery path.
@@ -3666,6 +3220,8 @@ export class KairnRuntime {
         daemonAttempted: Boolean(input.daemonAttempted),
         daemonHit: Boolean(input.daemonHit),
         indexRefreshSkipped: !shouldRefreshIndex,
+        indexStaleBeforeHook: freshnessBeforeHook?.stale ?? false,
+        freshnessCheckMs,
         refreshIndexMs,
         primeElapsedMs,
         hookLatencyMs: Date.now() - hookStartedAt
@@ -3690,6 +3246,8 @@ export class KairnRuntime {
         daemonHit: Boolean(input.daemonHit),
         daemonMiss: Boolean(input.daemonAttempted) && !input.daemonHit,
         indexRefreshSkipped: !shouldRefreshIndex,
+        indexStaleBeforeHook: freshnessBeforeHook?.stale ?? false,
+        freshnessCheckMs,
         refreshIndexMs,
         primeElapsedMs,
         hookLatencyMs: Date.now() - hookStartedAt,
@@ -3945,7 +3503,6 @@ export class KairnRuntime {
       agentCommand: input.agentCommand,
       setupCommand: input.setupCommand,
       timeoutMs: input.agentTimeoutMs,
-      agentEnv: benchmarkAgentEnv(input.benchmarkCase, input.assistanceMode),
       preparePrompt:
         input.assistanceMode === "manual_prime" || input.assistanceMode === "proactive"
           ? async ({ workspacePath, prompt }) => {
@@ -4030,10 +3587,10 @@ export class KairnRuntime {
                   ...mcpFirstBenchmarkInstructionLines(input.benchmarkCase),
                   "Call `kairn_prepare_task` before broad, unclear, multi-file, or failure-driven file scans.",
                   "For diagnose, investigate, audit, trace, or source-rescue tasks that do not name an exact production path, call `kairn_prepare_task` once before manual source reads.",
-                  "Do not skip Kairn merely because a task feels small; skip the first prepare call only when the user names an exact production file or exact symbol.",
-                  "If `kairn_prepare_task` returns `stopCondition` or no `nextToolCalls`, continue from its files and do not call more Kairn unless a check fails with a concrete missing source outside the returned files or the target changes.",
+                  "For short obvious single-source symbol tasks, inspect the likely source first and call Kairn only if that guess fails or the task broadens.",
+                  "If `kairn_prepare_task` returns `stopCondition` or no `nextToolCalls`, continue from its files and do not call more Kairn unless a check fails or the target changes.",
                   "Only call `kairn_get_next_context` when `kairn_prepare_task` explicitly returns it as a next tool call.",
-                  "For real failures, call `kairn_get_failure_context` only when `kairn_prepare_task` did not return a sufficient source surface or the failure output names a new file/symbol outside the returned files.",
+                  "For real failures, call `kairn_get_failure_context` once before broad debugging searches.",
                   "Use the smallest Kairn-recommended read before `rg --files`, large `sed`, or full-file reads.",
                   "",
                   "User task:",
@@ -4085,8 +3642,374 @@ export class KairnRuntime {
     return this.getIndexStatus();
   }
 
+  /**
+   * Materialize the same bounded query-local feature vectors used by the
+   * calibrated serving path. This deliberately returns no labels: corpus
+   * provenance is supplied and validated by the offline curation pipeline.
+   */
+  async inspectEvidenceCandidates(input: {
+    query: string;
+    limit?: number | undefined;
+    /** Benchmark-only: use an already validated immutable index snapshot. */
+    reuseIndex?: boolean | undefined;
+    /** Offline diagnostics only; public serving remains capped at 128. */
+    probeLimit?: number | undefined;
+  }): Promise<EvidenceCandidateInspection> {
+    const inspectionStarted = performance.now();
+    const initializeStarted = performance.now();
+    if (input.reuseIndex) {
+      if (this.store.listFiles(this.rootPath).length === 0) {
+        throw new Error("Cannot reuse benchmark index snapshot: the local index is empty.");
+      }
+    } else {
+      await this.init();
+    }
+    const initializeIndex = performance.now() - initializeStarted;
+    const inventoryStarted = performance.now();
+    const files = this.store.listFiles(this.rootPath);
+    const inventoryLoad = performance.now() - inventoryStarted;
+    const retrievalStarted = performance.now();
+    const localIndex = await this.getCalibratedQueryLocalIndex({
+      rootPath: this.rootPath,
+      files,
+      query: input.query,
+      semanticConfig: resolveSemanticRetrieverConfig(this.rootPath, this.semanticConfig),
+      ...(input.probeLimit ? { diagnosticProbeLimit: input.probeLimit } : {})
+    });
+    const candidateRetrieval = performance.now() - retrievalStarted;
+    const featureBuildStarted = performance.now();
+    const candidatePaths = new Set(localIndex.candidateFiles);
+    const retrievalFiles = files.filter((file) => candidatePaths.has(file.path));
+    const hybridCandidates = localIndex.candidateResults ?? hybridSearch({
+      files: retrievalFiles,
+      query: input.query,
+      symbols: localIndex.symbols,
+      chunks: localIndex.chunks,
+      vectors: localIndex.vectors,
+      lexicalDocuments: localIndex.lexicalDocuments,
+      lexicalTerms: localIndex.lexicalTerms,
+      lexicalStats: localIndex.lexicalStats,
+      edges: localIndex.edges,
+      shown: [],
+      changedFiles: new Set<string>()
+    }).slice(0, DEFAULT_ENRICHED_CANDIDATE_LIMIT);
+    const candidateSet = buildEvidenceCandidates({
+      files,
+      query: input.query,
+      symbols: localIndex.symbols,
+      edges: localIndex.edges,
+      legacyResults: hybridCandidates,
+      fixedCandidatePaths: localIndex.candidateFiles,
+      ...(localIndex.graphEvidenceByPath
+        ? { graphEvidenceByPath: localIndex.graphEvidenceByPath }
+        : {}),
+      shown: [],
+      changedFiles: new Set<string>(),
+      initialLimit: DEFAULT_INITIAL_CANDIDATE_LIMIT,
+      enrichedLimit: DEFAULT_ENRICHED_CANDIDATE_LIMIT
+    });
+    const probeLimit = input.probeLimit
+      ? Math.max(
+          DEFAULT_ENRICHED_CANDIDATE_LIMIT,
+          Math.min(Math.floor(input.probeLimit), MODEL_RETRIEVAL_PROBE_LIMIT)
+        )
+      : undefined;
+    const probeCandidateSet = probeLimit && localIndex.probeCandidateFiles
+      ? buildEvidenceCandidates({
+          files,
+          query: input.query,
+          symbols: localIndex.symbols,
+          edges: localIndex.edges,
+          legacyResults: localIndex.probeCandidateResults ?? hybridCandidates,
+          fixedCandidatePaths: localIndex.probeCandidateFiles,
+          ...(localIndex.graphEvidenceByPath
+            ? { graphEvidenceByPath: localIndex.graphEvidenceByPath }
+            : {}),
+          shown: [],
+          changedFiles: new Set<string>(),
+          initialLimit: DEFAULT_INITIAL_CANDIDATE_LIMIT,
+          enrichedLimit: probeLimit,
+          diagnosticProbeMode: true
+        })
+      : undefined;
+    const candidateLimit = Math.max(1, Math.min(input.limit ?? DEFAULT_INITIAL_CANDIDATE_LIMIT, DEFAULT_INITIAL_CANDIDATE_LIMIT));
+    const candidateFeatureBuild = performance.now() - featureBuildStarted;
+    return {
+      timingMs: {
+        initializeIndex: roundTimingMs(initializeIndex),
+        inventoryLoad: roundTimingMs(inventoryLoad),
+        candidateRetrieval: roundTimingMs(candidateRetrieval),
+        candidateFeatureBuild: roundTimingMs(candidateFeatureBuild),
+        total: roundTimingMs(performance.now() - inspectionStarted)
+      },
+      signals: candidateSet.signals,
+      candidates: candidateSet.candidates.slice(0, candidateLimit),
+      enrichedCandidates: candidateSet.candidates,
+      ...(probeCandidateSet
+        ? { probeCandidates: probeCandidateSet.candidates }
+        : {}),
+      initialCandidatePaths: localIndex.initialCandidateFiles,
+      enrichedCandidatePaths: candidateSet.candidates.map((candidate) => candidate.path),
+      ...(probeCandidateSet
+        ? { probeCandidatePaths: probeCandidateSet.candidates.map((candidate) => candidate.path) }
+        : {}),
+      initialCandidateCount: localIndex.initialCandidateCount,
+      enrichedCandidateCount: localIndex.enrichedCandidateCount,
+      ...(probeCandidateSet
+        ? { probeCandidateCount: probeCandidateSet.candidates.length }
+        : {}),
+      candidateLimit,
+      ...(probeLimit ? { probeLimit } : {}),
+      ...(localIndex.semanticStatus ? { semanticStatus: localIndex.semanticStatus } : {}),
+      ...(localIndex.candidateDiagnostics
+        ? { candidateDiagnostics: localIndex.candidateDiagnostics }
+        : {})
+    };
+  }
+
   compactIndex(): IndexCompactionResult {
     return this.indexService.compact(this.rootPath);
+  }
+
+  private async getCalibratedQueryLocalIndex(input: {
+    rootPath: string;
+    files: FileRecord[];
+    query: string;
+    changedFiles?: Set<string> | undefined;
+    shown?: TaskSession["filesShown"] | undefined;
+    semanticConfig?: SemanticRetrieverConfig | undefined;
+    /** Offline diagnostics only; public serving remains capped at 128. */
+    diagnosticProbeLimit?: number | undefined;
+  }): Promise<CalibratedQueryLocalIndex> {
+    const semanticConfig = resolveSemanticRetrieverConfig(
+      input.rootPath,
+      input.semanticConfig ?? this.semanticConfig
+    );
+    const signals = extractEvidenceTaskSignals(input.query);
+    const retrievalQueries = buildEvidenceRetrievalQueries(input.query);
+    const budget = queryLocalBudget({
+      fileCount: input.files.length,
+      query: input.query
+    });
+    const lexicalTerms = this.store.listLexicalTermsForTerms(
+      input.rootPath,
+      signals.queryTerms,
+      budget.lexicalTermLimit
+    );
+    const lexicalDocuments = this.store.listLexicalDocumentsByIds(
+      input.rootPath,
+      lexicalTerms.map((term) => term.documentId),
+      budget.lexicalDocumentLimit
+    );
+    const lexicalStats = this.store.getLexicalStats(input.rootPath);
+    const symbolCandidateTerms = selectEvidenceSymbolTerms(signals, budget.termLookupLimit);
+    const matchingSymbols = this.store.listSymbolsForTerms(
+      input.rootPath,
+      symbolCandidateTerms,
+      budget.symbolLimit
+    );
+    const filesByPath = new Map(input.files.map((file) => [file.path, file]));
+    const sourceOrUnknownIntent = signals.intent === "source" || signals.intent === "unknown";
+    const modelBm25Results = retrievalQueries.reduce<HybridScoredResult[]>((merged, retrievalQuery) => {
+      const scored = [...scoreBm25Files({
+        query: retrievalQuery,
+        documents: lexicalDocuments,
+        terms: lexicalTerms,
+        stats: lexicalStats
+      }).entries()]
+        .map(([filePath, score]) => {
+          const file = filesByPath.get(filePath);
+          return file ? lightweightLexicalResult(file, score.score, score.reasons) : undefined;
+        })
+        .filter((result): result is HybridScoredResult => Boolean(result))
+        .sort((left, right) => right.bm25Score - left.bm25Score || left.path.localeCompare(right.path));
+      return mergeLightweightResults(
+        merged,
+        normalizeLightweightScores(scored, "bm25Score")
+      );
+    }, []);
+    const lexicalResults = semanticConfig.mode === "legacy"
+      ? selectRoleBalancedSeeds(modelBm25Results, sourceOrUnknownIntent)
+      : modelBm25Results;
+    const pathAndSymbolResults = retrievalQueries.reduce<HybridScoredResult[]>((merged, retrievalQuery) => {
+      const scored = scoreFiles(input.files, retrievalQuery, matchingSymbols)
+        .filter((result) => result.reasons.some((reason) =>
+          reason.startsWith("path contains") ||
+          reason.startsWith("filename contains") ||
+          reason.startsWith("broad path term") ||
+          reason.startsWith("broad filename term") ||
+          reason.startsWith("symbol match") ||
+          reason.startsWith("exported symbol")
+        ))
+        .map((result) => lightweightKeywordResult(result, result.score, result.reasons));
+      return mergeLightweightResults(
+        merged,
+        selectRoleBalancedSeeds(normalizeLightweightScores(scored, "keywordScore"), sourceOrUnknownIntent)
+      );
+    }, []);
+
+    if (semanticConfig.mode !== "legacy") {
+      const semanticSearch = await searchSemanticCandidates({
+        query: input.query,
+        config: semanticConfig,
+        documents: this.store.listSemanticDocuments(input.rootPath),
+        embeddings: this.store.listSemanticEmbeddings(input.rootPath),
+        limit: MODEL_RETRIEVAL_PROBE_LIMIT
+      });
+      const semanticEvidencePaths = interleaveRankedPaths(
+        (semanticSearch.queryRankings ?? []).map((ranking) =>
+          ranking.map((hit) => hit.path)
+        ),
+        4_096
+      );
+      const preliminary = buildModelCandidateUnion({
+        files: input.files,
+        query: input.query,
+        symbols: matchingSymbols,
+        bm25Results: modelBm25Results,
+        semanticHits: semanticSearch.hits,
+        ...(semanticSearch.queryRankings
+          ? { semanticQueryRankings: semanticSearch.queryRankings }
+          : {}),
+        semanticEvidencePaths,
+        semanticStatus: semanticSearch.status,
+        edges: [],
+        ...(input.changedFiles ? { changedFiles: input.changedFiles } : {}),
+        ...(input.shown ? { shown: input.shown } : {})
+      });
+      const edges = this.store.listGraphEdgesForFiles(
+        input.rootPath,
+        preliminary.graphSeedPaths,
+        budget.graphEdgeLimit
+      );
+      const fused = buildModelCandidateUnion({
+        files: input.files,
+        query: input.query,
+        symbols: matchingSymbols,
+        bm25Results: modelBm25Results,
+        semanticHits: semanticSearch.hits,
+        ...(semanticSearch.queryRankings
+          ? { semanticQueryRankings: semanticSearch.queryRankings }
+          : {}),
+        semanticEvidencePaths,
+        semanticStatus: semanticSearch.status,
+        edges,
+        ...(input.diagnosticProbeLimit
+          ? { probeLimit: input.diagnosticProbeLimit }
+          : {}),
+        ...(input.changedFiles ? { changedFiles: input.changedFiles } : {}),
+        ...(input.shown ? { shown: input.shown } : {})
+      });
+      const candidateFiles = fused.enrichedPaths.slice(0, DEFAULT_ENRICHED_CANDIDATE_LIMIT);
+      const metadataCandidateFiles = input.diagnosticProbeLimit
+        ? fused.probePaths
+        : candidateFiles;
+      const candidatePathSet = new Set(metadataCandidateFiles);
+      const symbols = uniqueSymbols([
+        ...matchingSymbols.filter((symbol) => candidatePathSet.has(symbol.filePath)),
+        ...this.store.listSymbolsForFiles(input.rootPath, metadataCandidateFiles, budget.symbolLimit)
+      ]);
+      const chunks = this.store.listSemanticChunksForFiles(
+        input.rootPath,
+        metadataCandidateFiles,
+        budget.chunkLimit
+      );
+      return {
+        symbols,
+        chunks,
+        // Hashed lexical vectors belong only to the legacy scorer. The model
+        // candidate path never silently reuses them.
+        vectors: [],
+        lexicalDocuments,
+        lexicalTerms,
+        ...(lexicalStats ? { lexicalStats } : {}),
+        edges,
+        candidateFiles,
+        initialCandidateFiles: fused.initialPaths,
+        initialCandidateCount: fused.initialPaths.length,
+        enrichedCandidateCount: candidateFiles.length,
+        candidateResults: fused.candidateResults,
+        ...(input.diagnosticProbeLimit
+          ? {
+              probeCandidateFiles: fused.probePaths,
+              probeCandidateResults: fused.probeCandidateResults
+            }
+          : {}),
+        graphEvidenceByPath: fused.graphEvidenceByPath,
+        semanticStatus: fused.semanticStatus,
+        candidateDiagnostics: {
+          semanticQueryViews: (semanticSearch.queryRankings ?? [])
+            .map((ranking) => ranking.map((hit) => hit.path)),
+          semanticRawFused: semanticSearch.hits.map((hit) => hit.path),
+          semanticFused: fused.semanticPaths,
+          semanticEvidence: fused.semanticEvidencePaths,
+          bm25: modelBm25Results.map((result) => result.path),
+          graph: fused.graphPaths,
+          graphImporter: fused.graphImporterPaths,
+          graphConsensus: fused.graphConsensusPaths,
+          graphEvidence: describeGraphCandidateEvidence({
+            seedPaths: fused.graphSeedPaths,
+            seedRanks: fused.graphSeedRanks,
+            graphPaths: fused.graphPaths,
+            edges,
+            graphEvidenceByPath: fused.graphEvidenceByPath
+          })
+        }
+      };
+    }
+
+    const cheapCandidateResults = mergeLightweightResults(lexicalResults, pathAndSymbolResults);
+    const baseCandidateInput = {
+      files: input.files,
+      query: input.query,
+      symbols: matchingSymbols,
+      legacyResults: cheapCandidateResults,
+      ...(input.shown ? { shown: input.shown } : {}),
+      ...(input.changedFiles ? { changedFiles: input.changedFiles } : {})
+    };
+    const initial = buildEvidenceCandidates({
+      ...baseCandidateInput,
+      edges: [],
+      initialLimit: DEFAULT_INITIAL_CANDIDATE_LIMIT,
+      enrichedLimit: DEFAULT_INITIAL_CANDIDATE_LIMIT
+    });
+    const initialPaths = initial.candidates.map((candidate) => candidate.path);
+    const edges = this.store.listGraphEdgesForFiles(
+      input.rootPath,
+      initialPaths,
+      budget.graphEdgeLimit
+    );
+    const enriched = buildEvidenceCandidates({
+      ...baseCandidateInput,
+      edges,
+      seedCandidatePaths: initialPaths,
+      initialLimit: DEFAULT_INITIAL_CANDIDATE_LIMIT,
+      enrichedLimit: DEFAULT_ENRICHED_CANDIDATE_LIMIT
+    });
+    const candidateFiles = enriched.candidates
+      .map((candidate) => candidate.path)
+      .slice(0, DEFAULT_ENRICHED_CANDIDATE_LIMIT);
+    const candidatePathSet = new Set(candidateFiles);
+    const symbols = uniqueSymbols([
+      ...matchingSymbols.filter((symbol) => candidatePathSet.has(symbol.filePath)),
+      ...this.store.listSymbolsForFiles(input.rootPath, candidateFiles, budget.symbolLimit)
+    ]);
+    const chunks = this.store.listSemanticChunksForFiles(input.rootPath, candidateFiles, budget.chunkLimit);
+    const vectors = this.store.listSemanticVectorsForChunkIds(input.rootPath, chunks.map((chunk) => chunk.id));
+
+    return {
+      symbols,
+      chunks,
+      vectors,
+      lexicalDocuments,
+      lexicalTerms,
+      ...(lexicalStats ? { lexicalStats } : {}),
+      edges,
+      candidateFiles,
+      initialCandidateFiles: initialPaths,
+      initialCandidateCount: initialPaths.length,
+      enrichedCandidateCount: candidateFiles.length
+    };
   }
 
   private getQueryLocalIndex(input: {
@@ -4110,7 +4033,6 @@ export class KairnRuntime {
     );
     const lexicalStats = this.store.getLexicalStats(input.rootPath);
     const termSymbols = this.store.listSymbolsForTerms(input.rootPath, queryTerms.slice(0, budget.termLookupLimit), budget.symbolLimit);
-    const exactNamedSymbolFiles = exactPromptNamedSymbolFiles(termSymbols, input.query);
     const preliminary = hybridSearch({
       files: input.files,
       query: input.query,
@@ -4126,7 +4048,6 @@ export class KairnRuntime {
     const candidateLimit = input.candidateLimit ?? budget.candidateLimit;
     const candidateFiles = uniquePaths([
       ...(input.seedPaths ?? []),
-      ...exactNamedSymbolFiles,
       ...preliminary.slice(0, candidateLimit).map((file) => file.path),
       ...termSymbols.map((symbol) => symbol.filePath),
       ...(input.changedFiles ? [...input.changedFiles] : []),
@@ -4425,20 +4346,89 @@ export class KairnRuntime {
   }
 }
 
-function benchmarkAgentEnv(
-  benchmarkCase: Parameters<typeof scoreBenchmarkCase>[0]["benchmarkCase"],
-  assistanceMode: BenchmarkAssistanceMode | undefined
-): Record<string, string> | undefined {
-  if (assistanceMode !== "kairn_codex_session") return undefined;
-  const allowedDiffScopes = benchmarkCase.allowedDiffScopes ?? [];
-  const sourceInvariants = benchmarkCase.sourceInvariants ?? [];
-  if (allowedDiffScopes.length === 0 && sourceInvariants.length === 0) return undefined;
-  return {
-    KAIRN_BENCH_EDIT_SCOPE_HINTS: JSON.stringify({
-      allowedDiffScopes,
-      sourceInvariants
-    })
-  };
+function describeGraphCandidateEvidence(input: {
+  seedPaths: string[];
+  seedRanks?: ReadonlyMap<string, number>;
+  graphPaths: string[];
+  edges: import("../types.js").GraphEdgeRecord[];
+  graphEvidenceByPath?: ReadonlyMap<string, import("../types.js").EvidenceGraphFacts>;
+}): NonNullable<EvidenceCandidateInspection["candidateDiagnostics"]>["graphEvidence"] {
+  const seedRanks = new Map(
+    input.seedPaths.map((filePath, index) => [
+      filePath,
+      input.seedRanks?.get(filePath) ?? index + 1
+    ])
+  );
+  const supportsByPath = new Map<string, Array<{
+    seedPath: string;
+    seedRank: number;
+    edgeType: import("../types.js").GraphEdgeType;
+    reason?: string;
+  }>>();
+  for (const edge of input.edges) {
+    const fromRank = seedRanks.get(edge.fromFile);
+    const toRank = seedRanks.get(edge.toFile);
+    const add = (
+      candidatePath: string,
+      seedPath: string,
+      seedRank: number
+    ): void => {
+      const reason = typeof edge.metadata.reason === "string"
+        ? edge.metadata.reason
+        : undefined;
+      supportsByPath.set(candidatePath, [
+        ...(supportsByPath.get(candidatePath) ?? []),
+        {
+          seedPath,
+          seedRank,
+          edgeType: edge.type,
+          ...(reason ? { reason } : {})
+        }
+      ]);
+    };
+    if (fromRank !== undefined && toRank === undefined) add(edge.toFile, edge.fromFile, fromRank);
+    if (toRank !== undefined && fromRank === undefined) add(edge.fromFile, edge.toFile, toRank);
+  }
+  return input.graphPaths.map((filePath) => {
+    const supports = (supportsByPath.get(filePath) ?? [])
+      .sort((left, right) =>
+        left.seedRank - right.seedRank ||
+        left.edgeType.localeCompare(right.edgeType) ||
+        left.seedPath.localeCompare(right.seedPath)
+      );
+    return {
+      path: filePath,
+      supportCount: new Set(supports.map((support) => support.seedPath)).size,
+      ...(input.graphEvidenceByPath?.get(filePath)
+        ? {
+            precision: input.graphEvidenceByPath.get(filePath)!.precision,
+            seedStrength: input.graphEvidenceByPath.get(filePath)!.seedStrength,
+            independentEvidence: input.graphEvidenceByPath.get(filePath)!.independentEvidence
+          }
+        : {}),
+      supports: supports.slice(0, 8)
+    };
+  });
+}
+
+function interleaveRankedPaths(rankings: string[][], limit: number): string[] {
+  const boundedLimit = Math.max(0, Math.floor(limit));
+  const selected: string[] = [];
+  const seen = new Set<string>();
+  const maximumRankingLength = rankings.reduce(
+    (maximum, ranking) => Math.max(maximum, ranking.length),
+    0
+  );
+  for (let rank = 0; rank < maximumRankingLength && selected.length < boundedLimit; rank += 1) {
+    for (const ranking of rankings) {
+      const filePath = ranking[rank];
+      if (!filePath || seen.has(filePath)) continue;
+      selected.push(filePath);
+      seen.add(filePath);
+      if (selected.length >= boundedLimit) break;
+    }
+  }
+  return selected;
 }
 
 export function createRuntime(root?: string): KairnRuntime {
@@ -4569,27 +4559,16 @@ function multiFileDirectiveFileLimit(
   companionPaths: string[],
   decision: ContextValueDecision
 ): number {
-  const normalized = task.toLowerCase();
-  if (hasWebSessionRenewalScope(task)) return 5;
-  if (hasPackageSourceMappingScope(task)) return 5;
-  if (hasRequestBodyFormScope(task)) return 4;
-  if (hasDatastoreBackendParityScope(task)) return 4;
   if (decision.recommendedDelivery !== "multi_file_directive") return 2;
-  if (hasDeprecationLifecycleScope(task)) return 5;
-  if (hasUiLivenessMultiSurfaceDirective(normalized)) {
-    return 5;
-  }
   if (companionPaths.length < 2) return 2;
+  const normalized = task.toLowerCase();
   const roleFamilies = [
     /\b(router|route|routing|mux)\b/,
     /\b(context|ctx|handler|middleware)\b/,
     /\b(controller|repository|model)\b/,
     /\b(scheduler|renderer|work loop|workloop)\b/,
     /\b(interceptor|dispatch|adapter)\b/,
-    /\b(runtime|mcp|server|client)\b/,
-    /\b(search|printer|json|match|matches|event|events)\b/,
-    /\b(linegen|line generator|line|lines|comment|comments|splitting)\b/,
-    /\b(fixture|fixtures|runner|collected|nodes|setup)\b/
+    /\b(runtime|mcp|server|client)\b/
   ];
   const roleFamilyHits = roleFamilies.filter((pattern) => pattern.test(normalized)).length;
   const explicitlySpansFrameworkTriple =
@@ -4597,31 +4576,7 @@ function multiFileDirectiveFileLimit(
     /\b(framework|architecture|across|spans|flow|pipeline|lifecycle|integration)\b/.test(normalized) &&
     /\b(debug|fix|regression|behavior|dispatch|send|matching|scheduling|trimming|prefix|suffix)\b/.test(normalized);
   const selectedTestFanout = selectedTestPathCount(task) >= 3 && /\b(selected|failing|failed|failure)\s+tests?\b/.test(normalized);
-  const queryLocalTriple =
-    /\b(routing|route)\b/.test(normalized) && /\b(map|rules?|matcher|endpoint)\b/.test(normalized) ||
-    /\b(search|matches?)\b/.test(normalized) && /\b(printer|json|paths?|events?)\b/.test(normalized) ||
-    /\b(line generator|linegen|output lines?)\b/.test(normalized) && /\b(comments?|splitting|formatting)\b/.test(normalized) ||
-    /\b(fixtures?|collected|nodes?)\b/.test(normalized) && /\b(runner|setup|resolution|values?)\b/.test(normalized);
-  return explicitlySpansFrameworkTriple || selectedTestFanout || queryLocalTriple ? 3 : 2;
-}
-
-function hasUiLivenessMultiSurfaceDirective(normalizedTask: string): boolean {
-  return /\b(liveness|live|badge|icon|feedback|visual|shown|render)\b/.test(normalizedTask) &&
-    (
-      /\b(voice|broadcast|recording|playback)\b/.test(normalizedTask) ||
-      (/\b(ui|frontend|component|components|header|body)\b/.test(normalizedTask) && /\b(liveness|live|badge|icon|visual)\b/.test(normalizedTask))
-    );
-}
-
-function hasDatastoreBackendParityScope(task: string): boolean {
-  const normalized = task.toLowerCase();
-  const collectionMutation =
-    /\b(list|lists|set|sets|zset|hash|queue|collection|collections)\b/.test(normalized) &&
-    /\b(remove|removing|delete|deleting|del|discard|pull|pop|trim|add|insert|push)\b/.test(normalized);
-  const multiValue =
-    /\b(multiple|distinct|array|arrays|elements?|values?|batch|bulk|several)\b/.test(normalized) ||
-    /\[[^\]]+,[^\]]+\]/.test(task);
-  return collectionMutation && multiValue;
+  return explicitlySpansFrameworkTriple || selectedTestFanout ? 3 : 2;
 }
 
 function selectedTestPathCount(task: string): number {
@@ -4647,217 +4602,7 @@ function isLikelyProductionSourceFile(filePath: string): boolean {
   if (/\.(test|spec)\.[cm]?[jt]sx?$/.test(normalized)) return false;
   if (/(_test|_spec|_tests)\.(py|go|rb|cc|cpp|cxx|c|hpp|hh|hxx)$/.test(normalized)) return false;
   if (/(test|tests)\.java$/.test(normalized.split("/").at(-1) ?? "")) return false;
-  if (isDeclarativeConfigSchemaFile(normalized)) return true;
-  return /\.(ts|tsx|js|jsx|mjs|cjs|py|pyi|java|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx|cs)$/.test(normalized);
-}
-
-function isDeclarativeConfigSchemaFile(filePath: string): boolean {
-  return /(^|\/)(configdata|config_data|configschema|config_schema|settings|options)\.(ya?ml|json|toml)$/.test(filePath);
-}
-
-function isUnrelatedCentralBackendTestHelper(filePath: string, task: string): boolean {
-  const normalizedPath = filePath.toLowerCase();
-  const normalizedTask = task.toLowerCase();
-  if (!/(^|\/)test\.go$/.test(normalizedPath)) return false;
-  if (!/\b(hsm|kms|softhsm|yubihsm|cloudhsm|pkcs11)\b/.test(normalizedTask)) return false;
-  if (!/\b(unified|central|centralize|centralized|reusable|duplicated|duplication|consistent|selector|detect|detects|available|backend|backends)\b/.test(normalizedTask)) return false;
-  return !/\/keystore\//.test(normalizedPath);
-}
-
-function isUnrelatedBackendAutocompleteSurface(filePath: string, task: string): boolean {
-  const normalizedPath = filePath.toLowerCase();
-  const normalizedTask = task.toLowerCase();
-  if (!/\bautocomplete\b/.test(normalizedTask)) return false;
-  if (!/\b(endpoint|route|routes|solr|olid|olids|query string|fallback|db|base class|page class|works|authors|subjects)\b/.test(normalizedTask)) return false;
-  const basename = normalizedPath.split("/").at(-1) ?? normalizedPath;
-  if (/^autocomplete\.(py|rb|go|rs|php|java|ts)$/.test(basename)) return false;
-  if (/\b(?:file|path|source)\s+\W*autocomplete\.py\W*\s+must\b/.test(normalizedTask) || /\bautocomplete\.py\W*\s+must\b/.test(normalizedTask)) return true;
-  return /\/js\/autocomplete\.[cm]?js$/.test(normalizedPath) ||
-    /(^|\/)(tests?|testing|fixtures?)\//.test(normalizedPath);
-}
-
-function isUnrelatedDeprecationLifecycleSurface(filePath: string, task: string): boolean {
-  return isUnrelatedDeprecationLifecyclePath(filePath, task);
-}
-
-function isUnrelatedConfigSchemaSurface(filePath: string, task: string, selectedCounterparts: string[]): boolean {
-  const normalizedPath = filePath.toLowerCase();
-  const normalizedTask = task.toLowerCase();
-  if (!isDeclarativeConfigSchemaFile(normalizedPath)) return false;
-  if (!/\bselected (verification )?tests? from swe-bench pro metadata\b/.test(normalizedTask)) return false;
-  if (promptRequiresConfigSchemaSurface(normalizedTask)) return false;
-  if (normalizedTask.includes(normalizedPath)) return false;
-  if (selectedCounterparts.length === 0) return false;
-  const basename = path.posix.basename(normalizedPath).replace(/\.[^.]+$/, "");
-  if (selectedCounterparts.some((file) => path.posix.basename(file.toLowerCase()).replace(/\.[^.]+$/, "") === basename)) return false;
-  return /\b(config|setting|settings|option|options|workaround|qtwebengine|chromium|args?)\b/.test(normalizedTask);
-}
-
-function isUnrelatedWebSessionRenewalSurface(filePath: string, task: string): boolean {
-  if (!hasWebSessionRenewalScope(task)) return false;
-  const normalizedPath = filePath.toLowerCase();
-  const normalizedTask = task.toLowerCase();
-  if (normalizedTask.includes(normalizedPath)) return false;
-  if (/^lib\/web\/sessions\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
-  if (/^lib\/web\/apiserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
-  if (/^lib\/auth\/apiserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
-  if (/^lib\/auth\/auth\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
-  return /\b(access|checker|observability|trace|tracing|client|types?|constants?)\b/.test(normalizedPath) ||
-    /^api\//.test(normalizedPath) ||
-    /^lib\/services?\//.test(normalizedPath);
-}
-
-function isUnrelatedRequestBodyFormSurface(filePath: string, task: string, allowedRequestFiles: string[]): boolean {
-  if (!hasRequestBodyFormScope(task)) return false;
-  const normalizedPath = filePath.toLowerCase();
-  const normalizedTask = task.toLowerCase();
-  const allowed = new Set(allowedRequestFiles.map((file) => file.toLowerCase()));
-  if (allowed.has(normalizedPath)) return false;
-  if (normalizedTask.includes(normalizedPath)) return false;
-  const basename = normalizedPath.split("/").at(-1) ?? normalizedPath;
-  if (/^lists?\.(py|ts|js|go|rb|rs)$/.test(basename)) return false;
-  if (/\b(upstream|remote|external|proxy|forward|unflatten|flatten|form|request|body|params?|query)\b/.test(normalizedPath)) return false;
-  return /(^|\/)(admin|admins|administration|management|staff)(\/|$)/.test(normalizedPath) ||
-    /\b(utils?|helpers?)\.(py|ts|js|go|rb|rs)$/.test(basename) ||
-    /(^|\/)(utils?|helpers?|shared|common)\//.test(normalizedPath) ||
-    /\/models?\//.test(normalizedPath);
-}
-
-function isUnrelatedBenchmarkGeneratorSurface(filePath: string, task: string, allowedBenchmarkFiles: string[]): boolean {
-  if (!hasBenchmarkGeneratorScope(task)) return false;
-  const normalizedPath = filePath.toLowerCase();
-  const normalizedTask = task.toLowerCase();
-  const allowed = new Set(allowedBenchmarkFiles.map((file) => file.toLowerCase()));
-  if (allowed.has(normalizedPath)) return false;
-  if (normalizedTask.includes(normalizedPath)) return false;
-  if (isGenericBenchmarkGeneratorEntrypoint(normalizedPath, task)) return true;
-  if (/\/benchmark\//.test(normalizedPath) || /(^|\/)benchmark\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
-  if (/\/(client|cli|cmd|tool|tools?|tsh|tctl)\//.test(normalizedPath) && /\b(bench|benchmark)\b/.test(normalizedPath)) return false;
-  return /(^|\/)(build|dist|vendor|third_party|external|deps|generated|gen|build\.assets)(\/|$)/.test(normalizedPath) ||
-    /\/(config|configs?|configuration|settings?|options?|pam|session|sessions?|services?\/local)\//.test(normalizedPath) ||
-    /\/(proxy|auth|limiter|ratelimit|retry|access_request|rbac|kube)\//.test(normalizedPath);
-}
-
-function isUnrelatedGrpcErrorPolicySurface(filePath: string, task: string, allowedGrpcFiles: string[]): boolean {
-  if (!hasGrpcErrorPolicyScope(task)) return false;
-  const normalizedPath = filePath.toLowerCase();
-  const normalizedTask = task.toLowerCase();
-  const allowed = new Set(allowedGrpcFiles.map((file) => file.toLowerCase()));
-  if (allowed.has(normalizedPath)) return false;
-  if (normalizedTask.includes(normalizedPath)) return false;
-  if (/\/(cmd|server|middleware|auth)\/.*grpc/.test(normalizedPath)) return false;
-  if (/\/(auth|middleware)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
-  return /\/(errors?|segment|segments?|models?|storage|database|db|tests?|docs?)\//.test(normalizedPath) ||
-    /(^|\/)(errors?|types?|models?)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath);
-}
-
-function isUnrelatedHttpAuthPolicySurface(filePath: string, task: string, allowedHttpAuthFiles: string[]): boolean {
-  if (!hasHttpAuthPolicyScope(task)) return false;
-  const normalizedPath = filePath.toLowerCase();
-  const normalizedTask = task.toLowerCase();
-  const allowed = new Set(allowedHttpAuthFiles.map((file) => file.toLowerCase()));
-  if (allowed.has(normalizedPath)) return false;
-  if (normalizedTask.includes(normalizedPath)) return false;
-  if (/\/plugins\/action\/uri\.py$/.test(normalizedPath)) return !httpAuthPolicyNeedsActionPlugin(task);
-  if (/\/(module_utils\/urls|modules\/uri|modules\/get_url|plugins\/lookup\/url)\.py$/.test(normalizedPath)) return false;
-  return /\/(executor|interpreter|facts?|plugins\/list|plugins\/doc_fragments|plugins\/action|module_utils\/basic|tests?|docs?)\//.test(normalizedPath);
-}
-
-function isUnrelatedSystemMetadataSurface(filePath: string, task: string, allowedSystemMetadataFiles: string[]): boolean {
-  if (!hasSystemMetadataScope(task)) return false;
-  const normalizedPath = filePath.toLowerCase();
-  const normalizedTask = task.toLowerCase();
-  const allowed = new Set(allowedSystemMetadataFiles.map((file) => file.toLowerCase()));
-  if (allowed.has(normalizedPath)) return false;
-  if (normalizedTask.includes(normalizedPath)) return false;
-  if (/\/inventory\/metadata\//.test(normalizedPath)) return false;
-  if (/\/linux\/(dmi|dmi_sysfs|os_release|metadata)[^/]*\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
-  return /\/(config|configs?|configuration|systemd|parse|parser|utils?|tests?|docs?|examples?|fixtures?)\//.test(normalizedPath) &&
-    !/\b(dmi|os[_-]?release|inventory|metadata)\b/.test(normalizedPath);
-}
-
-function isUnrelatedDatabaseFailoverSurface(filePath: string, task: string, allowedDatabaseFiles: string[]): boolean {
-  if (!hasDatabaseFailoverScope(task)) return false;
-  const normalizedPath = filePath.toLowerCase();
-  const normalizedTask = task.toLowerCase();
-  const allowed = new Set(allowedDatabaseFiles.map((file) => file.toLowerCase()));
-  if (allowed.has(normalizedPath)) return false;
-  if (normalizedTask.includes(normalizedPath)) return false;
-  if (/\/types\/databaseserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
-  if (/\/srv\/db\/proxyserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
-  if (/\/reversetunnel\/fake\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
-  if (/(^|\/)tool\/tsh\/db\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return false;
-  if (/\/reversetunnel\/[^/]+\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) return true;
-  return /\/(events?|session|sessions?|audit|kube|app|regular|service|auth|client|tests?|docs?)\//.test(normalizedPath) &&
-    !/\b(databaseserver|proxyserver|reversetunnel|tool\/tsh\/db)\b/.test(normalizedPath);
-}
-
-function isUnrelatedPluginActivationValidationSurface(filePath: string, task: string, allowedPluginFiles: string[]): boolean {
-  if (!hasPluginActivationValidationScope(task)) return false;
-  const normalizedPath = filePath.toLowerCase();
-  const normalizedTask = task.toLowerCase();
-  const allowed = new Set(allowedPluginFiles.map((file) => file.toLowerCase()));
-  if (allowed.has(normalizedPath)) return false;
-  if (normalizedTask.includes(normalizedPath)) return false;
-  if (/\/plugins\/install\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath)) return false;
-  if (/\/socket\.io\/admin\/plugins\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath)) return false;
-  if (/\/flags\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath)) return false;
-  return /\/(topic|topics|posts?|flags\/list|installer|language|views?|templates?|tests?|docs?|examples?)\//.test(normalizedPath) &&
-    !/\b(plugin|plugins|toggleactive|invalid-plugin-id)\b/.test(normalizedPath);
-}
-
-function isUnrelatedExecutionStateMigrationSurface(filePath: string, task: string, allowedStateFiles: string[]): boolean {
-  if (!hasExecutionStateMigrationScope(task)) return false;
-  const normalizedPath = filePath.toLowerCase();
-  const normalizedTask = task.toLowerCase();
-  const allowed = new Set(allowedStateFiles.map((file) => file.toLowerCase()));
-  if (allowed.has(normalizedPath)) return false;
-  if (normalizedTask.includes(normalizedPath)) return false;
-  if (/(^|\/)play_iterator\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) || /\/executor\/play_iterator\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) return false;
-  if (/\/strategy\/(__init__|linear)\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) return false;
-  if (/\/strategy\/[^/]+\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) return true;
-  return (/\/(module_utils\/common|utils?|validation|warnings|display|parameters|basic|tests?|docs?|examples?|fixtures?)\//.test(normalizedPath) || /\/module_utils\/basic\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) &&
-    !/\b(play_iterator|hoststate|strategy|iteratingstates|failedstates)\b/.test(normalizedPath);
-}
-
-function isUnrelatedDatastoreBackendParitySurface(filePath: string, task: string, allowedBackendFiles: string[]): boolean {
-  if (!hasDatastoreBackendParityScope(task)) return false;
-  if (allowedBackendFiles.length < 2) return false;
-  const normalizedPath = filePath.toLowerCase();
-  const allowed = new Set(allowedBackendFiles.map((file) => file.toLowerCase()));
-  if (allowed.has(normalizedPath)) return false;
-  return true;
-}
-
-function isForbiddenFrontendEditSurface(filePath: string, task: string): boolean {
-  const normalizedTask = task.toLowerCase();
-  if (!/\b(do not|don't|avoid|no)\s+edit(?:ing)?\s+(?:the\s+)?(?:frontend|client|ui|browser|component|components|utilities|utils)/.test(normalizedTask)) return false;
-  const normalizedPath = filePath.toLowerCase();
-  return /(^|\/)(frontend|client|ui|components?|views?)\//.test(normalizedPath) ||
-    /\/components?\//.test(normalizedPath) ||
-    /\.(tsx|jsx|vue|svelte)$/.test(normalizedPath);
-}
-
-function isUnrelatedPromptMentionedSourceSurface(filePath: string, task: string, promptMentionedSourceFiles: string[]): boolean {
-  if (promptMentionedSourceFiles.length < 3) return false;
-  const normalizedPath = filePath.toLowerCase();
-  if (promptMentionedSourceFiles.map((file) => file.toLowerCase()).includes(normalizedPath)) return false;
-  const normalizedTask = task.toLowerCase();
-  if (normalizedTask.includes(normalizedPath)) return false;
-  const namedPrefixes = new Set(promptMentionedSourceFiles.map((file) => file.toLowerCase().split("/").slice(0, 2).join("/")));
-  const filePrefix = normalizedPath.split("/").slice(0, 2).join("/");
-  if (namedPrefixes.has(filePrefix) && !/\/components?\//.test(normalizedPath)) return false;
-  return /\/components?\//.test(normalizedPath) ||
-    /(^|\/)(frontend|client|ui|views?)\//.test(normalizedPath) ||
-    /(^|\/)(utils?|helpers?)\.[cm]?js$/.test(normalizedPath);
-}
-
-function promptRequiresConfigSchemaSurface(normalizedTask: string): boolean {
-  return (
-    /\b(config|configuration|setting|settings|option|options|workaround|workarounds)\b/.test(normalizedTask) &&
-    /\b(named|must exist|exists?|accept|values?|valid values?|default|required|restart|backend|metadata|schema|define|add|support)\b/.test(normalizedTask) &&
-    /\b(setting|option|values?|default|restart|backend|schema|metadata)\b/.test(normalizedTask)
-  );
+  return /\.(ts|tsx|js|jsx|mjs|cjs|py|pyi|java|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)$/.test(normalized);
 }
 
 function hasRecentMcpPrepareAbstention(events: Array<{ eventKind: string; eventName: string; metadata: Record<string, unknown> }>): boolean {
@@ -4883,39 +4628,21 @@ function automaticPrimeSuppressionReason(input: {
 }): string | undefined {
   if (input.source !== "codex" && input.source !== "claude") return undefined;
   const sourceRescueGuardrail = shouldEmitAutomaticSourceRescueGuardrail(input.decision);
-  const officialPatchGuardrail = shouldEmitAutomaticOfficialPatchGuardrail(input.task, input.decision);
   const productionOnlyGuardrail =
     taskHasProductionOnlyEditIntent(input.task) &&
     !input.decision.wrongContextRisk &&
     !input.decision.cheapExactSource &&
     (input.decision.exactSourceHit || input.decision.canonicalSourceHit || input.decision.sourceRescue);
-  if (
-    input.decision.cheapSingleSource &&
-    !input.decision.companionSpecific &&
-    !sourceRescueGuardrail &&
-    !productionOnlyGuardrail &&
-    !officialPatchGuardrail
-  ) {
+  if (input.decision.cheapSingleSource && !input.decision.companionSpecific && !sourceRescueGuardrail && !productionOnlyGuardrail) {
     return "automatic hook suppressed cheap single-source context to avoid over-assist";
   }
-  if (input.decision.cheapExactSource && !productionOnlyGuardrail && !officialPatchGuardrail) {
+  if (input.decision.cheapExactSource && !productionOnlyGuardrail) {
     return "automatic hook suppressed cheap exact-source context to avoid over-assist";
   }
-  if (isCheapOneShotAutomaticTask(input.task) && input.decision.exactSourceHit && !input.decision.wrongContextRisk && !sourceRescueGuardrail && !productionOnlyGuardrail && !officialPatchGuardrail) {
+  if (isCheapOneShotAutomaticTask(input.task) && input.decision.exactSourceHit && !input.decision.wrongContextRisk && !sourceRescueGuardrail && !productionOnlyGuardrail) {
     return "automatic hook suppressed obvious one-shot source context to avoid over-assist";
   }
   return undefined;
-}
-
-function shouldEmitAutomaticOfficialPatchGuardrail(task: string, decision: ContextValueDecision): boolean {
-  if (decision.taskFrame !== "official_patch") return false;
-  if (decision.directiveStyle === "scope_guardrail") return true;
-  if (!taskHasProductionOnlyEditIntent(task)) return false;
-  if (!decision.debugSignal) return false;
-  if (!decision.cheapSingleSource || decision.cheapExactSource || decision.companionSpecific) return false;
-  if (decision.wrongContextRisk) return false;
-  if (decision.topScore < 220 || decision.topGap < 35) return false;
-  return decision.recommendedDelivery === "one_file_directive" || decision.action === "shrink";
 }
 
 function shouldEmitAutomaticSourceRescueGuardrail(decision: ContextValueDecision): boolean {
@@ -4955,28 +4682,12 @@ function shouldUseMinimalOneFileDirective(input: {
   if (input.emittedFiles.length !== 1) return false;
   if (!taskHasProductionOnlyEditIntent(input.task)) return false;
   if (hasExplicitMultiFileScopeRequest(input.task)) return false;
-  if (hasPromptDerivedMultiFileScope(input.task)) return false;
   if (input.decision.wrongContextRisk) return false;
-  const narrowOfficialPatch = isNarrowOfficialExactSourcePatch(input);
-  if (input.decision.taskFrame === "multi_file_debug") return false;
-  if (input.decision.taskFrame === "official_patch" && !narrowOfficialPatch) return false;
+  if (input.decision.taskFrame === "multi_file_debug" || input.decision.taskFrame === "official_patch") return false;
   if (!input.decision.exactSourceHit && !input.decision.canonicalSourceHit && !input.decision.sourceRescue && !input.decision.cheapSingleSource && !input.decision.cheapExactSource) return false;
   if (input.decision.topScore < 180 || input.decision.topGap < 25) return false;
-  if (input.task.length > 520 && !narrowOfficialPatch) return false;
+  if (input.task.length > 520) return false;
   return true;
-}
-
-function isNarrowOfficialExactSourcePatch(input: {
-  task: string;
-  decision: ContextValueDecision;
-  emittedFiles: string[];
-}): boolean {
-  if (input.decision.taskFrame !== "official_patch") return false;
-  if (input.emittedFiles.length !== 1) return false;
-  if (input.decision.wrongContextRisk) return false;
-  if (!taskHasProductionOnlyEditIntent(input.task)) return false;
-  if (!input.decision.exactSourceHit && !input.decision.canonicalSourceHit && !input.decision.sourceRescue) return false;
-  return input.decision.topScore >= 180 && input.decision.topGap >= 25;
 }
 
 function isCheapOneShotAutomaticTask(task: string): boolean {
@@ -4998,7 +4709,7 @@ function hasSpecificCompanionEvidence(value: unknown): boolean {
       .join("; ")
       .toLowerCase()
     : "";
-  return /mentioned source filename|direct role basename anchor|route\/path surface anchor|same package|same module|import neighbor|controller\/repository|scheduler\/renderer|interceptor\/dispatch|validation\/callback|named peer client companion|user\/email companion|exact user\/email companion|proxy\/service companion|kubernetes service companion|keyboard shortcut companion|module resolver companion|schema generation companion|field definition companion|statement state companion|field metadata companion|command-line parser companion|config companion|routing map\/rule|routing map\/rule\/matcher source companion|line\/comment formatting source companion|core search source companion|printer output source companion|fixture\/runner source companion|named source surface|compound path term match|same-package utility sibling companion|shared URL\/path utility companion|inline\/header companion/.test(reasons);
+  return /mentioned source filename|direct role basename anchor|route\/path surface anchor|same package|same module|import neighbor|controller\/repository|scheduler\/renderer|interceptor\/dispatch|validation\/callback|named peer client companion|user\/email companion|exact user\/email companion|proxy\/service companion|kubernetes service companion|keyboard shortcut companion|module resolver companion|schema generation companion|field definition companion|statement state companion|field metadata companion|command-line parser companion|config companion|routing map\/rule companion|named source surface|compound path term match|same-package utility sibling companion|shared URL\/path utility companion|inline\/header companion/.test(reasons);
 }
 
 function strongestSuppressiveAction(
@@ -5040,7 +4751,7 @@ function mcpFirstBenchmarkInstructionLines(benchmarkCase: BenchmarkCase): string
 }
 
 function minimalSourceFocusOverridesSuppression(reason: SessionContextPolicyDecision["reason"]): boolean {
-  return reason === "active_source_context_shrunk";
+  return reason === "active_source_context_shrunk" || reason === "scope_drift_repair";
 }
 
 function collectWorkspaceKairnMetrics(workspacePath: string): Record<string, unknown> {
@@ -5166,913 +4877,100 @@ function exactPathCandidates(files: FileRecord[], query: string): string[] {
     .map((item) => item.path);
 }
 
-function exactPromptNamedSymbolFiles(symbols: SymbolRecord[], query: string): string[] {
-  const normalizedQuery = normalizeCandidateText(query);
-  return uniquePaths(
-    symbols
-      .filter((symbol) => isLikelyProductionSourceFile(symbol.filePath))
-      .filter((symbol) => {
-        if (symbol.name.length < 4) return false;
-        const normalized = normalizeCandidateText(symbol.name).trim();
-        if (normalized.length < 4) return false;
-        const normalizedTerms = normalized.split(/\s+/).filter(Boolean);
-        return queryMentionsCompactIdentifier(query, symbol.name) ||
-          (normalizedTerms.length <= 2 && normalizedQuery.includes(normalized));
-      })
-      .sort((a, b) => {
-        const exported = Number(Boolean(b.exported)) - Number(Boolean(a.exported));
-        if (exported !== 0) return exported;
-        return a.filePath.localeCompare(b.filePath);
-      })
-      .map((symbol) => symbol.filePath)
-  );
-}
-
-function promptNamedSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  const normalizedQuery = normalizeCandidateText(query);
-  const anchorTerms = promptFeatureAnchorTerms(query);
-  return uniquePaths(
-    files
-      .filter((file) => isLikelyProductionSourceFile(file.path))
-      .filter((file) => {
-        const basename = path.posix.basename(file.path).replace(/\.[^.]+$/, "");
-        if (basename.length < 4 || /^(index|main|core|base|utils?|helpers?)$/i.test(basename)) return false;
-        if (anchorTerms.length > 0) {
-          const pathTerms = new Set(tokenizeLexical(file.path));
-          if (!anchorTerms.some((term) => pathTerms.has(term))) return false;
-        }
-        const normalized = normalizeCandidateText(basename).trim();
-        const normalizedTerms = normalized.split(/\s+/).filter(Boolean);
-        return queryMentionsCompactIdentifier(query, basename) ||
-          (normalized.length >= 4 && normalizedTerms.length <= 2 && normalizedQuery.includes(normalized));
-      })
-      .sort((a, b) => a.path.localeCompare(b.path))
-      .map((file) => file.path)
-  );
-}
-
-function promptMentionedProductionSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  const paths = new Set<string>();
-  const sourceLines = query
-    .replaceAll("\\", "/")
-    .split(/\r?\n/)
-    .filter((line) => {
-      const normalized = line.toLowerCase();
-      return !/selected (?:verification )?tests? from swe[- ]bench pro metadata/.test(normalized);
-    });
-  for (const line of sourceLines) {
-    for (const match of line.matchAll(/\b[A-Za-z0-9_.@+~/-]+?\.(?:[cm]?[jt]sx?|pyi?|go|java|kt|kts|c|cc|cpp|cxx|h|hh|hpp|hxx|rs|rb|php|cs)\b/g)) {
-      const filePath = normalizeRelativePath(match[0] ?? "");
-      if (!filePath.includes("/")) continue;
-      if (!isLikelyProductionSourceFile(filePath)) continue;
-      paths.add(filePath);
-    }
-  }
-  return uniquePaths([...paths]);
-}
-
-function kubernetesExecForwarderSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  if (!hasKubernetesExecForwarderScope(query)) return [];
-  const scored = files
-    .filter((file) => isLikelyProductionSourceFile(file.path))
-    .map((file) => {
-      const normalizedPath = file.path.toLowerCase();
-      let score = 0;
-      if (/^lib\/kube\/proxy\/forwarder\.go$/.test(normalizedPath) || /\/kube\/proxy\/forwarder\.(go|ts|js)$/.test(normalizedPath)) score += 1000;
-      if (/^lib\/service\/kubernetes\.go$/.test(normalizedPath) || /\/service\/kubernetes\.(go|ts|js)$/.test(normalizedPath)) score += 940;
-      if (/^lib\/kube\/proxy\/server\.go$/.test(normalizedPath) || /\/kube\/proxy\/server\.(go|ts|js)$/.test(normalizedPath)) score += 760;
-      if (/^lib\/service\/service\.go$/.test(normalizedPath) || /\/service\/service\.(go|ts|js)$/.test(normalizedPath)) score += 620;
-      if (/\/kube\/proxy\/(auth|session|audit|handler)\.(go|ts|js)$/.test(normalizedPath)) score += 360;
-      if (/^lib\/auth\//.test(normalizedPath) || /\/srv\/app\/session\.(go|ts|js)$/.test(normalizedPath) || /\/srv\/exec\.(go|ts|js)$/.test(normalizedPath)) score -= 500;
-      return { path: file.path, score };
-    })
-    .filter((file) => file.score > 0)
-    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
-  const authoritative = scored.filter((file) => file.score >= 900);
-  const selected = authoritative.length >= 2 ? authoritative : scored;
-  return uniquePaths(selected.map((file) => file.path));
-}
-
-function webSessionRenewalSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  if (!hasWebSessionRenewalScope(query)) return [];
-  const scored = files
-    .filter((file) => isLikelyProductionSourceFile(file.path))
-    .map((file) => {
-      const normalizedPath = file.path.toLowerCase();
-      let score = 0;
-      if (/^lib\/web\/sessions\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/web\/sessions\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 1000;
-      if (/^lib\/web\/apiserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/web\/apiserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 940;
-      if (/^lib\/auth\/apiserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/auth\/apiserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 900;
-      if (/^lib\/auth\/auth\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/auth\/auth\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 860;
-      if (/\b(web|session|sessions|auth|access|cert|certificate)\b/.test(normalizedPath)) score += 120;
-      if (/^api\/types\//.test(normalizedPath) || /\/api\/types\//.test(normalizedPath) || /\/constants\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score -= 520;
-      return { path: file.path, score };
-    })
-    .filter((file) => file.score > 0)
-    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
-  const authoritative = scored.filter((file) => file.score >= 900).map((file) => file.path);
-  if (authoritative.length >= 3) return uniquePaths(authoritative);
-  return uniquePaths(scored.map((file) => file.path));
-}
-
-function packageSourceMappingSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  if (!hasPackageSourceMappingScope(query)) return [];
-  const normalizedQuery = normalizeCandidateText(query);
-  const rpmQuery = /\b(sourcerpm|source rpm|src\.rpm|rpm|epoch|redhat|rhel|centos)\b/.test(normalizedQuery);
-  const alpineQuery = /\b(apk|alpine)\b/.test(normalizedQuery);
-  const scored = files
-    .filter((file) => isLikelyProductionSourceFile(file.path))
-    .map((file) => {
-      const normalizedPath = file.path.toLowerCase();
-      const base = path.posix.basename(normalizedPath);
-      let score = 0;
-      if (rpmQuery && (/^scanner\/(redhat|redhatbase|rpm|rhel|centos)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/(redhat|redhatbase|rpm|rhel|centos)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath))) score += 1320;
-      if (alpineQuery && (/^scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath))) score += 1800;
-      if (/^oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += alpineQuery ? 1120 : 920;
-      if (/^scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += alpineQuery ? 1000 : 780;
-      if (alpineQuery && (/^oval\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/oval\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath))) score += 520;
-      if (rpmQuery && /(alpine|apk)/.test(base)) score -= 760;
-      if (alpineQuery && /(redhat|redhatbase|rpm|rhel|centos)/.test(base)) score -= 3_000;
-      if (/\/scanner\/trivy\//.test(normalizedPath) || /\/parser\//.test(normalizedPath) || /\/contrib\//.test(normalizedPath)) score -= 520;
-      return { path: file.path, score };
-    })
-    .filter((file) => file.score > 0)
-    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
-    .map((file) => file.path);
-  return uniquePaths(scored);
-}
-
-function orderPackageSourceMappingFiles(files: string[], query: string): string[] {
-  const normalizedQuery = normalizeCandidateText(query);
-  const rpmQuery = /\b(sourcerpm|source rpm|src\.rpm|rpm|epoch|redhat|rhel|centos)\b/.test(normalizedQuery);
-  const alpineQuery = /\b(apk|alpine)\b/.test(normalizedQuery);
-  const isOtherDistroScanner = (file: string): boolean => {
-    const base = path.posix.basename(file.toLowerCase());
-    if (alpineQuery && /(redhat|redhatbase|rpm|rhel|centos)/.test(base)) return true;
-    if (rpmQuery && !alpineQuery && /(alpine|apk)/.test(base)) return true;
-    return false;
-  };
-  const score = (file: string): number => {
-    const normalizedPath = file.toLowerCase();
-    const base = path.posix.basename(normalizedPath);
-    let value = 0;
-    if (alpineQuery && (/^scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/alpine\.(go|ts|js|py|rb|rs)$/.test(normalizedPath))) value += 5_000;
-    if (rpmQuery && !alpineQuery && (/^scanner\/(redhat|redhatbase|rpm|rhel|centos)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/(redhat|redhatbase|rpm|rhel|centos)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath))) value += 5_000;
-    if (/^oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/oval\/util\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) value += 4_500;
-    if (/^scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) value += 4_000;
-    if (alpineQuery && /(redhat|redhatbase|rpm|rhel|centos)/.test(base)) value -= 2_000;
-    if (rpmQuery && !alpineQuery && /(alpine|apk)/.test(base)) value -= 2_000;
-    return value;
-  };
-  return uniquePaths(files).filter((file) => !isOtherDistroScanner(file)).sort((a, b) => score(b) - score(a) || a.localeCompare(b));
-}
-
-function benchmarkGeneratorSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  if (!hasBenchmarkGeneratorScope(query)) return [];
-  const scored = files
-    .filter((file) => isLikelyProductionSourceFile(file.path))
-    .map((file) => {
-      const normalizedPath = file.path.toLowerCase();
-      const base = path.posix.basename(normalizedPath);
-      let score = 0;
-      if (/\/benchmark\//.test(normalizedPath) || /^benchmark\.(go|ts|js|py|rb|rs)$/.test(base)) score += 980;
-      if (/\/benchmark\/(linear|generator|config|benchmark)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 620;
-      if (/\/benchmark\/linear\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 640;
-      if (/\/(client|cli|cmd|tool|tsh|tctl)\//.test(normalizedPath) && /\b(bench|benchmark)\b/.test(normalizedPath)) score += 520;
-      if (/(^|\/)(cmd|commands?|cli|tool|tools?)\/[^/]+\/[^/]+\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) && /\b(tsh|tctl|cli|cmd|command|main)\b/.test(base)) score += 500;
-      if (/\b(linear|benchmark|bench|generator)\b/.test(normalizedPath)) score += 220;
-      if (isGenericBenchmarkGeneratorEntrypoint(normalizedPath, query)) score -= 1_200;
-      if (/\/(config|configs?|configuration|settings?|options?|pam)\//.test(normalizedPath) && !/\b(bench|benchmark)\b/.test(normalizedPath)) score -= 520;
-      if (/\/(proxy|auth|limiter|ratelimit|retry|access_request|rbac|kube)\//.test(normalizedPath) && !/\b(bench|benchmark)\b/.test(normalizedPath)) score -= 620;
-      return { path: file.path, score };
-    })
-    .filter((file) => file.score > 0)
-    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
-    .map((file) => file.path);
-  return uniquePaths(scored);
-}
-
-function isGenericBenchmarkGeneratorEntrypoint(normalizedPath: string, query: string): boolean {
-  const normalizedQuery = normalizeCandidateText(query);
-  const basename = path.posix.basename(normalizedPath);
-  if (!/^(main|cli|command|commands)\.(go|ts|tsx|js|jsx|py|rb|rs)$/.test(basename)) return false;
-  if (!/(^|\/)(cmd|commands?|cli|tool|tools?)\//.test(normalizedPath)) return false;
-  return !/\b(cli|command line|flag|flags|option|options|args?|arguments|argv|subcommand|command wiring|entrypoint|launcher)\b/.test(normalizedQuery);
-}
-
-function topicOrderingSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  if (!hasTopicOrderingScope(query)) return [];
-  const scored = files
-    .filter((file) => isLikelyProductionSourceFile(file.path))
-    .map((file) => {
-      const normalizedPath = file.path.toLowerCase();
-      let score = 0;
-      if (/^src\/topics\/tools\.(js|ts|jsx|tsx)$/.test(normalizedPath) || /\/src\/topics\/tools\.(js|ts|jsx|tsx)$/.test(normalizedPath)) score += 1180;
-      if (/^src\/socket\.io\/topics\/tools\.(js|ts|jsx|tsx)$/.test(normalizedPath) || /\/src\/socket\.io\/topics\/tools\.(js|ts|jsx|tsx)$/.test(normalizedPath)) score += 1040;
-      if (/^public\/src\/client\/category\/tools\.(js|ts|jsx|tsx)$/.test(normalizedPath) || /\/public\/src\/client\/category\/tools\.(js|ts|jsx|tsx)$/.test(normalizedPath)) score += 960;
-      if (/\b(topic|topics|pin|pinned|order)\b/.test(normalizedPath)) score += 140;
-      if (/\/(admin|dashboard|openapi|views?|upgrades?)\//.test(normalizedPath)) score -= 520;
-      if (/^src\/privileges\/topics\.(js|ts|jsx|tsx)$/.test(normalizedPath) || /\/src\/privileges\/topics\.(js|ts|jsx|tsx)$/.test(normalizedPath)) score -= 120;
-      return { path: file.path, score };
-    })
-    .filter((file) => file.score >= 900)
-    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
-    .map((file) => file.path);
-  return uniquePaths(scored);
-}
-
-function collectionNameValidationSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  if (!hasCollectionNameValidationScope(query)) return [];
-  const scored = files
-    .filter((file) => isLikelyProductionSourceFile(file.path))
-    .map((file) => {
-      const normalizedPath = file.path.toLowerCase();
-      let score = 0;
-      if (/\/utils\/collection_loader\/_collection_finder\.py$/.test(normalizedPath)) score += 1160;
-      if (/\/galaxy\/dependency_resolution\/dataclasses\.py$/.test(normalizedPath)) score += 1080;
-      if (/\b(collection|fqcn|namespace|identifier|keyword)\b/.test(normalizedPath)) score += 160;
-      if (/\/(test|tests|integration|docs?|data)\//.test(normalizedPath)) score -= 520;
-      if (/\/galaxy\/collection\//.test(normalizedPath) && !/dataclasses\.py$/.test(normalizedPath)) score -= 180;
-      return { path: file.path, score };
-    })
-    .filter((file) => file.score > 0)
-    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
-  const authoritative = scored.filter((file) => file.score >= 1000);
-  const selected = authoritative.length >= 2 ? authoritative : scored.slice(0, 2);
-  return uniquePaths(selected.map((file) => file.path));
-}
-
-function grpcErrorPolicySourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  if (!hasGrpcErrorPolicyScope(query)) return [];
-  const scored = files
-    .filter((file) => isLikelyProductionSourceFile(file.path))
-    .map((file) => {
-      const normalizedPath = file.path.toLowerCase();
-      let score = 0;
-      if (/\/server\/middleware\/grpc\/middleware\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/middleware\/grpc\/middleware\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 1120;
-      if (/\/server\/auth\/middleware\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/auth\/middleware\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 1100;
-      if (/^internal\/cmd\/grpc\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/cmd\/grpc\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 1040;
-      if (/\b(grpc|middleware|auth|status|codes?|context)\b/.test(normalizedPath)) score += 160;
-      if (/\/(errors?|segment|segments?|models?|storage|database|db|tests?|docs?)\//.test(normalizedPath) && !/\b(grpc|middleware|auth|status)\b/.test(normalizedPath)) score -= 520;
-      return { path: file.path, score };
-    })
-    .filter((file) => file.score > 0)
-    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
-  const authoritative = scored.filter((file) => file.score >= 1000);
-  const selected = authoritative.length >= 3 ? authoritative : scored;
-  return uniquePaths(selected.map((file) => file.path));
-}
-
-function httpAuthPolicySourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  if (!hasHttpAuthPolicyScope(query)) return [];
-  const needsActionPlugin = httpAuthPolicyNeedsActionPlugin(query);
-  const scored = files
-    .filter((file) => isLikelyProductionSourceFile(file.path))
-    .map((file) => {
-      const normalizedPath = file.path.toLowerCase();
-      const base = path.posix.basename(normalizedPath);
-      let score = 0;
-      if (/\/module_utils\/urls\.py$/.test(normalizedPath)) score += 1160;
-      if (/\/modules\/uri\.py$/.test(normalizedPath) || (!/\/plugins\/action\//.test(normalizedPath) && /^uri\.(py|ts|js|go|rb|rs)$/.test(base))) score += 1040;
-      if (/\/modules\/get_url\.py$/.test(normalizedPath) || /^get_url\.(py|ts|js|go|rb|rs)$/.test(base)) score += 980;
-      if (/\/plugins\/lookup\/url\.py$/.test(normalizedPath) || /\/lookup\/url\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) score += 920;
-      if (/\/plugins\/action\/uri\.py$/.test(normalizedPath)) score += needsActionPlugin ? 760 : -1120;
-      if (/\/url(s)?\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) && !/\/(module_utils|modules|plugins\/lookup)\//.test(normalizedPath)) score += 300;
-      if (/\b(netrc|authorization|auth|headers?|url|uri|request)\b/.test(normalizedPath)) score += 140;
-      if (/\/(executor|interpreter|facts?|plugins\/list|plugins\/doc_fragments|plugins\/action|module_utils\/basic|tests?|docs?)\//.test(normalizedPath) && !/\b(netrc|authorization|open_url|use_netrc|headers?|url|uri)\b/.test(normalizedPath)) score -= 540;
-      return { path: file.path, score };
-    })
-    .filter((file) => file.score > 0)
-    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
-  const authoritative = scored.filter((file) => file.score >= 900);
-  const selected = authoritative.length >= 3 ? authoritative : scored;
-  return uniquePaths(selected.map((file) => file.path));
-}
-
-function httpAuthPolicyNeedsActionPlugin(query: string): boolean {
-  const normalized = normalizeCandidateText(query);
-  return /\b(action plugin|plugin action|action layer|action module|plugins action|action uri|action handler)\b/.test(normalized);
-}
-
-function systemMetadataSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  if (!hasSystemMetadataScope(query)) return [];
-  const scored = files
-    .filter((file) => isLikelyProductionSourceFile(file.path))
-    .map((file) => {
-      const normalizedPath = file.path.toLowerCase();
-      let score = 0;
-      if (/\/inventory\/metadata\/metadata_linux\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 1260;
-      if (/\/inventory\/metadata\/(metadata|get)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 960;
-      if (/\/linux\/(dmi|dmi_sysfs|os_release|metadata)[^/]*\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 1180;
-      if (/\b(dmi|dmifs|os[_-]?release|sysfs|inventory|metadata)\b/.test(normalizedPath)) score += 170;
-      if (/\/(config|configs?|configuration|systemd|parse|parser|utils?)\//.test(normalizedPath) && !/\b(dmi|os[_-]?release|inventory|metadata)\b/.test(normalizedPath)) score -= 760;
-      if (/\/(tests?|docs?|examples?|fixtures?|vendor|third_party|generated)\//.test(normalizedPath)) score -= 480;
-      return { path: file.path, score };
-    })
-    .filter((file) => file.score > 0)
-    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
-  const authoritative = scored.filter((file) => file.score >= 900).map((file) => file.path);
-  if (authoritative.length >= 2) return uniquePaths(authoritative);
-  return uniquePaths(scored.map((file) => file.path));
-}
-
-function databaseFailoverSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  if (!hasDatabaseFailoverScope(query)) return [];
-  const scored = files
-    .filter((file) => isLikelyProductionSourceFile(file.path))
-    .map((file) => {
-      const normalizedPath = file.path.toLowerCase();
-      let score = 0;
-      if (/^api\/types\/databaseserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/types\/databaseserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 1260;
-      if (/\/srv\/db\/proxyserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/db\/proxyserver\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 1220;
-      if (/\/reversetunnel\/fake\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/fake(?:remote)?site\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 960;
-      if (/(^|\/)tool\/tsh\/db\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/cli\/.*db\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score += 920;
-      if (/\b(database|db|proxyserver|databaseserver|reversetunnel|tsh|serverid|hostid|shuffle|dedupe|candidate)\b/.test(normalizedPath)) score += 150;
-      if (/\/(events?|session|sessions?|audit|kube|app|regular|service|auth|client)\//.test(normalizedPath) && !/\b(databaseserver|proxyserver|reversetunnel|tool\/tsh\/db)\b/.test(normalizedPath)) score -= 620;
-      if (/\/(tests?|docs?|examples?|fixtures?|generated|vendor|third_party)\//.test(normalizedPath)) score -= 480;
-      return { path: file.path, score };
-    })
-    .filter((file) => file.score > 0)
-    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
-  const authoritative = scored.filter((file) => file.score >= 900).map((file) => file.path);
-  if (authoritative.length >= 3) return uniquePaths(authoritative);
-  return uniquePaths(scored.map((file) => file.path));
-}
-
-function pluginActivationValidationSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  if (!hasPluginActivationValidationScope(query)) return [];
-  const scored = files
-    .filter((file) => isLikelyProductionSourceFile(file.path))
-    .map((file) => {
-      const normalizedPath = file.path.toLowerCase();
-      let score = 0;
-      if (/^src\/plugins\/install\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath) || /\/plugins\/install\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath)) score += 1260;
-      if (/^src\/socket\.io\/admin\/plugins\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath) || /\/socket\.io\/admin\/plugins\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath)) score += 1020;
-      if (/^src\/flags\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath) || /\/flags\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath)) score += 740;
-      if (/\/admin\/extend\/plugins\.(js|ts|tsx|jsx|py|go|rb|rs)$/.test(normalizedPath)) score += 280;
-      if (/\b(plugin|plugins|toggleactive|invalid-plugin-id|identifier|validation|flags)\b/.test(normalizedPath)) score += 140;
-      if (/\/(topic|topics|posts?|flags\/list|installer|language|views?|templates?)\//.test(normalizedPath) && !/\b(plugin|plugins|toggleactive|invalid-plugin-id)\b/.test(normalizedPath)) score -= 520;
-      if (/\/(tests?|docs?|examples?|fixtures?|node_modules|dist|build|public\/language)\//.test(normalizedPath)) score -= 480;
-      return { path: file.path, score };
-    })
-    .filter((file) => file.score > 0)
-    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
-    .map((file) => file.path);
-  return uniquePaths(scored);
-}
-
-function executionStateMigrationSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  if (!hasExecutionStateMigrationScope(query)) return [];
-  const scored = files
-    .filter((file) => isLikelyProductionSourceFile(file.path))
-    .map((file) => {
-      const normalizedPath = file.path.toLowerCase();
-      let score = 0;
-      if (/(^|\/)play_iterator\.(py|ts|js|go|rb|rs)$/.test(normalizedPath) || /\/executor\/play_iterator\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) score += 1320;
-      if (/\/strategy\/__init__\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) score += 980;
-      if (/\/strategy\/linear\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) score += 940;
-      if (/\b(play_iterator|hoststate|iterating|failedstates|strategy)\b/.test(normalizedPath)) score += 160;
-      if ((/\/(module_utils\/common|utils?|validation|warnings|display|parameters|basic)\//.test(normalizedPath) || /\/module_utils\/basic\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) && !/\b(play_iterator|strategy|hoststate|iterating|failedstates)\b/.test(normalizedPath)) score -= 820;
-      if (/\/(tests?|docs?|examples?|fixtures?|vendor|third_party|generated)\//.test(normalizedPath)) score -= 480;
-      return { path: file.path, score };
-    })
-    .filter((file) => file.score > 0)
-    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
-  const authoritative = scored.filter((file) => file.score >= 900).map((file) => file.path);
-  if (authoritative.length >= 2) return uniquePaths(authoritative);
-  return uniquePaths(scored.map((file) => file.path));
-}
-
-function requestBodyFormSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  if (!hasRequestBodyFormScope(query)) return [];
-  const normalizedQuery = normalizeCandidateText(query);
-  const scored = files
-    .filter((file) => isLikelyProductionSourceFile(file.path))
-    .map((file) => {
-      const normalizedPath = file.path.toLowerCase();
-      const base = path.posix.basename(normalizedPath);
-      let score = 0;
-      let role: "handler" | "utility" | undefined;
-      const isListTask = /\b(list|lists)\b/.test(normalizedQuery) || /\/lists?\//.test(normalizedQuery);
-      const handlerPath = /(^|\/)(routes?|handlers?|controllers?|views?|endpoints?|resources?|plugins?)\//.test(normalizedPath);
-      const handlerName = /\b(post|get|put|patch|delete|create|update|add|submit|request|form|body|params?|lists?)\b/.test(base);
-      const utilityPath = /(^|\/)(utils?|helpers?|shared|common)\//.test(normalizedPath) || /\b(utils?|helpers?)\.(py|ts|js|go|rb|rs)$/.test(base);
-      const reconstructionName = /\b(unflatten|flatten|form|forms|request|body|params?|query)\b/.test(normalizedPath);
-      const upstreamRequestUtility = /\b(upstream|remote|external|prox(?:y|ied)?|forward(?:ed|ing)?)\b/.test(normalizedPath);
-      const explicitReconstructionQuery = /\b(unflatten|flattened|nested|indexed|parent keys?|ordered pairs?)\b/.test(normalizedQuery);
-      const genericAdminUtility = /(^|\/)(admin|admins|administration|management|staff)(\/|$)/.test(normalizedPath) && utilityPath;
-      const adminRequested = /\b(admin|administration|management|staff)\b/.test(normalizedQuery);
-      const utilityOwnsRequestSurface = reconstructionName || upstreamRequestUtility;
-      if ((handlerPath && handlerName) || (isListTask && /\blists?\.(py|ts|js|go|rb|rs)$/.test(base))) {
-        role = "handler";
-        score += 900;
-      }
-      if (
-        (utilityPath && utilityOwnsRequestSurface) ||
-        (utilityPath && explicitReconstructionQuery && !genericAdminUtility) ||
-        /\b(unflatten|flatten|forms?|request)_?utils?\.(py|ts|js|go|rb|rs)$/.test(base)
-      ) {
-        role = "utility";
-        score += 860;
-      }
-      if (role === "handler" && /\b(post|add|submit|body|form|request)\b/.test(normalizedQuery)) score += 100;
-      if (role === "utility" && explicitReconstructionQuery) score += 120;
-      if (role === "utility" && upstreamRequestUtility) score += 240;
-      if (role === "utility" && /\b(upstream|remote|external|prox(?:y|ied)|forward(?:ed|ing)?)\b/.test(normalizedQuery) && /\b(upstream|remote|external|proxy|forward)\b/.test(normalizedPath)) score += 180;
-      if (role === "utility" && genericAdminUtility && !adminRequested) score -= 1100;
-      if (role === "utility" && /\b(query|url|solr|search)\b/.test(base) && !/\b(unflatten|flatten|form|body|request)\b/.test(base)) score -= 500;
-      if (/\/js\/|\/client\/|\/browser\/|\/static\//.test(normalizedPath) && !/\b(javascript|frontend|browser|client)\b/.test(normalizedQuery)) score -= 500;
-      if (/\/models?\//.test(normalizedPath) || /\/core\/lists\/model\.(py|ts|js|go|rb|rs)$/.test(normalizedPath)) score -= 560;
-      return { path: file.path, score, role };
-    })
-    .filter((file) => file.score > 0 && file.role)
-    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
-  const handler = scored.find((file) => file.role === "handler")?.path;
-  const utility = scored.find((file) => file.role === "utility")?.path;
-  return uniquePaths([handler, utility].filter(Boolean) as string[]);
-}
-
-function converterOutputSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  if (!hasConverterOutputScope(query)) return [];
-  const scored = files
-    .filter((file) => isLikelyProductionSourceFile(file.path))
-    .map((file) => {
-      const normalizedPath = file.path.toLowerCase();
-      let score = 0;
-      if (/convert(or|er)|converter|convertor/.test(normalizedPath)) score += 1000;
-      if (/\b(trivy|vuls|cve|severity|severities|output|json)\b/.test(normalizedPath)) score += 120;
-      if (/^scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath) || /\/scanner\/scanner\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score -= 520;
-      if (/(^|\/)(storage|store|stores|db|database|backend|backends)\//.test(normalizedPath) && !/convert(or|er)|converter|convertor/.test(normalizedPath)) score -= 460;
-      if (/\/scanner\/(alpine|debian|redhat|ubuntu|amazon|oracle|suse)\.(go|ts|js|py|rb|rs)$/.test(normalizedPath)) score -= 360;
-      return { path: file.path, score };
-    })
-    .filter((file) => file.score > 0)
-    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
-    .map((file) => file.path);
-  return uniquePaths(scored);
-}
-
-function discoveryConfigSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  if (!hasDiscoveryConfigScope(query)) return [];
-  const normalizedQuery = normalizeCandidateText(query);
-  const scored = files
-    .filter((file) => isLikelyProductionSourceFile(file.path))
-    .map((file) => {
-      const normalizedPath = file.path.toLowerCase();
-      const base = path.posix.basename(normalizedPath).replace(/\.[^.]+$/, "");
-      const compactBase = base.replace(/[^a-z0-9]+/g, "");
-      let score = 0;
-      let role: "discovery" | "contract" | undefined;
-      const autoDiscoveryOwner = compactBase.includes("autodiscovery") || compactBase.includes("discovery") || compactBase.includes("homeserver");
-      const supportingWellKnown = compactBase.includes("wellknown") || normalizedPath.includes("/well-known/") || normalizedPath.includes("/wellknown/");
-      if (autoDiscoveryOwner || supportingWellKnown || /\/(discovery|autodiscovery|well-known|wellknown)\//.test(normalizedPath)) {
-        role = "discovery";
-        score += autoDiscoveryOwner ? 1120 : 760;
-      }
-      if (/\b(validatedserverconfig|serverconfig)\b/.test(compactBase) || (compactBase.includes("validated") && compactBase.includes("config")) || (compactBase.includes("server") && compactBase.includes("config"))) {
-        role = "contract";
-        score += 940;
-      }
-      if (role === "discovery" && /\b(discovery|homeserver|well[- ]?known)\b/.test(normalizedQuery)) score += 140;
-      if (role === "contract" && /\b(validated|configuration|config|public interface|optional object)\b/.test(normalizedQuery)) score += 160;
-      if (/\b(authentication|delegated|issuer|authorization|registration|token|account)\b/.test(normalizedPath)) score += 80;
-      if (/(^|\/)(cypress|tests?|testing|support)\//.test(normalizedPath)) score -= 900;
-      if ((/(^|\/)(settings|preferences)\//.test(normalizedPath) || /\/settings\//.test(normalizedPath)) && !/\b(settings?|preferences?)\b/.test(normalizedQuery)) score -= 1200;
-      return { path: file.path, score, role };
-    })
-    .filter((file) => file.score > 0 && file.role)
-    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
-  const discovery = scored.find((file) => file.role === "discovery")?.path;
-  const contract = scored.find((file) => file.role === "contract")?.path;
-  return uniquePaths([discovery, contract].filter(Boolean) as string[]);
-}
-
-function deviceSessionListenerSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  if (!hasDeviceSessionListenerScope(query)) return [];
-  const scored = files
-    .filter((file) => isLikelyProductionSourceFile(file.path))
-    .map((file) => {
-      const normalizedPath = file.path.toLowerCase();
-      let score = 0;
-      if (/listener|observer|watcher|subscriber|notifier/.test(normalizedPath)) score += 1000;
-      if (/\b(device|devices|session|sessions|notification|notifications|unverified)\b/.test(normalizedPath)) score += 160;
-      if (/\/(stores?|state|models?)\//.test(normalizedPath) && /\b(session|sessions|notification|notifications|device|devices)\b/.test(normalizedPath)) score += 120;
-      if (/(^|\/)(settings|tabs?|views?)\//.test(normalizedPath)) score -= 460;
-      if (/\/toasts?\//.test(normalizedPath)) score -= 360;
-      if (/\/models?\/call\.(ts|tsx|js|jsx)$/.test(normalizedPath)) score -= 320;
-      return { path: file.path, score };
-    })
-    .filter((file) => file.score > 0)
-    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
-    .map((file) => file.path);
-  return uniquePaths(scored);
-}
-
-function datastoreBackendParitySourceFilesFromKnownFiles(files: FileRecord[], query: string, seedFiles: string[]): string[] {
-  if (!hasDatastoreBackendParityScope(query)) return [];
-  const groups = new Map<string, Array<{ path: string; surface: DatastoreBackendSurface }>>();
-  for (const file of files) {
-    if (!isLikelyProductionSourceFile(file.path)) continue;
-    const surface = datastoreBackendSurface(file.path);
-    if (!surface) continue;
-    const key = `${surface.prefix}\0${surface.suffix}`;
-    const group = groups.get(key) ?? [];
-    group.push({ path: file.path, surface });
-    groups.set(key, group);
-  }
-  const seedKeys = new Set(
-    seedFiles
-      .map((file) => datastoreBackendSurface(file))
-      .filter((surface): surface is DatastoreBackendSurface => Boolean(surface))
-      .map((surface) => `${surface.prefix}\0${surface.suffix}`)
-  );
-  const ranked = [...groups.entries()]
-    .filter(([, group]) => new Set(group.map((entry) => entry.surface.backend)).size >= 2)
-    .map(([key, group]) => ({
-      key,
-      group,
-      seeded: seedKeys.has(key)
-    }))
-    .filter((entry) => entry.seeded || seedKeys.size === 0)
-    .sort((a, b) => Number(b.seeded) - Number(a.seeded) || b.group.length - a.group.length || a.key.localeCompare(b.key));
-  const best = ranked[0]?.group ?? [];
-  const seedOrder = new Map(seedFiles.map((file, index) => [file.toLowerCase(), index]));
-  return uniquePaths(
-    best
-      .sort((a, b) => {
-        const seedA = seedOrder.get(a.path.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
-        const seedB = seedOrder.get(b.path.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
-        return seedA - seedB || a.surface.backend.localeCompare(b.surface.backend) || a.path.localeCompare(b.path);
-      })
-      .map((entry) => entry.path)
-  );
-}
-
-type DatastoreBackendSurface = { prefix: string; backend: string; suffix: string };
-
-function datastoreBackendSurface(filePath: string): DatastoreBackendSurface | undefined {
-  const parts = filePath.replaceAll("\\", "/").toLowerCase().split("/").filter(Boolean);
-  const backendNames = new Set(["mongo", "mongodb", "redis", "postgres", "postgresql", "mysql", "sqlite", "memory", "inmemory"]);
-  const rootNames = new Set(["database", "databases", "db", "storage", "stores", "backends"]);
-  for (let index = 0; index < parts.length - 1; index += 1) {
-    const part = parts[index];
-    if (!part || !backendNames.has(part)) continue;
-    const hasDatastoreRoot = parts.slice(Math.max(0, index - 2), index).some((segment) => rootNames.has(segment));
-    if (!hasDatastoreRoot) continue;
-    const suffix = parts.slice(index + 1).join("/");
-    if (!suffix) continue;
-    return {
-      prefix: parts.slice(0, index).join("/"),
-      backend: part,
-      suffix
-    };
-  }
-  return undefined;
-}
-
-function hasKubernetesExecForwarderScope(query: string): boolean {
-  const normalized = normalizeCandidateText(query);
-  const compact = normalized.replace(/\s+/g, "");
-  return (
-    /\b(kubernetes|kubectl|kube)\b/.test(normalized) &&
-    (
-      /\b(exec|forwarder|forwarder config|session uploader|session recording|recordings?|streaming|upload directory|async upload|audit event|audit events|client disconnect|reverse tunnel|route to cluster)\b/.test(normalized) ||
-      /\b(port forward|catch all)\b/.test(normalized) ||
-      /\b(portforward|catchall|forwarderconfig|reversetunnelsrv|routetocluster|getkubeservices|getclusterconfig)\b/.test(compact)
-    )
-  );
-}
-
-function hasPackageSourceMappingScope(query: string): boolean {
-  const normalized = normalizeCandidateText(query);
-  if (hasNarrowPackageParserScope(normalized)) return false;
-  return /\b(source packages?|binary packages?|src packages?|package source|source package associations?|sourcerpm|src\.rpm|rpm|apk|alpine|redhat|rhel|centos)\b/.test(normalized) &&
-    /\b(oval|vulnerabilit(?:y|ies)|scanner|package manager|upgradable|installed packages?|parse installed packages|package information|package metadata)\b/.test(normalized);
-}
-
-function hasNarrowPackageParserScope(normalizedQuery: string): boolean {
-  const rpmParserTerms =
-    /\b(sourcerpm|source rpm|src\.rpm|rpm filenames?|source filenames?|splitfilename|parseinstalledpackagesline|epoch)\b/.test(normalizedQuery);
-  const scannerTerms = /\b(scanner|package manager|installed packages?|package information|package metadata|redhat|rhel|centos|rpm)\b/.test(normalizedQuery);
-  const mappingTerms =
-    /\b(oval|vulnerability matching|binary packages? derive|source package associations?|map binary packages?|package index|upgradable)\b/.test(normalizedQuery);
-  return rpmParserTerms && scannerTerms && !mappingTerms;
-}
-
-function hasBenchmarkGeneratorScope(query: string): boolean {
-  const normalized = normalizeCandidateText(query);
-  const benchmarkTerms = /\b(benchmark|benchmarks|benchmarking|performance benchmark|load test|request rate|requests per second|rps)\b/.test(normalized);
-  const generatorTerms = /\b(generator|generate|sequence|progression|linear|lower bound|upper bound|step size|minimum measurements|minimum window|getbenchmark|configuration|configurations)\b/.test(normalized);
-  return benchmarkTerms && generatorTerms;
-}
-
-function hasTopicOrderingScope(query: string): boolean {
-  const normalized = normalizeCandidateText(query);
-  const topicTerms = /\b(topic|topics|category|categories)\b/.test(normalized);
-  const orderTerms = /\b(pin|pinned|reorder|ordering|order|position|relative order|target position)\b/.test(normalized);
-  const contractTerms = /\b(privileges?|moderator|admin|socket|client|no-op|category isolation|membership|sorted set)\b/.test(normalized);
-  return topicTerms && orderTerms && contractTerms;
-}
-
-function hasCollectionNameValidationScope(query: string): boolean {
-  const normalized = normalizeCandidateText(query);
-  const collectionTerms = /\b(collection name|collection names|fqcn|fully qualified collection name|namespace\.collection|namespace|collection)\b/.test(normalized);
-  const validationTerms = /\b(validate|validation|valid|invalid|identifier|python keyword|reserved keyword|is_valid_collection_name|is_python_identifier)\b/.test(normalized);
-  return collectionTerms && validationTerms;
-}
-
-function hasGrpcErrorPolicyScope(query: string): boolean {
-  const normalized = normalizeCandidateText(query);
-  const grpcTerms = /\b(grpc|rpc|status code|status codes|code canceled|code deadlineexceeded|deadline exceeded|unauthenticated|internal)\b/.test(normalized);
-  const contextTerms = /\b(context\.canceled|context canceled|cancelled context|canceled context|context cancellation|context timeout|context\.deadlineexceeded|deadline exceeded|timeout|cancelled|canceled)\b/.test(normalized);
-  const policyTerms = /\b(classif(?:y|ied|ication)|map|mapping|return|respond|propagate|convert|middleware|auth(?:entication)?|server)\b/.test(normalized);
-  return grpcTerms && contextTerms && policyTerms;
-}
-
-function hasHttpAuthPolicyScope(query: string): boolean {
-  const normalized = normalizeCandidateText(query);
-  const authTerms = /\b(netrc|\.netrc|authorization header|bearer|basic auth|basic authentication|credentials)\b/.test(normalized);
-  const httpTerms = /\b(uri module|uri|open_url|request\.open|request|http|url|headers?)\b/.test(normalized);
-  const policyTerms = /\b(overwrite|overwrites|override|overrides|overriding|overridden|respect|ignore|use_netrc|netrc usage|parameter|forward|default|enabled|disabled|control)\b/.test(normalized);
-  return authTerms && httpTerms && policyTerms;
-}
-
-function hasSystemMetadataScope(query: string): boolean {
-  const normalized = normalizeCandidateText(query);
-  const systemMetadataTerms =
-    /\b(dmi|dmifs|sysfs|\/sys\/class\/dmi\/id|product_name|product_serial|board_serial|chassis_asset_tag|os-release|\/etc\/os-release|pretty_name|version_id|distro|distribution|linux system metadata|system metadata|device metadata)\b/.test(normalized);
-  const extractionTerms = /\b(parse|parser|read|open|extract|retrieve|metadata|filesystem|fs\.fs|struct|field|trim|permission denied|partial errors?|malformed lines?)\b/.test(normalized);
-  return systemMetadataTerms && extractionTerms;
-}
-
-function hasDatabaseFailoverScope(query: string): boolean {
-  const normalized = normalizeCandidateText(query);
-  const databaseTerms = /\b(database|databases|db)\b/.test(normalized);
-  const serviceTerms = /\b(service|services|server|servers|databaseserver|database server|database service)\b/.test(normalized);
-  const failoverTerms = /\b(ha|high availability|failover|candidate|candidates|retry|shuffle|randomi[sz]e|offline tunnel|tunnel outage|reachable|unreachable|deduplicate|dedupe|same-name|same name|hostid|serverid|proxy context|tsh db ls)\b/.test(normalized);
-  const proxyTerms = /\b(proxy|connect|dial|reverse tunnel|authorization|auth(?:orization)? context|list|display)\b/.test(normalized);
-  return databaseTerms && serviceTerms && failoverTerms && proxyTerms;
-}
-
-function hasPluginActivationValidationScope(query: string): boolean {
-  const normalized = normalizeCandidateText(query);
-  const pluginTerms = /\b(plugin|plugins|plugin id|plugin identifier|plugin identifiers|package name)\b/.test(normalized);
-  const activationTerms = /\b(activate|activation|toggleactive|toggle active|deactivate|admin\.plugins\.toggleactive)\b/.test(normalized);
-  const validationTerms = /\b(validate|validation|valid|invalid|malformed|whitespace|special characters?|naming pattern|identifier|invalid-plugin-id)\b/.test(normalized);
-  return pluginTerms && activationTerms && validationTerms;
-}
-
-function hasPromptSupportedPluginActivationConsumerScope(query: string): boolean {
-  const normalized = normalizeCandidateText(query);
-  const consumerTerms = /\b(client|frontend|front end|ui|browser|topic|topics|flags?|feature flag|consumer|consumers|caller|callers|admin client|request path|entry points?)\b/.test(normalized);
-  const propagationTerms = /\b(update|carry|propagate|through|across|also|every|all|both|surface|surfaces|path|paths|entry|entries)\b/.test(normalized);
-  return consumerTerms && propagationTerms;
-}
-
-function hasExecutionStateMigrationScope(query: string): boolean {
-  const normalized = normalizeCandidateText(query);
-  const stateTerms =
-    /\b(playiterator|play iterator|hoststate|host state|run_state|run state|fail_state|failure state|execution state|iterator state|state representation|strategy plugin|strategy plugins)\b/.test(normalized) ||
-    /\b(iteratingstates|failedstates|iterating_tasks|iterating_setup|failed_setup|failed_tasks)\b/.test(normalized);
-  const migrationTerms =
-    /\b(enum|enums|enumeration|intenum|intflag|public type|public representation|namespaced|legacy constants?|deprecated constants?|deprecation warning|backward compatibility|third-party|strategy\/linear|strategy\/__init__|metaclass|attribute access|string output)\b/.test(normalized);
-  const behaviorTerms =
-    /\b(preserve|redirect|emit|warn|compare|transition|assignment|bitwise|combinable|state descriptions?|readable state names?)\b/.test(normalized);
-  return stateTerms && migrationTerms && behaviorTerms;
-}
-
-function hasSelfContainedExecutionStateMigrationPrompt(query: string): boolean {
-  const normalized = normalizeCandidateText(query);
-  const requirementBullets = (query.match(/\n\s*-\s+/g) ?? []).length;
-  const interfaceDetail = countPresent(normalized, [
-    /\biterating states\b/,
-    /\bfailed states\b/,
-    /\bmeta play iterator\b/,
-    /\bint enum\b/,
-    /\bint flag\b/,
-    /\bnew interfaces introduced\b/
-  ]);
-  const compatibilityDetail = countPresent(normalized, [
-    /\blegacy constants?\b/,
-    /\bclass and instance\b/,
-    /\bthird party\b/,
-    /\bdeprecation warnings?\b/,
-    /\bhost state\b/
-  ]);
-  const surfaceDetail = countPresent(normalized, [
-    /\bplay iterator py\b/,
-    /\bstrategy init py\b/,
-    /\bstrategy linear py\b/
-  ]);
-  return requirementBullets >= 4 && interfaceDetail >= 2 && compatibilityDetail >= 2 && surfaceDetail >= 3;
-}
-
-function hasWebSessionRenewalScope(query: string): boolean {
-  const normalized = normalizeCandidateText(query);
-  return /\b(web session|session renewal|renew(?:ing)? (?:a )?(?:web )?session|prevsessionid|websessionreq|reloaduser|switchback|active requests?|access request|renewed session)\b/.test(normalized) &&
-    /\b(traits?|certificate|certificates?|ssh certificate|tls certificate|roles?|allowed resources?|login time|expiry|backend|user record|stale)\b/.test(normalized);
-}
-
-function hasRequestBodyFormScope(query: string): boolean {
-  const normalized = normalizeCandidateText(query);
-  const explicitFormSignal = /\b(unflatten|flattened|nested|indexed|parent keys?|form data|body data|request body|query string|query parameters?|duplicate (?:simple )?keys?|assignments?)\b/.test(normalized);
-  const requestQueryConflict =
-    /\b(post|form|body|request|endpoint|route|handler|list|lists)\b/.test(normalized) &&
-    /\b(query|params?|parameters?)\b/.test(normalized) &&
-    /\b(conflict|conflicts|merge|merged|handling|precedence|wins?|prefer|preferential)\b/.test(normalized);
-  return (explicitFormSignal || requestQueryConflict) &&
-    /\b(post|form|body|request|endpoint|route|handler|seeds?|defaults?)\b/.test(normalized);
-}
-
-function hasConverterOutputScope(query: string): boolean {
-  const normalized = normalizeCandidateText(query);
-  if (hasPackageSourceMappingScope(normalized)) return false;
-  const converterSignal =
-    /\b(convert|converts|converted|converter|converters|conversion|adapter|adapters)\b/.test(normalized) ||
-    /\b(trivy to vuls|trivy-to-vuls)\b/.test(normalized);
-  const outputSignal =
-    /\b(output|outputs|json|record|records|finding|findings|report|reports|contents?|cve|cves|severity|severities|debian|vuls|trivy)\b/.test(normalized);
-  return converterSignal && outputSignal;
-}
-
-function hasDiscoveryConfigScope(query: string): boolean {
-  const normalized = normalizeCandidateText(query);
-  return countPresent(normalized, [
-    /\b(discovery|discover|autodiscovery|well[- ]?known|homeserver|server discovery)\b/,
-    /\b(authentication|delegated auth|delegated authentication|m authentication|issuer|authorization endpoint|registration endpoint|token endpoint|account)\b/,
-    /\b(validated config|validated configuration|server config|configuration|config|preserve|expose|optional object|public interface)\b/
-  ]) >= 2;
-}
-
-function hasDeviceSessionListenerScope(query: string): boolean {
-  const normalized = normalizeCandidateText(query);
-  return countPresent(normalized, [
-    /\b(device|devices)\b/,
-    /\b(session|sessions)\b/,
-    /\b(notification|notifications|unverified)\b/,
-    /\b(listener|listeners|startup|existing|new|download|downloads|refresh|state)\b/
-  ]) >= 3;
-}
-
-function countPresent(value: string, patterns: RegExp[]): number {
-  return patterns.reduce((count, pattern) => count + (pattern.test(value) ? 1 : 0), 0);
-}
-
-function queryMentionsCompactIdentifier(query: string, identifier: string): boolean {
-  const compact = identifier.toLowerCase().replace(/[^a-z0-9]+/g, "");
-  if (compact.length < 4) return false;
-  const pattern = new RegExp(`(^|[^a-z0-9])${escapeRegExp(compact)}([^a-z0-9]|$)`, "i");
-  return pattern.test(query);
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function selectedTestCounterpartSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  const counterpartNames = selectedTestCounterpartBasenames(query);
-  if (counterpartNames.size === 0) return [];
-  const normalizedQuery = normalizeCandidateText(query);
-  return uniquePaths(
-    files
-      .filter((file) => isLikelyProductionSourceFile(file.path))
-      .map((file) => {
-        const basename = path.posix.basename(file.path).replace(/\.[^.]+$/, "").toLowerCase();
-        if (!counterpartNames.has(basename)) return { path: file.path, score: 0 };
-        const pathTerms = new Set(tokenizeLexical(file.path));
-        let score = 1000;
-        for (const term of pathTerms) {
-          if (term.length >= 4 && normalizedQuery.includes(term)) score += 50;
-        }
-        return { path: file.path, score };
-      })
-      .filter((item) => item.score > 0)
-      .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
-      .map((item) => item.path)
-  );
-}
-
-function selectedTestCounterpartBasenames(query: string): Set<string> {
-  const names = new Set<string>();
-  for (const match of query.matchAll(/\b[A-Za-z0-9_.@+~/-]+?\.(?:ts|tsx|js|jsx|mjs|cjs|py|pyi|java|kt|kts|go|rb|c|cc|cpp|cxx|h|hh|hpp|hxx)\b/g)) {
-    const filePath = normalizeRelativePath(match[0] ?? "").toLowerCase();
-    if (!isTestLikePath(filePath)) continue;
-    const basename = path.posix.basename(filePath).replace(/\.[^.]+$/, "");
-    const counterpart = basename.replace(/^(test|spec)[_-]/, "").replace(/[._-](test|spec)$/, "");
-    if (counterpart.length >= 3) names.add(counterpart);
-  }
-  return names;
-}
-
-function isTestLikePath(filePath: string): boolean {
-  const normalized = filePath.toLowerCase();
-  const basename = path.posix.basename(normalized);
-  return (
-    /(^|\/)(tests?|specs?|__tests__|testing)\//.test(normalized) ||
-    /(^|\/)src\/test\//.test(normalized) ||
-    /^(test|spec)[_-]/.test(basename) ||
-    /[._-](test|spec)\./.test(basename) ||
-    /_test\.go$/.test(basename)
-  );
-}
-
-function deprecationLifecycleSourceFilesFromKnownFiles(files: FileRecord[], query: string): string[] {
-  const scored = files
-    .filter((file) => isLikelyProductionSourceFile(file.path))
-    .map((file) => {
-      return { path: file.path, score: scoreDeprecationLifecyclePath({ filePath: file.path, query }) };
-    })
-    .filter((file) => file.score > 0)
-    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
-    .map((file) => file.path);
-  return uniquePaths(scored);
-}
-
-function promptFeatureAnchorTerms(query: string): string[] {
-  const generic = new Set([
-    "component",
-    "components",
-    "header",
-    "body",
-    "badge",
-    "icon",
-    "state",
-    "status",
-    "live",
-    "liveness",
-    "playback",
-    "recording",
-    "option",
-    "options",
-    "type",
-    "method",
-    "function",
-    "interface"
-  ]);
-  const terms = tokenizeLexical(query).filter((term) => term.length >= 4 && !generic.has(term));
-  const counts = new Map<string, number>();
-  for (const term of terms) counts.set(term, (counts.get(term) ?? 0) + 1);
-  return [...counts.entries()]
-    .filter(([, count]) => count >= 2)
-    .map(([term]) => term)
-    .slice(0, 4);
-}
-
-function buildPrimeDeliveryTrace(input: {
-  decision: ContextValueDecision;
-  guardrailVariant: string | undefined;
-  emittedFiles: string[];
-  editScope: ContextPrime["editScope"];
-  estimatedDirectiveTokens: number;
-  estimatedSourceContextTokens: number;
-}): PrimeDeliveryTrace {
-  const emittedFileRoleSummary: Partial<Record<FileRoleV2, number>> = {};
-  for (const file of input.emittedFiles) {
-    const role = deliveryRoleForPath(file);
-    emittedFileRoleSummary[role] = (emittedFileRoleSummary[role] ?? 0) + 1;
-  }
+function lightweightLexicalResult(
+  file: FileRecord,
+  bm25Score: number,
+  reasons: string[]
+): HybridScoredResult {
   return {
-    action: input.decision.action,
-    ...(input.decision.recommendedDelivery ? { recommendedDelivery: input.decision.recommendedDelivery } : {}),
-    ...(input.decision.taskShapeSignal ? { taskShapeSignal: input.decision.taskShapeSignal } : {}),
-    ...(input.decision.requiredSurface ? { requiredSurface: input.decision.requiredSurface } : {}),
-    ...(input.decision.directiveStyle ? { directiveStyle: input.decision.directiveStyle } : {}),
-    ...(input.guardrailVariant ? { guardrailVariant: input.guardrailVariant } : {}),
-    emittedFileCount: input.emittedFiles.length,
-    emittedFileRoleSummary,
-    ...(input.editScope?.scopeSource ? { editScopeSource: input.editScope.scopeSource } : {}),
-    estimatedDirectiveTokens: input.estimatedDirectiveTokens,
-    estimatedSourceContextTokens: input.estimatedSourceContextTokens,
-    sizingReason: deliverySizingReason(input.decision, input.guardrailVariant, input.emittedFiles.length)
+    ...file,
+    score: bm25Score,
+    reasons,
+    semanticScore: 0,
+    keywordScore: 0,
+    bm25Score,
+    behaviorScore: 0,
+    graphScore: 0,
+    intentScore: 0,
+    sessionScore: 0,
+    importanceScore: file.importance,
+    gitScore: 0,
+    chunks: []
   };
 }
 
-function deliverySizingReason(decision: ContextValueDecision, guardrailVariant: string | undefined, emittedFileCount: number): string {
-  if (decision.action === "request_evidence") return "evidence needed before source context";
-  if (decision.action === "suppress") return "context suppressed by session policy";
-  if (guardrailVariant) return `official ${guardrailVariant.replace(/_/g, " ")}`;
-  if (decision.requiredSurface === "single_file") return "single-file source surface";
-  if (decision.requiredSurface === "paired_contract") return "paired contract source surface";
-  if (decision.requiredSurface === "feature_cluster") return "frontend owner cluster";
-  if (emittedFileCount > 1) return "compact multi-file source surface";
-  return "standard focused source surface";
+function lightweightKeywordResult(
+  file: FileRecord,
+  keywordScore: number,
+  reasons: string[]
+): HybridScoredResult {
+  return {
+    ...file,
+    score: keywordScore,
+    reasons,
+    semanticScore: 0,
+    keywordScore,
+    bm25Score: 0,
+    behaviorScore: 0,
+    graphScore: 0,
+    intentScore: 0,
+    sessionScore: 0,
+    importanceScore: file.importance,
+    gitScore: 0,
+    chunks: []
+  };
 }
 
-function deliveryRoleForPath(file: string): FileRoleV2 {
-  const normalized = file.toLowerCase();
-  if (/\b(test|tests|spec|specs|__tests__|fixtures?)\b|[-_.](test|spec)\./.test(normalized)) return "test";
-  if (/\b(docs?|readme|changelog)\b/.test(normalized) || /\.(md|mdx|rst|txt)$/.test(normalized)) return "docs";
-  if (/\b(examples?|samples?)\b/.test(normalized)) return "example";
-  if (/\b(generated|vendor|third_party|dist|build|coverage|snapshot)\b/.test(normalized)) return "generated";
-  if (/\b(configdata|settings?|options?|config)\b/.test(normalized) || /\.(ya?ml|toml|ini)$/.test(normalized)) return "config";
-  if (/\b(schema|schemas|types?)\b/.test(normalized)) return "schema";
-  if (/\b(api|public|exports?|index)\b/.test(normalized)) return "public_api";
-  if (/\b(cli|cmd|command|main|entry|launcher)\b/.test(normalized)) return "entrypoint";
-  if (/\b(route|routes|router|pages?|app)\b/.test(normalized)) return "route";
-  if (/\b(component|components|view|views|atoms|molecules|organisms|screen|screens)\b/.test(normalized) || /\.(tsx|jsx|vue|svelte)$/.test(normalized)) return "ui_surface";
-  if (/\b(platform|provider|adapter|backend|driver|variant)\b/.test(normalized)) return "platform_variant";
-  if (/\b(node_modules|vendor)\b/.test(normalized)) return "vendor_dep";
-  return "production_source";
+function mergeLightweightResults(
+  lexical: HybridScoredResult[],
+  keyword: HybridScoredResult[]
+): HybridScoredResult[] {
+  const byPath = new Map<string, HybridScoredResult>();
+  for (const result of [...lexical, ...keyword]) {
+    const previous = byPath.get(result.path);
+    if (!previous) {
+      byPath.set(result.path, result);
+      continue;
+    }
+    const bm25Score = Math.max(previous.bm25Score, result.bm25Score);
+    const keywordScore = Math.max(previous.keywordScore, result.keywordScore);
+    byPath.set(result.path, {
+      ...previous,
+      score: bm25Score + keywordScore,
+      bm25Score,
+      keywordScore,
+      reasons: uniqueStrings([...previous.reasons, ...result.reasons])
+    });
+  }
+  return [...byPath.values()].sort((left, right) => right.score - left.score || left.path.localeCompare(right.path));
+}
+
+function normalizeLightweightScores(
+  results: HybridScoredResult[],
+  field: "bm25Score" | "keywordScore"
+): HybridScoredResult[] {
+  const maximum = Math.max(0, ...results.map((result) => result[field]));
+  if (maximum <= 0) return results;
+  return results.map((result) => {
+    const value = result[field] / maximum;
+    return {
+      ...result,
+      score: value,
+      [field]: value
+    };
+  });
+}
+
+function selectRoleBalancedSeeds(
+  results: HybridScoredResult[],
+  includeProductionReserve: boolean
+): HybridScoredResult[] {
+  const global = results.slice(0, DEFAULT_INITIAL_CANDIDATE_LIMIT);
+  if (!includeProductionReserve) return global;
+  const production = results
+    .filter((result) => isProductionEvidenceFile(result))
+    .slice(0, DEFAULT_ENRICHED_CANDIDATE_LIMIT * 3);
+  return mergeLightweightResults(global, production);
 }
 
 function rankedFilesFromScored(files: HybridScoredResult[]): ContextRankedFile[] {
@@ -6081,6 +4979,19 @@ function rankedFilesFromScored(files: HybridScoredResult[]): ContextRankedFile[]
     kind: file.kind,
     score: file.score,
     reasons: file.reasons,
+    ...(file.relevanceProbability !== undefined ? { relevanceProbability: file.relevanceProbability } : {}),
+    ...(file.probabilityGap !== undefined ? { probabilityGap: file.probabilityGap } : {}),
+    ...(file.rankerModelId ? { rankerModelId: file.rankerModelId } : {}),
+    ...(file.featureSchemaVersion ? { featureSchemaVersion: file.featureSchemaVersion } : {}),
+    ...(file.evidenceReasons ? { evidenceReasons: file.evidenceReasons } : {}),
+    ...(file.delivery ? { delivery: file.delivery } : {}),
+    ...(file.rankerMode ? { rankerMode: file.rankerMode } : {}),
+    ...(file.rankerFallbackReason ? { rankerFallbackReason: file.rankerFallbackReason } : {}),
+    ...(file.candidateGeneratorMode ? { candidateGeneratorMode: file.candidateGeneratorMode } : {}),
+    ...(file.semanticModelId ? { semanticModelId: file.semanticModelId } : {}),
+    ...(file.semanticIndexStatus ? { semanticIndexStatus: file.semanticIndexStatus } : {}),
+    ...(file.semanticSimilarity !== undefined ? { semanticSimilarity: file.semanticSimilarity } : {}),
+    ...(file.semanticFallbackReason ? { semanticFallbackReason: file.semanticFallbackReason } : {}),
     scores: {
       semantic: file.semanticScore,
       keyword: file.keywordScore,
@@ -6121,11 +5032,6 @@ function preferredStructuredDebugPrimary(primaryFile: string | undefined, compan
         reason.includes("command-line parser companion") ||
         reason.includes("config companion") ||
         reason.includes("routing map/rule companion") ||
-        reason.includes("routing map/rule/matcher source companion") ||
-        reason.includes("line/comment formatting source companion") ||
-        reason.includes("core search source companion") ||
-        reason.includes("printer output source companion") ||
-        reason.includes("fixture/runner source companion") ||
         reason.includes("named source surface") ||
         reason.includes("compound path term match")
       )
@@ -6163,4 +5069,8 @@ function uniqueSymbols(symbols: SymbolRecord[]): SymbolRecord[] {
     byKey.set(`${symbol.filePath}:${symbol.name}:${symbol.startLine}:${symbol.endLine}`, symbol);
   }
   return [...byKey.values()];
+}
+
+function roundTimingMs(value: number): number {
+  return Math.round(value * 1000) / 1000;
 }

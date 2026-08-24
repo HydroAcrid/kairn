@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "semantic-holdout-checkpoint.v1",
+  "checkpointId": "v02c-semantic-holdout-v3-20260724",
+  "createdAt": "2026-07-24T18:30:00-04:00",
+  "status": "passed",
+  "frozenImplementationCommit": "b145292",
+  "freezeCheckpointCommit": "4b02691",
+  "manifest": {
+    "path": "benchmarks/semantic/model-selection-v3.json",
+    "sha256": "1294dd5c742dad29ee73aad492552202805d8c736a906a1e8afdceedce158d71",
+    "documentSchemaVersion": "semantic-documents-v3"
+  },
+  "model": {
+    "modelId": "jina-code-v2-q8",
+    "upstreamRepository": "jinaai/jina-embeddings-v2-base-code",
+    "upstreamRevision": "516f4baf13dec4ddddda8631e019b5737c8bc250",
+    "installedBytesAfterFallbackRemoval": 165443832
+  },
+  "holdout": {
+    "artifactPath": "artifacts/semantic/jina-holdout-v3.json",
+    "artifactSha256": "b2fefad80dbe072d4cc8d054031afd4c32eacc0145d8d16ac4b99b5c4f9871db",
+    "caseCount": 5,
+    "recallAt1": 0.8,
+    "recallAt5": 1,
+    "strictFullRecallAt64": 1,
+    "strictFullRecallAt128": 1,
+    "meanReciprocalRank": 0.9,
+    "zeroPositiveCasesAt128": 0,
+    "medianQueryLatencyMs": 40.064,
+    "tuningAfterHoldout": false
+  },
+  "runtime": {
+    "artifactPath": "artifacts/semantic/jina-runtime-v3.json",
+    "artifactSha256": "21239eb2d52b788f91da83e79ee2e9f6af490f0f385fb7a3288d8ead5644ec0c",
+    "cpuThreads": 4,
+    "documentChars": 768,
+    "embeddingBatchSize": 16,
+    "referenceDocuments": 7500,
+    "coldInitializationMs": 820.979,
+    "warmQueryP95Ms": 25.411,
+    "vectorScanP95Ms": 13.6,
+    "warmCandidateP95UpperBoundMs": 39.011,
+    "projectedInitialEmbeddingMinutesAt7500": 21.07,
+    "gates": {
+      "coldInitializationAtMostFiveSeconds": true,
+      "warmCandidateAtMost300Ms": true,
+      "vectorScanAtMost50Ms": true
+    }
+  },
+  "candidateGatePassed": true,
+  "paidComparisonEligible": false,
+  "nextGate": "Rerun the 38-case public required-source oracle. Promotion requires 38/38 strict full recall at 64 and no zero-positive cases at 128."
+}

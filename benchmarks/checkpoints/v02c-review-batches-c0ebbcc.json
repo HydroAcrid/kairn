@@ -1,0 +1,181 @@
+{
+  "schemaVersion": "ranker-corpus-review-batch-index.v1",
+  "corpusId": "kairn-evidence-v02c-20260722",
+  "status": "review_pending",
+  "promotionEligible": false,
+  "sourceQueue": {
+    "fileName": "ranker-corpus.review-queue-v35-freeze.json",
+    "sha256": "16acb7b34ac67bf24cc3a8562aac5f8ae665b86550064f794e1738354291c117",
+    "intakeSha256": "b38df6aebe47113d70636efadf7b0afb54dd148283bcc6e66cb7ee001ee7943f",
+    "manifestSha256": "4dde1e38fc8eedb3015a2a39baaa41cda19d24deaaa02329b82536686159b2a3",
+    "reportSha256": "f5c9a90f8904c21b00d486466512809d472554dd27a94634bb69d45aa53a6de5",
+    "materializerCommit": "c0ebbcc0e84f0813a2e9fb5ff0ff002389347ad2"
+  },
+  "caseCount": 165,
+  "caseSetSha256": "97700e6a8dfbf415f32213c42b362063599bc56b08bc2d1707e55510f6a44f65",
+  "batchSize": 11,
+  "batchCount": 15,
+  "initialReviewProgress": {
+    "completedCases": 0,
+    "pendingCases": 165
+  },
+  "policy": {
+    "decisionsAreNeverAutoFilled": true,
+    "immutableContextMustMatchSourceQueue": true,
+    "exactCaseCoverageRequired": true,
+    "partialProgressMayBeMerged": true,
+    "completeMergeRequiredBeforeSealing": true
+  },
+  "batches": [
+    {
+      "batchId": "batch-001-of-015",
+      "fileName": "batch-001-of-015.json",
+      "caseCount": 11,
+      "firstCaseId": "v02c-train-python-source_localization-001",
+      "lastCaseId": "v02c-train-python-failure_first-011",
+      "caseIdsSha256": "78fd802e1b1c1ccadec732d82c059d67375fdeb7191ea25d473af957f056bca6",
+      "contextSha256": "ba69210c35127323bf3b1917cb8c709beb8e0a860d3c867c7f5e9f7d3164b26e",
+      "initialTemplateSha256": "8863974951ef99ce6bbfea6fa1d79efde8aa0a2b661ba0aa81f6ce061c5eac59"
+    },
+    {
+      "batchId": "batch-002-of-015",
+      "fileName": "batch-002-of-015.json",
+      "caseCount": 11,
+      "firstCaseId": "v02c-train-python-failure_first-012",
+      "lastCaseId": "v02c-train-typescript-source_localization-022",
+      "caseIdsSha256": "379b3bcae4c07708fcb93f48cf1bfdea42eab2f6d65b6599e01425ee5d469585",
+      "contextSha256": "fae13bc888447c001951ecd734d1654686819f98b6bfb7849c1e1c9a0086898a",
+      "initialTemplateSha256": "b7bb3528f44ebb9e691027742607ac39b414a19f7a825c74b3cc59adb6618dc7"
+    },
+    {
+      "batchId": "batch-003-of-015",
+      "fileName": "batch-003-of-015.json",
+      "caseCount": 11,
+      "firstCaseId": "v02c-train-typescript-source_localization-023",
+      "lastCaseId": "v02c-train-typescript-long_session-033",
+      "caseIdsSha256": "afd69a0bbd94a18a57f314e7ca6bf84992356bf8c9632ab7c8b40faa5cbffe08",
+      "contextSha256": "407ca804a0a5648064d4821a2b1319091a3b82d8fa9fefef964ac9fe1ebc81ec",
+      "initialTemplateSha256": "f8a6726ecdb514bb46d0c6db67f5fed5251213a08e0f5def4c7c2ca5a6f2cedf"
+    },
+    {
+      "batchId": "batch-004-of-015",
+      "fileName": "batch-004-of-015.json",
+      "caseCount": 11,
+      "firstCaseId": "v02c-train-typescript-long_session-034",
+      "lastCaseId": "v02c-train-go-failure_first-044",
+      "caseIdsSha256": "933b4bad36507520c5031543eae546c1b1fc6c72f2bd057f0a327a532a5268f0",
+      "contextSha256": "3ef8cb852dd4a3d80069b26de91e9607f7af1c637da5ffc9c8a545a6b8caac9e",
+      "initialTemplateSha256": "bcc28bf9739d26f0d5420afdff7f628dfd94a27fd0892baaee4424cd82031ce6"
+    },
+    {
+      "batchId": "batch-005-of-015",
+      "fileName": "batch-005-of-015.json",
+      "caseCount": 11,
+      "firstCaseId": "v02c-train-go-failure_first-045",
+      "lastCaseId": "v02c-train-java-source_localization-055",
+      "caseIdsSha256": "38302888416057775d80e8587025109d6c3c52a4ce41daadc3b324eef0682c33",
+      "contextSha256": "e01ef6818f0477fca3e9234b2220d866fc836e373c1be0226e51350d411f942f",
+      "initialTemplateSha256": "e3e31d853f1fdc022c30ba5de98e31d168d002a855379376d98cadb3ed6433af"
+    },
+    {
+      "batchId": "batch-006-of-015",
+      "fileName": "batch-006-of-015.json",
+      "caseCount": 11,
+      "firstCaseId": "v02c-train-java-source_localization-056",
+      "lastCaseId": "v02c-train-java-failure_first-066",
+      "caseIdsSha256": "b0e71a0f35380d5180ca65bd49181ff7e0d22a3d39b3323b1b1a5bf0cbd19823",
+      "contextSha256": "3c9edce5ab6ef4ad9f9f861dcece9a78d5bc8e66630e8fe111e4b29921bdd9b2",
+      "initialTemplateSha256": "5bc19a896801a49f31849f133d44227be1aff165607df84ab4754ccb8b6889d7"
+    },
+    {
+      "batchId": "batch-007-of-015",
+      "fileName": "batch-007-of-015.json",
+      "caseCount": 11,
+      "firstCaseId": "v02c-train-java-long_session-067",
+      "lastCaseId": "v02c-train-cpp-source_localization-077",
+      "caseIdsSha256": "8e8ea9e85dffdd81aff71343905e72d18d953d706ddb986c07bfedb5939a5244",
+      "contextSha256": "6263d30ac5be1b19c1ebe1891647e70552b19b97b34dc27cafcf8572c0e80d29",
+      "initialTemplateSha256": "a8b64e8813f17d27dfc4a1ce6860dc7988c8c3244d23be022292c58b386f2501"
+    },
+    {
+      "batchId": "batch-008-of-015",
+      "fileName": "batch-008-of-015.json",
+      "caseCount": 11,
+      "firstCaseId": "v02c-train-cpp-source_localization-078",
+      "lastCaseId": "v02c-train-cpp-long_session-088",
+      "caseIdsSha256": "b870fc71284ecb2c1271d87f549df35b3fd0b83b78ac9f95e580fa594c5b3e10",
+      "contextSha256": "9a3adbabbd732eabee699290862f2e79b0b9da49fd1aad248e56f86b29276141",
+      "initialTemplateSha256": "635ed89b78faa76f7f8c38045ec9de49eaa017879227b6960cda746612649cd7"
+    },
+    {
+      "batchId": "batch-009-of-015",
+      "fileName": "batch-009-of-015.json",
+      "caseCount": 11,
+      "firstCaseId": "v02c-train-cpp-long_session-089",
+      "lastCaseId": "v02c-calibration-python-long_session-099",
+      "caseIdsSha256": "2f5f5ceeef3321548ddce913e7fec698d87dc3ed32d9a2a4edc6315caf592a21",
+      "contextSha256": "51f5e2e54e47bb56bc737906a3daffaabd0abd1930f6376b6d7831961fc18c28",
+      "initialTemplateSha256": "ed22e43f879ec55add74300b486986527eb6cd7cdd7ef8a14a1e1f6bb814e411"
+    },
+    {
+      "batchId": "batch-010-of-015",
+      "fileName": "batch-010-of-015.json",
+      "caseCount": 11,
+      "firstCaseId": "v02c-calibration-typescript-source_localization-100",
+      "lastCaseId": "v02c-calibration-go-source_localization-110",
+      "caseIdsSha256": "85b1eed708cb9b9a615188ef0dccd7803a7a5eedd661cb587e8deebd89ebe52a",
+      "contextSha256": "069919cf5132ee7717627ae61e8ac226b9ff434b9b52050ca3c9c9e7cb9b3acf",
+      "initialTemplateSha256": "035dfaec2c23d700aa418f9d9e70ed56389b3c641161c1b91a74f27539bc793e"
+    },
+    {
+      "batchId": "batch-011-of-015",
+      "fileName": "batch-011-of-015.json",
+      "caseCount": 11,
+      "firstCaseId": "v02c-calibration-go-source_localization-111",
+      "lastCaseId": "v02c-calibration-java-failure_first-121",
+      "caseIdsSha256": "3139cc3dd337736e2351852265a8efac057af46c9ab27250fd5ac05edea38a65",
+      "contextSha256": "fdeb9002524d39ecbce9612b2da449fcd073dcb66f6029d18595435defc3f3da",
+      "initialTemplateSha256": "ebaf13deb38bbabc697a64191197ff44c04c02b7c0075d13509cc9d305c3540c"
+    },
+    {
+      "batchId": "batch-012-of-015",
+      "fileName": "batch-012-of-015.json",
+      "caseCount": 11,
+      "firstCaseId": "v02c-calibration-java-failure_first-122",
+      "lastCaseId": "v02c-calibration-cpp-failure_first-132",
+      "caseIdsSha256": "460bde19e27830d9e32b1f0133d64b0c6929e91019a68902a74fecfe980b2875",
+      "contextSha256": "d3d6a76b36808f3dd92ae033e347d3da7ecffa68d887c71794cabf996ba39073",
+      "initialTemplateSha256": "c3bc7ad7c14989e1f1455500715b5204428a0fa696ed1e3f24967e4dabc39417"
+    },
+    {
+      "batchId": "batch-013-of-015",
+      "fileName": "batch-013-of-015.json",
+      "caseCount": 11,
+      "firstCaseId": "v02c-calibration-cpp-long_session-133",
+      "lastCaseId": "v02c-holdout-typescript-source_localization-143",
+      "caseIdsSha256": "cabf19e990df3255d9eacc7fe480da784ab5d4225ae4fe2ab0cda1d9fbd1e105",
+      "contextSha256": "d5e722c05e11f187584fb153e4796886bcf36938298efe244ecfaca4287a160b",
+      "initialTemplateSha256": "538f504042099a61c69894469ed2c0244cb9abe2953fce6152e23c27a55935cd"
+    },
+    {
+      "batchId": "batch-014-of-015",
+      "fileName": "batch-014-of-015.json",
+      "caseCount": 11,
+      "firstCaseId": "v02c-holdout-typescript-failure_first-144",
+      "lastCaseId": "v02c-holdout-java-source_localization-154",
+      "caseIdsSha256": "ddf956d6fc27de1ef4322fbba8eb4b610d971fe7eb84d42f5c88bd4b39a2bfa8",
+      "contextSha256": "dda1d4ec727d6b95ea70e0f297da87c41bea3b37fe1a65a6e0b4b72edcd138e1",
+      "initialTemplateSha256": "185258b078d7f42c082f0f53581fa42caa490565acb7cccc55a1134832a6416a"
+    },
+    {
+      "batchId": "batch-015-of-015",
+      "fileName": "batch-015-of-015.json",
+      "caseCount": 11,
+      "firstCaseId": "v02c-holdout-java-source_localization-155",
+      "lastCaseId": "v02c-holdout-cpp-long_session-165",
+      "caseIdsSha256": "63fc8357b5392c9f7754209f0e4d0b93be7b688284288d7ea12a1f2127917f85",
+      "contextSha256": "1b64ed9d281ea89b8008947008f64d85279b1d11f146e3c67916f9734706be58",
+      "initialTemplateSha256": "5bc2ef4b5c982d51873e9268f4898eac86e2fbf7ecc51e512724f7db8bcd34e5"
+    }
+  ]
+}

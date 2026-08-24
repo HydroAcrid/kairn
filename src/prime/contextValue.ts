@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { ContextResponse, ContextValueDecision, FileRecord, PrimeQuality } from "../types.js";
 import type { ResolvedPrimeProfile } from "./quality.js";
 import { isFailureDebugTask } from "./quality.js";

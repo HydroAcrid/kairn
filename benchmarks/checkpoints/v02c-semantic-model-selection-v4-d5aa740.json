@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "semantic-model-freeze.v1",
+  "checkpointId": "v02c-semantic-model-selection-v4-20260724",
+  "createdAt": "2026-07-24T19:09:44-04:00",
+  "status": "frozen_before_holdout",
+  "implementationBaseCommit": "d5aa740",
+  "supersedes": "v02c-semantic-model-selection-v3-20260724",
+  "supersessionReason": "The first public calibration case showed that file summaries and top-of-file symbol allocation hid relevant method bodies in large parser files. The general parser coverage and bounded weighted symbol-allocation mechanisms were changed without adding task, path, filename, symbol, or benchmark-specific relevance rules. The previously opened v3 holdout is therefore not reused as promotion evidence.",
+  "selectionManifest": {
+    "path": "benchmarks/semantic/model-selection-v4.json",
+    "sha256": "e6d018fc0cd8bb23b69f3c9bd6298a4b4e5e9641f4a0ff6c6d4f15b6a77e8124",
+    "documentSchemaVersion": "semantic-documents-v3",
+    "selectionCases": 10,
+    "holdoutCases": 5,
+    "lineageDisjoint": true,
+    "holdoutOpened": false
+  },
+  "candidates": [
+    {
+      "modelId": "bge-small-en-v15",
+      "selectionArtifactSha256": "4e35c8716373ce455a10f78fc4acca0aa704bde5cf8f3e1aa976b11a24cb855a",
+      "selection": {
+        "recallAt1": 0.7,
+        "recallAt5": 1,
+        "strictFullRecallAt64": 1,
+        "strictFullRecallAt128": 1,
+        "meanReciprocalRank": 0.833333,
+        "medianQueryLatencyMs": 14.434,
+        "coldInitializationMs": 723.224
+      }
+    },
+    {
+      "modelId": "jina-code-v2-q8",
+      "selectionArtifactSha256": "61fb8a4cbc18a87492ceb72bd0a524380c0839c847ab12778fd34fbcba5daa20",
+      "selection": {
+        "recallAt1": 1,
+        "recallAt5": 1,
+        "strictFullRecallAt64": 1,
+        "strictFullRecallAt128": 1,
+        "meanReciprocalRank": 1,
+        "medianQueryLatencyMs": 29.543,
+        "coldInitializationMs": 1030.229
+      }
+    }
+  ],
+  "winner": {
+    "modelId": "jina-code-v2-q8",
+    "reason": "Jina retained perfect selection Recall@1 and MRR and remains the predeclared code-retrieval-quality preference. BGE was faster but ranked three of ten required sources below first.",
+    "documentSchemaVersion": "semantic-documents-v3",
+    "maximumDocumentChars": 768,
+    "embeddingBatchSize": 16,
+    "featureSchemaVersion": "evidence-features-v2",
+    "semanticTopK": 64,
+    "initialCandidateLimit": 64,
+    "enrichedCandidateLimit": 128,
+    "rankFusionConstant": 60,
+    "graphHops": 1
+  },
+  "verification": {
+    "tests": {
+      "filesPassed": 30,
+      "testsPassed": 423
+    },
+    "typecheck": "passed",
+    "build": "passed",
+    "semanticArchitectureCheck": "passed",
+    "publicCalibrationSmoke": {
+      "caseId": "v02c-calibration-typescript-failure_first-103",
+      "requiredSourceRankAt64": 12,
+      "requiredSourceRecallAt64": 1,
+      "semanticSimilarity": 0.661666,
+      "stateBytes": 159146088
+    }
+  },
+  "holdoutOpened": false,
+  "paidComparisonEligible": false,
+  "nextGate": "Commit and push this freeze, then evaluate Jina exactly once on the five new v4 holdout lineages. No tuning is allowed after opening the holdout."
+}

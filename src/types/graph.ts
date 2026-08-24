@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 export type FileKind =
   | "source"
   | "test"
@@ -30,7 +32,9 @@ export type GraphEdgeType =
   | "definition"
   | "reference"
   | "call"
+  | "shared_call_target"
   | "type_reference"
+  | "module_installation"
   | "implementation";
 
 export type SemanticChunkKind = "symbol" | "file_summary";
@@ -73,6 +77,8 @@ export type IndexStateStats = {
   graphEdgeCount: number;
   semanticChunkCount: number;
   semanticVectorCount: number;
+  semanticDocumentCount?: number;
+  semanticEmbeddingCount?: number;
   lexicalDocumentCount: number;
   lexicalTermCount: number;
   tiers: Record<IndexTier, number>;
@@ -92,7 +98,7 @@ export type IndexFreshnessMetadata = {
 
 export type IndexFreshnessStatus = {
   stale: boolean;
-  reason: "fresh" | "missing_metadata" | "git_head_changed" | "git_branch_changed" | "dirty_state_changed" | "file_count_changed" | "unknown";
+  reason: "fresh" | "missing_metadata" | "git_head_changed" | "git_branch_changed" | "dirty_state_changed" | "file_count_changed" | "index_schema_changed" | "unknown";
   indexedAt?: string | undefined;
   gitHead?: string | undefined;
   gitBranch?: string | undefined;
@@ -161,6 +167,14 @@ export type ParsedFile = {
   language: string;
   symbols: SymbolRecord[];
   imports: string[];
+  /** Parser-observed type names used by this file, never task-derived relevance terms. */
+  references?: string[];
+  /** Parser-observed unqualified call targets, never task-derived relevance terms. */
+  calls?: string[];
+  /** Relative module-family prefixes from dynamic local require calls. */
+  dynamicImports?: string[];
+  /** Literal modules that are required and immediately invoked as installers. */
+  moduleInstallers?: string[];
   hasErrors: boolean;
 };
 
@@ -190,6 +204,38 @@ export type SemanticVectorRecord = {
   chunkId: string;
   dimensions: number;
   vector: number[];
+};
+
+export type SemanticDocumentKind = "file" | "symbol";
+export type SemanticDocumentSchemaVersion =
+  | "semantic-documents-v1"
+  | "semantic-documents-v2"
+  | "semantic-documents-v3"
+  | "semantic-documents-v4"
+  | "semantic-documents-v5";
+
+export type SemanticDocumentRecord = {
+  rootPath: string;
+  id: string;
+  filePath: string;
+  kind: SemanticDocumentKind;
+  symbol?: string;
+  text: string;
+  hash: string;
+  tokenEstimate: number;
+  schemaVersion: SemanticDocumentSchemaVersion;
+};
+
+export type SemanticEmbeddingRecord = {
+  rootPath: string;
+  documentId: string;
+  documentHash: string;
+  modelId: string;
+  schemaVersion: SemanticDocumentSchemaVersion;
+  dimensions: number;
+  /** Symmetric int8 quantization keeps a repository-wide local index bounded. */
+  vector: Int8Array;
+  scale: number;
 };
 
 export type LexicalDocumentRecord = {
@@ -224,6 +270,8 @@ export type ScanResult = {
   candidateCount?: number;
   indexedFileLimit?: number;
   skippedByLimit?: number;
+  inventoryOnlyCount?: number;
+  contentIndexedCount?: number;
   indexTiers?: Record<IndexTier, number>;
   tierStates?: IndexedFileTierState[];
   scannedAt: string;

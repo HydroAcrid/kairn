@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "semantic-diagnostic-checkpoint.v1",
+  "checkpointId": "v02c-semantic-axios-recovery-20260725",
+  "createdAt": "2026-07-25T13:15:00-04:00",
+  "status": "targeted_case_recovered_not_promotion_evidence",
+  "implementationCommit": "5430391",
+  "branch": "codex/v0.2c-semantic-iteration",
+  "model": {
+    "modelId": "jina-code-v2-q8",
+    "documentSchemaVersion": "semantic-documents-v4"
+  },
+  "intake": {
+    "path": "artifacts/ranker-corpus-intake.reviewed-v35.json",
+    "sha256": "bcfe94973f9e93964a2bd0473addb3c1f43a0b4fed1168de690214db36629fa6"
+  },
+  "case": {
+    "id": "v02c-holdout-typescript-source_localization-142",
+    "requiredSource": "lib/helpers/isAbsoluteURL.js",
+    "legacyReviewedBaseline": {
+      "reportPath": "artifacts/ranker-corpus.semantic-v19-oracle38-regression.report.json",
+      "reportSha256": "e935a570da829f3bf193f2933250cf72327324e44d7590c0e4c0a42687e73e0d",
+      "rankAt64": null,
+      "rankAt128": 95,
+      "requiredSourceRecallAt64": 0,
+      "requiredSourceRecallAt128": 1
+    },
+    "preCorrectionDiagnostic": {
+      "reportPath": "artifacts/ranker-corpus.semantic-v24-axios-docrefs.report.json",
+      "reportSha256": "93ab2931a0de793e63c906d5bbf75aaaabf5302ab86457bab09f9c2aec7aed40",
+      "semanticFusedRank": 44,
+      "bm25Rank": 17,
+      "finalRankAt64": null,
+      "finalRankAt128": 72,
+      "finding": "A second graph-fusion pass evicted independently strong retrieval evidence from the initial 64-file lane."
+    },
+    "correctedResult": {
+      "manifestPath": "artifacts/ranker-corpus.semantic-v25-axios-stable-initial.json",
+      "manifestSha256": "368d3639e2c71027753debafe0e201e2197ad617a127225d9f528a53080ed267",
+      "reportPath": "artifacts/ranker-corpus.semantic-v25-axios-stable-initial.report.json",
+      "reportSha256": "d7ac9e78638e31220d4f314963842274cf024f0119292c01c6e965016d950915",
+      "semanticQueryViewRanks": [23, 66, 52],
+      "semanticFusedRank": 44,
+      "bm25Rank": 17,
+      "finalRankAt64": 41,
+      "finalRankAt128": 41,
+      "requiredSourceRecallAt64": 1,
+      "requiredSourceRecallAt128": 1
+    }
+  },
+  "mechanism": {
+    "change": "Preserve the first 64 files selected from independent semantic, BM25, exact-symbol, git, and session evidence; graph candidates enrich the union without evicting that lane.",
+    "taskTermsAdded": false,
+    "pathOrFilenameBonusesAdded": false,
+    "regexRelevanceAdded": false,
+    "benchmarkSpecificPolicyAdded": false
+  },
+  "integrity": {
+    "targetedCaseInspectedBeforeChange": true,
+    "tuningAfterCaseAccess": true,
+    "eligibleAsFreshHoldout": false,
+    "eligibleAsPublicationAggregate": false,
+    "negativeIntermediateResultDisclosed": true
+  },
+  "promotion": {
+    "candidateGatePassed": false,
+    "paidComparisonEligible": false,
+    "nextGate": "Validate the same general mechanism on the complete reviewed 38-case oracle after targeted mechanism changes stop."
+  }
+}

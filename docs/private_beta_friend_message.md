@@ -1,6 +1,6 @@
 # Kairn Private Beta Instructions
 
-I am privately testing **Kairn**, a local-first context governor for AI coding agents.
+I am privately testing **Kairn**, a local repository-evidence and token-efficiency layer for coding agents.
 
 Kairn indexes your repo locally and helps agents like Codex, VS Code/Copilot MCP, Claude Code, Gemini, and other MCP clients avoid rereading unnecessary repo context. It may provide focused source context, shrink to a small edit-scope directive, ask for better evidence, or stay silent when extra context would be noise.
 
@@ -23,7 +23,7 @@ git --version
 If I sent you a tarball, it will look like:
 
 ```text
-kairn-0.1.2.tgz
+usekairn-0.2.0-beta.1.tgz
 ```
 
 Use the full path to that file during install if you are not in the same directory.
@@ -40,8 +40,8 @@ nvm use 24
 Install Kairn:
 
 ```bash
-npm uninstall -g kairn || true
-npm install -g ~/Downloads/kairn-0.1.2.tgz
+npm uninstall -g usekairn || true
+npm install -g ~/Downloads/usekairn-0.2.0-beta.1.tgz
 kairn --version
 ```
 
@@ -49,7 +49,7 @@ Set up a repo:
 
 ```bash
 cd /path/to/your/repo
-kairn setup wizard
+kairn enable
 kairn doctor
 ```
 
@@ -84,9 +84,9 @@ git --version
 Install Kairn from Downloads:
 
 ```powershell
-$Tarball = "$env:USERPROFILE\Downloads\kairn-0.1.2.tgz"
+$Tarball = "$env:USERPROFILE\Downloads\usekairn-0.2.0-beta.1.tgz"
 Test-Path $Tarball
-npm uninstall -g kairn
+npm uninstall -g usekairn
 npm install -g $Tarball
 kairn --version
 ```
@@ -95,7 +95,7 @@ Set up a repo:
 
 ```powershell
 cd C:\path\to\your\repo
-kairn setup wizard --targets vscode,generic --yes --index-mode safe
+kairn enable --agents vscode,generic --yes
 kairn doctor --target vscode
 kairn beta report
 ```
@@ -136,14 +136,14 @@ Copy the tarball into WSL if it is in Windows Downloads:
 
 ```bash
 mkdir -p ~/kairn-beta
-cp /mnt/c/Users/<you>/Downloads/kairn-0.1.2.tgz ~/kairn-beta/
+cp /mnt/c/Users/<you>/Downloads/usekairn-0.2.0-beta.1.tgz ~/kairn-beta/
 ```
 
 Install:
 
 ```bash
-npm uninstall -g kairn || true
-npm install -g ~/kairn-beta/kairn-0.1.2.tgz
+npm uninstall -g usekairn || true
+npm install -g ~/kairn-beta/usekairn-0.2.0-beta.1.tgz
 command -v kairn
 kairn --version
 ```
@@ -152,7 +152,7 @@ Set up a repo:
 
 ```bash
 cd /path/to/your/repo
-kairn setup wizard --targets generic --yes --index-mode full
+kairn enable --agents generic --yes
 kairn doctor --target generic
 kairn beta report
 ```
@@ -192,17 +192,23 @@ Telemetry uploads only at safe command boundaries, such as when `kairn codex` ex
 From inside your repo:
 
 ```bash
-kairn beta report
+kairn report --share
 ```
 
-This report is local. It summarizes whether Kairn helped, stayed silent, over-assisted, missed opportunities, or has no useful session data yet.
+This produces a short local, aggregate-only check-in. Please paste that back
+if you are comfortable, then optionally tell me just two things:
+
+- What felt useful?
+- What felt annoying, confusing, or wrong?
+
+There is no need to design tasks, rerun work, or perform a formal comparison.
 
 ## Update Kairn
 
 When I send a newer tarball:
 
 ```bash
-npm install -g /full/path/to/kairn-0.1.2.tgz
+npm install -g /full/path/to/usekairn-0.2.0-beta.1.tgz
 ```
 
 Then run inside each repo where Kairn is configured:
@@ -225,29 +231,20 @@ kairn setup remove --delete-state
 Then uninstall globally:
 
 ```bash
-npm uninstall -g kairn
+npm uninstall -g usekairn
 ```
 
 `setup remove --delete-state` removes Kairn-owned hook/MCP config and deletes `.kairn/`. It is designed to preserve unrelated editor, agent, and repo config.
 
 ## What To Send Back
 
-Please send:
-
-- your OS and terminal: macOS/Linux/Windows PowerShell/WSL,
-- `node -v`,
-- `npm -v`,
-- whether install worked,
-- whether `kairn setup wizard` worked,
-- `kairn doctor` output or JSON,
-- `kairn beta report` output or JSON,
-- what felt confusing, noisy, too quiet, slow, or useful.
+Please send the output of `kairn report --share`, whether installation worked, and one sentence about anything useful, confusing, or wrong. If setup failed, also send `kairn doctor`; no formal comparison or designed test task is required.
 
 Please do **not** send source code, prompts, diffs, `.kairn/`, repo files, raw agent outputs, branch names, repo names, or private paths unless we explicitly agree to debug something together.
 
 ## Quick Troubleshooting
 
-- `npm install -g` cannot find the tarball: use the absolute path to `kairn-0.1.2.tgz`.
+- `npm install -g` cannot find the tarball: use the absolute path to `usekairn-0.2.0-beta.1.tgz`.
 - `kairn` is not found after install: restart the terminal, then check `npm config get prefix` and PATH.
 - Windows VS Code terminal cannot find `kairn`: fully restart VS Code after install.
 - WSL install succeeds but `kairn` is missing: make sure `which node` and `which npm` point to the same Node installation.

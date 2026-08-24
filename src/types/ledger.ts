@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { WatchEventSource } from "./watch.js";
 
 export type TaskPhase = "discovery" | "implementation" | "debugging" | "verification" | "cleanup";
@@ -39,10 +41,15 @@ export type SessionLedgerSummary = {
   shownFiles: string[];
   agentMentionedFiles: string[];
   agentTouchedFiles: string[];
+  recommendedFilesLaterUsed: string[];
+  recommendedFilesLaterTouched: string[];
   repeatedFilesAvoided: number;
   repeatedSnippetsAvoided: number;
   recommendedFilesUsed: string[];
   repeatedlyTouchedFiles: string[];
+  verificationPasses: number;
+  verificationFailures: number;
+  latestVerification: "passed" | "failed" | "none";
   unresolvedFailures: number;
   workingSet: SessionWorkingSet;
   recentEvents: SessionLedgerEvent[];
@@ -57,6 +64,10 @@ export type SessionWorkingSet = {
   ignoredRecommendedFiles: string[];
   ruledOutFiles: string[];
   staleFiles: string[];
+  /** True when the newest failure/failed verification has no later passing verification. */
+  unresolvedFailure: boolean;
+  /** Previously shown files that may safely be reconsidered because that failure is unresolved. */
+  reconsiderableShownFiles: string[];
   currentInvariant?: SessionWorkingSetInvariant;
   lastFailure?: SessionWorkingSetSignal;
   lastPassingVerification?: SessionWorkingSetSignal;
@@ -93,6 +104,7 @@ export type SessionContextPolicyReason =
   | "failure_reemitted"
   | "phase_shift_reemitted"
   | "ignored_recommendation_shrunk"
+  | "scope_drift_repair"
   | "verified_context_shrunk"
   | "verified_context_suppressed"
   | "active_source_context_shrunk"

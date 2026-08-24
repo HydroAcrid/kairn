@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { NormalizedHookEvent, WatchEventKind } from "../types.js";
 import { estimateTokens } from "../utils/tokens.js";
 

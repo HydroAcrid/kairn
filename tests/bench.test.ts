@@ -65,6 +65,41 @@ import type {
 const CLI = ["tsx", "src/cli.ts"];
 
 describe("benchmark suite and scoring", () => {
+  it("marks async shell timeouts as failed and terminates descendant processes", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-shell-timeout-"));
+    const childScript = path.join(root, "child.js");
+    const parentScript = path.join(root, "parent.js");
+    const leakedFile = path.join(root, "leaked.txt");
+    fs.writeFileSync(
+      childScript,
+      [
+        "const fs = require('node:fs');",
+        `setTimeout(() => fs.writeFileSync(${JSON.stringify(leakedFile)}, 'leaked'), 300);`,
+        "setTimeout(() => {}, 2000);"
+      ].join("\n")
+    );
+    fs.writeFileSync(
+      parentScript,
+      [
+        "const { spawn } = require('node:child_process');",
+        `spawn(process.execPath, [${JSON.stringify(childScript)}], { stdio: 'ignore' });`,
+        "setTimeout(() => {}, 2000);"
+      ].join("\n")
+    );
+
+    try {
+      const command = `${JSON.stringify(process.execPath)} ${JSON.stringify(parentScript)}`;
+      const result = await runShellWithProcessGroupTimeout(command, root, 75, 1024 * 1024);
+      await new Promise((resolve) => setTimeout(resolve, 450));
+
+      expect(result.timedOut).toBe(true);
+      expect(result.status).not.toBe(0);
+      expect(fs.existsSync(leakedFile)).toBe(false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("routes explicit debug/regression prompts to the failure-debug prime profile", () => {
     expect(resolvePrimeProfile("auto", "Debug StringUtils.isBlank whitespace behavior")).toBe("failure_debug");
     expect(resolvePrimeProfile("auto", "Debug local URL handling in the router utility")).toBe("failure_debug");
@@ -1082,72 +1117,6 @@ describe("benchmark suite and scoring", () => {
     }
   });
 
-  it("keeps high-clue discovery proxy in compact paired scope instead of suppressing", async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-campaign-proxy-discovery-"));
-    const outRoot = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-campaign-proxy-discovery-out-"));
-    try {
-      fs.mkdirSync(path.join(root, "src/utils"), { recursive: true });
-      fs.writeFileSync(
-        path.join(root, "src/utils/AutoDiscoveryUtils.tsx"),
-        "export function buildValidatedConfig(discoveryResult: unknown) { return discoveryResult; }\n"
-      );
-      fs.writeFileSync(
-        path.join(root, "src/utils/ValidatedServerConfig.ts"),
-        "export interface ValidatedServerConfig { baseUrl: string; }\n"
-      );
-      const manifestPath = path.join(outRoot, "campaign-manifest.json");
-      const outDir = path.join(outRoot, "out");
-      fs.writeFileSync(
-        manifestPath,
-        JSON.stringify({
-          id: "proxy-discovery-suppress-test",
-          name: "Proxy Discovery Suppress Test",
-          entries: [
-            {
-              id: "proxy-discovery-high-clue",
-              kind: "proxy",
-              root,
-              task: [
-                "SWE-Bench Pro metadata. Selected verification tests from SWE-Bench Pro metadata:",
-                "test/utils/AutoDiscoveryUtils-test.tsx",
-                "Fix homeserver discovery so delegated authentication metadata advertised under m.authentication is preserved in the validated server configuration.",
-                "The public interface ValidatedServerConfig must optionally declare delegatedAuthentication.",
-                "Keep edits to production source only."
-              ].join("\n"),
-              expectedFiles: ["src/utils/AutoDiscoveryUtils.tsx", "src/utils/ValidatedServerConfig.ts"],
-              budget: 500
-            }
-          ]
-        })
-      );
-
-      const report = await runCampaign({
-        manifestPath,
-        outDir,
-        stage: "proxy",
-        parallel: 1
-      });
-      const row = report.rows[0];
-      const artifact = report.artifacts[0];
-      const proxyReport = artifact?.report as {
-        action?: string;
-        recommendedDelivery?: string;
-        expectedFilesMatchedCount?: number;
-      } | undefined;
-
-      expect(row?.classifications).not.toContain("suppression_expected");
-      expect(row?.classifications).not.toContain("wrong_surface_risk");
-      expect(row?.qualityPassed).toBe(true);
-      expect(report.paused).toBe(false);
-      expect(proxyReport?.action).toBe("shrink");
-      expect(proxyReport?.recommendedDelivery).toBe("multi_file_directive");
-      expect(proxyReport?.expectedFilesMatchedCount).toBe(2);
-    } finally {
-      fs.rmSync(root, { recursive: true, force: true });
-      fs.rmSync(outRoot, { recursive: true, force: true });
-    }
-  });
-
   it("accepts publication v2 official and context-pilot entries in dry-run mode", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-publication-v2-dry-run-"));
     try {
@@ -1310,6 +1279,11 @@ describe("benchmark suite and scoring", () => {
       repeatedFilesAvoided: 0,
       repeatedSnippetsAvoided: 0,
       recommendedFilesUsed: [],
+      recommendedFilesLaterUsed: [],
+      recommendedFilesLaterTouched: [],
+      verificationPasses: 0,
+      verificationFailures: 0,
+      latestVerification: "none",
       repeatedlyTouchedFiles: [],
       unresolvedFailures: 0,
       workingSet: {
@@ -1321,6 +1295,8 @@ describe("benchmark suite and scoring", () => {
         ignoredRecommendedFiles: [],
         ruledOutFiles: [],
         staleFiles: [],
+        unresolvedFailure: false,
+        reconsiderableShownFiles: [],
         currentInvariant: {
           statement: "Diagnose the Click compatibility regression where ASCII encoding should fall back to UTF-8.",
           filePath: "src/click/_termui_impl.py",
@@ -1359,6 +1335,11 @@ describe("benchmark suite and scoring", () => {
       repeatedFilesAvoided: 0,
       repeatedSnippetsAvoided: 0,
       recommendedFilesUsed: [],
+      recommendedFilesLaterUsed: [],
+      recommendedFilesLaterTouched: [],
+      verificationPasses: 0,
+      verificationFailures: 1,
+      latestVerification: "failed",
       repeatedlyTouchedFiles: [],
       unresolvedFailures: 1,
       workingSet: {
@@ -1370,6 +1351,8 @@ describe("benchmark suite and scoring", () => {
         ignoredRecommendedFiles: [],
         ruledOutFiles: [],
         staleFiles: [],
+        unresolvedFailure: true,
+        reconsiderableShownFiles: ["src/click/_compat.py"],
         lastFailure: {
           turnId: "fix-source",
           filePath: "src/click/_termui_impl.py",

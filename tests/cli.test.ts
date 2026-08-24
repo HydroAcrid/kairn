@@ -261,6 +261,14 @@ describe("CLI", () => {
       cwd: process.cwd(),
       encoding: "utf8"
     });
+    const userReport = execFileSync(CLI[0]!, [...CLI.slice(1), "report", "--root", root, "--last", "12"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+    const shareableReport = execFileSync(CLI[0]!, [...CLI.slice(1), "report", "--root", root, "--share"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
     execFileSync(CLI[0]!, [...CLI.slice(1), "telemetry", "enable", "--root", root, "--destination", "supabase"], {
       cwd: process.cwd(),
       encoding: "utf8"
@@ -280,7 +288,7 @@ describe("CLI", () => {
     const parsedMcpSetup = JSON.parse(mcpSetup) as { configPath: string; serverConfig: { args: string[] } };
     const parsedClaudeMcpSetup = JSON.parse(claudeMcpSetup) as { configPath: string; clientConfig: { mcpServers: Record<string, unknown> }; installCommand: string };
     const parsedGeminiMcpSetup = JSON.parse(geminiMcpSetup) as { configPath: string; clientConfig: { mcpServers: Record<string, { trust?: boolean }> } };
-    const parsedCopilotMcpSetup = JSON.parse(copilotMcpSetup) as { configPath?: string; userConfigWriteSkipped: boolean; clientConfig: { mcpServers: Record<string, { type?: string; tools?: string[] }> } };
+    const parsedCopilotMcpSetup = JSON.parse(copilotMcpSetup) as { serverName: string; configPath?: string; userConfigWriteSkipped: boolean; clientConfig: { mcpServers: Record<string, { type?: string; tools?: string[] }> } };
     const parsedGenericMcpSetup = JSON.parse(genericMcpSetup) as { configPath?: string; clientConfig: { mcpServers: Record<string, unknown> } };
     const parsedClaudeHookSetup = JSON.parse(claudeHookSetup) as { configPath: string; hooksInstalled: string[] };
     const parsedSetupWizard = JSON.parse(setupWizard) as {
@@ -328,8 +336,9 @@ describe("CLI", () => {
     expect(parsedGeminiMcpSetup.clientConfig.mcpServers.kairn?.trust).toBe(false);
     expect(parsedCopilotMcpSetup.configPath).toBeUndefined();
     expect(parsedCopilotMcpSetup.userConfigWriteSkipped).toBe(true);
-    expect(parsedCopilotMcpSetup.clientConfig.mcpServers.kairn?.type).toBe("local");
-    expect(parsedCopilotMcpSetup.clientConfig.mcpServers.kairn?.tools).toEqual(["*"]);
+    expect(parsedCopilotMcpSetup.serverName).toMatch(/^kairn-/);
+    expect(parsedCopilotMcpSetup.clientConfig.mcpServers[parsedCopilotMcpSetup.serverName]?.type).toBe("local");
+    expect(parsedCopilotMcpSetup.clientConfig.mcpServers[parsedCopilotMcpSetup.serverName]?.tools).toEqual(["*"]);
     expect(parsedGenericMcpSetup.configPath).toBeUndefined();
     expect(parsedGenericMcpSetup.clientConfig.mcpServers.kairn).toBeTruthy();
     expect(parsedClaudeHookSetup.configPath.endsWith(path.join(".claude", "settings.local.json"))).toBe(true);
@@ -352,6 +361,19 @@ describe("CLI", () => {
     expect(parsedTelemetry.queueLength).toBe(0);
     expect(parsedBetaReport.sessions).toBeGreaterThan(0);
     expect(parsedBetaReport.verdict).toBeTruthy();
+    expect(userReport).toContain("Estimated context saved:");
+    expect(userReport).toContain("Quality");
+    expect(userReport).toContain("Harmful assists:");
+    expect(userReport).toContain("not provider billing usage");
+    expect(shareableReport).toContain("Kairn check-in — last");
+    expect(shareableReport).toContain("Estimated context saved:");
+    expect(shareableReport).toMatch(/Quality: \d+ passed · \d+ failed · \d+ unverified/);
+    expect(shareableReport).toContain("recorded harmful assists");
+    expect(shareableReport).toContain("Recommendations followed:");
+    expect(shareableReport).toContain("local full-context baselines");
+    expect(shareableReport).toContain("not observed provider usage or billing savings");
+    expect(shareableReport).toContain("Privacy: aggregate only;");
+    expect(shareableReport).not.toContain(root);
   }, 120_000);
 
   it("uses init as the friendly guided setup entrypoint", () => {
@@ -422,12 +444,10 @@ describe("CLI", () => {
       }
     );
     const parsed = JSON.parse(init) as { choice?: string; integrations?: unknown[]; scan?: unknown };
-
     expect(parsed.choice).toBe("doctor");
     expect(Array.isArray(parsed.integrations)).toBe(true);
     expect(parsed.scan).toBeUndefined();
   });
-
   it("accepts whitespace-separated setup wizard targets from PowerShell-style argument lists", () => {
     const root = createFixtureRepo();
     const setupWizardWhitespaceTargets = execFileSync(
@@ -554,7 +574,7 @@ describe("CLI", () => {
     expect(parsedVscode.fix.repaired).toContain("mcp:vscode");
     expect(vscodeConfig.servers.kairn.command).not.toBe("/old/kairn");
     expect(vscodeConfig.servers.kairn.args).toContain("serve");
-    expect(parsedCodex.fix.repaired).toContain("codex:savings");
+    expect(parsedCodex.fix.repaired).toContain("codex:source-first");
     expect(codexConfig).toContain("hooks = true");
     expect(codexConfig).not.toContain("codex_hooks");
     expect(codexHooks).toContain("Priming Kairn context");

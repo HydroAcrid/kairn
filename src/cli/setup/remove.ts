@@ -1,8 +1,13 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { getKairnPaths } from "../../config/paths.js";
 import { disableTelemetry } from "../../telemetry/config.js";
+import { isKairnOwnedClaudeHookEntry } from "./claudeSetup.js";
+import { isKairnOwnedCodexHookEntry, removeKairnOwnedCodexMcpConfig } from "./codexSetup.js";
+import { copilotServerNameForRoot, copilotServerNamesForRoot, isKairnOwnedMcpServer } from "./mcpSetup.js";
 
 export type SetupRemoveResult = {
   rootPath: string;
@@ -16,6 +21,7 @@ export type SetupRemoveResult = {
 export function removeKairnSetup(input: {
   root: string;
   deleteState?: boolean | undefined;
+  homeDir?: string | undefined;
 }): SetupRemoveResult {
   const rootPath = path.resolve(input.root);
   const result: SetupRemoveResult = {
@@ -32,7 +38,7 @@ export function removeKairnSetup(input: {
   removeVscodeMcp(rootPath, result);
   removeProjectMcp(rootPath, result);
   removeGeminiMcp(rootPath, result);
-  removeCopilotMcp(rootPath, result);
+  removeCopilotMcp(rootPath, result, input.homeDir ?? os.homedir());
   removeClaudeHooks(rootPath, result);
   removeAgentsInstructions(rootPath, result);
 
@@ -93,13 +99,13 @@ function removeCodexHooks(rootPath: string, result: SetupRemoveResult): void {
   }
 
   if (!isRecord(parsed) || !isRecord(parsed.hooks)) return;
-  const nextHooks: Record<string, unknown[]> = {};
+  const nextHooks: Record<string, unknown> = {};
   for (const [eventName, value] of Object.entries(parsed.hooks)) {
     if (!Array.isArray(value)) {
-      nextHooks[eventName] = [value];
+      if (!isKairnOwnedCodexHookEntry(value)) nextHooks[eventName] = value;
       continue;
     }
-    const kept = value.filter((entry) => !containsKairnCommand(entry));
+    const kept = value.filter((entry) => !isKairnOwnedCodexHookEntry(entry));
     if (kept.length > 0) nextHooks[eventName] = kept;
   }
 
@@ -107,13 +113,15 @@ function removeCodexHooks(rootPath: string, result: SetupRemoveResult): void {
     return;
   }
 
-  if (Object.keys(nextHooks).length === 0) {
+  const next: Record<string, unknown> = { ...parsed, hooks: nextHooks };
+  if (Object.keys(nextHooks).length === 0) delete next.hooks;
+  if (Object.keys(next).length === 0) {
     fs.rmSync(hooksPath, { force: true });
     result.removed.push(".codex/hooks.json");
     return;
   }
 
-  fs.writeFileSync(hooksPath, `${JSON.stringify({ ...parsed, hooks: nextHooks }, null, 2)}\n`);
+  fs.writeFileSync(hooksPath, `${JSON.stringify(next, null, 2)}\n`);
   result.changed.push(".codex/hooks.json");
 }
 
@@ -121,7 +129,12 @@ function removeCodexMcpConfig(rootPath: string, result: SetupRemoveResult): void
   const configPath = path.join(rootPath, ".codex", "config.toml");
   if (!fs.existsSync(configPath)) return;
   const raw = fs.readFileSync(configPath, "utf8");
-  const next = raw.replace(/(^|\n)\[mcp_servers\.kairn\]\n[\s\S]*?(?=\n\[|$)/, "$1").trimEnd();
+  const withoutMcp = removeKairnOwnedCodexMcpConfig(raw);
+  const withoutOwnedHookFlag = withoutMcp
+    .replace(/^\s*hooks\s*=\s*true\s*#\s*kairn:owned\s*\n?/m, "")
+    .replace(/^\s*hooks\s*=\s*true\s*#\s*kairn:previous=false\s*$/m, "hooks = false")
+    .replace(/(^|\n)\[features\]\n\s*(?=\n\[|$)/, "$1");
+  const next = withoutOwnedHookFlag.trimEnd();
   if (next === raw.trimEnd()) return;
   if (!next.trim()) {
     fs.rmSync(configPath, { force: true });
@@ -163,18 +176,39 @@ function removeGeminiMcp(rootPath: string, result: SetupRemoveResult): void {
   });
 }
 
-function removeCopilotMcp(rootPath: string, result: SetupRemoveResult): void {
-  const configPath = path.join(os.homedir(), ".copilot", "mcp-config.json");
+function removeCopilotMcp(rootPath: string, result: SetupRemoveResult, homeDir: string): void {
+  const configPath = path.join(homeDir, ".copilot", "mcp-config.json");
   if (!fs.existsSync(configPath)) return;
   const raw = fs.readFileSync(configPath, "utf8");
-  if (!raw.includes(rootPath)) return;
-  removeMcpServerFromJson({
-    rootPath,
-    filePath: configPath,
-    result,
-    serverKey: "mcpServers",
-    relativePath: configPath
-  });
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    if (/kairn/i.test(raw)) {
+      result.skipped.push({ path: configPath, reason: "contains Kairn text but is not valid JSON; edit manually" });
+    }
+    return;
+  }
+  if (!isRecord(parsed) || !isRecord(parsed.mcpServers)) return;
+  const ownedNames = copilotServerNamesForRoot(parsed.mcpServers, rootPath);
+  if (ownedNames.length === 0) {
+    const repositoryKey = copilotServerNameForRoot(rootPath);
+    if (repositoryKey in parsed.mcpServers) {
+      result.skipped.push({ path: configPath, reason: `mcpServers.${repositoryKey} is not owned by this Kairn repository; left unchanged` });
+    }
+    return;
+  }
+  const servers = { ...parsed.mcpServers };
+  for (const serverName of ownedNames) delete servers[serverName];
+  const next: Record<string, unknown> = { ...parsed, mcpServers: servers };
+  if (Object.keys(servers).length === 0) delete next.mcpServers;
+  if (Object.keys(next).length === 0) {
+    fs.rmSync(configPath, { force: true });
+    result.removed.push(configPath);
+    return;
+  }
+  fs.writeFileSync(configPath, `${JSON.stringify(next, null, 2)}\n`);
+  result.changed.push(configPath);
 }
 
 function removeMcpServerFromJson(input: {
@@ -197,6 +231,10 @@ function removeMcpServerFromJson(input: {
     return;
   }
   if (!isRecord(parsed) || !isRecord(parsed[serverKey]) || !("kairn" in parsed[serverKey])) return;
+  if (!isKairnOwnedMcpServer(parsed[serverKey].kairn)) {
+    result.skipped.push({ path: relativePath, reason: `${serverKey}.kairn is not Kairn-owned; left unchanged` });
+    return;
+  }
   const servers = { ...parsed[serverKey] };
   delete servers.kairn;
   const next: Record<string, unknown> = { ...parsed, [serverKey]: servers };
@@ -224,12 +262,22 @@ function removeClaudeHooks(rootPath: string, result: SetupRemoveResult): void {
     return;
   }
   if (!isRecord(parsed) || !isRecord(parsed.hooks)) return;
-  const nextHooks: Record<string, unknown[]> = {};
+  const nextHooks: Record<string, unknown> = {};
+  let removedOwnedEntry = false;
   for (const [eventName, value] of Object.entries(parsed.hooks)) {
-    const entries = Array.isArray(value) ? value : [value];
-    const kept = entries.filter((entry) => !containsKairnCommand(entry));
+    if (!Array.isArray(value)) {
+      if (isKairnOwnedClaudeHookEntry(value, eventName)) {
+        removedOwnedEntry = true;
+      } else {
+        nextHooks[eventName] = value;
+      }
+      continue;
+    }
+    const kept = value.filter((entry) => !isKairnOwnedClaudeHookEntry(entry, eventName));
+    if (kept.length !== value.length) removedOwnedEntry = true;
     if (kept.length > 0) nextHooks[eventName] = kept;
   }
+  if (!removedOwnedEntry) return;
   const next: Record<string, unknown> = { ...parsed, hooks: nextHooks };
   if (Object.keys(nextHooks).length === 0) delete next.hooks;
   if (Object.keys(next).length === 0) {
@@ -265,13 +313,6 @@ function cleanupEmptyDir(dirPath: string, rootPath: string, result: SetupRemoveR
   } catch {
     // Best-effort cleanup only.
   }
-}
-
-function containsKairnCommand(value: unknown): boolean {
-  if (typeof value === "string") return /kairn|KAIRN_CMD/i.test(value);
-  if (Array.isArray(value)) return value.some(containsKairnCommand);
-  if (isRecord(value)) return Object.values(value).some(containsKairnCommand);
-  return false;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

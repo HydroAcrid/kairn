@@ -1,0 +1,21 @@
+{
+  "templateSchemaVersion": "codex-pilot-template.v1",
+  "kind": "kairn-codex-pilot-template",
+  "runnable": false,
+  "profile": "smoke",
+  "blockedReason": "The dedicated live-smoke sentinel has not been independently sealed.",
+  "requiredOutput": "benchmarks/plans/codex-v02c.smoke.sealed.json",
+  "conditions": ["vanilla_codex", "codex_kairn"],
+  "taskCount": 1,
+  "repeats": 1,
+  "attemptCount": 2,
+  "codex": {
+    "package": "@openai/codex",
+    "version": "0.145.0",
+    "integrity": "sha512-/PSPSFujjjmiyVFvG2yu/grOFhsWdokTH8t2KGWhXSo/M5n/dIDsnbsnO82/7bLtIoDuzQf7ATBUMWqPWQINlQ==",
+    "model": "gpt-5.6",
+    "reasoningEffort": "medium",
+    "serviceTier": "standard",
+    "fastMode": false
+  }
+}

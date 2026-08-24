@@ -1,0 +1,55 @@
+{
+  "templateSchemaVersion": "comparison-plan-template.v1",
+  "kind": "kairn-experiment-plan-template",
+  "runnable": false,
+  "profile": "pilot",
+  "blockedReason": "No lineage-disjoint, sealed 15-task pilot manifest has been committed. This descriptor is deliberately not accepted by `kairn bench experiment`.",
+  "requiredTaskManifest": {
+    "schemaVersion": "comparison-task-manifest.v1",
+    "status": "sealed",
+    "languages": [
+      "python",
+      "typescript",
+      "go",
+      "java",
+      "cpp"
+    ],
+    "taskClasses": [
+      "source_localization",
+      "failure_first",
+      "long_session"
+    ],
+    "tasksPerCell": 1,
+    "taskCount": 15,
+    "repeats": 3,
+    "attemptCount": 180,
+    "requiredFields": [
+      "immutable repository commit",
+      "sandbox image digest",
+      "required production source oracle",
+      "required touched files",
+      "allowed diff scopes",
+      "source invariants",
+      "explicit noise patterns"
+    ]
+  },
+  "lockedPlanFields": {
+    "schemaVersion": 1,
+    "id": "comparison-v1-pilot",
+    "name": "Kairn comparison-v1 pilot",
+    "profile": "pilot",
+    "conditions": [
+      "vanilla",
+      "reasonblocks",
+      "kairn",
+      "kairn_reasonblocks"
+    ],
+    "model": "claude-sonnet-4-6",
+    "temperature": 0,
+    "maxSteps": 40,
+    "maxTokensPerResponse": 4096,
+    "timeoutMs": 1800000,
+    "repeats": 3
+  },
+  "unresolvedTaskManifest": null
+}

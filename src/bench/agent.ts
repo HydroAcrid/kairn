@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -27,6 +29,11 @@ export async function runAgentBenchmarkCase(input: {
   agentCommand?: string | undefined;
   setupCommand?: string | undefined;
   timeoutMs?: number | undefined;
+  /** Environment for public-repository setup and verification commands. */
+  untrustedEnvironment?: NodeJS.ProcessEnv | undefined;
+  /** Environment for the explicitly configured agent host. */
+  agentEnvironment?: NodeJS.ProcessEnv | undefined;
+  /** @deprecated Use agentEnvironment. Retained for the v0.1 benchmark host. */
   agentEnv?: Record<string, string> | undefined;
   preparePrompt?: ((input: {
     workspacePath: string;
@@ -35,6 +42,7 @@ export async function runAgentBenchmarkCase(input: {
   }) => Promise<{ prompt: string; metadata?: Record<string, unknown> }> | { prompt: string; metadata?: Record<string, unknown> }) | undefined;
 }): Promise<AgentBenchmarkResult> {
   const prompt = input.benchmarkCase.agentPrompt ?? input.benchmarkCase.task;
+  const agentEnvironment = input.agentEnvironment ?? (input.agentEnv ? { ...process.env, ...input.agentEnv } : undefined);
   let workspacePath = "";
   let seedMetadata: Record<string, unknown> = {};
   const workspaceStartedAt = Date.now();
@@ -42,7 +50,8 @@ export async function runAgentBenchmarkCase(input: {
   try {
     const workspace = createBenchmarkWorkspace({
       rootPath: input.rootPath,
-      benchmarkCase: input.benchmarkCase
+      benchmarkCase: input.benchmarkCase,
+      environment: input.untrustedEnvironment
     });
     workspacePath = workspace.workspacePath;
     seedMetadata = {
@@ -101,7 +110,12 @@ export async function runAgentBenchmarkCase(input: {
     const commandSessionId = `task_${randomUUID()}`;
     const setupStartedAt = Date.now();
     const setupResult = input.setupCommand
-      ? runShell(commandWithPlaceholders(input.setupCommand, { prompt, root: workspacePath, session: commandSessionId }), workspacePath, timeoutMs)
+      ? runShell(
+          commandWithPlaceholders(input.setupCommand, { prompt, root: workspacePath, session: commandSessionId }),
+          workspacePath,
+          timeoutMs,
+          agentEnvironment
+        )
       : undefined;
     const assistanceSetupMs = Date.now() - setupStartedAt;
     const setupMetadata = setupResult
@@ -156,7 +170,13 @@ export async function runAgentBenchmarkCase(input: {
     const promptPrepareMs = Date.now() - prepareStartedAt;
     const command = commandWithPlaceholders(input.agentCommand, { prompt: prepared.prompt, root: workspacePath, session: commandSessionId });
     const agentStartedAt = Date.now();
-    const completed = await runShellWithProcessGroupTimeout(command, workspacePath, timeoutMs, 16 * 1024 * 1024, input.agentEnv);
+    const completed = await runShellWithProcessGroupTimeout(
+      command,
+      workspacePath,
+      timeoutMs,
+      16 * 1024 * 1024,
+      agentEnvironment
+    );
     const agentTimedOut = completed.timedOut;
     const agentElapsedMs = Date.now() - agentStartedAt;
     const output = completed.output;
@@ -164,7 +184,8 @@ export async function runAgentBenchmarkCase(input: {
     const verification = runSeedVerification({
       workspacePath,
       benchmarkCase: input.benchmarkCase,
-      timeoutMs: input.timeoutMs
+      timeoutMs: input.timeoutMs,
+      environment: input.untrustedEnvironment
     });
     const verificationElapsedMs = Date.now() - verificationStartedAt;
     const sourceInvariantResult = evaluateSourceInvariants({
@@ -318,7 +339,16 @@ export async function runAgentBenchmarkCase(input: {
         ignoredAbsentRequiredTouchedFiles: requiredTouchPlan.ignoredAbsentRequiredTouchedFiles,
         requiredTouchedFiles,
         requiredTouchedSatisfied: missingRequiredTouchedFiles.length === 0,
-        missingRequiredTouchedFiles
+        missingRequiredTouchedFiles,
+        ...(error instanceof SandboxInfrastructureError
+          ? {
+              sandboxInfrastructureFailure: true,
+              // The controlled experiment runner already classifies this
+              // established setup-error field as infrastructure, including
+              // failures discovered by the redundant final verifier.
+              workspaceSetupError: error.message
+            }
+          : {})
       }
     });
     return {
@@ -399,9 +429,10 @@ function createTempWorkspace(rootPath: string): string {
 export function createBenchmarkWorkspace(input: {
   rootPath: string;
   benchmarkCase: BenchmarkCase;
+  environment?: NodeJS.ProcessEnv | undefined;
 }): { workspacePath: string; metadata: Record<string, unknown> } {
   if (input.benchmarkCase.seed) {
-    return createSeededWorkspace(input.benchmarkCase.seed);
+    return createSeededWorkspace(input.benchmarkCase.seed, input.environment);
   }
   return {
     workspacePath: createTempWorkspace(input.rootPath),
@@ -411,45 +442,82 @@ export function createBenchmarkWorkspace(input: {
   };
 }
 
-function createSeededWorkspace(seed: BenchmarkSeedSpec): { workspacePath: string; metadata: Record<string, unknown> } {
+function createSeededWorkspace(
+  seed: BenchmarkSeedSpec,
+  environment?: NodeJS.ProcessEnv | undefined
+): { workspacePath: string; metadata: Record<string, unknown> } {
   const missingPrerequisite = missingSeedPrerequisite(seed);
   if (missingPrerequisite) {
     throw new MissingBenchmarkPrerequisiteError(missingPrerequisite);
   }
 
+  const sandboxImage = seed.sandboxImage;
+  if (sandboxImage) assertSandboxImageAvailable(sandboxImage, environment);
+  const gitEnvironment = scrubRepositoryHostEnvironment(environment);
+
   const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-bench-seed-"));
   const cloneDepth = seed.cloneDepth ?? 1;
+  let seedResolvedCommit: string | undefined;
 
   if (seed.ref) {
-    runRequired("git", ["init"], { cwd: workspacePath, label: "git init" });
-    runRequired("git", ["remote", "add", "origin", seed.repoUrl], { cwd: workspacePath, label: "git remote add" });
+    runRequired("git", ["init"], { cwd: workspacePath, label: "git init", environment: gitEnvironment });
+    runRequired("git", ["remote", "add", "origin", seed.repoUrl], { cwd: workspacePath, label: "git remote add", environment: gitEnvironment });
     runRequiredWithRetry("git", ["fetch", ...depthArgs(cloneDepth), "origin", seed.ref], {
       cwd: workspacePath,
       label: `git fetch ${seed.ref}`,
+      environment: gitEnvironment,
       attempts: 3,
       retryDelayMs: 2000,
       retryOn: isTransientGitFailure
     });
-    runRequired("git", ["checkout", "--detach", "FETCH_HEAD"], { cwd: workspacePath, label: "git checkout" });
+    runRequired("git", ["checkout", "--detach", "FETCH_HEAD"], { cwd: workspacePath, label: "git checkout", environment: gitEnvironment });
+    seedResolvedCommit = gitCommit(workspacePath);
   } else {
     fs.rmSync(workspacePath, { recursive: true, force: true });
     runRequiredWithRetry("git", ["clone", ...depthArgs(cloneDepth), seed.repoUrl, workspacePath], {
       cwd: os.tmpdir(),
       label: "git clone",
+      environment: gitEnvironment,
       attempts: 3,
       retryDelayMs: 2000,
       retryOn: isTransientGitFailure
     });
   }
 
-  applySeedPatch({ workspacePath, seed });
+  applySeedPatch({ workspacePath, seed, environment: gitEnvironment });
+  if (sandboxImage) {
+    const preflight = runSandboxedRepositoryCommand(":", workspacePath, 60_000, sandboxImage, environment);
+    if (preflight.status !== 0) {
+      throw new SandboxInfrastructureError(`sandbox preflight failed with exit code ${preflight.status}: ${preflight.output.slice(-1000)}`);
+    }
+  }
+  for (const command of seed.setupCommands ?? []) {
+    if (sandboxImage) {
+      const result = runSandboxedRepositoryCommand(command, workspacePath, 120_000, sandboxImage, environment);
+      if (result.status !== 0) {
+        throw new Error(`sandboxed setup command failed with exit code ${result.status}: ${result.output.slice(-4000)}`);
+      }
+    } else {
+      runRequired(normalizeSeedCommand(command), [], {
+        cwd: workspacePath,
+        label: `setup command: ${command}`,
+        shell: true,
+        environment
+      });
+    }
+  }
+  // The benchmark baseline includes both the seed patch and deterministic
+  // setup output. Snapshot only after setup so generated tracked files are
+  // never misattributed to the agent under test.
   const seedPatchFiles = changedFiles(workspacePath);
   const seedPatchFileHashes = fileHashes(workspacePath, seedPatchFiles);
-  for (const command of seed.setupCommands ?? []) {
-    runRequired(normalizeSeedCommand(command), [], { cwd: workspacePath, label: `setup command: ${command}`, shell: true });
-  }
+  if (seed.commitSetupBaseline) commitSeedSetupBaseline(workspacePath, environment, sandboxImage);
 
-  const expectedFailure = seed.expectedFailureCommand ? runShell(normalizeSeedCommand(seed.expectedFailureCommand), workspacePath, 120000) : undefined;
+  const expectedFailure = seed.expectedFailureCommand
+    ? sandboxImage
+      ? runSandboxedRepositoryCommand(seed.expectedFailureCommand, workspacePath, 120_000, sandboxImage, environment)
+      : runShell(normalizeSeedCommand(seed.expectedFailureCommand), workspacePath, 120000, environment)
+    : undefined;
 
   return {
     workspacePath,
@@ -457,7 +525,9 @@ function createSeededWorkspace(seed: BenchmarkSeedSpec): { workspacePath: string
       seedConfigured: true,
       seedRepoUrl: seed.repoUrl,
       ...(seed.ref ? { seedRef: seed.ref } : {}),
+      ...(seedResolvedCommit ? { seedResolvedCommit } : {}),
       seedCloneDepth: cloneDepth,
+      ...(sandboxImage ? { seedSandboxImage: sandboxImage, seedSandboxedRepositoryCode: true } : {}),
       seedSetupCommandCount: seed.setupCommands?.length ?? 0,
       seedHasPatch: Boolean(seed.setupPatch || seed.setupPatchFile),
       seedPatchFiles,
@@ -476,12 +546,61 @@ function createSeededWorkspace(seed: BenchmarkSeedSpec): { workspacePath: string
   };
 }
 
-function applySeedPatch(input: { workspacePath: string; seed: BenchmarkSeedSpec }): void {
+function commitSeedSetupBaseline(
+  workspacePath: string,
+  environment?: NodeJS.ProcessEnv | undefined,
+  sandboxImage?: string | undefined
+): void {
+  if (sandboxImage) {
+    const command = [
+      "git add --all",
+      "git -c user.name='Kairn Benchmark' -c user.email='kairn-benchmark@invalid.local' " +
+        "-c core.hooksPath=/dev/null commit --allow-empty --no-gpg-sign --no-verify " +
+        "-m 'kairn benchmark setup baseline'"
+    ].join(" && ");
+    const result = runSandboxedRepositoryCommand(command, workspacePath, 120_000, sandboxImage, environment, true);
+    if (result.status !== 0) {
+      throw new SandboxInfrastructureError(`sandboxed baseline commit failed with exit code ${result.status}: ${result.output.slice(-4000)}`);
+    }
+    return;
+  }
+  runRequired("git", ["add", "--all"], {
+    cwd: workspacePath,
+    label: "benchmark baseline git add",
+    environment: scrubGitConfigEnvironment(environment)
+  });
+  runRequired("git", [
+    "-c", "user.name=Kairn Benchmark",
+    "-c", "user.email=kairn-benchmark@invalid.local",
+    "commit", "--allow-empty", "--no-gpg-sign", "-m", "kairn benchmark setup baseline"
+  ], {
+    cwd: workspacePath,
+    label: "benchmark baseline commit",
+    environment: scrubGitConfigEnvironment(environment)
+  });
+}
+
+function gitCommit(workspacePath: string): string | undefined {
+  const result = spawnSync("git", ["rev-parse", "HEAD"], {
+    cwd: workspacePath,
+    env: scrubGitConfigEnvironment(),
+    encoding: "utf8"
+  });
+  const value = result.status === 0 ? result.stdout.trim() : "";
+  return /^[a-f0-9]{40,64}$/i.test(value) ? value : undefined;
+}
+
+function applySeedPatch(input: {
+  workspacePath: string;
+  seed: BenchmarkSeedSpec;
+  environment?: NodeJS.ProcessEnv | undefined;
+}): void {
   const patch = input.seed.setupPatchFile ? fs.readFileSync(input.seed.setupPatchFile, "utf8") : input.seed.setupPatch;
   if (!patch) return;
   const result = spawnSync("git", ["apply", "--whitespace=nowarn"], {
     cwd: input.workspacePath,
     input: patch,
+    ...(input.environment ? { env: input.environment } : {}),
     encoding: "utf8",
     maxBuffer: 8 * 1024 * 1024
   });
@@ -510,6 +629,7 @@ export function runSeedVerification(input: {
   workspacePath: string;
   benchmarkCase: BenchmarkCase;
   timeoutMs?: number | undefined;
+  environment?: NodeJS.ProcessEnv | undefined;
 }): {
   failed: boolean;
   exitCode?: number;
@@ -520,8 +640,11 @@ export function runSeedVerification(input: {
   if (!command) {
     return { failed: false, output: "", metadata: {} };
   }
-  const normalizedCommand = normalizeSeedCommand(command);
-  const result = runShell(normalizedCommand, input.workspacePath, input.timeoutMs ?? 120000);
+  const sandboxImage = input.benchmarkCase.seed?.sandboxImage;
+  const normalizedCommand = sandboxImage ? command : normalizeSeedCommand(command);
+  const result = sandboxImage
+    ? runSandboxedRepositoryCommand(normalizedCommand, input.workspacePath, input.timeoutMs ?? 120000, sandboxImage, input.environment)
+    : runShell(normalizedCommand, input.workspacePath, input.timeoutMs ?? 120000, input.environment);
   return {
     failed: result.status !== 0,
     exitCode: result.status,
@@ -532,7 +655,8 @@ export function runSeedVerification(input: {
       seedTestTimedOut: result.timedOut,
       seedTestSignal: result.signal,
       seedTestOutputHash: sha256(result.output),
-      seedTestOutputTokens: estimateTokens(result.output)
+      seedTestOutputTokens: estimateTokens(result.output),
+      ...(sandboxImage ? { seedTestSandboxImage: sandboxImage, seedTestSandboxed: true } : {})
     }
   };
 }
@@ -544,6 +668,7 @@ class MissingBenchmarkPrerequisiteError extends Error {
 }
 
 function missingSeedPrerequisite(seed: BenchmarkSeedSpec): string | undefined {
+  if (seed.sandboxImage) return commandExists("docker") ? undefined : "docker";
   const commands = [
     ...(seed.setupCommands ?? []),
     seed.expectedFailureCommand,
@@ -568,6 +693,13 @@ function seedCommandNormalizationMetadata(seed: BenchmarkSeedSpec): Record<strin
 }
 
 function commandExists(command: string): boolean {
+  if (process.platform === "win32") {
+    const result = spawnSync("where.exe", [command], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    });
+    return (result.status ?? 1) === 0;
+  }
   const result = spawnSync("sh", ["-lc", `command -v ${shellQuote(command)} >/dev/null 2>&1`], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "ignore"]
@@ -622,17 +754,175 @@ export function fileHashes(workspacePath: string, files: string[]): Record<strin
 function currentFileHash(workspacePath: string, filePath: string): string {
   const absolute = path.join(workspacePath, filePath);
   if (!fs.existsSync(absolute)) return "missing";
+  const stat = fs.lstatSync(absolute);
+  if (stat.isSymbolicLink()) return `symlink:${sha256(fs.readlinkSync(absolute))}`;
+  const resolvedRoot = fs.realpathSync(workspacePath);
+  const resolved = fs.realpathSync(absolute);
+  if (resolved !== resolvedRoot && !resolved.startsWith(`${resolvedRoot}${path.sep}`)) return "outside-workspace";
   return sha256(fs.readFileSync(absolute));
+}
+
+class SandboxInfrastructureError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SandboxInfrastructureError";
+  }
+}
+
+const PINNED_SANDBOX_IMAGE = /^[a-z0-9][a-z0-9./_-]*@sha256:[a-f0-9]{64}$/i;
+
+function assertSandboxImageAvailable(image: string, environment?: NodeJS.ProcessEnv | undefined): void {
+  if (!PINNED_SANDBOX_IMAGE.test(image)) {
+    throw new SandboxInfrastructureError("sandbox image must be pinned by an immutable sha256 digest");
+  }
+  const result = spawnSync("docker", ["image", "inspect", image], {
+    env: scrubRepositoryHostEnvironment(environment),
+    encoding: "utf8",
+    timeout: 60_000,
+    maxBuffer: 2 * 1024 * 1024
+  });
+  if (result.error || result.status !== 0) {
+    const detail = [result.stderr, result.stdout, result.error?.message].filter(Boolean).join("\n").slice(-1000);
+    throw new SandboxInfrastructureError(
+      `digest-pinned sandbox image is unavailable locally; the harness will not pull it (${image}): ${detail || "docker image inspect failed"}`
+    );
+  }
+  try {
+    const inspected = JSON.parse(result.stdout) as Array<{ Config?: { Volumes?: Record<string, unknown> | null } }>;
+    const volumes = inspected[0]?.Config?.Volumes;
+    if (volumes && Object.keys(volumes).length > 0) {
+      throw new SandboxInfrastructureError("sandbox images must not declare writable VOLUME paths");
+    }
+  } catch (error) {
+    if (error instanceof SandboxInfrastructureError) throw error;
+    throw new SandboxInfrastructureError("Docker returned an unreadable sandbox image inspection result");
+  }
+}
+
+function runSandboxedRepositoryCommand(
+  command: string,
+  cwd: string,
+  timeoutMs: number,
+  image: string,
+  environment?: NodeJS.ProcessEnv | undefined,
+  gitWritable = false
+): { status: number; output: string; timedOut: boolean; signal?: NodeJS.Signals | null } {
+  if (!PINNED_SANDBOX_IMAGE.test(image)) {
+    throw new SandboxInfrastructureError("sandbox image must be pinned by an immutable sha256 digest");
+  }
+  const resolvedWorkspace = path.resolve(cwd);
+  const containerName = `kairn-bench-${randomUUID().replaceAll("-", "")}`;
+  const uid = typeof process.getuid === "function" ? process.getuid() : 65532;
+  const gid = typeof process.getgid === "function" ? process.getgid() : 65532;
+  const args = [
+    "run", "--rm", "--pull=never", "--name", containerName,
+    "--network", "none",
+    "--read-only",
+    "--cap-drop", "ALL",
+    "--security-opt", "no-new-privileges",
+    "--pids-limit", "512",
+    "--user", `${uid}:${gid}`,
+    "--tmpfs", "/tmp:rw,nosuid,nodev,size=1g,mode=1777",
+    "--mount", `type=bind,source=${resolvedWorkspace},target=/workspace`,
+    "--workdir", "/workspace",
+    "--env", "HOME=/tmp/kairn-home",
+    "--env", "CI=true",
+    "--env", "GIT_CONFIG_NOSYSTEM=1",
+    "--env", "GIT_CONFIG_GLOBAL=/dev/null",
+    "--env", "GIT_TERMINAL_PROMPT=0",
+    "--env", "GIT_OPTIONAL_LOCKS=0",
+    "--entrypoint", "/bin/sh"
+  ];
+  const gitDirectory = path.join(resolvedWorkspace, ".git");
+  if (!gitWritable && fs.statSync(gitDirectory, { throwIfNoEntry: false })?.isDirectory()) {
+    args.push("--mount", `type=bind,source=${gitDirectory},target=/workspace/.git,readonly`);
+  }
+  args.push(
+    image,
+    "-c", 'umask 077; mkdir -p "$HOME"; exec /bin/sh -c "$1"', "kairn-bench", command
+  );
+  const result = spawnSync("docker", args, {
+    env: scrubRepositoryHostEnvironment(environment),
+    encoding: "utf8",
+    timeout: timeoutMs,
+    maxBuffer: 8 * 1024 * 1024
+  });
+  const timedOut = spawnTimedOut(result);
+  if (timedOut) cleanupSandboxContainer(containerName, environment);
+  const status = result.status ?? (result.error ? 1 : 0);
+  const output = [result.stdout, result.stderr, result.error?.message].filter(Boolean).join("\n");
+  if (result.error || timedOut || status === 125 || status === 126 || status === 127) {
+    if (!timedOut) cleanupSandboxContainer(containerName, environment);
+    throw new SandboxInfrastructureError(
+      timedOut
+        ? `sandboxed repository command timed out after ${timeoutMs}ms`
+        : `sandbox execution failed with exit code ${status}: ${output.slice(-1000)}`
+    );
+  }
+  return { status, output, timedOut, signal: result.signal };
+}
+
+function cleanupSandboxContainer(name: string, environment?: NodeJS.ProcessEnv | undefined): void {
+  spawnSync("docker", ["rm", "--force", name], {
+    env: scrubRepositoryHostEnvironment(environment),
+    encoding: "utf8",
+    timeout: 30_000,
+    stdio: "ignore"
+  });
+}
+
+function scrubGitConfigEnvironment(environment?: NodeJS.ProcessEnv | undefined): NodeJS.ProcessEnv {
+  const output: NodeJS.ProcessEnv = { ...(environment ?? process.env) };
+  const unsafeGitEnvironment = new Set([
+    "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_COMMON_DIR", "GIT_NAMESPACE",
+    "GIT_EXEC_PATH", "GIT_TEMPLATE_DIR", "GIT_EXTERNAL_DIFF", "GIT_DIFF_OPTS",
+    "GIT_PROXY_COMMAND", "GIT_SSH", "GIT_SSH_COMMAND", "GIT_CONFIG_SYSTEM"
+  ]);
+  for (const key of Object.keys(output)) {
+    if (
+      unsafeGitEnvironment.has(key.toUpperCase()) ||
+      /^GIT_CONFIG_(?:COUNT|KEY_\d+|VALUE_\d+|PARAMETERS)$/i.test(key) ||
+      /^(?:GIT|SSH)_ASKPASS$/i.test(key)
+    ) {
+      delete output[key];
+    }
+  }
+  output.GIT_CONFIG_NOSYSTEM = "1";
+  output.GIT_CONFIG_GLOBAL = process.platform === "win32" ? "NUL" : os.devNull;
+  output.GIT_TERMINAL_PROMPT = "0";
+  output.GCM_INTERACTIVE = "Never";
+  return output;
+}
+
+function scrubRepositoryHostEnvironment(environment?: NodeJS.ProcessEnv | undefined): NodeJS.ProcessEnv {
+  const output = scrubGitConfigEnvironment(environment);
+  const explicit = new Set([
+    "ANTHROPIC_API_KEY", "REASONBLOCKS_API_KEY", "OPENAI_API_KEY", "GITHUB_TOKEN",
+    "GH_TOKEN", "NPM_TOKEN", "PYPI_TOKEN", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY",
+    "AWS_SESSION_TOKEN", "GOOGLE_APPLICATION_CREDENTIALS", "AZURE_CLIENT_SECRET"
+  ]);
+  const sensitive = /(?:^|_)(?:TOKEN|SECRET|PASSWORD|CREDENTIAL|API_KEY|PRIVATE_KEY)(?:$|_)/i;
+  for (const key of Object.keys(output)) {
+    if (explicit.has(key.toUpperCase()) || sensitive.test(key)) delete output[key];
+  }
+  return output;
 }
 
 function runRequired(
   command: string,
   args: string[],
-  input: { cwd: string; label: string; shell?: boolean | undefined }
+  input: {
+    cwd: string;
+    label: string;
+    shell?: boolean | undefined;
+    environment?: NodeJS.ProcessEnv | undefined;
+  }
 ): void {
   const result = spawnSync(command, args, {
     cwd: input.cwd,
     shell: input.shell ?? false,
+    ...(input.environment ? { env: input.environment } : {}),
     encoding: "utf8",
     maxBuffer: 8 * 1024 * 1024
   });
@@ -648,6 +938,7 @@ function runRequiredWithRetry(
     cwd: string;
     label: string;
     shell?: boolean | undefined;
+    environment?: NodeJS.ProcessEnv | undefined;
     attempts: number;
     retryDelayMs: number;
     retryOn: (message: string) => boolean;
@@ -675,10 +966,16 @@ function sleepSync(ms: number): void {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
-export function runShell(command: string, cwd: string, timeoutMs: number): { status: number; output: string; timedOut: boolean; signal?: NodeJS.Signals | null } {
+export function runShell(
+  command: string,
+  cwd: string,
+  timeoutMs: number,
+  environment?: NodeJS.ProcessEnv | undefined
+): { status: number; output: string; timedOut: boolean; signal?: NodeJS.Signals | null } {
   const result = spawnSync(command, {
     cwd,
     shell: true,
+    ...(environment ? { env: environment } : {}),
     encoding: "utf8",
     timeout: timeoutMs,
     maxBuffer: 8 * 1024 * 1024
@@ -701,14 +998,14 @@ export async function runShellWithProcessGroupTimeout(
   cwd: string,
   timeoutMs: number,
   maxBuffer: number,
-  env?: Record<string, string> | undefined
+  environment?: NodeJS.ProcessEnv | undefined
 ): Promise<{ status: number | null; output: string; timedOut: boolean; signal?: NodeJS.Signals | null; error?: Error | undefined }> {
   return new Promise((resolve) => {
     const child = spawn(command, {
       cwd,
       shell: true,
-      env: env ? { ...process.env, ...env } : undefined,
       detached: process.platform !== "win32",
+      ...(environment ? { env: environment } : {}),
       stdio: ["ignore", "pipe", "pipe"]
     });
     let output = "";
@@ -738,8 +1035,12 @@ export async function runShellWithProcessGroupTimeout(
       clearTimeout(timeoutTimer);
       if (forceTimer) clearTimeout(forceTimer);
       if (watchdogTimer) clearInterval(watchdogTimer);
+      const normalizedStatus =
+        timedOut && (status === null || status === 0)
+          ? 124
+          : status ?? (spawnError ? 1 : 0);
       resolve({
-        status: status ?? (spawnError ? 1 : 0),
+        status: normalizedStatus,
         output,
         timedOut,
         signal,
@@ -809,6 +1110,7 @@ export function changedFiles(workspacePath: string): string[] {
   if (!workspacePath) return [];
   try {
     const tracked = execFileSync("git", ["-C", workspacePath, "diff", "--name-only"], {
+      env: scrubGitConfigEnvironment(),
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"]
     })
@@ -816,6 +1118,7 @@ export function changedFiles(workspacePath: string): string[] {
       .map((line) => normalizeRelativePath(line.trim()))
       .filter((file) => file && !isBenchmarkInternalPath(file));
     const untracked = execFileSync("git", ["-C", workspacePath, "ls-files", "--others", "--exclude-standard"], {
+      env: scrubGitConfigEnvironment(),
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"]
     })

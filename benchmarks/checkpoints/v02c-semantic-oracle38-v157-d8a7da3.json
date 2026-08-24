@@ -1,0 +1,113 @@
+{
+  "schemaVersion": "semantic-oracle-checkpoint.v1",
+  "checkpointId": "v02c-semantic-oracle38-v157-20260727",
+  "createdAt": "2026-07-27T20:35:00-04:00",
+  "status": "candidate_gate_failed_with_broad_improvement",
+  "frozenImplementationCommit": "d8a7da3b68836b83dde0756f4353f46e6648ec3c",
+  "branch": "codex/v0.2c-semantic-iteration",
+  "model": {
+    "modelId": "jina-code-v2-q8",
+    "documentSchemaVersion": "semantic-documents-v5",
+    "candidatePolicy": "seven_eighths_semantic_reserve"
+  },
+  "campaign": {
+    "caseManifestPath": "benchmarks/semantic/oracle38-cases-v1.json",
+    "caseCount": 38,
+    "caseProcessIsolation": true,
+    "semanticRequired": true,
+    "complete": true,
+    "corpus": {
+      "path": "artifacts/ranker-corpus.semantic-v157-oracle38-jina-seven-eighths-frozen.jsonl",
+      "sha256": "50b01eff2c807629f3b5514291902efba145a415eb8b851fc8771b028b76500a",
+      "bytes": 7836543
+    },
+    "report": {
+      "path": "artifacts/ranker-corpus.semantic-v157-oracle38-jina-seven-eighths-frozen.report.json",
+      "sha256": "943a935e93fa62893607a3a82f6b18f4a76877a362f8a4b8f0f02c736a6f66fd",
+      "bytes": 35156512
+    },
+    "progress": {
+      "path": "artifacts/ranker-corpus.semantic-v157-oracle38-jina-seven-eighths-frozen.jsonl.progress.json",
+      "sha256": "0f43fe849caa4a4312ddec0425df81085d0094f75a97eeb359be3cc5984d238a",
+      "bytes": 29437702
+    }
+  },
+  "candidateResults": {
+    "eligibleCases": 38,
+    "strictFullRecallAt64": {
+      "count": 30,
+      "total": 38,
+      "rate": 0.7894736842105263,
+      "legacyCount": 26,
+      "legacyRate": 0.6842105263157895,
+      "requiredRate": 0.99,
+      "passed": false
+    },
+    "strictFullRecallAt128": {
+      "count": 37,
+      "total": 38,
+      "rate": 0.9736842105263158,
+      "legacyCount": 31,
+      "legacyRate": 0.8157894736842105,
+      "passed": false
+    },
+    "positiveSourceAnyHitRateAt64": 0.8947368421052632,
+    "positiveSourceAnyHitRateAt128": 1,
+    "officialPatchMeanRecallAt64": 0.8364661654135338,
+    "officialPatchMeanRecallAt128": 0.9887218045112781,
+    "semanticReadyCases": 38,
+    "semanticServedCases": 38,
+    "generatedOrVendorTopOneCases": 0,
+    "byLanguage": {
+      "python": {"fullAt64": 6, "fullAt128": 6, "cases": 6},
+      "typescript": {"fullAt64": 8, "fullAt128": 9, "cases": 10},
+      "go": {"fullAt64": 6, "fullAt128": 8, "cases": 8},
+      "java": {"fullAt64": 6, "fullAt128": 7, "cases": 7},
+      "cpp": {"fullAt64": 4, "fullAt128": 7, "cases": 7}
+    },
+    "byScenario": {
+      "failure_first": {"fullAt64": 10, "fullAt128": 11, "cases": 11},
+      "long_session": {"fullAt64": 12, "fullAt128": 14, "cases": 14},
+      "source_localization": {"fullAt64": 8, "fullAt128": 12, "cases": 13}
+    }
+  },
+  "failureClass": {
+    "at64Misses": 8,
+    "recoveredCompletelyByGraphEnriched128": 7,
+    "stillIncompleteAt128": 1,
+    "description": "Seven initial-union misses are recovered by bounded one-hop enrichment at positions 74 through 126. One seven-source TypeScript case remains incomplete at 128. Source localization and C++ are the weakest broad strata.",
+    "tuningPolicy": "Do not add repository, fixture, filename, symbol, issue-phrase, path-token, task-word, or regex relevance rules. Replace sequential lane quotas using train/calibration data and evaluate the next frozen mechanism on fresh lineage-disjoint holdout data."
+  },
+  "dedicatedRuntime": {
+    "referenceDocuments": 7500,
+    "cpuThreads": 4,
+    "coldInitializationMs": 1067.982,
+    "warmQueryP95Ms": 81.131,
+    "vectorScanP95Ms": 23.951,
+    "warmCandidateP95UpperBoundMs": 105.082,
+    "embeddingBatchP95Ms": 1728.821,
+    "projectedEmbeddingMinutesAt7500": 27.03,
+    "gates": {
+      "coldInitializationAtMostFiveSeconds": true,
+      "warmCandidateAtMost300Ms": true,
+      "vectorScanAtMost50Ms": true
+    }
+  },
+  "campaignRuntimeDiagnostics": {
+    "queryP95Ms": 890.838,
+    "vectorScanP95Ms": 60.639,
+    "maximumStateMiB": 329.62,
+    "medianStateMiB": 150.19,
+    "coldIndexingPassed": false,
+    "observedColdCaseMinutes": {
+      "java": [52, 70, 93],
+      "pythonRange": [37, 54],
+      "typescriptMaximum": 22.5
+    },
+    "disclosure": "The dedicated warm runtime gates pass. Rich real-repository cold indexing is much slower than the synthetic projection because the dynamically quantized model is intentionally executed one document at a time to keep embeddings independent of batch companions."
+  },
+  "candidateGatePassed": false,
+  "rankerPromotionPassed": false,
+  "paidComparisonEligible": false,
+  "nextGate": "Use only train/calibration and new public or synthetic repositories to replace sequential semantic, symbol, and graph quotas with general model-plus-structural fusion. Freeze the new mechanism before evaluating a fresh lineage-disjoint holdout. Paid Claude and ReasonBlocks work remains blocked."
+}

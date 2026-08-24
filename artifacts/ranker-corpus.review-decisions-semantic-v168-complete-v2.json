@@ -1,0 +1,2613 @@
+{
+  "schemaVersion": "ranker-corpus-review-decision-checkpoint.v1",
+  "corpusId": "kairn-evidence-v02c-20260722",
+  "status": "review_complete",
+  "promotionEligible": false,
+  "sourceQueueSha256": "afd28f2c708612160dac3888b0a95aa3f6f72008fd45a6b4e094f10770364ff0",
+  "batchIndexSha256": "7dad59c3fc7f66c564754b604d1d0517805ea2f7867fb5fc94056d6c6e1288fd",
+  "caseCount": 135,
+  "completedCases": 135,
+  "pendingCases": 0,
+  "decisions": [
+    {
+      "id": "v02c-train-python-source_localization-001",
+      "materializedCaseSha256": "0e9aacbd7ff0ced6e3fd127bf65b75d184784a595287307d5b01884eed803879",
+      "candidatePathsSha256": "913ed97234ce67fb4bdf23ffa284de4a5a290bdb06e15787eb2067d303294899",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "pylint/checkers/unicode.py",
+          "pylint/checkers/similar.py",
+          "pylint/checkers/classes/special_methods_checker.py",
+          "pylint/pyreverse/diagrams.py",
+          "pylint/pyreverse/main.py",
+          "pylint/extensions/code_style.py"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:00:00-04:00",
+        "notes": "The recursive ignore-path fix is in expand_modules. The selected checker, pyreverse, and style-extension candidates do not implement recursive module expansion or ignore-path application."
+      }
+    },
+    {
+      "id": "v02c-train-python-source_localization-002",
+      "materializedCaseSha256": "4c7e76c3f2fc226632636f928e3b1fb121d6025c4fc740336119123980c667fe",
+      "candidatePathsSha256": "7cc4a76bc98015c3be8e9148e6ab7ccfbef67876fc5e4a358d5c3ad016f77928",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/functional/t/too/too_many_ancestors.py",
+          "pylint/reporters/ureports/nodes.py",
+          "pylint/extensions/docparams.py",
+          "pylint/extensions/code_style.py",
+          "pylint/extensions/mccabe.py",
+          "pylint/checkers/raw_metrics.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The official patch source is present. Noise labels cover unrelated reporting, checker, extension, and functional-test behavior rather than command bootstrap and sys.path handling."
+      }
+    },
+    {
+      "id": "v02c-train-python-source_localization-003",
+      "materializedCaseSha256": "6a26cefc7e30db0090624e7442dda390e755295e10448fbac562fb7ff98ecdb8",
+      "candidatePathsSha256": "3bfeb439981c607b0360308cad2835080d6c2ab471c637e59c894b5dec7abb65",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "bench/manyparam.py",
+          "testing/test_skipping.py",
+          "testing/test_doctest.py",
+          "src/_pytest/junitxml.py",
+          "src/_pytest/recwarn.py",
+          "testing/test_recwarn.py"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:00:00-04:00",
+        "notes": "The caplog list-identity bug is confined to pytest logging. Benchmark, skipping, doctest, JUnit XML, and warning-capture candidates do not control caplog records."
+      }
+    },
+    {
+      "id": "v02c-train-python-source_localization-004",
+      "materializedCaseSha256": "6898cbe3633661716a3dc765c735e24ae18c907174ee53f24e7af4cb57a58b1b",
+      "candidatePathsSha256": "bcbb6ad0299ca6d1b9553310fca18b6128b8833221c44d8ffb4f123eb6e3eda8",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "sklearn/mixture/gmm.py",
+          "sklearn/externals/joblib/numpy_pickle.py",
+          "sklearn/covariance/graph_lasso_.py",
+          "sklearn/neighbors/classification.py",
+          "sklearn/tree/tree.py",
+          "sklearn/gaussian_process/kernels.py"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:00:00-04:00",
+        "notes": "RidgeClassifierCV is implemented in linear_model/ridge.py. The selected mixture, serialization, covariance, neighbors, tree, and Gaussian-process candidates are unrelated estimator surfaces."
+      }
+    },
+    {
+      "id": "v02c-train-python-source_localization-005",
+      "materializedCaseSha256": "a3f1bd9f3fa0a5df1b25b80f559427b4af29925745495808d0709114135b320f",
+      "candidatePathsSha256": "96cf781338abbda6c877e90d1b89700a6651ca4ed83f392e0d2ac627e15bd63a",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "sphinx/ext/graphviz.py",
+          "sphinx/ext/napoleon/docstring.py",
+          "sphinx/builders/epub3.py",
+          "sphinx/domains/javascript.py",
+          "sphinx/domains/cpp.py",
+          "sphinx/builders/changes.py"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:00:00-04:00",
+        "notes": "literalinclude prepend indentation is handled by the code directive. Graphviz, Napoleon, EPUB/change builders, and JavaScript/C++ domains do not implement that directive behavior."
+      }
+    },
+    {
+      "id": "v02c-train-python-source_localization-006",
+      "materializedCaseSha256": "278f4eedd2ce9526182e750f72688d12744a9d814500081db7594983cc7e8c4d",
+      "candidatePathsSha256": "47b44fcbc4e0107e2d49b018e00b603eb8cf7deb71e0f3f4c67e0a74c40883f4",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "sympy/simplify/tests/test_sqrtdenest.py",
+          "sympy/polys/factortools.py",
+          "sympy/solvers/tests/test_pde.py",
+          "sympy/concrete/tests/test_delta.py",
+          "sympy/physics/quantum/tests/test_cartesian.py",
+          "sympy/tensor/tests/test_indexed.py"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:00:00-04:00",
+        "notes": "Point dimensionality and distance live in geometry/point.py. The selected simplification, polynomial, PDE, concrete, quantum, and tensor files do not implement Point distance."
+      }
+    },
+    {
+      "id": "v02c-train-python-failure_first-007",
+      "materializedCaseSha256": "cec4bd0d94f815ea43b47115b3a8c03a1ea219ea5f2bc2db289444a03708c0ab",
+      "candidatePathsSha256": "1613002a98af71bc1b7343d989562e8f47c8c42eb153b21e1e1a7104e5aee02a",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "requests/packages/charade/hebrewprober.py",
+          "requests/packages/charade/jpcntx.py",
+          "requests/packages/charade/chardistribution.py",
+          "requests/packages/charade/langthaimodel.py",
+          "requests/packages/charade/langgreekmodel.py",
+          "requests/packages/charade/langhungarianmodel.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The request-body model patch source is present. Noise labels are bundled character-detection modules unrelated to HTTP Content-Length preparation."
+      }
+    },
+    {
+      "id": "v02c-train-python-failure_first-008",
+      "materializedCaseSha256": "12c06b11e748c9bfa82fb66116b636e2c26136159543313f409c8cde0f7da966",
+      "candidatePathsSha256": "b5c907e237f7c38b2f7ffb127e1322adfd9969e09aa3b643488d21113239db17",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "requests/packages/charade/jpcntx.py",
+          "requests/packages/charade/chardistribution.py",
+          "requests/packages/charade/hebrewprober.py",
+          "requests/packages/charade/langthaimodel.py",
+          "requests/packages/charade/latin1prober.py",
+          "requests/packages/charade/gb2312prober.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The session implementation patch source is present. Noise labels are bundled character-detection modules unrelated to HTTP method normalization and multipart request handling."
+      }
+    },
+    {
+      "id": "v02c-train-python-failure_first-009",
+      "materializedCaseSha256": "0bec95bc406a283898de62d49f82d908085c244ee22e59000b7d0eb64d8730f6",
+      "candidatePathsSha256": "f37798fb3a00a7dd1e7ae33a89b2a4f3d212d937bc631f2b57c6beb6d988501d",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "requests/packages/charade/hebrewprober.py",
+          "requests/packages/charade/jpcntx.py",
+          "requests/packages/charade/chardistribution.py",
+          "requests/packages/charade/langthaimodel.py",
+          "requests/packages/charade/langhebrewmodel.py",
+          "requests/packages/charade/latin1prober.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The digest-auth implementation patch source is present. Noise labels are bundled character-detection modules unrelated to Digest Authorization header quoting."
+      }
+    },
+    {
+      "id": "v02c-train-python-failure_first-010",
+      "materializedCaseSha256": "f411508642cb6c0d8ca68db6530389d3835aa614d6de6b81680e95cf7e9d1c3c",
+      "candidatePathsSha256": "7677b86f13c9a4da2e14cef1cdbc019aff6baa721411ac63a92142141b5c19f9",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "requests/packages/chardet/hebrewprober.py",
+          "requests/packages/chardet/chardistribution.py",
+          "requests/packages/chardet/jpcntx.py",
+          "requests/packages/chardet/langthaimodel.py",
+          "requests/packages/chardet/langhebrewmodel.py",
+          "requests/packages/chardet/latin1prober.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The session implementation patch source is present. Noise labels are bundled character-detection modules unrelated to removal of default session headers."
+      }
+    },
+    {
+      "id": "v02c-train-python-failure_first-011",
+      "materializedCaseSha256": "6997b44d4d7fc9e2f6ed822e1d84eb4a68ee6ce95bd731cd40e0225fe566d8a9",
+      "candidatePathsSha256": "712ad10243673b2d510d8312481879174ce8b3709adc46d692a1ebb93d59c2a6",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "requests/packages/chardet/langbulgarianmodel.py",
+          "requests/packages/chardet/langhungarianmodel.py",
+          "requests/packages/chardet/langgreekmodel.py",
+          "requests/packages/chardet/mbcsgroupprober.py",
+          "requests/packages/chardet/sbcsgroupprober.py",
+          "requests/packages/chardet/langthaimodel.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The session implementation patch source is present. Noise labels are bundled character-detection modules unrelated to byte-string HTTP method normalization."
+      }
+    },
+    {
+      "id": "v02c-train-python-failure_first-012",
+      "materializedCaseSha256": "f26af839abe0a87127b1d447467b7ff6429ab15decb03f8cd87dca6e872d4ae2",
+      "candidatePathsSha256": "9bcef908acd79fadbd826e9096a1e82effb28d62b8d564732b5c2de94e7992a5",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "requests/packages/chardet/euctwfreq.py",
+          "requests/packages/chardet/big5freq.py",
+          "requests/packages/chardet/euckrfreq.py",
+          "requests/packages/chardet/sjisprober.py",
+          "requests/packages/chardet/langthaimodel.py",
+          "requests/packages/chardet/langhebrewmodel.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The request model patch source is present. Noise labels are bundled character-detection frequency tables and probers unrelated to binary request-body preparation."
+      }
+    },
+    {
+      "id": "v02c-train-python-long_session-013",
+      "materializedCaseSha256": "755be99ee345930a76dbf53fe463d92a6445323bdec4ecb068fcc818d39e1218",
+      "candidatePathsSha256": "0617f9244d9f926790a2f41c880a188ba1f1c72c31f5f96f7d56bf934492f7f7",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "pylint/extensions/check_docs.py",
+          "pylint/checkers/python3.py",
+          "tests/checkers/unittest_spelling.py",
+          "pylint/checkers/raw_metrics.py",
+          "pylint/checkers/strings.py",
+          "pylint/checkers/exceptions.py"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:00:00-04:00",
+        "notes": "The patch changes pyreverse diagrams, inspection, utilities, and writing. Documentation, Python-3, spelling, metrics, string, and exception lint checkers do not generate UML relationships from type hints."
+      }
+    },
+    {
+      "id": "v02c-train-python-long_session-014",
+      "materializedCaseSha256": "acb5782779a2b26f797f5747616ae4a5b67ac6ef574776fe956e1bd48a2162b0",
+      "candidatePathsSha256": "2947dd98cfb50cfc5708d53badf6797555852a0866bfdbf263e1a0781a75533f",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/extensions/test_empty_comment.py",
+          "tests/extensions/test_docstyle.py",
+          "pylint/graph.py",
+          "pylint/reporters/multi_reporter.py",
+          "pylint/extensions/mccabe.py",
+          "pylint/pyreverse/diadefslib.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The variables and constants patch sources are present. Noise labels cover unrelated extensions, graph/reporting infrastructure, complexity checks, and UML diagram definitions."
+      }
+    },
+    {
+      "id": "v02c-train-python-long_session-015",
+      "materializedCaseSha256": "b7d0d1b5241bb4d3e8154142d7873723bb5e0f063b1d34adc7d5a6453ec7ebe6",
+      "candidatePathsSha256": "a586ed0f786b4724533088defa633aa24d90537d2e5d1e95d3d91803bd156f66",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "pylint/checkers/typecheck.py",
+          "pylint/checkers/format.py",
+          "pylint/checkers/spelling.py",
+          "pylint/checkers/variables.py",
+          "pylint/checkers/stdlib.py",
+          "pylint/checkers/design_analysis.py"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:00:00-04:00",
+        "notes": "The XDG data-directory constant is a configuration concern. The selected type, format, spelling, variables, stdlib, and design checkers do not choose Pylint's persistent data location."
+      }
+    },
+    {
+      "id": "v02c-train-python-long_session-016",
+      "materializedCaseSha256": "1998906672540f8f274a2930b1173f9301e660f527aa45db5349667a272af404",
+      "candidatePathsSha256": "add9032f48ef79ff655168ce66110e319d33f2aefaecc39d0ca137860d415713",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "pylint/pyreverse/dot_printer.py",
+          "pylint/pyreverse/diadefslib.py",
+          "pylint/checkers/unicode.py",
+          "pylint/checkers/typecheck.py",
+          "pylint/checkers/design_analysis.py",
+          "pylint/checkers/logging.py"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:00:00-04:00",
+        "notes": "The short verbose flag is defined by configuration argument handling and base options. Pyreverse and unrelated lint checkers do not define the CLI action for -v."
+      }
+    },
+    {
+      "id": "v02c-train-python-long_session-017",
+      "materializedCaseSha256": "e731c1716ffcf3d40680f6739c7e0614bde603f25c90e6cc05cb9f2c6ec5b6d1",
+      "candidatePathsSha256": "f2d83842ebaacb20bf4ecff54be0d2441372a0665e648991bbc7a4dc7bc59072",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/functional/n/non_ascii_name/non_ascii_name_pos_and_kwonly_function.py",
+          "tests/functional/r/regression/regression_property_no_member_2641.py",
+          "pylint/checkers/deprecated.py",
+          "pylint/checkers/async.py",
+          "pylint/checkers/strings.py",
+          "pylint/checkers/spelling.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The recursive expansion and linter patch sources are present. Noise labels cover unrelated diagnostic fixtures and checker categories."
+      }
+    },
+    {
+      "id": "v02c-train-python-long_session-018",
+      "materializedCaseSha256": "f51701b99d5411cee05ba66d520698aa302d516f809de5dd00bdaddb947d8290",
+      "candidatePathsSha256": "f7bc1ff9d320377a6a13d73157dbc100393c8c6b49c87c84de094f59c765e638",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/functional/c/consider/consider_using_with_open.py",
+          "pylint/checkers/refactoring/implicit_booleaness_checker.py",
+          "pylint/checkers/base/docstring_checker.py",
+          "pylint/reporters/json_reporter.py",
+          "pylint/lint/parallel.py",
+          "pylint/checkers/lambda_expressions.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The argument and utility patch sources are present. Noise labels cover unrelated checker, reporter, parallel-lint, and functional-test behavior."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-source_localization-019",
+      "materializedCaseSha256": "ee1f6cff2870916e2247d7a4e7ded03a0c860bad1e4eb28509772e09e8d71bbe",
+      "candidatePathsSha256": "0c67b223072c4e15d274e77870a23b990ddb2ca55769a7f95b6f8c67bcf2c998",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benches/scripts/prepare.js",
+          "benches/scripts/analyze.js",
+          "benches/scripts/deopts.js",
+          "scripts/release/publish.mjs",
+          "debug/src/debug.js",
+          "scripts/release/upload-gh-asset.js"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:00:00-04:00",
+        "notes": "Compat event normalization is implemented in compat/src/render.js. Benchmark tooling, release scripts, and debug instrumentation do not reconcile onInput and onChange callbacks."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-source_localization-020",
+      "materializedCaseSha256": "f9379d51794e295a97d3e939043daa19055681a6b0cec5afe4416fbe6c1268b7",
+      "candidatePathsSha256": "bb34fed6d16c0fcba8b2519a879c482c7b1260ea97a885e246f990d543a40c30",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benches/src/keyed-children/components.js",
+          "benches/src/keyed-children/store.js",
+          "benches/scripts/analyze.js",
+          "benches/scripts/deopts.js",
+          "scripts/release/publish.mjs",
+          "compat/test/browser/portals.test.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The hook implementation and declarations are present. Noise labels are benchmark, release, and portal-test code unrelated to error-boundary hook metadata."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-source_localization-021",
+      "materializedCaseSha256": "aa3b07300c0e7a01574520e0fbeb9589b0c44bc42a849fcfcbae6f7098f0d9fe",
+      "candidatePathsSha256": "83fc444e769855a646f9b399125393f040ff6a792a818119f0910c674aaa26c6",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benches/scripts/global.d.ts",
+          "benches/scripts/index.js",
+          "benches/scripts/analyze.js",
+          "benches/scripts/deopts.js",
+          "benches/scripts/config.js",
+          "debug/test/browser/component-stack.test.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The hook implementation patch source is present. Noise labels are benchmark harness and debug-stack test code unrelated to same-tick hook state scheduling."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-source_localization-022",
+      "materializedCaseSha256": "41f204b1f3a19ea4701df1ba0177efa6417891c6d03b793f8cf8ab70420f4d94",
+      "candidatePathsSha256": "66b6ca09a31dbbdf329079ea93d7d9bf814872e1ce3cb9c3bd493d0037d2bed1",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "compat/test/browser/PureComponent.test.js",
+          "compat/test/browser/portals.test.js",
+          "compat/test/browser/suspense-utils.js",
+          "benches/scripts/analyze.js",
+          "benches/scripts/deopts.js",
+          "scripts/release/publish.mjs"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The core diff patch source is present. Noise labels cover unrelated compat feature tests, benchmark analysis, and release tooling."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-source_localization-023",
+      "materializedCaseSha256": "271fce0604e986d4f1373a3f4d110bec0f75c69d7457dc8c8f3008de042eddf4",
+      "candidatePathsSha256": "dacf718bddd5c2f82bff01f7f3e6d1f396464af49dfc4a1d9b1e83d2059bee1c",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benches/src/keyed-children/index.js",
+          "benches/scripts/analyze.js",
+          "benches/scripts/deopts.js",
+          "debug/src/debug.js",
+          "benches/proxy-packages/preact-hooks-proxy/index.js",
+          "benches/src/util.js"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:00:00-04:00",
+        "notes": "Rendering boxed strings is handled by the child diff implementation. The selected benchmark, proxy, analysis, deopt, and debug files do not classify or render child values."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-source_localization-024",
+      "materializedCaseSha256": "be6473c79fe1b25c5fd5d6c34feb1ec78329ca0e2d0f85254f155fe65ff4c66c",
+      "candidatePathsSha256": "74fe5cefaeb113354d62aa791d7d874267d04ea699b80f8857b8fd9b1d4bcf8e",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "packages/create-docusaurus/src/index.ts",
+          "admin/scripts/formatLighthouseReport.js",
+          "packages/docusaurus-theme-classic/src/theme/SiteMetadata/index.tsx",
+          "packages/docusaurus-theme-classic/src/theme/BlogPostItem/Header/Author/index.tsx",
+          "packages/docusaurus-plugin-pwa/src/sw.ts",
+          "packages/docusaurus-theme-classic/src/theme/Footer/LinkItem/index.tsx"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:20:00-04:00",
+        "notes": "The official patch changes server-side broken-anchor normalization. The selected scaffolding, Lighthouse, theme metadata/author/footer, and service-worker files do not implement the broken-link checker."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-failure_first-025",
+      "materializedCaseSha256": "de727730267177f7d3e7553899715cb5f5c9db4cfd83b095bc7df5d0adf93a85",
+      "candidatePathsSha256": "bfd8678dc9e63d48884dbb1a5ab825b59bc4fc1acea72a310400bbfd8d4bdfc3",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "type-definitions/ts-tests/ordered-map.ts",
+          "resources/benchmark.js",
+          "src/predicates/isOrderedMap.js",
+          "src/functional/removeIn.js",
+          "perf/List.js",
+          "type-definitions/flow-tests/es6-collections.js"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:20:00-04:00",
+        "notes": "The failure concerns negative slicing after filtering and is fixed in sequence operations. Ordered-map predicates, nested removal, benchmarks, and collection type fixtures do not implement that slice operation."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-failure_first-026",
+      "materializedCaseSha256": "7607e4792a61c69fa7febddeb44a706072edee13f51395431035e1394bd9f353",
+      "candidatePathsSha256": "222f12d56f0347cdfdd50aee2599cd7d6caef1d1ea99bef3b9634143f02c0c7e",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benches/src/keyed-children/index.js",
+          "benches/scripts/bench.js",
+          "benches/scripts/paths.js",
+          "debug/test/browser/component-stack.test.js",
+          "compat/test/browser/portals.test.js",
+          "compat/test/browser/suspense-list.test.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The core diff patch source is present. Noise labels are benchmark tooling and unrelated debug, portal, and suspense tests."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-failure_first-027",
+      "materializedCaseSha256": "d8d29b7b431857b05851b620423e800680c2de7d27bd0eabf0f2a9b6f85505bf",
+      "candidatePathsSha256": "c2291836505f437060bb1678d953901ff4f03837e28541fba6888701d491809c",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benches/scripts/config.js",
+          "benches/scripts/deopts.js",
+          "benches/scripts/prepare.js",
+          "debug/test/browser/component-stack.test.js",
+          "compat/test/browser/portals.test.js",
+          "compat/test/browser/suspense-list.test.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The child-diff patch source is present. Noise labels are benchmark tooling and unrelated debug, portal, and suspense-list tests."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-failure_first-028",
+      "materializedCaseSha256": "c30aa480790bf8705d97cbd2e266a8c087da1eec70211776834214be329145c3",
+      "candidatePathsSha256": "c879f0a8a1b021b8e58bcee280df17ae28fe18c85fbf18b3629aeeb10d3000fc",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "compat/test/browser/cloneElement.test.js",
+          "compat/test/browser/events.test.js",
+          "compat/test/browser/portals.test.js",
+          "compat/test/browser/findDOMNode.test.js",
+          "benches/scripts/bench.js",
+          "benches/scripts/deopts.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The property-diff patch source is present. Noise labels cover unrelated compat feature tests and benchmark tooling."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-failure_first-029",
+      "materializedCaseSha256": "58b2717d55f4795fa9e0b9fd317ac754e6569745d82e6f61a886dd1ffdeb9a42",
+      "candidatePathsSha256": "b2867184215b202e65917d8d9385f090029bb37869df7a4a73405cc285396302",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "compat/test/browser/suspense-list.test.js",
+          "benches/scripts/analyze.js",
+          "benches/scripts/deopts.js",
+          "benches/proxy-packages/preact-master-proxy/index.js",
+          "debug/src/component-stack.js",
+          "compat/src/PureComponent.js"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:20:00-04:00",
+        "notes": "The tabindex regression is in DOM property diffing. Suspense, benchmark tooling/proxies, debug component stacks, and PureComponent do not apply or remove DOM properties."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-failure_first-030",
+      "materializedCaseSha256": "6b5db2d1fa1eb1755bfe9fd45087252e8da5cd572010511b9cbceb783434c8e2",
+      "candidatePathsSha256": "986457388b91d3f5b03d17e334871d1f723509c715866249f4edc92ad9d57bc5",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benches/src/keyed-children/components.js",
+          "benches/src/keyed-children/store.js",
+          "benches/scripts/global.d.ts",
+          "benches/scripts/index.js",
+          "compat/test/browser/memo.test.js",
+          "compat/test/browser/suspense.test.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The hook cleanup patch source is present. Noise labels are benchmark harness code and unrelated memo or suspense tests."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-long_session-031",
+      "materializedCaseSha256": "2e98c96f6a060ef5c3627fb8ee32aba5767c530f52375d700541ea449545eae1",
+      "candidatePathsSha256": "a2cea57a550428ca0b1d61df440728f4c488718af5fcfee2b32993826bfa8466",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "type-definitions/flow-tests/merge.js",
+          "type-definitions/ts-tests/list.ts",
+          "resources/benchmark.js",
+          "perf/Record.js",
+          "src/functional/removeIn.js",
+          "src/functional/setIn.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The collection implementation patch source is present. Noise labels cover unrelated type fixtures, performance code, nested removal, and nested assignment."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-long_session-032",
+      "materializedCaseSha256": "743a614c99a7361d787bed106b3655a4d1e38b07af04bda4608b9439488cba24",
+      "candidatePathsSha256": "f94cd7d91274aa86d0fc413116b1e40e370704a3daa9245be1344453dd30ba2a",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "editor/js/libs/acorn/acorn.js",
+          "editor/js/libs/es-module-shims.js",
+          "editor/js/libs/codemirror/codemirror.js",
+          "editor/js/commands/SetMaterialMapCommand.js",
+          "src/geometries/TubeGeometry.js",
+          "src/lights/RectAreaLight.js"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:20:00-04:00",
+        "notes": "Camera up-vector serialization belongs to Object3D and ObjectLoader. Editor parsers, material-map commands, tube geometry, and area-light code do not serialize the camera transform."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-long_session-033",
+      "materializedCaseSha256": "3bdab58c9acd25a0c10f38abeef7cbbed62c230c13b5db9595d45edc641d369a",
+      "candidatePathsSha256": "32436587ae37800cb291cbfd11a72a76cf04c877dbaa14cacbdc8b06812b87bb",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/renderers/webgl/WebGLShadowMap.js",
+          "src/math/Matrix3.js",
+          "src/lights/HemisphereLight.js",
+          "src/renderers/webgl/WebGLMaterials.js",
+          "src/math/SphericalHarmonics3.js",
+          "src/core/UniformsGroup.js"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:20:00-04:00",
+        "notes": "The patch clones material arrays in Mesh, Line, and Points copy paths. The selected renderer, math, lighting, and uniform-group files neither own those object copy methods nor the material-array reference."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-long_session-034",
+      "materializedCaseSha256": "2de14d1ff8dc873a7dbe671b4dc9edba24c6440424e79ffb24c3a685abc5d140",
+      "candidatePathsSha256": "f0d696c28cc9f786c83dd7807bdd5ad2ac038c3b1e8ddaa005bcee5525bb6b60",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "manual/resources/threejs-materials.js",
+          "src/helpers/PointLightHelper.js",
+          "src/helpers/HemisphereLightHelper.js",
+          "editor/js/EditorControls.js",
+          "editor/js/Viewport.VR.js",
+          "editor/js/Sidebar.Geometry.IcosahedronGeometry.js"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:20:00-04:00",
+        "notes": "The missing type marker is defined directly on Sphere. Manual examples, light helpers, editor controls/VR, and an unrelated geometry sidebar do not define Sphere instances."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-long_session-035",
+      "materializedCaseSha256": "2c453d63c7cdc702c1f706b6b813b5293b8d0fef05934a3a5d89aa366fceecf3",
+      "candidatePathsSha256": "9403759a923180872651326902c68272f3517a064154818e1c5c334b8a1ade74",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "compat/test/browser/portals.test.js",
+          "compat/test/browser/events.test.js",
+          "compat/test/browser/findDOMNode.test.js",
+          "benches/scripts/analyze.js",
+          "benches/scripts/deopts.js",
+          "debug/test/browser/debug-compat.test.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "The child-diff and public type patch sources are present. Noise labels cover unrelated compat tests, benchmark tooling, and debug compatibility."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-long_session-036",
+      "materializedCaseSha256": "b962935150243bbb26689c67f67fc215cb4237fb5df99dae9cfcdb0d274d4356",
+      "candidatePathsSha256": "11a757f2a7ee530a7e919edff388b84936044eb268f35f05235972549da885a7",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "compat/test/browser/forwardRef.test.js",
+          "compat/test/browser/memo.test.js",
+          "benches/scripts/prepare.js",
+          "benches/scripts/deopts.js",
+          "benches/src/keyed-children/components.js",
+          "config/codemod-strip-tdz.js"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:20:00-04:00",
+        "notes": "The regression is in hook state settling and cleanup. ForwardRef/memo tests, benchmark setup/components, and a TDZ codemod do not implement the hook effect lifecycle."
+      }
+    },
+    {
+      "id": "v02c-train-go-source_localization-037",
+      "materializedCaseSha256": "4b8bd32e933dceb3e602d925ba90d1027bafb1ab370e9a557e8e77164f2dc087",
+      "candidatePathsSha256": "a8b6a0e77a42f4eff96e6a70db682972368e68d59767eb24e775ae2edbcf8c21",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "internal/cloud/backend.go",
+          "internal/provider-terraform/main/main.go",
+          "internal/states/statefile/read.go",
+          "internal/legacy/terraform/resource.go",
+          "internal/command/providers_lock.go",
+          "internal/plugin/mock_proto/generate.go"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:20:00-04:00",
+        "notes": "The change extends the fmt command's accepted filename suffixes. Cloud backends, provider entrypoints, state reading, legacy resources, provider locks, and generated mock protocol code do not gate terraform fmt inputs."
+      }
+    },
+    {
+      "id": "v02c-train-go-source_localization-038",
+      "materializedCaseSha256": "3a4c09bac47976db7337ec015e221231a454110bb0d9ae9a99ed83432fb418cb",
+      "candidatePathsSha256": "99421bf9cb822ad64fdb35ca7c482bdc76e4f31647622de8b568e9a25b65bee5",
+      "decision": {
+        "requiredSourceFiles": [
+          "internal/communicator/ssh/provisioner.go"
+        ],
+        "explicitNoiseFiles": [
+          "internal/registry/regsrc/module.go",
+          "internal/lang/funcs/crypto_test.go",
+          "internal/command/cliconfig/credentials.go",
+          "internal/backend/remote-state/kubernetes/backend.go",
+          "internal/backend/remote-state/cos/backend_state.go",
+          "internal/genconfig/generate_config_write.go"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:20:00-04:00",
+        "notes": "The official patch file is absent from the bounded union. The SSH provisioner is the present implementation source that creates and manages the provisioner communication used by remote-exec, so it is required evidence. Registry modules, crypto tests, CLI credentials, remote-state backends, and generated configuration do not own that lifecycle."
+      }
+    },
+    {
+      "id": "v02c-train-go-source_localization-039",
+      "materializedCaseSha256": "9d03b558ccb93899e1864165b412118d25bd974ac998a8fa77d64cccb7461bc1",
+      "candidatePathsSha256": "30afe7c42fcca48411e673cf38e70dd19e19462aeb00350e18a7578bc8ffb664",
+      "decision": {
+        "requiredSourceFiles": [
+          "internal/terraform/transform_attach_config_resource.go"
+        ],
+        "explicitNoiseFiles": [
+          "internal/command/testdata/login-oauth-server/main.go",
+          "internal/provider-simple-v6/main/main.go",
+          "main.go",
+          "internal/command/command.go",
+          "internal/builtin/providers/terraform/resource_data.go",
+          "commands.go",
+          "internal/command/push.go"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:20:00-04:00",
+        "notes": "The required transform attaches removed-block configuration to module resources. OAuth fixtures, provider entrypoints/resources, and top-level command dispatch/push code do not perform that graph attachment."
+      }
+    },
+    {
+      "id": "v02c-train-go-source_localization-040",
+      "materializedCaseSha256": "0710ffc4637108f538fc08e1d7a2389f3930584e64b20272592b8d2396737c83",
+      "candidatePathsSha256": "74473e0a2e7245e8bd275866fcace7f4ebe3d8d901d0d05030d58866bb39a3b0",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "lib/devicetrust/native/device_darwin.go",
+          "lib/auditd/auditd_linux.go",
+          "lib/srv/desktop/windows_server.go",
+          "lib/sshutils/scp/stat_linux.go",
+          "web/packages/teleterm/src/mainProcess/loadInstallationId/loadInstallationId.ts",
+          "dronegen/container_images_release_version.go"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:21:00-04:00",
+        "notes": "The patch adds Linux inventory metadata and OS/DMI readers. Device-trust Darwin code, auditd, Windows desktop serving, SCP stat, Teleterm installation IDs, and release-image generation do not extract that metadata."
+      }
+    },
+    {
+      "id": "v02c-train-go-source_localization-041",
+      "materializedCaseSha256": "fc9ce57523caee7bd4fcfd5ba19144c4c3841a2415a5d180aa876b7a8ebb980c",
+      "candidatePathsSha256": "78bfc2e7e94120500ca43a835763c0aca9cf8ee885794713a88a893e11d21494",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "ui/src/icons/MusicBrainz.js",
+          "ui/src/common/useRating.js",
+          "persistence/playlist_repository.go",
+          "ui/src/playlist/PlaylistList.js",
+          "server/subsonic/media_annotation.go",
+          "core/scrobbler/play_tracker.go"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:21:00-04:00",
+        "notes": "The refresh changes artist, album, media-file, artist-repository, and scanner behavior. UI icons/ratings/playlists, playlist persistence, Subsonic annotations, and scrobbling do not implement artist refresh."
+      }
+    },
+    {
+      "id": "v02c-train-go-source_localization-042",
+      "materializedCaseSha256": "55dc36702508745e177fcdbc8f12efb03d445824c6eb09f254ecaece125e8d99",
+      "candidatePathsSha256": "902cf4cb4ffaa5e211f3ccd0f701a59a8463bbd13ee446f5605a856f583670cd",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "lib/web/ui/perf_test.go",
+          "lib/service/acme.go",
+          "lib/web/app/match.go",
+          "lib/services/role_test.go",
+          "lib/srv/regular/sshserver_test.go",
+          "tool/tsh/resolve_default_addr_test.go"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:21:00-04:00",
+        "notes": "HA database access is handled in database-server selection, the DB proxy, reverse tunnel, and tsh DB command. UI performance, ACME, web matching, role/SSH tests, and default-address resolution are unrelated surfaces."
+      }
+    },
+    {
+      "id": "v02c-train-go-failure_first-043",
+      "materializedCaseSha256": "f87094db16171c263f1e4e47ea0699ccca4a889ce9bbb71252382ca285a824eb",
+      "candidatePathsSha256": "0a2538aedd106251afaac375e58919e93373a19f339f0edc0504c5a30a3a4e95",
+      "decision": {
+        "requiredSourceFiles": [
+          "hugolib/content_map.go"
+        ],
+        "explicitNoiseFiles": [
+          "create/skeletons/theme/content/_index.md",
+          "create/skeletons/theme/content/posts/_index.md",
+          "docs/content/en/functions/crypto/_index.md",
+          "docs/content/en/functions/data/_index.md",
+          "docs/content/en/functions/debug/_index.md",
+          "docs/content/en/functions/images/_index.md"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:21:00-04:00",
+        "notes": "The official content_map_page patch is absent from the bounded union. content_map.go owns the page-map/tree mechanism behind section membership and is required implementation evidence. Skeleton and function-document index files cannot correct the adjacent-section prefix traversal."
+      }
+    },
+    {
+      "id": "v02c-train-go-failure_first-044",
+      "materializedCaseSha256": "edc4469be1054231cc8cf31e862589829f8b7cbb06fe543f975b93fb55cb3467",
+      "candidatePathsSha256": "26352494610429a1fda1cf1fd9191be3a15bdc5d49b9d5d3f50c467299e3e0cd",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "markup/goldmark/goldmark_config/config.go",
+          "markup/blackfriday/anchors.go",
+          "tpl/urls/urls.go",
+          "resources/resource_transformers/postcss/postcss.go",
+          "common/constants/constants.go",
+          "hugolib/shortcode.go"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:21:00-04:00",
+        "notes": "The hash truncation is fixed in page path/permalink construction. Markdown anchor generation, template URL helpers, PostCSS, constants, shortcodes, and Goldmark configuration do not construct this page permalink."
+      }
+    },
+    {
+      "id": "v02c-train-go-failure_first-045",
+      "materializedCaseSha256": "c82e73754c6f62393384aacc69ad69e8bf1fe10b9a171edfcad68182017a7ae0",
+      "candidatePathsSha256": "11dade065f62ffc68e12ba90aa177fec5dffde21b9aa18e9527b2738422d0d9b",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "create/skeletons/theme/content/_index.md",
+          "docs/hugo.toml",
+          "livereload/livereload.js",
+          "magefile.go",
+          "commands/server.go",
+          "resources/page/pagination.go"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:21:00-04:00",
+        "notes": "The rebuild invalidation fix is in content_map_page. Theme/docs configuration, browser livereload code, build tooling, server command wiring, and pagination do not update the changed page's content-map state."
+      }
+    },
+    {
+      "id": "v02c-train-go-failure_first-046",
+      "materializedCaseSha256": "197a0029e70032ce5af643740f6792530b1268b7bef8cc74dd91e2153bded160",
+      "candidatePathsSha256": "1190d0816aeff4542446f206a39010f309f1ca7d007a575f1fe3f3b1c5fc9e5c",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "common/loggers/logger.go",
+          "modules/module.go",
+          "create/skeletons/theme/hugo.toml",
+          "docs/hugo.toml",
+          "hugolib/filesystems/basefs.go",
+          "resources/page/pagemeta/page_frontmatter.go"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:21:00-04:00",
+        "notes": "The fix changes content-map lookup for adapter-created pages. Logging, modules, sample/docs config, base filesystems, and front-matter parsing do not resolve Site.GetPage's short path."
+      }
+    },
+    {
+      "id": "v02c-train-go-failure_first-047",
+      "materializedCaseSha256": "3f8d674c9e575205f421a416dc9e5efcbe47b37d118dd16b2fb12610dafdf1f5",
+      "candidatePathsSha256": "e2cc2bf630a7a9b0414498d60f0742ebf780640a45cca7e76f0c720198649986",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "media/testdata/resource.js",
+          "resources/errorResource.go",
+          "metrics/metrics.go",
+          "config/defaultConfigProvider.go",
+          "helpers/path.go",
+          "hugolib/shortcode.go"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:21:00-04:00",
+        "notes": "GroupByParam behavior is implemented in pagegroup. Media fixtures, error resources, metrics, default configuration, generic path helpers, and shortcode rendering do not group pages by front-matter parameters."
+      }
+    },
+    {
+      "id": "v02c-train-go-failure_first-048",
+      "materializedCaseSha256": "0c90ff931dafdf2725ce53123f841293e67961b7a076f515ed88d0bef1798813",
+      "candidatePathsSha256": "765638f6088b85d7449605f18d8ee0246cf7bb053e9edd10a558a3d3c0629f9d",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "commands/import.go",
+          "tpl/debug/debug.go",
+          "tpl/compare/init.go",
+          "common/hugo/version.go",
+          "config/allconfig/configlanguage.go",
+          "helpers/general.go"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:21:00-04:00",
+        "notes": "Alert marker case normalization is confined to the Goldmark blockquote extension. Import commands, template debug/compare, versioning, language config, and generic helpers do not parse blockquote alerts."
+      }
+    },
+    {
+      "id": "v02c-train-go-long_session-049",
+      "materializedCaseSha256": "0eda5222a5041aea58b1a08786007b92f582ee896773cd482709875db49e79cf",
+      "candidatePathsSha256": "f063e6d069151989f9c547d2e37d8aef29acaa0f3bfe5bbe4ba6c9484cc9eaa5",
+      "decision": {
+        "requiredSourceFiles": [
+          "internal/terraform/marks.go",
+          "internal/terraform/node_resource_abstract_instance.go",
+          "internal/terraform/node_resource_plan_partialexp.go"
+        ],
+        "explicitNoiseFiles": [
+          "internal/backend/local/test.go",
+          "internal/command/jsonformat/computed/renderers/sensitive_block.go",
+          "internal/configs/provider.go",
+          "internal/command/jsonprovider/block.go",
+          "internal/command/jsonformat/differ/attribute.go",
+          "internal/cloud/migration.go"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:21:00-04:00",
+        "notes": "The patch propagates sensitive marks through resource planning. Local-backend tests, JSON rendering/diffing, provider configuration, JSON provider schema, and cloud migration only consume or describe values and do not implement that plan transformation."
+      }
+    },
+    {
+      "id": "v02c-train-go-long_session-050",
+      "materializedCaseSha256": "b51bf556ec5ee54ec603f6cd678e2855d32e65e98a8a5d082c8465cd05696a69",
+      "candidatePathsSha256": "96353ad2f552e7c9f3de31e673b03d69433ec6b409587d709e3346450cf7391b",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "internal/states/statemgr/migrate.go",
+          "internal/terraform/testdata/refresh-schema-upgrade/main.tf",
+          "internal/command/cliconfig/cliconfig.go",
+          "internal/stacks/stackruntime/testing/provider.go",
+          "internal/legacy/terraform/resource_provider.go",
+          "internal/command/testdata/providers-schema/required/output.json"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:21:30-04:00",
+        "notes": "Import-block validation is implemented in Terraform validation/evaluation and graph nodes. State migration, fixtures, CLI config, stack test providers, legacy providers, and serialized schema output do not validate import expressions."
+      }
+    },
+    {
+      "id": "v02c-train-go-long_session-051",
+      "materializedCaseSha256": "11ab519180828effbbd3fae51cbc3c13c009f65ea3a5b0ff4937cad55d224ec1",
+      "candidatePathsSha256": "8536b76f412e35f825c72d6565e8e3d3fa32a2f939cd3c3599342a0a7820861a",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "lib/web/ui/cluster.go",
+          "lib/kube/kubeconfig/kubeconfig_test.go",
+          "lib/kube/kubeconfig/kubeconfig.go",
+          "lib/kube/utils/utils.go",
+          "lib/auth/init_test.go",
+          "lib/srv/app/server.go"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:21:30-04:00",
+        "notes": "The patch normalizes legacy ClusterConfig and changes cache/reverse-tunnel collection policy. Cluster UI, Kubernetes config/utilities, auth initialization tests, and application serving do not provide that compatibility layer."
+      }
+    },
+    {
+      "id": "v02c-train-go-long_session-052",
+      "materializedCaseSha256": "3a20f255770e9ba3e5a80938c7c8e1e254295f7596a90d3211e378a31066d305",
+      "candidatePathsSha256": "dca728c528c920add3b0dd759eca10c9fa814c9773fbe1b74b5817abcc63c303",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "lib/auth/auth_test.go",
+          "lib/services/license_test.go",
+          "lib/backend/report.go",
+          "lib/services/role_test.go",
+          "lib/utils/tls.go",
+          "lib/multiplexer/proxyline.go",
+          "lib/events/emitter_test.go"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:21:30-04:00",
+        "notes": "The new linear load profile belongs to benchmark/client/tsh code. Auth/license tests, backend reporting, roles, TLS, proxy-line parsing, and event-emitter tests do not generate progressive request rates."
+      }
+    },
+    {
+      "id": "v02c-train-go-long_session-053",
+      "materializedCaseSha256": "b6148cf441343897aeeaf15c54351b2254d84ec1d4c1308dfb8466ee84672580",
+      "candidatePathsSha256": "a5eb1f75b129b7b386127b038c12f974bf16b7f5da718a229d335db2affa2d0b",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "lib/kube/proxy/sess.go",
+          "lib/srv/app/session.go",
+          "tool/tctl/common/user_command.go",
+          "operator/controllers/resources/user_controller.go",
+          "lib/srv/db/server.go",
+          "lib/auth/bot.go"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:21:30-04:00",
+        "notes": "The change refreshes user traits during auth/web session renewal. Kubernetes/application sessions, tctl user commands, operator reconciliation, database serving, and bot authentication do not perform that browser-session renewal."
+      }
+    },
+    {
+      "id": "v02c-train-go-long_session-054",
+      "materializedCaseSha256": "4ca62f8f8d15407649c21f8ae8eb069c9096f91e2edd7db685fbbc91bb3f90f3",
+      "candidatePathsSha256": "c88eb77540492da27e61f4bb4015ffba9890aace11a20fec3d9360baad5dd6d3",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "core/agents/lastfm/lastfm.go",
+          "ui/src/common/BatchPlayButton.js",
+          "ui/src/actions/audioplayer.js",
+          "ui/src/common/ShuffleAllButton.js",
+          "ui/src/dialogs/AddToPlaylistDialog.js",
+          "ui/src/serviceWorker.js"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:21:30-04:00",
+        "notes": "Selective delivery is implemented in request metadata, scanner, server middleware, and event SSE/diode paths. Metadata agents and UI playback/playlist/service-worker components consume events but do not select server recipients."
+      }
+    },
+    {
+      "id": "v02c-train-java-source_localization-055",
+      "materializedCaseSha256": "dc430a95bde2eab80ad3d7014775a606c13c1184c369323be7d8ae3a2e695624",
+      "candidatePathsSha256": "c2291a5f189873bbfd0c33b2ab9e13a2ab9df4acc86364a492f3b5a2ee7b1cc0",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "javaparser-core/src/main/java/com/github/javaparser/ast/validator/postprocessors/Java10PostProcessor.java",
+          "javaparser-core/src/main/java/com/github/javaparser/printer/lexicalpreservation/PhantomNodeLogic.java",
+          "javaparser-core/src/main/java/com/github/javaparser/printer/concretesyntaxmodel/CsmOrphanCommentsEnding.java",
+          "javaparser-core/src/main/java/com/github/javaparser/CommentsInserter.java",
+          "javaparser-core/src/main/java/com/github/javaparser/printer/XmlPrinter.java",
+          "javaparser-core/src/main/javacc-support/com/github/javaparser/GeneratedJavaParserBase.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:21:30-04:00",
+        "notes": "The root-only post-order traversal bug is inside Node's iterator. Version postprocessors, lexical-preservation/comment printers, XML output, and parser generation do not advance that AST iterator."
+      }
+    },
+    {
+      "id": "v02c-train-java-source_localization-056",
+      "materializedCaseSha256": "c55ebd339500cdc13428e332965ca01d3be12d5759a61ae1d7da544fe7b14cf3",
+      "candidatePathsSha256": "d7216389a54ea8b7263e251ca3f68ee058ecd6a6e938a54d6ea3badb5e9775d1",
+      "decision": {
+        "requiredSourceFiles": [
+          "javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java"
+        ],
+        "explicitNoiseFiles": [
+          "javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/other/GrammarLetterGenerator.java",
+          "javaparser-core/src/main/java/com/github/javaparser/printer/configuration/Indentation.java",
+          "javaparser-core/src/main/java/com/github/javaparser/JavadocParser.java",
+          "javaparser-core/src/main/java/com/github/javaparser/LineEndingProcessingProvider.java",
+          "javaparser-core/src/main/java/com/github/javaparser/printer/SourcePrinter.java",
+          "javaparser-core/src/main/java/com/github/javaparser/UnicodeEscapeProcessingProvider.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:21:30-04:00",
+        "notes": "String.format type resolution is fixed in the symbol solver's TypeExtractor. Grammar generation, indentation/Javadoc, line-ending/source printing, and Unicode preprocessing do not resolve method-call argument types."
+      }
+    },
+    {
+      "id": "v02c-train-java-source_localization-057",
+      "materializedCaseSha256": "f8dc4141c2a87ec3bea9984aa8d0cb577f08f8711bf0defcb29fbf37fff70992",
+      "candidatePathsSha256": "c0aa7d4a194308fe7494e55efdcf753def800844c92ceca4b27ac04dee1595c6",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/core/lombok/core/PublicApiCreatorApp.java",
+          "src/core/lombok/eclipse/handlers/HandleEqualsAndHashCode.java",
+          "src/core/lombok/SneakyThrows.java",
+          "src/core/lombok/experimental/Tolerate.java",
+          "src/core/lombok/bytecode/PreventNullAnalysisRemover.java",
+          "src/core/lombok/javac/handlers/HandleCleanup.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:21:30-04:00",
+        "notes": "Generic @val resolution belongs to javac HandleVal and JavacResolution. API generation, Eclipse equals/hashCode, unrelated annotations, bytecode cleanup, and @Cleanup handling do not infer the val type."
+      }
+    },
+    {
+      "id": "v02c-train-java-source_localization-058",
+      "materializedCaseSha256": "36f8c53ea00b78e7b78411dcf7dc806a81ff626764610ea1910bbc45daa12953",
+      "candidatePathsSha256": "97c2660b542768225b6e8cb48abb7256ee7ecd2df07553307883f98bfa2f39fd",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/core/lombok/experimental/Wither.java",
+          "src/core/lombok/AllArgsConstructor.java",
+          "src/core/lombok/bytecode/FixedClassWriter.java",
+          "src/core/lombok/javac/handlers/HandleWith.java",
+          "src/core/lombok/With.java",
+          "src/delombok/lombok/delombok/LombokOptionsFactory.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:21:30-04:00",
+        "notes": "The compilation issue is in Eclipse and javac SuperBuilder handlers. With/constructor annotations, bytecode writing, HandleWith, and delombok option setup do not generate the SuperBuilder hierarchy."
+      }
+    },
+    {
+      "id": "v02c-train-java-source_localization-059",
+      "materializedCaseSha256": "1822c9b5a8868e682b08e260a6e898626f5c5b137d3303f0a025a7b191a16a19",
+      "candidatePathsSha256": "9d2718c7b9d462f34131f9bb054bcc1455425cd70a829513c521d1955113dbdd",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "docker/shared/modules/src/main/java/foo/HelloWorld.java",
+          "docker/shared/classpath/src/main/java/SneakyThrowsExample.java",
+          "src/core/lombok/bytecode/ClassFileMetaData.java",
+          "src/eclipseAgent/lombok/eclipse/agent/PatchDelegate.java",
+          "src/eclipseAgent/lombok/eclipse/agent/PatchJavadoc.java",
+          "src/core/lombok/bytecode/SneakyThrowsRemover.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:21:30-04:00",
+        "notes": "Unrelated-call transformation is implemented in javac HandleExtensionMethod. Docker examples, class metadata, Eclipse delegate/Javadoc patches, and SneakyThrows bytecode removal do not rewrite javac method invocations."
+      }
+    },
+    {
+      "id": "v02c-train-java-source_localization-060",
+      "materializedCaseSha256": "ed82729467a4ce7df9fc698e7dfdf30ab87145dc8ff934cbf29406afb1c6432d",
+      "candidatePathsSha256": "df87e262fb8dd351a219757da4df3f93a13dcecd901354e1b16bd6a09aae4bbe",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/core/lombok/bytecode/PreventNullAnalysisRemover.java",
+          "src/core/lombok/javac/handlers/HandleNonNull.java",
+          "src/core/lombok/javac/handlers/singulars/JavacGuavaSingularizer.java",
+          "src/core/lombok/javac/handlers/singulars/JavacJavaUtilListSingularizer.java",
+          "src/spiProcessor/lombok/spi/SpiProcessor.java",
+          "src/core/lombok/eclipse/handlers/HandleCleanup.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:00-04:00",
+        "notes": "The javac crash is fixed in UtilityClass handling and its Symbol interaction. Null-analysis/non-null handlers, collection singularizers, SPI processing, and Eclipse cleanup do not rewrite generic utility-class members."
+      }
+    },
+    {
+      "id": "v02c-train-java-failure_first-061",
+      "materializedCaseSha256": "dde3e23be3995903fe3d3614b7deee4b37c682d760611432616dea0ca20c3d48",
+      "candidatePathsSha256": "d894ab5e09c857f57959bca4b10d75192e22ef68d447f2bcb83d08794d5c5592",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "metrics/src/main/java/com/google/gson/metrics/ParseBenchmark.java",
+          "proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java",
+          "extras/src/main/java/com/google/gson/typeadapters/UtcDateTypeAdapter.java",
+          "codegen/src/main/java/com/google/gson/codegen/JavaWriter.java",
+          "extras/src/main/java/com/google/gson/graph/GraphAdapterBuilder.java",
+          "gson/src/main/java/com/google/gson/ExclusionStrategy.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:00-04:00",
+        "notes": "Skipping object values is corrected in JsonTreeReader. Benchmarks, protobuf/date/graph adapters, code generation, and exclusion policy do not advance the tree reader's stack."
+      }
+    },
+    {
+      "id": "v02c-train-java-failure_first-062",
+      "materializedCaseSha256": "51f83de0c305335a86e56ec6315258309a13005effe7c88451ea19e1adb9f779",
+      "candidatePathsSha256": "1f65dd6ba9176be536248eb5fd8ea8c080766d725a93d802ea313429bc6d9c05",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "metrics/src/main/java/com/google/gson/metrics/CollectionsDeserializationBenchmark.java",
+          "codegen/src/main/java/com/google/gson/codegen/JavaWriter.java",
+          "proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java",
+          "gson/src/main/java/com/google/gson/DefaultDateTypeAdapter.java",
+          "gson/src/main/java/com/google/gson/internal/bind/SqlDateTypeAdapter.java",
+          "extras/src/main/java/com/google/gson/graph/GraphAdapterBuilder.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:00-04:00",
+        "notes": "Lenient non-finite Number output is implemented in JsonWriter. Collection benchmarks, codegen, protobuf/graph adapters, and date adapters do not enforce writer numeric-value leniency."
+      }
+    },
+    {
+      "id": "v02c-train-java-failure_first-063",
+      "materializedCaseSha256": "9de92fecabe6a4893e2cc99a91bd51be038181e57a6145b0a0f1a2a8078507ff",
+      "candidatePathsSha256": "482b111321c8baea3bdffe4c6f2c69ae20dbb29b0e704c4f10dd03779c8e1af4",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "gson/src/test/java/com/google/gson/JsonObjectTest.java",
+          "proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java",
+          "metrics/src/main/java/com/google/gson/metrics/ParseBenchmark.java",
+          "extras/src/main/java/com/google/gson/graph/GraphAdapterBuilder.java",
+          "extras/src/main/java/com/google/gson/typeadapters/RuntimeTypeAdapterFactory.java",
+          "gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:00-04:00",
+        "notes": "Null custom-date serialization is fixed in DefaultDateTypeAdapter. JsonObject tests, protobuf/graph/runtime adapters, parse benchmarks, and constructor creation do not serialize the null date field."
+      }
+    },
+    {
+      "id": "v02c-train-java-failure_first-064",
+      "materializedCaseSha256": "385f02a3cd8440c10899a0f5aaaa1c8eebb7664e20c2f26dde072c993a20032b",
+      "candidatePathsSha256": "61be338c1116079b53ad334e0aa8426f2b91ffaea6f563101c8c6e36ec0ec4a8",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java",
+          "codegen/src/main/java/com/google/gson/codegen/JavaWriter.java",
+          "extras/src/main/java/com/google/gson/graph/GraphAdapterBuilder.java",
+          "metrics/src/main/java/com/google/gson/metrics/CollectionsDeserializationBenchmark.java",
+          "gson/src/main/java/com/google/gson/internal/UnsafeAllocator.java",
+          "gson/src/main/java/com/google/gson/internal/bind/DefaultDateTypeAdapter.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:15:00-04:00",
+        "notes": "The field-naming policy patch source is present. Noise labels cover unrelated protobuf, code generation, graph adapters, benchmarking, allocation, and date adaptation."
+      }
+    },
+    {
+      "id": "v02c-train-java-failure_first-065",
+      "materializedCaseSha256": "f526d78d072796119ca3d1af29ed88297df1962e2383af86ee2f24d2c36976d6",
+      "candidatePathsSha256": "e1dc95feb06ee725c1bbc845788c2cb55e6350e5bf2baa6941ef0dd04397eec4",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+          "gson/src/main/java/com/google/gson/internal/reflect/ReflectionHelper.java",
+          "extras/src/main/java/com/google/gson/graph/GraphAdapterBuilder.java",
+          "metrics/src/main/java/com/google/gson/metrics/ParseBenchmark.java",
+          "gson/src/main/java/com/google/gson/internal/sql/SqlTimeTypeAdapter.java",
+          "gson/src/main/java/com/google/gson/ToNumberPolicy.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:00-04:00",
+        "notes": "Invalid ISO dates are rejected in ISO8601Utils. Array tests, reflection, graph/benchmark code, SQL time adaptation, and numeric policy do not validate calendar day/month ranges."
+      }
+    },
+    {
+      "id": "v02c-train-java-failure_first-066",
+      "materializedCaseSha256": "110f7378e353e627933bbb5aaea1f79403350b1fdd1247abdac573b4f1bb540b",
+      "candidatePathsSha256": "cf224effec635ccfd9b07eb1fcc684247b57e874ecf9e53d5106b5d56f1f033f",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java",
+          "metrics/src/main/java/com/google/gson/metrics/BagOfPrimitives.java",
+          "gson/src/main/java/com/google/gson/internal/LinkedTreeMap.java",
+          "gson/src/main/java/com/google/gson/LongSerializationPolicy.java",
+          "metrics/src/main/java/com/google/gson/metrics/SerializationBenchmark.java",
+          "gson/src/main/java/com/google/gson/stream/JsonWriter.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:00-04:00",
+        "notes": "BigInteger equality is implemented in JsonPrimitive. Protobuf/benchmark fixtures, map storage, long serialization policy, and stream writing do not define JsonPrimitive numeric equality."
+      }
+    },
+    {
+      "id": "v02c-train-java-long_session-067",
+      "materializedCaseSha256": "90ed6e5b31426966441b53cad0a8dfa468857f0f546b220e060aeef657d0a904",
+      "candidatePathsSha256": "7612acdc119a220b0499a7eda6aea61e23d7732448fbd7d2a94d51d629b58c56",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "metrics/src/main/java/com/google/gson/metrics/ParseBenchmark.java",
+          "gson/src/main/java/com/google/gson/internal/sql/SqlDateTypeAdapter.java",
+          "gson/src/test/java/com/google/gson/stream/JsonWriterTest.java",
+          "gson/src/test/java/com/google/gson/functional/ReflectionAccessTest.java",
+          "gson/src/test/java/com/google/gson/GsonBuilderTest.java",
+          "gson/src/test/java/com/google/gson/OverrideCoreTypeAdaptersTest.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:00-04:00",
+        "notes": "END_DOCUMENT hasNext behavior is fixed in JsonReader and JsonTreeReader. Parsing benchmarks, SQL dates, writer, reflection, builder, and adapter-override tests do not implement reader termination."
+      }
+    },
+    {
+      "id": "v02c-train-java-long_session-068",
+      "materializedCaseSha256": "7a86ff5da61b47a3ca1e6c29b104d800694854853a9167c00e531ee637b5fe5f",
+      "candidatePathsSha256": "1771762add688e6ee608babe011b017ccce348500d8b69a507662a827d504221",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java",
+          "metrics/src/main/java/com/google/gson/metrics/NonUploadingCaliperRunner.java",
+          "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java",
+          "gson/src/main/java/com/google/gson/internal/ReflectionAccessFilterHelper.java",
+          "extras/src/main/java/com/google/gson/typeadapters/UtcDateTypeAdapter.java",
+          "gson/src/main/java/com/google/gson/internal/sql/SqlTimestampTypeAdapter.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:00-04:00",
+        "notes": "Primitive numeric conversion is fixed in Gson and core TypeAdapters. Protobuf/post-construct/date adapters, benchmark runners, reflection filtering, and SQL timestamps do not select the primitive serialization adapter."
+      }
+    },
+    {
+      "id": "v02c-train-java-long_session-069",
+      "materializedCaseSha256": "e8ddb0db7ee3d2287901dd384fe9bf0a7f6e80d8b7d67efcc1b92db04e7fecea",
+      "candidatePathsSha256": "ca464548ff9b266780018912f13c834bb74c61d8c319d509571a9d5fc6a8abef",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "extras/src/main/java/com/google/gson/graph/GraphAdapterBuilder.java",
+          "proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java",
+          "gson/src/main/java/com/google/gson/internal/sql/SqlTypesSupport.java",
+          "gson/src/main/java/com/google/gson/internal/reflect/ReflectionHelper.java",
+          "gson/src/test/java/com/google/gson/functional/CollectionTest.java",
+          "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "The GsonBuilder patch source is present. Noise labels cover unrelated graph, protobuf, SQL, reflection, collections, and post-construction adapters."
+      }
+    },
+    {
+      "id": "v02c-train-java-long_session-070",
+      "materializedCaseSha256": "c35f8d0177527a70bf8ab1728d0b5fe54467ef32a2b0c6294d5ad091dd2d7f7a",
+      "candidatePathsSha256": "b3c6308d71fa7c39f522c1a9f19dcb7c3002c2fc66a520ab177a4599266b8949",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "docker/shared/modules/src/main/java/foo/HelloWorld.java",
+          "src/eclipseAgent/lombok/eclipse/agent/PatchExtensionMethod.java",
+          "src/delombok/lombok/delombok/FormatPreferences.java",
+          "src/eclipseAgent/lombok/eclipse/agent/PatchValEclipsePortal.java",
+          "src/core/lombok/Generated.java",
+          "src/core/lombok/core/configuration/ExampleValueString.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:00-04:00",
+        "notes": "Record compatibility is implemented in javac/Eclipse FieldDefaults handlers. Docker examples, extension/val patches, delombok formatting, @Generated, and example-value config do not apply default field modifiers."
+      }
+    },
+    {
+      "id": "v02c-train-java-long_session-071",
+      "materializedCaseSha256": "60b9de0483d1c746b417cb70c2bc0a5966b51e1c4ff1f967474e37020e5e55b7",
+      "candidatePathsSha256": "11fde337a98ae6f9a7b192875e12a16ca79f8e903651998fc3937915324f5e15",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/delombok/lombok/delombok/FormatPreferenceScanner.java",
+          "src/core/lombok/SneakyThrows.java",
+          "src/core/lombok/extern/jackson/Jacksonized.java",
+          "src/eclipseAgent/lombok/eclipse/agent/PatchValEclipse.java",
+          "src/spiProcessor/lombok/spi/Provides.java",
+          "src/core/lombok/experimental/UtilityClass.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:00-04:00",
+        "notes": "Array-valued constructor annotation copying is fixed in EclipseHandlerUtil and JavacHandlerUtil. Formatting, unrelated annotations, Eclipse val patching, SPI metadata, and UtilityClass do not copy constructor annotations."
+      }
+    },
+    {
+      "id": "v02c-train-java-long_session-072",
+      "materializedCaseSha256": "bfd78f4a09c0afb50bf3a42100918a776f3bd59e486ef3ed2bd814ffe04dc24f",
+      "candidatePathsSha256": "7d0f4da2e3c06272d5fbd9d3986d08d30a43e514007d749b9c0ce27cf3255b3c",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "docker/shared/modules/src/main/java/foo/HelloWorld.java",
+          "src/core/lombok/experimental/FieldDefaults.java",
+          "src/core/lombok/Data.java",
+          "src/core/lombok/javac/handlers/HandleUtilityClass.java",
+          "src/core/lombok/Generated.java",
+          "src/core/lombok/experimental/Wither.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:15-04:00",
+        "notes": "The wrong generic type is produced by javac Builder/SuperBuilder generation. Docker samples, FieldDefaults/Data/UtilityClass/Generated/Wither surfaces do not create the builder default expression."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-source_localization-073",
+      "materializedCaseSha256": "bf8ecf03f6cab5a21694d85c13fe7b405ca87b670ed0ac0fc051543dc4479960",
+      "candidatePathsSha256": "1f3c4ca87f5a673f668178f127bc13b61adba8acacdfcf7fa692cfca2110330b",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/thirdparty/Fuzzer/FuzzerIO.cpp",
+          "benchmarks/src/benchmarks.cpp",
+          "test/thirdparty/Fuzzer/FuzzerCorpus.h",
+          "include/nlohmann/detail/conversions/to_json.hpp",
+          "include/nlohmann/detail/output/binary_writer.hpp",
+          "include/nlohmann/ordered_map.hpp"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:15-04:00",
+        "notes": "The diagnostic assertion is fixed in the central json header. Fuzzer/benchmark code, to-json conversion, binary output, and ordered-map storage do not form that diagnostic path."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-source_localization-074",
+      "materializedCaseSha256": "086a6a9d879a923ba7270f2e0079893934696c6c80523dda7b7fe3dde2a71d0f",
+      "candidatePathsSha256": "0cb57a588c497d014afa65ed74b3cfb3744e0e75dfb5faefe8bbab9fb00feecf",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/thirdparty/Fuzzer/FuzzerTracePC.h",
+          "test/thirdparty/Fuzzer/FuzzerIOWindows.cpp",
+          "include/nlohmann/detail/output/serializer.hpp",
+          "include/nlohmann/ordered_map.hpp",
+          "include/nlohmann/detail/output/binary_writer.hpp",
+          "include/nlohmann/detail/input/lexer.hpp"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:15-04:00",
+        "notes": "Non-default-constructible container deserialization is implemented in from_json, traits, ADL, and json dispatch. Fuzzing, output, ordered-map, binary-writing, and lexical parsing code do not construct those values."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-source_localization-075",
+      "materializedCaseSha256": "f363da30bfe4712070bc45544f43411a9cb274c254442f8839580820d5a51c59",
+      "candidatePathsSha256": "1c78e770825bf8b57ed59f0a5a1d913341a8b24cbd8fb0f7030989e97002ebca",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benchmarks/thirdparty/benchmark/src/re.h",
+          "benchmarks/thirdparty/benchmark/src/timers.cc",
+          "benchmarks/thirdparty/benchmark/tools/strip_asm.py",
+          "test/thirdparty/Fuzzer/FuzzerRandom.h",
+          "test/thirdparty/Fuzzer/FuzzerIOWindows.cpp",
+          "test/thirdparty/Fuzzer/FuzzerMutate.cpp"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:15-04:00",
+        "notes": "The production change introduces the test-visibility macro across JSON internals. Third-party benchmark and fuzzer sources do not define or consume the library's private/public test macro."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-source_localization-076",
+      "materializedCaseSha256": "d9f45c73bf51a1f03b3a7daa06c833f2caf7ac7b187c1939d7b325ef9f237407",
+      "candidatePathsSha256": "140a4d4239a41b238f4a1e5041d98d1e647685a2c81080d3b8f93128a08051bc",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benchmarks/thirdparty/benchmark/src/complexity.cc",
+          "benchmarks/thirdparty/benchmark/src/console_reporter.cc",
+          "benchmarks/thirdparty/benchmark/tools/compare.py",
+          "benchmarks/thirdparty/benchmark/tools/strip_asm.py",
+          "test/thirdparty/imapdl/filterbr.py",
+          "benchmarks/thirdparty/benchmark/src/csv_reporter.cc"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:15-04:00",
+        "notes": "Repeated-comment handling is fixed in the JSON lexer. Benchmark reporters/tools and third-party test filters neither tokenize JSON nor honor ignore_comments."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-source_localization-077",
+      "materializedCaseSha256": "a2626533c1176320b75864c476b716639b245b96ce38aa09c9937833a0555391",
+      "candidatePathsSha256": "0bfa548b1801042a6f5cd81e354e2cfffdd47e0279f776ce10f66ad57198c751",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "dependencies/jsoncppdist/json/json.h",
+          "dependencies/jsoncppdist/jsoncpp.cpp",
+          "benchmark/json2msgpack/rapidjson.h",
+          "benchmark/kostya/yyjson.h",
+          "benchmark/kostya/boostjson.h",
+          "benchmark/kostya/sajson.h"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:15-04:00",
+        "notes": "Issue 2154 is fixed in simdjson DOM/on-demand value and error handling. Bundled competing JSON implementations and benchmark headers do not implement simdjson access behavior."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-source_localization-078",
+      "materializedCaseSha256": "1f6139bb22ccdb152ea5ec852917b4ca25d93a89e6c885f17fa7c1efa5d8bffe",
+      "candidatePathsSha256": "173d943f1e500c466871dd3a2ca44bc24e26e0edfd0d63e0d49ce19568ddcd13",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/fuzzing/standalone_fuzz_target_runner.cpp",
+          "test/fuzzing/server_fuzzer.cc",
+          "example/benchmark.cc",
+          "example/client.cc",
+          "example/redirect.cc",
+          "example/hello.cc"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:15-04:00",
+        "notes": "Embedded-NUL path rejection is implemented in httplib's path validator. Fuzz harnesses and client/redirect/hello/benchmark examples do not define path validity."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-failure_first-079",
+      "materializedCaseSha256": "70b6e945921447883df8a04ee4dca5fef61e38c19a814d11a04d9d4510a397f8",
+      "candidatePathsSha256": "3923ce7e11b04b705eed4c8741ce734af8d360ef00745f2c5e9ff01c7cbf0a4e",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/thirdparty/Fuzzer/FuzzerInternal.h",
+          "test/thirdparty/Fuzzer/FuzzerCorpus.h",
+          "test/thirdparty/Fuzzer/FuzzerDictionary.h",
+          "test/thirdparty/Fuzzer/FuzzerSHA1.h",
+          "benchmarks/src/benchmarks.cpp",
+          "include/nlohmann/detail/hash.hpp"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:15-04:00",
+        "notes": "The CMake failure is fixed across the listed JSON implementation headers. Third-party fuzzing, benchmarks, and the standalone hash helper are outside the patched build/concatenation interface."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-failure_first-080",
+      "materializedCaseSha256": "7f20b9b24363bf3f5a66d2b002a8e935ca706e39b0e701dc58c671193b409b6f",
+      "candidatePathsSha256": "9fe363c07b60665a4cf0cbd27828a0e44b079ff42a5db1764a8547fc5b18ebd4",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/thirdparty/Fuzzer/FuzzerMutate.h",
+          "test/thirdparty/Fuzzer/FuzzerCrossOver.cpp",
+          "benchmarks/src/benchmarks.cpp",
+          "test/thirdparty/Fuzzer/FuzzerCorpus.h",
+          "include/nlohmann/ordered_map.hpp",
+          "include/nlohmann/byte_container_with_subtype.hpp"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:15-04:00",
+        "notes": "Post-increment/decrement equality is implemented in iterator classes. Fuzzing/benchmarks, ordered-map storage, and byte-container representation do not implement iterator operator semantics."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-failure_first-081",
+      "materializedCaseSha256": "fb0abfe5d309021bc83ed82724624a5a498938eaef538e02894a1f560fbe97ef",
+      "candidatePathsSha256": "b99e06340e80f9989c4283196b32e50c224c3d5cbddc12072199534c45f63d1d",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/thirdparty/Fuzzer/FuzzerInternal.h",
+          "test/thirdparty/Fuzzer/FuzzerDictionary.h",
+          "test/thirdparty/Fuzzer/FuzzerSHA1.h",
+          "test/thirdparty/Fuzzer/test/FuzzerUnittest.cpp",
+          "benchmarks/src/benchmarks.cpp",
+          "include/nlohmann/thirdparty/hedley/hedley_undef.hpp"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:15-04:00",
+        "notes": "The build failure is corrected in ordered_map. Third-party fuzz/benchmark code and Hedley macro cleanup do not implement the ordered-map API."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-failure_first-082",
+      "materializedCaseSha256": "c14cbf086599712ad2b5da81ec6883dac36162379ac1734e359ce1c67a572399",
+      "candidatePathsSha256": "0bb8ac73212c9b1aba6cb691c2cf5e5b258a2a79016be44d6a8feed4b49d0387",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/thirdparty/Fuzzer/FuzzerIOWindows.cpp",
+          "test/thirdparty/Fuzzer/FuzzerDictionary.h",
+          "include/nlohmann/detail/exceptions.hpp",
+          "include/nlohmann/detail/json_pointer.hpp",
+          "include/nlohmann/detail/output/serializer.hpp",
+          "benchmarks/src/benchmarks.cpp"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:30-04:00",
+        "notes": "The build failure is fixed in type traits and JSON conversions. Third-party fuzzers, diagnostics, pointers, serialization, and benchmarks do not define the affected conversion SFINAE."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-failure_first-083",
+      "materializedCaseSha256": "b39e837e25c66a915848598308f44c21012d89e907ff7c15220aff396cca3211",
+      "candidatePathsSha256": "18bbb8932f5b167f20d24d9d1e78735335583abfc012dca20e8dbdd24b29d9f9",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/thirdparty/Fuzzer/FuzzerMerge.cpp",
+          "test/thirdparty/Fuzzer/FuzzerMain.cpp",
+          "test/src/unit-meta.cpp",
+          "benchmarks/src/benchmarks.cpp",
+          "include/nlohmann/detail/output/binary_writer.hpp",
+          "include/nlohmann/detail/iterators/primitive_iterator.hpp"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:30-04:00",
+        "notes": "JSON_DIAGNOSTICS assertion handling is fixed in json.hpp. Fuzzer/meta tests, benchmarks, binary output, and primitive iteration do not construct the diagnostic parent chain."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-failure_first-084",
+      "materializedCaseSha256": "d4ca4dc39899f1206fa66b1e6fa962fc36c76c6a12989f874030bfd137566b34",
+      "candidatePathsSha256": "6b7ca998b547e7ef6b2e17e85ffa9b56256d62ff48c75faf2adc94a95c068fd8",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/thirdparty/Fuzzer/FuzzerInternal.h",
+          "tests/cmake_import/project/main.cpp",
+          "tests/cmake_fetch_content/project/main.cpp",
+          "tools/gdb_pretty_printer/nlohmann-json.py",
+          "tools/serve_header/serve_header.py",
+          "tools/generate_natvis/generate_natvis.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The JSON header patch source is present. Noise labels cover unrelated fuzzer, CMake integration, pretty-printer, header-serving, and visualization tooling."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-long_session-085",
+      "materializedCaseSha256": "34baedea4d684cff1d854a3277b307b07124642504cd70e01327aaebdfa0381b",
+      "candidatePathsSha256": "792dc9ffd10830c3d533eb0236d597884f8b3ab960dd284eee69787afdc86357",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/thirdparty/Fuzzer/FuzzerIO.cpp",
+          "tests/thirdparty/Fuzzer/FuzzerMerge.cpp",
+          "tests/thirdparty/Fuzzer/FuzzerDriver.cpp",
+          "tools/serve_header/serve_header.py",
+          "tools/amalgamate/amalgamate.py",
+          "tests/thirdparty/fifo_map/fifo_map.hpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The JSON header patch source is present. Noise labels cover unrelated fuzzer machinery, release tooling, and the third-party FIFO map."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-long_session-086",
+      "materializedCaseSha256": "e1375db748f1773c6fc844195a6858938f87a4a2350c0fcc631edda81fe42d9b",
+      "candidatePathsSha256": "cb14928ca387e7dca7fabd2bd802282b7a9145df5bdb5aa1ed41220e0fbe27a2",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/thirdparty/Fuzzer/FuzzerCorpus.h",
+          "tools/cpplint/cpplint.py",
+          "tools/serve_header/serve_header.py",
+          "tools/amalgamate/amalgamate.py",
+          "tests/thirdparty/Fuzzer/FuzzerDriver.cpp",
+          "include/nlohmann/detail/output/serializer.hpp"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:30-04:00",
+        "notes": "The BJData npos dimension guard is in binary_reader. Fuzzer and repository tooling plus output serialization do not parse BJData dimension lengths."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-long_session-087",
+      "materializedCaseSha256": "77baa2fb6c1bf52b9c24c675d7d16aed12385f0140837e8fa9c204e11112f186",
+      "candidatePathsSha256": "53f55436f59c6d81e91fe30274ed85f8a23757c029033e3232591ea8390ea439",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/thirdparty/Fuzzer/test/SignedIntOverflowTest.cpp",
+          "tests/thirdparty/Fuzzer/test/BufferOverflowOnInput.cpp",
+          "tests/thirdparty/Fuzzer/test/OneHugeAllocTest.cpp",
+          "tests/thirdparty/Fuzzer/test/TraceMallocTest.cpp",
+          "tests/thirdparty/Fuzzer/test/OutOfMemoryTest.cpp",
+          "tests/thirdparty/Fuzzer/test/MemcmpTest.cpp"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:30-04:00",
+        "notes": "BJData ndarray signedness and length overflow are fixed in binary_reader and traits. The selected generic third-party libFuzzer regression tests do not decode BJData dimensions."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-long_session-088",
+      "materializedCaseSha256": "9b1c9636ce75cf2a29aee79260518644c4b627ad22d02caf12e846e735346789",
+      "candidatePathsSha256": "b22604ea0c2e57c9637f666a6cd55a53b9cfa9ab33d5a7f21931516ed225333a",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/thirdparty/Fuzzer/FuzzerCorpus.h",
+          "tools/cpplint/cpplint.py",
+          "tests/src/unit-element_access1.cpp",
+          "tests/src/unit-conversions.cpp",
+          "tests/src/unit-diagnostics.cpp",
+          "tests/src/unit-modifiers.cpp"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:30-04:00",
+        "notes": "The ndarray flag assertion is fixed in binary_reader. Fuzzer/lint code and unrelated element-access, conversion, diagnostics, and modifier tests do not parse BJData ndarray metadata."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-long_session-089",
+      "materializedCaseSha256": "2c94134f164d8b5326d6c2a2f89cf4cefaace94e2b5a106422b868bcc4205831",
+      "candidatePathsSha256": "6d92f69b1482c891046a7f1710752a552cd9c906f561e7b1bb56f8295666734b",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/thirdparty/Fuzzer/FuzzerUtilWindows.cpp",
+          "tests/src/unit-udt_macro.cpp",
+          "tests/thirdparty/Fuzzer/test/ShrinkValueProfileTest.cpp",
+          "tests/thirdparty/Fuzzer/test/RepeatedBytesTest.cpp",
+          "tests/thirdparty/Fuzzer/test/TimeoutEmptyTest.cpp",
+          "tests/thirdparty/Fuzzer/test/StrncmpOOBTest.cpp"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:30-04:00",
+        "notes": "Invalid optimized BJData types are rejected in binary_reader. Windows fuzz utilities, UDT macro tests, and generic libFuzzer behavior tests do not decode the BJData optimized type."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-long_session-090",
+      "materializedCaseSha256": "2afebc4366106b85019fc06413410bc49bfc65d6b6ca4b952b05909d0f448c1e",
+      "candidatePathsSha256": "41531ed8457106b990e8dd1c2cf4656a090e4490d72c6a20cffd3441d0b7efae",
+      "decision": {
+        "requiredSourceFiles": [
+          "include/nlohmann/detail/macro_scope.hpp"
+        ],
+        "explicitNoiseFiles": [
+          "tests/thirdparty/Fuzzer/FuzzerCorpus.h",
+          "tests/cmake_import/project/main.cpp",
+          "tools/cpplint/cpplint.py",
+          "tools/serve_header/serve_header.py",
+          "tests/src/unit-bjdata.cpp",
+          "tests/src/unit-large_json.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The missing macro-scope production patch source remains labeled as a candidate@64 retrieval miss; the other comparison and iterator patch sources are present. Noise labels cover unrelated fuzzing, CMake integration, linting, header tooling, BJData, and large-JSON tests."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-source_localization-091",
+      "materializedCaseSha256": "5761ef1a0f98c652e44fae4107dc6ce3480af41db76a0a026f0786af71666cb4",
+      "candidatePathsSha256": "01c63cf8c881a7143731032cb321b7ffa4a0344922ce3ae5a0b44aceaf2ff739",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "xarray/plot/plot.py",
+          "xarray/backends/rasterio_.py",
+          "xarray/coding/cftimeindex.py",
+          "asv_bench/benchmarks/dataset_io.py",
+          "xarray/tests/test_formatting.py",
+          "xarray/util/print_versions.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The coordinate-combination patch source is present. Noise labels cover unrelated plotting, raster I/O, calendar-time coding, I/O benchmarking, formatting, and version reporting."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-source_localization-092",
+      "materializedCaseSha256": "6f6f8a558bf0a8a815d3d022e5b14cce1f0ad98b54f3cc77ddd2befd29095874",
+      "candidatePathsSha256": "a411f3bfb18352d02ba6728d42db34ba03faac337ea84da72c36a950c8ba5efd",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "xarray/tests/test_formatting_html.py",
+          "xarray/backends/rasterio_.py",
+          "xarray/plot/facetgrid.py",
+          "xarray/backends/cfgrib_.py",
+          "xarray/tests/test_coding_times.py",
+          "xarray/tests/test_sparse.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The dataset merge-method patch source is present. Noise labels cover unrelated HTML formatting, raster and GRIB backends, faceted plotting, time coding, and sparse arrays."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-source_localization-093",
+      "materializedCaseSha256": "cbbd0d33e8dc51a4145dcf8f88eda73d641e9312260026bf005899866cb4bc8b",
+      "candidatePathsSha256": "23f32cd5e453d9ab5101a683ff14b47d22ab1b6297e565e9a058cd0f5cd78a47",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "xarray/backends/netcdf3.py",
+          "xarray/plot/dataset_plot.py",
+          "asv_bench/benchmarks/combine.py",
+          "xarray/coding/frequencies.py",
+          "xarray/tests/test_cftimeindex.py",
+          "xarray/tests/test_formatting.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "Both integrate-API patch sources are present. Noise labels cover unrelated NetCDF I/O, plotting, combination benchmarks, frequency coding, calendar indexes, and formatting."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-failure_first-094",
+      "materializedCaseSha256": "da8473284ea521ea4e1575c76c1b12b667b8c0eda8481bdc2cad11c0ab2248f7",
+      "candidatePathsSha256": "a675d7d0895702322c0c744e670b5c56b15b1d6dee52a241c07db2c9835030ec",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/_stats/test_regression.py",
+          "tests/test_palettes.py",
+          "seaborn/external/kde.py",
+          "seaborn/widgets.py",
+          "seaborn/external/docscrape.py",
+          "seaborn/algorithms.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The core plot finalization patch source is present. Noise labels cover unrelated regression statistics, palettes, KDE, widgets, documentation scraping, and algorithms."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-failure_first-095",
+      "materializedCaseSha256": "28799aeefd8afe682f024f6d3a43ee7fc48e27b391617bd73ad62ef6d39bd999",
+      "candidatePathsSha256": "e8e8b72cf3e92605082a7fc60b32dac0f7db6f353ecc83ebc15443f4b178b85a",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/flask/sessions.py",
+          "src/flask/json/tag.py",
+          "src/flask/signals.py",
+          "tests/typing/typing_route.py",
+          "tests/test_apps/cliapp/importerrorapp.py",
+          "src/flask/templating.py"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:30-04:00",
+        "notes": "Blueprint name validation is implemented in blueprints.py. Sessions, JSON tagging, signals, typing/CLI fixtures, and templating do not construct or validate Blueprint names."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-failure_first-096",
+      "materializedCaseSha256": "a2e7a74188832d62a8620c28c7996b932fc2319fbc6d6d52a652390dc7a7904e",
+      "candidatePathsSha256": "6bdaf8f988a79e6d4593ab8ccf6ee5e087fc9be2fdeb1ac243d74802feb56e50",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "xarray/backends/netcdf3.py",
+          "xarray/backends/h5netcdf_.py",
+          "xarray/backends/cfgrib_.py",
+          "xarray/plot/facetgrid.py",
+          "xarray/coding/cftime_offsets.py",
+          "xarray/tutorial.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The variable-coercion patch source is present. Noise labels cover unrelated storage backends, faceted plotting, calendar offsets, and tutorial code."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-long_session-097",
+      "materializedCaseSha256": "bd0f2df86fc9a7191f64c5931307faae84e2fc429afe6f29eb564ec6009fd565",
+      "candidatePathsSha256": "327cca2116199e47db156aa0d2294de4a143452c573c5a702a00630a2acbe0ac",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "seaborn/regression.py",
+          "seaborn/_stats/order.py",
+          "seaborn/external/docscrape.py",
+          "seaborn/matrix.py",
+          "tests/_stats/test_density.py",
+          "seaborn/categorical.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The scale-formatting and utility patch sources are present. Noise labels cover unrelated regression, ordering, documentation scraping, matrix plots, density statistics, and categorical plotting."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-long_session-098",
+      "materializedCaseSha256": "630306bb503bf92e9d09962c8f819fd4bec28459c858a8ffea844bda01e46bb9",
+      "candidatePathsSha256": "5c1a54d7d586fdcdd9e2650368ee0793b3c4eeae1c571afa7a831be89e674cc8",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "xarray/backends/file_manager.py",
+          "xarray/backends/netCDF4_.py",
+          "xarray/backends/zarr.py",
+          "xarray/backends/pydap_.py",
+          "xarray/coding/cftimeindex.py",
+          "xarray/tests/test_plot.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The indexing and variable-copy patch sources are present. Noise labels cover unrelated backend management and formats, calendar indexes, and plotting tests."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-long_session-099",
+      "materializedCaseSha256": "f1765d77a3607344f5a8f45aca499e1e689045e70306cc0d5b119d4e5dcf8821",
+      "candidatePathsSha256": "b26d3e98c8a70ceef3d40416fa3ede37bb19bf76fa63aacf0645ea4918854d0d",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "xarray/backends/h5netcdf_.py",
+          "xarray/backends/pseudonetcdf_.py",
+          "xarray/backends/rasterio_.py",
+          "versioneer.py",
+          "xarray/tests/test_cftime_offsets.py",
+          "setup.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The dataset and variable quantile patch sources are present. Noise labels cover unrelated storage backends, release versioning, calendar offsets, and packaging."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-source_localization-100",
+      "materializedCaseSha256": "57e28b65d191702b1b40050c46b68b70e36abbb927695d85ac2a962d6f2fa8a4",
+      "candidatePathsSha256": "81829443a56740350ce2eeafc9e53bec89758393a5470ee2061a9bb929094dfa",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "packages/babel-standalone/src/index.ts",
+          ".yarn/plugins/@yarnpkg/plugin-constraints.cjs",
+          "packages/babel-generator/src/node/index.ts",
+          "packages/babel-plugin-transform-property-literals/src/index.ts",
+          "packages/babel-plugin-proposal-decorators/src/transformer-legacy.ts",
+          "packages/babel-plugin-transform-modules-commonjs/src/index.ts"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:30-04:00",
+        "notes": "Shorthand ObjectPattern renaming is fixed in traverse's renamer. Standalone/Yarn plumbing, generator output, property-literal/module transforms, and decorators do not update scope binding names."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-source_localization-101",
+      "materializedCaseSha256": "6aace402319159554c198f3bd233ddb4e577a7d74b2838b250b39b7ab155e215",
+      "candidatePathsSha256": "42d1e88f129b09cc33592ea6fbdffa888881ea0529030e6ce0bc9b04e0818737",
+      "decision": {
+        "requiredSourceFiles": [
+          "packages/babel-helpers/src/index.ts"
+        ],
+        "explicitNoiseFiles": [
+          "packages/babel-compat-data/scripts/data/plugin-bugfixes.js",
+          "packages/babel-core/cjs-proxy.cjs",
+          "packages/babel-preset-env/src/available-plugins.ts",
+          "packages/babel-helper-plugin-utils/src/index.ts",
+          "packages/babel-plugin-proposal-decorators/src/transformer-2023-05.ts",
+          "packages/babel-plugin-transform-typescript/src/index.ts"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:30-04:00",
+        "notes": "The helper registry is the reviewed required source for the class/object-super stack overflow. Compatibility metadata, CJS proxying, preset registration, plugin utilities, decorators, and TypeScript transformation do not define that helper."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-source_localization-102",
+      "materializedCaseSha256": "d9c87754c0e3bc47a840b588292a63ce57b414625a470fbe123946bc9bd59c7f",
+      "candidatePathsSha256": "ab6110981cd52ea17bac91aca15d9cad6083cbb021fe689a123f0cb855099fc5",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/voice-broadcast/utils/hasRoomLiveVoiceBroadcast.ts",
+          "src/voice-broadcast/utils/VoiceBroadcastResumer.ts",
+          "src/voice-broadcast/utils/checkVoiceBroadcastPreConditions.tsx",
+          "src/models/Call.ts",
+          "src/BasePlatform.ts",
+          "src/stores/room-list/utils/roomMute.ts"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:30-04:00",
+        "notes": "Existing-versus-new unverified-session notifications are reconciled in DeviceListener. Voice broadcasts, calls, platform abstraction, and room mute state do not compare device verification sessions."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-failure_first-103",
+      "materializedCaseSha256": "f8c272cb2b6f1a087469967628b7ab7914b7b76de02b9b335892137fbfe9586c",
+      "candidatePathsSha256": "f1ba8a141b8e7d2d8bf3d3757c9596e2e1c0663c38d4f9e349fa383304434b89",
+      "decision": {
+        "requiredSourceFiles": [
+          "packages/babel-parser/src/parser/expression.js"
+        ],
+        "explicitNoiseFiles": [
+          "package.json",
+          "packages/babel-helpers/src/helpers/asyncIterator.js",
+          "packages/babel-compat-data/scripts/data/plugin-bugfixes.js",
+          "packages/babel-preset-env/src/index.ts",
+          "packages/babel-generator/src/generators/methods.ts",
+          "packages/babel-core/src/config/index.ts"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:45-04:00",
+        "notes": "Yield/await after arrow parameters is parsed in expression.js. Package metadata, async helper emission, compatibility/preset data, generator methods, and core config do not parse that grammar position."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-failure_first-104",
+      "materializedCaseSha256": "fd1945d50d465d250fc6d9c6aedc86515e27bb3aaffb2c8912289a0ff072d49f",
+      "candidatePathsSha256": "90373ee0d4dea8370ef3fa12983cd24632d02d6c4c85980ca62981e827fc4ac3",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "packages/babel-preset-env/src/index.ts",
+          "eslint/babel-eslint-tests/test/fixtures/parser-override/babel.config.json",
+          "packages/babel-cli/test/fixtures/babel/env - SHOW_CONFIG_FOR with ignored file/in-files/babel.config.json",
+          "packages/babel-plugin-transform-react-jsx-compat/src/index.ts",
+          "packages/babel-plugin-transform-typescript/src/enum.ts",
+          "packages/babel-plugin-proposal-pipeline-operator/src/minimalVisitor.ts"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:45-04:00",
+        "notes": "Function-statement parentheses are fixed in generator node precedence. Preset/config fixtures, JSX compatibility, TypeScript enum, and pipeline transforms do not decide these generator parentheses."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-failure_first-105",
+      "materializedCaseSha256": "33816538e078a49310f121b56a785d4dc18d4da891ec9552b735cee1024addf6",
+      "candidatePathsSha256": "bc87595328a8974229ad84f7dc84e04f661f7b9c36c2c10c66290990291749a8",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "packages/babel-register/src/node.js",
+          "Gulpfile.mjs",
+          "packages/babel-helper-fixtures/src/index.ts",
+          "packages/babel-preset-env/src/debug.ts",
+          "packages/babel-types/scripts/generators/docs.js",
+          "packages/babel-plugin-transform-property-mutators/src/define-map.ts"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:45-04:00",
+        "notes": "Undefined sourcesContent is handled in generator source-map assembly. Register/build/fixture tooling, preset debug, docs generation, and property transforms do not merge input source-map content."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-long_session-106",
+      "materializedCaseSha256": "2eb02148947a10d0ffea599e641b998e0826e83f45b58d495cf2b8794a70c7c1",
+      "candidatePathsSha256": "fee517fd11f5f8b6024789a702a967a4fa846ef591019017aba81607c3b1ae46",
+      "decision": {
+        "requiredSourceFiles": [
+          "src/KeyBindingsDefaults.ts",
+          "src/KeyBindingsManager.ts",
+          "src/components/structures/RoomSearch.tsx",
+          "src/components/structures/RoomView.tsx",
+          "src/components/views/rooms/EditMessageComposer.js",
+          "src/components/views/rooms/RoomSublist.tsx",
+          "src/components/views/rooms/SendMessageComposer.js"
+        ],
+        "explicitNoiseFiles": [
+          "src/components/views/emojipicker/Header.tsx",
+          "src/components/views/emojipicker/Search.tsx",
+          "src/components/views/settings/IntegrationManager.js",
+          "src/components/views/settings/Notifications.js",
+          "src/TextForEvent.js",
+          "src/components/views/settings/tabs/user/HelpUserSettingsTab.js"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:45-04:00",
+        "notes": "The reviewed source set centralizes and consumes key bindings across room/search/composer views. Emoji/search UI, integration/notification settings, event text, and help settings do not own shortcut matching policy."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-long_session-107",
+      "materializedCaseSha256": "67c4bb99fcd4a873934a54654bb1ad156bb6271ecebfd436bff3c8dc76e74344",
+      "candidatePathsSha256": "7a410a1aed8cec350d4ecc47bfd9fa20d182e799ebddd0b135f86d01f772f6c6",
+      "decision": {
+        "requiredSourceFiles": [
+          "src/components/views/settings/devices/useOwnDevices.ts",
+          "src/voice-broadcast/models/VoiceBroadcastRecording.ts"
+        ],
+        "explicitNoiseFiles": [
+          "src/components/structures/MatrixChat.tsx",
+          "src/Notifier.ts",
+          "src/RoomNotifs.ts",
+          "src/components/views/voip/CallView.tsx",
+          "src/toasts/BulkUnverifiedSessionsToast.ts",
+          "src/models/Call.ts"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:45-04:00",
+        "notes": "The reviewed positives implement device refresh and broadcast chunk sequencing; the official precondition/client-info sources remain weak patch positives. Matrix/room notification, unverified toast, and VoIP call surfaces do not prune client data or sequence recordings."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-long_session-108",
+      "materializedCaseSha256": "eea2266a9209112fcf6494c63f9eae63d040898695e8d057a7e75b7297927c5d",
+      "candidatePathsSha256": "5b9eb0ebd819bdf2bf5f4d9c860f2d0958e267006d8648aa7fc217ac175ad823",
+      "decision": {
+        "requiredSourceFiles": [
+          "src/hooks/useWindowWidth.ts"
+        ],
+        "explicitNoiseFiles": [
+          "src/stores/widgets/WidgetLayoutStore.ts",
+          "src/components/views/messages/LegacyCallEvent.tsx",
+          "playwright/global.d.ts",
+          "src/components/views/context_menus/GenericElementContextMenu.tsx",
+          "src/stores/ActiveWidgetStore.ts",
+          "src/components/views/voip/VideoFeed.tsx"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:45-04:00",
+        "notes": "The created useWindowWidth hook is the required source even though creation paths cannot appear in the pre-task candidate union. Widget/call/context-menu/video state and global test types do not expose current window width."
+      }
+    },
+    {
+      "id": "v02c-calibration-go-source_localization-109",
+      "materializedCaseSha256": "6ed4396b7ed25ab0b7966b336ce49041a721b8cbd0bd29e925eb42423f804ce9",
+      "candidatePathsSha256": "84bd99db03ce5c29f4e7ccb8f16e930251f5afafdea1055a7753b8280ed5ac46",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "binding/yaml.go",
+          "binding/msgpack.go",
+          "internal/json/jsoniter.go",
+          "auth.go",
+          "binding/form_mapping_benchmark_test.go",
+          "render/html.go"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:45-04:00",
+        "notes": "StaticFS duplicate 404 logging is fixed in routergroup. Binding/JSON/auth/benchmark and HTML rendering code do not register or fall through the static route."
+      }
+    },
+    {
+      "id": "v02c-calibration-go-source_localization-110",
+      "materializedCaseSha256": "70e54d4a5c30aab7c9ef10b3c66240616e9c46e8c80a1593df3831d2e85271ac",
+      "candidatePathsSha256": "1e4c5dd6be1b3d45f54957e3ee63e84792a9f9ed965170bc825c5431b9edc90f",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "binding/json_test.go",
+          "binding/xml_test.go",
+          "binding/yaml_test.go",
+          "tree.go",
+          "auth.go",
+          "binding/protobuf.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "The reader-render patch source is present. Noise labels cover unrelated request binding tests, routing trees, authentication, and protobuf binding."
+      }
+    },
+    {
+      "id": "v02c-calibration-go-source_localization-111",
+      "materializedCaseSha256": "2696d10459dd9f0dd5eb8bc4d48993810fc7c4d72499e1fdd5088819b3af127e",
+      "candidatePathsSha256": "8b8a5bf81e9c1cb8147bbfd6385abc18a4f86de7a90d021bbf51e4db309a3fe7",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "binding/yaml_test.go",
+          "binding/msgpack.go",
+          "testdata/protoexample/test.pb.go",
+          "auth.go",
+          "logger.go",
+          "render/html.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:15:00-04:00",
+        "notes": "The route-tree patch source is present. Noise labels cover unrelated binding formats, protobuf fixtures, authentication, logging, and HTML rendering."
+      }
+    },
+    {
+      "id": "v02c-calibration-go-failure_first-112",
+      "materializedCaseSha256": "74d65304647b18a96b2aab5136efe1a893c28e8a7a3ab08399d75d51633f2e85",
+      "candidatePathsSha256": "aa80f84ca40e65d6d5f61a5135e49520442e17d22ad329318ef3cf6019c26573",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "binding/multipart_form_mapping_test.go",
+          "render/protobuf.go",
+          "render/yaml.go",
+          "auth.go",
+          "path.go",
+          "binding/default_validator.go"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:45-04:00",
+        "notes": "Status-color selection is implemented in logger.go. Binding tests/validation, renderers, authentication, and path helpers do not map HTTP status to terminal color."
+      }
+    },
+    {
+      "id": "v02c-calibration-go-failure_first-113",
+      "materializedCaseSha256": "62b696bde933db3fde95774b1695c3e232a9d4d9460fd36fbad3fb5a201e5daf",
+      "candidatePathsSha256": "fd76b65c6dcdce4ce972a995994d8caf376fecfdb7da14ed075e7a30ff2cb422",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "logger_test.go",
+          "auth_test.go",
+          "render/html.go",
+          "internal/bytesconv/bytesconv_test.go",
+          "tree.go",
+          "version.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:15:00-04:00",
+        "notes": "The form-mapping patch source is present. Noise labels cover unrelated logging, authentication, rendering, byte conversion, route trees, and versioning."
+      }
+    },
+    {
+      "id": "v02c-calibration-go-failure_first-114",
+      "materializedCaseSha256": "f63271a451e82b11738a7e01bb913b717b81ab46f7c80d312b3e78b7ad303e62",
+      "candidatePathsSha256": "5af2e702a7727466ca29409f5d01af6656e96a8cb983d6e38dcc40662663e78e",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "binding/xml_test.go",
+          "binding/default_validator_benchmark_test.go",
+          "internal/json/sonic.go",
+          "render/protobuf.go",
+          "auth.go",
+          "binding/form_mapping_benchmark_test.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:15:00-04:00",
+        "notes": "The engine method-handling patch source is present. Noise labels cover unrelated XML binding, validation and form benchmarks, JSON adapters, protobuf rendering, and authentication."
+      }
+    },
+    {
+      "id": "v02c-calibration-go-long_session-115",
+      "materializedCaseSha256": "66c930a47bc62f0bdc74dca920ab6df183f377313675ec42e777657676b8365b",
+      "candidatePathsSha256": "1a1de03657da1a062d9b6b97b975902da4b051c1c6066296f59b0056636512ae",
+      "decision": {
+        "requiredSourceFiles": [
+          "binding/header.go"
+        ],
+        "explicitNoiseFiles": [
+          "render/yaml.go",
+          "render/msgpack.go",
+          "benchmarks_test.go",
+          "githubapi_test.go",
+          "auth.go",
+          "deprecated.go"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:45-04:00",
+        "notes": "Header binding is introduced in binding/header and wired through binding/context. Renderers, benchmarks, GitHub/auth tests, and deprecated API shims do not parse request headers into structs."
+      }
+    },
+    {
+      "id": "v02c-calibration-go-long_session-116",
+      "materializedCaseSha256": "5304328ee945e8a9b5d923d68003ed006a32c45712289609cb6d1671ea221b1c",
+      "candidatePathsSha256": "2caf63796493bc12dd8298484206dd3bd5b8d95936fc981bddd3296714e834ff",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "models/github.go",
+          "config/awsconf.go",
+          "scanner/windows.go",
+          "detector/wordpress.go",
+          "reporter/s3.go",
+          "scanner/macos.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:15:00-04:00",
+        "notes": "The Alpine scanner, OVAL utility, and scanner orchestration patch sources are present. Noise labels cover unrelated GitHub, cloud configuration and reporting, Windows, WordPress, and macOS paths."
+      }
+    },
+    {
+      "id": "v02c-calibration-go-long_session-117",
+      "materializedCaseSha256": "fb2b638ea95a5b9929cff73ffa0bd72fd717507bb2b3d1a8efe4b9a5c01d7a6f",
+      "candidatePathsSha256": "50806ef6016f56e70b10e301c9f503bc809586c06544153e098eb3a428dce25f",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "reporter/email.go",
+          "reporter/slack.go",
+          "config/googlechatconf.go",
+          "subcmds/tui.go",
+          "subcmds/history.go",
+          "saas/uuid.go"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:22:45-04:00",
+        "notes": "CIDR expansion/exclusion is implemented in configuration loading and discover/scan commands. Notification reporters/config, TUI/history, and SaaS UUIDs do not enumerate host ranges."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-source_localization-118",
+      "materializedCaseSha256": "eec95bbc61977dde3decae667a2ca5387341c25caad107ef4d93bbba12869b2d",
+      "candidatePathsSha256": "03b3362ddfe1232ce096d0a42df4028c40c72009b0b3e53b34cd884f30d91879",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/main/java/com/fasterxml/jackson/core/FormatSchema.java",
+          "src/main/java/com/fasterxml/jackson/core/Base64Variants.java",
+          "src/main/java/com/fasterxml/jackson/core/util/InternCache.java",
+          "src/main/java/com/fasterxml/jackson/core/sym/BytesToNameCanonicalizer.java",
+          "src/main/java/com/fasterxml/jackson/core/JsonPointer.java",
+          "src/main/java/com/fasterxml/jackson/core/Versioned.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:15:00-04:00",
+        "notes": "The text-buffer patch source is present. Noise labels cover unrelated schemas, Base64, intern and symbol tables, JSON pointers, and version contracts."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-source_localization-119",
+      "materializedCaseSha256": "0411a22a53da5f62ebf6c7eed1e9922c0ac5f23db50556bd7384a9139f8149f8",
+      "candidatePathsSha256": "8eedf4f863efed775614409b318b7cf0a51441700940d3e637fab92a74e81765",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/main/java/com/fasterxml/jackson/core/Base64Variants.java",
+          "src/main/java/com/fasterxml/jackson/core/util/DefaultPrettyPrinter.java",
+          "src/main/java/com/fasterxml/jackson/core/sym/CharsToNameCanonicalizer.java",
+          "src/main/java/com/fasterxml/jackson/core/io/UTF32Reader.java",
+          "src/main/java/com/fasterxml/jackson/core/util/VersionUtil.java",
+          "src/main/java/com/fasterxml/jackson/core/JsonEncoding.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:15:00-04:00",
+        "notes": "The JSON pointer patch source is present. Noise labels cover unrelated Base64, pretty printing, symbol tables, UTF-32 input, versioning, and encodings."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-source_localization-120",
+      "materializedCaseSha256": "5b08bbe9cc7f983d4cc81eb3a777ebfcbe6171ee1060236a631a0e430070216b",
+      "candidatePathsSha256": "df52f7b1ad22cf9b72aeed4f98279e225c5a4c88449840b863f5a6174bfea540",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "buildSrc/src/main/java/org/apache/lucene/gradle/ErrorReportingTestListener.java",
+          "lucene/core/src/java/org/apache/lucene/search/CollectionTerminatedException.java",
+          "lucene/backward-codecs/src/java/org/apache/lucene/backward_codecs/lucene84/Lucene84ScoreSkipReader.java",
+          "lucene/backward-codecs/src/java/org/apache/lucene/backward_codecs/lucene50/Lucene50ScoreSkipReader.java",
+          "lucene/analysis/smartcn/src/java/org/apache/lucene/analysis/cn/smart/hhmm/SegGraph.java",
+          "lucene/codecs/src/java/org/apache/lucene/codecs/uniformsplit/IntersectBlockReader.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:23:00-04:00",
+        "notes": "The bounds error is fixed in OpenNLPSentenceBreakIterator. Gradle reporting, collection termination, backward-codec skip readers, SmartCN graphs, and uniform-split blocks do not calculate OpenNLP sentence positions."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-failure_first-121",
+      "materializedCaseSha256": "62c4e4e865208f9b413fc8cbdf822f7d64d48441b0bd9ccdbae68ad2e5f22d41",
+      "candidatePathsSha256": "6334ed6757f5593306b6b8f8aa076a49a24ac5ec1b48a84ff41ed88c3ba8f7da",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/main/java/com/fasterxml/jackson/core/Base64Variants.java",
+          "src/main/java/com/fasterxml/jackson/core/sym/CharsToNameCanonicalizer.java",
+          "src/main/java/com/fasterxml/jackson/core/json/async/NonBlockingJsonParser.java",
+          "src/main/java/com/fasterxml/jackson/core/io/OutputDecorator.java",
+          "src/main/java/com/fasterxml/jackson/core/JsonLocation.java",
+          "src/main/java/com/fasterxml/jackson/core/util/MinimalPrettyPrinter.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:23:00-04:00",
+        "notes": "Generator filtering is fixed in FilteringGeneratorDelegate. Base64, symbol canonicalization, async parsing, output decoration, locations, and pretty printing do not maintain filter match state."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-failure_first-122",
+      "materializedCaseSha256": "550584245dd6cfea19be5cafe89a2afd141422b49a9852ead6ecba2977caca9c",
+      "candidatePathsSha256": "3aaf2eb7bab5a5d7e212e10425b26e318bec506ca2dc727bf368ad93ec9ea096",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/main/java/com/fasterxml/jackson/core/util/ByteArrayBuilder.java",
+          "src/main/java/com/fasterxml/jackson/core/format/DataFormatMatcher.java",
+          "src/main/java/com/fasterxml/jackson/core/sym/ByteQuadsCanonicalizer.java",
+          "src/main/java/com/fasterxml/jackson/core/Versioned.java",
+          "src/main/java/com/fasterxml/jackson/core/Base64Variant.java",
+          "src/main/java/com/fasterxml/jackson/core/util/DefaultPrettyPrinter.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:23:00-04:00",
+        "notes": "The combined regressions are addressed in filtering parser/context behavior. Buffering, format matching, canonicalization, version/base64 metadata, and pretty printing do not advance token filters."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-failure_first-123",
+      "materializedCaseSha256": "bd77e42fee555cedd15767ecd801d58924095958250220fbd1e5124248039e11",
+      "candidatePathsSha256": "b12ec723cb7d399f1bfc58a91792f884cc626bf9e547696d9d06c21f08b42d34",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/main/java/com/fasterxml/jackson/core/util/DefaultIndenter.java",
+          "src/main/java/com/fasterxml/jackson/core/util/VersionUtil.java",
+          "src/main/java/com/fasterxml/jackson/core/io/SegmentedStringWriter.java",
+          "src/main/java/com/fasterxml/jackson/core/util/JsonParserSequence.java",
+          "src/main/java/com/fasterxml/jackson/core/base/ParserMinimalBase.java",
+          "src/main/java/com/fasterxml/jackson/core/TreeNode.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:23:00-04:00",
+        "notes": "The serializability/escaping changes are made in JsonGenerator. Indentation/version/string writing, parser sequencing/base classes, and TreeNode do not define generator API serialization behavior."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-long_session-124",
+      "materializedCaseSha256": "def02301f8430f09757c8d9a5614a72a0253199b358bf018df32ccd006553564",
+      "candidatePathsSha256": "a75748caab0a8442727206c85136ecfe63cfe6bcf887b3db50f248ed988eeb89",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/main/java/com/fasterxml/jackson/core/io/CharacterEscapes.java",
+          "src/main/java/com/fasterxml/jackson/core/sym/ByteQuadsCanonicalizer.java",
+          "src/test/java/com/fasterxml/jackson/core/json/GeneratorFeaturesTest.java",
+          "src/main/java/com/fasterxml/jackson/core/json/UTF8JsonGenerator.java",
+          "src/main/java/com/fasterxml/jackson/core/util/TextBuffer.java",
+          "src/test/java/com/fasterxml/jackson/core/dos/PerfBigDecimalParser967Test.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:23:00-04:00",
+        "notes": "Trailing-dot stringified number parsing is implemented in NumberInput. Escaping/canonicalization, generator features/output, generic text buffers, and BigDecimal performance tests do not parse that string form."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-long_session-125",
+      "materializedCaseSha256": "aa164d2c85cb3bdef4197e6fac7b8702382f276bffc4cbfb0e679fdf3a23f03c",
+      "candidatePathsSha256": "dfc99799b6a4d7bd09a986ee74043fbb967986e1071437777a32882f1dba2690",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/main/java/com/fasterxml/jackson/core/util/DefaultPrettyPrinter.java",
+          "src/main/java/com/fasterxml/jackson/core/io/CharacterEscapes.java",
+          "src/main/java/com/fasterxml/jackson/core/util/JsonParserSequence.java",
+          "src/main/java/com/fasterxml/jackson/core/io/UTF32Reader.java",
+          "src/main/java/com/fasterxml/jackson/core/util/InternCache.java",
+          "src/main/java/com/fasterxml/jackson/core/json/ReaderBasedJsonParser.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:23:00-04:00",
+        "notes": "pooledCount is added to RecyclerPool. Pretty printing, escaping, parser sequencing/readers, and intern caching neither own recycler-pool implementations nor count pooled entries."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-long_session-126",
+      "materializedCaseSha256": "52db6b51d997577ae012812453aa390b9e31631b6a00a0cbe695e36559e36f8e",
+      "candidatePathsSha256": "91abf0e7df604cdb96e0d64eab06f79b1aeea51d4524b4e3087a207193746e06",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/main/java/com/fasterxml/jackson/core/io/NumberOutput.java",
+          "src/main/java/com/fasterxml/jackson/core/FormatSchema.java",
+          "src/test/java/perf/ManualCharAccessTest.java",
+          "src/main/java/com/fasterxml/jackson/core/sym/ByteQuadsCanonicalizer.java",
+          "src/test/java/com/fasterxml/jackson/core/io/UTF8WriterTest.java",
+          "src/main/java/com/fasterxml/jackson/core/io/UTF32Reader.java"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:23:00-04:00",
+        "notes": "Base64 padding read policy is corrected in the three JSON parsers. Number/schema output, char performance, symbol canonicalization, UTF8 writing, and UTF32 reading do not choose Base64 padding behavior."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-source_localization-127",
+      "materializedCaseSha256": "f332a2f5e56125a4bc18b688b76f0a02b3945988ccddd7fabeb0a8ecba71c823",
+      "candidatePathsSha256": "1a9e193076f1c6f6ad1d83c34de3ac55cfb6fef0eae342260658a212435bbcf2",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/args-test.cc",
+          "test/color-test.cc",
+          "test/fuzzing/named-arg.cc",
+          "src/os.cc",
+          "support/docopt.py",
+          "support/printable.py"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:23:00-04:00",
+        "notes": "Large time_point overflow is fixed in chrono formatting. Args/color/named-arg tests, OS support, and documentation/printing scripts do not perform chrono duration conversion."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-source_localization-128",
+      "materializedCaseSha256": "23221726b83f76505971a74ec10ef9db271780366c7db3875bbc6a002bdb8fa6",
+      "candidatePathsSha256": "650b1121e01370c8ebb3f33fe5c3a5c64852c86cdbaa6b9e8fcc36afe458a877",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/fuzzing/chrono-duration.cc",
+          "test/color-test.cc",
+          "src/os.cc",
+          "support/build-docs.py",
+          "test/gtest/.clang-format",
+          "support/docopt.py"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:23:00-04:00",
+        "notes": "optional format_as visibility is fixed in format.h. Chrono/color tests, OS code, docs/config tooling, and docopt support do not expose the formatter's debug-format method."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-source_localization-129",
+      "materializedCaseSha256": "9f5e5de14f332e87fc0c6862628984b65847ebe3187726b71339f66039d590d4",
+      "candidatePathsSha256": "c5a656343283b922efd9cbf7d9287e658bd57507907654a2e088ca938864f92b",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/fuzzing/chrono-timepoint.cc",
+          "src/os.cc",
+          "support/docopt.py",
+          "test/color-test.cc",
+          "support/printable.py",
+          "test/fuzzing/two-args.cc"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:23:00-04:00",
+        "notes": "vector<bool>::reference format_as support is added in std.h. Chrono/color/two-arg fuzzing, OS implementation, and support scripts do not define this standard-library formatter bridge."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-failure_first-130",
+      "materializedCaseSha256": "738034cda35bf74dc44c671b4753ee6a3aec064a89603c67c020f246284823c6",
+      "candidatePathsSha256": "83f97bf46ee3eb54bbaede7a5870c5ac83914abd11999d47072ce5377d17c489",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "support/release.py",
+          "support/python/mkdocstrings_handlers/cxx/__init__.py",
+          "test/cuda-test/cpp14.cc",
+          "test/color-test.cc",
+          "test/fuzzing/chrono-timepoint.cc",
+          "support/printable.py"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:23:10-04:00",
+        "notes": "The failing args/assert/base behavior is fixed in base.h. Release/docs/CUDA/color/chrono-fuzz and printable support code do not implement the base formatting contract."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-failure_first-131",
+      "materializedCaseSha256": "d90005a2be5cf8b0a230ef8420f6e6d6caeebb7179ad9060876296de66dc7315",
+      "candidatePathsSha256": "dd11c6a39a4492aeeecc03fc3fa045f91508926bb5ff39e250e9180bf53eba78",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/os.cc",
+          "support/build-docs.py",
+          "test/fuzzing/chrono-duration.cc",
+          "test/color-test.cc",
+          "support/docopt.py",
+          "support/manage.py"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:23:10-04:00",
+        "notes": "Bool presentation validation is fixed in core.h. OS/docs/management support and chrono/color tests do not validate the c presentation type for bool."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-failure_first-132",
+      "materializedCaseSha256": "95b85e9319a445338fab37c55c79d7c9a0a0b341fba027bdd6c409d4871b6b1f",
+      "candidatePathsSha256": "46990f3c6ff4b2c349ae8cf196321ec26b86adac2146aa6b901b958840d40fc9",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/fuzzing/float.cc",
+          "support/build-docs.py",
+          "test/color-test.cc",
+          "test/compile-fp-test.cc",
+          "test/posix-mock-test.cc",
+          "support/docopt.py"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:23:10-04:00",
+        "notes": "Native/generic filesystem path representation is added in std.h. Float/color/compile/posix tests and documentation tooling do not define the path formatter specification."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-long_session-133",
+      "materializedCaseSha256": "c600345330c7c9bec57ac0dbd91940de1686a92277aee6ef5e8180a8e81b1077",
+      "candidatePathsSha256": "6a94e11066979ac76519332e007139caba4517e01800370058958e8a49b79dcc",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "support/release.py",
+          "test/fuzzing/chrono-duration.cc",
+          "test/color-test.cc",
+          "src/os.cc",
+          "support/printable.py",
+          "support/docopt.py"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:23:10-04:00",
+        "notes": "xchar bitset formatting and fill copying are fixed in format/std. Release/printing/docs support, chrono/color fuzzing, and OS code do not implement that formatter state."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-long_session-134",
+      "materializedCaseSha256": "558aa4772edbf8b74bb3bb7ed7d9236cb20d3aae13d1cb15822b26c4e43fd6ef",
+      "candidatePathsSha256": "042a76b71715865853d56b39fc164ab2f6fcf580fc593f30c54c515683c13222",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/fuzzing/named-arg.cc",
+          "test/color-test.cc",
+          "src/os.cc",
+          "support/rst2md.py",
+          "test/cuda-test/cpp14.cc",
+          "test/find-package-test/main.cc"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The core and format header patch sources are present. Noise labels cover unrelated named-argument fuzzing, colors, OS code, documentation conversion, CUDA, and package-discovery tests."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-long_session-135",
+      "materializedCaseSha256": "c9bf21fd7651f24b5d62c03803b053fb81fb4b294d6ab71d898775d0f6d70687",
+      "candidatePathsSha256": "c79807eccbcd24d73769e7e5b9d9b3840f4661c006e7896ed81cd215d305558d",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "support/update-coverity-branch.py",
+          "support/travis-build.py",
+          "support/appveyor-build.py",
+          "test/chrono-test.cc",
+          "test/add-subdirectory-test/main.cc",
+          "test/color-test.cc"
+        ],
+        "reviewer": "Codex independent semantic-union review",
+        "reviewedAt": "2026-08-15T13:23:10-04:00",
+        "notes": "Single-precision Grisu formatting is implemented in format-inl/format. CI scripts and chrono/add-subdirectory/color tests do not perform Grisu digit generation."
+      }
+    }
+  ]
+}

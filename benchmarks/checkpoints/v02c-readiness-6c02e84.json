@@ -1,0 +1,454 @@
+{
+  "schemaVersion": "ranker-corpus-readiness-checkpoint.v1",
+  "checkpointId": "kairn-evidence-v02c-20260722-6c02e846e720",
+  "corpusId": "kairn-evidence-v02c-20260722",
+  "status": "blocked_candidate_recall",
+  "promotionEligible": false,
+  "trainingEligible": false,
+  "publicDataOnly": true,
+  "artifacts": {
+    "reviewedIntake": {
+      "fileName": "ranker-corpus-intake.reviewed-v35.json",
+      "sha256": "bcfe94973f9e93964a2bd0473addb3c1f43a0b4fed1168de690214db36629fa6",
+      "bytes": 514395
+    },
+    "lineageRegistry": {
+      "fileName": "lineage-registry.reviewed-v35.json",
+      "sha256": "e0b876c765cb621bf04bcb5ab7eda9a60ee46c571656cd5cc91cb6237c3b70d9",
+      "bytes": 3588
+    },
+    "reviewApplication": {
+      "fileName": "ranker-corpus-review-application-v35.json",
+      "sha256": "f36d2bbc1f8731bfd8aff84b75baeea478ed75601550fc03b42dbf41c2073738",
+      "bytes": 1119
+    },
+    "reviewDecisions": {
+      "fileName": "v02c-review-decisions-c0ebbcc.json",
+      "sha256": "8bdc073104b6309f153b8d1b5d89e3c5e0afc515076dbbddd22f877e4501db2f",
+      "bytes": 170895
+    },
+    "sealedManifest": {
+      "fileName": "ranker-corpus.sealed-v37.json",
+      "sha256": "1a2840bbe43addcd42238b330ba9d4da86652d8cf0c240f66fa7d2adaecff8ea",
+      "bytes": 9423814
+    },
+    "materializationReport": {
+      "fileName": "ranker-corpus.sealed-v37.report.json",
+      "sha256": "1ec65853317c3a49d221cc43b08c835d05b5e7e4a016a795062287cd897320f9",
+      "bytes": 121414
+    },
+    "flattenedCorpus": {
+      "fileName": "ranker-corpus.v37.jsonl",
+      "sha256": "6296ab4393c604c23ddb41ae48ca78dc427afcb45efb5dc5765487dcfd7b2e2f",
+      "bytes": 6415981
+    },
+    "corpusSummary": {
+      "fileName": "ranker-corpus.v37.summary.json",
+      "sha256": "51832fbd8ef2f5a400fd175ed8b9c25f165ccea12dc7247f18ab1f5e7c9399f6",
+      "bytes": 1663
+    }
+  },
+  "review": {
+    "status": "review_complete",
+    "caseCount": 165,
+    "completedCases": 165,
+    "pendingCases": 0,
+    "reviewers": [
+      "Codex independent repository-evidence review"
+    ],
+    "requiredSourceOracleCases": 40,
+    "explicitNoiseLabels": 990,
+    "oracleSelectionBySplit": {
+      "calibration": 6,
+      "holdout": 30,
+      "train": 4
+    }
+  },
+  "materialization": {
+    "kairnCommit": "6c02e846e72059e560b52f69b302942cd2595b29",
+    "candidateLimit": 64,
+    "graphHops": 1,
+    "caseProcessIsolation": true,
+    "caseCount": 165,
+    "candidateRows": 10547,
+    "labeledRows": 1242,
+    "unlabeledRows": 9305,
+    "zeroPositiveCases": 6
+  },
+  "candidateRecall": {
+    "strictReviewedOracles": {
+      "cases": 40,
+      "fullCases": 22,
+      "partialCases": 7,
+      "zeroCases": 11,
+      "fullRecallRate": 0.55,
+      "meanFileRecall": 0.6446428571428572
+    },
+    "holdout": {
+      "cases": 30,
+      "fullCases": 22,
+      "partialCases": 7,
+      "zeroCases": 1,
+      "fullRecallRate": 0.7333333333333333,
+      "meanFileRecall": 0.8595238095238096
+    },
+    "reviewedByLanguage": {
+      "cpp": {
+        "cases": 7,
+        "fullCases": 4,
+        "partialCases": 1,
+        "zeroCases": 2,
+        "fullRecallRate": 0.5714285714285714,
+        "meanFileRecall": 0.6666666666666666
+      },
+      "go": {
+        "cases": 9,
+        "fullCases": 6,
+        "partialCases": 0,
+        "zeroCases": 3,
+        "fullRecallRate": 0.6666666666666666,
+        "meanFileRecall": 0.6666666666666666
+      },
+      "java": {
+        "cases": 7,
+        "fullCases": 4,
+        "partialCases": 2,
+        "zeroCases": 1,
+        "fullRecallRate": 0.5714285714285714,
+        "meanFileRecall": 0.7142857142857143
+      },
+      "python": {
+        "cases": 6,
+        "fullCases": 4,
+        "partialCases": 2,
+        "zeroCases": 0,
+        "fullRecallRate": 0.6666666666666666,
+        "meanFileRecall": 0.8611111111111112
+      },
+      "typescript": {
+        "cases": 11,
+        "fullCases": 4,
+        "partialCases": 2,
+        "zeroCases": 5,
+        "fullRecallRate": 0.36363636363636365,
+        "meanFileRecall": 0.45021645021645024
+      }
+    },
+    "holdoutByLanguage": {
+      "cpp": {
+        "cases": 6,
+        "fullCases": 4,
+        "partialCases": 1,
+        "zeroCases": 1,
+        "fullRecallRate": 0.6666666666666666,
+        "meanFileRecall": 0.7777777777777777
+      },
+      "go": {
+        "cases": 6,
+        "fullCases": 6,
+        "partialCases": 0,
+        "zeroCases": 0,
+        "fullRecallRate": 1,
+        "meanFileRecall": 1
+      },
+      "java": {
+        "cases": 6,
+        "fullCases": 4,
+        "partialCases": 2,
+        "zeroCases": 0,
+        "fullRecallRate": 0.6666666666666666,
+        "meanFileRecall": 0.8333333333333334
+      },
+      "python": {
+        "cases": 6,
+        "fullCases": 4,
+        "partialCases": 2,
+        "zeroCases": 0,
+        "fullRecallRate": 0.6666666666666666,
+        "meanFileRecall": 0.8611111111111112
+      },
+      "typescript": {
+        "cases": 6,
+        "fullCases": 4,
+        "partialCases": 2,
+        "zeroCases": 0,
+        "fullRecallRate": 0.6666666666666666,
+        "meanFileRecall": 0.8253968253968255
+      }
+    },
+    "reviewedBySplit": {
+      "calibration": {
+        "cases": 6,
+        "fullCases": 0,
+        "partialCases": 0,
+        "zeroCases": 6,
+        "fullRecallRate": 0,
+        "meanFileRecall": 0
+      },
+      "holdout": {
+        "cases": 30,
+        "fullCases": 22,
+        "partialCases": 7,
+        "zeroCases": 1,
+        "fullRecallRate": 0.7333333333333333,
+        "meanFileRecall": 0.8595238095238096
+      },
+      "train": {
+        "cases": 4,
+        "fullCases": 0,
+        "partialCases": 0,
+        "zeroCases": 4,
+        "fullRecallRate": 0,
+        "meanFileRecall": 0
+      }
+    },
+    "positiveSourceAnyHitRateAt64": 0.9636363636363636,
+    "officialPatchMeanRecallAt64": 0.8742957042957042,
+    "officialPatchMeanRecallAt128": 0.9141105191105191,
+    "missingRequiredSourceFileCount": 32,
+    "misses": [
+      {
+        "id": "v02c-calibration-go-long_session-115",
+        "split": "calibration",
+        "language": "go",
+        "scenario": "long_session",
+        "requiredSourceCount": 1,
+        "recallAt64": 0,
+        "missingRequiredSourceFiles": [
+          "binding/header.go"
+        ]
+      },
+      {
+        "id": "v02c-calibration-typescript-failure_first-103",
+        "split": "calibration",
+        "language": "typescript",
+        "scenario": "failure_first",
+        "requiredSourceCount": 1,
+        "recallAt64": 0,
+        "missingRequiredSourceFiles": [
+          "packages/babel-parser/src/parser/expression.js"
+        ]
+      },
+      {
+        "id": "v02c-calibration-typescript-long_session-106",
+        "split": "calibration",
+        "language": "typescript",
+        "scenario": "long_session",
+        "requiredSourceCount": 7,
+        "recallAt64": 0,
+        "missingRequiredSourceFiles": [
+          "src/KeyBindingsDefaults.ts",
+          "src/KeyBindingsManager.ts",
+          "src/components/structures/RoomSearch.tsx",
+          "src/components/structures/RoomView.tsx",
+          "src/components/views/rooms/EditMessageComposer.js",
+          "src/components/views/rooms/RoomSublist.tsx",
+          "src/components/views/rooms/SendMessageComposer.js"
+        ]
+      },
+      {
+        "id": "v02c-calibration-typescript-long_session-107",
+        "split": "calibration",
+        "language": "typescript",
+        "scenario": "long_session",
+        "requiredSourceCount": 2,
+        "recallAt64": 0,
+        "missingRequiredSourceFiles": [
+          "src/components/views/settings/devices/useOwnDevices.ts",
+          "src/voice-broadcast/models/VoiceBroadcastRecording.ts"
+        ]
+      },
+      {
+        "id": "v02c-calibration-typescript-long_session-108",
+        "split": "calibration",
+        "language": "typescript",
+        "scenario": "long_session",
+        "requiredSourceCount": 1,
+        "recallAt64": 0,
+        "missingRequiredSourceFiles": [
+          "src/hooks/useWindowWidth.ts"
+        ]
+      },
+      {
+        "id": "v02c-calibration-typescript-source_localization-101",
+        "split": "calibration",
+        "language": "typescript",
+        "scenario": "source_localization",
+        "requiredSourceCount": 1,
+        "recallAt64": 0,
+        "missingRequiredSourceFiles": [
+          "packages/babel-helpers/src/index.ts"
+        ]
+      },
+      {
+        "id": "v02c-holdout-cpp-failure_first-163",
+        "split": "holdout",
+        "language": "cpp",
+        "scenario": "failure_first",
+        "requiredSourceCount": 3,
+        "recallAt64": 0.6666666666666666,
+        "missingRequiredSourceFiles": [
+          "include/internal/catch_list.h"
+        ]
+      },
+      {
+        "id": "v02c-holdout-cpp-source_localization-160",
+        "split": "holdout",
+        "language": "cpp",
+        "scenario": "source_localization",
+        "requiredSourceCount": 1,
+        "recallAt64": 0,
+        "missingRequiredSourceFiles": [
+          "src/catch2/catch_all.hpp"
+        ]
+      },
+      {
+        "id": "v02c-holdout-java-long_session-158",
+        "split": "holdout",
+        "language": "java",
+        "scenario": "long_session",
+        "requiredSourceCount": 2,
+        "recallAt64": 0.5,
+        "missingRequiredSourceFiles": [
+          "dubbo-common/src/main/java/org/apache/dubbo/common/utils/CompatibleTypeUtils.java"
+        ]
+      },
+      {
+        "id": "v02c-holdout-java-source_localization-155",
+        "split": "holdout",
+        "language": "java",
+        "scenario": "source_localization",
+        "requiredSourceCount": 2,
+        "recallAt64": 0.5,
+        "missingRequiredSourceFiles": [
+          "processing/src/main/java/org/apache/druid/java/util/common/JodaUtils.java"
+        ]
+      },
+      {
+        "id": "v02c-holdout-python-long_session-140",
+        "split": "holdout",
+        "language": "python",
+        "scenario": "long_session",
+        "requiredSourceCount": 3,
+        "recallAt64": 0.6666666666666666,
+        "missingRequiredSourceFiles": [
+          "django/contrib/sessions/middleware.py"
+        ]
+      },
+      {
+        "id": "v02c-holdout-python-long_session-141",
+        "split": "holdout",
+        "language": "python",
+        "scenario": "long_session",
+        "requiredSourceCount": 2,
+        "recallAt64": 0.5,
+        "missingRequiredSourceFiles": [
+          "django/forms/fields.py"
+        ]
+      },
+      {
+        "id": "v02c-holdout-typescript-long_session-147",
+        "split": "holdout",
+        "language": "typescript",
+        "scenario": "long_session",
+        "requiredSourceCount": 6,
+        "recallAt64": 0.6666666666666666,
+        "missingRequiredSourceFiles": [
+          "lib/helpers/formDataToStream.js",
+          "lib/helpers/readBlob.js"
+        ]
+      },
+      {
+        "id": "v02c-holdout-typescript-source_localization-143",
+        "split": "holdout",
+        "language": "typescript",
+        "scenario": "source_localization",
+        "requiredSourceCount": 7,
+        "recallAt64": 0.2857142857142857,
+        "missingRequiredSourceFiles": [
+          "src/database/mongo/main.js",
+          "src/database/postgres/main.js",
+          "src/database/redis/main.js",
+          "src/socket.io/admin/user.js",
+          "src/user/email.js"
+        ]
+      },
+      {
+        "id": "v02c-train-cpp-long_session-090",
+        "split": "train",
+        "language": "cpp",
+        "scenario": "long_session",
+        "requiredSourceCount": 1,
+        "recallAt64": 0,
+        "missingRequiredSourceFiles": [
+          "include/nlohmann/detail/macro_scope.hpp"
+        ]
+      },
+      {
+        "id": "v02c-train-go-long_session-049",
+        "split": "train",
+        "language": "go",
+        "scenario": "long_session",
+        "requiredSourceCount": 3,
+        "recallAt64": 0,
+        "missingRequiredSourceFiles": [
+          "internal/terraform/marks.go",
+          "internal/terraform/node_resource_abstract_instance.go",
+          "internal/terraform/node_resource_plan_partialexp.go"
+        ]
+      },
+      {
+        "id": "v02c-train-go-source_localization-039",
+        "split": "train",
+        "language": "go",
+        "scenario": "source_localization",
+        "requiredSourceCount": 1,
+        "recallAt64": 0,
+        "missingRequiredSourceFiles": [
+          "internal/terraform/transform_attach_config_resource.go"
+        ]
+      },
+      {
+        "id": "v02c-train-java-source_localization-056",
+        "split": "train",
+        "language": "java",
+        "scenario": "source_localization",
+        "requiredSourceCount": 1,
+        "recallAt64": 0,
+        "missingRequiredSourceFiles": [
+          "javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java"
+        ]
+      }
+    ]
+  },
+  "gates": {
+    "candidateRecallAt64Overall": {
+      "threshold": 0.99,
+      "actual": 0.55,
+      "passed": false
+    },
+    "candidateRecallAt64PerLanguage": {
+      "threshold": 0.95,
+      "actual": {
+        "cpp": 0.5714285714285714,
+        "go": 0.6666666666666666,
+        "java": 0.5714285714285714,
+        "python": 0.6666666666666666,
+        "typescript": 0.36363636363636365
+      },
+      "passed": false
+    }
+  },
+  "nextMechanismClasses": [
+    "query-term and symbol candidate coverage",
+    "direct import/include graph completeness",
+    "source/test and failure/source relationships",
+    "bounded sibling and companion production-source expansion"
+  ],
+  "disclosures": [
+    "The 30 holdout cases all received independent required-source review.",
+    "Train and calibration required-source review is miss-enriched, so strict reviewed-oracle recall is not an unbiased all-split estimate.",
+    "A calibrated ranker cannot recover a required source file that is absent from candidate@64.",
+    "This checkpoint is pre-training readiness evidence, not model-quality, token-efficiency, or live-agent comparison evidence."
+  ]
+}

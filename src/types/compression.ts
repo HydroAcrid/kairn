@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { OutputKind } from "./context.js";
 
 export type CompressionStatus = "compressed" | "skipped" | "failed_open";

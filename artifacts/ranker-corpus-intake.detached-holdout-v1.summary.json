@@ -1,0 +1,80 @@
+{
+  "schemaVersion": "detached-holdout-intake-summary.v1",
+  "sourcePoolSha256": "f8057bd08479a674b9a7b64de0f04574f691b1db02fe182387443006d96e1f3f",
+  "candidatePoolSize": 975,
+  "excludedLineages": 40,
+  "selectedCases": 30,
+  "selectedLineages": 10,
+  "repositoriesByLanguage": {
+    "python": [
+      "ansible/ansible",
+      "internetarchive/openlibrary",
+      "qutebrowser/qutebrowser"
+    ],
+    "typescript": [
+      "protonmail/webclients",
+      "tutao/tutanota"
+    ],
+    "go": [
+      "grpc/grpc-go",
+      "prometheus/prometheus"
+    ],
+    "java": [
+      "mockito/mockito",
+      "reactivex/rxjava"
+    ],
+    "cpp": [
+      "shader-slang/slang"
+    ]
+  },
+  "cells": {
+    "python/source_localization": 2,
+    "python/failure_first": 2,
+    "python/long_session": 2,
+    "typescript/source_localization": 2,
+    "typescript/failure_first": 2,
+    "typescript/long_session": 2,
+    "go/source_localization": 2,
+    "go/failure_first": 2,
+    "go/long_session": 2,
+    "java/source_localization": 2,
+    "java/failure_first": 2,
+    "java/long_session": 2,
+    "cpp/source_localization": 2,
+    "cpp/failure_first": 2,
+    "cpp/long_session": 2
+  },
+  "sourceIds": [
+    "swe-bench-pro-public-slice:16:instance_internetarchive__openlibrary-111347e9583372e8ef91c82e0612ea437ae3a9c9-v2d9a6c849c60ed19fd0858ce9e40b7cc8e097e59",
+    "swe-bench-pro-public-slice:19:instance_qutebrowser__qutebrowser-fd6790fe8c02b144ab2464f1fc8ab3d02ce3c476-v2ef375ac784985212b1805e1d0431dc8f1b3c171",
+    "swe-bench-pro-public-slice:11:instance_ansible__ansible-395e5e20fab9cad517243372fa3c3c5d9e09ab2a-v7eee2454f617569fd6889f2211f75bc02a35f9f8",
+    "swe-bench-pro-public-slice:13:instance_qutebrowser__qutebrowser-96b997802e942937e81d2b8a32d08f00d3f4bc4e-v5fc38aaf22415ab0b70567368332beee7955b367",
+    "swe-bench-pro-public-slice:1:instance_qutebrowser__qutebrowser-f91ace96223cac8161c16dd061907e138fe85111-v059c6fdc75567943479b23ebca7c07b5e9a7f34c",
+    "swe-bench-pro-public-slice:10:instance_internetarchive__openlibrary-dbbd9d539c6d4fd45d5be9662aa19b6d664b5137-v08d8e8889ec945ab821fb156c04c7d2e2810debb",
+    "swe-bench-pro-public-slice:86:instance_tutao__tutanota-09c2776c0fce3db5c6e18da92b5a45dce9f013aa-vbc0d9ba8f0071fbe982809910959a6ff8884dbbf",
+    "swe-bench-pro-public-slice:93:instance_protonmail__webclients-09fcf0dbdb87fa4f4a27700800ee4a3caed8b413",
+    "swe-bench-pro-public-slice:53:instance_protonmail__webclients-08bb09914d0d37b0cd6376d4cab5b77728a43e7b",
+    "swe-bench-pro-public-slice:83:instance_tutao__tutanota-da4edb7375c10f47f4ed3860a591c5e6557f7b5c-vbc0d9ba8f0071fbe982809910959a6ff8884dbbf",
+    "swe-bench-pro-public-slice:25:instance_protonmail__webclients-2c3559cad02d1090985dba7e8eb5a129144d9811",
+    "swe-bench-pro-public-slice:41:instance_protonmail__webclients-6dcf0d0b0f7965ad94be3f84971afeb437f25b02",
+    "multi-swe-go:grpc__grpc-go_dataset.jsonl:13",
+    "swe-bench-multilingual:225:prometheus__prometheus-10633",
+    "multi-swe-go:grpc__grpc-go_dataset.jsonl:0",
+    "multi-swe-go:grpc__grpc-go_dataset.jsonl:1",
+    "multi-swe-go:grpc__grpc-go_dataset.jsonl:12",
+    "multi-swe-go:grpc__grpc-go_dataset.jsonl:14",
+    "multi-swe-java:mockito__mockito_dataset.jsonl:4",
+    "swe-bench-multilingual:233:reactivex__rxjava-7597",
+    "multi-swe-java:mockito__mockito_dataset.jsonl:2",
+    "multi-swe-java:mockito__mockito_dataset.jsonl:3",
+    "multi-swe-java:mockito__mockito_dataset.jsonl:0",
+    "multi-swe-java:mockito__mockito_dataset.jsonl:1",
+    "swe-bench-live-multilang-cpp:2:shader-slang__slang-7864",
+    "swe-bench-live-multilang-cpp:20:shader-slang__slang-9967",
+    "swe-bench-live-multilang-cpp:18:shader-slang__slang-10758",
+    "swe-bench-live-multilang-cpp:19:shader-slang__slang-10856",
+    "swe-bench-live-multilang-cpp:12:shader-slang__slang-7815",
+    "swe-bench-live-multilang-cpp:13:shader-slang__slang-7523"
+  ],
+  "nextAction": "Independently review source oracles without ranker output; freeze the model before materializing or evaluating this holdout."
+}

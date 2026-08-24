@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { createRequire } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
@@ -7,7 +9,14 @@ import type { ParsedFile, SymbolKind, SymbolRecord } from "../types.js";
 
 const moduleRequire = createRequire(resolveModuleUrl());
 
-type ParserGrammar = "typescript" | "tsx" | "python" | "java" | "c" | "cpp";
+type ParserGrammar = "typescript" | "tsx" | "python" | "go" | "java" | "c" | "cpp";
+
+type ParsedLanguageFacts = {
+  symbols: SymbolRecord[];
+  imports: string[];
+  dynamicImports?: string[];
+  moduleInstallers?: string[];
+};
 
 type SyntaxNodeLike = {
   type: string;
@@ -19,6 +28,7 @@ type SyntaxNodeLike = {
   parent: SyntaxNodeLike | null;
   namedChildren: SyntaxNodeLike[];
   childForFieldName(fieldName: string): SyntaxNodeLike | null;
+  childrenForFieldName(fieldName: string): SyntaxNodeLike[];
 };
 
 const WASM_BY_GRAMMAR: Record<ParserGrammar, { specifier: string; assetPath: string }> = {
@@ -33,6 +43,10 @@ const WASM_BY_GRAMMAR: Record<ParserGrammar, { specifier: string; assetPath: str
   python: {
     specifier: "@repomix/tree-sitter-wasms/out/tree-sitter-python.wasm",
     assetPath: "tree-sitter-wasms/out/tree-sitter-python.wasm"
+  },
+  go: {
+    specifier: "@repomix/tree-sitter-wasms/out/tree-sitter-go.wasm",
+    assetPath: "tree-sitter-wasms/out/tree-sitter-go.wasm"
   },
   java: {
     specifier: "@repomix/tree-sitter-wasms/out/tree-sitter-java.wasm",
@@ -62,6 +76,7 @@ const SOURCE_GRAMMAR_BY_EXTENSION = new Map<string, ParserGrammar>([
   [".cjs", "typescript"],
   [".py", "python"],
   [".pyi", "python"],
+  [".go", "go"],
   [".java", "java"],
   [".c", "c"],
   [".h", "cpp"],
@@ -74,7 +89,6 @@ const SOURCE_GRAMMAR_BY_EXTENSION = new Map<string, ParserGrammar>([
 ]);
 
 let parserInitPromise: Promise<void> | undefined;
-let parserBackendDisabled = false;
 const languagePromises = new Map<ParserGrammar, Promise<Language>>();
 
 export function isParseSupported(filePath: string): boolean {
@@ -91,7 +105,7 @@ export async function parseSourceFile(input: {
   if (!grammar) {
     return emptyParsedFile(input, false);
   }
-  if (parserBackendDisabled || isWasmParserDisabled()) {
+  if (isWasmParserDisabled()) {
     return emptyParsedFile(input, true);
   }
 
@@ -109,12 +123,17 @@ export async function parseSourceFile(input: {
       language: input.language,
       symbols: dedupeSymbols(parsed.symbols),
       imports: [...new Set(parsed.imports)].sort(),
+      references: extractStructuralTypeReferences(tree.rootNode, input.language),
+      calls: extractStructuralCallTargets(tree.rootNode, input.language),
+      dynamicImports: [...new Set(parsed.dynamicImports ?? [])].sort(),
+      moduleInstallers: [...new Set(parsed.moduleInstallers ?? [])].sort(),
       hasErrors: tree.rootNode.hasError
     };
-  } catch (error) {
-    if (isFatalWasmParserError(error)) {
-      parserBackendDisabled = true;
-    }
+  } catch {
+    // A malformed, oversized, or otherwise parser-hostile file must not
+    // disable structured parsing for every later file and repository in this
+    // process. Parser/language initialization promises remain cached, so a
+    // genuine backend initialization failure still degrades consistently.
     return emptyParsedFile(input, true);
   }
 }
@@ -174,7 +193,6 @@ function isFatalWasmParserError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return /aborted|wasm|webassembly|incompatible|failed to initialize/i.test(message);
 }
-
 function isWasmParserDisabled(): boolean {
   const explicitDisable = process.env.KAIRN_DISABLE_WASM_PARSER;
   if (explicitDisable && /^(1|true|yes)$/i.test(explicitDisable)) return true;
@@ -192,15 +210,56 @@ function emptyParsedFile(
     language: input.language,
     symbols: [],
     imports: [],
+    references: [],
+    calls: [],
+    dynamicImports: [],
+    moduleInstallers: [],
     hasErrors
   };
+}
+
+function extractStructuralCallTargets(
+  rootNode: SyntaxNodeLike,
+  language: string
+): string[] {
+  const calls = new Set<string>();
+  visit(rootNode, (node) => {
+    const callable = node.type === "call_expression"
+      ? node.childForFieldName("function")
+      : node.type === "method_invocation" && language === "java"
+        ? node.childForFieldName("name")
+        : undefined;
+    if (callable?.type !== "identifier") return;
+    const name = callable.text.trim();
+    if (name && name.length <= 160) calls.add(name);
+  });
+  return [...calls].sort().slice(0, 256);
+}
+
+function extractStructuralTypeReferences(
+  rootNode: SyntaxNodeLike,
+  language: string
+): string[] {
+  if (!["go", "java", "c", "cpp"].includes(language)) return [];
+  const references = new Set<string>();
+  visit(rootNode, (node) => {
+    if (node.type !== "type_identifier") return;
+    const name = node.text.trim();
+    if (name && name.length <= 160) references.add(name);
+    if (language === "go" && node.parent?.type === "qualified_type") {
+      const qualified = node.parent.text.trim();
+      if (qualified && qualified.length <= 160) references.add(qualified);
+    }
+  });
+  return [...references].sort().slice(0, 256);
 }
 
 function parseByLanguage(
   input: { rootPath: string; filePath: string; content: string; language: string },
   rootNode: SyntaxNodeLike
-): { symbols: SymbolRecord[]; imports: string[] } {
+): ParsedLanguageFacts {
   if (input.language === "python") return parsePython(input, rootNode);
+  if (input.language === "go") return parseGo(input, rootNode);
   if (input.language === "java") return parseJava(input, rootNode);
   if (input.language === "c" || input.language === "cpp") return parseCFamily(input, rootNode);
   return parseJavaScriptLike(input, rootNode);
@@ -209,9 +268,16 @@ function parseByLanguage(
 function parseJavaScriptLike(
   input: { rootPath: string; filePath: string; content: string },
   rootNode: SyntaxNodeLike
-): { symbols: SymbolRecord[]; imports: string[] } {
+): {
+  symbols: SymbolRecord[];
+  imports: string[];
+  dynamicImports: string[];
+  moduleInstallers: string[];
+} {
   const symbols: SymbolRecord[] = [];
   const imports = new Set<string>();
+  const dynamicImports = new Set<string>();
+  const moduleInstallers = new Set<string>();
 
   visit(rootNode, (node) => {
     if (node.type === "import_statement") {
@@ -223,6 +289,15 @@ function parseJavaScriptLike(
     if (node.type === "call_expression") {
       const specifier = extractRequireSpecifier(node.text);
       if (specifier) imports.add(specifier);
+      const dynamicPrefix = dynamicRequirePrefix(node);
+      if (dynamicPrefix) dynamicImports.add(dynamicPrefix);
+      const installer = immediatelyInvokedRequire(node);
+      if (installer) moduleInstallers.add(installer);
+    }
+
+    if (node.type === "assignment_expression") {
+      const assignedMethod = javaScriptAssignedMethodSymbol(input, node);
+      if (assignedMethod) symbols.push(assignedMethod);
     }
 
     const exported = isExported(node);
@@ -235,7 +310,78 @@ function parseJavaScriptLike(
     }
   });
 
-  return { symbols, imports: [...imports] };
+  return {
+    symbols,
+    imports: [...imports],
+    dynamicImports: [...dynamicImports],
+    moduleInstallers: [...moduleInstallers]
+  };
+}
+
+function dynamicRequirePrefix(call: SyntaxNodeLike): string | undefined {
+  const argument = requireArgument(call);
+  if (argument?.type !== "template_string") return undefined;
+  const raw = argument.text.slice(1, -1);
+  const interpolation = raw.indexOf("${");
+  if (interpolation <= 0) return undefined;
+  const prefix = raw.slice(0, interpolation);
+  return prefix.startsWith(".") ? prefix : undefined;
+}
+
+function immediatelyInvokedRequire(call: SyntaxNodeLike): string | undefined {
+  const invoked = call.childForFieldName("function");
+  if (invoked?.type !== "call_expression") return undefined;
+  const argument = requireArgument(invoked);
+  if (!argument || !["string", "string_fragment"].includes(argument.type)) {
+    return extractRequireSpecifier(invoked.text);
+  }
+  return unquoteJavaScriptString(argument.text);
+}
+
+function requireArgument(call: SyntaxNodeLike): SyntaxNodeLike | undefined {
+  const callable = call.childForFieldName("function");
+  if (callable?.text !== "require") return undefined;
+  const argumentsNode = call.childForFieldName("arguments") ??
+    call.namedChildren.find((child) => child.type === "arguments");
+  return argumentsNode?.namedChildren[0];
+}
+
+function unquoteJavaScriptString(value: string): string | undefined {
+  if (value.length < 2) return undefined;
+  const quote = value[0];
+  if ((quote !== "\"" && quote !== "'") || value.at(-1) !== quote) return undefined;
+  return value.slice(1, -1);
+}
+
+function javaScriptAssignedMethodSymbol(
+  input: { rootPath: string; filePath: string },
+  assignment: SyntaxNodeLike
+): SymbolRecord | undefined {
+  const left = assignment.childForFieldName("left");
+  const right = assignment.childForFieldName("right");
+  if (!left || !right) return undefined;
+  if (
+    right.type !== "function_expression" &&
+    right.type !== "generator_function" &&
+    right.type !== "arrow_function"
+  ) {
+    return undefined;
+  }
+  if (left.type !== "member_expression" && left.type !== "subscript_expression") {
+    return undefined;
+  }
+  const property = left.childForFieldName("property") ??
+    left.childForFieldName("index") ??
+    left.namedChildren.at(-1);
+  const name = property?.text.replace(/^["']|["']$/g, "");
+  if (!name || !/^[A-Za-z_$][\w$]*$/.test(name)) return undefined;
+  const exported =
+    left.text === "module.exports" ||
+    left.text.startsWith("module.exports.") ||
+    left.text.startsWith("module.exports[") ||
+    left.text.startsWith("exports.") ||
+    left.text.startsWith("exports[");
+  return symbolRecord(input, name, "function", exported, assignment);
 }
 
 function parsePython(
@@ -263,6 +409,55 @@ function parsePython(
       const name = node.childForFieldName("name")?.text;
       if (!name) return;
       symbols.push(symbolRecord(input, name, "function", false, node));
+    }
+  });
+
+  return { symbols, imports: [...imports] };
+}
+
+function parseGo(
+  input: { rootPath: string; filePath: string; content: string },
+  rootNode: SyntaxNodeLike
+): { symbols: SymbolRecord[]; imports: string[] } {
+  const symbols: SymbolRecord[] = [];
+  const imports = new Set<string>();
+
+  visit(rootNode, (node) => {
+    if (node.type === "package_clause") {
+      const packageName = node.namedChildren.find((child) => child.type === "package_identifier")?.text;
+      if (packageName) imports.add(`package:${packageName}`);
+      return;
+    }
+
+    if (node.type === "import_declaration") {
+      for (const literal of findNodes(node, ["interpreted_string_literal", "raw_string_literal"])) {
+        const specifier = unquoteGoString(literal.text);
+        if (specifier) imports.add(specifier);
+      }
+      return;
+    }
+
+    if (node.type === "function_declaration" || node.type === "method_declaration") {
+      const name = node.childForFieldName("name")?.text;
+      if (name) symbols.push(symbolRecord(input, name, "function", isGoExported(name), node));
+      return;
+    }
+
+    if (node.type === "type_spec" || node.type === "type_alias") {
+      const name = node.childForFieldName("name")?.text;
+      if (!name) return;
+      const declaredType = node.childForFieldName("type")?.type;
+      const kind: SymbolKind = declaredType === "interface_type" ? "interface" : "type";
+      symbols.push(symbolRecord(input, name, kind, isGoExported(name), node));
+      return;
+    }
+
+    if (node.type === "const_spec" || node.type === "var_spec") {
+      const kind: SymbolKind = node.type === "const_spec" ? "const" : "var";
+      for (const nameNode of node.childrenForFieldName("name")) {
+        const name = nameNode.text;
+        if (name) symbols.push(symbolRecord(input, name, kind, isGoExported(name), node));
+      }
     }
   });
 
@@ -367,6 +562,15 @@ function jsSymbolsFromDeclaration(
       return symbolForNamedDeclaration(rootPath, filePath, declaration, "function", exported, rangeNode);
     case "class_declaration":
       return symbolForNamedDeclaration(rootPath, filePath, declaration, "class", exported, rangeNode);
+    case "method_definition":
+    case "method_signature":
+    case "abstract_method_signature":
+      return symbolForNamedDeclaration(rootPath, filePath, declaration, "function", false, rangeNode);
+    case "public_field_definition":
+    case "field_definition":
+      return isFunctionValuedField(declaration)
+        ? symbolForNamedDeclaration(rootPath, filePath, declaration, "function", false, rangeNode)
+        : [];
     case "interface_declaration":
       return symbolForNamedDeclaration(rootPath, filePath, declaration, "interface", exported, rangeNode);
     case "type_alias_declaration":
@@ -379,6 +583,14 @@ function jsSymbolsFromDeclaration(
   }
 }
 
+function isFunctionValuedField(declaration: SyntaxNodeLike): boolean {
+  const value = declaration.childForFieldName("value");
+  if (value?.type === "arrow_function" || value?.type === "function_expression") return true;
+  return declaration.namedChildren.some((child) =>
+    child.type === "arrow_function" || child.type === "function_expression"
+  );
+}
+
 function symbolForNamedDeclaration(
   rootPath: string,
   filePath: string,
@@ -387,7 +599,9 @@ function symbolForNamedDeclaration(
   exported: boolean,
   rangeNode: SyntaxNodeLike
 ): SymbolRecord[] {
-  const name = findIdentifierName(declaration) ?? (exported && isDefaultExport(rangeNode) ? "default" : undefined);
+  const name = declaration.childForFieldName("name")?.text ??
+    findIdentifierName(declaration) ??
+    (exported && isDefaultExport(rangeNode) ? "default" : undefined);
   if (!name) return [];
 
   return [
@@ -477,10 +691,11 @@ function findIdentifierName(node: SyntaxNodeLike): string | undefined {
   return undefined;
 }
 
-function findNodes(node: SyntaxNodeLike, type: string): SyntaxNodeLike[] {
+function findNodes(node: SyntaxNodeLike, type: string | string[]): SyntaxNodeLike[] {
   const matches: SyntaxNodeLike[] = [];
+  const types = Array.isArray(type) ? new Set(type) : new Set([type]);
   visit(node, (candidate) => {
-    if (candidate.type === type) matches.push(candidate);
+    if (types.has(candidate.type)) matches.push(candidate);
   });
   return matches;
 }
@@ -556,6 +771,23 @@ function extractPythonImports(text: string): string[] {
 
 function extractCIncludeSpecifier(text: string): string | undefined {
   return text.match(/#\s*include\s+[<"]([^>"]+)[>"]/)?.[1];
+}
+
+function unquoteGoString(text: string): string | undefined {
+  if (text.length < 2) return undefined;
+  if (text.startsWith("`") && text.endsWith("`")) return text.slice(1, -1);
+  if (!text.startsWith('"') || !text.endsWith('"')) return undefined;
+
+  try {
+    const value: unknown = JSON.parse(text);
+    return typeof value === "string" ? value : undefined;
+  } catch {
+    return text.slice(1, -1);
+  }
+}
+
+function isGoExported(name: string): boolean {
+  return /^\p{Lu}/u.test(name);
 }
 
 function hasPublicModifier(node: SyntaxNodeLike): boolean {

@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "semantic-holdout-checkpoint.v1",
+  "checkpointId": "v02c-semantic-holdout-v4-20260724",
+  "createdAt": "2026-07-24T19:12:04-04:00",
+  "status": "candidate_gate_passed_with_disclosed_ranking_miss",
+  "frozenImplementationCommit": "d5aa740",
+  "freezeCheckpointCommit": "566f912",
+  "manifest": {
+    "path": "benchmarks/semantic/model-selection-v4.json",
+    "sha256": "e6d018fc0cd8bb23b69f3c9bd6298a4b4e5e9641f4a0ff6c6d4f15b6a77e8124",
+    "documentSchemaVersion": "semantic-documents-v3"
+  },
+  "model": {
+    "modelId": "jina-code-v2-q8",
+    "upstreamRepository": "jinaai/jina-embeddings-v2-base-code",
+    "upstreamRevision": "516f4baf13dec4ddddda8631e019b5737c8bc250",
+    "installedBytesAfterFallbackRemoval": 165431544
+  },
+  "holdout": {
+    "artifactPath": "artifacts/semantic/jina-holdout-v4.json",
+    "artifactSha256": "11345e6700322aa693af2c22a5da4da35a1604bac49bb52d6e5ac9d7a7dd6889",
+    "caseCount": 5,
+    "recallAt1": 0.6,
+    "recallAt5": 0.8,
+    "strictFullRecallAt64": 1,
+    "strictFullRecallAt128": 1,
+    "meanReciprocalRank": 0.683333,
+    "zeroPositiveCasesAt128": 0,
+    "medianQueryLatencyMs": 38.63,
+    "ranks": {
+      "python": 1,
+      "typescript": 3,
+      "go": 1,
+      "java": 12,
+      "cpp": 1
+    },
+    "negativeResult": "The Java long-session source ranked 12 and failed Recall@5. It still passed the candidate-generation gate at 64. No tuning was performed after holdout access.",
+    "tuningAfterHoldout": false
+  },
+  "runtime": {
+    "artifactPath": "artifacts/semantic/jina-runtime-v4.json",
+    "artifactSha256": "02a0d406ed9fe5e3fb98716af2ef2b0f198eac9d316218fc5c549cb8cb6eb8aa",
+    "cpuThreads": 4,
+    "documentChars": 768,
+    "embeddingBatchSize": 16,
+    "referenceDocuments": 7500,
+    "coldInitializationMs": 1051.56,
+    "warmQueryP95Ms": 26.763,
+    "vectorScanP95Ms": 12.594,
+    "warmCandidateP95UpperBoundMs": 39.357,
+    "projectedInitialEmbeddingMinutesAt7500": 20.57,
+    "gates": {
+      "coldInitializationAtMostFiveSeconds": true,
+      "warmCandidateAtMost300Ms": true,
+      "vectorScanAtMost50Ms": true
+    }
+  },
+  "candidateGatePassed": true,
+  "rankerPromotionPassed": false,
+  "paidComparisonEligible": false,
+  "nextGate": "Run the full 38-case public required-source oracle with the frozen mechanism. Promotion requires 38/38 strict full recall at 64, zero positive misses at 128, and the declared per-language gates."
+}

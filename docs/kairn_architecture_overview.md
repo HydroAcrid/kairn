@@ -1,19 +1,21 @@
 # Kairn Architecture Overview
 
-Kairn is no longer a single retrieval command. It is a local context runtime with several integration surfaces, an indexing pipeline, retrieval/ranking layers, session memory, hook/MCP delivery paths, and an evidence harness. This document is the high-level map for keeping that complexity understandable.
+Kairn is a local repository evidence layer for coding agents. It maps the current checkout, ranks the files most likely to be required, and delivers the smallest useful evidence through hooks or MCP. The complete useful path runs locally by default: indexing, ranking, session evidence, and delivery do not require a Kairn account, API key, hosted backend, or trajectory upload.
+
+Token efficiency is a co-primary outcome, but only when the agent still reaches the required production source and passes verification. This document maps the implementation behind that product contract.
 
 ## Product Shape
 
 Kairn has one core product:
 
-> A local-first context runtime that helps coding agents read less, read better, and preserve quality by choosing the smallest useful context for a task.
+> A local repository evidence and token-efficiency layer that helps supported coding agents reach the right production source sooner.
 
 It exposes that runtime through multiple surfaces:
 
 - CLI commands for direct use and scripting.
 - MCP tools for agent-native context requests.
 - Codex/Claude hooks for automatic prompt and failure context.
-- Watcher/daemon paths for warm state and observe/react behavior.
+- Session and optional watcher/daemon paths for current local evidence and lower latency.
 - Eval/benchmark tools for proving whether Kairn actually helps.
 
 These are surfaces over the same runtime. They should not become separate products.
@@ -23,31 +25,30 @@ These are surfaces over the same runtime. They should not become separate produc
 ```text
 Agent / Human
   |
-  |-- CLI: init, start, prime, context, hook, watch, eval, bench
+  |-- CLI: enable, model, init, start, prime, context, hook, watch, eval, bench
   |-- MCP: prepare_task, find_context, read_file, read_symbol, next_context, failure_context
   |-- Hooks: Codex/Claude UserPromptSubmit, PostToolUse, failures, file changes
   |
 KairnRuntime facade
   |
-  |-- IndexService      -> scan, parse, graph, semantic chunks, lexical index, tier/state stats
+  |-- IndexService      -> scan, parse, graph, semantic documents/embeddings, lexical index, tier/state stats
   |-- MetricsService    -> token estimates, hook/MCP telemetry, index tier stats
   |-- EvalService       -> observed Codex usage, transcript metadata, feedback
   |-- Runtime methods   -> context, prime, hooks, failures, benchmarks, sessions
   |
-Retrieval / Decision Layer
+Repository Evidence Layer
   |
-  |-- query intent classification
-  |-- BM25 exact lexical retrieval
-  |-- local hashed semantic vectors
-  |-- WASM Tree-sitter symbols and chunks
-  |-- TypeScript graph enrichment
-  |-- graph/test/related-file heuristics
-  |-- adaptive context controller
+  |-- TaskSignalExtractor: paths, symbols, failures, intent, git, session state
+  |-- CandidateGenerators: exact path/symbol, BM25, failure, diff, session, local semantic
+  |-- bounded union and query-local graph/chunk enrichment
+  |-- EvidenceFeatureBuilder and local calibrated file-relevance ranker
+  |-- deterministic governor: content, path hint, shrink, request evidence, or silence
   |
 SQLite Store under .kairn/
   |
   |-- sessions, shown context, files, symbols, graph edges
-  |-- semantic chunks/vectors, lexical documents/terms
+  |-- semantic documents/int8 embeddings, lexical documents/terms
+  |-- legacy semantic chunks/vectors retained only for rollback migration
   |-- watch events, metrics events, eval runs, benchmark runs
   |-- session ledger events and local telemetry queue/config
 ```
@@ -63,14 +64,15 @@ Command modules:
 - `src/cli/commands/core.ts`: `init`, `start`, `prime`, `serve`, `daemon`, `metrics`, `index`, `codex`.
 - `src/cli/commands/context.ts`: `context`, `diff`, `compress`, `failure`.
 - `src/cli/commands/watch.ts`: `watch`, `hook`.
-- `src/cli/commands/setup.ts`: `setup wizard`, `setup codex`, `setup mcp`, `setup mcp-instructions`, `setup remove`.
+- `src/cli/commands/setup.ts`: canonical `enable`/`disable` plus advanced `setup wizard`, `setup codex`, `setup mcp`, and repair/removal commands.
+- `src/cli/commands/model.ts`: explicit status, checksummed installation, verification, and removal for the shared local ONNX model cache.
 - `src/cli/commands/eval.ts`: eval runs, Codex usage ingestion, feedback.
 - `src/cli/commands/bench.ts`: replay, live-agent proofs, repo-matrix preflight, endurance runs.
 - `src/cli/commands/beta.ts`: doctor checks, privacy-first telemetry, diagnostics export, beta reports.
 
 The CLI should stay thin. Command modules should parse options, call `KairnRuntime` or focused benchmark/setup helpers, then format output.
 
-Private beta onboarding starts at `kairn setup wizard`. The wizard is a thin composition layer over the same setup primitives used by direct commands: Codex savings hooks, client-specific MCP config for Claude Code, Copilot CLI, Gemini CLI, VS Code/Copilot, generic MCP clients, advanced Codex/Claude hooks, doctor checks, and optional sanitized telemetry. Private beta offboarding uses `kairn setup remove`, which removes only Kairn-owned hook/MCP/instruction config and can optionally delete local `.kairn/` state.
+Canonical onboarding starts with one machine install and `kairn enable` in each repository. Enable detects supported local agents, previews Kairn-owned changes, installs source-first Codex hooks or client-specific MCP configuration after one confirmation, builds local inventory, and runs doctor checks. The setup wizard remains an advanced composition layer over the same primitives. `kairn disable` removes only configuration that Kairn can identify as its own; `--delete-state` also removes local `.kairn` state.
 
 ### MCP
 
@@ -94,9 +96,9 @@ Current tools:
 
 MCP is the read-gateway surface. Its job is not to dump large prime briefs. It should help agents take the next smallest useful read. Kairn writes client-specific config rather than assuming one MCP layout: VS Code uses `.vscode/mcp.json` with `servers`, Claude Code uses project `.mcp.json` with `mcpServers`, Gemini CLI uses `.gemini/settings.json`, Copilot CLI uses `~/.copilot/mcp-config.json` only with explicit user-level consent, and generic clients receive JSON to paste into their own settings.
 
-MCP is also a beta entrypoint, not only a benchmark mode. It supports editor/app integrations where prompt hooks are unavailable, blocked by review, or not part of the host UX. `kairn setup mcp --client vscode` writes a workspace `.vscode/mcp.json` server block while preserving unrelated MCP servers. `kairn setup codex --mode mcp-first` writes the Codex TOML equivalent. Both point at the same local `kairn serve --mcp --root <repo>` server.
+MCP is a product entrypoint, not only a benchmark mode. It supports editor/app integrations where prompt hooks are unavailable, blocked by review, or not part of the host UX. `kairn setup mcp --client vscode` writes a workspace `.vscode/mcp.json` server block while preserving unrelated MCP servers. `kairn setup codex --mode mcp-first` writes the Codex TOML equivalent. Both point at the same local `kairn serve --mcp --root <repo>` server.
 
-Beta mode guidance:
+Integration guidance:
 
 - `kairn codex`: default CLI/terminal path with session-bound hooks.
 - `kairn setup mcp --client vscode`: default MCP/editor path with no hooks.
@@ -202,8 +204,8 @@ Indexing starts with `runtime.init()` and flows through:
 
 3. `src/languages/adapters.ts`
    - language adapter registry,
-   - active JS/TS, Python, Java, C/C++ support,
-   - stub adapters for Go, Rust, and Ruby where universal retrieval works but deep graph support is future work.
+   - active JS/TS, Python, Go, Java, and C/C++ support,
+   - stub adapters for Rust and Ruby where universal retrieval works but deep graph support is future work.
 
 4. `src/graph/buildGraph.ts`
    - import edges,
@@ -214,21 +216,29 @@ Indexing starts with `runtime.init()` and flows through:
 5. `src/ts/tsGraph.ts`
    - TypeScript language-service enrichment for JS/TS definitions/references where feasible.
 
-6. `src/semantic/chunk.ts`
-   - symbol-aware chunks,
-   - file summaries for files without symbols.
+6. `src/semantic/documents.ts`
+   - one structural file document for every eligible indexed source,
+   - bounded symbol documents allocated across files and across large-file symbol ranges,
+   - objective path, language, role, module, import, signature, documentation, and source-body fields.
 
-7. `src/semantic/vector.ts`
-   - deterministic local hashed lexical vectors.
+7. `src/semantic/modelManager.ts` and `src/semantic/modelRuntime.ts`
+   - immutable checksummed model installation,
+   - CPU-only ONNX batching, pooling, normalization, and deterministic verification,
+   - explicit unavailable, corrupt, incompatible, stale-index, and ready states,
+   - no runtime download and no executable remote model code.
 
 8. `src/lexical/bm25.ts`
    - exact lexical document/term index.
 
 9. `src/indexer/indexRepo.ts`
-   - combines scan, parse, graph, chunks, vectors, BM25, and tier state into persisted index records.
+   - combines scan, parse, graph, structural documents, compact int8 embeddings, BM25, and tier state into persisted index records,
+   - reuses embeddings only when document, model/tokenizer artifact, and document-schema identities remain current,
+   - keeps cheap inventory available while deeper embedding work is resumable.
 
 10. `src/indexer/symbolCompaction.ts`
    - large-repo symbol compaction.
+
+`src/semantic/chunk.ts` and `src/semantic/vector.ts` remain only for the legacy/shadow rollback path through v0.3. Hashed vectors are never used as semantic evidence in `semantic` mode.
 
 Indexing goal:
 
@@ -242,39 +252,30 @@ Retrieval is hybrid and local-only.
 
 Core modules:
 
-- `src/retrieval/queryIntent.ts`
-- `src/retrieval/hybridRetrieval.ts`
-- `src/retrieval/companions.ts`
-- `src/retrieval/scoreResults.ts`
+- `src/retrieval/evidenceSignals.ts`
+- `src/retrieval/semanticCandidates.ts`
+- `src/retrieval/candidateFusion.ts`
+- `src/retrieval/evidenceRanker.ts`
+- `src/retrieval/evidenceModel.ts`
 - `src/retrieval/relatedFiles.ts`
 - `src/retrieval/readSource.ts`
 - `src/retrieval/responseRouter.ts`
 - `src/context/formatContext.ts`
 
-Signals used:
+Candidate generation is independent by evidence class:
 
-- exact path/name matches,
-- exact identifier/BM25 matches,
-- symbol matches,
-- local hashed semantic vector similarity,
-- file kind/source priority,
-- query intent,
-- graph proximity,
-- related tests,
-- git diff and session history,
-- failure references,
-- repeated-context penalties.
+- exact paths and precise failure locations are hard-pinned;
+- exact symbols, BM25, git diff, and active-session evidence produce independent rankings;
+- the local ONNX model searches the complete available embedding index, then collapses symbol/file documents to files by maximum normalized cosine similarity;
+- reciprocal-rank fusion combines non-hard rankings without path-name or task-word bonuses;
+- at most 64 initial files are selected;
+- only direct graph and source/test neighbors may expand the union, capped at 128.
 
-The companion stage is query-local and capped. It exists for multi-surface framework tasks where the first relevant file is not enough, such as router/dependency, controller/repository, scheduler/renderer, interceptor/dispatch, validation/callback, session/adapter/model, router/index/route/layer, fiber/hooks/workloop, and Go router/context/engine surfaces. It should not reintroduce broad fanout after exact source hits.
+The calibrated logistic model receives this bounded union and estimates file requirement probability from `evidence-features-v4`. In addition to real semantic similarity, v4 exposes objective parser-graph precision, independent-seed consensus, bounded support, supporting-seed strength, and independent retrieval evidence. Candidate-generation facts from the broader probe lane are preserved for the ranker instead of being recomputed from only the first 64 files. This lets the model learn the value of parser relationships without a hand-written relevance bonus. The deterministic governor—not the embedding model—decides whether to emit content, emit a path hint, request more evidence, suppress repeated unchanged context, or remain silent. Explicit paths, precise failures, generated/vendor policy, intent compatibility, index freshness, verification state, and context budgets stay deterministic.
 
-Companion routing is evidence-gated:
+Regular expressions are permitted for objective parsing such as compiler locations, stack traces, transport cleanup, and file-role classification. They may not create semantic relevance, path/task-word bonuses, or benchmark-specific scores. `scripts/check-semantic-architecture.mjs` enforces this serving boundary in CI.
 
-- exact single-source fixes stay one-file or silent,
-- structured debug tasks may use a two-file directive,
-- strong framework triples may use at most three production files,
-- docs/tests/examples/generated/vendor/dependency surfaces are demoted unless explicitly requested.
-
-Companion Routing V2 adds role-complement scoring. Kairn now prefers complementary source surfaces over same-role siblings: controller/repository over neighboring controllers, route/convertor over unrelated middleware, runtime/MCP over docs, and framework router/proxy/response-controller companions over cross-package helper surfaces. These rules must stay convention-based and language-general, not tuned to a single benchmark repo.
+`src/retrieval/hybridRetrieval.ts`, `src/retrieval/companions.ts`, and `src/retrieval/scoreResults.ts` are retained behind `legacy` and `shadow` rollout modes through v0.3. Invalid or unavailable model artifacts fail visibly to exact path, failure, symbol, BM25, git, session, and graph evidence; they never reactivate hashed pseudo-semantic scoring.
 
 Important design point:
 
@@ -409,7 +410,8 @@ Major record groups:
 - file inventory,
 - symbols,
 - graph edges,
-- semantic chunks/vectors,
+- semantic documents and compact int8 model embeddings,
+- legacy semantic chunks/vectors during the rollback migration window,
 - lexical documents/terms/stats,
 - watch events,
 - metrics events,

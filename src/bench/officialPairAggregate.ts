@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { BenchmarkAssistClassification } from "../types.js";
 
 export type OfficialPairClassification =

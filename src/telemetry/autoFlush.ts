@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { KairnRuntime } from "../runtime/KairnRuntime.js";
 import type { TelemetryFlushResult } from "../types.js";
 import { ensureTelemetryIdentity, loadTelemetryConfig } from "./config.js";

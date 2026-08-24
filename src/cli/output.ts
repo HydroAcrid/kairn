@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { ContextResponse } from "../types.js";
 
 export function printJson(value: unknown): void {

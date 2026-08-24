@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 const SOURCE_EXT = "(py|ts|tsx|js|jsx|mjs|cjs|go|rb|rs|cs|java|kt|c|cc|cpp|cxx|h|hh|hpp|hxx)";
 
 export function isUnrelatedDeprecationLifecyclePath(filePath: string, task: string, sourceText = ""): boolean {

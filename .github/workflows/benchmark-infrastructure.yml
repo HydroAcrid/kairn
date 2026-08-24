@@ -1,0 +1,116 @@
+name: Benchmark infrastructure
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_tier_b:
+        description: Run the real-model five-language semantic smoke
+        required: false
+        type: boolean
+        default: false
+      draft_prerelease_tag:
+        description: Optional existing/new tag for a draft prerelease bundle
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  tier-a:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.31.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pnpm install --frozen-lockfile
+      - name: Run Tier A
+        shell: bash
+        run: |
+          mkdir -p artifacts/benchmark-infrastructure
+          pnpm benchmark:tier-a | tee artifacts/benchmark-infrastructure/tier-a-${{ runner.os }}.json
+          shasum -a 256 artifacts/benchmark-infrastructure/tier-a-${{ runner.os }}.json > artifacts/benchmark-infrastructure/tier-a-${{ runner.os }}.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-tier-a-${{ runner.os }}-${{ github.sha }}
+          path: artifacts/benchmark-infrastructure
+          if-no-files-found: error
+          retention-days: 30
+
+  tier-b:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_tier_b
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.31.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/cache@v4
+        with:
+          path: ~/.kairn/models
+          key: kairn-jina-code-v2-q8-516f4baf13dec4ddddda8631e019b5737c8bc250
+      - run: pnpm dev model install --yes --json
+      - name: Run Tier B
+        shell: bash
+        run: |
+          mkdir -p artifacts/benchmark-infrastructure
+          pnpm benchmark:tier-b | tee artifacts/benchmark-infrastructure/tier-b-Linux.json
+          shasum -a 256 artifacts/benchmark-infrastructure/tier-b-Linux.json > artifacts/benchmark-infrastructure/tier-b-Linux.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-tier-b-${{ github.sha }}
+          path: artifacts/benchmark-infrastructure
+          if-no-files-found: error
+          retention-days: 30
+
+  draft-bundle:
+    if: github.event_name == 'workflow_dispatch' && inputs.draft_prerelease_tag != ''
+    needs: tier-a
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: benchmark-tier-a-*-${{ github.sha }}
+          merge-multiple: true
+          path: bundle
+      - name: Build sanitized checksummed bundle
+        shell: bash
+        run: |
+          cp benchmarks/campaigns/v02c-infrastructure.json bundle/
+          cp docs/benchmark-infrastructure.md bundle/
+          find bundle -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 shasum -a 256 > bundle/SHA256SUMS
+          tar -czf kairn-benchmark-infrastructure-${{ github.sha }}.tar.gz -C bundle .
+      - name: Create or update draft prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          tag='${{ inputs.draft_prerelease_tag }}'
+          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --draft --prerelease --title "$tag" --notes "Sanitized Kairn benchmark infrastructure bundle. No effectiveness claim."
+          gh release upload "$tag" kairn-benchmark-infrastructure-${{ github.sha }}.tar.gz --clobber

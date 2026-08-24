@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -6,7 +8,12 @@ import { getKairnPaths } from "../config/paths.js";
 import { loadTelemetryConfig } from "../telemetry/config.js";
 import type { KairnRuntime } from "../runtime/KairnRuntime.js";
 import { commandInvocation, commandSpawnInvocation } from "../utils/command.js";
-import { getKairnBuildInfo } from "../version.js";
+import { hasKairnOwnedCodexMcpConfig } from "../cli/setup/codexSetup.js";
+import { hasKairnOwnedClaudeHooks } from "../cli/setup/claudeSetup.js";
+import { existingCopilotServerNameForRoot, isKairnOwnedMcpServer } from "../cli/setup/mcpSetup.js";
+import { resolveSemanticRetrieverConfig } from "../config/semantic.js";
+import { getSemanticModelState } from "../semantic/modelManager.js";
+import { getKairnVersion } from "../version.js";
 
 export type DoctorCheckStatus = "ok" | "warn" | "fail";
 
@@ -32,17 +39,27 @@ export function runDoctor(input: {
   runtime: KairnRuntime;
   codexCommand?: string | undefined;
   target?: DoctorTarget | undefined;
+  homeDir?: string | undefined;
 }): DoctorReport {
   const rootPath = path.resolve(input.rootPath);
   const target = input.target ?? "all";
+  const homeDir = input.homeDir ?? os.homedir();
   const checks: DoctorCheck[] = [
     checkNodeVersion(),
     checkKairnInstall(),
     checkKairnCommand(),
     checkKairnState(rootPath),
     checkIndex(input.runtime),
+    checkSemanticModel(rootPath, homeDir),
+    checkSemanticIndex(rootPath, input.runtime),
     checkWindowsFriction(rootPath),
-    ...targetedChecks({ rootPath, runtime: input.runtime, target, codexCommand: input.codexCommand ?? process.env.KAIRN_CODEX_CMD ?? "codex" }),
+    ...targetedChecks({
+      rootPath,
+      runtime: input.runtime,
+      target,
+      codexCommand: input.codexCommand ?? process.env.KAIRN_CODEX_CMD ?? "codex",
+      homeDir
+    }),
     checkDaemon(rootPath),
     checkTelemetry(rootPath)
   ];
@@ -54,15 +71,62 @@ export function runDoctor(input: {
   };
 }
 
+function checkSemanticModel(rootPath: string, homeDir: string): DoctorCheck {
+  const config = resolveSemanticRetrieverConfig(rootPath);
+  if (config.mode === "legacy") {
+    return {
+      id: "semantic_model",
+      status: "ok",
+      summary: "Semantic candidate preview is disabled; deterministic evidence delivery is active."
+    };
+  }
+  const state = getSemanticModelState({
+    ...(config.modelId ? { modelId: config.modelId } : {}),
+    ...(config.modelPath ? { modelPath: config.modelPath } : {}),
+    homeDir
+  });
+  return {
+    id: "semantic_model",
+    status: state.status === "ready" ? "ok" : "warn",
+    summary: state.status === "ready"
+      ? `Local semantic model ${state.modelId} is ready.`
+      : `Local semantic model ${state.modelId} is ${state.status}.`,
+    fix: state.status === "ready" ? undefined : `Run kairn model install --model ${state.modelId}.`,
+    metadata: state
+  };
+}
+
+function checkSemanticIndex(rootPath: string, runtime: KairnRuntime): DoctorCheck {
+  if (resolveSemanticRetrieverConfig(rootPath).mode === "legacy") {
+    return {
+      id: "semantic_index",
+      status: "ok",
+      summary: "Semantic index is not required in deterministic mode.",
+      metadata: { required: false }
+    };
+  }
+  const status = runtime.getIndexStatus();
+  const documents = status.semanticDocumentCount ?? 0;
+  const embeddings = status.semanticEmbeddingCount ?? 0;
+  const complete = documents > 0 && documents === embeddings;
+  return {
+    id: "semantic_index",
+    status: complete ? "ok" : "warn",
+    summary: complete
+      ? `Semantic index covers ${documents} documents.`
+      : `Semantic index coverage is incomplete (${embeddings}/${documents} documents).`,
+    fix: complete ? undefined : "Install the semantic model and run kairn index refresh --root <repo>.",
+    metadata: { documents, embeddings, complete }
+  };
+}
+
 function checkKairnInstall(): DoctorCheck {
-  const info = getKairnBuildInfo();
-  const npmBetaWithoutPlatform = info.channel === "npm-beta" && !info.platformPackage;
+  const version = getKairnVersion();
   return {
     id: "kairn_install",
-    status: npmBetaWithoutPlatform ? "warn" : "ok",
-    summary: `Kairn ${info.version} (${info.channel}, ${info.target})${info.platformPackage ? ` via ${info.platformPackage}` : ""}.`,
-    fix: npmBetaWithoutPlatform ? "Reinstall with npm install -g usekairn@beta so npm can install the matching platform package." : undefined,
-    metadata: info
+    status: "ok",
+    summary: `Kairn ${version} (Node ${process.version}, ${process.platform}-${process.arch}).`,
+    metadata: { version, node: process.version, platform: process.platform, arch: process.arch, distribution: "npm-source" }
   };
 }
 
@@ -71,34 +135,63 @@ function targetedChecks(input: {
   runtime: KairnRuntime;
   target: DoctorTarget;
   codexCommand: string;
+  homeDir: string;
 }): DoctorCheck[] {
   if (input.target === "codex") {
     return [
       checkCodex(input.codexCommand),
+      checkSetupModeMigration(input.rootPath),
       checkCodexHooks(input.rootPath, input.runtime),
-      checkMcpConfig(input.rootPath, "codex")
+      checkMcpConfig(input.rootPath, "codex", input.homeDir)
     ];
   }
   if (input.target === "claude-code") {
-    return [checkBinary("claude", "claude_binary", "Claude Code"), checkMcpConfig(input.rootPath, "claude-code"), checkClaudeHooks(input.rootPath)];
+    return [checkBinary("claude", "claude_binary", "Claude Code"), checkMcpConfig(input.rootPath, "claude-code", input.homeDir), checkClaudeHooks(input.rootPath)];
   }
   if (input.target === "copilot-cli") {
-    return [checkBinary("copilot", "copilot_binary", "Copilot CLI"), checkMcpConfig(input.rootPath, "copilot-cli")];
+    return [checkBinary("copilot", "copilot_binary", "Copilot CLI"), checkMcpConfig(input.rootPath, "copilot-cli", input.homeDir)];
   }
   if (input.target === "gemini-cli") {
-    return [checkBinary("gemini", "gemini_binary", "Gemini CLI"), checkMcpConfig(input.rootPath, "gemini-cli")];
+    return [checkBinary("gemini", "gemini_binary", "Gemini CLI"), checkMcpConfig(input.rootPath, "gemini-cli", input.homeDir)];
   }
   if (input.target === "vscode") {
-    return [checkMcpConfig(input.rootPath, "vscode")];
+    return [checkMcpConfig(input.rootPath, "vscode", input.homeDir)];
   }
   if (input.target === "generic") {
-    return [checkMcpConfig(input.rootPath, "generic")];
+    return [checkMcpConfig(input.rootPath, "generic", input.homeDir)];
   }
   return [
     checkCodex(input.codexCommand),
+    checkSetupModeMigration(input.rootPath),
     checkCodexHooks(input.rootPath, input.runtime),
-    checkMcpConfig(input.rootPath)
+    checkMcpConfig(input.rootPath, "all", input.homeDir)
   ];
+}
+
+function checkSetupModeMigration(rootPath: string): DoctorCheck {
+  const candidates = [
+    path.join(rootPath, ".codex", "config.toml"),
+    path.join(rootPath, ".codex", "hooks.json")
+  ];
+  const legacyFiles = candidates.filter((filePath) => {
+    if (!fs.existsSync(filePath)) return false;
+    const content = fs.readFileSync(filePath, "utf8");
+    return /--(?:hook-)?mode\s+["']?savings\b/i.test(content) ||
+      /(?:setup[_ -]?mode|mode)\s*[:=]\s*["']?savings\b/i.test(content);
+  });
+  return {
+    id: "setup_mode_migration",
+    status: legacyFiles.length > 0 ? "warn" : "ok",
+    summary: legacyFiles.length > 0
+      ? "Deprecated savings setup metadata was detected; source-first is now the canonical mode."
+      : "Source-first is the canonical setup mode; the deprecated savings parser alias remains migration-only.",
+    fix: legacyFiles.length > 0 ? "Run kairn setup codex --mode source-first --root <repo>." : undefined,
+    metadata: {
+      canonicalMode: "source-first",
+      deprecatedAlias: "savings",
+      legacyFiles: legacyFiles.map((filePath) => path.relative(rootPath, filePath))
+    }
+  };
 }
 
 function checkNodeVersion(): DoctorCheck {
@@ -240,7 +333,7 @@ function checkCodexHooks(rootPath: string, runtime: KairnRuntime): DoctorCheck {
       id: "codex_hooks",
       status: "warn",
       summary: "Codex hooks are not installed.",
-      fix: "Run kairn setup codex --mode savings --root <repo> or use kairn codex."
+      fix: "Run kairn enable --agents codex --root <repo> or use kairn codex."
     };
   }
   if (/\bcodex_hooks\s*=/.test(config)) {
@@ -248,7 +341,7 @@ function checkCodexHooks(rootPath: string, runtime: KairnRuntime): DoctorCheck {
       id: "codex_hooks",
       status: "warn",
       summary: "Codex config uses deprecated codex_hooks feature flag.",
-      fix: "Run kairn setup codex --mode savings --root <repo>."
+      fix: "Run kairn setup codex --mode source-first --root <repo>."
     };
   }
   if (!/\bhooks\s*=\s*true\b/.test(config)) {
@@ -256,7 +349,7 @@ function checkCodexHooks(rootPath: string, runtime: KairnRuntime): DoctorCheck {
       id: "codex_hooks",
       status: "warn",
       summary: "Codex hooks feature flag is not enabled.",
-      fix: "Enable [features].hooks or run kairn setup codex --mode savings --root <repo>."
+      fix: "Enable [features].hooks or run kairn setup codex --mode source-first --root <repo>."
     };
   }
   try {
@@ -276,28 +369,28 @@ function checkCodexHooks(rootPath: string, runtime: KairnRuntime): DoctorCheck {
       id: "codex_hooks",
       status: promptHook ? "ok" : "warn",
       summary: promptHook ? "Codex UserPromptSubmit hook is configured." : "Codex hooks file exists but prompt hook is missing.",
-      fix: promptHook ? undefined : "Run kairn setup codex --mode savings --root <repo>."
+      fix: promptHook ? undefined : "Run kairn setup codex --mode source-first --root <repo>."
     };
   } catch (error) {
     return {
       id: "codex_hooks",
       status: "fail",
       summary: "Codex hooks.json is invalid JSON.",
-      fix: "Run kairn setup codex --mode savings --root <repo>.",
+      fix: "Run kairn setup codex --mode source-first --root <repo>.",
       metadata: { error: error instanceof Error ? error.message : String(error) }
     };
   }
 }
 
-function checkMcpConfig(rootPath: string, target: DoctorTarget = "all"): DoctorCheck {
+function checkMcpConfig(rootPath: string, target: DoctorTarget = "all", homeDir = os.homedir()): DoctorCheck {
   const configPath = path.join(rootPath, ".codex", "config.toml");
   const config = fs.existsSync(configPath) ? fs.readFileSync(configPath, "utf8") : "";
-  const codexConfigured = config.includes("[mcp_servers.kairn]");
+  const codexConfigured = hasKairnOwnedCodexMcpConfig(config);
   const vscodeConfigPath = path.join(rootPath, ".vscode", "mcp.json");
   const vscodeConfigured = hasMcpServer(vscodeConfigPath, "servers");
   const claudeConfigured = hasMcpServer(path.join(rootPath, ".mcp.json"), "mcpServers");
   const geminiConfigured = hasMcpServer(path.join(rootPath, ".gemini", "settings.json"), "mcpServers");
-  const copilotConfigured = hasCopilotMcpServer(rootPath);
+  const copilotConfigured = hasCopilotMcpServer(rootPath, homeDir);
   const byTarget: Record<DoctorTarget, boolean> = {
     all: codexConfigured || vscodeConfigured || claudeConfigured || geminiConfigured || copilotConfigured,
     codex: codexConfigured,
@@ -333,23 +426,15 @@ function hasMcpServer(filePath: string, key: "servers" | "mcpServers"): boolean 
     const parsed = JSON.parse(fs.readFileSync(filePath, "utf8")) as unknown;
     if (!isRecord(parsed)) return false;
     const servers = parsed[key];
-    return Boolean(isRecord(servers) && "kairn" in servers);
+    return Boolean(isRecord(servers) && "kairn" in servers && isKairnOwnedMcpServer(servers.kairn));
   } catch {
     return false;
   }
 }
 
-function hasCopilotMcpServer(rootPath: string): boolean {
-  const filePath = path.join(os.homedir(), ".copilot", "mcp-config.json");
-  if (!fs.existsSync(filePath)) return false;
-  try {
-    const raw = fs.readFileSync(filePath, "utf8");
-    if (!raw.includes(rootPath)) return false;
-    const parsed = JSON.parse(raw) as unknown;
-    return Boolean(isRecord(parsed) && isRecord(parsed.mcpServers) && "kairn" in parsed.mcpServers);
-  } catch {
-    return false;
-  }
+function hasCopilotMcpServer(rootPath: string, homeDir: string): boolean {
+  const filePath = path.join(homeDir, ".copilot", "mcp-config.json");
+  return existingCopilotServerNameForRoot(filePath, rootPath) !== undefined;
 }
 
 function checkClaudeHooks(rootPath: string): DoctorCheck {
@@ -364,7 +449,7 @@ function checkClaudeHooks(rootPath: string): DoctorCheck {
   }
   try {
     const parsed = JSON.parse(fs.readFileSync(filePath, "utf8")) as unknown;
-    const configured = Boolean(isRecord(parsed) && isRecord(parsed.hooks) && Object.values(parsed.hooks).some(containsKairnCommand));
+    const configured = Boolean(isRecord(parsed) && hasKairnOwnedClaudeHooks(parsed.hooks));
     return {
       id: "claude_hooks",
       status: configured ? "ok" : "warn",
@@ -430,13 +515,6 @@ function rollupStatus(checks: DoctorCheck[]): DoctorCheckStatus {
   if (checks.some((check) => check.status === "fail")) return "fail";
   if (checks.some((check) => check.status === "warn")) return "warn";
   return "ok";
-}
-
-function containsKairnCommand(value: unknown): boolean {
-  if (typeof value === "string") return /kairn|KAIRN_CMD/i.test(value);
-  if (Array.isArray(value)) return value.some(containsKairnCommand);
-  if (isRecord(value)) return Object.values(value).some(containsKairnCommand);
-  return false;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

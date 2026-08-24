@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { PrimeProfile } from "../types.js";
 
 export type RepoScale = "small" | "medium" | "large" | "huge";

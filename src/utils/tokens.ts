@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }

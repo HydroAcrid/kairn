@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "semantic-candidate-baseline.v1",
+  "checkpointId": "v02c-semantic-baseline-cf43ef8",
+  "createdAt": "2026-07-24T00:00:00-04:00",
+  "sourceCommit": "cf43ef8",
+  "status": "superseded_pending_semantic_candidate_freeze",
+  "promotionEligible": false,
+  "paidComparisonEligible": false,
+  "generator": {
+    "mode": "legacy",
+    "semanticImplementation": "hashed-bag-of-words-256",
+    "initialCandidateLimit": 64,
+    "enrichedCandidateLimit": 128,
+    "graphHops": 1
+  },
+  "strictRequiredSourceRecall": {
+    "eligibleCases": 38,
+    "fullRecallCasesAt64": 26,
+    "fullRecallRateAt64": 0.6842105263157895,
+    "fullRecallCasesAt128": 31,
+    "fullRecallRateAt128": 0.8157894736842105,
+    "zeroPositiveCasesAt128": 3
+  },
+  "review": {
+    "totalCases": 165,
+    "carriedForwardCases": 130,
+    "pendingCases": 35,
+    "pendingDisposition": "superseded_pending",
+    "resumeCondition": "frozen semantic candidate union"
+  },
+  "blockers": [
+    "Strict candidate recall is below the semantic promotion gate.",
+    "The pending 35 reviews target a candidate union that is being replaced.",
+    "Ranker training, corpus review, and paid Claude/ReasonBlocks runs remain paused."
+  ]
+}

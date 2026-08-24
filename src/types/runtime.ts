@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { CommandRecord, ContextShownRecord, DiffRecord } from "./context.js";
 import type { WatchEventRecord } from "./watch.js";
 

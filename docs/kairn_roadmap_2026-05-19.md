@@ -1,4 +1,6 @@
-# Kairn Roadmap 2026-05-19
+# Kairn Roadmap 2026-05-19 (Historical, Superseded)
+
+> This roadmap is retained as historical context. Its generic context-governor, team-dashboard, and hosted product direction is superseded by `docs/product-contract.md`. Current development targets a complete local repository evidence layer; dashboards, model routing, reasoning traces, and hosted collective memory are explicit non-goals.
 
 This roadmap replaces the earlier LinkedIn/website brief. It keeps the public-preview copy, but puts it behind the work that matters first: private beta stability, a credible evidence bundle, then a waitlist launch.
 

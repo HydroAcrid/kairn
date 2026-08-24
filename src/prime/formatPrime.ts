@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { ContextInvariant, ContextPrime, ContextResponse, EditScopeDecision, EvidenceRequest, PrimeQuality } from "../types.js";
 import { editScopeBlock, editScopeLine } from "../scope/editScope.js";
 import { estimateTokens, truncateToBudget } from "../utils/tokens.js";
@@ -210,6 +212,34 @@ export function formatEvidenceRequestPrimeContext(input: {
     "",
     "Kairn did not include source snippets or edit targets for this turn."
   ].join("\n");
+}
+
+export function formatScopeDriftPrimeContext(input: {
+  task: string;
+  sessionId: string;
+  budget: number;
+  driftFiles: string[];
+  expectedScopeFiles: string[];
+}): string {
+  const driftFiles = uniquePaths(input.driftFiles).slice(0, 3);
+  const expectedScopeFiles = uniquePaths(input.expectedScopeFiles).slice(0, 3);
+  const lines = [
+    "# Kairn Scope Drift Guardrail",
+    "",
+    `Task: ${compactTaskLine(input.task)}`,
+    `Kairn session: ${input.sessionId}`,
+    "",
+    "Expected edit scope:",
+    expectedScopeFiles.length > 0 ? expectedScopeFiles.map((file) => `- ${file}`).join("\n") : "- Use the previously verified source file.",
+    "",
+    "Unexpected changed/touched files:",
+    driftFiles.length > 0 ? driftFiles.map((file) => `- ${file}`).join("\n") : "- No out-of-scope production files detected.",
+    "",
+    "Next step: inspect the current diff, then revert or explicitly justify each unexpected file before continuing.",
+    "Do not edit additional source files unless a focused failing check names them."
+  ];
+
+  return fitSectionsToBudget(lines, input.budget);
 }
 
 export function formatSourceRoutingPrimeContext(input: {

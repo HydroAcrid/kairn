@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import crypto from "node:crypto";
 import path from "node:path";
 import type { MetricsSummary, TelemetryPayload, TaskSession } from "../types.js";

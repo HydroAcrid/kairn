@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { Command, Option } from "commander";
 import type { EvalRunMode } from "../../types.js";
 import { printEvalComparison, printEvalReport } from "../formatters.js";

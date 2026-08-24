@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { ContextPrime, ContextResponse, OutputKind } from "./context.js";
 import type { TaskSession } from "./runtime.js";
 

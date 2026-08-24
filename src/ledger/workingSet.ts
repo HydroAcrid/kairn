@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type {
   SessionLedgerEvent,
   SessionWorkingSet,
@@ -21,14 +23,21 @@ export function buildSessionWorkingSet(input: {
   const recentlyTouchedFiles = uniquePaths(touchedFiles.slice(-8));
   const usedFiles = uniquePaths([...mentionedFiles, ...touchedFiles]);
   const ignoredRecommendedFiles = recommendedFiles.filter((file) => !usedFiles.includes(file));
-  const failureEvents = events.filter((event) => event.kind === "failure_seen");
+  const failureEvents = events.filter((event) => event.kind === "failure_seen" || event.kind === "verification_failed");
   const verificationPassedEvents = events.filter((event) => event.kind === "verification_passed");
   const lastFailure = signalFromEvent(failureEvents.at(-1));
   const lastPassingVerification = signalFromEvent(verificationPassedEvents.at(-1));
-  const unresolvedFailure = Boolean(
-    lastFailure &&
-      (!lastPassingVerification || Date.parse(lastFailure.createdAt) > Date.parse(lastPassingVerification.createdAt))
-  );
+  // Ledger order is authoritative. Multiple hook events can share a
+  // millisecond timestamp, so timestamp comparison can incorrectly let a pass
+  // mask a later failure.
+  const lastFailureIndex = lastEventIndex(events, (event) => event.kind === "failure_seen" || event.kind === "verification_failed");
+  const lastPassingVerificationIndex = lastEventIndex(events, (event) => event.kind === "verification_passed");
+  const unresolvedFailure = lastFailureIndex >= 0 && lastFailureIndex > lastPassingVerificationIndex;
+  const reconsiderableShownFiles = unresolvedFailure
+    ? lastFailure?.filePath && shownFiles.includes(lastFailure.filePath)
+      ? [lastFailure.filePath]
+      : shownFiles
+    : [];
   const contextWasActivelyShown = shownFiles.length > 0;
   const ignoreStaleRecommendations = !contextWasActivelyShown || Boolean(lastPassingVerification && !unresolvedFailure);
   const currentInvariant = latestInvariant(events);
@@ -83,6 +92,8 @@ export function buildSessionWorkingSet(input: {
     ignoredRecommendedFiles,
     ruledOutFiles,
     staleFiles,
+    unresolvedFailure,
+    reconsiderableShownFiles,
     ...(currentInvariant ? { currentInvariant } : {}),
     ...(lastFailure ? { lastFailure } : {}),
     ...(lastPassingVerification ? { lastPassingVerification } : {}),
@@ -206,4 +217,11 @@ function lastVerificationForFile(events: SessionLedgerEvent[], filePath: string)
 
 function eventFile(event: SessionLedgerEvent): string[] {
   return event.filePath ? [event.filePath] : [];
+}
+
+function lastEventIndex(events: SessionLedgerEvent[], predicate: (event: SessionLedgerEvent) => boolean): number {
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    if (predicate(events[index]!)) return index;
+  }
+  return -1;
 }

@@ -1,5 +1,14 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { FileKind, FileRecord, IndexStateStats, RepoGraph, ScanResult, SemanticChunkRecord } from "./graph.js";
 import type { TaskSession } from "./runtime.js";
+import type {
+  CandidateGeneratorMode,
+  EvidenceDelivery,
+  EvidenceReason,
+  RankerMode,
+  SemanticIndexStatus
+} from "./evidence.js";
 
 export type ContextRequestType =
   | "initial_brief"
@@ -27,7 +36,13 @@ export type ContextQueryMode = "brief" | "snippets" | "summary" | "exact";
 
 export type PrimeProfile = "auto" | "ui" | "workflow" | "backend" | "test" | "failure_debug" | "generic";
 
-export type CodexSetupMode = "savings" | "observe" | "debug" | "mcp-first" | "hybrid";
+export type CanonicalCodexSetupMode = "source-first" | "observe" | "debug" | "mcp-first" | "hybrid";
+
+/**
+ * `savings` is accepted as a v0.2 compatibility alias. New configuration and
+ * public output must use `source-first`.
+ */
+export type CodexSetupMode = CanonicalCodexSetupMode | "savings";
 
 export type HookOutputProfile = "full-prime" | "tiny-directive" | "failure-only" | "mcp-brief";
 
@@ -213,6 +228,7 @@ export type ContextValueDecision = {
   evidenceRequest?: EvidenceRequest;
   modelPrediction?: ContextGovernorModelPrediction;
   featureSummary?: ContextGovernorFeatureSummary;
+  policySource?: "calibrated_evidence_policy_v1";
 };
 
 export type EditScopeConfidence = "high" | "medium" | "low";
@@ -266,6 +282,19 @@ export type ContextRankedFile = {
   kind: FileKind;
   score: number;
   reasons: string[];
+  relevanceProbability?: number;
+  probabilityGap?: number;
+  rankerModelId?: string;
+  featureSchemaVersion?: string;
+  evidenceReasons?: EvidenceReason[];
+  delivery?: EvidenceDelivery;
+  rankerMode?: RankerMode | "fallback";
+  rankerFallbackReason?: string;
+  candidateGeneratorMode?: CandidateGeneratorMode | "fallback";
+  semanticModelId?: string;
+  semanticIndexStatus?: SemanticIndexStatus;
+  semanticSimilarity?: number;
+  semanticFallbackReason?: string;
   scores?: {
     semantic?: number;
     keyword?: number;
@@ -310,6 +339,13 @@ export type InitResult = {
   semantic: {
     chunks: number;
     vectors: number;
+    documents?: number;
+    embeddings?: number;
+    modelId?: string;
+    status?: "disabled" | "unavailable" | "corrupt" | "incompatible" | "ready";
+    reusedEmbeddings?: number;
+    createdEmbeddings?: number;
+    error?: string;
   };
   state?: IndexStateStats;
 };
@@ -322,6 +358,19 @@ export type ScoredFile = FileRecord & {
 export type HybridScoredResult = FileRecord & {
   score: number;
   reasons: string[];
+  relevanceProbability?: number;
+  probabilityGap?: number;
+  rankerModelId?: string;
+  featureSchemaVersion?: string;
+  evidenceReasons?: EvidenceReason[];
+  delivery?: EvidenceDelivery;
+  rankerMode?: RankerMode | "fallback";
+  rankerFallbackReason?: string;
+  candidateGeneratorMode?: CandidateGeneratorMode | "fallback";
+  semanticModelId?: string;
+  semanticIndexStatus?: SemanticIndexStatus;
+  semanticSimilarity?: number;
+  semanticFallbackReason?: string;
   semanticScore: number;
   keywordScore: number;
   bm25Score: number;

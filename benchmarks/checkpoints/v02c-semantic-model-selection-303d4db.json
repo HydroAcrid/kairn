@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "semantic-model-freeze.v1",
+  "checkpointId": "v02c-semantic-model-selection-20260724",
+  "createdAt": "2026-07-24T17:15:00-04:00",
+  "status": "frozen_before_holdout",
+  "implementationBaseCommit": "303d4db",
+  "selectionManifest": {
+    "path": "benchmarks/semantic/model-selection-v1.json",
+    "sha256": "278d0511c7dd8cd76ce93941daf218c209fb1ad1536c4a6c683672a31f94787b",
+    "selectionCases": 10,
+    "holdoutCases": 5,
+    "lineageDisjoint": true
+  },
+  "candidates": [
+    {
+      "modelId": "bge-small-en-v15",
+      "upstreamRepository": "BAAI/bge-small-en-v1.5",
+      "upstreamRevision": "5c38ec7c405ec4b44b94cc5a9bb96e735b38267a",
+      "selectionArtifactSha256": "577ea5108274894cc2afed28823d42ce755ea53d8b6ae9c12f19dc4a3997e955",
+      "selection": {
+        "recallAt1": 0.8,
+        "recallAt5": 1,
+        "strictFullRecallAt64": 1,
+        "strictFullRecallAt128": 1,
+        "meanReciprocalRank": 0.9,
+        "medianQueryLatencyMs": 39.189,
+        "coldInitializationMs": 643.624
+      }
+    },
+    {
+      "modelId": "jina-code-v2-q8",
+      "upstreamRepository": "jinaai/jina-embeddings-v2-base-code",
+      "upstreamRevision": "516f4baf13dec4ddddda8631e019b5737c8bc250",
+      "selectionArtifactSha256": "78f663e617779a25aa0ab865746abcbf8704161ca6846c1bd8e2db8c6ebf4f06",
+      "selection": {
+        "recallAt1": 1,
+        "recallAt5": 1,
+        "strictFullRecallAt64": 1,
+        "strictFullRecallAt128": 1,
+        "meanReciprocalRank": 1,
+        "medianQueryLatencyMs": 92.965,
+        "coldInitializationMs": 882.61
+      }
+    }
+  ],
+  "winner": {
+    "modelId": "jina-code-v2-q8",
+    "reason": "Both candidates passed selection recall gates; Jina achieved perfect Recall@1 and MRR while remaining inside the latency and footprint gates.",
+    "dimensions": 768,
+    "pooling": "mean",
+    "maxTokens": 512,
+    "documentSchemaVersion": "semantic-documents-v1",
+    "featureSchemaVersion": "evidence-features-v2",
+    "semanticTopK": 64,
+    "initialCandidateLimit": 64,
+    "enrichedCandidateLimit": 128,
+    "rankFusionConstant": 60,
+    "graphHops": 1,
+    "runtime": {
+      "onnxruntimeWeb": "1.27.0",
+      "huggingfaceTokenizers": "0.1.3",
+      "executionProvider": "wasm",
+      "threads": 1,
+      "device": "cpu"
+    }
+  },
+  "holdout": {
+    "openedAfterFreezeCommit": "19dfff9",
+    "artifactSha256": "fc9c7bcf5fbff690fa2253eb508abe3642c1a9c7e5547a0652098a1d6de9d091",
+    "caseCount": 5,
+    "recallAt1": 0.4,
+    "recallAt5": 1,
+    "strictFullRecallAt64": 1,
+    "strictFullRecallAt128": 1,
+    "meanReciprocalRank": 0.59,
+    "zeroPositiveCasesAt128": 0,
+    "medianQueryLatencyMs": 100.82
+  },
+  "holdoutOpened": true,
+  "paidComparisonEligible": false,
+  "nextGate": "Evaluate the frozen Jina configuration on holdout, then rematerialize the existing 38-case required-source oracle."
+}

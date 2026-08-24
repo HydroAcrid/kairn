@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -1378,7 +1380,7 @@ function defaultCommand(mode: PublicationMode, model: string): string {
 function defaultSetupCommand(mode: Exclude<PublicationMode, "baseline" | "manual_prime">): string | undefined {
   if (mode === "real_mcp_first") return "{kairn} setup codex --root {root} --mode mcp-first >/dev/null";
   if (mode === "hybrid_mcp_brief") return "{kairn} setup codex --root {root} --mode hybrid --session {session} >/dev/null";
-  if (mode === "hook_full_prime") return "{kairn} setup codex --root {root} --mode savings --hook-output full-prime >/dev/null";
+  if (mode === "hook_full_prime") return "{kairn} setup codex --root {root} --mode source-first --hook-output full-prime >/dev/null";
   return undefined;
 }
 

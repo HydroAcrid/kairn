@@ -1,0 +1,83 @@
+{
+  "schemaVersion": "semantic-model-freeze.v1",
+  "checkpointId": "v02c-semantic-model-selection-v7-20260725",
+  "createdAt": "2026-07-25T15:40:00-04:00",
+  "status": "selection_refreshed_for_document_schema_v5",
+  "implementationBaseCommit": "03f66d6",
+  "supersedes": "v02c-semantic-model-selection-v6-20260724",
+  "supersessionReason": "The production semantic document profile moved from 768 to 1500 characters and from schema v4 to v5. Model selection was rerun on the unchanged train/calibration contents so the effect of the schema migration is isolated from task-content changes.",
+  "selectionManifest": {
+    "path": "benchmarks/semantic/model-selection-v7.json",
+    "sha256": "d28a9af0e433e3cee1e34a2fe8a55bc1534acb5502ec4c21b6257a06cfeee6df",
+    "documentSchemaVersion": "semantic-documents-v5",
+    "selectionCases": 10,
+    "holdoutCases": 5,
+    "selectionContentIdenticalToV6": true,
+    "holdoutRerun": false
+  },
+  "candidates": [
+    {
+      "modelId": "bge-small-en-v15",
+      "upstreamRevision": "5c38ec7c405ec4b44b94cc5a9bb96e735b38267a",
+      "installedManifestSha256": "22a29ad70ff508dc5f09493e00c0b898c58484e2865bfc726fa859eab4f17f6d",
+      "installedBytes": 134037628,
+      "selectionArtifactPath": "artifacts/semantic-model-selection-v7-bge.selection.json",
+      "selectionArtifactSha256": "bb7b85204bced5834cb725aef61c0f66a1489ae675bb89f32a328bcf1e70c2ad",
+      "selection": {
+        "recallAt1": 0.6,
+        "recallAt5": 1,
+        "strictFullRecallAt64": 1,
+        "strictFullRecallAt128": 1,
+        "meanReciprocalRank": 0.766667,
+        "zeroPositiveCasesAt128": 0
+      }
+    },
+    {
+      "modelId": "jina-code-v2-q8",
+      "upstreamRevision": "516f4baf13dec4ddddda8631e019b5737c8bc250",
+      "installedManifestSha256": "d36c6ed084986e362004c43ddca67dabf5ef281617882eed9ee0e4b7dca999c0",
+      "installedBytes": 165431544,
+      "selectionArtifactPath": "artifacts/semantic-model-selection-v7-jina.selection.json",
+      "selectionArtifactSha256": "e23bfa81230007c33e891e51b4174db49375dea2ed213bf7d51641e787d47a3c",
+      "selection": {
+        "recallAt1": 0.9,
+        "recallAt5": 1,
+        "strictFullRecallAt64": 1,
+        "strictFullRecallAt128": 1,
+        "meanReciprocalRank": 0.95,
+        "zeroPositiveCasesAt128": 0
+      }
+    }
+  ],
+  "winner": {
+    "modelId": "jina-code-v2-q8",
+    "reason": "Both candidates retain perfect selection Recall@5, Recall@64, and Recall@128. Jina retains the predeclared code-quality preference and materially higher Recall@1 and MRR.",
+    "documentSchemaVersion": "semantic-documents-v5",
+    "maximumDocumentChars": 1500,
+    "featureSchemaVersion": "evidence-features-v2",
+    "semanticTopK": 128,
+    "initialCandidateLimit": 64,
+    "enrichedCandidateLimit": 128,
+    "rankFusionConstant": 60,
+    "graphHops": 1
+  },
+  "verification": {
+    "schemaContentControlTest": {
+      "file": "tests/semanticCandidates.test.ts",
+      "testsPassed": 42
+    },
+    "implementationBaseFullSuite": {
+      "filesPassed": 31,
+      "testsPassed": 468,
+      "typecheck": "passed",
+      "semanticArchitectureCheck": "passed"
+    },
+    "runtimeTimingPromotionEligible": false,
+    "runtimeTimingNote": "Selection was run concurrently with repository re-embedding jobs; ranks are valid, but these latency samples are not used for promotion."
+  },
+  "holdoutOpened": true,
+  "holdoutTuningPerformed": false,
+  "holdoutNote": "The unchanged v6 synthetic holdout had already been opened and was not rerun. Candidate-mechanism validation proceeds against fresh semantic indexes and the frozen public 38-case oracle.",
+  "paidComparisonEligible": false,
+  "nextGate": "Complete fresh schema-v5 repository re-embedding, then rerun the reviewed public required-source oracle. Promotion still requires 38/38 strict full recall at 64 and zero positive misses at 128."
+}

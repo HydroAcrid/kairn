@@ -1,0 +1,168 @@
+{
+  "schemaVersion": "codex-pilot-task-curation.v1",
+  "campaignId": "codex-v02c",
+  "status": "curation",
+  "note": "This registry is intentionally non-runnable. A cell becomes sealed only after its public repository commit, Docker image digest, setup/failure behavior, production-source oracle, touch/scope/invariant gates, and offline verifier have been independently checked.",
+  "smoke": [
+    {
+      "id": "smoke-sentinel",
+      "status": "unsealed",
+      "repositoryLineageId": null,
+      "repoUrl": null,
+      "ref": null,
+      "taskPlan": null
+    }
+  ],
+  "pilot": [
+    {
+      "id": "pilot-python-source-localization",
+      "language": "python",
+      "scenario": "source_localization",
+      "status": "unsealed",
+      "repositoryLineageId": null,
+      "repoUrl": null,
+      "ref": null,
+      "taskPlan": null
+    },
+    {
+      "id": "pilot-python-failure-first",
+      "language": "python",
+      "scenario": "failure_first",
+      "status": "unsealed",
+      "repositoryLineageId": null,
+      "repoUrl": null,
+      "ref": null,
+      "taskPlan": null
+    },
+    {
+      "id": "pilot-python-long-session",
+      "language": "python",
+      "scenario": "long_session",
+      "status": "unsealed",
+      "repositoryLineageId": null,
+      "repoUrl": null,
+      "ref": null,
+      "taskPlan": null
+    },
+    {
+      "id": "pilot-typescript-source-localization",
+      "language": "typescript",
+      "scenario": "source_localization",
+      "status": "unsealed",
+      "repositoryLineageId": null,
+      "repoUrl": null,
+      "ref": null,
+      "taskPlan": null
+    },
+    {
+      "id": "pilot-typescript-failure-first",
+      "language": "typescript",
+      "scenario": "failure_first",
+      "status": "unsealed",
+      "repositoryLineageId": null,
+      "repoUrl": null,
+      "ref": null,
+      "taskPlan": null
+    },
+    {
+      "id": "pilot-typescript-long-session",
+      "language": "typescript",
+      "scenario": "long_session",
+      "status": "unsealed",
+      "repositoryLineageId": null,
+      "repoUrl": null,
+      "ref": null,
+      "taskPlan": null
+    },
+    {
+      "id": "pilot-go-source-localization",
+      "language": "go",
+      "scenario": "source_localization",
+      "status": "unsealed",
+      "repositoryLineageId": null,
+      "repoUrl": null,
+      "ref": null,
+      "taskPlan": null
+    },
+    {
+      "id": "pilot-go-failure-first",
+      "language": "go",
+      "scenario": "failure_first",
+      "status": "unsealed",
+      "repositoryLineageId": null,
+      "repoUrl": null,
+      "ref": null,
+      "taskPlan": null
+    },
+    {
+      "id": "pilot-go-long-session",
+      "language": "go",
+      "scenario": "long_session",
+      "status": "unsealed",
+      "repositoryLineageId": null,
+      "repoUrl": null,
+      "ref": null,
+      "taskPlan": null
+    },
+    {
+      "id": "pilot-java-source-localization",
+      "language": "java",
+      "scenario": "source_localization",
+      "status": "unsealed",
+      "repositoryLineageId": null,
+      "repoUrl": null,
+      "ref": null,
+      "taskPlan": null
+    },
+    {
+      "id": "pilot-java-failure-first",
+      "language": "java",
+      "scenario": "failure_first",
+      "status": "unsealed",
+      "repositoryLineageId": null,
+      "repoUrl": null,
+      "ref": null,
+      "taskPlan": null
+    },
+    {
+      "id": "pilot-java-long-session",
+      "language": "java",
+      "scenario": "long_session",
+      "status": "unsealed",
+      "repositoryLineageId": null,
+      "repoUrl": null,
+      "ref": null,
+      "taskPlan": null
+    },
+    {
+      "id": "pilot-cpp-source-localization",
+      "language": "cpp",
+      "scenario": "source_localization",
+      "status": "unsealed",
+      "repositoryLineageId": null,
+      "repoUrl": null,
+      "ref": null,
+      "taskPlan": null
+    },
+    {
+      "id": "pilot-cpp-failure-first",
+      "language": "cpp",
+      "scenario": "failure_first",
+      "status": "unsealed",
+      "repositoryLineageId": null,
+      "repoUrl": null,
+      "ref": null,
+      "taskPlan": null
+    },
+    {
+      "id": "pilot-cpp-long-session",
+      "language": "cpp",
+      "scenario": "long_session",
+      "status": "unsealed",
+      "repositoryLineageId": null,
+      "repoUrl": null,
+      "ref": null,
+      "taskPlan": null
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "templateSchemaVersion": "comparison-plan-template.v1",
+  "kind": "kairn-experiment-plan-template",
+  "runnable": false,
+  "profile": "publication",
+  "blockedReason": "No lineage-disjoint, sealed 30-task publication manifest has been committed. This descriptor is deliberately not accepted by `kairn bench experiment`.",
+  "requiredTaskManifest": {
+    "schemaVersion": "comparison-task-manifest.v1",
+    "status": "sealed",
+    "languages": [
+      "python",
+      "typescript",
+      "go",
+      "java",
+      "cpp"
+    ],
+    "taskClasses": [
+      "source_localization",
+      "failure_first",
+      "long_session"
+    ],
+    "tasksPerCell": 2,
+    "taskCount": 30,
+    "repeats": 5,
+    "attemptCount": 600,
+    "requiredFields": [
+      "immutable repository commit",
+      "sandbox image digest",
+      "required production source oracle",
+      "required touched files",
+      "allowed diff scopes",
+      "source invariants",
+      "explicit noise patterns"
+    ],
+    "lineageConstraint": "No repository lineage may overlap ranker training, calibration, or ranker holdout repositories."
+  },
+  "lockedPlanFields": {
+    "schemaVersion": 1,
+    "id": "comparison-v1-publication",
+    "name": "Kairn comparison-v1 publication campaign",
+    "profile": "publication",
+    "conditions": [
+      "vanilla",
+      "reasonblocks",
+      "kairn",
+      "kairn_reasonblocks"
+    ],
+    "model": "claude-sonnet-4-6",
+    "temperature": 0,
+    "maxSteps": 40,
+    "maxTokensPerResponse": 4096,
+    "timeoutMs": 1800000,
+    "repeats": 5
+  },
+  "unresolvedTaskManifest": null
+}

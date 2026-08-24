@@ -1,0 +1,3266 @@
+{
+  "schemaVersion": "ranker-corpus-review-decision-checkpoint.v1",
+  "corpusId": "kairn-evidence-v02c-20260722",
+  "status": "review_complete",
+  "promotionEligible": false,
+  "sourceQueueSha256": "16acb7b34ac67bf24cc3a8562aac5f8ae665b86550064f794e1738354291c117",
+  "batchIndexSha256": "7ba998b4c6d6bff1f433f3e1d37572175b748f210438d3c89a9fd04c9dd7dcd5",
+  "caseCount": 165,
+  "completedCases": 165,
+  "pendingCases": 0,
+  "decisions": [
+    {
+      "id": "v02c-train-python-source_localization-001",
+      "materializedCaseSha256": "9314240e3a9473f83418bc629026b72bc5d000186527f730379ab534a8ee46f4",
+      "candidatePathsSha256": "53658054245b10a6a1fbed03a46d53b7ef7275b4790262fe8febd063a91cafbe",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/functional/n/no/no_dummy_redefined.txt",
+          "tests/functional/n/no/no_member_if_statements.txt",
+          "tests/functional/n/no/no_member_assign_same_line.txt",
+          "pylint/checkers/unicode.py",
+          "pylint/checkers/similar.py",
+          "pylint/checkers/classes/special_methods_checker.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The official patch source is present. Noise labels are unrelated functional fixtures and checker implementations that are not involved in recursive ignore-path expansion."
+      }
+    },
+    {
+      "id": "v02c-train-python-source_localization-002",
+      "materializedCaseSha256": "700791d44c21f3d933b1b71010684a035294eaf60bb07f6fbc691f84721000ab",
+      "candidatePathsSha256": "2c1a62f10ecde0ce5c1d42367c9a7d2be1aad48bc53c8f70b4810c4d41e540bd",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/functional/t/too/too_many_ancestors.py",
+          "pylint/reporters/ureports/nodes.py",
+          "pylint/extensions/docparams.py",
+          "pylint/extensions/code_style.py",
+          "pylint/extensions/mccabe.py",
+          "pylint/checkers/raw_metrics.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The official patch source is present. Noise labels cover unrelated reporting, checker, extension, and functional-test behavior rather than command bootstrap and sys.path handling."
+      }
+    },
+    {
+      "id": "v02c-train-python-source_localization-003",
+      "materializedCaseSha256": "c23642dbfe809b53afcfb20115bffc2be637029e94fe11fac2cb37a60b958dda",
+      "candidatePathsSha256": "62917297dca6b284c7c9da2d34fb63520b72b68c43a3e7b8b148482eb89de10c",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "testing/example_scripts/collect/package_init_given_as_arg/pkg/__init__.py",
+          "testing/example_scripts/collect/package_infinite_recursion/__init__.pyi",
+          "bench/manyparam.py",
+          "testing/test_skipping.py",
+          "testing/test_doctest.py",
+          "src/_pytest/junitxml.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The official logging implementation patch source is present. Noise labels are unrelated collection fixtures, benchmark code, skipping, doctest, and JUnit XML behavior."
+      }
+    },
+    {
+      "id": "v02c-train-python-source_localization-004",
+      "materializedCaseSha256": "bcb25ddd60d0c4c14f6e6a5d14ae54a800078cee03f06ced7528b913bcefb078",
+      "candidatePathsSha256": "27d2d239177334bc7a782f882a592f184ef8edacd4c63c8c3ebbabae30936920",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "sklearn/mixture/gmm.py",
+          "sklearn/cluster/k_means_.py",
+          "sklearn/gaussian_process/correlation_models.py",
+          "sklearn/decomposition/tests/test_dict_learning.py",
+          "sklearn/datasets/samples_generator.py",
+          "sklearn/externals/joblib/numpy_pickle.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The Ridge implementation patch source is present. Noise labels are implementations and tests for unrelated estimators, clustering, Gaussian processes, datasets, and serialization."
+      }
+    },
+    {
+      "id": "v02c-train-python-source_localization-005",
+      "materializedCaseSha256": "50b9aa1e9c2c099ae3045d6ec4baa5783f1f381aa633e48e2e826e07c4841e09",
+      "candidatePathsSha256": "ea7e358b80cd7ec3c658e236290bfa543c99af732a1527fce0c81a1f61b59871",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "sphinx/ext/graphviz.py",
+          "sphinx/ext/imgconverter.py",
+          "sphinx/ext/napoleon/docstring.py",
+          "sphinx/builders/epub3.py",
+          "sphinx/domains/javascript.py",
+          "sphinx/domains/cpp.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The literalinclude directive patch source is present. Noise labels are unrelated extensions, builders, and language-domain implementations."
+      }
+    },
+    {
+      "id": "v02c-train-python-source_localization-006",
+      "materializedCaseSha256": "8e5587a0f98b10d626189b612d6bd2a38b64a05de5f1e24f31581320692aede7",
+      "candidatePathsSha256": "11092ca3c52ed3f21c0940c3ee6ad211a950a570144b3542a0e8835f61f9384a",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "sympy/liealgebras/type_e.py",
+          "sympy/liealgebras/type_g.py",
+          "sympy/polys/rationaltools.py",
+          "sympy/polys/numberfields.py",
+          "sympy/integrals/meijerint.py",
+          "sympy/simplify/tests/test_sqrtdenest.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The geometry Point patch source is present. Noise labels are unrelated Lie algebra, polynomial, integration, and simplification implementations or tests."
+      }
+    },
+    {
+      "id": "v02c-train-python-failure_first-007",
+      "materializedCaseSha256": "fb8eb6836a16891e5477f859b6bbd49d602a07a34293e6be8101b2993125cbd7",
+      "candidatePathsSha256": "7f1c45d1c6a696c0e701e990b8302772b01abee538b2b3ffa0d29d83ece99aab",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "requests/packages/charade/hebrewprober.py",
+          "requests/packages/charade/jpcntx.py",
+          "requests/packages/charade/chardistribution.py",
+          "requests/packages/charade/langthaimodel.py",
+          "requests/packages/charade/langgreekmodel.py",
+          "requests/packages/charade/langhungarianmodel.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The request-body model patch source is present. Noise labels are bundled character-detection modules unrelated to HTTP Content-Length preparation."
+      }
+    },
+    {
+      "id": "v02c-train-python-failure_first-008",
+      "materializedCaseSha256": "01181bf94d229e130bbf3d7c8e573e2e52385f709be6cfc477fcf4f2194ae3b0",
+      "candidatePathsSha256": "54425dd50fa5c1041505b1bfa4b2b94feafb7737c13ee10d1aa4bbae457abec5",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "requests/packages/charade/jpcntx.py",
+          "requests/packages/charade/chardistribution.py",
+          "requests/packages/charade/hebrewprober.py",
+          "requests/packages/charade/langthaimodel.py",
+          "requests/packages/charade/latin1prober.py",
+          "requests/packages/charade/gb2312prober.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The session implementation patch source is present. Noise labels are bundled character-detection modules unrelated to HTTP method normalization and multipart request handling."
+      }
+    },
+    {
+      "id": "v02c-train-python-failure_first-009",
+      "materializedCaseSha256": "08a798f60d59717d0e4bda6669c4ed28765ce9003fab8a29ac79b0be49d2c3ef",
+      "candidatePathsSha256": "3443c5ce94517dd3c12630044e3cb7484c3e9f165160bbb130d6e7248fbf8fed",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "requests/packages/charade/hebrewprober.py",
+          "requests/packages/charade/jpcntx.py",
+          "requests/packages/charade/chardistribution.py",
+          "requests/packages/charade/langthaimodel.py",
+          "requests/packages/charade/langhebrewmodel.py",
+          "requests/packages/charade/latin1prober.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The digest-auth implementation patch source is present. Noise labels are bundled character-detection modules unrelated to Digest Authorization header quoting."
+      }
+    },
+    {
+      "id": "v02c-train-python-failure_first-010",
+      "materializedCaseSha256": "ef6c7b818458109f17e0d40d8e44e6aec7e9a9046bca4dc3e32424b902eef7c9",
+      "candidatePathsSha256": "6da5af58b04cf21c91800ff3e45c7f6f169fe42dd49003f06509fc445c927deb",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "requests/packages/chardet/hebrewprober.py",
+          "requests/packages/chardet/chardistribution.py",
+          "requests/packages/chardet/jpcntx.py",
+          "requests/packages/chardet/langthaimodel.py",
+          "requests/packages/chardet/langhebrewmodel.py",
+          "requests/packages/chardet/latin1prober.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The session implementation patch source is present. Noise labels are bundled character-detection modules unrelated to removal of default session headers."
+      }
+    },
+    {
+      "id": "v02c-train-python-failure_first-011",
+      "materializedCaseSha256": "2bf27bc1a5e12b3c6a227cd1d0eb277af3154ce3a931178dbf98d4c90cde953d",
+      "candidatePathsSha256": "dfbfa08e58cbf258c145bdb593183cdd0cde84ce358d7a517d6b2aa0e5a93b47",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "requests/packages/chardet/langbulgarianmodel.py",
+          "requests/packages/chardet/langhungarianmodel.py",
+          "requests/packages/chardet/langgreekmodel.py",
+          "requests/packages/chardet/mbcsgroupprober.py",
+          "requests/packages/chardet/sbcsgroupprober.py",
+          "requests/packages/chardet/langthaimodel.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:16:03-04:00",
+        "notes": "The session implementation patch source is present. Noise labels are bundled character-detection modules unrelated to byte-string HTTP method normalization."
+      }
+    },
+    {
+      "id": "v02c-train-python-failure_first-012",
+      "materializedCaseSha256": "fb79e8197bc0b31120f606932bb6c306ca4aeaf50d0def5bf2e0f4334bd8a5c4",
+      "candidatePathsSha256": "b0efb9125c11445c96e7e62e94cb0ca92a8ed57133ef0bd42533f241bf82bbf3",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "requests/packages/chardet/euctwfreq.py",
+          "requests/packages/chardet/big5freq.py",
+          "requests/packages/chardet/euckrfreq.py",
+          "requests/packages/chardet/sjisprober.py",
+          "requests/packages/chardet/langthaimodel.py",
+          "requests/packages/chardet/langhebrewmodel.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The request model patch source is present. Noise labels are bundled character-detection frequency tables and probers unrelated to binary request-body preparation."
+      }
+    },
+    {
+      "id": "v02c-train-python-long_session-013",
+      "materializedCaseSha256": "92b00e76678f1cbb77c6ecadba7aee10fff9a2f8c1fef55965aca8208e9aa288",
+      "candidatePathsSha256": "6b09a22dbf18a156ebbc99c264978fe5d2a5b9359c5c809cbb5e46dadeade85a",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/functional/n/nested_func_defined_in_loop.txt",
+          "pylint/extensions/check_docs.py",
+          "pylint/checkers/python3.py",
+          "tests/checkers/unittest_spelling.py",
+          "pylint/checkers/raw_metrics.py",
+          "tests/extensions/test_check_raise_docs.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "Pyreverse patch sources are present. Noise labels cover unrelated lint diagnostics, documentation extensions, spelling, Python-3 checks, and raw metrics."
+      }
+    },
+    {
+      "id": "v02c-train-python-long_session-014",
+      "materializedCaseSha256": "dd2b0db0cb65f196e5b916b1411611b14303edd6f046cc77a18f5d1ec1eb6a78",
+      "candidatePathsSha256": "e60060ec2efbdfdeeb36a5617b6fff93ce3da316533eaa086739e18e0bd50bea",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/extensions/test_empty_comment.py",
+          "tests/extensions/test_docstyle.py",
+          "pylint/graph.py",
+          "pylint/reporters/multi_reporter.py",
+          "pylint/extensions/mccabe.py",
+          "pylint/pyreverse/diadefslib.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The variables and constants patch sources are present. Noise labels cover unrelated extensions, graph/reporting infrastructure, complexity checks, and UML diagram definitions."
+      }
+    },
+    {
+      "id": "v02c-train-python-long_session-015",
+      "materializedCaseSha256": "589b083c575de3ea5531438116f13fb7919e67a1a74b58626553a8e635eb1df6",
+      "candidatePathsSha256": "2228a31eb7a7101fe918bac1168e4045433c244a96e1b98bf0a781cc1fb2e050",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/functional/i/invalid/invalid_hash_returned.py",
+          "tests/functional/m/misplaced_bare_raise.txt",
+          "tests/functional/u/unexpected_special_method_signature.txt",
+          "tests/extensions/data/mccabe.py",
+          "pylint/checkers/typecheck.py",
+          "pylint/checkers/format.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The configuration patch source is present. Noise labels are unrelated checker fixtures and type, format, or complexity behavior rather than XDG data-directory selection."
+      }
+    },
+    {
+      "id": "v02c-train-python-long_session-016",
+      "materializedCaseSha256": "490e9efaef75445af577b1f972bf5eb404155232323970aa22ca8ec9c9815595",
+      "candidatePathsSha256": "95337cb8068915ff938e01b4c0986ae3b53916381547dcd209f8eac093347bcf",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "pylint/pyreverse/dot_printer.py",
+          "pylint/pyreverse/diadefslib.py",
+          "pylint/checkers/unicode.py",
+          "pylint/checkers/typecheck.py",
+          "tests/functional/a/attribute_defined_outside_init.py",
+          "pylint/checkers/design_analysis.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The argument-manager and base-option patch sources are present. Noise labels cover unrelated UML rendering, checker diagnostics, and a functional lint fixture."
+      }
+    },
+    {
+      "id": "v02c-train-python-long_session-017",
+      "materializedCaseSha256": "528922028dcf8247670f488362614a171bb2d85f0325e81735a5f2b44bd60bbd",
+      "candidatePathsSha256": "64d0ea444fd41b7e2142fd7dfe0996f98380921aaad44fa2870574791ba1a00c",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/functional/n/non_ascii_name/non_ascii_name_pos_and_kwonly_function.py",
+          "tests/functional/r/regression/regression_property_no_member_2641.py",
+          "pylint/checkers/deprecated.py",
+          "pylint/checkers/async.py",
+          "pylint/checkers/strings.py",
+          "pylint/checkers/spelling.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The recursive expansion and linter patch sources are present. Noise labels cover unrelated diagnostic fixtures and checker categories."
+      }
+    },
+    {
+      "id": "v02c-train-python-long_session-018",
+      "materializedCaseSha256": "682b0c1218e49c646c5a115847ccd7bf7bf10039bb01b7a0ce30382b99dcd308",
+      "candidatePathsSha256": "6891de0dfcb03c382048ddab5f9a33eae479fe02a3347b325b89daff97b1a6d6",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/functional/c/consider/consider_using_with_open.py",
+          "pylint/checkers/refactoring/implicit_booleaness_checker.py",
+          "pylint/checkers/base/docstring_checker.py",
+          "pylint/reporters/json_reporter.py",
+          "pylint/lint/parallel.py",
+          "pylint/checkers/lambda_expressions.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The argument and utility patch sources are present. Noise labels cover unrelated checker, reporter, parallel-lint, and functional-test behavior."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-source_localization-019",
+      "materializedCaseSha256": "aa5fb61f5fc5e3e051c5b8408f1217668848afaf04f28b80becb2aac28c75102",
+      "candidatePathsSha256": "a8d989546538e3873078a417d71c189c459ffab3aaa497c5d2397bbcade1c067",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benches/scripts/prepare.js",
+          "benches/scripts/analyze.js",
+          "benches/scripts/deopts.js",
+          "scripts/release/publish.mjs",
+          "debug/src/debug.js",
+          "demo/key_bug.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The compat render patch source is present. Noise labels are benchmark, release, debug, and demo code unrelated to compat input/change event forwarding."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-source_localization-020",
+      "materializedCaseSha256": "94172020f3db8ed6e3ff2b9b6c040ea2410fadd285035a477371e9bccd2c0538",
+      "candidatePathsSha256": "c54030f62abf348a326d87ec59c7a06091205c7612cbee832ac9803a6b167915",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benches/src/keyed-children/components.js",
+          "benches/src/keyed-children/store.js",
+          "benches/scripts/analyze.js",
+          "benches/scripts/deopts.js",
+          "scripts/release/publish.mjs",
+          "compat/test/browser/portals.test.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The hook implementation and declarations are present. Noise labels are benchmark, release, and portal-test code unrelated to error-boundary hook metadata."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-source_localization-021",
+      "materializedCaseSha256": "30870b3589993fba5aa0d8305710a0ca68016d5151e1b57cb97d07ce15c1b449",
+      "candidatePathsSha256": "06e762cd1332a6485308cd1837145dc6c95a3a99abde5a9457fb4d289402ee3a",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benches/scripts/global.d.ts",
+          "benches/scripts/index.js",
+          "benches/scripts/analyze.js",
+          "benches/scripts/deopts.js",
+          "benches/scripts/config.js",
+          "debug/test/browser/component-stack.test.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The hook implementation patch source is present. Noise labels are benchmark harness and debug-stack test code unrelated to same-tick hook state scheduling."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-source_localization-022",
+      "materializedCaseSha256": "e877fa3986fc1c7791962e6276d833a15d77d76e78e40f0ff678255f09acf2c5",
+      "candidatePathsSha256": "0403b79564c0360df89e57a5a6d99d04c31d929d225d3ccb3caa4fc202662a4b",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "compat/test/browser/PureComponent.test.js",
+          "compat/test/browser/portals.test.js",
+          "compat/test/browser/suspense-utils.js",
+          "benches/scripts/analyze.js",
+          "benches/scripts/deopts.js",
+          "scripts/release/publish.mjs"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:26:00-04:00",
+        "notes": "The core diff patch source is present. Noise labels cover unrelated compat feature tests, benchmark analysis, and release tooling."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-source_localization-023",
+      "materializedCaseSha256": "917f24ee50eb7fa81466bb1680e322d4f5213996da7a336013c2df5bed55bfdb",
+      "candidatePathsSha256": "cb5eb478fb6ad6a4d5e8364c3e2c793115c23890e2c2280aa27e0e3192ed3616",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benches/src/keyed-children/index.js",
+          "benches/scripts/analyze.js",
+          "benches/scripts/deopts.js",
+          "scripts/release/publish.mjs",
+          "debug/src/debug.js",
+          "demo/stateOrderBug.jsx"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The child-diff patch source is present. Noise labels are benchmark, release, debug, and demo code unrelated to rendering boxed string values."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-source_localization-024",
+      "materializedCaseSha256": "f66a34918e171daf4f469b71826a1e354c834d5db1e1ac8c72eaf3d8d81550aa",
+      "candidatePathsSha256": "562772c74297a620f1aabaa1231eddf4a79a9938a41c942290ae665e1086483d",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "packages/docusaurus-plugin-content-docs/src/__tests__/numberPrefix.test.ts",
+          "packages/docusaurus-plugin-content-blog/src/__tests__/feed.test.ts",
+          "packages/docusaurus-theme-common/src/contexts/__tests__/docsVersion.test.tsx",
+          "packages/docusaurus-plugin-pwa/src/registerSw.ts",
+          "packages/docusaurus-theme-translations/update.mjs",
+          "packages/docusaurus-theme-common/src/hooks/useTOCHighlight.ts"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The server broken-link patch source is present. Noise labels cover unrelated content-plugin tests, theme state, PWA registration, translations, and table-of-contents behavior."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-failure_first-025",
+      "materializedCaseSha256": "eea7258f51aae372ae34771469a6a66d00c76a246c85b5fde02f7f76559b8198",
+      "candidatePathsSha256": "0cec64651bc3872a4ea5a57bebb2bd051dc34767c9653913f277eee7fb3c6091",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "type-definitions/flow-tests/merge.js",
+          "type-definitions/ts-tests/ordered-map.ts",
+          "resources/benchmark.js",
+          "website/src/ImmutableConsole.tsx",
+          "src/predicates/isOrderedMap.js",
+          "src/functional/removeIn.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The sequence Operations patch source is present. Noise labels cover unrelated type fixtures, benchmarking, website UI, ordered-map predicates, and nested removal."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-failure_first-026",
+      "materializedCaseSha256": "00303b94660fce5522b0031e67df963be0e4fce04cb84258f9abf4c3e1b0faae",
+      "candidatePathsSha256": "6ebf3174379d0bedad183c774b062223bd11ce36738b27fa3c6a6216fc1397ea",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benches/src/keyed-children/index.js",
+          "benches/scripts/bench.js",
+          "benches/scripts/paths.js",
+          "debug/test/browser/component-stack.test.js",
+          "compat/test/browser/portals.test.js",
+          "compat/test/browser/suspense-list.test.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The core diff patch source is present. Noise labels are benchmark tooling and unrelated debug, portal, and suspense tests."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-failure_first-027",
+      "materializedCaseSha256": "88506324d68d5869c1894d063b19be0cc48ce03e3ecee7b7520cd313872b41d1",
+      "candidatePathsSha256": "72e17170356c7d2352608c8538636d560cb2657a975d19237ae40d2667f1de49",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benches/scripts/config.js",
+          "benches/scripts/deopts.js",
+          "benches/scripts/prepare.js",
+          "debug/test/browser/component-stack.test.js",
+          "compat/test/browser/portals.test.js",
+          "compat/test/browser/suspense-list.test.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The child-diff patch source is present. Noise labels are benchmark tooling and unrelated debug, portal, and suspense-list tests."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-failure_first-028",
+      "materializedCaseSha256": "e9c3ea9ad5d3fd047384bd5e890319c296e9ebce5f46d3084ddf15bd01cb9b72",
+      "candidatePathsSha256": "54a9ebef4881cc031ce5efffc3b8f2267ee3d203cc6664a8f909b1712058c9ea",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "compat/test/browser/cloneElement.test.js",
+          "compat/test/browser/events.test.js",
+          "compat/test/browser/portals.test.js",
+          "compat/test/browser/findDOMNode.test.js",
+          "benches/scripts/bench.js",
+          "benches/scripts/deopts.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The property-diff patch source is present. Noise labels cover unrelated compat feature tests and benchmark tooling."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-failure_first-029",
+      "materializedCaseSha256": "db8ee545e76e930799739fb60bdeebf99f0cd7340a0cb52f99252320964883d0",
+      "candidatePathsSha256": "cb42211449d51d008a9d39030439bcf4f9d7b4454f3691ea62ac9289499a46d9",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "compat/test/browser/events.test.js",
+          "compat/test/browser/suspense-list.test.js",
+          "compat/test/browser/Children.test.js",
+          "benches/scripts/analyze.js",
+          "benches/scripts/deopts.js",
+          "benches/proxy-packages/preact-master-proxy/index.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The property-diff patch source is present. Noise labels cover unrelated compat tests, benchmark analysis, and benchmark proxy packaging."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-failure_first-030",
+      "materializedCaseSha256": "5e91991f3cb23a9865de3127625b987a0c582aeb10732218c029da98b06aff65",
+      "candidatePathsSha256": "6b3d32cd5d8b5315b18540b5f62f41be88c6fb6827f4a0760cc6ab5563b9521f",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benches/src/keyed-children/components.js",
+          "benches/src/keyed-children/store.js",
+          "benches/scripts/global.d.ts",
+          "benches/scripts/index.js",
+          "compat/test/browser/memo.test.js",
+          "compat/test/browser/suspense.test.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The hook cleanup patch source is present. Noise labels are benchmark harness code and unrelated memo or suspense tests."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-long_session-031",
+      "materializedCaseSha256": "9cefd5cf2ba89024b13745d9f56f8724a97b14e5bd2e272d8d2527eb87973feb",
+      "candidatePathsSha256": "d9a6621199bd391e7535893a92b605e21994a1322c63b14fb95921f4982a3c58",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "type-definitions/flow-tests/merge.js",
+          "type-definitions/ts-tests/list.ts",
+          "resources/benchmark.js",
+          "perf/Record.js",
+          "src/functional/removeIn.js",
+          "src/functional/setIn.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The collection implementation patch source is present. Noise labels cover unrelated type fixtures, performance code, nested removal, and nested assignment."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-long_session-032",
+      "materializedCaseSha256": "6181a3e2b101c74f2c671eaf2b00a1afd518c563926eae95cb659e91386a8e65",
+      "candidatePathsSha256": "d237c2dee069d3e1ea7b08231be04782ebea05c8ca15953ed603f8705e1c83a1",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "editor/js/libs/acorn/acorn.js",
+          "editor/js/libs/es-module-shims.js",
+          "editor/js/libs/codemirror/codemirror.js",
+          "manual/resources/tools/geo-picking/ogc-parser.js",
+          "src/renderers/webgl/WebGLState.js",
+          "examples/textures/lottie/24017-lottie-logo-animation.json"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "The Object3D and ObjectLoader patch sources are present. Noise labels are unrelated editor libraries, parsing assets, renderer state, and example animation data."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-long_session-033",
+      "materializedCaseSha256": "4eaeee3d58baf3746b0929563bfcaa140c102e69d3220d3c156b725755f02425",
+      "candidatePathsSha256": "fdac8b85efbe80559378b1cc9d474e36d178c5bffc232be629b55b41a48c6c0c",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "editor/js/libs/codemirror/codemirror.js",
+          "editor/js/libs/acorn/acorn.js",
+          "manual/resources/prettify.js",
+          "src/renderers/webgl/WebGLExtensions.js",
+          "src/renderers/webgl/WebGLShadowMap.js",
+          "docs/api/en/constants/Materials.html"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:34:00-04:00",
+        "notes": "A patched object subclass is present. Noise labels are unrelated editor libraries, manual formatting, WebGL infrastructure, and generated API documentation."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-long_session-034",
+      "materializedCaseSha256": "01ee220928cdc29e6bddb586ad141fdfff0ea52b0c327d7071c80b0590df07d9",
+      "candidatePathsSha256": "ac10978fa07bd0939fa23c1625c3b491c986002e2c073fc41f263bf0ef857f19",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "editor/js/Sidebar.Material.Program.js",
+          "editor/js/libs/esprima.js",
+          "editor/js/libs/codemirror/codemirror.js",
+          "docs/scenes/bones-browser.html",
+          "src/renderers/webgl/WebGLPrograms.js",
+          "examples/models/gltf/AnimatedMorphSphere/glTF/AnimatedMorphSphere.bin"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "The Sphere patch source is present. Noise labels are unrelated editor, parser, documentation, renderer, and model assets."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-long_session-035",
+      "materializedCaseSha256": "2d8c84d075cd6ab306ea203489453d1e6e4471045b07373bebef29a341e21c33",
+      "candidatePathsSha256": "5afc5a1f98ca2859f2fa7b2f71cc00ea0c50a05762f9878d956b89860e7f12d5",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "compat/test/browser/portals.test.js",
+          "compat/test/browser/events.test.js",
+          "compat/test/browser/findDOMNode.test.js",
+          "benches/scripts/analyze.js",
+          "benches/scripts/deopts.js",
+          "debug/test/browser/debug-compat.test.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "The child-diff and public type patch sources are present. Noise labels cover unrelated compat tests, benchmark tooling, and debug compatibility."
+      }
+    },
+    {
+      "id": "v02c-train-typescript-long_session-036",
+      "materializedCaseSha256": "4d077446ba07d6eaf7b72c90745ddcc7e15ac09474d77dbb4532bef31ea841a7",
+      "candidatePathsSha256": "6986e154b7f38a7a48b7b74cf2dc03a29ac754a44c7d8a2d1b17fd2d91d36640",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "compat/test/browser/forwardRef.test.js",
+          "compat/test/browser/memo.test.js",
+          "benches/scripts/prepare.js",
+          "benches/scripts/deopts.js",
+          "demo/stateOrderBug.js",
+          "demo/key_bug.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "The hook implementation and internal declaration patch sources are present. Noise labels cover unrelated compat tests, benchmark tooling, and demos."
+      }
+    },
+    {
+      "id": "v02c-train-go-source_localization-037",
+      "materializedCaseSha256": "1cd0e8bd96dc540fd9e3c54e0c9cc4a1799339675ff287ee343480835abd7594",
+      "candidatePathsSha256": "9d813212ccd11741f7e982ca9d577c1cd4ea9fbd7845563f275a0a569b15bd0c",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "internal/command/testdata/backend-change-multi-default-to-single/.terraform/terraform.tfstate",
+          "internal/command/testdata/backend-change-multi-to-multi/.terraform/terraform.tfstate",
+          "internal/lang/globalref/analyzer_meta_references_test.go",
+          "internal/builtin/providers/terraform/resource_data_test.go",
+          "internal/backend/remote-state/s3/backend_complete_test.go",
+          "internal/terraform/context_apply2_test.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "The fmt command patch source is present. Noise labels are unrelated backend state fixtures, global-reference, provider, remote-backend, and apply tests."
+      }
+    },
+    {
+      "id": "v02c-train-go-source_localization-038",
+      "materializedCaseSha256": "2e9ac3be62690c16af7c6833cdc37e0259dcf4a5ef832f59141f4946a5ec2398",
+      "candidatePathsSha256": "2aea32d44538d755a788a05b78d41317ad466773faf0a86c262d97afcb21f2d4",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "internal/registry/regsrc/module.go",
+          "internal/lang/funcs/crypto_test.go",
+          "internal/addrs/provider_test.go",
+          "internal/backend/remote-state/http/server_test.go",
+          "internal/command/cliconfig/credentials_test.go",
+          "internal/lang/funcs/cidr.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "The remote-exec provisioner patch source is present. Noise labels cover unrelated registry, language functions, provider addressing, backend server, and CLI credential behavior."
+      }
+    },
+    {
+      "id": "v02c-train-go-source_localization-039",
+      "materializedCaseSha256": "874bd9be995dddb21b4f87891a4cf5d92974ad75e93a231d92e23665120fad4b",
+      "candidatePathsSha256": "9be09c5664f1b8da0d83884046cdbf2b7988be2e3f628f8b95b1192a97f7c7cd",
+      "decision": {
+        "requiredSourceFiles": [
+          "internal/terraform/transform_attach_config_resource.go"
+        ],
+        "explicitNoiseFiles": [
+          "internal/command/testdata/login-oauth-server/main.go",
+          "internal/registry/response/module_versions.go",
+          "internal/command/views/init_test.go",
+          "internal/stacks/stackruntime/internal/stackeval/diagnostics_test.go",
+          "internal/provider-simple-v6/main/main.go",
+          "version/version.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "The manually confirmed official production source is absent from candidate@64 and remains labeled as a retrieval miss. Noise labels are unrelated login, registry, UI, stack diagnostics, provider fixture, and version code."
+      }
+    },
+    {
+      "id": "v02c-train-go-source_localization-040",
+      "materializedCaseSha256": "d80b2a5e4b88670e83665736e50a701682610bd2d2f7fca50950a1da160ba777",
+      "candidatePathsSha256": "bb940266e822f70e6d42995de031bd65dbb070ef798103d044ec0b38ca87921b",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "web/packages/teleport/src/config.test.ts",
+          "web/packages/teleport/src/Teleport.tsx",
+          "bpf/enhancedrecording/counter_test.bpf.c",
+          "gen/proto/js/prehog/v1/teleport_pb.js",
+          "lib/benchmark/db/postgres.go",
+          "assets/aws/cmd/update-ami-id/main.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "A Linux inventory metadata patch source is present. Noise labels cover unrelated web UI, BPF, generated telemetry, database benchmarking, and AWS asset tooling."
+      }
+    },
+    {
+      "id": "v02c-train-go-source_localization-041",
+      "materializedCaseSha256": "e137cfdb11aa6e3e27bec683d6ed5f9fa60eeb9d854935175cb5164d7e30b694",
+      "candidatePathsSha256": "80f981da85d16ac4f10a6712fef39f304d417f7fd1ccc246e607e12a2f6f9e96",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "ui/src/icons/MusicBrainz.js",
+          "core/agents/lastfm/client_test.go",
+          "core/agents/listenbrainz/auth_router_test.go",
+          "core/media_streamer_test.go",
+          "ui/src/dialogs/AddToPlaylistDialog.js",
+          "ui/src/common/useRating.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "Artist refresh model, persistence, and scanner patch sources are present. Noise labels cover unrelated UI, metadata agents, media streaming, playlist dialogs, and rating hooks."
+      }
+    },
+    {
+      "id": "v02c-train-go-source_localization-042",
+      "materializedCaseSha256": "de098ae94535d96137e0e246384f89b9b6273c2dad405ec5e61f109a1fa00a9e",
+      "candidatePathsSha256": "f93f294e3265715b455067a606096af4e44f3ead871991e4c4101f92b342eb42",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "lib/sshutils/scp/local.go",
+          "lib/benchmark/linear_test.go",
+          "lib/web/ui/perf_test.go",
+          "lib/client/keystore_test.go",
+          "tool/tctl/common/auth_command_test.go",
+          "lib/config/formatter.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "Database server, proxy, and tsh database patch sources are present. Noise labels cover unrelated SCP, benchmarking, web performance, keystore, auth CLI, and formatting behavior."
+      }
+    },
+    {
+      "id": "v02c-train-go-failure_first-043",
+      "materializedCaseSha256": "49f745739b2ee338861acc842b677f0f18d095d82095cb954f49b68d7fc203de",
+      "candidatePathsSha256": "f64961c43c26c2835bf7e4156b8f444c3d3d703e2a98db0d16df9351575e3bc5",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tpl/safe/safe.go",
+          "resources/image_test.go",
+          "navigation/menu_cache_test.go",
+          "config/defaultConfigProvider_test.go",
+          "markup/asciidocext/asciidocext_config/config.go",
+          "common/loggers/handlerdefault.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "The content-map page patch source is present. Noise labels cover unrelated template safety, images, menu cache, default configuration, AsciiDoc, and logging."
+      }
+    },
+    {
+      "id": "v02c-train-go-failure_first-044",
+      "materializedCaseSha256": "c6f0c3632e8d2ae21e50ceeb305cdfac5969d3c347d2157d51621821767fd816",
+      "candidatePathsSha256": "716d32dfce95ad8dde3d7e08da9eeed4d38938775ec709bc3f74c25aa04ed804",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "resources/image_test.go",
+          "identity/identityhash_test.go",
+          "tpl/safe/safe_test.go",
+          "common/herrors/file_error_test.go",
+          "markup/goldmark/goldmark_config/config.go",
+          "media/testdata/resource.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T13:42:00-04:00",
+        "notes": "The page-path patch source is present. Noise labels cover unrelated image, identity, template safety, file-error, Markdown configuration, and media fixture behavior."
+      }
+    },
+    {
+      "id": "v02c-train-go-failure_first-045",
+      "materializedCaseSha256": "1d78260dc3bda47c72bd31f0f9f35d64d0b759e2161d5c4f90c821c07bf23c4f",
+      "candidatePathsSha256": "2e282451be4c68d12debad80ae2c74ff8e752368d581920a7848a7ccc4b58fe4",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "create/skeletons/theme/content/_index.md",
+          "tpl/safe/safe.go",
+          "modules/config_test.go",
+          "deploy/deploy.go",
+          "tpl/openapi/openapi3/openapi3.go",
+          "markup/asciidocext/asciidocext_config/config.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:08:00-04:00",
+        "notes": "The content-map page patch source is present. Noise labels cover unrelated theme skeleton, template safety, module configuration, deployment, OpenAPI, and AsciiDoc behavior."
+      }
+    },
+    {
+      "id": "v02c-train-go-failure_first-046",
+      "materializedCaseSha256": "007ea78d8a838db3f9c47c021b3e70c941aceb688ea433f244b068e444f69015",
+      "candidatePathsSha256": "26e21aae0e99c84e29372483e3ecae0a232de69a69d4402def42d55108f1a8a4",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "hugolib/datafiles_test.go",
+          "common/urls/baseURL_test.go",
+          "common/loggers/logger.go",
+          "modules/module.go",
+          "cache/filecache/filecache.go",
+          "hugolib/disableKinds_test.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:08:00-04:00",
+        "notes": "The content-map page patch source is present. Noise labels cover unrelated data files, base URLs, logging, modules, file caching, and disabled-kind behavior."
+      }
+    },
+    {
+      "id": "v02c-train-go-failure_first-047",
+      "materializedCaseSha256": "f252a7cecbeb096b3fe72f70fd40b0f72889fc196cb3a6ebefb3297f1253065c",
+      "candidatePathsSha256": "33b20b122cadc8c4206d8ef724589ddc4d34cae451430d759b7296c5565342cc",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "media/testdata/resource.js",
+          "resources/image_test.go",
+          "markup/goldmark/render_hooks.go",
+          "lazy/once.go",
+          "hugolib/menu_test.go",
+          "common/herrors/errors_test.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:08:00-04:00",
+        "notes": "The page-group implementation patch source is present. Noise labels cover unrelated media, images, Markdown hooks, lazy initialization, menus, and error helpers."
+      }
+    },
+    {
+      "id": "v02c-train-go-failure_first-048",
+      "materializedCaseSha256": "9de2c5d3dc061e480f914bf30c720db41ac3c214655ccb4b51ce0e7873d70540",
+      "candidatePathsSha256": "c0c206d3174157e39c8c80713f3056a1ca1b4521e25c5f1f8942626de228c806",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "common/hugo/version_test.go",
+          "identity/identity_test.go",
+          "releaser/releaser.go",
+          "livereload/hub.go",
+          "config/privacy/privacyConfig.go",
+          "docs/_vendor/github.com/gohugoio/gohugoioTheme/layouts/partials/svg/hugo-h-only.svg"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:08:00-04:00",
+        "notes": "The Goldmark blockquote patch source is present. Noise labels cover unrelated versioning, identity, release, live reload, privacy, and documentation assets."
+      }
+    },
+    {
+      "id": "v02c-train-go-long_session-049",
+      "materializedCaseSha256": "8bcec0f0315241fbde7c4cdb9a36735d6da56a9f27981d26a8bdd1f715513773",
+      "candidatePathsSha256": "f501edcd49b2e34afb73c09f1286203793e0101ae643928b805527ca70e01310",
+      "decision": {
+        "requiredSourceFiles": [
+          "internal/terraform/marks.go",
+          "internal/terraform/node_resource_abstract_instance.go",
+          "internal/terraform/node_resource_plan_partialexp.go"
+        ],
+        "explicitNoiseFiles": [
+          "internal/backend/local/test.go",
+          "internal/command/jsonformat/computed/renderers/sensitive_block.go",
+          "internal/getmodules/moduleaddrs/detect_gcs_test.go",
+          "internal/getmodules/moduleaddrs/detect_git_test.go",
+          "internal/command/jsonformat/plan_test.go",
+          "internal/cloud/e2e/apply_auto_approve_test.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:08:00-04:00",
+        "notes": "All three manually confirmed production patch sources are absent from candidate@64 and remain labeled as retrieval misses. Noise labels cover unrelated backend, JSON rendering, module-address detection, plan formatting, and cloud tests."
+      }
+    },
+    {
+      "id": "v02c-train-go-long_session-050",
+      "materializedCaseSha256": "7dcb4b9b6ffffa99ca458e3027d2597e5f7a55ba395b2828b5dd7fe430e728d0",
+      "candidatePathsSha256": "d76fac5fe6dd2cc1c55e3bd925ee35140bc8f91d52499448c99aa7319376efb6",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "internal/states/statemgr/migrate.go",
+          "internal/backend/remote-state/s3/validate.go",
+          "internal/command/views/validate_test.go",
+          "version/version_test.go",
+          "internal/stacks/tfstackdata1/tfstackdata1.pb.go",
+          "internal/command/views/output.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:08:00-04:00",
+        "notes": "A core validation patch source is present. Noise labels cover unrelated state migration, backend validation, command presentation, versioning, generated stack data, and output views."
+      }
+    },
+    {
+      "id": "v02c-train-go-long_session-051",
+      "materializedCaseSha256": "8c8e8526350c509ec5fec963387d157669f02d1278f1e115a56cab5010bd5c7c",
+      "candidatePathsSha256": "3270d49e9b209a715cd99c003a06f19e946c881c8d10b962ff664212f90e767d",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "lib/auth/resetpasswordtoken_test.go",
+          "lib/web/static_test.go",
+          "lib/auth/oidc_test.go",
+          "lib/auth/password_test.go",
+          "lib/web/ui/perf_test.go",
+          "integration/db_integration_test.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:08:00-04:00",
+        "notes": "Cache, reverse-tunnel, and configuration patch sources are present. Noise labels cover unrelated authentication, static web, UI performance, and database integration tests."
+      }
+    },
+    {
+      "id": "v02c-train-go-long_session-052",
+      "materializedCaseSha256": "8ca6db2e7c35be13c706dfa18d63e88fde9afcbe48fe726c4aeec865ef3a5e31",
+      "candidatePathsSha256": "9258b126d0968386d9199b17df5d8054dc2abe9763e489007f5c0411c80f4367",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "lib/auth/auth_test.go",
+          "lib/services/license_test.go",
+          "tool/tctl/common/user_command_test.go",
+          "lib/bpf/bpf_test.go",
+          "assets/aws/files/system/teleport.service",
+          "examples/aws/eks/teleport.yaml"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:08:00-04:00",
+        "notes": "Client benchmark and tsh patch sources are present. Noise labels cover unrelated auth, licensing, user CLI, BPF, service packaging, and EKS configuration."
+      }
+    },
+    {
+      "id": "v02c-train-go-long_session-053",
+      "materializedCaseSha256": "8beb36e3e21fd6c8d3d7f4d3d76fc2e38aae8f154843cc487d20f7164894be6c",
+      "candidatePathsSha256": "f86c8b7755a490ef69a108f393691b1ca960c02686d030fb2a2e379fa5b424f0",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "lib/client/db/dbcmd/error.go",
+          "lib/auth/webauthn/attestation_test.go",
+          "lib/teleterm/api/protogen/js/v1/service_pb.d.ts",
+          "dronegen/buildbox.go",
+          "lib/events/filesessions/fileuploader.go",
+          "lib/srv/db/cloud/users/users_test.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:08:00-04:00",
+        "notes": "The web session patch source is present. Noise labels cover unrelated database CLI, WebAuthn, generated Teleterm types, build generation, file uploads, and database-user tests."
+      }
+    },
+    {
+      "id": "v02c-train-go-long_session-054",
+      "materializedCaseSha256": "081ce86da972bd1762357bb70d073ce81d2ecc5c997673ce2e667f68b4061104",
+      "candidatePathsSha256": "cb8ecc5c3fa5b3dfe01714cc1610293928c22df8aa5ee44cd9e0dfc9edb0bedf",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "core/agents/spotify/responses.go",
+          "core/agents/lastfm/lastfm.go",
+          "ui/src/dialogs/HelpDialog.js",
+          "persistence/artist_repository_test.go",
+          "core/auth/auth_test.go",
+          "ui/src/album/AlbumDetails.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:08:00-04:00",
+        "notes": "Event, request, constants, and media-annotation patch sources are present. Noise labels cover unrelated metadata agents, help UI, persistence tests, authentication, and album presentation."
+      }
+    },
+    {
+      "id": "v02c-train-java-source_localization-055",
+      "materializedCaseSha256": "427bf5e3ec0f5febfe54c0fe1430bbe08bc6eb32c087f2d26c24b19ea2790d0b",
+      "candidatePathsSha256": "1b62e21bbd0ca2858a2156e10cddb5491275d90a18402a3a1f5db1b3b32ae213",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/typeinference/LeastUpperBoundLogic.java",
+          "javaparser-core-generators/src/main/java/com/github/javaparser/generator/CompilationUnitGenerator.java",
+          "javaparser-core/src/main/java/com/github/javaparser/ast/validator/postprocessors/Java10PostProcessor.java",
+          "javaparser-core/src/main/java/com/github/javaparser/printer/SourcePrinter.java",
+          "javaparser-core-testing/src/test/java/com/github/javaparser/version/Java10PostProcessorTest.java",
+          "javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/resolution/typeinference/bounds/ThrowsBound.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:08:00-04:00",
+        "notes": "The AST Node patch source is present. Noise labels cover unrelated type inference, code generation, postprocessing, source printing, and associated tests."
+      }
+    },
+    {
+      "id": "v02c-train-java-source_localization-056",
+      "materializedCaseSha256": "9ce2095131a45c697d00aad8665988da8220a210f03c0330d6bb1ff64672e894",
+      "candidatePathsSha256": "d279f23a842b6267e1b3ebe752e51036c5238148764d53a9d7c6aa33999d9745",
+      "decision": {
+        "requiredSourceFiles": [
+          "javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor.java"
+        ],
+        "explicitNoiseFiles": [
+          "javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/other/GrammarLetterGenerator.java",
+          "javaparser-core/src/main/java/com/github/javaparser/printer/configuration/Indentation.java",
+          "javaparser-core-generators/src/main/java/com/github/javaparser/generator/CompilationUnitGenerator.java",
+          "javaparser-core-generators/src/main/java/com/github/javaparser/generator/core/visitor/VoidVisitorGenerator.java",
+          "javaparser-core/src/main/java/com/github/javaparser/ast/comments/LineComment.java",
+          "javaparser-core-testing-bdd/src/test/java/com/github/javaparser/steps/CommentParsingSteps.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:15:00-04:00",
+        "notes": "The manually confirmed TypeExtractor production source is absent from candidate@64 and remains labeled as a retrieval miss. Noise labels cover unrelated grammar generation, printing, visitor generation, and comment handling."
+      }
+    },
+    {
+      "id": "v02c-train-java-source_localization-057",
+      "materializedCaseSha256": "e6735a34f62db8c43aa2c2085421544cc58ba1c7c4fc591ede29060276667bb9",
+      "candidatePathsSha256": "be43959423cc03d97d59bd71d7ea9ce53acc33bb0c4b4eb579b701178b887201",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/installer/lombok/installer/eclipse/STSLocationProvider.java",
+          "src/core/lombok/core/PublicApiCreatorApp.java",
+          "src/core/lombok/core/debug/DebugSnapshotStore.java",
+          "src/bindings/mapstruct/lombok/mapstruct/NotifierHider.java",
+          "src/core/lombok/core/configuration/ConfigurationFile.java",
+          "src/core/lombok/eclipse/handlers/HandleEqualsAndHashCode.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:15:00-04:00",
+        "notes": "The Javac val handler patch source is present. Noise labels cover unrelated installation, API generation, debugging, MapStruct binding, configuration, and Eclipse equality generation."
+      }
+    },
+    {
+      "id": "v02c-train-java-source_localization-058",
+      "materializedCaseSha256": "9fda2ec49019055be077f94803c963fbd671a4bbec9632e60af3aec55da127f0",
+      "candidatePathsSha256": "5f0d26d76c4a242a7cacb8422179ee7e4fee4b7a1b8497769a490f0c7e091f6d",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/installer/lombok/installer/WindowsDriveInfo.java",
+          "winsrc/lombok_installer_WindowsDriveInfo.c",
+          "src/bindings/mapstruct/lombok/mapstruct/NotifierHider.java",
+          "src/core/lombok/core/handlers/SneakyThrowsAndCleanupDependencyInfo.java",
+          "test/eclipse/src/lombok/eclipse/edit/SelectTest.java",
+          "src/core/lombok/experimental/UtilityClass.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:15:00-04:00",
+        "notes": "Both SuperBuilder handler patch sources are present. Noise labels cover unrelated installation, MapStruct, cleanup dependencies, Eclipse selection, and utility-class behavior."
+      }
+    },
+    {
+      "id": "v02c-train-java-source_localization-059",
+      "materializedCaseSha256": "c91247fd19afe1a4260a32b26f8ef132ec358f18e6ed3016459a88d343f8f1fc",
+      "candidatePathsSha256": "3bc10f18e4b17168da784f236637db4cf54a89befe9307ec955c0ea1baac987a",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "docker/shared/modules/src/main/java/foo/HelloWorld.java",
+          "docker/shared/classpath/src/main/java/SneakyThrowsExample.java",
+          "src/installer/lombok/installer/WindowsDriveInfo.java",
+          "src/delombok/lombok/delombok/PrettyPrinter.java",
+          "src/core/lombok/bytecode/ClassFileMetaData.java",
+          "test/pretty/resource/after/ForLoop.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:15:00-04:00",
+        "notes": "The Javac extension-method handler patch source is present. Noise labels cover unrelated Docker examples, installation, pretty printing, bytecode metadata, and formatting fixtures."
+      }
+    },
+    {
+      "id": "v02c-train-java-source_localization-060",
+      "materializedCaseSha256": "142ae577029be7374ddad2e33e971ebe7d82127742d11c485b6504ebad6441ea",
+      "candidatePathsSha256": "9ff0e022abf93074d3d677bdc02a529106c754e8e6a9a0d8b09b285b6ba901d1",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/eclipse/src/lombok/eclipse/cleanup/CleanupTest.java",
+          "src/core/lombok/core/runtimeDependencies/RuntimeDependencyInfo.java",
+          "src/installer/lombok/installer/InstallerGUI.java",
+          "src/core/lombok/bytecode/ClassFileMetaData.java",
+          "src/core/lombok/Builder.java",
+          "src/core/lombok/EqualsAndHashCode.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:15:00-04:00",
+        "notes": "The UtilityClass handler and Javac symbol stub patch sources are present. Noise labels cover unrelated cleanup, runtime dependencies, installer UI, bytecode, builder, and equality generation."
+      }
+    },
+    {
+      "id": "v02c-train-java-failure_first-061",
+      "materializedCaseSha256": "46f47a4ba4c291268d341b079b1749f50847e9b8356d6e4044c084b4cf0ef2db",
+      "candidatePathsSha256": "163e2f4cc38a9402eb0a91a443c0f50868dbb39fce69e75924e255983b6392aa",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "gson/src/test/java/com/google/gson/VersionExclusionStrategyTest.java",
+          "extras/src/test/java/com/google/gson/graph/GraphAdapterBuilderTest.java",
+          "metrics/src/main/java/com/google/gson/metrics/ParseBenchmark.java",
+          "proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java",
+          "extras/src/main/java/com/google/gson/typeadapters/UtcDateTypeAdapter.java",
+          "codegen/src/main/java/com/google/gson/codegen/JavaWriter.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:15:00-04:00",
+        "notes": "The JsonTreeReader patch source is present. Noise labels cover unrelated exclusion, graph adapters, benchmarking, protobuf, date adapters, and code generation."
+      }
+    },
+    {
+      "id": "v02c-train-java-failure_first-062",
+      "materializedCaseSha256": "8d6a2332b528457a2c60d8577afba6ee64a6793c3690dc5ab0ed45fc87be3d9c",
+      "candidatePathsSha256": "6416c564b0f176428fc58fea2f609749e79590f51b7eaa05adc48e8f99ed47cb",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "gson/src/test/java/com/google/gson/FieldAttributesTest.java",
+          "gson/src/test/java/com/google/gson/DefaultDateTypeAdapterTest.java",
+          "extras/src/test/java/com/google/gson/graph/GraphAdapterBuilderTest.java",
+          "metrics/src/main/java/com/google/gson/metrics/CollectionsDeserializationBenchmark.java",
+          "codegen/src/main/java/com/google/gson/codegen/JavaWriter.java",
+          "proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:15:00-04:00",
+        "notes": "The JsonWriter patch source is present. Noise labels cover unrelated field metadata, dates, graph adapters, benchmarking, code generation, and protobuf."
+      }
+    },
+    {
+      "id": "v02c-train-java-failure_first-063",
+      "materializedCaseSha256": "1fa77d2a4016205c2ea09e4cfb63aeddc610c8d764fc0e419b3e74366e0b3950",
+      "candidatePathsSha256": "bba48a66a46651fd46c55544379aaff868c621c1871c12b192fce9078acbf7da",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "gson/src/test/java/com/google/gson/internal/LinkedTreeMapTest.java",
+          "gson/src/test/java/com/google/gson/JsonObjectTest.java",
+          "proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java",
+          "metrics/src/main/java/com/google/gson/metrics/ParseBenchmark.java",
+          "extras/src/main/java/com/google/gson/graph/GraphAdapterBuilder.java",
+          "codegen/src/main/java/com/google/gson/codegen/JavaWriter.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:15:00-04:00",
+        "notes": "The default date adapter patch source is present. Noise labels cover unrelated maps, JSON objects, protobuf, benchmarking, graph adapters, and code generation."
+      }
+    },
+    {
+      "id": "v02c-train-java-failure_first-064",
+      "materializedCaseSha256": "37364a8b6e6ab7394a76f865954c3ae71cb5767eef18fd7886055c0a28efc516",
+      "candidatePathsSha256": "c5b552e892e654515635ae9d77bc202e481840c00e3d28c77e0f711b05643a42",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java",
+          "codegen/src/main/java/com/google/gson/codegen/JavaWriter.java",
+          "extras/src/main/java/com/google/gson/graph/GraphAdapterBuilder.java",
+          "metrics/src/main/java/com/google/gson/metrics/CollectionsDeserializationBenchmark.java",
+          "gson/src/main/java/com/google/gson/internal/UnsafeAllocator.java",
+          "gson/src/main/java/com/google/gson/internal/bind/DefaultDateTypeAdapter.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:15:00-04:00",
+        "notes": "The field-naming policy patch source is present. Noise labels cover unrelated protobuf, code generation, graph adapters, benchmarking, allocation, and date adaptation."
+      }
+    },
+    {
+      "id": "v02c-train-java-failure_first-065",
+      "materializedCaseSha256": "da5192a09ac5929dd85e26c94ada9da678b261828c10b087c8023e294ae03f4f",
+      "candidatePathsSha256": "f5436c4699c8fa396c0b1689fa5e6cbfe4d9501ffe402fd6862c6d89e0ca5e3e",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "gson/src/test/java/com/google/gson/functional/JsonParserTest.java",
+          "gson/src/test/java/com/google/gson/JsonArrayTest.java",
+          "gson/src/main/java/com/google/gson/internal/reflect/ReflectionHelper.java",
+          "extras/src/main/java/com/google/gson/graph/GraphAdapterBuilder.java",
+          "metrics/src/main/java/com/google/gson/metrics/ParseBenchmark.java",
+          "gson/src/main/java/com/google/gson/internal/LinkedTreeMap.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:15:00-04:00",
+        "notes": "The ISO-8601 utility patch source is present. Noise labels cover unrelated parsing, arrays, reflection, graph adapters, benchmarking, and tree maps."
+      }
+    },
+    {
+      "id": "v02c-train-java-failure_first-066",
+      "materializedCaseSha256": "ebc6edc1e79408e4314f1b0668f74cfc84535debdd6821bf39a694be46a9bfb4",
+      "candidatePathsSha256": "bda26a1a03e341c31bc9f89c29de2a250bab825fed0555ba024bd66f6ac28ca6",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "gson/src/test/java/com/google/gson/functional/SerializedNameTest.java",
+          "gson/src/test/java/com/google/gson/FieldNamingPolicyTest.java",
+          "proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java",
+          "metrics/src/main/java/com/google/gson/metrics/BagOfPrimitives.java",
+          "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java",
+          "gson/src/test/java/com/google/gson/stream/JsonReaderPathTest.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:15:00-04:00",
+        "notes": "The JsonPrimitive patch source is present. Noise labels cover unrelated serialized names, field naming, protobuf, benchmarking, post-construction adapters, and reader paths."
+      }
+    },
+    {
+      "id": "v02c-train-java-long_session-067",
+      "materializedCaseSha256": "9f979694452da0c4d2eeb6c988ce622f35452db06504f6c9458a17a6f833b858",
+      "candidatePathsSha256": "f40285ff41819c99ed9b5a9ca52414f769dcdccdc84db7702b3b06408cb92ff5",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "gson/src/test/java/com/google/gson/FieldAttributesTest.java",
+          "gson/src/test/java/com/google/gson/FieldNamingPolicyTest.java",
+          "extras/src/test/java/com/google/gson/graph/GraphAdapterBuilderTest.java",
+          "codegen/src/main/java/com/google/gson/codegen/JavaWriter.java",
+          "metrics/src/main/java/com/google/gson/metrics/ParseBenchmark.java",
+          "gson/src/main/java/com/google/gson/internal/sql/SqlDateTypeAdapter.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "Both reader patch sources are present. Noise labels cover unrelated field naming, graph adapters, code generation, benchmarking, and SQL dates."
+      }
+    },
+    {
+      "id": "v02c-train-java-long_session-068",
+      "materializedCaseSha256": "5fba33daad9e0796f0c1488a5e6900baa8157d26c043b65fe2b8e553c40c65e5",
+      "candidatePathsSha256": "1e85e903a265feeb0c7650b755a19eb89541e53319dc021b975d6ae9b1795c28",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "gson/src/test/java/com/google/gson/JavaSerializationTest.java",
+          "gson/src/test/java/com/google/gson/DefaultInetAddressTypeAdapterTest.java",
+          "proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java",
+          "metrics/src/main/java/com/google/gson/metrics/NonUploadingCaliperRunner.java",
+          "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java",
+          "gson/src/main/java/com/google/gson/internal/ReflectionAccessFilterHelper.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "The Gson and primitive TypeAdapters patch sources are present. Noise labels cover unrelated serialization, network addresses, protobuf, benchmarking, post-construction, and reflection access."
+      }
+    },
+    {
+      "id": "v02c-train-java-long_session-069",
+      "materializedCaseSha256": "f372a406b9145e3283f0a9c90c33081e95eb81c68486aed04c0eefab6c1bdd55",
+      "candidatePathsSha256": "6a59c48f26ba516deea72ad41fd9c634bf479b05217647dd417ff8a71741b3c6",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "extras/src/main/java/com/google/gson/graph/GraphAdapterBuilder.java",
+          "proto/src/main/java/com/google/gson/protobuf/ProtoTypeAdapter.java",
+          "gson/src/main/java/com/google/gson/internal/sql/SqlTypesSupport.java",
+          "gson/src/main/java/com/google/gson/internal/reflect/ReflectionHelper.java",
+          "gson/src/test/java/com/google/gson/functional/CollectionTest.java",
+          "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "The GsonBuilder patch source is present. Noise labels cover unrelated graph, protobuf, SQL, reflection, collections, and post-construction adapters."
+      }
+    },
+    {
+      "id": "v02c-train-java-long_session-070",
+      "materializedCaseSha256": "77d13819140e3c8e466e39226fe76b0a77e4e2c3854d711f31d69b30e0d28d54",
+      "candidatePathsSha256": "2661d4fbb113d41f144b8b52228a47d08ecd9345187b96c0448e3a23563a3ebb",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/transform/resource/after-delombok/ValDelegateMethodReference.java",
+          "src/utils/lombok/javac/java6/CommentCollectingParser.java",
+          "src/utils/lombok/javac/java7/CommentCollectingParser.java",
+          "docker/shared/modules/src/main/java/foo/HelloWorld.java",
+          "test/transform/resource/after-delombok/BuilderWithDeprecatedAnnOnly.java",
+          "src/eclipseAgent/lombok/eclipse/agent/PatchExtensionMethod.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "Both field-default handler patch sources are present. Noise labels cover unrelated val delegation, comment parsing, Docker examples, builder annotations, and extension methods."
+      }
+    },
+    {
+      "id": "v02c-train-java-long_session-071",
+      "materializedCaseSha256": "70695fbd9029fc603de4e6806d2c487f9946e891e26a8c4577687ebd1e327a85",
+      "candidatePathsSha256": "56b3ce9902818d0ab6b2e037ef9210e3cbf6e84b2c72818f5cdcffc4fc1268b6",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/delombok/lombok/delombok/PrettyPrinter.java",
+          "src/stubs/com/sun/tools/javac/parser/ScannerFactory.java",
+          "src/utils/lombok/javac/TreeMirrorMaker.java",
+          "src/delombok/lombok/delombok/FormatPreferenceScanner.java",
+          "src/installer/lombok/installer/InstallerGUI.java",
+          "test/bytecode/resource/PostCompileSneaky.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "Both handler utility patch sources are present. Noise labels cover unrelated printing, scanning, tree mirroring, installation, and bytecode fixtures."
+      }
+    },
+    {
+      "id": "v02c-train-java-long_session-072",
+      "materializedCaseSha256": "2307ac2f4009707355d453524f91e8b2578ea9254530ef585622edab1cb14733",
+      "candidatePathsSha256": "7fa33dbc74ec297ec4517a897d25813f501b311af4a89e7b8ce255cb74e9d59f",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "docker/shared/modules/src/main/java/foo/HelloWorld.java",
+          "src/installer/lombok/installer/WindowsDriveInfo.java",
+          "src/core/lombok/bytecode/PostCompilerApp.java",
+          "src/core/lombok/core/configuration/LogDeclaration.java",
+          "src/utils/lombok/javac/CommentInfo.java",
+          "src/core/lombok/Cleanup.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "Both builder handler patch sources are present. Noise labels cover unrelated examples, installation, bytecode post-processing, logging configuration, comments, and cleanup."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-source_localization-073",
+      "materializedCaseSha256": "63c88a797770b4e28f1bb2166759f964019391ce1fb3e634bba2ec36584ce10c",
+      "candidatePathsSha256": "f3988e7a93d9029ec5a145a291e7a3eb916c63a9aa662a26cbde2dfef0a11b26",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/thirdparty/Fuzzer/FuzzerIO.cpp",
+          "benchmarks/src/benchmarks.cpp",
+          "test/cmake_add_subdirectory/project/main.cpp",
+          "test/cmake_fetch_content/project/main.cpp",
+          "test/src/fuzzer-parse_bson.cpp",
+          "test/thirdparty/Fuzzer/FuzzerCorpus.h"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "The amalgamated JSON patch source is present. Noise labels cover unrelated fuzzing, benchmarking, CMake integration, and binary-format fuzzers."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-source_localization-074",
+      "materializedCaseSha256": "92249cf2423487095fba3fb1d1a43d0b679e0237d245b5019fabad57efb0509a",
+      "candidatePathsSha256": "edff4ea9b6c3cddd0bc4a8c06db4dc0b5e533ce732850d5de260feaf602def3a",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          ".github/CONTRIBUTING.md",
+          "README.md",
+          "third_party/amalgamate/README.md",
+          "test/thirdparty/Fuzzer/FuzzerTracePC.h",
+          "test/thirdparty/Fuzzer/FuzzerIOWindows.cpp",
+          "doc/docset/README.md"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "The relevant serializer, conversion, meta, and JSON patch sources are present. Noise labels are contribution/docs files and unrelated fuzzing infrastructure."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-source_localization-075",
+      "materializedCaseSha256": "3d64f91579d2d2623f69b2c36ffb0f31cfd6fa8b8577c4dddc687c910c595667",
+      "candidatePathsSha256": "f021a3ef2f8e25ad009c49f93758f201121c60640b93c44a5540a3d399777f1d",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benchmarks/thirdparty/benchmark/src/cycleclock.h",
+          "benchmarks/thirdparty/benchmark/src/re.h",
+          "benchmarks/thirdparty/benchmark/src/timers.cc",
+          "benchmarks/thirdparty/benchmark/tools/strip_asm.py",
+          "test/thirdparty/Fuzzer/FuzzerRandom.h",
+          "test/thirdparty/Fuzzer/FuzzerIOWindows.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "Iterator, pointer, macro, serializer, and JSON patch sources are present. Noise labels cover unrelated benchmark and fuzzing infrastructure."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-source_localization-076",
+      "materializedCaseSha256": "98c1aedc80bc704d86387a47550521dcfc2e770b7c01de85f1abda2b62d1ac6d",
+      "candidatePathsSha256": "04461f9b58761440ad01c51c47552900348abea9d2fc25359333ea46d45cc633",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benchmarks/thirdparty/benchmark/src/complexity.cc",
+          "benchmarks/thirdparty/benchmark/src/console_reporter.cc",
+          "benchmarks/thirdparty/benchmark/tools/compare.py",
+          "benchmarks/thirdparty/benchmark/tools/strip_asm.py",
+          "test/thirdparty/imapdl/filterbr.py",
+          "test/thirdparty/Fuzzer/test/CounterTest.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "The input lexer patch source is present. Noise labels cover unrelated benchmarking, external IMAP tooling, and fuzzer tests."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-source_localization-077",
+      "materializedCaseSha256": "68ac8d20eb5f386cca23700479563faed55852230b7c1d1ea2c255c9bea7ddba",
+      "candidatePathsSha256": "e29a495969eb78f971e2f03686fb3b9b2bf1daffe3f9638aa880a963cd9bdb1f",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "dependencies/jsoncppdist/json/json.h",
+          "dependencies/jsoncppdist/jsoncpp.cpp",
+          "benchmark/bench_dom_api.cpp",
+          "benchmark/json2msgpack/rapidjson.h",
+          "singleheader/amalgamate.py",
+          "fuzz/fuzz_print_json.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:22:00-04:00",
+        "notes": "The DOM and ondemand pointer error patch sources are present. Noise labels cover unrelated third-party JSON, benchmarks, amalgamation, and fuzz printing."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-source_localization-078",
+      "materializedCaseSha256": "15d2363f2a967159fa793b805ce5ebcaec1662da58bc6fc07e2c3ad2d7ed567f",
+      "candidatePathsSha256": "e1a4f7b03e2b35c9e8738a78290d43ef5a5a16fd54b9371968f55dfeea850001",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/fuzzing/standalone_fuzz_target_runner.cpp",
+          "test/fuzzing/server_fuzzer.cc",
+          "cmake/FindBrotli.cmake",
+          "test/gtest/gtest-all.cc",
+          "example/benchmark.cc",
+          "test/proxy/docker-compose.yml"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The httplib header patch source is present. Noise labels cover unrelated fuzzing, Brotli discovery, test framework code, benchmarking, and proxy infrastructure."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-failure_first-079",
+      "materializedCaseSha256": "03e4e84546fe6ffeabb6a4b771cc443a6c8743abacf69a9e4e2dec4826fb3500",
+      "candidatePathsSha256": "dd07ad67c4873b6173cd6995b8a15c313279c63540b70291695e5b7646395f1d",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/thirdparty/Fuzzer/FuzzerInternal.h",
+          "test/thirdparty/Fuzzer/FuzzerCorpus.h",
+          "test/thirdparty/Fuzzer/FuzzerDictionary.h",
+          "test/thirdparty/Fuzzer/FuzzerSHA1.h",
+          "test/thirdparty/fifo_map/LICENSE.MIT",
+          "benchmarks/src/benchmarks.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "All official JSON patch sources represented in the candidate set remain source evidence. Noise labels cover unrelated fuzzer internals, dictionaries, hashing, licensing, and benchmarks."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-failure_first-080",
+      "materializedCaseSha256": "20246d038aae5cb8023ded9f77b45e2e6dbb60e4ccb9e547a4e48dc53f6ccb0b",
+      "candidatePathsSha256": "8d1a24c33d16f2bf18c4c96105d842390c682f641d560e353722fdf92667aa89",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/thirdparty/Fuzzer/FuzzerMutate.h",
+          "test/thirdparty/Fuzzer/FuzzerCrossOver.cpp",
+          "test/thirdparty/Fuzzer/FuzzerIOWindows.cpp",
+          "doc/mkdocs/docs/api/basic_json/operator_eq.md",
+          "benchmarks/src/benchmarks.cpp",
+          "test/thirdparty/Fuzzer/FuzzerCorpus.h"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The iterator implementation patch sources are present. Noise labels cover unrelated fuzzer mechanics, equality documentation, and benchmark code."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-failure_first-081",
+      "materializedCaseSha256": "8b2af815841e8508a957a21884605b32c3d9e7012050b4b7a6993ca4a7c3a33e",
+      "candidatePathsSha256": "ffb94c2a3e6c8b01790225ba4761243236e03ee73c0e1d76f4b1ef339e7daad3",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/thirdparty/Fuzzer/FuzzerInternal.h",
+          "test/thirdparty/Fuzzer/FuzzerDictionary.h",
+          "test/thirdparty/Fuzzer/FuzzerSHA1.h",
+          "test/thirdparty/Fuzzer/test/FuzzerUnittest.cpp",
+          "benchmarks/src/benchmarks.cpp",
+          "test/cmake_target_include_directories/project/Foo.hpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The ordered-map patch source is present. Noise labels cover unrelated fuzzing, benchmarks, and a CMake include-directory fixture."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-failure_first-082",
+      "materializedCaseSha256": "936411097cb4ab11d5dcdb70cf36b9f9fc94b7af96d8ee00d1044772a1a8976d",
+      "candidatePathsSha256": "e8e76506cb1ebd908878d6866f56c02a96b6a7e8b9d2a111a3bef784bbfc893b",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          ".github/CONTRIBUTING.md",
+          "README.md",
+          "third_party/amalgamate/README.md",
+          "doc/docset/README.md",
+          "test/thirdparty/Fuzzer/FuzzerIOWindows.cpp",
+          "test/thirdparty/Fuzzer/FuzzerDictionary.h"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The conversion and type-trait patch sources are present. Noise labels are contribution and documentation files plus unrelated fuzzer I/O and dictionaries."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-failure_first-083",
+      "materializedCaseSha256": "ff58da384727b1e971b29664f28dcc4b376522f6922fc603161a24f1ffd22dd2",
+      "candidatePathsSha256": "ab45eb260ea408e56c675926aa442b54e5408bef82fb1a72194224df7faf6783",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          ".github/CONTRIBUTING.md",
+          "README.md",
+          "third_party/amalgamate/README.md",
+          "test/thirdparty/Fuzzer/FuzzerMerge.cpp",
+          "test/thirdparty/Fuzzer/FuzzerMain.cpp",
+          "test/src/unit-meta.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The primary JSON header patch source is present. Noise labels cover unrelated docs, fuzzing entry points, and meta tests."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-failure_first-084",
+      "materializedCaseSha256": "6bdc4bef88f39a64b96786d1bd27a87de2db5760d4f62f4590d0248c747b7d9a",
+      "candidatePathsSha256": "237e83281cba1a711842378d7701ee526afec669ec83feabe50f1b15bfe5c0c4",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/thirdparty/Fuzzer/FuzzerInternal.h",
+          "tests/cmake_import/project/main.cpp",
+          "tests/cmake_fetch_content/project/main.cpp",
+          "tools/gdb_pretty_printer/nlohmann-json.py",
+          "tools/serve_header/serve_header.py",
+          "tools/generate_natvis/generate_natvis.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The JSON header patch source is present. Noise labels cover unrelated fuzzer, CMake integration, pretty-printer, header-serving, and visualization tooling."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-long_session-085",
+      "materializedCaseSha256": "6e09575c204f60a33dac0e72e63887a75b8f272d47ed160d597c581f2048348e",
+      "candidatePathsSha256": "4b87120810b86f36f01e4318fea8a08a785a1f9806fc621fd9c6259924f240d2",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/thirdparty/Fuzzer/FuzzerIO.cpp",
+          "tests/thirdparty/Fuzzer/FuzzerMerge.cpp",
+          "tests/thirdparty/Fuzzer/FuzzerDriver.cpp",
+          "tools/serve_header/serve_header.py",
+          "tools/amalgamate/amalgamate.py",
+          "tests/thirdparty/fifo_map/fifo_map.hpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The JSON header patch source is present. Noise labels cover unrelated fuzzer machinery, release tooling, and the third-party FIFO map."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-long_session-086",
+      "materializedCaseSha256": "b8021ff6d9e6c5e0238114b5c9cc534058bdc205b8fa63d669a6fd2161c0516f",
+      "candidatePathsSha256": "9eece72d38791f7e9b0b312a7fc43f217f6fee4098fb11f36ba52a3fed639aef",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/thirdparty/Fuzzer/FuzzerCorpus.h",
+          "tools/cpplint/cpplint.py",
+          "tools/serve_header/serve_header.py",
+          "tools/amalgamate/amalgamate.py",
+          "tests/thirdparty/Fuzzer/FuzzerDriver.cpp",
+          "tests/src/unit-inspection.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The binary-reader patch source is present. Noise labels cover unrelated fuzzing, linting, release tooling, and inspection tests."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-long_session-087",
+      "materializedCaseSha256": "521882bb354dd2c3ffd4be912e5fbd27b722f76dc8c3c4b5f0517246e15adbcb",
+      "candidatePathsSha256": "82d2a3e39f2f7557be4b05c83943212e64d35bc2825472ada6022efd0aae03f4",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/thirdparty/Fuzzer/test/fuzzer-fdmask.test",
+          "tests/thirdparty/Fuzzer/test/afl-driver-stderr.test",
+          "tests/thirdparty/Fuzzer/FuzzerMain.cpp",
+          "tools/cpplint/cpplint.py",
+          "tools/serve_header/serve_header.py",
+          "tests/thirdparty/Fuzzer/test/ThreadedTest.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The binary reader and type-traits patch sources are present. Noise labels cover unrelated fuzzer harnesses, linting, header tooling, and threaded tests."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-long_session-088",
+      "materializedCaseSha256": "2ff9382928084b9d3c3aa38bbbd85fd310c4270954a934183e73b7a79784b491",
+      "candidatePathsSha256": "8fe90bf89a32c38941e9d99b50fafec9080459b612819b2121db5dc4e7415a57",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tools/gdb_pretty_printer/nlohmann-json.py",
+          "nlohmann_json.natvis",
+          "docs/examples/json_lines.cpp",
+          "tests/thirdparty/Fuzzer/FuzzerCorpus.h",
+          "tests/cmake_import/project/main.cpp",
+          "tools/cpplint/cpplint.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:30:00-04:00",
+        "notes": "The binary-reader patch source is present. Noise labels cover unrelated debugger visuals, JSON-lines examples, fuzzing, CMake integration, and linting."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-long_session-089",
+      "materializedCaseSha256": "ff7f11c67969ad91c83670eca41a59cc30aae879c4ae878f134865af5f6d2bb6",
+      "candidatePathsSha256": "ea7b3b7b169be29cdf729168ed099b5defb6dfba24ac24865b7d5ebd3d6f502a",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/thirdparty/Fuzzer/FuzzerCrossOver.cpp",
+          "tests/thirdparty/Fuzzer/FuzzerSHA1.h",
+          "tests/thirdparty/Fuzzer/FuzzerUtilWindows.cpp",
+          "tests/src/unit-udt_macro.cpp",
+          "tools/serve_header/serve_header.py",
+          "docs/examples/patch.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The binary-reader patch source is present. Noise labels cover unrelated fuzzer crossover, hashing and platform utilities, UDT macros, header tooling, and JSON Patch examples."
+      }
+    },
+    {
+      "id": "v02c-train-cpp-long_session-090",
+      "materializedCaseSha256": "a64a4c2790753f98e79d295c86904be2bb2304339f5d6536ef89e1f2b51980a6",
+      "candidatePathsSha256": "0964d9cb7fd29f2df211810313dd6e696d7601efffa299b52f04e1b79efbcf92",
+      "decision": {
+        "requiredSourceFiles": [
+          "include/nlohmann/detail/macro_scope.hpp"
+        ],
+        "explicitNoiseFiles": [
+          "tests/thirdparty/Fuzzer/FuzzerCorpus.h",
+          "tests/cmake_import/project/main.cpp",
+          "tools/cpplint/cpplint.py",
+          "tools/serve_header/serve_header.py",
+          "tests/src/unit-bjdata.cpp",
+          "tests/src/unit-large_json.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The missing macro-scope production patch source remains labeled as a candidate@64 retrieval miss; the other comparison and iterator patch sources are present. Noise labels cover unrelated fuzzing, CMake integration, linting, header tooling, BJData, and large-JSON tests."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-source_localization-091",
+      "materializedCaseSha256": "7253c7cc80e613f2523cd79017f8ffce88b12f1ce6ffb95c103aa4db35ab1879",
+      "candidatePathsSha256": "2efa20d83dc395973560cf33eb6e5b04d90e987a6f9c78b1cb8e44c39614900a",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "xarray/plot/plot.py",
+          "xarray/backends/rasterio_.py",
+          "xarray/coding/cftimeindex.py",
+          "asv_bench/benchmarks/dataset_io.py",
+          "xarray/tests/test_formatting.py",
+          "xarray/util/print_versions.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The coordinate-combination patch source is present. Noise labels cover unrelated plotting, raster I/O, calendar-time coding, I/O benchmarking, formatting, and version reporting."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-source_localization-092",
+      "materializedCaseSha256": "a896b30facca01f6287f0b96c3d195c5337817fc8aa21d28e2edb7d7c5be8c5a",
+      "candidatePathsSha256": "96bdbf52e543f40531ba8d1690d454279b2dbc6e66cf04952e7333b963456b24",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "xarray/tests/test_formatting_html.py",
+          "xarray/backends/rasterio_.py",
+          "xarray/plot/facetgrid.py",
+          "xarray/backends/cfgrib_.py",
+          "xarray/tests/test_coding_times.py",
+          "xarray/tests/test_sparse.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The dataset merge-method patch source is present. Noise labels cover unrelated HTML formatting, raster and GRIB backends, faceted plotting, time coding, and sparse arrays."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-source_localization-093",
+      "materializedCaseSha256": "bbc907509b3ba2a4cecfe2d0e5f67d94c63c26b65dd44a7fa090ec146d3652d3",
+      "candidatePathsSha256": "f643a9529af6a47092c4c8eb14d1dfb04aa5cbe3a5d04844153f6f523871f4a6",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "xarray/backends/netcdf3.py",
+          "xarray/plot/dataset_plot.py",
+          "asv_bench/benchmarks/combine.py",
+          "xarray/coding/frequencies.py",
+          "xarray/tests/test_cftimeindex.py",
+          "xarray/tests/test_formatting.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "Both integrate-API patch sources are present. Noise labels cover unrelated NetCDF I/O, plotting, combination benchmarks, frequency coding, calendar indexes, and formatting."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-failure_first-094",
+      "materializedCaseSha256": "acdee2835542cf6e635124f201fd7c7190ac7791afa71ba9cc8661ed879e4524",
+      "candidatePathsSha256": "cf03981b3388432cf34328ddf9c5efe13f59ebaa868ff621ca4882816cbdaf03",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "tests/_stats/test_regression.py",
+          "tests/test_palettes.py",
+          "seaborn/external/kde.py",
+          "seaborn/widgets.py",
+          "seaborn/external/docscrape.py",
+          "seaborn/algorithms.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The core plot finalization patch source is present. Noise labels cover unrelated regression statistics, palettes, KDE, widgets, documentation scraping, and algorithms."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-failure_first-095",
+      "materializedCaseSha256": "dc224878fea2ec93d3fddf93e7b685ef0a1ed786beb4a6934cacd2841f522815",
+      "candidatePathsSha256": "ac2ea8c74581637d3143f80925f72753c108e1b935a8143956140092f7ab5232",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/flask/sessions.py",
+          "src/flask/json/tag.py",
+          "src/flask/signals.py",
+          "tests/static/config.toml",
+          "tests/typing/typing_route.py",
+          "tests/test_apps/cliapp/importerrorapp.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The Blueprint implementation patch source is present. Noise labels cover unrelated sessions, JSON tagging, signals, static configuration, route typing, and CLI import errors."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-failure_first-096",
+      "materializedCaseSha256": "ad39d6dace715547bb662f0c4b2adceb0c9342fcc1da75563636f26550f900eb",
+      "candidatePathsSha256": "7dea1507451be91c0e85408aef5a56b4844b6d86ea2a8f31a64c5b0f70b940ff",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "xarray/backends/netcdf3.py",
+          "xarray/backends/h5netcdf_.py",
+          "xarray/backends/cfgrib_.py",
+          "xarray/plot/facetgrid.py",
+          "xarray/coding/cftime_offsets.py",
+          "xarray/tutorial.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The variable-coercion patch source is present. Noise labels cover unrelated storage backends, faceted plotting, calendar offsets, and tutorial code."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-long_session-097",
+      "materializedCaseSha256": "f33ceae53f27e28ff44c08df441c3c12d021f5d1fed5b842bd6b31b39c45ed81",
+      "candidatePathsSha256": "f657cd231f046b56658d668ef6d8533732d27046471f2c5a6709fc571a23051c",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "seaborn/regression.py",
+          "seaborn/_stats/order.py",
+          "seaborn/external/docscrape.py",
+          "seaborn/matrix.py",
+          "tests/_stats/test_density.py",
+          "seaborn/categorical.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The scale-formatting and utility patch sources are present. Noise labels cover unrelated regression, ordering, documentation scraping, matrix plots, density statistics, and categorical plotting."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-long_session-098",
+      "materializedCaseSha256": "adc92964e0127c3c0ae5ab6344bb57d37e4f44b45feafe63cca3e6a0c07cf297",
+      "candidatePathsSha256": "233ae82e29f631f599271bea61dffd93f505ab478078c3225416e94cc36de172",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "xarray/backends/file_manager.py",
+          "xarray/backends/netCDF4_.py",
+          "xarray/backends/zarr.py",
+          "xarray/backends/pydap_.py",
+          "xarray/coding/cftimeindex.py",
+          "xarray/tests/test_plot.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The indexing and variable-copy patch sources are present. Noise labels cover unrelated backend management and formats, calendar indexes, and plotting tests."
+      }
+    },
+    {
+      "id": "v02c-calibration-python-long_session-099",
+      "materializedCaseSha256": "ce06e2109b6c1f9e59bdeef3fd7ff01af6aef5668e8d8df2d5a471b487f0a2f9",
+      "candidatePathsSha256": "98f03129bf6372b9379415b20c9a5e2ac3de06c04a8432ee447059c1fc87782e",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "xarray/backends/h5netcdf_.py",
+          "xarray/backends/pseudonetcdf_.py",
+          "xarray/backends/rasterio_.py",
+          "versioneer.py",
+          "xarray/tests/test_cftime_offsets.py",
+          "setup.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T16:40:00-04:00",
+        "notes": "The dataset and variable quantile patch sources are present. Noise labels cover unrelated storage backends, release versioning, calendar offsets, and packaging."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-source_localization-100",
+      "materializedCaseSha256": "70288d2ac627c21265502daf5ff5b12b0b2543a69069cf87309bae65ea30b668",
+      "candidatePathsSha256": "adfcf64bf80dbafb3353f8f64a6e95cdd2449b43f8a60419f653d3ee4c69c3a5",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "benchmark/babel-helper-validator-identifier/isIdentifierName.bench.mjs",
+          "packages/babel-code-frame/src/index.ts",
+          "packages/babel-cli/src/babel/dir.ts",
+          "packages/babel-standalone/src/index.ts",
+          ".github/ISSUE_TEMPLATE/bug_report.yml",
+          "packages/babel-helpers/src/helpers/using.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "The scope-renamer patch source is present. Noise labels cover unrelated identifier benchmarks, code frames, CLI and standalone entry points, issue templates, and disposal helpers."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-source_localization-101",
+      "materializedCaseSha256": "321a7a631118f2d95ba6047aa82a7b9cb62682e96cdf6e8b6ee342bb64d09ea1",
+      "candidatePathsSha256": "d4f16ede6b772ab3bc231c3a2c6ea2428801fa9b44e1f72374cd1717b0325910",
+      "decision": {
+        "requiredSourceFiles": [
+          "packages/babel-helpers/src/index.ts"
+        ],
+        "explicitNoiseFiles": [
+          "packages/babel-parser/src/parse-error/strict-mode-errors.ts",
+          "benchmark/babel-helper-validator-identifier/identifier.bench.mjs",
+          "eslint/babel-eslint-parser/src/worker/configuration.cjs",
+          "packages/babel-cli/src/babel/options.ts",
+          "packages/babel-standalone/src/index.ts",
+          "test/runtime-integration/src/require-corejs.cjs"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "The verified Babel helpers index is absent from candidate@64 and remains labeled as a source-retrieval miss. Noise labels cover unrelated parser errors, benchmarks, ESLint configuration, CLI options, standalone packaging, and runtime integration."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-source_localization-102",
+      "materializedCaseSha256": "fdcbd158e98a6ff6ca75cf13afb87c08a8ee32fc6a1de5b9dfb7cf4b504d2060",
+      "candidatePathsSha256": "1b6ad27adb7d2eba6d25081351f886df24eecabe8b193ca0338e634bdf13e438",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/voice-broadcast/utils/retrieveStartedInfoEvent.ts",
+          "src/components/views/dialogs/AddExistingSubspaceDialog.tsx",
+          "src/utils/Image.ts",
+          "src/components/views/settings/account/PhoneNumbers.tsx",
+          "src/components/views/settings/account/EmailAddresses.tsx",
+          "src/hooks/useAudioDeviceSelection.ts"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "The device-listener patch source is present. Noise labels cover unrelated voice broadcasts, spaces, images, account contacts, and audio device selection."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-failure_first-103",
+      "materializedCaseSha256": "1fcc58e00ecf03b8d11f1670c264f21a659977cf0bc6ec1e0862b8cb015799a3",
+      "candidatePathsSha256": "eef9dd1eb9d770c55e1b6feb521dadde5985e4c0988414a83798a27b9e85b530",
+      "decision": {
+        "requiredSourceFiles": [
+          "packages/babel-parser/src/parser/expression.js"
+        ],
+        "explicitNoiseFiles": [
+          "packages/babel-code-frame/package.json",
+          "benchmark/package.json",
+          "eslint/babel-eslint-plugin-development/src/utils/is-babel-plugin-factory.js",
+          "test/runtime-integration/src/package.json",
+          "codemods/babel-plugin-codemod-object-assign-to-object-spread/package.json",
+          "packages/babel-cli/src/babel/options.ts"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "The verified parser expression source is absent from candidate@64 and remains labeled as a source-retrieval miss. Noise labels cover unrelated package metadata, ESLint plugin utilities, codemods, and CLI options."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-failure_first-104",
+      "materializedCaseSha256": "0e4c8855afbe98a4d398b72ed3a50b68c1691fa1f6e28bde24e61dcc5aa23663",
+      "candidatePathsSha256": "be8f5daff5150843c236d8a3758f498d231b398261c86b4a59405124dd79c364",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "packages/babel-core/src/config/cache-contexts.ts",
+          "eslint/babel-eslint-plugin-development/src/index.cjs",
+          "benchmark/babel-traverse/enter-visitor-context-change/bench.mjs",
+          "packages/babel-node/test/fixtures/cli/--presets/in-files/presetFile.js",
+          "packages/babel-preset-env/src/index.ts",
+          "packages/babel-code-frame/src/index.ts"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "The generator parentheses patch source is present. Noise labels cover unrelated configuration caching, ESLint plugins, traversal benchmarks, CLI fixtures, preset-env, and code frames."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-failure_first-105",
+      "materializedCaseSha256": "79d1919c66b8c960393ef136d4e0d261e0e96c5ecbb7f4f54a76eb97c53a89aa",
+      "candidatePathsSha256": "c132fcab9d38dab308b3f7d793c1df45d21523b5874cf122a7a22956c58e3725",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "packages/babel-plugin-proposal-optional-chaining/src/transform.ts",
+          "scripts/parser-tests/typescript/index.js",
+          "eslint/babel-eslint-plugin-development/src/utils/is-babel-plugin-factory.cjs",
+          "packages/babel-runtime-corejs2/regenerator/index.js",
+          ".yarn/plugins/@yarnpkg/plugin-babel-release-tool.cjs",
+          "packages/babel-register/src/node.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "The source-map patch source is present. Noise labels cover unrelated optional chaining, parser fixtures, ESLint utilities, runtime regeneration, release tooling, and registration."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-long_session-106",
+      "materializedCaseSha256": "2fba76be4e1f6bc04634998ba5efcb40bbfd96970b84206511bb4f2f2b36abb2",
+      "candidatePathsSha256": "0b89914ce353d414226b2fff7b6e9c3d60a8fb034b1ede696dc9d4aa41b6a3c0",
+      "decision": {
+        "requiredSourceFiles": [
+          "src/KeyBindingsDefaults.ts",
+          "src/KeyBindingsManager.ts",
+          "src/components/structures/RoomSearch.tsx",
+          "src/components/structures/RoomView.tsx",
+          "src/components/views/rooms/EditMessageComposer.js",
+          "src/components/views/rooms/RoomSublist.tsx",
+          "src/components/views/rooms/SendMessageComposer.js"
+        ],
+        "explicitNoiseFiles": [
+          "src/utils/MegolmExportEncryption.js",
+          "src/utils/presence.ts",
+          "test/end-to-end-tests/src/usecases/toasts.js",
+          "test/end-to-end-tests/src/usecases/room-settings.js",
+          "test/end-to-end-tests/src/usecases/invite.js",
+          "src/notifications/ContentRules.ts"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "Seven verified keyboard-binding and consumer sources are absent from candidate@64 and remain explicit retrieval misses; the logged-in view and basic composer sources are present. Noise labels cover unrelated encryption, presence, toasts, room settings, invitations, and notification rules."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-long_session-107",
+      "materializedCaseSha256": "e7f1ef6008d5c287a5baef342d47e3263e033988b392ef8ee522c97418c67a06",
+      "candidatePathsSha256": "ed6803c494db27bcbeb779ffa9ceaae768d859c661fbc7affb4d2876e7e2d138",
+      "decision": {
+        "requiredSourceFiles": [
+          "src/components/views/settings/devices/useOwnDevices.ts",
+          "src/voice-broadcast/models/VoiceBroadcastRecording.ts"
+        ],
+        "explicitNoiseFiles": [
+          "src/utils/space.tsx",
+          "src/utils/read-receipts.ts",
+          "src/components/views/settings/AddPrivilegedUsers.tsx",
+          "src/@types/png-chunks-extract.d.ts",
+          "src/components/views/dialogs/LazyLoadingResyncDialog.tsx",
+          "src/WhoIsTyping.ts"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "The verified own-device hook and voice-broadcast recording model are absent from candidate@64 and remain retrieval misses; the client-information and precondition sources are present. Noise labels cover unrelated spaces, read receipts, privilege dialogs, image typing, resync UI, and typing state."
+      }
+    },
+    {
+      "id": "v02c-calibration-typescript-long_session-108",
+      "materializedCaseSha256": "446a450419d55fb3e45d748bbb16883f9e54b3ffa55d3b3d0dd8824bf9c55f76",
+      "candidatePathsSha256": "dfb8dba5d537fb5e3da4244053b99ddfa1ea2733932fc8893ad1725ada24718e",
+      "decision": {
+        "requiredSourceFiles": [
+          "src/hooks/useWindowWidth.ts"
+        ],
+        "explicitNoiseFiles": [
+          "playwright/e2e/read-receipts/read-receipts.spec.ts",
+          "src/voice-broadcast/utils/textForVoiceBroadcastStoppedEventWithoutLink.ts",
+          "src/utils/device/clientInformation.ts",
+          "src/components/views/settings/account/EmailAddresses.tsx",
+          "src/components/views/settings/account/PhoneNumbers.tsx",
+          "src/components/views/messages/ReactionsRow.tsx"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "The verified window-width hook is absent from candidate@64 and remains a retrieval miss; the tabbed-view source is present. Noise labels cover unrelated read receipts, voice broadcasts, device information, account contacts, and reactions."
+      }
+    },
+    {
+      "id": "v02c-calibration-go-source_localization-109",
+      "materializedCaseSha256": "7bb34652e291ed4923e527cd07756b46fae2b1b6a3f75e41bc6201583364c126",
+      "candidatePathsSha256": "f290755476588b40d69f522ea734ad1253a7112b94c13fa5095413a7de9532bd",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "binding/yaml.go",
+          "binding/msgpack.go",
+          "testdata/protoexample/test.proto",
+          "internal/json/jsoniter.go",
+          "auth.go",
+          "binding/form_mapping_benchmark_test.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "The router-group patch source is present. Noise labels cover unrelated binding formats, protobuf fixtures, JSON adapters, authentication, and form benchmarks."
+      }
+    },
+    {
+      "id": "v02c-calibration-go-source_localization-110",
+      "materializedCaseSha256": "5301c68194ef9445c4175a00c1acd051546d05eab5188c86408dac469b3eda8b",
+      "candidatePathsSha256": "1f3d9ab3b8e4a65b9191e23bf6a31a3e32df594d95dd08382cb2be61d0e30db7",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "binding/json_test.go",
+          "binding/xml_test.go",
+          "binding/yaml_test.go",
+          "tree.go",
+          "auth.go",
+          "binding/protobuf.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:00:00-04:00",
+        "notes": "The reader-render patch source is present. Noise labels cover unrelated request binding tests, routing trees, authentication, and protobuf binding."
+      }
+    },
+    {
+      "id": "v02c-calibration-go-source_localization-111",
+      "materializedCaseSha256": "de7ee362ff2479ca39d5a27908b14ad452fff7bc3d9a71ff132f923446645807",
+      "candidatePathsSha256": "5edcafcc51a9b8b3d046896a4bb438cc71ecc0d2b71368436d8c6a20462edce0",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "binding/yaml_test.go",
+          "binding/msgpack.go",
+          "testdata/protoexample/test.pb.go",
+          "auth.go",
+          "logger.go",
+          "render/html.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:15:00-04:00",
+        "notes": "The route-tree patch source is present. Noise labels cover unrelated binding formats, protobuf fixtures, authentication, logging, and HTML rendering."
+      }
+    },
+    {
+      "id": "v02c-calibration-go-failure_first-112",
+      "materializedCaseSha256": "6947cfab07b3c9baf242525d22347089acfce9c7159d68780669cfe22090c46c",
+      "candidatePathsSha256": "a9486042bd69478b2645dccfaa8897aa5aa2f9c77e7454a984b2d6de0d393b61",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "binding/multipart_form_mapping_test.go",
+          "testdata/protoexample/test.proto",
+          "render/protobuf.go",
+          "render/yaml.go",
+          "auth.go",
+          "path.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:15:00-04:00",
+        "notes": "The logger color-selection patch source is present. Noise labels cover unrelated form binding, protobuf fixtures and rendering, YAML rendering, authentication, and path utilities."
+      }
+    },
+    {
+      "id": "v02c-calibration-go-failure_first-113",
+      "materializedCaseSha256": "643fbbe196cd01baad11e60eca07e9fd52fec288a53a349a78c7930a8e7ea11b",
+      "candidatePathsSha256": "5998c34a841d473c784109969e1c7c3010aaee465e24be2c0ee5e060578658d0",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "logger_test.go",
+          "auth_test.go",
+          "render/html.go",
+          "internal/bytesconv/bytesconv_test.go",
+          "tree.go",
+          "version.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:15:00-04:00",
+        "notes": "The form-mapping patch source is present. Noise labels cover unrelated logging, authentication, rendering, byte conversion, route trees, and versioning."
+      }
+    },
+    {
+      "id": "v02c-calibration-go-failure_first-114",
+      "materializedCaseSha256": "73353fd24f02fb68c90fd372d803b03f7cb293df7aa5e5d4f84542696d86507e",
+      "candidatePathsSha256": "dad43adadcd71ca89657906e60396929200d3c09d5c4915233611d9d175161ec",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "binding/xml_test.go",
+          "binding/default_validator_benchmark_test.go",
+          "internal/json/sonic.go",
+          "render/protobuf.go",
+          "auth.go",
+          "binding/form_mapping_benchmark_test.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:15:00-04:00",
+        "notes": "The engine method-handling patch source is present. Noise labels cover unrelated XML binding, validation and form benchmarks, JSON adapters, protobuf rendering, and authentication."
+      }
+    },
+    {
+      "id": "v02c-calibration-go-long_session-115",
+      "materializedCaseSha256": "7ef49a5d6e854497ce3e49e8a3020a73948d3cb1e0d2ccdcb27c123031c893f5",
+      "candidatePathsSha256": "d2d5cf023b6244c2fe8608d87181365f2eb3e4070ee4eab669e82401838f6e34",
+      "decision": {
+        "requiredSourceFiles": [
+          "binding/header.go"
+        ],
+        "explicitNoiseFiles": [
+          "render/yaml.go",
+          "render/msgpack.go",
+          "testdata/protoexample/test.proto",
+          "benchmarks_test.go",
+          "githubapi_test.go",
+          "auth.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:15:00-04:00",
+        "notes": "The verified header-binding source is absent from candidate@64 and remains a retrieval miss; the binding registry and context sources are present. Noise labels cover unrelated renderers, protobuf fixtures, benchmarks, GitHub API tests, and authentication."
+      }
+    },
+    {
+      "id": "v02c-calibration-go-long_session-116",
+      "materializedCaseSha256": "07adaaddc6613343e5eac153b4e41200b115f6d3caee099414889e9d35a83a5c",
+      "candidatePathsSha256": "9c22707def55c5f1d388a94d293fa8ae2cb77d82b023db074198ba121cd5fe4d",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "models/github.go",
+          "config/awsconf.go",
+          "scanner/windows.go",
+          "detector/wordpress.go",
+          "reporter/s3.go",
+          "scanner/macos.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:15:00-04:00",
+        "notes": "The Alpine scanner, OVAL utility, and scanner orchestration patch sources are present. Noise labels cover unrelated GitHub, cloud configuration and reporting, Windows, WordPress, and macOS paths."
+      }
+    },
+    {
+      "id": "v02c-calibration-go-long_session-117",
+      "materializedCaseSha256": "e57d32b6cdccb3d3e590496f683521d29dea4208256c53e71a2a887609945b94",
+      "candidatePathsSha256": "d29692db0b5a566f2734ddc09dde0c07595efeeb5cbb6c9f64c537417fba0f7f",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "detector/wordpress_test.go",
+          "reporter/email.go",
+          "reporter/slack.go",
+          "config/googlechatconf.go",
+          "subcmds/tui.go",
+          "subcmds/history.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:15:00-04:00",
+        "notes": "The host configuration, loader, discovery, config-test, and scan sources are present. Noise labels cover unrelated WordPress, notification reporters, terminal UI, and history commands."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-source_localization-118",
+      "materializedCaseSha256": "f9fa85708c3b6e47645c5fb43828e2fb585db45a0c97a6f26dcdb294beb61954",
+      "candidatePathsSha256": "bdf4a640155af464daa8e37e98768c26d251194d2600c39e16fd7deab9905999",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/main/java/com/fasterxml/jackson/core/FormatSchema.java",
+          "src/main/java/com/fasterxml/jackson/core/Base64Variants.java",
+          "src/main/java/com/fasterxml/jackson/core/util/InternCache.java",
+          "src/main/java/com/fasterxml/jackson/core/sym/BytesToNameCanonicalizer.java",
+          "src/main/java/com/fasterxml/jackson/core/JsonPointer.java",
+          "src/main/java/com/fasterxml/jackson/core/Versioned.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:15:00-04:00",
+        "notes": "The text-buffer patch source is present. Noise labels cover unrelated schemas, Base64, intern and symbol tables, JSON pointers, and version contracts."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-source_localization-119",
+      "materializedCaseSha256": "35bae22ff02cdd7c835f5bdc1792f77c7e693004bed5dd83807ff7d334ce9829",
+      "candidatePathsSha256": "31607b1991eeeb05eff68debf16f1fbb9261807021ce877ba597a5c31e2f2d64",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/main/java/com/fasterxml/jackson/core/Base64Variants.java",
+          "src/main/java/com/fasterxml/jackson/core/util/DefaultPrettyPrinter.java",
+          "src/main/java/com/fasterxml/jackson/core/sym/CharsToNameCanonicalizer.java",
+          "src/main/java/com/fasterxml/jackson/core/io/UTF32Reader.java",
+          "src/main/java/com/fasterxml/jackson/core/util/VersionUtil.java",
+          "src/main/java/com/fasterxml/jackson/core/JsonEncoding.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:15:00-04:00",
+        "notes": "The JSON pointer patch source is present. Noise labels cover unrelated Base64, pretty printing, symbol tables, UTF-32 input, versioning, and encodings."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-source_localization-120",
+      "materializedCaseSha256": "5bd564b5d8ddbf397393a7e41c67da3f031e692c346c7df0ef2b8937f0acc92b",
+      "candidatePathsSha256": "9ac6c2be31ed0241afb50f3501640237c9a67b8e422cd1e144a88651e91305a9",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "buildSrc/src/main/java/org/apache/lucene/gradle/ErrorReportingTestListener.java",
+          "lucene/spatial3d/src/java/org/apache/lucene/spatial3d/geom/XYZBounds.java",
+          "lucene/core/src/java/org/apache/lucene/index/MultiBits.java",
+          "lucene/luke/src/java/org/apache/lucene/luke/app/DirectoryHandler.java",
+          "lucene/analysis/common/src/java/org/apache/lucene/analysis/hunspell/Hunspell.java",
+          "dev-tools/scripts/addVersion.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:15:00-04:00",
+        "notes": "The OpenNLP sentence-break patch source is present. Noise labels cover unrelated build listeners, spatial geometry, index bits, desktop tooling, Hunspell, and release scripts."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-failure_first-121",
+      "materializedCaseSha256": "d12e292e62da3a7bd47162131bc57034a4cb533063b06ab840cf1747d0ebe20a",
+      "candidatePathsSha256": "07a788d91b47bcacda095e8abdf95627d1c778a0fe31ad32409197c271b18209",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/main/java/com/fasterxml/jackson/core/Base64Variants.java",
+          "src/main/java/com/fasterxml/jackson/core/sym/CharsToNameCanonicalizer.java",
+          "src/main/java/com/fasterxml/jackson/core/json/async/NonBlockingJsonParser.java",
+          "src/main/java/com/fasterxml/jackson/core/io/OutputDecorator.java",
+          "src/main/java/com/fasterxml/jackson/core/JsonLocation.java",
+          "src/test/java/com/fasterxml/jackson/core/json/BoundsChecksWithJsonFactoryTest.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:15:00-04:00",
+        "notes": "The filtering-generator delegate patch source is present. Noise labels cover unrelated Base64, symbol tables, async parsing, output decoration, locations, and factory bounds tests."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-failure_first-122",
+      "materializedCaseSha256": "cecb9dabd74d8cedad7c5d14f92db5085bbf0dfcf7661eec14b2209b8983b369",
+      "candidatePathsSha256": "d183830b8f53f171c80221f1dca12f5d1721252aaf1b1debda1c13bba93463f3",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/main/java/com/fasterxml/jackson/core/util/DefaultIndenter.java",
+          "src/main/java/com/fasterxml/jackson/core/util/ByteArrayBuilder.java",
+          "src/main/java/com/fasterxml/jackson/core/format/DataFormatMatcher.java",
+          "src/main/java/com/fasterxml/jackson/core/sym/ByteQuadsCanonicalizer.java",
+          "src/main/java/com/fasterxml/jackson/core/Versioned.java",
+          "src/main/java/com/fasterxml/jackson/core/Base64Variant.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "The filtering parser, token filter, and filter-context patch sources are present. Noise labels cover unrelated indentation, buffers, format detection, symbol tables, versioning, and Base64."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-failure_first-123",
+      "materializedCaseSha256": "88969a83a4061ce227ceef955b079708c427b0aaaa53d1096c4964570ddf01a8",
+      "candidatePathsSha256": "854e4174430e061f83b0619a51df417bfc8d928d11319627b0f1bbe54f82d8f6",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/main/java/com/fasterxml/jackson/core/util/DefaultIndenter.java",
+          "src/main/java/com/fasterxml/jackson/core/sym/FieldNameMatcher.java",
+          "src/main/java/com/fasterxml/jackson/core/util/VersionUtil.java",
+          "src/test/java/com/fasterxml/jackson/core/io/UTF8WriterTest.java",
+          "src/main/java/com/fasterxml/jackson/core/io/SegmentedStringWriter.java",
+          "src/main/java/com/fasterxml/jackson/core/util/JsonParserSequence.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "The JSON generator contract patch source is present. Noise labels cover unrelated indentation, field matching, versioning, UTF-8 writing, segmented writers, and parser sequencing."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-long_session-124",
+      "materializedCaseSha256": "dd88c062341bcf619579b803fabae19ba200e91bc3856fcb4c8d5d921d530312",
+      "candidatePathsSha256": "2a42e81a42c7d1981a0521122a1a64281cbc2311adddcb9093b86bc065ec3903",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/test/java/com/fasterxml/jackson/core/jsonptr/JsonPointerTest.java",
+          "src/main/java/com/fasterxml/jackson/core/util/DefaultIndenter.java",
+          "src/main/java/com/fasterxml/jackson/core/io/CharacterEscapes.java",
+          "src/main/java/com/fasterxml/jackson/core/sym/ByteQuadsCanonicalizer.java",
+          "src/test/java/com/fasterxml/jackson/core/json/async/AsyncSimpleObjectTest.java",
+          "src/main/java/com/fasterxml/jackson/core/util/JsonGeneratorDecorator.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "The number-input patch source is present. Noise labels cover unrelated JSON pointers, indentation, character escapes, symbol tables, async objects, and generator decoration."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-long_session-125",
+      "materializedCaseSha256": "bb3f94c5117ec3fdab63b1f4f0f6f94544881225ea857ad8177acd079664e27c",
+      "candidatePathsSha256": "0f01ce634ff7a8cc548c1aa4afd233701a8059e5f93682b669772b6ff8912ab3",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/main/java/com/fasterxml/jackson/core/type/TypeReference.java",
+          "src/main/java/com/fasterxml/jackson/core/util/DefaultPrettyPrinter.java",
+          "src/main/java/com/fasterxml/jackson/core/io/CharacterEscapes.java",
+          "src/main/java/com/fasterxml/jackson/core/util/JsonParserSequence.java",
+          "src/test/java/com/fasterxml/jackson/core/sym/SymbolTableMergingTest.java",
+          "src/main/java/com/fasterxml/jackson/core/io/UTF32Reader.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "The recycler-pool patch source is present. Noise labels cover unrelated type references, pretty printing, escapes, parser sequencing, symbol tables, and UTF-32 input."
+      }
+    },
+    {
+      "id": "v02c-calibration-java-long_session-126",
+      "materializedCaseSha256": "7e585925d5650daa000dd38738d7c55445331412a5cea65914759089fb0ffcbc",
+      "candidatePathsSha256": "3719e944f65d6366a97e721611cbe46bbf07a74f7ed657bf937d19504d58d23d",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "src/test/java/com/fasterxml/jackson/core/jsonptr/JsonPointerTest.java",
+          "src/main/java/com/fasterxml/jackson/core/PrettyPrinter.java",
+          "src/main/java/com/fasterxml/jackson/core/util/VersionUtil.java",
+          "src/main/java/com/fasterxml/jackson/core/io/NumberOutput.java",
+          "src/main/java/com/fasterxml/jackson/core/FormatSchema.java",
+          "src/main/java/com/fasterxml/jackson/core/util/JsonGeneratorDelegate.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "All three Base64-reading parser patch sources are present. Noise labels cover unrelated pointers, pretty printing, versioning, number output, schemas, and generator delegation."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-source_localization-127",
+      "materializedCaseSha256": "d2b279d065e2bdfcd59f58221c3874a087c64c5177b23584f3e5c38a1034942d",
+      "candidatePathsSha256": "bdc73b3341f92eb74655465fd5af02974304e26dcfdcc46f0072ccc2a2a64411",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/args-test.cc",
+          "test/color-test.cc",
+          "test/fuzzing/named-arg.cc",
+          "src/os.cc",
+          "support/docopt.py",
+          "test/gtest/gmock-gtest-all.cc"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "The chrono formatting patch source is present. Noise labels cover unrelated argument and color tests, named-argument fuzzing, OS support, documentation parsing, and test framework code."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-source_localization-128",
+      "materializedCaseSha256": "0d25c276157d37410a96830a6e1d8b562f9edfa5335ceb208eecd79388c53d83",
+      "candidatePathsSha256": "8731127f75d80a25ca2e230d10cfd9d2cbab4ea33ebbae7bccc8f09d4bd70d99",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/fuzzing/chrono-duration.cc",
+          "test/color-test.cc",
+          "src/os.cc",
+          "support/build-docs.py",
+          "test/gtest/.clang-format",
+          "support/cmake/FindSetEnv.cmake"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "The format header patch source is present. Noise labels cover unrelated chrono fuzzing, color and OS code, documentation builds, formatting policy, and CMake environment discovery."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-source_localization-129",
+      "materializedCaseSha256": "187b2a2a5dd658215ce60ac7bec30033728e179cf638e528d38b862e4e4262fc",
+      "candidatePathsSha256": "9aaa1ad9555e4c7e8aae3571b050f3b1d2205a096ef4f8ed549eb41715f7869b",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/fuzzing/chrono-timepoint.cc",
+          "src/os.cc",
+          "support/docopt.py",
+          "support/build.gradle",
+          "support/Vagrantfile",
+          "test/color-test.cc"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "The standard-library format header patch source is present. Noise labels cover unrelated chrono fuzzing, OS code, documentation parsing, build infrastructure, virtualization, and colors."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-failure_first-130",
+      "materializedCaseSha256": "3e18fbfcad868a816818039d8cae9f8132bd8be217db1e86bd16676374a70a89",
+      "candidatePathsSha256": "5407990d7f7f0077a2e33d8e03ddd8c991ce8eebc7389ce9dd4885b1ee6985e1",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "support/release.py",
+          "support/python/mkdocstrings_handlers/cxx/__init__.py",
+          "support/bazel/MODULE.bazel",
+          "test/cuda-test/cpp14.cc",
+          "test/color-test.cc",
+          "test/fuzzing/chrono-timepoint.cc"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "The base header patch source is present. Noise labels cover unrelated release and documentation tooling, Bazel, CUDA, colors, and chrono fuzzing."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-failure_first-131",
+      "materializedCaseSha256": "5387196f6252d6b6eb9249ef8d2fa5a3231d5b2b425f206983c3e37340091fb6",
+      "candidatePathsSha256": "076c61c74827870457fb1d6029cc6c3c83313f28b82ecca627aff466cb34a599",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/cuda-test/cuda-cpp14.cu",
+          "test/static-export-test/CMakeLists.txt",
+          "src/os.cc",
+          "support/build-docs.py",
+          "test/fuzzing/chrono-duration.cc",
+          "test/color-test.cc"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "The core presentation-type patch source is present. Noise labels cover unrelated CUDA, static export, OS code, documentation builds, chrono fuzzing, and colors."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-failure_first-132",
+      "materializedCaseSha256": "b2de5025ab8c1e8deea316c273d1e94b804cb038f3502112ed6b3dcdffc622d8",
+      "candidatePathsSha256": "57a0564f27887ae70c15b1306e051739d3a39aa3f0965d74e4bc0210472b468b",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/fuzzing/float.cc",
+          "test/cuda-test/cuda-cpp14.cu",
+          "support/build-docs.py",
+          "test/color-test.cc",
+          "test/compile-fp-test.cc",
+          "test/posix-mock-test.cc"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:30:00-04:00",
+        "notes": "The standard-library path-format patch source is present. Noise labels cover unrelated float fuzzing, CUDA, documentation builds, colors, floating-point compilation, and POSIX mocks."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-long_session-133",
+      "materializedCaseSha256": "3d549b3d3575a8e8e8c5ad8a7a9c05c1bd54e4f9039519d92243dbf7959f71c3",
+      "candidatePathsSha256": "4010606efbcb51f776080c9bf975621298835f02c9576e1ea2fdaf6c19691005",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "support/release.py",
+          "support/bazel/MODULE.bazel",
+          "support/Vagrantfile",
+          "test/fuzzing/chrono-duration.cc",
+          "test/color-test.cc",
+          "src/os.cc"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The format and standard-library headers are present. Noise labels cover unrelated release and Bazel tooling, virtualization, chrono fuzzing, colors, and OS code."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-long_session-134",
+      "materializedCaseSha256": "42726a38433ef9fc2ac6dcebc9dae5e8eda6ca78121c64a8b4c902d2e8ce750c",
+      "candidatePathsSha256": "5ea2df21ee5b19b61e0b2e0c8aa5481eeac046ba22ad028e4f4da7d7c7f8d125",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "test/fuzzing/named-arg.cc",
+          "test/color-test.cc",
+          "src/os.cc",
+          "support/rst2md.py",
+          "test/cuda-test/cpp14.cc",
+          "test/find-package-test/main.cc"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The core and format header patch sources are present. Noise labels cover unrelated named-argument fuzzing, colors, OS code, documentation conversion, CUDA, and package-discovery tests."
+      }
+    },
+    {
+      "id": "v02c-calibration-cpp-long_session-135",
+      "materializedCaseSha256": "efb12e4ded26502579070f9cc713e795bdc4256dc4b9eeb58ab5c2c1a1b02c4b",
+      "candidatePathsSha256": "5eda1e938015d9ae8686815477ecf80bf01398deb2b9076b0c3d5ef2aa3cfd3a",
+      "decision": {
+        "requiredSourceFiles": [],
+        "explicitNoiseFiles": [
+          "support/update-coverity-branch.py",
+          "support/travis-build.py",
+          "support/appveyor-build.py",
+          "support/Vagrantfile",
+          "test/chrono-test.cc",
+          "test/add-subdirectory-test/main.cc"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The format and format-inl patch sources are present. Noise labels cover unrelated CI tooling, virtualization, chrono behavior, and integration builds."
+      }
+    },
+    {
+      "id": "v02c-holdout-python-source_localization-136",
+      "materializedCaseSha256": "0af512f630f43c1c159c89d6159e06de5c73ef94a28ed66e03770b2bf8e89151",
+      "candidatePathsSha256": "db92bf1ecd1f22d45c6cb3c7257be4dbc70303ceabb105a6f98c2b6fa5238516",
+      "decision": {
+        "requiredSourceFiles": [
+          "django/db/models/expressions.py"
+        ],
+        "explicitNoiseFiles": [
+          "tests/syndication_tests/templates/syndication/description.html",
+          "tests/admin_docs/test_utils.py",
+          "django/core/mail/message.py",
+          "tests/sitemaps_tests/base.py",
+          "django/contrib/gis/db/models/functions.py",
+          "django/contrib/admin/static/admin/js/admin/DateTimeShortcuts.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The expression source is manually confirmed as required and present. Noise labels cover unrelated syndication, admin documentation and JavaScript, mail, sitemaps, and GIS functions."
+      }
+    },
+    {
+      "id": "v02c-holdout-python-source_localization-137",
+      "materializedCaseSha256": "04f3a1aad6b0b1684e11c9e36f60ed2421f1150f242b3de601a56bccd5abefc9",
+      "candidatePathsSha256": "20fe7f1dc215480c705593f2de75e589af13b536be42d9201889219f8fd7e414",
+      "decision": {
+        "requiredSourceFiles": [
+          "lib/matplotlib/axes/_axes.py"
+        ],
+        "explicitNoiseFiles": [
+          "src/qhull_wrap.c",
+          "extern/agg24-svn/include/agg_bspline.h",
+          "lib/matplotlib/font_manager.py",
+          "tools/github_stats.py",
+          "tutorials/intermediate/legend_guide.py",
+          "lib/matplotlib/backends/backend_qt5agg.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The axes implementation is manually confirmed as required and present. Noise labels cover unrelated geometry, rasterization, fonts, repository statistics, legends, and Qt backends."
+      }
+    },
+    {
+      "id": "v02c-holdout-python-failure_first-138",
+      "materializedCaseSha256": "814349f8d3643b62a4cb7d280267823093822a8fd85efdff26e7dcc3da17b556",
+      "candidatePathsSha256": "35f8232408f393f8c8bded441382d67addde13058676b3f0fdb9efd6f8f8c805",
+      "decision": {
+        "requiredSourceFiles": [
+          "astropy/modeling/separable.py"
+        ],
+        "explicitNoiseFiles": [
+          "astropy/cosmology/tests/test_core.py",
+          "astropy/io/fits/tests/test_core.py",
+          "astropy/extern/jquery/data/js/jquery-3.1.1.js",
+          "astropy/timeseries/periodograms/lombscargle/implementations/mle.py",
+          "astropy/nddata/nduncertainty.py",
+          "astropy/coordinates/sky_coordinate.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The model separability source is manually confirmed as required and present. Noise labels cover unrelated cosmology, FITS, vendored JavaScript, periodograms, NDData uncertainty, and coordinates."
+      }
+    },
+    {
+      "id": "v02c-holdout-python-failure_first-139",
+      "materializedCaseSha256": "cd561387c9873dfba67585d14bd19696f970ceae325a6cf9192f46f58689ca66",
+      "candidatePathsSha256": "59bd038d8801fb68231e6fb90b4f72673d63f93349f1f09587295d397e4fa249",
+      "decision": {
+        "requiredSourceFiles": [
+          "astropy/timeseries/core.py"
+        ],
+        "explicitNoiseFiles": [
+          "CODE_OF_CONDUCT.md",
+          "CONTRIBUTING.md",
+          "astropy/io/votable/exceptions.py",
+          "astropy/io/fits/tests/test_fitstime.py",
+          "astropy/wcs/wcsapi/tests/test_utils.py",
+          "astropy/coordinates/tests/test_solar_system.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The time-series core source is manually confirmed as required and present. Noise labels cover project policy plus unrelated VOTable, FITS, WCS, and solar-system code."
+      }
+    },
+    {
+      "id": "v02c-holdout-python-long_session-140",
+      "materializedCaseSha256": "e6e6135bbc7edd56d69bf61b718ef34ce98b6bcf8fcf1598905b7223ec04c00d",
+      "candidatePathsSha256": "19ad4875b497f58ef914146054d64242cc6b01c09562e7a82688527d04c52d06",
+      "decision": {
+        "requiredSourceFiles": [
+          "django/http/response.py",
+          "django/contrib/messages/storage/cookie.py",
+          "django/contrib/sessions/middleware.py"
+        ],
+        "explicitNoiseFiles": [
+          "tests/model_formsets_regress/models.py",
+          "tests/syndication_tests/templates/syndication/description.html",
+          "tests/staticfiles_tests/storage.py",
+          "tests/admin_scripts/app_raising_warning/models.py",
+          "tests/delete/tests.py",
+          "django/core/mail/message.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The HTTP response and message-cookie sources are present; the manually confirmed session middleware remains a candidate@64 retrieval miss. Noise labels cover unrelated model formsets, syndication, static files, admin warnings, deletion, and mail."
+      }
+    },
+    {
+      "id": "v02c-holdout-python-long_session-141",
+      "materializedCaseSha256": "07f422d07b9e7314e7e3b6944341a1da013e77fbe5ebabf211d97cbf8d2180b3",
+      "candidatePathsSha256": "60682b43722c1ba8a64ea859831f5fef2f11b02255236f8f04e483fe1d63988f",
+      "decision": {
+        "requiredSourceFiles": [
+          "django/core/validators.py",
+          "django/forms/fields.py"
+        ],
+        "explicitNoiseFiles": [
+          "tests/messages_tests/test_api.py",
+          "django/core/mail/message.py",
+          "django/db/backends/oracle/utils.py",
+          "tests/test_utils/templates/template_used/include.html",
+          "django/contrib/admin/sites.py",
+          "django/contrib/gis/geos/geometry.py"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The core validator source is present; the manually confirmed forms field source remains a candidate@64 retrieval miss. Noise labels cover unrelated messages, mail, Oracle helpers, templates, admin sites, and GIS geometry."
+      }
+    },
+    {
+      "id": "v02c-holdout-typescript-source_localization-142",
+      "materializedCaseSha256": "4fdbc4f77d24b4907aecbc8015d625fabb3060ae9b1d0ff601594d14d7cda1a4",
+      "candidatePathsSha256": "e934f88cc5c512653767234595f2c46b9dfb9c41e9e36a43f624ebcd8db3eeda",
+      "decision": {
+        "requiredSourceFiles": [
+          "lib/helpers/isAbsoluteURL.js"
+        ],
+        "explicitNoiseFiles": [
+          "bin/contributors.js",
+          "bin/resolveNPMTag.js",
+          "bin/RepoBot.js",
+          "gulpfile.js",
+          "test/manual/promise.js",
+          "lib/helpers/deprecatedMethod.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The absolute-URL helper is manually confirmed as required and present. Noise labels cover unrelated contributor, release-tag, repository-bot, build, promise-demo, and deprecation code."
+      }
+    },
+    {
+      "id": "v02c-holdout-typescript-source_localization-143",
+      "materializedCaseSha256": "9177e5c37a84f2e5e9fadf5696e88b7575d7ae9497215dac19a5c3b637746104",
+      "candidatePathsSha256": "f691a21f3b9926e57a6682ac70a2e05260505eba5713e3837dd8136642d1ed90",
+      "decision": {
+        "requiredSourceFiles": [
+          "src/controllers/admin/users.js",
+          "src/user/delete.js",
+          "src/database/mongo/main.js",
+          "src/database/postgres/main.js",
+          "src/database/redis/main.js",
+          "src/socket.io/admin/user.js",
+          "src/user/email.js"
+        ],
+        "explicitNoiseFiles": [
+          "src/analytics.js",
+          "src/api/flags.js",
+          "src/api/chats.js",
+          "src/topics/create.js",
+          "src/cli/colors.js",
+          "public/src/client/header.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T17:45:00-04:00",
+        "notes": "The admin user controller and deletion source are present; five manually confirmed database, socket, and email sources remain candidate@64 retrieval misses. Noise labels cover unrelated analytics, flags, chats, topic creation, CLI colors, and client headers."
+      }
+    },
+    {
+      "id": "v02c-holdout-typescript-failure_first-144",
+      "materializedCaseSha256": "190c0b4d9f7441e58514b8a4e67fbe6517a5937f71b3f2c2a710b9fe0cd42cda",
+      "candidatePathsSha256": "b62b6808d7fa9d9df569879d8c16841743438cae47ab9bf873b509e83247f18f",
+      "decision": {
+        "requiredSourceFiles": [
+          "lib/adapters/http.js"
+        ],
+        "explicitNoiseFiles": [
+          "test/specs/cancel/CancelToken.spec.js",
+          "lib/platform/browser/classes/URLSearchParams.js",
+          "Gruntfile.js",
+          "test/manual/promise.js",
+          "lib/helpers/deprecatedMethod.js",
+          "test/specs/helpers/isURLSameOrigin.spec.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "The Node HTTP adapter is manually confirmed as required and present. Noise labels cover unrelated cancellation, browser URL parameters, build tooling, promise examples, deprecation, and same-origin tests."
+      }
+    },
+    {
+      "id": "v02c-holdout-typescript-failure_first-145",
+      "materializedCaseSha256": "946449e7ba30de4444a55d0384d002e09f3049d1cd81b81050f7cc03d1361bf5",
+      "candidatePathsSha256": "e241babf6cd6cddeaa59e784b97b4392e8f673bda4d8f29d449f8531bff3453a",
+      "decision": {
+        "requiredSourceFiles": [
+          "lib/adapters/http.js"
+        ],
+        "explicitNoiseFiles": [
+          "lib/adapters/xhr.js",
+          "examples/README.md",
+          "lib/helpers/formDataToJSON.js",
+          "test/manual/promise.js",
+          "bin/ssl_hotfix.js",
+          "lib/helpers/isAbsoluteURL.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "The Node HTTP adapter is manually confirmed as required and present. Noise labels cover unrelated browser XHR, examples, form conversion, promises, SSL tooling, and URL classification."
+      }
+    },
+    {
+      "id": "v02c-holdout-typescript-long_session-146",
+      "materializedCaseSha256": "ac8218ad73d313405d4e2d79c09e5dade6047ba3471d2db07454a8e5ce3e67af",
+      "candidatePathsSha256": "144e301c5f6f0ef399683d22a894fd9570333b9b62aa4af0b26b74fd157a4597",
+      "decision": {
+        "requiredSourceFiles": [
+          "index.d.ts",
+          "lib/core/AxiosHeaders.js"
+        ],
+        "explicitNoiseFiles": [
+          "test/specs/cancel/CancelToken.spec.js",
+          "test/specs/helpers/formDataToJSON.spec.js",
+          "gulpfile.js",
+          "lib/helpers/speedometer.js",
+          "test/manual/promise.js",
+          "test/specs/interceptors.spec.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "The public typings and Axios headers implementation are manually confirmed as required and present. Noise labels cover unrelated cancellation, form conversion, builds, transfer-speed calculation, promises, and interceptors."
+      }
+    },
+    {
+      "id": "v02c-holdout-typescript-long_session-147",
+      "materializedCaseSha256": "84c5cd7295bf8771e20eabb02e5bee09663cc5a78f2a25a4885bac9fdf68d070",
+      "candidatePathsSha256": "b9708abbd528f36ad30411bee84d8d8495b948726f01053ccfc345a3be375b07",
+      "decision": {
+        "requiredSourceFiles": [
+          "lib/adapters/http.js",
+          "lib/env/classes/FormData.js",
+          "lib/helpers/toFormData.js",
+          "lib/utils.js",
+          "lib/helpers/formDataToStream.js",
+          "lib/helpers/readBlob.js"
+        ],
+        "explicitNoiseFiles": [
+          "bin/contributors.js",
+          "bin/injectContributorsList.js",
+          "test/manual/promise.js",
+          "test/specs/cancel/isCancel.spec.js",
+          "lib/helpers/speedometer.js",
+          "lib/helpers/deprecatedMethod.js"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "Four FormData and HTTP sources are present; the stream and blob helpers remain manually confirmed candidate@64 retrieval misses. Noise labels cover unrelated contributor tooling, promises, cancellation, transfer speeds, and deprecation."
+      }
+    },
+    {
+      "id": "v02c-holdout-go-source_localization-148",
+      "materializedCaseSha256": "229e05ccdfe88c5eba042e8740f4663becbde0d7be9c3f04122823487cb90185",
+      "candidatePathsSha256": "cea221c13d0dd11d9d4780782e91214d691c998685f57cfd83111b07ef9101f1",
+      "decision": {
+        "requiredSourceFiles": [
+          "admin.go"
+        ],
+        "explicitNoiseFiles": [
+          "internal/metrics/metrics.go",
+          "modules/caddyhttp/fileserver/matcher.go",
+          "modules/caddytls/acmeissuer.go",
+          "modules/caddyhttp/reverseproxy/reverseproxy.go",
+          "modules/caddyhttp/caddyauth/basicauth.go",
+          "modules/caddyhttp/encode/encode.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "The administration API source is manually confirmed as required and present. Noise labels cover unrelated metrics, file serving, ACME, reverse proxying, authentication, and encoding."
+      }
+    },
+    {
+      "id": "v02c-holdout-go-source_localization-149",
+      "materializedCaseSha256": "3d955cabfbacd69b083f90342e2564f12ecc2bc9924f6daf3405459c95a64c6e",
+      "candidatePathsSha256": "3632ab25f1cef5ead467f356f8ac4702ac70f9d3fa8443a4c9e402a18cc19857",
+      "decision": {
+        "requiredSourceFiles": [
+          "errors/errors.go",
+          "rpc/flipt.pb.go",
+          "rpc/flipt.pb.gw.go",
+          "rpc/flipt_grpc.pb.go",
+          "server/evaluator.go",
+          "server/server.go"
+        ],
+        "explicitNoiseFiles": [
+          "ui/src/router/index.js",
+          "ui/src/mixins/notify.js",
+          "config/migrations/mysql/0_initial.up.sql",
+          "storage/cache/segment_test.go",
+          "cmd/flipt/export.go",
+          "cmd/flipt/import.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "All six batch-evaluation error, RPC, evaluator, and server sources are manually confirmed as required and present. Noise labels cover unrelated UI, migrations, cache tests, and import/export commands."
+      }
+    },
+    {
+      "id": "v02c-holdout-go-failure_first-150",
+      "materializedCaseSha256": "03dbb991f2498fe74376a07974c9ce2abead427ecc10244c30cde092e91ef5de",
+      "candidatePathsSha256": "4b3ba944e1e7b5a6a7a6d0b3e82c5bfea98012926edae2b007673064bc11dfb8",
+      "decision": {
+        "requiredSourceFiles": [
+          "modules/logging/filters.go"
+        ],
+        "explicitNoiseFiles": [
+          "modules/caddytls/tls.go",
+          "modules/caddyhttp/reverseproxy/fastcgi/client.go",
+          "modules/caddyhttp/fileserver/staticfiles.go",
+          "modules/caddyhttp/templates/templates.go",
+          "modules/caddyhttp/encode/gzip/gzip.go",
+          "modules/caddypki/adminapi.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "The logging filter source is manually confirmed as required and present. Noise labels cover unrelated TLS, FastCGI, static files, templates, compression, and PKI administration."
+      }
+    },
+    {
+      "id": "v02c-holdout-go-failure_first-151",
+      "materializedCaseSha256": "960ac5ec090a92f9cbd92bbf9bf89fd184f9d62bec94367adb3527b7fc3bc75d",
+      "candidatePathsSha256": "f3cd8338d0a069de231a1f9f26fe4e0eee06a537bd028fa934e39d12d28df9e3",
+      "decision": {
+        "requiredSourceFiles": [
+          "caddyconfig/caddyfile/lexer.go"
+        ],
+        "explicitNoiseFiles": [
+          "modules/caddytls/acmeissuer.go",
+          "modules/caddyhttp/reverseproxy/reverseproxy.go",
+          "modules/caddyhttp/fileserver/browse.go",
+          "modules/caddytls/distributedstek/distributedstek.go",
+          "modules/caddyhttp/tracing/module.go",
+          "modules/caddyhttp/encode/encode_test.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "The Caddyfile lexer is manually confirmed as required and present. Noise labels cover unrelated ACME, reverse proxies, file browsing, distributed tickets, tracing, and encoding."
+      }
+    },
+    {
+      "id": "v02c-holdout-go-long_session-152",
+      "materializedCaseSha256": "90cc66dec793b46f37813901d37e00284d4d1ce2c6fa99135e34b28ccb8934f4",
+      "candidatePathsSha256": "d50588c12e74b87501479e27b16bbbfb389bddf6f5de404b00c2fa4d0ccbba1f",
+      "decision": {
+        "requiredSourceFiles": [
+          "caddyconfig/httpcaddyfile/addresses.go",
+          "caddyconfig/httpcaddyfile/options.go"
+        ],
+        "explicitNoiseFiles": [
+          "modules/caddytls/tls.go",
+          "modules/caddyhttp/fileserver/browse.go",
+          "modules/caddyhttp/reverseproxy/hosts.go",
+          "modules/caddyhttp/templates/tplcontext.go",
+          "modules/caddyhttp/encode/zstd/zstd.go",
+          "modules/caddypki/ca.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "The HTTP Caddyfile address and option sources are manually confirmed as required and present. Noise labels cover unrelated TLS, file browsing, reverse proxies, templates, compression, and PKI."
+      }
+    },
+    {
+      "id": "v02c-holdout-go-long_session-153",
+      "materializedCaseSha256": "98304a025073d822a75db46873ea4e0d27153286735ca0e69c445f1ad804476c",
+      "candidatePathsSha256": "c29fa6186f3288e1fe5fd62be6db2c915b70e3bfb939aafde8a7a57ba84eea25",
+      "decision": {
+        "requiredSourceFiles": [
+          "caddyconfig/caddyfile/dispenser.go",
+          "caddyconfig/caddyfile/lexer.go",
+          "caddyconfig/caddyfile/parse.go"
+        ],
+        "explicitNoiseFiles": [
+          "modules/caddytls/tls.go",
+          "modules/caddyhttp/reverseproxy/reverseproxy.go",
+          "modules/caddyhttp/fileserver/staticfiles.go",
+          "modules/caddyevents/app.go",
+          "modules/caddyhttp/logging.go",
+          "notify/notify_windows.go"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "The Caddyfile dispenser, lexer, and parser are manually confirmed as required and present. Noise labels cover unrelated TLS, reverse proxies, static files, events, HTTP logging, and Windows notifications."
+      }
+    },
+    {
+      "id": "v02c-holdout-java-source_localization-154",
+      "materializedCaseSha256": "633e99b4b324cbbc5dce0017b874f8929dc4dfb5d505114102b8bc844559eec1",
+      "candidatePathsSha256": "5c90cff92eb07ec5fac2ec8be8791f2ce67437da64c4aa87e893befd54a1bb4c",
+      "decision": {
+        "requiredSourceFiles": [
+          "server/src/main/java/org/apache/druid/discovery/DruidLeaderClient.java"
+        ],
+        "explicitNoiseFiles": [
+          "web-console/src/singletons/api.ts",
+          "extensions-contrib/redis-cache/src/main/java/org/apache/druid/client/cache/RedisCacheConfig.java",
+          "processing/src/main/java/org/apache/druid/math/expr/Expr.java",
+          "processing/src/main/java/org/apache/druid/hll/VersionOneHyperLogLogCollector.java",
+          "server/src/main/java/org/apache/druid/server/coordinator/CoordinatorDynamicConfig.java",
+          "extensions-contrib/cloudfiles-extensions/src/main/java/org/apache/druid/storage/cloudfiles/CloudFilesObjectApiProxy.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:00:00-04:00",
+        "notes": "The Druid leader client is manually confirmed as required and present. Noise labels cover unrelated web UI, Redis, expressions, HyperLogLog, coordinator configuration, and CloudFiles."
+      }
+    },
+    {
+      "id": "v02c-holdout-java-source_localization-155",
+      "materializedCaseSha256": "f53528f070f32bd1692d04fd7dabe49f86f687fd64d93f12ee87a44a12379c62",
+      "candidatePathsSha256": "34a1cbc257999bdfc920e0f779a2aa608b3421d4579f435fd8b814b708ed92a8",
+      "decision": {
+        "requiredSourceFiles": [
+          "processing/src/main/java/org/apache/druid/timeline/VersionedIntervalTimeline.java",
+          "processing/src/main/java/org/apache/druid/java/util/common/JodaUtils.java"
+        ],
+        "explicitNoiseFiles": [
+          "processing/src/main/java/org/apache/druid/metadata/MetadataStorageConnector.java",
+          "processing/src/main/java/org/apache/druid/query/aggregation/post/ArithmeticPostAggregator.java",
+          "extensions-contrib/aliyun-oss-extensions/src/main/java/org/apache/druid/storage/aliyun/OssTimestampVersionedDataFinder.java",
+          "processing/src/main/java/org/apache/druid/query/timeseries/TimeseriesQuery.java",
+          "processing/src/main/java/org/apache/druid/hll/VersionZeroHyperLogLogCollector.java",
+          "server/src/main/java/org/apache/druid/server/audit/SQLAuditManager.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "The versioned interval timeline is present; the manually confirmed Joda utility remains a candidate@64 retrieval miss. Noise labels cover unrelated metadata, post-aggregation, object storage, timeseries, HyperLogLog, and auditing."
+      }
+    },
+    {
+      "id": "v02c-holdout-java-failure_first-156",
+      "materializedCaseSha256": "a8e54bf1661be24f7b2bb76c751b4067383277890e2f5c5a8f45b8247e323cf7",
+      "candidatePathsSha256": "778b203b61cc7780b52623b63de70e212abef407930ad1989348b3d6ad01b824",
+      "decision": {
+        "requiredSourceFiles": [
+          "dubbo-common/src/main/java/org/apache/dubbo/common/URLStrParser.java"
+        ],
+        "explicitNoiseFiles": [
+          "dubbo-common/src/main/java/org/apache/dubbo/common/metrics/collector/stat/DefaultMetricsStatHandler.java",
+          "dubbo-xds/src/main/java/org/apache/dubbo/registry/xds/XdsCertificateSigner.java",
+          "dubbo-rpc/dubbo-rpc-triple/src/main/java/org/apache/dubbo/rpc/protocol/tri/SingleProtobufUtils.java",
+          "dubbo-config/dubbo-config-spring/src/main/java/org/apache/dubbo/config/spring/schema/DubboBeanDefinitionParser.java",
+          "dubbo-registry/dubbo-registry-api/src/main/java/org/apache/dubbo/registry/client/OverrideInstanceAddressURL.java",
+          "dubbo-metadata/dubbo-metadata-api/src/main/java/org/apache/dubbo/metadata/rest/springmvc/AbstractRequestAnnotationParameterProcessor.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "The URL string parser is manually confirmed as required and present. Noise labels cover unrelated metrics, XDS, protobuf, Spring configuration, registry overrides, and REST metadata."
+      }
+    },
+    {
+      "id": "v02c-holdout-java-failure_first-157",
+      "materializedCaseSha256": "2e13b0a463ca0970f3f6b1c4b7fdc4d47f531645fd3a22f4357b7f73508b2a6f",
+      "candidatePathsSha256": "0f3ae269ef91d2608b9dd7410e21f99ee2df418f269377afbc07d7157dbbae4a",
+      "decision": {
+        "requiredSourceFiles": [
+          "dubbo-common/src/main/java/org/apache/dubbo/common/utils/ReflectUtils.java"
+        ],
+        "explicitNoiseFiles": [
+          "dubbo-plugin/dubbo-qos/src/main/java/org/apache/dubbo/qos/legacy/ChangeTelnetHandler.java",
+          "dubbo-registry/dubbo-registry-zookeeper/src/main/java/org/apache/dubbo/registry/zookeeper/ZookeeperServiceDiscoveryChangeWatcher.java",
+          "dubbo-plugin/dubbo-auth/src/main/java/org/apache/dubbo/auth/exception/AccessKeyNotFoundException.java",
+          "dubbo-common/src/main/java/org/apache/dubbo/common/config/configcenter/ConfigChangeType.java",
+          "dubbo-common/src/main/java/org/apache/dubbo/common/utils/NetUtils.java",
+          "dubbo-serialization/dubbo-serialization-protostuff/src/main/java/org/apache/dubbo/common/serialize/protostuff/delegate/TimeDelegate.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "The reflection utility is manually confirmed as required and present. Noise labels cover unrelated QoS, Zookeeper, authentication, configuration, networking, and time serialization."
+      }
+    },
+    {
+      "id": "v02c-holdout-java-long_session-158",
+      "materializedCaseSha256": "8eb68a4b7ea719f75af12746ebd6c7b047b786ae427f05d2c6165448f8ee157c",
+      "candidatePathsSha256": "4bb74546fd20870354da34f68c01efb433445d09f8da7fe3596de5a2e04a0b1f",
+      "decision": {
+        "requiredSourceFiles": [
+          "dubbo-common/src/main/java/org/apache/dubbo/common/utils/PojoUtils.java",
+          "dubbo-common/src/main/java/org/apache/dubbo/common/utils/CompatibleTypeUtils.java"
+        ],
+        "explicitNoiseFiles": [
+          "dubbo-common/src/main/java/org/apache/dubbo/common/metrics/model/sample/MetricSample.java",
+          "dubbo-plugin/dubbo-qos/src/main/java/org/apache/dubbo/qos/command/impl/ChangeTelnet.java",
+          "dubbo-common/src/main/java/org/apache/dubbo/common/threadpool/support/fixed/FixedThreadPool.java",
+          "dubbo-xds/src/main/java/org/apache/dubbo/registry/xds/XdsServiceDiscovery.java",
+          "dubbo-common/src/main/java/org/apache/dubbo/common/utils/UrlUtils.java",
+          "dubbo-cluster/src/main/java/org/apache/dubbo/rpc/cluster/support/wrapper/MockClusterInvoker.java"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "The POJO utility is present; the manually confirmed compatible-type utility remains a candidate@64 retrieval miss. Noise labels cover unrelated metrics, QoS, thread pools, XDS, URLs, and cluster mocking."
+      }
+    },
+    {
+      "id": "v02c-holdout-java-long_session-159",
+      "materializedCaseSha256": "1d480c3a31b2b05935c56b6b325348ce51f1d776ecbecabaa4c2010c5ffb4da8",
+      "candidatePathsSha256": "6e423c0e621e3ba4337b2948538af96cc78962c0eed9d06e6b2785cc122b2c26",
+      "decision": {
+        "requiredSourceFiles": [
+          "processing/src/main/java/org/apache/druid/query/aggregation/post/ArithmeticPostAggregator.java"
+        ],
+        "explicitNoiseFiles": [
+          "docs/operations/tls-support.md",
+          "extensions-core/orc-extensions/src/main/java/org/apache/druid/data/input/orc/OrcStructConverter.java",
+          "extensions-core/parquet-extensions/src/main/java/org/apache/parquet/avro/DruidParquetAvroReadSupport.java",
+          "core/src/main/java/org/apache/druid/java/util/http/client/Request.java",
+          "indexing-service/src/main/java/org/apache/druid/indexing/common/actions/SegmentAllocateRequest.java",
+          "licenses/bin/change-case.MIT"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "The arithmetic post-aggregator is manually confirmed as required and present. Noise labels cover unrelated TLS documentation, ORC and Parquet, HTTP requests, segment allocation, and third-party licensing."
+      }
+    },
+    {
+      "id": "v02c-holdout-cpp-source_localization-160",
+      "materializedCaseSha256": "a4d0460005cf0212bf8b6e48584a93b68ce478ac80438b0ba0b846e2713bdafe",
+      "candidatePathsSha256": "9bb5fceec86a35b90459ad994ab77a117b13fb830993f6425ef54d69dbca2606",
+      "decision": {
+        "requiredSourceFiles": [
+          "src/catch2/catch_all.hpp"
+        ],
+        "explicitNoiseFiles": [
+          "src/catch2/internal/catch_random_number_generator.cpp",
+          "src/catch2/internal/catch_textflow.cpp",
+          "src/catch2/benchmark/catch_benchmark.hpp",
+          "src/catch2/reporters/catch_reporter_xml.cpp",
+          "src/catch2/internal/catch_debugger.cpp",
+          "src/catch2/matchers/catch_matchers_vector.hpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "The manually confirmed amalgamating Catch2 header is absent from candidate@64 and remains a retrieval miss. Noise labels cover unrelated randomness, text wrapping, benchmarks, XML reporting, debugging, and vector matchers."
+      }
+    },
+    {
+      "id": "v02c-holdout-cpp-source_localization-161",
+      "materializedCaseSha256": "3a5bd2ff5822373cd72fab6d2e08f9bf75fe85e4369f9aea57f8f0fb983516c2",
+      "candidatePathsSha256": "927d3e25eaebe6e51a7ef170dc9754448cf3149eac9279b67ad15ffc59226d3c",
+      "decision": {
+        "requiredSourceFiles": [
+          "include/internal/catch_approx.h"
+        ],
+        "explicitNoiseFiles": [
+          "include/reporters/catch_reporter_xml.cpp",
+          "include/internal/catch_registry_hub.cpp",
+          "include/internal/catch_random_number_generator.cpp",
+          "include/internal/catch_string_manip.cpp",
+          "projects/SelfTest/CompileTimePerfTests/All.tests.cpp",
+          "projects/SelfTest/UsageTests/ToStringVector.tests.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "The Approx header is manually confirmed as required and present. Noise labels cover unrelated XML reporting, registries, randomness, string manipulation, compile-time performance, and vector stringification."
+      }
+    },
+    {
+      "id": "v02c-holdout-cpp-failure_first-162",
+      "materializedCaseSha256": "9eac6683ad331a3149a93fbd02b57a64700466dc1fb0f84e1b1f855f1c75e317",
+      "candidatePathsSha256": "52a922412730b95eb4769b763521ef13adddfb29c0a9edd191d9aed319cb6bd7",
+      "decision": {
+        "requiredSourceFiles": [
+          "src/catch2/internal/catch_run_context.cpp"
+        ],
+        "explicitNoiseFiles": [
+          "docs/contributing.md",
+          "tools/scripts/fixWhitespace.py",
+          "src/catch2/internal/catch_list.cpp",
+          "src/catch2/reporters/catch_reporter_junit.cpp",
+          "src/catch2/benchmark/detail/catch_stats.cpp",
+          "src/catch2/internal/catch_textflow.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "The run-context source is manually confirmed as required and present. Noise labels cover unrelated contribution docs, whitespace tooling, listing, JUnit reporting, benchmark statistics, and text wrapping."
+      }
+    },
+    {
+      "id": "v02c-holdout-cpp-failure_first-163",
+      "materializedCaseSha256": "63c576a95039ccd93ae2305f4a8399c4e1d02e228e1d795add2e77cf28900109",
+      "candidatePathsSha256": "39b13cb8b72c84611072ad115793fa3fc9e60a1abfe8ba9edf74d11467d13b38",
+      "decision": {
+        "requiredSourceFiles": [
+          "include/internal/catch_commandline.cpp",
+          "include/internal/catch_list.cpp",
+          "include/internal/catch_list.h"
+        ],
+        "explicitNoiseFiles": [
+          "scripts/releaseNotes.py",
+          "scripts/benchmarkRunner.py",
+          "include/reporters/catch_reporter_teamcity.hpp",
+          "include/internal/catch_message.h",
+          "include/internal/catch_generators.cpp",
+          "include/internal/catch_xmlwriter.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "The command-line and listing implementations are present; the manually confirmed list header remains a candidate@64 retrieval miss. Noise labels cover unrelated release and benchmark scripts, TeamCity reporting, messages, generators, and XML writing."
+      }
+    },
+    {
+      "id": "v02c-holdout-cpp-long_session-164",
+      "materializedCaseSha256": "cd1a9e78baa9cab75932fee902f25b6e74f45f4d6e5e669d05f5781e67be78a6",
+      "candidatePathsSha256": "544ee6a9500d1ece7066df3d11cf1099e9d2f9a973c0f6e38e1fe883c4277aee",
+      "decision": {
+        "requiredSourceFiles": [
+          "src/catch2/internal/catch_textflow.cpp",
+          "src/catch2/internal/catch_textflow.hpp"
+        ],
+        "explicitNoiseFiles": [
+          "src/catch2/benchmark/catch_benchmark.hpp",
+          "src/catch2/catch_config.cpp",
+          "src/catch2/catch_registry_hub.cpp",
+          "src/catch2/matchers/catch_matchers_floating_point.cpp",
+          "src/catch2/generators/catch_generators.hpp",
+          "src/catch2/catch_session.cpp"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "Both text-flow sources are manually confirmed as required and present. Noise labels cover unrelated benchmarks, configuration, registries, floating-point matchers, generators, and sessions."
+      }
+    },
+    {
+      "id": "v02c-holdout-cpp-long_session-165",
+      "materializedCaseSha256": "8402a28e51c7a9d199cb9b2e2885c50be2d429476a6a41766b37a28d0c0319b7",
+      "candidatePathsSha256": "e69a0ca2e1b18427eb94b349f6aa521904f6903a4ab95d88fa3b66f5593c3afe",
+      "decision": {
+        "requiredSourceFiles": [
+          "include/internal/catch_message.cpp",
+          "include/internal/catch_message.h"
+        ],
+        "explicitNoiseFiles": [
+          "include/internal/catch_reporter_registry.cpp",
+          "include/internal/catch_version.cpp",
+          "include/internal/catch_matchers_vector.h",
+          "include/internal/catch_benchmark.cpp",
+          "include/internal/catch_session.cpp",
+          "include/internal/catch_console_colour.h"
+        ],
+        "reviewer": "Codex independent repository-evidence review",
+        "reviewedAt": "2026-07-23T18:15:00-04:00",
+        "notes": "Both message sources are manually confirmed as required and present. Noise labels cover unrelated reporter registries, versioning, vector matchers, benchmarks, sessions, and console colors."
+      }
+    }
+  ]
+}

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { ContextResponse, HybridScoredResult } from "../types.js";
 import type { QueryIntent } from "../retrieval/queryIntent.js";
 import { estimateTokens, truncateToBudget } from "../utils/tokens.js";
@@ -16,6 +18,10 @@ export function formatContextResults(input: {
     input.scored.length > 0
       ? input.scored
           .map((file) => {
+            if ((file.rankerMode === "calibrated" || file.rankerMode === "fallback") && file.relevanceProbability !== undefined) {
+              const evidenceReasons = file.evidenceReasons?.map((reason) => reason.replaceAll("_", " ")).join(", ") || "bounded repository evidence";
+              return `- ${file.path} (${file.kind}, probability ${file.relevanceProbability.toFixed(3)}, ${file.delivery ?? "path_hint"}): ${evidenceReasons}`;
+            }
             const scoreBreakdown = [
               `bm25 ${file.bm25Score}`,
               `semantic ${file.semanticScore}`,
@@ -44,8 +50,9 @@ export function formatContextResults(input: {
   ];
 
   if (input.mode === "snippets" || input.mode === "exact_code") {
-    const snippetFiles = input.scored.filter((file) => file.intentScore > 0 || !file.reasons.includes("graph neighbor"));
-    const files = (snippetFiles.length > 0 ? snippetFiles : input.scored).slice(0, 5);
+    const contentEligible = input.scored.filter((file) => file.delivery !== "path_hint");
+    const snippetFiles = contentEligible.filter((file) => file.intentScore > 0 || !file.reasons.includes("graph neighbor"));
+    const files = (snippetFiles.length > 0 ? snippetFiles : contentEligible).slice(0, 5);
     sections.push("", "## Matched Snippets", formatMatchedSnippets(files, Math.max(180, Math.floor((input.budget ?? 1600) * 0.42))));
   }
 

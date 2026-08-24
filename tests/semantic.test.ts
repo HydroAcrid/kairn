@@ -44,7 +44,7 @@ describe("language adapter registry", () => {
     expect(languageAdapters.find((adapter) => adapter.id === "python")?.status).toBe("active");
     expect(languageAdapters.find((adapter) => adapter.id === "java")?.status).toBe("active");
     expect(languageAdapters.find((adapter) => adapter.id === "c-cpp")?.status).toBe("active");
-    expect(languageAdapters.find((adapter) => adapter.id === "go")?.status).toBe("stub");
+    expect(languageAdapters.find((adapter) => adapter.id === "go")?.status).toBe("active");
     expect(languageAdapters.find((adapter) => adapter.id === "rust")?.status).toBe("stub");
     expect(languageAdapters.find((adapter) => adapter.id === "ruby")?.status).toBe("stub");
     expect(getLanguageAdapterForPath("src/service.py")?.id).toBe("python");
@@ -78,6 +78,14 @@ describe("hybridSearch", () => {
     const intent = classifyQueryIntent("Debug basic_string_view starts_with equal-length prefix behavior");
 
     expect(intent.primary).not.toBe("ui");
+  });
+
+  it("does not classify failing-check bug context as a request to edit tests", () => {
+    const intent = classifyQueryIntent(
+      "Initial failing checks: TestNeighborPages. Bug: adjacent sections return incorrect pages."
+    );
+
+    expect(intent.primary).not.toBe("test");
   });
 
   it("finds semantically relevant files even when the path and symbols do not match the query", () => {
@@ -302,6 +310,35 @@ describe("hybridSearch", () => {
 
     expect(new Set(ids).size).toBe(ids.length);
     expect(lexical.terms.every((term) => ids.includes(term.documentId))).toBe(true);
+  });
+
+  it("allocates compact lexical evidence fairly across later indexed files", () => {
+    const rootPath = "/repo";
+    const files = Array.from({ length: 500 }, (_, index) =>
+      file(rootPath, `src/module-${String(index).padStart(3, "0")}.ts`, "source")
+    );
+    const symbols = files.map((record, index) =>
+      symbol(rootPath, record.path, `ModuleService${index}`)
+    );
+    const chunks = files.map((record, index) =>
+      chunk(
+        rootPath,
+        record.path,
+        `ModuleService${index}`,
+        [
+          `tailmarker${index}`,
+          ...Array.from({ length: 80 }, (_, termIndex) => `token${index}x${termIndex}`)
+        ].join(" ")
+      )
+    );
+    const lexical = buildLexicalIndex({ rootPath, files, symbols, chunks });
+    const lastPath = files.at(-1)!.path;
+
+    expect(lexical.terms).toContainEqual(expect.objectContaining({
+      filePath: lastPath,
+      term: "tailmarker499"
+    }));
+    expect(lexical.terms.length).toBeLessThanOrEqual(90_000);
   });
 
   it("maps behavior-heavy hashing bug descriptions to the production symbol file", () => {

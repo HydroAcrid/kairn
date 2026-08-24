@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { OutputKind } from "../types.js";
 import { truncateToBudget } from "../utils/tokens.js";
 

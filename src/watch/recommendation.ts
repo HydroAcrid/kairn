@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { FailureContext, WatchRecommendation } from "../types.js";
 
 export function failureRecommendation(context: FailureContext): WatchRecommendation {

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { tokenizeLexical } from "../semantic/tokenize.js";
 
 export type QueryIntentPrimary = "ui" | "backend" | "data" | "auth" | "test" | "workflow" | "infra" | "docs" | "generic";
@@ -130,11 +132,14 @@ export function classifyQueryIntent(query: string): QueryIntent {
   const workflow = detectWorkflowIntent(query, terms);
   const scores = new Map<QueryIntentPrimary, string[]>();
   const negatedTestIntent = hasNegatedIntent(query, ["test", "tests", "spec", "specs", "pytest", "vitest", "jest"]);
+  const failureFirstSourceIntent = terms.some((term) =>
+    ["bug", "debug", "error", "errors", "exception", "exceptions", "fail", "fails", "failed", "failing", "failure", "failures", "incorrect", "regression"].includes(term)
+  );
   const negatedDocsIntent = hasNegatedIntent(query, ["doc", "docs", "documentation", "readme", "example", "examples"]);
 
   for (const [intent, dictionary] of Object.entries(INTENT_TERMS) as Array<[Exclude<QueryIntentPrimary, "generic">, Set<string>]>) {
     if (intent === "workflow" && workflow.matchedPhrases.length === 0) continue;
-    if (intent === "test" && negatedTestIntent) continue;
+    if (intent === "test" && (negatedTestIntent || failureFirstSourceIntent)) continue;
     if (intent === "docs" && negatedDocsIntent) continue;
     const matched = terms.filter((term) => dictionary.has(term));
     if (matched.length > 0) {

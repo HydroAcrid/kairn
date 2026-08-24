@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { ensureKairnDir } from "../config/paths.js";

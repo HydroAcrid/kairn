@@ -465,7 +465,7 @@ describe("benchmark campaign harness", () => {
     expect(fs.readFileSync(report.outputs.failuresCsvPath, "utf8")).toContain("official_pass_token_unavailable");
   });
 
-  it("records timeout-estimated token accounting separately from observed token data", async () => {
+  it("marks timed-out attempts quality-incomplete and excludes token claims", async () => {
     const dir = tempDir("kairn-campaign-timeout-estimated-");
     const timeoutCommand = [
       "node -e",
@@ -504,16 +504,16 @@ describe("benchmark campaign harness", () => {
     });
 
     const row = report.rows[0];
-    expect(row?.qualityPassed).toBe(true);
-    expect(row?.classifications).toContain("timeout_pass_estimated_tokens");
-    expect(row?.classifications).not.toContain("official_pass_token_unavailable");
-    expect(row?.tokenAccounting).toBe("timeout_estimate");
+    expect(row?.qualityPassed).toBe(false);
+    expect(row?.classifications).toContain("quality_incomplete");
+    expect(row?.classifications).not.toContain("timeout_pass_estimated_tokens");
+    expect(row?.tokenAccounting).toBeUndefined();
     expect(row?.observedTokens).toBeUndefined();
     expect(row?.baselineTokens).toBeUndefined();
-    expect(row?.estimatedObservedTokens).toBeGreaterThan(0);
-    expect(row?.estimatedBaselineTokens).toBeGreaterThan(0);
+    expect(row?.estimatedObservedTokens).toBeUndefined();
+    expect(row?.estimatedBaselineTokens).toBeUndefined();
     expect(report.aggregate.medianSavedTokens).toBe(0);
-    expect(fs.readFileSync(report.outputs.failuresCsvPath, "utf8")).toContain("timeout_pass_estimated_tokens");
+    expect(fs.readFileSync(report.outputs.failuresCsvPath, "utf8")).toContain("quality_incomplete");
   });
 
   it("limits campaign worker concurrency", async () => {

@@ -1,0 +1,95 @@
+name: Open-source integrity
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.31.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm check:secrets:history
+      - run: pnpm check:headers
+      - run: pnpm --silent check:licenses > licenses.prod.json
+      - run: pnpm --silent check:licenses:all > licenses.all.json
+      - run: pnpm notices:check
+      - run: pnpm --silent sbom > sbom.cdx.json
+      - run: node scripts/verify-supply-chain-reports.mjs licenses.prod.json sbom.cdx.json
+      - run: pnpm verify:ranker-sample
+      - run: pnpm verify:ranker-promotion-sample
+      - run: pnpm verify:release-checksums
+      - run: pnpm smoke:offline
+      - run: npm pack --dry-run --json > package-contents.json
+      - run: node scripts/verify-package-contents.mjs package-contents.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: supply-chain-reports
+          path: |
+            licenses.prod.json
+            licenses.all.json
+            sbom.cdx.json
+            package-contents.json
+
+  setup-smoke:
+    name: setup smoke (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Enable Git long paths
+        if: runner.os == 'Windows'
+        run: git config --global core.longpaths true
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.31.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm smoke:enable-disable
+      - run: pnpm smoke:package
+
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.31.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Audit production dependency lockfile
+        run: pnpm audit --prod --audit-level moderate

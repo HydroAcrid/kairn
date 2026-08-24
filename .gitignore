@@ -2,6 +2,7 @@ node_modules/
 dist/
 .release/
 coverage/
+artifacts/
 .DS_Store
 .env
 .env.*
@@ -9,6 +10,8 @@ coverage/
 *.log
 .kairn/
 supabase/.temp/
+__pycache__/
+*.py[cod]
 
 # Generated benchmark/evaluator artifacts. Keep curated reports and compact
 # summaries tracked explicitly; archive raw bundles outside normal commits.

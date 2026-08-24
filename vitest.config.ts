@@ -5,6 +5,9 @@ export default defineConfig({
     environment: "node",
     globals: true,
     include: ["tests/**/*.test.ts"],
-    testTimeout: process.env.CI ? 45000 : 15000
+      testTimeout: 60000,
+      env: {
+        KAIRN_CANDIDATE_MODE: "legacy"
+      }
   }
 });

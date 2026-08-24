@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type {
   SessionContextPolicyDecision,
   SessionLedgerEvent,
@@ -58,8 +60,7 @@ export function decideSessionContextPolicy(input: {
   const lastFailure = workingSet.lastFailure;
   const lastPassingVerification = workingSet.lastPassingVerification;
   const hasPassingVerification = Boolean(lastPassingVerification);
-  const hasUnresolvedFailure = Boolean(lastFailure) &&
-    (!lastPassingVerification || Date.parse(lastFailure!.createdAt) > Date.parse(lastPassingVerification.createdAt));
+  const hasUnresolvedFailure = workingSet.unresolvedFailure;
   const shownFiles = new Set(workingSet.shownFiles);
   const repeatedFiles = candidateFiles.filter((file) => shownFiles.has(file));
   const changedFiles = candidateFiles.filter((file) => workingSet.staleFiles.includes(file));
@@ -70,6 +71,16 @@ export function decideSessionContextPolicy(input: {
     (event) => event.kind === "context_shown" && event.contentHash === contentHash
   );
   const phaseShift = phase !== input.ledger.currentPhase;
+  const verifiedFocus = lastPassingVerification?.filePath ?? workingSet.currentInvariant?.filePath ?? workingSet.activeFiles[0];
+  const latestEditScopeFiles = latestInitialEditScopeFiles(input.recentEvents);
+  const scopeDriftFiles = selectScopeDriftRepairFiles({
+    task: input.task,
+    phase,
+    workingSet,
+    latestEditScopeFiles,
+    verifiedFocus,
+    hasUnresolvedFailure
+  });
   const postDiagnosisFocus = selectPostDiagnosisFocus({
     task: input.task,
     phase,
@@ -83,8 +94,20 @@ export function decideSessionContextPolicy(input: {
     hasUnresolvedFailure
   });
 
+  if (scopeDriftFiles.length > 0) {
+    const expectedScopeFiles = uniqueStrings([
+      ...latestEditScopeFiles,
+      ...(verifiedFocus ? [verifiedFocus] : [])
+    ]).filter(isLikelyProductionSourcePath);
+    return decision("shrink", phase, "scope_drift_repair", scopeDriftFiles, repeatedFiles, changedFiles, ignoredRecommendedFiles, input, {
+      scopeDriftFiles,
+      expectedScopeFiles,
+      lastPassingVerification,
+      nextSmallestUsefulRead: workingSet.nextSmallestUsefulRead
+    });
+  }
+
   if ((phase === "verification" || phase === "cleanup") && hasPassingVerification && !hasUnresolvedFailure) {
-    const verifiedFocus = lastPassingVerification?.filePath ?? workingSet.currentInvariant?.filePath ?? workingSet.activeFiles[0];
     const activeFiles = uniqueStrings([
       ...(verifiedFocus ? [verifiedFocus] : []),
       ...candidateFiles.filter((file) => workingSet.activeFiles.includes(file))
@@ -110,7 +133,7 @@ export function decideSessionContextPolicy(input: {
   if (changedFiles.length > 0) {
     return decision("emit", phase, "changed_file_reemitted", candidateFiles, repeatedFiles, changedFiles, ignoredRecommendedFiles, input);
   }
-  if (failureFiles.length > 0) {
+  if (failureFiles.length > 0 || hasUnresolvedFailure) {
     return decision("emit", phase, "failure_reemitted", candidateFiles.slice(0, 2), repeatedFiles, changedFiles, ignoredRecommendedFiles, input);
   }
   if (postDiagnosisFocus && isFixTurnSignal(input.task, phase)) {
@@ -223,6 +246,46 @@ function isFixTurnSignal(task: string, phase: TaskPhase): boolean {
   return /\b(fix|repair|patch|regression|bug|seeded|failing|failure|broken)\b/i.test(task);
 }
 
+function latestInitialEditScopeFiles(events: SessionLedgerEvent[]): string[] {
+  for (const event of [...events].reverse()) {
+    if (event.kind !== "edit_scope_changed") continue;
+    const editScope = isRecord(event.metadata.editScope) ? event.metadata.editScope : undefined;
+    const initialEditFiles = Array.isArray(editScope?.initialEditFiles)
+      ? editScope.initialEditFiles.filter((file): file is string => typeof file === "string" && file.length > 0)
+      : [];
+    if (initialEditFiles.length > 0) return uniqueStrings(initialEditFiles);
+  }
+  return [];
+}
+
+function selectScopeDriftRepairFiles(input: {
+  task: string;
+  phase: TaskPhase;
+  workingSet: SessionLedgerSummary["workingSet"];
+  latestEditScopeFiles: string[];
+  verifiedFocus?: string | undefined;
+  hasUnresolvedFailure: boolean;
+}): string[] {
+  if (input.phase !== "verification" && input.phase !== "cleanup") return [];
+  if (input.hasUnresolvedFailure) return [];
+  if (hasExplicitMultiFileSignal(input.task) && input.latestEditScopeFiles.length === 0) return [];
+  const allowedFiles = uniqueStrings([
+    ...input.latestEditScopeFiles,
+    ...(input.verifiedFocus ? [input.verifiedFocus] : []),
+    ...(input.workingSet.currentInvariant?.filePath ? [input.workingSet.currentInvariant.filePath] : [])
+  ]).filter(isLikelyProductionSourcePath);
+  if (allowedFiles.length === 0) return [];
+  const allowed = new Set(allowedFiles);
+  const driftFiles = uniqueStrings([
+    ...input.workingSet.recentlyTouchedFiles,
+    ...input.workingSet.activeFiles
+  ])
+    .filter(isLikelyProductionSourcePath)
+    .filter((file) => !allowed.has(file));
+  if (driftFiles.length === 0) return [];
+  return uniqueStrings([...driftFiles.slice(0, 2), ...allowedFiles.slice(0, 1)]);
+}
+
 function shouldSuppressVerifiedContext(input: {
   task: string;
   phase: TaskPhase;
@@ -253,4 +316,8 @@ function isLikelyProductionSourcePath(filePath: string): boolean {
   }
   if (/(?:^|\/)[^/]*(?:test|spec)\.[^/]+$/i.test(filePath)) return false;
   return true;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

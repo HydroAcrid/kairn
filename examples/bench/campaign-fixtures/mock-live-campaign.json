@@ -7,8 +7,8 @@
     "agentTimeoutMs": 10000,
     "cleanup": "always",
     "commands": {
-      "baseline": "node -e \"setTimeout(() => { console.log('src/app.ts'); console.log('tokens used 1000'); }, 150)\"",
-      "kairn_codex_session": "node -e \"setTimeout(() => { console.log('src/app.ts'); console.log('tokens used 700'); }, 150)\""
+      "baseline": "node -e \"console.log('src/app.ts'); console.log('tokens used 1000')\"",
+      "kairn_codex_session": "node -e \"console.log('src/app.ts'); console.log('tokens used 700')\""
     }
   },
   "pauseRules": {

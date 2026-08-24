@@ -1,0 +1,73 @@
+name: Release integrity bundle (no publish)
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.31.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm check:secrets:history
+      - run: pnpm check:headers
+      - run: pnpm notices:check
+      - run: pnpm verify:ranker-sample
+      - run: pnpm verify:ranker-promotion-sample
+      - run: pnpm verify:release-checksums
+      - run: pnpm verify:package-contents
+      - run: pnpm smoke:offline
+      - name: Assemble local integrity payload
+        shell: bash
+        run: |
+          mkdir -p artifacts/release/model
+          npm pack --pack-destination artifacts/release
+          pnpm --silent check:licenses > artifacts/release/licenses.prod.json
+          pnpm --silent check:licenses:all > artifacts/release/licenses.all.json
+          pnpm --silent sbom > artifacts/release/sbom.cdx.json
+          node scripts/verify-supply-chain-reports.mjs \
+            artifacts/release/licenses.prod.json \
+            artifacts/release/sbom.cdx.json
+          cp LICENSE NOTICE THIRD_PARTY_NOTICES.md artifacts/release/
+          python3 scripts/train-evidence-ranker.py \
+            --input benchmarks/evidence-training.sample.jsonl \
+            --out artifacts/release/model/sample-evidence-model.json \
+            --model-id sample-evidence-v1 \
+            --node "$(command -v node)" \
+            --public-data-only
+          node scripts/generate-release-checksums.mjs --root artifacts/release
+          node scripts/generate-release-checksums.mjs --root artifacts/release --check
+      - name: Record non-publishing boundary
+        shell: bash
+        run: |
+          {
+            echo "## Release integrity bundle"
+            echo "This workflow built and checksummed a candidate artifact."
+            echo "It did not publish npm, create a GitHub release, sign release notes, or attest provenance."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-integrity-${{ github.sha }}
+          path: artifacts/release
+          if-no-files-found: error
+          retention-days: 30

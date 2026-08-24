@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { ContextResponseMode } from "./context.js";
 import type { CompressionMetricsSummary, EvidenceRoutingShadowSummary } from "./compression.js";
 import type { CodexUsageRecord } from "./eval.js";
@@ -71,6 +73,41 @@ export type MetricsSummary = {
     mcpFiles: string[];
     overlapFiles: string[];
     exactSourceFiles: string[];
+  };
+  decisions: {
+    emit: number;
+    shrink: number;
+    suppress: number;
+    requestEvidence: number;
+  };
+  assistance: {
+    valid: number;
+    overAssist: number;
+    missedOpportunity: number;
+    harmful: number;
+  };
+  quality: {
+    verificationPasses: number;
+    verificationFailures: number;
+    latestVerification: "passed" | "failed" | "none";
+  };
+  recommendations: {
+    made: number;
+    laterUsed: number;
+    laterTouched: number;
+  };
+  delivery: {
+    hooks: {
+      invocations: number;
+      failures: number;
+      suppressed: number;
+    };
+    mcp: {
+      calls: number;
+      returnedSourceFiles: number;
+      returnedTestFiles: number;
+      returnedNoiseFiles: number;
+    };
   };
   index: {
     files: number;

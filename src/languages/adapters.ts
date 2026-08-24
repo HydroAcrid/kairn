@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import type { LanguageAdapter } from "../types.js";
 
 export const languageAdapters: LanguageAdapter[] = [
@@ -37,9 +39,9 @@ export const languageAdapters: LanguageAdapter[] = [
     id: "go",
     languages: ["go"],
     fileExtensions: [".go"],
-    capabilities: ["symbols", "definitions", "references", "tests", "failures"],
-    status: "stub",
-    notes: "Universal retrieval works now; deep Go graph support is a future adapter."
+    capabilities: ["symbols", "tests", "failures"],
+    status: "active",
+    notes: "Tree-sitter package/import/symbol extraction plus direct local package and test/source relationships."
   },
   {
     id: "rust",

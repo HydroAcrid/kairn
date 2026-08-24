@@ -1,0 +1,165 @@
+{
+  "schemaVersion": "lineage-registry.v1",
+  "lineages": [
+    {
+      "id": "https://github.com/apache/druid",
+      "role": "holdout"
+    },
+    {
+      "id": "https://github.com/apache/dubbo",
+      "role": "holdout"
+    },
+    {
+      "id": "https://github.com/apache/lucene",
+      "role": "calibration"
+    },
+    {
+      "id": "https://github.com/astropy/astropy",
+      "role": "holdout"
+    },
+    {
+      "id": "https://github.com/axios/axios",
+      "role": "holdout"
+    },
+    {
+      "id": "https://github.com/babel/babel",
+      "role": "calibration"
+    },
+    {
+      "id": "https://github.com/caddyserver/caddy",
+      "role": "holdout"
+    },
+    {
+      "id": "https://github.com/catchorg/Catch2",
+      "role": "holdout"
+    },
+    {
+      "id": "https://github.com/django/django",
+      "role": "holdout"
+    },
+    {
+      "id": "https://github.com/element-hq/element-web",
+      "role": "calibration"
+    },
+    {
+      "id": "https://github.com/facebook/docusaurus",
+      "role": "train"
+    },
+    {
+      "id": "https://github.com/fasterxml/jackson-core",
+      "role": "calibration"
+    },
+    {
+      "id": "https://github.com/flipt-io/flipt",
+      "role": "holdout"
+    },
+    {
+      "id": "https://github.com/fmtlib/fmt",
+      "role": "calibration"
+    },
+    {
+      "id": "https://github.com/future-architect/vuls",
+      "role": "calibration"
+    },
+    {
+      "id": "https://github.com/gin-gonic/gin",
+      "role": "calibration"
+    },
+    {
+      "id": "https://github.com/gohugoio/hugo",
+      "role": "train"
+    },
+    {
+      "id": "https://github.com/google/gson",
+      "role": "train"
+    },
+    {
+      "id": "https://github.com/gravitational/teleport",
+      "role": "train"
+    },
+    {
+      "id": "https://github.com/hashicorp/terraform",
+      "role": "train"
+    },
+    {
+      "id": "https://github.com/immutable-js/immutable-js",
+      "role": "train"
+    },
+    {
+      "id": "https://github.com/javaparser/javaparser",
+      "role": "train"
+    },
+    {
+      "id": "https://github.com/matplotlib/matplotlib",
+      "role": "holdout"
+    },
+    {
+      "id": "https://github.com/mrdoob/three.js",
+      "role": "train"
+    },
+    {
+      "id": "https://github.com/mwaskom/seaborn",
+      "role": "calibration"
+    },
+    {
+      "id": "https://github.com/navidrome/navidrome",
+      "role": "train"
+    },
+    {
+      "id": "https://github.com/nlohmann/json",
+      "role": "train"
+    },
+    {
+      "id": "https://github.com/NodeBB/NodeBB",
+      "role": "holdout"
+    },
+    {
+      "id": "https://github.com/pallets/flask",
+      "role": "calibration"
+    },
+    {
+      "id": "https://github.com/preactjs/preact",
+      "role": "train"
+    },
+    {
+      "id": "https://github.com/projectlombok/lombok",
+      "role": "train"
+    },
+    {
+      "id": "https://github.com/psf/requests",
+      "role": "train"
+    },
+    {
+      "id": "https://github.com/pydata/xarray",
+      "role": "calibration"
+    },
+    {
+      "id": "https://github.com/pylint-dev/pylint",
+      "role": "train"
+    },
+    {
+      "id": "https://github.com/pytest-dev/pytest",
+      "role": "train"
+    },
+    {
+      "id": "https://github.com/scikit-learn/scikit-learn",
+      "role": "train"
+    },
+    {
+      "id": "https://github.com/simdjson/simdjson",
+      "role": "train"
+    },
+    {
+      "id": "https://github.com/sphinx-doc/sphinx",
+      "role": "train"
+    },
+    {
+      "id": "https://github.com/sympy/sympy",
+      "role": "train"
+    },
+    {
+      "id": "https://github.com/yhirose/cpp-httplib",
+      "role": "train"
+    }
+  ]
+}

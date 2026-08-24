@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "ranker-corpus.v1",
+  "corpusId": "kairn-v02c-20260722",
+  "featureSchemaVersion": "evidence-features-v1",
+  "sealed": false,
+  "sampleOnly": false,
+  "lineageRegistry": "lineage-registry.v1.json",
+  "cases": []
+}

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import { Command, Option } from "commander";
 import { handleHookWithDaemon } from "../../daemon/server.js";
 import type { HookOutputProfile, PrimeProfile, WatchEventSource } from "../../types.js";

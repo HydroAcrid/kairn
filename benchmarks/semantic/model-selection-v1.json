@@ -1,0 +1,160 @@
+{
+  "schemaVersion": "semantic-model-selection.v1",
+  "campaignId": "v02c-semantic-model-selection-20260724",
+  "sealed": true,
+  "documentSchemaVersion": "semantic-documents-v1",
+  "selectionSplits": ["train", "calibration"],
+  "holdoutSplit": "holdout",
+  "cases": [
+    {
+      "id": "python-source-localization",
+      "lineageId": "synthetic-python-train",
+      "split": "train",
+      "language": "python",
+      "scenario": "source_localization",
+      "targetPath": "src/traffic/limiter.py",
+      "query": "Where is incoming request throughput smoothed so short bursts are allowed without overwhelming the service?",
+      "targetText": "file: src/traffic/limiter.py\nlanguage: python\nrole: source\nmodule: src/traffic\nexported symbols:\nclass TokenBucket\ndef admit_request\n\nclass TokenBucket:\n    def admit_request(self, now):\n        self.credits = min(self.capacity, self.credits + self.refill_rate * elapsed)\n        if self.credits < 1:\n            return False\n        self.credits -= 1\n        return True"
+    },
+    {
+      "id": "typescript-source-localization",
+      "lineageId": "synthetic-typescript-train",
+      "split": "train",
+      "language": "typescript",
+      "scenario": "source_localization",
+      "targetPath": "src/release/cohort.ts",
+      "query": "Which implementation decides whether a person belongs in a gradual product rollout?",
+      "targetText": "file: src/release/cohort.ts\nlanguage: typescript\nrole: source\nmodule: src/release\nexported symbols:\nfunction chooseCohort\n\nexport function chooseCohort(accountId: string, percentage: number): boolean {\n  const bucket = stableHash(accountId) % 100;\n  return bucket < percentage;\n}"
+    },
+    {
+      "id": "go-source-localization",
+      "lineageId": "synthetic-go-train",
+      "split": "train",
+      "language": "go",
+      "scenario": "source_localization",
+      "targetPath": "internal/shutdown/drain.go",
+      "query": "Where does the server stop accepting new work while allowing active operations to finish before exit?",
+      "targetText": "file: internal/shutdown/drain.go\nlanguage: go\nrole: source\nmodule: internal/shutdown\nexported symbols:\nfunc Drain\n\nfunc Drain(ctx context.Context, listener net.Listener, active *sync.WaitGroup) error {\n    listener.Close()\n    done := make(chan struct{})\n    go func() { active.Wait(); close(done) }()\n    select { case <-done: return nil; case <-ctx.Done(): return ctx.Err() }\n}"
+    },
+    {
+      "id": "java-source-localization",
+      "lineageId": "synthetic-java-train",
+      "split": "train",
+      "language": "java",
+      "scenario": "source_localization",
+      "targetPath": "src/main/java/cache/LruStore.java",
+      "query": "Which code removes the entry that has gone unused for the longest time once capacity is reached?",
+      "targetText": "file: src/main/java/cache/LruStore.java\nlanguage: java\nrole: source\nmodule: cache\nexported symbols:\nclass LruStore\nmethod evictEldest\n\npublic final class LruStore<K,V> extends LinkedHashMap<K,V> {\n  protected boolean removeEldestEntry(Map.Entry<K,V> eldest) {\n    return size() > capacity;\n  }\n}"
+    },
+    {
+      "id": "cpp-source-localization",
+      "lineageId": "synthetic-cpp-train",
+      "split": "train",
+      "language": "cpp",
+      "scenario": "source_localization",
+      "targetPath": "src/fs/normalize_path.cpp",
+      "query": "Where are redundant directory steps removed to produce a canonical filesystem location?",
+      "targetText": "file: src/fs/normalize_path.cpp\nlanguage: cpp\nrole: source\nmodule: src/fs\nexported symbols:\nfunction normalize_path\n\nstd::filesystem::path normalize_path(const std::filesystem::path& input) {\n  std::vector<path> parts;\n  for (auto& part : input) {\n    if (part == \".\") continue;\n    if (part == \"..\" && !parts.empty()) parts.pop_back(); else parts.push_back(part);\n  }\n  return join(parts);\n}"
+    },
+    {
+      "id": "python-failure-first",
+      "lineageId": "synthetic-python-calibration",
+      "split": "calibration",
+      "language": "python",
+      "scenario": "failure_first",
+      "targetPath": "src/cache/expiry.py",
+      "query": "A stale record is still returned after its lifetime passes. Which implementation should reject outdated values?",
+      "targetText": "file: src/cache/expiry.py\nlanguage: python\nrole: source\nmodule: src/cache\nexported symbols:\ndef read_if_fresh\n\nclass ExpiringStore:\n    def read_if_fresh(self, key, clock):\n        item = self.entries.get(key)\n        if item is None or clock.now() >= item.expires_at:\n            self.entries.pop(key, None)\n            return None\n        return item.value"
+    },
+    {
+      "id": "typescript-failure-first",
+      "lineageId": "synthetic-typescript-calibration",
+      "split": "calibration",
+      "language": "typescript",
+      "scenario": "failure_first",
+      "targetPath": "src/auth/refreshSession.ts",
+      "query": "Requests remain unauthorized after login credentials expire even though a renewal secret exists. Where should access be restored?",
+      "targetText": "file: src/auth/refreshSession.ts\nlanguage: typescript\nrole: source\nmodule: src/auth\nexported symbols:\nfunction refreshSession\n\nexport async function refreshSession(refreshToken: string) {\n  const response = await identity.exchange(refreshToken);\n  cookieJar.set(\"access\", response.accessToken, { expires: response.expiresAt });\n  return response.account;\n}"
+    },
+    {
+      "id": "go-failure-first",
+      "lineageId": "synthetic-go-calibration",
+      "split": "calibration",
+      "language": "go",
+      "scenario": "failure_first",
+      "targetPath": "internal/tls/reloader.go",
+      "query": "New secure connections keep serving an old certificate after rotation. Which code should swap the in-memory identity?",
+      "targetText": "file: internal/tls/reloader.go\nlanguage: go\nrole: source\nmodule: internal/tls\nexported symbols:\nfunc ReloadCertificate\n\nfunc (r *Reloader) ReloadCertificate(certFile, keyFile string) error {\n    next, err := tls.LoadX509KeyPair(certFile, keyFile)\n    if err != nil { return err }\n    r.current.Store(&next)\n    return nil\n}"
+    },
+    {
+      "id": "java-failure-first",
+      "lineageId": "synthetic-java-calibration",
+      "split": "calibration",
+      "language": "java",
+      "scenario": "failure_first",
+      "targetPath": "src/main/java/resilience/CircuitBreaker.java",
+      "query": "A failing dependency is called continuously instead of being paused after repeated errors. Which implementation owns that protection?",
+      "targetText": "file: src/main/java/resilience/CircuitBreaker.java\nlanguage: java\nrole: source\nmodule: resilience\nexported symbols:\nclass CircuitBreaker\nmethod recordFailure\n\npublic void recordFailure(Instant now) {\n  if (failures.incrementAndGet() >= threshold) {\n    state.set(State.OPEN);\n    retryAfter.set(now.plus(cooldown));\n  }\n}"
+    },
+    {
+      "id": "cpp-failure-first",
+      "lineageId": "synthetic-cpp-calibration",
+      "split": "calibration",
+      "language": "cpp",
+      "scenario": "failure_first",
+      "targetPath": "src/memory/slab_pool.cpp",
+      "query": "The allocator crashes when the same object is released twice. Where should duplicate returns to the free list be detected?",
+      "targetText": "file: src/memory/slab_pool.cpp\nlanguage: cpp\nrole: source\nmodule: src/memory\nexported symbols:\nmethod SlabPool::release\n\nvoid SlabPool::release(void* pointer) {\n  auto index = slot_index(pointer);\n  if (!allocated[index].exchange(false)) throw double_release_error(index);\n  free_slots.push(index);\n}"
+    },
+    {
+      "id": "python-long-session",
+      "lineageId": "synthetic-python-holdout",
+      "split": "holdout",
+      "language": "python",
+      "scenario": "long_session",
+      "targetPath": "src/billing/proration.py",
+      "query": "After several edits to subscription changes, locate the calculation that charges only for the unused portion of the billing period.",
+      "targetText": "file: src/billing/proration.py\nlanguage: python\nrole: source\nmodule: src/billing\nexported symbols:\ndef prorated_adjustment\n\ndef prorated_adjustment(old_price, new_price, period, changed_at):\n    remaining = (period.end - changed_at).total_seconds()\n    fraction = remaining / (period.end - period.start).total_seconds()\n    return money.round((new_price - old_price) * fraction)"
+    },
+    {
+      "id": "typescript-long-session",
+      "lineageId": "synthetic-typescript-holdout",
+      "split": "holdout",
+      "language": "typescript",
+      "scenario": "long_session",
+      "targetPath": "src/state/reconcileQueue.ts",
+      "query": "Continue the multi-turn fix: where are speculative client changes merged with the authoritative response after a save completes?",
+      "targetText": "file: src/state/reconcileQueue.ts\nlanguage: typescript\nrole: source\nmodule: src/state\nexported symbols:\nfunction reconcileQueue\n\nexport function reconcileQueue(server: Snapshot, pending: Mutation[]): Snapshot {\n  return pending.reduce((current, mutation) => mutation.apply(current), server);\n}"
+    },
+    {
+      "id": "go-long-session",
+      "lineageId": "synthetic-go-holdout",
+      "split": "holdout",
+      "language": "go",
+      "scenario": "long_session",
+      "targetPath": "internal/coordination/lease.go",
+      "query": "Resume debugging the worker ownership issue: which code periodically proves the process is still alive so another node does not take over?",
+      "targetText": "file: internal/coordination/lease.go\nlanguage: go\nrole: source\nmodule: internal/coordination\nexported symbols:\nfunc Renew\n\nfunc (l *Lease) Renew(ctx context.Context) error {\n    ticker := time.NewTicker(l.interval)\n    for { select { case <-ticker.C: if err := l.store.Extend(ctx, l.key, l.ttl); err != nil { return err }; case <-ctx.Done(): return ctx.Err() } }\n}"
+    },
+    {
+      "id": "java-long-session",
+      "lineageId": "synthetic-java-holdout",
+      "split": "holdout",
+      "language": "java",
+      "scenario": "long_session",
+      "targetPath": "src/main/java/payments/IdempotencyLedger.java",
+      "query": "After earlier payment fixes, find the guard that prevents retrying the same purchase request from creating a second charge.",
+      "targetText": "file: src/main/java/payments/IdempotencyLedger.java\nlanguage: java\nrole: source\nmodule: payments\nexported symbols:\nclass IdempotencyLedger\nmethod executeOnce\n\npublic Receipt executeOnce(String requestKey, Supplier<Receipt> operation) {\n  return records.computeIfAbsent(requestKey, ignored -> operation.get());\n}"
+    },
+    {
+      "id": "cpp-long-session",
+      "lineageId": "synthetic-cpp-holdout",
+      "split": "holdout",
+      "language": "cpp",
+      "scenario": "long_session",
+      "targetPath": "src/parser/checkpoint.cpp",
+      "query": "Continue the parser performance work: where is reusable syntax state saved so an edit does not require processing the entire document again?",
+      "targetText": "file: src/parser/checkpoint.cpp\nlanguage: cpp\nrole: source\nmodule: src/parser\nexported symbols:\nmethod IncrementalParser::save_checkpoint\n\nvoid IncrementalParser::save_checkpoint(size_t offset, const ParseState& state) {\n  checkpoints.insert_or_assign(offset, state.compact());\n}"
+    }
+  ]
+}
