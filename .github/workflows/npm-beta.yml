@@ -1,24 +1,45 @@
-name: npm beta source package
+name: npm beta two-step release
 
 on:
   workflow_dispatch:
     inputs:
+      action:
+        description: "Build a candidate, or publish a previously verified candidate"
+        required: true
+        default: build
+        type: choice
+        options:
+          - build
+          - publish
       version:
         description: "Exact package version expected from package.json"
         required: true
         type: string
-      publish:
-        description: "Publish to the npm beta dist-tag after validation"
+      build_run_id:
+        description: "Successful build workflow run ID (required for publish)"
         required: false
-        default: false
-        type: boolean
+        type: string
+      expected_commit:
+        description: "Full main-branch commit SHA from the verified build (required for publish)"
+        required: false
+        type: string
+      expected_sha256:
+        description: "Verified package tarball SHA-256 (required for publish)"
+        required: false
+        type: string
 
 permissions:
+  actions: read
   contents: read
   id-token: write
 
+concurrency:
+  group: npm-beta-release
+  cancel-in-progress: false
+
 jobs:
   build:
+    if: inputs.action == 'build'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,21 +90,81 @@ jobs:
           retention-days: 30
 
   publish:
-    if: inputs.publish
-    needs: build
+    if: inputs.action == 'publish'
     runs-on: ubuntu-latest
-    environment: npm-beta
     steps:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           registry-url: "https://registry.npmjs.org"
+      - name: Validate manual publication approval
+        shell: bash
+        env:
+          BUILD_RUN_ID: ${{ inputs.build_run_id }}
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+          EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
+          EXPECTED_VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "${GITHUB_REF}" = "refs/heads/main"
+          test -n "${BUILD_RUN_ID}"
+          test -n "${EXPECTED_COMMIT}"
+          test "${#EXPECTED_COMMIT}" = "40"
+          test -n "${EXPECTED_SHA256}"
+          test "${#EXPECTED_SHA256}" = "64"
+          case "${EXPECTED_VERSION}" in
+            0.2.0-beta.*) ;;
+            *) echo "Refusing non-v0.2 beta version: ${EXPECTED_VERSION}" >&2; exit 1 ;;
+          esac
+
+          RUN_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${BUILD_RUN_ID}")"
+          echo "${RUN_JSON}" | jq -e \
+            --arg commit "${EXPECTED_COMMIT}" \
+            '.event == "workflow_dispatch" and
+             .conclusion == "success" and
+             .head_branch == "main" and
+             .head_sha == $commit and
+             .path == ".github/workflows/npm-beta.yml"' >/dev/null
+
+          JOBS_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${BUILD_RUN_ID}/jobs?filter=all&per_page=100")"
+          echo "${JOBS_JSON}" | jq -e \
+            '[.jobs[] | select(.name == "build" and .conclusion == "success")] | length == 1' >/dev/null
       - uses: actions/download-artifact@v4
         with:
-          name: usekairn-${{ inputs.version }}-${{ github.sha }}
+          name: usekairn-${{ inputs.version }}-${{ inputs.expected_commit }}
           path: artifacts/npm
-      - name: Verify and publish beta only
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ github.token }}
+      - name: Verify exact candidate and publish beta only
         shell: bash
+        env:
+          EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
+          EXPECTED_VERSION: ${{ inputs.version }}
         run: |
           shasum -a 256 --check artifacts/npm/SHA256SUMS
-          npm publish artifacts/npm/*.tgz --tag beta --access public --provenance
+          PACKAGE_TARBALL="$(find artifacts/npm -maxdepth 1 -type f -name '*.tgz' -print)"
+          test -n "${PACKAGE_TARBALL}"
+          test "$(printf '%s\n' "${PACKAGE_TARBALL}" | wc -l | tr -d ' ')" = "1"
+          ACTUAL_SHA256="$(shasum -a 256 "${PACKAGE_TARBALL}" | awk '{print $1}')"
+          test "${ACTUAL_SHA256}" = "${EXPECTED_SHA256}"
+          tar -xOf "${PACKAGE_TARBALL}" package/package.json | node -e '
+            let body = "";
+            process.stdin.setEncoding("utf8");
+            process.stdin.on("data", (chunk) => { body += chunk; });
+            process.stdin.on("end", () => {
+              const manifest = JSON.parse(body);
+              if (manifest.name !== "usekairn" || manifest.version !== process.env.EXPECTED_VERSION) {
+                process.exitCode = 1;
+              }
+            });
+          '
+
+          if npm view "usekairn@${EXPECTED_VERSION}" version >/dev/null 2>&1; then
+            echo "Refusing to republish existing version usekairn@${EXPECTED_VERSION}" >&2
+            exit 1
+          fi
+
+          LATEST_BEFORE="$(npm view usekairn dist-tags.latest)"
+          npm publish "${PACKAGE_TARBALL}" --tag beta --access public --provenance
+          test "$(npm view usekairn dist-tags.beta)" = "${EXPECTED_VERSION}"
+          test "$(npm view usekairn dist-tags.latest)" = "${LATEST_BEFORE}"
