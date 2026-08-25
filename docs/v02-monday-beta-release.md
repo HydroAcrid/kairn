@@ -49,7 +49,7 @@ Any failed gate is a no-go. Infrastructure failures are fixed or disclosed; they
 - Dispatch `npm beta two-step release` from `main` with `action=build` and `version=0.2.0-beta.1`.
 - Download its artifact and verify the recorded SHA-256, package identity, contents, and source commit.
 - Manually dispatch the same workflow with `action=publish`, the verified build run ID, full commit SHA, and exact tarball SHA-256. The publish run refuses any other workflow, branch, commit, failed build, package identity, version line, or checksum.
-- Keep trusted publishing restricted to `HydroAcrid/kairn` and `npm-beta.yml`, with only `npm publish` allowed. The private-repository beta omits `--provenance` because npm rejects private GitHub source visibility; do not replace OIDC with a long-lived npm token.
+- Keep trusted publishing restricted to `HydroAcrid/kairn` and `npm-beta.yml`, with only `npm publish` allowed. The private-repository beta explicitly sets `--provenance=false` because npm can auto-enable provenance when GitHub OIDC is available and then reject private source visibility; do not replace OIDC with a long-lived npm token.
 - Verify `npm view usekairn@beta version`, install globally on a clean machine, and run `kairn --version`, `kairn enable --dry-run`, `kairn enable`, `kairn doctor`, and `kairn disable`.
 
 ### Public update
