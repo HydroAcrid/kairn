@@ -169,7 +169,8 @@ jobs:
           # npm provenance verification currently accepts public source
           # repositories only. Keep this private-repository beta on OIDC and
           # the immutable checksum gate; restore --provenance when the source
-          # repository is public.
-          npm publish "${PACKAGE_TARBALL}" --tag beta --access public
+          # repository is public. The explicit false is required because npm
+          # can auto-enable provenance when a GitHub OIDC token is available.
+          npm publish "${PACKAGE_TARBALL}" --tag beta --access public --provenance=false
           test "$(npm view usekairn dist-tags.beta)" = "${EXPECTED_VERSION}"
           test "$(npm view usekairn dist-tags.latest)" = "${LATEST_BEFORE}"
