@@ -172,5 +172,22 @@ jobs:
           # repository is public. The explicit false is required because npm
           # can auto-enable provenance when a GitHub OIDC token is available.
           npm publish "${PACKAGE_TARBALL}" --tag beta --access public --provenance=false
-          test "$(npm view usekairn dist-tags.beta)" = "${EXPECTED_VERSION}"
-          test "$(npm view usekairn dist-tags.latest)" = "${LATEST_BEFORE}"
+
+          wait_for_dist_tag() {
+            tag="$1"
+            expected="$2"
+            for delay in 1 2 4 8 16 30; do
+              actual="$(npm view usekairn "dist-tags.${tag}" --prefer-online 2>/dev/null || true)"
+              if [ "${actual}" = "${expected}" ]; then
+                return 0
+              fi
+              sleep "${delay}"
+            done
+            echo "Timed out waiting for usekairn ${tag}=${expected}; observed ${actual:-<missing>}" >&2
+            return 1
+          }
+
+          # Registry reads can lag a successful package PUT. Wait for beta to
+          # propagate before asserting that latest remained unchanged.
+          wait_for_dist_tag beta "${EXPECTED_VERSION}"
+          wait_for_dist_tag latest "${LATEST_BEFORE}"
