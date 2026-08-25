@@ -24,7 +24,7 @@ All must be green on the exact release commit:
 3. The packed `usekairn` tarball installs into a clean consumer project; version, dry-run, deterministic enable, and complete disable pass.
 4. Hosted clean-install/setup smoke passes on Ubuntu, macOS, and Windows. Tier A passes on Ubuntu and macOS. Tier B passes with the pinned Jina artifact, proving operation only.
 5. `kairn report` and `kairn report --share` label estimated context separately from provider tokens and withhold claims from quality-incomplete sessions.
-6. The npm workflow uses two manually separated runs: first build and inspect a checksummed artifact, then dispatch publication with that build run ID, commit, and SHA-256. Publication uses provenance and only the `beta` dist-tag. This is the approval boundary because the current private-repository GitHub plan does not support required environment reviewers.
+6. The npm workflow uses two manually separated runs: first build and inspect a checksummed artifact, then dispatch publication with that build run ID, commit, and SHA-256. Publication uses npm OIDC trusted publishing and only the `beta` dist-tag. npm rejects GitHub Actions provenance for private source repositories, so this private-repository beta publishes without provenance; provenance returns when the source repository is public. This is the approval boundary because the current private-repository GitHub plan does not support required environment reviewers.
 7. The install command is verified against the registry artifact after publication. `latest` is unchanged.
 
 Any failed gate is a no-go. Infrastructure failures are fixed or disclosed; they are never converted into Kairn effectiveness losses or wins.
@@ -49,6 +49,7 @@ Any failed gate is a no-go. Infrastructure failures are fixed or disclosed; they
 - Dispatch `npm beta two-step release` from `main` with `action=build` and `version=0.2.0-beta.1`.
 - Download its artifact and verify the recorded SHA-256, package identity, contents, and source commit.
 - Manually dispatch the same workflow with `action=publish`, the verified build run ID, full commit SHA, and exact tarball SHA-256. The publish run refuses any other workflow, branch, commit, failed build, package identity, version line, or checksum.
+- Keep trusted publishing restricted to `HydroAcrid/kairn` and `npm-beta.yml`, with only `npm publish` allowed. The private-repository beta omits `--provenance` because npm rejects private GitHub source visibility; do not replace OIDC with a long-lived npm token.
 - Verify `npm view usekairn@beta version`, install globally on a clean machine, and run `kairn --version`, `kairn enable --dry-run`, `kairn enable`, `kairn doctor`, and `kairn disable`.
 
 ### Public update
