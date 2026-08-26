@@ -3637,6 +3637,10 @@ export class KairnRuntime {
     return this.indexService.getStatus(this.rootPath);
   }
 
+  isInventoryIndex(): boolean {
+    return this.indexService.isInventoryStage(this.rootPath);
+  }
+
   async refreshIndexNow(): Promise<IndexStateStats> {
     await this.refreshIndex(this.rootPath, { force: true });
     return this.getIndexStatus();

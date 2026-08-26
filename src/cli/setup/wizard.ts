@@ -116,7 +116,9 @@ export async function runSetupWizard(inputOptions: {
       const setup = writeMcpClientSetup({
         root: rootPath,
         client: target,
-        writeInstructions: true,
+        // Generic enable is a copy-only fallback; without a known client we
+        // must not mutate tracked repository instructions such as AGENTS.md.
+        writeInstructions: target !== "generic",
         homeDir: inputOptions.homeDir,
         writeUserConfig: target === "copilot-cli" ? answers.copilotWriteUser : undefined
       });

@@ -1,6 +1,6 @@
 {
   "name": "usekairn",
-  "version": "0.2.0-beta.1",
+  "version": "0.2.0-beta.2",
   "description": "Local repository evidence and token-efficiency layer for coding agents.",
   "type": "module",
   "bin": {

@@ -19,6 +19,9 @@ fs.writeFileSync(path.join(installRoot, "package.json"), "{\"private\":true}\n",
 fs.writeFileSync(path.join(repoRoot, "package.json"), "{\"private\":true}\n", "utf8");
 fs.mkdirSync(path.join(repoRoot, "src"), { recursive: true });
 fs.writeFileSync(path.join(repoRoot, "src", "app.ts"), "export const ready = true;\n", "utf8");
+const instructionsPath = path.join(repoRoot, "AGENTS.md");
+const originalInstructions = "# Existing repository instructions\n\nDo not replace this file.\n";
+fs.writeFileSync(instructionsPath, originalInstructions, "utf8");
 
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const pack = run(npmCommand, ["pack", "--json", "--pack-destination", smokeRoot], packageRoot);
@@ -37,8 +40,7 @@ const kairnCommand = path.join(
 const environment = {
   ...process.env,
   HOME: isolatedHome,
-  USERPROFILE: isolatedHome,
-  KAIRN_DISABLE_BACKGROUND_INDEX: "1"
+  USERPROFILE: isolatedHome
 };
 const version = run(kairnCommand, ["--version"], installRoot, environment).stdout.trim();
 if (version !== packageJson.version) {
@@ -62,21 +64,79 @@ const enabled = JSON.parse(run(kairnCommand, [
   "--root", repoRoot,
   "--agents", "generic",
   "--yes",
-  "--no-index",
   "--offline",
   "--json"
 ], installRoot, environment).stdout);
 const config = JSON.parse(fs.readFileSync(path.join(repoRoot, ".kairn", "config.json"), "utf8"));
+if (!enabled.indexed || !enabled.deepIndexStarted || !enabled.deepIndexLog) {
+  fail("Packed CLI did not build the foreground inventory and start the installed background index.");
+}
 if (enabled.semanticModelInstalled || config.semantic?.mode !== "legacy") {
   fail("Packed CLI attempted semantic installation or did not persist the deterministic default.");
+}
+if (fs.readFileSync(instructionsPath, "utf8") !== originalInstructions) {
+  fail("Packed generic enable modified tracked repository instructions.");
+}
+
+const deepIndex = await waitForBackgroundIndex(enabled.deepIndexLog);
+if (deepIndex.state?.symbolCount < 1 || deepIndex.state?.semanticChunkCount < 1) {
+  fail("Packed CLI background index completed without materializing source symbols and chunks.");
+}
+
+const secondEnableEnvironment = { ...environment, KAIRN_DISABLE_BACKGROUND_INDEX: "1" };
+const secondEnable = JSON.parse(run(kairnCommand, [
+  "enable",
+  "--root", repoRoot,
+  "--agents", "generic",
+  "--yes",
+  "--offline",
+  "--json"
+], installRoot, secondEnableEnvironment).stdout);
+if (!secondEnable.indexed || secondEnable.indexMode !== "reuse" || secondEnable.deepIndexStarted) {
+  fail("Packed generic enable did not reuse the fresh full index on repeat.");
+}
+if (fs.readFileSync(instructionsPath, "utf8") !== originalInstructions) {
+  fail("Packed generic enable changed repository instructions on repeat.");
+}
+
+const doctor = JSON.parse(run(kairnCommand, ["doctor", "--root", repoRoot, "--json"], installRoot, environment).stdout);
+if (doctor.checks?.find((check) => check.id === "index_state")?.status !== "ok") {
+  fail("Packed CLI doctor did not report a healthy index after background indexing.");
+}
+const status = JSON.parse(run(kairnCommand, ["index", "status", "--root", repoRoot, "--json"], installRoot, environment).stdout);
+if (status.symbolCount !== deepIndex.state.symbolCount || status.semanticChunkCount !== deepIndex.state.semanticChunkCount) {
+  fail("Packed repeat enable replaced the completed full index with a shallow inventory.");
 }
 
 run(kairnCommand, ["disable", "--root", repoRoot, "--delete-state", "--json"], installRoot, environment);
 if (fs.existsSync(path.join(repoRoot, ".kairn"))) {
   fail("Packed CLI disable did not remove Kairn state.");
 }
+if (fs.readFileSync(instructionsPath, "utf8") !== originalInstructions) {
+  fail("Packed CLI disable did not preserve pre-existing repository instructions.");
+}
 
 process.stdout.write(`Packed usekairn@${packageJson.version} install/enable/disable smoke passed.\n`);
+
+async function waitForBackgroundIndex(logPath, timeoutMs = 30_000) {
+  const deadline = Date.now() + timeoutMs;
+  let lastContents = "";
+  while (Date.now() < deadline) {
+    if (fs.existsSync(logPath)) {
+      lastContents = fs.readFileSync(logPath, "utf8");
+      if (lastContents.trim()) {
+        try {
+          const result = JSON.parse(lastContents);
+          if (result?.rootPath === repoRoot && Array.isArray(result?.scan?.files)) return result;
+        } catch {
+          // The detached process may still be writing the JSON document.
+        }
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  fail(`Packed CLI background index did not finish within ${timeoutMs}ms.\n${lastContents}`);
+}
 
 function run(command, args, cwd, env = process.env) {
   const invocation = windowsInvocation(command, args);
