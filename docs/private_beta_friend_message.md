@@ -23,7 +23,7 @@ git --version
 If I sent you a tarball, it will look like:
 
 ```text
-usekairn-0.2.0-beta.1.tgz
+usekairn-0.2.0-beta.2.tgz
 ```
 
 Use the full path to that file during install if you are not in the same directory.
@@ -41,7 +41,7 @@ Install Kairn:
 
 ```bash
 npm uninstall -g usekairn || true
-npm install -g ~/Downloads/usekairn-0.2.0-beta.1.tgz
+npm install -g ~/Downloads/usekairn-0.2.0-beta.2.tgz
 kairn --version
 ```
 
@@ -84,7 +84,7 @@ git --version
 Install Kairn from Downloads:
 
 ```powershell
-$Tarball = "$env:USERPROFILE\Downloads\usekairn-0.2.0-beta.1.tgz"
+$Tarball = "$env:USERPROFILE\Downloads\usekairn-0.2.0-beta.2.tgz"
 Test-Path $Tarball
 npm uninstall -g usekairn
 npm install -g $Tarball
@@ -136,14 +136,14 @@ Copy the tarball into WSL if it is in Windows Downloads:
 
 ```bash
 mkdir -p ~/kairn-beta
-cp /mnt/c/Users/<you>/Downloads/usekairn-0.2.0-beta.1.tgz ~/kairn-beta/
+cp /mnt/c/Users/<you>/Downloads/usekairn-0.2.0-beta.2.tgz ~/kairn-beta/
 ```
 
 Install:
 
 ```bash
 npm uninstall -g usekairn || true
-npm install -g ~/kairn-beta/usekairn-0.2.0-beta.1.tgz
+npm install -g ~/kairn-beta/usekairn-0.2.0-beta.2.tgz
 command -v kairn
 kairn --version
 ```
@@ -208,7 +208,7 @@ There is no need to design tasks, rerun work, or perform a formal comparison.
 When I send a newer tarball:
 
 ```bash
-npm install -g /full/path/to/usekairn-0.2.0-beta.1.tgz
+npm install -g /full/path/to/usekairn-0.2.0-beta.2.tgz
 ```
 
 Then run inside each repo where Kairn is configured:
@@ -244,7 +244,7 @@ Please do **not** send source code, prompts, diffs, `.kairn/`, repo files, raw a
 
 ## Quick Troubleshooting
 
-- `npm install -g` cannot find the tarball: use the absolute path to `usekairn-0.2.0-beta.1.tgz`.
+- `npm install -g` cannot find the tarball: use the absolute path to `usekairn-0.2.0-beta.2.tgz`.
 - `kairn` is not found after install: restart the terminal, then check `npm config get prefix` and PATH.
 - Windows VS Code terminal cannot find `kairn`: fully restart VS Code after install.
 - WSL install succeeds but `kairn` is missing: make sure `which node` and `which npm` point to the same Node installation.

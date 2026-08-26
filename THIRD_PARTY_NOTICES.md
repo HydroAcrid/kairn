@@ -3,7 +3,7 @@
 This file inventories production dependencies present in the generating install for usekairn.
 It is generated from the locked production dependency graph and does not replace a legal provenance review.
 
-- Package: `usekairn@0.2.0-beta.1`
+- Package: `usekairn@0.2.0-beta.2`
 - Lockfile SHA-256: `c58dcb05a2a0a9c62d424f64e8bf84d80719e2fc832bf94ded84a5c525a025e7`
 - Production dependencies: `201`
 - Dependencies without package-root license/notice text: `6` (manual review required)

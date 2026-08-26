@@ -17,6 +17,7 @@ import {
   semanticModelBytes
 } from "../../semantic/modelRegistry.js";
 import { writeSemanticRetrieverConfig } from "../../config/semantic.js";
+import { ensureKairnInternalStateExcluded } from "../helpers.js";
 
 export type EnableTarget = Exclude<SetupWizardTarget, "doctor">;
 export type EnableAgentStatus = "configured" | "already-configured" | "planned" | "skipped" | "action-required";
@@ -52,7 +53,7 @@ export type EnableResult = EnablePlan & {
   dryRun: boolean;
   cancelled: boolean;
   indexed: boolean;
-  indexMode: "inventory" | "skip";
+  indexMode: "inventory" | "reuse" | "skip";
   deepIndexStarted: boolean;
   deepIndexLog?: string | undefined;
   indexError?: string | undefined;
@@ -150,10 +151,15 @@ export async function enableKairn(input: {
     };
   }
 
-  const setup = index && input.plan.targets.length > 0
+  // Keep local runtime state out of Git dirtiness and freshness calculations
+  // before setup writes .kairn/config.json or builds either index stage.
+  ensureKairnInternalStateExcluded(input.plan.rootPath);
+
+  const configuredTargets = input.plan.targets.filter((target) => target !== "generic");
+  const setup = index && configuredTargets.length > 0
     ? await runSetupWizard({
         root: input.plan.rootPath,
-        targets: input.plan.targets.join(","),
+        targets: configuredTargets.join(","),
         yes: true,
         interactive: false,
         index: false,
@@ -164,6 +170,7 @@ export async function enableKairn(input: {
   const directIntegrations = setup ? [] : configureWithoutIndex(input.plan);
   const integrations = new Map((setup?.integrations ?? directIntegrations).map((integration) => [integration.target, integration]));
   let indexed = false;
+  let indexMode: EnableResult["indexMode"] = index ? "inventory" : "skip";
   let indexError: string | undefined;
   let doctor = setup?.doctor;
   let deepIndexStarted = false;
@@ -188,16 +195,31 @@ export async function enableKairn(input: {
   });
   if (index) {
     const runtime = new KairnRuntime(input.plan.rootPath);
+    let needsDeepIndex = false;
     try {
-      await runtime.initInventory();
+      const existing = runtime.getIndexStatus();
+      const hasFreshIndex = existing.fileCount > 0 && existing.freshness?.stale === false;
+      const semanticIndexRequired = input.plan.semanticPreview
+        && semanticModel.status === "ready"
+        && existing.semanticEmbeddingCount === 0;
+      const hasFreshFullIndex = hasFreshIndex
+        && !runtime.isInventoryIndex()
+        && !semanticIndexRequired;
+      if (hasFreshIndex) {
+        indexMode = "reuse";
+      } else {
+        await runtime.initInventory();
+        indexMode = "inventory";
+      }
       indexed = true;
+      needsDeepIndex = !hasFreshFullIndex;
       doctor = runDoctor({ rootPath: input.plan.rootPath, runtime, homeDir: input.plan.homeDir });
     } catch (error) {
       indexError = error instanceof Error ? error.message : String(error);
     } finally {
       runtime.close();
     }
-    if (indexed) {
+    if (indexed && needsDeepIndex) {
       const background = startDeepIndex(input.plan.rootPath);
       deepIndexStarted = background.started;
       deepIndexLog = background.logPath;
@@ -226,7 +248,7 @@ export async function enableKairn(input: {
     dryRun: false,
     cancelled: false,
     indexed,
-    indexMode: index ? "inventory" : "skip",
+    indexMode,
     deepIndexStarted,
     semanticModel,
     semanticModelInstalled,
@@ -264,7 +286,10 @@ function configureWithoutIndex(plan: EnablePlan): Array<{
     const setup = writeMcpClientSetup({
       root: plan.rootPath,
       client: target as McpClientSetupTarget,
-      writeInstructions: true,
+      // The generic target only prints copy-ready MCP configuration. It does
+      // not know which client, instruction format, or tracked repository file
+      // the user wants to modify, so it must remain read-only outside .kairn.
+      writeInstructions: target !== "generic",
       homeDir: plan.homeDir,
       writeUserConfig: target === "copilot-cli" ? plan.writesUserConfig : undefined
     });
@@ -322,14 +347,24 @@ export function formatEnableResult(result: EnableResult): string {
 
 function startDeepIndex(rootPath: string): { started: boolean; logPath?: string | undefined } {
   if (/^(1|true|yes)$/i.test(process.env.KAIRN_DISABLE_BACKGROUND_INDEX ?? "")) return { started: false };
-  const entry = process.argv[1];
-  if (!entry || !/cli\.(?:[cm]?js|ts)$/i.test(path.basename(entry))) return { started: false };
+  const invokedEntry = process.argv[1];
+  if (!invokedEntry) return { started: false };
+  let entry: string;
+  try {
+    // Global npm installs invoke the CLI through a `kairn` symlink. Resolve it
+    // before validating and spawning so the installed path behaves like a
+    // direct `node dist/cli.js` invocation.
+    entry = fs.realpathSync(invokedEntry);
+  } catch {
+    return { started: false };
+  }
+  if (!/cli\.(?:[cm]?js|ts)$/i.test(path.basename(entry))) return { started: false };
   const logPath = path.join(rootPath, ".kairn", "deep-index.log");
   const descriptor = fs.openSync(logPath, "w");
   try {
     const child = spawn(
       process.execPath,
-      [...process.execArgv, entry, "init", "--root", rootPath, "--json"],
+      [...process.execArgv, entry, "init", "--state-only", "--root", rootPath, "--json"],
       {
         detached: true,
         windowsHide: true,

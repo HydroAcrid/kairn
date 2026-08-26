@@ -4,6 +4,8 @@
 
 Monday is a public beta update, not the calibrated semantic promotion and not the v0.3 evidence publication. The release is allowed to ship the safer deterministic candidate generator, unified local runtime, easier enable flow, and quality-gated reporting while semantic retrieval continues in explicit shadow preview.
 
+`0.2.0-beta.2` supersedes the initial `0.2.0-beta.1` registry artifact. It keeps generic MCP enable read-only outside `.kairn`, excludes Kairn state from Git dirtiness, makes the npm-installed CLI start its state-only deep index through the resolved package entrypoint, and reuses a fresh full index on repeat enable. Promotion requires the packed-package smoke to verify those behaviors before publication.
+
 ## User contract
 
 ```text
@@ -33,7 +35,7 @@ Any failed gate is a no-go. Infrastructure failures are fixed or disclosed; they
 
 ### Candidate freeze
 
-- Freeze `0.2.0-beta.1` on the unified branch.
+- Freeze `0.2.0-beta.2` on the repair branch after merging it into `main`.
 - Generate the tarball and SHA-256 checksum.
 - Record the commit, package digest, Node/pnpm versions, and gate outputs.
 - Install the exact tarball in a new temporary consumer and repository.
@@ -46,7 +48,7 @@ Any failed gate is a no-go. Infrastructure failures are fixed or disclosed; they
 
 ### Publish
 
-- Dispatch `npm beta two-step release` from `main` with `action=build` and `version=0.2.0-beta.1`.
+- Dispatch `npm beta two-step release` from `main` with `action=build` and `version=0.2.0-beta.2`.
 - Download its artifact and verify the recorded SHA-256, package identity, contents, and source commit.
 - Manually dispatch the same workflow with `action=publish`, the verified build run ID, full commit SHA, and exact tarball SHA-256. The publish run refuses any other workflow, branch, commit, failed build, package identity, version line, or checksum.
 - Keep trusted publishing restricted to `HydroAcrid/kairn` and `npm-beta.yml`, with only `npm publish` allowed. The private-repository beta explicitly sets `--provenance=false` because npm can auto-enable provenance when GitHub OIDC is available and then reject private source visibility; do not replace OIDC with a long-lived npm token.

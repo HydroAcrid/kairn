@@ -13,6 +13,7 @@ import { fixDoctorIssues } from "../src/doctor/fix.js";
 import { KairnRuntime } from "../src/runtime/KairnRuntime.js";
 import { resolveSemanticRetrieverConfig } from "../src/config/semantic.js";
 import { createFixtureRepo } from "./helpers.js";
+import { ensureKairnInternalStateExcluded } from "../src/cli/helpers.js";
 
 const CLI = ["tsx", "src/cli.ts"];
 
@@ -100,6 +101,10 @@ describe("source-first setup and enable", () => {
 
   it("falls back to generic MCP guidance and still indexes when no supported client is detected", async () => {
     const root = createFixtureRepo();
+    const instructionsPath = path.join(root, "AGENTS.md");
+    const originalInstructions = "# Existing repository instructions\n\nKeep this file unchanged.\n";
+    fs.writeFileSync(instructionsPath, originalInstructions, "utf8");
+    const gitStatusBefore = execFileSync("git", ["status", "--porcelain=v1"], { cwd: root, encoding: "utf8" });
     const plan = planKairnEnable({ root, pathValue: "" });
 
     expect(plan.targets).toEqual(["generic"]);
@@ -116,6 +121,23 @@ describe("source-first setup and enable", () => {
       status: "action-required"
     }));
     expect(fs.existsSync(path.join(root, ".kairn"))).toBe(true);
+    expect(fs.readFileSync(instructionsPath, "utf8")).toBe(originalInstructions);
+    expect(execFileSync("git", ["status", "--porcelain=v1"], { cwd: root, encoding: "utf8" })).toBe(gitStatusBefore);
+  });
+
+  it("keeps explicit generic enable read-only outside Kairn state without indexing", async () => {
+    const root = createFixtureRepo();
+    const instructionsPath = path.join(root, "AGENTS.md");
+    const originalInstructions = "# Existing repository instructions\n";
+    fs.writeFileSync(instructionsPath, originalInstructions, "utf8");
+    const plan = planKairnEnable({ root, agents: "generic", pathValue: "" });
+
+    const result = await enableKairn({ plan, index: false });
+
+    expect(result.agents.find((agent) => agent.target === "generic")?.status).toBe("action-required");
+    expect(fs.readFileSync(instructionsPath, "utf8")).toBe(originalInstructions);
+    expect(fs.existsSync(path.join(root, ".codex"))).toBe(false);
+    expect(fs.existsSync(path.join(root, ".vscode"))).toBe(false);
   });
 
   it("builds an immediately usable inventory and returns doctor results by default", async () => {
@@ -128,6 +150,36 @@ describe("source-first setup and enable", () => {
     expect(result.deepIndexStarted).toBe(false);
     expect(result.doctor?.checks.some((check) => check.id === "index_state")).toBe(true);
     expect(fs.existsSync(path.join(root, ".kairn"))).toBe(true);
+  });
+
+  it("reuses a fresh full index instead of replacing it with an inventory on repeat enable", async () => {
+    const root = createFixtureRepo();
+    ensureKairnInternalStateExcluded(root);
+    const runtime = new KairnRuntime(root);
+    let fullStatus: ReturnType<KairnRuntime["getIndexStatus"]>;
+    try {
+      await runtime.init();
+      fullStatus = runtime.getIndexStatus();
+    } finally {
+      runtime.close();
+    }
+    expect(fullStatus.symbolCount).toBeGreaterThan(0);
+    expect(fullStatus.freshness).toEqual(expect.objectContaining({ stale: false }));
+
+    const plan = planKairnEnable({ root, agents: "generic", pathValue: "" });
+    const result = await enableKairn({ plan });
+
+    expect(result.indexed).toBe(true);
+    expect(result.indexMode).toBe("reuse");
+    expect(result.deepIndexStarted).toBe(false);
+    const reopened = new KairnRuntime(root);
+    try {
+      const repeatedStatus = reopened.getIndexStatus();
+      expect(repeatedStatus.symbolCount).toBe(fullStatus.symbolCount);
+      expect(repeatedStatus.semanticChunkCount).toBe(fullStatus.semanticChunkCount);
+    } finally {
+      reopened.close();
+    }
   });
 
   it("exposes idempotent top-level enable and disable commands", () => {

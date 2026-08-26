@@ -93,7 +93,7 @@ npm pack
 # beta user
 nvm install 24
 nvm use 24
-npm install -g ./usekairn-0.2.0-beta.1.tgz
+npm install -g ./usekairn-0.2.0-beta.2.tgz
 cd /path/to/repo
 kairn enable
 ```
