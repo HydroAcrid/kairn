@@ -143,11 +143,27 @@ function completedBackgroundIndex(contents) {
   if (!contents.trim()) return undefined;
   try {
     const result = JSON.parse(contents);
-    return result?.rootPath === repoRoot && Array.isArray(result?.scan?.files) ? result : undefined;
+    return sameFilesystemPath(result?.rootPath, repoRoot) && Array.isArray(result?.scan?.files) ? result : undefined;
   } catch {
     // The detached process may still be writing the JSON document.
     return undefined;
   }
+}
+
+function sameFilesystemPath(left, right) {
+  if (typeof left !== "string" || typeof right !== "string") return false;
+  const canonicalize = (value) => {
+    try {
+      return fs.realpathSync.native(value);
+    } catch {
+      return path.resolve(value);
+    }
+  };
+  const canonicalLeft = canonicalize(left);
+  const canonicalRight = canonicalize(right);
+  return process.platform === "win32"
+    ? canonicalLeft.toLowerCase() === canonicalRight.toLowerCase()
+    : canonicalLeft === canonicalRight;
 }
 
 function run(command, args, cwd, env = process.env) {
