@@ -118,24 +118,36 @@ if (fs.readFileSync(instructionsPath, "utf8") !== originalInstructions) {
 
 process.stdout.write(`Packed usekairn@${packageJson.version} install/enable/disable smoke passed.\n`);
 
-async function waitForBackgroundIndex(logPath, timeoutMs = 30_000) {
+async function waitForBackgroundIndex(logPath, timeoutMs = 90_000) {
   const deadline = Date.now() + timeoutMs;
   let lastContents = "";
   while (Date.now() < deadline) {
     if (fs.existsSync(logPath)) {
       lastContents = fs.readFileSync(logPath, "utf8");
-      if (lastContents.trim()) {
-        try {
-          const result = JSON.parse(lastContents);
-          if (result?.rootPath === repoRoot && Array.isArray(result?.scan?.files)) return result;
-        } catch {
-          // The detached process may still be writing the JSON document.
-        }
-      }
+      const result = completedBackgroundIndex(lastContents);
+      if (result) return result;
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
+  // A slow filesystem can finish the final write between the loop condition
+  // and timeout handling. Read and parse once more before declaring failure.
+  if (fs.existsSync(logPath)) {
+    lastContents = fs.readFileSync(logPath, "utf8");
+    const result = completedBackgroundIndex(lastContents);
+    if (result) return result;
+  }
   fail(`Packed CLI background index did not finish within ${timeoutMs}ms.\n${lastContents}`);
+}
+
+function completedBackgroundIndex(contents) {
+  if (!contents.trim()) return undefined;
+  try {
+    const result = JSON.parse(contents);
+    return result?.rootPath === repoRoot && Array.isArray(result?.scan?.files) ? result : undefined;
+  } catch {
+    // The detached process may still be writing the JSON document.
+    return undefined;
+  }
 }
 
 function run(command, args, cwd, env = process.env) {
