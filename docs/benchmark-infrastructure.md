@@ -79,6 +79,14 @@ The audit registers `rankability-audit.v2` JSON and Markdown in the content-addr
 
 The 38-case deterministic-versus-semantic candidate comparison, 10-case/17-file required-source audit, and 45-case calibration cohort are distinct populations and are never merged into one percentage. The required-source cohort has no Python cases and uneven language/scenario coverage, so its results remain internal diagnostics. Any public claim requires sealed-holdout confirmation plus quality-passing live-agent runs and provider-observed token measurements.
 
+## Frozen v0.2C-R result
+
+The source-bound audit at commit `eb3e23ed5b53f48f49df38ad513c4327eaf701d6` is `completed_negative` with valid infrastructure and data. The canonical reports are `artifacts/rankability-audit.v2.json` and `artifacts/rankability-audit.v2.md`.
+
+Semantic candidate generation improved strict full recall@64 from 26/38 (68.42%) to 28/38 (73.68%) and required-file recall@64 from 51/72 (70.83%) to 57/72 (79.17%). Neither paired 95% confidence interval excludes zero, and strict full recall@128 remains 31/38 (81.58%). Seven cases still miss required source at bounded pool@128, so the zero-miss hard gate fails and the ranker remains frozen.
+
+On the separate 45-case/72-file weak-patch cohort, v170 regresses against v166 on the identical bounded pool: Recall@5 is 69.44% versus 76.39% (-6.94 percentage points; paired 95% CI -15.93 to +4.63) and MRR is 0.4384 versus 0.4636 (-0.0252; paired 95% CI -0.0871 to +0.0137). The next authorized experiment is general candidate coverage through semantic documents, query representation, or candidate fusion. It must rerun the frozen 38-case candidate audit before any reranker work.
+
 ## Portable bundles
 
 Routine Tier A/Tier B reports are uploaded as checksummed GitHub Actions artifacts. The manual workflow can attach a checksummed, sanitized milestone bundle to a draft prerelease. Bundles exclude repository checkouts, semantic indexes, credentials, source, prompts, patches, and trajectories.
