@@ -54,6 +54,10 @@ type ReviewItem = {
     priority: number;
     rawScore: number;
     outrankedPositiveCount: number;
+    worstRequiredSourcePositiveRank: number;
+    requiredSourcePositiveMissAt64: boolean;
+    worstPositiveRank: number;
+    positiveMissAt64: boolean;
     nearestOutrankedPositiveScoreGap: number;
     positiveCandidates: Array<{
       path: string;
@@ -206,6 +210,9 @@ export function buildHardNegativeReviewQueue(
         labelWeight: positive.labelWeight,
         labelProvenance: positive.labelProvenance
       }));
+      const requiredSourcePositives = positives.filter(
+        (positive) => positive.labelProvenance === "required_source_oracle"
+      );
       const nearest = [...outranked].sort((left, right) => left.rank - right.rank)[0]!;
       const reviewItem: ReviewItem = {
         id: sha256(`${caseId}\n${candidate.path}`).slice(0, 24),
@@ -217,6 +224,14 @@ export function buildHardNegativeReviewQueue(
           priority: candidate.priority,
           rawScore: candidate.rawScore,
           outrankedPositiveCount: outranked.length,
+          worstRequiredSourcePositiveRank: requiredSourcePositives.length > 0
+            ? Math.max(...requiredSourcePositives.map((positive) => positive.rank))
+            : 0,
+          requiredSourcePositiveMissAt64: requiredSourcePositives.some(
+            (positive) => positive.rank > 64
+          ),
+          worstPositiveRank: Math.max(...positives.map((positive) => positive.rank)),
+          positiveMissAt64: positives.some((positive) => positive.rank > 64),
           nearestOutrankedPositiveScoreGap: candidate.rawScore - nearest.rawScore,
           positiveCandidates
         },
@@ -393,7 +408,12 @@ function compareRankedCandidates(left: RankedCandidate, right: RankedCandidate):
 }
 
 function compareReviewItems(left: ReviewItem, right: ReviewItem): number {
-  return right.ranking.outrankedPositiveCount - left.ranking.outrankedPositiveCount
+  return Number(right.ranking.requiredSourcePositiveMissAt64)
+    - Number(left.ranking.requiredSourcePositiveMissAt64)
+    || right.ranking.worstRequiredSourcePositiveRank - left.ranking.worstRequiredSourcePositiveRank
+    || Number(right.ranking.positiveMissAt64) - Number(left.ranking.positiveMissAt64)
+    || right.ranking.worstPositiveRank - left.ranking.worstPositiveRank
+    || right.ranking.outrankedPositiveCount - left.ranking.outrankedPositiveCount
     || left.ranking.rank - right.ranking.rank
     || right.ranking.nearestOutrankedPositiveScoreGap - left.ranking.nearestOutrankedPositiveScoreGap
     || left.caseId.localeCompare(right.caseId)

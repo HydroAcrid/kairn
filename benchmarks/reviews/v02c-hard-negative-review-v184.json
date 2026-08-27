@@ -1,0 +1,193 @@
+{
+  "schemaVersion": "hard-negative-review-decisions.v1",
+  "reviewQueueSha256": "65857379204834a1e013f6c45dd18593565cba7d02e18040ef04da919665016e",
+  "reviewer": "codex-source-review",
+  "reviewedAt": "2026-08-27T22:15:00Z",
+  "policy": {
+    "irrelevant": "Clearly unrelated to solving or verifying the task after reading immutable source.",
+    "relevant": "Plausibly useful production, API, test, or direct execution-path evidence; remains unlabeled.",
+    "uncertain": "Source review cannot rule relevance in or out; remains unlabeled."
+  },
+  "decisions": [
+    {
+      "id": "a69f4a441597b2f35d010045",
+      "verdict": "relevant",
+      "sourceContentSha256": "f72caa6116635d2a5e644d292f2df742deeca0b2515ea73a530723d3814abb5e",
+      "notes": "The forward declarations and template surface are directly implicated when json_pointer changes template parameters."
+    },
+    {
+      "id": "d899249fd0e97a430c39013c",
+      "verdict": "relevant",
+      "sourceContentSha256": "7262f190c3a2f2bb334236b3b74acaa1ac1ffb72920c4654bcaf02a7db1a4ec0",
+      "notes": "The public umbrella header assembles the iterator API whose post-increment and post-decrement behavior changes."
+    },
+    {
+      "id": "3149fb24d78c3a985d056ba4",
+      "verdict": "relevant",
+      "sourceContentSha256": "36d03fab72c3e2504071b4b2ad4eb2ea67217db3876afd5efa27f8c03818a952",
+      "notes": "The task changes iterator concepts and comparison behavior, and this file defines the related detection and compatibility traits."
+    },
+    {
+      "id": "f3d3bfda2ea7d5652260ccf6",
+      "verdict": "irrelevant",
+      "sourceContentSha256": "5399d3c1a428ce9e389957c06459bb9a7df303a96189e14b1f4100778d443c57",
+      "notes": "This is the binary serialization writer; the task concerns ndarray dimension decoding and length overflow in the reader path."
+    },
+    {
+      "id": "fe337e0b32dbd41344492536",
+      "verdict": "uncertain",
+      "sourceContentSha256": "6c6e7b5c186f297219c7354aeea5735d9f1f318989e5318bfc9955156e4886a1",
+      "notes": "The generic traits file contains private implementation sections, but source review does not establish whether the test-access macro must cover them."
+    },
+    {
+      "id": "09d7cf65d9b02d03fd201119",
+      "verdict": "relevant",
+      "sourceContentSha256": "37ef0340d5feeac42494eced85e7c4b23345f9e6cf73e1c7fae99fa7a0d2b079",
+      "notes": "Serializer and basic_json forward declarations support the non-default-constructible from_json dispatch introduced by the task."
+    },
+    {
+      "id": "9d94f7ff0637b45a005dcb7a",
+      "verdict": "relevant",
+      "sourceContentSha256": "4c3365531db69f4d8c7b98ab2fabe43fe9b398e9aade75b4af0e9613daf22c0f",
+      "notes": "The supplied failing reproduction uses hugolib.Test, which is defined here; it is directly useful verification context."
+    },
+    {
+      "id": "ed6d4b74144ed768e0234ae7",
+      "verdict": "relevant",
+      "sourceContentSha256": "6398046b8bdeb3e333b7c1f5de877d91e7cb0dfddcd3483e4fc3bbcae1b48a53",
+      "notes": "This file contains the page and Site.GetPage API surface involved in resolving content-adapter pages."
+    },
+    {
+      "id": "2105cc1fdedd34b999fc26bd",
+      "verdict": "relevant",
+      "sourceContentSha256": "4c8edf7dbd70054b337dec47465a30b9e0aa7fc1fc7bead71c7be088247adced",
+      "notes": "The renderer consumes sensitive marks and controls the hidden plan output at the center of the regression."
+    },
+    {
+      "id": "e4deb4902bf94ce50c17f8f1",
+      "verdict": "relevant",
+      "sourceContentSha256": "2748860076c69bd3b0501ce2435dedbb7d5777453079760f6698887594a07897",
+      "notes": "This is the terraform validate command entry path for the import-block validation task."
+    },
+    {
+      "id": "ec23825d4e40428ef4b97101",
+      "verdict": "irrelevant",
+      "sourceContentSha256": "0e040f09c2bef50313983a742ea7e23333218bf1945ce06236b48b5c49db6c99",
+      "notes": "Output-value graph expansion is separate from attaching destroy provisioners to removed resource configuration."
+    },
+    {
+      "id": "1678ff88ef96f2962204fda8",
+      "verdict": "relevant",
+      "sourceContentSha256": "04488ae9daf9117a2f1c33e888f5f6afb89044da518286a434986505cf3e3071",
+      "notes": "The persistence abstraction is part of the boundary being refactored away from SQL-based artist aggregation."
+    },
+    {
+      "id": "a4e24999bd50d3ca0bfdf5ce",
+      "verdict": "relevant",
+      "sourceContentSha256": "edc977ac56c9357423aaf1b9539bf075d491e4f5e37232f906d0d08a31cfe05d",
+      "notes": "This test file contains the stated failing JsonWriter regression and is direct verification evidence."
+    },
+    {
+      "id": "ef25481cbc36fe9f419fd101",
+      "verdict": "relevant",
+      "sourceContentSha256": "41081bdf403d0bb4e0b50307ac6f6cd00d8ea3aa372114d1a4b17bc1bbd468f6",
+      "notes": "This functional test covers the new field-naming policy in the task and is direct verification evidence."
+    },
+    {
+      "id": "f2b22e7685cb1ff04ec9842a",
+      "verdict": "relevant",
+      "sourceContentSha256": "48e5fb39ec93a29f3709ba1d8cda0138ae5ee29e87b24efe245114e944947891",
+      "notes": "The annotation and nested Builder.Default contract are directly involved in the generic default-value bug."
+    },
+    {
+      "id": "dcedec32d5cec9aaf05c87d7",
+      "verdict": "relevant",
+      "sourceContentSha256": "1c746190e756c7addf7f793314d745b1aaab885d91a71d40b83c9725c662bba7",
+      "notes": "The annotation target and documented semantics are directly relevant to deciding how records should be excluded."
+    },
+    {
+      "id": "cc0406778636b6f47877c5d9",
+      "verdict": "relevant",
+      "sourceContentSha256": "1ca2914e6ab1e52b0a1a05202cc6763acca247377b69ccae2b1a20a1c5a28632",
+      "notes": "Method-call resolution invokes expression type extraction, so this context is on the direct failing path for text-block receivers."
+    },
+    {
+      "id": "63f02ee3f1e307433474bc63",
+      "verdict": "irrelevant",
+      "sourceContentSha256": "980d48a165b39ddb426b133e6eb3c81aae4de4fb232313d25f9a4e43d6a9bdb6",
+      "notes": "This public Lombok utility only implements sneaky throwing and null helpers; it does not participate in javac val type inference."
+    },
+    {
+      "id": "a607cb06057bb3f5104becb7",
+      "verdict": "relevant",
+      "sourceContentSha256": "2c482f0ad0b1c5e7465a95bcf19cab5834c3dca3c4c8b755c2dd990bdaac34cd",
+      "notes": "The file contains the stated digest-auth regression tests and is direct verification evidence."
+    },
+    {
+      "id": "6579607a62306d0fcda86834",
+      "verdict": "relevant",
+      "sourceContentSha256": "f25af022ba9778f2fed1f00d26d3a378b8bac5bcfe65a041941d33a607842740",
+      "notes": "The file contains the binary PUT regression test and is direct verification evidence."
+    },
+    {
+      "id": "05fdbca38ac7b763b515e1da",
+      "verdict": "irrelevant",
+      "sourceContentSha256": "2477aa2c96617fd1254e7bf898687397f5241c6866a588730667e2ec8ccfcdde",
+      "notes": "Package entry points and sys.path cleanup do not parse comma-separated regular-expression option values."
+    },
+    {
+      "id": "2399b87f53c2fa785782780a",
+      "verdict": "relevant",
+      "sourceContentSha256": "37019e90086b5de959e02b96aa3f7d0fcd3a647f00d043fc181ed8d78084d17e",
+      "notes": "This checker owns unused-import reporting and is directly relevant to imports referenced by type comments."
+    },
+    {
+      "id": "6c03508a2290e1e2a6fa456a",
+      "verdict": "irrelevant",
+      "sourceContentSha256": "cdcc01f57cf2f4e2e6b3e44d3e1ffd8399a5adf06ba2657dfb68c1ab70db9d5c",
+      "notes": "This static example configuration neither implements nor calls Windows path exclusion in module discovery."
+    },
+    {
+      "id": "727d619c68c495d81860122c",
+      "verdict": "relevant",
+      "sourceContentSha256": "e0d56647fa35a5e10b22ca3fbe9f5e9712552912dd24bac4bbc1f4206f639b36",
+      "notes": "The linter orchestrator invokes module expansion and applies ignore settings, making it useful execution-path evidence."
+    },
+    {
+      "id": "561d0aafef0bd91f445d3eac",
+      "verdict": "uncertain",
+      "sourceContentSha256": "ed78e0af8dc0c30da2a8eef4ebb7570339348659f37f281cfd81fac9beaed88a",
+      "notes": "The public entry module exposes render but the failing tabIndex behavior is implemented in diff/props; direct necessity is unclear."
+    },
+    {
+      "id": "adbff34f7b9051217146c81f",
+      "verdict": "irrelevant",
+      "sourceContentSha256": "a07d4cf31f80c9d74cad5b1f82ec3b3a0ae330cf214630be9262a1557a40adb8",
+      "notes": "Suspense promise handling and detached vnode restoration are unrelated to resetting a DOM contentEditable property."
+    },
+    {
+      "id": "72f2591197c51e63ff1982b8",
+      "verdict": "irrelevant",
+      "sourceContentSha256": "8c67fe164827421d794ce411fdc02a0f67f772f58862e5a73051fa353dd2e85f",
+      "notes": "Material property implementation does not control cloning the material arrays stored by Mesh, Points, and Line objects."
+    },
+    {
+      "id": "3e8ea5b1e8b7230951269ce4",
+      "verdict": "relevant",
+      "sourceContentSha256": "e2b5ffea11f42201b367f72ac30e3d9128c8d3ecb5c0edc01e7697fbd33994b5",
+      "notes": "The core diff dispatch is on the render path for bigint child values and is useful implementation context."
+    },
+    {
+      "id": "348d89d799a8990349cf4193",
+      "verdict": "relevant",
+      "sourceContentSha256": "a369a68667c788437e202e0702a232b4c6a0c62160339cf6bf2d2fb61c89c37d",
+      "notes": "This file constructs and forwards errorInfo for error boundaries, directly matching the hook API request."
+    },
+    {
+      "id": "851f177b8b7be3d22fdbc76d",
+      "verdict": "uncertain",
+      "sourceContentSha256": "f9cee9daeb63d0e8795c236953b2b60958eea969bb187deeddbfd296834275f1",
+      "notes": "Child type declarations may need to admit boxed String values, but the runtime fix is in child diffing; direct necessity is unclear."
+    }
+  ]
+}

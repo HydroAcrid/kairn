@@ -395,3 +395,59 @@ were removed rather than added to serving complexity. The detached holdout,
 paid Claude/ReasonBlocks runs, npm publication, and public effectiveness copy
 remain blocked. Exact artifact hashes and negative-result disclosures are in
 `benchmarks/checkpoints/v02c-learned-reranker-309377b.json`.
+
+## Reviewed Hard Negatives and Cross-Encoder Diagnostic
+
+The training-only hard-negative review inspected 30 high-ranked distractors
+from the four required-source failures. Immutable source review classified 7
+as clearly irrelevant, 20 as plausibly relevant, and 3 as uncertain. Only the
+7 irrelevant files became negative labels; relevant and uncertain files stayed
+unlabeled. The resulting v185 pairwise model improved required-file recall at
+64 from 76.47% to 82.35% and strict full recall at 64 from 60% to 70%, while
+calibration Recall@5 remained 75%. Required-source MRR moved backward by
+0.0107, and the 99% served-recall gate still failed. This result ruled out more
+unreviewed negative pressure as a responsible next step.
+
+A controlled local cross-encoder experiment then added exactly one learned
+query/file probability plus an explicit missingness field to v185. Candidate
+pools, structural features, labels, repository lineages, pairwise objective,
+calibration split, and deterministic failure/path priorities remained frozen.
+The pinned quantized `jina-reranker-v1-tiny-en` artifact is 33.4 MB. Scoring
+6,304 file documents across all 135 immutable snapshots completed in 466.97
+seconds and did not access the detached holdout.
+
+Against v185 on the identical 45-case calibration cohort and 10-case
+required-source diagnostic:
+
+| Metric | v185 | Cross-encoder feature | Delta | Paired case-bootstrap 95% CI |
+| --- | ---: | ---: | ---: | ---: |
+| Calibration Recall@5 | 75.00% | 76.39% | +1.39 pp | 0.00 to +4.69 pp |
+| Calibration MRR | 0.4793 | 0.4790 | -0.0003 | -0.0030 to +0.0018 |
+| Calibration Recall@64 | 97.22% | 97.22% | 0.00 pp | 0.00 to 0.00 pp |
+| Required-source Recall@5 | 17.65% | 17.65% | 0.00 pp | 0.00 to 0.00 pp |
+| Required-source Recall@64 | 82.35% | 82.35% | 0.00 pp | 0.00 to 0.00 pp |
+| Required-source MRR | 0.1728 | 0.1733 | +0.0006 | -0.0001 to +0.0013 |
+| Calibration ECE | 0.0317 | 0.2105 | +0.1788 | n/a |
+
+Both models produced zero generated/vendor top-one violations. The candidate
+is `completed_negative`: its only Recall@5 gain is not strictly positive under
+the paired interval, it does not move the required-source served-recall gate,
+and calibration fails the 0.05 maximum. The raw cross-encoder is also much
+worse than the structural ranker, so neither replacement nor combination is
+promotion-worthy. v185 remains the internal baseline and the cross-encoder is
+not added to serving complexity.
+
+The scoring run exposed and fixed one infrastructure defect before the learned
+fit: full calibration pools previously omitted a labeled file when that file
+sat outside the frozen 128-path pool. The scorer now evaluates the exact frozen
+pool plus any additional reviewed rows, marks their membership explicitly, and
+computes effectiveness ranks from the frozen pool only. A content and source
+implementation fingerprint prevents repaired output from being spliced into an
+older run.
+
+The next experiment is data resolution, not a larger model. The current strong
+required-source diagnostic has only 10 cases, no Python cases, and uneven
+language/scenario coverage. Expand and review that cohort first, then rerun the
+frozen rankability audit. A subsequent model-family experiment is allowed only
+if the larger reviewed set can distinguish feature insufficiency from objective
+or capacity failure. The detached holdout and paid provider runs remain sealed.
