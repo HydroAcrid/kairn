@@ -43,6 +43,7 @@
     "ranker:synthetic-variants": "tsx scripts/build-synthetic-prompt-variants.ts",
     "ranker:materialize": "tsx scripts/materialize-evidence-corpus.ts",
     "ranker:review-queue": "tsx scripts/build-corpus-review-queue.ts",
+    "ranker:hard-negative-review-queue": "tsx scripts/build-hard-negative-review-queue.ts",
     "ranker:carry-reviews": "tsx scripts/carry-forward-corpus-reviews.ts",
     "ranker:review-batches": "tsx scripts/corpus-review-batches.ts",
     "ranker:apply-reviews": "tsx scripts/apply-corpus-review-decisions.ts",
