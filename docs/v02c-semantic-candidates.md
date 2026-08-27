@@ -351,3 +351,47 @@ the 135 train/calibration cases under the new index schema, review changed rows,
 and evaluate the next learned reranker against v166 on identical 128-file
 pools. The detached holdout and paid Claude/ReasonBlocks work remain blocked
 until the served-ranker and calibration gates pass.
+
+## Frozen Learned-Reranker Follow-up
+
+The 135 train/calibration cases were regenerated at commit `c7622bb` with
+whole-file and symbol-body semantic similarities preserved separately. Every
+repository index snapshot was reused, all 558,081 embeddings were reused, and
+no embedding was regenerated. The isolated run completed in 1,441,660.943 ms
+(24.03 minutes), with a 10.018-second median and 16.276-second p95 per case.
+The regenerated 128-file paths and all pre-existing feature values are
+byte-for-byte identical to the frozen v172 comparison pool.
+
+The strongest diagnostic uses those document-kind features with a
+case-normalized pairwise logistic objective and an improved Newton/line-search
+Platt calibration fit. Against v166 on the same cases and files:
+
+| Metric | v166 | Candidate | Delta | Paired case-bootstrap 95% CI |
+| --- | ---: | ---: | ---: | ---: |
+| Calibration Recall@5 (45 cases / 72 files) | 76.39% | 75.00% | -1.39 pp | -6.85 to +5.26 pp |
+| Calibration MRR | 0.4636 | 0.4746 | +0.0110 | -0.0260 to +0.0523 |
+| Calibration Recall@64 | 97.22% | 97.22% | 0.00 pp | 0.00 to 0.00 pp |
+| Required-source MRR (10 cases / 17 files) | 0.1404 | 0.1834 | +0.0430 | +0.0007 to +0.1284 |
+| Required-source Recall@64 | 70.59% | 76.47% | +5.88 pp | 0.00 to +17.65 pp |
+
+The candidate's ECE is 0.0263 and it produces no generated/vendor top-one
+violations. Required-source MRR is the first learned-reranker metric whose
+paired interval is above zero. Calibration Recall@5 is within the two-point
+noninferiority margin and calibration MRR is directionally higher.
+
+This is still classified `completed_negative`, not promotion-ready. The
+required-source Recall@64 gate is 99%, and the candidate reaches only 76.47%.
+Four cases remain outside rank 64. In each failure, 61 to 98 higher-ranked
+candidates are unlabeled while only three to five reviewed negatives appear
+above the required source. The learner is correctly forbidden from treating
+those unlabeled candidates as irrelevant. The next mechanism is therefore a
+training-only hard-negative review of the high-ranked distractors; calibration
+labels remain untouched. If reviewed labels do not close the served-recall
+gap, the next model experiment is a local cross-encoder, not a path, term, or
+regular-expression relevance rule.
+
+Shallow nonlinear, query-rank, and graph-rank feature probes all regressed and
+were removed rather than added to serving complexity. The detached holdout,
+paid Claude/ReasonBlocks runs, npm publication, and public effectiveness copy
+remain blocked. Exact artifact hashes and negative-result disclosures are in
+`benchmarks/checkpoints/v02c-learned-reranker-309377b.json`.

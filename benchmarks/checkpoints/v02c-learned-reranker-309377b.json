@@ -1,0 +1,152 @@
+{
+  "schemaVersion": "learned-reranker-checkpoint.v1",
+  "checkpointId": "v02c-learned-reranker-309377b-20260827",
+  "createdAt": "2026-08-27T17:08:33-04:00",
+  "status": "completed_negative_with_positive_required_source_mrr",
+  "classification": "completed_negative",
+  "branch": "codex/v0.2c-learned-reranker",
+  "implementationCommit": "309377b44730bef32593d9ec0dbf24481f0d600d",
+  "holdoutState": "sealed_detached",
+  "inputs": {
+    "trainingRows": {
+      "path": "artifacts/ranker-probe.semantic-v173-schema11-reviewed-train-cal135.jsonl",
+      "sha256": "a0418f3ea60d73f25df56091dbcffda441bfe35c5e425ba9fd89805b20bc3ef2"
+    },
+    "frozenBaselineManifest": {
+      "path": "artifacts/ranker-corpus.semantic-v172-schema11-train-cal135.json",
+      "sha256": "b8d0e786a938c70dfb83a1728490e324be46739645d7beb97dd1b6c3f83d91fa"
+    },
+    "documentInteractionManifest": {
+      "path": "artifacts/ranker-corpus.semantic-v178-doc-interactions-train-cal135.json",
+      "sha256": "8d3a1a6b80eeccf880bfc215628b7b7e3d21889c1feb47573e14673cc42047a7"
+    },
+    "documentInteractionReport": {
+      "path": "artifacts/ranker-corpus.semantic-v178-doc-interactions-train-cal135.report.json",
+      "sha256": "b311ff0b74a6cf7186a24dd8f4a9197abb1f3f14a9c7a75070684a116c9c00f2"
+    },
+    "evaluation": {
+      "path": "artifacts/ranker-semantic-document-features-pairwise.v183.json",
+      "sha256": "069dd7adb4bdaf4b321255ae78eb78294a9f2928ab5863a90e2827b03ef948ca"
+    }
+  },
+  "samePoolContract": {
+    "caseCount": 135,
+    "candidateLimit": 128,
+    "candidatePathsIdentical": true,
+    "baseFeatureVectorsIdentical": true,
+    "calibrationCaseCount": 45,
+    "calibrationRequiredFileCount": 72,
+    "requiredSourceCaseCount": 10,
+    "requiredSourceFileCount": 17
+  },
+  "mechanism": {
+    "features": [
+      "whole-file semantic similarity",
+      "symbol-body semantic similarity",
+      "explicit missingness for each document kind"
+    ],
+    "trainingObjective": "case-normalized pairwise logistic",
+    "calibration": "positive-slope Newton Platt fit with backtracking",
+    "runtimePromotionImplemented": false,
+    "promotionEligible": false,
+    "benchmarkSpecificRelevanceRulesAdded": false
+  },
+  "results": {
+    "weakPatchCalibration": {
+      "cases": 45,
+      "requiredFiles": 72,
+      "v166": {
+        "recallAt5": 0.7638888888888888,
+        "mrr": 0.46356735162447993,
+        "recallAt64": 0.9722222222222222
+      },
+      "candidate": {
+        "recallAt5": 0.75,
+        "mrr": 0.4745923149078865,
+        "recallAt64": 0.9722222222222222,
+        "ece": 0.026284254284290036,
+        "generatedVendorTopOneViolations": 0
+      },
+      "paired95": {
+        "recallAt5Delta": [-0.06849315068493145, 0.05263157894736836],
+        "mrrDelta": [-0.025984845241376897, 0.0523023831791295],
+        "recallAt64Delta": [0, 0]
+      }
+    },
+    "requiredSourceDiagnostic": {
+      "cases": 10,
+      "requiredFiles": 17,
+      "v166": {
+        "recallAt5": 0.17647058823529413,
+        "mrr": 0.1404164267999033,
+        "recallAt64": 0.7058823529411765
+      },
+      "candidate": {
+        "recallAt5": 0.17647058823529413,
+        "mrr": 0.18341613713545357,
+        "recallAt64": 0.7647058823529411,
+        "strictFullRecallAt64": 0.6,
+        "recallAt128": 1,
+        "generatedVendorTopOneViolations": 0
+      },
+      "paired95": {
+        "recallAt5Delta": [0, 0],
+        "mrrDelta": [0.0006860647772206074, 0.12836439291218424],
+        "recallAt64Delta": [0, 0.17647058823529416]
+      }
+    }
+  },
+  "runtime": {
+    "isolatedCases": 135,
+    "indexSnapshotsRestored": 135,
+    "coldIndexCases": 0,
+    "embeddingsReused": 558081,
+    "embeddingsGenerated": 0,
+    "embeddingReuseRate": 1,
+    "totalIsolatedProcessMs": 1441660.943,
+    "medianIsolatedProcessMs": 10017.518,
+    "p95IsolatedProcessMs": 16275.629
+  },
+  "rejectedExperiments": [
+    {
+      "kind": "shallow nonlinear ranker",
+      "artifactSha256": "53b28b4d4011a372c3ba16b41f9b6ab08506105e2293a6c125ae9c178bbe852b",
+      "reason": "Recall@5, MRR, and ECE all regressed."
+    },
+    {
+      "kind": "semantic query-rank features",
+      "artifactSha256": "8d8af153dfd9011ecb7bf4872ee1683bc551ee58d26bd45b5f36b39a1a620c7a",
+      "reason": "Recall@5 and MRR regressed; the feature was removed."
+    },
+    {
+      "kind": "graph-rank percentile features",
+      "artifactSha256": "c7d0616c595a5cf87e70869efb11b57d43485137f7d8eba47eff76bd1a340ee0",
+      "reason": "Recall@5, required-source MRR, and calibration regressed; the feature was removed."
+    }
+  ],
+  "validation": {
+    "focusedTests": { "files": 2, "tests": 85, "passed": true },
+    "typecheckPassed": true,
+    "semanticArchitectureGuardPassed": true,
+    "pythonCompilePassed": true,
+    "holdoutOpened": false,
+    "paidProviderCalls": false
+  },
+  "gateDecision": {
+    "boundedPoolRecallAt128Passed": true,
+    "calibrationEcePassed": true,
+    "generatedVendorTopOnePassed": true,
+    "recallAt5Noninferior": true,
+    "mrrNoninferior": true,
+    "statisticallyPositiveRequiredSourceMrr": true,
+    "rankerServedRecallAt64Passed": false,
+    "promotionPassed": false,
+    "publicationEligible": false
+  },
+  "limitations": [
+    "The 10-case required-source cohort is small, unevenly stratified, and contains no Python cases.",
+    "The positive required-source MRR interval is development evidence, not sealed holdout or live-agent evidence.",
+    "Four required-source cases remain outside served rank 64. Most higher-ranked candidates in those cases are unlabeled, so the current failure is label quality before model capacity."
+  ],
+  "nextExperiment": "Review high-ranked unlabeled distractors in training cases only, rematerialize affected labels and rows, then refit the same pairwise document-feature ranker. Calibration labels remain untouched. If the 99% served-recall gate still fails, specify a local cross-encoder reranker experiment rather than adding heuristic relevance rules."
+}
