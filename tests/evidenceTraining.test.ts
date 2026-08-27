@@ -1193,13 +1193,19 @@ describe("public evidence ranker training", () => {
     expect(result.status, result.stderr).toBe(0);
     expect(validateEvidenceRankerArtifact(JSON.parse(fs.readFileSync(output, "utf8"))).modelId)
       .toBe("sample-pairwise-evidence-v1");
-    expect(JSON.parse(fs.readFileSync(
+    const manifest = JSON.parse(fs.readFileSync(
       path.join(temporary, "sample-pairwise-evidence-v1.training-manifest.json"),
       "utf8"
-    ))).toMatchObject({
+    ));
+    expect(manifest).toMatchObject({
       trainingObjective: "pairwise",
       trainingPairs: 2,
-      crossValidationGroup: "repositoryLineageId"
+      crossValidationGroup: "repositoryLineageId",
+      calibration: {
+        rows: 4,
+        positiveRows: 2,
+        expectedCalibrationError: 0
+      }
     });
   });
 

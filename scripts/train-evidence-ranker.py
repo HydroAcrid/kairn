@@ -205,18 +205,64 @@ def fit_platt(rows: list[dict[str, Any]], intercept: float, coefficients: list[f
     if not rows:
         return 1.0, 0.0
     scores = [raw_score(intercept, coefficients, row["features"]) for row in rows]
-    a, b = 1.0, 0.0
-    total_weight = max(1.0, sum(row["labelWeight"] for row in rows))
-    for iteration in range(1200):
+    total_weight = max(1e-12, sum(row["labelWeight"] for row in rows))
+    positive_weight = sum(
+        row["labelWeight"] for row in rows if row["label"] == 1
+    )
+    prevalence = min(1 - 1e-9, max(1e-9, positive_weight / total_weight))
+    # Pairwise objectives can produce raw scores on a very different scale
+    # from pointwise fitting. Newton updates use the actual score curvature,
+    # while backtracking guarantees each accepted step improves weighted log
+    # loss. A positive slope preserves the learned file ordering.
+    a, b = 1.0, math.log(prevalence / (1 - prevalence))
+
+    def objective(next_a: float, next_b: float) -> float:
+        loss = 0.0
+        for row, score in zip(rows, scores, strict=True):
+            probability = min(1 - 1e-12, max(1e-12, sigmoid(next_a * score + next_b)))
+            label = row["label"]
+            loss += -row["labelWeight"] * (
+                label * math.log(probability) + (1 - label) * math.log(1 - probability)
+            )
+        return loss / total_weight
+
+    current_loss = objective(a, b)
+    for _ in range(100):
         gradient_a = 0.0
         gradient_b = 0.0
+        hessian_aa = 1e-9
+        hessian_ab = 0.0
+        hessian_bb = 1e-9
         for row, score in zip(rows, scores, strict=True):
-            error = (sigmoid(a * score + b) - row["label"]) * row["labelWeight"]
+            probability = sigmoid(a * score + b)
+            weight = row["labelWeight"]
+            error = (probability - row["label"]) * weight
+            curvature = probability * (1 - probability) * weight
             gradient_a += error * score
             gradient_b += error
-        rate = 0.15 / (1.0 + iteration / 250.0)
-        a -= rate * gradient_a / total_weight
-        b -= rate * gradient_b / total_weight
+            hessian_aa += curvature * score * score
+            hessian_ab += curvature * score
+            hessian_bb += curvature
+        determinant = hessian_aa * hessian_bb - hessian_ab * hessian_ab
+        if determinant <= 1e-18:
+            break
+        delta_a = (hessian_bb * gradient_a - hessian_ab * gradient_b) / determinant
+        delta_b = (-hessian_ab * gradient_a + hessian_aa * gradient_b) / determinant
+        if max(abs(delta_a), abs(delta_b)) < 1e-10:
+            break
+        step = 1.0
+        accepted = False
+        while step >= 1 / 1024:
+            next_a = max(1e-9, a - step * delta_a)
+            next_b = b - step * delta_b
+            next_loss = objective(next_a, next_b)
+            if next_loss <= current_loss - 1e-12:
+                a, b, current_loss = next_a, next_b, next_loss
+                accepted = True
+                break
+            step /= 2
+        if not accepted:
+            break
     return a, b
 
 
