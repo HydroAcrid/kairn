@@ -140,7 +140,7 @@ type RankabilityCaseAudit = {
 export type RankabilityAudit = {
   schemaVersion: "rankability-audit.v2";
   promotionEligible: false;
-  infrastructure: { valid: boolean; campaignFingerprint: string; evidenceSha256: string };
+  infrastructure: { valid: boolean; sourceCommit: string; campaignFingerprint: string; evidenceSha256: string };
   data: {
     valid: boolean;
     inputSha256: string;
@@ -203,6 +203,7 @@ export function buildRankabilityAudit(input: {
   inputPath: string;
   modelPaths: string[];
   infrastructureValid: boolean;
+  sourceCommit: string;
   campaignFingerprint: string;
   infrastructureEvidenceSha256: string;
 }): RankabilityAudit {
@@ -231,7 +232,7 @@ export function buildRankabilityAudit(input: {
   return {
     schemaVersion: "rankability-audit.v2",
     promotionEligible: false,
-    infrastructure: { valid: input.infrastructureValid, campaignFingerprint: input.campaignFingerprint, evidenceSha256: input.infrastructureEvidenceSha256 },
+    infrastructure: { valid: input.infrastructureValid, sourceCommit: input.sourceCommit, campaignFingerprint: input.campaignFingerprint, evidenceSha256: input.infrastructureEvidenceSha256 },
     data: {
       valid: dataValid,
       inputSha256: digest(inputBytes),
@@ -276,6 +277,7 @@ export function formatRankabilityAuditMarkdown(audit: RankabilityAudit): string 
     `Infrastructure: **${audit.infrastructure.valid ? "valid" : "invalid"}**  `,
     `Data: **${audit.data.valid ? "valid" : "invalid"}**  `,
     `Classification: **${audit.classification}**  `,
+    `Commit: \`${audit.infrastructure.sourceCommit}\`  `,
     `Campaign: \`${audit.infrastructure.campaignFingerprint}\`  `,
     `Input: \`${audit.data.inputSha256}\``,
     "",

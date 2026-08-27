@@ -52,6 +52,7 @@ try {
     inputPath: inputArtifact.absolutePath,
     modelPaths: modelArtifacts.map((artifact) => artifact.absolutePath),
     infrastructureValid: infrastructure.valid,
+    sourceCommit,
     campaignFingerprint: campaign.fingerprint,
     infrastructureEvidenceSha256: benchmarkInfrastructureEvidenceHash(infrastructure)
   });

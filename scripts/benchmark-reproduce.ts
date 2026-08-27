@@ -63,6 +63,7 @@ function reproduceRankability(runDirectory: string, manifest: typeof run.manifes
     inputPath: input.absolutePath,
     modelPaths: models.map((model) => model!.absolutePath),
     infrastructureValid: infrastructure.valid,
+    sourceCommit: manifest.sourceCommit,
     campaignFingerprint: campaign.fingerprint,
     infrastructureEvidenceSha256: benchmarkInfrastructureEvidenceHash(infrastructure)
   });

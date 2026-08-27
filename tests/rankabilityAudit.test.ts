@@ -80,6 +80,7 @@ function build(input: RankabilityInput) {
     inputPath,
     modelPaths,
     infrastructureValid: true,
+    sourceCommit: "c".repeat(40),
     campaignFingerprint: "a".repeat(64),
     infrastructureEvidenceSha256: "b".repeat(64)
   });

@@ -12,6 +12,7 @@ describe("frozen v0.2C-R audit input", () => {
         "artifacts/kairn-evidence-v02c-semantic-v170-reviewed-probe512-candidate.json"
       ],
       infrastructureValid: true,
+      sourceCommit: "c".repeat(40),
       campaignFingerprint: "a".repeat(64),
       infrastructureEvidenceSha256: "b".repeat(64)
     });
