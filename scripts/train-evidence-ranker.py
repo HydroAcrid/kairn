@@ -107,6 +107,100 @@ def choose_l2(rows: list[dict[str, Any]]) -> tuple[float, dict[str, float]]:
     return selected, scores
 
 
+def build_pairwise_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        grouped[str(row["caseGroupId"])].append(row)
+    pairs: list[dict[str, Any]] = []
+    for case_group_id, case_rows in grouped.items():
+        positives = [row for row in case_rows if row["label"] == 1]
+        negatives = [row for row in case_rows if row["label"] == 0]
+        if not positives or not negatives:
+            continue
+        weighted_pairs = [
+            (positive, negative, positive["labelWeight"] * negative["labelWeight"])
+            for positive in positives
+            for negative in negatives
+        ]
+        total_weight = sum(weight for _, _, weight in weighted_pairs)
+        for positive, negative, weight in weighted_pairs:
+            pairs.append({
+                "caseGroupId": case_group_id,
+                "repositoryLineageId": positive["repositoryLineageId"],
+                "features": [
+                    left - right
+                    for left, right in zip(positive["features"], negative["features"], strict=True)
+                ],
+                "labelWeight": weight / total_weight,
+            })
+    if not pairs:
+        raise ValueError("pairwise training requires at least one case with positive and negative labels")
+    return pairs
+
+
+def train_pairwise_logistic(
+    pairs: list[dict[str, Any]], l2: float, iterations: int = 1800
+) -> list[float]:
+    coefficients = [0.0] * len(FEATURES)
+    total_weight = max(1.0, sum(pair["labelWeight"] for pair in pairs))
+    for iteration in range(iterations):
+        gradients = [0.0] * len(FEATURES)
+        for pair in pairs:
+            score = sum(
+                coefficient * feature
+                for coefficient, feature in zip(coefficients, pair["features"], strict=True)
+            )
+            error = (sigmoid(score) - 1.0) * pair["labelWeight"]
+            for index, feature in enumerate(pair["features"]):
+                gradients[index] += error * feature
+        learning_rate = 0.3 / (1.0 + iteration / 300.0)
+        for index in range(len(coefficients)):
+            regularized = gradients[index] / total_weight + l2 * coefficients[index]
+            coefficients[index] -= learning_rate * regularized
+    return coefficients
+
+
+def pairwise_log_loss(pairs: list[dict[str, Any]], coefficients: list[float]) -> float:
+    if not pairs:
+        return float("inf")
+    weighted = 0.0
+    total_weight = 0.0
+    for pair in pairs:
+        score = sum(
+            coefficient * feature
+            for coefficient, feature in zip(coefficients, pair["features"], strict=True)
+        )
+        probability = min(1 - 1e-12, max(1e-12, sigmoid(score)))
+        weight = pair["labelWeight"]
+        weighted += -weight * math.log(probability)
+        total_weight += weight
+    return weighted / max(total_weight, 1e-12)
+
+
+def choose_l2_pairwise(rows: list[dict[str, Any]]) -> tuple[float, dict[str, float]]:
+    groups = sorted(
+        {row["repositoryLineageId"] for row in rows},
+        key=lambda value: (hashlib.sha256(value.encode()).hexdigest(), value),
+    )
+    folds = min(5, len(groups))
+    if folds < 2:
+        raise ValueError("pairwise training needs at least two repository lineages for grouped cross-validation")
+    fold_by_group = {group: index % folds for index, group in enumerate(groups)}
+    scores: dict[str, float] = {}
+    for l2 in L2_GRID:
+        losses: list[float] = []
+        for fold in range(folds):
+            train_rows = [row for row in rows if fold_by_group[row["repositoryLineageId"]] != fold]
+            validation_rows = [row for row in rows if fold_by_group[row["repositoryLineageId"]] == fold]
+            train_pairs = build_pairwise_rows(train_rows)
+            validation_pairs = build_pairwise_rows(validation_rows)
+            coefficients = train_pairwise_logistic(train_pairs, l2, iterations=700)
+            losses.append(pairwise_log_loss(validation_pairs, coefficients))
+        scores[str(l2)] = sum(losses) / len(losses) if losses else float("inf")
+    selected = min(L2_GRID, key=lambda value: (scores[str(value)], value))
+    return selected, scores
+
+
 def fit_platt(rows: list[dict[str, Any]], intercept: float, coefficients: list[float]) -> tuple[float, float]:
     if not rows:
         return 1.0, 0.0
@@ -286,6 +380,7 @@ def main() -> int:
     parser.add_argument("--out", required=True)
     parser.add_argument("--model-id", required=True)
     parser.add_argument("--node", default="node")
+    parser.add_argument("--objective", choices=["pointwise", "pairwise"], default="pointwise")
     parser.add_argument(
         "--detached-holdout",
         action="store_true",
@@ -319,8 +414,15 @@ def main() -> int:
     if {row["label"] for row in train} != {0, 1} or {row["label"] for row in calibration} != {0, 1}:
         raise ValueError("train and calibration splits must each include positive and negative labels")
 
-    selected_l2, cv_scores = choose_l2(train)
-    intercept, coefficients = train_logistic(train, selected_l2)
+    if args.objective == "pairwise":
+        selected_l2, cv_scores = choose_l2_pairwise(train)
+        training_pairs = build_pairwise_rows(train)
+        intercept = 0.0
+        coefficients = train_pairwise_logistic(training_pairs, selected_l2)
+    else:
+        selected_l2, cv_scores = choose_l2(train)
+        training_pairs = []
+        intercept, coefficients = train_logistic(train, selected_l2)
     platt_a, platt_b = fit_platt(calibration, intercept, coefficients)
     calibration_probabilities = calibrated_probabilities(calibration, intercept, coefficients, platt_a, platt_b)
     thresholds = {
@@ -364,6 +466,8 @@ def main() -> int:
             for split in ["train", "calibration", "holdout"]
         },
         "selectedL2": selected_l2,
+        "trainingObjective": args.objective,
+        "trainingPairs": len(training_pairs),
         "crossValidationGroup": "repositoryLineageId",
         "crossValidationLogLoss": cv_scores,
         "calibration": evaluate(calibration, calibration_probabilities),
@@ -392,6 +496,7 @@ def main() -> int:
             f"- Artifact checksum: `{artifact['checksum']}`",
             f"- Training data hash: `{data_hash}`",
             f"- Feature schema: `{SCHEMA_VERSION}` / `{schema_hash()}`",
+            f"- Training objective: `{args.objective}`",
             f"- Public-data-only declaration: `true`",
             (
                 "- Detached holdout: `pending` (must be sealed and opened exactly once after freeze)"
