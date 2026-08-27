@@ -12,6 +12,7 @@ const output = buildRankabilityInput({
   deterministicOracleReportPath: options.deterministicOracleReport,
   semanticOracleProgressPath: options.semanticOracleProgress,
   modelPaths: options.models,
+  recordedEvaluationPaths: options.recordedEvaluations,
   repositoryCacheRoot: options.repositoryCache
 });
 const target = path.resolve(options.out);
@@ -32,6 +33,7 @@ function parseArgs(argv: string[]): {
   deterministicOracleReport: string;
   semanticOracleProgress: string;
   models: string[];
+  recordedEvaluations: string[];
   repositoryCache: string;
   out: string;
 } {
@@ -50,6 +52,8 @@ function parseArgs(argv: string[]): {
   };
   const models = required("--models").split(",").map((value) => path.resolve(value.trim())).filter(Boolean);
   if (models.length < 2) throw new Error("--models requires at least two model artifacts");
+  const recordedEvaluations = required("--recorded-evaluations").split(",").map((value) => path.resolve(value.trim())).filter(Boolean);
+  if (recordedEvaluations.length < 4) throw new Error("--recorded-evaluations requires the four frozen baseline evaluations");
   return {
     sourceManifest: required("--source-manifest"),
     sourceReport: required("--source-report"),
@@ -57,6 +61,7 @@ function parseArgs(argv: string[]): {
     deterministicOracleReport: required("--deterministic-oracle-report"),
     semanticOracleProgress: required("--semantic-oracle-progress"),
     models,
+    recordedEvaluations,
     repositoryCache: required("--repository-cache"),
     out: required("--out")
   };

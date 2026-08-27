@@ -65,6 +65,20 @@ export type CandidateOracleInput = {
   semantic: { initial64: string[]; bounded128: string[] } | null;
 };
 
+export type RecordedRankabilityBaseline = {
+  cohort: "required_source" | "weak_patch_calibration";
+  modelId: string;
+  modelChecksum: string;
+  source: ArtifactDigest;
+  candidatePool: string;
+  cases: number;
+  requiredFiles: number;
+  recallAt5: number;
+  mrr: number;
+  strictFullRecallAt64: number;
+  expectedCalibrationError: number | null;
+};
+
 export type RankabilityInput = {
   schemaVersion: typeof RANKABILITY_INPUT_SCHEMA;
   promotionEligible: false;
@@ -83,6 +97,7 @@ export type RankabilityInput = {
     sourceReconstructionExact: boolean;
   };
   models: Array<{ id: string; checksum: string; path: string }>;
+  recordedBaselines: RecordedRankabilityBaseline[];
   cohortCounts: {
     candidateOracleExpected: 38;
     candidateOracleMaterialized: number;
@@ -105,6 +120,7 @@ export type BuildRankabilityInputOptions = {
   deterministicOracleReportPath: string;
   semanticOracleProgressPath: string;
   modelPaths: string[];
+  recordedEvaluationPaths: string[];
   repositoryCacheRoot: string;
 };
 
@@ -217,6 +233,11 @@ export function buildRankabilityInput(options: BuildRankabilityInputOptions): Ra
     validateModelsAgainstCases(artifact, cases);
     return { id: artifact.modelId, checksum: artifact.checksum, path: repositoryRelative(modelPath) };
   });
+  const recordedBaselines = options.recordedEvaluationPaths.map(parseRecordedBaseline);
+  for (const baseline of recordedBaselines) {
+    const model = models.find((item) => item.id === baseline.modelId);
+    if (!model || model.checksum !== baseline.modelChecksum) throw new Error(`recorded baseline model ${baseline.modelId} does not match the frozen model artifact`);
+  }
   const requiredCases = cases.filter((item) => item.cohorts.includes("required_source"));
   return {
     schemaVersion: RANKABILITY_INPUT_SCHEMA,
@@ -236,6 +257,7 @@ export function buildRankabilityInput(options: BuildRankabilityInputOptions): Ra
       sourceReconstructionExact: true
     },
     models,
+    recordedBaselines,
     cohortCounts: {
       candidateOracleExpected: 38,
       candidateOracleMaterialized: candidateOracle.filter((item) => item.semantic !== null).length,
@@ -245,6 +267,34 @@ export function buildRankabilityInput(options: BuildRankabilityInputOptions): Ra
     },
     candidateOracle,
     cases
+  };
+}
+
+function parseRecordedBaseline(filePath: string): RecordedRankabilityBaseline {
+  const evaluation = loadJson(filePath);
+  if (evaluation.schemaVersion !== "probe-ranker-evaluation.v1") throw new Error(`${filePath}: unsupported recorded baseline schema`);
+  const model = record(evaluation.model, `${filePath}.model`);
+  const metrics = record(evaluation.metrics, `${filePath}.metrics`);
+  const cases = array(evaluation.cases, `${filePath}.cases`);
+  const referenceKind = string(evaluation.referenceKind, `${filePath}.referenceKind`);
+  const cohort = referenceKind === "required_source_oracle"
+    ? "required_source" as const
+    : referenceKind === "verified_official_patch_source"
+      ? "weak_patch_calibration" as const
+      : (() => { throw new Error(`${filePath}: unsupported baseline reference kind`); })();
+  const requiredFiles = cases.reduce<number>((sum, value, index) => sum + stringArray(record(value, `${filePath}.cases[${index}]`).requiredSourceFiles, `${filePath}.cases[${index}].requiredSourceFiles`).length, 0);
+  return {
+    cohort,
+    modelId: string(model.id, `${filePath}.model.id`),
+    modelChecksum: sha256String(model.checksum, `${filePath}.model.checksum`),
+    source: digest(filePath),
+    candidatePool: typeof evaluation.candidatePool === "string" ? evaluation.candidatePool : "probe",
+    cases: finite(evaluation.targetCaseCount, `${filePath}.targetCaseCount`),
+    requiredFiles,
+    recallAt5: finite(metrics.rankedRequiredFileRecallAt5, `${filePath}.metrics.rankedRequiredFileRecallAt5`),
+    mrr: finite(metrics.rankedRequiredFileMrr, `${filePath}.metrics.rankedRequiredFileMrr`),
+    strictFullRecallAt64: finite(metrics.rankedStrictFullRecallAt64, `${filePath}.metrics.rankedStrictFullRecallAt64`),
+    expectedCalibrationError: metrics.expectedCalibrationError === null ? null : finite(metrics.expectedCalibrationError, `${filePath}.metrics.expectedCalibrationError`)
   };
 }
 

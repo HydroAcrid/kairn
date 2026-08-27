@@ -47,6 +47,8 @@ describe("rankability audit v2", () => {
         if (model.rawScore === null) continue;
         const reconstructed = model.intercept + model.contributions.reduce((sum, value) => sum + value.contribution, 0);
         expect(reconstructed).toBeCloseTo(model.rawScore, 7);
+        expect(model.calibration.calibratedLogit).toBeCloseTo(model.calibration.a * model.rawScore + model.calibration.b, 7);
+        expect(model.calibration.finalProbability).toBe(model.probability);
       }
     }
   });
@@ -120,6 +122,7 @@ function fixtureInput(): RankabilityInput {
       sourceReconstructionExact: true
     },
     models,
+    recordedBaselines: [],
     cohortCounts: { candidateOracleExpected: 38, candidateOracleMaterialized: 0, requiredSourceCases: 1, requiredSourceFiles: 6, weakPatchCalibrationCases: 1 },
     candidateOracle: [],
     cases: [{

@@ -8,6 +8,7 @@ import type { BenchmarkRunClassification } from "./campaign.js";
 import {
   RANKABILITY_INPUT_SCHEMA,
   type CandidateOracleInput,
+  type RecordedRankabilityBaseline,
   type RankabilityCandidateInput,
   type RankabilityCaseInput,
   type RankabilityInput
@@ -37,6 +38,7 @@ type RankedCandidate = {
   rank: number;
   hardPriority: number;
   rawScore: number;
+  uncalibratedProbability: number;
   probability: number;
   contributions: ScoreContribution[];
 };
@@ -76,11 +78,22 @@ type CandidateComparison = {
   valid: boolean;
   expectedCases: 38;
   comparedCases: number;
+  baselineGeneratorId: string;
+  candidateGeneratorId: string;
   missingSemanticCases: string[];
   deterministic: CandidateMetrics;
   semantic: CandidateMetrics | null;
-  deltas: { strictFullRecallAt64: number; strictFullRecallAt128: number; requiredFileRecallAt64: number; requiredFileRecallAt128: number } | null;
+  deltas: { strictFullRecallAt64: MetricDelta; strictFullRecallAt128: MetricDelta; requiredFileRecallAt64: MetricDelta; requiredFileRecallAt128: MetricDelta } | null;
+  perLanguage: Record<string, CandidateStratumComparison>;
+  perScenario: Record<string, CandidateStratumComparison>;
   misses: Array<{ arm: "deterministic" | "semantic"; caseId: string; at64: string[]; at128: string[] }>;
+};
+type CandidateStratumComparison = {
+  cases: number;
+  requiredFiles: number;
+  deterministic: CandidateMetrics;
+  semantic: CandidateMetrics | null;
+  deltas: CandidateComparison["deltas"];
 };
 
 type HigherRankedCandidate = {
@@ -107,7 +120,9 @@ type RequiredFileAudit = {
     probability: number | null;
     probabilityGapFromTop: number | null;
     rawScore: number | null;
+    uncalibratedProbability: number | null;
     intercept: number;
+    calibration: { kind: "platt"; a: number; b: number; calibratedLogit: number | null; finalProbability: number | null };
     contributions: ScoreContribution[];
     higherRankedCandidates: HigherRankedCandidate[];
   }>;
@@ -136,19 +151,35 @@ export type RankabilityAudit = {
   };
   classification: BenchmarkRunClassification;
   evidencePolicy: { developmentOnly: true; publicClaimRequires: "sealed_holdout_and_quality_passing_live_runs" };
+  recordedBaselines: RecordedRankabilityBaseline[];
   cohorts: {
     candidateOracle: { expectedCases: 38; materializedCases: number };
     requiredSource: { cases: number; requiredFiles: number; languages: string[]; scenarios: string[] };
     weakPatchCalibration: { cases: number };
   };
   candidateComparison: CandidateComparison;
+  /** Required-source diagnostic metrics: 10 cases / 17 files. */
   modelMetrics: RankabilityModelMetrics[];
+  /** Weak-patch calibration metrics: 45 cases, kept separate from required-source diagnostics. */
+  calibrationModelMetrics: RankabilityModelMetrics[];
   modelComparison: {
     baselineModelId: string;
     candidateModelId: string;
     recallAt5: MetricDelta;
     mrr: MetricDelta;
     strictFullRecallAt64: MetricDelta;
+    perLanguage: Record<string, ModelStratumComparison>;
+    perScenario: Record<string, ModelStratumComparison>;
+    negativeRankMovements: Array<{ caseId: string; path: string; baselineRank: number | null; candidateRank: number | null; delta: number | null }>;
+  } | null;
+  calibrationModelComparison: {
+    baselineModelId: string;
+    candidateModelId: string;
+    recallAt5: MetricDelta;
+    mrr: MetricDelta;
+    strictFullRecallAt64: MetricDelta;
+    perLanguage: Record<string, ModelStratumComparison>;
+    perScenario: Record<string, ModelStratumComparison>;
     negativeRankMovements: Array<{ caseId: string; path: string; baselineRank: number | null; candidateRank: number | null; delta: number | null }>;
   } | null;
   diagnosticCeilings: RankabilityDiagnosticCeilings;
@@ -158,6 +189,14 @@ export type RankabilityAudit = {
     reason: string;
   };
   cases: RankabilityCaseAudit[];
+};
+
+type ModelStratumComparison = {
+  cases: number;
+  requiredFiles: number;
+  recallAt5: MetricDelta;
+  mrr: MetricDelta;
+  strictFullRecallAt64: MetricDelta;
 };
 
 export function buildRankabilityAudit(input: {
@@ -175,10 +214,14 @@ export function buildRankabilityAudit(input: {
   const rankings = rankEveryCase(source, models);
   const cases = source.cases.filter((item) => item.cohorts.includes("required_source"))
     .map((item) => auditCase(item, models, rankings.get(item.id)!));
-  const modelMetrics = models.map((model) => buildModelMetrics(source, model, rankings));
-  const candidateComparison = buildCandidateComparison(source.candidateOracle);
+  const modelMetrics = models.map((model) => buildModelMetrics(source, model, rankings, "required_source"));
+  const calibrationModelMetrics = models.map((model) => buildModelMetrics(source, model, rankings, "weak_patch_calibration"));
+  const candidateComparison = buildCandidateComparison(source);
   const modelComparison = models.length >= 2
-    ? compareModels(cases, modelMetrics[0]!, modelMetrics[1]!, models[0]!.modelId, models[1]!.modelId)
+    ? compareModels(source, rankings, modelMetrics[0]!, modelMetrics[1]!, models[0]!.modelId, models[1]!.modelId, "required_source")
+    : null;
+  const calibrationModelComparison = models.length >= 2
+    ? compareModels(source, rankings, calibrationModelMetrics[0]!, calibrationModelMetrics[1]!, models[0]!.modelId, models[1]!.modelId, "weak_patch_calibration")
     : null;
   const diagnosticCeilings = runRankabilityDiagnosticCeilings(source);
   const rootCauses = summarizeRootCauses(cases);
@@ -203,6 +246,7 @@ export function buildRankabilityAudit(input: {
     },
     classification,
     evidencePolicy: { developmentOnly: true, publicClaimRequires: "sealed_holdout_and_quality_passing_live_runs" },
+    recordedBaselines: source.recordedBaselines,
     cohorts: {
       candidateOracle: { expectedCases: 38, materializedCases: source.cohortCounts.candidateOracleMaterialized },
       requiredSource: {
@@ -218,7 +262,9 @@ export function buildRankabilityAudit(input: {
     modelComparison,
     diagnosticCeilings,
     rootCauses,
-    nextExperiment: chooseNextExperiment(rootCauses, diagnosticCeilings, dataValid),
+    nextExperiment: chooseNextExperiment(candidateComparison, rootCauses, diagnosticCeilings, dataValid),
+    calibrationModelMetrics,
+    calibrationModelComparison,
     cases
   };
 }
@@ -235,6 +281,12 @@ export function formatRankabilityAuditMarkdown(audit: RankabilityAudit): string 
     "",
     "> Development diagnostic only. A public improvement claim requires sealed-holdout confirmation and quality-passing live-agent results.",
     "",
+    "## Immutable recorded baselines",
+    "",
+    "| Cohort | Model | Pool | Cases | Files | Recall@5 | MRR | Strict@64 | ECE |",
+    "|---|---|---|---:|---:|---:|---:|---:|---:|",
+    ...audit.recordedBaselines.map((item) => `| ${item.cohort} | ${item.modelId} | ${item.candidatePool} | ${item.cases} | ${item.requiredFiles} | ${percent(item.recallAt5)} | ${item.mrr.toFixed(4)} | ${percent(item.strictFullRecallAt64)} | ${item.expectedCalibrationError === null ? "n/a" : item.expectedCalibrationError.toFixed(4)} |`),
+    "",
     "## Cohorts",
     "",
     `- Candidate oracle: ${audit.cohorts.candidateOracle.materializedCases}/${audit.cohorts.candidateOracle.expectedCases} semantic cases reconstructed.`,
@@ -242,11 +294,30 @@ export function formatRankabilityAuditMarkdown(audit: RankabilityAudit): string 
     `- Weak-patch calibration: ${audit.cohorts.weakPatchCalibration.cases} cases.`,
     `- Required-source languages: ${audit.cohorts.requiredSource.languages.join(", ") || "none"}.`,
     "",
-    "## Same-pool model metrics",
+    "## Frozen candidate generation (38 cases / 72 required files)",
+    "",
+    `- Baseline: \`${audit.candidateComparison.baselineGeneratorId}\`.`,
+    `- Candidate: \`${audit.candidateComparison.candidateGeneratorId}\`.`,
+    `- Strict full recall@64: ${formatMetric(audit.candidateComparison.deterministic.strictFullRecallAt64)} → ${audit.candidateComparison.semantic ? formatMetric(audit.candidateComparison.semantic.strictFullRecallAt64) : "unavailable"}.`,
+    `- Strict full recall@128: ${formatMetric(audit.candidateComparison.deterministic.strictFullRecallAt128)} → ${audit.candidateComparison.semantic ? formatMetric(audit.candidateComparison.semantic.strictFullRecallAt128) : "unavailable"}.`,
+    `- Required-file recall@64: ${formatMetric(audit.candidateComparison.deterministic.requiredFileRecallAt64)} → ${audit.candidateComparison.semantic ? formatMetric(audit.candidateComparison.semantic.requiredFileRecallAt64) : "unavailable"}.`,
+    `- Required-file recall@128: ${formatMetric(audit.candidateComparison.deterministic.requiredFileRecallAt128)} → ${audit.candidateComparison.semantic ? formatMetric(audit.candidateComparison.semantic.requiredFileRecallAt128) : "unavailable"}.`,
+    ...(audit.candidateComparison.deltas ? [
+      `- Strict@64 delta: ${points(audit.candidateComparison.deltas.strictFullRecallAt64.percentagePointDelta)} (95% paired CI ${points(audit.candidateComparison.deltas.strictFullRecallAt64.ci95.lower * 100)} to ${points(audit.candidateComparison.deltas.strictFullRecallAt64.ci95.upper * 100)}).`,
+      `- File@64 delta: ${points(audit.candidateComparison.deltas.requiredFileRecallAt64.percentagePointDelta)} (95% paired CI ${points(audit.candidateComparison.deltas.requiredFileRecallAt64.ci95.lower * 100)} to ${points(audit.candidateComparison.deltas.requiredFileRecallAt64.ci95.upper * 100)}).`
+    ] : []),
+    "",
+    "## Same-pool required-source model metrics (10-case diagnostic)",
     "",
     "| Model | Cases | Files | Recall@5 | Strict@64 | File@64 | MRR | ECE | Brier | Log loss |",
     "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ...audit.modelMetrics.map((metric) => `| ${metric.modelId} | ${metric.cases} | ${metric.requiredFiles} | ${percent(metric.requiredFileRecallAt5.value)} | ${percent(metric.strictFullRecallAt64.value)} | ${percent(metric.requiredFileRecallAt64.value)} | ${metric.mrr.value.toFixed(4)} | ${metric.expectedCalibrationError.value.toFixed(4)} | ${metric.brierScore.value.toFixed(4)} | ${metric.logLoss.value.toFixed(4)} |`),
+    "",
+    "## Same-pool weak-patch calibration metrics (45 cases)",
+    "",
+    "| Model | Cases | Files | Recall@5 | Strict@64 | File@64 | MRR | ECE | Brier | Log loss |",
+    "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ...audit.calibrationModelMetrics.map((metric) => `| ${metric.modelId} | ${metric.cases} | ${metric.requiredFiles} | ${percent(metric.requiredFileRecallAt5.value)} | ${percent(metric.strictFullRecallAt64.value)} | ${percent(metric.requiredFileRecallAt64.value)} | ${metric.mrr.value.toFixed(4)} | ${metric.expectedCalibrationError.value.toFixed(4)} | ${metric.brierScore.value.toFixed(4)} | ${metric.logLoss.value.toFixed(4)} |`),
     "",
     "## Root-cause accounting",
     "",
@@ -269,6 +340,16 @@ export function formatRankabilityAuditMarkdown(audit: RankabilityAudit): string 
       ""
     );
   }
+  if (audit.calibrationModelComparison) {
+    lines.push(
+      "## Weak-patch calibration baseline → candidate deltas",
+      "",
+      `- Required-file Recall@5: ${points(audit.calibrationModelComparison.recallAt5.percentagePointDelta)} (95% paired CI ${points(audit.calibrationModelComparison.recallAt5.ci95.lower * 100)} to ${points(audit.calibrationModelComparison.recallAt5.ci95.upper * 100)}).`,
+      `- MRR: ${signed(audit.calibrationModelComparison.mrr.absoluteDelta)} (95% paired CI ${signed(audit.calibrationModelComparison.mrr.ci95.lower)} to ${signed(audit.calibrationModelComparison.mrr.ci95.upper)}).`,
+      `- Strict full recall@64: ${points(audit.calibrationModelComparison.strictFullRecallAt64.percentagePointDelta)} (95% paired CI ${points(audit.calibrationModelComparison.strictFullRecallAt64.ci95.lower * 100)} to ${points(audit.calibrationModelComparison.strictFullRecallAt64.ci95.upper * 100)}).`,
+      ""
+    );
+  }
   if (audit.data.failures.length > 0) lines.push("## Data failures", "", ...audit.data.failures.map((item) => `- ${item}`), "");
   lines.push("## Limitations", "", ...audit.data.limitations.map((item) => `- ${item}`), "");
   return `${lines.join("\n")}\n`;
@@ -287,6 +368,7 @@ function rankCandidates(model: EvidenceRankerArtifact, candidates: RankabilityCa
       rank: 0,
       hardPriority: features.failureReference > 0 ? 2 : features.exactPath > 0 ? 1 : 0,
       rawScore: prediction.rawScore,
+      uncalibratedProbability: prediction.uncalibratedProbability,
       probability: prediction.relevanceProbability,
       contributions: model.orderedFeatures.map((feature, index) => ({
         feature,
@@ -313,7 +395,15 @@ function auditCase(item: RankabilityCaseInput, models: EvidenceRankerArtifact[],
         probability: found?.probability ?? null,
         probabilityGapFromTop: found && ranked[0] ? round(ranked[0].probability - found.probability) : null,
         rawScore: found?.rawScore ?? null,
+        uncalibratedProbability: found?.uncalibratedProbability ?? null,
         intercept: model.intercept,
+        calibration: {
+          kind: "platt" as const,
+          a: model.calibration.a,
+          b: model.calibration.b,
+          calibratedLogit: found ? round(model.calibration.a * found.rawScore + model.calibration.b) : null,
+          finalProbability: found?.probability ?? null
+        },
         contributions: found?.contributions ?? [],
         higherRankedCandidates: higher.map((other): HigherRankedCandidate => {
           const difference = featureDifference(candidate?.features, other.candidate.features);
@@ -388,10 +478,15 @@ function diagnosis(primaryCause: RankabilityFailureCause, reason: string): Pick<
   return { primaryCause, contributingCauses: [], diagnosisReasons: [reason] };
 }
 
-function buildModelMetrics(source: RankabilityInput, model: EvidenceRankerArtifact, rankings: Map<string, Map<string, RankedCandidate[]>>): RankabilityModelMetrics {
-  const required = source.cases.filter((item) => item.cohorts.includes("required_source")).map((item) => ({
+function buildModelMetrics(
+  source: RankabilityInput,
+  model: EvidenceRankerArtifact,
+  rankings: Map<string, Map<string, RankedCandidate[]>>,
+  cohort: "required_source" | "weak_patch_calibration"
+): RankabilityModelMetrics {
+  const required = source.cases.filter((item) => item.cohorts.includes(cohort)).map((item) => ({
     item,
-    ranks: item.requiredFiles.map((file) => rankings.get(item.id)!.get(model.modelId)!.find((value) => value.candidate.path === file.path)?.rank ?? null)
+    ranks: cohortPaths(item, cohort).map((filePath) => rankings.get(item.id)!.get(model.modelId)!.find((value) => value.candidate.path === filePath)?.rank ?? null)
   }));
   const fileRanks = required.flatMap((item) => item.ranks);
   const samples = source.cases.filter((item) => item.cohorts.includes("weak_patch_calibration")).flatMap((item) =>
@@ -424,7 +519,8 @@ function buildModelMetrics(source: RankabilityInput, model: EvidenceRankerArtifa
   };
 }
 
-function buildCandidateComparison(cases: CandidateOracleInput[]): CandidateComparison {
+function buildCandidateComparison(source: RankabilityInput): CandidateComparison {
+  const cases = source.candidateOracle;
   const missingSemanticCases = cases.filter((item) => item.semantic === null).map((item) => item.id);
   const deterministic = candidateMetrics(cases, "deterministic");
   const valid = cases.length === 38 && missingSemanticCases.length === 0;
@@ -443,16 +539,50 @@ function buildCandidateComparison(cases: CandidateOracleInput[]): CandidateCompa
     valid,
     expectedCases: 38,
     comparedCases: valid ? 38 : cases.length - missingSemanticCases.length,
+    baselineGeneratorId: "deterministic-frozen-v73",
+    candidateGeneratorId: `semantic-frozen-${source.provenance.semanticOracleGeneratorCommit}`,
     missingSemanticCases,
     deterministic,
     semantic,
-    deltas: semantic ? {
-      strictFullRecallAt64: round(semantic.strictFullRecallAt64.value - deterministic.strictFullRecallAt64.value),
-      strictFullRecallAt128: round(semantic.strictFullRecallAt128.value - deterministic.strictFullRecallAt128.value),
-      requiredFileRecallAt64: round(semantic.requiredFileRecallAt64.value - deterministic.requiredFileRecallAt64.value),
-      requiredFileRecallAt128: round(semantic.requiredFileRecallAt128.value - deterministic.requiredFileRecallAt128.value)
-    } : null,
+    deltas: semantic ? candidateDeltas(cases, deterministic, semantic) : null,
+    perLanguage: candidateStrata(cases, (item) => item.language),
+    perScenario: candidateStrata(cases, (item) => item.scenario),
     misses
+  };
+}
+
+function candidateStrata(cases: CandidateOracleInput[], key: (item: CandidateOracleInput) => string): Record<string, CandidateStratumComparison> {
+  const groups = new Map<string, CandidateOracleInput[]>();
+  for (const item of cases) groups.set(key(item), [...(groups.get(key(item)) ?? []), item]);
+  return Object.fromEntries([...groups.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([name, items]) => {
+    const deterministic = candidateMetrics(items, "deterministic");
+    const semantic = items.every((item) => item.semantic !== null) ? candidateMetrics(items, "semantic") : null;
+    return [name, {
+      cases: items.length,
+      requiredFiles: items.reduce((sum, item) => sum + item.requiredFiles.length, 0),
+      deterministic,
+      semantic,
+      deltas: semantic ? candidateDeltas(items, deterministic, semantic) : null
+    }];
+  }));
+}
+
+function candidateDeltas(cases: CandidateOracleInput[], baseline: CandidateMetrics, candidate: CandidateMetrics): NonNullable<CandidateComparison["deltas"]> {
+  const paired = cases.filter((item) => item.semantic !== null).map((item) => ({
+    baselineStrict64: allWithin(item.requiredFiles, item.deterministic.initial64) ? 1 : 0,
+    candidateStrict64: allWithin(item.requiredFiles, item.semantic!.initial64) ? 1 : 0,
+    baselineStrict128: allWithin(item.requiredFiles, item.deterministic.bounded128) ? 1 : 0,
+    candidateStrict128: allWithin(item.requiredFiles, item.semantic!.bounded128) ? 1 : 0,
+    baselineFile64: pathRecall(item.requiredFiles, item.deterministic.initial64),
+    candidateFile64: pathRecall(item.requiredFiles, item.semantic!.initial64),
+    baselineFile128: pathRecall(item.requiredFiles, item.deterministic.bounded128),
+    candidateFile128: pathRecall(item.requiredFiles, item.semantic!.bounded128)
+  }));
+  return {
+    strictFullRecallAt64: delta(baseline.strictFullRecallAt64.value, candidate.strictFullRecallAt64.value, paired.map((item) => item.baselineStrict64), paired.map((item) => item.candidateStrict64)),
+    strictFullRecallAt128: delta(baseline.strictFullRecallAt128.value, candidate.strictFullRecallAt128.value, paired.map((item) => item.baselineStrict128), paired.map((item) => item.candidateStrict128)),
+    requiredFileRecallAt64: delta(baseline.requiredFileRecallAt64.value, candidate.requiredFileRecallAt64.value, paired.map((item) => item.baselineFile64), paired.map((item) => item.candidateFile64)),
+    requiredFileRecallAt128: delta(baseline.requiredFileRecallAt128.value, candidate.requiredFileRecallAt128.value, paired.map((item) => item.baselineFile128), paired.map((item) => item.candidateFile128))
   };
 }
 
@@ -477,11 +607,24 @@ function candidateMetrics(cases: CandidateOracleInput[], arm: "deterministic" | 
   };
 }
 
-function compareModels(cases: RankabilityCaseAudit[], baseline: RankabilityModelMetrics, candidate: RankabilityModelMetrics, baselineId: string, candidateId: string): NonNullable<RankabilityAudit["modelComparison"]> {
+function compareModels(
+  source: RankabilityInput,
+  rankings: Map<string, Map<string, RankedCandidate[]>>,
+  baseline: RankabilityModelMetrics,
+  candidate: RankabilityModelMetrics,
+  baselineId: string,
+  candidateId: string,
+  cohort: "required_source" | "weak_patch_calibration"
+): NonNullable<RankabilityAudit["modelComparison"]> {
+  const cases = source.cases.filter((item) => item.cohorts.includes(cohort));
   const values = cases.map((item) => {
-    const left = item.requiredFiles.map((file) => file.models.find((model) => model.modelId === baselineId)?.rank ?? null);
-    const right = item.requiredFiles.map((file) => file.models.find((model) => model.modelId === candidateId)?.rank ?? null);
+    const paths = cohortPaths(item, cohort);
+    const left = paths.map((filePath) => rankings.get(item.id)!.get(baselineId)!.find((value) => value.candidate.path === filePath)?.rank ?? null);
+    const right = paths.map((filePath) => rankings.get(item.id)!.get(candidateId)!.find((value) => value.candidate.path === filePath)?.rank ?? null);
     return {
+      language: item.language,
+      scenario: item.scenario,
+      requiredFiles: paths.length,
       leftRecall5: fileRecallValue(left, 5), rightRecall5: fileRecallValue(right, 5),
       leftMrr: mean(left.map(reciprocal)), rightMrr: mean(right.map(reciprocal)),
       leftStrict64: left.every((rank) => rank !== null && rank <= 64) ? 1 : 0,
@@ -494,13 +637,30 @@ function compareModels(cases: RankabilityCaseAudit[], baseline: RankabilityModel
     recallAt5: delta(baseline.requiredFileRecallAt5.value, candidate.requiredFileRecallAt5.value, values.map((item) => item.leftRecall5), values.map((item) => item.rightRecall5)),
     mrr: delta(baseline.mrr.value, candidate.mrr.value, values.map((item) => item.leftMrr), values.map((item) => item.rightMrr)),
     strictFullRecallAt64: delta(baseline.strictFullRecallAt64.value, candidate.strictFullRecallAt64.value, values.map((item) => item.leftStrict64), values.map((item) => item.rightStrict64)),
-    negativeRankMovements: cases.flatMap((item) => item.requiredFiles.flatMap((file) => {
-      const baselineRank = file.models.find((model) => model.modelId === baselineId)?.rank ?? null;
-      const candidateRank = file.models.find((model) => model.modelId === candidateId)?.rank ?? null;
+    perLanguage: modelStrata(values, (item) => item.language),
+    perScenario: modelStrata(values, (item) => item.scenario),
+    negativeRankMovements: cases.flatMap((item) => cohortPaths(item, cohort).flatMap((filePath) => {
+      const baselineRank = rankings.get(item.id)!.get(baselineId)!.find((value) => value.candidate.path === filePath)?.rank ?? null;
+      const candidateRank = rankings.get(item.id)!.get(candidateId)!.find((value) => value.candidate.path === filePath)?.rank ?? null;
       return baselineRank !== null && candidateRank !== null && candidateRank > baselineRank
-        ? [{ caseId: item.id, path: file.path, baselineRank, candidateRank, delta: candidateRank - baselineRank }] : [];
+        ? [{ caseId: item.id, path: filePath, baselineRank, candidateRank, delta: candidateRank - baselineRank }] : [];
     })).sort((left, right) => (right.delta ?? 0) - (left.delta ?? 0) || left.caseId.localeCompare(right.caseId))
   };
+}
+
+function modelStrata<T extends { language: string; scenario: string; requiredFiles: number; leftRecall5: number; rightRecall5: number; leftMrr: number; rightMrr: number; leftStrict64: number; rightStrict64: number }>(
+  values: T[],
+  key: (item: T) => string
+): Record<string, ModelStratumComparison> {
+  const groups = new Map<string, T[]>();
+  for (const item of values) groups.set(key(item), [...(groups.get(key(item)) ?? []), item]);
+  return Object.fromEntries([...groups.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([name, items]) => [name, {
+    cases: items.length,
+    requiredFiles: items.reduce((sum, item) => sum + item.requiredFiles, 0),
+    recallAt5: delta(mean(items.map((item) => item.leftRecall5)), mean(items.map((item) => item.rightRecall5)), items.map((item) => item.leftRecall5), items.map((item) => item.rightRecall5)),
+    mrr: delta(mean(items.map((item) => item.leftMrr)), mean(items.map((item) => item.rightMrr)), items.map((item) => item.leftMrr), items.map((item) => item.rightMrr)),
+    strictFullRecallAt64: delta(mean(items.map((item) => item.leftStrict64)), mean(items.map((item) => item.rightStrict64)), items.map((item) => item.leftStrict64), items.map((item) => item.rightStrict64))
+  }]));
 }
 
 function classifyAudit(infrastructureValid: boolean, dataValid: boolean, source: RankabilityInput, metrics: RankabilityModelMetrics, comparison: RankabilityAudit["modelComparison"]): BenchmarkRunClassification {
@@ -514,8 +674,13 @@ function classifyAudit(infrastructureValid: boolean, dataValid: boolean, source:
     ? "completed_positive" : "completed_noninferior";
 }
 
-function chooseNextExperiment(root: RankabilityAudit["rootCauses"], ceilings: RankabilityDiagnosticCeilings, dataValid: boolean): RankabilityAudit["nextExperiment"] {
+function chooseNextExperiment(candidateComparison: CandidateComparison, root: RankabilityAudit["rootCauses"], ceilings: RankabilityDiagnosticCeilings, dataValid: boolean): RankabilityAudit["nextExperiment"] {
   if (!dataValid) return { kind: "expand_reviewed_data", reason: "Audit inputs are incomplete or invalid; no mechanism change is authorized." };
+  const semanticCoverageMisses = candidateComparison.misses.filter((item) => item.arm === "semantic" && item.at128.length > 0);
+  if (semanticCoverageMisses.length > 0) return {
+    kind: "candidate_generation",
+    reason: `${semanticCoverageMisses.length} of ${candidateComparison.comparedCases} frozen semantic-oracle cases still miss required source at bounded pool@128; the ranker remains frozen.`
+  };
   if (root.byRequiredFile.candidate_coverage > 0) return { kind: "candidate_generation", reason: "A required file is absent from the bounded pool, which no reranker can repair." };
   if (root.byRequiredFile.label_quality > 0) return { kind: "label_repair", reason: "Required-source label integrity fails before model comparison." };
   if (root.byRequiredFile.feature_representation > 0) return { kind: "feature_representation", reason: "Reviewed negatives collide with required files under the current feature schema." };
@@ -541,6 +706,12 @@ function validateAuditData(input: RankabilityInput): string[] {
   const missingHashes = requiredFiles.filter((item) => item.contentHashStatus !== "verified" || item.contentSha256 === null).length;
   if (missingHashes > 0) failures.push(`${missingHashes} required source file(s) lack verified content SHA-256.`);
   if (input.cohortCounts.weakPatchCalibrationCases !== 45) failures.push(`Weak-patch calibration cohort contains ${input.cohortCounts.weakPatchCalibrationCases}/45 cases.`);
+  if (input.recordedBaselines.length !== 4) failures.push(`Recorded baseline contract contains ${input.recordedBaselines.length}/4 evaluations.`);
+  for (const cohort of ["required_source", "weak_patch_calibration"] as const) {
+    const baselines = input.recordedBaselines.filter((item) => item.cohort === cohort);
+    if (baselines.length !== 2) failures.push(`${cohort} recorded baseline contract contains ${baselines.length}/2 models.`);
+    if (new Set(baselines.map((item) => item.modelId)).size !== baselines.length) failures.push(`${cohort} recorded baseline contract contains duplicate model ids.`);
+  }
   for (const item of input.cases) {
     if (item.stages.bounded128.length > 128) failures.push(`${item.id}: bounded pool exceeds 128 files.`);
     if (new Set(item.candidates.map((candidate) => candidate.path)).size !== item.candidates.length) failures.push(`${item.id}: candidate pool contains duplicate paths.`);
@@ -616,6 +787,20 @@ function limitations(input: RankabilityInput): string[] {
   return values;
 }
 
+function cohortPaths(item: RankabilityCaseInput, cohort: "required_source" | "weak_patch_calibration"): string[] {
+  return cohort === "required_source" ? item.requiredFiles.map((file) => file.path) : item.officialPatchFiles;
+}
+
+function allWithin(required: string[], candidates: string[]): boolean {
+  const paths = new Set(candidates);
+  return required.every((filePath) => paths.has(filePath));
+}
+
+function pathRecall(required: string[], candidates: string[]): number {
+  const paths = new Set(candidates);
+  return ratio(required.filter((filePath) => paths.has(filePath)).length, required.length);
+}
+
 function parseInput(value: unknown): RankabilityInput {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("rankability input must be an object");
   const input = value as RankabilityInput;
@@ -644,3 +829,4 @@ function mulberry32(seed: number): () => number { return () => { seed |= 0; seed
 function percent(value: number): string { return `${(value * 100).toFixed(2)}%`; }
 function signed(value: number): string { return `${value >= 0 ? "+" : ""}${value.toFixed(4)}`; }
 function points(value: number): string { return `${value >= 0 ? "+" : ""}${value.toFixed(2)} pp`; }
+function formatMetric(metric: MetricEstimate): string { return `${metric.numerator ?? "—"}/${metric.denominator} (${percent(metric.value)})`; }
