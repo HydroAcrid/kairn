@@ -7,7 +7,7 @@ import path from "node:path";
 export const BENCHMARK_CAMPAIGN_SCHEMA = "benchmark-campaign.v1" as const;
 export const BENCHMARK_RUN_SCHEMA = "benchmark-run.v1" as const;
 
-export type BenchmarkStage = "tier_a" | "tier_b" | "calibration" | "holdout" | "live";
+export type BenchmarkStage = "tier_a" | "tier_b" | "calibration" | "rankability" | "holdout" | "live";
 export type BenchmarkRunClassification =
   | "infrastructure_invalid"
   | "data_invalid"
@@ -195,7 +195,7 @@ function parseBenchmarkCampaign(value: unknown): BenchmarkCampaign {
       sha256: hash(artifact.sha256, `artifacts[${index}].sha256`),
       parents: requiredStringArray(artifact.parents, `artifacts[${index}].parents`),
       allowedStages: array(artifact.allowedStages, `artifacts[${index}].allowedStages`).map((stage, stageIndex) =>
-        oneOf(stage, ["tier_a", "tier_b", "calibration", "holdout", "live"] as const, `artifacts[${index}].allowedStages[${stageIndex}]`))
+        oneOf(stage, ["tier_a", "tier_b", "calibration", "rankability", "holdout", "live"] as const, `artifacts[${index}].allowedStages[${stageIndex}]`))
     };
   });
   const status = oneOf(holdout.status, ["sealed_detached", "opened"] as const, "holdout.status");

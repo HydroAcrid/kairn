@@ -12,7 +12,7 @@ const started = Date.now();
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "kairn-tier-a-"));
 const steps: Array<{ id: string; command: string; args: string[]; durationMs?: number }> = [
   { id: "typecheck", command: "pnpm", args: ["typecheck"] },
-  { id: "contracts", command: "pnpm", args: ["exec", "vitest", "run", "tests/benchmarkInfrastructure.test.ts", "tests/experiment.test.ts", "tests/evidenceTraining.test.ts"] },
+  { id: "contracts", command: "pnpm", args: ["exec", "vitest", "run", "tests/benchmarkInfrastructure.test.ts", "tests/experiment.test.ts", "tests/evidenceTraining.test.ts", "tests/rankabilityAudit.test.ts", "tests/rankabilityAuditIntegration.test.ts"] },
   { id: "architecture", command: "pnpm", args: ["check:semantic-architecture"] },
   { id: "fake_agent", command: "pnpm", args: ["verify:experiment-smoke"] }
 ];
@@ -39,7 +39,7 @@ try {
   for (const name of ["sample.json", "tier-a-determinism-sample.training-manifest.json", "sample.MODEL_CARD.md"]) {
     const firstPath = path.join(path.dirname(first), name);
     const secondPath = path.join(path.dirname(second), name);
-    if (sha256(firstPath) !== sha256(secondPath)) throw new Error(`sample ranker output is nondeterministic: ${suffix}`);
+    if (sha256(firstPath) !== sha256(secondPath)) throw new Error(`sample ranker output is nondeterministic: ${name}`);
   }
   const durationMs = Date.now() - started;
   if (durationMs > 120_000) throw new Error(`Tier A exceeded its 120 second budget (${durationMs} ms).`);

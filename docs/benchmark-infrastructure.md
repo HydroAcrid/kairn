@@ -9,12 +9,18 @@ Kairn separates infrastructure validity, data validity, and product effectivenes
 - Python 3.12 (`.python-version`)
 - Jina Code v2 Q8 at revision `516f4baf13dec4ddddda8631e019b5737c8bc250`
 
-Run from a clean checkout of `codex/v0.2c-benchmark-infrastructure`. On WSL, ensure Node, npm, and pnpm resolve from the same Node installation before running any benchmark command.
+Run infrastructure checks from `codex/v0.2c-benchmark-infrastructure`. Run the frozen rankability audit from `codex/v0.2c-rankability-audit`. On the current WSL host, activate the pinned runtimes before any evidence command:
+
+```bash
+export PATH=/home/kevin_dotel/.nvm/versions/node/v24.18.0/bin:/home/kevin_dotel/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/bin:/usr/local/bin:/usr/bin:/bin
+```
+
+The default WSL Node 18 / Python 3.10 environment is invalid for this campaign.
 
 ## Preflight
 
 ```bash
-pnpm benchmark:doctor -- --profile ranker
+pnpm benchmark:doctor -- --profile ranker --manifest benchmarks/campaigns/v02c-rankability-audit.json
 pnpm benchmark:doctor -- --profile live
 ```
 
@@ -60,16 +66,18 @@ Corpus materialization caches repository inventory/parser/index snapshots separa
 
 ```bash
 pnpm benchmark:rankability-audit -- \
-  --rows artifacts/ranker-probe.semantic-v170-reviewed-probe512-train-cal135.jsonl \
-  --models artifacts/kairn-evidence-v02c-semantic-v166-candidate.json,artifacts/kairn-evidence-v02c-semantic-v170-reviewed-probe512-candidate.json \
-  --out artifacts/runs/rankability-audit.json
+  --manifest benchmarks/campaigns/v02c-rankability-audit.json \
+  --run-id <id> \
+  --resume
 ```
 
 Candidate-generation comparisons use the same frozen 38-case oracle. Ranker comparisons require identical split, case IDs, candidate-manifest hash, and materialization-report hash. Reports refuse cross-population percentages.
 
 Raw candidate recall@64 is diagnostic. Promotion requires zero required-source misses in the bounded pool at 128, served recall@64 of at least 99% overall and 95% per language, ECE at most 0.05, and zero unreferenced generated/vendor top-one results. Recall@5, MRR, verification, and source-invariant results remain separate gates.
 
-The rankability audit is calibration-only and `promotionEligible: false`. It identifies positive ranks, higher-ranked reviewed negatives, feature collisions, weak-label-only cases, and linear ordering failures without opening holdout.
+The audit registers `rankability-audit.v2` JSON and Markdown in the content-addressed run ledger. It is calibration-only and `promotionEligible: false`. For each required file it records candidate-stage and lane ranks, v166/v170 scores and feature contributions, higher-ranked labels, exact/near feature collisions, paired confidence intervals, root-cause classification, and the mechanism-selected next experiment. Pairwise-linear and shallow-nonlinear probes are diagnostic ceilings only.
+
+The 38-case deterministic-versus-semantic candidate comparison, 10-case/17-file required-source audit, and 45-case calibration cohort are distinct populations and are never merged into one percentage. The required-source cohort has no Python cases and uneven language/scenario coverage, so its results remain internal diagnostics. Any public claim requires sealed-holdout confirmation plus quality-passing live-agent runs and provider-observed token measurements.
 
 ## Portable bundles
 

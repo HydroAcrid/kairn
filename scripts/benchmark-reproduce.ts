@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { initializeBenchmarkRun, registerRunArtifact, updateRunStatus, verifyRegisteredArtifacts } from "../src/bench/artifactLedger.js";
 import { runBenchmarkDoctor } from "../src/bench/benchmarkDoctor.js";
 import { loadBenchmarkCampaign, type BenchmarkStage } from "../src/bench/campaign.js";
+import { buildRankabilityAudit, formatRankabilityAuditMarkdown } from "../src/bench/rankabilityAudit.js";
 import { compareRankerEvaluations } from "../src/bench/rankerComparison.js";
 
 const options = parseArgs(process.argv.slice(2));
@@ -40,6 +41,7 @@ try {
 
   if (options.stage === "tier_a") reproduceTierA(run.runDirectory, run.manifest);
   else if (options.stage === "calibration") reproduceCalibration(run.runDirectory, run.manifest, resolved);
+  else if (options.stage === "rankability") reproduceRankability(run.runDirectory, run.manifest, resolved);
   else throw new Error(`reproduction does not implement stage ${options.stage}`);
   verifyRegisteredArtifacts(run.runDirectory);
   updateRunStatus(run.runDirectory, "complete");
@@ -47,6 +49,30 @@ try {
 } catch (error) {
   updateRunStatus(run.runDirectory, "invalid");
   throw error;
+}
+
+function reproduceRankability(runDirectory: string, manifest: typeof run.manifest, campaign: ReturnType<typeof loadBenchmarkCampaign>): void {
+  if (existingArtifact(runDirectory, "rankability-audit-json") && existingArtifact(runDirectory, "rankability-audit-markdown")) return;
+  const input = campaign.artifacts.find((artifact) => artifact.id === "rankability-input" && artifact.kind === "candidate_pool");
+  const models = ["model-v166", "model-v170"].map((id) => campaign.artifacts.find((artifact) => artifact.id === id && artifact.kind === "model"));
+  if (!input || models.some((model) => !model)) throw new Error("rankability campaign artifacts are incomplete");
+  const infrastructurePath = path.join(runDirectory, "infrastructure-report.json");
+  const infrastructure = JSON.parse(fs.readFileSync(infrastructurePath, "utf8")) as { valid: boolean };
+  const startedAt = new Date().toISOString();
+  const audit = buildRankabilityAudit({
+    inputPath: input.absolutePath,
+    modelPaths: models.map((model) => model!.absolutePath),
+    infrastructureValid: infrastructure.valid,
+    campaignFingerprint: campaign.fingerprint,
+    infrastructureReportSha256: fileHash(infrastructurePath)
+  });
+  const jsonPath = path.join(runDirectory, "evaluation", "rankability-audit.v2.json");
+  const markdownPath = path.join(runDirectory, "evaluation", "rankability-audit.v2.md");
+  fs.writeFileSync(jsonPath, `${JSON.stringify(audit, null, 2)}\n`, "utf8");
+  fs.writeFileSync(markdownPath, formatRankabilityAuditMarkdown(audit), "utf8");
+  const inputs = [input, ...models.map((model) => model!)].map((artifact) => ({ id: artifact.id, sha256: artifact.sha256 }));
+  registerRunArtifact({ runDirectory, runManifest: manifest, id: "rankability-audit-json", filePath: jsonPath, schema: audit.schemaVersion, producer: ["pnpm", "benchmark:reproduce", "--stage", "rankability"], inputs, startedAt });
+  registerRunArtifact({ runDirectory, runManifest: manifest, id: "rankability-audit-markdown", filePath: markdownPath, schema: "rankability-audit-markdown.v1", producer: ["pnpm", "benchmark:reproduce", "--stage", "rankability"], inputs: [{ id: "rankability-audit-json", sha256: fileHash(jsonPath) }], startedAt });
 }
 
 function reproduceTierA(runDirectory: string, manifest: typeof run.manifest): void {
