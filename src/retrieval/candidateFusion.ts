@@ -48,6 +48,13 @@ export type ModelCandidateUnion = {
   graphEvidenceByPath: ReadonlyMap<string, EvidenceGraphFacts>;
   semanticPaths: string[];
   semanticEvidencePaths: string[];
+  /** Diagnostic model interactions; no policy or ranking bonus is applied. */
+  semanticInteractions: Array<{
+    path: string;
+    similarity: number;
+    fileSimilarity?: number;
+    symbolSimilarity?: number;
+  }>;
 };
 
 /**
@@ -457,7 +464,13 @@ export function buildModelCandidateUnion(input: {
     graphSeedRanks,
     graphEvidenceByPath,
     semanticPaths,
-    semanticEvidencePaths
+    semanticEvidencePaths,
+    semanticInteractions: intentAwareSemanticHits.map((hit) => ({
+      path: normalizePath(hit.path),
+      similarity: hit.similarity,
+      ...(hit.fileSimilarity !== undefined ? { fileSimilarity: hit.fileSimilarity } : {}),
+      ...(hit.symbolSimilarity !== undefined ? { symbolSimilarity: hit.symbolSimilarity } : {})
+    }))
   };
 }
 

@@ -19,6 +19,10 @@ import { DEFAULT_SEMANTIC_MODEL_ID } from "../semantic/modelRegistry.js";
 export type SemanticCandidateHit = {
   path: string;
   similarity: number;
+  /** Best whole-file document similarity for this query view. */
+  fileSimilarity?: number;
+  /** Best symbol-body document similarity for this query view. */
+  symbolSimilarity?: number;
   documentIds: string[];
 };
 
@@ -414,6 +418,8 @@ export function fuseSemanticCandidateRankings(
     score: number;
     bestRank: number;
     similarity: number;
+    fileSimilarity: number;
+    symbolSimilarity: number;
     documentIds: Set<string>;
   }>();
   for (const ranking of rankings) {
@@ -426,11 +432,21 @@ export function fuseSemanticCandidateRankings(
         score: 0,
         bestRank: Number.POSITIVE_INFINITY,
         similarity: Number.NEGATIVE_INFINITY,
+        fileSimilarity: Number.NEGATIVE_INFINITY,
+        symbolSimilarity: Number.NEGATIVE_INFINITY,
         documentIds: new Set<string>()
       };
       current.score += 1 / (boundedConstant + rank);
       current.bestRank = Math.min(current.bestRank, rank);
       current.similarity = Math.max(current.similarity, hit.similarity);
+      current.fileSimilarity = Math.max(
+        current.fileSimilarity,
+        hit.fileSimilarity ?? Number.NEGATIVE_INFINITY
+      );
+      current.symbolSimilarity = Math.max(
+        current.symbolSimilarity,
+        hit.symbolSimilarity ?? Number.NEGATIVE_INFINITY
+      );
       hit.documentIds.forEach((documentId) => current.documentIds.add(documentId));
       byPath.set(hit.path, current);
     });
@@ -500,6 +516,12 @@ export function fuseSemanticCandidateRankings(
     .map(([filePath, value]) => ({
       path: filePath,
       similarity: Number(value.similarity.toFixed(6)),
+      ...(Number.isFinite(value.fileSimilarity)
+        ? { fileSimilarity: Number(value.fileSimilarity.toFixed(6)) }
+        : {}),
+      ...(Number.isFinite(value.symbolSimilarity)
+        ? { symbolSimilarity: Number(value.symbolSimilarity.toFixed(6)) }
+        : {}),
       documentIds: [...value.documentIds].sort().slice(0, 6)
     }));
 }
@@ -511,28 +533,49 @@ export function scoreSemanticEmbeddingIndex(input: {
   limit?: number;
 }): SemanticCandidateHit[] {
   const documentsById = new Map(input.documents.map((document) => [document.id, document]));
-  const byFile = new Map<string, SemanticCandidateHit>();
+  const byFile = new Map<string, {
+    path: string;
+    similarity: number;
+    fileSimilarity: number;
+    symbolSimilarity: number;
+    documentIds: string[];
+  }>();
   for (const embedding of input.embeddings) {
     const document = documentsById.get(embedding.documentId);
     if (!document) continue;
     const similarity = quantizedCosineSimilarity(input.queryVector, embedding);
-    const existing = byFile.get(document.filePath);
-    if (!existing || similarity > existing.similarity) {
-      byFile.set(document.filePath, {
+    const existing = byFile.get(document.filePath) ?? {
         path: document.filePath,
-        similarity,
-        documentIds: [document.id]
-      });
+        similarity: Number.NEGATIVE_INFINITY,
+        fileSimilarity: Number.NEGATIVE_INFINITY,
+        symbolSimilarity: Number.NEGATIVE_INFINITY,
+        documentIds: []
+      };
+    if (document.kind === "file") {
+      existing.fileSimilarity = Math.max(existing.fileSimilarity, similarity);
+    } else {
+      existing.symbolSimilarity = Math.max(existing.symbolSimilarity, similarity);
+    }
+    if (similarity > existing.similarity) {
+      existing.similarity = similarity;
+      existing.documentIds = [document.id];
     } else if (Math.abs(similarity - existing.similarity) < 1e-9 && existing.documentIds.length < 3) {
       existing.documentIds.push(document.id);
     }
+    byFile.set(document.filePath, existing);
   }
   return [...byFile.values()]
     .sort((left, right) => right.similarity - left.similarity || left.path.localeCompare(right.path))
     .slice(0, Math.max(1, Math.floor(input.limit ?? 64)))
     .map((hit) => ({
-      ...hit,
+      path: hit.path,
       similarity: Number(hit.similarity.toFixed(6)),
+      ...(Number.isFinite(hit.fileSimilarity)
+        ? { fileSimilarity: Number(hit.fileSimilarity.toFixed(6)) }
+        : {}),
+      ...(Number.isFinite(hit.symbolSimilarity)
+        ? { symbolSimilarity: Number(hit.symbolSimilarity.toFixed(6)) }
+        : {}),
       documentIds: [...hit.documentIds].sort()
     }));
 }

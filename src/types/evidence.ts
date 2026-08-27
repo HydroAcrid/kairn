@@ -162,6 +162,13 @@ export type EvidenceCandidateInspection = {
     /** Semantic ranking actually used by candidate generation. */
     semanticFused: string[];
     semanticEvidence: string[];
+    /** Model-only whole-file and symbol-body similarities for feature research. */
+    semanticInteractions?: Array<{
+      path: string;
+      similarity: number;
+      fileSimilarity?: number;
+      symbolSimilarity?: number;
+    }>;
     bm25: string[];
     graph: string[];
     graphImporter?: string[];

@@ -3947,6 +3947,7 @@ export class KairnRuntime {
           semanticRawFused: semanticSearch.hits.map((hit) => hit.path),
           semanticFused: fused.semanticPaths,
           semanticEvidence: fused.semanticEvidencePaths,
+          semanticInteractions: fused.semanticInteractions,
           bm25: modelBm25Results.map((result) => result.path),
           graph: fused.graphPaths,
           graphImporter: fused.graphImporterPaths,
