@@ -129,6 +129,28 @@ describe("cross-language parser adapters", () => {
     expect(parsed.moduleInstallers).toEqual(["./memory/main"]);
   });
 
+  it("extracts imported module member calls as structural facts", async () => {
+    const parsed = await parseSourceFile({
+      rootPath: "/repo",
+      filePath: "src/service.js",
+      language: "javascript",
+      content: [
+        "const db = require('./database');",
+        "const user = require('./user');",
+        "async function run() {",
+        "  await db.getObject('key');",
+        "  await user.email.confirmByUid(7);",
+        "}",
+        ""
+      ].join("\n")
+    });
+
+    expect(parsed.moduleMemberCalls).toEqual([
+      { specifier: "./database", member: "getObject" },
+      { specifier: "./user", member: "confirmByUid" }
+    ]);
+  });
+
   it("contains a fatal-looking parser error to one file", async () => {
     const parse = vi.spyOn(Parser.prototype, "parse");
     try {

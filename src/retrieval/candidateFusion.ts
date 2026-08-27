@@ -328,15 +328,18 @@ export function buildModelCandidateUnion(input: {
       { channel: "graph", paths: graphPaths },
       ...(graphConsensusPaths.length > 0
         ? [{ channel: "graph_consensus" as const, paths: graphConsensusPaths }]
+        : []),
+      ...(graphImporterPaths.length > 0
+        ? [{ channel: "graph_importer" as const, paths: graphImporterPaths }]
         : [])
     ],
     limit: GRAPH_ENRICHMENT_CAPACITY
   }).filter((filePath) => filesByPath.has(filePath));
-  // Preserve the complete parser-precision/consensus core before admitting
-  // the weaker reverse-import relation. The tail is still model-based:
-  // importer candidates require their own semantic evidence. A two-to-one
-  // structural interleave reflects the stronger multi-seed consensus without
-  // assigning brittle independent quotas or enlarging the 128-file union.
+  // The core is one bounded structural selector: precise relations,
+  // independent-seed consensus, and model-corroborated reverse importers can
+  // reinforce one another without a sequential lane starving the others.
+  // The tail retains deterministic coverage when a lane has no cross-lane
+  // agreement; importer candidates still require their own semantic evidence.
   const graphTailPaths = weightedInterleavePaths([
     { paths: graphConsensusPaths, weight: 2 },
     { paths: graphImporterPaths, weight: 1 }

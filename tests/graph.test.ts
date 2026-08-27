@@ -381,7 +381,8 @@ describe("buildRepoGraph", () => {
       file(rootPath, "src/storage/postgres/main.js", "source"),
       file(rootPath, "src/features/index.js", "source"),
       file(rootPath, "src/features/remove.js", "source"),
-      file(rootPath, "src/controllers/admin.js", "source")
+      file(rootPath, "src/controllers/admin.js", "source"),
+      file(rootPath, "src/controllers/storage.js", "source")
     ];
     const sources = new Map([
       ["src/storage/index.js", "module.exports = require(`./${backend}`);"],
@@ -393,14 +394,24 @@ describe("buildRepoGraph", () => {
         "src/storage/postgres.js",
         "const adapter = module.exports;\nrequire('./postgres/main')(adapter);"
       ],
-      ["src/storage/memory/main.js", "module.exports = function install(adapter) {};"],
-      ["src/storage/postgres/main.js", "module.exports = function install(adapter) {};"],
+      [
+        "src/storage/memory/main.js",
+        "module.exports = function install(adapter) { adapter.getObject = async function (key) { return key; }; };"
+      ],
+      [
+        "src/storage/postgres/main.js",
+        "module.exports = function install(adapter) { adapter.getObject = async function (key) { return key; }; };"
+      ],
       [
         "src/features/index.js",
         "const features = module.exports;\nrequire('./remove')(features);"
       ],
       ["src/features/remove.js", "module.exports = function install(features) {};"],
-      ["src/controllers/admin.js", "const features = require('../features');"]
+      ["src/controllers/admin.js", "const features = require('../features');"],
+      [
+        "src/controllers/storage.js",
+        "const storage = require('../storage');\nmodule.exports = () => storage.getObject('account');"
+      ]
     ]);
     const parsedFiles = await Promise.all(files.map((record) =>
       parseSourceFile({
@@ -438,6 +449,21 @@ describe("buildRepoGraph", () => {
       "src/controllers/admin.js",
       "src/features/remove.js"
     )).toContain("module_installation");
+    expect(edgeTypes(
+      graph.edges,
+      "src/controllers/storage.js",
+      "src/storage/memory/main.js"
+    )).toContain("call");
+    expect(edgeTypes(
+      graph.edges,
+      "src/controllers/storage.js",
+      "src/storage/postgres/main.js"
+    )).toContain("call");
+    expect(graph.edges.some((edge) =>
+      edge.fromFile === "src/controllers/storage.js" &&
+      edge.toFile === "src/features/remove.js" &&
+      edge.type === "call"
+    )).toBe(false);
   });
 
   it("falls back gracefully when tsconfig is broken", async () => {

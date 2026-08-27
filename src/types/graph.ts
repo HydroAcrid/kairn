@@ -171,6 +171,13 @@ export type ParsedFile = {
   references?: string[];
   /** Parser-observed unqualified call targets, never task-derived relevance terms. */
   calls?: string[];
+  /**
+   * Parser-observed calls through a locally imported module binding. These
+   * facts preserve the import specifier and called member so graph building
+   * can resolve a dynamic dispatcher to only implementations that actually
+   * provide the member. They are syntax facts, never query-derived terms.
+   */
+  moduleMemberCalls?: Array<{ specifier: string; member: string }>;
   /** Relative module-family prefixes from dynamic local require calls. */
   dynamicImports?: string[];
   /** Literal modules that are required and immediately invoked as installers. */

@@ -125,6 +125,7 @@ export async function parseSourceFile(input: {
       imports: [...new Set(parsed.imports)].sort(),
       references: extractStructuralTypeReferences(tree.rootNode, input.language),
       calls: extractStructuralCallTargets(tree.rootNode, input.language),
+      moduleMemberCalls: extractModuleMemberCalls(tree.rootNode, input.language),
       dynamicImports: [...new Set(parsed.dynamicImports ?? [])].sort(),
       moduleInstallers: [...new Set(parsed.moduleInstallers ?? [])].sort(),
       hasErrors: tree.rootNode.hasError
@@ -212,6 +213,7 @@ function emptyParsedFile(
     imports: [],
     references: [],
     calls: [],
+    moduleMemberCalls: [],
     dynamicImports: [],
     moduleInstallers: [],
     hasErrors
@@ -234,6 +236,78 @@ function extractStructuralCallTargets(
     if (name && name.length <= 160) calls.add(name);
   });
   return [...calls].sort().slice(0, 256);
+}
+
+function extractModuleMemberCalls(
+  rootNode: SyntaxNodeLike,
+  language: string
+): Array<{ specifier: string; member: string }> {
+  if (language !== "javascript" && language !== "typescript") return [];
+
+  const moduleBindings = new Map<string, string>();
+  visit(rootNode, (node) => {
+    if (node.type === "variable_declarator") {
+      const name = node.childForFieldName("name");
+      const value = node.childForFieldName("value");
+      if (name?.type !== "identifier" || value?.type !== "call_expression") return;
+      const specifier = extractRequireSpecifier(value.text);
+      if (specifier) moduleBindings.set(name.text, specifier);
+      return;
+    }
+
+    if (node.type !== "import_statement") return;
+    const specifier = extractModuleSpecifier(node.text);
+    const clause = node.namedChildren.find((child) => child.type === "import_clause");
+    if (!specifier || !clause) return;
+    for (const child of clause.namedChildren) {
+      if (child.type === "identifier") {
+        moduleBindings.set(child.text, specifier);
+        continue;
+      }
+      if (child.type !== "namespace_import") continue;
+      const alias = [...child.namedChildren]
+        .reverse()
+        .find((candidate) => candidate.type === "identifier");
+      if (alias) moduleBindings.set(alias.text, specifier);
+    }
+  });
+
+  const calls = new Map<string, { specifier: string; member: string }>();
+  visit(rootNode, (node) => {
+    if (node.type !== "call_expression") return;
+    const callable = node.childForFieldName("function");
+    const memberCall = callable ? moduleMemberCall(callable) : undefined;
+    if (!memberCall) return;
+    const specifier = moduleBindings.get(memberCall.binding);
+    if (!specifier) return;
+    calls.set(`${specifier}\0${memberCall.member}`, {
+      specifier,
+      member: memberCall.member
+    });
+  });
+  return [...calls.values()].sort((left, right) =>
+    left.specifier.localeCompare(right.specifier) || left.member.localeCompare(right.member)
+  );
+}
+
+function moduleMemberCall(
+  callable: SyntaxNodeLike
+): { binding: string; member: string } | undefined {
+  if (callable.type !== "member_expression" && callable.type !== "subscript_expression") {
+    return undefined;
+  }
+  const property = callable.childForFieldName("property") ??
+    callable.childForFieldName("index") ??
+    callable.namedChildren.at(-1);
+  const member = property?.text.replace(/^["']|["']$/g, "");
+  if (!member || !/^[A-Za-z_$][\w$]*$/.test(member)) return undefined;
+
+  let owner = callable.childForFieldName("object") ?? callable.namedChildren[0];
+  while (owner?.type === "member_expression" || owner?.type === "subscript_expression") {
+    owner = owner.childForFieldName("object") ?? owner.namedChildren[0];
+  }
+  if (owner?.type !== "identifier") return undefined;
+  return { binding: owner.text, member };
 }
 
 function extractStructuralTypeReferences(

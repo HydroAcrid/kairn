@@ -75,6 +75,7 @@ function addDynamicImplementationEdges(
   const fileByPath = new Map(files.map((file) => [file.path, file]));
   const parsedByPath = new Map(parsedFiles.map((parsedFile) => [parsedFile.filePath, parsedFile]));
   const maxTargetsPerDispatcher = 64;
+  const maxTargetsPerMember = 16;
 
   for (const dispatcher of parsedFiles) {
     if (!dispatcher.dynamicImports?.length && !dispatcher.moduleInstallers?.length) continue;
@@ -137,6 +138,37 @@ function addDynamicImplementationEdges(
       .sort()
       .slice(0, 256);
     for (const importer of importers) {
+      const memberCalls = (parsedByPath.get(importer)?.moduleMemberCalls ?? [])
+        .filter((call) =>
+          resolveImportCandidates(importer, call.specifier).includes(dispatcher.filePath)
+        );
+      for (const call of memberCalls) {
+        const matchingTargets = boundedTargets.filter((target) =>
+          parsedByPath.get(target)?.symbols.some((symbol) =>
+            symbol.kind === "function" && symbol.name === call.member
+          )
+        );
+        // A member implemented by a bounded set of concrete modules is
+        // precise structural evidence. Very broad surfaces remain represented
+        // by the lower-confidence installation family instead of being
+        // mislabeled as direct calls.
+        if (matchingTargets.length === 0 || matchingTargets.length > maxTargetsPerMember) {
+          continue;
+        }
+        for (const target of matchingTargets) {
+          addEdge(edgeMap, {
+            rootPath,
+            fromFile: importer,
+            toFile: target,
+            type: "call",
+            metadata: {
+              reason: "parser-resolved imported module member call",
+              symbol: call.member,
+              through: dispatcher.filePath
+            }
+          });
+        }
+      }
       for (const target of boundedTargets) {
         if (target === importer) continue;
         addEdge(edgeMap, {
